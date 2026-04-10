@@ -15,55 +15,51 @@ A high-polish digital client for **Magic: The Gathering Commander (EDH)** multip
 - No content treadmill. New cards can lag official releases by days or weeks.
 - Realistic hobby-project scope. Not a startup.
 
-The three hard problems that remain are: **rules engine**, **multiplayer state sync**, and **the UX polish that is actually the point**.
+The three hard problems that remain are: **game state and multiplayer sync**, **the UX polish that is actually the point**, and — on a long horizon — **incremental rules enforcement**.
 
 ---
 
 ## 2. The central architectural decision
 
-One decision dominates everything else: where does the rules engine come from?
+One decision dominates everything else: how do we handle the rules engine?
 
-### Option A — New client on the XMage backend (recommended)
+### The three options
 
-Reuse [XMage](https://github.com/magefree/mage) as the rules engine. XMage is a Java/Maven project under an MIT license, actively developed (v1.4.58 released October 2025), supports Commander with up to 10 players, and ships **full rules enforcement for over 28,000 unique cards**. Replace only the client: write a thin protocol bridge and a new web frontend.
+**Option A — Reuse XMage as the backend.** Thin protocol bridge to XMage's Java server. Inherits ~28,000 implemented cards, full rules enforcement, commander support, multiplayer sync. *Rejected after S01 discovery* — see §2.2.
 
-Pros:
-- The hardest problem in the space — the rules engine — is already solved.
-- Commander is natively supported.
-- MIT license allows anything.
-- Inherits 15 years of rules work and new-set support for free.
+**Option B — Sandbox-style client.** Server-authoritative game state, but no rules enforcement. Players tap their own cards, resolve their own triggers, track their own mana. Like Cockatrice, but built around 4-player Commander with better UX.
 
-Cons:
-- Coupled to XMage's protocol and release cadence.
-- Java server is a deployment wart (fine for personal VPS).
-- XMage's abstractions may not expose everything a nice UI wants (animation hooks, intent preview, undo).
+**Option C — Custom rules engine.** Build rules enforcement from scratch. Forge has been at this 15+ years; XMage the same. A solo hobbyist cannot out-build either.
 
-MVP effort: **~3–6 months part-time** to a playable, prettier client.
+### 2.1 The decision: **B first, C grafted on incrementally**
 
-### Option B — Fresh sandbox client (fallback)
+Build Option B fully — a polished sandbox client with authoritative multiplayer state and world-class Commander UX. Ship it, play real games on it, and then **layer rules enforcement on top, card by card and mechanic by mechanic, driven entirely by what actually appears at our table.**
 
-Build a Cockatrice-style sandbox from scratch. No rules enforcement. Players move their own cards, tap and untap manually, track life manually. Build Commander-specific UX on top (command zone, commander damage grid, monarch, politics, vote tracking).
+This is a deliberate inversion of PLAN.md v1's recommendation. The original plan chose Option A (reuse XMage) on the reasoning that rules enforcement is the hardest problem and should be delegated. That's still true in the abstract — but the coupling cost is real (see §2.2), and a manual-first, rules-grafted-in-later path has properties the original plan undervalued:
 
-Pros:
-- Total freedom over stack, UX, and animations.
-- Any card "works" instantly — no per-card implementation bottleneck.
-- The playgroup already knows the rules; enforcement is not the value-add.
+- **First playable in ~3 months** instead of ~6. Real games with friends drive every subsequent priority decision.
+- **No "stuck" state, ever.** Manual override is the fallback for any interaction the engine doesn't understand yet. Games don't halt because of an unimplemented card — players resolve it by hand and move on.
+- **Rules work is prioritised by pain.** You implement the cards and interactions that actually annoyed you last weekend, not a speculative coverage goal.
+- **The long tail is small in practice.** A playgroup's 8 decks share maybe 400–800 unique cards. That's a tractable target over years — not 28,000.
+- **All original stack.** No JBoss Remoting. No Maven wart on the VPS. Go backend, TypeScript client, one deployable per service.
 
-Cons:
-- Cannot achieve the Arena "click card → it just works" feel.
-- No automatic triggers, stack management, or combat phase automation.
+The risk this accepts: **full rules enforcement may never arrive**, in the sense that XMage-level coverage is years away. That's fine if the sandbox itself is the compelling product — and Option B's analysis already makes that case: the playgroup knows the rules, so enforcement is not the value-add.
 
-MVP effort: **~2–4 months part-time** to a working Cockatrice-beater.
+### 2.2 Why not Option A (the S01 discovery)
 
-### Option C — Full custom rules engine (do not do this)
+S01 was originally scoped as "clone XMage, play a game, capture protocol, confirm Option A". The clone-and-read-source portion surfaced a blocker before any protocol capture happened:
 
-XMage took 15+ years and 50,000+ commits with a team of volunteers to reach 28k cards. A solo developer will not out-build this.
+- XMage's wire protocol is **JBoss Remoting 2.5.4** (dependency declared in `Mage.Common/pom.xml:31`) with **Java object serialization** (`Connection.java:36`: `?serializationtype=java`).
+- The "protocol" is remote Java method calls on interfaces like `Session`, `GamePlay`, `PlayerActions` (see `Mage.Common/src/main/java/mage/remote/`), invoked via `TransporterClient.createTransporterClient(...)` in `SessionImpl.java:371`.
+- JBoss Remoting 2 was deprecated around 2013. The library is unmaintained. It is not reimplementable in Go or Node as a client — the only practical client is the original Java library.
 
-### Recommendation: Option A
+This forces any XMage-based bridge onto the JVM (Java or Kotlin), which in turn forces a JVM runtime on the VPS alongside Go/Node. The coupling isn't catastrophic, but it imposes a permanent Java dependency on a project whose whole appeal is a clean, modern stack. Combined with the B-then-C path being more playable sooner, Option A is no longer the recommendation.
 
-"As nice as MTG Arena" implies the "it just works" feel, which requires rules enforcement. XMage is the only realistic path to that as a solo hobbyist. The hybrid move: fork XMage's server, write a thin protocol bridge, and pour all energy into the client and Commander-specific UX layer. That is where the gap in the space actually is.
+**Keep as a fallback:** if Option B stalls on game-state or sync problems we haven't anticipated, re-evaluating Option A remains on the table.
 
-A safety valve is **Option A with a manual-override escape hatch**: allow players to manually move cards or fix state when the engine gets a weird interaction wrong, so games do not get stuck.
+### 2.3 Why not Option C (straight custom rules engine)
+
+Same reason the original plan rejected it: 28,000 cards × hand-written rules × 15 years of edge cases is not reachable by one person at 10 hrs/week. Attempting it means zero playability for 2+ years with no user feedback — the classic infra-first trap. **Option C as the starting point is rejected.** Option C *as the destination* — incrementally grown on top of Option B — is the plan.
 
 ---
 
@@ -73,44 +69,43 @@ A safety valve is **Option A with a manual-override escape hatch**: allow player
 |---|---|---|---|---|---|
 | MTG Arena | Full | 1v1 | Excellent | No (by design) | Unity, WotC. Historic Brawl is the closest; no 4-player. |
 | MTGO | Full | Up to 4p | Poor (2004-era) | Yes | The only "official" Commander client; universally complained about. |
-| **XMage** | Full (28k) | Up to 10p | Poor (Java/Swing) | Yes | Technically excellent, visually dated. **This project's leverage point.** |
-| Cockatrice | Sandbox | Up to 10p | Dated | Partial | C++/Qt, GPLv2. Server-authoritative but no enforcement. Still active (2.10.3, Feb 2026). |
+| XMage | Full (~28k) | Up to 10p | Poor (Java/Swing) | Yes | Technically excellent, visually dated. Considered and rejected as a backend in S01. |
+| Cockatrice | Sandbox | Up to 10p | Dated | Partial | C++/Qt, GPLv2. Server-authoritative but no enforcement. Closest sibling to what we're building. |
 | Forge | Full-ish | Local mostly | Dated | Partial | Data-driven card scripts, strong AI, weak multiplayer. |
 | Spelltable | None (webcam) | 4p | OK | Yes | WotC-owned. Paper play over video. |
 | Tabletop Simulator | None | 4p | Clunky | Partial | Generic VTT with MTG mods. |
 
-**The gap:** nobody combines rules enforcement, good UX, and Commander-first design. XMage has the first and third; the second is missing. That is the wedge.
+**The gap we're targeting:** a Cockatrice-class sandbox with an Arena-class UX, built from the ground up around 4-player Commander, with a credible long-term path to rules enforcement. Nobody is in that quadrant.
 
 ---
 
-## 4. Tech stack (assuming Option A)
+## 4. Tech stack
 
-- **Backend rules engine:** XMage server (Java 21, Maven, MIT). Hosted on a $5–10/mo VPS.
-- **Protocol bridge:** thin Go or TypeScript/Node service. Speaks XMage's protocol on one side, WebSocket + JSON on the other. Isolates Java ugliness from the client.
-- **Client:** web app. TypeScript + React (or Svelte) + PixiJS for the play area. React/Svelte for menus, lobby, deck manager, chat. PixiJS canvas for the play area.
-- **Card data and images:** [Scryfall](https://scryfall.com/docs/api) bulk data ("default cards" JSON, ~200MB), refreshed weekly via cron. Images downloaded on-demand, cached locally.
+- **Game server:** **Go** (stdlib + [gorilla/websocket](https://github.com/gorilla/websocket) or similar). Authoritative game state, WebSocket+JSON protocol to clients, room/lobby management. Hosted on a $5–10/mo VPS.
+- **Protocol:** WebSocket per client, JSON frames (our schema, versioned). Server-authoritative; clients submit actions, server emits state deltas.
+- **Client:** TypeScript + Vite. [React](https://react.dev) or [Svelte](https://svelte.dev) for menus, lobby, deck manager, chat. [PixiJS](https://pixijs.com) canvas for the play area and animations.
+- **Card data and images:** [Scryfall](https://scryfall.com/docs/api) bulk data ("default cards" JSON, ~200 MB), refreshed weekly via cron. Images downloaded on-demand, cached locally.
 - **Deck import:** Moxfield and Archidekt exports (open text formats), `.cod`, `.dek`, plain text.
 - **Auth:** single shared password or magic-link email. It is 4–8 people. Do not over-engineer.
-- **State sync:** already handled by XMage's protocol. Server-authoritative by default.
-- **Animations and juice:** GSAP + PixiJS. Card flips, tap/untap, damage numbers, combat arrows, stack visualization.
+- **State storage:** in-memory during a game, JSON snapshots to disk for replays and crash recovery. No database until there's a reason for one.
+- **Animations and juice:** GSAP + PixiJS. Card flips, tap/untap, damage numbers, combat arrows.
+- **Rules enforcement (B→C path, from S13+):** grafted onto the Go game server incrementally. Each rule lives as a pure function of game state; mechanics ship one at a time. Manual override is the permanent fallback for anything the engine doesn't know yet.
 - **Later packaging:** Tauri or Electron wrap for desktop; Capacitor for mobile. Same codebase.
-
-Alternative stack for Option B: SvelteKit + [Colyseus](https://colyseus.io) (Node.js real-time server). Simpler, far less capable.
 
 ---
 
 ## 5. Commander-specific UX goals (the differentiator)
 
-XMage has rules but does not have *Commander feel*. Design wins to pursue:
+Where MTGO and XMage have Commander but no feel, and Cockatrice has feel but no Commander-specific affordances, the differentiator is doing both.
 
 - **4-player table layout** that gives proper spatial sense of opponents. Not a 1v1 view bodged sideways.
 - **Command zone** as a first-class prominent UI element, not an afterthought.
 - **Commander damage grid** (4×4 matrix) always visible.
 - **Life-total ticker** starting at 40, with change history, poison, infect, energy.
 - **Politics UI:** deal buttons, promise tokens, voting UI for council's dilemma, goad / monarch / initiative markers.
-- **Priority visualization:** clear indicator of who has priority, "any responses?" across 3 opponents.
-- **Intent preview:** hover a card to preview what it would do before committing. Huge Arena feature; XMage lacks it.
-- **Undo / take-back:** one-click rewind to last priority pass for casual play.
+- **Priority visualization:** clear indicator of who has priority, "any responses?" across 3 opponents. (In Option B: priority is advanced manually via a pass button until S13+ rules work automates it.)
+- **Intent preview:** hover a card to preview what it would do. Starts as "show full Oracle text and current state" in Option B; becomes true intent simulation as the rules engine grows in the B→C phase.
+- **Undo / take-back:** one-click rewind to last snapshot for casual play.
 - **Deck stats sidebar:** lands left, cards in hand, average CMC drawn.
 - **Chat and reactions:** Discord-tier chat in-game. Table-talk is half of Commander.
 - **Replays and screenshots:** auto-saved game logs and a "share this turn" button.
@@ -124,36 +119,35 @@ Assumes ~10 hours/week part-time.
 
 | Phase | Scope | Rough duration |
 |---|---|---|
-| **0 — Discovery spike** | Clone XMage, build it locally, play a game, capture protocol traffic. Decision gate: confirm Option A or pivot. | 2–3 weeks |
-| **1 — Protocol bridge** | Minimal Go/TS service speaking XMage protocol on one side, WebSocket/JSON on the other. CLI test client plays basic actions. | 3–4 weeks |
-| **2 — Lobby and deck import** | React app: login, create game, invite by link, import decks from Moxfield. Scryfall data pipeline. | 3 weeks |
-| **3 — Core play UI** | PixiJS play area: hand, battlefield, libraries, graveyards, exile, command zone. 4-player layout. Functional, not pretty. | 6–8 weeks |
-| **4 — First playable** | Two-player game end-to-end in browser. Play yourself across two tabs. | milestone |
-| **5 — Polish pass 1** | Animations, sound, particles, hover previews, commander damage grid, life tracker. Make it feel good. | 4–6 weeks |
-| **6 — 4-player and go live with friends** | Deploy to VPS. Play real games. Iterate on pain points. | 2 weeks |
-| **7+** | Ongoing polish driven by what annoys us in real sessions. | ongoing |
+| **0 — Server + client architecture spike** | Pick Go WS stack, scaffold `server/` and `client/`, echo an action through both. Decision gate on framework and protocol schema v0. | 2 weeks |
+| **1 — Core game server** | Authoritative in-memory game state: players, zones, turn/phase/step state machine, action protocol, state deltas over WebSocket. No rules enforcement — all actions valid. | 4 weeks |
+| **2 — Lobby, auth, Scryfall pipeline** | Create/join game, shared-password auth, weekly Scryfall pull, card image cache. | 2 weeks |
+| **3 — Core play UI** | PixiJS play area: hand, battlefield, libraries, graveyards, exile, command zone. 4-player layout. Functional, not pretty. Deck import. | 6–8 weeks |
+| **4 — First playable sandbox** | 2-player game end-to-end in browser, played across two tabs. No rules enforcement; players resolve everything manually. Milestone. | — |
+| **5 — Polish pass 1** | Animations, sound, hover previews, commander damage grid, life tracker, politics UI, monarch/initiative markers. Make it feel good. | 4–6 weeks |
+| **6 — 4-player and go live with friends** | Deploy to VPS. Real 4-player Commander games. Triage pain points into the S13+ backlog. | 2 weeks |
+| **7 — B→C rules graft (ongoing)** | Incremental rules enforcement. Start with auto-untap, auto-draw step, auto-tap lands for mana. Grow into combat resolution, target validation, triggered abilities, the long tail of cards. Priorities come from real games. | indefinite |
 
-Realistic "first real game with friends": **4–6 months part-time**. First "this feels premium": **9–12 months**.
+Realistic "first real game with friends on the sandbox": **~3 months part-time**. First "this feels premium": **~6 months**. First "the engine is taking over meaningful chunks of the rules": **~12+ months**.
 
 ---
 
 ## 7. Open decisions
 
-Before writing protocol or UI code, the following need calls:
+Before writing serious code, the following need calls:
 
-1. **Option A (XMage backend) vs B (sandbox)?** Strong recommendation: A.
-2. **Delivery target:** web browser only, or also desktop (Tauri) or mobile (Capacitor)? Recommendation: web-only first.
-3. **Framework preference:** React, Svelte, Vue? Familiarity beats theoretical best.
-4. **Comfort with Java:** shapes how thick the protocol bridge needs to be.
-5. **Art direction:** Scryfall art as-is (traditional look), or stylize the table, backgrounds, and VFX?
-6. **Playgroup shape:** 4 fixed friends or rotating 6–8? Affects whether we bother with a real lobby system.
+1. **Go WebSocket library:** stdlib `net/http` + `gorilla/websocket`, or something higher-level like `nhooyr.io/websocket`. Recommendation: gorilla — boring, battle-tested.
+2. **Client framework:** React, Svelte, or Vue? Familiarity beats theoretical best.
+3. **Delivery target:** web browser only, or also desktop (Tauri) or mobile (Capacitor)? Recommendation: web-only first.
+4. **Art direction:** Scryfall art as-is (traditional look), or stylize the table, backgrounds, and VFX?
+5. **Playgroup shape:** 4 fixed friends or rotating 6–8? Affects whether we bother with a real lobby system.
 
 ---
 
-## 8. Immediate next step — Phase 0
+## 8. Immediate next step — Phase 0 (S01)
 
-1. Project skeleton in place (this document, devcontainer, research notes directory).
-2. Clone `magefree/mage` locally and build it.
-3. Play one game in XMage's native client; capture network traffic.
-4. Write a technical note on XMage's protocol surface. That note becomes the bridge design doc.
-5. Commit to Option A vs B with real information.
+1. Scaffold `server/` (Go module) and `client/` (Vite + TS) with lint, format, test.
+2. Draft `docs/protocol.md` — v0 schema for action frames and state delta frames.
+3. Echo demo: client sends a `ping` action over WebSocket; server broadcasts a state delta; client renders a change. Proves the seam.
+4. Resolve the framework decisions in §7 items 1 and 2, record them in `docs/decisions/`.
+5. End of S01: a repo with both services scaffolded, one round-trip working, and a written v0 protocol.

@@ -1,0 +1,21 @@
+# Runtime state
+/data/
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Node / Vite (for client/)
+node_modules/
+dist/
+.vite/
+.cache/
+
+# Go (for server/)
+/server/bin/
+*.test
+*.out
+coverage.txt
