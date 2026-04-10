@@ -34,17 +34,19 @@ in another terminal (`cd ../server && make dev`) and open
 ```
 client/
 ├── src/
-│   ├── main.ts           # app entry point
-│   ├── App.svelte        # S01 demo UI: send ping, show log
-│   ├── app.css           # global styles
+│   ├── main.ts             # app entry point, mount(App, ...)
+│   ├── App.svelte          # S01 demo UI: send ping, show log
+│   ├── app.css             # global styles
 │   └── lib/
-│       ├── protocol.ts   # mirror of server protocol types
-│       └── ws.ts         # WebSocket client + Svelte stores
-├── index.html
-├── vite.config.ts
-├── svelte.config.js
+│       ├── protocol.ts     # hand-maintained mirror of server protocol types
+│       └── ws.ts           # WebSocket client + Svelte stores
+├── index.html              # Vite entry HTML
+├── vite.config.ts          # Vite + /ws proxy to Go server
+├── svelte.config.js        # Svelte preprocessor
 ├── tsconfig.json
-├── eslint.config.js
+├── eslint.config.js        # ESLint 9 flat config
+├── .prettierrc
+├── .prettierignore
 └── package.json
 ```
 

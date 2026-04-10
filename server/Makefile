@@ -1,9 +1,12 @@
-.PHONY: all build run dev test vet lint fmt tidy clean
+.PHONY: all build run dev test vet lint fmt fmt-check tidy clean
 
 BINARY := bin/cmd_and_ctrl-server
 PKGS := ./...
 
-all: fmt vet test build
+# Default target never mutates the working tree: it verifies formatting,
+# runs vet and tests, and builds the binary. Use `make fmt` explicitly
+# when you want to rewrite files.
+all: fmt-check vet test build
 
 build:
 	mkdir -p bin
@@ -21,8 +24,18 @@ test:
 vet:
 	go vet $(PKGS)
 
+# Rewrite source in place. Explicit opt-in.
 fmt:
 	gofmt -s -w .
+
+# Non-destructive: exits non-zero if any file would be rewritten.
+fmt-check:
+	@unformatted=$$(gofmt -s -l .); \
+	if [ -n "$$unformatted" ]; then \
+		echo "These files are not gofmt-clean:"; \
+		echo "$$unformatted"; \
+		exit 1; \
+	fi
 
 lint:
 	@if ! command -v golangci-lint >/dev/null 2>&1; then \

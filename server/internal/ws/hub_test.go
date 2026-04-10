@@ -205,6 +205,34 @@ func TestShutdownEmptyHubIsImmediate(t *testing.T) {
 	}
 }
 
+// TestServeWSRejectsAfterShutdown guards the closed-flag regression:
+// once Shutdown has been called, subsequent WebSocket upgrade attempts
+// must be refused with 503 rather than joining a tearing-down hub.
+func TestServeWSRejectsAfterShutdown(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	hub := NewHub(log)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws", hub.ServeWS)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	hub.Shutdown(ctx)
+
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws"
+	_, resp, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err == nil {
+		t.Fatalf("dial after shutdown: expected error, got nil")
+	}
+	if resp == nil {
+		t.Fatalf("dial after shutdown: no HTTP response on the failed upgrade")
+	}
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Errorf("status: got %d, want %d", resp.StatusCode, http.StatusServiceUnavailable)
+	}
+}
+
 // TestShutdownWithClientsWaitsForPumps verifies Shutdown waits for the
 // read/write pumps of connected clients to exit, then returns.
 func TestShutdownWithClientsWaitsForPumps(t *testing.T) {
@@ -218,7 +246,7 @@ func TestShutdownWithClientsWaitsForPumps(t *testing.T) {
 
 	// Connect three clients.
 	var conns []*websocket.Conn
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 		if err != nil {
 			t.Fatalf("ws dial: %v", err)

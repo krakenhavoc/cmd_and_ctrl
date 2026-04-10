@@ -57,7 +57,13 @@ cmd_and_ctrl/
 │   ├── src/
 │   │   ├── App.svelte
 │   │   ├── main.ts
+│   │   ├── app.css
 │   │   └── lib/         # protocol types, WebSocket client
+│   ├── index.html
+│   ├── vite.config.ts
+│   ├── svelte.config.js
+│   ├── tsconfig.json
+│   ├── eslint.config.js
 │   └── package.json
 ├── scripts/             # one-off tools, Scryfall pipeline, etc. — not yet created
 ├── data/                # runtime state (gitignored): Scryfall cache, snapshots, replays

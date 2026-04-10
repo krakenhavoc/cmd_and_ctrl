@@ -61,9 +61,15 @@ func main() {
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	hub.Shutdown(shutdownCtx)
+
+	// Order matters: close the HTTP listener first so no new WebSocket
+	// upgrades can slip in after we've taken a snapshot of live clients.
+	// ServeWS is a hijacking handler that returns immediately after
+	// spawning its pumps, so srv.Shutdown itself completes quickly —
+	// it's the act of closing the listener that we need.
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Error("http shutdown", "err", err)
 	}
+	hub.Shutdown(shutdownCtx)
 	log.Info("server stopped")
 }

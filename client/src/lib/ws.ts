@@ -10,10 +10,12 @@ import {
 
 export type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
+export type LogDirection = "sent" | "received" | "error" | "info";
+
 export interface LogEntry {
   id: string;
   at: Date;
-  direction: "sent" | "received" | "error";
+  direction: LogDirection;
   text: string;
 }
 
@@ -46,10 +48,10 @@ export class GameClient {
     socket.addEventListener("open", () => {
       if (!isCurrent()) return;
       this.status.set("connected");
-      this.append("sent", `connected to ${this.url}`);
+      this.append("info", `connected to ${this.url}`);
     });
 
-    socket.addEventListener("message", (ev) => {
+    socket.addEventListener("message", (ev: MessageEvent<unknown>) => {
       if (!isCurrent()) return;
       this.handleMessage(ev.data);
     });
@@ -58,7 +60,7 @@ export class GameClient {
       if (!isCurrent()) return;
       this.status.set("disconnected");
       this.socket = null;
-      this.append("error", "socket closed");
+      this.append("info", "socket closed");
     });
 
     socket.addEventListener("error", () => {
@@ -70,6 +72,11 @@ export class GameClient {
   disconnect(): void {
     const socket = this.socket;
     this.socket = null;
+    // Explicitly flip status before closing: the close listener on the
+    // captured socket will short-circuit (isCurrent() is now false), so
+    // without this line the status store would stay stuck at whatever
+    // it was, misrepresenting a deliberate disconnect in the UI.
+    this.status.set("disconnected");
     socket?.close();
   }
 

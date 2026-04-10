@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20.11"
+  },
   "scripts": {
     "dev": "vite",
     "build": "svelte-check --tsconfig ./tsconfig.json && vite build",
@@ -10,9 +13,10 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "devDependencies": {
+    "@eslint/js": "^9.0.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "@tsconfig/svelte": "^5.0.4",
     "@types/node": "^22.0.0",

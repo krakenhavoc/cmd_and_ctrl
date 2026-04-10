@@ -105,6 +105,10 @@ input[type="text"] {
   color: #79c0ff;
 }
 
+.log-entry.info {
+  color: #a5a5a5;
+}
+
 .log-entry.error {
   color: #ff8787;
 }

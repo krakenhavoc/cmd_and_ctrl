@@ -45,10 +45,47 @@ func TestFrameRoundTrip(t *testing.T) {
 	}
 }
 
+// TestErrorCodes asserts that the error-code constants match the
+// exact values specified in docs/protocol.md. Changing a value here is
+// a wire-breaking change that must also update docs/protocol.md and the
+// TypeScript mirror in client/src/lib/protocol.ts.
 func TestErrorCodes(t *testing.T) {
-	for _, code := range []string{CodeBadVersion, CodeBadJSON, CodeBadRequest, CodeInternal} {
-		if code == "" {
-			t.Errorf("empty error code constant")
+	cases := []struct {
+		got  string
+		want string
+	}{
+		{CodeBadVersion, "bad_version"},
+		{CodeBadJSON, "bad_json"},
+		{CodeBadRequest, "bad_request"},
+		{CodeInternal, "internal"},
+	}
+	for _, c := range cases {
+		if c.got != c.want {
+			t.Errorf("error code: got %q, want %q", c.got, c.want)
 		}
+	}
+}
+
+// TestKindValues asserts the Kind string constants match docs/protocol.md
+// verbatim. Same wire-breaking rule as TestErrorCodes.
+func TestKindValues(t *testing.T) {
+	cases := []struct {
+		got  Kind
+		want string
+	}{
+		{KindPing, "ping"},
+		{KindPong, "pong"},
+		{KindError, "error"},
+	}
+	for _, c := range cases {
+		if string(c.got) != c.want {
+			t.Errorf("kind: got %q, want %q", c.got, c.want)
+		}
+	}
+}
+
+func TestVersionIsZero(t *testing.T) {
+	if Version != 0 {
+		t.Errorf("Version: got %d, want 0 (see docs/protocol.md)", Version)
 	}
 }

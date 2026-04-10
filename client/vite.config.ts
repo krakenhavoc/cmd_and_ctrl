@@ -7,8 +7,11 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
+      // http:// target + ws:true is the canonical Vite form; http-proxy
+      // handles the WebSocket upgrade on top of the HTTP base. A
+      // ws:// target confuses HTTP probes hitting /ws in a browser.
       "/ws": {
-        target: "ws://localhost:8080",
+        target: "http://localhost:8080",
         ws: true,
         changeOrigin: true,
       },

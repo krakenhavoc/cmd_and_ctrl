@@ -17,19 +17,24 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
+// Timing constants mirror the canonical gorilla/websocket chat example
+// (examples/chat/client.go). Documented inline so future readers don't
+// need to find the source.
 const (
-	writeWait      = 10 * time.Second
-	pongWait       = 60 * time.Second
-	pingPeriod     = (pongWait * 9) / 10
-	maxMessageSize = 64 * 1024
+	writeWait      = 10 * time.Second    // max time to wait for a single outbound write
+	pongWait       = 60 * time.Second    // max time to wait for a pong response from a peer
+	pingPeriod     = (pongWait * 9) / 10 // ping period must be less than pongWait
+	maxMessageSize = 64 * 1024           // max inbound frame size — will grow once game state frames exist
 )
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  4096,
 	WriteBufferSize: 4096,
-	// v0 has no authentication; allow all origins for local development.
-	// S04 will lock this down behind the shared-password auth check.
-	CheckOrigin: func(r *http.Request) bool { return true },
+	// SECURITY: v0 accepts every origin for local dev. This is a
+	// cross-site WebSocket hijacking hazard if the server is ever
+	// exposed on a public port before S04's shared-password auth lands.
+	// Lock this down before the first deploy.
+	CheckOrigin: func(_ *http.Request) bool { return true },
 }
 
 // Hub is the central registry of connected WebSocket clients. It is safe
@@ -37,6 +42,7 @@ var upgrader = websocket.Upgrader{
 type Hub struct {
 	mu      sync.RWMutex
 	clients map[*Client]struct{}
+	closed  bool // set by Shutdown; blocks new registrations
 	log     *slog.Logger
 	wg      sync.WaitGroup // tracks active read/write pumps for graceful shutdown
 }
@@ -52,10 +58,16 @@ func NewHub(log *slog.Logger) *Hub {
 	}
 }
 
-func (h *Hub) register(c *Client) {
+// register adds a client to the hub. Returns false if the hub has been
+// shut down, in which case the caller must not spawn the client pumps.
+func (h *Hub) register(c *Client) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if h.closed {
+		return false
+	}
 	h.clients[c] = struct{}{}
+	return true
 }
 
 func (h *Hub) unregister(c *Client) {
@@ -75,8 +87,18 @@ func (h *Hub) Count() int {
 }
 
 // ServeWS upgrades the HTTP connection to a WebSocket and registers a new
-// client. Intended to be mounted at /ws on the HTTP mux.
+// client. Intended to be mounted at /ws on the HTTP mux. Returns 503 if
+// the hub has already been shut down.
 func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
+	// Fast path: refuse new connections once shutdown has begun.
+	h.mu.RLock()
+	closed := h.closed
+	h.mu.RUnlock()
+	if closed {
+		http.Error(w, "server shutting down", http.StatusServiceUnavailable)
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		h.log.Error("ws upgrade failed", "err", err, "remote", r.RemoteAddr)
@@ -88,7 +110,17 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		send: make(chan []byte, 16),
 		log:  h.log.With("remote", r.RemoteAddr),
 	}
-	h.register(client)
+	if !h.register(client) {
+		// A Shutdown raced us between the fast-path check and
+		// register. Close the freshly-upgraded socket and bail.
+		_ = conn.WriteControl(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseGoingAway, "server shutting down"),
+			time.Now().Add(writeWait),
+		)
+		_ = conn.Close()
+		return
+	}
 	client.log.Info("ws client connected", "total", h.Count())
 
 	h.wg.Add(2)
@@ -194,7 +226,13 @@ func (c *Client) sendFrame(f protocol.Frame) {
 	select {
 	case c.send <- raw:
 	default:
-		c.log.Warn("ws send channel full, dropping frame", "kind", f.Kind)
+		// A full send buffer means the writer is stuck or the peer
+		// can't keep up. Dropping the frame silently would swallow
+		// critical responses (like the pong to a ping). Instead, tear
+		// the client down: closing the conn unblocks readPump, which
+		// runs the normal unregister + close(send) path.
+		c.log.Warn("ws send buffer full, disconnecting client", "kind", f.Kind)
+		_ = c.conn.Close()
 	}
 }
 
@@ -240,16 +278,18 @@ func (c *Client) writePump() {
 	}
 }
 
-// Shutdown closes every connected client and waits for their read/write
-// pumps to exit, or ctx to cancel — whichever comes first. With zero
-// clients, this returns essentially immediately.
+// Shutdown marks the hub as closed (so new registrations are rejected),
+// closes every connected client, and waits for their read/write pumps
+// to exit, or ctx to cancel — whichever comes first. With zero clients,
+// this returns essentially immediately. Safe to call once.
 func (h *Hub) Shutdown(ctx context.Context) {
-	h.mu.RLock()
+	h.mu.Lock()
+	h.closed = true
 	clients := make([]*Client, 0, len(h.clients))
 	for c := range h.clients {
 		clients = append(clients, c)
 	}
-	h.mu.RUnlock()
+	h.mu.Unlock()
 
 	for _, c := range clients {
 		_ = c.conn.WriteControl(
