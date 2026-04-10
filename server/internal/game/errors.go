@@ -41,4 +41,17 @@ var (
 
 	// ErrZoneEmpty is returned from Top/Bottom/PopTop on an empty zone.
 	ErrZoneEmpty = errors.New("game: zone is empty")
+
+	// ErrPlayerNotFound is returned when a mutation references a player
+	// ID that is not seated at the table.
+	ErrPlayerNotFound = errors.New("game: player not found")
+
+	// ErrZoneNotFound is returned when a ZoneRef cannot be resolved to
+	// a concrete Zone on the game (unknown kind or unknown owner).
+	ErrZoneNotFound = errors.New("game: zone not found")
+
+	// ErrInvalidParam is returned when an action's parameters are
+	// rejected for reasons not covered by a more specific error (e.g.
+	// negative hand size on Mulligan).
+	ErrInvalidParam = errors.New("game: invalid parameter")
 )

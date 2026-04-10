@@ -14,9 +14,11 @@ const Version = 0
 type Kind string
 
 const (
-	KindPing  Kind = "ping"
-	KindPong  Kind = "pong"
-	KindError Kind = "error"
+	KindPing     Kind = "ping"
+	KindPong     Kind = "pong"
+	KindError    Kind = "error"
+	KindAction   Kind = "action"
+	KindSnapshot Kind = "snapshot"
 )
 
 // Error codes for Kind == KindError. Kept deliberately small at v0.
@@ -51,4 +53,30 @@ type PongPayload struct {
 type ErrorPayload struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
+}
+
+// ActionPayload is the payload body for a Kind == KindAction frame
+// (client → server). It carries a typed action name and an
+// action-specific params blob that the server decodes based on Type.
+// See the actions package for the full catalog of action types.
+type ActionPayload struct {
+	Type   string          `json:"type"`
+	Player string          `json:"player,omitempty"`
+	Params json.RawMessage `json:"params,omitempty"`
+}
+
+// SnapshotPayload is the payload body for a Kind == KindSnapshot
+// frame (server → client). It carries a full authoritative view of
+// the game state. The server emits a snapshot on initial connect and
+// after every successful action.
+//
+// S03 deliberately broadcasts full snapshots rather than incremental
+// deltas. Bandwidth is not a concern at four clients; diff-based
+// delta frames can be added later without a protocol version bump.
+type SnapshotPayload struct {
+	// Seq is a monotonically increasing per-game sequence number,
+	// incremented before each broadcast. Clients can use it to detect
+	// dropped or out-of-order frames.
+	Seq  uint64   `json:"seq"`
+	Game GameView `json:"game"`
 }

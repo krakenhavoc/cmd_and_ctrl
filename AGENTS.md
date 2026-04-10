@@ -47,10 +47,14 @@ cmd_and_ctrl/
 ├── Makefile             # top-level dev/test/lint targets
 ├── .devcontainer/       # Go + Node dev environment
 ├── server/              # Go game server (authoritative state, WebSocket API)
-│   ├── cmd/server/      # main package
+│   ├── cmd/
+│   │   ├── server/      # main package — serves :8080 with the singleton demo game
+│   │   └── gamecli/     # dev WebSocket client for driving a game via v0 actions
 │   ├── internal/
-│   │   ├── protocol/    # v0 wire format types
-│   │   └── ws/          # gorilla/websocket hub + client
+│   │   ├── game/        # authoritative domain: Game, Player, Zone, Card, Turn, mutations
+│   │   ├── protocol/    # v0 wire format types + ViewOfGame projection
+│   │   ├── actions/     # action type enum + Dispatch(Game, Action) router
+│   │   └── ws/          # gorilla/websocket hub, Room, action handler, crash-recovery dumps
 │   ├── Makefile
 │   └── .golangci.yml
 ├── client/              # TypeScript + Svelte 5 + Vite (PixiJS arrives in S05)
@@ -158,12 +162,14 @@ unused — they can be removed in a later cleanup PR.)
 - `make lint` — `go vet` + client ESLint + Prettier check
 
 ### Server (Go, `server/`)
-- `make -C server dev` — run locally on :8080
+- `make -C server dev` — run locally on :8080 (seeds a 4-player demo game)
 - `make -C server test` — `go test -race -cover ./...`
 - `make -C server vet` — `go vet ./...`
 - `make -C server fmt` — `gofmt -s -w .`
 - `make -C server build` — produces `server/bin/cmd_and_ctrl-server`
-- Endpoints at S01: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md))
+- `cd server && go run ./cmd/gamecli -addr ws://localhost:8080/ws` — drive the demo game from a terminal; reads action JSON on stdin or via `-script path.json`
+- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md))
+- Env vars: `CMDCTRL_ADDR` (default `:8080`), `CMDCTRL_DATA_DIR` (default `./data` — where crash-recovery snapshots are dumped; set to empty to disable)
 
 ### Client (TypeScript + Svelte 5 + Vite, `client/`)
 - `cd client && npm install` — first-time setup

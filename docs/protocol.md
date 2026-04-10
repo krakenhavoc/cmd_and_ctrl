@@ -1,9 +1,11 @@
 # Protocol v0
 
 Wire protocol between the `cmd_and_ctrl` Go game server and its TypeScript
-clients. Version 0 is the absolute minimum needed to prove the seam in S01:
-one request type, one response type, one error type. S02 and S03 expand it
-into the real action / state-delta protocol.
+clients. Version 0 started as the minimum needed to prove the seam in S01
+(`ping`/`pong` only) and was extended in S03 with `action` and `snapshot`
+frame kinds plus the supporting action-type catalog and view schema. All
+additions within v0 are backwards-compatible — an old ping-only client
+still works against a newer v0 server.
 
 - **Transport:** WebSocket (`ws://host:8080/ws`, `wss://` in production)
 - **Framing:** one JSON object per WebSocket text frame
@@ -104,6 +106,104 @@ Any server-side failure in processing a client frame.
 `id` matches the originating client frame's `id` when possible; otherwise
 empty string.
 
+### `action` (client → server) — added in S03
+
+A request to mutate the authoritative game state. The server validates,
+applies the mutation, and broadcasts a `snapshot` frame to every connected
+client on success. On failure it replies with an `error` frame addressed
+to the originating client only (no broadcast).
+
+```json
+{
+  "v": 0,
+  "kind": "action",
+  "id": "a4f7b8e1-2c3d-4e5f-9a2c-0d8e7f6a5b4c",
+  "payload": {
+    "type": "draw_card",
+    "player": "8a2c0d8e-7f6a-5b4c-9a2c-0d8e7f6a5b4c"
+  }
+}
+```
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `payload.type` | string | yes | One of the action types in the table below. |
+| `payload.player` | string (UUID) | conditional | Required for actions that operate on a specific player (draw, play, untap_all, mulligan, shuffle_library, change_life). Omitted for game-wide actions (pass_priority, pass_turn). |
+| `payload.params` | object | conditional | Action-specific parameters, shape depends on `type`. See the table. |
+
+#### Action types (v0)
+
+All are accepted at face value — there is no rules enforcement at S03.
+Rules enforcement grows incrementally in the S13+ B→C graft track (see
+PLAN.md §2.1).
+
+| `type` | `player` required | `params` shape | Effect |
+|---|---|---|---|
+| `draw_card` | yes | — | Moves the top of `player`'s library to their hand. |
+| `play_card` | yes | `{ "instance_id": "<uuid>" }` | Moves the card from `player`'s hand to the battlefield; stamps controller to `player`. |
+| `move_card` | no | `{ "src": <ZoneRef>, "dst": <ZoneRef>, "instance_id": "<uuid>" }` | General-purpose zone-to-zone move. Clears tapped state + counters if leaving the battlefield (CR 400.7). |
+| `tap` | no | `{ "instance_id": "<uuid>" }` | Sets a battlefield card's tapped state to true. |
+| `untap` | no | `{ "instance_id": "<uuid>" }` | Sets a battlefield card's tapped state to false. |
+| `untap_all` | yes | — | Untaps all of `player`'s cards on the battlefield. |
+| `pass_priority` | no | — | Advances the turn cursor by one step. |
+| `pass_turn` | no | — | Jumps to the next seat's untap step. |
+| `mulligan` | yes | `{ "hand_size": <int> }` | Shuffles `player`'s hand back into their library and draws `hand_size` cards. Simplified London mulligan — no card-to-bottom penalty. |
+| `shuffle_library` | yes | — | Reshuffles `player`'s library. |
+| `change_life` | yes | `{ "delta": <int> }` | Adjusts `player`'s life by `delta` (positive for gain, negative for loss). |
+| `add_counter` | no | `{ "instance_id": "<uuid>", "name": "<string>", "delta": <int> }` | Modifies a named counter on a card. Delta ≤ 0 that drives the counter to zero removes the entry. |
+| `set_commander_damage` | no | `{ "from": "<uuid>", "to": "<uuid>", "amount": <int> }` | Sets total commander damage dealt from `from`'s commander(s) to `to`. Set semantics, not additive. |
+
+`<ZoneRef>` is `{ "kind": "<zone_kind>", "owner": "<uuid>" }`. Owner is
+omitted for shared zones (`battlefield`, `stack`, `exile`). Zone kinds are
+`library`, `hand`, `battlefield`, `graveyard`, `exile`, `command`, `stack`.
+
+### `snapshot` (server → client) — added in S03
+
+A full authoritative view of the game state. The server emits a `snapshot`
+on initial connect (to the joining client only) and after every successful
+action (broadcast to all connected clients). There is no incremental delta
+format at v0 — bandwidth is trivial at ≤4 players and the full-snapshot
+design is much simpler to reason about. A future version may introduce
+diffs; new frame kinds can be added inside v0 additively.
+
+```json
+{
+  "v": 0,
+  "kind": "snapshot",
+  "id": "",
+  "payload": {
+    "seq": 42,
+    "game": { "id": "...", "state": "active", "seats": [ ... ], "turn": { ... }, "battlefield": { ... }, "stack": { ... }, "exile": { ... } }
+  }
+}
+```
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `payload.seq` | uint64 | yes | Per-room monotonically increasing sequence number. Clients use it to detect dropped or out-of-order frames. Allocated atomically with the state capture it contains, so `seq` ordering matches state progression. |
+| `payload.game` | object | yes | Complete `GameView`. See the schema below. |
+
+The `id` field on a snapshot is always empty — snapshots are not correlated
+to any particular client request.
+
+#### GameView schema (summary)
+
+The server's Go source at `server/internal/protocol/view.go` is the
+canonical type definition. High-level shape:
+
+- **GameView**: `{ id, state, seats[], battlefield, stack, exile, turn }`
+- **PlayerView**: `{ id, name, seat, life, poison?, energy?, library, hand, graveyard, command, commander_damage }`
+- **ZoneView**: `{ kind, owner?, count, cards[] }` — `owner` omitted for shared zones
+- **CardView**: `{ instance_id, name, owner, controller, tapped?, counters?, is_commander? }`
+- **TurnView**: `{ number, active_seat, phase, step }`
+
+S03 does not yet apply visibility filtering — every client receives every
+card's contents, including opponents' hands. Per-connection visibility is
+an S04 concern (ships alongside authentication).
+
+Clients should treat every received snapshot as the new authoritative
+state; no partial merge is needed.
+
 ---
 
 ## Connection lifecycle (v0)
@@ -118,19 +218,20 @@ empty string.
 
 ## Out of scope for v0
 
-Explicitly deferred to v1 (S02) and v2 (S03):
+Deferred to later sprints, typically requiring a new frame kind but no `v`
+bump unless they turn out to be wire-breaking:
 
-- Game creation / join / leave
-- Player identity and seat assignment
-- Any game state (zones, cards, turn structure)
-- Any game actions (draw, play, tap, pass priority)
-- State deltas larger than `pong`
-- Reconnection and session resume
-- Server push of lobby events
-- Spectator mode
-- Chat
-
-The rule of thumb for v0: **if it's not `ping` or `pong`, it waits for v1.**
+- **Lobby and game creation** (S04) — per-connection auth, create/join
+  rooms, list active games.
+- **Visibility filtering** (S04) — opponent hands should show counts, not
+  contents. At S03 every client sees every card face-up.
+- **Incremental deltas** — S03's choice is full-snapshot broadcast. Deltas
+  can arrive as a new frame kind without breaking v0.
+- **Reconnection and session resume** — crash-recovery dumps let a
+  restarted server reload state, but live client sessions drop on
+  disconnect and must be re-established.
+- **Chat** (S07) — in-game chat as a separate frame kind.
+- **Spectator mode** (S11) — read-only connections.
 
 ---
 
@@ -151,4 +252,6 @@ The rule of thumb for v0: **if it's not `ping` or `pong`, it waits for v1.**
 
 - RFC 6455 — The WebSocket Protocol
 - [ADR 0001 — WebSocket library](decisions/0001-ws-library.md)
-- Sprint S02 — [action protocol + state deltas](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3)
+- Sprint S03 — [action protocol + state deltas](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3)
+- `server/internal/protocol/` — Go source of truth for wire types
+- `server/internal/actions/` — action type catalog and dispatch

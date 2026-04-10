@@ -32,8 +32,8 @@ planned just-in-time from the S12 pain-point triage.
 | # | Name | Phase | Issue | Due | Status |
 |---|---|---|---|---|---|
 | S01 | Go server + client scaffold | 0 | [#1](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1) | 2026-04-24 | **done** |
-| S02 | Core game state: zones + turns | 1 | [#2](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2) | 2026-05-08 | **in progress** |
-| S03 | Action protocol + state deltas | 1 | [#3](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3) | 2026-05-22 | planned |
+| S02 | Core game state: zones + turns | 1 | [#2](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2) | 2026-05-08 | **done** |
+| S03 | Action protocol + state deltas | 1 | [#3](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3) | 2026-05-22 | **in progress** |
 | S04 | Lobby, auth, Scryfall pipeline | 2 | [#4](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4) | 2026-06-05 | planned |
 | S05 | Deck import + 4-player table layout | 3 | [#5](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5) | 2026-06-19 | planned |
 | S06 | Hand, battlefield, zones UI | 3 | [#6](https://github.com/krakenhavoc/cmd_and_ctrl/issues/6) | 2026-07-03 | planned |

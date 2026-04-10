@@ -7,13 +7,17 @@ package ws
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/actions"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
@@ -45,9 +49,14 @@ type Hub struct {
 	closed  bool // set by Shutdown; blocks new registrations
 	log     *slog.Logger
 	wg      sync.WaitGroup // tracks active read/write pumps for graceful shutdown
+
+	// room is the single S03 default game. If nil, the hub accepts
+	// ping/pong only and rejects action frames with a bad_request
+	// error. S04 will replace the singleton with a RoomManager.
+	room *Room
 }
 
-// NewHub creates an empty hub.
+// NewHub creates an empty hub with no room attached.
 func NewHub(log *slog.Logger) *Hub {
 	if log == nil {
 		log = slog.Default()
@@ -56,6 +65,13 @@ func NewHub(log *slog.Logger) *Hub {
 		clients: make(map[*Client]struct{}),
 		log:     log,
 	}
+}
+
+// SetRoom attaches a room to the hub. Must be called before the HTTP
+// server starts accepting connections; calling it concurrently with
+// ServeWS is not supported.
+func (h *Hub) SetRoom(r *Room) {
+	h.room = r
 }
 
 // register adds a client to the hub. Returns false if the hub has been
@@ -132,6 +148,34 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		defer h.wg.Done()
 		client.readPump()
 	}()
+
+	// If a room is attached, send the new client an initial snapshot
+	// of the current state — targeted at this client only. Other
+	// already-connected clients do not need this snapshot; their state
+	// is unchanged by a new join (at S03 there's no "player joined"
+	// event because every seat is pre-seeded at server startup).
+	if h.room != nil {
+		if raw, seq, err := h.room.Snapshot(); err == nil {
+			client.sendRaw(raw)
+			client.log.Debug("sent initial snapshot on connect", "seq", seq)
+		} else {
+			client.log.Error("build initial snapshot failed", "err", err)
+		}
+	}
+}
+
+// broadcastAll sends a pre-marshalled frame to every currently
+// connected client. The hub's read lock prevents unregister from
+// closing any client's send channel mid-broadcast, so the sends are
+// always to open channels. A full send buffer disconnects the slow
+// client rather than dropping the frame silently — see sendFrame for
+// the same policy.
+func (h *Hub) broadcastAll(raw []byte) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for c := range h.clients {
+		c.sendRaw(raw)
+	}
 }
 
 // Client is one connected WebSocket peer. Each client owns two goroutines:
@@ -186,10 +230,80 @@ func (c *Client) handleFrame(raw []byte) {
 	switch frame.Kind {
 	case protocol.KindPing:
 		c.handlePing(frame)
+	case protocol.KindAction:
+		c.handleAction(frame)
 	default:
 		c.sendError(frame.ID, protocol.CodeBadRequest,
 			"unknown or unsupported kind")
 	}
+}
+
+// handleAction decodes an action payload, dispatches it to the game
+// via the actions package, and broadcasts a fresh snapshot to every
+// connected client on success. Validation or dispatch errors come
+// back as error frames to the originating client only.
+//
+// Dispatch + seq alloc + state capture are serialised under the
+// room's mutex via Room.Apply, so two concurrent action frames cannot
+// interleave their state changes or broadcast non-monotonic snapshots.
+func (c *Client) handleAction(frame protocol.Frame) {
+	if c.hub.room == nil {
+		// Server configuration bug, not a client mistake.
+		c.sendError(frame.ID, protocol.CodeInternal, "server has no room configured")
+		return
+	}
+
+	var payload protocol.ActionPayload
+	if len(frame.Payload) == 0 {
+		c.sendError(frame.ID, protocol.CodeBadRequest, "action frame missing payload")
+		return
+	}
+	if err := json.Unmarshal(frame.Payload, &payload); err != nil {
+		c.sendError(frame.ID, protocol.CodeBadJSON, "action payload is not valid JSON")
+		return
+	}
+
+	action, err := actions.Decode(payload.Type, payload.Player, payload.Params)
+	if err != nil {
+		c.sendError(frame.ID, protocol.CodeBadRequest, err.Error())
+		return
+	}
+
+	raw, seq, err := c.hub.room.Apply(func() error {
+		return actions.Dispatch(c.hub.room.Game, action)
+	})
+	if err != nil {
+		code, msg := classifyActionError(err)
+		c.sendError(frame.ID, code, msg)
+		return
+	}
+	c.hub.broadcastAll(raw)
+	c.log.Debug("action dispatched", "type", payload.Type, "seq", seq)
+}
+
+// classifyActionError maps a dispatch-time error from the game or
+// actions package to a wire error code + clean client-facing message.
+// Internal package prefixes (`game:`, `actions:`) are stripped from
+// the message so the wire surface doesn't leak Go module layout, and
+// sentinel errors that reflect server state problems get the
+// `internal` code instead of `bad_request`.
+func classifyActionError(err error) (code, message string) {
+	if err == nil {
+		return "", ""
+	}
+	// Errors like ErrGameNotActive from the game package are really
+	// "someone crashed the demo game", which is a server state issue
+	// rather than a malformed client request.
+	if errors.Is(err, game.ErrGameNotActive) {
+		return protocol.CodeInternal, "game is not in active state"
+	}
+	// Everything else is traceable to a client-supplied input — bad
+	// player ID, bad card ID, bad zone, unknown action type, etc.
+	msg := err.Error()
+	for _, prefix := range []string{"game: ", "actions: "} {
+		msg = strings.TrimPrefix(msg, prefix)
+	}
+	return protocol.CodeBadRequest, msg
 }
 
 func (c *Client) handlePing(frame protocol.Frame) {
@@ -223,15 +337,18 @@ func (c *Client) sendFrame(f protocol.Frame) {
 		c.log.Error("ws marshal frame", "err", err)
 		return
 	}
+	c.sendRaw(raw)
+}
+
+// sendRaw enqueues a pre-marshalled frame on the client's send
+// channel. A full buffer disconnects the client rather than dropping
+// the frame silently — letting the pong for a ping, or the snapshot
+// for an action, be quietly dropped would mask real bugs.
+func (c *Client) sendRaw(raw []byte) {
 	select {
 	case c.send <- raw:
 	default:
-		// A full send buffer means the writer is stuck or the peer
-		// can't keep up. Dropping the frame silently would swallow
-		// critical responses (like the pong to a ping). Instead, tear
-		// the client down: closing the conn unblocks readPump, which
-		// runs the normal unregister + close(send) path.
-		c.log.Warn("ws send buffer full, disconnecting client", "kind", f.Kind)
+		c.log.Warn("ws send buffer full, disconnecting client")
 		_ = c.conn.Close()
 	}
 }

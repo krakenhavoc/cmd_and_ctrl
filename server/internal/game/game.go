@@ -8,6 +8,11 @@ import (
 	"github.com/google/uuid"
 )
 
+// rngSource is the minimal interface that zone.Shuffle needs from a
+// randomness source. *math/rand/v2.Rand satisfies it; nil means
+// "use the package-global source".
+type rngSource = rand.Rand
+
 // MinPlayers and MaxPlayers bound a legal game. Commander allows up to
 // 10 players per the MTG comprehensive rules, but cmd_and_ctrl is
 // scoped to 4-player games per PLAN.md §1, and that bound gates the
@@ -36,8 +41,9 @@ const (
 
 // Game is the complete server-side state of one Commander table. A
 // Game is safe for concurrent access: every public method takes the
-// internal mutex. Callers outside this package never touch fields
-// directly — the exported methods are the whole surface.
+// internal rwmutex. Callers outside this package never touch fields
+// directly — the exported methods are the whole surface. Read-only
+// consumers (like the protocol view builder) should use ReadSnapshot.
 //
 // Zero-value Game is not valid; use NewGame.
 type Game struct {
@@ -56,7 +62,14 @@ type Game struct {
 	// Turn cursor, meaningful only when State == StateActive.
 	Turn Turn
 
-	mu sync.Mutex
+	// rng is captured from Start so that subsequent mutations that
+	// shuffle (Mulligan, ShuffleLibrary) use the same source of
+	// randomness as the initial library shuffle. nil means "use the
+	// global math/rand/v2 source". Tests pass a deterministic
+	// *rand.Rand here to get reproducible snapshots.
+	rng *rngSource
+
+	mu sync.RWMutex
 }
 
 // NewGame constructs a game in the lobby state with a fresh ID and
@@ -119,8 +132,13 @@ func (g *Game) AddPlayer(name string, deck []Card) (*Player, error) {
 // Start transitions the game from lobby to active, initialises the
 // turn cursor at seat 0 / turn 1 / untap step, and shuffles each
 // player's library using the supplied RNG (nil for the package
-// default). Returns ErrNotEnoughPlayers if fewer than MinPlayers are
-// seated, and ErrGameAlreadyStarted if the game is not in lobby.
+// default). The RNG is retained on the game and reused by subsequent
+// shuffles (Mulligan, ShuffleLibrary) so that tests starting with a
+// deterministic seed stay deterministic through all shuffles in the
+// game — not just the initial one.
+//
+// Returns ErrNotEnoughPlayers if fewer than MinPlayers are seated,
+// and ErrGameAlreadyStarted if the game is not in lobby.
 func (g *Game) Start(r *rand.Rand) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -132,6 +150,7 @@ func (g *Game) Start(r *rand.Rand) error {
 		return ErrNotEnoughPlayers
 	}
 
+	g.rng = r
 	for _, p := range g.Seats {
 		p.Library.Shuffle(r)
 	}
@@ -166,8 +185,8 @@ func (g *Game) AdvanceStep() (Turn, error) {
 // ActivePlayer returns the player whose turn it currently is, or nil
 // if the game has not yet started.
 func (g *Game) ActivePlayer() *Player {
-	g.mu.Lock()
-	defer g.mu.Unlock()
+	g.mu.RLock()
+	defer g.mu.RUnlock()
 	if g.State != StateActive || len(g.Seats) == 0 {
 		return nil
 	}
@@ -177,8 +196,14 @@ func (g *Game) ActivePlayer() *Player {
 // PlayerByID looks up a seated player by ID. Returns nil if no player
 // with that ID is seated.
 func (g *Game) PlayerByID(id uuid.UUID) *Player {
-	g.mu.Lock()
-	defer g.mu.Unlock()
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.playerByIDLocked(id)
+}
+
+// playerByIDLocked is the unlocked variant of PlayerByID. The caller
+// must already hold g.mu (read or write).
+func (g *Game) playerByIDLocked(id uuid.UUID) *Player {
 	for _, p := range g.Seats {
 		if p.ID == id {
 			return p
@@ -187,14 +212,29 @@ func (g *Game) PlayerByID(id uuid.UUID) *Player {
 	return nil
 }
 
+// ReadSnapshot runs fn while holding a read lock on the game. The
+// callback gets to read any exported field of g consistently — no
+// other mutations can interleave. Callers MUST NOT mutate the game
+// inside fn; use the exported mutation methods (which take a write
+// lock) for that.
+//
+// This exists so that the protocol package can build a wire-format
+// view of the game without the game package depending on the protocol
+// package (which would be a circular import, since protocol views are
+// built from game types).
+func (g *Game) ReadSnapshot(fn func()) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	fn()
+}
+
 // Snapshot returns a shallow copy of the top-level game state suitable
 // for logging or diffing. Slices and maps are aliased, so a Snapshot
-// is a read-only view and must not be mutated. Use this for tests and
-// diagnostics; the S03 protocol layer will build proper wire-format
-// snapshots on top of this.
+// is a read-only view and must not be mutated. For wire-format
+// snapshots, use protocol.ViewOfGame instead.
 func (g *Game) Snapshot() Game {
-	g.mu.Lock()
-	defer g.mu.Unlock()
+	g.mu.RLock()
+	defer g.mu.RUnlock()
 	return Game{
 		ID:          g.ID,
 		CreatedAt:   g.CreatedAt,
