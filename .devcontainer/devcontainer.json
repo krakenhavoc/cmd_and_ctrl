@@ -1,0 +1,72 @@
+{
+  "name": "cmd_and_ctrl",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "21",
+      "jdkDistro": "tem",
+      "installMaven": true,
+      "mavenVersion": "latest"
+    },
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "configureZshAsDefaultShell": false,
+      "upgradePackages": false
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "mounts": [
+    "source=cmd-and-ctrl-claude,target=/home/node/.claude,type=volume",
+    "source=cmd-and-ctrl-vscode-server,target=/home/node/.vscode-server,type=volume",
+    "source=cmd-and-ctrl-m2,target=/home/node/.m2,type=volume",
+    "source=cmd-and-ctrl-node-global,target=/home/node/.npm-global,type=volume"
+  ],
+
+  "containerEnv": {
+    "NPM_CONFIG_PREFIX": "/home/node/.npm-global"
+  },
+
+  "remoteEnv": {
+    "PATH": "/home/node/.npm-global/bin:${containerEnv:PATH}"
+  },
+
+  "postCreateCommand": "npm install -g @anthropic-ai/claude-code",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "redhat.java",
+        "vscjava.vscode-java-pack",
+        "vscjava.vscode-maven",
+        "golang.go",
+        "ms-azuretools.vscode-docker",
+        "eamodio.gitlens"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+
+  "forwardPorts": [3000, 5173, 8080, 17171],
+  "portsAttributes": {
+    "3000": { "label": "web dev server" },
+    "5173": { "label": "vite dev server" },
+    "8080": { "label": "protocol bridge" },
+    "17171": { "label": "XMage server" }
+  },
+
+  "remoteUser": "node"
+}
