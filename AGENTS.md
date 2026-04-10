@@ -44,12 +44,27 @@ original work goes).
 cmd_and_ctrl/
 ├── PLAN.md              # vision, roadmap, open decisions
 ├── AGENTS.md            # this file
+├── Makefile             # top-level dev/test/lint targets
 ├── .devcontainer/       # Go + Node dev environment
-├── server/              # Go game server (authoritative state, WebSocket API) — not yet created
-├── client/              # web client (TypeScript + React/Svelte + PixiJS) — not yet created
+├── server/              # Go game server (authoritative state, WebSocket API)
+│   ├── cmd/server/      # main package
+│   ├── internal/
+│   │   ├── protocol/    # v0 wire format types
+│   │   └── ws/          # gorilla/websocket hub + client
+│   ├── Makefile
+│   └── .golangci.yml
+├── client/              # TypeScript + Svelte 5 + Vite (PixiJS arrives in S05)
+│   ├── src/
+│   │   ├── App.svelte
+│   │   ├── main.ts
+│   │   └── lib/         # protocol types, WebSocket client
+│   └── package.json
 ├── scripts/             # one-off tools, Scryfall pipeline, etc. — not yet created
 ├── data/                # runtime state (gitignored): Scryfall cache, snapshots, replays
-└── docs/                # protocol specs, decision records, research notes
+└── docs/
+    ├── protocol.md      # v0 wire format spec
+    ├── sprints.md       # sprint plan
+    └── decisions/       # ADRs (0001 — WS library, 0002 — client framework, ...)
 ```
 
 When you create a new top-level directory, add it here.
@@ -85,17 +100,17 @@ Issue: #<issue_number>
 Example:
 
 ```
-feat(bridge): add websocket handshake scaffolding
+feat(server): add websocket ping/pong round-trip
 
-Thin TS service accepting WS connections on :8080 and echoing frames.
-No XMage protocol yet — this is just the seam.
+Minimal gorilla/websocket hub accepting JSON frames on /ws. Replies to
+v0 ping frames with pong carrying server_time. No game state yet.
 
-Sprint: S02 — Protocol bridge foundations
-Issue: #14
+Sprint: S01 — Go server + client scaffold
+Issue: #1
 ```
 
 `<type>` is one of: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `spike`.
-`<scope>` is the top-level dir being touched (`bridge`, `client`, `xmage`, etc.).
+`<scope>` is the top-level dir being touched (`server`, `client`, `docs`, etc.).
 
 ### Pull request format
 
@@ -129,11 +144,28 @@ The devcontainer installs Go, Node, and the GitHub CLI. Ports 3000, 5173, and
 8080 are forwarded. (The Java/Maven features remain installed for now but are
 unused — they can be removed in a later cleanup PR.)
 
-### Server (Go)
-- *(TBD — scaffolded in S01)*
+### Top-level
+- `make help` — list targets
+- `make server-dev` — run the Go server on :8080
+- `make client-dev` — run the Vite dev server on :5173
+- `make test` — server tests + client typecheck
+- `make lint` — `go vet` + client ESLint + Prettier check
 
-### Client (TypeScript)
-- *(TBD — scaffolded in S01)*
+### Server (Go, `server/`)
+- `make -C server dev` — run locally on :8080
+- `make -C server test` — `go test -race -cover ./...`
+- `make -C server vet` — `go vet ./...`
+- `make -C server fmt` — `gofmt -s -w .`
+- `make -C server build` — produces `server/bin/cmd_and_ctrl-server`
+- Endpoints at S01: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md))
+
+### Client (TypeScript + Svelte 5 + Vite, `client/`)
+- `cd client && npm install` — first-time setup
+- `npm run dev` — Vite dev server on :5173, proxies `/ws` to the Go server
+- `npm run build` — type-check + production build into `client/dist/`
+- `npm run check` — `svelte-check` typecheck only
+- `npm run lint` — ESLint + Prettier check
+- `npm run format` — auto-format
 
 ---
 

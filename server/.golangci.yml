@@ -1,0 +1,30 @@
+# golangci-lint config for cmd_and_ctrl server.
+# Deliberately conservative: start with stable defaults, add linters only
+# when they catch real bugs. See https://golangci-lint.run/usage/linters/.
+run:
+  timeout: 3m
+
+linters:
+  disable-all: true
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gofmt
+    - goimports
+    - misspell
+    - unconvert
+    - unparam
+
+linters-settings:
+  errcheck:
+    check-blank: false
+  govet:
+    enable-all: true
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
