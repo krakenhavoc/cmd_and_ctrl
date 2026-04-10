@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -96,8 +97,11 @@ func TestRoomInitialSnapshotOnConnect(t *testing.T) {
 	defer conn.Close()
 
 	snap := readSnapshotFrame(t, conn)
-	if snap.Seq == 0 {
-		t.Error("initial snapshot seq should be non-zero")
+	// Snapshot reuses the current seq (no bump) — a freshly-created
+	// room has seen no actions yet, so seq=0 is the expected initial
+	// value. The first Apply will bump to seq=1.
+	if snap.Seq != 0 {
+		t.Errorf("initial snapshot seq: got %d, want 0", snap.Seq)
 	}
 	if snap.Game.ID != g.ID.String() {
 		t.Errorf("game id: got %q, want %q", snap.Game.ID, g.ID.String())
@@ -117,8 +121,11 @@ func TestRoomActionDrawCardBroadcasts(t *testing.T) {
 	conn := dial(t, wsURL)
 	defer conn.Close()
 
-	// Consume initial snapshot.
+	// Consume initial snapshot. seq=0 (no actions yet, Snapshot doesn't bump).
 	initial := readSnapshotFrame(t, conn)
+	if initial.Seq != 0 {
+		t.Fatalf("initial seq: got %d, want 0", initial.Seq)
+	}
 
 	// Send a draw_card action for seat 0.
 	seat0ID := g.Seats[0].ID.String()
@@ -127,10 +134,10 @@ func TestRoomActionDrawCardBroadcasts(t *testing.T) {
 		Player: seat0ID,
 	})
 
-	// Expect a broadcast snapshot with seat 0 hand size +1 and higher seq.
+	// First Apply bumps seq to exactly 1.
 	after := readSnapshotFrame(t, conn)
-	if after.Seq <= initial.Seq {
-		t.Errorf("seq: got %d, want > %d", after.Seq, initial.Seq)
+	if after.Seq != 1 {
+		t.Errorf("seq after first action: got %d, want 1", after.Seq)
 	}
 	if after.Game.Seats[0].Hand.Count != 1 {
 		t.Errorf("hand count: got %d, want 1", after.Game.Seats[0].Hand.Count)
@@ -278,6 +285,140 @@ func TestRoomCrashRecoveryDumpsToDisk(t *testing.T) {
 	// After 1 draw, the latest snapshot should show hand count 1.
 	if snap.Game.Seats[0].Hand.Count != 1 {
 		t.Errorf("dumped hand count: got %d, want 1", snap.Game.Seats[0].Hand.Count)
+	}
+}
+
+// TestRoomInitialSnapshotOnlyGoesToJoiner regresses the C1 fix:
+// the initial snapshot sent on connect must not be broadcast to
+// already-connected clients. A regression that replaced the targeted
+// client.sendRaw with hub.broadcastAll would double-bump the seq
+// counter for every connection and make existing clients re-render
+// on every new join.
+func TestRoomInitialSnapshotOnlyGoesToJoiner(t *testing.T) {
+	wsURL, _, _, cleanup := newRoomTestServer(t)
+	defer cleanup()
+
+	c1 := dial(t, wsURL)
+	defer c1.Close()
+	readSnapshotFrame(t, c1) // c1's initial
+
+	// Connect a second client. c1 must NOT receive a second snapshot
+	// just because c2 joined.
+	c2 := dial(t, wsURL)
+	defer c2.Close()
+	readSnapshotFrame(t, c2) // c2's initial
+
+	// Try to read from c1 with a short deadline. Nothing should be
+	// sitting in its buffer: the new-join did not broadcast.
+	_ = c1.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
+	_, raw, err := c1.ReadMessage()
+	if err == nil {
+		t.Errorf("c1 received unexpected frame after c2 joined: %s", raw)
+	}
+}
+
+// TestRoomActionSeqIsMonotonicAcrossActions regresses the Room.Apply
+// seq discipline: four successive actions must produce snapshots with
+// seq 1, 2, 3, 4 — no gaps, no duplicates, no regressions.
+func TestRoomActionSeqIsMonotonicAcrossActions(t *testing.T) {
+	wsURL, g, _, cleanup := newRoomTestServer(t)
+	defer cleanup()
+
+	conn := dial(t, wsURL)
+	defer conn.Close()
+
+	initial := readSnapshotFrame(t, conn)
+	if initial.Seq != 0 {
+		t.Fatalf("initial seq: got %d, want 0", initial.Seq)
+	}
+
+	seat0 := g.Seats[0].ID.String()
+	for i := 1; i <= 4; i++ {
+		sendActionFrame(t, conn, protocol.ActionPayload{
+			Type:   "draw_card",
+			Player: seat0,
+		})
+		got := readSnapshotFrame(t, conn)
+		if got.Seq != uint64(i) {
+			t.Errorf("action %d: seq got %d, want %d", i, got.Seq, i)
+		}
+	}
+}
+
+// TestRoomActionFrameVersionRejected regresses the same frame-version
+// guard as TestBadVersionIsRejected but for an action frame instead
+// of a ping. A refactor that moved the version check after the Kind
+// switch would let a v=999 action land on the game.
+func TestRoomActionFrameVersionRejected(t *testing.T) {
+	wsURL, g, _, cleanup := newRoomTestServer(t)
+	defer cleanup()
+
+	conn := dial(t, wsURL)
+	defer conn.Close()
+	readSnapshotFrame(t, conn) // initial
+
+	payload, err := json.Marshal(protocol.ActionPayload{
+		Type:   "draw_card",
+		Player: g.Seats[0].ID.String(),
+	})
+	if err != nil {
+		t.Fatalf("marshal payload: %v", err)
+	}
+	// Send a v=999 action frame — must be rejected.
+	sendFrame(t, conn, protocol.Frame{
+		V:       999,
+		Kind:    protocol.KindAction,
+		ID:      "test-bad-v",
+		Payload: payload,
+	})
+	f := readFrame(t, conn)
+	if f.Kind != protocol.KindError {
+		t.Fatalf("kind: got %q, want %q", f.Kind, protocol.KindError)
+	}
+	var ep protocol.ErrorPayload
+	_ = json.Unmarshal(f.Payload, &ep)
+	if ep.Code != protocol.CodeBadVersion {
+		t.Errorf("code: got %q, want %q", ep.Code, protocol.CodeBadVersion)
+	}
+}
+
+// TestClassifyActionErrorGameNotActive regresses the wire-code
+// classification policy: an action against a non-active game reports
+// CodeInternal (server state problem), not CodeBadRequest (client
+// fault).
+func TestClassifyActionErrorGameNotActive(t *testing.T) {
+	// Use a Room whose game is in Ended state.
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	g := seedTestGame(t)
+	g.End()
+
+	room := NewRoom(g, log, "")
+	hub := NewHub(log)
+	hub.SetRoom(room)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws", hub.ServeWS)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws"
+
+	conn := dial(t, wsURL)
+	defer conn.Close()
+	readSnapshotFrame(t, conn) // initial (game is Ended but Snapshot still works)
+
+	// Any action should fail with ErrGameNotActive → CodeInternal.
+	sendActionFrame(t, conn, protocol.ActionPayload{
+		Type:   "draw_card",
+		Player: g.Seats[0].ID.String(),
+	})
+	f := readFrame(t, conn)
+	if f.Kind != protocol.KindError {
+		t.Fatalf("kind: got %q, want %q", f.Kind, protocol.KindError)
+	}
+	var ep protocol.ErrorPayload
+	_ = json.Unmarshal(f.Payload, &ep)
+	if ep.Code != protocol.CodeInternal {
+		t.Errorf("code: got %q, want %q (ErrGameNotActive should classify as internal)", ep.Code, protocol.CodeInternal)
 	}
 }
 

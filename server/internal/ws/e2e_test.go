@@ -110,11 +110,13 @@ func (n *normalizer) player(p protocol.PlayerView, id string) protocol.PlayerVie
 		Graveyard: n.zone(p.Graveyard),
 		Command:   n.zone(p.Command),
 	}
-	if len(p.CommanderDamage) > 0 {
-		out.CommanderDamage = make(map[string]int, len(p.CommanderDamage))
-		for k, v := range p.CommanderDamage {
-			out.CommanderDamage[n.id(k)] = v
-		}
+	// Always initialise (possibly empty) — matches the wire shape
+	// emitted by protocol.viewOfPlayer, which always allocates the
+	// map. Leaving it nil here would make the golden file show
+	// `null` while the real wire shows `{}`.
+	out.CommanderDamage = make(map[string]int, len(p.CommanderDamage))
+	for k, v := range p.CommanderDamage {
+		out.CommanderDamage[n.id(k)] = v
 	}
 	return out
 }
@@ -125,11 +127,13 @@ func (n *normalizer) zone(z protocol.ZoneView) protocol.ZoneView {
 		Owner: n.id(z.Owner),
 		Count: z.Count,
 	}
-	if len(z.Cards) > 0 {
-		out.Cards = make([]protocol.CardView, len(z.Cards))
-		for i, c := range z.Cards {
-			out.Cards[i] = n.card(c)
-		}
+	// Always allocate, even when empty, to match protocol.viewOfZone
+	// which always does `make([]CardView, len(z.Cards))`. An empty
+	// but non-nil slice marshals to `[]`; a nil slice marshals to
+	// `null`. The wire always emits `[]`.
+	out.Cards = make([]protocol.CardView, len(z.Cards))
+	for i, c := range z.Cards {
+		out.Cards[i] = n.card(c)
 	}
 	return out
 }

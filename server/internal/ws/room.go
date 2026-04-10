@@ -72,27 +72,47 @@ func (r *Room) Apply(fn func() error) ([]byte, uint64, error) {
 	if err := fn(); err != nil {
 		return nil, 0, err
 	}
-	return r.captureLocked()
+	return r.captureLocked(true)
 }
 
 // Snapshot returns a snapshot frame of the current state without
-// mutating anything. Used to send the initial state to a just-joined
-// client. Takes the room mutex so it can't interleave with Apply.
+// mutating anything and without advancing the sequence counter. Used
+// to send the initial state to a just-joined client. The returned
+// frame carries the CURRENT seq — the same value the last Apply
+// broadcast to other clients. Under a join-during-action race, a
+// new client can briefly see two consecutive frames with the same
+// seq (one from Snapshot, one from a subsequent broadcast of the
+// same state); both carry identical state and clients should treat
+// snapshots idempotently.
+//
+// This "no-bump" semantics is deliberate: if Snapshot advanced the
+// shared counter, existing clients would see a seq jump of +2 on
+// their next broadcast (Apply→seq+1 AND Snapshot→seq+1) and flag it
+// as a dropped frame.
 func (r *Room) Snapshot() ([]byte, uint64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.captureLocked()
+	return r.captureLocked(false)
 }
 
-// captureLocked is the common seq-alloc + state-capture + marshal
-// path used by both Apply and Snapshot. Caller MUST hold r.mu.
-func (r *Room) captureLocked() ([]byte, uint64, error) {
-	r.seq++
-	seq := r.seq
+// captureLocked is the common state-capture + marshal path used by
+// both Apply and Snapshot. Caller MUST hold r.mu.
+//
+// If advanceSeq is true, the sequence counter is incremented — but
+// only AFTER json.Marshal succeeds, so a marshal failure does not
+// leave the counter advanced with no corresponding broadcast.
+//
+// If advanceSeq is false, the current seq is reused and the counter
+// is not touched (see Snapshot).
+func (r *Room) captureLocked(advanceSeq bool) ([]byte, uint64, error) {
+	nextSeq := r.seq
+	if advanceSeq {
+		nextSeq = r.seq + 1
+	}
 	view := protocol.ViewOfGame(r.Game)
 
 	payload, err := json.Marshal(protocol.SnapshotPayload{
-		Seq:  seq,
+		Seq:  nextSeq,
 		Game: view,
 	})
 	if err != nil {
@@ -108,12 +128,18 @@ func (r *Room) captureLocked() ([]byte, uint64, error) {
 		return nil, 0, err
 	}
 
+	// Marshal succeeded. Commit the seq advance (if any) BEFORE the
+	// disk dump so the dump's seq matches what we're about to return.
+	if advanceSeq {
+		r.seq = nextSeq
+	}
+
 	if r.dumpDir != "" {
 		if err := r.dumpSnapshotLocked(payload); err != nil {
-			r.log.Warn("snapshot dump failed", "err", err, "seq", seq)
+			r.log.Warn("snapshot dump failed", "err", err, "seq", nextSeq)
 		}
 	}
-	return frame, seq, nil
+	return frame, nextSeq, nil
 }
 
 // dumpSnapshotLocked writes the snapshot payload to the crash-recovery

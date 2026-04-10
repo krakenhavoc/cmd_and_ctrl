@@ -135,6 +135,12 @@ func (g *Game) PlayCard(playerID, cardID uuid.UUID) error {
 // ZoneRef. This is the general-purpose zone mutation used by the
 // move_card action; higher-level actions (DrawCard, PlayCard) wrap
 // zone-specific MoveCard calls directly for clarity.
+//
+// A move where src resolves to the same Zone as dst is a no-op:
+// MoveCard would Remove the card and re-Push it, and if src.Kind is
+// battlefield it would also clear tapped state and counters — which
+// would silently wipe a battlefield card's counters on a redundant
+// client-issued no-op move. Detect the same-zone case up front.
 func (g *Game) MoveCardByID(src, dst ZoneRef, cardID uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -148,6 +154,14 @@ func (g *Game) MoveCardByID(src, dst ZoneRef, cardID uuid.UUID) error {
 	dstZone := g.zoneFromRefLocked(dst)
 	if dstZone == nil {
 		return ErrZoneNotFound
+	}
+	if srcZone == dstZone {
+		// Verify the card is actually present so the caller still
+		// sees ErrCardNotFound for a bogus instance ID.
+		if !srcZone.Contains(cardID) {
+			return ErrCardNotFound
+		}
+		return nil
 	}
 	_, err := MoveCard(srcZone, dstZone, cardID)
 	return err

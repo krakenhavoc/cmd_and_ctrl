@@ -1,9 +1,12 @@
 # ADR 0002 — Client framework
 
-- **Status:** accepted (tentative — low cost to revisit during S01)
+- **Status:** accepted
 - **Date:** 2026-04-10
 - **Sprint:** S01 — Go server + client scaffold
 - **Deciders:** project owner
+- **Confirmed in:** S03. Tentative qualifier dropped after the
+  S01–S03 sprints landed with Svelte 5 + runes working cleanly. No
+  collaborator friction, no missing libraries, no regrets.
 
 ## Context
 

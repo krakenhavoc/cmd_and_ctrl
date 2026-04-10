@@ -1,5 +1,5 @@
 {
-  "seq": 5,
+  "seq": 4,
   "game": {
     "id": "\u003cuuid-001\u003e",
     "state": "active",
@@ -134,13 +134,13 @@
           "kind": "hand",
           "owner": "\u003cuuid-002\u003e",
           "count": 0,
-          "cards": null
+          "cards": []
         },
         "graveyard": {
           "kind": "graveyard",
           "owner": "\u003cuuid-002\u003e",
           "count": 0,
-          "cards": null
+          "cards": []
         },
         "command": {
           "kind": "command",
@@ -156,7 +156,7 @@
             }
           ]
         },
-        "commander_damage": null
+        "commander_damage": {}
       },
       {
         "id": "\u003cuuid-003\u003e",
@@ -294,13 +294,13 @@
           "kind": "hand",
           "owner": "\u003cuuid-003\u003e",
           "count": 0,
-          "cards": null
+          "cards": []
         },
         "graveyard": {
           "kind": "graveyard",
           "owner": "\u003cuuid-003\u003e",
           "count": 0,
-          "cards": null
+          "cards": []
         },
         "command": {
           "kind": "command",
@@ -316,7 +316,7 @@
             }
           ]
         },
-        "commander_damage": null
+        "commander_damage": {}
       }
     ],
     "battlefield": {
@@ -335,12 +335,12 @@
     "stack": {
       "kind": "stack",
       "count": 0,
-      "cards": null
+      "cards": []
     },
     "exile": {
       "kind": "exile",
       "count": 0,
-      "cards": null
+      "cards": []
     },
     "turn": {
       "number": 1,

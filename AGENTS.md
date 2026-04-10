@@ -8,13 +8,16 @@ vision and phased roadmap; this file is about *how* to work, not *what* to build
 
 ## 1. What this project is
 
-A private, personal client for 4-player Magic: The Gathering Commander, layered
-on top of the XMage rules engine. Personal-use only — not a product. See
-[PLAN.md](PLAN.md) for scope, stack, and the Option A vs B decision.
+A private, personal 4-player Magic: The Gathering Commander sandbox
+with a Go game server and a TypeScript client. Personal-use only — not
+a product. See [PLAN.md](PLAN.md) for scope, stack, and the Option B
+("sandbox first, rules grafted in incrementally from S13+") decision.
 
-Three hard problems, ranked: **rules engine** (delegated to XMage), **multiplayer
-state sync** (inherited from XMage's protocol), **UX polish** (this is where all
-original work goes).
+Three hard problems, ranked: **game state and multiplayer sync** (Go
+server, authoritative state, WebSocket broadcast), **UX polish** (the
+whole point — Commander-specific affordances nothing else has), and —
+long horizon — **incremental rules enforcement** (B→C track, starting
+in S13+ after the sandbox is shipped).
 
 ---
 

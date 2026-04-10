@@ -67,6 +67,72 @@ func TestDrawCardRequiresActive(t *testing.T) {
 	}
 }
 
+func TestPlayCardNotInHand(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	// Bogus card ID that isn't in the player's hand.
+	if err := g.PlayCard(p.ID, uuid.New()); err != ErrCardNotFound {
+		t.Errorf("bogus card: got %v, want ErrCardNotFound", err)
+	}
+	// Card actually sitting on the top of the LIBRARY (not hand) —
+	// should also fail because PlayCard moves from hand only.
+	libCard, _ := p.Library.Top()
+	if err := g.PlayCard(p.ID, libCard.InstanceID); err != ErrCardNotFound {
+		t.Errorf("card in library (not hand): got %v, want ErrCardNotFound", err)
+	}
+}
+
+func TestMoveCardByIDSrcEqualsDstPreservesState(t *testing.T) {
+	// Regression for R5: move_card with src == dst must NOT clear
+	// counters or tapped state (the underlying MoveCard path clears
+	// battlefield state on leave, which would wipe a permanent's
+	// counters if a client issued a redundant no-op move).
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	_ = g.DrawCard(p.ID)
+	card, _ := p.Hand.Top()
+	_ = g.PlayCard(p.ID, card.InstanceID)
+	_ = g.TapCard(card.InstanceID, true)
+	_ = g.AddCounter(card.InstanceID, "+1/+1", 3)
+
+	// No-op move on battlefield.
+	err := g.MoveCardByID(
+		ZoneRef{Kind: ZoneBattlefield},
+		ZoneRef{Kind: ZoneBattlefield},
+		card.InstanceID,
+	)
+	if err != nil {
+		t.Fatalf("no-op move: %v", err)
+	}
+	// Find the card on the battlefield and verify state is preserved.
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID != card.InstanceID {
+			continue
+		}
+		if !c.Tapped {
+			t.Error("no-op move cleared Tapped state")
+		}
+		if c.Counters["+1/+1"] != 3 {
+			t.Errorf("no-op move clobbered counters: %v", c.Counters)
+		}
+	}
+}
+
+func TestMoveCardByIDSrcEqualsDstBogusCard(t *testing.T) {
+	// A no-op move of a card that isn't actually in the source zone
+	// should still return ErrCardNotFound — the optimization must
+	// not hide the missing-card error.
+	g := newActiveGame(t)
+	err := g.MoveCardByID(
+		ZoneRef{Kind: ZoneBattlefield},
+		ZoneRef{Kind: ZoneBattlefield},
+		uuid.New(),
+	)
+	if err != ErrCardNotFound {
+		t.Errorf("bogus same-zone move: got %v, want ErrCardNotFound", err)
+	}
+}
+
 func TestPlayCardMovesToBattlefield(t *testing.T) {
 	g := newActiveGame(t)
 	p := g.Seats[0]

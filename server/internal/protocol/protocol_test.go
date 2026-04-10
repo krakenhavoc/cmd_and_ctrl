@@ -76,6 +76,8 @@ func TestKindValues(t *testing.T) {
 		{KindPing, "ping"},
 		{KindPong, "pong"},
 		{KindError, "error"},
+		{KindAction, "action"},
+		{KindSnapshot, "snapshot"},
 	}
 	for _, c := range cases {
 		if string(c.got) != c.want {

@@ -128,7 +128,7 @@ to the originating client only (no broadcast).
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `payload.type` | string | yes | One of the action types in the table below. |
-| `payload.player` | string (UUID) | conditional | Required for actions that operate on a specific player (draw, play, untap_all, mulligan, shuffle_library, change_life). Omitted for game-wide actions (pass_priority, pass_turn). |
+| `payload.player` | string (UUID) | conditional | See the per-action `player required` column in the catalog below. Required for most "a specific player does X" actions; omitted for actions that operate on a specific card by instance ID (`tap`, `untap`, `move_card`, `add_counter`, `set_commander_damage`) and for game-wide actions (`pass_priority`, `pass_turn`). |
 | `payload.params` | object | conditional | Action-specific parameters, shape depends on `type`. See the table. |
 
 #### Action types (v0)
@@ -180,7 +180,7 @@ diffs; new frame kinds can be added inside v0 additively.
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `payload.seq` | uint64 | yes | Per-room monotonically increasing sequence number. Clients use it to detect dropped or out-of-order frames. Allocated atomically with the state capture it contains, so `seq` ordering matches state progression. |
+| `payload.seq` | uint64 | yes | Per-room monotonically **non-decreasing** sequence number. Clients use it to detect dropped or out-of-order frames. `seq` is bumped only on successful `action` dispatches (see `Room.Apply` in the server); the initial snapshot a joining client receives reuses the current (not-yet-bumped) value, so a new joiner during an action race may briefly see two consecutive snapshots with identical `seq` — both carrying the same state. Clients must treat snapshots idempotently: duplicate `seq` always means "same state, re-apply is a no-op". |
 | `payload.game` | object | yes | Complete `GameView`. See the schema below. |
 
 The `id` field on a snapshot is always empty — snapshots are not correlated

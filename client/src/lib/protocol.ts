@@ -1,9 +1,10 @@
-// Mirror of the v0 protocol types from server/internal/protocol/protocol.go.
-// When the spec in docs/protocol.md evolves, update both sides in lockstep.
+// Mirror of the v0 protocol types from server/internal/protocol/protocol.go
+// and server/internal/protocol/view.go. When the spec in docs/protocol.md
+// evolves, update both sides in lockstep.
 
 export const PROTOCOL_VERSION = 0;
 
-export type Kind = "ping" | "pong" | "error";
+export type Kind = "ping" | "pong" | "error" | "action" | "snapshot";
 
 export const ErrorCode = {
   BadVersion: "bad_version",
@@ -33,6 +34,72 @@ export interface PongPayload {
 export interface ErrorPayload {
   code: string;
   message: string;
+}
+
+// ActionPayload is sent by the client to mutate game state. See
+// docs/protocol.md for the full catalog of action types and their
+// params shapes.
+export interface ActionPayload {
+  type: string;
+  player?: string;
+  params?: unknown;
+}
+
+// SnapshotPayload is the server's authoritative view of the game,
+// broadcast after every successful action and sent once on connect.
+export interface SnapshotPayload {
+  seq: number;
+  game: GameView;
+}
+
+// View types mirror server/internal/protocol/view.go.
+
+export interface GameView {
+  id: string;
+  state: "lobby" | "active" | "ended";
+  seats: PlayerView[];
+  battlefield: ZoneView;
+  stack: ZoneView;
+  exile: ZoneView;
+  turn: TurnView;
+}
+
+export interface PlayerView {
+  id: string;
+  name: string;
+  seat: number;
+  life: number;
+  poison?: number;
+  energy?: number;
+  library: ZoneView;
+  hand: ZoneView;
+  graveyard: ZoneView;
+  command: ZoneView;
+  commander_damage: Record<string, number>;
+}
+
+export interface ZoneView {
+  kind: string;
+  owner?: string;
+  count: number;
+  cards: CardView[];
+}
+
+export interface CardView {
+  instance_id: string;
+  name: string;
+  owner: string;
+  controller: string;
+  tapped?: boolean;
+  counters?: Record<string, number>;
+  is_commander?: boolean;
+}
+
+export interface TurnView {
+  number: number;
+  active_seat: number;
+  phase: string;
+  step: string;
 }
 
 // uuid generates a v4 UUID. Uses crypto.randomUUID when available (all

@@ -82,7 +82,7 @@ planned just-in-time from the S12 pain-point triage.
 - [ ] Action types: `draw_card`, `play_card`, `move_card` (between zones), `tap`, `untap`, `untap_all`, `pass_priority`, `pass_turn`, `mulligan`, `shuffle_library`, `change_life`, `add_counter`, `set_commander_damage`
 - [ ] Server applies action → computes state delta → broadcasts to all players in the game
 - [ ] Delta format versioned in `docs/protocol.md`
-- [ ] `cmd/bridge-cli/` — CLI test client that drives a game via the protocol
+- [ ] `cmd/gamecli/` — CLI test client that drives a game via the protocol
 - [ ] Snapshot tests of a recorded game transcript (golden files)
 - [ ] Crash recovery: server writes JSON snapshots after every action
 
