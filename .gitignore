@@ -2,16 +2,35 @@
 /data/
 *.log
 
+# Secrets / env
+.env
+.env.*
+!.env.example
+
 # OS / editor
 .DS_Store
 Thumbs.db
 *.swp
+*.swo
 *~
+*.bak
+*.orig
+
+# Editor / IDE state (user-specific, not project config)
+.vscode/
+.idea/
+*.iml
+
+# Claude Code per-project state. `.claude/settings.json` is a
+# command-permission allowlist; remove this line (or add
+# `!.claude/settings.json`) if you want to share it with collaborators.
+.claude/
 
 # Node / Vite (for client/)
 node_modules/
 dist/
 .vite/
+.svelte-kit/
 .cache/
 
 # Go (for server/)
@@ -19,3 +38,4 @@ dist/
 *.test
 *.out
 coverage.txt
+coverage.html
