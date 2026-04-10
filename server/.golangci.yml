@@ -1,0 +1,29 @@
+# golangci-lint config for cmd_and_ctrl server.
+# Deliberately conservative: start with stable, low-noise linters and add
+# more only when they catch real bugs. See https://golangci-lint.run/.
+#
+# Notably NOT enabled:
+#   - govet/fieldalignment — noisy on structs containing sync primitives
+#     where the author usually has a deliberate layout.
+#   - shadow — too many false positives on common idioms.
+run:
+  timeout: 3m
+
+linters:
+  disable-all: true
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gofmt
+    - goimports
+    - misspell
+    - unconvert
+    - unparam
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
