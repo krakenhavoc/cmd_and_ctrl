@@ -28,11 +28,13 @@ original work goes).
    abstractions. One VPS. One database. One deployable per service.
 3. **Personal use only changes the calculus.** Legal risk is low (Cockatrice and
    XMage exist). Scale is ≤8 users. Don't build for hypothetical public launch.
-4. **UX polish is the entire point.** If a task is "make rules work" the answer
-   is almost always "delegate to XMage". If a task is "make it feel good"
-   that's core product work and deserves real care.
-5. **Don't touch XMage internals unless explicitly in scope.** Fork discipline:
-   the protocol bridge is the seam. Keep Java ugliness on one side of it.
+4. **UX polish is the entire point.** "Make it feel good" is core product
+   work and deserves real care. Sandbox features (manual resolution,
+   manual priority) are a deliberate design choice, not a shortcut.
+5. **We do not use XMage.** This was evaluated and rejected in S01 — see
+   [PLAN.md §2.2](PLAN.md#22-why-not-option-a-the-s01-discovery). The entire
+   backend is an original Go game server; the rules engine (eventually,
+   S13+) is grown incrementally on top of it. No Java anywhere in the stack.
 
 ---
 
@@ -42,12 +44,12 @@ original work goes).
 cmd_and_ctrl/
 ├── PLAN.md              # vision, roadmap, open decisions
 ├── AGENTS.md            # this file
-├── .devcontainer/       # Java 21 + Go + Node dev environment
-├── bridge/              # protocol bridge (TS or Go) — not yet created
-├── client/              # web client (React/Svelte + PixiJS) — not yet created
-├── xmage/               # XMage submodule or vendored fork — not yet created
-├── scripts/             # one-off tools, Scryfall pipeline, etc.
-└── docs/                # research notes, protocol capture, decision records
+├── .devcontainer/       # Go + Node dev environment
+├── server/              # Go game server (authoritative state, WebSocket API) — not yet created
+├── client/              # web client (TypeScript + React/Svelte + PixiJS) — not yet created
+├── scripts/             # one-off tools, Scryfall pipeline, etc. — not yet created
+├── data/                # runtime state (gitignored): Scryfall cache, snapshots, replays
+└── docs/                # protocol specs, decision records, research notes
 ```
 
 When you create a new top-level directory, add it here.
@@ -123,19 +125,15 @@ If a PR does not belong to the active sprint, say so explicitly and justify it.
 
 ### Dev environment
 
-The devcontainer already installs Java 21, Maven, Go, Node, and the GitHub CLI.
-Ports 3000, 5173, 8080, and 17171 are forwarded.
+The devcontainer installs Go, Node, and the GitHub CLI. Ports 3000, 5173, and
+8080 are forwarded. (The Java/Maven features remain installed for now but are
+unused — they can be removed in a later cleanup PR.)
 
-### XMage
-- Build: *(TBD — captured during Phase 0 spike)*
-- Run server: *(TBD)*
-- Run legacy client: *(TBD)*
+### Server (Go)
+- *(TBD — scaffolded in S01)*
 
-### Bridge
-- *(TBD — created in Sprint 2)*
-
-### Client
-- *(TBD — created in Sprint 4)*
+### Client (TypeScript)
+- *(TBD — scaffolded in S01)*
 
 ---
 
@@ -155,9 +153,12 @@ Ports 3000, 5173, 8080, and 17171 are forwarded.
 
 - Do not add CI/CD beyond basic lint + test until there's code to protect.
 - Do not introduce a database, auth provider, or payment anything without
-  discussion. Shared password is fine for now (see [PLAN.md](PLAN.md#4-tech-stack-assuming-option-a)).
-- Do not build a full rules engine. That is Option C in PLAN.md, and the plan
-  explicitly rejects it.
+  discussion. Shared password is fine for now (see [PLAN.md §4](PLAN.md#4-tech-stack)).
+- Do not attempt a "full rules engine" sprint. Rules enforcement grows
+  incrementally in the S13+ B→C track, one mechanic at a time, driven by
+  real games. See [PLAN.md §2.3](PLAN.md#23-why-not-option-c-straight-custom-rules-engine).
+- Do not reintroduce a dependency on XMage or any JVM tooling. That was
+  evaluated and rejected in S01.
 - Do not generate card art, card text, or anything else that would pull this
   project out of "private, personal use" territory.
 - Do not create commits or PRs that do not reference a sprint (see section 4).
