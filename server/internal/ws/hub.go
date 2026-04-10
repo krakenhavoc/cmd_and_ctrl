@@ -5,15 +5,21 @@
 package ws
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/actions"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
@@ -45,9 +51,19 @@ type Hub struct {
 	closed  bool // set by Shutdown; blocks new registrations
 	log     *slog.Logger
 	wg      sync.WaitGroup // tracks active read/write pumps for graceful shutdown
+
+	// room is the single S03 default game. If nil, the hub accepts
+	// ping/pong only and rejects action frames with an internal
+	// error. S04 will replace the singleton with a RoomManager.
+	//
+	// Stored in an atomic.Pointer so SetRoom and the read-side accesses
+	// in ServeWS/handleAction don't race, even though the current
+	// production call pattern (SetRoom on startup, before the HTTP
+	// server starts) is serialised by construction.
+	room atomic.Pointer[Room]
 }
 
-// NewHub creates an empty hub.
+// NewHub creates an empty hub with no room attached.
 func NewHub(log *slog.Logger) *Hub {
 	if log == nil {
 		log = slog.Default()
@@ -58,15 +74,38 @@ func NewHub(log *slog.Logger) *Hub {
 	}
 }
 
-// register adds a client to the hub. Returns false if the hub has been
-// shut down, in which case the caller must not spawn the client pumps.
-func (h *Hub) register(c *Client) bool {
+// SetRoom attaches a room to the hub. The atomic pointer means this
+// is race-free against concurrent reads, but the current production
+// call pattern (SetRoom on startup, before the HTTP server starts)
+// also serialises it by construction.
+func (h *Hub) SetRoom(r *Room) {
+	h.room.Store(r)
+}
+
+// loadRoom returns the currently attached room, or nil if none.
+func (h *Hub) loadRoom() *Room {
+	return h.room.Load()
+}
+
+// admit atomically adds a client to the hub AND increments the pump
+// WaitGroup by 2, under a single hold of h.mu. Returns false if the
+// hub has been shut down, in which case the caller must close the
+// connection and bail without spawning pumps.
+//
+// The combined register + wg.Add invariant is load-bearing: if wg.Add
+// ran outside the lock, Shutdown could observe a client in h.clients,
+// call wg.Wait() (which returns immediately if no pump has Added yet
+// for this client), and then the caller's subsequent wg.Add would be
+// "Add after Wait with counter 0" — documented sync.WaitGroup misuse
+// that panics at runtime.
+func (h *Hub) admit(c *Client) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.closed {
 		return false
 	}
 	h.clients[c] = struct{}{}
+	h.wg.Add(2)
 	return true
 }
 
@@ -110,9 +149,34 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		send: make(chan []byte, 16),
 		log:  h.log.With("remote", r.RemoteAddr),
 	}
-	if !h.register(client) {
-		// A Shutdown raced us between the fast-path check and
-		// register. Close the freshly-upgraded socket and bail.
+
+	// Pre-stage the initial snapshot into the client's send channel
+	// BEFORE the client becomes visible to broadcastAll. This closes
+	// the "initial snapshot arrives after a concurrent action's
+	// broadcast" race: since the client is not yet in h.clients, no
+	// concurrent Apply can broadcast to this channel, so the initial
+	// snapshot is guaranteed to be the first frame the new client
+	// sees. The channel is freshly-created and buffered at 16, so the
+	// non-blocking send inside sendRaw always succeeds here.
+	room := h.loadRoom()
+	if room != nil {
+		if raw, seq, err := room.Snapshot(); err == nil {
+			client.sendRaw(raw)
+			client.log.Debug("pre-staged initial snapshot", "seq", seq)
+		} else {
+			client.log.Error("build initial snapshot failed", "err", err)
+		}
+	}
+
+	// admit() atomically registers the client AND increments the wg
+	// by 2 under a single hold of h.mu. That combined critical section
+	// prevents Shutdown from observing a client whose wg.Add hasn't
+	// run yet, which would be "Add after Wait with counter 0" — a
+	// runtime panic.
+	if !h.admit(client) {
+		// A Shutdown raced us between the fast-path check and admit.
+		// Close the freshly-upgraded socket and bail. No pumps have
+		// been spawned, so no wg.Done is owed.
 		_ = conn.WriteControl(
 			websocket.CloseMessage,
 			websocket.FormatCloseMessage(websocket.CloseGoingAway, "server shutting down"),
@@ -123,7 +187,6 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	}
 	client.log.Info("ws client connected", "total", h.Count())
 
-	h.wg.Add(2)
 	go func() {
 		defer h.wg.Done()
 		client.writePump()
@@ -132,6 +195,20 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		defer h.wg.Done()
 		client.readPump()
 	}()
+}
+
+// broadcastAll sends a pre-marshalled frame to every currently
+// connected client. The hub's read lock prevents unregister from
+// closing any client's send channel mid-broadcast, so the sends are
+// always to open channels. A full send buffer disconnects the slow
+// client rather than dropping the frame silently — see sendFrame for
+// the same policy.
+func (h *Hub) broadcastAll(raw []byte) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for c := range h.clients {
+		c.sendRaw(raw)
+	}
 }
 
 // Client is one connected WebSocket peer. Each client owns two goroutines:
@@ -186,10 +263,91 @@ func (c *Client) handleFrame(raw []byte) {
 	switch frame.Kind {
 	case protocol.KindPing:
 		c.handlePing(frame)
+	case protocol.KindAction:
+		c.handleAction(frame)
 	default:
 		c.sendError(frame.ID, protocol.CodeBadRequest,
 			"unknown or unsupported kind")
 	}
+}
+
+// handleAction decodes an action payload, dispatches it to the game
+// via the actions package, and broadcasts a fresh snapshot to every
+// connected client on success. Validation or dispatch errors come
+// back as error frames to the originating client only.
+//
+// Dispatch + seq alloc + state capture are serialised under the
+// room's mutex via Room.Apply, so two concurrent action frames cannot
+// interleave their state changes or broadcast non-monotonic snapshots.
+func (c *Client) handleAction(frame protocol.Frame) {
+	room := c.hub.loadRoom()
+	if room == nil {
+		// Server configuration bug, not a client mistake.
+		c.sendError(frame.ID, protocol.CodeInternal, "server has no room configured")
+		return
+	}
+
+	// An explicit JSON `null` payload has len > 0 but unmarshals into
+	// the zero-value ActionPayload, which would then fall through the
+	// Dispatch switch with an empty Type and produce a cryptic
+	// "unknown action type" error. Treat `null` the same as an absent
+	// payload: it's a malformed request.
+	if len(frame.Payload) == 0 || bytes.Equal(bytes.TrimSpace(frame.Payload), []byte("null")) {
+		c.sendError(frame.ID, protocol.CodeBadRequest, "action frame missing payload")
+		return
+	}
+	var payload protocol.ActionPayload
+	if err := json.Unmarshal(frame.Payload, &payload); err != nil {
+		c.sendError(frame.ID, protocol.CodeBadJSON, "action payload is not valid JSON")
+		return
+	}
+
+	action, err := actions.Decode(payload.Type, payload.Player, payload.Params)
+	if err != nil {
+		c.sendError(frame.ID, protocol.CodeBadRequest, err.Error())
+		return
+	}
+
+	raw, seq, err := room.Apply(func() error {
+		return actions.Dispatch(room.Game, action)
+	})
+	if err != nil {
+		code, msg := classifyActionError(err)
+		c.sendError(frame.ID, code, msg)
+		return
+	}
+	c.hub.broadcastAll(raw)
+	c.log.Debug("action dispatched", "type", payload.Type, "seq", seq)
+}
+
+// classifyActionError maps a dispatch-time error from the game or
+// actions package to a wire error code + clean client-facing message.
+// Internal package prefixes (`game:`, `actions:`) are stripped from
+// the message so the wire surface doesn't leak Go module layout, and
+// sentinel errors that reflect server state problems get the
+// `internal` code instead of `bad_request`.
+func classifyActionError(err error) (code, message string) {
+	if err == nil {
+		return "", ""
+	}
+	// Server-state errors: the client's request is well-formed, but
+	// the game is in a state that can't satisfy it. Report as internal
+	// so clients don't treat it as "your input was malformed".
+	switch {
+	case errors.Is(err, game.ErrGameNotActive):
+		return protocol.CodeInternal, "game is not in active state"
+	case errors.Is(err, game.ErrZoneEmpty):
+		// e.g. draw_card on an empty library — the player has lost
+		// (state-based action) but S03 doesn't enforce that, so the
+		// action is well-formed but unsatisfiable.
+		return protocol.CodeInternal, "zone is empty"
+	}
+	// Everything else is traceable to a client-supplied input — bad
+	// player ID, bad card ID, bad zone, unknown action type, etc.
+	msg := err.Error()
+	msg = strings.TrimPrefix(msg, "game: ")
+	msg = strings.TrimPrefix(msg, "actions: ")
+	return protocol.CodeBadRequest, msg
 }
 
 func (c *Client) handlePing(frame protocol.Frame) {
@@ -223,15 +381,18 @@ func (c *Client) sendFrame(f protocol.Frame) {
 		c.log.Error("ws marshal frame", "err", err)
 		return
 	}
+	c.sendRaw(raw)
+}
+
+// sendRaw enqueues a pre-marshalled frame on the client's send
+// channel. A full buffer disconnects the client rather than dropping
+// the frame silently — letting the pong for a ping, or the snapshot
+// for an action, be quietly dropped would mask real bugs.
+func (c *Client) sendRaw(raw []byte) {
 	select {
 	case c.send <- raw:
 	default:
-		// A full send buffer means the writer is stuck or the peer
-		// can't keep up. Dropping the frame silently would swallow
-		// critical responses (like the pong to a ping). Instead, tear
-		// the client down: closing the conn unblocks readPump, which
-		// runs the normal unregister + close(send) path.
-		c.log.Warn("ws send buffer full, disconnecting client", "kind", f.Kind)
+		c.log.Warn("ws send buffer full, disconnecting client")
 		_ = c.conn.Close()
 	}
 }
@@ -282,6 +443,10 @@ func (c *Client) writePump() {
 // closes every connected client, and waits for their read/write pumps
 // to exit, or ctx to cancel — whichever comes first. With zero clients,
 // this returns essentially immediately. Safe to call once.
+//
+// The per-client WriteControl + Close loop honours ctx: if the caller's
+// deadline elapses mid-loop we stop cleanly rather than burning through
+// writeWait-many seconds on every dead client.
 func (h *Hub) Shutdown(ctx context.Context) {
 	h.mu.Lock()
 	h.closed = true
@@ -292,6 +457,9 @@ func (h *Hub) Shutdown(ctx context.Context) {
 	h.mu.Unlock()
 
 	for _, c := range clients {
+		if ctx.Err() != nil {
+			break
+		}
 		_ = c.conn.WriteControl(
 			websocket.CloseMessage,
 			websocket.FormatCloseMessage(websocket.CloseGoingAway, "server shutting down"),

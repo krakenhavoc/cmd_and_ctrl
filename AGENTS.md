@@ -8,13 +8,16 @@ vision and phased roadmap; this file is about *how* to work, not *what* to build
 
 ## 1. What this project is
 
-A private, personal client for 4-player Magic: The Gathering Commander, layered
-on top of the XMage rules engine. Personal-use only — not a product. See
-[PLAN.md](PLAN.md) for scope, stack, and the Option A vs B decision.
+A private, personal 4-player Magic: The Gathering Commander sandbox
+with a Go game server and a TypeScript client. Personal-use only — not
+a product. See [PLAN.md](PLAN.md) for scope, stack, and the Option B
+("sandbox first, rules grafted in incrementally from S13+") decision.
 
-Three hard problems, ranked: **rules engine** (delegated to XMage), **multiplayer
-state sync** (inherited from XMage's protocol), **UX polish** (this is where all
-original work goes).
+Three hard problems, ranked: **game state and multiplayer sync** (Go
+server, authoritative state, WebSocket broadcast), **UX polish** (the
+whole point — Commander-specific affordances nothing else has), and —
+long horizon — **incremental rules enforcement** (B→C track, starting
+in S13+ after the sandbox is shipped).
 
 ---
 
@@ -47,10 +50,14 @@ cmd_and_ctrl/
 ├── Makefile             # top-level dev/test/lint targets
 ├── .devcontainer/       # Go + Node dev environment
 ├── server/              # Go game server (authoritative state, WebSocket API)
-│   ├── cmd/server/      # main package
+│   ├── cmd/
+│   │   ├── server/      # main package — serves :8080 with the singleton demo game
+│   │   └── gamecli/     # dev WebSocket client for driving a game via v0 actions
 │   ├── internal/
-│   │   ├── protocol/    # v0 wire format types
-│   │   └── ws/          # gorilla/websocket hub + client
+│   │   ├── game/        # authoritative domain: Game, Player, Zone, Card, Turn, mutations
+│   │   ├── protocol/    # v0 wire format types + ViewOfGame projection
+│   │   ├── actions/     # action type enum + Dispatch(Game, Action) router
+│   │   └── ws/          # gorilla/websocket hub, Room, action handler, crash-recovery dumps
 │   ├── Makefile
 │   └── .golangci.yml
 ├── client/              # TypeScript + Svelte 5 + Vite (PixiJS arrives in S05)
@@ -158,12 +165,14 @@ unused — they can be removed in a later cleanup PR.)
 - `make lint` — `go vet` + client ESLint + Prettier check
 
 ### Server (Go, `server/`)
-- `make -C server dev` — run locally on :8080
+- `make -C server dev` — run locally on :8080 (seeds a 4-player demo game)
 - `make -C server test` — `go test -race -cover ./...`
 - `make -C server vet` — `go vet ./...`
 - `make -C server fmt` — `gofmt -s -w .`
 - `make -C server build` — produces `server/bin/cmd_and_ctrl-server`
-- Endpoints at S01: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md))
+- `cd server && go run ./cmd/gamecli -addr ws://localhost:8080/ws` — drive the demo game from a terminal; reads action JSON on stdin or via `-script path.json`
+- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md))
+- Env vars: `CMDCTRL_ADDR` (default `:8080`), `CMDCTRL_DATA_DIR` (default `./data` — where crash-recovery snapshots are dumped; set to empty to disable)
 
 ### Client (TypeScript + Svelte 5 + Vite, `client/`)
 - `cd client && npm install` — first-time setup

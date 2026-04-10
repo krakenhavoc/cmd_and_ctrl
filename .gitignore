@@ -1,5 +1,10 @@
-# Runtime state
+# Runtime state (crash-recovery dumps, caches). The server writes to
+# $CMDCTRL_DATA_DIR which defaults to "./data" — relative to the CWD
+# when the server runs — so a dev running `make dev` from server/
+# creates server/data/, while /data/ at the repo root covers the
+# other common case.
 /data/
+/server/data/
 *.log
 
 # Secrets / env
