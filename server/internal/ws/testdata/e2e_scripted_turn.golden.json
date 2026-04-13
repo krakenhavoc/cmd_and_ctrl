@@ -167,128 +167,7 @@
           "kind": "library",
           "owner": "\u003cuuid-003\u003e",
           "count": 20,
-          "cards": [
-            {
-              "instance_id": "\u003cuuid-024\u003e",
-              "name": "Test Filler 13",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            },
-            {
-              "instance_id": "\u003cuuid-025\u003e",
-              "name": "Test Filler 2",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            },
-            {
-              "instance_id": "\u003cuuid-026\u003e",
-              "name": "Test Filler 20",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            },
-            {
-              "instance_id": "\u003cuuid-027\u003e",
-              "name": "Test Filler 3",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            },
-            {
-              "instance_id": "\u003cuuid-028\u003e",
-              "name": "Test Filler 4",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            },
-            {
-              "instance_id": "\u003cuuid-029\u003e",
-              "name": "Test Filler 9",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            },
-            {
-              "instance_id": "\u003cuuid-030\u003e",
-              "name": "Test Filler 18",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            },
-            {
-              "instance_id": "\u003cuuid-031\u003e",
-              "name": "Test Filler 8",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            },
-            {
-              "instance_id": "\u003cuuid-032\u003e",
-              "name": "Test Filler 11",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            },
-            {
-              "instance_id": "\u003cuuid-033\u003e",
-              "name": "Test Filler 14",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            },
-            {
-              "instance_id": "\u003cuuid-034\u003e",
-              "name": "Test Filler 16",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            },
-            {
-              "instance_id": "\u003cuuid-035\u003e",
-              "name": "Test Filler 17",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            },
-            {
-              "instance_id": "\u003cuuid-036\u003e",
-              "name": "Test Filler 12",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            },
-            {
-              "instance_id": "\u003cuuid-037\u003e",
-              "name": "Test Filler 15",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            },
-            {
-              "instance_id": "\u003cuuid-038\u003e",
-              "name": "Test Filler 19",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            },
-            {
-              "instance_id": "\u003cuuid-039\u003e",
-              "name": "Test Filler 5",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            },
-            {
-              "instance_id": "\u003cuuid-040\u003e",
-              "name": "Test Filler 1",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            },
-            {
-              "instance_id": "\u003cuuid-041\u003e",
-              "name": "Test Filler 7",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            },
-            {
-              "instance_id": "\u003cuuid-042\u003e",
-              "name": "Test Filler 6",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            },
-            {
-              "instance_id": "\u003cuuid-043\u003e",
-              "name": "Test Filler 10",
-              "owner": "\u003cuuid-003\u003e",
-              "controller": "\u003cuuid-003\u003e"
-            }
-          ]
+          "cards": []
         },
         "hand": {
           "kind": "hand",
@@ -308,7 +187,7 @@
           "count": 1,
           "cards": [
             {
-              "instance_id": "\u003cuuid-044\u003e",
+              "instance_id": "\u003cuuid-024\u003e",
               "name": "Test Commander 2",
               "owner": "\u003cuuid-003\u003e",
               "controller": "\u003cuuid-003\u003e",
@@ -324,7 +203,7 @@
       "count": 1,
       "cards": [
         {
-          "instance_id": "\u003cuuid-045\u003e",
+          "instance_id": "\u003cuuid-025\u003e",
           "name": "Test Filler 13",
           "owner": "\u003cuuid-002\u003e",
           "controller": "\u003cuuid-002\u003e",

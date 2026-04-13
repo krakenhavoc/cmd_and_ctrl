@@ -1,7 +1,10 @@
 // Package ws wraps gorilla/websocket with a small hub-and-client pattern
-// following the canonical gorilla chat example. At v0 the hub just holds
-// connected clients and dispatches ping frames. S02 and S03 grow this into
-// per-game rooms and an action router.
+// following the canonical gorilla chat example. As of S04 the hub speaks
+// to multiple concurrent games via a RoomManager: every client is bound
+// to one game (game UUID in the `?game=` query param) and one optional
+// seat (player UUID in `?player=`). Action frames mutate only the bound
+// game; broadcasts are scoped to clients sharing that game, each with a
+// per-viewer filtered snapshot.
 package ws
 
 import (
@@ -16,6 +19,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/actions"
@@ -38,8 +42,8 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 4096,
 	// SECURITY: v0 accepts every origin for local dev. This is a
 	// cross-site WebSocket hijacking hazard if the server is ever
-	// exposed on a public port before S04's shared-password auth lands.
-	// Lock this down before the first deploy.
+	// exposed on a public port before the auth story tightens past
+	// shared-credential. Lock this down before the first deploy.
 	CheckOrigin: func(_ *http.Request) bool { return true },
 }
 
@@ -52,18 +56,57 @@ type Hub struct {
 	log     *slog.Logger
 	wg      sync.WaitGroup // tracks active read/write pumps for graceful shutdown
 
-	// room is the single S03 default game. If nil, the hub accepts
-	// ping/pong only and rejects action frames with an internal
-	// error. S04 will replace the singleton with a RoomManager.
+	// manager holds the set of active Rooms keyed by game ID. A nil
+	// manager means the hub accepts only ping/pong and rejects every
+	// action frame or multi-game upgrade with an internal error.
 	//
-	// Stored in an atomic.Pointer so SetRoom and the read-side accesses
-	// in ServeWS/handleAction don't race, even though the current
-	// production call pattern (SetRoom on startup, before the HTTP
-	// server starts) is serialised by construction.
-	room atomic.Pointer[Room]
+	// Stored in an atomic.Pointer so SetManager and the read-side
+	// accesses in ServeWS/handleAction don't race. The production
+	// call pattern (SetManager on startup) is also serialised by
+	// construction, but the atomic makes the ordering explicit.
+	manager atomic.Pointer[RoomManager]
+
+	// authorize is an optional hook that runs per WebSocket upgrade
+	// request AFTER the request has been admitted at the HTTP layer
+	// (status-200 handshake) but BEFORE the connection is registered.
+	// It is responsible for extracting the caller's identity (token
+	// validation, principal lookup) and enforcing that the caller is
+	// allowed to bind to the requested ?game=/?player= pair. A non-nil
+	// error rejects the upgrade with an HTTP error; a nil error
+	// proceeds with the returned gameID and playerID as the client's
+	// bound identity — which may differ from the raw query values
+	// (e.g. the authorizer could resolve a session token to a player
+	// ID and ignore the query param altogether).
+	//
+	// If authorize is nil, the hub falls back to reading ?game= and
+	// ?player= directly from the query string with no validation —
+	// this is the legacy S01–S03 path that pre-lobby tests still use.
+	authorize UpgradeAuthorizer
 }
 
-// NewHub creates an empty hub with no room attached.
+// UpgradeAuthorizer validates an incoming WebSocket upgrade and
+// returns the bound game + player IDs the connection should carry. A
+// nil error means the upgrade is allowed; any non-nil error is
+// converted to an HTTP 401/403 response before the upgrade completes.
+//
+// The authorizer owns session-token validation, seat-ownership checks,
+// and any other policy decisions. It is the *only* place the hub
+// looks for identity — the hub itself has no notion of auth.
+type UpgradeAuthorizer interface {
+	AuthorizeUpgrade(r *http.Request) (gameID, playerID uuid.UUID, err error)
+}
+
+// UpgradeAuthorizerFunc is a function adapter for UpgradeAuthorizer,
+// handy for tests and for wiring in a one-off closure from main.go
+// without declaring a named type.
+type UpgradeAuthorizerFunc func(r *http.Request) (uuid.UUID, uuid.UUID, error)
+
+// AuthorizeUpgrade implements UpgradeAuthorizer by calling f.
+func (f UpgradeAuthorizerFunc) AuthorizeUpgrade(r *http.Request) (uuid.UUID, uuid.UUID, error) {
+	return f(r)
+}
+
+// NewHub creates an empty hub with no manager and no authorizer attached.
 func NewHub(log *slog.Logger) *Hub {
 	if log == nil {
 		log = slog.Default()
@@ -74,17 +117,45 @@ func NewHub(log *slog.Logger) *Hub {
 	}
 }
 
-// SetRoom attaches a room to the hub. The atomic pointer means this
-// is race-free against concurrent reads, but the current production
-// call pattern (SetRoom on startup, before the HTTP server starts)
-// also serialises it by construction.
-func (h *Hub) SetRoom(r *Room) {
-	h.room.Store(r)
+// SetManager attaches a RoomManager to the hub. The atomic pointer
+// makes this race-free against concurrent reads; the production call
+// pattern (SetManager on startup, before the HTTP server starts) also
+// serialises it by construction.
+func (h *Hub) SetManager(m *RoomManager) {
+	h.manager.Store(m)
 }
 
-// loadRoom returns the currently attached room, or nil if none.
-func (h *Hub) loadRoom() *Room {
-	return h.room.Load()
+// SetAuthorizer installs a per-upgrade authorization hook. Passing nil
+// restores the legacy no-auth path that reads ?game= and ?player=
+// from the query string directly. See UpgradeAuthorizer.
+func (h *Hub) SetAuthorizer(a UpgradeAuthorizer) {
+	h.authorize = a
+}
+
+// SetRoom is a backward-compat convenience: it wraps the given room in
+// a single-game RoomManager and installs it via SetManager. Tests and
+// the single-game dev server (behind CMDCTRL_SEED_DEMO) still call
+// this; the multi-game code path uses SetManager directly.
+func (h *Hub) SetRoom(r *Room) {
+	mgr := NewRoomManager(h.log, "")
+	mgr.Register(r)
+	h.SetManager(mgr)
+}
+
+// loadManager returns the currently attached manager, or nil if none.
+func (h *Hub) loadManager() *RoomManager {
+	return h.manager.Load()
+}
+
+// resolveRoom looks up the room for a connected client. Returns nil
+// if the manager has been removed or the client's game ID no longer
+// resolves to a live room (e.g. the lobby evicted it mid-session).
+func (h *Hub) resolveRoom(c *Client) *Room {
+	mgr := h.loadManager()
+	if mgr == nil {
+		return nil
+	}
+	return mgr.Get(c.gameID)
 }
 
 // admit atomically adds a client to the hub AND increments the pump
@@ -125,9 +196,20 @@ func (h *Hub) Count() int {
 	return len(h.clients)
 }
 
-// ServeWS upgrades the HTTP connection to a WebSocket and registers a new
-// client. Intended to be mounted at /ws on the HTTP mux. Returns 503 if
-// the hub has already been shut down.
+// ServeWS upgrades the HTTP connection to a WebSocket and registers a
+// new client. Intended to be mounted at /ws on the HTTP mux. Returns
+// 503 if the hub has already been shut down, 400 if the requested
+// game does not resolve, and 401/403 if an authorizer is attached and
+// rejects the request.
+//
+// Query params (when no authorizer is attached):
+//
+//	?game=<uuid>   — target game ID. Optional if the manager holds
+//	                 exactly one room (tests and single-game dev).
+//	?player=<uuid> — viewer identity, for per-client visibility
+//	                 filtering. Optional: omitting it yields a
+//	                 spectator view where every opponent hand is
+//	                 hidden.
 func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	// Fast path: refuse new connections once shutdown has begun.
 	h.mu.RLock()
@@ -138,31 +220,74 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	gameID, playerID, err := h.resolveBinding(r)
+	if err != nil {
+		// resolveBinding logs nothing — we log here so that auth
+		// failures are visible at exactly one level.
+		h.log.Warn("ws upgrade rejected", "err", err, "remote", r.RemoteAddr)
+		http.Error(w, err.Error(), statusFor(err))
+		return
+	}
+
+	// If the client requested a specific game, confirm that game
+	// resolves before burning a socket on it. A gameID of uuid.Nil
+	// means "no game bound" (ping-only connection) — allowed even
+	// without a manager so pre-S04 seams (the healthcheck/ping
+	// tests) continue to work unchanged.
+	var room *Room
+	if gameID != uuid.Nil {
+		mgr := h.loadManager()
+		if mgr == nil {
+			http.Error(w, "server has no room manager", http.StatusServiceUnavailable)
+			return
+		}
+		room = mgr.Get(gameID)
+		if room == nil {
+			http.Error(w, "game not found", http.StatusNotFound)
+			return
+		}
+		// If a player ID was supplied, validate it is actually a seat
+		// in the requested game. A mismatch is almost certainly a
+		// client bug; reject the upgrade rather than let the client
+		// bind to a non-existent viewer and silently receive
+		// spectator views.
+		if playerID != uuid.Nil && room.Game.PlayerByID(playerID) == nil {
+			http.Error(w, "player not in game", http.StatusForbidden)
+			return
+		}
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		h.log.Error("ws upgrade failed", "err", err, "remote", r.RemoteAddr)
 		return
 	}
 	client := &Client{
-		hub:  h,
-		conn: conn,
-		send: make(chan []byte, 16),
-		log:  h.log.With("remote", r.RemoteAddr),
+		hub:      h,
+		conn:     conn,
+		send:     make(chan []byte, 16),
+		log:      h.log.With("remote", r.RemoteAddr, "game", gameID.String(), "player", playerID.String()),
+		gameID:   gameID,
+		playerID: playerID,
 	}
 
 	// Pre-stage the initial snapshot into the client's send channel
-	// BEFORE the client becomes visible to broadcastAll. This closes
+	// BEFORE the client becomes visible to broadcastToRoom. This closes
 	// the "initial snapshot arrives after a concurrent action's
 	// broadcast" race: since the client is not yet in h.clients, no
 	// concurrent Apply can broadcast to this channel, so the initial
 	// snapshot is guaranteed to be the first frame the new client
 	// sees. The channel is freshly-created and buffered at 16, so the
 	// non-blocking send inside sendRaw always succeeds here.
-	room := h.loadRoom()
 	if room != nil {
-		if raw, seq, err := room.Snapshot(); err == nil {
-			client.sendRaw(raw)
-			client.log.Debug("pre-staged initial snapshot", "seq", seq)
+		if view, seq, err := room.Snapshot(); err == nil {
+			raw, marshalErr := marshalSnapshotFrame(seq, protocol.FilterViewFor(view, playerID.String()))
+			if marshalErr == nil {
+				client.sendRaw(raw)
+				client.log.Debug("pre-staged initial snapshot", "seq", seq)
+			} else {
+				client.log.Error("marshal initial snapshot failed", "err", marshalErr)
+			}
 		} else {
 			client.log.Error("build initial snapshot failed", "err", err)
 		}
@@ -197,18 +322,121 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	}()
 }
 
-// broadcastAll sends a pre-marshalled frame to every currently
-// connected client. The hub's read lock prevents unregister from
-// closing any client's send channel mid-broadcast, so the sends are
-// always to open channels. A full send buffer disconnects the slow
-// client rather than dropping the frame silently — see sendFrame for
-// the same policy.
-func (h *Hub) broadcastAll(raw []byte) {
+// resolveBinding extracts the (gameID, playerID) pair the incoming
+// upgrade request should be bound to. If an authorizer is attached,
+// it delegates entirely. Otherwise it parses the query string with
+// permissive defaults (missing game resolves to the singleton room if
+// any; missing player yields the zero UUID, i.e. spectator).
+func (h *Hub) resolveBinding(r *http.Request) (uuid.UUID, uuid.UUID, error) {
+	if h.authorize != nil {
+		return h.authorize.AuthorizeUpgrade(r)
+	}
+	q := r.URL.Query()
+	var gameID uuid.UUID
+	if raw := q.Get("game"); raw != "" {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			return uuid.Nil, uuid.Nil, errBadRequest("invalid game id")
+		}
+		gameID = id
+	} else if mgr := h.loadManager(); mgr != nil {
+		if only := mgr.Singleton(); only != nil {
+			gameID = only.Game.ID
+		}
+	}
+	// gameID == uuid.Nil is allowed here: it means "no game bound".
+	// The ServeWS caller permits such connections but rejects any
+	// subsequent action frame on them. Pings still work — that's the
+	// S01 seam that legacy tests (TestPingRoundTrip etc.) exercise
+	// without ever setting up a game.
+
+	var playerID uuid.UUID
+	if raw := q.Get("player"); raw != "" {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			return uuid.Nil, uuid.Nil, errBadRequest("invalid player id")
+		}
+		playerID = id
+	}
+	return gameID, playerID, nil
+}
+
+// errBadRequest is a sentinel wrapper so statusFor can map auth
+// errors back to their HTTP status. External packages (auth/lobby)
+// wrap their own error shapes via this mechanism too — any error
+// the authorizer returns is passed through statusFor unchanged.
+type httpStatusError struct {
+	code int
+	msg  string
+}
+
+func (e *httpStatusError) Error() string { return e.msg }
+
+func errBadRequest(msg string) error {
+	return &httpStatusError{code: http.StatusBadRequest, msg: msg}
+}
+
+// StatusError wraps an error message with an HTTP status code that
+// the hub will surface on a failed upgrade. Authorizers use this to
+// distinguish "unauthenticated" (401) from "forbidden" (403) from
+// "bad request" (400).
+func StatusError(code int, msg string) error {
+	return &httpStatusError{code: code, msg: msg}
+}
+
+// statusFor returns the HTTP status the hub should use when rejecting
+// an upgrade with the given error. Unwrapped errors default to 400.
+func statusFor(err error) int {
+	var s *httpStatusError
+	if errors.As(err, &s) {
+		return s.code
+	}
+	return http.StatusBadRequest
+}
+
+// broadcastToRoom sends a per-client filtered snapshot frame to every
+// currently connected client whose bound gameID matches. The hub's
+// read lock prevents unregister from closing any client's send
+// channel mid-broadcast, so the sends are always to open channels. A
+// full send buffer disconnects the slow client rather than dropping
+// the frame silently — see sendRaw for the same policy.
+//
+// The filter + marshal happens per client because each viewer sees a
+// tailored view. At ≤4 clients per room this is microseconds and
+// keeps the filter logic strictly server-side. If we ever scale past
+// that, lift the marshalling outside this method and cache the bytes
+// by player ID.
+func (h *Hub) broadcastToRoom(gameID uuid.UUID, seq uint64, view protocol.GameView) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	for c := range h.clients {
+		if c.gameID != gameID {
+			continue
+		}
+		raw, err := marshalSnapshotFrame(seq, protocol.FilterViewFor(view, c.playerID.String()))
+		if err != nil {
+			c.log.Error("marshal broadcast snapshot failed", "err", err)
+			continue
+		}
 		c.sendRaw(raw)
 	}
+}
+
+// marshalSnapshotFrame builds a ready-to-send JSON frame carrying the
+// given seq + view as a SnapshotPayload. Extracted so that both the
+// initial-snapshot-on-connect path and the broadcast-after-action path
+// can share a single frame construction.
+func marshalSnapshotFrame(seq uint64, view protocol.GameView) ([]byte, error) {
+	payload, err := json.Marshal(protocol.SnapshotPayload{Seq: seq, Game: view})
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(protocol.Frame{
+		V:       protocol.Version,
+		Kind:    protocol.KindSnapshot,
+		ID:      "",
+		Payload: payload,
+	})
 }
 
 // Client is one connected WebSocket peer. Each client owns two goroutines:
@@ -221,6 +449,17 @@ type Client struct {
 	conn *websocket.Conn
 	send chan []byte
 	log  *slog.Logger
+
+	// gameID is the room this client is bound to for the lifetime of
+	// the connection. Set at upgrade time from query string or
+	// authorizer output; never changes.
+	gameID uuid.UUID
+
+	// playerID is the seat identity used for per-viewer visibility
+	// filtering. uuid.Nil means "spectator" — every opponent hand is
+	// hidden. Never changes across the connection's lifetime; to
+	// switch seats, close and reconnect.
+	playerID uuid.UUID
 }
 
 func (c *Client) readPump() {
@@ -273,17 +512,19 @@ func (c *Client) handleFrame(raw []byte) {
 
 // handleAction decodes an action payload, dispatches it to the game
 // via the actions package, and broadcasts a fresh snapshot to every
-// connected client on success. Validation or dispatch errors come
-// back as error frames to the originating client only.
+// client bound to the same game on success. Validation or dispatch
+// errors come back as error frames to the originating client only.
 //
 // Dispatch + seq alloc + state capture are serialised under the
 // room's mutex via Room.Apply, so two concurrent action frames cannot
 // interleave their state changes or broadcast non-monotonic snapshots.
 func (c *Client) handleAction(frame protocol.Frame) {
-	room := c.hub.loadRoom()
+	room := c.hub.resolveRoom(c)
 	if room == nil {
-		// Server configuration bug, not a client mistake.
-		c.sendError(frame.ID, protocol.CodeInternal, "server has no room configured")
+		// Either the hub has no manager, or the client's game has
+		// been evicted since upgrade. Either way is a server-state
+		// problem, not a client mistake.
+		c.sendError(frame.ID, protocol.CodeInternal, "game is no longer available")
 		return
 	}
 
@@ -308,7 +549,7 @@ func (c *Client) handleAction(frame protocol.Frame) {
 		return
 	}
 
-	raw, seq, err := room.Apply(func() error {
+	view, seq, err := room.Apply(func() error {
 		return actions.Dispatch(room.Game, action)
 	})
 	if err != nil {
@@ -316,7 +557,7 @@ func (c *Client) handleAction(frame protocol.Frame) {
 		c.sendError(frame.ID, code, msg)
 		return
 	}
-	c.hub.broadcastAll(raw)
+	c.hub.broadcastToRoom(room.Game.ID, seq, view)
 	c.log.Debug("action dispatched", "type", payload.Type, "seq", seq)
 }
 

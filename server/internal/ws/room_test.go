@@ -60,6 +60,39 @@ func seedTestGame(t *testing.T) *game.Game {
 	return g
 }
 
+// tryDial is like dial but returns the error + HTTP response instead
+// of failing the test. Used by tests that expect an upgrade rejection
+// (non-101 status).
+func tryDial(url string) (*websocket.Conn, *http.Response, error) {
+	return websocket.DefaultDialer.Dial(url, nil)
+}
+
+// tryReadSnapshotFrame attempts a short-deadline read from conn. On
+// timeout/close it returns nil — the "nothing arrived" outcome that
+// isolation tests care about. On a successful read that happens to
+// not be a snapshot frame, it fails the test (the protocol guarantee
+// is that broadcasts are snapshots).
+func tryReadSnapshotFrame(t *testing.T, conn *websocket.Conn, millis int) *protocol.SnapshotPayload {
+	t.Helper()
+	_ = conn.SetReadDeadline(time.Now().Add(time.Duration(millis) * time.Millisecond))
+	_, raw, err := conn.ReadMessage()
+	if err != nil {
+		return nil
+	}
+	var f protocol.Frame
+	if err := json.Unmarshal(raw, &f); err != nil {
+		t.Fatalf("unmarshal frame: %v", err)
+	}
+	if f.Kind != protocol.KindSnapshot {
+		t.Fatalf("unexpected non-snapshot frame during isolation check: kind=%q", f.Kind)
+	}
+	var snap protocol.SnapshotPayload
+	if err := json.Unmarshal(f.Payload, &snap); err != nil {
+		t.Fatalf("unmarshal snapshot: %v", err)
+	}
+	return &snap
+}
+
 func readSnapshotFrame(t *testing.T, conn *websocket.Conn) protocol.SnapshotPayload {
 	t.Helper()
 	f := readFrame(t, conn)
