@@ -5,14 +5,33 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// ValidSizes is the set of Scryfall image sizes we accept. Anything
+// outside this list is rejected before it reaches the filesystem — see
+// ErrInvalidSize and the path-traversal note on pathFor.
+var ValidSizes = map[string]struct{}{
+	"small":       {},
+	"normal":      {},
+	"large":       {},
+	"png":         {},
+	"art_crop":    {},
+	"border_crop": {},
+}
+
+// ErrInvalidSize is returned when the requested size is not one of the
+// Scryfall-blessed variants. The HTTP handler maps this to 400.
+var ErrInvalidSize = errors.New("cards: invalid image size")
 
 // ImageCache is a disk-backed on-demand image fetcher. First request
 // for a given card pulls the image from Scryfall's CDN and writes it
@@ -56,10 +75,15 @@ var ErrNoImage = errors.New("cards: no image uri for card")
 // it. ctx cancels the download.
 //
 // If size is empty, Cache.DefaultSize is used. Valid Scryfall sizes:
-// small, normal, large, png, art_crop, border_crop.
+// small, normal, large, png, art_crop, border_crop. Any other size
+// returns ErrInvalidSize — this guard is what keeps a caller-supplied
+// size from becoming a path-traversal vector through pathFor.
 func (c *ImageCache) Fetch(ctx context.Context, idx *Index, id uuid.UUID, size string) (string, error) {
 	if size == "" {
 		size = c.DefaultSize
+	}
+	if _, ok := ValidSizes[size]; !ok {
+		return "", ErrInvalidSize
 	}
 	path := c.pathFor(id, size)
 	if _, err := os.Stat(path); err == nil {
@@ -119,6 +143,9 @@ func (c *ImageCache) lockFor(id uuid.UUID) *sync.Mutex {
 // sibling .tmp file. Caller holds the per-id mutex so no other
 // goroutine competes for the same tmp path.
 func (c *ImageCache) download(ctx context.Context, uri, path string) error {
+	if err := validateImageURI(uri); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
@@ -159,4 +186,46 @@ func (c *ImageCache) download(ctx context.Context, uri, path string) error {
 	}
 	tmp = nil
 	return os.Rename(tmpPath, path)
+}
+
+// validateImageURI enforces that a URI we are about to fetch is one we
+// trust. The Scryfall index is loaded from disk at startup; if that
+// file were ever swapped or tampered with, a malicious image_uris
+// entry could otherwise direct the server to fetch arbitrary internal
+// URLs (SSRF). Production traffic must be https to a Scryfall host.
+// Loopback is permitted as an escape hatch for tests (httptest) and
+// local development.
+func validateImageURI(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("cards: invalid image uri: %w", err)
+	}
+	host := u.Hostname()
+	if host == "" {
+		return fmt.Errorf("cards: image uri missing host: %s", raw)
+	}
+	if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() {
+		return nil
+	}
+	if strings.EqualFold(host, "localhost") {
+		return nil
+	}
+	if u.Scheme != "https" {
+		return fmt.Errorf("cards: image uri must be https: %s", raw)
+	}
+	if !isScryfallHost(host) {
+		return fmt.Errorf("cards: image uri host not allowed: %s", host)
+	}
+	return nil
+}
+
+// isScryfallHost matches Scryfall's CDN hostnames. They currently
+// serve images from c*.scryfall.com and cards.scryfall.io; we accept
+// any subdomain of either apex to stay robust against CDN shuffles.
+func isScryfallHost(host string) bool {
+	host = strings.ToLower(host)
+	return host == "scryfall.com" ||
+		host == "scryfall.io" ||
+		strings.HasSuffix(host, ".scryfall.com") ||
+		strings.HasSuffix(host, ".scryfall.io")
 }

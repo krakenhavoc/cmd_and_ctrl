@@ -267,6 +267,77 @@ func TestHandlerImageServesAndCaches(t *testing.T) {
 	}
 }
 
+func TestImageCacheRejectsInvalidSize(t *testing.T) {
+	// A caller-supplied size outside the allow-list must never reach
+	// pathFor: if it did, `size="../../etc/passwd"` would escape the
+	// cache root.
+	id := uuid.New()
+	idx := NewIndex()
+	idx.byID[id] = Card{ID: id, ImageURIs: map[string]string{"normal": "https://example.test/x.jpg"}}
+	cache, _ := NewImageCache(t.TempDir())
+	_, err := cache.Fetch(context.Background(), idx, id, "../../etc/passwd")
+	if err != ErrInvalidSize {
+		t.Errorf("invalid size: got %v, want ErrInvalidSize", err)
+	}
+}
+
+func TestHandlerImageInvalidSize400(t *testing.T) {
+	id := uuid.New()
+	idx := NewIndex()
+	idx.byID[id] = Card{ID: id, ImageURIs: map[string]string{"normal": "https://example.test/x.jpg"}}
+	cache, _ := NewImageCache(t.TempDir())
+	h := Handler(idx, cache)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	resp, err := http.Get(fmt.Sprintf("%s/cards/%s/image?size=..%%2Fescape", srv.URL, id))
+	if err != nil {
+		t.Fatalf("GET: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("status: got %d, want 400", resp.StatusCode)
+	}
+}
+
+func TestImageCacheRejectsNonScryfallHost(t *testing.T) {
+	// A tampered index that points at an internal URL must not cause
+	// an outbound fetch (SSRF). Production traffic requires https to
+	// a scryfall host; loopback is the only escape hatch.
+	id := uuid.New()
+	idx := NewIndex()
+	idx.byID[id] = Card{ID: id, ImageURIs: map[string]string{"normal": "https://internal.example.com/secret"}}
+	cache, _ := NewImageCache(t.TempDir())
+	_, err := cache.Fetch(context.Background(), idx, id, "normal")
+	if err == nil || !strings.Contains(err.Error(), "host not allowed") {
+		t.Errorf("non-scryfall host: got %v, want host-not-allowed", err)
+	}
+}
+
+func TestImageCacheRejectsNonHTTPS(t *testing.T) {
+	id := uuid.New()
+	idx := NewIndex()
+	idx.byID[id] = Card{ID: id, ImageURIs: map[string]string{"normal": "http://cards.scryfall.io/x.jpg"}}
+	cache, _ := NewImageCache(t.TempDir())
+	_, err := cache.Fetch(context.Background(), idx, id, "normal")
+	if err == nil || !strings.Contains(err.Error(), "must be https") {
+		t.Errorf("plain-http scryfall: got %v, want https-required", err)
+	}
+}
+
+func TestImageCacheAllowsScryfallHost(t *testing.T) {
+	// The validator is URI-shape only — an https://*.scryfall.io URI
+	// should pass the allow-check even if the DNS doesn't resolve in
+	// the test environment. We don't make a network call here; we
+	// just confirm validateImageURI accepts a Scryfall host.
+	if err := validateImageURI("https://cards.scryfall.io/normal/front/x/y.jpg"); err != nil {
+		t.Errorf("scryfall.io: got %v, want nil", err)
+	}
+	if err := validateImageURI("https://c1.scryfall.com/front/a/b.jpg"); err != nil {
+		t.Errorf("scryfall.com subdomain: got %v, want nil", err)
+	}
+}
+
 func TestHandlerUnknownCard404(t *testing.T) {
 	path := writeFixture(t)
 	idx := NewIndex()

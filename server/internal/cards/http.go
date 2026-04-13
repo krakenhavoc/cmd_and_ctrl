@@ -63,6 +63,8 @@ func Handler(idx *Index, cache *ImageCache) http.Handler {
 		path, err := cache.Fetch(ctx, idx, id, size)
 		if err != nil {
 			switch {
+			case errors.Is(err, ErrInvalidSize):
+				writeErr(w, http.StatusBadRequest, "invalid image size")
 			case errors.Is(err, ErrNoImage):
 				writeErr(w, http.StatusNotFound, "no image for this card")
 			case errors.Is(err, os.ErrNotExist):
