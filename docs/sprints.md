@@ -90,17 +90,21 @@ planned just-in-time from the S12 pain-point triage.
 
 ---
 
-## S04 — Lobby, auth, Scryfall pipeline
+## S04 — Lobby, auth, Scryfall pipeline ✅
 **Phase:** 2 · **Goal:** the non-play parts of the app.
 
-- [ ] HTTP endpoints: `POST /games`, `GET /games/:id`, `POST /games/:id/join`
-- [ ] Shared-password auth (single env var; no user accounts)
-- [ ] Invite links (game ID + join token in URL)
-- [ ] Scryfall bulk download job (`scripts/scryfall-refresh.sh`) + weekly cron
-- [ ] Card image cache layer (server-side on-demand download, disk cache under `data/images/`)
-- [ ] Client lobby page: create game, join by link, list active games
+- [x] HTTP endpoints: `POST /games`, `GET /games/:id`, `POST /games/:id/join`, `POST /games/:id/start`, `GET /me`
+- [x] Pluggable `auth.Authenticator` interface; S04 default is an in-memory invite store (admin token + per-game invite tokens). Swap for stateless HMAC later without touching handlers.
+- [x] Invite links (`#/games/<id>/join?t=<token>`); session cookie + bearer + query-param transports
+- [x] RoomManager for multi-game routing; hub broadcasts scoped per game
+- [x] Per-connection visibility filter (opponent `hand.cards` + `library.cards` hidden; counts preserved)
+- [x] Scryfall bulk download script (`scripts/scryfall-refresh.sh`) + weekly cron line
+- [x] Streaming Scryfall index loader + disk-backed image cache (sharded layout, per-id dedup)
+- [x] Client lobby: hash router, login / lobby / join / game routes, localStorage-persisted session
 
-**Exit criteria:** two browser tabs log in with the shared password, create/join a game, and see each other in the lobby; any card can be looked up by ID and served as an image.
+**Exit criteria:** two browser tabs log in (admin creates, second tab opens invite), create/join a game, and see each other in the lobby; any card can be looked up by ID and served as an image.
+
+**Deferred:** lobby persistence across server restart (S12 deploy work); TLS (reverse proxy); login rate limiting; per-invite revocation. See [ADR 0003](decisions/0003-auth-and-lobby.md).
 
 ---
 
