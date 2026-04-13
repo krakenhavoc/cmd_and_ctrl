@@ -16,14 +16,20 @@ import (
 // infrastructure needed to broadcast snapshots of it: a monotonic
 // sequence counter, a slog logger, and optional on-disk crash
 // recovery. The actual set of connected clients lives on the Hub;
-// Room is intentionally membership-free so that a future multi-room
-// refactor (S04) doesn't have to reshuffle client tracking.
+// Room is intentionally membership-free so the RoomManager can own
+// lifecycle concerns independently.
 //
 // Room is safe for concurrent use. All mutation + snapshot pairs go
 // through Apply, which holds a single mutex across the dispatch,
 // the sequence allocation, and the state capture — guaranteeing that
 // seq numbers are allocated in the same order state progresses, and
 // that no two dispatches can interleave their state captures.
+//
+// S04: Apply and Snapshot return a protocol.GameView (the full,
+// unfiltered view) instead of pre-marshalled frame bytes. The hub
+// layers per-client visibility filtering on top, which means the
+// same captured view can be marshalled into N different tailored
+// frames per broadcast — one per connected viewer.
 type Room struct {
 	Game *game.Game
 	log  *slog.Logger
@@ -36,7 +42,9 @@ type Room struct {
 	// dumpDir is the root for crash-recovery snapshots. Empty string
 	// disables disk writes entirely. Each snapshot lands at
 	//   <dumpDir>/games/<game-id>.json
-	// written via CreateTemp + rename for atomicity.
+	// written via CreateTemp + rename for atomicity. Dumps always
+	// contain the full unfiltered view — crash recovery is not a
+	// player-facing surface, so visibility filtering does not apply.
 	dumpDir string
 }
 
@@ -57,89 +65,88 @@ func NewRoom(g *game.Game, log *slog.Logger, dumpDir string) *Room {
 // Apply serializes a mutation against the room: it runs fn (which
 // should be a single game-state mutation, typically actions.Dispatch),
 // then atomically allocates a sequence number, captures a wire-format
-// view of the resulting game state, marshals a snapshot frame, writes
-// the recovery dump if enabled, and returns the frame bytes for
+// view of the resulting game state, writes the recovery dump if
+// enabled, and returns the view + seq for the hub to filter and
 // broadcast. If fn returns an error, Apply returns it verbatim and
-// does NOT increment seq or emit a snapshot.
+// does NOT increment seq or emit a view.
 //
 // The room mutex is held for the whole mutate → seq → capture → dump
 // sequence, so two concurrent clients cannot interleave state and
 // cannot observe non-monotonic (seq, state) pairs.
-func (r *Room) Apply(fn func() error) ([]byte, uint64, error) {
+func (r *Room) Apply(fn func() error) (protocol.GameView, uint64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	if err := fn(); err != nil {
-		return nil, 0, err
+		return protocol.GameView{}, 0, err
 	}
 	return r.captureLocked(true)
 }
 
-// Snapshot returns a snapshot frame of the current state without
-// mutating anything and without advancing the sequence counter. Used
-// to send the initial state to a just-joined client. The returned
-// frame carries the CURRENT seq — the same value the last Apply
-// broadcast to other clients. Under a join-during-action race, a
-// new client can briefly see two consecutive frames with the same
-// seq (one from Snapshot, one from a subsequent broadcast of the
-// same state); both carry identical state and clients should treat
-// snapshots idempotently.
+// Snapshot returns the current view without mutating anything and
+// without advancing the sequence counter. Used to send the initial
+// state to a just-joined client. The returned view carries the CURRENT
+// seq — the same value the last Apply broadcast to other clients.
+// Under a join-during-action race, a new client can briefly see two
+// consecutive frames with the same seq (one from Snapshot, one from a
+// subsequent broadcast of the same state); both carry identical state
+// and clients should treat snapshots idempotently.
 //
 // This "no-bump" semantics is deliberate: if Snapshot advanced the
 // shared counter, existing clients would see a seq jump of +2 on
 // their next broadcast (Apply→seq+1 AND Snapshot→seq+1) and flag it
 // as a dropped frame.
-func (r *Room) Snapshot() ([]byte, uint64, error) {
+func (r *Room) Snapshot() (protocol.GameView, uint64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.captureLocked(false)
 }
 
-// captureLocked is the common state-capture + marshal path used by
-// both Apply and Snapshot. Caller MUST hold r.mu.
+// captureLocked is the common state-capture path used by both Apply
+// and Snapshot. Caller MUST hold r.mu.
 //
 // If advanceSeq is true, the sequence counter is incremented — but
-// only AFTER json.Marshal succeeds, so a marshal failure does not
-// leave the counter advanced with no corresponding broadcast.
+// only AFTER the crash-recovery dump marshal succeeds, so a marshal
+// failure doesn't leave the counter advanced with no corresponding
+// on-disk record.
 //
-// If advanceSeq is false, the current seq is reused and the counter
-// is not touched (see Snapshot).
-func (r *Room) captureLocked(advanceSeq bool) ([]byte, uint64, error) {
+// The full-fidelity view is returned to the caller; the hub layer is
+// responsible for per-client visibility filtering and marshalling.
+func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error) {
 	nextSeq := r.seq
 	if advanceSeq {
 		nextSeq = r.seq + 1
 	}
 	view := protocol.ViewOfGame(r.Game)
 
-	payload, err := json.Marshal(protocol.SnapshotPayload{
-		Seq:  nextSeq,
-		Game: view,
-	})
-	if err != nil {
-		return nil, 0, err
-	}
-	frame, err := json.Marshal(protocol.Frame{
-		V:       protocol.Version,
-		Kind:    protocol.KindSnapshot,
-		ID:      "",
-		Payload: payload,
-	})
-	if err != nil {
-		return nil, 0, err
+	// If crash recovery is enabled, marshal the full (unfiltered)
+	// payload now, BEFORE committing the seq advance. A marshal
+	// failure must not leave r.seq advanced.
+	var dumpPayload []byte
+	if r.dumpDir != "" {
+		payload, err := json.Marshal(protocol.SnapshotPayload{
+			Seq:  nextSeq,
+			Game: view,
+		})
+		if err != nil {
+			return protocol.GameView{}, 0, fmt.Errorf("marshal snapshot: %w", err)
+		}
+		dumpPayload = payload
 	}
 
-	// Marshal succeeded. Commit the seq advance (if any) BEFORE the
-	// disk dump so the dump's seq matches what we're about to return.
+	// Marshal succeeded (or was skipped). Commit the seq advance before
+	// writing to disk so the dump's seq matches what we're about to
+	// return.
 	if advanceSeq {
 		r.seq = nextSeq
 	}
 
-	if r.dumpDir != "" {
-		if err := r.dumpSnapshotLocked(payload); err != nil {
+	if dumpPayload != nil {
+		if err := r.dumpSnapshotLocked(dumpPayload); err != nil {
 			r.log.Warn("snapshot dump failed", "err", err, "seq", nextSeq)
 		}
 	}
-	return frame, nextSeq, nil
+	return view, nextSeq, nil
 }
 
 // dumpSnapshotLocked writes the snapshot payload to the crash-recovery

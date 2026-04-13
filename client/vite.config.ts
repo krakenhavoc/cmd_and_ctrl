@@ -15,6 +15,13 @@ export default defineConfig({
         ws: true,
         changeOrigin: true,
       },
+      // Lobby + auth + cards routes — proxied to the Go server so
+      // dev-mode clients hit the same URL space as production.
+      "/admin": { target: "http://localhost:8080", changeOrigin: true },
+      "/games": { target: "http://localhost:8080", changeOrigin: true },
+      "/cards": { target: "http://localhost:8080", changeOrigin: true },
+      "/me": { target: "http://localhost:8080", changeOrigin: true },
+      "/healthz": { target: "http://localhost:8080", changeOrigin: true },
     },
   },
 });

@@ -152,7 +152,9 @@ func (n *normalizer) card(c protocol.CardView) protocol.CardView {
 
 // newE2EServer stands up a fully-wired httptest server with a room
 // whose game has been seeded from a deterministic RNG. Returns the
-// ws URL, the game (for player ID lookups), and a cleanup func.
+// ws URL (without query params), the game (for player ID lookups),
+// and a cleanup func. Callers append `?game=<id>&player=<id>` as
+// needed to bind a specific seat.
 func newE2EServer(t *testing.T) (string, *game.Game, func()) {
 	t.Helper()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -181,6 +183,19 @@ func newE2EServer(t *testing.T) (string, *game.Game, func()) {
 	srv := httptest.NewServer(mux)
 	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws"
 	return wsURL, g, srv.Close
+}
+
+// dialAs opens a WS connection bound to the given player ID. Passing
+// uuid.Nil yields a spectator connection (no player query param),
+// which has every opponent hand filtered away in the received
+// snapshots.
+func dialAs(t *testing.T, wsURL string, playerID uuid.UUID) *websocket.Conn {
+	t.Helper()
+	u := wsURL
+	if playerID != uuid.Nil {
+		u += "?player=" + playerID.String()
+	}
+	return dial(t, u)
 }
 
 // sendActionAndWait sends a scripted action and returns the resulting
@@ -234,7 +249,13 @@ func TestE2EScriptedTurn(t *testing.T) {
 	wsURL, g, cleanup := newE2EServer(t)
 	defer cleanup()
 
-	conn := dial(t, wsURL)
+	// Drive the scripted turn from seat 0's perspective. Binding the
+	// viewer matters now that S04 filters opponent hand + library
+	// cards out of every broadcast — a spectator connection would
+	// never see the drawn card and the test's `Hand.Cards[0]` lookup
+	// would panic on an empty slice.
+	seat0ID := g.Seats[0].ID
+	conn := dialAs(t, wsURL, seat0ID)
 	defer conn.Close()
 
 	// Consume initial snapshot.
@@ -243,7 +264,7 @@ func TestE2EScriptedTurn(t *testing.T) {
 		t.Fatalf("initial hand count: got %d, want 0", initial.Game.Seats[0].Hand.Count)
 	}
 
-	seat0 := g.Seats[0].ID.String()
+	seat0 := seat0ID.String()
 
 	// 1) Draw a card.
 	afterDraw := sendActionAndWait(t, conn, protocol.ActionPayload{

@@ -16,6 +16,50 @@ still works against a newer v0 server.
 
 ---
 
+## Connection lifecycle (S04)
+
+`GET /ws` requires authentication and game binding:
+
+- **Credential** transported as a session cookie (`cmdctrl_session`, browser),
+  `Authorization: Bearer <token>` header (CLI), or `?token=<token>` query
+  parameter (browser WebSocket — the only transport that works cross-
+  origin, since browsers cannot set Authorization headers on WS upgrade).
+- **Game / player binding** via query parameters:
+  - `?game=<uuid>` — the game the connection is for. A RolePlayer session
+    implicitly fixes this; supplying a mismatched value returns 403.
+  - `?player=<uuid>` — the viewer's seat. A RolePlayer session also fixes
+    this. Omitting it for an admin connection yields a spectator view
+    (every opponent hand and library rendered as hidden counts).
+
+Upgrade errors surface as HTTP status codes before the WebSocket handshake
+completes:
+
+| Status | Meaning |
+|---|---|
+| 401 | missing or invalid credential |
+| 403 | session not valid for the requested game / player |
+| 404 | unknown game |
+| 503 | server shutting down |
+
+### Per-connection visibility (S04)
+
+Every snapshot frame is filtered per recipient before it goes on the wire:
+
+- The recipient's own seat carries full `hand.cards` and `library.cards`.
+- Every other seat's `hand.cards` and `library.cards` are replaced with
+  an empty array `[]`. The `count` field is preserved so the UI can still
+  render a placeholder stack.
+- Shared zones (`battlefield`, `stack`, `exile`), plus every seat's
+  `graveyard` and `command` zones, are unchanged.
+- Spectator connections (admin without `?player=`, or a future
+  observer role) see all opponent hand cards hidden.
+
+The filter runs inside the hub after `Room.Apply`'s state capture, so
+all recipients see the same `seq` for a given state even though the
+payloads differ.
+
+---
+
 ## Frame envelope
 
 Every frame is a JSON object with at least:

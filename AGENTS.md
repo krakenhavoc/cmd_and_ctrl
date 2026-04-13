@@ -49,35 +49,40 @@ cmd_and_ctrl/
 ├── AGENTS.md            # this file
 ├── Makefile             # top-level dev/test/lint targets
 ├── .devcontainer/       # Go + Node dev environment
-├── server/              # Go game server (authoritative state, WebSocket API)
+├── server/              # Go game server (authoritative state, WebSocket + HTTP API)
 │   ├── cmd/
-│   │   ├── server/      # main package — serves :8080 with the singleton demo game
+│   │   ├── server/      # main package — serves :8080 with lobby + hub + cards routes
 │   │   └── gamecli/     # dev WebSocket client for driving a game via v0 actions
 │   ├── internal/
 │   │   ├── game/        # authoritative domain: Game, Player, Zone, Card, Turn, mutations
-│   │   ├── protocol/    # v0 wire format types + ViewOfGame projection
+│   │   ├── protocol/    # v0 wire format types + ViewOfGame + FilterViewFor
 │   │   ├── actions/     # action type enum + Dispatch(Game, Action) router
-│   │   └── ws/          # gorilla/websocket hub, Room, action handler, crash-recovery dumps
+│   │   ├── ws/          # gorilla/websocket hub, Room, RoomManager, per-viewer broadcast
+│   │   ├── auth/        # pluggable Authenticator interface + MemoryAuthenticator + HTTP middleware
+│   │   ├── lobby/       # GameMeta registry, invite flow, lobby HTTP handler, WSAuthorizer
+│   │   └── cards/       # Scryfall index (streaming load) + disk-backed image cache + /cards routes
 │   ├── Makefile
 │   └── .golangci.yml
 ├── client/              # TypeScript + Svelte 5 + Vite (PixiJS arrives in S05)
 │   ├── src/
-│   │   ├── App.svelte
+│   │   ├── App.svelte   # router shell
 │   │   ├── main.ts
 │   │   ├── app.css
-│   │   └── lib/         # protocol types, WebSocket client
+│   │   ├── lib/         # protocol types, WebSocket client, session, api, hash router
+│   │   └── routes/      # Login / Lobby / Join / Game views
 │   ├── index.html
 │   ├── vite.config.ts
 │   ├── svelte.config.js
 │   ├── tsconfig.json
 │   ├── eslint.config.js
 │   └── package.json
-├── scripts/             # one-off tools, Scryfall pipeline, etc. — not yet created
-├── data/                # runtime state (gitignored): Scryfall cache, snapshots, replays
+├── scripts/             # scryfall-refresh.sh (weekly cron) + one-off tools
+├── data/                # runtime state (gitignored): Scryfall cache, snapshots, images
 └── docs/
     ├── protocol.md      # v0 wire format spec
+    ├── lobby.md         # lobby HTTP API reference
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 — WS library, 0002 — client framework, ...)
+    └── decisions/       # ADRs (0001 WS library, 0002 client framework, 0003 auth+lobby)
 ```
 
 When you create a new top-level directory, add it here.
@@ -171,8 +176,15 @@ unused — they can be removed in a later cleanup PR.)
 - `make -C server fmt` — `gofmt -s -w .`
 - `make -C server build` — produces `server/bin/cmd_and_ctrl-server`
 - `cd server && go run ./cmd/gamecli -addr ws://localhost:8080/ws` — drive the demo game from a terminal; reads action JSON on stdin or via `-script path.json`
-- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md))
-- Env vars: `CMDCTRL_ADDR` (default `:8080`), `CMDCTRL_DATA_DIR` (default `./data` — where crash-recovery snapshots are dumped; set to empty to disable)
+- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](docs/lobby.md)), `/cards/*` image + metadata routes
+- Env vars:
+  - `CMDCTRL_ADDR` — listen addr (default `:8080`)
+  - `CMDCTRL_DATA_DIR` — data root (default `./data`; empty string disables disk writes + card cache)
+  - `CMDCTRL_ADMIN_TOKEN` — **required**. Shared admin secret for `POST /admin/login`. At least 16 characters.
+  - `CMDCTRL_SESSION_TTL` — session lifetime as a Go duration (default `12h`)
+  - `CMDCTRL_ALLOWED_ORIGINS` — comma-separated hostnames (or full URLs) permitted as cross-origin WebSocket callers. Same-origin is always allowed; unset = same-origin only.
+  - `CMDCTRL_SEED_DEMO=1` — seed the S03 4-player demo game at startup for the gamecli dev loop
+- Cron: `scripts/scryfall-refresh.sh` — weekly refresh of the Scryfall default-cards dump (suggested cron: `0 5 * * 0`)
 
 ### Client (TypeScript + Svelte 5 + Vite, `client/`)
 - `cd client && npm install` — first-time setup

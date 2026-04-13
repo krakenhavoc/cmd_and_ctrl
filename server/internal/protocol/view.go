@@ -26,11 +26,11 @@ type GameView struct {
 	Turn        TurnView     `json:"turn"`
 }
 
-// PlayerView is the wire representation of a Player. S03 sends every
-// player's full hand contents — there is no visibility filtering yet.
-// Visibility (hide opponent hands, show counts only) arrives in S04
-// with authentication, since "whose view is this" is only meaningful
-// once we know who's asking.
+// PlayerView is the wire representation of a Player. Full-fidelity
+// views come out of ViewOfGame; FilterViewFor then zeroes out any
+// zones that should be hidden from a specific viewer (opponent hand
+// cards, opponent library cards) while preserving the `count` so the
+// UI can still render a placeholder stack.
 type PlayerView struct {
 	ID              string         `json:"id"`
 	Name            string         `json:"name"`
@@ -143,6 +143,59 @@ func viewOfZone(z *game.Zone) ZoneView {
 		Owner: owner,
 		Count: len(z.Cards),
 		Cards: cards,
+	}
+}
+
+// FilterViewFor returns a copy of v with zones hidden from the given
+// viewer zeroed out. The input is not mutated; only the copy's seat
+// entries for non-viewer players get new (empty) card slices.
+//
+// Visibility rules at S04:
+//   - Own seat: full fidelity (hand + library cards visible).
+//   - Opponent seat: Hand.Cards and Library.Cards replaced with empty
+//     slices; the Count field is preserved so the UI can render a
+//     hidden stack. Graveyard and Command zones stay visible
+//     (graveyard is public in MTG; command is public because
+//     commanders are public).
+//   - Shared zones (battlefield, stack, exile): unchanged.
+//
+// viewerID is the player UUID string; pass the empty string to get a
+// "spectator" view where every opponent hand and library is hidden
+// (i.e. no seat is treated as "own"). An observer without a claimed
+// seat ends up here.
+func FilterViewFor(v GameView, viewerID string) GameView {
+	seats := make([]PlayerView, len(v.Seats))
+	for i, p := range v.Seats {
+		if p.ID != "" && p.ID == viewerID {
+			seats[i] = p
+			continue
+		}
+		hidden := p
+		hidden.Hand = hideZoneContents(p.Hand)
+		hidden.Library = hideZoneContents(p.Library)
+		seats[i] = hidden
+	}
+	return GameView{
+		ID:          v.ID,
+		State:       v.State,
+		Seats:       seats,
+		Battlefield: v.Battlefield,
+		Stack:       v.Stack,
+		Exile:       v.Exile,
+		Turn:        v.Turn,
+	}
+}
+
+// hideZoneContents returns a copy of z with Cards replaced by an empty
+// (but non-nil) slice. Non-nil matters: json.Marshal of a nil []CardView
+// is `null`, but every other zone on the wire is `[]`; clients would
+// see a shape inconsistency across seats.
+func hideZoneContents(z ZoneView) ZoneView {
+	return ZoneView{
+		Kind:  z.Kind,
+		Owner: z.Owner,
+		Count: z.Count,
+		Cards: []CardView{},
 	}
 }
 
