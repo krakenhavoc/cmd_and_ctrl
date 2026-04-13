@@ -2,10 +2,10 @@ package auth
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"sync"
 	"time"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/token"
 )
 
 // MemoryAuthenticator is the S04 default Authenticator: a simple
@@ -49,7 +49,7 @@ func (m *MemoryAuthenticator) Issue(ctx context.Context, p Principal, ttl time.D
 	if ttl <= 0 {
 		return "", Principal{}, ErrInvalidCredential
 	}
-	tok, err := randomToken(32)
+	tok, err := token.Random(32)
 	if err != nil {
 		return "", Principal{}, err
 	}
@@ -101,17 +101,6 @@ func (m *MemoryAuthenticator) Count() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return len(m.tokens)
-}
-
-// randomToken returns n bytes of crypto-random data encoded as
-// base64url. The result is 4*⌈n/3⌉ characters long, URL-safe, and
-// padding-free.
-func randomToken(n int) (string, error) {
-	b := make([]byte, n)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 // compile-time assertion.

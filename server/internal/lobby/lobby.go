@@ -11,8 +11,6 @@
 package lobby
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"errors"
 	"sync"
 	"time"
@@ -20,6 +18,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/token"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
@@ -94,7 +93,7 @@ func (l *Lobby) Create(name string) (GameMeta, error) {
 	if name == "" {
 		return GameMeta{}, ErrEmptyName
 	}
-	invite, err := randomToken(16)
+	invite, err := token.Random(16)
 	if err != nil {
 		return GameMeta{}, err
 	}
@@ -273,14 +272,6 @@ func sortMetaByCreatedAt(s []GameMeta) {
 			s[j], s[j-1] = s[j-1], s[j]
 		}
 	}
-}
-
-func randomToken(n int) (string, error) {
-	b := make([]byte, n)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 // trimToLimit trims whitespace and enforces a maximum length. If the
