@@ -14,6 +14,24 @@ export interface SeatInfo {
   player_id: string;
   name: string;
   seat: number;
+  deck_name?: string;
+  deck_uploaded: boolean;
+}
+
+// DeckViolation mirrors deck.Violation on the server.
+export interface DeckViolation {
+  code: string;
+  message: string;
+  card?: string;
+}
+
+// UploadDeckResponse mirrors lobby.uploadDeckResponse.
+export interface UploadDeckResponse {
+  game: GameMeta;
+  deck_name: string;
+  card_count: number;
+  commanders: string[];
+  warnings?: DeckViolation[];
 }
 
 interface SessionResponse {
@@ -88,6 +106,30 @@ export async function joinGame(
 export async function startGame(id: string): Promise<GameMeta> {
   const res = await authFetch(`/games/${id}/start`, { method: "POST" });
   return (await res.json()) as GameMeta;
+}
+
+// uploadDeck ships a decklist (plain text or Moxfield JSON) to the
+// server for parse + validate + install. Format can be omitted — the
+// server auto-detects by checking the first non-whitespace byte for
+// '{' (Moxfield) vs anything else (text).
+//
+// On validation failure (422), the thrown LobbyApiError's message is
+// the human-readable summary; the structured violation list is on
+// the err as a `.violations` field for callers that want to
+// highlight individual cards. Implemented via a try/catch on the raw
+// response because authFetch's default error path drops the JSON
+// body after extracting the message.
+export async function uploadDeck(
+  gameID: string,
+  playerID: string,
+  source: string,
+  format?: "text" | "moxfield",
+): Promise<UploadDeckResponse> {
+  const res = await authFetch(`/games/${gameID}/decks`, {
+    method: "POST",
+    body: JSON.stringify({ player_id: playerID, source, format }),
+  });
+  return (await res.json()) as UploadDeckResponse;
 }
 
 // logout revokes the current session server-side and clears local

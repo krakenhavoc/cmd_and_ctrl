@@ -2,6 +2,8 @@
   import { GameClient } from "../lib/ws";
   import { navigate } from "../lib/router";
   import { session } from "../lib/session";
+  import { TableRenderer } from "../lib/table";
+  import type { GameView } from "../lib/protocol";
 
   interface Props {
     gameID: string;
@@ -38,6 +40,60 @@
     return () => client.disconnect();
   });
 
+  // PixiJS table renderer. init() is async; we track the in-flight
+  // init so snapshots that arrive before the canvas is ready don't
+  // try to render into a half-built application. destroyed flags
+  // guard against late init callbacks firing after the component
+  // has already torn down (HMR, route change).
+  let canvasEl: HTMLDivElement | undefined = $state();
+  let renderer: TableRenderer | null = null;
+  let rendererReady = $state(false);
+
+  $effect(() => {
+    if (!canvasEl) return;
+    const r = new TableRenderer();
+    let destroyed = false;
+    void r.init(canvasEl).then(() => {
+      if (destroyed) {
+        r.destroy();
+        return;
+      }
+      renderer = r;
+      rendererReady = true;
+    });
+    return () => {
+      destroyed = true;
+      if (renderer === r) {
+        renderer = null;
+        rendererReady = false;
+      }
+      r.destroy();
+    };
+  });
+
+  // Re-render whenever a new snapshot arrives OR the renderer just
+  // finished initialising. Reading $snapshot and rendererReady in the
+  // same $effect ties both reactive inputs to the redraw.
+  $effect(() => {
+    const view: GameView | null = $snapshot;
+    if (!renderer || !rendererReady || !view) return;
+    renderer.render(view, { viewerID: sess?.playerID ?? null });
+  });
+
+  // Watch the container size. PIXI's resizeTo handles the canvas
+  // sizing; we just need to trigger a redraw so the layout recomputes
+  // against the new dimensions.
+  $effect(() => {
+    if (!canvasEl) return;
+    const obs = new ResizeObserver(() => {
+      if (!renderer || !rendererReady) return;
+      const view = $snapshot;
+      if (view) renderer.render(view, { viewerID: sess?.playerID ?? null });
+    });
+    obs.observe(canvasEl);
+    return () => obs.disconnect();
+  });
+
   function back(): void {
     navigate("#/lobby");
   }
@@ -48,20 +104,19 @@
     <button onclick={back}>← lobby</button>
     <h1>game {gameID.slice(0, 8)}</h1>
     <span class={`tag tag-${$status}`}>{$status}</span>
+    <span class="muted">seq {$lastSeq}</span>
   </header>
 
-  <p class="muted">seq: {$lastSeq}</p>
+  <div class="table" bind:this={canvasEl}></div>
 
-  {#if $snapshot}
-    <pre>{JSON.stringify($snapshot, null, 2)}</pre>
-  {:else}
-    <p class="muted">waiting for snapshot…</p>
+  {#if !$snapshot}
+    <p class="muted centered">waiting for snapshot…</p>
   {/if}
 </section>
 
 <style>
   section {
-    max-width: 960px;
+    max-width: 1280px;
     margin: 1rem auto;
     padding: 1rem;
   }
@@ -69,16 +124,21 @@
     display: flex;
     gap: 0.75rem;
     align-items: baseline;
+    margin-bottom: 0.75rem;
   }
-  pre {
-    background: #f4f4f4;
-    padding: 0.75rem;
-    overflow: auto;
-    max-height: 70vh;
-    font-size: 0.85em;
+  .table {
+    width: 100%;
+    height: 720px;
+    background: #0b1220;
+    border-radius: 6px;
+    overflow: hidden;
   }
   .muted {
-    color: #666;
+    color: #888;
+  }
+  .centered {
+    text-align: center;
+    margin-top: 1rem;
   }
   .tag {
     padding: 0.1rem 0.4rem;
