@@ -12,6 +12,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/ratelimit"
 )
 
 // sessionTTL controls how long a newly-minted Principal lives in the
@@ -62,8 +63,13 @@ func Handler(c Config) http.Handler {
 	}
 	mux := http.NewServeMux()
 
-	mux.Handle("POST /admin/login", handlerFunc(c, adminLogin))
-	mux.Handle("POST /games/{id}/join", handlerFunc(c, joinGame))
+	// Rate-limit the two endpoints that accept untrusted credentials:
+	// /admin/login brute-forces the shared admin token, /join
+	// brute-forces invite tokens. 1 req/s with a 5-token burst per
+	// client IP is lenient for real humans, prohibitive for scripts.
+	limit := ratelimit.New(1, 5)
+	mux.Handle("POST /admin/login", limit.Middleware(handlerFunc(c, adminLogin)))
+	mux.Handle("POST /games/{id}/join", limit.Middleware(handlerFunc(c, joinGame)))
 	mux.Handle("POST /games", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, createGame)))
 	mux.Handle("DELETE /games/{id}", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, deleteGame)))
 	mux.Handle("GET /games", auth.Middleware(c.Auth)(handlerFunc(c, listGames)))
