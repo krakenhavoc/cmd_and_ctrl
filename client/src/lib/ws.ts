@@ -44,7 +44,16 @@ export class GameClient {
   // no-op state refresh (same state, same seq).
   private highestSeq = 0;
 
-  constructor(private readonly url: string) {}
+  constructor(private url: string) {}
+
+  // setURL swaps the target URL. Does not affect an already-open
+  // socket — callers who want the new URL to take effect should
+  // disconnect() + connect() after setting. Exposed so route
+  // components can rebuild the WS URL on session change without
+  // throwing away the GameClient instance and its subscribers.
+  setURL(url: string): void {
+    this.url = url;
+  }
 
   connect(): void {
     if (this.socket) {

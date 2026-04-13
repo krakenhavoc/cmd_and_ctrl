@@ -1,63 +1,46 @@
 <script lang="ts">
-  import { GameClient } from "./lib/ws";
+  // App is the router shell. Each top-level view lives in its own
+  // component under src/routes; this file just picks the right one
+  // based on the current `route` and the presence of a session.
+  //
+  // The routing rules are intentionally small: most unauthenticated
+  // routes redirect to /login. The one public route is /games/:id/join,
+  // which is how new players onboard via an invite link.
 
-  const wsURL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
+  import Login from "./routes/Login.svelte";
+  import Lobby from "./routes/Lobby.svelte";
+  import Join from "./routes/Join.svelte";
+  import Game from "./routes/Game.svelte";
+  import { route, navigate } from "./lib/router";
+  import { session } from "./lib/session";
 
-  const client = new GameClient(wsURL);
-  // Extract the stores for auto-subscription via `$status` / `$log` in
-  // the template. This is the idiomatic Svelte 5 way to read stores
-  // without writing manual `.subscribe` boilerplate.
-  const { status, log } = client;
-
-  let msg = $state("hello");
-
-  // $effect handles mount + cleanup through the Svelte 5 effect
-  // lifecycle. The returned function runs when the effect is torn down
-  // (component unmount, HMR replacement, etc.).
+  // Enforce the auth gate as a side effect of routing. Running this
+  // inside $effect ensures it re-evaluates on hash change + session
+  // change without manual subscription plumbing.
   $effect(() => {
-    client.connect();
-    return () => client.disconnect();
+    const r = $route;
+    const s = $session;
+    const isPublic = r.name === "login" || r.name === "adminLogin" || r.name === "join";
+    if (!s && !isPublic) {
+      navigate("#/login");
+    }
+    // Landed on login with a live session? Kick to the lobby so the
+    // reload-after-login flow doesn't leave you staring at a login
+    // form you don't need.
+    if (s && r.name === "login") {
+      navigate("#/lobby");
+    }
   });
-
-  function sendPing(): void {
-    client.sendPing(msg);
-  }
-
-  function reconnect(): void {
-    client.disconnect();
-    client.connect();
-  }
 </script>
 
-<main>
-  <h1>cmd_and_ctrl</h1>
-  <p>
-    S01 — Go server + client scaffold ·
-    <span class={`tag tag-${$status}`} data-testid="status">
-      {$status}
-    </span>
-  </p>
-
-  <p>
-    <input
-      type="text"
-      bind:value={msg}
-      placeholder="ping message"
-      disabled={$status !== "connected"}
-    />
-    <button onclick={sendPing} disabled={$status !== "connected"}> send ping </button>
-    <button onclick={reconnect}>reconnect</button>
-  </p>
-
-  <div class="log" data-testid="log">
-    {#each $log as entry (entry.id)}
-      <div class={`log-entry ${entry.direction}`}>
-        <span class="log-time">{entry.at.toLocaleTimeString()}</span>
-        {entry.text}
-      </div>
-    {/each}
-    {#if $log.length === 0}
-      <div class="log-entry">(no activity yet)</div>
-    {/if}
-  </div>
-</main>
+{#if $route.name === "login"}
+  <Login />
+{:else if $route.name === "adminLogin"}
+  <Login />
+{:else if $route.name === "lobby"}
+  <Lobby />
+{:else if $route.name === "join"}
+  <Join gameID={$route.gameID} inviteToken={$route.inviteToken} />
+{:else if $route.name === "game"}
+  <Game gameID={$route.gameID} />
+{/if}
