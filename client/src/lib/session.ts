@@ -44,16 +44,56 @@ function loadSession(): Session | null {
 
 export const session: Writable<Session | null> = writable(loadSession());
 
+// expiryNotice is raised when we clear the session proactively
+// because its TTL elapsed. The Login route surfaces this as a banner
+// so the user understands why they landed back on login instead of
+// mid-game. Cleared on the next successful setSession.
+export const expiryNotice: Writable<string> = writable("");
+
+// Track the pending expiry timer so we cancel + rearm it on every
+// setSession call. Module-scoped rather than per-subscriber so there
+// is always exactly one timer in flight.
+let expiryTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleExpiry(s: Session | null): void {
+  if (expiryTimer !== null) {
+    clearTimeout(expiryTimer);
+    expiryTimer = null;
+  }
+  if (s === null) return;
+  const ms = Date.parse(s.expiresAt) - Date.now();
+  if (ms <= 0) {
+    // Already expired at setSession time — clear on the next tick so
+    // subscribers see the setSession first, then the clear.
+    expiryTimer = setTimeout(() => expireSession(), 0);
+    return;
+  }
+  // setTimeout caps at ~24 days on most runtimes — well above our
+  // 12h default TTL. Clamp defensively so tabs left open across a
+  // browser suspend don't fire with a negative delay on resume.
+  expiryTimer = setTimeout(() => expireSession(), Math.min(ms, 2_000_000_000));
+}
+
+function expireSession(): void {
+  expiryTimer = null;
+  session.set(null);
+  expiryNotice.set("Your session expired — please sign in again.");
+}
+
 // Persist store writes to localStorage so a page reload restores
-// the session.
+// the session. Also rearms the expiry timer so a long-running tab
+// clears state at the TTL rather than quietly 401-ing mid-match.
 session.subscribe((s) => {
+  scheduleExpiry(s);
   if (typeof localStorage === "undefined") return;
   if (s === null) localStorage.removeItem(STORAGE_KEY);
   else localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
 });
 
 // setSession replaces the current session with s and persists it.
+// Clears any pending expiry notice on a fresh login.
 export function setSession(s: Session | null): void {
+  if (s !== null) expiryNotice.set("");
   session.set(s);
 }
 

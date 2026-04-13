@@ -1,7 +1,7 @@
 <script lang="ts">
   import { adminLogin } from "../lib/api";
   import { navigate } from "../lib/router";
-  import { LobbyApiError } from "../lib/session";
+  import { expiryNotice, LobbyApiError } from "../lib/session";
 
   // Admin login is the only direct-auth path at S04. Regular players
   // arrive via an invite link and hit /routes/Join instead. The
@@ -46,6 +46,10 @@
 
 <section>
   <h1>cmd_and_ctrl</h1>
+
+  {#if $expiryNotice}
+    <p class="notice">{$expiryNotice}</p>
+  {/if}
 
   <h2>admin login</h2>
   <form onsubmit={submit}>
@@ -92,6 +96,13 @@
   }
   .error {
     color: #c00;
+  }
+  .notice {
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 1rem;
+    background: #fff6d6;
+    border: 1px solid #e0c75a;
+    border-radius: 4px;
   }
   .muted {
     color: #666;
