@@ -14,6 +14,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -37,14 +38,12 @@ const (
 	maxMessageSize = 64 * 1024           // max inbound frame size — will grow once game state frames exist
 )
 
-var upgrader = websocket.Upgrader{
+// baseUpgrader carries the tunable buffer sizes. The CheckOrigin hook
+// is installed per-Hub in NewHub so each hub can honour its own
+// allowed-origins configuration without a package-level global.
+var baseUpgrader = websocket.Upgrader{
 	ReadBufferSize:  4096,
 	WriteBufferSize: 4096,
-	// SECURITY: v0 accepts every origin for local dev. This is a
-	// cross-site WebSocket hijacking hazard if the server is ever
-	// exposed on a public port before the auth story tightens past
-	// shared-credential. Lock this down before the first deploy.
-	CheckOrigin: func(_ *http.Request) bool { return true },
 }
 
 // Hub is the central registry of connected WebSocket clients. It is safe
@@ -82,6 +81,18 @@ type Hub struct {
 	// ?player= directly from the query string with no validation —
 	// this is the legacy S01–S03 path that pre-lobby tests still use.
 	authorize UpgradeAuthorizer
+
+	// upgrader carries this hub's CheckOrigin. Built once in NewHub
+	// so hot-path upgrades don't allocate, and so the allowed-origin
+	// set can be tweaked via SetAllowedOrigins without touching the
+	// package-level state.
+	upgrader websocket.Upgrader
+
+	// allowedOrigins is a case-insensitive set of hostnames that
+	// CheckOrigin will honour in addition to same-origin. Empty by
+	// default (same-origin only). Protected by originsMu.
+	originsMu      sync.RWMutex
+	allowedOrigins map[string]struct{}
 }
 
 // UpgradeAuthorizer validates an incoming WebSocket upgrade and
@@ -111,10 +122,65 @@ func NewHub(log *slog.Logger) *Hub {
 	if log == nil {
 		log = slog.Default()
 	}
-	return &Hub{
-		clients: make(map[*Client]struct{}),
-		log:     log,
+	h := &Hub{
+		clients:        make(map[*Client]struct{}),
+		log:            log,
+		allowedOrigins: make(map[string]struct{}),
 	}
+	h.upgrader = baseUpgrader
+	h.upgrader.CheckOrigin = h.checkOrigin
+	return h
+}
+
+// SetAllowedOrigins replaces the set of cross-origin hostnames the hub
+// will accept WebSocket upgrades from. Same-origin requests (Origin
+// host == Host) and requests with no Origin header (CLI, tests) are
+// always allowed. Hostnames are matched case-insensitively; include
+// the port (e.g. "192.168.1.20:8080") if it differs from the default.
+func (h *Hub) SetAllowedOrigins(origins []string) {
+	set := make(map[string]struct{}, len(origins))
+	for _, o := range origins {
+		o = strings.TrimSpace(o)
+		if o == "" {
+			continue
+		}
+		// Accept a full URL ("https://lan.local") or a bare host.
+		if u, err := url.Parse(o); err == nil && u.Host != "" {
+			set[strings.ToLower(u.Host)] = struct{}{}
+			continue
+		}
+		set[strings.ToLower(o)] = struct{}{}
+	}
+	h.originsMu.Lock()
+	h.allowedOrigins = set
+	h.originsMu.Unlock()
+}
+
+// checkOrigin is the hub's CheckOrigin hook. Same-origin is always
+// allowed; cross-origin requires the Origin host to be in the
+// configured allow-set. An empty Origin (non-browser clients) is
+// treated as same-origin — the browser hijacking threat model only
+// applies when a browser is the caller.
+func (h *Hub) checkOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true
+	}
+	u, err := url.Parse(origin)
+	if err != nil || u.Host == "" {
+		h.log.Warn("ws upgrade rejected: bad Origin", "origin", origin)
+		return false
+	}
+	if strings.EqualFold(u.Host, r.Host) {
+		return true
+	}
+	h.originsMu.RLock()
+	_, ok := h.allowedOrigins[strings.ToLower(u.Host)]
+	h.originsMu.RUnlock()
+	if !ok {
+		h.log.Warn("ws upgrade rejected by CheckOrigin", "origin", origin, "host", r.Host)
+	}
+	return ok
 }
 
 // SetManager attaches a RoomManager to the hub. The atomic pointer
@@ -257,7 +323,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		h.log.Error("ws upgrade failed", "err", err, "remote", r.RemoteAddr)
 		return

@@ -34,6 +34,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -69,6 +70,10 @@ func main() {
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
 	hub.SetAuthorizer(&lobby.WSAuthorizer{Auth: authenticator})
+	if len(cfg.AllowedOrigins) > 0 {
+		hub.SetAllowedOrigins(cfg.AllowedOrigins)
+		log.Info("ws allowed-origins configured", "hosts", cfg.AllowedOrigins)
+	}
 
 	// Card index + image cache. The Scryfall bulk dump is optional
 	// at startup: a missing file logs a warning and the /cards*
@@ -146,6 +151,12 @@ type config struct {
 	AdminToken string
 	SessionTTL time.Duration
 	SeedDemo   bool
+	// AllowedOrigins is the cross-origin hostname allow-list passed to
+	// the hub's WebSocket CheckOrigin. Same-origin is always allowed
+	// (no config needed). Set CMDCTRL_ALLOWED_ORIGINS to a comma-
+	// separated list for LAN clients reaching the server from a
+	// different host/port than the one it binds on.
+	AllowedOrigins []string
 }
 
 // loadConfig pulls the server's env vars, applies defaults, and
@@ -179,6 +190,14 @@ func loadConfig(log *slog.Logger) config {
 		c.DataDir = os.Getenv("CMDCTRL_DATA_DIR")
 	} else {
 		c.DataDir = "./data"
+	}
+
+	if raw := os.Getenv("CMDCTRL_ALLOWED_ORIGINS"); raw != "" {
+		for _, s := range strings.Split(raw, ",") {
+			if s = strings.TrimSpace(s); s != "" {
+				c.AllowedOrigins = append(c.AllowedOrigins, s)
+			}
+		}
 	}
 
 	if c.AdminToken == "" {

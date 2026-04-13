@@ -281,3 +281,50 @@ func TestShutdownWithClientsWaitsForPumps(t *testing.T) {
 		t.Errorf("Shutdown took %s, want <1s", elapsed)
 	}
 }
+
+func TestCheckOriginRejectsCrossOrigin(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	hub := NewHub(log)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws", hub.ServeWS)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws"
+
+	// Cross-origin with no allow-list entry → rejected.
+	hdr := http.Header{}
+	hdr.Set("Origin", "http://evil.example.com")
+	_, resp, err := websocket.DefaultDialer.Dial(wsURL, hdr)
+	if err == nil {
+		t.Fatal("cross-origin dial: expected error")
+	}
+	if resp == nil || resp.StatusCode != http.StatusForbidden {
+		t.Errorf("status: got %v, want 403", resp)
+	}
+
+	// Same-origin (Origin host matches request Host) → allowed.
+	hdr = http.Header{}
+	hdr.Set("Origin", "http://"+strings.TrimPrefix(srv.URL, "http://"))
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, hdr)
+	if err != nil {
+		t.Fatalf("same-origin dial: %v", err)
+	}
+	conn.Close()
+
+	// Explicit allow-list lets a cross-origin request through.
+	hub.SetAllowedOrigins([]string{"friendly.example.com"})
+	hdr = http.Header{}
+	hdr.Set("Origin", "http://friendly.example.com")
+	conn, _, err = websocket.DefaultDialer.Dial(wsURL, hdr)
+	if err != nil {
+		t.Fatalf("allow-listed dial: %v", err)
+	}
+	conn.Close()
+
+	// Empty Origin (CLI/tests) → allowed.
+	conn, _, err = websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("empty-origin dial: %v", err)
+	}
+	conn.Close()
+}

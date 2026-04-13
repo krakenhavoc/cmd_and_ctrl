@@ -182,6 +182,7 @@ unused — they can be removed in a later cleanup PR.)
   - `CMDCTRL_DATA_DIR` — data root (default `./data`; empty string disables disk writes + card cache)
   - `CMDCTRL_ADMIN_TOKEN` — **required**. Shared admin secret for `POST /admin/login`. At least 16 characters.
   - `CMDCTRL_SESSION_TTL` — session lifetime as a Go duration (default `12h`)
+  - `CMDCTRL_ALLOWED_ORIGINS` — comma-separated hostnames (or full URLs) permitted as cross-origin WebSocket callers. Same-origin is always allowed; unset = same-origin only.
   - `CMDCTRL_SEED_DEMO=1` — seed the S03 4-player demo game at startup for the gamecli dev loop
 - Cron: `scripts/scryfall-refresh.sh` — weekly refresh of the Scryfall default-cards dump (suggested cron: `0 5 * * 0`)
 
