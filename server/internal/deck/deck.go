@@ -23,6 +23,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // List is a parsed, resolved decklist. Cards are by reference to the
@@ -189,8 +190,29 @@ func isLetter(b byte) bool {
 	return (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z')
 }
 
-// stableID is a helper exported for tests — turns a card ID into a
-// deterministic new UUID for "take this card N times in the
-// mainboard" iteration. Not used in production (game.AddPlayer
-// stamps instance IDs at seat time).
-var _ = uuid.Nil
+// ToGameCards converts a resolved List into the []game.Card slice
+// that game.AddPlayer / game.ReplaceDeck expects. Each card gets a
+// fresh InstanceID (game uses these to distinguish physical copies
+// of the same printed card), the Scryfall UUID is stamped for
+// client-side image lookup, and IsCommander is set on each
+// commander card. Owner / Controller are left as uuid.Nil — the
+// game package re-stamps them at seat time.
+func (l *List) ToGameCards() []game.Card {
+	out := make([]game.Card, 0, len(l.Commanders)+len(l.Mainboard))
+	for _, c := range l.Commanders {
+		out = append(out, toGameCard(c, true))
+	}
+	for _, c := range l.Mainboard {
+		out = append(out, toGameCard(c, false))
+	}
+	return out
+}
+
+func toGameCard(c cards.Card, isCommander bool) game.Card {
+	return game.Card{
+		InstanceID:  uuid.New(),
+		Name:        c.Name,
+		ScryfallID:  c.ID.String(),
+		IsCommander: isCommander,
+	}
+}

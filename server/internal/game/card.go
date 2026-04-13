@@ -20,8 +20,11 @@ type Card struct {
 	// lookup key into the Scryfall cache in S04.
 	Name string
 
-	// ScryfallID is the Scryfall oracle ID (stable across reprints).
-	// Empty in S02 because the Scryfall pipeline is not yet wired up.
+	// ScryfallID is the Scryfall UUID for the card's printing, stamped
+	// by the deck importer at seat time (S05). Empty only for
+	// placeholder cards (e.g. the demo game seeded via
+	// CMDCTRL_SEED_DEMO). The client uses this to resolve image URIs
+	// by hitting GET /cards/{id}/image.
 	ScryfallID string
 
 	// Owner is the player who brought this card to the game. Ownership

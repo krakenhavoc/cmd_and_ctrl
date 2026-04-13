@@ -106,20 +106,49 @@ func TestJoinFullGame(t *testing.T) {
 	}
 }
 
+// uploadDummyDeck gives a seat a minimal valid deck so Start can
+// transition the game. Tests that exercise Start lifecycle (not
+// deck validation) use this to skip the deck-upload flow. Uses
+// game.Card directly rather than going through the deck package so
+// the lobby test stays hermetic.
+func uploadDummyDeck(t *testing.T, l *Lobby, gameID, playerID uuid.UUID) {
+	t.Helper()
+	cmd := game.NewCommander("Dummy Commander", uuid.Nil)
+	filler := game.NewCard("Dummy Filler", uuid.Nil)
+	if _, err := l.SetDeck(gameID, playerID, "dummy", []game.Card{cmd, filler}); err != nil {
+		t.Fatalf("SetDeck: %v", err)
+	}
+}
+
 func TestStartRequiresMinPlayers(t *testing.T) {
 	l := newTestLobby(t)
 	meta, _ := l.Create("FNM")
-	_, _, _ = l.Join(meta.ID, meta.InviteToken, "Solo")
+	_, pid, _ := l.Join(meta.ID, meta.InviteToken, "Solo")
+	uploadDummyDeck(t, l, meta.ID, pid)
 	if _, err := l.Start(meta.ID); err != game.ErrNotEnoughPlayers {
 		t.Errorf("Start with 1 player: got %v, want ErrNotEnoughPlayers", err)
+	}
+}
+
+func TestStartRequiresAllDecks(t *testing.T) {
+	l := newTestLobby(t)
+	meta, _ := l.Create("FNM")
+	_, alice, _ := l.Join(meta.ID, meta.InviteToken, "Alice")
+	_, _, _ = l.Join(meta.ID, meta.InviteToken, "Bob")
+	uploadDummyDeck(t, l, meta.ID, alice)
+	// Bob hasn't uploaded — Start should refuse.
+	if _, err := l.Start(meta.ID); err != ErrDeckNotUploaded {
+		t.Errorf("Start with one missing deck: got %v, want ErrDeckNotUploaded", err)
 	}
 }
 
 func TestStartHappyPath(t *testing.T) {
 	l := newTestLobby(t)
 	meta, _ := l.Create("FNM")
-	_, _, _ = l.Join(meta.ID, meta.InviteToken, "Alice")
-	_, _, _ = l.Join(meta.ID, meta.InviteToken, "Bob")
+	_, alice, _ := l.Join(meta.ID, meta.InviteToken, "Alice")
+	_, bob, _ := l.Join(meta.ID, meta.InviteToken, "Bob")
+	uploadDummyDeck(t, l, meta.ID, alice)
+	uploadDummyDeck(t, l, meta.ID, bob)
 	after, err := l.Start(meta.ID)
 	if err != nil {
 		t.Fatalf("Start: %v", err)
@@ -140,8 +169,10 @@ func TestStartHappyPath(t *testing.T) {
 func TestJoinAfterStartRejected(t *testing.T) {
 	l := newTestLobby(t)
 	meta, _ := l.Create("FNM")
-	_, _, _ = l.Join(meta.ID, meta.InviteToken, "Alice")
-	_, _, _ = l.Join(meta.ID, meta.InviteToken, "Bob")
+	_, alice, _ := l.Join(meta.ID, meta.InviteToken, "Alice")
+	_, bob, _ := l.Join(meta.ID, meta.InviteToken, "Bob")
+	uploadDummyDeck(t, l, meta.ID, alice)
+	uploadDummyDeck(t, l, meta.ID, bob)
 	_, _ = l.Start(meta.ID)
 	if _, _, err := l.Join(meta.ID, meta.InviteToken, "Carol"); err != ErrGameStarted {
 		t.Errorf("Join after Start: got %v, want ErrGameStarted", err)

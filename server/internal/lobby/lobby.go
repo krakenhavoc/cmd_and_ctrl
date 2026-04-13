@@ -46,13 +46,22 @@ type GameMeta struct {
 	State       string     `json:"state"` // "lobby" | "active" | "ended"
 }
 
-// SeatInfo is the lobby-level view of one seat. At S04 we don't
-// expose deck contents here — that lands in S05 with real deck
-// import.
+// SeatInfo is the lobby-level view of one seat. As of S05 it
+// carries the player-facing deck summary so the lobby UI can render
+// a "decks ready: 3/4" indicator without pulling the full deck
+// contents.
 type SeatInfo struct {
 	PlayerID uuid.UUID `json:"player_id"`
 	Name     string    `json:"name"`
 	Seat     int       `json:"seat"`
+	// DeckName, if set, is the parsed deck's display name. Empty
+	// when the seat is still using the placeholder deck handed out
+	// at join time.
+	DeckName string `json:"deck_name,omitempty"`
+	// DeckUploaded reports whether the seat has uploaded a real deck
+	// (vs. the placeholder). Start refuses to transition the game
+	// until every seat has DeckUploaded == true.
+	DeckUploaded bool `json:"deck_uploaded"`
 }
 
 // Lobby holds the set of games currently known to the server, keyed
@@ -171,9 +180,10 @@ func (l *Lobby) Join(id uuid.UUID, invite, playerName string) (GameMeta, uuid.UU
 	}
 
 	entry.meta.Players = append(entry.meta.Players, SeatInfo{
-		PlayerID: p.ID,
-		Name:     p.Name,
-		Seat:     p.Seat,
+		PlayerID:     p.ID,
+		Name:         p.Name,
+		Seat:         p.Seat,
+		DeckUploaded: false,
 	})
 	// The game's State flips to active on Start — the lobby drives
 	// Start only when an explicit POST /games/:id/start lands. Until
@@ -186,11 +196,64 @@ func (l *Lobby) Join(id uuid.UUID, invite, playerName string) (GameMeta, uuid.UU
 	return copyMeta(entry.meta), p.ID, nil
 }
 
-// Start transitions the game from lobby to active. Fails if fewer
-// than game.MinPlayers are seated. No-op on an already-started game
-// (returns the current meta + nil).
+// ErrDeckNotUploaded is returned by Start when one or more seats
+// haven't uploaded a real deck yet. The HTTP handler maps this to
+// 409 so the lobby UI can show which seats are blocking the start.
+var ErrDeckNotUploaded = errors.New("lobby: not every seat has uploaded a deck")
+
+// SetDeck replaces a seated player's library + command zone with
+// `cards` (a slice produced by deck.List.ToGameCards). Only valid
+// while the game is still in the lobby state. playerID must match
+// the seat being modified — callers enforce "you can only set your
+// own deck" at the HTTP layer.
 //
-// Admins and any seated player can call Start at S04 — seat-claim
+// Marks the seat's DeckUploaded flag so Start can refuse to
+// transition until every seat has a real deck.
+func (l *Lobby) SetDeck(gameID, playerID uuid.UUID, deckName string, cards []game.Card) (GameMeta, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	entry, ok := l.games[gameID]
+	if !ok {
+		return GameMeta{}, ErrGameNotFound
+	}
+	if entry.room.Game.State != game.StateLobby {
+		return GameMeta{}, ErrGameStarted
+	}
+	// Confirm the player is seated in this game.
+	var seat *SeatInfo
+	for i := range entry.meta.Players {
+		if entry.meta.Players[i].PlayerID == playerID {
+			seat = &entry.meta.Players[i]
+			break
+		}
+	}
+	if seat == nil {
+		return GameMeta{}, ErrPlayerNotInGame
+	}
+
+	if err := entry.room.Game.ReplaceDeck(playerID, cards); err != nil {
+		switch err {
+		case game.ErrGameNotInLobby:
+			return GameMeta{}, ErrGameStarted
+		case game.ErrPlayerNotFound:
+			return GameMeta{}, ErrPlayerNotInGame
+		}
+		return GameMeta{}, err
+	}
+
+	seat.DeckName = deckName
+	seat.DeckUploaded = true
+	return copyMeta(entry.meta), nil
+}
+
+// Start transitions the game from lobby to active. Fails if fewer
+// than game.MinPlayers are seated, or if any seat still holds the
+// placeholder deck from join time (S05 adds ErrDeckNotUploaded so
+// the client can point at the blocking seat). No-op on an already-
+// started game (returns the current meta + nil).
+//
+// Admins and any seated player can call Start — seat-claim
 // and start-button ownership is deferred until there's a reason to
 // differentiate them.
 func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
@@ -203,6 +266,16 @@ func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
 	}
 	if entry.room.Game.State == game.StateActive {
 		return copyMeta(entry.meta), nil
+	}
+	// Require every seat to have a real deck before we let them
+	// untap step 1. The placeholder deck from Join is enough to
+	// satisfy game.Start's "library not empty" invariant but produces
+	// a farcical game; refusing here gives the UI a chance to surface
+	// the specific seats blocking the start.
+	for _, seat := range entry.meta.Players {
+		if !seat.DeckUploaded {
+			return GameMeta{}, ErrDeckNotUploaded
+		}
 	}
 	if err := entry.room.Game.Start(nil); err != nil {
 		// Most likely ErrNotEnoughPlayers — surface as-is; the HTTP

@@ -61,6 +61,7 @@ type CardView struct {
 	Name        string         `json:"name"`
 	Owner       string         `json:"owner"`
 	Controller  string         `json:"controller"`
+	ScryfallID  string         `json:"scryfall_id,omitempty"`
 	Tapped      bool           `json:"tapped,omitempty"`
 	Counters    map[string]int `json:"counters,omitempty"`
 	IsCommander bool           `json:"is_commander,omitempty"`
@@ -212,6 +213,7 @@ func viewOfCard(c game.Card) CardView {
 		Name:        c.Name,
 		Owner:       c.Owner.String(),
 		Controller:  c.Controller.String(),
+		ScryfallID:  c.ScryfallID,
 		Tapped:      c.Tapped,
 		Counters:    counters,
 		IsCommander: c.IsCommander,
