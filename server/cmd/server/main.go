@@ -33,15 +33,25 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
+)
+
+const (
+	// scryfallPath is the relative location of the bulk dump inside
+	// CMDCTRL_DATA_DIR. Matches scripts/scryfall-refresh.sh.
+	scryfallSubdir      = "scryfall"
+	scryfallDefaultFile = "default-cards.json"
+	imagesSubdir        = "images"
 )
 
 func main() {
@@ -60,6 +70,13 @@ func main() {
 	hub.SetManager(mgr)
 	hub.SetAuthorizer(&lobby.WSAuthorizer{Auth: authenticator})
 
+	// Card index + image cache. The Scryfall bulk dump is optional
+	// at startup: a missing file logs a warning and the /cards*
+	// routes serve 404 / 503 until the next scryfall-refresh run.
+	// This keeps the server bootable on a fresh deployment before
+	// the cron has landed its first dump.
+	cardIdx, imgCache := loadCardAssets(log, cfg.DataDir)
+
 	// Optional demo game for the gamecli dev path. Creates a game
 	// directly (bypassing the lobby's invite flow) so you can dial
 	// the ws endpoint with any admin token and a ?game=<demo-id>
@@ -76,6 +93,7 @@ func main() {
 		_, _ = w.Write([]byte("ok"))
 	})
 	mux.HandleFunc("GET /ws", hub.ServeWS)
+	mux.Handle("/cards/", auth.Middleware(authenticator)(cards.Handler(cardIdx, imgCache)))
 	mux.Handle("/", lobby.Handler(lobby.Config{
 		Lobby:      l,
 		Auth:       authenticator,
@@ -178,6 +196,38 @@ func envOr(key, dflt string) string {
 		return v
 	}
 	return dflt
+}
+
+// loadCardAssets boots the card index and image cache from the data
+// dir. A missing bulk dump is logged as a warning, not a fatal: the
+// server stays usable for lobby-only operations and starts serving
+// card images as soon as the next scryfall-refresh writes the file.
+//
+// Empty DataDir (disk persistence fully disabled) returns a nil
+// index and cache; the /cards routes handle that with 404 / 503.
+func loadCardAssets(log *slog.Logger, dataDir string) (*cards.Index, *cards.ImageCache) {
+	if dataDir == "" {
+		log.Warn("CMDCTRL_DATA_DIR is empty; card index and image cache disabled")
+		return nil, nil
+	}
+	idx := cards.NewIndex()
+	dumpPath := filepath.Join(dataDir, scryfallSubdir, scryfallDefaultFile)
+	if n, err := idx.Load(dumpPath); err != nil {
+		if os.IsNotExist(err) {
+			log.Warn("scryfall dump not found; run scripts/scryfall-refresh.sh", "path", dumpPath)
+		} else {
+			log.Error("scryfall dump load failed", "path", dumpPath, "err", err)
+		}
+	} else {
+		log.Info("scryfall index loaded", "cards", n, "path", dumpPath)
+	}
+
+	cache, err := cards.NewImageCache(filepath.Join(dataDir, imagesSubdir))
+	if err != nil {
+		log.Error("image cache init failed", "err", err)
+		return idx, nil
+	}
+	return idx, cache
 }
 
 // seedDemoGame builds a 4-player Commander game in the active state,
