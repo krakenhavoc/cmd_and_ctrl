@@ -245,6 +245,22 @@ func (l *Lobby) List() []GameMeta {
 	return out
 }
 
+// Delete removes the game from both the lobby registry and the
+// underlying RoomManager. Returns ErrGameNotFound if the ID isn't
+// known. The room manager's Delete does not evict connected WS
+// clients; callers that need that should call hub-level eviction
+// after this returns.
+func (l *Lobby) Delete(id uuid.UUID) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if _, ok := l.games[id]; !ok {
+		return ErrGameNotFound
+	}
+	delete(l.games, id)
+	l.mgr.Delete(id)
+	return nil
+}
+
 // RoomOf returns the Room for a given game ID, or nil if no such
 // game exists. Used by HTTP handlers that need to check the game's
 // state directly (e.g. the WS authorizer checking seat ownership).

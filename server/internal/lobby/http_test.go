@@ -243,6 +243,71 @@ func TestWSUpgradeWithPlayerSession(t *testing.T) {
 	}
 }
 
+func TestDeleteGameAdminOnly(t *testing.T) {
+	srv, l, _ := newTestHTTPStack(t)
+
+	// Create via admin, get token.
+	resp := postJSON(t, srv, "/admin/login", "", adminLoginRequest{Token: "shared-admin-token"})
+	var adminSess sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&adminSess)
+	resp.Body.Close()
+
+	resp = postJSON(t, srv, "/games", adminSess.Token, createGameRequest{Name: "FNM"})
+	var meta GameMeta
+	_ = json.NewDecoder(resp.Body).Decode(&meta)
+	resp.Body.Close()
+
+	// Join as a player so we can assert player sessions cannot DELETE.
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Alice"})
+	var playerSess sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&playerSess)
+	resp.Body.Close()
+
+	doDelete := func(token string) *http.Response {
+		req, _ := http.NewRequest(http.MethodDelete, srv.URL+"/games/"+meta.ID.String(), nil)
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		resp, err := srv.Client().Do(req)
+		if err != nil {
+			t.Fatalf("delete: %v", err)
+		}
+		return resp
+	}
+
+	// No auth → 401.
+	resp = doDelete("")
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("anon delete: got %d, want 401", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// Player → 403.
+	resp = doDelete(playerSess.Token)
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("player delete: got %d, want 403", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// Admin → 204, game gone.
+	resp = doDelete(adminSess.Token)
+	if resp.StatusCode != http.StatusNoContent {
+		t.Errorf("admin delete: got %d, want 204", resp.StatusCode)
+	}
+	resp.Body.Close()
+	if _, err := l.Get(meta.ID); err != ErrGameNotFound {
+		t.Errorf("after delete Get: got %v, want ErrGameNotFound", err)
+	}
+
+	// Second delete → 404.
+	resp = doDelete(adminSess.Token)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("double delete: got %d, want 404", resp.StatusCode)
+	}
+	resp.Body.Close()
+}
+
 func TestLogoutRevokesSession(t *testing.T) {
 	srv, _, a := newTestHTTPStack(t)
 

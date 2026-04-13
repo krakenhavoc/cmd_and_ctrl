@@ -99,6 +99,7 @@ func main() {
 		Auth:       authenticator,
 		AdminToken: cfg.AdminToken,
 		SessionTTL: cfg.SessionTTL,
+		Evictor:    hub,
 	}))
 
 	srv := &http.Server{

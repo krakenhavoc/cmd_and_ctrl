@@ -24,11 +24,23 @@ const sessionTTL = 12 * time.Hour
 // Lobby itself so main.go can build the HTTP layer without the
 // lobby having to know about auth.
 type Config struct {
-	Lobby        *Lobby
-	Auth         auth.Authenticator
-	AdminToken   string // shared admin token; empty disables admin flow
-	SessionTTL   time.Duration
-	AllowAnon    bool // allow unauthenticated /games/{id}/join via invite (default: true)
+	Lobby      *Lobby
+	Auth       auth.Authenticator
+	AdminToken string // shared admin token; empty disables admin flow
+	SessionTTL time.Duration
+	AllowAnon  bool // allow unauthenticated /games/{id}/join via invite (default: true)
+	// Evictor optionally closes any WS clients bound to a game when
+	// the game is deleted. When nil, DELETE still drops the game
+	// from the lobby + room manager but existing sockets linger
+	// until their next action hits "game no longer available".
+	Evictor GameEvictor
+}
+
+// GameEvictor is the subset of *ws.Hub that the lobby needs to close
+// connections for a deleted game. Interface rather than concrete type
+// so tests can omit it without standing up a hub.
+type GameEvictor interface {
+	EvictGame(gameID uuid.UUID) int
 }
 
 // Handler returns an http.Handler wired to the v0 lobby REST surface:
@@ -53,6 +65,7 @@ func Handler(c Config) http.Handler {
 	mux.Handle("POST /admin/login", handlerFunc(c, adminLogin))
 	mux.Handle("POST /games/{id}/join", handlerFunc(c, joinGame))
 	mux.Handle("POST /games", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, createGame)))
+	mux.Handle("DELETE /games/{id}", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, deleteGame)))
 	mux.Handle("GET /games", auth.Middleware(c.Auth)(handlerFunc(c, listGames)))
 	mux.Handle("GET /games/{id}", auth.Middleware(c.Auth)(handlerFunc(c, getGame)))
 	mux.Handle("POST /games/{id}/start", auth.Middleware(c.Auth)(handlerFunc(c, startGame)))
@@ -222,6 +235,25 @@ func getGame(c Config, w http.ResponseWriter, r *http.Request) error {
 		meta.InviteToken = ""
 	}
 	return writeJSON(w, http.StatusOK, meta)
+}
+
+// deleteGame (admin-only) removes a game from the lobby and from the
+// underlying RoomManager, and evicts any WebSocket clients currently
+// bound to it. Idempotent only in the sense that a second DELETE
+// returns 404 rather than an error shape — the game is gone.
+func deleteGame(c Config, w http.ResponseWriter, r *http.Request) error {
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	if err := c.Lobby.Delete(id); err != nil {
+		return err
+	}
+	if c.Evictor != nil {
+		c.Evictor.EvictGame(id)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
 }
 
 func startGame(c Config, w http.ResponseWriter, r *http.Request) error {

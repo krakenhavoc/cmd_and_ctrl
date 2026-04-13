@@ -680,6 +680,36 @@ func (c *Client) writePump() {
 	}
 }
 
+// EvictGame closes every connected client bound to gameID, sending a
+// WebSocket close frame so the peer knows the game is gone (not a
+// transport hiccup) and can render a "game ended" state rather than
+// reconnect. Returns the number of clients evicted.
+//
+// Invoked by the lobby when a game is deleted. The read pump's
+// deferred unregister handles the map cleanup when each conn closes,
+// so we don't touch h.clients under the write lock here — we just
+// close sockets and let the existing lifecycle drain.
+func (h *Hub) EvictGame(gameID uuid.UUID) int {
+	h.mu.RLock()
+	victims := make([]*Client, 0)
+	for c := range h.clients {
+		if c.gameID == gameID {
+			victims = append(victims, c)
+		}
+	}
+	h.mu.RUnlock()
+
+	for _, c := range victims {
+		_ = c.conn.WriteControl(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, "game deleted"),
+			time.Now().Add(writeWait),
+		)
+		_ = c.conn.Close()
+	}
+	return len(victims)
+}
+
 // Shutdown marks the hub as closed (so new registrations are rejected),
 // closes every connected client, and waits for their read/write pumps
 // to exit, or ctx to cancel — whichever comes first. With zero clients,
