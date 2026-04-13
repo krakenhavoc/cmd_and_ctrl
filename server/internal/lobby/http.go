@@ -205,8 +205,13 @@ func getGame(c Config, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	// Only the admin and seated players should see the invite token
-	// — drop it for anyone else.
-	p, _ := auth.PrincipalFromContext(r.Context())
+	// — drop it for anyone else. Require a principal attached by the
+	// auth middleware: if it's missing the request slipped past our
+	// mux, which is a server bug and should 500 before leaking data.
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return httpError(http.StatusInternalServerError, "missing principal")
+	}
 	if p.Role != auth.RoleAdmin && p.GameID != id {
 		meta.InviteToken = ""
 	}
@@ -221,7 +226,10 @@ func startGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	// Require that the caller be either an admin or a seated player
 	// in this game. Anyone else with a stray session cookie shouldn't
 	// be able to yank a game to "active".
-	p, _ := auth.PrincipalFromContext(r.Context())
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return httpError(http.StatusInternalServerError, "missing principal")
+	}
 	if p.Role != auth.RoleAdmin && p.GameID != id {
 		return httpError(http.StatusForbidden, "not a seat in this game")
 	}
@@ -233,7 +241,10 @@ func startGame(c Config, w http.ResponseWriter, r *http.Request) error {
 }
 
 func me(_ Config, w http.ResponseWriter, r *http.Request) error {
-	p, _ := auth.PrincipalFromContext(r.Context())
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return httpError(http.StatusInternalServerError, "missing principal")
+	}
 	return writeJSON(w, http.StatusOK, p)
 }
 
