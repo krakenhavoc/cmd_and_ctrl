@@ -1,4 +1,4 @@
-import { authFetch, setSession, type Session } from "./session";
+import { authFetch, currentSession, setSession, type Session } from "./session";
 
 // GameMeta mirrors lobby.GameMeta in server/internal/lobby/lobby.go.
 export interface GameMeta {
@@ -88,4 +88,25 @@ export async function joinGame(
 export async function startGame(id: string): Promise<GameMeta> {
   const res = await authFetch(`/games/${id}/start`, { method: "POST" });
   return (await res.json()) as GameMeta;
+}
+
+// logout revokes the current session server-side and clears local
+// state. Best-effort: a network failure still clears the store so
+// the user isn't stranded in a half-logged-out UI. We bypass
+// authFetch because its 401 handler would double-clear the session
+// and throw — /logout accepts stale credentials and always returns
+// 204, so there's nothing to interpret from the body.
+export async function logout(): Promise<void> {
+  const s = currentSession();
+  try {
+    await fetch("/logout", {
+      method: "POST",
+      headers: s?.token ? { Authorization: `Bearer ${s.token}` } : {},
+      credentials: "same-origin",
+    });
+  } catch {
+    // Swallow network errors — we still want to drop the local
+    // session so the UI recovers.
+  }
+  setSession(null);
 }

@@ -243,6 +243,58 @@ func TestWSUpgradeWithPlayerSession(t *testing.T) {
 	}
 }
 
+func TestLogoutRevokesSession(t *testing.T) {
+	srv, _, a := newTestHTTPStack(t)
+
+	// Acquire an admin session.
+	resp := postJSON(t, srv, "/admin/login", "", adminLoginRequest{Token: "shared-admin-token"})
+	var s sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&s)
+	resp.Body.Close()
+
+	// Pre-check: the token is valid server-side.
+	if _, err := a.Validate(nil, s.Token); err != nil {
+		t.Fatalf("pre-logout validate: %v", err)
+	}
+
+	// Logout.
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/logout", nil)
+	req.Header.Set("Authorization", "Bearer "+s.Token)
+	resp, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatalf("logout: %v", err)
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		t.Errorf("logout status: got %d, want 204", resp.StatusCode)
+	}
+	// Cookie should be cleared.
+	var sawClear bool
+	for _, c := range resp.Cookies() {
+		if c.Name == auth.SessionCookie && c.MaxAge < 0 {
+			sawClear = true
+		}
+	}
+	if !sawClear {
+		t.Error("logout did not emit a cookie-clearing Set-Cookie")
+	}
+	resp.Body.Close()
+
+	// Post-check: the token no longer validates.
+	if _, err := a.Validate(nil, s.Token); err == nil {
+		t.Error("post-logout validate: token still valid")
+	}
+
+	// Logout with no credential is still 204.
+	resp, err = srv.Client().Post(srv.URL+"/logout", "application/json", nil)
+	if err != nil {
+		t.Fatalf("anon logout: %v", err)
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		t.Errorf("anon logout status: got %d, want 204", resp.StatusCode)
+	}
+	resp.Body.Close()
+}
+
 func TestWSRejectsMissingCredential(t *testing.T) {
 	srv, _, _ := newTestHTTPStack(t)
 	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws"

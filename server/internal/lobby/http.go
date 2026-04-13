@@ -40,6 +40,7 @@ type Config struct {
 //	POST /games/{id}/join   — invite + name → session + player_id
 //	POST /games/{id}/start  — authenticated: transition lobby → active
 //	GET  /me                — authenticated: principal echo (for client bootstrap)
+//	POST /logout            — revoke the caller's session server-side
 //
 // Routes that mutate state accept JSON bodies; read-only routes use
 // query params / path params. All responses are JSON.
@@ -56,6 +57,11 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /games/{id}", auth.Middleware(c.Auth)(handlerFunc(c, getGame)))
 	mux.Handle("POST /games/{id}/start", auth.Middleware(c.Auth)(handlerFunc(c, startGame)))
 	mux.Handle("GET /me", auth.Middleware(c.Auth)(handlerFunc(c, me)))
+	// Logout does not require an authenticated principal — a client
+	// with a stale or revoked token should still be able to clear
+	// browser state without a 401 dead-end. We just revoke whatever
+	// credential is on the request (if any) and drop the cookie.
+	mux.Handle("POST /logout", handlerFunc(c, logout))
 
 	return mux
 }
@@ -240,6 +246,24 @@ func startGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, meta)
 }
 
+// logout revokes the caller's credential server-side and clears the
+// session cookie. Unauthenticated — we want a client with an already-
+// expired token to be able to reach this endpoint to flush its cookie
+// without hitting a 401 first. Always returns 204 so the client can
+// safely treat the response as idempotent.
+func logout(c Config, w http.ResponseWriter, r *http.Request) error {
+	if cred := auth.CredentialFromRequest(r); cred != "" {
+		// Ignore Revoke errors: a stateless HMAC-style authenticator
+		// may always return nil, a stateful one may return "unknown
+		// token" which we treat as already-revoked. Either way the
+		// client just wants its cookie cleared.
+		_ = c.Auth.Revoke(r.Context(), cred)
+	}
+	clearSessionCookie(w)
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
 func me(_ Config, w http.ResponseWriter, r *http.Request) error {
 	p, ok := auth.PrincipalFromContext(r.Context())
 	if !ok {
@@ -294,6 +318,22 @@ func setSessionCookie(w http.ResponseWriter, tok string, exp time.Time) {
 		Value:    tok,
 		Path:     "/",
 		Expires:  exp,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+// clearSessionCookie emits a Set-Cookie that evicts the browser's
+// current session cookie. MaxAge=-1 tells browsers to drop it
+// immediately; Expires in the past covers older clients that ignore
+// MaxAge.
+func clearSessionCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     auth.SessionCookie,
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Unix(0, 0),
+		MaxAge:   -1,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	})

@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { createGame, listGames, startGame, type GameMeta } from "../lib/api";
+  import { createGame, listGames, logout as apiLogout, startGame, type GameMeta } from "../lib/api";
   import { inviteURL, navigate } from "../lib/router";
-  import { session, setSession, LobbyApiError } from "../lib/session";
+  import { session, LobbyApiError } from "../lib/session";
 
   // Lobby is the admin + player landing page. Admins see a create-
   // game form and the invite token for each game they've created;
@@ -67,8 +67,8 @@
     navigate(`#/games/${id}`);
   }
 
-  function logout(): void {
-    setSession(null);
+  async function logout(): Promise<void> {
+    await apiLogout();
     navigate("#/login");
   }
 
