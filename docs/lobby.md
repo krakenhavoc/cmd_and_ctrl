@@ -165,7 +165,61 @@ seated in the game may call this.
 |---|---|
 | 403 | not a seat in this game |
 | 404 | game not found |
-| 409 | not enough players (min 2) |
+| 409 | not enough players (min 2), or one or more seats haven't uploaded a deck |
+
+### `POST /games/{id}/decks`
+
+Upload a deck for a seat. RolePlayer may only set their own seat's
+deck (`player_id` in the body must match the session's bound player);
+RoleAdmin may set any seat.
+
+**Request**
+
+```json
+{
+  "format": "text",   // or "moxfield"; empty → auto-detect
+  "source": "Commander:\n1 Atraxa, Praetors' Voice\n\nMainboard:\n...\n",
+  "player_id": "<uuid>"
+}
+```
+
+When `format` is empty, the server checks the first non-whitespace
+byte — `{` means Moxfield JSON, anything else is plain text.
+
+**Response 200**
+
+```json
+{
+  "game": { "...GameMeta with updated seat..." },
+  "deck_name": "Atraxa Superfriends",
+  "card_count": 100,
+  "commanders": ["Atraxa, Praetors' Voice"],
+  "warnings": [
+    { "code": "sideboard_not_supported_in_commander", "message": "..." }
+  ]
+}
+```
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | malformed request (missing source / player_id, unknown format) |
+| 403 | not your seat (RolePlayer with mismatched player_id) |
+| 422 | validation failed — body carries `{"error", "violations": [...]}` |
+| 503 | server card index not loaded — run `scripts/scryfall-refresh.sh` |
+
+Validation violation codes (stable strings, keyable by the client):
+
+- `wrong_card_count` — deck is not 100 cards
+- `missing_commander` / `too_many_commanders` / `not_a_legal_commander`
+- `color_identity_violation` — mainboard card outside commander's
+  color identity (carries the offending `card` field)
+- `singleton_violation` — non-basic-land card appears more than once
+- `not_legal_in_format` — card is banned or not legal in Commander
+- `sideboard_not_supported_in_commander` — **warning only**,
+  surfaced under `warnings` in the success response (the deck is
+  still accepted)
 
 ### `GET /me`
 

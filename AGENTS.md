@@ -59,8 +59,9 @@ cmd_and_ctrl/
 │   │   ├── actions/     # action type enum + Dispatch(Game, Action) router
 │   │   ├── ws/          # gorilla/websocket hub, Room, RoomManager, per-viewer broadcast
 │   │   ├── auth/        # pluggable Authenticator interface + MemoryAuthenticator + HTTP middleware
-│   │   ├── lobby/       # GameMeta registry, invite flow, lobby HTTP handler, WSAuthorizer
-│   │   └── cards/       # Scryfall index (streaming load) + disk-backed image cache + /cards routes
+│   │   ├── lobby/       # GameMeta registry, invite flow, lobby HTTP handler, WSAuthorizer, deck upload
+│   │   ├── cards/       # Scryfall index (streaming load) + disk-backed image cache + /cards routes
+│   │   └── deck/        # decklist parsers (Moxfield, plain text) + Commander validation
 │   ├── Makefile
 │   └── .golangci.yml
 ├── client/              # TypeScript + Svelte 5 + Vite (PixiJS arrives in S05)

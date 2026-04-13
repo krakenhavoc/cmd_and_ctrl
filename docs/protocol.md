@@ -238,7 +238,7 @@ canonical type definition. High-level shape:
 - **GameView**: `{ id, state, seats[], battlefield, stack, exile, turn }`
 - **PlayerView**: `{ id, name, seat, life, poison?, energy?, library, hand, graveyard, command, commander_damage }`
 - **ZoneView**: `{ kind, owner?, count, cards[] }` — `owner` omitted for shared zones
-- **CardView**: `{ instance_id, name, owner, controller, tapped?, counters?, is_commander? }`
+- **CardView**: `{ instance_id, name, owner, controller, scryfall_id?, tapped?, counters?, is_commander? }` — `scryfall_id` is stamped at deck-import time and lets the client resolve images via `GET /cards/{id}/image`. Omitted for placeholder cards (demo game seeded via `CMDCTRL_SEED_DEMO`).
 - **TurnView**: `{ number, active_seat, phase, step }`
 
 S03 does not yet apply visibility filtering — every client receives every

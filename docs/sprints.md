@@ -108,18 +108,23 @@ planned just-in-time from the S12 pain-point triage.
 
 ---
 
-## S05 — Deck import + 4-player table layout
+## S05 — Deck import + 4-player table layout ✅
 **Phase:** 3 · **Goal:** bring decks into games and render a 4-player table.
 
-- [ ] Moxfield export parser
-- [ ] Archidekt export parser
-- [ ] `.txt` / `.cod` / `.dek` parsers
-- [ ] Validation: 100-card singleton, commander legality (from Scryfall data), color identity
-- [ ] PixiJS play area canvas mounted in the client shell
-- [ ] 4-player table layout: you at the bottom, 3 opponents around the top
-- [ ] Placeholder card backs rendered in each zone
+- [x] Moxfield export parser (JSON)
+- [x] Plain-text parser (`1x Sol Ring` / `SB:` / `*CMDR*` dialect)
+- [x] Validation: 100-card singleton, commander legality, color identity, format legality
+- [x] `POST /games/{id}/decks` endpoint — RolePlayer may only set own deck; admin may set any
+- [x] Banlist snapshot: commander legality comes from the Scryfall index loaded at server start; mid-game rotations don't invalidate existing decks
+- [x] Partner / companion surfaced as `ErrUnsupportedMechanic` — decks using them fail loudly rather than silently drop the second commander
+- [x] PixiJS play area canvas mounted in the Game route
+- [x] 4-player table layout: viewer at bottom, opponents clockwise at left / top / right
+- [x] Placeholder card "backs" (solid rectangles) — Scryfall's card back is Wizards' IP, deferred to custom asset work
+- [x] Client lobby: per-seat deck-status badges, inline upload form, Start gated on all-uploaded
 
-**Exit criteria:** import a Moxfield deck, create a game, and see your seat at a 4-player table with the right zones laid out.
+**Deferred:** Archidekt JSON parser, `.cod`, `.dek`, `.txt`-file-upload parsers — all follow-ups; Moxfield + plain-text covers ~90% of users.
+
+**Exit criteria:** import a Moxfield or plain-text decklist, create a game, and see your seat at a 4-player table with the right zones laid out.
 
 ---
 
