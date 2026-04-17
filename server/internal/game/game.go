@@ -129,6 +129,51 @@ func (g *Game) AddPlayer(name string, deck []Card) (*Player, error) {
 	return p, nil
 }
 
+// ReplaceDeck swaps a seated player's library + command zone with
+// the supplied deck. Only valid while the game is still in the lobby
+// state — once Start runs, deck mutations would let a player top-
+// deck arbitrary cards mid-game.
+//
+// Every supplied card is re-stamped with the owner's ID; callers
+// shouldn't pre-populate Owner / Controller. Commanders (IsCommander)
+// route to the command zone, everything else to the library in
+// supplied order. Shuffle happens on Start.
+//
+// Returns ErrPlayerNotFound if playerID isn't seated and
+// ErrGameNotInLobby if the game has already started.
+func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
+	if len(deck) == 0 {
+		return ErrEmptyDeck
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if g.State != StateLobby {
+		return ErrGameNotInLobby
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+
+	// Reset the zones in-place. Reusing the existing *Zone pointers
+	// keeps any external references (logs, snapshots mid-serialise)
+	// from dangling.
+	p.Library.Cards = p.Library.Cards[:0]
+	p.Command.Cards = p.Command.Cards[:0]
+
+	for _, c := range deck {
+		c.Owner = p.ID
+		c.Controller = p.ID
+		if c.IsCommander {
+			p.Command.PushTop(c)
+		} else {
+			p.Library.PushTop(c)
+		}
+	}
+	return nil
+}
+
 // Start transitions the game from lobby to active, initialises the
 // turn cursor at seat 0 / turn 1 / untap step, and shuffles each
 // player's library using the supplied RNG (nil for the package

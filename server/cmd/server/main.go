@@ -104,6 +104,7 @@ func main() {
 		Auth:       authenticator,
 		AdminToken: cfg.AdminToken,
 		SessionTTL: cfg.SessionTTL,
+		Cards:      cardIdx,
 		Evictor:    hub,
 	}))
 

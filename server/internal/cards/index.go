@@ -21,26 +21,55 @@ import (
 )
 
 // Card is the trimmed subset of Scryfall's card record we keep
-// in-memory. Everything the S04 server needs (name, image URIs) is
-// here; higher-level fields (mana cost, oracle text, types) come
-// later when the rules engine arrives in S13+.
+// in-memory. The S04 set (name + image URIs) grew in S05 to include
+// the fields needed for deck validation: type_line, color_identity,
+// oracle_text, and the Commander entry from the legalities map.
+// Full rules-engine fields (mana cost breakdown, loyalty, power/
+// toughness parsing) arrive with the S13+ engine work.
 type Card struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
 	SetCode     string    `json:"set"`
 	CollectorNo string    `json:"collector_number"`
 	Lang        string    `json:"lang"`
+	// TypeLine is Scryfall's typeline, e.g. "Legendary Creature — Human
+	// Wizard". Used by deck validation to identify commanders and by
+	// the UI to group cards.
+	TypeLine string `json:"type_line"`
+	// ColorIdentity is the WUBRG letters in this card's color identity.
+	// Invariant: values are uppercase single-character strings from
+	// the set {"W","U","B","R","G"}. Used to enforce commander color-
+	// identity rules.
+	ColorIdentity []string `json:"color_identity"`
+	// OracleText is Scryfall's up-to-date reminder text. Carried for
+	// the client's card-detail panel; the parser also sniffs it for
+	// partner / companion clauses so decks using those mechanics can
+	// be rejected as unsupported rather than silently accepted.
+	OracleText string `json:"oracle_text"`
+	// Legalities maps format name → status ("legal", "not_legal",
+	// "banned", "restricted"). The only key we use at S05 is
+	// "commander"; everything else is carried through as-is for
+	// future features.
+	Legalities map[string]string `json:"legalities"`
 	// ImageURIs is Scryfall's multi-size image map. Keys we care
 	// about: "small", "normal", "large", "png", "art_crop",
 	// "border_crop". The server picks based on Cache.DefaultSize.
 	ImageURIs map[string]string `json:"image_uris"`
 	// CardFaces is populated for double-faced / split cards. The
 	// front face's image_uris is what we surface for now; handling
-	// flip state is a UI concern.
-	CardFaces []struct {
-		Name      string            `json:"name"`
-		ImageURIs map[string]string `json:"image_uris"`
-	} `json:"card_faces"`
+	// flip state is a UI concern. The face-level oracle_text lets
+	// the parser sniff "Partner" on either half of a partner pair.
+	CardFaces []CardFace `json:"card_faces"`
+}
+
+// CardFace is one printed side of a double-faced / split / flip
+// card. Only the fields the server reads are mirrored from Scryfall's
+// richer face schema.
+type CardFace struct {
+	Name       string            `json:"name"`
+	TypeLine   string            `json:"type_line"`
+	OracleText string            `json:"oracle_text"`
+	ImageURIs  map[string]string `json:"image_uris"`
 }
 
 // Index is a read-only map from card UUID → Card, built at server
@@ -53,6 +82,15 @@ type Card struct {
 type Index struct {
 	mu     sync.RWMutex
 	byID   map[uuid.UUID]Card
+	// byName resolves a case-insensitive card name to the best-match
+	// Card for deck imports. Scryfall may ship multiple printings of
+	// the same name (different sets); the bulk-dump load path keeps
+	// the last one seen, which is usually the most recent printing —
+	// good enough for a sandbox. Split / double-faced cards are
+	// indexed by both the full printed name ("Fire // Ice") and the
+	// front-face name ("Fire") so common deck-list shorthand still
+	// resolves.
+	byName map[string]Card
 	loaded time.Time
 	path   string
 }
@@ -60,7 +98,10 @@ type Index struct {
 // NewIndex returns an empty Index. Call Load to populate it from a
 // Scryfall bulk dump file.
 func NewIndex() *Index {
-	return &Index{byID: make(map[uuid.UUID]Card)}
+	return &Index{
+		byID:   make(map[uuid.UUID]Card),
+		byName: make(map[string]Card),
+	}
 }
 
 // Load replaces the in-memory map with the cards parsed from the
@@ -90,6 +131,7 @@ func (i *Index) Load(path string) (int, error) {
 	}
 
 	loaded := make(map[uuid.UUID]Card, 40_000) // ballpark for default_cards
+	byName := make(map[string]Card, 40_000)
 	for dec.More() {
 		var c Card
 		if err := dec.Decode(&c); err != nil {
@@ -99,6 +141,19 @@ func (i *Index) Load(path string) (int, error) {
 			continue // a record without an ID is useless; skip rather than reject
 		}
 		loaded[c.ID] = c
+		// Build the name index. Index both the full printed name and
+		// the front-face name for split / double-faced cards, since
+		// deck exports vary ("Fire // Ice" vs "Fire"). Last-write-wins
+		// is acceptable — Scryfall ships tens of thousands of cards
+		// and collisions are dominated by reprints of the same card.
+		byName[normalizeName(c.Name)] = c
+		if len(c.CardFaces) > 0 {
+			for _, face := range c.CardFaces {
+				if face.Name != "" {
+					byName[normalizeName(face.Name)] = c
+				}
+			}
+		}
 	}
 	// Consume the closing bracket; a decoder that swallows it would
 	// also swallow trailing junk, so we check.
@@ -108,6 +163,7 @@ func (i *Index) Load(path string) (int, error) {
 
 	i.mu.Lock()
 	i.byID = loaded
+	i.byName = byName
 	i.loaded = time.Now().UTC()
 	i.path = path
 	i.mu.Unlock()
@@ -123,6 +179,65 @@ func (i *Index) Get(id uuid.UUID) (Card, bool) {
 	return c, ok
 }
 
+// FindByName resolves a card name to a Card. Matching is case- and
+// whitespace-insensitive; for split / double-faced cards both the
+// full printed name ("Fire // Ice") and the front-face name ("Fire")
+// resolve to the same Card. Returns (zero, false) on miss — the
+// deck parser turns that into a structured "unknown card" error.
+func (i *Index) FindByName(name string) (Card, bool) {
+	key := normalizeName(name)
+	if key == "" {
+		return Card{}, false
+	}
+	i.mu.RLock()
+	defer i.mu.RUnlock()
+	c, ok := i.byName[key]
+	return c, ok
+}
+
+// normalizeName canonicalises a card name for case-insensitive
+// lookup. Trims leading/trailing whitespace, collapses internal
+// whitespace runs to a single space, and lowercases. Keeps
+// punctuation (apostrophes, commas, hyphens) intact — "Jace, the
+// Mind Sculptor" and "Sol Ring" both survive.
+func normalizeName(s string) string {
+	// Trim edges.
+	start, end := 0, len(s)
+	for start < end && isASCIISpace(s[start]) {
+		start++
+	}
+	for end > start && isASCIISpace(s[end-1]) {
+		end--
+	}
+	s = s[start:end]
+	if s == "" {
+		return ""
+	}
+	// Collapse internal whitespace runs and lowercase ASCII.
+	out := make([]byte, 0, len(s))
+	prevSpace := false
+	for i := 0; i < len(s); i++ {
+		b := s[i]
+		if isASCIISpace(b) {
+			if !prevSpace {
+				out = append(out, ' ')
+			}
+			prevSpace = true
+			continue
+		}
+		prevSpace = false
+		if b >= 'A' && b <= 'Z' {
+			b += 'a' - 'A'
+		}
+		out = append(out, b)
+	}
+	return string(out)
+}
+
+func isASCIISpace(b byte) bool {
+	return b == ' ' || b == '\t' || b == '\n' || b == '\r'
+}
+
 // Count returns the number of cards currently in the index.
 func (i *Index) Count() int {
 	i.mu.RLock()
@@ -136,6 +251,30 @@ func (i *Index) LoadedAt() time.Time {
 	i.mu.RLock()
 	defer i.mu.RUnlock()
 	return i.loaded
+}
+
+// Put inserts a card into the index, updating both the ID and
+// name-keyed maps. Intended for tests that want a small in-memory
+// index without a fixture file; production code uses Load to
+// populate from the Scryfall bulk dump.
+//
+// Not safe to call concurrently with Load — the caller is
+// responsible for not racing index construction against readers.
+func (i *Index) Put(c Card) {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	i.byID[c.ID] = c
+	if key := normalizeName(c.Name); key != "" {
+		i.byName[key] = c
+	}
+	for _, face := range c.CardFaces {
+		if face.Name == "" {
+			continue
+		}
+		if key := normalizeName(face.Name); key != "" {
+			i.byName[key] = c
+		}
+	}
 }
 
 // ImageURI returns the best image URL for c at the given size.

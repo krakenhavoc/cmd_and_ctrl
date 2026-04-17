@@ -14,12 +14,22 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
 // newTestHTTPStack builds a full HTTP stack — lobby, auth, hub — on
 // an httptest.Server and returns helpers for talking to it.
 func newTestHTTPStack(t *testing.T) (*httptest.Server, *Lobby, auth.Authenticator) {
+	srv, l, a, _ := newTestHTTPStackWithCards(t, nil)
+	return srv, l, a
+}
+
+// newTestHTTPStackWithCards is like newTestHTTPStack but plugs a
+// cards.Index into the lobby config so upload-deck tests can
+// resolve fixture names.
+func newTestHTTPStackWithCards(t *testing.T, idx *cards.Index) (*httptest.Server, *Lobby, auth.Authenticator, *cards.Index) {
 	t.Helper()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mgr := ws.NewRoomManager(log, "")
@@ -33,18 +43,17 @@ func newTestHTTPStack(t *testing.T) (*httptest.Server, *Lobby, auth.Authenticato
 		Lobby:      l,
 		Auth:       a,
 		AdminToken: "shared-admin-token",
+		Cards:      idx,
 	}
 
 	mux := http.NewServeMux()
 	lobbyHandler := Handler(cfg)
-	// The lobby handler manages its own sub-routes under /; mount it
-	// at the root and layer /ws on top.
 	mux.Handle("/", lobbyHandler)
 	mux.HandleFunc("GET /ws", hub.ServeWS)
 
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return srv, l, a
+	return srv, l, a, idx
 }
 
 // postJSON is a small helper for testing POSTs that take JSON bodies.
@@ -183,7 +192,8 @@ func TestWSUpgradeWithPlayerSession(t *testing.T) {
 	// the second seat come in through HTTP so we exercise the join
 	// endpoint end-to-end (including session issuance).
 	m, _ := l.Create("FNM")
-	if _, _, err := l.Join(m.ID, m.InviteToken, "Alice"); err != nil {
+	_, alice, err := l.Join(m.ID, m.InviteToken, "Alice")
+	if err != nil {
 		t.Fatalf("Join Alice: %v", err)
 	}
 
@@ -196,6 +206,13 @@ func TestWSUpgradeWithPlayerSession(t *testing.T) {
 	_ = json.NewDecoder(resp.Body).Decode(&joined)
 	resp.Body.Close()
 
+	// Satisfy Start's new "every seat has a deck" invariant.
+	if _, err := l.SetDeck(m.ID, alice, "dummy", []game.Card{game.NewCommander("A", uuid.Nil), game.NewCard("F", uuid.Nil)}); err != nil {
+		t.Fatalf("SetDeck Alice: %v", err)
+	}
+	if _, err := l.SetDeck(m.ID, joined.PlayerID, "dummy", []game.Card{game.NewCommander("B", uuid.Nil), game.NewCard("F", uuid.Nil)}); err != nil {
+		t.Fatalf("SetDeck Carol: %v", err)
+	}
 	if _, err := l.Start(m.ID); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
@@ -394,5 +411,240 @@ func TestWSPlayerCannotCrossGame(t *testing.T) {
 	}
 	if resp2 == nil || resp2.StatusCode != http.StatusForbidden {
 		t.Errorf("status: got %v, want %d", resp2, http.StatusForbidden)
+	}
+}
+
+// buildMinimalDeckIndex populates a cards.Index with just enough
+// cards to resolve a 100-card "all basics" Commander deck. Used by
+// the upload-deck HTTP tests.
+func buildMinimalDeckIndex(t *testing.T) *cards.Index {
+	t.Helper()
+	idx := cards.NewIndex()
+	// A legal commander.
+	idx.Put(cards.Card{
+		ID:            uuid.New(),
+		Name:          "Test Commander",
+		TypeLine:      "Legendary Creature — Human Wizard",
+		ColorIdentity: []string{"W"},
+		Legalities:    map[string]string{"commander": "legal"},
+	})
+	// Plains — basic land, identity W, legal.
+	idx.Put(cards.Card{
+		ID:            uuid.New(),
+		Name:          "Plains",
+		TypeLine:      "Basic Land — Plains",
+		ColorIdentity: []string{"W"},
+		Legalities:    map[string]string{"commander": "legal"},
+	})
+	return idx
+}
+
+func TestUploadDeckHappyPath(t *testing.T) {
+	idx := buildMinimalDeckIndex(t)
+	srv, l, _, _ := newTestHTTPStackWithCards(t, idx)
+
+	meta, _ := l.Create("FNM")
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Alice"})
+	var joined sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&joined)
+	resp.Body.Close()
+
+	// 1 commander + 99 Plains — a hand-crafted mono-white "deck".
+	source := "Commander:\n1 Test Commander\nMainboard:\n99 Plains\n"
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/decks", joined.Token,
+		uploadDeckRequest{Format: "text", Source: source, PlayerID: joined.PlayerID})
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("upload: got %d, want 200 (body=%s)", resp.StatusCode, body)
+	}
+	var out uploadDeckResponse
+	_ = json.NewDecoder(resp.Body).Decode(&out)
+	resp.Body.Close()
+
+	if out.CardCount != 100 {
+		t.Errorf("card_count: got %d, want 100", out.CardCount)
+	}
+	if len(out.Commanders) != 1 || out.Commanders[0] != "Test Commander" {
+		t.Errorf("commanders: got %v", out.Commanders)
+	}
+	if len(out.Game.Players) != 1 || !out.Game.Players[0].DeckUploaded {
+		t.Errorf("seat deck_uploaded: got %+v", out.Game.Players)
+	}
+}
+
+func TestUploadDeckPlayerCannotSetAnothersDeck(t *testing.T) {
+	idx := buildMinimalDeckIndex(t)
+	srv, l, _, _ := newTestHTTPStackWithCards(t, idx)
+
+	meta, _ := l.Create("FNM")
+	// Seat Alice via lobby API to get her player ID directly.
+	_, alice, _ := l.Join(meta.ID, meta.InviteToken, "Alice")
+
+	// Carol joins via HTTP and gets a RolePlayer session bound to
+	// her own player ID — she should be forbidden from uploading
+	// Alice's deck.
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Carol"})
+	var carolSession sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&carolSession)
+	resp.Body.Close()
+
+	// Use an otherwise-valid 100-card source so the 403 we assert is
+	// coming from the auth check, not from parsing or validation
+	// failing first. If a future refactor reorders the handler, this
+	// test won't pass trivially.
+	valid := "Commander:\n1 Test Commander\nMainboard:\n99 Plains\n"
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/decks", carolSession.Token,
+		uploadDeckRequest{Format: "text", Source: valid, PlayerID: alice})
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("cross-player upload: got %d, want 403", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// Sanity: Carol can upload her OWN deck with the same source. This
+	// anchors the 403 above to the player-id mismatch rather than
+	// something stateful about the deck bytes.
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/decks", carolSession.Token,
+		uploadDeckRequest{Format: "text", Source: valid, PlayerID: carolSession.PlayerID})
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Errorf("own upload: got %d, want 200 (body=%s)", resp.StatusCode, body)
+	}
+	resp.Body.Close()
+}
+
+func TestUploadDeckValidationError(t *testing.T) {
+	idx := buildMinimalDeckIndex(t)
+	srv, l, _, _ := newTestHTTPStackWithCards(t, idx)
+	meta, _ := l.Create("FNM")
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Alice"})
+	var joined sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&joined)
+	resp.Body.Close()
+
+	// Missing 50 cards → 422 with violations.
+	source := "Commander:\n1 Test Commander\nMainboard:\n49 Plains\n"
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/decks", joined.Token,
+		uploadDeckRequest{Format: "text", Source: source, PlayerID: joined.PlayerID})
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("undersized deck: got %d, want 422", resp.StatusCode)
+	}
+	var body map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&body)
+	resp.Body.Close()
+	if _, ok := body["violations"]; !ok {
+		t.Errorf("expected violations in response body, got %+v", body)
+	}
+}
+
+func TestUploadDeck503WhenIndexMissing(t *testing.T) {
+	srv, l, _, _ := newTestHTTPStackWithCards(t, nil)
+	meta, _ := l.Create("FNM")
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Alice"})
+	var joined sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&joined)
+	resp.Body.Close()
+
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/decks", joined.Token,
+		uploadDeckRequest{Format: "text", Source: "1 Sol Ring\n", PlayerID: joined.PlayerID})
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Errorf("no-index upload: got %d, want 503", resp.StatusCode)
+	}
+	resp.Body.Close()
+}
+
+// TestUploadDeckUnknownCardReturnsViolations verifies the 422 body
+// for unknown cards uses the same `{"error", "violations"}` shape as
+// validation failures. Regression for the pre-fix behaviour where
+// Resolve-time failures returned a bare `{"error": "..."}` string
+// that the client couldn't render row-by-row.
+func TestUploadDeckUnknownCardReturnsViolations(t *testing.T) {
+	idx := buildMinimalDeckIndex(t)
+	srv, l, _, _ := newTestHTTPStackWithCards(t, idx)
+	meta, _ := l.Create("FNM")
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Alice"})
+	var joined sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&joined)
+	resp.Body.Close()
+
+	source := "Commander:\n1 Test Commander\nMainboard:\n1 Not A Real Card\n"
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/decks", joined.Token,
+		uploadDeckRequest{Format: "text", Source: source, PlayerID: joined.PlayerID})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("unknown-card upload: got %d, want 422", resp.StatusCode)
+	}
+	var body struct {
+		Error      string `json:"error"`
+		Violations []struct {
+			Code string `json:"code"`
+			Card string `json:"card"`
+		} `json:"violations"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(body.Violations) != 1 {
+		t.Fatalf("violations: got %d, want 1 (%+v)", len(body.Violations), body)
+	}
+	if body.Violations[0].Code != "unknown_card" {
+		t.Errorf("code: got %q, want unknown_card", body.Violations[0].Code)
+	}
+	if body.Violations[0].Card != "Not A Real Card" {
+		t.Errorf("card: got %q, want \"Not A Real Card\"", body.Violations[0].Card)
+	}
+}
+
+// TestUploadDeckBodySizeCap verifies the MaxBytesReader on the deck
+// endpoint. A 4 MiB payload must be rejected with 413 before the
+// parser ever sees it.
+func TestUploadDeckBodySizeCap(t *testing.T) {
+	idx := buildMinimalDeckIndex(t)
+	srv, l, _, _ := newTestHTTPStackWithCards(t, idx)
+	meta, _ := l.Create("FNM")
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Alice"})
+	var joined sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&joined)
+	resp.Body.Close()
+
+	huge := strings.Repeat("x", 4*1024*1024)
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/decks", joined.Token,
+		uploadDeckRequest{Format: "text", Source: huge, PlayerID: joined.PlayerID})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Errorf("oversized upload: got %d, want 413", resp.StatusCode)
+	}
+}
+
+// TestStartReturns409WhenDeckMissing verifies that ErrDeckNotUploaded
+// maps to 409 over the HTTP surface. Regression for the pre-fix
+// behaviour where the error fell through writeLobbyError's switch
+// and surfaced as 500.
+func TestStartReturns409WhenDeckMissing(t *testing.T) {
+	srv, l, _ := newTestHTTPStack(t)
+	meta, _ := l.Create("FNM")
+
+	// Two joins → two seats, neither with an uploaded deck.
+	var aliceToken string
+	for _, name := range []string{"Alice", "Bob"} {
+		r := postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+			joinRequest{InviteToken: meta.InviteToken, Name: name})
+		var s sessionResponse
+		_ = json.NewDecoder(r.Body).Decode(&s)
+		r.Body.Close()
+		if name == "Alice" {
+			aliceToken = s.Token
+		}
+	}
+
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/start", aliceToken, nil)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusConflict {
+		t.Errorf("start without decks: got %d, want 409", resp.StatusCode)
 	}
 }

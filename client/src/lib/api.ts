@@ -1,4 +1,10 @@
-import { authFetch, currentSession, setSession, type Session } from "./session";
+import { authFetch, currentSession, setSession, type ApiViolation, type Session } from "./session";
+
+// Re-export the violation shape so consumers of api.ts don't also
+// have to import from session.ts. ApiViolation is the canonical
+// name; DeckViolation is kept as an alias for existing callers.
+export type DeckViolation = ApiViolation;
+export type { ApiViolation };
 
 // GameMeta mirrors lobby.GameMeta in server/internal/lobby/lobby.go.
 export interface GameMeta {
@@ -14,6 +20,17 @@ export interface SeatInfo {
   player_id: string;
   name: string;
   seat: number;
+  deck_name?: string;
+  deck_uploaded: boolean;
+}
+
+// UploadDeckResponse mirrors lobby.uploadDeckResponse.
+export interface UploadDeckResponse {
+  game: GameMeta;
+  deck_name: string;
+  card_count: number;
+  commanders: string[];
+  warnings?: ApiViolation[];
 }
 
 interface SessionResponse {
@@ -88,6 +105,30 @@ export async function joinGame(
 export async function startGame(id: string): Promise<GameMeta> {
   const res = await authFetch(`/games/${id}/start`, { method: "POST" });
   return (await res.json()) as GameMeta;
+}
+
+// uploadDeck ships a decklist (plain text or Moxfield JSON) to the
+// server for parse + validate + install. Format can be omitted — the
+// server auto-detects by checking the first non-whitespace byte for
+// '{' (Moxfield) vs anything else (text).
+//
+// On validation failure (422), authFetch throws a LobbyApiError whose
+// `.violations` carries the full structured list (one per offending
+// card) and `.warnings` carries non-fatal advisories (e.g. sideboard
+// ignored). Callers that want to highlight individual rows should
+// read `.violations`; the plain `.message` is the human-readable
+// summary.
+export async function uploadDeck(
+  gameID: string,
+  playerID: string,
+  source: string,
+  format?: "text" | "moxfield",
+): Promise<UploadDeckResponse> {
+  const res = await authFetch(`/games/${gameID}/decks`, {
+    method: "POST",
+    body: JSON.stringify({ player_id: playerID, source, format }),
+  });
+  return (await res.json()) as UploadDeckResponse;
 }
 
 // logout revokes the current session server-side and clears local

@@ -87,10 +87,7 @@ func TestImageURIFallbacks(t *testing.T) {
 		t.Errorf("fallback to normal: got %q, want %q", got, "n.jpg")
 	}
 	// Double-faced card: falls back to front face.
-	c = Card{CardFaces: []struct {
-		Name      string            `json:"name"`
-		ImageURIs map[string]string `json:"image_uris"`
-	}{
+	c = Card{CardFaces: []CardFace{
 		{Name: "Front", ImageURIs: map[string]string{"normal": "front.jpg"}},
 	}}
 	if got := ImageURI(c, "normal"); got != "front.jpg" {

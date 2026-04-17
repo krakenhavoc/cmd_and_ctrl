@@ -6,11 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/ratelimit"
 )
@@ -21,6 +24,11 @@ import (
 // "please log in again" mid-match.
 const sessionTTL = 12 * time.Hour
 
+// maxDeckBodyBytes caps the payload accepted by POST /games/{id}/decks.
+// A 100-card Moxfield JSON export is typically well under 200 KiB; 2 MiB
+// is generous headroom and still prohibitive as a DoS primitive.
+const maxDeckBodyBytes = 2 * 1024 * 1024
+
 // Config bundles the dependencies Handler needs. Separate from
 // Lobby itself so main.go can build the HTTP layer without the
 // lobby having to know about auth.
@@ -30,6 +38,12 @@ type Config struct {
 	AdminToken string // shared admin token; empty disables admin flow
 	SessionTTL time.Duration
 	AllowAnon  bool // allow unauthenticated /games/{id}/join via invite (default: true)
+	// Cards is the Scryfall index used by the deck-upload endpoint.
+	// When nil, POST /games/{id}/decks returns 503 so a fresh
+	// deployment (no Scryfall dump yet) surfaces a clear "run
+	// scryfall-refresh.sh" error rather than a cryptic unknown-card
+	// list.
+	Cards *cards.Index
 	// Evictor optionally closes any WS clients bound to a game when
 	// the game is deleted. When nil, DELETE still drops the game
 	// from the lobby + room manager but existing sockets linger
@@ -68,6 +82,11 @@ func Handler(c Config) http.Handler {
 	// brute-forces invite tokens. 1 req/s with a 5-token burst per
 	// client IP is lenient for real humans, prohibitive for scripts.
 	limit := ratelimit.New(1, 5)
+	// Deck upload has a separate, more permissive bucket: legitimate
+	// players may re-upload several times while iterating, but we still
+	// want a ceiling on how fast a single IP can stream megabyte-sized
+	// Moxfield blobs at the parser.
+	deckLimit := ratelimit.New(2, 10)
 	mux.Handle("POST /admin/login", limit.Middleware(handlerFunc(c, adminLogin)))
 	mux.Handle("POST /games/{id}/join", limit.Middleware(handlerFunc(c, joinGame)))
 	mux.Handle("POST /games", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, createGame)))
@@ -75,6 +94,7 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /games", auth.Middleware(c.Auth)(handlerFunc(c, listGames)))
 	mux.Handle("GET /games/{id}", auth.Middleware(c.Auth)(handlerFunc(c, getGame)))
 	mux.Handle("POST /games/{id}/start", auth.Middleware(c.Auth)(handlerFunc(c, startGame)))
+	mux.Handle("POST /games/{id}/decks", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, uploadDeck))))
 	mux.Handle("GET /me", auth.Middleware(c.Auth)(handlerFunc(c, me)))
 	// Logout does not require an authenticated principal — a client
 	// with a stale or revoked token should still be able to clear
@@ -284,6 +304,185 @@ func startGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, meta)
 }
 
+// uploadDeckRequest is the request shape for POST /games/{id}/decks.
+// Exactly one of Text / Moxfield must be set; Format is optional but
+// helps the handler pick a parser when the caller can't match the
+// file extension to a format string. The server echoes back a
+// parsed + validated summary on success.
+type uploadDeckRequest struct {
+	// Format is one of "text", "moxfield", or empty (auto-detect
+	// from the first non-whitespace byte: '{' → moxfield, else text).
+	Format string `json:"format,omitempty"`
+	// Source is the raw decklist payload. For "text" format, the
+	// plain-text decklist. For "moxfield", the JSON export bytes.
+	Source string `json:"source"`
+	// PlayerID is the seat this deck is for. A RolePlayer caller can
+	// only set their own deck — we cross-check against the principal
+	// below.
+	PlayerID uuid.UUID `json:"player_id"`
+}
+
+// uploadDeckResponse describes the accepted deck. Mirrors the lobby
+// seat update the caller will see via GET /games/{id}, but returned
+// inline so the client doesn't have to refetch.
+type uploadDeckResponse struct {
+	Game       GameMeta  `json:"game"`
+	DeckName   string    `json:"deck_name"`
+	CardCount  int       `json:"card_count"`
+	Commanders []string  `json:"commanders"`
+	// Warnings is a non-fatal violation list (e.g. sideboard ignored).
+	// The accepted deck is already installed when warnings is
+	// non-empty; treat it as advisory.
+	Warnings []deck.Violation `json:"warnings,omitempty"`
+}
+
+// uploadDeck handles POST /games/{id}/decks. Accepts either plain-
+// text or Moxfield JSON, resolves each card against the Scryfall
+// index, validates the result against Commander rules, and — on
+// success — replaces the seat's library + command zone on the
+// authoritative game.
+//
+// Authorization:
+//   - RolePlayer sessions may only set their OWN deck (p.PlayerID
+//     must equal body.PlayerID and p.GameID must match the path id).
+//   - RoleAdmin may set any seat's deck (useful for debugging and
+//     for the rare "uploaded the wrong file" case).
+//
+// On validation failure the endpoint returns 422 with the full
+// violation list so the client can highlight every offending card
+// at once.
+func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
+	if c.Cards == nil || c.Cards.Count() == 0 {
+		return httpError(http.StatusServiceUnavailable, "card index not loaded; run scripts/scryfall-refresh.sh")
+	}
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return httpError(http.StatusInternalServerError, "missing principal")
+	}
+
+	// Cap the request body before decoding so a hostile client can't
+	// stream megabytes at the parser. 2 MiB is roughly 10x the size of
+	// a generous Moxfield JSON export.
+	if r.Body == nil {
+		return httpError(http.StatusBadRequest, "missing body")
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxDeckBodyBytes)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	var body uploadDeckRequest
+	if err := dec.Decode(&body); err != nil {
+		var mbe *http.MaxBytesError
+		if errors.As(err, &mbe) {
+			return httpError(http.StatusRequestEntityTooLarge, fmt.Sprintf("deck source exceeds %d-byte limit", maxDeckBodyBytes))
+		}
+		return httpError(http.StatusBadRequest, fmt.Sprintf("invalid body: %s", err.Error()))
+	}
+	if strings.TrimSpace(body.Source) == "" {
+		return httpError(http.StatusBadRequest, "source is required")
+	}
+	if body.PlayerID == uuid.Nil {
+		return httpError(http.StatusBadRequest, "player_id is required")
+	}
+
+	// Role enforcement: players must match their own principal.
+	if p.Role == auth.RolePlayer {
+		if p.GameID != id {
+			return httpError(http.StatusForbidden, "session is not for this game")
+		}
+		if p.PlayerID != body.PlayerID {
+			return httpError(http.StatusForbidden, "players may only upload their own deck")
+		}
+	}
+
+	// Parse: auto-detect if Format is empty.
+	format := body.Format
+	if format == "" {
+		trimmed := strings.TrimLeft(body.Source, " \t\r\n")
+		if strings.HasPrefix(trimmed, "{") {
+			format = "moxfield"
+		} else {
+			format = "text"
+		}
+	}
+
+	var (
+		deckName string
+		entries  []deck.Entry
+		perr     error
+	)
+	switch format {
+	case "text":
+		entries, perr = deck.ParseText(body.Source)
+	case "moxfield":
+		deckName, entries, perr = deck.ParseMoxfield([]byte(body.Source))
+	default:
+		return httpError(http.StatusBadRequest, fmt.Sprintf("unknown deck format %q", format))
+	}
+	if perr != nil {
+		return httpError(http.StatusBadRequest, perr.Error())
+	}
+
+	list, err := deck.Resolve(c.Cards, deckName, entries)
+	if err != nil {
+		// Resolve failures that carry a per-card Violation list are
+		// surfaced with the same 422 `{"error", "violations"}` shape
+		// the validator uses, so the client has one schema to handle.
+		var uce *deck.UnknownCardError
+		if errors.As(err, &uce) {
+			return writeDeckViolations(w, err.Error(), uce.Violations(), nil)
+		}
+		var ume *deck.UnsupportedMechanicError
+		if errors.As(err, &ume) {
+			return writeDeckViolations(w, err.Error(), ume.Violations(), nil)
+		}
+		return httpError(http.StatusBadRequest, err.Error())
+	}
+
+	// Validate. Sideboard-only warnings are treated as non-fatal —
+	// we strip them from the violation list and pass the rest
+	// through. Everything else means the deck cannot be installed.
+	var warnings []deck.Violation
+	var fatal []deck.Violation
+	if verr := deck.Validate(list); verr != nil {
+		var ve *deck.ValidationError
+		if errors.As(verr, &ve) {
+			for _, v := range ve.Violations {
+				if v.Code == deck.CodeSideboardUnsupported {
+					warnings = append(warnings, v)
+					continue
+				}
+				fatal = append(fatal, v)
+			}
+			if len(fatal) > 0 {
+				return writeDeckViolations(w, "deck has validation errors", fatal, warnings)
+			}
+		} else {
+			return verr
+		}
+	}
+
+	meta, err := c.Lobby.SetDeck(id, body.PlayerID, list.Name, list.ToGameCards())
+	if err != nil {
+		return err
+	}
+
+	commanders := make([]string, 0, len(list.Commanders))
+	for _, cc := range list.Commanders {
+		commanders = append(commanders, cc.Name)
+	}
+	return writeJSON(w, http.StatusOK, uploadDeckResponse{
+		Game:       meta,
+		DeckName:   list.Name,
+		CardCount:  len(list.Commanders) + len(list.Mainboard),
+		Commanders: commanders,
+		Warnings:   warnings,
+	})
+}
+
 // logout revokes the caller's credential server-side and clears the
 // session cookie. Unauthenticated — we want a client with an already-
 // expired token to be able to reach this endpoint to flush its cookie
@@ -343,6 +542,22 @@ func writeJSON(w http.ResponseWriter, status int, body any) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	return json.NewEncoder(w).Encode(body)
+}
+
+// writeDeckViolations is the canonical 422 body for deck-upload
+// failures: a human-readable summary, the list of fatal violations,
+// and any non-fatal warnings (e.g. sideboard contents). All three
+// failure modes — unknown card, unsupported mechanic, validation —
+// share this schema so the client has one shape to render.
+func writeDeckViolations(w http.ResponseWriter, summary string, fatal, warnings []deck.Violation) error {
+	body := map[string]any{
+		"error":      summary,
+		"violations": fatal,
+	}
+	if len(warnings) > 0 {
+		body["warnings"] = warnings
+	}
+	return writeJSON(w, http.StatusUnprocessableEntity, body)
 }
 
 // setSessionCookie stamps the browser session cookie that transports
@@ -409,10 +624,13 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 	case errors.Is(err, ErrGameFull),
 		errors.Is(err, ErrGameStarted),
 		errors.Is(err, ErrSeatTaken),
+		errors.Is(err, ErrDeckNotUploaded),
 		errors.Is(err, game.ErrNotEnoughPlayers),
 		errors.Is(err, game.ErrGameAlreadyStarted),
 		errors.Is(err, game.ErrGameNotInLobby):
 		status = http.StatusConflict
+	case errors.Is(err, ErrPlayerNotInGame):
+		status = http.StatusForbidden
 	case errors.Is(err, ErrEmptyName):
 		status = http.StatusBadRequest
 	case errors.Is(err, auth.ErrInvalidCredential),
