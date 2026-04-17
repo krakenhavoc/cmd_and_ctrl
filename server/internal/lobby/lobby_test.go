@@ -1,6 +1,8 @@
 package lobby
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"testing"
@@ -202,6 +204,41 @@ func TestListStripsInviteToken(t *testing.T) {
 		t.Error("Get must include invite token")
 	}
 	_ = b
+}
+
+// TestListGamesPlayersNonNil is a regression for an on-wire bug where
+// empty Players slices marshalled as JSON `null` instead of `[]`.
+// The Svelte client iterates `g.players` and accessing `.length` on
+// null threw mid-render, which Svelte silently caught — leaving the
+// stale "no games yet" fallback visible after every create.
+func TestListGamesPlayersNonNil(t *testing.T) {
+	l := newTestLobby(t)
+	_, _ = l.Create("A")
+
+	for _, g := range l.List() {
+		if g.Players == nil {
+			t.Fatalf("List: Players slice is nil for %q; must be non-nil []SeatInfo{}", g.Name)
+		}
+	}
+
+	// And make sure the JSON wire renders as `[]`, not `null`. Tests
+	// the full round-trip the HTTP handler actually emits.
+	raw, err := json.Marshal(l.List())
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if bytes.Contains(raw, []byte(`"players":null`)) {
+		t.Errorf("wire format contains players:null, want players:[]; got %s", raw)
+	}
+	if !bytes.Contains(raw, []byte(`"players":[]`)) {
+		t.Errorf("wire format missing players:[]; got %s", raw)
+	}
+
+	// Get() goes through copyMeta too.
+	got, _ := l.Get(l.List()[0].ID)
+	if got.Players == nil {
+		t.Error("Get: Players slice is nil")
+	}
 }
 
 func TestGetUnknownGame(t *testing.T) {

@@ -61,7 +61,13 @@ export async function adminLogin(token: string): Promise<Session> {
 export async function listGames(): Promise<GameMeta[]> {
   const res = await authFetch("/games", { method: "GET" });
   const body = (await res.json()) as { games: GameMeta[] };
-  return body.games;
+  // Defensive normalisation: a buggy server may emit `players: null`
+  // for seat-less games (see lobby.copyMeta regression). Iterating
+  // `g.players` then throws mid-render and Svelte silently bails on
+  // the subtree — "no games yet" keeps showing. Coercing to [] here
+  // means the UI degrades to a visible empty-seats row instead of a
+  // vanished list.
+  return body.games.map((g) => ({ ...g, players: g.players ?? [] }));
 }
 
 export async function getGame(id: string): Promise<GameMeta> {
