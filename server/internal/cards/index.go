@@ -144,15 +144,31 @@ func (i *Index) Load(path string) (int, error) {
 		loaded[c.ID] = c
 		// Build the name index. Index both the full printed name and
 		// the front-face name for split / double-faced cards, since
-		// deck exports vary ("Fire // Ice" vs "Fire"). Last-write-wins
-		// is acceptable — Scryfall ships tens of thousands of cards
-		// and collisions are dominated by reprints of the same card.
+		// deck exports vary ("Fire // Ice" vs "Fire").
+		//
+		// Top-level inserts are last-write-wins: reprints of the same
+		// card carry the same legalities and swap harmlessly.
+		//
+		// Face inserts are guarded: if an existing byName entry's
+		// canonical Name already matches the key we're inserting, don't
+		// overwrite. This blocks art-series / double-faced-token
+		// printings (whose name is "X // X" with two identical faces)
+		// from hijacking the legitimate "X" entry via the face loop.
+		// Without the guard, Scryfall's art-series record for
+		// "Garruk's Uprising // Garruk's Uprising" (commander:
+		// not_legal) shadows the playable printing and rejects valid
+		// decks.
 		byName[normalizeName(c.Name)] = c
 		if len(c.CardFaces) > 0 {
 			for _, face := range c.CardFaces {
-				if face.Name != "" {
-					byName[normalizeName(face.Name)] = c
+				if face.Name == "" {
+					continue
 				}
+				key := normalizeName(face.Name)
+				if existing, ok := byName[key]; ok && normalizeName(existing.Name) == key {
+					continue
+				}
+				byName[key] = c
 			}
 		}
 	}
@@ -287,9 +303,18 @@ func (i *Index) Put(c Card) {
 		if face.Name == "" {
 			continue
 		}
-		if key := normalizeName(face.Name); key != "" {
-			i.byName[key] = c
+		key := normalizeName(face.Name)
+		if key == "" {
+			continue
 		}
+		// See Load: face inserts don't clobber an entry whose
+		// canonical Name matches the key. Prevents art-series /
+		// same-named-both-faces records from shadowing a legitimate
+		// single-card printing.
+		if existing, ok := i.byName[key]; ok && normalizeName(existing.Name) == key {
+			continue
+		}
+		i.byName[key] = c
 	}
 }
 

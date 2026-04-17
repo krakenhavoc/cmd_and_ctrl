@@ -79,6 +79,66 @@ func TestIndexLoadRejectsNonArray(t *testing.T) {
 	}
 }
 
+// TestPutPreservesLegitimateCanonicalAgainstHijack is a regression
+// for Scryfall art-series records whose Name is "X // X" with two
+// faces both named "X". Prior to the guard, the face loop would
+// overwrite the legitimate single-card "X" entry with the art-series
+// record, which carries commander: not_legal — valid decks got
+// `not_legal_in_format` for perfectly playable cards like Garruk's
+// Uprising.
+func TestPutPreservesLegitimateCanonicalAgainstHijack(t *testing.T) {
+	legitID := uuid.New()
+	legit := Card{
+		ID:         legitID,
+		Name:       "Garruk's Uprising",
+		Legalities: map[string]string{"commander": "legal"},
+	}
+	hijack := Card{
+		ID:   uuid.New(),
+		Name: "Garruk's Uprising // Garruk's Uprising",
+		CardFaces: []CardFace{
+			{Name: "Garruk's Uprising"},
+			{Name: "Garruk's Uprising"},
+		},
+		Legalities: map[string]string{"commander": "not_legal"},
+	}
+
+	for _, order := range []struct {
+		label string
+		first Card
+		next  Card
+	}{
+		{"legit first then hijack", legit, hijack},
+		{"hijack first then legit", hijack, legit},
+	} {
+		t.Run(order.label, func(t *testing.T) {
+			fresh := NewIndex()
+			fresh.Put(order.first)
+			fresh.Put(order.next)
+			got, ok := fresh.FindByName("Garruk's Uprising")
+			if !ok {
+				t.Fatal("FindByName: not found")
+			}
+			if got.ID != legitID {
+				t.Errorf("ID: got %v, want legit %v (hijack record won the race)", got.ID, legitID)
+			}
+			if got.Legalities["commander"] != "legal" {
+				t.Errorf("commander legality: got %q, want legal", got.Legalities["commander"])
+			}
+			// The hijack record is still reachable under its full name —
+			// we only block the single-face hijack, not the full-name
+			// lookup.
+			full, ok := fresh.FindByName("Garruk's Uprising // Garruk's Uprising")
+			if !ok {
+				t.Error("full-name lookup for hijack record: not found")
+			}
+			if full.ID == legitID {
+				t.Error("full-name should resolve to the art-series record, not the legit printing")
+			}
+		})
+	}
+}
+
 // TestFindByNameSlashFallback covers the deck-import quirk where
 // exports vary between "Fire / Ice" (single slash) and Scryfall's
 // canonical "Fire // Ice" (double slash). Direct lookup on the
