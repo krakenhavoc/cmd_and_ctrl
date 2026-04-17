@@ -80,13 +80,20 @@
     };
   });
 
+  // sendAction is a thin shim over GameClient.sendAction that the
+  // renderer invokes from interactive events. Bound via $derived so
+  // session changes (logout + re-login) pick up a fresh viewer ID.
+  const sendAction = (type: string, params?: unknown, player?: string): void => {
+    client.sendAction(type, player, params);
+  };
+
   // Re-render whenever a new snapshot arrives OR the renderer just
   // finished initialising. Reading $snapshot and rendererReady in the
   // same $effect ties both reactive inputs to the redraw.
   $effect(() => {
     const view: GameView | null = $snapshot;
     if (!renderer || !rendererReady || !view) return;
-    renderer.render(view, { viewerID: sess?.playerID ?? null });
+    renderer.render(view, { viewerID: sess?.playerID ?? null, sendAction });
   });
 
   // Watch the container size. PIXI's resizeTo handles the canvas
@@ -97,7 +104,7 @@
     const obs = new ResizeObserver(() => {
       if (!renderer || !rendererReady) return;
       const view = $snapshot;
-      if (view) renderer.render(view, { viewerID: sess?.playerID ?? null });
+      if (view) renderer.render(view, { viewerID: sess?.playerID ?? null, sendAction });
     });
     obs.observe(canvasEl);
     return () => obs.disconnect();

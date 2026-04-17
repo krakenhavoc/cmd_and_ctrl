@@ -68,11 +68,21 @@ function labelStyle(size: number, color: number): TextStyle {
   return s;
 }
 
+// ActionSender mirrors GameClient.sendAction so the renderer can
+// emit mutations without pulling the websocket client into its
+// import graph. Params shape is caller-defined; the server-side
+// docs/protocol.md is the source of truth for each action type.
+export type ActionSender = (type: string, params?: unknown, player?: string) => void;
+
 export interface RenderOptions {
   // viewerID is the seat the current client belongs to. The
   // matching PlayerView is rendered at the "self" anchor; others
   // rotate to left/top/right in their original seat order.
   viewerID: string | null;
+  // sendAction, when present, is invoked from user interactions
+  // (click-to-tap, click-to-play). Omitting it makes the renderer
+  // read-only — useful for spectator / admin views.
+  sendAction?: ActionSender;
 }
 
 export class TableRenderer {
@@ -134,7 +144,7 @@ export class TableRenderer {
     };
 
     // Shared zones band across the middle.
-    drawSharedBand(this.root, view, width, height);
+    drawSharedBand(this.root, view, width, height, opts);
 
     // Per-seat panels.
     for (const [pos, seat] of Object.entries(placements) as [SeatPosition, PlayerView | null][]) {
@@ -149,7 +159,7 @@ export class TableRenderer {
     // server), so this branch is a no-op for spectator / admin views.
     const self = placements.self;
     if (self && self.hand.cards.length > 0) {
-      drawHandFan(this.root, self.hand.cards, width, height);
+      drawHandFan(this.root, self.hand.cards, width, height, opts);
     }
   }
 }
@@ -247,7 +257,13 @@ function drawSeat(
   root.addChild(panel);
 }
 
-function drawSharedBand(root: Container, view: GameView, width: number, height: number): void {
+function drawSharedBand(
+  root: Container,
+  view: GameView,
+  width: number,
+  height: number,
+  opts: RenderOptions,
+): void {
   const band = new Graphics();
   const y = height / 2 - SHARED_BAND / 2;
   band.roundRect(PAD, y, width - PAD * 2, SHARED_BAND, 8);
@@ -279,7 +295,7 @@ function drawSharedBand(root: Container, view: GameView, width: number, height: 
   bfLab.y = battleY + 6;
   root.addChild(bfLab);
 
-  drawBattlefieldCards(root, view.battlefield.cards, battleX, battleY, battleW, battleH);
+  drawBattlefieldCards(root, view.battlefield.cards, battleX, battleY, battleW, battleH, opts);
 
   // Stack + exile — compact count chips.
   const sides: [string, ZoneView][] = [
@@ -316,7 +332,13 @@ function drawSharedBand(root: Container, view: GameView, width: number, height: 
 // The fan uses a virtual arc of radius R = ~2× tile height, which is
 // tight enough that 7+ cards still fit in 1280px-wide canvases but
 // wide enough that adjacent cards don't over-occlude each other.
-function drawHandFan(root: Container, cards: CardView[], width: number, height: number): void {
+function drawHandFan(
+  root: Container,
+  cards: CardView[],
+  width: number,
+  height: number,
+  opts: RenderOptions,
+): void {
   const n = cards.length;
   // Per-card angular step, clamped so very large hands don't fan
   // past 60° total (at which point cards start pointing sideways).
@@ -330,6 +352,7 @@ function drawHandFan(root: Container, cards: CardView[], width: number, height: 
   // sit just inside the bottom edge.
   const baseY = height + radius - TILE_H * 0.9;
 
+  const viewerID = opts.viewerID ?? undefined;
   for (let i = 0; i < n; i++) {
     const c = cards[i];
     const angle = -total / 2 + i * perCard;
@@ -339,6 +362,15 @@ function drawHandFan(root: Container, cards: CardView[], width: number, height: 
     tile.setPosition(x, y);
     tile.setRotation(angle);
     tile.makeInteractive();
+    // Click to play — emits play_card with the viewer as the player.
+    // Read-only views (no sendAction) skip this so spectators can't
+    // mutate state.
+    if (opts.sendAction) {
+      const send = opts.sendAction;
+      tile.view.on("pointertap", () => {
+        send("play_card", { instance_id: c.instance_id }, viewerID);
+      });
+    }
     root.addChild(tile.view);
   }
 }
@@ -357,6 +389,7 @@ function drawBattlefieldCards(
   ry: number,
   rw: number,
   rh: number,
+  opts: RenderOptions,
 ): void {
   const innerX = rx + TILE_W / 2 + 4;
   const innerY = ry + TILE_H / 2 + 4;
@@ -368,6 +401,84 @@ function drawBattlefieldCards(
     const by = c.battle_y ?? 0;
     tile.setPosition(innerX + bx * innerW, innerY + by * innerH);
     tile.setTapped(Boolean(c.tapped));
+    if (opts.sendAction) {
+      // Click-to-toggle-tap on the battlefield. Drag-to-reposition
+      // lands in a later phase — this handler fires on a static
+      // pointertap (press + release without movement), so a future
+      // drag implementation won't collide with it.
+      wireTapClick(tile, c, opts.sendAction, innerX, innerY, innerW, innerH);
+    }
     root.addChild(tile.view);
   }
+}
+
+// wireTapClick attaches click-to-toggle-tap and drag-to-reposition
+// to a battlefield tile. A pointerdown that stays within a small
+// move threshold before pointerup is treated as a tap-toggle;
+// anything further is a drag that ends with set_battlefield_position
+// on release, carrying the tile's new (x, y) renormalised against
+// the battlefield rect.
+//
+// Drag state is local to this closure — each tile gets its own.
+function wireTapClick(
+  tile: CardTile,
+  card: CardView,
+  send: ActionSender,
+  innerX: number,
+  innerY: number,
+  innerW: number,
+  innerH: number,
+): void {
+  tile.view.eventMode = "static";
+  tile.view.cursor = "pointer";
+  // DRAG_THRESHOLD is the cursor-movement distance (in pixels) that
+  // separates a click from a drag. Below the threshold we emit
+  // tap/untap; above it we treat the gesture as a reposition.
+  const DRAG_THRESHOLD = 4;
+  let downAt: { x: number; y: number } | null = null;
+  let dragging = false;
+
+  tile.view.on("pointerdown", (e) => {
+    downAt = { x: e.global.x, y: e.global.y };
+    dragging = false;
+  });
+  tile.view.on("globalpointermove", (e) => {
+    if (!downAt) return;
+    const dx = e.global.x - downAt.x;
+    const dy = e.global.y - downAt.y;
+    if (!dragging && dx * dx + dy * dy > DRAG_THRESHOLD * DRAG_THRESHOLD) {
+      dragging = true;
+    }
+    if (dragging) {
+      // Track the cursor under the tile's centre. Parent space maps
+      // 1:1 to screen here (no transforms on root).
+      tile.setPosition(e.global.x, e.global.y);
+    }
+  });
+  const finish = (e: { global: { x: number; y: number } }) => {
+    if (!downAt) return;
+    const started = downAt;
+    downAt = null;
+    if (!dragging) {
+      send(card.tapped ? "untap" : "tap", { instance_id: card.instance_id });
+      return;
+    }
+    // Drop position → renormalise against the battlefield rect.
+    // Clamp so a release outside the rect still stamps a valid
+    // [0, 1] coordinate; the server also clamps defensively.
+    const nx = clamp01((e.global.x - innerX) / innerW);
+    const ny = clamp01((e.global.y - innerY) / innerH);
+    send("set_battlefield_position", { instance_id: card.instance_id, x: nx, y: ny });
+    // Silence "unused started" noise — we may want to re-introduce
+    // gesture-timing heuristics (long-press menu) later.
+    void started;
+  };
+  tile.view.on("pointerup", finish);
+  tile.view.on("pointerupoutside", finish);
+}
+
+function clamp01(v: number): number {
+  if (v < 0) return 0;
+  if (v > 1) return 1;
+  return v;
 }
