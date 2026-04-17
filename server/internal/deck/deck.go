@@ -6,12 +6,14 @@
 // commander, color identity subset, and format legality pinned to
 // the game's banlist snapshot.
 //
-// The validator is format-pinned: a game created on 2026-03-01 uses
-// the Scryfall legalities map as shipped at that time. Mid-game
-// rotations don't retroactively invalidate the deck. At S05 we
-// pin the *load time* of the cards.Index as a good-enough proxy
-// for the banlist snapshot; a future sprint can swap in a real
-// MTR-dated snapshot if Wizards' rotation schedule starts mattering.
+// Banlist pinning is an explicit NON-goal at S05: Validate reads
+// legalities live out of the cards.Index, and the server loads its
+// Scryfall dump exactly once at startup and never hot-reloads. That
+// pins the banlist to whatever the operator shipped with — good
+// enough for a home server. When a future sprint introduces
+// mid-process refreshes, this validator will need to either freeze
+// a per-game snapshot of Legalities at Create() time or consult the
+// timestamp stored on List.ParsedAt; neither is wired today.
 package deck
 
 import (
