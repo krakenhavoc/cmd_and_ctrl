@@ -3,6 +3,7 @@ package lobby
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
@@ -647,4 +649,199 @@ func TestStartReturns409WhenDeckMissing(t *testing.T) {
 	if resp.StatusCode != http.StatusConflict {
 		t.Errorf("start without decks: got %d, want 409", resp.StatusCode)
 	}
+}
+
+// TestUploadDeckViaMoxfieldURL covers the S06.5 URL-import happy
+// path end-to-end: POST /games/{id}/decks with format: "url" and a
+// Moxfield deck URL. The upstream is stubbed via httptest.Server +
+// deck.TestingSetMoxfieldAPIHost, so the handler exercises the full
+// fetch → parse → resolve → validate → SetDeck pipeline without
+// touching the live API.
+func TestUploadDeckViaMoxfieldURL(t *testing.T) {
+	idx := buildMinimalDeckIndex(t)
+
+	moxStub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v3/decks/all/xyz789" {
+			t.Errorf("upstream path: got %q, want /v3/decks/all/xyz789", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		// Matches buildMinimalDeckIndex: 1 commander + 99 Plains.
+		body := `{
+			"name": "URL Test Deck",
+			"commanders": { "Test Commander": {"quantity": 1} },
+			"mainboard":  { "Plains": {"quantity": 99} }
+		}`
+		fmt.Fprint(w, body)
+	}))
+	t.Cleanup(moxStub.Close)
+	deck.TestingSetMoxfieldAPIHost(t, moxStub.URL)
+
+	srv, l := newTestHTTPStackFull(t, idx, moxStub.Client())
+	meta, _ := l.Create("FNM")
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Alice"})
+	var joined sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&joined)
+	resp.Body.Close()
+
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/decks", joined.Token,
+		uploadDeckRequest{
+			Format:   "url",
+			Source:   "https://moxfield.com/decks/xyz789",
+			PlayerID: joined.PlayerID,
+		})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("url upload: got %d, want 200 (body=%s)", resp.StatusCode, body)
+	}
+	var ok uploadDeckResponse
+	if err := json.NewDecoder(resp.Body).Decode(&ok); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if ok.DeckName != "URL Test Deck" {
+		t.Errorf("deck_name: got %q, want %q", ok.DeckName, "URL Test Deck")
+	}
+	if ok.CardCount != 100 {
+		t.Errorf("card_count: got %d, want 100", ok.CardCount)
+	}
+}
+
+// TestUploadDeckURLAutoDetect verifies that omitting `format` with a
+// source that starts with https:// lands in the URL path, not the
+// text parser (which would see an unknown-name for "https").
+func TestUploadDeckURLAutoDetect(t *testing.T) {
+	idx := buildMinimalDeckIndex(t)
+	moxStub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"name":"auto","commanders":{"Test Commander":{"quantity":1}},"mainboard":{"Plains":{"quantity":99}}}`)
+	}))
+	t.Cleanup(moxStub.Close)
+	deck.TestingSetMoxfieldAPIHost(t, moxStub.URL)
+
+	srv, l := newTestHTTPStackFull(t, idx, moxStub.Client())
+	meta, _ := l.Create("FNM")
+	r := postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Alice"})
+	var joined sessionResponse
+	_ = json.NewDecoder(r.Body).Decode(&joined)
+	r.Body.Close()
+
+	// No Format — handler auto-detects from the leading https://.
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/decks", joined.Token,
+		uploadDeckRequest{
+			Source:   "https://moxfield.com/decks/auto123",
+			PlayerID: joined.PlayerID,
+		})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("auto-detect url upload: got %d, want 200 (body=%s)", resp.StatusCode, body)
+	}
+}
+
+// TestUploadDeckURLUnknownSource covers the 422 shape for a URL
+// whose host isn't a supported deck-builder. The response should
+// carry a typed `unknown_source` violation rather than a raw 400.
+func TestUploadDeckURLUnknownSource(t *testing.T) {
+	idx := buildMinimalDeckIndex(t)
+	srv, l := newTestHTTPStackFull(t, idx, nil)
+	meta, _ := l.Create("FNM")
+	r := postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Alice"})
+	var joined sessionResponse
+	_ = json.NewDecoder(r.Body).Decode(&joined)
+	r.Body.Close()
+
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/decks", joined.Token,
+		uploadDeckRequest{
+			Format:   "url",
+			Source:   "https://tappedout.net/mtg-decks/some-deck/",
+			PlayerID: joined.PlayerID,
+		})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("unknown-source url: got %d, want 422", resp.StatusCode)
+	}
+	var body struct {
+		Violations []struct {
+			Code string `json:"code"`
+			Card string `json:"card"`
+		} `json:"violations"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(body.Violations) != 1 || body.Violations[0].Code != "unknown_source" {
+		t.Errorf("violations: got %+v, want one unknown_source", body.Violations)
+	}
+	if body.Violations[0].Card != "https://tappedout.net/mtg-decks/some-deck/" {
+		t.Errorf("echo: got %q, want the URL echoed", body.Violations[0].Card)
+	}
+}
+
+// TestUploadDeckURLNotFound maps upstream 404 → structured
+// `deck_not_found` violation.
+func TestUploadDeckURLNotFound(t *testing.T) {
+	idx := buildMinimalDeckIndex(t)
+	moxStub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "gone", http.StatusNotFound)
+	}))
+	t.Cleanup(moxStub.Close)
+	deck.TestingSetMoxfieldAPIHost(t, moxStub.URL)
+
+	srv, l := newTestHTTPStackFull(t, idx, moxStub.Client())
+	meta, _ := l.Create("FNM")
+	r := postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Alice"})
+	var joined sessionResponse
+	_ = json.NewDecoder(r.Body).Decode(&joined)
+	r.Body.Close()
+
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/decks", joined.Token,
+		uploadDeckRequest{
+			Format:   "url",
+			Source:   "https://moxfield.com/decks/missing",
+			PlayerID: joined.PlayerID,
+		})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("deck-not-found: got %d, want 422", resp.StatusCode)
+	}
+	var body struct {
+		Violations []struct{ Code string } `json:"violations"`
+	}
+	_ = json.NewDecoder(resp.Body).Decode(&body)
+	if len(body.Violations) != 1 || body.Violations[0].Code != "deck_not_found" {
+		t.Errorf("violations: got %+v, want one deck_not_found", body.Violations)
+	}
+}
+
+// newTestHTTPStackFull is a superset of newTestHTTPStackWithCards that
+// also wires a DeckHTTPClient. Used by the S06.5 URL-import tests so
+// the upload path hits an httptest stub instead of the live Moxfield
+// / Archidekt APIs. Passing a nil client preserves the existing
+// default-client behaviour.
+func newTestHTTPStackFull(t *testing.T, idx *cards.Index, deckClient *http.Client) (*httptest.Server, *Lobby) {
+	t.Helper()
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	mgr := ws.NewRoomManager(log, "")
+	l := NewLobby(mgr)
+	a := auth.NewMemoryAuthenticator()
+	hub := ws.NewHub(log)
+	hub.SetManager(mgr)
+	hub.SetAuthorizer(&WSAuthorizer{Auth: a})
+
+	cfg := Config{
+		Lobby:          l,
+		Auth:           a,
+		AdminToken:     "shared-admin-token",
+		Cards:          idx,
+		DeckHTTPClient: deckClient,
+	}
+	mux := http.NewServeMux()
+	mux.Handle("/", Handler(cfg))
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	return srv, l
 }

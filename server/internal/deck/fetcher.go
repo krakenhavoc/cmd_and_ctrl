@@ -101,6 +101,44 @@ func readLimitedBody(r io.Reader, maxBody int64) ([]byte, error) {
 // more than that is malformed on the upstream's end, not ours.
 const maxBodyBytes = 2 * 1024 * 1024
 
+// FetchViolation classifies a FetchFromURL error into the Violation
+// shape the HTTP layer emits on 422. Returns (violation, true) if
+// the error maps to one of our structured sentinels; (zero, false)
+// otherwise — callers should fall through to a generic 400/500 in
+// that case.
+//
+// The URL is echoed in the `card` field so the client's violations-
+// list renderer can show what the user actually pasted.
+func FetchViolation(url string, err error) (Violation, bool) {
+	switch {
+	case errors.Is(err, ErrUnknownSource):
+		return Violation{
+			Code:    CodeUnknownSource,
+			Card:    url,
+			Message: err.Error(),
+		}, true
+	case errors.Is(err, ErrDeckNotFound):
+		return Violation{
+			Code:    CodeDeckNotFound,
+			Card:    url,
+			Message: err.Error(),
+		}, true
+	case errors.Is(err, ErrDeckPrivate):
+		return Violation{
+			Code:    CodeDeckPrivate,
+			Card:    url,
+			Message: err.Error(),
+		}, true
+	case errors.Is(err, ErrExternalAPIUnavailable):
+		return Violation{
+			Code:    CodeExternalAPIUnavailable,
+			Card:    url,
+			Message: err.Error(),
+		}, true
+	}
+	return Violation{}, false
+}
+
 // classifyHTTPStatus maps an upstream HTTP status into one of our
 // structured sentinel errors. Used by every source-specific fetcher
 // so the mapping stays consistent.
