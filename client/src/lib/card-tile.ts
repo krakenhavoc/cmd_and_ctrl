@@ -83,6 +83,11 @@ export interface CardTileOptions {
   faceDown: boolean;
 }
 
+// HOVER_LIFT is how many pixels the hovered card translates "up"
+// (negative y) while hovered. Tuned so a fanned hand card clears
+// its neighbors without fully detaching from the fan.
+const HOVER_LIFT = 24;
+
 // CardTile owns its own Container; callers add it to a parent scene
 // graph via `tile.view`.
 export class CardTile {
@@ -90,6 +95,13 @@ export class CardTile {
   private fill: Graphics;
   private sprite: Sprite | null = null;
   private label: Text | null = null;
+  // Resting position + rotation so hover + tap transforms compose
+  // without the fan layout being "sticky" across state changes.
+  private restingX = 0;
+  private restingY = 0;
+  private restingRotation = 0;
+  private tapped = false;
+  private hovered = false;
 
   constructor(card: CardView, opts: CardTileOptions) {
     this.view = new Container();
@@ -102,19 +114,60 @@ export class CardTile {
   // setPosition places the tile's centre at (cx, cy). Mirrors the
   // anchor-at-centre convention used for seat panels in table.ts.
   setPosition(cx: number, cy: number): void {
-    this.view.x = cx;
-    this.view.y = cy;
+    this.restingX = cx;
+    this.restingY = cy;
+    this.applyTransform();
   }
 
-  // setTapped rotates the tile 90° clockwise around its centre. The
-  // Container's pivot is placed at (0, 0) — tile-local centre —
-  // because every visual child is already drawn centred.
+  // setRotation stores a "resting" rotation (radians) that composes
+  // with tap state. Callers use this for the fan layout; the tile
+  // applies it alongside tap to produce the final transform.
+  setRotation(rotation: number): void {
+    this.restingRotation = rotation;
+    this.applyTransform();
+  }
+
+  // setTapped rotates the tile 90° clockwise around its centre.
   setTapped(tapped: boolean): void {
-    this.view.rotation = tapped ? Math.PI / 2 : 0;
+    this.tapped = tapped;
+    this.applyTransform();
+  }
+
+  // setHover lifts the tile toward screen-up while hovered. The lift
+  // is in parent (screen) space, not tile-local, so a rotated fan
+  // card still visibly rises rather than drifting sideways.
+  setHover(hovered: boolean): void {
+    this.hovered = hovered;
+    this.applyTransform();
+    // Z-order: while hovered, pop the tile to the top of its parent
+    // so it's not clipped by later-drawn neighbors in the fan.
+    if (hovered) {
+      const parent = this.view.parent;
+      if (parent) parent.setChildIndex(this.view, parent.children.length - 1);
+    }
+  }
+
+  // makeInteractive wires pointerover / pointerout to setHover. The
+  // caller opts in — the battlefield draw path keeps tiles static so
+  // a hand-card hover doesn't bleed into battlefield behaviour.
+  makeInteractive(): void {
+    this.view.eventMode = "static";
+    this.view.cursor = "pointer";
+    this.view.on("pointerover", () => this.setHover(true));
+    this.view.on("pointerout", () => this.setHover(false));
   }
 
   destroy(): void {
     this.view.destroy({ children: true });
+  }
+
+  // applyTransform composes resting position + rotation + tap + hover
+  // into the tile's final PIXI transform. Called after any state
+  // change so ordering of set* calls doesn't matter.
+  private applyTransform(): void {
+    this.view.x = this.restingX;
+    this.view.y = this.restingY + (this.hovered ? -HOVER_LIFT : 0);
+    this.view.rotation = this.restingRotation + (this.tapped ? Math.PI / 2 : 0);
   }
 
   private draw(card: CardView, opts: CardTileOptions): void {

@@ -142,6 +142,15 @@ export class TableRenderer {
       const a = anchors[pos];
       drawSeat(this.root, seat, pos, a.x, a.y, opts.viewerID === seat.id);
     }
+
+    // Self-hand fan, drawn last so it sits on top of the seat panel
+    // and the shared band. Only the viewer has full-fidelity hand
+    // contents (FilterViewFor zeroes out opponent hand cards on the
+    // server), so this branch is a no-op for spectator / admin views.
+    const self = placements.self;
+    if (self && self.hand.cards.length > 0) {
+      drawHandFan(this.root, self.hand.cards, width, height);
+    }
   }
 }
 
@@ -297,6 +306,41 @@ function drawSharedBand(root: Container, view: GameView, width: number, height: 
     count.y = battleY + battleH / 2;
     root.addChild(count);
   });
+}
+
+// drawHandFan lays the viewer's hand in an arc at the bottom of the
+// canvas. Cards nearer the centre sit slightly higher, and each card
+// is rotated proportional to its offset from the centre so the fan
+// reads as a real hand rather than a flat strip.
+//
+// The fan uses a virtual arc of radius R = ~2× tile height, which is
+// tight enough that 7+ cards still fit in 1280px-wide canvases but
+// wide enough that adjacent cards don't over-occlude each other.
+function drawHandFan(root: Container, cards: CardView[], width: number, height: number): void {
+  const n = cards.length;
+  // Per-card angular step, clamped so very large hands don't fan
+  // past 60° total (at which point cards start pointing sideways).
+  const maxTotal = Math.PI / 3; // 60°
+  const perCard = Math.min(0.12, maxTotal / Math.max(1, n - 1));
+  const total = perCard * Math.max(0, n - 1);
+  const radius = TILE_H * 2;
+
+  const centerX = width / 2;
+  // baseY places the fan's arc pivot below the canvas so card centres
+  // sit just inside the bottom edge.
+  const baseY = height + radius - TILE_H * 0.9;
+
+  for (let i = 0; i < n; i++) {
+    const c = cards[i];
+    const angle = -total / 2 + i * perCard;
+    const x = centerX + radius * Math.sin(angle);
+    const y = baseY - radius * Math.cos(angle);
+    const tile = new CardTile(c, { faceDown: false });
+    tile.setPosition(x, y);
+    tile.setRotation(angle);
+    tile.makeInteractive();
+    root.addChild(tile.view);
+  }
 }
 
 // drawBattlefieldCards paints one CardTile per card, positioned by
