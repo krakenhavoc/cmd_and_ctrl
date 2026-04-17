@@ -83,6 +83,8 @@ func FetchFromURL(ctx context.Context, client *http.Client, rawURL string) (name
 	switch host {
 	case "moxfield.com":
 		return fetchMoxfield(ctx, client, u)
+	case "archidekt.com":
+		return fetchArchidekt(ctx, client, u)
 	}
 	return "", nil, fmt.Errorf("%w: host %q", ErrUnknownSource, u.Host)
 }
