@@ -10,72 +10,93 @@ import (
 	"strings"
 )
 
-// ParseMoxfield parses a Moxfield export (JSON) into []Entry. The
-// Moxfield API emits at least two shapes depending on the export
-// endpoint; the one we accept is the "v3 deck" shape produced by
-// the "Export → JSON" button on any public deck page, which has
-// the form:
+// ParseMoxfield parses a Moxfield v3 deck JSON into []Entry. The
+// shape produced by https://api2.moxfield.com/v3/decks/all/<id> nests
+// every board under a `boards` object, and each board carries
+// `count` + `cards` where the inner keys are opaque Moxfield IDs
+// (not the card names); the card name lives at `.card.name`:
 //
 //	{
 //	  "name": "My Deck",
-//	  "commanders": { "<card-name>": { "quantity": N, ... } },
-//	  "mainboard":  { "<card-name>": { "quantity": N, ... } },
-//	  "sideboard":  { ... },
-//	  "companions": { ... }
+//	  "boards": {
+//	    "commanders": { "count": N, "cards": { "<opaque>": { "quantity": N, "card": { "name": "..." } } } },
+//	    "mainboard":  { ... },
+//	    "sideboard":  { ... },
+//	    "companions": { ... }
+//	  }
 //	}
 //
 // Card records carry more fields than we need (mana cost, colors,
-// Scryfall ID, etc.); we read only quantity + the map key as the
-// card name. If Moxfield ever ships a stable Scryfall UUID on each
-// entry, switching to ID-based resolution is a one-field change.
+// Scryfall ID, etc.); we read only quantity + card.name. Switching
+// to Scryfall-UUID-based resolution is a later change — see the
+// `card.scryfall_id` field in the response.
 func ParseMoxfield(raw []byte) (name string, entries []Entry, err error) {
 	var doc struct {
-		Name       string                   `json:"name"`
-		Commanders map[string]moxfieldEntry `json:"commanders"`
-		Mainboard  map[string]moxfieldEntry `json:"mainboard"`
-		Sideboard  map[string]moxfieldEntry `json:"sideboard"`
-		Companions map[string]moxfieldEntry `json:"companions"`
+		Name   string `json:"name"`
+		Boards struct {
+			Mainboard  moxfieldBoard `json:"mainboard"`
+			Sideboard  moxfieldBoard `json:"sideboard"`
+			Commanders moxfieldBoard `json:"commanders"`
+			Companions moxfieldBoard `json:"companions"`
+		} `json:"boards"`
 	}
 	if err := json.Unmarshal(raw, &doc); err != nil {
 		return "", nil, fmt.Errorf("deck: moxfield json: %w", err)
 	}
-	if doc.Commanders == nil && doc.Mainboard == nil {
+	if doc.Boards.Commanders.Cards == nil && doc.Boards.Mainboard.Cards == nil {
 		return "", nil, errors.New("deck: moxfield export had no commanders or mainboard — maybe the wrong JSON shape?")
 	}
 
 	// Companion slot is unsupported at S05 — Resolve would catch the
 	// mechanic via oracle text anyway, but failing here gives a
 	// clearer error message up front.
-	if len(doc.Companions) > 0 {
+	if len(doc.Boards.Companions.Cards) > 0 {
 		return "", nil, ErrUnsupportedMechanic
 	}
 
-	for n, e := range doc.Commanders {
-		if e.Quantity <= 0 {
-			continue
-		}
-		entries = append(entries, Entry{Name: n, Count: e.Quantity, IsCommander: true})
-	}
-	for n, e := range doc.Mainboard {
-		if e.Quantity <= 0 {
-			continue
-		}
-		entries = append(entries, Entry{Name: n, Count: e.Quantity})
-	}
-	for n, e := range doc.Sideboard {
-		if e.Quantity <= 0 {
-			continue
-		}
-		entries = append(entries, Entry{Name: n, Count: e.Quantity, IsSideboard: true})
-	}
+	entries = append(entries, collectMoxfieldBoard(doc.Boards.Commanders, func(e *Entry) { e.IsCommander = true })...)
+	entries = append(entries, collectMoxfieldBoard(doc.Boards.Mainboard, nil)...)
+	entries = append(entries, collectMoxfieldBoard(doc.Boards.Sideboard, func(e *Entry) { e.IsSideboard = true })...)
 	return doc.Name, entries, nil
 }
 
-// moxfieldEntry is the trimmed per-card record shape. Moxfield ships
-// much more (Scryfall ID, foil flag, condition, tags, board
-// history) — we carry only quantity.
-type moxfieldEntry struct {
+// moxfieldBoard is one of {mainboard, sideboard, commanders,
+// companions}. The inner map is keyed by Moxfield's opaque per-card
+// ID; the card identity we care about lives on .card.name.
+type moxfieldBoard struct {
+	Cards map[string]moxfieldBoardEntry `json:"cards"`
+}
+
+// moxfieldBoardEntry is the trimmed per-card record. Moxfield ships
+// much more (foil flag, condition, tags, board history, Scryfall ID,
+// etc.) — we carry only quantity + the nested card name.
+type moxfieldBoardEntry struct {
 	Quantity int `json:"quantity"`
+	Card     struct {
+		Name string `json:"name"`
+	} `json:"card"`
+}
+
+// collectMoxfieldBoard walks a board and emits one Entry per card.
+// tag, when non-nil, is invoked on each entry before append so the
+// caller can stamp IsCommander / IsSideboard without a per-board loop
+// duplicated three times.
+func collectMoxfieldBoard(b moxfieldBoard, tag func(*Entry)) []Entry {
+	if len(b.Cards) == 0 {
+		return nil
+	}
+	out := make([]Entry, 0, len(b.Cards))
+	for _, e := range b.Cards {
+		if e.Quantity <= 0 || e.Card.Name == "" {
+			continue
+		}
+		entry := Entry{Name: e.Card.Name, Count: e.Quantity}
+		if tag != nil {
+			tag(&entry)
+		}
+		out = append(out, entry)
+	}
+	return out
 }
 
 // moxfieldAPIHost is where our outbound deck-fetch requests go.

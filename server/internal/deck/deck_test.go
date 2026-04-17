@@ -126,9 +126,18 @@ not a card
 func TestParseMoxfieldBasic(t *testing.T) {
 	raw := []byte(`{
 		"name": "Atraxa Superfriends",
-		"commanders": { "Atraxa, Praetors' Voice": {"quantity": 1} },
-		"mainboard": { "Sol Ring": {"quantity": 1}, "Forest": {"quantity": 4} },
-		"sideboard": { "Relic of Progenitus": {"quantity": 1} }
+		"boards": {
+			"commanders": { "count": 1, "cards": {
+				"c1": { "quantity": 1, "card": { "name": "Atraxa, Praetors' Voice" } }
+			}},
+			"mainboard":  { "count": 5, "cards": {
+				"m1": { "quantity": 1, "card": { "name": "Sol Ring" } },
+				"m2": { "quantity": 4, "card": { "name": "Forest" } }
+			}},
+			"sideboard":  { "count": 1, "cards": {
+				"s1": { "quantity": 1, "card": { "name": "Relic of Progenitus" } }
+			}}
+		}
 	}`)
 	name, entries, err := ParseMoxfield(raw)
 	if err != nil {
@@ -156,9 +165,17 @@ func TestParseMoxfieldBasic(t *testing.T) {
 
 func TestParseMoxfieldRejectsCompanion(t *testing.T) {
 	raw := []byte(`{
-		"commanders": { "Atraxa": {"quantity": 1} },
-		"mainboard": { "Sol Ring": {"quantity": 1} },
-		"companions": { "Lurrus of the Dream-Den": {"quantity": 1} }
+		"boards": {
+			"commanders": { "count": 1, "cards": {
+				"c1": { "quantity": 1, "card": { "name": "Atraxa" } }
+			}},
+			"mainboard":  { "count": 1, "cards": {
+				"m1": { "quantity": 1, "card": { "name": "Sol Ring" } }
+			}},
+			"companions": { "count": 1, "cards": {
+				"o1": { "quantity": 1, "card": { "name": "Lurrus of the Dream-Den" } }
+			}}
+		}
 	}`)
 	_, _, err := ParseMoxfield(raw)
 	if !errors.Is(err, ErrUnsupportedMechanic) {
