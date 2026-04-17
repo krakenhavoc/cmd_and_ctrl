@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -184,6 +185,13 @@ func (i *Index) Get(id uuid.UUID) (Card, bool) {
 // full printed name ("Fire // Ice") and the front-face name ("Fire")
 // resolve to the same Card. Returns (zero, false) on miss — the
 // deck parser turns that into a structured "unknown card" error.
+//
+// Fallback: if the exact key misses and the input contains a slash
+// separator, retry on the portion before the first slash. This
+// handles deck-export variants that use "Stump Stomp / Burnwillow
+// Clearing" (single slash) while Scryfall's canonical form is
+// "Stump Stomp // Burnwillow Clearing". The front-face name is
+// already indexed during Load, so the fallback hits the same Card.
 func (i *Index) FindByName(name string) (Card, bool) {
 	key := normalizeName(name)
 	if key == "" {
@@ -191,8 +199,16 @@ func (i *Index) FindByName(name string) (Card, bool) {
 	}
 	i.mu.RLock()
 	defer i.mu.RUnlock()
-	c, ok := i.byName[key]
-	return c, ok
+	if c, ok := i.byName[key]; ok {
+		return c, true
+	}
+	if slash := strings.IndexByte(key, '/'); slash > 0 {
+		front := strings.TrimRight(key[:slash], " ")
+		if c, ok := i.byName[front]; ok {
+			return c, true
+		}
+	}
+	return Card{}, false
 }
 
 // normalizeName canonicalises a card name for case-insensitive

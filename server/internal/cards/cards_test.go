@@ -79,6 +79,47 @@ func TestIndexLoadRejectsNonArray(t *testing.T) {
 	}
 }
 
+// TestFindByNameSlashFallback covers the deck-import quirk where
+// exports vary between "Fire / Ice" (single slash) and Scryfall's
+// canonical "Fire // Ice" (double slash). Direct lookup on the
+// single-slash form misses; the fallback on the front-face name
+// should resolve both forms to the same Card.
+func TestFindByNameSlashFallback(t *testing.T) {
+	idx := NewIndex()
+	id := uuid.New()
+	idx.Put(Card{
+		ID:   id,
+		Name: "Stump Stomp // Burnwillow Clearing",
+		CardFaces: []CardFace{
+			{Name: "Stump Stomp"},
+			{Name: "Burnwillow Clearing"},
+		},
+	})
+
+	cases := []struct {
+		name  string
+		query string
+	}{
+		{"canonical double slash", "Stump Stomp // Burnwillow Clearing"},
+		{"single slash variant", "Stump Stomp / Burnwillow Clearing"},
+		{"extra whitespace around single slash", "Stump Stomp   /   Burnwillow Clearing"},
+		{"front face only", "Stump Stomp"},
+		{"back face only", "Burnwillow Clearing"},
+		{"case-insensitive single slash", "stump stomp / burnwillow clearing"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			c, ok := idx.FindByName(tc.query)
+			if !ok {
+				t.Fatalf("FindByName(%q): not found", tc.query)
+			}
+			if c.ID != id {
+				t.Errorf("FindByName(%q): got ID %v, want %v", tc.query, c.ID, id)
+			}
+		})
+	}
+}
+
 func TestImageURIFallbacks(t *testing.T) {
 	// Single-faced card, asked for "large" when only "normal" exists:
 	// falls back to normal.
