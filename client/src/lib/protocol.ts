@@ -90,9 +90,15 @@ export interface CardView {
   name: string;
   owner: string;
   controller: string;
+  scryfall_id?: string;
   tapped?: boolean;
   counters?: Record<string, number>;
   is_commander?: boolean;
+  // Normalised battlefield position in [0, 1]. Only meaningful for
+  // cards on the battlefield zone; server clears to 0 on exit and
+  // omits the fields for cards that have never been positioned.
+  battle_x?: number;
+  battle_y?: number;
 }
 
 export interface TurnView {

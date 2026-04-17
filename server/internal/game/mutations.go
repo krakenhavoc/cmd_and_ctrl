@@ -185,6 +185,40 @@ func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 	return ErrCardNotFound
 }
 
+// SetBattlefieldPosition stamps a normalised (x, y) position on a
+// card on the battlefield. x and y are clamped to [0, 1] — the client
+// sends fractions of the battlefield area so the server's stored
+// coordinate survives resolution changes on the rendering side.
+// Returns ErrCardNotFound when the card is not on the battlefield;
+// positions on cards in other zones are meaningless and ignored.
+func (g *Game) SetBattlefieldPosition(cardID uuid.UUID, x, y float64) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	x = clampUnit(x)
+	y = clampUnit(y)
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == cardID {
+			g.Battlefield.Cards[i].BattleX = x
+			g.Battlefield.Cards[i].BattleY = y
+			return nil
+		}
+	}
+	return ErrCardNotFound
+}
+
+func clampUnit(v float64) float64 {
+	if v < 0 {
+		return 0
+	}
+	if v > 1 {
+		return 1
+	}
+	return v
+}
+
 // UntapAll untaps every card on the battlefield controlled by the
 // given player. This is what a player does at the start of their
 // untap step.

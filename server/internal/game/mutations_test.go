@@ -229,6 +229,89 @@ func TestTapCardNotOnBattlefield(t *testing.T) {
 	}
 }
 
+func TestSetBattlefieldPosition(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	_ = g.DrawCard(p.ID)
+	card, _ := p.Hand.Top()
+	_ = g.PlayCard(p.ID, card.InstanceID)
+
+	if err := g.SetBattlefieldPosition(card.InstanceID, 0.25, 0.75); err != nil {
+		t.Fatalf("SetBattlefieldPosition: %v", err)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID == card.InstanceID {
+			if c.BattleX != 0.25 || c.BattleY != 0.75 {
+				t.Errorf("position: got (%v, %v), want (0.25, 0.75)", c.BattleX, c.BattleY)
+			}
+		}
+	}
+}
+
+func TestSetBattlefieldPositionClamps(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	_ = g.DrawCard(p.ID)
+	card, _ := p.Hand.Top()
+	_ = g.PlayCard(p.ID, card.InstanceID)
+
+	// Out-of-range inputs should clamp to [0, 1] rather than error;
+	// the wire contract is that clients send fractions and the server
+	// defends the invariant without a user-facing failure.
+	if err := g.SetBattlefieldPosition(card.InstanceID, -0.5, 2.0); err != nil {
+		t.Fatalf("SetBattlefieldPosition: %v", err)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID == card.InstanceID {
+			if c.BattleX != 0 || c.BattleY != 1 {
+				t.Errorf("clamp: got (%v, %v), want (0, 1)", c.BattleX, c.BattleY)
+			}
+		}
+	}
+}
+
+func TestSetBattlefieldPositionNotOnBattlefield(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	// Card in the library — position on a non-battlefield card is a
+	// no-op at best; we return ErrCardNotFound so clients don't silently
+	// stamp coordinates on a card that'll be ignored.
+	lib, _ := p.Library.Top()
+	if err := g.SetBattlefieldPosition(lib.InstanceID, 0.5, 0.5); err != ErrCardNotFound {
+		t.Errorf("library card: got %v, want ErrCardNotFound", err)
+	}
+}
+
+func TestMoveCardClearsBattlefieldPosition(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	_ = g.DrawCard(p.ID)
+	card, _ := p.Hand.Top()
+	_ = g.PlayCard(p.ID, card.InstanceID)
+	_ = g.SetBattlefieldPosition(card.InstanceID, 0.33, 0.66)
+
+	// Move to graveyard — BattleX/Y should be cleared alongside Tapped
+	// and Counters.
+	_ = g.TapCard(card.InstanceID, true)
+	if err := g.MoveCardByID(
+		ZoneRef{Kind: ZoneBattlefield},
+		ZoneRef{Kind: ZoneGraveyard, Owner: p.ID},
+		card.InstanceID,
+	); err != nil {
+		t.Fatalf("MoveCardByID: %v", err)
+	}
+	for _, c := range p.Graveyard.Cards {
+		if c.InstanceID == card.InstanceID {
+			if c.BattleX != 0 || c.BattleY != 0 {
+				t.Errorf("position not cleared: got (%v, %v)", c.BattleX, c.BattleY)
+			}
+			if c.Tapped {
+				t.Error("tapped not cleared on zone exit")
+			}
+		}
+	}
+}
+
 func TestUntapAllOnlyControllersCards(t *testing.T) {
 	g := newActiveGame(t)
 	p0, p1 := g.Seats[0], g.Seats[1]

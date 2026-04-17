@@ -80,8 +80,8 @@ type CardFace struct {
 // yet on a fresh deployment; the server can still run, image
 // lookups just 404.
 type Index struct {
-	mu     sync.RWMutex
-	byID   map[uuid.UUID]Card
+	mu   sync.RWMutex
+	byID map[uuid.UUID]Card
 	// byName resolves a case-insensitive card name to the best-match
 	// Card for deck imports. Scryfall may ship multiple printings of
 	// the same name (different sets); the bulk-dump load path keeps

@@ -143,11 +143,14 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	if err != nil {
 		return Card{}, err
 	}
-	// Cards leaving the battlefield lose their tapped state by
-	// convention; rules-level effects can re-tap if needed.
+	// Cards leaving the battlefield lose their tapped state and
+	// battlefield-only position by convention; rules-level effects can
+	// re-tap if needed, and positions are re-stamped on re-entry.
 	if src.Kind == ZoneBattlefield {
 		c.Tapped = false
 		c.Counters = nil
+		c.BattleX = 0
+		c.BattleY = 0
 	}
 	dst.PushTop(c)
 	return c, nil
