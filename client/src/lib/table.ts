@@ -186,9 +186,23 @@ function assignSeats(
   const selfIdx = viewerID ? seats.findIndex((s) => s.id === viewerID) : -1;
   if (selfIdx >= 0) {
     out.self = seats[selfIdx];
-    // Rotate remaining seats clockwise: left, top, right.
+    // Rotate remaining seats around the viewer. Shape depends on
+    // opponent count so the layout reads right for each player count:
+    //   1 opponent  → top (across the table — the MTG convention)
+    //   2 opponents → left + right (a 3-player triangle)
+    //   3 opponents → left + top + right, clockwise from viewer
     const others = [...seats.slice(selfIdx + 1), ...seats.slice(0, selfIdx)];
-    const spots: SeatPosition[] = ["left", "top", "right"];
+    let spots: SeatPosition[];
+    switch (others.length) {
+      case 1:
+        spots = ["top"];
+        break;
+      case 2:
+        spots = ["left", "right"];
+        break;
+      default:
+        spots = ["left", "top", "right"];
+    }
     others.slice(0, 3).forEach((s, i) => {
       out[spots[i]] = s;
     });
