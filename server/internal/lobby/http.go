@@ -125,11 +125,11 @@ type adminLoginRequest struct {
 }
 
 type sessionResponse struct {
-	Token     string          `json:"token"`
-	ExpiresAt time.Time       `json:"expires_at"`
-	Principal auth.Principal  `json:"principal"`
-	Game      *GameMeta       `json:"game,omitempty"`
-	PlayerID  uuid.UUID       `json:"player_id,omitempty"`
+	Token     string         `json:"token"`
+	ExpiresAt time.Time      `json:"expires_at"`
+	Principal auth.Principal `json:"principal"`
+	Game      *GameMeta      `json:"game,omitempty"`
+	PlayerID  uuid.UUID      `json:"player_id,omitempty"`
 }
 
 type createGameRequest struct {
@@ -326,10 +326,10 @@ type uploadDeckRequest struct {
 // seat update the caller will see via GET /games/{id}, but returned
 // inline so the client doesn't have to refetch.
 type uploadDeckResponse struct {
-	Game       GameMeta  `json:"game"`
-	DeckName   string    `json:"deck_name"`
-	CardCount  int       `json:"card_count"`
-	Commanders []string  `json:"commanders"`
+	Game       GameMeta `json:"game"`
+	DeckName   string   `json:"deck_name"`
+	CardCount  int      `json:"card_count"`
+	Commanders []string `json:"commanders"`
 	// Warnings is a non-fatal violation list (e.g. sideboard ignored).
 	// The accepted deck is already installed when warnings is
 	// non-empty; treat it as advisory.

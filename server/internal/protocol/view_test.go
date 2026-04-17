@@ -76,6 +76,43 @@ func TestViewOfGamePlayerContents(t *testing.T) {
 	}
 }
 
+func TestViewOfCardBattlefieldPosition(t *testing.T) {
+	g := buildActiveGame(t)
+	p := g.Seats[0]
+	// Put a card on the battlefield and stamp a position, then verify
+	// the projection carries BattleX / BattleY on the wire.
+	_ = g.DrawCard(p.ID)
+	card, _ := p.Hand.Top()
+	_ = g.PlayCard(p.ID, card.InstanceID)
+	_ = g.SetBattlefieldPosition(card.InstanceID, 0.3, 0.7)
+
+	v := ViewOfGame(g)
+	var found bool
+	for _, c := range v.Battlefield.Cards {
+		if c.InstanceID == card.InstanceID.String() {
+			found = true
+			if c.BattleX != 0.3 || c.BattleY != 0.7 {
+				t.Errorf("BattleX/Y: got (%v, %v), want (0.3, 0.7)", c.BattleX, c.BattleY)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("card not on battlefield view")
+	}
+
+	// JSON must round-trip the new fields under their snake_case tags.
+	raw, err := json.Marshal(v)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if !bytes.Contains(raw, []byte(`"battle_x":0.3`)) {
+		t.Errorf("battle_x not in JSON: %s", raw)
+	}
+	if !bytes.Contains(raw, []byte(`"battle_y":0.7`)) {
+		t.Errorf("battle_y not in JSON: %s", raw)
+	}
+}
+
 func TestViewOfGameJSONRoundTrip(t *testing.T) {
 	g := buildActiveGame(t)
 	v := ViewOfGame(g)

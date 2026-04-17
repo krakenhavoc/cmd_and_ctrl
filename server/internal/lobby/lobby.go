@@ -350,7 +350,14 @@ func (l *Lobby) RoomOf(id uuid.UUID) *ws.Room {
 
 func copyMeta(m GameMeta) GameMeta {
 	out := m
-	out.Players = append([]SeatInfo(nil), m.Players...)
+	// `append([]T(nil), empty...)` is a Go gotcha: appending zero
+	// elements to a nil slice returns nil, which JSON-marshals as
+	// `"players":null` instead of the `"players":[]` the docs promise.
+	// The client relies on Players being a real array — indexing
+	// `g.players.length` on null throws mid-render, which Svelte 5
+	// catches silently and bails on the enclosing subtree. Use an
+	// explicit non-nil empty slice to hold the invariant.
+	out.Players = append(make([]SeatInfo, 0, len(m.Players)), m.Players...)
 	return out
 }
 

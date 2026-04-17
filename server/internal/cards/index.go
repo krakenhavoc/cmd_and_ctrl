@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -80,8 +81,8 @@ type CardFace struct {
 // yet on a fresh deployment; the server can still run, image
 // lookups just 404.
 type Index struct {
-	mu     sync.RWMutex
-	byID   map[uuid.UUID]Card
+	mu   sync.RWMutex
+	byID map[uuid.UUID]Card
 	// byName resolves a case-insensitive card name to the best-match
 	// Card for deck imports. Scryfall may ship multiple printings of
 	// the same name (different sets); the bulk-dump load path keeps
@@ -143,15 +144,31 @@ func (i *Index) Load(path string) (int, error) {
 		loaded[c.ID] = c
 		// Build the name index. Index both the full printed name and
 		// the front-face name for split / double-faced cards, since
-		// deck exports vary ("Fire // Ice" vs "Fire"). Last-write-wins
-		// is acceptable — Scryfall ships tens of thousands of cards
-		// and collisions are dominated by reprints of the same card.
+		// deck exports vary ("Fire // Ice" vs "Fire").
+		//
+		// Top-level inserts are last-write-wins: reprints of the same
+		// card carry the same legalities and swap harmlessly.
+		//
+		// Face inserts are guarded: if an existing byName entry's
+		// canonical Name already matches the key we're inserting, don't
+		// overwrite. This blocks art-series / double-faced-token
+		// printings (whose name is "X // X" with two identical faces)
+		// from hijacking the legitimate "X" entry via the face loop.
+		// Without the guard, Scryfall's art-series record for
+		// "Garruk's Uprising // Garruk's Uprising" (commander:
+		// not_legal) shadows the playable printing and rejects valid
+		// decks.
 		byName[normalizeName(c.Name)] = c
 		if len(c.CardFaces) > 0 {
 			for _, face := range c.CardFaces {
-				if face.Name != "" {
-					byName[normalizeName(face.Name)] = c
+				if face.Name == "" {
+					continue
 				}
+				key := normalizeName(face.Name)
+				if existing, ok := byName[key]; ok && normalizeName(existing.Name) == key {
+					continue
+				}
+				byName[key] = c
 			}
 		}
 	}
@@ -184,6 +201,13 @@ func (i *Index) Get(id uuid.UUID) (Card, bool) {
 // full printed name ("Fire // Ice") and the front-face name ("Fire")
 // resolve to the same Card. Returns (zero, false) on miss — the
 // deck parser turns that into a structured "unknown card" error.
+//
+// Fallback: if the exact key misses and the input contains a slash
+// separator, retry on the portion before the first slash. This
+// handles deck-export variants that use "Stump Stomp / Burnwillow
+// Clearing" (single slash) while Scryfall's canonical form is
+// "Stump Stomp // Burnwillow Clearing". The front-face name is
+// already indexed during Load, so the fallback hits the same Card.
 func (i *Index) FindByName(name string) (Card, bool) {
 	key := normalizeName(name)
 	if key == "" {
@@ -191,8 +215,16 @@ func (i *Index) FindByName(name string) (Card, bool) {
 	}
 	i.mu.RLock()
 	defer i.mu.RUnlock()
-	c, ok := i.byName[key]
-	return c, ok
+	if c, ok := i.byName[key]; ok {
+		return c, true
+	}
+	if slash := strings.IndexByte(key, '/'); slash > 0 {
+		front := strings.TrimRight(key[:slash], " ")
+		if c, ok := i.byName[front]; ok {
+			return c, true
+		}
+	}
+	return Card{}, false
 }
 
 // normalizeName canonicalises a card name for case-insensitive
@@ -271,9 +303,18 @@ func (i *Index) Put(c Card) {
 		if face.Name == "" {
 			continue
 		}
-		if key := normalizeName(face.Name); key != "" {
-			i.byName[key] = c
+		key := normalizeName(face.Name)
+		if key == "" {
+			continue
 		}
+		// See Load: face inserts don't clobber an entry whose
+		// canonical Name matches the key. Prevents art-series /
+		// same-named-both-faces records from shadowing a legitimate
+		// single-card printing.
+		if existing, ok := i.byName[key]; ok && normalizeName(existing.Name) == key {
+			continue
+		}
+		i.byName[key] = c
 	}
 }
 

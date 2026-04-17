@@ -65,6 +65,14 @@ type CardView struct {
 	Tapped      bool           `json:"tapped,omitempty"`
 	Counters    map[string]int `json:"counters,omitempty"`
 	IsCommander bool           `json:"is_commander,omitempty"`
+	// BattleX, BattleY are the normalised battlefield position in
+	// [0, 1]. Emitted only for cards on the battlefield (other zones
+	// clear them to zero on exit); clients should ignore these fields
+	// outside the battlefield zone. omitempty drops them for cards that
+	// have never been positioned (e.g. just-played cards waiting for a
+	// drag-release).
+	BattleX float64 `json:"battle_x,omitempty"`
+	BattleY float64 `json:"battle_y,omitempty"`
 }
 
 // TurnView is the wire representation of the turn cursor.
@@ -217,5 +225,7 @@ func viewOfCard(c game.Card) CardView {
 		Tapped:      c.Tapped,
 		Counters:    counters,
 		IsCommander: c.IsCommander,
+		BattleX:     c.BattleX,
+		BattleY:     c.BattleY,
 	}
 }

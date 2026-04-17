@@ -40,6 +40,16 @@ type Card struct {
 	// the battlefield; ignored in other zones.
 	Tapped bool
 
+	// BattleX, BattleY are the normalised position of a card on the
+	// battlefield, as fractions of the battlefield area (each in the
+	// range [0, 1]; the server clamps on write). Only meaningful on the
+	// battlefield — cleared when the card leaves, alongside Tapped and
+	// Counters. Normalised so a rendering resolution change doesn't
+	// invalidate saved snapshots. Cards entering the battlefield
+	// default to (0, 0) until the client stamps a drag-release.
+	BattleX float64
+	BattleY float64
+
 	// Counters is a generic per-card counter map (+1/+1, -1/-1, loyalty,
 	// charge, fade, etc.). nil means no counters. S02 does not interpret
 	// counters; they're just storage until rules enforcement grows.

@@ -268,6 +268,34 @@ func TestDispatchSetCommanderDamage(t *testing.T) {
 	}
 }
 
+func TestDispatchSetBattlefieldPosition(t *testing.T) {
+	g := newGame(t)
+	p := g.Seats[0]
+	_ = g.DrawCard(p.ID)
+	card, _ := p.Hand.Top()
+	_ = g.PlayCard(p.ID, card.InstanceID)
+
+	a, _ := Decode(
+		string(TypeSetBattlefieldPosition),
+		"",
+		params(t, map[string]any{
+			"instance_id": card.InstanceID.String(),
+			"x":           0.4,
+			"y":           0.6,
+		}),
+	)
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID == card.InstanceID {
+			if c.BattleX != 0.4 || c.BattleY != 0.6 {
+				t.Errorf("position: got (%v, %v), want (0.4, 0.6)", c.BattleX, c.BattleY)
+			}
+		}
+	}
+}
+
 func TestDispatchUnknownType(t *testing.T) {
 	g := newGame(t)
 	a, _ := Decode("explode", "", nil)

@@ -24,19 +24,20 @@ import (
 type Type string
 
 const (
-	TypeDrawCard           Type = "draw_card"
-	TypePlayCard           Type = "play_card"
-	TypeMoveCard           Type = "move_card"
-	TypeTap                Type = "tap"
-	TypeUntap              Type = "untap"
-	TypeUntapAll           Type = "untap_all"
-	TypePassPriority       Type = "pass_priority"
-	TypePassTurn           Type = "pass_turn"
-	TypeMulligan           Type = "mulligan"
-	TypeShuffleLibrary     Type = "shuffle_library"
-	TypeChangeLife         Type = "change_life"
-	TypeAddCounter         Type = "add_counter"
-	TypeSetCommanderDamage Type = "set_commander_damage"
+	TypeDrawCard               Type = "draw_card"
+	TypePlayCard               Type = "play_card"
+	TypeMoveCard               Type = "move_card"
+	TypeTap                    Type = "tap"
+	TypeUntap                  Type = "untap"
+	TypeUntapAll               Type = "untap_all"
+	TypePassPriority           Type = "pass_priority"
+	TypePassTurn               Type = "pass_turn"
+	TypeMulligan               Type = "mulligan"
+	TypeShuffleLibrary         Type = "shuffle_library"
+	TypeChangeLife             Type = "change_life"
+	TypeAddCounter             Type = "add_counter"
+	TypeSetCommanderDamage     Type = "set_commander_damage"
+	TypeSetBattlefieldPosition Type = "set_battlefield_position"
 )
 
 // ErrUnknownType is returned when Dispatch receives an action type it
@@ -235,6 +236,21 @@ func Dispatch(g *game.Game, a Action) error {
 			return fmt.Errorf("set_commander_damage to: %w", err)
 		}
 		return g.SetCommanderDamage(from, to, p.Amount)
+
+	case TypeSetBattlefieldPosition:
+		var p struct {
+			InstanceID string  `json:"instance_id"`
+			X          float64 `json:"x"`
+			Y          float64 `json:"y"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		instanceID, err := uuid.Parse(p.InstanceID)
+		if err != nil {
+			return fmt.Errorf("set_battlefield_position instance_id: %w", err)
+		}
+		return g.SetBattlefieldPosition(instanceID, p.X, p.Y)
 	}
 
 	return fmt.Errorf("%w: %q", ErrUnknownType, a.Type)
