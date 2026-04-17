@@ -150,7 +150,7 @@ export class TableRenderer {
     for (const [pos, seat] of Object.entries(placements) as [SeatPosition, PlayerView | null][]) {
       if (!seat) continue;
       const a = anchors[pos];
-      drawSeat(this.root, seat, pos, a.x, a.y, opts.viewerID === seat.id);
+      drawSeat(this.root, seat, pos, a.x, a.y, opts.viewerID === seat.id, opts);
     }
 
     // Self-hand fan, drawn last so it sits on top of the seat panel
@@ -200,6 +200,7 @@ function drawSeat(
   cx: number,
   cy: number,
   isSelf: boolean,
+  opts: RenderOptions,
 ): void {
   const seatColor = seatColors[pos];
   const panel = new Container();
@@ -252,6 +253,19 @@ function drawSeat(
     count.x = zx + (perZoneW - 4) / 2;
     count.y = zoneY + (Z_HEIGHT - 44) / 2 + 4;
     panel.addChild(count);
+
+    // Self-seat library click → draw one card. Other zones stay
+    // passive until Phase 5's modal browser lands — this is the one
+    // interaction the S06 exit criteria needs ("draws 7 cards").
+    if (isSelf && label === "lib" && opts.sendAction) {
+      const send = opts.sendAction;
+      const viewerID = opts.viewerID ?? undefined;
+      g.eventMode = "static";
+      g.cursor = "pointer";
+      g.on("pointertap", () => {
+        send("draw_card", undefined, viewerID);
+      });
+    }
   });
 
   root.addChild(panel);

@@ -113,6 +113,22 @@
   function back(): void {
     navigate("#/lobby");
   }
+
+  // ---- Testing affordances (superseded by S07 turn/phase UI) ----
+  // S06 exit criteria reference "draws 7 cards" and "passes turn";
+  // the proper turn/phase bar arrives in S07. Until then these three
+  // buttons expose the actions needed to drive a game manually.
+  function openingHand(): void {
+    if (!sess?.playerID) return;
+    client.sendAction("mulligan", sess.playerID, { hand_size: 7 });
+  }
+  function passTurn(): void {
+    client.sendAction("pass_turn");
+  }
+  function shuffle(): void {
+    if (!sess?.playerID) return;
+    client.sendAction("shuffle_library", sess.playerID);
+  }
 </script>
 
 <section>
@@ -122,6 +138,18 @@
     <span class={`tag tag-${$status}`}>{$status}</span>
     <span class="muted">seq {$lastSeq}</span>
   </header>
+
+  {#if $snapshot && sess?.playerID}
+    <div class="dev-controls" aria-label="testing controls (temporary until S07)">
+      <button onclick={openingHand}>draw 7 (mulligan)</button>
+      <button onclick={shuffle}>shuffle library</button>
+      <button onclick={passTurn}>pass turn</button>
+      <span class="muted"
+        >· click library to draw · click hand card to play · click battlefield card to tap · drag to
+        reposition</span
+      >
+    </div>
+  {/if}
 
   <div class="table" bind:this={canvasEl}></div>
 
@@ -168,5 +196,21 @@
   }
   .tag-disconnected {
     background: #fcc;
+  }
+  .dev-controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    background: #1a2540;
+    border-radius: 4px;
+    color: #bbc4dd;
+    font-size: 0.85em;
+  }
+  .dev-controls button {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.9em;
   }
 </style>
