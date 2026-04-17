@@ -17,7 +17,7 @@
 // library). That keeps S05 off the asset-pipeline critical path.
 
 import { Application, Container, Graphics, Text, TextStyle } from "pixi.js";
-import { CardTile, TILE_H, TILE_W } from "./card-tile";
+import { CardTile, isHovered, TILE_H, TILE_W } from "./card-tile";
 import type { CardView, GameView, PlayerView, ZoneView } from "./protocol";
 
 // SeatPosition places one of the four seats around the table. "self"
@@ -121,7 +121,16 @@ export class TableRenderer {
   // wrong.
   render(view: GameView, opts: RenderOptions): void {
     if (!this.initialized) return;
-    this.root.removeChildren();
+    // removeChildren() detaches from the display list but does NOT
+    // destroy Sprite / Graphics / Text / Container resources — left
+    // as-is, every snapshot (and every ResizeObserver tick) would
+    // orphan the previous batch in GPU memory. Destroy each detached
+    // subtree explicitly. Shared Textures (card art) are *not*
+    // destroyed because `texture: true` is not passed — Pixi's
+    // Assets cache keeps them alive for reuse on the next render.
+    for (const child of this.root.removeChildren()) {
+      child.destroy({ children: true });
+    }
 
     // Assign every seat to a SeatPosition. The viewer goes to "self";
     // remaining seats fill left → top → right in their original
@@ -386,6 +395,11 @@ function drawHandFan(
       });
     }
     root.addChild(tile.view);
+    // Restore hover after insertion: if the pointer was over the
+    // previous tile for this card when the snapshot arrived, the
+    // destroyed tile never emitted pointerout, and the replacement
+    // would otherwise flash down to resting position.
+    if (isHovered(c.instance_id)) tile.setHover(true);
   }
 }
 

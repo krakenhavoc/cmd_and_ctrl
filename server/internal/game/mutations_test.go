@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"testing"
 
@@ -267,6 +268,52 @@ func TestSetBattlefieldPositionClamps(t *testing.T) {
 				t.Errorf("clamp: got (%v, %v), want (0, 1)", c.BattleX, c.BattleY)
 			}
 		}
+	}
+}
+
+func TestSetBattlefieldPositionRejectsNaNAndInf(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	_ = g.DrawCard(p.ID)
+	card, _ := p.Hand.Top()
+	_ = g.PlayCard(p.ID, card.InstanceID)
+
+	// NaN and infinities must not leak into stored state: Go's
+	// encoding/json errors on NaN marshalling, which would poison
+	// every subsequent snapshot broadcast. `clampUnit` treats any
+	// non-finite input as out-of-range and pulls it to the [0, 1] edge.
+	cases := []struct {
+		name  string
+		x, y  float64
+		wantX float64
+		wantY float64
+	}{
+		{"nan_x", math.NaN(), 0.5, 0, 0.5},
+		{"nan_y", 0.5, math.NaN(), 0.5, 0},
+		{"neg_inf_x", math.Inf(-1), 0.5, 0, 0.5},
+		{"pos_inf_y", 0.5, math.Inf(1), 0.5, 1},
+		{"upper_clamp_x", 1.5, 0.5, 1, 0.5},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := g.SetBattlefieldPosition(card.InstanceID, tc.x, tc.y); err != nil {
+				t.Fatalf("SetBattlefieldPosition: %v", err)
+			}
+			for _, c := range g.Battlefield.Cards {
+				if c.InstanceID != card.InstanceID {
+					continue
+				}
+				if math.IsNaN(c.BattleX) || math.IsNaN(c.BattleY) {
+					t.Fatalf("stored NaN: (%v, %v)", c.BattleX, c.BattleY)
+				}
+				if math.IsInf(c.BattleX, 0) || math.IsInf(c.BattleY, 0) {
+					t.Fatalf("stored Inf: (%v, %v)", c.BattleX, c.BattleY)
+				}
+				if c.BattleX != tc.wantX || c.BattleY != tc.wantY {
+					t.Errorf("got (%v, %v), want (%v, %v)", c.BattleX, c.BattleY, tc.wantX, tc.wantY)
+				}
+			}
+		})
 	}
 }
 

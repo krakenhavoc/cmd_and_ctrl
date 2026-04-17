@@ -88,10 +88,28 @@ export interface CardTileOptions {
 // its neighbors without fully detaching from the fan.
 const HOVER_LIFT = 24;
 
+// hoveredCardID tracks which card instance currently has the
+// pointer over it, at module scope. This survives across tile
+// destroy / recreate cycles: when a snapshot arrives mid-hover,
+// the old tile is torn down without a synthetic pointerout and
+// the new tile (same instance_id) is constructed at resting
+// position — visually a "drop flash." Persisting the hovered ID
+// lets the caller re-apply hover on the replacement tile so the
+// lift stays put until the user actually moves their pointer.
+let hoveredCardID: string | null = null;
+
+// isHovered reports whether the given instance_id is the current
+// hover target. Callers use it after addChild to restore hover
+// state on freshly-constructed tiles.
+export function isHovered(cardInstanceID: string): boolean {
+  return hoveredCardID === cardInstanceID;
+}
+
 // CardTile owns its own Container; callers add it to a parent scene
 // graph via `tile.view`.
 export class CardTile {
   readonly view: Container;
+  readonly cardID: string;
   private fill: Graphics;
   private sprite: Sprite | null = null;
   private label: Text | null = null;
@@ -105,6 +123,7 @@ export class CardTile {
 
   constructor(card: CardView, opts: CardTileOptions) {
     this.view = new Container();
+    this.cardID = card.instance_id;
     this.fill = new Graphics();
     this.view.addChild(this.fill);
 
@@ -147,14 +166,25 @@ export class CardTile {
     }
   }
 
-  // makeInteractive wires pointerover / pointerout to setHover. The
-  // caller opts in — the battlefield draw path keeps tiles static so
-  // a hand-card hover doesn't bleed into battlefield behaviour.
+  // makeInteractive wires pointerover / pointerout to setHover and
+  // keeps the module-scope hoveredCardID in sync so freshly-created
+  // replacement tiles (after a snapshot rebuild) can restore hover
+  // state without waiting for a pointermove.
+  //
+  // The caller opts in — the battlefield draw path keeps tiles
+  // static so a hand-card hover doesn't bleed into battlefield
+  // behaviour.
   makeInteractive(): void {
     this.view.eventMode = "static";
     this.view.cursor = "pointer";
-    this.view.on("pointerover", () => this.setHover(true));
-    this.view.on("pointerout", () => this.setHover(false));
+    this.view.on("pointerover", () => {
+      hoveredCardID = this.cardID;
+      this.setHover(true);
+    });
+    this.view.on("pointerout", () => {
+      if (hoveredCardID === this.cardID) hoveredCardID = null;
+      this.setHover(false);
+    });
   }
 
   destroy(): void {

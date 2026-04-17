@@ -210,7 +210,13 @@ func (g *Game) SetBattlefieldPosition(cardID uuid.UUID, x, y float64) error {
 }
 
 func clampUnit(v float64) float64 {
-	if v < 0 {
+	// `!(v >= 0)` intentionally treats NaN the same as a negative
+	// input: the comparison is false for NaN, and `!false` pulls us
+	// into the zero branch. Storing NaN would poison every subsequent
+	// snapshot — Go's encoding/json errors on NaN rather than
+	// serialising it, so a single bad write would break broadcasts
+	// for every viewer.
+	if !(v >= 0) {
 		return 0
 	}
 	if v > 1 {
