@@ -1,9 +1,13 @@
 package deck
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
 )
 
 // ParseMoxfield parses a Moxfield export (JSON) into []Entry. The
@@ -72,4 +76,61 @@ func ParseMoxfield(raw []byte) (name string, entries []Entry, err error) {
 // history) — we carry only quantity.
 type moxfieldEntry struct {
 	Quantity int `json:"quantity"`
+}
+
+// moxfieldAPIHost is where our outbound deck-fetch requests go.
+// Kept as a package-level var rather than a const so tests can swap
+// in an httptest.Server URL without exercising the live network.
+var moxfieldAPIHost = "https://api2.moxfield.com"
+
+// fetchMoxfield fetches a public Moxfield deck by ID and hands the
+// bytes off to ParseMoxfield. The URL path is parsed to extract the
+// deck ID — Moxfield's public URLs have the form
+// `https://moxfield.com/decks/<id>` or the deprecated
+// `https://moxfield.com/decks/<id>/<slug>`. Either works.
+func fetchMoxfield(ctx context.Context, client *http.Client, u *url.URL) (name string, entries []Entry, err error) {
+	deckID, err := extractMoxfieldDeckID(u)
+	if err != nil {
+		return "", nil, err
+	}
+
+	reqURL := moxfieldAPIHost + "/v3/decks/all/" + url.PathEscape(deckID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return "", nil, fmt.Errorf("%w: build request: %v", ErrExternalAPIUnavailable, err)
+	}
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", nil, fmt.Errorf("%w: moxfield fetch: %v", ErrExternalAPIUnavailable, err)
+	}
+	defer resp.Body.Close()
+
+	if werr := classifyHTTPStatus(resp.StatusCode); werr != nil {
+		return "", nil, fmt.Errorf("%w: moxfield", werr)
+	}
+
+	body, err := readLimitedBody(resp.Body, maxBodyBytes)
+	if err != nil {
+		return "", nil, fmt.Errorf("%w: read moxfield body: %v", ErrExternalAPIUnavailable, err)
+	}
+	return ParseMoxfield(body)
+}
+
+// extractMoxfieldDeckID pulls the deck ID out of a Moxfield URL path.
+// Accepts the two forms Moxfield's UI produces:
+//
+//	/decks/<id>            — canonical short link
+//	/decks/<id>/<slug>     — the full URL with a human-readable slug
+//
+// Anything else is surfaced as ErrUnknownSource so the caller can
+// tell "wrong host / wrong path" apart from "upstream is down".
+func extractMoxfieldDeckID(u *url.URL) (string, error) {
+	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+	if len(parts) < 2 || parts[0] != "decks" || parts[1] == "" {
+		return "", fmt.Errorf("%w: moxfield URL path must be /decks/<id>, got %q", ErrUnknownSource, u.Path)
+	}
+	return parts[1], nil
 }
