@@ -1,4 +1,10 @@
-import { authFetch, currentSession, setSession, type Session } from "./session";
+import { authFetch, currentSession, setSession, type ApiViolation, type Session } from "./session";
+
+// Re-export the violation shape so consumers of api.ts don't also
+// have to import from session.ts. ApiViolation is the canonical
+// name; DeckViolation is kept as an alias for existing callers.
+export type DeckViolation = ApiViolation;
+export type { ApiViolation };
 
 // GameMeta mirrors lobby.GameMeta in server/internal/lobby/lobby.go.
 export interface GameMeta {
@@ -18,20 +24,13 @@ export interface SeatInfo {
   deck_uploaded: boolean;
 }
 
-// DeckViolation mirrors deck.Violation on the server.
-export interface DeckViolation {
-  code: string;
-  message: string;
-  card?: string;
-}
-
 // UploadDeckResponse mirrors lobby.uploadDeckResponse.
 export interface UploadDeckResponse {
   game: GameMeta;
   deck_name: string;
   card_count: number;
   commanders: string[];
-  warnings?: DeckViolation[];
+  warnings?: ApiViolation[];
 }
 
 interface SessionResponse {
@@ -113,12 +112,12 @@ export async function startGame(id: string): Promise<GameMeta> {
 // server auto-detects by checking the first non-whitespace byte for
 // '{' (Moxfield) vs anything else (text).
 //
-// On validation failure (422), the thrown LobbyApiError's message is
-// the human-readable summary; the structured violation list is on
-// the err as a `.violations` field for callers that want to
-// highlight individual cards. Implemented via a try/catch on the raw
-// response because authFetch's default error path drops the JSON
-// body after extracting the message.
+// On validation failure (422), authFetch throws a LobbyApiError whose
+// `.violations` carries the full structured list (one per offending
+// card) and `.warnings` carries non-fatal advisories (e.g. sideboard
+// ignored). Callers that want to highlight individual rows should
+// read `.violations`; the plain `.message` is the human-readable
+// summary.
 export async function uploadDeck(
   gameID: string,
   playerID: string,

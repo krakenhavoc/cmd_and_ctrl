@@ -89,6 +89,44 @@ func (e *UnknownCardError) Error() string {
 	return fmt.Sprintf("deck: %d unknown cards: %s", len(e.Names), strings.Join(e.Names, ", "))
 }
 
+// Violations projects the unknown-name list into the same Violation
+// shape Validate emits, so the HTTP layer can render a single 422
+// `{"error", "violations": [...]}` body regardless of whether the
+// failure came from Resolve or Validate.
+func (e *UnknownCardError) Violations() []Violation {
+	out := make([]Violation, 0, len(e.Names))
+	for _, n := range e.Names {
+		out = append(out, Violation{
+			Code:    CodeUnknownCard,
+			Card:    n,
+			Message: fmt.Sprintf("%q was not found in the card index", n),
+		})
+	}
+	return out
+}
+
+// UnsupportedMechanicError is returned when Resolve finds a card
+// whose oracle text leans on a mechanic (partner/companion) the
+// server doesn't model yet. Carries the offending card name so the
+// HTTP layer can surface it as a structured violation.
+type UnsupportedMechanicError struct {
+	Card string
+}
+
+func (e *UnsupportedMechanicError) Error() string {
+	return fmt.Sprintf("%s: %s", ErrUnsupportedMechanic.Error(), e.Card)
+}
+
+func (e *UnsupportedMechanicError) Unwrap() error { return ErrUnsupportedMechanic }
+
+func (e *UnsupportedMechanicError) Violations() []Violation {
+	return []Violation{{
+		Code:    CodeUnsupportedMechanic,
+		Card:    e.Card,
+		Message: fmt.Sprintf("%q uses partner/companion, which is deferred to a later sprint", e.Card),
+	}}
+}
+
 // Resolve turns a slice of Entry rows into a List by looking each
 // name up in idx. Unknown names are collected into a single
 // UnknownCardError so a bad decklist fails in one shot rather than
@@ -113,8 +151,8 @@ func Resolve(idx *cards.Index, name string, entries []Entry) (*List, error) {
 		// partner or companion at all, the deck is probably leaning
 		// on a mechanic we don't model yet. Bail rather than silently
 		// coerce the second commander into the mainboard.
-		if mentionsUnsupportedMechanic(c) {
-			return nil, fmt.Errorf("%w: %s", ErrUnsupportedMechanic, c.Name)
+		if e.IsCommander && mentionsUnsupportedMechanic(c) {
+			return nil, &UnsupportedMechanicError{Card: c.Name}
 		}
 		switch {
 		case e.IsCommander:

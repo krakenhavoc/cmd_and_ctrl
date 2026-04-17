@@ -9,7 +9,7 @@
     type GameMeta,
   } from "../lib/api";
   import { inviteURL, navigate } from "../lib/router";
-  import { session, LobbyApiError } from "../lib/session";
+  import { session, LobbyApiError, type ApiViolation } from "../lib/session";
 
   // Lobby is the admin + player landing page. Admins see a create-
   // game form and the invite token for each game they've created;
@@ -26,12 +26,31 @@
   // session so admins can copy the link without re-fetching /games/{id}.
   const recentInvites = new Map<string, string>();
 
-  // Per-game deck-upload form state. Keyed by game ID so switching
-  // between games in the UI doesn't clobber pasted text.
+  // Per-game deck-upload form state. Keyed by game ID so feedback
+  // for one upload doesn't bleed into the panel for another game.
   const deckSources = $state<Record<string, string>>({});
+  const deckErrors = $state<Record<string, string>>({});
+  const deckViolations = $state<Record<string, ApiViolation[]>>({});
+  const deckWarnings = $state<Record<string, ApiViolation[]>>({});
+  const deckSuccess = $state<Record<string, string>>({});
   let deckBusy = $state("");
-  let deckError = $state("");
-  let deckSuccess = $state("");
+
+  // violationLabel prefixes the card name (when present) onto the
+  // server message so the UI renders a compact one-line-per-failure
+  // list without needing a table.
+  function violationLabel(v: ApiViolation): string {
+    return v.card ? `${v.card}: ${v.message}` : v.message;
+  }
+
+  // clearDeckFeedback resets every banner for a single game — called
+  // before firing a new upload so stale success/error state doesn't
+  // linger alongside fresh output.
+  function clearDeckFeedback(id: string): void {
+    delete deckErrors[id];
+    delete deckViolations[id];
+    delete deckWarnings[id];
+    delete deckSuccess[id];
+  }
 
   async function refresh(): Promise<void> {
     try {
@@ -101,21 +120,27 @@
     if (!s?.playerID || s.gameID !== g.id) return;
     const source = deckSources[g.id] ?? "";
     if (!source.trim()) {
-      deckError = "paste a decklist first";
+      clearDeckFeedback(g.id);
+      deckErrors[g.id] = "paste a decklist first";
       return;
     }
     deckBusy = g.id;
-    deckError = "";
-    deckSuccess = "";
+    clearDeckFeedback(g.id);
     try {
       const res = await uploadDeck(g.id, s.playerID, source);
-      const warnSuffix =
-        res.warnings && res.warnings.length > 0 ? ` (${res.warnings.length} warning)` : "";
-      deckSuccess = `uploaded ${res.deck_name || "deck"}: ${res.card_count} cards, commander: ${res.commanders.join(", ")}${warnSuffix}`;
+      deckSuccess[g.id] =
+        `uploaded ${res.deck_name || "deck"}: ${res.card_count} cards, commander: ${res.commanders.join(", ")}`;
+      if (res.warnings && res.warnings.length > 0) deckWarnings[g.id] = res.warnings;
       deckSources[g.id] = "";
       await refresh();
     } catch (err) {
-      deckError = err instanceof LobbyApiError ? err.message : "upload failed";
+      if (err instanceof LobbyApiError) {
+        deckErrors[g.id] = err.message;
+        if (err.violations && err.violations.length > 0) deckViolations[g.id] = err.violations;
+        if (err.warnings && err.warnings.length > 0) deckWarnings[g.id] = err.warnings;
+      } else {
+        deckErrors[g.id] = "upload failed";
+      }
     } finally {
       deckBusy = "";
     }
@@ -213,11 +238,25 @@
                   {deckBusy === g.id ? "uploading…" : "upload deck"}
                 </button>
               </div>
-              {#if deckError}
-                <pre class="error deck-error">{deckError}</pre>
+              {#if deckErrors[g.id]}
+                <pre class="error deck-error">{deckErrors[g.id]}</pre>
               {/if}
-              {#if deckSuccess}
-                <p class="success">{deckSuccess}</p>
+              {#if deckViolations[g.id]?.length}
+                <ul class="violations">
+                  {#each deckViolations[g.id] as v (v.code + (v.card ?? "") + v.message)}
+                    <li><span class="code">{v.code}</span> · {violationLabel(v)}</li>
+                  {/each}
+                </ul>
+              {/if}
+              {#if deckWarnings[g.id]?.length}
+                <ul class="warnings">
+                  {#each deckWarnings[g.id] as v (v.code + (v.card ?? "") + v.message)}
+                    <li><span class="code">{v.code}</span> · {violationLabel(v)}</li>
+                  {/each}
+                </ul>
+              {/if}
+              {#if deckSuccess[g.id]}
+                <p class="success">{deckSuccess[g.id]}</p>
               {/if}
             </details>
           {/if}
@@ -282,6 +321,30 @@
     background: #fee;
     padding: 0.5rem;
     border-radius: 3px;
+  }
+  .violations,
+  .warnings {
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem 0.5rem 1.5rem;
+    border-radius: 3px;
+    font-size: 0.85em;
+  }
+  .violations {
+    background: #fee;
+    color: #900;
+  }
+  .warnings {
+    background: #ffb;
+    color: #660;
+  }
+  .violations li,
+  .warnings li {
+    margin: 0.15rem 0;
+  }
+  .code {
+    font-family: monospace;
+    font-size: 0.9em;
+    opacity: 0.75;
   }
   .badge-ok {
     color: #060;

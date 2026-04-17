@@ -29,6 +29,14 @@ const (
 	CodeSingleton            = "singleton_violation"
 	CodeNotLegalInFormat     = "not_legal_in_format"
 	CodeSideboardUnsupported = "sideboard_not_supported_in_commander"
+	// CodeUnknownCard flags a decklist row whose name did not resolve
+	// against the Scryfall index. Surfaced via UnknownCardError and
+	// translated into the 422 violations[] list so the client can
+	// highlight every offending row at once.
+	CodeUnknownCard = "unknown_card"
+	// CodeUnsupportedMechanic flags a resolved card that leans on a
+	// mechanic (partner/companion) the server hasn't modeled yet.
+	CodeUnsupportedMechanic = "unsupported_mechanic"
 )
 
 // ValidationError bundles one or more Violations into a single error
@@ -181,24 +189,33 @@ func Validate(list *List) error {
 // isLegalCommander captures the "can this card be in the command
 // zone" predicate. Covers legendary creatures (the default case) and
 // the handful of non-creature commanders whose oracle text says
-// "can be your commander". The simplest proxy for the latter is
-// Scryfall's type-line + legalities combination: if the type line
-// includes "Legendary" and the card is commander-legal, it can be a
-// commander.
+// "can be your commander". Walks every face so DFC/MDFC legendary
+// commanders (e.g. Esika, God of the Tree // The Prismatic Bridge)
+// aren't rejected when their top-level TypeLine concatenates oddly.
 func isLegalCommander(c cards.Card) bool {
 	if c.Legalities["commander"] != "legal" {
 		return false
 	}
-	typeLine := c.TypeLine
-	if len(c.CardFaces) > 0 && typeLine == "" {
-		typeLine = c.CardFaces[0].TypeLine
+	if commanderOnFace(c.TypeLine, c.OracleText) {
+		return true
 	}
-	if !strings.Contains(typeLine, "Legendary") {
-		// Some commanders are tokens/planeswalkers with an explicit
-		// "can be your commander" clause in the oracle text.
-		return strings.Contains(c.OracleText, "can be your commander")
+	for _, face := range c.CardFaces {
+		if commanderOnFace(face.TypeLine, face.OracleText) {
+			return true
+		}
 	}
-	return true
+	return false
+}
+
+// commanderOnFace is the per-face predicate used by isLegalCommander:
+// a legendary type line qualifies, OR an oracle text that explicitly
+// states "can be your commander" (the rider clause on non-creature
+// commanders like Faceless Haven's legendary transformations).
+func commanderOnFace(typeLine, oracleText string) bool {
+	if strings.Contains(typeLine, "Legendary") {
+		return true
+	}
+	return strings.Contains(oracleText, "can be your commander")
 }
 
 // isBasicLand returns true for basic-land printings, which are

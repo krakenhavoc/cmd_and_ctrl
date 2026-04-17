@@ -539,3 +539,96 @@ func TestUploadDeck503WhenIndexMissing(t *testing.T) {
 	}
 	resp.Body.Close()
 }
+
+// TestUploadDeckUnknownCardReturnsViolations verifies the 422 body
+// for unknown cards uses the same `{"error", "violations"}` shape as
+// validation failures. Regression for the pre-fix behaviour where
+// Resolve-time failures returned a bare `{"error": "..."}` string
+// that the client couldn't render row-by-row.
+func TestUploadDeckUnknownCardReturnsViolations(t *testing.T) {
+	idx := buildMinimalDeckIndex(t)
+	srv, l, _, _ := newTestHTTPStackWithCards(t, idx)
+	meta, _ := l.Create("FNM")
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Alice"})
+	var joined sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&joined)
+	resp.Body.Close()
+
+	source := "Commander:\n1 Test Commander\nMainboard:\n1 Not A Real Card\n"
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/decks", joined.Token,
+		uploadDeckRequest{Format: "text", Source: source, PlayerID: joined.PlayerID})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("unknown-card upload: got %d, want 422", resp.StatusCode)
+	}
+	var body struct {
+		Error      string `json:"error"`
+		Violations []struct {
+			Code string `json:"code"`
+			Card string `json:"card"`
+		} `json:"violations"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(body.Violations) != 1 {
+		t.Fatalf("violations: got %d, want 1 (%+v)", len(body.Violations), body)
+	}
+	if body.Violations[0].Code != "unknown_card" {
+		t.Errorf("code: got %q, want unknown_card", body.Violations[0].Code)
+	}
+	if body.Violations[0].Card != "Not A Real Card" {
+		t.Errorf("card: got %q, want \"Not A Real Card\"", body.Violations[0].Card)
+	}
+}
+
+// TestUploadDeckBodySizeCap verifies the MaxBytesReader on the deck
+// endpoint. A 4 MiB payload must be rejected with 413 before the
+// parser ever sees it.
+func TestUploadDeckBodySizeCap(t *testing.T) {
+	idx := buildMinimalDeckIndex(t)
+	srv, l, _, _ := newTestHTTPStackWithCards(t, idx)
+	meta, _ := l.Create("FNM")
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Alice"})
+	var joined sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&joined)
+	resp.Body.Close()
+
+	huge := strings.Repeat("x", 4*1024*1024)
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/decks", joined.Token,
+		uploadDeckRequest{Format: "text", Source: huge, PlayerID: joined.PlayerID})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Errorf("oversized upload: got %d, want 413", resp.StatusCode)
+	}
+}
+
+// TestStartReturns409WhenDeckMissing verifies that ErrDeckNotUploaded
+// maps to 409 over the HTTP surface. Regression for the pre-fix
+// behaviour where the error fell through writeLobbyError's switch
+// and surfaced as 500.
+func TestStartReturns409WhenDeckMissing(t *testing.T) {
+	srv, l, _ := newTestHTTPStack(t)
+	meta, _ := l.Create("FNM")
+
+	// Two joins → two seats, neither with an uploaded deck.
+	var aliceToken string
+	for _, name := range []string{"Alice", "Bob"} {
+		r := postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+			joinRequest{InviteToken: meta.InviteToken, Name: name})
+		var s sessionResponse
+		_ = json.NewDecoder(r.Body).Decode(&s)
+		r.Body.Close()
+		if name == "Alice" {
+			aliceToken = s.Token
+		}
+	}
+
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/start", aliceToken, nil)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusConflict {
+		t.Errorf("start without decks: got %d, want 409", resp.StatusCode)
+	}
+}

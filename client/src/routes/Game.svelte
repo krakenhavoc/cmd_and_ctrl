@@ -53,9 +53,18 @@
     if (!canvasEl) return;
     const r = new TableRenderer();
     let destroyed = false;
+    // Pixi's Application.destroy is not idempotent — guard so both
+    // the cleanup callback and a late-resolving init promise can
+    // dispatch dispose() without double-firing the underlying call.
+    let disposed = false;
+    const dispose = (): void => {
+      if (disposed) return;
+      disposed = true;
+      r.destroy();
+    };
     void r.init(canvasEl).then(() => {
       if (destroyed) {
-        r.destroy();
+        dispose();
         return;
       }
       renderer = r;
@@ -67,7 +76,7 @@
         renderer = null;
         rendererReady = false;
       }
-      r.destroy();
+      dispose();
     };
   });
 

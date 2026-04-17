@@ -206,10 +206,28 @@ byte — `{` means Moxfield JSON, anything else is plain text.
 |---|---|
 | 400 | malformed request (missing source / player_id, unknown format) |
 | 403 | not your seat (RolePlayer with mismatched player_id) |
-| 422 | validation failed — body carries `{"error", "violations": [...]}` |
+| 413 | body exceeds the 2 MiB deck-source cap |
+| 422 | validation failed — body carries `{"error", "violations": [...]}`; may also carry `warnings` |
+| 429 | too many requests — 2/s refill with 10-burst per IP |
 | 503 | server card index not loaded — run `scripts/scryfall-refresh.sh` |
 
-Validation violation codes (stable strings, keyable by the client):
+All 422 failure modes (validation, unknown cards, unsupported
+mechanics) share the same response shape. A response with fatals in
+`violations` may also include non-fatal advisories under `warnings`:
+
+```json
+{
+  "error": "deck has validation errors",
+  "violations": [
+    { "code": "color_identity_violation", "card": "Lightning Bolt", "message": "..." }
+  ],
+  "warnings": [
+    { "code": "sideboard_not_supported_in_commander", "message": "..." }
+  ]
+}
+```
+
+Violation codes (stable strings, keyable by the client):
 
 - `wrong_card_count` — deck is not 100 cards
 - `missing_commander` / `too_many_commanders` / `not_a_legal_commander`
@@ -217,9 +235,13 @@ Validation violation codes (stable strings, keyable by the client):
   color identity (carries the offending `card` field)
 - `singleton_violation` — non-basic-land card appears more than once
 - `not_legal_in_format` — card is banned or not legal in Commander
-- `sideboard_not_supported_in_commander` — **warning only**,
-  surfaced under `warnings` in the success response (the deck is
-  still accepted)
+- `unknown_card` — decklist name that did not resolve against the
+  Scryfall index (carries `card`)
+- `unsupported_mechanic` — resolved commander uses partner/companion,
+  deferred to a later sprint (carries `card`)
+- `sideboard_not_supported_in_commander` — **warning only**, delivered
+  under `warnings` on both success and 422 responses (the server
+  ignores the sideboard either way)
 
 ### `GET /me`
 

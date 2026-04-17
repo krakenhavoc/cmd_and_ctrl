@@ -212,6 +212,81 @@ func TestResolvePartnerSniff(t *testing.T) {
 	}
 }
 
+// TestResolvePartnerSniffCommanderOnly guards against the false-
+// positive where a non-commander mainboard card whose oracle text
+// references the partner keyword (e.g. a tutor that targets partner
+// creatures) would have rejected the whole deck.
+func TestResolvePartnerSniffCommanderOnly(t *testing.T) {
+	ref := basicLegal("Partner Reference", "Instant", "U")
+	ref.OracleText = "Choose target creature with Partner (...)."
+	cmd := basicLegal("Test Commander", "Legendary Creature — Human", "U")
+	idx := indexWith(ref, cmd)
+	_, err := Resolve(idx, "t", []Entry{
+		{Name: "Test Commander", Count: 1, IsCommander: true},
+		{Name: "Partner Reference", Count: 1},
+	})
+	if err != nil {
+		t.Errorf("mainboard partner reference: got %v, want nil", err)
+	}
+}
+
+// TestResolveUnsupportedMechanicErrorShape covers the new structured
+// error that Resolve returns for partner/companion so the HTTP layer
+// can emit `{"violations": [...]}` without pattern-matching messages.
+func TestResolveUnsupportedMechanicErrorShape(t *testing.T) {
+	partner := basicLegal("Thrasios, Triton Hero", "Legendary Creature", "U", "G")
+	partner.OracleText = "Partner (You can have two commanders if both have partner.)"
+	idx := indexWith(partner)
+	_, err := Resolve(idx, "t", []Entry{{Name: "Thrasios, Triton Hero", Count: 1, IsCommander: true}})
+	var ume *UnsupportedMechanicError
+	if !errors.As(err, &ume) {
+		t.Fatalf("Resolve: got %v, want *UnsupportedMechanicError", err)
+	}
+	if ume.Card != "Thrasios, Triton Hero" {
+		t.Errorf("card: got %q, want Thrasios", ume.Card)
+	}
+	vs := ume.Violations()
+	if len(vs) != 1 || vs[0].Code != CodeUnsupportedMechanic {
+		t.Errorf("Violations: got %+v, want one %s", vs, CodeUnsupportedMechanic)
+	}
+	// errors.Is must still unwrap to the sentinel so existing tests
+	// and switch statements keep working.
+	if !errors.Is(err, ErrUnsupportedMechanic) {
+		t.Errorf("errors.Is: unwrap to ErrUnsupportedMechanic failed")
+	}
+}
+
+// TestValidateDFCLegendaryCommander covers the case where a
+// legendary commander's top-level TypeLine is empty (Scryfall's
+// modal-double-faced schema stamps per-face lines only). The
+// per-face predicate should still accept it.
+func TestValidateDFCLegendaryCommander(t *testing.T) {
+	cmd := basicLegal("Esika, God of the Tree // The Prismatic Bridge", "", "W", "U", "B", "R", "G")
+	cmd.CardFaces = []cards.CardFace{
+		{Name: "Esika, God of the Tree", TypeLine: "Legendary Creature — God"},
+		{Name: "The Prismatic Bridge", TypeLine: "Legendary Enchantment"},
+	}
+	list := &List{Commanders: []cards.Card{cmd}}
+	basic := basicLegal("Plains", "Basic Land — Plains", "W")
+	for i := 0; i < 99; i++ {
+		list.Mainboard = append(list.Mainboard, basic)
+	}
+	err := Validate(list)
+	// We expect no commander-legality violation. Other violations
+	// (e.g. singleton) are fine — we only care that the DFC legendary
+	// isn't rejected as "not a commander".
+	if err != nil {
+		var ve *ValidationError
+		if errors.As(err, &ve) {
+			for _, v := range ve.Violations {
+				if v.Code == CodeNotLegalCommander {
+					t.Errorf("DFC legendary rejected: %+v", v)
+				}
+			}
+		}
+	}
+}
+
 // --- validation ---
 
 // buildValidDeck returns a List that passes every validation rule.

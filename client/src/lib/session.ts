@@ -125,21 +125,40 @@ export async function authFetch(input: string, init: RequestInit = {}): Promise<
   }
   if (!res.ok) {
     let message = `${res.status} ${res.statusText}`;
+    let violations: ApiViolation[] | undefined;
+    let warnings: ApiViolation[] | undefined;
     try {
-      const body = (await res.clone().json()) as { error?: string };
+      const body = (await res.clone().json()) as {
+        error?: string;
+        violations?: ApiViolation[];
+        warnings?: ApiViolation[];
+      };
       if (body.error) message = body.error;
+      if (Array.isArray(body.violations)) violations = body.violations;
+      if (Array.isArray(body.warnings)) warnings = body.warnings;
     } catch {
       // body wasn't JSON — keep the default message
     }
-    throw new LobbyApiError(res.status, message);
+    throw new LobbyApiError(res.status, message, violations, warnings);
   }
   return res;
+}
+
+// ApiViolation mirrors deck.Violation on the server. Kept here (not
+// in api.ts) so LobbyApiError can carry the structured list without
+// a circular import between session and api.
+export interface ApiViolation {
+  code: string;
+  message: string;
+  card?: string;
 }
 
 export class LobbyApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    public violations?: ApiViolation[],
+    public warnings?: ApiViolation[],
   ) {
     super(message);
     this.name = "LobbyApiError";

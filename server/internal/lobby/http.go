@@ -24,6 +24,11 @@ import (
 // "please log in again" mid-match.
 const sessionTTL = 12 * time.Hour
 
+// maxDeckBodyBytes caps the payload accepted by POST /games/{id}/decks.
+// A 100-card Moxfield JSON export is typically well under 200 KiB; 2 MiB
+// is generous headroom and still prohibitive as a DoS primitive.
+const maxDeckBodyBytes = 2 * 1024 * 1024
+
 // Config bundles the dependencies Handler needs. Separate from
 // Lobby itself so main.go can build the HTTP layer without the
 // lobby having to know about auth.
@@ -77,6 +82,11 @@ func Handler(c Config) http.Handler {
 	// brute-forces invite tokens. 1 req/s with a 5-token burst per
 	// client IP is lenient for real humans, prohibitive for scripts.
 	limit := ratelimit.New(1, 5)
+	// Deck upload has a separate, more permissive bucket: legitimate
+	// players may re-upload several times while iterating, but we still
+	// want a ceiling on how fast a single IP can stream megabyte-sized
+	// Moxfield blobs at the parser.
+	deckLimit := ratelimit.New(2, 10)
 	mux.Handle("POST /admin/login", limit.Middleware(handlerFunc(c, adminLogin)))
 	mux.Handle("POST /games/{id}/join", limit.Middleware(handlerFunc(c, joinGame)))
 	mux.Handle("POST /games", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, createGame)))
@@ -84,7 +94,7 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /games", auth.Middleware(c.Auth)(handlerFunc(c, listGames)))
 	mux.Handle("GET /games/{id}", auth.Middleware(c.Auth)(handlerFunc(c, getGame)))
 	mux.Handle("POST /games/{id}/start", auth.Middleware(c.Auth)(handlerFunc(c, startGame)))
-	mux.Handle("POST /games/{id}/decks", auth.Middleware(c.Auth)(handlerFunc(c, uploadDeck)))
+	mux.Handle("POST /games/{id}/decks", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, uploadDeck))))
 	mux.Handle("GET /me", auth.Middleware(c.Auth)(handlerFunc(c, me)))
 	// Logout does not require an authenticated principal — a client
 	// with a stale or revoked token should still be able to clear
@@ -354,9 +364,22 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
 
+	// Cap the request body before decoding so a hostile client can't
+	// stream megabytes at the parser. 2 MiB is roughly 10x the size of
+	// a generous Moxfield JSON export.
+	if r.Body == nil {
+		return httpError(http.StatusBadRequest, "missing body")
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxDeckBodyBytes)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
 	var body uploadDeckRequest
-	if err := decodeJSON(r, &body); err != nil {
-		return err
+	if err := dec.Decode(&body); err != nil {
+		var mbe *http.MaxBytesError
+		if errors.As(err, &mbe) {
+			return httpError(http.StatusRequestEntityTooLarge, fmt.Sprintf("deck source exceeds %d-byte limit", maxDeckBodyBytes))
+		}
+		return httpError(http.StatusBadRequest, fmt.Sprintf("invalid body: %s", err.Error()))
 	}
 	if strings.TrimSpace(body.Source) == "" {
 		return httpError(http.StatusBadRequest, "source is required")
@@ -405,14 +428,16 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 
 	list, err := deck.Resolve(c.Cards, deckName, entries)
 	if err != nil {
-		// UnknownCardError carries the full name list; surface as 422
-		// with the message so the client can show them all at once.
+		// Resolve failures that carry a per-card Violation list are
+		// surfaced with the same 422 `{"error", "violations"}` shape
+		// the validator uses, so the client has one schema to handle.
 		var uce *deck.UnknownCardError
 		if errors.As(err, &uce) {
-			return httpError(http.StatusUnprocessableEntity, err.Error())
+			return writeDeckViolations(w, err.Error(), uce.Violations(), nil)
 		}
-		if errors.Is(err, deck.ErrUnsupportedMechanic) {
-			return httpError(http.StatusUnprocessableEntity, err.Error())
+		var ume *deck.UnsupportedMechanicError
+		if errors.As(err, &ume) {
+			return writeDeckViolations(w, err.Error(), ume.Violations(), nil)
 		}
 		return httpError(http.StatusBadRequest, err.Error())
 	}
@@ -433,10 +458,7 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 				fatal = append(fatal, v)
 			}
 			if len(fatal) > 0 {
-				return writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
-					"error":      "deck has validation errors",
-					"violations": fatal,
-				})
+				return writeDeckViolations(w, "deck has validation errors", fatal, warnings)
 			}
 		} else {
 			return verr
@@ -522,6 +544,22 @@ func writeJSON(w http.ResponseWriter, status int, body any) error {
 	return json.NewEncoder(w).Encode(body)
 }
 
+// writeDeckViolations is the canonical 422 body for deck-upload
+// failures: a human-readable summary, the list of fatal violations,
+// and any non-fatal warnings (e.g. sideboard contents). All three
+// failure modes — unknown card, unsupported mechanic, validation —
+// share this schema so the client has one shape to render.
+func writeDeckViolations(w http.ResponseWriter, summary string, fatal, warnings []deck.Violation) error {
+	body := map[string]any{
+		"error":      summary,
+		"violations": fatal,
+	}
+	if len(warnings) > 0 {
+		body["warnings"] = warnings
+	}
+	return writeJSON(w, http.StatusUnprocessableEntity, body)
+}
+
 // setSessionCookie stamps the browser session cookie that transports
 // the credential on subsequent HTTP and same-origin WS requests.
 // HttpOnly prevents JS access; SameSite=Lax lets the invite-link
@@ -586,10 +624,13 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 	case errors.Is(err, ErrGameFull),
 		errors.Is(err, ErrGameStarted),
 		errors.Is(err, ErrSeatTaken),
+		errors.Is(err, ErrDeckNotUploaded),
 		errors.Is(err, game.ErrNotEnoughPlayers),
 		errors.Is(err, game.ErrGameAlreadyStarted),
 		errors.Is(err, game.ErrGameNotInLobby):
 		status = http.StatusConflict
+	case errors.Is(err, ErrPlayerNotInGame):
+		status = http.StatusForbidden
 	case errors.Is(err, ErrEmptyName):
 		status = http.StatusBadRequest
 	case errors.Is(err, auth.ErrInvalidCredential),
