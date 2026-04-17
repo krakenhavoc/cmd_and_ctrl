@@ -137,8 +137,7 @@
   }
   .table {
     width: 100%;
-    height: 720px;
-    background: #0b1220;
+    height: min(720px, 70vh);
     border-radius: 6px;
     overflow: hidden;
   }

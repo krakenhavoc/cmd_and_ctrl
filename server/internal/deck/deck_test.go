@@ -401,16 +401,54 @@ func TestValidateSideboardWarning(t *testing.T) {
 
 // --- JSON wire shape ---
 
-func TestValidationErrorMarshals(t *testing.T) {
-	ve := &ValidationError{Violations: []Violation{
-		{Code: CodeColorIdentity, Card: "Lightning Bolt", Message: "off-color"},
-	}}
-	raw, err := json.Marshal(ve)
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
+// TestViolationJSONShape locks down the wire shape the HTTP layer
+// serialises for each Violation (code/card/message, with card
+// omitted when empty). The lobby handler wraps a []Violation into
+// `{"error","violations":[...]}` — the test asserts the inner shape
+// since the outer envelope is built by writeDeckViolations.
+func TestViolationJSONShape(t *testing.T) {
+	cases := []struct {
+		name string
+		in   Violation
+		want map[string]any
+	}{
+		{
+			name: "with-card",
+			in:   Violation{Code: CodeColorIdentity, Card: "Lightning Bolt", Message: "off-color"},
+			want: map[string]any{
+				"code":    "color_identity_violation",
+				"card":    "Lightning Bolt",
+				"message": "off-color",
+			},
+		},
+		{
+			name: "no-card-omits-field",
+			in:   Violation{Code: CodeWrongCardCount, Message: "99 cards; expected 100"},
+			want: map[string]any{
+				"code":    "wrong_card_count",
+				"message": "99 cards; expected 100",
+			},
+		},
 	}
-	if !strings.Contains(string(raw), `"code":"color_identity_violation"`) {
-		t.Errorf("marshal lost code: %s", raw)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			raw, err := json.Marshal(tc.in)
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+			var got map[string]any
+			if err := json.Unmarshal(raw, &got); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			if len(got) != len(tc.want) {
+				t.Errorf("field count: got %d (%+v), want %d (%+v)", len(got), got, len(tc.want), tc.want)
+			}
+			for k, v := range tc.want {
+				if got[k] != v {
+					t.Errorf("%s: got %v, want %v", k, got[k], v)
+				}
+			}
+		})
 	}
 }
 

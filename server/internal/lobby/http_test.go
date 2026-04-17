@@ -490,10 +490,26 @@ func TestUploadDeckPlayerCannotSetAnothersDeck(t *testing.T) {
 	_ = json.NewDecoder(resp.Body).Decode(&carolSession)
 	resp.Body.Close()
 
+	// Use an otherwise-valid 100-card source so the 403 we assert is
+	// coming from the auth check, not from parsing or validation
+	// failing first. If a future refactor reorders the handler, this
+	// test won't pass trivially.
+	valid := "Commander:\n1 Test Commander\nMainboard:\n99 Plains\n"
 	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/decks", carolSession.Token,
-		uploadDeckRequest{Format: "text", Source: "1 Test Commander\n", PlayerID: alice})
+		uploadDeckRequest{Format: "text", Source: valid, PlayerID: alice})
 	if resp.StatusCode != http.StatusForbidden {
 		t.Errorf("cross-player upload: got %d, want 403", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// Sanity: Carol can upload her OWN deck with the same source. This
+	// anchors the 403 above to the player-id mismatch rather than
+	// something stateful about the deck bytes.
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/decks", carolSession.Token,
+		uploadDeckRequest{Format: "text", Source: valid, PlayerID: carolSession.PlayerID})
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Errorf("own upload: got %d, want 200 (body=%s)", resp.StatusCode, body)
 	}
 	resp.Body.Close()
 }

@@ -7,8 +7,9 @@
 //
 // The module exports a single TableRenderer class that owns a
 // PIXI.Application and exposes a `render(view, viewerID)` method
-// consumers call whenever a new snapshot arrives. Layout recalculates
-// on `resize()`.
+// consumers call whenever a new snapshot arrives. PIXI's resizeTo
+// handles canvas sizing; callers re-invoke render() on resize to
+// recompute the anchor layout against the new dimensions.
 //
 // Scryfall card-back art is Wizards' IP, so we never fetch it. The
 // placeholder card "back" is a solid rectangle with a thin border,
@@ -43,6 +44,29 @@ const seatColors: Record<SeatPosition, number> = {
   right: 0x1f4a38,
 };
 
+// BG_COLOR is the Pixi stage clear color. Kept next to the zone
+// palette so theme tweaks live in one place; the canvas CSS background
+// has been dropped to avoid a double source-of-truth.
+const BG_COLOR = 0x0b1220;
+
+// TextStyle instances are expensive to allocate — Pixi internally
+// parses font strings and builds a shared FontMetrics. Cache one per
+// (size,color) tuple so a full redraw doesn't churn the GC.
+const styleCache = new Map<string, TextStyle>();
+function labelStyle(size: number, color: number): TextStyle {
+  const key = `${size}:${color}`;
+  let s = styleCache.get(key);
+  if (!s) {
+    s = new TextStyle({
+      fontFamily: "system-ui, -apple-system, sans-serif",
+      fontSize: size,
+      fill: color,
+    });
+    styleCache.set(key, s);
+  }
+  return s;
+}
+
 export interface RenderOptions {
   // viewerID is the seat the current client belongs to. The
   // matching PlayerView is rendered at the "self" anchor; others
@@ -53,7 +77,6 @@ export interface RenderOptions {
 export class TableRenderer {
   readonly app: Application;
   private root: Container;
-  private lastSize = { w: 0, h: 0 };
   private initialized = false;
 
   constructor() {
@@ -66,7 +89,7 @@ export class TableRenderer {
   async init(container: HTMLElement): Promise<void> {
     await this.app.init({
       resizeTo: container,
-      background: 0x0b1220,
+      background: BG_COLOR,
       antialias: true,
     });
     container.appendChild(this.app.canvas);
@@ -100,7 +123,6 @@ export class TableRenderer {
     // the resize observer has fired).
     const width = this.app.renderer.width || 1280;
     const height = this.app.renderer.height || 720;
-    this.lastSize = { w: width, h: height };
 
     // Seat anchor points (centre of each seat's zone cluster).
     const anchors: Record<SeatPosition, { x: number; y: number }> = {
@@ -119,14 +141,6 @@ export class TableRenderer {
       const a = anchors[pos];
       drawSeat(this.root, seat, pos, a.x, a.y, opts.viewerID === seat.id);
     }
-  }
-
-  // resize triggers a re-render using the last known view. Called
-  // from the component's ResizeObserver.
-  resize(view: GameView | null, opts: RenderOptions): void {
-    if (!view) return;
-    this.render(view, opts);
-    void this.lastSize;
   }
 }
 
@@ -258,13 +272,5 @@ function drawSharedBand(root: Container, view: GameView, width: number, height: 
     count.x = zx + (perZoneW - 8) / 2;
     count.y = y + SHARED_BAND / 2;
     root.addChild(count);
-  });
-}
-
-function labelStyle(size: number, color: number): TextStyle {
-  return new TextStyle({
-    fontFamily: "system-ui, -apple-system, sans-serif",
-    fontSize: size,
-    fill: color,
   });
 }
