@@ -131,13 +131,16 @@ planned just-in-time from the S12 pain-point triage.
 ## S06 — Hand, battlefield, zones UI
 **Phase:** 3 · **Goal:** render and manipulate the core game zones.
 
-- [ ] Hand: fan layout, hover lift, drag to battlefield
-- [ ] Battlefield: free card placement, tap/untap via click, stacking for tokens/copies
-- [ ] Library / graveyard / exile / command zone — clickable, searchable, reorderable
-- [ ] All zone state driven by server state deltas (no local truth)
-- [ ] Card art rendered from the Scryfall cache
+- [x] Hand: fan layout, hover lift, drag to battlefield
+- [x] Battlefield: free card placement, tap/untap via click
+- [ ] Battlefield: token / copy stacking — deferred (tokens don't enter the game until the rules graft track; S13+)
+- [x] Library — clickable (draws top card on tap)
+- [ ] Graveyard / exile / command — clickable modal browser (S07 alongside turn/phase UI)
+- [ ] Library — searchable / reorderable — deferred to S11 (hover preview / polish)
+- [x] All zone state driven by server state deltas (no local truth)
+- [x] Card art rendered from the Scryfall cache
 
-**Exit criteria:** a player draws 7 cards, plays a land, casts a creature, taps a permanent — all visible, all driven by server-authoritative deltas.
+**Exit criteria:** a player draws 7 cards, plays a land, casts a creature, taps a permanent — all visible, all driven by server-authoritative deltas. ✅
 
 ---
 
