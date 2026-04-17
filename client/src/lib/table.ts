@@ -17,7 +17,8 @@
 // library). That keeps S05 off the asset-pipeline critical path.
 
 import { Application, Container, Graphics, Text, TextStyle } from "pixi.js";
-import type { GameView, PlayerView, ZoneView } from "./protocol";
+import { CardTile, TILE_H, TILE_W } from "./card-tile";
+import type { CardView, GameView, PlayerView, ZoneView } from "./protocol";
 
 // SeatPosition places one of the four seats around the table. "self"
 // always renders at the bottom; opponents rotate clockwise. With
@@ -245,32 +246,84 @@ function drawSharedBand(root: Container, view: GameView, width: number, height: 
   band.stroke({ color: 0x2e3a55, width: 1 });
   root.addChild(band);
 
-  const zones: [string, ZoneView][] = [
-    ["battlefield", view.battlefield],
+  // Band layout: the battlefield takes the left two-thirds (so cards
+  // have room to breathe at (battle_x, battle_y)); stack + exile are
+  // compact count chips on the right. This is a transitional layout —
+  // Phase 4 will give the battlefield its own full row when we add
+  // drag-to-place.
+  const battleW = ((width - PAD * 2 - 16) * 2) / 3;
+  const sideW = ((width - PAD * 2 - 16) * 1) / 3 / 2;
+  const battleX = PAD + 8;
+  const battleY = y + 8;
+  const battleH = SHARED_BAND - 16;
+
+  // Battlefield panel — cards are positioned inside this rect via
+  // their normalised battle_x/battle_y (both in [0, 1]).
+  const bfPanel = new Graphics();
+  bfPanel.roundRect(battleX, battleY, battleW, battleH, 4);
+  bfPanel.fill({ color: 0x1a2540 });
+  bfPanel.stroke({ color: 0x3e4a70, width: 1 });
+  root.addChild(bfPanel);
+
+  const bfLab = new Text({ text: "battlefield", style: labelStyle(12, 0xbbc4dd) });
+  bfLab.x = battleX + 8;
+  bfLab.y = battleY + 6;
+  root.addChild(bfLab);
+
+  drawBattlefieldCards(root, view.battlefield.cards, battleX, battleY, battleW, battleH);
+
+  // Stack + exile — compact count chips.
+  const sides: [string, ZoneView][] = [
     ["stack", view.stack],
     ["exile", view.exile],
   ];
-  const perZoneW = (width - PAD * 2 - 16) / zones.length;
-  zones.forEach(([label, zone], i) => {
-    const zx = PAD + 8 + i * perZoneW;
+  const sideStart = battleX + battleW + 8;
+  sides.forEach(([label, zone], i) => {
+    const zx = sideStart + i * (sideW + 8);
     const g = new Graphics();
-    g.roundRect(zx, y + 8, perZoneW - 8, SHARED_BAND - 16, 4);
+    g.roundRect(zx, battleY, sideW, battleH, 4);
     g.fill({ color: 0x1a2540 });
     g.stroke({ color: 0x3e4a70, width: 1 });
     root.addChild(g);
 
     const lab = new Text({ text: label, style: labelStyle(12, 0xbbc4dd) });
     lab.x = zx + 8;
-    lab.y = y + 12;
+    lab.y = battleY + 6;
     root.addChild(lab);
 
-    const count = new Text({
-      text: String(zone.count),
-      style: labelStyle(26, 0xffffff),
-    });
+    const count = new Text({ text: String(zone.count), style: labelStyle(26, 0xffffff) });
     count.anchor.set(0.5);
-    count.x = zx + (perZoneW - 8) / 2;
-    count.y = y + SHARED_BAND / 2;
+    count.x = zx + sideW / 2;
+    count.y = battleY + battleH / 2;
     root.addChild(count);
   });
+}
+
+// drawBattlefieldCards paints one CardTile per card, positioned by
+// its normalised (battle_x, battle_y) inside the given rect. Cards
+// without positions (default 0,0) land at the top-left — the Phase 4
+// drag UX will stamp a real position on release.
+//
+// Tiles are inset by half their size so an edge-aligned position
+// still fits inside the rect rather than bleeding past the border.
+function drawBattlefieldCards(
+  root: Container,
+  cards: CardView[],
+  rx: number,
+  ry: number,
+  rw: number,
+  rh: number,
+): void {
+  const innerX = rx + TILE_W / 2 + 4;
+  const innerY = ry + TILE_H / 2 + 4;
+  const innerW = rw - TILE_W - 8;
+  const innerH = rh - TILE_H - 8;
+  for (const c of cards) {
+    const tile = new CardTile(c, { faceDown: false });
+    const bx = c.battle_x ?? 0;
+    const by = c.battle_y ?? 0;
+    tile.setPosition(innerX + bx * innerW, innerY + by * innerH);
+    tile.setTapped(Boolean(c.tapped));
+    root.addChild(tile.view);
+  }
 }
