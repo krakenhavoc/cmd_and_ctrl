@@ -42,6 +42,31 @@
     return v.card ? `${v.card}: ${v.message}` : v.message;
   }
 
+  // looksLikeURL flips the upload-button label + spinner text when
+  // the pasted source is clearly a URL, so the user sees
+  // "fetching from moxfield.com…" instead of a generic "uploading…"
+  // while an outbound request is in flight. Matches the server's
+  // auto-detect heuristic (leading http:// or https://) so the
+  // button text doesn't contradict what the server will actually do.
+  function looksLikeURL(source: string): boolean {
+    const s = source.trim();
+    return s.startsWith("http://") || s.startsWith("https://");
+  }
+
+  // sourceHostname pulls the hostname out of a URL source for the
+  // spinner label. Returns "" for non-URLs; URL-parse errors fall
+  // back to the full trimmed source so the user still sees what
+  // they pasted.
+  function sourceHostname(source: string): string {
+    const s = source.trim();
+    if (!looksLikeURL(s)) return "";
+    try {
+      return new URL(s).hostname.replace(/^www\./, "");
+    } catch {
+      return s;
+    }
+  }
+
   // clearDeckFeedback resets every banner for a single game — called
   // before firing a new upload so stale success/error state doesn't
   // linger alongside fresh output.
@@ -225,17 +250,28 @@
                 {seat.deck_uploaded ? "replace your deck" : "upload your deck"}
               </summary>
               <p class="muted">
-                Paste a plain-text decklist or a Moxfield JSON export. The server validates it
-                against Commander rules (100-card singleton, color identity, format legality).
+                Paste a Moxfield or Archidekt deck URL, a Moxfield JSON export, or a plain-text
+                decklist. The server validates against Commander rules (100-card singleton, color
+                identity, format legality).
               </p>
               <textarea
                 rows="8"
-                placeholder={"Commander:\n1 Atraxa, Praetors' Voice\n\nMainboard:\n1 Sol Ring\n..."}
+                placeholder={"https://moxfield.com/decks/abc123\n\n— or —\n\nCommander:\n1 Atraxa, Praetors' Voice\n\nMainboard:\n1 Sol Ring\n..."}
                 bind:value={deckSources[g.id]}
               ></textarea>
               <div class="row-actions">
                 <button onclick={() => onUploadDeck(g)} disabled={deckBusy === g.id}>
-                  {deckBusy === g.id ? "uploading…" : "upload deck"}
+                  {#if deckBusy === g.id}
+                    {#if looksLikeURL(deckSources[g.id] ?? "")}
+                      fetching from {sourceHostname(deckSources[g.id] ?? "")}…
+                    {:else}
+                      uploading…
+                    {/if}
+                  {:else if looksLikeURL(deckSources[g.id] ?? "")}
+                    import deck
+                  {:else}
+                    upload deck
+                  {/if}
                 </button>
               </div>
               {#if deckErrors[g.id]}

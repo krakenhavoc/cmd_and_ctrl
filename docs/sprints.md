@@ -150,16 +150,17 @@ planned just-in-time from the S12 pain-point triage.
 
 One-week mini sprint slotted between S06 and S07 to address UX friction surfaced during S06 smoke testing. The paste-based flow works but is tedious for 100-card decks, and every paste-era bug on the S06 branch (single-slash MDFCs, art-series name collisions) would have been avoided by fetching the structured JSON directly from the source of truth.
 
-- [ ] Moxfield API client — `GET https://api2.moxfield.com/v3/decks/all/{id}` (public decks only)
-- [ ] Archidekt API client — `GET https://archidekt.com/api/decks/{id}/`, new parser for its JSON shape
-- [ ] `POST /games/{id}/decks` grows a `format: "url"` source type; handler dispatches on host
-- [ ] Outbound HTTP hygiene: 10s timeout, descriptive User-Agent, short in-process cache
-- [ ] New structured violations (`external_api_unavailable`, `deck_not_found`, `deck_private`, `unknown_source`) rendered via the existing 422 shape
-- [ ] Client lobby: auto-detect URL-vs-JSON-vs-text on paste; spinner while fetching
+- [x] Moxfield API client — `GET https://api2.moxfield.com/v3/decks/all/{id}` (public decks only)
+- [x] Archidekt API client — `GET https://archidekt.com/api/decks/{id}/`, new parser for its JSON shape
+- [x] `POST /games/{id}/decks` grows a `format: "url"` source type; handler dispatches on host
+- [x] Outbound HTTP hygiene: 10s timeout, descriptive User-Agent
+- [ ] Short in-process cache of (URL → parsed result) — deferred as polish; the external APIs are fast enough that first-call latency is acceptable at one-user scale
+- [x] New structured violations (`external_api_unavailable`, `deck_not_found`, `deck_private`, `unknown_source`) rendered via the existing 422 shape
+- [x] Client lobby: auto-detect URL-vs-JSON-vs-text on paste; spinner while fetching (shows target hostname)
 
-**Deferred:** TappedOut / Deckstats / EDHREC parsers (add incrementally); authenticated imports of private decks; Scryfall `/cards/collection` batch name resolution.
+**Deferred:** TappedOut / Deckstats / EDHREC parsers (add incrementally); authenticated imports of private decks; Scryfall `/cards/collection` batch name resolution; URL-result cache (flagged above).
 
-**Exit criteria:** paste `https://moxfield.com/decks/<id>` or `https://archidekt.com/decks/<id>/…` into the deck-upload textarea, click upload, see the parsed + validated deck install on the seat. Same UX as paste, zero manual conversion.
+**Exit criteria:** paste `https://moxfield.com/decks/<id>` or `https://archidekt.com/decks/<id>/…` into the deck-upload textarea, click upload, see the parsed + validated deck install on the seat. Same UX as paste, zero manual conversion. ✅
 
 ---
 
