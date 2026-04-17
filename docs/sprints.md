@@ -37,7 +37,7 @@ planned just-in-time from the S12 pain-point triage.
 | S04 | Lobby, auth, Scryfall pipeline | 2 | [#4](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4) | 2026-06-05 | **done** |
 | S05 | Deck import + 4-player table layout | 3 | [#5](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5) | 2026-06-19 | **done** |
 | S06 | Hand, battlefield, zones UI | 3 | [#6](https://github.com/krakenhavoc/cmd_and_ctrl/issues/6) | 2026-07-03 | **done** |
-| S06.5 | Dynamic deck import from URLs (mini) | 3 | [#37](https://github.com/krakenhavoc/cmd_and_ctrl/issues/37) | 2026-07-10 | **in progress** |
+| S06.5 | Dynamic deck import from URLs (mini) | 3 | [#37](https://github.com/krakenhavoc/cmd_and_ctrl/issues/37) | 2026-07-10 | **done** |
 | S07 | Turn/phase UI + chat + manual priority | 3 | [#7](https://github.com/krakenhavoc/cmd_and_ctrl/issues/7) | 2026-07-17 | planned |
 | S08 | First playable sandbox (2-player, milestone) | 4 | [#8](https://github.com/krakenhavoc/cmd_and_ctrl/issues/8) | 2026-07-31 | planned |
 | S09 | Polish I — animations + VFX | 5 | [#9](https://github.com/krakenhavoc/cmd_and_ctrl/issues/9) | 2026-08-14 | planned |

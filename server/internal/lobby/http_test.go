@@ -668,8 +668,14 @@ func TestUploadDeckViaMoxfieldURL(t *testing.T) {
 		// Matches buildMinimalDeckIndex: 1 commander + 99 Plains.
 		body := `{
 			"name": "URL Test Deck",
-			"commanders": { "Test Commander": {"quantity": 1} },
-			"mainboard":  { "Plains": {"quantity": 99} }
+			"boards": {
+				"commanders": { "count": 1, "cards": {
+					"c1": { "quantity": 1, "card": { "name": "Test Commander" } }
+				}},
+				"mainboard":  { "count": 99, "cards": {
+					"m1": { "quantity": 99, "card": { "name": "Plains" } }
+				}}
+			}
 		}`
 		fmt.Fprint(w, body)
 	}))
@@ -714,7 +720,7 @@ func TestUploadDeckURLAutoDetect(t *testing.T) {
 	idx := buildMinimalDeckIndex(t)
 	moxStub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"name":"auto","commanders":{"Test Commander":{"quantity":1}},"mainboard":{"Plains":{"quantity":99}}}`)
+		fmt.Fprint(w, `{"name":"auto","boards":{"commanders":{"count":1,"cards":{"c1":{"quantity":1,"card":{"name":"Test Commander"}}}},"mainboard":{"count":99,"cards":{"m1":{"quantity":99,"card":{"name":"Plains"}}}}}}`)
 	}))
 	t.Cleanup(moxStub.Close)
 	deck.TestingSetMoxfieldAPIHost(t, moxStub.URL)

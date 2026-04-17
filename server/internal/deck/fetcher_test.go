@@ -51,8 +51,15 @@ func TestFetchFromURLUnknownHost(t *testing.T) {
 func TestFetchFromURLMoxfieldHappyPath(t *testing.T) {
 	body := `{
 		"name": "Atraxa Superfriends",
-		"commanders": { "Atraxa, Praetors' Voice": {"quantity": 1} },
-		"mainboard":  { "Sol Ring": {"quantity": 1}, "Forest": {"quantity": 2} }
+		"boards": {
+			"commanders": { "count": 1, "cards": {
+				"c1": { "quantity": 1, "card": { "name": "Atraxa, Praetors' Voice" } }
+			}},
+			"mainboard":  { "count": 3, "cards": {
+				"m1": { "quantity": 1, "card": { "name": "Sol Ring" } },
+				"m2": { "quantity": 2, "card": { "name": "Forest" } }
+			}}
+		}
 	}`
 	srv := withMoxfieldStub(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got := r.URL.Path; got != "/v3/decks/all/abc123" {
