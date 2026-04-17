@@ -37,6 +37,22 @@ const (
 	// CodeUnsupportedMechanic flags a resolved card that leans on a
 	// mechanic (partner/companion) the server hasn't modeled yet.
 	CodeUnsupportedMechanic = "unsupported_mechanic"
+	// CodeUnknownSource flags a URL-based import whose host isn't
+	// one of the supported deck-builders (S06.5). Carries the offending
+	// URL in the `card` field so the client can echo it back.
+	CodeUnknownSource = "unknown_source"
+	// CodeDeckNotFound is a URL-import failure where the upstream
+	// returned 404 — the deck was deleted or the ID was wrong.
+	CodeDeckNotFound = "deck_not_found"
+	// CodeDeckPrivate is a URL-import failure where the upstream
+	// returned 401/403. We don't support authenticated imports at
+	// S06.5, so the user needs to either make the deck public or
+	// paste the JSON directly.
+	CodeDeckPrivate = "deck_private"
+	// CodeExternalAPIUnavailable is a URL-import failure for upstream
+	// 5xx / connection / timeout errors. Retry-after-a-bit semantics;
+	// not the user's fault.
+	CodeExternalAPIUnavailable = "external_api_unavailable"
 )
 
 // ValidationError bundles one or more Violations into a single error

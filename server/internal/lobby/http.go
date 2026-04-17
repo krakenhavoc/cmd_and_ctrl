@@ -49,6 +49,12 @@ type Config struct {
 	// from the lobby + room manager but existing sockets linger
 	// until their next action hits "game no longer available".
 	Evictor GameEvictor
+	// DeckHTTPClient is the outbound client used by the S06.5 URL-
+	// based deck import (`format: "url"`). Nil falls back to a
+	// sensible default with a 10 s timeout and the project's User-Agent.
+	// Tests inject an httptest.Server-backed client here so the
+	// upload path never touches the live Moxfield / Archidekt APIs.
+	DeckHTTPClient *http.Client
 }
 
 // GameEvictor is the subset of *ws.Hub that the lobby needs to close
@@ -398,13 +404,18 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	// Parse: auto-detect if Format is empty.
+	// Parse: auto-detect if Format is empty. URLs are detected first
+	// since they're unambiguous ("http://" or "https://" prefix);
+	// JSON next (leading `{`); everything else is plain text.
 	format := body.Format
+	source := strings.TrimLeft(body.Source, " \t\r\n")
 	if format == "" {
-		trimmed := strings.TrimLeft(body.Source, " \t\r\n")
-		if strings.HasPrefix(trimmed, "{") {
+		switch {
+		case strings.HasPrefix(source, "http://"), strings.HasPrefix(source, "https://"):
+			format = "url"
+		case strings.HasPrefix(source, "{"):
 			format = "moxfield"
-		} else {
+		default:
 			format = "text"
 		}
 	}
@@ -419,6 +430,25 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		entries, perr = deck.ParseText(body.Source)
 	case "moxfield":
 		deckName, entries, perr = deck.ParseMoxfield([]byte(body.Source))
+	case "url":
+		client := c.DeckHTTPClient
+		if client == nil {
+			client = deck.DefaultClient()
+		}
+		deckName, entries, perr = deck.FetchFromURL(r.Context(), client, strings.TrimSpace(body.Source))
+		if perr != nil {
+			// Fetcher failures (unknown host, private deck, upstream
+			// down, etc.) surface via FetchViolation as typed 422
+			// entries so the client renders them the same way it
+			// renders validation violations.
+			if v, ok := deck.FetchViolation(strings.TrimSpace(body.Source), perr); ok {
+				return writeDeckViolations(w, perr.Error(), []deck.Violation{v}, nil)
+			}
+			// Unknown-mechanic inside the fetched payload (e.g. a
+			// Moxfield deck with a companion slot) bubbles through
+			// here; fall into the existing Resolve-failure path
+			// below by leaving perr set.
+		}
 	default:
 		return httpError(http.StatusBadRequest, fmt.Sprintf("unknown deck format %q", format))
 	}

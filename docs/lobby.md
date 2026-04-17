@@ -183,8 +183,27 @@ RoleAdmin may set any seat.
 }
 ```
 
-When `format` is empty, the server checks the first non-whitespace
-byte — `{` means Moxfield JSON, anything else is plain text.
+When `format` is empty, the server auto-detects from the first
+non-whitespace bytes of `source`:
+
+| Prefix | Detected format |
+|---|---|
+| `http://` / `https://` | `url` (S06.5+) |
+| `{` | `moxfield` (JSON paste) |
+| anything else | `text` |
+
+### `format: "url"` (S06.5+)
+
+When `format` is `"url"`, `source` is a deck URL the server fetches
+and parses upstream. No JSON shape to paste; the server handles the
+outbound request and reuses the same validation pipeline as the paste-
+based importers. Supported hosts at S06.5:
+
+- `moxfield.com` — `/decks/<id>` or `/decks/<id>/<slug>`
+- `archidekt.com` — `/decks/<id>` or `/decks/<id>/<slug>`
+
+Private decks (upstream 401/403) and unsupported hosts surface as
+`deck_private` / `unknown_source` violations in the 422 response.
 
 **Response 200**
 
@@ -239,6 +258,14 @@ Violation codes (stable strings, keyable by the client):
   Scryfall index (carries `card`)
 - `unsupported_mechanic` — resolved commander uses partner/companion,
   deferred to a later sprint (carries `card`)
+- `unknown_source` — URL-based import (S06.5+) whose host is not one
+  of the supported deck-builders; carries the URL in `card`
+- `deck_not_found` — URL-based import where the upstream returned
+  404; the deck was deleted or the ID is wrong
+- `deck_private` — URL-based import where the upstream returned
+  401/403; only publicly-readable decks are supported at S06.5
+- `external_api_unavailable` — URL-based import where the upstream
+  timed out or returned 5xx; treat as retry-after-a-bit
 - `sideboard_not_supported_in_commander` — **warning only**, delivered
   under `warnings` on both success and 422 responses (the server
   ignores the sideboard either way)

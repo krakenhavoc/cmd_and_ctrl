@@ -70,7 +70,15 @@ function textureFor(scryfallID: string, size: "small" | "normal" = "small"): Pro
   if (!pending) {
     // Same-origin; the client's Vite proxy / deployed reverse proxy
     // sends /cards/* to the Go server which handles CDN fallback.
-    pending = Assets.load<Texture>(`/cards/${scryfallID}/image?size=${size}`);
+    //
+    // loadParser is explicit because our URL path ends in /image with
+    // no file extension — Pixi's default parser selection sniffs the
+    // extension and bails out, so Assets.load rejects without this
+    // hint. The response is always a JPEG from the Go image cache.
+    pending = Assets.load<Texture>({
+      src: `/cards/${scryfallID}/image?size=${size}`,
+      loadParser: "loadTextures",
+    });
     textureCache.set(key, pending);
   }
   return pending;
