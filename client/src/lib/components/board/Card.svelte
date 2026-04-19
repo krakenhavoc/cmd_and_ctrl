@@ -22,6 +22,7 @@
 
   import type { CardView } from "../../protocol";
   import { hoveredCard } from "../../cardTypes";
+  import { animateTap } from "../../animations";
 
   interface Props {
     card: CardView;
@@ -72,10 +73,22 @@
     ev.preventDefault();
     onClick?.(card, ev as unknown as MouseEvent);
   }
+
+  // Drive the tap rotation with GSAP so it eases instead of snapping
+  // and so future combat / damage effects can sequence against it.
+  // The rotation lives in --tap-rot (animated) while the hover lift
+  // lives in --hover-lift (CSS-only); composing via custom properties
+  // keeps the two effects independent.
+  let cardEl: HTMLDivElement | undefined = $state();
+  $effect(() => {
+    if (!cardEl) return;
+    animateTap(cardEl, !!card.tapped);
+  });
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
+  bind:this={cardEl}
   class="card"
   class:face-down={faceDown}
   class:tapped={card.tapped}
@@ -121,26 +134,28 @@
     position: relative;
     box-sizing: border-box;
     flex: 0 0 auto;
-    transition:
-      transform 80ms ease,
-      box-shadow 80ms ease;
+    transition: box-shadow 80ms ease;
     transform-origin: center center;
     user-select: none;
     -webkit-user-select: none;
+    /* Compose tap rotation (animated by GSAP via --tap-rot) with the
+       CSS-only hover lift (--hover-lift). Stacking through CSS vars
+       lets each effect tween independently without one stomping the
+       other's transform string. */
+    transform: rotate(var(--tap-rot, 0deg)) translateY(var(--hover-lift, 0px));
   }
   .card.clickable {
     cursor: pointer;
   }
   .card.clickable:hover {
-    transform: translateY(-6px);
+    /* --hover-lift snaps rather than tweens; smoothly transitioning a
+       custom property requires @property registration which Svelte's
+       scoped CSS doesn't expose. The 6px snap is small enough not to
+       read as a jump cut, and the box-shadow + GSAP tap rotation
+       still animate. */
+    --hover-lift: -6px;
     box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
     z-index: 5;
-  }
-  .card.tapped {
-    transform: rotate(90deg);
-  }
-  .card.tapped.clickable:hover {
-    transform: rotate(90deg) translateY(-6px);
   }
   .card.face-down {
     background: #1a1f35;
