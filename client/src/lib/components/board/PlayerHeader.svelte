@@ -129,10 +129,18 @@
   .dmg-popup {
     position: absolute;
     right: 12px;
-    top: -28px;
+    /* Anchored just below the header (top: 100%) instead of above it.
+       The parent .panel uses overflow: hidden — needed to clip the
+       rotated opponent content — so a popup positioned ABOVE the
+       header is invisible. The floatUp / fadeOut tick callbacks both
+       translate negatively, so the popup still reads as "floats
+       upward off the player" while staying inside the clip box. */
+    top: 100%;
+    margin-top: 4px;
     font-size: 22px;
     font-weight: 800;
     pointer-events: none;
+    z-index: 20;
     text-shadow:
       0 1px 0 rgba(0, 0, 0, 0.8),
       0 0 8px rgba(0, 0, 0, 0.55);
