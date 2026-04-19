@@ -45,6 +45,7 @@ planned just-in-time from the S12 pain-point triage.
 | S10 | Polish II — Commander UX (cmd damage, politics) | 5 | [#10](https://github.com/krakenhavoc/cmd_and_ctrl/issues/10) | 2026-08-28 | planned |
 | S11 | Polish III — hover preview, undo, spectator | 5 | [#11](https://github.com/krakenhavoc/cmd_and_ctrl/issues/11) | 2026-09-11 | planned |
 | S12 | Deploy + 4-player go-live with friends | 6 | [#12](https://github.com/krakenhavoc/cmd_and_ctrl/issues/12) | 2026-09-25 | planned |
+| S12.5 | Discord identity for players (OAuth + bot + presence) | 6 | [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59) | 2026-10-09 | planned |
 | S13+ | **B→C rules graft track** (ongoing) | 7 | TBD at S12 retro | rolling | not started |
 
 ---
@@ -258,6 +259,67 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 - [ ] Triage top 10 pain points from the real game into the S13+ backlog
 
 **Exit criteria:** a real 4-player Commander game happens on the deployed stack, and a prioritised S13+ backlog exists.
+
+---
+
+## S12.5 — Discord identity for players
+**Phase:** 6 · **Goal:** the playgroup uses Discord for coordination already (S08.5 removed in-game chat in favour of it); lean all the way in. Invite links opened from Discord land the player in the game with their Discord display name and avatar; a bot posts/DMs invites from Discord itself; the player's presence reflects what they're doing in the game.
+
+Every "out of scope" deferral from the initial planning pass is pulled into this sprint — the user decided the full integration is worth a single ~2-week sprint rather than chaining three mini-sprints.
+
+### Tasks
+
+**Discord OAuth (core):**
+- [ ] Register the Discord application; `CMDCTRL_DISCORD_CLIENT_ID` / `CMDCTRL_DISCORD_CLIENT_SECRET` env vars (dev + prod). Callback URLs for both environments registered with Discord.
+- [ ] Server routes: `GET /auth/discord/start?game=<id>&t=<invite>` builds the Discord authorize URL with PKCE + state; `GET /auth/discord/callback` exchanges the code, calls `/users/@me`, completes `Lobby.Join` on the bound invite, mints the session.
+- [ ] Server-side state store (`game_id`, `invite_token`, `pkce_verifier`, 5-minute TTL) — reuse the pattern from `auth.MemoryAuthenticator`; no schema migration.
+- [ ] Extend `auth.Principal` with optional `DiscordID`, `DiscordUsername`, `DiscordAvatarHash`, `DisplayName`. `MemoryAuthenticator` preserves them across `Validate`.
+- [ ] Extend `lobby.SeatInfo` with `display_name` (Discord `global_name`, fallback username, final fallback manual name) and `avatar_url`.
+- [ ] Client: `Join.svelte` gets a primary "Sign in with Discord" button; manual name-entry kept as fallback.
+
+**Avatar rendering:**
+- [ ] `client/src/lib/protocol.ts` — `PlayerView` / `SeatInfo` grow the two optional fields.
+- [ ] `PlayerHeader.svelte` — render a 24px circular avatar before `.seat-dot` when present.
+- [ ] Lobby seat list, any S10 politics / commander-damage UI that names seats — pick up `displayName` / `avatarUrl`.
+- [ ] Server-side avatar cache (`$CMDCTRL_DATA_DIR/avatars/<discord_id>/<hash>.png`): on first fetch hit `cdn.discordapp.com`, cache with immutable headers, re-fetch when hash changes. Client requests `/avatars/<discord_id>`; server serves from cache or proxies on miss. (Avoids embedding Discord CDN URLs directly in the state stream.)
+
+**Discord bot (`cmd_and_ctrl-bot`):**
+- [ ] New top-level directory `bot/` or a cmd under `server/cmd/bot/` — pick one in the ADR. Go, using `bwmarrin/discordgo`.
+- [ ] Slash command `/cc-invite [name]` — calls server `POST /games` with admin credentials (bot holds `CMDCTRL_ADMIN_TOKEN` via env), posts the invite link back to the channel (ephemeral or channel-visible, configurable).
+- [ ] Slash command `/cc-invite-dm @user [name]` — creates the game and DMs the invite to `@user`, pre-binding the invite's `DiscordID` so the OAuth round-trip on click is a no-op if they're already signed in.
+- [ ] Slash command `/cc-games` — lists active/lobby games known to the server; `/cc-end <id>` admin-only shutdown.
+- [ ] Bot deploys as a second systemd unit on the same VPS (S12 infra). Shares the server's VPS data dir via env only; no DB.
+
+**Rich Presence:**
+- [ ] Opt-in toggle in the client ("Show this game on Discord"); stored in `localStorage` alongside the session.
+- [ ] When enabled, client uses Discord's RPC over the local IPC socket (`discord-rpc` from npm or a thin WebSocket wrapper) to publish presence: "In a Commander game — Turn 5, 3 opponents alive".
+- [ ] Presence updates on phase change + life change (throttled to 1 update / 15 s to stay inside Discord's rate limits).
+- [ ] Presence clears on game end / browser close.
+
+**Re-link after the fact:**
+- [ ] `GET /auth/discord/link` — already-signed-in player reopens the invite/OAuth loop to attach (or swap) their Discord identity onto an existing seat without leaving the game.
+- [ ] Client surfaces a "Link Discord" row in a session-settings panel (new — probably a small menu in the corner of `Game.svelte`).
+- [ ] Server merges Discord fields onto the existing `Principal` + broadcasts a `SeatInfo` update delta so opponents immediately see the avatar/name swap.
+
+**Docs:**
+- [ ] `docs/decisions/0004-discord-identity.md` — ADR. Why OAuth + bot + presence all together; PKCE + state handling; bot deployment shape; opt-in scopes; what happens when a user revokes the Discord token.
+- [ ] `docs/lobby.md` — document the new auth routes + the `SeatInfo` field additions.
+- [ ] `AGENTS.md` §5 — env vars (`CMDCTRL_DISCORD_CLIENT_ID` / `_SECRET`, bot token, RPC client ID).
+
+### Risks / gotchas
+- OAuth callback URLs must be whitelisted per environment — document dev, staging, prod in the ADR.
+- Bot token compromise gives admin access to the server (it holds `CMDCTRL_ADMIN_TOKEN`). Store it in `systemd` credential, not a plain `.env`.
+- Discord Rich Presence over IPC requires the Discord desktop client running on the user's machine; it silently no-ops on web-only / mobile. Document the gap, don't treat it as a failure mode.
+- Avatar hash changes when a user updates their Discord avatar; our cache must key on `discord_id + hash`, not `discord_id` alone, or we'll serve stale avatars for hours.
+- Ratelimits: `/users/@me` is generous (once per join); bot's channel posts can hit per-guild limits if the sprint expands the command set later — budget headroom.
+
+### Exit criteria
+1. A friend clicks an invite link shared in Discord, clicks "Sign in with Discord" once, and lands in the game with their Discord name + avatar already on the seat. No manual name prompt.
+2. `/cc-invite` in a Discord channel produces a game + pastes an invite link the playgroup can click.
+3. `/cc-invite-dm @alice` DMs Alice a link she can click for one-tap onboarding.
+4. With Rich Presence toggled on and the Discord desktop client running, the player's Discord profile shows "In a Commander game" while they play, and clears within seconds of leaving.
+5. A player who joined with manual name entry can later click "Link Discord" and have their avatar appear at all four seats without leaving the game.
+6. All four of the above work against the deployed VPS from S12.
 
 ---
 
