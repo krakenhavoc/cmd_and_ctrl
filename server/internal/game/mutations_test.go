@@ -563,6 +563,63 @@ func TestChangePlayerLife(t *testing.T) {
 	}
 }
 
+func TestChangePlayerLifeRecordsHistory(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+
+	// Sequence of changes — running total tracks Delta.
+	for _, delta := range []int{-3, +1, -2, +5} {
+		if _, err := g.ChangePlayerLife(p.ID, delta); err != nil {
+			t.Fatalf("ChangePlayerLife(%d): %v", delta, err)
+		}
+	}
+	if len(p.LifeHistory) != 4 {
+		t.Fatalf("history length: got %d, want 4", len(p.LifeHistory))
+	}
+	wantTotals := []int{37, 38, 36, 41}
+	for i, want := range wantTotals {
+		if p.LifeHistory[i].NewTotal != want {
+			t.Errorf("entry %d NewTotal: got %d, want %d",
+				i, p.LifeHistory[i].NewTotal, want)
+		}
+	}
+	if p.LifeHistory[3].At.IsZero() {
+		t.Error("entry timestamp should be stamped")
+	}
+}
+
+func TestChangePlayerLifeZeroDeltaIsNoop(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	if _, err := g.ChangePlayerLife(p.ID, 0); err != nil {
+		t.Fatalf("ChangePlayerLife(0): %v", err)
+	}
+	if len(p.LifeHistory) != 0 {
+		t.Errorf("zero-delta should not record history; got %d entries", len(p.LifeHistory))
+	}
+}
+
+func TestChangePlayerLifeHistoryRolloverCap(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	// Drive the log past MaxLifeHistoryEntries — last N must survive,
+	// the oldest entries fall off the front.
+	for i := 0; i < MaxLifeHistoryEntries+10; i++ {
+		// Alternate +1 / -1 so totals stay near the starting value.
+		delta := 1
+		if i%2 == 1 {
+			delta = -1
+		}
+		if _, err := g.ChangePlayerLife(p.ID, delta); err != nil {
+			t.Fatalf("ChangePlayerLife: %v", err)
+		}
+	}
+	if len(p.LifeHistory) != MaxLifeHistoryEntries {
+		t.Errorf("history length: got %d, want %d (cap)",
+			len(p.LifeHistory), MaxLifeHistoryEntries)
+	}
+}
+
 func TestAddCounter(t *testing.T) {
 	g := newActiveGame(t)
 	p := g.Seats[0]

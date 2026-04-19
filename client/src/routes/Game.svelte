@@ -206,6 +206,7 @@
     client.sendAction("shuffle_library", viewerID);
   }
   let mulliganTo = $state(7);
+  let showLifeHistory = $state(false);
   function mulligan(): void {
     if (!viewerID) return;
     const n = Math.max(0, Math.min(20, Math.floor(mulliganTo)));
@@ -307,12 +308,67 @@
           />
         </span>
       </div>
-      <div class="toolbar-group">
-        <span class="life-label">life {viewerSeat?.life ?? "—"}</span>
+      <div class="toolbar-group life-group">
+        <button
+          class="life-label"
+          type="button"
+          onclick={() => (showLifeHistory = !showLifeHistory)}
+          aria-expanded={showLifeHistory}
+          aria-controls="life-history-popover"
+          title="click to toggle life-change history"
+        >
+          life {viewerSeat?.life ?? "—"}
+        </button>
         <button onclick={() => changeLife(-5)}>−5</button>
         <button onclick={() => changeLife(-1)}>−1</button>
         <button onclick={() => changeLife(1)}>+1</button>
         <button onclick={() => changeLife(5)}>+5</button>
+
+        {#if showLifeHistory}
+          <div class="life-history-popover" id="life-history-popover" role="dialog">
+            <header class="life-history-header">
+              <span>life history — all seats</span>
+              <button
+                type="button"
+                class="life-history-close"
+                onclick={() => (showLifeHistory = false)}
+                aria-label="close life history"
+              >
+                ×
+              </button>
+            </header>
+            <div class="life-history-body">
+              {#each seats as seat (seat.id)}
+                <section class="life-history-seat">
+                  <h4 class="life-history-seat-name">
+                    <span class="seat-dot" style="background:{seatColor(seat.seat)}"></span>
+                    {seat.name}
+                    <span class="muted">· now {seat.life}</span>
+                  </h4>
+                  {#if (seat.life_history?.length ?? 0) === 0}
+                    <p class="muted life-history-empty">no changes yet</p>
+                  {:else}
+                    <ol class="life-history-entries">
+                      {#each seat.life_history.slice().reverse() as entry, idx (idx)}
+                        <li>
+                          <span
+                            class="life-delta"
+                            class:gain={entry.delta > 0}
+                            class:loss={entry.delta < 0}
+                          >
+                            {entry.delta > 0 ? "+" : ""}{entry.delta}
+                          </span>
+                          <span class="life-newtotal">→ {entry.new_total}</span>
+                          <span class="life-time muted">{fmtTime(new Date(entry.at))}</span>
+                        </li>
+                      {/each}
+                    </ol>
+                  {/if}
+                </section>
+              {/each}
+            </div>
+          </div>
+        {/if}
       </div>
       <div class="toolbar-group priority-controls">
         <button
@@ -530,6 +586,105 @@
   .life-label {
     color: #e0e8ff;
     margin-right: 0.25rem;
+    background: transparent;
+    border: 1px solid transparent;
+    padding: 0.15rem 0.4rem;
+    cursor: pointer;
+    font: inherit;
+  }
+  .life-label:hover {
+    border-color: #2a3550;
+    border-radius: 3px;
+  }
+  .life-group {
+    position: relative;
+  }
+  .life-history-popover {
+    position: absolute;
+    top: calc(100% + 0.4rem);
+    left: 0;
+    z-index: 5;
+    width: min(320px, calc(100vw - 2rem));
+    max-height: 360px;
+    background: #0f1a30;
+    border: 1px solid #2a3550;
+    border-radius: 6px;
+    color: #cfd6ee;
+    font-size: 0.85em;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  }
+  .life-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid #2a3550;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.8em;
+  }
+  .life-history-close {
+    background: transparent;
+    border: none;
+    color: #888;
+    font-size: 1.2em;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.25rem;
+  }
+  .life-history-body {
+    overflow-y: auto;
+    padding: 0.4rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .life-history-seat-name {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0 0 0.25rem 0;
+    font-size: 0.95em;
+    font-weight: 600;
+    color: #e0e8ff;
+  }
+  .life-history-empty {
+    margin: 0 0 0 1.1rem;
+    font-size: 0.85em;
+  }
+  .life-history-entries {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .life-history-entries li {
+    display: grid;
+    grid-template-columns: 3rem 4rem 1fr;
+    align-items: baseline;
+    column-gap: 0.4rem;
+  }
+  .life-delta {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    text-align: right;
+  }
+  .life-delta.gain {
+    color: #b3e5b3;
+  }
+  .life-delta.loss {
+    color: #ffadad;
+  }
+  .life-newtotal {
+    color: #cfd6ee;
+    font-variant-numeric: tabular-nums;
+  }
+  .life-time {
+    font-size: 0.85em;
   }
   .priority-controls .viewer-priority {
     background: #b3e5b3;

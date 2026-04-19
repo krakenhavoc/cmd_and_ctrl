@@ -88,6 +88,17 @@ export interface PlayerView {
   graveyard: ZoneView;
   command: ZoneView;
   commander_damage: Record<string, number>;
+  // Rolling per-player life-change log. Bounded server-side at
+  // MaxLifeHistoryEntries (currently 50). Always emitted as an array
+  // (possibly empty); each entry is server-stamped at the moment of
+  // change. Added in S08.
+  life_history: LifeChangeView[];
+}
+
+export interface LifeChangeView {
+  delta: number;
+  new_total: number;
+  at: string; // RFC3339
 }
 
 export interface ZoneView {
