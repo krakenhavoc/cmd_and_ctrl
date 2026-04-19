@@ -24,6 +24,7 @@
   import HoverZoomOverlay from "./HoverZoomOverlay.svelte";
   import StackOverlay from "./StackOverlay.svelte";
   import CombatArrows from "./CombatArrows.svelte";
+  import CommanderDamageGrid from "./CommanderDamageGrid.svelte";
 
   type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
 
@@ -136,6 +137,7 @@
   <CombatArrows {view} {boardEl} />
   <HoverZoomOverlay />
   <StackOverlay stack={view.stack} />
+  <CommanderDamageGrid {view} {sendAction} />
 </div>
 
 <style>
