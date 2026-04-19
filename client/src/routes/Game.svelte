@@ -32,7 +32,7 @@
   // subscribers across reactive reruns (vs. replacing the client
   // instance, which would strand subscriptions on the old object).
   const client = new GameClient("");
-  const { status, snapshot, lastSeq, chat } = client;
+  const { status, snapshot, lastSeq, chat, lastError } = client;
 
   $effect(() => {
     client.disconnect();
@@ -88,13 +88,19 @@
     client.sendAction(type, player, params);
   };
 
-  // Re-render whenever a new snapshot arrives OR the renderer just
-  // finished initialising. Reading $snapshot and rendererReady in the
-  // same $effect ties both reactive inputs to the redraw.
+  // Re-render whenever a new snapshot arrives, the renderer just
+  // finished initialising, OR any combat-related field on
+  // renderOptions changes (selection, mode). The combat highlights
+  // are drawn into the same canvas as the rest of the table, so
+  // they need a redraw to update.
   $effect(() => {
     const view: GameView | null = $snapshot;
+    // touch every combat-related field so the effect re-runs on
+    // local UI changes that don't carry a new snapshot.
+    void renderOptions.combatMode;
+    void renderOptions.selectedCombatCardID;
     if (!renderer || !rendererReady || !view) return;
-    renderer.render(view, { viewerID: sess?.playerID ?? null, sendAction });
+    renderer.render(view, renderOptions);
   });
 
   // Watch the container size. PIXI's resizeTo handles the canvas
@@ -105,7 +111,7 @@
     const obs = new ResizeObserver(() => {
       if (!renderer || !rendererReady) return;
       const view = $snapshot;
-      if (view) renderer.render(view, { viewerID: sess?.playerID ?? null, sendAction });
+      if (view) renderer.render(view, renderOptions);
     });
     obs.observe(canvasEl);
     return () => obs.disconnect();
@@ -171,6 +177,15 @@
     client.sendAction("pass_turn");
   }
 
+  // advanceStep is the sandbox shortcut that bumps the step cursor
+  // forward by one without requiring both players to pass priority.
+  // Used by the "next step" toolbar button and the "done" button in
+  // the combat panel — solo testing and casual play don't need to
+  // simulate the priority hand-off rigorously.
+  function advanceStep(): void {
+    client.sendAction("advance_step");
+  }
+
   // "Pass until end of turn": send pass_priority repeatedly, waiting
   // for each snapshot to settle, until the cursor reaches the cleanup
   // step or the active seat changes. Capped at 24 iterations as a
@@ -231,6 +246,102 @@
   function changeLife(delta: number): void {
     if (!viewerID) return;
     client.sendAction("change_life", viewerID, { delta });
+  }
+
+  // ---- Combat ----
+  // Two-click flow: click an attacker (or blocker) row to "select"
+  // it, click a target row to commit. Selection state is local to
+  // the viewer's tab; nothing on the wire until the second click
+  // dispatches the action.
+
+  type CombatSelection =
+    | { kind: "attacker"; cardID: string }
+    | { kind: "blocker"; cardID: string }
+    | null;
+  let combatSelection = $state<CombatSelection>(null);
+
+  // Creatures on the battlefield currently declared as attacking the
+  // viewer — used to gate the block-mode flag below so the canvas
+  // doesn't enter block mode when there's nothing to block.
+  const incomingAttackers = $derived.by(() => {
+    if (!viewerID || !view) return [];
+    return view.battlefield.cards.filter((c) => c.attacking_target === viewerID);
+  });
+
+  // Step-based gating mirrors the server's MTG-rules check. Attackers
+  // can only be declared during declare_attackers and only by the
+  // active player; blockers only during declare_blockers and only
+  // when the viewer is being attacked.
+  const canDeclareAttackers = $derived(
+    !!turn && turn.step === "declare_attackers" && viewerIsActive,
+  );
+  const canDeclareBlockers = $derived(
+    !!turn && turn.step === "declare_blockers" && incomingAttackers.length > 0,
+  );
+
+  // combatMode tells the renderer how to interpret battlefield /
+  // seat clicks. Derived directly from the step gates so canvas
+  // clicks track the panel UX without separate state.
+  const combatMode = $derived<"idle" | "attack" | "block">(
+    canDeclareAttackers ? "attack" : canDeclareBlockers ? "block" : "idle",
+  );
+
+  // renderOptions bundles everything the table renderer needs.
+  // Recomputed on every snapshot / selection / mode change so
+  // canvas-side highlights and click handlers stay in sync.
+  const renderOptions = $derived({
+    viewerID: viewerID,
+    sendAction,
+    combatMode,
+    selectedCombatCardID: combatSelection?.cardID ?? null,
+    onSelectCombatCard: (cardID: string): void => {
+      if (combatMode === "attack") selectAttacker(cardID);
+      else if (combatMode === "block") selectBlocker(cardID);
+    },
+    onDeclareAttack: (targetPlayerID: string): void => {
+      declareAttackTarget(targetPlayerID);
+    },
+    onDeclareBlock: (attackerCardID: string): void => {
+      declareBlockTarget(attackerCardID);
+    },
+  });
+
+  function selectAttacker(cardID: string): void {
+    combatSelection =
+      combatSelection?.kind === "attacker" && combatSelection.cardID === cardID
+        ? null
+        : { kind: "attacker", cardID };
+  }
+  function selectBlocker(cardID: string): void {
+    combatSelection =
+      combatSelection?.kind === "blocker" && combatSelection.cardID === cardID
+        ? null
+        : { kind: "blocker", cardID };
+  }
+  function declareAttackTarget(targetPlayerID: string): void {
+    if (!viewerID || combatSelection?.kind !== "attacker") return;
+    client.sendAction("declare_attacker", undefined, {
+      attacker: combatSelection.cardID,
+      target: targetPlayerID,
+    });
+    combatSelection = null;
+  }
+  function declareBlockTarget(attackerCardID: string): void {
+    if (!viewerID || combatSelection?.kind !== "blocker") return;
+    client.sendAction("declare_blocker", undefined, {
+      blocker: combatSelection.cardID,
+      attacker: attackerCardID,
+    });
+    combatSelection = null;
+  }
+  // Look up a card's name + controller-name by instance ID. Used to
+  // label the combat-hint banner during selection.
+  function cardLabel(cardID: string): { name: string; controller: string } {
+    if (!view) return { name: "?", controller: "?" };
+    const c = view.battlefield.cards.find((x) => x.instance_id === cardID);
+    if (!c) return { name: "?", controller: "?" };
+    const ctrl = seats.find((s) => s.id === c.controller);
+    return { name: c.name, controller: ctrl?.name ?? "?" };
   }
 
   function keepHand(): void {
@@ -364,6 +475,22 @@
     </div>
   {/if}
 
+  {#if $lastError}
+    <div class="error-toast" role="alert" aria-live="polite">
+      <strong>server rejected action:</strong>
+      {$lastError.message}
+      <span class="muted">({$lastError.code})</span>
+      <button
+        type="button"
+        class="error-toast-close"
+        onclick={() => lastError.set(null)}
+        aria-label="dismiss"
+      >
+        ×
+      </button>
+    </div>
+  {/if}
+
   {#if gameEnded}
     <div class="game-end-banner" role="alert">
       {#if winner}
@@ -492,6 +619,16 @@
       </div>
       <div class="toolbar-group priority-controls">
         <button
+          onclick={advanceStep}
+          disabled={!viewerIsActive}
+          class:advance-step={viewerIsActive}
+          title={viewerIsActive
+            ? "advance the step cursor by one (sandbox shortcut — bypasses opponent priority pass)"
+            : `${activePlayer?.name ?? "another seat"} is the active player`}
+        >
+          next step
+        </button>
+        <button
           onclick={passPriority}
           disabled={!viewerHasPriority}
           class:viewer-priority={viewerHasPriority}
@@ -532,6 +669,19 @@
           concede
         </button>
       </div>
+    </div>
+  {/if}
+
+  {#if combatSelection && !mulligansOpen}
+    <div class="combat-hint" role="status" aria-live="polite">
+      {#if combatSelection.kind === "attacker"}
+        Attacking with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an opponent's
+        seat to commit, or click the creature again to cancel.
+      {:else}
+        Blocking with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an incoming attacker
+        to commit, or click the creature again to cancel.
+      {/if}
+      <button class="combat-cancel" onclick={() => (combatSelection = null)}>cancel</button>
     </div>
   {/if}
 
@@ -632,6 +782,20 @@
     height: 100%;
     border-radius: 6px;
     overflow: hidden;
+    /* PIXI v8 sets position: absolute on the canvas it injects.
+       Without an explicit positioned ancestor, the canvas anchors
+       to the next one up (the section, which is position: fixed
+       and inset: 0). The result was the canvas — and PIXI's
+       pointer-event capture — covering the entire viewport,
+       making toolbar buttons visually present but clickless.
+       position: relative pins the canvas inside this container. */
+    position: relative;
+  }
+  .table > :global(canvas) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
   }
   .muted {
     color: #888;
@@ -818,6 +982,59 @@
     color: #cfd6ee;
   }
 
+  /* Combat: just the active selection hint. The actual combat UI
+     is canvas-only — click your creature, click an opponent's seat. */
+  .combat-hint {
+    padding: 0.4rem 0.6rem;
+    margin-bottom: 0.4rem;
+    background: #0f1a30;
+    border: 1px solid #ffd07a;
+    border-radius: 4px;
+    color: #ffd07a;
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .combat-hint strong {
+    color: #fff;
+  }
+  .combat-cancel {
+    margin-left: auto;
+    padding: 0.15rem 0.6rem;
+    font-size: 0.85em;
+    background: #2a3550;
+    color: #cfd6ee;
+    border: 1px solid #3a4570;
+  }
+
+  /* Server-error toast */
+  .error-toast {
+    padding: 0.5rem 0.8rem;
+    margin-bottom: 0.4rem;
+    background: #4a1a1a;
+    border: 1px solid #8a3a3a;
+    border-radius: 4px;
+    color: #ffd0d0;
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .error-toast strong {
+    color: #fff;
+  }
+  .error-toast-close {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: #ffd0d0;
+    font-size: 1.2em;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.25rem;
+  }
+
   /* End-of-game banners */
   .game-end-banner {
     padding: 0.6rem 0.9rem;
@@ -990,6 +1207,12 @@
     background: #b3e5b3;
     color: #0c1426;
     font-weight: 600;
+  }
+  .priority-controls .advance-step {
+    background: #5fb0ff;
+    color: #0c1426;
+    font-weight: 600;
+    border: 1px solid #4a8acc;
   }
 
   /* Chat */

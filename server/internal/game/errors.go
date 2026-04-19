@@ -59,4 +59,14 @@ var (
 	// whose Eliminated flag is set, or when an eliminated player tries
 	// to concede a second time.
 	ErrPlayerEliminated = errors.New("game: player is eliminated")
+
+	// ErrWrongStep is returned when a step-gated mutation is attempted
+	// in a step that doesn't permit it (e.g. declare_attacker outside
+	// the declare_attackers step). Added in S08.
+	ErrWrongStep = errors.New("game: action not legal in current step")
+
+	// ErrNotACreature is returned when a card-targeting mutation
+	// requires a creature but the supplied card isn't one (e.g.
+	// declaring a land as an attacker). Added in S08.
+	ErrNotACreature = errors.New("game: card is not a creature")
 )

@@ -247,6 +247,113 @@ func TestDispatchRejectsCrossSeatPlayerScopedAction(t *testing.T) {
 	}
 }
 
+// pushCreature drops a 2/2 test creature onto the battlefield and
+// returns its instance ID as a string. Combat dispatch tests need
+// real creatures (the game's IsCreature check rejects placeholder
+// cards from the demo deck).
+func pushCreature(t *testing.T, g *game.Game, p *game.Player) string {
+	t.Helper()
+	c := game.NewCard("Test Creature", p.ID)
+	c.TypeLine = "Creature — Test"
+	c.Power = 2
+	c.Toughness = 2
+	g.Battlefield.PushTop(c)
+	return c.InstanceID.String()
+}
+
+// advanceTo walks the game's step cursor forward to the named step.
+func advanceTo(t *testing.T, g *game.Game, step game.Step) {
+	t.Helper()
+	for g.Turn.Step != step {
+		before := g.Turn
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+		if g.Turn == before {
+			t.Fatalf("advanceTo loop didn't progress past %v", before)
+		}
+	}
+}
+
+func TestDispatchDeclareAttacker(t *testing.T) {
+	g := newGame(t)
+	attacker := pushCreature(t, g, g.Seats[0])
+	advanceTo(t, g, game.StepDeclareAttackers)
+	target := g.Seats[1].ID.String()
+
+	a, _ := Decode(string(TypeDeclareAttacker), "", params(t, map[string]string{
+		"attacker": attacker,
+		"target":   target,
+	}))
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID.String() == attacker && c.AttackingTarget.String() != target {
+			t.Errorf("AttackingTarget: got %v, want %v", c.AttackingTarget, target)
+		}
+	}
+}
+
+func TestDispatchDeclareBlocker(t *testing.T) {
+	g := newGame(t)
+	attacker := pushCreature(t, g, g.Seats[0])
+	blocker := pushCreature(t, g, g.Seats[1])
+	advanceTo(t, g, game.StepDeclareAttackers)
+	_ = Dispatch(g, mustAction(t, TypeDeclareAttacker, params(t, map[string]string{
+		"attacker": attacker,
+		"target":   g.Seats[1].ID.String(),
+	})))
+	advanceTo(t, g, game.StepDeclareBlockers)
+
+	a, _ := Decode(string(TypeDeclareBlocker), "", params(t, map[string]string{
+		"blocker":  blocker,
+		"attacker": attacker,
+	}))
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID.String() == blocker && c.BlockingTarget.String() != attacker {
+			t.Errorf("BlockingTarget: got %v, want %v", c.BlockingTarget, attacker)
+		}
+	}
+}
+
+func TestDispatchClearCombat(t *testing.T) {
+	g := newGame(t)
+	attacker := pushCreature(t, g, g.Seats[0])
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := Dispatch(g, mustAction(t, TypeDeclareAttacker, params(t, map[string]string{
+		"attacker": attacker,
+		"target":   g.Seats[1].ID.String(),
+	}))); err != nil {
+		t.Fatalf("Dispatch declare: %v", err)
+	}
+
+	clear, _ := Decode(string(TypeClearCombat), "", nil)
+	if err := Dispatch(g, clear); err != nil {
+		t.Fatalf("Dispatch clear: %v", err)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.AttackingTarget != uuid.Nil {
+			t.Errorf("card %v still attacking after clear_combat", c.InstanceID)
+		}
+	}
+}
+
+// mustAction is a thin Decode wrapper that fails the test on decode
+// error. Used so combat dispatch tests can chain multiple actions
+// without local error boilerplate.
+func mustAction(t *testing.T, ty Type, p []byte) Action {
+	t.Helper()
+	a, err := Decode(string(ty), "", p)
+	if err != nil {
+		t.Fatalf("Decode %s: %v", ty, err)
+	}
+	return a
+}
+
 func TestDispatchKeepHand(t *testing.T) {
 	g := newGame(t)
 	caller := g.Seats[0].ID

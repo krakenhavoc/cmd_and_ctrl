@@ -151,6 +151,8 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.Counters = nil
 		c.BattleX = 0
 		c.BattleY = 0
+		c.AttackingTarget = uuid.Nil
+		c.BlockingTarget = uuid.Nil
 	}
 	dst.PushTop(c)
 	return c, nil

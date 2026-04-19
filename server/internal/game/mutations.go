@@ -274,6 +274,180 @@ func (g *Game) PassPriority() error {
 	return nil
 }
 
+// DeclareAttacker marks a battlefield card as attacking the target
+// player. Gated by the declare_attackers step (MTG: attackers can
+// only be declared during the corresponding step) and by the
+// attacker being a creature (MTG: only creatures attack).
+//
+// Returns ErrWrongStep outside the declare_attackers step,
+// ErrNotACreature for non-creature cards, ErrPlayerNotFound for an
+// unknown target player, and ErrCardNotFound for an unknown
+// attacker card. Re-declaring the same attacker against a different
+// target overwrites the previous target.
+//
+// Caller authorization (was-it-the-controller) is intentionally
+// NOT enforced — sandbox flexibility for casual play. Untap state
+// and summoning sickness are also not enforced; those land with
+// rules enforcement in S13+.
+func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	if g.Turn.Step != StepDeclareAttackers {
+		return ErrWrongStep
+	}
+	if g.playerByIDLocked(targetPlayerID) == nil {
+		return ErrPlayerNotFound
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == attackerID {
+			if !g.Battlefield.Cards[i].IsCreature() {
+				return ErrNotACreature
+			}
+			g.Battlefield.Cards[i].AttackingTarget = targetPlayerID
+			// A card declared as attacker can't simultaneously be a
+			// blocker — clearing the other field keeps the per-card
+			// combat state coherent.
+			g.Battlefield.Cards[i].BlockingTarget = uuid.Nil
+			return nil
+		}
+	}
+	return ErrCardNotFound
+}
+
+// DeclareBlocker marks a battlefield card as blocking a specific
+// declared attacker. Gated by the declare_blockers step. Both IDs
+// must exist on the battlefield, and the blocker must be a
+// creature.
+//
+// Returns ErrWrongStep outside the declare_blockers step,
+// ErrNotACreature for a non-creature blocker, and ErrCardNotFound
+// when either card is missing from the battlefield. Idempotent on
+// the same pair.
+//
+// The attacker need not currently have AttackingTarget set — the
+// sandbox accepts pre-emptive blocker declarations.
+func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	if g.Turn.Step != StepDeclareBlockers {
+		return ErrWrongStep
+	}
+	// Verify the attacker exists on the battlefield. Without this the
+	// blocker would silently point at a non-existent attacker ID.
+	attackerExists := false
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == attackerID {
+			attackerExists = true
+			break
+		}
+	}
+	if !attackerExists {
+		return ErrCardNotFound
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == blockerID {
+			if !g.Battlefield.Cards[i].IsCreature() {
+				return ErrNotACreature
+			}
+			g.Battlefield.Cards[i].BlockingTarget = attackerID
+			g.Battlefield.Cards[i].AttackingTarget = uuid.Nil
+			return nil
+		}
+	}
+	return ErrCardNotFound
+}
+
+// ResolveCombatDamage applies damage from declared attackers that
+// went unblocked. For each card with AttackingTarget set:
+//
+//   - If no other battlefield card is currently blocking it
+//     (BlockingTarget == this attacker's instance ID), the
+//     attacker's CurrentPower is subtracted from the target
+//     player's life — recorded via the same path as ChangeLife so
+//     the change shows up in LifeHistory.
+//   - If at least one blocker is declared, the attacker is left
+//     alone here; creature-vs-creature damage assignment requires
+//     full rules support and remains a manual step until S13+.
+//
+// After damage application, all combat state is cleared (same as
+// ClearCombat). Trample, deathtouch, double strike, lifelink, and
+// other combat keywords are NOT modeled — those land with rules
+// enforcement.
+//
+// Auto-invoked by AdvanceStep when entering the combat_damage step,
+// so under normal play this never needs to be called explicitly.
+func (g *Game) ResolveCombatDamage() {
+	// internal helper — caller holds g.mu via AdvanceStep, or we
+	// take it ourselves below.
+	g.resolveCombatDamageLocked()
+}
+
+func (g *Game) resolveCombatDamageLocked() {
+	if g.State != StateActive {
+		return
+	}
+	// Pre-compute the set of attacker IDs that have at least one
+	// declared blocker. O(n) two-pass keeps the per-attacker check
+	// O(1) even with many blockers.
+	blocked := make(map[uuid.UUID]bool, len(g.Battlefield.Cards))
+	for _, c := range g.Battlefield.Cards {
+		if c.BlockingTarget != uuid.Nil {
+			blocked[c.BlockingTarget] = true
+		}
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.AttackingTarget == uuid.Nil {
+			continue
+		}
+		if blocked[c.InstanceID] {
+			continue
+		}
+		target := g.playerByIDLocked(c.AttackingTarget)
+		if target == nil {
+			continue
+		}
+		damage := c.CurrentPower()
+		if damage <= 0 {
+			continue
+		}
+		// Player.ChangeLife appends a LifeHistory entry. We're inside
+		// the game's write lock; ChangeLife operates on the player
+		// struct directly without any internal locking, so this is
+		// safe.
+		target.ChangeLife(-damage)
+	}
+	// Clear all combat state at the end so the next combat starts
+	// from a clean slate. Mirrors ClearCombat.
+	for i := range g.Battlefield.Cards {
+		g.Battlefield.Cards[i].AttackingTarget = uuid.Nil
+		g.Battlefield.Cards[i].BlockingTarget = uuid.Nil
+	}
+}
+
+// ClearCombat resets every card on the battlefield to "not attacking
+// and not blocking". Called by the active player at end of combat
+// (or by anyone, really — the sandbox doesn't gate it). Cheap O(n)
+// pass over the battlefield.
+func (g *Game) ClearCombat() error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	for i := range g.Battlefield.Cards {
+		g.Battlefield.Cards[i].AttackingTarget = uuid.Nil
+		g.Battlefield.Cards[i].BlockingTarget = uuid.Nil
+	}
+	return nil
+}
+
 // Concede marks the given player as eliminated. If exactly one
 // non-eliminated player remains after the mutation, the game's State
 // transitions to StateEnded — derived state, no separate Winner field

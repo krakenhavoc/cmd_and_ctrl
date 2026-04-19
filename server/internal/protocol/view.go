@@ -3,6 +3,8 @@ package protocol
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -90,11 +92,25 @@ type ZoneView struct {
 
 // CardView is the wire representation of a Card.
 type CardView struct {
-	InstanceID  string         `json:"instance_id"`
-	Name        string         `json:"name"`
-	Owner       string         `json:"owner"`
-	Controller  string         `json:"controller"`
-	ScryfallID  string         `json:"scryfall_id,omitempty"`
+	InstanceID string `json:"instance_id"`
+	Name       string `json:"name"`
+	Owner      string `json:"owner"`
+	Controller string `json:"controller"`
+	ScryfallID string `json:"scryfall_id,omitempty"`
+	// TypeLine is Scryfall's printed type line ("Legendary Creature
+	// — Human Wizard"). Carried so the client can filter "creatures
+	// only" UIs (the combat panel) without a Scryfall round-trip.
+	// Omitted for placeholder demo cards that have no resolved type.
+	// Added in S08.
+	TypeLine string `json:"type_line,omitempty"`
+	// Power and Toughness are the parsed printed stats. Zero for
+	// non-creatures and for any card with non-numeric printed stats
+	// ("*", "1+*"). The client uses Power to label combat-panel
+	// creature rows; ResolveCombatDamage uses CurrentPower (base +
+	// counter modifiers) on the server side. Both omitempty for
+	// non-creatures. Added in S08.
+	Power       int            `json:"power,omitempty"`
+	Toughness   int            `json:"toughness,omitempty"`
 	Tapped      bool           `json:"tapped,omitempty"`
 	Counters    map[string]int `json:"counters,omitempty"`
 	IsCommander bool           `json:"is_commander,omitempty"`
@@ -106,6 +122,14 @@ type CardView struct {
 	// drag-release).
 	BattleX float64 `json:"battle_x,omitempty"`
 	BattleY float64 `json:"battle_y,omitempty"`
+	// AttackingTarget is the player ID this card is currently
+	// declared to attack, or omitted if not declared. Cleared on
+	// zone exit and by clear_combat. Added in S08.
+	AttackingTarget string `json:"attacking_target,omitempty"`
+	// BlockingTarget is the attacker instance ID this card is
+	// currently declared to block, or omitted if not declared.
+	// Cleared on zone exit and by clear_combat. Added in S08.
+	BlockingTarget string `json:"blocking_target,omitempty"`
 }
 
 // TurnView is the wire representation of the turn cursor. PriorityHolder
@@ -268,16 +292,26 @@ func viewOfCard(c game.Card) CardView {
 			counters[k] = v
 		}
 	}
-	return CardView{
+	view := CardView{
 		InstanceID:  c.InstanceID.String(),
 		Name:        c.Name,
 		Owner:       c.Owner.String(),
 		Controller:  c.Controller.String(),
 		ScryfallID:  c.ScryfallID,
+		TypeLine:    c.TypeLine,
+		Power:       c.Power,
+		Toughness:   c.Toughness,
 		Tapped:      c.Tapped,
 		Counters:    counters,
 		IsCommander: c.IsCommander,
 		BattleX:     c.BattleX,
 		BattleY:     c.BattleY,
 	}
+	if c.AttackingTarget != uuid.Nil {
+		view.AttackingTarget = c.AttackingTarget.String()
+	}
+	if c.BlockingTarget != uuid.Nil {
+		view.BlockingTarget = c.BlockingTarget.String()
+	}
+	return view
 }

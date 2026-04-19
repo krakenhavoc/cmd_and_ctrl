@@ -89,6 +89,27 @@ export interface RenderOptions {
   // (click-to-tap, click-to-play). Omitting it makes the renderer
   // read-only — useful for spectator / admin views.
   sendAction?: ActionSender;
+  // combatMode tells the renderer how battlefield card / seat
+  // panel clicks should be interpreted. "idle" = normal tap/play;
+  // "attack" = clicking your creature selects it as an attacker
+  // and clicking an opponent seat declares attack;
+  // "block" = clicking your creature selects it as a blocker and
+  // clicking an incoming attacker declares the block. Added in S08.
+  combatMode?: "idle" | "attack" | "block";
+  // selectedCombatCardID is the instance ID of the currently
+  // selected attacker / blocker (mirrors Game.svelte's local
+  // state). Drives the yellow highlight on the selected card.
+  selectedCombatCardID?: string | null;
+  // onSelectCombatCard fires when the user clicks one of their
+  // own creatures during combat mode. The route component holds
+  // the canonical combat-selection state.
+  onSelectCombatCard?: (cardID: string) => void;
+  // onDeclareAttack fires when, during attack mode with a
+  // selection, the user clicks an opponent's seat panel.
+  onDeclareAttack?: (targetPlayerID: string) => void;
+  // onDeclareBlock fires when, during block mode with a selection,
+  // the user clicks an incoming attacker on the battlefield.
+  onDeclareBlock?: (attackerCardID: string) => void;
 }
 
 export class TableRenderer {
@@ -238,11 +259,32 @@ function drawSeat(
   panel.x = cx;
   panel.y = cy;
 
+  // Opponent seat targetable as an attack destination when the
+  // viewer is in attack mode and has a selected attacker. Drawn
+  // before the header so the header still renders on top.
+  const isAttackTargetable =
+    !isSelf && !seat.eliminated && opts.combatMode === "attack" && !!opts.selectedCombatCardID;
+
   // Header: player name + life + seat #.
   const header = new Graphics();
   header.roundRect(-Z_WIDTH / 2, -Z_HEIGHT / 2, Z_WIDTH, 32, 4);
   header.fill({ color: seatColor, alpha: 0.9 });
   panel.addChild(header);
+
+  // Attack-target glow + click handler. The glow on the seat header
+  // signals "click here to attack me"; the handler dispatches via
+  // the route-supplied callback.
+  if (isAttackTargetable) {
+    const glow = new Graphics();
+    glow.roundRect(-Z_WIDTH / 2 - 4, -Z_HEIGHT / 2 - 4, Z_WIDTH + 8, 40, 6);
+    glow.stroke({ color: 0xff7a7a, width: 3 });
+    panel.addChild(glow);
+    header.eventMode = "static";
+    header.cursor = "pointer";
+    header.on("pointertap", () => {
+      opts.onDeclareAttack?.(seat.id);
+    });
+  }
 
   const nameText = new Text({
     text: `${seat.name}  ·  ${seat.life} life  ·  seat ${seat.seat}`,
@@ -455,30 +497,58 @@ function drawBattlefieldCards(
       // Click-to-toggle-tap on the battlefield. Drag-to-reposition
       // lands in a later phase — this handler fires on a static
       // pointertap (press + release without movement), so a future
-      // drag implementation won't collide with it.
-      wireTapClick(tile, c, opts.sendAction, innerX, innerY, innerW, innerH);
+      // drag implementation won't collide with it. During combat
+      // mode the click resolves to a combat selection / target
+      // action instead; see wireTapClick.
+      wireTapClick(tile, c, opts, innerX, innerY, innerW, innerH);
+    }
+    // Visual: yellow glow on the selected combat creature (matches
+    // the panel's .combat-row.selected styling). Drawn as a bright
+    // border on top of the existing tile.
+    if (opts.selectedCombatCardID === c.instance_id) {
+      const ring = new Graphics();
+      ring.roundRect(-TILE_W / 2 - 3, -TILE_H / 2 - 3, TILE_W + 6, TILE_H + 6, 6);
+      ring.stroke({ color: 0xffd07a, width: 3 });
+      tile.view.addChild(ring);
+    }
+    // Visual: red border on declared attackers, blue on declared
+    // blockers, so combat state is legible without the panel.
+    if (c.attacking_target) {
+      const ring = new Graphics();
+      ring.roundRect(-TILE_W / 2 - 2, -TILE_H / 2 - 2, TILE_W + 4, TILE_H + 4, 5);
+      ring.stroke({ color: 0xff7a7a, width: 2 });
+      tile.view.addChild(ring);
+    } else if (c.blocking_target) {
+      const ring = new Graphics();
+      ring.roundRect(-TILE_W / 2 - 2, -TILE_H / 2 - 2, TILE_W + 4, TILE_H + 4, 5);
+      ring.stroke({ color: 0x9ec7ff, width: 2 });
+      tile.view.addChild(ring);
     }
     root.addChild(tile.view);
   }
 }
 
-// wireTapClick attaches click-to-toggle-tap and drag-to-reposition
-// to a battlefield tile. A pointerdown that stays within a small
-// move threshold before pointerup is treated as a tap-toggle;
-// anything further is a drag that ends with set_battlefield_position
-// on release, carrying the tile's new (x, y) renormalised against
-// the battlefield rect.
+// wireTapClick attaches the battlefield-tile interaction handlers.
+// In normal play (combat mode "idle"), a static pointertap toggles
+// tap state and a drag stamps a new battle position. During combat
+// mode the static-pointertap branch is reinterpreted: clicks on the
+// viewer's own creatures select/deselect them as the attacker /
+// blocker; clicks on an opponent's incoming attacker (block mode
+// only) commit the block. The drag-to-reposition branch is
+// preserved across modes so combat selection doesn't trap the user.
 //
 // Drag state is local to this closure — each tile gets its own.
 function wireTapClick(
   tile: CardTile,
   card: CardView,
-  send: ActionSender,
+  opts: RenderOptions,
   innerX: number,
   innerY: number,
   innerW: number,
   innerH: number,
 ): void {
+  const send = opts.sendAction;
+  if (!send) return;
   tile.view.eventMode = "static";
   tile.view.cursor = "pointer";
   // DRAG_THRESHOLD is the cursor-movement distance (in pixels) that
@@ -510,6 +580,28 @@ function wireTapClick(
     const started = downAt;
     downAt = null;
     if (!dragging) {
+      // Combat-mode click routing. Disambiguates between selecting
+      // your own creature (always your card) and committing a block
+      // against an incoming attacker (always not your card). Non-
+      // creatures fall through to the tap branch so combat clicks
+      // on lands / artifacts don't dispatch a doomed action — the
+      // server would reject with ErrNotACreature, but the UX is
+      // better if the click just toggles tap as expected.
+      const mode = opts.combatMode ?? "idle";
+      const viewerID = opts.viewerID;
+      const cardIsCreature = !!card.type_line && /creature/i.test(card.type_line);
+      if (
+        (mode === "attack" || mode === "block") &&
+        card.controller === viewerID &&
+        cardIsCreature
+      ) {
+        opts.onSelectCombatCard?.(card.instance_id);
+        return;
+      }
+      if (mode === "block" && card.attacking_target === viewerID) {
+        opts.onDeclareBlock?.(card.instance_id);
+        return;
+      }
       send(card.tapped ? "untap" : "tap", { instance_id: card.instance_id });
       return;
     }

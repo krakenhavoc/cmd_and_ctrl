@@ -40,6 +40,10 @@ const (
 	TypeSetBattlefieldPosition Type = "set_battlefield_position"
 	TypeConcede                Type = "concede"
 	TypeKeepHand               Type = "keep_hand"
+	TypeDeclareAttacker        Type = "declare_attacker"
+	TypeDeclareBlocker         Type = "declare_blocker"
+	TypeClearCombat            Type = "clear_combat"
+	TypeAdvanceStep            Type = "advance_step"
 )
 
 // ErrUnknownType is returned when Dispatch receives an action type it
@@ -348,6 +352,57 @@ func Dispatch(g *game.Game, a Action) error {
 			return ErrInvalidPlayer
 		}
 		return g.KeepHand(a.Player)
+
+	case TypeDeclareAttacker:
+		var p struct {
+			Attacker string `json:"attacker"`
+			Target   string `json:"target"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		attackerID, err := uuid.Parse(p.Attacker)
+		if err != nil {
+			return fmt.Errorf("declare_attacker attacker: %w", err)
+		}
+		targetID, err := uuid.Parse(p.Target)
+		if err != nil {
+			return fmt.Errorf("declare_attacker target: %w", err)
+		}
+		return g.DeclareAttacker(attackerID, targetID)
+
+	case TypeDeclareBlocker:
+		var p struct {
+			Blocker  string `json:"blocker"`
+			Attacker string `json:"attacker"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		blockerID, err := uuid.Parse(p.Blocker)
+		if err != nil {
+			return fmt.Errorf("declare_blocker blocker: %w", err)
+		}
+		attackerID, err := uuid.Parse(p.Attacker)
+		if err != nil {
+			return fmt.Errorf("declare_blocker attacker: %w", err)
+		}
+		return g.DeclareBlocker(blockerID, attackerID)
+
+	case TypeClearCombat:
+		return g.ClearCombat()
+
+	case TypeAdvanceStep:
+		// Sandbox affordance: advance the step cursor by one without
+		// requiring both players to have passed priority. This is the
+		// "done — next step" button. NOT caller-gated — any seated
+		// player (or admin) can advance the cursor; in casual play
+		// the active player is usually the one driving combat
+		// progression. Auto-resolve combat damage still fires when
+		// the cursor lands on combat_damage (handled inside
+		// game.AdvanceStep).
+		_, err := g.AdvanceStep()
+		return err
 
 	case TypeSetBattlefieldPosition:
 		var p struct {

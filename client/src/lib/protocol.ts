@@ -133,6 +133,14 @@ export interface CardView {
   owner: string;
   controller: string;
   scryfall_id?: string;
+  // Scryfall printed type line ("Legendary Creature — Human Wizard").
+  // Used by the client to filter creature-only UIs (combat panel)
+  // and to label cards. Omitted for placeholder demo cards. S08.
+  type_line?: string;
+  // Parsed printed creature stats. Omitted (zero) for non-creatures
+  // and for cards with non-numeric printed stats. S08.
+  power?: number;
+  toughness?: number;
   tapped?: boolean;
   counters?: Record<string, number>;
   is_commander?: boolean;
@@ -141,6 +149,14 @@ export interface CardView {
   // omits the fields for cards that have never been positioned.
   battle_x?: number;
   battle_y?: number;
+  // Player ID this card is currently declared to attack. Omitted
+  // when not declared as attacker. Cleared on zone exit and by
+  // clear_combat. Added in S08.
+  attacking_target?: string;
+  // Attacker instance ID this card is currently declared to block.
+  // Omitted when not declared as blocker. Cleared on zone exit and
+  // by clear_combat. Added in S08.
+  blocking_target?: string;
 }
 
 export interface TurnView {
