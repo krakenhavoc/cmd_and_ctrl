@@ -79,6 +79,14 @@ export interface GameView {
   // action. Drives the keep / mulligan dialog and gates the normal
   // game UI. Added in S08.
   mulligans_open: boolean;
+  // Player ID of the current monarch (Conspiracy mechanic). Empty /
+  // omitted when no monarch is set. Sandbox marker; the must-attack
+  // and combat-damage transfer rules are not enforced server-side.
+  // Added in S10.
+  monarch?: string;
+  // Player ID currently holding the initiative (BG3 mechanic). Empty
+  // when unassigned. Same sandbox posture as monarch. Added in S10.
+  initiative?: string;
 }
 
 export interface PlayerView {
@@ -162,6 +170,10 @@ export interface CardView {
   // Omitted when not declared as blocker. Cleared on zone exit and
   // by clear_combat. Added in S08.
   blocking_target?: string;
+  // Player ID who goaded this creature, or omitted when not goaded.
+  // Cleared on zone exit. Sandbox marker; must-attack-not-the-goader
+  // is not enforced server-side. Added in S10.
+  goaded_by?: string;
 }
 
 export interface TurnView {

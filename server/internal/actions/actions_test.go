@@ -552,6 +552,81 @@ func TestDispatchSetBattlefieldPosition(t *testing.T) {
 	}
 }
 
+func TestDispatchSetMonarch(t *testing.T) {
+	g := newGame(t)
+	p0 := g.Seats[0]
+	a, _ := Decode(string(TypeSetMonarch), p0.ID.String(), nil)
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	if g.Monarch != p0.ID {
+		t.Errorf("monarch: got %v, want %v", g.Monarch, p0.ID)
+	}
+	// Empty player clears.
+	clear, _ := Decode(string(TypeSetMonarch), "", nil)
+	if err := Dispatch(g, clear); err != nil {
+		t.Fatalf("Dispatch clear: %v", err)
+	}
+	if g.Monarch != uuid.Nil {
+		t.Errorf("monarch cleared: got %v, want nil", g.Monarch)
+	}
+}
+
+func TestDispatchSetInitiative(t *testing.T) {
+	g := newGame(t)
+	p0 := g.Seats[0]
+	a, _ := Decode(string(TypeSetInitiative), p0.ID.String(), nil)
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	if g.Initiative != p0.ID {
+		t.Errorf("initiative: got %v, want %v", g.Initiative, p0.ID)
+	}
+}
+
+func TestDispatchSetGoaded(t *testing.T) {
+	g := newGame(t)
+	p0, p1 := g.Seats[0], g.Seats[1]
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: uuid.New(), Name: "Atog", TypeLine: "Creature — Atog",
+		Owner: p0.ID, Controller: p0.ID,
+	})
+	c := g.Battlefield.Cards[0]
+	a, _ := Decode(string(TypeSetGoaded), "", params(t, map[string]string{
+		"instance_id": c.InstanceID.String(),
+		"by":          p1.ID.String(),
+	}))
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	if g.Battlefield.Cards[0].GoadedBy != p1.ID {
+		t.Errorf("goaded_by: got %v, want %v", g.Battlefield.Cards[0].GoadedBy, p1.ID)
+	}
+}
+
+func TestDispatchSetPoison(t *testing.T) {
+	g := newGame(t)
+	p0 := g.Seats[0]
+	a, _ := Decode(string(TypeSetPoison), p0.ID.String(), params(t, map[string]int{"amount": 5}))
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	if p0.Poison != 5 {
+		t.Errorf("poison: got %d, want 5", p0.Poison)
+	}
+}
+
+func TestDispatchSetEnergyRejectsCrossSeat(t *testing.T) {
+	g := newGame(t)
+	p0, p1 := g.Seats[0], g.Seats[1]
+	a, _ := Decode(string(TypeSetEnergy), p1.ID.String(), params(t, map[string]int{"amount": 4}))
+	a.Caller = p0.ID
+	err := Dispatch(g, a)
+	if !errors.Is(err, ErrPlayerCallerMismatch) {
+		t.Errorf("cross-seat energy: got %v, want ErrPlayerCallerMismatch", err)
+	}
+}
+
 func TestDispatchUnknownType(t *testing.T) {
 	g := newGame(t)
 	a, _ := Decode("explode", "", nil)

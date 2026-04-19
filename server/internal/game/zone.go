@@ -153,6 +153,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.BattleY = 0
 		c.AttackingTarget = uuid.Nil
 		c.BlockingTarget = uuid.Nil
+		c.GoadedBy = uuid.Nil
 	}
 	dst.PushTop(c)
 	return c, nil

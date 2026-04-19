@@ -44,6 +44,12 @@ const (
 	TypeDeclareBlocker         Type = "declare_blocker"
 	TypeClearCombat            Type = "clear_combat"
 	TypeAdvanceStep            Type = "advance_step"
+	// S10 Commander UX additions.
+	TypeSetMonarch    Type = "set_monarch"
+	TypeSetInitiative Type = "set_initiative"
+	TypeSetGoaded     Type = "set_goaded"
+	TypeSetPoison     Type = "set_poison"
+	TypeSetEnergy     Type = "set_energy"
 )
 
 // ErrUnknownType is returned when Dispatch receives an action type it
@@ -207,6 +213,13 @@ var playerScopedActions = map[Type]struct{}{
 	TypeChangeLife:     {},
 	TypeConcede:        {},
 	TypeKeepHand:       {},
+	// Poison and energy follow change_life's posture: the affected
+	// player adjusts their own counters in the sandbox. Monarch and
+	// initiative are NOT player-scoped — any seated player may flip
+	// the marker because card effects routinely make someone else
+	// the monarch.
+	TypeSetPoison: {},
+	TypeSetEnergy: {},
 }
 
 // Dispatch applies an action to a game. Returns nil on success, an
@@ -440,6 +453,66 @@ func Dispatch(g *game.Game, a Action) error {
 		// game.AdvanceStep).
 		_, err := g.AdvanceStep()
 		return err
+
+	case TypeSetMonarch:
+		// Sandbox affordance — any seated player can flip the marker
+		// (no enforcement of "combat damage transfers monarchy"). Empty
+		// player clears the marker.
+		if a.Player == uuid.Nil {
+			return g.SetMonarch(uuid.Nil)
+		}
+		return g.SetMonarch(a.Player)
+
+	case TypeSetInitiative:
+		if a.Player == uuid.Nil {
+			return g.SetInitiative(uuid.Nil)
+		}
+		return g.SetInitiative(a.Player)
+
+	case TypeSetGoaded:
+		var p struct {
+			InstanceID string `json:"instance_id"`
+			By         string `json:"by"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		instanceID, err := uuid.Parse(p.InstanceID)
+		if err != nil {
+			return fmt.Errorf("set_goaded instance_id: %w", err)
+		}
+		var by uuid.UUID
+		if p.By != "" {
+			by, err = uuid.Parse(p.By)
+			if err != nil {
+				return fmt.Errorf("set_goaded by: %w", err)
+			}
+		}
+		return g.SetGoaded(instanceID, by)
+
+	case TypeSetPoison:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			Amount int `json:"amount"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		return g.SetPoison(a.Player, p.Amount)
+
+	case TypeSetEnergy:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			Amount int `json:"amount"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		return g.SetEnergy(a.Player, p.Amount)
 
 	case TypeSetBattlefieldPosition:
 		var p struct {

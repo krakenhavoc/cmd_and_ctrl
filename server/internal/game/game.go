@@ -68,6 +68,21 @@ type Game struct {
 	// "real" game UI behind the player's commitment. Added in S08.
 	MulligansOpen bool
 
+	// Monarch is the player ID currently designated as the monarch
+	// (Conspiracy mechanic; player draws an extra card at end of their
+	// turn). uuid.Nil means "no monarch currently". Set manually via
+	// the set_monarch action — sandbox doesn't enforce the combat-damage
+	// transfer rule. Added in S10.
+	Monarch uuid.UUID
+
+	// Initiative is the player ID currently designated as having taken
+	// the initiative (Commander Legends: Battle for Baldur's Gate
+	// mechanic; player ventures into the Undercity at the start of
+	// their upkeep). uuid.Nil means "unassigned". Sandbox-only marker;
+	// venturing is resolved manually until rules graft work lands.
+	// Added in S10.
+	Initiative uuid.UUID
+
 	// rng is captured from Start so that subsequent mutations that
 	// shuffle (Mulligan, ShuffleLibrary) use the same source of
 	// randomness as the initial library shuffle. nil means "use the
