@@ -2,10 +2,10 @@
   import { GameClient } from "../lib/ws";
   import { navigate } from "../lib/router";
   import { session } from "../lib/session";
-  import { TableRenderer } from "../lib/table";
   import { seatColor } from "../lib/colors";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
-  import type { GameView, PlayerView } from "../lib/protocol";
+  import Board from "../lib/components/board/Board.svelte";
+  import type { PlayerView } from "../lib/protocol";
 
   interface Props {
     gameID: string;
@@ -46,81 +46,13 @@
     return () => client.disconnect();
   });
 
-  // PixiJS table renderer. init() is async; we track the in-flight
-  // init so snapshots that arrive before the canvas is ready don't
-  // try to render into a half-built application. destroyed flags
-  // guard against late init callbacks firing after the component
-  // has already torn down (HMR, route change).
-  let canvasEl: HTMLDivElement | undefined = $state();
-  let renderer: TableRenderer | null = null;
-  let rendererReady = $state(false);
-
-  $effect(() => {
-    if (!canvasEl) return;
-    const r = new TableRenderer();
-    let destroyed = false;
-    // Pixi's Application.destroy is not idempotent — guard so both
-    // the cleanup callback and a late-resolving init promise can
-    // dispatch dispose() without double-firing the underlying call.
-    let disposed = false;
-    const dispose = (): void => {
-      if (disposed) return;
-      disposed = true;
-      r.destroy();
-    };
-    void r.init(canvasEl).then(() => {
-      if (destroyed) {
-        dispose();
-        return;
-      }
-      renderer = r;
-      rendererReady = true;
-    });
-    return () => {
-      destroyed = true;
-      if (renderer === r) {
-        renderer = null;
-        rendererReady = false;
-      }
-      dispose();
-    };
-  });
-
   // sendAction is a thin shim over GameClient.sendAction that the
-  // renderer invokes from interactive events. Bound via $derived so
-  // session changes (logout + re-login) pick up a fresh viewer ID.
+  // Board passes to its child components for interactive mutations.
+  // Bound at module scope so session changes (logout + re-login) pick
+  // up the new viewer ID via the closure on `client`.
   const sendAction = (type: string, params?: unknown, player?: string): void => {
     client.sendAction(type, player, params);
   };
-
-  // Re-render whenever a new snapshot arrives, the renderer just
-  // finished initialising, OR any combat-related field on
-  // renderOptions changes (selection, mode). The combat highlights
-  // are drawn into the same canvas as the rest of the table, so
-  // they need a redraw to update.
-  $effect(() => {
-    const view: GameView | null = $snapshot;
-    // touch every combat-related field so the effect re-runs on
-    // local UI changes that don't carry a new snapshot.
-    void renderOptions.combatMode;
-    void renderOptions.selectedCombatCardID;
-    if (!renderer || !rendererReady || !view) return;
-    renderer.render(view, renderOptions);
-  });
-
-  // Watch the container size. PIXI's resizeTo handles the canvas
-  // sizing; we just need to trigger a redraw so the layout recomputes
-  // against the new dimensions.
-  $effect(() => {
-    if (!canvasEl) return;
-    const obs = new ResizeObserver(() => {
-      if (!renderer || !rendererReady) return;
-      const view = $snapshot;
-      if (view) renderer.render(view, renderOptions);
-    });
-    obs.observe(canvasEl);
-    return () => obs.disconnect();
-  });
 
   function back(): void {
     navigate("#/lobby");
@@ -304,33 +236,19 @@
     !!turn && turn.step === "declare_blockers" && incomingAttackers.length > 0,
   );
 
-  // combatMode tells the renderer how to interpret battlefield /
-  // seat clicks. Derived directly from the step gates so canvas
-  // clicks track the panel UX without separate state.
+  // combatMode tells the Board how to interpret battlefield / seat
+  // clicks. Derived directly from the step gates so the panel UX
+  // tracks the priority/step state without separate state.
   const combatMode = $derived<"idle" | "attack" | "block">(
     canDeclareAttackers ? "attack" : canDeclareBlockers ? "block" : "idle",
   );
 
-  // renderOptions bundles everything the table renderer needs.
-  // Recomputed on every snapshot / selection / mode change so
-  // canvas-side highlights and click handlers stay in sync.
-  const renderOptions = $derived({
-    viewerID: viewerID,
-    isAdmin: sess?.principal.role === "admin",
-    sendAction,
-    combatMode,
-    selectedCombatCardID: combatSelection?.cardID ?? null,
-    onSelectCombatCard: (cardID: string): void => {
-      if (combatMode === "attack") selectAttacker(cardID);
-      else if (combatMode === "block") selectBlocker(cardID);
-    },
-    onDeclareAttack: (targetPlayerID: string): void => {
-      declareAttackTarget(targetPlayerID);
-    },
-    onDeclareBlock: (attackerCardID: string): void => {
-      declareBlockTarget(attackerCardID);
-    },
-  });
+  const isAdmin = $derived(sess?.principal.role === "admin");
+  const selectedCombatCardID = $derived(combatSelection?.cardID ?? null);
+  function handleSelectCombatCard(cardID: string): void {
+    if (combatMode === "attack") selectAttacker(cardID);
+    else if (combatMode === "block") selectBlocker(cardID);
+  }
 
   function selectAttacker(cardID: string): void {
     combatSelection =
@@ -717,7 +635,19 @@
     transport layer.
   -->
   <div class="play-area">
-    <div class="table" bind:this={canvasEl}></div>
+    {#if view}
+      <Board
+        {view}
+        {viewerID}
+        {isAdmin}
+        {sendAction}
+        {combatMode}
+        {selectedCombatCardID}
+        onSelectCombatCard={handleSelectCombatCard}
+        onDeclareAttack={declareAttackTarget}
+        onDeclareBlock={declareBlockTarget}
+      />
+    {/if}
   </div>
 
   {#if !view}
@@ -751,12 +681,8 @@
   }
   .play-area {
     /* Single-column layout since S08.5 removed the chat sidebar.
-       Grid kept (rather than just flex) so a future panel can slot
-       back in as a second column without reshuffling the markup —
-       just add `grid-template-columns: 1fr <Npx>` and a sibling
-       div. The 1fr row + min-height: 0 combo is what lets the Pixi
-       canvas size against the play-area's height instead of
-       collapsing to its intrinsic fit-content size. */
+       The 1fr row + min-height: 0 combo lets the Board sit at the
+       full available height without collapsing to fit-content. */
     display: grid;
     grid-template-columns: 1fr;
     grid-template-rows: 1fr;
@@ -764,26 +690,10 @@
     flex: 1;
     min-height: 0;
     min-width: 0;
-  }
-  .table {
-    width: 100%;
-    height: 100%;
-    border-radius: 6px;
-    overflow: hidden;
-    /* PIXI v8 sets position: absolute on the canvas it injects.
-       Without an explicit positioned ancestor, the canvas anchors
-       to the next one up (the section, which is position: fixed
-       and inset: 0). The result was the canvas — and PIXI's
-       pointer-event capture — covering the entire viewport,
-       making toolbar buttons visually present but clickless.
-       position: relative pins the canvas inside this container. */
+    /* position: relative anchors the Board's absolutely-positioned
+       overlays (HoverZoomOverlay, StackOverlay) to this container
+       rather than to the viewport. */
     position: relative;
-  }
-  .table > :global(canvas) {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
   }
   .muted {
     color: #888;
