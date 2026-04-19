@@ -133,6 +133,14 @@ export interface CardView {
   owner: string;
   controller: string;
   scryfall_id?: string;
+  // Scryfall printed type line ("Legendary Creature — Human Wizard").
+  // Used by the client to filter creature-only UIs (combat panel)
+  // and to label cards. Omitted for placeholder demo cards. S08.
+  type_line?: string;
+  // Parsed printed creature stats. Omitted (zero) for non-creatures
+  // and for cards with non-numeric printed stats. S08.
+  power?: number;
+  toughness?: number;
   tapped?: boolean;
   counters?: Record<string, number>;
   is_commander?: boolean;

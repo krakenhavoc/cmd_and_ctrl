@@ -470,10 +470,10 @@ func TestPassTurnResetsPriorityHolder(t *testing.T) {
 	}
 }
 
-// playToBattlefield helper: draws a card to seat 0's hand and plays
-// it onto the battlefield, returning the card's instance ID. Used by
-// the combat-mutation tests so each one starts with at least one
-// permanent in play.
+// playToBattlefield helper: draws a card to the player's hand and
+// plays it onto the battlefield, returning the card's instance ID.
+// Drawn cards are non-creature placeholders by default — combat
+// tests that need a creature should use pushCreatureToBattlefield.
 func playToBattlefield(t *testing.T, g *Game, p *Player) uuid.UUID {
 	t.Helper()
 	if err := g.DrawCard(p.ID); err != nil {
@@ -489,9 +489,42 @@ func playToBattlefield(t *testing.T, g *Game, p *Player) uuid.UUID {
 	return c.InstanceID
 }
 
+// pushCreatureToBattlefield builds a 2/2 creature controlled by p and
+// drops it directly onto the battlefield, returning the instance ID.
+// Bypasses the draw/play loop so combat tests don't need to wrangle
+// a deck full of creatures. The TypeLine satisfies IsCreature; Power
+// 2 makes ResolveCombatDamage assertions easy.
+func pushCreatureToBattlefield(t *testing.T, g *Game, p *Player) uuid.UUID {
+	t.Helper()
+	c := NewCard("Test Creature", p.ID)
+	c.TypeLine = "Creature — Test"
+	c.Power = 2
+	c.Toughness = 2
+	g.Battlefield.PushTop(c)
+	return c.InstanceID
+}
+
+// advanceTo walks the turn cursor forward until reaching the named
+// step. Used by combat tests to position the game in the
+// declare_attackers / declare_blockers / combat_damage windows
+// without each test re-implementing the loop.
+func advanceTo(t *testing.T, g *Game, step Step) {
+	t.Helper()
+	for g.Turn.Step != step {
+		before := g.Turn
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+		if g.Turn == before {
+			t.Fatalf("advanceTo loop didn't progress past %v", before)
+		}
+	}
+}
+
 func TestDeclareAttackerSetsTarget(t *testing.T) {
 	g := newActiveGame(t)
-	attacker := playToBattlefield(t, g, g.Seats[0])
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	advanceTo(t, g, StepDeclareAttackers)
 	defender := g.Seats[1].ID
 
 	if err := g.DeclareAttacker(attacker, defender); err != nil {
@@ -504,9 +537,31 @@ func TestDeclareAttackerSetsTarget(t *testing.T) {
 	}
 }
 
+func TestDeclareAttackerRejectsOutsideStep(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	// Default step is Untap — attackers not legal here.
+	if err := g.DeclareAttacker(attacker, g.Seats[1].ID); err != ErrWrongStep {
+		t.Errorf("declare in untap: got %v, want ErrWrongStep", err)
+	}
+}
+
+func TestDeclareAttackerRejectsNonCreature(t *testing.T) {
+	g := newActiveGame(t)
+	// Non-creature: NewCard with no TypeLine.
+	land := NewCard("Some Land", g.Seats[0].ID)
+	land.TypeLine = "Land"
+	g.Battlefield.PushTop(land)
+	advanceTo(t, g, StepDeclareAttackers)
+	if err := g.DeclareAttacker(land.InstanceID, g.Seats[1].ID); err != ErrNotACreature {
+		t.Errorf("non-creature attacker: got %v, want ErrNotACreature", err)
+	}
+}
+
 func TestDeclareAttackerRejectsUnknownTarget(t *testing.T) {
 	g := newActiveGame(t)
-	attacker := playToBattlefield(t, g, g.Seats[0])
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	advanceTo(t, g, StepDeclareAttackers)
 	if err := g.DeclareAttacker(attacker, uuid.New()); err != ErrPlayerNotFound {
 		t.Errorf("unknown target: got %v, want ErrPlayerNotFound", err)
 	}
@@ -514,6 +569,7 @@ func TestDeclareAttackerRejectsUnknownTarget(t *testing.T) {
 
 func TestDeclareAttackerRejectsUnknownCard(t *testing.T) {
 	g := newActiveGame(t)
+	advanceTo(t, g, StepDeclareAttackers)
 	if err := g.DeclareAttacker(uuid.New(), g.Seats[1].ID); err != ErrCardNotFound {
 		t.Errorf("unknown attacker: got %v, want ErrCardNotFound", err)
 	}
@@ -521,7 +577,8 @@ func TestDeclareAttackerRejectsUnknownCard(t *testing.T) {
 
 func TestDeclareAttackerOverwritesPreviousTarget(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
-	attacker := playToBattlefield(t, g, g.Seats[0])
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	advanceTo(t, g, StepDeclareAttackers)
 	if err := g.DeclareAttacker(attacker, g.Seats[1].ID); err != nil {
 		t.Fatalf("first DeclareAttacker: %v", err)
 	}
@@ -538,12 +595,13 @@ func TestDeclareAttackerOverwritesPreviousTarget(t *testing.T) {
 
 func TestDeclareBlockerSetsTarget(t *testing.T) {
 	g := newActiveGame(t)
-	attacker := playToBattlefield(t, g, g.Seats[0])
-	blocker := playToBattlefield(t, g, g.Seats[1])
-
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	blocker := pushCreatureToBattlefield(t, g, g.Seats[1])
+	advanceTo(t, g, StepDeclareAttackers)
 	if err := g.DeclareAttacker(attacker, g.Seats[1].ID); err != nil {
 		t.Fatalf("DeclareAttacker: %v", err)
 	}
+	advanceTo(t, g, StepDeclareBlockers)
 	if err := g.DeclareBlocker(blocker, attacker); err != nil {
 		t.Fatalf("DeclareBlocker: %v", err)
 	}
@@ -554,9 +612,22 @@ func TestDeclareBlockerSetsTarget(t *testing.T) {
 	}
 }
 
+func TestDeclareBlockerRejectsOutsideStep(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	blocker := pushCreatureToBattlefield(t, g, g.Seats[1])
+	advanceTo(t, g, StepDeclareAttackers)
+	_ = g.DeclareAttacker(attacker, g.Seats[1].ID)
+	// Still in declare_attackers — blocking not legal here.
+	if err := g.DeclareBlocker(blocker, attacker); err != ErrWrongStep {
+		t.Errorf("block in declare_attackers: got %v, want ErrWrongStep", err)
+	}
+}
+
 func TestDeclareBlockerRejectsMissingAttacker(t *testing.T) {
 	g := newActiveGame(t)
-	blocker := playToBattlefield(t, g, g.Seats[1])
+	blocker := pushCreatureToBattlefield(t, g, g.Seats[1])
+	advanceTo(t, g, StepDeclareBlockers)
 	if err := g.DeclareBlocker(blocker, uuid.New()); err != ErrCardNotFound {
 		t.Errorf("missing attacker: got %v, want ErrCardNotFound", err)
 	}
@@ -564,9 +635,11 @@ func TestDeclareBlockerRejectsMissingAttacker(t *testing.T) {
 
 func TestClearCombatResetsAllAttackersAndBlockers(t *testing.T) {
 	g := newActiveGame(t)
-	attacker := playToBattlefield(t, g, g.Seats[0])
-	blocker := playToBattlefield(t, g, g.Seats[1])
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	blocker := pushCreatureToBattlefield(t, g, g.Seats[1])
+	advanceTo(t, g, StepDeclareAttackers)
 	_ = g.DeclareAttacker(attacker, g.Seats[1].ID)
+	advanceTo(t, g, StepDeclareBlockers)
 	_ = g.DeclareBlocker(blocker, attacker)
 
 	if err := g.ClearCombat(); err != nil {
@@ -583,25 +656,93 @@ func TestClearCombatResetsAllAttackersAndBlockers(t *testing.T) {
 }
 
 func TestZoneExitClearsCombatState(t *testing.T) {
-	// Card declared as attacker, then moved off the battlefield —
-	// AttackingTarget must clear (CR 400.7-style; here applied to
-	// our combat fields too).
 	g := newActiveGame(t)
-	attacker := playToBattlefield(t, g, g.Seats[0])
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	advanceTo(t, g, StepDeclareAttackers)
 	if err := g.DeclareAttacker(attacker, g.Seats[1].ID); err != nil {
 		t.Fatalf("DeclareAttacker: %v", err)
 	}
-	// Move it to graveyard.
 	src := ZoneRef{Kind: ZoneBattlefield}
 	dst := ZoneRef{Kind: ZoneGraveyard, Owner: g.Seats[0].ID}
 	if err := g.MoveCardByID(src, dst, attacker); err != nil {
 		t.Fatalf("MoveCardByID: %v", err)
 	}
-	// Card now in graveyard — confirm AttackingTarget cleared.
 	for _, c := range g.Seats[0].Graveyard.Cards {
 		if c.InstanceID == attacker && c.AttackingTarget != uuid.Nil {
 			t.Errorf("AttackingTarget not cleared on zone exit: %v", c.AttackingTarget)
 		}
+	}
+}
+
+func TestResolveCombatDamageUnblockedAppliesPower(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	defender := g.Seats[1]
+	startLife := defender.Life
+	advanceTo(t, g, StepDeclareAttackers)
+	if err := g.DeclareAttacker(attacker, defender.ID); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
+	// Skip declare_blockers (no blocker declared).
+	advanceTo(t, g, StepCombatDamage)
+	// AdvanceStep into combat_damage triggered the auto-resolve.
+	if defender.Life != startLife-2 {
+		t.Errorf("defender life: got %d, want %d (took 2 unblocked)",
+			defender.Life, startLife-2)
+	}
+	if len(defender.LifeHistory) == 0 {
+		t.Error("life history: expected one entry from combat damage")
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.AttackingTarget != uuid.Nil {
+			t.Error("AttackingTarget not cleared after auto-resolve")
+		}
+	}
+}
+
+func TestResolveCombatDamageBlockedSpared(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	blocker := pushCreatureToBattlefield(t, g, g.Seats[1])
+	defender := g.Seats[1]
+	startLife := defender.Life
+	advanceTo(t, g, StepDeclareAttackers)
+	_ = g.DeclareAttacker(attacker, defender.ID)
+	advanceTo(t, g, StepDeclareBlockers)
+	_ = g.DeclareBlocker(blocker, attacker)
+	advanceTo(t, g, StepCombatDamage)
+	if defender.Life != startLife {
+		t.Errorf("blocked attacker dealt damage: life %d, want unchanged %d",
+			defender.Life, startLife)
+	}
+}
+
+func TestResolveCombatDamageRespectsCounters(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	// Slap a +1/+1 counter on it (base 2 → 3).
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == attacker {
+			g.Battlefield.Cards[i].Counters = map[string]int{"+1/+1": 1}
+		}
+	}
+	defender := g.Seats[1]
+	startLife := defender.Life
+	advanceTo(t, g, StepDeclareAttackers)
+	_ = g.DeclareAttacker(attacker, defender.ID)
+	advanceTo(t, g, StepCombatDamage)
+	if defender.Life != startLife-3 {
+		t.Errorf("counter-boosted attacker damage: life %d, want %d",
+			defender.Life, startLife-3)
+	}
+}
+
+func TestCurrentPowerClampsToZero(t *testing.T) {
+	c := NewCard("Test", uuid.New())
+	c.Power = 2
+	c.Counters = map[string]int{"-1/-1": 5}
+	if got := c.CurrentPower(); got != 0 {
+		t.Errorf("CurrentPower with -1/-1 swing: got %d, want 0 (clamped)", got)
 	}
 }
 

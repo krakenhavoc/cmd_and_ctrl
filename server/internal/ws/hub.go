@@ -756,6 +756,10 @@ func classifyActionError(err error) (code, message string) {
 		return protocol.CodeBadRequest, "you are not the active player"
 	case errors.Is(err, actions.ErrPlayerCallerMismatch):
 		return protocol.CodeBadRequest, "you cannot act on another player's behalf"
+	case errors.Is(err, game.ErrWrongStep):
+		return protocol.CodeBadRequest, "action is not legal in the current step"
+	case errors.Is(err, game.ErrNotACreature):
+		return protocol.CodeBadRequest, "card is not a creature"
 	}
 	// Everything else is traceable to a client-supplied input — bad
 	// player ID, bad card ID, bad zone, unknown action type, etc.

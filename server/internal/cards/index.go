@@ -67,6 +67,13 @@ type Card struct {
 	// flip state is a UI concern. The face-level oracle_text lets
 	// the parser sniff "Partner" on either half of a partner pair.
 	CardFaces []CardFace `json:"card_faces"`
+	// Power and Toughness are Scryfall's printed values. Strings,
+	// not ints, because creatures like Mortivore use "*" (variable).
+	// Empty for non-creatures. Carried for combat-damage resolution
+	// (S08); the deck importer parses them to ints when stamping
+	// game.Card. Added in S08.
+	Power     string `json:"power"`
+	Toughness string `json:"toughness"`
 }
 
 // CardFace is one printed side of a double-faced / split / flip

@@ -245,12 +245,23 @@
     | null;
   let combatSelection: CombatSelection = $state(null);
 
-  // Cards on the battlefield controlled by the viewer.
+  // Heuristic mirror of server-side IsCreature — substring match on
+  // the type_line. Cards without a type_line (placeholders) are
+  // treated as non-creatures.
+  function isCreature(typeLine: string | undefined): boolean {
+    return !!typeLine && /creature/i.test(typeLine);
+  }
+
+  // Creatures on the battlefield controlled by the viewer.
+  // Non-creatures (lands, artifacts that aren't creatures, etc.) are
+  // filtered out — only creatures can attack or block.
   const viewerBattlefield = $derived.by(() => {
     if (!viewerID || !view) return [];
-    return view.battlefield.cards.filter((c) => c.controller === viewerID);
+    return view.battlefield.cards.filter(
+      (c) => c.controller === viewerID && isCreature(c.type_line),
+    );
   });
-  // Cards on the battlefield currently declared as attacking the viewer.
+  // Creatures on the battlefield currently declared as attacking the viewer.
   const incomingAttackers = $derived.by(() => {
     if (!viewerID || !view) return [];
     return view.battlefield.cards.filter((c) => c.attacking_target === viewerID);
@@ -262,6 +273,17 @@
   // attacking_target set. Used to gate the "Clear combat" button.
   const combatInProgress = $derived(
     !!view && view.battlefield.cards.some((c) => c.attacking_target),
+  );
+
+  // Step-based gating mirrors the server's MTG-rules check. Attackers
+  // can only be declared during declare_attackers and only by the
+  // active player; blockers only during declare_blockers and only
+  // when the viewer is being attacked.
+  const canDeclareAttackers = $derived(
+    !!turn && turn.step === "declare_attackers" && viewerIsActive,
+  );
+  const canDeclareBlockers = $derived(
+    !!turn && turn.step === "declare_blockers" && incomingAttackers.length > 0,
   );
 
   function selectAttacker(cardID: string): void {
@@ -612,7 +634,7 @@
     </div>
   {/if}
 
-  {#if view && viewerID && !viewerEliminated && !gameEnded && !mulligansOpen && (viewerBattlefield.length > 0 || incomingAttackers.length > 0 || combatInProgress)}
+  {#if view && viewerID && !viewerEliminated && !gameEnded && !mulligansOpen && (canDeclareAttackers || canDeclareBlockers || combatInProgress)}
     <div class="combat-panel" aria-label="combat declarations">
       {#if combatSelection}
         <div class="combat-hint">
@@ -627,7 +649,7 @@
       {/if}
 
       <div class="combat-cols">
-        {#if viewerBattlefield.length > 0}
+        {#if canDeclareAttackers && viewerBattlefield.length > 0}
           <section class="combat-col">
             <h3>Your creatures</h3>
             <ul>
@@ -640,7 +662,11 @@
                     class:declared={!!c.attacking_target || !!c.blocking_target}
                     onclick={() => selectAttacker(c.instance_id)}
                   >
-                    <span class="combat-row-name">{c.name}</span>
+                    <span class="combat-row-name"
+                      >{c.name}{#if c.power !== undefined && c.toughness !== undefined}
+                        <span class="muted">· {c.power}/{c.toughness}</span>
+                      {/if}</span
+                    >
                     {#if c.attacking_target}
                       <span class="combat-row-state attack">→ {seatName(c.attacking_target)}</span>
                     {:else if c.blocking_target}
@@ -655,7 +681,7 @@
           </section>
         {/if}
 
-        {#if combatSelection?.kind === "attacker"}
+        {#if canDeclareAttackers && combatSelection?.kind === "attacker"}
           <section class="combat-col combat-targets">
             <h3>Choose target</h3>
             <ul>
@@ -674,7 +700,7 @@
           </section>
         {/if}
 
-        {#if incomingAttackers.length > 0}
+        {#if canDeclareBlockers && incomingAttackers.length > 0}
           <section class="combat-col">
             <h3>Incoming attackers</h3>
             <ul>
@@ -689,7 +715,9 @@
                       : "select one of your creatures first to block"}
                   >
                     <span class="combat-row-name"
-                      >{cardLabel(a.instance_id).controller}'s {a.name}</span
+                      >{cardLabel(a.instance_id).controller}'s {a.name}{#if a.power !== undefined && a.toughness !== undefined}
+                        <span class="muted">· {a.power}/{a.toughness}</span>
+                      {/if}</span
                     >
                   </button>
                 </li>
@@ -698,7 +726,7 @@
           </section>
         {/if}
 
-        {#if viewerBattlefield.length > 0 && incomingAttackers.length > 0}
+        {#if canDeclareBlockers && viewerBattlefield.length > 0 && incomingAttackers.length > 0}
           <section class="combat-col combat-block-pool">
             <h3>Block with…</h3>
             <ul>
@@ -710,7 +738,11 @@
                       combatSelection.cardID === c.instance_id}
                     onclick={() => selectBlocker(c.instance_id)}
                   >
-                    {c.name}
+                    <span class="combat-row-name"
+                      >{c.name}{#if c.power !== undefined && c.toughness !== undefined}
+                        <span class="muted">· {c.power}/{c.toughness}</span>
+                      {/if}</span
+                    >
                     {#if c.blocking_target}
                       <span class="combat-row-state block"
                         >blocking {cardLabel(c.blocking_target).name}</span

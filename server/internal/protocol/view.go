@@ -92,11 +92,25 @@ type ZoneView struct {
 
 // CardView is the wire representation of a Card.
 type CardView struct {
-	InstanceID  string         `json:"instance_id"`
-	Name        string         `json:"name"`
-	Owner       string         `json:"owner"`
-	Controller  string         `json:"controller"`
-	ScryfallID  string         `json:"scryfall_id,omitempty"`
+	InstanceID string `json:"instance_id"`
+	Name       string `json:"name"`
+	Owner      string `json:"owner"`
+	Controller string `json:"controller"`
+	ScryfallID string `json:"scryfall_id,omitempty"`
+	// TypeLine is Scryfall's printed type line ("Legendary Creature
+	// — Human Wizard"). Carried so the client can filter "creatures
+	// only" UIs (the combat panel) without a Scryfall round-trip.
+	// Omitted for placeholder demo cards that have no resolved type.
+	// Added in S08.
+	TypeLine string `json:"type_line,omitempty"`
+	// Power and Toughness are the parsed printed stats. Zero for
+	// non-creatures and for any card with non-numeric printed stats
+	// ("*", "1+*"). The client uses Power to label combat-panel
+	// creature rows; ResolveCombatDamage uses CurrentPower (base +
+	// counter modifiers) on the server side. Both omitempty for
+	// non-creatures. Added in S08.
+	Power       int            `json:"power,omitempty"`
+	Toughness   int            `json:"toughness,omitempty"`
 	Tapped      bool           `json:"tapped,omitempty"`
 	Counters    map[string]int `json:"counters,omitempty"`
 	IsCommander bool           `json:"is_commander,omitempty"`
@@ -284,6 +298,9 @@ func viewOfCard(c game.Card) CardView {
 		Owner:       c.Owner.String(),
 		Controller:  c.Controller.String(),
 		ScryfallID:  c.ScryfallID,
+		TypeLine:    c.TypeLine,
+		Power:       c.Power,
+		Toughness:   c.Toughness,
 		Tapped:      c.Tapped,
 		Counters:    counters,
 		IsCommander: c.IsCommander,

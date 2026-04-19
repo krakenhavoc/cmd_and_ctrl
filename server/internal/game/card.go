@@ -27,6 +27,23 @@ type Card struct {
 	// by hitting GET /cards/{id}/image.
 	ScryfallID string
 
+	// TypeLine is Scryfall's type line ("Legendary Creature — Human
+	// Wizard", "Land", "Sorcery", etc.). Stamped at deck-import time
+	// (S08) so combat-rule gates can check whether a card is a
+	// creature without a round-trip back to the cards index. Empty
+	// for placeholder cards (the demo seed) and for any card the
+	// importer was unable to resolve type info for.
+	TypeLine string
+
+	// Power and Toughness are the printed creature stats, parsed
+	// from Scryfall's strings at deck-import time. Zero for non-
+	// creatures and for any card whose printed stats are non-numeric
+	// (e.g. "*" for cards like Mortivore — handled manually until
+	// rules enforcement grows). Used by ResolveCombatDamage to
+	// auto-apply unblocked attacker damage. Added in S08.
+	Power     int
+	Toughness int
+
 	// Owner is the player who brought this card to the game. Ownership
 	// is fixed at deck-build time and never changes.
 	Owner uuid.UUID
@@ -70,6 +87,46 @@ type Card struct {
 	// Set by DeclareBlocker, cleared by ClearCombat or zone exit.
 	// Only meaningful on the battlefield. Added in S08.
 	BlockingTarget uuid.UUID
+}
+
+// CurrentPower returns the card's effective power: base printed
+// power plus any +1/+1 counters, minus any -1/-1 counters. Other
+// dynamic effects (auras, equipment, anthem effects) are not
+// modeled — the sandbox handles them via manual life adjustments.
+// Negative results clamp to zero (a -3/-3 modifier on a 2/2 deals
+// no damage, not negative damage).
+func (c Card) CurrentPower() int {
+	p := c.Power
+	if c.Counters != nil {
+		p += c.Counters["+1/+1"]
+		p -= c.Counters["-1/-1"]
+	}
+	if p < 0 {
+		return 0
+	}
+	return p
+}
+
+// IsCreature reports whether the card's TypeLine identifies it as a
+// creature. Case-insensitive substring check against "creature";
+// covers "Creature — Human Wizard" and "Legendary Artifact Creature
+// — Golem" alike. Empty TypeLine returns false (placeholder cards
+// from the demo seed are conservatively treated as non-creatures).
+func (c Card) IsCreature() bool {
+	t := c.TypeLine
+	for i := 0; i+8 <= len(t); i++ {
+		if (t[i] == 'C' || t[i] == 'c') &&
+			(t[i+1] == 'R' || t[i+1] == 'r') &&
+			(t[i+2] == 'E' || t[i+2] == 'e') &&
+			(t[i+3] == 'A' || t[i+3] == 'a') &&
+			(t[i+4] == 'T' || t[i+4] == 't') &&
+			(t[i+5] == 'U' || t[i+5] == 'u') &&
+			(t[i+6] == 'R' || t[i+6] == 'r') &&
+			(t[i+7] == 'E' || t[i+7] == 'e') {
+			return true
+		}
+	}
+	return false
 }
 
 // NewCard constructs a fresh Card instance with a new InstanceID, owned

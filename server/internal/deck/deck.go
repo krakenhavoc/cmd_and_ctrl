@@ -19,6 +19,7 @@ package deck
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -249,10 +250,19 @@ func (l *List) ToGameCards() []game.Card {
 }
 
 func toGameCard(c cards.Card, isCommander bool) game.Card {
+	// Parse Scryfall's printed power/toughness strings to ints.
+	// Non-numeric values ("*", "1+*", "?", empty) parse to zero —
+	// good enough for the combat-damage auto-resolve, and the
+	// sandbox lets players manually adjust life for the exotic cases.
+	power, _ := strconv.Atoi(strings.TrimSpace(c.Power))
+	toughness, _ := strconv.Atoi(strings.TrimSpace(c.Toughness))
 	return game.Card{
 		InstanceID:  uuid.New(),
 		Name:        c.Name,
 		ScryfallID:  c.ID.String(),
+		TypeLine:    c.TypeLine,
+		Power:       power,
+		Toughness:   toughness,
 		IsCommander: isCommander,
 	}
 }
