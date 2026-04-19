@@ -568,24 +568,21 @@
 
 <style>
   /* The Game route needs the whole viewport, not the 800px column
-     #app imposes on the lobby / login screens. Scoping the override
-     to :global(#app) inside this component means the cap is lifted
-     only while Game is mounted and restored when the user navigates
-     away. */
-  :global(#app) {
-    max-width: none;
-    margin: 0;
-    padding: 0;
-  }
+     #app imposes on the lobby / login screens. Pinning the section
+     with position: fixed + inset: 0 sidesteps #app entirely — no
+     global override, no CSS load-order fight, and it's scoped to
+     this component so the cap is restored automatically on navigate
+     away. overflow: hidden keeps the outer scrollbar off when
+     child layout is tight. */
   section {
-    max-width: none;
-    margin: 0;
-    padding: 0.75rem 1rem;
-    height: 100vh;
+    position: fixed;
+    inset: 0;
+    padding: 0.5rem 0.75rem;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    overflow: hidden;
   }
   header {
     display: flex;
@@ -596,7 +593,13 @@
   .play-area {
     display: grid;
     grid-template-columns: 1fr 280px;
-    gap: 0.75rem;
+    /* Explicit single-row template so the grid's row sizes to the
+       play-area's height rather than to its content — otherwise
+       .table's `height: 100%` resolves against an auto-sized row
+       and the Pixi canvas defaults to its intrinsic size, leaving
+       the bottom fan clipped. */
+    grid-template-rows: 1fr;
+    gap: 0.5rem;
     align-items: stretch;
     /* flex: 1 so the play area absorbs all remaining vertical space
        below the toolbars. min-height: 0 is required because a grid
@@ -605,6 +608,7 @@
        size and force the section to overflow the viewport. */
     flex: 1;
     min-height: 0;
+    min-width: 0;
   }
   .table {
     width: 100%;

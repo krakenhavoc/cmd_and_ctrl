@@ -35,6 +35,12 @@ const Z_HEIGHT = 120; // zone panel height
 const PAD = 12; // inner padding between zones
 const SHARED_BAND = 180; // height of the shared (battlefield/stack/exile) band
 
+// HAND_FAN_HEIGHT reserves a bottom strip for the viewer's hand fan.
+// The fan's highest card (at angle 0) reaches up to ~1.4 * TILE_H
+// above the canvas bottom; 1.5 gives a small breathing margin so the
+// self seat panel anchored above this strip never gets overlapped.
+const HAND_FAN_HEIGHT = Math.round(TILE_H * 1.5);
+
 // SeatColor is the base fill per seat, for quick visual
 // disambiguation before the proper UI chrome lands. These are
 // intentionally desaturated so they don't fight future card art.
@@ -144,9 +150,11 @@ export class TableRenderer {
     const width = this.app.renderer.width || 1280;
     const height = this.app.renderer.height || 720;
 
-    // Seat anchor points (centre of each seat's zone cluster).
+    // Seat anchor points (centre of each seat's zone cluster). The
+    // self anchor sits above the hand-fan strip so the fan never
+    // overlays the viewer's name / life / zone counts.
     const anchors: Record<SeatPosition, { x: number; y: number }> = {
-      self: { x: width / 2, y: height - Z_HEIGHT - PAD },
+      self: { x: width / 2, y: height - HAND_FAN_HEIGHT - PAD - Z_HEIGHT / 2 },
       top: { x: width / 2, y: Z_HEIGHT / 2 + PAD },
       left: { x: Z_WIDTH / 2 + PAD, y: height / 2 },
       right: { x: width - Z_WIDTH / 2 - PAD, y: height / 2 },
