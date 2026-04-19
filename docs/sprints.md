@@ -435,6 +435,45 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 
 ---
 
+## S13 — Priority foundation (rules graft kickoff)
+**Phase:** 7 · **Goal:** model priority + turn-based actions per CR 117 / 502 / 504 / 514.
+
+- [ ] Untap and cleanup steps don't grant priority (sentinel `Turn.PriorityHolder == -1`)
+- [ ] Auto turn-based actions (untap, draw, cleanup-discard fire automatically)
+- [ ] Eliminated-player skip in priority rotation
+- [ ] Turn-1 skip-draw rule (CR 103.7c)
+- [ ] Per-step stops UI (client-side localStorage preferences)
+- [ ] "Pass to my next stop" client action
+
+**Exit criteria:** a 4-player game runs through full turns with auto turn-based actions; per-player stops work; eliminated seats correctly skipped.
+
+**Out of scope (S13.1+):** real stack, state-based actions, hold-priority modifier, per-commander damage tracking.
+
+---
+
+## S13.1 — Stack: cast / resolve / target / counter / trigger / SBA
+**Phase:** 7 · **Goal:** all stack-adjacent items in one sprint.
+
+- [ ] Type helpers (IsLand, IsInstant, IsSorcery, IsPermanent, …)
+- [ ] `cast_spell` action; lands route to battlefield; spells to stack
+- [ ] Auto-resolve on full priority pass
+- [ ] Targeting (announce + re-check on resolve)
+- [ ] Modes / X / distribution capture
+- [ ] Manual `announce_trigger` + APNAP-ordered queue
+- [ ] Activated abilities + loyalty (sorcery-speed, once-per-turn)
+- [ ] `counter_spell` and `counter_ability`
+- [ ] Hold-priority modifier; split-second flag
+- [ ] Commander cast tax (per-commander instance ID — fixes partner-pair collapse)
+- [ ] Commander zone replacement (CR 903.9)
+- [ ] State-based actions: lethal damage, 0 toughness, 0 life, 21 commander damage, draw from empty library
+- [ ] Leaving-game stack cleanup with target scrubbing
+
+**Exit criteria:** a Commander player can cast Lightning Bolt, opponent counters with Counterspell on the stack, full priority/SBA loop works end-to-end.
+
+**Bright line — out of scope (S14+):** auto-fire of triggered abilities from card events, auto-validation of target legality at announce, auto-resolution of spell effects, mana pool, replacement effect engine generally, static abilities, combat keyword effects.
+
+---
+
 ## S13.2 — Counter mechanics (SBAs + player counters + UI)
 **Phase:** 7 · **Goal:** close out the "counters" surface the engine still has to resolve manually. S13.1 ships the four canonical Commander SBAs; this sprint adds the counter-specific SBAs (planeswalker loyalty, battle defense, +1/+1/-1/-1 cancel, poison player-loss, saga final-chapter), first-class UI treatment of counters, and a shared registry of MTG counter types. Sits between S13.1 and S14 so the effect catalog (S14) can rely on counters being fully modelled.
 
@@ -504,6 +543,130 @@ Gap analysis behind this sprint: `Card.Counters` exists today ([server/internal/
 5. Every counter on every card renders as a visible pip on the battlefield tile, with distinct colors for the top-20 known types.
 6. Right-clicking a card opens a Counters popover; players can add/remove any type without typing into chat.
 7. Player-level counters (poison, energy, experience, rad) render near each `PlayerHeader` and update live when the server broadcasts a delta.
+
+---
+
+## S14 — Card-effect catalog foundation
+**Phase:** 7 · **Goal:** ~30 of the most-played Commander cards work end-to-end with no manual intervention.
+
+- [ ] Event log infrastructure (typed events, append-only per-Game) — Arena pattern
+- [ ] Listener registry pre-wired for S19
+- [ ] Card-effect catalog in `server/internal/cards/effects/` keyed by Scryfall ID
+- [ ] 15 effect primitives (DealDamage, DrawCards, GainLife, DestroyTarget, …)
+- [ ] ~30 starter Commander cards (Lightning Bolt, Sol Ring, Cultivate, Counterspell, Wrath of God, Eternal Witness, Birds of Paradise, Demonic Tutor, …)
+- [ ] Client "auto" badge on catalog cards
+
+**Architectural decisions:** Forge-style declarative DSL in Go structs; Cockatrice fallback for unimplemented cards; pull-based event dispatch; Scryfall data for display only (don't parse oracle text into effects).
+
+**Exit criteria:** Cast Lightning Bolt → opponent's life drops by 3 automatically (no manual change_life).
+
+---
+
+## S15 — Mana pool, cost model, and auto-tapper
+**Phase:** 7 · **Goal:** server-side mana pool with backtracking auto-tapper that beats Arena on correctness.
+
+- [ ] Cost parser (`{1}{R}`, `{W/U}`, `{X}`, `{W/P}`, `{S}`)
+- [ ] Scryfall `produced_mana` + `mana_cost` ingestion
+- [ ] `ManaPool` as multiset of tokens; end-of-step empty (CR 106.4)
+- [ ] `tap_for_mana` action (distinct from generic `tap`)
+- [ ] Cost validation in `cast_spell`
+- [ ] Auto-tapper algorithm: backtracking + constraint propagation, <1ms p99
+- [ ] Tiebreaker scoring (avoid pain, restriction-bearing mana, utility activation)
+- [ ] Auto-tap-and-cast UX with preview, confirm, ESC cancel
+- [ ] Lock-tap override (clicking a land first locks it in)
+- [ ] Commander tax modifier + static-modifier registry
+
+**Out of scope:** filter lands (Mystic Gate sub-payment), Cavern of Souls tribe-locking, alternative costs.
+
+**Exit criteria:** Cast Cyclonic Rift overload from a 38-land Bant manabase → auto-tap finds plan in microseconds → preview → confirm → resolves.
+
+---
+
+## S16 — Continuous effects + layer system (CR 613)
+**Phase:** 7 · **Goal:** ship the 7-layer skeleton with timestamp ordering; ~10 catalog cards exercising each layer.
+
+- [ ] `Characteristic` snapshot type (printed vs. effective)
+- [ ] Layer engine (1 copy, 2 control, 3 text, 4 type, 5 color, 6 abilities, 7 P/T with sub-layers 7a-7e)
+- [ ] Recompute-from-scratch on state change, cached by version number
+- [ ] `StaticAbility` declarations on `CardImpl` (placeholder from S14, now populated)
+- [ ] ~10 catalog cards: Mycosynth Lattice, Conspiracy, Lord of Atlantis, Glorious Anthem, Crusade, Honor of the Pure, Tarmogoyf, Mind Control
+
+**Skip dependency detection (CR 613.8) initially** — pure timestamp ordering works for ~95% of real cards. Add when a problem card surfaces (Opalescence + Humility — niche in casual EDH).
+
+**Exit criteria:** Glorious Anthem in play → all your creatures show +1/+1 on the wire; remove anthem → reverts.
+
+---
+
+## S17 — Replacement effects engine (CR 614)
+**Phase:** 7 · **Goal:** effects that watch for events and substitute different events before they happen.
+
+- [ ] Replacement engine with iterative apply-loop
+- [ ] Affected-player-chooses-order prompt (CR 616) via paused server prompt
+- [ ] Self-replacement once-per-event tracking (CR 614.5)
+- [ ] Pipeline integration in `AddCounter`, `MoveCardByID`, `DrawCard`, `ChangePlayerLife`, `MarkDamage`
+- [ ] Built-in replacements: commander zone (refactored from S13.1), enters-tapped, skip-step
+- [ ] ~10 catalog cards: Doubling Season, Hardened Scales, Branching Evolution, Champion of Lambholt, Hangarback Walker, Stasis, Kismet
+- [ ] Damage prevention sub-category (CR 615)
+
+**Exit criteria:** Doubling Season + Hardened Scales in play → cast a counter-placing card → prompt for order → 4 counters land per chosen order.
+
+---
+
+## S18 — Combat keywords
+**Phase:** 7 · **Goal:** 12 keyword effects with full combat behavior + summoning sickness.
+
+- [ ] Keyword detection helpers (`HasKeyword`, `IsFlyingBlockable`, `BlockerCountValid`)
+- [ ] Combat damage flow rewrite (first-strike + regular sub-steps)
+- [ ] Lifelink, deathtouch, trample, vigilance
+- [ ] Flying / reach (block restriction)
+- [ ] Menace (≥2 blockers)
+- [ ] Defender, haste, flash
+- [ ] First strike + double strike
+- [ ] Summoning sickness (`Card.SummonedThisTurn`)
+- [ ] Damage assignment order prompt (CR 510.1c)
+- [ ] 12 catalog cards demonstrating each keyword
+
+**Out of scope:** protection, indestructible, hexproof, shroud, ward, banding, rampage, flanking, fear, intimidate, shadow.
+
+**Exit criteria:** A 1/1 deathtouch attacker takes down a 5/5 blocker; lifelink attackers gain life; trample carries over; vigilance keeps attackers untapped.
+
+---
+
+## S19 — Auto-fire triggered abilities
+**Phase:** 7 · **Goal:** ETB / dies / upkeep / cast / combat triggers fire automatically for catalog cards.
+
+- [ ] Auto-fire dispatcher: register listeners on zone change; LKI snapshot at trigger time (CR 603.10)
+- [ ] Optional / modal trigger prompts via existing prompt frame
+- [ ] ~25 catalog cards: Mulldrifter, Eternal Witness, Reclamation Sage, Acidic Slime, Solemn Simulacrum, Smothering Tithe, Esper Sentinel, Edric Spymaster of Trest, Phyrexian Arena, Sylvan Library, …
+
+**Manual fallback preserved:** `announce_trigger` from S13.1 stays for unimplemented cards and "hidden info" triggers.
+
+**Exit criteria:** Cast Mulldrifter → on resolve, you draw 2 cards automatically; advance to upkeep with Phyrexian Arena → trigger goes on stack automatically.
+
+---
+
+## S20 — Auto-target legality + smart cast UI
+**Phase:** 7 · **Goal:** capstone sprint — per-card targeting predicates; modal/X UI; structured cast dialog.
+
+- [ ] Predicate library (`AnyTarget`, `Creature`, `NonBlackCreature`, `Spell`, `PowerLE(n)`) + composers (`And`/`Or`/`Not`)
+- [ ] Extended `TargetSpec` (predicate + AllowSelf + AllowSameTarget)
+- [ ] `ModeSpec` for modal spells (Min/Max choose)
+- [ ] Cast dialog rewrite: filter target candidates by predicate; structured mode picker; X-cost live validation
+- [ ] Resolution-time re-check using same predicates (CR 608.2b)
+- [ ] Catalog updates: add `TargetSpec` predicates to all S14/S17/S18/S19 catalog cards
+
+**Free-form fallback preserved:** cards without structured predicates use S13.1's free-form picker.
+
+**Exit criteria:** Cast Doom Blade → picker shows only non-black creatures; cast Cyclonic Rift overload → no picker, mass effect; cast Fireball → X input with live mana-pool validation.
+
+---
+
+## S21+ — Rules-graft long tail
+**Phase:** 7 · **Status:** rolling, not started.
+
+After S20 the **engine** is feature-complete for 200 most-played Commander cards. S21+ is **catalog growth** — add cards as the user's playgroup demands them. Engine work continues only when a card surfaces a gap (e.g., dependency-detection in CR 613.8 layer system if Opalescence becomes relevant; copy effects layer 1 if Clone is wanted; protection if a player wants Pious Wayfarer's defense).
+
+Triaged just-in-time; no detailed plan until a real game surfaces the need.
 
 ---
 
@@ -635,22 +798,3 @@ Gap analysis behind this sprint: `Card.Counters` exists today ([server/internal/
 
 ---
 
-## S13+ — B→C rules graft (ongoing)
-
-After S12, every sprint adds one slice of rules enforcement to the Go server.
-Priorities come from the S12 pain-point triage and subsequent real games.
-
-Likely early wins:
-- Auto-untap at the start of each player's untap step
-- Auto-draw one card at draw step
-- Auto-tap lands for their mana type (mana pool UI)
-- Auto-resolve combat damage to life totals
-- Auto-move dead creatures to graveyard (state-based action, subset)
-- Triggered-ability ETB hooks for the most common cards in the playgroup
-
-**Design rule:** every rule is a pure function of game state. Manual override
-remains the permanent fallback. No sprint ever leaves the game in a state where
-a player cannot manually resolve an unhandled interaction.
-
-Sprint cadence stays at 2 weeks. Track sprints S13–Sxx in new issues once the
-S12 retro happens.
