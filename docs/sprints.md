@@ -40,7 +40,7 @@ planned just-in-time from the S12 pain-point triage.
 | S06.5 | Dynamic deck import from URLs (mini) | 3 | [#37](https://github.com/krakenhavoc/cmd_and_ctrl/issues/37) | 2026-07-10 | **done** |
 | S07 | Turn/phase UI + chat + manual priority | 3 | [#7](https://github.com/krakenhavoc/cmd_and_ctrl/issues/7) | 2026-07-17 | planned |
 | S08 | First playable sandbox (2-player, milestone) | 4 | [#8](https://github.com/krakenhavoc/cmd_and_ctrl/issues/8) | 2026-07-31 | planned |
-| S08.5 | Game-logic cleanup pass (mini, scope-TBD) | 4 | [#43](https://github.com/krakenhavoc/cmd_and_ctrl/issues/43) | TBD post-S13 | **deferred** |
+| S08.5 | Game-logic cleanup pass (wave 1: gating + room + import) | 4 | [#43](https://github.com/krakenhavoc/cmd_and_ctrl/issues/43) | 2026-05-03 | planned |
 | S09 | Polish I — animations + VFX | 5 | [#9](https://github.com/krakenhavoc/cmd_and_ctrl/issues/9) | 2026-08-14 | planned |
 | S10 | Polish II — Commander UX (cmd damage, politics) | 5 | [#10](https://github.com/krakenhavoc/cmd_and_ctrl/issues/10) | 2026-08-28 | planned |
 | S11 | Polish III — hover preview, undo, spectator | 5 | [#11](https://github.com/krakenhavoc/cmd_and_ctrl/issues/11) | 2026-09-11 | planned |
@@ -192,30 +192,20 @@ One-week mini sprint slotted between S06 and S07 to address UX friction surfaced
 
 ---
 
-## S08.5 — Game-logic cleanup pass (mini, deferred)
-**Phase:** 4 · **Status: DEFERRED to post-S13.**
+## S08.5 — Game-logic cleanup pass (wave 1)
+**Phase:** 4 · **Goal:** fix the three frictions that bit hardest in S08 playtest.
 
-**Originally scoped** as a one-week mini sprint between S08 and S09 to fix rough edges in the manual sandbox state model. **Deferred** post-S08 retro: most of the candidate items (turn-1 skip-draw, commander damage attribution, command zone tax, token API, mulligan penalty, etc.) are things the S13+ rules graft would either subsume or reshape entirely. Doing them now risks throwing the work away when S13+ lands.
+Originally deferred post-S08 retro because most candidate items would be subsumed by the S13+ rules graft. Re-activated for **wave 1** when 2-player play surfaced three items that don't overlap with rules work — they're UX/authorization issues that hurt now and the rules engine wouldn't help with later. The broader cleanup (turn-1 skip-draw, commander damage attribution, command-zone tax, token API, mulligan penalty, etc.) stays deferred to S13+.
 
-The plan: defer until after the first meaningful slice of S13+ ships, then re-triage. Items that the rules engine actually solves disappear from the list; items that remain manual-only get tackled at that point.
+**Wave 1 scope** ([issue #43](https://github.com/krakenhavoc/cmd_and_ctrl/issues/43)):
 
-S08 playtest items that surfaced during PR #50 work are logged in [issue #43](https://github.com/krakenhavoc/cmd_and_ctrl/issues/43)'s "Playtest-surfaced items" section so they're not lost. The issue stays open as a parking lot.
+- [ ] **Controller-only card interactions.** Server + client gate on `caller == card.controller` for `tap`, `untap`, `move_card`, `add_counter`, `set_battlefield_position`, `declare_attacker`, `declare_blocker`. Admins still bypass.
+- [ ] **Battlefield real-estate.** Remove the chat panel from the in-game UI (players use Discord); slim turn bar + toolbar; canvas grows from ~78%×85% to ~99%×92% of viewport. Chat wire-protocol stays intact for future re-mount.
+- [ ] **In-game deck import.** Players who land in `Game.svelte` via invite see a deck-import modal when the game is in lobby state and their library is empty — no need to navigate back to the lobby.
 
-The S08 retro produces the checklist. Likely sources, none of which are commitments yet:
+**Still deferred to S13+** (rules-graft would reshape these): turn-1 skip-draw, commander damage attribution, partner / companion deck imports, commander returns + tax, the Stack zone, token API, comprehensive move-card cleanup, mulligan penalty.
 
-- Turn-1 skip-draw rule ([server/internal/game/turn.go:98-100](../server/internal/game/turn.go#L98-L100)) — currently the first player gets a turn-1 draw the rules don't grant.
-- Commander-damage attribution keyed by player ID rather than commander instance ID ([server/internal/game/mutations.go:393-396](../server/internal/game/mutations.go#L393-L396)) — partner pairs collapse into a single tally.
-- Partner / companion deck imports rejected as unsupported (S05 deferral) — the playtest may or may not actually want these.
-- Commander returns to command zone on death / exile, plus commander tax — not in the model at all.
-- The Stack zone exists but no action moves anything onto it.
-- Move-card cleanup on leaving battlefield (CR 400.7) handles tapped + counters but probably misses other zone-transition state.
-- Token creation has no API.
-- Authorization gaps on card-instance actions (`tap`, `move_card`, `add_counter`, `set_battlefield_position`) — currently any player can act on any card. This is intentional sandbox flexibility; the playtest will tell us whether it's actually fine or whether it bites.
-- Mulligan is simplified London with no card-to-bottom penalty.
-
-**Exit criteria:** the punch list assembled at the S08 retro is closed out, and a second 2-player playtest doesn't surface any of the same issues. Items the playtest doesn't surface stay deferred — the goal is "what hurt", not "what could theoretically be wrong".
-
-**Out of scope:** rules enforcement (auto-untap, auto-tap lands, combat damage to life totals, etc.). Those land in S13+. S08.5 is corrective work on the manual state model, not additive automation.
+**Exit criteria:** all three wave-1 items shipped; a second 2-player playtest confirms (a) no cross-player card mutations, (b) the canvas feels uncramped, (c) a brand-new player can join and import without leaving the game route.
 
 ---
 

@@ -579,3 +579,142 @@ func TestDispatchMalformedParams(t *testing.T) {
 		t.Error("expected error on malformed params")
 	}
 }
+
+// TestCardActionRejectsWrongController is the S08.5 wave-1 controller
+// gate. Player B issuing a card-instance action against Player A's
+// creature must surface ErrCardCallerMismatch — not silently mutate
+// somebody else's cards (which the loose pre-S08.5 dispatch did).
+func TestCardActionRejectsWrongController(t *testing.T) {
+	cases := []struct {
+		name    string
+		buildAt game.Step
+		ty      Type
+		params  func(cardID string, p0, p1 *game.Player) json.RawMessage
+	}{
+		{
+			name: "tap",
+			ty:   TypeTap,
+			params: func(cardID string, _, _ *game.Player) json.RawMessage {
+				return mustJSON(map[string]string{"instance_id": cardID})
+			},
+		},
+		{
+			name: "move_card",
+			ty:   TypeMoveCard,
+			params: func(cardID string, _, _ *game.Player) json.RawMessage {
+				return mustJSON(map[string]any{
+					"src":         map[string]string{"kind": "battlefield"},
+					"dst":         map[string]string{"kind": "exile"},
+					"instance_id": cardID,
+				})
+			},
+		},
+		{
+			name: "add_counter",
+			ty:   TypeAddCounter,
+			params: func(cardID string, _, _ *game.Player) json.RawMessage {
+				return mustJSON(map[string]any{
+					"instance_id": cardID,
+					"name":        "+1/+1",
+					"delta":       1,
+				})
+			},
+		},
+		{
+			name: "set_battlefield_position",
+			ty:   TypeSetBattlefieldPosition,
+			params: func(cardID string, _, _ *game.Player) json.RawMessage {
+				return mustJSON(map[string]any{
+					"instance_id": cardID,
+					"x":           0.5,
+					"y":           0.5,
+				})
+			},
+		},
+		{
+			name:    "declare_attacker",
+			buildAt: game.StepDeclareAttackers,
+			ty:      TypeDeclareAttacker,
+			params: func(cardID string, _, p1 *game.Player) json.RawMessage {
+				return mustJSON(map[string]string{
+					"attacker": cardID,
+					"target":   p1.ID.String(),
+				})
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newGame(t)
+			p0, p1 := g.Seats[0], g.Seats[1]
+			cardID := pushCreature(t, g, p0)
+			if tc.buildAt != "" {
+				advanceTo(t, g, tc.buildAt)
+			}
+			a, err := Decode(string(tc.ty), "", tc.params(cardID, p0, p1))
+			if err != nil {
+				t.Fatalf("Decode: %v", err)
+			}
+			a.Caller = p1.ID // wrong controller
+			if err := Dispatch(g, a); !errors.Is(err, game.ErrCardCallerMismatch) {
+				t.Errorf("got %v, want ErrCardCallerMismatch", err)
+			}
+		})
+	}
+}
+
+// TestAdminBypassesCardControllerGate confirms that uuid.Nil callers
+// (admin / spectator sessions) skip the controller gate so a moderator
+// can fix a wedged board state.
+func TestAdminBypassesCardControllerGate(t *testing.T) {
+	g := newGame(t)
+	p0 := g.Seats[0]
+	cardID := pushCreature(t, g, p0)
+	a, _ := Decode(string(TypeTap), "", mustJSON(map[string]string{"instance_id": cardID}))
+	// a.Caller stays uuid.Nil — admin connection.
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("admin tap: %v", err)
+	}
+}
+
+// TestCardActionAllowsCorrectController ensures the gate isn't
+// over-zealous: the actual controller can still act on their own card.
+func TestCardActionAllowsCorrectController(t *testing.T) {
+	g := newGame(t)
+	p0 := g.Seats[0]
+	cardID := pushCreature(t, g, p0)
+	a, _ := Decode(string(TypeTap), "", mustJSON(map[string]string{"instance_id": cardID}))
+	a.Caller = p0.ID
+	if err := Dispatch(g, a); err != nil {
+		t.Errorf("controller tap: %v", err)
+	}
+}
+
+// TestCardActionUnknownInstancePassesThrough verifies that a card-not-
+// found case is surfaced via the canonical ErrCardNotFound, not via
+// ErrCardCallerMismatch — clients should be able to distinguish "I
+// don't know about that card" from "you don't control it".
+func TestCardActionUnknownInstancePassesThrough(t *testing.T) {
+	g := newGame(t)
+	bogus := uuid.New().String()
+	a, _ := Decode(string(TypeTap), "", mustJSON(map[string]string{"instance_id": bogus}))
+	a.Caller = g.Seats[0].ID
+	err := Dispatch(g, a)
+	if errors.Is(err, game.ErrCardCallerMismatch) {
+		t.Errorf("got ErrCardCallerMismatch, want ErrCardNotFound for unknown card")
+	}
+	if !errors.Is(err, game.ErrCardNotFound) {
+		t.Errorf("got %v, want ErrCardNotFound", err)
+	}
+}
+
+// mustJSON marshals v or panics. Test-only convenience for the table-
+// driven controller-gate cases above.
+func mustJSON(v any) json.RawMessage {
+	raw, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	return raw
+}
