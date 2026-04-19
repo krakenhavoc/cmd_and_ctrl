@@ -125,8 +125,9 @@
 
   <!-- Marker badges. Monarch and initiative are claim toggles for self
        (clear when already-held, set otherwise). Poison / energy show
-       only when non-zero (kept terse on opponent headers; self has the
-       inline steppers below). -->
+       inline ± steppers for self so the controls live next to the
+       value; opponents see read-only badges and only when non-zero
+       (the bar gets crowded fast in 4-player). -->
   <span class="markers">
     {#if isSelf}
       <button
@@ -153,6 +154,50 @@
           toggleInitiative();
         }}>⚔</button
       >
+      <span class="counter-inline poison" title="poison counters">
+        <span class="counter-icon" aria-hidden="true">🟢</span>
+        <button
+          type="button"
+          class="counter-btn"
+          aria-label="lose 1 poison"
+          onclick={(e) => {
+            e.stopPropagation();
+            changePoison(-1);
+          }}>−</button
+        >
+        <span class="counter-val">{seat.poison ?? 0}</span>
+        <button
+          type="button"
+          class="counter-btn"
+          aria-label="gain 1 poison"
+          onclick={(e) => {
+            e.stopPropagation();
+            changePoison(1);
+          }}>+</button
+        >
+      </span>
+      <span class="counter-inline energy" title="energy counters">
+        <span class="counter-icon" aria-hidden="true">⚡</span>
+        <button
+          type="button"
+          class="counter-btn"
+          aria-label="lose 1 energy"
+          onclick={(e) => {
+            e.stopPropagation();
+            changeEnergy(-1);
+          }}>−</button
+        >
+        <span class="counter-val">{seat.energy ?? 0}</span>
+        <button
+          type="button"
+          class="counter-btn"
+          aria-label="gain 1 energy"
+          onclick={(e) => {
+            e.stopPropagation();
+            changeEnergy(1);
+          }}>+</button
+        >
+      </span>
     {:else}
       {#if isMonarch}
         <span class="marker monarch active" title="monarch" aria-label="monarch">👑</span>
@@ -160,16 +205,16 @@
       {#if isInitiative}
         <span class="marker initiative active" title="initiative" aria-label="initiative">⚔</span>
       {/if}
-    {/if}
-    {#if (seat.poison ?? 0) > 0}
-      <span class="marker poison" title={`${seat.poison} poison`} aria-label="poison">
-        🟢{seat.poison}
-      </span>
-    {/if}
-    {#if (seat.energy ?? 0) > 0}
-      <span class="marker energy" title={`${seat.energy} energy`} aria-label="energy">
-        ⚡{seat.energy}
-      </span>
+      {#if (seat.poison ?? 0) > 0}
+        <span class="marker poison" title={`${seat.poison} poison`} aria-label="poison">
+          🟢{seat.poison}
+        </span>
+      {/if}
+      {#if (seat.energy ?? 0) > 0}
+        <span class="marker energy" title={`${seat.energy} energy`} aria-label="energy">
+          ⚡{seat.energy}
+        </span>
+      {/if}
     {/if}
   </span>
 
@@ -227,46 +272,6 @@
     {/key}
   {/if}
 </div>
-
-{#if isSelf}
-  <!-- Inline second-row steppers for poison / energy. Hidden by default
-       in the header proper to keep the bar uncluttered; here they sit
-       just below it so the viewer can fiddle without a modal. -->
-  <div class="counters-row" aria-label="poison and energy controls">
-    <span class="counter-stepper">
-      <span class="counter-label">poison</span>
-      <button
-        type="button"
-        title="-1 poison"
-        aria-label="lose 1 poison"
-        onclick={() => changePoison(-1)}>−</button
-      >
-      <span class="counter-value">{seat.poison ?? 0}</span>
-      <button
-        type="button"
-        title="+1 poison"
-        aria-label="gain 1 poison"
-        onclick={() => changePoison(1)}>+</button
-      >
-    </span>
-    <span class="counter-stepper">
-      <span class="counter-label">energy</span>
-      <button
-        type="button"
-        title="-1 energy"
-        aria-label="lose 1 energy"
-        onclick={() => changeEnergy(-1)}>−</button
-      >
-      <span class="counter-value">{seat.energy ?? 0}</span>
-      <button
-        type="button"
-        title="+1 energy"
-        aria-label="gain 1 energy"
-        onclick={() => changeEnergy(1)}>+</button
-      >
-    </span>
-  </div>
-{/if}
 
 <style>
   .header {
@@ -427,46 +432,51 @@
   .tag.elim {
     color: #ff7a7a;
   }
-  .counters-row {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    margin-top: 2px;
-    padding: 0 10px;
-    font-size: 10px;
-    color: #6c7a99;
-  }
-  .counter-stepper {
+  /* Inline poison / energy stepper, lives in the header marker row.
+     Shape mirrors the life ± controls so the bar reads as one
+     coherent strip of value-with-controls widgets. */
+  .counter-inline {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
-  }
-  .counter-label {
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #6c7a99;
-  }
-  .counter-stepper button {
-    width: 16px;
-    height: 16px;
-    padding: 0;
-    border: 1px solid #2e3a55;
+    gap: 2px;
+    padding: 1px 4px;
     border-radius: 3px;
-    background: transparent;
-    color: #c8c8c8;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid transparent;
+  }
+  .counter-icon {
     font-size: 11px;
+    line-height: 1;
+    margin-right: 2px;
+  }
+  .counter-val {
+    min-width: 14px;
+    text-align: center;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #e0e6f5;
+  }
+  .counter-inline.poison .counter-val {
+    color: #7aff9a;
+  }
+  .counter-inline.energy .counter-val {
+    color: #ffd07a;
+  }
+  .counter-btn {
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #6c7a99;
+    font-size: 11px;
+    line-height: 1;
     cursor: pointer;
     font-family: inherit;
-    line-height: 1;
+    border-radius: 2px;
   }
-  .counter-stepper button:hover {
+  .counter-btn:hover {
     background: #1a2335;
     color: #e0e6f5;
-  }
-  .counter-value {
-    min-width: 18px;
-    text-align: center;
-    color: #e0e6f5;
-    font-weight: 600;
   }
 </style>
