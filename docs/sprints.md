@@ -45,7 +45,7 @@ planned just-in-time from the S12 pain-point triage.
 | S10 | Polish II — Commander UX (cmd damage, politics) | 5 | [#10](https://github.com/krakenhavoc/cmd_and_ctrl/issues/10) | 2026-08-28 | planned |
 | S11 | Polish III — hover preview, undo, spectator | 5 | [#11](https://github.com/krakenhavoc/cmd_and_ctrl/issues/11) | 2026-09-11 | planned |
 | S12 | Deploy + 4-player go-live with friends | 6 | [#12](https://github.com/krakenhavoc/cmd_and_ctrl/issues/12) | 2026-09-25 | planned |
-| S12.5 | Discord identity for players (OAuth + bot + presence) | 6 | [#TBD](https://github.com/krakenhavoc/cmd_and_ctrl/issues) | 2026-10-09 | planned |
+| S12.5 | Discord identity for players (OAuth + bot + presence) | 6 | [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59) | 2026-10-09 | planned |
 | S13+ | **B→C rules graft track** (ongoing) | 7 | TBD at S12 retro | rolling | not started |
 
 ---
