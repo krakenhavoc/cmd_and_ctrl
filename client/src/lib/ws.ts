@@ -39,6 +39,11 @@ export interface ChatMessage {
 // and not part of crash recovery.
 const CHAT_LOG_LIMIT = 200;
 
+// ERROR_TOAST_TTL_MS is how long a server error sticks in the
+// lastError store before auto-clearing. Long enough to read, short
+// enough that an unread error doesn't stay on screen indefinitely.
+const ERROR_TOAST_TTL_MS = 5000;
+
 // GameClient wraps a WebSocket with the v0 protocol and exposes reactive
 // Svelte stores for UI binding. As of S03 it understands `ping`/`pong`,
 // `error`, and `snapshot` frames. `action` frames (client → server) are
@@ -59,6 +64,14 @@ export class GameClient {
   // messages drop off the front. Chat is ephemeral — a fresh connect
   // always starts with an empty log.
   readonly chat: Writable<ChatMessage[]> = writable([]);
+  // lastError holds the most recent error frame received from the
+  // server. Routes subscribe to render a toast / banner so users
+  // can see why an action was rejected (the v0 protocol replies
+  // with error frames addressed only to the originating client).
+  // Auto-cleared after ERROR_TOAST_TTL_MS so a stale error doesn't
+  // sit forever; a new error replaces the old one immediately.
+  readonly lastError: Writable<{ code: string; message: string; at: Date } | null> = writable(null);
+  private errorClearTimer: ReturnType<typeof setTimeout> | null = null;
 
   private socket: WebSocket | null = null;
   // highestSeq tracks the largest `seq` seen so far. The protocol
@@ -263,7 +276,20 @@ export class GameClient {
       }
       case "error": {
         const p = frame.payload as ErrorPayload | undefined;
-        this.append("error", `server error code=${p?.code ?? "?"} message=${p?.message ?? "?"}`);
+        const code = p?.code ?? "?";
+        const message = p?.message ?? "?";
+        this.append("error", `server error code=${code} message=${message}`);
+        // Surface visibly so the user sees why an action was
+        // rejected. Reset the auto-clear timer so a fresh error
+        // gets its full TTL even if a previous one is still showing.
+        this.lastError.set({ code, message, at: new Date() });
+        if (this.errorClearTimer !== null) {
+          clearTimeout(this.errorClearTimer);
+        }
+        this.errorClearTimer = setTimeout(() => {
+          this.lastError.set(null);
+          this.errorClearTimer = null;
+        }, ERROR_TOAST_TTL_MS);
         break;
       }
       default:

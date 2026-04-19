@@ -32,7 +32,7 @@
   // subscribers across reactive reruns (vs. replacing the client
   // instance, which would strand subscriptions on the old object).
   const client = new GameClient("");
-  const { status, snapshot, lastSeq, chat } = client;
+  const { status, snapshot, lastSeq, chat, lastError } = client;
 
   $effect(() => {
     client.disconnect();
@@ -502,6 +502,22 @@
         <button class="primary" onclick={keepHand}>Keep hand</button>
         <button onclick={mulliganDecide}>Mulligan</button>
       </div>
+    </div>
+  {/if}
+
+  {#if $lastError}
+    <div class="error-toast" role="alert" aria-live="polite">
+      <strong>server rejected action:</strong>
+      {$lastError.message}
+      <span class="muted">({$lastError.code})</span>
+      <button
+        type="button"
+        class="error-toast-close"
+        onclick={() => lastError.set(null)}
+        aria-label="dismiss"
+      >
+        ×
+      </button>
     </div>
   {/if}
 
@@ -1224,6 +1240,33 @@
     color: #0c1426;
     font-weight: 600;
     border: 1px solid #8acc8a;
+  }
+
+  /* Server-error toast */
+  .error-toast {
+    padding: 0.5rem 0.8rem;
+    margin-bottom: 0.4rem;
+    background: #4a1a1a;
+    border: 1px solid #8a3a3a;
+    border-radius: 4px;
+    color: #ffd0d0;
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .error-toast strong {
+    color: #fff;
+  }
+  .error-toast-close {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: #ffd0d0;
+    font-size: 1.2em;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.25rem;
   }
 
   /* End-of-game banners */
