@@ -258,13 +258,32 @@ func (g *Game) AdvanceStep() (Turn, error) {
 		return Turn{}, ErrGameNotActive
 	}
 	g.Turn = g.Turn.advance(len(g.Seats))
+	g.runStepEntryHooksLocked()
+	return g.Turn, nil
+}
+
+// runStepEntryHooksLocked dispatches the per-step side effects that
+// fire on entering certain steps. Called from every code path that
+// changes Turn.Step (AdvanceStep, PassPriority's wrap-and-advance
+// branch) so the auto-resolve / auto-clear hooks fire regardless of
+// which mutation produced the step transition.
+//
+// Side effects:
+//   - StepCombatDamage: auto-resolve unblocked attacker damage.
+//   - StepEndCombat: clear AttackingTarget / BlockingTarget on every
+//     battlefield card. Deferring the clear until end_combat (rather
+//     than combat_damage) lets the client keep its combat-arrow
+//     overlay visible through the entire combat_damage step instead
+//     of vanishing the moment damage is resolved.
+//
+// Caller must hold g.mu.
+func (g *Game) runStepEntryHooksLocked() {
 	switch g.Turn.Step {
 	case StepCombatDamage:
 		g.resolveCombatDamageLocked()
 	case StepEndCombat:
 		g.clearCombatLocked()
 	}
-	return g.Turn, nil
 }
 
 // ActivePlayer returns the player whose turn it currently is, or nil
