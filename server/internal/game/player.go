@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // StartingLife is the Commander format's starting life total.
 const StartingLife = 40
@@ -8,6 +12,27 @@ const StartingLife = 40
 // CommanderDamageLethal is the single-commander damage total that wins
 // the game via the commander damage rule (CR 903.10a).
 const CommanderDamageLethal = 21
+
+// MaxLifeHistoryEntries caps the per-player life-change log so a long
+// game doesn't grow snapshots unboundedly. Older entries roll off
+// the front when the cap is exceeded; the most recent
+// MaxLifeHistoryEntries are always retained.
+const MaxLifeHistoryEntries = 50
+
+// LifeChange is a single entry in a Player's life-change log. Delta
+// is the change applied (positive for gain, negative for loss);
+// NewTotal is the resulting life total after the change. At is the
+// server timestamp of the mutation.
+//
+// S08 keeps the schema deliberately small. A future extension could
+// carry a Reason ("commander damage", "burn spell", "manual") once
+// the rules graft surfaces those distinctions; right now every
+// change_life action is "manual" by definition.
+type LifeChange struct {
+	Delta    int
+	NewTotal int
+	At       time.Time
+}
 
 // Player is a seat at the table. Each player owns a set of private
 // zones (library, hand, graveyard, command zone) and tracks their own
@@ -42,6 +67,12 @@ type Player struct {
 	// CommanderDamage maps opposing player ID → damage dealt by that
 	// opponent's commander(s). See the package-level note above.
 	CommanderDamage map[uuid.UUID]int
+
+	// LifeHistory is the rolling log of every change to Life. Bounded
+	// at MaxLifeHistoryEntries; older entries fall off the front. The
+	// log is public — life is visible to all opponents in MTG, and the
+	// history is a UX affordance, not hidden information.
+	LifeHistory []LifeChange
 }
 
 // newPlayer constructs a player with empty zones and their starting
@@ -64,9 +95,25 @@ func newPlayer(name string, seat int) *Player {
 }
 
 // ChangeLife mutates life total by delta (positive for gain, negative
-// for loss) and returns the new total.
+// for loss), records a LifeHistory entry stamped at time.Now().UTC(),
+// and returns the new total. A delta of 0 is a no-op — no history
+// entry is recorded so the log isn't polluted by accidental clicks.
 func (p *Player) ChangeLife(delta int) int {
+	if delta == 0 {
+		return p.Life
+	}
 	p.Life += delta
+	p.LifeHistory = append(p.LifeHistory, LifeChange{
+		Delta:    delta,
+		NewTotal: p.Life,
+		At:       time.Now().UTC(),
+	})
+	if len(p.LifeHistory) > MaxLifeHistoryEntries {
+		// Trim by copying the tail forward so the underlying array
+		// doesn't grow without bound across a long game.
+		dropped := len(p.LifeHistory) - MaxLifeHistoryEntries
+		p.LifeHistory = append(p.LifeHistory[:0], p.LifeHistory[dropped:]...)
+	}
 	return p.Life
 }
 

@@ -156,7 +156,8 @@
             }
           ]
         },
-        "commander_damage": {}
+        "commander_damage": {},
+        "life_history": []
       },
       {
         "id": "\u003cuuid-003\u003e",
@@ -195,7 +196,8 @@
             }
           ]
         },
-        "commander_damage": {}
+        "commander_damage": {},
+        "life_history": []
       }
     ],
     "battlefield": {

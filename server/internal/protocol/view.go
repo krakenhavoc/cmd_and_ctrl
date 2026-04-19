@@ -1,6 +1,8 @@
 package protocol
 
 import (
+	"time"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -32,17 +34,29 @@ type GameView struct {
 // cards, opponent library cards) while preserving the `count` so the
 // UI can still render a placeholder stack.
 type PlayerView struct {
-	ID              string         `json:"id"`
-	Name            string         `json:"name"`
-	Seat            int            `json:"seat"`
-	Life            int            `json:"life"`
-	Poison          int            `json:"poison,omitempty"`
-	Energy          int            `json:"energy,omitempty"`
-	Library         ZoneView       `json:"library"`
-	Hand            ZoneView       `json:"hand"`
-	Graveyard       ZoneView       `json:"graveyard"`
-	Command         ZoneView       `json:"command"`
-	CommanderDamage map[string]int `json:"commander_damage"`
+	ID              string           `json:"id"`
+	Name            string           `json:"name"`
+	Seat            int              `json:"seat"`
+	Life            int              `json:"life"`
+	Poison          int              `json:"poison,omitempty"`
+	Energy          int              `json:"energy,omitempty"`
+	Library         ZoneView         `json:"library"`
+	Hand            ZoneView         `json:"hand"`
+	Graveyard       ZoneView         `json:"graveyard"`
+	Command         ZoneView         `json:"command"`
+	CommanderDamage map[string]int   `json:"commander_damage"`
+	LifeHistory     []LifeChangeView `json:"life_history"`
+}
+
+// LifeChangeView is the wire representation of a single life-change
+// log entry. Always emitted as part of PlayerView; the Player's
+// canonical history is bounded server-side at MaxLifeHistoryEntries
+// (S08), so the wire payload stays small without per-snapshot
+// pruning here.
+type LifeChangeView struct {
+	Delta    int    `json:"delta"`
+	NewTotal int    `json:"new_total"`
+	At       string `json:"at"` // RFC3339
 }
 
 // ZoneView is the wire representation of a Zone. Count is sent
@@ -125,6 +139,14 @@ func viewOfPlayer(p *game.Player) PlayerView {
 	for k, v := range p.CommanderDamage {
 		cmdrDamage[k.String()] = v
 	}
+	history := make([]LifeChangeView, len(p.LifeHistory))
+	for i, c := range p.LifeHistory {
+		history[i] = LifeChangeView{
+			Delta:    c.Delta,
+			NewTotal: c.NewTotal,
+			At:       c.At.UTC().Format(time.RFC3339),
+		}
+	}
 	return PlayerView{
 		ID:              p.ID.String(),
 		Name:            p.Name,
@@ -137,6 +159,7 @@ func viewOfPlayer(p *game.Player) PlayerView {
 		Graveyard:       viewOfZone(p.Graveyard),
 		Command:         viewOfZone(p.Command),
 		CommanderDamage: cmdrDamage,
+		LifeHistory:     history,
 	}
 }
 

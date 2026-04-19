@@ -283,7 +283,7 @@ The server's Go source at `server/internal/protocol/view.go` is the
 canonical type definition. High-level shape:
 
 - **GameView**: `{ id, state, seats[], battlefield, stack, exile, turn }`
-- **PlayerView**: `{ id, name, seat, life, poison?, energy?, library, hand, graveyard, command, commander_damage }`
+- **PlayerView**: `{ id, name, seat, life, poison?, energy?, library, hand, graveyard, command, commander_damage, life_history }` — `life_history` is a per-player rolling log of `LifeChangeView` entries (`{ delta, new_total, at }`, RFC3339 timestamp). Bounded server-side at 50 entries; never filtered (life is public). Added in S08.
 - **ZoneView**: `{ kind, owner?, count, cards[] }` — `owner` omitted for shared zones
 - **CardView**: `{ instance_id, name, owner, controller, scryfall_id?, tapped?, counters?, is_commander?, battle_x?, battle_y? }` — `scryfall_id` is stamped at deck-import time and lets the client resolve images via `GET /cards/{id}/image`. Omitted for placeholder cards (demo game seeded via `CMDCTRL_SEED_DEMO`). `battle_x` / `battle_y` are normalised positions in `[0, 1]` for cards on the battlefield (S06+); both are cleared on zone exit and omitted for cards that have never been positioned.
 - **TurnView**: `{ number, active_seat, priority_holder, phase, step }` — `priority_holder` is the seat index (0-based) that currently holds priority within the step. Equals `active_seat` at every step boundary; rotates on `pass_priority`. Added in S07.

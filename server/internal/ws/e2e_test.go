@@ -118,6 +118,18 @@ func (n *normalizer) player(p protocol.PlayerView, id string) protocol.PlayerVie
 	for k, v := range p.CommanderDamage {
 		out.CommanderDamage[n.id(k)] = v
 	}
+	// Same shape concern as CommanderDamage: viewOfPlayer always
+	// allocates the slice. For determinism the timestamp is replaced
+	// with a stable placeholder — wall-clock time would diff every
+	// run.
+	out.LifeHistory = make([]protocol.LifeChangeView, len(p.LifeHistory))
+	for i, c := range p.LifeHistory {
+		out.LifeHistory[i] = protocol.LifeChangeView{
+			Delta:    c.Delta,
+			NewTotal: c.NewTotal,
+			At:       "<timestamp>",
+		}
+	}
 	return out
 }
 
