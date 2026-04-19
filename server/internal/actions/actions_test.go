@@ -627,6 +627,69 @@ func TestDispatchSetEnergyRejectsCrossSeat(t *testing.T) {
 	}
 }
 
+func TestDispatchSetPromise(t *testing.T) {
+	g := newGame(t)
+	p0, p1 := g.Seats[0], g.Seats[1]
+	a, _ := Decode(string(TypeSetPromise), "", params(t, map[string]any{
+		"from":  p0.ID.String(),
+		"to":    p1.ID.String(),
+		"count": 2,
+	}))
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	if g.Promises[game.PromiseKey{From: p0.ID, To: p1.ID}] != 2 {
+		t.Errorf("promise: got %d, want 2", g.Promises[game.PromiseKey{From: p0.ID, To: p1.ID}])
+	}
+}
+
+func TestDispatchVoteFlow(t *testing.T) {
+	g := newGame(t)
+	p0, p1 := g.Seats[0], g.Seats[1]
+
+	start, _ := Decode(string(TypeStartVote), p0.ID.String(), params(t, map[string]any{
+		"topic":   "monarch?",
+		"options": []string{"alice", "bob"},
+	}))
+	if err := Dispatch(g, start); err != nil {
+		t.Fatalf("Dispatch start_vote: %v", err)
+	}
+	if g.Vote == nil {
+		t.Fatal("vote did not open")
+	}
+
+	cast0, _ := Decode(string(TypeCastVote), p0.ID.String(), params(t, map[string]int{"option": 0}))
+	cast1, _ := Decode(string(TypeCastVote), p1.ID.String(), params(t, map[string]int{"option": 1}))
+	if err := Dispatch(g, cast0); err != nil {
+		t.Fatalf("Dispatch cast_vote p0: %v", err)
+	}
+	if err := Dispatch(g, cast1); err != nil {
+		t.Fatalf("Dispatch cast_vote p1: %v", err)
+	}
+	if g.Vote.Ballots[p0.ID] != 0 || g.Vote.Ballots[p1.ID] != 1 {
+		t.Errorf("ballots: %v", g.Vote.Ballots)
+	}
+
+	end, _ := Decode(string(TypeEndVote), "", nil)
+	if err := Dispatch(g, end); err != nil {
+		t.Fatalf("Dispatch end_vote: %v", err)
+	}
+	if g.Vote != nil {
+		t.Error("vote did not close")
+	}
+}
+
+func TestDispatchCastVoteRejectsCrossSeat(t *testing.T) {
+	g := newGame(t)
+	p0, p1 := g.Seats[0], g.Seats[1]
+	_, _ = g.StartVote(p0.ID, "x", []string{"a", "b"})
+	a, _ := Decode(string(TypeCastVote), p1.ID.String(), params(t, map[string]int{"option": 0}))
+	a.Caller = p0.ID
+	if err := Dispatch(g, a); !errors.Is(err, ErrPlayerCallerMismatch) {
+		t.Errorf("cross-seat cast_vote: got %v, want ErrPlayerCallerMismatch", err)
+	}
+}
+
 func TestDispatchUnknownType(t *testing.T) {
 	g := newGame(t)
 	a, _ := Decode("explode", "", nil)

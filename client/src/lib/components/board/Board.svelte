@@ -24,6 +24,8 @@
   import HoverZoomOverlay from "./HoverZoomOverlay.svelte";
   import StackOverlay from "./StackOverlay.svelte";
   import CombatArrows from "./CombatArrows.svelte";
+  import CommanderDamageGrid from "./CommanderDamageGrid.svelte";
+  import VotingPanel from "./VotingPanel.svelte";
 
   type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
 
@@ -75,6 +77,8 @@
 
   const activeSeatID = $derived(view.seats[view.turn.active_seat]?.id ?? null);
   const prioritySeatID = $derived(view.seats[view.turn.priority_holder]?.id ?? null);
+  const monarchID = $derived(view.monarch ?? null);
+  const initiativeID = $derived(view.initiative ?? null);
 
   function handleTapToggle(card: CardView): void {
     sendAction(card.tapped ? "untap" : "tap", { instance_id: card.instance_id });
@@ -113,6 +117,10 @@
           hasPriority={seat.id === prioritySeatID}
           {viewerID}
           {isAdmin}
+          {sendAction}
+          isMonarch={seat.id === monarchID}
+          isInitiative={seat.id === initiativeID}
+          {view}
           controlledCards={cardsByController.get(seat.id) ?? []}
           exile={exileForOwner(seat.id)}
           {combatMode}
@@ -131,6 +139,8 @@
   <CombatArrows {view} {boardEl} />
   <HoverZoomOverlay />
   <StackOverlay stack={view.stack} />
+  <CommanderDamageGrid {view} {sendAction} />
+  <VotingPanel {view} {viewerID} {sendAction} />
 </div>
 
 <style>

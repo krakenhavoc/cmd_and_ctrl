@@ -50,6 +50,10 @@ const (
 	TypeSetGoaded     Type = "set_goaded"
 	TypeSetPoison     Type = "set_poison"
 	TypeSetEnergy     Type = "set_energy"
+	TypeSetPromise    Type = "set_promise"
+	TypeStartVote     Type = "start_vote"
+	TypeCastVote      Type = "cast_vote"
+	TypeEndVote       Type = "end_vote"
 )
 
 // ErrUnknownType is returned when Dispatch receives an action type it
@@ -220,6 +224,11 @@ var playerScopedActions = map[Type]struct{}{
 	// the monarch.
 	TypeSetPoison: {},
 	TypeSetEnergy: {},
+	// Cast vote on behalf of self only — the seated voter is the
+	// authoritative caller. start_vote is also self-driven (the
+	// initiator is `Player`) but the "any caller may start a vote"
+	// posture matches set_monarch / set_initiative — not scoped.
+	TypeCastVote: {},
 }
 
 // Dispatch applies an action to a game. Returns nil on success, an
@@ -513,6 +522,58 @@ func Dispatch(g *game.Game, a Action) error {
 			return err
 		}
 		return g.SetEnergy(a.Player, p.Amount)
+
+	case TypeSetPromise:
+		var p struct {
+			From  string `json:"from"`
+			To    string `json:"to"`
+			Count int    `json:"count"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		from, err := uuid.Parse(p.From)
+		if err != nil {
+			return fmt.Errorf("set_promise from: %w", err)
+		}
+		to, err := uuid.Parse(p.To)
+		if err != nil {
+			return fmt.Errorf("set_promise to: %w", err)
+		}
+		// Sandbox: any seated player may flip a promise marker. The
+		// authoritative thing here is the visual reminder; if it
+		// became contentious the playgroup would self-police.
+		return g.SetPromise(from, to, p.Count)
+
+	case TypeStartVote:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			Topic   string   `json:"topic"`
+			Options []string `json:"options"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		_, err := g.StartVote(a.Player, p.Topic, p.Options)
+		return err
+
+	case TypeCastVote:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			Option int `json:"option"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		return g.CastVote(a.Player, p.Option)
+
+	case TypeEndVote:
+		_, err := g.EndVote()
+		return err
 
 	case TypeSetBattlefieldPosition:
 		var p struct {

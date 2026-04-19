@@ -87,6 +87,22 @@ export interface GameView {
   // Player ID currently holding the initiative (BG3 mechanic). Empty
   // when unassigned. Same sandbox posture as monarch. Added in S10.
   initiative?: string;
+  // Per-pair "I owe you" promise tally as "{from}->{to}" string keys
+  // → count. Sparse: zero entries are dropped server-side. Added in
+  // S10.
+  promises?: Record<string, number>;
+  // Currently open council's-dilemma / politics vote, or omitted when
+  // none is in progress. Added in S10.
+  vote?: VoteView;
+}
+
+export interface VoteView {
+  id: string;
+  topic: string;
+  options: string[];
+  initiator: string;
+  // voter player ID → option index
+  ballots: Record<string, number>;
 }
 
 export interface PlayerView {
