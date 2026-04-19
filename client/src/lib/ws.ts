@@ -7,6 +7,7 @@ import {
   type PongPayload,
   type ErrorPayload,
   type SnapshotPayload,
+  type ChatPayload,
   type GameView,
 } from "./protocol";
 
@@ -20,6 +21,23 @@ export interface LogEntry {
   direction: LogDirection;
   text: string;
 }
+
+// ChatMessage is the local view of a server-stamped chat frame. The
+// frame `id` doubles as the message id so de-duped renders are easy;
+// `at` is parsed once on receipt so the UI can format without
+// re-parsing on every reactive tick.
+export interface ChatMessage {
+  id: string;
+  authorID: string;
+  authorName: string;
+  text: string;
+  at: Date;
+}
+
+// CHAT_LOG_LIMIT caps the number of messages retained client-side. Old
+// entries fall off the front of the log; chat history is ephemeral
+// and not part of crash recovery.
+const CHAT_LOG_LIMIT = 200;
 
 // GameClient wraps a WebSocket with the v0 protocol and exposes reactive
 // Svelte stores for UI binding. As of S03 it understands `ping`/`pong`,
@@ -36,6 +54,11 @@ export class GameClient {
   // consumers that care about ordering don't have to derive it.
   readonly snapshot: Writable<GameView | null> = writable(null);
   readonly lastSeq: Writable<number> = writable(0);
+  // chat is the rolling list of server-stamped chat messages received
+  // on this connection. Capped to CHAT_LOG_LIMIT entries; older
+  // messages drop off the front. Chat is ephemeral — a fresh connect
+  // always starts with an empty log.
+  readonly chat: Writable<ChatMessage[]> = writable([]);
 
   private socket: WebSocket | null = null;
   // highestSeq tracks the largest `seq` seen so far. The protocol
@@ -120,6 +143,31 @@ export class GameClient {
     this.append("sent", `ping id=${frame.id.slice(0, 8)} msg=${JSON.stringify(msg)}`);
   }
 
+  // sendChat submits a chat frame to the server. The server stamps
+  // author_id, author_name, and timestamp from the connection's
+  // principal — only the text is honoured from this side. Returns the
+  // generated frame id, or null if the socket isn't open.
+  sendChat(text: string): string | null {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      return null;
+    }
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      this.append("error", "not connected");
+      return null;
+    }
+    const id = uuid();
+    const frame: Frame<ChatPayload> = {
+      v: PROTOCOL_VERSION,
+      kind: "chat",
+      id,
+      payload: { author_name: "", text: trimmed, timestamp: "" },
+    };
+    this.socket.send(JSON.stringify(frame));
+    this.append("sent", `chat id=${id.slice(0, 8)} text=${JSON.stringify(trimmed)}`);
+    return id;
+  }
+
   // sendAction submits an action frame to the server. Returns the
   // generated frame id for correlation with subsequent snapshot/error
   // frames. The caller is responsible for typing the params shape
@@ -191,6 +239,26 @@ export class GameClient {
           "received",
           `snapshot seq=${p.seq} turn=${p.game.turn.number} seat=${p.game.turn.active_seat} step=${p.game.turn.step}`,
         );
+        break;
+      }
+      case "chat": {
+        const p = frame.payload as ChatPayload | undefined;
+        if (!p) {
+          this.append("error", "chat frame had no payload");
+          break;
+        }
+        const msg: ChatMessage = {
+          id: frame.id,
+          authorID: p.author_id ?? "",
+          authorName: p.author_name,
+          text: p.text,
+          at: new Date(p.timestamp),
+        };
+        this.chat.update((entries) => {
+          const next = [...entries, msg];
+          return next.length > CHAT_LOG_LIMIT ? next.slice(-CHAT_LOG_LIMIT) : next;
+        });
+        this.append("received", `chat from=${msg.authorName} text=${JSON.stringify(msg.text)}`);
         break;
       }
       case "error": {

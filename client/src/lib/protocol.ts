@@ -4,7 +4,7 @@
 
 export const PROTOCOL_VERSION = 0;
 
-export type Kind = "ping" | "pong" | "error" | "action" | "snapshot";
+export type Kind = "ping" | "pong" | "error" | "action" | "snapshot" | "chat";
 
 export const ErrorCode = {
   BadVersion: "bad_version",
@@ -50,6 +50,18 @@ export interface ActionPayload {
 export interface SnapshotPayload {
   seq: number;
   game: GameView;
+}
+
+// ChatPayload is the body of a Kind == "chat" frame in either
+// direction. When the client sends one, only `text` is honoured —
+// the server stamps `author_id`, `author_name`, and `timestamp` from
+// the connection's principal before broadcasting. Spectator chat
+// arrives with `author_id` empty and `author_name` == "spectator".
+export interface ChatPayload {
+  author_id?: string;
+  author_name: string;
+  text: string;
+  timestamp: string;
 }
 
 // View types mirror server/internal/protocol/view.go.
@@ -104,6 +116,10 @@ export interface CardView {
 export interface TurnView {
   number: number;
   active_seat: number;
+  // priority_holder is the seat index that currently holds priority
+  // within the step. Equal to active_seat at every step boundary;
+  // rotates on pass_priority. Added in S07.
+  priority_holder: number;
   phase: string;
   step: string;
 }
