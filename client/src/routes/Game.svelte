@@ -88,13 +88,19 @@
     client.sendAction(type, player, params);
   };
 
-  // Re-render whenever a new snapshot arrives OR the renderer just
-  // finished initialising. Reading $snapshot and rendererReady in the
-  // same $effect ties both reactive inputs to the redraw.
+  // Re-render whenever a new snapshot arrives, the renderer just
+  // finished initialising, OR any combat-related field on
+  // renderOptions changes (selection, mode). The combat highlights
+  // are drawn into the same canvas as the rest of the table, so
+  // they need a redraw to update.
   $effect(() => {
     const view: GameView | null = $snapshot;
+    // touch every combat-related field so the effect re-runs on
+    // local UI changes that don't carry a new snapshot.
+    void renderOptions.combatMode;
+    void renderOptions.selectedCombatCardID;
     if (!renderer || !rendererReady || !view) return;
-    renderer.render(view, { viewerID: sess?.playerID ?? null, sendAction });
+    renderer.render(view, renderOptions);
   });
 
   // Watch the container size. PIXI's resizeTo handles the canvas
@@ -105,7 +111,7 @@
     const obs = new ResizeObserver(() => {
       if (!renderer || !rendererReady) return;
       const view = $snapshot;
-      if (view) renderer.render(view, { viewerID: sess?.playerID ?? null, sendAction });
+      if (view) renderer.render(view, renderOptions);
     });
     obs.observe(canvasEl);
     return () => obs.disconnect();
@@ -243,7 +249,7 @@
     | { kind: "attacker"; cardID: string }
     | { kind: "blocker"; cardID: string }
     | null;
-  let combatSelection: CombatSelection = $state(null);
+  let combatSelection = $state<CombatSelection>(null);
 
   // Heuristic mirror of server-side IsCreature — substring match on
   // the type_line. Cards without a type_line (placeholders) are
@@ -285,6 +291,33 @@
   const canDeclareBlockers = $derived(
     !!turn && turn.step === "declare_blockers" && incomingAttackers.length > 0,
   );
+
+  // combatMode tells the renderer how to interpret battlefield /
+  // seat clicks. Derived directly from the step gates so canvas
+  // clicks track the panel UX without separate state.
+  const combatMode = $derived<"idle" | "attack" | "block">(
+    canDeclareAttackers ? "attack" : canDeclareBlockers ? "block" : "idle",
+  );
+
+  // renderOptions bundles everything the table renderer needs.
+  // Recomputed on every snapshot / selection / mode change so
+  // canvas-side highlights and click handlers stay in sync.
+  const renderOptions = $derived({
+    viewerID: viewerID,
+    sendAction,
+    combatMode,
+    selectedCombatCardID: combatSelection?.cardID ?? null,
+    onSelectCombatCard: (cardID: string): void => {
+      if (combatMode === "attack") selectAttacker(cardID);
+      else if (combatMode === "block") selectBlocker(cardID);
+    },
+    onDeclareAttack: (targetPlayerID: string): void => {
+      declareAttackTarget(targetPlayerID);
+    },
+    onDeclareBlock: (attackerCardID: string): void => {
+      declareBlockTarget(attackerCardID);
+    },
+  });
 
   function selectAttacker(cardID: string): void {
     combatSelection =
@@ -756,9 +789,20 @@
         {/if}
       </div>
 
-      {#if combatInProgress}
-        <button class="combat-clear" onclick={clearCombat}>clear combat</button>
-      {/if}
+      <div class="combat-footer">
+        {#if (canDeclareAttackers || canDeclareBlockers) && viewerHasPriority}
+          <button
+            class="combat-done"
+            onclick={passPriority}
+            title="finish declaring; pass priority to advance the combat phase"
+          >
+            done — pass priority
+          </button>
+        {/if}
+        {#if combatInProgress}
+          <button class="combat-clear" onclick={clearCombat}>clear combat</button>
+        {/if}
+      </div>
     </div>
   {/if}
 
@@ -1142,13 +1186,25 @@
   .combat-row-state.block {
     color: #9ec7ff;
   }
+  .combat-footer {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
   .combat-clear {
-    align-self: flex-start;
     padding: 0.2rem 0.6rem;
     font-size: 0.85em;
     background: #2a3550;
     color: #cfd6ee;
     border: 1px solid #3a4570;
+  }
+  .combat-done {
+    padding: 0.3rem 0.8rem;
+    font-size: 0.9em;
+    background: #b3e5b3;
+    color: #0c1426;
+    font-weight: 600;
+    border: 1px solid #8acc8a;
   }
 
   /* End-of-game banners */
