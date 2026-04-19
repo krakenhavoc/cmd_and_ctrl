@@ -64,7 +64,10 @@ const nameStyle = new TextStyle({
 // and always see the same backing Texture for a given key.
 const textureCache = new Map<string, Promise<Texture>>();
 
-function textureFor(scryfallID: string, size: "small" | "normal" = "small"): Promise<Texture> {
+export function textureFor(
+  scryfallID: string,
+  size: "small" | "normal" | "large" = "small",
+): Promise<Texture> {
   const key = `${scryfallID}:${size}`;
   let pending = textureCache.get(key);
   if (!pending) {
