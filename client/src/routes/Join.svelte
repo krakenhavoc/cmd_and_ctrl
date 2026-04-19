@@ -21,7 +21,12 @@
     error = "";
     try {
       await joinGame(gameID, inviteToken, name.trim());
-      navigate(`#/games/${gameID}`);
+      // Land in the lobby first so the player can import a deck +
+      // see other seats' status before entering the game route. The
+      // in-game deck-import modal in Game.svelte (S08.5 wave 1)
+      // remains as a safety net for direct navigation to /games/{id}
+      // by an unimported seat, but the default flow is lobby first.
+      navigate("#/lobby");
     } catch (err) {
       error = err instanceof LobbyApiError ? err.message : "join failed";
     } finally {
