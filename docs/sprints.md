@@ -42,7 +42,7 @@ planned just-in-time from the S12 pain-point triage.
 | S08 | First playable sandbox (2-player, milestone) | 4 | [#8](https://github.com/krakenhavoc/cmd_and_ctrl/issues/8) | 2026-07-31 | planned |
 | S08.5 | Game-logic cleanup pass (wave 1: gating + room + import) | 4 | [#43](https://github.com/krakenhavoc/cmd_and_ctrl/issues/43) | 2026-05-03 | planned |
 | S09 | Polish I — animations + VFX | 5 | [#9](https://github.com/krakenhavoc/cmd_and_ctrl/issues/9) | 2026-08-14 | planned |
-| S10 | Polish II — Commander UX (cmd damage, politics) | 5 | [#10](https://github.com/krakenhavoc/cmd_and_ctrl/issues/10) | 2026-08-28 | planned |
+| S10 | Polish II — Commander UX (cmd damage, politics) | 5 | [#10](https://github.com/krakenhavoc/cmd_and_ctrl/issues/10) | 2026-08-28 | **done** |
 | S11 | Polish III — hover preview, undo, spectator | 5 | [#11](https://github.com/krakenhavoc/cmd_and_ctrl/issues/11) | 2026-09-11 | planned |
 | S11.5 | Per-user settings and preferences (mini) | 5 | [#82](https://github.com/krakenhavoc/cmd_and_ctrl/issues/82) | 2026-09-18 | planned |
 | S12 | Deploy + 4-player go-live with friends | 6 | [#12](https://github.com/krakenhavoc/cmd_and_ctrl/issues/12) | 2026-09-25 | planned |
@@ -232,8 +232,8 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 - [x] Commander damage 4×4 grid, always visible (#88)
 - [x] Life tracker with history, poison/infect/energy controls (#87)
 - [x] Monarch / initiative / goad markers (#85, #87)
-- [x] Politics UI scaffold (promise tokens) (#89)
-- [x] Council's dilemma / voting UI (#89)
+- [x] Politics UI scaffold (promise tokens) (#91)
+- [x] Council's dilemma / voting UI (#91)
 
 **Exit criteria:** all Commander-specific affordances from PLAN.md §5 are at least rough-rendered.
 
