@@ -83,6 +83,20 @@ type Game struct {
 	// Added in S10.
 	Initiative uuid.UUID
 
+	// Promises is the directed per-pair "I owe you" promise-token count
+	// keyed by `from→to` pairs. Politics scaffold — players use it as
+	// a visual reminder of informal deals ("I owe Alice 2 favours").
+	// Set semantics via SetPromise; cleared to zero by setting count=0
+	// (the entry stays in the map for rendering simplicity, server
+	// trims trailing zeros at view-time). Added in S10.
+	Promises map[PromiseKey]int
+
+	// Vote is the currently open council's-dilemma / vote-on-an-issue,
+	// or nil when no vote is active. The wire view exposes it as a
+	// small object so every player sees the same prompt and tally.
+	// Added in S10.
+	Vote *Vote
+
 	// rng is captured from Start so that subsequent mutations that
 	// shuffle (Mulligan, ShuffleLibrary) use the same source of
 	// randomness as the initial library shuffle. nil means "use the

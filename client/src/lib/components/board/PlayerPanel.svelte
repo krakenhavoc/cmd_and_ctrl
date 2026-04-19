@@ -22,13 +22,14 @@
   // Pixi wireTapClick: combat select on your own creature, declare-
   // block on an incoming attacker, otherwise tap/untap.
 
-  import type { ActionPayload, CardView, PlayerView, ZoneView } from "../../protocol";
+  import type { ActionPayload, CardView, GameView, PlayerView, ZoneView } from "../../protocol";
   import { bucketForBattlefield, isCreature } from "../../cardTypes";
   import BattlefieldRow from "./BattlefieldRow.svelte";
   import BattlefieldColumn from "./BattlefieldColumn.svelte";
   import PileBar from "./PileBar.svelte";
   import Hand from "./Hand.svelte";
   import PlayerHeader from "./PlayerHeader.svelte";
+  import PromisesRow from "./PromisesRow.svelte";
 
   type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
 
@@ -42,6 +43,7 @@
     sendAction: ActionSender;
     isMonarch: boolean;
     isInitiative: boolean;
+    view: GameView;
     // Battlefield slice already filtered to cards with controller === seat.id
     controlledCards: CardView[];
     // Player-owned slice of the shared exile zone (filtered by Board)
@@ -66,6 +68,7 @@
     sendAction,
     isMonarch,
     isInitiative,
+    view,
     controlledCards,
     exile,
     combatMode,
@@ -124,6 +127,9 @@
       {sendAction}
       {onDeclareAttack}
     />
+    {#if !isSelf}
+      <PromisesRow {view} {viewerID} opponentID={seat.id} {sendAction} />
+    {/if}
   </div>
   <div class="grid-creatures">
     <BattlefieldRow

@@ -42,6 +42,23 @@ type GameView struct {
 	// (BG3 mechanic), or empty if unassigned. Same sandbox posture as
 	// Monarch. Added in S10.
 	Initiative string `json:"initiative,omitempty"`
+	// Promises is the per-pair "I owe you" token tally as
+	// "{from}->{to}" string keys → count. Zero entries are dropped on
+	// the wire so the map stays small. Added in S10.
+	Promises map[string]int `json:"promises,omitempty"`
+	// Vote is the currently open vote (council's dilemma /
+	// politics), or nil when no vote is in progress. Added in S10.
+	Vote *VoteView `json:"vote,omitempty"`
+}
+
+// VoteView is the wire form of game.Vote. Ballots is keyed by voter
+// player ID (string UUID) for trivial JSON serialisation.
+type VoteView struct {
+	ID        string         `json:"id"`
+	Topic     string         `json:"topic"`
+	Options   []string       `json:"options"`
+	Initiator string         `json:"initiator"`
+	Ballots   map[string]int `json:"ballots"`
 }
 
 // PlayerView is the wire representation of a Player. Full-fidelity
@@ -187,6 +204,8 @@ func ViewOfGame(g *game.Game) GameView {
 			MulligansOpen: g.MulligansOpen,
 			Monarch:       uuidStringOrEmpty(g.Monarch),
 			Initiative:    uuidStringOrEmpty(g.Initiative),
+			Promises:      viewOfPromises(g.Promises),
+			Vote:          viewOfVote(g.Vote),
 		}
 	})
 	return view
@@ -230,6 +249,45 @@ func viewOfPlayer(p *game.Player) PlayerView {
 		HandKept:        p.HandKept,
 		MulligansTaken:  p.MulligansTaken,
 		DeckImported:    p.DeckImported,
+	}
+}
+
+// viewOfPromises projects the per-pair promise map to wire format.
+// Keys are encoded as "{from}->{to}" strings; entries with count <= 0
+// are dropped so the wire payload stays sparse.
+func viewOfPromises(in map[game.PromiseKey]int) map[string]int {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]int, len(in))
+	for k, v := range in {
+		if v <= 0 {
+			continue
+		}
+		out[k.From.String()+"->"+k.To.String()] = v
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// viewOfVote projects an open vote to wire format. Returns nil for a
+// nil vote so json's omitempty drops the field entirely.
+func viewOfVote(v *game.Vote) *VoteView {
+	if v == nil {
+		return nil
+	}
+	ballots := make(map[string]int, len(v.Ballots))
+	for k, opt := range v.Ballots {
+		ballots[k.String()] = opt
+	}
+	return &VoteView{
+		ID:        v.ID.String(),
+		Topic:     v.Topic,
+		Options:   append([]string(nil), v.Options...),
+		Initiator: v.Initiator.String(),
+		Ballots:   ballots,
 	}
 }
 
@@ -303,6 +361,8 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		MulligansOpen: v.MulligansOpen,
 		Monarch:       v.Monarch,
 		Initiative:    v.Initiative,
+		Promises:      v.Promises,
+		Vote:          v.Vote,
 	}
 }
 

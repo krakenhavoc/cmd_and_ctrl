@@ -228,12 +228,12 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 ## S10 — Polish II — Commander UX
 **Phase:** 5 · **Goal:** the Commander-specific differentiators from PLAN.md §5.
 
-- [ ] Command zone as a first-class UI element
-- [ ] Commander damage 4×4 grid, always visible
-- [ ] Life tracker starting at 40 with history, poison/infect/energy
-- [ ] Monarch / initiative / goad markers
-- [ ] Politics UI scaffold (deal buttons, promise tokens)
-- [ ] Council's dilemma / voting UI
+- [x] Command zone as a first-class UI element (#86)
+- [x] Commander damage 4×4 grid, always visible (#88)
+- [x] Life tracker with history, poison/infect/energy controls (#87)
+- [x] Monarch / initiative / goad markers (#85, #87)
+- [x] Politics UI scaffold (promise tokens) (#89)
+- [x] Council's dilemma / voting UI (#89)
 
 **Exit criteria:** all Commander-specific affordances from PLAN.md §5 are at least rough-rendered.
 

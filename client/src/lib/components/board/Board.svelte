@@ -25,6 +25,7 @@
   import StackOverlay from "./StackOverlay.svelte";
   import CombatArrows from "./CombatArrows.svelte";
   import CommanderDamageGrid from "./CommanderDamageGrid.svelte";
+  import VotingPanel from "./VotingPanel.svelte";
 
   type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
 
@@ -119,6 +120,7 @@
           {sendAction}
           isMonarch={seat.id === monarchID}
           isInitiative={seat.id === initiativeID}
+          {view}
           controlledCards={cardsByController.get(seat.id) ?? []}
           exile={exileForOwner(seat.id)}
           {combatMode}
@@ -138,6 +140,7 @@
   <HoverZoomOverlay />
   <StackOverlay stack={view.stack} />
   <CommanderDamageGrid {view} {sendAction} />
+  <VotingPanel {view} {viewerID} {sendAction} />
 </div>
 
 <style>
