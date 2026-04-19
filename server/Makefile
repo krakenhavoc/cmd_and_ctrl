@@ -16,6 +16,8 @@ run: build
 	./$(BINARY)
 
 dev:
+	CMDCTRL_ADMIN_TOKEN="$${CMDCTRL_ADMIN_TOKEN:-dev-admin-token-not-for-production}" \
+	CMDCTRL_DATA_DIR="$${CMDCTRL_DATA_DIR:-../data}" \
 	go run ./cmd/server
 
 test:
