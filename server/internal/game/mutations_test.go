@@ -470,6 +470,141 @@ func TestPassTurnResetsPriorityHolder(t *testing.T) {
 	}
 }
 
+// playToBattlefield helper: draws a card to seat 0's hand and plays
+// it onto the battlefield, returning the card's instance ID. Used by
+// the combat-mutation tests so each one starts with at least one
+// permanent in play.
+func playToBattlefield(t *testing.T, g *Game, p *Player) uuid.UUID {
+	t.Helper()
+	if err := g.DrawCard(p.ID); err != nil {
+		t.Fatalf("DrawCard: %v", err)
+	}
+	c, err := p.Hand.Top()
+	if err != nil {
+		t.Fatalf("Hand.Top: %v", err)
+	}
+	if err := g.PlayCard(p.ID, c.InstanceID); err != nil {
+		t.Fatalf("PlayCard: %v", err)
+	}
+	return c.InstanceID
+}
+
+func TestDeclareAttackerSetsTarget(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := playToBattlefield(t, g, g.Seats[0])
+	defender := g.Seats[1].ID
+
+	if err := g.DeclareAttacker(attacker, defender); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID == attacker && c.AttackingTarget != defender {
+			t.Errorf("AttackingTarget: got %v, want %v", c.AttackingTarget, defender)
+		}
+	}
+}
+
+func TestDeclareAttackerRejectsUnknownTarget(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := playToBattlefield(t, g, g.Seats[0])
+	if err := g.DeclareAttacker(attacker, uuid.New()); err != ErrPlayerNotFound {
+		t.Errorf("unknown target: got %v, want ErrPlayerNotFound", err)
+	}
+}
+
+func TestDeclareAttackerRejectsUnknownCard(t *testing.T) {
+	g := newActiveGame(t)
+	if err := g.DeclareAttacker(uuid.New(), g.Seats[1].ID); err != ErrCardNotFound {
+		t.Errorf("unknown attacker: got %v, want ErrCardNotFound", err)
+	}
+}
+
+func TestDeclareAttackerOverwritesPreviousTarget(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	attacker := playToBattlefield(t, g, g.Seats[0])
+	if err := g.DeclareAttacker(attacker, g.Seats[1].ID); err != nil {
+		t.Fatalf("first DeclareAttacker: %v", err)
+	}
+	if err := g.DeclareAttacker(attacker, g.Seats[2].ID); err != nil {
+		t.Fatalf("second DeclareAttacker: %v", err)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID == attacker && c.AttackingTarget != g.Seats[2].ID {
+			t.Errorf("AttackingTarget: got %v, want seat 2 %v",
+				c.AttackingTarget, g.Seats[2].ID)
+		}
+	}
+}
+
+func TestDeclareBlockerSetsTarget(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := playToBattlefield(t, g, g.Seats[0])
+	blocker := playToBattlefield(t, g, g.Seats[1])
+
+	if err := g.DeclareAttacker(attacker, g.Seats[1].ID); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
+	if err := g.DeclareBlocker(blocker, attacker); err != nil {
+		t.Fatalf("DeclareBlocker: %v", err)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID == blocker && c.BlockingTarget != attacker {
+			t.Errorf("BlockingTarget: got %v, want %v", c.BlockingTarget, attacker)
+		}
+	}
+}
+
+func TestDeclareBlockerRejectsMissingAttacker(t *testing.T) {
+	g := newActiveGame(t)
+	blocker := playToBattlefield(t, g, g.Seats[1])
+	if err := g.DeclareBlocker(blocker, uuid.New()); err != ErrCardNotFound {
+		t.Errorf("missing attacker: got %v, want ErrCardNotFound", err)
+	}
+}
+
+func TestClearCombatResetsAllAttackersAndBlockers(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := playToBattlefield(t, g, g.Seats[0])
+	blocker := playToBattlefield(t, g, g.Seats[1])
+	_ = g.DeclareAttacker(attacker, g.Seats[1].ID)
+	_ = g.DeclareBlocker(blocker, attacker)
+
+	if err := g.ClearCombat(); err != nil {
+		t.Fatalf("ClearCombat: %v", err)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.AttackingTarget != uuid.Nil {
+			t.Errorf("card %v still attacking %v after ClearCombat", c.Name, c.AttackingTarget)
+		}
+		if c.BlockingTarget != uuid.Nil {
+			t.Errorf("card %v still blocking %v after ClearCombat", c.Name, c.BlockingTarget)
+		}
+	}
+}
+
+func TestZoneExitClearsCombatState(t *testing.T) {
+	// Card declared as attacker, then moved off the battlefield —
+	// AttackingTarget must clear (CR 400.7-style; here applied to
+	// our combat fields too).
+	g := newActiveGame(t)
+	attacker := playToBattlefield(t, g, g.Seats[0])
+	if err := g.DeclareAttacker(attacker, g.Seats[1].ID); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
+	// Move it to graveyard.
+	src := ZoneRef{Kind: ZoneBattlefield}
+	dst := ZoneRef{Kind: ZoneGraveyard, Owner: g.Seats[0].ID}
+	if err := g.MoveCardByID(src, dst, attacker); err != nil {
+		t.Fatalf("MoveCardByID: %v", err)
+	}
+	// Card now in graveyard — confirm AttackingTarget cleared.
+	for _, c := range g.Seats[0].Graveyard.Cards {
+		if c.InstanceID == attacker && c.AttackingTarget != uuid.Nil {
+			t.Errorf("AttackingTarget not cleared on zone exit: %v", c.AttackingTarget)
+		}
+	}
+}
+
 func TestStartDealsOpeningHand(t *testing.T) {
 	g := newActiveGame(t) // already started
 	for _, p := range g.Seats {

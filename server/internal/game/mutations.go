@@ -274,6 +274,92 @@ func (g *Game) PassPriority() error {
 	return nil
 }
 
+// DeclareAttacker marks a battlefield card as attacking the target
+// player. The attacker must be on the battlefield; the target must be
+// a seated player; both checks return ErrCardNotFound /
+// ErrPlayerNotFound respectively. Re-declaring the same attacker
+// against a different target overwrites the previous target — the
+// most recent declaration wins.
+//
+// S08 does not enforce that the caller controls the attacker, that
+// the target is an opponent, that the active step is one where
+// attackers can be declared, or that the attacker is untapped /
+// hasn't summoning-sickness. All four of those are rules enforcement
+// (S13+); the sandbox accepts any well-formed declaration.
+//
+// Idempotent on the same (attacker, target) pair.
+func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	if g.playerByIDLocked(targetPlayerID) == nil {
+		return ErrPlayerNotFound
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == attackerID {
+			g.Battlefield.Cards[i].AttackingTarget = targetPlayerID
+			// A card declared as attacker can't simultaneously be a
+			// blocker — clearing the other field keeps the per-card
+			// combat state coherent.
+			g.Battlefield.Cards[i].BlockingTarget = uuid.Nil
+			return nil
+		}
+	}
+	return ErrCardNotFound
+}
+
+// DeclareBlocker marks a battlefield card as blocking a specific
+// declared attacker. Both IDs must exist on the battlefield. The
+// attacker need not currently have AttackingTarget set — the sandbox
+// accepts pre-emptive blocker declarations and a future rules graft
+// can add the validation. Idempotent on the same pair.
+func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	// Verify the attacker exists on the battlefield. Without this the
+	// blocker would silently point at a non-existent attacker ID.
+	attackerExists := false
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == attackerID {
+			attackerExists = true
+			break
+		}
+	}
+	if !attackerExists {
+		return ErrCardNotFound
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == blockerID {
+			g.Battlefield.Cards[i].BlockingTarget = attackerID
+			g.Battlefield.Cards[i].AttackingTarget = uuid.Nil
+			return nil
+		}
+	}
+	return ErrCardNotFound
+}
+
+// ClearCombat resets every card on the battlefield to "not attacking
+// and not blocking". Called by the active player at end of combat
+// (or by anyone, really — the sandbox doesn't gate it). Cheap O(n)
+// pass over the battlefield.
+func (g *Game) ClearCombat() error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	for i := range g.Battlefield.Cards {
+		g.Battlefield.Cards[i].AttackingTarget = uuid.Nil
+		g.Battlefield.Cards[i].BlockingTarget = uuid.Nil
+	}
+	return nil
+}
+
 // Concede marks the given player as eliminated. If exactly one
 // non-eliminated player remains after the mutation, the game's State
 // transitions to StateEnded — derived state, no separate Winner field

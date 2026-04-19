@@ -40,6 +40,9 @@ const (
 	TypeSetBattlefieldPosition Type = "set_battlefield_position"
 	TypeConcede                Type = "concede"
 	TypeKeepHand               Type = "keep_hand"
+	TypeDeclareAttacker        Type = "declare_attacker"
+	TypeDeclareBlocker         Type = "declare_blocker"
+	TypeClearCombat            Type = "clear_combat"
 )
 
 // ErrUnknownType is returned when Dispatch receives an action type it
@@ -348,6 +351,45 @@ func Dispatch(g *game.Game, a Action) error {
 			return ErrInvalidPlayer
 		}
 		return g.KeepHand(a.Player)
+
+	case TypeDeclareAttacker:
+		var p struct {
+			Attacker string `json:"attacker"`
+			Target   string `json:"target"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		attackerID, err := uuid.Parse(p.Attacker)
+		if err != nil {
+			return fmt.Errorf("declare_attacker attacker: %w", err)
+		}
+		targetID, err := uuid.Parse(p.Target)
+		if err != nil {
+			return fmt.Errorf("declare_attacker target: %w", err)
+		}
+		return g.DeclareAttacker(attackerID, targetID)
+
+	case TypeDeclareBlocker:
+		var p struct {
+			Blocker  string `json:"blocker"`
+			Attacker string `json:"attacker"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		blockerID, err := uuid.Parse(p.Blocker)
+		if err != nil {
+			return fmt.Errorf("declare_blocker blocker: %w", err)
+		}
+		attackerID, err := uuid.Parse(p.Attacker)
+		if err != nil {
+			return fmt.Errorf("declare_blocker attacker: %w", err)
+		}
+		return g.DeclareBlocker(blockerID, attackerID)
+
+	case TypeClearCombat:
+		return g.ClearCombat()
 
 	case TypeSetBattlefieldPosition:
 		var p struct {

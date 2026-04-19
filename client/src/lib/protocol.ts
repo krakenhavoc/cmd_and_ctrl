@@ -141,6 +141,14 @@ export interface CardView {
   // omits the fields for cards that have never been positioned.
   battle_x?: number;
   battle_y?: number;
+  // Player ID this card is currently declared to attack. Omitted
+  // when not declared as attacker. Cleared on zone exit and by
+  // clear_combat. Added in S08.
+  attacking_target?: string;
+  // Attacker instance ID this card is currently declared to block.
+  // Omitted when not declared as blocker. Cleared on zone exit and
+  // by clear_combat. Added in S08.
+  blocking_target?: string;
 }
 
 export interface TurnView {

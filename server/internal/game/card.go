@@ -58,6 +58,18 @@ type Card struct {
 	// IsCommander marks a card as a commander for the Commander format.
 	// Commanders live in the command zone at game start.
 	IsCommander bool
+
+	// AttackingTarget is the player ID this card has been declared to
+	// attack. uuid.Nil means "not declared as attacker". Set by
+	// DeclareAttacker, cleared by ClearCombat or zone exit. Only
+	// meaningful on the battlefield. Added in S08.
+	AttackingTarget uuid.UUID
+
+	// BlockingTarget is the attacker instance ID this card has been
+	// declared to block. uuid.Nil means "not declared as blocker".
+	// Set by DeclareBlocker, cleared by ClearCombat or zone exit.
+	// Only meaningful on the battlefield. Added in S08.
+	BlockingTarget uuid.UUID
 }
 
 // NewCard constructs a fresh Card instance with a new InstanceID, owned

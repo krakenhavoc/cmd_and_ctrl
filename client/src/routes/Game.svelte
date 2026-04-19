@@ -233,6 +233,83 @@
     client.sendAction("change_life", viewerID, { delta });
   }
 
+  // ---- Combat ----
+  // Two-click flow: click an attacker (or blocker) row to "select"
+  // it, click a target row to commit. Selection state is local to
+  // the viewer's tab; nothing on the wire until the second click
+  // dispatches the action.
+
+  type CombatSelection =
+    | { kind: "attacker"; cardID: string }
+    | { kind: "blocker"; cardID: string }
+    | null;
+  let combatSelection: CombatSelection = $state(null);
+
+  // Cards on the battlefield controlled by the viewer.
+  const viewerBattlefield = $derived.by(() => {
+    if (!viewerID || !view) return [];
+    return view.battlefield.cards.filter((c) => c.controller === viewerID);
+  });
+  // Cards on the battlefield currently declared as attacking the viewer.
+  const incomingAttackers = $derived.by(() => {
+    if (!viewerID || !view) return [];
+    return view.battlefield.cards.filter((c) => c.attacking_target === viewerID);
+  });
+  // Opponent seats (everyone except the viewer; eliminated seats
+  // omitted because attacking a corpse is meaningless).
+  const opponents = $derived(seats.filter((s) => s.id !== viewerID && !s.eliminated));
+  // Any combat is in progress if any battlefield card has an
+  // attacking_target set. Used to gate the "Clear combat" button.
+  const combatInProgress = $derived(
+    !!view && view.battlefield.cards.some((c) => c.attacking_target),
+  );
+
+  function selectAttacker(cardID: string): void {
+    combatSelection =
+      combatSelection?.kind === "attacker" && combatSelection.cardID === cardID
+        ? null
+        : { kind: "attacker", cardID };
+  }
+  function selectBlocker(cardID: string): void {
+    combatSelection =
+      combatSelection?.kind === "blocker" && combatSelection.cardID === cardID
+        ? null
+        : { kind: "blocker", cardID };
+  }
+  function declareAttackTarget(targetPlayerID: string): void {
+    if (!viewerID || combatSelection?.kind !== "attacker") return;
+    client.sendAction("declare_attacker", undefined, {
+      attacker: combatSelection.cardID,
+      target: targetPlayerID,
+    });
+    combatSelection = null;
+  }
+  function declareBlockTarget(attackerCardID: string): void {
+    if (!viewerID || combatSelection?.kind !== "blocker") return;
+    client.sendAction("declare_blocker", undefined, {
+      blocker: combatSelection.cardID,
+      attacker: attackerCardID,
+    });
+    combatSelection = null;
+  }
+  function clearCombat(): void {
+    client.sendAction("clear_combat");
+    combatSelection = null;
+  }
+
+  // Look up a card's name + controller-name by instance ID. Used to
+  // label the incoming-attackers list with "Bob's <card>".
+  function cardLabel(cardID: string): { name: string; controller: string } {
+    if (!view) return { name: "?", controller: "?" };
+    const c = view.battlefield.cards.find((x) => x.instance_id === cardID);
+    if (!c) return { name: "?", controller: "?" };
+    const ctrl = seats.find((s) => s.id === c.controller);
+    return { name: c.name, controller: ctrl?.name ?? "?" };
+  }
+  function seatName(playerID: string): string {
+    return seats.find((s) => s.id === playerID)?.name ?? "?";
+  }
+
   function keepHand(): void {
     if (!viewerID) return;
     client.sendAction("keep_hand", viewerID);
@@ -535,6 +612,124 @@
     </div>
   {/if}
 
+  {#if view && viewerID && !viewerEliminated && !gameEnded && !mulligansOpen && (viewerBattlefield.length > 0 || incomingAttackers.length > 0 || combatInProgress)}
+    <div class="combat-panel" aria-label="combat declarations">
+      {#if combatSelection}
+        <div class="combat-hint">
+          {#if combatSelection.kind === "attacker"}
+            Attack with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an opponent
+            below.
+          {:else}
+            Block with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an incoming attacker.
+          {/if}
+          <button class="combat-cancel" onclick={() => (combatSelection = null)}>cancel</button>
+        </div>
+      {/if}
+
+      <div class="combat-cols">
+        {#if viewerBattlefield.length > 0}
+          <section class="combat-col">
+            <h3>Your creatures</h3>
+            <ul>
+              {#each viewerBattlefield as c (c.instance_id)}
+                <li>
+                  <button
+                    class="combat-row"
+                    class:selected={combatSelection?.kind === "attacker" &&
+                      combatSelection.cardID === c.instance_id}
+                    class:declared={!!c.attacking_target || !!c.blocking_target}
+                    onclick={() => selectAttacker(c.instance_id)}
+                  >
+                    <span class="combat-row-name">{c.name}</span>
+                    {#if c.attacking_target}
+                      <span class="combat-row-state attack">→ {seatName(c.attacking_target)}</span>
+                    {:else if c.blocking_target}
+                      <span class="combat-row-state block"
+                        >blocking {cardLabel(c.blocking_target).name}</span
+                      >
+                    {/if}
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          </section>
+        {/if}
+
+        {#if combatSelection?.kind === "attacker"}
+          <section class="combat-col combat-targets">
+            <h3>Choose target</h3>
+            <ul>
+              {#each opponents as o (o.id)}
+                <li>
+                  <button
+                    class="combat-row target"
+                    style="--seat-color: {seatColor(o.seat)}"
+                    onclick={() => declareAttackTarget(o.id)}
+                  >
+                    {o.name} <span class="muted">· {o.life} life</span>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          </section>
+        {/if}
+
+        {#if incomingAttackers.length > 0}
+          <section class="combat-col">
+            <h3>Incoming attackers</h3>
+            <ul>
+              {#each incomingAttackers as a (a.instance_id)}
+                <li>
+                  <button
+                    class="combat-row attacker"
+                    onclick={() => declareBlockTarget(a.instance_id)}
+                    disabled={combatSelection?.kind !== "blocker"}
+                    title={combatSelection?.kind === "blocker"
+                      ? `block this attacker with ${cardLabel(combatSelection.cardID).name}`
+                      : "select one of your creatures first to block"}
+                  >
+                    <span class="combat-row-name"
+                      >{cardLabel(a.instance_id).controller}'s {a.name}</span
+                    >
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          </section>
+        {/if}
+
+        {#if viewerBattlefield.length > 0 && incomingAttackers.length > 0}
+          <section class="combat-col combat-block-pool">
+            <h3>Block with…</h3>
+            <ul>
+              {#each viewerBattlefield as c (c.instance_id)}
+                <li>
+                  <button
+                    class="combat-row"
+                    class:selected={combatSelection?.kind === "blocker" &&
+                      combatSelection.cardID === c.instance_id}
+                    onclick={() => selectBlocker(c.instance_id)}
+                  >
+                    {c.name}
+                    {#if c.blocking_target}
+                      <span class="combat-row-state block"
+                        >blocking {cardLabel(c.blocking_target).name}</span
+                      >
+                    {/if}
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          </section>
+        {/if}
+      </div>
+
+      {#if combatInProgress}
+        <button class="combat-clear" onclick={clearCombat}>clear combat</button>
+      {/if}
+    </div>
+  {/if}
+
   <div class="play-area">
     <div class="table" bind:this={canvasEl}></div>
 
@@ -816,6 +1011,112 @@
     text-align: center;
     font-size: 0.75em;
     color: #cfd6ee;
+  }
+
+  /* Combat panel */
+  .combat-panel {
+    padding: 0.5rem 0.6rem;
+    background: #1a2540;
+    border: 1px solid #2a3550;
+    border-radius: 4px;
+    color: #cfd6ee;
+    font-size: 0.85em;
+    margin-bottom: 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .combat-hint {
+    background: #0f1a30;
+    padding: 0.3rem 0.5rem;
+    border-radius: 3px;
+    color: #ffd07a;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .combat-hint strong {
+    color: #fff;
+  }
+  .combat-cancel {
+    margin-left: auto;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.8em;
+  }
+  .combat-cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.5rem;
+  }
+  .combat-col h3 {
+    font-size: 0.8em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 0.25rem 0;
+    color: #888;
+  }
+  .combat-col ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .combat-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+    background: #0f1a30;
+    color: #e0e8ff;
+    border: 1px solid #2a3550;
+    border-radius: 3px;
+    padding: 0.25rem 0.5rem;
+    font: inherit;
+    cursor: pointer;
+    text-align: left;
+  }
+  .combat-row:hover:not(:disabled) {
+    background: #16243f;
+    border-color: #3a4570;
+  }
+  .combat-row:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .combat-row.selected {
+    border-color: #ffd07a;
+    box-shadow: 0 0 4px #ffd07a;
+  }
+  .combat-row.declared {
+    border-left: 3px solid #ff7a7a;
+  }
+  .combat-row.target {
+    border-color: var(--seat-color);
+  }
+  .combat-row.attacker {
+    border-left: 3px solid #ff7a7a;
+  }
+  .combat-row-name {
+    flex: 1;
+  }
+  .combat-row-state {
+    font-size: 0.85em;
+  }
+  .combat-row-state.attack {
+    color: #ff9e9e;
+  }
+  .combat-row-state.block {
+    color: #9ec7ff;
+  }
+  .combat-clear {
+    align-self: flex-start;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.85em;
+    background: #2a3550;
+    color: #cfd6ee;
+    border: 1px solid #3a4570;
   }
 
   /* End-of-game banners */

@@ -247,6 +247,84 @@ func TestDispatchRejectsCrossSeatPlayerScopedAction(t *testing.T) {
 	}
 }
 
+// playOne is a small helper that draws + plays a single card for the
+// given seat and returns its instance ID as a string. Combat dispatch
+// tests need at least one permanent on the battlefield.
+func playOne(t *testing.T, g *game.Game, p *game.Player) string {
+	t.Helper()
+	if err := g.DrawCard(p.ID); err != nil {
+		t.Fatalf("DrawCard: %v", err)
+	}
+	c, err := p.Hand.Top()
+	if err != nil {
+		t.Fatalf("Hand.Top: %v", err)
+	}
+	if err := g.PlayCard(p.ID, c.InstanceID); err != nil {
+		t.Fatalf("PlayCard: %v", err)
+	}
+	return c.InstanceID.String()
+}
+
+func TestDispatchDeclareAttacker(t *testing.T) {
+	g := newGame(t)
+	attacker := playOne(t, g, g.Seats[0])
+	target := g.Seats[1].ID.String()
+
+	a, _ := Decode(string(TypeDeclareAttacker), "", params(t, map[string]string{
+		"attacker": attacker,
+		"target":   target,
+	}))
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID.String() == attacker && c.AttackingTarget.String() != target {
+			t.Errorf("AttackingTarget: got %v, want %v", c.AttackingTarget, target)
+		}
+	}
+}
+
+func TestDispatchDeclareBlocker(t *testing.T) {
+	g := newGame(t)
+	attacker := playOne(t, g, g.Seats[0])
+	blocker := playOne(t, g, g.Seats[1])
+
+	a, _ := Decode(string(TypeDeclareBlocker), "", params(t, map[string]string{
+		"blocker":  blocker,
+		"attacker": attacker,
+	}))
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID.String() == blocker && c.BlockingTarget.String() != attacker {
+			t.Errorf("BlockingTarget: got %v, want %v", c.BlockingTarget, attacker)
+		}
+	}
+}
+
+func TestDispatchClearCombat(t *testing.T) {
+	g := newGame(t)
+	attacker := playOne(t, g, g.Seats[0])
+	a, _ := Decode(string(TypeDeclareAttacker), "", params(t, map[string]string{
+		"attacker": attacker,
+		"target":   g.Seats[1].ID.String(),
+	}))
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("Dispatch declare: %v", err)
+	}
+
+	clear, _ := Decode(string(TypeClearCombat), "", nil)
+	if err := Dispatch(g, clear); err != nil {
+		t.Fatalf("Dispatch clear: %v", err)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.AttackingTarget != uuid.Nil {
+			t.Errorf("card %v still attacking after clear_combat", c.InstanceID)
+		}
+	}
+}
+
 func TestDispatchKeepHand(t *testing.T) {
 	g := newGame(t)
 	caller := g.Seats[0].ID

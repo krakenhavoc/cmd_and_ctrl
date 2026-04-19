@@ -3,6 +3,8 @@ package protocol
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -106,6 +108,14 @@ type CardView struct {
 	// drag-release).
 	BattleX float64 `json:"battle_x,omitempty"`
 	BattleY float64 `json:"battle_y,omitempty"`
+	// AttackingTarget is the player ID this card is currently
+	// declared to attack, or omitted if not declared. Cleared on
+	// zone exit and by clear_combat. Added in S08.
+	AttackingTarget string `json:"attacking_target,omitempty"`
+	// BlockingTarget is the attacker instance ID this card is
+	// currently declared to block, or omitted if not declared.
+	// Cleared on zone exit and by clear_combat. Added in S08.
+	BlockingTarget string `json:"blocking_target,omitempty"`
 }
 
 // TurnView is the wire representation of the turn cursor. PriorityHolder
@@ -268,7 +278,7 @@ func viewOfCard(c game.Card) CardView {
 			counters[k] = v
 		}
 	}
-	return CardView{
+	view := CardView{
 		InstanceID:  c.InstanceID.String(),
 		Name:        c.Name,
 		Owner:       c.Owner.String(),
@@ -280,4 +290,11 @@ func viewOfCard(c game.Card) CardView {
 		BattleX:     c.BattleX,
 		BattleY:     c.BattleY,
 	}
+	if c.AttackingTarget != uuid.Nil {
+		view.AttackingTarget = c.AttackingTarget.String()
+	}
+	if c.BlockingTarget != uuid.Nil {
+		view.BlockingTarget = c.BlockingTarget.String()
+	}
+	return view
 }
