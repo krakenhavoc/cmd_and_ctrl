@@ -33,7 +33,11 @@
   // subscribers across reactive reruns (vs. replacing the client
   // instance, which would strand subscriptions on the old object).
   const client = new GameClient("");
-  const { status, snapshot, lastSeq, chat, lastError } = client;
+  // chat store stays populated server-side but isn't rendered: the
+  // chat UI was removed in S08.5 wave 1 in favour of out-of-band
+  // (Discord) coordination. Re-add `chat` to this destructure when
+  // a chat panel returns.
+  const { status, snapshot, lastSeq, lastError } = client;
 
   $effect(() => {
     client.disconnect();
@@ -388,36 +392,6 @@
     client.sendAction("concede", viewerID);
   }
 
-  // ---- Chat ----
-
-  let chatInput: string = $state("");
-  let chatScroller: HTMLDivElement | undefined = $state();
-
-  function sendChat(): void {
-    if (!chatInput.trim()) return;
-    client.sendChat(chatInput);
-    chatInput = "";
-  }
-
-  function chatKeydown(e: KeyboardEvent): void {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendChat();
-    }
-  }
-
-  // Auto-scroll the chat panel to the latest message on every new
-  // entry. Reading $chat inside the effect ties the scroll to the
-  // store so reactivity wires it up automatically.
-  $effect(() => {
-    const list = $chat;
-    if (!chatScroller) return;
-    // void to avoid "unused expression" warnings on the reactivity
-    // dependency.
-    void list.length;
-    chatScroller.scrollTop = chatScroller.scrollHeight;
-  });
-
   function fmtTime(d: Date): string {
     if (Number.isNaN(d.getTime())) return "";
     const hh = String(d.getHours()).padStart(2, "0");
@@ -734,47 +708,16 @@
     </div>
   {/if}
 
+  <!--
+    Chat UI removed in S08.5 wave 1 — players coordinate on Discord
+    during play. The wire protocol (KindChat, ChatPayload),
+    GameClient.chat store, GameClient.sendChat method, and the
+    server-side handleChat/broadcastChat path all stay live so a
+    future sprint can re-mount a panel here without touching the
+    transport layer.
+  -->
   <div class="play-area">
     <div class="table" bind:this={canvasEl}></div>
-
-    {#if view}
-      <aside class="chat" aria-label="table chat">
-        <header class="chat-header">chat</header>
-        <div class="chat-scroller" bind:this={chatScroller}>
-          {#each $chat as msg (msg.id)}
-            {@const seat = seats.find((s) => s.id === msg.authorID)}
-            <article class="chat-msg">
-              <span
-                class="chat-author"
-                style="color: {seat ? seatColor(seat.seat) : seatColor(-1)}"
-              >
-                {msg.authorName}
-              </span>
-              <span class="chat-time muted">{fmtTime(msg.at)}</span>
-              <div class="chat-text">{msg.text}</div>
-            </article>
-          {:else}
-            <p class="muted chat-empty">no messages yet</p>
-          {/each}
-        </div>
-        <form
-          class="chat-input"
-          onsubmit={(e) => {
-            e.preventDefault();
-            sendChat();
-          }}
-        >
-          <textarea
-            placeholder="say something…"
-            bind:value={chatInput}
-            onkeydown={chatKeydown}
-            rows="2"
-            aria-label="chat message"
-          ></textarea>
-          <button type="submit" disabled={!chatInput.trim()}>send</button>
-        </form>
-      </aside>
-    {/if}
   </div>
 
   {#if !view}
@@ -793,11 +736,11 @@
   section {
     position: fixed;
     inset: 0;
-    padding: 0.5rem 0.75rem;
+    padding: 0.35rem 0.5rem;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.25rem;
     overflow: hidden;
   }
   header {
@@ -807,21 +750,17 @@
     margin: 0;
   }
   .play-area {
+    /* Single-column layout since S08.5 removed the chat sidebar.
+       Grid kept (rather than just flex) so a future panel can slot
+       back in as a second column without reshuffling the markup —
+       just add `grid-template-columns: 1fr <Npx>` and a sibling
+       div. The 1fr row + min-height: 0 combo is what lets the Pixi
+       canvas size against the play-area's height instead of
+       collapsing to its intrinsic fit-content size. */
     display: grid;
-    grid-template-columns: 1fr 280px;
-    /* Explicit single-row template so the grid's row sizes to the
-       play-area's height rather than to its content — otherwise
-       .table's `height: 100%` resolves against an auto-sized row
-       and the Pixi canvas defaults to its intrinsic size, leaving
-       the bottom fan clipped. */
+    grid-template-columns: 1fr;
     grid-template-rows: 1fr;
-    gap: 0.5rem;
     align-items: stretch;
-    /* flex: 1 so the play area absorbs all remaining vertical space
-       below the toolbars. min-height: 0 is required because a grid
-       item's default min-size is "auto" (fit-content), which would
-       otherwise keep it from shrinking below its children's intrinsic
-       size and force the section to overflow the viewport. */
     flex: 1;
     min-height: 0;
     min-width: 0;
@@ -873,13 +812,13 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 1rem;
-    padding: 0.5rem 0.75rem;
+    gap: 0.75rem;
+    padding: 0.3rem 0.6rem;
     background: #1a2540;
     border-radius: 4px;
     color: #bbc4dd;
-    font-size: 0.9em;
-    margin-bottom: 0.5rem;
+    font-size: 0.85em;
+    margin-bottom: 0.25rem;
     flex-wrap: wrap;
   }
   .turn-summary {
@@ -1126,18 +1065,18 @@
   /* Toolbar */
   .toolbar {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.5rem;
     flex-wrap: wrap;
     align-items: center;
-    padding: 0.4rem 0.5rem;
+    padding: 0.25rem 0.4rem;
     background: #1a2540;
     border-radius: 4px;
     color: #bbc4dd;
-    font-size: 0.85em;
-    margin-bottom: 0.5rem;
+    font-size: 0.8em;
+    margin-bottom: 0.25rem;
   }
   .toolbar button {
-    padding: 0.25rem 0.6rem;
+    padding: 0.2rem 0.5rem;
     font-size: 0.9em;
   }
   .toolbar-group {
@@ -1264,75 +1203,6 @@
     border: 1px solid #4a8acc;
   }
 
-  /* Chat */
-  .chat {
-    display: flex;
-    flex-direction: column;
-    background: #1a2540;
-    border-radius: 6px;
-    color: #bbc4dd;
-    height: 100%;
-    min-height: 0;
-    overflow: hidden;
-  }
-  .chat-header {
-    padding: 0.4rem 0.6rem;
-    border-bottom: 1px solid #2a3550;
-    font-size: 0.85em;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-  .chat-scroller {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0.4rem 0.6rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
-  .chat-empty {
-    text-align: center;
-    margin: auto 0;
-  }
-  .chat-msg {
-    display: grid;
-    grid-template-columns: auto auto 1fr;
-    column-gap: 0.4rem;
-    align-items: baseline;
-    font-size: 0.9em;
-  }
-  .chat-author {
-    font-weight: 600;
-  }
-  .chat-time {
-    font-size: 0.75em;
-  }
-  .chat-text {
-    grid-column: 1 / -1;
-    white-space: pre-wrap;
-    word-break: break-word;
-    color: #e0e8ff;
-  }
-  .chat-input {
-    display: flex;
-    gap: 0.4rem;
-    padding: 0.4rem 0.6rem;
-    border-top: 1px solid #2a3550;
-  }
-  .chat-input textarea {
-    flex: 1;
-    resize: none;
-    font: inherit;
-    padding: 0.25rem 0.4rem;
-    border-radius: 3px;
-    border: 1px solid #2a3550;
-    background: #0f1a30;
-    color: #e0e8ff;
-  }
-  .chat-input button {
-    padding: 0.25rem 0.6rem;
-  }
-
   /* Pre-game deck import modal (S08.5 wave 1) — overlays the table
      for a freshly-joined player who hasn't uploaded a deck yet. The
      light card-on-dark-backdrop palette borrows from the lobby's
@@ -1375,16 +1245,5 @@
     cursor: pointer;
     padding: 0;
     font: inherit;
-  }
-
-  @media (max-width: 880px) {
-    .play-area {
-      grid-template-columns: 1fr;
-      grid-template-rows: 1fr auto;
-    }
-    .chat {
-      height: 240px;
-      min-height: auto;
-    }
   }
 </style>
