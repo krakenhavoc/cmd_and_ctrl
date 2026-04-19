@@ -12,6 +12,7 @@
 
   import type { CardView, ZoneView } from "../../protocol";
   import Card from "./Card.svelte";
+  import { dealIn, dealOut } from "../../animations";
 
   interface Props {
     hand: ZoneView;
@@ -75,7 +76,11 @@
         cards.length,
       )}px)"
     >
-      <Card card={c} faceDown={!isSelf} onClick={isSelf ? () => handleCardClick(c) : undefined} />
+      <!-- Inner wrapper carries the deal-in / deal-out transforms so
+           they don't fight the .hand-slot's fan-layout transform. -->
+      <div class="deal-wrap" in:dealIn out:dealOut>
+        <Card card={c} faceDown={!isSelf} onClick={isSelf ? () => handleCardClick(c) : undefined} />
+      </div>
     </div>
   {/each}
   {#if !isSelf && hand.count === 0}
