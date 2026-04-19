@@ -4,6 +4,7 @@
   import { session } from "../lib/session";
   import { TableRenderer } from "../lib/table";
   import { seatColor } from "../lib/colors";
+  import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import type { GameView, PlayerView } from "../lib/protocol";
 
   interface Props {
@@ -150,6 +151,26 @@
   const viewerNeedsToDecide = $derived(
     mulligansOpen && !!viewerSeat && !viewerSeat.eliminated && !viewerSeat.hand_kept,
   );
+
+  // Pre-game deck-import modal (S08.5 wave 1). A player who accepted
+  // an invite lands directly in Game.svelte without ever visiting
+  // Lobby, so they have no affordance to upload a deck unless we
+  // surface one here. Fires when the game is still in lobby state,
+  // the viewer is seated, and they haven't yet imported a real deck.
+  // The check uses the deck_imported flag (server-stamped) rather
+  // than a card-count test because Lobby.Join hands out a 1-card
+  // placeholder commander at seat-creation time — so library / command
+  // counts are non-zero even before import. `deckImportDismissed`
+  // lets the modal hide after a successful upload (SetDeck currently
+  // doesn't trigger a snapshot rebroadcast, so the local flag is
+  // what dismisses for the uploader; the next snapshot is
+  // authoritative for everyone else).
+  let deckImportDismissed = $state(false);
+  const viewerNeedsDeck = $derived.by(() => {
+    if (!view || view.state !== "lobby") return false;
+    if (!viewerSeat) return false;
+    return !viewerSeat.deck_imported;
+  });
 
   // Map MTG step IDs to short display labels. Steps cycle through 12
   // stops per turn; the abbreviated form keeps the bar compact.
@@ -411,6 +432,33 @@
     <span class={`tag tag-${$status}`}>{$status}</span>
     <span class="muted">seq {$lastSeq}</span>
   </header>
+
+  {#if viewerNeedsDeck && !deckImportDismissed && viewerID}
+    <div
+      class="deck-import-modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="deck-import-title"
+    >
+      <div class="deck-import-modal">
+        <h2 id="deck-import-title">import your deck</h2>
+        <p class="muted">
+          The game hasn't started yet. Paste a Moxfield or Archidekt deck URL, a Moxfield JSON
+          export, or a plain-text decklist. The server validates against Commander rules (100-card
+          singleton, color identity, format legality).
+        </p>
+        <DeckUploadForm
+          {gameID}
+          playerID={viewerID}
+          onSuccess={() => (deckImportDismissed = true)}
+        />
+        <p class="muted import-hint">
+          You can also manage decks (and other seats) from the
+          <button class="linkish" onclick={back}>lobby</button>.
+        </p>
+      </div>
+    </div>
+  {/if}
 
   {#if mulligansOpen && !gameEnded}
     <div class="mulligan-banner" aria-label="opening hand decisions">
@@ -1282,6 +1330,50 @@
   }
   .chat-input button {
     padding: 0.25rem 0.6rem;
+  }
+
+  /* Pre-game deck import modal (S08.5 wave 1) — overlays the table
+     for a freshly-joined player who hasn't uploaded a deck yet. The
+     light card-on-dark-backdrop palette borrows from the lobby's
+     deck-upload panel rather than the table's chrome (#1a2540) so
+     the form's #fee / #ffb violation banners stay readable. */
+  .deck-import-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 1rem;
+  }
+  .deck-import-modal {
+    background: #fff;
+    color: #222;
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    max-width: 640px;
+    width: 100%;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  }
+  .deck-import-modal h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.15em;
+  }
+  .import-hint {
+    margin-top: 1rem;
+    font-size: 0.85em;
+  }
+  .linkish {
+    background: none;
+    border: none;
+    color: #06c;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+    font: inherit;
   }
 
   @media (max-width: 880px) {

@@ -94,6 +94,15 @@ type Player struct {
 	// by the UI to show "mulligans taken: N" and is the seed for a
 	// future London-style bottom-N penalty (S13+ if it lands).
 	MulligansTaken int
+
+	// DeckImported is true once the player has had a real deck
+	// installed via ReplaceDeck. False after AddPlayer (which only
+	// installs a 1-card placeholder commander so the seat is real).
+	// The in-game deck-import modal in Game.svelte (S08.5 wave 1)
+	// uses this to distinguish "fresh invitee with placeholder" from
+	// "imported and ready to play" — a card-count check is unreliable
+	// because the placeholder also produces non-zero library counts.
+	DeckImported bool
 }
 
 // newPlayer constructs a player with empty zones and their starting

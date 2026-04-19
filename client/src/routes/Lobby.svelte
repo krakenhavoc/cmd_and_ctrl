@@ -1,15 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import {
-    createGame,
-    listGames,
-    logout as apiLogout,
-    startGame,
-    uploadDeck,
-    type GameMeta,
-  } from "../lib/api";
+  import { createGame, listGames, logout as apiLogout, startGame, type GameMeta } from "../lib/api";
   import { inviteURL, navigate } from "../lib/router";
-  import { session, LobbyApiError, type ApiViolation } from "../lib/session";
+  import { session, LobbyApiError } from "../lib/session";
+  import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
 
   // Lobby is the admin + player landing page. Admins see a create-
   // game form and the invite token for each game they've created;
@@ -25,57 +19,6 @@
   // List endpoint strips invite tokens, so we remember them per
   // session so admins can copy the link without re-fetching /games/{id}.
   const recentInvites = new Map<string, string>();
-
-  // Per-game deck-upload form state. Keyed by game ID so feedback
-  // for one upload doesn't bleed into the panel for another game.
-  const deckSources = $state<Record<string, string>>({});
-  const deckErrors = $state<Record<string, string>>({});
-  const deckViolations = $state<Record<string, ApiViolation[]>>({});
-  const deckWarnings = $state<Record<string, ApiViolation[]>>({});
-  const deckSuccess = $state<Record<string, string>>({});
-  let deckBusy = $state("");
-
-  // violationLabel prefixes the card name (when present) onto the
-  // server message so the UI renders a compact one-line-per-failure
-  // list without needing a table.
-  function violationLabel(v: ApiViolation): string {
-    return v.card ? `${v.card}: ${v.message}` : v.message;
-  }
-
-  // looksLikeURL flips the upload-button label + spinner text when
-  // the pasted source is clearly a URL, so the user sees
-  // "fetching from moxfield.com…" instead of a generic "uploading…"
-  // while an outbound request is in flight. Matches the server's
-  // auto-detect heuristic (leading http:// or https://) so the
-  // button text doesn't contradict what the server will actually do.
-  function looksLikeURL(source: string): boolean {
-    const s = source.trim();
-    return s.startsWith("http://") || s.startsWith("https://");
-  }
-
-  // sourceHostname pulls the hostname out of a URL source for the
-  // spinner label. Returns "" for non-URLs; URL-parse errors fall
-  // back to the full trimmed source so the user still sees what
-  // they pasted.
-  function sourceHostname(source: string): string {
-    const s = source.trim();
-    if (!looksLikeURL(s)) return "";
-    try {
-      return new URL(s).hostname.replace(/^www\./, "");
-    } catch {
-      return s;
-    }
-  }
-
-  // clearDeckFeedback resets every banner for a single game — called
-  // before firing a new upload so stale success/error state doesn't
-  // linger alongside fresh output.
-  function clearDeckFeedback(id: string): void {
-    delete deckErrors[id];
-    delete deckViolations[id];
-    delete deckWarnings[id];
-    delete deckSuccess[id];
-  }
 
   async function refresh(): Promise<void> {
     try {
@@ -138,37 +81,6 @@
     const s = $session;
     if (!s?.playerID || s.gameID !== g.id) return null;
     return g.players.find((p) => p.player_id === s.playerID) ?? null;
-  }
-
-  async function onUploadDeck(g: GameMeta): Promise<void> {
-    const s = $session;
-    if (!s?.playerID || s.gameID !== g.id) return;
-    const source = deckSources[g.id] ?? "";
-    if (!source.trim()) {
-      clearDeckFeedback(g.id);
-      deckErrors[g.id] = "paste a decklist first";
-      return;
-    }
-    deckBusy = g.id;
-    clearDeckFeedback(g.id);
-    try {
-      const res = await uploadDeck(g.id, s.playerID, source);
-      deckSuccess[g.id] =
-        `uploaded ${res.deck_name || "deck"}: ${res.card_count} cards, commander: ${res.commanders.join(", ")}`;
-      if (res.warnings && res.warnings.length > 0) deckWarnings[g.id] = res.warnings;
-      deckSources[g.id] = "";
-      await refresh();
-    } catch (err) {
-      if (err instanceof LobbyApiError) {
-        deckErrors[g.id] = err.message;
-        if (err.violations && err.violations.length > 0) deckViolations[g.id] = err.violations;
-        if (err.warnings && err.warnings.length > 0) deckWarnings[g.id] = err.warnings;
-      } else {
-        deckErrors[g.id] = "upload failed";
-      }
-    } finally {
-      deckBusy = "";
-    }
   }
 
   // canStart returns true when Start would succeed: at least 2 seats
@@ -244,7 +156,7 @@
             {/each}
           </ul>
 
-          {#if seat && g.state === "lobby"}
+          {#if seat && g.state === "lobby" && $session?.playerID}
             <details class="deck-upload" open={!seat.deck_uploaded}>
               <summary>
                 {seat.deck_uploaded ? "replace your deck" : "upload your deck"}
@@ -254,46 +166,11 @@
                 decklist. The server validates against Commander rules (100-card singleton, color
                 identity, format legality).
               </p>
-              <textarea
-                rows="8"
-                placeholder={"https://moxfield.com/decks/abc123\n\n— or —\n\nCommander:\n1 Atraxa, Praetors' Voice\n\nMainboard:\n1 Sol Ring\n..."}
-                bind:value={deckSources[g.id]}
-              ></textarea>
-              <div class="row-actions">
-                <button onclick={() => onUploadDeck(g)} disabled={deckBusy === g.id}>
-                  {#if deckBusy === g.id}
-                    {#if looksLikeURL(deckSources[g.id] ?? "")}
-                      fetching from {sourceHostname(deckSources[g.id] ?? "")}…
-                    {:else}
-                      uploading…
-                    {/if}
-                  {:else if looksLikeURL(deckSources[g.id] ?? "")}
-                    import deck
-                  {:else}
-                    upload deck
-                  {/if}
-                </button>
-              </div>
-              {#if deckErrors[g.id]}
-                <pre class="error deck-error">{deckErrors[g.id]}</pre>
-              {/if}
-              {#if deckViolations[g.id]?.length}
-                <ul class="violations">
-                  {#each deckViolations[g.id] as v (v.code + (v.card ?? "") + v.message)}
-                    <li><span class="code">{v.code}</span> · {violationLabel(v)}</li>
-                  {/each}
-                </ul>
-              {/if}
-              {#if deckWarnings[g.id]?.length}
-                <ul class="warnings">
-                  {#each deckWarnings[g.id] as v (v.code + (v.card ?? "") + v.message)}
-                    <li><span class="code">{v.code}</span> · {violationLabel(v)}</li>
-                  {/each}
-                </ul>
-              {/if}
-              {#if deckSuccess[g.id]}
-                <p class="success">{deckSuccess[g.id]}</p>
-              {/if}
+              <DeckUploadForm
+                gameID={g.id}
+                playerID={$session.playerID}
+                onSuccess={() => void refresh()}
+              />
             </details>
           {/if}
         </li>
@@ -347,41 +224,6 @@
   .error {
     color: #c00;
   }
-  .success {
-    color: #060;
-    margin-top: 0.5rem;
-  }
-  .deck-error {
-    white-space: pre-wrap;
-    margin-top: 0.5rem;
-    background: #fee;
-    padding: 0.5rem;
-    border-radius: 3px;
-  }
-  .violations,
-  .warnings {
-    margin-top: 0.5rem;
-    padding: 0.5rem 0.75rem 0.5rem 1.5rem;
-    border-radius: 3px;
-    font-size: 0.85em;
-  }
-  .violations {
-    background: #fee;
-    color: #900;
-  }
-  .warnings {
-    background: #ffb;
-    color: #660;
-  }
-  .violations li,
-  .warnings li {
-    margin: 0.15rem 0;
-  }
-  .code {
-    font-family: monospace;
-    font-size: 0.9em;
-    opacity: 0.75;
-  }
   .badge-ok {
     color: #060;
     margin-left: 0.5rem;
@@ -399,14 +241,6 @@
   .deck-upload summary {
     cursor: pointer;
     font-weight: 600;
-  }
-  textarea {
-    width: 100%;
-    font-family: monospace;
-    font-size: 0.9em;
-    padding: 0.5rem;
-    margin-top: 0.5rem;
-    box-sizing: border-box;
   }
   form {
     display: flex;

@@ -112,6 +112,11 @@ export interface PlayerView {
   // opening-hand window. Omitempty on the wire — absent means 0.
   // Added in S08.
   mulligans_taken?: number;
+  // True once the player has had a real deck installed via the
+  // POST /games/{id}/decks endpoint. Absent / false means the seat
+  // is still using the placeholder commander handed out at join
+  // time. Drives the in-game deck-import modal. Added in S08.5.
+  deck_imported?: boolean;
 }
 
 export interface LifeChangeView {
