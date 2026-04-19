@@ -87,6 +87,14 @@ type Card struct {
 	// Set by DeclareBlocker, cleared by ClearCombat or zone exit.
 	// Only meaningful on the battlefield. Added in S08.
 	BlockingTarget uuid.UUID
+
+	// GoadedBy is the player ID who goaded this creature. uuid.Nil
+	// means "not goaded". A goaded creature must attack each combat
+	// (and not the goader) under MTG rules; the sandbox surfaces the
+	// marker but doesn't enforce the must-attack constraint until rules
+	// graft work lands. Cleared on zone exit alongside Tapped /
+	// AttackingTarget. Added in S10.
+	GoadedBy uuid.UUID
 }
 
 // CurrentPower returns the card's effective power: base printed

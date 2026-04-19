@@ -1158,6 +1158,109 @@ func TestSetCommanderDamageValidatesTo(t *testing.T) {
 	}
 }
 
+func TestSetMonarchAndInitiative(t *testing.T) {
+	g := newActiveGame(t)
+	p0, p1 := g.Seats[0], g.Seats[1]
+
+	if err := g.SetMonarch(p0.ID); err != nil {
+		t.Fatalf("SetMonarch: %v", err)
+	}
+	if g.Monarch != p0.ID {
+		t.Errorf("monarch: got %v, want %v", g.Monarch, p0.ID)
+	}
+	// Reassigning to a different seat overwrites.
+	if err := g.SetMonarch(p1.ID); err != nil {
+		t.Fatalf("SetMonarch reassign: %v", err)
+	}
+	if g.Monarch != p1.ID {
+		t.Errorf("monarch reassign: got %v, want %v", g.Monarch, p1.ID)
+	}
+	// uuid.Nil clears.
+	if err := g.SetMonarch(uuid.Nil); err != nil {
+		t.Fatalf("SetMonarch clear: %v", err)
+	}
+	if g.Monarch != uuid.Nil {
+		t.Errorf("monarch cleared: got %v, want nil", g.Monarch)
+	}
+	// Unknown player is rejected.
+	if err := g.SetMonarch(uuid.New()); err != ErrPlayerNotFound {
+		t.Errorf("monarch unknown: got %v, want ErrPlayerNotFound", err)
+	}
+
+	// Initiative behaves the same.
+	if err := g.SetInitiative(p0.ID); err != nil {
+		t.Fatalf("SetInitiative: %v", err)
+	}
+	if g.Initiative != p0.ID {
+		t.Errorf("initiative: got %v, want %v", g.Initiative, p0.ID)
+	}
+}
+
+func TestSetGoaded(t *testing.T) {
+	g := newActiveGame(t)
+	p0, p1 := g.Seats[0], g.Seats[1]
+	c := Card{InstanceID: uuid.New(), Name: "Atog", TypeLine: "Creature — Atog", Owner: p0.ID, Controller: p0.ID, Power: 1, Toughness: 2}
+	g.Battlefield.PushTop(c)
+
+	if err := g.SetGoaded(c.InstanceID, p1.ID); err != nil {
+		t.Fatalf("SetGoaded: %v", err)
+	}
+	if g.Battlefield.Cards[0].GoadedBy != p1.ID {
+		t.Errorf("goaded_by: got %v, want %v", g.Battlefield.Cards[0].GoadedBy, p1.ID)
+	}
+	// Clearing.
+	_ = g.SetGoaded(c.InstanceID, uuid.Nil)
+	if g.Battlefield.Cards[0].GoadedBy != uuid.Nil {
+		t.Errorf("goaded cleared: got %v, want nil", g.Battlefield.Cards[0].GoadedBy)
+	}
+	// Unknown card.
+	if err := g.SetGoaded(uuid.New(), p1.ID); err != ErrCardNotFound {
+		t.Errorf("unknown card: got %v, want ErrCardNotFound", err)
+	}
+}
+
+func TestSetGoadedClearsOnZoneExit(t *testing.T) {
+	g := newActiveGame(t)
+	p0, p1 := g.Seats[0], g.Seats[1]
+	c := Card{InstanceID: uuid.New(), Name: "Atog", TypeLine: "Creature — Atog", Owner: p0.ID, Controller: p0.ID, Power: 1, Toughness: 2}
+	g.Battlefield.PushTop(c)
+	_ = g.SetGoaded(c.InstanceID, p1.ID)
+
+	if _, err := MoveCard(g.Battlefield, p0.Graveyard, c.InstanceID); err != nil {
+		t.Fatalf("MoveCard: %v", err)
+	}
+	if p0.Graveyard.Cards[0].GoadedBy != uuid.Nil {
+		t.Errorf("goaded persisted across zone exit: got %v", p0.Graveyard.Cards[0].GoadedBy)
+	}
+}
+
+func TestSetPoisonAndEnergy(t *testing.T) {
+	g := newActiveGame(t)
+	p0 := g.Seats[0]
+
+	if err := g.SetPoison(p0.ID, 4); err != nil {
+		t.Fatalf("SetPoison: %v", err)
+	}
+	if p0.Poison != 4 {
+		t.Errorf("poison: got %d, want 4", p0.Poison)
+	}
+	// Negative clamps to 0 (set semantics, not increment).
+	_ = g.SetPoison(p0.ID, -3)
+	if p0.Poison != 0 {
+		t.Errorf("poison clamped: got %d, want 0", p0.Poison)
+	}
+	if err := g.SetEnergy(p0.ID, 12); err != nil {
+		t.Fatalf("SetEnergy: %v", err)
+	}
+	if p0.Energy != 12 {
+		t.Errorf("energy: got %d, want 12", p0.Energy)
+	}
+	// Unknown player.
+	if err := g.SetPoison(uuid.New(), 1); err != ErrPlayerNotFound {
+		t.Errorf("poison unknown: got %v, want ErrPlayerNotFound", err)
+	}
+}
+
 func TestReadSnapshotConsistency(t *testing.T) {
 	g := newActiveGame(t)
 	var life int

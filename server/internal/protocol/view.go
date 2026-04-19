@@ -33,6 +33,15 @@ type GameView struct {
 	// opening hand via the keep_hand action. Clients render the
 	// keep / mulligan dialog while open. Added in S08.
 	MulligansOpen bool `json:"mulligans_open"`
+	// Monarch is the player ID currently designated as the monarch,
+	// or empty string if no monarch is set. Sandbox marker; the must-
+	// attack-when-able and combat-damage-transfer rules are not
+	// enforced. Added in S10.
+	Monarch string `json:"monarch,omitempty"`
+	// Initiative is the player ID currently holding the initiative
+	// (BG3 mechanic), or empty if unassigned. Same sandbox posture as
+	// Monarch. Added in S10.
+	Initiative string `json:"initiative,omitempty"`
 }
 
 // PlayerView is the wire representation of a Player. Full-fidelity
@@ -137,6 +146,10 @@ type CardView struct {
 	// currently declared to block, or omitted if not declared.
 	// Cleared on zone exit and by clear_combat. Added in S08.
 	BlockingTarget string `json:"blocking_target,omitempty"`
+	// GoadedBy is the player ID who goaded this creature, or empty
+	// when not goaded. Cleared on zone exit. Sandbox marker — the
+	// must-attack-not-the-goader rule is not enforced. Added in S10.
+	GoadedBy string `json:"goaded_by,omitempty"`
 }
 
 // TurnView is the wire representation of the turn cursor. PriorityHolder
@@ -172,6 +185,8 @@ func ViewOfGame(g *game.Game) GameView {
 				Step:           string(g.Turn.Step),
 			},
 			MulligansOpen: g.MulligansOpen,
+			Monarch:       uuidStringOrEmpty(g.Monarch),
+			Initiative:    uuidStringOrEmpty(g.Initiative),
 		}
 	})
 	return view
@@ -216,6 +231,16 @@ func viewOfPlayer(p *game.Player) PlayerView {
 		MulligansTaken:  p.MulligansTaken,
 		DeckImported:    p.DeckImported,
 	}
+}
+
+// uuidStringOrEmpty returns u.String() unless u is the zero UUID, in
+// which case it returns "" so json's omitempty drops the field. Used
+// for nullable scalar IDs like Game.Monarch / Game.Initiative.
+func uuidStringOrEmpty(u uuid.UUID) string {
+	if u == uuid.Nil {
+		return ""
+	}
+	return u.String()
 }
 
 func viewOfZone(z *game.Zone) ZoneView {
@@ -276,6 +301,8 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		Exile:         v.Exile,
 		Turn:          v.Turn,
 		MulligansOpen: v.MulligansOpen,
+		Monarch:       v.Monarch,
+		Initiative:    v.Initiative,
 	}
 }
 
@@ -320,6 +347,9 @@ func viewOfCard(c game.Card) CardView {
 	}
 	if c.BlockingTarget != uuid.Nil {
 		view.BlockingTarget = c.BlockingTarget.String()
+	}
+	if c.GoadedBy != uuid.Nil {
+		view.GoadedBy = c.GoadedBy.String()
 	}
 	return view
 }

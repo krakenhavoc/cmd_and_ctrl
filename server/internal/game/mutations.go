@@ -763,3 +763,114 @@ func (g *Game) SetCommanderDamage(from, to uuid.UUID, amount int) error {
 	target.CommanderDamage[from] = amount
 	return nil
 }
+
+// SetMonarch designates the given player as the monarch (Conspiracy
+// mechanic — the monarch draws an extra card at the end of their turn
+// in MTG, and any opponent who deals combat damage to them becomes the
+// new monarch). Pass uuid.Nil to clear (no current monarch — the rare
+// case where a card explicitly removes monarchy).
+//
+// Sandbox-only: the must-attack constraint and the combat-damage
+// transfer rule are not enforced. The marker is the affordance; the
+// rules graft track will hook these up if/when the playgroup wants
+// them auto-handled.
+//
+// Returns ErrPlayerNotFound if playerID isn't seated, or
+// ErrGameNotActive in lobby/ended state.
+func (g *Game) SetMonarch(playerID uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	if playerID != uuid.Nil && g.playerByIDLocked(playerID) == nil {
+		return ErrPlayerNotFound
+	}
+	g.Monarch = playerID
+	return nil
+}
+
+// SetInitiative designates the given player as having the initiative
+// (Commander Legends: Battle for Baldur's Gate — venture into the
+// Undercity at the start of upkeep; combat damage transfers initiative).
+// Pass uuid.Nil to clear. Same sandbox / non-enforcement posture as
+// SetMonarch — the marker is what's surfaced.
+func (g *Game) SetInitiative(playerID uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	if playerID != uuid.Nil && g.playerByIDLocked(playerID) == nil {
+		return ErrPlayerNotFound
+	}
+	g.Initiative = playerID
+	return nil
+}
+
+// SetGoaded marks a battlefield creature as goaded by the given player.
+// Pass uuid.Nil for `by` to clear the goad. The card must be on the
+// battlefield; goading a card in any other zone is meaningless.
+//
+// Sandbox-only: the must-attack-and-not-the-goader constraint is not
+// enforced — the marker is the affordance for players to remember.
+func (g *Game) SetGoaded(cardID, by uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	if by != uuid.Nil && g.playerByIDLocked(by) == nil {
+		return ErrPlayerNotFound
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == cardID {
+			g.Battlefield.Cards[i].GoadedBy = by
+			return nil
+		}
+	}
+	return ErrCardNotFound
+}
+
+// SetPoison sets a player's poison counter total. 10 is loss in MTG
+// (state-based action, deferred to S13+). amount is clamped at 0 from
+// below; there's no upper clamp because some cards / formats deal
+// arbitrary poison. Replaces (not increments) — clients send the new
+// total so two stale tabs don't double-count.
+func (g *Game) SetPoison(playerID uuid.UUID, amount int) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	if amount < 0 {
+		amount = 0
+	}
+	p.Poison = amount
+	return nil
+}
+
+// SetEnergy sets a player's energy counter total. Replaces (not
+// increments) for the same reason as SetPoison. Clamped at 0 from
+// below. No game-loss condition is tied to energy — it's a pure
+// resource counter.
+func (g *Game) SetEnergy(playerID uuid.UUID, amount int) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	if amount < 0 {
+		amount = 0
+	}
+	p.Energy = amount
+	return nil
+}
