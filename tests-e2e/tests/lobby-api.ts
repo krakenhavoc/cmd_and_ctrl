@@ -1,0 +1,86 @@
+import type { APIRequestContext } from "@playwright/test";
+import { ADMIN_TOKEN } from "./env";
+
+// Thin wrapper over the lobby's HTTP surface. The UI already covers
+// most happy paths in lobby.spec.ts; this helper is for tests that
+// need to bypass the UI — mostly to grab an invite token server-side
+// so the join flow can be driven without scraping the clipboard.
+
+export interface SeatInfo {
+  player_id: string;
+  name: string;
+  seat: number;
+  deck_name?: string;
+  deck_uploaded: boolean;
+}
+
+export interface GameMeta {
+  id: string;
+  name: string;
+  created_at: string;
+  invite_token?: string;
+  players: SeatInfo[];
+  state: "lobby" | "active" | "ended";
+}
+
+export async function adminLogin(req: APIRequestContext): Promise<string> {
+  const res = await req.post("/admin/login", { data: { token: ADMIN_TOKEN } });
+  if (!res.ok()) throw new Error(`admin login failed: ${res.status()}`);
+  const body = (await res.json()) as { token: string };
+  return body.token;
+}
+
+export async function createGame(
+  req: APIRequestContext,
+  token: string,
+  name: string,
+): Promise<GameMeta> {
+  const res = await req.post("/games", {
+    data: { name },
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok()) throw new Error(`create game failed: ${res.status()} ${await res.text()}`);
+  return (await res.json()) as GameMeta;
+}
+
+// uploadDeckAs uploads a decklist for (gameID, playerID). An admin
+// session can upload for any seat; a RolePlayer session must supply
+// its own player_id — the server rejects cross-seat uploads with 403.
+export async function uploadDeckAs(
+  req: APIRequestContext,
+  token: string,
+  gameID: string,
+  playerID: string,
+  source: string,
+): Promise<{ deck_name: string; card_count: number; commanders: string[] }> {
+  const res = await req.post(`/games/${gameID}/decks`, {
+    data: { player_id: playerID, source, format: "text" },
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok()) throw new Error(`upload deck failed: ${res.status()} ${await res.text()}`);
+  return (await res.json()) as { deck_name: string; card_count: number; commanders: string[] };
+}
+
+export async function startGameAs(
+  req: APIRequestContext,
+  token: string,
+  gameID: string,
+): Promise<GameMeta> {
+  const res = await req.post(`/games/${gameID}/start`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok()) throw new Error(`start game failed: ${res.status()} ${await res.text()}`);
+  return (await res.json()) as GameMeta;
+}
+
+export async function getGameAs(
+  req: APIRequestContext,
+  token: string,
+  gameID: string,
+): Promise<GameMeta> {
+  const res = await req.get(`/games/${gameID}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok()) throw new Error(`get game failed: ${res.status()} ${await res.text()}`);
+  return (await res.json()) as GameMeta;
+}
