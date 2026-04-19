@@ -46,6 +46,7 @@ planned just-in-time from the S12 pain-point triage.
 | S11 | Polish III — hover preview, undo, spectator | 5 | [#11](https://github.com/krakenhavoc/cmd_and_ctrl/issues/11) | 2026-09-11 | planned |
 | S12 | Deploy + 4-player go-live with friends | 6 | [#12](https://github.com/krakenhavoc/cmd_and_ctrl/issues/12) | 2026-09-25 | planned |
 | S12.5 | Discord identity for players (OAuth + bot + presence) | 6 | [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59) | 2026-10-09 | planned |
+| S13.2 | Counter mechanics (SBAs + player counters + UI) | 7 | [#79](https://github.com/krakenhavoc/cmd_and_ctrl/issues/79) | 2026-06-28 | planned |
 | S13+ | **B→C rules graft track** (ongoing) | 7 | TBD at S12 retro | rolling | not started |
 
 ---
@@ -320,6 +321,78 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 4. With Rich Presence toggled on and the Discord desktop client running, the player's Discord profile shows "In a Commander game" while they play, and clears within seconds of leaving.
 5. A player who joined with manual name entry can later click "Link Discord" and have their avatar appear at all four seats without leaving the game.
 6. All four of the above work against the deployed VPS from S12.
+
+---
+
+## S13.2 — Counter mechanics (SBAs + player counters + UI)
+**Phase:** 7 · **Goal:** close out the "counters" surface the engine still has to resolve manually. S13.1 ships the four canonical Commander SBAs; this sprint adds the counter-specific SBAs (planeswalker loyalty, battle defense, +1/+1/-1/-1 cancel, poison player-loss, saga final-chapter), first-class UI treatment of counters, and a shared registry of MTG counter types. Sits between S13.1 and S14 so the effect catalog (S14) can rely on counters being fully modelled.
+
+Gap analysis behind this sprint: `Card.Counters` exists today ([server/internal/game/card.go](../server/internal/game/card.go)) and `CurrentPower()` already applies +1/+1 / -1/-1 to P/T. S13.1 covers the Commander SBAs but explicitly not the counter SBAs. S14's `AddCounters` primitive and S17's replacement engine assume counter data is a first-class shape. Nothing in the roadmap (as of issues [#62](https://github.com/krakenhavoc/cmd_and_ctrl/issues/62)–[#70](https://github.com/krakenhavoc/cmd_and_ctrl/issues/70)) covers player-level counters, counter-specific SBAs, or client pip rendering.
+
+### Tasks
+
+**Counter-specific state-based actions (server):**
+- [ ] CR 704.5i — planeswalker with 0 loyalty counters → owner's graveyard (extend `Game.StateBasedActions` from S13.1)
+- [ ] CR 704.5p — battle with 0 defense counters → owner's graveyard (covers post-MoM battle cards)
+- [ ] CR 704.5q — `+1/+1` and `-1/-1` on same creature: remove N of each, where N = `min(count(+1/+1), count(-1/-1))`
+- [ ] CR 704.5c — player with ≥10 poison counters loses the game
+- [ ] CR 704.5u — saga with final-chapter lore counter is sacrificed (the SBA half; the lore-counter advance trigger ships in S14+ with the effect catalog)
+
+**Player-level counters (server):**
+- [ ] Add `Player.Counters map[string]int` alongside the existing `Life` int
+- [ ] `Game.AddPlayerCounter(playerID, name, delta)` mutation with existing zero-drops-key semantics
+- [ ] Wire action `add_player_counter` (payload: `{ player_id, name, delta }`)
+- [ ] Protocol: extend `PlayerView` with `counters` map; visibility unchanged (counters are public)
+- [ ] Snapshot/replay format carries `Player.Counters`
+
+**Counter-type registry (server + client):**
+- [ ] `server/internal/game/counter_types.go` — canonical list from MTG comprehensive rules (approx 80 types: +1/+1, -1/-1, loyalty, charge, defense, poison, energy, experience, rad, level, lore, shield, stun, age, charge, flood, ice, time, verse, …). Used for UI iconography and structured-log tagging. Unknown counter names remain accepted — they render as text-only pips.
+- [ ] Shared TypeScript mirror in `client/src/lib/counterTypes.ts` (type list + per-type color + optional icon key)
+
+**Marked-damage cleanup (CR 514.2):**
+- [ ] `Card.MarkedDamage int` — distinct from counters, separate storage
+- [ ] Combat damage step writes `MarkedDamage` instead of mutating counters (currently damage routes through counters or direct toughness inspection)
+- [ ] Cleanup-step turn-based action (already auto-fires from S13) clears `MarkedDamage` on every creature
+- [ ] Lethal-damage SBA (already in S13.1) reads `MarkedDamage >= Toughness` instead of whatever the S13.1 impl uses — one-line refactor, worth doing here so S14+ don't build on the old shape
+
+**Client UI (Svelte):**
+- [ ] Counter pip overlay on battlefield cards: stacked chips at top-right of `CardTile`; chip shows counter name abbreviation + count; color from the type registry
+- [ ] Counter inventory popover: right-click card → "Counters" menu → add/remove via per-type rows (common types pinned, free-text name entry for unknowns)
+- [ ] Player-level counter panel near `PlayerHeader.svelte`: poison (green/purple drop), energy (yellow bolt), experience (star), rad (radiation icon)
+- [ ] `client/src/lib/protocol.ts` — `CardView` + `PlayerView` gain optional `counters` field
+- [ ] Animated counter placement (borrow from the S09 GSAP primitives) — pip fade-in on add, fade-out on remove
+
+**Docs:**
+- [ ] `docs/decisions/0005-counters.md` — ADR covering counter taxonomy sources, rationale for putting player counters on `Player` vs a separate store, why saga SBA ships here but lore-advance triggers wait for S14, marked-damage split from counters
+- [ ] `docs/protocol.md` — document `add_player_counter` action + `counters` fields on views
+
+**Tests:**
+- [ ] Go unit tests for each new SBA: planeswalker loyalty 0 → graveyard; battle defense 0 → graveyard; +1/+1 and -1/-1 cancel correctly (including 3×+1 + 2×-1 → 1×+1 + 0×-1); poison ≥10 → loss; saga final chapter → sacrifice
+- [ ] Regression test: marked damage clears in cleanup; no carry-over between turns
+- [ ] Test that unknown counter names round-trip through protocol without validation errors
+
+### Out of scope (explicit handoffs)
+- **Counter-placement replacement effects** (Doubling Season, Hardened Scales, Branching Evolution) — S17 [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67)
+- **Counter-generating triggered abilities** (e.g. "when this ETBs, put a +1/+1 counter on target") — auto-fire in S19 [#69](https://github.com/krakenhavoc/cmd_and_ctrl/issues/69); manual `announce_trigger` from S13.1 still works here
+- **Infect / wither damage as counter placement** — depends on combat keyword layer (S18 [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68)); poison-counter SBA ships here but the *creature-inflicts-poison* mechanic lives with other combat keywords
+- **Persist / undying counter-conditional triggers** — S19 (needs event log + trigger framework)
+- **Proliferate** — S14 effect primitive; ships alongside the effect catalog
+- **Counter animations beyond simple fade** — S09 polish work; not this sprint
+
+### Risks / gotchas
+- `Card.CurrentPower()` already encodes layer-7d math; S16's layer system will eventually want to own this. Don't over-invest in refactoring `CurrentPower()` now — S16 will absorb it cleanly, and duplicating the +1/+1 math elsewhere will just create churn.
+- The canonical counter-type list is long and rarely-used types outnumber common types. Ship the list structured but small (top ~20 types get icons; rest are text-only) — over-designing the iconography is a trap.
+- `+1/+1 / -1/-1` SBA ordering matters: the cancel-SBA runs *before* the lethal-damage SBA, so a 2/2 with a -1/-1 counter and 1 marked damage shouldn't die if there's also a +1/+1 counter to cancel. Snapshot-test the ordering explicitly.
+- Poison counters currently have no home (`Player.Counters` doesn't exist). Adding the field is a protocol change — old client builds will silently drop it on decode. Fine for the friends-only deployment; document the bump in `docs/protocol.md`.
+
+### Exit criteria
+1. Cast a planeswalker, activate its minus ability to 0 loyalty → the card moves to its owner's graveyard without manual `move_card`.
+2. Infect a player to 10 poison counters via `add_player_counter` → they lose immediately on the next SBA check.
+3. Put a +1/+1 and a -1/-1 counter on the same creature → both clear on the next SBA check; a 2/2 with +1/+1 and -1/-1 is still a 2/2 afterward.
+4. Cast a battle, let opponents damage it to 0 defense counters → it moves to graveyard.
+5. Every counter on every card renders as a visible pip on the battlefield tile, with distinct colors for the top-20 known types.
+6. Right-clicking a card opens a Counters popover; players can add/remove any type without typing into chat.
+7. Player-level counters (poison, energy, experience, rad) render near each `PlayerHeader` and update live when the server broadcasts a delta.
 
 ---
 
