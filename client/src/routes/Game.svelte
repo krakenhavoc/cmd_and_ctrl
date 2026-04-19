@@ -340,6 +340,23 @@
           <p class="muted">Hand size: {viewerSeat?.hand.count ?? 0}. Keep or mulligan?</p>
         {/if}
       </header>
+      {#if (viewerSeat?.hand.cards.length ?? 0) > 0}
+        <div class="mulligan-cards" role="list" aria-label="your opening hand">
+          {#each viewerSeat?.hand.cards ?? [] as card (card.instance_id)}
+            <div class="mulligan-card" role="listitem" title={card.name}>
+              {#if card.scryfall_id}
+                <img
+                  src={`/cards/${card.scryfall_id}/image?size=small`}
+                  alt={card.name}
+                  loading="lazy"
+                />
+              {:else}
+                <span class="mulligan-card-fallback">{card.name}</span>
+              {/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
       <div class="mulligan-actions">
         <button class="primary" onclick={keepHand}>Keep hand</button>
         <button onclick={mulliganDecide}>Mulligan</button>
@@ -766,6 +783,39 @@
     color: #0c1426;
     font-weight: 600;
     border: 1px solid #8acc8a;
+  }
+  .mulligan-cards {
+    display: flex;
+    gap: 0.4rem;
+    overflow-x: auto;
+    padding: 0.4rem 0;
+    margin-bottom: 0.6rem;
+  }
+  .mulligan-card {
+    flex: 0 0 auto;
+    width: 96px;
+    height: 134px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #0f1a30;
+    border: 1px solid #2a3550;
+  }
+  .mulligan-card img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .mulligan-card-fallback {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    padding: 0.3rem;
+    text-align: center;
+    font-size: 0.75em;
+    color: #cfd6ee;
   }
 
   /* End-of-game banners */
