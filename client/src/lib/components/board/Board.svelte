@@ -113,6 +113,7 @@
           hasPriority={seat.id === prioritySeatID}
           {viewerID}
           {isAdmin}
+          {sendAction}
           controlledCards={cardsByController.get(seat.id) ?? []}
           exile={exileForOwner(seat.id)}
           {combatMode}

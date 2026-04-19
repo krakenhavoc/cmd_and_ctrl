@@ -1,24 +1,32 @@
 <script lang="ts">
   // PileBar renders the four bottom-left pile controls in the order
-  // shown on the wireframe: EXILE / GRAVEYARD / DECK / CMD ZONE.
+  // shown on the wireframe: EXILE / GRAVEYARD / LIBRARY / CMD ZONE.
   //
-  // Wires the only v1 action (DECK click on the viewer's own seat →
-  // draw_card); the others stay passive until a pile-browser modal
-  // lands. Exile is conceptually a shared zone in the wire protocol
+  // The CMD slot is no longer a face-down PileButton; it's the
+  // first-class CommandZone component (face-up commander, tax badge,
+  // cast affordance). The other three stay as PileButtons; LIBRARY
+  // shows a card back and is the only one wired to an action at v1
+  // (draw_card on the viewer's own seat).
+  //
+  // Exile is conceptually a shared zone in the wire protocol
   // (GameView.exile), so callers pass a pre-filtered ZoneView containing
   // just this player's owned exiled cards.
 
-  import type { PlayerView, ZoneView } from "../../protocol";
+  import type { ActionPayload, PlayerView, ZoneView } from "../../protocol";
   import PileButton from "./PileButton.svelte";
+  import CommandZone from "./CommandZone.svelte";
+
+  type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
 
   interface Props {
     seat: PlayerView;
     exile: ZoneView;
     isSelf: boolean;
+    sendAction: ActionSender;
     onDrawCard?: () => void;
   }
 
-  const { seat, exile, isSelf, onDrawCard }: Props = $props();
+  const { seat, exile, isSelf, sendAction, onDrawCard }: Props = $props();
 </script>
 
 <div class="pile-bar" aria-label={`${seat.name} piles`}>
@@ -31,7 +39,7 @@
     disabled={!isSelf || !onDrawCard}
     onClick={isSelf ? onDrawCard : undefined}
   />
-  <PileButton label="cmd" zone={seat.command} />
+  <CommandZone seat={{ id: seat.id, name: seat.name }} zone={seat.command} {isSelf} {sendAction} />
 </div>
 
 <style>
