@@ -43,6 +43,7 @@ const (
 	TypeDeclareAttacker        Type = "declare_attacker"
 	TypeDeclareBlocker         Type = "declare_blocker"
 	TypeClearCombat            Type = "clear_combat"
+	TypeAdvanceStep            Type = "advance_step"
 )
 
 // ErrUnknownType is returned when Dispatch receives an action type it
@@ -390,6 +391,18 @@ func Dispatch(g *game.Game, a Action) error {
 
 	case TypeClearCombat:
 		return g.ClearCombat()
+
+	case TypeAdvanceStep:
+		// Sandbox affordance: advance the step cursor by one without
+		// requiring both players to have passed priority. This is the
+		// "done — next step" button. NOT caller-gated — any seated
+		// player (or admin) can advance the cursor; in casual play
+		// the active player is usually the one driving combat
+		// progression. Auto-resolve combat damage still fires when
+		// the cursor lands on combat_damage (handled inside
+		// game.AdvanceStep).
+		_, err := g.AdvanceStep()
+		return err
 
 	case TypeSetBattlefieldPosition:
 		var p struct {

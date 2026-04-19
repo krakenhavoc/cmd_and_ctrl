@@ -177,6 +177,15 @@
     client.sendAction("pass_turn");
   }
 
+  // advanceStep is the sandbox shortcut that bumps the step cursor
+  // forward by one without requiring both players to pass priority.
+  // Used by the "next step" toolbar button and the "done" button in
+  // the combat panel — solo testing and casual play don't need to
+  // simulate the priority hand-off rigorously.
+  function advanceStep(): void {
+    client.sendAction("advance_step");
+  }
+
   // "Pass until end of turn": send pass_priority repeatedly, waiting
   // for each snapshot to settle, until the cursor reaches the cleanup
   // step or the active seat changes. Capped at 24 iterations as a
@@ -624,6 +633,16 @@
       </div>
       <div class="toolbar-group priority-controls">
         <button
+          onclick={advanceStep}
+          disabled={!viewerIsActive}
+          class:advance-step={viewerIsActive}
+          title={viewerIsActive
+            ? "advance the step cursor by one (sandbox shortcut — bypasses opponent priority pass)"
+            : `${activePlayer?.name ?? "another seat"} is the active player`}
+        >
+          next step
+        </button>
+        <button
           onclick={passPriority}
           disabled={!viewerHasPriority}
           class:viewer-priority={viewerHasPriority}
@@ -790,13 +809,13 @@
       </div>
 
       <div class="combat-footer">
-        {#if (canDeclareAttackers || canDeclareBlockers) && viewerHasPriority}
+        {#if viewerIsActive}
           <button
             class="combat-done"
-            onclick={passPriority}
-            title="finish declaring; pass priority to advance the combat phase"
+            onclick={advanceStep}
+            title="advance the step cursor by one (sandbox shortcut — bypasses opponent priority pass)"
           >
-            done — pass priority
+            done — next step
           </button>
         {/if}
         {#if combatInProgress}
@@ -1379,6 +1398,12 @@
     background: #b3e5b3;
     color: #0c1426;
     font-weight: 600;
+  }
+  .priority-controls .advance-step {
+    background: #5fb0ff;
+    color: #0c1426;
+    font-weight: 600;
+    border: 1px solid #4a8acc;
   }
 
   /* Chat */
