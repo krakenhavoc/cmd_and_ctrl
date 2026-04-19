@@ -40,7 +40,7 @@ planned just-in-time from the S12 pain-point triage.
 | S06.5 | Dynamic deck import from URLs (mini) | 3 | [#37](https://github.com/krakenhavoc/cmd_and_ctrl/issues/37) | 2026-07-10 | **done** |
 | S07 | Turn/phase UI + chat + manual priority | 3 | [#7](https://github.com/krakenhavoc/cmd_and_ctrl/issues/7) | 2026-07-17 | planned |
 | S08 | First playable sandbox (2-player, milestone) | 4 | [#8](https://github.com/krakenhavoc/cmd_and_ctrl/issues/8) | 2026-07-31 | planned |
-| S08.5 | Game-logic cleanup pass (mini, scope-TBD) | 4 | [#43](https://github.com/krakenhavoc/cmd_and_ctrl/issues/43) | 2026-08-07 | planned |
+| S08.5 | Game-logic cleanup pass (mini, scope-TBD) | 4 | [#43](https://github.com/krakenhavoc/cmd_and_ctrl/issues/43) | TBD post-S13 | **deferred** |
 | S09 | Polish I — animations + VFX | 5 | [#9](https://github.com/krakenhavoc/cmd_and_ctrl/issues/9) | 2026-08-14 | planned |
 | S10 | Polish II — Commander UX (cmd damage, politics) | 5 | [#10](https://github.com/krakenhavoc/cmd_and_ctrl/issues/10) | 2026-08-28 | planned |
 | S11 | Polish III — hover preview, undo, spectator | 5 | [#11](https://github.com/krakenhavoc/cmd_and_ctrl/issues/11) | 2026-09-11 | planned |
@@ -192,10 +192,14 @@ One-week mini sprint slotted between S06 and S07 to address UX friction surfaced
 
 ---
 
-## S08.5 — Game-logic cleanup pass (mini)
-**Phase:** 4 · **Goal:** fix the rough edges in the manual sandbox state model that the S08 playtest surfaces.
+## S08.5 — Game-logic cleanup pass (mini, deferred)
+**Phase:** 4 · **Status: DEFERRED to post-S13.**
 
-One-week mini sprint slotted between S08 and S09. The scope is **deliberately empty until the S08 retro** — playing a real 2-player sandbox game to completion is the only reliable way to know which game-logic gaps actually matter. Pre-S08 speculation about what's broken consistently triages to "you'll find out when you play."
+**Originally scoped** as a one-week mini sprint between S08 and S09 to fix rough edges in the manual sandbox state model. **Deferred** post-S08 retro: most of the candidate items (turn-1 skip-draw, commander damage attribution, command zone tax, token API, mulligan penalty, etc.) are things the S13+ rules graft would either subsume or reshape entirely. Doing them now risks throwing the work away when S13+ lands.
+
+The plan: defer until after the first meaningful slice of S13+ ships, then re-triage. Items that the rules engine actually solves disappear from the list; items that remain manual-only get tackled at that point.
+
+S08 playtest items that surfaced during PR #50 work are logged in [issue #43](https://github.com/krakenhavoc/cmd_and_ctrl/issues/43)'s "Playtest-surfaced items" section so they're not lost. The issue stays open as a parking lot.
 
 The S08 retro produces the checklist. Likely sources, none of which are commitments yet:
 
