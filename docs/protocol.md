@@ -189,7 +189,7 @@ PLAN.md §2.1).
 | `tap` | no | `{ "instance_id": "<uuid>" }` | Sets a battlefield card's tapped state to true. |
 | `untap` | no | `{ "instance_id": "<uuid>" }` | Sets a battlefield card's tapped state to false. |
 | `untap_all` | yes | — | Untaps all of `player`'s cards on the battlefield. |
-| `pass_priority` | no | — | Advances the turn cursor by one step. |
+| `pass_priority` | no | — | Rotates priority to the next seat (S07+). When priority would wrap back to the active seat, the step auto-advances and `priority_holder` resets to the new active seat. Stack-aware semantics (priority resets on spell resolution) arrive with the S13+ rules graft. |
 | `pass_turn` | no | — | Jumps to the next seat's untap step. |
 | `mulligan` | yes | `{ "hand_size": <int> }` | Shuffles `player`'s hand back into their library and draws `hand_size` cards. Simplified London mulligan — no card-to-bottom penalty. |
 | `shuffle_library` | yes | — | Reshuffles `player`'s library. |
@@ -201,6 +201,52 @@ PLAN.md §2.1).
 `<ZoneRef>` is `{ "kind": "<zone_kind>", "owner": "<uuid>" }`. Owner is
 omitted for shared zones (`battlefield`, `stack`, `exile`). Zone kinds are
 `library`, `hand`, `battlefield`, `graveyard`, `exile`, `command`, `stack`.
+
+### `chat` (both directions) — added in S07
+
+A chat message addressed to every client bound to the same game.
+Bypasses the action / snapshot pipeline entirely: chat does not
+mutate game state, does not bump the snapshot `seq`, and is not
+included in crash-recovery dumps. Reconnecting clients receive an
+empty chat history; persistent chat arrives with the S11 replay log.
+
+**Client → server:** the client supplies only `payload.text` (trimmed,
+non-empty, ≤ 1000 characters). The server **discards** any client-
+supplied `author_id`, `author_name`, or `timestamp` and re-stamps all
+three from the connection's authenticated principal before broadcast.
+
+**Server → client:** broadcast to every client bound to the same game
+(including the originator, so the local UI surfaces the canonical
+server-stamped message rather than echoing the unstamped local copy).
+Spectator / admin connections without a bound `playerID` chat under
+the synthetic name `"spectator"` and an empty `author_id` — the
+client distinguishes spectator messages by the missing `author_id`.
+
+```json
+{
+  "v": 0,
+  "kind": "chat",
+  "id": "c1d2e3f4-...",
+  "payload": {
+    "author_id": "8a2c0d8e-7f6a-5b4c-9a2c-0d8e7f6a5b4c",
+    "author_name": "Alice",
+    "text": "any responses?",
+    "timestamp": "2026-04-18T14:32:11Z"
+  }
+}
+```
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `payload.text` | string | yes | 1 – 1000 characters after trimming. Empty or oversized payloads are rejected with `bad_request`. |
+| `payload.author_id` | string (UUID) | no | Server-stamped from the connection's player principal. Empty for spectator connections. Ignored on inbound frames. |
+| `payload.author_name` | string | yes (server) | Server-stamped from the seated player's name (or `"spectator"`). Ignored on inbound frames. |
+| `payload.timestamp` | string (RFC3339) | yes (server) | Server wall clock at broadcast time. Ignored on inbound frames. |
+
+The originating client receives the server-stamped frame with the
+same `id` it sent. Other recipients see the same `id` — clients can
+use this for deduplication if they ever render a local optimistic
+copy before the broadcast lands.
 
 ### `snapshot` (server → client) — added in S03
 
@@ -240,7 +286,7 @@ canonical type definition. High-level shape:
 - **PlayerView**: `{ id, name, seat, life, poison?, energy?, library, hand, graveyard, command, commander_damage }`
 - **ZoneView**: `{ kind, owner?, count, cards[] }` — `owner` omitted for shared zones
 - **CardView**: `{ instance_id, name, owner, controller, scryfall_id?, tapped?, counters?, is_commander?, battle_x?, battle_y? }` — `scryfall_id` is stamped at deck-import time and lets the client resolve images via `GET /cards/{id}/image`. Omitted for placeholder cards (demo game seeded via `CMDCTRL_SEED_DEMO`). `battle_x` / `battle_y` are normalised positions in `[0, 1]` for cards on the battlefield (S06+); both are cleared on zone exit and omitted for cards that have never been positioned.
-- **TurnView**: `{ number, active_seat, phase, step }`
+- **TurnView**: `{ number, active_seat, priority_holder, phase, step }` — `priority_holder` is the seat index (0-based) that currently holds priority within the step. Equals `active_seat` at every step boundary; rotates on `pass_priority`. Added in S07.
 
 S03 does not yet apply visibility filtering — every client receives every
 card's contents, including opponents' hands. Per-connection visibility is
@@ -275,7 +321,6 @@ bump unless they turn out to be wire-breaking:
 - **Reconnection and session resume** — crash-recovery dumps let a
   restarted server reload state, but live client sessions drop on
   disconnect and must be re-established.
-- **Chat** (S07) — in-game chat as a separate frame kind.
 - **Spectator mode** (S11) — read-only connections.
 
 ---

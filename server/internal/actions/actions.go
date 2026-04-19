@@ -54,12 +54,33 @@ var ErrInvalidPlayer = errors.New("actions: invalid or missing player ID")
 // errors so the client-facing message is clean.
 var ErrMissingParams = errors.New("actions: missing required params")
 
+// ErrNotPriorityHolder is returned when pass_priority is dispatched by
+// a seated player who does not currently hold priority. Admin /
+// spectator callers (Caller == uuid.Nil) bypass this check.
+var ErrNotPriorityHolder = errors.New("actions: caller does not hold priority")
+
+// ErrNotActivePlayer is returned when pass_turn is dispatched by a
+// seated player whose seat is not the active turn's seat. Admin /
+// spectator callers (Caller == uuid.Nil) bypass this check.
+var ErrNotActivePlayer = errors.New("actions: caller is not the active player")
+
+// ErrPlayerCallerMismatch is returned when a seated player issues an
+// action whose Player field targets a different seat (e.g. draw_card
+// with someone else's player ID, change_life trying to drain an
+// opponent). Admin / spectator callers bypass this check.
+var ErrPlayerCallerMismatch = errors.New("actions: caller may not act on another player's behalf")
+
 // Action is the decoded form of a wire ActionPayload, with the player
 // ID already parsed as a uuid.UUID and Params still raw JSON for the
-// individual handler to decode.
+// individual handler to decode. Caller is the authenticated player ID
+// of the connection that sent the frame; the hub stamps it after
+// Decode and the gated action branches in Dispatch validate against
+// it. uuid.Nil means "no seat bound" (admin / spectator) and bypasses
+// per-seat checks — admins may need to act on behalf of any seat.
 type Action struct {
 	Type   Type
 	Player uuid.UUID
+	Caller uuid.UUID
 	Params json.RawMessage
 }
 
@@ -82,6 +103,51 @@ func Decode(payloadType, payloadPlayer string, payloadParams json.RawMessage) (A
 	return a, nil
 }
 
+// requirePriorityHolder verifies that caller (an authenticated player
+// ID, possibly uuid.Nil for admin / spectator) is the seated player
+// whose seat currently holds priority. uuid.Nil bypasses the check —
+// admins may need to advance the game on a player's behalf.
+func requirePriorityHolder(g *game.Game, caller uuid.UUID) error {
+	if caller == uuid.Nil {
+		return nil
+	}
+	snap := g.Snapshot()
+	if snap.State != game.StateActive {
+		// Let the underlying mutation surface ErrGameNotActive with its
+		// canonical message.
+		return nil
+	}
+	if snap.Turn.PriorityHolder < 0 || snap.Turn.PriorityHolder >= len(snap.Seats) {
+		return nil
+	}
+	holder := snap.Seats[snap.Turn.PriorityHolder]
+	if holder == nil || holder.ID != caller {
+		return ErrNotPriorityHolder
+	}
+	return nil
+}
+
+// requireActivePlayer verifies that caller is the seated player whose
+// seat is the active turn's seat. uuid.Nil (admin / spectator)
+// bypasses the check.
+func requireActivePlayer(g *game.Game, caller uuid.UUID) error {
+	if caller == uuid.Nil {
+		return nil
+	}
+	snap := g.Snapshot()
+	if snap.State != game.StateActive {
+		return nil
+	}
+	if snap.Turn.ActiveSeat < 0 || snap.Turn.ActiveSeat >= len(snap.Seats) {
+		return nil
+	}
+	active := snap.Seats[snap.Turn.ActiveSeat]
+	if active == nil || active.ID != caller {
+		return ErrNotActivePlayer
+	}
+	return nil
+}
+
 // unmarshalParams is a small helper that returns a friendly
 // "missing required params" error for nil or empty Params, and
 // otherwise decodes into dest. Without this, every action that
@@ -97,10 +163,34 @@ func unmarshalParams(raw json.RawMessage, actionType Type, dest any) error {
 	return nil
 }
 
+// playerScopedActions are the action types that carry a Player field
+// identifying which seat the action operates on. For these, a seated
+// (non-admin) caller may only act on their own seat — the wire
+// Player must match Caller. Card-instance-scoped actions (tap,
+// move_card, add_counter, etc.) intentionally stay loose; in casual
+// play players occasionally tap each other's permanents and the
+// sandbox should not block that.
+var playerScopedActions = map[Type]struct{}{
+	TypeDrawCard:       {},
+	TypePlayCard:       {},
+	TypeUntapAll:       {},
+	TypeMulligan:       {},
+	TypeShuffleLibrary: {},
+	TypeChangeLife:     {},
+}
+
 // Dispatch applies an action to a game. Returns nil on success, an
 // action-specific error on failure. Dispatch itself is stateless; all
 // state lives on the game.
 func Dispatch(g *game.Game, a Action) error {
+	// Player-scoped guard: a seated player may not target a different
+	// seat. Admin / spectator (Caller == uuid.Nil) bypasses so a
+	// trusted moderator can advance any seat.
+	if _, scoped := playerScopedActions[a.Type]; scoped {
+		if a.Caller != uuid.Nil && a.Player != uuid.Nil && a.Caller != a.Player {
+			return ErrPlayerCallerMismatch
+		}
+	}
 	switch a.Type {
 	case TypeDrawCard:
 		if a.Player == uuid.Nil {
@@ -167,9 +257,15 @@ func Dispatch(g *game.Game, a Action) error {
 		return g.UntapAll(a.Player)
 
 	case TypePassPriority:
+		if err := requirePriorityHolder(g, a.Caller); err != nil {
+			return err
+		}
 		return g.PassPriority()
 
 	case TypePassTurn:
+		if err := requireActivePlayer(g, a.Caller); err != nil {
+			return err
+		}
 		return g.PassTurn()
 
 	case TypeMulligan:

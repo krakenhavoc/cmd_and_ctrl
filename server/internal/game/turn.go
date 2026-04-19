@@ -85,12 +85,16 @@ func PhaseOf(s Step) Phase {
 // Turn is the cursor into the game's turn/phase/step state machine.
 // It says whose turn it is, which phase and step we're in, and the
 // turn number since the game started (turn 1 = the first player's
-// first turn).
+// first turn). PriorityHolder tracks which seat currently holds
+// priority within the step — added in S07 so the per-seat priority
+// indicator is meaningful. PriorityHolder always equals ActiveSeat
+// at the start of every step.
 type Turn struct {
-	Number     int // 1-indexed
-	ActiveSeat int // 0-indexed seat
-	Phase      Phase
-	Step       Step
+	Number         int // 1-indexed
+	ActiveSeat     int // 0-indexed seat
+	PriorityHolder int // 0-indexed seat; equals ActiveSeat at step boundaries
+	Phase          Phase
+	Step           Step
 }
 
 // newStartingTurn returns the turn cursor at the start of a game:
@@ -100,10 +104,11 @@ type Turn struct {
 // will automate it.
 func newStartingTurn() Turn {
 	return Turn{
-		Number:     1,
-		ActiveSeat: 0,
-		Phase:      PhaseOf(StepUntap),
-		Step:       StepUntap,
+		Number:         1,
+		ActiveSeat:     0,
+		PriorityHolder: 0,
+		Phase:          PhaseOf(StepUntap),
+		Step:           StepUntap,
 	}
 }
 
@@ -126,10 +131,11 @@ func (t Turn) advance(numSeats int) Turn {
 	next := idx + 1
 	if next < len(turnSequence) {
 		return Turn{
-			Number:     t.Number,
-			ActiveSeat: t.ActiveSeat,
-			Phase:      PhaseOf(turnSequence[next]),
-			Step:       turnSequence[next],
+			Number:         t.Number,
+			ActiveSeat:     t.ActiveSeat,
+			PriorityHolder: t.ActiveSeat,
+			Phase:          PhaseOf(turnSequence[next]),
+			Step:           turnSequence[next],
 		}
 	}
 	// Wrap: past cleanup, move to the next seat's untap. In Commander
@@ -141,9 +147,10 @@ func (t Turn) advance(numSeats int) Turn {
 		nextNumber++
 	}
 	return Turn{
-		Number:     nextNumber,
-		ActiveSeat: nextSeat,
-		Phase:      PhaseOf(StepUntap),
-		Step:       StepUntap,
+		Number:         nextNumber,
+		ActiveSeat:     nextSeat,
+		PriorityHolder: nextSeat,
+		Phase:          PhaseOf(StepUntap),
+		Step:           StepUntap,
 	}
 }

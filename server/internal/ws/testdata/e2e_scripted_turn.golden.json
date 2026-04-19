@@ -224,6 +224,7 @@
     "turn": {
       "number": 1,
       "active_seat": 1,
+      "priority_holder": 1,
       "phase": "beginning",
       "step": "untap"
     }

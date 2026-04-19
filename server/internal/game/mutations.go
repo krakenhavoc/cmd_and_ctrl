@@ -245,13 +245,33 @@ func (g *Game) UntapAll(playerID uuid.UUID) error {
 	return nil
 }
 
-// PassPriority advances the turn cursor by one step. This is an alias
-// for AdvanceStep at S03; a real priority system (with priority
-// passing between players within a step, stack resolution, etc.)
-// arrives with rules work in S13+.
+// PassPriority rotates priority to the next seat. When priority would
+// pass back to the active seat (every other seat has passed in
+// succession with nothing on the stack), the step auto-advances and
+// PriorityHolder is reset to the new ActiveSeat — mirroring real MTG
+// rules where priority passing around in succession ends the step.
+//
+// Stack-aware semantics (priority resets to active seat whenever a
+// spell resolves) are deferred to the S13+ rules graft.
 func (g *Game) PassPriority() error {
-	_, err := g.AdvanceStep()
-	return err
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	numSeats := len(g.Seats)
+	if numSeats == 0 {
+		return ErrGameNotActive
+	}
+	next := (g.Turn.PriorityHolder + 1) % numSeats
+	if next == g.Turn.ActiveSeat {
+		// Wrapped — advance the step. Turn.advance resets PriorityHolder
+		// to the new ActiveSeat for us.
+		g.Turn = g.Turn.advance(numSeats)
+		return nil
+	}
+	g.Turn.PriorityHolder = next
+	return nil
 }
 
 // PassTurn skips to the next player's untap step, regardless of
@@ -269,10 +289,11 @@ func (g *Game) PassTurn() error {
 		nextNumber++
 	}
 	g.Turn = Turn{
-		Number:     nextNumber,
-		ActiveSeat: nextSeat,
-		Phase:      PhaseOf(StepUntap),
-		Step:       StepUntap,
+		Number:         nextNumber,
+		ActiveSeat:     nextSeat,
+		PriorityHolder: nextSeat,
+		Phase:          PhaseOf(StepUntap),
+		Step:           StepUntap,
 	}
 	return nil
 }
