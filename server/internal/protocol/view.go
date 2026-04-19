@@ -46,6 +46,12 @@ type PlayerView struct {
 	Command         ZoneView         `json:"command"`
 	CommanderDamage map[string]int   `json:"commander_damage"`
 	LifeHistory     []LifeChangeView `json:"life_history"`
+	// Eliminated reflects Player.Eliminated. Set when the player
+	// concedes (S08); future state-based action work in S13+ may
+	// also flip it. An eliminated player still appears in seats[],
+	// still spectates, but the UI greys them out and disables their
+	// quick-action buttons. Added in S08.
+	Eliminated bool `json:"eliminated,omitempty"`
 }
 
 // LifeChangeView is the wire representation of a single life-change
@@ -160,6 +166,7 @@ func viewOfPlayer(p *game.Player) PlayerView {
 		Command:         viewOfZone(p.Command),
 		CommanderDamage: cmdrDamage,
 		LifeHistory:     history,
+		Eliminated:      p.Eliminated,
 	}
 }
 

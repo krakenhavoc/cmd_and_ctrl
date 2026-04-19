@@ -73,6 +73,13 @@ type Player struct {
 	// log is public — life is visible to all opponents in MTG, and the
 	// history is a UX affordance, not hidden information.
 	LifeHistory []LifeChange
+
+	// Eliminated is set when the player concedes (S08) or, in the
+	// future, loses to a state-based action (S13+ rules graft). An
+	// eliminated player still occupies their seat for spectating; the
+	// game's State transitions to StateEnded once exactly one
+	// non-eliminated seat remains.
+	Eliminated bool
 }
 
 // newPlayer constructs a player with empty zones and their starting

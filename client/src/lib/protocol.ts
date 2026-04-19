@@ -93,6 +93,12 @@ export interface PlayerView {
   // (possibly empty); each entry is server-stamped at the moment of
   // change. Added in S08.
   life_history: LifeChangeView[];
+  // Set when the player has conceded (S08) or, in the future, lost
+  // to a state-based action. Eliminated players still appear in the
+  // seats list and may continue to spectate; the UI greys them out
+  // and disables their action buttons. Omitempty on the wire — only
+  // present when true.
+  eliminated?: boolean;
 }
 
 export interface LifeChangeView {
