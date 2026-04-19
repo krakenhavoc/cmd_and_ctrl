@@ -63,8 +63,12 @@ planned just-in-time from the S12 pain-point triage.
 | S24 | Equipment, auras, attachments | 7 | [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76) | 2027-04-18 | planned |
 | S25 | Voltron / commander damage focus | 7 | [#77](https://github.com/krakenhavoc/cmd_and_ctrl/issues/77) | 2027-05-16 | planned |
 | S26 | Tribal / creature type matters | 7 | [#78](https://github.com/krakenhavoc/cmd_and_ctrl/issues/78) | 2027-06-13 | planned |
-| S27+ | Rolling deck-driven catalog growth | 7 | TBD at S26 retro | rolling | not started |
-| S31 | AI bot seat (heuristic policy) | 8 | [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89) | 2027-07-04 | planned |
+| S27 | Card-type completeness (planeswalkers, sagas, vehicles, battles) | 7 | [#92](https://github.com/krakenhavoc/cmd_and_ctrl/issues/92) | 2027-07-04 | planned |
+| S28 | Cost modification + alternative casts | 7 | [#93](https://github.com/krakenhavoc/cmd_and_ctrl/issues/93) | 2027-07-25 | planned |
+| S29 | Alt-cast paths from non-hand zones (flashback, suspend, foretell, …) | 7 | [#94](https://github.com/krakenhavoc/cmd_and_ctrl/issues/94) | 2027-08-15 | planned |
+| S30 | Damage prevention, cloning, face-down, deferred protection keywords | 7 | [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95) | 2027-09-05 | planned |
+| Post-S30 | Rolling deck-driven catalog growth | 7 | TBD at S30 retro | rolling | not started |
+| S31 | AI bot seat (heuristic policy) | 8 | [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89) | 2027-09-26 | planned |
 
 ---
 
@@ -751,14 +755,81 @@ Detailed plan TBD; lands just-in-time after S25.
 
 ---
 
-## S27+ — Rolling deck-driven catalog growth
+## S27 — Card-type completeness (planeswalkers, sagas, vehicles, battles)
+**Phase:** 7 · **Goal:** the four card types missing or only partially modeled by S13–S26 become full citizens.
+
+- [ ] `LoyaltyAbility{Cost, Effect}` — proper stack-item activation (CR 606); replaces S13.1's thin "delta-on-action" model
+- [ ] Planeswalker uniqueness SBA (CR 704.5j) — controller chooses which to keep
+- [ ] `declare_attacker` polymorphic target — attack player OR planeswalker OR battle (CR 506.4, 508.1d)
+- [ ] Saga chapter triggers + lore counter advance as turn-based action (CR 714)
+- [ ] `CrewCost{N}` cost component + `BecomeCreatureUntilEOT(P, T)` effect (CR 702.122)
+- [ ] `BattleSpec{Defense, Subtype}` + `Card.ProtectorPlayerID` + ETB protector prompt + defeating triggers (CR 310)
+- [ ] ~30 cards: 8 planeswalkers, 8 sagas, 6 vehicles, 4 battles, 4 counter-payoff bridges
+- [ ] Theme-deck smoke test (Superfriends/sagas/vehicles deck plays through 4 turns)
+
+Detailed plan: `/home/node/.claude/plans/s27-card-type-completeness.md`. Builds on S13.1, S13.2 (counters + counter SBAs already shipped), S14, S15, S16, S18, S19, S25.
+
+---
+
+## S28 — Cost modification + alternative casts
+**Phase:** 7 · **Goal:** the cost engine that the auto-tapper hooks before pool validation.
+
+- [ ] `CostModifier interface { Modify(*Cost, *Card, *Game, uuid.UUID) *Cost }` registered per static ability
+- [ ] Modifier ordering per CR 601.2f: alternative cost → additional costs → increasers → reducers, floor at {1} (CR 117.13)
+- [ ] Alternative-cost slots in cast dialog (Force of Will pitch, Fierce Guardianship "if you control a commander")
+- [ ] Additional-cost slots (Snuff Out's "pay 4 life", Cabal Therapy's "sacrifice")
+- [ ] Cascade primitive (CR 702.85) — exile-until-CMC-less, may cast for free
+- [ ] ~25 cards: 6 reducers, 6 increasers (Stax pieces), 4 free-cast, 4 additional-cost, 5 cascade
+- [ ] Theme-deck smoke test (Maelstrom Wanderer cascade chain with Goblin Electromancer + Trinisphere on table)
+
+Detailed plan: `/home/node/.claude/plans/s28-cost-modification.md`. Builds on S14, S15, S20. Convoke / Improvise / Delve / Affinity stay deferred (state-scanning at cast time + different UX).
+
+---
+
+## S29 — Alt-cast paths from non-hand zones
+**Phase:** 7 · **Goal:** spells cast from graveyard, exile, or hand-with-special-marker.
+
+- [ ] `CastableZones []Zone` per card (default `[Hand]`); cast dialog walks all legal zones and surfaces all legal cast paths as separate buttons with their costs
+- [ ] Flashback (CR 702.34) — cast from graveyard for flashback cost; exile after
+- [ ] Madness (CR 702.35) — replacement on discard: exile face-down with marker; may cast for madness cost
+- [ ] Foretell (CR 702.143) — sorcery-speed `foretell_card` action; cast on a later turn for foretell cost
+- [ ] Escape (CR 702.144) — cast from graveyard, exile N cards from graveyard as additional cost
+- [ ] Suspend (CR 702.62) — exile with N time counters; auto-fire removes one each upkeep; cast for free with haste-until-EOT when last removed
+- [ ] Cycling (CR 702.32) — activated ability of cards in hand; cycling triggers fire from hand
+- [ ] Splice (CR 702.47) — addon to instants/sorceries
+- [ ] ~30 cards: 8 flashback, 4 madness, 4 foretell, 4 escape, 4 suspend, 4 cycling, 2 splice
+- [ ] Theme-deck smoke test (Muldrotha-style graveyard deck casts via flashback + escape)
+
+Detailed plan: `/home/node/.claude/plans/s29-alt-cast-paths.md`. Builds on S14, S17, S19, S20, S22, S28. Dredge/retrace/rebound/aftermath stay deferred.
+
+---
+
+## S30 — Damage prevention, cloning, face-down, deferred protection keywords
+**Phase:** 7 · **Goal:** engine-completeness capstone. After S30 there are no major missing primitives.
+
+- [ ] Damage prevention shields (CR 615) — replacement subtype with charges; integrates with S17 pipeline
+- [ ] Cloning (CR 706) — ETB replacement that captures copyable values; populates S16 layer 1 copy slot
+- [ ] Spell copies (CR 706.10) — `CopyTopOfStack`; controller chooses new targets *before* copy hits stack
+- [ ] Morph / manifest (CR 702.36, 701.34, 707) — face-down zone state on `Card`; reuses S22 hidden-info wire frame
+- [ ] Protection (CR 702.16) — predicate-based guard at four DEBT hook points (damage / enchant-equip SBA / block / target)
+- [ ] Hexproof (CR 702.11) — targeting-by-opponent guard
+- [ ] Ward (CR 702.21) — `TriggeredAbility` on `EventBecomesTarget` via S19; pay-or-counter prompt
+- [ ] Indestructible (CR 702.12) — flag short-circuits lethal-damage SBA + destroy-effect rejection
+- [ ] ~25 cards: 4 fog, 4 cloning, 4 spell copies, 4 morph, 6 protection/indestructible, 3 ward
+- [ ] Theme-deck smoke test (Avacyn + Reverberate + Clone + a fog plays 4 turns end-to-end)
+
+Detailed plan: `/home/node/.claude/plans/s30-damage-cloning-protection.md`. Builds on S14, S16, S17, S18 (picks up its deferred set), S19, S22. Phasing / banding / shroud-as-distinct stay deferred.
+
+---
+
+## Post-S30 — Rolling deck-driven catalog growth
 **Phase:** 7 · **Status:** rolling, not started.
 
-After S26 the engine + bulk catalog (~350 cards) is mature enough that incremental work fits in 1-2 day batches. Switch from sprints to rolling work:
+After S30 the engine is feature-complete for major Commander mechanics and the catalog (~600 cards) is mature enough that incremental work fits in 1-2 day batches. Remaining mechanics (MDFCs, adventures, mutate, energy, day/night, monarch, vehicles-with-saddle, phasing) drop to on-demand work.
 
 - **Deck-import audit:** when the user imports a deck, the lobby UI shows "X% of cards in catalog." If <80%, suggest filing a "missing cards" issue.
 - **Small PR cadence:** 5-15 cards per PR, 1-2 day turnaround. No sprint scaffolding.
-- **Engine work as needed:** when a card surfaces a missing primitive, ship a tiny engine PR + the card together. No more bulk engine sprints.
+- **Engine work as needed:** when a card surfaces a missing primitive, ship a tiny engine PR + the card together.
 - **Quarterly catalog review:** every 12 weeks, audit "what cards have come up in real games but aren't in the catalog?" Prioritize by appearance count.
 
 Triaged just-in-time from real-play feedback.
