@@ -75,6 +75,8 @@
 
   const activeSeatID = $derived(view.seats[view.turn.active_seat]?.id ?? null);
   const prioritySeatID = $derived(view.seats[view.turn.priority_holder]?.id ?? null);
+  const monarchID = $derived(view.monarch ?? null);
+  const initiativeID = $derived(view.initiative ?? null);
 
   function handleTapToggle(card: CardView): void {
     sendAction(card.tapped ? "untap" : "tap", { instance_id: card.instance_id });
@@ -114,6 +116,8 @@
           {viewerID}
           {isAdmin}
           {sendAction}
+          isMonarch={seat.id === monarchID}
+          isInitiative={seat.id === initiativeID}
           controlledCards={cardsByController.get(seat.id) ?? []}
           exile={exileForOwner(seat.id)}
           {combatMode}

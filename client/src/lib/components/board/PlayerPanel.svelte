@@ -40,6 +40,8 @@
     viewerID: string | null;
     isAdmin: boolean;
     sendAction: ActionSender;
+    isMonarch: boolean;
+    isInitiative: boolean;
     // Battlefield slice already filtered to cards with controller === seat.id
     controlledCards: CardView[];
     // Player-owned slice of the shared exile zone (filtered by Board)
@@ -62,6 +64,8 @@
     viewerID,
     isAdmin,
     sendAction,
+    isMonarch,
+    isInitiative,
     controlledCards,
     exile,
     combatMode,
@@ -109,7 +113,17 @@
 
 <div class="panel" class:self={isSelf} class:opponent={!isSelf}>
   <div class="grid-header">
-    <PlayerHeader {seat} {isSelf} {isActive} {hasPriority} {attackTargetable} {onDeclareAttack} />
+    <PlayerHeader
+      {seat}
+      {isSelf}
+      {isActive}
+      {hasPriority}
+      {attackTargetable}
+      {isMonarch}
+      {isInitiative}
+      {sendAction}
+      {onDeclareAttack}
+    />
   </div>
   <div class="grid-creatures">
     <BattlefieldRow
