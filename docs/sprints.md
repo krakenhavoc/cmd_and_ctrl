@@ -44,6 +44,7 @@ planned just-in-time from the S12 pain-point triage.
 | S09 | Polish I — animations + VFX | 5 | [#9](https://github.com/krakenhavoc/cmd_and_ctrl/issues/9) | 2026-08-14 | planned |
 | S10 | Polish II — Commander UX (cmd damage, politics) | 5 | [#10](https://github.com/krakenhavoc/cmd_and_ctrl/issues/10) | 2026-08-28 | planned |
 | S11 | Polish III — hover preview, undo, spectator | 5 | [#11](https://github.com/krakenhavoc/cmd_and_ctrl/issues/11) | 2026-09-11 | planned |
+| S11.5 | Per-user settings and preferences (mini) | 5 | [#82](https://github.com/krakenhavoc/cmd_and_ctrl/issues/82) | 2026-09-18 | planned |
 | S12 | Deploy + 4-player go-live with friends | 6 | [#12](https://github.com/krakenhavoc/cmd_and_ctrl/issues/12) | 2026-09-25 | planned |
 | S12.5 | Discord identity for players (OAuth + bot + presence) | 6 | [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59) | 2026-10-09 | planned |
 | S13+ | **B→C rules graft track** (ongoing) | 7 | TBD at S12 retro | rolling | not started |
@@ -246,6 +247,115 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 - [ ] Auto-saved replays (server writes every delta to a game log file)
 
 **Exit criteria:** hover preview works for every card, undo works for the last action, spectating a live game works without interfering.
+
+---
+
+## S11.5 — Per-user settings and preferences (mini)
+**Phase:** 5 · **Goal:** one canonical settings panel that lets each player customise sound, animations, display, gameplay, and accessibility. Preferences persist in `localStorage`, respect OS-level accessibility hints, and unify the ad-hoc toggles otherwise scattered across S09/S10/S11/S12.5/S13. Lands before S12 deploy so friends' first real games open with configurable defaults.
+
+**Slot rationale.** Ships *after* the three polish sprints (S09 animations + sound, S10 Commander UX, S11 hover / undo / spectator) so the settings panel has real toggles to surface, and *before* S12 deploy so the go-live build ships with settings in place. 1-week mini-sprint scope — the infrastructure is small (single Svelte store + JSON schema + panel UI); most of the surface is wiring existing features up to toggles.
+
+**Storage decision.** Client-only `localStorage`. Matches project ethos (hobby scale, 4–8 users, no DB). Cross-device sync becomes feasible post-S12.5 using Discord ID as the key; documented as a future follow-up, not this sprint.
+
+### Tasks
+
+**Settings infrastructure (client):**
+- [ ] `client/src/lib/settings.ts` — Svelte `writable` store, typed `Settings` interface, schema versioning (`cmdctrl.settings.v1`) with a migration function shape ready for future bumps
+- [ ] Default values honour `window.matchMedia('(prefers-reduced-motion: reduce)')` at first load; subsequent OS changes are live-observed
+- [ ] Reactive apply — changes take effect without page reload
+- [ ] Export / import as JSON (copy-to-clipboard + paste) for moving settings between devices without a server
+- [ ] Reset-to-defaults button per section + one global
+- [ ] Absorb S13's "per-step stops" `localStorage` preferences (issue [#62](https://github.com/krakenhavoc/cmd_and_ctrl/issues/62)) into the same schema with a one-time migration
+
+**Settings panel UI (Svelte):**
+- [ ] New `client/src/lib/components/Settings.svelte` — modal panel with sidebar tabs (Audio, Animations, Display, Gameplay, Accessibility, Keybindings, Advanced)
+- [ ] Gear icon in `Game.svelte` header + keyboard shortcut `,` (comma); also reachable from `Lobby.svelte` and `Login.svelte`
+- [ ] Each setting = label + control (slider / toggle / select / key-capture) + short help text
+- [ ] Changes apply instantly (no "Save" button); a subtle "saved ✓" indicator flashes beside the changed control
+
+**Audio (S09 dependency):**
+- [ ] Master volume slider (0–100)
+- [ ] Effects volume (draw, play, tap, damage, turn change — everything S09 adds)
+- [ ] Music volume — disabled with a "no music yet" note if S09 doesn't ship music
+- [ ] Mute-all toggle; keyboard shortcut `M`
+- [ ] Test button per category that plays a sample sound
+
+**Animations (S09 dependency):**
+- [ ] Animations master toggle — auto-off when `prefers-reduced-motion: reduce` on first load; user override persists
+- [ ] Per-animation toggles: card draw / play / tap / untap / flip
+- [ ] Particle effects on ETB / death (on/off)
+- [ ] Damage-number popups + combat arrows (on/off)
+- [ ] Animation speed multiplier select: 0.5× / 1× (default) / 1.5× / 2×
+
+**Display:**
+- [ ] Theme select — dark (default), light, high-contrast (scaffolded; full theming is a follow-up, but the select + CSS-variable plumbing ships here)
+- [ ] Card size on battlefield: small / medium (default) / large
+- [ ] Hand layout: fan (default) / stacked
+- [ ] Auto-rotate battlefield to viewer POV (resolves issue [#38](https://github.com/krakenhavoc/cmd_and_ctrl/issues/38) if still open — setting defaults to on)
+- [ ] Card tooltip hover delay (0–1000 ms, default 300)
+- [ ] Show opponent hand count (default on)
+- [ ] Show mana pip icons vs. text (icons default)
+
+**Gameplay:**
+- [ ] Per-step stops grid (absorbs S13's localStorage prefs). 4 opponents × 10 steps checkbox grid; "stop on my upkeep / opponent's end step / …"
+- [ ] Auto-pass priority when the stack is empty and I have nothing playable (convenience — still overridable by holding Shift)
+- [ ] Confirm before exiting an active game (default on)
+- [ ] Default targeting: "always prompt" vs. "auto-pick if only one legal target"
+- [ ] Chat panel visibility — setting exists but no-ops until chat UI returns post-S08.5 removal; wire-protocol is still live
+- [ ] Discord Rich Presence toggle — **deferred**: S12.5 ([#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59)) adds the feature and will plug the toggle into this panel when it ships
+
+**Accessibility:**
+- [ ] Respect `prefers-reduced-motion` (on by default; off = user is overriding OS)
+- [ ] Increased text size: 0.9× / 1.0× / 1.2× / 1.5× (applies a root `--font-scale` CSS var)
+- [ ] High-contrast mode (overrides theme when active)
+- [ ] Color-blind-friendly seat colors (alternate palette in [colors.ts](../client/src/lib/colors.ts))
+- [ ] Focus indicators always visible (default on) — bypasses `:focus-visible` suppression
+
+**Keybindings:**
+- [ ] Read-only list of default bindings + "Change" button per row — but full re-binding UI (conflict detection, capture) **deferred to a follow-up** unless the sprint has spare budget; ship a JSON-editable `keybindings` setting and a `Reset to defaults` button at minimum
+- [ ] Defaults: pass priority (`Space`), untap all (`U`), draw (`D`), settings (`,`), mute (`M`), cancel targeting (`Esc`)
+
+**Advanced:**
+- [ ] Export settings to clipboard (JSON)
+- [ ] Import settings from clipboard (JSON, validates against schema; rejects with a toast on mismatch)
+- [ ] "Copy my settings hash" — short fingerprint for bug reports
+- [ ] "Reset all settings" (with confirm)
+
+**Docs:**
+- [ ] `docs/decisions/0006-per-user-settings.md` — ADR. Why client-only localStorage (simplicity, hobby scale, no PII leak across the network). Future path: server-synced settings keyed on Discord ID once S12.5 lands.
+- [ ] Update [README.md](../README.md) (or add a client-level one) with a "Customising your client" section
+
+**Tests:**
+- [ ] Schema migration test: v0 (no prior settings) → v1 loads with defaults; S13-style per-step prefs migrate into the unified schema
+- [ ] Default settings load correctly when `localStorage` is empty
+- [ ] `prefers-reduced-motion: reduce` at page load disables animations on first open
+- [ ] Export → import round-trip produces identical store state
+- [ ] Keybinding defaults render without conflicts
+
+### Out of scope (explicit handoffs)
+- **Server-backed settings sync across devices** — future post-S12.5 work; feasible using Discord ID as the key once S12.5 ships
+- **Full keybinding re-bind UI** — deferred to a follow-up mini-sprint unless the 1-week scope has spare budget (JSON-edit + reset-to-defaults ships here)
+- **Custom themes beyond dark / light / high-contrast** — scaffolding ships, full theme catalog is a follow-up
+- **Card-art customisation** — separate concern; Scryfall assets only for personal use
+- **Admin-wide / server-wide settings** (deck cap, game timeout, lobby limits) — operator domain, not per-user
+- **Per-game settings** ("music only in lobbies") — one level too deep for a hobby tool
+
+### Risks / gotchas
+- S09 / S10 / S11 are in flight. This sprint assumes the polish work has landed; if S09 slips, S11.5's audio/animation toggles are wiring toggles into features that don't exist yet. Mitigation: order S11.5 strictly *after* S11 rather than overlapping; scope the toggles that refer to unshipped features as no-ops with a "feature not yet available" disabled state.
+- `prefers-reduced-motion` is a **live** media query — settings must observe changes mid-session, not just at load, or a user who toggles OS reduced-motion mid-game won't see the effect.
+- `localStorage` is per-origin, per-browser. Switching browsers or clearing site data wipes settings. Document this and ship the export/import path as the mitigation.
+- Keybindings are the deepest rabbit hole. Time-box aggressively — `Reset to defaults` + JSON-edit is a full backstop; polished per-key rebinding UI waits.
+- S13's per-step-stops `localStorage` prefs land on a different track (rules graft, due 2026-05-17 — well before S11.5). Ship a migration so players don't lose their stops config when S11.5's schema takes over.
+
+### Exit criteria
+1. A gear icon opens the settings panel from the game header, the lobby, and the login screen. Keyboard `,` opens it from anywhere.
+2. Every setting persists across page reloads, tab closures, and re-opens of the browser.
+3. Muting sound effects makes the S09 card-tap sound silent immediately — no reload required.
+4. Disabling animations makes the S09 card-tap animation static immediately.
+5. Booting with OS `prefers-reduced-motion: reduce` auto-disables non-essential animations at first load.
+6. Changing card size re-flows the battlefield tiles without a reload.
+7. Export settings → paste into another browser → same config applies after import.
+8. S13's per-step-stops preferences are visible and editable from this panel (once S13 has shipped); existing S13 users don't lose their stops config on migration.
 
 ---
 
