@@ -40,6 +40,7 @@ planned just-in-time from the S12 pain-point triage.
 | S06.5 | Dynamic deck import from URLs (mini) | 3 | [#37](https://github.com/krakenhavoc/cmd_and_ctrl/issues/37) | 2026-07-10 | **done** |
 | S07 | Turn/phase UI + chat + manual priority | 3 | [#7](https://github.com/krakenhavoc/cmd_and_ctrl/issues/7) | 2026-07-17 | planned |
 | S08 | First playable sandbox (2-player, milestone) | 4 | [#8](https://github.com/krakenhavoc/cmd_and_ctrl/issues/8) | 2026-07-31 | planned |
+| S08.5 | Game-logic cleanup pass (mini, scope-TBD) | 4 | [#43](https://github.com/krakenhavoc/cmd_and_ctrl/issues/43) | 2026-08-07 | planned |
 | S09 | Polish I — animations + VFX | 5 | [#9](https://github.com/krakenhavoc/cmd_and_ctrl/issues/9) | 2026-08-14 | planned |
 | S10 | Polish II — Commander UX (cmd damage, politics) | 5 | [#10](https://github.com/krakenhavoc/cmd_and_ctrl/issues/10) | 2026-08-28 | planned |
 | S11 | Polish III — hover preview, undo, spectator | 5 | [#11](https://github.com/krakenhavoc/cmd_and_ctrl/issues/11) | 2026-09-11 | planned |
@@ -188,6 +189,29 @@ One-week mini sprint slotted between S06 and S07 to address UX friction surfaced
 - [ ] Play against yourself across two tabs, record a video
 
 **Exit criteria:** a recorded 2-player sandbox game, start to finish, with no manual state intervention outside the client.
+
+---
+
+## S08.5 — Game-logic cleanup pass (mini)
+**Phase:** 4 · **Goal:** fix the rough edges in the manual sandbox state model that the S08 playtest surfaces.
+
+One-week mini sprint slotted between S08 and S09. The scope is **deliberately empty until the S08 retro** — playing a real 2-player sandbox game to completion is the only reliable way to know which game-logic gaps actually matter. Pre-S08 speculation about what's broken consistently triages to "you'll find out when you play."
+
+The S08 retro produces the checklist. Likely sources, none of which are commitments yet:
+
+- Turn-1 skip-draw rule ([server/internal/game/turn.go:98-100](../server/internal/game/turn.go#L98-L100)) — currently the first player gets a turn-1 draw the rules don't grant.
+- Commander-damage attribution keyed by player ID rather than commander instance ID ([server/internal/game/mutations.go:393-396](../server/internal/game/mutations.go#L393-L396)) — partner pairs collapse into a single tally.
+- Partner / companion deck imports rejected as unsupported (S05 deferral) — the playtest may or may not actually want these.
+- Commander returns to command zone on death / exile, plus commander tax — not in the model at all.
+- The Stack zone exists but no action moves anything onto it.
+- Move-card cleanup on leaving battlefield (CR 400.7) handles tapped + counters but probably misses other zone-transition state.
+- Token creation has no API.
+- Authorization gaps on card-instance actions (`tap`, `move_card`, `add_counter`, `set_battlefield_position`) — currently any player can act on any card. This is intentional sandbox flexibility; the playtest will tell us whether it's actually fine or whether it bites.
+- Mulligan is simplified London with no card-to-bottom penalty.
+
+**Exit criteria:** the punch list assembled at the S08 retro is closed out, and a second 2-player playtest doesn't surface any of the same issues. Items the playtest doesn't surface stay deferred — the goal is "what hurt", not "what could theoretically be wrong".
+
+**Out of scope:** rules enforcement (auto-untap, auto-tap lands, combat damage to life totals, etc.). Those land in S13+. S08.5 is corrective work on the manual state model, not additive automation.
 
 ---
 
