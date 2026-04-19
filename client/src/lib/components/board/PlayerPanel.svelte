@@ -22,13 +22,15 @@
   // Pixi wireTapClick: combat select on your own creature, declare-
   // block on an incoming attacker, otherwise tap/untap.
 
-  import type { CardView, PlayerView, ZoneView } from "../../protocol";
+  import type { ActionPayload, CardView, PlayerView, ZoneView } from "../../protocol";
   import { bucketForBattlefield, isCreature } from "../../cardTypes";
   import BattlefieldRow from "./BattlefieldRow.svelte";
   import BattlefieldColumn from "./BattlefieldColumn.svelte";
   import PileBar from "./PileBar.svelte";
   import Hand from "./Hand.svelte";
   import PlayerHeader from "./PlayerHeader.svelte";
+
+  type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
 
   interface Props {
     seat: PlayerView;
@@ -37,6 +39,7 @@
     hasPriority: boolean;
     viewerID: string | null;
     isAdmin: boolean;
+    sendAction: ActionSender;
     // Battlefield slice already filtered to cards with controller === seat.id
     controlledCards: CardView[];
     // Player-owned slice of the shared exile zone (filtered by Board)
@@ -58,6 +61,7 @@
     hasPriority,
     viewerID,
     isAdmin,
+    sendAction,
     controlledCards,
     exile,
     combatMode,
@@ -126,7 +130,7 @@
     />
   </div>
   <div class="grid-piles">
-    <PileBar {seat} {exile} {isSelf} onDrawCard={isSelf ? onDrawCard : undefined} />
+    <PileBar {seat} {exile} {isSelf} {sendAction} onDrawCard={isSelf ? onDrawCard : undefined} />
   </div>
   <div class="grid-hand">
     <Hand hand={seat.hand} {isSelf} onPlayCard={isSelf ? onPlayCard : undefined} />
