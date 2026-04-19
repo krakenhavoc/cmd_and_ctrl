@@ -582,10 +582,19 @@ function wireTapClick(
     if (!dragging) {
       // Combat-mode click routing. Disambiguates between selecting
       // your own creature (always your card) and committing a block
-      // against an incoming attacker (always not your card).
+      // against an incoming attacker (always not your card). Non-
+      // creatures fall through to the tap branch so combat clicks
+      // on lands / artifacts don't dispatch a doomed action — the
+      // server would reject with ErrNotACreature, but the UX is
+      // better if the click just toggles tap as expected.
       const mode = opts.combatMode ?? "idle";
       const viewerID = opts.viewerID;
-      if ((mode === "attack" || mode === "block") && card.controller === viewerID) {
+      const cardIsCreature = !!card.type_line && /creature/i.test(card.type_line);
+      if (
+        (mode === "attack" || mode === "block") &&
+        card.controller === viewerID &&
+        cardIsCreature
+      ) {
         opts.onSelectCombatCard?.(card.instance_id);
         return;
       }

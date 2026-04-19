@@ -260,35 +260,13 @@
     | null;
   let combatSelection = $state<CombatSelection>(null);
 
-  // Heuristic mirror of server-side IsCreature — substring match on
-  // the type_line. Cards without a type_line (placeholders) are
-  // treated as non-creatures.
-  function isCreature(typeLine: string | undefined): boolean {
-    return !!typeLine && /creature/i.test(typeLine);
-  }
-
-  // Creatures on the battlefield controlled by the viewer.
-  // Non-creatures (lands, artifacts that aren't creatures, etc.) are
-  // filtered out — only creatures can attack or block.
-  const viewerBattlefield = $derived.by(() => {
-    if (!viewerID || !view) return [];
-    return view.battlefield.cards.filter(
-      (c) => c.controller === viewerID && isCreature(c.type_line),
-    );
-  });
-  // Creatures on the battlefield currently declared as attacking the viewer.
+  // Creatures on the battlefield currently declared as attacking the
+  // viewer — used to gate the block-mode flag below so the canvas
+  // doesn't enter block mode when there's nothing to block.
   const incomingAttackers = $derived.by(() => {
     if (!viewerID || !view) return [];
     return view.battlefield.cards.filter((c) => c.attacking_target === viewerID);
   });
-  // Opponent seats (everyone except the viewer; eliminated seats
-  // omitted because attacking a corpse is meaningless).
-  const opponents = $derived(seats.filter((s) => s.id !== viewerID && !s.eliminated));
-  // Any combat is in progress if any battlefield card has an
-  // attacking_target set. Used to gate the "Clear combat" button.
-  const combatInProgress = $derived(
-    !!view && view.battlefield.cards.some((c) => c.attacking_target),
-  );
 
   // Step-based gating mirrors the server's MTG-rules check. Attackers
   // can only be declared during declare_attackers and only by the
@@ -356,22 +334,14 @@
     });
     combatSelection = null;
   }
-  function clearCombat(): void {
-    client.sendAction("clear_combat");
-    combatSelection = null;
-  }
-
   // Look up a card's name + controller-name by instance ID. Used to
-  // label the incoming-attackers list with "Bob's <card>".
+  // label the combat-hint banner during selection.
   function cardLabel(cardID: string): { name: string; controller: string } {
     if (!view) return { name: "?", controller: "?" };
     const c = view.battlefield.cards.find((x) => x.instance_id === cardID);
     if (!c) return { name: "?", controller: "?" };
     const ctrl = seats.find((s) => s.id === c.controller);
     return { name: c.name, controller: ctrl?.name ?? "?" };
-  }
-  function seatName(playerID: string): string {
-    return seats.find((s) => s.id === playerID)?.name ?? "?";
   }
 
   function keepHand(): void {
@@ -702,142 +672,16 @@
     </div>
   {/if}
 
-  {#if view && viewerID && !viewerEliminated && !gameEnded && !mulligansOpen && (canDeclareAttackers || canDeclareBlockers || combatInProgress)}
-    <div class="combat-panel" aria-label="combat declarations">
-      {#if combatSelection}
-        <div class="combat-hint">
-          {#if combatSelection.kind === "attacker"}
-            Attack with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an opponent
-            below.
-          {:else}
-            Block with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an incoming attacker.
-          {/if}
-          <button class="combat-cancel" onclick={() => (combatSelection = null)}>cancel</button>
-        </div>
+  {#if combatSelection && !mulligansOpen}
+    <div class="combat-hint" role="status" aria-live="polite">
+      {#if combatSelection.kind === "attacker"}
+        Attacking with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an opponent's
+        seat to commit, or click the creature again to cancel.
+      {:else}
+        Blocking with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an incoming attacker
+        to commit, or click the creature again to cancel.
       {/if}
-
-      <div class="combat-cols">
-        {#if canDeclareAttackers && viewerBattlefield.length > 0}
-          <section class="combat-col">
-            <h3>Your creatures</h3>
-            <ul>
-              {#each viewerBattlefield as c (c.instance_id)}
-                <li>
-                  <button
-                    class="combat-row"
-                    class:selected={combatSelection?.kind === "attacker" &&
-                      combatSelection.cardID === c.instance_id}
-                    class:declared={!!c.attacking_target || !!c.blocking_target}
-                    onclick={() => selectAttacker(c.instance_id)}
-                  >
-                    <span class="combat-row-name"
-                      >{c.name}{#if c.power !== undefined && c.toughness !== undefined}
-                        <span class="muted">· {c.power}/{c.toughness}</span>
-                      {/if}</span
-                    >
-                    {#if c.attacking_target}
-                      <span class="combat-row-state attack">→ {seatName(c.attacking_target)}</span>
-                    {:else if c.blocking_target}
-                      <span class="combat-row-state block"
-                        >blocking {cardLabel(c.blocking_target).name}</span
-                      >
-                    {/if}
-                  </button>
-                </li>
-              {/each}
-            </ul>
-          </section>
-        {/if}
-
-        {#if canDeclareAttackers && combatSelection?.kind === "attacker"}
-          <section class="combat-col combat-targets">
-            <h3>Choose target</h3>
-            <ul>
-              {#each opponents as o (o.id)}
-                <li>
-                  <button
-                    class="combat-row target"
-                    style="--seat-color: {seatColor(o.seat)}"
-                    onclick={() => declareAttackTarget(o.id)}
-                  >
-                    {o.name} <span class="muted">· {o.life} life</span>
-                  </button>
-                </li>
-              {/each}
-            </ul>
-          </section>
-        {/if}
-
-        {#if canDeclareBlockers && incomingAttackers.length > 0}
-          <section class="combat-col">
-            <h3>Incoming attackers</h3>
-            <ul>
-              {#each incomingAttackers as a (a.instance_id)}
-                <li>
-                  <button
-                    class="combat-row attacker"
-                    onclick={() => declareBlockTarget(a.instance_id)}
-                    disabled={combatSelection?.kind !== "blocker"}
-                    title={combatSelection?.kind === "blocker"
-                      ? `block this attacker with ${cardLabel(combatSelection.cardID).name}`
-                      : "select one of your creatures first to block"}
-                  >
-                    <span class="combat-row-name"
-                      >{cardLabel(a.instance_id).controller}'s {a.name}{#if a.power !== undefined && a.toughness !== undefined}
-                        <span class="muted">· {a.power}/{a.toughness}</span>
-                      {/if}</span
-                    >
-                  </button>
-                </li>
-              {/each}
-            </ul>
-          </section>
-        {/if}
-
-        {#if canDeclareBlockers && viewerBattlefield.length > 0 && incomingAttackers.length > 0}
-          <section class="combat-col combat-block-pool">
-            <h3>Block with…</h3>
-            <ul>
-              {#each viewerBattlefield as c (c.instance_id)}
-                <li>
-                  <button
-                    class="combat-row"
-                    class:selected={combatSelection?.kind === "blocker" &&
-                      combatSelection.cardID === c.instance_id}
-                    onclick={() => selectBlocker(c.instance_id)}
-                  >
-                    <span class="combat-row-name"
-                      >{c.name}{#if c.power !== undefined && c.toughness !== undefined}
-                        <span class="muted">· {c.power}/{c.toughness}</span>
-                      {/if}</span
-                    >
-                    {#if c.blocking_target}
-                      <span class="combat-row-state block"
-                        >blocking {cardLabel(c.blocking_target).name}</span
-                      >
-                    {/if}
-                  </button>
-                </li>
-              {/each}
-            </ul>
-          </section>
-        {/if}
-      </div>
-
-      <div class="combat-footer">
-        {#if viewerIsActive}
-          <button
-            class="combat-done"
-            onclick={advanceStep}
-            title="advance the step cursor by one (sandbox shortcut — bypasses opponent priority pass)"
-          >
-            done — next step
-          </button>
-        {/if}
-        {#if combatInProgress}
-          <button class="combat-clear" onclick={clearCombat}>clear combat</button>
-        {/if}
-      </div>
+      <button class="combat-cancel" onclick={() => (combatSelection = null)}>cancel</button>
     </div>
   {/if}
 
@@ -938,6 +782,20 @@
     height: 100%;
     border-radius: 6px;
     overflow: hidden;
+    /* PIXI v8 sets position: absolute on the canvas it injects.
+       Without an explicit positioned ancestor, the canvas anchors
+       to the next one up (the section, which is position: fixed
+       and inset: 0). The result was the canvas — and PIXI's
+       pointer-event capture — covering the entire viewport,
+       making toolbar buttons visually present but clickless.
+       position: relative pins the canvas inside this container. */
+    position: relative;
+  }
+  .table > :global(canvas) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
   }
   .muted {
     color: #888;
@@ -1124,24 +982,16 @@
     color: #cfd6ee;
   }
 
-  /* Combat panel */
-  .combat-panel {
-    padding: 0.5rem 0.6rem;
-    background: #1a2540;
-    border: 1px solid #2a3550;
-    border-radius: 4px;
-    color: #cfd6ee;
-    font-size: 0.85em;
-    margin-bottom: 0.4rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
+  /* Combat: just the active selection hint. The actual combat UI
+     is canvas-only — click your creature, click an opponent's seat. */
   .combat-hint {
+    padding: 0.4rem 0.6rem;
+    margin-bottom: 0.4rem;
     background: #0f1a30;
-    padding: 0.3rem 0.5rem;
-    border-radius: 3px;
+    border: 1px solid #ffd07a;
+    border-radius: 4px;
     color: #ffd07a;
+    font-size: 0.9em;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -1151,95 +1001,11 @@
   }
   .combat-cancel {
     margin-left: auto;
-    padding: 0.1rem 0.5rem;
-    font-size: 0.8em;
-  }
-  .combat-cols {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 0.5rem;
-  }
-  .combat-col h3 {
-    font-size: 0.8em;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin: 0 0 0.25rem 0;
-    color: #888;
-  }
-  .combat-col ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-  }
-  .combat-row {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    width: 100%;
-    background: #0f1a30;
-    color: #e0e8ff;
-    border: 1px solid #2a3550;
-    border-radius: 3px;
-    padding: 0.25rem 0.5rem;
-    font: inherit;
-    cursor: pointer;
-    text-align: left;
-  }
-  .combat-row:hover:not(:disabled) {
-    background: #16243f;
-    border-color: #3a4570;
-  }
-  .combat-row:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-  .combat-row.selected {
-    border-color: #ffd07a;
-    box-shadow: 0 0 4px #ffd07a;
-  }
-  .combat-row.declared {
-    border-left: 3px solid #ff7a7a;
-  }
-  .combat-row.target {
-    border-color: var(--seat-color);
-  }
-  .combat-row.attacker {
-    border-left: 3px solid #ff7a7a;
-  }
-  .combat-row-name {
-    flex: 1;
-  }
-  .combat-row-state {
-    font-size: 0.85em;
-  }
-  .combat-row-state.attack {
-    color: #ff9e9e;
-  }
-  .combat-row-state.block {
-    color: #9ec7ff;
-  }
-  .combat-footer {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-  }
-  .combat-clear {
-    padding: 0.2rem 0.6rem;
+    padding: 0.15rem 0.6rem;
     font-size: 0.85em;
     background: #2a3550;
     color: #cfd6ee;
     border: 1px solid #3a4570;
-  }
-  .combat-done {
-    padding: 0.3rem 0.8rem;
-    font-size: 0.9em;
-    background: #b3e5b3;
-    color: #0c1426;
-    font-weight: 600;
-    border: 1px solid #8acc8a;
   }
 
   /* Server-error toast */
