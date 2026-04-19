@@ -693,9 +693,23 @@ func TestResolveCombatDamageUnblockedAppliesPower(t *testing.T) {
 	if len(defender.LifeHistory) == 0 {
 		t.Error("life history: expected one entry from combat damage")
 	}
+	// Combat declarations persist through the combat_damage step so
+	// the client can keep its arrows drawn while damage shows up.
+	stillAttacking := false
 	for _, c := range g.Battlefield.Cards {
 		if c.AttackingTarget != uuid.Nil {
-			t.Error("AttackingTarget not cleared after auto-resolve")
+			stillAttacking = true
+		}
+	}
+	if !stillAttacking {
+		t.Error("AttackingTarget cleared inside combat_damage; expected persistence until end_combat")
+	}
+	// One more advance moves the cursor into end_combat, which IS
+	// where the clear should fire.
+	advanceTo(t, g, StepEndCombat)
+	for _, c := range g.Battlefield.Cards {
+		if c.AttackingTarget != uuid.Nil {
+			t.Error("AttackingTarget not cleared after entering end_combat")
 		}
 	}
 }

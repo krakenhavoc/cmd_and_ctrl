@@ -239,10 +239,16 @@ func (g *Game) End() {
 // cleanup step, the cursor wraps to the next seat's untap step and
 // the turn number increments. Returns the new Turn.
 //
-// Side effect: when the cursor enters the combat_damage step,
-// ResolveCombatDamage runs automatically (S08 — auto-applies
-// unblocked attacker damage to defending players' life totals).
-// Blocked attackers and other combat keywords still resolve manually.
+// Side effects on step transitions:
+//   - Entering combat_damage: ResolveCombatDamage runs (S08 —
+//     auto-applies unblocked attacker damage to defending players'
+//     life totals). Combat declarations (AttackingTarget /
+//     BlockingTarget) are intentionally left in place.
+//   - Entering end_combat: clearCombatLocked wipes the combat
+//     declarations. Deferring the clear until this step lets the
+//     client keep its combat-arrow overlay visible through the
+//     entire combat_damage step instead of vanishing the moment
+//     damage is resolved.
 //
 // Returns ErrGameNotActive if the game is not in the active state.
 func (g *Game) AdvanceStep() (Turn, error) {
@@ -252,8 +258,11 @@ func (g *Game) AdvanceStep() (Turn, error) {
 		return Turn{}, ErrGameNotActive
 	}
 	g.Turn = g.Turn.advance(len(g.Seats))
-	if g.Turn.Step == StepCombatDamage {
+	switch g.Turn.Step {
+	case StepCombatDamage:
 		g.resolveCombatDamageLocked()
+	case StepEndCombat:
+		g.clearCombatLocked()
 	}
 	return g.Turn, nil
 }

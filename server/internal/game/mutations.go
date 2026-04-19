@@ -375,10 +375,15 @@ func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 //     alone here; creature-vs-creature damage assignment requires
 //     full rules support and remains a manual step until S13+.
 //
-// After damage application, all combat state is cleared (same as
-// ClearCombat). Trample, deathtouch, double strike, lifelink, and
-// other combat keywords are NOT modeled — those land with rules
-// enforcement.
+// AttackingTarget / BlockingTarget are intentionally NOT cleared
+// here — they persist through the combat_damage step so the client
+// can keep its combat-arrow overlay drawn while damage shows up on
+// the affected player headers. AdvanceStep calls clearCombatLocked
+// when the cursor moves on to end_combat, which is what actually
+// retracts the arrows.
+//
+// Trample, deathtouch, double strike, lifelink, and other combat
+// keywords are NOT modeled — those land with rules enforcement.
 //
 // Auto-invoked by AdvanceStep when entering the combat_damage step,
 // so under normal play this never needs to be called explicitly.
@@ -423,12 +428,11 @@ func (g *Game) resolveCombatDamageLocked() {
 		// safe.
 		target.ChangeLife(-damage)
 	}
-	// Clear all combat state at the end so the next combat starts
-	// from a clean slate. Mirrors ClearCombat.
-	for i := range g.Battlefield.Cards {
-		g.Battlefield.Cards[i].AttackingTarget = uuid.Nil
-		g.Battlefield.Cards[i].BlockingTarget = uuid.Nil
-	}
+	// Combat state is intentionally left in place here. AdvanceStep's
+	// transition into end_combat invokes clearCombatLocked, which is
+	// what actually clears AttackingTarget / BlockingTarget. Deferring
+	// the clear lets the client keep combat arrows drawn for the full
+	// duration of the combat_damage step.
 }
 
 // ClearCombat resets every card on the battlefield to "not attacking
@@ -441,11 +445,18 @@ func (g *Game) ClearCombat() error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	g.clearCombatLocked()
+	return nil
+}
+
+// clearCombatLocked is the internal mutator behind both ClearCombat
+// (which takes the lock) and AdvanceStep (which already holds it).
+// Caller must hold g.mu.
+func (g *Game) clearCombatLocked() {
 	for i := range g.Battlefield.Cards {
 		g.Battlefield.Cards[i].AttackingTarget = uuid.Nil
 		g.Battlefield.Cards[i].BlockingTarget = uuid.Nil
 	}
-	return nil
 }
 
 // Concede marks the given player as eliminated. If exactly one
