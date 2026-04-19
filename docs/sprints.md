@@ -47,9 +47,24 @@ planned just-in-time from the S12 pain-point triage.
 | S11.5 | Per-user settings and preferences (mini) | 5 | [#82](https://github.com/krakenhavoc/cmd_and_ctrl/issues/82) | 2026-09-18 | planned |
 | S12 | Deploy + 4-player go-live with friends | 6 | [#12](https://github.com/krakenhavoc/cmd_and_ctrl/issues/12) | 2026-09-25 | planned |
 | S12.5 | Discord identity for players (OAuth + bot + presence) | 6 | [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59) | 2026-10-09 | planned |
+| S13 | Priority foundation (rules graft kickoff) | 7 | [#62](https://github.com/krakenhavoc/cmd_and_ctrl/issues/62) | 2026-05-17 | planned |
+| S13.1 | Stack: cast/resolve/target/counter/trigger/SBA | 7 | [#63](https://github.com/krakenhavoc/cmd_and_ctrl/issues/63) | 2026-06-14 | planned |
 | S13.2 | Counter mechanics (SBAs + player counters + UI) | 7 | [#79](https://github.com/krakenhavoc/cmd_and_ctrl/issues/79) | 2026-06-28 | planned |
+| S14 | Card-effect catalog foundation | 7 | [#64](https://github.com/krakenhavoc/cmd_and_ctrl/issues/64) | 2026-07-12 | planned |
+| S15 | Mana pool, cost model, and auto-tapper | 7 | [#65](https://github.com/krakenhavoc/cmd_and_ctrl/issues/65) | 2026-08-09 | planned |
+| S16 | Continuous effects + layer system (CR 613) | 7 | [#66](https://github.com/krakenhavoc/cmd_and_ctrl/issues/66) | 2026-09-06 | planned |
+| S17 | Replacement effects engine (CR 614) | 7 | [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67) | 2026-10-04 | planned |
+| S18 | Combat keywords | 7 | [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68) | 2026-11-01 | planned |
+| S19 | Auto-fire triggered abilities | 7 | [#69](https://github.com/krakenhavoc/cmd_and_ctrl/issues/69) | 2026-11-29 | planned |
+| S20 | Auto-target legality + smart cast UI | 7 | [#70](https://github.com/krakenhavoc/cmd_and_ctrl/issues/70) | 2026-12-27 | planned |
+| S21 | Tokens, sacrifice, aristocrats | 7 | [#73](https://github.com/krakenhavoc/cmd_and_ctrl/issues/73) | 2027-01-24 | planned |
+| S22 | Card draw + library manipulation | 7 | [#74](https://github.com/krakenhavoc/cmd_and_ctrl/issues/74) | 2027-02-21 | planned |
+| S23 | Mass removal + boardwipes | 7 | [#75](https://github.com/krakenhavoc/cmd_and_ctrl/issues/75) | 2027-03-21 | planned |
+| S24 | Equipment, auras, attachments | 7 | [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76) | 2027-04-18 | planned |
+| S25 | Voltron / commander damage focus | 7 | [#77](https://github.com/krakenhavoc/cmd_and_ctrl/issues/77) | 2027-05-16 | planned |
+| S26 | Tribal / creature type matters | 7 | [#78](https://github.com/krakenhavoc/cmd_and_ctrl/issues/78) | 2027-06-13 | planned |
+| S27+ | Rolling deck-driven catalog growth | 7 | TBD at S26 retro | rolling | not started |
 | S31 | AI bot seat (heuristic policy) | 8 | [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89) | 2027-07-04 | planned |
-| S13+ | **B→C rules graft track** (ongoing) | 7 | TBD at S12 retro | rolling | not started |
 
 ---
 
@@ -661,12 +676,92 @@ Gap analysis behind this sprint: `Card.Counters` exists today ([server/internal/
 
 ---
 
-## S21+ — Rules-graft long tail
+## S21 — Tokens, sacrifice, aristocrats
+**Phase:** 7 · **Goal:** an aristocrats Commander deck plays end-to-end.
+
+- [ ] Token catalog (Treasure, Food, Clue, Blood, Map, Powerstone, generic creatures)
+- [ ] `SacrificePermanent`, `Proliferate`, `CreateTokenAdvanced` primitives
+- [ ] Sacrifice as a cost component
+- [ ] ~40 cards: token producers, sacrifice outlets, aristocrats payoffs, proliferate cards
+- [ ] Theme-deck smoke test (Korvold-style aristocrats deck plays 3 turns)
+
+**Exit criteria:** Cast Goblin Bombardment + Blood Artist + Krenko, Mob Boss; sacrifice tokens to Bombardment one at a time → opponent's life ticks down (Blood Artist + Bombardment damage); your life ticks up (Blood Artist gain).
+
+---
+
+## S22 — Card draw + library manipulation
+**Phase:** 7 · **Goal:** a draw-heavy Commander deck plays end-to-end.
+
+- [ ] `ScryN`, `SurveilN`, `Explore`, `RevealAndChoose`, `MillToZone`, `DrawAndScry` primitives
+- [ ] Delayed-trigger mechanism (`Game.DelayedTriggers`) for "at the next end step" patterns
+- [ ] `KindLookAtCards` / `KindRevealCards` wire frames (controller-only with redacted view)
+- [ ] ~40 cards: passive draw engines, top-of-library manipulation, tutoring, mill, big draw payoffs
+- [ ] Theme-deck smoke test (blue draw deck plays 3 turns)
+
+**Exit criteria:** Activate Sensei's Divining Top → personal-only modal shows top 3 cards → reorder → confirm. Necropotence: activate to exile a card → advance to end step → card moves to hand automatically.
+
+---
+
+## S23 — Mass removal + boardwipes
+**Phase:** 7 · **Goal:** mass-effect cards work; boardwipes wipe correctly across decks.
+
+- [ ] `DestroyAllMatching`, `ExileAllMatching`, `BounceAllMatching`, `ReturnAllToHand` primitives
+- [ ] Predicate-driven mass effects with non-X exclusions
+- [ ] ~30 cards: Wrath of God (extended), Damnation, Toxic Deluge, Vandalblast, Austere Command, Farewell, Merciless Eviction, Cyclonic Rift overload (extended), …
+- [ ] Theme-deck smoke test (control deck plays 3 turns including a boardwipe)
+
+Detailed plan TBD; lands just-in-time after S22 ships.
+
+---
+
+## S24 — Equipment, auras, attachments
+**Phase:** 7 · **Goal:** equipment + auras work as attached state on creatures.
+
+- [ ] `Card.AttachedTo *uuid.UUID` field + wire shape
+- [ ] `Attach`, `Detach`, `EquipPay`, `EnchantTarget` primitives
+- [ ] ~30 cards: Sword of Feast and Famine, Sword of Fire and Ice, Lightning Greaves, Swiftfoot Boots, Skullclamp (extended), Rancor, Curse-style auras, …
+- [ ] Theme-deck smoke test (equipment / voltron-adjacent deck plays 3 turns)
+
+Detailed plan TBD; lands just-in-time after S23.
+
+---
+
+## S25 — Voltron / commander damage focus
+**Phase:** 7 · **Goal:** "make commander big and swing" decks work end-to-end.
+
+- [ ] `BoostUntilEOT`, `GiveKeywordUntilEOT`, `HexproofUntilEOT`, `IndestructibleUntilEOT` primitives
+- [ ] Until-end-of-turn effect lifecycle (cleanup-step removal of one-shot continuous effects)
+- [ ] Per-commander damage UX from S13.1 exercised heavily
+- [ ] ~30 cards: Bruna Light of Alabaster, Uril the Miststalker, voltron commanders + support, ramp + protection, big-equipment cards, …
+- [ ] Theme-deck smoke test (voltron deck deals 21 commander damage in 3 turns)
+
+Detailed plan TBD; lands just-in-time after S24.
+
+---
+
+## S26 — Tribal / creature type matters
+**Phase:** 7 · **Goal:** tribal Commander decks (Goblins, Merfolk, Slivers, etc.) work end-to-end.
+
+- [ ] `ChooseCreatureTypeOnETB` primitive (per-permanent persistent state for Cavern of Souls' named tribe)
+- [ ] `GrantTypeUntilEOT`, `TypeFilter` predicate
+- [ ] ~30 cards: Cavern of Souls, Door of Destinies, Vanquisher's Banner, Coat of Arms, Adaptive Automaton, tribal lords, changeling creatures, …
+- [ ] Theme-deck smoke test (tribal deck plays 3 turns with type-locked Cavern + lord buffs)
+
+Detailed plan TBD; lands just-in-time after S25.
+
+---
+
+## S27+ — Rolling deck-driven catalog growth
 **Phase:** 7 · **Status:** rolling, not started.
 
-After S20 the **engine** is feature-complete for 200 most-played Commander cards. S21+ is **catalog growth** — add cards as the user's playgroup demands them. Engine work continues only when a card surfaces a gap (e.g., dependency-detection in CR 613.8 layer system if Opalescence becomes relevant; copy effects layer 1 if Clone is wanted; protection if a player wants Pious Wayfarer's defense).
+After S26 the engine + bulk catalog (~350 cards) is mature enough that incremental work fits in 1-2 day batches. Switch from sprints to rolling work:
 
-Triaged just-in-time; no detailed plan until a real game surfaces the need.
+- **Deck-import audit:** when the user imports a deck, the lobby UI shows "X% of cards in catalog." If <80%, suggest filing a "missing cards" issue.
+- **Small PR cadence:** 5-15 cards per PR, 1-2 day turnaround. No sprint scaffolding.
+- **Engine work as needed:** when a card surfaces a missing primitive, ship a tiny engine PR + the card together. No more bulk engine sprints.
+- **Quarterly catalog review:** every 12 weeks, audit "what cards have come up in real games but aren't in the catalog?" Prioritize by appearance count.
+
+Triaged just-in-time from real-play feedback.
 
 ---
 
