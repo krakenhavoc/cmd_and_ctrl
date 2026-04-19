@@ -241,6 +241,95 @@ func sendActionAndWait(t *testing.T, conn *websocket.Conn, a protocol.ActionPayl
 	return snap
 }
 
+// readChatFrame reads the next frame from conn and asserts it is a
+// chat frame, returning the decoded payload. Used by the S07 chat
+// broadcast test.
+func readChatFrame(t *testing.T, conn *websocket.Conn) protocol.ChatPayload {
+	t.Helper()
+	_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	_, raw, err := conn.ReadMessage()
+	if err != nil {
+		t.Fatalf("read chat frame: %v", err)
+	}
+	var f protocol.Frame
+	if err := json.Unmarshal(raw, &f); err != nil {
+		t.Fatalf("unmarshal frame: %v", err)
+	}
+	if f.Kind != protocol.KindChat {
+		t.Fatalf("kind: got %q, want %q", f.Kind, protocol.KindChat)
+	}
+	var p protocol.ChatPayload
+	if err := json.Unmarshal(f.Payload, &p); err != nil {
+		t.Fatalf("unmarshal chat payload: %v", err)
+	}
+	return p
+}
+
+// TestChatBroadcast covers the S07 chat path: a client-sent text
+// frame is server-stamped (author ID, author name, RFC3339 timestamp)
+// and broadcast to every client bound to the same game, including the
+// originator. Snapshot state is not touched.
+func TestChatBroadcast(t *testing.T) {
+	wsURL, g, cleanup := newE2EServer(t)
+	defer cleanup()
+
+	seat0 := g.Seats[0]
+	seat1 := g.Seats[1]
+
+	connA := dialAs(t, wsURL, seat0.ID)
+	defer connA.Close()
+	connB := dialAs(t, wsURL, seat1.ID)
+	defer connB.Close()
+
+	// Both clients consume their initial snapshots so subsequent reads
+	// see only the chat broadcast.
+	_ = readSnapshotFrame(t, connA)
+	_ = readSnapshotFrame(t, connB)
+
+	// Client A sends a chat frame. The author_id/name/timestamp values
+	// it puts on the wire are intentionally bogus — the server must
+	// overwrite all three.
+	out := protocol.ChatPayload{
+		AuthorID:   "client-supplied-bogus",
+		AuthorName: "client-supplied-bogus",
+		Text:       "hello table",
+		Timestamp:  "client-supplied-bogus",
+	}
+	payload, err := json.Marshal(out)
+	if err != nil {
+		t.Fatalf("marshal chat payload: %v", err)
+	}
+	frame, err := json.Marshal(protocol.Frame{
+		V:       protocol.Version,
+		Kind:    protocol.KindChat,
+		ID:      uuid.New().String(),
+		Payload: payload,
+	})
+	if err != nil {
+		t.Fatalf("marshal chat frame: %v", err)
+	}
+	if err := connA.WriteMessage(websocket.TextMessage, frame); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	for label, conn := range map[string]*websocket.Conn{"A": connA, "B": connB} {
+		got := readChatFrame(t, conn)
+		if got.Text != "hello table" {
+			t.Errorf("conn %s: text=%q, want %q", label, got.Text, "hello table")
+		}
+		if got.AuthorID != seat0.ID.String() {
+			t.Errorf("conn %s: author_id=%q, want %q (server should re-stamp from connection's player)",
+				label, got.AuthorID, seat0.ID)
+		}
+		if got.AuthorName != seat0.Name {
+			t.Errorf("conn %s: author_name=%q, want %q", label, got.AuthorName, seat0.Name)
+		}
+		if got.Timestamp == "" || got.Timestamp == "client-supplied-bogus" {
+			t.Errorf("conn %s: server did not stamp timestamp (got %q)", label, got.Timestamp)
+		}
+	}
+}
+
 // TestE2EScriptedTurn is the S03 exit-criteria test: drive a scripted
 // turn (draw, play, tap, pass_turn) through the real hub via an
 // actual WebSocket dial, then diff the final normalized snapshot

@@ -19,6 +19,7 @@ const (
 	KindError    Kind = "error"
 	KindAction   Kind = "action"
 	KindSnapshot Kind = "snapshot"
+	KindChat     Kind = "chat"
 )
 
 // Error codes for Kind == KindError. Kept deliberately small at v0.
@@ -64,6 +65,27 @@ type ActionPayload struct {
 	Player string          `json:"player,omitempty"`
 	Params json.RawMessage `json:"params,omitempty"`
 }
+
+// ChatPayload is the payload body for a Kind == KindChat frame in
+// either direction. Client → server: only Text is honoured; the server
+// re-stamps AuthorID, AuthorName, and Timestamp from the connection's
+// principal before broadcasting. Server → client: all four fields are
+// authoritative.
+//
+// Chat frames bypass Room.Apply: they don't mutate game state, don't
+// bump the snapshot seq, and don't appear in crash-recovery dumps.
+// Reconnecting clients see an empty chat history; persistent chat
+// arrives with the S11 replay log.
+type ChatPayload struct {
+	AuthorID   string `json:"author_id,omitempty"`
+	AuthorName string `json:"author_name"`
+	Text       string `json:"text"`
+	Timestamp  string `json:"timestamp"`
+}
+
+// MaxChatTextLen caps the text size of a single chat message. Messages
+// exceeding this length are rejected with a bad_request error.
+const MaxChatTextLen = 1000
 
 // SnapshotPayload is the payload body for a Kind == KindSnapshot
 // frame (server → client). It carries a full authoritative view of

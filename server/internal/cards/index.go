@@ -31,8 +31,14 @@ type Card struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
 	SetCode     string    `json:"set"`
+	SetType     string    `json:"set_type"`
 	CollectorNo string    `json:"collector_number"`
 	Lang        string    `json:"lang"`
+	// Layout is Scryfall's printing layout: "normal", "split",
+	// "transform", "token", "art_series", "double_faced_token", etc.
+	// Carried because the byName index has to demote token /
+	// art-series records when they collide with a real printing.
+	Layout string `json:"layout"`
 	// TypeLine is Scryfall's typeline, e.g. "Legendary Creature — Human
 	// Wizard". Used by deck validation to identify commanders and by
 	// the UI to group cards.
@@ -146,29 +152,35 @@ func (i *Index) Load(path string) (int, error) {
 		// the front-face name for split / double-faced cards, since
 		// deck exports vary ("Fire // Ice" vs "Fire").
 		//
-		// Top-level inserts are last-write-wins: reprints of the same
-		// card carry the same legalities and swap harmlessly.
+		// Top-level inserts prefer playable printings over non-playable
+		// ones (tokens, art-series, memorabilia). With ties, last-write-
+		// wins so reprints of the same playable card carry the most
+		// recent legalities. Without this guard, Scryfall's eternalize
+		// token records for "Champion of Wits" (5 of them, layout=token,
+		// commander=not_legal) shadow the legitimate printings and
+		// reject valid decks.
 		//
 		// Face inserts are guarded: if an existing byName entry's
 		// canonical Name already matches the key we're inserting, don't
 		// overwrite. This blocks art-series / double-faced-token
 		// printings (whose name is "X // X" with two identical faces)
 		// from hijacking the legitimate "X" entry via the face loop.
-		// Without the guard, Scryfall's art-series record for
-		// "Garruk's Uprising // Garruk's Uprising" (commander:
-		// not_legal) shadows the playable printing and rejects valid
-		// decks.
-		byName[normalizeName(c.Name)] = c
+		key := normalizeName(c.Name)
+		if existing, ok := byName[key]; !ok || preferIncoming(existing, c) {
+			byName[key] = c
+		}
 		if len(c.CardFaces) > 0 {
 			for _, face := range c.CardFaces {
 				if face.Name == "" {
 					continue
 				}
-				key := normalizeName(face.Name)
-				if existing, ok := byName[key]; ok && normalizeName(existing.Name) == key {
+				faceKey := normalizeName(face.Name)
+				if existing, ok := byName[faceKey]; ok && normalizeName(existing.Name) == faceKey {
 					continue
 				}
-				byName[key] = c
+				if existing, ok := byName[faceKey]; !ok || preferIncoming(existing, c) {
+					byName[faceKey] = c
+				}
 			}
 		}
 	}
@@ -225,6 +237,39 @@ func (i *Index) FindByName(name string) (Card, bool) {
 		}
 	}
 	return Card{}, false
+}
+
+// preferIncoming reports whether `incoming` should replace `existing`
+// under the same byName key. Playable printings (real sets, real
+// layouts) always win against non-playable records (tokens, art
+// series, memorabilia, minigame, vanguard). Among same-class records
+// the incoming wins — preserving the existing "most recent printing
+// wins" behavior for legitimate reprints.
+func preferIncoming(existing, incoming Card) bool {
+	eP := isPlayablePrint(existing)
+	iP := isPlayablePrint(incoming)
+	if iP && !eP {
+		return true
+	}
+	if !iP && eP {
+		return false
+	}
+	return true
+}
+
+// isPlayablePrint reports whether c is a printing a player could
+// legitimately put in a deck. Tokens, art series, and minigame /
+// vanguard cards are not playable; they should not be the canonical
+// byName entry for a given card name.
+func isPlayablePrint(c Card) bool {
+	if c.Layout == "token" || c.Layout == "double_faced_token" || c.Layout == "art_series" {
+		return false
+	}
+	switch c.SetType {
+	case "token", "art_series", "memorabilia", "minigame", "vanguard":
+		return false
+	}
+	return true
 }
 
 // normalizeName canonicalises a card name for case-insensitive
@@ -297,7 +342,9 @@ func (i *Index) Put(c Card) {
 	defer i.mu.Unlock()
 	i.byID[c.ID] = c
 	if key := normalizeName(c.Name); key != "" {
-		i.byName[key] = c
+		if existing, ok := i.byName[key]; !ok || preferIncoming(existing, c) {
+			i.byName[key] = c
+		}
 	}
 	for _, face := range c.CardFaces {
 		if face.Name == "" {
@@ -314,7 +361,9 @@ func (i *Index) Put(c Card) {
 		if existing, ok := i.byName[key]; ok && normalizeName(existing.Name) == key {
 			continue
 		}
-		i.byName[key] = c
+		if existing, ok := i.byName[key]; !ok || preferIncoming(existing, c) {
+			i.byName[key] = c
+		}
 	}
 }
 

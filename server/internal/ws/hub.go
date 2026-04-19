@@ -488,6 +488,22 @@ func (h *Hub) broadcastToRoom(gameID uuid.UUID, seq uint64, view protocol.GameVi
 	}
 }
 
+// broadcastChat sends a pre-marshalled chat frame to every client
+// bound to the given game (including the originating sender, so their
+// own client surfaces the canonical server-stamped message rather than
+// echoing the unstamped local copy). Mirrors broadcastToRoom but skips
+// the per-viewer filter step — chat is public within a room.
+func (h *Hub) broadcastChat(gameID uuid.UUID, frame []byte) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for c := range h.clients {
+		if c.gameID != gameID {
+			continue
+		}
+		c.sendRaw(frame)
+	}
+}
+
 // marshalSnapshotFrame builds a ready-to-send JSON frame carrying the
 // given seq + view as a SnapshotPayload. Extracted so that both the
 // initial-snapshot-on-connect path and the broadcast-after-action path
@@ -570,10 +586,89 @@ func (c *Client) handleFrame(raw []byte) {
 		c.handlePing(frame)
 	case protocol.KindAction:
 		c.handleAction(frame)
+	case protocol.KindChat:
+		c.handleChat(frame)
 	default:
 		c.sendError(frame.ID, protocol.CodeBadRequest,
 			"unknown or unsupported kind")
 	}
+}
+
+// handleChat decodes a client chat frame, re-stamps every server-
+// authoritative field (author ID, author name, timestamp), and
+// broadcasts the result to every other client bound to the same game.
+// Chat does not mutate game state, so it bypasses Room.Apply entirely:
+// no seq bump, no snapshot rebuild, no crash-recovery dump entry.
+//
+// Spectator/admin connections (no playerID) chat under the synthetic
+// name "spectator" so the UI can still surface their voice without
+// mis-attributing it to a seat.
+func (c *Client) handleChat(frame protocol.Frame) {
+	if c.gameID == uuid.Nil {
+		c.sendError(frame.ID, protocol.CodeBadRequest, "chat requires a game binding")
+		return
+	}
+	if len(frame.Payload) == 0 {
+		c.sendError(frame.ID, protocol.CodeBadRequest, "chat frame missing payload")
+		return
+	}
+	var in protocol.ChatPayload
+	if err := json.Unmarshal(frame.Payload, &in); err != nil {
+		c.sendError(frame.ID, protocol.CodeBadJSON, "chat payload is not valid JSON")
+		return
+	}
+	text := strings.TrimSpace(in.Text)
+	if text == "" {
+		c.sendError(frame.ID, protocol.CodeBadRequest, "chat text is empty")
+		return
+	}
+	if len(text) > protocol.MaxChatTextLen {
+		c.sendError(frame.ID, protocol.CodeBadRequest, "chat text exceeds maximum length")
+		return
+	}
+
+	// Resolve author identity from server state, ignoring whatever the
+	// client sent. A spectator (playerID == uuid.Nil) chats under a
+	// synthetic name and an empty AuthorID — the client uses presence
+	// of AuthorID to decide whether to apply seat-color styling.
+	authorName := "spectator"
+	authorID := ""
+	if c.playerID != uuid.Nil {
+		room := c.hub.resolveRoom(c)
+		if room == nil {
+			c.sendError(frame.ID, protocol.CodeInternal, "game is no longer available")
+			return
+		}
+		if p := room.Game.PlayerByID(c.playerID); p != nil {
+			authorName = p.Name
+			authorID = c.playerID.String()
+		}
+	}
+
+	out := protocol.ChatPayload{
+		AuthorID:   authorID,
+		AuthorName: authorName,
+		Text:       text,
+		Timestamp:  time.Now().UTC().Format(time.RFC3339),
+	}
+	payload, err := json.Marshal(out)
+	if err != nil {
+		c.log.Error("ws marshal chat payload", "err", err)
+		c.sendError(frame.ID, protocol.CodeInternal, "failed to encode chat payload")
+		return
+	}
+	stamped, err := json.Marshal(protocol.Frame{
+		V:       protocol.Version,
+		Kind:    protocol.KindChat,
+		ID:      frame.ID,
+		Payload: payload,
+	})
+	if err != nil {
+		c.log.Error("ws marshal chat frame", "err", err)
+		c.sendError(frame.ID, protocol.CodeInternal, "failed to encode chat frame")
+		return
+	}
+	c.hub.broadcastChat(c.gameID, stamped)
 }
 
 // handleAction decodes an action payload, dispatches it to the game
@@ -614,6 +709,11 @@ func (c *Client) handleAction(frame protocol.Frame) {
 		c.sendError(frame.ID, protocol.CodeBadRequest, err.Error())
 		return
 	}
+	// Stamp the authenticated caller so per-seat gates in Dispatch
+	// (pass_priority, pass_turn) can validate that the sender is
+	// actually the seat allowed to act. uuid.Nil here means admin or
+	// spectator — gated branches let those through unchanged.
+	action.Caller = c.playerID
 
 	view, seq, err := room.Apply(func() error {
 		return actions.Dispatch(room.Game, action)
@@ -648,6 +748,12 @@ func classifyActionError(err error) (code, message string) {
 		// (state-based action) but S03 doesn't enforce that, so the
 		// action is well-formed but unsatisfiable.
 		return protocol.CodeInternal, "zone is empty"
+	case errors.Is(err, actions.ErrNotPriorityHolder):
+		return protocol.CodeBadRequest, "you do not hold priority"
+	case errors.Is(err, actions.ErrNotActivePlayer):
+		return protocol.CodeBadRequest, "you are not the active player"
+	case errors.Is(err, actions.ErrPlayerCallerMismatch):
+		return protocol.CodeBadRequest, "you cannot act on another player's behalf"
 	}
 	// Everything else is traceable to a client-supplied input — bad
 	// player ID, bad card ID, bad zone, unknown action type, etc.

@@ -13,8 +13,21 @@ import (
 // RNG. Shared helper for mutations_test.
 func newActiveGame(t *testing.T) *Game {
 	t.Helper()
+	return newActiveGameWithSeats(t, 2)
+}
+
+// newFourPlayerActiveGame returns a started 4-player game seeded from
+// a fixed RNG. Used by priority-rotation tests where wrap behaviour is
+// only meaningful with more than two seats.
+func newFourPlayerActiveGame(t *testing.T) *Game {
+	t.Helper()
+	return newActiveGameWithSeats(t, 4)
+}
+
+func newActiveGameWithSeats(t *testing.T, seats int) *Game {
+	t.Helper()
 	g := NewGame()
-	for i := 0; i < 2; i++ {
+	for i := 0; i < seats; i++ {
 		if _, err := g.AddPlayer(fmt.Sprintf("P%d", i+1), buildTestDeck(fmt.Sprintf("Commander %d", i+1))); err != nil {
 			t.Fatalf("AddPlayer: %v", err)
 		}
@@ -392,14 +405,68 @@ func TestUntapAllOnlyControllersCards(t *testing.T) {
 	}
 }
 
-func TestPassPriorityIsAdvanceStep(t *testing.T) {
-	g := newActiveGame(t)
+func TestPassPriorityRotatesWithoutAdvancingStep(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
 	startStep := g.Turn.Step
-	if err := g.PassPriority(); err != nil {
-		t.Fatalf("PassPriority: %v", err)
+	for i := 1; i <= 3; i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority %d: %v", i, err)
+		}
+		if g.Turn.Step != startStep {
+			t.Errorf("after %d PassPriority calls: step=%q, want unchanged %q", i, g.Turn.Step, startStep)
+		}
+		if g.Turn.PriorityHolder != i {
+			t.Errorf("after %d PassPriority calls: PriorityHolder=%d, want %d", i, g.Turn.PriorityHolder, i)
+		}
+	}
+}
+
+func TestPassPriorityWrapsAdvancesStep(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	startStep := g.Turn.Step
+	// 4 passes in a 4-player game wrap priority back to the active
+	// seat, which auto-advances the step.
+	for i := 0; i < 4; i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority %d: %v", i, err)
+		}
 	}
 	if g.Turn.Step == startStep {
-		t.Errorf("step did not advance: still %q", g.Turn.Step)
+		t.Errorf("step did not advance after wraparound: still %q", g.Turn.Step)
+	}
+	if g.Turn.PriorityHolder != g.Turn.ActiveSeat {
+		t.Errorf("after wraparound: PriorityHolder=%d, want ActiveSeat=%d",
+			g.Turn.PriorityHolder, g.Turn.ActiveSeat)
+	}
+}
+
+func TestPriorityHolderResetsOnAdvanceStep(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	// Rotate priority halfway, then advance the step directly.
+	_ = g.PassPriority()
+	_ = g.PassPriority()
+	if g.Turn.PriorityHolder == g.Turn.ActiveSeat {
+		t.Fatalf("setup: PriorityHolder unexpectedly still equals ActiveSeat=%d",
+			g.Turn.ActiveSeat)
+	}
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatalf("AdvanceStep: %v", err)
+	}
+	if g.Turn.PriorityHolder != g.Turn.ActiveSeat {
+		t.Errorf("after AdvanceStep: PriorityHolder=%d, want ActiveSeat=%d",
+			g.Turn.PriorityHolder, g.Turn.ActiveSeat)
+	}
+}
+
+func TestPassTurnResetsPriorityHolder(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	_ = g.PassPriority()
+	if err := g.PassTurn(); err != nil {
+		t.Fatalf("PassTurn: %v", err)
+	}
+	if g.Turn.PriorityHolder != g.Turn.ActiveSeat {
+		t.Errorf("after PassTurn: PriorityHolder=%d, want ActiveSeat=%d",
+			g.Turn.PriorityHolder, g.Turn.ActiveSeat)
 	}
 }
 

@@ -3,7 +3,8 @@
   import { navigate } from "../lib/router";
   import { session } from "../lib/session";
   import { TableRenderer } from "../lib/table";
-  import type { GameView } from "../lib/protocol";
+  import { seatColor } from "../lib/colors";
+  import type { GameView, PlayerView } from "../lib/protocol";
 
   interface Props {
     gameID: string;
@@ -31,7 +32,7 @@
   // subscribers across reactive reruns (vs. replacing the client
   // instance, which would strand subscriptions on the old object).
   const client = new GameClient("");
-  const { status, snapshot, lastSeq } = client;
+  const { status, snapshot, lastSeq, chat } = client;
 
   $effect(() => {
     client.disconnect();
@@ -114,20 +115,142 @@
     navigate("#/lobby");
   }
 
-  // ---- Testing affordances (superseded by S07 turn/phase UI) ----
-  // S06 exit criteria reference "draws 7 cards" and "passes turn";
-  // the proper turn/phase bar arrives in S07. Until then these three
-  // buttons expose the actions needed to drive a game manually.
-  function openingHand(): void {
-    if (!sess?.playerID) return;
-    client.sendAction("mulligan", sess.playerID, { hand_size: 7 });
+  // ---- Turn / priority / quick actions ----
+
+  const view = $derived($snapshot);
+  const seats = $derived<PlayerView[]>(view?.seats ?? []);
+  const turn = $derived(view?.turn);
+  const activeSeat = $derived(turn?.active_seat ?? 0);
+  const prioritySeat = $derived(turn?.priority_holder ?? 0);
+  const activePlayer = $derived(seats[activeSeat]);
+  const priorityPlayer = $derived(seats[prioritySeat]);
+  const viewerID = $derived(sess?.playerID ?? null);
+  const viewerSeat = $derived(seats.find((s) => s.id === viewerID) ?? null);
+  const viewerHasPriority = $derived(viewerID !== null && priorityPlayer?.id === viewerID);
+  const viewerIsActive = $derived(viewerID !== null && activePlayer?.id === viewerID);
+
+  // Map MTG step IDs to short display labels. Steps cycle through 12
+  // stops per turn; the abbreviated form keeps the bar compact.
+  const STEP_LABELS: Record<string, string> = {
+    untap: "Untap",
+    upkeep: "Upkeep",
+    draw: "Draw",
+    precombat_main: "Main 1",
+    begin_combat: "Begin Combat",
+    declare_attackers: "Declare Attackers",
+    declare_blockers: "Declare Blockers",
+    combat_damage: "Combat Damage",
+    end_combat: "End Combat",
+    postcombat_main: "Main 2",
+    end: "End",
+    cleanup: "Cleanup",
+  };
+  const stepLabel = $derived(turn ? (STEP_LABELS[turn.step] ?? turn.step) : "");
+
+  function passPriority(): void {
+    client.sendAction("pass_priority");
   }
+
   function passTurn(): void {
     client.sendAction("pass_turn");
   }
+
+  // "Pass until end of turn": send pass_priority repeatedly, waiting
+  // for each snapshot to settle, until the cursor reaches the cleanup
+  // step or the active seat changes. Capped at 24 iterations as a
+  // safety belt against an unexpected state machine loop.
+  let passingToEnd = $state(false);
+  async function passToEnd(): Promise<void> {
+    if (passingToEnd || !turn) return;
+    passingToEnd = true;
+    const startSeat = activeSeat;
+    const startSeq = $lastSeq;
+    let lastSeenSeq = startSeq;
+    try {
+      for (let i = 0; i < 24; i++) {
+        const v = $snapshot;
+        if (!v) break;
+        if (v.turn.active_seat !== startSeat) break;
+        if (v.turn.step === "cleanup") break;
+        client.sendAction("pass_priority");
+        // Wait for the snapshot store to tick at least once. Polling
+        // the lastSeq store is simpler than wiring a one-shot
+        // subscription and matches the other reactive paths in the
+        // route.
+        const before = lastSeenSeq;
+        const deadline = Date.now() + 1500;
+        while (Date.now() < deadline) {
+          await new Promise((r) => setTimeout(r, 25));
+          if ($lastSeq > before) {
+            lastSeenSeq = $lastSeq;
+            break;
+          }
+        }
+        if (lastSeenSeq === before) break;
+      }
+    } finally {
+      passingToEnd = false;
+    }
+  }
+
+  function draw(): void {
+    if (!viewerID) return;
+    client.sendAction("draw_card", viewerID);
+  }
+  function untapAll(): void {
+    if (!viewerID) return;
+    client.sendAction("untap_all", viewerID);
+  }
   function shuffle(): void {
-    if (!sess?.playerID) return;
-    client.sendAction("shuffle_library", sess.playerID);
+    if (!viewerID) return;
+    client.sendAction("shuffle_library", viewerID);
+  }
+  let mulliganTo = $state(7);
+  function mulligan(): void {
+    if (!viewerID) return;
+    const n = Math.max(0, Math.min(20, Math.floor(mulliganTo)));
+    client.sendAction("mulligan", viewerID, { hand_size: n });
+  }
+  function changeLife(delta: number): void {
+    if (!viewerID) return;
+    client.sendAction("change_life", viewerID, { delta });
+  }
+
+  // ---- Chat ----
+
+  let chatInput: string = $state("");
+  let chatScroller: HTMLDivElement | undefined = $state();
+
+  function sendChat(): void {
+    if (!chatInput.trim()) return;
+    client.sendChat(chatInput);
+    chatInput = "";
+  }
+
+  function chatKeydown(e: KeyboardEvent): void {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendChat();
+    }
+  }
+
+  // Auto-scroll the chat panel to the latest message on every new
+  // entry. Reading $chat inside the effect ties the scroll to the
+  // store so reactivity wires it up automatically.
+  $effect(() => {
+    const list = $chat;
+    if (!chatScroller) return;
+    // void to avoid "unused expression" warnings on the reactivity
+    // dependency.
+    void list.length;
+    chatScroller.scrollTop = chatScroller.scrollHeight;
+  });
+
+  function fmtTime(d: Date): string {
+    if (Number.isNaN(d.getTime())) return "";
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    return `${hh}:${mm}`;
   }
 </script>
 
@@ -139,21 +262,135 @@
     <span class="muted">seq {$lastSeq}</span>
   </header>
 
-  {#if $snapshot && sess?.playerID}
-    <div class="dev-controls" aria-label="testing controls (temporary until S07)">
-      <button onclick={openingHand}>draw 7 (mulligan)</button>
-      <button onclick={shuffle}>shuffle library</button>
-      <button onclick={passTurn}>pass turn</button>
-      <span class="muted"
-        >· click library to draw · click hand card to play · click battlefield card to tap · drag to
-        reposition</span
-      >
+  {#if view && turn}
+    <div class="turn-bar" aria-label="turn and phase indicator">
+      <div class="turn-summary">
+        <span class="turn-no">Turn {turn.number}</span>
+        <span class="muted">·</span>
+        <span class="turn-active">
+          <span class="seat-dot" style="background:{seatColor(activeSeat)}"></span>
+          {activePlayer?.name ?? `seat ${activeSeat}`}
+        </span>
+        <span class="muted">·</span>
+        <span class="step">{stepLabel}</span>
+      </div>
+      <div class="priority-pills" role="group" aria-label="priority indicator">
+        {#each seats as seat (seat.id)}
+          <span
+            class="pill"
+            class:has-priority={seat.seat === prioritySeat}
+            class:is-active={seat.seat === activeSeat}
+            style="--seat-color: {seatColor(seat.seat)}"
+            title={`${seat.name} — seat ${seat.seat}${seat.seat === prioritySeat ? " (priority)" : ""}${seat.seat === activeSeat ? " (active)" : ""}`}
+          >
+            {seat.name}
+          </span>
+        {/each}
+      </div>
     </div>
   {/if}
 
-  <div class="table" bind:this={canvasEl}></div>
+  {#if view && viewerID}
+    <div class="toolbar" aria-label="quick actions">
+      <div class="toolbar-group">
+        <button onclick={draw}>draw</button>
+        <button onclick={untapAll}>untap all</button>
+        <button onclick={shuffle}>shuffle</button>
+        <span class="mulligan-group">
+          <button onclick={mulligan}>mulligan</button>
+          <input
+            type="number"
+            min="0"
+            max="20"
+            bind:value={mulliganTo}
+            aria-label="mulligan hand size"
+          />
+        </span>
+      </div>
+      <div class="toolbar-group">
+        <span class="life-label">life {viewerSeat?.life ?? "—"}</span>
+        <button onclick={() => changeLife(-5)}>−5</button>
+        <button onclick={() => changeLife(-1)}>−1</button>
+        <button onclick={() => changeLife(1)}>+1</button>
+        <button onclick={() => changeLife(5)}>+5</button>
+      </div>
+      <div class="toolbar-group priority-controls">
+        <button
+          onclick={passPriority}
+          disabled={!viewerHasPriority}
+          class:viewer-priority={viewerHasPriority}
+          title={viewerHasPriority
+            ? "pass priority — rotates to next seat"
+            : `${priorityPlayer?.name ?? "another seat"} holds priority`}
+        >
+          pass priority
+        </button>
+        <button
+          onclick={passToEnd}
+          disabled={passingToEnd || !viewerHasPriority}
+          title={viewerHasPriority
+            ? "pass priority repeatedly until end of this turn"
+            : `${priorityPlayer?.name ?? "another seat"} holds priority`}
+        >
+          {passingToEnd ? "passing…" : "pass until end of turn"}
+        </button>
+        <button
+          onclick={passTurn}
+          disabled={!viewerIsActive}
+          title={viewerIsActive
+            ? "skip the rest of your turn"
+            : `${activePlayer?.name ?? "another seat"} is the active player`}
+        >
+          pass turn
+        </button>
+      </div>
+    </div>
+  {/if}
 
-  {#if !$snapshot}
+  <div class="play-area">
+    <div class="table" bind:this={canvasEl}></div>
+
+    {#if view}
+      <aside class="chat" aria-label="table chat">
+        <header class="chat-header">chat</header>
+        <div class="chat-scroller" bind:this={chatScroller}>
+          {#each $chat as msg (msg.id)}
+            {@const seat = seats.find((s) => s.id === msg.authorID)}
+            <article class="chat-msg">
+              <span
+                class="chat-author"
+                style="color: {seat ? seatColor(seat.seat) : seatColor(-1)}"
+              >
+                {msg.authorName}
+              </span>
+              <span class="chat-time muted">{fmtTime(msg.at)}</span>
+              <div class="chat-text">{msg.text}</div>
+            </article>
+          {:else}
+            <p class="muted chat-empty">no messages yet</p>
+          {/each}
+        </div>
+        <form
+          class="chat-input"
+          onsubmit={(e) => {
+            e.preventDefault();
+            sendChat();
+          }}
+        >
+          <textarea
+            placeholder="say something…"
+            bind:value={chatInput}
+            onkeydown={chatKeydown}
+            rows="2"
+            aria-label="chat message"
+          ></textarea>
+          <button type="submit" disabled={!chatInput.trim()}>send</button>
+        </form>
+      </aside>
+    {/if}
+  </div>
+
+  {#if !view}
     <p class="muted centered">waiting for snapshot…</p>
   {/if}
 </section>
@@ -169,6 +406,12 @@
     gap: 0.75rem;
     align-items: baseline;
     margin-bottom: 0.75rem;
+  }
+  .play-area {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 0.75rem;
+    align-items: stretch;
   }
   .table {
     width: 100%;
@@ -197,20 +440,177 @@
   .tag-disconnected {
     background: #fcc;
   }
-  .dev-controls {
+
+  /* Turn / phase bar */
+  .turn-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 0.75rem;
+    background: #1a2540;
+    border-radius: 4px;
+    color: #bbc4dd;
+    font-size: 0.9em;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .turn-summary {
     display: flex;
     gap: 0.5rem;
     align-items: center;
+  }
+  .turn-no {
+    font-weight: 600;
+  }
+  .turn-active {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .seat-dot {
+    display: inline-block;
+    width: 0.7em;
+    height: 0.7em;
+    border-radius: 50%;
+  }
+  .step {
+    color: #e0e8ff;
+  }
+  .priority-pills {
+    display: flex;
+    gap: 0.35rem;
     flex-wrap: wrap;
-    margin-bottom: 0.5rem;
+  }
+  .pill {
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.8em;
+    border: 1px solid var(--seat-color);
+    color: #cfd6ee;
+    background: transparent;
+    opacity: 0.55;
+  }
+  .pill.is-active {
+    opacity: 1;
+  }
+  .pill.has-priority {
+    background: var(--seat-color);
+    color: #0c1426;
+    font-weight: 600;
+    box-shadow: 0 0 6px var(--seat-color);
+  }
+
+  /* Toolbar */
+  .toolbar {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
     padding: 0.4rem 0.5rem;
     background: #1a2540;
     border-radius: 4px;
     color: #bbc4dd;
     font-size: 0.85em;
+    margin-bottom: 0.5rem;
   }
-  .dev-controls button {
+  .toolbar button {
     padding: 0.25rem 0.6rem;
     font-size: 0.9em;
+  }
+  .toolbar-group {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+  }
+  .mulligan-group input {
+    width: 3em;
+    padding: 0.1rem 0.3rem;
+  }
+  .life-label {
+    color: #e0e8ff;
+    margin-right: 0.25rem;
+  }
+  .priority-controls .viewer-priority {
+    background: #b3e5b3;
+    color: #0c1426;
+    font-weight: 600;
+  }
+
+  /* Chat */
+  .chat {
+    display: flex;
+    flex-direction: column;
+    background: #1a2540;
+    border-radius: 6px;
+    color: #bbc4dd;
+    height: min(720px, 70vh);
+    overflow: hidden;
+  }
+  .chat-header {
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid #2a3550;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .chat-scroller {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.4rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .chat-empty {
+    text-align: center;
+    margin: auto 0;
+  }
+  .chat-msg {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    column-gap: 0.4rem;
+    align-items: baseline;
+    font-size: 0.9em;
+  }
+  .chat-author {
+    font-weight: 600;
+  }
+  .chat-time {
+    font-size: 0.75em;
+  }
+  .chat-text {
+    grid-column: 1 / -1;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #e0e8ff;
+  }
+  .chat-input {
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.4rem 0.6rem;
+    border-top: 1px solid #2a3550;
+  }
+  .chat-input textarea {
+    flex: 1;
+    resize: none;
+    font: inherit;
+    padding: 0.25rem 0.4rem;
+    border-radius: 3px;
+    border: 1px solid #2a3550;
+    background: #0f1a30;
+    color: #e0e8ff;
+  }
+  .chat-input button {
+    padding: 0.25rem 0.6rem;
+  }
+
+  @media (max-width: 880px) {
+    .play-area {
+      grid-template-columns: 1fr;
+    }
+    .chat {
+      height: 240px;
+    }
   }
 </style>

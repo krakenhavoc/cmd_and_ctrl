@@ -139,6 +139,59 @@ func TestPutPreservesLegitimateCanonicalAgainstHijack(t *testing.T) {
 	}
 }
 
+// TestPutPreservesLegitimatePrintingAgainstTokenHijack covers the
+// Champion of Wits class of bug: Scryfall ships eternalize / etb token
+// records whose Name matches the source card exactly (not "X // X" —
+// just "X"), with layout=token and commander=not_legal. The art-series
+// face-loop guard doesn't catch these because they collide via the
+// top-level Name insert, not the face loop. Without preferIncoming,
+// whichever record happened to land last in the bulk dump won, and a
+// token "Champion of Wits" would shadow the playable printings — a
+// valid Commander deck would fail validation with "not legal in
+// format".
+func TestPutPreservesLegitimatePrintingAgainstTokenHijack(t *testing.T) {
+	legitID := uuid.New()
+	legit := Card{
+		ID:         legitID,
+		Name:       "Champion of Wits",
+		Layout:     "normal",
+		SetType:    "expansion",
+		Legalities: map[string]string{"commander": "legal"},
+	}
+	tokenHijack := Card{
+		ID:         uuid.New(),
+		Name:       "Champion of Wits",
+		Layout:     "token",
+		SetType:    "token",
+		Legalities: map[string]string{"commander": "not_legal"},
+	}
+
+	for _, order := range []struct {
+		label string
+		first Card
+		next  Card
+	}{
+		{"legit first then token", legit, tokenHijack},
+		{"token first then legit", tokenHijack, legit},
+	} {
+		t.Run(order.label, func(t *testing.T) {
+			fresh := NewIndex()
+			fresh.Put(order.first)
+			fresh.Put(order.next)
+			got, ok := fresh.FindByName("Champion of Wits")
+			if !ok {
+				t.Fatal("FindByName: not found")
+			}
+			if got.ID != legitID {
+				t.Errorf("ID: got %v, want legit %v (token record won the race)", got.ID, legitID)
+			}
+			if got.Legalities["commander"] != "legal" {
+				t.Errorf("commander legality: got %q, want legal", got.Legalities["commander"])
+			}
+		})
+	}
+}
+
 // TestFindByNameSlashFallback covers the deck-import quirk where
 // exports vary between "Fire / Ice" (single slash) and Scryfall's
 // canonical "Fire // Ice" (double slash). Direct lookup on the

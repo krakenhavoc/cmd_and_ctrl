@@ -144,15 +144,21 @@ func TestDispatchUntapAllRequiresPlayer(t *testing.T) {
 	}
 }
 
-func TestDispatchPassPriorityAdvancesStep(t *testing.T) {
+func TestDispatchPassPriorityRotates(t *testing.T) {
+	// 2-player game: one PassPriority rotates priority to seat 1
+	// without advancing the step (the next would wrap and advance).
 	g := newGame(t)
-	before := g.Turn.Step
+	beforeStep := g.Turn.Step
+	beforeHolder := g.Turn.PriorityHolder
 	a, _ := Decode(string(TypePassPriority), "", nil)
 	if err := Dispatch(g, a); err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
-	if g.Turn.Step == before {
-		t.Error("pass_priority did not advance")
+	if g.Turn.Step != beforeStep {
+		t.Errorf("step changed unexpectedly: %q -> %q", beforeStep, g.Turn.Step)
+	}
+	if g.Turn.PriorityHolder == beforeHolder {
+		t.Errorf("priority did not rotate (still %d)", g.Turn.PriorityHolder)
 	}
 }
 
@@ -164,6 +170,89 @@ func TestDispatchPassTurnWrapsSeat(t *testing.T) {
 	}
 	if g.Turn.ActiveSeat != 1 {
 		t.Errorf("seat after pass_turn: got %d, want 1", g.Turn.ActiveSeat)
+	}
+}
+
+func TestDispatchPassPriorityRejectsNonHolder(t *testing.T) {
+	g := newGame(t)
+	holder := g.Seats[g.Turn.PriorityHolder].ID
+	other := g.Seats[(g.Turn.PriorityHolder+1)%len(g.Seats)].ID
+
+	a, _ := Decode(string(TypePassPriority), "", nil)
+	a.Caller = other
+	if err := Dispatch(g, a); !errors.Is(err, ErrNotPriorityHolder) {
+		t.Errorf("non-holder dispatch: got %v, want ErrNotPriorityHolder", err)
+	}
+	// State must not have moved.
+	if g.Seats[g.Turn.PriorityHolder].ID != holder {
+		t.Errorf("priority holder changed despite rejected dispatch")
+	}
+
+	// The legitimate holder still succeeds.
+	a.Caller = holder
+	if err := Dispatch(g, a); err != nil {
+		t.Errorf("holder dispatch: got %v, want nil", err)
+	}
+}
+
+func TestDispatchPassTurnRejectsNonActivePlayer(t *testing.T) {
+	g := newGame(t)
+	active := g.Seats[g.Turn.ActiveSeat].ID
+	other := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+
+	a, _ := Decode(string(TypePassTurn), "", nil)
+	a.Caller = other
+	if err := Dispatch(g, a); !errors.Is(err, ErrNotActivePlayer) {
+		t.Errorf("non-active dispatch: got %v, want ErrNotActivePlayer", err)
+	}
+	if g.Seats[g.Turn.ActiveSeat].ID != active {
+		t.Errorf("active seat changed despite rejected dispatch")
+	}
+
+	// The active player still succeeds.
+	a.Caller = active
+	if err := Dispatch(g, a); err != nil {
+		t.Errorf("active-player dispatch: got %v, want nil", err)
+	}
+}
+
+func TestDispatchRejectsCrossSeatPlayerScopedAction(t *testing.T) {
+	g := newGame(t)
+	caller := g.Seats[0].ID
+	target := g.Seats[1].ID
+
+	// change_life on someone else's seat is the prototypical case.
+	a, _ := Decode(string(TypeChangeLife), target.String(), params(t, struct {
+		Delta int `json:"delta"`
+	}{Delta: -40}))
+	a.Caller = caller
+	if err := Dispatch(g, a); !errors.Is(err, ErrPlayerCallerMismatch) {
+		t.Errorf("cross-seat change_life: got %v, want ErrPlayerCallerMismatch", err)
+	}
+	if g.Seats[1].Life != 40 {
+		t.Errorf("target life changed despite rejected dispatch: %d", g.Seats[1].Life)
+	}
+
+	// Self-targeting still works.
+	a, _ = Decode(string(TypeChangeLife), caller.String(), params(t, struct {
+		Delta int `json:"delta"`
+	}{Delta: -3}))
+	a.Caller = caller
+	if err := Dispatch(g, a); err != nil {
+		t.Errorf("self-targeted change_life: got %v, want nil", err)
+	}
+	if g.Seats[0].Life != 37 {
+		t.Errorf("self life: got %d, want 37", g.Seats[0].Life)
+	}
+}
+
+func TestDispatchPassPriorityAllowsAdminCaller(t *testing.T) {
+	// Admin / spectator (Caller == uuid.Nil) bypasses the gate so a
+	// trusted moderator can advance the game on a player's behalf.
+	g := newGame(t)
+	a, _ := Decode(string(TypePassPriority), "", nil)
+	if err := Dispatch(g, a); err != nil {
+		t.Errorf("admin dispatch: got %v, want nil", err)
 	}
 }
 

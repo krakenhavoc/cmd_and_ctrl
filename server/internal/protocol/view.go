@@ -75,12 +75,16 @@ type CardView struct {
 	BattleY float64 `json:"battle_y,omitempty"`
 }
 
-// TurnView is the wire representation of the turn cursor.
+// TurnView is the wire representation of the turn cursor. PriorityHolder
+// is the seat index that currently holds priority within the step
+// (S07+); it equals ActiveSeat at every step boundary and rotates on
+// pass_priority.
 type TurnView struct {
-	Number     int    `json:"number"`
-	ActiveSeat int    `json:"active_seat"`
-	Phase      string `json:"phase"`
-	Step       string `json:"step"`
+	Number         int    `json:"number"`
+	ActiveSeat     int    `json:"active_seat"`
+	PriorityHolder int    `json:"priority_holder"`
+	Phase          string `json:"phase"`
+	Step           string `json:"step"`
 }
 
 // ViewOfGame builds a wire snapshot from a game.Game. It acquires a
@@ -97,10 +101,11 @@ func ViewOfGame(g *game.Game) GameView {
 			Stack:       viewOfZone(g.Stack),
 			Exile:       viewOfZone(g.Exile),
 			Turn: TurnView{
-				Number:     g.Turn.Number,
-				ActiveSeat: g.Turn.ActiveSeat,
-				Phase:      string(g.Turn.Phase),
-				Step:       string(g.Turn.Step),
+				Number:         g.Turn.Number,
+				ActiveSeat:     g.Turn.ActiveSeat,
+				PriorityHolder: g.Turn.PriorityHolder,
+				Phase:          string(g.Turn.Phase),
+				Step:           string(g.Turn.Step),
 			},
 		}
 	})
