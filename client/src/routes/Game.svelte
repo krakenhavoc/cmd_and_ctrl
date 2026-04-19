@@ -156,17 +156,20 @@
   // an invite lands directly in Game.svelte without ever visiting
   // Lobby, so they have no affordance to upload a deck unless we
   // surface one here. Fires when the game is still in lobby state,
-  // the viewer is seated, and their library + command zone are both
-  // empty (i.e. they haven't uploaded yet). `deckImportDismissed`
-  // lets the modal hide after a successful upload even though
-  // SetDeck currently doesn't trigger a snapshot rebroadcast — once
-  // the game starts, the snapshot shows the full library and the
-  // derived `viewerNeedsDeck` flips to false permanently.
+  // the viewer is seated, and they haven't yet imported a real deck.
+  // The check uses the deck_imported flag (server-stamped) rather
+  // than a card-count test because Lobby.Join hands out a 1-card
+  // placeholder commander at seat-creation time — so library / command
+  // counts are non-zero even before import. `deckImportDismissed`
+  // lets the modal hide after a successful upload (SetDeck currently
+  // doesn't trigger a snapshot rebroadcast, so the local flag is
+  // what dismisses for the uploader; the next snapshot is
+  // authoritative for everyone else).
   let deckImportDismissed = $state(false);
   const viewerNeedsDeck = $derived.by(() => {
     if (!view || view.state !== "lobby") return false;
     if (!viewerSeat) return false;
-    return (viewerSeat.library?.count ?? 0) === 0 && (viewerSeat.command?.count ?? 0) === 0;
+    return !viewerSeat.deck_imported;
   });
 
   // Map MTG step IDs to short display labels. Steps cycle through 12

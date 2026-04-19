@@ -177,6 +177,7 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 			p.Library.PushTop(c)
 		}
 	}
+	p.DeckImported = true
 	return nil
 }
 

@@ -67,6 +67,13 @@ type PlayerView struct {
 	// MulligansTaken reflects Player.MulligansTaken. Surfaced so the
 	// UI can show "mulligans taken: N". Added in S08.
 	MulligansTaken int `json:"mulligans_taken,omitempty"`
+	// DeckImported reflects Player.DeckImported — true once the
+	// player has had a real deck installed via ReplaceDeck (vs. the
+	// 1-card placeholder commander handed out at AddPlayer time).
+	// Drives the in-game deck-import modal in Game.svelte (S08.5
+	// wave 1) — a card-count check is unreliable because the
+	// placeholder also produces non-zero library / command counts.
+	DeckImported bool `json:"deck_imported,omitempty"`
 }
 
 // LifeChangeView is the wire representation of a single life-change
@@ -207,6 +214,7 @@ func viewOfPlayer(p *game.Player) PlayerView {
 		Eliminated:      p.Eliminated,
 		HandKept:        p.HandKept,
 		MulligansTaken:  p.MulligansTaken,
+		DeckImported:    p.DeckImported,
 	}
 }
 
