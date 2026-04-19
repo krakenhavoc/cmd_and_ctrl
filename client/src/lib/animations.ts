@@ -13,8 +13,9 @@
 // call and just snap the var to its target value.
 
 import { gsap } from "gsap";
-import { backOut, cubicIn } from "svelte/easing";
+import { backOut, cubicIn, cubicOut } from "svelte/easing";
 import type { TransitionConfig } from "svelte/transition";
+import type { Action } from "svelte/action";
 
 // TAP_DURATION is short enough that a click-to-tap feels responsive
 // (under the 100ms perception threshold for "instant") but long enough
@@ -80,6 +81,71 @@ export function dealOut(node: HTMLElement): TransitionConfig {
       gsap.set(node, {
         y: -u * 32,
         scale: 1 - u * 0.12,
+        opacity: t,
+      });
+    },
+  };
+}
+
+// etbPulse is a Svelte action applied to a wrapper around each
+// battlefield card. The action fires when the keyed each-block mounts
+// a new DOM node — i.e. exactly when a fresh permanent enters the
+// battlefield (or, on initial snapshot, when the existing board first
+// renders). gsap drives a one-shot scale punch with backOut overshoot
+// so the card "pops" into existence rather than appearing flat.
+//
+// Action (vs. transition) chosen because there's no symmetric
+// out-animation: a permanent leaving the battlefield doesn't get a
+// dedicated effect (yet); the card just disappears as the next
+// snapshot rebuilds the row. A future death-pulse could wrap this
+// in `out:` if/when desired.
+const ETB_DURATION = 0.32;
+export const etbPulse: Action<HTMLElement> = (node) => {
+  gsap.fromTo(
+    node,
+    { scale: 0.55, opacity: 0 },
+    {
+      scale: 1,
+      opacity: 1,
+      duration: ETB_DURATION,
+      ease: "back.out(2.2)",
+      // overwrite so a snapshot-driven re-mount mid-animation cleanly
+      // restarts the punch instead of layering on top.
+      overwrite: "auto",
+    },
+  );
+};
+
+// floatUp / fadeOut drive the damage / heal popup over a player's
+// header. floatUp slides in from below + scales + fades; fadeOut
+// drifts upward + fades, so the popup appears to lift off the player
+// like a damage indicator in MTG Arena. Both are short — the popup
+// auto-clears on a setTimeout in PlayerHeader so it doesn't linger
+// after the next change.
+const POPUP_IN_DURATION = 220;
+const POPUP_OUT_DURATION = 320;
+export function floatUp(node: HTMLElement): TransitionConfig {
+  return {
+    duration: POPUP_IN_DURATION,
+    easing: backOut,
+    tick: (t: number) => {
+      const u = 1 - t;
+      gsap.set(node, {
+        y: u * 14,
+        scale: 0.7 + t * 0.3,
+        opacity: t,
+      });
+    },
+  };
+}
+export function fadeOut(node: HTMLElement): TransitionConfig {
+  return {
+    duration: POPUP_OUT_DURATION,
+    easing: cubicOut,
+    tick: (t: number) => {
+      const u = 1 - t;
+      gsap.set(node, {
+        y: -u * 22,
         opacity: t,
       });
     },

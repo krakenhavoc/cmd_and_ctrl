@@ -10,6 +10,7 @@
 
   import type { CardView } from "../../protocol";
   import Card from "./Card.svelte";
+  import { etbPulse } from "../../animations";
 
   interface Props {
     label: string;
@@ -28,7 +29,7 @@
   <span class="col-label" aria-hidden="true">{label}</span>
   <div class="col-cards" role="list" aria-label={label}>
     {#each sorted as c (c.instance_id)}
-      <div role="listitem">
+      <div role="listitem" use:etbPulse>
         <Card
           card={c}
           selected={selectedCombatCardID === c.instance_id}
