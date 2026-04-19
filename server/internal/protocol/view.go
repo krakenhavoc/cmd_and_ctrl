@@ -26,6 +26,11 @@ type GameView struct {
 	Stack       ZoneView     `json:"stack"`
 	Exile       ZoneView     `json:"exile"`
 	Turn        TurnView     `json:"turn"`
+	// MulligansOpen reflects Game.MulligansOpen — true between Start
+	// and the moment all seated players have committed to their
+	// opening hand via the keep_hand action. Clients render the
+	// keep / mulligan dialog while open. Added in S08.
+	MulligansOpen bool `json:"mulligans_open"`
 }
 
 // PlayerView is the wire representation of a Player. Full-fidelity
@@ -52,6 +57,14 @@ type PlayerView struct {
 	// still spectates, but the UI greys them out and disables their
 	// quick-action buttons. Added in S08.
 	Eliminated bool `json:"eliminated,omitempty"`
+	// HandKept reflects Player.HandKept — true once the player has
+	// committed to their opening hand. Drives the per-seat
+	// "kept ✓" / "deciding…" indicator during the mulligan window.
+	// Added in S08.
+	HandKept bool `json:"hand_kept,omitempty"`
+	// MulligansTaken reflects Player.MulligansTaken. Surfaced so the
+	// UI can show "mulligans taken: N". Added in S08.
+	MulligansTaken int `json:"mulligans_taken,omitempty"`
 }
 
 // LifeChangeView is the wire representation of a single life-change
@@ -127,6 +140,7 @@ func ViewOfGame(g *game.Game) GameView {
 				Phase:          string(g.Turn.Phase),
 				Step:           string(g.Turn.Step),
 			},
+			MulligansOpen: g.MulligansOpen,
 		}
 	})
 	return view
@@ -167,6 +181,8 @@ func viewOfPlayer(p *game.Player) PlayerView {
 		CommanderDamage: cmdrDamage,
 		LifeHistory:     history,
 		Eliminated:      p.Eliminated,
+		HandKept:        p.HandKept,
+		MulligansTaken:  p.MulligansTaken,
 	}
 }
 
@@ -220,13 +236,14 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		seats[i] = hidden
 	}
 	return GameView{
-		ID:          v.ID,
-		State:       v.State,
-		Seats:       seats,
-		Battlefield: v.Battlefield,
-		Stack:       v.Stack,
-		Exile:       v.Exile,
-		Turn:        v.Turn,
+		ID:            v.ID,
+		State:         v.State,
+		Seats:         seats,
+		Battlefield:   v.Battlefield,
+		Stack:         v.Stack,
+		Exile:         v.Exile,
+		Turn:          v.Turn,
+		MulligansOpen: v.MulligansOpen,
 	}
 }
 

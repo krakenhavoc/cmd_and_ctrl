@@ -62,6 +62,12 @@ type Game struct {
 	// Turn cursor, meaningful only when State == StateActive.
 	Turn Turn
 
+	// MulligansOpen is true between Start and the moment all seated
+	// players have called KeepHand. While open, the client is
+	// expected to surface a keep / mulligan dialog and gate the
+	// "real" game UI behind the player's commitment. Added in S08.
+	MulligansOpen bool
+
 	// rng is captured from Start so that subsequent mutations that
 	// shuffle (Mulligan, ShuffleLibrary) use the same source of
 	// randomness as the initial library shuffle. nil means "use the
@@ -198,11 +204,27 @@ func (g *Game) Start(r *rand.Rand) error {
 	g.rng = r
 	for _, p := range g.Seats {
 		p.Library.Shuffle(r)
+		// Deal an opening hand of 7. If the library is too short to
+		// satisfy 7 (a malformed deck), stop early — the partial hand
+		// is still valid and tests can use small decks.
+		for i := 0; i < OpeningHandSize; i++ {
+			c, err := p.Library.PopTop()
+			if err != nil {
+				break
+			}
+			p.Hand.PushTop(c)
+		}
 	}
 	g.Turn = newStartingTurn()
 	g.State = StateActive
+	g.MulligansOpen = true
 	return nil
 }
+
+// OpeningHandSize is the number of cards each player draws when the
+// game starts. The mulligan flow can take a player back to the same
+// count for redraws (simplified — no London bottom-N penalty yet).
+const OpeningHandSize = 7
 
 // End transitions the game to the ended state. Idempotent: calling
 // End on an already-ended game is a no-op.

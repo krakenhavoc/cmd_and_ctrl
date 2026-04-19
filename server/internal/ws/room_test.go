@@ -172,8 +172,9 @@ func TestRoomActionDrawCardBroadcasts(t *testing.T) {
 	if after.Seq != 1 {
 		t.Errorf("seq after first action: got %d, want 1", after.Seq)
 	}
-	if after.Game.Seats[0].Hand.Count != 1 {
-		t.Errorf("hand count: got %d, want 1", after.Game.Seats[0].Hand.Count)
+	// Opening hand of 7 (S08 Start) plus this draw = 8.
+	if after.Game.Seats[0].Hand.Count != 8 {
+		t.Errorf("hand count: got %d, want 8", after.Game.Seats[0].Hand.Count)
 	}
 }
 
@@ -203,8 +204,10 @@ func TestRoomActionBroadcastsToAllClients(t *testing.T) {
 	if snap1.Seq != snap2.Seq {
 		t.Errorf("seq mismatch across clients: c1=%d c2=%d", snap1.Seq, snap2.Seq)
 	}
-	if snap1.Game.Seats[0].Hand.Count != 1 || snap2.Game.Seats[0].Hand.Count != 1 {
-		t.Errorf("hand count not reflected in both snapshots")
+	// Opening hand of 7 + 1 draw = 8 in both viewers' snapshots.
+	if snap1.Game.Seats[0].Hand.Count != 8 || snap2.Game.Seats[0].Hand.Count != 8 {
+		t.Errorf("hand count not reflected in both snapshots: c1=%d c2=%d",
+			snap1.Game.Seats[0].Hand.Count, snap2.Game.Seats[0].Hand.Count)
 	}
 }
 
@@ -315,9 +318,9 @@ func TestRoomCrashRecoveryDumpsToDisk(t *testing.T) {
 	if snap.Game.ID != g.ID.String() {
 		t.Errorf("dumped game id: got %q, want %q", snap.Game.ID, g.ID.String())
 	}
-	// After 1 draw, the latest snapshot should show hand count 1.
-	if snap.Game.Seats[0].Hand.Count != 1 {
-		t.Errorf("dumped hand count: got %d, want 1", snap.Game.Seats[0].Hand.Count)
+	// Opening hand of 7 + 1 draw = 8 in the dumped snapshot.
+	if snap.Game.Seats[0].Hand.Count != 8 {
+		t.Errorf("dumped hand count: got %d, want 8", snap.Game.Seats[0].Hand.Count)
 	}
 }
 

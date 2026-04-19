@@ -470,6 +470,97 @@ func TestPassTurnResetsPriorityHolder(t *testing.T) {
 	}
 }
 
+func TestStartDealsOpeningHand(t *testing.T) {
+	g := newActiveGame(t) // already started
+	for _, p := range g.Seats {
+		if p.Hand.Size() != OpeningHandSize {
+			t.Errorf("seat %d hand size: got %d, want %d", p.Seat, p.Hand.Size(), OpeningHandSize)
+		}
+		if p.HandKept {
+			t.Errorf("seat %d HandKept: got true, want false (window just opened)", p.Seat)
+		}
+	}
+	if !g.MulligansOpen {
+		t.Error("MulligansOpen: got false, want true after Start")
+	}
+}
+
+func TestKeepHandClosesWindowWhenAllCommit(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	for i, p := range g.Seats {
+		if err := g.KeepHand(p.ID); err != nil {
+			t.Fatalf("KeepHand seat %d: %v", i, err)
+		}
+		if !p.HandKept {
+			t.Errorf("seat %d HandKept: not set", i)
+		}
+		// Window stays open until the LAST seat commits.
+		wantOpen := i < len(g.Seats)-1
+		if g.MulligansOpen != wantOpen {
+			t.Errorf("after %d/%d kept: MulligansOpen=%v, want %v",
+				i+1, len(g.Seats), g.MulligansOpen, wantOpen)
+		}
+	}
+}
+
+func TestKeepHandIsIdempotent(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	if err := g.KeepHand(p.ID); err != nil {
+		t.Fatalf("first KeepHand: %v", err)
+	}
+	// Repeat — must not error and must not flip back.
+	if err := g.KeepHand(p.ID); err != nil {
+		t.Errorf("second KeepHand: got %v, want nil (idempotent)", err)
+	}
+	if !p.HandKept {
+		t.Error("HandKept regressed to false on repeat call")
+	}
+}
+
+func TestMulliganResetsKeptAndCountsTaken(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	if err := g.KeepHand(p.ID); err != nil {
+		t.Fatalf("KeepHand: %v", err)
+	}
+	// Player changed their mind and called mulligan.
+	if err := g.Mulligan(p.ID, OpeningHandSize); err != nil {
+		t.Fatalf("Mulligan: %v", err)
+	}
+	if p.HandKept {
+		t.Error("HandKept should be false after Mulligan (commitment reset)")
+	}
+	if p.MulligansTaken != 1 {
+		t.Errorf("MulligansTaken: got %d, want 1", p.MulligansTaken)
+	}
+	// Two more mulligans → count = 3.
+	_ = g.Mulligan(p.ID, OpeningHandSize)
+	_ = g.Mulligan(p.ID, OpeningHandSize)
+	if p.MulligansTaken != 3 {
+		t.Errorf("MulligansTaken: got %d, want 3", p.MulligansTaken)
+	}
+}
+
+func TestKeepHandRejectsEliminated(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	if err := g.Concede(p.ID); err != nil {
+		t.Fatalf("Concede: %v", err)
+	}
+	// Concede in a 2-player game ends the game; KeepHand on lobby/
+	// ended state should fail with ErrGameNotActive — that's the
+	// outermost guard. Use a 4-player game so the game stays active.
+	g4 := newFourPlayerActiveGame(t)
+	p4 := g4.Seats[0]
+	if err := g4.Concede(p4.ID); err != nil {
+		t.Fatalf("Concede (4p): %v", err)
+	}
+	if err := g4.KeepHand(p4.ID); err != ErrPlayerEliminated {
+		t.Errorf("KeepHand on eliminated: got %v, want ErrPlayerEliminated", err)
+	}
+}
+
 func TestConcedeMarksPlayerEliminated(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	p := g.Seats[2]
@@ -572,12 +663,9 @@ func TestPassTurnWrapsToNextRound(t *testing.T) {
 func TestMulliganShufflesHandBack(t *testing.T) {
 	g := newActiveGame(t)
 	p := g.Seats[0]
-	// Draw an initial hand.
-	for range 7 {
-		_ = g.DrawCard(p.ID)
-	}
-	if p.Hand.Size() != 7 {
-		t.Fatalf("opening hand: got %d, want 7", p.Hand.Size())
+	// As of S08, Start deals an opening hand of OpeningHandSize.
+	if p.Hand.Size() != OpeningHandSize {
+		t.Fatalf("opening hand: got %d, want %d", p.Hand.Size(), OpeningHandSize)
 	}
 
 	if err := g.Mulligan(p.ID, 6); err != nil {
@@ -586,8 +674,8 @@ func TestMulliganShufflesHandBack(t *testing.T) {
 	if p.Hand.Size() != 6 {
 		t.Errorf("after mulligan: hand size %d, want 6", p.Hand.Size())
 	}
-	// 99 library cards - 6 drawn = 93 remaining.
-	// (The 100-card deck has 1 commander routed to the command zone.)
+	// 99 library cards minus 6 redrawn = 93 remaining. The opening
+	// hand was returned to the library before the mulligan redraw.
 	if p.Library.Size() != 93 {
 		t.Errorf("library size after mulligan: got %d, want 93", p.Library.Size())
 	}

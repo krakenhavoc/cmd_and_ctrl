@@ -80,6 +80,20 @@ type Player struct {
 	// game's State transitions to StateEnded once exactly one
 	// non-eliminated seat remains.
 	Eliminated bool
+
+	// HandKept is true once the player has committed to their opening
+	// hand. False during the mulligan-decision window between Start
+	// and the first turn-1 action. Mulligan resets it to false (the
+	// player must commit again after redrawing); KeepHand sets it to
+	// true. Game.MulligansOpen flips false once every seated player
+	// has KeptHand. Added in S08.
+	HandKept bool
+
+	// MulligansTaken is the count of Mulligan calls this player has
+	// made in the current opening-hand window. Reset at Start. Used
+	// by the UI to show "mulligans taken: N" and is the seed for a
+	// future London-style bottom-N penalty (S13+ if it lands).
+	MulligansTaken int
 }
 
 // newPlayer constructs a player with empty zones and their starting

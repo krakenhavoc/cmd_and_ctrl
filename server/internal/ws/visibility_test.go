@@ -73,8 +73,9 @@ func TestHubBindsClientToRequestedGame(t *testing.T) {
 	if afterA.Game.ID != roomA.Game.ID.String() {
 		t.Errorf("post-action frame from wrong game: got %q, want %q", afterA.Game.ID, roomA.Game.ID)
 	}
-	if afterA.Game.Seats[0].Hand.Count != 1 {
-		t.Errorf("connA did not see its own draw: hand=%d", afterA.Game.Seats[0].Hand.Count)
+	// Opening hand of 7 dealt at Start; seat A's draw makes it 8.
+	if afterA.Game.Seats[0].Hand.Count != 8 {
+		t.Errorf("connA did not see its own draw: hand=%d, want 8", afterA.Game.Seats[0].Hand.Count)
 	}
 
 	// connB must see no frame from A's action. Short deadline read.
@@ -111,27 +112,26 @@ func TestHubFiltersHandForViewer(t *testing.T) {
 	snap0 := readSnapshotFrame(t, conn0)
 	snap1 := readSnapshotFrame(t, conn1)
 
+	// Opening hand of 7 (S08) plus seat 0's draw = 8.
 	// From conn0's perspective: seat 0 hand visible, seat 1 hand hidden.
-	if len(snap0.Game.Seats[0].Hand.Cards) != 1 {
-		t.Errorf("conn0 own hand: got %d cards, want 1", len(snap0.Game.Seats[0].Hand.Cards))
+	if len(snap0.Game.Seats[0].Hand.Cards) != 8 {
+		t.Errorf("conn0 own hand: got %d cards, want 8", len(snap0.Game.Seats[0].Hand.Cards))
 	}
 	if len(snap0.Game.Seats[1].Hand.Cards) != 0 {
 		t.Errorf("conn0 opponent hand: should be hidden, got %d cards", len(snap0.Game.Seats[1].Hand.Cards))
 	}
 
-	// From conn1's perspective: seat 0 hand hidden (but count=1),
-	// seat 1 hand visible (empty, but not zeroed out).
-	if snap1.Game.Seats[0].Hand.Count != 1 {
-		t.Errorf("conn1 opponent hand count: got %d, want 1 (count must survive filter)", snap1.Game.Seats[0].Hand.Count)
+	// From conn1's perspective: seat 0 hand hidden (count survives),
+	// seat 1 hand visible.
+	if snap1.Game.Seats[0].Hand.Count != 8 {
+		t.Errorf("conn1 opponent hand count: got %d, want 8 (count must survive filter)", snap1.Game.Seats[0].Hand.Count)
 	}
 	if len(snap1.Game.Seats[0].Hand.Cards) != 0 {
 		t.Errorf("conn1 opponent hand cards: should be hidden, got %d", len(snap1.Game.Seats[0].Hand.Cards))
 	}
-	// conn1's own hand is empty (seat 1 has not drawn yet), but the
-	// filter branch that matches own seat still runs — verifying it
-	// doesn't crash on an empty hand.
-	if snap1.Game.Seats[1].Hand.Count != 0 {
-		t.Errorf("conn1 own hand count: got %d, want 0", snap1.Game.Seats[1].Hand.Count)
+	// conn1 sees its own opening hand of 7 (it hasn't drawn yet).
+	if snap1.Game.Seats[1].Hand.Count != 7 {
+		t.Errorf("conn1 own hand count: got %d, want 7 (opening hand)", snap1.Game.Seats[1].Hand.Count)
 	}
 
 	// Seq equality across clients is still enforced — both snapshots

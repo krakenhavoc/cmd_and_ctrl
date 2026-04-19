@@ -74,6 +74,11 @@ export interface GameView {
   stack: ZoneView;
   exile: ZoneView;
   turn: TurnView;
+  // True between Start and the moment all seated, non-eliminated
+  // players have committed to their opening hand via the keep_hand
+  // action. Drives the keep / mulligan dialog and gates the normal
+  // game UI. Added in S08.
+  mulligans_open: boolean;
 }
 
 export interface PlayerView {
@@ -99,6 +104,14 @@ export interface PlayerView {
   // and disables their action buttons. Omitempty on the wire — only
   // present when true.
   eliminated?: boolean;
+  // True once the player has committed to their opening hand during
+  // the mulligan window. Omitempty on the wire — absent means false.
+  // Added in S08.
+  hand_kept?: boolean;
+  // Number of mulligans this player has taken in the current
+  // opening-hand window. Omitempty on the wire — absent means 0.
+  // Added in S08.
+  mulligans_taken?: number;
 }
 
 export interface LifeChangeView {

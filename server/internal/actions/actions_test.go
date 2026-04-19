@@ -50,8 +50,9 @@ func TestDispatchDrawCard(t *testing.T) {
 	if err := Dispatch(g, a); err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
-	if p.Hand.Size() != 1 {
-		t.Errorf("hand size: got %d, want 1", p.Hand.Size())
+	// Opening hand is 7 (dealt by Start as of S08); +1 from this draw.
+	if p.Hand.Size() != 8 {
+		t.Errorf("hand size: got %d, want 8", p.Hand.Size())
 	}
 }
 
@@ -243,6 +244,30 @@ func TestDispatchRejectsCrossSeatPlayerScopedAction(t *testing.T) {
 	}
 	if g.Seats[0].Life != 37 {
 		t.Errorf("self life: got %d, want 37", g.Seats[0].Life)
+	}
+}
+
+func TestDispatchKeepHand(t *testing.T) {
+	g := newGame(t)
+	caller := g.Seats[0].ID
+	a, _ := Decode(string(TypeKeepHand), caller.String(), nil)
+	a.Caller = caller
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	if !g.Seats[0].HandKept {
+		t.Error("seat 0 HandKept not set")
+	}
+}
+
+func TestDispatchKeepHandRejectsCrossSeat(t *testing.T) {
+	g := newGame(t)
+	caller := g.Seats[0].ID
+	target := g.Seats[1].ID
+	a, _ := Decode(string(TypeKeepHand), target.String(), nil)
+	a.Caller = caller
+	if err := Dispatch(g, a); !errors.Is(err, ErrPlayerCallerMismatch) {
+		t.Errorf("cross-seat keep_hand: got %v, want ErrPlayerCallerMismatch", err)
 	}
 }
 

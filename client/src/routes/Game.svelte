@@ -137,6 +137,14 @@
   const survivors = $derived(seats.filter((s) => !s.eliminated));
   const winner = $derived(gameEnded && survivors.length === 1 ? survivors[0] : null);
 
+  // Mulligan window: open between Start and the moment everyone has
+  // KeptHand. The dialog blocks the viewer's normal toolbar until
+  // they commit. The viewer can still see the table, chat, etc.
+  const mulligansOpen = $derived(view?.mulligans_open === true);
+  const viewerNeedsToDecide = $derived(
+    mulligansOpen && !!viewerSeat && !viewerSeat.eliminated && !viewerSeat.hand_kept,
+  );
+
   // Map MTG step IDs to short display labels. Steps cycle through 12
   // stops per turn; the abbreviated form keeps the bar compact.
   const STEP_LABELS: Record<string, string> = {
@@ -225,6 +233,18 @@
     client.sendAction("change_life", viewerID, { delta });
   }
 
+  function keepHand(): void {
+    if (!viewerID) return;
+    client.sendAction("keep_hand", viewerID);
+  }
+
+  function mulliganDecide(): void {
+    if (!viewerID) return;
+    // Simplified London — redraw to OpeningHandSize (7) every time.
+    // No card-to-bottom penalty; that lands with rules enforcement.
+    client.sendAction("mulligan", viewerID, { hand_size: 7 });
+  }
+
   function concede(): void {
     if (!viewerID || viewerEliminated || gameEnded) return;
     // Concede is irreversible — confirm to guard against misclicks.
@@ -280,6 +300,52 @@
     <span class={`tag tag-${$status}`}>{$status}</span>
     <span class="muted">seq {$lastSeq}</span>
   </header>
+
+  {#if mulligansOpen && !gameEnded}
+    <div class="mulligan-banner" aria-label="opening hand decisions">
+      <strong>Opening hand:</strong>
+      {#each seats as seat (seat.id)}
+        <span
+          class="mulligan-seat"
+          class:waiting={!seat.hand_kept && !seat.eliminated}
+          style="--seat-color: {seatColor(seat.seat)}"
+        >
+          <span class="seat-dot" style="background:{seatColor(seat.seat)}"></span>
+          {seat.name}
+          {#if seat.eliminated}
+            <span class="muted">eliminated</span>
+          {:else if seat.hand_kept}
+            <span class="kept">kept ✓</span>
+          {:else}
+            <span class="deciding">deciding…</span>
+          {/if}
+          {#if (seat.mulligans_taken ?? 0) > 0}
+            <span class="muted mull-count">×{seat.mulligans_taken}</span>
+          {/if}
+        </span>
+      {/each}
+    </div>
+  {/if}
+
+  {#if viewerNeedsToDecide}
+    <div class="mulligan-dialog" role="dialog" aria-label="keep or mulligan your hand">
+      <header>
+        <h2>Your opening hand</h2>
+        {#if (viewerSeat?.mulligans_taken ?? 0) > 0}
+          <p class="muted">
+            Mulligans taken: {viewerSeat?.mulligans_taken}. You'll redraw 7 cards (simplified London
+            — no bottom-N penalty yet).
+          </p>
+        {:else}
+          <p class="muted">Hand size: {viewerSeat?.hand.count ?? 0}. Keep or mulligan?</p>
+        {/if}
+      </header>
+      <div class="mulligan-actions">
+        <button class="primary" onclick={keepHand}>Keep hand</button>
+        <button onclick={mulliganDecide}>Mulligan</button>
+      </div>
+    </div>
+  {/if}
 
   {#if gameEnded}
     <div class="game-end-banner" role="alert">
@@ -501,26 +567,48 @@
 </section>
 
 <style>
+  /* The Game route needs the whole viewport, not the 800px column
+     #app imposes on the lobby / login screens. Scoping the override
+     to :global(#app) inside this component means the cap is lifted
+     only while Game is mounted and restored when the user navigates
+     away. */
+  :global(#app) {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
   section {
-    max-width: 1280px;
-    margin: 1rem auto;
-    padding: 1rem;
+    max-width: none;
+    margin: 0;
+    padding: 0.75rem 1rem;
+    height: 100vh;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
   }
   header {
     display: flex;
     gap: 0.75rem;
     align-items: baseline;
-    margin-bottom: 0.75rem;
+    margin: 0;
   }
   .play-area {
     display: grid;
     grid-template-columns: 1fr 280px;
     gap: 0.75rem;
     align-items: stretch;
+    /* flex: 1 so the play area absorbs all remaining vertical space
+       below the toolbars. min-height: 0 is required because a grid
+       item's default min-size is "auto" (fit-content), which would
+       otherwise keep it from shrinking below its children's intrinsic
+       size and force the section to overflow the viewport. */
+    flex: 1;
+    min-height: 0;
   }
   .table {
     width: 100%;
-    height: min(720px, 70vh);
+    height: 100%;
     border-radius: 6px;
     overflow: hidden;
   }
@@ -609,6 +697,71 @@
     opacity: 0.35;
     text-decoration: line-through;
     border-style: dashed;
+  }
+
+  /* Mulligan window */
+  .mulligan-banner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+    background: #1a2540;
+    border: 1px solid #3a4570;
+    border-radius: 4px;
+    color: #cfd6ee;
+    font-size: 0.9em;
+  }
+  .mulligan-seat {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .mulligan-seat.waiting {
+    border-bottom: 2px dotted var(--seat-color);
+    padding-bottom: 0.05rem;
+  }
+  .kept {
+    color: #b3e5b3;
+    font-weight: 600;
+  }
+  .deciding {
+    color: #ffd07a;
+    font-style: italic;
+  }
+  .mull-count {
+    font-size: 0.85em;
+  }
+  .mulligan-dialog {
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    background: #1a2540;
+    border: 2px solid #b3e5b3;
+    border-radius: 6px;
+    color: #e0e8ff;
+  }
+  .mulligan-dialog header h2 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.05em;
+  }
+  .mulligan-dialog header p {
+    margin: 0 0 0.6rem 0;
+    font-size: 0.9em;
+  }
+  .mulligan-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .mulligan-actions button {
+    padding: 0.4rem 1rem;
+    font-size: 0.95em;
+  }
+  .mulligan-actions button.primary {
+    background: #b3e5b3;
+    color: #0c1426;
+    font-weight: 600;
+    border: 1px solid #8acc8a;
   }
 
   /* End-of-game banners */
@@ -792,7 +945,8 @@
     background: #1a2540;
     border-radius: 6px;
     color: #bbc4dd;
-    height: min(720px, 70vh);
+    height: 100%;
+    min-height: 0;
     overflow: hidden;
   }
   .chat-header {
@@ -856,9 +1010,11 @@
   @media (max-width: 880px) {
     .play-area {
       grid-template-columns: 1fr;
+      grid-template-rows: 1fr auto;
     }
     .chat {
       height: 240px;
+      min-height: auto;
     }
   }
 </style>

@@ -12,7 +12,7 @@
         "library": {
           "kind": "library",
           "owner": "\u003cuuid-002\u003e",
-          "count": 19,
+          "count": 12,
           "cards": [
             {
               "instance_id": "\u003cuuid-004\u003e",
@@ -85,22 +85,29 @@
               "name": "Test Filler 20",
               "owner": "\u003cuuid-002\u003e",
               "controller": "\u003cuuid-002\u003e"
-            },
+            }
+          ]
+        },
+        "hand": {
+          "kind": "hand",
+          "owner": "\u003cuuid-002\u003e",
+          "count": 7,
+          "cards": [
             {
               "instance_id": "\u003cuuid-016\u003e",
-              "name": "Test Filler 10",
+              "name": "Test Filler 8",
               "owner": "\u003cuuid-002\u003e",
               "controller": "\u003cuuid-002\u003e"
             },
             {
               "instance_id": "\u003cuuid-017\u003e",
-              "name": "Test Filler 15",
+              "name": "Test Filler 12",
               "owner": "\u003cuuid-002\u003e",
               "controller": "\u003cuuid-002\u003e"
             },
             {
               "instance_id": "\u003cuuid-018\u003e",
-              "name": "Test Filler 4",
+              "name": "Test Filler 9",
               "owner": "\u003cuuid-002\u003e",
               "controller": "\u003cuuid-002\u003e"
             },
@@ -112,29 +119,23 @@
             },
             {
               "instance_id": "\u003cuuid-020\u003e",
-              "name": "Test Filler 9",
+              "name": "Test Filler 4",
               "owner": "\u003cuuid-002\u003e",
               "controller": "\u003cuuid-002\u003e"
             },
             {
               "instance_id": "\u003cuuid-021\u003e",
-              "name": "Test Filler 12",
+              "name": "Test Filler 15",
               "owner": "\u003cuuid-002\u003e",
               "controller": "\u003cuuid-002\u003e"
             },
             {
               "instance_id": "\u003cuuid-022\u003e",
-              "name": "Test Filler 8",
+              "name": "Test Filler 10",
               "owner": "\u003cuuid-002\u003e",
               "controller": "\u003cuuid-002\u003e"
             }
           ]
-        },
-        "hand": {
-          "kind": "hand",
-          "owner": "\u003cuuid-002\u003e",
-          "count": 0,
-          "cards": []
         },
         "graveyard": {
           "kind": "graveyard",
@@ -167,13 +168,13 @@
         "library": {
           "kind": "library",
           "owner": "\u003cuuid-003\u003e",
-          "count": 20,
+          "count": 13,
           "cards": []
         },
         "hand": {
           "kind": "hand",
           "owner": "\u003cuuid-003\u003e",
-          "count": 0,
+          "count": 7,
           "cards": []
         },
         "graveyard": {
@@ -229,6 +230,7 @@
       "priority_holder": 1,
       "phase": "beginning",
       "step": "untap"
-    }
+    },
+    "mulligans_open": true
   }
 }
