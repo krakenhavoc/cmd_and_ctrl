@@ -76,9 +76,10 @@ func (n *normalizer) id(s string) string {
 
 func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	out := protocol.GameView{
-		ID:    n.id(v.ID),
-		State: v.State,
-		Turn:  v.Turn,
+		ID:            n.id(v.ID),
+		State:         v.State,
+		Turn:          v.Turn,
+		MulligansOpen: v.MulligansOpen,
 	}
 	out.Seats = make([]protocol.PlayerView, len(v.Seats))
 	// First pass: assign placeholders to every player's ID so that
@@ -99,17 +100,19 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 
 func (n *normalizer) player(p protocol.PlayerView, id string) protocol.PlayerView {
 	out := protocol.PlayerView{
-		ID:         id,
-		Name:       p.Name,
-		Seat:       p.Seat,
-		Life:       p.Life,
-		Poison:     p.Poison,
-		Energy:     p.Energy,
-		Library:    n.zone(p.Library),
-		Hand:       n.zone(p.Hand),
-		Graveyard:  n.zone(p.Graveyard),
-		Command:    n.zone(p.Command),
-		Eliminated: p.Eliminated,
+		ID:             id,
+		Name:           p.Name,
+		Seat:           p.Seat,
+		Life:           p.Life,
+		Poison:         p.Poison,
+		Energy:         p.Energy,
+		Library:        n.zone(p.Library),
+		Hand:           n.zone(p.Hand),
+		Graveyard:      n.zone(p.Graveyard),
+		Command:        n.zone(p.Command),
+		Eliminated:     p.Eliminated,
+		HandKept:       p.HandKept,
+		MulligansTaken: p.MulligansTaken,
 	}
 	// Always initialise (possibly empty) — matches the wire shape
 	// emitted by protocol.viewOfPlayer, which always allocates the
@@ -360,27 +363,33 @@ func TestE2EScriptedTurn(t *testing.T) {
 	conn := dialAs(t, wsURL, seat0ID)
 	defer conn.Close()
 
-	// Consume initial snapshot.
+	// Consume initial snapshot. As of S08, Start deals an opening
+	// hand of 7 to each seat — see game.OpeningHandSize.
 	initial := readSnapshotFrame(t, conn)
-	if initial.Game.Seats[0].Hand.Count != 0 {
-		t.Fatalf("initial hand count: got %d, want 0", initial.Game.Seats[0].Hand.Count)
+	if initial.Game.Seats[0].Hand.Count != 7 {
+		t.Fatalf("initial hand count: got %d, want 7 (opening hand)", initial.Game.Seats[0].Hand.Count)
+	}
+	if !initial.Game.MulligansOpen {
+		t.Fatalf("initial mulligans_open: got false, want true (window opens at Start)")
 	}
 
 	seat0 := seat0ID.String()
 
-	// 1) Draw a card.
+	// 1) Draw a card. Hand: 7 → 8, library: 13 (20 - 7 dealt) → 12.
 	afterDraw := sendActionAndWait(t, conn, protocol.ActionPayload{
 		Type:   "draw_card",
 		Player: seat0,
 	})
-	if afterDraw.Game.Seats[0].Hand.Count != 1 {
-		t.Errorf("after draw: hand=%d, want 1", afterDraw.Game.Seats[0].Hand.Count)
+	if afterDraw.Game.Seats[0].Hand.Count != 8 {
+		t.Errorf("after draw: hand=%d, want 8", afterDraw.Game.Seats[0].Hand.Count)
 	}
-	if afterDraw.Game.Seats[0].Library.Count != 19 {
-		t.Errorf("after draw: library=%d, want 19", afterDraw.Game.Seats[0].Library.Count)
+	if afterDraw.Game.Seats[0].Library.Count != 12 {
+		t.Errorf("after draw: library=%d, want 12", afterDraw.Game.Seats[0].Library.Count)
 	}
 
-	// 2) Play the drawn card onto the battlefield.
+	// 2) Play the first card in hand onto the battlefield. (No longer
+	// necessarily the just-drawn card now that the hand starts non-
+	// empty — but the play mechanics are identical.)
 	drawnCardID := afterDraw.Game.Seats[0].Hand.Cards[0].InstanceID
 	params, _ := json.Marshal(map[string]string{"instance_id": drawnCardID})
 	afterPlay := sendActionAndWait(t, conn, protocol.ActionPayload{
@@ -388,8 +397,8 @@ func TestE2EScriptedTurn(t *testing.T) {
 		Player: seat0,
 		Params: params,
 	})
-	if afterPlay.Game.Seats[0].Hand.Count != 0 {
-		t.Errorf("after play: hand=%d, want 0", afterPlay.Game.Seats[0].Hand.Count)
+	if afterPlay.Game.Seats[0].Hand.Count != 7 {
+		t.Errorf("after play: hand=%d, want 7", afterPlay.Game.Seats[0].Hand.Count)
 	}
 	if afterPlay.Game.Battlefield.Count != 1 {
 		t.Errorf("after play: battlefield=%d, want 1", afterPlay.Game.Battlefield.Count)

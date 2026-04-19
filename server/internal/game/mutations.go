@@ -390,8 +390,12 @@ func (g *Game) PassTurn() error {
 
 // Mulligan shuffles the player's entire hand back into their library
 // and draws newHandSize cards. This is the simplified "London
-// mulligan" shape without the card-to-bottom penalty — S03 does not
-// implement the penalty because it's rules enforcement.
+// mulligan" shape without the card-to-bottom penalty — S08 keeps the
+// penalty out of scope; rules enforcement arrives in S13+.
+//
+// Mulligan increments MulligansTaken and resets HandKept to false:
+// taking a mulligan is a fresh decision, so the player must commit
+// again afterward via KeepHand.
 func (g *Game) Mulligan(playerID uuid.UUID, newHandSize int) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -416,6 +420,56 @@ func (g *Game) Mulligan(playerID uuid.UUID, newHandSize int) error {
 		}
 		c, _ := p.Library.PopTop()
 		p.Hand.PushTop(c)
+	}
+	p.MulligansTaken++
+	p.HandKept = false
+	return nil
+}
+
+// KeepHand marks the player as having committed to their current
+// opening hand. Idempotent — calling it twice on a player who has
+// already kept is a no-op (avoids race conditions where two stale
+// client tabs both press keep). Once every seated, non-eliminated
+// player has KeptHand, Game.MulligansOpen flips false and the
+// "real" game UI takes over.
+//
+// Returns ErrGameNotActive in lobby/ended state and
+// ErrPlayerEliminated for an eliminated player (a defensive guard;
+// the client shouldn't surface the keep button in that case anyway).
+func (g *Game) KeepHand(playerID uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	if p.Eliminated {
+		return ErrPlayerEliminated
+	}
+	if p.HandKept {
+		return nil
+	}
+	p.HandKept = true
+	// Close the mulligan window once all non-eliminated seats have
+	// committed. Eliminated seats (improbable here — elimination
+	// during the mulligan window would be unusual but possible if
+	// the conceded flow is exercised mid-decision) don't gate the
+	// transition.
+	allKept := true
+	for _, seat := range g.Seats {
+		if seat.Eliminated {
+			continue
+		}
+		if !seat.HandKept {
+			allKept = false
+			break
+		}
+	}
+	if allKept {
+		g.MulligansOpen = false
 	}
 	return nil
 }

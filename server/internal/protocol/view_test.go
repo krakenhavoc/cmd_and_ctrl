@@ -65,8 +65,12 @@ func TestViewOfGamePlayerContents(t *testing.T) {
 	if p.Command.Count != 1 {
 		t.Errorf("command zone count: got %d, want 1", p.Command.Count)
 	}
-	if p.Library.Count != 10 {
-		t.Errorf("library count: got %d, want 10", p.Library.Count)
+	// Library was 10 fillers; Start deals 7 into the opening hand.
+	if p.Library.Count != 3 {
+		t.Errorf("library count: got %d, want 3 (10 - 7 opening hand)", p.Library.Count)
+	}
+	if p.Hand.Count != 7 {
+		t.Errorf("hand count: got %d, want 7 (opening hand)", p.Hand.Count)
 	}
 	if p.Command.Owner == "" {
 		t.Error("private zone should have non-empty owner")
@@ -161,21 +165,13 @@ func containsKey(s, key string) bool {
 	return false
 }
 
-// buildViewWithCardsInHands creates a 2-seat active game, draws one
-// card into each seat's hand, and returns the resulting GameView.
-// Used by the FilterViewFor tests so that "hand.cards zeroed" is
-// meaningful — in an empty game every hand is already empty.
+// buildViewWithCardsInHands creates a 2-seat active game and returns
+// the resulting GameView. As of S08, Start deals an opening hand of
+// game.OpeningHandSize per seat, so each hand is non-empty out of the
+// gate without a manual draw.
 func buildViewWithCardsInHands(t *testing.T) GameView {
 	t.Helper()
 	g := buildActiveGame(t)
-	// Draw a card into each seat's hand directly on the game model.
-	// The protocol package is allowed to reach into game.Card because
-	// it's the wire boundary.
-	for _, p := range g.Seats {
-		if err := g.DrawCard(p.ID); err != nil {
-			t.Fatalf("DrawCard: %v", err)
-		}
-	}
 	return ViewOfGame(g)
 }
 
@@ -185,11 +181,11 @@ func TestFilterViewForOwnSeatSeesHand(t *testing.T) {
 
 	filtered := FilterViewFor(v, own)
 
-	if filtered.Seats[0].Hand.Count != 1 {
-		t.Errorf("own hand count: got %d, want 1", filtered.Seats[0].Hand.Count)
+	if filtered.Seats[0].Hand.Count != 7 {
+		t.Errorf("own hand count: got %d, want 7", filtered.Seats[0].Hand.Count)
 	}
-	if len(filtered.Seats[0].Hand.Cards) != 1 {
-		t.Errorf("own hand.cards len: got %d, want 1", len(filtered.Seats[0].Hand.Cards))
+	if len(filtered.Seats[0].Hand.Cards) != 7 {
+		t.Errorf("own hand.cards len: got %d, want 7", len(filtered.Seats[0].Hand.Cards))
 	}
 	// Own library cards also visible.
 	if len(filtered.Seats[0].Library.Cards) == 0 {
@@ -204,8 +200,8 @@ func TestFilterViewForOpponentHandHidden(t *testing.T) {
 	filtered := FilterViewFor(v, own)
 
 	// Opponent (seat 1): count preserved, cards zeroed.
-	if filtered.Seats[1].Hand.Count != 1 {
-		t.Errorf("opponent hand count: got %d, want 1 (count must survive filter)", filtered.Seats[1].Hand.Count)
+	if filtered.Seats[1].Hand.Count != 7 {
+		t.Errorf("opponent hand count: got %d, want 7 (count must survive filter)", filtered.Seats[1].Hand.Count)
 	}
 	if len(filtered.Seats[1].Hand.Cards) != 0 {
 		t.Errorf("opponent hand.cards len: got %d, want 0 (must be hidden)", len(filtered.Seats[1].Hand.Cards))
