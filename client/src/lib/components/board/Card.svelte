@@ -114,8 +114,14 @@
     {#if card.is_commander}
       <span class="badge cmd" aria-hidden="true">CMD</span>
     {/if}
+    {#if card.goaded_by}
+      <span class="badge goad" title="goaded" aria-label="goaded">GOAD</span>
+    {/if}
   {:else}
     <span class="name-fallback">{card.name}</span>
+    {#if card.goaded_by}
+      <span class="badge goad" title="goaded" aria-label="goaded">GOAD</span>
+    {/if}
   {/if}
 </div>
 
@@ -195,6 +201,14 @@
     padding: 1px 3px;
     border-radius: 2px;
     letter-spacing: 0.05em;
+  }
+  .badge.goad {
+    /* Top-right so it doesn't collide with the CMD badge on legendary
+       commanders that get goaded back at their owner. */
+    left: auto;
+    right: 2px;
+    color: #ff7a7a;
+    background: rgba(80, 0, 0, 0.85);
   }
   .card.selected {
     box-shadow:
