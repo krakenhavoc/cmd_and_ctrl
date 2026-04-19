@@ -246,6 +246,41 @@ func TestDispatchRejectsCrossSeatPlayerScopedAction(t *testing.T) {
 	}
 }
 
+func TestDispatchConcede(t *testing.T) {
+	g := newGame(t)
+	caller := g.Seats[0].ID
+	a, _ := Decode(string(TypeConcede), caller.String(), nil)
+	a.Caller = caller
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	if !g.Seats[0].Eliminated {
+		t.Error("seat 0 should be eliminated after concede")
+	}
+}
+
+func TestDispatchConcedeRequiresPlayer(t *testing.T) {
+	g := newGame(t)
+	a, _ := Decode(string(TypeConcede), "", nil)
+	if err := Dispatch(g, a); !errors.Is(err, ErrInvalidPlayer) {
+		t.Errorf("concede without player: got %v, want ErrInvalidPlayer", err)
+	}
+}
+
+func TestDispatchConcedeRejectsCrossSeat(t *testing.T) {
+	g := newGame(t)
+	caller := g.Seats[0].ID
+	target := g.Seats[1].ID
+	a, _ := Decode(string(TypeConcede), target.String(), nil)
+	a.Caller = caller
+	if err := Dispatch(g, a); !errors.Is(err, ErrPlayerCallerMismatch) {
+		t.Errorf("cross-seat concede: got %v, want ErrPlayerCallerMismatch", err)
+	}
+	if g.Seats[1].Eliminated {
+		t.Error("target wrongly marked eliminated despite rejected dispatch")
+	}
+}
+
 func TestDispatchPassPriorityAllowsAdminCaller(t *testing.T) {
 	// Admin / spectator (Caller == uuid.Nil) bypasses the gate so a
 	// trusted moderator can advance the game on a player's behalf.

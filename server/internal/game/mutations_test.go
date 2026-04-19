@@ -470,6 +470,76 @@ func TestPassTurnResetsPriorityHolder(t *testing.T) {
 	}
 }
 
+func TestConcedeMarksPlayerEliminated(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	p := g.Seats[2]
+	if err := g.Concede(p.ID); err != nil {
+		t.Fatalf("Concede: %v", err)
+	}
+	if !p.Eliminated {
+		t.Error("Eliminated flag not set")
+	}
+	if g.State != StateActive {
+		t.Errorf("state: got %q, want active (3 players still alive)", g.State)
+	}
+}
+
+func TestConcedeIsRejectedWhenAlreadyEliminated(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	p := g.Seats[2]
+	if err := g.Concede(p.ID); err != nil {
+		t.Fatalf("first Concede: %v", err)
+	}
+	if err := g.Concede(p.ID); err != ErrPlayerEliminated {
+		t.Errorf("second Concede: got %v, want ErrPlayerEliminated", err)
+	}
+}
+
+func TestConcedeAdvancesPastEliminatedActiveSeat(t *testing.T) {
+	// Active seat == 0 at start. Conceding seat 0 must move the
+	// cursor to seat 1 so play continues.
+	g := newFourPlayerActiveGame(t)
+	if err := g.Concede(g.Seats[0].ID); err != nil {
+		t.Fatalf("Concede: %v", err)
+	}
+	if g.Turn.ActiveSeat != 1 {
+		t.Errorf("active seat: got %d, want 1", g.Turn.ActiveSeat)
+	}
+	if g.Turn.PriorityHolder != 1 {
+		t.Errorf("priority holder: got %d, want 1", g.Turn.PriorityHolder)
+	}
+	if g.Turn.Step != StepUntap {
+		t.Errorf("step after pass-past: got %q, want untap", g.Turn.Step)
+	}
+}
+
+func TestConcedeEndsGameWhenOneSurvivor(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	// Three concessions in a 4-player game leaves one survivor.
+	for i := 0; i < 3; i++ {
+		if err := g.Concede(g.Seats[i].ID); err != nil {
+			t.Fatalf("Concede seat %d: %v", i, err)
+		}
+	}
+	if g.State != StateEnded {
+		t.Errorf("state: got %q, want ended", g.State)
+	}
+	if g.Seats[3].Eliminated {
+		t.Error("survivor wrongly marked eliminated")
+	}
+}
+
+func TestConcedeFromLobbyRejected(t *testing.T) {
+	g := NewGame()
+	for i := 0; i < 2; i++ {
+		_, _ = g.AddPlayer(fmt.Sprintf("P%d", i+1), buildTestDeck(fmt.Sprintf("Cmdr %d", i+1)))
+	}
+	// Game not started.
+	if err := g.Concede(g.Seats[0].ID); err != ErrGameNotActive {
+		t.Errorf("Concede in lobby: got %v, want ErrGameNotActive", err)
+	}
+}
+
 func TestPassTurnSkipsToNextSeat(t *testing.T) {
 	g := newActiveGame(t)
 	// Put the cursor mid-turn.

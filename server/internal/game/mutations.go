@@ -274,6 +274,96 @@ func (g *Game) PassPriority() error {
 	return nil
 }
 
+// Concede marks the given player as eliminated. If exactly one
+// non-eliminated player remains after the mutation, the game's State
+// transitions to StateEnded — derived state, no separate Winner field
+// is stored (the surviving seat is the implicit winner).
+//
+// Idempotent on already-eliminated players returns ErrPlayerEliminated
+// rather than silently swallowing — clients should disable the
+// concede button after the first press, and a duplicate frame from a
+// stale tab is worth surfacing.
+//
+// If Concede is called from the lobby state (no game started yet),
+// returns ErrGameNotActive — there is nothing to lose. Calling it
+// after the game has already ended is also rejected.
+func (g *Game) Concede(playerID uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	if p.Eliminated {
+		return ErrPlayerEliminated
+	}
+	p.Eliminated = true
+
+	// If the conceding seat held priority or was the active turn, the
+	// turn cursor must advance past them — otherwise the table sits
+	// waiting on a player who can never act again. Pass to the next
+	// non-eliminated seat in turn order.
+	g.advancePastEliminatedLocked()
+
+	// Game-end check: exactly one survivor → StateEnded.
+	survivors := 0
+	for _, s := range g.Seats {
+		if !s.Eliminated {
+			survivors++
+		}
+	}
+	if survivors <= 1 {
+		g.State = StateEnded
+	}
+	return nil
+}
+
+// advancePastEliminatedLocked moves the turn cursor forward to the
+// next non-eliminated seat if the current ActiveSeat is eliminated.
+// Called from Concede (and intended for future state-based action
+// elimination paths). Caller must hold g.mu.
+func (g *Game) advancePastEliminatedLocked() {
+	numSeats := len(g.Seats)
+	if numSeats == 0 {
+		return
+	}
+	if !g.Seats[g.Turn.ActiveSeat].Eliminated {
+		// Active seat still standing — nothing to advance.
+		// But priority might be on an eliminated seat; reset it to
+		// the active seat (priority always defaults to active at
+		// step boundaries).
+		if g.Seats[g.Turn.PriorityHolder].Eliminated {
+			g.Turn.PriorityHolder = g.Turn.ActiveSeat
+		}
+		return
+	}
+	// Active seat eliminated — find the next survivor in turn order.
+	// Bounded by numSeats to terminate even if every seat is
+	// eliminated (the surrounding Concede caller transitions to
+	// StateEnded in that case; the cursor doesn't matter post-end
+	// but should not infinite-loop here).
+	for i := 0; i < numSeats; i++ {
+		next := (g.Turn.ActiveSeat + 1) % numSeats
+		nextNumber := g.Turn.Number
+		if next == 0 {
+			nextNumber++
+		}
+		g.Turn = Turn{
+			Number:         nextNumber,
+			ActiveSeat:     next,
+			PriorityHolder: next,
+			Phase:          PhaseOf(StepUntap),
+			Step:           StepUntap,
+		}
+		if !g.Seats[next].Eliminated {
+			return
+		}
+	}
+}
+
 // PassTurn skips to the next player's untap step, regardless of
 // whatever step the current turn is in. Useful for forfeiting a turn
 // or when all steps are uneventful.

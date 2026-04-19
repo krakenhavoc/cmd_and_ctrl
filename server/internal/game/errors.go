@@ -54,4 +54,9 @@ var (
 	// rejected for reasons not covered by a more specific error (e.g.
 	// negative hand size on Mulligan).
 	ErrInvalidParam = errors.New("game: invalid parameter")
+
+	// ErrPlayerEliminated is returned when a mutation targets a player
+	// whose Eliminated flag is set, or when an eliminated player tries
+	// to concede a second time.
+	ErrPlayerEliminated = errors.New("game: player is eliminated")
 )

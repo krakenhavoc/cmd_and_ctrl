@@ -748,6 +748,8 @@ func classifyActionError(err error) (code, message string) {
 		// (state-based action) but S03 doesn't enforce that, so the
 		// action is well-formed but unsatisfiable.
 		return protocol.CodeInternal, "zone is empty"
+	case errors.Is(err, game.ErrPlayerEliminated):
+		return protocol.CodeBadRequest, "player is already eliminated"
 	case errors.Is(err, actions.ErrNotPriorityHolder):
 		return protocol.CodeBadRequest, "you do not hold priority"
 	case errors.Is(err, actions.ErrNotActivePlayer):

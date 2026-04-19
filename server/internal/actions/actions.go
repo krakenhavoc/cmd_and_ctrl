@@ -38,6 +38,7 @@ const (
 	TypeAddCounter             Type = "add_counter"
 	TypeSetCommanderDamage     Type = "set_commander_damage"
 	TypeSetBattlefieldPosition Type = "set_battlefield_position"
+	TypeConcede                Type = "concede"
 )
 
 // ErrUnknownType is returned when Dispatch receives an action type it
@@ -177,6 +178,7 @@ var playerScopedActions = map[Type]struct{}{
 	TypeMulligan:       {},
 	TypeShuffleLibrary: {},
 	TypeChangeLife:     {},
+	TypeConcede:        {},
 }
 
 // Dispatch applies an action to a game. Returns nil on success, an
@@ -332,6 +334,12 @@ func Dispatch(g *game.Game, a Action) error {
 			return fmt.Errorf("set_commander_damage to: %w", err)
 		}
 		return g.SetCommanderDamage(from, to, p.Amount)
+
+	case TypeConcede:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		return g.Concede(a.Player)
 
 	case TypeSetBattlefieldPosition:
 		var p struct {

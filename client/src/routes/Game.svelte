@@ -128,6 +128,14 @@
   const viewerSeat = $derived(seats.find((s) => s.id === viewerID) ?? null);
   const viewerHasPriority = $derived(viewerID !== null && priorityPlayer?.id === viewerID);
   const viewerIsActive = $derived(viewerID !== null && activePlayer?.id === viewerID);
+  const viewerEliminated = $derived(viewerSeat?.eliminated === true);
+
+  // Game-end state. The server transitions State to "ended" once
+  // exactly one non-eliminated seat remains; the survivor is the
+  // implicit winner.
+  const gameEnded = $derived(view?.state === "ended");
+  const survivors = $derived(seats.filter((s) => !s.eliminated));
+  const winner = $derived(gameEnded && survivors.length === 1 ? survivors[0] : null);
 
   // Map MTG step IDs to short display labels. Steps cycle through 12
   // stops per turn; the abbreviated form keeps the bar compact.
@@ -217,6 +225,16 @@
     client.sendAction("change_life", viewerID, { delta });
   }
 
+  function concede(): void {
+    if (!viewerID || viewerEliminated || gameEnded) return;
+    // Concede is irreversible — confirm to guard against misclicks.
+    // window.confirm is acceptable for a hobby-scale sandbox; a proper
+    // styled modal can land alongside the S09 polish pass if needed.
+    const ok = window.confirm("Concede the game? This cannot be undone.");
+    if (!ok) return;
+    client.sendAction("concede", viewerID);
+  }
+
   // ---- Chat ----
 
   let chatInput: string = $state("");
@@ -263,6 +281,22 @@
     <span class="muted">seq {$lastSeq}</span>
   </header>
 
+  {#if gameEnded}
+    <div class="game-end-banner" role="alert">
+      {#if winner}
+        <strong>
+          <span class="seat-dot" style="background:{seatColor(winner.seat)}"></span>
+          {winner.name}
+        </strong>
+        wins the game.
+      {:else}
+        Game ended — no survivors.
+      {/if}
+    </div>
+  {:else if viewerEliminated}
+    <div class="eliminated-banner" role="status">You have been eliminated. Spectating.</div>
+  {/if}
+
   {#if view && turn}
     <div class="turn-bar" aria-label="turn and phase indicator">
       <div class="turn-summary">
@@ -279,12 +313,15 @@
         {#each seats as seat (seat.id)}
           <span
             class="pill"
-            class:has-priority={seat.seat === prioritySeat}
-            class:is-active={seat.seat === activeSeat}
+            class:has-priority={seat.seat === prioritySeat && !seat.eliminated}
+            class:is-active={seat.seat === activeSeat && !seat.eliminated}
+            class:eliminated={seat.eliminated}
             style="--seat-color: {seatColor(seat.seat)}"
-            title={`${seat.name} — seat ${seat.seat}${seat.seat === prioritySeat ? " (priority)" : ""}${seat.seat === activeSeat ? " (active)" : ""}`}
+            title={seat.eliminated
+              ? `${seat.name} — eliminated`
+              : `${seat.name} — seat ${seat.seat}${seat.seat === prioritySeat ? " (priority)" : ""}${seat.seat === activeSeat ? " (active)" : ""}`}
           >
-            {seat.name}
+            {seat.name}{seat.eliminated ? " ✕" : ""}
           </span>
         {/each}
       </div>
@@ -398,6 +435,18 @@
             : `${activePlayer?.name ?? "another seat"} is the active player`}
         >
           pass turn
+        </button>
+        <button
+          onclick={concede}
+          disabled={viewerEliminated || gameEnded}
+          class="concede"
+          title={viewerEliminated
+            ? "you are already eliminated"
+            : gameEnded
+              ? "the game has ended"
+              : "concede the game (irreversible)"}
+        >
+          concede
         </button>
       </div>
     </div>
@@ -555,6 +604,50 @@
     color: #0c1426;
     font-weight: 600;
     box-shadow: 0 0 6px var(--seat-color);
+  }
+  .pill.eliminated {
+    opacity: 0.35;
+    text-decoration: line-through;
+    border-style: dashed;
+  }
+
+  /* End-of-game banners */
+  .game-end-banner {
+    padding: 0.6rem 0.9rem;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(90deg, #2a4a2a 0%, #1a2540 100%);
+    border: 1px solid #4a8a4a;
+    border-radius: 4px;
+    color: #e0ffe0;
+    font-size: 1.05em;
+    text-align: center;
+  }
+  .game-end-banner strong {
+    color: #fff;
+    margin-right: 0.3rem;
+  }
+  .eliminated-banner {
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+    background: #3a1a1a;
+    border: 1px solid #6a3a3a;
+    border-radius: 4px;
+    color: #ffd0d0;
+    font-size: 0.95em;
+    text-align: center;
+  }
+  .toolbar button.concede {
+    margin-left: 0.5rem;
+    background: #3a1a1a;
+    color: #ffd0d0;
+    border: 1px solid #6a3a3a;
+  }
+  .toolbar button.concede:hover:not(:disabled) {
+    background: #5a1a1a;
+  }
+  .toolbar button.concede:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
   /* Toolbar */

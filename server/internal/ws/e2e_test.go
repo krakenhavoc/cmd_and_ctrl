@@ -99,16 +99,17 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 
 func (n *normalizer) player(p protocol.PlayerView, id string) protocol.PlayerView {
 	out := protocol.PlayerView{
-		ID:        id,
-		Name:      p.Name,
-		Seat:      p.Seat,
-		Life:      p.Life,
-		Poison:    p.Poison,
-		Energy:    p.Energy,
-		Library:   n.zone(p.Library),
-		Hand:      n.zone(p.Hand),
-		Graveyard: n.zone(p.Graveyard),
-		Command:   n.zone(p.Command),
+		ID:         id,
+		Name:       p.Name,
+		Seat:       p.Seat,
+		Life:       p.Life,
+		Poison:     p.Poison,
+		Energy:     p.Energy,
+		Library:    n.zone(p.Library),
+		Hand:       n.zone(p.Hand),
+		Graveyard:  n.zone(p.Graveyard),
+		Command:    n.zone(p.Command),
+		Eliminated: p.Eliminated,
 	}
 	// Always initialise (possibly empty) — matches the wire shape
 	// emitted by protocol.viewOfPlayer, which always allocates the

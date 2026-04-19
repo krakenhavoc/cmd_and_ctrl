@@ -197,6 +197,7 @@ PLAN.md §2.1).
 | `add_counter` | no | `{ "instance_id": "<uuid>", "name": "<string>", "delta": <int> }` | Modifies a named counter on a card. Delta ≤ 0 that drives the counter to zero removes the entry. |
 | `set_commander_damage` | no | `{ "from": "<uuid>", "to": "<uuid>", "amount": <int> }` | Sets total commander damage dealt from `from`'s commander(s) to `to`. Set semantics, not additive. |
 | `set_battlefield_position` | no | `{ "instance_id": "<uuid>", "x": <float>, "y": <float> }` | Stamps a normalised (x, y) position in `[0, 1]` on a battlefield card. Server clamps out-of-range inputs rather than erroring. Target must be on the battlefield — other zones return `card_not_found`. Added in S06. |
+| `concede` | yes | — | Marks the calling player as eliminated and advances the turn cursor past them if they were the active seat. When exactly one non-eliminated seat remains, the game's `state` transitions to `ended` (the survivor is the implicit winner — no separate field). Idempotent calls return `bad_request` with "player is already eliminated". Added in S08. |
 
 `<ZoneRef>` is `{ "kind": "<zone_kind>", "owner": "<uuid>" }`. Owner is
 omitted for shared zones (`battlefield`, `stack`, `exile`). Zone kinds are
@@ -283,7 +284,7 @@ The server's Go source at `server/internal/protocol/view.go` is the
 canonical type definition. High-level shape:
 
 - **GameView**: `{ id, state, seats[], battlefield, stack, exile, turn }`
-- **PlayerView**: `{ id, name, seat, life, poison?, energy?, library, hand, graveyard, command, commander_damage, life_history }` — `life_history` is a per-player rolling log of `LifeChangeView` entries (`{ delta, new_total, at }`, RFC3339 timestamp). Bounded server-side at 50 entries; never filtered (life is public). Added in S08.
+- **PlayerView**: `{ id, name, seat, life, poison?, energy?, library, hand, graveyard, command, commander_damage, life_history, eliminated? }` — `life_history` is a per-player rolling log of `LifeChangeView` entries (`{ delta, new_total, at }`, RFC3339 timestamp). Bounded server-side at 50 entries; never filtered (life is public). `eliminated` is omitted unless true; set when the player has conceded (S08) or, in future S13+ work, has lost to a state-based action. Both fields added in S08.
 - **ZoneView**: `{ kind, owner?, count, cards[] }` — `owner` omitted for shared zones
 - **CardView**: `{ instance_id, name, owner, controller, scryfall_id?, tapped?, counters?, is_commander?, battle_x?, battle_y? }` — `scryfall_id` is stamped at deck-import time and lets the client resolve images via `GET /cards/{id}/image`. Omitted for placeholder cards (demo game seeded via `CMDCTRL_SEED_DEMO`). `battle_x` / `battle_y` are normalised positions in `[0, 1]` for cards on the battlefield (S06+); both are cleared on zone exit and omitted for cards that have never been positioned.
 - **TurnView**: `{ number, active_seat, priority_holder, phase, step }` — `priority_holder` is the seat index (0-based) that currently holds priority within the step. Equals `active_seat` at every step boundary; rotates on `pass_priority`. Added in S07.
