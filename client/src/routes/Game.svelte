@@ -501,26 +501,52 @@
 </section>
 
 <style>
+  /* The Game route needs the whole viewport, not the 800px column
+     #app imposes on the lobby / login screens. Pinning the section
+     with position: fixed + inset: 0 sidesteps #app entirely — no
+     global override, no CSS load-order fight, and it's scoped to
+     this component so the cap is restored automatically on navigate
+     away. overflow: hidden keeps the outer scrollbar off when
+     child layout is tight. */
   section {
-    max-width: 1280px;
-    margin: 1rem auto;
-    padding: 1rem;
+    position: fixed;
+    inset: 0;
+    padding: 0.5rem 0.75rem;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    overflow: hidden;
   }
   header {
     display: flex;
     gap: 0.75rem;
     align-items: baseline;
-    margin-bottom: 0.75rem;
+    margin: 0;
   }
   .play-area {
     display: grid;
     grid-template-columns: 1fr 280px;
-    gap: 0.75rem;
+    /* Explicit single-row template so the grid's row sizes to the
+       play-area's height rather than to its content — otherwise
+       .table's `height: 100%` resolves against an auto-sized row
+       and the Pixi canvas defaults to its intrinsic size, leaving
+       the bottom fan clipped. */
+    grid-template-rows: 1fr;
+    gap: 0.5rem;
     align-items: stretch;
+    /* flex: 1 so the play area absorbs all remaining vertical space
+       below the toolbars. min-height: 0 is required because a grid
+       item's default min-size is "auto" (fit-content), which would
+       otherwise keep it from shrinking below its children's intrinsic
+       size and force the section to overflow the viewport. */
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
   }
   .table {
     width: 100%;
-    height: min(720px, 70vh);
+    height: 100%;
     border-radius: 6px;
     overflow: hidden;
   }
@@ -792,7 +818,8 @@
     background: #1a2540;
     border-radius: 6px;
     color: #bbc4dd;
-    height: min(720px, 70vh);
+    height: 100%;
+    min-height: 0;
     overflow: hidden;
   }
   .chat-header {
@@ -856,9 +883,11 @@
   @media (max-width: 880px) {
     .play-area {
       grid-template-columns: 1fr;
+      grid-template-rows: 1fr auto;
     }
     .chat {
       height: 240px;
+      min-height: auto;
     }
   }
 </style>
