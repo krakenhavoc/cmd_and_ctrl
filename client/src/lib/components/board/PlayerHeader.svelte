@@ -72,6 +72,7 @@
   class:targetable={attackTargetable}
   class:eliminated={seat.eliminated}
   style:--seat-color={seatColor(seat.seat)}
+  data-seat-id={seat.id}
   role={attackTargetable ? "button" : "group"}
   tabindex={attackTargetable ? 0 : undefined}
   onclick={handleClick}

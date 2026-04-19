@@ -23,6 +23,7 @@
   import PlayerPanel from "./PlayerPanel.svelte";
   import HoverZoomOverlay from "./HoverZoomOverlay.svelte";
   import StackOverlay from "./StackOverlay.svelte";
+  import CombatArrows from "./CombatArrows.svelte";
 
   type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
 
@@ -92,9 +93,15 @@
   // CSS Grid (each panel sets its own grid-area), but kept stable
   // here so Svelte's keyed each-block reuses DOM across snapshots.
   const positions: SeatPosition[] = ["across_next", "across", "next", "self"];
+
+  // boardEl is the anchor for absolute-positioned overlays (hover
+  // zoom, stack, combat arrows). Bound here so children that need
+  // board-relative coordinates (CombatArrows reads source/target
+  // bounding rects against it) get the same node.
+  let boardEl: HTMLDivElement | null = $state(null);
 </script>
 
-<div class="board" data-opp-count={opponentCount}>
+<div class="board" data-opp-count={opponentCount} bind:this={boardEl}>
   {#each positions as pos (pos)}
     {@const seat = placements[pos]}
     {#if seat}
@@ -121,6 +128,7 @@
     {/if}
   {/each}
 
+  <CombatArrows {view} {boardEl} />
   <HoverZoomOverlay />
   <StackOverlay stack={view.stack} />
 </div>
