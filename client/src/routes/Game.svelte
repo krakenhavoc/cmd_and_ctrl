@@ -291,6 +291,7 @@
   // canvas-side highlights and click handlers stay in sync.
   const renderOptions = $derived({
     viewerID: viewerID,
+    isAdmin: sess?.principal.role === "admin",
     sendAction,
     combatMode,
     selectedCombatCardID: combatSelection?.cardID ?? null,

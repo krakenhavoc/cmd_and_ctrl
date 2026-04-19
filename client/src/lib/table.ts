@@ -86,6 +86,12 @@ export interface RenderOptions {
   // matching PlayerView is rendered at the "self" anchor; others
   // rotate to left/top/right in their original seat order.
   viewerID: string | null;
+  // isAdmin is true for connections backed by an admin token. Admins
+  // bypass the controller-only gate on tap / untap / drag so they
+  // can fix wedged board state. The server enforces the same
+  // invariant — this flag just stops the client from emitting
+  // doomed actions for an admin viewer.
+  isAdmin?: boolean;
   // sendAction, when present, is invoked from user interactions
   // (click-to-tap, click-to-play). Omitting it makes the renderer
   // read-only — useful for spectator / admin views.
@@ -588,6 +594,15 @@ function wireTapClick(
   wireHoverPreview(tile, card, preview);
   const send = opts.sendAction;
   if (!send) return;
+  // viewerControlsCard gates tap / untap / drag on caller=controller.
+  // Admin sessions bypass so a moderator can still fix wedged state.
+  // The server enforces the same invariant via requireCardController;
+  // this client check just stops the click from emitting a doomed
+  // action and keeps the cursor honest. Combat-target clicks
+  // (selecting an opponent's attacker as a block target) are gated
+  // separately below — they intentionally fire on a card the viewer
+  // doesn't control.
+  const viewerControlsCard = !!opts.isAdmin || card.controller === opts.viewerID;
   // DRAG_THRESHOLD is the cursor-movement distance (in pixels) that
   // separates a click from a drag. Below the threshold we emit
   // tap/untap; above it we treat the gesture as a reposition.
@@ -601,6 +616,11 @@ function wireTapClick(
   });
   tile.view.on("globalpointermove", (e) => {
     if (!downAt) return;
+    // Don't engage the drag visualisation for cards the viewer
+    // doesn't control — the click branch is still reachable for
+    // combat-target selection (block-mode click on an incoming
+    // attacker).
+    if (!viewerControlsCard) return;
     const dx = e.global.x - downAt.x;
     const dy = e.global.y - downAt.y;
     if (!dragging && dx * dx + dy * dy > DRAG_THRESHOLD * DRAG_THRESHOLD) {
@@ -643,7 +663,15 @@ function wireTapClick(
         opts.onDeclareBlock?.(card.instance_id);
         return;
       }
+      if (!viewerControlsCard) return;
       send(card.tapped ? "untap" : "tap", { instance_id: card.instance_id });
+      return;
+    }
+    if (!viewerControlsCard) {
+      // We let the drag visualisation play (tile follows the cursor)
+      // but do not commit a position the server would reject. The
+      // next snapshot redraw will snap the tile back to its real
+      // position.
       return;
     }
     // Drop position → renormalise against the battlefield rect.

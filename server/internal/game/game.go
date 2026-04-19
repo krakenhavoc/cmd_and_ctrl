@@ -276,6 +276,30 @@ func (g *Game) PlayerByID(id uuid.UUID) *Player {
 	return g.playerByIDLocked(id)
 }
 
+// ControllerOfCard returns the current controller of the card with the
+// given instance ID, scanning every zone (battlefield, stack, exile,
+// and each player's library / hand / graveyard / command). The second
+// return is false when no zone holds the card.
+//
+// This exists so the actions package can authorize card-instance-
+// scoped actions (tap, move_card, add_counter, etc.) by caller without
+// reaching into Game internals or holding a write lock — it takes its
+// own read lock and the result is a value copy.
+func (g *Game) ControllerOfCard(instanceID uuid.UUID) (uuid.UUID, bool) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	z := g.findCardZoneLocked(instanceID)
+	if z == nil {
+		return uuid.Nil, false
+	}
+	for _, c := range z.Cards {
+		if c.InstanceID == instanceID {
+			return c.Controller, true
+		}
+	}
+	return uuid.Nil, false
+}
+
 // playerByIDLocked is the unlocked variant of PlayerByID. The caller
 // must already hold g.mu (read or write).
 func (g *Game) playerByIDLocked(id uuid.UUID) *Player {

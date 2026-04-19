@@ -185,28 +185,44 @@ PLAN.md §2.1).
 |---|---|---|---|
 | `draw_card` | yes | — | Moves the top of `player`'s library to their hand. |
 | `play_card` | yes | `{ "instance_id": "<uuid>" }` | Moves the card from `player`'s hand to the battlefield; stamps controller to `player`. |
-| `move_card` | no | `{ "src": <ZoneRef>, "dst": <ZoneRef>, "instance_id": "<uuid>" }` | General-purpose zone-to-zone move. Clears tapped state + counters if leaving the battlefield (CR 400.7). |
-| `tap` | no | `{ "instance_id": "<uuid>" }` | Sets a battlefield card's tapped state to true. |
-| `untap` | no | `{ "instance_id": "<uuid>" }` | Sets a battlefield card's tapped state to false. |
+| `move_card` | no | `{ "src": <ZoneRef>, "dst": <ZoneRef>, "instance_id": "<uuid>" }` | General-purpose zone-to-zone move. Clears tapped state + counters if leaving the battlefield (CR 400.7). Caller must control the card. |
+| `tap` | no | `{ "instance_id": "<uuid>" }` | Sets a battlefield card's tapped state to true. Caller must control the card (admin sessions bypass) — see "controller-only card actions" below. |
+| `untap` | no | `{ "instance_id": "<uuid>" }` | Sets a battlefield card's tapped state to false. Same controller gate as `tap`. |
 | `untap_all` | yes | — | Untaps all of `player`'s cards on the battlefield. |
 | `pass_priority` | no | — | Rotates priority to the next seat (S07+). When priority would wrap back to the active seat, the step auto-advances and `priority_holder` resets to the new active seat. Stack-aware semantics (priority resets on spell resolution) arrive with the S13+ rules graft. |
 | `pass_turn` | no | — | Jumps to the next seat's untap step. |
 | `mulligan` | yes | `{ "hand_size": <int> }` | Shuffles `player`'s hand back into their library and draws `hand_size` cards. Simplified London mulligan — no card-to-bottom penalty. |
 | `shuffle_library` | yes | — | Reshuffles `player`'s library. |
 | `change_life` | yes | `{ "delta": <int> }` | Adjusts `player`'s life by `delta` (positive for gain, negative for loss). |
-| `add_counter` | no | `{ "instance_id": "<uuid>", "name": "<string>", "delta": <int> }` | Modifies a named counter on a card. Delta ≤ 0 that drives the counter to zero removes the entry. |
+| `add_counter` | no | `{ "instance_id": "<uuid>", "name": "<string>", "delta": <int> }` | Modifies a named counter on a card. Delta ≤ 0 that drives the counter to zero removes the entry. Caller must control the card. |
 | `set_commander_damage` | no | `{ "from": "<uuid>", "to": "<uuid>", "amount": <int> }` | Sets total commander damage dealt from `from`'s commander(s) to `to`. Set semantics, not additive. |
-| `set_battlefield_position` | no | `{ "instance_id": "<uuid>", "x": <float>, "y": <float> }` | Stamps a normalised (x, y) position in `[0, 1]` on a battlefield card. Server clamps out-of-range inputs rather than erroring. Target must be on the battlefield — other zones return `card_not_found`. Added in S06. |
+| `set_battlefield_position` | no | `{ "instance_id": "<uuid>", "x": <float>, "y": <float> }` | Stamps a normalised (x, y) position in `[0, 1]` on a battlefield card. Server clamps out-of-range inputs rather than erroring. Target must be on the battlefield — other zones return `card_not_found`. Caller must control the card. Added in S06; controller gate added in S08.5. |
 | `concede` | yes | — | Marks the calling player as eliminated and advances the turn cursor past them if they were the active seat. When exactly one non-eliminated seat remains, the game's `state` transitions to `ended` (the survivor is the implicit winner — no separate field). Idempotent calls return `bad_request` with "player is already eliminated". Added in S08. |
 | `keep_hand` | yes | — | Commits the calling player to their current opening hand during the mulligan window. Once every seated, non-eliminated player has called `keep_hand`, `mulligans_open` flips to false. Idempotent (no-op if already kept). Added in S08. |
-| `declare_attacker` | no | `{ "attacker": "<uuid>", "target": "<uuid>" }` | Marks a battlefield card as attacking the target player. Step-gated to `declare_attackers`; rejects with `bad_request` outside that step. Attacker must be a creature (`type_line` contains "Creature"); rejects with `bad_request` otherwise. Re-declaring the same attacker against a different target overwrites. Caller (was-it-the-controller) is intentionally not enforced — sandbox flexibility for casual play. Added in S08. |
-| `declare_blocker` | no | `{ "blocker": "<uuid>", "attacker": "<uuid>" }` | Marks a battlefield card as blocking the named attacker. Step-gated to `declare_blockers`. Blocker must be a creature; attacker must exist on the battlefield. Added in S08. |
+| `declare_attacker` | no | `{ "attacker": "<uuid>", "target": "<uuid>" }` | Marks a battlefield card as attacking the target player. Step-gated to `declare_attackers`; rejects with `bad_request` outside that step. Attacker must be a creature (`type_line` contains "Creature"); rejects with `bad_request` otherwise. Re-declaring the same attacker against a different target overwrites. Caller must control the attacker (admin sessions bypass) — see "controller-only card actions" below. Added in S08; controller gate added in S08.5. |
+| `declare_blocker` | no | `{ "blocker": "<uuid>", "attacker": "<uuid>" }` | Marks a battlefield card as blocking the named attacker. Step-gated to `declare_blockers`. Blocker must be a creature; attacker must exist on the battlefield. Caller must control the blocker. Added in S08; controller gate added in S08.5. |
 | `clear_combat` | no | — | Resets `attacking_target` and `blocking_target` on every battlefield card. Not step-gated (escape hatch). Added in S08. |
 | `advance_step` | no | — | Advances the turn cursor by one step. Sandbox affordance — does NOT require the caller to hold priority (cf. `pass_priority` which does). Used by the "next step" / "done" buttons so the active player can drive combat progression without waiting for opponent priority passes. Auto-resolves combat damage on entry to `combat_damage` (same hook as `pass_priority`). Added in S08. |
 
 `<ZoneRef>` is `{ "kind": "<zone_kind>", "owner": "<uuid>" }`. Owner is
 omitted for shared zones (`battlefield`, `stack`, `exile`). Zone kinds are
 `library`, `hand`, `battlefield`, `graveyard`, `exile`, `command`, `stack`.
+
+#### Controller-only card actions (added in S08.5)
+
+`tap`, `untap`, `move_card`, `add_counter`, `set_battlefield_position`,
+`declare_attacker`, and `declare_blocker` are gated on the caller being
+the current controller of the named card. A seated player issuing one
+of these actions against a card controlled by a different seat receives
+an `error` frame with `payload.code = "bad_request"` and
+`payload.message = "you do not control that card"`. Admin sessions
+(`role: "admin"`) bypass the gate so a moderator can fix wedged board
+state. `clear_combat` intentionally stays loose — it's the "combat is
+wedged" escape hatch and any seated player may invoke it.
+
+This was deliberately permissive at S08 to support casual cross-seat
+play; S08.5 wave 1 tightened it after a 2-player playtest surfaced
+players accidentally tapping each other's permanents.
 
 ### `chat` (both directions) — added in S07
 

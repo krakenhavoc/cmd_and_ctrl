@@ -756,6 +756,8 @@ func classifyActionError(err error) (code, message string) {
 		return protocol.CodeBadRequest, "you are not the active player"
 	case errors.Is(err, actions.ErrPlayerCallerMismatch):
 		return protocol.CodeBadRequest, "you cannot act on another player's behalf"
+	case errors.Is(err, game.ErrCardCallerMismatch):
+		return protocol.CodeBadRequest, "you do not control that card"
 	case errors.Is(err, game.ErrWrongStep):
 		return protocol.CodeBadRequest, "action is not legal in the current step"
 	case errors.Is(err, game.ErrNotACreature):

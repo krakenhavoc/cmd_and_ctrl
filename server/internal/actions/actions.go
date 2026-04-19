@@ -133,6 +133,26 @@ func requirePriorityHolder(g *game.Game, caller uuid.UUID) error {
 	return nil
 }
 
+// requireCardController verifies that caller is the current controller
+// of the card with the given instance ID. uuid.Nil (admin / spectator)
+// bypasses the check. If the card is not present in any zone, the
+// helper returns nil so the underlying mutation can surface the
+// canonical ErrCardNotFound — keeping "I don't know about that card"
+// distinct from "you don't control that card" on the wire.
+func requireCardController(g *game.Game, caller uuid.UUID, instanceID uuid.UUID) error {
+	if caller == uuid.Nil {
+		return nil
+	}
+	controller, ok := g.ControllerOfCard(instanceID)
+	if !ok {
+		return nil
+	}
+	if controller != caller {
+		return game.ErrCardCallerMismatch
+	}
+	return nil
+}
+
 // requireActivePlayer verifies that caller is the seated player whose
 // seat is the active turn's seat. uuid.Nil (admin / spectator)
 // bypasses the check.
@@ -173,9 +193,11 @@ func unmarshalParams(raw json.RawMessage, actionType Type, dest any) error {
 // identifying which seat the action operates on. For these, a seated
 // (non-admin) caller may only act on their own seat — the wire
 // Player must match Caller. Card-instance-scoped actions (tap,
-// move_card, add_counter, etc.) intentionally stay loose; in casual
-// play players occasionally tap each other's permanents and the
-// sandbox should not block that.
+// move_card, add_counter, set_battlefield_position, declare_attacker,
+// declare_blocker) are gated separately via requireCardController
+// against the card's current Controller — see the case branches in
+// Dispatch. clear_combat is intentionally still loose: it's the
+// "combat is wedged" escape hatch and any seated player may invoke it.
 var playerScopedActions = map[Type]struct{}{
 	TypeDrawCard:       {},
 	TypePlayCard:       {},
@@ -243,6 +265,9 @@ func Dispatch(g *game.Game, a Action) error {
 		if err != nil {
 			return fmt.Errorf("move_card dst: %w", err)
 		}
+		if err := requireCardController(g, a.Caller, instanceID); err != nil {
+			return err
+		}
 		return g.MoveCardByID(srcRef, dstRef, instanceID)
 
 	case TypeTap, TypeUntap:
@@ -255,6 +280,9 @@ func Dispatch(g *game.Game, a Action) error {
 		instanceID, err := uuid.Parse(p.InstanceID)
 		if err != nil {
 			return fmt.Errorf("tap instance_id: %w", err)
+		}
+		if err := requireCardController(g, a.Caller, instanceID); err != nil {
+			return err
 		}
 		return g.TapCard(instanceID, a.Type == TypeTap)
 
@@ -320,6 +348,9 @@ func Dispatch(g *game.Game, a Action) error {
 		if err != nil {
 			return fmt.Errorf("add_counter instance_id: %w", err)
 		}
+		if err := requireCardController(g, a.Caller, instanceID); err != nil {
+			return err
+		}
 		return g.AddCounter(instanceID, p.Name, p.Delta)
 
 	case TypeSetCommanderDamage:
@@ -369,6 +400,9 @@ func Dispatch(g *game.Game, a Action) error {
 		if err != nil {
 			return fmt.Errorf("declare_attacker target: %w", err)
 		}
+		if err := requireCardController(g, a.Caller, attackerID); err != nil {
+			return err
+		}
 		return g.DeclareAttacker(attackerID, targetID)
 
 	case TypeDeclareBlocker:
@@ -386,6 +420,9 @@ func Dispatch(g *game.Game, a Action) error {
 		attackerID, err := uuid.Parse(p.Attacker)
 		if err != nil {
 			return fmt.Errorf("declare_blocker attacker: %w", err)
+		}
+		if err := requireCardController(g, a.Caller, blockerID); err != nil {
+			return err
 		}
 		return g.DeclareBlocker(blockerID, attackerID)
 
@@ -416,6 +453,9 @@ func Dispatch(g *game.Game, a Action) error {
 		instanceID, err := uuid.Parse(p.InstanceID)
 		if err != nil {
 			return fmt.Errorf("set_battlefield_position instance_id: %w", err)
+		}
+		if err := requireCardController(g, a.Caller, instanceID); err != nil {
+			return err
 		}
 		return g.SetBattlefieldPosition(instanceID, p.X, p.Y)
 	}

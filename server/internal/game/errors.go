@@ -69,4 +69,11 @@ var (
 	// requires a creature but the supplied card isn't one (e.g.
 	// declaring a land as an attacker). Added in S08.
 	ErrNotACreature = errors.New("game: card is not a creature")
+
+	// ErrCardCallerMismatch is returned when a seated player issues a
+	// card-instance-scoped action (tap, move_card, add_counter,
+	// set_battlefield_position, declare_attacker, declare_blocker) on
+	// a card whose Controller is a different seat. Admin / spectator
+	// callers (Caller == uuid.Nil) bypass this check. Added in S08.5.
+	ErrCardCallerMismatch = errors.New("game: caller does not control this card")
 )
