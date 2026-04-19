@@ -18,6 +18,7 @@
 
 import { Application, Container, Graphics, Text, TextStyle } from "pixi.js";
 import { CardTile, isHovered, TILE_H, TILE_W } from "./card-tile";
+import { ZoomPreview } from "./zoom-preview";
 import type { CardView, GameView, PlayerView, ZoneView } from "./protocol";
 
 // SeatPosition places one of the four seats around the table. "self"
@@ -115,11 +116,16 @@ export interface RenderOptions {
 export class TableRenderer {
   readonly app: Application;
   private root: Container;
+  // preview is the stage-level hover overlay. It's added to app.stage
+  // *after* root so it always draws on top, and survives the per-
+  // snapshot teardown because that only wipes root's children.
+  private preview: ZoomPreview;
   private initialized = false;
 
   constructor() {
     this.app = new Application();
     this.root = new Container();
+    this.preview = new ZoomPreview();
   }
 
   // init is async because PIXI v8 moved initialisation off the
@@ -132,6 +138,7 @@ export class TableRenderer {
     });
     container.appendChild(this.app.canvas);
     this.app.stage.addChild(this.root);
+    this.app.stage.addChild(this.preview.view);
     this.initialized = true;
   }
 
@@ -171,6 +178,12 @@ export class TableRenderer {
     const width = this.app.renderer.width || 1280;
     const height = this.app.renderer.height || 720;
 
+    // Reposition the hover preview for the current canvas size. Done
+    // every frame so a viewport resize (handled by ResizeObserver in
+    // Game.svelte, which re-invokes render) picks up the new centre
+    // without a dedicated resize pathway.
+    this.preview.resize(width, height);
+
     // Seat anchor points (centre of each seat's zone cluster). The
     // self anchor sits above the hand-fan strip so the fan never
     // overlays the viewer's name / life / zone counts.
@@ -182,7 +195,7 @@ export class TableRenderer {
     };
 
     // Shared zones band across the middle.
-    drawSharedBand(this.root, view, width, height, opts);
+    drawSharedBand(this.root, view, width, height, opts, this.preview);
 
     // Per-seat panels.
     for (const [pos, seat] of Object.entries(placements) as [SeatPosition, PlayerView | null][]) {
@@ -197,7 +210,7 @@ export class TableRenderer {
     // server), so this branch is a no-op for spectator / admin views.
     const self = placements.self;
     if (self && self.hand.cards.length > 0) {
-      drawHandFan(this.root, self.hand.cards, width, height, opts);
+      drawHandFan(this.root, self.hand.cards, width, height, opts, this.preview);
     }
   }
 }
@@ -350,6 +363,7 @@ function drawSharedBand(
   width: number,
   height: number,
   opts: RenderOptions,
+  preview: ZoomPreview,
 ): void {
   const band = new Graphics();
   const y = height / 2 - SHARED_BAND / 2;
@@ -382,7 +396,16 @@ function drawSharedBand(
   bfLab.y = battleY + 6;
   root.addChild(bfLab);
 
-  drawBattlefieldCards(root, view.battlefield.cards, battleX, battleY, battleW, battleH, opts);
+  drawBattlefieldCards(
+    root,
+    view.battlefield.cards,
+    battleX,
+    battleY,
+    battleW,
+    battleH,
+    opts,
+    preview,
+  );
 
   // Stack + exile — compact count chips.
   const sides: [string, ZoneView][] = [
@@ -425,6 +448,7 @@ function drawHandFan(
   width: number,
   height: number,
   opts: RenderOptions,
+  preview: ZoomPreview,
 ): void {
   const n = cards.length;
   // Per-card angular step, clamped so very large hands don't fan
@@ -449,6 +473,7 @@ function drawHandFan(
     tile.setPosition(x, y);
     tile.setRotation(angle);
     tile.makeInteractive();
+    wireHoverPreview(tile, c, preview);
     // Click to play — emits play_card with the viewer as the player.
     // Read-only views (no sendAction) skip this so spectators can't
     // mutate state.
@@ -463,7 +488,14 @@ function drawHandFan(
     // previous tile for this card when the snapshot arrived, the
     // destroyed tile never emitted pointerout, and the replacement
     // would otherwise flash down to resting position.
-    if (isHovered(c.instance_id)) tile.setHover(true);
+    if (isHovered(c.instance_id)) {
+      tile.setHover(true);
+      // Also re-show the preview with the fresh CardView — the old
+      // preview state survived the rebuild, but re-invoking show()
+      // is idempotent and guarantees the sprite reflects the current
+      // card data (e.g., if the scryfall_id changed between frames).
+      preview.show(c);
+    }
   }
 }
 
@@ -482,6 +514,7 @@ function drawBattlefieldCards(
   rw: number,
   rh: number,
   opts: RenderOptions,
+  preview: ZoomPreview,
 ): void {
   const innerX = rx + TILE_W / 2 + 4;
   const innerY = ry + TILE_H / 2 + 4;
@@ -493,15 +526,15 @@ function drawBattlefieldCards(
     const by = c.battle_y ?? 0;
     tile.setPosition(innerX + bx * innerW, innerY + by * innerH);
     tile.setTapped(Boolean(c.tapped));
-    if (opts.sendAction) {
-      // Click-to-toggle-tap on the battlefield. Drag-to-reposition
-      // lands in a later phase — this handler fires on a static
-      // pointertap (press + release without movement), so a future
-      // drag implementation won't collide with it. During combat
-      // mode the click resolves to a combat selection / target
-      // action instead; see wireTapClick.
-      wireTapClick(tile, c, opts, innerX, innerY, innerW, innerH);
-    }
+    // Click-to-toggle-tap on the battlefield + hover-preview. Drag-
+    // to-reposition happens inside wireTapClick and won't collide
+    // because it tests for pointer movement above a threshold. In
+    // combat mode the click resolves to a combat selection / target
+    // action instead; see wireTapClick. Called unconditionally so
+    // spectator / read-only views still get hover-to-zoom — the
+    // function itself no-ops the click/drag paths when sendAction
+    // is absent.
+    wireTapClick(tile, c, opts, innerX, innerY, innerW, innerH, preview);
     // Visual: yellow glow on the selected combat creature (matches
     // the panel's .combat-row.selected styling). Drawn as a bright
     // border on top of the existing tile.
@@ -546,11 +579,15 @@ function wireTapClick(
   innerY: number,
   innerW: number,
   innerH: number,
+  preview: ZoomPreview,
 ): void {
-  const send = opts.sendAction;
-  if (!send) return;
+  // Hover-to-zoom works in any mode (including read-only spectators),
+  // so wire it unconditionally before the sendAction early-return.
   tile.view.eventMode = "static";
   tile.view.cursor = "pointer";
+  wireHoverPreview(tile, card, preview);
+  const send = opts.sendAction;
+  if (!send) return;
   // DRAG_THRESHOLD is the cursor-movement distance (in pixels) that
   // separates a click from a drag. Below the threshold we emit
   // tap/untap; above it we treat the gesture as a reposition.
@@ -568,6 +605,10 @@ function wireTapClick(
     const dy = e.global.y - downAt.y;
     if (!dragging && dx * dx + dy * dy > DRAG_THRESHOLD * DRAG_THRESHOLD) {
       dragging = true;
+      // Drop the hover preview as soon as a drag begins — the card
+      // the player is dragging is the one they know; the preview
+      // would only occlude the drop target they're aiming at.
+      preview.hide();
     }
     if (dragging) {
       // Track the cursor under the tile's centre. Parent space maps
@@ -617,6 +658,25 @@ function wireTapClick(
   };
   tile.view.on("pointerup", finish);
   tile.view.on("pointerupoutside", finish);
+}
+
+// wireHoverPreview adds pointerover/pointerout listeners that drive
+// the stage-level ZoomPreview. It's a separate helper from
+// CardTile.makeInteractive because the preview is a cross-tile
+// concern: multiple tiles share one overlay, and the overlay's
+// lifetime is the TableRenderer's, not any single tile's.
+//
+// The tile's eventMode must already be set to "static" (either via
+// makeInteractive for hand cards or wireTapClick for battlefield
+// cards) — this helper only adds listeners, it doesn't toggle
+// interactivity.
+function wireHoverPreview(tile: CardTile, card: CardView, preview: ZoomPreview): void {
+  tile.view.on("pointerover", () => {
+    preview.show(card);
+  });
+  tile.view.on("pointerout", () => {
+    preview.hide();
+  });
 }
 
 function clamp01(v: number): number {
