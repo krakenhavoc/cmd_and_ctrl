@@ -266,8 +266,12 @@ func (g *Game) PassPriority() error {
 	next := (g.Turn.PriorityHolder + 1) % numSeats
 	if next == g.Turn.ActiveSeat {
 		// Wrapped — advance the step. Turn.advance resets PriorityHolder
-		// to the new ActiveSeat for us.
+		// to the new ActiveSeat for us. Run the same per-step entry
+		// hooks AdvanceStep does so combat damage resolves and combat
+		// declarations clear regardless of whether the step changed via
+		// a priority-wrap or an explicit advance_step click.
 		g.Turn = g.Turn.advance(numSeats)
+		g.runStepEntryHooksLocked()
 		return nil
 	}
 	g.Turn.PriorityHolder = next

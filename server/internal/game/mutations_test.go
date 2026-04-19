@@ -440,6 +440,64 @@ func TestPassPriorityWrapsAdvancesStep(t *testing.T) {
 	}
 }
 
+// TestPassPriorityRunsStepEntryHooks regression-tests the bug where
+// stepping the cursor forward via PassPriority's wrap branch did not
+// fire the auto-resolve / auto-clear hooks that AdvanceStep runs.
+// Symptom: a player driving combat exclusively with pass_priority (or
+// pass_until_end_of_turn, which loops it) saw combat declarations
+// persist past end_combat — arrows would stay drawn for the rest of
+// the turn.
+//
+// The fix extracted runStepEntryHooksLocked from AdvanceStep and
+// taught PassPriority to call it on the wrap branch; this test
+// covers both hooks (resolve into combat_damage, clear into
+// end_combat) using priority wraps only — never AdvanceStep.
+func TestPassPriorityRunsStepEntryHooks(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	defender := g.Seats[1]
+	startLife := defender.Life
+	advanceTo(t, g, StepDeclareAttackers)
+	if err := g.DeclareAttacker(attacker, defender.ID); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
+
+	// Wrap priority twice in a 2-player game to advance past
+	// declare_blockers and into combat_damage. Each wrap = 2 passes.
+	wrapStep := func() {
+		_ = g.PassPriority()
+		_ = g.PassPriority()
+	}
+	for g.Turn.Step != StepCombatDamage {
+		before := g.Turn.Step
+		wrapStep()
+		if g.Turn.Step == before {
+			t.Fatalf("priority-wrap loop didn't progress past %q", before)
+		}
+	}
+	// Auto-resolve should have fired on entering combat_damage.
+	if defender.Life != startLife-2 {
+		t.Errorf("defender life after pass-priority into combat_damage: got %d, want %d (resolve hook didn't fire)",
+			defender.Life, startLife-2)
+	}
+
+	// One more wrap moves into end_combat; the clear hook should
+	// nil AttackingTarget on every battlefield card.
+	for g.Turn.Step != StepEndCombat {
+		before := g.Turn.Step
+		wrapStep()
+		if g.Turn.Step == before {
+			t.Fatalf("priority-wrap loop didn't progress past %q", before)
+		}
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.AttackingTarget != uuid.Nil {
+			t.Errorf("AttackingTarget not cleared after pass-priority into end_combat: %v",
+				c.AttackingTarget)
+		}
+	}
+}
+
 func TestPriorityHolderResetsOnAdvanceStep(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	// Rotate priority halfway, then advance the step directly.
