@@ -254,6 +254,17 @@ func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identi
 		seat.DiscordID = identity.ID
 		seat.DiscordAvatarHash = identity.AvatarHash
 		seat.DisplayName = identity.DisplayName()
+		// Mirror the identity onto the game.Player so it flows
+		// through PlayerView to the client without the snapshot
+		// path having to reach into lobby.SeatInfo for every
+		// seat render.
+		if setErr := entry.room.Game.SetDiscordIdentity(p.ID, identity.ID, identity.AvatarHash, identity.DisplayName()); setErr != nil {
+			// Very narrow race: the game switched state between
+			// AddPlayer and SetDiscordIdentity. Log-worthy but not
+			// fatal — the seat still exists, the client just
+			// won't see the avatar until a future link flow.
+			_ = setErr
+		}
 	}
 	entry.meta.Players = append(entry.meta.Players, seat)
 	// The game's State flips to active on Start — the lobby drives

@@ -178,6 +178,18 @@ export async function uploadDeck(
   return (await res.json()) as UploadDeckResponse;
 }
 
+// avatarURL builds the cached-Discord-avatar URL for a (discord_id,
+// avatar_hash) pair. Returns null when either value is missing so
+// callers can use it as a render gate:
+//   const url = avatarURL(seat.discord_id, seat.discord_avatar_hash);
+//   {#if url}<img src={url}>{/if}
+// The /avatars handler 503s when the disk cache is unconfigured;
+// callers that care should treat a 503 as "fall back to initials".
+export function avatarURL(discordID?: string, avatarHash?: string): string | null {
+  if (!discordID || !avatarHash) return null;
+  return `/avatars/${encodeURIComponent(discordID)}/${encodeURIComponent(avatarHash)}.png`;
+}
+
 // discordAuthEnabled probes /auth/discord/config and reports whether
 // the server has the Discord OAuth three-tuple configured. Used by
 // Join.svelte to decide whether to render the "Sign in with Discord"

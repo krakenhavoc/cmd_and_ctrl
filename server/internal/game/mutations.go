@@ -845,6 +845,25 @@ func (g *Game) SetGoaded(cardID, by uuid.UUID) error {
 // below; there's no upper clamp because some cards / formats deal
 // arbitrary poison. Replaces (not increments) — clients send the new
 // total so two stale tabs don't double-count.
+// SetDiscordIdentity stamps the S12.5 OAuth identity metadata
+// onto the given seat. Called by the lobby's JoinWithIdentity
+// immediately after AddPlayer so the fields are in place before
+// the next snapshot is built. Valid in both lobby and active
+// state (a "link Discord" flow lands here mid-game without a
+// state restriction). Unknown player → ErrPlayerNotFound.
+func (g *Game) SetDiscordIdentity(playerID uuid.UUID, discordID, avatarHash, displayName string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	p.DiscordID = discordID
+	p.DiscordAvatarHash = avatarHash
+	p.DisplayName = displayName
+	return nil
+}
+
 func (g *Game) SetPoison(playerID uuid.UUID, amount int) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()

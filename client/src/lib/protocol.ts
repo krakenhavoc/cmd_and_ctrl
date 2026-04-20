@@ -149,6 +149,14 @@ export interface PlayerView {
   // their untap step. Drives the per-seat indicator on the toolbar.
   // Added in S11.
   undos_remaining?: number;
+  // Discord identity (S12.5). Populated when the seat was claimed
+  // via OAuth; absent for manual-name joins. The client builds
+  // /avatars/{discord_id}/{discord_avatar_hash}.png to pull the
+  // cached portrait, and prefers display_name over name for the
+  // seat label.
+  discord_id?: string;
+  discord_avatar_hash?: string;
+  display_name?: string;
 }
 
 export interface LifeChangeView {

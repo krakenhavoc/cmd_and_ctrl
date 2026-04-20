@@ -106,6 +106,17 @@ func main() {
 	} else {
 		log.Info("discord oauth disabled — set CMDCTRL_DISCORD_CLIENT_ID/SECRET/REDIRECT_URI to enable")
 	}
+
+	// Avatar cache lives under the same data dir as the scryfall
+	// index and replay dumps. Empty DataDir disables the cache —
+	// the /avatars endpoint will then 503 and the client falls
+	// back to its initials placeholder.
+	var avatarDir string
+	if cfg.DataDir != "" {
+		avatarDir = filepath.Join(cfg.DataDir, "avatars")
+	}
+	avatarCache := discord.NewAvatarCache(avatarDir, nil)
+
 	mux.Handle("/", lobby.Handler(lobby.Config{
 		Lobby:             l,
 		Auth:              authenticator,
@@ -115,6 +126,7 @@ func main() {
 		Evictor:           hub,
 		Discord:           discordCfg,
 		DiscordStateStore: discord.NewStateStore(),
+		DiscordAvatars:    avatarCache,
 	}))
 
 	srv := &http.Server{

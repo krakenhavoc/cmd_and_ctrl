@@ -16,6 +16,7 @@
   import { seatColor } from "../../colors";
   import { floatUp, fadeOut } from "../../animations";
   import { play } from "../../sounds";
+  import { avatarURL } from "../../api";
 
   type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
 
@@ -47,6 +48,18 @@
     if (!attackTargetable) return;
     onDeclareAttack?.(seat.id);
   }
+
+  // Discord identity (S12.5). avatar resolves to /avatars/{id}/{hash}.png
+  // when both fields are present; null falls back to the seat-color
+  // dot. displayLabel prefers the OAuth-provided global_name over
+  // the bare lobby name so a friend who signed in as "Alice" doesn't
+  // see "Alice.1234" on their seat. avatarFailed flips on the <img>
+  // error event so a 503 from the avatar cache (cdn fetch failed,
+  // disk write failed) seamlessly degrades to the dot without
+  // leaving a broken-image icon next to the name.
+  const avatar = $derived(avatarURL(seat.discord_id, seat.discord_avatar_hash));
+  const displayLabel = $derived(seat.display_name ?? seat.name);
+  let avatarFailed = $state(false);
 
   // Life / poison / energy adjusters. Self only — these all go through
   // the player-scoped guard server-side, so a non-admin viewer trying
@@ -120,10 +133,20 @@
       handleHeaderClick();
     }
   }}
-  aria-label={attackTargetable ? `attack ${seat.name}` : `${seat.name}, ${seat.life} life`}
+  aria-label={attackTargetable ? `attack ${displayLabel}` : `${displayLabel}, ${seat.life} life`}
 >
-  <span class="seat-dot" aria-hidden="true"></span>
-  <span class="name">{seat.name}</span>
+  {#if avatar && !avatarFailed}
+    <img
+      class="avatar"
+      src={avatar}
+      alt=""
+      aria-hidden="true"
+      onerror={() => (avatarFailed = true)}
+    />
+  {:else}
+    <span class="seat-dot" aria-hidden="true"></span>
+  {/if}
+  <span class="name">{displayLabel}</span>
 
   <!-- Marker badges. Monarch and initiative are claim toggles for self
        (clear when already-held, set otherwise). Poison / energy show
@@ -336,6 +359,18 @@
     border-radius: 50%;
     background: var(--seat-color, #888);
     flex: 0 0 auto;
+  }
+  .avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex: 0 0 auto;
+    /* The seat color stays visible as a 2px ring around the avatar
+       so a player looking at a 4-seat board can still tell who's
+       which colour at a glance — the avatar itself is otherwise
+       opaque to the seat palette. */
+    box-shadow: 0 0 0 2px var(--seat-color, #888);
   }
   .name {
     font-weight: 600;
