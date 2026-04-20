@@ -223,16 +223,21 @@
   }
   .panel.opponent {
     background: #0a1020;
-    /* Opponent slots fit roughly half the vertical space of self,
-       so cards + pile chrome shrink in lockstep to keep the same
-       wireframe layout legible at the top of the board. --card-
-       scale still applies here so the setting tunes both self and
-       opponent panels together. */
-    --card-w: calc(78px * var(--card-scale, 1));
-    --card-h: calc(110px * var(--card-scale, 1));
-    --pile-w: calc(66px * var(--card-scale, 1));
-    --thumb-w: calc(50px * var(--card-scale, 1));
-    --thumb-h: calc(70px * var(--card-scale, 1));
+    /* Opponent slots fit roughly half the vertical space of self
+       and the rotated-180° hand fan adds ~20px of bounding-box
+       height above the card itself, so the baseline has to leave
+       headroom or the fan overflows into the creatures row. These
+       values are tighter than they were pre-S11.5 for that reason.
+       --card-scale is intentionally NOT applied here: the user's
+       card-size setting expresses "I want my battlefield cards
+       bigger", which doesn't mean the opposite side of the table
+       should grow. Opponent cards stay compact so the layout fits
+       every setting. */
+    --card-w: 66px;
+    --card-h: 92px;
+    --pile-w: 56px;
+    --thumb-w: 44px;
+    --thumb-h: 62px;
   }
   .grid-header {
     grid-area: header;
