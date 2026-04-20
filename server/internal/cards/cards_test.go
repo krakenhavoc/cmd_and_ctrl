@@ -498,7 +498,10 @@ func TestHandlerUnknownCard404(t *testing.T) {
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
-	resp, _ := http.Get(srv.URL + "/cards/99999999-9999-9999-9999-999999999999")
+	resp, err := http.Get(srv.URL + "/cards/99999999-9999-9999-9999-999999999999")
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("status: got %d, want %d", resp.StatusCode, http.StatusNotFound)
