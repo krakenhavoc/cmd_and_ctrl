@@ -38,12 +38,12 @@ planned just-in-time from the S12 pain-point triage.
 | S05 | Deck import + 4-player table layout | 3 | [#5](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5) | 2026-06-19 | **done** |
 | S06 | Hand, battlefield, zones UI | 3 | [#6](https://github.com/krakenhavoc/cmd_and_ctrl/issues/6) | 2026-07-03 | **done** |
 | S06.5 | Dynamic deck import from URLs (mini) | 3 | [#37](https://github.com/krakenhavoc/cmd_and_ctrl/issues/37) | 2026-07-10 | **done** |
-| S07 | Turn/phase UI + chat + manual priority | 3 | [#7](https://github.com/krakenhavoc/cmd_and_ctrl/issues/7) | 2026-07-17 | planned |
-| S08 | First playable sandbox (2-player, milestone) | 4 | [#8](https://github.com/krakenhavoc/cmd_and_ctrl/issues/8) | 2026-07-31 | planned |
-| S08.5 | Game-logic cleanup pass (wave 1: gating + room + import) | 4 | [#43](https://github.com/krakenhavoc/cmd_and_ctrl/issues/43) | 2026-05-03 | planned |
-| S09 | Polish I — animations + VFX | 5 | [#9](https://github.com/krakenhavoc/cmd_and_ctrl/issues/9) | 2026-08-14 | planned |
+| S07 | Turn/phase UI + chat + manual priority | 3 | [#7](https://github.com/krakenhavoc/cmd_and_ctrl/issues/7) | 2026-07-17 | **done** |
+| S08 | First playable sandbox (2-player, milestone) | 4 | [#8](https://github.com/krakenhavoc/cmd_and_ctrl/issues/8) | 2026-07-31 | **done** |
+| S08.5 | Game-logic cleanup pass (wave 1: gating + room + import) | 4 | [#43](https://github.com/krakenhavoc/cmd_and_ctrl/issues/43) | 2026-05-03 | **done** |
+| S09 | Polish I — animations + VFX | 5 | [#9](https://github.com/krakenhavoc/cmd_and_ctrl/issues/9) | 2026-08-14 | **done** |
 | S10 | Polish II — Commander UX (cmd damage, politics) | 5 | [#10](https://github.com/krakenhavoc/cmd_and_ctrl/issues/10) | 2026-08-28 | **done** |
-| S11 | Polish III — hover preview, undo, spectator | 5 | [#11](https://github.com/krakenhavoc/cmd_and_ctrl/issues/11) | 2026-09-11 | planned |
+| S11 | Polish III — hover preview, undo, spectator | 5 | [#11](https://github.com/krakenhavoc/cmd_and_ctrl/issues/11) | 2026-09-11 | **done** |
 | S11.5 | Per-user settings and preferences (mini) | 5 | [#82](https://github.com/krakenhavoc/cmd_and_ctrl/issues/82) | 2026-09-18 | planned |
 | S12 | Deploy + 4-player go-live with friends | 6 | [#12](https://github.com/krakenhavoc/cmd_and_ctrl/issues/12) | 2026-09-25 | planned |
 | S12.5 | Discord identity for players (OAuth + bot + presence) | 6 | [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59) | 2026-10-09 | planned |
@@ -193,27 +193,31 @@ One-week mini sprint slotted between S06 and S07 to address UX friction surfaced
 ## S07 — Turn/phase UI + chat + manual priority
 **Phase:** 3 · **Goal:** the fiddly but essential parts of a manually-driven game.
 
-- [ ] Turn / phase / step indicator
-- [ ] "Pass priority" button per player
-- [ ] "Pass until end of turn" shortcut
-- [ ] Any-player chat, with player colors and timestamps
-- [ ] Quick-action buttons: draw, shuffle, mulligan, untap all, change life
-- [ ] Priority indicator ("any responses?") visible across all 4 seats
+- [x] Turn / phase / step indicator
+- [x] "Pass priority" button per player
+- [x] "Pass until end of turn" shortcut
+- [x] Any-player chat, with player colors and timestamps
+- [x] Quick-action buttons: draw, shuffle, mulligan, untap all, change life
+- [x] Priority indicator ("any responses?") visible across all 4 seats
 
 **Exit criteria:** two players can play a complete turn cooperatively, passing priority manually, with chat, and it feels like a game — not a demo.
+
+**Status:** done. Server-tracked priority + chat broadcast landed in [`ef211be`](https://github.com/krakenhavoc/cmd_and_ctrl/commit/ef211be); client turn bar, pass button, chat panel, and quick-action toolbar in [`0d2d979`](https://github.com/krakenhavoc/cmd_and_ctrl/commit/0d2d979). Note: the chat panel was later removed from the in-game view in S08.5 (wire protocol stays live).
 
 ---
 
 ## S08 — First playable sandbox (milestone)
 **Phase:** 4 · **Goal:** complete a 2-player sandbox game in a browser, end-to-end.
 
-- [ ] Mulligan flow (take 7, keep/mulligan, scry for extra mulligans — or simplified to "take N")
-- [ ] Combat UI: declare attackers, declare blockers, manually resolve damage
-- [ ] Life tracker with history
-- [ ] Win/loss screen (manual; player clicks "I lose")
-- [ ] Play against yourself across two tabs, record a video
+- [x] Mulligan flow (take 7, keep/mulligan, scry for extra mulligans — or simplified to "take N")
+- [x] Combat UI: declare attackers, declare blockers, manually resolve damage
+- [x] Life tracker with history
+- [x] Win/loss screen (manual; player clicks "I lose")
+- [x] Play against yourself across two tabs, record a video
 
 **Exit criteria:** a recorded 2-player sandbox game, start to finish, with no manual state intervention outside the client.
+
+**Status:** done. End-to-end 2-player flow is covered by [tests-e2e/tests/full-game.spec.ts](../tests-e2e/tests/full-game.spec.ts) (join → deck upload → mulligan → combat → turn passing), landed in [`d8ee7f2`](https://github.com/krakenhavoc/cmd_and_ctrl/commit/d8ee7f2).
 
 ---
 
@@ -224,13 +228,15 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 
 **Wave 1 scope** ([issue #43](https://github.com/krakenhavoc/cmd_and_ctrl/issues/43)):
 
-- [ ] **Controller-only card interactions.** Server + client gate on `caller == card.controller` for `tap`, `untap`, `move_card`, `add_counter`, `set_battlefield_position`, `declare_attacker`, `declare_blocker`. Admins still bypass.
-- [ ] **Battlefield real-estate.** Remove the chat panel from the in-game UI (players use Discord); slim turn bar + toolbar; canvas grows from ~78%×85% to ~99%×92% of viewport. Chat wire-protocol stays intact for future re-mount.
-- [ ] **In-game deck import.** Players who land in `Game.svelte` via invite see a deck-import modal when the game is in lobby state and their library is empty — no need to navigate back to the lobby.
+- [x] **Controller-only card interactions.** Server + client gate on `caller == card.controller` for `tap`, `untap`, `move_card`, `add_counter`, `set_battlefield_position`, `declare_attacker`, `declare_blocker`. Admins still bypass. ([`e8a70ff`](https://github.com/krakenhavoc/cmd_and_ctrl/commit/e8a70ff))
+- [x] **Battlefield real-estate.** Remove the chat panel from the in-game UI (players use Discord); slim turn bar + toolbar; canvas grows from ~78%×85% to ~99%×92% of viewport. Chat wire-protocol stays intact for future re-mount. ([`36c66ea`](https://github.com/krakenhavoc/cmd_and_ctrl/commit/36c66ea))
+- [x] **In-game deck import.** Players who land in `Game.svelte` via invite see a deck-import modal when the game is in lobby state and their library is empty — no need to navigate back to the lobby. ([`dbbb2ab`](https://github.com/krakenhavoc/cmd_and_ctrl/commit/dbbb2ab), [`f596057`](https://github.com/krakenhavoc/cmd_and_ctrl/commit/f596057))
 
 **Still deferred to S13+** (rules-graft would reshape these): turn-1 skip-draw, commander damage attribution, partner / companion deck imports, commander returns + tax, the Stack zone, token API, comprehensive move-card cleanup, mulligan penalty.
 
 **Exit criteria:** all three wave-1 items shipped; a second 2-player playtest confirms (a) no cross-player card mutations, (b) the canvas feels uncramped, (c) a brand-new player can join and import without leaving the game route.
+
+**Status:** done. All three wave-1 items shipped despite the `88d5cee` commit briefly marking S08.5 deferred; the deferral was reversed when the items were pulled in ahead of S13.
 
 ---
 
@@ -264,12 +270,14 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 ## S11 — Polish III — hover preview, undo, spectator
 **Phase:** 5 · **Goal:** the Arena-feel features that Cockatrice and XMage both lack.
 
-- [ ] Hover a card → detail panel with full Oracle text and current game context
-- [ ] One-click undo / rewind to last server snapshot
-- [ ] Spectator mode (read-only connection to a game)
-- [ ] Auto-saved replays (server writes every delta to a game log file)
+- [x] Hover a card → detail panel with full Oracle text and current game context ([#98](https://github.com/krakenhavoc/cmd_and_ctrl/pull/98))
+- [x] One-click undo / rewind to last server snapshot — per-player per-turn budget (default 1, admin-configurable via `set_undo_limit`), caller-gated so players can only undo their own actions ([#98](https://github.com/krakenhavoc/cmd_and_ctrl/pull/98))
+- [x] Spectator mode (read-only connection to a game) — separate `SpectatorInvite` token, `ReadOnly` binding at the WS layer, uniform grid layout without perspective rotation ([#101](https://github.com/krakenhavoc/cmd_and_ctrl/pull/101))
+- [x] Auto-saved replays (server writes every delta to a game log file) — append-only JSONL at `<dumpDir>/replays/<game-id>.jsonl`, lobby "download replay" link gated by admin or seated player ([#102](https://github.com/krakenhavoc/cmd_and_ctrl/pull/102))
 
 **Exit criteria:** hover preview works for every card, undo works for the last action, spectating a live game works without interfering.
+
+**Status:** done.
 
 ---
 
@@ -385,13 +393,15 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 ## S12 — Deploy and go live with friends
 **Phase:** 6 · **Goal:** real games, real feedback.
 
-- [ ] VPS provisioning script (Docker Compose or plain systemd units)
-- [ ] Deploy Go game server + static client
-- [ ] Basic observability (structured logs, uptime ping, crash dumps)
+- [x] VPS provisioning script (Docker Compose or plain systemd units) — systemd unit on a LAN box at cmd.labxp.io
+- [x] Deploy Go game server + static client — GitHub Actions CI/CD landed in [#111](https://github.com/krakenhavoc/cmd_and_ctrl/pull/111); scryfall bulk-dump refresh in [#112](https://github.com/krakenhavoc/cmd_and_ctrl/pull/112) / [#113](https://github.com/krakenhavoc/cmd_and_ctrl/pull/113)
+- [x] Basic observability (structured logs, uptime ping, crash dumps) — server emits JSON slog, crash-recovery snapshot dumps in `CMDCTRL_DATA_DIR`, `systemctl status` as live health signal
 - [ ] Play a real 4-player game with friends
 - [ ] Triage top 10 pain points from the real game into the S13+ backlog
 
 **Exit criteria:** a real 4-player Commander game happens on the deployed stack, and a prioritised S13+ backlog exists.
+
+**Status:** partial. Deploy infrastructure is live (auto-deploy on merge to main, scheduled scryfall refresh, nightly e2e). The 4-player playtest + pain-point triage remain open.
 
 ---
 
