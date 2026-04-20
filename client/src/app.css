@@ -30,18 +30,21 @@
   outline-offset: 1px;
 }
 
-/* Battlefield card size — settings.display.cardSize drives this.
-   Card.svelte reads width/height from --card-w / --card-h, so a
-   :root override cascades to every card. Per-panel overrides
-   (opponent shrinking) in PlayerPanel still layer on top because
-   they're at a deeper selector. */
+/* Battlefield card size — settings.display.cardSize drives this
+   as a multiplier. The actual pixel sizes live on .panel / .panel.
+   opponent in PlayerPanel.svelte; they read --card-scale so a
+   :root override scales both self and opponent cards in lockstep.
+   Using a multiplier (rather than a direct --card-w override)
+   lets us stack on top of the panel's per-role sizing without a
+   specificity war. */
+:root {
+  --card-scale: 1;
+}
 :root[data-card-size="small"] {
-  --card-w: 60px;
-  --card-h: 84px;
+  --card-scale: 0.75;
 }
 :root[data-card-size="large"] {
-  --card-w: 100px;
-  --card-h: 140px;
+  --card-scale: 1.25;
 }
 
 body {
