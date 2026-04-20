@@ -76,4 +76,9 @@ var (
 	// a card whose Controller is a different seat. Admin / spectator
 	// callers (Caller == uuid.Nil) bypass this check. Added in S08.5.
 	ErrCardCallerMismatch = errors.New("game: caller does not control this card")
+
+	// ErrNoUndosRemaining is returned by SpendUndo when the named
+	// player's per-turn undo budget is already at 0. Refreshed when
+	// the cursor enters that player's untap step. Added in S11.
+	ErrNoUndosRemaining = errors.New("game: no undos remaining this turn")
 )

@@ -7,6 +7,12 @@
 /server/data/
 *.log
 
+# Asset-pack archives. S09 sound bundles (and future art packs) get
+# unzipped into client/public/sounds/ where the individual .mp3 /
+# .wav files are tracked; the zip itself is provenance-only and
+# bloats history.
+*.zip
+
 # Secrets / env
 .env
 .env.*

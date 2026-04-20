@@ -459,3 +459,187 @@ func TestE2EScriptedTurn(t *testing.T) {
 			goldenPath, want, normalized)
 	}
 }
+
+// readNextFrame reads either a snapshot or error frame and returns
+// the raw protocol.Frame so the caller can assert on Kind. Used by
+// the S11 undo authorization tests where the server's response can
+// be either an error (rejected) or a snapshot (accepted).
+func readNextFrame(t *testing.T, conn *websocket.Conn) protocol.Frame {
+	t.Helper()
+	_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	_, raw, err := conn.ReadMessage()
+	if err != nil {
+		t.Fatalf("read frame: %v", err)
+	}
+	var f protocol.Frame
+	if err := json.Unmarshal(raw, &f); err != nil {
+		t.Fatalf("unmarshal frame: %v", err)
+	}
+	return f
+}
+
+// TestUndoRejectsCrossPlayerCaller covers the S11 caller gate: a
+// seated player may only undo their own most recent action. Player A
+// draws; Player B tries to undo A's draw; B's request must error
+// out with bad_request (and not affect game state).
+func TestUndoRejectsCrossPlayerCaller(t *testing.T) {
+	wsURL, g, cleanup := newE2EServer(t)
+	defer cleanup()
+
+	playerA := g.Seats[0].ID
+	playerB := g.Seats[1].ID
+
+	connA := dialAs(t, wsURL, playerA)
+	defer connA.Close()
+	readNextFrame(t, connA) // initial snapshot to A
+	connB := dialAs(t, wsURL, playerB)
+	defer connB.Close()
+	readNextFrame(t, connB) // initial snapshot to B
+
+	// A draws. Both A and B see the broadcast snapshot.
+	sendActionAndWait(t, connA, protocol.ActionPayload{
+		Type: "draw_card", Player: playerA.String(),
+	})
+	readNextFrame(t, connB) // B's broadcast copy
+	if g.Seats[0].Hand.Size() != 8 {
+		t.Fatalf("after A draw: A.hand=%d, want 8", g.Seats[0].Hand.Size())
+	}
+
+	// B tries to undo A's action. Should fail with bad_request and
+	// leave game state untouched.
+	sendActionFrame(t, connB, protocol.ActionPayload{Type: "undo"})
+	frame := readNextFrame(t, connB)
+	if frame.Kind != protocol.KindError {
+		t.Fatalf("expected error frame for cross-player undo, got %q", frame.Kind)
+	}
+	var ep protocol.ErrorPayload
+	_ = json.Unmarshal(frame.Payload, &ep)
+	if ep.Code != protocol.CodeBadRequest {
+		t.Errorf("error code: got %q, want %q", ep.Code, protocol.CodeBadRequest)
+	}
+	if g.Seats[0].Hand.Size() != 8 {
+		t.Errorf("rejected undo mutated state: A.hand=%d, want 8", g.Seats[0].Hand.Size())
+	}
+
+	// A undoes their own action. Should succeed; broadcast snapshot
+	// goes to both clients.
+	sendActionAndWait(t, connA, protocol.ActionPayload{Type: "undo"})
+	readNextFrame(t, connB) // B's broadcast copy
+	if g.Seats[0].Hand.Size() != 7 {
+		t.Errorf("after A undo: A.hand=%d, want 7", g.Seats[0].Hand.Size())
+	}
+}
+
+// TestUndoBudgetExhausted covers the per-player per-turn budget. A
+// draws twice, then undoes once (budget 1→0), then tries to undo
+// again — should fail with bad_request even though the stack has
+// another A-owned entry to pop.
+func TestUndoBudgetExhausted(t *testing.T) {
+	wsURL, g, cleanup := newE2EServer(t)
+	defer cleanup()
+
+	playerA := g.Seats[0].ID
+	connA := dialAs(t, wsURL, playerA)
+	defer connA.Close()
+	readNextFrame(t, connA) // initial
+
+	if g.Seats[0].UndosRemaining != game.DefaultUndoLimit {
+		t.Fatalf("budget at start: got %d, want %d",
+			g.Seats[0].UndosRemaining, game.DefaultUndoLimit)
+	}
+
+	// Two draws.
+	sendActionAndWait(t, connA, protocol.ActionPayload{Type: "draw_card", Player: playerA.String()})
+	sendActionAndWait(t, connA, protocol.ActionPayload{Type: "draw_card", Player: playerA.String()})
+	if g.Seats[0].Hand.Size() != 9 {
+		t.Fatalf("after two draws: A.hand=%d, want 9", g.Seats[0].Hand.Size())
+	}
+
+	// First undo: succeeds, budget 1→0.
+	sendActionAndWait(t, connA, protocol.ActionPayload{Type: "undo"})
+	if g.Seats[0].UndosRemaining != 0 {
+		t.Fatalf("budget after first undo: got %d, want 0", g.Seats[0].UndosRemaining)
+	}
+	if g.Seats[0].Hand.Size() != 8 {
+		t.Fatalf("after first undo: A.hand=%d, want 8", g.Seats[0].Hand.Size())
+	}
+
+	// Second undo: should fail with bad_request ("no undos remaining").
+	sendActionFrame(t, connA, protocol.ActionPayload{Type: "undo"})
+	frame := readNextFrame(t, connA)
+	if frame.Kind != protocol.KindError {
+		t.Fatalf("expected error frame for exhausted budget, got %q", frame.Kind)
+	}
+	var ep protocol.ErrorPayload
+	_ = json.Unmarshal(frame.Payload, &ep)
+	if ep.Code != protocol.CodeBadRequest {
+		t.Errorf("error code: got %q, want %q", ep.Code, protocol.CodeBadRequest)
+	}
+	if g.Seats[0].Hand.Size() != 8 {
+		t.Errorf("rejected undo mutated state: A.hand=%d, want 8", g.Seats[0].Hand.Size())
+	}
+}
+
+// TestUndoBudgetRefreshesOnTurnRollover confirms the per-player undo
+// budget refreshes when the cursor enters that player's untap step
+// (via PassTurn here; the same hook fires on AdvanceStep and on
+// PassPriority's wrap branch).
+func TestUndoBudgetRefreshesOnTurnRollover(t *testing.T) {
+	wsURL, g, cleanup := newE2EServer(t)
+	defer cleanup()
+
+	playerA := g.Seats[0].ID
+	connA := dialAs(t, wsURL, playerA)
+	defer connA.Close()
+	readNextFrame(t, connA) // initial
+
+	// Spend A's budget.
+	sendActionAndWait(t, connA, protocol.ActionPayload{Type: "draw_card", Player: playerA.String()})
+	sendActionAndWait(t, connA, protocol.ActionPayload{Type: "undo"})
+	if g.Seats[0].UndosRemaining != 0 {
+		t.Fatalf("budget post-undo: got %d, want 0", g.Seats[0].UndosRemaining)
+	}
+
+	// Pass turn (B becomes active) then back to A. A's budget refreshes
+	// on entering A's untap step.
+	sendActionAndWait(t, connA, protocol.ActionPayload{Type: "pass_turn"})
+	if g.Seats[1].UndosRemaining != game.DefaultUndoLimit {
+		t.Errorf("B budget after pass_turn: got %d, want %d",
+			g.Seats[1].UndosRemaining, game.DefaultUndoLimit)
+	}
+}
+
+// TestSetUndoLimitRefreshesAllSeats covers the in-game admin path:
+// any seated player can dial the undo budget up via set_undo_limit
+// and every player's UndosRemaining updates to the new limit
+// immediately.
+func TestSetUndoLimitRefreshesAllSeats(t *testing.T) {
+	wsURL, g, cleanup := newE2EServer(t)
+	defer cleanup()
+
+	playerA := g.Seats[0].ID
+	connA := dialAs(t, wsURL, playerA)
+	defer connA.Close()
+	readNextFrame(t, connA) // initial
+
+	// Drain A's budget so we can verify the refresh.
+	sendActionAndWait(t, connA, protocol.ActionPayload{Type: "draw_card", Player: playerA.String()})
+	sendActionAndWait(t, connA, protocol.ActionPayload{Type: "undo"})
+	if g.Seats[0].UndosRemaining != 0 {
+		t.Fatalf("setup: A budget got %d, want 0", g.Seats[0].UndosRemaining)
+	}
+
+	// Bump the limit to 3 — every seat should snap to UndosRemaining=3.
+	sendActionAndWait(t, connA, protocol.ActionPayload{
+		Type:   "set_undo_limit",
+		Params: json.RawMessage(`{"limit":3}`),
+	})
+	if g.UndoLimit != 3 {
+		t.Errorf("game UndoLimit: got %d, want 3", g.UndoLimit)
+	}
+	for i, p := range g.Seats {
+		if p.UndosRemaining != 3 {
+			t.Errorf("seat %d UndosRemaining: got %d, want 3", i, p.UndosRemaining)
+		}
+	}
+}

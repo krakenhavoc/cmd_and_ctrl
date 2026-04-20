@@ -574,6 +574,10 @@ func (g *Game) PassTurn() error {
 		Phase:          PhaseOf(StepUntap),
 		Step:           StepUntap,
 	}
+	// Refresh per-turn budgets (undo, future per-turn counters) on
+	// the new active seat — same hook AdvanceStep / PassPriority's
+	// wrap branch run when stepping into untap.
+	g.runStepEntryHooksLocked()
 	return nil
 }
 
@@ -855,6 +859,56 @@ func (g *Game) SetPoison(playerID uuid.UUID, amount int) error {
 		amount = 0
 	}
 	p.Poison = amount
+	return nil
+}
+
+// SetUndoLimit sets the per-player per-turn undo budget. Refreshes
+// every seated player's UndosRemaining to the new limit immediately
+// (so a mid-turn raise is usable right away by the active player).
+// Clamped at 0 from below — passing a negative is treated as "no
+// undos allowed".
+//
+// Sandbox: any seated player or admin may call it. The intent is
+// "the table agreed to relax the limit for this game"; in casual
+// play that's social, not enforced.
+func (g *Game) SetUndoLimit(limit int) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	if limit < 0 {
+		limit = 0
+	}
+	g.UndoLimit = limit
+	for _, p := range g.Seats {
+		p.UndosRemaining = limit
+	}
+	return nil
+}
+
+// SpendUndo decrements the named player's UndosRemaining if they
+// have any to spend; returns ErrNoUndosRemaining when the budget is
+// exhausted. Called from the room layer immediately before a successful
+// RestoreFrom so the budget is only debited on a successful undo.
+//
+// Returns ErrPlayerNotFound for an unseated playerID. Admin / spectator
+// undos (callerID uuid.Nil) bypass this entirely — the room layer
+// short-circuits to never call SpendUndo for those.
+func (g *Game) SpendUndo(playerID uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	if p.UndosRemaining <= 0 {
+		return ErrNoUndosRemaining
+	}
+	p.UndosRemaining--
 	return nil
 }
 

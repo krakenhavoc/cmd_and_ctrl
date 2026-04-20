@@ -598,6 +598,35 @@
           pass turn
         </button>
         <button
+          onclick={() => client.sendAction("undo")}
+          disabled={!isAdmin && (viewerSeat?.undos_remaining ?? 0) <= 0}
+          title={isAdmin
+            ? "rewind the most recent action (admin — bypasses caller / budget gates)"
+            : (viewerSeat?.undos_remaining ?? 0) <= 0
+              ? "no undos remaining this turn (refreshes on your next untap)"
+              : `undo your most recent action — ${viewerSeat?.undos_remaining ?? 0} left this turn`}
+        >
+          undo {!isAdmin && viewerSeat ? `(${viewerSeat.undos_remaining ?? 0})` : ""}
+        </button>
+        <label
+          class="undo-limit"
+          title="per-player undo budget refreshed each turn (any seat may change)"
+        >
+          limit
+          <input
+            type="number"
+            min="0"
+            max="20"
+            value={view?.undo_limit ?? 1}
+            onchange={(e) => {
+              const next = Number((e.currentTarget as HTMLInputElement).value);
+              if (Number.isFinite(next) && next >= 0) {
+                client.sendAction("set_undo_limit", undefined, { limit: next });
+              }
+            }}
+          />
+        </label>
+        <button
           onclick={concede}
           disabled={viewerEliminated || gameEnded}
           class="concede"
@@ -957,6 +986,24 @@
     color: #ffd0d0;
     font-size: 0.95em;
     text-align: center;
+  }
+  .toolbar .undo-limit {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: #6c7a99;
+    text-transform: lowercase;
+  }
+  .toolbar .undo-limit input {
+    width: 36px;
+    padding: 2px 4px;
+    background: #1a2335;
+    border: 1px solid #2e3a55;
+    color: #e0e6f5;
+    border-radius: 3px;
+    font: inherit;
+    font-size: 11px;
   }
   .toolbar button.concede {
     margin-left: 0.5rem;

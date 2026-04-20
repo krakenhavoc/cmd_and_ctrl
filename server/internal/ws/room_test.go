@@ -178,6 +178,75 @@ func TestRoomActionDrawCardBroadcasts(t *testing.T) {
 	}
 }
 
+func TestUndoRewindsLastAction(t *testing.T) {
+	wsURL, g, _, cleanup := newRoomTestServer(t)
+	defer cleanup()
+
+	conn := dial(t, wsURL)
+	defer conn.Close()
+	readSnapshotFrame(t, conn) // initial
+
+	seat0ID := g.Seats[0].ID.String()
+
+	// Apply two draws: hand grows 7 → 8 → 9.
+	sendActionFrame(t, conn, protocol.ActionPayload{Type: "draw_card", Player: seat0ID})
+	after1 := readSnapshotFrame(t, conn)
+	if after1.Game.Seats[0].Hand.Count != 8 {
+		t.Fatalf("after draw 1: hand=%d, want 8", after1.Game.Seats[0].Hand.Count)
+	}
+	sendActionFrame(t, conn, protocol.ActionPayload{Type: "draw_card", Player: seat0ID})
+	after2 := readSnapshotFrame(t, conn)
+	if after2.Game.Seats[0].Hand.Count != 9 {
+		t.Fatalf("after draw 2: hand=%d, want 9", after2.Game.Seats[0].Hand.Count)
+	}
+
+	// Undo once: hand back to 8, library count back up by 1.
+	sendActionFrame(t, conn, protocol.ActionPayload{Type: "undo"})
+	rewind1 := readSnapshotFrame(t, conn)
+	if rewind1.Game.Seats[0].Hand.Count != 8 {
+		t.Errorf("after undo: hand=%d, want 8", rewind1.Game.Seats[0].Hand.Count)
+	}
+	if rewind1.Seq != after2.Seq+1 {
+		t.Errorf("undo seq: got %d, want %d (one bump past the second draw)",
+			rewind1.Seq, after2.Seq+1)
+	}
+
+	// Second undo: hand back to 7.
+	sendActionFrame(t, conn, protocol.ActionPayload{Type: "undo"})
+	rewind2 := readSnapshotFrame(t, conn)
+	if rewind2.Game.Seats[0].Hand.Count != 7 {
+		t.Errorf("after second undo: hand=%d, want 7", rewind2.Game.Seats[0].Hand.Count)
+	}
+}
+
+func TestUndoEmptyStackReturnsError(t *testing.T) {
+	wsURL, _, _, cleanup := newRoomTestServer(t)
+	defer cleanup()
+
+	conn := dial(t, wsURL)
+	defer conn.Close()
+	readSnapshotFrame(t, conn) // initial
+
+	// Initial snapshot does NOT push the undo stack (Snapshot doesn't
+	// mutate). An undo with no prior actions should error, not silently
+	// no-op or wedge the room.
+	id := sendActionFrame(t, conn, protocol.ActionPayload{Type: "undo"})
+	frame := readFrame(t, conn)
+	if frame.Kind != protocol.KindError {
+		t.Fatalf("expected error frame, got kind=%q", frame.Kind)
+	}
+	if frame.ID != id {
+		t.Errorf("error frame ID: got %q, want %q (originator)", frame.ID, id)
+	}
+	var p protocol.ErrorPayload
+	if err := json.Unmarshal(frame.Payload, &p); err != nil {
+		t.Fatalf("decode error payload: %v", err)
+	}
+	if p.Code != protocol.CodeBadRequest {
+		t.Errorf("error code: got %q, want %q", p.Code, protocol.CodeBadRequest)
+	}
+}
+
 func TestRoomActionBroadcastsToAllClients(t *testing.T) {
 	wsURL, g, _, cleanup := newRoomTestServer(t)
 	defer cleanup()
