@@ -15,6 +15,7 @@
   import type { ActionPayload, PlayerView } from "../../protocol";
   import { seatColor } from "../../colors";
   import { floatUp, fadeOut } from "../../animations";
+  import { play } from "../../sounds";
 
   type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
 
@@ -90,6 +91,7 @@
       return;
     }
     popup = { id: last.at, delta: last.delta };
+    play(last.delta < 0 ? "damage" : "heal");
     if (popupTimer) clearTimeout(popupTimer);
     popupTimer = setTimeout(() => {
       popup = null;

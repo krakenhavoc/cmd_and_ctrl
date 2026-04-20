@@ -52,10 +52,7 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   heal: ["/sounds/heal-1.mp3", "/sounds/heal-2.mp3"],
   attack: ["/sounds/attack-1.mp3", "/sounds/attack-2.mp3"],
   block: ["/sounds/block-1.mp3", "/sounds/block-2.mp3"],
-  combat_resolve: [
-    "/sounds/combat_resolve-1.mp3",
-    "/sounds/combat_resolve-2.mp3",
-  ],
+  combat_resolve: ["/sounds/combat_resolve-1.mp3", "/sounds/combat_resolve-2.mp3"],
   turn_change: ["/sounds/turn_change-1.mp3", "/sounds/turn_change-2.mp3"],
   shuffle: ["/sounds/shuffle-1.mp3", "/sounds/shuffle-2.mp3"],
   win: ["/sounds/win-1.mp3", "/sounds/win-2.mp3"],
