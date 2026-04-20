@@ -25,7 +25,11 @@ jobs:
     runs-on: self-hosted
     env:
       CMDCTRL_HOST: ${{ vars.CMDCTRL_HOST }}
-      CMDCTRL_DATA_DIR: /opt/cmd_and_ctrl/data
+      # Must match CMDCTRL_DATA_DIR in the systemd unit's
+      # EnvironmentFile (/etc/cmd_and_ctrl/env on the deploy host).
+      # Otherwise the script writes the dump where the server isn't
+      # looking and the lobby keeps reporting "card index not loaded".
+      CMDCTRL_DATA_DIR: /var/lib/cmd_and_ctrl/data
       SSH_OPTS: -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10
     steps:
       - name: Verify CMDCTRL_HOST is set
@@ -36,9 +40,16 @@ jobs:
           fi
 
       - name: Run scryfall-refresh on deploy host
+        # sudo -u cmdctrl so the dump is created with the same
+        # ownership as the service user, avoiding a permission flip
+        # where krkn-owned files are unreadable by the service.
+        # Requires this sudoers stanza on the host:
+        #   krkn ALL=(cmdctrl) NOPASSWD:SETENV: /opt/cmd_and_ctrl/scripts/scryfall-refresh.sh
+        # SETENV is needed so CMDCTRL_DATA_DIR survives the sudo
+        # privilege boundary.
         run: |
           ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
-            "CMDCTRL_DATA_DIR=${CMDCTRL_DATA_DIR} /opt/cmd_and_ctrl/scripts/scryfall-refresh.sh"
+            "sudo -u cmdctrl CMDCTRL_DATA_DIR=${CMDCTRL_DATA_DIR} /opt/cmd_and_ctrl/scripts/scryfall-refresh.sh"
 
       - name: Restart cmd-and-ctrl to reload the card index
         # The server loads the index once at boot, so a fresh dump on
