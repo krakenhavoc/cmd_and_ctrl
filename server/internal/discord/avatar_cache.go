@@ -212,4 +212,3 @@ func (c *AvatarCache) writeCacheHeaders(w http.ResponseWriter) {
 	w.Header().Set("Cache-Control", "public, max-age=86400, immutable")
 	w.Header().Set("Content-Type", "image/png")
 }
-
