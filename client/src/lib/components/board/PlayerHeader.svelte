@@ -361,16 +361,17 @@
     flex: 0 0 auto;
   }
   .avatar {
-    width: 22px;
-    height: 22px;
+    /* Header is 28px tall with 4px padding = 20px content. Avatar
+       is 18px + 1px ring so it sits cleanly inside without being
+       clipped on the top/bottom. A bigger portrait would need the
+       header to grow — not worth it for the 4-seat grid layout
+       where every px of vertical space is already tight. */
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     object-fit: cover;
     flex: 0 0 auto;
-    /* The seat color stays visible as a 2px ring around the avatar
-       so a player looking at a 4-seat board can still tell who's
-       which colour at a glance — the avatar itself is otherwise
-       opaque to the seat palette. */
-    box-shadow: 0 0 0 2px var(--seat-color, #888);
+    box-shadow: 0 0 0 1px var(--seat-color, #888);
   }
   .name {
     font-weight: 600;
