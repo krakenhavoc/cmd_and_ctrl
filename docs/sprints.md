@@ -47,9 +47,28 @@ planned just-in-time from the S12 pain-point triage.
 | S11.5 | Per-user settings and preferences (mini) | 5 | [#82](https://github.com/krakenhavoc/cmd_and_ctrl/issues/82) | 2026-09-18 | planned |
 | S12 | Deploy + 4-player go-live with friends | 6 | [#12](https://github.com/krakenhavoc/cmd_and_ctrl/issues/12) | 2026-09-25 | planned |
 | S12.5 | Discord identity for players (OAuth + bot + presence) | 6 | [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59) | 2026-10-09 | planned |
+| S13 | Priority foundation (rules graft kickoff) | 7 | [#62](https://github.com/krakenhavoc/cmd_and_ctrl/issues/62) | 2026-05-17 | planned |
+| S13.1 | Stack: cast/resolve/target/counter/trigger/SBA | 7 | [#63](https://github.com/krakenhavoc/cmd_and_ctrl/issues/63) | 2026-06-14 | planned |
 | S13.2 | Counter mechanics (SBAs + player counters + UI) | 7 | [#79](https://github.com/krakenhavoc/cmd_and_ctrl/issues/79) | 2026-06-28 | planned |
-| S31 | AI bot seat (heuristic policy) | 8 | [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89) | 2027-07-04 | planned |
-| S13+ | **B→C rules graft track** (ongoing) | 7 | TBD at S12 retro | rolling | not started |
+| S14 | Card-effect catalog foundation | 7 | [#64](https://github.com/krakenhavoc/cmd_and_ctrl/issues/64) | 2026-07-12 | planned |
+| S15 | Mana pool, cost model, and auto-tapper | 7 | [#65](https://github.com/krakenhavoc/cmd_and_ctrl/issues/65) | 2026-08-09 | planned |
+| S16 | Continuous effects + layer system (CR 613) | 7 | [#66](https://github.com/krakenhavoc/cmd_and_ctrl/issues/66) | 2026-09-06 | planned |
+| S17 | Replacement effects engine (CR 614) | 7 | [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67) | 2026-10-04 | planned |
+| S18 | Combat keywords | 7 | [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68) | 2026-11-01 | planned |
+| S19 | Auto-fire triggered abilities | 7 | [#69](https://github.com/krakenhavoc/cmd_and_ctrl/issues/69) | 2026-11-29 | planned |
+| S20 | Auto-target legality + smart cast UI | 7 | [#70](https://github.com/krakenhavoc/cmd_and_ctrl/issues/70) | 2026-12-27 | planned |
+| S21 | Tokens, sacrifice, aristocrats | 7 | [#73](https://github.com/krakenhavoc/cmd_and_ctrl/issues/73) | 2027-01-24 | planned |
+| S22 | Card draw + library manipulation | 7 | [#74](https://github.com/krakenhavoc/cmd_and_ctrl/issues/74) | 2027-02-21 | planned |
+| S23 | Mass removal + boardwipes | 7 | [#75](https://github.com/krakenhavoc/cmd_and_ctrl/issues/75) | 2027-03-21 | planned |
+| S24 | Equipment, auras, attachments | 7 | [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76) | 2027-04-18 | planned |
+| S25 | Voltron / commander damage focus | 7 | [#77](https://github.com/krakenhavoc/cmd_and_ctrl/issues/77) | 2027-05-16 | planned |
+| S26 | Tribal / creature type matters | 7 | [#78](https://github.com/krakenhavoc/cmd_and_ctrl/issues/78) | 2027-06-13 | planned |
+| S27 | Card-type completeness (planeswalkers, sagas, vehicles, battles) | 7 | [#92](https://github.com/krakenhavoc/cmd_and_ctrl/issues/92) | 2027-07-04 | planned |
+| S28 | Cost modification + alternative casts | 7 | [#93](https://github.com/krakenhavoc/cmd_and_ctrl/issues/93) | 2027-07-25 | planned |
+| S29 | Alt-cast paths from non-hand zones (flashback, suspend, foretell, …) | 7 | [#94](https://github.com/krakenhavoc/cmd_and_ctrl/issues/94) | 2027-08-15 | planned |
+| S30 | Damage prevention, cloning, face-down, deferred protection keywords | 7 | [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95) | 2027-09-05 | planned |
+| Post-S30 | Rolling deck-driven catalog growth | 7 | TBD at S30 retro | rolling | not started |
+| S31 | AI bot seat (heuristic policy) | 8 | [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89) | 2027-09-26 | planned |
 
 ---
 
@@ -435,6 +454,45 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 
 ---
 
+## S13 — Priority foundation (rules graft kickoff)
+**Phase:** 7 · **Goal:** model priority + turn-based actions per CR 117 / 502 / 504 / 514.
+
+- [ ] Untap and cleanup steps don't grant priority (sentinel `Turn.PriorityHolder == -1`)
+- [ ] Auto turn-based actions (untap, draw, cleanup-discard fire automatically)
+- [ ] Eliminated-player skip in priority rotation
+- [ ] Turn-1 skip-draw rule (CR 103.7c)
+- [ ] Per-step stops UI (client-side localStorage preferences)
+- [ ] "Pass to my next stop" client action
+
+**Exit criteria:** a 4-player game runs through full turns with auto turn-based actions; per-player stops work; eliminated seats correctly skipped.
+
+**Out of scope (S13.1+):** real stack, state-based actions, hold-priority modifier, per-commander damage tracking.
+
+---
+
+## S13.1 — Stack: cast / resolve / target / counter / trigger / SBA
+**Phase:** 7 · **Goal:** all stack-adjacent items in one sprint.
+
+- [ ] Type helpers (IsLand, IsInstant, IsSorcery, IsPermanent, …)
+- [ ] `cast_spell` action; lands route to battlefield; spells to stack
+- [ ] Auto-resolve on full priority pass
+- [ ] Targeting (announce + re-check on resolve)
+- [ ] Modes / X / distribution capture
+- [ ] Manual `announce_trigger` + APNAP-ordered queue
+- [ ] Activated abilities + loyalty (sorcery-speed, once-per-turn)
+- [ ] `counter_spell` and `counter_ability`
+- [ ] Hold-priority modifier; split-second flag
+- [ ] Commander cast tax (per-commander instance ID — fixes partner-pair collapse)
+- [ ] Commander zone replacement (CR 903.9)
+- [ ] State-based actions: lethal damage, 0 toughness, 0 life, 21 commander damage, draw from empty library
+- [ ] Leaving-game stack cleanup with target scrubbing
+
+**Exit criteria:** a Commander player can cast Lightning Bolt, opponent counters with Counterspell on the stack, full priority/SBA loop works end-to-end.
+
+**Bright line — out of scope (S14+):** auto-fire of triggered abilities from card events, auto-validation of target legality at announce, auto-resolution of spell effects, mana pool, replacement effect engine generally, static abilities, combat keyword effects.
+
+---
+
 ## S13.2 — Counter mechanics (SBAs + player counters + UI)
 **Phase:** 7 · **Goal:** close out the "counters" surface the engine still has to resolve manually. S13.1 ships the four canonical Commander SBAs; this sprint adds the counter-specific SBAs (planeswalker loyalty, battle defense, +1/+1/-1/-1 cancel, poison player-loss, saga final-chapter), first-class UI treatment of counters, and a shared registry of MTG counter types. Sits between S13.1 and S14 so the effect catalog (S14) can rely on counters being fully modelled.
 
@@ -504,6 +562,277 @@ Gap analysis behind this sprint: `Card.Counters` exists today ([server/internal/
 5. Every counter on every card renders as a visible pip on the battlefield tile, with distinct colors for the top-20 known types.
 6. Right-clicking a card opens a Counters popover; players can add/remove any type without typing into chat.
 7. Player-level counters (poison, energy, experience, rad) render near each `PlayerHeader` and update live when the server broadcasts a delta.
+
+---
+
+## S14 — Card-effect catalog foundation
+**Phase:** 7 · **Goal:** ~30 of the most-played Commander cards work end-to-end with no manual intervention.
+
+- [ ] Event log infrastructure (typed events, append-only per-Game) — Arena pattern
+- [ ] Listener registry pre-wired for S19
+- [ ] Card-effect catalog in `server/internal/cards/effects/` keyed by Scryfall ID
+- [ ] 15 effect primitives (DealDamage, DrawCards, GainLife, DestroyTarget, …)
+- [ ] ~30 starter Commander cards (Lightning Bolt, Sol Ring, Cultivate, Counterspell, Wrath of God, Eternal Witness, Birds of Paradise, Demonic Tutor, …)
+- [ ] Client "auto" badge on catalog cards
+
+**Architectural decisions:** Forge-style declarative DSL in Go structs; Cockatrice fallback for unimplemented cards; pull-based event dispatch; Scryfall data for display only (don't parse oracle text into effects).
+
+**Exit criteria:** Cast Lightning Bolt → opponent's life drops by 3 automatically (no manual change_life).
+
+---
+
+## S15 — Mana pool, cost model, and auto-tapper
+**Phase:** 7 · **Goal:** server-side mana pool with backtracking auto-tapper that beats Arena on correctness.
+
+- [ ] Cost parser (`{1}{R}`, `{W/U}`, `{X}`, `{W/P}`, `{S}`)
+- [ ] Scryfall `produced_mana` + `mana_cost` ingestion
+- [ ] `ManaPool` as multiset of tokens; end-of-step empty (CR 106.4)
+- [ ] `tap_for_mana` action (distinct from generic `tap`)
+- [ ] Cost validation in `cast_spell`
+- [ ] Auto-tapper algorithm: backtracking + constraint propagation, <1ms p99
+- [ ] Tiebreaker scoring (avoid pain, restriction-bearing mana, utility activation)
+- [ ] Auto-tap-and-cast UX with preview, confirm, ESC cancel
+- [ ] Lock-tap override (clicking a land first locks it in)
+- [ ] Commander tax modifier + static-modifier registry
+
+**Out of scope:** filter lands (Mystic Gate sub-payment), Cavern of Souls tribe-locking, alternative costs.
+
+**Exit criteria:** Cast Cyclonic Rift overload from a 38-land Bant manabase → auto-tap finds plan in microseconds → preview → confirm → resolves.
+
+---
+
+## S16 — Continuous effects + layer system (CR 613)
+**Phase:** 7 · **Goal:** ship the 7-layer skeleton with timestamp ordering; ~10 catalog cards exercising each layer.
+
+- [ ] `Characteristic` snapshot type (printed vs. effective)
+- [ ] Layer engine (1 copy, 2 control, 3 text, 4 type, 5 color, 6 abilities, 7 P/T with sub-layers 7a-7e)
+- [ ] Recompute-from-scratch on state change, cached by version number
+- [ ] `StaticAbility` declarations on `CardImpl` (placeholder from S14, now populated)
+- [ ] ~10 catalog cards: Mycosynth Lattice, Conspiracy, Lord of Atlantis, Glorious Anthem, Crusade, Honor of the Pure, Tarmogoyf, Mind Control
+
+**Skip dependency detection (CR 613.8) initially** — pure timestamp ordering works for ~95% of real cards. Add when a problem card surfaces (Opalescence + Humility — niche in casual EDH).
+
+**Exit criteria:** Glorious Anthem in play → all your creatures show +1/+1 on the wire; remove anthem → reverts.
+
+---
+
+## S17 — Replacement effects engine (CR 614)
+**Phase:** 7 · **Goal:** effects that watch for events and substitute different events before they happen.
+
+- [ ] Replacement engine with iterative apply-loop
+- [ ] Affected-player-chooses-order prompt (CR 616) via paused server prompt
+- [ ] Self-replacement once-per-event tracking (CR 614.5)
+- [ ] Pipeline integration in `AddCounter`, `MoveCardByID`, `DrawCard`, `ChangePlayerLife`, `MarkDamage`
+- [ ] Built-in replacements: commander zone (refactored from S13.1), enters-tapped, skip-step
+- [ ] ~10 catalog cards: Doubling Season, Hardened Scales, Branching Evolution, Champion of Lambholt, Hangarback Walker, Stasis, Kismet
+- [ ] Damage prevention sub-category (CR 615)
+
+**Exit criteria:** Doubling Season + Hardened Scales in play → cast a counter-placing card → prompt for order → 4 counters land per chosen order.
+
+---
+
+## S18 — Combat keywords
+**Phase:** 7 · **Goal:** 12 keyword effects with full combat behavior + summoning sickness.
+
+- [ ] Keyword detection helpers (`HasKeyword`, `IsFlyingBlockable`, `BlockerCountValid`)
+- [ ] Combat damage flow rewrite (first-strike + regular sub-steps)
+- [ ] Lifelink, deathtouch, trample, vigilance
+- [ ] Flying / reach (block restriction)
+- [ ] Menace (≥2 blockers)
+- [ ] Defender, haste, flash
+- [ ] First strike + double strike
+- [ ] Summoning sickness (`Card.SummonedThisTurn`)
+- [ ] Damage assignment order prompt (CR 510.1c)
+- [ ] 12 catalog cards demonstrating each keyword
+
+**Out of scope:** protection, indestructible, hexproof, shroud, ward, banding, rampage, flanking, fear, intimidate, shadow.
+
+**Exit criteria:** A 1/1 deathtouch attacker takes down a 5/5 blocker; lifelink attackers gain life; trample carries over; vigilance keeps attackers untapped.
+
+---
+
+## S19 — Auto-fire triggered abilities
+**Phase:** 7 · **Goal:** ETB / dies / upkeep / cast / combat triggers fire automatically for catalog cards.
+
+- [ ] Auto-fire dispatcher: register listeners on zone change; LKI snapshot at trigger time (CR 603.10)
+- [ ] Optional / modal trigger prompts via existing prompt frame
+- [ ] ~25 catalog cards: Mulldrifter, Eternal Witness, Reclamation Sage, Acidic Slime, Solemn Simulacrum, Smothering Tithe, Esper Sentinel, Edric Spymaster of Trest, Phyrexian Arena, Sylvan Library, …
+
+**Manual fallback preserved:** `announce_trigger` from S13.1 stays for unimplemented cards and "hidden info" triggers.
+
+**Exit criteria:** Cast Mulldrifter → on resolve, you draw 2 cards automatically; advance to upkeep with Phyrexian Arena → trigger goes on stack automatically.
+
+---
+
+## S20 — Auto-target legality + smart cast UI
+**Phase:** 7 · **Goal:** capstone sprint — per-card targeting predicates; modal/X UI; structured cast dialog.
+
+- [ ] Predicate library (`AnyTarget`, `Creature`, `NonBlackCreature`, `Spell`, `PowerLE(n)`) + composers (`And`/`Or`/`Not`)
+- [ ] Extended `TargetSpec` (predicate + AllowSelf + AllowSameTarget)
+- [ ] `ModeSpec` for modal spells (Min/Max choose)
+- [ ] Cast dialog rewrite: filter target candidates by predicate; structured mode picker; X-cost live validation
+- [ ] Resolution-time re-check using same predicates (CR 608.2b)
+- [ ] Catalog updates: add `TargetSpec` predicates to all S14/S17/S18/S19 catalog cards
+
+**Free-form fallback preserved:** cards without structured predicates use S13.1's free-form picker.
+
+**Exit criteria:** Cast Doom Blade → picker shows only non-black creatures; cast Cyclonic Rift overload → no picker, mass effect; cast Fireball → X input with live mana-pool validation.
+
+---
+
+## S21 — Tokens, sacrifice, aristocrats
+**Phase:** 7 · **Goal:** an aristocrats Commander deck plays end-to-end.
+
+- [ ] Token catalog (Treasure, Food, Clue, Blood, Map, Powerstone, generic creatures)
+- [ ] `SacrificePermanent`, `Proliferate`, `CreateTokenAdvanced` primitives
+- [ ] Sacrifice as a cost component
+- [ ] ~40 cards: token producers, sacrifice outlets, aristocrats payoffs, proliferate cards
+- [ ] Theme-deck smoke test (Korvold-style aristocrats deck plays 3 turns)
+
+**Exit criteria:** Cast Goblin Bombardment + Blood Artist + Krenko, Mob Boss; sacrifice tokens to Bombardment one at a time → opponent's life ticks down (Blood Artist + Bombardment damage); your life ticks up (Blood Artist gain).
+
+---
+
+## S22 — Card draw + library manipulation
+**Phase:** 7 · **Goal:** a draw-heavy Commander deck plays end-to-end.
+
+- [ ] `ScryN`, `SurveilN`, `Explore`, `RevealAndChoose`, `MillToZone`, `DrawAndScry` primitives
+- [ ] Delayed-trigger mechanism (`Game.DelayedTriggers`) for "at the next end step" patterns
+- [ ] `KindLookAtCards` / `KindRevealCards` wire frames (controller-only with redacted view)
+- [ ] ~40 cards: passive draw engines, top-of-library manipulation, tutoring, mill, big draw payoffs
+- [ ] Theme-deck smoke test (blue draw deck plays 3 turns)
+
+**Exit criteria:** Activate Sensei's Divining Top → personal-only modal shows top 3 cards → reorder → confirm. Necropotence: activate to exile a card → advance to end step → card moves to hand automatically.
+
+---
+
+## S23 — Mass removal + boardwipes
+**Phase:** 7 · **Goal:** mass-effect cards work; boardwipes wipe correctly across decks.
+
+- [ ] `DestroyAllMatching`, `ExileAllMatching`, `BounceAllMatching`, `ReturnAllToHand` primitives
+- [ ] Predicate-driven mass effects with non-X exclusions
+- [ ] ~30 cards: Wrath of God (extended), Damnation, Toxic Deluge, Vandalblast, Austere Command, Farewell, Merciless Eviction, Cyclonic Rift overload (extended), …
+- [ ] Theme-deck smoke test (control deck plays 3 turns including a boardwipe)
+
+Detailed plan TBD; lands just-in-time after S22 ships.
+
+---
+
+## S24 — Equipment, auras, attachments
+**Phase:** 7 · **Goal:** equipment + auras work as attached state on creatures.
+
+- [ ] `Card.AttachedTo *uuid.UUID` field + wire shape
+- [ ] `Attach`, `Detach`, `EquipPay`, `EnchantTarget` primitives
+- [ ] ~30 cards: Sword of Feast and Famine, Sword of Fire and Ice, Lightning Greaves, Swiftfoot Boots, Skullclamp (extended), Rancor, Curse-style auras, …
+- [ ] Theme-deck smoke test (equipment / voltron-adjacent deck plays 3 turns)
+
+Detailed plan TBD; lands just-in-time after S23.
+
+---
+
+## S25 — Voltron / commander damage focus
+**Phase:** 7 · **Goal:** "make commander big and swing" decks work end-to-end.
+
+- [ ] `BoostUntilEOT`, `GiveKeywordUntilEOT`, `HexproofUntilEOT`, `IndestructibleUntilEOT` primitives
+- [ ] Until-end-of-turn effect lifecycle (cleanup-step removal of one-shot continuous effects)
+- [ ] Per-commander damage UX from S13.1 exercised heavily
+- [ ] ~30 cards: Bruna Light of Alabaster, Uril the Miststalker, voltron commanders + support, ramp + protection, big-equipment cards, …
+- [ ] Theme-deck smoke test (voltron deck deals 21 commander damage in 3 turns)
+
+Detailed plan TBD; lands just-in-time after S24.
+
+---
+
+## S26 — Tribal / creature type matters
+**Phase:** 7 · **Goal:** tribal Commander decks (Goblins, Merfolk, Slivers, etc.) work end-to-end.
+
+- [ ] `ChooseCreatureTypeOnETB` primitive (per-permanent persistent state for Cavern of Souls' named tribe)
+- [ ] `GrantTypeUntilEOT`, `TypeFilter` predicate
+- [ ] ~30 cards: Cavern of Souls, Door of Destinies, Vanquisher's Banner, Coat of Arms, Adaptive Automaton, tribal lords, changeling creatures, …
+- [ ] Theme-deck smoke test (tribal deck plays 3 turns with type-locked Cavern + lord buffs)
+
+Detailed plan TBD; lands just-in-time after S25.
+
+---
+
+## S27 — Card-type completeness (planeswalkers, sagas, vehicles, battles)
+**Phase:** 7 · **Goal:** the four card types missing or only partially modeled by S13–S26 become full citizens.
+
+- [ ] `LoyaltyAbility{Cost, Effect}` — proper stack-item activation (CR 606); replaces S13.1's thin "delta-on-action" model
+- [ ] Planeswalker uniqueness SBA (CR 704.5j) — controller chooses which to keep
+- [ ] `declare_attacker` polymorphic target — attack player OR planeswalker OR battle (CR 506.4, 508.1d)
+- [ ] Saga chapter triggers + lore counter advance as turn-based action (CR 714)
+- [ ] `CrewCost{N}` cost component + `BecomeCreatureUntilEOT(P, T)` effect (CR 702.122)
+- [ ] `BattleSpec{Defense, Subtype}` + `Card.ProtectorPlayerID` + ETB protector prompt + defeating triggers (CR 310)
+- [ ] ~30 cards: 8 planeswalkers, 8 sagas, 6 vehicles, 4 battles, 4 counter-payoff bridges
+- [ ] Theme-deck smoke test (Superfriends/sagas/vehicles deck plays through 4 turns)
+
+Detailed plan: `/home/node/.claude/plans/s27-card-type-completeness.md`. Builds on S13.1, S13.2 (counters + counter SBAs already shipped), S14, S15, S16, S18, S19, S25.
+
+---
+
+## S28 — Cost modification + alternative casts
+**Phase:** 7 · **Goal:** the cost engine that the auto-tapper hooks before pool validation.
+
+- [ ] `CostModifier interface { Modify(*Cost, *Card, *Game, uuid.UUID) *Cost }` registered per static ability
+- [ ] Modifier ordering per CR 601.2f: alternative cost → additional costs → increasers → reducers, floor at {1} (CR 117.13)
+- [ ] Alternative-cost slots in cast dialog (Force of Will pitch, Fierce Guardianship "if you control a commander")
+- [ ] Additional-cost slots (Snuff Out's "pay 4 life", Cabal Therapy's "sacrifice")
+- [ ] Cascade primitive (CR 702.85) — exile-until-CMC-less, may cast for free
+- [ ] ~25 cards: 6 reducers, 6 increasers (Stax pieces), 4 free-cast, 4 additional-cost, 5 cascade
+- [ ] Theme-deck smoke test (Maelstrom Wanderer cascade chain with Goblin Electromancer + Trinisphere on table)
+
+Detailed plan: `/home/node/.claude/plans/s28-cost-modification.md`. Builds on S14, S15, S20. Convoke / Improvise / Delve / Affinity stay deferred (state-scanning at cast time + different UX).
+
+---
+
+## S29 — Alt-cast paths from non-hand zones
+**Phase:** 7 · **Goal:** spells cast from graveyard, exile, or hand-with-special-marker.
+
+- [ ] `CastableZones []Zone` per card (default `[Hand]`); cast dialog walks all legal zones and surfaces all legal cast paths as separate buttons with their costs
+- [ ] Flashback (CR 702.34) — cast from graveyard for flashback cost; exile after
+- [ ] Madness (CR 702.35) — replacement on discard: exile face-down with marker; may cast for madness cost
+- [ ] Foretell (CR 702.143) — sorcery-speed `foretell_card` action; cast on a later turn for foretell cost
+- [ ] Escape (CR 702.144) — cast from graveyard, exile N cards from graveyard as additional cost
+- [ ] Suspend (CR 702.62) — exile with N time counters; auto-fire removes one each upkeep; cast for free with haste-until-EOT when last removed
+- [ ] Cycling (CR 702.32) — activated ability of cards in hand; cycling triggers fire from hand
+- [ ] Splice (CR 702.47) — addon to instants/sorceries
+- [ ] ~30 cards: 8 flashback, 4 madness, 4 foretell, 4 escape, 4 suspend, 4 cycling, 2 splice
+- [ ] Theme-deck smoke test (Muldrotha-style graveyard deck casts via flashback + escape)
+
+Detailed plan: `/home/node/.claude/plans/s29-alt-cast-paths.md`. Builds on S14, S17, S19, S20, S22, S28. Dredge/retrace/rebound/aftermath stay deferred.
+
+---
+
+## S30 — Damage prevention, cloning, face-down, deferred protection keywords
+**Phase:** 7 · **Goal:** engine-completeness capstone. After S30 there are no major missing primitives.
+
+- [ ] Damage prevention shields (CR 615) — replacement subtype with charges; integrates with S17 pipeline
+- [ ] Cloning (CR 706) — ETB replacement that captures copyable values; populates S16 layer 1 copy slot
+- [ ] Spell copies (CR 706.10) — `CopyTopOfStack`; controller chooses new targets *before* copy hits stack
+- [ ] Morph / manifest (CR 702.36, 701.34, 707) — face-down zone state on `Card`; reuses S22 hidden-info wire frame
+- [ ] Protection (CR 702.16) — predicate-based guard at four DEBT hook points (damage / enchant-equip SBA / block / target)
+- [ ] Hexproof (CR 702.11) — targeting-by-opponent guard
+- [ ] Ward (CR 702.21) — `TriggeredAbility` on `EventBecomesTarget` via S19; pay-or-counter prompt
+- [ ] Indestructible (CR 702.12) — flag short-circuits lethal-damage SBA + destroy-effect rejection
+- [ ] ~25 cards: 4 fog, 4 cloning, 4 spell copies, 4 morph, 6 protection/indestructible, 3 ward
+- [ ] Theme-deck smoke test (Avacyn + Reverberate + Clone + a fog plays 4 turns end-to-end)
+
+Detailed plan: `/home/node/.claude/plans/s30-damage-cloning-protection.md`. Builds on S14, S16, S17, S18 (picks up its deferred set), S19, S22. Phasing / banding / shroud-as-distinct stay deferred.
+
+---
+
+## Post-S30 — Rolling deck-driven catalog growth
+**Phase:** 7 · **Status:** rolling, not started.
+
+After S30 the engine is feature-complete for major Commander mechanics and the catalog (~600 cards) is mature enough that incremental work fits in 1-2 day batches. Remaining mechanics (MDFCs, adventures, mutate, energy, day/night, monarch, vehicles-with-saddle, phasing) drop to on-demand work.
+
+- **Deck-import audit:** when the user imports a deck, the lobby UI shows "X% of cards in catalog." If <80%, suggest filing a "missing cards" issue.
+- **Small PR cadence:** 5-15 cards per PR, 1-2 day turnaround. No sprint scaffolding.
+- **Engine work as needed:** when a card surfaces a missing primitive, ship a tiny engine PR + the card together.
+- **Quarterly catalog review:** every 12 weeks, audit "what cards have come up in real games but aren't in the catalog?" Prioritize by appearance count.
+
+Triaged just-in-time from real-play feedback.
 
 ---
 
@@ -635,22 +964,3 @@ Gap analysis behind this sprint: `Card.Counters` exists today ([server/internal/
 
 ---
 
-## S13+ — B→C rules graft (ongoing)
-
-After S12, every sprint adds one slice of rules enforcement to the Go server.
-Priorities come from the S12 pain-point triage and subsequent real games.
-
-Likely early wins:
-- Auto-untap at the start of each player's untap step
-- Auto-draw one card at draw step
-- Auto-tap lands for their mana type (mana pool UI)
-- Auto-resolve combat damage to life totals
-- Auto-move dead creatures to graveyard (state-based action, subset)
-- Triggered-ability ETB hooks for the most common cards in the playgroup
-
-**Design rule:** every rule is a pure function of game state. Manual override
-remains the permanent fallback. No sprint ever leaves the game in a state where
-a player cannot manually resolve an unhandled interaction.
-
-Sprint cadence stays at 2 weeks. Track sprints S13–Sxx in new issues once the
-S12 retro happens.
