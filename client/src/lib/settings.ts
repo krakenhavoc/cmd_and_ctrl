@@ -1,5 +1,6 @@
 import { writable, get, type Writable } from "svelte/store";
-import { setMuted } from "./sounds";
+import { setMuted, setVolumeMultiplier } from "./sounds";
+import { setAnimationConfig } from "./animations";
 
 // Settings is the client-wide preferences schema. Every toggle the
 // Settings panel surfaces maps to a field here. Persisted to
@@ -233,11 +234,40 @@ settings.subscribe((s) => saveSettings(s));
 // changes — including the migration-time absorption of the legacy
 // cmdctrl.muted key.
 let lastMuted: boolean | null = null;
+let lastVolume: number | null = null;
 settings.subscribe((s) => {
   if (s.audio.muted !== lastMuted) {
     lastMuted = s.audio.muted;
     setMuted(s.audio.muted);
   }
+  // Master × effects, both 0..100, normalised to a 0..1
+  // multiplier. sounds.play() folds this into per-event volume.
+  // Music volume is intentionally not folded here — music has no
+  // playback path yet (S09 didn't ship a music track).
+  const vol = (s.audio.masterVolume / 100) * (s.audio.effectsVolume / 100);
+  if (vol !== lastVolume) {
+    lastVolume = vol;
+    setVolumeMultiplier(vol);
+  }
+});
+
+// Bridge animations.* into animations.ts. Pushes the entire
+// animations group on every change rather than diffing because
+// (a) the payload is small (<10 booleans + a number), (b) the
+// receiver does shallow Object.assign, and (c) animations are
+// next-tick-bound so a redundant push has no observable effect.
+settings.subscribe((s) => {
+  setAnimationConfig({
+    enabled: s.animations.enabled,
+    speed: s.animations.speed,
+    cardDraw: s.animations.cardDraw,
+    cardPlay: s.animations.cardPlay,
+    cardTap: s.animations.cardTap,
+    cardUntap: s.animations.cardUntap,
+    cardFlip: s.animations.cardFlip,
+    particlesEtb: s.animations.particlesEtb,
+    damagePopups: s.animations.damagePopups,
+  });
 });
 
 // Observe the OS reduced-motion hint and propagate flips to the

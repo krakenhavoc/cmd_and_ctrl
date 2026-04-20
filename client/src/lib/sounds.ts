@@ -77,6 +77,19 @@ const lastPlayedAt = new Map<SoundName, number>();
 let armed = false;
 let mutedCache: boolean | null = null;
 
+// volumeMultiplier is the master * effects gain pushed by the
+// settings panel (S11.5). Stored as a plain number so play() can
+// fold it into per-call audio.volume without crossing a Svelte
+// store boundary on every fire. Range [0, 1]; clamped on set.
+let volumeMultiplier = 1;
+
+// setVolumeMultiplier is called from settings.ts whenever
+// audio.masterVolume or audio.effectsVolume changes. Kept exported
+// + dependency-free so the module's "no stores" contract holds.
+export function setVolumeMultiplier(v: number): void {
+  volumeMultiplier = Math.min(1, Math.max(0, v));
+}
+
 function hasWindow(): boolean {
   return typeof window !== "undefined";
 }
@@ -181,8 +194,13 @@ export function play(name: SoundName, opts?: PlayOptions): void {
   const base = pool.get(url);
   const audio = base ? (base.cloneNode(true) as HTMLAudioElement) : new Audio(url);
 
-  const volume = Math.min(1, Math.max(0, opts?.volume ?? 1));
-  audio.volume = volume;
+  // Final volume = caller's per-event hint × the user's master×effects
+  // multiplier from the settings panel. Both clamped; product stays in
+  // [0, 1]. A multiplier of 0 effectively mutes without taking the
+  // separate isMuted() path — useful for "0 master volume" UX without
+  // stomping the explicit mute checkbox.
+  const callerVol = Math.min(1, Math.max(0, opts?.volume ?? 1));
+  audio.volume = callerVol * volumeMultiplier;
   if (opts?.rate !== undefined) audio.playbackRate = opts.rate;
 
   // play() returns a promise that rejects if autoplay is blocked.
