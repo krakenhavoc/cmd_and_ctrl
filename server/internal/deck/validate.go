@@ -45,10 +45,20 @@ const (
 	// returned 404 — the deck was deleted or the ID was wrong.
 	CodeDeckNotFound = "deck_not_found"
 	// CodeDeckPrivate is a URL-import failure where the upstream
-	// returned 401/403. We don't support authenticated imports at
-	// S06.5, so the user needs to either make the deck public or
-	// paste the JSON directly.
+	// returned a JSON 401/403 — the deck exists but is not publicly
+	// readable. The user's fix is to flip the deck to Public or paste
+	// the JSON/text export directly.
 	CodeDeckPrivate = "deck_private"
+	// CodeUpstreamBlocked is a URL-import failure where the upstream's
+	// CDN (Cloudflare, typically) returned a 403 bot-wall HTML page
+	// instead of a JSON response. The deck itself may be public; the
+	// server's egress IP is being rate-limited or reputation-scored
+	// by the CDN. Distinguished from CodeDeckPrivate so the client
+	// can surface the right fix (try Archidekt, paste the text
+	// export, or route outbound traffic through a different IP)
+	// rather than nudging the user to change Moxfield's privacy
+	// setting on a deck that's already public.
+	CodeUpstreamBlocked = "upstream_blocked"
 	// CodeExternalAPIUnavailable is a URL-import failure for upstream
 	// 5xx / connection / timeout errors. Retry-after-a-bit semantics;
 	// not the user's fault.

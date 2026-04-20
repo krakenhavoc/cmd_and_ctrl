@@ -139,6 +139,29 @@ func TestFetchFromURLMoxfieldPrivate(t *testing.T) {
 	}
 }
 
+func TestFetchFromURLMoxfieldCloudflareBlock(t *testing.T) {
+	// Cloudflare 403 with its bot-wall HTML page must surface as
+	// ErrUpstreamBlocked, not ErrDeckPrivate — otherwise users see
+	// "deck is private" on a deck that's actually public and waste
+	// time flipping visibility settings on Moxfield.
+	cloudflareBody := `<!DOCTYPE html>
+<html><head><title>Attention Required! | Cloudflare</title></head>
+<body>Please stand by, while we are checking your browser...</body></html>`
+	withMoxfieldStub(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+		w.Header().Set("CF-Ray", "test-ray-id")
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(cloudflareBody))
+	}))
+	_, _, err := FetchFromURL(context.Background(), DefaultClient(), "https://moxfield.com/decks/public-but-blocked")
+	if !errors.Is(err, ErrUpstreamBlocked) {
+		t.Errorf("got %v, want ErrUpstreamBlocked", err)
+	}
+	if errors.Is(err, ErrDeckPrivate) {
+		t.Errorf("Cloudflare 403 must not match ErrDeckPrivate — users will think the deck is private when it isn't")
+	}
+}
+
 func TestFetchFromURLMoxfieldUpstreamDown(t *testing.T) {
 	withMoxfieldStub(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "sorry", http.StatusInternalServerError)
