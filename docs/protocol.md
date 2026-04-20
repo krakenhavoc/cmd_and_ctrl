@@ -51,8 +51,12 @@ Every snapshot frame is filtered per recipient before it goes on the wire:
   render a placeholder stack.
 - Shared zones (`battlefield`, `stack`, `exile`), plus every seat's
   `graveyard` and `command` zones, are unchanged.
-- Spectator connections (admin without `?player=`, or a future
-  observer role) see all opponent hand cards hidden.
+- Spectator connections (admin without `?player=`, or a `RoleSpectator`
+  session minted via `POST /games/{id}/spectate` — S11) see all opponent
+  hand cards hidden. `RoleSpectator` connections additionally have every
+  inbound `action` frame rejected with `bad_request` ("spectator
+  connections are read-only"). Admin-spectator connections keep their
+  ability to mutate state — admins are the moderator escape hatch.
 
 The filter runs inside the hub after `Room.Apply`'s state capture, so
 all recipients see the same `seq` for a given state even though the
@@ -212,6 +216,8 @@ PLAN.md §2.1).
 | `start_vote` | yes | `{ "topic": "<string>", "options": ["<string>", …] }` | Opens a vote with `player` as initiator. At least 2 options required. Rejects with `bad_request` if a vote is already open (clients must `end_vote` first). Added in S10. |
 | `cast_vote` | yes | `{ "option": <int> }` | Records / overwrites `player`'s ballot at the given option index. Re-voting overwrites. Added in S10. |
 | `end_vote` | no | — | Closes the currently open vote. Any seated caller may end any vote (sandbox). Added in S10. |
+| `undo` | no | — | Pops the room's most recent pre-mutation snapshot off its undo stack and restores the game state. Bumps `seq` like a normal action so clients see a regular `snapshot` frame. Authorization: a seated caller may only pop an entry whose stored caller matches their own seat (rewinding an opponent's move requires their cooperation — they undo first). Each successful seated undo debits the caller's `Player.UndosRemaining` (refreshed to `Game.UndoLimit` on entering their untap step). Admin (`?player=` omitted) bypasses both the caller and budget gates. Stack capped at 32 per room. No redo at v1. Errors: `bad_request` for empty stack ("nothing to undo"), cross-player request ("you can only undo your own most recent action"), or exhausted budget ("no undos remaining this turn"). Added in S11. |
+| `set_undo_limit` | no | `{ "limit": <int> }` | Sets `Game.UndoLimit` (per-player per-turn undo budget) and immediately refreshes every seat's `UndosRemaining` to the new value. Default at game start is 1. Sandbox — any seated player or admin may change it. Negative values clamp to 0 (effectively disables undo). Added in S11. |
 
 `<ZoneRef>` is `{ "kind": "<zone_kind>", "owner": "<uuid>" }`. Owner is
 omitted for shared zones (`battlefield`, `stack`, `exile`). Zone kinds are
@@ -353,6 +359,21 @@ bump unless they turn out to be wire-breaking:
   restarted server reload state, but live client sessions drop on
   disconnect and must be re-established.
 - **Spectator mode** (S11) — read-only connections.
+
+### Replay log (S11)
+
+Every successful `Apply` on a Room appends one JSONL line to
+`$CMDCTRL_DATA_DIR/replays/<game-id>.jsonl`. Each line is a full
+`SnapshotPayload` (the same shape broadcast over WS after an action),
+in the order the server produced them. Consumers can stream the file
+and re-derive the game timeline.
+
+`GET /games/{id}/replay` returns the log as `application/x-ndjson`.
+Authorization: admin or any seat (player / spectator) in this game.
+Returns 204 when no Apply has fired yet (empty replay). The
+crash-recovery dump (single `<game-id>.json` file holding the
+latest snapshot) is orthogonal — it exists for server restarts;
+the replay log is the additive history.
 
 ---
 

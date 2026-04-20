@@ -12,6 +12,11 @@ export interface GameMeta {
   name: string;
   created_at: string;
   invite_token?: string;
+  // Per-game spectator invite. Distinct from invite_token — sharing
+  // the player invite with a spectator would let them claim a seat.
+  // Only emitted to the admin and seated players; stripped from list
+  // responses + spectator-session responses. Added in S11.
+  spectator_invite?: string;
   players: SeatInfo[];
   state: "lobby" | "active" | "ended";
 }
@@ -108,9 +113,45 @@ export async function joinGame(
   return s;
 }
 
+// spectateGame is the read-only counterpart to joinGame: posts the
+// per-game spectator invite, receives a RoleSpectator session bound
+// to the game (no player_id). The session is installed in the
+// session store; the Game route uses session.principal.role to hide
+// action affordances. Added in S11.
+export async function spectateGame(
+  gameID: string,
+  inviteToken: string,
+  name: string,
+): Promise<Session> {
+  const res = await authFetch(`/games/${gameID}/spectate`, {
+    method: "POST",
+    body: JSON.stringify({ invite_token: inviteToken, name }),
+  });
+  const body = (await res.json()) as SessionResponse;
+  const s: Session = {
+    token: body.token,
+    expiresAt: body.expires_at,
+    principal: body.principal,
+    playerID: body.player_id,
+    gameID: body.game?.id,
+  };
+  setSession(s);
+  return s;
+}
+
 export async function startGame(id: string): Promise<GameMeta> {
   const res = await authFetch(`/games/${id}/start`, { method: "POST" });
   return (await res.json()) as GameMeta;
+}
+
+// replayURL returns an authenticated download URL for a game's
+// replay JSONL. Ships the session token as ?token= because browser
+// downloads can't set Authorization headers. Consumed by the lobby
+// "download replay" link via a plain <a href>. Added in S11.
+export function replayURL(gameID: string): string | null {
+  const s = currentSession();
+  if (!s?.token) return null;
+  return `/games/${gameID}/replay?token=${encodeURIComponent(s.token)}`;
 }
 
 // uploadDeck ships a decklist (plain text or Moxfield JSON) to the

@@ -178,6 +178,75 @@ func TestRoomActionDrawCardBroadcasts(t *testing.T) {
 	}
 }
 
+func TestUndoRewindsLastAction(t *testing.T) {
+	wsURL, g, _, cleanup := newRoomTestServer(t)
+	defer cleanup()
+
+	conn := dial(t, wsURL)
+	defer conn.Close()
+	readSnapshotFrame(t, conn) // initial
+
+	seat0ID := g.Seats[0].ID.String()
+
+	// Apply two draws: hand grows 7 → 8 → 9.
+	sendActionFrame(t, conn, protocol.ActionPayload{Type: "draw_card", Player: seat0ID})
+	after1 := readSnapshotFrame(t, conn)
+	if after1.Game.Seats[0].Hand.Count != 8 {
+		t.Fatalf("after draw 1: hand=%d, want 8", after1.Game.Seats[0].Hand.Count)
+	}
+	sendActionFrame(t, conn, protocol.ActionPayload{Type: "draw_card", Player: seat0ID})
+	after2 := readSnapshotFrame(t, conn)
+	if after2.Game.Seats[0].Hand.Count != 9 {
+		t.Fatalf("after draw 2: hand=%d, want 9", after2.Game.Seats[0].Hand.Count)
+	}
+
+	// Undo once: hand back to 8, library count back up by 1.
+	sendActionFrame(t, conn, protocol.ActionPayload{Type: "undo"})
+	rewind1 := readSnapshotFrame(t, conn)
+	if rewind1.Game.Seats[0].Hand.Count != 8 {
+		t.Errorf("after undo: hand=%d, want 8", rewind1.Game.Seats[0].Hand.Count)
+	}
+	if rewind1.Seq != after2.Seq+1 {
+		t.Errorf("undo seq: got %d, want %d (one bump past the second draw)",
+			rewind1.Seq, after2.Seq+1)
+	}
+
+	// Second undo: hand back to 7.
+	sendActionFrame(t, conn, protocol.ActionPayload{Type: "undo"})
+	rewind2 := readSnapshotFrame(t, conn)
+	if rewind2.Game.Seats[0].Hand.Count != 7 {
+		t.Errorf("after second undo: hand=%d, want 7", rewind2.Game.Seats[0].Hand.Count)
+	}
+}
+
+func TestUndoEmptyStackReturnsError(t *testing.T) {
+	wsURL, _, _, cleanup := newRoomTestServer(t)
+	defer cleanup()
+
+	conn := dial(t, wsURL)
+	defer conn.Close()
+	readSnapshotFrame(t, conn) // initial
+
+	// Initial snapshot does NOT push the undo stack (Snapshot doesn't
+	// mutate). An undo with no prior actions should error, not silently
+	// no-op or wedge the room.
+	id := sendActionFrame(t, conn, protocol.ActionPayload{Type: "undo"})
+	frame := readFrame(t, conn)
+	if frame.Kind != protocol.KindError {
+		t.Fatalf("expected error frame, got kind=%q", frame.Kind)
+	}
+	if frame.ID != id {
+		t.Errorf("error frame ID: got %q, want %q (originator)", frame.ID, id)
+	}
+	var p protocol.ErrorPayload
+	if err := json.Unmarshal(frame.Payload, &p); err != nil {
+		t.Fatalf("decode error payload: %v", err)
+	}
+	if p.Code != protocol.CodeBadRequest {
+		t.Errorf("error code: got %q, want %q", p.Code, protocol.CodeBadRequest)
+	}
+}
+
 func TestRoomActionBroadcastsToAllClients(t *testing.T) {
 	wsURL, g, _, cleanup := newRoomTestServer(t)
 	defer cleanup()
@@ -321,6 +390,71 @@ func TestRoomCrashRecoveryDumpsToDisk(t *testing.T) {
 	// Opening hand of 7 + 1 draw = 8 in the dumped snapshot.
 	if snap.Game.Seats[0].Hand.Count != 8 {
 		t.Errorf("dumped hand count: got %d, want 8", snap.Game.Seats[0].Hand.Count)
+	}
+}
+
+// TestRoomReplayLogAppends exercises the S11 replay surface: every
+// successful Apply should append exactly one JSON line (the
+// post-action snapshot) to <dumpDir>/replays/<game-id>.jsonl, in
+// order. The crash-recovery dump is a single-file "latest snapshot"
+// already; the replay log is its additive history equivalent so a
+// consumer can stream the timeline back.
+//
+// Also asserts the SIBLING invariant: Snapshot reads (no-seq-bump,
+// sent on connect to avoid racing with broadcasts) do NOT append a
+// line. Including them would pollute the replay with duplicates of
+// the current state every time a spectator opened a tab.
+func TestRoomReplayLogAppends(t *testing.T) {
+	wsURL, g, tmpDir, cleanup := newRoomTestServer(t)
+	defer cleanup()
+
+	conn := dial(t, wsURL)
+	defer conn.Close()
+
+	// Initial connect sends a targeted Snapshot — should NOT write
+	// a replay line. Wait for the initial frame to land so we're
+	// past the connect handshake.
+	readSnapshotFrame(t, conn)
+
+	replayPath := filepath.Join(tmpDir, "replays", g.ID.String()+".jsonl")
+	if _, err := os.Stat(replayPath); !os.IsNotExist(err) {
+		t.Fatalf("replay file should not exist yet: stat err=%v", err)
+	}
+
+	// Two actions → two replay lines (+ broadcast snapshots in
+	// response to each).
+	sendActionFrame(t, conn, protocol.ActionPayload{
+		Type: "draw_card", Player: g.Seats[0].ID.String(),
+	})
+	readSnapshotFrame(t, conn)
+	sendActionFrame(t, conn, protocol.ActionPayload{
+		Type: "draw_card", Player: g.Seats[0].ID.String(),
+	})
+	readSnapshotFrame(t, conn)
+
+	data, err := os.ReadFile(replayPath)
+	if err != nil {
+		t.Fatalf("read replay file: %v", err)
+	}
+	lines := strings.Split(strings.TrimSuffix(string(data), "\n"), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("replay line count: got %d, want 2\n---\n%s", len(lines), data)
+	}
+
+	// Seq on each line should monotonically increase starting at 1.
+	for i, line := range lines {
+		var snap protocol.SnapshotPayload
+		if err := json.Unmarshal([]byte(line), &snap); err != nil {
+			t.Fatalf("unmarshal replay line %d: %v", i, err)
+		}
+		wantSeq := uint64(i + 1)
+		if snap.Seq != wantSeq {
+			t.Errorf("replay line %d seq: got %d, want %d", i, snap.Seq, wantSeq)
+		}
+		if snap.Game.ID != g.ID.String() {
+			t.Errorf("replay line %d game id: got %q, want %q",
+				i, snap.Game.ID, g.ID.String())
+		}
 	}
 }
 

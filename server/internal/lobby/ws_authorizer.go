@@ -26,14 +26,14 @@ type WSAuthorizer struct {
 }
 
 // AuthorizeUpgrade implements ws.UpgradeAuthorizer.
-func (a *WSAuthorizer) AuthorizeUpgrade(r *http.Request) (uuid.UUID, uuid.UUID, error) {
+func (a *WSAuthorizer) AuthorizeUpgrade(r *http.Request) (ws.Binding, error) {
 	cred := auth.CredentialFromRequest(r)
 	if cred == "" {
-		return uuid.Nil, uuid.Nil, ws.StatusError(http.StatusUnauthorized, "authentication required")
+		return ws.Binding{}, ws.StatusError(http.StatusUnauthorized, "authentication required")
 	}
 	p, err := a.Auth.Validate(r.Context(), cred)
 	if err != nil {
-		return uuid.Nil, uuid.Nil, ws.StatusError(http.StatusUnauthorized, err.Error())
+		return ws.Binding{}, ws.StatusError(http.StatusUnauthorized, err.Error())
 	}
 
 	q := r.URL.Query()
@@ -41,7 +41,7 @@ func (a *WSAuthorizer) AuthorizeUpgrade(r *http.Request) (uuid.UUID, uuid.UUID, 
 	if raw := q.Get("game"); raw != "" {
 		id, perr := uuid.Parse(raw)
 		if perr != nil {
-			return uuid.Nil, uuid.Nil, ws.StatusError(http.StatusBadRequest, "invalid game id")
+			return ws.Binding{}, ws.StatusError(http.StatusBadRequest, "invalid game id")
 		}
 		requestedGame = id
 	}
@@ -53,28 +53,42 @@ func (a *WSAuthorizer) AuthorizeUpgrade(r *http.Request) (uuid.UUID, uuid.UUID, 
 		// principal) or, if present, MUST match — a mismatch is a
 		// sign of a copy-paste invite leak or a client bug.
 		if requestedGame != uuid.Nil && requestedGame != p.GameID {
-			return uuid.Nil, uuid.Nil, ws.StatusError(http.StatusForbidden, "session is not for this game")
+			return ws.Binding{}, ws.StatusError(http.StatusForbidden, "session is not for this game")
 		}
-		return p.GameID, p.PlayerID, nil
+		return ws.Binding{GameID: p.GameID, PlayerID: p.PlayerID}, nil
 
 	case auth.RoleAdmin:
 		// Admins bind to whatever game they asked for. ?player= is
-		// optional; uuid.Nil falls back to spectator view.
+		// optional; uuid.Nil falls back to spectator view. Admins are
+		// NOT marked read-only — they need to drive state on a
+		// player's behalf (the moderator escape hatch).
 		if requestedGame == uuid.Nil {
-			return uuid.Nil, uuid.Nil, ws.StatusError(http.StatusBadRequest, "missing game id")
+			return ws.Binding{}, ws.StatusError(http.StatusBadRequest, "missing game id")
 		}
 		var playerID uuid.UUID
 		if raw := q.Get("player"); raw != "" {
 			id, perr := uuid.Parse(raw)
 			if perr != nil {
-				return uuid.Nil, uuid.Nil, ws.StatusError(http.StatusBadRequest, "invalid player id")
+				return ws.Binding{}, ws.StatusError(http.StatusBadRequest, "invalid player id")
 			}
 			playerID = id
 		}
-		return requestedGame, playerID, nil
+		return ws.Binding{GameID: requestedGame, PlayerID: playerID}, nil
+
+	case auth.RoleSpectator:
+		// Spectator sessions are minted bound to one game (no player).
+		// Same query-string handling as RolePlayer (?game= must match
+		// or be omitted), but the bound playerID is always uuid.Nil
+		// — the hub then treats them like an admin spectator for
+		// visibility filtering, while ReadOnly = true makes the
+		// action-frame gate refuse any mutation frame they send.
+		if requestedGame != uuid.Nil && requestedGame != p.GameID {
+			return ws.Binding{}, ws.StatusError(http.StatusForbidden, "session is not for this game")
+		}
+		return ws.Binding{GameID: p.GameID, ReadOnly: true}, nil
 
 	default:
-		return uuid.Nil, uuid.Nil, ws.StatusError(http.StatusForbidden, "unrecognised principal role")
+		return ws.Binding{}, ws.StatusError(http.StatusForbidden, "unrecognised principal role")
 	}
 }
 

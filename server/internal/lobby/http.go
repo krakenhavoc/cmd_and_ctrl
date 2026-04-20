@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -95,11 +96,13 @@ func Handler(c Config) http.Handler {
 	deckLimit := ratelimit.New(2, 10)
 	mux.Handle("POST /admin/login", limit.Middleware(handlerFunc(c, adminLogin)))
 	mux.Handle("POST /games/{id}/join", limit.Middleware(handlerFunc(c, joinGame)))
+	mux.Handle("POST /games/{id}/spectate", limit.Middleware(handlerFunc(c, spectateGame)))
 	mux.Handle("POST /games", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, createGame)))
 	mux.Handle("DELETE /games/{id}", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, deleteGame)))
 	mux.Handle("GET /games", auth.Middleware(c.Auth)(handlerFunc(c, listGames)))
 	mux.Handle("GET /games/{id}", auth.Middleware(c.Auth)(handlerFunc(c, getGame)))
 	mux.Handle("POST /games/{id}/start", auth.Middleware(c.Auth)(handlerFunc(c, startGame)))
+	mux.Handle("GET /games/{id}/replay", auth.Middleware(c.Auth)(handlerFunc(c, downloadReplay)))
 	mux.Handle("POST /games/{id}/decks", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, uploadDeck))))
 	mux.Handle("GET /me", auth.Middleware(c.Auth)(handlerFunc(c, me)))
 	// Logout does not require an authenticated principal — a client
@@ -145,6 +148,14 @@ type createGameRequest struct {
 type joinRequest struct {
 	InviteToken string `json:"invite_token"`
 	Name        string `json:"name"`
+}
+
+// spectateRequest is the body of POST /games/{id}/spectate. The
+// invite token is the per-game spectator invite from GameMeta. Name
+// is purely cosmetic (chat author label, future presence indicator).
+type spectateRequest struct {
+	InviteToken string `json:"invite_token"`
+	Name        string `json:"name,omitempty"`
 }
 
 type listResponse struct {
@@ -229,16 +240,63 @@ func joinGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	setSessionCookie(w, tok, issued.ExpiresAt)
 
-	// Strip the invite token from the returned meta — the joiner
-	// already has it, and other joiners don't need to see it in the
-	// redirect-time response.
+	// Strip both invite tokens from the returned meta — the joiner
+	// already has the player invite they used to get here, and the
+	// spectator invite is admin-only data that shouldn't leak to a
+	// freshly-seated player by default.
 	meta.InviteToken = ""
+	meta.SpectatorInvite = ""
 	return writeJSON(w, http.StatusOK, sessionResponse{
 		Token:     tok,
 		ExpiresAt: issued.ExpiresAt,
 		Principal: issued,
 		Game:      &meta,
 		PlayerID:  playerID,
+	})
+}
+
+// spectateGame is the spectator counterpart to joinGame: a viewer
+// posts the per-game spectator invite and receives a RoleSpectator
+// session bound to the game (no PlayerID). They can then open
+// /ws?game=<id>&token=<tok> with no `?player=` and watch.
+//
+// No deck or seat is allocated. Spectators may join in any game
+// state (lobby / active / ended).
+func spectateGame(c Config, w http.ResponseWriter, r *http.Request) error {
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	var body spectateRequest
+	if err := decodeJSON(r, &body); err != nil {
+		return err
+	}
+
+	meta, err := c.Lobby.Spectate(id, body.InviteToken)
+	if err != nil {
+		return err
+	}
+
+	p := auth.Principal{
+		Role:   auth.RoleSpectator,
+		GameID: meta.ID,
+		Name:   trimToLimit(body.Name, 40),
+	}
+	tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
+	if err != nil {
+		return err
+	}
+	setSessionCookie(w, tok, issued.ExpiresAt)
+
+	// Spectators don't see either invite — neither the player nor
+	// the spectator one. They have what they need.
+	meta.InviteToken = ""
+	meta.SpectatorInvite = ""
+	return writeJSON(w, http.StatusOK, sessionResponse{
+		Token:     tok,
+		ExpiresAt: issued.ExpiresAt,
+		Principal: issued,
+		Game:      &meta,
 	})
 }
 
@@ -265,6 +323,14 @@ func getGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	if p.Role != auth.RoleAdmin && p.GameID != id {
 		meta.InviteToken = ""
+		meta.SpectatorInvite = ""
+	}
+	// Spectators specifically never see the player invite (would let
+	// them claim a seat) and shouldn't see the spectator one either —
+	// their session is already proof they have it.
+	if p.Role == auth.RoleSpectator {
+		meta.InviteToken = ""
+		meta.SpectatorInvite = ""
 	}
 	return writeJSON(w, http.StatusOK, meta)
 }
@@ -286,6 +352,70 @@ func deleteGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
+}
+
+// downloadReplay streams the per-game JSONL replay log back to the
+// caller. Each line is one protocol.SnapshotPayload (the same shape
+// the WS layer broadcasts), in the order Apply produced them. A
+// downstream consumer can deserialize line-by-line to reconstruct
+// the full game timeline.
+//
+// Authorization: admin or any seat (player or spectator) in this
+// game. The replay holds opponent hand contents in pre-filter form,
+// so it MUST NOT be served to unauthenticated callers — but a player
+// who was at the table has already seen these snapshots filtered for
+// their seat, and an admin / spectator who watched live likewise.
+// Sandbox-friendly default; if a deployment wants stricter
+// "admin-only replays", flip the role check below.
+func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return httpError(http.StatusInternalServerError, "missing principal")
+	}
+	if p.Role != auth.RoleAdmin && p.GameID != id {
+		return httpError(http.StatusForbidden, "not a seat in this game")
+	}
+	room := c.Lobby.RoomOf(id)
+	if room == nil {
+		return httpError(http.StatusNotFound, "game not found")
+	}
+	path := room.ReplayPath()
+	if path == "" {
+		return httpError(http.StatusServiceUnavailable, "replay log disabled (no dump dir)")
+	}
+	// Surface the file's existence cleanly: a brand-new game with no
+	// Apply yet has no replay file. Returning 204 keeps the contract
+	// "the route exists; there's just nothing to stream" without
+	// 404-confusing the client.
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			w.WriteHeader(http.StatusNoContent)
+			return nil
+		}
+		return httpError(http.StatusInternalServerError, "stat replay: "+err.Error())
+	}
+	w.Header().Set("Content-Type", "application/x-ndjson")
+	w.Header().Set(
+		"Content-Disposition",
+		`attachment; filename="`+id.String()+`.jsonl"`,
+	)
+	http.ServeContent(w, r, id.String()+".jsonl", info.ModTime(), mustOpen(path))
+	return nil
+}
+
+// mustOpen returns an *os.File for ServeContent. ServeContent needs
+// an io.ReadSeeker; os.File satisfies it. The defer-close lives in
+// http.ServeContent's lifetime via the response writer's flush — we
+// can't defer here because ServeContent reads from the file after
+// this function returns.
+func mustOpen(path string) *os.File {
+	f, _ := os.Open(path)
+	return f
 }
 
 func startGame(c Config, w http.ResponseWriter, r *http.Request) error {

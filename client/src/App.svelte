@@ -40,7 +40,7 @@
 {:else if $route.name === "lobby"}
   <Lobby />
 {:else if $route.name === "join"}
-  <Join gameID={$route.gameID} inviteToken={$route.inviteToken} />
+  <Join gameID={$route.gameID} inviteToken={$route.inviteToken} spectator={$route.spectator} />
 {:else if $route.name === "game"}
   <Game gameID={$route.gameID} />
 {/if}
