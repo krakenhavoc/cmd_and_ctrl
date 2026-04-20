@@ -12,7 +12,7 @@ export type Route =
   | { name: "login" }
   | { name: "adminLogin" }
   | { name: "lobby" }
-  | { name: "join"; gameID: string; inviteToken: string }
+  | { name: "join"; gameID: string; inviteToken: string; spectator: boolean }
   | { name: "game"; gameID: string };
 
 const defaultRoute: Route = { name: "login" };
@@ -36,10 +36,15 @@ function parseHash(hash: string): Route {
       // /games/:id/join?t=<token> → Join
       // /games/:id                → Game
       if (parts.length >= 3 && parts[2] === "join") {
+        // ?spectator=1 toggles the page from a player join (claims a
+        // seat) to a spectator join (read-only watch). Both flows
+        // share the same Join.svelte route — the UI swaps copy + the
+        // outbound API call based on this flag.
         return {
           name: "join",
           gameID: parts[1],
           inviteToken: params.get("t") ?? "",
+          spectator: params.get("spectator") === "1",
         };
       }
       if (parts.length >= 2) {
@@ -79,4 +84,12 @@ export function navigate(hash: string): void {
 // lobby UI's "copy invite link" button.
 export function inviteURL(gameID: string, token: string): string {
   return `${location.origin}${location.pathname}#/games/${gameID}/join?t=${encodeURIComponent(token)}`;
+}
+
+// spectatorInviteURL builds the spectator-flow variant of inviteURL.
+// Same Join.svelte route, but the ?spectator=1 query flag flips the
+// page into the read-only join path (calls /games/{id}/spectate
+// instead of /games/{id}/join).
+export function spectatorInviteURL(gameID: string, token: string): string {
+  return `${location.origin}${location.pathname}#/games/${gameID}/join?t=${encodeURIComponent(token)}&spectator=1`;
 }

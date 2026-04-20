@@ -51,8 +51,12 @@ Every snapshot frame is filtered per recipient before it goes on the wire:
   render a placeholder stack.
 - Shared zones (`battlefield`, `stack`, `exile`), plus every seat's
   `graveyard` and `command` zones, are unchanged.
-- Spectator connections (admin without `?player=`, or a future
-  observer role) see all opponent hand cards hidden.
+- Spectator connections (admin without `?player=`, or a `RoleSpectator`
+  session minted via `POST /games/{id}/spectate` — S11) see all opponent
+  hand cards hidden. `RoleSpectator` connections additionally have every
+  inbound `action` frame rejected with `bad_request` ("spectator
+  connections are read-only"). Admin-spectator connections keep their
+  ability to mutate state — admins are the moderator escape hatch.
 
 The filter runs inside the hub after `Room.Apply`'s state capture, so
 all recipients see the same `seq` for a given state even though the

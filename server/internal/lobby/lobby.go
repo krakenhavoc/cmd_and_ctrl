@@ -42,8 +42,14 @@ type GameMeta struct {
 	Name        string     `json:"name"`
 	CreatedAt   time.Time  `json:"created_at"`
 	InviteToken string     `json:"invite_token,omitempty"` // omitted from list responses; see PublicSeat
-	Players     []SeatInfo `json:"players"`
-	State       string     `json:"state"` // "lobby" | "active" | "ended"
+	// SpectatorInvite is a separate token that grants read-only access
+	// to a game (cannot claim a seat, cannot send action frames).
+	// Issued at Create time alongside the player invite. Stripped
+	// from list responses for the same reason as InviteToken — only
+	// the admin and seated players see it. Added in S11.
+	SpectatorInvite string     `json:"spectator_invite,omitempty"`
+	Players         []SeatInfo `json:"players"`
+	State           string     `json:"state"` // "lobby" | "active" | "ended"
 }
 
 // SeatInfo is the lobby-level view of one seat. As of S05 it
@@ -106,17 +112,22 @@ func (l *Lobby) Create(name string) (GameMeta, error) {
 	if err != nil {
 		return GameMeta{}, err
 	}
+	specInvite, err := token.Random(16)
+	if err != nil {
+		return GameMeta{}, err
+	}
 
 	g := game.NewGame()
 	room := l.mgr.Create(g)
 
 	meta := GameMeta{
-		ID:          g.ID,
-		Name:        name,
-		CreatedAt:   g.CreatedAt,
-		InviteToken: invite,
-		Players:     []SeatInfo{},
-		State:       string(g.State),
+		ID:              g.ID,
+		Name:            name,
+		CreatedAt:       g.CreatedAt,
+		InviteToken:     invite,
+		SpectatorInvite: specInvite,
+		Players:         []SeatInfo{},
+		State:           string(g.State),
 	}
 
 	l.mu.Lock()
@@ -194,6 +205,30 @@ func (l *Lobby) Join(id uuid.UUID, invite, playerName string) (GameMeta, uuid.UU
 	// returned meta. (json.Marshal would copy anyway, but defense in
 	// depth.)
 	return copyMeta(entry.meta), p.ID, nil
+}
+
+// Spectate validates `invite` against the per-game spectator invite
+// and returns the game's current metadata. It does not seat the
+// caller — spectators are not in entry.meta.Players. Distinct from
+// Join in that no player ID is allocated and no deck/library is
+// touched; the caller's identity is purely "spectator of this game".
+//
+// Returns ErrGameNotFound for an unknown ID and ErrInvalidInvite for
+// a wrong / empty token. Spectators may join in any game state
+// (lobby, active, ended) — there's no analogue to ErrGameStarted /
+// ErrGameFull. Added in S11.
+func (l *Lobby) Spectate(id uuid.UUID, invite string) (GameMeta, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	entry, ok := l.games[id]
+	if !ok {
+		return GameMeta{}, ErrGameNotFound
+	}
+	if invite == "" || invite != entry.meta.SpectatorInvite {
+		return GameMeta{}, ErrInvalidInvite
+	}
+	return copyMeta(entry.meta), nil
 }
 
 // ErrDeckNotUploaded is returned by Start when one or more seats
@@ -310,6 +345,7 @@ func (l *Lobby) List() []GameMeta {
 	for _, e := range l.games {
 		m := copyMeta(e.meta)
 		m.InviteToken = ""
+		m.SpectatorInvite = ""
 		out = append(out, m)
 	}
 	// Deterministic ordering by creation time helps the lobby UI
