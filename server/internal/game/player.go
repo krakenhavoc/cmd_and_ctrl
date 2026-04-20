@@ -109,6 +109,15 @@ type Player struct {
 	// player's untap step. Decremented per successful undo. Added in
 	// S11 alongside the per-caller undo gate.
 	UndosRemaining int
+
+	// Discord identity metadata (S12.5). Populated on AddPlayer when
+	// the seat is claimed via the OAuth flow; zero values for seats
+	// claimed via the manual-name form. Exposed through PlayerView so
+	// the client can render the avatar + display name without holding
+	// the lobby SeatInfo.
+	DiscordID         string
+	DiscordAvatarHash string
+	DisplayName       string
 }
 
 // newPlayer constructs a player with empty zones and their starting

@@ -108,6 +108,15 @@ type PlayerView struct {
 	// "undos: N" indicator on the toolbar so the viewer can see at
 	// a glance whether their next undo will be allowed. Added in S11.
 	UndosRemaining int `json:"undos_remaining,omitempty"`
+
+	// Discord identity (S12.5). Populated when the seat was claimed
+	// via OAuth; zero values for manual-name joins. The client
+	// builds /avatars/{discord_id}/{discord_avatar_hash}.png to
+	// pull the cached portrait, and prefers display_name over name
+	// for the seat label.
+	DiscordID         string `json:"discord_id,omitempty"`
+	DiscordAvatarHash string `json:"discord_avatar_hash,omitempty"`
+	DisplayName       string `json:"display_name,omitempty"`
 }
 
 // LifeChangeView is the wire representation of a single life-change
@@ -242,23 +251,26 @@ func viewOfPlayer(p *game.Player) PlayerView {
 		}
 	}
 	return PlayerView{
-		ID:              p.ID.String(),
-		Name:            p.Name,
-		Seat:            p.Seat,
-		Life:            p.Life,
-		Poison:          p.Poison,
-		Energy:          p.Energy,
-		Library:         viewOfZone(p.Library),
-		Hand:            viewOfZone(p.Hand),
-		Graveyard:       viewOfZone(p.Graveyard),
-		Command:         viewOfZone(p.Command),
-		CommanderDamage: cmdrDamage,
-		LifeHistory:     history,
-		Eliminated:      p.Eliminated,
-		HandKept:        p.HandKept,
-		MulligansTaken:  p.MulligansTaken,
-		DeckImported:    p.DeckImported,
-		UndosRemaining:  p.UndosRemaining,
+		ID:                p.ID.String(),
+		Name:              p.Name,
+		Seat:              p.Seat,
+		Life:              p.Life,
+		Poison:            p.Poison,
+		Energy:            p.Energy,
+		Library:           viewOfZone(p.Library),
+		Hand:              viewOfZone(p.Hand),
+		Graveyard:         viewOfZone(p.Graveyard),
+		Command:           viewOfZone(p.Command),
+		CommanderDamage:   cmdrDamage,
+		LifeHistory:       history,
+		Eliminated:        p.Eliminated,
+		HandKept:          p.HandKept,
+		MulligansTaken:    p.MulligansTaken,
+		DeckImported:      p.DeckImported,
+		UndosRemaining:    p.UndosRemaining,
+		DiscordID:         p.DiscordID,
+		DiscordAvatarHash: p.DiscordAvatarHash,
+		DisplayName:       p.DisplayName,
 	}
 }
 

@@ -38,6 +38,11 @@ export default defineConfig({
       // the callback. Mirror the same shape used by the prod
       // reverse proxy (cmd.labxp.io → :8080).
       "/auth": { target: "http://localhost:8080", changeOrigin: true },
+      // S12.5: Discord avatar cache, served by the Go side. Without
+      // this proxy Vite returns its index.html and the browser
+      // tries to render HTML as a PNG — onerror fires and the
+      // PlayerHeader latches the failed-avatar state.
+      "/avatars": { target: "http://localhost:8080", changeOrigin: true },
     },
   },
 });

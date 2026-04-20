@@ -74,6 +74,14 @@ type Config struct {
 	// token + /users/@me endpoints via httptest. Nil falls back to
 	// http.DefaultClient.
 	DiscordHTTPClient *http.Client
+
+	// DiscordAvatars is the S12.5 avatar cache. Nil means
+	// /avatars/* returns 503; production wires a cache rooted at
+	// $CMDCTRL_DATA_DIR/avatars so disk-cached images persist
+	// across restarts. The client falls back to an initials
+	// placeholder when the endpoint 503s, so an unconfigured
+	// deploy still renders a usable board.
+	DiscordAvatars *discord.AvatarCache
 }
 
 // GameEvictor is the subset of *ws.Hub that the lobby needs to close
@@ -125,6 +133,13 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /auth/discord/config", handlerFunc(c, discordConfig))
 	mux.Handle("GET /auth/discord/start", limit.Middleware(handlerFunc(c, discordStart)))
 	mux.Handle("GET /auth/discord/callback", limit.Middleware(handlerFunc(c, discordCallback)))
+	// Discord avatar cache. Unauthenticated — the avatar hashes
+	// are effectively public (anyone in a shared guild already
+	// sees them via Discord's CDN) and a cached image tells the
+	// requester nothing they couldn't learn by watching the
+	// game's seat list. An authenticated gate would mean every
+	// <img> in the board has to carry a token.
+	mux.Handle("GET /avatars/{id}/{hash}", handlerFunc(c, discordAvatar))
 	mux.Handle("POST /games", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, createGame)))
 	mux.Handle("DELETE /games/{id}", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, deleteGame)))
 	mux.Handle("GET /games", auth.Middleware(c.Auth)(handlerFunc(c, listGames)))

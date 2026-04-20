@@ -16,6 +16,7 @@
   import { seatColor } from "../../colors";
   import { floatUp, fadeOut } from "../../animations";
   import { play } from "../../sounds";
+  import { avatarURL } from "../../api";
 
   type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
 
@@ -47,6 +48,24 @@
     if (!attackTargetable) return;
     onDeclareAttack?.(seat.id);
   }
+
+  // Discord identity (S12.5). avatar resolves to /avatars/{id}/{hash}.png
+  // when both fields are present; null falls back to the seat-color
+  // dot. displayLabel prefers the OAuth-provided global_name over
+  // the bare lobby name so a friend who signed in as "Alice" doesn't
+  // see "Alice.1234" on their seat.
+  const avatar = $derived(avatarURL(seat.discord_id, seat.discord_avatar_hash));
+  const displayLabel = $derived(seat.display_name ?? seat.name);
+  // failedAvatarURL latches a single URL that errored, so a transient
+  // server failure for one specific (id, hash) doesn't degrade
+  // to the dot permanently. When the user changes their avatar
+  // (new hash → new URL), or the server starts succeeding again,
+  // a re-render with a different avatar URL clears the latch and
+  // lets the <img> retry. Stored as a string instead of a boolean
+  // for exactly that reason — boolean would stick across URL
+  // changes since avatarFailed has no input to reset against.
+  let failedAvatarURL = $state<string | null>(null);
+  const avatarFailed = $derived(avatar !== null && failedAvatarURL === avatar);
 
   // Life / poison / energy adjusters. Self only — these all go through
   // the player-scoped guard server-side, so a non-admin viewer trying
@@ -120,10 +139,20 @@
       handleHeaderClick();
     }
   }}
-  aria-label={attackTargetable ? `attack ${seat.name}` : `${seat.name}, ${seat.life} life`}
+  aria-label={attackTargetable ? `attack ${displayLabel}` : `${displayLabel}, ${seat.life} life`}
 >
-  <span class="seat-dot" aria-hidden="true"></span>
-  <span class="name">{seat.name}</span>
+  {#if avatar && !avatarFailed}
+    <img
+      class="avatar"
+      src={avatar}
+      alt=""
+      aria-hidden="true"
+      onerror={() => (failedAvatarURL = avatar)}
+    />
+  {:else}
+    <span class="seat-dot" aria-hidden="true"></span>
+  {/if}
+  <span class="name">{displayLabel}</span>
 
   <!-- Marker badges. Monarch and initiative are claim toggles for self
        (clear when already-held, set otherwise). Poison / energy show
@@ -336,6 +365,19 @@
     border-radius: 50%;
     background: var(--seat-color, #888);
     flex: 0 0 auto;
+  }
+  .avatar {
+    /* Header is 28px tall with 4px padding = 20px content. Avatar
+       is 18px + 1px ring so it sits cleanly inside without being
+       clipped on the top/bottom. A bigger portrait would need the
+       header to grow — not worth it for the 4-seat grid layout
+       where every px of vertical space is already tight. */
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex: 0 0 auto;
+    box-shadow: 0 0 0 1px var(--seat-color, #888);
   }
   .name {
     font-weight: 600;

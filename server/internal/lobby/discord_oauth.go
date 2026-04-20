@@ -147,6 +147,36 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// discordAvatar serves a cached Discord avatar PNG. Path shape
+// is /avatars/{id}/{hash}.png — the .png suffix is stripped here
+// so the ServeMux pattern {hash} doesn't have to include it.
+// Avatar cache handles disk I/O + CDN fetch + inflight dedup.
+func discordAvatar(c Config, w http.ResponseWriter, r *http.Request) error {
+	if c.DiscordAvatars == nil {
+		return httpError(http.StatusServiceUnavailable, "avatar cache not configured")
+	}
+	id := r.PathValue("id")
+	hash := r.PathValue("hash")
+	// The Svelte client builds the URL with `.png` on the end so
+	// browsers pick the right decoder from the extension; the
+	// cache keys don't carry the suffix, so strip it before
+	// handing off.
+	if len(hash) > 4 && hash[len(hash)-4:] == ".png" {
+		hash = hash[:len(hash)-4]
+	}
+	err := c.DiscordAvatars.Serve(w, r, id, hash)
+	if err == discord.ErrCacheDisabled {
+		return httpError(http.StatusServiceUnavailable, "avatar cache disabled")
+	}
+	if err == discord.ErrInvalidAvatarKey {
+		return httpError(http.StatusBadRequest, "invalid avatar id or hash")
+	}
+	if err != nil {
+		return httpError(http.StatusBadGateway, err.Error())
+	}
+	return nil
+}
+
 // discordStore returns the Config's state store, constructing a
 // fresh one on first use if the caller left the field nil. Stored
 // back onto the Config so subsequent calls in the same request
