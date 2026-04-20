@@ -144,16 +144,27 @@
   .hand.opponent .hand-slot:first-child {
     margin-left: 0;
   }
-  /* Stacked layout: drop the fan rotation + overshoot the overlap so
-     cards read as a neat deck-like stack rather than a rotated fan.
-     -60% negative margin produces a tight overlap where only the top
-     sliver of each trailing card peeks out. Works for both self and
-     opponent hands. */
+  /* Stacked layout: drop the fan rotation and tightly overlap the
+     cards into a deck-like pile. The overlap is sized relative to
+     the card width (--card-w, which cascades from the card-size
+     setting) rather than the container, because a % margin-left in
+     flexbox resolves against the flex container, pushing cards off-
+     screen. 85% overlap leaves a 15% sliver of each trailing card
+     visible — enough to see how many are in hand without spreading
+     them across the strip. */
   .hand.stacked .hand-slot {
-    margin-left: -60%;
+    margin-left: calc(var(--card-w, 80px) * -0.85);
   }
   .hand.stacked .hand-slot:first-child {
     margin-left: 0;
+  }
+  /* Stacked layout needs left alignment — justify-content: center
+     with near-zero total width collapses every slot onto the same
+     point, which hides every card but the last. flex-start anchors
+     the stack to the left edge so the strip grows visibly. */
+  .hand.stacked {
+    justify-content: flex-start;
+    padding-left: 12px;
   }
   /* Opponent hand sizes are inherited from the parent
      .panel.opponent via --card-w/--card-h, so no explicit override
