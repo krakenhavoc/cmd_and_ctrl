@@ -59,6 +59,52 @@ type GameView struct {
 	// which matches the only seat games started on before this field
 	// existed. Added in S13.
 	StartingSeat int `json:"starting_seat"`
+	// StackItems is the announce-time metadata for every item
+	// currently on the stack — caster, target list, modes, X,
+	// distribution, hold-priority, split-second flags. Indexed in
+	// stack order (bottom..top); the corresponding card (for spell
+	// items) lives in the existing `stack` ZoneView. The dual
+	// representation keeps existing zone plumbing intact while the
+	// new cast/resolve UI reads StackItems for its rendering. Empty
+	// when the stack is empty. Added in S13.1.
+	StackItems []StackItemView `json:"stack_items,omitempty"`
+	// PendingTriggers is the APNAP-ordered queue of triggered
+	// abilities waiting to hit the stack (CR 603.3b). Drained on
+	// next priority-grant boundary. Empty when no triggers are
+	// pending. Added in S13.1.
+	PendingTriggers []StackItemView `json:"pending_triggers,omitempty"`
+	// SplitSecondActive mirrors `Game.SplitSecondActive` — true
+	// while any item with split second is on the stack (CR 702.79).
+	// Drives the client's "no responses allowed" UI gating. Added
+	// in S13.1.
+	SplitSecondActive bool `json:"split_second_active,omitempty"`
+}
+
+// StackItemView is the wire shape of a stack-item's announce-time
+// metadata. Mirrors `game.StackItem` with UUIDs serialised as
+// strings. See server/internal/game/stack.go for field semantics.
+type StackItemView struct {
+	ID           string          `json:"id"`
+	Kind         string          `json:"kind"`
+	Controller   string          `json:"controller"`
+	Owner        string          `json:"owner"`
+	SourceCardID string          `json:"source_card_id"`
+	Label        string          `json:"label,omitempty"`
+	Targets      []TargetRefView `json:"targets,omitempty"`
+	Modes        []int           `json:"modes,omitempty"`
+	XValue       int             `json:"x_value,omitempty"`
+	Distribution map[string]int  `json:"distribution,omitempty"`
+	HoldPriority bool            `json:"hold_priority,omitempty"`
+	SplitSecond  bool            `json:"split_second,omitempty"`
+}
+
+// TargetRefView is the wire shape of a single announce-time target
+// slot. Kind is one of "player", "card", "self", "none"; ID is the
+// referenced UUID (zero string for "self" / "none"). See
+// server/internal/game/stack.go for the canonical taxonomy.
+type TargetRefView struct {
+	Kind string `json:"kind"`
+	ID   string `json:"id,omitempty"`
 }
 
 // VoteView is the wire form of game.Vote. Ballots is keyed by voter
@@ -171,6 +217,12 @@ type CardView struct {
 	Tapped      bool           `json:"tapped,omitempty"`
 	Counters    map[string]int `json:"counters,omitempty"`
 	IsCommander bool           `json:"is_commander,omitempty"`
+	// DamageMarked is the damage currently noted on this creature
+	// (S13.1 — feeds the lethal-damage SBA). Cleared by the
+	// cleanup-step turn-based action and on zone exit. Only
+	// meaningful for creatures on the battlefield; omitted when
+	// zero. Added in S13.1.
+	DamageMarked int `json:"damage_marked,omitempty"`
 	// BattleX, BattleY are the normalised battlefield position in
 	// [0, 1]. Emitted only for cards on the battlefield (other zones
 	// clear them to zero on exit); clients should ignore these fields
@@ -225,15 +277,104 @@ func ViewOfGame(g *game.Game) GameView {
 				Phase:          string(g.Turn.Phase),
 				Step:           string(g.Turn.Step),
 			},
-			MulligansOpen: g.MulligansOpen,
-			Monarch:       uuidStringOrEmpty(g.Monarch),
-			Initiative:    uuidStringOrEmpty(g.Initiative),
-			Promises:      viewOfPromises(g.Promises),
-			Vote:          viewOfVote(g.Vote),
-			UndoLimit:     g.UndoLimit,
-			StartingSeat:  g.StartingSeat,
+			MulligansOpen:     g.MulligansOpen,
+			Monarch:           uuidStringOrEmpty(g.Monarch),
+			Initiative:        uuidStringOrEmpty(g.Initiative),
+			Promises:          viewOfPromises(g.Promises),
+			Vote:              viewOfVote(g.Vote),
+			UndoLimit:         g.UndoLimit,
+			StartingSeat:      g.StartingSeat,
+			StackItems:        viewOfStackItemsInStackOrder(g),
+			PendingTriggers:   viewOfStackItemSlice(g.PendingTriggers),
+			SplitSecondActive: g.SplitSecondActive,
 		}
 	})
+	return view
+}
+
+// viewOfStackItemsInStackOrder projects every stack item, ordered by
+// the underlying Game.Stack zone (bottom..top). Spell items are
+// matched to cards via InstanceID; ability items (which don't have a
+// real card on the stack) are appended in StackMeta iteration order
+// after the spell items. Returns nil for an empty stack so json
+// omitempty drops the field.
+func viewOfStackItemsInStackOrder(g *game.Game) []StackItemView {
+	if len(g.StackMeta) == 0 {
+		return nil
+	}
+	out := make([]StackItemView, 0, len(g.StackMeta))
+	seen := make(map[uuid.UUID]bool, len(g.StackMeta))
+	if g.Stack != nil {
+		for _, c := range g.Stack.Cards {
+			if item, ok := g.StackMeta[c.InstanceID]; ok && item != nil {
+				out = append(out, viewOfStackItem(item))
+				seen[item.ID] = true
+			}
+		}
+	}
+	for id, item := range g.StackMeta {
+		if seen[id] || item == nil {
+			continue
+		}
+		out = append(out, viewOfStackItem(item))
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// viewOfStackItemSlice projects a slice of *StackItem (the pending-
+// triggers queue) to the wire shape, preserving order. Returns nil
+// for an empty input.
+func viewOfStackItemSlice(items []*game.StackItem) []StackItemView {
+	if len(items) == 0 {
+		return nil
+	}
+	out := make([]StackItemView, 0, len(items))
+	for _, it := range items {
+		if it == nil {
+			continue
+		}
+		out = append(out, viewOfStackItem(it))
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// viewOfStackItem mirrors a single game.StackItem to its wire shape.
+// Distribution and Targets are reallocated; scalar fields are
+// stringified UUIDs.
+func viewOfStackItem(it *game.StackItem) StackItemView {
+	view := StackItemView{
+		ID:           it.ID.String(),
+		Kind:         string(it.Kind),
+		Controller:   it.Controller.String(),
+		Owner:        it.Owner.String(),
+		SourceCardID: it.SourceCardID.String(),
+		Label:        it.Label,
+		Modes:        append([]int(nil), it.Modes...),
+		XValue:       it.XValue,
+		HoldPriority: it.HoldPriority,
+		SplitSecond:  it.SplitSecond,
+	}
+	if len(it.Targets) > 0 {
+		view.Targets = make([]TargetRefView, len(it.Targets))
+		for i, t := range it.Targets {
+			view.Targets[i] = TargetRefView{
+				Kind: string(t.Kind),
+				ID:   uuidStringOrEmpty(t.ID),
+			}
+		}
+	}
+	if len(it.Distribution) > 0 {
+		view.Distribution = make(map[string]int, len(it.Distribution))
+		for k, v := range it.Distribution {
+			view.Distribution[k.String()] = v
+		}
+	}
 	return view
 }
 
@@ -381,20 +522,23 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		seats[i] = hidden
 	}
 	return GameView{
-		ID:            v.ID,
-		State:         v.State,
-		Seats:         seats,
-		Battlefield:   v.Battlefield,
-		Stack:         v.Stack,
-		Exile:         v.Exile,
-		Turn:          v.Turn,
-		MulligansOpen: v.MulligansOpen,
-		Monarch:       v.Monarch,
-		Initiative:    v.Initiative,
-		Promises:      v.Promises,
-		Vote:          v.Vote,
-		UndoLimit:     v.UndoLimit,
-		StartingSeat:  v.StartingSeat,
+		ID:                v.ID,
+		State:             v.State,
+		Seats:             seats,
+		Battlefield:       v.Battlefield,
+		Stack:             v.Stack,
+		Exile:             v.Exile,
+		Turn:              v.Turn,
+		MulligansOpen:     v.MulligansOpen,
+		Monarch:           v.Monarch,
+		Initiative:        v.Initiative,
+		Promises:          v.Promises,
+		Vote:              v.Vote,
+		UndoLimit:         v.UndoLimit,
+		StartingSeat:      v.StartingSeat,
+		StackItems:        v.StackItems,
+		PendingTriggers:   v.PendingTriggers,
+		SplitSecondActive: v.SplitSecondActive,
 	}
 }
 
@@ -420,19 +564,20 @@ func viewOfCard(c game.Card) CardView {
 		}
 	}
 	view := CardView{
-		InstanceID:  c.InstanceID.String(),
-		Name:        c.Name,
-		Owner:       c.Owner.String(),
-		Controller:  c.Controller.String(),
-		ScryfallID:  c.ScryfallID,
-		TypeLine:    c.TypeLine,
-		Power:       c.Power,
-		Toughness:   c.Toughness,
-		Tapped:      c.Tapped,
-		Counters:    counters,
-		IsCommander: c.IsCommander,
-		BattleX:     c.BattleX,
-		BattleY:     c.BattleY,
+		InstanceID:   c.InstanceID.String(),
+		Name:         c.Name,
+		Owner:        c.Owner.String(),
+		Controller:   c.Controller.String(),
+		ScryfallID:   c.ScryfallID,
+		TypeLine:     c.TypeLine,
+		Power:        c.Power,
+		Toughness:    c.Toughness,
+		Tapped:       c.Tapped,
+		Counters:     counters,
+		IsCommander:  c.IsCommander,
+		BattleX:      c.BattleX,
+		BattleY:      c.BattleY,
+		DamageMarked: c.DamageMarked,
 	}
 	if c.AttackingTarget != uuid.Nil {
 		view.AttackingTarget = c.AttackingTarget.String()
