@@ -31,20 +31,24 @@
 }
 
 /* Battlefield card size — settings.display.cardSize drives this
-   as a multiplier. The actual pixel sizes live on .panel / .panel.
-   opponent in PlayerPanel.svelte; they read --card-scale so a
-   :root override scales both self and opponent cards in lockstep.
-   Using a multiplier (rather than a direct --card-w override)
-   lets us stack on top of the panel's per-role sizing without a
-   specificity war. */
+   as two multipliers, one per role. Self uses the full curve
+   (0.75 / 1 / 1.25); opponents use a flatter curve (0.85 / 1 /
+   1.1) because their panel sits in a fixed 0.7fr row in the
+   Board grid and a 25% upscale would push the rotated hand fan
+   into the creatures zone. The flatter curve keeps "large"
+   layout-safe while still letting the user feel the setting on
+   the opposite side of the table. */
 :root {
   --card-scale: 1;
+  --card-scale-opponent: 1;
 }
 :root[data-card-size="small"] {
   --card-scale: 0.75;
+  --card-scale-opponent: 0.85;
 }
 :root[data-card-size="large"] {
   --card-scale: 1.25;
+  --card-scale-opponent: 1.1;
 }
 
 body {
