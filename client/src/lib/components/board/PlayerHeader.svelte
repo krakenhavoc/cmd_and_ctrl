@@ -130,11 +130,6 @@
   class:eliminated={seat.eliminated}
   style:--seat-color={seatColor(seat.seat)}
   data-seat-id={seat.id}
-  data-debug-discord-id={seat.discord_id ?? "ABSENT"}
-  data-debug-avatar-hash={seat.discord_avatar_hash ?? "ABSENT"}
-  data-debug-avatar-url={avatar ?? "NULL"}
-  data-debug-avatar-failed={String(avatarFailed)}
-  data-debug-failed-url={failedAvatarURL ?? "NONE"}
   role={attackTargetable ? "button" : "group"}
   tabindex={attackTargetable ? 0 : undefined}
   onclick={handleHeaderClick}
