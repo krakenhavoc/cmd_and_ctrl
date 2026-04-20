@@ -53,9 +53,17 @@
     onDeclareBlock,
   }: Props = $props();
 
-  const placements = $derived(seatPlacements(view.seats, viewerID));
+  // Spectators have no perspective — there's no "self" seat to anchor
+  // the around-the-table rotation. Use a uniform grid for them with
+  // every panel upright and equally sized; quadrant placements only
+  // apply when there's a viewer at the table.
+  const isSpectator = $derived(viewerID === null);
+
+  const placements = $derived(isSpectator ? null : seatPlacements(view.seats, viewerID));
   const opponentCount = $derived(
-    (["next", "across", "across_next"] as SeatPosition[]).filter((p) => placements[p]).length,
+    placements
+      ? (["next", "across", "across_next"] as SeatPosition[]).filter((p) => placements[p]).length
+      : 0,
   );
 
   // Group battlefield cards by controller so each panel only sees
@@ -105,14 +113,50 @@
   let boardEl: HTMLDivElement | null = $state(null);
 </script>
 
-<div class="board" data-opp-count={opponentCount} bind:this={boardEl}>
-  {#each positions as pos (pos)}
-    {@const seat = placements[pos]}
-    {#if seat}
-      <div class="slot" data-pos={pos} style:grid-area={pos}>
+<div
+  class="board"
+  class:spectator={isSpectator}
+  data-opp-count={opponentCount}
+  data-seat-count={view.seats.length}
+  bind:this={boardEl}
+>
+  {#if placements}
+    {#each positions as pos (pos)}
+      {@const seat = placements[pos]}
+      {#if seat}
+        <div class="slot" data-pos={pos} style:grid-area={pos}>
+          <PlayerPanel
+            {seat}
+            isSelf={pos === "self"}
+            isActive={seat.id === activeSeatID}
+            hasPriority={seat.id === prioritySeatID}
+            {viewerID}
+            {isAdmin}
+            {sendAction}
+            isMonarch={seat.id === monarchID}
+            isInitiative={seat.id === initiativeID}
+            {view}
+            controlledCards={cardsByController.get(seat.id) ?? []}
+            exile={exileForOwner(seat.id)}
+            {combatMode}
+            {selectedCombatCardID}
+            {onSelectCombatCard}
+            {onDeclareAttack}
+            {onDeclareBlock}
+            onTapToggle={handleTapToggle}
+            onPlayCard={handlePlayCard}
+            onDrawCard={handleDrawCard}
+          />
+        </div>
+      {/if}
+    {/each}
+  {:else}
+    <!-- Spectator path: uniform grid, all upright, equal real estate. -->
+    {#each view.seats as seat (seat.id)}
+      <div class="slot spectator-slot">
         <PlayerPanel
           {seat}
-          isSelf={pos === "self"}
+          isSelf={false}
           isActive={seat.id === activeSeatID}
           hasPriority={seat.id === prioritySeatID}
           {viewerID}
@@ -133,8 +177,8 @@
           onDrawCard={handleDrawCard}
         />
       </div>
-    {/if}
-  {/each}
+    {/each}
+  {/if}
 
   <CombatArrows {view} {boardEl} />
   <HoverZoomOverlay />
@@ -203,5 +247,28 @@
   .slot[data-pos="across_next"] :global(.panel) {
     transform: rotate(180deg);
     transform-origin: center;
+  }
+
+  /* Spectator layout: no "around the table" perspective, so every
+     seat renders upright and gets equal screen real estate. The grid
+     dimensions are chosen by total seat count (set on the .board
+     itself via data-seat-count) — 1 = single panel, 2 = stacked, 3-4
+     = 2x2. No 180° rotation: the spectator isn't sitting at any one
+     seat, so flipping anybody upside-down would just be confusing. */
+  .board.spectator {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+  }
+  .board.spectator[data-seat-count="2"] {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+  .board.spectator[data-seat-count="3"] {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+  .board.spectator[data-seat-count="4"] {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
   }
 </style>
