@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { joinGame, spectateGame } from "../lib/api";
+  import { onMount } from "svelte";
+  import { discordAuthEnabled, joinGame, spectateGame } from "../lib/api";
   import { navigate } from "../lib/router";
   import { LobbyApiError } from "../lib/session";
 
@@ -18,6 +19,28 @@
   let name = $state("");
   let busy = $state(false);
   let error = $state("");
+
+  // discordEnabled gates the "Sign in with Discord" button. Probed
+  // once on mount from /auth/discord/config — a deploy without the
+  // three CMDCTRL_DISCORD_* env vars hides the button so the user
+  // isn't offered a flow that would 503. Spectator joins stay
+  // manual-name-only for now; the Discord flow claims a seat and
+  // spectators don't need one.
+  let discordEnabled = $state(false);
+  onMount(() => {
+    if (spectator) return; // not surfaced for spectator flow
+    void discordAuthEnabled().then((on) => {
+      discordEnabled = on;
+    });
+  });
+
+  // discordHref is a plain link into /auth/discord/start rather
+  // than a fetch — the server issues a 302 to Discord, which the
+  // browser must follow at the top level (not inside an XHR) so
+  // the user actually lands on the Discord consent screen.
+  const discordHref = $derived(
+    `/auth/discord/start?game=${encodeURIComponent(gameID)}&t=${encodeURIComponent(inviteToken)}`,
+  );
 
   async function submit(e: SubmitEvent): Promise<void> {
     e.preventDefault();
@@ -56,6 +79,12 @@
   {#if !inviteToken}
     <p class="error">invite token missing from URL</p>
   {:else}
+    {#if discordEnabled}
+      <a class="discord-btn" href={discordHref}>
+        <span class="discord-mark" aria-hidden="true">◆</span> Sign in with Discord
+      </a>
+      <p class="muted or-line">or enter a name manually</p>
+    {/if}
     <form onsubmit={submit}>
       <input
         type="text"
@@ -100,6 +129,29 @@
   }
   .note {
     margin-top: 0.75rem;
+  }
+  .discord-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #5865f2;
+    color: #fff;
+    text-decoration: none;
+    padding: 0.6rem 1rem;
+    border-radius: 4px;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  .discord-btn:hover {
+    background: #4651c8;
+  }
+  .discord-mark {
+    font-size: 1.1em;
+    line-height: 1;
+  }
+  .or-line {
+    margin: 0.25rem 0 0.75rem 0;
+    font-size: 0.85em;
   }
   code {
     font-family: monospace;

@@ -59,6 +59,20 @@ type Principal struct {
 	PlayerID uuid.UUID `json:"player_id,omitempty"`
 	Name     string    `json:"name,omitempty"`
 
+	// Discord* fields are populated when a RolePlayer session is
+	// minted via the OAuth flow (S12.5). All four are optional —
+	// a player who joins with manual name entry has zero values
+	// across the board. DiscordID is the stable snowflake; the
+	// other three are cached at sign-in time so the server can
+	// render the seat label + avatar without re-hitting the
+	// Discord API on every snapshot. Avatar hash is cached here
+	// rather than joined from a separate store because it's
+	// small and changes rarely.
+	DiscordID         string `json:"discord_id,omitempty"`
+	DiscordUsername   string `json:"discord_username,omitempty"`
+	DiscordGlobalName string `json:"discord_global_name,omitempty"`
+	DiscordAvatarHash string `json:"discord_avatar_hash,omitempty"`
+
 	// IssuedAt / ExpiresAt are populated by Issue and checked by
 	// Validate. They're exposed so clients (and tests) can tell when
 	// a session will expire without holding the Authenticator.

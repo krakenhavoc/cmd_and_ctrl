@@ -13,7 +13,11 @@ export type Route =
   | { name: "adminLogin" }
   | { name: "lobby" }
   | { name: "join"; gameID: string; inviteToken: string; spectator: boolean }
-  | { name: "game"; gameID: string };
+  | { name: "game"; gameID: string }
+  // S12.5: /auth/discord/callback (server-side) redirects here with
+  // the session details in the URL fragment. App.svelte's effect
+  // reads them, installs the session, and navigates onward.
+  | { name: "oauthComplete"; token: string; gameID: string; playerID: string; expiresAt: string };
 
 const defaultRoute: Route = { name: "login" };
 
@@ -51,6 +55,25 @@ function parseHash(hash: string): Route {
         return { name: "game", gameID: parts[1] };
       }
       return { name: "lobby" };
+    case "oauth-complete":
+      // Server fragment carries the four Session fields. Any
+      // missing → we fall through to the login route rather than
+      // install a half-populated session.
+      if (
+        params.get("token") &&
+        params.get("game") &&
+        params.get("player_id") &&
+        params.get("expires_at")
+      ) {
+        return {
+          name: "oauthComplete",
+          token: params.get("token")!,
+          gameID: params.get("game")!,
+          playerID: params.get("player_id")!,
+          expiresAt: params.get("expires_at")!,
+        };
+      }
+      return defaultRoute;
     default:
       return defaultRoute;
   }
