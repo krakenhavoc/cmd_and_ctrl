@@ -1,6 +1,7 @@
 import { writable, get, type Writable } from "svelte/store";
 import { setMuted, setVolumeMultiplier } from "./sounds";
 import { setAnimationConfig } from "./animations";
+import { STEP_IDS, NO_PRIORITY_STEPS, type StepID } from "./turn";
 
 // Settings is the client-wide preferences schema. Every toggle the
 // Settings panel surfaces maps to a field here. Persisted to
@@ -79,9 +80,11 @@ export interface Settings {
     // When the stack is empty and no legal plays exist, auto-pass
     // priority. Held Shift on the pass button overrides.
     autoPassPriority: boolean;
-    // Per-step stops will land in S13.3 once we have the priority-
-    // aware stops mechanism. Storing the empty object now keeps the
-    // schema future-proof.
+    // Per-step stops (S13). For each priority-granting step, true
+    // means "stop here when priority lands on me" and false means
+    // "auto-pass through it". Untap and Cleanup are not stoppable
+    // (they don't grant priority) and are absent from this map.
+    // Defaults seeded by defaultStepStops().
     stepStops: Record<string, boolean>;
   };
 
@@ -100,9 +103,32 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 1;
+export const SETTINGS_VERSION = 2;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
+
+// defaultStepStops seeds the per-step stops map. The defaults match
+// MTG Online's standard "stops" — the active player gets stopped on
+// their main phases and combat declarations; everyone else passes
+// through routine begin/end-step priority unless they opt in.
+// Untap and Cleanup are excluded because they don't grant priority
+// (CR 502.4 / 514.3); the server's NoPriority sentinel makes any
+// attempt to pass during them a no-op anyway.
+export function defaultStepStops(): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  const opted: ReadonlySet<StepID> = new Set([
+    "precombat_main",
+    "declare_attackers",
+    "declare_blockers",
+    "postcombat_main",
+    "end",
+  ]);
+  for (const id of STEP_IDS) {
+    if (NO_PRIORITY_STEPS.has(id)) continue;
+    out[id] = opted.has(id);
+  }
+  return out;
+}
 
 // prefersReducedMotion reads the OS hint without subscribing. Used
 // to pick the initial default for accessibility.reduceMotion when
@@ -148,7 +174,7 @@ export function defaultSettings(): Settings {
     gameplay: {
       confirmExit: true,
       autoPassPriority: false,
-      stepStops: {},
+      stepStops: defaultStepStops(),
     },
     accessibility: {
       reduceMotion: reduced,
@@ -170,8 +196,6 @@ function migrate(raw: unknown): Settings {
   if (!raw || typeof raw !== "object") return absorbLegacy(d);
 
   const s = raw as Partial<Settings>;
-  // Future: branch on s.__version to run named migrations. At v1
-  // there's nothing to do beyond field-level merge.
   const merged: Settings = {
     __version: SETTINGS_VERSION,
     audio: { ...d.audio, ...(s.audio ?? {}) },
@@ -180,6 +204,19 @@ function migrate(raw: unknown): Settings {
     gameplay: { ...d.gameplay, ...(s.gameplay ?? {}) },
     accessibility: { ...d.accessibility, ...(s.accessibility ?? {}) },
   };
+  // v1 → v2 (S13): the gameplay.stepStops map was scaffolded as `{}`
+  // pre-S13. Seed defaults for any user whose stored map is empty so
+  // the per-step stops UI has something meaningful on first paint.
+  // Existing user-configured maps are preserved untouched. Strip any
+  // entries for no-priority steps (Untap / Cleanup) to keep the map
+  // canonical.
+  if (Object.keys(merged.gameplay.stepStops).length === 0) {
+    merged.gameplay.stepStops = defaultStepStops();
+  } else {
+    for (const id of NO_PRIORITY_STEPS) {
+      delete merged.gameplay.stepStops[id];
+    }
+  }
   return absorbLegacy(merged);
 }
 
