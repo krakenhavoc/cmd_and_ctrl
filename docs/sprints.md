@@ -52,6 +52,7 @@ planned just-in-time from the S12 pain-point triage.
 | S13.2 | Counter mechanics (SBAs + player counters + UI) | 7 | [#79](https://github.com/krakenhavoc/cmd_and_ctrl/issues/79) | 2026-06-28 | planned |
 | S13.3 | Client-side timing affordance (greyed illegal actions) | 7 | [#99](https://github.com/krakenhavoc/cmd_and_ctrl/issues/99) | 2026-07-04 | planned |
 | S13.4 | Interactive cleanup discard + per-player MaxHandSize | 7 | [#103](https://github.com/krakenhavoc/cmd_and_ctrl/issues/103) | 2026-07-11 | planned |
+| S13.5 | Card visibility + known-by tracking | 7 | [#108](https://github.com/krakenhavoc/cmd_and_ctrl/issues/108) | 2026-07-25 | planned |
 | S14 | Card-effect catalog foundation | 7 | [#64](https://github.com/krakenhavoc/cmd_and_ctrl/issues/64) | 2026-07-12 | planned |
 | S15 | Mana pool, cost model, and auto-tapper | 7 | [#65](https://github.com/krakenhavoc/cmd_and_ctrl/issues/65) | 2026-08-09 | planned |
 | S16 | Continuous effects + layer system (CR 613) | 7 | [#66](https://github.com/krakenhavoc/cmd_and_ctrl/issues/66) | 2026-09-06 | planned |
@@ -672,6 +673,61 @@ S13's cleanup step auto-discards from the hand top as a placeholder — S13.4 re
 5. Opponent tab doesn't see the prompt; hand contents stay private.
 
 Detailed plan: `/home/node/.claude/plans/s13-4-hand-size-and-interactive-discard.md`. Builds on S13 (cleanup turn-based action) + S13.1 (pause-and-resume prompt pattern). ~1 week, 2 sub-PRs.
+
+---
+
+## S13.5 — Card visibility + known-by tracking
+**Phase:** 7 · **Goal:** Arena-style per-instance sticky visibility. Every `Card` carries a `KnownBy` set — who currently knows this specific instance's identity. Zone moves / reveals / shuffles mutate the set; hub filter redacts printed characteristics for non-`KnownBy` viewers; client renders card back with hover-reveal for viewers who previously saw the card face-up.
+
+Today's filter is zone-default-only — no way to express Thoughtseize reveals, bounced-but-known creatures, scry persistence, or morph-face-up-then-down with correct opponent knowledge. S13.5 replaces the zone-default heuristic with authoritative per-card `KnownBy`. [S22](#s22--card-draw--library-manipulation)'s transient reveal frames become animation sugar on top.
+
+### Tasks
+
+**Server — card + mutations:**
+- [ ] `Card.KnownBy map[uuid.UUID]bool` field (always initialized, never nil)
+- [ ] `Card.FaceDown bool` field (pure visual state, separate from knowledge)
+- [ ] Helpers: `AddKnower`, `AddKnowersAll(game)`, `ClearKnown`, `IsKnownTo`
+- [ ] `NewGame` initializer — library empty, starting hand `[owner]`, command zone all seated
+- [ ] `MoveCardByID` / `MoveCard` hook — public-zone destinations add all; private-zone destinations preserve (sticky)
+- [ ] `ShuffleLibrary` iterates library cards and clears KnownBy
+- [ ] Mulligan clears hand + library (composite shuffle)
+- [ ] Token / Clone ETB / spell-copy creation initializes `KnownBy = {all seated}`
+
+**Server — wire:**
+- [ ] `CardView.face_down bool` + `CardView.known_by_you bool` (computed per-viewer)
+- [ ] Printed characteristics (`name`, `type_line`, `image_url`, `oracle`, `mana_cost`, `colors`, `power`, `toughness`) nullable / zeroed on filter redaction
+- [ ] Instance ID, zone, counters, tapped state, controller, face-down flag, position always sent
+
+**Hub filter:**
+- [ ] Per-viewer redaction reads `card.KnownBy` instead of zone-default heuristic
+- [ ] Populates `known_by_you` for the viewer
+
+**Client:**
+- [ ] Face renders iff `!face_down && printed chars present`; otherwise back
+- [ ] Hover-reveal on face-down cards when `known_by_you = true` (reuses hover-zoom component)
+- [ ] Hand: mixed rendering — face-up for known-by-you cards, backs for the rest
+
+**Tests:**
+- [ ] Unit: public-zone move grows KnownBy; private-zone move preserves; shuffle clears library only; mulligan clears hand+library; token all-known; commander starts all; commander shuffled clears; face-down flip preserves knowledge; reveal-cards adds specified players
+- [ ] Hub filter: redaction on non-KnownBy viewer; known_by_you populated correctly
+- [ ] Client: face-down + known_by_you renders back with hover; mixed-hand rendering
+
+### Out of scope
+- Long-term "opponent-X-saw-card-Y in the past" advisory UI — pure engine tracking is enough
+- Undo / take-back logic — falls out naturally from instance-sticky `KnownBy`
+- Rules-lawyering on face-down concealment (paper says no-characteristics; we match Arena's sticky model and document the deviation)
+- Replay "what did I know when" historical tracking
+
+### Exit criteria
+1. **Scry persistence.** Scry 1, keep on top, next turn draw → card stays visible to you all along.
+2. **Bounce-known.** Cast Lightning Bolt (public on stack), opponent Unsummons it → renders face-up for everyone in your hand.
+3. **Thoughtseize-style reveal.** Opponent reveals your hand → cards stay known to opponent after the reveal; next turn's drawn cards unknown again.
+4. **Morph face-up-then-down.** Morph cast face-down, flipped face-up by paying morph cost, then Ixidroned back face-down → opponents still hover-reveal the true card.
+5. **Shuffle clears.** Scry 3, see all, then shuffle → top-of-library knowledge cleared.
+6. **Commander path.** Public from game start through cast / battlefield / graveyard / command-zone replacement. All steps all-known. Shuffle into library (rare effect) clears.
+7. **Token.** Creates with `KnownBy = {all}` immediately.
+
+Detailed plan: `/home/node/.claude/plans/s13-5-card-visibility-knownby.md`. Builds on S13 (turn/step primitives) + S22 (transient reveal frames become animation sugar). ~1.5 weeks, 3 sub-PRs.
 
 ---
 
