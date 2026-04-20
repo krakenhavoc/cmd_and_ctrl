@@ -61,9 +61,12 @@ const (
 	// every other type goes to the stack with a fresh StackMeta
 	// entry and the caster retains priority. play_card is kept as
 	// the sandbox / admin direct-drop verb.
-	TypeCastSpell      Type = "cast_spell"
-	TypeCounterSpell   Type = "counter_spell"
-	TypeCounterAbility Type = "counter_ability"
+	TypeCastSpell        Type = "cast_spell"
+	TypeCounterSpell     Type = "counter_spell"
+	TypeCounterAbility   Type = "counter_ability"
+	TypeActivateAbility  Type = "activate_ability"
+	TypeActivateLoyalty  Type = "activate_loyalty"
+	TypeAnnounceTrigger  Type = "announce_trigger"
 )
 
 // ErrUnknownType is returned when Dispatch receives an action type it
@@ -691,6 +694,80 @@ func Dispatch(g *game.Game, a Action) error {
 		}
 		return g.CounterAbility(instanceID)
 
+	case TypeActivateAbility:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		if err := requirePriorityHolder(g, a.Caller); err != nil {
+			return err
+		}
+		var p struct {
+			SourceCardID string           `json:"source_card_id"`
+			Label        string           `json:"label,omitempty"`
+			Targets      []castTargetWire `json:"targets,omitempty"`
+			Modes        []int            `json:"modes,omitempty"`
+			XValue       int              `json:"x_value,omitempty"`
+			Distribution map[string]int   `json:"distribution,omitempty"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		srcID, err := uuid.Parse(p.SourceCardID)
+		if err != nil {
+			return fmt.Errorf("activate_ability source_card_id: %w", err)
+		}
+		params, err := buildAbilityParams(p.Label, p.Targets, p.Modes, p.XValue, p.Distribution)
+		if err != nil {
+			return fmt.Errorf("activate_ability: %w", err)
+		}
+		return g.ActivateAbility(a.Player, srcID, params)
+
+	case TypeActivateLoyalty:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		if err := requirePriorityHolder(g, a.Caller); err != nil {
+			return err
+		}
+		var p struct {
+			PlaneswalkerID string `json:"planeswalker_id"`
+			Label          string `json:"label,omitempty"`
+			Delta          int    `json:"delta"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		pwID, err := uuid.Parse(p.PlaneswalkerID)
+		if err != nil {
+			return fmt.Errorf("activate_loyalty planeswalker_id: %w", err)
+		}
+		return g.ActivateLoyalty(a.Player, pwID, p.Label, p.Delta)
+
+	case TypeAnnounceTrigger:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			SourceCardID string           `json:"source_card_id"`
+			Label        string           `json:"label,omitempty"`
+			Targets      []castTargetWire `json:"targets,omitempty"`
+			Modes        []int            `json:"modes,omitempty"`
+			XValue       int              `json:"x_value,omitempty"`
+			Distribution map[string]int   `json:"distribution,omitempty"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		srcID, err := uuid.Parse(p.SourceCardID)
+		if err != nil {
+			return fmt.Errorf("announce_trigger source_card_id: %w", err)
+		}
+		params, err := buildAbilityParams(p.Label, p.Targets, p.Modes, p.XValue, p.Distribution)
+		if err != nil {
+			return fmt.Errorf("announce_trigger: %w", err)
+		}
+		return g.AnnounceTrigger(a.Player, srcID, params)
+
 	case TypeSetBattlefieldPosition:
 		var p struct {
 			InstanceID string  `json:"instance_id"`
@@ -725,6 +802,39 @@ type zoneRefWire struct {
 type castTargetWire struct {
 	Kind string `json:"kind"`
 	ID   string `json:"id,omitempty"`
+}
+
+// buildAbilityParams marshals the wire-decoded fields of an
+// activate_ability / announce_trigger payload into a
+// game.AbilityParams. Returns wrapped target-decode errors so the
+// caller's error message can prepend the action name.
+func buildAbilityParams(label string, targets []castTargetWire, modes []int, xValue int, distribution map[string]int) (game.AbilityParams, error) {
+	out := game.AbilityParams{
+		Label:  label,
+		Modes:  append([]int(nil), modes...),
+		XValue: xValue,
+	}
+	if len(targets) > 0 {
+		out.Targets = make([]game.TargetRef, 0, len(targets))
+		for i, t := range targets {
+			ref, err := t.toRef()
+			if err != nil {
+				return game.AbilityParams{}, fmt.Errorf("targets[%d]: %w", i, err)
+			}
+			out.Targets = append(out.Targets, ref)
+		}
+	}
+	if len(distribution) > 0 {
+		out.Distribution = make(map[uuid.UUID]int, len(distribution))
+		for k, v := range distribution {
+			id, err := uuid.Parse(k)
+			if err != nil {
+				return game.AbilityParams{}, fmt.Errorf("distribution key %q: %w", k, err)
+			}
+			out.Distribution[id] = v
+		}
+	}
+	return out, nil
 }
 
 func (t castTargetWire) toRef() (game.TargetRef, error) {

@@ -1834,6 +1834,171 @@ func TestS131CounterMissingItem(t *testing.T) {
 	}
 }
 
+// TestS131ActivateAbilityCreatesStackItem covers the activated-
+// ability shape: a fresh StackItem with synthetic ID, controller =
+// player, source = card. No card moves; the source stays put.
+func TestS131ActivateAbilityCreatesStackItem(t *testing.T) {
+	g := newActiveGame(t)
+	caster := g.Seats[0]
+	src := pushCreatureToBattlefield(t, g, caster)
+
+	beforeStackCount := len(g.StackMeta)
+	if err := g.ActivateAbility(caster.ID, src, AbilityParams{
+		Label: "Tap: Add G",
+	}); err != nil {
+		t.Fatalf("ActivateAbility: %v", err)
+	}
+	if len(g.StackMeta) != beforeStackCount+1 {
+		t.Errorf("StackMeta count: got %d, want +1", len(g.StackMeta))
+	}
+	// The source card must still be on the battlefield (abilities
+	// don't move their source).
+	if !g.Battlefield.Contains(src) {
+		t.Errorf("source card moved off battlefield after ability activation")
+	}
+	// Find the new entry — controller=caster, kind=activated.
+	var entry *StackItem
+	for _, item := range g.StackMeta {
+		if item.SourceCardID == src && item.Kind == StackItemActivated {
+			entry = item
+			break
+		}
+	}
+	if entry == nil {
+		t.Fatalf("activated ability entry not found in StackMeta")
+	}
+	if entry.Controller != caster.ID || entry.Owner != caster.ID {
+		t.Errorf("entry controller/owner wrong: %+v", entry)
+	}
+	if entry.Label != "Tap: Add G" {
+		t.Errorf("entry label: got %q, want %q", entry.Label, "Tap: Add G")
+	}
+}
+
+// TestS131ActivateLoyaltyAppliesDelta covers the sandbox loyalty
+// shape: sorcery-speed gate, immediate delta application via the
+// "loyalty" counter, once-per-turn flag set.
+func TestS131ActivateLoyaltyAppliesDelta(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	caster := g.Seats[0]
+	pwID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: pwID,
+		Name:       "Jace, the Mind Sculptor",
+		TypeLine:   "Legendary Planeswalker — Jace",
+		Owner:      caster.ID,
+		Controller: caster.ID,
+		Counters:   map[string]int{"loyalty": 3},
+	})
+	if err := g.ActivateLoyalty(caster.ID, pwID, "+0 brainstorm", 0); err != nil {
+		t.Fatalf("ActivateLoyalty +0: %v", err)
+	}
+	// Loyalty unchanged at 3 (delta=0, no-op).
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == pwID {
+			if g.Battlefield.Cards[i].Counters["loyalty"] != 3 {
+				t.Errorf("loyalty after +0: got %d, want 3", g.Battlefield.Cards[i].Counters["loyalty"])
+			}
+		}
+	}
+	// Second activation same turn → blocked.
+	if err := g.ActivateLoyalty(caster.ID, pwID, "-1 unsummon", -1); err != ErrLoyaltyAlreadyActivated {
+		t.Errorf("second activation: got %v, want ErrLoyaltyAlreadyActivated", err)
+	}
+}
+
+// TestS131ActivateLoyaltyResetsOnNewTurn verifies the once-per-turn
+// flag clears when the cursor moves to a new active seat.
+func TestS131ActivateLoyaltyResetsOnNewTurn(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	caster := g.Seats[0]
+	pwID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: pwID,
+		Name:       "Jace",
+		TypeLine:   "Legendary Planeswalker — Jace",
+		Owner:      caster.ID,
+		Controller: caster.ID,
+		Counters:   map[string]int{"loyalty": 3},
+	})
+	if err := g.ActivateLoyalty(caster.ID, pwID, "+1", 1); err != nil {
+		t.Fatalf("ActivateLoyalty: %v", err)
+	}
+	if err := g.PassTurn(); err != nil {
+		t.Fatalf("PassTurn: %v", err)
+	}
+	if g.LoyaltyActivatedThisTurn[pwID] {
+		t.Errorf("LoyaltyActivatedThisTurn[pw] should reset on new turn")
+	}
+}
+
+// TestS131ActivateLoyaltySorcerySpeedGate verifies the sorcery-speed
+// gate: no main phase / stack non-empty / not active player → reject.
+func TestS131ActivateLoyaltySorcerySpeedGate(t *testing.T) {
+	g := newActiveGame(t)
+	// Cursor at Upkeep — not main phase.
+	caster := g.Seats[0]
+	pwID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: pwID,
+		Name:       "Jace",
+		TypeLine:   "Legendary Planeswalker — Jace",
+		Owner:      caster.ID,
+		Controller: caster.ID,
+		Counters:   map[string]int{"loyalty": 3},
+	})
+	if err := g.ActivateLoyalty(caster.ID, pwID, "+1", 1); err != ErrSorcerySpeedRequired {
+		t.Errorf("upkeep activation: got %v, want ErrSorcerySpeedRequired", err)
+	}
+}
+
+// TestS131AnnounceTriggerAPNAPDrain covers the APNAP queue (CR
+// 603.3b): triggers from active player drain first, then turn-order
+// clockwise. With seats [0..3] and active=0, queueing in order
+// [seat2, seat0, seat3, seat1] should drain into StackMeta in seat
+// order [0, 1, 2, 3].
+func TestS131AnnounceTriggerAPNAPDrain(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	// Park a card on each player's battlefield to use as source.
+	srcs := make([]uuid.UUID, len(g.Seats))
+	for i, p := range g.Seats {
+		srcs[i] = pushCreatureToBattlefield(t, g, p)
+	}
+	// Announce in non-APNAP order: seat 2, seat 0, seat 3, seat 1.
+	for _, seat := range []int{2, 0, 3, 1} {
+		if err := g.AnnounceTrigger(g.Seats[seat].ID, srcs[seat], AbilityParams{
+			Label: "trigger",
+		}); err != nil {
+			t.Fatalf("AnnounceTrigger seat %d: %v", seat, err)
+		}
+	}
+	if len(g.PendingTriggers) != 4 {
+		t.Fatalf("PendingTriggers count: got %d, want 4", len(g.PendingTriggers))
+	}
+	// Drain — manually for the test (in real play PassPriority calls it).
+	g.WithWriteLock(func() { g.drainPendingTriggersAPNAPLocked() })
+	if len(g.PendingTriggers) != 0 {
+		t.Errorf("PendingTriggers should be empty after drain: got %d", len(g.PendingTriggers))
+	}
+	if len(g.StackMeta) != 4 {
+		t.Fatalf("StackMeta count after drain: got %d, want 4", len(g.StackMeta))
+	}
+	// Verify each trigger landed; we don't assert per-seat ordering
+	// inside StackMeta because Go maps are unordered, but the controller
+	// set must match the four seats.
+	gotControllers := make(map[uuid.UUID]bool, 4)
+	for _, item := range g.StackMeta {
+		gotControllers[item.Controller] = true
+	}
+	for i, p := range g.Seats {
+		if !gotControllers[p.ID] {
+			t.Errorf("seat %d's trigger missing from drained stack", i)
+		}
+	}
+}
+
 // TestS131SplitSecondClearsOnResolve verifies that after the split-
 // second item resolves, SplitSecondActive flips back to false and
 // new casts go through.

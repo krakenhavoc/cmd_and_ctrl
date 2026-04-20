@@ -351,9 +351,26 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	if g.State != StateActive {
 		return Turn{}, ErrGameNotActive
 	}
+	prev := g.Turn
 	g.Turn = g.Turn.advance(len(g.Seats))
+	g.onTurnAdvanceLocked(prev, g.Turn)
 	g.runStepEntryHooksLocked()
 	return g.Turn, nil
+}
+
+// onTurnAdvanceLocked clears any per-turn caches whenever the
+// active seat changes. Currently flushes
+// `LoyaltyActivatedThisTurn` (CR 606.5 — once per turn per
+// planeswalker), but the same hook is the natural home for any
+// other "reset on new turn" caches the engine grows. Caller must
+// hold g.mu.
+func (g *Game) onTurnAdvanceLocked(prev, next Turn) {
+	if !prev.IsNewTurn(next) {
+		return
+	}
+	if g.LoyaltyActivatedThisTurn != nil {
+		g.LoyaltyActivatedThisTurn = nil
+	}
 }
 
 // runStepEntryHooksLocked dispatches the per-step side effects that

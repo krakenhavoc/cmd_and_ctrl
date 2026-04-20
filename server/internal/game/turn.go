@@ -150,6 +150,15 @@ func indexOfStep(s Step) int {
 	return -1
 }
 
+// IsNewTurn reports whether the Turn `next` belongs to a different
+// active seat than `t` — i.e. whether the priority cursor wrapped
+// past Cleanup into another seat's Untap. Used by callers that need
+// to fire "new turn" hooks (clearing the per-turn loyalty-activation
+// flag, refreshing land-drops-this-turn budgets, etc.).
+func (t Turn) IsNewTurn(next Turn) bool {
+	return t.ActiveSeat != next.ActiveSeat
+}
+
 // advance returns the Turn cursor one step after t, wrapping to the
 // next seat (and incrementing Number) after the cleanup step. numSeats
 // must be > 0; callers are responsible for passing a valid count.

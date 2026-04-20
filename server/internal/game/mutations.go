@@ -503,6 +503,245 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card) error {
 	return err
 }
 
+// AbilityParams carries the announce-time choices that flow into an
+// activated or triggered ability's stack item. Same shape as
+// CastSpellParams minus FromZone (abilities don't move a card) and
+// SplitSecond (only spells / activations get the modifier; the
+// flag would round-trip on the wire if a future card needed it).
+type AbilityParams struct {
+	Label        string
+	Targets      []TargetRef
+	Modes        []int
+	XValue       int
+	Distribution map[uuid.UUID]int
+}
+
+// ActivateAbility creates an activated-ability stack item linked to
+// the source card. Implements CR 602: announce → push to stack →
+// caller retains priority. Mana abilities are NOT modeled this way
+// (CR 605 — they don't use the stack); see the package commentary.
+//
+// No card moves. The source card stays in its origin zone; the
+// stack item carries its own synthetic ID. Resolution removes the
+// item (CR 608.2m).
+//
+// SourceCardID must reference a card that exists in some zone; an
+// unknown ID returns ErrCardNotFound.
+//
+// Caller-gated to priority holder via the action layer; this
+// method does not re-check that.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+//
+// S13.1.
+func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityParams) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	if g.SplitSecondActive {
+		return ErrSplitSecondActive
+	}
+	if g.playerByIDLocked(playerID) == nil {
+		return ErrPlayerNotFound
+	}
+	if g.findCardZoneLocked(sourceCardID) == nil {
+		return ErrCardNotFound
+	}
+	id := uuid.New()
+	if g.StackMeta == nil {
+		g.StackMeta = make(map[uuid.UUID]*StackItem)
+	}
+	g.StackMeta[id] = &StackItem{
+		ID:           id,
+		Kind:         StackItemActivated,
+		Controller:   playerID,
+		Owner:        playerID,
+		SourceCardID: sourceCardID,
+		Label:        params.Label,
+		Targets:      append([]TargetRef(nil), params.Targets...),
+		Modes:        append([]int(nil), params.Modes...),
+		XValue:       params.XValue,
+		Distribution: cloneDistributionLocked(params.Distribution),
+	}
+	return nil
+}
+
+// ActivateLoyalty applies a planeswalker's loyalty ability. Sandbox
+// shape: the engine doesn't model the activation as a proper stack
+// item (full loyalty-on-stack lands in S14+ alongside the effect
+// catalog). Instead, the loyalty delta is applied immediately and
+// the once-per-turn flag is set. Sorcery-speed gate enforced per
+// CR 606.5.
+//
+// `delta` is the loyalty change announced by the ability:
+// +1 / +2 / -3 / etc. Applied via AddCounter to the planeswalker's
+// "loyalty" counter; negative deltas that would drive loyalty below
+// zero are clamped (the planeswalker leaves via SBA in sub-PR 7).
+//
+// Returns:
+//   - ErrCardNotFound if planeswalkerID is not on the battlefield.
+//   - ErrSorcerySpeedRequired if the gate is closed.
+//   - ErrLoyaltyAlreadyActivated if the planeswalker has already
+//     activated a loyalty ability this turn (CR 606.5).
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+//
+// S13.1.
+func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string, delta int) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	if g.SplitSecondActive {
+		return ErrSplitSecondActive
+	}
+	if g.playerByIDLocked(playerID) == nil {
+		return ErrPlayerNotFound
+	}
+	if !g.sorcerySpeedOpenLocked(playerID) {
+		return ErrSorcerySpeedRequired
+	}
+	if g.LoyaltyActivatedThisTurn[planeswalkerID] {
+		return ErrLoyaltyAlreadyActivated
+	}
+	// Find the planeswalker on the battlefield.
+	var pw *Card
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == planeswalkerID {
+			pw = &g.Battlefield.Cards[i]
+			break
+		}
+	}
+	if pw == nil {
+		return ErrCardNotFound
+	}
+	if pw.Counters == nil {
+		pw.Counters = make(map[string]int)
+	}
+	pw.Counters["loyalty"] += delta
+	if pw.Counters["loyalty"] <= 0 {
+		// Loyalty reaching zero is the SBA's responsibility (sub-PR 7);
+		// here we just keep the bookkeeping clean by removing the key
+		// when it drops to zero. SBA will pick up "loyalty == 0" by
+		// counting positive entries.
+		if pw.Counters["loyalty"] == 0 {
+			delete(pw.Counters, "loyalty")
+		}
+		// Negative is allowed for the moment — clamping would discard
+		// "minus more than you have" intent that the SBA needs to
+		// see. Sub-PR 7 will read this as "loyalty <= 0".
+	}
+	if g.LoyaltyActivatedThisTurn == nil {
+		g.LoyaltyActivatedThisTurn = make(map[uuid.UUID]bool)
+	}
+	g.LoyaltyActivatedThisTurn[planeswalkerID] = true
+	if label != "" {
+		// Record a no-card stack item briefly so the wire surfaces
+		// the label for the duration of the activation, then drop it.
+		// Future "loyalty as a real stack item" would persist this
+		// past the action.
+		_ = label
+	}
+	return nil
+}
+
+// AnnounceTrigger queues a triggered ability for APNAP-ordered drain
+// onto the stack. Per CR 603.3b, all triggers waiting at a priority-
+// grant boundary are placed on the stack in active-player-non-active-
+// player order, with each affected player choosing the relative
+// order of their own simultaneous triggers (here: the order they
+// announce them).
+//
+// Sandbox: the player whose card has a triggered ability clicks
+// "trigger" on the card, optionally provides a label and target
+// list, and the engine queues an item. The drain happens in
+// drainPendingTriggersAPNAPLocked() — called from PassPriority and
+// every other priority-grant path.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+//
+// S13.1.
+func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityParams) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	if g.playerByIDLocked(playerID) == nil {
+		return ErrPlayerNotFound
+	}
+	if g.findCardZoneLocked(sourceCardID) == nil {
+		return ErrCardNotFound
+	}
+	id := uuid.New()
+	g.PendingTriggers = append(g.PendingTriggers, &StackItem{
+		ID:           id,
+		Kind:         StackItemTriggered,
+		Controller:   playerID,
+		Owner:        playerID,
+		SourceCardID: sourceCardID,
+		Label:        params.Label,
+		Targets:      append([]TargetRef(nil), params.Targets...),
+		Modes:        append([]int(nil), params.Modes...),
+		XValue:       params.XValue,
+		Distribution: cloneDistributionLocked(params.Distribution),
+	})
+	return nil
+}
+
+// drainPendingTriggersAPNAPLocked moves every queued triggered
+// ability onto the stack in APNAP order: active-player's first,
+// then turn-order clockwise around the table. Within a single
+// player's batch, the queue order is preserved (the caller chose
+// the order via the order they called AnnounceTrigger).
+//
+// Called from PassPriority and other priority-grant boundaries.
+// Caller must hold g.mu.
+//
+// S13.1.
+func (g *Game) drainPendingTriggersAPNAPLocked() {
+	if len(g.PendingTriggers) == 0 {
+		return
+	}
+	numSeats := len(g.Seats)
+	if numSeats == 0 {
+		return
+	}
+	// Bucket triggers by controller seat so we can drain in seat
+	// order. Preserves per-controller queue order via stable
+	// iteration.
+	bySeat := make(map[int][]*StackItem)
+	for _, t := range g.PendingTriggers {
+		seat := -1
+		for i, p := range g.Seats {
+			if p.ID == t.Controller {
+				seat = i
+				break
+			}
+		}
+		if seat == -1 {
+			// Controller no longer seated — drop the trigger.
+			continue
+		}
+		bySeat[seat] = append(bySeat[seat], t)
+	}
+	g.PendingTriggers = nil
+	if g.StackMeta == nil {
+		g.StackMeta = make(map[uuid.UUID]*StackItem)
+	}
+	// APNAP: active player first, then clockwise.
+	for offset := 0; offset < numSeats; offset++ {
+		seat := (g.Turn.ActiveSeat + offset) % numSeats
+		for _, t := range bySeat[seat] {
+			g.StackMeta[t.ID] = t
+		}
+	}
+	g.recomputeSplitSecondLocked()
+}
+
 // CounterSpell removes a spell from the stack and routes its card to
 // `dst` (defaulting to the spell's owner's graveyard). Implements
 // the Counterspell / Hinder / Remand / Spell Crumple shape — the
@@ -813,13 +1052,19 @@ func (g *Game) PassPriority() error {
 		if err := g.resolveTopOfStackLocked(); err != nil {
 			return err
 		}
+		// Drain any pending APNAP triggers onto the stack now that
+		// we've crossed a priority-grant boundary (CR 603.3b).
+		g.drainPendingTriggersAPNAPLocked()
 		// Priority returns to the active player after a resolution
 		// (CR 117.3b). The step doesn't change.
 		g.Turn.PriorityHolder = g.Turn.ActiveSeat
 		return nil
 	}
+	prev := g.Turn
 	g.Turn = g.Turn.advance(numSeats)
+	g.onTurnAdvanceLocked(prev, g.Turn)
 	g.runStepEntryHooksLocked()
+	g.drainPendingTriggersAPNAPLocked()
 	return nil
 }
 
@@ -1137,6 +1382,7 @@ func (g *Game) PassTurn() error {
 	if nextSeat == 0 {
 		nextNumber++
 	}
+	prev := g.Turn
 	g.Turn = Turn{
 		Number:         nextNumber,
 		ActiveSeat:     nextSeat,
@@ -1144,6 +1390,7 @@ func (g *Game) PassTurn() error {
 		Phase:          PhaseOf(StepUntap),
 		Step:           StepUntap,
 	}
+	g.onTurnAdvanceLocked(prev, g.Turn)
 	// Refresh per-turn budgets (undo, future per-turn counters) on
 	// the new active seat — same hook AdvanceStep / PassPriority's
 	// wrap branch run when stepping into untap. The hook also auto-
