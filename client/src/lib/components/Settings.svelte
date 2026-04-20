@@ -381,11 +381,13 @@
                 checked={$settings.gameplay.autoPassPriority}
                 onchange={(e) => change("gameplay", "autoPassPriority", e.currentTarget.checked)}
               />
-              Auto-pass priority when I have nothing playable
+              Auto-pass priority through unstopped steps
               {#if isFresh("gameplay.autoPassPriority")}<span class="saved">✓ saved</span>{/if}
             </label>
             <p class="help">
-              Hold <kbd>Shift</kbd> while clicking the pass button to override for one step.
+              Pairs with the stops grid below: priority auto-passes through any step you haven't
+              pinned. Use the &ldquo;&rarr; next stop&rdquo; toolbar button to fast-forward one stop
+              at a time without enabling auto-pass globally.
             </p>
 
             <fieldset class="step-stops">

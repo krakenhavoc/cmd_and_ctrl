@@ -173,7 +173,12 @@ export function defaultSettings(): Settings {
     },
     gameplay: {
       confirmExit: true,
-      autoPassPriority: false,
+      // S13 default: on. Pre-S13 this was off because the only
+      // gating was "not on viewer's own turn", which felt too
+      // aggressive. The S13 stops grid (defaultStepStops) gives
+      // the user fine control, so auto-pass-on is now the right
+      // default — stops are the affordance for "stop here".
+      autoPassPriority: true,
       stepStops: defaultStepStops(),
     },
     accessibility: {
@@ -209,9 +214,23 @@ function migrate(raw: unknown): Settings {
   // the per-step stops UI has something meaningful on first paint.
   // Existing user-configured maps are preserved untouched. Strip any
   // entries for no-priority steps (Untap / Cleanup) to keep the map
-  // canonical.
+  // canonical. While we're here, flip `autoPassPriority` to true if
+  // the user is still on the v1 default (false) — at v1 the toggle
+  // was a global "auto-pass on opponents' turns" with no per-step
+  // control, so off was the only safe default. With stops, the
+  // toggle gates the per-step auto-pass and on is the natural
+  // default. Pre-existing v1 users who explicitly turned it on stay
+  // on; users who left it off get the new behaviour. We can't
+  // distinguish "user explicitly left it off" from "user never
+  // touched the default" at v1, but the worst case is "auto-pass
+  // through opponents' turns the user wasn't expecting" — which
+  // their stops grid (also being seeded here) prevents.
+  const fromV1 = typeof s.__version !== "number" || s.__version < 2;
   if (Object.keys(merged.gameplay.stepStops).length === 0) {
     merged.gameplay.stepStops = defaultStepStops();
+    if (fromV1) {
+      merged.gameplay.autoPassPriority = true;
+    }
   } else {
     for (const id of NO_PRIORITY_STEPS) {
       delete merged.gameplay.stepStops[id];
