@@ -5,6 +5,29 @@
   color-scheme: dark;
   background: #0f1419;
   color: #e6e6e6;
+
+  /* --font-scale is driven by settings.accessibility.textScale via
+     App.svelte's $effect. Defaulting in CSS keeps first-paint
+     correct before the $effect runs. */
+  --font-scale: 1;
+  font-size: calc(1rem * var(--font-scale));
+}
+
+/* Respect the user's reduce-motion preference (either OS-level or
+   set via the in-app settings panel). Overrides tween durations at
+   the CSS layer; GSAP-driven animations are toggled via
+   settings.animations.enabled in the modules that run them. */
+:root[data-reduce-motion="1"] * {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Always-visible focus outlines — bypass the default
+   :focus-visible suppression for users who need a consistent
+   keyboard-nav signal. */
+:root[data-always-show-focus="1"] :is(button, a, input, select, textarea):focus {
+  outline: 2px solid #2f6fb8;
+  outline-offset: 1px;
 }
 
 body {

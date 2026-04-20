@@ -11,8 +11,10 @@
   import Lobby from "./routes/Lobby.svelte";
   import Join from "./routes/Join.svelte";
   import Game from "./routes/Game.svelte";
+  import Settings from "./lib/components/Settings.svelte";
   import { route, navigate } from "./lib/router";
   import { session } from "./lib/session";
+  import { settings } from "./lib/settings";
 
   // Enforce the auth gate as a side effect of routing. Running this
   // inside $effect ensures it re-evaluates on hash change + session
@@ -31,6 +33,21 @@
       navigate("#/lobby");
     }
   });
+
+  // Apply the subset of settings that hang off :root as CSS
+  // variables. Other settings (mute, animations.enabled) are
+  // consumed by the modules that care about them via the shared
+  // store; the ones below need a single apply-to-document seam
+  // because they drive stylesheet values.
+  $effect(() => {
+    const s = $settings;
+    const root = document.documentElement;
+    root.style.setProperty("--font-scale", String(s.accessibility.textScale));
+    root.dataset.theme = s.display.theme;
+    root.dataset.cardSize = s.display.cardSize;
+    root.dataset.reduceMotion = s.accessibility.reduceMotion ? "1" : "0";
+    root.dataset.alwaysShowFocus = s.accessibility.alwaysShowFocus ? "1" : "0";
+  });
 </script>
 
 {#if $route.name === "login"}
@@ -44,3 +61,9 @@
 {:else if $route.name === "game"}
   <Game gameID={$route.gameID} />
 {/if}
+
+<!-- Settings modal lives at the app shell so it overlays every
+     route and the keyboard shortcut / reactive store works from
+     lobby, game, join, and login. The component self-renders
+     based on settingsOpen — mounting it here just plugs it in. -->
+<Settings />
