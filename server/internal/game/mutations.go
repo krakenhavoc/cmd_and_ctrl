@@ -503,6 +503,90 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card) error {
 	return err
 }
 
+// CounterSpell removes a spell from the stack and routes its card to
+// `dst` (defaulting to the spell's owner's graveyard). Implements
+// the Counterspell / Hinder / Remand / Spell Crumple shape — the
+// caller picks a destination (graveyard, hand, library, exile) at
+// announce time.
+//
+// Battlefield is rejected as a destination: a counter that "puts the
+// spell onto the battlefield" would be a different effect entirely
+// (and there's no MTG card that does it the way a generic counter
+// does). Stack is also rejected — the counter MUST move it off.
+//
+// Caller-gated to priority holder via the action layer; this method
+// does not re-check that.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+//
+// S13.1.
+func (g *Game) CounterSpell(spellID uuid.UUID, dst *ZoneRef) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	item, ok := g.StackMeta[spellID]
+	if !ok || item == nil || item.Kind != StackItemSpell {
+		return ErrCardNotOnStack
+	}
+	if g.Stack == nil || !g.Stack.Contains(spellID) {
+		return ErrCardNotOnStack
+	}
+	// Resolve the destination. nil → owner's graveyard. Battlefield /
+	// stack are illegal — see method docstring.
+	var destZone *Zone
+	if dst == nil {
+		owner := g.playerByIDLocked(item.Owner)
+		if owner == nil {
+			// Owner has left the game — exile rather than wedging.
+			destZone = g.Exile
+		} else {
+			destZone = owner.Graveyard
+		}
+	} else {
+		if dst.Kind == ZoneBattlefield || dst.Kind == ZoneStack {
+			return ErrInvalidStackDestination
+		}
+		destZone = g.zoneFromRefLocked(*dst)
+		if destZone == nil {
+			return ErrZoneNotFound
+		}
+	}
+	if _, err := MoveCard(g.Stack, destZone, spellID); err != nil {
+		return err
+	}
+	delete(g.StackMeta, spellID)
+	g.recomputeSplitSecondLocked()
+	return nil
+}
+
+// CounterAbility removes an activated / triggered ability from the
+// stack. Abilities cease to exist on resolution (CR 608.2m); a
+// counter is the same destinationless removal. Returns
+// ErrCardNotOnStack if the ID doesn't reference an ability item.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+//
+// S13.1.
+func (g *Game) CounterAbility(abilityID uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	item, ok := g.StackMeta[abilityID]
+	if !ok || item == nil {
+		return ErrCardNotOnStack
+	}
+	if item.Kind != StackItemActivated && item.Kind != StackItemTriggered {
+		return ErrCardNotOnStack
+	}
+	delete(g.StackMeta, abilityID)
+	g.recomputeSplitSecondLocked()
+	return nil
+}
+
 // recomputeSplitSecondLocked walks StackMeta and pending triggers
 // and refreshes the SplitSecondActive cache. Called after every
 // stack mutation. Caller must hold g.mu.

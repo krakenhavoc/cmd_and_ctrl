@@ -61,7 +61,9 @@ const (
 	// every other type goes to the stack with a fresh StackMeta
 	// entry and the caster retains priority. play_card is kept as
 	// the sandbox / admin direct-drop verb.
-	TypeCastSpell Type = "cast_spell"
+	TypeCastSpell      Type = "cast_spell"
+	TypeCounterSpell   Type = "counter_spell"
+	TypeCounterAbility Type = "counter_ability"
 )
 
 // ErrUnknownType is returned when Dispatch receives an action type it
@@ -647,6 +649,47 @@ func Dispatch(g *game.Game, a Action) error {
 		// Sandbox — any seated player or admin may raise/lower the
 		// limit. The table self-polices abuse.
 		return g.SetUndoLimit(p.Limit)
+
+	case TypeCounterSpell:
+		if err := requirePriorityHolder(g, a.Caller); err != nil {
+			return err
+		}
+		var p struct {
+			InstanceID string       `json:"instance_id"`
+			ToZone     *zoneRefWire `json:"to_zone,omitempty"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		instanceID, err := uuid.Parse(p.InstanceID)
+		if err != nil {
+			return fmt.Errorf("counter_spell instance_id: %w", err)
+		}
+		var dst *game.ZoneRef
+		if p.ToZone != nil {
+			ref, err := p.ToZone.toRef()
+			if err != nil {
+				return fmt.Errorf("counter_spell to_zone: %w", err)
+			}
+			dst = &ref
+		}
+		return g.CounterSpell(instanceID, dst)
+
+	case TypeCounterAbility:
+		if err := requirePriorityHolder(g, a.Caller); err != nil {
+			return err
+		}
+		var p struct {
+			InstanceID string `json:"instance_id"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		instanceID, err := uuid.Parse(p.InstanceID)
+		if err != nil {
+			return fmt.Errorf("counter_ability instance_id: %w", err)
+		}
+		return g.CounterAbility(instanceID)
 
 	case TypeSetBattlefieldPosition:
 		var p struct {

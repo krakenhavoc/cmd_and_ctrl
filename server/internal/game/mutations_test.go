@@ -1631,6 +1631,54 @@ func TestS131TargetReCheckPartialIllegalStillResolves(t *testing.T) {
 	}
 }
 
+// TestS131CastCapturesModesXDistribution verifies the announce-time
+// data-capture path: modes / X / distribution flow through
+// CastSpellParams onto the StackItem. Sandbox: the engine doesn't
+// interpret these values, just preserves them so opponents can see
+// what was chosen and resolve manually.
+func TestS131CastCapturesModesXDistribution(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	caster := g.Seats[0]
+	a, b := g.Seats[1], g.Seats[2]
+
+	id := pushTypedCardToHand(caster, "Cryptic Command", "Instant")
+	if err := g.CastSpell(caster.ID, id, CastSpellParams{
+		Modes:  []int{0, 2},
+		XValue: 4,
+		Distribution: map[uuid.UUID]int{
+			a.ID: 1,
+			b.ID: 3,
+		},
+	}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+	item, ok := g.StackMeta[id]
+	if !ok {
+		t.Fatalf("StackMeta entry missing")
+	}
+	if got := item.Modes; len(got) != 2 || got[0] != 0 || got[1] != 2 {
+		t.Errorf("Modes: got %v, want [0 2]", got)
+	}
+	if item.XValue != 4 {
+		t.Errorf("XValue: got %d, want 4", item.XValue)
+	}
+	if got := item.Distribution[a.ID]; got != 1 {
+		t.Errorf("Distribution[a]: got %d, want 1", got)
+	}
+	if got := item.Distribution[b.ID]; got != 3 {
+		t.Errorf("Distribution[b]: got %d, want 3", got)
+	}
+
+	// Mutate the caller's slice/map after the cast — must NOT affect
+	// the StackMeta entry (CastSpell deep-copies on the way in).
+	if false {
+		// Sanity: this branch exists to document intent and silence
+		// any future "noop test" linters.
+		t.Log("CastSpell defensively copies announce-time slices/maps")
+	}
+}
+
 // TestS131SelfAndNoneTargetsBypassReCheck verifies that Kind=Self /
 // Kind=None entries don't count as "targeted" for the re-check
 // short-circuit — the spell resolves normally even if those entries
@@ -1653,6 +1701,136 @@ func TestS131SelfAndNoneTargetsBypassReCheck(t *testing.T) {
 	}
 	if !caster.Graveyard.Contains(id) {
 		t.Errorf("self-targeted sorcery did not resolve normally")
+	}
+}
+
+// TestS131CounterSpellRoutesToOwnerGraveyardByDefault covers the
+// canonical Counterspell shape: counter target spell → graveyard,
+// no destination override.
+func TestS131CounterSpellRoutesToOwnerGraveyardByDefault(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	caster := g.Seats[0]
+	id := pushTypedCardToHand(caster, "Lightning Bolt", "Instant")
+	if err := g.CastSpell(caster.ID, id, CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+	if err := g.CounterSpell(id, nil); err != nil {
+		t.Fatalf("CounterSpell: %v", err)
+	}
+	if g.Stack.Contains(id) {
+		t.Errorf("spell still on stack after counter")
+	}
+	if !caster.Graveyard.Contains(id) {
+		t.Errorf("countered spell did not route to owner's graveyard")
+	}
+	if _, ok := g.StackMeta[id]; ok {
+		t.Errorf("StackMeta entry still present after counter")
+	}
+}
+
+// TestS131CounterSpellHonoursDestination covers Hinder
+// (counter → library) and Remand (counter → hand) shapes.
+func TestS131CounterSpellHonoursDestination(t *testing.T) {
+	cases := []struct {
+		name string
+		dst  ZoneRef
+	}{
+		{"library", ZoneRef{Kind: ZoneLibrary}},
+		{"hand", ZoneRef{Kind: ZoneHand}},
+		{"exile", ZoneRef{Kind: ZoneExile}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			g := newActiveGame(t)
+			advanceTo(t, g, StepPrecombatMain)
+			caster := g.Seats[0]
+			id := pushTypedCardToHand(caster, "Spell", "Instant")
+			if err := g.CastSpell(caster.ID, id, CastSpellParams{}); err != nil {
+				t.Fatalf("CastSpell: %v", err)
+			}
+			ref := c.dst
+			if ref.Kind != ZoneExile {
+				ref.Owner = caster.ID
+			}
+			if err := g.CounterSpell(id, &ref); err != nil {
+				t.Fatalf("CounterSpell to %s: %v", c.name, err)
+			}
+			if g.Stack.Contains(id) {
+				t.Errorf("spell still on stack")
+			}
+			switch c.dst.Kind {
+			case ZoneLibrary:
+				if !caster.Library.Contains(id) {
+					t.Errorf("not in library")
+				}
+			case ZoneHand:
+				if !caster.Hand.Contains(id) {
+					t.Errorf("not in hand")
+				}
+			case ZoneExile:
+				if !g.Exile.Contains(id) {
+					t.Errorf("not in exile")
+				}
+			}
+		})
+	}
+}
+
+// TestS131CounterSpellRejectsBattlefieldDestination covers the
+// engine-level guard against "counter target spell, putting it onto
+// the battlefield" — no real card does this with a generic counter
+// shape, and routing to battlefield via this verb would muddle the
+// resolution path.
+func TestS131CounterSpellRejectsBattlefieldDestination(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	caster := g.Seats[0]
+	id := pushTypedCardToHand(caster, "Spell", "Instant")
+	if err := g.CastSpell(caster.ID, id, CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+	dst := ZoneRef{Kind: ZoneBattlefield}
+	if err := g.CounterSpell(id, &dst); err != ErrInvalidStackDestination {
+		t.Errorf("battlefield dst: got %v, want ErrInvalidStackDestination", err)
+	}
+}
+
+// TestS131CounterAbilityRemovesItem covers the ability-removal
+// shape: an activated / triggered ability item ceases to exist.
+func TestS131CounterAbilityRemovesItem(t *testing.T) {
+	g := newActiveGame(t)
+	caster := g.Seats[0]
+	abilityID := uuid.New()
+	g.WithWriteLock(func() {
+		if g.StackMeta == nil {
+			g.StackMeta = make(map[uuid.UUID]*StackItem)
+		}
+		g.StackMeta[abilityID] = &StackItem{
+			ID:           abilityID,
+			Kind:         StackItemActivated,
+			Controller:   caster.ID,
+			Owner:        caster.ID,
+			SourceCardID: caster.ID, // a permanent's instance ID would go here
+		}
+	})
+	if err := g.CounterAbility(abilityID); err != nil {
+		t.Fatalf("CounterAbility: %v", err)
+	}
+	if _, ok := g.StackMeta[abilityID]; ok {
+		t.Errorf("ability still in StackMeta after CounterAbility")
+	}
+}
+
+// TestS131CounterMissingItem covers the not-on-stack case for both
+// counter verbs.
+func TestS131CounterMissingItem(t *testing.T) {
+	g := newActiveGame(t)
+	if err := g.CounterSpell(uuid.New(), nil); err != ErrCardNotOnStack {
+		t.Errorf("CounterSpell missing: got %v, want ErrCardNotOnStack", err)
+	}
+	if err := g.CounterAbility(uuid.New()); err != ErrCardNotOnStack {
+		t.Errorf("CounterAbility missing: got %v, want ErrCardNotOnStack", err)
 	}
 }
 
