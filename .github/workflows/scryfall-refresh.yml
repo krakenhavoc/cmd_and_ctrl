@@ -1,0 +1,55 @@
+name: cmd_and_ctrl Scryfall refresh
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    # Sundays at 05:00 UTC. Matches the cadence in the comment at the
+    # top of scripts/scryfall-refresh.sh; chosen to avoid colliding
+    # with the nightly Playwright run (08:30 UTC) and Scryfall's
+    # own bulk refresh (typically rolls daily ~03:00 UTC, so we read
+    # a fresh snapshot two hours after they publish).
+    - cron: "0 5 * * 0"
+  workflow_dispatch:
+
+concurrency:
+  # One refresh at a time. cancel-in-progress would interrupt a
+  # mid-stream rsync of a ~400 MB JSON dump and leave a half-written
+  # tmp file; let the running job finish.
+  group: cmdctrl-scryfall
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: self-hosted
+    env:
+      CMDCTRL_HOST: ${{ vars.CMDCTRL_HOST }}
+      CMDCTRL_DATA_DIR: /opt/cmd_and_ctrl/data
+      SSH_OPTS: -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10
+    steps:
+      - name: Verify CMDCTRL_HOST is set
+        run: |
+          if [ -z "${CMDCTRL_HOST}" ]; then
+            echo "::error::Repo variable CMDCTRL_HOST is not set."
+            exit 1
+          fi
+
+      - name: Run scryfall-refresh on deploy host
+        run: |
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "CMDCTRL_DATA_DIR=${CMDCTRL_DATA_DIR} /opt/cmd_and_ctrl/scripts/scryfall-refresh.sh"
+
+      - name: Restart cmd-and-ctrl to reload the card index
+        # The server loads the index once at boot, so a fresh dump on
+        # disk has no effect until the process re-reads it. Restart is
+        # cheap (~1s) and recovers from the "card index not loaded"
+        # state players will hit if the server started before the
+        # first refresh ever ran.
+        run: |
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} 'sudo systemctl restart cmd-and-ctrl'
+
+      - name: Confirm service came back up
+        run: |
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            'systemctl is-active cmd-and-ctrl && systemctl status cmd-and-ctrl --no-pager --lines=5'
