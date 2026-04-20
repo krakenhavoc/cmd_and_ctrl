@@ -103,7 +103,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 2;
+export const SETTINGS_VERSION = 3;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -225,7 +225,8 @@ function migrate(raw: unknown): Settings {
   // touched the default" at v1, but the worst case is "auto-pass
   // through opponents' turns the user wasn't expecting" — which
   // their stops grid (also being seeded here) prevents.
-  const fromV1 = typeof s.__version !== "number" || s.__version < 2;
+  const storedVersion = typeof s.__version === "number" ? s.__version : 0;
+  const fromV1 = storedVersion < 2;
   if (Object.keys(merged.gameplay.stepStops).length === 0) {
     merged.gameplay.stepStops = defaultStepStops();
     if (fromV1) {
@@ -236,7 +237,35 @@ function migrate(raw: unknown): Settings {
       delete merged.gameplay.stepStops[id];
     }
   }
+  // v2 → v3 (S13 hotfix): early v2 builds (the previous client
+  // commit) shipped autoPassPriority=false through the v1→v2
+  // migration even after the new "default true" landed. Anyone who
+  // already migrated to v2 with stepStops seeded still has the
+  // toggle off and hits the "game halts at draw" trap. v3 flips
+  // autoPassPriority on for users coming from v2 whose stops grid
+  // matches the seeded default — strong signal they haven't tuned
+  // either knob, so re-applying the new pairing is safe. Users who
+  // customised stops keep their autoPassPriority value untouched.
+  if (storedVersion === 2 && stepStopsMatchDefault(merged.gameplay.stepStops)) {
+    merged.gameplay.autoPassPriority = true;
+  }
   return absorbLegacy(merged);
+}
+
+// stepStopsMatchDefault reports whether the supplied stepStops map
+// is structurally identical to defaultStepStops(). Used by the v2→v3
+// migration to detect "user hasn't customised stops" so we can
+// safely re-seed autoPassPriority without overwriting an explicit
+// off-toggle.
+function stepStopsMatchDefault(actual: Record<string, boolean>): boolean {
+  const expected = defaultStepStops();
+  const actualKeys = Object.keys(actual);
+  const expectedKeys = Object.keys(expected);
+  if (actualKeys.length !== expectedKeys.length) return false;
+  for (const k of expectedKeys) {
+    if (actual[k] !== expected[k]) return false;
+  }
+  return true;
 }
 
 // absorbLegacy folds pre-S11.5 single-key localStorage flags into
