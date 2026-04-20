@@ -1556,6 +1556,106 @@ func TestS131PassPriorityResolvesTopWhenStackNonEmpty(t *testing.T) {
 	}
 }
 
+// TestS131TargetReCheckAllIllegalCountersByGameRules covers
+// CR 608.2b: when every targeted slot has become illegal between
+// announce and resolve, the spell is "countered by game rules" and
+// goes to its owner's graveyard without effect — even if it would
+// normally be a permanent that resolves to the battlefield.
+func TestS131TargetReCheckAllIllegalCountersByGameRules(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	caster := g.Seats[0]
+	target := g.Seats[2]
+
+	// Cast a creature with a player target (sandbox: targeting works
+	// regardless of the card's actual oracle text).
+	creatureID := pushTypedCardToHand(caster, "Stalking Vengeance", "Creature — Avatar")
+	if err := g.CastSpell(caster.ID, creatureID, CastSpellParams{
+		Targets: []TargetRef{{Kind: TargetPlayer, ID: target.ID}},
+	}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+
+	// Eliminate the targeted player BEFORE the spell resolves.
+	target.Eliminated = true
+
+	// Walk priority all the way around to fire the resolve.
+	stepBefore := g.Turn.Step
+	for g.stackHasItemsLocked() {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	if g.Turn.Step != stepBefore {
+		t.Errorf("step advanced unexpectedly: was %q, now %q", stepBefore, g.Turn.Step)
+	}
+	// Creature should be in caster's graveyard, NOT the battlefield.
+	if g.Battlefield.Contains(creatureID) {
+		t.Errorf("creature resolved to battlefield despite all-illegal targets")
+	}
+	if !caster.Graveyard.Contains(creatureID) {
+		t.Errorf("creature did not route to owner's graveyard (countered by game rules)")
+	}
+}
+
+// TestS131TargetReCheckPartialIllegalStillResolves covers the
+// partial-illegal case: at least one target survives, so the spell
+// resolves normally. Sandbox: the engine doesn't trim the surviving
+// target subset, just lets the spell through.
+func TestS131TargetReCheckPartialIllegalStillResolves(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	caster := g.Seats[0]
+	dead := g.Seats[2]
+	alive := g.Seats[3]
+
+	id := pushTypedCardToHand(caster, "Multi-target Spell", "Sorcery")
+	if err := g.CastSpell(caster.ID, id, CastSpellParams{
+		Targets: []TargetRef{
+			{Kind: TargetPlayer, ID: dead.ID},
+			{Kind: TargetPlayer, ID: alive.ID},
+		},
+	}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+
+	dead.Eliminated = true
+
+	for g.stackHasItemsLocked() {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	if !caster.Graveyard.Contains(id) {
+		t.Errorf("partial-target sorcery did not resolve to owner's graveyard")
+	}
+}
+
+// TestS131SelfAndNoneTargetsBypassReCheck verifies that Kind=Self /
+// Kind=None entries don't count as "targeted" for the re-check
+// short-circuit — the spell resolves normally even if those entries
+// exist alongside no actual player/card targets.
+func TestS131SelfAndNoneTargetsBypassReCheck(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	caster := g.Seats[0]
+
+	id := pushTypedCardToHand(caster, "Self Sorcery", "Sorcery")
+	if err := g.CastSpell(caster.ID, id, CastSpellParams{
+		Targets: []TargetRef{{Kind: TargetSelf}, {Kind: TargetNone}},
+	}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+	for g.stackHasItemsLocked() {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	if !caster.Graveyard.Contains(id) {
+		t.Errorf("self-targeted sorcery did not resolve normally")
+	}
+}
+
 // TestS131SplitSecondClearsOnResolve verifies that after the split-
 // second item resolves, SplitSecondActive flips back to false and
 // new casts go through.

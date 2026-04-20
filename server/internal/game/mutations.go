@@ -375,6 +375,26 @@ func (g *Game) resolveTopOfStackLocked() error {
 	delete(g.StackMeta, top.InstanceID)
 	defer g.recomputeSplitSecondLocked()
 
+	// Target re-check (CR 608.2b). If the spell declared at least one
+	// target (player or card kind) and EVERY target is now illegal
+	// (referenced player no longer seated / conceded, referenced card
+	// no longer in a zone the engine tracks), the spell is "countered
+	// by game rules" — it resolves by going to the owner's graveyard
+	// without effect. If only *some* targets have become illegal, the
+	// spell still resolves: the engine records what's still valid via
+	// the surviving subset, and players resolve the effect manually
+	// (sandbox — partial-target effects aren't automated).
+	//
+	// Self / none targets don't re-check (self is the caster; none
+	// has no referent) and count as always-legal for the all-illegal
+	// short-circuit.
+	if spellAllTargetsIllegalLocked(g, item) {
+		// "Countered by game rules" — permanents and non-permanents
+		// alike go to the owner's graveyard (CR 608.2b). The
+		// announce-time choices on StackMeta are discarded along
+		// with the item.
+		return g.routeStackCardToGraveyardLocked(top)
+	}
 	if top.IsPermanent() {
 		// Permanents resolve to the battlefield with the announce-time
 		// controller (which may differ from owner — e.g. cast via a
@@ -393,6 +413,56 @@ func (g *Game) resolveTopOfStackLocked() error {
 	}
 	// Instants / sorceries: resolve to the owner's graveyard.
 	return g.routeStackCardToGraveyardLocked(top)
+}
+
+// spellAllTargetsIllegalLocked reports whether a resolved stack item
+// has at least one targeted slot (player or card) and every one of
+// those targets is now illegal per the CR 608.2b existence check.
+// A slot with Kind Self or None is always legal. Items with no
+// targets at all return false (nothing to re-check).
+//
+// Caller must hold g.mu.
+func spellAllTargetsIllegalLocked(g *Game, item *StackItem) bool {
+	if item == nil || len(item.Targets) == 0 {
+		return false
+	}
+	hadTargeted := false
+	anyLegal := false
+	for _, t := range item.Targets {
+		switch t.Kind {
+		case TargetSelf, TargetNone:
+			// These aren't "targets" for the re-check — they're fixed
+			// references. Treat as always-legal and skip the "had any
+			// targeted slot" signal.
+			continue
+		case TargetPlayer, TargetCard:
+			hadTargeted = true
+			if targetStillExistsLocked(g, t) {
+				anyLegal = true
+			}
+		}
+	}
+	if !hadTargeted {
+		return false
+	}
+	return !anyLegal
+}
+
+// targetStillExistsLocked performs the CR 608.2b existence check for
+// a single TargetRef: the referenced player is still seated and
+// non-eliminated, or the referenced card is still in a zone the
+// engine tracks (findCardZoneLocked walks every zone). Caller must
+// hold g.mu.
+func targetStillExistsLocked(g *Game, t TargetRef) bool {
+	switch t.Kind {
+	case TargetPlayer:
+		p := g.playerByIDLocked(t.ID)
+		return p != nil && !p.Eliminated
+	case TargetCard:
+		return g.findCardZoneLocked(t.ID) != nil
+	default:
+		return true
+	}
 }
 
 // resolveTopAbilityLocked resolves the most-recently-added ability
