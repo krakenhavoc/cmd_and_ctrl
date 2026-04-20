@@ -17,6 +17,52 @@ import { backOut, cubicIn, cubicOut } from "svelte/easing";
 import type { TransitionConfig } from "svelte/transition";
 import type { Action } from "svelte/action";
 
+// Per-effect gating, settable from the S11.5 settings panel via
+// setAnimationConfig. Each animation function checks the relevant
+// per-effect boolean (gated under `enabled` as the master). When
+// disabled, the function snaps to its end state without a tween so
+// downstream UI (taps, deals, ETB pulses) still reach the right
+// final visual — the user just doesn't see motion.
+//
+// `speed` multiplies durations: speed=2 → twice as slow; speed=0.5
+// → twice as fast. Read each call instead of pre-computed at
+// settings-change time so a flip mid-animation is felt by the next
+// fire without needing every duration constant to be re-derived.
+type AnimationConfig = {
+  enabled: boolean;
+  speed: number;
+  cardDraw: boolean;
+  cardPlay: boolean;
+  cardTap: boolean;
+  cardUntap: boolean;
+  cardFlip: boolean;
+  particlesEtb: boolean;
+  damagePopups: boolean;
+};
+const cfg: AnimationConfig = {
+  enabled: true,
+  speed: 1,
+  cardDraw: true,
+  cardPlay: true,
+  cardTap: true,
+  cardUntap: true,
+  cardFlip: true,
+  particlesEtb: true,
+  damagePopups: true,
+};
+export function setAnimationConfig(next: Partial<AnimationConfig>): void {
+  Object.assign(cfg, next);
+}
+
+// gatedDuration applies the speed multiplier and forces a snap
+// (~1ms) when the master switch or per-effect flag is off. The 1ms
+// floor — instead of 0 — is because some Svelte transitions skip
+// rendering the final frame on duration: 0.
+function gatedDuration(baseMs: number, perEffect: boolean): number {
+  if (!cfg.enabled || !perEffect) return 1;
+  return Math.max(1, baseMs * cfg.speed);
+}
+
 // TAP_DURATION is short enough that a click-to-tap feels responsive
 // (under the 100ms perception threshold for "instant") but long enough
 // that the rotation reads as motion rather than a jump cut.
@@ -28,9 +74,14 @@ const TAP_DURATION = 0.18;
 // gsap tween so callers can chain or kill if needed; most callers can
 // ignore the return value.
 export function animateTap(el: HTMLElement, tapped: boolean): gsap.core.Tween {
+  // Per-effect gate distinguishes tap (cardTap) from untap
+  // (cardUntap) so a user who likes the tap motion but finds untap-
+  // all visually noisy at end-of-turn can disable just that side.
+  const allowed = tapped ? cfg.cardTap : cfg.cardUntap;
+  const dur = cfg.enabled && allowed ? TAP_DURATION * cfg.speed : 0;
   return gsap.to(el, {
     "--tap-rot": tapped ? "90deg" : "0deg",
-    duration: TAP_DURATION,
+    duration: dur,
     ease: "power2.out",
     overwrite: "auto",
   });
@@ -52,7 +103,7 @@ const DEAL_IN_DURATION = 360;
 const DEAL_OUT_DURATION = 220;
 export function dealIn(node: HTMLElement): TransitionConfig {
   return {
-    duration: DEAL_IN_DURATION,
+    duration: gatedDuration(DEAL_IN_DURATION, cfg.cardDraw),
     easing: backOut,
     tick: (t: number) => {
       const u = 1 - t;
@@ -74,7 +125,10 @@ export function dealIn(node: HTMLElement): TransitionConfig {
 // FLIP step. Saving that for a follow-up if it's missed.
 export function dealOut(node: HTMLElement): TransitionConfig {
   return {
-    duration: DEAL_OUT_DURATION,
+    // Played-from-hand uses cardPlay; pure draw discards (less
+    // common) also flow through dealOut, but cardPlay is the more
+    // visible action so it's the right gate to bind to.
+    duration: gatedDuration(DEAL_OUT_DURATION, cfg.cardPlay),
     easing: cubicIn,
     tick: (t: number) => {
       const u = 1 - t;
@@ -101,13 +155,19 @@ export function dealOut(node: HTMLElement): TransitionConfig {
 // in `out:` if/when desired.
 const ETB_DURATION = 0.32;
 export const etbPulse: Action<HTMLElement> = (node) => {
+  if (!cfg.enabled || !cfg.particlesEtb) {
+    // Skip the punch — but still snap to the final state so the
+    // permanent doesn't render at scale 0.55 / opacity 0.
+    gsap.set(node, { scale: 1, opacity: 1 });
+    return;
+  }
   gsap.fromTo(
     node,
     { scale: 0.55, opacity: 0 },
     {
       scale: 1,
       opacity: 1,
-      duration: ETB_DURATION,
+      duration: ETB_DURATION * cfg.speed,
       ease: "back.out(2.2)",
       // overwrite so a snapshot-driven re-mount mid-animation cleanly
       // restarts the punch instead of layering on top.
@@ -126,7 +186,7 @@ const POPUP_IN_DURATION = 220;
 const POPUP_OUT_DURATION = 320;
 export function floatUp(node: HTMLElement): TransitionConfig {
   return {
-    duration: POPUP_IN_DURATION,
+    duration: gatedDuration(POPUP_IN_DURATION, cfg.damagePopups),
     easing: backOut,
     tick: (t: number) => {
       const u = 1 - t;
@@ -140,7 +200,7 @@ export function floatUp(node: HTMLElement): TransitionConfig {
 }
 export function fadeOut(node: HTMLElement): TransitionConfig {
   return {
-    duration: POPUP_OUT_DURATION,
+    duration: gatedDuration(POPUP_OUT_DURATION, cfg.damagePopups),
     easing: cubicOut,
     tick: (t: number) => {
       const u = 1 - t;
