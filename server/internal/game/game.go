@@ -83,6 +83,13 @@ type Game struct {
 	// Added in S10.
 	Initiative uuid.UUID
 
+	// UndoLimit is the per-player budget of undos allowed each turn.
+	// Refreshed on each player's untap step. Default DefaultUndoLimit;
+	// admin / any seated player can change via the set_undo_limit
+	// action. Sandbox — players self-police, the limit is a guardrail
+	// against runaway rewinds, not a strict policy. Added in S11.
+	UndoLimit int
+
 	// Promises is the directed per-pair "I owe you" promise-token count
 	// keyed by `from→to` pairs. Politics scaffold — players use it as
 	// a visual reminder of informal deals ("I owe Alice 2 favours").
@@ -232,7 +239,11 @@ func (g *Game) Start(r *rand.Rand) error {
 	}
 
 	g.rng = r
+	if g.UndoLimit <= 0 {
+		g.UndoLimit = DefaultUndoLimit
+	}
 	for _, p := range g.Seats {
+		p.UndosRemaining = g.UndoLimit
 		p.Library.Shuffle(r)
 		// Deal an opening hand of 7. If the library is too short to
 		// satisfy 7 (a malformed deck), stop early — the partial hand
@@ -255,6 +266,13 @@ func (g *Game) Start(r *rand.Rand) error {
 // game starts. The mulligan flow can take a player back to the same
 // count for redraws (simplified — no London bottom-N penalty yet).
 const OpeningHandSize = 7
+
+// DefaultUndoLimit is the per-player undo budget refreshed each turn
+// when Game.UndoLimit is unset. One is intentionally tight — undo is
+// for "I clicked the wrong card", not for re-litigating turns. Admin
+// or any seated player can raise it via set_undo_limit if the table
+// wants more leniency. Added in S11.
+const DefaultUndoLimit = 1
 
 // End transitions the game to the ended state. Idempotent: calling
 // End on an already-ended game is a no-op.
@@ -308,6 +326,14 @@ func (g *Game) AdvanceStep() (Turn, error) {
 // Caller must hold g.mu.
 func (g *Game) runStepEntryHooksLocked() {
 	switch g.Turn.Step {
+	case StepUntap:
+		// Refresh the active player's per-turn undo budget. This
+		// fires when the cursor enters their untap step — both via
+		// AdvanceStep and via PassPriority's wrap-and-advance branch
+		// (both routes funnel through this hook).
+		if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
+			g.Seats[g.Turn.ActiveSeat].UndosRemaining = g.UndoLimit
+		}
 	case StepCombatDamage:
 		g.resolveCombatDamageLocked()
 	case StepEndCombat:

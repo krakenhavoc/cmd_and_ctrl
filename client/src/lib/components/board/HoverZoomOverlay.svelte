@@ -118,13 +118,16 @@
 <style>
   .overlay {
     position: absolute;
-    /* Anchor centre at (0.8, 0.2) of the board area. translate(-50%,
-       -50%) re-centres around the chosen anchor so the visual centre,
-       not the top-left, sits at the percentage. */
-    left: 80%;
-    top: 20%;
-    transform: translate(-50%, -50%);
+    /* Pin to the top-right corner of the board with a small inset so
+       the panel always fits inside the viewport regardless of width.
+       Previously anchored at left:80% + translate(-50%,-50%), which
+       pushed the right edge off-screen on wide displays. */
+    right: 12px;
+    top: 12px;
     width: clamp(220px, 26vw, 380px);
+    /* Cap height to viewport with a small breathing margin so the
+       Oracle text never grows the panel past the bottom edge. */
+    max-height: calc(100vh - 24px);
     background: #0b1220;
     border: 1px solid #4a5270;
     border-radius: 12px;

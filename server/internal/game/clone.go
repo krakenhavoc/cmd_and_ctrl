@@ -36,6 +36,7 @@ func (g *Game) cloneLocked() *Game {
 		MulligansOpen: g.MulligansOpen,
 		Monarch:       g.Monarch,
 		Initiative:    g.Initiative,
+		UndoLimit:     g.UndoLimit,
 		rng:           g.rng,
 	}
 	out.Battlefield = cloneZone(g.Battlefield)
@@ -96,6 +97,7 @@ func clonePlayer(p *Player) *Player {
 		HandKept:       p.HandKept,
 		MulligansTaken: p.MulligansTaken,
 		DeckImported:   p.DeckImported,
+		UndosRemaining: p.UndosRemaining,
 	}
 	out.Library = cloneZone(p.Library)
 	out.Hand = cloneZone(p.Hand)
@@ -160,6 +162,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.MulligansOpen = src.MulligansOpen
 	g.Monarch = src.Monarch
 	g.Initiative = src.Initiative
+	g.UndoLimit = src.UndoLimit
 	g.Promises = src.Promises
 	g.Vote = src.Vote
 	g.rng = src.rng

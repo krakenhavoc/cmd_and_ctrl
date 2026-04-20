@@ -708,20 +708,29 @@ func (c *Client) handleAction(frame protocol.Frame) {
 	// the room's undo stack and restores the previous game state.
 	// Special-cased here (rather than routed through actions.Dispatch)
 	// because Dispatch only has access to *game.Game, not the room
-	// that owns the history. Sandbox — any seated player or admin can
-	// undo; the casual table self-polices abuse.
+	// that owns the history. The room layer enforces caller gates
+	// (top-of-stack must be your own action; you must have undo
+	// budget remaining); admin sessions (playerID == uuid.Nil)
+	// bypass both.
 	if payload.Type == "undo" {
-		view, seq, err := room.Undo()
+		view, seq, err := room.Undo(c.playerID)
 		if err != nil {
-			if errors.Is(err, ErrNothingToUndo) {
+			switch {
+			case errors.Is(err, ErrNothingToUndo):
 				c.sendError(frame.ID, protocol.CodeBadRequest, "nothing to undo")
-			} else {
+			case errors.Is(err, ErrNotYourUndo):
+				c.sendError(frame.ID, protocol.CodeBadRequest,
+					"you can only undo your own most recent action")
+			case errors.Is(err, game.ErrNoUndosRemaining):
+				c.sendError(frame.ID, protocol.CodeBadRequest,
+					"no undos remaining this turn")
+			default:
 				c.sendError(frame.ID, protocol.CodeInternal, err.Error())
 			}
 			return
 		}
 		c.hub.broadcastToRoom(room.Game.ID, seq, view)
-		c.log.Debug("undo applied", "seq", seq)
+		c.log.Debug("undo applied", "seq", seq, "caller", c.playerID)
 		return
 	}
 
@@ -736,7 +745,7 @@ func (c *Client) handleAction(frame protocol.Frame) {
 	// spectator — gated branches let those through unchanged.
 	action.Caller = c.playerID
 
-	view, seq, err := room.Apply(func() error {
+	view, seq, err := room.Apply(c.playerID, func() error {
 		return actions.Dispatch(room.Game, action)
 	})
 	if err != nil {
