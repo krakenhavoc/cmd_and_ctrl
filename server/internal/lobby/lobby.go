@@ -12,6 +12,7 @@ package lobby
 
 import (
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
@@ -68,6 +69,18 @@ type SeatInfo struct {
 	// (vs. the placeholder). Start refuses to transition the game
 	// until every seat has DeckUploaded == true.
 	DeckUploaded bool `json:"deck_uploaded"`
+
+	// DiscordID + DiscordAvatarHash are populated for seats claimed
+	// via the OAuth flow (S12.5). The client uses DiscordID to build
+	// the /avatars/<id>/<hash>.png URL; DiscordAvatarHash is there
+	// so the hash is visible to opponents without reading every
+	// other player's session. Empty for seats joined via the manual
+	// name form. DisplayName carries Discord's global_name (or
+	// username fallback) so the lobby and seat label render the
+	// friendly name even before the avatar cache populates.
+	DiscordID         string `json:"discord_id,omitempty"`
+	DiscordAvatarHash string `json:"discord_avatar_hash,omitempty"`
+	DisplayName       string `json:"display_name,omitempty"`
 }
 
 // Lobby holds the set of games currently known to the server, keyed
@@ -147,6 +160,47 @@ func (l *Lobby) Create(name string) (GameMeta, error) {
 // which is the narrow correctness goal here — "two tabs can see each
 // other in the lobby and both land on the game view".
 func (l *Lobby) Join(id uuid.UUID, invite, playerName string) (GameMeta, uuid.UUID, error) {
+	return l.JoinWithIdentity(id, invite, playerName, DiscordIdentity{})
+}
+
+// DiscordIdentity is the optional OAuth-sourced identity passed
+// to JoinWithIdentity. Zero value means "no Discord identity" —
+// JoinWithIdentity then behaves exactly like the legacy Join.
+type DiscordIdentity struct {
+	ID         string
+	Username   string
+	GlobalName string
+	AvatarHash string
+}
+
+// Populated reports whether the caller has a real Discord identity
+// attached. Used by JoinWithIdentity to decide whether to write
+// the Discord* fields to the new SeatInfo.
+func (d DiscordIdentity) Populated() bool { return d.ID != "" }
+
+// DisplayName picks the friendly seat label: GlobalName when
+// non-empty, else Username. Callers should prefer this over
+// building the fallback chain inline.
+func (d DiscordIdentity) DisplayName() string {
+	if d.GlobalName != "" {
+		return d.GlobalName
+	}
+	return d.Username
+}
+
+// JoinWithIdentity is the OAuth-aware seat claim. If identity is
+// populated (ID non-empty), the seat's Name defaults to the
+// Discord display name — an explicit non-empty playerName
+// override wins if the caller wants to force a manual label.
+// Non-populated identity is indistinguishable from the legacy
+// Join path.
+func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identity DiscordIdentity) (GameMeta, uuid.UUID, error) {
+	// Fall back to the Discord display name when the caller didn't
+	// pass an explicit override. This is the path the OAuth
+	// callback takes — the user never typed a name.
+	if strings.TrimSpace(playerName) == "" && identity.Populated() {
+		playerName = identity.DisplayName()
+	}
 	playerName = trimToLimit(playerName, 40)
 	if playerName == "" {
 		return GameMeta{}, uuid.Nil, ErrEmptyName
@@ -190,12 +244,18 @@ func (l *Lobby) Join(id uuid.UUID, invite, playerName string) (GameMeta, uuid.UU
 		return GameMeta{}, uuid.Nil, err
 	}
 
-	entry.meta.Players = append(entry.meta.Players, SeatInfo{
+	seat := SeatInfo{
 		PlayerID:     p.ID,
 		Name:         p.Name,
 		Seat:         p.Seat,
 		DeckUploaded: false,
-	})
+	}
+	if identity.Populated() {
+		seat.DiscordID = identity.ID
+		seat.DiscordAvatarHash = identity.AvatarHash
+		seat.DisplayName = identity.DisplayName()
+	}
+	entry.meta.Players = append(entry.meta.Players, seat)
 	// The game's State flips to active on Start — the lobby drives
 	// Start only when an explicit POST /games/:id/start lands. Until
 	// then meta.State stays "lobby".

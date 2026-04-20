@@ -15,6 +15,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/ratelimit"
 )
@@ -56,6 +57,23 @@ type Config struct {
 	// Tests inject an httptest.Server-backed client here so the
 	// upload path never touches the live Moxfield / Archidekt APIs.
 	DeckHTTPClient *http.Client
+
+	// Discord carries the S12.5 OAuth config. When Enabled() is
+	// false the /auth/discord/* routes are still registered but
+	// return 503, and /auth/discord/config reports enabled: false
+	// so the client hides the sign-in button. Unset in tests that
+	// don't exercise the OAuth surface.
+	Discord discord.Config
+	// DiscordStateStore holds in-flight OAuth rounds. Nil falls
+	// back to a freshly-constructed store on first use so tests
+	// that don't set it still work; production wires a single
+	// shared store at boot so concurrent OAuths don't each build
+	// their own map.
+	DiscordStateStore *discord.StateStore
+	// DiscordHTTPClient is injected for tests that stub Discord's
+	// token + /users/@me endpoints via httptest. Nil falls back to
+	// http.DefaultClient.
+	DiscordHTTPClient *http.Client
 }
 
 // GameEvictor is the subset of *ws.Hub that the lobby needs to close
@@ -97,6 +115,16 @@ func Handler(c Config) http.Handler {
 	mux.Handle("POST /admin/login", limit.Middleware(handlerFunc(c, adminLogin)))
 	mux.Handle("POST /games/{id}/join", limit.Middleware(handlerFunc(c, joinGame)))
 	mux.Handle("POST /games/{id}/spectate", limit.Middleware(handlerFunc(c, spectateGame)))
+
+	// Discord OAuth (S12.5). All three are unauthenticated — they
+	// either run before any session exists or carry their own
+	// CSRF protection via the state token. /start and /callback
+	// are rate-limited alongside admin-login + join because state
+	// generation involves crypto/rand and the upstream calls are
+	// the most expensive thing we forward to Discord.
+	mux.Handle("GET /auth/discord/config", handlerFunc(c, discordConfig))
+	mux.Handle("GET /auth/discord/start", limit.Middleware(handlerFunc(c, discordStart)))
+	mux.Handle("GET /auth/discord/callback", limit.Middleware(handlerFunc(c, discordCallback)))
 	mux.Handle("POST /games", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, createGame)))
 	mux.Handle("DELETE /games/{id}", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, deleteGame)))
 	mux.Handle("GET /games", auth.Middleware(c.Auth)(handlerFunc(c, listGames)))

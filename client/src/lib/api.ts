@@ -178,6 +178,25 @@ export async function uploadDeck(
   return (await res.json()) as UploadDeckResponse;
 }
 
+// discordAuthEnabled probes /auth/discord/config and reports whether
+// the server has the Discord OAuth three-tuple configured. Used by
+// Join.svelte to decide whether to render the "Sign in with Discord"
+// button. A 503 / network failure → false; the manual-name fallback
+// is always safe, so a down probe shouldn't block the join flow.
+export async function discordAuthEnabled(): Promise<boolean> {
+  try {
+    const res = await fetch("/auth/discord/config", {
+      method: "GET",
+      credentials: "same-origin",
+    });
+    if (!res.ok) return false;
+    const body = (await res.json()) as { enabled?: boolean };
+    return body.enabled === true;
+  } catch {
+    return false;
+  }
+}
+
 // logout revokes the current session server-side and clears local
 // state. Best-effort: a network failure still clears the store so
 // the user isn't stranded in a half-logged-out UI. We bypass

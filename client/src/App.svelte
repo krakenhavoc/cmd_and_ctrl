@@ -13,7 +13,7 @@
   import Game from "./routes/Game.svelte";
   import Settings from "./lib/components/Settings.svelte";
   import { route, navigate } from "./lib/router";
-  import { session } from "./lib/session";
+  import { session, setSession } from "./lib/session";
   import { settings } from "./lib/settings";
 
   // Enforce the auth gate as a side effect of routing. Running this
@@ -22,7 +22,11 @@
   $effect(() => {
     const r = $route;
     const s = $session;
-    const isPublic = r.name === "login" || r.name === "adminLogin" || r.name === "join";
+    const isPublic =
+      r.name === "login" ||
+      r.name === "adminLogin" ||
+      r.name === "join" ||
+      r.name === "oauthComplete";
     if (!s && !isPublic) {
       navigate("#/login");
     }
@@ -32,6 +36,33 @@
     if (s && r.name === "login") {
       navigate("#/lobby");
     }
+  });
+
+  // oauth-complete handoff (S12.5). /auth/discord/callback on the
+  // server 302s here with token / game / player_id / expires_at in
+  // the URL fragment. Install the session, clear the fragment so
+  // it doesn't survive a reload (we've already persisted the
+  // session to localStorage), and send the user into the game.
+  $effect(() => {
+    const r = $route;
+    if (r.name !== "oauthComplete") return;
+    setSession({
+      token: r.token,
+      expiresAt: r.expiresAt,
+      principal: {
+        // The server's /me returns the full principal, but we
+        // don't block navigation on fetching it — a RolePlayer
+        // session with game_id + player_id is enough for Game.
+        role: "player",
+        game_id: r.gameID,
+        player_id: r.playerID,
+        issued_at: new Date().toISOString(),
+        expires_at: r.expiresAt,
+      },
+      playerID: r.playerID,
+      gameID: r.gameID,
+    });
+    navigate(`#/games/${r.gameID}`);
   });
 
   // Apply the subset of settings that hang off :root as CSS

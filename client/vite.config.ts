@@ -32,6 +32,12 @@ export default defineConfig({
       "/cards": { target: "http://localhost:8080", changeOrigin: true },
       "/me": { target: "http://localhost:8080", changeOrigin: true },
       "/healthz": { target: "http://localhost:8080", changeOrigin: true },
+      // S12.5: Discord OAuth round-trip. The redirect from Discord
+      // lands on /auth/discord/callback; without this proxy the
+      // dev browser hits Vite's index.html and the SPA never sees
+      // the callback. Mirror the same shape used by the prod
+      // reverse proxy (cmd.labxp.io → :8080).
+      "/auth": { target: "http://localhost:8080", changeOrigin: true },
     },
   },
 });

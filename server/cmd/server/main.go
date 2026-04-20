@@ -42,6 +42,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
@@ -99,13 +100,21 @@ func main() {
 	})
 	mux.HandleFunc("GET /ws", hub.ServeWS)
 	mux.Handle("/cards/", auth.Middleware(authenticator)(cards.Handler(cardIdx, imgCache)))
+	discordCfg := discord.ConfigFromEnv()
+	if discordCfg.Enabled() {
+		log.Info("discord oauth enabled", "redirect_uri", discordCfg.RedirectURI)
+	} else {
+		log.Info("discord oauth disabled — set CMDCTRL_DISCORD_CLIENT_ID/SECRET/REDIRECT_URI to enable")
+	}
 	mux.Handle("/", lobby.Handler(lobby.Config{
-		Lobby:      l,
-		Auth:       authenticator,
-		AdminToken: cfg.AdminToken,
-		SessionTTL: cfg.SessionTTL,
-		Cards:      cardIdx,
-		Evictor:    hub,
+		Lobby:             l,
+		Auth:              authenticator,
+		AdminToken:        cfg.AdminToken,
+		SessionTTL:        cfg.SessionTTL,
+		Cards:             cardIdx,
+		Evictor:           hub,
+		Discord:           discordCfg,
+		DiscordStateStore: discord.NewStateStore(),
 	}))
 
 	srv := &http.Server{
