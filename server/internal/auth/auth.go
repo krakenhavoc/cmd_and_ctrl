@@ -21,7 +21,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Role tags what a Principal is allowed to do. At S04 there are two:
+// Role tags what a Principal is allowed to do.
 //
 //   - RolePlayer: a seated player in a specific game. Allowed to
 //     open WS connections to that game only, and to hit /games/:id
@@ -30,11 +30,18 @@ import (
 //     list all games, and claim any seat. There is no admin-only
 //     "mutate game state" endpoint — admins act as players once
 //     they've claimed a seat.
+//   - RoleSpectator: a non-seated observer of a specific game.
+//     Receives snapshot broadcasts (filtered — all opponent hands
+//     hidden, same as admin spectator) but cannot send action
+//     frames. Bound to GameID only; PlayerID is uuid.Nil. Issued
+//     via the per-game spectator invite from the lobby. Added in
+//     S11.
 type Role string
 
 const (
-	RolePlayer Role = "player"
-	RoleAdmin  Role = "admin"
+	RolePlayer    Role = "player"
+	RoleAdmin     Role = "admin"
+	RoleSpectator Role = "spectator"
 )
 
 // Principal is the canonical authenticated identity. It is the only

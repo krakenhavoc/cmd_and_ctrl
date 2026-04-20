@@ -8,7 +8,7 @@
     startGame,
     type GameMeta,
   } from "../lib/api";
-  import { inviteURL, navigate } from "../lib/router";
+  import { inviteURL, spectatorInviteURL, navigate } from "../lib/router";
   import { session, LobbyApiError } from "../lib/session";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
 
@@ -22,10 +22,14 @@
   let newName = $state("");
   let busy = $state(false);
 
-  // Track the freshly-created game's invite token client-side — the
-  // List endpoint strips invite tokens, so we remember them per
-  // session so admins can copy the link without re-fetching /games/{id}.
+  // Track the freshly-created game's invite tokens client-side — the
+  // List endpoint strips both invites, so we remember them per
+  // session so admins can copy each link without re-fetching
+  // /games/{id}. The spectator invite (S11) is distinct from the
+  // player invite — sharing the player one with a spectator would
+  // let them claim a seat.
   const recentInvites = new Map<string, string>();
+  const recentSpectatorInvites = new Map<string, string>();
 
   async function refresh(): Promise<void> {
     try {
@@ -43,6 +47,7 @@
     try {
       const meta = await createGame(newName.trim());
       if (meta.invite_token) recentInvites.set(meta.id, meta.invite_token);
+      if (meta.spectator_invite) recentSpectatorInvites.set(meta.id, meta.spectator_invite);
       newName = "";
       await refresh();
     } catch (err) {
@@ -69,6 +74,16 @@
       return;
     }
     const url = inviteURL(id, token);
+    void navigator.clipboard.writeText(url);
+  }
+
+  function copySpectatorInvite(id: string): void {
+    const token = recentSpectatorInvites.get(id);
+    if (!token) {
+      error = "no spectator invite cached for this game — re-open as admin to recover";
+      return;
+    }
+    const url = spectatorInviteURL(id, token);
     void navigator.clipboard.writeText(url);
   }
 
@@ -141,6 +156,9 @@
             <div class="row-actions">
               {#if recentInvites.has(g.id)}
                 <button onclick={() => copyInvite(g.id)}>copy invite</button>
+              {/if}
+              {#if recentSpectatorInvites.has(g.id)}
+                <button onclick={() => copySpectatorInvite(g.id)}>copy spectator link</button>
               {/if}
               {#if canStart(g)}
                 <button onclick={() => onStart(g.id)}>start</button>

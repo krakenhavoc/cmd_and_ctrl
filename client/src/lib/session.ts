@@ -7,7 +7,7 @@ export interface Session {
   token: string;
   expiresAt: string; // ISO 8601, for display
   principal: {
-    role: "player" | "admin";
+    role: "player" | "admin" | "spectator";
     admin_id?: string;
     game_id?: string;
     player_id?: string;

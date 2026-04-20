@@ -54,6 +54,8 @@ const (
 	TypeStartVote     Type = "start_vote"
 	TypeCastVote      Type = "cast_vote"
 	TypeEndVote       Type = "end_vote"
+	// S11.
+	TypeSetUndoLimit Type = "set_undo_limit"
 )
 
 // ErrUnknownType is returned when Dispatch receives an action type it
@@ -574,6 +576,17 @@ func Dispatch(g *game.Game, a Action) error {
 	case TypeEndVote:
 		_, err := g.EndVote()
 		return err
+
+	case TypeSetUndoLimit:
+		var p struct {
+			Limit int `json:"limit"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		// Sandbox — any seated player or admin may raise/lower the
+		// limit. The table self-polices abuse.
+		return g.SetUndoLimit(p.Limit)
 
 	case TypeSetBattlefieldPosition:
 		var p struct {

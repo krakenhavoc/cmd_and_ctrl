@@ -94,6 +94,10 @@ export interface GameView {
   // Currently open council's-dilemma / politics vote, or omitted when
   // none is in progress. Added in S10.
   vote?: VoteView;
+  // Per-player per-turn undo budget. Refreshed on each player's untap
+  // step. Drives the "undos: N" indicator and gates the undo button.
+  // Added in S11.
+  undo_limit?: number;
 }
 
 export interface VoteView {
@@ -141,6 +145,10 @@ export interface PlayerView {
   // is still using the placeholder commander handed out at join
   // time. Drives the in-game deck-import modal. Added in S08.5.
   deck_imported?: boolean;
+  // Per-turn undo budget left for this seat, refreshed on entering
+  // their untap step. Drives the per-seat indicator on the toolbar.
+  // Added in S11.
+  undos_remaining?: number;
 }
 
 export interface LifeChangeView {
