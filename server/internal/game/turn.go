@@ -82,31 +82,58 @@ func PhaseOf(s Step) Phase {
 	return stepPhase[s]
 }
 
+// NoPriority is the sentinel PriorityHolder value meaning "no player
+// holds priority right now." Per CR 502.4 / 514.3, the Untap and
+// Cleanup steps do not grant priority. PassPriority returns
+// ErrNoPriority while PriorityHolder == NoPriority; the auto turn-
+// based actions in runStepEntryHooksLocked drive the cursor through
+// these steps without requiring a player click. Added in S13.
+const NoPriority = -1
+
 // Turn is the cursor into the game's turn/phase/step state machine.
 // It says whose turn it is, which phase and step we're in, and the
 // turn number since the game started (turn 1 = the first player's
 // first turn). PriorityHolder tracks which seat currently holds
 // priority within the step — added in S07 so the per-seat priority
-// indicator is meaningful. PriorityHolder always equals ActiveSeat
-// at the start of every step.
+// indicator is meaningful. PriorityHolder equals ActiveSeat at the
+// start of every step that grants priority, or NoPriority during
+// Untap and Cleanup.
 type Turn struct {
 	Number         int // 1-indexed
 	ActiveSeat     int // 0-indexed seat
-	PriorityHolder int // 0-indexed seat; equals ActiveSeat at step boundaries
+	PriorityHolder int // 0-indexed seat or NoPriority during Untap/Cleanup
 	Phase          Phase
 	Step           Step
 }
 
+// stepGrantsPriority reports whether the given step grants priority
+// to the active player on entry (CR 117). Untap and Cleanup are the
+// only steps that do not.
+func stepGrantsPriority(s Step) bool {
+	return s != StepUntap && s != StepCleanup
+}
+
+// initialPriorityHolder returns the PriorityHolder value the cursor
+// should hold immediately after entering step s with the given active
+// seat — NoPriority for steps that don't grant priority, otherwise
+// the active seat itself.
+func initialPriorityHolder(s Step, activeSeat int) int {
+	if !stepGrantsPriority(s) {
+		return NoPriority
+	}
+	return activeSeat
+}
+
 // newStartingTurn returns the turn cursor at the start of a game:
-// turn 1, seat 0, beginning phase, untap step. Note that MTG's turn-1
-// rules actually skip the draw step for the first player; S02 does not
-// enforce this — manual play can account for it, and S13+ rules work
-// will automate it.
+// turn 1, seat 0, beginning phase, untap step. PriorityHolder is
+// NoPriority because Untap doesn't grant priority. After the mulligan
+// window closes, KeepHand fires runStepEntryHooksLocked which auto-
+// untaps and advances the cursor into Upkeep.
 func newStartingTurn() Turn {
 	return Turn{
 		Number:         1,
 		ActiveSeat:     0,
-		PriorityHolder: 0,
+		PriorityHolder: initialPriorityHolder(StepUntap, 0),
 		Phase:          PhaseOf(StepUntap),
 		Step:           StepUntap,
 	}
@@ -126,16 +153,21 @@ func indexOfStep(s Step) int {
 // advance returns the Turn cursor one step after t, wrapping to the
 // next seat (and incrementing Number) after the cleanup step. numSeats
 // must be > 0; callers are responsible for passing a valid count.
+//
+// PriorityHolder is set via initialPriorityHolder so that landing on
+// Untap or Cleanup yields NoPriority (S13 — those steps don't grant
+// priority per CR 502.4 / 514.3).
 func (t Turn) advance(numSeats int) Turn {
 	idx := indexOfStep(t.Step)
 	next := idx + 1
 	if next < len(turnSequence) {
+		nextStep := turnSequence[next]
 		return Turn{
 			Number:         t.Number,
 			ActiveSeat:     t.ActiveSeat,
-			PriorityHolder: t.ActiveSeat,
-			Phase:          PhaseOf(turnSequence[next]),
-			Step:           turnSequence[next],
+			PriorityHolder: initialPriorityHolder(nextStep, t.ActiveSeat),
+			Phase:          PhaseOf(nextStep),
+			Step:           nextStep,
 		}
 	}
 	// Wrap: past cleanup, move to the next seat's untap. In Commander
@@ -149,7 +181,7 @@ func (t Turn) advance(numSeats int) Turn {
 	return Turn{
 		Number:         nextNumber,
 		ActiveSeat:     nextSeat,
-		PriorityHolder: nextSeat,
+		PriorityHolder: initialPriorityHolder(StepUntap, nextSeat),
 		Phase:          PhaseOf(StepUntap),
 		Step:           StepUntap,
 	}

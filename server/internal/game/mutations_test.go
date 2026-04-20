@@ -26,6 +26,29 @@ func newFourPlayerActiveGame(t *testing.T) *Game {
 
 func newActiveGameWithSeats(t *testing.T, seats int) *Game {
 	t.Helper()
+	g := newActiveGameMulligansOpen(t, seats)
+	// S13: every test that drives priority / steps assumes the
+	// mulligan window has closed and the cursor has landed on a
+	// priority-granting step. Closing mulligans here fires the first
+	// step-entry hook, which auto-untaps seat 0 and advances the
+	// cursor to Upkeep with PriorityHolder=ActiveSeat.
+	for _, p := range g.Seats {
+		if err := g.KeepHand(p.ID); err != nil {
+			t.Fatalf("KeepHand %s: %v", p.Name, err)
+		}
+	}
+	return g
+}
+
+// newActiveGameMulligansOpen returns a started game with the mulligan
+// window still open (no KeepHand calls), so tests that exercise the
+// pre-game flow (TestStartDealsOpeningHand,
+// TestKeepHandClosesWindowWhenAllCommit) can observe the initial
+// state. After S13 the cursor sits on Untap with NoPriority until
+// KeepHand for the last seat closes the window and fires the first
+// auto-untap.
+func newActiveGameMulligansOpen(t *testing.T, seats int) *Game {
+	t.Helper()
 	g := NewGame()
 	for i := 0; i < seats; i++ {
 		if _, err := g.AddPlayer(fmt.Sprintf("P%d", i+1), buildTestDeck(fmt.Sprintf("Commander %d", i+1))); err != nil {
@@ -819,7 +842,7 @@ func TestCurrentPowerClampsToZero(t *testing.T) {
 }
 
 func TestStartDealsOpeningHand(t *testing.T) {
-	g := newActiveGame(t) // already started
+	g := newActiveGameMulligansOpen(t, 2)
 	for _, p := range g.Seats {
 		if p.Hand.Size() != OpeningHandSize {
 			t.Errorf("seat %d hand size: got %d, want %d", p.Seat, p.Hand.Size(), OpeningHandSize)
@@ -834,7 +857,7 @@ func TestStartDealsOpeningHand(t *testing.T) {
 }
 
 func TestKeepHandClosesWindowWhenAllCommit(t *testing.T) {
-	g := newFourPlayerActiveGame(t)
+	g := newActiveGameMulligansOpen(t, 4)
 	for i, p := range g.Seats {
 		if err := g.KeepHand(p.ID); err != nil {
 			t.Fatalf("KeepHand seat %d: %v", i, err)
@@ -936,7 +959,9 @@ func TestConcedeIsRejectedWhenAlreadyEliminated(t *testing.T) {
 
 func TestConcedeAdvancesPastEliminatedActiveSeat(t *testing.T) {
 	// Active seat == 0 at start. Conceding seat 0 must move the
-	// cursor to seat 1 so play continues.
+	// cursor to seat 1 so play continues. S13: the new seat starts
+	// on Untap, the entry hook auto-untaps and walks the cursor on
+	// to Upkeep where priority is granted.
 	g := newFourPlayerActiveGame(t)
 	if err := g.Concede(g.Seats[0].ID); err != nil {
 		t.Fatalf("Concede: %v", err)
@@ -947,8 +972,8 @@ func TestConcedeAdvancesPastEliminatedActiveSeat(t *testing.T) {
 	if g.Turn.PriorityHolder != 1 {
 		t.Errorf("priority holder: got %d, want 1", g.Turn.PriorityHolder)
 	}
-	if g.Turn.Step != StepUntap {
-		t.Errorf("step after pass-past: got %q, want untap", g.Turn.Step)
+	if g.Turn.Step != StepUpkeep {
+		t.Errorf("step after pass-past: got %q, want upkeep (S13 auto-advance)", g.Turn.Step)
 	}
 }
 
@@ -990,8 +1015,9 @@ func TestPassTurnSkipsToNextSeat(t *testing.T) {
 	if g.Turn.ActiveSeat != 1 {
 		t.Errorf("seat: got %d, want 1", g.Turn.ActiveSeat)
 	}
-	if g.Turn.Step != StepUntap {
-		t.Errorf("step after PassTurn: got %q, want %q", g.Turn.Step, StepUntap)
+	if g.Turn.Step != StepUpkeep {
+		t.Errorf("step after PassTurn: got %q, want %q (S13 auto-advance through Untap)",
+			g.Turn.Step, StepUpkeep)
 	}
 }
 
@@ -1319,6 +1345,56 @@ func TestSetPoisonAndEnergy(t *testing.T) {
 	}
 }
 
+// TestS13PassPriorityRejectedOnNoPriorityStep verifies the server
+// returns ErrNoPriority when called during Untap or Cleanup. The
+// helper closes mulligans which auto-advances to Upkeep, so we get
+// to a no-priority state via PassTurn (lands on Untap of next seat
+// — but mulligans-close already happened, so… use a fresh game with
+// mulligans open).
+func TestS13PassPriorityRejectedOnNoPriorityStep(t *testing.T) {
+	g := newActiveGameMulligansOpen(t, 4)
+	if g.Turn.Step != StepUntap || g.Turn.PriorityHolder != NoPriority {
+		t.Fatalf("setup: step=%q priority=%d, want Untap/NoPriority", g.Turn.Step, g.Turn.PriorityHolder)
+	}
+	if err := g.PassPriority(); err != ErrNoPriority {
+		t.Errorf("PassPriority on Untap (mulligans open): got %v, want ErrNoPriority", err)
+	}
+}
+
+// TestS13PassPrioritySkipsEliminatedSeat verifies the new rotation
+// loop walks past eliminated seats so a 4-player game with two dead
+// seats still terminates the priority loop on the survivors' wrap.
+func TestS13PassPrioritySkipsEliminatedSeat(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	// Eliminate seats 1 and 3 directly. (Concede would also advance
+	// the cursor when seat 0 is active; we want to leave the cursor
+	// alone here so we can observe rotation across the dead seats.)
+	g.Seats[1].Eliminated = true
+	g.Seats[3].Eliminated = true
+
+	// Cursor at seat 0 Upkeep with PriorityHolder=0 (post-mulligan).
+	// PassPriority from seat 0 should jump straight to seat 2,
+	// skipping seat 1.
+	if err := g.PassPriority(); err != nil {
+		t.Fatalf("PassPriority 0→2: %v", err)
+	}
+	if g.Turn.PriorityHolder != 2 {
+		t.Errorf("after first pass: PriorityHolder=%d, want 2 (skipped eliminated seat 1)",
+			g.Turn.PriorityHolder)
+	}
+
+	// Pass again — seat 2 is the only other live opponent, so the
+	// rotation walks past seat 3 (eliminated) and wraps back to the
+	// active seat (0), which advances the step.
+	beforeStep := g.Turn.Step
+	if err := g.PassPriority(); err != nil {
+		t.Fatalf("PassPriority wrap: %v", err)
+	}
+	if g.Turn.Step == beforeStep {
+		t.Errorf("step did not advance on rotation wrap (still %q)", g.Turn.Step)
+	}
+}
+
 func TestReadSnapshotConsistency(t *testing.T) {
 	g := newActiveGame(t)
 	var life int
@@ -1330,7 +1406,7 @@ func TestReadSnapshotConsistency(t *testing.T) {
 	if life != StartingLife {
 		t.Errorf("life: got %d, want %d", life, StartingLife)
 	}
-	if turn.Number != 1 || turn.Step != StepUntap {
-		t.Errorf("turn: %+v", turn)
+	if turn.Number != 1 || turn.Step != StepUpkeep {
+		t.Errorf("turn: %+v (want number=1 step=upkeep after S13 auto-advance from Untap)", turn)
 	}
 }

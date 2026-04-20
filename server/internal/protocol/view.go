@@ -52,6 +52,13 @@ type GameView struct {
 	// UndoLimit is the per-player per-turn undo budget. Drives the
 	// client's "undos remaining" indicator. Added in S11.
 	UndoLimit int `json:"undo_limit,omitempty"`
+	// StartingSeat is the seat index that took the first turn. Used
+	// by the server to enforce the CR 103.7c turn-1 skip-draw rule;
+	// surfaced on the wire so spectators / reconnects can render
+	// "first player" UI affordances. Pre-S13 replays decode as 0,
+	// which matches the only seat games started on before this field
+	// existed. Added in S13.
+	StartingSeat int `json:"starting_seat"`
 }
 
 // VoteView is the wire form of game.Vote. Ballots is keyed by voter
@@ -224,6 +231,7 @@ func ViewOfGame(g *game.Game) GameView {
 			Promises:      viewOfPromises(g.Promises),
 			Vote:          viewOfVote(g.Vote),
 			UndoLimit:     g.UndoLimit,
+			StartingSeat:  g.StartingSeat,
 		}
 	})
 	return view
@@ -386,6 +394,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		Promises:      v.Promises,
 		Vote:          v.Vote,
 		UndoLimit:     v.UndoLimit,
+		StartingSeat:  v.StartingSeat,
 	}
 }
 

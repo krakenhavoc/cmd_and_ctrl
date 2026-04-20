@@ -90,6 +90,14 @@ type Game struct {
 	// against runaway rewinds, not a strict policy. Added in S11.
 	UndoLimit int
 
+	// StartingSeat is the seat index that took the first turn. Set in
+	// Start() to the active seat at game start. Used by the StepDraw
+	// auto-action to skip the starting player's turn-1 draw per
+	// CR 103.7c. Replays predating S13 default to seat 0 on decode,
+	// which matches the only seat games started on before this field
+	// existed. Added in S13.
+	StartingSeat int
+
 	// Promises is the directed per-pair "I owe you" promise-token count
 	// keyed by `from→to` pairs. Politics scaffold — players use it as
 	// a visual reminder of informal deals ("I owe Alice 2 favours").
@@ -257,8 +265,14 @@ func (g *Game) Start(r *rand.Rand) error {
 		}
 	}
 	g.Turn = newStartingTurn()
+	g.StartingSeat = g.Turn.ActiveSeat
 	g.State = StateActive
 	g.MulligansOpen = true
+	// Step entry hooks (auto-untap, auto-draw, etc.) intentionally do
+	// NOT fire at Start — the cursor sits idle on Untap until the
+	// mulligan window closes (KeepHand triggers them when MulligansOpen
+	// flips false). This keeps the lobby/keep-hand UX from auto-drawing
+	// before players have committed to their opening hand.
 	return nil
 }
 
@@ -312,32 +326,73 @@ func (g *Game) AdvanceStep() (Turn, error) {
 // runStepEntryHooksLocked dispatches the per-step side effects that
 // fire on entering certain steps. Called from every code path that
 // changes Turn.Step (AdvanceStep, PassPriority's wrap-and-advance
-// branch) so the auto-resolve / auto-clear hooks fire regardless of
-// which mutation produced the step transition.
+// branch, KeepHand when the mulligan window closes) so the auto-
+// resolve / auto-clear hooks fire regardless of which mutation
+// produced the step transition.
 //
-// Side effects:
+// S13 introduced auto turn-based actions on StepUntap, StepDraw, and
+// StepCleanup. Untap and Cleanup do not grant priority, so after
+// firing their action the hook recurses through g.Turn.advance to
+// drive the cursor on to the next priority-granting step. A single
+// client-visible step advance from StepEnd therefore walks End →
+// Cleanup → next seat's Untap → next seat's Upkeep inside one write
+// lock.
+//
+// Side effects by step:
+//   - StepUntap (S13): untap all permanents the active seat controls;
+//     refresh their per-turn undo budget; auto-advance because Untap
+//     grants no priority.
+//   - StepDraw (S13): draw 1 for the active seat, except when the
+//     starting player would draw on turn 1 (CR 103.7c skip).
 //   - StepCombatDamage: auto-resolve unblocked attacker damage.
 //   - StepEndCombat: clear AttackingTarget / BlockingTarget on every
 //     battlefield card. Deferring the clear until end_combat (rather
 //     than combat_damage) lets the client keep its combat-arrow
 //     overlay visible through the entire combat_damage step instead
 //     of vanishing the moment damage is resolved.
+//   - StepCleanup (S13): auto-advance past cleanup to the next
+//     seat's turn. S13.4 will hook interactive discard in here.
 //
 // Caller must hold g.mu.
 func (g *Game) runStepEntryHooksLocked() {
 	switch g.Turn.Step {
 	case StepUntap:
-		// Refresh the active player's per-turn undo budget. This
-		// fires when the cursor enters their untap step — both via
-		// AdvanceStep and via PassPriority's wrap-and-advance branch
-		// (both routes funnel through this hook).
+		// Mulligans still open → hold the cursor at Untap until
+		// KeepHand closes the window. KeepHand re-runs this hook.
+		if g.MulligansOpen {
+			return
+		}
 		if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
 			g.Seats[g.Turn.ActiveSeat].UndosRemaining = g.UndoLimit
+			g.untapAllForLocked(g.Turn.ActiveSeat)
 		}
+		// Untap grants no priority; recurse into the next step.
+		g.Turn = g.Turn.advance(len(g.Seats))
+		g.runStepEntryHooksLocked()
+	case StepDraw:
+		if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
+			return
+		}
+		// CR 103.7c: the player who takes the first turn skips their
+		// draw step on turn 1. Subsequent turns are normal.
+		if g.Turn.Number == 1 && g.Turn.ActiveSeat == g.StartingSeat {
+			return
+		}
+		// Best-effort: an empty library on auto-draw is not a hard
+		// error here (losing from drawing from an empty library is a
+		// SBA that lands in S13.1). The drawCardLocked helper surfaces
+		// ErrZoneEmpty, which we swallow so the cursor keeps moving —
+		// the losing player will be caught by the SBA once it exists.
+		_ = g.drawCardLocked(g.Seats[g.Turn.ActiveSeat].ID)
 	case StepCombatDamage:
 		g.resolveCombatDamageLocked()
 	case StepEndCombat:
 		g.clearCombatLocked()
+	case StepCleanup:
+		// Cleanup grants no priority and (pending S13.4's discard UI)
+		// has no S13 work; auto-advance immediately.
+		g.Turn = g.Turn.advance(len(g.Seats))
+		g.runStepEntryHooksLocked()
 	}
 }
 
