@@ -136,6 +136,10 @@ func (g *Game) activeSeatIDLocked() uuid.UUID {
 // battlefield. The card's controller is set to the player (already
 // the case for cards entering from your own hand, but stored
 // explicitly for clarity).
+//
+// S13.1: kept as the sandbox / admin direct-drop verb for token
+// creation, replay restore, and "fix wedged state" cases. Normal
+// play uses CastSpell, which routes through the stack.
 func (g *Game) PlayCard(playerID, cardID uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -158,6 +162,294 @@ func (g *Game) PlayCard(playerID, cardID uuid.UUID) error {
 		}
 	}
 	return nil
+}
+
+// CastSpellParams carries the announce-time choices that flow into a
+// new StackItem. All fields are optional; sensible zero values mean
+// "no targets, no modes, no X, no distribution, default flags."
+//
+// FromZone defaults to "hand" when empty. The only other supported
+// value today is "command" for casting a commander out of the
+// command zone (S13.1 commander tax + zone-replacement work in
+// sub-PR 8 reads this). Other zones (graveyard, library, exile,
+// stack) come with S29's alt-cast-paths sprint.
+//
+// Targets / Modes / XValue / Distribution land in sub-PRs 3 & 4 —
+// the params struct accepts them now so the action wire format stays
+// stable across the sprint, but CastSpell itself ignores all but
+// FromZone, HoldPriority, and SplitSecond at this checkpoint.
+type CastSpellParams struct {
+	FromZone     string
+	Targets      []TargetRef
+	Modes        []int
+	XValue       int
+	Distribution map[uuid.UUID]int
+	HoldPriority bool
+	SplitSecond  bool
+}
+
+// CastSpell is the canonical "play a card from hand" verb (CR 601).
+// Lands route directly to the battlefield — they're a special action
+// that doesn't use the stack (CR 305). Every other card type goes to
+// the stack with a fresh StackMeta entry capturing announce-time
+// choices, and the caster RETAINS priority (CR 117.3c) — they pass
+// explicitly via PassPriority once they're done.
+//
+// Sorcery-speed gate: sorceries (and sub-PR 8's commander casts and
+// sub-PR 6's loyalty abilities) require main-phase + stack-empty +
+// caller-is-active-player, per CR 307.1. Instants honour the
+// caller-holds-priority gate at the action layer (requirePriorityHolder
+// in the dispatcher), so no extra speed gate is needed here for
+// them.
+//
+// Split-second blocks all casts and activations except mana abilities
+// and special actions (CR 702.79). The flag is mirrored on
+// Game.SplitSecondActive for fast lookup; recomputed every time the
+// stack changes.
+//
+// On success: the card is in the stack zone (for non-lands) with a
+// StackMeta entry, or on the battlefield (for lands). PriorityHolder
+// is unchanged — the caster retains priority. SBA loop and pending-
+// trigger drain are sub-PR 7 / 6 territory.
+func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	if g.SplitSecondActive {
+		return ErrSplitSecondActive
+	}
+	src, err := g.castSourceZoneLocked(p, params.FromZone)
+	if err != nil {
+		return err
+	}
+	// Find the card in the source zone so we can inspect its type
+	// before moving anything. Pre-S13.1 PlayCard moved first then
+	// stamped — for cast we need the type *before* deciding the
+	// destination, so look up first.
+	var card Card
+	found := false
+	for _, c := range src.Cards {
+		if c.InstanceID == cardID {
+			card = c
+			found = true
+			break
+		}
+	}
+	if !found {
+		return ErrCardNotFound
+	}
+	// Sorcery-speed gate. Lands are special-action-fast (CR 305 is
+	// "you may play a land during your main phase if the stack is
+	// empty"); they're handled implicitly by the same gate below.
+	// Instants bypass the gate entirely. Anything else (sorceries,
+	// permanents that aren't instants) needs sorcery speed.
+	requiresSorcerySpeed := !card.IsInstant() && !card.IsLand()
+	if card.IsLand() || requiresSorcerySpeed {
+		if !g.sorcerySpeedOpenLocked(playerID) {
+			return ErrSorcerySpeedRequired
+		}
+	}
+	// Lands skip the stack entirely (CR 305). Move the card to the
+	// battlefield and stamp the controller — same shape as PlayCard.
+	if card.IsLand() {
+		moved, err := MoveCard(src, g.Battlefield, cardID)
+		if err != nil {
+			return err
+		}
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == moved.InstanceID {
+				g.Battlefield.Cards[i].Controller = playerID
+				break
+			}
+		}
+		return nil
+	}
+	// Non-land: route through the stack. The card lives in
+	// Game.Stack; the announce-time choices live in StackMeta.
+	if _, err := MoveCard(src, g.Stack, cardID); err != nil {
+		return err
+	}
+	if g.StackMeta == nil {
+		g.StackMeta = make(map[uuid.UUID]*StackItem)
+	}
+	g.StackMeta[cardID] = &StackItem{
+		ID:           cardID,
+		Kind:         StackItemSpell,
+		Controller:   playerID,
+		Owner:        card.Owner,
+		SourceCardID: cardID,
+		Targets:      append([]TargetRef(nil), params.Targets...),
+		Modes:        append([]int(nil), params.Modes...),
+		XValue:       params.XValue,
+		Distribution: cloneDistributionLocked(params.Distribution),
+		HoldPriority: params.HoldPriority,
+		SplitSecond:  params.SplitSecond,
+	}
+	if params.SplitSecond {
+		g.SplitSecondActive = true
+	}
+	return nil
+}
+
+// castSourceZoneLocked resolves the FromZone string to the zone
+// the card should leave from. Unknown values fall back to hand —
+// keeps the action forward-compatible with sub-PR 8's "command"
+// addition without breaking older clients that omit the field.
+func (g *Game) castSourceZoneLocked(p *Player, fromZone string) (*Zone, error) {
+	switch fromZone {
+	case "", "hand":
+		return p.Hand, nil
+	case "command":
+		return p.Command, nil
+	default:
+		return nil, ErrZoneNotFound
+	}
+}
+
+// sorcerySpeedOpenLocked reports whether the sorcery-speed gate is
+// currently open for the given player: caller is the active seat,
+// the cursor is on a main phase, and the stack is empty (CR 307.1).
+// Caller must hold g.mu.
+func (g *Game) sorcerySpeedOpenLocked(playerID uuid.UUID) bool {
+	if g.Turn.Step != StepPrecombatMain && g.Turn.Step != StepPostcombatMain {
+		return false
+	}
+	if g.Stack != nil && len(g.Stack.Cards) > 0 {
+		return false
+	}
+	if g.activeSeatIDLocked() != playerID {
+		return false
+	}
+	return true
+}
+
+// cloneDistributionLocked deep-copies the announce-time distribution
+// map so the caller's slice / map can't be mutated through StackMeta.
+// Returns nil for an empty input.
+func cloneDistributionLocked(in map[uuid.UUID]int) map[uuid.UUID]int {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[uuid.UUID]int, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
+}
+
+// resolveTopOfStackLocked pops the topmost stack item and resolves
+// it. For spells, permanents route to the battlefield with their
+// recorded controller; instants and sorceries route to the owner's
+// graveyard (CR 608.2f). For activated / triggered abilities, the
+// item simply ceases to exist (CR 608.2m) — there is no source-card
+// movement because the ability's source is a separate card that
+// stays put.
+//
+// S13.1 sub-PR 2 lands the basic resolution path (no target re-check
+// yet — that arrives in sub-PR 3; no SBA loop yet — sub-PR 7). The
+// caller is responsible for calling this only when the stack is
+// non-empty.
+//
+// Caller must hold g.mu.
+func (g *Game) resolveTopOfStackLocked() error {
+	if g.Stack == nil || len(g.Stack.Cards) == 0 {
+		// No spell on the stack — but there could still be ability
+		// items in StackMeta. Find the most recent and resolve it.
+		return g.resolveTopAbilityLocked()
+	}
+	// Top of the stack is the last card in the slice (LIFO).
+	top := g.Stack.Cards[len(g.Stack.Cards)-1]
+	item, ok := g.StackMeta[top.InstanceID]
+	if !ok || item == nil {
+		// Defensive: a card on the stack without a meta entry should
+		// not happen — but if it does, route to graveyard so the
+		// stack doesn't wedge.
+		return g.routeStackCardToGraveyardLocked(top)
+	}
+	delete(g.StackMeta, top.InstanceID)
+	defer g.recomputeSplitSecondLocked()
+
+	if top.IsPermanent() {
+		// Permanents resolve to the battlefield with the announce-time
+		// controller (which may differ from owner — e.g. cast via a
+		// "play this from exile" effect that change controller).
+		moved, err := MoveCard(g.Stack, g.Battlefield, top.InstanceID)
+		if err != nil {
+			return err
+		}
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == moved.InstanceID {
+				g.Battlefield.Cards[i].Controller = item.Controller
+				break
+			}
+		}
+		return nil
+	}
+	// Instants / sorceries: resolve to the owner's graveyard.
+	return g.routeStackCardToGraveyardLocked(top)
+}
+
+// resolveTopAbilityLocked resolves the most-recently-added ability
+// item in StackMeta (no underlying card on Game.Stack). Returns nil
+// if there are no abilities to resolve. Caller must hold g.mu.
+func (g *Game) resolveTopAbilityLocked() error {
+	if len(g.StackMeta) == 0 {
+		return nil
+	}
+	// Without an ordering hint, pick any ability item — sub-PR 6
+	// will replace this with proper LIFO ordering once
+	// activate_ability / announce_trigger are wired.
+	for id, item := range g.StackMeta {
+		if item != nil && (item.Kind == StackItemActivated || item.Kind == StackItemTriggered) {
+			delete(g.StackMeta, id)
+			g.recomputeSplitSecondLocked()
+			return nil
+		}
+	}
+	return nil
+}
+
+// routeStackCardToGraveyardLocked moves a card off Game.Stack and
+// into its owner's graveyard. Used by resolveTopOfStackLocked for
+// instants / sorceries and by the "countered by game rules" path
+// (sub-PR 3) when every target is illegal on resolve. Caller must
+// hold g.mu.
+func (g *Game) routeStackCardToGraveyardLocked(c Card) error {
+	owner := g.playerByIDLocked(c.Owner)
+	if owner == nil {
+		// Owner is no longer seated — drop the card to exile so the
+		// stack doesn't carry a reference to a dead player. (S13.1
+		// sub-PR 10 will fold this into the leaving-game cleanup.)
+		_, err := MoveCard(g.Stack, g.Exile, c.InstanceID)
+		return err
+	}
+	_, err := MoveCard(g.Stack, owner.Graveyard, c.InstanceID)
+	return err
+}
+
+// recomputeSplitSecondLocked walks StackMeta and pending triggers
+// and refreshes the SplitSecondActive cache. Called after every
+// stack mutation. Caller must hold g.mu.
+func (g *Game) recomputeSplitSecondLocked() {
+	for _, item := range g.StackMeta {
+		if item != nil && item.SplitSecond {
+			g.SplitSecondActive = true
+			return
+		}
+	}
+	for _, item := range g.PendingTriggers {
+		if item != nil && item.SplitSecond {
+			g.SplitSecondActive = true
+			return
+		}
+	}
+	g.SplitSecondActive = false
 }
 
 // MoveCardByID moves a card from one zone to another, identified by
@@ -348,16 +640,49 @@ func (g *Game) PassPriority() error {
 			return nil
 		}
 	}
-	// Wrapped (or only the active seat is alive) — advance the step.
-	// Turn.advance resets PriorityHolder to NoPriority (Untap/Cleanup)
-	// or the new ActiveSeat (everything else). Run the same per-step
-	// entry hooks AdvanceStep does so auto turn-based actions, combat
-	// damage resolution, and combat-clear all fire regardless of
-	// whether the step changed via a priority-wrap or an explicit
-	// advance_step click.
+	// Wrapped (or only the active seat is alive). Two cases:
+	//
+	// S13.1: if the stack has any items (spells in Game.Stack OR
+	// abilities in StackMeta), resolve the top one and reset
+	// priority to the new active seat — the post-resolution priority
+	// boundary per CR 117.3b / 608.1. The step does NOT advance; the
+	// engine returns to the priority loop at the same step until the
+	// stack drains.
+	//
+	// Empty stack: advance the step (existing behavior). Turn.advance
+	// resets PriorityHolder to NoPriority (Untap/Cleanup) or the new
+	// ActiveSeat. Run the same per-step entry hooks AdvanceStep does
+	// so auto turn-based actions, combat damage resolution, and
+	// combat-clear all fire regardless of whether the step changed
+	// via a priority-wrap or an explicit advance_step click.
+	if g.stackHasItemsLocked() {
+		if err := g.resolveTopOfStackLocked(); err != nil {
+			return err
+		}
+		// Priority returns to the active player after a resolution
+		// (CR 117.3b). The step doesn't change.
+		g.Turn.PriorityHolder = g.Turn.ActiveSeat
+		return nil
+	}
 	g.Turn = g.Turn.advance(numSeats)
 	g.runStepEntryHooksLocked()
 	return nil
+}
+
+// stackHasItemsLocked reports whether anything (a spell card or an
+// ability item in StackMeta) is currently on the stack. Used by the
+// priority-wrap branch to decide between "resolve top" and "advance
+// step." Caller must hold g.mu.
+func (g *Game) stackHasItemsLocked() bool {
+	if g.Stack != nil && len(g.Stack.Cards) > 0 {
+		return true
+	}
+	for _, item := range g.StackMeta {
+		if item != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // DeclareAttacker marks a battlefield card as attacking the target

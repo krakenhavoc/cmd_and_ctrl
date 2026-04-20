@@ -1395,6 +1395,196 @@ func TestS13PassPrioritySkipsEliminatedSeat(t *testing.T) {
 	}
 }
 
+// pushTypedCardToHand puts a card with the given name + type line on
+// the player's hand and returns its instance ID. Used by the S13.1
+// cast tests to control the type-line route the mutation takes
+// (land vs. instant vs. permanent vs. sorcery).
+func pushTypedCardToHand(p *Player, name, typeLine string) uuid.UUID {
+	c := NewCard(name, p.ID)
+	c.TypeLine = typeLine
+	p.Hand.PushTop(c)
+	return c.InstanceID
+}
+
+// advanceTo positions the cursor at a specific step. Helper for
+// sorcery-speed gating tests below. (advanceTo is also defined
+// further down in this file for combat tests; the names match by
+// design.)
+
+// TestS131CastLandRoutesToBattlefield verifies that casting a land
+// skips the stack entirely (CR 305 — special action) when the
+// sorcery-speed gate is open.
+func TestS131CastLandRoutesToBattlefield(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	id := pushTypedCardToHand(p, "Forest", "Basic Land — Forest")
+
+	if err := g.CastSpell(p.ID, id, CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell land: %v", err)
+	}
+	if !g.Battlefield.Contains(id) {
+		t.Errorf("land did not route to battlefield")
+	}
+	if g.Stack != nil && g.Stack.Contains(id) {
+		t.Errorf("land should not have hit the stack")
+	}
+	if _, ok := g.StackMeta[id]; ok {
+		t.Errorf("land should not have a StackMeta entry")
+	}
+}
+
+// TestS131CastSpellGoesToStack verifies that a non-land cast lands
+// the card on the stack with a StackMeta entry, and the caster
+// retains priority (CR 117.3c).
+func TestS131CastSpellGoesToStack(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	id := pushTypedCardToHand(p, "Counterspell", "Instant")
+
+	priorityBefore := g.Turn.PriorityHolder
+	if err := g.CastSpell(p.ID, id, CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell instant: %v", err)
+	}
+	if !g.Stack.Contains(id) {
+		t.Errorf("spell did not hit the stack")
+	}
+	item, ok := g.StackMeta[id]
+	if !ok {
+		t.Fatalf("StackMeta entry missing for cast spell")
+	}
+	if item.Kind != StackItemSpell || item.Controller != p.ID || item.Owner != p.ID {
+		t.Errorf("StackMeta shape wrong: %+v", item)
+	}
+	if g.Turn.PriorityHolder != priorityBefore {
+		t.Errorf("caster did not retain priority: was %d, now %d", priorityBefore, g.Turn.PriorityHolder)
+	}
+}
+
+// TestS131SorcerySpeedGate verifies that sorceries reject outside the
+// caller's main phase / empty stack / active-player window, and
+// instants ignore the gate.
+func TestS131SorcerySpeedGate(t *testing.T) {
+	g := newActiveGame(t)
+	// Cursor after newActiveGame is StepUpkeep — not a main phase.
+	p := g.Seats[0]
+	sorcID := pushTypedCardToHand(p, "Wrath of God", "Sorcery")
+	if err := g.CastSpell(p.ID, sorcID, CastSpellParams{}); err != ErrSorcerySpeedRequired {
+		t.Errorf("sorcery on Upkeep: got %v, want ErrSorcerySpeedRequired", err)
+	}
+	instID := pushTypedCardToHand(p, "Lightning Bolt", "Instant")
+	if err := g.CastSpell(p.ID, instID, CastSpellParams{}); err != nil {
+		t.Errorf("instant on Upkeep should bypass sorcery gate: %v", err)
+	}
+}
+
+// TestS131SplitSecondBlocksFurtherCasts verifies that
+// SplitSecondActive rejects subsequent casts (CR 702.79). Split-
+// second mana abilities and special actions remain legal — we only
+// cover the cast path here.
+func TestS131SplitSecondBlocksFurtherCasts(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	splitID := pushTypedCardToHand(p, "Trickbind", "Instant")
+	if err := g.CastSpell(p.ID, splitID, CastSpellParams{SplitSecond: true}); err != nil {
+		t.Fatalf("first split-second cast: %v", err)
+	}
+	if !g.SplitSecondActive {
+		t.Fatalf("SplitSecondActive should be true after split-second cast")
+	}
+	otherID := pushTypedCardToHand(p, "Lightning Bolt", "Instant")
+	if err := g.CastSpell(p.ID, otherID, CastSpellParams{}); err != ErrSplitSecondActive {
+		t.Errorf("subsequent cast: got %v, want ErrSplitSecondActive", err)
+	}
+}
+
+// TestS131PassPriorityResolvesTopWhenStackNonEmpty verifies the
+// rewritten PassPriority: with a non-empty stack and all opponents
+// passed, the wrap branch resolves the top instead of advancing the
+// step. Permanents land on the battlefield; instants go to the
+// owner's graveyard.
+func TestS131PassPriorityResolvesTopWhenStackNonEmpty(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p0, p1 := g.Seats[0], g.Seats[1]
+
+	// Cast a creature from seat 0 — should land on stack.
+	creatureID := pushTypedCardToHand(p0, "Grizzly Bears", "Creature — Bear")
+	if err := g.CastSpell(p0.ID, creatureID, CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell creature: %v", err)
+	}
+	if !g.Stack.Contains(creatureID) {
+		t.Fatalf("creature not on stack")
+	}
+
+	// Caster passes, then opponent passes — wrap fires resolution.
+	stepBefore := g.Turn.Step
+	if err := g.PassPriority(); err != nil {
+		t.Fatalf("PassPriority caster: %v", err)
+	}
+	// Now seat 1 holds priority. Pass — wraps to active seat.
+	if err := g.PassPriority(); err != nil {
+		t.Fatalf("PassPriority opponent: %v", err)
+	}
+	if g.Turn.Step != stepBefore {
+		t.Errorf("step advanced on resolve: was %q, now %q (should NOT advance)", stepBefore, g.Turn.Step)
+	}
+	if !g.Battlefield.Contains(creatureID) {
+		t.Errorf("creature did not resolve to battlefield")
+	}
+	if _, ok := g.StackMeta[creatureID]; ok {
+		t.Errorf("StackMeta entry for resolved creature still present")
+	}
+	if g.Turn.PriorityHolder != g.Turn.ActiveSeat {
+		t.Errorf("priority did not return to active seat after resolve: %d", g.Turn.PriorityHolder)
+	}
+
+	// Cast an instant — should resolve to graveyard on full pass.
+	advanceTo(t, g, StepPostcombatMain)
+	instantID := pushTypedCardToHand(p1, "Shock", "Instant")
+	if err := g.CastSpell(p1.ID, instantID, CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell instant: %v", err)
+	}
+	// p1 is the priority holder (cast). Pass to p0 first.
+	g.Turn.PriorityHolder = (g.Turn.ActiveSeat + 1) % len(g.Seats) // simulate priority on caster seat
+	_ = g.PassPriority()                                            // p1 → p0
+	_ = g.PassPriority()                                            // p0 → wrap → resolve
+	if !p1.Graveyard.Contains(instantID) {
+		t.Errorf("instant did not resolve to owner's graveyard")
+	}
+}
+
+// TestS131SplitSecondClearsOnResolve verifies that after the split-
+// second item resolves, SplitSecondActive flips back to false and
+// new casts go through.
+func TestS131SplitSecondClearsOnResolve(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	splitID := pushTypedCardToHand(p, "Trickbind", "Instant")
+	if err := g.CastSpell(p.ID, splitID, CastSpellParams{SplitSecond: true}); err != nil {
+		t.Fatalf("split-second cast: %v", err)
+	}
+
+	// Pass twice (caster → opponent → wrap+resolve).
+	_ = g.PassPriority()
+	_ = g.PassPriority()
+
+	if g.SplitSecondActive {
+		t.Errorf("SplitSecondActive should be false after resolve")
+	}
+	if !p.Graveyard.Contains(splitID) {
+		t.Errorf("split-second instant should have routed to graveyard")
+	}
+	// Subsequent cast should now succeed.
+	otherID := pushTypedCardToHand(p, "Lightning Bolt", "Instant")
+	if err := g.CastSpell(p.ID, otherID, CastSpellParams{}); err != nil {
+		t.Errorf("post-resolve cast: %v", err)
+	}
+}
+
 func TestReadSnapshotConsistency(t *testing.T) {
 	g := newActiveGame(t)
 	var life int

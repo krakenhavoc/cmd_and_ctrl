@@ -56,6 +56,12 @@ const (
 	TypeEndVote       Type = "end_vote"
 	// S11.
 	TypeSetUndoLimit Type = "set_undo_limit"
+	// S13.1 — stack actions. cast_spell is the canonical "play a card
+	// from hand" verb (CR 601). Lands route to the battlefield;
+	// every other type goes to the stack with a fresh StackMeta
+	// entry and the caster retains priority. play_card is kept as
+	// the sandbox / admin direct-drop verb.
+	TypeCastSpell Type = "cast_spell"
 )
 
 // ErrUnknownType is returned when Dispatch receives an action type it
@@ -213,6 +219,7 @@ func unmarshalParams(raw json.RawMessage, actionType Type, dest any) error {
 var playerScopedActions = map[Type]struct{}{
 	TypeDrawCard:       {},
 	TypePlayCard:       {},
+	TypeCastSpell:      {},
 	TypeUntapAll:       {},
 	TypeMulligan:       {},
 	TypeShuffleLibrary: {},
@@ -267,6 +274,59 @@ func Dispatch(g *game.Game, a Action) error {
 			return fmt.Errorf("play_card instance_id: %w", err)
 		}
 		return g.PlayCard(a.Player, instanceID)
+
+	case TypeCastSpell:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		if err := requirePriorityHolder(g, a.Caller); err != nil {
+			return err
+		}
+		var p struct {
+			InstanceID   string             `json:"instance_id"`
+			FromZone     string             `json:"from_zone,omitempty"`
+			Targets      []castTargetWire   `json:"targets,omitempty"`
+			Modes        []int              `json:"modes,omitempty"`
+			XValue       int                `json:"x_value,omitempty"`
+			Distribution map[string]int     `json:"distribution,omitempty"`
+			HoldPriority bool               `json:"hold_priority,omitempty"`
+			SplitSecond  bool               `json:"split_second,omitempty"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		instanceID, err := uuid.Parse(p.InstanceID)
+		if err != nil {
+			return fmt.Errorf("cast_spell instance_id: %w", err)
+		}
+		params := game.CastSpellParams{
+			FromZone:     p.FromZone,
+			Modes:        append([]int(nil), p.Modes...),
+			XValue:       p.XValue,
+			HoldPriority: p.HoldPriority,
+			SplitSecond:  p.SplitSecond,
+		}
+		if len(p.Targets) > 0 {
+			params.Targets = make([]game.TargetRef, 0, len(p.Targets))
+			for i, t := range p.Targets {
+				ref, err := t.toRef()
+				if err != nil {
+					return fmt.Errorf("cast_spell targets[%d]: %w", i, err)
+				}
+				params.Targets = append(params.Targets, ref)
+			}
+		}
+		if len(p.Distribution) > 0 {
+			params.Distribution = make(map[uuid.UUID]int, len(p.Distribution))
+			for k, v := range p.Distribution {
+				id, err := uuid.Parse(k)
+				if err != nil {
+					return fmt.Errorf("cast_spell distribution key %q: %w", k, err)
+				}
+				params.Distribution[id] = v
+			}
+		}
+		return g.CastSpell(a.Player, instanceID, params)
 
 	case TypeMoveCard:
 		var p struct {
@@ -614,6 +674,36 @@ func Dispatch(g *game.Game, a Action) error {
 type zoneRefWire struct {
 	Kind  string `json:"kind"`
 	Owner string `json:"owner,omitempty"`
+}
+
+// castTargetWire is the wire representation of a single target slot
+// captured at announce time. Mirrors game.TargetRef with stringified
+// UUID. Empty / missing ID is allowed for "self" / "none" kinds.
+type castTargetWire struct {
+	Kind string `json:"kind"`
+	ID   string `json:"id,omitempty"`
+}
+
+func (t castTargetWire) toRef() (game.TargetRef, error) {
+	ref := game.TargetRef{Kind: game.TargetRefKind(t.Kind)}
+	switch ref.Kind {
+	case game.TargetSelf, game.TargetNone:
+		// ID is meaningless / allowed-empty for these kinds. Drop
+		// any provided ID silently — the engine ignores it.
+		return ref, nil
+	case game.TargetPlayer, game.TargetCard:
+		if t.ID == "" {
+			return game.TargetRef{}, fmt.Errorf("kind %q requires id", t.Kind)
+		}
+		id, err := uuid.Parse(t.ID)
+		if err != nil {
+			return game.TargetRef{}, fmt.Errorf("id: %w", err)
+		}
+		ref.ID = id
+		return ref, nil
+	default:
+		return game.TargetRef{}, fmt.Errorf("unknown target kind %q", t.Kind)
+	}
 }
 
 func (z zoneRefWire) toRef() (game.ZoneRef, error) {
