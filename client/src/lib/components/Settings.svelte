@@ -279,24 +279,17 @@
             </fieldset>
           {:else if activeTab === "display"}
             <h3>Display</h3>
-            <label class="slider-row">
+            <label class="slider-row disabled">
               <span>Theme</span>
-              <select
-                value={$settings.display.theme}
-                onchange={(e) =>
-                  change(
-                    "display",
-                    "theme",
-                    e.currentTarget.value as "dark" | "light" | "high-contrast",
-                  )}
-              >
+              <select disabled value="dark">
                 <option value="dark">Dark (default)</option>
-                <option value="light">Light</option>
-                <option value="high-contrast">High contrast</option>
               </select>
-              {#if isFresh("display.theme")}<span class="saved">✓</span>{/if}
             </label>
-            <p class="help">Theme scaffolding is in place; full palettes ship in a follow-up.</p>
+            <p class="help">
+              Light and high-contrast themes are scaffolded in CSS but most table panels still
+              hardcode dark colours. Switching themes right now produces a broken-looking mix, so
+              the toggle stays disabled until per-component <code>var()</code> migration ships.
+            </p>
 
             <label class="slider-row">
               <span>Card size on battlefield</span>
