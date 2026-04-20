@@ -6,6 +6,9 @@
     closeSettings,
     resetSettings,
     updateSettings,
+    exportSettings,
+    importSettings,
+    fingerprintSettings,
   } from "../settings";
 
   // Active sidebar tab. Reset to "audio" every time the modal
@@ -81,6 +84,49 @@
   function onConfirmReset(): void {
     if (confirm("Reset every setting to its default?")) resetSettings();
   }
+
+  // Advanced tab state — all scoped to the modal lifecycle so
+  // stale text doesn't linger between open/close.
+  let importText = $state("");
+  let importStatus = $state<{ kind: "ok" | "err"; message: string } | null>(null);
+  let copyStatus = $state<"idle" | "copied">("idle");
+  // Re-derive the fingerprint whenever settings change so the
+  // "my settings hash" line always reflects what's live.
+  const fp = $derived($settings ? fingerprintSettings() : "");
+
+  async function onCopyExport(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(exportSettings());
+      copyStatus = "copied";
+      setTimeout(() => (copyStatus = "idle"), 1500);
+    } catch {
+      // Some browsers (Firefox non-focused tab, HTTP contexts)
+      // reject writeText. Fall back to no-op; the user can still
+      // read/copy from a revealed <textarea> if we add one later.
+      importStatus = { kind: "err", message: "clipboard write failed" };
+    }
+  }
+
+  function onApplyImport(): void {
+    const res = importSettings(importText);
+    if (!res.ok) {
+      importStatus = { kind: "err", message: res.error ?? "invalid JSON" };
+      return;
+    }
+    importStatus = {
+      kind: "ok",
+      message: res.changed ? "settings imported" : "no changes — already matched",
+    };
+    importText = "";
+  }
+
+  $effect(() => {
+    if (!$settingsOpen) {
+      importText = "";
+      importStatus = null;
+      copyStatus = "idle";
+    }
+  });
 </script>
 
 {#if $settingsOpen}
@@ -394,11 +440,55 @@
             </label>
           {:else if activeTab === "advanced"}
             <h3>Advanced</h3>
-            <p class="help">
-              Settings live under <code>localStorage["cmdctrl.settings.v1"]</code>. Export / import
-              + per-setting reset land in the next S11.5 PR.
-            </p>
-            <button class="danger" onclick={onConfirmReset}>Reset all settings</button>
+
+            <div class="adv-section">
+              <h4>Export</h4>
+              <p class="help">
+                Copies your current settings as JSON. Paste into the Import box below on another
+                device to carry your prefs across without a server sync.
+              </p>
+              <button onclick={onCopyExport}>
+                {copyStatus === "copied" ? "✓ copied to clipboard" : "Copy settings to clipboard"}
+              </button>
+            </div>
+
+            <div class="adv-section">
+              <h4>Import</h4>
+              <p class="help">
+                Paste a settings JSON blob. Unknown fields are dropped, missing fields fall back to
+                defaults — safe to paste an older export.
+              </p>
+              <textarea
+                rows="6"
+                placeholder="paste a settings JSON blob here"
+                bind:value={importText}
+                spellcheck="false"
+              ></textarea>
+              <div class="adv-row">
+                <button onclick={onApplyImport} disabled={!importText.trim()}>Apply import</button>
+                {#if importStatus}
+                  <span class={`import-status ${importStatus.kind}`}>{importStatus.message}</span>
+                {/if}
+              </div>
+            </div>
+
+            <div class="adv-section">
+              <h4>Settings fingerprint</h4>
+              <p class="help">
+                Short hash (FNV-1a, non-cryptographic) of your current settings. Useful to quote in
+                a bug report so another user can tell whether they're running the same config.
+              </p>
+              <code class="fingerprint">{fp}</code>
+            </div>
+
+            <div class="adv-section">
+              <h4>Reset</h4>
+              <p class="help">
+                Storage key: <code>localStorage["cmdctrl.settings.v1"]</code>. Reset scraps every
+                value and restores defaults (including OS-pref sensing for reduced motion).
+              </p>
+              <button class="danger" onclick={onConfirmReset}>Reset all settings</button>
+            </div>
           {/if}
         </section>
       </div>
@@ -565,5 +655,70 @@
   }
   .danger:hover {
     background: #8b2828;
+  }
+  .adv-section {
+    margin: 0.25rem 0 1.25rem 0;
+  }
+  .adv-section h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 0.95rem;
+    color: #ddd;
+  }
+  .adv-section button {
+    background: #2a2b30;
+    color: #eee;
+    border: 1px solid #444;
+    padding: 0.4rem 0.8rem;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .adv-section button:hover:not(:disabled) {
+    background: #34363c;
+  }
+  .adv-section button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .adv-section button.danger {
+    background: #6b2020;
+    border-color: #8b2828;
+  }
+  .adv-section button.danger:hover {
+    background: #8b2828;
+  }
+  .adv-section textarea {
+    width: 100%;
+    box-sizing: border-box;
+    background: #15161a;
+    color: #eee;
+    border: 1px solid #333;
+    border-radius: 3px;
+    padding: 0.5rem;
+    font-family: ui-monospace, monospace;
+    font-size: 0.85em;
+    resize: vertical;
+  }
+  .adv-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.4rem;
+  }
+  .import-status.ok {
+    color: #6cc07a;
+    font-size: 0.85rem;
+  }
+  .import-status.err {
+    color: #d77;
+    font-size: 0.85rem;
+  }
+  .fingerprint {
+    background: #15161a;
+    border: 1px solid #333;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    font-family: ui-monospace, monospace;
+    font-size: 0.95em;
+    user-select: all;
   }
 </style>

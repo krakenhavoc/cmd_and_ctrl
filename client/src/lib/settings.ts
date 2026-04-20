@@ -336,3 +336,59 @@ export function openSettings(): void {
 export function closeSettings(): void {
   settingsOpen.set(false);
 }
+
+// exportSettings serialises the current settings to a JSON string
+// suitable for copying to the clipboard. The Advanced tab uses this
+// for the "copy my settings" button; a user on a second device can
+// then paste the blob into importSettings to carry their prefs
+// across without a server-side sync layer.
+export function exportSettings(): string {
+  return JSON.stringify(get(settings), null, 2);
+}
+
+// ImportResult reports what happened. `changed` signals whether the
+// store actually updated — a valid no-op import (JSON matches
+// current state) returns ok: true, changed: false so callers can
+// flash an appropriate confirmation.
+export interface ImportResult {
+  ok: boolean;
+  error?: string;
+  changed?: boolean;
+}
+
+// importSettings validates the blob, merges via the same migration
+// path used at module load, and writes to the store. Rejects on
+// parse failure or on blobs that aren't a plain object. Schema
+// mismatches are tolerated — missing fields fall back to defaults
+// via migrate(), unknown fields are dropped.
+export function importSettings(raw: string): ImportResult {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return { ok: false, error: "settings JSON must be an object" };
+  }
+  const before = JSON.stringify(get(settings));
+  const next = migrate(parsed);
+  const after = JSON.stringify(next);
+  settings.set(next);
+  return { ok: true, changed: before !== after };
+}
+
+// fingerprintSettings returns a short alphanumeric hash of the
+// current settings for bug reports. Not cryptographic — FNV-1a
+// 32-bit keeps the implementation small and dependency-free, which
+// is enough to distinguish "same prefs" from "different prefs" when
+// comparing two players' reports.
+export function fingerprintSettings(): string {
+  const str = JSON.stringify(get(settings));
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+  }
+  return h.toString(36).padStart(7, "0");
+}
