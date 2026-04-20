@@ -53,13 +53,19 @@
   // when both fields are present; null falls back to the seat-color
   // dot. displayLabel prefers the OAuth-provided global_name over
   // the bare lobby name so a friend who signed in as "Alice" doesn't
-  // see "Alice.1234" on their seat. avatarFailed flips on the <img>
-  // error event so a 503 from the avatar cache (cdn fetch failed,
-  // disk write failed) seamlessly degrades to the dot without
-  // leaving a broken-image icon next to the name.
+  // see "Alice.1234" on their seat.
   const avatar = $derived(avatarURL(seat.discord_id, seat.discord_avatar_hash));
   const displayLabel = $derived(seat.display_name ?? seat.name);
-  let avatarFailed = $state(false);
+  // failedAvatarURL latches a single URL that errored, so a transient
+  // server failure for one specific (id, hash) doesn't degrade
+  // to the dot permanently. When the user changes their avatar
+  // (new hash → new URL), or the server starts succeeding again,
+  // a re-render with a different avatar URL clears the latch and
+  // lets the <img> retry. Stored as a string instead of a boolean
+  // for exactly that reason — boolean would stick across URL
+  // changes since avatarFailed has no input to reset against.
+  let failedAvatarURL = $state<string | null>(null);
+  const avatarFailed = $derived(avatar !== null && failedAvatarURL === avatar);
 
   // Life / poison / energy adjusters. Self only — these all go through
   // the player-scoped guard server-side, so a non-admin viewer trying
@@ -128,6 +134,7 @@
   data-debug-avatar-hash={seat.discord_avatar_hash ?? "ABSENT"}
   data-debug-avatar-url={avatar ?? "NULL"}
   data-debug-avatar-failed={String(avatarFailed)}
+  data-debug-failed-url={failedAvatarURL ?? "NONE"}
   role={attackTargetable ? "button" : "group"}
   tabindex={attackTargetable ? 0 : undefined}
   onclick={handleHeaderClick}
@@ -145,7 +152,7 @@
       src={avatar}
       alt=""
       aria-hidden="true"
-      onerror={() => (avatarFailed = true)}
+      onerror={() => (failedAvatarURL = avatar)}
     />
   {:else}
     <span class="seat-dot" aria-hidden="true"></span>
