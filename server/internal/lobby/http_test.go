@@ -61,6 +61,22 @@ func newTestHTTPStackWithCards(t *testing.T, idx *cards.Index) (*httptest.Server
 // postJSON is a small helper for testing POSTs that take JSON bodies.
 // Returns the response and decoded body (if status-ok); test cleans
 // up the body itself.
+func doGet(t *testing.T, srv *httptest.Server, path, token string) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, srv.URL+path, nil)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	resp, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatalf("do: %v", err)
+	}
+	return resp
+}
+
 func postJSON(t *testing.T, srv *httptest.Server, path, token string, body any) *http.Response {
 	t.Helper()
 	raw, err := json.Marshal(body)
@@ -407,6 +423,86 @@ func TestSpectatorWSCanWatchButNotMutate(t *testing.T) {
 	}
 	if resp2.Payload.Code != "bad_request" {
 		t.Errorf("error code: got %q, want bad_request", resp2.Payload.Code)
+	}
+}
+
+// TestSpectatorBeforePlayersDoesNotCorruptState is a direct repro for
+// the manual-test report: "if a spectator joins before the players,
+// the players join as spectators and the game is marked as started
+// prematurely". This test asserts that the server-side flow is
+// independent: a spectator joining first doesn't touch game state,
+// doesn't change the response of subsequent player joins, and the
+// game stays in lobby until Start fires.
+//
+// If this test passes, the bug is client-side (likely a single-
+// browser-profile localStorage session collision). If it fails, the
+// server has a leak we need to chase.
+func TestSpectatorBeforePlayersDoesNotCorruptState(t *testing.T) {
+	srv, _, _ := newTestHTTPStack(t)
+
+	// Admin creates a game.
+	resp := postJSON(t, srv, "/admin/login", "", adminLoginRequest{Token: "shared-admin-token"})
+	var adminSess sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&adminSess)
+	resp.Body.Close()
+	resp = postJSON(t, srv, "/games", adminSess.Token, createGameRequest{Name: "FNM"})
+	var meta GameMeta
+	_ = json.NewDecoder(resp.Body).Decode(&meta)
+	resp.Body.Close()
+
+	// Spectator joins first.
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/spectate", "",
+		spectateRequest{InviteToken: meta.SpectatorInvite, Name: "watcher"})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("spectate status: got %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+	var spec sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&spec)
+	resp.Body.Close()
+	if spec.Principal.Role != auth.RoleSpectator {
+		t.Fatalf("spectator role: got %q, want %q", spec.Principal.Role, auth.RoleSpectator)
+	}
+
+	// Game state must still be lobby — Spectate is read-only.
+	resp = doGet(t, srv, "/games/"+meta.ID.String(), adminSess.Token)
+	var afterSpec GameMeta
+	_ = json.NewDecoder(resp.Body).Decode(&afterSpec)
+	resp.Body.Close()
+	if afterSpec.State != "lobby" {
+		t.Fatalf("state after spectator joined: got %q, want %q", afterSpec.State, "lobby")
+	}
+	if len(afterSpec.Players) != 0 {
+		t.Errorf("spectator should not have created a seat; got %d players", len(afterSpec.Players))
+	}
+
+	// Now a player joins via the regular invite. They MUST get a
+	// RolePlayer session, not a spectator one.
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Alice"})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("join after spectator status: got %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+	var alice sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&alice)
+	resp.Body.Close()
+	if alice.Principal.Role != auth.RolePlayer {
+		t.Errorf("player role after spectator joined first: got %q, want %q",
+			alice.Principal.Role, auth.RolePlayer)
+	}
+	if alice.PlayerID == uuid.Nil {
+		t.Error("player session has no PlayerID")
+	}
+
+	// Game state must still be lobby (haven't called Start).
+	resp = doGet(t, srv, "/games/"+meta.ID.String(), adminSess.Token)
+	var afterPlayer GameMeta
+	_ = json.NewDecoder(resp.Body).Decode(&afterPlayer)
+	resp.Body.Close()
+	if afterPlayer.State != "lobby" {
+		t.Errorf("state after player joined: got %q, want %q", afterPlayer.State, "lobby")
+	}
+	if len(afterPlayer.Players) != 1 {
+		t.Errorf("seat count after player joined: got %d, want 1", len(afterPlayer.Players))
 	}
 }
 
