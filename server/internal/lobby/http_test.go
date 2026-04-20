@@ -61,6 +61,22 @@ func newTestHTTPStackWithCards(t *testing.T, idx *cards.Index) (*httptest.Server
 // postJSON is a small helper for testing POSTs that take JSON bodies.
 // Returns the response and decoded body (if status-ok); test cleans
 // up the body itself.
+func doGet(t *testing.T, srv *httptest.Server, path, token string) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, srv.URL+path, nil)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	resp, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatalf("do: %v", err)
+	}
+	return resp
+}
+
 func postJSON(t *testing.T, srv *httptest.Server, path, token string, body any) *http.Response {
 	t.Helper()
 	raw, err := json.Marshal(body)
@@ -171,6 +187,70 @@ func TestJoinFlowPublicEndpoint(t *testing.T) {
 	}
 }
 
+func TestSpectateFlowMintsSpectatorSession(t *testing.T) {
+	srv, _, _ := newTestHTTPStack(t)
+
+	// Admin creates a game; the meta carries both invites.
+	resp := postJSON(t, srv, "/admin/login", "", adminLoginRequest{Token: "shared-admin-token"})
+	var session sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&session)
+	resp.Body.Close()
+	resp = postJSON(t, srv, "/games", session.Token, createGameRequest{Name: "FNM"})
+	var meta GameMeta
+	_ = json.NewDecoder(resp.Body).Decode(&meta)
+	resp.Body.Close()
+	if meta.SpectatorInvite == "" {
+		t.Fatal("Create did not mint a spectator invite")
+	}
+	if meta.SpectatorInvite == meta.InviteToken {
+		t.Fatal("spectator invite must differ from player invite")
+	}
+
+	// Anyone with the spectator invite can spectate without claiming a
+	// seat. Returns a RoleSpectator session bound to the game (no
+	// player ID).
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/spectate", "",
+		spectateRequest{InviteToken: meta.SpectatorInvite, Name: "watcher"})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("spectate status: got %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+	var spec sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&spec)
+	resp.Body.Close()
+	if spec.Principal.Role != auth.RoleSpectator {
+		t.Errorf("role: got %q, want %q", spec.Principal.Role, auth.RoleSpectator)
+	}
+	if spec.Principal.GameID != meta.ID {
+		t.Errorf("principal gameID: got %q, want %q", spec.Principal.GameID, meta.ID)
+	}
+	if spec.PlayerID != uuid.Nil {
+		t.Errorf("spectator session leaked a player id: %v", spec.PlayerID)
+	}
+	// Returned meta should NOT carry either invite — spectators
+	// shouldn't be able to forward a seat-claim invite to someone else.
+	if spec.Game.InviteToken != "" || spec.Game.SpectatorInvite != "" {
+		t.Errorf("spectator session response leaked invite tokens: player=%q spectator=%q",
+			spec.Game.InviteToken, spec.Game.SpectatorInvite)
+	}
+
+	// Wrong invite is rejected.
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/spectate", "",
+		spectateRequest{InviteToken: "wrong"})
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("wrong invite status: got %d, want %d", resp.StatusCode, http.StatusUnauthorized)
+	}
+	resp.Body.Close()
+
+	// The player invite is NOT a spectator invite — distinct tokens.
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/spectate", "",
+		spectateRequest{InviteToken: meta.InviteToken})
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("player invite for spectate status: got %d, want %d",
+			resp.StatusCode, http.StatusUnauthorized)
+	}
+	resp.Body.Close()
+}
+
 func TestJoinBadInviteFails(t *testing.T) {
 	srv, l, _ := newTestHTTPStack(t)
 	m, _ := l.Create("FNM")
@@ -259,6 +339,170 @@ func TestWSUpgradeWithPlayerSession(t *testing.T) {
 	_ = json.Unmarshal(f.Payload, &snap)
 	if snap.Game.ID != m.ID.String() {
 		t.Errorf("game id: got %q, want %q", snap.Game.ID, m.ID)
+	}
+}
+
+// TestSpectatorWSCanWatchButNotMutate end-to-ends the spectator path:
+// a viewer hits POST /games/{id}/spectate, opens the WS with the
+// returned session, gets a snapshot, and is rejected when they try
+// to send an action frame. Confirms ReadOnly plumbing from auth →
+// ws.Binding → Client.readOnly → handleAction reaches all the way
+// through.
+func TestSpectatorWSCanWatchButNotMutate(t *testing.T) {
+	srv, l, _ := newTestHTTPStack(t)
+
+	m, _ := l.Create("FNM")
+	_, alice, err := l.Join(m.ID, m.InviteToken, "Alice")
+	if err != nil {
+		t.Fatalf("Join Alice: %v", err)
+	}
+	_, bob, err := l.Join(m.ID, m.InviteToken, "Bob")
+	if err != nil {
+		t.Fatalf("Join Bob: %v", err)
+	}
+	if _, err := l.SetDeck(m.ID, alice, "dummy", []game.Card{game.NewCommander("A", uuid.Nil), game.NewCard("F", uuid.Nil)}); err != nil {
+		t.Fatalf("SetDeck Alice: %v", err)
+	}
+	if _, err := l.SetDeck(m.ID, bob, "dummy", []game.Card{game.NewCommander("B", uuid.Nil), game.NewCard("F", uuid.Nil)}); err != nil {
+		t.Fatalf("SetDeck Bob: %v", err)
+	}
+	if _, err := l.Start(m.ID); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+
+	// Spectate via HTTP.
+	resp := postJSON(t, srv, "/games/"+m.ID.String()+"/spectate", "",
+		spectateRequest{InviteToken: m.SpectatorInvite, Name: "watcher"})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("spectate status: got %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+	var spec sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&spec)
+	resp.Body.Close()
+
+	// Open the WS as the spectator.
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws?token=" + spec.Token
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("ws dial: %v", err)
+	}
+	defer conn.Close()
+
+	// First frame is the initial snapshot — spectator can read.
+	_, raw, err := conn.ReadMessage()
+	if err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+	var f struct {
+		Kind string `json:"kind"`
+	}
+	_ = json.Unmarshal(raw, &f)
+	if f.Kind != "snapshot" {
+		t.Errorf("first frame kind: got %q, want snapshot", f.Kind)
+	}
+
+	// Send any action frame — must be rejected with bad_request.
+	actionFrame := []byte(`{"v":0,"kind":"action","id":"00000000-0000-4000-8000-000000000001","payload":{"type":"draw_card"}}`)
+	if err := conn.WriteMessage(websocket.TextMessage, actionFrame); err != nil {
+		t.Fatalf("write action: %v", err)
+	}
+	_, raw, err = conn.ReadMessage()
+	if err != nil {
+		t.Fatalf("read action response: %v", err)
+	}
+	var resp2 struct {
+		Kind    string `json:"kind"`
+		Payload struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"payload"`
+	}
+	_ = json.Unmarshal(raw, &resp2)
+	if resp2.Kind != "error" {
+		t.Errorf("expected error frame for spectator action, got kind=%q", resp2.Kind)
+	}
+	if resp2.Payload.Code != "bad_request" {
+		t.Errorf("error code: got %q, want bad_request", resp2.Payload.Code)
+	}
+}
+
+// TestSpectatorBeforePlayersDoesNotCorruptState is a direct repro for
+// the manual-test report: "if a spectator joins before the players,
+// the players join as spectators and the game is marked as started
+// prematurely". This test asserts that the server-side flow is
+// independent: a spectator joining first doesn't touch game state,
+// doesn't change the response of subsequent player joins, and the
+// game stays in lobby until Start fires.
+//
+// If this test passes, the bug is client-side (likely a single-
+// browser-profile localStorage session collision). If it fails, the
+// server has a leak we need to chase.
+func TestSpectatorBeforePlayersDoesNotCorruptState(t *testing.T) {
+	srv, _, _ := newTestHTTPStack(t)
+
+	// Admin creates a game.
+	resp := postJSON(t, srv, "/admin/login", "", adminLoginRequest{Token: "shared-admin-token"})
+	var adminSess sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&adminSess)
+	resp.Body.Close()
+	resp = postJSON(t, srv, "/games", adminSess.Token, createGameRequest{Name: "FNM"})
+	var meta GameMeta
+	_ = json.NewDecoder(resp.Body).Decode(&meta)
+	resp.Body.Close()
+
+	// Spectator joins first.
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/spectate", "",
+		spectateRequest{InviteToken: meta.SpectatorInvite, Name: "watcher"})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("spectate status: got %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+	var spec sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&spec)
+	resp.Body.Close()
+	if spec.Principal.Role != auth.RoleSpectator {
+		t.Fatalf("spectator role: got %q, want %q", spec.Principal.Role, auth.RoleSpectator)
+	}
+
+	// Game state must still be lobby — Spectate is read-only.
+	resp = doGet(t, srv, "/games/"+meta.ID.String(), adminSess.Token)
+	var afterSpec GameMeta
+	_ = json.NewDecoder(resp.Body).Decode(&afterSpec)
+	resp.Body.Close()
+	if afterSpec.State != "lobby" {
+		t.Fatalf("state after spectator joined: got %q, want %q", afterSpec.State, "lobby")
+	}
+	if len(afterSpec.Players) != 0 {
+		t.Errorf("spectator should not have created a seat; got %d players", len(afterSpec.Players))
+	}
+
+	// Now a player joins via the regular invite. They MUST get a
+	// RolePlayer session, not a spectator one.
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Alice"})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("join after spectator status: got %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+	var alice sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&alice)
+	resp.Body.Close()
+	if alice.Principal.Role != auth.RolePlayer {
+		t.Errorf("player role after spectator joined first: got %q, want %q",
+			alice.Principal.Role, auth.RolePlayer)
+	}
+	if alice.PlayerID == uuid.Nil {
+		t.Error("player session has no PlayerID")
+	}
+
+	// Game state must still be lobby (haven't called Start).
+	resp = doGet(t, srv, "/games/"+meta.ID.String(), adminSess.Token)
+	var afterPlayer GameMeta
+	_ = json.NewDecoder(resp.Body).Decode(&afterPlayer)
+	resp.Body.Close()
+	if afterPlayer.State != "lobby" {
+		t.Errorf("state after player joined: got %q, want %q", afterPlayer.State, "lobby")
+	}
+	if len(afterPlayer.Players) != 1 {
+		t.Errorf("seat count after player joined: got %d, want 1", len(afterPlayer.Players))
 	}
 }
 

@@ -95,25 +95,40 @@ type Hub struct {
 	allowedOrigins map[string]struct{}
 }
 
+// Binding is what the upgrade authorizer hands to the hub: the
+// (gameID, playerID) pair the connection should bind to, plus a
+// `ReadOnly` flag that gates mutation frames at the hub layer.
+//
+// ReadOnly = true marks the connection as a spectator (S11) — it
+// receives snapshot broadcasts but any incoming `action` frame is
+// rejected with bad_request. Admin spectators (admin session, no
+// `?player=`) keep ReadOnly = false because admins legitimately
+// need to mutate state on a player's behalf.
+type Binding struct {
+	GameID   uuid.UUID
+	PlayerID uuid.UUID
+	ReadOnly bool
+}
+
 // UpgradeAuthorizer validates an incoming WebSocket upgrade and
-// returns the bound game + player IDs the connection should carry. A
-// nil error means the upgrade is allowed; any non-nil error is
-// converted to an HTTP 401/403 response before the upgrade completes.
+// returns the binding the connection should carry. A nil error means
+// the upgrade is allowed; any non-nil error is converted to an HTTP
+// 401/403 response before the upgrade completes.
 //
 // The authorizer owns session-token validation, seat-ownership checks,
 // and any other policy decisions. It is the *only* place the hub
 // looks for identity — the hub itself has no notion of auth.
 type UpgradeAuthorizer interface {
-	AuthorizeUpgrade(r *http.Request) (gameID, playerID uuid.UUID, err error)
+	AuthorizeUpgrade(r *http.Request) (Binding, error)
 }
 
 // UpgradeAuthorizerFunc is a function adapter for UpgradeAuthorizer,
 // handy for tests and for wiring in a one-off closure from main.go
 // without declaring a named type.
-type UpgradeAuthorizerFunc func(r *http.Request) (uuid.UUID, uuid.UUID, error)
+type UpgradeAuthorizerFunc func(r *http.Request) (Binding, error)
 
 // AuthorizeUpgrade implements UpgradeAuthorizer by calling f.
-func (f UpgradeAuthorizerFunc) AuthorizeUpgrade(r *http.Request) (uuid.UUID, uuid.UUID, error) {
+func (f UpgradeAuthorizerFunc) AuthorizeUpgrade(r *http.Request) (Binding, error) {
 	return f(r)
 }
 
@@ -286,7 +301,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gameID, playerID, err := h.resolveBinding(r)
+	binding, err := h.resolveBinding(r)
 	if err != nil {
 		// resolveBinding logs nothing — we log here so that auth
 		// failures are visible at exactly one level.
@@ -294,6 +309,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), statusFor(err))
 		return
 	}
+	gameID, playerID := binding.GameID, binding.PlayerID
 
 	// If the client requested a specific game, confirm that game
 	// resolves before burning a socket on it. A gameID of uuid.Nil
@@ -335,6 +351,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		log:      h.log.With("remote", r.RemoteAddr, "game", gameID.String(), "player", playerID.String()),
 		gameID:   gameID,
 		playerID: playerID,
+		readOnly: binding.ReadOnly,
 	}
 
 	// Pre-stage the initial snapshot into the client's send channel
@@ -388,12 +405,15 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	}()
 }
 
-// resolveBinding extracts the (gameID, playerID) pair the incoming
-// upgrade request should be bound to. If an authorizer is attached,
-// it delegates entirely. Otherwise it parses the query string with
-// permissive defaults (missing game resolves to the singleton room if
-// any; missing player yields the zero UUID, i.e. spectator).
-func (h *Hub) resolveBinding(r *http.Request) (uuid.UUID, uuid.UUID, error) {
+// resolveBinding extracts the Binding the incoming upgrade request
+// should be bound to. If an authorizer is attached, it delegates
+// entirely. Otherwise it parses the query string with permissive
+// defaults (missing game resolves to the singleton room if any;
+// missing player yields the zero UUID, i.e. spectator). The legacy
+// no-auth path always returns ReadOnly = false — the read-only
+// distinction only exists when an authorizer can certify a session
+// as RoleSpectator.
+func (h *Hub) resolveBinding(r *http.Request) (Binding, error) {
 	if h.authorize != nil {
 		return h.authorize.AuthorizeUpgrade(r)
 	}
@@ -402,7 +422,7 @@ func (h *Hub) resolveBinding(r *http.Request) (uuid.UUID, uuid.UUID, error) {
 	if raw := q.Get("game"); raw != "" {
 		id, err := uuid.Parse(raw)
 		if err != nil {
-			return uuid.Nil, uuid.Nil, errBadRequest("invalid game id")
+			return Binding{}, errBadRequest("invalid game id")
 		}
 		gameID = id
 	} else if mgr := h.loadManager(); mgr != nil {
@@ -420,11 +440,11 @@ func (h *Hub) resolveBinding(r *http.Request) (uuid.UUID, uuid.UUID, error) {
 	if raw := q.Get("player"); raw != "" {
 		id, err := uuid.Parse(raw)
 		if err != nil {
-			return uuid.Nil, uuid.Nil, errBadRequest("invalid player id")
+			return Binding{}, errBadRequest("invalid player id")
 		}
 		playerID = id
 	}
-	return gameID, playerID, nil
+	return Binding{GameID: gameID, PlayerID: playerID}, nil
 }
 
 // errBadRequest is a sentinel wrapper so statusFor can map auth
@@ -542,6 +562,15 @@ type Client struct {
 	// hidden. Never changes across the connection's lifetime; to
 	// switch seats, close and reconnect.
 	playerID uuid.UUID
+
+	// readOnly gates incoming `action` frames at the hub. When true,
+	// any action / undo dispatch is rejected with bad_request before
+	// reaching the room layer. Set from Binding.ReadOnly at upgrade
+	// time. RoleSpectator sessions get readOnly=true; admin sessions
+	// (including admin-spectator with no ?player=) keep readOnly=false
+	// because admins need to drive state on a player's behalf. Added
+	// in S11.
+	readOnly bool
 }
 
 func (c *Client) readPump() {
@@ -680,6 +709,15 @@ func (c *Client) handleChat(frame protocol.Frame) {
 // room's mutex via Room.Apply, so two concurrent action frames cannot
 // interleave their state changes or broadcast non-monotonic snapshots.
 func (c *Client) handleAction(frame protocol.Frame) {
+	// S11 spectator gate: read-only connections can't mutate state.
+	// Reject before resolving the room so the path is cheap and the
+	// client gets a single consistent error code regardless of what
+	// they tried to send.
+	if c.readOnly {
+		c.sendError(frame.ID, protocol.CodeBadRequest, "spectator connections are read-only")
+		return
+	}
+
 	room := c.hub.resolveRoom(c)
 	if room == nil {
 		// Either the hub has no manager, or the client's game has

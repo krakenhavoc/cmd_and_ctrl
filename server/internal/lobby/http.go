@@ -95,6 +95,7 @@ func Handler(c Config) http.Handler {
 	deckLimit := ratelimit.New(2, 10)
 	mux.Handle("POST /admin/login", limit.Middleware(handlerFunc(c, adminLogin)))
 	mux.Handle("POST /games/{id}/join", limit.Middleware(handlerFunc(c, joinGame)))
+	mux.Handle("POST /games/{id}/spectate", limit.Middleware(handlerFunc(c, spectateGame)))
 	mux.Handle("POST /games", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, createGame)))
 	mux.Handle("DELETE /games/{id}", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, deleteGame)))
 	mux.Handle("GET /games", auth.Middleware(c.Auth)(handlerFunc(c, listGames)))
@@ -145,6 +146,14 @@ type createGameRequest struct {
 type joinRequest struct {
 	InviteToken string `json:"invite_token"`
 	Name        string `json:"name"`
+}
+
+// spectateRequest is the body of POST /games/{id}/spectate. The
+// invite token is the per-game spectator invite from GameMeta. Name
+// is purely cosmetic (chat author label, future presence indicator).
+type spectateRequest struct {
+	InviteToken string `json:"invite_token"`
+	Name        string `json:"name,omitempty"`
 }
 
 type listResponse struct {
@@ -229,16 +238,63 @@ func joinGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	setSessionCookie(w, tok, issued.ExpiresAt)
 
-	// Strip the invite token from the returned meta — the joiner
-	// already has it, and other joiners don't need to see it in the
-	// redirect-time response.
+	// Strip both invite tokens from the returned meta — the joiner
+	// already has the player invite they used to get here, and the
+	// spectator invite is admin-only data that shouldn't leak to a
+	// freshly-seated player by default.
 	meta.InviteToken = ""
+	meta.SpectatorInvite = ""
 	return writeJSON(w, http.StatusOK, sessionResponse{
 		Token:     tok,
 		ExpiresAt: issued.ExpiresAt,
 		Principal: issued,
 		Game:      &meta,
 		PlayerID:  playerID,
+	})
+}
+
+// spectateGame is the spectator counterpart to joinGame: a viewer
+// posts the per-game spectator invite and receives a RoleSpectator
+// session bound to the game (no PlayerID). They can then open
+// /ws?game=<id>&token=<tok> with no `?player=` and watch.
+//
+// No deck or seat is allocated. Spectators may join in any game
+// state (lobby / active / ended).
+func spectateGame(c Config, w http.ResponseWriter, r *http.Request) error {
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	var body spectateRequest
+	if err := decodeJSON(r, &body); err != nil {
+		return err
+	}
+
+	meta, err := c.Lobby.Spectate(id, body.InviteToken)
+	if err != nil {
+		return err
+	}
+
+	p := auth.Principal{
+		Role:   auth.RoleSpectator,
+		GameID: meta.ID,
+		Name:   trimToLimit(body.Name, 40),
+	}
+	tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
+	if err != nil {
+		return err
+	}
+	setSessionCookie(w, tok, issued.ExpiresAt)
+
+	// Spectators don't see either invite — neither the player nor
+	// the spectator one. They have what they need.
+	meta.InviteToken = ""
+	meta.SpectatorInvite = ""
+	return writeJSON(w, http.StatusOK, sessionResponse{
+		Token:     tok,
+		ExpiresAt: issued.ExpiresAt,
+		Principal: issued,
+		Game:      &meta,
 	})
 }
 
@@ -265,6 +321,14 @@ func getGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	if p.Role != auth.RoleAdmin && p.GameID != id {
 		meta.InviteToken = ""
+		meta.SpectatorInvite = ""
+	}
+	// Spectators specifically never see the player invite (would let
+	// them claim a seat) and shouldn't see the spectator one either —
+	// their session is already proof they have it.
+	if p.Role == auth.RoleSpectator {
+		meta.InviteToken = ""
+		meta.SpectatorInvite = ""
 	}
 	return writeJSON(w, http.StatusOK, meta)
 }

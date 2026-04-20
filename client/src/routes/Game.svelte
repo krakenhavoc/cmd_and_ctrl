@@ -244,6 +244,12 @@
   );
 
   const isAdmin = $derived(sess?.principal.role === "admin");
+  // Spectator sessions (S11) are read-only — the server rejects every
+  // action frame with bad_request, so the toolbar / mulligan / deck-
+  // import / quick-action surfaces all hide here too. Bound by role,
+  // not by playerID-being-Nil, so admin spectators (no ?player=)
+  // still keep their moderator affordances.
+  const isSpectator = $derived(sess?.principal.role === "spectator");
   const selectedCombatCardID = $derived(combatSelection?.cardID ?? null);
   function handleSelectCombatCard(cardID: string): void {
     if (combatMode === "attack") selectAttacker(cardID);
@@ -323,6 +329,12 @@
     <button onclick={back}>← lobby</button>
     <h1>game {gameID.slice(0, 8)}</h1>
     <span class={`tag tag-${$status}`}>{$status}</span>
+    {#if isSpectator}
+      <span
+        class="tag tag-spectator"
+        title="read-only — your action frames are rejected by the server">spectating</span
+      >
+    {/if}
     <span class="muted">seq {$lastSeq}</span>
   </header>
 
@@ -744,6 +756,15 @@
   }
   .tag-disconnected {
     background: #fcc;
+  }
+  .tag-spectator {
+    background: rgba(176, 138, 255, 0.2);
+    color: #b08aff;
+    border: 1px solid #b08aff;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.7em;
+    font-weight: 700;
   }
 
   /* Turn / phase bar */
