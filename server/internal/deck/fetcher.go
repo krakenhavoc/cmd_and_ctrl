@@ -21,9 +21,19 @@ var (
 	ErrDeckNotFound = errors.New("deck: not found at source")
 
 	// ErrDeckPrivate is returned when the upstream API responds 401 /
-	// 403 (deck exists but is not publicly readable). We don't support
-	// authenticated fetches at S06.5.
+	// 403 *with a JSON body*, i.e. the deck exists but is not publicly
+	// readable. We don't support authenticated fetches at S06.5.
 	ErrDeckPrivate = errors.New("deck: source requires authentication")
+
+	// ErrUpstreamBlocked is returned when the upstream's CDN (most
+	// commonly Cloudflare) returns a 403 with an HTML bot-wall page
+	// rather than a JSON "deck private" response. The deck itself may
+	// be public; the server's egress IP is being rate-limited or
+	// reputation-scored by the CDN. Distinguished from ErrDeckPrivate
+	// so the error message can steer users toward the right fix (use
+	// Archidekt or paste the text export) instead of telling them to
+	// change Moxfield's privacy setting when that's not the problem.
+	ErrUpstreamBlocked = errors.New("deck: source CDN blocked this server's IP")
 
 	// ErrExternalAPIUnavailable is returned for upstream 5xx,
 	// connection failures, or timeouts.
@@ -129,6 +139,12 @@ func FetchViolation(url string, err error) (Violation, bool) {
 			Card:    url,
 			Message: err.Error(),
 		}, true
+	case errors.Is(err, ErrUpstreamBlocked):
+		return Violation{
+			Code:    CodeUpstreamBlocked,
+			Card:    url,
+			Message: err.Error(),
+		}, true
 	case errors.Is(err, ErrExternalAPIUnavailable):
 		return Violation{
 			Code:    CodeExternalAPIUnavailable,
@@ -138,6 +154,59 @@ func FetchViolation(url string, err error) (Violation, bool) {
 	}
 	return Violation{}, false
 }
+
+// looksLikeCloudflareBlock returns true when a 4xx response carries
+// a Cloudflare bot-wall HTML page rather than a real upstream JSON
+// body. Callers use this to re-classify a 403 from ErrDeckPrivate
+// to ErrUpstreamBlocked so the error surface to the user names the
+// actual problem.
+//
+// Detection is conservative: we only rewrite the error when the
+// response both claims text/html and peeks as a Cloudflare
+// challenge page. An empty body or an application/json 403 stays
+// as ErrDeckPrivate so genuine private-deck responses aren't
+// misreported.
+//
+// The peek uses a tiny buffer (1 KiB) and replaces resp.Body so
+// later reads of the body still work if a caller wants the raw
+// response — though none currently do on the error path.
+func looksLikeCloudflareBlock(resp *http.Response) bool {
+	ct := resp.Header.Get("Content-Type")
+	if !strings.Contains(strings.ToLower(ct), "text/html") {
+		return false
+	}
+	const peekBytes = 1024
+	peek, err := io.ReadAll(io.LimitReader(resp.Body, peekBytes))
+	if err != nil {
+		return false
+	}
+	// Rewind so any later reader still sees the peeked bytes
+	// followed by the rest of the body. Matters less on the error
+	// path but keeps the contract clean.
+	resp.Body = &peekedBody{peek: peek, rest: resp.Body}
+	needle := strings.ToLower(string(peek))
+	return strings.Contains(needle, "cloudflare") ||
+		strings.Contains(needle, "attention required") ||
+		strings.Contains(needle, "cf-ray")
+}
+
+// peekedBody stitches the already-read peek buffer back in front
+// of the remaining stream so resp.Body stays usable after peek.
+type peekedBody struct {
+	peek []byte
+	rest io.ReadCloser
+}
+
+func (p *peekedBody) Read(b []byte) (int, error) {
+	if len(p.peek) > 0 {
+		n := copy(b, p.peek)
+		p.peek = p.peek[n:]
+		return n, nil
+	}
+	return p.rest.Read(b)
+}
+
+func (p *peekedBody) Close() error { return p.rest.Close() }
 
 // classifyHTTPStatus maps an upstream HTTP status into one of our
 // structured sentinel errors. Used by every source-specific fetcher

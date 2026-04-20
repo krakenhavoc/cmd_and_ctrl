@@ -130,6 +130,14 @@ func fetchMoxfield(ctx context.Context, client *http.Client, u *url.URL) (name s
 	defer resp.Body.Close()
 
 	if werr := classifyHTTPStatus(resp.StatusCode); werr != nil {
+		// 401/403 can be either a genuine private-deck response from
+		// Moxfield (JSON body) or a Cloudflare bot-wall challenge
+		// (HTML body). Re-classify the latter so the user sees a
+		// useful error instead of "deck is private" when their deck
+		// is actually public.
+		if errors.Is(werr, ErrDeckPrivate) && looksLikeCloudflareBlock(resp) {
+			return "", nil, fmt.Errorf("%w: moxfield (try Archidekt or paste the text export)", ErrUpstreamBlocked)
+		}
 		return "", nil, fmt.Errorf("%w: moxfield", werr)
 	}
 
