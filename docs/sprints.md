@@ -468,18 +468,89 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 ---
 
 ## S13 — Priority foundation (rules graft kickoff)
-**Phase:** 7 · **Goal:** model priority + turn-based actions per CR 117 / 502 / 504 / 514.
+**Phase:** 7 · **Goal:** model priority + turn-based actions per CR 117 / 502 / 504 / 514. The Untap and Cleanup steps stop granting priority. Untap and Draw fire automatically on step entry (with the Turn-1 skip-draw exception per CR 103.7c). Priority rotation skips eliminated seats. The client adds per-step "stops" preferences and a "Pass to my next stop" button so a 4-player turn doesn't require 30+ manual `pass_priority` clicks per cycle.
 
-- [ ] Untap and cleanup steps don't grant priority (sentinel `Turn.PriorityHolder == -1`)
-- [ ] Auto turn-based actions (untap, draw, cleanup-discard fire automatically)
-- [ ] Eliminated-player skip in priority rotation
-- [ ] Turn-1 skip-draw rule (CR 103.7c)
-- [ ] Per-step stops UI (client-side localStorage preferences)
-- [ ] "Pass to my next stop" client action
+This sprint is the *foundation* for the entire S13.x rules-graft track: S13.1 (stack), S13.2 (counter SBAs), S13.3 (greyed illegal actions), S13.4 (interactive cleanup discard), and S13.5 (card visibility) all assume the priority + turn-based-action shape lands here. Cleanup-discard is intentionally deferred to S13.4 — S13's cleanup step just auto-advances to the next turn without granting priority, and S13.4 will inject the discard pause into that gap.
 
-**Exit criteria:** a 4-player game runs through full turns with auto turn-based actions; per-player stops work; eliminated seats correctly skipped.
+### Tasks
 
-**Out of scope (S13.1+):** real stack, state-based actions, hold-priority modifier, per-commander damage tracking.
+**Priority sentinel + no-priority steps (server):**
+- [ ] Define `game.NoPriority = -1` constant in [server/internal/game/turn.go](../server/internal/game/turn.go); document on `Turn.PriorityHolder`.
+- [ ] `Turn.advance()` sets `PriorityHolder = NoPriority` when the new step is `StepUntap` or `StepCleanup`; sets it to `ActiveSeat` for every other step.
+- [ ] `Game.PassPriority` returns an error (`ErrNoPriority`) if called while `PriorityHolder == NoPriority`. Existing `< 0` defensive guard at [actions.go:138](../server/internal/actions/actions.go) stays as the wire-level catch.
+- [ ] `protocol.ViewOfGame` round-trips `PriorityHolder == -1` to clients unchanged.
+
+**Auto turn-based actions on step entry (server):**
+- [ ] Extract a private `untapAllForLocked(seat)` from `UntapAll` so the step hook and the existing manual action share code.
+- [ ] Extract a private `drawCardLocked(playerID)` from `DrawCard` for the same reason.
+- [ ] Extend `runStepEntryHooksLocked` ([server/internal/game/game.go:327](../server/internal/game/game.go)):
+  - `StepUntap`: untap all permanents controlled by `ActiveSeat`, then auto-advance the cursor to Upkeep — Untap grants no priority.
+  - `StepDraw`: auto-draw 1 card for `ActiveSeat`, **except** when `Turn.Number == 1 && ActiveSeat == Game.StartingSeat` (CR 103.7c).
+  - `StepCleanup`: in S13, auto-advance to the next turn's Untap so the cleanup cursor never sits idle. (S13.4 injects the discard pause here.)
+- [ ] Manual `TypeUntapAll` / `TypeDrawCard` actions stay dispatchable as sandbox overrides; gate them so they no-op (or return a soft error) during their auto-fire steps to avoid double-fire.
+
+**Eliminated-player skip in priority rotation (server):**
+- [ ] `Game.PassPriority`: replace `next = (PriorityHolder + 1) % numSeats` with a loop that walks past `Eliminated == true` seats (reuse the iteration shape from `advancePastEliminatedLocked` at [mutations.go:517](../server/internal/game/mutations.go)).
+- [ ] When wrapping back to the active seat through skips, trigger the same step-advance branch as the all-passed case.
+
+**Turn-1 skip-draw rule, CR 103.7c (server):**
+- [ ] Add `Game.StartingSeat int` field; set in `Game.Start()` to whichever seat is `ActiveSeat` at that moment.
+- [ ] `protocol.GameView` carries `starting_seat` so spectators / reconnects see the same skip-draw decision.
+- [ ] Used by the `StepDraw` auto-action above.
+
+**Per-step stops UI (client):**
+- [ ] Extract the 12-step list + labels from [Game.svelte](../client/src/routes/Game.svelte) (`STEP_LABELS`) into a shared `client/src/lib/turn.ts` constant so Settings and Game render identically.
+- [ ] Replace the empty `gameplay.stepStops: {}` seed in [client/src/lib/settings.ts](../client/src/lib/settings.ts) with sensible defaults (typical MTGO opt-ins: upkeep off, draw off, precombat_main on, declare_attackers on, declare_blockers on, end on, rest off). Bump `__version`; add a migration that fills defaults for users with an empty `stepStops`.
+- [ ] Settings.svelte gameplay tab: add a "Step stops" section — checkbox per step. Wires to `updateSettings('gameplay', 'stepStops', {...})`.
+
+**Auto-pass through unstopped steps (client):**
+- [ ] Extend the existing `autoPassPriority` effect in Game.svelte: fire `pass_priority` whenever the viewer holds priority, the stack is empty, and `settings.gameplay.stepStops[turn.step] === false`. Reuse the existing dedup-by-snapshot-seq pattern.
+
+**"Pass to my next stop" button (client):**
+- [ ] Add `passToNextStop()` next to `passToEnd()` in Game.svelte — same shape (24-iteration cap, await snapshot between sends), with the exit condition: stop when active seat changes, when stack changes, or when `settings.gameplay.stepStops[turn.step] === true`.
+- [ ] Render a "→ Next stop" button in the priority controls toolbar between "pass priority" and "pass until end of turn".
+
+**Hide priority indicator when no one holds priority (client):**
+- [ ] Priority pills row in Game.svelte: render only when `turn.priority_holder >= 0`; show a muted "—" marker during Untap / Cleanup so the bar doesn't visually pop.
+- [ ] PlayerHeader badge: verify `hasPriority` is false when `priority_holder === -1` (it already should be — `-1 === seatIndex` is always false).
+
+**Docs:**
+- [ ] `docs/decisions/0006-priority-foundation.md` — ADR. Topics: why `-1` sentinel vs a separate enum, why auto-fire lives in step entry hooks (vs a tick loop), why per-step stops are client-only (no protocol bump), why `Game.StartingSeat` is a separate field rather than inferred, why `TypeUntapAll` / `TypeDrawCard` actions are kept (sandbox / replay).
+- [ ] [docs/protocol.md](protocol.md): document `starting_seat` on `GameView` and the `PriorityHolder == -1` sentinel.
+
+**Tests:**
+- [ ] Server unit tests next to the existing `TestFullFourPlayerTurnCycle` pattern in [game_test.go](../server/internal/game/game_test.go):
+  - Full 4-player turn cycle with all auto-actions firing; cursor lands on the next active seat's Upkeep without manual `untap_all` / `draw_card`.
+  - Turn 1 starting-seat draw is skipped; turn 1 next seat draws normally; turn 2 starting-seat draws normally.
+  - PassPriority skips eliminated seats (4 seats, eliminate seats 1+3, expect rotation 0 → 2 → 0 → step advance).
+  - PassPriority during Untap / Cleanup returns an error (priority sentinel guard).
+  - Cleanup auto-advances to next turn's Untap without granting priority.
+- [ ] Snapshot/replay round-trip test for `StartingSeat` and `PriorityHolder == -1`.
+
+### Out of scope (explicit handoffs)
+- **Stack, cast actions, SBAs, targeting, modes/X, hold-priority, split-second, commander cast tax + zone replacement** — S13.1 [#63](https://github.com/krakenhavoc/cmd_and_ctrl/issues/63).
+- **Counter SBAs (planeswalker loyalty 0, battle defense 0, +1/+1/-1/-1 cancel, poison, saga final chapter), player-level counters, marked-damage cleanup** — S13.2 [#79](https://github.com/krakenhavoc/cmd_and_ctrl/issues/79).
+- **Greyed illegal-action affordance** — S13.3 [#99](https://github.com/krakenhavoc/cmd_and_ctrl/issues/99).
+- **Interactive cleanup discard + per-player MaxHandSize** — S13.4 [#103](https://github.com/krakenhavoc/cmd_and_ctrl/issues/103). S13's auto-advance on cleanup is the placeholder S13.4 will hook into.
+- **Card visibility / known-by tracking** — S13.5 [#108](https://github.com/krakenhavoc/cmd_and_ctrl/issues/108).
+- **Per-commander damage tracking** — explicit S13 non-goal.
+
+### Risks / gotchas
+- **Auto-action / manual-action collision.** `TypeUntapAll` and `TypeDrawCard` remain dispatchable. If the server has already auto-fired on step entry, a client-sent `draw_card` would draw again. Mitigation: gate the manual actions on `Turn.Step != StepUntap / StepDraw` so they no-op during the auto-fire window. Document in the ADR.
+- **Step-entry recursion.** Untap auto-untaps then auto-advances the step, which fires the next step's hook. The Cleanup → next-Untap → auto-untap → Upkeep chain runs synchronously inside one mutation. Verify the existing lock semantics in `AdvanceStep` ([game.go:301](../server/internal/game/game.go)) tolerate the chain (likely fine — `runStepEntryHooksLocked` already runs under the same write lock).
+- **Stops + auto-pass races.** The client effect that auto-passes on unstopped steps must dedup against the snapshot seq the same way the existing `autoPassPriority` effect does; otherwise a single step entry can fire two `pass_priority` actions.
+- **StartingSeat in old replays.** Replays recorded before this sprint won't carry `StartingSeat`. Decode default of `0` matches the only seat games start on today, so replays still work — document the assumption in the ADR and the protocol doc.
+- **Stop defaults are opinionated.** Pre-seeding step stops changes behaviour for existing users on first load after the migration. The migration must only fill defaults when the existing `stepStops` is empty; never overwrite user-configured stops.
+- **No stack yet ⇒ "stops" are partial UX.** Without S13.1's stack, "stop on upkeep" only lets the player see an empty upkeep. That's the intended hand-off — the affordance lands now, the value compounds when S13.1 ships.
+
+### Exit criteria
+1. A 4-player game runs through full turns with **zero manual `untap_all` or `draw_card` clicks**. Cursor walks Untap → Upkeep → Draw → Main → ... → Cleanup → next seat's Untap.
+2. Turn 1's starting seat does not draw at its draw step. Turn 2 onwards, every seat draws normally.
+3. With seats 1 and 3 eliminated, priority rotation across non-eliminated seats works (`pass_priority` from seat 0 lands on seat 2, not seat 1).
+4. The priority pill / badge is hidden during Untap and Cleanup; players cannot send `pass_priority` during those steps (server returns an error).
+5. With "stop on declare attackers" off, the client auto-passes through the declare-attackers step. With it on, the client stops and waits for an explicit click.
+6. "→ Next stop" button advances to the next configured stop (or the next seat's turn if no further stops are configured), bounded by the same 24-iteration safety cap as `passToEnd`.
+7. ADR `0006-priority-foundation.md` exists and explains the sentinel, auto-fire architecture, and the kept-but-gated manual actions.
 
 ---
 
