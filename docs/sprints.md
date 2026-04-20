@@ -50,6 +50,7 @@ planned just-in-time from the S12 pain-point triage.
 | S13 | Priority foundation (rules graft kickoff) | 7 | [#62](https://github.com/krakenhavoc/cmd_and_ctrl/issues/62) | 2026-05-17 | planned |
 | S13.1 | Stack: cast/resolve/target/counter/trigger/SBA | 7 | [#63](https://github.com/krakenhavoc/cmd_and_ctrl/issues/63) | 2026-06-14 | planned |
 | S13.2 | Counter mechanics (SBAs + player counters + UI) | 7 | [#79](https://github.com/krakenhavoc/cmd_and_ctrl/issues/79) | 2026-06-28 | planned |
+| S13.3 | Client-side timing affordance (greyed illegal actions) | 7 | [#99](https://github.com/krakenhavoc/cmd_and_ctrl/issues/99) | 2026-07-04 | planned |
 | S14 | Card-effect catalog foundation | 7 | [#64](https://github.com/krakenhavoc/cmd_and_ctrl/issues/64) | 2026-07-12 | planned |
 | S15 | Mana pool, cost model, and auto-tapper | 7 | [#65](https://github.com/krakenhavoc/cmd_and_ctrl/issues/65) | 2026-08-09 | planned |
 | S16 | Continuous effects + layer system (CR 613) | 7 | [#66](https://github.com/krakenhavoc/cmd_and_ctrl/issues/66) | 2026-09-06 | planned |
@@ -562,6 +563,55 @@ Gap analysis behind this sprint: `Card.Counters` exists today ([server/internal/
 5. Every counter on every card renders as a visible pip on the battlefield tile, with distinct colors for the top-20 known types.
 6. Right-clicking a card opens a Counters popover; players can add/remove any type without typing into chat.
 7. Player-level counters (poison, energy, experience, rad) render near each `PlayerHeader` and update live when the server broadcasts a delta.
+
+---
+
+## S13.3 — Client-side timing affordance (greyed illegal actions)
+**Phase:** 7 · **Goal:** the UI pre-disables illegal cast / activation affordances so players don't try actions the server will only reject after the click. Pure client work; consumes priority/step/stack/split-second/loyalty-this-turn state that S13 + S13.1 already publish.
+
+After S13 + S13.1, the server enforces timing: who holds priority, sorcery-speed window, split-second blocks, once-per-turn loyalty, etc. Today the only UI signal is an error toast *after* an illegal click. S13.3 closes the loop: hand cards grey out when not castable, ability buttons disable with a reason tooltip, the play-land button greys after the one-per-turn is used. Server enforcement stays authoritative — UI greyness is best-effort UX.
+
+### Tasks
+
+**Client legality helpers (`client/src/lib/timing.ts` — new file):**
+- [ ] `canCastFromHand(card, snap, viewerID): { legal, reason? }` — checks viewer-has-priority + correct step/phase + stack-empty (sorcery) + split-second clear
+- [ ] `canActivateAbility(card, ability, snap, viewerID)` — sorcery-speed gate for non-mana activations
+- [ ] `canPlayLand(card, snap, viewerID)` — checks land-drops-remaining + main phase + stack empty
+- [ ] `canActivateLoyalty(card, snap, viewerID)` — sorcery-speed + once-per-turn from `LoyaltyActivatedThisTurn`
+- [ ] Reasons are plain English (not CR citations): "Not your turn", "Stack isn't empty", "Already activated this turn", "Already played a land this turn", "Split second spell on stack"
+
+**Hand component:**
+- [ ] Each card runs `canCastFromHand` in a `$derived`; when illegal, applies `.timing-disabled` (opacity 0.55, pointer-events: none, slight grayscale)
+- [ ] Hover/zoom still works — only the click affordance is disabled
+- [ ] Tooltip on hover shows the legality reason
+
+**Battlefield + ability dialog:**
+- [ ] Each ability row in the right-click ability dialog ([S13.1](#s131--stack-castresolvetargetcountertriggersba)) renders disabled with reason if illegal
+- [ ] Loyalty abilities greyed with "Already activated this turn" / "Stack isn't empty" / "Not your main phase"
+
+**Toolbar:**
+- [ ] `pass_priority` greys when sentinel says no priority OR when viewer doesn't hold priority
+- [ ] `play_land` greys when used / not main / stack non-empty
+- [ ] `advance_step` / `pass_to_next_stop` follow existing S13 sentinel rules
+
+**Tests:**
+- [ ] `client/src/lib/__tests__/timing.test.ts` — table-driven, one scenario per reason string, fake snapshots
+- [ ] Manual smoke: 2-tab playtest covering all 8 verification scenarios (sorceries on opponent turn, instants OK, split-second blocking, loyalty re-activation, second land drop, etc.)
+
+### Out of scope (stays for later)
+- **Mana-source prediction** ("can't afford this") — depends on [S15](#s15--mana-pool--auto-tapper-from-cost-vector) mana pool
+- **Target-predicate greyness** ("no legal targets") — [S20](#s20--auto-target-legality--smart-cast-ui) territory
+- **Alt-cast paths from non-hand zones** ("flashback not yet eligible") — [S29](#s29--alt-cast-paths-from-non-hand-zones)
+- **Animated un-grey transitions** — S11-ish polish
+
+### Exit criteria
+1. On opponent's turn, viewer's hand sorceries are visibly greyed; instants render normally; tooltip on a greyed sorcery says "Not your turn".
+2. Cast a sorcery on your own main phase → other sorceries in your hand grey out with "Stack isn't empty"; un-grey when the stack resolves.
+3. Activate a planeswalker's loyalty → that planeswalker's ability list greys remaining options with "Already activated this turn"; resets next turn.
+4. Play a land → second land in hand greys with "Already played a land this turn".
+5. Force a race condition (skip the client check) → server still rejects with the same error toast that worked pre-S13.3 (server enforcement remains authoritative).
+
+Detailed plan: `/home/node/.claude/plans/s13-3-client-timing-affordance.md`. Builds on S13 (priority sentinel) + S13.1 (sorcery-speed + split-second + loyalty-activated state). ~1 week, 2 sub-PRs.
 
 ---
 
