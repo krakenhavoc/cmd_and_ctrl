@@ -61,6 +61,22 @@ func newTestHTTPStackWithCards(t *testing.T, idx *cards.Index) (*httptest.Server
 // postJSON is a small helper for testing POSTs that take JSON bodies.
 // Returns the response and decoded body (if status-ok); test cleans
 // up the body itself.
+func doGet(t *testing.T, srv *httptest.Server, path, token string) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, srv.URL+path, nil)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	resp, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatalf("do: %v", err)
+	}
+	return resp
+}
+
 func postJSON(t *testing.T, srv *httptest.Server, path, token string, body any) *http.Response {
 	t.Helper()
 	raw, err := json.Marshal(body)
@@ -260,6 +276,144 @@ func TestWSUpgradeWithPlayerSession(t *testing.T) {
 	if snap.Game.ID != m.ID.String() {
 		t.Errorf("game id: got %q, want %q", snap.Game.ID, m.ID)
 	}
+}
+
+// TestReplayDownloadWithDumpDir stands up a real lobby with a dump
+// directory and confirms the download endpoint's behavior.
+func TestReplayDownloadWithDumpDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	mgr := ws.NewRoomManager(log, tmpDir)
+	l := NewLobby(mgr)
+	a := auth.NewMemoryAuthenticator()
+	hub := ws.NewHub(log)
+	hub.SetManager(mgr)
+	hub.SetAuthorizer(&WSAuthorizer{Auth: a})
+	cfg := Config{Lobby: l, Auth: a, AdminToken: "shared-admin-token"}
+
+	mux := http.NewServeMux()
+	mux.Handle("/", Handler(cfg))
+	mux.HandleFunc("GET /ws", hub.ServeWS)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	// Admin creates a game, gets an admin session token.
+	resp := postJSON(t, srv, "/admin/login", "", adminLoginRequest{Token: "shared-admin-token"})
+	var adminSess sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&adminSess)
+	resp.Body.Close()
+	resp = postJSON(t, srv, "/games", adminSess.Token, createGameRequest{Name: "FNM"})
+	var meta GameMeta
+	_ = json.NewDecoder(resp.Body).Decode(&meta)
+	resp.Body.Close()
+
+	// No Apply has fired yet — replay is empty → 204.
+	resp = doGet(t, srv, "/games/"+meta.ID.String()+"/replay", adminSess.Token)
+	if resp.StatusCode != http.StatusNoContent {
+		t.Errorf("empty replay status: got %d, want %d", resp.StatusCode, http.StatusNoContent)
+	}
+	resp.Body.Close()
+
+	// Seat two players through the public API so the game is startable.
+	_, alice, err := l.Join(meta.ID, meta.InviteToken, "Alice")
+	if err != nil {
+		t.Fatalf("Join Alice: %v", err)
+	}
+	_, bob, err := l.Join(meta.ID, meta.InviteToken, "Bob")
+	if err != nil {
+		t.Fatalf("Join Bob: %v", err)
+	}
+	// 20+ fillers so the opening hand (7) + post-start draws don't
+	// bankrupt the library mid-test.
+	aliceDeck := []game.Card{game.NewCommander("A", uuid.Nil)}
+	bobDeck := []game.Card{game.NewCommander("B", uuid.Nil)}
+	for i := 0; i < 20; i++ {
+		aliceDeck = append(aliceDeck, game.NewCard(fmt.Sprintf("AF%d", i), uuid.Nil))
+		bobDeck = append(bobDeck, game.NewCard(fmt.Sprintf("BF%d", i), uuid.Nil))
+	}
+	if _, err := l.SetDeck(meta.ID, alice, "dummy", aliceDeck); err != nil {
+		t.Fatalf("SetDeck Alice: %v", err)
+	}
+	if _, err := l.SetDeck(meta.ID, bob, "dummy", bobDeck); err != nil {
+		t.Fatalf("SetDeck Bob: %v", err)
+	}
+	if _, err := l.Start(meta.ID); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+
+	// Fire an Apply by connecting a WS and sending draw_card. Each
+	// successful action produces exactly one replay line.
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws?token=" + adminSess.Token + "&game=" + meta.ID.String() + "&player=" + alice.String()
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("ws dial: %v", err)
+	}
+	defer conn.Close()
+
+	// Consume initial snapshot (no replay append — Snapshot path).
+	_, _, _ = conn.ReadMessage()
+
+	// One action → one replay line.
+	actionID := "00000000-0000-4000-8000-000000000001"
+	frame := []byte(`{"v":0,"kind":"action","id":"` + actionID + `","payload":{"type":"draw_card","player":"` + alice.String() + `"}}`)
+	if err := conn.WriteMessage(websocket.TextMessage, frame); err != nil {
+		t.Fatalf("write action: %v", err)
+	}
+	_, respRaw, err := conn.ReadMessage()
+	if err != nil {
+		t.Fatalf("read action response: %v", err)
+	}
+	// Surface the response so action rejects (bad state, caller
+	// mismatch, etc.) don't just look like "no replay file yet".
+	var respFrame struct {
+		Kind    string          `json:"kind"`
+		Payload json.RawMessage `json:"payload"`
+	}
+	_ = json.Unmarshal(respRaw, &respFrame)
+	if respFrame.Kind != "snapshot" {
+		t.Fatalf("expected snapshot after draw_card, got %q (payload=%s)",
+			respFrame.Kind, respFrame.Payload)
+	}
+
+	// Download the replay.
+	resp = doGet(t, srv, "/games/"+meta.ID.String()+"/replay", adminSess.Token)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("replay status: got %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if ct := resp.Header.Get("Content-Type"); ct != "application/x-ndjson" {
+		t.Errorf("content type: got %q, want %q", ct, "application/x-ndjson")
+	}
+	lines := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
+	if len(lines) != 1 {
+		t.Errorf("replay line count after one action: got %d, want 1\n---\n%s", len(lines), body)
+	}
+
+	// Unauth request (no token) → 401.
+	resp = doGet(t, srv, "/games/"+meta.ID.String()+"/replay", "")
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("unauth replay status: got %d, want %d", resp.StatusCode, http.StatusUnauthorized)
+	}
+	resp.Body.Close()
+
+	// Cross-game player → 403. Create a second game, get a player
+	// session bound to it; they shouldn't be able to download the
+	// first game's replay.
+	resp = postJSON(t, srv, "/games", adminSess.Token, createGameRequest{Name: "Other"})
+	var other GameMeta
+	_ = json.NewDecoder(resp.Body).Decode(&other)
+	resp.Body.Close()
+	resp = postJSON(t, srv, "/games/"+other.ID.String()+"/join", "",
+		joinRequest{InviteToken: other.InviteToken, Name: "Intruder"})
+	var intruderSess sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&intruderSess)
+	resp.Body.Close()
+	resp = doGet(t, srv, "/games/"+meta.ID.String()+"/replay", intruderSess.Token)
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("cross-game replay status: got %d, want %d", resp.StatusCode, http.StatusForbidden)
+	}
+	resp.Body.Close()
 }
 
 func TestDeleteGameAdminOnly(t *testing.T) {

@@ -324,6 +324,71 @@ func TestRoomCrashRecoveryDumpsToDisk(t *testing.T) {
 	}
 }
 
+// TestRoomReplayLogAppends exercises the S11 replay surface: every
+// successful Apply should append exactly one JSON line (the
+// post-action snapshot) to <dumpDir>/replays/<game-id>.jsonl, in
+// order. The crash-recovery dump is a single-file "latest snapshot"
+// already; the replay log is its additive history equivalent so a
+// consumer can stream the timeline back.
+//
+// Also asserts the SIBLING invariant: Snapshot reads (no-seq-bump,
+// sent on connect to avoid racing with broadcasts) do NOT append a
+// line. Including them would pollute the replay with duplicates of
+// the current state every time a spectator opened a tab.
+func TestRoomReplayLogAppends(t *testing.T) {
+	wsURL, g, tmpDir, cleanup := newRoomTestServer(t)
+	defer cleanup()
+
+	conn := dial(t, wsURL)
+	defer conn.Close()
+
+	// Initial connect sends a targeted Snapshot — should NOT write
+	// a replay line. Wait for the initial frame to land so we're
+	// past the connect handshake.
+	readSnapshotFrame(t, conn)
+
+	replayPath := filepath.Join(tmpDir, "replays", g.ID.String()+".jsonl")
+	if _, err := os.Stat(replayPath); !os.IsNotExist(err) {
+		t.Fatalf("replay file should not exist yet: stat err=%v", err)
+	}
+
+	// Two actions → two replay lines (+ broadcast snapshots in
+	// response to each).
+	sendActionFrame(t, conn, protocol.ActionPayload{
+		Type: "draw_card", Player: g.Seats[0].ID.String(),
+	})
+	readSnapshotFrame(t, conn)
+	sendActionFrame(t, conn, protocol.ActionPayload{
+		Type: "draw_card", Player: g.Seats[0].ID.String(),
+	})
+	readSnapshotFrame(t, conn)
+
+	data, err := os.ReadFile(replayPath)
+	if err != nil {
+		t.Fatalf("read replay file: %v", err)
+	}
+	lines := strings.Split(strings.TrimSuffix(string(data), "\n"), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("replay line count: got %d, want 2\n---\n%s", len(lines), data)
+	}
+
+	// Seq on each line should monotonically increase starting at 1.
+	for i, line := range lines {
+		var snap protocol.SnapshotPayload
+		if err := json.Unmarshal([]byte(line), &snap); err != nil {
+			t.Fatalf("unmarshal replay line %d: %v", i, err)
+		}
+		wantSeq := uint64(i + 1)
+		if snap.Seq != wantSeq {
+			t.Errorf("replay line %d seq: got %d, want %d", i, snap.Seq, wantSeq)
+		}
+		if snap.Game.ID != g.ID.String() {
+			t.Errorf("replay line %d game id: got %q, want %q",
+				i, snap.Game.ID, g.ID.String())
+		}
+	}
+}
+
 // TestRoomInitialSnapshotOnlyGoesToJoiner regresses the C1 fix:
 // the initial snapshot sent on connect must not be broadcast to
 // already-connected clients. A regression that replaced the targeted

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -100,6 +101,7 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /games", auth.Middleware(c.Auth)(handlerFunc(c, listGames)))
 	mux.Handle("GET /games/{id}", auth.Middleware(c.Auth)(handlerFunc(c, getGame)))
 	mux.Handle("POST /games/{id}/start", auth.Middleware(c.Auth)(handlerFunc(c, startGame)))
+	mux.Handle("GET /games/{id}/replay", auth.Middleware(c.Auth)(handlerFunc(c, downloadReplay)))
 	mux.Handle("POST /games/{id}/decks", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, uploadDeck))))
 	mux.Handle("GET /me", auth.Middleware(c.Auth)(handlerFunc(c, me)))
 	// Logout does not require an authenticated principal — a client
@@ -286,6 +288,70 @@ func deleteGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
+}
+
+// downloadReplay streams the per-game JSONL replay log back to the
+// caller. Each line is one protocol.SnapshotPayload (the same shape
+// the WS layer broadcasts), in the order Apply produced them. A
+// downstream consumer can deserialize line-by-line to reconstruct
+// the full game timeline.
+//
+// Authorization: admin or any seat (player or spectator) in this
+// game. The replay holds opponent hand contents in pre-filter form,
+// so it MUST NOT be served to unauthenticated callers — but a player
+// who was at the table has already seen these snapshots filtered for
+// their seat, and an admin / spectator who watched live likewise.
+// Sandbox-friendly default; if a deployment wants stricter
+// "admin-only replays", flip the role check below.
+func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return httpError(http.StatusInternalServerError, "missing principal")
+	}
+	if p.Role != auth.RoleAdmin && p.GameID != id {
+		return httpError(http.StatusForbidden, "not a seat in this game")
+	}
+	room := c.Lobby.RoomOf(id)
+	if room == nil {
+		return httpError(http.StatusNotFound, "game not found")
+	}
+	path := room.ReplayPath()
+	if path == "" {
+		return httpError(http.StatusServiceUnavailable, "replay log disabled (no dump dir)")
+	}
+	// Surface the file's existence cleanly: a brand-new game with no
+	// Apply yet has no replay file. Returning 204 keeps the contract
+	// "the route exists; there's just nothing to stream" without
+	// 404-confusing the client.
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			w.WriteHeader(http.StatusNoContent)
+			return nil
+		}
+		return httpError(http.StatusInternalServerError, "stat replay: "+err.Error())
+	}
+	w.Header().Set("Content-Type", "application/x-ndjson")
+	w.Header().Set(
+		"Content-Disposition",
+		`attachment; filename="`+id.String()+`.jsonl"`,
+	)
+	http.ServeContent(w, r, id.String()+".jsonl", info.ModTime(), mustOpen(path))
+	return nil
+}
+
+// mustOpen returns an *os.File for ServeContent. ServeContent needs
+// an io.ReadSeeker; os.File satisfies it. The defer-close lives in
+// http.ServeContent's lifetime via the response writer's flush — we
+// can't defer here because ServeContent reads from the file after
+// this function returns.
+func mustOpen(path string) *os.File {
+	f, _ := os.Open(path)
+	return f
 }
 
 func startGame(c Config, w http.ResponseWriter, r *http.Request) error {

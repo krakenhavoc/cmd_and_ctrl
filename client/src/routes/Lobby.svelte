@@ -1,6 +1,13 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { createGame, listGames, logout as apiLogout, startGame, type GameMeta } from "../lib/api";
+  import {
+    createGame,
+    listGames,
+    logout as apiLogout,
+    replayURL,
+    startGame,
+    type GameMeta,
+  } from "../lib/api";
   import { inviteURL, navigate } from "../lib/router";
   import { session, LobbyApiError } from "../lib/session";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
@@ -141,6 +148,12 @@
                 <button disabled title="waiting for all seats to upload a deck">start</button>
               {/if}
               <button onclick={() => openGame(g.id)}>open</button>
+              {#if g.state !== "lobby"}
+                {@const url = replayURL(g.id)}
+                {#if url}
+                  <a class="linkish" href={url} download={`${g.id}.jsonl`}>download replay</a>
+                {/if}
+              {/if}
             </div>
           </div>
           <ul class="seats">
