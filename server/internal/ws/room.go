@@ -284,8 +284,59 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 		if err := r.dumpSnapshotLocked(dumpPayload); err != nil {
 			r.log.Warn("snapshot dump failed", "err", err, "seq", nextSeq)
 		}
+		// Replay log: every Apply (advanceSeq=true) appends one
+		// JSONL line to the per-game replay file. Snapshot reads
+		// (advanceSeq=false) are deliberately excluded — they're a
+		// no-op on game state and would inflate the log without
+		// adding information.
+		if advanceSeq {
+			if err := r.appendReplayLocked(dumpPayload); err != nil {
+				r.log.Warn("replay log append failed", "err", err, "seq", nextSeq)
+			}
+		}
 	}
 	return view, nextSeq, nil
+}
+
+// appendReplayLocked appends one JSON line (the marshaled snapshot
+// payload + '\n') to the per-game replay log. The crash-recovery dump
+// already captures the latest snapshot in a single file; the replay
+// log is the additive history equivalent — every successful Apply
+// produces exactly one line, in order, so a downstream consumer can
+// re-derive the full game timeline by streaming it back.
+//
+// Format: JSONL (one protocol.SnapshotPayload per line). Open with
+// O_APPEND so concurrent writes from different goroutines (which
+// shouldn't happen — caller holds r.mu — but defense in depth) get
+// atomic POSIX-compliant single-line appends.
+//
+// Caller MUST hold r.mu. ReplayPath returns the on-disk location.
+func (r *Room) appendReplayLocked(payload []byte) error {
+	replayDir := filepath.Join(r.dumpDir, "replays")
+	if err := os.MkdirAll(replayDir, 0o755); err != nil {
+		return err
+	}
+	path := filepath.Join(replayDir, r.Game.ID.String()+".jsonl")
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if _, err := f.Write(append(payload, '\n')); err != nil {
+		return fmt.Errorf("append replay line: %w", err)
+	}
+	return nil
+}
+
+// ReplayPath returns the on-disk path to the replay JSONL for this
+// room's game, or an empty string when crash recovery / replay is
+// disabled (dumpDir empty). Used by the lobby's GET
+// /games/{id}/replay handler to stream the file back to the client.
+func (r *Room) ReplayPath() string {
+	if r.dumpDir == "" {
+		return ""
+	}
+	return filepath.Join(r.dumpDir, "replays", r.Game.ID.String()+".jsonl")
 }
 
 // dumpSnapshotLocked writes the snapshot payload to the crash-recovery

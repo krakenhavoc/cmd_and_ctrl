@@ -144,6 +144,16 @@ export async function startGame(id: string): Promise<GameMeta> {
   return (await res.json()) as GameMeta;
 }
 
+// replayURL returns an authenticated download URL for a game's
+// replay JSONL. Ships the session token as ?token= because browser
+// downloads can't set Authorization headers. Consumed by the lobby
+// "download replay" link via a plain <a href>. Added in S11.
+export function replayURL(gameID: string): string | null {
+  const s = currentSession();
+  if (!s?.token) return null;
+  return `/games/${gameID}/replay?token=${encodeURIComponent(s.token)}`;
+}
+
 // uploadDeck ships a decklist (plain text or Moxfield JSON) to the
 // server for parse + validate + install. Format can be omitted — the
 // server auto-detects by checking the first non-whitespace byte for

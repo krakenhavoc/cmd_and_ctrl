@@ -360,6 +360,21 @@ bump unless they turn out to be wire-breaking:
   disconnect and must be re-established.
 - **Spectator mode** (S11) — read-only connections.
 
+### Replay log (S11)
+
+Every successful `Apply` on a Room appends one JSONL line to
+`$CMDCTRL_DATA_DIR/replays/<game-id>.jsonl`. Each line is a full
+`SnapshotPayload` (the same shape broadcast over WS after an action),
+in the order the server produced them. Consumers can stream the file
+and re-derive the game timeline.
+
+`GET /games/{id}/replay` returns the log as `application/x-ndjson`.
+Authorization: admin or any seat (player / spectator) in this game.
+Returns 204 when no Apply has fired yet (empty replay). The
+crash-recovery dump (single `<game-id>.json` file holding the
+latest snapshot) is orthogonal — it exists for server restarts;
+the replay log is the additive history.
+
 ---
 
 ## Schema evolution rules
