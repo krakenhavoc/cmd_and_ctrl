@@ -5,14 +5,11 @@ hand deal-in/out, ETB pulse, damage popups, and combat arrows. The
 last checklist item — **sound** — was deferred until the asset pack
 existed.
 
-**Status:** the Suno pack has landed as MP3s with two takes per
-event, plus a bonus ambient loop. Assets live in
-[client/public/sounds/](../client/public/sounds/) and the playback
-module (`play`, `setMuted`, `armAudioOnFirstGesture`) lives in
-[client/src/lib/sounds.ts](../client/src/lib/sounds.ts). The
-Svelte-seam wiring table (§2.3 below) plus the mute toggle
-(§2.4) are the remaining work — tracked as a follow-up so it
-can land independently of the S11 hover-preview work.
+**Status: ✅ done (S09 sound pass closed).** The Suno pack landed
+as MP3s with two takes per event plus a bonus ambient loop
+(#106), the playback module (`play`, `setMuted`,
+`armAudioOnFirstGesture`) landed alongside it, and every Svelte
+seam + the toolbar mute toggle are wired (#107).
 
 Deviations from the original Suno brief:
 - **MP3, not WAV.** Smaller files, universally supported; the
@@ -84,34 +81,33 @@ Explicit mute short-circuits `play()` to a no-op. Reduced-motion
 is NOT auto-coupled — S11.5 can layer its own preference on top
 via `setMuted()`.
 
-### Event hooks — ⏳ follow-up
-Each existing GSAP / state seam gets one `play(...)` call:
+### Event hooks — ✅ landed (#107)
+Each existing GSAP / state seam fires one `play(...)` call:
 
-| Seam | Sound |
-|---|---|
-| `animateTap` (Card.svelte $effect) | `tap` |
-| `dealIn` first-fire in Hand | `draw` |
-| `dealOut` first-fire in Hand | `play` |
-| `etbPulse` action mount | (no sound — visual only, matches play) |
-| PlayerHeader life_history popup spawn | `damage` if delta < 0, `heal` if > 0 |
-| Combat-mode `declare_attacker` action | `attack` |
-| Combat-mode `declare_blocker` action | `block` |
-| AdvanceStep into `combat_damage` (snapshot detect) | `combat_resolve` |
-| AdvanceStep into `untap` (turn-cursor detect) | `untap_all` + `turn_change` |
-| `mulligan` / `shuffle_library` action | `shuffle` |
-| GameView.state transitions to `ended` | `win` if viewer survives, `loss` otherwise |
+| Seam | Sound | Notes |
+|---|---|---|
+| Card.svelte `animateTap` $effect | `tap` | Fires only on the untapped→tapped edge; initial mount + manual untap stay silent. |
+| Hand.svelte `use:handLifecycle` on `.deal-wrap` | `draw` / `play` | Action's mount = draw, destroy = play. Mass events (opening hand, mulligan) collapse via 40ms rate-limit. |
+| `etbPulse` action mount | — | No sound; the scale-pulse rides on top of the `play` cue. |
+| PlayerHeader life_history popup spawn | `damage` / `heal` | Picked from `last.delta` sign. |
+| `declare_attacker` dispatch in Game.svelte | `attack` | |
+| `declare_blocker` dispatch in Game.svelte | `block` | |
+| Step-change $effect (`turn.step` watcher) into `combat_damage` | `combat_resolve` | |
+| Step-change $effect into `untap` | `untap_all` + `turn_change` | |
+| `shuffle_library` / `mulligan` / `mulliganDecide` dispatches | `shuffle` | |
+| Game-end $effect (`state === "ended"` edge) | `win` / `loss` | Viewer-relative; spectators stay silent. |
 
-### UI — ⏳ follow-up
-- Mute toggle in the `Game.svelte` toolbar (small icon button) so
-  every page has one click to silence. Wire to `toggleMuted()`
-  from `sounds.ts`; read initial state from `isMuted()`.
+### UI — ✅ landed (#107)
+- Mute toggle (🔊/🔇) lives in the left `.toolbar-group` of
+  `Game.svelte` — wired to `toggleMuted()` / `isMuted()`,
+  persisted to `localStorage["cmdctrl.muted"]`.
 
-### Verification — ⏳ follow-up
-- Manual: play a full 2-player turn end-to-end, listen for each
-  event firing exactly once. No double-trigger on snapshot rebuilds.
-- Call `armAudioOnFirstGesture()` on app mount (route `onMount` or
-  GameClient init) — must land before the first `play()` for the
-  autoplay-policy unlock to take effect.
+### Verification — ✅ done
+- Manual 2-player walkthrough confirmed cues fire on the correct
+  edges with no snapshot-rebuild double-triggers.
+- `armAudioOnFirstGesture()` is called from a bare `$effect` on
+  `Game.svelte` mount — any pointerdown / keydown on the page
+  unlocks the audio context before the first cue.
 
 ### Risks — resolved in `sounds.ts`
 - Simultaneous same-name calls: **handled** — `play()` rate-limits
@@ -122,6 +118,6 @@ Each existing GSAP / state seam gets one `play(...)` call:
 
 ---
 
-Once assets + module land, this file moves to `docs/decisions/`
-as the audio-design ADR (or just gets deleted if the work is small
-enough not to warrant a permanent record).
+Kept here as the historical record of the S09 sound pass — the
+Suno prompt list (§1) + the event → cue mapping (§2) are both
+useful to future-us if the sound design gets refreshed.
