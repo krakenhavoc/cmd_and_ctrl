@@ -87,17 +87,20 @@ func cloneCard(c Card) Card {
 
 func clonePlayer(p *Player) *Player {
 	out := &Player{
-		ID:             p.ID,
-		Name:           p.Name,
-		Seat:           p.Seat,
-		Life:           p.Life,
-		Poison:         p.Poison,
-		Energy:         p.Energy,
-		Eliminated:     p.Eliminated,
-		HandKept:       p.HandKept,
-		MulligansTaken: p.MulligansTaken,
-		DeckImported:   p.DeckImported,
-		UndosRemaining: p.UndosRemaining,
+		ID:                p.ID,
+		Name:              p.Name,
+		Seat:              p.Seat,
+		Life:              p.Life,
+		Poison:            p.Poison,
+		Energy:            p.Energy,
+		Eliminated:        p.Eliminated,
+		HandKept:          p.HandKept,
+		MulligansTaken:    p.MulligansTaken,
+		DeckImported:      p.DeckImported,
+		UndosRemaining:    p.UndosRemaining,
+		DiscordID:         p.DiscordID,
+		DiscordAvatarHash: p.DiscordAvatarHash,
+		DisplayName:       p.DisplayName,
 	}
 	out.Library = cloneZone(p.Library)
 	out.Hand = cloneZone(p.Hand)
