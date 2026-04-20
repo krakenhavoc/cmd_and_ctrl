@@ -23,6 +23,7 @@
   import type { CardView } from "../../protocol";
   import { hoveredCard } from "../../cardTypes";
   import { animateTap } from "../../animations";
+  import { play } from "../../sounds";
 
   interface Props {
     card: CardView;
@@ -80,9 +81,20 @@
   // lives in --hover-lift (CSS-only); composing via custom properties
   // keeps the two effects independent.
   let cardEl: HTMLDivElement | undefined = $state();
+  // Fire the tap SFX only on the untapped→tapped transition, not on
+  // initial mount (for cards that arrive already tapped via snapshot)
+  // and not on the tapped→untapped direction (the turn-start `untap_all`
+  // cue covers the bulk untap, and individual manual untaps don't need
+  // a dedicated sound).
+  let prevTapped = false;
+  let tapEffectHasRun = false;
   $effect(() => {
     if (!cardEl) return;
-    animateTap(cardEl, !!card.tapped);
+    const tapped = !!card.tapped;
+    animateTap(cardEl, tapped);
+    if (tapEffectHasRun && tapped && !prevTapped) play("tap");
+    prevTapped = tapped;
+    tapEffectHasRun = true;
   });
 </script>
 

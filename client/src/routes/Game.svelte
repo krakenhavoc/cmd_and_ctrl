@@ -6,6 +6,7 @@
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import Board from "../lib/components/board/Board.svelte";
   import type { PlayerView } from "../lib/protocol";
+  import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
 
   interface Props {
     gameID: string;
@@ -44,6 +45,13 @@
     client.setURL(wsURL);
     client.connect();
     return () => client.disconnect();
+  });
+
+  // Autoplay-policy unlock. The first pointerdown / keydown anywhere in
+  // the window preloads + decodes every sound variant; sounds.ts no-ops
+  // after the first call so reruns (new wsURL) are harmless.
+  $effect(() => {
+    armAudioOnFirstGesture();
   });
 
   // sendAction is a thin shim over GameClient.sendAction that the
@@ -126,6 +134,44 @@
   };
   const stepLabel = $derived(turn ? (STEP_LABELS[turn.step] ?? turn.step) : "");
 
+  // Step-transition sound cues. Snapshot-driven, so we track the last
+  // seen step and only fire on a real change; the initial snapshot (or
+  // a reconnect rebuild) sets the baseline silently.
+  let prevStep: string | null = null;
+  $effect(() => {
+    if (!turn) return;
+    const step = turn.step;
+    if (prevStep !== null && step !== prevStep) {
+      if (step === "untap") {
+        play("turn_change");
+        play("untap_all");
+      } else if (step === "combat_damage") {
+        play("combat_resolve");
+      }
+    }
+    prevStep = step;
+  });
+
+  // Win / loss cue on the state→ended transition. Spectators (no
+  // viewerID) hear neither — the outcome isn't theirs.
+  let prevEnded = false;
+  $effect(() => {
+    const ended = gameEnded;
+    if (ended && !prevEnded && viewerID) {
+      play(winner?.id === viewerID ? "win" : "loss");
+    }
+    prevEnded = ended;
+  });
+
+  // Mute toggle backing state. Seeded from localStorage via isMuted();
+  // the click handler flips both the shared store and this local copy
+  // so the button label re-renders immediately.
+  let muted = $state(isMuted());
+  function onToggleMute(): void {
+    toggleMuted();
+    muted = isMuted();
+  }
+
   function passPriority(): void {
     client.sendAction("pass_priority");
   }
@@ -192,6 +238,7 @@
   function shuffle(): void {
     if (!viewerID) return;
     client.sendAction("shuffle_library", viewerID);
+    play("shuffle");
   }
   let mulliganTo = $state(7);
   let showLifeHistory = $state(false);
@@ -199,6 +246,7 @@
     if (!viewerID) return;
     const n = Math.max(0, Math.min(20, Math.floor(mulliganTo)));
     client.sendAction("mulligan", viewerID, { hand_size: n });
+    play("shuffle");
   }
   function changeLife(delta: number): void {
     if (!viewerID) return;
@@ -275,6 +323,7 @@
       target: targetPlayerID,
     });
     combatSelection = null;
+    play("attack");
   }
   function declareBlockTarget(attackerCardID: string): void {
     if (!viewerID || combatSelection?.kind !== "blocker") return;
@@ -283,6 +332,7 @@
       attacker: attackerCardID,
     });
     combatSelection = null;
+    play("block");
   }
   // Look up a card's name + controller-name by instance ID. Used to
   // label the combat-hint banner during selection.
@@ -304,6 +354,7 @@
     // Simplified London — redraw to OpeningHandSize (7) every time.
     // No card-to-bottom penalty; that lands with rules enforcement.
     client.sendAction("mulligan", viewerID, { hand_size: 7 });
+    play("shuffle");
   }
 
   function concede(): void {
@@ -507,6 +558,16 @@
             aria-label="mulligan hand size"
           />
         </span>
+        <button
+          type="button"
+          class="mute-toggle"
+          onclick={onToggleMute}
+          aria-pressed={muted}
+          aria-label={muted ? "unmute sound effects" : "mute sound effects"}
+          title={muted ? "sounds muted — click to unmute" : "sounds on — click to mute"}
+        >
+          {muted ? "🔇" : "🔊"}
+        </button>
       </div>
       <div class="toolbar-group life-group">
         <button
@@ -1065,6 +1126,16 @@
   .mulligan-group input {
     width: 3em;
     padding: 0.1rem 0.3rem;
+  }
+  .mute-toggle {
+    padding: 0.15rem 0.45rem;
+    font-size: 0.95em;
+    line-height: 1;
+  }
+  .mute-toggle[aria-pressed="true"] {
+    background: #3a1a1a;
+    color: #ffd0d0;
+    border: 1px solid #6a3a3a;
   }
   .life-label {
     color: #e0e8ff;

@@ -17,21 +17,21 @@ The `SoundName` enum in [../src/lib/sounds.ts](../src/lib/sounds.ts)
 owns the canonical list; add a new take by appending to the variant
 array there.
 
-| Event | Variants |
-|---|---|
-| Card draw | `draw-1.mp3`, `draw-2.mp3` |
-| Card play | `play-1.mp3`, `play-2.mp3` |
-| Tap (rotate 90°) | `tap-1.mp3`, `tap-2.mp3` |
-| Untap all (start of turn) | `untap_all-1.mp3`, `untap_all-2.mp3` |
-| Damage / life loss | `damage-1.mp3`, `damage-2.mp3` |
-| Heal / life gain | `heal-1.mp3`, `heal-2.mp3` |
-| Attack declared | `attack-1.mp3`, `attack-2.mp3` |
-| Block declared | `block-1.mp3`, `block-2.mp3` |
-| Combat damage resolves | `combat_resolve-1.mp3`, `combat_resolve-2.mp3` |
-| Turn change | `turn_change-1.mp3`, `turn_change-2.mp3` |
-| Mulligan / shuffle | `shuffle-1.mp3`, `shuffle-2.mp3` |
-| Game over (win) | `win-1.mp3`, `win-2.mp3` |
-| Game over (loss) | `loss-1.mp3`, `loss-2.mp3` |
+| Event                     | Variants                                       |
+| ------------------------- | ---------------------------------------------- |
+| Card draw                 | `draw-1.mp3`, `draw-2.mp3`                     |
+| Card play                 | `play-1.mp3`, `play-2.mp3`                     |
+| Tap (rotate 90°)          | `tap-1.mp3`, `tap-2.mp3`                       |
+| Untap all (start of turn) | `untap_all-1.mp3`, `untap_all-2.mp3`           |
+| Damage / life loss        | `damage-1.mp3`, `damage-2.mp3`                 |
+| Heal / life gain          | `heal-1.mp3`, `heal-2.mp3`                     |
+| Attack declared           | `attack-1.mp3`, `attack-2.mp3`                 |
+| Block declared            | `block-1.mp3`, `block-2.mp3`                   |
+| Combat damage resolves    | `combat_resolve-1.mp3`, `combat_resolve-2.mp3` |
+| Turn change               | `turn_change-1.mp3`, `turn_change-2.mp3`       |
+| Mulligan / shuffle        | `shuffle-1.mp3`, `shuffle-2.mp3`               |
+| Game over (win)           | `win-1.mp3`, `win-2.mp3`                       |
+| Game over (loss)          | `loss-1.mp3`, `loss-2.mp3`                     |
 
 ## Bonus
 

@@ -10,9 +10,11 @@
   //     face-down cards in a tighter fan so the player count is
   //     visible at a glance without leaking content.
 
+  import type { Action } from "svelte/action";
   import type { CardView, ZoneView } from "../../protocol";
   import Card from "./Card.svelte";
   import { dealIn, dealOut } from "../../animations";
+  import { play } from "../../sounds";
 
   interface Props {
     hand: ZoneView;
@@ -65,6 +67,21 @@
     if (!isSelf) return;
     onPlayCard?.(card);
   }
+
+  // dealIn / dealOut are Svelte transitions (no mount/destroy callback
+  // surface), so this action piggy-backs on the same element's
+  // lifecycle: mount = "card entered hand" (draw), destroy = "card
+  // left hand" (play). Mass events (opening-hand 7-card deal,
+  // mulligan 7-card replacement) collapse to a single sound via the
+  // 40ms same-name rate limit in sounds.ts — exactly what we want.
+  const handLifecycle: Action<HTMLElement> = () => {
+    play("draw");
+    return {
+      destroy() {
+        play("play");
+      },
+    };
+  };
 </script>
 
 <div class="hand" class:opponent={!isSelf} aria-label={isSelf ? "your hand" : "opponent hand"}>
@@ -78,7 +95,7 @@
     >
       <!-- Inner wrapper carries the deal-in / deal-out transforms so
            they don't fight the .hand-slot's fan-layout transform. -->
-      <div class="deal-wrap" in:dealIn out:dealOut>
+      <div class="deal-wrap" in:dealIn out:dealOut use:handLifecycle>
         <Card card={c} faceDown={!isSelf} onClick={isSelf ? () => handleCardClick(c) : undefined} />
       </div>
     </div>
