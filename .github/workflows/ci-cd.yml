@@ -33,21 +33,29 @@ jobs:
           cache: npm
           cache-dependency-path: client/package-lock.json
 
-      - name: Server — fmt check
+      - name: Server — gofmt check
         working-directory: server
-        run: make fmt-check
+        run: |
+          unformatted=$(gofmt -s -l .)
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-clean:"
+            echo "$unformatted"
+            exit 1
+          fi
 
       - name: Server — vet
         working-directory: server
-        run: make vet
+        run: go vet ./...
 
       - name: Server — test
         working-directory: server
-        run: make test
+        run: go test -race -cover ./...
 
       - name: Server — build
         working-directory: server
-        run: make build
+        run: |
+          mkdir -p bin
+          go build -o bin/cmd_and_ctrl-server ./cmd/server
 
       - name: Client — npm ci
         working-directory: client
