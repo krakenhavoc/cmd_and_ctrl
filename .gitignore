@@ -8,9 +8,8 @@
 *.log
 
 # Asset-pack archives (S09 sound bundles, art packs). The unpacked
-# .mp3 / .wav / image files belong under client/public/ where they
-# are tracked individually; the zip itself is provenance-only and
-# bloats history.
+# individual files belong under client/public/ where they are
+# tracked; the zip itself is provenance-only and bloats history.
 *.zip
 
 # Secrets / env

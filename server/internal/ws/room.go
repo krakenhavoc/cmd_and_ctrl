@@ -2,11 +2,14 @@ package ws
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
@@ -46,7 +49,51 @@ type Room struct {
 	// contain the full unfiltered view — crash recovery is not a
 	// player-facing surface, so visibility filtering does not apply.
 	dumpDir string
+
+	// undoStack holds pre-mutation Game clones paired with the seat
+	// ID of the player whose action produced the post-state. Oldest
+	// first; capped at undoStackCap. Each Apply pushes one entry;
+	// Snapshot does NOT push (it's a no-op for state).
+	//
+	// Per-entry caller tracking gates Undo: a seated player may only
+	// pop an entry whose caller matches their own seat. Admin
+	// (Caller == uuid.Nil) bypasses the gate. This prevents one
+	// player from rewinding an opponent's action mid-game.
+	undoStack []undoEntry
 }
+
+// undoEntry is one slot on Room.undoStack — the pre-action game
+// state plus the seat ID of the player who triggered the action.
+// Caller == uuid.Nil means the action came from an admin / spectator
+// session and the entry is undoable by any seated player or admin.
+type undoEntry struct {
+	pre    *game.Game
+	caller uuid.UUID
+}
+
+// undoStackCap bounds the per-room undo ring. 32 is a casual-game-
+// reasonable depth — the most common use is "I clicked the wrong
+// card, let me back up one or two", not deep history rewind.
+// Keeping it small bounds the per-room memory footprint (each clone
+// is ~10-100 KB depending on board state).
+const undoStackCap = 32
+
+// ErrNothingToUndo is returned by Undo when the undo stack is empty
+// (no actions have been applied since the room was created or since
+// the stack was cleared on game start). The hub turns this into a
+// `bad_request` error frame addressed back to the originator.
+var ErrNothingToUndo = errSentinel("ws: nothing to undo")
+
+// ErrNotYourUndo is returned by Undo when the seated caller asked to
+// pop a stack entry whose stored caller is a different seat. Casual
+// games' "I'd like to take that back" social protocol — you ask the
+// opponent to undo their move first if they've acted since you. Admin
+// (caller == uuid.Nil) bypasses the check. Added in S11.
+var ErrNotYourUndo = errSentinel("ws: top of undo stack is another seat's action")
+
+type errSentinel string
+
+func (e errSentinel) Error() string { return string(e) }
 
 // NewRoom constructs a Room wrapping the given game. If log is nil,
 // slog.Default() is used. If dumpDir is empty, crash-recovery writes
@@ -73,15 +120,107 @@ func NewRoom(g *game.Game, log *slog.Logger, dumpDir string) *Room {
 // The room mutex is held for the whole mutate → seq → capture → dump
 // sequence, so two concurrent clients cannot interleave state and
 // cannot observe non-monotonic (seq, state) pairs.
-func (r *Room) Apply(fn func() error) (protocol.GameView, uint64, error) {
+func (r *Room) Apply(caller uuid.UUID, fn func() error) (protocol.GameView, uint64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	// Stash a pre-mutation clone for the undo stack BEFORE running
+	// fn. Done eagerly so a failing fn doesn't grow history with a
+	// no-op snapshot. If fn fails we drop the clone on the floor.
+	pre := r.Game.Clone()
 	if err := fn(); err != nil {
 		return protocol.GameView{}, 0, err
 	}
+	r.undoStack = append(r.undoStack, undoEntry{pre: pre, caller: caller})
+	if len(r.undoStack) > undoStackCap {
+		// Drop the oldest entry. Trim by reslicing forward — the
+		// underlying array's first slot is now unreachable, GC'd on
+		// next allocation. Keeping the cap small bounds the leak.
+		r.undoStack = append(r.undoStack[:0], r.undoStack[1:]...)
+	}
 	return r.captureLocked(true)
 }
+
+// Undo pops the most recent pre-mutation entry off the undo stack,
+// restores the live Game to that state, captures a fresh snapshot,
+// and returns it for broadcast.
+//
+// Authorization: a seated caller may only pop an entry whose stored
+// caller matches their own seat — preventing one player from rewinding
+// an opponent's move mid-game. Admin / spectator (caller == uuid.Nil)
+// bypasses both checks; any seated player may undo their own admin-
+// stamped entries (entries whose stored caller is uuid.Nil).
+//
+// Budget: a successful seated-caller undo also debits the caller's
+// per-turn UndosRemaining via game.SpendUndo. Refreshed when the
+// cursor enters that player's untap step. Admin bypasses the budget.
+//
+// Returns ErrNothingToUndo (empty stack), ErrNotYourUndo (top entry
+// belongs to another seat), or game.ErrNoUndosRemaining (budget at 0).
+// Bumps seq on success so connected clients see a regular snapshot
+// frame and don't have to special-case the rewind. The undo itself
+// is NOT pushed onto the stack — no redo at v1.
+func (r *Room) Undo(caller uuid.UUID) (protocol.GameView, uint64, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if len(r.undoStack) == 0 {
+		return protocol.GameView{}, 0, ErrNothingToUndo
+	}
+	top := r.undoStack[len(r.undoStack)-1]
+
+	// Caller gate. Admin (uuid.Nil) bypasses; otherwise the top
+	// entry's caller must match.
+	if caller != uuid.Nil && top.caller != uuid.Nil && top.caller != caller {
+		return protocol.GameView{}, 0, ErrNotYourUndo
+	}
+
+	// Budget pre-check (peek, don't decrement). We need to know the
+	// pre-restore game has budget so the undo isn't half-applied:
+	// if SpendUndo would fail, we bail BEFORE touching state.
+	// Decrement happens after RestoreFrom so it isn't clobbered by
+	// the snapshot's pre-spend budget value.
+	if caller != uuid.Nil {
+		if peekUndoBudget(r.Game, caller) <= 0 {
+			return protocol.GameView{}, 0, game.ErrNoUndosRemaining
+		}
+	}
+
+	r.undoStack = r.undoStack[:len(r.undoStack)-1]
+	r.Game.WithWriteLock(func() {
+		r.Game.RestoreFrom(top.pre)
+	})
+
+	// Spend the budget AFTER restore — the restore reset the budget
+	// to its pre-action value (which had not yet been spent), so the
+	// debit needs to land on top of that.
+	if caller != uuid.Nil {
+		if err := r.Game.SpendUndo(caller); err != nil {
+			// Should not happen: peek above confirmed budget > 0
+			// and we hold r.mu so no concurrent spend could race.
+			// Surface as internal so it stands out if it ever fires.
+			return protocol.GameView{}, 0, err
+		}
+	}
+	return r.captureLocked(true)
+}
+
+// peekUndoBudget returns the named player's current UndosRemaining
+// without mutating state. Used by Room.Undo to validate budget
+// before doing the more expensive state restore. Calls PlayerByID
+// directly (which takes its own read lock) — no nested locking.
+func peekUndoBudget(g *game.Game, playerID uuid.UUID) int {
+	p := g.PlayerByID(playerID)
+	if p == nil {
+		return 0
+	}
+	return p.UndosRemaining
+}
+
+// IsErrNothingToUndo reports whether err is one of the expected
+// "undo can't proceed" sentinels — used by the hub to map server
+// errors to wire codes without importing the game package directly.
+func IsErrNothingToUndo(err error) bool { return errors.Is(err, ErrNothingToUndo) }
+func IsErrNotYourUndo(err error) bool   { return errors.Is(err, ErrNotYourUndo) }
 
 // Snapshot returns the current view without mutating anything and
 // without advancing the sequence counter. Used to send the initial

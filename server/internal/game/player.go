@@ -103,6 +103,12 @@ type Player struct {
 	// "imported and ready to play" — a card-count check is unreliable
 	// because the placeholder also produces non-zero library counts.
 	DeckImported bool
+
+	// UndosRemaining is how many undos this player can still spend in
+	// the current turn. Refreshed to Game.UndoLimit on entering this
+	// player's untap step. Decremented per successful undo. Added in
+	// S11 alongside the per-caller undo gate.
+	UndosRemaining int
 }
 
 // newPlayer constructs a player with empty zones and their starting

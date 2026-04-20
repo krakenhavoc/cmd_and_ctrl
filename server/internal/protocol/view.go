@@ -49,6 +49,9 @@ type GameView struct {
 	// Vote is the currently open vote (council's dilemma /
 	// politics), or nil when no vote is in progress. Added in S10.
 	Vote *VoteView `json:"vote,omitempty"`
+	// UndoLimit is the per-player per-turn undo budget. Drives the
+	// client's "undos remaining" indicator. Added in S11.
+	UndoLimit int `json:"undo_limit,omitempty"`
 }
 
 // VoteView is the wire form of game.Vote. Ballots is keyed by voter
@@ -100,6 +103,11 @@ type PlayerView struct {
 	// wave 1) — a card-count check is unreliable because the
 	// placeholder also produces non-zero library / command counts.
 	DeckImported bool `json:"deck_imported,omitempty"`
+	// UndosRemaining is the per-turn undo budget left for this seat,
+	// refreshed when the cursor enters their untap step. Drives the
+	// "undos: N" indicator on the toolbar so the viewer can see at
+	// a glance whether their next undo will be allowed. Added in S11.
+	UndosRemaining int `json:"undos_remaining,omitempty"`
 }
 
 // LifeChangeView is the wire representation of a single life-change
@@ -206,6 +214,7 @@ func ViewOfGame(g *game.Game) GameView {
 			Initiative:    uuidStringOrEmpty(g.Initiative),
 			Promises:      viewOfPromises(g.Promises),
 			Vote:          viewOfVote(g.Vote),
+			UndoLimit:     g.UndoLimit,
 		}
 	})
 	return view
@@ -249,6 +258,7 @@ func viewOfPlayer(p *game.Player) PlayerView {
 		HandKept:        p.HandKept,
 		MulligansTaken:  p.MulligansTaken,
 		DeckImported:    p.DeckImported,
+		UndosRemaining:  p.UndosRemaining,
 	}
 }
 
@@ -363,6 +373,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		Initiative:    v.Initiative,
 		Promises:      v.Promises,
 		Vote:          v.Vote,
+		UndoLimit:     v.UndoLimit,
 	}
 }
 
