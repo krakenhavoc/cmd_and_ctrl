@@ -81,4 +81,9 @@ var (
 	// player's per-turn undo budget is already at 0. Refreshed when
 	// the cursor enters that player's untap step. Added in S11.
 	ErrNoUndosRemaining = errors.New("game: no undos remaining this turn")
+
+	// ErrNoPriority is returned by PassPriority when called during a
+	// step that does not grant priority (currently Untap and Cleanup
+	// per CR 502.4 / 514.3). Added in S13.
+	ErrNoPriority = errors.New("game: no player holds priority this step")
 )

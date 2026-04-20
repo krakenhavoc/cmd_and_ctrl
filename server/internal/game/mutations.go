@@ -85,12 +85,27 @@ func (g *Game) findCardZoneLocked(cardID uuid.UUID) *Zone {
 // their hand. Returns ErrZoneEmpty if the library is empty (the
 // player would normally lose on the next state-based action check;
 // S03 doesn't enforce that).
+//
+// S13: gated to no-op during the active player's StepDraw — that
+// step's auto-action has already drawn for them, and a manual
+// dispatch on top would draw twice. Outside StepDraw the manual
+// action is honoured (sandbox / replay support).
 func (g *Game) DrawCard(playerID uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	if g.Turn.Step == StepDraw && g.activeSeatIDLocked() == playerID {
+		return nil
+	}
+	return g.drawCardLocked(playerID)
+}
+
+// drawCardLocked is the unlocked draw used both by the public
+// DrawCard action and by the StepDraw auto-action in
+// runStepEntryHooksLocked. Caller must hold g.mu.
+func (g *Game) drawCardLocked(playerID uuid.UUID) error {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound
@@ -101,6 +116,20 @@ func (g *Game) DrawCard(playerID uuid.UUID) error {
 	}
 	p.Hand.PushTop(c)
 	return nil
+}
+
+// activeSeatIDLocked returns the player ID at the active seat, or
+// uuid.Nil if no active player can be resolved (lobby state, empty
+// seats, out-of-range index). Caller must hold g.mu.
+func (g *Game) activeSeatIDLocked() uuid.UUID {
+	if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
+		return uuid.Nil
+	}
+	p := g.Seats[g.Turn.ActiveSeat]
+	if p == nil {
+		return uuid.Nil
+	}
+	return p.ID
 }
 
 // PlayCard moves a card from the player's hand to the shared
@@ -226,8 +255,11 @@ func clampUnit(v float64) float64 {
 }
 
 // UntapAll untaps every card on the battlefield controlled by the
-// given player. This is what a player does at the start of their
-// untap step.
+// given player. Pre-S13 this was the manual untap step; S13's
+// StepUntap auto-action now drives normal play. The action remains
+// dispatchable (sandbox / replay support) but is gated as a no-op
+// during the active player's StepUntap to avoid double-firing on top
+// of the auto-action.
 func (g *Game) UntapAll(playerID uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -237,19 +269,53 @@ func (g *Game) UntapAll(playerID uuid.UUID) error {
 	if g.playerByIDLocked(playerID) == nil {
 		return ErrPlayerNotFound
 	}
+	if g.Turn.Step == StepUntap && g.activeSeatIDLocked() == playerID {
+		return nil
+	}
+	g.untapAllForLocked(seatOfPlayerLocked(g, playerID))
+	return nil
+}
+
+// untapAllForLocked untaps every battlefield card controlled by the
+// given seat. Used both by the public UntapAll mutation and by the
+// StepUntap auto-action in runStepEntryHooksLocked. A negative or
+// out-of-range seat is a no-op (the caller has already validated the
+// seat or is the auto-fire path which only calls with the active
+// seat). Caller must hold g.mu.
+func (g *Game) untapAllForLocked(seat int) {
+	if seat < 0 || seat >= len(g.Seats) {
+		return
+	}
+	playerID := g.Seats[seat].ID
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].Controller == playerID {
 			g.Battlefield.Cards[i].Tapped = false
 		}
 	}
-	return nil
 }
 
-// PassPriority rotates priority to the next seat. When priority would
-// pass back to the active seat (every other seat has passed in
-// succession with nothing on the stack), the step auto-advances and
-// PriorityHolder is reset to the new ActiveSeat — mirroring real MTG
-// rules where priority passing around in succession ends the step.
+// seatOfPlayerLocked returns the seat index of the player with the
+// given ID, or -1 if not seated. Caller must hold g.mu.
+func seatOfPlayerLocked(g *Game, id uuid.UUID) int {
+	for i, p := range g.Seats {
+		if p.ID == id {
+			return i
+		}
+	}
+	return -1
+}
+
+// PassPriority rotates priority to the next non-eliminated seat. When
+// priority would pass back to the active seat (every other live seat
+// has passed in succession with nothing on the stack), the step auto-
+// advances and PriorityHolder is reset to the new ActiveSeat —
+// mirroring real MTG rules where priority passing around in
+// succession ends the step.
+//
+// S13: returns ErrNoPriority during the Untap and Cleanup steps,
+// which don't grant priority (CR 502.4 / 514.3). Eliminated seats are
+// skipped during the rotation so a 4-player game with one dead seat
+// still terminates the priority loop on the survivors' wrap.
 //
 // Stack-aware semantics (priority resets to active seat whenever a
 // spell resolves) are deferred to the S13+ rules graft.
@@ -263,18 +329,34 @@ func (g *Game) PassPriority() error {
 	if numSeats == 0 {
 		return ErrGameNotActive
 	}
-	next := (g.Turn.PriorityHolder + 1) % numSeats
-	if next == g.Turn.ActiveSeat {
-		// Wrapped — advance the step. Turn.advance resets PriorityHolder
-		// to the new ActiveSeat for us. Run the same per-step entry
-		// hooks AdvanceStep does so combat damage resolves and combat
-		// declarations clear regardless of whether the step changed via
-		// a priority-wrap or an explicit advance_step click.
-		g.Turn = g.Turn.advance(numSeats)
-		g.runStepEntryHooksLocked()
-		return nil
+	if g.Turn.PriorityHolder == NoPriority {
+		return ErrNoPriority
 	}
-	g.Turn.PriorityHolder = next
+	// Walk forward to the next non-eliminated seat. Bounded by
+	// numSeats iterations so a fully-eliminated table can't infinite-
+	// loop (the surrounding game-end check in Concede flips State to
+	// StateEnded in that case; the early ErrGameNotActive guard above
+	// catches subsequent calls).
+	next := g.Turn.PriorityHolder
+	for i := 0; i < numSeats; i++ {
+		next = (next + 1) % numSeats
+		if next == g.Turn.ActiveSeat {
+			break
+		}
+		if !g.Seats[next].Eliminated {
+			g.Turn.PriorityHolder = next
+			return nil
+		}
+	}
+	// Wrapped (or only the active seat is alive) — advance the step.
+	// Turn.advance resets PriorityHolder to NoPriority (Untap/Cleanup)
+	// or the new ActiveSeat (everything else). Run the same per-step
+	// entry hooks AdvanceStep does so auto turn-based actions, combat
+	// damage resolution, and combat-clear all fire regardless of
+	// whether the step changed via a priority-wrap or an explicit
+	// advance_step click.
+	g.Turn = g.Turn.advance(numSeats)
+	g.runStepEntryHooksLocked()
 	return nil
 }
 
@@ -523,8 +605,10 @@ func (g *Game) advancePastEliminatedLocked() {
 		// Active seat still standing — nothing to advance.
 		// But priority might be on an eliminated seat; reset it to
 		// the active seat (priority always defaults to active at
-		// step boundaries).
-		if g.Seats[g.Turn.PriorityHolder].Eliminated {
+		// step boundaries). NoPriority means no one holds priority
+		// (Untap/Cleanup) — leave it alone.
+		ph := g.Turn.PriorityHolder
+		if ph >= 0 && ph < numSeats && g.Seats[ph].Eliminated {
 			g.Turn.PriorityHolder = g.Turn.ActiveSeat
 		}
 		return
@@ -543,11 +627,15 @@ func (g *Game) advancePastEliminatedLocked() {
 		g.Turn = Turn{
 			Number:         nextNumber,
 			ActiveSeat:     next,
-			PriorityHolder: next,
+			PriorityHolder: initialPriorityHolder(StepUntap, next),
 			Phase:          PhaseOf(StepUntap),
 			Step:           StepUntap,
 		}
 		if !g.Seats[next].Eliminated {
+			// New active seat starts on Untap; run the entry hook so
+			// the auto-untap fires and the cursor advances out of the
+			// no-priority step, matching the rest of the engine.
+			g.runStepEntryHooksLocked()
 			return
 		}
 	}
@@ -555,7 +643,10 @@ func (g *Game) advancePastEliminatedLocked() {
 
 // PassTurn skips to the next player's untap step, regardless of
 // whatever step the current turn is in. Useful for forfeiting a turn
-// or when all steps are uneventful.
+// or when all steps are uneventful. Lands on Untap with NoPriority
+// (S13); the entry hook auto-untaps and walks the cursor on to
+// Upkeep, matching the normal-flow behaviour of priority wraps and
+// AdvanceStep so callers always end at a priority-granting step.
 func (g *Game) PassTurn() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -570,13 +661,15 @@ func (g *Game) PassTurn() error {
 	g.Turn = Turn{
 		Number:         nextNumber,
 		ActiveSeat:     nextSeat,
-		PriorityHolder: nextSeat,
+		PriorityHolder: initialPriorityHolder(StepUntap, nextSeat),
 		Phase:          PhaseOf(StepUntap),
 		Step:           StepUntap,
 	}
 	// Refresh per-turn budgets (undo, future per-turn counters) on
 	// the new active seat — same hook AdvanceStep / PassPriority's
-	// wrap branch run when stepping into untap.
+	// wrap branch run when stepping into untap. The hook also auto-
+	// untaps and advances past Untap (no priority) so the cursor
+	// lands at Upkeep.
 	g.runStepEntryHooksLocked()
 	return nil
 }
@@ -663,6 +756,12 @@ func (g *Game) KeepHand(playerID uuid.UUID) error {
 	}
 	if allKept {
 		g.MulligansOpen = false
+		// First-step entry happens here, not at Start: the cursor has
+		// been parked on Untap with NoPriority since Start, waiting
+		// for everyone to commit. Run the hook now so seat 0's auto-
+		// untap fires and the cursor advances to Upkeep, matching the
+		// shape of every subsequent step transition. (S13.)
+		g.runStepEntryHooksLocked()
 	}
 	return nil
 }

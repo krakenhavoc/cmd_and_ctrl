@@ -37,6 +37,7 @@ func (g *Game) cloneLocked() *Game {
 		Monarch:       g.Monarch,
 		Initiative:    g.Initiative,
 		UndoLimit:     g.UndoLimit,
+		StartingSeat:  g.StartingSeat,
 		rng:           g.rng,
 	}
 	out.Battlefield = cloneZone(g.Battlefield)
@@ -166,6 +167,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.Monarch = src.Monarch
 	g.Initiative = src.Initiative
 	g.UndoLimit = src.UndoLimit
+	g.StartingSeat = src.StartingSeat
 	g.Promises = src.Promises
 	g.Vote = src.Vote
 	g.rng = src.rng

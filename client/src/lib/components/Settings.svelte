@@ -10,6 +10,23 @@
     importSettings,
     fingerprintSettings,
   } from "../settings";
+  import { STEP_IDS, STEP_LABELS, NO_PRIORITY_STEPS, type StepID } from "../turn";
+
+  // Steps that grant priority — the only ones the per-step stops UI
+  // surfaces. Untap and Cleanup are filtered out since the server
+  // sentinel (priority_holder = -1) makes them un-stoppable anyway.
+  const STOPPABLE_STEPS: readonly StepID[] = STEP_IDS.filter((id) => !NO_PRIORITY_STEPS.has(id));
+
+  // toggleStepStop flips one entry in the stepStops map and flashes
+  // the saved indicator next to the row. Path uses the step ID as
+  // the leaf so each row's flash is independent.
+  function toggleStepStop(step: StepID, value: boolean): void {
+    updateSettings("gameplay", "stepStops", {
+      ...$settings.gameplay.stepStops,
+      [step]: value,
+    });
+    flashSaved(`gameplay.stepStops.${step}`);
+  }
 
   // Active sidebar tab. Reset to "audio" every time the modal
   // re-opens so the user doesn't land on a deep tab they forgot
@@ -364,16 +381,35 @@
                 checked={$settings.gameplay.autoPassPriority}
                 onchange={(e) => change("gameplay", "autoPassPriority", e.currentTarget.checked)}
               />
-              Auto-pass priority when I have nothing playable
+              Auto-pass priority through unstopped steps
               {#if isFresh("gameplay.autoPassPriority")}<span class="saved">✓ saved</span>{/if}
             </label>
             <p class="help">
-              Hold <kbd>Shift</kbd> while clicking the pass button to override for one step.
+              Pairs with the stops grid below: priority auto-passes through any step you haven't
+              pinned. Use the &ldquo;&rarr; next stop&rdquo; toolbar button to fast-forward one stop
+              at a time without enabling auto-pass globally.
             </p>
 
-            <p class="help">
-              Per-step stops grid will land with the client-side timing affordance in S13.3.
-            </p>
+            <fieldset class="step-stops">
+              <legend>Stop on these steps</legend>
+              <p class="help">
+                When auto-pass is on, priority stops here for your input. Untap and Cleanup are
+                excluded — they don't grant priority (turn-based actions auto-fire).
+              </p>
+              <div class="step-stops-grid">
+                {#each STOPPABLE_STEPS as step (step)}
+                  <label class="step-stop-row">
+                    <input
+                      type="checkbox"
+                      checked={$settings.gameplay.stepStops[step] === true}
+                      onchange={(e) => toggleStepStop(step, e.currentTarget.checked)}
+                    />
+                    <span>{STEP_LABELS[step]}</span>
+                    {#if isFresh(`gameplay.stepStops.${step}`)}<span class="saved">✓</span>{/if}
+                  </label>
+                {/each}
+              </div>
+            </fieldset>
           {:else if activeTab === "accessibility"}
             <h3>Accessibility</h3>
             <label>
@@ -713,5 +749,24 @@
     font-family: ui-monospace, monospace;
     font-size: 0.95em;
     user-select: all;
+  }
+  .step-stops {
+    margin-top: 1rem;
+  }
+  .step-stops-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.35rem 0.75rem;
+    margin-top: 0.4rem;
+  }
+  .step-stop-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95em;
+  }
+  .step-stop-row .saved {
+    color: #6c9;
+    font-size: 0.85em;
   }
 </style>

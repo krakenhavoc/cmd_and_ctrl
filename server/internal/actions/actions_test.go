@@ -27,6 +27,16 @@ func newGame(t *testing.T) *game.Game {
 	if err := g.Start(rand.New(rand.NewPCG(1, 2))); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
+	// S13: close the mulligan window so the cursor lands on a
+	// priority-granting step. Tests in this package exercise priority/
+	// step gating against a real *game.Game; without closing mulligans
+	// the cursor sits at Untap with PriorityHolder=NoPriority and
+	// most pass_priority dispatches would fail with ErrNoPriority.
+	for _, p := range g.Seats {
+		if err := g.KeepHand(p.ID); err != nil {
+			t.Fatalf("KeepHand %s: %v", p.Name, err)
+		}
+	}
 	return g
 }
 

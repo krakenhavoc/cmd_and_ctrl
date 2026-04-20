@@ -115,3 +115,56 @@ func TestIndexOfStepUnknownReturnsNegative(t *testing.T) {
 		t.Errorf("indexOfStep(nonsense): got %d, want -1", idx)
 	}
 }
+
+func TestTurnAdvanceIntoUntapSetsNoPriority(t *testing.T) {
+	// Cleanup → next seat's Untap must land with PriorityHolder set to
+	// the NoPriority sentinel — S13 no-priority-on-untap guarantee.
+	turn := Turn{Number: 1, ActiveSeat: 0, Phase: PhaseEnding, Step: StepCleanup}
+	turn = turn.advance(4)
+	if turn.Step != StepUntap {
+		t.Fatalf("after cleanup: got %q, want %q", turn.Step, StepUntap)
+	}
+	if turn.PriorityHolder != NoPriority {
+		t.Errorf("PriorityHolder on Untap: got %d, want NoPriority (%d)", turn.PriorityHolder, NoPriority)
+	}
+}
+
+func TestTurnAdvanceIntoCleanupSetsNoPriority(t *testing.T) {
+	turn := Turn{Number: 1, ActiveSeat: 0, Phase: PhaseEnding, Step: StepEnd, PriorityHolder: 0}
+	turn = turn.advance(4)
+	if turn.Step != StepCleanup {
+		t.Fatalf("after end: got %q, want %q", turn.Step, StepCleanup)
+	}
+	if turn.PriorityHolder != NoPriority {
+		t.Errorf("PriorityHolder on Cleanup: got %d, want NoPriority (%d)", turn.PriorityHolder, NoPriority)
+	}
+}
+
+func TestTurnAdvanceIntoPriorityStepsSetsActiveSeat(t *testing.T) {
+	// Every other step must grant priority to the active seat.
+	cases := []struct {
+		from Step
+		want Step
+	}{
+		{StepUntap, StepUpkeep},
+		{StepUpkeep, StepDraw},
+		{StepDraw, StepPrecombatMain},
+		{StepPrecombatMain, StepBeginCombat},
+		{StepBeginCombat, StepDeclareAttackers},
+		{StepDeclareAttackers, StepDeclareBlockers},
+		{StepDeclareBlockers, StepCombatDamage},
+		{StepCombatDamage, StepEndCombat},
+		{StepEndCombat, StepPostcombatMain},
+		{StepPostcombatMain, StepEnd},
+	}
+	for _, c := range cases {
+		turn := Turn{Number: 1, ActiveSeat: 2, Phase: PhaseOf(c.from), Step: c.from}
+		got := turn.advance(4)
+		if got.Step != c.want {
+			t.Errorf("advance from %q: got step %q, want %q", c.from, got.Step, c.want)
+		}
+		if got.PriorityHolder != 2 {
+			t.Errorf("advance from %q: PriorityHolder=%d, want ActiveSeat=2", c.from, got.PriorityHolder)
+		}
+	}
+}

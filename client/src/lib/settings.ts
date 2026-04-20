@@ -1,6 +1,7 @@
 import { writable, get, type Writable } from "svelte/store";
 import { setMuted, setVolumeMultiplier } from "./sounds";
 import { setAnimationConfig } from "./animations";
+import { STEP_IDS, NO_PRIORITY_STEPS, type StepID } from "./turn";
 
 // Settings is the client-wide preferences schema. Every toggle the
 // Settings panel surfaces maps to a field here. Persisted to
@@ -79,9 +80,11 @@ export interface Settings {
     // When the stack is empty and no legal plays exist, auto-pass
     // priority. Held Shift on the pass button overrides.
     autoPassPriority: boolean;
-    // Per-step stops will land in S13.3 once we have the priority-
-    // aware stops mechanism. Storing the empty object now keeps the
-    // schema future-proof.
+    // Per-step stops (S13). For each priority-granting step, true
+    // means "stop here when priority lands on me" and false means
+    // "auto-pass through it". Untap and Cleanup are not stoppable
+    // (they don't grant priority) and are absent from this map.
+    // Defaults seeded by defaultStepStops().
     stepStops: Record<string, boolean>;
   };
 
@@ -100,9 +103,32 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 1;
+export const SETTINGS_VERSION = 3;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
+
+// defaultStepStops seeds the per-step stops map. The defaults match
+// MTG Online's standard "stops" — the active player gets stopped on
+// their main phases and combat declarations; everyone else passes
+// through routine begin/end-step priority unless they opt in.
+// Untap and Cleanup are excluded because they don't grant priority
+// (CR 502.4 / 514.3); the server's NoPriority sentinel makes any
+// attempt to pass during them a no-op anyway.
+export function defaultStepStops(): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  const opted: ReadonlySet<StepID> = new Set([
+    "precombat_main",
+    "declare_attackers",
+    "declare_blockers",
+    "postcombat_main",
+    "end",
+  ]);
+  for (const id of STEP_IDS) {
+    if (NO_PRIORITY_STEPS.has(id)) continue;
+    out[id] = opted.has(id);
+  }
+  return out;
+}
 
 // prefersReducedMotion reads the OS hint without subscribing. Used
 // to pick the initial default for accessibility.reduceMotion when
@@ -147,8 +173,13 @@ export function defaultSettings(): Settings {
     },
     gameplay: {
       confirmExit: true,
-      autoPassPriority: false,
-      stepStops: {},
+      // S13 default: on. Pre-S13 this was off because the only
+      // gating was "not on viewer's own turn", which felt too
+      // aggressive. The S13 stops grid (defaultStepStops) gives
+      // the user fine control, so auto-pass-on is now the right
+      // default — stops are the affordance for "stop here".
+      autoPassPriority: true,
+      stepStops: defaultStepStops(),
     },
     accessibility: {
       reduceMotion: reduced,
@@ -170,8 +201,6 @@ function migrate(raw: unknown): Settings {
   if (!raw || typeof raw !== "object") return absorbLegacy(d);
 
   const s = raw as Partial<Settings>;
-  // Future: branch on s.__version to run named migrations. At v1
-  // there's nothing to do beyond field-level merge.
   const merged: Settings = {
     __version: SETTINGS_VERSION,
     audio: { ...d.audio, ...(s.audio ?? {}) },
@@ -180,7 +209,63 @@ function migrate(raw: unknown): Settings {
     gameplay: { ...d.gameplay, ...(s.gameplay ?? {}) },
     accessibility: { ...d.accessibility, ...(s.accessibility ?? {}) },
   };
+  // v1 → v2 (S13): the gameplay.stepStops map was scaffolded as `{}`
+  // pre-S13. Seed defaults for any user whose stored map is empty so
+  // the per-step stops UI has something meaningful on first paint.
+  // Existing user-configured maps are preserved untouched. Strip any
+  // entries for no-priority steps (Untap / Cleanup) to keep the map
+  // canonical. While we're here, flip `autoPassPriority` to true if
+  // the user is still on the v1 default (false) — at v1 the toggle
+  // was a global "auto-pass on opponents' turns" with no per-step
+  // control, so off was the only safe default. With stops, the
+  // toggle gates the per-step auto-pass and on is the natural
+  // default. Pre-existing v1 users who explicitly turned it on stay
+  // on; users who left it off get the new behaviour. We can't
+  // distinguish "user explicitly left it off" from "user never
+  // touched the default" at v1, but the worst case is "auto-pass
+  // through opponents' turns the user wasn't expecting" — which
+  // their stops grid (also being seeded here) prevents.
+  const storedVersion = typeof s.__version === "number" ? s.__version : 0;
+  const fromV1 = storedVersion < 2;
+  if (Object.keys(merged.gameplay.stepStops).length === 0) {
+    merged.gameplay.stepStops = defaultStepStops();
+    if (fromV1) {
+      merged.gameplay.autoPassPriority = true;
+    }
+  } else {
+    for (const id of NO_PRIORITY_STEPS) {
+      delete merged.gameplay.stepStops[id];
+    }
+  }
+  // v2 → v3 (S13 hotfix): early v2 builds (the previous client
+  // commit) shipped autoPassPriority=false through the v1→v2
+  // migration even after the new "default true" landed. Anyone who
+  // already migrated to v2 with stepStops seeded still has the
+  // toggle off and hits the "game halts at draw" trap. v3 flips
+  // autoPassPriority on for users coming from v2 whose stops grid
+  // matches the seeded default — strong signal they haven't tuned
+  // either knob, so re-applying the new pairing is safe. Users who
+  // customised stops keep their autoPassPriority value untouched.
+  if (storedVersion === 2 && stepStopsMatchDefault(merged.gameplay.stepStops)) {
+    merged.gameplay.autoPassPriority = true;
+  }
   return absorbLegacy(merged);
+}
+
+// stepStopsMatchDefault reports whether the supplied stepStops map
+// is structurally identical to defaultStepStops(). Used by the v2→v3
+// migration to detect "user hasn't customised stops" so we can
+// safely re-seed autoPassPriority without overwriting an explicit
+// off-toggle.
+function stepStopsMatchDefault(actual: Record<string, boolean>): boolean {
+  const expected = defaultStepStops();
+  const actualKeys = Object.keys(actual);
+  const expectedKeys = Object.keys(expected);
+  if (actualKeys.length !== expectedKeys.length) return false;
+  for (const k of expectedKeys) {
+    if (actual[k] !== expected[k]) return false;
+  }
+  return true;
 }
 
 // absorbLegacy folds pre-S11.5 single-key localStorage flags into

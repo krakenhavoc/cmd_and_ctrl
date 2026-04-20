@@ -54,6 +54,47 @@ func TestViewOfGameStructuralFields(t *testing.T) {
 	}
 }
 
+// TestViewOfGameS13Fields verifies StartingSeat surfaces on the wire
+// and the PriorityHolder == NoPriority sentinel round-trips as -1.
+// The buildActiveGame helper does not close mulligans, so the cursor
+// sits at Untap with PriorityHolder=NoPriority — the post-Start
+// state the wire view must serialise faithfully.
+func TestViewOfGameS13Fields(t *testing.T) {
+	g := buildActiveGame(t)
+	v := ViewOfGame(g)
+	if v.Turn.PriorityHolder != -1 {
+		t.Errorf("PriorityHolder on Untap (mulligans open): got %d, want -1",
+			v.Turn.PriorityHolder)
+	}
+	if v.StartingSeat != 0 {
+		t.Errorf("StartingSeat: got %d, want 0", v.StartingSeat)
+	}
+
+	// JSON round-trip — both fields must survive marshal/unmarshal as
+	// integers (not omitted, not stringified).
+	raw, err := json.Marshal(v)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if !bytes.Contains(raw, []byte(`"priority_holder":-1`)) {
+		t.Errorf("JSON missing priority_holder=-1: %s", raw)
+	}
+	if !bytes.Contains(raw, []byte(`"starting_seat":0`)) {
+		t.Errorf("JSON missing starting_seat=0: %s", raw)
+	}
+
+	var decoded GameView
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	if decoded.Turn.PriorityHolder != -1 {
+		t.Errorf("decoded PriorityHolder: got %d, want -1", decoded.Turn.PriorityHolder)
+	}
+	if decoded.StartingSeat != 0 {
+		t.Errorf("decoded StartingSeat: got %d, want 0", decoded.StartingSeat)
+	}
+}
+
 func TestViewOfGamePlayerContents(t *testing.T) {
 	g := buildActiveGame(t)
 	v := ViewOfGame(g)
