@@ -46,7 +46,32 @@ type Room struct {
 	// contain the full unfiltered view — crash recovery is not a
 	// player-facing surface, so visibility filtering does not apply.
 	dumpDir string
+
+	// undoStack holds pre-mutation Game clones, oldest first.
+	// Capped at undoStackCap; older entries fall off the front when
+	// the cap is exceeded. Each Apply pushes the *pre-action* clone
+	// before running fn, so Undo restores the state immediately
+	// before the most recent action. Snapshot does NOT push (it's a
+	// no-op for state).
+	undoStack []*game.Game
 }
+
+// undoStackCap bounds the per-room undo ring. 32 is a casual-game-
+// reasonable depth — the most common use is "I clicked the wrong
+// card, let me back up one or two", not deep history rewind.
+// Keeping it small bounds the per-room memory footprint (each clone
+// is ~10-100 KB depending on board state).
+const undoStackCap = 32
+
+// ErrNothingToUndo is returned by Undo when the undo stack is empty
+// (no actions have been applied since the room was created or since
+// the stack was cleared on game start). The hub turns this into a
+// `bad_request` error frame addressed back to the originator.
+var ErrNothingToUndo = errSentinel("ws: nothing to undo")
+
+type errSentinel string
+
+func (e errSentinel) Error() string { return string(e) }
 
 // NewRoom constructs a Room wrapping the given game. If log is nil,
 // slog.Default() is used. If dumpDir is empty, crash-recovery writes
@@ -77,9 +102,47 @@ func (r *Room) Apply(fn func() error) (protocol.GameView, uint64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	// Stash a pre-mutation clone for the undo stack BEFORE running
+	// fn. Done eagerly so a failing fn doesn't grow history with a
+	// no-op snapshot. If fn fails we drop the clone on the floor.
+	pre := r.Game.Clone()
 	if err := fn(); err != nil {
 		return protocol.GameView{}, 0, err
 	}
+	r.undoStack = append(r.undoStack, pre)
+	if len(r.undoStack) > undoStackCap {
+		// Drop the oldest entry. Trim by reslicing forward — the
+		// underlying array's first slot is now unreachable, GC'd on
+		// next allocation. Keeping the cap small bounds the leak.
+		r.undoStack = append(r.undoStack[:0], r.undoStack[1:]...)
+	}
+	return r.captureLocked(true)
+}
+
+// Undo pops the most recent pre-mutation clone off the undo stack,
+// restores the live Game to that state, captures a fresh snapshot,
+// and returns it for broadcast. Returns ErrNothingToUndo if the
+// stack is empty (no actions applied since the last clear).
+//
+// Undo bumps seq the same way a regular Apply does so connected
+// clients see a normal snapshot frame and don't have to special-case
+// the rewind. The undo itself is NOT pushed onto the stack — undoing
+// an undo would create a cycle; if you want redo, use a separate
+// future redo stack (out of scope for v1).
+func (r *Room) Undo() (protocol.GameView, uint64, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if len(r.undoStack) == 0 {
+		return protocol.GameView{}, 0, ErrNothingToUndo
+	}
+	prev := r.undoStack[len(r.undoStack)-1]
+	r.undoStack = r.undoStack[:len(r.undoStack)-1]
+
+	// Restore under the game's own write lock so any concurrent
+	// readers (PlayerByID, etc.) see a consistent transition.
+	r.Game.WithWriteLock(func() {
+		r.Game.RestoreFrom(prev)
+	})
 	return r.captureLocked(true)
 }
 

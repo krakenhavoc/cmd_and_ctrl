@@ -369,6 +369,17 @@ func (g *Game) playerByIDLocked(id uuid.UUID) *Player {
 	return nil
 }
 
+// WithWriteLock runs fn while holding the game's write lock. Used
+// by callers (e.g. the room's Undo path) that need to perform a
+// multi-field state replacement atomically without exposing every
+// individual mutator. The callback may freely mutate exported fields
+// of g; no other Apply / Snapshot can interleave.
+func (g *Game) WithWriteLock(fn func()) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	fn()
+}
+
 // ReadSnapshot runs fn while holding a read lock on the game. The
 // callback gets to read any exported field of g consistently — no
 // other mutations can interleave. Callers MUST NOT mutate the game

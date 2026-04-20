@@ -598,6 +598,12 @@
           pass turn
         </button>
         <button
+          onclick={() => client.sendAction("undo")}
+          title="rewind the most recent action (server-side undo, applies for everyone)"
+        >
+          undo
+        </button>
+        <button
           onclick={concede}
           disabled={viewerEliminated || gameEnded}
           class="concede"

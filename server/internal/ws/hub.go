@@ -704,6 +704,27 @@ func (c *Client) handleAction(frame protocol.Frame) {
 		return
 	}
 
+	// `undo` is a room-level operation, not a game mutation: it pops
+	// the room's undo stack and restores the previous game state.
+	// Special-cased here (rather than routed through actions.Dispatch)
+	// because Dispatch only has access to *game.Game, not the room
+	// that owns the history. Sandbox — any seated player or admin can
+	// undo; the casual table self-polices abuse.
+	if payload.Type == "undo" {
+		view, seq, err := room.Undo()
+		if err != nil {
+			if errors.Is(err, ErrNothingToUndo) {
+				c.sendError(frame.ID, protocol.CodeBadRequest, "nothing to undo")
+			} else {
+				c.sendError(frame.ID, protocol.CodeInternal, err.Error())
+			}
+			return
+		}
+		c.hub.broadcastToRoom(room.Game.ID, seq, view)
+		c.log.Debug("undo applied", "seq", seq)
+		return
+	}
+
 	action, err := actions.Decode(payload.Type, payload.Player, payload.Params)
 	if err != nil {
 		c.sendError(frame.ID, protocol.CodeBadRequest, err.Error())
