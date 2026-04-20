@@ -30,6 +30,27 @@
   outline-offset: 1px;
 }
 
+/* Battlefield card size — settings.display.cardSize drives this
+   as two multipliers, one per role. Self uses the full curve
+   (0.75 / 1 / 1.25); opponents use a flatter curve (0.85 / 1 /
+   1.1) because their panel sits in a fixed 0.7fr row in the
+   Board grid and a 25% upscale would push the rotated hand fan
+   into the creatures zone. The flatter curve keeps "large"
+   layout-safe while still letting the user feel the setting on
+   the opposite side of the table. */
+:root {
+  --card-scale: 1;
+  --card-scale-opponent: 1;
+}
+:root[data-card-size="small"] {
+  --card-scale: 0.75;
+  --card-scale-opponent: 0.85;
+}
+:root[data-card-size="large"] {
+  --card-scale: 1.25;
+  --card-scale-opponent: 1.1;
+}
+
 body {
   margin: 0;
   padding: 0;

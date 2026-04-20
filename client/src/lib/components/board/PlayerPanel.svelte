@@ -183,12 +183,17 @@
        vars; everything downstream (Card.svelte, PileButton.svelte,
        Hand.svelte) reads them. Aspect ratio held at 0.714 (the real
        63mm × 88mm magic-card proportion) so face art stays
-       undistorted. */
-    --card-w: 120px;
-    --card-h: 168px;
-    --pile-w: 94px;
-    --thumb-w: 75px;
-    --thumb-h: 105px;
+       undistorted.
+
+       --card-scale is set on :root by the S11.5 settings panel
+       (Display → card size). Multiplying here rather than letting
+       :root override --card-w directly avoids a specificity fight
+       with .panel.opponent's smaller baseline. */
+    --card-w: calc(120px * var(--card-scale, 1));
+    --card-h: calc(168px * var(--card-scale, 1));
+    --pile-w: calc(94px * var(--card-scale, 1));
+    --thumb-w: calc(75px * var(--card-scale, 1));
+    --thumb-h: calc(105px * var(--card-scale, 1));
     display: grid;
     grid-template-columns: minmax(0, 1.4fr) minmax(0, 3fr) minmax(0, 1.3fr);
     /* Header is fixed; piles/hand row is content-sized (the largest
@@ -218,14 +223,18 @@
   }
   .panel.opponent {
     background: #0a1020;
-    /* Opponent slots fit roughly half the vertical space of self,
-       so cards + pile chrome shrink in lockstep to keep the same
-       wireframe layout legible at the top of the board. */
-    --card-w: 78px;
-    --card-h: 110px;
-    --pile-w: 66px;
-    --thumb-w: 50px;
-    --thumb-h: 70px;
+    /* Opponent baseline is shrunk vs. pre-S11.5 (78×110 → 66×92)
+       to leave headroom for the rotated-180° hand fan's bounding
+       box, which adds ~20px above the card height. Scales by
+       --card-scale-opponent (defined on :root by the S11.5
+       settings panel), which uses a gentler curve than self
+       (0.85 / 1 / 1.1) so a "large" setting doesn't overflow the
+       fixed 0.7fr opponent row in the Board grid. */
+    --card-w: calc(66px * var(--card-scale-opponent, 1));
+    --card-h: calc(92px * var(--card-scale-opponent, 1));
+    --pile-w: calc(56px * var(--card-scale-opponent, 1));
+    --thumb-w: calc(44px * var(--card-scale-opponent, 1));
+    --thumb-h: calc(62px * var(--card-scale-opponent, 1));
   }
   .grid-header {
     grid-area: header;

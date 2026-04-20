@@ -24,6 +24,7 @@
   import { hoveredCard } from "../../cardTypes";
   import { animateTap } from "../../animations";
   import { play } from "../../sounds";
+  import { settings } from "../../settings";
 
   interface Props {
     card: CardView;
@@ -53,12 +54,38 @@
     card.scryfall_id ? `/cards/${card.scryfall_id}/image?size=${size}` : null,
   );
 
+  // Hover delay (settings.display.hoverDelayMs) defers the write to
+  // the hoveredCard store until the user has rested on the card for
+  // the configured duration. Defaults to 300ms so a fast mouse-over
+  // sweep doesn't flash the zoom panel on every card in its path.
+  // A per-card timer is cancelled on leave / click / unmount.
+  let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function cancelHoverTimer(): void {
+    if (hoverTimer !== null) {
+      clearTimeout(hoverTimer);
+      hoverTimer = null;
+    }
+  }
+
   function handleEnter(): void {
     if (faceDown) return;
-    hoveredCard.set(card);
+    cancelHoverTimer();
+    const delay = $settings.display.hoverDelayMs;
+    if (delay <= 0) {
+      hoveredCard.set(card);
+      return;
+    }
+    hoverTimer = setTimeout(() => {
+      hoverTimer = null;
+      hoveredCard.set(card);
+    }, delay);
   }
 
   function handleLeave(): void {
+    // Cancel any pending delayed-show so the zoom doesn't pop up
+    // after the cursor has already left.
+    cancelHoverTimer();
     // Only clear if we still own the slot — guards against a snapshot
     // rebuild that swaps the hovered card out from under us before the
     // pointerleave fires.
