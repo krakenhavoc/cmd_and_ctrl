@@ -129,4 +129,56 @@ describe("settings", () => {
     expect(get(settings).audio.muted).toBe(false);
     expect(get(settings).__version).toBe(1);
   });
+
+  it("export → import is a round-trip", async () => {
+    const { settings, updateSettings, exportSettings, importSettings } = await freshModule();
+    // Mutate so the exported blob carries non-default values.
+    updateSettings("audio", "muted", true);
+    updateSettings("display", "cardSize", "large");
+    updateSettings("accessibility", "textScale", 1.5);
+    const exported = exportSettings();
+
+    // Reset and confirm the values are gone, then re-import.
+    updateSettings("audio", "muted", false);
+    updateSettings("display", "cardSize", "small");
+    updateSettings("accessibility", "textScale", 0.9);
+
+    const res = importSettings(exported);
+    expect(res.ok).toBe(true);
+    expect(res.changed).toBe(true);
+    expect(get(settings).audio.muted).toBe(true);
+    expect(get(settings).display.cardSize).toBe("large");
+    expect(get(settings).accessibility.textScale).toBe(1.5);
+  });
+
+  it("importSettings rejects non-JSON and non-object blobs", async () => {
+    const { settings, importSettings } = await freshModule();
+    const before = JSON.stringify(get(settings));
+
+    expect(importSettings("not json").ok).toBe(false);
+    expect(importSettings("[1,2,3]").ok).toBe(false);
+    expect(importSettings("null").ok).toBe(false);
+    expect(importSettings('"just a string"').ok).toBe(false);
+
+    // Store untouched after every rejection.
+    expect(JSON.stringify(get(settings))).toBe(before);
+  });
+
+  it("importSettings of identical state reports changed: false", async () => {
+    const { exportSettings, importSettings } = await freshModule();
+    const blob = exportSettings();
+    const res = importSettings(blob);
+    expect(res.ok).toBe(true);
+    expect(res.changed).toBe(false);
+  });
+
+  it("fingerprintSettings is deterministic for the same state and changes when state does", async () => {
+    const { updateSettings, fingerprintSettings } = await freshModule();
+    const a1 = fingerprintSettings();
+    const a2 = fingerprintSettings();
+    expect(a1).toBe(a2);
+    updateSettings("audio", "muted", true);
+    const b = fingerprintSettings();
+    expect(b).not.toBe(a1);
+  });
 });

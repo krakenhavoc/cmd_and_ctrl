@@ -39,11 +39,22 @@
   // consumed by the modules that care about them via the shared
   // store; the ones below need a single apply-to-document seam
   // because they drive stylesheet values.
+  //
+  // Note on theme: the schema carries display.theme but we
+  // deliberately do NOT push it to root.dataset.theme yet.
+  // PR #119 landed the :root[data-theme=...] palette scaffold,
+  // but most components in the table chrome (PlayerPanel, Card,
+  // Game.svelte styles) still hardcode hex colours rather than
+  // reading var(--bg) / var(--fg). Toggling light or high-
+  // contrast right now would change the page bg without flipping
+  // any of those panels, producing a broken-looking mix. Until
+  // the per-component var() migration ships, the theme setting
+  // persists but is inert — the Settings panel disables the
+  // select with a "coming soon" note so users know.
   $effect(() => {
     const s = $settings;
     const root = document.documentElement;
     root.style.setProperty("--font-scale", String(s.accessibility.textScale));
-    root.dataset.theme = s.display.theme;
     root.dataset.cardSize = s.display.cardSize;
     root.dataset.reduceMotion = s.accessibility.reduceMotion ? "1" : "0";
     root.dataset.alwaysShowFocus = s.accessibility.alwaysShowFocus ? "1" : "0";
