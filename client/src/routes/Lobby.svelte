@@ -10,6 +10,7 @@
   } from "../lib/api";
   import { inviteURL, spectatorInviteURL, navigate } from "../lib/router";
   import { session, LobbyApiError } from "../lib/session";
+  import { openSettings } from "../lib/settings";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
 
   // Lobby is the admin + player landing page. Admins see a create-
@@ -124,6 +125,12 @@
       {#if $session?.principal.name}
         ({$session.principal.name})
       {/if}
+      <button
+        class="linkish gear"
+        title="settings (press , from anywhere)"
+        aria-label="open settings"
+        onclick={openSettings}>⚙</button
+      >
       <button class="linkish" onclick={logout}>log out</button>
     </p>
   </header>

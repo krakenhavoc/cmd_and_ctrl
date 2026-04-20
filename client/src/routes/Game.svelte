@@ -7,6 +7,7 @@
   import Board from "../lib/components/board/Board.svelte";
   import type { PlayerView } from "../lib/protocol";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
+  import { openSettings } from "../lib/settings";
 
   interface Props {
     gameID: string;
@@ -387,6 +388,12 @@
       >
     {/if}
     <span class="muted">seq {$lastSeq}</span>
+    <button
+      class="gear"
+      title="settings (press , from anywhere)"
+      aria-label="open settings"
+      onclick={openSettings}>⚙</button
+    >
   </header>
 
   {#if viewerNeedsDeck && !deckImportDismissed && viewerID}
@@ -780,6 +787,19 @@
     gap: 0.75rem;
     align-items: baseline;
     margin: 0;
+  }
+  .gear {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0.15rem 0.4rem;
+    line-height: 1;
+  }
+  .gear:hover {
+    color: #fff;
   }
   .play-area {
     /* Single-column layout since S08.5 removed the chat sidebar.
