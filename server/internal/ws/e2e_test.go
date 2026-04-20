@@ -478,6 +478,30 @@ func readNextFrame(t *testing.T, conn *websocket.Conn) protocol.Frame {
 	return f
 }
 
+// Game state read helpers — the hub's write goroutine mutates the
+// shared *game.Game under its own write lock, so tests that assert on
+// fields from the test goroutine must take the read lock too. Without
+// these helpers `go test -race` flags a data race on every field
+// read. Wrapping each assertion in a ReadSnapshot closure would work
+// but is noisy; a pair of tiny accessors keeps the tests readable.
+func handSize(g *game.Game, seat int) int {
+	var n int
+	g.ReadSnapshot(func() { n = g.Seats[seat].Hand.Size() })
+	return n
+}
+
+func undosRemaining(g *game.Game, seat int) int {
+	var n int
+	g.ReadSnapshot(func() { n = g.Seats[seat].UndosRemaining })
+	return n
+}
+
+func undoLimit(g *game.Game) int {
+	var n int
+	g.ReadSnapshot(func() { n = g.UndoLimit })
+	return n
+}
+
 // TestUndoRejectsCrossPlayerCaller covers the S11 caller gate: a
 // seated player may only undo their own most recent action. Player A
 // draws; Player B tries to undo A's draw; B's request must error
@@ -501,8 +525,8 @@ func TestUndoRejectsCrossPlayerCaller(t *testing.T) {
 		Type: "draw_card", Player: playerA.String(),
 	})
 	readNextFrame(t, connB) // B's broadcast copy
-	if g.Seats[0].Hand.Size() != 8 {
-		t.Fatalf("after A draw: A.hand=%d, want 8", g.Seats[0].Hand.Size())
+	if n := handSize(g, 0); n != 8 {
+		t.Fatalf("after A draw: A.hand=%d, want 8", n)
 	}
 
 	// B tries to undo A's action. Should fail with bad_request and
@@ -517,16 +541,16 @@ func TestUndoRejectsCrossPlayerCaller(t *testing.T) {
 	if ep.Code != protocol.CodeBadRequest {
 		t.Errorf("error code: got %q, want %q", ep.Code, protocol.CodeBadRequest)
 	}
-	if g.Seats[0].Hand.Size() != 8 {
-		t.Errorf("rejected undo mutated state: A.hand=%d, want 8", g.Seats[0].Hand.Size())
+	if n := handSize(g, 0); n != 8 {
+		t.Errorf("rejected undo mutated state: A.hand=%d, want 8", n)
 	}
 
 	// A undoes their own action. Should succeed; broadcast snapshot
 	// goes to both clients.
 	sendActionAndWait(t, connA, protocol.ActionPayload{Type: "undo"})
 	readNextFrame(t, connB) // B's broadcast copy
-	if g.Seats[0].Hand.Size() != 7 {
-		t.Errorf("after A undo: A.hand=%d, want 7", g.Seats[0].Hand.Size())
+	if n := handSize(g, 0); n != 7 {
+		t.Errorf("after A undo: A.hand=%d, want 7", n)
 	}
 }
 
@@ -543,25 +567,24 @@ func TestUndoBudgetExhausted(t *testing.T) {
 	defer connA.Close()
 	readNextFrame(t, connA) // initial
 
-	if g.Seats[0].UndosRemaining != game.DefaultUndoLimit {
-		t.Fatalf("budget at start: got %d, want %d",
-			g.Seats[0].UndosRemaining, game.DefaultUndoLimit)
+	if n := undosRemaining(g, 0); n != game.DefaultUndoLimit {
+		t.Fatalf("budget at start: got %d, want %d", n, game.DefaultUndoLimit)
 	}
 
 	// Two draws.
 	sendActionAndWait(t, connA, protocol.ActionPayload{Type: "draw_card", Player: playerA.String()})
 	sendActionAndWait(t, connA, protocol.ActionPayload{Type: "draw_card", Player: playerA.String()})
-	if g.Seats[0].Hand.Size() != 9 {
-		t.Fatalf("after two draws: A.hand=%d, want 9", g.Seats[0].Hand.Size())
+	if n := handSize(g, 0); n != 9 {
+		t.Fatalf("after two draws: A.hand=%d, want 9", n)
 	}
 
 	// First undo: succeeds, budget 1→0.
 	sendActionAndWait(t, connA, protocol.ActionPayload{Type: "undo"})
-	if g.Seats[0].UndosRemaining != 0 {
-		t.Fatalf("budget after first undo: got %d, want 0", g.Seats[0].UndosRemaining)
+	if n := undosRemaining(g, 0); n != 0 {
+		t.Fatalf("budget after first undo: got %d, want 0", n)
 	}
-	if g.Seats[0].Hand.Size() != 8 {
-		t.Fatalf("after first undo: A.hand=%d, want 8", g.Seats[0].Hand.Size())
+	if n := handSize(g, 0); n != 8 {
+		t.Fatalf("after first undo: A.hand=%d, want 8", n)
 	}
 
 	// Second undo: should fail with bad_request ("no undos remaining").
@@ -575,8 +598,8 @@ func TestUndoBudgetExhausted(t *testing.T) {
 	if ep.Code != protocol.CodeBadRequest {
 		t.Errorf("error code: got %q, want %q", ep.Code, protocol.CodeBadRequest)
 	}
-	if g.Seats[0].Hand.Size() != 8 {
-		t.Errorf("rejected undo mutated state: A.hand=%d, want 8", g.Seats[0].Hand.Size())
+	if n := handSize(g, 0); n != 8 {
+		t.Errorf("rejected undo mutated state: A.hand=%d, want 8", n)
 	}
 }
 
@@ -596,16 +619,15 @@ func TestUndoBudgetRefreshesOnTurnRollover(t *testing.T) {
 	// Spend A's budget.
 	sendActionAndWait(t, connA, protocol.ActionPayload{Type: "draw_card", Player: playerA.String()})
 	sendActionAndWait(t, connA, protocol.ActionPayload{Type: "undo"})
-	if g.Seats[0].UndosRemaining != 0 {
-		t.Fatalf("budget post-undo: got %d, want 0", g.Seats[0].UndosRemaining)
+	if n := undosRemaining(g, 0); n != 0 {
+		t.Fatalf("budget post-undo: got %d, want 0", n)
 	}
 
 	// Pass turn (B becomes active) then back to A. A's budget refreshes
 	// on entering A's untap step.
 	sendActionAndWait(t, connA, protocol.ActionPayload{Type: "pass_turn"})
-	if g.Seats[1].UndosRemaining != game.DefaultUndoLimit {
-		t.Errorf("B budget after pass_turn: got %d, want %d",
-			g.Seats[1].UndosRemaining, game.DefaultUndoLimit)
+	if n := undosRemaining(g, 1); n != game.DefaultUndoLimit {
+		t.Errorf("B budget after pass_turn: got %d, want %d", n, game.DefaultUndoLimit)
 	}
 }
 
@@ -625,8 +647,8 @@ func TestSetUndoLimitRefreshesAllSeats(t *testing.T) {
 	// Drain A's budget so we can verify the refresh.
 	sendActionAndWait(t, connA, protocol.ActionPayload{Type: "draw_card", Player: playerA.String()})
 	sendActionAndWait(t, connA, protocol.ActionPayload{Type: "undo"})
-	if g.Seats[0].UndosRemaining != 0 {
-		t.Fatalf("setup: A budget got %d, want 0", g.Seats[0].UndosRemaining)
+	if n := undosRemaining(g, 0); n != 0 {
+		t.Fatalf("setup: A budget got %d, want 0", n)
 	}
 
 	// Bump the limit to 3 — every seat should snap to UndosRemaining=3.
@@ -634,12 +656,14 @@ func TestSetUndoLimitRefreshesAllSeats(t *testing.T) {
 		Type:   "set_undo_limit",
 		Params: json.RawMessage(`{"limit":3}`),
 	})
-	if g.UndoLimit != 3 {
-		t.Errorf("game UndoLimit: got %d, want 3", g.UndoLimit)
+	if n := undoLimit(g); n != 3 {
+		t.Errorf("game UndoLimit: got %d, want 3", n)
 	}
-	for i, p := range g.Seats {
-		if p.UndosRemaining != 3 {
-			t.Errorf("seat %d UndosRemaining: got %d, want 3", i, p.UndosRemaining)
+	g.ReadSnapshot(func() {
+		for i, p := range g.Seats {
+			if p.UndosRemaining != 3 {
+				t.Errorf("seat %d UndosRemaining: got %d, want 3", i, p.UndosRemaining)
+			}
 		}
-	}
+	})
 }

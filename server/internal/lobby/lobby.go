@@ -38,10 +38,10 @@ var (
 // invite token and the display-level seat list (player names only;
 // card data lives on the game.Game). Exposed over JSON by http.go.
 type GameMeta struct {
-	ID          uuid.UUID  `json:"id"`
-	Name        string     `json:"name"`
-	CreatedAt   time.Time  `json:"created_at"`
-	InviteToken string     `json:"invite_token,omitempty"` // omitted from list responses; see PublicSeat
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	CreatedAt   time.Time `json:"created_at"`
+	InviteToken string    `json:"invite_token,omitempty"` // omitted from list responses; see PublicSeat
 	// SpectatorInvite is a separate token that grants read-only access
 	// to a game (cannot claim a seat, cannot send action frames).
 	// Issued at Create time alongside the player invite. Stripped
