@@ -1,0 +1,144 @@
+name: cmd_and_ctrl CI/CD
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: cmdctrl-cd-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  cmdctrl-ci:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: server/go.sum
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Server — fmt check
+        working-directory: server
+        run: make fmt-check
+
+      - name: Server — vet
+        working-directory: server
+        run: make vet
+
+      - name: Server — test
+        working-directory: server
+        run: make test
+
+      - name: Server — build
+        working-directory: server
+        run: make build
+
+      - name: Client — npm ci
+        working-directory: client
+        run: npm ci
+
+      - name: Client — typecheck
+        working-directory: client
+        run: npm run check
+
+      - name: Client — lint
+        working-directory: client
+        run: npm run lint
+
+      - name: Client — build
+        working-directory: client
+        run: npm run build
+
+      - name: Upload server binary
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v5
+        with:
+          name: cmdctrl-server-bin
+          path: server/bin/cmd_and_ctrl-server
+          retention-days: 7
+
+      - name: Upload client dist
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v5
+        with:
+          name: cmdctrl-client-dist
+          path: client/dist/
+          retention-days: 7
+
+  cmdctrl-cd:
+    runs-on: self-hosted
+    needs: cmdctrl-ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    env:
+      CMDCTRL_HOST: ${{ vars.CMDCTRL_HOST }}
+      SSH_OPTS: -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Verify CMDCTRL_HOST is set
+        run: |
+          if [ -z "${CMDCTRL_HOST}" ]; then
+            echo "::error::Repo variable CMDCTRL_HOST is not set. Configure under Settings → Secrets and variables → Actions → Variables."
+            exit 1
+          fi
+          echo "Deploy target: krkn@${CMDCTRL_HOST}"
+
+      - name: Download server binary
+        uses: actions/download-artifact@v6
+        with:
+          name: cmdctrl-server-bin
+          path: server/bin
+
+      - name: Download client dist
+        uses: actions/download-artifact@v6
+        with:
+          name: cmdctrl-client-dist
+          path: client/dist
+
+      - name: Restore server binary exec bit
+        run: chmod +x server/bin/cmd_and_ctrl-server
+
+      - name: Deploy server binary
+        run: |
+          rsync -a -e "ssh ${SSH_OPTS}" \
+            server/bin/cmd_and_ctrl-server \
+            krkn@${CMDCTRL_HOST}:/opt/cmd_and_ctrl/server/bin/
+
+      - name: Deploy client dist
+        run: |
+          rsync -a --delete -e "ssh ${SSH_OPTS}" \
+            client/dist/ \
+            krkn@${CMDCTRL_HOST}:/var/www/cmdctrl-client/
+
+      - name: Deploy scripts
+        run: |
+          rsync -a -e "ssh ${SSH_OPTS}" \
+            scripts/ \
+            krkn@${CMDCTRL_HOST}:/opt/cmd_and_ctrl/scripts/
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} 'chmod +x /opt/cmd_and_ctrl/scripts/*.sh'
+
+      - name: Restart cmd-and-ctrl service
+        run: |
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} 'sudo systemctl restart cmd-and-ctrl'
+
+      - name: Verify service is active
+        run: |
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            'systemctl is-active cmd-and-ctrl && systemctl status cmd-and-ctrl --no-pager --lines=10'
