@@ -240,7 +240,7 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 - [x] GSAP integration (#58)
 - [x] Card draw / play / tap / untap animations (#58, #61)
 - [x] Damage number popups, combat arrows (#72, #81)
-- [ ] Sound pass (draw, play, tap, damage, turn change) — **deferred** until SFX pack lands; prompts + wiring plan in [s09-sound-pass.md](s09-sound-pass.md)
+- [ ] Sound pass (draw, play, tap, damage, turn change) — assets + `sounds.ts` module landed (2 variants per event under [client/public/sounds/](../client/public/sounds/)); Svelte-seam wiring + mute toggle is the remaining follow-up. See [s09-sound-pass.md](s09-sound-pass.md).
 - [x] Particle effects on ETB / death — shipped as a scale-pulse in #72; full particle system folded back in if/when needed
 
 **Exit criteria:** side-by-side video vs. Cockatrice shows a clear "this feels better" delta.

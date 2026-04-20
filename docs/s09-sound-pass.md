@@ -2,14 +2,30 @@
 
 The S09 polish-pass shipped GSAP integration, tap/untap animation,
 hand deal-in/out, ETB pulse, damage popups, and combat arrows. The
-last checklist item — **sound** — is deferred until the asset pack
-exists. This doc captures both halves so the work picks up cleanly:
+last checklist item — **sound** — was deferred until the asset pack
+existed.
 
-1. The Suno prompts a friend with Suno is generating from
-2. The wiring plan once the WAVs land
+**Status:** the Suno pack has landed as MP3s with two takes per
+event, plus a bonus ambient loop. Assets live in
+[client/public/sounds/](../client/public/sounds/) and the playback
+module (`play`, `setMuted`, `armAudioOnFirstGesture`) lives in
+[client/src/lib/sounds.ts](../client/src/lib/sounds.ts). The
+Svelte-seam wiring table (§2.3 below) plus the mute toggle
+(§2.4) are the remaining work — tracked as a follow-up so it
+can land independently of the S11 hover-preview work.
 
-Not a blocker for closing S09; the visual pass is a complete S09
-deliverable on its own.
+Deviations from the original Suno brief:
+- **MP3, not WAV.** Smaller files, universally supported; the
+  module doesn't care about container.
+- **Two takes per event.** `sounds.ts` exposes them as a variant
+  array and picks uniformly at random on each `play()`, which
+  breaks up the obvious-loop effect on rapid-fire events (e.g.
+  the opening-hand draw flurry).
+- **Damage variant discrepancy.** The source pack delivered
+  `damage popup 1` and `damage output 2` (no matching partners);
+  both were taken as generic damage takes — noted in the sounds
+  [README](../client/public/sounds/README.md) in case a future
+  pass wants to split them back apart.
 
 ---
 
@@ -40,24 +56,35 @@ Format request for every clip:
 
 ---
 
-## 2. Wiring plan (once WAVs land)
+## 2. Wiring plan
 
-### Asset placement
-- Drop all `*.wav` files into `client/public/sounds/` so Vite serves
-  them under `/sounds/<name>.wav` with no extra config.
-- Add a `client/public/sounds/README.md` listing source + license
-  attribution (Suno-generated for this project, personal use).
+### Asset placement — ✅ landed
+- Files live in [client/public/sounds/](../client/public/sounds/)
+  as MP3, two variants per event (e.g. `draw-1.mp3`, `draw-2.mp3`).
+  Vite serves them at `/sounds/<name>-<n>.mp3` with no extra config.
+- [client/public/sounds/README.md](../client/public/sounds/README.md)
+  lists source + license (Suno-generated, personal use) and the
+  full event → filename table.
 
-### Sound module — `client/src/lib/sounds.ts`
-- Single registry of `name → HTMLAudioElement` pre-loaded on first
-  user gesture (autoplay-policy unlock).
-- `play(name: string, opts?: { volume?: number; rate?: number })`
-  helper that clones a fresh `Audio` per call so overlapping plays
-  don't cut each other off (e.g. two cards drawn back-to-back).
-- Mute toggle persisted to `localStorage["cmdctrl.muted"]`.
-- Reduced-motion / explicit-mute short-circuits to a no-op.
+### Sound module — ✅ landed in [client/src/lib/sounds.ts](../client/src/lib/sounds.ts)
+- Registry: `SOUND_MANIFEST: Record<SoundName, string[]>` — each
+  event points at an array of variant URLs; `play()` picks one at
+  random.
+- `armAudioOnFirstGesture()` installs a one-shot pointerdown/keydown
+  listener that preloads + decodes every variant (autoplay-policy
+  unlock). Call once on app mount.
+- `play(name, opts?: { volume?: number; rate?: number })` clones the
+  preloaded Audio so overlapping plays don't cut each other off.
+- `isMuted()` / `setMuted(bool)` / `toggleMuted()` — persisted to
+  `localStorage["cmdctrl.muted"]`.
+- Rate-limit: same-name calls within 40ms are dropped to prevent
+  the opening-hand draw flurry from stacking seven sounds.
 
-### Event hooks
+Explicit mute short-circuits `play()` to a no-op. Reduced-motion
+is NOT auto-coupled — S11.5 can layer its own preference on top
+via `setMuted()`.
+
+### Event hooks — ⏳ follow-up
 Each existing GSAP / state seam gets one `play(...)` call:
 
 | Seam | Sound |
@@ -74,23 +101,24 @@ Each existing GSAP / state seam gets one `play(...)` call:
 | `mulligan` / `shuffle_library` action | `shuffle` |
 | GameView.state transitions to `ended` | `win` if viewer survives, `loss` otherwise |
 
-### UI
+### UI — ⏳ follow-up
 - Mute toggle in the `Game.svelte` toolbar (small icon button) so
-  every page has one click to silence.
+  every page has one click to silence. Wire to `toggleMuted()`
+  from `sounds.ts`; read initial state from `isMuted()`.
 
-### Verification
+### Verification — ⏳ follow-up
 - Manual: play a full 2-player turn end-to-end, listen for each
   event firing exactly once. No double-trigger on snapshot rebuilds.
-- The autoplay-policy unlock (any `pointerdown` arms the audio
-  context) needs to land BEFORE the first sound — easiest: install
-  it inside the GameClient init or on the route mount.
+- Call `armAudioOnFirstGesture()` on app mount (route `onMount` or
+  GameClient init) — must land before the first `play()` for the
+  autoplay-policy unlock to take effect.
 
-### Risks
-- Many events firing simultaneously (e.g. opening hand of 7 → 7
-  draw sounds at once) — rate-limit at the play() seam (drop calls
-  for the same `name` within 40ms).
-- Browser audio decode latency on first hit — pre-decode all
-  sounds during the unlock gesture, not lazily.
+### Risks — resolved in `sounds.ts`
+- Simultaneous same-name calls: **handled** — `play()` rate-limits
+  repeat triggers of the same name within 40ms.
+- Browser audio decode latency on first hit: **handled** —
+  `armAudioOnFirstGesture()` pre-decodes every variant, and `play()`
+  clones from the pool.
 
 ---
 
