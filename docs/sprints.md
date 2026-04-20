@@ -51,6 +51,7 @@ planned just-in-time from the S12 pain-point triage.
 | S13.1 | Stack: cast/resolve/target/counter/trigger/SBA | 7 | [#63](https://github.com/krakenhavoc/cmd_and_ctrl/issues/63) | 2026-06-14 | planned |
 | S13.2 | Counter mechanics (SBAs + player counters + UI) | 7 | [#79](https://github.com/krakenhavoc/cmd_and_ctrl/issues/79) | 2026-06-28 | planned |
 | S13.3 | Client-side timing affordance (greyed illegal actions) | 7 | [#99](https://github.com/krakenhavoc/cmd_and_ctrl/issues/99) | 2026-07-04 | planned |
+| S13.4 | Interactive cleanup discard + per-player MaxHandSize | 7 | [#103](https://github.com/krakenhavoc/cmd_and_ctrl/issues/103) | 2026-07-11 | planned |
 | S14 | Card-effect catalog foundation | 7 | [#64](https://github.com/krakenhavoc/cmd_and_ctrl/issues/64) | 2026-07-12 | planned |
 | S15 | Mana pool, cost model, and auto-tapper | 7 | [#65](https://github.com/krakenhavoc/cmd_and_ctrl/issues/65) | 2026-08-09 | planned |
 | S16 | Continuous effects + layer system (CR 613) | 7 | [#66](https://github.com/krakenhavoc/cmd_and_ctrl/issues/66) | 2026-09-06 | planned |
@@ -612,6 +613,55 @@ After S13 + S13.1, the server enforces timing: who holds priority, sorcery-speed
 5. Force a race condition (skip the client check) → server still rejects with the same error toast that worked pre-S13.3 (server enforcement remains authoritative).
 
 Detailed plan: `/home/node/.claude/plans/s13-3-client-timing-affordance.md`. Builds on S13 (priority sentinel) + S13.1 (sorcery-speed + split-second + loyalty-activated state). ~1 week, 2 sub-PRs.
+
+---
+
+## S13.4 — Interactive cleanup discard + per-player MaxHandSize
+**Phase:** 7 · **Goal:** close out S13's deferred interactive-discard item + lay the per-player `MaxHandSize` groundwork for hand-size-modifying effects (Reliquary Tower, Thought Vessel, Spellbook, Library of Leng, Null Profusion, Venser's Journal) to plug into later via S14/S16.
+
+S13's cleanup step auto-discards from the hand top as a placeholder — S13.4 replaces that with an interactive prompt: the cleanup step pauses, the active player picks which cards to discard, then the turn advances. Separately, the hardcoded "7" becomes a per-player `MaxHandSize int` (default 7, `-1` = no maximum) so later catalog cards can modify it. The catalog declarations themselves (Reliquary Tower et al.) ship via S14's effect catalog and S16's layer system writing to the field this sprint creates.
+
+### Tasks
+
+**Server — engine + actions:**
+- [ ] `Player.MaxHandSize int` field (default 7; `-1` sentinel = no maximum)
+- [ ] `Turn.DiscardPending map[playerID]int` — cleanup-step-entry sets pending counts for any player over their max
+- [ ] `Turn.advance` refuses to leave cleanup while pending is non-empty; re-checks on `discard_selection` resolve
+- [ ] `discard_selection` action (`{ card_ids }`) — gated to the pending discarder; validates count + ownership; moves to graveyard; clears pending
+- [ ] `set_max_hand_size` action (`{ player_id, value }`) — sandbox helper; admin-only or self-only
+- [ ] Replace S13's "discard from hand top" placeholder with the prompt pathway
+- [ ] APNAP order for multi-player simultaneous discard (Mindslicer, Painful Quandary)
+
+**Server — wire:**
+- [ ] `PlayerView.max_hand_size int`
+- [ ] `GameView.discard_pending map<playerID, count>`
+- [ ] `KindDiscardPrompt` frame (`{ player_id, count }`)
+
+**Client:**
+- [ ] `DiscardPromptModal.svelte` — opens when `discard_pending[viewerID] > 0`; multi-select exactly N cards; non-dismissible; auto-closes when pending drops to 0
+- [ ] `PlayerHeader` shows non-default `MaxHandSize` next to hand-count ("8 / ∞" for Reliquary, "3 / 2" for Null Profusion)
+- [ ] Optional sandbox numeric input for `set_max_hand_size` (slot into [S11.5](#s115--per-user-settings-and-preferences-mini) settings UI if that lands first)
+
+**Tests:**
+- [ ] Server: over-max prompts / selection resolves / wrong count rejected / non-hand card rejected / `-1` skips / admin & self gating
+- [ ] Client: `DiscardPromptModal` opens when pending, submits correct payload
+- [ ] Manual 2-tab smoke through 5 exit scenarios
+
+### Out of scope
+- **Static-ability declarations** for Reliquary Tower, Thought Vessel, Spellbook, Library of Leng, Null Profusion, Venser's Journal — these land as [S14](#s14--card-effect-catalog-foundation) catalog cards plugged into [S16](#s16--continuous-effects--layer-system-cr-613) layer pipeline, writing to the `MaxHandSize` field S13.4 creates
+- Replacement effects on discard (Library of Leng's "to top/bottom of library instead") — [S17](#s17--replacement-effects-engine-cr-614)
+- Triggers on discard (Asylum Visitor, madness) — [S19](#s19--auto-fire-triggered-abilities) + [S29](#s29--alt-cast-paths-from-non-hand-zones)
+- Hand-reveal UX (Telepathy, Bottled Cloister)
+- Multi-player simultaneous discard ordering UI (server handles APNAP correctly; only one modal at a time)
+
+### Exit criteria
+1. End turn with 9 cards → modal opens on active-player tab prompting "discard 2 cards"; cannot close without selecting.
+2. Select 2 + submit → cards move to graveyard, modal closes, turn advances.
+3. Set `MaxHandSize = -1` → end turn with 15 cards, no modal, cleanup passes through.
+4. Set `MaxHandSize = 2` → end turn with 5 cards, modal prompts "discard 3 cards".
+5. Opponent tab doesn't see the prompt; hand contents stay private.
+
+Detailed plan: `/home/node/.claude/plans/s13-4-hand-size-and-interactive-discard.md`. Builds on S13 (cleanup turn-based action) + S13.1 (pause-and-resume prompt pattern). ~1 week, 2 sub-PRs.
 
 ---
 
