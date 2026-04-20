@@ -15,6 +15,7 @@
   import Card from "./Card.svelte";
   import { dealIn, dealOut } from "../../animations";
   import { play } from "../../sounds";
+  import { settings } from "../../settings";
 
   interface Props {
     hand: ZoneView;
@@ -27,9 +28,16 @@
   // Synth a list of N face-down placeholder cards for opponent hands.
   // The server omits real CardView contents for opponent hands, so we
   // rely on `count` and never read scryfall_id / name from these.
+  //
+  // settings.display.showOpponentHandCount collapses the fan to a
+  // single face-down card (when false) so the opponent still has a
+  // visible hand but viewers who find the N-wide strip distracting
+  // don't have N placeholders bulking up the row. Always-empty hands
+  // still render the "empty" chip below.
   const placeholders = $derived.by((): CardView[] => {
     if (isSelf) return [];
-    const n = hand.count;
+    const showCount = $settings.display.showOpponentHandCount;
+    const n = showCount ? hand.count : Math.min(hand.count, 1);
     const out: CardView[] = [];
     for (let i = 0; i < n; i++) {
       out.push({
@@ -43,6 +51,7 @@
   });
 
   const cards = $derived(isSelf ? hand.cards : placeholders);
+  const layout = $derived($settings.display.handLayout);
 
   // Per-card fan angle in degrees. Caps the total fan spread so very
   // large hands don't tip cards past sideways. Matches the Pixi math
@@ -84,14 +93,18 @@
   };
 </script>
 
-<div class="hand" class:opponent={!isSelf} aria-label={isSelf ? "your hand" : "opponent hand"}>
+<div
+  class="hand"
+  class:opponent={!isSelf}
+  class:stacked={layout === "stacked"}
+  aria-label={isSelf ? "your hand" : "opponent hand"}
+>
   {#each cards as c, i (c.instance_id)}
     <div
       class="hand-slot"
-      style:transform="rotate({fanAngle(i, cards.length)}deg) translateY({fanLift(
-        i,
-        cards.length,
-      )}px)"
+      style:transform={layout === "stacked"
+        ? "none"
+        : `rotate(${fanAngle(i, cards.length)}deg) translateY(${fanLift(i, cards.length)}px)`}
     >
       <!-- Inner wrapper carries the deal-in / deal-out transforms so
            they don't fight the .hand-slot's fan-layout transform. -->
@@ -129,6 +142,17 @@
     margin-left: -42px;
   }
   .hand.opponent .hand-slot:first-child {
+    margin-left: 0;
+  }
+  /* Stacked layout: drop the fan rotation + overshoot the overlap so
+     cards read as a neat deck-like stack rather than a rotated fan.
+     -60% negative margin produces a tight overlap where only the top
+     sliver of each trailing card peeks out. Works for both self and
+     opponent hands. */
+  .hand.stacked .hand-slot {
+    margin-left: -60%;
+  }
+  .hand.stacked .hand-slot:first-child {
     margin-left: 0;
   }
   /* Opponent hand sizes are inherited from the parent

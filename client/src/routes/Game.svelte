@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { GameClient } from "../lib/ws";
   import { navigate } from "../lib/router";
   import { session } from "../lib/session";
@@ -7,7 +8,7 @@
   import Board from "../lib/components/board/Board.svelte";
   import type { PlayerView } from "../lib/protocol";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
-  import { openSettings } from "../lib/settings";
+  import { openSettings, settings } from "../lib/settings";
 
   interface Props {
     gameID: string;
@@ -55,6 +56,55 @@
     armAudioOnFirstGesture();
   });
 
+  // settings.gameplay.confirmExit also covers the browser-level
+  // close-tab / hard-refresh case via beforeunload. Returning a
+  // string from the handler triggers the browser's native confirm
+  // dialog (text is browser-controlled — the string we return is
+  // ignored in modern browsers but the non-empty return value still
+  // arms the prompt). Only installed while the gate is on AND the
+  // game is live, so an idle lobby tab doesn't ask "really leave?".
+  onMount(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (
+        $settings.gameplay.confirmExit &&
+        view?.state === "active" &&
+        !viewerEliminated &&
+        !gameEnded
+      ) {
+        e.preventDefault();
+        return "Leave this game?";
+      }
+      return undefined;
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  });
+
+  // settings.gameplay.autoPassPriority: auto-press the pass button
+  // when (a) the user toggled it on, (b) priority just landed on
+  // the viewer, (c) the stack is empty, and (d) it's NOT the
+  // viewer's own turn. Limiting to opponents' turns avoids
+  // auto-passing through the viewer's own main phase before they've
+  // had a chance to make plays. The full "auto-pass when nothing
+  // legal to do" check waits on S13.3's legality engine; this
+  // simplified rule still catches the common 80% case (passing
+  // through opponents' upkeep / draw / end steps).
+  let lastAutoPassedSeq = $state(-1);
+  $effect(() => {
+    if (!$settings.gameplay.autoPassPriority) return;
+    if (!viewerHasPriority) return;
+    if (viewerIsActive) return;
+    if ((view?.stack?.cards?.length ?? 0) > 0) return;
+    if (mulligansOpen || gameEnded || viewerEliminated) return;
+    // Dedupe by snapshot seq so we don't fire twice on the same
+    // priority window if the effect re-runs for an unrelated reason
+    // before the next snapshot lands.
+    const seq = $lastSeq;
+    if (seq === lastAutoPassedSeq) return;
+    lastAutoPassedSeq = seq;
+    client.sendAction("pass_priority");
+  });
+
   // sendAction is a thin shim over GameClient.sendAction that the
   // Board passes to its child components for interactive mutations.
   // Bound at module scope so session changes (logout + re-login) pick
@@ -64,6 +114,21 @@
   };
 
   function back(): void {
+    // settings.gameplay.confirmExit: guard the manual back-to-lobby
+    // button so a misclick doesn't drop a live game. The browser
+    // close-tab case is handled separately via beforeunload below.
+    // We only prompt while a game is in flight — during the lobby
+    // phase (state === "lobby") there's nothing to lose.
+    if (
+      $settings.gameplay.confirmExit &&
+      view?.state === "active" &&
+      !viewerEliminated &&
+      !gameEnded
+    ) {
+      if (!confirm("Leave this game? Your seat stays active — you can rejoin from the lobby.")) {
+        return;
+      }
+    }
     navigate("#/lobby");
   }
 

@@ -30,6 +30,20 @@
   outline-offset: 1px;
 }
 
+/* Battlefield card size — settings.display.cardSize drives this.
+   Card.svelte reads width/height from --card-w / --card-h, so a
+   :root override cascades to every card. Per-panel overrides
+   (opponent shrinking) in PlayerPanel still layer on top because
+   they're at a deeper selector. */
+:root[data-card-size="small"] {
+  --card-w: 60px;
+  --card-h: 84px;
+}
+:root[data-card-size="large"] {
+  --card-w: 100px;
+  --card-h: 140px;
+}
+
 body {
   margin: 0;
   padding: 0;
