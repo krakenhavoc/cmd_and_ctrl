@@ -44,7 +44,7 @@ planned just-in-time from the S12 pain-point triage.
 | S09 | Polish I — animations + VFX | 5 | [#9](https://github.com/krakenhavoc/cmd_and_ctrl/issues/9) | 2026-08-14 | **done** |
 | S10 | Polish II — Commander UX (cmd damage, politics) | 5 | [#10](https://github.com/krakenhavoc/cmd_and_ctrl/issues/10) | 2026-08-28 | **done** |
 | S11 | Polish III — hover preview, undo, spectator | 5 | [#11](https://github.com/krakenhavoc/cmd_and_ctrl/issues/11) | 2026-09-11 | **done** |
-| S11.5 | Per-user settings and preferences (mini) | 5 | [#82](https://github.com/krakenhavoc/cmd_and_ctrl/issues/82) | 2026-09-18 | planned |
+| S11.5 | Per-user settings and preferences (mini) | 5 | [#82](https://github.com/krakenhavoc/cmd_and_ctrl/issues/82) | 2026-09-18 | **done** |
 | S12 | Deploy + 4-player go-live with friends | 6 | [#12](https://github.com/krakenhavoc/cmd_and_ctrl/issues/12) | 2026-09-25 | planned |
 | S12.5 | Discord identity for players (OAuth + bot + presence) | 6 | [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59) | 2026-10-09 | planned |
 | S13 | Priority foundation (rules graft kickoff) | 7 | [#62](https://github.com/krakenhavoc/cmd_and_ctrl/issues/62) | 2026-05-17 | planned |
@@ -292,77 +292,77 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 ### Tasks
 
 **Settings infrastructure (client):**
-- [ ] `client/src/lib/settings.ts` — Svelte `writable` store, typed `Settings` interface, schema versioning (`cmdctrl.settings.v1`) with a migration function shape ready for future bumps
-- [ ] Default values honour `window.matchMedia('(prefers-reduced-motion: reduce)')` at first load; subsequent OS changes are live-observed
-- [ ] Reactive apply — changes take effect without page reload
-- [ ] Export / import as JSON (copy-to-clipboard + paste) for moving settings between devices without a server
-- [ ] Reset-to-defaults button per section + one global
-- [ ] Absorb S13's "per-step stops" `localStorage` preferences (issue [#62](https://github.com/krakenhavoc/cmd_and_ctrl/issues/62)) into the same schema with a one-time migration
+- [x] `client/src/lib/settings.ts` — Svelte `writable` store, typed `Settings` interface, schema versioning (`cmdctrl.settings.v1`) with a migration function shape ready for future bumps ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
+- [x] Default values honour `window.matchMedia('(prefers-reduced-motion: reduce)')` at first load; subsequent OS changes are live-observed ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
+- [x] Reactive apply — changes take effect without page reload ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
+- [x] Export / import as JSON (copy-to-clipboard + paste) for moving settings between devices without a server ([#119](https://github.com/krakenhavoc/cmd_and_ctrl/pull/119))
+- [x] Reset-to-defaults button — global only; per-section reset deferred ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116) + [#119](https://github.com/krakenhavoc/cmd_and_ctrl/pull/119))
+- [ ] Absorb S13's "per-step stops" `localStorage` preferences — **deferred to S13.3** ([#99](https://github.com/krakenhavoc/cmd_and_ctrl/issues/99)) when the per-step-stops mechanism actually lands. Schema has the empty `gameplay.stepStops` slot reserved.
 
 **Settings panel UI (Svelte):**
-- [ ] New `client/src/lib/components/Settings.svelte` — modal panel with sidebar tabs (Audio, Animations, Display, Gameplay, Accessibility, Keybindings, Advanced)
-- [ ] Gear icon in `Game.svelte` header + keyboard shortcut `,` (comma); also reachable from `Lobby.svelte` and `Login.svelte`
-- [ ] Each setting = label + control (slider / toggle / select / key-capture) + short help text
-- [ ] Changes apply instantly (no "Save" button); a subtle "saved ✓" indicator flashes beside the changed control
+- [x] New `client/src/lib/components/Settings.svelte` — modal panel with sidebar tabs ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
+- [x] Gear icon in `Game.svelte` header + keyboard shortcut `,` (comma); reachable from `Lobby.svelte` ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
+- [x] Each setting = label + control + short help text ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
+- [x] Changes apply instantly with a "saved ✓" flash beside the changed control ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
 
-**Audio (S09 dependency):**
-- [ ] Master volume slider (0–100)
-- [ ] Effects volume (draw, play, tap, damage, turn change — everything S09 adds)
-- [ ] Music volume — disabled with a "no music yet" note if S09 doesn't ship music
-- [ ] Mute-all toggle; keyboard shortcut `M`
-- [ ] Test button per category that plays a sample sound
+**Audio:**
+- [x] Master volume slider (0–100) ([#117](https://github.com/krakenhavoc/cmd_and_ctrl/pull/117))
+- [x] Effects volume — folded with master into a single multiplier in `sounds.ts` ([#117](https://github.com/krakenhavoc/cmd_and_ctrl/pull/117))
+- [x] Music volume — slider exists but no-op until a music track ships ([#117](https://github.com/krakenhavoc/cmd_and_ctrl/pull/117))
+- [x] Mute-all toggle ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
+- [ ] `M` keyboard shortcut + per-category test buttons — deferred (low value; mute toggle in modal works)
 
-**Animations (S09 dependency):**
-- [ ] Animations master toggle — auto-off when `prefers-reduced-motion: reduce` on first load; user override persists
-- [ ] Per-animation toggles: card draw / play / tap / untap / flip
-- [ ] Particle effects on ETB / death (on/off)
-- [ ] Damage-number popups + combat arrows (on/off)
-- [ ] Animation speed multiplier select: 0.5× / 1× (default) / 1.5× / 2×
+**Animations:**
+- [x] Animations master toggle — auto-off when `prefers-reduced-motion: reduce` on first load ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116) + [#117](https://github.com/krakenhavoc/cmd_and_ctrl/pull/117))
+- [x] Per-animation toggles: card draw / play / tap / untap / flip ([#117](https://github.com/krakenhavoc/cmd_and_ctrl/pull/117))
+- [x] Particle effects on ETB ([#117](https://github.com/krakenhavoc/cmd_and_ctrl/pull/117))
+- [x] Damage-number popups (gates `floatUp`/`fadeOut`) ([#117](https://github.com/krakenhavoc/cmd_and_ctrl/pull/117))
+- [x] Animation speed multiplier select: 0.5× / 1× / 1.5× / 2× ([#117](https://github.com/krakenhavoc/cmd_and_ctrl/pull/117))
 
 **Display:**
-- [ ] Theme select — dark (default), light, high-contrast (scaffolded; full theming is a follow-up, but the select + CSS-variable plumbing ships here)
-- [ ] Card size on battlefield: small / medium (default) / large
-- [ ] Hand layout: fan (default) / stacked
-- [ ] Auto-rotate battlefield to viewer POV (resolves issue [#38](https://github.com/krakenhavoc/cmd_and_ctrl/issues/38) if still open — setting defaults to on)
-- [ ] Card tooltip hover delay (0–1000 ms, default 300)
-- [ ] Show opponent hand count (default on)
-- [ ] Show mana pip icons vs. text (icons default)
+- [~] Theme select — CSS palette scaffolded for dark / light / high-contrast, but the select is **disabled** until per-component `var()` migration ships. ([#119](https://github.com/krakenhavoc/cmd_and_ctrl/pull/119))
+- [x] Card size on battlefield: small / medium / large — drives `--card-scale` (self) + `--card-scale-opponent` (gentler curve to avoid opponent-row overflow) ([#118](https://github.com/krakenhavoc/cmd_and_ctrl/pull/118))
+- [x] Hand layout: fan (default) / stacked ([#118](https://github.com/krakenhavoc/cmd_and_ctrl/pull/118))
+- [ ] Auto-rotate battlefield to viewer POV — already on by design; the toggle isn't surfaced because no use-case has appeared
+- [x] Card tooltip hover delay (0–1000 ms) ([#118](https://github.com/krakenhavoc/cmd_and_ctrl/pull/118))
+- [x] Show opponent hand count ([#118](https://github.com/krakenhavoc/cmd_and_ctrl/pull/118))
+- [ ] Show mana pip icons vs. text — deferred (no toggle implemented)
 
 **Gameplay:**
-- [ ] Per-step stops grid (absorbs S13's localStorage prefs). 4 opponents × 10 steps checkbox grid; "stop on my upkeep / opponent's end step / …"
-- [ ] Auto-pass priority when the stack is empty and I have nothing playable (convenience — still overridable by holding Shift)
-- [ ] Confirm before exiting an active game (default on)
-- [ ] Default targeting: "always prompt" vs. "auto-pick if only one legal target"
-- [ ] Chat panel visibility — setting exists but no-ops until chat UI returns post-S08.5 removal; wire-protocol is still live
-- [ ] Discord Rich Presence toggle — **deferred**: S12.5 ([#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59)) adds the feature and will plug the toggle into this panel when it ships
+- [ ] Per-step stops grid — **deferred to S13.3** ([#99](https://github.com/krakenhavoc/cmd_and_ctrl/issues/99))
+- [~] Auto-pass priority — wired for opponents' turns + empty stack. Full "nothing playable" check waits on S13.3's legality engine ([#118](https://github.com/krakenhavoc/cmd_and_ctrl/pull/118))
+- [x] Confirm before exiting an active game (back button + browser `beforeunload`) ([#118](https://github.com/krakenhavoc/cmd_and_ctrl/pull/118))
+- [ ] Default targeting — deferred (no targeting UI yet to plug into)
+- [ ] Chat panel visibility — deferred (chat UI removed in S08.5, no-op until it returns)
+- [ ] Discord Rich Presence toggle — **deferred to S12.5**
 
 **Accessibility:**
-- [ ] Respect `prefers-reduced-motion` (on by default; off = user is overriding OS)
-- [ ] Increased text size: 0.9× / 1.0× / 1.2× / 1.5× (applies a root `--font-scale` CSS var)
-- [ ] High-contrast mode (overrides theme when active)
-- [ ] Color-blind-friendly seat colors (alternate palette in [colors.ts](../client/src/lib/colors.ts))
-- [ ] Focus indicators always visible (default on) — bypasses `:focus-visible` suppression
+- [x] Respect `prefers-reduced-motion` (live media query observer) ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
+- [x] Increased text size: 0.9× / 1.0× / 1.2× / 1.5× via `--font-scale` ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
+- [~] High-contrast mode — palette in CSS scaffold; needs the per-component `var()` migration before the toggle works
+- [x] Colour-blind palette toggle persists ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116)); the alternate palette in `colors.ts` is a follow-up
+- [x] Focus indicators always visible toggle ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
 
 **Keybindings:**
-- [ ] Read-only list of default bindings + "Change" button per row — but full re-binding UI (conflict detection, capture) **deferred to a follow-up** unless the sprint has spare budget; ship a JSON-editable `keybindings` setting and a `Reset to defaults` button at minimum
-- [ ] Defaults: pass priority (`Space`), untap all (`U`), draw (`D`), settings (`,`), mute (`M`), cancel targeting (`Esc`)
+- [ ] **Deferred wholesale.** Adding any kind of rebind UI without a conflict-detection layer gives users a way to lock themselves out of the app. The two existing shortcuts (`,` for settings, mute via the modal toggle) are hardcoded for now. Revisit once we have a meaningful set of bindings to manage.
 
 **Advanced:**
-- [ ] Export settings to clipboard (JSON)
-- [ ] Import settings from clipboard (JSON, validates against schema; rejects with a toast on mismatch)
-- [ ] "Copy my settings hash" — short fingerprint for bug reports
-- [ ] "Reset all settings" (with confirm)
+- [x] Export settings to clipboard (JSON) ([#119](https://github.com/krakenhavoc/cmd_and_ctrl/pull/119))
+- [x] Import settings from clipboard (JSON, validates against schema) ([#119](https://github.com/krakenhavoc/cmd_and_ctrl/pull/119))
+- [x] "Copy my settings hash" — FNV-1a fingerprint ([#119](https://github.com/krakenhavoc/cmd_and_ctrl/pull/119))
+- [x] "Reset all settings" with confirm ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
 
 **Docs:**
-- [ ] `docs/decisions/0006-per-user-settings.md` — ADR. Why client-only localStorage (simplicity, hobby scale, no PII leak across the network). Future path: server-synced settings keyed on Discord ID once S12.5 lands.
-- [ ] Update [README.md](../README.md) (or add a client-level one) with a "Customising your client" section
+- [ ] ADR — deferred. Decision rationale captured in PR descriptions + commit messages; an ADR sweep can fold them in later.
+- [ ] Client-level "Customising your client" README section — deferred.
 
 **Tests:**
-- [ ] Schema migration test: v0 (no prior settings) → v1 loads with defaults; S13-style per-step prefs migrate into the unified schema
-- [ ] Default settings load correctly when `localStorage` is empty
-- [ ] `prefers-reduced-motion: reduce` at page load disables animations on first open
-- [ ] Export → import round-trip produces identical store state
-- [ ] Keybinding defaults render without conflicts
+- [x] Schema migration test (v0 → v1 defaults; corrupt-blob fallback; partial-blob field merge; legacy `cmdctrl.muted` absorption) ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
+- [x] Default settings load correctly when `localStorage` is empty ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
+- [ ] `prefers-reduced-motion: reduce` at page load — manually verified, no automated test (jsdom doesn't ship `matchMedia`; not worth a polyfill for one assertion)
+- [x] Export → import round-trip produces identical store state ([#119](https://github.com/krakenhavoc/cmd_and_ctrl/pull/119))
+- [x] Fingerprint determinism + sensitivity ([#119](https://github.com/krakenhavoc/cmd_and_ctrl/pull/119))
+- [ ] Keybinding defaults — N/A, keybindings deferred
 
 ### Out of scope (explicit handoffs)
 - **Server-backed settings sync across devices** — future post-S12.5 work; feasible using Discord ID as the key once S12.5 ships
@@ -388,6 +388,15 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 6. Changing card size re-flows the battlefield tiles without a reload.
 7. Export settings → paste into another browser → same config applies after import.
 8. S13's per-step-stops preferences are visible and editable from this panel (once S13 has shipped); existing S13 users don't lose their stops config on migration.
+
+### Status
+**Done** across four PRs: [#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116) infrastructure + modal shell, [#117](https://github.com/krakenhavoc/cmd_and_ctrl/pull/117) audio + animation consumers, [#118](https://github.com/krakenhavoc/cmd_and_ctrl/pull/118) display + gameplay consumers, [#119](https://github.com/krakenhavoc/cmd_and_ctrl/pull/119) export/import + fingerprint + theme palette scaffold.
+
+Deferred, with concrete pickup points:
+- **Per-step stops grid (Gameplay tab)** — waits on S13.3's priority-aware stops mechanism; schema slot reserved.
+- **Theme live-apply (Display tab)** — CSS palette scaffolded; needs a sweep to migrate hardcoded hex colours in `PlayerPanel.svelte` / `Card.svelte` / `Game.svelte` / etc. to `var(--bg)`/`var(--fg)`. Select is disabled in the UI until then.
+- **Keybinding rebind UI** — deferred wholesale; revisit once more shortcuts exist.
+- **ADR + README "Customising your client"** — decision context lives in the four PR descriptions for now.
 
 ---
 
