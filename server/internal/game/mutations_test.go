@@ -2225,6 +2225,65 @@ func TestS131CommanderZoneReplacementOnlyForCommanders(t *testing.T) {
 	}
 }
 
+// TestS131ConcedeClearsStackItems covers CR 800.4a — when a player
+// leaves the game, every spell + ability they control on the stack
+// ceases to exist. Spell items move to exile (closest sandbox
+// analogue to "cease to exist"); ability items + pending triggers
+// disappear from StackMeta / PendingTriggers.
+func TestS131ConcedeClearsStackItems(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	leaver := g.Seats[1]
+	other := g.Seats[2]
+
+	// Two spells from leaver + one from other on the stack.
+	leaverSpell := pushTypedCardToHand(leaver, "Counterspell", "Instant")
+	if err := g.CastSpell(leaver.ID, leaverSpell, CastSpellParams{}); err != nil {
+		t.Fatalf("leaver cast: %v", err)
+	}
+	otherSpell := pushTypedCardToHand(other, "Lightning Bolt", "Instant")
+	if err := g.CastSpell(other.ID, otherSpell, CastSpellParams{}); err != nil {
+		t.Fatalf("other cast: %v", err)
+	}
+	// Activated ability from leaver pointing at a card they control.
+	leaverSrc := pushCreatureToBattlefield(t, g, leaver)
+	if err := g.ActivateAbility(leaver.ID, leaverSrc, AbilityParams{Label: "ability"}); err != nil {
+		t.Fatalf("ActivateAbility: %v", err)
+	}
+	// Pending trigger from leaver.
+	if err := g.AnnounceTrigger(leaver.ID, leaverSrc, AbilityParams{Label: "trigger"}); err != nil {
+		t.Fatalf("AnnounceTrigger: %v", err)
+	}
+
+	if err := g.Concede(leaver.ID); err != nil {
+		t.Fatalf("Concede: %v", err)
+	}
+
+	// Leaver's spell should be exiled; other's spell should still be on stack.
+	if g.Stack.Contains(leaverSpell) {
+		t.Errorf("leaver's spell still on stack after concede")
+	}
+	if !g.Exile.Contains(leaverSpell) {
+		t.Errorf("leaver's spell did not move to exile (cease-to-exist analogue)")
+	}
+	if !g.Stack.Contains(otherSpell) {
+		t.Errorf("other's spell wrongly removed by concede")
+	}
+
+	// All leaver-controlled stack metadata must be gone.
+	for _, item := range g.StackMeta {
+		if item != nil && item.Controller == leaver.ID {
+			t.Errorf("leaver-controlled StackMeta entry persisted after concede: %+v", item)
+		}
+	}
+	// Pending triggers from leaver dropped.
+	for _, t2 := range g.PendingTriggers {
+		if t2 != nil && t2.Controller == leaver.ID {
+			t.Errorf("leaver-controlled pending trigger persisted after concede")
+		}
+	}
+}
+
 // TestS131SplitSecondClearsOnResolve verifies that after the split-
 // second item resolves, SplitSecondActive flips back to false and
 // new casts go through.

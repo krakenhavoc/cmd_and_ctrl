@@ -809,21 +809,18 @@ func (g *Game) runStateChecksLocked() {
 }
 
 // eliminatePlayerLocked transitions a seated player to eliminated
-// state and walks the cursor past them if they were the active seat.
-// Used by Concede AND by the SBA loop. Caller must hold g.mu.
-//
-// Game-end transition (StateActive → StateEnded when ≤ 1 survivor
-// remains) lives in Concede / the SBA loop wrapper, NOT here, so
-// chained eliminations during one SBA pass don't end the game
-// mid-iteration.
+// state, cleans up their stack items + pending triggers, walks the
+// cursor past them if they were the active seat, and runs the
+// game-end check. Used by Concede AND by the SBA loop. Caller must
+// hold g.mu.
 func (g *Game) eliminatePlayerLocked(p *Player) {
 	if p.Eliminated {
 		return
 	}
 	p.Eliminated = true
 	p.LosesAtNextSBA = false
+	g.cleanupStackForEliminatedLocked(p.ID)
 	g.advancePastEliminatedLocked()
-	// Sub-PR 10 will wire cleanupStackForEliminatedLocked here.
 	// Game-end check.
 	survivors := 0
 	for _, s := range g.Seats {
@@ -834,6 +831,51 @@ func (g *Game) eliminatePlayerLocked(p *Player) {
 	if survivors <= 1 {
 		g.State = StateEnded
 	}
+}
+
+// cleanupStackForEliminatedLocked implements CR 800.4a — when a
+// player leaves the game, every spell and ability they control on
+// the stack ceases to exist. Spell items have their card removed
+// from Game.Stack to exile (closest analogue to "cease to exist").
+// Ability items are just deleted from StackMeta. Pending triggers
+// controlled by the eliminated player are dropped from the queue.
+//
+// Targets on remaining stack items pointing at the eliminated
+// player are NOT scrubbed here — the existing target re-check at
+// resolution time (CR 608.2b, see spellAllTargetsIllegalLocked)
+// already turns those slots illegal, so the spell either resolves
+// partially or is countered by game rules at the moment the
+// mechanic actually matters.
+//
+// Caller must hold g.mu.
+//
+// S13.1.
+func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
+	if len(g.StackMeta) > 0 {
+		toRemove := make([]uuid.UUID, 0, len(g.StackMeta))
+		for id, item := range g.StackMeta {
+			if item != nil && item.Controller == playerID {
+				toRemove = append(toRemove, id)
+			}
+		}
+		for _, id := range toRemove {
+			item := g.StackMeta[id]
+			delete(g.StackMeta, id)
+			if item != nil && item.Kind == StackItemSpell && g.Stack != nil && g.Stack.Contains(id) {
+				_, _ = MoveCard(g.Stack, g.Exile, id)
+			}
+		}
+	}
+	if len(g.PendingTriggers) > 0 {
+		kept := g.PendingTriggers[:0]
+		for _, t := range g.PendingTriggers {
+			if t == nil || t.Controller != playerID {
+				kept = append(kept, t)
+			}
+		}
+		g.PendingTriggers = kept
+	}
+	g.recomputeSplitSecondLocked()
 }
 
 // routeBattlefieldCardToOwnerGraveyardLocked moves a battlefield
@@ -1550,24 +1592,10 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 	if p.Eliminated {
 		return ErrPlayerEliminated
 	}
-	p.Eliminated = true
-
-	// If the conceding seat held priority or was the active turn, the
-	// turn cursor must advance past them — otherwise the table sits
-	// waiting on a player who can never act again. Pass to the next
-	// non-eliminated seat in turn order.
-	g.advancePastEliminatedLocked()
-
-	// Game-end check: exactly one survivor → StateEnded.
-	survivors := 0
-	for _, s := range g.Seats {
-		if !s.Eliminated {
-			survivors++
-		}
-	}
-	if survivors <= 1 {
-		g.State = StateEnded
-	}
+	// S13.1: delegate to the unified elimination path so concede
+	// fires the same stack cleanup + cursor advance + game-end
+	// check as an SBA-driven loss.
+	g.eliminatePlayerLocked(p)
 	return nil
 }
 
