@@ -80,8 +80,8 @@ const (
 	// where the chooser isn't the player who's being discarded
 	// from (S14). For the simpler S13.4 cleanup case, callers
 	// still use TypeDiscardSelection.
-	TypeResolveChoice Type = "resolve_choice"
-	TypeSetMaxHandSize   Type = "set_max_hand_size"
+	TypeResolveChoice  Type = "resolve_choice"
+	TypeSetMaxHandSize Type = "set_max_hand_size"
 )
 
 // ErrUnknownType is returned when Dispatch receives an action type it

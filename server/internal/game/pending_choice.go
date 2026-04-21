@@ -27,16 +27,17 @@ import "github.com/google/uuid"
 // ResolvePendingChoice fires and by the client when rendering the
 // picker. Values:
 //
-//   "discard_from_hand" — chooser picks Count card IDs from
-//                         FromPlayer's hand; those cards move to
-//                         FromPlayer's graveyard.
+//	"discard_from_hand" — chooser picks Count card IDs from
+//	                      FromPlayer's hand; those cards move to
+//	                      FromPlayer's graveyard.
 //
 // Future kinds (reserved names, not implemented yet):
-//   "mode_pick"         — chooser picks a mode index for a modal
-//                         spell.
-//   "mill_reveal"       — chooser picks which of the revealed top-N
-//                         library cards go where (Brainstorm's
-//                         put-two-back half).
+//
+//	"mode_pick"         — chooser picks a mode index for a modal
+//	                      spell.
+//	"mill_reveal"       — chooser picks which of the revealed top-N
+//	                      library cards go where (Brainstorm's
+//	                      put-two-back half).
 type PendingChoiceKind string
 
 const (
