@@ -121,6 +121,7 @@
           class="item"
           class:cast-targetable={stackTargetable}
           style:--seat-color={seatColor(seatNum)}
+          data-stack-item-id={item.id}
           onclick={stackTargetable ? () => onTargetStackItem?.(item) : undefined}
           onkeydown={(e) => {
             if (stackTargetable && (e.key === "Enter" || e.key === " ")) {
