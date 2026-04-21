@@ -1,20 +1,17 @@
 <script lang="ts">
   // StackOverlay is the floating display of the shared stack zone,
-  // anchored at (0.2, 0.2) of the board area — top-left quadrant.
-  // Mirrors the placement convention of HoverZoomOverlay (top-right
-  // at 0.8, 0.2) so both overlays share visual hierarchy without
-  // colliding. Visible only when the stack has metadata items
-  // (StackMeta is the source of truth post-S13.1; the legacy
-  // ZoneView fallback covers admin direct-drops that bypass the
-  // cast verb).
+  // pinned to the top-left corner of the board. Visually mirrors
+  // HoverZoomOverlay (top-right): same clamp width, same
+  // image-over-info shape. Each stack item renders as its own panel
+  // so players can read the full card art + caster + targets at a
+  // glance without hovering.
   //
-  // Each entry is a small Card stacked from bottom to top with a
-  // fixed offset, decorated with the caster's seat colour and a
-  // counter button visible to the priority holder.
+  // Items stack top-to-bottom with the top of the visual stack
+  // (most-recently-cast, resolves first) at the top of the overlay.
+  // The container scrolls if a deep stack overflows viewport height.
 
   import type { CardView, PlayerView, StackItemView, ZoneView } from "../../protocol";
   import { seatColor } from "../../colors";
-  import Card from "./Card.svelte";
 
   interface Props {
     stack: ZoneView;
@@ -36,9 +33,6 @@
     onCounter,
   }: Props = $props();
 
-  // Map instance_id → CardView for rendering spell items. Ability
-  // items don't have a card on the stack; their source card stays
-  // in its origin zone, so for them we render a label-only chip.
   const cardByID = $derived.by(() => {
     const out = new Map<string, CardView>();
     for (const c of stack.cards) {
@@ -70,7 +64,6 @@
         if (t.kind === "player") {
           return seatBySeatID.get(t.id ?? "")?.name ?? "player";
         }
-        // Card target: try to find a meaningful name.
         const c = cardByID.get(t.id ?? "");
         return c?.name ?? "card";
       })
@@ -78,68 +71,90 @@
     return `→ ${parts}`;
   }
 
-  // Items render bottom-to-top so the most-recently-cast (top of
-  // the stack) sits on top of the pile. The wire delivers
-  // stack_items in stack order (bottom..top) per the server's
-  // viewOfStackItemsInStackOrder helper.
-  const items = $derived(stackItems ?? []);
+  function imgSrcFor(item: StackItemView): string | null {
+    const c = cardByID.get(item.id);
+    if (!c || !c.scryfall_id) return null;
+    return `/cards/${c.scryfall_id}/image?size=normal`;
+  }
+
+  function titleFor(item: StackItemView): string {
+    const c = cardByID.get(item.id);
+    if (c?.name) return c.name;
+    if (item.label) return item.label;
+    return item.kind === "triggered" ? "trigger" : "ability";
+  }
+
+  // Wire delivers stack_items bottom..top (per viewOfStackItemsInStackOrder
+  // on the server). The user-facing convention is "top of stack resolves
+  // first", so we render in reverse — top entry in the overlay = top of
+  // the stack = next to resolve.
+  const displayItems = $derived([...(stackItems ?? [])].reverse());
   const triggers = $derived(pendingTriggers ?? []);
-  const visible = $derived(items.length > 0 || triggers.length > 0 || stack.count > 0);
+  const visible = $derived(displayItems.length > 0 || triggers.length > 0 || stack.count > 0);
 </script>
 
 {#if visible}
-  <div class="overlay" aria-label={`stack: ${items.length} on the stack`}>
+  <div class="overlay" aria-label={`stack: ${displayItems.length} on the stack`}>
     {#if splitSecondActive}
-      <div class="split-second" title="No responses allowed (split second is active)">
+      <div class="split-second" title="no responses allowed (split second is active)">
         ⚡ split second
       </div>
     {/if}
-    <span class="label">stack · {items.length}</span>
+    <header class="stack-head">
+      <span class="label">stack</span>
+      <span class="count">{displayItems.length}</span>
+    </header>
     <div class="items">
-      {#each items as item (item.id)}
-        <div class="item-row" style:--seat-color={seatColor(controllerSeatNum(item))}>
-          {#if cardByID.has(item.id)}
-            <div class="thumb">
-              <Card card={cardByID.get(item.id) as CardView} />
-            </div>
-          {:else}
-            <div class="ability-thumb" title="ability">
-              {item.kind === "triggered" ? "⚡" : "✦"}
-            </div>
-          {/if}
-          <div class="meta">
-            <div class="line caster">{controllerName(item)}</div>
-            {#if cardByID.has(item.id) && cardByID.get(item.id)?.name}
-              <div class="line spell-name">{cardByID.get(item.id)?.name}</div>
+      {#each displayItems as item (item.id)}
+        {@const seatNum = controllerSeatNum(item)}
+        {@const src = imgSrcFor(item)}
+        <div class="item" style:--seat-color={seatColor(seatNum)}>
+          <div class="image-wrap">
+            {#if src}
+              <img {src} alt={titleFor(item)} loading="lazy" decoding="async" />
+            {:else}
+              <div class="image-fallback">
+                <span class="glyph">{item.kind === "triggered" ? "⚡" : "✦"}</span>
+                <span class="fb-name">{titleFor(item)}</span>
+              </div>
             {/if}
-            {#if item.label}
-              <div class="line label-text">{item.label}</div>
-            {/if}
-            {#if item.targets && item.targets.length > 0}
-              <div class="line target-text">{targetLabel(item)}</div>
-            {/if}
-            {#if item.x_value}
-              <div class="line">X = {item.x_value}</div>
-            {/if}
-            {#if item.modes && item.modes.length > 0}
-              <div class="line">modes: {item.modes.join(", ")}</div>
-            {/if}
-            {#if item.split_second}
-              <div class="line flag">split-second</div>
-            {/if}
-            {#if item.hold_priority}
-              <div class="line flag">held priority</div>
-            {/if}
+            <button
+              type="button"
+              class="counter-btn"
+              disabled={!viewerHasPriority}
+              onclick={() => onCounter(item)}
+              title={viewerHasPriority ? "counter this item" : "you don't hold priority"}
+            >
+              counter
+            </button>
           </div>
-          <button
-            type="button"
-            class="counter-btn"
-            disabled={!viewerHasPriority}
-            onclick={() => onCounter(item)}
-            title={viewerHasPriority ? "counter this item" : "you don't hold priority"}
-          >
-            counter
-          </button>
+          <div class="info">
+            <div class="title">{titleFor(item)}</div>
+            <div class="caster">
+              <span class="seat-dot"></span>
+              <span class="caster-name">{controllerName(item)}</span>
+              {#if item.kind !== "spell"}
+                <span class="kind-chip">{item.kind}</span>
+              {/if}
+            </div>
+            {#if item.targets && item.targets.length > 0}
+              <div class="target-text">{targetLabel(item)}</div>
+            {/if}
+            <div class="meta-flags">
+              {#if item.x_value}
+                <span class="chip">X = {item.x_value}</span>
+              {/if}
+              {#if item.modes && item.modes.length > 0}
+                <span class="chip">modes: {item.modes.join(", ")}</span>
+              {/if}
+              {#if item.split_second}
+                <span class="chip flag">split-second</span>
+              {/if}
+              {#if item.hold_priority}
+                <span class="chip flag">held priority</span>
+              {/if}
+            </div>
+          </div>
         </div>
       {/each}
     </div>
@@ -166,127 +181,199 @@
 <style>
   .overlay {
     position: absolute;
-    left: 20%;
-    top: 20%;
-    transform: translate(-50%, -50%);
+    left: 12px;
+    top: 12px;
+    width: clamp(220px, 26vw, 380px);
+    max-height: calc(100vh - 24px);
     background: #0b1220;
     border: 1px solid #4a5270;
     border-radius: 12px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
     z-index: 40;
-    padding: 10px 10px 14px;
-    box-sizing: border-box;
-    min-width: 240px;
-    max-width: 320px;
+    display: flex;
+    flex-direction: column;
+    color: #e0e6f5;
+    font-size: 12px;
+    overflow: hidden;
     pointer-events: auto;
-  }
-  .label {
-    display: block;
-    font-size: 9px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: #6c7a99;
-    margin-bottom: 6px;
   }
   .split-second {
     background: #4a1a1a;
     color: #ffd6d6;
-    border: 1px solid #c54848;
-    padding: 2px 6px;
-    border-radius: 4px;
+    border-bottom: 1px solid #c54848;
+    padding: 4px 10px;
     font-size: 11px;
-    margin-bottom: 8px;
     text-align: center;
+    letter-spacing: 0.05em;
+  }
+  .stack-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 8px 10px 6px;
+    border-bottom: 1px solid #1a2335;
+  }
+  .label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #6c7a99;
+  }
+  .count {
+    font-size: 11px;
+    font-weight: 700;
+    color: #cfd6ee;
+    font-variant-numeric: tabular-nums;
   }
   .items {
-    position: relative;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 10px;
+    padding: 10px;
+    overflow-y: auto;
+    min-height: 0;
   }
-  .item-row {
-    display: grid;
-    grid-template-columns: 56px 1fr auto;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 6px;
+  .item {
+    border: 1px solid #2a3148;
     border-left: 3px solid var(--seat-color);
+    border-radius: 8px;
     background: #131a2c;
-    border-radius: 4px;
-  }
-  .thumb {
-    width: 56px;
-    height: 78px;
-    /* Cascade card size to the child Card via the CSS vars it reads
-       for --card-w / --card-h, so the image fills the thumb rather
-       than rendering at its 80x112 default and getting cropped. */
-    --card-w: 56px;
-    --card-h: 78px;
     overflow: hidden;
-    border-radius: 3px;
-  }
-  .ability-thumb {
-    width: 40px;
-    height: 40px;
-    background: var(--seat-color);
-    color: #0c1426;
-    font-size: 22px;
-    font-weight: 700;
     display: flex;
+    flex-direction: column;
+  }
+  .image-wrap {
+    position: relative;
+    background: #0b1220;
+  }
+  .image-wrap img {
+    width: 100%;
+    aspect-ratio: 63 / 88;
+    object-fit: contain;
+    display: block;
+  }
+  .image-fallback {
+    width: 100%;
+    aspect-ratio: 63 / 88;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    border-radius: 4px;
-  }
-  .meta {
-    font-size: 11px;
+    gap: 10px;
+    background: #1a2335;
     color: #cfd6ee;
-    line-height: 1.3;
+    text-align: center;
+    padding: 12px;
+    box-sizing: border-box;
   }
-  .meta .line {
+  .image-fallback .glyph {
+    font-size: 36px;
+    color: var(--seat-color);
+  }
+  .image-fallback .fb-name {
+    font-size: 13px;
+  }
+  .counter-btn {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    background: rgba(20, 26, 44, 0.92);
+    color: #cfd6ee;
+    border: 1px solid #4a5270;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    backdrop-filter: blur(2px);
+  }
+  .counter-btn:hover:not(:disabled) {
+    background: #3a4263;
+    border-color: #6c7a99;
+  }
+  .counter-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .info {
+    padding: 6px 10px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    border-top: 1px solid #1a2335;
+  }
+  .title {
+    font-weight: 700;
+    font-size: 12px;
+    color: #e0e6f5;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .meta .caster {
+  .caster {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+  }
+  .seat-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--seat-color);
+    flex: 0 0 auto;
+  }
+  .caster-name {
     color: var(--seat-color);
     font-weight: 600;
   }
-  .meta .spell-name {
-    color: #e0e6f5;
-    font-weight: 600;
-  }
-  .meta .target-text {
-    color: #9aa5cd;
-  }
-  .meta .flag {
-    color: #c5a648;
-    font-size: 10px;
+  .kind-chip {
+    font-size: 9px;
     text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: #1a2335;
+    color: #9aa5cd;
+    border: 1px solid #2e3a55;
   }
-  .counter-btn {
-    font-size: 10px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    background: #2a3148;
-    color: #cfd6ee;
-    border: 1px solid #4a5270;
-    cursor: pointer;
+  .target-text {
+    font-size: 11px;
+    color: #9aa5cd;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .counter-btn:hover:not(:disabled) {
-    background: #3a4263;
+  .meta-flags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
   }
-  .counter-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
+  .chip {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: #1a2335;
+    color: #c8a86a;
+    border: 1px solid #2e3a55;
+  }
+  .chip.flag {
+    color: #ffd07a;
+    border-color: #5a4a1a;
+    background: #2a2010;
   }
   .pending-section {
-    margin-top: 10px;
-    padding-top: 8px;
+    padding: 8px 10px;
     border-top: 1px solid #2a3148;
+    background: #0e1424;
   }
   .trigger-list {
     list-style: none;
-    margin: 0;
+    margin: 4px 0 0;
     padding: 0;
     display: flex;
     flex-direction: column;
