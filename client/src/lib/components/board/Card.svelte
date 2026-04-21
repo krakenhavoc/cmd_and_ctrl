@@ -25,6 +25,7 @@
   import { animateTap } from "../../animations";
   import { play } from "../../sounds";
   import { settings } from "../../settings";
+  import CounterPips from "./CounterPips.svelte";
 
   interface Props {
     card: CardView;
@@ -156,10 +157,22 @@
     {#if card.goaded_by}
       <span class="badge goad" title="goaded" aria-label="goaded">GOAD</span>
     {/if}
+    <CounterPips counters={card.counters} />
+    {#if (card.damage_marked ?? 0) > 0}
+      <span class="badge damage" title={`${card.damage_marked} damage marked`} aria-label="damage">
+        {card.damage_marked}
+      </span>
+    {/if}
   {:else}
     <span class="name-fallback">{card.name}</span>
     {#if card.goaded_by}
       <span class="badge goad" title="goaded" aria-label="goaded">GOAD</span>
+    {/if}
+    <CounterPips counters={card.counters} />
+    {#if (card.damage_marked ?? 0) > 0}
+      <span class="badge damage" title={`${card.damage_marked} damage marked`} aria-label="damage">
+        {card.damage_marked}
+      </span>
     {/if}
   {/if}
 </div>
@@ -248,6 +261,18 @@
     right: 2px;
     color: #ff7a7a;
     background: rgba(80, 0, 0, 0.85);
+  }
+  .badge.damage {
+    /* Bottom-right so it stays clear of the goad / CMD badges and
+       sits next to the card's printed P/T conceptually. S13.2 — the
+       lethal-damage SBA reads damage_marked. */
+    top: auto;
+    bottom: 2px;
+    left: auto;
+    right: 2px;
+    color: #ff9090;
+    background: rgba(80, 0, 0, 0.9);
+    font-size: 11px;
   }
   .card.selected {
     box-shadow:

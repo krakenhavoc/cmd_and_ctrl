@@ -74,10 +74,13 @@
     sendAction("change_life", { delta }, seat.id);
   }
   function changePoison(delta: number): void {
-    sendAction("set_poison", { amount: Math.max(0, (seat.poison ?? 0) + delta) }, seat.id);
+    // S13.2: route through add_player_counter so the SBA loop fires
+    // (poison ≥ 10 is a game-loss). The server keeps Player.Poison
+    // in sync with the unified Counters["poison"] map.
+    sendAction("add_player_counter", { name: "poison", delta }, seat.id);
   }
   function changeEnergy(delta: number): void {
-    sendAction("set_energy", { amount: Math.max(0, (seat.energy ?? 0) + delta) }, seat.id);
+    sendAction("add_player_counter", { name: "energy", delta }, seat.id);
   }
   function toggleMonarch(): void {
     // Empty player clears; passing this seat's id sets it.
@@ -245,6 +248,18 @@
         <span class="marker energy" title={`${seat.energy} energy`} aria-label="energy">
           ⚡{seat.energy}
         </span>
+      {/if}
+      <!-- S13.2: surface non-zero player counters that aren't
+           already shown via the legacy poison / energy markers.
+           experience, rad, and any homebrew names land here. -->
+      {#if seat.counters}
+        {#each Object.entries(seat.counters) as [name, count] (name)}
+          {#if count > 0 && name !== "poison" && name !== "energy"}
+            <span class="marker counter" title={`${count} ${name}`} aria-label={name}>
+              {name === "experience" ? "⭐" : name === "rad" ? "☢" : "•"}{count}
+            </span>
+          {/if}
+        {/each}
       {/if}
     {/if}
   </span>
@@ -425,6 +440,9 @@
   }
   .marker.energy {
     color: #ffd07a;
+  }
+  .marker.counter {
+    color: #b8c8e8;
   }
   .life-controls {
     margin-left: auto;

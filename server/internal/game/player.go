@@ -139,6 +139,16 @@ type Player struct {
 	// the mana cost — players track mana on paper / in their head.
 	// Added in S13.1.
 	CommanderCasts map[uuid.UUID]int
+
+	// Counters is the per-player named counter map (S13.2 — poison,
+	// energy, experience, rad, plus any homebrew). Distinct from the
+	// per-card Card.Counters map. The legacy single-int Player.Poison
+	// and Player.Energy fields are kept in sync via SetPoison /
+	// SetEnergy / AddPlayerCounter so the older actions and the SBA
+	// loop see consistent values; new code should prefer Counters.
+	// Zero-valued entries are removed to keep the map sparse on the
+	// wire.
+	Counters map[string]int
 }
 
 // newPlayer constructs a player with empty zones and their starting

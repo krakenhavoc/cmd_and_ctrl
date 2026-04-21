@@ -439,8 +439,17 @@ func (g *Game) runStepEntryHooksLocked() {
 	case StepEndCombat:
 		g.clearCombatLocked()
 	case StepCleanup:
+		// CR 514.2: at the start of cleanup, all damage marked on
+		// permanents is removed. Lethal-damage SBA from S13.1 reads
+		// DamageMarked, so clearing it here means the per-turn
+		// damage doesn't carry over into the next turn. (S13.4 will
+		// inject the interactive discard pause between this clear
+		// and the auto-advance below.)
+		for i := range g.Battlefield.Cards {
+			g.Battlefield.Cards[i].DamageMarked = 0
+		}
 		// Cleanup grants no priority and (pending S13.4's discard UI)
-		// has no S13 work; auto-advance immediately.
+		// has no remaining S13.x work; auto-advance immediately.
 		g.Turn = g.Turn.advance(len(g.Seats))
 		g.runStepEntryHooksLocked()
 	}

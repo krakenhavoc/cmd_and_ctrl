@@ -586,44 +586,44 @@ Gap analysis behind this sprint: `Card.Counters` exists today ([server/internal/
 ### Tasks
 
 **Counter-specific state-based actions (server):**
-- [ ] CR 704.5i — planeswalker with 0 loyalty counters → owner's graveyard (extend `Game.StateBasedActions` from S13.1)
-- [ ] CR 704.5p — battle with 0 defense counters → owner's graveyard (covers post-MoM battle cards)
-- [ ] CR 704.5q — `+1/+1` and `-1/-1` on same creature: remove N of each, where N = `min(count(+1/+1), count(-1/-1))`
-- [ ] CR 704.5c — player with ≥10 poison counters loses the game
-- [ ] CR 704.5u — saga with final-chapter lore counter is sacrificed (the SBA half; the lore-counter advance trigger ships in S14+ with the effect catalog)
+- [x] CR 704.5i — planeswalker with 0 loyalty counters → owner's graveyard
+- [x] CR 704.5p — battle with 0 defense counters → owner's graveyard
+- [x] CR 704.5q — `+1/+1` and `-1/-1` cancel 1-for-1; runs BEFORE the lethal-damage / 0-toughness destruction passes (CR 704.3)
+- [x] CR 704.5c — player with ≥10 poison counters loses the game
+- [ ] CR 704.5u — saga final-chapter sacrifice: deferred to S14+ alongside the effect catalog (needs per-card final-chapter metadata)
 
 **Player-level counters (server):**
-- [ ] Add `Player.Counters map[string]int` alongside the existing `Life` int
-- [ ] `Game.AddPlayerCounter(playerID, name, delta)` mutation with existing zero-drops-key semantics
-- [ ] Wire action `add_player_counter` (payload: `{ player_id, name, delta }`)
-- [ ] Protocol: extend `PlayerView` with `counters` map; visibility unchanged (counters are public)
-- [ ] Snapshot/replay format carries `Player.Counters`
+- [x] `Player.Counters map[string]int` alongside legacy Poison/Energy ints (kept synchronised)
+- [x] `Game.AddPlayerCounter(playerID, name, delta)` mutation with zero-clamp + map-sparse semantics
+- [x] Wire action `add_player_counter` (payload: `{ name, delta }` — player-scoped)
+- [x] Protocol: `PlayerView.counters` map (sparse / omitempty)
+- [x] Clone/restore round-trip carries `Player.Counters`
 
 **Counter-type registry (server + client):**
-- [ ] `server/internal/game/counter_types.go` — canonical list from MTG comprehensive rules (approx 80 types: +1/+1, -1/-1, loyalty, charge, defense, poison, energy, experience, rad, level, lore, shield, stun, age, charge, flood, ice, time, verse, …). Used for UI iconography and structured-log tagging. Unknown counter names remain accepted — they render as text-only pips.
-- [ ] Shared TypeScript mirror in `client/src/lib/counterTypes.ts` (type list + per-type color + optional icon key)
+- [x] `server/internal/game/counter_types.go` — named constants for engine-referenced types + KnownCardCounters / KnownPlayerCounters slice forms. Unknown names round-trip without validation.
+- [x] `client/src/lib/counterTypes.ts` — TS mirror with iconography (per-type color + glyph + abbr); `counterStyle()` falls back to neutral for homebrew
 
 **Marked-damage cleanup (CR 514.2):**
-- [ ] `Card.MarkedDamage int` — distinct from counters, separate storage
-- [ ] Combat damage step writes `MarkedDamage` instead of mutating counters (currently damage routes through counters or direct toughness inspection)
-- [ ] Cleanup-step turn-based action (already auto-fires from S13) clears `MarkedDamage` on every creature
-- [ ] Lethal-damage SBA (already in S13.1) reads `MarkedDamage >= Toughness` instead of whatever the S13.1 impl uses — one-line refactor, worth doing here so S14+ don't build on the old shape
+- [x] `Card.DamageMarked int` (already shipped in S13.1 — feeds the lethal-damage SBA)
+- [x] Cleanup-step turn-based action zeros `DamageMarked` on every creature before the auto-advance
+- [x] Lethal-damage SBA reads `DamageMarked >= CurrentToughness` (S13.1)
 
 **Client UI (Svelte):**
-- [ ] Counter pip overlay on battlefield cards: stacked chips at top-right of `CardTile`; chip shows counter name abbreviation + count; color from the type registry
-- [ ] Counter inventory popover: right-click card → "Counters" menu → add/remove via per-type rows (common types pinned, free-text name entry for unknowns)
-- [ ] Player-level counter panel near `PlayerHeader.svelte`: poison (green/purple drop), energy (yellow bolt), experience (star), rad (radiation icon)
-- [ ] `client/src/lib/protocol.ts` — `CardView` + `PlayerView` gain optional `counters` field
-- [ ] Animated counter placement (borrow from the S09 GSAP primitives) — pip fade-in on add, fade-out on remove
+- [x] `CounterPips.svelte` — stacked pip overlay at top-right of every battlefield card; colour from the registry
+- [x] PlayerHeader counter row — poison/energy keep dedicated chips, generic loop renders other non-zero counters (experience ⭐, rad ☢, homebrew •); +/- routes through `add_player_counter`
+- [x] `damage_marked` badge on battlefield cards (red, bottom-right)
+- [x] `protocol.ts` — `CardView.damage_marked`, `PlayerView.counters`, `PlayerView.commander_casts`
+- [ ] Counter-inventory popover (right-click → "Counters" menu) — deferred; the CounterPips + PlayerHeader counter row are enough to verify counters at the table
+- [ ] Animated counter placement — deferred; static rendering is enough for the foundation
 
 **Docs:**
-- [ ] `docs/decisions/0005-counters.md` — ADR covering counter taxonomy sources, rationale for putting player counters on `Player` vs a separate store, why saga SBA ships here but lore-advance triggers wait for S14, marked-damage split from counters
-- [ ] `docs/protocol.md` — document `add_player_counter` action + `counters` fields on views
+- [x] `docs/decisions/0008-counter-mechanics.md` — ADR
+- [x] `docs/protocol.md` — `add_player_counter` action + `counters` / `damage_marked` field documentation
 
 **Tests:**
-- [ ] Go unit tests for each new SBA: planeswalker loyalty 0 → graveyard; battle defense 0 → graveyard; +1/+1 and -1/-1 cancel correctly (including 3×+1 + 2×-1 → 1×+1 + 0×-1); poison ≥10 → loss; saga final chapter → sacrifice
-- [ ] Regression test: marked damage clears in cleanup; no carry-over between turns
-- [ ] Test that unknown counter names round-trip through protocol without validation errors
+- [x] SBAs: planeswalker loyalty 0, battle defense 0, +1/+1 -1/-1 cancel (5-case table), poison ≥ 10 loss
+- [x] AddPlayerCounter clamps at zero; legacy Energy/Poison ints stay in sync
+- [x] Cleanup-step clears `DamageMarked`
 
 ### Out of scope (explicit handoffs)
 - **Counter-placement replacement effects** (Doubling Season, Hardened Scales, Branching Evolution) — S17 [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67)

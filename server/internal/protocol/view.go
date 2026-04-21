@@ -178,6 +178,12 @@ type PlayerView struct {
 	// {2}-per-cast surcharge — players track mana themselves.
 	// Omitted when empty.
 	CommanderCasts map[string]int `json:"commander_casts,omitempty"`
+
+	// Counters is the per-player named counter map (S13.2 — poison,
+	// energy, experience, rad, plus homebrew). The legacy `poison`
+	// and `energy` int fields above stay populated for backwards
+	// compatibility with pre-S13.2 clients. Omitted when empty.
+	Counters map[string]int `json:"counters,omitempty"`
 }
 
 // LifeChangeView is the wire representation of a single life-change
@@ -436,7 +442,22 @@ func viewOfPlayer(p *game.Player) PlayerView {
 		DiscordAvatarHash: p.DiscordAvatarHash,
 		DisplayName:       p.DisplayName,
 		CommanderCasts:    cmdrCasts,
+		Counters:          cloneStringIntMap(p.Counters),
 	}
+}
+
+// cloneStringIntMap returns nil for an empty input so json.Marshal's
+// omitempty drops the field. Otherwise allocates a fresh map so the
+// caller doesn't observe future mutations on the engine's copy.
+func cloneStringIntMap(in map[string]int) map[string]int {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]int, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
 }
 
 // viewOfPromises projects the per-pair promise map to wire format.

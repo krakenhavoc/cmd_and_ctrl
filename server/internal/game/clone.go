@@ -142,6 +142,12 @@ func clonePlayer(p *Player) *Player {
 	} else {
 		out.CommanderCasts = make(map[uuid.UUID]int)
 	}
+	if len(p.Counters) > 0 {
+		out.Counters = make(map[string]int, len(p.Counters))
+		for k, v := range p.Counters {
+			out.Counters[k] = v
+		}
+	}
 	if len(p.LifeHistory) > 0 {
 		out.LifeHistory = make([]LifeChange, len(p.LifeHistory))
 		copy(out.LifeHistory, p.LifeHistory)

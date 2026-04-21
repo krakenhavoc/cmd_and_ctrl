@@ -2284,6 +2284,180 @@ func TestS131ConcedeClearsStackItems(t *testing.T) {
 	}
 }
 
+// TestS132SBAPlaneswalkerZeroLoyalty covers CR 704.5i — a
+// planeswalker with 0 loyalty counters is moved to its owner's
+// graveyard.
+func TestS132SBAPlaneswalkerZeroLoyalty(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	pwID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: pwID,
+		Name:       "Jace",
+		TypeLine:   "Legendary Planeswalker — Jace",
+		Owner:      owner.ID,
+		Controller: owner.ID,
+	})
+	g.WithWriteLock(func() { g.runStateChecksLocked() })
+	if g.Battlefield.Contains(pwID) {
+		t.Errorf("planeswalker with 0 loyalty still on battlefield")
+	}
+	if !owner.Graveyard.Contains(pwID) {
+		t.Errorf("planeswalker did not route to owner's graveyard")
+	}
+}
+
+// TestS132SBABattleZeroDefense covers CR 704.5p — a battle with 0
+// defense counters is moved to its owner's graveyard.
+func TestS132SBABattleZeroDefense(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	id := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: id,
+		Name:       "Invasion of Tolvada",
+		TypeLine:   "Battle — Siege",
+		Owner:      owner.ID,
+		Controller: owner.ID,
+	})
+	g.WithWriteLock(func() { g.runStateChecksLocked() })
+	if g.Battlefield.Contains(id) {
+		t.Errorf("battle with 0 defense still on battlefield")
+	}
+	if !owner.Graveyard.Contains(id) {
+		t.Errorf("battle did not route to owner's graveyard")
+	}
+}
+
+// TestS132SBAPlusMinusCounterCancel covers CR 704.5q — +1/+1 and
+// -1/-1 counters on the same creature cancel 1-for-1.
+func TestS132SBAPlusMinusCounterCancel(t *testing.T) {
+	cases := []struct {
+		name      string
+		plus      int
+		minus     int
+		wantPlus  int
+		wantMinus int
+	}{
+		{"1 each cancels both", 1, 1, 0, 0},
+		{"3 plus + 2 minus → 1 plus", 3, 2, 1, 0},
+		{"2 plus + 5 minus → 3 minus", 2, 5, 0, 3},
+		{"only plus stays", 2, 0, 2, 0},
+		{"only minus stays (still alive)", 0, 1, 0, 1},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			g := newActiveGame(t)
+			owner := g.Seats[0]
+			id := uuid.New()
+			counters := map[string]int{}
+			if c.plus > 0 {
+				counters[CounterPlusOne] = c.plus
+			}
+			if c.minus > 0 {
+				counters[CounterMinusOne] = c.minus
+			}
+			g.Battlefield.PushTop(Card{
+				InstanceID: id,
+				Name:       "Test Creature",
+				TypeLine:   "Creature — Beast",
+				Power:      4,
+				Toughness:  4,
+				Owner:      owner.ID,
+				Controller: owner.ID,
+				Counters:   counters,
+			})
+			g.WithWriteLock(func() { g.runStateChecksLocked() })
+			var got *Card
+			for i := range g.Battlefield.Cards {
+				if g.Battlefield.Cards[i].InstanceID == id {
+					got = &g.Battlefield.Cards[i]
+					break
+				}
+			}
+			if got == nil {
+				t.Fatalf("creature destroyed unexpectedly")
+			}
+			if got.Counters[CounterPlusOne] != c.wantPlus {
+				t.Errorf("+1/+1: got %d, want %d", got.Counters[CounterPlusOne], c.wantPlus)
+			}
+			if got.Counters[CounterMinusOne] != c.wantMinus {
+				t.Errorf("-1/-1: got %d, want %d", got.Counters[CounterMinusOne], c.wantMinus)
+			}
+		})
+	}
+}
+
+// TestS132SBAPoisonTenLosesGame covers CR 704.5c — a player with
+// ≥ 10 poison counters loses the game.
+func TestS132SBAPoisonTenLosesGame(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	target := g.Seats[1]
+	if err := g.AddPlayerCounter(target.ID, CounterPoison, PoisonLethal); err != nil {
+		t.Fatalf("AddPlayerCounter: %v", err)
+	}
+	if !target.Eliminated {
+		t.Errorf("player at %d poison not eliminated", PoisonLethal)
+	}
+	if target.Poison != PoisonLethal {
+		t.Errorf("Player.Poison legacy field out of sync: got %d, want %d",
+			target.Poison, PoisonLethal)
+	}
+}
+
+// TestS132AddPlayerCounterClampsAtZero verifies negative deltas
+// driving below zero clamp at zero.
+func TestS132AddPlayerCounterClampsAtZero(t *testing.T) {
+	g := newActiveGame(t)
+	target := g.Seats[0]
+	if err := g.AddPlayerCounter(target.ID, CounterEnergy, 3); err != nil {
+		t.Fatalf("add: %v", err)
+	}
+	if err := g.AddPlayerCounter(target.ID, CounterEnergy, -10); err != nil {
+		t.Fatalf("subtract: %v", err)
+	}
+	if got := target.Counters[CounterEnergy]; got != 0 {
+		t.Errorf("energy: got %d, want 0", got)
+	}
+	if target.Energy != 0 {
+		t.Errorf("Energy legacy field: got %d, want 0", target.Energy)
+	}
+}
+
+// TestS132CleanupClearsDamageMarked covers CR 514.2 — at the start
+// of cleanup, all damage marked on permanents is removed.
+func TestS132CleanupClearsDamageMarked(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	cardID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: cardID,
+		Name:       "Big Creature",
+		TypeLine:   "Creature — Avatar",
+		Power:      4,
+		Toughness:  10,
+		Owner:      owner.ID,
+		Controller: owner.ID,
+	})
+	if err := g.MarkDamage(cardID, 5); err != nil {
+		t.Fatalf("MarkDamage: %v", err)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID == cardID && c.DamageMarked != 5 {
+			t.Fatalf("setup: DamageMarked=%d, want 5", c.DamageMarked)
+		}
+	}
+	advanceTo(t, g, StepEnd)
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatalf("AdvanceStep past End: %v", err)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID == cardID && c.DamageMarked != 0 {
+			t.Errorf("DamageMarked after cleanup: got %d, want 0", c.DamageMarked)
+		}
+	}
+}
+
 // TestS131SplitSecondClearsOnResolve verifies that after the split-
 // second item resolves, SplitSecondActive flips back to false and
 // new casts go through.

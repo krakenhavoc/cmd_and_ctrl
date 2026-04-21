@@ -197,6 +197,14 @@ export interface PlayerView {
   discord_id?: string;
   discord_avatar_hash?: string;
   display_name?: string;
+  // Per-commander cast count for the Commander tax (S13.1, CR
+  // 903.8). Keyed by commander instance UUID. Drives the "+N tax"
+  // indicator next to the commander tile.
+  commander_casts?: Record<string, number>;
+  // Per-player named counter map (S13.2 — poison, energy,
+  // experience, rad, plus homebrew). The legacy `poison` and
+  // `energy` ints above stay populated for backwards compat.
+  counters?: Record<string, number>;
 }
 
 export interface LifeChangeView {
@@ -229,6 +237,10 @@ export interface CardView {
   tapped?: boolean;
   counters?: Record<string, number>;
   is_commander?: boolean;
+  // Damage marked on this creature for the lethal-damage SBA (S13.1,
+  // CR 704.5g). Cleaned up in cleanup step (S13.2, CR 514.2). Only
+  // meaningful on the battlefield; omitted when zero.
+  damage_marked?: number;
   // Normalised battlefield position in [0, 1]. Only meaningful for
   // cards on the battlefield zone; server clears to 0 on exit and
   // omits the fields for cards that have never been positioned.
