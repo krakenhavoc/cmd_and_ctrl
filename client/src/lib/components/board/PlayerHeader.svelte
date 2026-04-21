@@ -344,15 +344,24 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 10px;
-    border-radius: 6px;
-    background: color-mix(in srgb, var(--seat-color, #888) 25%, #111a2b);
-    border: 1px solid color-mix(in srgb, var(--seat-color, #888) 35%, #2e3a55);
-    color: #e0e6f5;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0) 60%),
+      color-mix(in srgb, var(--seat-color, #888) 22%, #0f1829);
+    border: 1px solid color-mix(in srgb, var(--seat-color, #888) 38%, #2e3a55);
+    color: var(--fg);
     font-size: 12px;
     height: 28px;
     box-sizing: border-box;
     position: relative;
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition:
+      box-shadow 160ms var(--ease),
+      background 160ms var(--ease),
+      border-color 160ms var(--ease);
   }
   .dmg-popup {
     position: absolute;
@@ -374,34 +383,50 @@
     color: #7aff9a;
   }
   .header.self {
-    background: color-mix(in srgb, var(--seat-color, #5fb0ff) 35%, #111a2b);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 60%),
+      color-mix(in srgb, var(--seat-color, #5fb0ff) 32%, #0f1829);
   }
   .header.active {
     border-color: var(--seat-color, #5fb0ff);
+    box-shadow:
+      0 0 0 1px var(--seat-color, #5fb0ff),
+      0 0 16px color-mix(in srgb, var(--seat-color, #5fb0ff) 40%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
   .header.priority {
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--seat-color, #5fb0ff) 60%, transparent);
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--seat-color, #5fb0ff) 70%, transparent),
+      0 0 18px color-mix(in srgb, var(--seat-color, #5fb0ff) 55%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
   .header.targetable {
     cursor: pointer;
     box-shadow:
-      0 0 0 2px #ff7a7a,
-      0 0 12px rgba(255, 122, 122, 0.5);
+      0 0 0 2px var(--danger),
+      0 0 18px rgba(255, 122, 122, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
   .header.targetable:hover {
-    background: color-mix(in srgb, #ff7a7a 25%, #111a2b);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 60%),
+      color-mix(in srgb, var(--danger) 28%, #0f1829);
   }
   .header.cast-targetable {
     cursor: pointer;
     box-shadow:
-      0 0 0 2px #ffd07a,
-      0 0 12px rgba(255, 208, 122, 0.55);
+      0 0 0 2px var(--gold),
+      0 0 18px rgba(255, 208, 122, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
   .header.cast-targetable:hover {
-    background: color-mix(in srgb, #ffd07a 25%, #111a2b);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 60%),
+      color-mix(in srgb, var(--gold) 28%, #0f1829);
   }
   .header.eliminated {
-    opacity: 0.55;
+    opacity: 0.5;
+    filter: grayscale(0.6);
   }
   .seat-dot {
     width: 10px;
@@ -413,22 +438,25 @@
   .avatar {
     /* Header is 28px tall with 4px padding = 20px content. Avatar
        is 18px + 1px ring so it sits cleanly inside without being
-       clipped on the top/bottom. A bigger portrait would need the
-       header to grow — not worth it for the 4-seat grid layout
-       where every px of vertical space is already tight. */
-    width: 18px;
-    height: 18px;
+       clipped on the top/bottom. */
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     object-fit: cover;
     flex: 0 0 auto;
-    box-shadow: 0 0 0 1px var(--seat-color, #888);
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.4),
+      0 0 0 2px var(--seat-color, #888);
   }
   .name {
     font-weight: 600;
+    letter-spacing: 0.01em;
     flex: 0 1 auto;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: var(--fg);
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
   }
   .markers {
     display: flex;
@@ -442,33 +470,47 @@
     display: inline-flex;
     align-items: center;
     gap: 2px;
-    padding: 1px 4px;
-    border-radius: 3px;
-    background: rgba(0, 0, 0, 0.35);
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.3);
     color: #c8c8c8;
-    border: 1px solid transparent;
+    border: 1px solid rgba(255, 255, 255, 0.05);
     cursor: default;
+    backdrop-filter: blur(4px);
   }
-  /* Buttons need their <button> defaults stripped. */
   button.marker {
     font-family: inherit;
     cursor: pointer;
+    box-shadow: none;
+    transition:
+      transform 120ms var(--ease),
+      border-color 120ms var(--ease),
+      background 120ms var(--ease);
+  }
+  button.marker:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.55);
+  }
+  button.marker:active {
+    transform: scale(0.95);
   }
   .marker.active.monarch {
-    color: #ffd07a;
-    border-color: #ffd07a;
-    background: rgba(255, 208, 122, 0.15);
+    color: var(--gold);
+    border-color: rgba(255, 208, 122, 0.7);
+    background: var(--gold-soft);
+    box-shadow: 0 0 10px rgba(255, 208, 122, 0.35);
   }
   .marker.active.initiative {
     color: #b08aff;
-    border-color: #b08aff;
-    background: rgba(176, 138, 255, 0.15);
+    border-color: rgba(176, 138, 255, 0.7);
+    background: rgba(176, 138, 255, 0.18);
+    box-shadow: 0 0 10px rgba(176, 138, 255, 0.35);
   }
   .marker.poison {
-    color: #7aff9a;
+    color: var(--mint);
   }
   .marker.energy {
-    color: #ffd07a;
+    color: var(--gold);
   }
   .marker.counter {
     color: #b8c8e8;
@@ -478,13 +520,21 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    padding: 2px 4px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 999px;
   }
   .life {
-    font-weight: 700;
-    font-size: 14px;
-    min-width: 22px;
+    font-weight: 800;
+    font-size: 15px;
+    min-width: 24px;
     text-align: center;
     margin-left: auto;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg);
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+    letter-spacing: -0.02em;
   }
   .life-controls .life {
     margin-left: 0;
@@ -493,35 +543,52 @@
     width: 18px;
     height: 18px;
     padding: 0;
-    border-radius: 3px;
-    border: 1px solid #2e3a55;
-    background: rgba(0, 0, 0, 0.35);
-    color: #e0e6f5;
-    font-size: 14px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--fg);
+    font-size: 13px;
     line-height: 1;
     cursor: pointer;
     font-family: inherit;
+    box-shadow: none;
+    transition:
+      border-color 120ms var(--ease),
+      background 120ms var(--ease),
+      color 120ms var(--ease);
   }
-  .life-btn:hover {
-    background: #1a2335;
-    border-color: #5fb0ff;
+  .life-btn.dec:hover {
+    background: rgba(255, 122, 122, 0.18);
+    border-color: rgba(255, 122, 122, 0.5);
+    color: var(--danger);
+  }
+  .life-btn.inc:hover {
+    background: rgba(122, 255, 154, 0.18);
+    border-color: rgba(122, 255, 154, 0.5);
+    color: var(--mint);
   }
   .tag {
     font-size: 9px;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding: 1px 5px;
-    border-radius: 3px;
+    letter-spacing: 0.1em;
+    padding: 2px 7px;
+    border-radius: 999px;
     background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    font-weight: 700;
   }
   .tag.prio {
-    color: #ffd07a;
+    color: var(--gold);
+    border-color: rgba(255, 208, 122, 0.4);
+    box-shadow: 0 0 8px rgba(255, 208, 122, 0.3);
   }
   .tag.act {
     color: #9ec7ff;
+    border-color: rgba(158, 199, 255, 0.4);
   }
   .tag.elim {
-    color: #ff7a7a;
+    color: var(--danger);
+    border-color: rgba(255, 122, 122, 0.4);
   }
   /* Inline poison / energy stepper, lives in the header marker row.
      Shape mirrors the life ± controls so the bar reads as one
@@ -530,10 +597,10 @@
     display: inline-flex;
     align-items: center;
     gap: 2px;
-    padding: 1px 4px;
-    border-radius: 3px;
-    background: rgba(0, 0, 0, 0.35);
-    border: 1px solid transparent;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.06);
   }
   .counter-icon {
     font-size: 11px;
@@ -545,13 +612,13 @@
     text-align: center;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
-    color: #e0e6f5;
+    color: var(--fg);
   }
   .counter-inline.poison .counter-val {
-    color: #7aff9a;
+    color: var(--mint);
   }
   .counter-inline.energy .counter-val {
-    color: #ffd07a;
+    color: var(--gold);
   }
   .counter-btn {
     width: 14px;
@@ -559,15 +626,19 @@
     padding: 0;
     border: 0;
     background: transparent;
-    color: #6c7a99;
+    color: var(--fg-dim);
     font-size: 11px;
     line-height: 1;
     cursor: pointer;
     font-family: inherit;
-    border-radius: 2px;
+    border-radius: 50%;
+    box-shadow: none;
+    transition:
+      background 100ms var(--ease),
+      color 100ms var(--ease);
   }
   .counter-btn:hover {
-    background: #1a2335;
-    color: #e0e6f5;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--fg);
   }
 </style>

@@ -52,13 +52,17 @@
   }
   .pip {
     display: inline-block;
-    padding: 1px 5px;
-    border-radius: 3px;
+    padding: 2px 7px;
+    border-radius: 999px;
     color: #0c1426;
     font-size: 10px;
-    font-weight: 700;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    font-weight: 800;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+    box-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
     line-height: 1.2;
+    letter-spacing: 0.01em;
   }
 </style>

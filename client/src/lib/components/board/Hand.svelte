@@ -202,13 +202,16 @@
      the self hand's wider fan. */
   .empty {
     font-size: 11px;
-    color: #6c7a99;
+    color: var(--fg-dim);
     align-self: center;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-weight: 600;
   }
   /* S13.3 — illegal-cast greying. Hover/zoom still works; only the
      click affordance is muted via the conditional onClick on Card. */
   .hand-slot.timing-disabled {
-    opacity: 0.55;
-    filter: grayscale(0.4);
+    opacity: 0.5;
+    filter: grayscale(0.5) brightness(0.85);
   }
 </style>

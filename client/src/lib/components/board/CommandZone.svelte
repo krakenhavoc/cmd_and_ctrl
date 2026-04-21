@@ -132,21 +132,20 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
-    padding: 4px;
-    background: #111a2b;
-    border: 1px solid #4a3a1a;
-    border-radius: 6px;
+    gap: 4px;
+    padding: 6px 4px 4px;
+    background:
+      linear-gradient(180deg, rgba(255, 208, 122, 0.08) 0%, rgba(0, 0, 0, 0.25) 100%), #0f1324;
+    border: 1px solid #5a4520;
+    border-radius: var(--radius);
     box-sizing: border-box;
-    /* Width matches the regular pile column so the bar still aligns,
-       but the card slot inside is the full --card-w/--card-h so the
-       commander reads as a real card rather than a thumbnail. */
     width: var(--pile-w, 64px);
-    /* Self gets the brighter "this is your commander" border. */
   }
   .cmd-zone.self {
-    border-color: #ffd07a;
-    box-shadow: 0 0 8px rgba(255, 208, 122, 0.18);
+    border-color: var(--gold);
+    box-shadow:
+      0 0 12px rgba(255, 208, 122, 0.28),
+      inset 0 1px 0 rgba(255, 208, 122, 0.12);
   }
   .cmd-zone.empty {
     border-style: dashed;
@@ -174,14 +173,18 @@
   }
   .tax-badge {
     position: absolute;
-    top: 2px;
-    right: 2px;
-    background: #4a3a1a;
-    color: #ffd07a;
-    font-size: 9px;
+    top: 3px;
+    right: 3px;
+    background: linear-gradient(180deg, #8a6a2e 0%, #5a4520 100%);
+    color: var(--gold);
+    font-size: 10px;
     font-weight: 800;
-    padding: 1px 4px;
-    border-radius: 3px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 208, 122, 0.55);
+    box-shadow:
+      0 2px 6px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
     pointer-events: none;
     text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
   }
@@ -189,41 +192,52 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    line-height: 1.1;
+    line-height: 1.2;
+    gap: 2px;
   }
   .label {
     font-size: 8px;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.12em;
     color: #c8a86a;
+    font-weight: 600;
   }
   .count {
-    font-size: 13px;
-    font-weight: 700;
-    color: #e0e6f5;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
   }
   .cycle,
   .cast-hint {
     margin-top: 2px;
     background: transparent;
     color: #c8a86a;
-    border: 1px solid #4a3a1a;
-    border-radius: 3px;
+    border: 1px solid #5a4520;
+    border-radius: 999px;
     font-size: 9px;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding: 1px 4px;
+    letter-spacing: 0.1em;
+    padding: 2px 8px;
     cursor: pointer;
     font-family: inherit;
+    font-weight: 700;
+    box-shadow: none;
+    transition:
+      background 120ms var(--ease),
+      color 120ms var(--ease),
+      border-color 120ms var(--ease);
   }
   .cycle:hover,
   .cast-hint:hover {
-    background: #4a3a1a;
-    color: #ffd07a;
+    background: rgba(255, 208, 122, 0.15);
+    color: var(--gold);
+    border-color: var(--gold);
   }
   .cast-hint:focus-visible,
   .cycle:focus-visible {
-    outline: 1px solid #ffd07a;
+    outline: 1px solid var(--gold);
     outline-offset: 1px;
   }
 </style>

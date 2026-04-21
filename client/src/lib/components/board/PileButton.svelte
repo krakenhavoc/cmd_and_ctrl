@@ -73,31 +73,37 @@
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    gap: 2px;
-    padding: 4px;
-    background: #111a2b;
-    border: 1px solid #2e3a55;
-    border-radius: 6px;
+    gap: 4px;
+    padding: 6px 4px 4px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(0, 0, 0, 0.25) 100%),
+      var(--surface-sunken, #0a1122);
+    border: 1px solid var(--border, #273049);
+    border-radius: var(--radius);
     color: inherit;
     font: inherit;
     cursor: pointer;
-    /* Width / thumb dimensions read from inherited CSS vars so a
-       parent panel (e.g. an opponent slot) can shrink the whole bar
-       without per-component prop plumbing. */
     width: var(--pile-w, 64px);
     box-sizing: border-box;
+    box-shadow: none;
+    transition:
+      border-color 140ms var(--ease),
+      background 140ms var(--ease),
+      transform 140ms var(--ease);
   }
   .pile:disabled,
   .pile.disabled {
     cursor: default;
-    opacity: 0.6;
+    opacity: 0.55;
   }
   .pile:not(:disabled):hover {
-    border-color: #5fb0ff;
-    background: #18243a;
+    border-color: var(--accent);
+    background:
+      linear-gradient(180deg, var(--accent-soft) 0%, rgba(0, 0, 0, 0.3) 100%), var(--surface-sunken);
+    transform: translateY(-1px);
   }
   .pile:focus-visible {
-    outline: 2px solid #5fb0ff;
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
   .thumb {
@@ -106,9 +112,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Re-publish the thumb size as --card-w/--card-h so the embedded
-       Card.svelte (which reads those vars) sizes down to the pile's
-       footprint without overriding its intrinsic 80×112 default. */
     --card-w: var(--thumb-w, 50px);
     --card-h: var(--thumb-h, 70px);
   }
@@ -116,23 +119,28 @@
     width: 100%;
     height: 100%;
     border-radius: 4px;
-    border: 1px dashed #2e3a55;
+    border: 1px dashed var(--border-strong, #3a4570);
+    background: rgba(0, 0, 0, 0.25);
   }
   .meta {
     display: flex;
     flex-direction: column;
     align-items: center;
-    line-height: 1.1;
+    line-height: 1.2;
+    gap: 2px;
   }
   .label {
     font-size: 8px;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #6c7a99;
+    letter-spacing: 0.12em;
+    color: var(--fg-dim, #6c7a99);
+    font-weight: 600;
   }
   .count {
-    font-size: 13px;
-    font-weight: 700;
-    color: #e0e6f5;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--fg, #e0e6f5);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
   }
 </style>

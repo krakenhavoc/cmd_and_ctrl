@@ -281,10 +281,31 @@
     width: 100%;
     height: 100%;
     display: grid;
-    gap: 6px;
+    gap: 8px;
+    padding: 6px;
     box-sizing: border-box;
     overflow: hidden;
-    background: #0b1220;
+    /* Table-like depth: a vignette from centre to edges on top of a
+       radial "spotlight" in the middle, over a deep navy base. The
+       spotlight anchors the eye at the stack/centre area without
+       drawing attention from the panels themselves. */
+    background:
+      radial-gradient(60% 55% at 50% 50%, rgba(80, 120, 220, 0.08) 0%, rgba(6, 10, 20, 0) 60%),
+      radial-gradient(120% 100% at 50% 100%, rgba(10, 15, 35, 0), rgba(2, 4, 10, 0.6) 70%),
+      radial-gradient(120% 100% at 50% 0%, rgba(10, 15, 35, 0), rgba(2, 4, 10, 0.6) 70%),
+      linear-gradient(180deg, #070c18 0%, #0a1122 60%, #050811 100%);
+  }
+  .board::before {
+    /* Very subtle tiling noise to break up the flat gradients — makes
+       the "table" feel material rather than plastic. SVG-data-URI keeps
+       it zero-cost on the network. */
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.035 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    mix-blend-mode: overlay;
+    opacity: 0.5;
   }
   .slot {
     min-height: 0;

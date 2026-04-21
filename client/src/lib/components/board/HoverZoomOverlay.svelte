@@ -119,25 +119,29 @@
   .overlay {
     position: absolute;
     /* Pin to the top-right corner of the board with a small inset so
-       the panel always fits inside the viewport regardless of width.
-       Previously anchored at left:80% + translate(-50%,-50%), which
-       pushed the right edge off-screen on wide displays. */
+       the panel always fits inside the viewport regardless of width. */
     right: 12px;
     top: 12px;
     width: clamp(220px, 26vw, 380px);
-    /* Cap height to viewport with a small breathing margin so the
-       Oracle text never grows the panel past the bottom edge. */
     max-height: calc(100vh - 24px);
-    background: #0b1220;
-    border: 1px solid #4a5270;
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    background: linear-gradient(180deg, rgba(19, 26, 44, 0.92) 0%, rgba(8, 12, 24, 0.92) 100%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(122, 167, 255, 0.22);
+    border-radius: var(--radius-lg);
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
     pointer-events: none;
-    z-index: 40;
+    /* 300 sits above the modal-backdrop layer (200) so the preview
+       isn't blurred by backdrop-filter when the user is picking
+       cards in a modal (Discard / Choice / deck-import). */
+    z-index: 300;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    color: #e0e6f5;
+    color: var(--fg);
     font-size: 12px;
   }
   img {
@@ -174,7 +178,9 @@
   }
   .title {
     font-weight: 700;
-    font-size: 13px;
+    font-size: 14px;
+    letter-spacing: -0.01em;
+    color: var(--fg);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
