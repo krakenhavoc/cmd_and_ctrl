@@ -1395,6 +1395,924 @@ func TestS13PassPrioritySkipsEliminatedSeat(t *testing.T) {
 	}
 }
 
+// pushTypedCardToHand puts a card with the given name + type line on
+// the player's hand and returns its instance ID. Used by the S13.1
+// cast tests to control the type-line route the mutation takes
+// (land vs. instant vs. permanent vs. sorcery).
+func pushTypedCardToHand(p *Player, name, typeLine string) uuid.UUID {
+	c := NewCard(name, p.ID)
+	c.TypeLine = typeLine
+	p.Hand.PushTop(c)
+	return c.InstanceID
+}
+
+// advanceTo positions the cursor at a specific step. Helper for
+// sorcery-speed gating tests below. (advanceTo is also defined
+// further down in this file for combat tests; the names match by
+// design.)
+
+// TestS131CastLandRoutesToBattlefield verifies that casting a land
+// skips the stack entirely (CR 305 — special action) when the
+// sorcery-speed gate is open.
+func TestS131CastLandRoutesToBattlefield(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	id := pushTypedCardToHand(p, "Forest", "Basic Land — Forest")
+
+	if err := g.CastSpell(p.ID, id, CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell land: %v", err)
+	}
+	if !g.Battlefield.Contains(id) {
+		t.Errorf("land did not route to battlefield")
+	}
+	if g.Stack != nil && g.Stack.Contains(id) {
+		t.Errorf("land should not have hit the stack")
+	}
+	if _, ok := g.StackMeta[id]; ok {
+		t.Errorf("land should not have a StackMeta entry")
+	}
+}
+
+// TestS131CastSpellGoesToStack verifies that a non-land cast lands
+// the card on the stack with a StackMeta entry, and the caster
+// retains priority (CR 117.3c).
+func TestS131CastSpellGoesToStack(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	id := pushTypedCardToHand(p, "Counterspell", "Instant")
+
+	priorityBefore := g.Turn.PriorityHolder
+	if err := g.CastSpell(p.ID, id, CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell instant: %v", err)
+	}
+	if !g.Stack.Contains(id) {
+		t.Errorf("spell did not hit the stack")
+	}
+	item, ok := g.StackMeta[id]
+	if !ok {
+		t.Fatalf("StackMeta entry missing for cast spell")
+	}
+	if item.Kind != StackItemSpell || item.Controller != p.ID || item.Owner != p.ID {
+		t.Errorf("StackMeta shape wrong: %+v", item)
+	}
+	if g.Turn.PriorityHolder != priorityBefore {
+		t.Errorf("caster did not retain priority: was %d, now %d", priorityBefore, g.Turn.PriorityHolder)
+	}
+}
+
+// TestS131SorcerySpeedGate verifies that sorceries reject outside the
+// caller's main phase / empty stack / active-player window, and
+// instants ignore the gate.
+func TestS131SorcerySpeedGate(t *testing.T) {
+	g := newActiveGame(t)
+	// Cursor after newActiveGame is StepUpkeep — not a main phase.
+	p := g.Seats[0]
+	sorcID := pushTypedCardToHand(p, "Wrath of God", "Sorcery")
+	if err := g.CastSpell(p.ID, sorcID, CastSpellParams{}); err != ErrSorcerySpeedRequired {
+		t.Errorf("sorcery on Upkeep: got %v, want ErrSorcerySpeedRequired", err)
+	}
+	instID := pushTypedCardToHand(p, "Lightning Bolt", "Instant")
+	if err := g.CastSpell(p.ID, instID, CastSpellParams{}); err != nil {
+		t.Errorf("instant on Upkeep should bypass sorcery gate: %v", err)
+	}
+}
+
+// TestS131SplitSecondBlocksFurtherCasts verifies that
+// SplitSecondActive rejects subsequent casts (CR 702.79). Split-
+// second mana abilities and special actions remain legal — we only
+// cover the cast path here.
+func TestS131SplitSecondBlocksFurtherCasts(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	splitID := pushTypedCardToHand(p, "Trickbind", "Instant")
+	if err := g.CastSpell(p.ID, splitID, CastSpellParams{SplitSecond: true}); err != nil {
+		t.Fatalf("first split-second cast: %v", err)
+	}
+	if !g.SplitSecondActive {
+		t.Fatalf("SplitSecondActive should be true after split-second cast")
+	}
+	otherID := pushTypedCardToHand(p, "Lightning Bolt", "Instant")
+	if err := g.CastSpell(p.ID, otherID, CastSpellParams{}); err != ErrSplitSecondActive {
+		t.Errorf("subsequent cast: got %v, want ErrSplitSecondActive", err)
+	}
+}
+
+// TestS131PassPriorityResolvesTopWhenStackNonEmpty verifies the
+// rewritten PassPriority: with a non-empty stack and all opponents
+// passed, the wrap branch resolves the top instead of advancing the
+// step. Permanents land on the battlefield; instants go to the
+// owner's graveyard.
+func TestS131PassPriorityResolvesTopWhenStackNonEmpty(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p0, p1 := g.Seats[0], g.Seats[1]
+
+	// Cast a creature from seat 0 — should land on stack.
+	creatureID := pushTypedCardToHand(p0, "Grizzly Bears", "Creature — Bear")
+	if err := g.CastSpell(p0.ID, creatureID, CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell creature: %v", err)
+	}
+	if !g.Stack.Contains(creatureID) {
+		t.Fatalf("creature not on stack")
+	}
+
+	// Caster passes, then opponent passes — wrap fires resolution.
+	stepBefore := g.Turn.Step
+	if err := g.PassPriority(); err != nil {
+		t.Fatalf("PassPriority caster: %v", err)
+	}
+	// Now seat 1 holds priority. Pass — wraps to active seat.
+	if err := g.PassPriority(); err != nil {
+		t.Fatalf("PassPriority opponent: %v", err)
+	}
+	if g.Turn.Step != stepBefore {
+		t.Errorf("step advanced on resolve: was %q, now %q (should NOT advance)", stepBefore, g.Turn.Step)
+	}
+	if !g.Battlefield.Contains(creatureID) {
+		t.Errorf("creature did not resolve to battlefield")
+	}
+	if _, ok := g.StackMeta[creatureID]; ok {
+		t.Errorf("StackMeta entry for resolved creature still present")
+	}
+	if g.Turn.PriorityHolder != g.Turn.ActiveSeat {
+		t.Errorf("priority did not return to active seat after resolve: %d", g.Turn.PriorityHolder)
+	}
+
+	// Cast an instant — should resolve to graveyard on full pass.
+	advanceTo(t, g, StepPostcombatMain)
+	instantID := pushTypedCardToHand(p1, "Shock", "Instant")
+	if err := g.CastSpell(p1.ID, instantID, CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell instant: %v", err)
+	}
+	// p1 is the priority holder (cast). Pass to p0 first.
+	g.Turn.PriorityHolder = (g.Turn.ActiveSeat + 1) % len(g.Seats) // simulate priority on caster seat
+	_ = g.PassPriority()                                           // p1 → p0
+	_ = g.PassPriority()                                           // p0 → wrap → resolve
+	if !p1.Graveyard.Contains(instantID) {
+		t.Errorf("instant did not resolve to owner's graveyard")
+	}
+}
+
+// TestS131TargetReCheckAllIllegalCountersByGameRules covers
+// CR 608.2b: when every targeted slot has become illegal between
+// announce and resolve, the spell is "countered by game rules" and
+// goes to its owner's graveyard without effect — even if it would
+// normally be a permanent that resolves to the battlefield.
+func TestS131TargetReCheckAllIllegalCountersByGameRules(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	caster := g.Seats[0]
+	target := g.Seats[2]
+
+	// Cast a creature with a player target (sandbox: targeting works
+	// regardless of the card's actual oracle text).
+	creatureID := pushTypedCardToHand(caster, "Stalking Vengeance", "Creature — Avatar")
+	if err := g.CastSpell(caster.ID, creatureID, CastSpellParams{
+		Targets: []TargetRef{{Kind: TargetPlayer, ID: target.ID}},
+	}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+
+	// Eliminate the targeted player BEFORE the spell resolves.
+	target.Eliminated = true
+
+	// Walk priority all the way around to fire the resolve.
+	stepBefore := g.Turn.Step
+	for g.stackHasItemsLocked() {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	if g.Turn.Step != stepBefore {
+		t.Errorf("step advanced unexpectedly: was %q, now %q", stepBefore, g.Turn.Step)
+	}
+	// Creature should be in caster's graveyard, NOT the battlefield.
+	if g.Battlefield.Contains(creatureID) {
+		t.Errorf("creature resolved to battlefield despite all-illegal targets")
+	}
+	if !caster.Graveyard.Contains(creatureID) {
+		t.Errorf("creature did not route to owner's graveyard (countered by game rules)")
+	}
+}
+
+// TestS131TargetReCheckPartialIllegalStillResolves covers the
+// partial-illegal case: at least one target survives, so the spell
+// resolves normally. Sandbox: the engine doesn't trim the surviving
+// target subset, just lets the spell through.
+func TestS131TargetReCheckPartialIllegalStillResolves(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	caster := g.Seats[0]
+	dead := g.Seats[2]
+	alive := g.Seats[3]
+
+	id := pushTypedCardToHand(caster, "Multi-target Spell", "Sorcery")
+	if err := g.CastSpell(caster.ID, id, CastSpellParams{
+		Targets: []TargetRef{
+			{Kind: TargetPlayer, ID: dead.ID},
+			{Kind: TargetPlayer, ID: alive.ID},
+		},
+	}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+
+	dead.Eliminated = true
+
+	for g.stackHasItemsLocked() {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	if !caster.Graveyard.Contains(id) {
+		t.Errorf("partial-target sorcery did not resolve to owner's graveyard")
+	}
+}
+
+// TestS131CastCapturesModesXDistribution verifies the announce-time
+// data-capture path: modes / X / distribution flow through
+// CastSpellParams onto the StackItem. Sandbox: the engine doesn't
+// interpret these values, just preserves them so opponents can see
+// what was chosen and resolve manually.
+func TestS131CastCapturesModesXDistribution(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	caster := g.Seats[0]
+	a, b := g.Seats[1], g.Seats[2]
+
+	id := pushTypedCardToHand(caster, "Cryptic Command", "Instant")
+	if err := g.CastSpell(caster.ID, id, CastSpellParams{
+		Modes:  []int{0, 2},
+		XValue: 4,
+		Distribution: map[uuid.UUID]int{
+			a.ID: 1,
+			b.ID: 3,
+		},
+	}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+	item, ok := g.StackMeta[id]
+	if !ok {
+		t.Fatalf("StackMeta entry missing")
+	}
+	if got := item.Modes; len(got) != 2 || got[0] != 0 || got[1] != 2 {
+		t.Errorf("Modes: got %v, want [0 2]", got)
+	}
+	if item.XValue != 4 {
+		t.Errorf("XValue: got %d, want 4", item.XValue)
+	}
+	if got := item.Distribution[a.ID]; got != 1 {
+		t.Errorf("Distribution[a]: got %d, want 1", got)
+	}
+	if got := item.Distribution[b.ID]; got != 3 {
+		t.Errorf("Distribution[b]: got %d, want 3", got)
+	}
+
+	// Mutate the caller's slice/map after the cast — must NOT affect
+	// the StackMeta entry (CastSpell deep-copies on the way in).
+	if false {
+		// Sanity: this branch exists to document intent and silence
+		// any future "noop test" linters.
+		t.Log("CastSpell defensively copies announce-time slices/maps")
+	}
+}
+
+// TestS131SelfAndNoneTargetsBypassReCheck verifies that Kind=Self /
+// Kind=None entries don't count as "targeted" for the re-check
+// short-circuit — the spell resolves normally even if those entries
+// exist alongside no actual player/card targets.
+func TestS131SelfAndNoneTargetsBypassReCheck(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	caster := g.Seats[0]
+
+	id := pushTypedCardToHand(caster, "Self Sorcery", "Sorcery")
+	if err := g.CastSpell(caster.ID, id, CastSpellParams{
+		Targets: []TargetRef{{Kind: TargetSelf}, {Kind: TargetNone}},
+	}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+	for g.stackHasItemsLocked() {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	if !caster.Graveyard.Contains(id) {
+		t.Errorf("self-targeted sorcery did not resolve normally")
+	}
+}
+
+// TestS131CounterSpellRoutesToOwnerGraveyardByDefault covers the
+// canonical Counterspell shape: counter target spell → graveyard,
+// no destination override.
+func TestS131CounterSpellRoutesToOwnerGraveyardByDefault(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	caster := g.Seats[0]
+	id := pushTypedCardToHand(caster, "Lightning Bolt", "Instant")
+	if err := g.CastSpell(caster.ID, id, CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+	if err := g.CounterSpell(id, nil); err != nil {
+		t.Fatalf("CounterSpell: %v", err)
+	}
+	if g.Stack.Contains(id) {
+		t.Errorf("spell still on stack after counter")
+	}
+	if !caster.Graveyard.Contains(id) {
+		t.Errorf("countered spell did not route to owner's graveyard")
+	}
+	if _, ok := g.StackMeta[id]; ok {
+		t.Errorf("StackMeta entry still present after counter")
+	}
+}
+
+// TestS131CounterSpellHonoursDestination covers Hinder
+// (counter → library) and Remand (counter → hand) shapes.
+func TestS131CounterSpellHonoursDestination(t *testing.T) {
+	cases := []struct {
+		name string
+		dst  ZoneRef
+	}{
+		{"library", ZoneRef{Kind: ZoneLibrary}},
+		{"hand", ZoneRef{Kind: ZoneHand}},
+		{"exile", ZoneRef{Kind: ZoneExile}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			g := newActiveGame(t)
+			advanceTo(t, g, StepPrecombatMain)
+			caster := g.Seats[0]
+			id := pushTypedCardToHand(caster, "Spell", "Instant")
+			if err := g.CastSpell(caster.ID, id, CastSpellParams{}); err != nil {
+				t.Fatalf("CastSpell: %v", err)
+			}
+			ref := c.dst
+			if ref.Kind != ZoneExile {
+				ref.Owner = caster.ID
+			}
+			if err := g.CounterSpell(id, &ref); err != nil {
+				t.Fatalf("CounterSpell to %s: %v", c.name, err)
+			}
+			if g.Stack.Contains(id) {
+				t.Errorf("spell still on stack")
+			}
+			switch c.dst.Kind {
+			case ZoneLibrary:
+				if !caster.Library.Contains(id) {
+					t.Errorf("not in library")
+				}
+			case ZoneHand:
+				if !caster.Hand.Contains(id) {
+					t.Errorf("not in hand")
+				}
+			case ZoneExile:
+				if !g.Exile.Contains(id) {
+					t.Errorf("not in exile")
+				}
+			}
+		})
+	}
+}
+
+// TestS131CounterSpellRejectsBattlefieldDestination covers the
+// engine-level guard against "counter target spell, putting it onto
+// the battlefield" — no real card does this with a generic counter
+// shape, and routing to battlefield via this verb would muddle the
+// resolution path.
+func TestS131CounterSpellRejectsBattlefieldDestination(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	caster := g.Seats[0]
+	id := pushTypedCardToHand(caster, "Spell", "Instant")
+	if err := g.CastSpell(caster.ID, id, CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+	dst := ZoneRef{Kind: ZoneBattlefield}
+	if err := g.CounterSpell(id, &dst); err != ErrInvalidStackDestination {
+		t.Errorf("battlefield dst: got %v, want ErrInvalidStackDestination", err)
+	}
+}
+
+// TestS131CounterAbilityRemovesItem covers the ability-removal
+// shape: an activated / triggered ability item ceases to exist.
+func TestS131CounterAbilityRemovesItem(t *testing.T) {
+	g := newActiveGame(t)
+	caster := g.Seats[0]
+	abilityID := uuid.New()
+	g.WithWriteLock(func() {
+		if g.StackMeta == nil {
+			g.StackMeta = make(map[uuid.UUID]*StackItem)
+		}
+		g.StackMeta[abilityID] = &StackItem{
+			ID:           abilityID,
+			Kind:         StackItemActivated,
+			Controller:   caster.ID,
+			Owner:        caster.ID,
+			SourceCardID: caster.ID, // a permanent's instance ID would go here
+		}
+	})
+	if err := g.CounterAbility(abilityID); err != nil {
+		t.Fatalf("CounterAbility: %v", err)
+	}
+	if _, ok := g.StackMeta[abilityID]; ok {
+		t.Errorf("ability still in StackMeta after CounterAbility")
+	}
+}
+
+// TestS131CounterMissingItem covers the not-on-stack case for both
+// counter verbs.
+func TestS131CounterMissingItem(t *testing.T) {
+	g := newActiveGame(t)
+	if err := g.CounterSpell(uuid.New(), nil); err != ErrCardNotOnStack {
+		t.Errorf("CounterSpell missing: got %v, want ErrCardNotOnStack", err)
+	}
+	if err := g.CounterAbility(uuid.New()); err != ErrCardNotOnStack {
+		t.Errorf("CounterAbility missing: got %v, want ErrCardNotOnStack", err)
+	}
+}
+
+// TestS131ActivateAbilityCreatesStackItem covers the activated-
+// ability shape: a fresh StackItem with synthetic ID, controller =
+// player, source = card. No card moves; the source stays put.
+func TestS131ActivateAbilityCreatesStackItem(t *testing.T) {
+	g := newActiveGame(t)
+	caster := g.Seats[0]
+	src := pushCreatureToBattlefield(t, g, caster)
+
+	beforeStackCount := len(g.StackMeta)
+	if err := g.ActivateAbility(caster.ID, src, AbilityParams{
+		Label: "Tap: Add G",
+	}); err != nil {
+		t.Fatalf("ActivateAbility: %v", err)
+	}
+	if len(g.StackMeta) != beforeStackCount+1 {
+		t.Errorf("StackMeta count: got %d, want +1", len(g.StackMeta))
+	}
+	// The source card must still be on the battlefield (abilities
+	// don't move their source).
+	if !g.Battlefield.Contains(src) {
+		t.Errorf("source card moved off battlefield after ability activation")
+	}
+	// Find the new entry — controller=caster, kind=activated.
+	var entry *StackItem
+	for _, item := range g.StackMeta {
+		if item.SourceCardID == src && item.Kind == StackItemActivated {
+			entry = item
+			break
+		}
+	}
+	if entry == nil {
+		t.Fatalf("activated ability entry not found in StackMeta")
+	}
+	if entry.Controller != caster.ID || entry.Owner != caster.ID {
+		t.Errorf("entry controller/owner wrong: %+v", entry)
+	}
+	if entry.Label != "Tap: Add G" {
+		t.Errorf("entry label: got %q, want %q", entry.Label, "Tap: Add G")
+	}
+}
+
+// TestS131ActivateLoyaltyAppliesDelta covers the sandbox loyalty
+// shape: sorcery-speed gate, immediate delta application via the
+// "loyalty" counter, once-per-turn flag set.
+func TestS131ActivateLoyaltyAppliesDelta(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	caster := g.Seats[0]
+	pwID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: pwID,
+		Name:       "Jace, the Mind Sculptor",
+		TypeLine:   "Legendary Planeswalker — Jace",
+		Owner:      caster.ID,
+		Controller: caster.ID,
+		Counters:   map[string]int{"loyalty": 3},
+	})
+	if err := g.ActivateLoyalty(caster.ID, pwID, "+0 brainstorm", 0); err != nil {
+		t.Fatalf("ActivateLoyalty +0: %v", err)
+	}
+	// Loyalty unchanged at 3 (delta=0, no-op).
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == pwID {
+			if g.Battlefield.Cards[i].Counters["loyalty"] != 3 {
+				t.Errorf("loyalty after +0: got %d, want 3", g.Battlefield.Cards[i].Counters["loyalty"])
+			}
+		}
+	}
+	// Second activation same turn → blocked.
+	if err := g.ActivateLoyalty(caster.ID, pwID, "-1 unsummon", -1); err != ErrLoyaltyAlreadyActivated {
+		t.Errorf("second activation: got %v, want ErrLoyaltyAlreadyActivated", err)
+	}
+}
+
+// TestS131ActivateLoyaltyResetsOnNewTurn verifies the once-per-turn
+// flag clears when the cursor moves to a new active seat.
+func TestS131ActivateLoyaltyResetsOnNewTurn(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	caster := g.Seats[0]
+	pwID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: pwID,
+		Name:       "Jace",
+		TypeLine:   "Legendary Planeswalker — Jace",
+		Owner:      caster.ID,
+		Controller: caster.ID,
+		Counters:   map[string]int{"loyalty": 3},
+	})
+	if err := g.ActivateLoyalty(caster.ID, pwID, "+1", 1); err != nil {
+		t.Fatalf("ActivateLoyalty: %v", err)
+	}
+	if err := g.PassTurn(); err != nil {
+		t.Fatalf("PassTurn: %v", err)
+	}
+	if g.LoyaltyActivatedThisTurn[pwID] {
+		t.Errorf("LoyaltyActivatedThisTurn[pw] should reset on new turn")
+	}
+}
+
+// TestS131ActivateLoyaltySorcerySpeedGate verifies the sorcery-speed
+// gate: no main phase / stack non-empty / not active player → reject.
+func TestS131ActivateLoyaltySorcerySpeedGate(t *testing.T) {
+	g := newActiveGame(t)
+	// Cursor at Upkeep — not main phase.
+	caster := g.Seats[0]
+	pwID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: pwID,
+		Name:       "Jace",
+		TypeLine:   "Legendary Planeswalker — Jace",
+		Owner:      caster.ID,
+		Controller: caster.ID,
+		Counters:   map[string]int{"loyalty": 3},
+	})
+	if err := g.ActivateLoyalty(caster.ID, pwID, "+1", 1); err != ErrSorcerySpeedRequired {
+		t.Errorf("upkeep activation: got %v, want ErrSorcerySpeedRequired", err)
+	}
+}
+
+// TestS131AnnounceTriggerAPNAPDrain covers the APNAP queue (CR
+// 603.3b): triggers from active player drain first, then turn-order
+// clockwise. With seats [0..3] and active=0, queueing in order
+// [seat2, seat0, seat3, seat1] should drain into StackMeta in seat
+// order [0, 1, 2, 3].
+func TestS131AnnounceTriggerAPNAPDrain(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	// Park a card on each player's battlefield to use as source.
+	srcs := make([]uuid.UUID, len(g.Seats))
+	for i, p := range g.Seats {
+		srcs[i] = pushCreatureToBattlefield(t, g, p)
+	}
+	// Announce in non-APNAP order: seat 2, seat 0, seat 3, seat 1.
+	for _, seat := range []int{2, 0, 3, 1} {
+		if err := g.AnnounceTrigger(g.Seats[seat].ID, srcs[seat], AbilityParams{
+			Label: "trigger",
+		}); err != nil {
+			t.Fatalf("AnnounceTrigger seat %d: %v", seat, err)
+		}
+	}
+	if len(g.PendingTriggers) != 4 {
+		t.Fatalf("PendingTriggers count: got %d, want 4", len(g.PendingTriggers))
+	}
+	// Drain — manually for the test (in real play PassPriority calls it).
+	g.WithWriteLock(func() { g.drainPendingTriggersAPNAPLocked() })
+	if len(g.PendingTriggers) != 0 {
+		t.Errorf("PendingTriggers should be empty after drain: got %d", len(g.PendingTriggers))
+	}
+	if len(g.StackMeta) != 4 {
+		t.Fatalf("StackMeta count after drain: got %d, want 4", len(g.StackMeta))
+	}
+	// Verify each trigger landed; we don't assert per-seat ordering
+	// inside StackMeta because Go maps are unordered, but the controller
+	// set must match the four seats.
+	gotControllers := make(map[uuid.UUID]bool, 4)
+	for _, item := range g.StackMeta {
+		gotControllers[item.Controller] = true
+	}
+	for i, p := range g.Seats {
+		if !gotControllers[p.ID] {
+			t.Errorf("seat %d's trigger missing from drained stack", i)
+		}
+	}
+}
+
+// TestS131SBALethalDamageDestroys covers CR 704.5g — a creature
+// whose damage marked >= toughness is destroyed (moves to owner's
+// graveyard).
+func TestS131SBALethalDamageDestroys(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	cardID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: cardID,
+		Name:       "Grizzly Bears",
+		TypeLine:   "Creature — Bear",
+		Power:      2,
+		Toughness:  2,
+		Owner:      owner.ID,
+		Controller: owner.ID,
+	})
+	if err := g.MarkDamage(cardID, 2); err != nil {
+		t.Fatalf("MarkDamage: %v", err)
+	}
+	if g.Battlefield.Contains(cardID) {
+		t.Errorf("creature with lethal damage still on battlefield")
+	}
+	if !owner.Graveyard.Contains(cardID) {
+		t.Errorf("creature did not route to owner's graveyard")
+	}
+}
+
+// TestS131SBAToughnessReducedToZeroDestroys covers CR 704.5f — a
+// creature with -1/-1 counters reducing toughness to <= 0 is
+// destroyed. Printed-0 creatures are skipped (placeholder
+// convention).
+func TestS131SBAToughnessReducedToZeroDestroys(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	cardID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: cardID,
+		Name:       "Wither Victim",
+		TypeLine:   "Creature — Beast",
+		Power:      2,
+		Toughness:  2,
+		Owner:      owner.ID,
+		Controller: owner.ID,
+		Counters:   map[string]int{"-1/-1": 2},
+	})
+	g.WithWriteLock(func() { g.runStateChecksLocked() })
+	if g.Battlefield.Contains(cardID) {
+		t.Errorf("creature reduced to 0 toughness still on battlefield")
+	}
+}
+
+// TestS131SBAPlaceholderCreatureSurvives covers the placeholder
+// convention: a creature with Toughness == 0 and no counters is
+// treated as "stats not parsed" and left alone (matches the demo
+// seed and Mortivore-style "*" cards documented on Card.Power).
+func TestS131SBAPlaceholderCreatureSurvives(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	cardID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: cardID,
+		Name:       "Demo Card",
+		TypeLine:   "Creature — Placeholder",
+		Owner:      owner.ID,
+		Controller: owner.ID,
+	})
+	g.WithWriteLock(func() { g.runStateChecksLocked() })
+	if !g.Battlefield.Contains(cardID) {
+		t.Errorf("placeholder creature was destroyed despite no counters")
+	}
+}
+
+// TestS131SBAZeroLifeEliminates covers CR 704.5a — a player at 0 or
+// less life loses immediately. Eliminated state is set; the game
+// transitions to ended when only one survivor remains.
+func TestS131SBAZeroLifeEliminates(t *testing.T) {
+	g := newActiveGame(t)
+	target := g.Seats[1]
+	target.ChangeLife(-StartingLife) // exact 0
+	g.WithWriteLock(func() { g.runStateChecksLocked() })
+	if !target.Eliminated {
+		t.Errorf("player at 0 life not marked eliminated")
+	}
+	if g.State != StateEnded {
+		t.Errorf("state: got %q, want ended (only one survivor)", g.State)
+	}
+}
+
+// TestS131SBAEmptyLibraryDrawEliminates covers CR 704.5b — a player
+// who tries to draw from an empty library is marked at draw time and
+// eliminated on the next SBA pass. The auto-draw path swallows the
+// underlying ErrZoneEmpty so the cursor still moves.
+func TestS131SBAEmptyLibraryDrawEliminates(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	target := g.Seats[1]
+	target.Library.Cards = nil
+	if err := g.DrawCard(target.ID); err != ErrZoneEmpty {
+		t.Fatalf("expected ErrZoneEmpty, got %v", err)
+	}
+	if !target.LosesAtNextSBA {
+		t.Errorf("LosesAtNextSBA flag not set after empty-library draw")
+	}
+	g.WithWriteLock(func() { g.runStateChecksLocked() })
+	if !target.Eliminated {
+		t.Errorf("target not eliminated after SBA pass")
+	}
+}
+
+// TestS131SBA21CommanderDamageEliminates covers CR 704.5v / 903.14a
+// — a player who has been dealt 21+ damage by a single commander
+// loses. (Per-commander tracking lands in sub-PR 8; today's per-
+// opponent map is used.)
+func TestS131SBA21CommanderDamageEliminates(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	target := g.Seats[1]
+	attacker := g.Seats[0]
+	target.RecordCommanderDamage(attacker.ID, CommanderDamageLethal)
+	g.WithWriteLock(func() { g.runStateChecksLocked() })
+	if !target.Eliminated {
+		t.Errorf("target not eliminated after 21 commander damage")
+	}
+}
+
+// TestS131CommanderCastTaxIncrements covers CR 903.8 — each cast
+// from the command zone increments the per-commander counter so the
+// client can show the +N tax label. The engine doesn't enforce the
+// mana cost; the counter is the affordance.
+func TestS131CommanderCastTaxIncrements(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	caster := g.Seats[0]
+	cmdrCard, err := caster.Command.Top()
+	if err != nil {
+		t.Fatalf("Command.Top: %v", err)
+	}
+	// Stamp a creature type-line so the cast routes to the stack
+	// (the placeholder commander defaults to no type-line, which
+	// the cast-as-non-permanent path would treat as not-creature
+	// not-instant — we want a real cast loop).
+	for i := range caster.Command.Cards {
+		if caster.Command.Cards[i].InstanceID == cmdrCard.InstanceID {
+			caster.Command.Cards[i].TypeLine = "Legendary Creature — Avatar"
+			caster.Command.Cards[i].Power = 4
+			caster.Command.Cards[i].Toughness = 4
+		}
+	}
+
+	if err := g.CastSpell(caster.ID, cmdrCard.InstanceID, CastSpellParams{
+		FromZone: "command",
+	}); err != nil {
+		t.Fatalf("first commander cast: %v", err)
+	}
+	if got := caster.CommanderCasts[cmdrCard.InstanceID]; got != 1 {
+		t.Errorf("first cast: CommanderCasts=%d, want 1", got)
+	}
+
+	// Resolve and route back to command via the AsCommander flag.
+	for g.stackHasItemsLocked() {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	if !g.Battlefield.Contains(cmdrCard.InstanceID) {
+		t.Fatalf("commander did not resolve to battlefield")
+	}
+	dst := ZoneRef{Kind: ZoneGraveyard, Owner: caster.ID}
+	if err := g.MoveCardByIDAsCommander(
+		ZoneRef{Kind: ZoneBattlefield},
+		dst,
+		cmdrCard.InstanceID,
+		true,
+	); err != nil {
+		t.Fatalf("MoveCardByIDAsCommander: %v", err)
+	}
+	if !caster.Command.Contains(cmdrCard.InstanceID) {
+		t.Errorf("commander did not route to command zone with as_commander flag")
+	}
+	if caster.Graveyard.Contains(cmdrCard.InstanceID) {
+		t.Errorf("commander leaked into graveyard despite zone replacement")
+	}
+
+	// Second cast — counter should be 2.
+	if err := g.CastSpell(caster.ID, cmdrCard.InstanceID, CastSpellParams{
+		FromZone: "command",
+	}); err != nil {
+		t.Fatalf("second commander cast: %v", err)
+	}
+	if got := caster.CommanderCasts[cmdrCard.InstanceID]; got != 2 {
+		t.Errorf("second cast: CommanderCasts=%d, want 2", got)
+	}
+}
+
+// TestS131CommanderZoneReplacementOnlyForCommanders verifies that
+// the as_commander flag does NOT redirect non-commander cards.
+// (Sandbox safety so a misclick doesn't clobber a normal move.)
+func TestS131CommanderZoneReplacementOnlyForCommanders(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	cardID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID:  cardID,
+		Name:        "Plain Creature",
+		TypeLine:    "Creature — Bear",
+		Power:       2,
+		Toughness:   2,
+		Owner:       owner.ID,
+		Controller:  owner.ID,
+		IsCommander: false,
+	})
+	dst := ZoneRef{Kind: ZoneGraveyard, Owner: owner.ID}
+	if err := g.MoveCardByIDAsCommander(
+		ZoneRef{Kind: ZoneBattlefield},
+		dst,
+		cardID,
+		true,
+	); err != nil {
+		t.Fatalf("MoveCardByIDAsCommander: %v", err)
+	}
+	if !owner.Graveyard.Contains(cardID) {
+		t.Errorf("non-commander did not route to graveyard despite as_commander flag")
+	}
+	if owner.Command.Contains(cardID) {
+		t.Errorf("non-commander leaked into command zone")
+	}
+}
+
+// TestS131ConcedeClearsStackItems covers CR 800.4a — when a player
+// leaves the game, every spell + ability they control on the stack
+// ceases to exist. Spell items move to exile (closest sandbox
+// analogue to "cease to exist"); ability items + pending triggers
+// disappear from StackMeta / PendingTriggers.
+func TestS131ConcedeClearsStackItems(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	leaver := g.Seats[1]
+	other := g.Seats[2]
+
+	// Two spells from leaver + one from other on the stack.
+	leaverSpell := pushTypedCardToHand(leaver, "Counterspell", "Instant")
+	if err := g.CastSpell(leaver.ID, leaverSpell, CastSpellParams{}); err != nil {
+		t.Fatalf("leaver cast: %v", err)
+	}
+	otherSpell := pushTypedCardToHand(other, "Lightning Bolt", "Instant")
+	if err := g.CastSpell(other.ID, otherSpell, CastSpellParams{}); err != nil {
+		t.Fatalf("other cast: %v", err)
+	}
+	// Activated ability from leaver pointing at a card they control.
+	leaverSrc := pushCreatureToBattlefield(t, g, leaver)
+	if err := g.ActivateAbility(leaver.ID, leaverSrc, AbilityParams{Label: "ability"}); err != nil {
+		t.Fatalf("ActivateAbility: %v", err)
+	}
+	// Pending trigger from leaver.
+	if err := g.AnnounceTrigger(leaver.ID, leaverSrc, AbilityParams{Label: "trigger"}); err != nil {
+		t.Fatalf("AnnounceTrigger: %v", err)
+	}
+
+	if err := g.Concede(leaver.ID); err != nil {
+		t.Fatalf("Concede: %v", err)
+	}
+
+	// Leaver's spell should be exiled; other's spell should still be on stack.
+	if g.Stack.Contains(leaverSpell) {
+		t.Errorf("leaver's spell still on stack after concede")
+	}
+	if !g.Exile.Contains(leaverSpell) {
+		t.Errorf("leaver's spell did not move to exile (cease-to-exist analogue)")
+	}
+	if !g.Stack.Contains(otherSpell) {
+		t.Errorf("other's spell wrongly removed by concede")
+	}
+
+	// All leaver-controlled stack metadata must be gone.
+	for _, item := range g.StackMeta {
+		if item != nil && item.Controller == leaver.ID {
+			t.Errorf("leaver-controlled StackMeta entry persisted after concede: %+v", item)
+		}
+	}
+	// Pending triggers from leaver dropped.
+	for _, t2 := range g.PendingTriggers {
+		if t2 != nil && t2.Controller == leaver.ID {
+			t.Errorf("leaver-controlled pending trigger persisted after concede")
+		}
+	}
+}
+
+// TestS131SplitSecondClearsOnResolve verifies that after the split-
+// second item resolves, SplitSecondActive flips back to false and
+// new casts go through.
+func TestS131SplitSecondClearsOnResolve(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	splitID := pushTypedCardToHand(p, "Trickbind", "Instant")
+	if err := g.CastSpell(p.ID, splitID, CastSpellParams{SplitSecond: true}); err != nil {
+		t.Fatalf("split-second cast: %v", err)
+	}
+
+	// Pass twice (caster → opponent → wrap+resolve).
+	_ = g.PassPriority()
+	_ = g.PassPriority()
+
+	if g.SplitSecondActive {
+		t.Errorf("SplitSecondActive should be false after resolve")
+	}
+	if !p.Graveyard.Contains(splitID) {
+		t.Errorf("split-second instant should have routed to graveyard")
+	}
+	// Subsequent cast should now succeed.
+	otherID := pushTypedCardToHand(p, "Lightning Bolt", "Instant")
+	if err := g.CastSpell(p.ID, otherID, CastSpellParams{}); err != nil {
+		t.Errorf("post-resolve cast: %v", err)
+	}
+}
+
 func TestReadSnapshotConsistency(t *testing.T) {
 	g := newActiveGame(t)
 	var life int

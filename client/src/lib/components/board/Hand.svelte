@@ -1,7 +1,7 @@
 <script lang="ts">
   // Hand renders the bottom-center hand strip for one player.
   //
-  //   - Self: cards are face-up, click → play_card. Layout is a
+  //   - Self: cards are face-up, click → cast_spell. Layout is a
   //     centered fan, each card rotated proportional to its offset
   //     from the centre, like the old Pixi version.
   //   - Opponents: cards are face-down. The server's FilterViewFor

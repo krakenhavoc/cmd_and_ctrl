@@ -93,7 +93,14 @@
   }
 
   function handlePlayCard(card: CardView): void {
-    sendAction("play_card", { instance_id: card.instance_id }, viewerID ?? undefined);
+    // S13.1: hand-card click sends cast_spell. Lands route directly
+    // to the battlefield server-side (CR 305 special action); other
+    // types land on the stack with the caster retaining priority.
+    // The richer cast UI (target picker, modes, X) lands in S13.1
+    // sub-PRs 3 & 4; this minimum-viable wiring keeps the previous
+    // one-click cast path intact for cards with no announce-time
+    // choices.
+    sendAction("cast_spell", { instance_id: card.instance_id }, viewerID ?? undefined);
   }
 
   function handleDrawCard(): void {
@@ -182,7 +189,18 @@
 
   <CombatArrows {view} {boardEl} />
   <HoverZoomOverlay />
-  <StackOverlay stack={view.stack} />
+  <StackOverlay
+    stack={view.stack}
+    stackItems={view.stack_items ?? []}
+    pendingTriggers={view.pending_triggers ?? []}
+    seats={view.seats}
+    viewerHasPriority={prioritySeatID === viewerID}
+    splitSecondActive={view.split_second_active === true}
+    onCounter={(item) => {
+      const verb = item.kind === "spell" ? "counter_spell" : "counter_ability";
+      sendAction(verb, { instance_id: item.id });
+    }}
+  />
   <CommanderDamageGrid {view} {sendAction} />
   <VotingPanel {view} {viewerID} {sendAction} />
 </div>

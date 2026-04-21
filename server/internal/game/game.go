@@ -98,6 +98,39 @@ type Game struct {
 	// existed. Added in S13.
 	StartingSeat int
 
+	// StackMeta is the per-stack-item metadata map (S13.1). Keyed by
+	// the item's ID — for spells this equals the underlying Card's
+	// InstanceID (the card itself lives in Game.Stack); for abilities
+	// it's a synthetic UUID minted at activation/announce time. The
+	// dual storage (Game.Stack for the spell card slice, StackMeta
+	// for everything else) keeps existing zone plumbing untouched
+	// while giving cast/resolve code a place to attach announce-time
+	// choices (targets, modes, X, distribution, hold-priority,
+	// split-second).
+	StackMeta map[uuid.UUID]*StackItem
+
+	// PendingTriggers is the APNAP queue of triggered abilities
+	// waiting to hit the stack (CR 603.3b). Drained on the next
+	// priority-grant boundary in active-player-non-active-player
+	// order. Per-controller chosen ordering of multiple triggers
+	// from the same player is captured at announce time. Added in
+	// S13.1.
+	PendingTriggers []*StackItem
+
+	// SplitSecondActive mirrors "any item on the stack has
+	// SplitSecond set" (CR 702.79). While true, cast_spell and
+	// activate_ability return ErrSplitSecondActive. Mana abilities
+	// and special actions stay legal. Recomputed every time the
+	// stack changes (cast, counter, resolve). Added in S13.1.
+	SplitSecondActive bool
+
+	// LoyaltyActivatedThisTurn flags planeswalkers whose loyalty
+	// abilities have already been activated this turn (CR 606.5).
+	// Keyed by the planeswalker's instance ID. Cleared on
+	// Turn.advance to a new turn (i.e. when ActiveSeat changes).
+	// Added in S13.1.
+	LoyaltyActivatedThisTurn map[uuid.UUID]bool
+
 	// Promises is the directed per-pair "I owe you" promise-token count
 	// keyed by `from→to` pairs. Politics scaffold — players use it as
 	// a visual reminder of informal deals ("I owe Alice 2 favours").
@@ -318,9 +351,26 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	if g.State != StateActive {
 		return Turn{}, ErrGameNotActive
 	}
+	prev := g.Turn
 	g.Turn = g.Turn.advance(len(g.Seats))
+	g.onTurnAdvanceLocked(prev, g.Turn)
 	g.runStepEntryHooksLocked()
 	return g.Turn, nil
+}
+
+// onTurnAdvanceLocked clears any per-turn caches whenever the
+// active seat changes. Currently flushes
+// `LoyaltyActivatedThisTurn` (CR 606.5 — once per turn per
+// planeswalker), but the same hook is the natural home for any
+// other "reset on new turn" caches the engine grows. Caller must
+// hold g.mu.
+func (g *Game) onTurnAdvanceLocked(prev, next Turn) {
+	if !prev.IsNewTurn(next) {
+		return
+	}
+	if g.LoyaltyActivatedThisTurn != nil {
+		g.LoyaltyActivatedThisTurn = nil
+	}
 }
 
 // runStepEntryHooksLocked dispatches the per-step side effects that

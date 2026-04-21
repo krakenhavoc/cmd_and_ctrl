@@ -98,6 +98,46 @@ export interface GameView {
   // step. Drives the "undos: N" indicator and gates the undo button.
   // Added in S11.
   undo_limit?: number;
+  // Seat index that took the first turn. Used by the server to enforce
+  // the CR 103.7c turn-1 skip-draw rule. Added in S13. Pre-S13 replays
+  // decode as 0 (Go's int zero), which matches the only seat games
+  // ever started on before the field existed.
+  starting_seat?: number;
+  // Stack item announce-time metadata (S13.1). Indexed bottom..top —
+  // the corresponding spell card (if any) lives in `stack` at the
+  // same index. Empty when the stack is empty.
+  stack_items?: StackItemView[];
+  // APNAP-ordered queue of triggered abilities waiting to hit the
+  // stack (S13.1, CR 603.3b). Empty when no triggers are pending.
+  pending_triggers?: StackItemView[];
+  // Mirrors `Game.SplitSecondActive` — true while any item with
+  // split second is on the stack (S13.1, CR 702.79). Drives the
+  // client's "no responses allowed" UI gating.
+  split_second_active?: boolean;
+}
+
+// StackItemView mirrors `protocol.StackItemView` server-side: the
+// announce-time metadata for one item on the stack.
+export interface StackItemView {
+  id: string;
+  kind: "spell" | "activated" | "triggered";
+  controller: string;
+  owner: string;
+  source_card_id: string;
+  label?: string;
+  targets?: TargetRefView[];
+  modes?: number[];
+  x_value?: number;
+  distribution?: Record<string, number>;
+  hold_priority?: boolean;
+  split_second?: boolean;
+}
+
+// TargetRefView mirrors `protocol.TargetRefView` server-side: a
+// single announce-time target slot.
+export interface TargetRefView {
+  kind: "player" | "card" | "self" | "none";
+  id?: string;
 }
 
 export interface VoteView {

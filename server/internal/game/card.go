@@ -95,6 +95,13 @@ type Card struct {
 	// graft work lands. Cleared on zone exit alongside Tapped /
 	// AttackingTarget. Added in S10.
 	GoadedBy uuid.UUID
+
+	// DamageMarked is the damage currently noted on the creature this
+	// turn, used by the lethal-damage state-based action (CR 704.5g).
+	// Combat damage and direct-damage spells (resolved manually) write
+	// into this field; the cleanup-step turn-based action zeroes it.
+	// Only meaningful for creatures on the battlefield. Added in S13.1.
+	DamageMarked int
 }
 
 // CurrentPower returns the card's effective power: base printed
@@ -115,22 +122,107 @@ func (c Card) CurrentPower() int {
 	return p
 }
 
+// CurrentToughness returns the card's effective toughness: base
+// printed toughness plus any +1/+1 counters, minus any -1/-1
+// counters. Used by the lethal-damage and 0-toughness SBAs (S13.1).
+// May be zero or negative — callers compare against DamageMarked
+// directly. NOT clamped (cf. CurrentPower) because the SBAs need to
+// distinguish "printed 0/0 placeholder" (Toughness == 0, no counters)
+// from "reduced to 0/0 by -1/-1 counters" (Toughness > 0 + counters).
+func (c Card) CurrentToughness() int {
+	t := c.Toughness
+	if c.Counters != nil {
+		t += c.Counters["+1/+1"]
+		t -= c.Counters["-1/-1"]
+	}
+	return t
+}
+
 // IsCreature reports whether the card's TypeLine identifies it as a
 // creature. Case-insensitive substring check against "creature";
 // covers "Creature — Human Wizard" and "Legendary Artifact Creature
 // — Golem" alike. Empty TypeLine returns false (placeholder cards
 // from the demo seed are conservatively treated as non-creatures).
 func (c Card) IsCreature() bool {
-	t := c.TypeLine
-	for i := 0; i+8 <= len(t); i++ {
-		if (t[i] == 'C' || t[i] == 'c') &&
-			(t[i+1] == 'R' || t[i+1] == 'r') &&
-			(t[i+2] == 'E' || t[i+2] == 'e') &&
-			(t[i+3] == 'A' || t[i+3] == 'a') &&
-			(t[i+4] == 'T' || t[i+4] == 't') &&
-			(t[i+5] == 'U' || t[i+5] == 'u') &&
-			(t[i+6] == 'R' || t[i+6] == 'r') &&
-			(t[i+7] == 'E' || t[i+7] == 'e') {
+	return typeLineHas(c.TypeLine, "creature")
+}
+
+// IsLand reports whether the card's TypeLine identifies it as a land.
+func (c Card) IsLand() bool {
+	return typeLineHas(c.TypeLine, "land")
+}
+
+// IsInstant reports whether the card is an instant. Instants share
+// the priority window with activated abilities — they're castable
+// any time the caller holds priority.
+func (c Card) IsInstant() bool {
+	return typeLineHas(c.TypeLine, "instant")
+}
+
+// IsSorcery reports whether the card is a sorcery. Sorceries are
+// sorcery-speed only — main phase, stack empty, caller is the
+// active player.
+func (c Card) IsSorcery() bool {
+	return typeLineHas(c.TypeLine, "sorcery")
+}
+
+// IsArtifact reports whether the card is an artifact. Artifacts are
+// permanents (resolution route: battlefield).
+func (c Card) IsArtifact() bool {
+	return typeLineHas(c.TypeLine, "artifact")
+}
+
+// IsEnchantment reports whether the card is an enchantment.
+func (c Card) IsEnchantment() bool {
+	return typeLineHas(c.TypeLine, "enchantment")
+}
+
+// IsPlaneswalker reports whether the card is a planeswalker.
+func (c Card) IsPlaneswalker() bool {
+	return typeLineHas(c.TypeLine, "planeswalker")
+}
+
+// IsBattle reports whether the card is a battle (post-MoM card type).
+func (c Card) IsBattle() bool {
+	return typeLineHas(c.TypeLine, "battle")
+}
+
+// IsPermanent reports whether the card resolves to the battlefield.
+// Per CR 110.4, the permanent types are artifact, creature,
+// enchantment, land, planeswalker, and battle. Instants and sorceries
+// are explicitly NOT permanents (they resolve to the graveyard).
+func (c Card) IsPermanent() bool {
+	return c.IsArtifact() ||
+		c.IsCreature() ||
+		c.IsEnchantment() ||
+		c.IsLand() ||
+		c.IsPlaneswalker() ||
+		c.IsBattle()
+}
+
+// typeLineHas does a case-insensitive substring check against the
+// given lowercase needle. The needle MUST be lowercase (callers in
+// this file always pass a literal). Returns false for an empty
+// TypeLine (placeholder cards from the demo seed are conservatively
+// treated as no-type).
+func typeLineHas(typeLine, lowerNeedle string) bool {
+	if typeLine == "" {
+		return false
+	}
+	n := len(lowerNeedle)
+	for i := 0; i+n <= len(typeLine); i++ {
+		match := true
+		for j := 0; j < n; j++ {
+			c := typeLine[i+j]
+			if c >= 'A' && c <= 'Z' {
+				c += 'a' - 'A'
+			}
+			if c != lowerNeedle[j] {
+				match = false
+				break
+			}
+		}
+		if match {
 			return true
 		}
 	}

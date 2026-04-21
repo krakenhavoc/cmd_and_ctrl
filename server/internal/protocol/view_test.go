@@ -54,6 +54,65 @@ func TestViewOfGameStructuralFields(t *testing.T) {
 	}
 }
 
+// TestViewOfGameS131StackScaffold verifies that the new S13.1 stack
+// metadata fields surface on the wire when populated. Builds a
+// synthetic StackItem directly on the game (the cast/activate
+// mutations land in sub-PR 2; this just verifies the projection),
+// then asserts the wire view picks it up under stack_items and
+// preserves announce-time targets / X / split-second.
+func TestViewOfGameS131StackScaffold(t *testing.T) {
+	g := buildActiveGame(t)
+	caster := g.Seats[0]
+	target := g.Seats[1]
+
+	itemID := uuid.New()
+	g.WithWriteLock(func() {
+		if g.StackMeta == nil {
+			g.StackMeta = make(map[uuid.UUID]*game.StackItem)
+		}
+		g.StackMeta[itemID] = &game.StackItem{
+			ID:           itemID,
+			Kind:         game.StackItemSpell,
+			Controller:   caster.ID,
+			Owner:        caster.ID,
+			SourceCardID: itemID,
+			Targets: []game.TargetRef{
+				{Kind: game.TargetPlayer, ID: target.ID},
+			},
+			XValue:      3,
+			SplitSecond: true,
+		}
+		g.SplitSecondActive = true
+	})
+
+	v := ViewOfGame(g)
+	if !v.SplitSecondActive {
+		t.Errorf("SplitSecondActive on the wire: got false, want true")
+	}
+	if len(v.StackItems) != 1 {
+		t.Fatalf("StackItems on the wire: got %d, want 1", len(v.StackItems))
+	}
+	got := v.StackItems[0]
+	if got.ID != itemID.String() {
+		t.Errorf("StackItem.ID: got %q, want %q", got.ID, itemID.String())
+	}
+	if got.Kind != string(game.StackItemSpell) {
+		t.Errorf("StackItem.Kind: got %q, want %q", got.Kind, game.StackItemSpell)
+	}
+	if got.Controller != caster.ID.String() {
+		t.Errorf("StackItem.Controller: got %q, want %q", got.Controller, caster.ID.String())
+	}
+	if got.XValue != 3 {
+		t.Errorf("StackItem.XValue: got %d, want 3", got.XValue)
+	}
+	if !got.SplitSecond {
+		t.Errorf("StackItem.SplitSecond: got false, want true")
+	}
+	if len(got.Targets) != 1 || got.Targets[0].ID != target.ID.String() {
+		t.Errorf("StackItem.Targets: got %+v, want one player target referencing seat 1", got.Targets)
+	}
+}
+
 // TestViewOfGameS13Fields verifies StartingSeat surfaces on the wire
 // and the PriorityHolder == NoPriority sentinel round-trips as -1.
 // The buildActiveGame helper does not close mulligans, so the cursor

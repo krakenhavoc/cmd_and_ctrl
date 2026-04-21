@@ -29,16 +29,35 @@ func (g *Game) Clone() *Game {
 // g.mu (read or write).
 func (g *Game) cloneLocked() *Game {
 	out := &Game{
-		ID:            g.ID,
-		CreatedAt:     g.CreatedAt,
-		State:         g.State,
-		Turn:          g.Turn,
-		MulligansOpen: g.MulligansOpen,
-		Monarch:       g.Monarch,
-		Initiative:    g.Initiative,
-		UndoLimit:     g.UndoLimit,
-		StartingSeat:  g.StartingSeat,
-		rng:           g.rng,
+		ID:                g.ID,
+		CreatedAt:         g.CreatedAt,
+		State:             g.State,
+		Turn:              g.Turn,
+		MulligansOpen:     g.MulligansOpen,
+		Monarch:           g.Monarch,
+		Initiative:        g.Initiative,
+		UndoLimit:         g.UndoLimit,
+		StartingSeat:      g.StartingSeat,
+		SplitSecondActive: g.SplitSecondActive,
+		rng:               g.rng,
+	}
+	if len(g.StackMeta) > 0 {
+		out.StackMeta = make(map[uuid.UUID]*StackItem, len(g.StackMeta))
+		for k, v := range g.StackMeta {
+			out.StackMeta[k] = cloneStackItem(v)
+		}
+	}
+	if len(g.PendingTriggers) > 0 {
+		out.PendingTriggers = make([]*StackItem, len(g.PendingTriggers))
+		for i, t := range g.PendingTriggers {
+			out.PendingTriggers[i] = cloneStackItem(t)
+		}
+	}
+	if len(g.LoyaltyActivatedThisTurn) > 0 {
+		out.LoyaltyActivatedThisTurn = make(map[uuid.UUID]bool, len(g.LoyaltyActivatedThisTurn))
+		for k, v := range g.LoyaltyActivatedThisTurn {
+			out.LoyaltyActivatedThisTurn[k] = v
+		}
 	}
 	out.Battlefield = cloneZone(g.Battlefield)
 	out.Stack = cloneZone(g.Stack)
@@ -115,9 +134,52 @@ func clonePlayer(p *Player) *Player {
 	} else {
 		out.CommanderDamage = make(map[uuid.UUID]int)
 	}
+	if len(p.CommanderCasts) > 0 {
+		out.CommanderCasts = make(map[uuid.UUID]int, len(p.CommanderCasts))
+		for k, v := range p.CommanderCasts {
+			out.CommanderCasts[k] = v
+		}
+	} else {
+		out.CommanderCasts = make(map[uuid.UUID]int)
+	}
 	if len(p.LifeHistory) > 0 {
 		out.LifeHistory = make([]LifeChange, len(p.LifeHistory))
 		copy(out.LifeHistory, p.LifeHistory)
+	}
+	return out
+}
+
+// cloneStackItem deep-copies a StackItem. Targets / Modes / Distribution
+// are reallocated; scalar fields are value-copied. Returns nil for a
+// nil input so the caller doesn't have to guard.
+func cloneStackItem(s *StackItem) *StackItem {
+	if s == nil {
+		return nil
+	}
+	out := &StackItem{
+		ID:           s.ID,
+		Kind:         s.Kind,
+		Controller:   s.Controller,
+		Owner:        s.Owner,
+		SourceCardID: s.SourceCardID,
+		Label:        s.Label,
+		XValue:       s.XValue,
+		HoldPriority: s.HoldPriority,
+		SplitSecond:  s.SplitSecond,
+	}
+	if len(s.Targets) > 0 {
+		out.Targets = make([]TargetRef, len(s.Targets))
+		copy(out.Targets, s.Targets)
+	}
+	if len(s.Modes) > 0 {
+		out.Modes = make([]int, len(s.Modes))
+		copy(out.Modes, s.Modes)
+	}
+	if len(s.Distribution) > 0 {
+		out.Distribution = make(map[uuid.UUID]int, len(s.Distribution))
+		for k, v := range s.Distribution {
+			out.Distribution[k] = v
+		}
 	}
 	return out
 }
@@ -168,6 +230,10 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.Initiative = src.Initiative
 	g.UndoLimit = src.UndoLimit
 	g.StartingSeat = src.StartingSeat
+	g.SplitSecondActive = src.SplitSecondActive
+	g.StackMeta = src.StackMeta
+	g.PendingTriggers = src.PendingTriggers
+	g.LoyaltyActivatedThisTurn = src.LoyaltyActivatedThisTurn
 	g.Promises = src.Promises
 	g.Vote = src.Vote
 	g.rng = src.rng

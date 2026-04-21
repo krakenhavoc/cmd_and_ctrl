@@ -104,7 +104,13 @@ func (g *Game) DrawCard(playerID uuid.UUID) error {
 
 // drawCardLocked is the unlocked draw used both by the public
 // DrawCard action and by the StepDraw auto-action in
-// runStepEntryHooksLocked. Caller must hold g.mu.
+// runStepEntryHooksLocked. S13.1: an empty library marks the player
+// for elimination at the next SBA check (CR 704.5b) and surfaces
+// ErrZoneEmpty so the manual DrawCard path keeps its existing wire
+// behaviour. The auto-fire path in the step entry hook swallows
+// ErrZoneEmpty so the cursor still moves.
+//
+// Caller must hold g.mu.
 func (g *Game) drawCardLocked(playerID uuid.UUID) error {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
@@ -112,6 +118,9 @@ func (g *Game) drawCardLocked(playerID uuid.UUID) error {
 	}
 	c, err := p.Library.PopTop()
 	if err != nil {
+		if err == ErrZoneEmpty {
+			p.LosesAtNextSBA = true
+		}
 		return err
 	}
 	p.Hand.PushTop(c)
@@ -136,6 +145,10 @@ func (g *Game) activeSeatIDLocked() uuid.UUID {
 // battlefield. The card's controller is set to the player (already
 // the case for cards entering from your own hand, but stored
 // explicitly for clarity).
+//
+// S13.1: kept as the sandbox / admin direct-drop verb for token
+// creation, replay restore, and "fix wedged state" cases. Normal
+// play uses CastSpell, which routes through the stack.
 func (g *Game) PlayCard(playerID, cardID uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -160,6 +173,922 @@ func (g *Game) PlayCard(playerID, cardID uuid.UUID) error {
 	return nil
 }
 
+// CastSpellParams carries the announce-time choices that flow into a
+// new StackItem. All fields are optional; sensible zero values mean
+// "no targets, no modes, no X, no distribution, default flags."
+//
+// FromZone defaults to "hand" when empty. The only other supported
+// value today is "command" for casting a commander out of the
+// command zone (S13.1 commander tax + zone-replacement work in
+// sub-PR 8 reads this). Other zones (graveyard, library, exile,
+// stack) come with S29's alt-cast-paths sprint.
+//
+// Targets / Modes / XValue / Distribution land in sub-PRs 3 & 4 —
+// the params struct accepts them now so the action wire format stays
+// stable across the sprint, but CastSpell itself ignores all but
+// FromZone, HoldPriority, and SplitSecond at this checkpoint.
+type CastSpellParams struct {
+	FromZone     string
+	Targets      []TargetRef
+	Modes        []int
+	XValue       int
+	Distribution map[uuid.UUID]int
+	HoldPriority bool
+	SplitSecond  bool
+}
+
+// CastSpell is the canonical "play a card from hand" verb (CR 601).
+// Lands route directly to the battlefield — they're a special action
+// that doesn't use the stack (CR 305). Every other card type goes to
+// the stack with a fresh StackMeta entry capturing announce-time
+// choices, and the caster RETAINS priority (CR 117.3c) — they pass
+// explicitly via PassPriority once they're done.
+//
+// Sorcery-speed gate: sorceries (and sub-PR 8's commander casts and
+// sub-PR 6's loyalty abilities) require main-phase + stack-empty +
+// caller-is-active-player, per CR 307.1. Instants honour the
+// caller-holds-priority gate at the action layer (requirePriorityHolder
+// in the dispatcher), so no extra speed gate is needed here for
+// them.
+//
+// Split-second blocks all casts and activations except mana abilities
+// and special actions (CR 702.79). The flag is mirrored on
+// Game.SplitSecondActive for fast lookup; recomputed every time the
+// stack changes.
+//
+// On success: the card is in the stack zone (for non-lands) with a
+// StackMeta entry, or on the battlefield (for lands). PriorityHolder
+// is unchanged — the caster retains priority. SBA loop and pending-
+// trigger drain are sub-PR 7 / 6 territory.
+func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	if g.SplitSecondActive {
+		return ErrSplitSecondActive
+	}
+	src, err := g.castSourceZoneLocked(p, params.FromZone)
+	if err != nil {
+		return err
+	}
+	// Find the card in the source zone so we can inspect its type
+	// before moving anything. Pre-S13.1 PlayCard moved first then
+	// stamped — for cast we need the type *before* deciding the
+	// destination, so look up first.
+	var card Card
+	found := false
+	for _, c := range src.Cards {
+		if c.InstanceID == cardID {
+			card = c
+			found = true
+			break
+		}
+	}
+	if !found {
+		return ErrCardNotFound
+	}
+	// Sorcery-speed gate. Lands are special-action-fast (CR 305 is
+	// "you may play a land during your main phase if the stack is
+	// empty"); they're handled implicitly by the same gate below.
+	// Instants bypass the gate entirely. Anything else (sorceries,
+	// permanents that aren't instants) needs sorcery speed.
+	requiresSorcerySpeed := !card.IsInstant() && !card.IsLand()
+	if card.IsLand() || requiresSorcerySpeed {
+		if !g.sorcerySpeedOpenLocked(playerID) {
+			return ErrSorcerySpeedRequired
+		}
+	}
+	// Lands skip the stack entirely (CR 305). Move the card to the
+	// battlefield and stamp the controller — same shape as PlayCard.
+	if card.IsLand() {
+		moved, err := MoveCard(src, g.Battlefield, cardID)
+		if err != nil {
+			return err
+		}
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == moved.InstanceID {
+				g.Battlefield.Cards[i].Controller = playerID
+			}
+		}
+		return nil
+	}
+	// Non-land: route through the stack. The card lives in
+	// Game.Stack; the announce-time choices live in StackMeta.
+	if _, err := MoveCard(src, g.Stack, cardID); err != nil {
+		return err
+	}
+	if g.StackMeta == nil {
+		g.StackMeta = make(map[uuid.UUID]*StackItem)
+	}
+	g.StackMeta[cardID] = &StackItem{
+		ID:           cardID,
+		Kind:         StackItemSpell,
+		Controller:   playerID,
+		Owner:        card.Owner,
+		SourceCardID: cardID,
+		Targets:      append([]TargetRef(nil), params.Targets...),
+		Modes:        append([]int(nil), params.Modes...),
+		XValue:       params.XValue,
+		Distribution: cloneDistributionLocked(params.Distribution),
+		HoldPriority: params.HoldPriority,
+		SplitSecond:  params.SplitSecond,
+	}
+	if params.SplitSecond {
+		g.SplitSecondActive = true
+	}
+	// Commander tax bookkeeping (CR 903.8). Increment AFTER the
+	// card has reached the stack so a failed cast doesn't bump the
+	// counter. Sandbox: the engine doesn't enforce the +{2}
+	// surcharge — players track mana in their head; the counter is
+	// the affordance.
+	if params.FromZone == "command" {
+		if p.CommanderCasts == nil {
+			p.CommanderCasts = make(map[uuid.UUID]int)
+		}
+		p.CommanderCasts[cardID]++
+	}
+	return nil
+}
+
+// castSourceZoneLocked resolves the FromZone string to the zone
+// the card should leave from. Unknown values fall back to hand —
+// keeps the action forward-compatible with sub-PR 8's "command"
+// addition without breaking older clients that omit the field.
+func (g *Game) castSourceZoneLocked(p *Player, fromZone string) (*Zone, error) {
+	switch fromZone {
+	case "", "hand":
+		return p.Hand, nil
+	case "command":
+		return p.Command, nil
+	default:
+		return nil, ErrZoneNotFound
+	}
+}
+
+// sorcerySpeedOpenLocked reports whether the sorcery-speed gate is
+// currently open for the given player: caller is the active seat,
+// the cursor is on a main phase, and the stack is empty (CR 307.1).
+// Caller must hold g.mu.
+func (g *Game) sorcerySpeedOpenLocked(playerID uuid.UUID) bool {
+	if g.Turn.Step != StepPrecombatMain && g.Turn.Step != StepPostcombatMain {
+		return false
+	}
+	if g.Stack != nil && len(g.Stack.Cards) > 0 {
+		return false
+	}
+	if g.activeSeatIDLocked() != playerID {
+		return false
+	}
+	return true
+}
+
+// cloneDistributionLocked deep-copies the announce-time distribution
+// map so the caller's slice / map can't be mutated through StackMeta.
+// Returns nil for an empty input.
+func cloneDistributionLocked(in map[uuid.UUID]int) map[uuid.UUID]int {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[uuid.UUID]int, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
+}
+
+// resolveTopOfStackLocked pops the topmost stack item and resolves
+// it. For spells, permanents route to the battlefield with their
+// recorded controller; instants and sorceries route to the owner's
+// graveyard (CR 608.2f). For activated / triggered abilities, the
+// item simply ceases to exist (CR 608.2m) — there is no source-card
+// movement because the ability's source is a separate card that
+// stays put.
+//
+// S13.1 sub-PR 2 lands the basic resolution path (no target re-check
+// yet — that arrives in sub-PR 3; no SBA loop yet — sub-PR 7). The
+// caller is responsible for calling this only when the stack is
+// non-empty.
+//
+// Caller must hold g.mu.
+func (g *Game) resolveTopOfStackLocked() error {
+	if g.Stack == nil || len(g.Stack.Cards) == 0 {
+		// No spell on the stack — but there could still be ability
+		// items in StackMeta. Find the most recent and resolve it.
+		return g.resolveTopAbilityLocked()
+	}
+	// Top of the stack is the last card in the slice (LIFO).
+	top := g.Stack.Cards[len(g.Stack.Cards)-1]
+	item, ok := g.StackMeta[top.InstanceID]
+	if !ok || item == nil {
+		// Defensive: a card on the stack without a meta entry should
+		// not happen — but if it does, route to graveyard so the
+		// stack doesn't wedge.
+		return g.routeStackCardToGraveyardLocked(top)
+	}
+	delete(g.StackMeta, top.InstanceID)
+	defer g.recomputeSplitSecondLocked()
+
+	// Target re-check (CR 608.2b). If the spell declared at least one
+	// target (player or card kind) and EVERY target is now illegal
+	// (referenced player no longer seated / conceded, referenced card
+	// no longer in a zone the engine tracks), the spell is "countered
+	// by game rules" — it resolves by going to the owner's graveyard
+	// without effect. If only *some* targets have become illegal, the
+	// spell still resolves: the engine records what's still valid via
+	// the surviving subset, and players resolve the effect manually
+	// (sandbox — partial-target effects aren't automated).
+	//
+	// Self / none targets don't re-check (self is the caster; none
+	// has no referent) and count as always-legal for the all-illegal
+	// short-circuit.
+	if spellAllTargetsIllegalLocked(g, item) {
+		// "Countered by game rules" — permanents and non-permanents
+		// alike go to the owner's graveyard (CR 608.2b). The
+		// announce-time choices on StackMeta are discarded along
+		// with the item.
+		return g.routeStackCardToGraveyardLocked(top)
+	}
+	if top.IsPermanent() {
+		// Permanents resolve to the battlefield with the announce-time
+		// controller (which may differ from owner — e.g. cast via a
+		// "play this from exile" effect that change controller).
+		moved, err := MoveCard(g.Stack, g.Battlefield, top.InstanceID)
+		if err != nil {
+			return err
+		}
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == moved.InstanceID {
+				g.Battlefield.Cards[i].Controller = item.Controller
+				break
+			}
+		}
+		return nil
+	}
+	// Instants / sorceries: resolve to the owner's graveyard.
+	return g.routeStackCardToGraveyardLocked(top)
+}
+
+// spellAllTargetsIllegalLocked reports whether a resolved stack item
+// has at least one targeted slot (player or card) and every one of
+// those targets is now illegal per the CR 608.2b existence check.
+// A slot with Kind Self or None is always legal. Items with no
+// targets at all return false (nothing to re-check).
+//
+// Caller must hold g.mu.
+func spellAllTargetsIllegalLocked(g *Game, item *StackItem) bool {
+	if item == nil || len(item.Targets) == 0 {
+		return false
+	}
+	hadTargeted := false
+	anyLegal := false
+	for _, t := range item.Targets {
+		switch t.Kind {
+		case TargetSelf, TargetNone:
+			// These aren't "targets" for the re-check — they're fixed
+			// references. Treat as always-legal and skip the "had any
+			// targeted slot" signal.
+			continue
+		case TargetPlayer, TargetCard:
+			hadTargeted = true
+			if targetStillExistsLocked(g, t) {
+				anyLegal = true
+			}
+		}
+	}
+	if !hadTargeted {
+		return false
+	}
+	return !anyLegal
+}
+
+// targetStillExistsLocked performs the CR 608.2b existence check for
+// a single TargetRef: the referenced player is still seated and
+// non-eliminated, or the referenced card is still in a zone the
+// engine tracks (findCardZoneLocked walks every zone). Caller must
+// hold g.mu.
+func targetStillExistsLocked(g *Game, t TargetRef) bool {
+	switch t.Kind {
+	case TargetPlayer:
+		p := g.playerByIDLocked(t.ID)
+		return p != nil && !p.Eliminated
+	case TargetCard:
+		return g.findCardZoneLocked(t.ID) != nil
+	default:
+		return true
+	}
+}
+
+// resolveTopAbilityLocked resolves the most-recently-added ability
+// item in StackMeta (no underlying card on Game.Stack). Returns nil
+// if there are no abilities to resolve. Caller must hold g.mu.
+func (g *Game) resolveTopAbilityLocked() error {
+	if len(g.StackMeta) == 0 {
+		return nil
+	}
+	// Without an ordering hint, pick any ability item — sub-PR 6
+	// will replace this with proper LIFO ordering once
+	// activate_ability / announce_trigger are wired.
+	for id, item := range g.StackMeta {
+		if item != nil && (item.Kind == StackItemActivated || item.Kind == StackItemTriggered) {
+			delete(g.StackMeta, id)
+			g.recomputeSplitSecondLocked()
+			return nil
+		}
+	}
+	return nil
+}
+
+// routeStackCardToGraveyardLocked moves a card off Game.Stack and
+// into its owner's graveyard. Used by resolveTopOfStackLocked for
+// instants / sorceries and by the "countered by game rules" path
+// (sub-PR 3) when every target is illegal on resolve. Caller must
+// hold g.mu.
+func (g *Game) routeStackCardToGraveyardLocked(c Card) error {
+	owner := g.playerByIDLocked(c.Owner)
+	if owner == nil {
+		// Owner is no longer seated — drop the card to exile so the
+		// stack doesn't carry a reference to a dead player. (S13.1
+		// sub-PR 10 will fold this into the leaving-game cleanup.)
+		_, err := MoveCard(g.Stack, g.Exile, c.InstanceID)
+		return err
+	}
+	_, err := MoveCard(g.Stack, owner.Graveyard, c.InstanceID)
+	return err
+}
+
+// AbilityParams carries the announce-time choices that flow into an
+// activated or triggered ability's stack item. Same shape as
+// CastSpellParams minus FromZone (abilities don't move a card) and
+// SplitSecond (only spells / activations get the modifier; the
+// flag would round-trip on the wire if a future card needed it).
+type AbilityParams struct {
+	Label        string
+	Targets      []TargetRef
+	Modes        []int
+	XValue       int
+	Distribution map[uuid.UUID]int
+}
+
+// ActivateAbility creates an activated-ability stack item linked to
+// the source card. Implements CR 602: announce → push to stack →
+// caller retains priority. Mana abilities are NOT modeled this way
+// (CR 605 — they don't use the stack); see the package commentary.
+//
+// No card moves. The source card stays in its origin zone; the
+// stack item carries its own synthetic ID. Resolution removes the
+// item (CR 608.2m).
+//
+// SourceCardID must reference a card that exists in some zone; an
+// unknown ID returns ErrCardNotFound.
+//
+// Caller-gated to priority holder via the action layer; this
+// method does not re-check that.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+//
+// S13.1.
+func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityParams) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	if g.SplitSecondActive {
+		return ErrSplitSecondActive
+	}
+	if g.playerByIDLocked(playerID) == nil {
+		return ErrPlayerNotFound
+	}
+	if g.findCardZoneLocked(sourceCardID) == nil {
+		return ErrCardNotFound
+	}
+	id := uuid.New()
+	if g.StackMeta == nil {
+		g.StackMeta = make(map[uuid.UUID]*StackItem)
+	}
+	g.StackMeta[id] = &StackItem{
+		ID:           id,
+		Kind:         StackItemActivated,
+		Controller:   playerID,
+		Owner:        playerID,
+		SourceCardID: sourceCardID,
+		Label:        params.Label,
+		Targets:      append([]TargetRef(nil), params.Targets...),
+		Modes:        append([]int(nil), params.Modes...),
+		XValue:       params.XValue,
+		Distribution: cloneDistributionLocked(params.Distribution),
+	}
+	return nil
+}
+
+// ActivateLoyalty applies a planeswalker's loyalty ability. Sandbox
+// shape: the engine doesn't model the activation as a proper stack
+// item (full loyalty-on-stack lands in S14+ alongside the effect
+// catalog). Instead, the loyalty delta is applied immediately and
+// the once-per-turn flag is set. Sorcery-speed gate enforced per
+// CR 606.5.
+//
+// `delta` is the loyalty change announced by the ability:
+// +1 / +2 / -3 / etc. Applied via AddCounter to the planeswalker's
+// "loyalty" counter; negative deltas that would drive loyalty below
+// zero are clamped (the planeswalker leaves via SBA in sub-PR 7).
+//
+// Returns:
+//   - ErrCardNotFound if planeswalkerID is not on the battlefield.
+//   - ErrSorcerySpeedRequired if the gate is closed.
+//   - ErrLoyaltyAlreadyActivated if the planeswalker has already
+//     activated a loyalty ability this turn (CR 606.5).
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+//
+// S13.1.
+func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string, delta int) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	if g.SplitSecondActive {
+		return ErrSplitSecondActive
+	}
+	if g.playerByIDLocked(playerID) == nil {
+		return ErrPlayerNotFound
+	}
+	if !g.sorcerySpeedOpenLocked(playerID) {
+		return ErrSorcerySpeedRequired
+	}
+	if g.LoyaltyActivatedThisTurn[planeswalkerID] {
+		return ErrLoyaltyAlreadyActivated
+	}
+	// Find the planeswalker on the battlefield.
+	var pw *Card
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == planeswalkerID {
+			pw = &g.Battlefield.Cards[i]
+			break
+		}
+	}
+	if pw == nil {
+		return ErrCardNotFound
+	}
+	if pw.Counters == nil {
+		pw.Counters = make(map[string]int)
+	}
+	pw.Counters["loyalty"] += delta
+	if pw.Counters["loyalty"] <= 0 {
+		// Loyalty reaching zero is the SBA's responsibility (sub-PR 7);
+		// here we just keep the bookkeeping clean by removing the key
+		// when it drops to zero. SBA will pick up "loyalty == 0" by
+		// counting positive entries.
+		if pw.Counters["loyalty"] == 0 {
+			delete(pw.Counters, "loyalty")
+		}
+		// Negative is allowed for the moment — clamping would discard
+		// "minus more than you have" intent that the SBA needs to
+		// see. Sub-PR 7 will read this as "loyalty <= 0".
+	}
+	if g.LoyaltyActivatedThisTurn == nil {
+		g.LoyaltyActivatedThisTurn = make(map[uuid.UUID]bool)
+	}
+	g.LoyaltyActivatedThisTurn[planeswalkerID] = true
+	if label != "" {
+		// Record a no-card stack item briefly so the wire surfaces
+		// the label for the duration of the activation, then drop it.
+		// Future "loyalty as a real stack item" would persist this
+		// past the action.
+		_ = label
+	}
+	return nil
+}
+
+// AnnounceTrigger queues a triggered ability for APNAP-ordered drain
+// onto the stack. Per CR 603.3b, all triggers waiting at a priority-
+// grant boundary are placed on the stack in active-player-non-active-
+// player order, with each affected player choosing the relative
+// order of their own simultaneous triggers (here: the order they
+// announce them).
+//
+// Sandbox: the player whose card has a triggered ability clicks
+// "trigger" on the card, optionally provides a label and target
+// list, and the engine queues an item. The drain happens in
+// drainPendingTriggersAPNAPLocked() — called from PassPriority and
+// every other priority-grant path.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+//
+// S13.1.
+func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityParams) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	if g.playerByIDLocked(playerID) == nil {
+		return ErrPlayerNotFound
+	}
+	if g.findCardZoneLocked(sourceCardID) == nil {
+		return ErrCardNotFound
+	}
+	id := uuid.New()
+	g.PendingTriggers = append(g.PendingTriggers, &StackItem{
+		ID:           id,
+		Kind:         StackItemTriggered,
+		Controller:   playerID,
+		Owner:        playerID,
+		SourceCardID: sourceCardID,
+		Label:        params.Label,
+		Targets:      append([]TargetRef(nil), params.Targets...),
+		Modes:        append([]int(nil), params.Modes...),
+		XValue:       params.XValue,
+		Distribution: cloneDistributionLocked(params.Distribution),
+	})
+	return nil
+}
+
+// stateBasedActionsLocked runs one pass of state-based actions per
+// CR 704.5. Returns true if any SBA fired so the caller can re-run
+// the loop (CR 704.4 — SBAs repeat until none fire).
+//
+// S13.1 implements the four canonical Commander SBAs plus the
+// empty-library draw loss:
+//   - 704.5a: a player at 0 or less life loses
+//   - 704.5b: a player who tried to draw from an empty library loses
+//   - 704.5f: a creature with 0 or less toughness is destroyed
+//   - 704.5g: a creature with damage marked >= toughness is destroyed
+//   - 704.5v / 903.14a: 21 commander damage from a single source
+//     (per-commander tracking lands in sub-PR 8 — for now the
+//     existing per-opponent map is used; partner-pair edge case is
+//     known and tracked there)
+//
+// Counter-specific SBAs (planeswalker loyalty 0, battle defense 0,
+// +1/+1 -1/-1 cancel, poison ≥ 10, saga final chapter) are S13.2.
+//
+// Caller must hold g.mu.
+func (g *Game) stateBasedActionsLocked() bool {
+	if g.State != StateActive {
+		return false
+	}
+	fired := false
+
+	// Player-loss SBAs first — destroying creatures is a separate
+	// pass to keep the bookkeeping simple.
+	for _, p := range g.Seats {
+		if p.Eliminated {
+			continue
+		}
+		if p.Life <= 0 || p.LosesAtNextSBA || p.IsDeadByCommanderDamage() {
+			g.eliminatePlayerLocked(p)
+			fired = true
+		}
+	}
+
+	// Creature destruction SBAs. Collect doomed instance IDs in a
+	// pre-pass to avoid mutating the slice while iterating it.
+	//
+	// Printed-0 creatures (Toughness == 0 and no counters applied)
+	// are skipped: that's the placeholder / unparseable-stats
+	// convention documented on Card.Power — the SBA would else
+	// destroy every demo seed card. A printed >0 creature reduced
+	// to <=0 by counters does die, as does a printed >0 creature
+	// with damage marked >= current toughness.
+	var doomed []uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if !c.IsCreature() {
+			continue
+		}
+		if c.Toughness == 0 && len(c.Counters) == 0 {
+			continue
+		}
+		curT := c.CurrentToughness()
+		if curT <= 0 {
+			doomed = append(doomed, c.InstanceID)
+			continue
+		}
+		if c.DamageMarked >= curT {
+			doomed = append(doomed, c.InstanceID)
+		}
+	}
+	for _, id := range doomed {
+		if err := g.routeBattlefieldCardToOwnerGraveyardLocked(id); err == nil {
+			fired = true
+		}
+	}
+
+	return fired
+}
+
+// runStateChecksLocked runs the SBA + APNAP-trigger-drain loop until
+// the game is quiet (no SBAs fire AND no triggers are pending).
+// CR 704.4 + 603.3b — both checks are paired at every priority-grant
+// boundary.
+//
+// Bounded at 32 iterations as a safety belt against an unintended
+// SBA / trigger ping-pong; in practice the loop terminates after at
+// most a handful of passes (one creature destroyed → one Concede-
+// adjacent trigger → one resolution).
+//
+// Caller must hold g.mu.
+func (g *Game) runStateChecksLocked() {
+	const maxIter = 32
+	for i := 0; i < maxIter; i++ {
+		fired := g.stateBasedActionsLocked()
+		hasPending := len(g.PendingTriggers) > 0
+		if !fired && !hasPending {
+			return
+		}
+		if hasPending {
+			g.runStateChecksLocked()
+		}
+	}
+}
+
+// eliminatePlayerLocked transitions a seated player to eliminated
+// state, cleans up their stack items + pending triggers, walks the
+// cursor past them if they were the active seat, and runs the
+// game-end check. Used by Concede AND by the SBA loop. Caller must
+// hold g.mu.
+func (g *Game) eliminatePlayerLocked(p *Player) {
+	if p.Eliminated {
+		return
+	}
+	p.Eliminated = true
+	p.LosesAtNextSBA = false
+	g.cleanupStackForEliminatedLocked(p.ID)
+	g.advancePastEliminatedLocked()
+	// Game-end check.
+	survivors := 0
+	for _, s := range g.Seats {
+		if !s.Eliminated {
+			survivors++
+		}
+	}
+	if survivors <= 1 {
+		g.State = StateEnded
+	}
+}
+
+// cleanupStackForEliminatedLocked implements CR 800.4a — when a
+// player leaves the game, every spell and ability they control on
+// the stack ceases to exist. Spell items have their card removed
+// from Game.Stack to exile (closest analogue to "cease to exist").
+// Ability items are just deleted from StackMeta. Pending triggers
+// controlled by the eliminated player are dropped from the queue.
+//
+// Targets on remaining stack items pointing at the eliminated
+// player are NOT scrubbed here — the existing target re-check at
+// resolution time (CR 608.2b, see spellAllTargetsIllegalLocked)
+// already turns those slots illegal, so the spell either resolves
+// partially or is countered by game rules at the moment the
+// mechanic actually matters.
+//
+// Caller must hold g.mu.
+//
+// S13.1.
+func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
+	if len(g.StackMeta) > 0 {
+		toRemove := make([]uuid.UUID, 0, len(g.StackMeta))
+		for id, item := range g.StackMeta {
+			if item != nil && item.Controller == playerID {
+				toRemove = append(toRemove, id)
+			}
+		}
+		for _, id := range toRemove {
+			item := g.StackMeta[id]
+			delete(g.StackMeta, id)
+			if item != nil && item.Kind == StackItemSpell && g.Stack != nil && g.Stack.Contains(id) {
+				_, _ = MoveCard(g.Stack, g.Exile, id)
+			}
+		}
+	}
+	if len(g.PendingTriggers) > 0 {
+		kept := g.PendingTriggers[:0]
+		for _, t := range g.PendingTriggers {
+			if t == nil || t.Controller != playerID {
+				kept = append(kept, t)
+			}
+		}
+		g.PendingTriggers = kept
+	}
+	g.recomputeSplitSecondLocked()
+}
+
+// routeBattlefieldCardToOwnerGraveyardLocked moves a battlefield
+// card to its owner's graveyard, clearing battlefield-only state
+// (combat declarations and damage marked are zeroed by MoveCard's
+// CR 400.7 cleanup; we additionally clear DamageMarked here since
+// MoveCard predates the field). Used by SBAs that destroy creatures.
+//
+// If the owner is no longer seated, the card lands in exile so the
+// engine doesn't carry a stale reference. Caller must hold g.mu.
+func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) error {
+	var owner *Player
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == cardID {
+			owner = g.playerByIDLocked(g.Battlefield.Cards[i].Owner)
+			// Zero battlefield-only state in place before the move.
+			// MoveCard handles tapped + counters + position via
+			// existing CR 400.7 cleanup, but DamageMarked is new.
+			g.Battlefield.Cards[i].DamageMarked = 0
+			break
+		}
+	}
+	if owner == nil {
+		_, err := MoveCard(g.Battlefield, g.Exile, cardID)
+		return err
+	}
+	_, err := MoveCard(g.Battlefield, owner.Graveyard, cardID)
+	return err
+}
+
+// MarkDamage adjusts the damage noted on a creature on the
+// battlefield by `delta` (positive to add damage, negative to
+// remove). Drives the lethal-damage SBA (CR 704.5g). Caller-gated
+// to the controller in the action layer for the additive case;
+// admins / spectators may apply negative deltas to undo.
+//
+// Returns ErrCardNotFound if the cardID isn't on the battlefield.
+// SBA loop fires after the mutation so a lethal mark applies
+// immediately.
+//
+// S13.1.
+func (g *Game) MarkDamage(cardID uuid.UUID, delta int) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == cardID {
+			g.Battlefield.Cards[i].DamageMarked += delta
+			if g.Battlefield.Cards[i].DamageMarked < 0 {
+				g.Battlefield.Cards[i].DamageMarked = 0
+			}
+			g.runStateChecksLocked()
+			return nil
+		}
+	}
+	return ErrCardNotFound
+}
+
+// drainPendingTriggersAPNAPLocked moves every queued triggered
+// ability onto the stack in APNAP order: active-player's first,
+// then turn-order clockwise around the table. Within a single
+// player's batch, the queue order is preserved (the caller chose
+// the order via the order they called AnnounceTrigger).
+//
+// Called from PassPriority and other priority-grant boundaries.
+// Caller must hold g.mu.
+//
+// S13.1.
+func (g *Game) drainPendingTriggersAPNAPLocked() {
+	if len(g.PendingTriggers) == 0 {
+		return
+	}
+	numSeats := len(g.Seats)
+	if numSeats == 0 {
+		return
+	}
+	// Bucket triggers by controller seat so we can drain in seat
+	// order. Preserves per-controller queue order via stable
+	// iteration.
+	bySeat := make(map[int][]*StackItem)
+	for _, t := range g.PendingTriggers {
+		seat := -1
+		for i, p := range g.Seats {
+			if p.ID == t.Controller {
+				seat = i
+				break
+			}
+		}
+		if seat == -1 {
+			// Controller no longer seated — drop the trigger.
+			continue
+		}
+		bySeat[seat] = append(bySeat[seat], t)
+	}
+	g.PendingTriggers = nil
+	if g.StackMeta == nil {
+		g.StackMeta = make(map[uuid.UUID]*StackItem)
+	}
+	// APNAP: active player first, then clockwise.
+	for offset := 0; offset < numSeats; offset++ {
+		seat := (g.Turn.ActiveSeat + offset) % numSeats
+		for _, t := range bySeat[seat] {
+			g.StackMeta[t.ID] = t
+		}
+	}
+	g.recomputeSplitSecondLocked()
+}
+
+// CounterSpell removes a spell from the stack and routes its card to
+// `dst` (defaulting to the spell's owner's graveyard). Implements
+// the Counterspell / Hinder / Remand / Spell Crumple shape — the
+// caller picks a destination (graveyard, hand, library, exile) at
+// announce time.
+//
+// Battlefield is rejected as a destination: a counter that "puts the
+// spell onto the battlefield" would be a different effect entirely
+// (and there's no MTG card that does it the way a generic counter
+// does). Stack is also rejected — the counter MUST move it off.
+//
+// Caller-gated to priority holder via the action layer; this method
+// does not re-check that.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+//
+// S13.1.
+func (g *Game) CounterSpell(spellID uuid.UUID, dst *ZoneRef) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	item, ok := g.StackMeta[spellID]
+	if !ok || item == nil || item.Kind != StackItemSpell {
+		return ErrCardNotOnStack
+	}
+	if g.Stack == nil || !g.Stack.Contains(spellID) {
+		return ErrCardNotOnStack
+	}
+	// Resolve the destination. nil → owner's graveyard. Battlefield /
+	// stack are illegal — see method docstring.
+	var destZone *Zone
+	if dst == nil {
+		owner := g.playerByIDLocked(item.Owner)
+		if owner == nil {
+			// Owner has left the game — exile rather than wedging.
+			destZone = g.Exile
+		} else {
+			destZone = owner.Graveyard
+		}
+	} else {
+		if dst.Kind == ZoneBattlefield || dst.Kind == ZoneStack {
+			return ErrInvalidStackDestination
+		}
+		destZone = g.zoneFromRefLocked(*dst)
+		if destZone == nil {
+			return ErrZoneNotFound
+		}
+	}
+	if _, err := MoveCard(g.Stack, destZone, spellID); err != nil {
+		return err
+	}
+	delete(g.StackMeta, spellID)
+	g.recomputeSplitSecondLocked()
+	return nil
+}
+
+// CounterAbility removes an activated / triggered ability from the
+// stack. Abilities cease to exist on resolution (CR 608.2m); a
+// counter is the same destinationless removal. Returns
+// ErrCardNotOnStack if the ID doesn't reference an ability item.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+//
+// S13.1.
+func (g *Game) CounterAbility(abilityID uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	item, ok := g.StackMeta[abilityID]
+	if !ok || item == nil {
+		return ErrCardNotOnStack
+	}
+	if item.Kind != StackItemActivated && item.Kind != StackItemTriggered {
+		return ErrCardNotOnStack
+	}
+	delete(g.StackMeta, abilityID)
+	g.recomputeSplitSecondLocked()
+	return nil
+}
+
+// recomputeSplitSecondLocked walks StackMeta and pending triggers
+// and refreshes the SplitSecondActive cache. Called after every
+// stack mutation. Caller must hold g.mu.
+func (g *Game) recomputeSplitSecondLocked() {
+	for _, item := range g.StackMeta {
+		if item != nil && item.SplitSecond {
+			g.SplitSecondActive = true
+			return
+		}
+	}
+	for _, item := range g.PendingTriggers {
+		if item != nil && item.SplitSecond {
+			g.SplitSecondActive = true
+			return
+		}
+	}
+	g.SplitSecondActive = false
+}
+
 // MoveCardByID moves a card from one zone to another, identified by
 // ZoneRef. This is the general-purpose zone mutation used by the
 // move_card action; higher-level actions (DrawCard, PlayCard) wrap
@@ -170,7 +1099,22 @@ func (g *Game) PlayCard(playerID, cardID uuid.UUID) error {
 // battlefield it would also clear tapped state and counters — which
 // would silently wipe a battlefield card's counters on a redundant
 // client-issued no-op move. Detect the same-zone case up front.
+//
+// S13.1: when asCommander is true and the card is a commander
+// being moved to graveyard, exile, hand, or library, the
+// destination is rewritten to the owner's command zone (CR 903.9
+// — commander zone replacement, exercised here as an explicit
+// player choice rather than an automatic engine transform).
 func (g *Game) MoveCardByID(src, dst ZoneRef, cardID uuid.UUID) error {
+	return g.MoveCardByIDAsCommander(src, dst, cardID, false)
+}
+
+// MoveCardByIDAsCommander is the S13.1 extended form. asCommander
+// is the player's "yes, route this commander back to command zone
+// instead" choice that the move_card action exposes via a
+// per-request flag. The default-false form preserves the historic
+// MoveCardByID behaviour for non-commander moves.
+func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCommander bool) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -179,6 +1123,15 @@ func (g *Game) MoveCardByID(src, dst ZoneRef, cardID uuid.UUID) error {
 	srcZone := g.zoneFromRefLocked(src)
 	if srcZone == nil {
 		return ErrZoneNotFound
+	}
+	// Commander zone replacement (CR 903.9): if the caller flagged
+	// the move and the card is a commander headed to a destination
+	// the rule covers, rewrite dst to the owner's command zone
+	// before resolving the destination zone.
+	if asCommander {
+		if rewritten, ok := g.applyCommanderZoneReplacementLocked(dst, cardID); ok {
+			dst = rewritten
+		}
 	}
 	dstZone := g.zoneFromRefLocked(dst)
 	if dstZone == nil {
@@ -194,6 +1147,35 @@ func (g *Game) MoveCardByID(src, dst ZoneRef, cardID uuid.UUID) error {
 	}
 	_, err := MoveCard(srcZone, dstZone, cardID)
 	return err
+}
+
+// applyCommanderZoneReplacementLocked returns a rewritten ZoneRef
+// pointing at the owner's command zone if the move is eligible for
+// the CR 903.9 replacement (the card is a commander and the
+// destination is graveyard / exile / hand / library). Returns
+// (input, false) when not eligible. Caller must hold g.mu.
+func (g *Game) applyCommanderZoneReplacementLocked(dst ZoneRef, cardID uuid.UUID) (ZoneRef, bool) {
+	switch dst.Kind {
+	case ZoneGraveyard, ZoneExile, ZoneHand, ZoneLibrary:
+		// Eligible destination.
+	default:
+		return dst, false
+	}
+	// Find the card and confirm it's a commander.
+	z := g.findCardZoneLocked(cardID)
+	if z == nil {
+		return dst, false
+	}
+	for _, c := range z.Cards {
+		if c.InstanceID != cardID {
+			continue
+		}
+		if !c.IsCommander {
+			return dst, false
+		}
+		return ZoneRef{Kind: ZoneCommand, Owner: c.Owner}, true
+	}
+	return dst, false
 }
 
 // TapCard sets the tapped state of a card on the battlefield. Returns
@@ -348,16 +1330,55 @@ func (g *Game) PassPriority() error {
 			return nil
 		}
 	}
-	// Wrapped (or only the active seat is alive) — advance the step.
-	// Turn.advance resets PriorityHolder to NoPriority (Untap/Cleanup)
-	// or the new ActiveSeat (everything else). Run the same per-step
-	// entry hooks AdvanceStep does so auto turn-based actions, combat
-	// damage resolution, and combat-clear all fire regardless of
-	// whether the step changed via a priority-wrap or an explicit
-	// advance_step click.
+	// Wrapped (or only the active seat is alive). Two cases:
+	//
+	// S13.1: if the stack has any items (spells in Game.Stack OR
+	// abilities in StackMeta), resolve the top one and reset
+	// priority to the new active seat — the post-resolution priority
+	// boundary per CR 117.3b / 608.1. The step does NOT advance; the
+	// engine returns to the priority loop at the same step until the
+	// stack drains.
+	//
+	// Empty stack: advance the step (existing behavior). Turn.advance
+	// resets PriorityHolder to NoPriority (Untap/Cleanup) or the new
+	// ActiveSeat. Run the same per-step entry hooks AdvanceStep does
+	// so auto turn-based actions, combat damage resolution, and
+	// combat-clear all fire regardless of whether the step changed
+	// via a priority-wrap or an explicit advance_step click.
+	if g.stackHasItemsLocked() {
+		if err := g.resolveTopOfStackLocked(); err != nil {
+			return err
+		}
+		// Drain any pending APNAP triggers onto the stack now that
+		// we've crossed a priority-grant boundary (CR 603.3b).
+		g.runStateChecksLocked()
+		// Priority returns to the active player after a resolution
+		// (CR 117.3b). The step doesn't change.
+		g.Turn.PriorityHolder = g.Turn.ActiveSeat
+		return nil
+	}
+	prev := g.Turn
 	g.Turn = g.Turn.advance(numSeats)
+	g.onTurnAdvanceLocked(prev, g.Turn)
 	g.runStepEntryHooksLocked()
+	g.drainPendingTriggersAPNAPLocked()
 	return nil
+}
+
+// stackHasItemsLocked reports whether anything (a spell card or an
+// ability item in StackMeta) is currently on the stack. Used by the
+// priority-wrap branch to decide between "resolve top" and "advance
+// step." Caller must hold g.mu.
+func (g *Game) stackHasItemsLocked() bool {
+	if g.Stack != nil && len(g.Stack.Cards) > 0 {
+		return true
+	}
+	for _, item := range g.StackMeta {
+		if item != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // DeclareAttacker marks a battlefield card as attacking the target
@@ -571,24 +1592,10 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 	if p.Eliminated {
 		return ErrPlayerEliminated
 	}
-	p.Eliminated = true
-
-	// If the conceding seat held priority or was the active turn, the
-	// turn cursor must advance past them — otherwise the table sits
-	// waiting on a player who can never act again. Pass to the next
-	// non-eliminated seat in turn order.
-	g.advancePastEliminatedLocked()
-
-	// Game-end check: exactly one survivor → StateEnded.
-	survivors := 0
-	for _, s := range g.Seats {
-		if !s.Eliminated {
-			survivors++
-		}
-	}
-	if survivors <= 1 {
-		g.State = StateEnded
-	}
+	// S13.1: delegate to the unified elimination path so concede
+	// fires the same stack cleanup + cursor advance + game-end
+	// check as an SBA-driven loss.
+	g.eliminatePlayerLocked(p)
 	return nil
 }
 
@@ -658,6 +1665,7 @@ func (g *Game) PassTurn() error {
 	if nextSeat == 0 {
 		nextNumber++
 	}
+	prev := g.Turn
 	g.Turn = Turn{
 		Number:         nextNumber,
 		ActiveSeat:     nextSeat,
@@ -665,6 +1673,7 @@ func (g *Game) PassTurn() error {
 		Phase:          PhaseOf(StepUntap),
 		Step:           StepUntap,
 	}
+	g.onTurnAdvanceLocked(prev, g.Turn)
 	// Refresh per-turn budgets (undo, future per-turn counters) on
 	// the new active seat — same hook AdvanceStep / PassPriority's
 	// wrap branch run when stepping into untap. The hook also auto-

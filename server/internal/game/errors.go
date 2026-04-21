@@ -86,4 +86,34 @@ var (
 	// step that does not grant priority (currently Untap and Cleanup
 	// per CR 502.4 / 514.3). Added in S13.
 	ErrNoPriority = errors.New("game: no player holds priority this step")
+
+	// ErrSplitSecondActive is returned by cast_spell and
+	// activate_ability when an item with SplitSecond is on the stack
+	// (CR 702.79). Mana abilities and special actions are still
+	// allowed. Added in S13.1.
+	ErrSplitSecondActive = errors.New("game: split second is active")
+
+	// ErrLoyaltyAlreadyActivated is returned by activate_loyalty when
+	// the planeswalker's loyalty ability has already been activated
+	// this turn (CR 606.5). The flag clears when the turn cursor
+	// wraps to the next ActiveSeat. Added in S13.1.
+	ErrLoyaltyAlreadyActivated = errors.New("game: planeswalker loyalty already activated this turn")
+
+	// ErrInvalidStackDestination is returned by counter_spell when the
+	// requested destination zone is invalid (battlefield, stack — a
+	// counter must move the spell off the stack). Added in S13.1.
+	ErrInvalidStackDestination = errors.New("game: invalid stack-counter destination")
+
+	// ErrSorcerySpeedRequired is returned by cast_spell / activate_*
+	// when the action is sorcery-speed only (sorceries, loyalty
+	// abilities, casts of cards lacking flash) and the sorcery-speed
+	// gate is not currently open: stack non-empty, caller is not the
+	// active player, or current step isn't a main phase. Added in
+	// S13.1.
+	ErrSorcerySpeedRequired = errors.New("game: sorcery speed required")
+
+	// ErrCardNotOnStack is returned by counter_spell / counter_ability
+	// when the targeted item is not currently on the stack (already
+	// resolved, never cast, or wrong instance ID). Added in S13.1.
+	ErrCardNotOnStack = errors.New("game: card is not on the stack")
 )
