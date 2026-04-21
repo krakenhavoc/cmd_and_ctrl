@@ -10,7 +10,7 @@ import (
 // a unique ScryfallID to avoid collisions with sibling tests.
 func TestRegisterAndLookup(t *testing.T) {
 	const id = "test-registry-baseline"
-	Register(Spec{ScryfallID: id, Name: "Baseline"})
+	Register(Spec{OracleID: id, Name: "Baseline"})
 	spec, ok := Lookup(id)
 	if !ok {
 		t.Fatalf("Lookup(%q): ok=false, want true", id)
@@ -41,13 +41,13 @@ func TestLookupMiss(t *testing.T) {
 // bug at server boot rather than silently letting one win.
 func TestRegisterDuplicatePanics(t *testing.T) {
 	const id = "test-registry-duplicate"
-	Register(Spec{ScryfallID: id, Name: "First"})
+	Register(Spec{OracleID: id, Name: "First"})
 	defer func() {
 		if r := recover(); r == nil {
 			t.Errorf("duplicate Register did not panic")
 		}
 	}()
-	Register(Spec{ScryfallID: id, Name: "Second"})
+	Register(Spec{OracleID: id, Name: "Second"})
 }
 
 // TestRegisterEmptyIDPanics pins the sanity check: a Spec with no
@@ -65,11 +65,11 @@ func TestRegisterEmptyIDPanics(t *testing.T) {
 // mutating it does not leak back into the registry.
 func TestAllReturnsSnapshot(t *testing.T) {
 	const id = "test-registry-all-snapshot"
-	Register(Spec{ScryfallID: id, Name: "SnapshotProbe"})
+	Register(Spec{OracleID: id, Name: "SnapshotProbe"})
 	snap := All()
 	found := false
 	for _, s := range snap {
-		if s.ScryfallID == id {
+		if s.OracleID == id {
 			found = true
 			break
 		}

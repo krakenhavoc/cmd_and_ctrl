@@ -25,6 +25,17 @@ func (g *Game) PlayerByIDForEffect(id uuid.UUID) *Player {
 	return g.playerByIDLocked(id)
 }
 
+// StackItemForEffect looks up a stack item by its ID. Returns nil
+// if no such item is on the stack. Used by effects that need to
+// peek at a countered spell's controller / owner before
+// CounterTarget deletes the StackMeta entry (Swan Song).
+func (g *Game) StackItemForEffect(id uuid.UUID) *StackItem {
+	if g.StackMeta == nil {
+		return nil
+	}
+	return g.StackMeta[id]
+}
+
 // FindCardZoneForEffect returns the zone a card currently lives in,
 // or nil if the card is in none of the tracked zones. Lock-free —
 // caller must hold g.mu. Used by primitives for the CR 608.2b

@@ -776,7 +776,7 @@ func viewOfCard(c game.Card) CardView {
 		BattleY:      c.BattleY,
 		DamageMarked: c.DamageMarked,
 		FaceDown:     c.FaceDown,
-		Auto:         c.ScryfallID != "" && game.IsAutoCard(c.ScryfallID),
+		Auto:         game.IsAutoCard(c.OracleID),
 		knowers:      knowers,
 	}
 	if c.AttackingTarget != uuid.Nil {

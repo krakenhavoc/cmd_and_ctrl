@@ -31,8 +31,8 @@ func init() {
 // OnResolve (vanilla permanent in the catalog — Birds of Paradise,
 // Sol Ring) is a no-op. The resolution path carries on with
 // standard zone routing either way.
-func resolveSpell(g *game.Game, item *game.StackItem, scryfallID string) error {
-	spec, ok := Lookup(scryfallID)
+func resolveSpell(g *game.Game, item *game.StackItem, oracleID string) error {
+	spec, ok := Lookup(oracleID)
 	if !ok {
 		return nil
 	}
@@ -51,8 +51,8 @@ func resolveSpell(g *game.Game, item *game.StackItem, scryfallID string) error {
 // Looks up the live Card via FindCardZoneForEffect so the hook
 // reads the current card state (post-ETB zone move) rather than a
 // stale copy captured before the move.
-func fireOnETB(g *game.Game, cardID uuid.UUID, scryfallID string) error {
-	spec, ok := Lookup(scryfallID)
+func fireOnETB(g *game.Game, cardID uuid.UUID, oracleID string) error {
+	spec, ok := Lookup(oracleID)
 	if !ok {
 		return nil
 	}

@@ -260,6 +260,7 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		InstanceID:  uuid.New(),
 		Name:        c.Name,
 		ScryfallID:  c.ID.String(),
+		OracleID:    c.OracleID.String(),
 		TypeLine:    c.TypeLine,
 		Power:       power,
 		Toughness:   toughness,

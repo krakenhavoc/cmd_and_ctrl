@@ -54,7 +54,7 @@ func TestEffectResolverFiresOnCatalogSpell(t *testing.T) {
 	// Stamp the Scryfall ID so the resolver can match.
 	for i := range caster.Hand.Cards {
 		if caster.Hand.Cards[i].InstanceID == spellID {
-			caster.Hand.Cards[i].ScryfallID = knownScryfallID
+			caster.Hand.Cards[i].OracleID = knownScryfallID
 			break
 		}
 	}
@@ -97,7 +97,7 @@ func TestEffectResolverSkipsNonCatalogSpell(t *testing.T) {
 	// reaches the graveyard even when the catalog says "no effect."
 	for i := range caster.Hand.Cards {
 		if caster.Hand.Cards[i].InstanceID == spellID {
-			caster.Hand.Cards[i].ScryfallID = "not-in-catalog"
+			caster.Hand.Cards[i].OracleID = "not-in-catalog"
 			break
 		}
 	}
@@ -133,7 +133,7 @@ func TestEffectResolverErrorEmitsEventEffectError(t *testing.T) {
 	spellID := pushTypedCardToHand(caster, "Broken Spell", "Instant")
 	for i := range caster.Hand.Cards {
 		if caster.Hand.Cards[i].InstanceID == spellID {
-			caster.Hand.Cards[i].ScryfallID = "any-id"
+			caster.Hand.Cards[i].OracleID = "any-id"
 			break
 		}
 	}
@@ -186,7 +186,7 @@ func TestETBHookFiresOnSpellResolve(t *testing.T) {
 	spellID := pushTypedCardToHand(caster, "Test Creature", "Creature — Bear")
 	for i := range caster.Hand.Cards {
 		if caster.Hand.Cards[i].InstanceID == spellID {
-			caster.Hand.Cards[i].ScryfallID = "etb-creature"
+			caster.Hand.Cards[i].OracleID = "etb-creature"
 			break
 		}
 	}
@@ -226,7 +226,7 @@ func TestETBHookFiresOnLandCast(t *testing.T) {
 	landID := pushTypedCardToHand(caster, "Forest", "Basic Land — Forest")
 	for i := range caster.Hand.Cards {
 		if caster.Hand.Cards[i].InstanceID == landID {
-			caster.Hand.Cards[i].ScryfallID = "etb-land"
+			caster.Hand.Cards[i].OracleID = "etb-land"
 			break
 		}
 	}
