@@ -102,6 +102,65 @@ type Card struct {
 	// into this field; the cleanup-step turn-based action zeroes it.
 	// Only meaningful for creatures on the battlefield. Added in S13.1.
 	DamageMarked int
+
+	// FaceDown is the visual face-down flag (CR 708) — morph,
+	// manifest, mutate-bottom, set face-down by an effect. Distinct
+	// from the KnownBy knowledge set: a face-down creature is
+	// face-down to everyone visually, but the morph caster (and
+	// anyone who saw it via Frantic Search-style reveal) still has
+	// the card in their KnownBy set so the hover-reveal works on
+	// their client. Added in S13.5.
+	FaceDown bool
+
+	// KnownBy is the per-instance "who currently knows this card's
+	// identity" set (S13.5). Sticky across zone moves: once a player
+	// sees a card face-up, they stay in the set until a knowledge-
+	// clearing event (shuffle, mulligan-into-library, library-bottom)
+	// removes them. Initialised always-non-nil by NewCard so the
+	// helpers don't have to allocate defensively. Drives the hub
+	// filter's per-viewer redaction in S13.5.
+	KnownBy map[uuid.UUID]bool
+}
+
+// AddKnower marks `viewerID` as having seen this card. No-op for
+// uuid.Nil (admin / spectator placeholder). Idempotent. Added in
+// S13.5.
+func (c *Card) AddKnower(viewerID uuid.UUID) {
+	if viewerID == uuid.Nil {
+		return
+	}
+	if c.KnownBy == nil {
+		c.KnownBy = make(map[uuid.UUID]bool)
+	}
+	c.KnownBy[viewerID] = true
+}
+
+// AddKnowersAll marks every supplied viewer as a knower. Used by
+// public-zone moves (battlefield, stack, exile, graveyard) and by
+// reveal effects (Thoughtseize, Telepathy, scry).
+func (c *Card) AddKnowersAll(viewerIDs []uuid.UUID) {
+	for _, id := range viewerIDs {
+		c.AddKnower(id)
+	}
+}
+
+// ClearKnown drops every knower for this card. Used by shuffle and
+// hidden-zone "lose track" cases.
+func (c *Card) ClearKnown() {
+	c.KnownBy = nil
+}
+
+// IsKnownTo reports whether `viewerID` is currently a knower of
+// this card's identity. uuid.Nil (admin / spectator) always returns
+// true so admin sessions see everything.
+func (c *Card) IsKnownTo(viewerID uuid.UUID) bool {
+	if viewerID == uuid.Nil {
+		return true
+	}
+	if c.KnownBy == nil {
+		return false
+	}
+	return c.KnownBy[viewerID]
 }
 
 // CurrentPower returns the card's effective power: base printed

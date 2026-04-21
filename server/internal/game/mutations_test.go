@@ -2571,6 +2571,127 @@ func TestS134SetMaxHandSizeRejectsBadValue(t *testing.T) {
 	}
 }
 
+// TestS135StartInitialisesKnownBy verifies S13.5's initial-state
+// knowledge: library cards have empty KnownBy, hand cards are
+// known to their owner only, command-zone cards are known to all
+// seated players.
+func TestS135StartInitialisesKnownBy(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	for _, p := range g.Seats {
+		// Library cards: zero knowers (post-shuffle nobody knows the
+		// top-of-library order, including the owner).
+		for _, c := range p.Library.Cards {
+			if len(c.KnownBy) != 0 {
+				t.Errorf("library card %s starts with knowers: %v", c.Name, c.KnownBy)
+			}
+		}
+		// Hand cards: owner only.
+		for _, c := range p.Hand.Cards {
+			if !c.IsKnownTo(p.ID) {
+				t.Errorf("hand card %s not known to owner", c.Name)
+			}
+			for _, other := range g.Seats {
+				if other.ID != p.ID && c.IsKnownTo(other.ID) {
+					t.Errorf("hand card %s leaked to opponent %s", c.Name, other.Name)
+				}
+			}
+		}
+		// Command-zone cards: all seated.
+		for _, c := range p.Command.Cards {
+			for _, other := range g.Seats {
+				if !c.IsKnownTo(other.ID) {
+					t.Errorf("command card %s not known to %s", c.Name, other.Name)
+				}
+			}
+		}
+	}
+}
+
+// TestS135ShuffleClearsLibraryKnowledge verifies that ShuffleLibrary
+// clears KnownBy on every library card. Models scry-then-shuffle:
+// the player saw the top, then the shuffle erased their knowledge.
+func TestS135ShuffleClearsLibraryKnowledge(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	// Pretend the player scryd and now knows the top card.
+	if owner.Library.Size() == 0 {
+		t.Fatal("setup: empty library")
+	}
+	owner.Library.Cards[0].AddKnower(owner.ID)
+	if !owner.Library.Cards[0].IsKnownTo(owner.ID) {
+		t.Fatal("setup: KnownBy add failed")
+	}
+	if err := g.ShuffleLibrary(owner.ID); err != nil {
+		t.Fatalf("ShuffleLibrary: %v", err)
+	}
+	for _, c := range owner.Library.Cards {
+		if len(c.KnownBy) != 0 {
+			t.Errorf("library card %s retains knowers after shuffle: %v", c.Name, c.KnownBy)
+		}
+	}
+}
+
+// TestS135PublicZoneMoveGrantsKnowledge verifies that moving a card
+// to a public zone (battlefield) marks every seated player as a
+// knower — a creature played by one seat is visible to all.
+func TestS135PublicZoneMoveGrantsKnowledge(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	caster := g.Seats[0]
+	id := pushTypedCardToHand(caster, "Grizzly Bears", "Creature — Bear")
+	// Hand-place doesn't grant knowers — manual setup. Confirm the
+	// pre-state.
+	caster.Hand.Cards[len(caster.Hand.Cards)-1].KnownBy = nil
+	if err := g.CastSpell(caster.ID, id, CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+	// Walk priority to resolve.
+	for g.stackHasItemsLocked() {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	// Find the resolved card on the battlefield and verify every
+	// seated player is now a knower.
+	var found *Card
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == id {
+			found = &g.Battlefield.Cards[i]
+		}
+	}
+	if found == nil {
+		t.Fatal("creature not on battlefield")
+	}
+	for _, p := range g.Seats {
+		if !found.IsKnownTo(p.ID) {
+			t.Errorf("battlefield card not known to %s", p.Name)
+		}
+	}
+}
+
+// TestS135DrawAddsOwnerOnly verifies that drawing a card from the
+// library makes only the owner a knower (not opponents).
+func TestS135DrawAddsOwnerOnly(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	owner := g.Seats[0]
+	handBefore := owner.Hand.Size()
+	if err := g.DrawCard(owner.ID); err != nil {
+		t.Fatalf("DrawCard: %v", err)
+	}
+	if owner.Hand.Size() != handBefore+1 {
+		t.Fatalf("hand size: got %d, want %d", owner.Hand.Size(), handBefore+1)
+	}
+	drawn := owner.Hand.Cards[owner.Hand.Size()-1]
+	if !drawn.IsKnownTo(owner.ID) {
+		t.Errorf("owner not added as knower on draw")
+	}
+	for _, other := range g.Seats[1:] {
+		if drawn.IsKnownTo(other.ID) {
+			t.Errorf("opponent %s leaked as knower of drawn card", other.Name)
+		}
+	}
+}
+
 // TestS131SplitSecondClearsOnResolve verifies that after the split-
 // second item resolves, SplitSecondActive flips back to false and
 // new casts go through.

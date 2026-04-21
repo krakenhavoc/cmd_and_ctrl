@@ -293,6 +293,12 @@ func (g *Game) Start(r *rand.Rand) error {
 	if g.UndoLimit <= 0 {
 		g.UndoLimit = DefaultUndoLimit
 	}
+	// S13.5: collect every seated player's ID so command-zone
+	// initialisation can mark all knowers in one pass.
+	allSeatedIDs := make([]uuid.UUID, 0, len(g.Seats))
+	for _, p := range g.Seats {
+		allSeatedIDs = append(allSeatedIDs, p.ID)
+	}
 	for _, p := range g.Seats {
 		p.UndosRemaining = g.UndoLimit
 		p.Library.Shuffle(r)
@@ -305,6 +311,16 @@ func (g *Game) Start(r *rand.Rand) error {
 				break
 			}
 			p.Hand.PushTop(c)
+		}
+		// S13.5: opening-hand cards are known to their owner only.
+		// Library cards have no knowers (post-shuffle order is
+		// unknown to everyone). Command-zone cards are public — every
+		// seated player sees them per CR 400.7e.
+		for i := range p.Hand.Cards {
+			p.Hand.Cards[i].AddKnower(p.ID)
+		}
+		for i := range p.Command.Cards {
+			p.Command.Cards[i].AddKnowersAll(allSeatedIDs)
 		}
 	}
 	g.Turn = newStartingTurn()

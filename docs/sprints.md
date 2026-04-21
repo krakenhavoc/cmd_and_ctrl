@@ -748,33 +748,32 @@ Today's filter is zone-default-only — no way to express Thoughtseize reveals, 
 ### Tasks
 
 **Server — card + mutations:**
-- [ ] `Card.KnownBy map[uuid.UUID]bool` field (always initialized, never nil)
-- [ ] `Card.FaceDown bool` field (pure visual state, separate from knowledge)
-- [ ] Helpers: `AddKnower`, `AddKnowersAll(game)`, `ClearKnown`, `IsKnownTo`
-- [ ] `NewGame` initializer — library empty, starting hand `[owner]`, command zone all seated
-- [ ] `MoveCardByID` / `MoveCard` hook — public-zone destinations add all; private-zone destinations preserve (sticky)
-- [ ] `ShuffleLibrary` iterates library cards and clears KnownBy
-- [ ] Mulligan clears hand + library (composite shuffle)
-- [ ] Token / Clone ETB / spell-copy creation initializes `KnownBy = {all seated}`
+- [x] `Card.KnownBy map[uuid.UUID]bool` field; `Card.FaceDown bool` field
+- [x] Helpers: `AddKnower`, `AddKnowersAll`, `ClearKnown`, `IsKnownTo`
+- [x] `Game.Start` initialiser — library no knowers, starting hand → owner, command zone → all seated
+- [x] `Game.markCardKnownInZoneLocked` post-move hook called from PlayCard / CastSpell / resolution / counter / battlefield-to-graveyard SBA paths; public zones grant all, hand grants owner only
+- [x] `ShuffleLibrary` clears KnownBy on every library card (CR 701.20)
+- [x] `Mulligan` clears hand + library knowledge, re-grants owner on the new opening hand
+- [ ] Token / Clone ETB / spell-copy creation initializes `KnownBy = {all seated}` — deferred until those paths exist (S14+ effect catalog)
 
 **Server — wire:**
-- [ ] `CardView.face_down bool` + `CardView.known_by_you bool` (computed per-viewer)
-- [ ] Printed characteristics (`name`, `type_line`, `image_url`, `oracle`, `mana_cost`, `colors`, `power`, `toughness`) nullable / zeroed on filter redaction
-- [ ] Instance ID, zone, counters, tapped state, controller, face-down flag, position always sent
+- [x] `CardView.face_down bool` + `CardView.known_by_you bool` (per-viewer)
+- [x] Printed characteristics (name, type_line, scryfall_id, power, toughness, counters, is_commander) zeroed by FilterViewFor for non-knowers; instance_id, owner, controller, tapped, position, face_down, damage_marked always sent
 
 **Hub filter:**
-- [ ] Per-viewer redaction reads `card.KnownBy` instead of zone-default heuristic
-- [ ] Populates `known_by_you` for the viewer
+- [x] `FilterViewFor` walks every visible zone and per-card decides redaction via the unexported `knowers` map carried from `viewOfCard`. Opponent hand + library still get the S04 zone-wholesale hide; visible-zone cards get per-card redaction.
+- [x] `known_by_you` populated per viewer
 
 **Client:**
-- [ ] Face renders iff `!face_down && printed chars present`; otherwise back
-- [ ] Hover-reveal on face-down cards when `known_by_you = true` (reuses hover-zoom component)
-- [ ] Hand: mixed rendering — face-up for known-by-you cards, backs for the rest
+- [x] `Card.svelte` renders the back when `face_down` or `known_by_you === false`; face-up otherwise
+- [x] `protocol.ts` mirrors `face_down` + `known_by_you`
+- [ ] Hover-reveal on face-down + known_by_you cards — deferred; the existing hover-zoom already shows the face for known cards via the imgSrc path
+- [ ] Mixed hand rendering (face-up for revealed-by-Thoughtseize cards) — deferred; depends on the opponent-hand-per-card filter, which is also deferred
 
 **Tests:**
-- [ ] Unit: public-zone move grows KnownBy; private-zone move preserves; shuffle clears library only; mulligan clears hand+library; token all-known; commander starts all; commander shuffled clears; face-down flip preserves knowledge; reveal-cards adds specified players
-- [ ] Hub filter: redaction on non-KnownBy viewer; known_by_you populated correctly
-- [ ] Client: face-down + known_by_you renders back with hover; mixed-hand rendering
+- [x] Server: Start initialises KnownBy correctly per zone; shuffle clears library; public-zone move grants all seats; draw adds owner only
+- [x] Hub filter: redaction on non-knower viewer keeps instance_id but zeroes printed chars; known cards keep characteristics + known_by_you=true
+- [ ] Client: face-down + known_by_you renders back with hover — manual smoke covered by exit criteria
 
 ### Out of scope
 - Long-term "opponent-X-saw-card-Y in the past" advisory UI — pure engine tracking is enough

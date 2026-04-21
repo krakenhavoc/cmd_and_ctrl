@@ -55,6 +55,14 @@
     card.scryfall_id ? `/cards/${card.scryfall_id}/image?size=${size}` : null,
   );
 
+  // S13.5 — render the back when the wire says face-down OR when
+  // the card is one the viewer doesn't know (server redacted the
+  // characteristics, so we have nothing meaningful to render face-
+  // up). known_by_you is omitted when true, so the inverse is
+  // "explicit false" — `=== false` distinguishes "redacted card"
+  // from "older client / pre-S13.5 wire / face-up by default".
+  const showBack = $derived(faceDown || card.known_by_you === false);
+
   // Hover delay (settings.display.hoverDelayMs) defers the write to
   // the hoveredCard store until the user has rested on the card for
   // the configured duration. Defaults to 300ms so a fast mouse-over
@@ -130,7 +138,7 @@
 <div
   bind:this={cardEl}
   class="card"
-  class:face-down={faceDown}
+  class:face-down={showBack}
   class:tapped={card.tapped}
   class:selected
   class:attacking
@@ -140,14 +148,14 @@
   data-tapped={card.tapped ? "true" : "false"}
   role={onClick ? "button" : "img"}
   tabindex={onClick ? 0 : undefined}
-  aria-label={faceDown ? "face-down card" : card.name}
-  title={faceDown ? "" : card.name}
+  aria-label={showBack ? "face-down card" : card.name}
+  title={showBack ? "" : card.name}
   onpointerenter={handleEnter}
   onpointerleave={handleLeave}
   onclick={handleClick}
   onkeydown={handleKeydown}
 >
-  {#if faceDown}
+  {#if showBack}
     <div class="back"></div>
   {:else if imgSrc}
     <img src={imgSrc} alt={card.name} loading="lazy" decoding="async" draggable="false" />
