@@ -727,6 +727,269 @@ func TestUnsummonBouncesToHand(t *testing.T) {
 // the Cockatrice-style manual fallback is intact. Canary for
 // future regressions that might accidentally activate auto-resolve
 // on non-catalog cards.
+// --- Tutors + recursion + ETB (sub-PR 6) -----------------------
+
+// pushLibraryCardForTest pushes a specific Card onto the BOTTOM of
+// a player's library. SearchLibrary iterates bottom-to-top and picks
+// the first predicate match, so bottom placement guarantees the
+// seeded card wins for accept-all predicates (Demonic / Vampiric
+// Tutor). For tutors with a selective predicate (Cultivate,
+// Solemn Simulacrum) the filler library is IsBasicLand-negative,
+// so bottom placement still wins deterministically.
+func pushLibraryCardForTest(p *game.Player, c game.Card) uuid.UUID {
+	if c.InstanceID == uuid.Nil {
+		c.InstanceID = uuid.New()
+	}
+	if c.Owner == uuid.Nil {
+		c.Owner = p.ID
+	}
+	if c.Controller == uuid.Nil {
+		c.Controller = p.ID
+	}
+	p.Library.PushBottom(c)
+	return c.InstanceID
+}
+
+// pushGraveyardCardForTest seeds a card into a player's graveyard
+// pile. Regrowth / Eternal Witness sandbox-pick the TOP (most
+// recently pushed) card, so push order matters in the tests.
+func pushGraveyardCardForTest(p *game.Player, name string) uuid.UUID {
+	id := uuid.New()
+	p.Graveyard.PushTop(game.Card{
+		InstanceID: id,
+		Name:       name,
+		TypeLine:   "Creature — Test",
+		Power:      1,
+		Toughness:  1,
+		Owner:      p.ID,
+		Controller: p.ID,
+	})
+	return id
+}
+
+func TestDemonicTutorSearchesIntoHand(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	// Seed a unique needle on top of the library so we can assert
+	// it was the card moved into hand.
+	needle := pushLibraryCardForTest(caster, game.Card{Name: "Needle"})
+	libBefore := caster.Library.Size()
+	handBefore := caster.Hand.Size()
+
+	castCatalogSpell(t, g, "Demonic Tutor", "Sorcery",
+		"82004860-e589-4e38-8d61-8c0210e4ea39",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+
+	if !caster.Hand.Contains(needle) {
+		t.Errorf("needle card not tutored into hand")
+	}
+	if caster.Library.Size() != libBefore-1 {
+		t.Errorf("library size delta: got %d, want -1", caster.Library.Size()-libBefore)
+	}
+	// Net +1 hand (Demonic Tutor itself went to graveyard on resolve).
+	if got := caster.Hand.Size() - handBefore; got != 1 {
+		t.Errorf("hand delta: got %d, want 1", got)
+	}
+}
+
+func TestVampiricTutorSearchesAndLosesLife(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	needle := pushLibraryCardForTest(caster, game.Card{Name: "Vamp Needle"})
+	lifeBefore := caster.Life
+
+	castCatalogSpell(t, g, "Vampiric Tutor", "Instant",
+		"ededbdae-d9dc-4206-9335-d7158f2d7700",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+
+	if !caster.Hand.Contains(needle) {
+		t.Errorf("needle not tutored into hand")
+	}
+	if caster.Life != lifeBefore-2 {
+		t.Errorf("caster life: got %d, want %d", caster.Life, lifeBefore-2)
+	}
+}
+
+func TestCultivateFetchesOneToFieldOneToHand(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	// Seed two basics on top (plus a non-basic decoy beneath).
+	forest1 := pushLibraryCardForTest(caster, game.Card{
+		Name: "Forest", TypeLine: "Basic Land — Forest",
+	})
+	forest2 := pushLibraryCardForTest(caster, game.Card{
+		Name: "Forest", TypeLine: "Basic Land — Forest",
+	})
+
+	castCatalogSpell(t, g, "Cultivate", "Sorcery",
+		"8b755881-a72d-4e21-a369-d2924eb4585a",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+
+	// Two basics moved out of the library.
+	onField := g.Battlefield.Contains(forest1) || g.Battlefield.Contains(forest2)
+	inHand := caster.Hand.Contains(forest1) || caster.Hand.Contains(forest2)
+	if !onField {
+		t.Errorf("no Forest reached the battlefield")
+	}
+	if !inHand {
+		t.Errorf("no Forest reached the hand")
+	}
+	// Exactly one of each — no double-land, no self-destruct.
+	if g.Battlefield.Contains(forest1) && g.Battlefield.Contains(forest2) {
+		t.Errorf("both forests on battlefield (expected one each to bf + hand)")
+	}
+	if caster.Hand.Contains(forest1) && caster.Hand.Contains(forest2) {
+		t.Errorf("both forests in hand (expected one each to bf + hand)")
+	}
+}
+
+func TestRegrowthReturnsTopOfGraveyard(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	// Older card at bottom, target on top.
+	pushGraveyardCardForTest(caster, "Older Body")
+	top := pushGraveyardCardForTest(caster, "Latest Body")
+
+	castCatalogSpell(t, g, "Regrowth", "Sorcery",
+		"e6e4a8bd-5c40-4654-8de1-0da9afed90fd",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+
+	if !caster.Hand.Contains(top) {
+		t.Errorf("top-of-graveyard card not returned to hand")
+	}
+	if caster.Graveyard.Contains(top) {
+		t.Errorf("returned card still in graveyard")
+	}
+}
+
+// TestEternalWitnessETBReturnsTopGraveyard exercises the OnETB
+// direct-call hook by casting E-Witness as a spell (it resolves,
+// enters the battlefield, and the ETB fires inline during the
+// resolve mutation).
+func TestEternalWitnessETBReturnsTopGraveyard(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	pushGraveyardCardForTest(caster, "Older Body")
+	top := pushGraveyardCardForTest(caster, "Latest Body")
+
+	castCatalogSpell(t, g, "Eternal Witness", "Creature — Human Shaman",
+		"30b24e8e-3b0e-4d8e-90f3-f66eb7c1858c",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+
+	if !caster.Hand.Contains(top) {
+		t.Errorf("E-Witness ETB did not return top-of-graveyard card")
+	}
+}
+
+// TestSolemnSimulacrumETBFetchesBasic casts the Golem and checks
+// that the ETB-driven land search found a Forest in the library
+// and moved it to the battlefield.
+func TestSolemnSimulacrumETBFetchesBasic(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	forestID := pushLibraryCardForTest(caster, game.Card{
+		Name: "Forest", TypeLine: "Basic Land — Forest",
+	})
+
+	castCatalogSpell(t, g, "Solemn Simulacrum", "Artifact Creature — Golem",
+		"00c0543c-2a1f-4425-8283-4062d74a1637",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+
+	if !g.Battlefield.Contains(forestID) {
+		t.Errorf("fetched Forest not on battlefield")
+	}
+}
+
+// --- Vanilla permanents ----------------------------------------
+
+// TestSolRingResolvesToBattlefield just proves that registering a
+// vanilla spec (no OnResolve / OnETB) still routes the card through
+// the normal battlefield landing — the catalog's presence shouldn't
+// block resolution.
+func TestSolRingResolvesToBattlefield(t *testing.T) {
+	g := newCatalogGame(t)
+	solID := castCatalogSpell(t, g, "Sol Ring", "Artifact",
+		"6ad8011d-3471-4369-9d68-b264cc027487",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+
+	if !g.Battlefield.Contains(solID) {
+		t.Errorf("Sol Ring did not reach battlefield")
+	}
+}
+
+func TestArcaneSignetResolvesToBattlefield(t *testing.T) {
+	g := newCatalogGame(t)
+	id := castCatalogSpell(t, g, "Arcane Signet", "Artifact",
+		"0bc7f093-bef0-4f1a-852c-4b75ebf54838",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+
+	if !g.Battlefield.Contains(id) {
+		t.Errorf("Arcane Signet did not reach battlefield")
+	}
+}
+
+func TestBirdsOfParadiseResolvesToBattlefield(t *testing.T) {
+	g := newCatalogGame(t)
+	id := castCatalogSpell(t, g, "Birds of Paradise", "Creature — Bird",
+		"d3a0b660-358c-41bd-9cd2-41fbf3491b1a",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+
+	if !g.Battlefield.Contains(id) {
+		t.Errorf("Birds of Paradise did not reach battlefield")
+	}
+}
+
+// --- Planeswalker ----------------------------------------------
+
+// TestWanderingEmperorEntersWithStartingLoyalty exercises the
+// StartingLoyalty stamp: the ETB hook writes "loyalty" counters
+// equal to the Spec's value before the next SBA pass.
+func TestWanderingEmperorEntersWithStartingLoyalty(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	pwID := castCatalogSpell(t, g, "The Wandering Emperor", "Legendary Planeswalker — Wanderer",
+		"0c7f18d5-36cb-4bc6-a358-443b97666215",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+
+	if !g.Battlefield.Contains(pwID) {
+		t.Fatalf("planeswalker did not reach battlefield")
+	}
+	var card *game.Card
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == pwID {
+			card = &g.Battlefield.Cards[i]
+			break
+		}
+	}
+	if card == nil {
+		t.Fatalf("planeswalker card not found on battlefield")
+	}
+	if got := card.Counters["loyalty"]; got != 3 {
+		t.Errorf("loyalty counters: got %d, want 3", got)
+	}
+	_ = caster
+}
+
 func TestNonCatalogSpellStaysSandbox(t *testing.T) {
 	g := newCatalogGame(t)
 	caster := g.Seats[0]

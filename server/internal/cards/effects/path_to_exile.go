@@ -34,40 +34,13 @@ func init() {
 				return err
 			}
 			// Search the controller's library for any basic land.
-			// Predicate matches Scryfall's "Basic Land" prefix on the
-			// type line, case-insensitive.
 			return SearchLibrary{
-				Player: controller,
-				Predicate: func(c game.Card) bool {
-					// Case-insensitive "Basic Land" substring check.
-					lower := []byte(c.TypeLine)
-					for i := range lower {
-						if lower[i] >= 'A' && lower[i] <= 'Z' {
-							lower[i] += 'a' - 'A'
-						}
-					}
-					needle := "basic land"
-					if len(lower) < len(needle) {
-						return false
-					}
-					for i := 0; i+len(needle) <= len(lower); i++ {
-						match := true
-						for j := 0; j < len(needle); j++ {
-							if lower[i+j] != needle[j] {
-								match = false
-								break
-							}
-						}
-						if match {
-							return true
-						}
-					}
-					return false
-				},
-				Dest:    game.ZoneBattlefield,
-				Limit:   1,
-				Reveal:  true,
-				Shuffle: true,
+				Player:    controller,
+				Predicate: IsBasicLand,
+				Dest:      game.ZoneBattlefield,
+				Limit:     1,
+				Reveal:    true,
+				Shuffle:   true,
 			}.Apply(ctx)
 		},
 	})
