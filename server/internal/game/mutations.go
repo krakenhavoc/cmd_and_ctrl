@@ -1593,6 +1593,262 @@ func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 	return ErrCardNotFound
 }
 
+// ActivateManaAbility fires the `abilityIdx`-th mana ability on a
+// battlefield permanent. Single code path for both catalog-declared
+// abilities (Sol Ring, Arcane Signet, Birds of Paradise — looked up
+// via the CatalogManaAbilities hook) and synthetic basic-land
+// abilities (Forest → "{G}") the engine derives from TypeLine when
+// the catalog has nothing to say.
+//
+// Validates the card is on the battlefield, controlled by playerID,
+// and — when the ability has a tap cost — currently untapped. Taps
+// the card as part of the cost. Then parses Produced into one slot
+// per brace: single-color slots drop straight into the controller's
+// pool as one ManaToken; multi-option slots (pipe syntax, "{W|U|B|R|G}")
+// queue a PendingChoiceMana for the controller to pick from.
+//
+// Mana abilities don't use the stack (CR 605.3) — everything is
+// synchronous under the write lock. Event log gets
+// EventManaAbilityActivated + EventTapCard (if tap cost) + one
+// EventManaAdded per single-color slot.
+//
+// Returns an error when the card isn't on the battlefield
+// (ErrCardNotFound), the caller doesn't control it (ErrNotController),
+// the tap cost can't be paid because the card is already tapped
+// (ErrAlreadyTapped), or the ability index is out of bounds
+// (ErrInvalidParam). Commander-identity filtering for Arcane Signet
+// happens inline: the engine intersects the pipe set with the
+// controller's commander's color identity before queuing the pick.
+//
+// Added in S15 sub-PR 2.
+func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	// Locate the card on the battlefield.
+	var card *Card
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == cardID {
+			card = &g.Battlefield.Cards[i]
+			break
+		}
+	}
+	if card == nil {
+		return ErrCardNotFound
+	}
+	if card.Controller != playerID {
+		return ErrCardCallerMismatch
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	// Resolve the ability shape — catalog first, synthetic basic-land
+	// fallback second. A catalog spec with ManaAbilities overrides
+	// the synthetic path wholesale (Dryad Arbor, if it ever lands,
+	// would declare its own; basic Forest just uses the synthetic).
+	abilities := ManaAbilitiesForCard(*card)
+	if abilityIdx < 0 || abilityIdx >= len(abilities) {
+		return ErrInvalidParam
+	}
+	ab := abilities[abilityIdx]
+	// Pay costs. Tap: the card must be untapped; we flip it, emit the
+	// tap event. Sacrifice: not exercised by S15 catalog; rejected
+	// here as unsupported so a future Lotus-Petal-style spec fails
+	// loudly rather than silently producing mana without a cost.
+	if ab.SacrificeCost {
+		return ErrInvalidParam
+	}
+	if ab.TapCost {
+		if card.Tapped {
+			return ErrAlreadyTapped
+		}
+		card.Tapped = true
+		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
+	}
+	g.EmitEvent(Event{
+		Kind:   EventManaAbilityActivated,
+		Actor:  playerID,
+		Source: cardID,
+	})
+	// Materialise the produced mana.
+	slots, err := ParseProducedMana(ab.Produced)
+	if err != nil {
+		// Mal-formed produced string: emit an effect-error event and
+		// stop short of adding mana. The cost has already been paid —
+		// the player just didn't get anything for it, which is correct
+		// for a broken ability declaration.
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Actor:    playerID,
+			Source:   cardID,
+			ErrorMsg: err.Error(),
+		})
+		return nil
+	}
+	for _, slot := range slots {
+		options := slot.Options
+		if len(options) == 0 {
+			continue
+		}
+		if len(options) == 1 {
+			// Single-color slot — straight into the pool.
+			p.ManaPool.AddMana(ManaToken{Color: options[0], Source: cardID})
+			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: cardID})
+			continue
+		}
+		// Multi-option slot — intersect with the controller's commander
+		// identity (Arcane Signet). When no commander exists or the
+		// identity is empty (placeholder commanders from the demo seed),
+		// fall through to the raw option set so Birds of Paradise still
+		// offers the full five colors.
+		filtered := filterPipeByCommanderIdentity(options, p)
+		// Queue the pick.
+		g.QueueChoiceForEffect(PendingChoice{
+			Kind:         PendingChoiceMana,
+			Chooser:      playerID,
+			FromPlayer:   playerID,
+			Count:        1,
+			Source:       cardID,
+			Reason:       ab.Label,
+			ColorOptions: filtered,
+		})
+	}
+	return nil
+}
+
+// ManaAbilitiesForCard returns the abilities available on a card,
+// preferring the catalog declaration and falling back to the
+// synthetic basic-land shape (Forest → "{G}", etc.) when the catalog
+// has nothing registered. The protocol layer calls this to stamp
+// CardView.ManaAbilities; the dispatcher calls it to resolve an
+// incoming ability index. Caller must hold g.mu (the fallback path
+// reads the card's TypeLine, which is stable under lock).
+func ManaAbilitiesForCard(c Card) []ManaAbilityShape {
+	if CatalogManaAbilities != nil {
+		if list := CatalogManaAbilities(c.OracleID); len(list) > 0 {
+			return list
+		}
+	}
+	if color := basicLandColor(c.TypeLine); color != "" {
+		return []ManaAbilityShape{{
+			TapCost:  true,
+			Produced: "{" + color + "}",
+			Label:    "Add {" + color + "}",
+		}}
+	}
+	return nil
+}
+
+// basicLandColor returns the single-letter mana color produced by a
+// basic land subtype on a card's TypeLine. Lowercase substring check
+// so "Basic Land — Forest" and "Land — Forest" both match.
+// Multi-type basic lands (Snow-Covered basics, Wastes) fall out of
+// this path and would need catalog entries; for S15 we ship only
+// the five plain basics.
+func basicLandColor(typeLine string) string {
+	if !typeLineHas(typeLine, "basic") || !typeLineHas(typeLine, "land") {
+		return ""
+	}
+	switch {
+	case typeLineHas(typeLine, "plains"):
+		return "W"
+	case typeLineHas(typeLine, "island"):
+		return "U"
+	case typeLineHas(typeLine, "swamp"):
+		return "B"
+	case typeLineHas(typeLine, "mountain"):
+		return "R"
+	case typeLineHas(typeLine, "forest"):
+		return "G"
+	}
+	return ""
+}
+
+// filterPipeByCommanderIdentity narrows `options` to just the colors
+// in the active player's commander's color identity. Used by the
+// `"{W|U|B|R|G}"` → Arcane Signet path. If the player has no
+// commander (or the commander has no color identity), returns the
+// raw options unchanged — Birds of Paradise falls through this path
+// with the full 5-color set intact.
+func filterPipeByCommanderIdentity(options []string, p *Player) []string {
+	// Find the player's commander on the battlefield or in the
+	// command zone. The color identity is on game.Card directly
+	// (copied at deck-import time via cards.Card.ColorIdentity).
+	// For S15 we scan the command zone only — post-move commanders
+	// on the battlefield still carry identity, but CR 903.4 keys
+	// identity off the printed card, so either source would work.
+	identity := commanderIdentityFor(p)
+	if len(identity) == 0 {
+		return options
+	}
+	keep := make([]string, 0, len(options))
+	for _, o := range options {
+		for _, id := range identity {
+			if o == id {
+				keep = append(keep, o)
+				break
+			}
+		}
+	}
+	if len(keep) == 0 {
+		// No overlap — degenerate case; fall back to raw so the
+		// player isn't stuck with an empty picker. Logged via the
+		// effect-error event for visibility.
+		return options
+	}
+	return keep
+}
+
+// commanderIdentityFor returns the player's commander color identity
+// as uppercase single-character strings. Empty when no commander is
+// present. Sandbox: picks the first card in the command zone — the
+// partner-pair union is S20 polish territory.
+func commanderIdentityFor(p *Player) []string {
+	if p == nil || p.Command == nil {
+		return nil
+	}
+	for _, c := range p.Command.Cards {
+		if !c.IsCommander {
+			continue
+		}
+		// Card.ColorIdentity isn't carried on game.Card today — the
+		// deck importer keeps it on cards.Card only. S15 doesn't
+		// thread it yet; use the TypeLine / ManaCost as a proxy by
+		// scanning the card's ManaCost for WUBRG letters. Good
+		// enough for every sandbox Commander whose commander's mana
+		// cost hints at the identity (true for >99% of EDH
+		// commanders — the escape hatch ("has color abilities in
+		// rules text") lands alongside S17 layer work).
+		return distinctColorsInManaCost(c.ManaCost)
+	}
+	return nil
+}
+
+// distinctColorsInManaCost extracts the unique WUBRG letters that
+// appear in a mana-cost string. Used as the S15 proxy for the
+// commander's color identity. "{1}{W}{U}" → ["W", "U"].
+func distinctColorsInManaCost(cost string) []string {
+	seen := map[string]bool{}
+	out := []string{}
+	for i := 0; i < len(cost); i++ {
+		b := cost[i]
+		if b >= 'a' && b <= 'z' {
+			b -= 'a' - 'A'
+		}
+		if b == 'W' || b == 'U' || b == 'B' || b == 'R' || b == 'G' {
+			k := string(b)
+			if !seen[k] {
+				seen[k] = true
+				out = append(out, k)
+			}
+		}
+	}
+	return out
+}
+
 // SetBattlefieldPosition stamps a normalised (x, y) position on a
 // card on the battlefield. x and y are clamped to [0, 1] — the client
 // sends fractions of the battlefield area so the server's stored

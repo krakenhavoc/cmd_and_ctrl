@@ -170,6 +170,13 @@ type Player struct {
 	// the set_max_hand_size action; effect-catalog work in S14+
 	// will write to it via the S16 layer pipeline. Added in S13.4.
 	MaxHandSize int
+
+	// ManaPool holds the player's currently-floating mana tokens.
+	// Slice (not multiset) to preserve insertion order for the S15
+	// auto-tapper preview + S17+ filter-land sub-payment routing.
+	// Cleared at every step boundary by the step-change hook
+	// (CR 106.4). Added in S15 sub-PR 2.
+	ManaPool ManaPool
 }
 
 // newPlayer constructs a player with empty zones and their starting

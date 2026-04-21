@@ -18,6 +18,7 @@
   import { play } from "../../sounds";
   import { avatarURL } from "../../api";
   import { targeting, isTargetingPlayer } from "../../targeting";
+  import ManaPoolPips from "./ManaPoolPips.svelte";
 
   type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
 
@@ -322,6 +323,8 @@
   {:else if isActive}
     <span class="tag act">active</span>
   {/if}
+
+  <ManaPoolPips pool={seat.mana_pool} />
 
   {#if popup}
     {#key popup.id}

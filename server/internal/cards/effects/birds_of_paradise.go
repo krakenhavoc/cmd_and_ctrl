@@ -12,5 +12,10 @@ func init() {
 	Register(Spec{
 		OracleID: "d3a0b660-358c-41bd-9cd2-41fbf3491b1a",
 		Name:     "Birds of Paradise",
+		ManaAbilities: []ManaAbility{{
+			Cost:     ManaAbilityCost{Tap: true},
+			Produced: "{W|U|B|R|G}",
+			Label:    "Add one mana of any color",
+		}},
 	})
 }

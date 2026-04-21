@@ -990,6 +990,191 @@ func TestWanderingEmperorEntersWithStartingLoyalty(t *testing.T) {
 	_ = caster
 }
 
+// --- S15 sub-PR 2 mana abilities ------------------------------
+
+// pushArtifactToBattlefieldForTest puts a specific instance on the
+// shared battlefield with the named oracle_id so the catalog lookup
+// fires. Distinct from pushCreatureToBattlefieldForTest so we can
+// use a non-creature TypeLine (Sol Ring / Arcane Signet / Birds of
+// Paradise all have different shapes).
+func pushArtifactToBattlefieldForTest(g *game.Game, owner uuid.UUID, name, typeLine, oracleID string) uuid.UUID {
+	id := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: id,
+		Name:       name,
+		TypeLine:   typeLine,
+		OracleID:   oracleID,
+		Owner:      owner,
+		Controller: owner,
+	})
+	return id
+}
+
+func TestSolRingTapAddsTwoColorless(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	solID := pushArtifactToBattlefieldForTest(g, caster.ID, "Sol Ring", "Artifact",
+		"6ad8011d-3471-4369-9d68-b264cc027487",
+	)
+
+	if err := g.ActivateManaAbility(caster.ID, solID, 0); err != nil {
+		t.Fatalf("ActivateManaAbility: %v", err)
+	}
+	if len(caster.ManaPool) != 2 {
+		t.Fatalf("mana pool: got %d tokens, want 2", len(caster.ManaPool))
+	}
+	for i, tok := range caster.ManaPool {
+		if tok.Color != "C" {
+			t.Errorf("token[%d]: got color %q, want C", i, tok.Color)
+		}
+		if tok.Source != solID {
+			t.Errorf("token[%d]: got source %v, want %v", i, tok.Source, solID)
+		}
+	}
+	// Sol Ring should now be tapped (tap cost).
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID == solID && !c.Tapped {
+			t.Errorf("Sol Ring should be tapped after activation")
+		}
+	}
+	// Re-activating while tapped should fail.
+	if err := g.ActivateManaAbility(caster.ID, solID, 0); err == nil {
+		t.Errorf("second activation on tapped Sol Ring should have returned an error")
+	}
+	// No PendingChoice — no pipe in the produced string.
+	if len(g.PendingChoices) != 0 {
+		t.Errorf("unexpected PendingChoice: %+v", g.PendingChoices)
+	}
+}
+
+func TestBirdsOfParadiseTapQueuesMagicChoice(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	birdID := pushArtifactToBattlefieldForTest(g, caster.ID, "Birds of Paradise", "Creature — Bird",
+		"d3a0b660-358c-41bd-9cd2-41fbf3491b1a",
+	)
+
+	if err := g.ActivateManaAbility(caster.ID, birdID, 0); err != nil {
+		t.Fatalf("ActivateManaAbility: %v", err)
+	}
+	// No mana lands in the pool yet — deferred to resolve_choice.
+	if len(caster.ManaPool) != 0 {
+		t.Errorf("mana pool should be empty pre-choice: got %+v", caster.ManaPool)
+	}
+	// One PendingChoice addressed to the controller with all five
+	// colors in the option set (no commander identity present in
+	// the test harness, so the filter falls through unchanged).
+	if len(g.PendingChoices) != 1 {
+		t.Fatalf("PendingChoices: got %d, want 1", len(g.PendingChoices))
+	}
+	choice := g.PendingChoices[0]
+	if choice.Kind != game.PendingChoiceMana {
+		t.Errorf("choice.Kind: got %q, want mana_pick", choice.Kind)
+	}
+	if choice.Chooser != caster.ID {
+		t.Errorf("choice.Chooser: got %v, want %v", choice.Chooser, caster.ID)
+	}
+	if len(choice.ColorOptions) != 5 {
+		t.Errorf("choice.ColorOptions: got %v, want 5 entries", choice.ColorOptions)
+	}
+
+	// Caster picks blue. Mana lands, queue drains.
+	if err := g.ResolveManaChoice(choice.ID, caster.ID, "U"); err != nil {
+		t.Fatalf("ResolveManaChoice: %v", err)
+	}
+	if len(caster.ManaPool) != 1 || caster.ManaPool[0].Color != "U" {
+		t.Errorf("post-resolve mana pool: got %+v, want 1×U", caster.ManaPool)
+	}
+	if len(g.PendingChoices) != 0 {
+		t.Errorf("queue not drained: %+v", g.PendingChoices)
+	}
+}
+
+func TestArcaneSignetNarrowsToCommanderIdentity(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	// Seed a Bant commander (white/blue/green identity derived from
+	// ManaCost via distinctColorsInManaCost).
+	caster.Command.PushTop(game.Card{
+		InstanceID:  uuid.New(),
+		Name:        "Test Bant Commander",
+		TypeLine:    "Legendary Creature",
+		ManaCost:    "{1}{G}{W}{U}",
+		Owner:       caster.ID,
+		Controller:  caster.ID,
+		IsCommander: true,
+	})
+	signetID := pushArtifactToBattlefieldForTest(g, caster.ID, "Arcane Signet", "Artifact",
+		"0bc7f093-bef0-4f1a-852c-4b75ebf54838",
+	)
+
+	if err := g.ActivateManaAbility(caster.ID, signetID, 0); err != nil {
+		t.Fatalf("ActivateManaAbility: %v", err)
+	}
+	if len(g.PendingChoices) != 1 {
+		t.Fatalf("PendingChoices: got %d, want 1", len(g.PendingChoices))
+	}
+	choice := g.PendingChoices[0]
+	// Options must include W, U, G and NOT B, R.
+	want := map[string]bool{"W": true, "U": true, "G": true}
+	got := map[string]bool{}
+	for _, c := range choice.ColorOptions {
+		got[c] = true
+	}
+	for color := range want {
+		if !got[color] {
+			t.Errorf("ColorOptions missing %q (Bant identity): %v", color, choice.ColorOptions)
+		}
+	}
+	for _, bad := range []string{"B", "R"} {
+		if got[bad] {
+			t.Errorf("ColorOptions contains %q — should be narrowed out of Bant identity", bad)
+		}
+	}
+}
+
+// TestBasicLandSyntheticAbilityAddsOneMana exercises the fallback
+// path: a card with no catalog entry but a basic-land subtype on
+// its TypeLine gets a synthetic "{T}: Add {G}" ability derived
+// server-side. Proves basics work without any catalog registration.
+func TestBasicLandSyntheticAbilityAddsOneMana(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	forestID := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: forestID,
+		Name:       "Forest",
+		TypeLine:   "Basic Land — Forest",
+		Owner:      caster.ID,
+		Controller: caster.ID,
+	})
+
+	if err := g.ActivateManaAbility(caster.ID, forestID, 0); err != nil {
+		t.Fatalf("ActivateManaAbility on Forest: %v", err)
+	}
+	if len(caster.ManaPool) != 1 || caster.ManaPool[0].Color != "G" {
+		t.Errorf("Forest tap: got %+v, want 1×G", caster.ManaPool)
+	}
+}
+
+// TestStepAdvanceEmptiesAllManaPools proves the CR 106.4 empty-on-
+// step-boundary hook fires from runStepEntryHooksLocked.
+func TestStepAdvanceEmptiesAllManaPools(t *testing.T) {
+	g := newCatalogGame(t)
+	// Seed floating mana into every seat's pool.
+	for _, p := range g.Seats {
+		p.ManaPool.AddMana(game.ManaToken{Color: "R"}, game.ManaToken{Color: "C"})
+	}
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatalf("AdvanceStep: %v", err)
+	}
+	for _, p := range g.Seats {
+		if len(p.ManaPool) != 0 {
+			t.Errorf("seat %s pool not emptied after step advance: %+v", p.Name, p.ManaPool)
+		}
+	}
+}
+
 func TestNonCatalogSpellStaysSandbox(t *testing.T) {
 	g := newCatalogGame(t)
 	caster := g.Seats[0]

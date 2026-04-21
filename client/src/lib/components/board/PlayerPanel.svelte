@@ -97,6 +97,21 @@
     return out;
   });
 
+  // S15: mana-ability activation handler for battlefield permanents
+  // the viewer controls. Only installed on the viewer's own panel;
+  // opponent panels pass undefined down so the context menu stays
+  // closed on cards they don't control.
+  const activateManaAbility = $derived(
+    isSelf
+      ? (card: CardView, abilityIndex: number) =>
+          sendAction(
+            "activate_mana_ability",
+            { card_id: card.instance_id, ability_index: abilityIndex },
+            seat.id,
+          )
+      : undefined,
+  );
+
   const attackTargetable = $derived(
     !isSelf && !seat.eliminated && combatMode === "attack" && !!selectedCombatCardID,
   );
@@ -162,6 +177,7 @@
       {viewerID}
       {selectedCombatCardID}
       onCardClick={handleCardClick}
+      onActivateManaAbility={activateManaAbility}
     />
   </div>
   <div class="grid-lands">
@@ -171,6 +187,7 @@
       {viewerID}
       {selectedCombatCardID}
       onCardClick={handleCardClick}
+      onActivateManaAbility={activateManaAbility}
     />
   </div>
   <div class="grid-piles">
@@ -192,6 +209,7 @@
       {viewerID}
       {selectedCombatCardID}
       onCardClick={handleCardClick}
+      onActivateManaAbility={activateManaAbility}
     />
   </div>
 </div>

@@ -128,6 +128,24 @@ const (
 	// to apply. Caller logs + keeps moving; the event is the
 	// debugging breadcrumb. ErrorMsg carries the reason.
 	EventEffectError EventKind = "effect_error"
+
+	// EventManaAbilityActivated — a mana-producing ability fired.
+	// Actor = controller, Source = the permanent that produced the
+	// mana. S15 sub-PR 2.
+	EventManaAbilityActivated EventKind = "mana_ability_activated"
+
+	// EventManaAdded — one mana token landed in a player's pool.
+	// Actor = pool owner, Source = the producing permanent (uuid.Nil
+	// for non-card sources). The token's color rides Amount as 0
+	// (W/U/B/R/G/C carries no numeric weight) — the wire-side mana
+	// pool is the canonical projection. S15 sub-PR 2.
+	EventManaAdded EventKind = "mana_added"
+
+	// EventManaPoolEmptied — a player's mana pool was cleared at a
+	// step / phase boundary (CR 106.4) or by an admin reset. Actor =
+	// pool owner. Amount = number of tokens that were dropped.
+	// S15 sub-PR 2.
+	EventManaPoolEmptied EventKind = "mana_pool_emptied"
 )
 
 // Event is a single entry in the per-game event log. Tagged union

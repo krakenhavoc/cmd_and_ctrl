@@ -15,5 +15,10 @@ func init() {
 	Register(Spec{
 		OracleID: "6ad8011d-3471-4369-9d68-b264cc027487",
 		Name:     "Sol Ring",
+		ManaAbilities: []ManaAbility{{
+			Cost:     ManaAbilityCost{Tap: true},
+			Produced: "{C}{C}",
+			Label:    "Add {C}{C}",
+		}},
 	})
 }

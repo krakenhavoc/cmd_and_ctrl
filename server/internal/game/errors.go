@@ -128,4 +128,10 @@ var (
 	// caller is not the player the choice was addressed to. Added
 	// in S14.
 	ErrNotTheChooser = errors.New("game: caller is not the chooser of this pending choice")
+
+	// ErrAlreadyTapped is returned by ActivateManaAbility when the
+	// ability has a tap cost and the permanent is already tapped —
+	// the mana-ability rules require the cost to be payable (CR
+	// 605.1 + 118.3). Added in S15 sub-PR 2.
+	ErrAlreadyTapped = errors.New("game: card is already tapped")
 )

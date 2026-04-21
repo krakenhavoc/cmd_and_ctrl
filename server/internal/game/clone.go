@@ -89,6 +89,11 @@ func (g *Game) cloneLocked() *Game {
 				continue
 			}
 			cloned := *c
+			// S15: ColorOptions is a slice — copy the backing array
+			// so post-clone mutations on one don't leak to the other.
+			if len(c.ColorOptions) > 0 {
+				cloned.ColorOptions = append([]string(nil), c.ColorOptions...)
+			}
 			out.PendingChoices[i] = &cloned
 		}
 	}
@@ -182,6 +187,19 @@ func clonePlayer(p *Player) *Player {
 	if len(p.LifeHistory) > 0 {
 		out.LifeHistory = make([]LifeChange, len(p.LifeHistory))
 		copy(out.LifeHistory, p.LifeHistory)
+	}
+	// S15: deep-copy ManaPool so undo restores the exact token
+	// identity (Source uuid + Restrictions slice) rather than
+	// aliasing the originals.
+	if len(p.ManaPool) > 0 {
+		out.ManaPool = make(ManaPool, len(p.ManaPool))
+		for i, t := range p.ManaPool {
+			cloned := t
+			if len(t.Restrictions) > 0 {
+				cloned.Restrictions = append([]string(nil), t.Restrictions...)
+			}
+			out.ManaPool[i] = cloned
+		}
 	}
 	return out
 }
