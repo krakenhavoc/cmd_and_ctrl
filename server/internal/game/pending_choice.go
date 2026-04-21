@@ -42,6 +42,13 @@ type PendingChoiceKind string
 
 const (
 	PendingChoiceDiscardFromHand PendingChoiceKind = "discard_from_hand"
+
+	// PendingChoiceMana — the chooser picks one color from a fixed
+	// option set (Birds of Paradise's WUBRG, Arcane Signet's
+	// commander-identity subset). On resolve the picked color drops
+	// into the chooser's pool as one ManaToken sourced from the
+	// permanent that fired the ability. Added in S15 sub-PR 2.
+	PendingChoiceMana PendingChoiceKind = "mana_pick"
 )
 
 // PendingChoice is one outstanding "someone needs to pick" entry
@@ -81,6 +88,14 @@ type PendingChoice struct {
 	// ("Thoughtseize", "Vendilion Clique"). Kept on the server so
 	// the wire carries it; no localisation yet.
 	Reason string
+
+	// ColorOptions is the legal-picks list for PendingChoiceMana.
+	// Uppercase single-character entries (W/U/B/R/G/C). Unused for
+	// other choice kinds. Populated server-side so the client
+	// renders a color picker with exactly the right buttons
+	// (commander-identity-filtered for Arcane Signet, the full five
+	// for Birds of Paradise). Added in S15 sub-PR 2.
+	ColorOptions []string
 }
 
 // QueueChoiceForEffect appends a PendingChoice to the game's queue.
@@ -132,6 +147,11 @@ func (g *Game) ResolvePendingChoice(choiceID, chooserID uuid.UUID, picks []uuid.
 		return ErrInvalidParam
 	}
 	switch choice.Kind {
+	case PendingChoiceMana:
+		// Mana picks are resolved by ResolveManaChoice — the payload
+		// is a color string, not a list of card IDs. Callers who
+		// route here with card-ID picks hit a guard rail.
+		return ErrInvalidParam
 	case PendingChoiceDiscardFromHand:
 		from := g.playerByIDLocked(choice.FromPlayer)
 		if from == nil {
@@ -162,6 +182,65 @@ func (g *Game) ResolvePendingChoice(choiceID, chooserID uuid.UUID, picks []uuid.
 	default:
 		return ErrInvalidParam
 	}
+	g.dequeueChoiceLocked(idx)
+	return nil
+}
+
+// ResolveManaChoice processes a resolve_choice action for a
+// PendingChoiceMana entry. The chooser picks one color from the
+// entry's ColorOptions; the picked color drops into their pool as
+// one ManaToken sourced from the permanent that fired the ability
+// (choice.Source). Emits EventManaAdded.
+//
+// Distinct from ResolvePendingChoice because the payload shape is a
+// color string, not a list of card IDs. The dispatcher decides
+// which to call based on the action's payload.
+//
+// Caller must NOT hold g.mu.
+func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	idx := -1
+	for i, c := range g.PendingChoices {
+		if c != nil && c.ID == choiceID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ErrPendingChoiceNotFound
+	}
+	choice := g.PendingChoices[idx]
+	if choice.Kind != PendingChoiceMana {
+		return ErrInvalidParam
+	}
+	if choice.Chooser != chooserID {
+		return ErrNotTheChooser
+	}
+	// Validate color is in the pre-materialised option set.
+	matched := false
+	for _, o := range choice.ColorOptions {
+		if o == color {
+			matched = true
+			break
+		}
+	}
+	if !matched {
+		return ErrInvalidParam
+	}
+	p := g.playerByIDLocked(chooserID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	p.ManaPool.AddMana(ManaToken{Color: color, Source: choice.Source})
+	g.EmitEvent(Event{
+		Kind:   EventManaAdded,
+		Actor:  chooserID,
+		Source: choice.Source,
+	})
 	g.dequeueChoiceLocked(idx)
 	return nil
 }

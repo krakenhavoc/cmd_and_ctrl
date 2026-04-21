@@ -28,6 +28,22 @@ func init() {
 		}
 		return ""
 	}
+	game.CatalogManaAbilities = func(oracleID string) []game.ManaAbilityShape {
+		spec, ok := Lookup(oracleID)
+		if !ok || len(spec.ManaAbilities) == 0 {
+			return nil
+		}
+		out := make([]game.ManaAbilityShape, len(spec.ManaAbilities))
+		for i, a := range spec.ManaAbilities {
+			out[i] = game.ManaAbilityShape{
+				TapCost:       a.Cost.Tap,
+				SacrificeCost: a.Cost.Sacrifice,
+				Produced:      a.Produced,
+				Label:         a.Label,
+			}
+		}
+		return out
+	}
 }
 
 // resolveSpell is the EffectResolver implementation. Called from

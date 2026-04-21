@@ -87,6 +87,51 @@ type Spec struct {
 	// Target count is always 1 in S14; multi-target (Arcing Lightning
 	// style "distribute 3 damage") is S22 territory.
 	TargetMode string
+
+	// ManaAbilities is the list of activated mana abilities the card
+	// exposes from the battlefield. Each entry is one tap-or-cost-
+	// for-mana ability — Sol Ring's "{T}: Add {C}{C}", Birds of
+	// Paradise's "{T}: Add one mana of any color", Arcane Signet's
+	// commander-identity-restricted variant. Mana abilities do NOT
+	// use the stack (CR 605.3); they resolve synchronously when the
+	// activate_mana_ability action fires. The Index a client sends in
+	// the action payload is the position in this slice.
+	//
+	// Empty / nil for cards that have no mana abilities (the vast
+	// majority of S15 catalog). Basic lands get a synthetic default
+	// ability derived from their TypeLine when no catalog entry
+	// declares ManaAbilities — see Game.ActivateManaAbility for the
+	// fallback shape.
+	//
+	// Added in S15 sub-PR 2.
+	ManaAbilities []ManaAbility
+}
+
+// ManaAbility is one mana-producing activated ability on a permanent.
+// Cost expresses what the controller pays to activate (today: tap +
+// optional sacrifice; future: pay-life, sub-mana). Produced is the
+// mana the ability adds to the controller's pool; uses the same
+// brace-notation grammar the Scryfall mana_cost field does, plus a
+// pipe (`|`) inside a single brace pair to mean "controller picks
+// one of these colors" — Birds of Paradise prints `"{W|U|B|R|G}"`.
+// Label is the menu copy the client renders ("Add {C}{C}",
+// "Add one mana of any color"); empty falls back to a generated
+// label.
+type ManaAbility struct {
+	Cost     ManaAbilityCost
+	Produced string
+	Label    string
+}
+
+// ManaAbilityCost names the activation cost of one mana ability.
+// Tap is the canonical cost ({T}). Sacrifice is reserved for future
+// mana rocks like Lotus Petal — declared on the struct so the wire
+// shape is stable, NOT exercised by S15's catalog. Mana / life /
+// counter sub-costs land with later sprints when a catalog card
+// demands them.
+type ManaAbilityCost struct {
+	Tap       bool
+	Sacrifice bool
 }
 
 // ZeroUUID is an alias for uuid.Nil. Mostly used in tests to

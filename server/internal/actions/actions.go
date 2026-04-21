@@ -82,6 +82,12 @@ const (
 	// still use TypeDiscardSelection.
 	TypeResolveChoice  Type = "resolve_choice"
 	TypeSetMaxHandSize Type = "set_max_hand_size"
+	// S15 sub-PR 2 — fires a mana ability on a battlefield permanent.
+	// Params carry `{card_id, ability_index}`; `card_id` must be on
+	// the battlefield controlled by `player`, `ability_index` is the
+	// 0-based offset into the catalog's Spec.ManaAbilities (or 0 for
+	// the synthetic basic-land ability derived from TypeLine).
+	TypeActivateManaAbility Type = "activate_mana_ability"
 )
 
 // ErrUnknownType is returned when Dispatch receives an action type it
@@ -251,12 +257,13 @@ var playerScopedActions = map[Type]struct{}{
 	// initiative are NOT player-scoped — any seated player may flip
 	// the marker because card effects routinely make someone else
 	// the monarch.
-	TypeSetPoison:        {},
-	TypeSetEnergy:        {},
-	TypeAddPlayerCounter: {},
-	TypeDiscardSelection: {},
-	TypeResolveChoice:    {},
-	TypeSetMaxHandSize:   {},
+	TypeSetPoison:           {},
+	TypeSetEnergy:           {},
+	TypeAddPlayerCounter:    {},
+	TypeDiscardSelection:    {},
+	TypeResolveChoice:       {},
+	TypeSetMaxHandSize:      {},
+	TypeActivateManaAbility: {},
 	// Cast vote on behalf of self only — the seated voter is the
 	// authoritative caller. start_vote is also self-driven (the
 	// initiator is `Player`) but the "any caller may start a vote"
@@ -803,6 +810,12 @@ func Dispatch(g *game.Game, a Action) error {
 		var p struct {
 			ChoiceID string   `json:"choice_id"`
 			CardIDs  []string `json:"card_ids"`
+			// Color populates a PendingChoiceMana pick — one of
+			// "W"/"U"/"B"/"R"/"G"/"C". Absent for discard_from_hand
+			// picks. The dispatcher routes by the presence of this
+			// field rather than round-tripping the PendingChoice to
+			// check its Kind (saves a lock acquisition).
+			Color string `json:"color"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -810,6 +823,9 @@ func Dispatch(g *game.Game, a Action) error {
 		choiceID, err := uuid.Parse(p.ChoiceID)
 		if err != nil {
 			return fmt.Errorf("resolve_choice choice_id: %w", err)
+		}
+		if p.Color != "" {
+			return g.ResolveManaChoice(choiceID, a.Player, p.Color)
 		}
 		ids := make([]uuid.UUID, 0, len(p.CardIDs))
 		for i, raw := range p.CardIDs {
@@ -820,6 +836,23 @@ func Dispatch(g *game.Game, a Action) error {
 			ids = append(ids, id)
 		}
 		return g.ResolvePendingChoice(choiceID, a.Player, ids)
+
+	case TypeActivateManaAbility:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			CardID       string `json:"card_id"`
+			AbilityIndex int    `json:"ability_index"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		cardID, err := uuid.Parse(p.CardID)
+		if err != nil {
+			return fmt.Errorf("activate_mana_ability card_id: %w", err)
+		}
+		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex)
 
 	case TypeSetMaxHandSize:
 		if a.Player == uuid.Nil {

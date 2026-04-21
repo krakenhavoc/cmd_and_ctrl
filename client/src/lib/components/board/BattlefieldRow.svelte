@@ -20,9 +20,20 @@
     viewerID: string | null;
     selectedCombatCardID?: string | null;
     onCardClick?: (card: CardView, ev: MouseEvent) => void;
+    // onActivateManaAbility — fires `activate_mana_ability` for a
+    // battlefield permanent the viewer controls. Routed down to
+    // Card.svelte so the right-click / context menu can hit it.
+    // Undefined suppresses the menu entirely (opponent panels).
+    onActivateManaAbility?: (card: CardView, abilityIndex: number) => void;
   }
 
-  const { label, cards, selectedCombatCardID = null, onCardClick }: Props = $props();
+  const {
+    label,
+    cards,
+    selectedCombatCardID = null,
+    onCardClick,
+    onActivateManaAbility,
+  }: Props = $props();
 
   const sorted = $derived([...cards].sort((a, b) => (a.battle_x ?? 0) - (b.battle_x ?? 0)));
 </script>
@@ -38,6 +49,9 @@
           attacking={!!c.attacking_target}
           blocking={!!c.blocking_target}
           onClick={onCardClick}
+          onActivateManaAbility={onActivateManaAbility
+            ? (idx) => onActivateManaAbility(c, idx)
+            : undefined}
         />
       </div>
     {/each}

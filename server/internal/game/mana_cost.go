@@ -1,8 +1,12 @@
-package effects
+package game
 
 import "fmt"
 
-// cost.go parses Scryfall-style mana-cost strings into a ParsedCost
+// mana_cost.go parses Scryfall-style mana-cost strings into a ParsedCost
+// (moved from cards/effects/cost.go in S15 sub-PR 2 — `game` owns the
+// parser now so Player.ManaPool helpers can consume ParsedCost
+// without an import cycle through cards/effects, which itself
+// depends on `game`).
 // the S15 cost validator + auto-tapper can reason about. Regexp-free;
 // walks the string token by token. ~80 LoC, single-pass.
 //
@@ -196,4 +200,77 @@ func isColor(b byte) bool {
 		return true
 	}
 	return false
+}
+
+// ProducedManaEntry is one "slot" parsed out of a ManaAbility.Produced
+// string. Options lists the colors the controller may pick from (one
+// entry for `"{W}"`, one per color for `"{W|U|B|R|G}"`). A slot with
+// multiple Options is materialised into a PendingChoiceMana at
+// activation time; a single-option slot drops straight into the pool.
+type ProducedManaEntry struct {
+	Options []string
+}
+
+// ParseProducedMana walks a produced-mana declaration (the
+// Spec.ManaAbilities.Produced string) and returns one
+// ProducedManaEntry per colored brace. Syntax is a superset of
+// ParseCost — adds the pipe operator to express "controller picks
+// one of these colors":
+//
+//	"{C}{C}"          → two colorless slots (Sol Ring)
+//	"{G}"             → one green slot (basic Forest synthetic)
+//	"{W|U|B|R|G}"     → one any-color slot (Birds of Paradise)
+//
+// Generic / X / phyrexian / snow tokens aren't meaningful in produced
+// mana and return an error. Empty input parses to a nil slice — a
+// "produces nothing" ability, which isn't expected in live catalog
+// but is useful for tests.
+func ParseProducedMana(s string) ([]ProducedManaEntry, error) {
+	var out []ProducedManaEntry
+	i := 0
+	for i < len(s) {
+		if s[i] == ' ' || s[i] == '\t' {
+			i++
+			continue
+		}
+		if s[i] != '{' {
+			return nil, fmt.Errorf("produced mana: expected '{' at position %d in %q", i, s)
+		}
+		end := i + 1
+		for end < len(s) && s[end] != '}' {
+			end++
+		}
+		if end >= len(s) {
+			return nil, fmt.Errorf("produced mana: unterminated '{' at position %d in %q", i, s)
+		}
+		token := s[i+1 : end]
+		if token == "" {
+			return nil, fmt.Errorf("produced mana: empty token in %q", s)
+		}
+		// Uppercase + pipe-split.
+		buf := make([]byte, len(token))
+		for j := 0; j < len(token); j++ {
+			b := token[j]
+			if b >= 'a' && b <= 'z' {
+				b -= 'a' - 'A'
+			}
+			buf[j] = b
+		}
+		u := string(buf)
+		var options []string
+		start := 0
+		for j := 0; j <= len(u); j++ {
+			if j == len(u) || u[j] == '|' {
+				seg := u[start:j]
+				if len(seg) != 1 || !isColor(seg[0]) {
+					return nil, fmt.Errorf("produced mana: unknown token %q in %q", seg, s)
+				}
+				options = append(options, seg)
+				start = j + 1
+			}
+		}
+		out = append(out, ProducedManaEntry{Options: options})
+		i = end + 1
+	}
+	return out, nil
 }

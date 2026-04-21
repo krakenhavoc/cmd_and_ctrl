@@ -109,6 +109,13 @@ type PendingChoiceView struct {
 	Source     string     `json:"source,omitempty"`
 	Reason     string     `json:"reason,omitempty"`
 	Options    []CardView `json:"options,omitempty"`
+	// ColorOptions populates the S15 "mana_pick" kind: one entry per
+	// legal color button the chooser's picker modal should render.
+	// Uppercase single-character values ("W", "U", "B", "R", "G",
+	// "C"). Absent for non-mana choices. Server-side filtered
+	// against commander identity before the wire leaves the engine.
+	// Added in S15 sub-PR 2.
+	ColorOptions []string `json:"color_options,omitempty"`
 }
 
 // StackItemView is the wire shape of a stack-item's announce-time
@@ -222,6 +229,15 @@ type PlayerView struct {
 	// / Thought Vessel). Surfaced on the wire so clients can
 	// render "8 / ∞" or "3 / 2" next to the hand-count badge.
 	MaxHandSize int `json:"max_hand_size"`
+
+	// ManaPool is the player's current mana pool projection — one
+	// entry per floating mana token, in insertion order. Entries
+	// are uppercase single-character mana letters ("W", "U", "B",
+	// "R", "G", "C"). Empty / nil when the pool is empty (CR 106.4
+	// empties at every step boundary, so this is the common case
+	// outside a cast). Drives the S15 ManaPoolPips UI. Added in
+	// S15 sub-PR 2.
+	ManaPool []string `json:"mana_pool,omitempty"`
 }
 
 // LifeChangeView is the wire representation of a single life-change
@@ -342,6 +358,41 @@ type CardView struct {
 	// this into a ParsedCost at cast time for the strict-mode
 	// validator. Added in S15 sub-PR 1.
 	ManaCost string `json:"mana_cost,omitempty"`
+
+	// ManaAbilities lists the card's activated mana abilities, one
+	// entry per tap-or-cost-for-mana slot on the battlefield. The
+	// client's right-click menu (ManaAbilityMenu.svelte) reads this
+	// to build the activation buttons. Ability indices 0..N-1 match
+	// the array ordering and are what activate_mana_ability's
+	// payload carries. Empty / absent for non-producers. Added in
+	// S15 sub-PR 2.
+	ManaAbilities []ManaAbilityView `json:"mana_abilities,omitempty"`
+}
+
+// ManaAbilityView is the wire shape of one activated mana ability
+// on a permanent. Mirrors effects.ManaAbility via the
+// game.ManaAbilityShape projection, so the client can render the
+// button labels without reaching into the catalog directly. Added
+// in S15 sub-PR 2.
+type ManaAbilityView struct {
+	// Index is the 0-based position in the card's ability list;
+	// what the activate_mana_ability payload carries.
+	Index int `json:"index"`
+	// Label is the human-readable menu entry ("Add {C}{C}",
+	// "Add one mana of any color"). Empty falls back to the raw
+	// Produced string on the client side.
+	Label string `json:"label,omitempty"`
+	// TapCost reflects the "{T}:" portion of the ability. Drives
+	// the client's "can't tap — already tapped" greying of the
+	// menu entry. SacrificeCost mirrors the sacrifice-cost flag
+	// but is unused by S15 catalog.
+	TapCost       bool `json:"tap_cost,omitempty"`
+	SacrificeCost bool `json:"sacrifice_cost,omitempty"`
+	// Produced is the raw production string ("{C}{C}",
+	// "{W|U|B|R|G}"). Lets the client render the produced-mana
+	// pills alongside the activation button even when Label is
+	// empty.
+	Produced string `json:"produced,omitempty"`
 }
 
 // TurnView is the wire representation of the turn cursor. PriorityHolder
@@ -456,6 +507,13 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 					v.Options[i] = viewOfCard(card)
 				}
 			}
+		}
+		// PendingChoiceMana carries a color-option list server-
+		// filtered against the chooser's commander identity (see
+		// ActivateManaAbility). Clone the slice so post-wire
+		// mutations on the engine's copy don't leak onto the view.
+		if c.Kind == game.PendingChoiceMana && len(c.ColorOptions) > 0 {
+			v.ColorOptions = append([]string(nil), c.ColorOptions...)
 		}
 		out = append(out, v)
 	}
@@ -593,6 +651,13 @@ func viewOfPlayer(p *game.Player) PlayerView {
 			At:       c.At.UTC().Format(time.RFC3339),
 		}
 	}
+	var manaPool []string
+	if len(p.ManaPool) > 0 {
+		manaPool = make([]string, len(p.ManaPool))
+		for i, t := range p.ManaPool {
+			manaPool[i] = t.Color
+		}
+	}
 	return PlayerView{
 		ID:                p.ID.String(),
 		Name:              p.Name,
@@ -617,6 +682,7 @@ func viewOfPlayer(p *game.Player) PlayerView {
 		CommanderCasts:    cmdrCasts,
 		Counters:          cloneStringIntMap(p.Counters),
 		MaxHandSize:       p.MaxHandSize,
+		ManaPool:          manaPool,
 	}
 }
 
@@ -901,25 +967,26 @@ func viewOfCard(c game.Card) CardView {
 		}
 	}
 	view := CardView{
-		InstanceID:   c.InstanceID.String(),
-		Name:         c.Name,
-		Owner:        c.Owner.String(),
-		Controller:   c.Controller.String(),
-		ScryfallID:   c.ScryfallID,
-		TypeLine:     c.TypeLine,
-		Power:        c.Power,
-		Toughness:    c.Toughness,
-		Tapped:       c.Tapped,
-		Counters:     counters,
-		IsCommander:  c.IsCommander,
-		BattleX:      c.BattleX,
-		BattleY:      c.BattleY,
-		DamageMarked: c.DamageMarked,
-		FaceDown:     c.FaceDown,
-		Auto:         game.IsAutoCard(c.OracleID),
-		TargetMode:   game.TargetModeFor(c.OracleID),
-		ManaCost:     c.ManaCost,
-		knowers:      knowers,
+		InstanceID:    c.InstanceID.String(),
+		Name:          c.Name,
+		Owner:         c.Owner.String(),
+		Controller:    c.Controller.String(),
+		ScryfallID:    c.ScryfallID,
+		TypeLine:      c.TypeLine,
+		Power:         c.Power,
+		Toughness:     c.Toughness,
+		Tapped:        c.Tapped,
+		Counters:      counters,
+		IsCommander:   c.IsCommander,
+		BattleX:       c.BattleX,
+		BattleY:       c.BattleY,
+		DamageMarked:  c.DamageMarked,
+		FaceDown:      c.FaceDown,
+		Auto:          game.IsAutoCard(c.OracleID),
+		TargetMode:    game.TargetModeFor(c.OracleID),
+		ManaCost:      c.ManaCost,
+		ManaAbilities: viewOfManaAbilities(c),
+		knowers:       knowers,
 	}
 	if c.AttackingTarget != uuid.Nil {
 		view.AttackingTarget = c.AttackingTarget.String()
@@ -931,4 +998,28 @@ func viewOfCard(c game.Card) CardView {
 		view.GoadedBy = c.GoadedBy.String()
 	}
 	return view
+}
+
+// viewOfManaAbilities projects a card's catalog + synthetic mana
+// abilities to wire format. Empty for non-producers (the vast
+// majority of cards); populated for Sol Ring / Arcane Signet /
+// Birds of Paradise + every basic land (via the synthetic path).
+// Cheap — ManaAbilitiesForCard is a single catalog lookup + a
+// TypeLine substring scan. Added in S15 sub-PR 2.
+func viewOfManaAbilities(c game.Card) []ManaAbilityView {
+	raw := game.ManaAbilitiesForCard(c)
+	if len(raw) == 0 {
+		return nil
+	}
+	out := make([]ManaAbilityView, len(raw))
+	for i, a := range raw {
+		out[i] = ManaAbilityView{
+			Index:         i,
+			Label:         a.Label,
+			TapCost:       a.TapCost,
+			SacrificeCost: a.SacrificeCost,
+			Produced:      a.Produced,
+		}
+	}
+	return out
 }

@@ -51,6 +51,29 @@ var IsCatalogCard func(oracleID string) bool
 // cast-targeting UI.
 var CatalogTargetMode func(oracleID string) string
 
+// ManaAbilityShape is the minimal mana-ability surface the game
+// package consumes. Mirrors effects.ManaAbility but lives in `game`
+// to avoid an import cycle (the effects package already imports
+// `game`). The S15 dispatcher reads this on every
+// activate_mana_ability call to look up the ability's cost shape +
+// produced-mana string.
+type ManaAbilityShape struct {
+	TapCost       bool
+	SacrificeCost bool
+	Produced      string
+	Label         string
+}
+
+// CatalogManaAbilities returns the registered mana abilities for
+// the given oracle ID (one entry per `effects.Spec.ManaAbilities`
+// element), or nil when no catalog entry exists / the entry has no
+// mana abilities. The cards/effects package populates this hook at
+// init time alongside EffectResolver / ETBEffectHook. Nil hook ⇒
+// engine falls back to the synthetic basic-land ability path.
+//
+// Added in S15 sub-PR 2.
+var CatalogManaAbilities func(oracleID string) []ManaAbilityShape
+
 // fireEffectResolverLocked invokes the registered EffectResolver
 // if non-nil, emits EventEffectError on failure, and swallows the
 // error so the resolution path keeps moving. Caller must hold g.mu.

@@ -83,49 +83,91 @@
   // options here would mean the server misrouted — the chooser
   // should always be a knower of the revealed cards.
   const optionCards = $derived<CardView[]>(active?.options ?? []);
+
+  // S15 mana_pick branch — a color-pick choice from Arcane Signet /
+  // Birds of Paradise. `active.color_options` is the server-filtered
+  // legal button list. Submits via resolve_choice with `{choice_id,
+  // color}` (card_ids absent).
+  const isManaPick = $derived(active?.kind === "mana_pick");
+  const colorOptions = $derived<string[]>(active?.color_options ?? []);
+
+  const COLOR_META: Record<string, { label: string; fill: string }> = {
+    W: { label: "White", fill: "#f4ead5" },
+    U: { label: "Blue", fill: "#aad4ff" },
+    B: { label: "Black", fill: "#2b2b3d" },
+    R: { label: "Red", fill: "#ff9a85" },
+    G: { label: "Green", fill: "#92c493" },
+    C: { label: "Colorless", fill: "#c6cfdd" },
+  };
+
+  function pickColor(color: string): void {
+    if (!active || !viewerID) return;
+    sendAction("resolve_choice", { choice_id: active.id, color }, viewerID);
+  }
 </script>
 
 {#if open && active}
   <div class="backdrop" role="dialog" aria-modal="true" aria-labelledby="choice-title">
     <div class="modal">
-      <h2 id="choice-title">
-        {active.reason || "Choose"} — pick {active.count} card{active.count === 1 ? "" : "s"}
-      </h2>
-      <p class="hint">
-        {#if isSelfSource}
-          Pick {active.count} card{active.count === 1 ? "" : "s"} from your hand to discard.
-        {:else}
-          Pick {active.count} card{active.count === 1 ? "" : "s"} from
-          <strong>{fromName}</strong>'s revealed hand.
-          <strong>{fromName}</strong> will discard your pick{active.count === 1 ? "" : "s"}.
-        {/if}
-      </p>
-      <div class="card-grid">
-        {#each optionCards as c (c.instance_id)}
+      {#if isManaPick}
+        <h2 id="choice-title">{active.reason || "Pick a color"}</h2>
+        <p class="hint">Choose a color to add to your mana pool.</p>
+        <div class="color-row">
+          {#each colorOptions as color (color)}
+            {@const meta = COLOR_META[color] ?? { label: color, fill: "#ccc" }}
+            <button
+              type="button"
+              class="color-pick"
+              style:--fill={meta.fill}
+              title={meta.label}
+              aria-label={`add ${meta.label} mana`}
+              onclick={() => pickColor(color)}
+            >
+              <span class="color-letter">{color}</span>
+              <span class="color-name">{meta.label}</span>
+            </button>
+          {/each}
+        </div>
+      {:else}
+        <h2 id="choice-title">
+          {active.reason || "Choose"} — pick {active.count} card{active.count === 1 ? "" : "s"}
+        </h2>
+        <p class="hint">
+          {#if isSelfSource}
+            Pick {active.count} card{active.count === 1 ? "" : "s"} from your hand to discard.
+          {:else}
+            Pick {active.count} card{active.count === 1 ? "" : "s"} from
+            <strong>{fromName}</strong>'s revealed hand.
+            <strong>{fromName}</strong> will discard your pick{active.count === 1 ? "" : "s"}.
+          {/if}
+        </p>
+        <div class="card-grid">
+          {#each optionCards as c (c.instance_id)}
+            <button
+              type="button"
+              class="card-pick"
+              class:selected={selected.has(c.instance_id)}
+              disabled={!selected.has(c.instance_id) && selected.size >= active.count}
+              onclick={() => toggle(c.instance_id)}
+              aria-pressed={selected.has(c.instance_id)}
+              aria-label={`select ${c.name || "card"}`}
+            >
+              <Card card={c} />
+            </button>
+          {/each}
+        </div>
+        <div class="footer">
+          <span class="counter">{selected.size} / {active.count} selected</span>
           <button
             type="button"
-            class="card-pick"
-            class:selected={selected.has(c.instance_id)}
-            disabled={!selected.has(c.instance_id) && selected.size >= active.count}
-            onclick={() => toggle(c.instance_id)}
-            aria-pressed={selected.has(c.instance_id)}
-            aria-label={`select ${c.name || "card"}`}
+            class="submit"
+            disabled={selected.size !== active.count}
+            onclick={submit}
           >
-            <Card card={c} />
+            Confirm
           </button>
-        {/each}
-      </div>
-      <div class="footer">
-        <span class="counter">{selected.size} / {active.count} selected</span>
-        <button
-          type="button"
-          class="submit"
-          disabled={selected.size !== active.count}
-          onclick={submit}
-        >
-          Confirm
-        </button>
-      </div>
+        </div>
+      {/if}
     </div>
   </div>
 {/if}
@@ -260,5 +302,52 @@
     opacity: 0.4;
     cursor: not-allowed;
     box-shadow: none;
+  }
+  .color-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .color-pick {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 14px 18px;
+    background: var(--fill);
+    color: #0a0e1a;
+    border: 2px solid rgba(0, 0, 0, 0.4);
+    border-radius: 10px;
+    font-weight: 800;
+    cursor: pointer;
+    min-width: 88px;
+    box-shadow:
+      0 6px 16px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    transition:
+      transform 120ms var(--ease),
+      box-shadow 120ms var(--ease),
+      filter 120ms var(--ease);
+  }
+  .color-pick:hover,
+  .color-pick:focus-visible {
+    transform: translateY(-2px);
+    box-shadow:
+      0 12px 24px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    filter: brightness(1.05);
+    outline: none;
+  }
+  .color-letter {
+    font-size: 22px;
+    line-height: 1;
+  }
+  .color-name {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.8;
   }
 </style>

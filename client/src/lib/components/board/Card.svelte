@@ -26,6 +26,7 @@
   import { play } from "../../sounds";
   import { settings } from "../../settings";
   import CounterPips from "./CounterPips.svelte";
+  import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
 
   interface Props {
     card: CardView;
@@ -45,6 +46,13 @@
     // leak identity even when the card is face-down, since the wire
     // redacts mana_cost for non-knowers anyway).
     showManaCost?: boolean;
+    // onActivateManaAbility — when supplied, right-click / context-menu
+    // opens the ManaAbilityMenu for the card's mana_abilities and
+    // this callback fires with the chosen index. Parents set it on
+    // battlefield cards the viewer controls; undefined suppresses
+    // the menu entirely (hand cards, opponent permanents, zones
+    // where activations aren't meaningful).
+    onActivateManaAbility?: (abilityIndex: number) => void;
     onClick?: (card: CardView, ev: MouseEvent) => void;
   }
 
@@ -56,8 +64,19 @@
     blocking = false,
     size = "small",
     showManaCost = false,
+    onActivateManaAbility,
     onClick,
   }: Props = $props();
+
+  // manaMenuOpen — Card-local state driving the ManaAbilityMenu
+  // pop-over. Flipped true by oncontextmenu when the card has at
+  // least one mana ability and a parent wired onActivateManaAbility.
+  // Dismissed on selection, Escape (handled inside the menu), or
+  // click elsewhere (the window-level onclick handler below).
+  let manaMenuOpen = $state(false);
+  const hasManaAbilities = $derived(
+    !!onActivateManaAbility && !!card.mana_abilities && card.mana_abilities.length > 0,
+  );
 
   const imgSrc = $derived(
     card.scryfall_id ? `/cards/${card.scryfall_id}/image?size=${size}` : null,
@@ -123,7 +142,21 @@
   }
 
   function handleClick(ev: MouseEvent): void {
+    // Close any open mana-ability menu on a regular click; the
+    // outer-click dismiss fires BEFORE the menu receives its
+    // button click because the menu's onclick uses stopPropagation.
+    if (manaMenuOpen) {
+      manaMenuOpen = false;
+      return;
+    }
     onClick?.(card, ev);
+  }
+
+  function handleContextMenu(ev: MouseEvent): void {
+    if (!hasManaAbilities) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    manaMenuOpen = !manaMenuOpen;
   }
 
   function handleKeydown(ev: KeyboardEvent): void {
@@ -165,6 +198,7 @@
   class:attacking
   class:blocking
   class:clickable={!!onClick}
+  class:menu-open={manaMenuOpen}
   data-instance-id={card.instance_id}
   data-tapped={card.tapped ? "true" : "false"}
   role={onClick ? "button" : "img"}
@@ -174,6 +208,7 @@
   onpointerenter={handleEnter}
   onpointerleave={handleLeave}
   onclick={handleClick}
+  oncontextmenu={handleContextMenu}
   onkeydown={handleKeydown}
 >
   {#if showBack}
@@ -233,6 +268,16 @@
         {card.damage_marked}
       </span>
     {/if}
+  {/if}
+  {#if manaMenuOpen && hasManaAbilities && onActivateManaAbility && card.mana_abilities}
+    <div class="mana-menu-anchor">
+      <ManaAbilityMenu
+        abilities={card.mana_abilities}
+        tapped={!!card.tapped}
+        onActivate={(idx) => onActivateManaAbility(idx)}
+        onClose={() => (manaMenuOpen = false)}
+      />
+    </div>
   {/if}
 </div>
 
@@ -348,6 +393,23 @@
     background: rgba(60, 0, 0, 0.9);
     border-color: rgba(255, 122, 122, 0.5);
     font-size: 11px;
+  }
+  .card.menu-open {
+    /* When the mana-ability menu is open, let the popover extend
+       past the card frame. The menu itself carries its own border /
+       shadow, so loosening the clip here doesn't fight other art. */
+    overflow: visible;
+  }
+  .mana-menu-anchor {
+    /* Float the menu below the card. Anchored via the .card's
+       position: relative; .card.menu-open disables overflow:hidden
+       so the pop-over extends past the card frame without
+       needing a portal. */
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    z-index: 60;
   }
   .badge.cost {
     /* Top-right to mirror the printed-card convention. Only shown in

@@ -468,6 +468,13 @@ func (g *Game) onTurnAdvanceLocked(prev, next Turn) {
 //
 // Caller must hold g.mu.
 func (g *Game) runStepEntryHooksLocked() {
+	// CR 106.4: every player's mana pool empties at the end of each
+	// step / phase. We model this by clearing pools at the START of
+	// the next step's entry — equivalent net effect, and centralised
+	// here so every step transition (including the auto-advance
+	// recursion through Untap → Upkeep and Cleanup → next-Untap)
+	// triggers the clear. Cheap to call on already-empty pools.
+	g.emptyAllManaPoolsLocked()
 	switch g.Turn.Step {
 	case StepUntap:
 		// Mulligans still open → hold the cursor at Untap until

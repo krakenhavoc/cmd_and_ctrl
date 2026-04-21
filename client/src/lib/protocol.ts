@@ -131,13 +131,19 @@ export interface GameView {
 // is pre-filtered to what the viewer is legally allowed to see.
 export interface PendingChoiceView {
   id: string;
-  kind: "discard_from_hand" | string;
+  kind: "discard_from_hand" | "mana_pick" | string;
   chooser: string;
   from_player: string;
   count: number;
   source?: string;
   reason?: string;
   options?: CardView[];
+  // S15: populated for kind "mana_pick" — the legal color buttons
+  // the chooser's picker modal should render. Uppercase single-
+  // character values ("W", "U", "B", "R", "G", "C"). Server-filtered
+  // against commander identity for Arcane Signet; full 5-color for
+  // Birds of Paradise.
+  color_options?: string[];
 }
 
 // StackItemView mirrors `protocol.StackItemView` server-side: the
@@ -234,6 +240,12 @@ export interface PlayerView {
   // Always present on the wire; the field is non-omitempty so
   // clients know the cap even when it's the default.
   max_hand_size?: number;
+  // S15: per-player mana pool. Each entry is an uppercase mana
+  // letter ("W", "U", "B", "R", "G", "C") — order reflects
+  // insertion order so the UI can highlight the most recent add.
+  // Empties at every step boundary (CR 106.4), so this is absent
+  // / empty in the common case outside an active cast sequence.
+  mana_pool?: string[];
 }
 
 export interface LifeChangeView {
@@ -313,6 +325,25 @@ export interface CardView {
   // per-viewer redaction path when the viewer is not a knower of the
   // card (so opponent hand-counts don't leak cost shapes).
   mana_cost?: string;
+  // S15: activated mana abilities on this permanent. Populated for
+  // catalog mana rocks (Sol Ring, Arcane Signet, Birds of Paradise)
+  // and for every basic land (via the synthetic-ability fallback).
+  // The ManaAbilityMenu renders one button per entry; the index
+  // field in each entry is what the activate_mana_ability action
+  // carries as `ability_index`.
+  mana_abilities?: ManaAbilityView[];
+}
+
+// ManaAbilityView mirrors `protocol.ManaAbilityView` server-side —
+// one entry per activated mana ability on a battlefield permanent.
+// The client renders these as buttons in a right-click / long-press
+// menu anchored to the card. Added in S15 sub-PR 2.
+export interface ManaAbilityView {
+  index: number;
+  label?: string;
+  tap_cost?: boolean;
+  sacrifice_cost?: boolean;
+  produced?: string;
 }
 
 export interface TurnView {
