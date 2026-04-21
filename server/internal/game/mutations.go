@@ -715,19 +715,34 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 // CR 704.5. Returns true if any SBA fired so the caller can re-run
 // the loop (CR 704.4 — SBAs repeat until none fire).
 //
-// S13.1 implements the four canonical Commander SBAs plus the
-// empty-library draw loss:
+// Player-loss SBAs (S13.1):
 //   - 704.5a: a player at 0 or less life loses
 //   - 704.5b: a player who tried to draw from an empty library loses
+//   - 704.5v / 903.14a: 21 commander damage from a single source
+//
+// Player-loss SBAs (S13.2):
+//   - 704.5c: a player with ≥ 10 poison counters loses
+//
+// Permanent SBAs (S13.1):
 //   - 704.5f: a creature with 0 or less toughness is destroyed
 //   - 704.5g: a creature with damage marked >= toughness is destroyed
-//   - 704.5v / 903.14a: 21 commander damage from a single source
-//     (per-commander tracking lands in sub-PR 8 — for now the
-//     existing per-opponent map is used; partner-pair edge case is
-//     known and tracked there)
 //
-// Counter-specific SBAs (planeswalker loyalty 0, battle defense 0,
-// +1/+1 -1/-1 cancel, poison ≥ 10, saga final chapter) are S13.2.
+// Counter SBAs (S13.2):
+//   - 704.5i: a planeswalker with 0 loyalty counters is moved to its
+//     owner's graveyard
+//   - 704.5p: a battle with 0 defense counters is moved to its
+//     owner's graveyard
+//   - 704.5q: +1/+1 and -1/-1 counters on the same creature
+//     cancel out — remove min(N, M) of each
+//   - 704.5u: a saga whose final-chapter lore counter is set is
+//     sacrificed by its controller (the SBA half; the lore-counter
+//     advance trigger lands in S14+ with the effect catalog)
+//
+// Counter ordering (CR 704.3): the +1/+1 / -1/-1 cancel runs BEFORE
+// the lethal-damage check so a 2/2 with one +1/+1 and one -1/-1 +
+// 1 marked damage doesn't die — the counters cancel first, leaving
+// it a 2/2 with 1 damage. The implementation enforces this by
+// running the counter cancel pass before destruction collection.
 //
 // Caller must hold g.mu.
 func (g *Game) stateBasedActionsLocked() bool {
@@ -736,8 +751,36 @@ func (g *Game) stateBasedActionsLocked() bool {
 	}
 	fired := false
 
-	// Player-loss SBAs first — destroying creatures is a separate
-	// pass to keep the bookkeeping simple.
+	// Counter cancel (704.5q). Must run before destruction so the
+	// post-cancel state is what the lethal-damage SBA sees.
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if !c.IsCreature() || c.Counters == nil {
+			continue
+		}
+		plus := c.Counters["+1/+1"]
+		minus := c.Counters["-1/-1"]
+		if plus > 0 && minus > 0 {
+			cancel := plus
+			if minus < cancel {
+				cancel = minus
+			}
+			c.Counters["+1/+1"] -= cancel
+			c.Counters["-1/-1"] -= cancel
+			if c.Counters["+1/+1"] <= 0 {
+				delete(c.Counters, "+1/+1")
+			}
+			if c.Counters["-1/-1"] <= 0 {
+				delete(c.Counters, "-1/-1")
+			}
+			if len(c.Counters) == 0 {
+				c.Counters = nil
+			}
+			fired = true
+		}
+	}
+
+	// Player-loss SBAs.
 	for _, p := range g.Seats {
 		if p.Eliminated {
 			continue
@@ -745,33 +788,60 @@ func (g *Game) stateBasedActionsLocked() bool {
 		if p.Life <= 0 || p.LosesAtNextSBA || p.IsDeadByCommanderDamage() {
 			g.eliminatePlayerLocked(p)
 			fired = true
+			continue
+		}
+		// 704.5c: poison ≥ 10. Player.Counters is the S13.2 map;
+		// the legacy single-int Player.Poison field stays in sync
+		// via SetPoison so old action paths keep working.
+		poison := 0
+		if p.Counters != nil {
+			poison = p.Counters[CounterPoison]
+		}
+		if poison < p.Poison {
+			poison = p.Poison
+		}
+		if poison >= PoisonLethal {
+			g.eliminatePlayerLocked(p)
+			fired = true
 		}
 	}
 
-	// Creature destruction SBAs. Collect doomed instance IDs in a
-	// pre-pass to avoid mutating the slice while iterating it.
+	// Permanent + counter destruction SBAs. Collect doomed instance
+	// IDs in a pre-pass to avoid mutating the slice while iterating.
 	//
 	// Printed-0 creatures (Toughness == 0 and no counters applied)
 	// are skipped: that's the placeholder / unparseable-stats
 	// convention documented on Card.Power — the SBA would else
-	// destroy every demo seed card. A printed >0 creature reduced
-	// to <=0 by counters does die, as does a printed >0 creature
-	// with damage marked >= current toughness.
+	// destroy every demo seed card.
 	var doomed []uuid.UUID
 	for _, c := range g.Battlefield.Cards {
-		if !c.IsCreature() {
+		if c.IsCreature() {
+			if c.Toughness == 0 && len(c.Counters) == 0 {
+				continue
+			}
+			curT := c.CurrentToughness()
+			if curT <= 0 {
+				doomed = append(doomed, c.InstanceID)
+				continue
+			}
+			if c.DamageMarked >= curT {
+				doomed = append(doomed, c.InstanceID)
+			}
 			continue
 		}
-		if c.Toughness == 0 && len(c.Counters) == 0 {
+		// 704.5i — planeswalker with 0 loyalty counters.
+		if c.IsPlaneswalker() {
+			if c.Counters == nil || c.Counters[CounterLoyalty] <= 0 {
+				doomed = append(doomed, c.InstanceID)
+			}
 			continue
 		}
-		curT := c.CurrentToughness()
-		if curT <= 0 {
-			doomed = append(doomed, c.InstanceID)
+		// 704.5p — battle with 0 defense counters.
+		if c.IsBattle() {
+			if c.Counters == nil || c.Counters[CounterDefense] <= 0 {
+				doomed = append(doomed, c.InstanceID)
+			}
 			continue
-		}
-		if c.DamageMarked >= curT {
-			doomed = append(doomed, c.InstanceID)
 		}
 	}
 	for _, id := range doomed {
@@ -1986,7 +2056,80 @@ func (g *Game) SetPoison(playerID uuid.UUID, amount int) error {
 		amount = 0
 	}
 	p.Poison = amount
+	// S13.2: keep the unified Counters map in sync so the SBA loop
+	// reads the same value the legacy SetPoison action wrote.
+	setPlayerCounterLocked(p, CounterPoison, amount)
+	g.runStateChecksLocked()
 	return nil
+}
+
+// AddPlayerCounter modifies a named player-level counter by `delta`
+// (positive to add, negative to remove). Negative deltas that would
+// drive the count below zero clamp at zero. Empty / unknown names
+// are accepted (Sandbox: homebrew counters are fine — the registry
+// in counter_types.go is for the engine and the iconography, not
+// validation).
+//
+// Special-cased identifiers stay synchronised with their legacy int
+// fields:
+//   - poison ↔ Player.Poison
+//   - energy ↔ Player.Energy
+//
+// Drives the SBA loop after the mutation so 10+ poison or 0 life
+// (via energy-cost cards in the future) immediately apply.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+//
+// Added in S13.2.
+func (g *Game) AddPlayerCounter(playerID uuid.UUID, name string, delta int) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	if name == "" {
+		return ErrInvalidParam
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	if p.Counters == nil {
+		p.Counters = make(map[string]int)
+	}
+	cur := p.Counters[name]
+	next := cur + delta
+	if next < 0 {
+		next = 0
+	}
+	setPlayerCounterLocked(p, name, next)
+	// Mirror to legacy single-int fields so SetPoison / SetEnergy
+	// callers continue to read consistent state.
+	switch name {
+	case CounterPoison:
+		p.Poison = next
+	case CounterEnergy:
+		p.Energy = next
+	}
+	g.runStateChecksLocked()
+	return nil
+}
+
+// setPlayerCounterLocked writes a counter value, removing the key
+// when the value drops to zero so the map stays sparse on the wire.
+// Caller must hold g.mu.
+func setPlayerCounterLocked(p *Player, name string, value int) {
+	if p.Counters == nil {
+		p.Counters = make(map[string]int)
+	}
+	if value <= 0 {
+		delete(p.Counters, name)
+		if len(p.Counters) == 0 {
+			p.Counters = nil
+		}
+		return
+	}
+	p.Counters[name] = value
 }
 
 // SetUndoLimit sets the per-player per-turn undo budget. Refreshes
@@ -2057,5 +2200,7 @@ func (g *Game) SetEnergy(playerID uuid.UUID, amount int) error {
 		amount = 0
 	}
 	p.Energy = amount
+	// S13.2: keep the unified Counters map in sync.
+	setPlayerCounterLocked(p, CounterEnergy, amount)
 	return nil
 }

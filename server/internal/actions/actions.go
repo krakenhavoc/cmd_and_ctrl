@@ -68,6 +68,11 @@ const (
 	TypeActivateLoyalty Type = "activate_loyalty"
 	TypeAnnounceTrigger Type = "announce_trigger"
 	TypeMarkDamage      Type = "mark_damage"
+	// S13.2 — counter mechanics. add_player_counter modifies a named
+	// player-level counter (poison, energy, experience, rad, plus
+	// homebrew names). Drives the SBA loop after the mutation so
+	// poison ≥ 10 immediately applies.
+	TypeAddPlayerCounter Type = "add_player_counter"
 )
 
 // ErrUnknownType is returned when Dispatch receives an action type it
@@ -237,8 +242,9 @@ var playerScopedActions = map[Type]struct{}{
 	// initiative are NOT player-scoped — any seated player may flip
 	// the marker because card effects routinely make someone else
 	// the monarch.
-	TypeSetPoison: {},
-	TypeSetEnergy: {},
+	TypeSetPoison:        {},
+	TypeSetEnergy:        {},
+	TypeAddPlayerCounter: {},
 	// Cast vote on behalf of self only — the seated voter is the
 	// authoritative caller. start_vote is also self-driven (the
 	// initiator is `Player`) but the "any caller may start a vote"
@@ -744,6 +750,19 @@ func Dispatch(g *game.Game, a Action) error {
 			return fmt.Errorf("activate_loyalty planeswalker_id: %w", err)
 		}
 		return g.ActivateLoyalty(a.Player, pwID, p.Label, p.Delta)
+
+	case TypeAddPlayerCounter:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			Name  string `json:"name"`
+			Delta int    `json:"delta"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		return g.AddPlayerCounter(a.Player, p.Name, p.Delta)
 
 	case TypeMarkDamage:
 		var p struct {
