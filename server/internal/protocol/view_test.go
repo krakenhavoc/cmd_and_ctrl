@@ -54,6 +54,66 @@ func TestViewOfGameStructuralFields(t *testing.T) {
 	}
 }
 
+// TestS135FilterViewRedactsUnknownCards verifies the per-card S13.5
+// redaction: cards the viewer doesn't know have their printed
+// characteristics zeroed; cards the viewer knows keep theirs;
+// known_by_you reflects the lookup.
+func TestS135FilterViewRedactsUnknownCards(t *testing.T) {
+	g := buildActiveGame(t)
+	owner := g.Seats[0]
+	other := g.Seats[1]
+
+	// Park a known-to-owner card on the battlefield + an unknown card.
+	knownID := uuid.New()
+	unknownID := uuid.New()
+	g.WithWriteLock(func() {
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: knownID,
+			Name:       "Known Bear",
+			TypeLine:   "Creature — Bear",
+			Power:      2,
+			Toughness:  2,
+			Owner:      owner.ID,
+			Controller: owner.ID,
+			KnownBy:    map[uuid.UUID]bool{owner.ID: true},
+		})
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: unknownID,
+			Name:       "Mystery Card",
+			TypeLine:   "Sorcery",
+			Owner:      other.ID,
+			Controller: other.ID,
+		})
+	})
+
+	v := ViewOfGame(g)
+	filtered := FilterViewFor(v, owner.ID.String())
+
+	var knownView, unknownView *CardView
+	for i := range filtered.Battlefield.Cards {
+		c := &filtered.Battlefield.Cards[i]
+		switch c.InstanceID {
+		case knownID.String():
+			knownView = c
+		case unknownID.String():
+			unknownView = c
+		}
+	}
+	if knownView == nil || unknownView == nil {
+		t.Fatalf("setup: didn't find both cards in filtered view")
+	}
+	if knownView.Name != "Known Bear" || !knownView.KnownByYou {
+		t.Errorf("known card redacted unexpectedly: %+v", knownView)
+	}
+	if unknownView.Name != "" || unknownView.TypeLine != "" || unknownView.KnownByYou {
+		t.Errorf("unknown card not redacted: %+v", unknownView)
+	}
+	// Instance ID + controller stay intact even on redacted cards.
+	if unknownView.Controller != other.ID.String() {
+		t.Errorf("controller field stripped on redacted card: got %q", unknownView.Controller)
+	}
+}
+
 // TestViewOfGameS131StackScaffold verifies that the new S13.1 stack
 // metadata fields surface on the wire when populated. Builds a
 // synthetic StackItem directly on the game (the cast/activate

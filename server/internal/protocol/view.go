@@ -219,7 +219,11 @@ type ZoneView struct {
 	Cards []CardView `json:"cards"`
 }
 
-// CardView is the wire representation of a Card.
+// CardView is the wire representation of a Card. Carries an
+// unexported `knowers` map for the S13.5 per-viewer redaction in
+// FilterViewFor — encoding/json skips unexported fields so the map
+// never reaches the wire. FilterViewFor walks the map per viewer,
+// clears it on the output, and stamps `KnownByYou` from the lookup.
 type CardView struct {
 	InstanceID string `json:"instance_id"`
 	Name       string `json:"name"`
@@ -249,6 +253,30 @@ type CardView struct {
 	// meaningful for creatures on the battlefield; omitted when
 	// zero. Added in S13.1.
 	DamageMarked int `json:"damage_marked,omitempty"`
+	// FaceDown reflects Card.FaceDown — a card flipped face-down
+	// by morph / manifest / mutate-bottom (CR 708). Distinct from
+	// KnownByYou: a face-down creature is face-down to everyone
+	// visually, but the morph caster (and anyone else who saw it
+	// face-up or via reveal) still has KnownByYou=true so their
+	// client can hover-reveal the printed characteristics. Added
+	// in S13.5.
+	FaceDown bool `json:"face_down,omitempty"`
+	// KnownByYou reports whether the viewer is currently a knower
+	// of this card's identity (S13.5). Computed per-viewer at
+	// FilterViewFor time. When false, printed characteristics
+	// (name, type_line, scryfall_id, power, toughness, counters)
+	// are redacted to their zero values; the instance ID, zone,
+	// controller, tapped state, and battlefield position remain
+	// visible so the engine state stays observable. Added in S13.5.
+	KnownByYou bool `json:"known_by_you,omitempty"`
+
+	// knowers is the set of player UUID strings that currently
+	// know this card. Populated by viewOfCard from
+	// game.Card.KnownBy; consumed by FilterViewFor which clears it
+	// on the output. Unexported so encoding/json drops it from
+	// the wire — the only consumer is the in-process per-viewer
+	// projection. Added in S13.5.
+	knowers map[string]bool
 	// BattleX, BattleY are the normalised battlefield position in
 	// [0, 1]. Emitted only for cards on the battlefield (other zones
 	// clear them to zero on exit); clients should ignore these fields
@@ -281,6 +309,34 @@ type TurnView struct {
 	PriorityHolder int    `json:"priority_holder"`
 	Phase          string `json:"phase"`
 	Step           string `json:"step"`
+}
+
+// ViewOfGameFor builds a per-viewer wire snapshot. Same shape as
+// ViewOfGame, plus per-card S13.5 KnownBy redaction:
+//   - Every card in every zone has its KnownByYou flag set per the
+//     viewer's KnownBy membership.
+//   - Cards the viewer doesn't know have their printed
+//     characteristics (name / type_line / scryfall_id / power /
+//     toughness / counters / commander flag) zeroed out so the
+//     wire doesn't leak identity. The instance ID, zone, owner,
+//     controller, tapped state, position, face-down flag, and
+//     damage_marked stay intact so the engine state is still
+//     observable.
+//   - Opponent hand + library are still rendered as backs by the
+//     S04 zone-default heuristic (HandHasFilteredContents) — but
+//     with KnownBy in place, individual hand cards revealed via
+//     Thoughtseize-style effects will surface their characteristics
+//     to the knowing viewer once the hand-zone filter is taught
+//     to honour KnownBy. For S13.5 sub-PR 1, library + hand
+//     redaction stays zone-wide; per-card knowledge of opponent
+//     hand cards (the Thoughtseize case) lands as a follow-up.
+//
+// `viewerID` is the player UUID string; pass empty string for an
+// admin / spectator session that sees everything (KnownByYou = true
+// on every card). Added in S13.5.
+func ViewOfGameFor(g *game.Game, viewerID string) GameView {
+	view := ViewOfGame(g)
+	return FilterViewFor(view, viewerID)
 }
 
 // ViewOfGame builds a wire snapshot from a game.Game. It acquires a
@@ -575,24 +631,44 @@ func viewOfZone(z *game.Zone) ZoneView {
 // (i.e. no seat is treated as "own"). An observer without a claimed
 // seat ends up here.
 func FilterViewFor(v GameView, viewerID string) GameView {
+	// S13.5: build a per-card "is the viewer a knower" closure that
+	// every zone projection consults. Empty viewerID = admin /
+	// spectator → knows everything.
+	isKnower := func(c CardView) bool {
+		if viewerID == "" {
+			return true
+		}
+		return c.knowers[viewerID]
+	}
+
 	seats := make([]PlayerView, len(v.Seats))
 	for i, p := range v.Seats {
-		if p.ID != "" && p.ID == viewerID {
-			seats[i] = p
-			continue
+		out := p
+		// S13.5: redact every visible card based on KnownBy.
+		// Hand + library still get their wholesale-hide (S04
+		// zone-default heuristic) for opponents, but the per-card
+		// pass below covers all visible zones uniformly.
+		out.Library = redactZone(p.Library, isKnower)
+		out.Hand = redactZone(p.Hand, isKnower)
+		out.Graveyard = redactZone(p.Graveyard, isKnower)
+		out.Command = redactZone(p.Command, isKnower)
+		// Opponent hand + library: hide the per-card slice contents
+		// entirely so unrevealed cards stay backs (the S04 zone-
+		// default heuristic). For the viewer's own hand + library,
+		// the per-card redaction above already handled visibility.
+		if p.ID == "" || p.ID != viewerID {
+			out.Hand = hideZoneContents(out.Hand)
+			out.Library = hideZoneContents(out.Library)
 		}
-		hidden := p
-		hidden.Hand = hideZoneContents(p.Hand)
-		hidden.Library = hideZoneContents(p.Library)
-		seats[i] = hidden
+		seats[i] = out
 	}
 	return GameView{
 		ID:                v.ID,
 		State:             v.State,
 		Seats:             seats,
-		Battlefield:       v.Battlefield,
-		Stack:             v.Stack,
-		Exile:             v.Exile,
+		Battlefield:       redactZone(v.Battlefield, isKnower),
+		Stack:             redactZone(v.Stack, isKnower),
+		Exile:             redactZone(v.Exile, isKnower),
 		Turn:              v.Turn,
 		MulligansOpen:     v.MulligansOpen,
 		Monarch:           v.Monarch,
@@ -604,7 +680,50 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		StackItems:        v.StackItems,
 		PendingTriggers:   v.PendingTriggers,
 		SplitSecondActive: v.SplitSecondActive,
+		DiscardPending:    v.DiscardPending,
 	}
+}
+
+// redactZone returns a copy of `z` with every card projected through
+// redactCardForViewer — known cards keep their characteristics with
+// known_by_you=true; unknown cards get redacted characteristics with
+// known_by_you=false. Always allocates a fresh non-nil slice so the
+// JSON shape stays `[]` (not `null`) regardless of input.
+func redactZone(z ZoneView, isKnower func(CardView) bool) ZoneView {
+	out := ZoneView{
+		Kind:  z.Kind,
+		Owner: z.Owner,
+		Count: z.Count,
+		Cards: make([]CardView, len(z.Cards)),
+	}
+	for i, c := range z.Cards {
+		out.Cards[i] = redactCardForViewer(c, isKnower(c))
+	}
+	return out
+}
+
+// redactCardForViewer applies the S13.5 visibility rule to a single
+// card. When `known` is true the card keeps every printed
+// characteristic; when false, name / type_line / scryfall_id /
+// power / toughness / counters / is_commander zero out so the wire
+// doesn't leak identity. The unexported `knowers` map is always
+// cleared on the output so repeated FilterViewFor calls stay
+// idempotent.
+func redactCardForViewer(c CardView, known bool) CardView {
+	out := c
+	out.knowers = nil
+	out.KnownByYou = known
+	if known {
+		return out
+	}
+	out.Name = ""
+	out.TypeLine = ""
+	out.ScryfallID = ""
+	out.Power = 0
+	out.Toughness = 0
+	out.Counters = nil
+	out.IsCommander = false
+	return out
 }
 
 // hideZoneContents returns a copy of z with Cards replaced by an empty
@@ -628,6 +747,13 @@ func viewOfCard(c game.Card) CardView {
 			counters[k] = v
 		}
 	}
+	var knowers map[string]bool
+	if len(c.KnownBy) > 0 {
+		knowers = make(map[string]bool, len(c.KnownBy))
+		for k := range c.KnownBy {
+			knowers[k.String()] = true
+		}
+	}
 	view := CardView{
 		InstanceID:   c.InstanceID.String(),
 		Name:         c.Name,
@@ -643,6 +769,8 @@ func viewOfCard(c game.Card) CardView {
 		BattleX:      c.BattleX,
 		BattleY:      c.BattleY,
 		DamageMarked: c.DamageMarked,
+		FaceDown:     c.FaceDown,
+		knowers:      knowers,
 	}
 	if c.AttackingTarget != uuid.Nil {
 		view.AttackingTarget = c.AttackingTarget.String()

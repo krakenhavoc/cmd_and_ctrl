@@ -250,6 +250,16 @@ export interface CardView {
   // CR 704.5g). Cleaned up in cleanup step (S13.2, CR 514.2). Only
   // meaningful on the battlefield; omitted when zero.
   damage_marked?: number;
+  // S13.5 visual face-down flag (CR 708 — morph / manifest /
+  // mutate-bottom). Distinct from known_by_you: a face-down card
+  // is visually a card back to everyone, but knowers can hover-
+  // reveal the printed characteristics.
+  face_down?: boolean;
+  // S13.5 per-viewer knowledge flag. True when the viewer is in the
+  // server-side KnownBy set for this card. When false, printed
+  // characteristics (name, type_line, scryfall_id, power, toughness,
+  // counters, is_commander) are zero/empty.
+  known_by_you?: boolean;
   // Normalised battlefield position in [0, 1]. Only meaningful for
   // cards on the battlefield zone; server clears to 0 on exit and
   // omits the fields for cards that have never been positioned.

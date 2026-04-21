@@ -124,6 +124,10 @@ func (g *Game) drawCardLocked(playerID uuid.UUID) error {
 		return err
 	}
 	p.Hand.PushTop(c)
+	// S13.5: drawn cards become known to the owner. Cards drawn from
+	// scry-positioned tops keep any pre-existing scry knowledge via
+	// the sticky map; the AddKnower call is idempotent.
+	g.markCardKnownInZoneLocked(p.Hand, c.InstanceID)
 	return nil
 }
 
@@ -170,6 +174,8 @@ func (g *Game) PlayCard(playerID, cardID uuid.UUID) error {
 			break
 		}
 	}
+	// S13.5: arriving at a public zone makes the card known to all.
+	g.markCardKnownInZoneLocked(g.Battlefield, c.InstanceID)
 	return nil
 }
 
@@ -276,6 +282,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 				g.Battlefield.Cards[i].Controller = playerID
 			}
 		}
+		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
 		return nil
 	}
 	// Non-land: route through the stack. The card lives in
@@ -283,6 +290,8 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	if _, err := MoveCard(src, g.Stack, cardID); err != nil {
 		return err
 	}
+	// S13.5: cast spells are public on the stack.
+	g.markCardKnownInZoneLocked(g.Stack, cardID)
 	if g.StackMeta == nil {
 		g.StackMeta = make(map[uuid.UUID]*StackItem)
 	}
@@ -428,6 +437,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 				break
 			}
 		}
+		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
 		return nil
 	}
 	// Instants / sorceries: resolve to the owner's graveyard.
@@ -515,11 +525,17 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card) error {
 		// Owner is no longer seated — drop the card to exile so the
 		// stack doesn't carry a reference to a dead player. (S13.1
 		// sub-PR 10 will fold this into the leaving-game cleanup.)
-		_, err := MoveCard(g.Stack, g.Exile, c.InstanceID)
+		if _, err := MoveCard(g.Stack, g.Exile, c.InstanceID); err != nil {
+			return err
+		}
+		g.markCardKnownInZoneLocked(g.Exile, c.InstanceID)
+		return nil
+	}
+	if _, err := MoveCard(g.Stack, owner.Graveyard, c.InstanceID); err != nil {
 		return err
 	}
-	_, err := MoveCard(g.Stack, owner.Graveyard, c.InstanceID)
-	return err
+	g.markCardKnownInZoneLocked(owner.Graveyard, c.InstanceID)
+	return nil
 }
 
 // AbilityParams carries the announce-time choices that flow into an
@@ -709,6 +725,63 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 		Distribution: cloneDistributionLocked(params.Distribution),
 	})
 	return nil
+}
+
+// isPublicZone reports whether a card sitting in a zone of this
+// kind is visible to every seated player (CR 400.2). Used by the
+// S13.5 KnownBy machinery to decide whether a zone-move should
+// grant knowledge to everyone.
+func isPublicZone(k ZoneKind) bool {
+	switch k {
+	case ZoneBattlefield, ZoneStack, ZoneExile, ZoneGraveyard, ZoneCommand:
+		return true
+	}
+	return false
+}
+
+// markCardKnownInZoneLocked is the canonical post-move hook: after
+// a card lands in `zone`, mark the appropriate viewers as knowers.
+// Public zones grant knowledge to every seated player; the hand
+// grants knowledge only to its owner; library grants nothing
+// (cards in the library have no knowers until they're drawn or
+// scryd into knowledge).
+//
+// Caller must hold g.mu.
+func (g *Game) markCardKnownInZoneLocked(zone *Zone, cardID uuid.UUID) {
+	if zone == nil {
+		return
+	}
+	var idsToAdd []uuid.UUID
+	switch {
+	case isPublicZone(zone.Kind):
+		idsToAdd = make([]uuid.UUID, 0, len(g.Seats))
+		for _, p := range g.Seats {
+			idsToAdd = append(idsToAdd, p.ID)
+		}
+	case zone.Kind == ZoneHand:
+		// Only the hand's owner knows newly-arrived cards.
+		idsToAdd = []uuid.UUID{zone.Owner}
+	default:
+		return
+	}
+	for i := range zone.Cards {
+		if zone.Cards[i].InstanceID == cardID {
+			zone.Cards[i].AddKnowersAll(idsToAdd)
+			return
+		}
+	}
+}
+
+// clearKnownInZoneLocked drops the KnownBy set on every card in the
+// zone. Used by ShuffleLibrary to reset the per-card knowledge
+// when the order is no longer determinable.
+func clearKnownInZoneLocked(zone *Zone) {
+	if zone == nil {
+		return
+	}
+	for i := range zone.Cards {
+		zone.Cards[i].ClearKnown()
+	}
 }
 
 // stateBasedActionsLocked runs one pass of state-based actions per
@@ -969,11 +1042,17 @@ func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) erro
 		}
 	}
 	if owner == nil {
-		_, err := MoveCard(g.Battlefield, g.Exile, cardID)
+		if _, err := MoveCard(g.Battlefield, g.Exile, cardID); err != nil {
+			return err
+		}
+		g.markCardKnownInZoneLocked(g.Exile, cardID)
+		return nil
+	}
+	if _, err := MoveCard(g.Battlefield, owner.Graveyard, cardID); err != nil {
 		return err
 	}
-	_, err := MoveCard(g.Battlefield, owner.Graveyard, cardID)
-	return err
+	g.markCardKnownInZoneLocked(owner.Graveyard, cardID)
+	return nil
 }
 
 // MarkDamage adjusts the damage noted on a creature on the
@@ -1202,6 +1281,7 @@ func (g *Game) CounterSpell(spellID uuid.UUID, dst *ZoneRef) error {
 	if _, err := MoveCard(g.Stack, destZone, spellID); err != nil {
 		return err
 	}
+	g.markCardKnownInZoneLocked(destZone, spellID)
 	delete(g.StackMeta, spellID)
 	g.recomputeSplitSecondLocked()
 	return nil
@@ -1308,8 +1388,11 @@ func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCom
 		}
 		return nil
 	}
-	_, err := MoveCard(srcZone, dstZone, cardID)
-	return err
+	if _, err := MoveCard(srcZone, dstZone, cardID); err != nil {
+		return err
+	}
+	g.markCardKnownInZoneLocked(dstZone, cardID)
+	return nil
 }
 
 // applyCommanderZoneReplacementLocked returns a rewritten ZoneRef
@@ -1872,12 +1955,19 @@ func (g *Game) Mulligan(playerID uuid.UUID, newHandSize int) error {
 	}
 	p.Hand.Cards = nil
 	p.Library.Shuffle(g.rng)
+	// S13.5: shuffle wipes per-card knowledge across hand + library
+	// (the hand cards are now indistinguishable from the rest of the
+	// shuffled pile from the opponent's perspective, and the owner
+	// no longer knows the new opening hand until they redraw it).
+	clearKnownInZoneLocked(p.Library)
 	for range newHandSize {
 		if p.Library.Size() == 0 {
 			break
 		}
 		c, _ := p.Library.PopTop()
 		p.Hand.PushTop(c)
+		// Owner immediately knows their newly-drawn opening hand.
+		g.markCardKnownInZoneLocked(p.Hand, c.InstanceID)
 	}
 	p.MulligansTaken++
 	p.HandKept = false
@@ -1940,7 +2030,9 @@ func (g *Game) KeepHand(playerID uuid.UUID) error {
 
 // ShuffleLibrary reshuffles the given player's library in place,
 // using the RNG captured by Start so deterministic test runs stay
-// deterministic.
+// deterministic. S13.5: clears KnownBy on every library card —
+// any prior scry / top-of-library knowledge dissolves with the
+// shuffle (CR 701.20 + the per-instance KnownBy invariant).
 func (g *Game) ShuffleLibrary(playerID uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -1952,6 +2044,7 @@ func (g *Game) ShuffleLibrary(playerID uuid.UUID) error {
 		return ErrPlayerNotFound
 	}
 	p.Library.Shuffle(g.rng)
+	clearKnownInZoneLocked(p.Library)
 	return nil
 }
 
