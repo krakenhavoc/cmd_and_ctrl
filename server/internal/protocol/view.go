@@ -735,12 +735,20 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		out.Hand = redactZone(p.Hand, isKnower)
 		out.Graveyard = redactZone(p.Graveyard, isKnower)
 		out.Command = redactZone(p.Command, isKnower)
-		// Opponent hand + library: hide the per-card slice contents
-		// entirely so unrevealed cards stay backs (the S04 zone-
-		// default heuristic). For the viewer's own hand + library,
-		// the per-card redaction above already handled visibility.
+		// Opponent hand: strip only UNREVEALED cards (seated-viewer
+		// path — Thoughtseize-style reveals survive via KnownBy);
+		// wholesale-hide for spectator / admin (viewerID empty)
+		// where the isKnower short-circuit to true would otherwise
+		// leak every hand on the wire. Opponent library: always
+		// wholesale-hidden — no per-card reveal paths for library
+		// identity leak to the opponent client today. Viewer's own
+		// hand + library: redactZone already handled visibility.
 		if p.ID == "" || p.ID != viewerID {
-			out.Hand = hideZoneContents(out.Hand)
+			if viewerID == "" {
+				out.Hand = hideZoneContents(out.Hand)
+			} else {
+				out.Hand = keepKnownInHandZone(out.Hand)
+			}
 			out.Library = hideZoneContents(out.Library)
 		}
 		seats[i] = out
@@ -843,6 +851,30 @@ func hideZoneContents(z ZoneView) ZoneView {
 		Count: z.Count,
 		Cards: []CardView{},
 	}
+}
+
+// keepKnownInHandZone drops cards the viewer isn't a knower of
+// from an opponent's hand zone. Revealed cards (Thoughtseize
+// reveal; scry-to-hand in future) survive; others are stripped
+// from the Cards slice. Count is preserved so the client can
+// still fan out the right number of face-down backs for the
+// unrevealed remainder.
+//
+// Input z is expected to have already been projected through
+// redactZone — we key off KnownByYou, which redactZone set.
+func keepKnownInHandZone(z ZoneView) ZoneView {
+	out := ZoneView{
+		Kind:  z.Kind,
+		Owner: z.Owner,
+		Count: z.Count,
+		Cards: []CardView{},
+	}
+	for _, c := range z.Cards {
+		if c.KnownByYou {
+			out.Cards = append(out.Cards, c)
+		}
+	}
+	return out
 }
 
 func viewOfCard(c game.Card) CardView {

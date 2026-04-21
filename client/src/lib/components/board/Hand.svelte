@@ -32,21 +32,28 @@
 
   const { hand, isSelf, onPlayCard, snap = null, viewerID = null }: Props = $props();
 
-  // Synth a list of N face-down placeholder cards for opponent hands.
-  // The server omits real CardView contents for opponent hands, so we
-  // rely on `count` and never read scryfall_id / name from these.
-  //
-  // settings.display.showOpponentHandCount collapses the fan to a
-  // single face-down card (when false) so the opponent still has a
-  // visible hand but viewers who find the N-wide strip distracting
-  // don't have N placeholders bulking up the row. Always-empty hands
-  // still render the "empty" chip below.
-  const placeholders = $derived.by((): CardView[] => {
-    if (isSelf) return [];
+  // Opponent hand composition:
+  //   - hand.cards contains any cards the server has revealed to the
+  //     viewer (Thoughtseize-style reveals, sticky per S13.5). Those
+  //     render face-up.
+  //   - The remaining (hand.count - revealed) cards render as face-
+  //     down placeholders synthesized here.
+  //   - settings.display.showOpponentHandCount collapses the full
+  //     fan to a single face-down stand-in when the viewer prefers a
+  //     compact opponent hand; revealed cards still render in full
+  //     so a Thoughtseize peek isn't obscured by the setting.
+  const cards = $derived.by((): CardView[] => {
+    if (isSelf) return hand.cards;
+    const revealed = hand.cards;
+    const hidden = Math.max(0, hand.count - revealed.length);
     const showCount = $settings.display.showOpponentHandCount;
-    const n = showCount ? hand.count : Math.min(hand.count, 1);
-    const out: CardView[] = [];
-    for (let i = 0; i < n; i++) {
+    // Cap the back-count when compact-opponent-hand mode is on, but
+    // only if we also have no revealed cards; mixing a revealed card
+    // with a single back stand-in reads cleaner than hiding the
+    // revealed card entirely.
+    const hiddenToShow = showCount ? hidden : Math.min(hidden, revealed.length > 0 ? hidden : 1);
+    const out: CardView[] = [...revealed];
+    for (let i = 0; i < hiddenToShow; i++) {
       out.push({
         instance_id: `opp-hand-${i}`,
         name: "",
@@ -56,8 +63,6 @@
     }
     return out;
   });
-
-  const cards = $derived(isSelf ? hand.cards : placeholders);
   const layout = $derived($settings.display.handLayout);
 
   // Per-card fan angle in degrees. Caps the total fan spread so very
@@ -131,7 +136,7 @@
       <div class="deal-wrap" in:dealIn out:dealOut use:handLifecycle>
         <Card
           card={c}
-          faceDown={!isSelf}
+          faceDown={!isSelf && c.known_by_you !== true}
           onClick={isSelf && leg.legal ? () => handleCardClick(c) : undefined}
         />
       </div>
