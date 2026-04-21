@@ -61,13 +61,13 @@ const (
 	// every other type goes to the stack with a fresh StackMeta
 	// entry and the caster retains priority. play_card is kept as
 	// the sandbox / admin direct-drop verb.
-	TypeCastSpell        Type = "cast_spell"
-	TypeCounterSpell     Type = "counter_spell"
-	TypeCounterAbility   Type = "counter_ability"
-	TypeActivateAbility  Type = "activate_ability"
-	TypeActivateLoyalty  Type = "activate_loyalty"
-	TypeAnnounceTrigger  Type = "announce_trigger"
-	TypeMarkDamage       Type = "mark_damage"
+	TypeCastSpell       Type = "cast_spell"
+	TypeCounterSpell    Type = "counter_spell"
+	TypeCounterAbility  Type = "counter_ability"
+	TypeActivateAbility Type = "activate_ability"
+	TypeActivateLoyalty Type = "activate_loyalty"
+	TypeAnnounceTrigger Type = "announce_trigger"
+	TypeMarkDamage      Type = "mark_damage"
 )
 
 // ErrUnknownType is returned when Dispatch receives an action type it
@@ -289,14 +289,14 @@ func Dispatch(g *game.Game, a Action) error {
 			return err
 		}
 		var p struct {
-			InstanceID   string             `json:"instance_id"`
-			FromZone     string             `json:"from_zone,omitempty"`
-			Targets      []castTargetWire   `json:"targets,omitempty"`
-			Modes        []int              `json:"modes,omitempty"`
-			XValue       int                `json:"x_value,omitempty"`
-			Distribution map[string]int     `json:"distribution,omitempty"`
-			HoldPriority bool               `json:"hold_priority,omitempty"`
-			SplitSecond  bool               `json:"split_second,omitempty"`
+			InstanceID   string           `json:"instance_id"`
+			FromZone     string           `json:"from_zone,omitempty"`
+			Targets      []castTargetWire `json:"targets,omitempty"`
+			Modes        []int            `json:"modes,omitempty"`
+			XValue       int              `json:"x_value,omitempty"`
+			Distribution map[string]int   `json:"distribution,omitempty"`
+			HoldPriority bool             `json:"hold_priority,omitempty"`
+			SplitSecond  bool             `json:"split_second,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err

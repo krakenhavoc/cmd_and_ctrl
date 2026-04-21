@@ -1549,8 +1549,8 @@ func TestS131PassPriorityResolvesTopWhenStackNonEmpty(t *testing.T) {
 	}
 	// p1 is the priority holder (cast). Pass to p0 first.
 	g.Turn.PriorityHolder = (g.Turn.ActiveSeat + 1) % len(g.Seats) // simulate priority on caster seat
-	_ = g.PassPriority()                                            // p1 → p0
-	_ = g.PassPriority()                                            // p0 → wrap → resolve
+	_ = g.PassPriority()                                           // p1 → p0
+	_ = g.PassPriority()                                           // p0 → wrap → resolve
 	if !p1.Graveyard.Contains(instantID) {
 		t.Errorf("instant did not resolve to owner's graveyard")
 	}
