@@ -81,6 +81,22 @@ type Card struct {
 	// game.Card. Added in S08.
 	Power     string `json:"power"`
 	Toughness string `json:"toughness"`
+	// ManaCost is the printed casting cost as Scryfall returns it —
+	// e.g. "{1}{R}", "{W/U}", "{X}{B}{B}", "{2}{W}{W}". Empty for
+	// lands and for cards without a mana cost (e.g. Pact of Negation
+	// alternative-cost printings carry their cost in oracle_text).
+	// S15 sub-PR 3 parses this at cast time into a ParsedCost for
+	// the optional strict-mode validator. Added in S15 sub-PR 1.
+	ManaCost string `json:"mana_cost"`
+	// ProducedMana is Scryfall's list of colors a permanent can
+	// produce via any mana ability. Entries are uppercase single-
+	// character mana letters ("W", "U", "B", "R", "G", "C"). A
+	// colorless rock like Sol Ring has ["C"]; Birds of Paradise has
+	// ["B", "G", "R", "U", "W"]; non-producers have nil / empty.
+	// S15's auto-tapper uses this to narrow the candidate set when
+	// solving a cost; basic lands get a synthetic ability derived
+	// from their TypeLine instead. Added in S15 sub-PR 1.
+	ProducedMana []string `json:"produced_mana"`
 }
 
 // CardFace is one printed side of a double-faced / split / flip

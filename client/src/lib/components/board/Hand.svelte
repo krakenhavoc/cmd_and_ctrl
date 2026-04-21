@@ -137,6 +137,7 @@
         <Card
           card={c}
           faceDown={!isSelf && c.known_by_you !== true}
+          showManaCost={isSelf}
           onClick={isSelf && leg.legal ? () => handleCardClick(c) : undefined}
         />
       </div>

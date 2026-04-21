@@ -335,6 +335,13 @@ type CardView struct {
 	// not a catalog card, or a catalog card with no targeting
 	// prompt — e.g. Pyroclasm, Wrath of God). Added in S14 sub-PR 4.
 	TargetMode string `json:"target_mode,omitempty"`
+	// ManaCost is the printed casting cost as Scryfall returns it —
+	// "{1}{R}", "{W/U}", "{X}{B}{B}", etc. Empty for lands and for
+	// placeholder / demo-seed cards. Rendered by the client as a
+	// read-only chip on hand-zone cards; S15 sub-PR 3 will parse
+	// this into a ParsedCost at cast time for the strict-mode
+	// validator. Added in S15 sub-PR 1.
+	ManaCost string `json:"mana_cost,omitempty"`
 }
 
 // TurnView is the wire representation of the turn cursor. PriorityHolder
@@ -837,6 +844,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.Toughness = 0
 	out.Counters = nil
 	out.IsCommander = false
+	out.ManaCost = ""
 	return out
 }
 
@@ -910,6 +918,7 @@ func viewOfCard(c game.Card) CardView {
 		FaceDown:     c.FaceDown,
 		Auto:         game.IsAutoCard(c.OracleID),
 		TargetMode:   game.TargetModeFor(c.OracleID),
+		ManaCost:     c.ManaCost,
 		knowers:      knowers,
 	}
 	if c.AttackingTarget != uuid.Nil {

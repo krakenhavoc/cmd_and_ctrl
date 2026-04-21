@@ -38,6 +38,13 @@
     // "small" is the default (~146×204) and is what we use everywhere
     // on the table; the hover zoom overlay requests "normal".
     size?: "small" | "normal";
+    // showManaCost renders the S15 cost-chip overlay bottom-left.
+    // Enabled by Hand.svelte for the viewer's own hand so they can
+    // see what each spell costs without hover-zooming. Hidden on the
+    // battlefield (no value there) and on opponents' hands (would
+    // leak identity even when the card is face-down, since the wire
+    // redacts mana_cost for non-knowers anyway).
+    showManaCost?: boolean;
     onClick?: (card: CardView, ev: MouseEvent) => void;
   }
 
@@ -48,6 +55,7 @@
     attacking = false,
     blocking = false,
     size = "small",
+    showManaCost = false,
     onClick,
   }: Props = $props();
 
@@ -61,12 +69,15 @@
   // by Vite and in production by whoever serves the built client.
   const backSrc = $derived(size === "normal" ? "/card-back.jpg" : "/card-back-small.jpg");
 
-  // S13.5 — render the back when the wire says face-down OR when
-  // the card is one the viewer doesn't know (server redacted the
-  // characteristics, so we have nothing meaningful to render face-
-  // up). known_by_you is omitted when true, so the inverse is
-  // "explicit false" — `=== false` distinguishes "redacted card"
-  // from "older client / pre-S13.5 wire / face-up by default".
+  // S13.5 — render the back when the wire says face-down. The
+  // `|| card.known_by_you === false` arm is a belt-and-braces
+  // fallback: the server's CardView uses `omitempty` on KnownByYou,
+  // so a revealed card sends `true` and an unrevealed card omits
+  // the field entirely (opponents never see an explicit `false`
+  // from the wire). If a future code path were to build a CardView
+  // locally with an explicit `{known_by_you: false}`, this check
+  // would keep it rendering as a back. Parents that know the zone
+  // (Hand.svelte for opponent cards) still set `faceDown` directly.
   const showBack = $derived(faceDown || card.known_by_you === false);
 
   // Hover delay (settings.display.hoverDelayMs) defers the write to
@@ -189,6 +200,11 @@
         aria-label="auto-resolving"
       >
         AUTO
+      </span>
+    {/if}
+    {#if showManaCost && card.mana_cost}
+      <span class="badge cost" title={`mana cost ${card.mana_cost}`} aria-label="mana cost">
+        {card.mana_cost}
       </span>
     {/if}
     <CounterPips counters={card.counters} />
@@ -332,6 +348,25 @@
     background: rgba(60, 0, 0, 0.9);
     border-color: rgba(255, 122, 122, 0.5);
     font-size: 11px;
+  }
+  .badge.cost {
+    /* Top-right to mirror the printed-card convention. Only shown in
+       hand-zone presentations via the showManaCost prop, so no clash
+       with the goad / damage battlefield badges. Monospace so cost
+       strings like "{W}{U}{B}{R}{G}" stay legible at small sizes. */
+    left: auto;
+    right: 3px;
+    top: 3px;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 9px;
+    letter-spacing: 0;
+    color: var(--gold);
+    background: rgba(10, 14, 26, 0.92);
+    border: 1px solid rgba(200, 168, 106, 0.5);
+    max-width: 72%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .card.selected {
     box-shadow:
