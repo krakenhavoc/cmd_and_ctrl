@@ -7,6 +7,7 @@
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import Board from "../lib/components/board/Board.svelte";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
+  import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
   import TargetingBanner from "../lib/components/board/TargetingBanner.svelte";
   import { cancel as cancelTargeting } from "../lib/targeting";
   import type { PlayerView } from "../lib/protocol";
@@ -888,6 +889,7 @@
         onDeclareBlock={declareBlockTarget}
       />
       <DiscardPromptModal snap={view} {viewerID} {sendAction} />
+      <ChoicePromptModal snap={view} {viewerID} {sendAction} />
       <TargetingBanner />
     {/if}
   </div>

@@ -558,7 +558,7 @@ func TestMindRotQueuesDiscardChoice(t *testing.T) {
 	}
 }
 
-func TestThoughtseizeRevealsAndDiscards(t *testing.T) {
+func TestThoughtseizeQueuesCasterChoice(t *testing.T) {
 	g := newCatalogGame(t)
 	caster := g.Seats[0]
 	target := g.Seats[1]
@@ -572,21 +572,53 @@ func TestThoughtseizeRevealsAndDiscards(t *testing.T) {
 	)
 	passPriorityAroundTable(t, g)
 
-	if got := handBefore - target.Hand.Size(); got != 1 {
-		t.Errorf("target hand delta: got %d, want 1", got)
-	}
-	if got := target.Graveyard.Size() - gyBefore; got != 1 {
-		t.Errorf("target graveyard delta: got %d, want 1", got)
-	}
+	// Life loss fires at resolution; the discard is deferred.
 	if caster.Life != casterLife-2 {
 		t.Errorf("caster life: got %d, want %d", caster.Life, casterLife-2)
 	}
-	// Remaining hand cards should be known to the caster post-reveal.
-	// (Sticky knowledge — S13.5 doesn't drop it after discard.)
+	// Hand is revealed to the caster.
 	for _, c := range target.Hand.Cards {
 		if !c.IsKnownTo(caster.ID) {
 			t.Errorf("caster not a knower of %v after Thoughtseize reveal", c.InstanceID)
 		}
+	}
+	// Pre-pick: nothing moved.
+	if got := target.Hand.Size(); got != handBefore {
+		t.Errorf("hand size changed before resolve_choice: got %d, want %d", got, handBefore)
+	}
+	if got := target.Graveyard.Size() - gyBefore; got != 0 {
+		t.Errorf("graveyard changed before resolve_choice: got delta %d, want 0", got)
+	}
+	// A PendingChoice should exist addressed to the caster, sourced
+	// from the target.
+	if len(g.PendingChoices) != 1 {
+		t.Fatalf("PendingChoices len: got %d, want 1", len(g.PendingChoices))
+	}
+	choice := g.PendingChoices[0]
+	if choice.Chooser != caster.ID {
+		t.Errorf("choice.Chooser: got %v, want %v (caster)", choice.Chooser, caster.ID)
+	}
+	if choice.FromPlayer != target.ID {
+		t.Errorf("choice.FromPlayer: got %v, want %v (target)", choice.FromPlayer, target.ID)
+	}
+	if choice.Count != 1 {
+		t.Errorf("choice.Count: got %d, want 1", choice.Count)
+	}
+
+	// Caster picks one of the target's hand cards and submits.
+	pick := target.Hand.Cards[0].InstanceID
+	if err := g.ResolvePendingChoice(choice.ID, caster.ID, []uuid.UUID{pick}); err != nil {
+		t.Fatalf("ResolvePendingChoice: %v", err)
+	}
+
+	if target.Hand.Contains(pick) {
+		t.Errorf("picked card still in target hand")
+	}
+	if !target.Graveyard.Contains(pick) {
+		t.Errorf("picked card not in target graveyard")
+	}
+	if len(g.PendingChoices) != 0 {
+		t.Errorf("PendingChoices not drained after resolve: len=%d", len(g.PendingChoices))
 	}
 }
 

@@ -155,6 +155,13 @@ type Game struct {
 	// Added in S10.
 	Vote *Vote
 
+	// PendingChoices is the S14 generic "someone needs to pick"
+	// queue. Populated by effect cards that defer a decision
+	// (Thoughtseize → caster picks from target's revealed hand).
+	// Distinct from DiscardPending (S13.4 cleanup-only). Drained
+	// by resolve_choice actions. See pending_choice.go.
+	PendingChoices []*PendingChoice
+
 	// Events is the append-only per-game event log. Every rules-
 	// visible mutation calls EmitEvent, producing one or more
 	// entries here in-order. Consumers are S14+ card-effect

@@ -75,6 +75,12 @@ const (
 	TypeAddPlayerCounter Type = "add_player_counter"
 	// S13.4 — interactive cleanup discard + per-player hand-size cap.
 	TypeDiscardSelection Type = "discard_selection"
+	// TypeResolveChoice drains a PendingChoice entry by ID with
+	// the chooser's picks. Used by Thoughtseize-style effects
+	// where the chooser isn't the player who's being discarded
+	// from (S14). For the simpler S13.4 cleanup case, callers
+	// still use TypeDiscardSelection.
+	TypeResolveChoice Type = "resolve_choice"
 	TypeSetMaxHandSize   Type = "set_max_hand_size"
 )
 
@@ -249,6 +255,7 @@ var playerScopedActions = map[Type]struct{}{
 	TypeSetEnergy:        {},
 	TypeAddPlayerCounter: {},
 	TypeDiscardSelection: {},
+	TypeResolveChoice:    {},
 	TypeSetMaxHandSize:   {},
 	// Cast vote on behalf of self only — the seated voter is the
 	// authoritative caller. start_vote is also self-driven (the
@@ -788,6 +795,31 @@ func Dispatch(g *game.Game, a Action) error {
 			ids = append(ids, id)
 		}
 		return g.DiscardSelection(a.Player, ids)
+
+	case TypeResolveChoice:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			ChoiceID string   `json:"choice_id"`
+			CardIDs  []string `json:"card_ids"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		choiceID, err := uuid.Parse(p.ChoiceID)
+		if err != nil {
+			return fmt.Errorf("resolve_choice choice_id: %w", err)
+		}
+		ids := make([]uuid.UUID, 0, len(p.CardIDs))
+		for i, raw := range p.CardIDs {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return fmt.Errorf("resolve_choice card_ids[%d]: %w", i, err)
+			}
+			ids = append(ids, id)
+		}
+		return g.ResolvePendingChoice(choiceID, a.Player, ids)
 
 	case TypeSetMaxHandSize:
 		if a.Player == uuid.Nil {

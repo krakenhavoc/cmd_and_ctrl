@@ -116,4 +116,16 @@ var (
 	// when the targeted item is not currently on the stack (already
 	// resolved, never cast, or wrong instance ID). Added in S13.1.
 	ErrCardNotOnStack = errors.New("game: card is not on the stack")
+
+	// ErrPendingChoiceNotFound is returned by ResolvePendingChoice
+	// when the supplied choice ID isn't in the queue (already
+	// resolved, wrong ID, or queue was drained by an earlier
+	// resolution path). Added in S14 for Thoughtseize-style
+	// effects.
+	ErrPendingChoiceNotFound = errors.New("game: pending choice not found")
+
+	// ErrNotTheChooser is returned by ResolvePendingChoice when the
+	// caller is not the player the choice was addressed to. Added
+	// in S14.
+	ErrNotTheChooser = errors.New("game: caller is not the chooser of this pending choice")
 )

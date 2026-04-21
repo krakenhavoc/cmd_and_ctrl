@@ -81,6 +81,17 @@ func (g *Game) cloneLocked() *Game {
 	if g.Vote != nil {
 		out.Vote = cloneVote(g.Vote)
 	}
+	// PendingChoices: deep-copy pointers.
+	if len(g.PendingChoices) > 0 {
+		out.PendingChoices = make([]*PendingChoice, len(g.PendingChoices))
+		for i, c := range g.PendingChoices {
+			if c == nil {
+				continue
+			}
+			cloned := *c
+			out.PendingChoices[i] = &cloned
+		}
+	}
 	// Event log: deep-copy by value (Event is pure-data, no pointers).
 	// Listeners are process-lifetime singletons — shallow-copy the
 	// slice so the clone dispatches to the same subscribers the
@@ -266,5 +277,6 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.Events = src.Events
 	g.eventSeq = src.eventSeq
 	g.Listeners = src.Listeners
+	g.PendingChoices = src.PendingChoices
 	g.rng = src.rng
 }
