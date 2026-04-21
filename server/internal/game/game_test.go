@@ -203,6 +203,15 @@ func TestFullFourPlayerTurnCycle(t *testing.T) {
 		}
 	}
 
+	// S13.4: this test walks ~4 turns and the auto-draw step would
+	// push every hand past the default 7-card cap, freezing the
+	// cursor at cleanup waiting for an interactive discard. The
+	// turn-cycle test isn't about discard — uncapping every seat
+	// keeps the focus on the priority + step sequence.
+	for _, p := range g.Seats {
+		p.MaxHandSize = NoMaxHandSize
+	}
+
 	active := g.ActivePlayer()
 	if active == nil || active.Name != "Alice" {
 		t.Fatalf("active player: got %v, want Alice", active)

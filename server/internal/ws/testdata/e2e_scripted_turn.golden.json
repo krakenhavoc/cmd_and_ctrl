@@ -158,7 +158,8 @@
           ]
         },
         "commander_damage": {},
-        "life_history": []
+        "life_history": [],
+        "max_hand_size": 7
       },
       {
         "id": "\u003cuuid-003\u003e",
@@ -198,7 +199,8 @@
           ]
         },
         "commander_damage": {},
-        "life_history": []
+        "life_history": [],
+        "max_hand_size": 7
       }
     ],
     "battlefield": {

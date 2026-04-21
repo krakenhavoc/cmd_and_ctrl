@@ -73,6 +73,9 @@ const (
 	// homebrew names). Drives the SBA loop after the mutation so
 	// poison ≥ 10 immediately applies.
 	TypeAddPlayerCounter Type = "add_player_counter"
+	// S13.4 — interactive cleanup discard + per-player hand-size cap.
+	TypeDiscardSelection Type = "discard_selection"
+	TypeSetMaxHandSize   Type = "set_max_hand_size"
 )
 
 // ErrUnknownType is returned when Dispatch receives an action type it
@@ -245,6 +248,8 @@ var playerScopedActions = map[Type]struct{}{
 	TypeSetPoison:        {},
 	TypeSetEnergy:        {},
 	TypeAddPlayerCounter: {},
+	TypeDiscardSelection: {},
+	TypeSetMaxHandSize:   {},
 	// Cast vote on behalf of self only — the seated voter is the
 	// authoritative caller. start_vote is also self-driven (the
 	// initiator is `Player`) but the "any caller may start a vote"
@@ -763,6 +768,38 @@ func Dispatch(g *game.Game, a Action) error {
 			return err
 		}
 		return g.AddPlayerCounter(a.Player, p.Name, p.Delta)
+
+	case TypeDiscardSelection:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			CardIDs []string `json:"card_ids"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		ids := make([]uuid.UUID, 0, len(p.CardIDs))
+		for i, raw := range p.CardIDs {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return fmt.Errorf("discard_selection card_ids[%d]: %w", i, err)
+			}
+			ids = append(ids, id)
+		}
+		return g.DiscardSelection(a.Player, ids)
+
+	case TypeSetMaxHandSize:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			Value int `json:"value"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		return g.SetMaxHandSize(a.Player, p.Value)
 
 	case TypeMarkDamage:
 		var p struct {

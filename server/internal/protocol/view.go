@@ -78,6 +78,11 @@ type GameView struct {
 	// Drives the client's "no responses allowed" UI gating. Added
 	// in S13.1.
 	SplitSecondActive bool `json:"split_second_active,omitempty"`
+	// DiscardPending is the cleanup-step pause map (S13.4): keys
+	// are player UUID strings, values are the count each player
+	// must discard. Drives the client's discard-prompt modal.
+	// Empty when nobody owes discard. Added in S13.4.
+	DiscardPending map[string]int `json:"discard_pending,omitempty"`
 }
 
 // StackItemView is the wire shape of a stack-item's announce-time
@@ -184,6 +189,13 @@ type PlayerView struct {
 	// and `energy` int fields above stay populated for backwards
 	// compatibility with pre-S13.2 clients. Omitted when empty.
 	Counters map[string]int `json:"counters,omitempty"`
+
+	// MaxHandSize is the per-player cleanup-step hand-size cap
+	// (S13.4, CR 402.2). DefaultMaxHandSize (7) on every freshly
+	// seated player; -1 sentinel disables the cap (Reliquary Tower
+	// / Thought Vessel). Surfaced on the wire so clients can
+	// render "8 / ∞" or "3 / 2" next to the hand-count badge.
+	MaxHandSize int `json:"max_hand_size"`
 }
 
 // LifeChangeView is the wire representation of a single life-change
@@ -301,9 +313,24 @@ func ViewOfGame(g *game.Game) GameView {
 			StackItems:        viewOfStackItemsInStackOrder(g),
 			PendingTriggers:   viewOfStackItemSlice(g.PendingTriggers),
 			SplitSecondActive: g.SplitSecondActive,
+			DiscardPending:    viewOfDiscardPending(g.DiscardPending),
 		}
 	})
 	return view
+}
+
+// viewOfDiscardPending mirrors Game.DiscardPending to the wire
+// shape (string-keyed UUIDs). Returns nil for an empty map so
+// json.Marshal's omitempty drops the field.
+func viewOfDiscardPending(in map[uuid.UUID]int) map[string]int {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]int, len(in))
+	for k, v := range in {
+		out[k.String()] = v
+	}
+	return out
 }
 
 // viewOfStackItemsInStackOrder projects every stack item, ordered by
@@ -443,6 +470,7 @@ func viewOfPlayer(p *game.Player) PlayerView {
 		DisplayName:       p.DisplayName,
 		CommanderCasts:    cmdrCasts,
 		Counters:          cloneStringIntMap(p.Counters),
+		MaxHandSize:       p.MaxHandSize,
 	}
 }
 

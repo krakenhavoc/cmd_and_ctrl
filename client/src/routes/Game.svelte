@@ -6,6 +6,7 @@
   import { seatColor } from "../lib/colors";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import Board from "../lib/components/board/Board.svelte";
+  import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import type { PlayerView } from "../lib/protocol";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
@@ -884,6 +885,7 @@
         onDeclareAttack={declareAttackTarget}
         onDeclareBlock={declareBlockTarget}
       />
+      <DiscardPromptModal snap={view} {viewerID} {sendAction} />
     {/if}
   </div>
 

@@ -113,6 +113,7 @@ func (n *normalizer) player(p protocol.PlayerView, id string) protocol.PlayerVie
 		Eliminated:     p.Eliminated,
 		HandKept:       p.HandKept,
 		MulligansTaken: p.MulligansTaken,
+		MaxHandSize:    p.MaxHandSize,
 	}
 	// Always initialise (possibly empty) — matches the wire shape
 	// emitted by protocol.viewOfPlayer, which always allocates the

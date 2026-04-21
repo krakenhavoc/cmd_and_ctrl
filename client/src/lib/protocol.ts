@@ -114,6 +114,10 @@ export interface GameView {
   // split second is on the stack (S13.1, CR 702.79). Drives the
   // client's "no responses allowed" UI gating.
   split_second_active?: boolean;
+  // Cleanup-step pause map (S13.4, CR 402.2). Keys are player UUID
+  // strings, values are the count each player must discard. Drives
+  // DiscardPromptModal. Empty / absent when nobody owes discard.
+  discard_pending?: Record<string, number>;
 }
 
 // StackItemView mirrors `protocol.StackItemView` server-side: the
@@ -205,6 +209,11 @@ export interface PlayerView {
   // experience, rad, plus homebrew). The legacy `poison` and
   // `energy` ints above stay populated for backwards compat.
   counters?: Record<string, number>;
+  // Per-player cleanup-step hand-size cap (S13.4, CR 402.2).
+  // 7 by default; -1 = no cap (Reliquary Tower / Thought Vessel).
+  // Always present on the wire; the field is non-omitempty so
+  // clients know the cap even when it's the default.
+  max_hand_size?: number;
 }
 
 export interface LifeChangeView {

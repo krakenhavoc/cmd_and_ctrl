@@ -131,6 +131,16 @@ type Game struct {
 	// Added in S13.1.
 	LoyaltyActivatedThisTurn map[uuid.UUID]bool
 
+	// DiscardPending is the cleanup-step pause map (S13.4): keys
+	// are player IDs that need to discard, values are the count
+	// each player must discard. Set at cleanup-step entry by
+	// runStepEntryHooksLocked when Hand.Size() > MaxHandSize for
+	// any non-eliminated player; cleared per-player by the
+	// discard_selection action. The cleanup auto-advance is
+	// blocked while this map is non-empty so the cursor pauses
+	// for player input. Added in S13.4.
+	DiscardPending map[uuid.UUID]int
+
 	// Promises is the directed per-pair "I owe you" promise-token count
 	// keyed by `from→to` pairs. Politics scaffold — players use it as
 	// a visual reminder of informal deals ("I owe Alice 2 favours").
@@ -439,19 +449,51 @@ func (g *Game) runStepEntryHooksLocked() {
 	case StepEndCombat:
 		g.clearCombatLocked()
 	case StepCleanup:
-		// CR 514.2: at the start of cleanup, all damage marked on
-		// permanents is removed. Lethal-damage SBA from S13.1 reads
-		// DamageMarked, so clearing it here means the per-turn
-		// damage doesn't carry over into the next turn. (S13.4 will
-		// inject the interactive discard pause between this clear
-		// and the auto-advance below.)
+		// CR 402.2: build the discard-pending map for any player
+		// over their per-player MaxHandSize. The cursor pauses at
+		// cleanup until every entry is drained via discard_selection
+		// (S13.4 — the interactive discard pathway).
+		g.populateDiscardPendingLocked()
+		// CR 514.2: damage marked on permanents is removed at the
+		// start of cleanup, regardless of whether the discard pause
+		// fires. The lethal-damage SBA from S13.1 reads DamageMarked,
+		// so clearing it here means the per-turn damage doesn't
+		// carry over into the next turn.
 		for i := range g.Battlefield.Cards {
 			g.Battlefield.Cards[i].DamageMarked = 0
 		}
-		// Cleanup grants no priority and (pending S13.4's discard UI)
-		// has no remaining S13.x work; auto-advance immediately.
-		g.Turn = g.Turn.advance(len(g.Seats))
-		g.runStepEntryHooksLocked()
+		// Auto-advance only when no player owes discard. Otherwise
+		// the cursor sits at Cleanup with PriorityHolder=NoPriority
+		// until DiscardSelection drains the pending map and re-fires
+		// this hook.
+		if len(g.DiscardPending) == 0 {
+			g.Turn = g.Turn.advance(len(g.Seats))
+			g.runStepEntryHooksLocked()
+		}
+	}
+}
+
+// populateDiscardPendingLocked scans seated, non-eliminated players
+// and records the over-max count for each one whose hand exceeds
+// their MaxHandSize. NoMaxHandSize (-1) is treated as "no cap" and
+// skipped. Caller must hold g.mu.
+func (g *Game) populateDiscardPendingLocked() {
+	g.DiscardPending = nil
+	for _, p := range g.Seats {
+		if p.Eliminated {
+			continue
+		}
+		if p.MaxHandSize == NoMaxHandSize {
+			continue
+		}
+		over := p.Hand.Size() - p.MaxHandSize
+		if over <= 0 {
+			continue
+		}
+		if g.DiscardPending == nil {
+			g.DiscardPending = make(map[uuid.UUID]int)
+		}
+		g.DiscardPending[p.ID] = over
 	}
 }
 

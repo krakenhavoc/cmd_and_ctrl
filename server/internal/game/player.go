@@ -19,6 +19,20 @@ const CommanderDamageLethal = 21
 // MaxLifeHistoryEntries are always retained.
 const MaxLifeHistoryEntries = 50
 
+// DefaultMaxHandSize is the per-player hand-size cap enforced at
+// cleanup (CR 402.2 — "the maximum hand size is normally seven").
+// Cards like Reliquary Tower / Thought Vessel / Spellbook /
+// Library of Leng / Null Profusion / Venser's Journal modify the
+// per-player MaxHandSize via S14+ catalog cards plugged into the
+// S16 layer system.
+const DefaultMaxHandSize = 7
+
+// NoMaxHandSize is the sentinel for "no maximum hand size" (the
+// Reliquary Tower / Thought Vessel effect). Encoded as -1 so the
+// integer field stays small and the discard-prompt logic can short-
+// circuit on a single comparison.
+const NoMaxHandSize = -1
+
 // LifeChange is a single entry in a Player's life-change log. Delta
 // is the change applied (positive for gain, negative for loss);
 // NewTotal is the resulting life total after the change. At is the
@@ -149,6 +163,13 @@ type Player struct {
 	// Zero-valued entries are removed to keep the map sparse on the
 	// wire.
 	Counters map[string]int
+
+	// MaxHandSize is the per-player cleanup-step hand-size cap
+	// (CR 402.2). Default DefaultMaxHandSize (7); NoMaxHandSize (-1)
+	// disables the cap (Reliquary Tower / Thought Vessel). Set via
+	// the set_max_hand_size action; effect-catalog work in S14+
+	// will write to it via the S16 layer pipeline. Added in S13.4.
+	MaxHandSize int
 }
 
 // newPlayer constructs a player with empty zones and their starting
@@ -163,6 +184,7 @@ func newPlayer(name string, seat int) *Player {
 		Life:            StartingLife,
 		CommanderDamage: make(map[uuid.UUID]int),
 		CommanderCasts:  make(map[uuid.UUID]int),
+		MaxHandSize:     DefaultMaxHandSize,
 	}
 	p.Library = newZone(ZoneLibrary, id)
 	p.Hand = newZone(ZoneHand, id)

@@ -702,28 +702,25 @@ S13's cleanup step auto-discards from the hand top as a placeholder — S13.4 re
 ### Tasks
 
 **Server — engine + actions:**
-- [ ] `Player.MaxHandSize int` field (default 7; `-1` sentinel = no maximum)
-- [ ] `Turn.DiscardPending map[playerID]int` — cleanup-step-entry sets pending counts for any player over their max
-- [ ] `Turn.advance` refuses to leave cleanup while pending is non-empty; re-checks on `discard_selection` resolve
-- [ ] `discard_selection` action (`{ card_ids }`) — gated to the pending discarder; validates count + ownership; moves to graveyard; clears pending
-- [ ] `set_max_hand_size` action (`{ player_id, value }`) — sandbox helper; admin-only or self-only
-- [ ] Replace S13's "discard from hand top" placeholder with the prompt pathway
-- [ ] APNAP order for multi-player simultaneous discard (Mindslicer, Painful Quandary)
+- [x] `Player.MaxHandSize int` field (default 7; `-1` = no max)
+- [x] `Game.DiscardPending map[playerID]int` populated by the cleanup-step-entry hook
+- [x] Cleanup hook auto-advances only when `DiscardPending` is empty; re-fires on `discard_selection` drain so the cursor resumes
+- [x] `discard_selection` action (`{ card_ids }`) — count-validated, hand-ownership-validated, idempotent for callers not in the pending map
+- [x] `set_max_hand_size` action (`{ value }`, player-scoped) — sandbox helper for now; effect-catalog work in S14+ writes to it via the layer pipeline
+- [ ] APNAP order for multi-player simultaneous discard — single-prompt-at-a-time is fine for the friends-only deployment; revisit if/when Mindslicer / Painful Quandary land at the table
 
 **Server — wire:**
-- [ ] `PlayerView.max_hand_size int`
-- [ ] `GameView.discard_pending map<playerID, count>`
-- [ ] `KindDiscardPrompt` frame (`{ player_id, count }`)
+- [x] `PlayerView.max_hand_size int` (always present so clients know the cap)
+- [x] `GameView.discard_pending map<playerID, count>` (omitempty)
 
 **Client:**
-- [ ] `DiscardPromptModal.svelte` — opens when `discard_pending[viewerID] > 0`; multi-select exactly N cards; non-dismissible; auto-closes when pending drops to 0
-- [ ] `PlayerHeader` shows non-default `MaxHandSize` next to hand-count ("8 / ∞" for Reliquary, "3 / 2" for Null Profusion)
-- [ ] Optional sandbox numeric input for `set_max_hand_size` (slot into [S11.5](#s115--per-user-settings-and-preferences-mini) settings UI if that lands first)
+- [x] `DiscardPromptModal.svelte` — opens when `discard_pending[viewerID] > 0`; multi-select exactly N cards; non-dismissible; auto-closes when the wire drains the entry
+- [ ] `PlayerHeader` shows non-default `MaxHandSize` next to hand-count — deferred until set_max_hand_size has a UI consumer
+- [ ] Settings panel toggle for `set_max_hand_size` — deferred, sandbox helper only
 
 **Tests:**
-- [ ] Server: over-max prompts / selection resolves / wrong count rejected / non-hand card rejected / `-1` skips / admin & self gating
-- [ ] Client: `DiscardPromptModal` opens when pending, submits correct payload
-- [ ] Manual 2-tab smoke through 5 exit scenarios
+- [x] Server: over-max prompts, selection resolves + advances, wrong count rejected, NoMaxHandSize bypass, set_max_hand_size validation
+- [ ] Manual 2-tab smoke through the 5 exit scenarios below
 
 ### Out of scope
 - **Static-ability declarations** for Reliquary Tower, Thought Vessel, Spellbook, Library of Leng, Null Profusion, Venser's Journal — these land as [S14](#s14--card-effect-catalog-foundation) catalog cards plugged into [S16](#s16--continuous-effects--layer-system-cr-613) layer pipeline, writing to the `MaxHandSize` field S13.4 creates

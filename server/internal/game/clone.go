@@ -59,6 +59,12 @@ func (g *Game) cloneLocked() *Game {
 			out.LoyaltyActivatedThisTurn[k] = v
 		}
 	}
+	if len(g.DiscardPending) > 0 {
+		out.DiscardPending = make(map[uuid.UUID]int, len(g.DiscardPending))
+		for k, v := range g.DiscardPending {
+			out.DiscardPending[k] = v
+		}
+	}
 	out.Battlefield = cloneZone(g.Battlefield)
 	out.Stack = cloneZone(g.Stack)
 	out.Exile = cloneZone(g.Exile)
@@ -148,6 +154,7 @@ func clonePlayer(p *Player) *Player {
 			out.Counters[k] = v
 		}
 	}
+	out.MaxHandSize = p.MaxHandSize
 	if len(p.LifeHistory) > 0 {
 		out.LifeHistory = make([]LifeChange, len(p.LifeHistory))
 		copy(out.LifeHistory, p.LifeHistory)
@@ -240,6 +247,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.StackMeta = src.StackMeta
 	g.PendingTriggers = src.PendingTriggers
 	g.LoyaltyActivatedThisTurn = src.LoyaltyActivatedThisTurn
+	g.DiscardPending = src.DiscardPending
 	g.Promises = src.Promises
 	g.Vote = src.Vote
 	g.rng = src.rng
