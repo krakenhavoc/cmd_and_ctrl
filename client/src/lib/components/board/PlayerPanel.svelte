@@ -209,16 +209,6 @@
        opponent panels can shrink the whole board with one rule
        (see .panel.opponent below). --pile-w / --thumb-w /
        --thumb-h play the same role for the PileBar. */
-    /* Card sizes — easy to dial in further by tweaking just these
-       vars; everything downstream (Card.svelte, PileButton.svelte,
-       Hand.svelte) reads them. Aspect ratio held at 0.714 (the real
-       63mm × 88mm magic-card proportion) so face art stays
-       undistorted.
-
-       --card-scale is set on :root by the S11.5 settings panel
-       (Display → card size). Multiplying here rather than letting
-       :root override --card-w directly avoids a specificity fight
-       with .panel.opponent's smaller baseline. */
     --card-w: calc(120px * var(--card-scale, 1));
     --card-h: calc(168px * var(--card-scale, 1));
     --pile-w: calc(94px * var(--card-scale, 1));
@@ -226,16 +216,6 @@
     --thumb-h: calc(105px * var(--card-scale, 1));
     display: grid;
     grid-template-columns: minmax(0, 1.4fr) minmax(0, 3fr) minmax(0, 1.3fr);
-    /* Header is fixed; piles/hand row is content-sized (the largest
-       child is the hand fan, naturally about --card-h tall). The
-       creatures and lands rows split the remaining space so the
-       battlefield zones grow to fill the panel instead of leaving a
-       blank gap above the piles row.
-
-       The right column (artifacts / enchantments) spans every row
-       below the header so it can grow vertically alongside the
-       creatures row instead of overflowing off-screen at the bottom
-       when many permanents are in play. */
     grid-template-rows: 32px minmax(0, 1.4fr) minmax(0, 1fr) auto;
     grid-template-areas:
       "header     header     header"
@@ -246,13 +226,35 @@
     width: 100%;
     height: 100%;
     box-sizing: border-box;
-    padding: 4px;
-    background: #0d1424;
-    border-radius: 6px;
+    padding: 8px;
+    /* Layered surface: subtle inner highlight at the top for a sheen,
+       gentle gradient from raised→sunken so the panel reads like a
+       felt-topped playmat rather than a flat rectangle. */
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0%, rgba(255, 255, 255, 0) 20%),
+      linear-gradient(180deg, #131c34 0%, #0b1325 100%);
+    border: 1px solid rgba(122, 167, 255, 0.1);
+    border-radius: var(--radius-lg);
+    box-shadow:
+      0 12px 30px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
     overflow: hidden;
+    position: relative;
+  }
+  /* Self panel carries a subtle amber accent along the bottom to
+     remind the user which row is theirs without drawing too much
+     attention. */
+  .panel.self {
+    border-color: rgba(255, 208, 122, 0.18);
+    box-shadow:
+      0 14px 34px rgba(0, 0, 0, 0.45),
+      inset 0 -1px 0 rgba(255, 208, 122, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
   .panel.opponent {
-    background: #0a1020;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 20%),
+      linear-gradient(180deg, #0f1628 0%, #080d1b 100%);
     /* Opponent baseline is shrunk vs. pre-S11.5 (78×110 → 66×92)
        to leave headroom for the rotated-180° hand fan's bounding
        box, which adds ~20px above the card height. Scales by

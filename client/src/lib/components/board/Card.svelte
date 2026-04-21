@@ -224,42 +224,43 @@
   .card {
     /* Sizes are driven by inherited CSS vars so a parent panel can
        cascade smaller dimensions (e.g. opponent panels at the top of
-       the board) without each Card needing a per-call prop. Defaults
-       in the var() fallback match the prior intrinsic size. */
+       the board) without each Card needing a per-call prop. */
     width: var(--card-w, 80px);
     height: var(--card-h, 112px);
-    border-radius: 6px;
-    border: 1px solid #4a5270;
-    background: #1e2638;
+    border-radius: 8px;
+    border: 1px solid #0a0e1a;
+    background: #0d1220;
     overflow: hidden;
     position: relative;
     box-sizing: border-box;
     flex: 0 0 auto;
-    transition: box-shadow 80ms ease;
+    box-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.5),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    transition:
+      box-shadow 140ms var(--ease),
+      filter 140ms var(--ease);
     transform-origin: center center;
     user-select: none;
     -webkit-user-select: none;
     /* Compose tap rotation (animated by GSAP via --tap-rot) with the
-       CSS-only hover lift (--hover-lift). Stacking through CSS vars
-       lets each effect tween independently without one stomping the
-       other's transform string. */
+       CSS-only hover lift (--hover-lift). */
     transform: rotate(var(--tap-rot, 0deg)) translateY(var(--hover-lift, 0px));
   }
   .card.clickable {
     cursor: pointer;
   }
   .card.clickable:hover {
-    /* --hover-lift snaps rather than tweens; smoothly transitioning a
-       custom property requires @property registration which Svelte's
-       scoped CSS doesn't expose. The 6px snap is small enough not to
-       read as a jump cut, and the box-shadow + GSAP tap rotation
-       still animate. */
-    --hover-lift: -6px;
-    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
+    --hover-lift: -8px;
+    box-shadow:
+      0 14px 28px rgba(0, 0, 0, 0.55),
+      0 0 0 1px rgba(122, 167, 255, 0.35),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    filter: brightness(1.06);
     z-index: 5;
   }
   .card.face-down {
-    background: #1a1f35;
+    background: #0f1428;
   }
   .back-img {
     width: 100%;
@@ -289,61 +290,70 @@
   }
   .badge {
     position: absolute;
-    top: 2px;
-    left: 2px;
-    background: rgba(0, 0, 0, 0.7);
-    color: #ffd07a;
+    top: 3px;
+    left: 3px;
+    background: rgba(10, 14, 26, 0.88);
+    color: var(--gold);
     font-size: 8px;
-    font-weight: 700;
-    padding: 1px 3px;
-    border-radius: 2px;
-    letter-spacing: 0.05em;
+    font-weight: 800;
+    padding: 2px 5px;
+    border-radius: 999px;
+    letter-spacing: 0.06em;
+    border: 1px solid rgba(255, 208, 122, 0.45);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
   }
   .badge.goad {
     /* Top-right so it doesn't collide with the CMD badge on legendary
        commanders that get goaded back at their owner. */
     left: auto;
-    right: 2px;
-    color: #ff7a7a;
-    background: rgba(80, 0, 0, 0.85);
+    right: 3px;
+    color: var(--danger);
+    background: rgba(60, 0, 0, 0.85);
+    border-color: rgba(255, 122, 122, 0.5);
   }
   .badge.auto {
     /* Bottom-left so the AUTO pip sits opposite the damage badge
-       (bottom-right) and below the CMD / GOAD badges (top).
-       Gold-on-black matches the CMD palette for "this card is
-       rules-special." Added in S14 sub-PR 3. */
+       (bottom-right) and below the CMD / GOAD badges (top). */
     top: auto;
-    bottom: 2px;
-    left: 2px;
-    color: #ffd07a;
-    background: rgba(80, 60, 0, 0.85);
-    border: 1px solid #c8a86a;
+    bottom: 3px;
+    left: 3px;
+    color: var(--gold);
+    background: rgba(60, 44, 0, 0.85);
+    border: 1px solid rgba(200, 168, 106, 0.7);
   }
   .badge.damage {
-    /* Bottom-right so it stays clear of the goad / CMD badges and
-       sits next to the card's printed P/T conceptually. S13.2 — the
-       lethal-damage SBA reads damage_marked. */
+    /* Bottom-right so it stays clear of the goad / CMD badges. */
     top: auto;
-    bottom: 2px;
+    bottom: 3px;
     left: auto;
-    right: 2px;
+    right: 3px;
     color: #ff9090;
-    background: rgba(80, 0, 0, 0.9);
+    background: rgba(60, 0, 0, 0.9);
+    border-color: rgba(255, 122, 122, 0.5);
     font-size: 11px;
   }
   .card.selected {
     box-shadow:
-      0 0 0 3px #ffd07a,
-      0 6px 14px rgba(0, 0, 0, 0.45);
+      0 0 0 2px var(--gold),
+      0 0 22px rgba(255, 208, 122, 0.6),
+      0 10px 22px rgba(0, 0, 0, 0.5),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   }
   .card.attacking {
-    box-shadow: 0 0 0 2px #ff7a7a;
+    box-shadow:
+      0 0 0 2px var(--danger),
+      0 0 18px rgba(255, 122, 122, 0.55),
+      0 6px 16px rgba(0, 0, 0, 0.5);
   }
   .card.blocking {
-    box-shadow: 0 0 0 2px #9ec7ff;
+    box-shadow:
+      0 0 0 2px #9ec7ff,
+      0 0 18px rgba(158, 199, 255, 0.5),
+      0 6px 16px rgba(0, 0, 0, 0.5);
   }
   .card:focus-visible {
-    outline: 2px solid #5fb0ff;
-    outline-offset: 2px;
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
   }
 </style>

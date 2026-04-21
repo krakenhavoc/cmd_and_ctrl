@@ -68,52 +68,71 @@
 </script>
 
 <section>
-  <h1>{spectator ? "spectate game" : "join game"}</h1>
-  <p class="muted">
-    game: <code>{gameID}</code>
-    {#if spectator}
-      <span class="badge">read-only</span>
-    {/if}
-  </p>
+  <header class="head">
+    <h1>{spectator ? "spectate game" : "join game"}</h1>
+    <p class="muted">
+      game: <code>{gameID}</code>
+      {#if spectator}
+        <span class="badge">read-only</span>
+      {/if}
+    </p>
+  </header>
 
-  {#if !inviteToken}
-    <p class="error">invite token missing from URL</p>
-  {:else}
-    {#if discordEnabled}
-      <a class="discord-btn" href={discordHref}>
-        <span class="discord-mark" aria-hidden="true">◆</span> Sign in with Discord
-      </a>
-      <p class="muted or-line">or enter a name manually</p>
+  <div class="card">
+    {#if !inviteToken}
+      <p class="error">invite token missing from URL</p>
+    {:else}
+      {#if discordEnabled}
+        <a class="discord-btn" href={discordHref}>
+          <span class="discord-mark" aria-hidden="true">◆</span>
+          <span>Sign in with Discord</span>
+        </a>
+        <div class="divider" aria-hidden="true"><span>or</span></div>
+      {/if}
+      <form onsubmit={submit}>
+        <input
+          type="text"
+          placeholder={spectator ? "your name (chat label)" : "your name"}
+          bind:value={name}
+          required
+        />
+        <button type="submit" disabled={busy || !name.trim()}>
+          {busy ? "…" : spectator ? "watch" : "join"}
+        </button>
+      </form>
+      {#if spectator}
+        <p class="muted note">
+          You'll see the table from a non-seated viewpoint. Opponent hands and libraries stay
+          hidden, the same way they do for any other player. You can't send actions.
+        </p>
+      {/if}
     {/if}
-    <form onsubmit={submit}>
-      <input
-        type="text"
-        placeholder={spectator ? "your name (chat label)" : "your name"}
-        bind:value={name}
-        required
-      />
-      <button type="submit" disabled={busy || !name.trim()}>
-        {busy ? "…" : spectator ? "watch" : "join"}
-      </button>
-    </form>
-    {#if spectator}
-      <p class="muted note">
-        You'll see the table from a non-seated viewpoint. Opponent hands and libraries stay hidden,
-        the same way they do for any other player. You can't send actions.
-      </p>
-    {/if}
-  {/if}
 
-  {#if error}
-    <p class="error">{error}</p>
-  {/if}
+    {#if error}
+      <p class="error" role="alert">{error}</p>
+    {/if}
+  </div>
 </section>
 
 <style>
   section {
     max-width: 480px;
-    margin: 2rem auto;
+    margin: 3rem auto;
     padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .head h1 {
+    font-size: 1.6rem;
+    letter-spacing: -0.02em;
+  }
+  .card {
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg-2) 100%);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    box-shadow: var(--shadow);
   }
   form {
     display: flex;
@@ -121,53 +140,89 @@
   }
   input {
     flex: 1;
-    padding: 0.5rem;
   }
   .muted {
-    color: #666;
+    color: var(--fg-muted);
     font-size: 0.9em;
+    margin: 0.25rem 0 0;
   }
   .note {
-    margin-top: 0.75rem;
+    margin-top: 0.9rem;
   }
   .discord-btn {
     display: inline-flex;
+    width: 100%;
+    box-sizing: border-box;
     align-items: center;
-    gap: 0.5rem;
-    background: #5865f2;
+    justify-content: center;
+    gap: 0.6rem;
+    background: linear-gradient(180deg, #5865f2 0%, #4651c8 100%);
     color: #fff;
     text-decoration: none;
-    padding: 0.6rem 1rem;
-    border-radius: 4px;
+    padding: 0.7rem 1rem;
+    border-radius: var(--radius);
     font-weight: 600;
-    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    box-shadow:
+      var(--shadow-sm),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    transition:
+      transform 120ms var(--ease),
+      box-shadow 120ms var(--ease);
   }
   .discord-btn:hover {
-    background: #4651c8;
+    box-shadow:
+      var(--shadow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+  .discord-btn:active {
+    transform: translateY(1px);
   }
   .discord-mark {
     font-size: 1.1em;
     line-height: 1;
   }
-  .or-line {
-    margin: 0.25rem 0 0.75rem 0;
-    font-size: 0.85em;
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0.9rem 0;
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--fg-dim);
+  }
+  .divider::before,
+  .divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
   }
   code {
-    font-family: monospace;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.85em;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
   }
   .badge {
     display: inline-block;
     margin-left: 0.5rem;
     padding: 1px 6px;
-    border: 1px solid #4a5270;
-    border-radius: 3px;
-    font-size: 0.75em;
+    border: 1px solid rgba(214, 122, 255, 0.4);
+    background: rgba(214, 122, 255, 0.12);
+    border-radius: 999px;
+    font-size: 0.72em;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: #b08aff;
+    color: var(--magenta);
+    font-weight: 600;
   }
   .error {
-    color: #c00;
+    margin: 0.75rem 0 0;
+    color: var(--danger);
+    font-size: 0.9em;
   }
 </style>

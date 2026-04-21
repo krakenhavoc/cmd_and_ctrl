@@ -47,23 +47,27 @@
 <style>
   .row {
     position: relative;
-    background: #111a2b;
-    border: 1px solid #2e3a55;
-    border-radius: 6px;
-    padding: 18px 8px 8px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(0, 0, 0, 0.15) 100%),
+      var(--surface-sunken);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 10px 10px;
     min-height: 0;
     min-width: 0;
     overflow: auto;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
   }
   .row-label {
     position: absolute;
-    top: 4px;
-    left: 8px;
+    top: 5px;
+    left: 10px;
     font-size: 9px;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: #6c7a99;
+    letter-spacing: 0.14em;
+    color: var(--fg-dim);
     pointer-events: none;
+    font-weight: 700;
   }
   .row-cards {
     display: flex;

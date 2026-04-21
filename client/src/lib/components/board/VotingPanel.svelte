@@ -145,14 +145,19 @@
     left: 50%;
     transform: translateX(-50%);
     z-index: 50;
-    background: #0d1424;
-    border: 1px solid #b08aff;
-    border-radius: 10px;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7);
-    padding: 12px 16px;
+    background: linear-gradient(180deg, rgba(19, 26, 44, 0.92) 0%, rgba(8, 12, 24, 0.92) 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(176, 138, 255, 0.6);
+    border-radius: var(--radius-lg);
+    box-shadow:
+      0 14px 36px rgba(0, 0, 0, 0.65),
+      0 0 20px rgba(176, 138, 255, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    padding: 14px 18px;
     min-width: 280px;
     max-width: 420px;
-    color: #e0e6f5;
+    color: var(--fg);
   }
   .head {
     display: flex;
@@ -161,22 +166,27 @@
     margin-bottom: 10px;
   }
   .badge {
-    background: #b08aff;
-    color: #0d1424;
+    background: linear-gradient(180deg, #c09dff 0%, #9c78f0 100%);
+    color: #1a0d33;
     font-size: 9px;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    padding: 2px 6px;
-    border-radius: 3px;
+    letter-spacing: 0.12em;
+    padding: 3px 8px;
+    border-radius: 999px;
+    box-shadow:
+      0 2px 6px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
   }
   .topic {
     font-size: 14px;
     flex: 1;
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
   .initiator {
     font-size: 10px;
-    color: #6c7a99;
+    color: var(--fg-dim);
     text-transform: lowercase;
   }
   .options {
@@ -193,29 +203,34 @@
     justify-content: space-between;
     gap: 12px;
     width: 100%;
-    background: transparent;
-    border: 1px solid #2e3a55;
-    border-radius: 5px;
-    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius);
+    padding: 8px 12px;
     color: inherit;
     font: inherit;
     cursor: pointer;
     text-align: left;
+    box-shadow: none;
+    transition:
+      background 140ms var(--ease),
+      border-color 140ms var(--ease);
   }
   .option:hover {
-    background: #1a2335;
-    border-color: #b08aff;
+    background: rgba(176, 138, 255, 0.1);
+    border-color: rgba(176, 138, 255, 0.6);
   }
   .option.mine {
-    background: rgba(176, 138, 255, 0.18);
+    background: rgba(176, 138, 255, 0.22);
     border-color: #b08aff;
-    color: #d8c8ff;
+    color: #e1d3ff;
+    box-shadow: 0 0 14px rgba(176, 138, 255, 0.25);
   }
   .option-text {
     flex: 1;
   }
   .option-tally {
-    font-weight: 700;
+    font-weight: 800;
     font-variant-numeric: tabular-nums;
     color: #b08aff;
     min-width: 18px;
@@ -224,26 +239,32 @@
   .foot {
     display: flex;
     justify-content: flex-end;
-    margin-top: 12px;
+    margin-top: 14px;
   }
   .end {
     background: transparent;
-    border: 1px solid #4a5270;
-    color: #c8c8c8;
-    padding: 4px 12px;
-    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--fg-muted);
+    padding: 5px 14px;
+    border-radius: 999px;
     cursor: pointer;
     font: inherit;
     font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+    box-shadow: none;
+    transition:
+      background 120ms var(--ease),
+      border-color 120ms var(--ease),
+      color 120ms var(--ease);
   }
   .end:hover {
-    background: #1a2335;
-    color: #ff7a7a;
-    border-color: #ff7a7a;
+    background: rgba(255, 122, 122, 0.15);
+    color: var(--danger);
+    border-color: rgba(255, 122, 122, 0.6);
   }
 
-  /* Launcher when no vote is open — small button, tucked next to the
-     other overlays. Top-left under the StackOverlay corner. */
   .vote-launcher {
     position: absolute;
     top: 12px;
@@ -251,57 +272,82 @@
     z-index: 30;
   }
   .launcher-btn {
-    background: #0d1424;
-    border: 1px solid #4a5270;
+    background: rgba(13, 20, 36, 0.85);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(176, 138, 255, 0.4);
     color: #b08aff;
     font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    padding: 3px 8px;
-    border-radius: 4px;
+    letter-spacing: 0.14em;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 999px;
     cursor: pointer;
     font-family: inherit;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    transition:
+      background 120ms var(--ease),
+      border-color 120ms var(--ease);
   }
   .launcher-btn:hover {
-    background: #1a2335;
+    background: rgba(176, 138, 255, 0.2);
     border-color: #b08aff;
+    color: #d8c8ff;
   }
   .launcher-form {
     display: flex;
     gap: 6px;
     align-items: center;
-    background: #0d1424;
-    border: 1px solid #b08aff;
-    border-radius: 6px;
-    padding: 6px 8px;
+    background: linear-gradient(180deg, rgba(19, 26, 44, 0.94) 0%, rgba(8, 12, 24, 0.94) 100%);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(176, 138, 255, 0.5);
+    border-radius: var(--radius);
+    padding: 8px 10px;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
   }
   .launcher-form input {
-    background: #1a2335;
-    border: 1px solid #2e3a55;
-    color: #e0e6f5;
-    border-radius: 4px;
-    padding: 3px 6px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    color: var(--fg);
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
     font: inherit;
     font-size: 11px;
     width: 140px;
   }
   .launcher-form input:focus {
-    outline: 1px solid #b08aff;
+    outline: none;
+    border-color: #b08aff;
+    box-shadow: 0 0 0 2px rgba(176, 138, 255, 0.25);
   }
   .launcher-form button {
     background: transparent;
-    border: 1px solid #4a5270;
-    color: #c8c8c8;
-    padding: 3px 8px;
-    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--fg-muted);
+    padding: 4px 10px;
+    border-radius: 999px;
     cursor: pointer;
     font: inherit;
     font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+    box-shadow: none;
+    transition:
+      background 120ms var(--ease),
+      color 120ms var(--ease),
+      border-color 120ms var(--ease);
+  }
+  .launcher-form button:hover {
+    color: var(--fg);
+    background: rgba(255, 255, 255, 0.06);
   }
   .launcher-form button[type="submit"] {
     color: #b08aff;
-    border-color: #b08aff;
+    border-color: rgba(176, 138, 255, 0.6);
+  }
+  .launcher-form button[type="submit"]:hover {
+    background: rgba(176, 138, 255, 0.2);
+    color: #d8c8ff;
   }
 </style>

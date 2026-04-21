@@ -50,31 +50,52 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 8px 14px;
-    border-radius: 8px;
-    background: rgba(80, 60, 0, 0.92);
-    color: #ffd07a;
-    border: 1px solid #c8a86a;
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(80, 60, 0, 0.94) 0%, rgba(50, 38, 0, 0.94) 100%);
+    color: var(--gold);
+    border: 1px solid rgba(200, 168, 106, 0.7);
     font-size: 13px;
     z-index: 60;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+    box-shadow:
+      0 10px 30px rgba(0, 0, 0, 0.55),
+      0 0 24px rgba(255, 208, 122, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(6px);
+    animation: banner-in 200ms var(--ease);
+  }
+  @keyframes banner-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -8px);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
   }
   .prompt strong {
     color: #ffe69a;
     font-weight: 700;
   }
   .cancel {
-    padding: 4px 10px;
+    padding: 4px 12px;
     font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    background: #2a2010;
-    color: #ffd07a;
-    border: 1px solid #c8a86a;
-    border-radius: 4px;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+    background: rgba(42, 32, 16, 0.9);
+    color: var(--gold);
+    border: 1px solid rgba(200, 168, 106, 0.6);
+    border-radius: 999px;
     cursor: pointer;
+    box-shadow: none;
+    transition:
+      background 120ms var(--ease),
+      border-color 120ms var(--ease);
   }
   .cancel:hover {
-    background: #3a2e14;
+    background: rgba(58, 46, 20, 0.95);
+    border-color: var(--gold);
   }
 </style>

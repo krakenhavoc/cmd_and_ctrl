@@ -916,31 +916,45 @@
   section {
     position: fixed;
     inset: 0;
-    padding: 0.35rem 0.5rem;
+    padding: 0.45rem 0.6rem;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.35rem;
     overflow: hidden;
   }
   header {
     display: flex;
     gap: 0.75rem;
-    align-items: baseline;
+    align-items: center;
+    margin: 0;
+  }
+  header :global(h1) {
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
     margin: 0;
   }
   .gear {
     margin-left: auto;
     background: none;
-    border: none;
-    color: #aaa;
+    border: 1px solid transparent;
+    color: var(--fg-muted);
     font-size: 1.1rem;
     cursor: pointer;
-    padding: 0.15rem 0.4rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius);
     line-height: 1;
+    box-shadow: none;
+    transition:
+      background 120ms var(--ease),
+      color 120ms var(--ease),
+      border-color 120ms var(--ease);
   }
   .gear:hover {
-    color: #fff;
+    color: var(--fg);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
   }
   .play-area {
     /* Single-column layout since S08.5 removed the chat sidebar.
@@ -959,32 +973,41 @@
     position: relative;
   }
   .muted {
-    color: #888;
+    color: var(--fg-dim);
   }
   .centered {
     text-align: center;
     margin-top: 1rem;
   }
   .tag {
-    padding: 0.1rem 0.4rem;
-    border-radius: 3px;
-    font-size: 0.8em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.72em;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    border: 1px solid transparent;
   }
   .tag-connected {
-    background: #cfc;
+    background: rgba(122, 255, 154, 0.12);
+    color: var(--mint);
+    border-color: rgba(122, 255, 154, 0.35);
   }
   .tag-connecting {
-    background: #ffc;
+    background: rgba(255, 208, 122, 0.12);
+    color: var(--gold);
+    border-color: rgba(255, 208, 122, 0.35);
   }
   .tag-disconnected {
-    background: #fcc;
+    background: rgba(255, 122, 122, 0.12);
+    color: var(--danger);
+    border-color: rgba(255, 122, 122, 0.35);
   }
   .tag-spectator {
-    background: rgba(176, 138, 255, 0.2);
+    background: rgba(176, 138, 255, 0.15);
     color: #b08aff;
-    border: 1px solid #b08aff;
+    border: 1px solid rgba(176, 138, 255, 0.5);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     font-size: 0.7em;
     font-weight: 700;
   }
@@ -995,13 +1018,16 @@
     justify-content: space-between;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.3rem 0.6rem;
-    background: #1a2540;
-    border-radius: 4px;
-    color: #bbc4dd;
+    padding: 0.4rem 0.8rem;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.15) 100%),
+      var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--fg-muted);
     font-size: 0.85em;
-    margin-bottom: 0.25rem;
     flex-wrap: wrap;
+    box-shadow: var(--shadow-sm);
   }
   .turn-summary {
     display: flex;
@@ -1023,21 +1049,29 @@
     border-radius: 50%;
   }
   .step {
-    color: #e0e8ff;
+    color: var(--fg);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.82em;
   }
   .priority-pills {
     display: flex;
-    gap: 0.35rem;
+    gap: 0.4rem;
     flex-wrap: wrap;
   }
   .pill {
-    padding: 0.15rem 0.55rem;
+    padding: 0.2rem 0.7rem;
     border-radius: 999px;
-    font-size: 0.8em;
+    font-size: 0.78em;
     border: 1px solid var(--seat-color);
-    color: #cfd6ee;
+    color: var(--fg);
     background: transparent;
-    opacity: 0.55;
+    opacity: 0.5;
+    font-weight: 600;
+    transition:
+      opacity 140ms var(--ease),
+      box-shadow 140ms var(--ease);
   }
   .pill.is-active {
     opacity: 1;
@@ -1045,17 +1079,19 @@
   .pill.has-priority {
     background: var(--seat-color);
     color: #0c1426;
-    font-weight: 600;
-    box-shadow: 0 0 6px var(--seat-color);
+    font-weight: 700;
+    box-shadow:
+      0 0 14px var(--seat-color),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25);
   }
   .pill.eliminated {
-    opacity: 0.35;
+    opacity: 0.3;
     text-decoration: line-through;
     border-style: dashed;
   }
   .no-priority-marker {
     align-self: center;
-    color: #6c7794;
+    color: var(--fg-dim);
     font-weight: 600;
     padding: 0 0.4rem;
     cursor: help;
@@ -1067,13 +1103,15 @@
     flex-wrap: wrap;
     gap: 0.5rem 0.75rem;
     align-items: center;
-    padding: 0.5rem 0.75rem;
-    margin-bottom: 0.5rem;
-    background: #1a2540;
-    border: 1px solid #3a4570;
-    border-radius: 4px;
-    color: #cfd6ee;
+    padding: 0.55rem 0.9rem;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(0, 0, 0, 0.15) 100%),
+      var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--fg-muted);
     font-size: 0.9em;
+    box-shadow: var(--shadow-sm);
   }
   .mulligan-seat {
     display: inline-flex;
@@ -1096,12 +1134,16 @@
     font-size: 0.85em;
   }
   .mulligan-dialog {
-    padding: 0.75rem 1rem;
-    margin-bottom: 0.5rem;
-    background: #1a2540;
-    border: 2px solid #b3e5b3;
-    border-radius: 6px;
-    color: #e0e8ff;
+    padding: 0.9rem 1.1rem;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(0, 0, 0, 0.2) 100%), var(--surface);
+    border: 1px solid rgba(179, 229, 179, 0.55);
+    border-radius: var(--radius-lg);
+    color: var(--fg);
+    box-shadow:
+      0 10px 28px rgba(0, 0, 0, 0.45),
+      0 0 20px rgba(179, 229, 179, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
   .mulligan-dialog header h2 {
     margin: 0 0 0.25rem 0;
@@ -1120,10 +1162,16 @@
     font-size: 0.95em;
   }
   .mulligan-actions button.primary {
-    background: #b3e5b3;
+    background: linear-gradient(180deg, #c3f0c3 0%, #8acc8a 100%);
     color: #0c1426;
-    font-weight: 600;
-    border: 1px solid #8acc8a;
+    font-weight: 700;
+    border: 1px solid rgba(138, 204, 138, 0.7);
+    box-shadow:
+      0 6px 14px rgba(138, 204, 138, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+  .mulligan-actions button.primary:hover {
+    filter: brightness(1.04);
   }
   .mulligan-cards {
     display: flex;
@@ -1136,10 +1184,11 @@
     flex: 0 0 auto;
     width: 96px;
     height: 134px;
-    border-radius: 4px;
+    border-radius: var(--radius);
     overflow: hidden;
-    background: #0f1a30;
-    border: 1px solid #2a3550;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
   }
   .mulligan-card img {
     display: block;
@@ -1162,16 +1211,20 @@
   /* Combat: just the active selection hint. The actual combat UI
      is canvas-only — click your creature, click an opponent's seat. */
   .combat-hint {
-    padding: 0.4rem 0.6rem;
-    margin-bottom: 0.4rem;
-    background: #0f1a30;
-    border: 1px solid #ffd07a;
-    border-radius: 4px;
-    color: #ffd07a;
+    padding: 0.55rem 0.9rem;
+    background:
+      linear-gradient(180deg, rgba(80, 60, 0, 0.55) 0%, rgba(40, 28, 0, 0.55) 100%), var(--surface);
+    border: 1px solid rgba(200, 168, 106, 0.7);
+    border-radius: var(--radius);
+    color: var(--gold);
     font-size: 0.9em;
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.3),
+      0 0 14px rgba(255, 208, 122, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
   .combat-hint strong {
     color: #fff;
@@ -1187,16 +1240,18 @@
 
   /* Server-error toast */
   .error-toast {
-    padding: 0.5rem 0.8rem;
-    margin-bottom: 0.4rem;
-    background: #4a1a1a;
-    border: 1px solid #8a3a3a;
-    border-radius: 4px;
+    padding: 0.55rem 0.9rem;
+    background: linear-gradient(180deg, rgba(90, 30, 30, 0.9) 0%, rgba(60, 18, 18, 0.9) 100%);
+    border: 1px solid rgba(255, 122, 122, 0.5);
+    border-radius: var(--radius);
     color: #ffd0d0;
     font-size: 0.9em;
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    box-shadow:
+      0 6px 18px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
   .error-toast strong {
     color: #fff;
@@ -1214,55 +1269,64 @@
 
   /* End-of-game banners */
   .game-end-banner {
-    padding: 0.6rem 0.9rem;
-    margin-bottom: 0.5rem;
-    background: linear-gradient(90deg, #2a4a2a 0%, #1a2540 100%);
-    border: 1px solid #4a8a4a;
-    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(90deg, rgba(42, 90, 42, 0.65) 0%, rgba(26, 37, 64, 0.65) 100%);
+    border: 1px solid rgba(122, 255, 154, 0.45);
+    border-radius: var(--radius);
     color: #e0ffe0;
     font-size: 1.05em;
     text-align: center;
+    box-shadow:
+      0 8px 22px rgba(0, 0, 0, 0.35),
+      0 0 18px rgba(122, 255, 154, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    font-weight: 600;
   }
   .game-end-banner strong {
     color: #fff;
     margin-right: 0.3rem;
   }
   .eliminated-banner {
-    padding: 0.5rem 0.75rem;
-    margin-bottom: 0.5rem;
-    background: #3a1a1a;
-    border: 1px solid #6a3a3a;
-    border-radius: 4px;
+    padding: 0.55rem 0.9rem;
+    background: linear-gradient(180deg, rgba(58, 26, 26, 0.85) 0%, rgba(42, 18, 18, 0.85) 100%);
+    border: 1px solid rgba(255, 122, 122, 0.4);
+    border-radius: var(--radius);
     color: #ffd0d0;
     font-size: 0.95em;
     text-align: center;
+    box-shadow:
+      0 4px 14px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
   .toolbar .undo-limit {
     display: inline-flex;
     align-items: center;
     gap: 4px;
     font-size: 10px;
-    color: #6c7a99;
+    color: var(--fg-dim);
     text-transform: lowercase;
   }
   .toolbar .undo-limit input {
     width: 36px;
-    padding: 2px 4px;
-    background: #1a2335;
-    border: 1px solid #2e3a55;
-    color: #e0e6f5;
-    border-radius: 3px;
+    padding: 2px 6px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    color: var(--fg);
+    border-radius: var(--radius-sm);
     font: inherit;
     font-size: 11px;
+    margin: 0;
   }
   .toolbar button.concede {
     margin-left: 0.5rem;
-    background: #3a1a1a;
+    background: linear-gradient(180deg, rgba(90, 30, 30, 0.9) 0%, rgba(60, 18, 18, 0.9) 100%);
     color: #ffd0d0;
-    border: 1px solid #6a3a3a;
+    border: 1px solid rgba(255, 122, 122, 0.4);
+    box-shadow: none;
   }
   .toolbar button.concede:hover:not(:disabled) {
-    background: #5a1a1a;
+    background: linear-gradient(180deg, rgba(110, 40, 40, 0.95) 0%, rgba(80, 24, 24, 0.95) 100%);
+    border-color: rgba(255, 122, 122, 0.65);
   }
   .toolbar button.concede:disabled {
     opacity: 0.4;
@@ -1275,16 +1339,37 @@
     gap: 0.5rem;
     flex-wrap: wrap;
     align-items: center;
-    padding: 0.25rem 0.4rem;
-    background: #1a2540;
-    border-radius: 4px;
-    color: #bbc4dd;
+    padding: 0.4rem 0.6rem;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.15) 100%),
+      var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--fg-muted);
     font-size: 0.8em;
-    margin-bottom: 0.25rem;
+    box-shadow: var(--shadow-sm);
   }
   .toolbar button {
-    padding: 0.2rem 0.5rem;
+    padding: 0.3rem 0.7rem;
     font-size: 0.9em;
+    background: linear-gradient(180deg, var(--bg-3) 0%, var(--bg-2) 100%);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    font-weight: 500;
+    box-shadow: none;
+    transition:
+      background 120ms var(--ease),
+      border-color 120ms var(--ease),
+      transform 120ms var(--ease);
+  }
+  .toolbar button:hover:not(:disabled) {
+    background: linear-gradient(180deg, var(--bg-2) 0%, var(--bg-3) 100%);
+    border-color: var(--border-strong);
+  }
+  .toolbar button:disabled {
+    background: rgba(0, 0, 0, 0.25);
+    border-color: var(--border);
+    color: var(--fg-dim);
   }
   .toolbar-group {
     display: flex;
@@ -1323,29 +1408,34 @@
   }
   .life-history-popover {
     position: absolute;
-    top: calc(100% + 0.4rem);
+    top: calc(100% + 0.5rem);
     left: 0;
     z-index: 5;
     width: min(320px, calc(100vw - 2rem));
     max-height: 360px;
-    background: #0f1a30;
-    border: 1px solid #2a3550;
-    border-radius: 6px;
-    color: #cfd6ee;
+    background: linear-gradient(180deg, rgba(19, 26, 44, 0.96) 0%, rgba(8, 12, 24, 0.96) 100%);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(122, 167, 255, 0.22);
+    border-radius: var(--radius-lg);
+    color: var(--fg-muted);
     font-size: 0.85em;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+    box-shadow:
+      0 12px 32px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
   .life-history-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.4rem 0.6rem;
-    border-bottom: 1px solid #2a3550;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-size: 0.8em;
+    letter-spacing: 0.12em;
+    font-size: 0.75em;
+    color: var(--fg-dim);
+    font-weight: 700;
   }
   .life-history-close {
     background: transparent;
@@ -1409,15 +1499,30 @@
     font-size: 0.85em;
   }
   .priority-controls .viewer-priority {
-    background: #b3e5b3;
-    color: #0c1426;
-    font-weight: 600;
+    background: linear-gradient(180deg, #b3e5b3 0%, #7fc87f 100%);
+    color: #0a1a0a;
+    font-weight: 700;
+    border-color: rgba(127, 200, 127, 0.6);
+    box-shadow:
+      0 4px 12px rgba(127, 200, 127, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  .priority-controls .viewer-priority:hover:not(:disabled) {
+    background: linear-gradient(180deg, #c4f0c4 0%, #8fd88f 100%);
+    border-color: rgba(127, 200, 127, 0.85);
   }
   .priority-controls .advance-step {
-    background: #5fb0ff;
-    color: #0c1426;
-    font-weight: 600;
-    border: 1px solid #4a8acc;
+    background: linear-gradient(180deg, #9bbfff 0%, #5a88ee 100%);
+    color: #0a1024;
+    font-weight: 700;
+    border-color: rgba(90, 136, 238, 0.65);
+    box-shadow:
+      0 4px 12px rgba(90, 136, 238, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  .priority-controls .advance-step:hover:not(:disabled) {
+    background: linear-gradient(180deg, #b4d0ff 0%, #7098f0 100%);
+    border-color: rgba(90, 136, 238, 0.9);
   }
 
   /* Pre-game deck import modal (S08.5 wave 1) — overlays the table
@@ -1428,7 +1533,9 @@
   .deck-import-modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.65);
+    background: rgba(4, 8, 16, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1436,15 +1543,18 @@
     padding: 1rem;
   }
   .deck-import-modal {
-    background: #fff;
-    color: #222;
-    border-radius: 8px;
-    padding: 1.25rem 1.5rem;
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg-2) 100%);
+    color: var(--fg);
+    border: 1px solid rgba(122, 167, 255, 0.22);
+    border-radius: var(--radius-xl);
+    padding: 1.4rem 1.6rem;
     max-width: 640px;
     width: 100%;
     max-height: calc(100vh - 2rem);
     overflow-y: auto;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+    box-shadow:
+      0 30px 80px rgba(0, 0, 0, 0.7),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
   .deck-import-modal h2 {
     margin: 0 0 0.5rem 0;
@@ -1457,10 +1567,16 @@
   .linkish {
     background: none;
     border: none;
-    color: #06c;
+    color: var(--accent-strong);
     text-decoration: underline;
     cursor: pointer;
     padding: 0;
     font: inherit;
+    box-shadow: none;
+  }
+  .linkish:hover {
+    color: var(--accent);
+    background: transparent;
+    box-shadow: none;
   }
 </style>

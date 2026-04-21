@@ -223,79 +223,175 @@
 
 <style>
   section {
-    max-width: 720px;
+    max-width: 760px;
     margin: 2rem auto;
     padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
   header {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.25rem 0 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    letter-spacing: -0.02em;
+  }
+  header p {
+    margin: 0;
+    color: var(--fg-muted);
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  header strong {
+    color: var(--fg);
+    font-weight: 600;
   }
   .games {
     list-style: none;
     padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
   }
   .games > li {
-    border: 1px solid #ddd;
-    padding: 0.75rem;
-    border-radius: 4px;
-    margin-bottom: 0.5rem;
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg-2) 100%);
+    border: 1px solid var(--border);
+    padding: 1rem 1.1rem;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    transition:
+      border-color 140ms var(--ease),
+      transform 140ms var(--ease);
+  }
+  .games > li:hover {
+    border-color: var(--border-strong);
   }
   .row {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .row > div:first-child strong {
+    font-size: 1.05rem;
   }
   .row-actions {
     display: flex;
     gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .row-actions button {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
   }
   .seats {
-    margin: 0.5rem 0 0 1rem;
-    color: #555;
+    list-style: none;
+    margin: 0.75rem 0 0;
+    padding: 0;
+    color: var(--fg-muted);
     font-size: 0.9em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .seats li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
   }
   .muted {
-    color: #666;
+    color: var(--fg-muted);
+    font-weight: 500;
   }
   .error {
-    color: #c00;
+    color: var(--danger);
+    padding: 0.6rem 0.85rem;
+    border-radius: var(--radius);
+    background: rgba(255, 122, 122, 0.08);
+    border: 1px solid rgba(255, 122, 122, 0.3);
+    margin: 0;
   }
   .badge-ok {
-    color: #060;
-    margin-left: 0.5rem;
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 999px;
+    color: var(--mint);
+    background: rgba(122, 255, 154, 0.12);
+    border: 1px solid rgba(122, 255, 154, 0.3);
+    margin-left: 0.25rem;
+    font-weight: 600;
+    font-size: 0.8em;
   }
   .badge-pending {
-    color: #a60;
-    margin-left: 0.5rem;
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 999px;
+    color: var(--gold);
+    background: var(--gold-soft);
+    border: 1px solid rgba(255, 208, 122, 0.3);
+    margin-left: 0.25rem;
+    font-weight: 600;
+    font-size: 0.8em;
   }
   .deck-upload {
     margin-top: 0.75rem;
-    padding: 0.5rem;
-    background: #f7f7f7;
-    border-radius: 3px;
+    padding: 0.6rem 0.75rem;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
   }
   .deck-upload summary {
     cursor: pointer;
     font-weight: 600;
+    color: var(--accent-strong);
+    padding: 0.25rem 0;
+  }
+  .deck-upload summary:hover {
+    color: var(--fg);
   }
   form {
     display: flex;
     gap: 0.5rem;
-    margin-bottom: 1rem;
   }
   input {
     flex: 1;
-    padding: 0.5rem;
   }
   .linkish {
     background: none;
     border: none;
-    color: #06c;
-    text-decoration: underline;
+    color: var(--accent-strong);
+    text-decoration: none;
     cursor: pointer;
-    padding: 0;
-    margin-left: 0.5rem;
+    padding: 0.3rem 0.55rem;
+    margin-left: 0.25rem;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    box-shadow: none;
+    font-size: 0.85rem;
+    transition: background 120ms var(--ease);
+  }
+  .linkish:hover {
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    box-shadow: none;
+  }
+  .linkish.gear {
+    font-size: 1.1rem;
+    padding: 0.3rem 0.5rem;
+    line-height: 1;
   }
 </style>

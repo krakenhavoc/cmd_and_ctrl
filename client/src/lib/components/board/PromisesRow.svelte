@@ -70,22 +70,27 @@
   .promises {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     font-size: 10px;
-    color: #6c7a99;
-    padding: 1px 10px 0;
+    color: var(--fg-dim);
+    padding: 2px 12px 0;
   }
   .seg {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.05);
   }
   .label {
     font-size: 11px;
-    color: #6c7a99;
+    color: var(--fg-dim);
+    line-height: 1;
   }
   .count {
-    font-weight: 700;
+    font-weight: 800;
     color: #c8a86a;
     min-width: 12px;
     text-align: center;
@@ -95,18 +100,23 @@
     width: 14px;
     height: 14px;
     padding: 0;
-    border: 1px solid #2e3a55;
-    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
     background: transparent;
-    color: #c8c8c8;
+    color: var(--fg-dim);
     font: inherit;
     font-size: 10px;
     cursor: pointer;
     line-height: 1;
+    box-shadow: none;
+    transition:
+      border-color 120ms var(--ease),
+      color 120ms var(--ease),
+      background 120ms var(--ease);
   }
   .seg.owe button:hover {
-    background: #1a2335;
-    color: #ffd07a;
-    border-color: #ffd07a;
+    background: rgba(255, 208, 122, 0.12);
+    color: var(--gold);
+    border-color: var(--gold);
   }
 </style>
