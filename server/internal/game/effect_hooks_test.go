@@ -254,4 +254,3 @@ func TestIsAutoCardReflectsCatalog(t *testing.T) {
 		t.Errorf("IsAutoCard(unknown-id) = true, want false")
 	}
 }
-
