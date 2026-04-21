@@ -104,7 +104,13 @@ func (g *Game) DrawCard(playerID uuid.UUID) error {
 
 // drawCardLocked is the unlocked draw used both by the public
 // DrawCard action and by the StepDraw auto-action in
-// runStepEntryHooksLocked. Caller must hold g.mu.
+// runStepEntryHooksLocked. S13.1: an empty library marks the player
+// for elimination at the next SBA check (CR 704.5b) and surfaces
+// ErrZoneEmpty so the manual DrawCard path keeps its existing wire
+// behaviour. The auto-fire path in the step entry hook swallows
+// ErrZoneEmpty so the cursor still moves.
+//
+// Caller must hold g.mu.
 func (g *Game) drawCardLocked(playerID uuid.UUID) error {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
@@ -112,6 +118,9 @@ func (g *Game) drawCardLocked(playerID uuid.UUID) error {
 	}
 	c, err := p.Library.PopTop()
 	if err != nil {
+		if err == ErrZoneEmpty {
+			p.LosesAtNextSBA = true
+		}
 		return err
 	}
 	p.Hand.PushTop(c)
@@ -692,6 +701,189 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 	return nil
 }
 
+// stateBasedActionsLocked runs one pass of state-based actions per
+// CR 704.5. Returns true if any SBA fired so the caller can re-run
+// the loop (CR 704.4 — SBAs repeat until none fire).
+//
+// S13.1 implements the four canonical Commander SBAs plus the
+// empty-library draw loss:
+//   - 704.5a: a player at 0 or less life loses
+//   - 704.5b: a player who tried to draw from an empty library loses
+//   - 704.5f: a creature with 0 or less toughness is destroyed
+//   - 704.5g: a creature with damage marked >= toughness is destroyed
+//   - 704.5v / 903.14a: 21 commander damage from a single source
+//     (per-commander tracking lands in sub-PR 8 — for now the
+//     existing per-opponent map is used; partner-pair edge case is
+//     known and tracked there)
+//
+// Counter-specific SBAs (planeswalker loyalty 0, battle defense 0,
+// +1/+1 -1/-1 cancel, poison ≥ 10, saga final chapter) are S13.2.
+//
+// Caller must hold g.mu.
+func (g *Game) stateBasedActionsLocked() bool {
+	if g.State != StateActive {
+		return false
+	}
+	fired := false
+
+	// Player-loss SBAs first — destroying creatures is a separate
+	// pass to keep the bookkeeping simple.
+	for _, p := range g.Seats {
+		if p.Eliminated {
+			continue
+		}
+		if p.Life <= 0 || p.LosesAtNextSBA || p.IsDeadByCommanderDamage() {
+			g.eliminatePlayerLocked(p)
+			fired = true
+		}
+	}
+
+	// Creature destruction SBAs. Collect doomed instance IDs in a
+	// pre-pass to avoid mutating the slice while iterating it.
+	//
+	// Printed-0 creatures (Toughness == 0 and no counters applied)
+	// are skipped: that's the placeholder / unparseable-stats
+	// convention documented on Card.Power — the SBA would else
+	// destroy every demo seed card. A printed >0 creature reduced
+	// to <=0 by counters does die, as does a printed >0 creature
+	// with damage marked >= current toughness.
+	var doomed []uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if !c.IsCreature() {
+			continue
+		}
+		if c.Toughness == 0 && len(c.Counters) == 0 {
+			continue
+		}
+		curT := c.CurrentToughness()
+		if curT <= 0 {
+			doomed = append(doomed, c.InstanceID)
+			continue
+		}
+		if c.DamageMarked >= curT {
+			doomed = append(doomed, c.InstanceID)
+		}
+	}
+	for _, id := range doomed {
+		if err := g.routeBattlefieldCardToOwnerGraveyardLocked(id); err == nil {
+			fired = true
+		}
+	}
+
+	return fired
+}
+
+// runStateChecksLocked runs the SBA + APNAP-trigger-drain loop until
+// the game is quiet (no SBAs fire AND no triggers are pending).
+// CR 704.4 + 603.3b — both checks are paired at every priority-grant
+// boundary.
+//
+// Bounded at 32 iterations as a safety belt against an unintended
+// SBA / trigger ping-pong; in practice the loop terminates after at
+// most a handful of passes (one creature destroyed → one Concede-
+// adjacent trigger → one resolution).
+//
+// Caller must hold g.mu.
+func (g *Game) runStateChecksLocked() {
+	const maxIter = 32
+	for i := 0; i < maxIter; i++ {
+		fired := g.stateBasedActionsLocked()
+		hasPending := len(g.PendingTriggers) > 0
+		if !fired && !hasPending {
+			return
+		}
+		if hasPending {
+			g.runStateChecksLocked()
+		}
+	}
+}
+
+// eliminatePlayerLocked transitions a seated player to eliminated
+// state and walks the cursor past them if they were the active seat.
+// Used by Concede AND by the SBA loop. Caller must hold g.mu.
+//
+// Game-end transition (StateActive → StateEnded when ≤ 1 survivor
+// remains) lives in Concede / the SBA loop wrapper, NOT here, so
+// chained eliminations during one SBA pass don't end the game
+// mid-iteration.
+func (g *Game) eliminatePlayerLocked(p *Player) {
+	if p.Eliminated {
+		return
+	}
+	p.Eliminated = true
+	p.LosesAtNextSBA = false
+	g.advancePastEliminatedLocked()
+	// Sub-PR 10 will wire cleanupStackForEliminatedLocked here.
+	// Game-end check.
+	survivors := 0
+	for _, s := range g.Seats {
+		if !s.Eliminated {
+			survivors++
+		}
+	}
+	if survivors <= 1 {
+		g.State = StateEnded
+	}
+}
+
+// routeBattlefieldCardToOwnerGraveyardLocked moves a battlefield
+// card to its owner's graveyard, clearing battlefield-only state
+// (combat declarations and damage marked are zeroed by MoveCard's
+// CR 400.7 cleanup; we additionally clear DamageMarked here since
+// MoveCard predates the field). Used by SBAs that destroy creatures.
+//
+// If the owner is no longer seated, the card lands in exile so the
+// engine doesn't carry a stale reference. Caller must hold g.mu.
+func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) error {
+	var owner *Player
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == cardID {
+			owner = g.playerByIDLocked(g.Battlefield.Cards[i].Owner)
+			// Zero battlefield-only state in place before the move.
+			// MoveCard handles tapped + counters + position via
+			// existing CR 400.7 cleanup, but DamageMarked is new.
+			g.Battlefield.Cards[i].DamageMarked = 0
+			break
+		}
+	}
+	if owner == nil {
+		_, err := MoveCard(g.Battlefield, g.Exile, cardID)
+		return err
+	}
+	_, err := MoveCard(g.Battlefield, owner.Graveyard, cardID)
+	return err
+}
+
+// MarkDamage adjusts the damage noted on a creature on the
+// battlefield by `delta` (positive to add damage, negative to
+// remove). Drives the lethal-damage SBA (CR 704.5g). Caller-gated
+// to the controller in the action layer for the additive case;
+// admins / spectators may apply negative deltas to undo.
+//
+// Returns ErrCardNotFound if the cardID isn't on the battlefield.
+// SBA loop fires after the mutation so a lethal mark applies
+// immediately.
+//
+// S13.1.
+func (g *Game) MarkDamage(cardID uuid.UUID, delta int) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == cardID {
+			g.Battlefield.Cards[i].DamageMarked += delta
+			if g.Battlefield.Cards[i].DamageMarked < 0 {
+				g.Battlefield.Cards[i].DamageMarked = 0
+			}
+			g.runStateChecksLocked()
+			return nil
+		}
+	}
+	return ErrCardNotFound
+}
+
 // drainPendingTriggersAPNAPLocked moves every queued triggered
 // ability onto the stack in APNAP order: active-player's first,
 // then turn-order clockwise around the table. Within a single
@@ -1054,7 +1246,7 @@ func (g *Game) PassPriority() error {
 		}
 		// Drain any pending APNAP triggers onto the stack now that
 		// we've crossed a priority-grant boundary (CR 603.3b).
-		g.drainPendingTriggersAPNAPLocked()
+		g.runStateChecksLocked()
 		// Priority returns to the active player after a resolution
 		// (CR 117.3b). The step doesn't change.
 		g.Turn.PriorityHolder = g.Turn.ActiveSeat

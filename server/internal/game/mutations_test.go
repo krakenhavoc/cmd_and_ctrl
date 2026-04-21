@@ -1999,6 +1999,129 @@ func TestS131AnnounceTriggerAPNAPDrain(t *testing.T) {
 	}
 }
 
+// TestS131SBALethalDamageDestroys covers CR 704.5g — a creature
+// whose damage marked >= toughness is destroyed (moves to owner's
+// graveyard).
+func TestS131SBALethalDamageDestroys(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	cardID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: cardID,
+		Name:       "Grizzly Bears",
+		TypeLine:   "Creature — Bear",
+		Power:      2,
+		Toughness:  2,
+		Owner:      owner.ID,
+		Controller: owner.ID,
+	})
+	if err := g.MarkDamage(cardID, 2); err != nil {
+		t.Fatalf("MarkDamage: %v", err)
+	}
+	if g.Battlefield.Contains(cardID) {
+		t.Errorf("creature with lethal damage still on battlefield")
+	}
+	if !owner.Graveyard.Contains(cardID) {
+		t.Errorf("creature did not route to owner's graveyard")
+	}
+}
+
+// TestS131SBAToughnessReducedToZeroDestroys covers CR 704.5f — a
+// creature with -1/-1 counters reducing toughness to <= 0 is
+// destroyed. Printed-0 creatures are skipped (placeholder
+// convention).
+func TestS131SBAToughnessReducedToZeroDestroys(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	cardID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: cardID,
+		Name:       "Wither Victim",
+		TypeLine:   "Creature — Beast",
+		Power:      2,
+		Toughness:  2,
+		Owner:      owner.ID,
+		Controller: owner.ID,
+		Counters:   map[string]int{"-1/-1": 2},
+	})
+	g.WithWriteLock(func() { g.runStateChecksLocked() })
+	if g.Battlefield.Contains(cardID) {
+		t.Errorf("creature reduced to 0 toughness still on battlefield")
+	}
+}
+
+// TestS131SBAPlaceholderCreatureSurvives covers the placeholder
+// convention: a creature with Toughness == 0 and no counters is
+// treated as "stats not parsed" and left alone (matches the demo
+// seed and Mortivore-style "*" cards documented on Card.Power).
+func TestS131SBAPlaceholderCreatureSurvives(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	cardID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: cardID,
+		Name:       "Demo Card",
+		TypeLine:   "Creature — Placeholder",
+		Owner:      owner.ID,
+		Controller: owner.ID,
+	})
+	g.WithWriteLock(func() { g.runStateChecksLocked() })
+	if !g.Battlefield.Contains(cardID) {
+		t.Errorf("placeholder creature was destroyed despite no counters")
+	}
+}
+
+// TestS131SBAZeroLifeEliminates covers CR 704.5a — a player at 0 or
+// less life loses immediately. Eliminated state is set; the game
+// transitions to ended when only one survivor remains.
+func TestS131SBAZeroLifeEliminates(t *testing.T) {
+	g := newActiveGame(t)
+	target := g.Seats[1]
+	target.ChangeLife(-StartingLife) // exact 0
+	g.WithWriteLock(func() { g.runStateChecksLocked() })
+	if !target.Eliminated {
+		t.Errorf("player at 0 life not marked eliminated")
+	}
+	if g.State != StateEnded {
+		t.Errorf("state: got %q, want ended (only one survivor)", g.State)
+	}
+}
+
+// TestS131SBAEmptyLibraryDrawEliminates covers CR 704.5b — a player
+// who tries to draw from an empty library is marked at draw time and
+// eliminated on the next SBA pass. The auto-draw path swallows the
+// underlying ErrZoneEmpty so the cursor still moves.
+func TestS131SBAEmptyLibraryDrawEliminates(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	target := g.Seats[1]
+	target.Library.Cards = nil
+	if err := g.DrawCard(target.ID); err != ErrZoneEmpty {
+		t.Fatalf("expected ErrZoneEmpty, got %v", err)
+	}
+	if !target.LosesAtNextSBA {
+		t.Errorf("LosesAtNextSBA flag not set after empty-library draw")
+	}
+	g.WithWriteLock(func() { g.runStateChecksLocked() })
+	if !target.Eliminated {
+		t.Errorf("target not eliminated after SBA pass")
+	}
+}
+
+// TestS131SBA21CommanderDamageEliminates covers CR 704.5v / 903.14a
+// — a player who has been dealt 21+ damage by a single commander
+// loses. (Per-commander tracking lands in sub-PR 8; today's per-
+// opponent map is used.)
+func TestS131SBA21CommanderDamageEliminates(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	target := g.Seats[1]
+	attacker := g.Seats[0]
+	target.RecordCommanderDamage(attacker.ID, CommanderDamageLethal)
+	g.WithWriteLock(func() { g.runStateChecksLocked() })
+	if !target.Eliminated {
+		t.Errorf("target not eliminated after 21 commander damage")
+	}
+}
+
 // TestS131SplitSecondClearsOnResolve verifies that after the split-
 // second item resolves, SplitSecondActive flips back to false and
 // new casts go through.

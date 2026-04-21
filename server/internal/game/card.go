@@ -122,6 +122,22 @@ func (c Card) CurrentPower() int {
 	return p
 }
 
+// CurrentToughness returns the card's effective toughness: base
+// printed toughness plus any +1/+1 counters, minus any -1/-1
+// counters. Used by the lethal-damage and 0-toughness SBAs (S13.1).
+// May be zero or negative — callers compare against DamageMarked
+// directly. NOT clamped (cf. CurrentPower) because the SBAs need to
+// distinguish "printed 0/0 placeholder" (Toughness == 0, no counters)
+// from "reduced to 0/0 by -1/-1 counters" (Toughness > 0 + counters).
+func (c Card) CurrentToughness() int {
+	t := c.Toughness
+	if c.Counters != nil {
+		t += c.Counters["+1/+1"]
+		t -= c.Counters["-1/-1"]
+	}
+	return t
+}
+
 // IsCreature reports whether the card's TypeLine identifies it as a
 // creature. Case-insensitive substring check against "creature";
 // covers "Creature — Human Wizard" and "Legendary Artifact Creature

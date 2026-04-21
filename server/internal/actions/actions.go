@@ -67,6 +67,7 @@ const (
 	TypeActivateAbility  Type = "activate_ability"
 	TypeActivateLoyalty  Type = "activate_loyalty"
 	TypeAnnounceTrigger  Type = "announce_trigger"
+	TypeMarkDamage       Type = "mark_damage"
 )
 
 // ErrUnknownType is returned when Dispatch receives an action type it
@@ -742,6 +743,29 @@ func Dispatch(g *game.Game, a Action) error {
 			return fmt.Errorf("activate_loyalty planeswalker_id: %w", err)
 		}
 		return g.ActivateLoyalty(a.Player, pwID, p.Label, p.Delta)
+
+	case TypeMarkDamage:
+		var p struct {
+			InstanceID string `json:"instance_id"`
+			Delta      int    `json:"delta"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		instanceID, err := uuid.Parse(p.InstanceID)
+		if err != nil {
+			return fmt.Errorf("mark_damage instance_id: %w", err)
+		}
+		// Caller-gate: positive damage requires controller; negative
+		// is allowed without (admin / opponent undoing damage during
+		// resolution flow). Use requireCardController which already
+		// bypasses for admins.
+		if p.Delta > 0 {
+			if err := requireCardController(g, a.Caller, instanceID); err != nil {
+				return err
+			}
+		}
+		return g.MarkDamage(instanceID, p.Delta)
 
 	case TypeAnnounceTrigger:
 		if a.Player == uuid.Nil {

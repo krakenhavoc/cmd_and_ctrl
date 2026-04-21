@@ -118,6 +118,14 @@ type Player struct {
 	DiscordID         string
 	DiscordAvatarHash string
 	DisplayName       string
+
+	// LosesAtNextSBA marks a player who has tried to draw from an
+	// empty library since the last SBA check (CR 704.5b) and will
+	// be eliminated on the next state-based-action loop. Set by the
+	// auto-draw step entry hook and the manual DrawCard action when
+	// PopTop returns ErrZoneEmpty; cleared on elimination. Added in
+	// S13.1.
+	LosesAtNextSBA bool
 }
 
 // newPlayer constructs a player with empty zones and their starting
