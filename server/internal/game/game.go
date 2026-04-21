@@ -155,6 +155,29 @@ type Game struct {
 	// Added in S10.
 	Vote *Vote
 
+	// Events is the append-only per-game event log. Every rules-
+	// visible mutation calls EmitEvent, producing one or more
+	// entries here in-order. Consumers are S14+ card-effect
+	// primitives (sub-PR 3 onwards) and S19's triggered-ability
+	// harvester. Clone deep-copies this slice; RestoreFrom replaces
+	// it. See events.go for the tagged-struct shape. Added in S14
+	// sub-PR 1.
+	Events []Event
+
+	// eventSeq is the monotonic counter stamped into Event.Seq on
+	// each EmitEvent. Starts at 0; first emitted event has Seq == 1.
+	// Survives Clone / RestoreFrom so reconstructed games continue
+	// the sequence rather than restarting at 1.
+	eventSeq uint64
+
+	// Listeners is the per-game event subscriber list. Populated by
+	// RegisterListener; walked by notifyListenersLocked under the
+	// write lock. S14 ships the registry infrastructure with zero
+	// production listeners — S19 registers the first real one.
+	// Shallow-copied on Clone / RestoreFrom (listeners are process-
+	// lifetime singletons). Added in S14 sub-PR 1.
+	Listeners []Listener
+
 	// rng is captured from Start so that subsequent mutations that
 	// shuffle (Mulligan, ShuffleLibrary) use the same source of
 	// randomness as the initial library shuffle. nil means "use the

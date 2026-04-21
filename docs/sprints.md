@@ -795,18 +795,143 @@ Detailed plan: `/home/node/.claude/plans/s13-5-card-visibility-knownby.md`. Buil
 ---
 
 ## S14 — Card-effect catalog foundation
-**Phase:** 7 · **Goal:** ~30 of the most-played Commander cards work end-to-end with no manual intervention.
+**Phase:** 7 · **Goal:** ~30 of the most-played Commander cards resolve end-to-end with zero manual intervention — cast Lightning Bolt at an opponent, the stack resolves on a full priority pass, opponent's life drops by 3, the card routes to graveyard, no `change_life` click required. Unimplemented cards keep today's Cockatrice-style manual posture; the catalog is opt-in per Scryfall ID.
 
-- [ ] Event log infrastructure (typed events, append-only per-Game) — Arena pattern
-- [ ] Listener registry pre-wired for S19
-- [ ] Card-effect catalog in `server/internal/cards/effects/` keyed by Scryfall ID
-- [ ] 15 effect primitives (DealDamage, DrawCards, GainLife, DestroyTarget, …)
-- [ ] ~30 starter Commander cards (Lightning Bolt, Sol Ring, Cultivate, Counterspell, Wrath of God, Eternal Witness, Birds of Paradise, Demonic Tutor, …)
-- [ ] Client "auto" badge on catalog cards
+S14 lays the rules-engine infrastructure the rest of Phase 7 hangs off: a per-game append-only event log, a pull-based listener registry (pre-wired for S19 triggered abilities), a declarative Forge-style card-effect catalog, 15 composable effect primitives, and 30 starter cards picked to exercise the primitives without depending on mana (S15), layers (S16), replacement effects (S17), or combat keywords (S18).
 
-**Architectural decisions:** Forge-style declarative DSL in Go structs; Cockatrice fallback for unimplemented cards; pull-based event dispatch; Scryfall data for display only (don't parse oracle text into effects).
+### Architectural decisions
 
-**Exit criteria:** Cast Lightning Bolt → opponent's life drops by 3 automatically (no manual change_life).
+- **Forge-style declarative DSL in Go structs.** No oracle-text parser. Each card file is ~5-15 lines: an `init()` that calls `effects.Register(Spec{...})`.
+- **Cockatrice-style fallback for unimplemented cards.** Non-catalog cards keep 100% of today's manual sandbox posture — the auto-resolve path is opt-in per Scryfall ID. Regression-pinned.
+- **Pull-based event dispatch.** Listeners query the log on demand; the engine walks listeners synchronously after every `EmitEvent` under the write lock. S14 registers zero production listeners — the registry is infrastructure for S19.
+- **Scryfall data is display-only.** `server/internal/cards` resolves names / images / type lines / mana costs; it does NOT parse Oracle text into effects.
+- **Catalog membership is opt-in.** `effects.Lookup(scryfallID).OnResolve != nil` is the auto-trigger bit; absent ⇒ manual.
+- **Effects run under the existing resolution write lock.** Primitives call `*Locked` helpers only — never public locking mutators — to avoid deadlock.
+- **One file per card** under `server/internal/cards/effects/`. Low merge-conflict surface, clean `git blame`.
+- **`Spec.OnETB` is a direct-call shim in S14.** S19 re-routes it through the listener registry with no per-card changes.
+
+### Tasks
+
+**Event log infrastructure (server):**
+- [ ] New `server/internal/game/events.go` — `Event` tagged struct (`{Kind, Actor, Source, Target, Amount, CardID, OldZone, NewZone, Seq}`), `EventKind` constants (Cast, Resolve, Fizzle, DealDamage, ChangeLife, DrawCard, DiscardCard, Mill, ZoneMove, TapCard, UntapCard, CounterPlaced, TokenCreated, SearchLibrary, CounterSpell, Concede, ETB, LTB, EffectError).
+- [ ] `Game.Events []Event` field; `Game.EmitEvent(Event)` append point (caller holds `g.mu`).
+- [ ] `server/internal/game/clone.go` — deep-copy `Events` slice; shallow-copy `Listeners`.
+- [ ] Instrument every rules-visible mutation to call `EmitEvent`: `drawCardLocked`, `routeBattlefieldCardToOwnerGraveyardLocked`, `routeStackCardToGraveyardLocked`, `MarkDamage`, `ChangePlayerLife`, `AddCounter`, `TapCard`, `ShuffleLibrary`, `MoveCardByID`, `CastSpell`, `resolveTopOfStackLocked`, `CounterSpell`, `CounterAbility`, `eliminatePlayerLocked`, `AnnounceTrigger`.
+- [ ] `protocol.GameView.events` (last-N window, omitempty) for client debugging / auto annotations.
+
+**Listener registry (server):**
+- [ ] New `server/internal/game/listeners.go` — `Listener interface { OnEvent(*Game, Event) }`, `Game.RegisterListener(Listener)`, `Game.notifyListenersLocked(Event)` fired immediately after `EmitEvent`.
+- [ ] Zero production listeners in S14. `noOpListener` in tests exercises the wiring.
+
+**Effect engine (server):**
+- [ ] New subpackage `server/internal/cards/effects/` (separate from `cards` — keeps Scryfall-index concerns disentangled from effect concerns).
+- [ ] `effects/registry.go` — `Spec` struct, `Register(Spec)`, `Lookup(scryfallID) (Spec, bool)`, `All() []Spec`. Duplicate-ScryfallID registration panics at package init.
+- [ ] `effects/context.go` — `Context` wrapping `*game.Game` under-lock, helper accessors (`CreatureIDs`, `PlayerByID`, `ZoneOf`, `IsTargetLegal`).
+- [ ] `effects/primitives.go` — 15 primitives, each a struct with `Apply(ctx *Context) error` that emits the matching `Event`.
+- [ ] `effects/spec.go` — `Spec{ScryfallID, Name, OnResolve, OnETB, StartingLoyalty}`.
+- [ ] `effects/tokens.go` — `TokenSpec` + `CreateToken`. Fresh `InstanceID`, empty `ScryfallID`, `KnownBy = {all seated}`.
+- [ ] 30 card files under `effects/` (one per card).
+
+**Resolution integration (server):**
+- [ ] `resolveTopOfStackLocked` (mutations.go) — after target-legality short-circuit, before zone routing: `if spec, ok := effects.Lookup(top.ScryfallID); ok && spec.OnResolve != nil { spec.OnResolve(item, ctx) }`. Errors emit `EventEffectError`, don't wedge resolution.
+- [ ] ETB hook: after `MoveCard(Stack → Battlefield, …)`, call `spec.OnETB(&card, ctx)` if non-nil.
+- [ ] Starting loyalty: `StartingLoyalty > 0` on the spec stamps `CounterLoyalty` counters in the ETB branch.
+
+**Wire protocol (server + client):**
+- [ ] `protocol.CardView.auto bool` — set by `viewOfCard` when `effects.Lookup(c.ScryfallID).OnResolve != nil || .OnETB != nil`.
+- [ ] `client/src/lib/protocol.ts` — mirror `CardView.auto` + `GameView.events`.
+- [ ] `docs/protocol.md` — document new fields + `EventKind` constants.
+
+**Client (Svelte):**
+- [ ] `client/src/lib/components/board/Card.svelte` — gold-leaf "auto" badge bottom-right when `card.auto === true`. Hover tooltip.
+- [ ] `client/src/lib/components/board/StackOverlay.svelte` — "auto-resolve" chip next to the controller name on catalog stack items.
+- [ ] `client/src/lib/events.ts` — derived store pulling `GameView.events`, surfaces last ~5 as 2s toast notifications ("Alice took 3 from Lightning Bolt"). Soft nudge against double-applying after an auto-resolve.
+
+**Tests:**
+- [ ] `server/internal/game/events_test.go` — emit points + clone/restore round-trip + listener notification order.
+- [ ] `server/internal/cards/effects/primitives_test.go` — each primitive in isolation.
+- [ ] `server/internal/cards/effects/cards_test.go` — table-driven, one case per catalog card.
+- [ ] `mutations_test.go` extensions — `TestCastLightningBoltAutoResolves`, `TestCastNonCatalogSpellStaysSandbox` (opt-in regression canary), `TestCastSpellFizzleRoutesToGraveyard`.
+- [ ] Vitest — `Card.svelte` auto badge, `StackOverlay.svelte` auto chip.
+
+**Docs:**
+- [ ] `docs/decisions/0010-card-effect-catalog.md` — ADR covering the decisions above.
+- [ ] `docs/protocol.md` — wire docs for new fields.
+- [ ] `AGENTS.md` — "how to add a new catalog card" recipe.
+
+### Starter card list (31 cards)
+
+| Family | Cards | Primitives |
+|---|---|---|
+| Direct damage | Lightning Bolt, Shock, Lightning Helix, Pyroclasm | DealDamage + GainLife iteration |
+| Mass removal | Wrath of God, Damnation, Day of Judgment | DestroyTarget iteration |
+| Counter magic | Counterspell, Negate, Swan Song | CounterTarget + CreateToken |
+| Draw | Divination, Harmonize, Sign in Blood | DrawCards + ChangePlayerLife |
+| Mill / discard | Glimpse the Unthinkable (mill 10), Thoughtseize (random — UI deferred to S22), Mind Rot | MillCards + DiscardCards |
+| Targeted removal | Swords to Plowshares, Path to Exile (enters-tapped deferred) | ExileTarget + GainLife + SearchLibrary |
+| Bounce | Unsummon | BounceToHand |
+| Mana rocks (vanilla permanents this sprint) | Sol Ring, Arcane Signet | none — S15 wires mana abilities |
+| Tutors | Cultivate (both lands → hand — enters-tapped deferred to S17), Demonic Tutor, Vampiric Tutor | SearchLibrary (to hand / library-top) |
+| Recursion | Eternal Witness (`OnETB` direct-call hook → S19 migrates to listener), Regrowth | ReturnFromGraveyard |
+| ETB creatures | Solemn Simulacrum (enters-tapped land deferred), Acidic Slime | `OnETB` composition |
+| Vanilla creature placeholder | Birds of Paradise | none — mana ability lands in S15 |
+| **Planeswalker** | **The Wandering Emperor** (`OnETB` stamps starting loyalty 3 via `AddCounter`; activated abilities remain manual via S13.1's `activate_loyalty`) | **AddCounter on ETB** |
+
+**Primitive coverage summary:** 13 of 15 primitives exercised by catalog cards; TapTarget / UntapTarget ship as primitives with unit-test-only coverage so S15 has the hooks ready.
+
+### Out of scope (explicit handoffs)
+- **Mana pool + cost validation** — S15. Sol Ring / Arcane Signet / Birds of Paradise ship as vanilla permanents; their mana abilities plug into `effects/` as activated-ability specs in S15.
+- **Continuous effects + layers** — S16. No S14 catalog card has a static ability.
+- **Replacement effects (ETB-tapped, "if-would-die-exile-instead")** — S17. Cultivate's "enters tapped" half, Path to Exile's tapped land, Solemn Simulacrum's tapped land all defer.
+- **Combat keywords (trample, lifelink, flying)** — S18.
+- **Auto-fire triggered abilities from catalog cards** — S19. ETB hooks use the direct-call path in S14 and migrate for free.
+- **Scry / surveil / look-at-top-N + Brainstorm's "put 2 back" half** — S22 library-manipulation polish. Brainstorm is NOT in the S14 catalog.
+- **Target-picker UX for Thoughtseize (pick-from-revealed-hand)** — S22. S14 ships random-pick sandbox.
+- **Target legality validation at announce time** — S20 smart-cast UI. Effects re-check at resolve via CR 608.2b.
+
+### Risks / gotchas
+- **Sandbox-override double-apply.** Player clicks "-3" manually after Lightning Bolt auto-resolves. Mitigation: recent life-change toast + gold-leaf "auto" badge as visual nudges. No server-side de-dup.
+- **Non-catalog-card regression.** Opt-in invariant is load-bearing; every non-catalog test must assert manual-only behaviour is unchanged. Canary: `TestCastNonCatalogSpellStaysSandbox`.
+- **Effect resolution under write lock.** Primitive calling a public locking mutator ⇒ deadlock. Enforce via godoc + code review (Go can't encode "locked context" at the type level).
+- **Target cardinality mismatch.** Effect with missing target silently no-ops + emits `EventEffectError`. Debug via `GameView.events`. Announce-time validation is S20 territory.
+- **Undo through resolution.** `pass_priority` that triggers an auto-resolve is one `Apply` frame on the undo stack — undoing rewinds everything. Matches S13.1 resolution-undo behaviour.
+- **Pre-S14 replay snapshots.** No `events` field ⇒ decodes to empty log ⇒ correct lossy restore.
+- **Event log size.** ~2-5k events per game × 32 undo frames × ~64 B each ≈ 10 MB per room. Acceptable for friends-only deployment.
+- **ETB hook migration to S19.** Direct-call path in S14 becomes listener-sugar in S19 — catalog cards untouched. Documented in ADR.
+
+### Exit criteria
+1. **Lightning Bolt** — cast at opponent, pass priority round, opponent's life drops by 3, card in caster's graveyard. No manual clicks.
+2. **Counterspell** — opponent's Bolt on the stack, cast Counterspell, pass priority: Bolt in opponent's graveyard, no damage, Counterspell in caster's graveyard.
+3. **Cultivate** — cast, resolve: library shuffled, two basics in caster's hand, Cultivate in graveyard.
+4. **Wrath of God** — with 4 creatures on the board, cast Wrath, resolve: all 4 in owners' graveyards, Wrath in caster's graveyard.
+5. **Eternal Witness** — cast, resolves to battlefield, caster clicks ETB hook, picks a graveyard card, card returns to hand.
+6. **The Wandering Emperor** — cast, enters battlefield with 3 loyalty counters automatically. Loyalty abilities remain manual in S14.
+7. **Non-catalog card regression** — cast a card not in the catalog, passes priority, routes per S13.1, no auto-effect.
+8. **Auto badge** — catalog cards in hand show the gold-leaf badge; non-catalog cards don't.
+9. **Event log inspection** — `GameView.events` includes Cast → Resolve → DealDamage → ZoneMove for the Bolt case.
+10. **Undo** — cast Bolt, pass priority (auto-resolves), undo: life restored, Bolt back on stack.
+
+### Sub-PR split
+Stop-and-show for manual testing at each.
+1. Event log + listener registry infrastructure. Zero visible changes; regression is "nothing breaks."
+2. `effects/` package skeleton + 15 primitives + unit tests. Still no visible change.
+3. Resolution integration + `auto` bit on CardView + auto badge in `Card.svelte` + StackOverlay chip. First visible change: catalog stubs (empty-body Lightning Bolt) render with the badge.
+4. Catalog cards in 2-3 sub-PRs grouped by family (damage + counters, draw + mill + discard + removal, bounce + tutors + recursion + ETB creatures + Wandering Emperor).
+5. Event-toast client polish.
+6. ADR + protocol docs final pass.
+
+### Critical files
+- Server: [events.go](server/internal/game/events.go) (new), [listeners.go](server/internal/game/listeners.go) (new), [game.go](server/internal/game/game.go), [clone.go](server/internal/game/clone.go), [mutations.go](server/internal/game/mutations.go), [view.go](server/internal/protocol/view.go), new `server/internal/cards/effects/` subpackage (registry, context, primitives, spec, tokens, 30 card files).
+- Client: [Card.svelte](client/src/lib/components/board/Card.svelte), [StackOverlay.svelte](client/src/lib/components/board/StackOverlay.svelte), [protocol.ts](client/src/lib/protocol.ts), new [client/src/lib/events.ts](client/src/lib/events.ts).
+- Docs: new [docs/decisions/0010-card-effect-catalog.md](docs/decisions/0010-card-effect-catalog.md), [docs/protocol.md](docs/protocol.md), [AGENTS.md](AGENTS.md).
+
+### Branch + commit conventions
+- Branch: `feat/s14-card-effect-catalog` (sub-PRs use `-s14-<slice>` suffixes).
+- Footer:
+  ```
+  Sprint: S14 — Card-effect catalog foundation
+  Issue: #64
+  ```
 
 ---
 

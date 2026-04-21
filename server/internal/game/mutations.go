@@ -128,6 +128,13 @@ func (g *Game) drawCardLocked(playerID uuid.UUID) error {
 	// scry-positioned tops keep any pre-existing scry knowledge via
 	// the sticky map; the AddKnower call is idempotent.
 	g.markCardKnownInZoneLocked(p.Hand, c.InstanceID)
+	g.EmitEvent(Event{
+		Kind:    EventDrawCard,
+		Actor:   playerID,
+		CardID:  c.InstanceID,
+		OldZone: ZoneLibrary,
+		NewZone: ZoneHand,
+	})
 	return nil
 }
 
@@ -283,6 +290,18 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			}
 		}
 		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
+		g.EmitEvent(Event{
+			Kind:    EventZoneMove,
+			Actor:   playerID,
+			CardID:  moved.InstanceID,
+			OldZone: src.Kind,
+			NewZone: ZoneBattlefield,
+		})
+		g.EmitEvent(Event{
+			Kind:   EventETB,
+			Actor:  playerID,
+			CardID: moved.InstanceID,
+		})
 		return nil
 	}
 	// Non-land: route through the stack. The card lives in
@@ -322,6 +341,12 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		}
 		p.CommanderCasts[cardID]++
 	}
+	g.EmitEvent(Event{
+		Kind:   EventCast,
+		Actor:  playerID,
+		Source: cardID,
+		CardID: cardID,
+	})
 	return nil
 }
 
@@ -421,8 +446,20 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// alike go to the owner's graveyard (CR 608.2b). The
 		// announce-time choices on StackMeta are discarded along
 		// with the item.
+		g.EmitEvent(Event{
+			Kind:   EventFizzle,
+			Actor:  item.Controller,
+			Source: top.InstanceID,
+			CardID: top.InstanceID,
+		})
 		return g.routeStackCardToGraveyardLocked(top)
 	}
+	g.EmitEvent(Event{
+		Kind:   EventResolve,
+		Actor:  item.Controller,
+		Source: top.InstanceID,
+		CardID: top.InstanceID,
+	})
 	if top.IsPermanent() {
 		// Permanents resolve to the battlefield with the announce-time
 		// controller (which may differ from owner — e.g. cast via a
@@ -438,6 +475,18 @@ func (g *Game) resolveTopOfStackLocked() error {
 			}
 		}
 		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
+		g.EmitEvent(Event{
+			Kind:    EventZoneMove,
+			Actor:   item.Controller,
+			CardID:  moved.InstanceID,
+			OldZone: ZoneStack,
+			NewZone: ZoneBattlefield,
+		})
+		g.EmitEvent(Event{
+			Kind:   EventETB,
+			Actor:  item.Controller,
+			CardID: moved.InstanceID,
+		})
 		return nil
 	}
 	// Instants / sorceries: resolve to the owner's graveyard.
@@ -508,6 +557,11 @@ func (g *Game) resolveTopAbilityLocked() error {
 		if item != nil && (item.Kind == StackItemActivated || item.Kind == StackItemTriggered) {
 			delete(g.StackMeta, id)
 			g.recomputeSplitSecondLocked()
+			g.EmitEvent(Event{
+				Kind:   EventResolve,
+				Actor:  item.Controller,
+				Source: item.SourceCardID,
+			})
 			return nil
 		}
 	}
@@ -529,12 +583,25 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card) error {
 			return err
 		}
 		g.markCardKnownInZoneLocked(g.Exile, c.InstanceID)
+		g.EmitEvent(Event{
+			Kind:    EventZoneMove,
+			CardID:  c.InstanceID,
+			OldZone: ZoneStack,
+			NewZone: ZoneExile,
+		})
 		return nil
 	}
 	if _, err := MoveCard(g.Stack, owner.Graveyard, c.InstanceID); err != nil {
 		return err
 	}
 	g.markCardKnownInZoneLocked(owner.Graveyard, c.InstanceID)
+	g.EmitEvent(Event{
+		Kind:    EventZoneMove,
+		Actor:   owner.ID,
+		CardID:  c.InstanceID,
+		OldZone: ZoneStack,
+		NewZone: ZoneGraveyard,
+	})
 	return nil
 }
 
@@ -723,6 +790,12 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 		Modes:        append([]int(nil), params.Modes...),
 		XValue:       params.XValue,
 		Distribution: cloneDistributionLocked(params.Distribution),
+	})
+	g.EmitEvent(Event{
+		Kind:   EventTrigger,
+		Actor:  playerID,
+		Source: sourceCardID,
+		Label:  params.Label,
 	})
 	return nil
 }
@@ -964,6 +1037,10 @@ func (g *Game) eliminatePlayerLocked(p *Player) {
 	p.LosesAtNextSBA = false
 	g.cleanupStackForEliminatedLocked(p.ID)
 	g.advancePastEliminatedLocked()
+	g.EmitEvent(Event{
+		Kind:  EventPlayerEliminated,
+		Actor: p.ID,
+	})
 	// Game-end check.
 	survivors := 0
 	for _, s := range g.Seats {
@@ -1046,12 +1123,27 @@ func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) erro
 			return err
 		}
 		g.markCardKnownInZoneLocked(g.Exile, cardID)
+		g.EmitEvent(Event{
+			Kind:    EventZoneMove,
+			CardID:  cardID,
+			OldZone: ZoneBattlefield,
+			NewZone: ZoneExile,
+		})
+		g.EmitEvent(Event{Kind: EventLTB, CardID: cardID})
 		return nil
 	}
 	if _, err := MoveCard(g.Battlefield, owner.Graveyard, cardID); err != nil {
 		return err
 	}
 	g.markCardKnownInZoneLocked(owner.Graveyard, cardID)
+	g.EmitEvent(Event{
+		Kind:    EventZoneMove,
+		Actor:   owner.ID,
+		CardID:  cardID,
+		OldZone: ZoneBattlefield,
+		NewZone: ZoneGraveyard,
+	})
+	g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, Actor: owner.ID})
 	return nil
 }
 
@@ -1077,6 +1169,13 @@ func (g *Game) MarkDamage(cardID uuid.UUID, delta int) error {
 			g.Battlefield.Cards[i].DamageMarked += delta
 			if g.Battlefield.Cards[i].DamageMarked < 0 {
 				g.Battlefield.Cards[i].DamageMarked = 0
+			}
+			if delta > 0 {
+				g.EmitEvent(Event{
+					Kind:   EventDealDamage,
+					Target: cardID,
+					Amount: delta,
+				})
 			}
 			g.runStateChecksLocked()
 			return nil
@@ -1284,6 +1383,11 @@ func (g *Game) CounterSpell(spellID uuid.UUID, dst *ZoneRef) error {
 	g.markCardKnownInZoneLocked(destZone, spellID)
 	delete(g.StackMeta, spellID)
 	g.recomputeSplitSecondLocked()
+	g.EmitEvent(Event{
+		Kind:   EventCounterSpell,
+		Target: spellID,
+		CardID: spellID,
+	})
 	return nil
 }
 
@@ -1308,8 +1412,14 @@ func (g *Game) CounterAbility(abilityID uuid.UUID) error {
 	if item.Kind != StackItemActivated && item.Kind != StackItemTriggered {
 		return ErrCardNotOnStack
 	}
+	source := item.SourceCardID
 	delete(g.StackMeta, abilityID)
 	g.recomputeSplitSecondLocked()
+	g.EmitEvent(Event{
+		Kind:   EventCounterSpell,
+		Source: source,
+		Target: abilityID,
+	})
 	return nil
 }
 
@@ -1392,6 +1502,18 @@ func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCom
 		return err
 	}
 	g.markCardKnownInZoneLocked(dstZone, cardID)
+	g.EmitEvent(Event{
+		Kind:    EventZoneMove,
+		CardID:  cardID,
+		OldZone: srcZone.Kind,
+		NewZone: dstZone.Kind,
+	})
+	if srcZone.Kind == ZoneBattlefield {
+		g.EmitEvent(Event{Kind: EventLTB, CardID: cardID})
+	}
+	if dstZone.Kind == ZoneBattlefield {
+		g.EmitEvent(Event{Kind: EventETB, CardID: cardID})
+	}
 	return nil
 }
 
@@ -1436,6 +1558,11 @@ func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cardID {
 			g.Battlefield.Cards[i].Tapped = tapped
+			if tapped {
+				g.EmitEvent(Event{Kind: EventTapCard, CardID: cardID})
+			} else {
+				g.EmitEvent(Event{Kind: EventUntapCard, CardID: cardID})
+			}
 			return nil
 		}
 	}
@@ -1838,6 +1965,7 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 	if p.Eliminated {
 		return ErrPlayerEliminated
 	}
+	g.EmitEvent(Event{Kind: EventConcede, Actor: playerID})
 	// S13.1: delegate to the unified elimination path so concede
 	// fires the same stack cleanup + cursor advance + game-end
 	// check as an SBA-driven loss.
@@ -2047,6 +2175,7 @@ func (g *Game) ShuffleLibrary(playerID uuid.UUID) error {
 	}
 	p.Library.Shuffle(g.rng)
 	clearKnownInZoneLocked(p.Library)
+	g.EmitEvent(Event{Kind: EventSearchLibrary, Actor: playerID, Label: "shuffle"})
 	return nil
 }
 
@@ -2062,7 +2191,13 @@ func (g *Game) ChangePlayerLife(playerID uuid.UUID, delta int) (int, error) {
 	if p == nil {
 		return 0, ErrPlayerNotFound
 	}
-	return p.ChangeLife(delta), nil
+	newLife := p.ChangeLife(delta)
+	g.EmitEvent(Event{
+		Kind:   EventChangeLife,
+		Target: playerID,
+		Amount: delta,
+	})
+	return newLife, nil
 }
 
 // AddCounter modifies a named counter on a card by delta. Creates the
@@ -2093,12 +2228,19 @@ func (g *Game) AddCounter(cardID uuid.UUID, name string, delta int) error {
 				z.Cards[i].Counters = make(map[string]int)
 			}
 			z.Cards[i].Counters[name] += delta
+			newAmount := z.Cards[i].Counters[name]
 			if z.Cards[i].Counters[name] <= 0 {
 				delete(z.Cards[i].Counters, name)
 				if len(z.Cards[i].Counters) == 0 {
 					z.Cards[i].Counters = nil
 				}
 			}
+			g.EmitEvent(Event{
+				Kind:   EventCounterPlaced,
+				Target: cardID,
+				Label:  name,
+				Amount: newAmount,
+			})
 			return nil
 		}
 	}
