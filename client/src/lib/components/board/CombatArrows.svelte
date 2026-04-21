@@ -31,7 +31,9 @@
 
   type Pair =
     | { kind: "attack"; id: string; fromCardID: string; toSeatID: string }
-    | { kind: "block"; id: string; fromCardID: string; toCardID: string };
+    | { kind: "block"; id: string; fromCardID: string; toCardID: string }
+    | { kind: "stack-target-player"; id: string; fromStackID: string; toSeatID: string }
+    | { kind: "stack-target-card"; id: string; fromStackID: string; toCardID: string };
 
   const pairs = $derived.by((): Pair[] => {
     const out: Pair[] = [];
@@ -55,12 +57,38 @@
         });
       }
     }
+    // S14: stack-item target arrows. Each StackItem carries its
+    // announce-time targets[]; draw one arrow per player / card slot
+    // so the board shows who each spell is aimed at. Self / none
+    // slots don't produce arrows (no visual referent).
+    for (const item of view.stack_items ?? []) {
+      for (let i = 0; i < (item.targets?.length ?? 0); i++) {
+        const t = item.targets![i];
+        if (t.kind === "player" && t.id) {
+          out.push({
+            kind: "stack-target-player",
+            id: `stk-${item.id}-p-${i}`,
+            fromStackID: item.id,
+            toSeatID: t.id,
+          });
+        } else if (t.kind === "card" && t.id) {
+          out.push({
+            kind: "stack-target-card",
+            id: `stk-${item.id}-c-${i}`,
+            fromStackID: item.id,
+            toCardID: t.id,
+          });
+        }
+      }
+    }
     return out;
   });
 
+  type ArrowKind = "attack" | "block" | "stack-target-player" | "stack-target-card";
+
   interface ArrowGeo {
     id: string;
-    kind: "attack" | "block";
+    kind: ArrowKind;
     x1: number;
     y1: number;
     x2: number;
@@ -118,13 +146,31 @@
     const boardRect = boardEl.getBoundingClientRect();
     const next: ArrowGeo[] = [];
     for (const p of pairs) {
-      const from = rectIn(boardRect, `[data-instance-id="${cssEscape(p.fromCardID)}"]`);
+      // Source: battlefield card (attack / block) or stack item
+      // (stack-target-*). Route through the matching data attribute
+      // in each case.
+      let from: { x: number; y: number } | null = null;
+      if (p.kind === "attack" || p.kind === "block") {
+        from = rectIn(boardRect, `[data-instance-id="${cssEscape(p.fromCardID)}"]`);
+      } else {
+        from = rectIn(boardRect, `[data-stack-item-id="${cssEscape(p.fromStackID)}"]`);
+      }
       if (!from) continue;
       let to: { x: number; y: number } | null = null;
-      if (p.kind === "attack") {
+      if (p.kind === "attack" || p.kind === "stack-target-player") {
         to = rectIn(boardRect, `[data-seat-id="${cssEscape(p.toSeatID)}"]`);
       } else {
-        to = rectIn(boardRect, `[data-instance-id="${cssEscape(p.toCardID)}"]`);
+        // Card targets can live in two places: the battlefield (via
+        // data-instance-id on Card.svelte) or the stack (via
+        // data-stack-item-id on StackOverlay's item div). For spell
+        // stack items, id and instance_id are the same UUID (see
+        // server/internal/game/stack.go StackItem.ID doc) so either
+        // attribute resolves. Try the battlefield first; fall back
+        // to the stack to cover Counterspell-style stack-on-stack
+        // targeting.
+        to =
+          rectIn(boardRect, `[data-instance-id="${cssEscape(p.toCardID)}"]`) ??
+          rectIn(boardRect, `[data-stack-item-id="${cssEscape(p.toCardID)}"]`);
       }
       if (!to) continue;
       const ctrl = midpointOffset(from.x, from.y, to.x, to.y);
@@ -174,6 +220,18 @@
   // pathLength → 0, so arrows "draw on" rather than popping in. Keyed
   // by ARROW id so re-mounts (a card replays its attack declaration)
   // re-fire the draw.
+  function markerFor(kind: ArrowKind): string {
+    switch (kind) {
+      case "attack":
+        return "url(#arrowhead-attack)";
+      case "block":
+        return "url(#arrowhead-block)";
+      case "stack-target-player":
+      case "stack-target-card":
+        return "url(#arrowhead-target)";
+    }
+  }
+
   function drawOn(node: SVGPathElement): void {
     const len = node.getTotalLength();
     gsap.fromTo(
@@ -214,12 +272,23 @@
       >
         <path d="M 0 0 L 10 5 L 0 10 z" fill="#9ec7ff" />
       </marker>
+      <marker
+        id="arrowhead-target"
+        viewBox="0 0 10 10"
+        refX="8"
+        refY="5"
+        markerWidth="6"
+        markerHeight="6"
+        orient="auto-start-reverse"
+      >
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#ffd07a" />
+      </marker>
     </defs>
     {#each arrows as a (a.id)}
       <path
         d={`M ${a.x1} ${a.y1} Q ${a.cx} ${a.cy} ${a.x2} ${a.y2}`}
         class={a.kind}
-        marker-end={a.kind === "attack" ? "url(#arrowhead-attack)" : "url(#arrowhead-block)"}
+        marker-end={markerFor(a.kind)}
         use:drawOn
       />
     {/each}
@@ -248,5 +317,14 @@
   }
   path.block {
     stroke: #9ec7ff;
+  }
+  /* S14: stack-target arrows use the same gold palette as the
+     AUTO badge + targeting banner — reads as "a catalog spell is
+     pointing at this thing." Dashed to distinguish from combat's
+     solid red/blue when both are drawn simultaneously. */
+  path.stack-target-player,
+  path.stack-target-card {
+    stroke: #ffd07a;
+    stroke-dasharray: 6 4;
   }
 </style>

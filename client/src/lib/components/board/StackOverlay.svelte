@@ -12,6 +12,7 @@
 
   import type { CardView, PlayerView, StackItemView, ZoneView } from "../../protocol";
   import { seatColor } from "../../colors";
+  import { targeting, isTargetingStack } from "../../targeting";
 
   interface Props {
     stack: ZoneView;
@@ -21,6 +22,7 @@
     viewerHasPriority: boolean;
     splitSecondActive: boolean;
     onCounter: (item: StackItemView) => void;
+    onTargetStackItem?: (item: StackItemView) => void;
   }
 
   const {
@@ -31,7 +33,13 @@
     viewerHasPriority,
     splitSecondActive,
     onCounter,
+    onTargetStackItem,
   }: Props = $props();
+
+  const stackTargetable = $derived.by(() => {
+    const t = $targeting;
+    return t !== null && isTargetingStack(t.mode);
+  });
 
   const cardByID = $derived.by(() => {
     const out = new Map<string, CardView>();
@@ -108,7 +116,22 @@
       {#each displayItems as item (item.id)}
         {@const seatNum = controllerSeatNum(item)}
         {@const src = imgSrcFor(item)}
-        <div class="item" style:--seat-color={seatColor(seatNum)}>
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+        <div
+          class="item"
+          class:cast-targetable={stackTargetable}
+          style:--seat-color={seatColor(seatNum)}
+          data-stack-item-id={item.id}
+          onclick={stackTargetable ? () => onTargetStackItem?.(item) : undefined}
+          onkeydown={(e) => {
+            if (stackTargetable && (e.key === "Enter" || e.key === " ")) {
+              e.preventDefault();
+              onTargetStackItem?.(item);
+            }
+          }}
+          role={stackTargetable ? "button" : undefined}
+          tabindex={stackTargetable ? 0 : undefined}
+        >
           <div class="image-wrap">
             {#if src}
               <img {src} alt={titleFor(item)} loading="lazy" decoding="async" />
@@ -122,7 +145,10 @@
               type="button"
               class="counter-btn"
               disabled={!viewerHasPriority}
-              onclick={() => onCounter(item)}
+              onclick={(e) => {
+                e.stopPropagation();
+                onCounter(item);
+              }}
               title={viewerHasPriority ? "counter this item" : "you don't hold priority"}
             >
               counter
@@ -249,6 +275,15 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+  }
+  .item.cast-targetable {
+    cursor: pointer;
+    outline: 2px solid #ffd07a;
+    outline-offset: 1px;
+    box-shadow: 0 0 12px rgba(255, 208, 122, 0.45);
+  }
+  .item.cast-targetable:hover {
+    background: color-mix(in srgb, #ffd07a 18%, #131a2c);
   }
   .image-wrap {
     position: relative;

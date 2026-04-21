@@ -7,6 +7,8 @@
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import Board from "../lib/components/board/Board.svelte";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
+  import TargetingBanner from "../lib/components/board/TargetingBanner.svelte";
+  import { cancel as cancelTargeting } from "../lib/targeting";
   import type { PlayerView } from "../lib/protocol";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
@@ -886,6 +888,7 @@
         onDeclareBlock={declareBlockTarget}
       />
       <DiscardPromptModal snap={view} {viewerID} {sendAction} />
+      <TargetingBanner />
     {/if}
   </div>
 
@@ -893,6 +896,12 @@
     <p class="muted centered">waiting for snapshot…</p>
   {/if}
 </section>
+
+<svelte:window
+  onkeydown={(ev: KeyboardEvent) => {
+    if (ev.key === "Escape") cancelTargeting();
+  }}
+/>
 
 <style>
   /* The Game route needs the whole viewport, not the 800px column

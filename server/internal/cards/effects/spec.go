@@ -29,11 +29,12 @@ import (
 // resolution time via Lookup. Absence in the registry ⇒ non-catalog
 // ⇒ today's manual sandbox behaviour.
 type Spec struct {
-	// ScryfallID is the card's printing identifier. Required. The
-	// registry panics if two Specs collide on this key so a
-	// copy-paste duplicate fails at server boot (the earliest, most
-	// visible failure mode).
-	ScryfallID string
+	// OracleID is the Scryfall oracle-level card identifier — stable
+	// across printings (every printing of Lightning Bolt shares one
+	// oracle_id). Required. The registry panics if two Specs collide
+	// on this key so a copy-paste duplicate fails at server boot
+	// (the earliest, most visible failure mode).
+	OracleID string
 
 	// Name is the human-readable card name. Present in the Spec so
 	// logs / panics / tests have a nice handle without bouncing
@@ -66,6 +67,26 @@ type Spec struct {
 	// stamps this via AddCounter when the card crosses into the
 	// battlefield. Used by The Wandering Emperor in S14.
 	StartingLoyalty int
+
+	// TargetMode tells the client what to prompt for at cast time.
+	// Serialized to CardView.target_mode so the Svelte cast flow
+	// can enter a targeting state before firing cast_spell with
+	// populated targets[]. Empty string means "no target prompt,
+	// cast immediately." Valid values:
+	//
+	//   ""             no prompt (Pyroclasm, Wrath, vanilla permanents)
+	//   "any"          player / creature / planeswalker / battle
+	//                  (Lightning Bolt, Shock, Helix)
+	//   "player"       seated player only
+	//   "creature"     battlefield creature only
+	//   "stack_spell"  an item currently on the stack (Counterspell,
+	//                  Negate, Swan Song)
+	//   "card_in_graveyard" a card in any graveyard (Regrowth, Eternal
+	//                       Witness)
+	//
+	// Target count is always 1 in S14; multi-target (Arcing Lightning
+	// style "distribute 3 damage") is S22 territory.
+	TargetMode string
 }
 
 // ZeroUUID is an alias for uuid.Nil. Mostly used in tests to

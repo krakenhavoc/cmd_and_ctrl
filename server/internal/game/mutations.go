@@ -302,7 +302,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			Actor:  playerID,
 			CardID: moved.InstanceID,
 		})
-		g.fireETBHookLocked(moved.InstanceID, moved.ScryfallID)
+		g.fireETBHookLocked(moved.InstanceID, moved.OracleID)
 		return nil
 	}
 	// Non-land: route through the stack. The card lives in
@@ -465,7 +465,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// and zone routing. Non-catalog cards return nil (no-op); catalog
 	// spells fire their effect here. Errors emit EventEffectError
 	// via fireEffectResolverLocked and do not wedge resolution.
-	g.fireEffectResolverLocked(item, top.ScryfallID, top.InstanceID)
+	g.fireEffectResolverLocked(item, top.OracleID, top.InstanceID)
 	if top.IsPermanent() {
 		// Permanents resolve to the battlefield with the announce-time
 		// controller (which may differ from owner — e.g. cast via a
@@ -493,7 +493,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 			Actor:  item.Controller,
 			CardID: moved.InstanceID,
 		})
-		g.fireETBHookLocked(moved.InstanceID, moved.ScryfallID)
+		g.fireETBHookLocked(moved.InstanceID, moved.OracleID)
 		return nil
 	}
 	// Instants / sorceries: resolve to the owner's graveyard.
@@ -1525,7 +1525,7 @@ func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCom
 		// the destination zone to pull its Scryfall ID.
 		for _, c := range dstZone.Cards {
 			if c.InstanceID == cardID {
-				g.fireETBHookLocked(cardID, c.ScryfallID)
+				g.fireETBHookLocked(cardID, c.OracleID)
 				break
 			}
 		}

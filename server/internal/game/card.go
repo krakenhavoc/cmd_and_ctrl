@@ -27,6 +27,14 @@ type Card struct {
 	// by hitting GET /cards/{id}/image.
 	ScryfallID string
 
+	// OracleID is the Scryfall oracle-level card identity, stable
+	// across printings (every printing of Lightning Bolt shares one
+	// oracle_id). Used by the S14+ card-effect catalog as the
+	// lookup key so a deck importing a specific printing still
+	// matches the catalog entry. Empty for placeholder / demo-seed
+	// cards. Added in S14 sub-PR 4.
+	OracleID string
+
 	// TypeLine is Scryfall's type line ("Legendary Creature — Human
 	// Wizard", "Land", "Sorcery", etc.). Stamped at deck-import time
 	// (S08) so combat-rule gates can check whether a card is a

@@ -648,9 +648,24 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	// Validate. Sideboard-only warnings are treated as non-fatal —
 	// we strip them from the violation list and pass the rest
 	// through. Everything else means the deck cannot be installed.
+	//
+	// Dev bypass (S14): when CMDCTRL_DEV_SKIP_DECK_VALIDATION is set
+	// to a non-empty value, skip validation entirely. Intended for
+	// manual-testing the card-effect catalog with a small throwaway
+	// deck (~5 cards + commander) — a full 100-card deck is
+	// tedious when all you want to do is cast Lightning Bolt. The
+	// env var is read per-request so flipping it on/off on a live
+	// server doesn't require a restart. Any non-empty value counts
+	// as "on" — defer to shell truthiness. NEVER set this in
+	// production.
 	var warnings []deck.Violation
 	var fatal []deck.Violation
-	if verr := deck.Validate(list); verr != nil {
+	if os.Getenv("CMDCTRL_DEV_SKIP_DECK_VALIDATION") != "" {
+		warnings = append(warnings, deck.Violation{
+			Code:    "dev_skip_validation",
+			Message: "CMDCTRL_DEV_SKIP_DECK_VALIDATION is set; deck validation was bypassed",
+		})
+	} else if verr := deck.Validate(list); verr != nil {
 		var ve *deck.ValidationError
 		if errors.As(verr, &ve) {
 			for _, v := range ve.Violations {

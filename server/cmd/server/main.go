@@ -65,6 +65,14 @@ func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(log)
 
+	// Dev convenience: warn loudly when deck validation is being
+	// skipped. Catches the case where the env var leaks into a
+	// production deployment — a WARN on every boot is harder to
+	// miss than a quiet behaviour change.
+	if os.Getenv("CMDCTRL_DEV_SKIP_DECK_VALIDATION") != "" {
+		log.Warn("CMDCTRL_DEV_SKIP_DECK_VALIDATION is set; deck validation is BYPASSED. Do not use in production.")
+	}
+
 	cfg := loadConfig(log)
 
 	// Auth + room manager are global singletons for the lifetime of

@@ -1,4 +1,4 @@
-.PHONY: all build run dev test vet lint fmt fmt-check tidy clean
+.PHONY: all build run dev dev-skip-validation test vet lint fmt fmt-check tidy clean
 
 BINARY := bin/cmd_and_ctrl-server
 PKGS := ./...
@@ -18,6 +18,17 @@ run: build
 dev:
 	CMDCTRL_ADMIN_TOKEN="$${CMDCTRL_ADMIN_TOKEN:-dev-admin-token-not-for-production}" \
 	CMDCTRL_DATA_DIR="$${CMDCTRL_DATA_DIR:-../data}" \
+	go run ./cmd/server
+
+# S14 manual-test convenience: spin the server with deck validation
+# bypassed so a throwaway 5-card list (one commander, a few catalog
+# cards, a basic or two) imports without tripping the 100-card /
+# singleton / color-identity checks. Boot logs WARN when the flag is
+# active — never use in production.
+dev-skip-validation:
+	CMDCTRL_ADMIN_TOKEN="$${CMDCTRL_ADMIN_TOKEN:-dev-admin-token-not-for-production}" \
+	CMDCTRL_DATA_DIR="$${CMDCTRL_DATA_DIR:-../data}" \
+	CMDCTRL_DEV_SKIP_DECK_VALIDATION=1 \
 	go run ./cmd/server
 
 test:

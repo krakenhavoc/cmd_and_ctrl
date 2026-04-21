@@ -11,34 +11,34 @@ import "fmt"
 var registry = map[string]Spec{}
 
 // Register adds a catalog entry. Called once per card at init()
-// time. Panics on duplicate ScryfallID — a collision means a
-// card file was copy-pasted without updating the ID, which is a
-// logic bug we want to surface loudly at server boot rather than
+// time. Panics on duplicate OracleID — a collision means a card
+// file was copy-pasted without updating the key, which is a logic
+// bug we want to surface loudly at server boot rather than
 // silently letting one spec win.
 //
-// Empty ScryfallID is rejected for the same reason: a spec
-// without a key would shadow Lookup() results for the empty string
-// and mask bugs in the caller.
+// Empty OracleID is rejected for the same reason: a spec without
+// a key would shadow Lookup() results for the empty string and
+// mask bugs in the caller.
 func Register(spec Spec) {
-	if spec.ScryfallID == "" {
-		panic(fmt.Sprintf("effects.Register: empty ScryfallID on %q", spec.Name))
+	if spec.OracleID == "" {
+		panic(fmt.Sprintf("effects.Register: empty OracleID on %q", spec.Name))
 	}
-	if existing, ok := registry[spec.ScryfallID]; ok {
-		panic(fmt.Sprintf("effects.Register: duplicate ScryfallID %s (existing %q, new %q)",
-			spec.ScryfallID, existing.Name, spec.Name))
+	if existing, ok := registry[spec.OracleID]; ok {
+		panic(fmt.Sprintf("effects.Register: duplicate OracleID %s (existing %q, new %q)",
+			spec.OracleID, existing.Name, spec.Name))
 	}
-	registry[spec.ScryfallID] = spec
+	registry[spec.OracleID] = spec
 }
 
-// Lookup returns the Spec for a given Scryfall card ID. The second
-// return is false when the ID is not in the catalog — that's the
-// signal for the resolution path to fall back to manual sandbox
-// behaviour. Callers MUST check this; the zero Spec{} is semantically
-// distinct from a real registered spec (no OnResolve, no OnETB),
-// which means a missed check would silently apply nothing rather
-// than triggering the manual fallback correctly.
-func Lookup(scryfallID string) (Spec, bool) {
-	s, ok := registry[scryfallID]
+// Lookup returns the Spec for a given oracle ID. The second return
+// is false when the ID is not in the catalog — that's the signal
+// for the resolution path to fall back to manual sandbox behaviour.
+// Callers MUST check the second return; the zero Spec{} is
+// semantically distinct from a real registered spec (no OnResolve,
+// no OnETB), which means a missed check would silently apply
+// nothing rather than triggering the manual fallback correctly.
+func Lookup(oracleID string) (Spec, bool) {
+	s, ok := registry[oracleID]
 	return s, ok
 }
 
@@ -55,10 +55,9 @@ func All() []Spec {
 	return out
 }
 
-// Has reports whether the catalog knows the given Scryfall ID.
-// Convenience wrapper for the auto-badge bit (sub-PR 3). Equivalent
-// to `_, ok := Lookup(id); return ok`.
-func Has(scryfallID string) bool {
-	_, ok := registry[scryfallID]
+// Has reports whether the catalog knows the given oracle ID.
+// Convenience wrapper for the auto-badge bit (sub-PR 3).
+func Has(oracleID string) bool {
+	_, ok := registry[oracleID]
 	return ok
 }

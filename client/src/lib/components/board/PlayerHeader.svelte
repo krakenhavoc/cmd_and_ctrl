@@ -17,6 +17,7 @@
   import { floatUp, fadeOut } from "../../animations";
   import { play } from "../../sounds";
   import { avatarURL } from "../../api";
+  import { targeting, isTargetingPlayer } from "../../targeting";
 
   type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
 
@@ -30,6 +31,7 @@
     isInitiative: boolean;
     sendAction: ActionSender;
     onDeclareAttack?: (targetPlayerID: string) => void;
+    onTargetPlayer?: (targetPlayerID: string) => void;
   }
 
   const {
@@ -42,9 +44,26 @@
     isInitiative,
     sendAction,
     onDeclareAttack,
+    onTargetPlayer,
   }: Props = $props();
 
+  // S14: when a cast-targeting prompt is active and the mode accepts
+  // a player, light up this header and route clicks to the picker
+  // callback instead of the combat path. Using the store directly so
+  // every seat reacts to the same targeting state without needing
+  // the parent to re-pass a prop per seat.
+  const targetableByCast = $derived.by(() => {
+    const t = $targeting;
+    if (!t) return false;
+    if (!isTargetingPlayer(t.mode)) return false;
+    return !seat.eliminated;
+  });
+
   function handleHeaderClick(): void {
+    if (targetableByCast) {
+      onTargetPlayer?.(seat.id);
+      return;
+    }
     if (!attackTargetable) return;
     onDeclareAttack?.(seat.id);
   }
@@ -130,14 +149,15 @@
   class:active={isActive}
   class:priority={hasPriority}
   class:targetable={attackTargetable}
+  class:cast-targetable={targetableByCast}
   class:eliminated={seat.eliminated}
   style:--seat-color={seatColor(seat.seat)}
   data-seat-id={seat.id}
-  role={attackTargetable ? "button" : "group"}
-  tabindex={attackTargetable ? 0 : undefined}
+  role={attackTargetable || targetableByCast ? "button" : "group"}
+  tabindex={attackTargetable || targetableByCast ? 0 : undefined}
   onclick={handleHeaderClick}
   onkeydown={(e) => {
-    if (attackTargetable && (e.key === "Enter" || e.key === " ")) {
+    if ((attackTargetable || targetableByCast) && (e.key === "Enter" || e.key === " ")) {
       e.preventDefault();
       handleHeaderClick();
     }
@@ -370,6 +390,15 @@
   }
   .header.targetable:hover {
     background: color-mix(in srgb, #ff7a7a 25%, #111a2b);
+  }
+  .header.cast-targetable {
+    cursor: pointer;
+    box-shadow:
+      0 0 0 2px #ffd07a,
+      0 0 12px rgba(255, 208, 122, 0.55);
+  }
+  .header.cast-targetable:hover {
+    background: color-mix(in srgb, #ffd07a 25%, #111a2b);
   }
   .header.eliminated {
     opacity: 0.55;

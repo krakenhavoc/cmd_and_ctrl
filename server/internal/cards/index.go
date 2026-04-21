@@ -28,7 +28,14 @@ import (
 // Full rules-engine fields (mana cost breakdown, loyalty, power/
 // toughness parsing) arrive with the S13+ engine work.
 type Card struct {
-	ID          uuid.UUID `json:"id"`
+	ID uuid.UUID `json:"id"`
+	// OracleID is the Scryfall oracle-level card identity, stable
+	// across printings of the same card (e.g. every printing of
+	// Lightning Bolt shares one oracle_id). Used by the S14+ card-
+	// effect catalog as the spec key, so a deck importing a set-
+	// specific printing still matches the catalog entry. Added in
+	// S14 sub-PR 4.
+	OracleID    uuid.UUID `json:"oracle_id"`
 	Name        string    `json:"name"`
 	SetCode     string    `json:"set"`
 	SetType     string    `json:"set_type"`

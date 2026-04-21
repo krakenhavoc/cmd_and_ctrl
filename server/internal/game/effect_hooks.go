@@ -22,36 +22,43 @@ import "github.com/google/uuid"
 
 // EffectResolver is invoked from resolveTopOfStackLocked after the
 // target re-check and before zone routing. Implementations look up
-// the spell's Scryfall ID in the catalog and run the registered
-// OnResolve callback if present. Nil means "no catalog wired" —
-// the resolution path skips the call and relies on the manual
-// sandbox behaviour.
+// the spell's oracle ID (stable across printings) in the catalog
+// and run the registered OnResolve callback if present. Nil means
+// "no catalog wired" — the resolution path skips the call and
+// relies on the manual sandbox behaviour.
 //
 // Implementations MUST NOT take g.mu — the resolution path already
 // holds it. Use *ForEffect helpers on *Game.
-var EffectResolver func(g *Game, item *StackItem, scryfallID string) error
+var EffectResolver func(g *Game, item *StackItem, oracleID string) error
 
 // ETBEffectHook fires after a permanent crosses into the
 // battlefield from any source (land cast, spell resolution,
 // MoveCardByID into battlefield). Implementations look up the
-// card's Scryfall ID in the catalog and run the registered OnETB
+// card's oracle ID in the catalog and run the registered OnETB
 // callback + stamp StartingLoyalty for planeswalkers.
-var ETBEffectHook func(g *Game, cardID uuid.UUID, scryfallID string) error
+var ETBEffectHook func(g *Game, cardID uuid.UUID, oracleID string) error
 
-// IsCatalogCard reports whether a Scryfall ID is present in the
+// IsCatalogCard reports whether an oracle ID is present in the
 // card-effect catalog. Used by the view layer (protocol.CardView)
 // to stamp the `auto` bit so the client can render the auto badge.
 // Nil is treated as "no catalog wired" → every card looks manual.
-var IsCatalogCard func(scryfallID string) bool
+var IsCatalogCard func(oracleID string) bool
+
+// CatalogTargetMode returns the registered card's announce-time
+// target prompt shape (see effects.Spec.TargetMode) or empty
+// string when no catalog entry matches. Nil hook always returns
+// empty. Serialised onto CardView.TargetMode for the client's
+// cast-targeting UI.
+var CatalogTargetMode func(oracleID string) string
 
 // fireEffectResolverLocked invokes the registered EffectResolver
 // if non-nil, emits EventEffectError on failure, and swallows the
 // error so the resolution path keeps moving. Caller must hold g.mu.
-func (g *Game) fireEffectResolverLocked(item *StackItem, scryfallID string, cardID uuid.UUID) {
-	if EffectResolver == nil {
+func (g *Game) fireEffectResolverLocked(item *StackItem, oracleID string, cardID uuid.UUID) {
+	if EffectResolver == nil || oracleID == "" {
 		return
 	}
-	if err := EffectResolver(g, item, scryfallID); err != nil {
+	if err := EffectResolver(g, item, oracleID); err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Source:   cardID,
@@ -64,11 +71,11 @@ func (g *Game) fireEffectResolverLocked(item *StackItem, scryfallID string, card
 // non-nil. Used by every code path that places a card on the
 // battlefield — land cast, spell resolution, manual admin move
 // into battlefield. Caller must hold g.mu.
-func (g *Game) fireETBHookLocked(cardID uuid.UUID, scryfallID string) {
-	if ETBEffectHook == nil {
+func (g *Game) fireETBHookLocked(cardID uuid.UUID, oracleID string) {
+	if ETBEffectHook == nil || oracleID == "" {
 		return
 	}
-	if err := ETBEffectHook(g, cardID, scryfallID); err != nil {
+	if err := ETBEffectHook(g, cardID, oracleID); err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Source:   cardID,
@@ -77,19 +84,24 @@ func (g *Game) fireETBHookLocked(cardID uuid.UUID, scryfallID string) {
 	}
 }
 
-// isCatalogCardLocked is the internal accessor that the view layer
-// uses (via protocol.ViewOfCard) to stamp CardView.Auto. Nil hook
-// returns false — no catalog means no auto. Lock-free.
-func isCatalogCard(scryfallID string) bool {
-	if IsCatalogCard == nil {
+// IsAutoCard is the exported wrapper for the view layer. Returns
+// true when the card's oracle ID is in the catalog. Called from
+// protocol.viewOfCard when stamping CardView.Auto. Nil hook returns
+// false — no catalog means no auto.
+func IsAutoCard(oracleID string) bool {
+	if IsCatalogCard == nil || oracleID == "" {
 		return false
 	}
-	return IsCatalogCard(scryfallID)
+	return IsCatalogCard(oracleID)
 }
 
-// IsAutoCard is the exported wrapper for the view layer. Returns
-// true when the card is in the catalog. Called from
-// protocol.viewOfCard when stamping CardView.Auto.
-func IsAutoCard(scryfallID string) bool {
-	return isCatalogCard(scryfallID)
+// TargetModeFor returns the catalog's declared target prompt mode
+// for the given oracle ID, or empty string if the card isn't in
+// the catalog / has no target prompt. Called from protocol.viewOfCard
+// when stamping CardView.TargetMode.
+func TargetModeFor(oracleID string) string {
+	if CatalogTargetMode == nil || oracleID == "" {
+		return ""
+	}
+	return CatalogTargetMode(oracleID)
 }

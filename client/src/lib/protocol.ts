@@ -283,6 +283,10 @@ export interface CardView {
   // non-catalog cards (the majority) don't carry the field. Drives
   // the gold-leaf "auto" badge on Card.svelte.
   auto?: boolean;
+  // target_mode tells the cast-click flow what to prompt for at
+  // announce time. Empty/absent ⇒ cast immediately with no target.
+  // See client/src/lib/targeting.ts for the full enum.
+  target_mode?: string;
 }
 
 export interface TurnView {
