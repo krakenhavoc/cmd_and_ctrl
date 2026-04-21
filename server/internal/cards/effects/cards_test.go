@@ -511,10 +511,10 @@ func TestGlimpseMillsTen(t *testing.T) {
 	}
 }
 
-func TestMindRotDiscardsTwo(t *testing.T) {
+func TestMindRotQueuesDiscardChoice(t *testing.T) {
 	g := newCatalogGame(t)
 	target := g.Seats[1]
-	// Seed extra hand cards so we have at least 2 to discard.
+	// Seed extra hand cards so the discard-2 choice has options.
 	pushHandCard(g, target)
 	pushHandCard(g, target)
 	handBefore := target.Hand.Size()
@@ -526,11 +526,35 @@ func TestMindRotDiscardsTwo(t *testing.T) {
 	)
 	passPriorityAroundTable(t, g)
 
+	// The discard is deferred until the target picks — no hand /
+	// graveyard movement yet.
+	if got := target.Hand.Size(); got != handBefore {
+		t.Errorf("hand size changed pre-choice: got %d, want %d", got, handBefore)
+	}
+	if got := target.Graveyard.Size() - gyBefore; got != 0 {
+		t.Errorf("graveyard changed pre-choice: got delta %d, want 0", got)
+	}
+	if g.DiscardPending[target.ID] != 2 {
+		t.Fatalf("DiscardPending[target]: got %d, want 2", g.DiscardPending[target.ID])
+	}
+
+	// Simulate the target submitting their picks.
+	picks := []uuid.UUID{
+		target.Hand.Cards[0].InstanceID,
+		target.Hand.Cards[1].InstanceID,
+	}
+	if err := g.DiscardSelection(target.ID, picks); err != nil {
+		t.Fatalf("DiscardSelection: %v", err)
+	}
+
 	if got := handBefore - target.Hand.Size(); got != 2 {
-		t.Errorf("hand delta: got %d, want 2", got)
+		t.Errorf("post-selection hand delta: got %d, want 2", got)
 	}
 	if got := target.Graveyard.Size() - gyBefore; got != 2 {
-		t.Errorf("graveyard delta: got %d, want 2", got)
+		t.Errorf("post-selection graveyard delta: got %d, want 2", got)
+	}
+	if _, still := g.DiscardPending[target.ID]; still {
+		t.Errorf("DiscardPending not cleared after selection")
 	}
 }
 

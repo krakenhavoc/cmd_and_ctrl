@@ -31,6 +31,14 @@
   });
   const open = $derived(owedCount > 0);
 
+  // S14: the same DiscardPending map carries cleanup-step max-
+  // hand overflow AND mid-game effect-driven discards (Mind Rot,
+  // future effect cards). Tell them apart by looking at the turn
+  // step. Cleanup → cleanup copy; any other step → "effect
+  // resolving" copy. The behaviour is identical (pick N, submit)
+  // either way.
+  const isCleanupContext = $derived(snap.turn.step === "cleanup");
+
   // viewerSeat is the seated PlayerView for the viewer. Used to
   // read the hand contents — opponents' DiscardPromptModal
   // wouldn't have visibility anyway since the wire filters
@@ -72,9 +80,14 @@
         Discard {owedCount} card{owedCount === 1 ? "" : "s"}
       </h2>
       <p class="hint">
-        Your hand size exceeds your maximum ({viewerSeat?.max_hand_size ?? 7}). Pick exactly
-        {owedCount} card{owedCount === 1 ? "" : "s"} to send to the graveyard. Cleanup resumes once you
-        submit.
+        {#if isCleanupContext}
+          Your hand size exceeds your maximum ({viewerSeat?.max_hand_size ?? 7}). Pick exactly
+          {owedCount} card{owedCount === 1 ? "" : "s"} to send to the graveyard. Cleanup resumes once
+          you submit.
+        {:else}
+          An effect is asking you to discard. Pick {owedCount} card{owedCount === 1 ? "" : "s"} to send
+          to the graveyard.
+        {/if}
       </p>
       <div class="card-grid">
         {#each handCards as c (c.instance_id)}
