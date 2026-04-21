@@ -69,12 +69,15 @@
   // by Vite and in production by whoever serves the built client.
   const backSrc = $derived(size === "normal" ? "/card-back.jpg" : "/card-back-small.jpg");
 
-  // S13.5 — render the back when the wire says face-down OR when
-  // the card is one the viewer doesn't know (server redacted the
-  // characteristics, so we have nothing meaningful to render face-
-  // up). known_by_you is omitted when true, so the inverse is
-  // "explicit false" — `=== false` distinguishes "redacted card"
-  // from "older client / pre-S13.5 wire / face-up by default".
+  // S13.5 — render the back when the wire says face-down. The
+  // `|| card.known_by_you === false` arm is a belt-and-braces
+  // fallback: the server's CardView uses `omitempty` on KnownByYou,
+  // so a revealed card sends `true` and an unrevealed card omits
+  // the field entirely (opponents never see an explicit `false`
+  // from the wire). If a future code path were to build a CardView
+  // locally with an explicit `{known_by_you: false}`, this check
+  // would keep it rendering as a back. Parents that know the zone
+  // (Hand.svelte for opponent cards) still set `faceDown` directly.
   const showBack = $derived(faceDown || card.known_by_you === false);
 
   // Hover delay (settings.display.hoverDelayMs) defers the write to
