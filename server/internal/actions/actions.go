@@ -336,9 +336,10 @@ func Dispatch(g *game.Game, a Action) error {
 
 	case TypeMoveCard:
 		var p struct {
-			Src        zoneRefWire `json:"src"`
-			Dst        zoneRefWire `json:"dst"`
-			InstanceID string      `json:"instance_id"`
+			Src         zoneRefWire `json:"src"`
+			Dst         zoneRefWire `json:"dst"`
+			InstanceID  string      `json:"instance_id"`
+			AsCommander bool        `json:"as_commander,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -358,7 +359,7 @@ func Dispatch(g *game.Game, a Action) error {
 		if err := requireCardController(g, a.Caller, instanceID); err != nil {
 			return err
 		}
-		return g.MoveCardByID(srcRef, dstRef, instanceID)
+		return g.MoveCardByIDAsCommander(srcRef, dstRef, instanceID, p.AsCommander)
 
 	case TypeTap, TypeUntap:
 		var p struct {

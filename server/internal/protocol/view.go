@@ -170,6 +170,14 @@ type PlayerView struct {
 	DiscordID         string `json:"discord_id,omitempty"`
 	DiscordAvatarHash string `json:"discord_avatar_hash,omitempty"`
 	DisplayName       string `json:"display_name,omitempty"`
+
+	// CommanderCasts is the per-commander cast count from the
+	// command zone (S13.1, CR 903.8). Keyed by commander instance
+	// UUID string. Drives the "+N tax" indicator next to the
+	// commander tile. Sandbox: the engine doesn't enforce the
+	// {2}-per-cast surcharge — players track mana themselves.
+	// Omitted when empty.
+	CommanderCasts map[string]int `json:"commander_casts,omitempty"`
 }
 
 // LifeChangeView is the wire representation of a single life-change
@@ -391,6 +399,13 @@ func viewOfPlayer(p *game.Player) PlayerView {
 	for k, v := range p.CommanderDamage {
 		cmdrDamage[k.String()] = v
 	}
+	var cmdrCasts map[string]int
+	if len(p.CommanderCasts) > 0 {
+		cmdrCasts = make(map[string]int, len(p.CommanderCasts))
+		for k, v := range p.CommanderCasts {
+			cmdrCasts[k.String()] = v
+		}
+	}
 	history := make([]LifeChangeView, len(p.LifeHistory))
 	for i, c := range p.LifeHistory {
 		history[i] = LifeChangeView{
@@ -420,6 +435,7 @@ func viewOfPlayer(p *game.Player) PlayerView {
 		DiscordID:         p.DiscordID,
 		DiscordAvatarHash: p.DiscordAvatarHash,
 		DisplayName:       p.DisplayName,
+		CommanderCasts:    cmdrCasts,
 	}
 }
 

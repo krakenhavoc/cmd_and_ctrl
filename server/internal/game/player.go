@@ -126,6 +126,19 @@ type Player struct {
 	// PopTop returns ErrZoneEmpty; cleared on elimination. Added in
 	// S13.1.
 	LosesAtNextSBA bool
+
+	// CommanderCasts tracks the per-commander cast count from the
+	// command zone for the Commander tax (CR 903.8 — each cast costs
+	// {2} more for every previous cast). Keyed by the commander's
+	// instance ID so partner-pair players get independent counters
+	// (the pre-S13.1 per-opponent CommanderDamage map collapsed
+	// partners; this fixes that for the cast-tax half — the damage
+	// half is sub-PR-deferred until the partner-pair playtest demands
+	// it). Surfaced on the wire so clients can render "+0 / +2 / +4"
+	// next to the commander tile. Sandbox: the engine doesn't enforce
+	// the mana cost — players track mana on paper / in their head.
+	// Added in S13.1.
+	CommanderCasts map[uuid.UUID]int
 }
 
 // newPlayer constructs a player with empty zones and their starting
@@ -139,6 +152,7 @@ func newPlayer(name string, seat int) *Player {
 		Seat:            seat,
 		Life:            StartingLife,
 		CommanderDamage: make(map[uuid.UUID]int),
+		CommanderCasts:  make(map[uuid.UUID]int),
 	}
 	p.Library = newZone(ZoneLibrary, id)
 	p.Hand = newZone(ZoneHand, id)

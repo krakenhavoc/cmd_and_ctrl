@@ -274,7 +274,6 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		for i := range g.Battlefield.Cards {
 			if g.Battlefield.Cards[i].InstanceID == moved.InstanceID {
 				g.Battlefield.Cards[i].Controller = playerID
-				break
 			}
 		}
 		return nil
@@ -302,6 +301,17 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	}
 	if params.SplitSecond {
 		g.SplitSecondActive = true
+	}
+	// Commander tax bookkeeping (CR 903.8). Increment AFTER the
+	// card has reached the stack so a failed cast doesn't bump the
+	// counter. Sandbox: the engine doesn't enforce the +{2}
+	// surcharge — players track mana in their head; the counter is
+	// the affordance.
+	if params.FromZone == "command" {
+		if p.CommanderCasts == nil {
+			p.CommanderCasts = make(map[uuid.UUID]int)
+		}
+		p.CommanderCasts[cardID]++
 	}
 	return nil
 }
@@ -1047,7 +1057,22 @@ func (g *Game) recomputeSplitSecondLocked() {
 // battlefield it would also clear tapped state and counters — which
 // would silently wipe a battlefield card's counters on a redundant
 // client-issued no-op move. Detect the same-zone case up front.
+//
+// S13.1: when asCommander is true and the card is a commander
+// being moved to graveyard, exile, hand, or library, the
+// destination is rewritten to the owner's command zone (CR 903.9
+// — commander zone replacement, exercised here as an explicit
+// player choice rather than an automatic engine transform).
 func (g *Game) MoveCardByID(src, dst ZoneRef, cardID uuid.UUID) error {
+	return g.MoveCardByIDAsCommander(src, dst, cardID, false)
+}
+
+// MoveCardByIDAsCommander is the S13.1 extended form. asCommander
+// is the player's "yes, route this commander back to command zone
+// instead" choice that the move_card action exposes via a
+// per-request flag. The default-false form preserves the historic
+// MoveCardByID behaviour for non-commander moves.
+func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCommander bool) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -1056,6 +1081,15 @@ func (g *Game) MoveCardByID(src, dst ZoneRef, cardID uuid.UUID) error {
 	srcZone := g.zoneFromRefLocked(src)
 	if srcZone == nil {
 		return ErrZoneNotFound
+	}
+	// Commander zone replacement (CR 903.9): if the caller flagged
+	// the move and the card is a commander headed to a destination
+	// the rule covers, rewrite dst to the owner's command zone
+	// before resolving the destination zone.
+	if asCommander {
+		if rewritten, ok := g.applyCommanderZoneReplacementLocked(dst, cardID); ok {
+			dst = rewritten
+		}
 	}
 	dstZone := g.zoneFromRefLocked(dst)
 	if dstZone == nil {
@@ -1071,6 +1105,35 @@ func (g *Game) MoveCardByID(src, dst ZoneRef, cardID uuid.UUID) error {
 	}
 	_, err := MoveCard(srcZone, dstZone, cardID)
 	return err
+}
+
+// applyCommanderZoneReplacementLocked returns a rewritten ZoneRef
+// pointing at the owner's command zone if the move is eligible for
+// the CR 903.9 replacement (the card is a commander and the
+// destination is graveyard / exile / hand / library). Returns
+// (input, false) when not eligible. Caller must hold g.mu.
+func (g *Game) applyCommanderZoneReplacementLocked(dst ZoneRef, cardID uuid.UUID) (ZoneRef, bool) {
+	switch dst.Kind {
+	case ZoneGraveyard, ZoneExile, ZoneHand, ZoneLibrary:
+		// Eligible destination.
+	default:
+		return dst, false
+	}
+	// Find the card and confirm it's a commander.
+	z := g.findCardZoneLocked(cardID)
+	if z == nil {
+		return dst, false
+	}
+	for _, c := range z.Cards {
+		if c.InstanceID != cardID {
+			continue
+		}
+		if !c.IsCommander {
+			return dst, false
+		}
+		return ZoneRef{Kind: ZoneCommand, Owner: c.Owner}, true
+	}
+	return dst, false
 }
 
 // TapCard sets the tapped state of a card on the battlefield. Returns

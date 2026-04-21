@@ -2122,6 +2122,109 @@ func TestS131SBA21CommanderDamageEliminates(t *testing.T) {
 	}
 }
 
+// TestS131CommanderCastTaxIncrements covers CR 903.8 — each cast
+// from the command zone increments the per-commander counter so the
+// client can show the +N tax label. The engine doesn't enforce the
+// mana cost; the counter is the affordance.
+func TestS131CommanderCastTaxIncrements(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	caster := g.Seats[0]
+	cmdrCard, err := caster.Command.Top()
+	if err != nil {
+		t.Fatalf("Command.Top: %v", err)
+	}
+	// Stamp a creature type-line so the cast routes to the stack
+	// (the placeholder commander defaults to no type-line, which
+	// the cast-as-non-permanent path would treat as not-creature
+	// not-instant — we want a real cast loop).
+	for i := range caster.Command.Cards {
+		if caster.Command.Cards[i].InstanceID == cmdrCard.InstanceID {
+			caster.Command.Cards[i].TypeLine = "Legendary Creature — Avatar"
+			caster.Command.Cards[i].Power = 4
+			caster.Command.Cards[i].Toughness = 4
+		}
+	}
+
+	if err := g.CastSpell(caster.ID, cmdrCard.InstanceID, CastSpellParams{
+		FromZone: "command",
+	}); err != nil {
+		t.Fatalf("first commander cast: %v", err)
+	}
+	if got := caster.CommanderCasts[cmdrCard.InstanceID]; got != 1 {
+		t.Errorf("first cast: CommanderCasts=%d, want 1", got)
+	}
+
+	// Resolve and route back to command via the AsCommander flag.
+	for g.stackHasItemsLocked() {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	if !g.Battlefield.Contains(cmdrCard.InstanceID) {
+		t.Fatalf("commander did not resolve to battlefield")
+	}
+	dst := ZoneRef{Kind: ZoneGraveyard, Owner: caster.ID}
+	if err := g.MoveCardByIDAsCommander(
+		ZoneRef{Kind: ZoneBattlefield},
+		dst,
+		cmdrCard.InstanceID,
+		true,
+	); err != nil {
+		t.Fatalf("MoveCardByIDAsCommander: %v", err)
+	}
+	if !caster.Command.Contains(cmdrCard.InstanceID) {
+		t.Errorf("commander did not route to command zone with as_commander flag")
+	}
+	if caster.Graveyard.Contains(cmdrCard.InstanceID) {
+		t.Errorf("commander leaked into graveyard despite zone replacement")
+	}
+
+	// Second cast — counter should be 2.
+	if err := g.CastSpell(caster.ID, cmdrCard.InstanceID, CastSpellParams{
+		FromZone: "command",
+	}); err != nil {
+		t.Fatalf("second commander cast: %v", err)
+	}
+	if got := caster.CommanderCasts[cmdrCard.InstanceID]; got != 2 {
+		t.Errorf("second cast: CommanderCasts=%d, want 2", got)
+	}
+}
+
+// TestS131CommanderZoneReplacementOnlyForCommanders verifies that
+// the as_commander flag does NOT redirect non-commander cards.
+// (Sandbox safety so a misclick doesn't clobber a normal move.)
+func TestS131CommanderZoneReplacementOnlyForCommanders(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	cardID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID:  cardID,
+		Name:        "Plain Creature",
+		TypeLine:    "Creature — Bear",
+		Power:       2,
+		Toughness:   2,
+		Owner:       owner.ID,
+		Controller:  owner.ID,
+		IsCommander: false,
+	})
+	dst := ZoneRef{Kind: ZoneGraveyard, Owner: owner.ID}
+	if err := g.MoveCardByIDAsCommander(
+		ZoneRef{Kind: ZoneBattlefield},
+		dst,
+		cardID,
+		true,
+	); err != nil {
+		t.Fatalf("MoveCardByIDAsCommander: %v", err)
+	}
+	if !owner.Graveyard.Contains(cardID) {
+		t.Errorf("non-commander did not route to graveyard despite as_commander flag")
+	}
+	if owner.Command.Contains(cardID) {
+		t.Errorf("non-commander leaked into command zone")
+	}
+}
+
 // TestS131SplitSecondClearsOnResolve verifies that after the split-
 // second item resolves, SplitSecondActive flips back to false and
 // new casts go through.
