@@ -2458,6 +2458,119 @@ func TestS132CleanupClearsDamageMarked(t *testing.T) {
 	}
 }
 
+// TestS134CleanupPromptsForOverMaxHand verifies that an end-of-turn
+// hand of 9 (default cap = 7) populates DiscardPending with the
+// over-max count and pauses the cleanup auto-advance.
+func TestS134CleanupPromptsForOverMaxHand(t *testing.T) {
+	g := newActiveGame(t)
+	active := g.Seats[0]
+	// Stuff the active player's hand to 9 cards.
+	for active.Hand.Size() < 9 {
+		_ = g.DrawCard(active.ID)
+	}
+	if active.Hand.Size() != 9 {
+		t.Fatalf("hand setup: got %d, want 9", active.Hand.Size())
+	}
+	advanceTo(t, g, StepEnd)
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatalf("AdvanceStep past End: %v", err)
+	}
+	// Cursor should be paused at Cleanup, not the next seat's Upkeep.
+	if g.Turn.Step != StepCleanup {
+		t.Errorf("cursor advanced past Cleanup despite over-max hand: step=%q", g.Turn.Step)
+	}
+	if g.DiscardPending[active.ID] != 2 {
+		t.Errorf("DiscardPending[active]: got %d, want 2", g.DiscardPending[active.ID])
+	}
+}
+
+// TestS134DiscardSelectionResolvesAndAdvances verifies that
+// dispatching discard_selection with the correct count moves the
+// chosen cards to graveyard, drains the pending entry, and
+// re-fires the cleanup hook so the cursor walks on to the next
+// seat's Upkeep.
+func TestS134DiscardSelectionResolvesAndAdvances(t *testing.T) {
+	g := newActiveGame(t)
+	active := g.Seats[0]
+	for active.Hand.Size() < 9 {
+		_ = g.DrawCard(active.ID)
+	}
+	advanceTo(t, g, StepEnd)
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatalf("AdvanceStep past End: %v", err)
+	}
+	if g.Turn.Step != StepCleanup {
+		t.Fatalf("expected paused at Cleanup, got %q", g.Turn.Step)
+	}
+
+	// Pick 2 hand cards to discard.
+	picks := []uuid.UUID{
+		active.Hand.Cards[0].InstanceID,
+		active.Hand.Cards[1].InstanceID,
+	}
+	gyBefore := active.Graveyard.Size()
+	if err := g.DiscardSelection(active.ID, picks); err != nil {
+		t.Fatalf("DiscardSelection: %v", err)
+	}
+	if active.Graveyard.Size() != gyBefore+2 {
+		t.Errorf("graveyard size: got %d, want %d", active.Graveyard.Size(), gyBefore+2)
+	}
+	if len(g.DiscardPending) != 0 {
+		t.Errorf("DiscardPending should be empty after selection: %+v", g.DiscardPending)
+	}
+	// Cursor should have advanced to the next seat's Upkeep.
+	if g.Turn.ActiveSeat == 0 {
+		t.Errorf("cursor stayed on seat 0 after discard resolution")
+	}
+}
+
+// TestS134DiscardSelectionWrongCount rejects with ErrInvalidParam.
+func TestS134DiscardSelectionWrongCount(t *testing.T) {
+	g := newActiveGame(t)
+	active := g.Seats[0]
+	for active.Hand.Size() < 9 {
+		_ = g.DrawCard(active.ID)
+	}
+	advanceTo(t, g, StepEnd)
+	_, _ = g.AdvanceStep()
+	// Need to discard 2; supply 1.
+	if err := g.DiscardSelection(active.ID, []uuid.UUID{active.Hand.Cards[0].InstanceID}); err != ErrInvalidParam {
+		t.Errorf("wrong count: got %v, want ErrInvalidParam", err)
+	}
+}
+
+// TestS134NoMaxHandSizeBypassesPrompt verifies that
+// MaxHandSize == NoMaxHandSize (-1) skips the discard prompt
+// entirely — the Reliquary Tower / Thought Vessel effect.
+func TestS134NoMaxHandSizeBypassesPrompt(t *testing.T) {
+	g := newActiveGame(t)
+	active := g.Seats[0]
+	if err := g.SetMaxHandSize(active.ID, NoMaxHandSize); err != nil {
+		t.Fatalf("SetMaxHandSize: %v", err)
+	}
+	for active.Hand.Size() < 15 {
+		_ = g.DrawCard(active.ID)
+	}
+	advanceTo(t, g, StepEnd)
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatalf("AdvanceStep: %v", err)
+	}
+	if len(g.DiscardPending) != 0 {
+		t.Errorf("DiscardPending non-empty for no-cap player: %+v", g.DiscardPending)
+	}
+	if g.Turn.ActiveSeat == 0 {
+		t.Errorf("cursor stuck on seat 0 despite no-cap (no prompt expected)")
+	}
+}
+
+// TestS134SetMaxHandSizeRejectsBadValue covers the validation gate.
+func TestS134SetMaxHandSizeRejectsBadValue(t *testing.T) {
+	g := newActiveGame(t)
+	if err := g.SetMaxHandSize(g.Seats[0].ID, -2); err != ErrInvalidParam {
+		t.Errorf("got %v, want ErrInvalidParam for -2", err)
+	}
+}
+
 // TestS131SplitSecondClearsOnResolve verifies that after the split-
 // second item resolves, SplitSecondActive flips back to false and
 // new casts go through.

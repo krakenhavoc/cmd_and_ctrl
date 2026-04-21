@@ -1056,6 +1056,99 @@ func (g *Game) drainPendingTriggersAPNAPLocked() {
 	g.recomputeSplitSecondLocked()
 }
 
+// DiscardSelection processes the active player's interactive
+// cleanup-step discard (S13.4). Validates that the caller is in the
+// pending map, that the supplied card IDs all live in the caller's
+// hand, and that the count exactly matches the over-max amount the
+// engine recorded at cleanup entry. On success, moves each card to
+// the caller's graveyard and clears their pending entry. When the
+// pending map drains, re-fires the cleanup hook so the cursor
+// resumes its auto-advance.
+//
+// Returns ErrInvalidParam for wrong count, ErrCardNotFound for IDs
+// not in the caller's hand. Returns nil and a no-op for callers not
+// in the pending map (idempotent — clients can dismiss-without-
+// dispatching).
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+//
+// S13.4.
+func (g *Game) DiscardSelection(playerID uuid.UUID, cardIDs []uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	want, owed := g.DiscardPending[playerID]
+	if !owed {
+		// Not in the pending map — caller has nothing to do; treat
+		// as no-op so a stale dismiss doesn't error.
+		return nil
+	}
+	if len(cardIDs) != want {
+		return ErrInvalidParam
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	// Pre-validate: every supplied card must be in the caller's hand.
+	for _, id := range cardIDs {
+		if !p.Hand.Contains(id) {
+			return ErrCardNotFound
+		}
+	}
+	for _, id := range cardIDs {
+		if _, err := MoveCard(p.Hand, p.Graveyard, id); err != nil {
+			return err
+		}
+	}
+	delete(g.DiscardPending, playerID)
+	if len(g.DiscardPending) == 0 {
+		g.DiscardPending = nil
+	}
+	// Resume the cleanup auto-advance if the pending map is now
+	// empty. Re-fires runStepEntryHooksLocked which rechecks
+	// DiscardPending; with the map empty, the auto-advance branch
+	// runs and the cursor walks on to the next seat's Untap.
+	if len(g.DiscardPending) == 0 && g.Turn.Step == StepCleanup {
+		g.runStepEntryHooksLocked()
+	}
+	return nil
+}
+
+// SetMaxHandSize updates the named player's per-player hand-size
+// cap. Sandbox-only — used by the S14+ effect catalog for
+// Reliquary Tower / Thought Vessel / Library of Leng / Spellbook /
+// Null Profusion / Venser's Journal style cards. Until the catalog
+// lands, this is also exposed as a manual sandbox helper for
+// playgroup adjustments.
+//
+// `value` is clamped to NoMaxHandSize (-1) for "no cap"; any other
+// negative value is rejected with ErrInvalidParam. Doesn't fire
+// the SBA loop — the cap only matters at cleanup-step entry, which
+// has its own re-check via populateDiscardPendingLocked.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+//
+// S13.4.
+func (g *Game) SetMaxHandSize(playerID uuid.UUID, value int) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	if value < NoMaxHandSize {
+		return ErrInvalidParam
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	p.MaxHandSize = value
+	return nil
+}
+
 // CounterSpell removes a spell from the stack and routes its card to
 // `dst` (defaulting to the spell's owner's graveyard). Implements
 // the Counterspell / Hinder / Remand / Spell Crumple shape — the
