@@ -153,7 +153,13 @@
     <PileBar {seat} {exile} {isSelf} {sendAction} onDrawCard={isSelf ? onDrawCard : undefined} />
   </div>
   <div class="grid-hand">
-    <Hand hand={seat.hand} {isSelf} onPlayCard={isSelf ? onPlayCard : undefined} />
+    <Hand
+      hand={seat.hand}
+      {isSelf}
+      onPlayCard={isSelf ? onPlayCard : undefined}
+      snap={view}
+      {viewerID}
+    />
   </div>
   <div class="grid-rightcol">
     <BattlefieldColumn

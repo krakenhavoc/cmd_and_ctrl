@@ -95,9 +95,9 @@ describe("settings", () => {
 
   it("falls back to defaults when stored blob is corrupt", async () => {
     localStorage.setItem("cmdctrl.settings.v1", "{not valid json");
-    const { settings } = await freshModule();
+    const { settings, SETTINGS_VERSION } = await freshModule();
     // No exception; defaults loaded.
-    expect(get(settings).__version).toBe(1);
+    expect(get(settings).__version).toBe(SETTINGS_VERSION);
   });
 
   it("updateSettings does a shallow path merge", async () => {
@@ -122,12 +122,12 @@ describe("settings", () => {
   });
 
   it("resetSettings restores defaults without losing the schema version", async () => {
-    const { settings, updateSettings, resetSettings } = await freshModule();
+    const { settings, updateSettings, resetSettings, SETTINGS_VERSION } = await freshModule();
     updateSettings("audio", "muted", true);
     expect(get(settings).audio.muted).toBe(true);
     resetSettings();
     expect(get(settings).audio.muted).toBe(false);
-    expect(get(settings).__version).toBe(1);
+    expect(get(settings).__version).toBe(SETTINGS_VERSION);
   });
 
   it("export → import is a round-trip", async () => {

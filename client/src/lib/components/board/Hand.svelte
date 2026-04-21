@@ -11,19 +11,26 @@
   //     visible at a glance without leaking content.
 
   import type { Action } from "svelte/action";
-  import type { CardView, ZoneView } from "../../protocol";
+  import type { CardView, GameView, ZoneView } from "../../protocol";
   import Card from "./Card.svelte";
   import { dealIn, dealOut } from "../../animations";
   import { play } from "../../sounds";
   import { settings } from "../../settings";
+  import { canCastFromHand, type Legality } from "../../timing";
 
   interface Props {
     hand: ZoneView;
     isSelf: boolean;
     onPlayCard?: (card: CardView) => void;
+    // S13.3 — when present, each hand card is checked for legality
+    // and rendered greyed-out with a reason tooltip if illegal.
+    // Self hands only; opponent hands always render face-down with
+    // no per-card legality (we don't know what they are).
+    snap?: GameView | null;
+    viewerID?: string | null;
   }
 
-  const { hand, isSelf, onPlayCard }: Props = $props();
+  const { hand, isSelf, onPlayCard, snap = null, viewerID = null }: Props = $props();
 
   // Synth a list of N face-down placeholder cards for opponent hands.
   // The server omits real CardView contents for opponent hands, so we
@@ -77,6 +84,16 @@
     onPlayCard?.(card);
   }
 
+  // legalityFor computes the cast-from-hand legality for a single
+  // card. Cheap enough to call on every render; the predicate just
+  // walks a few snapshot fields. Returns a "spectator" Legality for
+  // opponent hands so the .timing-disabled class stays off (we
+  // never grey opponent hands — face-down already says "not yours").
+  function legalityFor(c: CardView): Legality {
+    if (!isSelf) return { legal: true };
+    return canCastFromHand(c, snap, viewerID);
+  }
+
   // dealIn / dealOut are Svelte transitions (no mount/destroy callback
   // surface), so this action piggy-backs on the same element's
   // lifecycle: mount = "card entered hand" (draw), destroy = "card
@@ -100,8 +117,11 @@
   aria-label={isSelf ? "your hand" : "opponent hand"}
 >
   {#each cards as c, i (c.instance_id)}
+    {@const leg = legalityFor(c)}
     <div
       class="hand-slot"
+      class:timing-disabled={isSelf && !leg.legal}
+      title={isSelf && !leg.legal ? leg.reason : undefined}
       style:transform={layout === "stacked"
         ? "none"
         : `rotate(${fanAngle(i, cards.length)}deg) translateY(${fanLift(i, cards.length)}px)`}
@@ -109,7 +129,11 @@
       <!-- Inner wrapper carries the deal-in / deal-out transforms so
            they don't fight the .hand-slot's fan-layout transform. -->
       <div class="deal-wrap" in:dealIn out:dealOut use:handLifecycle>
-        <Card card={c} faceDown={!isSelf} onClick={isSelf ? () => handleCardClick(c) : undefined} />
+        <Card
+          card={c}
+          faceDown={!isSelf}
+          onClick={isSelf && leg.legal ? () => handleCardClick(c) : undefined}
+        />
       </div>
     </div>
   {/each}
@@ -175,5 +199,11 @@
     font-size: 11px;
     color: #6c7a99;
     align-self: center;
+  }
+  /* S13.3 — illegal-cast greying. Hover/zoom still works; only the
+     click affordance is muted via the conditional onClick on Card. */
+  .hand-slot.timing-disabled {
+    opacity: 0.55;
+    filter: grayscale(0.4);
   }
 </style>
