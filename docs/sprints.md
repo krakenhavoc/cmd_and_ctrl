@@ -657,30 +657,25 @@ After S13 + S13.1, the server enforces timing: who holds priority, sorcery-speed
 
 ### Tasks
 
-**Client legality helpers (`client/src/lib/timing.ts` — new file):**
-- [ ] `canCastFromHand(card, snap, viewerID): { legal, reason? }` — checks viewer-has-priority + correct step/phase + stack-empty (sorcery) + split-second clear
-- [ ] `canActivateAbility(card, ability, snap, viewerID)` — sorcery-speed gate for non-mana activations
-- [ ] `canPlayLand(card, snap, viewerID)` — checks land-drops-remaining + main phase + stack empty
-- [ ] `canActivateLoyalty(card, snap, viewerID)` — sorcery-speed + once-per-turn from `LoyaltyActivatedThisTurn`
-- [ ] Reasons are plain English (not CR citations): "Not your turn", "Stack isn't empty", "Already activated this turn", "Already played a land this turn", "Split second spell on stack"
+**Client legality helpers (`client/src/lib/timing.ts`):**
+- [x] `canCastFromHand(card, snap, viewerID): { legal, reason? }` — checks priority + sorcery-speed window for non-instants + split-second clear; lands gated identically to sorceries (CR 305.3)
+- [x] `canActivateAbility(card, snap, viewerID)` — instant-speed activation predicate (priority + split-second clear)
+- [x] `canActivateLoyalty(card, snap, viewerID, alreadyActivated?)` — sorcery-speed + battlefield-presence; the once-per-turn flag is best-effort callee-tracked since `LoyaltyActivatedThisTurn` is server-only
+- [x] `canPassPriority(snap, viewerID)` — false during Untap / Cleanup (NoPriority sentinel) and when viewer isn't the holder
+- [x] Reasons are plain English: "Not your priority", "Stack isn't empty", "Only at sorcery speed", "Split second on the stack", "Lands only on your main phase", "Already activated this turn"
 
 **Hand component:**
-- [ ] Each card runs `canCastFromHand` in a `$derived`; when illegal, applies `.timing-disabled` (opacity 0.55, pointer-events: none, slight grayscale)
-- [ ] Hover/zoom still works — only the click affordance is disabled
-- [ ] Tooltip on hover shows the legality reason
+- [x] Each card runs `canCastFromHand` in a `$derived`; illegal cards get `.timing-disabled` (opacity 0.55 + grayscale 0.4) and the click handler is detached
+- [x] Hover/zoom still works — only the click affordance is muted
+- [x] Tooltip on the slot exposes the legality reason
 
-**Battlefield + ability dialog:**
-- [ ] Each ability row in the right-click ability dialog ([S13.1](#s131--stack-castresolvetargetcountertriggersba)) renders disabled with reason if illegal
-- [ ] Loyalty abilities greyed with "Already activated this turn" / "Stack isn't empty" / "Not your main phase"
-
-**Toolbar:**
-- [ ] `pass_priority` greys when sentinel says no priority OR when viewer doesn't hold priority
-- [ ] `play_land` greys when used / not main / stack non-empty
-- [ ] `advance_step` / `pass_to_next_stop` follow existing S13 sentinel rules
+**Toolbar / battlefield / ability dialog:**
+- [ ] Toolbar pass-priority button still uses pre-S13.3 `viewerHasPriority` derivation (matches `canPassPriority` for the common case); CastDialog / AbilityDialog UX integration follows when those land alongside S13.1's deferred dialogs
+- [ ] Loyalty greyness in the ability dialog ships with the dialog itself (S13.1 deferred UX batch)
 
 **Tests:**
-- [ ] `client/src/lib/__tests__/timing.test.ts` — table-driven, one scenario per reason string, fake snapshots
-- [ ] Manual smoke: 2-tab playtest covering all 8 verification scenarios (sorceries on opponent turn, instants OK, split-second blocking, loyalty re-activation, second land drop, etc.)
+- [x] `client/src/lib/timing.test.ts` — 23 vitest cases covering every reason string + the spectator path
+- [ ] Manual smoke: 2-tab playtest (sorceries on opponent turn, instants OK, split-second blocking, etc.) — covered by the 5 exit criteria below
 
 ### Out of scope (stays for later)
 - **Mana-source prediction** ("can't afford this") — depends on [S15](#s15--mana-pool--auto-tapper-from-cost-vector) mana pool
