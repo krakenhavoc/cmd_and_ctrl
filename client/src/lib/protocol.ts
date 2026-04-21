@@ -277,6 +277,12 @@ export interface CardView {
   // Cleared on zone exit. Sandbox marker; must-attack-not-the-goader
   // is not enforced server-side. Added in S10.
   goaded_by?: string;
+  // S14: card is in the server's effect catalog — when it resolves
+  // (or ETBs), a registered effect fires automatically rather than
+  // requiring manual sandbox clicks. Omitted when false so
+  // non-catalog cards (the majority) don't carry the field. Drives
+  // the gold-leaf "auto" badge on Card.svelte.
+  auto?: boolean;
 }
 
 export interface TurnView {

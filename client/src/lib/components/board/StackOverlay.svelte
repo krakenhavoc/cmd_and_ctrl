@@ -136,6 +136,14 @@
               {#if item.kind !== "spell"}
                 <span class="kind-chip">{item.kind}</span>
               {/if}
+              {#if cardByID.get(item.id)?.auto}
+                <span
+                  class="auto-chip"
+                  title="this card auto-resolves — effect fires when priority passes to empty stack"
+                >
+                  auto
+                </span>
+              {/if}
             </div>
             {#if item.targets && item.targets.length > 0}
               <div class="target-text">{targetLabel(item)}</div>
@@ -338,6 +346,17 @@
     background: #1a2335;
     color: #9aa5cd;
     border: 1px solid #2e3a55;
+  }
+  .auto-chip {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(80, 60, 0, 0.7);
+    color: #ffd07a;
+    border: 1px solid #c8a86a;
+    font-weight: 700;
   }
   .target-text {
     font-size: 11px;

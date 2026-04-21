@@ -182,6 +182,15 @@
     {#if card.goaded_by}
       <span class="badge goad" title="goaded" aria-label="goaded">GOAD</span>
     {/if}
+    {#if card.auto}
+      <span
+        class="badge auto"
+        title="auto-resolving card — effect fires on resolve"
+        aria-label="auto-resolving"
+      >
+        AUTO
+      </span>
+    {/if}
     <CounterPips counters={card.counters} />
     {#if (card.damage_marked ?? 0) > 0}
       <span class="badge damage" title={`${card.damage_marked} damage marked`} aria-label="damage">
@@ -192,6 +201,15 @@
     <span class="name-fallback">{card.name}</span>
     {#if card.goaded_by}
       <span class="badge goad" title="goaded" aria-label="goaded">GOAD</span>
+    {/if}
+    {#if card.auto}
+      <span
+        class="badge auto"
+        title="auto-resolving card — effect fires on resolve"
+        aria-label="auto-resolving"
+      >
+        AUTO
+      </span>
     {/if}
     <CounterPips counters={card.counters} />
     {#if (card.damage_marked ?? 0) > 0}
@@ -288,6 +306,18 @@
     right: 2px;
     color: #ff7a7a;
     background: rgba(80, 0, 0, 0.85);
+  }
+  .badge.auto {
+    /* Bottom-left so the AUTO pip sits opposite the damage badge
+       (bottom-right) and below the CMD / GOAD badges (top).
+       Gold-on-black matches the CMD palette for "this card is
+       rules-special." Added in S14 sub-PR 3. */
+    top: auto;
+    bottom: 2px;
+    left: 2px;
+    color: #ffd07a;
+    background: rgba(80, 60, 0, 0.85);
+    border: 1px solid #c8a86a;
   }
   .badge.damage {
     /* Bottom-right so it stays clear of the goad / CMD badges and

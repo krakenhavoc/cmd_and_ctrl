@@ -297,6 +297,12 @@ type CardView struct {
 	// when not goaded. Cleared on zone exit. Sandbox marker — the
 	// must-attack-not-the-goader rule is not enforced. Added in S10.
 	GoadedBy string `json:"goaded_by,omitempty"`
+	// Auto signals that this card is in the S14 effect catalog —
+	// when it resolves (or ETBs), a registered effect fires
+	// automatically rather than relying on manual sandbox clicks.
+	// Omitted when false so non-catalog cards (the majority) don't
+	// carry the field on the wire. Added in S14 sub-PR 3.
+	Auto bool `json:"auto,omitempty"`
 }
 
 // TurnView is the wire representation of the turn cursor. PriorityHolder
@@ -770,6 +776,7 @@ func viewOfCard(c game.Card) CardView {
 		BattleY:      c.BattleY,
 		DamageMarked: c.DamageMarked,
 		FaceDown:     c.FaceDown,
+		Auto:         c.ScryfallID != "" && game.IsAutoCard(c.ScryfallID),
 		knowers:      knowers,
 	}
 	if c.AttackingTarget != uuid.Nil {
