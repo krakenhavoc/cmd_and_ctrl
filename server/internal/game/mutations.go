@@ -1926,6 +1926,8 @@ func (g *Game) PassTurn() error {
 	// untaps and advances past Untap (no priority) so the cursor
 	// lands at Upkeep.
 	g.runStepEntryHooksLocked()
+	// CR 117.5 / 704.3: new priority grant → run SBAs.
+	g.runStateChecksLocked()
 	return nil
 }
 

@@ -381,6 +381,13 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	g.Turn = g.Turn.advance(len(g.Seats))
 	g.onTurnAdvanceLocked(prev, g.Turn)
 	g.runStepEntryHooksLocked()
+	// CR 117.5 / 704.3: SBAs fire whenever a player would get
+	// priority. AdvanceStep lands on a priority-granting step (Untap
+	// and Cleanup auto-advance through their hooks), so this is such
+	// a boundary — run the SBA + APNAP-trigger-drain loop to catch
+	// 0-life losses, lethal damage, 0-loyalty planeswalkers, etc.
+	// that accumulated during the prior step without a priority pass.
+	g.runStateChecksLocked()
 	return g.Turn, nil
 }
 
