@@ -1,0 +1,64 @@
+package effects
+
+import "fmt"
+
+// registry is the package-level card-effect catalog. Populated at
+// init() time by each per-card file calling Register(Spec{...}).
+// Reads (Lookup / All) are zero-lock because Go's init() ordering
+// serialises writes before any reader touches the map. Post-init
+// mutation is disallowed — tests that need to inject specs call
+// registerForTest, which is only visible within the test binary.
+var registry = map[string]Spec{}
+
+// Register adds a catalog entry. Called once per card at init()
+// time. Panics on duplicate ScryfallID — a collision means a
+// card file was copy-pasted without updating the ID, which is a
+// logic bug we want to surface loudly at server boot rather than
+// silently letting one spec win.
+//
+// Empty ScryfallID is rejected for the same reason: a spec
+// without a key would shadow Lookup() results for the empty string
+// and mask bugs in the caller.
+func Register(spec Spec) {
+	if spec.ScryfallID == "" {
+		panic(fmt.Sprintf("effects.Register: empty ScryfallID on %q", spec.Name))
+	}
+	if existing, ok := registry[spec.ScryfallID]; ok {
+		panic(fmt.Sprintf("effects.Register: duplicate ScryfallID %s (existing %q, new %q)",
+			spec.ScryfallID, existing.Name, spec.Name))
+	}
+	registry[spec.ScryfallID] = spec
+}
+
+// Lookup returns the Spec for a given Scryfall card ID. The second
+// return is false when the ID is not in the catalog — that's the
+// signal for the resolution path to fall back to manual sandbox
+// behaviour. Callers MUST check this; the zero Spec{} is semantically
+// distinct from a real registered spec (no OnResolve, no OnETB),
+// which means a missed check would silently apply nothing rather
+// than triggering the manual fallback correctly.
+func Lookup(scryfallID string) (Spec, bool) {
+	s, ok := registry[scryfallID]
+	return s, ok
+}
+
+// All returns a snapshot slice of every registered Spec. Order is
+// undefined (map iteration). Used by the "auto"-bit serialiser on
+// CardView (sub-PR 3) and by tests that want to iterate the whole
+// catalog. The returned slice is freshly allocated — callers can
+// mutate it freely without leaking into the registry.
+func All() []Spec {
+	out := make([]Spec, 0, len(registry))
+	for _, s := range registry {
+		out = append(out, s)
+	}
+	return out
+}
+
+// Has reports whether the catalog knows the given Scryfall ID.
+// Convenience wrapper for the auto-badge bit (sub-PR 3). Equivalent
+// to `_, ok := Lookup(id); return ok`.
+func Has(scryfallID string) bool {
+	_, ok := registry[scryfallID]
+	return ok
+}
