@@ -2721,6 +2721,77 @@ func TestS131SplitSecondClearsOnResolve(t *testing.T) {
 	}
 }
 
+// TestAdvanceStepRunsSBAs covers CR 117.5 / 704.3: state-based
+// actions are checked at every priority-granting boundary, including
+// step transitions driven by AdvanceStep (not only by PassPriority).
+// Regression: AdvanceStep used to skip the SBA loop, so a
+// planeswalker that hit 0 loyalty mid-step stayed on the battlefield
+// until the next PassPriority.
+func TestAdvanceStepRunsSBAs(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	owner := g.Seats[0]
+	pwID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: pwID,
+		Name:       "Jace",
+		TypeLine:   "Legendary Planeswalker — Jace",
+		Owner:      owner.ID,
+		Controller: owner.ID,
+	})
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatalf("AdvanceStep: %v", err)
+	}
+	if g.Battlefield.Contains(pwID) {
+		t.Errorf("0-loyalty planeswalker still on battlefield after AdvanceStep")
+	}
+	if !owner.Graveyard.Contains(pwID) {
+		t.Errorf("planeswalker did not route to owner graveyard")
+	}
+}
+
+// TestAdvanceStepEliminatesZeroLife covers CR 704.5a: a player at 0
+// life loses the game on the next SBA check. AdvanceStep is a valid
+// SBA trigger point, so stepping through end-of-turn with a player
+// at 0 life should eliminate them without needing an explicit
+// PassPriority.
+func TestAdvanceStepEliminatesZeroLife(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	target := g.Seats[1]
+	target.ChangeLife(-StartingLife) // exact 0
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatalf("AdvanceStep: %v", err)
+	}
+	if !target.Eliminated {
+		t.Errorf("player at 0 life not eliminated after AdvanceStep")
+	}
+}
+
+// TestPassTurnRunsSBAs mirrors TestAdvanceStepRunsSBAs for the
+// "next turn" shortcut. PassTurn lands on a priority-granting step
+// (Upkeep, via the auto-advance past Untap), so SBAs should fire
+// once the cursor settles.
+func TestPassTurnRunsSBAs(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	owner := g.Seats[0]
+	pwID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: pwID,
+		Name:       "Jace",
+		TypeLine:   "Legendary Planeswalker — Jace",
+		Owner:      owner.ID,
+		Controller: owner.ID,
+	})
+	if err := g.PassTurn(); err != nil {
+		t.Fatalf("PassTurn: %v", err)
+	}
+	if g.Battlefield.Contains(pwID) {
+		t.Errorf("0-loyalty planeswalker still on battlefield after PassTurn")
+	}
+	if !owner.Graveyard.Contains(pwID) {
+		t.Errorf("planeswalker did not route to owner graveyard")
+	}
+}
+
 func TestReadSnapshotConsistency(t *testing.T) {
 	g := newActiveGame(t)
 	var life int
