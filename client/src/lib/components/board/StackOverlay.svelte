@@ -96,13 +96,8 @@
     {/if}
     <span class="label">stack · {items.length}</span>
     <div class="items">
-      {#each items as item, i (item.id)}
-        <div
-          class="item-row"
-          style:top="{i * 36}px"
-          style:z-index={i + 1}
-          style:--seat-color={seatColor(controllerSeatNum(item))}
-        >
+      {#each items as item (item.id)}
+        <div class="item-row" style:--seat-color={seatColor(controllerSeatNum(item))}>
           {#if cardByID.has(item.id)}
             <div class="thumb">
               <Card card={cardByID.get(item.id) as CardView} />
@@ -114,6 +109,9 @@
           {/if}
           <div class="meta">
             <div class="line caster">{controllerName(item)}</div>
+            {#if cardByID.has(item.id) && cardByID.get(item.id)?.name}
+              <div class="line spell-name">{cardByID.get(item.id)?.name}</div>
+            {/if}
             {#if item.label}
               <div class="line label-text">{item.label}</div>
             {/if}
@@ -219,10 +217,13 @@
   .thumb {
     width: 56px;
     height: 78px;
+    /* Cascade card size to the child Card via the CSS vars it reads
+       for --card-w / --card-h, so the image fills the thumb rather
+       than rendering at its 80x112 default and getting cropped. */
+    --card-w: 56px;
+    --card-h: 78px;
     overflow: hidden;
     border-radius: 3px;
-    transform: scale(0.7);
-    transform-origin: top left;
   }
   .ability-thumb {
     width: 40px;
@@ -248,6 +249,10 @@
   }
   .meta .caster {
     color: var(--seat-color);
+    font-weight: 600;
+  }
+  .meta .spell-name {
+    color: #e0e6f5;
     font-weight: 600;
   }
   .meta .target-text {
