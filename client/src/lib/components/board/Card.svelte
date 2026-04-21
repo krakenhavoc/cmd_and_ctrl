@@ -55,6 +55,12 @@
     card.scryfall_id ? `/cards/${card.scryfall_id}/image?size=${size}` : null,
   );
 
+  // Real MTG card back bundled as a static asset under client/public.
+  // Two sizes to keep hand/battlefield thumbnails snappy while the
+  // hover-zoom overlay gets a crisper back. Served at /card-back*.jpg
+  // by Vite and in production by whoever serves the built client.
+  const backSrc = $derived(size === "normal" ? "/card-back.jpg" : "/card-back-small.jpg");
+
   // S13.5 — render the back when the wire says face-down OR when
   // the card is one the viewer doesn't know (server redacted the
   // characteristics, so we have nothing meaningful to render face-
@@ -78,7 +84,11 @@
   }
 
   function handleEnter(): void {
-    if (faceDown) return;
+    // Suppress hover-zoom for any back-rendered card: the explicit
+    // faceDown prop AND the server-redacted case (known_by_you ===
+    // false). Either way the viewer doesn't have the characteristics
+    // to reveal in the overlay.
+    if (showBack) return;
     cancelHoverTimer();
     const delay = $settings.display.hoverDelayMs;
     if (delay <= 0) {
@@ -156,7 +166,14 @@
   onkeydown={handleKeydown}
 >
   {#if showBack}
-    <div class="back"></div>
+    <img
+      class="back-img"
+      src={backSrc}
+      alt="card back"
+      loading="lazy"
+      decoding="async"
+      draggable="false"
+    />
   {:else if imgSrc}
     <img src={imgSrc} alt={card.name} loading="lazy" decoding="async" draggable="false" />
     {#if card.is_commander}
@@ -226,10 +243,12 @@
   .card.face-down {
     background: #1a1f35;
   }
-  .back {
+  .back-img {
     width: 100%;
     height: 100%;
-    background: repeating-linear-gradient(45deg, #1a1f35, #1a1f35 6px, #232842 6px, #232842 12px);
+    object-fit: cover;
+    display: block;
+    pointer-events: none;
   }
   img {
     width: 100%;
