@@ -209,7 +209,116 @@ unused — they can be removed in a later cleanup PR.)
 
 ---
 
-## 7. Things to explicitly *not* do
+## 7. Adding a catalog card (S14+)
+
+The catalog at [server/internal/cards/effects/](server/internal/cards/effects/) is
+opt-in per Scryfall `oracle_id`. A card that isn't in the catalog keeps its
+pre-S14 manual sandbox behaviour; a card that is in the catalog resolves
+automatically at the right stack boundary. Each card is one `init()` in its
+own file — one-file-per-card keeps `git blame` clean and the merge-conflict
+surface tiny.
+
+### Recipe
+
+1. **Find the oracle ID.** The Scryfall bulk dump at
+   `data/scryfall/default-cards.json` (local only; refreshed weekly via the
+   scheduled workflow) has every printing. One-liner:
+   ```bash
+   python3 -c "import json; d=json.load(open('data/scryfall/default-cards.json')); \
+     print(next(c['oracle_id'] for c in d if c['name']=='CARD NAME'))"
+   ```
+   `oracle_id` (NOT `scryfall_id`) is the catalog key — stable across
+   printings.
+
+2. **Pick a primitive composition.** See
+   [server/internal/cards/effects/primitives.go](server/internal/cards/effects/primitives.go)
+   for the 15 primitives. Most cards are 1-2 primitives sequenced. A
+   card that can't be expressed with existing primitives either needs a new
+   primitive (add it to `primitives.go`) or a new `*ForEffect` helper on
+   `*Game` (under a lock caller already holds — follow the existing naming
+   in [server/internal/game/effect_api.go](server/internal/game/effect_api.go)).
+
+3. **Pick a `TargetMode`.** If the card has a target, declare it via
+   `Spec.TargetMode` so the client pops the targeting UI before
+   `cast_spell`. Valid values: `"any"`, `"player"`, `"creature"`,
+   `"stack_spell"`, `"card_in_graveyard"`. Empty means no prompt.
+
+4. **Write the card file.** One file per card at
+   `server/internal/cards/effects/<snake_name>.go`:
+   ```go
+   package effects
+
+   import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+   // Card Name — "full oracle text quoted."
+   //
+   // S14 sandbox simplifications (if any — enters-tapped, auto-pick,
+   // target-at-ETB deferrals, etc.). Be specific about WHAT is
+   // deferred and to which future sprint.
+   func init() {
+       Register(Spec{
+           OracleID:   "<uuid from step 1>",
+           Name:       "Card Name",
+           TargetMode: "<player / creature / ...>",
+           OnResolve: func(item *game.StackItem, ctx *Context) error {
+               // primitive composition here
+               return nil
+           },
+       })
+   }
+   ```
+   For permanents with an ETB trigger, populate `OnETB` instead of
+   (or alongside) `OnResolve`. For planeswalkers, set
+   `StartingLoyalty` — the ETB hook stamps loyalty counters
+   automatically.
+
+5. **Add a test case** in
+   [cards_test.go](server/internal/cards/effects/cards_test.go). Use
+   `newCatalogGame(t)` + `castCatalogSpell(t, g, name, typeLine, oracleID, targets)`
+   + `passPriorityAroundTable(t, g)` and assert the resulting state. For
+   OnETB tests, the ETB fires inline during resolution — no extra setup
+   needed. For library tutors, seed needles via `pushLibraryCardForTest`
+   (which uses `PushBottom` so the "first match" sandbox pick is
+   deterministic).
+
+6. **Verify.** `cd server && go test ./internal/cards/effects/...` and
+   `gofmt -l internal/cards/effects/` should both be clean. The
+   `TestNonCatalogSpellStaysSandbox` canary should still pass — it's the
+   opt-in invariant.
+
+7. **Manual smoke-test.** `CMDCTRL_DEV_SKIP_DECK_VALIDATION=1 make server-dev`
+   plus a small deck (`make dev-skip-validation` target on the top-level
+   Makefile) so the library is small enough to find your card quickly.
+   Cast it, verify the AUTO badge renders, verify the effect resolves.
+
+### When NOT to add a catalog entry
+
+- **Activated abilities** (mana rocks, +1/-1 loyalty costs, equip, etc.)
+  land with S19's activated-ability pipeline. Don't invent a shape; wait.
+- **Triggered abilities on non-ETB events** (die-to-graveyard, attack
+  triggers, "whenever you cast a spell") land with S19's listener pipeline.
+  Don't use `OnETB` as a workaround.
+- **Static abilities** (Reliquary Tower "no max hand size", Mana Drain's
+  mana gain, lord-style +1/+1 bonuses) need S16's layer system. The
+  [S16 sprint](docs/sprints.md) covers them.
+- **Replacement effects** ("enters tapped", "if would die, exile instead",
+  "draw 2 instead of 1") land with S17. Cultivate / Path's land-fetch
+  enters **untapped** in S14 — document the deferral in the card file.
+- **Cards that need a pick-from-zone UI** the client doesn't have yet —
+  e.g. "target card in any graveyard" (Regrowth / Eternal Witness) works
+  today only because S14 sandbox auto-picks the top of the controller's
+  graveyard. If the picker UX is load-bearing for the card, wait for S20
+  smart-cast.
+
+### When in doubt
+
+[ADR 0010](docs/decisions/0010-card-effect-catalog.md) captures every
+architectural decision and sandbox simplification the catalog was built
+around. Start there.
+
+---
+
+## 8. Things to explicitly *not* do
 
 - Do not add CI/CD beyond basic lint + test until there's code to protect.
 - Do not introduce a database, auth provider, or payment anything without
