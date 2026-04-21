@@ -421,10 +421,10 @@
               {#if isFresh("gameplay.strictMana")}<span class="saved">✓ saved</span>{/if}
             </label>
             <p class="help">
-              When on, the server checks your mana pool before letting a spell resolve and
-              enforces commander tax (CR&nbsp;903.8). If you're short, a toast lets you cast
-              anyway by overriding the gate for that one spell. Default is off — the sandbox
-              treats mana as paper-tracked.
+              When on, the server checks your mana pool before letting a spell resolve and enforces
+              commander tax (CR&nbsp;903.8). If you're short, a toast lets you cast anyway by
+              overriding the gate for that one spell. Default is off — the sandbox treats mana as
+              paper-tracked.
             </p>
           {:else if activeTab === "accessibility"}
             <h3>Accessibility</h3>
