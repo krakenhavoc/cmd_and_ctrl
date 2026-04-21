@@ -189,7 +189,18 @@
 
   <CombatArrows {view} {boardEl} />
   <HoverZoomOverlay />
-  <StackOverlay stack={view.stack} />
+  <StackOverlay
+    stack={view.stack}
+    stackItems={view.stack_items ?? []}
+    pendingTriggers={view.pending_triggers ?? []}
+    seats={view.seats}
+    viewerHasPriority={prioritySeatID === viewerID}
+    splitSecondActive={view.split_second_active === true}
+    onCounter={(item) => {
+      const verb = item.kind === "spell" ? "counter_spell" : "counter_ability";
+      sendAction(verb, { instance_id: item.id });
+    }}
+  />
   <CommanderDamageGrid {view} {sendAction} />
   <VotingPanel {view} {viewerID} {sendAction} />
 </div>
