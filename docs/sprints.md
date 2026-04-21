@@ -557,19 +557,20 @@ This sprint is the *foundation* for the entire S13.x rules-graft track: S13.1 (s
 ## S13.1 — Stack: cast / resolve / target / counter / trigger / SBA
 **Phase:** 7 · **Goal:** all stack-adjacent items in one sprint.
 
-- [ ] Type helpers (IsLand, IsInstant, IsSorcery, IsPermanent, …)
-- [ ] `cast_spell` action; lands route to battlefield; spells to stack
-- [ ] Auto-resolve on full priority pass
-- [ ] Targeting (announce + re-check on resolve)
-- [ ] Modes / X / distribution capture
-- [ ] Manual `announce_trigger` + APNAP-ordered queue
-- [ ] Activated abilities + loyalty (sorcery-speed, once-per-turn)
-- [ ] `counter_spell` and `counter_ability`
-- [ ] Hold-priority modifier; split-second flag
-- [ ] Commander cast tax (per-commander instance ID — fixes partner-pair collapse)
-- [ ] Commander zone replacement (CR 903.9)
-- [ ] State-based actions: lethal damage, 0 toughness, 0 life, 21 commander damage, draw from empty library
-- [ ] Leaving-game stack cleanup with target scrubbing
+- [x] Type helpers (IsLand, IsInstant, IsSorcery, IsPlaneswalker, IsBattle, IsArtifact, IsEnchantment, IsPermanent)
+- [x] `cast_spell` action; lands route to battlefield; spells to stack
+- [x] Auto-resolve on full priority pass
+- [x] Targeting (announce + re-check on resolve, CR 608.2b)
+- [x] Modes / X / distribution capture
+- [x] Manual `announce_trigger` + APNAP-ordered queue
+- [x] Activated abilities + loyalty (sorcery-speed, once-per-turn)
+- [x] `counter_spell` (with destination override) and `counter_ability`
+- [x] Hold-priority modifier; split-second flag
+- [x] Commander cast tax (per-commander instance ID via Player.CommanderCasts)
+- [x] Commander zone replacement (CR 903.9 — `move_card.as_commander` flag)
+- [x] State-based actions: lethal damage, 0 toughness, 0 life, 21 commander damage, draw from empty library
+- [x] Leaving-game stack cleanup (CR 800.4a — spells exile, abilities + triggers vanish)
+- [ ] Heavier announce-time UX: CastDialog (target picker / X / modes / distribution), AbilityDialog, inline mark-damage on creature tiles — follow-up; the wire shape already accepts the data so the basic cast loop and counter affordance are testable today
 
 **Exit criteria:** a Commander player can cast Lightning Bolt, opponent counters with Counterspell on the stack, full priority/SBA loop works end-to-end.
 
