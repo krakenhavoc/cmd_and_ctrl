@@ -118,9 +118,58 @@
   // Board passes to its child components for interactive mutations.
   // Bound at module scope so session changes (logout + re-login) pick
   // up the new viewer ID via the closure on `client`.
+  //
+  // S15: cast_spell actions get the viewer's gameplay.strictMana
+  // preference auto-stamped onto the params unless the caller has
+  // already set `strict` (e.g. the override toast injects
+  // force_cast=true and we want to skip the auto-stamp on that
+  // path). Other action types pass through unchanged.
   const sendAction = (type: string, params?: unknown, player?: string): void => {
+    if (type === "cast_spell") {
+      const strict = $settings.gameplay.strictMana;
+      const incoming = (params ?? {}) as Record<string, unknown>;
+      if (incoming.strict === undefined) {
+        params = { ...incoming, strict };
+      }
+    }
     client.sendAction(type, player, params);
   };
+
+  // S15: insufficient-mana override toast. Subscribes to the
+  // GameClient's lastError store; when an `insufficient_mana` frame
+  // lands, we capture the missing list + card_id so the override
+  // banner can surface "Cast anyway" — clicking re-fires the cast
+  // with `force_cast: true` (which the server treats as a permissive
+  // proceed without touching the pool). Cleared when the next
+  // snapshot or non-mana error arrives. lastError is already
+  // destructured at the top of this script from the GameClient.
+  let manaOverride = $state<{ cardID: string; missing: string[] } | null>(null);
+  $effect(() => {
+    const err = $lastError;
+    if (!err) {
+      manaOverride = null;
+      return;
+    }
+    if (err.code !== "insufficient_mana" || !err.cardID) {
+      manaOverride = null;
+      return;
+    }
+    manaOverride = { cardID: err.cardID, missing: err.missing ?? [] };
+  });
+  function castAnyway(): void {
+    if (!manaOverride) return;
+    const cardID = manaOverride.cardID;
+    manaOverride = null;
+    sendAction(
+      "cast_spell",
+      { instance_id: cardID, strict: true, force_cast: true },
+      viewerID ?? undefined,
+    );
+  }
+  function dismissManaOverride(): void {
+    manaOverride = null;
+    client.lastError.set(null);
+  }
 
   function back(): void {
     // settings.gameplay.confirmExit: guard the manual back-to-lobby
@@ -601,7 +650,23 @@
     </div>
   {/if}
 
-  {#if $lastError}
+  {#if manaOverride}
+    <div class="error-toast mana-override" role="alert" aria-live="polite">
+      <strong>insufficient mana</strong>
+      {#if manaOverride.missing.length > 0}
+        <span class="muted">missing {manaOverride.missing.join(" ")}</span>
+      {/if}
+      <button type="button" class="override-btn" onclick={castAnyway}>Cast anyway</button>
+      <button
+        type="button"
+        class="error-toast-close"
+        onclick={dismissManaOverride}
+        aria-label="dismiss"
+      >
+        ×
+      </button>
+    </div>
+  {:else if $lastError}
     <div class="error-toast" role="alert" aria-live="polite">
       <strong>server rejected action:</strong>
       {$lastError.message}
@@ -1265,6 +1330,28 @@
     line-height: 1;
     cursor: pointer;
     padding: 0 0.25rem;
+  }
+  /* S15 strict-mode override toast — same shell as the error
+     toast but with the gold "Cast anyway" affordance. */
+  .error-toast.mana-override {
+    background: linear-gradient(180deg, rgba(78, 56, 18, 0.95) 0%, rgba(54, 36, 8, 0.95) 100%);
+    border-color: rgba(200, 168, 106, 0.65);
+    color: #f4ead5;
+  }
+  .override-btn {
+    margin-left: 0.5rem;
+    padding: 0.3rem 0.85rem;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #ffe59a 0%, #e6b85f 100%);
+    color: #231806;
+    border: 1px solid rgba(255, 230, 160, 0.6);
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    font-size: 0.85em;
+  }
+  .override-btn:hover {
+    filter: brightness(1.05);
   }
 
   /* End-of-game banners */

@@ -134,4 +134,13 @@ var (
 	// the mana-ability rules require the cost to be payable (CR
 	// 605.1 + 118.3). Added in S15 sub-PR 2.
 	ErrAlreadyTapped = errors.New("game: card is already tapped")
+
+	// ErrInsufficientMana is the sentinel for a cast_spell gated by
+	// the S15 strict-mana mode when the caster's pool can't cover
+	// the effective cost. CastSpell wraps it in an
+	// InsufficientManaError whose Missing slice lists the unpaid
+	// symbols; callers that only need to discriminate the error
+	// class can still `errors.Is(err, ErrInsufficientMana)`.
+	// Added in S15 sub-PR 3.
+	ErrInsufficientMana = errors.New("game: insufficient mana")
 )

@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"math/rand/v2"
@@ -2790,6 +2791,186 @@ func TestPassTurnRunsSBAs(t *testing.T) {
 	if !owner.Graveyard.Contains(pwID) {
 		t.Errorf("planeswalker did not route to owner graveyard")
 	}
+}
+
+// --- S15 sub-PR 3 strict-mode cost gate ------------------------
+
+// pushTypedCardToHandWithCost is the cost-aware sibling of
+// pushTypedCardToHand. Used by the strict-mode cast tests so the
+// cost validator has something to parse.
+func pushTypedCardToHandWithCost(p *Player, name, typeLine, manaCost string) uuid.UUID {
+	c := NewCard(name, p.ID)
+	c.TypeLine = typeLine
+	c.ManaCost = manaCost
+	p.Hand.PushTop(c)
+	return c.InstanceID
+}
+
+// TestS15CastSpellPermissiveWarnsAndProceeds proves the default
+// (Strict=false) path emits an EventCostWarning and lands the
+// spell on the stack regardless of an empty pool. Sandbox-style.
+func TestS15CastSpellPermissiveWarnsAndProceeds(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	id := pushTypedCardToHandWithCost(p, "Lightning Bolt", "Instant", "{R}")
+
+	beforeEvents := len(g.Events)
+	if err := g.CastSpell(p.ID, id, CastSpellParams{}); err != nil {
+		t.Fatalf("permissive CastSpell: %v", err)
+	}
+	if !g.Stack.Contains(id) {
+		t.Errorf("permissive cast did not reach the stack")
+	}
+	// Pool unchanged.
+	if len(p.ManaPool) != 0 {
+		t.Errorf("permissive cast touched the pool: %+v", p.ManaPool)
+	}
+	// One EventCostWarning recorded for the cast.
+	sawWarning := false
+	for _, ev := range g.Events[beforeEvents:] {
+		if ev.Kind == EventCostWarning && ev.Source == id {
+			sawWarning = true
+			break
+		}
+	}
+	if !sawWarning {
+		t.Errorf("expected EventCostWarning emitted for permissive cast")
+	}
+}
+
+// TestS15CastSpellStrictRejectsWhenShort proves the strict-mode
+// gate refuses casts the pool can't cover and surfaces a
+// structured InsufficientManaError listing the missing symbols.
+func TestS15CastSpellStrictRejectsWhenShort(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	id := pushTypedCardToHandWithCost(p, "Counterspell", "Instant", "{U}{U}")
+
+	err := g.CastSpell(p.ID, id, CastSpellParams{Strict: true})
+	if err == nil {
+		t.Fatalf("strict CastSpell with empty pool should have failed")
+	}
+	var im *InsufficientManaError
+	if !errorsAs(err, &im) {
+		t.Fatalf("expected *InsufficientManaError, got %T (%v)", err, err)
+	}
+	want := []string{"{U}", "{U}"}
+	if len(im.Missing) != len(want) {
+		t.Fatalf("Missing: got %v, want %v", im.Missing, want)
+	}
+	for i, w := range want {
+		if im.Missing[i] != w {
+			t.Errorf("Missing[%d]: got %q, want %q", i, im.Missing[i], w)
+		}
+	}
+	// The cast should not have advanced state — card stays in hand.
+	if !p.Hand.Contains(id) {
+		t.Errorf("rejected cast left hand")
+	}
+	if g.Stack != nil && g.Stack.Contains(id) {
+		t.Errorf("rejected cast reached the stack")
+	}
+}
+
+// TestS15CastSpellStrictDeductsWhenPayable proves the happy path:
+// strict mode + payable pool drains the right tokens and lets the
+// cast proceed.
+func TestS15CastSpellStrictDeductsWhenPayable(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	id := pushTypedCardToHandWithCost(p, "Lightning Bolt", "Instant", "{R}")
+	p.ManaPool.AddMana(ManaToken{Color: "R"}, ManaToken{Color: "C"})
+
+	if err := g.CastSpell(p.ID, id, CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("strict CastSpell payable: %v", err)
+	}
+	if !g.Stack.Contains(id) {
+		t.Errorf("strict cast did not reach the stack")
+	}
+	// Red was spent; colorless survives.
+	if len(p.ManaPool) != 1 || p.ManaPool[0].Color != "C" {
+		t.Errorf("post-spend pool: got %+v, want 1×C", p.ManaPool)
+	}
+}
+
+// TestS15CastSpellForceCastBypassesGate proves the override toast
+// path: strict mode set, pool can't cover, but ForceCast=true lets
+// the cast proceed without touching the pool.
+func TestS15CastSpellForceCastBypassesGate(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	id := pushTypedCardToHandWithCost(p, "Counterspell", "Instant", "{U}{U}")
+
+	if err := g.CastSpell(p.ID, id, CastSpellParams{Strict: true, ForceCast: true}); err != nil {
+		t.Fatalf("force-cast: %v", err)
+	}
+	if !g.Stack.Contains(id) {
+		t.Errorf("force-cast did not reach the stack")
+	}
+	// Pool unchanged — override doesn't deduct.
+	if len(p.ManaPool) != 0 {
+		t.Errorf("force-cast touched empty pool: %+v", p.ManaPool)
+	}
+}
+
+// TestS15EffectiveCostStrictCommanderTax exercises the {2}-per-prior-
+// cast surcharge under strict mode (CR 903.8). First cast pays the
+// printed cost; second cast (after returning the commander to the
+// command zone) needs cost+{2}.
+func TestS15EffectiveCostStrictCommanderTax(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	cmdr := NewCard("Test Commander", p.ID)
+	cmdr.TypeLine = "Legendary Creature"
+	cmdr.ManaCost = "{1}{W}"
+	cmdr.IsCommander = true
+	p.Command.PushTop(cmdr)
+	id := cmdr.InstanceID
+
+	// Seed enough for {1}{W} but not for {3}{W} (1 generic + 1 white).
+	p.ManaPool.AddMana(ManaToken{Color: "W"}, ManaToken{Color: "C"})
+
+	// First cast under strict mode — should succeed.
+	if err := g.CastSpell(p.ID, id, CastSpellParams{Strict: true, FromZone: "command"}); err != nil {
+		t.Fatalf("first commander cast: %v", err)
+	}
+	if g.Seats[0].CommanderCasts[id] != 1 {
+		t.Errorf("CommanderCasts after first cast: got %d, want 1", g.Seats[0].CommanderCasts[id])
+	}
+
+	// Return the commander to the command zone (simulate "next time
+	// it would change zones, send to command instead" replacement).
+	if _, err := MoveCard(g.Stack, p.Command, id); err != nil {
+		t.Fatalf("move back to command: %v", err)
+	}
+	delete(g.StackMeta, id)
+	// Seed enough for {1}{W} ONLY (no tax) — should be too short.
+	p.ManaPool = nil
+	p.ManaPool.AddMana(ManaToken{Color: "W"}, ManaToken{Color: "C"})
+	err := g.CastSpell(p.ID, id, CastSpellParams{Strict: true, FromZone: "command"})
+	if err == nil {
+		t.Fatalf("second commander cast on cost+0 pool should have failed (tax requires +{2})")
+	}
+	var im *InsufficientManaError
+	if !errorsAs(err, &im) {
+		t.Fatalf("expected *InsufficientManaError on second cast, got %v", err)
+	}
+	// Now seed cost + {2} surcharge — should succeed.
+	p.ManaPool.AddMana(ManaToken{Color: "C"}, ManaToken{Color: "C"})
+	if err := g.CastSpell(p.ID, id, CastSpellParams{Strict: true, FromZone: "command"}); err != nil {
+		t.Fatalf("second commander cast on cost+{2} pool: %v", err)
+	}
+}
+
+// errorsAs is a tiny test-local wrapper to avoid pulling errors
+// into the import block in every TestS15 case.
+func errorsAs(err error, target any) bool {
+	return errors.As(err, target)
 }
 
 func TestReadSnapshotConsistency(t *testing.T) {

@@ -11,6 +11,12 @@ export const ErrorCode = {
   BadJSON: "bad_json",
   BadRequest: "bad_request",
   Internal: "internal",
+  // S15 sub-PR 3: the strict-mode mana-cost gate rejected a
+  // cast_spell. The error payload carries `missing` (brace-formatted
+  // unpaid symbols) and `card_id` (the rejected cast's instance) so
+  // the client can render an "Override strict mode for this cast"
+  // toast that re-fires the action with `force_cast: true`.
+  InsufficientMana: "insufficient_mana",
 } as const;
 
 export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -34,6 +40,13 @@ export interface PongPayload {
 export interface ErrorPayload {
   code: string;
   message: string;
+  // S15: brace-formatted symbols the caster's pool can't cover
+  // ("{R}", "{1}"). Populated when code === "insufficient_mana".
+  missing?: string[];
+  // S15: instance ID of the card whose cast was rejected. Lets the
+  // client correlate the toast with the cast UI without keeping an
+  // in-flight map.
+  card_id?: string;
 }
 
 // ActionPayload is sent by the client to mutate game state. See
