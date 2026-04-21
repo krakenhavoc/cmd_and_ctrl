@@ -36,6 +36,42 @@ func (g *Game) StackItemForEffect(id uuid.UUID) *StackItem {
 	return g.StackMeta[id]
 }
 
+// LookupCardForEffect returns a value copy of the card with the
+// given instance ID from whichever zone holds it, plus ok=true.
+// Empty Card and ok=false when the card isn't in any tracked zone.
+// Used by effects that need to read a target's printed
+// characteristics BEFORE moving it (Swords to Plowshares → read
+// power before exile; Path to Exile → read controller before
+// exile to drive the search clause).
+func (g *Game) LookupCardForEffect(cardID uuid.UUID) (Card, bool) {
+	z := g.findCardZoneLocked(cardID)
+	if z == nil {
+		return Card{}, false
+	}
+	for _, c := range z.Cards {
+		if c.InstanceID == cardID {
+			return c, true
+		}
+	}
+	return Card{}, false
+}
+
+// RevealHandForEffect marks every card in the named player's hand
+// as known to all seated players. Used by Thoughtseize / Duress
+// style "reveals hand" effects. No-op if the player isn't seated
+// or is eliminated.
+func (g *Game) RevealHandForEffect(playerID uuid.UUID) {
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return
+	}
+	for i := range p.Hand.Cards {
+		for _, viewer := range g.Seats {
+			p.Hand.Cards[i].AddKnower(viewer.ID)
+		}
+	}
+}
+
 // FindCardZoneForEffect returns the zone a card currently lives in,
 // or nil if the card is in none of the tracked zones. Lock-free —
 // caller must hold g.mu. Used by primitives for the CR 608.2b
