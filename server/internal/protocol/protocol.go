@@ -28,6 +28,14 @@ const (
 	CodeBadJSON    = "bad_json"
 	CodeBadRequest = "bad_request"
 	CodeInternal   = "internal"
+	// CodeInsufficientMana — the S15 strict-mode cost gate rejected
+	// a cast_spell because the caster's mana pool can't cover the
+	// effective cost. The frame carries the missing-symbols slice
+	// in ErrorPayload.Missing and the card_id of the rejected cast
+	// in ErrorPayload.CardID; the client's "Override strict mode
+	// for this cast" toast re-fires the action with `force_cast:
+	// true` to bypass the gate. Added in S15 sub-PR 3.
+	CodeInsufficientMana = "insufficient_mana"
 )
 
 // Frame is the envelope around every message. Payload is left as raw JSON
@@ -51,9 +59,28 @@ type PongPayload struct {
 }
 
 // ErrorPayload is the payload body for a Kind == KindError frame.
+// Code is one of the well-known protocol.Code* constants and is the
+// stable handle clients pattern-match on; Message is human-readable
+// debug copy. Some codes carry additional structured detail in the
+// optional fields below — the wire stays small for the common case
+// (omitempty everywhere) but the client can render richer
+// affordances without parsing the message string.
 type ErrorPayload struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
+	// Missing populates `code: "insufficient_mana"` (S15 sub-PR 3).
+	// Each entry is a brace-formatted symbol the caster's pool
+	// can't cover ("{R}", "{1}", "{W/U}"). The client renders an
+	// "Override strict mode for this cast" toast that re-fires the
+	// action with `force_cast: true`. Omitted for other codes.
+	Missing []string `json:"missing,omitempty"`
+	// CardID populates the structured-error frames that reference
+	// a specific card the user was acting on (insufficient_mana
+	// carries the card being cast). Lets the client correlate the
+	// toast with its cast UI without keeping an in-flight map of
+	// "what was the last action's instance_id?". Empty for
+	// generic errors. Added in S15 sub-PR 3.
+	CardID string `json:"card_id,omitempty"`
 }
 
 // ActionPayload is the payload body for a Kind == KindAction frame

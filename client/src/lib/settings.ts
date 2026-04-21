@@ -86,6 +86,15 @@ export interface Settings {
     // (they don't grant priority) and are absent from this map.
     // Defaults seeded by defaultStepStops().
     stepStops: Record<string, boolean>;
+    // S15: opt-in mana-cost enforcement. When true, the client
+    // tags every cast_spell action with `strict: true` and the
+    // server gates the cast on the caster's ManaPool actually
+    // covering the printed cost (plus commander tax for casts
+    // from the command zone). Default false (sandbox / paper
+    // tracking). When the gate rejects, the client surfaces an
+    // "Override strict mode for this cast" toast that re-fires
+    // the action with `force_cast: true`.
+    strictMana: boolean;
   };
 
   accessibility: {
@@ -103,7 +112,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 3;
+export const SETTINGS_VERSION = 4;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -180,6 +189,10 @@ export function defaultSettings(): Settings {
       // default — stops are the affordance for "stop here".
       autoPassPriority: true,
       stepStops: defaultStepStops(),
+      // S15 default: off. Sandbox / paper-tracking is the
+      // existing posture; players who want Arena-style "can't
+      // cast yet" enforcement opt in via Settings.
+      strictMana: false,
     },
     accessibility: {
       reduceMotion: reduced,
@@ -249,6 +262,11 @@ function migrate(raw: unknown): Settings {
   if (storedVersion === 2 && stepStopsMatchDefault(merged.gameplay.stepStops)) {
     merged.gameplay.autoPassPriority = true;
   }
+  // v3 → v4 (S15): the gameplay.strictMana toggle is new. The
+  // shallow merge above already populated it from defaults
+  // (false) for any v3 blob that omits the field; nothing else
+  // to do here — calling it out so future migrations have a
+  // hook to extend.
   return absorbLegacy(merged);
 }
 

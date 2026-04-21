@@ -787,6 +787,28 @@ func (c *Client) handleAction(frame protocol.Frame) {
 		return actions.Dispatch(room.Game, action)
 	})
 	if err != nil {
+		// S15: the structured insufficient_mana error carries the
+		// missing-symbols slice so the client's "Override strict
+		// mode for this cast" toast knows what's short. Surface it
+		// before the generic classifier flattens the wire.
+		var im *game.InsufficientManaError
+		if errors.As(err, &im) {
+			cardID := ""
+			if payload.Type == "cast_spell" {
+				var cp struct {
+					InstanceID string `json:"instance_id"`
+				}
+				_ = json.Unmarshal(payload.Params, &cp)
+				cardID = cp.InstanceID
+			}
+			c.sendErrorPayload(frame.ID, protocol.ErrorPayload{
+				Code:    protocol.CodeInsufficientMana,
+				Message: "insufficient mana to cast",
+				Missing: im.Missing,
+				CardID:  cardID,
+			})
+			return
+		}
 		code, msg := classifyActionError(err)
 		c.sendError(frame.ID, code, msg)
 		return
@@ -887,7 +909,16 @@ func (c *Client) sendRaw(raw []byte) {
 }
 
 func (c *Client) sendError(id, code, message string) {
-	payload, err := json.Marshal(protocol.ErrorPayload{Code: code, Message: message})
+	c.sendErrorPayload(id, protocol.ErrorPayload{Code: code, Message: message})
+}
+
+// sendErrorPayload sends a fully-populated ErrorPayload — used by
+// the structured-error paths that need to carry Missing / CardID
+// alongside Code + Message (S15 sub-PR 3 insufficient_mana flow).
+// Plain code+message callers should keep using sendError for
+// brevity; this helper is the escape hatch.
+func (c *Client) sendErrorPayload(id string, body protocol.ErrorPayload) {
+	payload, err := json.Marshal(body)
 	if err != nil {
 		c.log.Error("ws marshal error payload", "err", err)
 		return

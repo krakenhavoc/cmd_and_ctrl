@@ -70,7 +70,13 @@ export class GameClient {
   // with error frames addressed only to the originating client).
   // Auto-cleared after ERROR_TOAST_TTL_MS so a stale error doesn't
   // sit forever; a new error replaces the old one immediately.
-  readonly lastError: Writable<{ code: string; message: string; at: Date } | null> = writable(null);
+  readonly lastError: Writable<{
+    code: string;
+    message: string;
+    at: Date;
+    missing?: string[];
+    cardID?: string;
+  } | null> = writable(null);
   private errorClearTimer: ReturnType<typeof setTimeout> | null = null;
 
   private socket: WebSocket | null = null;
@@ -282,7 +288,13 @@ export class GameClient {
         // Surface visibly so the user sees why an action was
         // rejected. Reset the auto-clear timer so a fresh error
         // gets its full TTL even if a previous one is still showing.
-        this.lastError.set({ code, message, at: new Date() });
+        this.lastError.set({
+          code,
+          message,
+          at: new Date(),
+          missing: p?.missing,
+          cardID: p?.card_id,
+        });
         if (this.errorClearTimer !== null) {
           clearTimeout(this.errorClearTimer);
         }

@@ -146,6 +146,21 @@ const (
 	// pool owner. Amount = number of tokens that were dropped.
 	// S15 sub-PR 2.
 	EventManaPoolEmptied EventKind = "mana_pool_emptied"
+
+	// EventManaSpent — the strict-mode S15 cost gate deducted mana
+	// from a caster's pool to pay for a spell. Actor = caster,
+	// Source = card being cast. Permissive / forced casts emit
+	// EventCostWarning instead. S15 sub-PR 3.
+	EventManaSpent EventKind = "mana_spent"
+
+	// EventCostWarning — a cast_spell action proceeded under the S15
+	// permissive-default cost path OR under a strict-mode override
+	// (ForceCast=true) despite the pool not covering the cost.
+	// Breadcrumb for the client's auto-toast UI and a debug signal
+	// for operators that want to audit "did the caster actually pay
+	// for this?" Actor = caster, Source = card being cast.
+	// S15 sub-PR 3.
+	EventCostWarning EventKind = "cost_warning"
 )
 
 // Event is a single entry in the per-game event log. Tagged union

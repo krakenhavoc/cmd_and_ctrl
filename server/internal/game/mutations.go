@@ -208,7 +208,43 @@ type CastSpellParams struct {
 	Distribution map[uuid.UUID]int
 	HoldPriority bool
 	SplitSecond  bool
+
+	// Strict enables the S15 mana-cost gate. When set, the server
+	// parses the card's ManaCost into an effective cost (plus
+	// commander tax for casts from the command zone), checks the
+	// caster's ManaPool, rejects with ErrInsufficientMana when the
+	// pool can't cover it, and deducts on success. Sourced from the
+	// client's `gameplay.strictMana` setting — the action payload
+	// carries it per-cast rather than round-tripping through a
+	// server-side preference. Default false (permissive).
+	Strict bool
+
+	// ForceCast overrides the Strict gate for this one cast. Fired
+	// by the client's "Cast anyway" toast after an insufficient-mana
+	// error. Implies Strict (the user is explicitly overriding a
+	// strict gate that just rejected them), but the server treats
+	// it as a permissive proceed: no mana is deducted and an
+	// EventCostWarning is emitted. Default false.
+	ForceCast bool
 }
+
+// InsufficientManaError is returned by CastSpell when the Strict
+// gate is engaged and the caller's ManaPool can't cover the
+// effective cost. Carries the list of missing symbols so the
+// client's "Cast anyway" toast can render exactly what's short
+// ("{R}{R}" vs "{1}"). Wraps the sentinel error so callers doing
+// errors.Is(err, ErrInsufficientMana) still match.
+type InsufficientManaError struct {
+	Missing []string
+}
+
+func (e *InsufficientManaError) Error() string {
+	return "game: insufficient mana"
+}
+
+// Unwrap lets errors.Is(err, ErrInsufficientMana) still match a
+// *InsufficientManaError in the dispatcher / protocol layer.
+func (e *InsufficientManaError) Unwrap() error { return ErrInsufficientMana }
 
 // CastSpell is the canonical "play a card from hand" verb (CR 601).
 // Lands route directly to the battlefield — they're a special action
@@ -305,6 +341,16 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		g.fireETBHookLocked(moved.InstanceID, moved.OracleID)
 		return nil
 	}
+	// S15 strict-mode cost gate. Only engaged for non-land casts —
+	// lands have no mana cost, and the land-cast branch above has
+	// already returned. Strict + payable deducts the cost from the
+	// pool; strict + not payable + not forced rejects with a
+	// structured InsufficientManaError; permissive or forced emits
+	// an EventCostWarning and proceeds without touching the pool
+	// (sandbox posture — paper tracking remains valid).
+	if err := g.applyCastCostLocked(p, card, params, cardID); err != nil {
+		return err
+	}
 	// Non-land: route through the stack. The card lives in
 	// Game.Stack; the announce-time choices live in StackMeta.
 	if _, err := MoveCard(src, g.Stack, cardID); err != nil {
@@ -349,6 +395,85 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		CardID: cardID,
 	})
 	return nil
+}
+
+// applyCastCostLocked enforces the S15 strict-mode mana-cost gate.
+// Caller must hold g.mu and have already validated the card lives
+// in the source zone. The function decides one of three outcomes:
+//
+//  1. **Strict, payable** — deduct the effective cost from the
+//     caster's ManaPool and emit no warning. The cast proceeds
+//     normally with the deducted pool.
+//  2. **Strict, not payable, not ForceCast** — return an
+//     *InsufficientManaError carrying the missing-symbols slice.
+//     Pool is unchanged; the cast is rejected.
+//  3. **Permissive OR ForceCast** — emit EventCostWarning and
+//     leave the pool alone. Lets the player track mana on paper
+//     and lets the strict-mode override toast bypass the gate
+//     for one cast without consuming mana the caller may not
+//     have actually paid.
+//
+// The "effective cost" parses the printed ManaCost and adds
+// {2}-per-prior-cast for casts from the command zone (CR 903.8).
+// Empty / unparseable ManaCost short-circuits the gate (treats
+// the card as costless — matches the sandbox posture for cards
+// the importer couldn't parse). Caller must hold g.mu.
+func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams, cardID uuid.UUID) error {
+	cost, err := g.effectiveCostLocked(p, card, params)
+	if err != nil {
+		// Unparseable ManaCost — treat as costless so a Scryfall
+		// gap doesn't wedge sandbox casts. Emit a warning for
+		// debug visibility.
+		g.EmitEvent(Event{
+			Kind:     EventCostWarning,
+			Actor:    p.ID,
+			Source:   cardID,
+			ErrorMsg: err.Error(),
+		})
+		return nil
+	}
+	if !params.Strict || params.ForceCast {
+		// Permissive default OR strict-mode override. Don't touch
+		// the pool; just emit a warning so the client can render
+		// the toast / event-log breadcrumb.
+		g.EmitEvent(Event{
+			Kind:   EventCostWarning,
+			Actor:  p.ID,
+			Source: cardID,
+		})
+		return nil
+	}
+	if !p.ManaPool.CanPay(cost, params.XValue) {
+		return &InsufficientManaError{Missing: p.ManaPool.Missing(cost, params.XValue)}
+	}
+	// Payable under strict mode — commit the spend.
+	p.ManaPool.SpendMana(cost, params.XValue)
+	g.EmitEvent(Event{
+		Kind:   EventManaSpent,
+		Actor:  p.ID,
+		Source: cardID,
+	})
+	return nil
+}
+
+// effectiveCostLocked parses the card's printed ManaCost and adds
+// the commander tax surcharge for casts from the command zone
+// (CR 903.8 — each previous cast of THIS commander adds {2} to the
+// cost). The CommanderCasts counter is incremented AFTER CastSpell
+// reaches the stack, so reading it here returns the prior-cast
+// count: first cast pays cost+0, second pays cost+2, third pays
+// cost+4. Non-command casts return the raw parsed cost. Errors on
+// an unparseable ManaCost.
+func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams) (ParsedCost, error) {
+	cost, err := ParseCost(card.ManaCost)
+	if err != nil {
+		return ParsedCost{}, err
+	}
+	if params.FromZone == "command" {
+		tax := p.CommanderCasts[card.InstanceID]
+		cost.Generic += tax * 2
+	}
+	return cost, nil
 }
 
 // castSourceZoneLocked resolves the FromZone string to the zone

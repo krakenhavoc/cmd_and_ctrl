@@ -322,6 +322,12 @@ func Dispatch(g *game.Game, a Action) error {
 			Distribution map[string]int   `json:"distribution,omitempty"`
 			HoldPriority bool             `json:"hold_priority,omitempty"`
 			SplitSecond  bool             `json:"split_second,omitempty"`
+			// S15 sub-PR 3 — strict-mode flag + override hatch.
+			// Strict comes from the client's gameplay.strictMana
+			// setting; ForceCast is set by the override toast that
+			// follows an insufficient_mana error frame.
+			Strict    bool `json:"strict,omitempty"`
+			ForceCast bool `json:"force_cast,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -336,6 +342,8 @@ func Dispatch(g *game.Game, a Action) error {
 			XValue:       p.XValue,
 			HoldPriority: p.HoldPriority,
 			SplitSecond:  p.SplitSecond,
+			Strict:       p.Strict,
+			ForceCast:    p.ForceCast,
 		}
 		if len(p.Targets) > 0 {
 			params.Targets = make([]game.TargetRef, 0, len(p.Targets))
