@@ -16,8 +16,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // predicate enforcement lands in S20.
 func init() {
 	Register(Spec{
-		OracleID: "8ddfc283-c9b4-41a5-af88-cf0068e986cc",
-		Name:     "Swan Song",
+		OracleID:   "8ddfc283-c9b4-41a5-af88-cf0068e986cc",
+		Name:       "Swan Song",
+		TargetMode: "stack_spell",
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {
 				return nil

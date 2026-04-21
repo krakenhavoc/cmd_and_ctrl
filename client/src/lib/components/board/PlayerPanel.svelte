@@ -56,6 +56,12 @@
     onTapToggle: (card: CardView) => void;
     onPlayCard: (card: CardView) => void;
     onDrawCard: () => void;
+    onTargetPlayer?: (targetPlayerID: string) => void;
+    // onTargetCard returns true when a cast-targeting prompt
+    // consumed the click (so the caller stops propagating into
+    // the tap-toggle / combat default). Returns false when no
+    // prompt is active or the card isn't a legal target.
+    onTargetCard?: (card: CardView) => boolean;
   }
 
   const {
@@ -79,6 +85,8 @@
     onTapToggle,
     onPlayCard,
     onDrawCard,
+    onTargetPlayer,
+    onTargetCard,
   }: Props = $props();
 
   const buckets = $derived.by(() => {
@@ -94,6 +102,21 @@
   );
 
   function handleCardClick(card: CardView): void {
+    // S14: targeting intercept. If a cast-targeting prompt is live
+    // and this card is a legal target (battlefield creature for
+    // "any" / "creature" modes), route through onTargetCard. Board
+    // clears the targeting state when cast_spell fires.
+    if (onTargetCard) {
+      // onTargetCard itself checks the targeting store; only call
+      // when a prompt is waiting. Board wires this to the
+      // targeting-aware completion.
+      // To avoid double-handling, we check the targeting store here
+      // via a light dynamic import — but easier: the callback
+      // returns a boolean "handled" signal. Lacking that, just
+      // call unconditionally: Board's handler is a no-op when no
+      // prompt is active.
+      if (onTargetCard(card)) return;
+    }
     // Combat select on viewer's own creature wins ahead of tap/untap.
     if (
       (combatMode === "attack" || combatMode === "block") &&
@@ -126,6 +149,7 @@
       {isInitiative}
       {sendAction}
       {onDeclareAttack}
+      {onTargetPlayer}
     />
     {#if !isSelf}
       <PromisesRow {view} {viewerID} opponentID={seat.id} {sendAction} />

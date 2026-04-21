@@ -67,6 +67,26 @@ type Spec struct {
 	// stamps this via AddCounter when the card crosses into the
 	// battlefield. Used by The Wandering Emperor in S14.
 	StartingLoyalty int
+
+	// TargetMode tells the client what to prompt for at cast time.
+	// Serialized to CardView.target_mode so the Svelte cast flow
+	// can enter a targeting state before firing cast_spell with
+	// populated targets[]. Empty string means "no target prompt,
+	// cast immediately." Valid values:
+	//
+	//   ""             no prompt (Pyroclasm, Wrath, vanilla permanents)
+	//   "any"          player / creature / planeswalker / battle
+	//                  (Lightning Bolt, Shock, Helix)
+	//   "player"       seated player only
+	//   "creature"     battlefield creature only
+	//   "stack_spell"  an item currently on the stack (Counterspell,
+	//                  Negate, Swan Song)
+	//   "card_in_graveyard" a card in any graveyard (Regrowth, Eternal
+	//                       Witness)
+	//
+	// Target count is always 1 in S14; multi-target (Arcing Lightning
+	// style "distribute 3 damage") is S22 territory.
+	TargetMode string
 }
 
 // ZeroUUID is an alias for uuid.Nil. Mostly used in tests to

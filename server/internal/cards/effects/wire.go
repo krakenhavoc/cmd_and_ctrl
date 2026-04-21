@@ -22,6 +22,12 @@ func init() {
 	game.EffectResolver = resolveSpell
 	game.ETBEffectHook = fireOnETB
 	game.IsCatalogCard = Has
+	game.CatalogTargetMode = func(oracleID string) string {
+		if spec, ok := Lookup(oracleID); ok {
+			return spec.TargetMode
+		}
+		return ""
+	}
 }
 
 // resolveSpell is the EffectResolver implementation. Called from

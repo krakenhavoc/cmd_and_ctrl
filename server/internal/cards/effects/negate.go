@@ -9,8 +9,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // rest. Social self-policing catches misplays in casual.
 func init() {
 	Register(Spec{
-		OracleID: "3407fe41-fdd3-4119-8f70-4bc4590a379f",
-		Name:     "Negate",
+		OracleID:   "3407fe41-fdd3-4119-8f70-4bc4590a379f",
+		Name:       "Negate",
+		TargetMode: "stack_spell",
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {
 				return nil

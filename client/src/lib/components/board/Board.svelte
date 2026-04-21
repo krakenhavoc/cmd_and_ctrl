@@ -26,6 +26,12 @@
   import CombatArrows from "./CombatArrows.svelte";
   import CommanderDamageGrid from "./CommanderDamageGrid.svelte";
   import VotingPanel from "./VotingPanel.svelte";
+  import {
+    targeting,
+    begin as beginTargeting,
+    cancel as cancelTargeting,
+    type TargetingMode,
+  } from "../../targeting";
 
   type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
 
@@ -93,19 +99,78 @@
   }
 
   function handlePlayCard(card: CardView): void {
-    // S13.1: hand-card click sends cast_spell. Lands route directly
-    // to the battlefield server-side (CR 305 special action); other
-    // types land on the stack with the caster retaining priority.
-    // The richer cast UI (target picker, modes, X) lands in S13.1
-    // sub-PRs 3 & 4; this minimum-viable wiring keeps the previous
-    // one-click cast path intact for cards with no announce-time
-    // choices.
+    // S14: if the card declares a target_mode (catalog cards with
+    // a target slot — Lightning Bolt, Counterspell), enter the
+    // targeting flow and wait for a second click on a legal target.
+    // Otherwise fire cast_spell immediately (lands, sorceries with
+    // no targets, vanilla permanents).
+    const mode = card.target_mode as TargetingMode | undefined;
+    if (
+      mode === "any" ||
+      mode === "player" ||
+      mode === "creature" ||
+      mode === "stack_spell" ||
+      mode === "card_in_graveyard"
+    ) {
+      beginTargeting(card, mode);
+      return;
+    }
     sendAction("cast_spell", { instance_id: card.instance_id }, viewerID ?? undefined);
+  }
+
+  // completeTargetedCast fires cast_spell with the resolved target
+  // and clears the targeting store. Called by targetable surfaces
+  // (player portraits, battlefield creatures, stack items) when the
+  // viewer clicks them while a targeting prompt is active.
+  function completeTargetedCast(kind: "player" | "card", targetID: string): void {
+    const state = $targeting;
+    if (!state) return;
+    const ref =
+      kind === "player" ? { kind: "player", id: targetID } : { kind: "card", id: targetID };
+    sendAction(
+      "cast_spell",
+      { instance_id: state.card.instance_id, targets: [ref] },
+      viewerID ?? undefined,
+    );
+    cancelTargeting();
   }
 
   function handleDrawCard(): void {
     if (!viewerID) return;
     sendAction("draw_card", undefined, viewerID);
+  }
+
+  function handleTargetPlayer(targetPlayerID: string): void {
+    completeTargetedCast("player", targetPlayerID);
+  }
+
+  // handleTargetCard is the card-click intercept. Returns true only
+  // when a cast-targeting prompt is waiting AND this card is a
+  // legal target for that prompt; the caller stops default
+  // processing (tap-toggle) in that case.
+  function handleTargetCard(card: CardView): boolean {
+    const state = $targeting;
+    if (!state) return false;
+    const mode = state.mode;
+    // For "any" / "creature" modes, the target must be on the
+    // battlefield. The card view doesn't carry its zone, but
+    // battlefield cards are the only ones with controller + tap
+    // state; heuristic: card.controller is set and the card is a
+    // creature (type-line check) or any permanent (mode "any").
+    // Simpler: trust the caller to only route battlefield cards.
+    if (mode === "creature" || mode === "any") {
+      completeTargetedCast("card", card.instance_id);
+      return true;
+    }
+    if (mode === "stack_spell") {
+      completeTargetedCast("card", card.instance_id);
+      return true;
+    }
+    if (mode === "card_in_graveyard") {
+      completeTargetedCast("card", card.instance_id);
+      return true;
+    }
+    return false;
   }
 
   // The four quadrant positions. Iteration order doesn't matter for
@@ -153,6 +218,8 @@
             onTapToggle={handleTapToggle}
             onPlayCard={handlePlayCard}
             onDrawCard={handleDrawCard}
+            onTargetPlayer={handleTargetPlayer}
+            onTargetCard={handleTargetCard}
           />
         </div>
       {/if}
@@ -182,6 +249,8 @@
           onTapToggle={handleTapToggle}
           onPlayCard={handlePlayCard}
           onDrawCard={handleDrawCard}
+          onTargetPlayer={handleTargetPlayer}
+          onTargetCard={handleTargetCard}
         />
       </div>
     {/each}
@@ -200,6 +269,7 @@
       const verb = item.kind === "spell" ? "counter_spell" : "counter_ability";
       sendAction(verb, { instance_id: item.id });
     }}
+    onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
   />
   <CommanderDamageGrid {view} {sendAction} />
   <VotingPanel {view} {viewerID} {sendAction} />

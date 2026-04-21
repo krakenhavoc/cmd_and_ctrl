@@ -44,6 +44,13 @@ var ETBEffectHook func(g *Game, cardID uuid.UUID, oracleID string) error
 // Nil is treated as "no catalog wired" → every card looks manual.
 var IsCatalogCard func(oracleID string) bool
 
+// CatalogTargetMode returns the registered card's announce-time
+// target prompt shape (see effects.Spec.TargetMode) or empty
+// string when no catalog entry matches. Nil hook always returns
+// empty. Serialised onto CardView.TargetMode for the client's
+// cast-targeting UI.
+var CatalogTargetMode func(oracleID string) string
+
 // fireEffectResolverLocked invokes the registered EffectResolver
 // if non-nil, emits EventEffectError on failure, and swallows the
 // error so the resolution path keeps moving. Caller must hold g.mu.
@@ -86,4 +93,15 @@ func IsAutoCard(oracleID string) bool {
 		return false
 	}
 	return IsCatalogCard(oracleID)
+}
+
+// TargetModeFor returns the catalog's declared target prompt mode
+// for the given oracle ID, or empty string if the card isn't in
+// the catalog / has no target prompt. Called from protocol.viewOfCard
+// when stamping CardView.TargetMode.
+func TargetModeFor(oracleID string) string {
+	if CatalogTargetMode == nil || oracleID == "" {
+		return ""
+	}
+	return CatalogTargetMode(oracleID)
 }

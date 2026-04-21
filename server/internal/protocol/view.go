@@ -303,6 +303,12 @@ type CardView struct {
 	// Omitted when false so non-catalog cards (the majority) don't
 	// carry the field on the wire. Added in S14 sub-PR 3.
 	Auto bool `json:"auto,omitempty"`
+	// TargetMode tells the client what kind of target to prompt
+	// for at cast time. See effects.Spec.TargetMode for the enum.
+	// Empty when the card takes no announce-time targets (either
+	// not a catalog card, or a catalog card with no targeting
+	// prompt — e.g. Pyroclasm, Wrath of God). Added in S14 sub-PR 4.
+	TargetMode string `json:"target_mode,omitempty"`
 }
 
 // TurnView is the wire representation of the turn cursor. PriorityHolder
@@ -777,6 +783,7 @@ func viewOfCard(c game.Card) CardView {
 		DamageMarked: c.DamageMarked,
 		FaceDown:     c.FaceDown,
 		Auto:         game.IsAutoCard(c.OracleID),
+		TargetMode:   game.TargetModeFor(c.OracleID),
 		knowers:      knowers,
 	}
 	if c.AttackingTarget != uuid.Nil {
