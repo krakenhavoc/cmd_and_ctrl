@@ -52,6 +52,24 @@ type Card struct {
 	Power     int
 	Toughness int
 
+	// ManaCost is the printed casting cost, copied from Scryfall at
+	// deck-import time — e.g. "{1}{R}", "{X}{B}{B}", "{W/U}". Empty
+	// for lands and for placeholder / demo-seed cards. The S15
+	// cost validator parses this at cast time into a ParsedCost.
+	// Carried on every game.Card instance so the view layer can
+	// surface it onto CardView.ManaCost without a round-trip back
+	// to the cards index. Added in S15 sub-PR 1.
+	ManaCost string
+
+	// ProducedMana lists the mana colors this permanent can produce
+	// via any of its mana abilities. Entries are uppercase single-
+	// character letters from {"W","U","B","R","G","C"}. Empty for
+	// non-producers. The S15 auto-tapper uses this to prune the
+	// candidate set; basic lands get a synthetic mana ability
+	// derived from their TypeLine regardless of what Scryfall says
+	// here. Added in S15 sub-PR 1.
+	ProducedMana []string
+
 	// Owner is the player who brought this card to the game. Ownership
 	// is fixed at deck-build time and never changes.
 	Owner uuid.UUID

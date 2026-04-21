@@ -307,6 +307,12 @@ export interface CardView {
   // announce time. Empty/absent ⇒ cast immediately with no target.
   // See client/src/lib/targeting.ts for the full enum.
   target_mode?: string;
+  // S15: raw Scryfall mana-cost string ("{1}{R}", "{W/U}", "{X}{B}"),
+  // rendered as a read-only chip on hand-zone cards. Omitted for
+  // lands and for placeholder / demo-seed cards. Also zeroed on the
+  // per-viewer redaction path when the viewer is not a knower of the
+  // card (so opponent hand-counts don't leak cost shapes).
+  mana_cost?: string;
 }
 
 export interface TurnView {

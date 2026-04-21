@@ -38,6 +38,13 @@
     // "small" is the default (~146×204) and is what we use everywhere
     // on the table; the hover zoom overlay requests "normal".
     size?: "small" | "normal";
+    // showManaCost renders the S15 cost-chip overlay bottom-left.
+    // Enabled by Hand.svelte for the viewer's own hand so they can
+    // see what each spell costs without hover-zooming. Hidden on the
+    // battlefield (no value there) and on opponents' hands (would
+    // leak identity even when the card is face-down, since the wire
+    // redacts mana_cost for non-knowers anyway).
+    showManaCost?: boolean;
     onClick?: (card: CardView, ev: MouseEvent) => void;
   }
 
@@ -48,6 +55,7 @@
     attacking = false,
     blocking = false,
     size = "small",
+    showManaCost = false,
     onClick,
   }: Props = $props();
 
@@ -191,6 +199,11 @@
         AUTO
       </span>
     {/if}
+    {#if showManaCost && card.mana_cost}
+      <span class="badge cost" title={`mana cost ${card.mana_cost}`} aria-label="mana cost">
+        {card.mana_cost}
+      </span>
+    {/if}
     <CounterPips counters={card.counters} />
     {#if (card.damage_marked ?? 0) > 0}
       <span class="badge damage" title={`${card.damage_marked} damage marked`} aria-label="damage">
@@ -332,6 +345,25 @@
     background: rgba(60, 0, 0, 0.9);
     border-color: rgba(255, 122, 122, 0.5);
     font-size: 11px;
+  }
+  .badge.cost {
+    /* Top-right to mirror the printed-card convention. Only shown in
+       hand-zone presentations via the showManaCost prop, so no clash
+       with the goad / damage battlefield badges. Monospace so cost
+       strings like "{W}{U}{B}{R}{G}" stay legible at small sizes. */
+    left: auto;
+    right: 3px;
+    top: 3px;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 9px;
+    letter-spacing: 0;
+    color: var(--gold);
+    background: rgba(10, 14, 26, 0.92);
+    border: 1px solid rgba(200, 168, 106, 0.5);
+    max-width: 72%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .card.selected {
     box-shadow:

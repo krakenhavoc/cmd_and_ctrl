@@ -257,13 +257,15 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 	power, _ := strconv.Atoi(strings.TrimSpace(c.Power))
 	toughness, _ := strconv.Atoi(strings.TrimSpace(c.Toughness))
 	return game.Card{
-		InstanceID:  uuid.New(),
-		Name:        c.Name,
-		ScryfallID:  c.ID.String(),
-		OracleID:    c.OracleID.String(),
-		TypeLine:    c.TypeLine,
-		Power:       power,
-		Toughness:   toughness,
-		IsCommander: isCommander,
+		InstanceID:   uuid.New(),
+		Name:         c.Name,
+		ScryfallID:   c.ID.String(),
+		OracleID:     c.OracleID.String(),
+		TypeLine:     c.TypeLine,
+		Power:        power,
+		Toughness:    toughness,
+		ManaCost:     c.ManaCost,
+		ProducedMana: append([]string(nil), c.ProducedMana...),
+		IsCommander:  isCommander,
 	}
 }
