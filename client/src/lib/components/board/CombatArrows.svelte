@@ -160,7 +160,17 @@
       if (p.kind === "attack" || p.kind === "stack-target-player") {
         to = rectIn(boardRect, `[data-seat-id="${cssEscape(p.toSeatID)}"]`);
       } else {
-        to = rectIn(boardRect, `[data-instance-id="${cssEscape(p.toCardID)}"]`);
+        // Card targets can live in two places: the battlefield (via
+        // data-instance-id on Card.svelte) or the stack (via
+        // data-stack-item-id on StackOverlay's item div). For spell
+        // stack items, id and instance_id are the same UUID (see
+        // server/internal/game/stack.go StackItem.ID doc) so either
+        // attribute resolves. Try the battlefield first; fall back
+        // to the stack to cover Counterspell-style stack-on-stack
+        // targeting.
+        to =
+          rectIn(boardRect, `[data-instance-id="${cssEscape(p.toCardID)}"]`) ??
+          rectIn(boardRect, `[data-stack-item-id="${cssEscape(p.toCardID)}"]`);
       }
       if (!to) continue;
       const ctrl = midpointOffset(from.x, from.y, to.x, to.y);
