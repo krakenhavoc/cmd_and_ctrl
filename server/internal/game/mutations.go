@@ -1287,6 +1287,14 @@ func (g *Game) DiscardSelection(playerID uuid.UUID, cardIDs []uuid.UUID) error {
 		if _, err := MoveCard(p.Hand, p.Graveyard, id); err != nil {
 			return err
 		}
+		g.markCardKnownInZoneLocked(p.Graveyard, id)
+		g.EmitEvent(Event{
+			Kind:    EventDiscardCard,
+			Actor:   playerID,
+			CardID:  id,
+			OldZone: ZoneHand,
+			NewZone: ZoneGraveyard,
+		})
 	}
 	delete(g.DiscardPending, playerID)
 	if len(g.DiscardPending) == 0 {

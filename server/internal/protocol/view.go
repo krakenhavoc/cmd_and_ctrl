@@ -83,6 +83,32 @@ type GameView struct {
 	// must discard. Drives the client's discard-prompt modal.
 	// Empty when nobody owes discard. Added in S13.4.
 	DiscardPending map[string]int `json:"discard_pending,omitempty"`
+	// PendingChoices is the S14 generic "someone needs to pick"
+	// queue. Populated by effect cards that defer a decision
+	// (Thoughtseize-style where the caster picks from the
+	// target's revealed hand). Each entry has an ID, the chooser,
+	// the discarder / source-zone owner, the count, a reason
+	// label, and the candidate cards (redacted per viewer so
+	// every client sees what its viewer is legally allowed to).
+	// Drained by resolve_choice actions. Added in S14 sub-PR 5.
+	PendingChoices []PendingChoiceView `json:"pending_choices,omitempty"`
+}
+
+// PendingChoiceView is the wire shape of a PendingChoice.
+// Serialised per-viewer with Options pre-filtered to the cards
+// the viewer is legally allowed to see. Chooser-viewer sees
+// revealed cards in full; others see either backs (for
+// discard_from_hand targeting an opponent's hand) or the raw
+// IDs plus redacted characteristics.
+type PendingChoiceView struct {
+	ID         string     `json:"id"`
+	Kind       string     `json:"kind"`
+	Chooser    string     `json:"chooser"`
+	FromPlayer string     `json:"from_player"`
+	Count      int        `json:"count"`
+	Source     string     `json:"source,omitempty"`
+	Reason     string     `json:"reason,omitempty"`
+	Options    []CardView `json:"options,omitempty"`
 }
 
 // StackItemView is the wire shape of a stack-item's announce-time
@@ -382,9 +408,54 @@ func ViewOfGame(g *game.Game) GameView {
 			PendingTriggers:   viewOfStackItemSlice(g.PendingTriggers),
 			SplitSecondActive: g.SplitSecondActive,
 			DiscardPending:    viewOfDiscardPending(g.DiscardPending),
+			PendingChoices:    viewOfPendingChoices(g),
 		}
 	})
 	return view
+}
+
+// viewOfPendingChoices materialises the PendingChoices queue,
+// inlining the candidate cards from the live game state so the
+// per-viewer filter can redact them uniformly. Caller must hold
+// g's read lock (ReadSnapshot already does).
+func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
+	if len(g.PendingChoices) == 0 {
+		return nil
+	}
+	out := make([]PendingChoiceView, 0, len(g.PendingChoices))
+	for _, c := range g.PendingChoices {
+		if c == nil {
+			continue
+		}
+		v := PendingChoiceView{
+			ID:         c.ID.String(),
+			Kind:       string(c.Kind),
+			Chooser:    c.Chooser.String(),
+			FromPlayer: c.FromPlayer.String(),
+			Count:      c.Count,
+			Source:     uuidStringOrEmpty(c.Source),
+			Reason:     c.Reason,
+		}
+		// For discard_from_hand, inline the source player's hand
+		// as Options. Per-viewer redaction in FilterViewFor
+		// projects the cards through isKnower — the Thoughtseize
+		// caster (chooser) sees face-up because QueueDiscardFromRevealedHand
+		// marked them knower; everyone else sees backs.
+		if c.Kind == game.PendingChoiceDiscardFromHand {
+			fromP := g.PlayerByIDForEffect(c.FromPlayer)
+			if fromP != nil && fromP.Hand != nil {
+				v.Options = make([]CardView, len(fromP.Hand.Cards))
+				for i, card := range fromP.Hand.Cards {
+					v.Options[i] = viewOfCard(card)
+				}
+			}
+		}
+		out = append(out, v)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // viewOfDiscardPending mirrors Game.DiscardPending to the wire
@@ -664,12 +735,20 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		out.Hand = redactZone(p.Hand, isKnower)
 		out.Graveyard = redactZone(p.Graveyard, isKnower)
 		out.Command = redactZone(p.Command, isKnower)
-		// Opponent hand + library: hide the per-card slice contents
-		// entirely so unrevealed cards stay backs (the S04 zone-
-		// default heuristic). For the viewer's own hand + library,
-		// the per-card redaction above already handled visibility.
+		// Opponent hand: strip only UNREVEALED cards (seated-viewer
+		// path — Thoughtseize-style reveals survive via KnownBy);
+		// wholesale-hide for spectator / admin (viewerID empty)
+		// where the isKnower short-circuit to true would otherwise
+		// leak every hand on the wire. Opponent library: always
+		// wholesale-hidden — no per-card reveal paths for library
+		// identity leak to the opponent client today. Viewer's own
+		// hand + library: redactZone already handled visibility.
 		if p.ID == "" || p.ID != viewerID {
-			out.Hand = hideZoneContents(out.Hand)
+			if viewerID == "" {
+				out.Hand = hideZoneContents(out.Hand)
+			} else {
+				out.Hand = keepKnownInHandZone(out.Hand)
+			}
 			out.Library = hideZoneContents(out.Library)
 		}
 		seats[i] = out
@@ -693,7 +772,30 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		PendingTriggers:   v.PendingTriggers,
 		SplitSecondActive: v.SplitSecondActive,
 		DiscardPending:    v.DiscardPending,
+		PendingChoices:    filterPendingChoices(v.PendingChoices, isKnower),
 	}
+}
+
+// filterPendingChoices projects each choice's Options through the
+// viewer's knower filter. Unknown cards come back redacted (backs)
+// so an opponent browsing the wire can't peek at a Thoughtseize-
+// revealed hand.
+func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool) []PendingChoiceView {
+	if len(src) == 0 {
+		return nil
+	}
+	out := make([]PendingChoiceView, len(src))
+	for i, c := range src {
+		out[i] = c
+		if len(c.Options) > 0 {
+			opts := make([]CardView, len(c.Options))
+			for j, card := range c.Options {
+				opts[j] = redactCardForViewer(card, isKnower(card))
+			}
+			out[i].Options = opts
+		}
+	}
+	return out
 }
 
 // redactZone returns a copy of `z` with every card projected through
@@ -749,6 +851,30 @@ func hideZoneContents(z ZoneView) ZoneView {
 		Count: z.Count,
 		Cards: []CardView{},
 	}
+}
+
+// keepKnownInHandZone drops cards the viewer isn't a knower of
+// from an opponent's hand zone. Revealed cards (Thoughtseize
+// reveal; scry-to-hand in future) survive; others are stripped
+// from the Cards slice. Count is preserved so the client can
+// still fan out the right number of face-down backs for the
+// unrevealed remainder.
+//
+// Input z is expected to have already been projected through
+// redactZone — we key off KnownByYou, which redactZone set.
+func keepKnownInHandZone(z ZoneView) ZoneView {
+	out := ZoneView{
+		Kind:  z.Kind,
+		Owner: z.Owner,
+		Count: z.Count,
+		Cards: []CardView{},
+	}
+	for _, c := range z.Cards {
+		if c.KnownByYou {
+			out.Cards = append(out.Cards, c)
+		}
+	}
+	return out
 }
 
 func viewOfCard(c game.Card) CardView {

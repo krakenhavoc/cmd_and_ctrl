@@ -437,6 +437,291 @@ func TestSwanSongCountersAndCreatesBirdToken(t *testing.T) {
 
 // --- Opt-in canary ---------------------------------------------
 
+// --- Draw + mill + discard (sub-PR 5) --------------------------
+
+func TestDivinationDrawsTwo(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	handBefore := caster.Hand.Size()
+
+	castCatalogSpell(t, g, "Divination", "Sorcery",
+		"273b339c-964b-4a18-8eb5-ceb8abcdfd9e",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+
+	if got := caster.Hand.Size() - handBefore; got != 2 {
+		t.Errorf("hand delta: got %d, want 2 (Divination spell is now in graveyard, net +2)", got)
+	}
+}
+
+func TestHarmonizeDrawsThree(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	handBefore := caster.Hand.Size()
+
+	castCatalogSpell(t, g, "Harmonize", "Sorcery",
+		"7eff84f1-f772-497a-b350-bbc93d0230f7",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+
+	if got := caster.Hand.Size() - handBefore; got != 3 {
+		t.Errorf("hand delta: got %d, want 3", got)
+	}
+}
+
+func TestSignInBloodDrawsAndDrains(t *testing.T) {
+	g := newCatalogGame(t)
+	target := g.Seats[1]
+	targetHand := target.Hand.Size()
+	targetLife := target.Life
+
+	castCatalogSpell(t, g, "Sign in Blood", "Sorcery",
+		"c6207f6a-a624-4754-88f5-dbe700c841ff",
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: target.ID}},
+	)
+	passPriorityAroundTable(t, g)
+
+	if got := target.Hand.Size() - targetHand; got != 2 {
+		t.Errorf("target hand delta: got %d, want 2", got)
+	}
+	if target.Life != targetLife-2 {
+		t.Errorf("target life: got %d, want %d", target.Life, targetLife-2)
+	}
+}
+
+func TestGlimpseMillsTen(t *testing.T) {
+	g := newCatalogGame(t)
+	target := g.Seats[1]
+	libBefore := target.Library.Size()
+	gyBefore := target.Graveyard.Size()
+
+	castCatalogSpell(t, g, "Glimpse the Unthinkable", "Sorcery",
+		"552f0163-a19d-4671-888f-044fc0354875",
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: target.ID}},
+	)
+	passPriorityAroundTable(t, g)
+
+	if got := libBefore - target.Library.Size(); got != 10 {
+		t.Errorf("library delta: got %d, want 10", got)
+	}
+	if got := target.Graveyard.Size() - gyBefore; got != 10 {
+		t.Errorf("graveyard delta: got %d, want 10", got)
+	}
+}
+
+func TestMindRotQueuesDiscardChoice(t *testing.T) {
+	g := newCatalogGame(t)
+	target := g.Seats[1]
+	// Seed extra hand cards so the discard-2 choice has options.
+	pushHandCard(g, target)
+	pushHandCard(g, target)
+	handBefore := target.Hand.Size()
+	gyBefore := target.Graveyard.Size()
+
+	castCatalogSpell(t, g, "Mind Rot", "Sorcery",
+		"ad44cf74-b717-48fb-9fa2-77512024d76a",
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: target.ID}},
+	)
+	passPriorityAroundTable(t, g)
+
+	// The discard is deferred until the target picks — no hand /
+	// graveyard movement yet.
+	if got := target.Hand.Size(); got != handBefore {
+		t.Errorf("hand size changed pre-choice: got %d, want %d", got, handBefore)
+	}
+	if got := target.Graveyard.Size() - gyBefore; got != 0 {
+		t.Errorf("graveyard changed pre-choice: got delta %d, want 0", got)
+	}
+	if g.DiscardPending[target.ID] != 2 {
+		t.Fatalf("DiscardPending[target]: got %d, want 2", g.DiscardPending[target.ID])
+	}
+
+	// Simulate the target submitting their picks.
+	picks := []uuid.UUID{
+		target.Hand.Cards[0].InstanceID,
+		target.Hand.Cards[1].InstanceID,
+	}
+	if err := g.DiscardSelection(target.ID, picks); err != nil {
+		t.Fatalf("DiscardSelection: %v", err)
+	}
+
+	if got := handBefore - target.Hand.Size(); got != 2 {
+		t.Errorf("post-selection hand delta: got %d, want 2", got)
+	}
+	if got := target.Graveyard.Size() - gyBefore; got != 2 {
+		t.Errorf("post-selection graveyard delta: got %d, want 2", got)
+	}
+	if _, still := g.DiscardPending[target.ID]; still {
+		t.Errorf("DiscardPending not cleared after selection")
+	}
+}
+
+func TestThoughtseizeQueuesCasterChoice(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	target := g.Seats[1]
+	handBefore := target.Hand.Size()
+	gyBefore := target.Graveyard.Size()
+	casterLife := caster.Life
+
+	castCatalogSpell(t, g, "Thoughtseize", "Sorcery",
+		"edd8d1e8-be43-4c38-bb3a-83081fbaf0b5",
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: target.ID}},
+	)
+	passPriorityAroundTable(t, g)
+
+	// Life loss fires at resolution; the discard is deferred.
+	if caster.Life != casterLife-2 {
+		t.Errorf("caster life: got %d, want %d", caster.Life, casterLife-2)
+	}
+	// Hand is revealed to the caster.
+	for _, c := range target.Hand.Cards {
+		if !c.IsKnownTo(caster.ID) {
+			t.Errorf("caster not a knower of %v after Thoughtseize reveal", c.InstanceID)
+		}
+	}
+	// Pre-pick: nothing moved.
+	if got := target.Hand.Size(); got != handBefore {
+		t.Errorf("hand size changed before resolve_choice: got %d, want %d", got, handBefore)
+	}
+	if got := target.Graveyard.Size() - gyBefore; got != 0 {
+		t.Errorf("graveyard changed before resolve_choice: got delta %d, want 0", got)
+	}
+	// A PendingChoice should exist addressed to the caster, sourced
+	// from the target.
+	if len(g.PendingChoices) != 1 {
+		t.Fatalf("PendingChoices len: got %d, want 1", len(g.PendingChoices))
+	}
+	choice := g.PendingChoices[0]
+	if choice.Chooser != caster.ID {
+		t.Errorf("choice.Chooser: got %v, want %v (caster)", choice.Chooser, caster.ID)
+	}
+	if choice.FromPlayer != target.ID {
+		t.Errorf("choice.FromPlayer: got %v, want %v (target)", choice.FromPlayer, target.ID)
+	}
+	if choice.Count != 1 {
+		t.Errorf("choice.Count: got %d, want 1", choice.Count)
+	}
+
+	// Caster picks one of the target's hand cards and submits.
+	pick := target.Hand.Cards[0].InstanceID
+	if err := g.ResolvePendingChoice(choice.ID, caster.ID, []uuid.UUID{pick}); err != nil {
+		t.Fatalf("ResolvePendingChoice: %v", err)
+	}
+
+	if target.Hand.Contains(pick) {
+		t.Errorf("picked card still in target hand")
+	}
+	if !target.Graveyard.Contains(pick) {
+		t.Errorf("picked card not in target graveyard")
+	}
+	if len(g.PendingChoices) != 0 {
+		t.Errorf("PendingChoices not drained after resolve: len=%d", len(g.PendingChoices))
+	}
+}
+
+// --- Targeted removal ------------------------------------------
+
+func TestSwordsToPlowsharesExilesAndGainsLife(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	opponent := g.Seats[1]
+	// Put a 4/4 on opponent's battlefield.
+	creatureID := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: creatureID,
+		Name:       "Big Thing",
+		TypeLine:   "Creature — Giant",
+		Power:      4,
+		Toughness:  4,
+		Owner:      opponent.ID,
+		Controller: opponent.ID,
+	})
+	oppLifeBefore := opponent.Life
+
+	castCatalogSpell(t, g, "Swords to Plowshares", "Instant",
+		"b1544f21-7e98-461b-aed5-e748b0168c52",
+		[]game.TargetRef{{Kind: game.TargetCard, ID: creatureID}},
+	)
+	passPriorityAroundTable(t, g)
+
+	if !g.Exile.Contains(creatureID) {
+		t.Errorf("creature not in exile")
+	}
+	if opponent.Life != oppLifeBefore+4 {
+		t.Errorf("opponent life: got %d, want %d", opponent.Life, oppLifeBefore+4)
+	}
+	_ = caster
+}
+
+func TestPathToExileExilesAndFetchesBasic(t *testing.T) {
+	g := newCatalogGame(t)
+	opponent := g.Seats[1]
+	creatureID := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: creatureID,
+		Name:       "Beater",
+		TypeLine:   "Creature — Beast",
+		Power:      3,
+		Toughness:  3,
+		Owner:      opponent.ID,
+		Controller: opponent.ID,
+	})
+	// Seed a Forest in opponent's library so Path's search has
+	// something to find.
+	forestID := uuid.New()
+	opponent.Library.PushTop(game.Card{
+		InstanceID: forestID,
+		Name:       "Forest",
+		TypeLine:   "Basic Land — Forest",
+		Owner:      opponent.ID,
+		Controller: opponent.ID,
+	})
+
+	castCatalogSpell(t, g, "Path to Exile", "Instant",
+		"d683d985-9888-4d21-8b5f-69e69ce4a03b",
+		[]game.TargetRef{{Kind: game.TargetCard, ID: creatureID}},
+	)
+	passPriorityAroundTable(t, g)
+
+	if !g.Exile.Contains(creatureID) {
+		t.Errorf("creature not exiled")
+	}
+	if !g.Battlefield.Contains(forestID) {
+		t.Errorf("fetched Forest not on battlefield")
+	}
+}
+
+func TestUnsummonBouncesToHand(t *testing.T) {
+	g := newCatalogGame(t)
+	owner := g.Seats[1]
+	creatureID := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: creatureID,
+		Name:       "Bouncable",
+		TypeLine:   "Creature — Bird",
+		Power:      2,
+		Toughness:  2,
+		Owner:      owner.ID,
+		Controller: owner.ID,
+	})
+
+	castCatalogSpell(t, g, "Unsummon", "Instant",
+		"837182db-1bf3-4a2c-bd01-1af9d9873561",
+		[]game.TargetRef{{Kind: game.TargetCard, ID: creatureID}},
+	)
+	passPriorityAroundTable(t, g)
+
+	if g.Battlefield.Contains(creatureID) {
+		t.Errorf("creature still on battlefield")
+	}
+	if !owner.Hand.Contains(creatureID) {
+		t.Errorf("creature not in owner's hand")
+	}
+}
+
 // TestNonCatalogSpellStaysSandbox proves a spell without a
 // catalog-matching OracleID resolves to graveyard with no effect —
 // the Cockatrice-style manual fallback is intact. Canary for

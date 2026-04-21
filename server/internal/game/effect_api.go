@@ -36,6 +36,78 @@ func (g *Game) StackItemForEffect(id uuid.UUID) *StackItem {
 	return g.StackMeta[id]
 }
 
+// LookupCardForEffect returns a value copy of the card with the
+// given instance ID from whichever zone holds it, plus ok=true.
+// Empty Card and ok=false when the card isn't in any tracked zone.
+// Used by effects that need to read a target's printed
+// characteristics BEFORE moving it (Swords to Plowshares → read
+// power before exile; Path to Exile → read controller before
+// exile to drive the search clause).
+func (g *Game) LookupCardForEffect(cardID uuid.UUID) (Card, bool) {
+	z := g.findCardZoneLocked(cardID)
+	if z == nil {
+		return Card{}, false
+	}
+	for _, c := range z.Cards {
+		if c.InstanceID == cardID {
+			return c, true
+		}
+	}
+	return Card{}, false
+}
+
+// RevealHandForEffect marks every card in the named player's hand
+// as known to all seated players. Used by Thoughtseize / Duress
+// style "reveals hand" effects. No-op if the player isn't seated
+// or is eliminated.
+func (g *Game) RevealHandForEffect(playerID uuid.UUID) {
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return
+	}
+	for i := range p.Hand.Cards {
+		for _, viewer := range g.Seats {
+			p.Hand.Cards[i].AddKnower(viewer.ID)
+		}
+	}
+}
+
+// DiscardChoiceForEffect queues a "chooser-picked" discard into the
+// existing DiscardPending map. Unlike DiscardRandomForEffect (which
+// discards randomly at resolution time), this path waits for the
+// target to send a discard_selection action with their chosen IDs.
+// The card auto-resolves (goes to graveyard) while the choice is
+// pending — the pending entry outlives the spell.
+//
+// Cap n to the player's current hand size per CR 701.8c ("discard
+// as many as you can"). Merges additively with existing pending
+// entries (e.g. cleanup-step discard stacked with a Mind Rot —
+// one combined modal handles both). No-op if the player isn't
+// seated or is eliminated.
+//
+// Used by Mind Rot et al; the UI is S13.4's DiscardPromptModal
+// which already watches DiscardPending for the viewer. Added in
+// S14 sub-PR 5+.
+func (g *Game) DiscardChoiceForEffect(playerID uuid.UUID, n int) {
+	if n <= 0 {
+		return
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil || p.Eliminated {
+		return
+	}
+	if n > p.Hand.Size() {
+		n = p.Hand.Size()
+	}
+	if n == 0 {
+		return
+	}
+	if g.DiscardPending == nil {
+		g.DiscardPending = make(map[uuid.UUID]int)
+	}
+	g.DiscardPending[playerID] += n
+}
+
 // FindCardZoneForEffect returns the zone a card currently lives in,
 // or nil if the card is in none of the tracked zones. Lock-free —
 // caller must hold g.mu. Used by primitives for the CR 608.2b

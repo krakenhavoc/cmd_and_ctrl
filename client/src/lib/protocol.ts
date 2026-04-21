@@ -118,6 +118,26 @@ export interface GameView {
   // strings, values are the count each player must discard. Drives
   // DiscardPromptModal. Empty / absent when nobody owes discard.
   discard_pending?: Record<string, number>;
+  // S14 generic "someone needs to pick" queue. Drives ChoicePromptModal
+  // for effects like Thoughtseize where the chooser isn't the
+  // discarder. Each entry carries its own options[] already filtered
+  // per the viewer's visibility.
+  pending_choices?: PendingChoiceView[];
+}
+
+// PendingChoiceView mirrors `protocol.PendingChoiceView` server-side.
+// Drives the client picker modal for deferred-choice effects
+// (Thoughtseize, future Vendilion-style cards). The Options slice
+// is pre-filtered to what the viewer is legally allowed to see.
+export interface PendingChoiceView {
+  id: string;
+  kind: "discard_from_hand" | string;
+  chooser: string;
+  from_player: string;
+  count: number;
+  source?: string;
+  reason?: string;
+  options?: CardView[];
 }
 
 // StackItemView mirrors `protocol.StackItemView` server-side: the
