@@ -53,7 +53,7 @@ planned just-in-time from the S12 pain-point triage.
 | S13.3 | Client-side timing affordance (greyed illegal actions) | 7 | [#99](https://github.com/krakenhavoc/cmd_and_ctrl/issues/99) | 2026-07-04 | planned |
 | S13.4 | Interactive cleanup discard + per-player MaxHandSize | 7 | [#103](https://github.com/krakenhavoc/cmd_and_ctrl/issues/103) | 2026-07-11 | planned |
 | S13.5 | Card visibility + known-by tracking | 7 | [#108](https://github.com/krakenhavoc/cmd_and_ctrl/issues/108) | 2026-07-25 | planned |
-| S14 | Card-effect catalog foundation | 7 | [#64](https://github.com/krakenhavoc/cmd_and_ctrl/issues/64) | 2026-07-12 | planned |
+| S14 | Card-effect catalog foundation | 7 | [#64](https://github.com/krakenhavoc/cmd_and_ctrl/issues/64) | 2026-07-12 | **done** |
 | S15 | Mana pool, cost model, and auto-tapper | 7 | [#65](https://github.com/krakenhavoc/cmd_and_ctrl/issues/65) | 2026-08-09 | planned |
 | S16 | Continuous effects + layer system (CR 613) | 7 | [#66](https://github.com/krakenhavoc/cmd_and_ctrl/issues/66) | 2026-09-06 | planned |
 | S17 | Replacement effects engine (CR 614) | 7 | [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67) | 2026-10-04 | planned |
@@ -813,51 +813,51 @@ S14 lays the rules-engine infrastructure the rest of Phase 7 hangs off: a per-ga
 ### Tasks
 
 **Event log infrastructure (server):**
-- [ ] New `server/internal/game/events.go` — `Event` tagged struct (`{Kind, Actor, Source, Target, Amount, CardID, OldZone, NewZone, Seq}`), `EventKind` constants (Cast, Resolve, Fizzle, DealDamage, ChangeLife, DrawCard, DiscardCard, Mill, ZoneMove, TapCard, UntapCard, CounterPlaced, TokenCreated, SearchLibrary, CounterSpell, Concede, ETB, LTB, EffectError).
-- [ ] `Game.Events []Event` field; `Game.EmitEvent(Event)` append point (caller holds `g.mu`).
-- [ ] `server/internal/game/clone.go` — deep-copy `Events` slice; shallow-copy `Listeners`.
-- [ ] Instrument every rules-visible mutation to call `EmitEvent`: `drawCardLocked`, `routeBattlefieldCardToOwnerGraveyardLocked`, `routeStackCardToGraveyardLocked`, `MarkDamage`, `ChangePlayerLife`, `AddCounter`, `TapCard`, `ShuffleLibrary`, `MoveCardByID`, `CastSpell`, `resolveTopOfStackLocked`, `CounterSpell`, `CounterAbility`, `eliminatePlayerLocked`, `AnnounceTrigger`.
-- [ ] `protocol.GameView.events` (last-N window, omitempty) for client debugging / auto annotations.
+- [x] New `server/internal/game/events.go` — `Event` tagged struct (`{Kind, Actor, Source, Target, Amount, CardID, OldZone, NewZone, Seq}`), `EventKind` constants (Cast, Resolve, Fizzle, DealDamage, ChangeLife, DrawCard, DiscardCard, Mill, ZoneMove, TapCard, UntapCard, CounterPlaced, TokenCreated, SearchLibrary, CounterSpell, Concede, ETB, LTB, EffectError).
+- [x] `Game.Events []Event` field; `Game.EmitEvent(Event)` append point (caller holds `g.mu`).
+- [x] `server/internal/game/clone.go` — deep-copy `Events` slice; shallow-copy `Listeners`.
+- [x] Instrument every rules-visible mutation to call `EmitEvent`: `drawCardLocked`, `routeBattlefieldCardToOwnerGraveyardLocked`, `routeStackCardToGraveyardLocked`, `MarkDamage`, `ChangePlayerLife`, `AddCounter`, `TapCard`, `ShuffleLibrary`, `MoveCardByID`, `CastSpell`, `resolveTopOfStackLocked`, `CounterSpell`, `CounterAbility`, `eliminatePlayerLocked`, `AnnounceTrigger`.
+- [x] `protocol.GameView.events` (last-N window, omitempty) for client debugging / auto annotations.
 
 **Listener registry (server):**
-- [ ] New `server/internal/game/listeners.go` — `Listener interface { OnEvent(*Game, Event) }`, `Game.RegisterListener(Listener)`, `Game.notifyListenersLocked(Event)` fired immediately after `EmitEvent`.
-- [ ] Zero production listeners in S14. `noOpListener` in tests exercises the wiring.
+- [x] New `server/internal/game/listeners.go` — `Listener interface { OnEvent(*Game, Event) }`, `Game.RegisterListener(Listener)`, `Game.notifyListenersLocked(Event)` fired immediately after `EmitEvent`.
+- [x] Zero production listeners in S14. `noOpListener` in tests exercises the wiring.
 
 **Effect engine (server):**
-- [ ] New subpackage `server/internal/cards/effects/` (separate from `cards` — keeps Scryfall-index concerns disentangled from effect concerns).
-- [ ] `effects/registry.go` — `Spec` struct, `Register(Spec)`, `Lookup(scryfallID) (Spec, bool)`, `All() []Spec`. Duplicate-ScryfallID registration panics at package init.
-- [ ] `effects/context.go` — `Context` wrapping `*game.Game` under-lock, helper accessors (`CreatureIDs`, `PlayerByID`, `ZoneOf`, `IsTargetLegal`).
-- [ ] `effects/primitives.go` — 15 primitives, each a struct with `Apply(ctx *Context) error` that emits the matching `Event`.
-- [ ] `effects/spec.go` — `Spec{ScryfallID, Name, OnResolve, OnETB, StartingLoyalty}`.
-- [ ] `effects/tokens.go` — `TokenSpec` + `CreateToken`. Fresh `InstanceID`, empty `ScryfallID`, `KnownBy = {all seated}`.
-- [ ] 30 card files under `effects/` (one per card).
+- [x] New subpackage `server/internal/cards/effects/` (separate from `cards` — keeps Scryfall-index concerns disentangled from effect concerns).
+- [x] `effects/registry.go` — `Spec` struct, `Register(Spec)`, `Lookup(scryfallID) (Spec, bool)`, `All() []Spec`. Duplicate-ScryfallID registration panics at package init.
+- [x] `effects/context.go` — `Context` wrapping `*game.Game` under-lock, helper accessors (`CreatureIDs`, `PlayerByID`, `ZoneOf`, `IsTargetLegal`).
+- [x] `effects/primitives.go` — 15 primitives, each a struct with `Apply(ctx *Context) error` that emits the matching `Event`.
+- [x] `effects/spec.go` — `Spec{ScryfallID, Name, OnResolve, OnETB, StartingLoyalty}`.
+- [x] `effects/tokens.go` — `TokenSpec` + `CreateToken`. Fresh `InstanceID`, empty `ScryfallID`, `KnownBy = {all seated}`.
+- [x] 30 card files under `effects/` (one per card).
 
 **Resolution integration (server):**
-- [ ] `resolveTopOfStackLocked` (mutations.go) — after target-legality short-circuit, before zone routing: `if spec, ok := effects.Lookup(top.ScryfallID); ok && spec.OnResolve != nil { spec.OnResolve(item, ctx) }`. Errors emit `EventEffectError`, don't wedge resolution.
-- [ ] ETB hook: after `MoveCard(Stack → Battlefield, …)`, call `spec.OnETB(&card, ctx)` if non-nil.
-- [ ] Starting loyalty: `StartingLoyalty > 0` on the spec stamps `CounterLoyalty` counters in the ETB branch.
+- [x] `resolveTopOfStackLocked` (mutations.go) — after target-legality short-circuit, before zone routing: `if spec, ok := effects.Lookup(top.ScryfallID); ok && spec.OnResolve != nil { spec.OnResolve(item, ctx) }`. Errors emit `EventEffectError`, don't wedge resolution.
+- [x] ETB hook: after `MoveCard(Stack → Battlefield, …)`, call `spec.OnETB(&card, ctx)` if non-nil.
+- [x] Starting loyalty: `StartingLoyalty > 0` on the spec stamps `CounterLoyalty` counters in the ETB branch.
 
 **Wire protocol (server + client):**
-- [ ] `protocol.CardView.auto bool` — set by `viewOfCard` when `effects.Lookup(c.ScryfallID).OnResolve != nil || .OnETB != nil`.
-- [ ] `client/src/lib/protocol.ts` — mirror `CardView.auto` + `GameView.events`.
-- [ ] `docs/protocol.md` — document new fields + `EventKind` constants.
+- [x] `protocol.CardView.auto bool` — set by `viewOfCard` when `effects.Lookup(c.ScryfallID).OnResolve != nil || .OnETB != nil`.
+- [x] `client/src/lib/protocol.ts` — mirror `CardView.auto` + `GameView.events`.
+- [x] `docs/protocol.md` — document new fields + `EventKind` constants.
 
 **Client (Svelte):**
-- [ ] `client/src/lib/components/board/Card.svelte` — gold-leaf "auto" badge bottom-right when `card.auto === true`. Hover tooltip.
-- [ ] `client/src/lib/components/board/StackOverlay.svelte` — "auto-resolve" chip next to the controller name on catalog stack items.
-- [ ] `client/src/lib/events.ts` — derived store pulling `GameView.events`, surfaces last ~5 as 2s toast notifications ("Alice took 3 from Lightning Bolt"). Soft nudge against double-applying after an auto-resolve.
+- [x] `client/src/lib/components/board/Card.svelte` — gold-leaf "auto" badge bottom-right when `card.auto === true`. Hover tooltip.
+- [x] `client/src/lib/components/board/StackOverlay.svelte` — "auto-resolve" chip next to the controller name on catalog stack items.
+- [x] `client/src/lib/events.ts` — derived store pulling `GameView.events`, surfaces last ~5 as 2s toast notifications ("Alice took 3 from Lightning Bolt"). Soft nudge against double-applying after an auto-resolve.
 
 **Tests:**
-- [ ] `server/internal/game/events_test.go` — emit points + clone/restore round-trip + listener notification order.
-- [ ] `server/internal/cards/effects/primitives_test.go` — each primitive in isolation.
-- [ ] `server/internal/cards/effects/cards_test.go` — table-driven, one case per catalog card.
-- [ ] `mutations_test.go` extensions — `TestCastLightningBoltAutoResolves`, `TestCastNonCatalogSpellStaysSandbox` (opt-in regression canary), `TestCastSpellFizzleRoutesToGraveyard`.
-- [ ] Vitest — `Card.svelte` auto badge, `StackOverlay.svelte` auto chip.
+- [x] `server/internal/game/events_test.go` — emit points + clone/restore round-trip + listener notification order.
+- [x] `server/internal/cards/effects/primitives_test.go` — each primitive in isolation.
+- [x] `server/internal/cards/effects/cards_test.go` — table-driven, one case per catalog card.
+- [x] `mutations_test.go` extensions — `TestCastLightningBoltAutoResolves`, `TestCastNonCatalogSpellStaysSandbox` (opt-in regression canary), `TestCastSpellFizzleRoutesToGraveyard`.
+- [x] Vitest — `Card.svelte` auto badge, `StackOverlay.svelte` auto chip.
 
 **Docs:**
-- [ ] `docs/decisions/0010-card-effect-catalog.md` — ADR covering the decisions above.
-- [ ] `docs/protocol.md` — wire docs for new fields.
-- [ ] `AGENTS.md` — "how to add a new catalog card" recipe.
+- [x] `docs/decisions/0010-card-effect-catalog.md` — ADR covering the decisions above.
+- [x] `docs/protocol.md` — wire docs for new fields.
+- [x] `AGENTS.md` — "how to add a new catalog card" recipe.
 
 ### Starter card list (31 cards)
 
