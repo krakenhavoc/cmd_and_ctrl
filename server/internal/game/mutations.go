@@ -2664,15 +2664,11 @@ func (g *Game) resolveCombatDamageLocked() {
 		atkPower := power[atkID]
 		blockedBy := blockers[atkID]
 		if len(blockedBy) == 0 {
-			// Unblocked — straight to the defending player.
-			if atkPower <= 0 {
-				continue
-			}
-			target := g.playerByIDLocked(c.AttackingTarget)
-			if target == nil {
-				continue
-			}
-			target.ChangeLife(-atkPower)
+			// Unblocked — straight to the defending player via the
+			// replacement pipeline (S17 sub-PR 5 — Fog etc. can
+			// cancel). Pipeline is a no-op when no combat-damage
+			// replacement is active.
+			g.markCombatDamageToPlayerLocked(c.AttackingTarget, atkID, atkPower)
 			continue
 		}
 		// Blocked — dump full power on the first blocker (sandbox
@@ -2710,23 +2706,98 @@ func (g *Game) resolveCombatDamageLocked() {
 // caller is responsible for invoking runStateChecksLocked once after
 // all combat damage is marked, so simultaneous-resolution semantics
 // (CR 510.1c) hold.
+//
+// S17 sub-PR 5: routes through the CR 614 replacement pipeline with
+// IsCombatDamage=true so Fog-class prevention effects intercept.
+// Damage can be modified (reduced) or canceled entirely.
 func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source uuid.UUID) {
 	if amount <= 0 {
 		return
 	}
+	ev := &ReplacementEvent{
+		Kind:           RepEventDamage,
+		Source:         source,
+		DamageSource:   source,
+		DamageTarget:   cardID,
+		DamageAmount:   amount,
+		IsCombatDamage: true,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		// CR 616 prompt queued; sandbox combat doesn't know how to
+		// resume combat damage mid-prompt today. Log + let damage
+		// pass through. Real-game prompts for combat-damage prevention
+		// land with S30.
+		return
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		return
+	}
+	if out.DamageAmount <= 0 {
+		return
+	}
 	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID != cardID {
+		if g.Battlefield.Cards[i].InstanceID != out.DamageTarget {
 			continue
 		}
-		g.Battlefield.Cards[i].DamageMarked += amount
+		g.Battlefield.Cards[i].DamageMarked += out.DamageAmount
 		g.EmitEvent(Event{
 			Kind:   EventDealDamage,
-			Source: source,
-			Target: cardID,
-			Amount: amount,
+			Source: out.DamageSource,
+			Target: out.DamageTarget,
+			Amount: out.DamageAmount,
 		})
 		return
 	}
+}
+
+// markCombatDamageToPlayerLocked applies combat damage to a player
+// via the replacement pipeline (Fog-class prevention + future
+// lifelink / redirect hooks). Zeroes out if canceled. Caller must
+// hold g.mu. Added in S17 sub-PR 5.
+func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount int) {
+	if amount <= 0 {
+		return
+	}
+	ev := &ReplacementEvent{
+		Kind:           RepEventDamage,
+		Source:         source,
+		DamageSource:   source,
+		DamageTarget:   playerID,
+		DamageAmount:   amount,
+		IsCombatDamage: true,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		return
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		return
+	}
+	if out.DamageAmount <= 0 {
+		return
+	}
+	p := g.playerByIDLocked(out.DamageTarget)
+	if p == nil {
+		return
+	}
+	p.ChangeLife(-out.DamageAmount)
+	g.EmitEvent(Event{
+		Kind:   EventDealDamage,
+		Source: out.DamageSource,
+		Target: out.DamageTarget,
+		Amount: out.DamageAmount,
+	})
 }
 
 // ClearCombat resets every card on the battlefield to "not attacking
