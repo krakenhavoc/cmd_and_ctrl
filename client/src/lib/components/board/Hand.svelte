@@ -152,13 +152,38 @@
   .hand {
     display: flex;
     flex-direction: row;
-    align-items: flex-end;
+    align-items: flex-start;
     justify-content: center;
     gap: -24px;
-    height: 100%;
     min-height: 0;
     padding: 4px;
+    /* Default "peek" state: clip to the top ~55% of a card so the hand
+       takes up roughly half its full vertical footprint, exposing the
+       name, mana cost, art, and type line while hiding P/T + flavour /
+       rules text. Hover lifts the whole fan up and over the board
+       (see .hand:hover) to reveal full cards without pushing layout. */
+    max-height: calc(var(--card-h, 168px) * 0.55);
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+    transition:
+      max-height 220ms var(--ease),
+      transform 220ms var(--ease);
+  }
+  /* Self hand expands on hover: overflow goes visible, the whole strip
+     translates upward so full cards poke over the battlefield, and z-
+     index jumps so nothing on the board occludes the revealed cards. */
+  .hand:not(.opponent):hover {
+    max-height: none;
     overflow: visible;
+    transform: translateY(calc(var(--card-h, 168px) * -0.55));
+    z-index: 20;
+  }
+  /* Opponent hands stay compact — they're face-down anyway and the
+     peek/reveal interaction would feel wrong on someone else's hand. */
+  .hand.opponent {
+    max-height: calc(var(--card-h, 168px) * 0.55);
+    overflow: hidden;
   }
   .hand-slot {
     margin-left: -24px;
