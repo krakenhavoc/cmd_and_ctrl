@@ -54,7 +54,7 @@ planned just-in-time from the S12 pain-point triage.
 | S13.4 | Interactive cleanup discard + per-player MaxHandSize | 7 | [#103](https://github.com/krakenhavoc/cmd_and_ctrl/issues/103) | 2026-07-11 | planned |
 | S13.5 | Card visibility + known-by tracking | 7 | [#108](https://github.com/krakenhavoc/cmd_and_ctrl/issues/108) | 2026-07-25 | planned |
 | S14 | Card-effect catalog foundation | 7 | [#64](https://github.com/krakenhavoc/cmd_and_ctrl/issues/64) | 2026-07-12 | **done** |
-| S15 | Mana pool, cost model, and auto-tapper | 7 | [#65](https://github.com/krakenhavoc/cmd_and_ctrl/issues/65) | 2026-08-09 | planned |
+| S15 | Mana pool, cost model, and auto-tapper | 7 | [#65](https://github.com/krakenhavoc/cmd_and_ctrl/issues/65) | 2026-08-09 | **done** |
 | S16 | Continuous effects + layer system (CR 613) | 7 | [#66](https://github.com/krakenhavoc/cmd_and_ctrl/issues/66) | 2026-09-06 | planned |
 | S17 | Replacement effects engine (CR 614) | 7 | [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67) | 2026-10-04 | planned |
 | S18 | Combat keywords | 7 | [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68) | 2026-11-01 | planned |
@@ -966,68 +966,68 @@ Mana abilities do NOT use the stack (CR 605.3); they resolve synchronously on ac
 ### Tasks
 
 **Card data + Scryfall ingestion (server):**
-- [ ] `cards.Card.ManaCost string` — raw Scryfall `mana_cost` string ("{1}{R}"); empty for lands.
-- [ ] `cards.Card.ProducedMana []string` — Scryfall's `produced_mana` array (WUBRGC entries; empty for non-producers). Tracks which sources the auto-tapper is allowed to consider.
-- [ ] `cards.index.go` JSON tags: `mana_cost` and `produced_mana` added to the struct; `Load()` streams them into the in-memory index.
-- [ ] `game.Card.ManaCost string` + `game.Card.ProducedMana []string` — stamped alongside the existing `OracleID` copy at `deck.toGameCard`; sandbox placeholder cards keep zero values.
-- [ ] `effects.ParseCost(string) (ParsedCost, error)` in a new `server/internal/cards/effects/cost.go`. Handles `{N}` generic, `{W|U|B|R|G|C}` colored, `{W/U}` hybrid (Guildmages), `{W/P}` phyrexian (parsed but self-pay life cost out-of-scope — see below), `{X}` (records `XSlots`, caller supplies `XValue`), `{S}` (snow — parsed but no snow-source routing this sprint). Table-driven test over every cost string in a 100-card sample.
-- [ ] `effects.ParseProducedMana(string) []ManaToken` helper for the synthetic basic-land ability (Forest → `[{Color:"G"}]`).
+- [x] `cards.Card.ManaCost string` — raw Scryfall `mana_cost` string ("{1}{R}"); empty for lands.
+- [x] `cards.Card.ProducedMana []string` — Scryfall's `produced_mana` array (WUBRGC entries; empty for non-producers). Tracks which sources the auto-tapper is allowed to consider.
+- [x] `cards.index.go` JSON tags: `mana_cost` and `produced_mana` added to the struct; `Load()` streams them into the in-memory index.
+- [x] `game.Card.ManaCost string` + `game.Card.ProducedMana []string` — stamped alongside the existing `OracleID` copy at `deck.toGameCard`; sandbox placeholder cards keep zero values.
+- [x] `effects.ParseCost(string) (ParsedCost, error)` in a new `server/internal/cards/effects/cost.go`. Handles `{N}` generic, `{W|U|B|R|G|C}` colored, `{W/U}` hybrid (Guildmages), `{W/P}` phyrexian (parsed but self-pay life cost out-of-scope — see below), `{X}` (records `XSlots`, caller supplies `XValue`), `{S}` (snow — parsed but no snow-source routing this sprint). Table-driven test over every cost string in a 100-card sample.
+- [x] `effects.ParseProducedMana(string) []ManaToken` helper for the synthetic basic-land ability (Forest → `[{Color:"G"}]`).
 
 **`ManaPool` + mana abilities (server):**
-- [ ] `game.ManaToken struct { Color string; Source uuid.UUID; Restrictions []string }` in a new [server/internal/game/mana.go](../server/internal/game/mana.go).
-- [ ] `Player.ManaPool []ManaToken` field with `AddMana`, `SpendMana(ParsedCost) (ok bool)`, `EmptyPool()` helpers. `SpendMana` is dry-run-safe (returns a boolean + the post-spend slice; caller commits).
-- [ ] Step-change hook: `g.emptyAllManaPoolsLocked()` called from the step-advance boundary; one `EventManaPoolEmptied` per non-empty pool.
-- [ ] `Spec.ManaAbilities []ManaAbility` new field on [effects.Spec](../server/internal/cards/effects/spec.go). `ManaAbility{Cost ManaAbilityCost, Produced string, Label string}`; `ManaAbilityCost` is a tiny struct expressing `{Tap bool; Sacrifice bool}` (sacrifice reserved for future mana rocks — not exercised this sprint; documented).
-- [ ] `Game.ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int) error` in [mutations.go](../server/internal/game/mutations.go). Dispatches through the catalog; falls back to the synthetic basic-land ability when `effects.Lookup(oracleID)` misses but the card's TypeLine contains a basic-land subtype. Emits `EventManaAbilityActivated` + `EventManaAdded` + (if tap cost) `EventTapCard`.
-- [ ] Pipe-syntax production queues a `PendingChoiceMana` for the controller: options list is the pipe set intersected with the controller's identity (Arcane Signet) or unrestricted (Birds of Paradise). `resolve_choice` drains the pick and adds the resulting `ManaToken` to the pool.
-- [ ] [sol_ring.go](../server/internal/cards/effects/sol_ring.go), [arcane_signet.go](../server/internal/cards/effects/arcane_signet.go), [birds_of_paradise.go](../server/internal/cards/effects/birds_of_paradise.go) grow their `Spec.ManaAbilities` declarations. Sol Ring: `{Tap}` → `"{C}{C}"`. Arcane Signet: `{Tap}` → `"{W|U|B|R|G}"` (server narrows to identity). Birds: `{Tap}` → `"{W|U|B|R|G}"`.
+- [x] `game.ManaToken struct { Color string; Source uuid.UUID; Restrictions []string }` in a new [server/internal/game/mana.go](../server/internal/game/mana.go).
+- [x] `Player.ManaPool []ManaToken` field with `AddMana`, `SpendMana(ParsedCost) (ok bool)`, `EmptyPool()` helpers. `SpendMana` is dry-run-safe (returns a boolean + the post-spend slice; caller commits).
+- [x] Step-change hook: `g.emptyAllManaPoolsLocked()` called from the step-advance boundary; one `EventManaPoolEmptied` per non-empty pool.
+- [x] `Spec.ManaAbilities []ManaAbility` new field on [effects.Spec](../server/internal/cards/effects/spec.go). `ManaAbility{Cost ManaAbilityCost, Produced string, Label string}`; `ManaAbilityCost` is a tiny struct expressing `{Tap bool; Sacrifice bool}` (sacrifice reserved for future mana rocks — not exercised this sprint; documented).
+- [x] `Game.ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int) error` in [mutations.go](../server/internal/game/mutations.go). Dispatches through the catalog; falls back to the synthetic basic-land ability when `effects.Lookup(oracleID)` misses but the card's TypeLine contains a basic-land subtype. Emits `EventManaAbilityActivated` + `EventManaAdded` + (if tap cost) `EventTapCard`.
+- [x] Pipe-syntax production queues a `PendingChoiceMana` for the controller: options list is the pipe set intersected with the controller's identity (Arcane Signet) or unrestricted (Birds of Paradise). `resolve_choice` drains the pick and adds the resulting `ManaToken` to the pool.
+- [x] [sol_ring.go](../server/internal/cards/effects/sol_ring.go), [arcane_signet.go](../server/internal/cards/effects/arcane_signet.go), [birds_of_paradise.go](../server/internal/cards/effects/birds_of_paradise.go) grow their `Spec.ManaAbilities` declarations. Sol Ring: `{Tap}` → `"{C}{C}"`. Arcane Signet: `{Tap}` → `"{W|U|B|R|G}"` (server narrows to identity). Birds: `{Tap}` → `"{W|U|B|R|G}"`.
 
 **Cost validation in `cast_spell` (server):**
-- [ ] New `CastSpellParams.ForceCast bool` — strict-mode override hatch ("Cast anyway"). Default false.
-- [ ] `CastSpellParams.AutoTap bool` — when true, the server runs `AutoTapForCost` before the cost-check, taps the returned plan, and drops the produced mana into the pool. Per-source preview (sub-PR 5) is client-driven; the server path is a single atomic frame under `g.mu`.
-- [ ] `Game.effectiveCostLocked(p *Player, card Card, params CastSpellParams) ParsedCost` — parses `card.ManaCost`, adds `{2}` per prior commander cast if `FromZone == "command"`.
-- [ ] Strict gate: if `gameplay.strictMana` is set on the calling seat's session AND `!params.ForceCast` AND `!p.ManaPool.CanPay(cost)` → return `ErrInsufficientMana` carrying the missing-symbols slice. Permissive gate: emit `EventCostWarning`, proceed.
-- [ ] On successful cast, deduct from `Player.ManaPool` (strict mode only; permissive mode leaves the pool alone so the affordance matches paper tracking).
+- [x] New `CastSpellParams.ForceCast bool` — strict-mode override hatch ("Cast anyway"). Default false.
+- [x] `CastSpellParams.AutoTap bool` — when true, the server runs `AutoTapForCost` before the cost-check, taps the returned plan, and drops the produced mana into the pool. Per-source preview (sub-PR 5) is client-driven; the server path is a single atomic frame under `g.mu`.
+- [x] `Game.effectiveCostLocked(p *Player, card Card, params CastSpellParams) ParsedCost` — parses `card.ManaCost`, adds `{2}` per prior commander cast if `FromZone == "command"`.
+- [x] Strict gate: if `gameplay.strictMana` is set on the calling seat's session AND `!params.ForceCast` AND `!p.ManaPool.CanPay(cost)` → return `ErrInsufficientMana` carrying the missing-symbols slice. Permissive gate: emit `EventCostWarning`, proceed.
+- [x] On successful cast, deduct from `Player.ManaPool` (strict mode only; permissive mode leaves the pool alone so the affordance matches paper tracking).
 
 **Auto-tapper (server):**
-- [ ] `Game.AutoTapForCost(controller uuid.UUID, cost ParsedCost) (plan []uuid.UUID, ok bool)` in new `server/internal/game/autotap.go`. Iterative-deepening backtracking over controller's untapped permanents with `ProducedMana`-non-empty. Restriction-first heuristic: permanents whose produced set is a strict subset of another's are tried first, so generic basics survive for the next cast.
-- [ ] Budget cap: 10k node expansions (p99 benchmark target < 1 ms for a 38-land Bant manabase). Above budget → `(nil, false)` and the client falls back to manual tapping.
-- [ ] Pre-tapped / lock-tap integration: `AutoTapForCostExcluding(controller, cost, excluded set)` where the lock-in sources are removed from the search set but their contribution is pre-credited to the cost.
-- [ ] Unit tests: Cyclonic Rift overload `{1}{U}{U}{U}{U}{U}{U}` from Hallowed Fountain + Breeding Pool + 4 Islands → plan of 6 sources covers 6 blue, 1 generic; Lightning Bolt `{R}` from 3 basics + 1 Signet → picks the Signet first (pipe restriction), cheapest generic survives.
+- [x] `Game.AutoTapForCost(controller uuid.UUID, cost ParsedCost) (plan []uuid.UUID, ok bool)` in new `server/internal/game/autotap.go`. Iterative-deepening backtracking over controller's untapped permanents with `ProducedMana`-non-empty. Restriction-first heuristic: permanents whose produced set is a strict subset of another's are tried first, so generic basics survive for the next cast.
+- [x] Budget cap: 10k node expansions (p99 benchmark target < 1 ms for a 38-land Bant manabase). Above budget → `(nil, false)` and the client falls back to manual tapping.
+- [x] Pre-tapped / lock-tap integration: `AutoTapForCostExcluding(controller, cost, excluded set)` where the lock-in sources are removed from the search set but their contribution is pre-credited to the cost.
+- [x] Unit tests: Cyclonic Rift overload `{1}{U}{U}{U}{U}{U}{U}` from Hallowed Fountain + Breeding Pool + 4 Islands → plan of 6 sources covers 6 blue, 1 generic; Lightning Bolt `{R}` from 3 basics + 1 Signet → picks the Signet first (pipe restriction), cheapest generic survives.
 
 **Wire protocol (server + client):**
-- [ ] `PlayerView.mana_pool []string` — each entry a serialised token ("W", "U", "C"). Slice, not map. `omitempty` when empty.
-- [ ] `CardView.mana_cost string` — raw Scryfall cost string for hand-zone cost-chip rendering.
-- [ ] `CardView.mana_abilities []ManaAbilityView` — `{Index, Label, Cost, Produced}` for activation buttons on the battlefield.
-- [ ] New `PendingChoiceKind = "mana_pick"` in [pending_choice.go](../server/internal/game/pending_choice.go) + the wire mirror in `PendingChoiceView`.
-- [ ] New `EventKind` constants: `EventManaAdded`, `EventManaSpent`, `EventManaAbilityActivated`, `EventManaPoolEmptied`, `EventCostWarning`.
-- [ ] `protocol.ErrorFrame` (new or extend existing) carrying `{code: "insufficient_mana", message, missing: ["{R}", "{R}"]}` — structured so the client can render the strict-mode override affordance without string-matching.
+- [x] `PlayerView.mana_pool []string` — each entry a serialised token ("W", "U", "C"). Slice, not map. `omitempty` when empty.
+- [x] `CardView.mana_cost string` — raw Scryfall cost string for hand-zone cost-chip rendering.
+- [x] `CardView.mana_abilities []ManaAbilityView` — `{Index, Label, Cost, Produced}` for activation buttons on the battlefield.
+- [x] New `PendingChoiceKind = "mana_pick"` in [pending_choice.go](../server/internal/game/pending_choice.go) + the wire mirror in `PendingChoiceView`.
+- [x] New `EventKind` constants: `EventManaAdded`, `EventManaSpent`, `EventManaAbilityActivated`, `EventManaPoolEmptied`, `EventCostWarning`.
+- [x] `protocol.ErrorFrame` (new or extend existing) carrying `{code: "insufficient_mana", message, missing: ["{R}", "{R}"]}` — structured so the client can render the strict-mode override affordance without string-matching.
 
 **Client:**
-- [ ] [client/src/lib/protocol.ts](../client/src/lib/protocol.ts) — mirror `PlayerView.mana_pool`, `CardView.mana_cost`, `CardView.mana_abilities`, the new event kinds, and the structured error.
-- [ ] [client/src/lib/settings.ts](../client/src/lib/settings.ts) — `gameplay.strictMana: boolean` field (default false), schema bump to v4, migration preserves prior v3 state and seeds strictMana=false.
-- [ ] Settings panel toggle ("Strict mana enforcement") under the existing Gameplay group.
-- [ ] `client/src/lib/components/board/ManaPoolPips.svelte` — horizontal WUBRGC pip row rendered inside [PlayerHeader.svelte](../client/src/lib/components/board/PlayerHeader.svelte) next to the life total. Zero-count colors hidden; any-pending choice shows a pulsing "?" pip.
-- [ ] `Card.svelte` — mana-cost chip rendered bottom-left in hand-zone presentations, hidden on battlefield. Uses the same gold-leaf/badge visual treatment as the S14 auto badge.
-- [ ] `client/src/lib/components/board/ManaAbilityMenu.svelte` — right-click / long-press on a battlefield permanent surfaces the ability list from `card.mana_abilities`; click fires `activate_mana_ability`. Basic lands with the synthetic ability get a convenience single-click tap-for-mana.
-- [ ] Auto-tap-and-cast UX: cast-targeting flow detects mana-short state, calls a new `GET /games/:id/auto-tap-preview?card=<instanceID>` endpoint (read-only, no state mutation) returning the candidate plan, renders a confirm modal listing which permanents will tap. Enter confirms (fires `cast_spell` with `auto_tap: true`); ESC cancels.
-- [ ] Lock-tap override: clicking a land BEFORE the cast locks it into the auto-tap excluded set; repeated clicks toggle. The preview modal highlights locked sources.
-- [ ] Strict-mode error surface: `insufficient_mana` error frame renders a toast with an "Override strict mode for this cast" button; re-fires the action with `force_cast: true`.
-- [ ] New `PendingChoiceKind: "mana_pick"` branch in `ChoicePromptModal.svelte` — renders a 5-button color picker for Arcane Signet / Birds of Paradise. Color options filtered server-side per the produced-string pipe set intersection; client just renders the buttons the wire sends.
+- [x] [client/src/lib/protocol.ts](../client/src/lib/protocol.ts) — mirror `PlayerView.mana_pool`, `CardView.mana_cost`, `CardView.mana_abilities`, the new event kinds, and the structured error.
+- [x] [client/src/lib/settings.ts](../client/src/lib/settings.ts) — `gameplay.strictMana: boolean` field (default false), schema bump to v4, migration preserves prior v3 state and seeds strictMana=false.
+- [x] Settings panel toggle ("Strict mana enforcement") under the existing Gameplay group.
+- [x] `client/src/lib/components/board/ManaPoolPips.svelte` — horizontal WUBRGC pip row rendered inside [PlayerHeader.svelte](../client/src/lib/components/board/PlayerHeader.svelte) next to the life total. Zero-count colors hidden; any-pending choice shows a pulsing "?" pip.
+- [x] `Card.svelte` — mana-cost chip rendered bottom-left in hand-zone presentations, hidden on battlefield. Uses the same gold-leaf/badge visual treatment as the S14 auto badge.
+- [x] `client/src/lib/components/board/ManaAbilityMenu.svelte` — right-click / long-press on a battlefield permanent surfaces the ability list from `card.mana_abilities`; click fires `activate_mana_ability`. Basic lands with the synthetic ability get a convenience single-click tap-for-mana.
+- [x] Auto-tap-and-cast UX: cast-targeting flow detects mana-short state, calls a new `GET /games/:id/auto-tap-preview?card=<instanceID>` endpoint (read-only, no state mutation) returning the candidate plan, renders a confirm modal listing which permanents will tap. Enter confirms (fires `cast_spell` with `auto_tap: true`); ESC cancels.
+- [x] Lock-tap override: clicking a land BEFORE the cast locks it into the auto-tap excluded set; repeated clicks toggle. The preview modal highlights locked sources.
+- [x] Strict-mode error surface: `insufficient_mana` error frame renders a toast with an "Override strict mode for this cast" button; re-fires the action with `force_cast: true`.
+- [x] New `PendingChoiceKind: "mana_pick"` branch in `ChoicePromptModal.svelte` — renders a 5-button color picker for Arcane Signet / Birds of Paradise. Color options filtered server-side per the produced-string pipe set intersection; client just renders the buttons the wire sends.
 
 **Tests:**
-- [ ] Server: `effects/cost_test.go` — parse table over 100 cost strings including every pipe / `{X}` / `{W/P}` / `{S}` shape.
-- [ ] Server: `game/mana_test.go` — `ManaPool.AddMana` / `SpendMana` / `EmptyPool` round-trips; step-change clears; undo rolls back.
-- [ ] Server: `game/autotap_test.go` — Cyclonic Rift overload from Bant manabase; Lightning Bolt from 3 basics + Signet; unsolvable cost returns `(nil, false)`; lock-tap excluded set honoured.
-- [ ] Server: `cards/effects/cards_test.go` extensions — Sol Ring tap adds `{C}{C}`; Arcane Signet tap queues PendingChoice with the commander's identity subset; Birds of Paradise tap queues unrestricted 5-color pick.
-- [ ] Server: `mutations_test.go` — `TestCastSpellStrictModeRejectsShort`, `TestCastSpellForceCastOverrides`, `TestCastSpellPermissiveWarnsAndProceeds`, `TestCastSpellCommanderTaxStrictIncludesSurcharge`.
-- [ ] Client: vitest on `ManaPoolPips.svelte` (pip rendering), `settings.ts` v3→v4 migration (strictMana seeded false, existing keys preserved), `ChoicePromptModal.svelte` mana_pick branch.
-- [ ] Manual 2-tab smoke through the exit-criteria list below.
+- [x] Server: `effects/cost_test.go` — parse table over 100 cost strings including every pipe / `{X}` / `{W/P}` / `{S}` shape.
+- [x] Server: `game/mana_test.go` — `ManaPool.AddMana` / `SpendMana` / `EmptyPool` round-trips; step-change clears; undo rolls back.
+- [x] Server: `game/autotap_test.go` — Cyclonic Rift overload from Bant manabase; Lightning Bolt from 3 basics + Signet; unsolvable cost returns `(nil, false)`; lock-tap excluded set honoured.
+- [x] Server: `cards/effects/cards_test.go` extensions — Sol Ring tap adds `{C}{C}`; Arcane Signet tap queues PendingChoice with the commander's identity subset; Birds of Paradise tap queues unrestricted 5-color pick.
+- [x] Server: `mutations_test.go` — `TestCastSpellStrictModeRejectsShort`, `TestCastSpellForceCastOverrides`, `TestCastSpellPermissiveWarnsAndProceeds`, `TestCastSpellCommanderTaxStrictIncludesSurcharge`.
+- [x] Client: vitest on `ManaPoolPips.svelte` (pip rendering), `settings.ts` v3→v4 migration (strictMana seeded false, existing keys preserved), `ChoicePromptModal.svelte` mana_pick branch.
+- [x] Manual 2-tab smoke through the exit-criteria list below.
 
 **Docs:**
-- [ ] `docs/decisions/0011-mana-pool-and-auto-tapper.md` — ADR covering the pool-as-slice choice, pipe syntax, single-action dispatcher, auto-tapper algorithm, permissive-default rationale, strict-mode override hatch.
-- [ ] `docs/protocol.md` — `mana_pool`, `mana_cost`, `mana_abilities`, new EventKinds, `insufficient_mana` error frame shape, `mana_pick` PendingChoice kind.
-- [ ] `AGENTS.md` — "how to add a mana ability to a catalog card" recipe addendum.
+- [x] `docs/decisions/0011-mana-pool-and-auto-tapper.md` — ADR covering the pool-as-slice choice, pipe syntax, single-action dispatcher, auto-tapper algorithm, permissive-default rationale, strict-mode override hatch.
+- [x] `docs/protocol.md` — `mana_pool`, `mana_cost`, `mana_abilities`, new EventKinds, `insufficient_mana` error frame shape, `mana_pick` PendingChoice kind.
+- [x] `AGENTS.md` — "how to add a mana ability to a catalog card" recipe addendum.
 
 ### Out of scope (explicit handoffs)
 - **Filter lands** (Mystic Gate's "`{1}`, pay sub-mana: add `{W}{W}` or `{U}{U}`") — the sub-payment mechanic is an S17 replacement-effect collaboration. S15 treats filter lands as vanilla dual-produce sources for the auto-tapper (good enough until filter-only costs show up).
