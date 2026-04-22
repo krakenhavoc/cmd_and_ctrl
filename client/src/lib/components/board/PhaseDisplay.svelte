@@ -122,16 +122,16 @@
   .phase-display {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 8px 10px;
-    min-width: 160px;
-    max-width: 220px;
+    gap: 8px;
+    padding: 12px 14px;
+    min-width: 220px;
+    max-width: 300px;
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.2) 100%), var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     color: var(--fg-muted);
-    font-size: 0.8em;
+    font-size: 0.95em;
     box-shadow: var(--shadow-sm);
   }
   .row {
@@ -177,18 +177,18 @@
      render at low opacity in the chrome colour so the row reads as a
      subtle timeline rather than a noisy icon strip. */
   .track {
-    gap: 2px;
-    padding: 2px 0;
+    gap: 3px;
+    padding: 3px 0;
     flex-wrap: nowrap;
   }
   .step-icon {
-    width: 12px;
-    height: 12px;
+    width: 17px;
+    height: 17px;
     flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: rgba(255, 255, 255, 0.28);
+    color: rgba(255, 255, 255, 0.3);
     opacity: 0.85;
     transition:
       color 160ms var(--ease),
@@ -199,11 +199,11 @@
   .step-icon.current {
     color: var(--active-player-color);
     opacity: 1;
-    transform: scale(1.15);
-    filter: drop-shadow(0 0 4px color-mix(in srgb, var(--active-player-color) 70%, transparent));
+    transform: scale(1.18);
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--active-player-color) 70%, transparent));
   }
   .track-gap {
-    width: 6px;
+    width: 8px;
     height: 1px;
     flex: 0 0 auto;
   }
@@ -211,7 +211,7 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    font-size: 0.82em;
+    font-size: 0.92em;
     color: var(--fg);
   }
 
