@@ -225,7 +225,7 @@ type Game struct {
 // NewGame constructs a game in the lobby state with a fresh ID and
 // empty shared zones.
 func NewGame() *Game {
-	return &Game{
+	g := &Game{
 		ID:          uuid.New(),
 		CreatedAt:   time.Now().UTC(),
 		State:       StateLobby,
@@ -233,6 +233,12 @@ func NewGame() *Game {
 		Stack:       newZone(ZoneStack, uuid.Nil),
 		Exile:       newZone(ZoneExile, uuid.Nil),
 	}
+	// S16 sub-PR 2: install the layer-engine invalidation listener.
+	// Bumps g.layerVersion on the events that change which static
+	// abilities are active (battlefield zone moves) or what they
+	// apply to (counter changes). See layer_listener.go.
+	g.Listeners = append(g.Listeners, layerVersionBump{})
+	return g
 }
 
 // AddPlayer seats a new player at the table with the given name and
