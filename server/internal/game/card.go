@@ -146,6 +146,28 @@ type Card struct {
 	// helpers don't have to allocate defensively. Drives the hub
 	// filter's per-viewer redaction in S13.5.
 	KnownBy map[uuid.UUID]bool
+
+	// EnteredBattlefieldAt is the Unix-nano timestamp when the card
+	// most recently entered the battlefield. Drives the S16 layer-
+	// engine's CR 613 timestamp-ordering: when two static abilities
+	// affect the same characteristic, the one whose source has the
+	// earlier timestamp applies first. Stamped by the layer listener
+	// on every EventZoneMove with NewZone == battlefield; cleared
+	// (zeroed) on battlefield-leave so a re-entered permanent gets
+	// a fresh timestamp. Zero ⇒ never on the battlefield in this
+	// game's lifetime. Added in S16 sub-PR 3.
+	EnteredBattlefieldAt int64
+
+	// effective is the cached post-layer-resolution characteristic
+	// for this card on the battlefield. Populated by the layer
+	// engine's recompute pass; nil ⇒ "no recompute has run since
+	// this card last entered the battlefield" or "card is not on
+	// the battlefield." Card.Effective() reads this when set, falls
+	// back to printedCharacteristic() otherwise. Pointer (not value)
+	// so the nil sentinel is cheap and the recompute can replace it
+	// atomically without partial-update visibility. Added in S16
+	// sub-PR 3.
+	effective *Characteristic
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for

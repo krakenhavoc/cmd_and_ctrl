@@ -70,13 +70,18 @@ func (c Card) printedCharacteristic() Characteristic {
 }
 
 // Effective returns the card's post-layer-resolution characteristic.
-// Sub-PR 1 ships the no-op pass: Effective == printed. Sub-PR 3
-// adds the layer cache and this method becomes the cache reader.
+// Sub-PR 3: reads `Card.effective` when populated by the layer
+// engine; falls back to printedCharacteristic when nil (card has
+// either never been on the battlefield since the most recent
+// recompute or is currently in another zone).
 //
 // Returns by value so callers can't mutate the cache. The layer
 // engine writes through a different path (recompute owns the
-// pointer it allocates per cycle).
+// pointer it allocates per cycle and replaces atomically).
 func (c Card) Effective() Characteristic {
+	if c.effective != nil {
+		return *c.effective
+	}
 	return c.printedCharacteristic()
 }
 

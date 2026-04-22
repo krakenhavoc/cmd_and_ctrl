@@ -44,6 +44,17 @@ func init() {
 		}
 		return out
 	}
+	// S16 sub-PR 3: static abilities flow straight through — the
+	// catalog declares them as `game.StaticAbility` already, so the
+	// hook is a thin lookup. Lookup-miss / no-static returns nil so
+	// the layer engine treats the card as inert.
+	game.CatalogStaticAbilities = func(oracleID string) []game.StaticAbility {
+		spec, ok := Lookup(oracleID)
+		if !ok || len(spec.Static) == 0 {
+			return nil
+		}
+		return spec.Static
+	}
 }
 
 // resolveSpell is the EffectResolver implementation. Called from
