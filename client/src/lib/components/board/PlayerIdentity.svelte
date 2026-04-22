@@ -126,191 +126,201 @@
 >
   <span class="name" title={displayLabel}>{displayLabel}</span>
 
-  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-  <div
-    class="avatar-wrap"
-    data-seat-id={seat.id}
-    role={interactive ? "button" : "group"}
-    tabindex={interactive ? 0 : undefined}
-    onclick={handleAvatarClick}
-    onkeydown={(e) => {
-      if (interactive && (e.key === "Enter" || e.key === " ")) {
-        e.preventDefault();
-        handleAvatarClick();
-      }
-    }}
-    aria-label={attackTargetable ? `attack ${displayLabel}` : `${displayLabel}, ${seat.life} life`}
-  >
-    {#if avatar && !avatarFailed}
-      <img
-        class="avatar"
-        src={avatar}
-        alt=""
-        aria-hidden="true"
-        onerror={() => (failedAvatarURL = avatar)}
-      />
-    {:else}
-      <span class="avatar seat-dot-fallback" aria-hidden="true"></span>
-    {/if}
+  <div class="core-row">
+    <!-- Left: mana pool floats alongside the avatar instead of stacking
+         below it. Empty when no mana is pooled, so the column
+         collapses and the avatar stays visually centred. -->
+    <div class="side left" aria-hidden={!seat.mana_pool || seat.mana_pool.length === 0}>
+      <ManaPoolPips pool={seat.mana_pool} />
+    </div>
 
-    <!-- Life overlay sits on the bottom arc of the avatar circle. On
-         self we expose ± chips flanking the number; on opponents it
-         reads as a static chip. -->
-    {#if isSelf}
-      <span class="life-chip">
-        <button
-          type="button"
-          class="life-btn dec"
-          title="-1 life"
-          aria-label="lose 1 life"
-          onclick={(e) => {
-            e.stopPropagation();
-            changeLife(-1);
-          }}>−</button
-        >
-        <span class="life">{seat.life}</span>
-        <button
-          type="button"
-          class="life-btn inc"
-          title="+1 life"
-          aria-label="gain 1 life"
-          onclick={(e) => {
-            e.stopPropagation();
-            changeLife(1);
-          }}>+</button
-        >
-      </span>
-    {:else}
-      <span class="life-chip readonly">
-        <span class="life">{seat.life}</span>
-      </span>
-    {/if}
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+    <div
+      class="avatar-wrap"
+      data-seat-id={seat.id}
+      role={interactive ? "button" : "group"}
+      tabindex={interactive ? 0 : undefined}
+      onclick={handleAvatarClick}
+      onkeydown={(e) => {
+        if (interactive && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          handleAvatarClick();
+        }
+      }}
+      aria-label={attackTargetable
+        ? `attack ${displayLabel}`
+        : `${displayLabel}, ${seat.life} life`}
+    >
+      {#if avatar && !avatarFailed}
+        <img
+          class="avatar"
+          src={avatar}
+          alt=""
+          aria-hidden="true"
+          onerror={() => (failedAvatarURL = avatar)}
+        />
+      {:else}
+        <span class="avatar seat-dot-fallback" aria-hidden="true"></span>
+      {/if}
 
-    {#if popup}
-      {#key popup.id}
-        <span
-          class="dmg-popup"
-          class:loss={popup.delta < 0}
-          class:gain={popup.delta > 0}
-          in:floatUp
-          out:fadeOut
-          aria-live="polite"
-        >
-          {popup.delta > 0 ? "+" : ""}{popup.delta}
+      <!-- Life overlay sits on the bottom arc of the avatar circle. On
+           self we expose ± chips flanking the number; on opponents it
+           reads as a static chip. -->
+      {#if isSelf}
+        <span class="life-chip">
+          <button
+            type="button"
+            class="life-btn dec"
+            title="-1 life"
+            aria-label="lose 1 life"
+            onclick={(e) => {
+              e.stopPropagation();
+              changeLife(-1);
+            }}>−</button
+          >
+          <span class="life">{seat.life}</span>
+          <button
+            type="button"
+            class="life-btn inc"
+            title="+1 life"
+            aria-label="gain 1 life"
+            onclick={(e) => {
+              e.stopPropagation();
+              changeLife(1);
+            }}>+</button
+          >
         </span>
-      {/key}
-    {/if}
+      {:else}
+        <span class="life-chip readonly">
+          <span class="life">{seat.life}</span>
+        </span>
+      {/if}
+
+      {#if popup}
+        {#key popup.id}
+          <span
+            class="dmg-popup"
+            class:loss={popup.delta < 0}
+            class:gain={popup.delta > 0}
+            in:floatUp
+            out:fadeOut
+            aria-live="polite"
+          >
+            {popup.delta > 0 ? "+" : ""}{popup.delta}
+          </span>
+        {/key}
+      {/if}
+    </div>
+
+    <!-- Right: monarch/initiative toggles + poison/energy steppers +
+         any ad-hoc player counters. Stacked vertically so they don't
+         push the panel taller; each row is the same height as a
+         single chip. -->
+    <div class="side right">
+      {#if isSelf}
+        <div class="crown-row">
+          <button
+            type="button"
+            class="marker monarch"
+            class:active={isMonarch}
+            title={isMonarch ? "release the monarch" : "claim the monarch"}
+            aria-label="toggle monarch"
+            aria-pressed={isMonarch}
+            onclick={(e) => {
+              e.stopPropagation();
+              toggleMonarch();
+            }}>👑</button
+          >
+          <button
+            type="button"
+            class="marker initiative"
+            class:active={isInitiative}
+            title={isInitiative ? "release the initiative" : "claim the initiative"}
+            aria-label="toggle initiative"
+            aria-pressed={isInitiative}
+            onclick={(e) => {
+              e.stopPropagation();
+              toggleInitiative();
+            }}>⚔</button
+          >
+        </div>
+        <span class="counter-inline poison" title="poison counters">
+          <span class="counter-icon" aria-hidden="true">🟢</span>
+          <button
+            type="button"
+            class="counter-btn"
+            aria-label="lose 1 poison"
+            onclick={(e) => {
+              e.stopPropagation();
+              changePoison(-1);
+            }}>−</button
+          >
+          <span class="counter-val">{seat.poison ?? 0}</span>
+          <button
+            type="button"
+            class="counter-btn"
+            aria-label="gain 1 poison"
+            onclick={(e) => {
+              e.stopPropagation();
+              changePoison(1);
+            }}>+</button
+          >
+        </span>
+        <span class="counter-inline energy" title="energy counters">
+          <span class="counter-icon" aria-hidden="true">⚡</span>
+          <button
+            type="button"
+            class="counter-btn"
+            aria-label="lose 1 energy"
+            onclick={(e) => {
+              e.stopPropagation();
+              changeEnergy(-1);
+            }}>−</button
+          >
+          <span class="counter-val">{seat.energy ?? 0}</span>
+          <button
+            type="button"
+            class="counter-btn"
+            aria-label="gain 1 energy"
+            onclick={(e) => {
+              e.stopPropagation();
+              changeEnergy(1);
+            }}>+</button
+          >
+        </span>
+      {:else}
+        {#if isMonarch}
+          <span class="marker monarch active" title="monarch" aria-label="monarch">👑</span>
+        {/if}
+        {#if isInitiative}
+          <span class="marker initiative active" title="initiative" aria-label="initiative">⚔</span>
+        {/if}
+        {#if (seat.poison ?? 0) > 0}
+          <span class="marker poison" title={`${seat.poison} poison`} aria-label="poison">
+            🟢{seat.poison}
+          </span>
+        {/if}
+        {#if (seat.energy ?? 0) > 0}
+          <span class="marker energy" title={`${seat.energy} energy`} aria-label="energy">
+            ⚡{seat.energy}
+          </span>
+        {/if}
+        {#if seat.counters}
+          {#each Object.entries(seat.counters) as [name, count] (name)}
+            {#if count > 0 && name !== "poison" && name !== "energy"}
+              <span class="marker counter" title={`${count} ${name}`} aria-label={name}>
+                {name === "experience" ? "⭐" : name === "rad" ? "☢" : "•"}{count}
+              </span>
+            {/if}
+          {/each}
+        {/if}
+      {/if}
+    </div>
   </div>
 
-  <span class="markers">
-    {#if isSelf}
-      <button
-        type="button"
-        class="marker monarch"
-        class:active={isMonarch}
-        title={isMonarch ? "release the monarch" : "claim the monarch"}
-        aria-label="toggle monarch"
-        aria-pressed={isMonarch}
-        onclick={(e) => {
-          e.stopPropagation();
-          toggleMonarch();
-        }}>👑</button
-      >
-      <button
-        type="button"
-        class="marker initiative"
-        class:active={isInitiative}
-        title={isInitiative ? "release the initiative" : "claim the initiative"}
-        aria-label="toggle initiative"
-        aria-pressed={isInitiative}
-        onclick={(e) => {
-          e.stopPropagation();
-          toggleInitiative();
-        }}>⚔</button
-      >
-      <span class="counter-inline poison" title="poison counters">
-        <span class="counter-icon" aria-hidden="true">🟢</span>
-        <button
-          type="button"
-          class="counter-btn"
-          aria-label="lose 1 poison"
-          onclick={(e) => {
-            e.stopPropagation();
-            changePoison(-1);
-          }}>−</button
-        >
-        <span class="counter-val">{seat.poison ?? 0}</span>
-        <button
-          type="button"
-          class="counter-btn"
-          aria-label="gain 1 poison"
-          onclick={(e) => {
-            e.stopPropagation();
-            changePoison(1);
-          }}>+</button
-        >
-      </span>
-      <span class="counter-inline energy" title="energy counters">
-        <span class="counter-icon" aria-hidden="true">⚡</span>
-        <button
-          type="button"
-          class="counter-btn"
-          aria-label="lose 1 energy"
-          onclick={(e) => {
-            e.stopPropagation();
-            changeEnergy(-1);
-          }}>−</button
-        >
-        <span class="counter-val">{seat.energy ?? 0}</span>
-        <button
-          type="button"
-          class="counter-btn"
-          aria-label="gain 1 energy"
-          onclick={(e) => {
-            e.stopPropagation();
-            changeEnergy(1);
-          }}>+</button
-        >
-      </span>
-    {:else}
-      {#if isMonarch}
-        <span class="marker monarch active" title="monarch" aria-label="monarch">👑</span>
-      {/if}
-      {#if isInitiative}
-        <span class="marker initiative active" title="initiative" aria-label="initiative">⚔</span>
-      {/if}
-      {#if (seat.poison ?? 0) > 0}
-        <span class="marker poison" title={`${seat.poison} poison`} aria-label="poison">
-          🟢{seat.poison}
-        </span>
-      {/if}
-      {#if (seat.energy ?? 0) > 0}
-        <span class="marker energy" title={`${seat.energy} energy`} aria-label="energy">
-          ⚡{seat.energy}
-        </span>
-      {/if}
-      {#if seat.counters}
-        {#each Object.entries(seat.counters) as [name, count] (name)}
-          {#if count > 0 && name !== "poison" && name !== "energy"}
-            <span class="marker counter" title={`${count} ${name}`} aria-label={name}>
-              {name === "experience" ? "⭐" : name === "rad" ? "☢" : "•"}{count}
-            </span>
-          {/if}
-        {/each}
-      {/if}
-    {/if}
-  </span>
-
-  <div class="status-row">
-    {#if seat.eliminated}
-      <span class="tag elim">eliminated</span>
-    {:else if hasPriority}
-      <span class="tag prio">priority</span>
-    {:else if isActive}
-      <span class="tag act">active</span>
-    {/if}
-    <ManaPoolPips pool={seat.mana_pool} />
-  </div>
+  {#if seat.eliminated}
+    <span class="tag elim">eliminated</span>
+  {/if}
 </div>
 
 <style>
@@ -367,7 +377,9 @@
     background: var(--seat-color, #888);
   }
 
-  /* State rings translate the old pill shadows into circle-shaped ones. */
+  /* State rings translate the old pill shadows into circle-shaped ones.
+     Active = whose turn it is → seat-coloured ring.
+     Priority = holds priority right now → gold ring (overrides active). */
   .identity.active .avatar-wrap {
     border-color: var(--seat-color, #5fb0ff);
     box-shadow:
@@ -376,9 +388,10 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
   .identity.priority .avatar-wrap {
+    border-color: var(--gold);
     box-shadow:
-      0 0 0 2px color-mix(in srgb, var(--seat-color, #5fb0ff) 75%, transparent),
-      0 0 24px color-mix(in srgb, var(--seat-color, #5fb0ff) 60%, transparent),
+      0 0 0 2px var(--gold),
+      0 0 26px rgba(255, 208, 122, 0.65),
       inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
   .identity.targetable .avatar-wrap {
@@ -493,14 +506,36 @@
     color: #7aff9a;
   }
 
-  .markers {
+  /* Horizontal arrangement: mana (left column) — avatar (center) —
+     counters (right column). The side columns stack vertically so a
+     full marker set (crown + sword + poison + energy) is roughly the
+     same height as the avatar, keeping the panel compact. */
+  .core-row {
     display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
     align-items: center;
     justify-content: center;
-    margin-top: 10px; /* clears the life-chip that extends below avatar */
+    gap: 8px;
     max-width: 100%;
+  }
+  .side {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 0 0 auto;
+    min-width: 0;
+    max-width: 90px;
+  }
+  .side.left {
+    align-items: flex-end;
+  }
+  .side.right {
+    align-items: flex-start;
+  }
+  /* Crown + sword sit on a single row so monarch/initiative read as
+     peer toggles rather than a tall stack. */
+  .crown-row {
+    display: flex;
+    gap: 4px;
   }
   .marker {
     font-size: 12px;
@@ -602,14 +637,6 @@
     color: var(--fg);
   }
 
-  .status-row {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    max-width: 100%;
-  }
   .tag {
     font-size: 9px;
     text-transform: uppercase;
@@ -619,15 +646,7 @@
     background: rgba(0, 0, 0, 0.35);
     border: 1px solid rgba(255, 255, 255, 0.06);
     font-weight: 700;
-  }
-  .tag.prio {
-    color: var(--gold);
-    border-color: rgba(255, 208, 122, 0.4);
-    box-shadow: 0 0 8px rgba(255, 208, 122, 0.3);
-  }
-  .tag.act {
-    color: #9ec7ff;
-    border-color: rgba(158, 199, 255, 0.4);
+    margin-top: 6px;
   }
   .tag.elim {
     color: var(--danger);
