@@ -43,7 +43,7 @@ func TestEffectiveMatchesPrintedWhenNoStatics(t *testing.T) {
 // TestParseTypeLineLegendaryHumanWizard exercises the type-line
 // parser on the canonical Scryfall format with em-dash + supertype.
 func TestParseTypeLineLegendaryHumanWizard(t *testing.T) {
-	supertypes, types, subtypes := parseTypeLine("Legendary Creature — Human Wizard")
+	supertypes, types, subtypes := ParseTypeLine("Legendary Creature — Human Wizard")
 	if len(supertypes) != 1 || supertypes[0] != "Legendary" {
 		t.Errorf("supertypes = %v, want [Legendary]", supertypes)
 	}
@@ -63,7 +63,7 @@ func TestParseTypeLineLegendaryHumanWizard(t *testing.T) {
 
 // TestParseTypeLineSorceryNoSubtypes covers the no-em-dash branch.
 func TestParseTypeLineSorceryNoSubtypes(t *testing.T) {
-	supertypes, types, subtypes := parseTypeLine("Sorcery")
+	supertypes, types, subtypes := ParseTypeLine("Sorcery")
 	if len(supertypes) != 0 {
 		t.Errorf("supertypes = %v, want empty", supertypes)
 	}
@@ -77,7 +77,7 @@ func TestParseTypeLineSorceryNoSubtypes(t *testing.T) {
 
 // TestParseTypeLineEmpty covers placeholder demo cards.
 func TestParseTypeLineEmpty(t *testing.T) {
-	supertypes, types, subtypes := parseTypeLine("")
+	supertypes, types, subtypes := ParseTypeLine("")
 	if supertypes != nil || types != nil || subtypes != nil {
 		t.Errorf("empty type line should yield nil slices, got %v / %v / %v", supertypes, types, subtypes)
 	}
@@ -85,7 +85,7 @@ func TestParseTypeLineEmpty(t *testing.T) {
 
 // TestParseTypeLineBasicLand covers the "Basic Land — Forest" shape.
 func TestParseTypeLineBasicLand(t *testing.T) {
-	supertypes, types, subtypes := parseTypeLine("Basic Land — Forest")
+	supertypes, types, subtypes := ParseTypeLine("Basic Land — Forest")
 	if len(supertypes) != 1 || supertypes[0] != "Basic" {
 		t.Errorf("supertypes = %v, want [Basic]", supertypes)
 	}
