@@ -83,15 +83,15 @@ func (c Card) Effective() Characteristic {
 // parseTypeLine splits a Scryfall-style type line into supertypes,
 // types, and subtypes. Examples:
 //
-//   "Legendary Creature — Human Wizard"
-//     → supertypes: ["Legendary"], types: ["Creature"],
-//       subtypes: ["Human", "Wizard"]
-//   "Basic Land — Forest"
-//     → supertypes: ["Basic"], types: ["Land"], subtypes: ["Forest"]
-//   "Sorcery"
-//     → supertypes: nil, types: ["Sorcery"], subtypes: nil
-//   ""
-//     → all nil
+//	"Legendary Creature — Human Wizard"
+//	  → supertypes: ["Legendary"], types: ["Creature"],
+//	    subtypes: ["Human", "Wizard"]
+//	"Basic Land — Forest"
+//	  → supertypes: ["Basic"], types: ["Land"], subtypes: ["Forest"]
+//	"Sorcery"
+//	  → supertypes: nil, types: ["Sorcery"], subtypes: nil
+//	""
+//	  → all nil
 //
 // The em-dash "—" (U+2014) is the canonical Scryfall separator;
 // hyphen-minus "-" is also accepted as a fallback for cards whose
