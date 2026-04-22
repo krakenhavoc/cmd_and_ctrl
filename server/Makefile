@@ -1,16 +1,25 @@
-.PHONY: all build run dev dev-skip-validation test vet lint fmt fmt-check tidy clean
+.PHONY: all build build-bot run dev dev-skip-validation test vet lint fmt fmt-check tidy clean
 
 BINARY := bin/cmd_and_ctrl-server
+BOT_BINARY := bin/cmd_and_ctrl-bot
 PKGS := ./...
 
 # Default target never mutates the working tree: it verifies formatting,
 # runs vet and tests, and builds the binary. Use `make fmt` explicitly
 # when you want to rewrite files.
-all: fmt-check vet test build
+all: fmt-check vet test build build-bot
 
 build:
 	mkdir -p bin
 	go build -o $(BINARY) ./cmd/server
+
+# S12.5 bot binary — second systemd unit on the prod VPS. Lives
+# in the same Go module as the server so config + types can be
+# shared; runs as its own process for crash isolation and
+# independent restart.
+build-bot:
+	mkdir -p bin
+	go build -o $(BOT_BINARY) ./cmd/bot
 
 run: build
 	./$(BINARY)
