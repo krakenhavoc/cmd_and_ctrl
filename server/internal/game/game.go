@@ -3,6 +3,7 @@ package game
 import (
 	"math/rand/v2"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -191,6 +192,32 @@ type Game struct {
 	// global math/rand/v2 source". Tests pass a deterministic
 	// *rand.Rand here to get reproducible snapshots.
 	rng *rngSource
+
+	// layerVersion is the S16 continuous-effect-engine invalidation
+	// counter. Bumped by listeners on every event that could change
+	// which static abilities are active or what they apply to —
+	// battlefield zone changes, control changes, counter changes,
+	// step advance. Sub-PR 1 ships the field; sub-PR 2 wires the
+	// listener bumps; sub-PR 3 wires actual recompute work.
+	// lastResolvedVersion mirrors the most recent version the
+	// recompute pass has caught up to; the snapshot path no-ops when
+	// they're equal. Both atomic so the snapshot path can call
+	// RecomputeLayersIfStaleLocked under the read lock without a
+	// data race against listener bumps. Read via .Load(), bumped via
+	// .Add(1) / .Store(). Added in S16 sub-PR 1.
+	layerVersion        atomic.Uint64
+	lastResolvedVersion atomic.Uint64
+
+	// recomputeCount instruments the layer engine for the fast-path
+	// regression test (exit criterion #10): two consecutive snapshot
+	// reads with no events between invoke RecomputeLayersLocked
+	// exactly once. Test-only; production callers ignore. Atomic
+	// for the same reason as the version counters.
+	recomputeCount atomic.Uint64
+
+	// recompute serialises layer recomputes against each other
+	// without promoting the game's read lock. See layers.go.
+	recompute recomputeState
 
 	mu sync.RWMutex
 }
@@ -628,6 +655,13 @@ func (g *Game) WithWriteLock(fn func()) {
 // inside fn; use the exported mutation methods (which take a write
 // lock) for that.
 //
+// S16: ReadSnapshot opportunistically resolves any stale layer-
+// system recompute before invoking fn so the projection sees the
+// current effective characteristics. The fast-path no-ops when the
+// version counters match; the body uses atomic version reads + a
+// dedicated recompute mutex, so calling under the read lock stays
+// race-free without promoting to the write lock.
+//
 // This exists so that the protocol package can build a wire-format
 // view of the game without the game package depending on the protocol
 // package (which would be a circular import, since protocol views are
@@ -635,6 +669,7 @@ func (g *Game) WithWriteLock(fn func()) {
 func (g *Game) ReadSnapshot(fn func()) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
+	g.RecomputeLayersIfStaleLocked()
 	fn()
 }
 
