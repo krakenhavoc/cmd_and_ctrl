@@ -99,6 +99,20 @@
   // (Hand.svelte for opponent cards) still set `faceDown` directly.
   const showBack = $derived(faceDown || card.known_by_you === false);
 
+  // Type-aware P/T overlay (S16): every creature card on the table
+  // gets a small bottom-right pip showing its current power/toughness
+  // — these are the post-layer effective values from the wire, so an
+  // anthem-buffed creature shows the bumped numbers (3/3 instead of
+  // 2/2 for a Bear under Glorious Anthem). Planeswalkers swap to a
+  // loyalty counter pip; non-permanent or non-creature cards (instants,
+  // sorceries, lands, artifacts/enchantments without Creature in the
+  // type-line) get nothing — there's no P/T to show.
+  const typeLine = $derived(card.type_line ?? "");
+  const isCreature = $derived(/\bCreature\b/.test(typeLine));
+  const isPlaneswalker = $derived(/\bPlaneswalker\b/.test(typeLine));
+  const loyaltyValue = $derived(card.counters?.loyalty ?? 0);
+  const showPT = $derived(!showBack && (isCreature || isPlaneswalker));
+
   // Hover delay (settings.display.hoverDelayMs) defers the write to
   // the hoveredCard store until the user has rested on the card for
   // the configured duration. Defaults to 300ms so a fast mouse-over
@@ -248,6 +262,21 @@
         {card.damage_marked}
       </span>
     {/if}
+    {#if showPT}
+      {#if isPlaneswalker}
+        <span class="badge loyalty" title={`loyalty ${loyaltyValue}`} aria-label="loyalty">
+          {loyaltyValue}
+        </span>
+      {:else}
+        <span
+          class="badge pt"
+          title={`power/toughness ${card.power ?? 0}/${card.toughness ?? 0}`}
+          aria-label="power/toughness"
+        >
+          {card.power ?? 0}/{card.toughness ?? 0}
+        </span>
+      {/if}
+    {/if}
   {:else}
     <span class="name-fallback">{card.name}</span>
     {#if card.goaded_by}
@@ -267,6 +296,21 @@
       <span class="badge damage" title={`${card.damage_marked} damage marked`} aria-label="damage">
         {card.damage_marked}
       </span>
+    {/if}
+    {#if showPT}
+      {#if isPlaneswalker}
+        <span class="badge loyalty" title={`loyalty ${loyaltyValue}`} aria-label="loyalty">
+          {loyaltyValue}
+        </span>
+      {:else}
+        <span
+          class="badge pt"
+          title={`power/toughness ${card.power ?? 0}/${card.toughness ?? 0}`}
+          aria-label="power/toughness"
+        >
+          {card.power ?? 0}/{card.toughness ?? 0}
+        </span>
+      {/if}
     {/if}
   {/if}
   {#if manaMenuOpen && hasManaAbilities && onActivateManaAbility && card.mana_abilities}
@@ -384,15 +428,42 @@
     border: 1px solid rgba(200, 168, 106, 0.7);
   }
   .badge.damage {
-    /* Bottom-right so it stays clear of the goad / CMD badges. */
+    /* Bottom-right; stacks above the P/T pip when both are showing
+       (P/T is always-on for creatures so this is the common case
+       any time a creature has been hit). */
     top: auto;
-    bottom: 3px;
+    bottom: 22px;
     left: auto;
     right: 3px;
     color: #ff9090;
     background: rgba(60, 0, 0, 0.9);
     border-color: rgba(255, 122, 122, 0.5);
     font-size: 11px;
+  }
+  .badge.pt,
+  .badge.loyalty {
+    /* Bottom-right (MTG card convention). Always-on for creatures
+       and planeswalkers so the player can see effective P/T at a
+       glance without hover-zooming — which especially matters once
+       layered effects (anthems, CDAs) start mutating the numbers
+       relative to the printed art. */
+    top: auto;
+    bottom: 3px;
+    left: auto;
+    right: 3px;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    color: #f4ead5;
+    background: rgba(10, 14, 26, 0.92);
+    border: 1px solid rgba(180, 180, 180, 0.45);
+  }
+  .badge.loyalty {
+    /* Loyalty pip — small green-tinted accent so planeswalkers'
+       counter is visually distinct from a creature P/T. */
+    color: #b8e0b8;
+    background: rgba(20, 40, 20, 0.92);
+    border-color: rgba(150, 200, 150, 0.5);
   }
   .card.menu-open {
     /* When the mana-ability menu is open, let the popover extend
