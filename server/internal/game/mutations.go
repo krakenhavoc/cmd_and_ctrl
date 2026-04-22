@@ -2465,42 +2465,107 @@ func (g *Game) resolveCombatDamageLocked() {
 	// this, an anthem-pumped attacker would deal printed-power damage
 	// instead of buffed.
 	g.RecomputeLayersIfStaleLocked()
-	// Pre-compute the set of attacker IDs that have at least one
-	// declared blocker. O(n) two-pass keeps the per-attacker check
-	// O(1) even with many blockers.
-	blocked := make(map[uuid.UUID]bool, len(g.Battlefield.Cards))
+
+	// Build the per-attacker blocker list once. Sandbox damage
+	// assignment: an attacker's full power lands on the FIRST blocker
+	// in the list (by Battlefield slice order). Real CR 509.2
+	// "controller assigns lethal damage in order" comes with combat
+	// keywords (S18+); for now the simple split is good enough for a
+	// 1-vs-1 block to actually destroy creatures.
+	blockers := make(map[uuid.UUID][]uuid.UUID, len(g.Battlefield.Cards))
 	for _, c := range g.Battlefield.Cards {
 		if c.BlockingTarget != uuid.Nil {
-			blocked[c.BlockingTarget] = true
+			blockers[c.BlockingTarget] = append(blockers[c.BlockingTarget], c.InstanceID)
 		}
 	}
-	for i := range g.Battlefield.Cards {
-		c := &g.Battlefield.Cards[i]
+
+	// Snapshot per-card power BEFORE marking any damage so simultaneous
+	// resolution (CR 510.1c) sees consistent inputs — Bear deals 2 to
+	// the attacker even if the attacker's power gets dropped to 0 by a
+	// future -1/-1 counter from this damage step.
+	power := make(map[uuid.UUID]int, len(g.Battlefield.Cards))
+	for _, c := range g.Battlefield.Cards {
+		if c.AttackingTarget != uuid.Nil || c.BlockingTarget != uuid.Nil {
+			power[c.InstanceID] = c.CurrentPower()
+		}
+	}
+
+	// First pass: unblocked attackers hit the defender; blocked
+	// attackers deal their power to their blockers; blockers deal
+	// their power back to the attacker. All marks happen via
+	// markDamageInPlaceLocked (no SBA between marks — the SBA loop
+	// below sees the full simultaneous state).
+	for _, c := range g.Battlefield.Cards {
 		if c.AttackingTarget == uuid.Nil {
 			continue
 		}
-		if blocked[c.InstanceID] {
+		atkID := c.InstanceID
+		atkPower := power[atkID]
+		blockedBy := blockers[atkID]
+		if len(blockedBy) == 0 {
+			// Unblocked — straight to the defending player.
+			if atkPower <= 0 {
+				continue
+			}
+			target := g.playerByIDLocked(c.AttackingTarget)
+			if target == nil {
+				continue
+			}
+			target.ChangeLife(-atkPower)
 			continue
 		}
-		target := g.playerByIDLocked(c.AttackingTarget)
-		if target == nil {
-			continue
+		// Blocked — dump full power on the first blocker (sandbox
+		// damage assignment). Real lethal-spread + trample / multi-
+		// blocker assignment lands with S18.
+		if atkPower > 0 {
+			g.markCombatDamageOnCardLocked(blockedBy[0], atkPower, atkID)
 		}
-		damage := c.CurrentPower()
-		if damage <= 0 {
-			continue
+		// Each blocker deals its full power to the attacker
+		// (simultaneous, so all blockers contribute).
+		for _, blkID := range blockedBy {
+			blkPower := power[blkID]
+			if blkPower <= 0 {
+				continue
+			}
+			g.markCombatDamageOnCardLocked(atkID, blkPower, blkID)
 		}
-		// Player.ChangeLife appends a LifeHistory entry. We're inside
-		// the game's write lock; ChangeLife operates on the player
-		// struct directly without any internal locking, so this is
-		// safe.
-		target.ChangeLife(-damage)
 	}
+
+	// Run state-based actions so lethal-damage / 0-toughness destroy
+	// the casualties of this combat. Without this, marked-damage
+	// would sit on the cards until the next mutation triggered SBAs.
+	g.runStateChecksLocked()
+
 	// Combat state is intentionally left in place here. AdvanceStep's
 	// transition into end_combat invokes clearCombatLocked, which is
 	// what actually clears AttackingTarget / BlockingTarget. Deferring
 	// the clear lets the client keep combat arrows drawn for the full
 	// duration of the combat_damage step.
+}
+
+// markCombatDamageOnCardLocked adds damage to a battlefield card and
+// emits an EventDealDamage. Caller must hold g.mu and have validated
+// the cardID is on the battlefield. No SBA fires between calls — the
+// caller is responsible for invoking runStateChecksLocked once after
+// all combat damage is marked, so simultaneous-resolution semantics
+// (CR 510.1c) hold.
+func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source uuid.UUID) {
+	if amount <= 0 {
+		return
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID != cardID {
+			continue
+		}
+		g.Battlefield.Cards[i].DamageMarked += amount
+		g.EmitEvent(Event{
+			Kind:   EventDealDamage,
+			Source: source,
+			Target: cardID,
+			Amount: amount,
+		})
+		return
+	}
 }
 
 // ClearCombat resets every card on the battlefield to "not attacking
