@@ -211,14 +211,25 @@ func (c *Card) IsKnownTo(viewerID uuid.UUID) bool {
 	return c.KnownBy[viewerID]
 }
 
-// CurrentPower returns the card's effective power: base printed
-// power plus any +1/+1 counters, minus any -1/-1 counters. Other
-// dynamic effects (auras, equipment, anthem effects) are not
-// modeled — the sandbox handles them via manual life adjustments.
-// Negative results clamp to zero (a -3/-3 modifier on a 2/2 deals
-// no damage, not negative damage).
+// CurrentPower returns the card's combat-relevant power: the
+// post-layer effective power (S16: anthems, CDAs, etc.) plus any
+// +1/+1 counters, minus any -1/-1 counters. Reads via Effective()
+// so layer-7c modifications (Glorious Anthem) and layer-7a CDAs
+// (Tarmogoyf) flow through naturally without combat code needing
+// to know about the layer engine.
+//
+// Effective().Power equals printed power for cards with no static
+// abilities affecting them, so the pre-S16 behavior is preserved
+// for the vast majority of cards. Negative results clamp to zero
+// (a -3/-3 modifier on a 2/2 deals no damage, not negative damage).
+//
+// Caller responsibility: when invoked from a write mutation that
+// followed a static-ability-relevant state change (cast a spell,
+// move a permanent), call g.RecomputeLayersIfStaleLocked first so
+// Effective() reflects the new state. Combat damage and the SBA
+// loop both do this at their top.
 func (c Card) CurrentPower() int {
-	p := c.Power
+	p := c.Effective().Power
 	if c.Counters != nil {
 		p += c.Counters["+1/+1"]
 		p -= c.Counters["-1/-1"]
@@ -229,15 +240,19 @@ func (c Card) CurrentPower() int {
 	return p
 }
 
-// CurrentToughness returns the card's effective toughness: base
-// printed toughness plus any +1/+1 counters, minus any -1/-1
-// counters. Used by the lethal-damage and 0-toughness SBAs (S13.1).
-// May be zero or negative — callers compare against DamageMarked
-// directly. NOT clamped (cf. CurrentPower) because the SBAs need to
-// distinguish "printed 0/0 placeholder" (Toughness == 0, no counters)
-// from "reduced to 0/0 by -1/-1 counters" (Toughness > 0 + counters).
+// CurrentToughness returns the card's combat-relevant toughness:
+// the post-layer effective toughness (S16: anthems, CDAs) plus any
+// +1/+1 counters, minus any -1/-1 counters. Used by the lethal-
+// damage and 0-toughness SBAs (S13.1). May be zero or negative —
+// callers compare against DamageMarked directly. NOT clamped (cf.
+// CurrentPower) because the SBAs need to distinguish "printed 0/0
+// placeholder" (Toughness == 0, no counters) from "reduced to 0/0
+// by -1/-1 counters" (Toughness > 0 + counters).
+//
+// Same caller responsibility as CurrentPower: ensure
+// RecomputeLayersIfStaleLocked has been called for this game state.
 func (c Card) CurrentToughness() int {
-	t := c.Toughness
+	t := c.Effective().Toughness
 	if c.Counters != nil {
 		t += c.Counters["+1/+1"]
 		t -= c.Counters["-1/-1"]

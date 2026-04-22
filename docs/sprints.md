@@ -1245,6 +1245,7 @@ Stop-and-show for manual testing at each boundary, mirroring S15.
 ## S18 — Combat keywords
 **Phase:** 7 · **Goal:** 12 keyword effects with full combat behavior + summoning sickness.
 
+- [x] **(shipped early via S16 hotfix [#157](https://github.com/krakenhavoc/cmd_and_ctrl/pull/157))** Bare-bones blocked-creature combat damage: blocked attackers deal full power to the FIRST blocker (slice order); each blocker deals full power back to the attacker; SBA fires after combat to destroy casualties. Caught during S16 manual testing — without it, blocking was a manual marker the engine ignored. Multi-blocker damage assignment, first strike, trample, deathtouch, etc. remain S18.
 - [ ] Keyword detection helpers (`HasKeyword`, `IsFlyingBlockable`, `BlockerCountValid`)
 - [ ] Combat damage flow rewrite (first-strike + regular sub-steps)
 - [ ] Lifelink, deathtouch, trample, vigilance
@@ -1253,7 +1254,7 @@ Stop-and-show for manual testing at each boundary, mirroring S15.
 - [ ] Defender, haste, flash
 - [ ] First strike + double strike
 - [ ] Summoning sickness (`Card.SummonedThisTurn`)
-- [ ] Damage assignment order prompt (CR 510.1c)
+- [ ] Damage assignment order prompt (CR 510.1c) — multi-blocker controller-chosen lethal split (the bare-bones early-shipped damage uses slice order, not player choice)
 - [ ] 12 catalog cards demonstrating each keyword
 
 **Out of scope:** protection, indestructible, hexproof, shroud, ward, banding, rampage, flanking, fear, intimidate, shadow.

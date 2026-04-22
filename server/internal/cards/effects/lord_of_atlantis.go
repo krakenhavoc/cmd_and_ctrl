@@ -25,7 +25,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // + S18 SBA can consume it without a wire bump.
 func init() {
 	Register(Spec{
-		OracleID: "9e64b11a-eaca-4ce4-a76a-29f4f12c8c6f",
+		OracleID: "cc7f290f-ca00-4285-9bdb-4b4402444f30",
 		Name:     "Lord of Atlantis",
 		Static: []game.StaticAbility{
 			{

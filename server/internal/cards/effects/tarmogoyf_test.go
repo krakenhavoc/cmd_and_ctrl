@@ -12,7 +12,7 @@ import (
 // (Layer 7a CDA): power = distinct card types in all graveyards,
 // toughness = power + 1.
 
-const tarmogoyfOracle = "5acdf4a1-9d1d-491a-a36c-fde6c9b1cf61"
+const tarmogoyfOracle = "45900b2f-f6a9-4c42-9642-008f3c1cf6dd"
 
 // pushGraveyardCardWithTypeLine seeds a typed card in the named
 // player's graveyard. Bumps the layer version directly so the next

@@ -16,8 +16,8 @@ import (
 // so EnteredBattlefieldAt + layerVersion are stamped properly via
 // the listener.
 
-const mycosynthLatticeOracle = "16ddc91a-4b7c-4d12-bd0a-1b2f4ce5d12e"
-const lordOfAtlantisOracle = "9e64b11a-eaca-4ce4-a76a-29f4f12c8c6f"
+const mycosynthLatticeOracle = "ae1f2ab5-c6a5-4d49-a746-3cb4668bf805"
+const lordOfAtlantisOracle = "cc7f290f-ca00-4285-9bdb-4b4402444f30"
 
 // effectiveTypes returns Effective().Types for the named card on
 // the battlefield, forcing a snapshot to ensure the layer engine
