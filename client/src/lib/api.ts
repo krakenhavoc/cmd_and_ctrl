@@ -209,6 +209,44 @@ export async function discordAuthEnabled(): Promise<boolean> {
   }
 }
 
+// AutoTapPreview mirrors the JSON returned by
+// `GET /games/:id/auto-tap-preview` (server/internal/lobby/http.go).
+// `ok=false` means the auto-tapper couldn't satisfy the cost; the
+// caller should keep showing the missing list and disable the
+// "Auto-tap & cast" submit affordance. `plan` is the ordered list
+// of permanent UUIDs the server proposes to tap; the modal renders
+// them in the order returned (colored requirements first, generic
+// recruits second). Added in S15 sub-PR 5.
+export interface AutoTapPreview {
+  ok: boolean;
+  plan?: string[];
+  missing?: string[];
+  cost: string;
+}
+
+// fetchAutoTapPreview asks the server which permanents the auto-
+// tapper would tap to cast `cardID` right now. Read-only — calling
+// it does not mutate game state. `excluded` lets the caller pass
+// the lock-tap UI's reservation list. `xValue` is the announced
+// X for spells with {X} in their cost (defaults to 0).
+export async function fetchAutoTapPreview(
+  gameID: string,
+  cardID: string,
+  opts: { xValue?: number; excluded?: string[] } = {},
+): Promise<AutoTapPreview> {
+  const params = new URLSearchParams({ card: cardID });
+  if (opts.xValue && opts.xValue > 0) {
+    params.set("x", String(opts.xValue));
+  }
+  if (opts.excluded && opts.excluded.length > 0) {
+    params.set("exclude", opts.excluded.join(","));
+  }
+  const res = await authFetch(`/games/${gameID}/auto-tap-preview?${params.toString()}`, {
+    method: "GET",
+  });
+  return (await res.json()) as AutoTapPreview;
+}
+
 // logout revokes the current session server-side and clears local
 // state. Best-effort: a network failure still clears the store so
 // the user isn't stranded in a half-logged-out UI. We bypass

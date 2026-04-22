@@ -328,6 +328,13 @@ func Dispatch(g *game.Game, a Action) error {
 			// follows an insufficient_mana error frame.
 			Strict    bool `json:"strict,omitempty"`
 			ForceCast bool `json:"force_cast,omitempty"`
+			// S15 sub-PR 5 — auto-tap-and-cast. AutoTap asks the
+			// server to plan + execute a tap pass against the
+			// caller's untapped permanents before the strict gate
+			// runs. LockedSources is the lock-tap UI's exclusion
+			// list (permanents the player has reserved).
+			AutoTap       bool     `json:"auto_tap,omitempty"`
+			LockedSources []string `json:"locked_sources,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -344,6 +351,17 @@ func Dispatch(g *game.Game, a Action) error {
 			SplitSecond:  p.SplitSecond,
 			Strict:       p.Strict,
 			ForceCast:    p.ForceCast,
+			AutoTap:      p.AutoTap,
+		}
+		if len(p.LockedSources) > 0 {
+			params.LockedSources = make([]uuid.UUID, 0, len(p.LockedSources))
+			for i, raw := range p.LockedSources {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("cast_spell locked_sources[%d]: %w", i, err)
+				}
+				params.LockedSources = append(params.LockedSources, id)
+			}
 		}
 		if len(p.Targets) > 0 {
 			params.Targets = make([]game.TargetRef, 0, len(p.Targets))
