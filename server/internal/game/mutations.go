@@ -1186,6 +1186,14 @@ func (g *Game) stateBasedActionsLocked() bool {
 	if g.State != StateActive {
 		return false
 	}
+	// S16: refresh effective characteristics before any toughness /
+	// loyalty / battle-defense check. Counter mutations + zone moves
+	// from prior SBA iterations bump layerVersion; this fast-paths
+	// when nothing's changed. Without it, the lethal-damage SBA
+	// would see printed toughness instead of post-anthem effective
+	// (a 2/2 + Glorious Anthem under 3 marked damage would die
+	// because CurrentToughness reads Effective().Toughness == 3).
+	g.RecomputeLayersIfStaleLocked()
 	fired := false
 
 	// Counter cancel (704.5q). Must run before destruction so the
@@ -2451,6 +2459,12 @@ func (g *Game) resolveCombatDamageLocked() {
 	if g.State != StateActive {
 		return
 	}
+	// S16: ensure post-layer effective P/T is current before reading
+	// CurrentPower for damage assignment. The fast-path no-ops when
+	// no relevant event has fired since the last recompute. Without
+	// this, an anthem-pumped attacker would deal printed-power damage
+	// instead of buffed.
+	g.RecomputeLayersIfStaleLocked()
 	// Pre-compute the set of attacker IDs that have at least one
 	// declared blocker. O(n) two-pass keeps the per-attacker check
 	// O(1) even with many blockers.
