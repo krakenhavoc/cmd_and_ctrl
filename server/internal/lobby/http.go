@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -146,6 +147,12 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /games/{id}", auth.Middleware(c.Auth)(handlerFunc(c, getGame)))
 	mux.Handle("POST /games/{id}/start", auth.Middleware(c.Auth)(handlerFunc(c, startGame)))
 	mux.Handle("GET /games/{id}/replay", auth.Middleware(c.Auth)(handlerFunc(c, downloadReplay)))
+	// S15 sub-PR 4 — read-only auto-tap preview. The client polls
+	// this just before firing cast_spell with auto_tap=true; the
+	// response shape is the planned tap order so the cast modal
+	// can show the user which permanents will tap before they
+	// confirm. Read-only — no game state mutates.
+	mux.Handle("GET /games/{id}/auto-tap-preview", auth.Middleware(c.Auth)(handlerFunc(c, autoTapPreview)))
 	mux.Handle("POST /games/{id}/decks", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, uploadDeck))))
 	mux.Handle("GET /me", auth.Middleware(c.Auth)(handlerFunc(c, me)))
 	// Logout does not require an authenticated principal — a client
@@ -395,6 +402,141 @@ func deleteGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
+}
+
+// autoTapPreview is the S15 sub-PR 4 read-only auto-tap endpoint.
+// The client polls it just before firing cast_spell with
+// `auto_tap: true` so the cast modal can show which permanents
+// will tap before the user confirms. Read-only — no game state
+// mutates. Auth: any seated player (or admin / spectator) at this
+// game; the caller's own player ID is read from query params and
+// validated against their session principal.
+//
+// Query params:
+//
+//	?card=<instance-uuid>     — required. The card the caller plans
+//	                            to cast; the server reads its
+//	                            ManaCost + commander tax (when the
+//	                            card is in command zone) to derive
+//	                            the effective cost.
+//	?x=<int>                  — optional. Caller-supplied X value
+//	                            for spells with {X} in their cost.
+//	                            Defaults to 0.
+//	?exclude=<uuid>,<uuid>... — optional. Comma-separated lock-tap
+//	                            permanent IDs the auto-tapper must
+//	                            NOT consider; lets the client
+//	                            reserve sources for later casts.
+//
+// Response:
+//
+//	{
+//	  "ok": true,
+//	  "plan": ["<uuid>", "<uuid>", ...],
+//	  "missing": null   // or ["{R}", "{1}"] when ok is false
+//	}
+//
+// Errors: 400 on missing/malformed query params; 403 on a
+// non-admin caller asking for someone else's preview; 404 when
+// the game / card doesn't exist.
+func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return httpError(http.StatusInternalServerError, "missing principal")
+	}
+	if p.Role != auth.RoleAdmin && p.GameID != id {
+		return httpError(http.StatusForbidden, "not a seat in this game")
+	}
+	if p.Role == auth.RoleSpectator || p.PlayerID == uuid.Nil {
+		return httpError(http.StatusForbidden, "spectators have no auto-tap preview")
+	}
+	cardIDStr := r.URL.Query().Get("card")
+	if cardIDStr == "" {
+		return httpError(http.StatusBadRequest, "card query param is required")
+	}
+	cardID, err := uuid.Parse(cardIDStr)
+	if err != nil {
+		return httpError(http.StatusBadRequest, "card is not a valid UUID")
+	}
+	xValue := 0
+	if xs := r.URL.Query().Get("x"); xs != "" {
+		v, err := strconv.Atoi(xs)
+		if err != nil || v < 0 {
+			return httpError(http.StatusBadRequest, "x must be a non-negative integer")
+		}
+		xValue = v
+	}
+	excluded := map[uuid.UUID]bool{}
+	if ex := r.URL.Query().Get("exclude"); ex != "" {
+		for _, raw := range strings.Split(ex, ",") {
+			raw = strings.TrimSpace(raw)
+			if raw == "" {
+				continue
+			}
+			eid, err := uuid.Parse(raw)
+			if err != nil {
+				return httpError(http.StatusBadRequest, "exclude must be a comma-separated UUID list")
+			}
+			excluded[eid] = true
+		}
+	}
+	g, err := c.Lobby.LookupGame(id)
+	if err != nil {
+		return httpError(http.StatusNotFound, err.Error())
+	}
+	if g == nil {
+		return httpError(http.StatusNotFound, "game not found")
+	}
+	// Look the card up via the game's effect-API surface so the
+	// preview consumes the same ManaCost the cost validator
+	// would. The ParseCost gate already accepts an empty
+	// ManaCost as costless, so a not-found-card path returns a
+	// clean 404 rather than a misleading "ok with empty plan."
+	card, ok := g.LookupCardForEffect(cardID)
+	if !ok {
+		return httpError(http.StatusNotFound, "card not found in game")
+	}
+	cost, err := game.ParseCost(card.ManaCost)
+	if err != nil {
+		return httpError(http.StatusBadRequest, "card's printed cost cannot be parsed: "+err.Error())
+	}
+	// Commander tax: if the card is in the command zone of the
+	// caller's seat, add {2} per prior cast. Mirrors
+	// effectiveCostLocked's logic so preview + actual cast align.
+	if seat := g.PlayerByIDForEffect(p.PlayerID); seat != nil && seat.Command != nil {
+		for _, c := range seat.Command.Cards {
+			if c.InstanceID == cardID {
+				cost.Generic += seat.CommanderCasts[cardID] * 2
+				break
+			}
+		}
+	}
+	plan, ok := g.AutoTapForCostExcluding(p.PlayerID, cost, xValue, excluded)
+	type response struct {
+		OK      bool     `json:"ok"`
+		Plan    []string `json:"plan,omitempty"`
+		Missing []string `json:"missing,omitempty"`
+		Cost    string   `json:"cost"`
+	}
+	body := response{OK: ok, Cost: card.ManaCost}
+	if ok {
+		body.Plan = make([]string, len(plan))
+		for i, id := range plan {
+			body.Plan[i] = id.String()
+		}
+	} else {
+		// On miss, surface the unpaid symbols so the client UI can
+		// reuse the same "missing {R}{R}" copy the strict-mode
+		// override toast renders.
+		seat := g.PlayerByIDForEffect(p.PlayerID)
+		if seat != nil {
+			body.Missing = seat.ManaPool.Missing(cost, xValue)
+		}
+	}
+	return writeJSON(w, http.StatusOK, body)
 }
 
 // downloadReplay streams the per-game JSONL replay log back to the

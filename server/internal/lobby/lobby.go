@@ -405,6 +405,22 @@ func (l *Lobby) Get(id uuid.UUID) (GameMeta, error) {
 	return copyMeta(entry.meta), nil
 }
 
+// LookupGame returns the live *game.Game pointer for id, or
+// ErrGameNotFound. Distinct from Get (which returns a copy of the
+// metadata) — the read-only HTTP endpoints that need to consult
+// the game state directly (S15 auto-tap preview) call this. The
+// returned Game pointer is shared with the WS hub; callers must
+// honour Game.mu (read methods take the lock internally).
+func (l *Lobby) LookupGame(id uuid.UUID) (*game.Game, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	entry, ok := l.games[id]
+	if !ok {
+		return nil, ErrGameNotFound
+	}
+	return entry.room.Game, nil
+}
+
 // List returns metadata for every known game, sorted oldest-first.
 // Invite tokens are STRIPPED from the list responses — listing
 // doesn't imply ownership, and we don't want a rando-with-the-admin-
