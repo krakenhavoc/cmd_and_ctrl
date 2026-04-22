@@ -26,7 +26,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // what shows.
 func init() {
 	Register(Spec{
-		OracleID: "5acdf4a1-9d1d-491a-a36c-fde6c9b1cf61",
+		OracleID: "45900b2f-f6a9-4c42-9642-008f3c1cf6dd",
 		Name:     "Tarmogoyf",
 		Static: []game.StaticAbility{
 			{

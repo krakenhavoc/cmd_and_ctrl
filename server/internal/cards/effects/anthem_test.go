@@ -15,7 +15,7 @@ import (
 // layerVersion; the next snapshot resolves the layer, and
 // Effective() reads the post-7c power/toughness.
 
-const gloriousAnthemOracle = "fa9c2b75-0c93-4eaa-a5ad-6f8aff09a98c"
+const gloriousAnthemOracle = "e3886fe8-9b76-4613-8891-4ec74657c087"
 
 // pushBattlefieldCardWithTimestamp seeds a card directly on the
 // battlefield AND fires EventZoneMove so the layer listener stamps

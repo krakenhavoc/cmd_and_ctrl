@@ -25,7 +25,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // documented so future implementers don't think they were missed.
 func init() {
 	Register(Spec{
-		OracleID: "16ddc91a-4b7c-4d12-bd0a-1b2f4ce5d12e",
+		OracleID: "ae1f2ab5-c6a5-4d49-a746-3cb4668bf805",
 		Name:     "Mycosynth Lattice",
 		Static: []game.StaticAbility{
 			{
