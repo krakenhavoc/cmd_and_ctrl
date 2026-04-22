@@ -55,7 +55,7 @@ planned just-in-time from the S12 pain-point triage.
 | S13.5 | Card visibility + known-by tracking | 7 | [#108](https://github.com/krakenhavoc/cmd_and_ctrl/issues/108) | 2026-07-25 | planned |
 | S14 | Card-effect catalog foundation | 7 | [#64](https://github.com/krakenhavoc/cmd_and_ctrl/issues/64) | 2026-07-12 | **done** |
 | S15 | Mana pool, cost model, and auto-tapper | 7 | [#65](https://github.com/krakenhavoc/cmd_and_ctrl/issues/65) | 2026-08-09 | **done** |
-| S16 | Continuous effects + layer system (CR 613) | 7 | [#66](https://github.com/krakenhavoc/cmd_and_ctrl/issues/66) | 2026-09-06 | planned |
+| S16 | Continuous effects + layer system (CR 613) | 7 | [#66](https://github.com/krakenhavoc/cmd_and_ctrl/issues/66) | 2026-09-06 | **done** |
 | S17 | Replacement effects engine (CR 614) | 7 | [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67) | 2026-10-04 | planned |
 | S18 | Combat keywords | 7 | [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68) | 2026-11-01 | planned |
 | S19 | Auto-fire triggered abilities | 7 | [#69](https://github.com/krakenhavoc/cmd_and_ctrl/issues/69) | 2026-11-29 | planned |
@@ -1110,62 +1110,62 @@ The hard sprint of the rules-engine arc — continuous effects are the second-mo
 ### Tasks
 
 **Server — characteristic snapshot:**
-- [ ] New [server/internal/game/characteristic.go](../server/internal/game/characteristic.go) with `Characteristic{Power, Toughness, Loyalty, Types, Subtypes, Supertypes, Colors, Abilities, Name}`. Field choice mirrors what `viewOfCard` projects to the wire.
-- [ ] `Card.printedCharacteristic() Characteristic` reads immutable printed fields off existing struct (no new storage on `Card` for printed; printed values ARE the existing fields).
-- [ ] `Card.effective` private cache field (nil-able). `Card.Effective()` returns it or falls back to printed when nil.
+- [x] New [server/internal/game/characteristic.go](../server/internal/game/characteristic.go) with `Characteristic{Power, Toughness, Loyalty, Types, Subtypes, Supertypes, Colors, Abilities, Name}`. Field choice mirrors what `viewOfCard` projects to the wire.
+- [x] `Card.printedCharacteristic() Characteristic` reads immutable printed fields off existing struct (no new storage on `Card` for printed; printed values ARE the existing fields).
+- [x] `Card.effective` private cache field (nil-able). `Card.Effective()` returns it or falls back to printed when nil.
 
 **Server — layer engine:**
-- [ ] New [server/internal/game/layers.go](../server/internal/game/layers.go) with `Layer`/`SubLayer` enums, `ContinuousEffect` interface (`Layer`, `Timestamp`, `AppliesTo`, `Apply`).
-- [ ] `Game.LayerVersion uint64` + `Game.LastResolvedVersion uint64`.
-- [ ] `g.RecomputeLayersLocked()` — reset effective = printed; collect active continuous effects; for each layer in 1..7 (sub-layers in 7a..7e for Layer7PT): filter, sort by timestamp, apply.
-- [ ] `g.RecomputeLayersIfStaleLocked()` — fast-path no-op when `LayerVersion == LastResolvedVersion`. Called from snapshot path.
-- [ ] Layer 7d Apply delegates to `CurrentPower()` / `CurrentToughness()` for counter math.
+- [x] New [server/internal/game/layers.go](../server/internal/game/layers.go) with `Layer`/`SubLayer` enums, `ContinuousEffect` interface (`Layer`, `Timestamp`, `AppliesTo`, `Apply`).
+- [x] `Game.LayerVersion uint64` + `Game.LastResolvedVersion uint64`.
+- [x] `g.RecomputeLayersLocked()` — reset effective = printed; collect active continuous effects; for each layer in 1..7 (sub-layers in 7a..7e for Layer7PT): filter, sort by timestamp, apply.
+- [x] `g.RecomputeLayersIfStaleLocked()` — fast-path no-op when `LayerVersion == LastResolvedVersion`. Called from snapshot path.
+- [x] Layer 7d Apply delegates to `CurrentPower()` / `CurrentToughness()` for counter math.
 
 **Server — `Spec.Static` + catalog hook:**
-- [ ] `Spec.Static []StaticAbility` field on [server/internal/cards/effects/spec.go](../server/internal/cards/effects/spec.go). `StaticAbility{Layer, SubLayer, AppliesTo func, Apply func}`.
-- [ ] `CatalogStaticAbilities func(oracleID string) []StaticAbility` — sixth function-var hook in [game/effect_hooks.go](../server/internal/game/effect_hooks.go); populated by [effects/wire.go](../server/internal/cards/effects/wire.go).
-- [ ] `g.activeStaticAbilitiesLocked()` — walks battlefield, looks each card's oracle ID up via the hook, adapts `StaticAbility` into a `ContinuousEffect` bound to source card's `EnteredBattlefieldAt` timestamp.
-- [ ] `Card.EnteredBattlefieldAt int64` (Unix-nano timestamp) + `g.stampBattlefieldEntryLocked(cardID)` helper called by every existing battlefield-entry site.
+- [x] `Spec.Static []StaticAbility` field on [server/internal/cards/effects/spec.go](../server/internal/cards/effects/spec.go). `StaticAbility{Layer, SubLayer, AppliesTo func, Apply func}`.
+- [x] `CatalogStaticAbilities func(oracleID string) []StaticAbility` — sixth function-var hook in [game/effect_hooks.go](../server/internal/game/effect_hooks.go); populated by [effects/wire.go](../server/internal/cards/effects/wire.go).
+- [x] `g.activeStaticAbilitiesLocked()` — walks battlefield, looks each card's oracle ID up via the hook, adapts `StaticAbility` into a `ContinuousEffect` bound to source card's `EnteredBattlefieldAt` timestamp.
+- [x] `Card.EnteredBattlefieldAt int64` (Unix-nano timestamp) + `g.stampBattlefieldEntryLocked(cardID)` helper called by every existing battlefield-entry site.
 
 **Server — event hooks + listeners:**
-- [ ] **Audit + emit `EventLTB`** on every battlefield-leave path. Mirrors existing `EventETB` emission at [mutations.go:336-341](../server/internal/game/mutations.go#L336-L341). Today only ETB fires; layer system needs LTB to invalidate.
-- [ ] Built-in listener: `EventETB`, `EventLTB`, `EventCounterPlaced` (battlefield card), `EventControlChanged` (S16-new), step advance — all bump `g.LayerVersion`. Registered at game-start.
-- [ ] Snapshot path: `ReadSnapshot` calls `g.RecomputeLayersIfStaleLocked()` inside the read closure before building views. Recompute uses a separate `sync.Mutex` so the read lock isn't promoted; double-check version after acquiring the recompute mutex to avoid duplicate work.
+- [x] **Audit + emit `EventLTB`** on every battlefield-leave path. Mirrors existing `EventETB` emission at [mutations.go:336-341](../server/internal/game/mutations.go#L336-L341). Today only ETB fires; layer system needs LTB to invalidate.
+- [x] Built-in listener: `EventETB`, `EventLTB`, `EventCounterPlaced` (battlefield card), `EventControlChanged` (S16-new), step advance — all bump `g.LayerVersion`. Registered at game-start.
+- [x] Snapshot path: `ReadSnapshot` calls `g.RecomputeLayersIfStaleLocked()` inside the read closure before building views. Recompute uses a separate `sync.Mutex` so the read lock isn't promoted; double-check version after acquiring the recompute mutex to avoid duplicate work.
 
 **Server — wire projection:**
-- [ ] `viewOfCard` ([protocol/view.go:954-1001](../server/internal/protocol/view.go#L954-L1001)) reads from `c.Effective()` for `Power`, `Toughness`, `TypeLine`, `Colors`, and the new `abilities []string` field.
-- [ ] `redactCardForViewer` ([view.go:899-914](../server/internal/protocol/view.go#L899-L914)) — same redaction shape (fields are the same; values are now effective).
-- [ ] `CardView.abilities []string` new wire field — drives S18's keyword renderer; ships now so S18 can plug in without a wire bump.
-- [ ] **No protocol bump.** `power`/`toughness`/`type_line` keep the same key names; values become effective.
+- [x] `viewOfCard` ([protocol/view.go:954-1001](../server/internal/protocol/view.go#L954-L1001)) reads from `c.Effective()` for `Power`, `Toughness`, `TypeLine`, `Colors`, and the new `abilities []string` field.
+- [x] `redactCardForViewer` ([view.go:899-914](../server/internal/protocol/view.go#L899-L914)) — same redaction shape (fields are the same; values are now effective).
+- [x] `CardView.abilities []string` new wire field — drives S18's keyword renderer; ships now so S18 can plug in without a wire bump.
+- [x] **No protocol bump.** `power`/`toughness`/`type_line` keep the same key names; values become effective.
 
 **Server — replace S15 commander-identity proxy:**
-- [ ] `commanderIdentityFor` ([mutations.go:2089-2131](../server/internal/game/mutations.go#L2089-L2131)) replaced with layer-aware computation: read commander's effective characteristic colors. `distinctColorsInManaCost` proxy stays as fallback for lobby-seeded placeholder commanders.
-- [ ] Existing S15 tests (Arcane Signet commander-identity filtering) stay green — layer system produces same identity for test commanders.
+- [x] `commanderIdentityFor` ([mutations.go:2089-2131](../server/internal/game/mutations.go#L2089-L2131)) replaced with layer-aware computation: read commander's effective characteristic colors. `distinctColorsInManaCost` proxy stays as fallback for lobby-seeded placeholder commanders.
+- [x] Existing S15 tests (Arcane Signet commander-identity filtering) stay green — layer system produces same identity for test commanders.
 
 **Catalog cards (4):**
-- [ ] **glorious_anthem.go** — Layer 7c. `AppliesTo`: target.IsCreature() && target.Controller == source.Controller. `Apply`: `c.Power++; c.Toughness++`.
-- [ ] **mycosynth_lattice.go** — Layer 4. `AppliesTo`: every permanent. `Apply`: append `"Artifact"` to `c.Types` (idempotent). Lattice's other clauses (lands tap for any color, no mana ability adds non-colorless) are S17 territory — out of scope for S16.
-- [ ] **lord_of_atlantis.go** — Two static abilities on one card:
+- [x] **glorious_anthem.go** — Layer 7c. `AppliesTo`: target.IsCreature() && target.Controller == source.Controller. `Apply`: `c.Power++; c.Toughness++`.
+- [x] **mycosynth_lattice.go** — Layer 4. `AppliesTo`: every permanent. `Apply`: append `"Artifact"` to `c.Types` (idempotent). Lattice's other clauses (lands tap for any color, no mana ability adds non-colorless) are S17 territory — out of scope for S16.
+- [x] **lord_of_atlantis.go** — Two static abilities on one card:
   - **7c**: AppliesTo = `target.IsCreature() && hasSubtype("Merfolk") && target != source && target.Controller == source.Controller`. Apply: +1/+1.
   - **6**: AppliesTo same predicate. Apply: append `"flying"` and `"islandwalk"` to `c.Abilities`. Behavior of flying/islandwalk lands with S18 — S16 just exposes the keyword grant on the wire.
-- [ ] **tarmogoyf.go** — Layer 7a CDA. AppliesTo: target == source. Apply: `n := distinctCardTypesInAllGraveyards(g); c.Power = n; c.Toughness = n + 1`. Helper unions `Types` across every graveyard zone.
+- [x] **tarmogoyf.go** — Layer 7a CDA. AppliesTo: target == source. Apply: `n := distinctCardTypesInAllGraveyards(g); c.Power = n; c.Toughness = n + 1`. Helper unions `Types` across every graveyard zone.
 
 **Tests:**
-- [ ] `server/internal/game/layers_test.go` (new):
+- [x] `server/internal/game/layers_test.go` (new):
   - `TestSingleAnthemAddsPlusOne`, `TestTwoAnthemsStack`, `TestAnthemRespectsControllerBoundary`, `TestRemoveAnthemRevertsCreatures`.
   - `TestMycosynthLatticeAddsArtifact`, `TestLordOfAtlantisGrantsFlyingToMerfolkOnly`, `TestLordOfAtlantisDoesNotPlusItself`.
   - `TestTarmogoyfCDA` (4 distinct types in graveyards → 4/5).
   - `TestCounterAndAnthemStack` (2/2 + +1/+1 counter + anthem → 4/4 — counter via 7d delegating to CurrentPower; anthem via 7c).
-- [ ] `TestLayerVersionInvalidationFastPath` — two consecutive snapshot reads with no events between invoke `RecomputeLayersLocked` exactly once (instrumentation counter on `Game`).
-- [ ] `TestEventLTBFiresOnZoneExit` — regression guard for the LTB emission audit.
-- [ ] Snapshot regression: `viewOfCard` for 2/2 + anthem → wire `power=3 toughness=3`; round-trip through `ViewOfGameFor` confirms redaction doesn't strip effective values for knowers.
-- [ ] S15 commander-identity regression stays green after proxy replacement.
+- [x] `TestLayerVersionInvalidationFastPath` — two consecutive snapshot reads with no events between invoke `RecomputeLayersLocked` exactly once (instrumentation counter on `Game`).
+- [x] `TestEventLTBFiresOnZoneExit` — regression guard for the LTB emission audit.
+- [x] Snapshot regression: `viewOfCard` for 2/2 + anthem → wire `power=3 toughness=3`; round-trip through `ViewOfGameFor` confirms redaction doesn't strip effective values for knowers.
+- [x] S15 commander-identity regression stays green after proxy replacement.
 
 **Docs:**
-- [ ] [docs/decisions/0012-layer-system.md](decisions/0012-layer-system.md) — ADR. Topics: recompute-from-scratch + version cache vs incremental diffs, timestamp-only ordering before dependency detection, Layer 7d delegating to `CurrentPower`/`CurrentToughness`, Layer 5 stub with no card, Layer 1/3 deferred, `Spec.Static` declarative-DSL consistency, commander-identity proxy replacement.
-- [ ] [docs/protocol.md](protocol.md) — note `CardView.power`, `toughness`, `type_line`, `abilities` are now *effective* (post-layer); document new `EventLTB` event kind.
-- [ ] [docs/sprints.md](sprints.md) S16 section — this expansion lives here.
-- [ ] [AGENTS.md](../AGENTS.md) §7 — extend catalog-card recipe with "Adding a static ability" sub-recipe (parallel to S15 mana-ability recipe), worked example using Glorious Anthem.
+- [x] [docs/decisions/0012-layer-system.md](decisions/0012-layer-system.md) — ADR. Topics: recompute-from-scratch + version cache vs incremental diffs, timestamp-only ordering before dependency detection, Layer 7d delegating to `CurrentPower`/`CurrentToughness`, Layer 5 stub with no card, Layer 1/3 deferred, `Spec.Static` declarative-DSL consistency, commander-identity proxy replacement.
+- [x] [docs/protocol.md](protocol.md) — note `CardView.power`, `toughness`, `type_line`, `abilities` are now *effective* (post-layer); document new `EventLTB` event kind.
+- [x] [docs/sprints.md](sprints.md) S16 section — this expansion lives here.
+- [x] [AGENTS.md](../AGENTS.md) §7 — extend catalog-card recipe with "Adding a static ability" sub-recipe (parallel to S15 mana-ability recipe), worked example using Glorious Anthem.
 
 ### Out of scope (explicit handoffs)
 - **Dependency detection (CR 613.8)** — Opalescence + Humility pathological case. S16.5 follow-up if a real card surfaces.

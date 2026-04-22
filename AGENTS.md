@@ -345,21 +345,76 @@ in S15 — `ManaAbilityCost{Tap: true, Sacrifice: true}` will fail with
 `ErrInvalidParam`. Keep adding them to specs; the activation gate
 opens in a later sprint.
 
-For non-mana activated abilities (planeswalker +1/-1, equip, cycling,
-etc.), wait — see the deferral list below.
+For non-mana, non-static activated abilities (planeswalker +1/-1,
+equip, cycling, etc.), wait — see the deferral list below.
+
+### Adding a static ability (S16+)
+
+Static abilities (anthems, type-changers, keyword grants, CDAs) live
+on `Spec.Static []game.StaticAbility`. The layer engine recomputes
+from scratch on every relevant event (battlefield zone change,
+counter change); the wire-side `power` / `toughness` / `type_line` /
+`abilities` fields reflect the post-layer effective characteristics.
+
+```go
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+func init() {
+    Register(Spec{
+        OracleID: "<uuid>",
+        Name:     "Glorious Anthem",
+        Static: []game.StaticAbility{
+            {
+                Layer:    game.Layer7PT,
+                SubLayer: game.SubLayer7C_Modify,
+                AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
+                    return target.IsCreature() && target.Controller == source.Controller
+                },
+                Apply: func(c *game.Characteristic, target *game.Card, g *game.Game, source *game.Card) {
+                    c.Power++
+                    c.Toughness++
+                },
+            },
+        },
+    })
+}
+```
+
+**Layer / SubLayer choices** (CR 613):
+
+| What you're doing | Layer | SubLayer |
+|---|---|---|
+| Add a creature type / artifact / enchantment | `Layer4Type` | (ignored) |
+| Grant a keyword (flying, trample, etc.) | `Layer6Ability` | (ignored) |
+| Set P/T to a specific value (Tarmogoyf-style CDA) | `Layer7PT` | `SubLayer7A_CDA` |
+| Modify P/T (+1/+1 anthem) | `Layer7PT` | `SubLayer7C_Modify` |
+| +1/+1 / -1/-1 counter math | (don't — counter math stays in `CurrentPower`) | — |
+
+**`AppliesTo` patterns:**
+- "Creatures you control" — `target.IsCreature() && target.Controller == source.Controller`
+- "OTHER X you control" — add `target.InstanceID != source.InstanceID`
+- Has subtype X — read `target.Effective().Subtypes` (so type-add effects compose)
+- Self-only (CDA) — `target.InstanceID == source.InstanceID`
+
+**`Apply` patterns:**
+- Anthem +1/+1 — `c.Power++; c.Toughness++`
+- Type-add — append to `c.Types` after checking idempotency
+- Keyword grant — append to `c.Abilities` after checking duplicate
+- CDA P/T — `c.Power = computed; c.Toughness = computed + 1`
+
+**Tests** — see [anthem_test.go](server/internal/cards/effects/anthem_test.go) and [tarmogoyf_test.go](server/internal/cards/effects/tarmogoyf_test.go) for the layer-aware pattern. Use `pushBattlefieldCardWithTimestamp` (fires `EventZoneMove` so the listener stamps `EnteredBattlefieldAt` + bumps `layerVersion`); read effective characteristics via `effectivePower` / `effectiveToughness` / `effectiveTypes` / `effectiveAbilities` helpers.
+
+**Don't bypass the printed/effective split:** if an effect needs to read another card's characteristic, use `target.Effective()` not `target.Power` / `target.TypeLine`. Reading printed values inside `AppliesTo` or `Apply` is a layer-ordering bug waiting to happen.
 
 ### When NOT to add a catalog entry
 
-- **Non-mana activated abilities** (planeswalker +1/-1 loyalty costs,
-  equip, cycling, etc.) land with S19's activated-ability pipeline.
-  Don't invent a shape; wait. (Mana abilities are the exception — see
-  the recipe above.)
+- **Non-mana, non-static activated abilities** (planeswalker +1/-1
+  loyalty costs, equip, cycling, etc.) land with S19's activated-
+  ability pipeline. Don't invent a shape; wait. (Mana abilities and
+  static abilities are the exceptions — see the recipes above.)
 - **Triggered abilities on non-ETB events** (die-to-graveyard, attack
   triggers, "whenever you cast a spell") land with S19's listener pipeline.
   Don't use `OnETB` as a workaround.
-- **Static abilities** (Reliquary Tower "no max hand size", Mana Drain's
-  mana gain, lord-style +1/+1 bonuses) need S16's layer system. The
-  [S16 sprint](docs/sprints.md) covers them.
 - **Replacement effects** ("enters tapped", "if would die, exile instead",
   "draw 2 instead of 1") land with S17. Cultivate / Path's land-fetch
   enters **untapped** in S14 — document the deferral in the card file.
