@@ -977,10 +977,12 @@ func viewOfCard(c game.Card) CardView {
 		}
 	}
 	// S16 sub-PR 1: read post-layer characteristics off Card.Effective()
-	// rather than the raw printed fields. The layer engine ships as a
-	// no-op pass in this sub-PR (effective == printed), so the wire
-	// shape is unchanged; sub-PR 3 onwards populates effective values
-	// that diverge from printed.
+	// rather than the raw printed fields. Sub-PR 4 makes TypeLine
+	// effective-aware too — Mycosynth Lattice's Layer-4 type-add
+	// inserts into Effective().Types and the wire string is rebuilt
+	// from the layered type fields. Cards with no static type
+	// changes (the vast majority) reproduce the printed type-line
+	// byte-for-byte via the parser round-trip.
 	eff := c.Effective()
 	view := CardView{
 		InstanceID:    c.InstanceID.String(),
@@ -988,7 +990,7 @@ func viewOfCard(c game.Card) CardView {
 		Owner:         c.Owner.String(),
 		Controller:    c.Controller.String(),
 		ScryfallID:    c.ScryfallID,
-		TypeLine:      c.TypeLine,
+		TypeLine:      effectiveTypeLine(c, eff),
 		Power:         eff.Power,
 		Toughness:     eff.Toughness,
 		Tapped:        c.Tapped,
@@ -1015,6 +1017,82 @@ func viewOfCard(c game.Card) CardView {
 		view.GoadedBy = c.GoadedBy.String()
 	}
 	return view
+}
+
+// effectiveTypeLine renders the wire `type_line` string from the
+// post-layer characteristic. Two short paths:
+//
+//  1. The card has no static type/sub/supertype changes — eff
+//     matches the parsed printed type-line — return c.TypeLine
+//     verbatim. This preserves the printed string byte-for-byte
+//     for the common case (no Mycosynth Lattice in play, no
+//     creature-typing aura, etc.) so the wire output is identical
+//     to pre-S16 for the ~99% of cards with no static type
+//     changes.
+//
+//  2. Layer 4 has mutated the type fields — rebuild the canonical
+//     "Supertypes Types — Subtypes" string from eff. Mycosynth
+//     Lattice + a Forest produces "Basic Land Artifact — Forest".
+//
+// Empty type fields return "" (matches placeholder demo cards
+// pre-S16).
+//
+// Added in S16 sub-PR 4.
+func effectiveTypeLine(c game.Card, eff game.Characteristic) string {
+	if len(eff.Types) == 0 && len(eff.Subtypes) == 0 && len(eff.Supertypes) == 0 {
+		return c.TypeLine
+	}
+	// Round-trip parse the printed line; if eff matches printed (no
+	// layer mutation), return printed verbatim to avoid drift like
+	// double spaces.
+	pSuper, pTypes, pSubs := game.ParseTypeLine(c.TypeLine)
+	if equalStrings(pSuper, eff.Supertypes) && equalStrings(pTypes, eff.Types) && equalStrings(pSubs, eff.Subtypes) {
+		return c.TypeLine
+	}
+	// Rebuild from eff. Format mirrors Scryfall: supertypes + types
+	// joined with spaces; em-dash and subtypes appended only when
+	// subtypes exist.
+	out := joinSpace(eff.Supertypes)
+	if out != "" && len(eff.Types) > 0 {
+		out += " "
+	}
+	out += joinSpace(eff.Types)
+	if len(eff.Subtypes) > 0 {
+		if out != "" {
+			out += " — "
+		}
+		out += joinSpace(eff.Subtypes)
+	}
+	return out
+}
+
+// joinSpace concatenates ss with single spaces. Empty input → "".
+// Cheap; the type-fields slices are usually 1-3 entries.
+func joinSpace(ss []string) string {
+	out := ""
+	for i, s := range ss {
+		if i > 0 {
+			out += " "
+		}
+		out += s
+	}
+	return out
+}
+
+// equalStrings reports whether two []string slices contain the
+// same elements in the same order. Used to decide when the
+// printed type-line and the post-layer types match (the no-op
+// fast path in effectiveTypeLine).
+func equalStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // viewOfManaAbilities projects a card's catalog + synthetic mana

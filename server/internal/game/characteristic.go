@@ -58,7 +58,7 @@ type Characteristic struct {
 // adds color-changing effects, this will need a parsed-from-cost
 // initial color set.
 func (c Card) printedCharacteristic() Characteristic {
-	supertypes, types, subtypes := parseTypeLine(c.TypeLine)
+	supertypes, types, subtypes := ParseTypeLine(c.TypeLine)
 	return Characteristic{
 		Power:      c.Power,
 		Toughness:  c.Toughness,
@@ -85,7 +85,7 @@ func (c Card) Effective() Characteristic {
 	return c.printedCharacteristic()
 }
 
-// parseTypeLine splits a Scryfall-style type line into supertypes,
+// ParseTypeLine splits a Scryfall-style type line into supertypes,
 // types, and subtypes. Examples:
 //
 //	"Legendary Creature — Human Wizard"
@@ -102,7 +102,11 @@ func (c Card) Effective() Characteristic {
 // hyphen-minus "-" is also accepted as a fallback for cards whose
 // importer round-tripped through ASCII. Whitespace tokenisation
 // handles double-spaces around the dash.
-func parseTypeLine(typeLine string) (supertypes, types, subtypes []string) {
+//
+// Exported (S16 sub-PR 4) so the protocol layer can do the printed-
+// vs-effective comparison in effectiveTypeLine without re-implementing
+// the parser.
+func ParseTypeLine(typeLine string) (supertypes, types, subtypes []string) {
 	if typeLine == "" {
 		return nil, nil, nil
 	}
