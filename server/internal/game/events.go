@@ -129,6 +129,14 @@ const (
 	// debugging breadcrumb. ErrorMsg carries the reason.
 	EventEffectError EventKind = "effect_error"
 
+	// EventStepTransition is an engine-internal sentinel used only
+	// by the S17 replacement-effect pipeline. Fired from the top of
+	// runStepEntryHooksLocked so skip-step replacements (Stasis
+	// cancels StepUntap) can intercept. Does NOT emit to the public
+	// event log — cards read it only via ReplacementEffect.Watches.
+	// Added in S17 sub-PR 2.
+	EventStepTransition EventKind = "step_transition"
+
 	// EventManaAbilityActivated — a mana-producing ability fired.
 	// Actor = controller, Source = the permanent that produced the
 	// mana. S15 sub-PR 2.

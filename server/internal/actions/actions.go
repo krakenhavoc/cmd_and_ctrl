@@ -842,6 +842,12 @@ func Dispatch(g *game.Game, a Action) error {
 			// field rather than round-tripping the PendingChoice to
 			// check its Kind (saves a lock acquisition).
 			Color string `json:"color"`
+			// Order populates an S17 PendingChoiceReplacementOrder
+			// pick — the client returns the effect IDs in the
+			// chosen order as decimal-string entries. Absent for
+			// other kinds. Dispatcher routes by presence. Added in
+			// S17 sub-PR 2.
+			Order []string `json:"order"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -852,6 +858,17 @@ func Dispatch(g *game.Game, a Action) error {
 		}
 		if p.Color != "" {
 			return g.ResolveManaChoice(choiceID, a.Player, p.Color)
+		}
+		if len(p.Order) > 0 {
+			order := make([]game.ReplacementEffectID, 0, len(p.Order))
+			for i, raw := range p.Order {
+				id, err := game.ReplacementEffectIDFromString(raw)
+				if err != nil {
+					return fmt.Errorf("resolve_choice order[%d]: %w", i, err)
+				}
+				order = append(order, id)
+			}
+			return g.ResolveReplacementOrder(choiceID, a.Player, order)
 		}
 		ids := make([]uuid.UUID, 0, len(p.CardIDs))
 		for i, raw := range p.CardIDs {

@@ -116,6 +116,27 @@ type PendingChoiceView struct {
 	// against commander identity before the wire leaves the engine.
 	// Added in S15 sub-PR 2.
 	ColorOptions []string `json:"color_options,omitempty"`
+
+	// ReplacementOptions populates the S17 "replacement_order" kind:
+	// one entry per applicable CR 614 replacement effect the
+	// chooser is ordering. The client renders a drag-reorder list
+	// with label + source-card context and returns the IDs in the
+	// chosen order as an `order []string` payload. Absent for
+	// non-replacement choices. Added in S17 sub-PR 2.
+	ReplacementOptions []ReplacementOptionView `json:"replacement_options,omitempty"`
+}
+
+// ReplacementOptionView is one entry in a PendingChoiceView's
+// ReplacementOptions slice — the wire shape of one CR 616 order-
+// prompt candidate. ID is the server-side ReplacementEffectID
+// serialised as a decimal string so JSON round-trips cleanly;
+// Label is the prompt copy ("Doubling Season: double counters");
+// SourceCardID points at the card hosting the effect (empty for
+// engine built-ins like commander-zone). Added in S17 sub-PR 2.
+type ReplacementOptionView struct {
+	ID           string `json:"id"`
+	Label        string `json:"label,omitempty"`
+	SourceCardID string `json:"source_card_id,omitempty"`
 }
 
 // StackItemView is the wire shape of a stack-item's announce-time
@@ -523,6 +544,25 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// mutations on the engine's copy don't leak onto the view.
 		if c.Kind == game.PendingChoiceMana && len(c.ColorOptions) > 0 {
 			v.ColorOptions = append([]string(nil), c.ColorOptions...)
+		}
+		// PendingChoiceReplacementOrder — S17 sub-PR 2. Emit the
+		// ordered list of replacement-effect IDs with a human-
+		// readable label + source-card ID (empty for engine
+		// built-ins). The client renders a drag-reorder list and
+		// returns the IDs in the chosen order.
+		if c.Kind == game.PendingChoiceReplacementOrder && len(c.ReplacementEffectIDs) > 0 {
+			v.ReplacementOptions = make([]ReplacementOptionView, 0, len(c.ReplacementEffectIDs))
+			for _, id := range c.ReplacementEffectIDs {
+				label, srcID := g.ReplacementOptionMetaForEffect(id)
+				opt := ReplacementOptionView{
+					ID:    game.ReplacementEffectIDToString(id),
+					Label: label,
+				}
+				if srcID != (uuid.UUID{}) {
+					opt.SourceCardID = srcID.String()
+				}
+				v.ReplacementOptions = append(v.ReplacementOptions, opt)
+			}
 		}
 		out = append(out, v)
 	}

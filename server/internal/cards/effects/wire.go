@@ -55,6 +55,17 @@ func init() {
 		}
 		return spec.Static
 	}
+	// S17 sub-PR 2: replacement effects also declared directly as
+	// `game.ReplacementEffect`, same thin-lookup shape. Lookup-miss
+	// / no-replacements returns nil so the gather pass skips the
+	// catalog leg for the card.
+	game.CatalogReplacements = func(oracleID string) []game.ReplacementEffect {
+		spec, ok := Lookup(oracleID)
+		if !ok || len(spec.Replacements) == 0 {
+			return nil
+		}
+		return spec.Replacements
+	}
 }
 
 // resolveSpell is the EffectResolver implementation. Called from

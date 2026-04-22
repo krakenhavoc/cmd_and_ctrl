@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"math/rand/v2"
 	"sync"
 	"sync/atomic"
@@ -219,6 +220,39 @@ type Game struct {
 	// without promoting the game's read lock. See layers.go.
 	recompute recomputeState
 
+	// BuiltinReplacements is the S17 replacement-effect registry
+	// populated at NewGame. Today: just the commander-zone
+	// replacement (refactored from S13.1's inline
+	// applyCommanderZoneReplacementLocked). Future built-ins
+	// register by appending here before Start. Catalog replacements
+	// flow through CatalogReplacements (see effect_hooks.go) and
+	// are NOT listed here. See replacements.go +
+	// builtin_replacements.go. Added in S17 sub-PR 2.
+	BuiltinReplacements []ReplacementEffect
+
+	// testReplacements is the test-only replacement injection slot
+	// populated by RegisterReplacementForTest. Unexported so
+	// production code has no path to it. Walked after built-ins +
+	// catalog in gatherActiveReplacementsLocked. Added in S17
+	// sub-PR 2.
+	testReplacements []ReplacementEffect
+
+	// replacementsAppliedThisEvent maps ReplacementEvent.ID → set
+	// of ReplacementEffectIDs that have already fired for that
+	// event (CR 614.5 / 616.1 once-per-event tracking). Scope is
+	// per-pipeline-call: pipeline functions defer-clear the entry
+	// for ev.ID at their outermost frame so CR 616 prompt pauses
+	// don't lose the entry mid-event. See replacements.go.
+	// Added in S17 sub-PR 2.
+	replacementsAppliedThisEvent map[ReplacementEventID]map[ReplacementEffectID]bool
+
+	// nextReplacementEventID mints the per-event keys stored in
+	// replacementsAppliedThisEvent. Atomic so pipeline functions
+	// can mint without promoting the lock (in practice they
+	// already hold g.mu, but atomic is defensive). Added in S17
+	// sub-PR 2.
+	nextReplacementEventID atomic.Uint64
+
 	mu sync.RWMutex
 }
 
@@ -238,6 +272,11 @@ func NewGame() *Game {
 	// abilities are active (battlefield zone moves) or what they
 	// apply to (counter changes). See layer_listener.go.
 	g.Listeners = append(g.Listeners, layerVersionBump{})
+	// S17 sub-PR 2: install the CR 903.9 commander-zone built-in
+	// replacement. Refactored from S13.1's inline
+	// applyCommanderZoneReplacementLocked. See
+	// builtin_replacements.go.
+	g.BuiltinReplacements = append(g.BuiltinReplacements, commanderZoneReplacement)
 	return g
 }
 
@@ -501,6 +540,32 @@ func (g *Game) onTurnAdvanceLocked(prev, next Turn) {
 //
 // Caller must hold g.mu.
 func (g *Game) runStepEntryHooksLocked() {
+	// S17 sub-PR 2: step-transition replacement hook. Stasis
+	// cancels StepUntap; "skip your next upkeep" cards would
+	// cancel StepUpkeep. The engine short-circuits on the cancel
+	// path: advance to the next step and recurse through this
+	// hook. Apply-loop iteration for skip-step is order-
+	// independent (multiple "skip this step" effects are
+	// idempotent) so even with ≥2 applicable the prompt path
+	// never actually queues — gatherActiveReplacementsLocked
+	// returns at most one eligible replacement in practice for
+	// sub-PR 2 (zero catalog replacements registered).
+	stepEv := &ReplacementEvent{
+		Kind:               RepEventStepTransition,
+		StepTransitionStep: g.Turn.Step,
+		StepTransitionSeat: g.Turn.ActiveSeat,
+	}
+	out, err := g.applyReplacementsLocked(stepEv)
+	if !errors.Is(err, errReplacementPending) {
+		defer g.clearReplacementEventLocked(stepEv.ID)
+		if err == nil && out != nil && out.Canceled {
+			// Step canceled — advance past and recurse so the
+			// cursor hits the next step's entry hook.
+			g.Turn = g.Turn.advance(len(g.Seats))
+			g.runStepEntryHooksLocked()
+			return
+		}
+	}
 	// CR 106.4: every player's mana pool empties at the end of each
 	// step / phase. We model this by clearing pools at the START of
 	// the next step's entry — equivalent net effect, and centralised

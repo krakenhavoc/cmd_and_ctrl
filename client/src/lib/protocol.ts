@@ -144,7 +144,7 @@ export interface GameView {
 // is pre-filtered to what the viewer is legally allowed to see.
 export interface PendingChoiceView {
   id: string;
-  kind: "discard_from_hand" | "mana_pick" | string;
+  kind: "discard_from_hand" | "mana_pick" | "replacement_order" | string;
   chooser: string;
   from_player: string;
   count: number;
@@ -157,6 +157,25 @@ export interface PendingChoiceView {
   // against commander identity for Arcane Signet; full 5-color for
   // Birds of Paradise.
   color_options?: string[];
+  // S17: populated for kind "replacement_order" — the CR 616
+  // affected-player-chooses-order prompt. Client renders a drag-
+  // reorder list of these entries and submits the IDs in the
+  // chosen order as resolve_choice { order: string[] }. Absent
+  // for other kinds. Wire modal lands in sub-PR 3 alongside
+  // Doubling Season + Hardened Scales.
+  replacement_options?: ReplacementOptionView[];
+}
+
+// ReplacementOptionView mirrors protocol.ReplacementOptionView —
+// one entry in a replacement_order prompt's candidate list. ID is
+// a decimal-string ReplacementEffectID; label is the prompt copy
+// ("Doubling Season: double counters"); source_card_id is the card
+// hosting the effect (empty for engine built-ins like commander-
+// zone replacement). Added in S17 sub-PR 2.
+export interface ReplacementOptionView {
+  id: string;
+  label?: string;
+  source_card_id?: string;
 }
 
 // StackItemView mirrors `protocol.StackItemView` server-side: the
