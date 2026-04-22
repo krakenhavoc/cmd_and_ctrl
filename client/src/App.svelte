@@ -15,6 +15,13 @@
   import { route, navigate } from "./lib/router";
   import { session, setSession } from "./lib/session";
   import { settings } from "./lib/settings";
+  import { armMusicOnFirstGesture } from "./lib/music";
+
+  // Ambient music spans the entire app shell (login → lobby →
+  // game), so arm it here rather than in Game.svelte where SFX
+  // live. The first pointerdown / keydown anywhere unlocks playback;
+  // music.ts no-ops on subsequent calls.
+  armMusicOnFirstGesture();
 
   // Enforce the auth gate as a side effect of routing. Running this
   // inside $effect ensures it re-evaluates on hash change + session

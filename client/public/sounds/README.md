@@ -33,12 +33,14 @@ array there.
 | Game over (win)           | `win-1.mp3`, `win-2.mp3`                       |
 | Game over (loss)          | `loss-1.mp3`, `loss-2.mp3`                     |
 
-## Bonus
+## Ambient music
 
-- `ambient_bronze_thunder.mp3` — ambient loop from the original
-  asset pack, not referenced by the `SoundName` enum yet. Left in
-  place for a future ambient-music toggle (candidate for S11.5's
-  music volume slider).
+- `ambient_bronze_thunder.mp3` — looping ambient bed for the app
+  shell. Played by [../src/lib/music.ts](../src/lib/music.ts),
+  armed on first user gesture from `App.svelte`, and gated by the
+  `audio.masterVolume × audio.musicVolume` product from the
+  Settings panel. Not part of the `SoundName` enum — SFX and
+  music use separate playback paths.
 
 ## Note on the source dump
 

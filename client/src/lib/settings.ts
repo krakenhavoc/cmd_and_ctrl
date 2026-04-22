@@ -1,5 +1,6 @@
 import { writable, get, type Writable } from "svelte/store";
 import { setMuted, setVolumeMultiplier } from "./sounds";
+import { setMusicMuted, setMusicVolumeMultiplier } from "./music";
 import { setAnimationConfig } from "./animations";
 import { STEP_IDS, NO_PRIORITY_STEPS, type StepID } from "./turn";
 
@@ -338,19 +339,28 @@ settings.subscribe((s) => saveSettings(s));
 // cmdctrl.muted key.
 let lastMuted: boolean | null = null;
 let lastVolume: number | null = null;
+let lastMusicVolume: number | null = null;
 settings.subscribe((s) => {
   if (s.audio.muted !== lastMuted) {
     lastMuted = s.audio.muted;
     setMuted(s.audio.muted);
+    setMusicMuted(s.audio.muted);
   }
   // Master × effects, both 0..100, normalised to a 0..1
   // multiplier. sounds.play() folds this into per-event volume.
-  // Music volume is intentionally not folded here — music has no
-  // playback path yet (S09 didn't ship a music track).
   const vol = (s.audio.masterVolume / 100) * (s.audio.effectsVolume / 100);
   if (vol !== lastVolume) {
     lastVolume = vol;
     setVolumeMultiplier(vol);
+  }
+  // Same shape for music: master × music feeds the ambient track's
+  // HTMLAudioElement.volume. music.ts pauses the element when the
+  // product is 0, so "master=0" or "music=0" stops decoding rather
+  // than silently streaming.
+  const musicVol = (s.audio.masterVolume / 100) * (s.audio.musicVolume / 100);
+  if (musicVol !== lastMusicVolume) {
+    lastMusicVolume = musicVol;
+    setMusicVolumeMultiplier(musicVol);
   }
 });
 
