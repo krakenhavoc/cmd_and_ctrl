@@ -144,10 +144,7 @@ export function getAvatarColor(
 // deterministic seat palette when the seat hasn't claimed a Discord
 // identity. Thin wrapper over getAvatarColor — most call sites want
 // this form.
-export function playerColor(
-  seat: PlayerView,
-  onResolved?: (color: string) => void,
-): string {
+export function playerColor(seat: PlayerView, onResolved?: (color: string) => void): string {
   const url = avatarURL(seat.discord_id, seat.discord_avatar_hash);
   return getAvatarColor(url, seatColor(seat.seat), onResolved);
 }

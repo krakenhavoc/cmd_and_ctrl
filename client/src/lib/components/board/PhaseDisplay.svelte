@@ -57,11 +57,8 @@
       });
     }
   });
-  const colorFor = (seat: PlayerView): string =>
-    playerColors[seat.id] ?? seatColor(seat.seat);
-  const activeColor = $derived(
-    activePlayer ? colorFor(activePlayer) : seatColor(activeSeat),
-  );
+  const colorFor = (seat: PlayerView): string => playerColors[seat.id] ?? seatColor(seat.seat);
+  const activeColor = $derived(activePlayer ? colorFor(activePlayer) : seatColor(activeSeat));
 </script>
 
 <div
