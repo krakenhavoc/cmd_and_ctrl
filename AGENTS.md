@@ -291,10 +291,54 @@ surface tiny.
    Makefile) so the library is small enough to find your card quickly.
    Cast it, verify the AUTO badge renders, verify the effect resolves.
 
+### Adding a mana ability (S15+)
+
+Mana abilities live on the same `Spec{}` struct via the optional
+`ManaAbilities []ManaAbility` field. Used by Sol Ring, Arcane Signet,
+Birds of Paradise today; basic lands fall back to a synthetic shape
+the engine derives from `TypeLine` (no spec needed).
+
+```go
+func init() {
+    Register(Spec{
+        OracleID: "<uuid>",
+        Name:     "Sol Ring",
+        ManaAbilities: []ManaAbility{
+            {
+                Cost:     ManaAbilityCost{Tap: true},
+                Produced: "{C}{C}",
+                Label:    "Add {C}{C}",
+            },
+        },
+    })
+}
+```
+
+`Produced` is parsed by `game.ParseProducedMana`. Single-color slots
+drop straight into the controller's pool when the ability fires;
+multi-option slots use **pipe syntax** and queue a `mana_pick`
+PendingChoice for the controller to resolve:
+
+- `"{C}{C}"` — Sol Ring: two colorless slots.
+- `"{W|U|B|R|G}"` — Birds of Paradise: one any-color slot, picker.
+- `"{W|U|B|R|G}"` + `commanderIdentityFor` filter — Arcane Signet:
+  the engine narrows the pipe set against the controller's commander
+  identity at activation time.
+
+Sacrifice-cost abilities (Lotus Petal) parse but reject at activation
+in S15 — `ManaAbilityCost{Tap: true, Sacrifice: true}` will fail with
+`ErrInvalidParam`. Keep adding them to specs; the activation gate
+opens in a later sprint.
+
+For non-mana activated abilities (planeswalker +1/-1, equip, cycling,
+etc.), wait — see the deferral list below.
+
 ### When NOT to add a catalog entry
 
-- **Activated abilities** (mana rocks, +1/-1 loyalty costs, equip, etc.)
-  land with S19's activated-ability pipeline. Don't invent a shape; wait.
+- **Non-mana activated abilities** (planeswalker +1/-1 loyalty costs,
+  equip, cycling, etc.) land with S19's activated-ability pipeline.
+  Don't invent a shape; wait. (Mana abilities are the exception — see
+  the recipe above.)
 - **Triggered abilities on non-ETB events** (die-to-graveyard, attack
   triggers, "whenever you cast a spell") land with S19's listener pipeline.
   Don't use `OnETB` as a workaround.
