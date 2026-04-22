@@ -457,18 +457,68 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 		return err
 	}
 
-	// Apply-loop settled. Run the underlying mutation according
-	// to ev.Kind, then clear the per-event tracking entry.
-	// Sub-PR 2 ships the resume dispatch as a TODO — no catalog
-	// card exercises the multi-replacement path yet. The engine
-	// unit test registers test-only replacements via
-	// RegisterReplacementForTest and asserts on ev.Canceled /
-	// mutated fields directly rather than on the underlying
-	// mutation side effect. Subsequent sub-PRs that ship real
-	// cards (Doubling Season + Hardened Scales in sub-PR 3) wire
-	// the resume dispatchers per ev.Kind.
-	_ = out
-	g.clearReplacementEventLocked(ev.ID)
+	// Apply-loop settled. Dispatch the underlying mutation per
+	// ev.Kind using the (possibly mutated) event payload. Added in
+	// S17 sub-PR 3 so Doubling Season + Hardened Scales actually
+	// land counters after the CR 616 prompt resolves.
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		return nil
+	}
+	return g.applyResolvedReplacementEventLocked(out)
+}
+
+// applyResolvedReplacementEventLocked runs the underlying
+// mutation for a fully-settled ReplacementEvent — called from the
+// CR 616 resume path (ResolveReplacementOrder) after the
+// replacement apply-loop finishes with no pending prompts. The
+// event's payload may have been mutated by replacements (e.g.
+// Doubling Season doubled CounterDelta; Library of Leng rewrote
+// NewZone). Pipeline functions' initial (non-paused) path inlines
+// the same mutation; the resume path uses this central dispatcher.
+//
+// Caller must hold g.mu.
+func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
+	switch ev.Kind {
+	case RepEventCounter:
+		return g.applyCounterLocked(ev.CounterTarget, ev.CounterName, ev.CounterDelta)
+	case RepEventDraw:
+		return g.actuallyDrawCardLocked(ev.DrawPlayer)
+	case RepEventLife:
+		p := g.playerByIDLocked(ev.LifePlayer)
+		if p == nil {
+			return ErrPlayerNotFound
+		}
+		p.ChangeLife(ev.LifeDelta)
+		g.EmitEvent(Event{Kind: EventChangeLife, Target: ev.LifePlayer, Amount: ev.LifeDelta})
+		return nil
+	case RepEventDamage:
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == ev.DamageTarget {
+				g.Battlefield.Cards[i].DamageMarked += ev.DamageAmount
+				if g.Battlefield.Cards[i].DamageMarked < 0 {
+					g.Battlefield.Cards[i].DamageMarked = 0
+				}
+				if ev.DamageAmount > 0 {
+					g.EmitEvent(Event{
+						Kind:   EventDealDamage,
+						Source: ev.DamageSource,
+						Target: ev.DamageTarget,
+						Amount: ev.DamageAmount,
+					})
+				}
+				g.runStateChecksLocked()
+				return nil
+			}
+		}
+		return ErrCardNotFound
+	case RepEventMove, RepEventStepTransition:
+		// Move + step-transition resumes land with sub-PR 4+
+		// (Kismet enters-tapped routing, Stasis skip-step). For
+		// sub-PR 3 no catalog card queues a multi-replacement
+		// prompt on these kinds, so this is a no-op TODO.
+		return nil
+	}
 	return nil
 }
 
