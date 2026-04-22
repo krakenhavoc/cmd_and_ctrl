@@ -6,11 +6,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // reveal those cards, put one onto the battlefield tapped and the
 // other into your hand, then shuffle."
 //
-// S14 sandbox simplifications:
-//   - Both lands enter UNTAPPED. Enters-tapped is a replacement-
-//     effect concern that lands alongside the layer / replacement
-//     pipeline in S17. Matches the posture Path to Exile's land-
-//     fetch adopts.
+// S14 sandbox simplifications retained:
 //   - Auto-picks the first two basic lands in library order. "Up to
 //     two" degrades gracefully: a library with one basic puts that
 //     one onto the battlefield and skips the hand grab; a library
@@ -20,6 +16,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     deferred (so the second sees the remaining basics in order),
 //     the second with shuffle true (the rules require exactly one
 //     shuffle at the end).
+//
+// S17 sub-PR 4: land enters the battlefield TAPPED via
+// SearchLibrary.TappedOnEntry — closes the S14 "enters untapped"
+// deferral. The hand half is untouched (no tapped state in hand).
 func init() {
 	Register(Spec{
 		OracleID: "8b755881-a72d-4e21-a369-d2924eb4585a",
@@ -27,12 +27,13 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller := ctx.Controller()
 			if err := (SearchLibrary{
-				Player:    controller,
-				Predicate: IsBasicLand,
-				Dest:      game.ZoneBattlefield,
-				Limit:     1,
-				Reveal:    true,
-				Shuffle:   false,
+				Player:        controller,
+				Predicate:     IsBasicLand,
+				Dest:          game.ZoneBattlefield,
+				Limit:         1,
+				Reveal:        true,
+				Shuffle:       false,
+				TappedOnEntry: true,
 			}).Apply(ctx); err != nil {
 				return err
 			}
