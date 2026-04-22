@@ -1,14 +1,14 @@
 <script lang="ts">
   // PromisesRow renders a small ledger of "I owe you" / "you owe me"
   // promise tokens between the viewer and each opponent. Sits below
-  // PlayerHeader on each opponent panel. The viewer's panel doesn't
+  // PlayerIdentity on each opponent panel. The viewer's panel doesn't
   // render this row — the totals are mirrored on every opponent
-  // header from the viewer's perspective, which is enough.
+  // identity from the viewer's perspective, which is enough.
   //
   // Click semantics (viewer-driven): + button increments the
   // viewer→opponent count; - decrements (clamped at 0). The other
   // direction (opponent→viewer) is read-only here; the opponent
-  // adjusts that side on their own header.
+  // adjusts that side on their own identity.
 
   import type { ActionPayload, GameView } from "../../protocol";
 
