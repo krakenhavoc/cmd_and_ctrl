@@ -145,8 +145,17 @@ func (g *Game) drawCardLocked(playerID uuid.UUID) error {
 		// Draw canceled by replacement.
 		return nil
 	}
+	return g.actuallyDrawCardLocked(out.DrawPlayer)
+}
 
-	p := g.playerByIDLocked(out.DrawPlayer)
+// actuallyDrawCardLocked is the post-replacement draw body —
+// pops the library, pushes to hand, marks known, emits the event.
+// Extracted from drawCardLocked in S17 sub-PR 3 so the CR 616
+// resume path (ResolveReplacementOrder → applyResolvedReplacementEventLocked)
+// runs the same logic as the inline non-paused path. Caller must
+// hold g.mu.
+func (g *Game) actuallyDrawCardLocked(playerID uuid.UUID) error {
+	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound
 	}
@@ -164,7 +173,7 @@ func (g *Game) drawCardLocked(playerID uuid.UUID) error {
 	g.markCardKnownInZoneLocked(p.Hand, c.InstanceID)
 	g.EmitEvent(Event{
 		Kind:    EventDrawCard,
-		Actor:   out.DrawPlayer,
+		Actor:   playerID,
 		CardID:  c.InstanceID,
 		OldZone: ZoneLibrary,
 		NewZone: ZoneHand,
