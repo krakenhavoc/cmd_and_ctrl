@@ -177,11 +177,11 @@ export const etbPulse: Action<HTMLElement> = (node) => {
 };
 
 // floatUp / fadeOut drive the damage / heal popup over a player's
-// header. floatUp slides in from below + scales + fades; fadeOut
-// drifts upward + fades, so the popup appears to lift off the player
-// like a damage indicator in MTG Arena. Both are short — the popup
-// auto-clears on a setTimeout in PlayerHeader so it doesn't linger
-// after the next change.
+// identity disc. floatUp slides in from below + scales + fades;
+// fadeOut drifts upward + fades, so the popup appears to lift off
+// the player like a damage indicator in MTG Arena. Both are short —
+// the popup auto-clears on a setTimeout in PlayerIdentity so it
+// doesn't linger after the next change.
 const POPUP_IN_DURATION = 220;
 const POPUP_OUT_DURATION = 320;
 export function floatUp(node: HTMLElement): TransitionConfig {

@@ -63,7 +63,7 @@ export function counterStyle(name: string): CounterStyle {
 }
 
 // PINNED_PLAYER_COUNTERS is the ordered list of counters that the
-// player-counter panel (PlayerHeader) renders as always-visible
+// player-counter panel (PlayerIdentity) renders as always-visible
 // rows. Other counters appear only when non-zero.
 export const PINNED_PLAYER_COUNTERS: readonly string[] = [
   COUNTER_POISON,

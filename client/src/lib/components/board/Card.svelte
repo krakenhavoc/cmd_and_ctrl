@@ -11,7 +11,7 @@
   //     same card paints from cache instantly.
   //   - Click vs. tap: the parent supplies onClick. The card itself
   //     just dispatches the event with the underlying CardView so
-  //     parents (Hand, BattlefieldRow, BattlefieldColumn) can decide
+  //     parents (Hand, BattlefieldRow) can decide
   //     whether the click means "play", "tap", "select for combat",
   //     etc. without each path re-deriving from instance_id.
   //

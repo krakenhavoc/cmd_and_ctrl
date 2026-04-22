@@ -1,21 +1,26 @@
 <script lang="ts">
   // PlayerPanel is one player's full board, laid out in a CSS Grid
-  // matching the wireframe:
+  // matching the S16.5 avatar-centric redesign:
   //
-  //   ┌────────────────────────────────────────┐
-  //   │ header                                 │
-  //   ├────────────────────────────────────────┤
-  //   │ creatures (full width)                 │
-  //   ├────────────────────────────────┬───────┤
-  //   │ lands                          │       │
-  //   ├──────────┬─────────────────────┤ right │
-  //   │ piles    │ hand                │ col   │
-  //   └──────────┴─────────────────────┴───────┘
+  //   ┌─────────────────────────────────────────────┐
+  //   │  creatures (full width)                     │
+  //   ├──────────────────────┬──────────────────────┤
+  //   │  lands               │  enchant / artifact  │
+  //   ├─────────────────────────────────────────────┤
+  //   │  ⭕ piles  hand (peek) ……………… phases (self)│
+  //   └─────────────────────────────────────────────┘
+  //
+  // The bottombar is a single flex row: avatar anchors bottom-left,
+  // piles immediately beside it, the hand peeks up from the same base-
+  // line (top ~55% of each card visible, bottom-clipped at the pile
+  // bottom), and PhaseDisplay floats bottom-right on the viewer's own
+  // panel. Hovering the self hand lifts the whole fan up over the board
+  // to reveal full cards.
   //
   // The same component is reused for self + opponents; Board.svelte
-  // wraps opponent instances in a transform container that scales
-  // and rotates them around the table. The panel itself is layout-
-  // only and doesn't know whether it's rotated.
+  // wraps opponent instances in a transform container that rotates
+  // them 180° across the top so they read "across the table". The
+  // panel itself is layout-only and doesn't know whether it's rotated.
   //
   // Click routing for battlefield cards lives here so combat vs.
   // tap-toggle logic stays in one place. The router mirrors the old
@@ -25,10 +30,10 @@
   import type { ActionPayload, CardView, GameView, PlayerView, ZoneView } from "../../protocol";
   import { bucketForBattlefield, isCreature } from "../../cardTypes";
   import BattlefieldRow from "./BattlefieldRow.svelte";
-  import BattlefieldColumn from "./BattlefieldColumn.svelte";
   import PileBar from "./PileBar.svelte";
   import Hand from "./Hand.svelte";
-  import PlayerHeader from "./PlayerHeader.svelte";
+  import PlayerIdentity from "./PlayerIdentity.svelte";
+  import PhaseDisplay from "./PhaseDisplay.svelte";
   import PromisesRow from "./PromisesRow.svelte";
 
   type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
@@ -153,23 +158,6 @@
 </script>
 
 <div class="panel" class:self={isSelf} class:opponent={!isSelf}>
-  <div class="grid-header">
-    <PlayerHeader
-      {seat}
-      {isSelf}
-      {isActive}
-      {hasPriority}
-      {attackTargetable}
-      {isMonarch}
-      {isInitiative}
-      {sendAction}
-      {onDeclareAttack}
-      {onTargetPlayer}
-    />
-    {#if !isSelf}
-      <PromisesRow {view} {viewerID} opponentID={seat.id} {sendAction} />
-    {/if}
-  </div>
   <div class="grid-creatures">
     <BattlefieldRow
       label="creatures"
@@ -190,20 +178,8 @@
       onActivateManaAbility={activateManaAbility}
     />
   </div>
-  <div class="grid-piles">
-    <PileBar {seat} {exile} {isSelf} {sendAction} onDrawCard={isSelf ? onDrawCard : undefined} />
-  </div>
-  <div class="grid-hand">
-    <Hand
-      hand={seat.hand}
-      {isSelf}
-      onPlayCard={isSelf ? onPlayCard : undefined}
-      snap={view}
-      {viewerID}
-    />
-  </div>
-  <div class="grid-rightcol">
-    <BattlefieldColumn
+  <div class="grid-enchant">
+    <BattlefieldRow
       label="enchant / artifact"
       cards={buckets.right}
       {viewerID}
@@ -212,16 +188,57 @@
       onActivateManaAbility={activateManaAbility}
     />
   </div>
+  <div class="grid-bottombar">
+    <PlayerIdentity
+      {seat}
+      {isSelf}
+      {isActive}
+      {hasPriority}
+      {attackTargetable}
+      {isMonarch}
+      {isInitiative}
+      {sendAction}
+      {onDeclareAttack}
+      {onTargetPlayer}
+    />
+    <PileBar {seat} {exile} {isSelf} {sendAction} onDrawCard={isSelf ? onDrawCard : undefined} />
+    {#if !isSelf}
+      <PromisesRow {view} {viewerID} opponentID={seat.id} {sendAction} />
+    {/if}
+    <!-- Hand sits inline with the piles so its clipped-bottom line
+         coincides with the pile baseline (panel bottom) instead of
+         floating in a gap above the bottombar. flex: 1 lets it absorb
+         the remaining width between piles and phases. -->
+    <div class="hand-zone">
+      <Hand
+        hand={seat.hand}
+        {isSelf}
+        onPlayCard={isSelf ? onPlayCard : undefined}
+        snap={view}
+        {viewerID}
+      />
+    </div>
+    {#if isSelf && view.turn}
+      <PhaseDisplay
+        turn={view.turn}
+        seats={view.seats}
+        mulligansOpen={view.mulligans_open === true}
+      />
+    {/if}
+  </div>
 </div>
 
 <style>
   .panel {
-    /* Wireframe layout. The right column spans the lower two rows
-       (lands + piles/hand). Header is a fixed 32px strip; the
-       remaining vertical space is split with creatures getting the
-       largest share. min-height: 0 on every grid item lets cards
-       shrink to fit instead of forcing the panel to grow past its
-       container.
+    /* S16.5 redesign: identity-first 4×4 grid. Creatures sit at the
+       top, a middle band splits Lands and Enchant/Artifact side-by-
+       side, and the bottom cluster groups hand-over-avatar in the
+       centre with piles to the left and phase-display to the right.
+       On opponent panels the whole thing rotates 180° (Board.svelte)
+       so the avatar reads "across the table".
+
+       min-height: 0 on every grid item lets cards shrink to fit
+       instead of forcing the panel to grow past its container.
 
        --card-w / --card-h cascade into every nested Card so the
        opponent panels can shrink the whole board with one rule
@@ -233,13 +250,12 @@
     --thumb-w: calc(75px * var(--card-scale, 1));
     --thumb-h: calc(105px * var(--card-scale, 1));
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 3fr) minmax(0, 1.3fr);
-    grid-template-rows: 32px minmax(0, 1.4fr) minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1.3fr) minmax(0, 1fr) auto;
     grid-template-areas:
-      "header     header     header"
-      "creatures  creatures  rightcol"
-      "lands      lands      rightcol"
-      "piles      hand       rightcol";
+      "creatures creatures"
+      "lands     enchant"
+      "bottombar bottombar";
     gap: 6px;
     width: 100%;
     height: 100%;
@@ -286,10 +302,6 @@
     --thumb-w: calc(44px * var(--card-scale-opponent, 1));
     --thumb-h: calc(62px * var(--card-scale-opponent, 1));
   }
-  .grid-header {
-    grid-area: header;
-    min-width: 0;
-  }
   .grid-creatures {
     grid-area: creatures;
     min-height: 0;
@@ -300,24 +312,34 @@
     min-height: 0;
     min-width: 0;
   }
-  .grid-piles {
-    grid-area: piles;
+  .grid-enchant {
+    grid-area: enchant;
+    min-height: 0;
+    min-width: 0;
+  }
+  /* Bottombar: avatar anchors bottom-left, piles immediately beside
+     it, the hand takes the flex-grow slot in the centre (peeking up
+     from the pile baseline), phase-display (self only) floats bottom-
+     right. All items bottom-align so the clipped hand bottoms line up
+     with the pile bottoms. */
+  .grid-bottombar {
+    grid-area: bottombar;
     min-height: 0;
     min-width: 0;
     display: flex;
-    /* Bottom-align so the pile chips sit on the same baseline as the
-       hand fan in the adjacent cell, instead of floating at the top
-       of an oversized row. */
     align-items: flex-end;
+    gap: 8px;
   }
-  .grid-hand {
-    grid-area: hand;
-    min-height: 0;
+  .hand-zone {
+    flex: 1 1 0;
     min-width: 0;
-  }
-  .grid-rightcol {
-    grid-area: rightcol;
-    min-height: 0;
-    min-width: 0;
+    align-self: flex-end;
+    /* Fixed rest-state height matches the Hand's clipped peek. Keeping
+       it explicit means the Hand's hover lift (max-height: none plus a
+       translateY transform) doesn't grow this wrapper and push the
+       bottombar row taller — the lift stays purely visual. */
+    height: calc(var(--card-h, 168px) * 0.55);
+    overflow: visible;
+    position: relative;
   }
 </style>

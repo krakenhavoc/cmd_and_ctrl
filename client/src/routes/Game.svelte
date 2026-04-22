@@ -14,7 +14,7 @@
   import type { PlayerView } from "../lib/protocol";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
-  import { STEP_LABELS, grantsPriority } from "../lib/turn";
+  import { grantsPriority } from "../lib/turn";
 
   interface Props {
     gameID: string;
@@ -271,18 +271,6 @@
     if (!viewerSeat) return false;
     return !viewerSeat.deck_imported;
   });
-
-  // Map MTG step IDs to short display labels. Source of truth lives
-  // in client/src/lib/turn.ts so Settings.svelte renders the same
-  // labels for the per-step stops UI.
-  const stepLabel = $derived(
-    turn ? (STEP_LABELS[turn.step as keyof typeof STEP_LABELS] ?? turn.step) : "",
-  );
-  // S13: Untap and Cleanup grant no priority (server lands cursor
-  // with priority_holder = -1). The pill row hides the priority
-  // glow during those steps and surfaces a muted "—" so the bar
-  // doesn't visually pop.
-  const priorityHeld = $derived((turn?.priority_holder ?? -1) >= 0);
 
   // Step-transition sound cues. Snapshot-driven, so we track the last
   // seen step and only fire on a real change; the initial snapshot (or
@@ -731,44 +719,9 @@
     <div class="eliminated-banner" role="status">You have been eliminated. Spectating.</div>
   {/if}
 
-  {#if view && turn}
-    <div class="turn-bar" aria-label="turn and phase indicator">
-      <div class="turn-summary">
-        <span class="turn-no">Turn {turn.number}</span>
-        <span class="muted">·</span>
-        <span class="turn-active">
-          <span class="seat-dot" style="background:{seatColor(activeSeat)}"></span>
-          {activePlayer?.name ?? `seat ${activeSeat}`}
-        </span>
-        <span class="muted">·</span>
-        <span class="step">{stepLabel}</span>
-      </div>
-      <div class="priority-pills" role="group" aria-label="priority indicator">
-        {#each seats as seat (seat.id)}
-          <span
-            class="pill"
-            class:has-priority={priorityHeld && seat.seat === prioritySeat && !seat.eliminated}
-            class:is-active={seat.seat === activeSeat && !seat.eliminated}
-            class:eliminated={seat.eliminated}
-            style="--seat-color: {seatColor(seat.seat)}"
-            title={seat.eliminated
-              ? `${seat.name} — eliminated`
-              : `${seat.name} — seat ${seat.seat}${priorityHeld && seat.seat === prioritySeat ? " (priority)" : ""}${seat.seat === activeSeat ? " (active)" : ""}`}
-          >
-            {seat.name}{seat.eliminated ? " ✕" : ""}
-          </span>
-        {/each}
-        {#if !priorityHeld && !mulligansOpen}
-          <span
-            class="no-priority-marker"
-            title="no player holds priority during {stepLabel} (turn-based actions auto-fire)"
-          >
-            —
-          </span>
-        {/if}
-      </div>
-    </div>
-  {/if}
+  <!-- S16.5: the global turn-bar moved into the self PlayerPanel's
+       grid-phases slot as PhaseDisplay. Single source of truth for
+       turn/step/priority UI now lives with the player it concerns. -->
 
   {#if view && viewerID}
     <div class="toolbar" aria-label="quick actions">
@@ -1115,91 +1068,6 @@
     letter-spacing: 0.1em;
     font-size: 0.7em;
     font-weight: 700;
-  }
-
-  /* Turn / phase bar */
-  .turn-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.4rem 0.8rem;
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.15) 100%),
-      var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--fg-muted);
-    font-size: 0.85em;
-    flex-wrap: wrap;
-    box-shadow: var(--shadow-sm);
-  }
-  .turn-summary {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-  }
-  .turn-no {
-    font-weight: 600;
-  }
-  .turn-active {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-  }
-  .seat-dot {
-    display: inline-block;
-    width: 0.7em;
-    height: 0.7em;
-    border-radius: 50%;
-  }
-  .step {
-    color: var(--fg);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-size: 0.82em;
-  }
-  .priority-pills {
-    display: flex;
-    gap: 0.4rem;
-    flex-wrap: wrap;
-  }
-  .pill {
-    padding: 0.2rem 0.7rem;
-    border-radius: 999px;
-    font-size: 0.78em;
-    border: 1px solid var(--seat-color);
-    color: var(--fg);
-    background: transparent;
-    opacity: 0.5;
-    font-weight: 600;
-    transition:
-      opacity 140ms var(--ease),
-      box-shadow 140ms var(--ease);
-  }
-  .pill.is-active {
-    opacity: 1;
-  }
-  .pill.has-priority {
-    background: var(--seat-color);
-    color: #0c1426;
-    font-weight: 700;
-    box-shadow:
-      0 0 14px var(--seat-color),
-      inset 0 1px 0 rgba(255, 255, 255, 0.25);
-  }
-  .pill.eliminated {
-    opacity: 0.3;
-    text-decoration: line-through;
-    border-style: dashed;
-  }
-  .no-priority-marker {
-    align-self: center;
-    color: var(--fg-dim);
-    font-weight: 600;
-    padding: 0 0.4rem;
-    cursor: help;
   }
 
   /* Mulligan window */
