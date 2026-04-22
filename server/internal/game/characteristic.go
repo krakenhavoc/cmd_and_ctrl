@@ -65,8 +65,41 @@ func (c Card) printedCharacteristic() Characteristic {
 		Types:      types,
 		Subtypes:   subtypes,
 		Supertypes: supertypes,
+		Colors:     printedColorsFromCost(c.ManaCost),
 		Name:       c.Name,
 	}
+}
+
+// printedColorsFromCost extracts the unique WUBRG letters from a
+// printed mana-cost string. Drives the printed Colors slice on
+// Characteristic, which feeds commander-identity computation
+// (S16 sub-PR 5) and any future Layer 5 color-changing effect.
+//
+// Pure cost-based; doesn't read color-indicator stamps or rules-
+// text color words (Bant Charm-style cards). The CR 105.2c "color
+// indicator" + CR 903.4 "rules-text color" cases are sandbox
+// simplifications — the layer engine's Effective().Colors stays
+// the canonical surface so a future card that mutates color works
+// through the same path.
+func printedColorsFromCost(cost string) []string {
+	if cost == "" {
+		return nil
+	}
+	seen := map[byte]bool{}
+	out := []string{}
+	for i := 0; i < len(cost); i++ {
+		b := cost[i]
+		if b >= 'a' && b <= 'z' {
+			b -= 'a' - 'A'
+		}
+		if b == 'W' || b == 'U' || b == 'B' || b == 'R' || b == 'G' {
+			if !seen[b] {
+				seen[b] = true
+				out = append(out, string(b))
+			}
+		}
+	}
+	return out
 }
 
 // Effective returns the card's post-layer-resolution characteristic.

@@ -2090,6 +2090,20 @@ func filterPipeByCommanderIdentity(options []string, p *Player) []string {
 // as uppercase single-character strings. Empty when no commander is
 // present. Sandbox: picks the first card in the command zone — the
 // partner-pair union is S20 polish territory.
+//
+// S16: reads the commander's post-layer Effective().Colors rather
+// than scanning the printed cost directly. Today the printed-color
+// derivation flows through printedCharacteristic.Colors (populated
+// from ManaCost in characteristic.go), so the result matches the
+// pre-S16 proxy for every commander whose identity is fully
+// captured by their mana cost. Future Layer-5 color-change effects
+// (Painter's Servant on a commander, etc.) would mutate
+// Effective().Colors and the identity computation here picks the
+// change up automatically.
+//
+// Falls back to distinctColorsInManaCost when Effective().Colors is
+// empty — covers placeholder commanders whose ManaCost is empty
+// (the demo seed) and the lobby-time pre-effects-init path.
 func commanderIdentityFor(p *Player) []string {
 	if p == nil || p.Command == nil {
 		return nil
@@ -2098,14 +2112,10 @@ func commanderIdentityFor(p *Player) []string {
 		if !c.IsCommander {
 			continue
 		}
-		// Card.ColorIdentity isn't carried on game.Card today — the
-		// deck importer keeps it on cards.Card only. S15 doesn't
-		// thread it yet; use the TypeLine / ManaCost as a proxy by
-		// scanning the card's ManaCost for WUBRG letters. Good
-		// enough for every sandbox Commander whose commander's mana
-		// cost hints at the identity (true for >99% of EDH
-		// commanders — the escape hatch ("has color abilities in
-		// rules text") lands alongside S17 layer work).
+		eff := c.Effective()
+		if len(eff.Colors) > 0 {
+			return eff.Colors
+		}
 		return distinctColorsInManaCost(c.ManaCost)
 	}
 	return nil

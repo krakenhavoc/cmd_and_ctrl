@@ -253,6 +253,41 @@ func findCardOnBattlefield(g *Game, cardID uuid.UUID) int {
 	return -1
 }
 
+// DistinctCardTypesInAllGraveyards counts the unique card types
+// across every player's graveyard. Drives Tarmogoyf-style CDAs
+// (S16 sub-PR 5) — Tarmogoyf's power is the number of distinct
+// card types among cards in all graveyards.
+//
+// Reads from each card's printedCharacteristic (the layer engine
+// hasn't recomputed graveyard cards — they're not on battlefield),
+// so the count reflects the printed types regardless of any
+// continuous effect. Card-type set is whatever shows up in the
+// "Types" slice — Artifact, Battle, Creature, Enchantment, Instant,
+// Land, Planeswalker, Sorcery, Tribal/Kindred plus any future
+// additions; "Token" is treated as a supertype here so a token's
+// "Creature" type still counts.
+//
+// Caller may hold either lock (read or write). Walks every player
+// graveyard once; cheap relative to a full game state.
+func DistinctCardTypesInAllGraveyards(g *Game) int {
+	if g == nil {
+		return 0
+	}
+	seen := map[string]struct{}{}
+	for _, p := range g.Seats {
+		if p.Graveyard == nil {
+			continue
+		}
+		for _, c := range p.Graveyard.Cards {
+			pc := c.printedCharacteristic()
+			for _, t := range pc.Types {
+				seen[t] = struct{}{}
+			}
+		}
+	}
+	return len(seen)
+}
+
 // recomputeMu serializes layer-engine recomputes against each other.
 // The Game's read lock is held by snapshot callers, so the recompute
 // can't promote to a write lock — instead it serialises through this
@@ -334,4 +369,14 @@ func (g *Game) BumpLayerVersionForTest() {
 // the fast-path regression test (exit criterion #10).
 func (g *Game) LayerRecomputeCountForTest() uint64 {
 	return g.recomputeCount.Load()
+}
+
+// CommanderIdentityForTest is the exported wrapper around the
+// unexported commanderIdentityFor for cross-package tests
+// (effects/tarmogoyf_test.go's regression guard for the S15→S16
+// proxy replacement). Reads the commander's effective colors via
+// the layer engine, falling back to the printed-cost proxy when
+// effective is empty.
+func CommanderIdentityForTest(p *Player) []string {
+	return commanderIdentityFor(p)
 }
