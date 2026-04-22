@@ -74,6 +74,19 @@ type ManaAbilityShape struct {
 // Added in S15 sub-PR 2.
 var CatalogManaAbilities func(oracleID string) []ManaAbilityShape
 
+// CatalogStaticAbilities returns the registered static abilities
+// for the given oracle ID (one entry per `effects.Spec.Static`
+// element), or nil when no catalog entry exists / the entry has no
+// statics. The cards/effects package populates this hook at init
+// time alongside the other catalog hooks. Nil hook ⇒ no card has a
+// static ability ⇒ the layer engine's recompute pass leaves
+// effective characteristics equal to printed.
+//
+// Used by Game.activeStaticAbilitiesLocked at every recompute pass
+// (snapshot-driven, lazy via the layerVersion counter). Added in
+// S16 sub-PR 3.
+var CatalogStaticAbilities func(oracleID string) []StaticAbility
+
 // fireEffectResolverLocked invokes the registered EffectResolver
 // if non-nil, emits EventEffectError on failure, and swallows the
 // error so the resolution path keeps moving. Caller must hold g.mu.

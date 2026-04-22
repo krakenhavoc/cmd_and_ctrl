@@ -1,6 +1,11 @@
 package game
 
-import "sync"
+import (
+	"sort"
+	"sync"
+
+	"github.com/google/uuid"
+)
 
 // layers.go is the S16 continuous-effect engine skeleton (CR 613).
 //
@@ -77,6 +82,177 @@ type ContinuousEffect interface {
 	Apply(c *Characteristic, target *Card, g *Game)
 }
 
+// StaticAbility is the declarative shape catalog cards use to
+// contribute continuous effects to the layer engine. Lives in the
+// `game` package so card files (`server/internal/cards/effects/*`)
+// can reference it via the existing `game` import without going
+// through a separate adapter type — the package already exposes
+// Card / Game / Characteristic / the Layer enums.
+//
+// Each `StaticAbility` becomes one `ContinuousEffect` per source
+// card on the battlefield (via the CatalogStaticAbilities hook),
+// bound to the source's `EnteredBattlefieldAt` timestamp. AppliesTo
+// is evaluated per battlefield card on every recompute pass; Apply
+// mutates the candidate's Characteristic in place.
+//
+// Apply receives the source card so predicates like "creatures you
+// control" can read `source.Controller`, and self-exclusion
+// predicates ("other Merfolk") can compare instance IDs.
+//
+// Added in S16 sub-PR 3.
+type StaticAbility struct {
+	Layer     Layer
+	SubLayer  SubLayer
+	AppliesTo func(target *Card, g *Game, source *Card) bool
+	Apply     func(c *Characteristic, target *Card, g *Game, source *Card)
+}
+
+// staticContinuousEffect is the internal `ContinuousEffect` adapter
+// for a `StaticAbility` bound to a source card. The recompute pass
+// builds one of these per (battlefield card, declared ability) pair
+// and feeds them through the layer-ordering loop.
+type staticContinuousEffect struct {
+	ability   StaticAbility
+	source    *Card
+	timestamp int64
+}
+
+func (e staticContinuousEffect) Layer() (Layer, SubLayer) {
+	return e.ability.Layer, e.ability.SubLayer
+}
+
+func (e staticContinuousEffect) Timestamp() int64 { return e.timestamp }
+
+func (e staticContinuousEffect) AppliesTo(target *Card, g *Game) bool {
+	if e.ability.AppliesTo == nil {
+		return false
+	}
+	return e.ability.AppliesTo(target, g, e.source)
+}
+
+func (e staticContinuousEffect) Apply(c *Characteristic, target *Card, g *Game) {
+	if e.ability.Apply == nil {
+		return
+	}
+	e.ability.Apply(c, target, g, e.source)
+}
+
+// activeStaticAbilitiesLocked walks the battlefield, looks up each
+// card's catalog static abilities via the CatalogStaticAbilities
+// hook, and returns the resulting list of `ContinuousEffect`s
+// bound to source pointers + timestamps. Caller must hold either
+// g.mu (write) or g.recompute.mu (the recompute serialisation
+// mutex used during snapshot).
+//
+// The returned source pointers reference into g.Battlefield.Cards
+// — safe for the duration of the recompute pass that holds the
+// recompute mutex; not safe to retain across mutations.
+func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
+	if g.Battlefield == nil || CatalogStaticAbilities == nil {
+		return nil
+	}
+	var out []ContinuousEffect
+	for i := range g.Battlefield.Cards {
+		src := &g.Battlefield.Cards[i]
+		abilities := CatalogStaticAbilities(src.OracleID)
+		if len(abilities) == 0 {
+			continue
+		}
+		for _, ab := range abilities {
+			out = append(out, staticContinuousEffect{
+				ability:   ab,
+				source:    src,
+				timestamp: src.EnteredBattlefieldAt,
+			})
+		}
+	}
+	return out
+}
+
+// layerOrder lists the (Layer, SubLayer) buckets in the order
+// CR 613 applies them. Layers 1-6 each contribute one bucket;
+// layer 7 fans out into 7a..7e. Effects are filtered to the bucket
+// they belong to, sorted by timestamp, then applied in turn.
+var layerOrder = []struct {
+	Layer    Layer
+	SubLayer SubLayer
+	// has7Sub is true for 7a..7e buckets so the bucket-filter
+	// matches on both Layer and SubLayer; false elsewhere.
+	has7Sub bool
+}{
+	{Layer: Layer1Copy},
+	{Layer: Layer2Control},
+	{Layer: Layer3Text},
+	{Layer: Layer4Type},
+	{Layer: Layer5Color},
+	{Layer: Layer6Ability},
+	{Layer: Layer7PT, SubLayer: SubLayer7A_CDA, has7Sub: true},
+	{Layer: Layer7PT, SubLayer: SubLayer7B_Set, has7Sub: true},
+	{Layer: Layer7PT, SubLayer: SubLayer7C_Modify, has7Sub: true},
+	{Layer: Layer7PT, SubLayer: SubLayer7D_Counters, has7Sub: true},
+	{Layer: Layer7PT, SubLayer: SubLayer7E_Switch, has7Sub: true},
+}
+
+// inBucket reports whether the effect belongs to the given layer
+// bucket. Layer matches always; sub-layer matches only when the
+// bucket is one of the 7a..7e fan-outs (layers 1-6 ignore
+// sub-layer entirely).
+func inBucket(eff ContinuousEffect, l Layer, sub SubLayer, has7Sub bool) bool {
+	effLayer, effSub := eff.Layer()
+	if effLayer != l {
+		return false
+	}
+	if !has7Sub {
+		return true
+	}
+	return effSub == sub
+}
+
+// applyLayerLocked filters effects to one (sub-)layer bucket,
+// sorts by timestamp, and applies each effect's Apply across every
+// battlefield card it AppliesTo. Stable sort so same-timestamp
+// effects fall in their gather order — matters for test
+// determinism and for catalog cards with multiple statics from a
+// single source.
+func (g *Game) applyLayerLocked(effects []ContinuousEffect, l Layer, sub SubLayer, has7Sub bool) {
+	bucket := make([]ContinuousEffect, 0, len(effects))
+	for _, eff := range effects {
+		if inBucket(eff, l, sub, has7Sub) {
+			bucket = append(bucket, eff)
+		}
+	}
+	if len(bucket) == 0 {
+		return
+	}
+	sort.SliceStable(bucket, func(i, j int) bool {
+		return bucket[i].Timestamp() < bucket[j].Timestamp()
+	})
+	for _, eff := range bucket {
+		for i := range g.Battlefield.Cards {
+			target := &g.Battlefield.Cards[i]
+			if !eff.AppliesTo(target, g) {
+				continue
+			}
+			eff.Apply(target.effective, target, g)
+		}
+	}
+}
+
+// findCardOnBattlefield returns the index of cardID in the
+// battlefield zone, or -1 if not present. Used by snapshot-time
+// helpers that need to walk per-card without re-iterating.
+func findCardOnBattlefield(g *Game, cardID uuid.UUID) int {
+	if g.Battlefield == nil {
+		return -1
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == cardID {
+			return i
+		}
+	}
+	return -1
+}
+
 // recomputeMu serializes layer-engine recomputes against each other.
 // The Game's read lock is held by snapshot callers, so the recompute
 // can't promote to a write lock — instead it serialises through this
@@ -116,25 +292,30 @@ func (g *Game) RecomputeLayersIfStaleLocked() {
 
 // recomputeLayersLocked is the unconditional recompute pass. Always
 // runs end-to-end; advances lastResolvedVersion on completion.
-// Sub-PR 1 is a no-op stub: there are no static abilities in the
-// catalog, so the printed characteristics ARE the effective
-// characteristics — Card.Effective() returns printedCharacteristic
-// verbatim.
 //
-// Sub-PR 3 wires the body:
+// S16 sub-PR 3 body:
 //  1. For each battlefield card, reset effective = printed.
 //  2. Collect active continuous effects from every static ability
 //     on the battlefield via the CatalogStaticAbilities hook.
-//  3. For layer in 1..6 and sub-layer in 7a..7e: filter effects to
-//     this (sub-)layer, sort by timestamp, apply each.
-//  4. Layer 7d delegates to Card.CurrentPower / CurrentToughness
-//     for counter math (the existing S13.2 code path).
+//  3. For each (Layer, SubLayer) bucket in CR 613 order: filter
+//     effects to that bucket, sort by source timestamp ascending,
+//     apply each effect across every battlefield card it AppliesTo.
 //
 // Caller must hold the recompute mutex (RecomputeLayersIfStaleLocked
 // acquires it). The recompute counter bumps on every call so the
 // fast-path test can assert it ran exactly once.
 func (g *Game) recomputeLayersLocked() {
 	g.recomputeCount.Add(1)
+	if g.Battlefield != nil {
+		for i := range g.Battlefield.Cards {
+			printed := g.Battlefield.Cards[i].printedCharacteristic()
+			g.Battlefield.Cards[i].effective = &printed
+		}
+	}
+	effects := g.activeStaticAbilitiesLocked()
+	for _, b := range layerOrder {
+		g.applyLayerLocked(effects, b.Layer, b.SubLayer, b.has7Sub)
+	}
 	g.lastResolvedVersion.Store(g.layerVersion.Load())
 }
 

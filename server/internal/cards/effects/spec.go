@@ -105,6 +105,29 @@ type Spec struct {
 	//
 	// Added in S15 sub-PR 2.
 	ManaAbilities []ManaAbility
+
+	// Static is the list of continuous-effect static abilities the
+	// card contributes to the layer engine while on the battlefield
+	// (CR 613). Each entry declares its `Layer`, `SubLayer` (for
+	// Layer7PT only), an `AppliesTo` predicate evaluated per
+	// candidate target on every recompute pass, and an `Apply`
+	// function that mutates the candidate's `Characteristic` in
+	// place. The engine recomputes from scratch on every relevant
+	// event (battlefield zone change, counter change) — so AppliesTo
+	// re-runs against the current board state every time.
+	//
+	// Empty / nil for cards with no static abilities (the S15
+	// majority). When non-empty, the card's effects only apply
+	// while it's on the battlefield (CR 113.6 default — non-
+	// battlefield-zone statics are deferred to a later sprint).
+	//
+	// Reaches directly into `game.StaticAbility` rather than a
+	// per-package adapter type because the function shapes already
+	// reference `game.Card` / `game.Game` / `game.Characteristic` —
+	// no information would survive a parallel struct.
+	//
+	// Added in S16 sub-PR 3.
+	Static []game.StaticAbility
 }
 
 // ManaAbility is one mana-producing activated ability on a permanent.
