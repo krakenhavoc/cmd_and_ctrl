@@ -437,11 +437,11 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 - [ ] Server-side avatar cache (`$CMDCTRL_DATA_DIR/avatars/<discord_id>/<hash>.png`): on first fetch hit `cdn.discordapp.com`, cache with immutable headers, re-fetch when hash changes. Client requests `/avatars/<discord_id>`; server serves from cache or proxies on miss. (Avoids embedding Discord CDN URLs directly in the state stream.)
 
 **Discord bot (`cmd_and_ctrl-bot`):**
-- [ ] New top-level directory `bot/` or a cmd under `server/cmd/bot/` — pick one in the ADR. Go, using `bwmarrin/discordgo`.
-- [ ] Slash command `/cc-invite [name]` — calls server `POST /games` with admin credentials (bot holds `CMDCTRL_ADMIN_TOKEN` via env), posts the invite link back to the channel (ephemeral or channel-visible, configurable).
-- [ ] Slash command `/cc-invite-dm @user [name]` — creates the game and DMs the invite to `@user`, pre-binding the invite's `DiscordID` so the OAuth round-trip on click is a no-op if they're already signed in.
-- [ ] Slash command `/cc-games` — lists active/lobby games known to the server; `/cc-end <id>` admin-only shutdown.
-- [ ] Bot deploys as a second systemd unit on the same VPS (S12 infra). Shares the server's VPS data dir via env only; no DB.
+- [x] New top-level directory `bot/` or a cmd under `server/cmd/bot/` — picked `server/cmd/bot/` + `server/internal/bot/` in ADR 0004 (shared module, separate binary). Go, using `bwmarrin/discordgo`. Allow-list gate via `CMDCTRL_DISCORD_GUILD_IDS`.
+- [x] Slash command `/cc-invite [name]` — calls server `POST /games` with admin credentials (bot holds `CMDCTRL_ADMIN_TOKEN` via env), posts the invite link back to the channel (channel-visible embed; ephemeral-toggle deferred).
+- [ ] Slash command `/cc-invite-dm @user [name]` — deferred (needs invite-side pre-bind of DiscordID; not in MVP).
+- [x] Slash command `/cc-games` — ephemeral list of active/lobby games (invite tokens already stripped by `Lobby.List`). `/cc-end <id>` deferred (destructive, wants confirmation UX).
+- [x] Bot deploys as a second systemd unit on the same VPS (S12 infra). Unit at `deploy/cmd-and-ctrl-bot.service`; env file separate from the server's (ADR 0004 §6).
 
 **Rich Presence:**
 - [ ] Opt-in toggle in the client ("Show this game on Discord"); stored in `localStorage` alongside the session.
@@ -455,9 +455,9 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 - [ ] Server merges Discord fields onto the existing `Principal` + broadcasts a `SeatInfo` update delta so opponents immediately see the avatar/name swap.
 
 **Docs:**
-- [ ] `docs/decisions/0004-discord-identity.md` — ADR. Why OAuth + bot + presence all together; PKCE + state handling; bot deployment shape; opt-in scopes; what happens when a user revokes the Discord token.
+- [x] `docs/decisions/0004-discord-identity.md` — ADR. Why OAuth + bot together; PKCE + state handling; bot deployment shape; gateway-vs-webhook rationale; secret-handling split (Rich Presence deferred, documented as out-of-scope).
 - [ ] `docs/lobby.md` — document the new auth routes + the `SeatInfo` field additions.
-- [ ] `AGENTS.md` §5 — env vars (`CMDCTRL_DISCORD_CLIENT_ID` / `_SECRET`, bot token, RPC client ID).
+- [x] `AGENTS.md` §5 — env vars (`CMDCTRL_DISCORD_CLIENT_ID` / `_SECRET` + bot token / app ID / guild IDs / server + client base URLs). RPC client ID lands with Rich Presence.
 
 ### Risks / gotchas
 - OAuth callback URLs must be whitelisted per environment — document dev, staging, prod in the ADR.
