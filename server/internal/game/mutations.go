@@ -226,6 +226,29 @@ type CastSpellParams struct {
 	// it as a permissive proceed: no mana is deducted and an
 	// EventCostWarning is emitted. Default false.
 	ForceCast bool
+
+	// AutoTap asks the server to plan and execute a mana-source
+	// tap-and-fill before the strict-mode cost check. Implies
+	// Strict — the auto-tapper exists to make a strict-gated cast
+	// succeed without manually clicking each land. The server
+	// runs `AutoTapForCostExcluding(controller, cost, x, locked)`
+	// against the caller's untapped permanents, taps each card in
+	// the returned plan, drops the produced mana into the pool
+	// (with greedy color-picking against the cost requirements),
+	// then proceeds to the normal CanPay/SpendMana flow — all
+	// atomically under the same write lock as the cast. Failure
+	// to satisfy the cost (no plan exists, or budget exceeded)
+	// returns an *InsufficientManaError before any card taps,
+	// keeping the operation all-or-nothing. Added in S15 sub-PR 5.
+	AutoTap bool
+
+	// LockedSources are permanent IDs the auto-tapper must NOT
+	// consider when planning — the player has reserved them for a
+	// later cast via the lock-tap UI. Only consulted when AutoTap
+	// is true. Cards already tapped are skipped naturally by the
+	// gather pass; LockedSources is for *untapped* permanents the
+	// player wants kept available. Added in S15 sub-PR 5.
+	LockedSources []uuid.UUID
 }
 
 // InsufficientManaError is returned by CastSpell when the Strict
@@ -341,6 +364,20 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		g.fireETBHookLocked(moved.InstanceID, moved.OracleID)
 		return nil
 	}
+	// S15 sub-PR 5 auto-tap. When AutoTap is set, plan a tap of the
+	// caller's untapped permanents and materialise the produced mana
+	// into the pool BEFORE the strict-mode cost gate runs. Failure
+	// to satisfy the cost surfaces as *InsufficientManaError without
+	// having tapped anything (the planner is read-only; only a
+	// successful plan triggers materialisation). The strict gate
+	// below then sees a freshly-funded pool and either spends it or
+	// — if AutoTap somehow returned a short plan — rejects with the
+	// same structured error.
+	if params.AutoTap {
+		if err := g.applyAutoTapLocked(p, card, params); err != nil {
+			return err
+		}
+	}
 	// S15 strict-mode cost gate. Only engaged for non-land casts —
 	// lands have no mana cost, and the land-cast branch above has
 	// already returned. Strict + payable deducts the cost from the
@@ -454,6 +491,128 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 		Source: cardID,
 	})
 	return nil
+}
+
+// applyAutoTapLocked plans + executes the S15 sub-PR 5 auto-tap
+// step. Called from CastSpell when params.AutoTap is set, before
+// the strict-mode cost gate. Atomic: a planning failure returns
+// *InsufficientManaError before any cards tap.
+//
+// Flow:
+//  1. Parse the effective cost (printed cost + commander tax).
+//     Unparseable cost short-circuits to nil — applyCastCostLocked
+//     will emit the warning and proceed permissively.
+//  2. If the pool already covers the cost, skip — auto-tap is
+//     idempotent on a funded pool.
+//  3. Build the excluded set from LockedSources.
+//  4. Run autoTapLocked to get a plan; if no plan exists, return
+//     a structured InsufficientManaError keyed off the current
+//     pool's missing list (the auto-tapper itself doesn't carry
+//     a missing-symbols breakdown).
+//  5. Materialise the plan: for each card, tap it and drop its
+//     produced mana into the pool with greedy color-picking
+//     against the still-unsatisfied cost requirements.
+//
+// Caller must hold g.mu (CastSpell holds the write lock).
+func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) error {
+	cost, err := g.effectiveCostLocked(p, card, params)
+	if err != nil {
+		return nil
+	}
+	if p.ManaPool.CanPay(cost, params.XValue) {
+		return nil
+	}
+	excluded := make(map[uuid.UUID]bool, len(params.LockedSources))
+	for _, id := range params.LockedSources {
+		excluded[id] = true
+	}
+	plan, ok := g.autoTapLocked(p.ID, cost, params.XValue, excluded)
+	if !ok {
+		return &InsufficientManaError{Missing: p.ManaPool.Missing(cost, params.XValue)}
+	}
+	g.materializePlanLocked(p, plan, cost)
+	return nil
+}
+
+// materializePlanLocked taps each card in `plan` and drops the
+// produced mana into the controller's pool. Multi-option slots
+// (Birds of Paradise, Arcane Signet) get greedy color-picking:
+// the picker walks the still-unsatisfied colored requirements and
+// picks an option that consumes one. When no requirement matches,
+// the slot drops its first option as generic-eligible mana.
+//
+// Skips PendingChoiceMana entirely — the auto-tapper's contract
+// is "no further player decisions required". Caller must hold
+// g.mu and have validated the plan via autoTapLocked.
+func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCost) {
+	pending := append([]ColorRequirement(nil), cost.Required...)
+	identity := commanderIdentityFor(p)
+	for _, cardID := range plan {
+		var card *Card
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == cardID {
+				card = &g.Battlefield.Cards[i]
+				break
+			}
+		}
+		if card == nil || card.Tapped {
+			continue
+		}
+		abilities := ManaAbilitiesForCard(*card)
+		var ab *ManaAbilityShape
+		for i := range abilities {
+			a := abilities[i]
+			if a.TapCost && !a.SacrificeCost {
+				ab = &a
+				break
+			}
+		}
+		if ab == nil {
+			continue
+		}
+		slots, err := ParseProducedMana(ab.Produced)
+		if err != nil {
+			continue
+		}
+		card.Tapped = true
+		g.EmitEvent(Event{Kind: EventTapCard, Actor: p.ID, CardID: cardID})
+		g.EmitEvent(Event{Kind: EventManaAbilityActivated, Actor: p.ID, Source: cardID})
+		for _, slot := range slots {
+			options := slot.Options
+			if len(options) > 1 && len(identity) > 0 {
+				options = intersectColors(options, identity)
+			}
+			color := pickColorForSlot(options, &pending)
+			if color == "" {
+				continue
+			}
+			p.ManaPool.AddMana(ManaToken{Color: color, Source: cardID})
+			g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: cardID})
+		}
+	}
+}
+
+// pickColorForSlot consumes one entry from `pending` if any of
+// `options` matches a still-unsatisfied requirement, returning
+// that color. Otherwise returns the first option (generic-eligible
+// fall-through). Empty options returns "".
+func pickColorForSlot(options []string, pending *[]ColorRequirement) string {
+	if len(options) == 0 {
+		return ""
+	}
+	if len(options) == 1 {
+		return options[0]
+	}
+	for i := range *pending {
+		req := (*pending)[i]
+		for _, opt := range options {
+			if matchColor(opt, req.Options) {
+				*pending = append((*pending)[:i], (*pending)[i+1:]...)
+				return opt
+			}
+		}
+	}
+	return options[0]
 }
 
 // effectiveCostLocked parses the card's printed ManaCost and adds

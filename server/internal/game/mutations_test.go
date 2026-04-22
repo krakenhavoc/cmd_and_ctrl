@@ -2973,6 +2973,152 @@ func errorsAs(err error, target any) bool {
 	return errors.As(err, target)
 }
 
+// --- S15 sub-PR 5 auto-tap-and-cast --------------------------------
+
+// TestS15CastSpellAutoTapBasicLandsHappyPath proves a strict cast
+// with AutoTap=true plans + taps the right basic lands and lets
+// the cast proceed without manual intervention. Bolt costs {R};
+// AutoTap should tap one Mountain and drop {R} in the pool, then
+// the strict gate spends it.
+func TestS15CastSpellAutoTapBasicLandsHappyPath(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	mountain := pushBattlefieldForTest(g, p.ID, "Mountain", "Basic Land — Mountain", "")
+	id := pushTypedCardToHandWithCost(p, "Lightning Bolt", "Instant", "{R}")
+
+	if err := g.CastSpell(p.ID, id, CastSpellParams{Strict: true, AutoTap: true}); err != nil {
+		t.Fatalf("auto-tap cast: %v", err)
+	}
+	if !g.Stack.Contains(id) {
+		t.Errorf("auto-tap cast did not reach the stack")
+	}
+	// Mountain should be tapped.
+	var found *Card
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == mountain {
+			found = &g.Battlefield.Cards[i]
+			break
+		}
+	}
+	if found == nil || !found.Tapped {
+		t.Errorf("Mountain should be tapped after auto-tap cast")
+	}
+	// Pool should be empty — produced {R} got spent.
+	if len(p.ManaPool) != 0 {
+		t.Errorf("post-spend pool: got %+v, want empty", p.ManaPool)
+	}
+}
+
+// TestS15CastSpellAutoTapInsufficientReturnsError proves that when
+// the auto-tapper can't satisfy the cost, no taps happen and the
+// caller gets a structured InsufficientManaError. Counterspell
+// {U}{U} against a single Island can't be planned.
+func TestS15CastSpellAutoTapInsufficientReturnsError(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	island := pushBattlefieldForTest(g, p.ID, "Island", "Basic Land — Island", "")
+	id := pushTypedCardToHandWithCost(p, "Counterspell", "Instant", "{U}{U}")
+
+	err := g.CastSpell(p.ID, id, CastSpellParams{Strict: true, AutoTap: true})
+	if err == nil {
+		t.Fatalf("auto-tap cast with one Island should have failed for {U}{U}")
+	}
+	var im *InsufficientManaError
+	if !errorsAs(err, &im) {
+		t.Fatalf("expected *InsufficientManaError, got %T (%v)", err, err)
+	}
+	// Atomic guarantee: the Island must NOT have tapped.
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID == island && c.Tapped {
+			t.Errorf("Island tapped despite plan failure (auto-tap should be all-or-nothing)")
+		}
+	}
+	if !p.Hand.Contains(id) {
+		t.Errorf("rejected cast left hand")
+	}
+}
+
+// TestS15CastSpellAutoTapRespectsLockedSources proves a card listed
+// in LockedSources is excluded from planning. With one Mountain and
+// one locked Mountain, auto-tap for {R}{R} fails — the locked one
+// can't contribute.
+func TestS15CastSpellAutoTapRespectsLockedSources(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	free := pushBattlefieldForTest(g, p.ID, "Mountain", "Basic Land — Mountain", "")
+	locked := pushBattlefieldForTest(g, p.ID, "Mountain", "Basic Land — Mountain", "")
+	id := pushTypedCardToHandWithCost(p, "Searing Spear", "Instant", "{R}{R}")
+
+	err := g.CastSpell(p.ID, id, CastSpellParams{
+		Strict:        true,
+		AutoTap:       true,
+		LockedSources: []uuid.UUID{locked},
+	})
+	if err == nil {
+		t.Fatalf("auto-tap with one locked Mountain should fail for {R}{R}")
+	}
+	var im *InsufficientManaError
+	if !errorsAs(err, &im) {
+		t.Fatalf("expected *InsufficientManaError, got %T", err)
+	}
+	// Free Mountain must not have tapped (atomic-failure guarantee).
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID == free && c.Tapped {
+			t.Errorf("free Mountain tapped despite plan failure")
+		}
+		if c.InstanceID == locked && c.Tapped {
+			t.Errorf("locked Mountain was tapped — exclusion ignored")
+		}
+	}
+}
+
+// TestS15CastSpellAutoTapSkipsWhenPoolAlreadyCovers proves the
+// idempotency guard — if the player's pool already has enough mana
+// to pay, AutoTap shouldn't tap anything new.
+func TestS15CastSpellAutoTapSkipsWhenPoolAlreadyCovers(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	mountain := pushBattlefieldForTest(g, p.ID, "Mountain", "Basic Land — Mountain", "")
+	id := pushTypedCardToHandWithCost(p, "Lightning Bolt", "Instant", "{R}")
+	p.ManaPool.AddMana(ManaToken{Color: "R"})
+
+	if err := g.CastSpell(p.ID, id, CastSpellParams{Strict: true, AutoTap: true}); err != nil {
+		t.Fatalf("auto-tap with pre-funded pool: %v", err)
+	}
+	// Mountain stays untapped — pool covered the cost.
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID == mountain && c.Tapped {
+			t.Errorf("Mountain tapped despite pre-funded pool")
+		}
+	}
+}
+
+// TestS15CastSpellAutoTapBirdsPicksRequiredColor proves that a
+// multi-option mana ability (Birds of Paradise) materialises into
+// the COLOR the cost requires, not a default — so a {R} cast
+// doesn't leave green floating in the pool.
+func TestS15CastSpellAutoTapBirdsPicksRequiredColor(t *testing.T) {
+	withCatalogHook(t, birdsHook)
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	pushBattlefieldForTest(g, p.ID, "Birds of Paradise", "Creature — Bird", "d3a0b660-358c-41bd-9cd2-41fbf3491b1a")
+	id := pushTypedCardToHandWithCost(p, "Lightning Bolt", "Instant", "{R}")
+
+	if err := g.CastSpell(p.ID, id, CastSpellParams{Strict: true, AutoTap: true}); err != nil {
+		t.Fatalf("auto-tap Birds for {R}: %v", err)
+	}
+	// Pool should be empty — Birds produced {R} (greedy color-pick),
+	// strict gate spent it.
+	if len(p.ManaPool) != 0 {
+		t.Errorf("post-spend pool: %+v (Birds should have produced {R}, not a default)", p.ManaPool)
+	}
+}
+
 func TestReadSnapshotConsistency(t *testing.T) {
 	g := newActiveGame(t)
 	var life int

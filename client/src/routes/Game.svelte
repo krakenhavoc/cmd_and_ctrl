@@ -8,6 +8,7 @@
   import Board from "../lib/components/board/Board.svelte";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
+  import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
   import TargetingBanner from "../lib/components/board/TargetingBanner.svelte";
   import { cancel as cancelTargeting } from "../lib/targeting";
   import type { PlayerView } from "../lib/protocol";
@@ -169,6 +170,37 @@
   function dismissManaOverride(): void {
     manaOverride = null;
     client.lastError.set(null);
+  }
+
+  // S15 sub-PR 5 auto-tap-and-cast modal driver. autoTapCardID
+  // doubles as the open / closed state — when null, the modal is
+  // closed; when set, AutoTapPreviewModal mounts and fetches the
+  // preview for that card. The "Auto-tap & cast" button on the
+  // insufficient-mana toast is the canonical entry point; the
+  // dismiss button (and ESC inside the modal) closes it.
+  let autoTapCardID = $state<string | null>(null);
+  function openAutoTap(): void {
+    if (!manaOverride) return;
+    autoTapCardID = manaOverride.cardID;
+    manaOverride = null;
+  }
+  function confirmAutoTap(lockedSources: string[]): void {
+    if (!autoTapCardID) return;
+    const cardID = autoTapCardID;
+    autoTapCardID = null;
+    sendAction(
+      "cast_spell",
+      {
+        instance_id: cardID,
+        strict: true,
+        auto_tap: true,
+        locked_sources: lockedSources,
+      },
+      viewerID ?? undefined,
+    );
+  }
+  function cancelAutoTap(): void {
+    autoTapCardID = null;
   }
 
   function back(): void {
@@ -656,6 +688,7 @@
       {#if manaOverride.missing.length > 0}
         <span class="muted">missing {manaOverride.missing.join(" ")}</span>
       {/if}
+      <button type="button" class="override-btn" onclick={openAutoTap}>Auto-tap & cast</button>
       <button type="button" class="override-btn" onclick={castAnyway}>Cast anyway</button>
       <button
         type="button"
@@ -955,6 +988,13 @@
       />
       <DiscardPromptModal snap={view} {viewerID} {sendAction} />
       <ChoicePromptModal snap={view} {viewerID} {sendAction} />
+      <AutoTapPreviewModal
+        {gameID}
+        snap={view}
+        cardID={autoTapCardID}
+        onConfirm={confirmAutoTap}
+        onCancel={cancelAutoTap}
+      />
       <TargetingBanner />
     {/if}
   </div>
