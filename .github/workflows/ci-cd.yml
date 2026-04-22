@@ -57,6 +57,10 @@ jobs:
           mkdir -p bin
           go build -o bin/cmd_and_ctrl-server ./cmd/server
 
+      - name: Bot — build
+        working-directory: server
+        run: go build -o bin/cmd_and_ctrl-bot ./cmd/bot
+
       - name: Client — npm ci
         working-directory: client
         run: npm ci
@@ -79,6 +83,14 @@ jobs:
         with:
           name: cmdctrl-server-bin
           path: server/bin/cmd_and_ctrl-server
+          retention-days: 7
+
+      - name: Upload bot binary
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v5
+        with:
+          name: cmdctrl-bot-bin
+          path: server/bin/cmd_and_ctrl-bot
           retention-days: 7
 
       - name: Upload client dist
@@ -114,6 +126,12 @@ jobs:
           name: cmdctrl-server-bin
           path: server/bin
 
+      - name: Download bot binary
+        uses: actions/download-artifact@v6
+        with:
+          name: cmdctrl-bot-bin
+          path: server/bin
+
       - name: Download client dist
         uses: actions/download-artifact@v6
         with:
@@ -121,13 +139,21 @@ jobs:
           path: client/dist
 
       - name: Restore server binary exec bit
-        run: chmod +x server/bin/cmd_and_ctrl-server
+        run: chmod +x server/bin/cmd_and_ctrl-server server/bin/cmd_and_ctrl-bot
 
       - name: Deploy server binary
         run: |
           rsync -a -e "ssh ${SSH_OPTS}" \
             server/bin/cmd_and_ctrl-server \
             krkn@${CMDCTRL_HOST}:/opt/cmd_and_ctrl/server/bin/
+
+      - name: Deploy bot binary
+        run: |
+          rsync -a -e "ssh ${SSH_OPTS}" \
+            server/bin/cmd_and_ctrl-bot \
+            krkn@${CMDCTRL_HOST}:/opt/cmd_and_ctrl/bot/bin/ || {
+              echo "::warning::Bot deploy skipped — /opt/cmd_and_ctrl/bot/bin/ may not exist yet. Create it on the host before the bot rolls out."
+            }
 
       - name: Deploy client dist
         run: |
@@ -145,6 +171,20 @@ jobs:
       - name: Restart cmd-and-ctrl service
         run: |
           ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} 'sudo systemctl restart cmd-and-ctrl'
+
+      - name: Restart cmd-and-ctrl-bot service (if enabled)
+        # Conditional so CI keeps passing before the operator
+        # installs the bot systemd unit for the first time.
+        # Once the unit is enabled, this branch is the steady state.
+        run: |
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} '
+            if systemctl is-enabled cmd-and-ctrl-bot >/dev/null 2>&1; then
+              sudo systemctl restart cmd-and-ctrl-bot
+              systemctl is-active cmd-and-ctrl-bot
+            else
+              echo "cmd-and-ctrl-bot unit is not enabled; skipping bot restart."
+            fi
+          '
 
       - name: Verify service is active
         run: |
