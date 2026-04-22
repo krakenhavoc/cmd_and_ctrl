@@ -367,6 +367,15 @@ type CardView struct {
 	// payload carries. Empty / absent for non-producers. Added in
 	// S15 sub-PR 2.
 	ManaAbilities []ManaAbilityView `json:"mana_abilities,omitempty"`
+
+	// Abilities is the card's effective keyword list — strings like
+	// "flying", "first strike", "trample". Layered effects (Lord of
+	// Atlantis grants flying to other Merfolk) populate this in
+	// S16 sub-PR 4 onward. S18 reads this list to render keyword
+	// badges and gate combat behaviour. Empty in S16 sub-PR 1
+	// (engine ships, no card declares a static ability yet).
+	// Added in S16 sub-PR 1.
+	Abilities []string `json:"abilities,omitempty"`
 }
 
 // ManaAbilityView is the wire shape of one activated mana ability
@@ -911,6 +920,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.Counters = nil
 	out.IsCommander = false
 	out.ManaCost = ""
+	out.Abilities = nil
 	return out
 }
 
@@ -966,15 +976,21 @@ func viewOfCard(c game.Card) CardView {
 			knowers[k.String()] = true
 		}
 	}
+	// S16 sub-PR 1: read post-layer characteristics off Card.Effective()
+	// rather than the raw printed fields. The layer engine ships as a
+	// no-op pass in this sub-PR (effective == printed), so the wire
+	// shape is unchanged; sub-PR 3 onwards populates effective values
+	// that diverge from printed.
+	eff := c.Effective()
 	view := CardView{
 		InstanceID:    c.InstanceID.String(),
-		Name:          c.Name,
+		Name:          eff.Name,
 		Owner:         c.Owner.String(),
 		Controller:    c.Controller.String(),
 		ScryfallID:    c.ScryfallID,
 		TypeLine:      c.TypeLine,
-		Power:         c.Power,
-		Toughness:     c.Toughness,
+		Power:         eff.Power,
+		Toughness:     eff.Toughness,
 		Tapped:        c.Tapped,
 		Counters:      counters,
 		IsCommander:   c.IsCommander,
@@ -986,6 +1002,7 @@ func viewOfCard(c game.Card) CardView {
 		TargetMode:    game.TargetModeFor(c.OracleID),
 		ManaCost:      c.ManaCost,
 		ManaAbilities: viewOfManaAbilities(c),
+		Abilities:     eff.Abilities,
 		knowers:       knowers,
 	}
 	if c.AttackingTarget != uuid.Nil {
