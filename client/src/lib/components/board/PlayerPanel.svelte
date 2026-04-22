@@ -7,15 +7,15 @@
   //   ├──────────────────────┬──────────────────────┤
   //   │  lands               │  enchant / artifact  │
   //   ├─────────────────────────────────────────────┤
-  //   │  hand (full width fan)                      │
-  //   ├─────────────────────────────────────────────┤
-  //   │  ⭕ piles …………………… phases (self)            │
+  //   │  ⭕ piles  hand (peek) ……………… phases (self)│
   //   └─────────────────────────────────────────────┘
   //
-  // The bottombar is a single flex row so the avatar anchors the
-  // bottom-left corner immediately beside the exile/graveyard/library/
-  // command piles, with PhaseDisplay floating to the bottom-right on
-  // the viewer's own panel.
+  // The bottombar is a single flex row: avatar anchors bottom-left,
+  // piles immediately beside it, the hand peeks up from the same base-
+  // line (top ~55% of each card visible, bottom-clipped at the pile
+  // bottom), and PhaseDisplay floats bottom-right on the viewer's own
+  // panel. Hovering the self hand lifts the whole fan up over the board
+  // to reveal full cards.
   //
   // The same component is reused for self + opponents; Board.svelte
   // wraps opponent instances in a transform container that rotates
@@ -188,15 +188,6 @@
       onActivateManaAbility={activateManaAbility}
     />
   </div>
-  <div class="grid-hand">
-    <Hand
-      hand={seat.hand}
-      {isSelf}
-      onPlayCard={isSelf ? onPlayCard : undefined}
-      snap={view}
-      {viewerID}
-    />
-  </div>
   <div class="grid-bottombar">
     <PlayerIdentity
       {seat}
@@ -214,7 +205,19 @@
     {#if !isSelf}
       <PromisesRow {view} {viewerID} opponentID={seat.id} {sendAction} />
     {/if}
-    <div class="bottombar-spacer"></div>
+    <!-- Hand sits inline with the piles so its clipped-bottom line
+         coincides with the pile baseline (panel bottom) instead of
+         floating in a gap above the bottombar. flex: 1 lets it absorb
+         the remaining width between piles and phases. -->
+    <div class="hand-zone">
+      <Hand
+        hand={seat.hand}
+        {isSelf}
+        onPlayCard={isSelf ? onPlayCard : undefined}
+        snap={view}
+        {viewerID}
+      />
+    </div>
     {#if isSelf && view.turn}
       <PhaseDisplay
         turn={view.turn}
@@ -248,11 +251,10 @@
     --thumb-h: calc(105px * var(--card-scale, 1));
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1.3fr) minmax(0, 1fr) auto auto;
+    grid-template-rows: minmax(0, 1.3fr) minmax(0, 1fr) auto;
     grid-template-areas:
       "creatures creatures"
       "lands     enchant"
-      "hand      hand"
       "bottombar bottombar";
     gap: 6px;
     width: 100%;
@@ -315,18 +317,11 @@
     min-height: 0;
     min-width: 0;
   }
-  .grid-hand {
-    grid-area: hand;
-    min-height: 0;
-    min-width: 0;
-    display: flex;
-    justify-content: center;
-    align-items: flex-end;
-  }
-  /* Bottombar: avatar anchors bottom-left, piles sit immediately to
-     its right (exile / graveyard / library / command), phase-display
-     (self only) floats to the bottom-right. The spacer absorbs the
-     slack so everything else keeps its natural width. */
+  /* Bottombar: avatar anchors bottom-left, piles immediately beside
+     it, the hand takes the flex-grow slot in the centre (peeking up
+     from the pile baseline), phase-display (self only) floats bottom-
+     right. All items bottom-align so the clipped hand bottoms line up
+     with the pile bottoms. */
   .grid-bottombar {
     grid-area: bottombar;
     min-height: 0;
@@ -335,8 +330,16 @@
     align-items: flex-end;
     gap: 8px;
   }
-  .bottombar-spacer {
-    flex: 1 1 auto;
+  .hand-zone {
+    flex: 1 1 0;
     min-width: 0;
+    align-self: flex-end;
+    /* Fixed rest-state height matches the Hand's clipped peek. Keeping
+       it explicit means the Hand's hover lift (max-height: none plus a
+       translateY transform) doesn't grow this wrapper and push the
+       bottombar row taller — the lift stays purely visual. */
+    height: calc(var(--card-h, 168px) * 0.55);
+    overflow: visible;
+    position: relative;
   }
 </style>
