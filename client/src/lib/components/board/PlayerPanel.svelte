@@ -6,11 +6,16 @@
   //   │  creatures (full width)                     │
   //   ├──────────────────────┬──────────────────────┤
   //   │  lands               │  enchant / artifact  │
-  //   ├──────┬───────────────┴───────────┬──────────┤
-  //   │      │  hand                     │          │
-  //   │piles ├───────────────────────────┤ phases   │
-  //   │      │  ⭕ avatar / identity     │ (self)   │
-  //   └──────┴───────────────────────────┴──────────┘
+  //   ├─────────────────────────────────────────────┤
+  //   │  hand (full width fan)                      │
+  //   ├─────────────────────────────────────────────┤
+  //   │  ⭕ piles …………………… phases (self)            │
+  //   └─────────────────────────────────────────────┘
+  //
+  // The bottombar is a single flex row so the avatar anchors the
+  // bottom-left corner immediately beside the exile/graveyard/library/
+  // command piles, with PhaseDisplay floating to the bottom-right on
+  // the viewer's own panel.
   //
   // The same component is reused for self + opponents; Board.svelte
   // wraps opponent instances in a transform container that rotates
@@ -183,9 +188,6 @@
       onActivateManaAbility={activateManaAbility}
     />
   </div>
-  <div class="grid-piles">
-    <PileBar {seat} {exile} {isSelf} {sendAction} onDrawCard={isSelf ? onDrawCard : undefined} />
-  </div>
   <div class="grid-hand">
     <Hand
       hand={seat.hand}
@@ -195,7 +197,7 @@
       {viewerID}
     />
   </div>
-  <div class="grid-avatar">
+  <div class="grid-bottombar">
     <PlayerIdentity
       {seat}
       {isSelf}
@@ -208,11 +210,11 @@
       {onDeclareAttack}
       {onTargetPlayer}
     />
+    <PileBar {seat} {exile} {isSelf} {sendAction} onDrawCard={isSelf ? onDrawCard : undefined} />
     {#if !isSelf}
       <PromisesRow {view} {viewerID} opponentID={seat.id} {sendAction} />
     {/if}
-  </div>
-  <div class="grid-phases">
+    <div class="bottombar-spacer"></div>
     {#if isSelf && view.turn}
       <PhaseDisplay
         turn={view.turn}
@@ -245,13 +247,13 @@
     --thumb-w: calc(75px * var(--card-scale, 1));
     --thumb-h: calc(105px * var(--card-scale, 1));
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-rows: minmax(0, 1.3fr) minmax(0, 1fr) auto auto;
     grid-template-areas:
-      "creatures creatures creatures creatures"
-      "lands     lands     enchant   enchant"
-      "piles     hand      hand      phases"
-      "piles     avatar    avatar    phases";
+      "creatures creatures"
+      "lands     enchant"
+      "hand      hand"
+      "bottombar bottombar";
     gap: 6px;
     width: 100%;
     height: 100%;
@@ -313,13 +315,6 @@
     min-height: 0;
     min-width: 0;
   }
-  .grid-piles {
-    grid-area: piles;
-    min-height: 0;
-    min-width: 0;
-    display: flex;
-    align-items: flex-end;
-  }
   .grid-hand {
     grid-area: hand;
     min-height: 0;
@@ -328,22 +323,20 @@
     justify-content: center;
     align-items: flex-end;
   }
-  .grid-avatar {
-    grid-area: avatar;
-    min-height: 0;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 4px;
-  }
-  .grid-phases {
-    grid-area: phases;
+  /* Bottombar: avatar anchors bottom-left, piles sit immediately to
+     its right (exile / graveyard / library / command), phase-display
+     (self only) floats to the bottom-right. The spacer absorbs the
+     slack so everything else keeps its natural width. */
+  .grid-bottombar {
+    grid-area: bottombar;
     min-height: 0;
     min-width: 0;
     display: flex;
     align-items: flex-end;
-    justify-content: flex-end;
+    gap: 8px;
+  }
+  .bottombar-spacer {
+    flex: 1 1 auto;
+    min-width: 0;
   }
 </style>
