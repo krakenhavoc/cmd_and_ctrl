@@ -16,7 +16,10 @@
 
   import type { PlayerView, TurnView } from "../../protocol";
   import { seatColor } from "../../colors";
+  import { avatarURL } from "../../api";
+  import { getAvatarColor } from "../../avatarColor";
   import { STEP_IDS, STEP_LABELS } from "../../turn";
+  import PhaseIcon from "./PhaseIcon.svelte";
 
   interface Props {
     turn: TurnView;
@@ -36,13 +39,37 @@
   // makes the five MTG phases (beginning / precombat main / combat /
   // postcombat / ending) visually distinct without labels.
   const BOUNDARIES: ReadonlySet<number> = new Set([3, 4, 8, 9]);
+
+  // Per-seat accent colour, keyed by player id. Seeded synchronously
+  // from seatColor() so first paint has the right shape; avatarColor
+  // resolves async and flips this map to the avatar-derived hex when
+  // the Discord image has been sampled. Seat-palette players (no
+  // Discord identity) never update — getAvatarColor short-circuits
+  // with the fallback when url is null.
+  const playerColors = $state<Record<string, string>>({});
+  $effect(() => {
+    for (const s of seats) {
+      const url = avatarURL(s.discord_id, s.discord_avatar_hash);
+      const fallback = seatColor(s.seat);
+      const id = s.id;
+      playerColors[id] = getAvatarColor(url, fallback, (c) => {
+        playerColors[id] = c;
+      });
+    }
+  });
+  const colorFor = (seat: PlayerView): string => playerColors[seat.id] ?? seatColor(seat.seat);
+  const activeColor = $derived(activePlayer ? colorFor(activePlayer) : seatColor(activeSeat));
 </script>
 
-<div class="phase-display" aria-label="turn and phase indicator">
+<div
+  class="phase-display"
+  aria-label="turn and phase indicator"
+  style:--active-player-color={activeColor}
+>
   <div class="row summary">
     <span class="turn-no">T{turn.number}</span>
     <span class="active">
-      <span class="seat-dot" style="background:{seatColor(activeSeat)}"></span>
+      <span class="seat-dot" style="background:{activeColor}"></span>
       <span class="active-name">{activePlayer?.name ?? `seat ${activeSeat}`}</span>
     </span>
   </div>
@@ -53,11 +80,13 @@
         <span class="track-gap" aria-hidden="true"></span>
       {/if}
       <span
-        class="step-dot"
+        class="step-icon"
         class:current={turn.step === id}
         title={STEP_LABELS[id]}
         aria-current={turn.step === id ? "step" : undefined}
-      ></span>
+      >
+        <PhaseIcon step={id} />
+      </span>
     {/each}
   </div>
 
@@ -70,7 +99,7 @@
         class:has-priority={priorityHeld && seat.seat === prioritySeat && !seat.eliminated}
         class:is-active={seat.seat === activeSeat && !seat.eliminated}
         class:eliminated={seat.eliminated}
-        style="--seat-color: {seatColor(seat.seat)}"
+        style="--seat-color: {colorFor(seat)}"
         title={seat.eliminated
           ? `${seat.name} — eliminated`
           : `${seat.name}${priorityHeld && seat.seat === prioritySeat ? " (priority)" : ""}${seat.seat === activeSeat ? " (active)" : ""}`}
@@ -93,16 +122,16 @@
   .phase-display {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 8px 10px;
-    min-width: 160px;
-    max-width: 220px;
+    gap: 8px;
+    padding: 12px 14px;
+    min-width: 220px;
+    max-width: 300px;
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.2) 100%), var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     color: var(--fg-muted);
-    font-size: 0.8em;
+    font-size: 0.95em;
     box-shadow: var(--shadow-sm);
   }
   .row {
@@ -142,30 +171,39 @@
     max-width: 10ch;
   }
 
-  /* Phase track — one dot per step, with a faint gap at each phase
-     boundary. Current step pops with a brighter ring and accent glow. */
+  /* Phase track — one pictogram per step, with a faint gap at each
+     phase boundary. Current step pops by switching to the active
+     player's avatar-derived colour with a soft glow; inactive steps
+     render at low opacity in the chrome colour so the row reads as a
+     subtle timeline rather than a noisy icon strip. */
   .track {
     gap: 3px;
-    padding: 2px 0;
+    padding: 3px 0;
+    flex-wrap: nowrap;
   }
-  .step-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+  .step-icon {
+    width: 17px;
+    height: 17px;
     flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.3);
+    opacity: 0.85;
     transition:
-      background 160ms var(--ease),
-      box-shadow 160ms var(--ease);
+      color 160ms var(--ease),
+      opacity 160ms var(--ease),
+      filter 160ms var(--ease),
+      transform 160ms var(--ease);
   }
-  .step-dot.current {
-    background: var(--accent);
-    border-color: var(--accent-strong);
-    box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 65%, transparent);
+  .step-icon.current {
+    color: var(--active-player-color);
+    opacity: 1;
+    transform: scale(1.18);
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--active-player-color) 70%, transparent));
   }
   .track-gap {
-    width: 6px;
+    width: 8px;
     height: 1px;
     flex: 0 0 auto;
   }
@@ -173,7 +211,7 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    font-size: 0.82em;
+    font-size: 0.92em;
     color: var(--fg);
   }
 
