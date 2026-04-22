@@ -1091,17 +1091,139 @@ Stop-and-show for manual testing at each boundary.
 ---
 
 ## S16 — Continuous effects + layer system (CR 613)
-**Phase:** 7 · **Goal:** ship the 7-layer skeleton with timestamp ordering; ~10 catalog cards exercising each layer.
+**Phase:** 7 · **Goal:** ship the 7-layer continuous-effect engine (CR 613) with timestamp-only ordering. Add `Spec.Static []StaticAbility` to the S14 catalog spec, populated by 4 starter cards proving the in-scope layers: Glorious Anthem (7c), Mycosynth Lattice (Layer 4 type-add), Lord of Atlantis (Layer 6 ability-grant + 7c), Tarmogoyf (Layer 7a CDA). Wire-side `CardView.power`, `toughness`, `type_line`, and the new `abilities` field reflect post-layer *effective* characteristics; printed values stay server-only and feed the recompute. Recompute runs lazily via a `Game.LayerVersion` counter bumped by listener hooks; the snapshot path resolves stale versions before serialising.
 
-- [ ] `Characteristic` snapshot type (printed vs. effective)
-- [ ] Layer engine (1 copy, 2 control, 3 text, 4 type, 5 color, 6 abilities, 7 P/T with sub-layers 7a-7e)
-- [ ] Recompute-from-scratch on state change, cached by version number
-- [ ] `StaticAbility` declarations on `CardImpl` (placeholder from S14, now populated)
-- [ ] ~10 catalog cards: Mycosynth Lattice, Conspiracy, Lord of Atlantis, Glorious Anthem, Crusade, Honor of the Pure, Tarmogoyf, Mind Control
+The hard sprint of the rules-engine arc — continuous effects are the second-most complex MTG subsystem after the stack. After this sprint, the catalog can include cards whose effects exist *while a permanent is on the battlefield*, not just on resolution. Co-requisite for S18 (combat keywords are layer-6 grants) and S17 (replacement effects need the layered characteristic snapshot).
 
-**Skip dependency detection (CR 613.8) initially** — pure timestamp ordering works for ~95% of real cards. Add when a problem card surfaces (Opalescence + Humility — niche in casual EDH).
+### Architectural decisions
 
-**Exit criteria:** Glorious Anthem in play → all your creatures show +1/+1 on the wire; remove anthem → reverts.
+- **Recompute-from-scratch with a version counter.** No incremental diffs. `Game.LayerVersion` bumps on every event that could affect continuous effects (battlefield zone changes, counter changes, control changes, step advance). `RecomputeLayersIfStaleLocked` runs only when `LayerVersion > LastResolvedVersion`. Snapshot path is the canonical caller — recomputes once per "settled" game state, not per individual mutation. Mirrors XMage / Forge.
+- **Two characteristic shapes**: `Card.printedCharacteristic()` (immutable, derived from existing fields) and `Card.Effective()` (cached, post-layer). Wire ships `Effective`; rules logic that needs printed values (mana cost, owner) keeps reading `Card` directly.
+- **Static abilities declared on `Spec.Static`** — new field on the existing S14 catalog spec, parallel to `OnETB`, `OnResolve`, `ManaAbilities`. Each entry is `{Layer, SubLayer, AppliesTo func, Apply func}`. Registered through the existing `Register()` flow; consumed via a 6th function-var hook (`CatalogStaticAbilities`) following the cycle-break pattern S14 established.
+- **Counter math stays in `CurrentPower()` / `CurrentToughness()`.** Layer 7d *calls* them rather than subsuming them — keeps S13.2's SBA suite green; minimal blast radius. Layer engine starts with anthems + CDAs + types; counter integration is one delegating Apply function in 7d.
+- **Skip dependency detection (CR 613.8).** Pure timestamp ordering works for ~95% of real cards. Opalescence + Humility is the canonical pathological case and never shows up in casual EDH. S16.5 follow-up if a real card surfaces.
+- **Layer 7 ships full sub-layer support** (7a CDA, 7b setting, 7c modifying, 7d counters, 7e switch) — Tarmogoyf needs 7a, anthems need 7c, counters need 7d. 7b and 7e ship as no-op-capable stubs.
+- **Battlefield-only** — CR 113.6 default. Continuous effects from non-battlefield zones (Yixlid Jailer in graveyard) deferred. Niche cards opt in later.
+- **`EnteredBattlefieldAt int64`** stamped on every battlefield-entry path. Drives layer ordering. New helper `g.stampBattlefieldEntryLocked(cardID)` called by every existing entry site (cast-spell land branch, ETB resolution, MoveCard).
+- **Replace S15 commander-identity proxy.** `commanderIdentityFor` (mutations.go:2089) hand-rolled `distinctColorsInManaCost` was the explicit S15→S16 hand-off. Now reads the commander's effective characteristic colors. Proxy stays as fallback for placeholder commanders the catalog doesn't know.
+
+### Tasks
+
+**Server — characteristic snapshot:**
+- [ ] New [server/internal/game/characteristic.go](../server/internal/game/characteristic.go) with `Characteristic{Power, Toughness, Loyalty, Types, Subtypes, Supertypes, Colors, Abilities, Name}`. Field choice mirrors what `viewOfCard` projects to the wire.
+- [ ] `Card.printedCharacteristic() Characteristic` reads immutable printed fields off existing struct (no new storage on `Card` for printed; printed values ARE the existing fields).
+- [ ] `Card.effective` private cache field (nil-able). `Card.Effective()` returns it or falls back to printed when nil.
+
+**Server — layer engine:**
+- [ ] New [server/internal/game/layers.go](../server/internal/game/layers.go) with `Layer`/`SubLayer` enums, `ContinuousEffect` interface (`Layer`, `Timestamp`, `AppliesTo`, `Apply`).
+- [ ] `Game.LayerVersion uint64` + `Game.LastResolvedVersion uint64`.
+- [ ] `g.RecomputeLayersLocked()` — reset effective = printed; collect active continuous effects; for each layer in 1..7 (sub-layers in 7a..7e for Layer7PT): filter, sort by timestamp, apply.
+- [ ] `g.RecomputeLayersIfStaleLocked()` — fast-path no-op when `LayerVersion == LastResolvedVersion`. Called from snapshot path.
+- [ ] Layer 7d Apply delegates to `CurrentPower()` / `CurrentToughness()` for counter math.
+
+**Server — `Spec.Static` + catalog hook:**
+- [ ] `Spec.Static []StaticAbility` field on [server/internal/cards/effects/spec.go](../server/internal/cards/effects/spec.go). `StaticAbility{Layer, SubLayer, AppliesTo func, Apply func}`.
+- [ ] `CatalogStaticAbilities func(oracleID string) []StaticAbility` — sixth function-var hook in [game/effect_hooks.go](../server/internal/game/effect_hooks.go); populated by [effects/wire.go](../server/internal/cards/effects/wire.go).
+- [ ] `g.activeStaticAbilitiesLocked()` — walks battlefield, looks each card's oracle ID up via the hook, adapts `StaticAbility` into a `ContinuousEffect` bound to source card's `EnteredBattlefieldAt` timestamp.
+- [ ] `Card.EnteredBattlefieldAt int64` (Unix-nano timestamp) + `g.stampBattlefieldEntryLocked(cardID)` helper called by every existing battlefield-entry site.
+
+**Server — event hooks + listeners:**
+- [ ] **Audit + emit `EventLTB`** on every battlefield-leave path. Mirrors existing `EventETB` emission at [mutations.go:336-341](../server/internal/game/mutations.go#L336-L341). Today only ETB fires; layer system needs LTB to invalidate.
+- [ ] Built-in listener: `EventETB`, `EventLTB`, `EventCounterPlaced` (battlefield card), `EventControlChanged` (S16-new), step advance — all bump `g.LayerVersion`. Registered at game-start.
+- [ ] Snapshot path: `ReadSnapshot` calls `g.RecomputeLayersIfStaleLocked()` inside the read closure before building views. Recompute uses a separate `sync.Mutex` so the read lock isn't promoted; double-check version after acquiring the recompute mutex to avoid duplicate work.
+
+**Server — wire projection:**
+- [ ] `viewOfCard` ([protocol/view.go:954-1001](../server/internal/protocol/view.go#L954-L1001)) reads from `c.Effective()` for `Power`, `Toughness`, `TypeLine`, `Colors`, and the new `abilities []string` field.
+- [ ] `redactCardForViewer` ([view.go:899-914](../server/internal/protocol/view.go#L899-L914)) — same redaction shape (fields are the same; values are now effective).
+- [ ] `CardView.abilities []string` new wire field — drives S18's keyword renderer; ships now so S18 can plug in without a wire bump.
+- [ ] **No protocol bump.** `power`/`toughness`/`type_line` keep the same key names; values become effective.
+
+**Server — replace S15 commander-identity proxy:**
+- [ ] `commanderIdentityFor` ([mutations.go:2089-2131](../server/internal/game/mutations.go#L2089-L2131)) replaced with layer-aware computation: read commander's effective characteristic colors. `distinctColorsInManaCost` proxy stays as fallback for lobby-seeded placeholder commanders.
+- [ ] Existing S15 tests (Arcane Signet commander-identity filtering) stay green — layer system produces same identity for test commanders.
+
+**Catalog cards (4):**
+- [ ] **glorious_anthem.go** — Layer 7c. `AppliesTo`: target.IsCreature() && target.Controller == source.Controller. `Apply`: `c.Power++; c.Toughness++`.
+- [ ] **mycosynth_lattice.go** — Layer 4. `AppliesTo`: every permanent. `Apply`: append `"Artifact"` to `c.Types` (idempotent). Lattice's other clauses (lands tap for any color, no mana ability adds non-colorless) are S17 territory — out of scope for S16.
+- [ ] **lord_of_atlantis.go** — Two static abilities on one card:
+  - **7c**: AppliesTo = `target.IsCreature() && hasSubtype("Merfolk") && target != source && target.Controller == source.Controller`. Apply: +1/+1.
+  - **6**: AppliesTo same predicate. Apply: append `"flying"` and `"islandwalk"` to `c.Abilities`. Behavior of flying/islandwalk lands with S18 — S16 just exposes the keyword grant on the wire.
+- [ ] **tarmogoyf.go** — Layer 7a CDA. AppliesTo: target == source. Apply: `n := distinctCardTypesInAllGraveyards(g); c.Power = n; c.Toughness = n + 1`. Helper unions `Types` across every graveyard zone.
+
+**Tests:**
+- [ ] `server/internal/game/layers_test.go` (new):
+  - `TestSingleAnthemAddsPlusOne`, `TestTwoAnthemsStack`, `TestAnthemRespectsControllerBoundary`, `TestRemoveAnthemRevertsCreatures`.
+  - `TestMycosynthLatticeAddsArtifact`, `TestLordOfAtlantisGrantsFlyingToMerfolkOnly`, `TestLordOfAtlantisDoesNotPlusItself`.
+  - `TestTarmogoyfCDA` (4 distinct types in graveyards → 4/5).
+  - `TestCounterAndAnthemStack` (2/2 + +1/+1 counter + anthem → 4/4 — counter via 7d delegating to CurrentPower; anthem via 7c).
+- [ ] `TestLayerVersionInvalidationFastPath` — two consecutive snapshot reads with no events between invoke `RecomputeLayersLocked` exactly once (instrumentation counter on `Game`).
+- [ ] `TestEventLTBFiresOnZoneExit` — regression guard for the LTB emission audit.
+- [ ] Snapshot regression: `viewOfCard` for 2/2 + anthem → wire `power=3 toughness=3`; round-trip through `ViewOfGameFor` confirms redaction doesn't strip effective values for knowers.
+- [ ] S15 commander-identity regression stays green after proxy replacement.
+
+**Docs:**
+- [ ] [docs/decisions/0012-layer-system.md](decisions/0012-layer-system.md) — ADR. Topics: recompute-from-scratch + version cache vs incremental diffs, timestamp-only ordering before dependency detection, Layer 7d delegating to `CurrentPower`/`CurrentToughness`, Layer 5 stub with no card, Layer 1/3 deferred, `Spec.Static` declarative-DSL consistency, commander-identity proxy replacement.
+- [ ] [docs/protocol.md](protocol.md) — note `CardView.power`, `toughness`, `type_line`, `abilities` are now *effective* (post-layer); document new `EventLTB` event kind.
+- [ ] [docs/sprints.md](sprints.md) S16 section — this expansion lives here.
+- [ ] [AGENTS.md](../AGENTS.md) §7 — extend catalog-card recipe with "Adding a static ability" sub-recipe (parallel to S15 mana-ability recipe), worked example using Glorious Anthem.
+
+### Out of scope (explicit handoffs)
+- **Dependency detection (CR 613.8)** — Opalescence + Humility pathological case. S16.5 follow-up if a real card surfaces.
+- **Layer 1 copy effects** — Clone, Phyrexian Metamorph, Spark Double. Defer to S16.5.
+- **Layer 3 text-changing effects** — Mind Bend, Glamerdye. Engine ships layer 3 stub; no execution path.
+- **Layer 5 color-changing effects** — Painter's Servant. Engine ships the layer 5 stub with no card.
+- **Continuous effects from non-battlefield zones** — Yixlid Jailer, command-zone commander effects. Battlefield-only is the S16 simplification (CR 113.6 default).
+- **Aura / Equipment attachment infrastructure** — Mind Control needs the aura's controller to grant control over the enchanted creature, requires aura-attaching state the engine doesn't model. Bundled with S17.
+- **Mycosynth Lattice's other clauses** — "lands tap for any color" + "no land's mana ability adds non-colorless." Defer to S17 (S15 mana-ability override needed).
+- **Combat keyword behavior** — flying / islandwalk / first strike / trample / vigilance show on the wire after S16 but combat behavior lands with S18. Explicit S18 hand-off.
+- **Continuous activated abilities** — non-mana activated abilities (planeswalker +1/-1, equip, cycling) are S19. S16 is static-ability-only.
+
+### Risks / gotchas
+- **`EventLTB` audit miss.** Layer system correctness depends on LTB firing every battlefield-leave. Mitigation: grep audit every `g.Battlefield` removal site; regression test walks every public battlefield-leave mutation and asserts an `EventLTB`.
+- **Recompute under SBA loop.** SBA mutations emit zone-change events that bump `LayerVersion`. Recompute must NOT run inside the SBA loop (would interleave with SBA evaluation). Mitigation: only call `RecomputeLayersIfStaleLocked` inside `ReadSnapshot`'s read closure — never inside a write mutation.
+- **Layer 7d counter integration via `CurrentPower`.** 7d's Apply reads `c.CurrentPower() - c.Power` to derive counter delta. With a 7c anthem + 7d counter delta, effective power == `printed + 1 + counter_delta` — matches CR 613.5 layering. Test: `TestCounterAndAnthemStack`.
+- **Tarmogoyf CDA timestamp.** CDAs are layer 7a — they SET P/T before any +1/+1 (7c) or counter (7d) apply. Tarmogoyf with a +1/+1 counter and Glorious Anthem is `(N+2) / (N+3)` where N = distinct types in graveyards. The layer engine must apply 7a's "set" before 7c's "modify" arithmetic.
+- **`Card.EnteredBattlefieldAt` not stamped on test fixtures.** `pushBattlefieldForTest` bypasses cast/move paths. Mitigation: extend the helper to stamp the field.
+- **`Game.LayerVersion` race over snapshot reads.** Two competing readers might both see "stale" and try to recompute. Mitigation: separate `sync.Mutex` for the recompute, double-check version after acquiring (avoid promoting the read lock).
+- **No protocol bump but a behavior change.** Pre-S16 replays decoded with post-S16 servers re-resolve all layers from scratch. No-op for legacy replays (no static abilities ⇒ effective == printed). Confirm via replay round-trip test.
+
+### Exit criteria
+1. **Anthem buffs creatures on the wire.** Cast Glorious Anthem; every controlled battlefield creature shows `power+1`/`toughness+1` in the next snapshot.
+2. **Removing the anthem reverts.** Move Glorious Anthem to graveyard; next snapshot shows printed P/T.
+3. **Anthems stack.** Two anthems → +2/+2.
+4. **Mycosynth Lattice adds artifact.** Cast Lattice; a Forest's wire `type_line` includes `"Artifact"`.
+5. **Lord of Atlantis grants flying.** Lord + one Merfolk + one non-Merfolk; only the Merfolk's wire `abilities` contains `"flying"`.
+6. **Lord doesn't pump itself.** Single Lord on board with no other Merfolk shows printed 2/2.
+7. **Tarmogoyf CDA reflects graveyards.** Tarmogoyf + 4 distinct card types across graveyards → wire 4/5; mill a 5th type → 5/6.
+8. **Counter + anthem stack correctly.** 2/2 with a +1/+1 counter + 1 anthem → wire 4/4 (counter via 7d, anthem via 7c).
+9. **No regression in S15 commander identity.** Arcane Signet filtering tests stay green after proxy replacement.
+10. **Snapshot fast-path is free.** Two consecutive snapshot reads with no intervening mutation invoke `RecomputeLayersLocked` exactly once (instrumentation counter confirms).
+11. **Replay round-trip clean.** Pre-S16 replay JSONL decodes and re-snapshots with effective == printed for every card.
+12. **ADR 0012 + protocol/AGENTS docs + sprint flip** all land in the docs sub-PR.
+
+### Sub-PR split
+Stop-and-show for manual testing at each boundary, mirroring S15.
+1. **Sprint plan expansion (sub-PR 0).** This expansion in `docs/sprints.md` + GitHub issue #66 body. Pure docs.
+2. **Characteristic + layer-engine skeleton (sub-PR 1).** `Characteristic`, `Card.effective` cache, `Card.Effective()`, `g.LayerVersion`, `g.RecomputeLayersLocked` (no-op pass), `g.RecomputeLayersIfStaleLocked`, snapshot integration. **No static abilities yet** — engine runs but does nothing observable. Stop-and-show: server tests prove `viewOfCard` reads from `Effective()`; a 2/2 stays 2/2.
+3. **`EventLTB` + listener registration (sub-PR 2).** Audit + emit `EventLTB` on every battlefield-leave path; built-in listener bumps `LayerVersion`. Stop-and-show: zone-leave → events log shows `EventLTB`; `LayerVersion` ticks.
+4. **`Spec.Static` + `CatalogStaticAbilities` hook + Glorious Anthem (sub-PR 3).** Adds declaration shape, the 6th function-var hook, the first card. Layer engine actually runs effects. Stop-and-show: cast Anthem → all your creatures gain +1/+1.
+5. **Mycosynth Lattice + Lord of Atlantis (sub-PR 4).** Layer 4 + Layer 6 cards. Stop-and-show: cast each, verify type / ability grant lands on the wire; Lord doesn't pump itself.
+6. **Tarmogoyf CDA + commander-identity proxy replacement (sub-PR 5).** Layer 7a + S15 hand-off. Stop-and-show: 4 card types in graveyards → Tarmogoyf 4/5; Arcane Signet filtering still works.
+7. **ADR 0012 + protocol + AGENTS recipe + sprint flip (sub-PR 6).** Docs leg, mirrors S15's sub-PR 6 shape.
+
+### Critical files
+- **Server new:** [server/internal/game/characteristic.go](../server/internal/game/characteristic.go), [server/internal/game/layers.go](../server/internal/game/layers.go), [server/internal/game/layers_test.go](../server/internal/game/layers_test.go), [glorious_anthem.go](../server/internal/cards/effects/glorious_anthem.go), [mycosynth_lattice.go](../server/internal/cards/effects/mycosynth_lattice.go), [lord_of_atlantis.go](../server/internal/cards/effects/lord_of_atlantis.go), [tarmogoyf.go](../server/internal/cards/effects/tarmogoyf.go).
+- **Server modified:** [card.go](../server/internal/game/card.go) (`effective` cache, `Effective()`, `EnteredBattlefieldAt`), [game.go](../server/internal/game/game.go) (`LayerVersion`, `LastResolvedVersion`, recompute mutex), [effect_hooks.go](../server/internal/game/effect_hooks.go) (6th hook), [events.go](../server/internal/game/events.go) (`EventLTB` if missing), [listeners.go](../server/internal/game/listeners.go) (built-in version-bump), [mutations.go](../server/internal/game/mutations.go) (LTB audit, entry timestamp helper, `commanderIdentityFor` replacement), [spec.go](../server/internal/cards/effects/spec.go) (`Static` field), [wire.go](../server/internal/cards/effects/wire.go) (populate hook), [view.go](../server/internal/protocol/view.go) (read from `Effective()`, new `abilities` field).
+- **Client (small):** [protocol.ts](../client/src/lib/protocol.ts) (mirror new `CardView.abilities` for S18 readiness).
+- **Docs:** new [docs/decisions/0012-layer-system.md](decisions/0012-layer-system.md), [docs/protocol.md](protocol.md), [docs/sprints.md](sprints.md), [AGENTS.md](../AGENTS.md) §7.
+
+### Branch + commit conventions
+- Branches: `feat/s16-sprint-plan-expansion`, `feat/s16-layer-engine`, `feat/s16-event-ltb`, `feat/s16-anthem`, `feat/s16-type-and-ability-grant`, `feat/s16-cda-and-identity`, `feat/s16-docs-and-sprint-flip`.
+- Footer:
+  ```
+  Sprint: S16 — Continuous effects + layer system (CR 613)
+  Issue: #66
+  ```
 
 ---
 
