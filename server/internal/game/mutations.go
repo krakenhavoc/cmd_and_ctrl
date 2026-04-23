@@ -1,6 +1,11 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"errors"
+	"log/slog"
+
+	"github.com/google/uuid"
+)
 
 // mutations.go holds the higher-level game-state mutation methods that
 // the S03 action protocol dispatches against. Each method is a thin
@@ -112,6 +117,45 @@ func (g *Game) DrawCard(playerID uuid.UUID) error {
 //
 // Caller must hold g.mu.
 func (g *Game) drawCardLocked(playerID uuid.UUID) error {
+	// S17 sub-PR 2: route through the replacement pipeline so
+	// draw-replacement effects ("if you would draw, mill instead",
+	// "if you would draw, opponent draws instead", etc.) fire
+	// pre-event. Sub-PR 2 registers zero catalog draw-replacements,
+	// so applyReplacementsLocked short-circuits with no gathered
+	// effects and behavior is byte-for-byte identical to pre-S17.
+	ev := &ReplacementEvent{
+		Kind:       RepEventDraw,
+		Actor:      playerID,
+		DrawPlayer: playerID,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		// CR 616 prompt queued; client will submit an order. The
+		// resume path in ResolveReplacementOrder re-enters the
+		// pipeline and runs the underlying draw. Return nil so the
+		// caller (public DrawCard or step-draw auto-action) sees
+		// the draw as "in flight" — no ErrZoneEmpty propagation.
+		return nil
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return err
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		// Draw canceled by replacement.
+		return nil
+	}
+	return g.actuallyDrawCardLocked(out.DrawPlayer)
+}
+
+// actuallyDrawCardLocked is the post-replacement draw body —
+// pops the library, pushes to hand, marks known, emits the event.
+// Extracted from drawCardLocked in S17 sub-PR 3 so the CR 616
+// resume path (ResolveReplacementOrder → applyResolvedReplacementEventLocked)
+// runs the same logic as the inline non-paused path. Caller must
+// hold g.mu.
+func (g *Game) actuallyDrawCardLocked(playerID uuid.UUID) error {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound
@@ -325,6 +369,22 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	if !found {
 		return ErrCardNotFound
 	}
+	// S17 sub-PR 6 follow-up: if the catalog declares a target_mode
+	// for this card, a cast without any target is a client bug (the
+	// targeting UI should have opened before firing cast_spell).
+	// Rejecting here turns the silent "spell resolves with no effect"
+	// failure into a visible ErrInvalidParam that the client's error
+	// toast surfaces. Non-catalog cards (empty TargetMode) pass
+	// through unchanged.
+	if mode := TargetModeFor(card.OracleID); mode != "" && len(params.Targets) == 0 {
+		slog.Warn("cast_spell rejected: targeted card arrived without targets",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"required_mode", mode,
+			"targets_received", len(params.Targets),
+		)
+		return ErrInvalidParam
+	}
 	// Sorcery-speed gate. Lands are special-action-fast (CR 305 is
 	// "you may play a land during your main phase if the stack is
 	// empty"); they're handled implicitly by the same gate below.
@@ -339,6 +399,32 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// Lands skip the stack entirely (CR 305). Move the card to the
 	// battlefield and stamp the controller — same shape as PlayCard.
 	if card.IsLand() {
+		// S17 sub-PR 4: run the CR 614 replacement pipeline so
+		// enters-tapped replacements (Kismet) + enters-with-counters
+		// effects fire before the land's ETB event. Pipeline runs
+		// pre-push so a future destination-rewriter replacement
+		// (e.g. a hypothetical "lands go to graveyard instead")
+		// would redirect cleanly.
+		ev := &ReplacementEvent{
+			Kind:    RepEventMove,
+			CardID:  cardID,
+			OldZone: src.Kind,
+			NewZone: ZoneBattlefield,
+			Actor:   playerID,
+		}
+		out, err := g.applyReplacementsLocked(ev)
+		if errors.Is(err, errReplacementPending) {
+			return nil
+		}
+		if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+			g.clearReplacementEventLocked(ev.ID)
+			return err
+		}
+		defer g.clearReplacementEventLocked(ev.ID)
+		if out == nil || out.Canceled {
+			return nil
+		}
+
 		moved, err := MoveCard(src, g.Battlefield, cardID)
 		if err != nil {
 			return err
@@ -346,9 +432,15 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		for i := range g.Battlefield.Cards {
 			if g.Battlefield.Cards[i].InstanceID == moved.InstanceID {
 				g.Battlefield.Cards[i].Controller = playerID
+				if out.EntersTapped {
+					g.Battlefield.Cards[i].Tapped = true
+				}
 			}
 		}
 		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
+		for name, n := range out.EntersWithCounters {
+			_ = g.AddCounterForEffect(moved.InstanceID, name, n)
+		}
 		g.EmitEvent(Event{
 			Kind:    EventZoneMove,
 			Actor:   playerID,
@@ -754,6 +846,30 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// Permanents resolve to the battlefield with the announce-time
 		// controller (which may differ from owner — e.g. cast via a
 		// "play this from exile" effect that change controller).
+		// S17 sub-PR 4: CR 614 replacement pipeline for enters-tapped
+		// (Kismet) + enters-with-counters. Pipeline runs pre-push;
+		// canceled permanents stay on the stack (rare in practice —
+		// "if X would enter, instead..." effects are edge cases).
+		ev := &ReplacementEvent{
+			Kind:    RepEventMove,
+			CardID:  top.InstanceID,
+			OldZone: ZoneStack,
+			NewZone: ZoneBattlefield,
+			Actor:   item.Controller,
+		}
+		out, err := g.applyReplacementsLocked(ev)
+		if errors.Is(err, errReplacementPending) {
+			return nil
+		}
+		if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+			g.clearReplacementEventLocked(ev.ID)
+			return err
+		}
+		defer g.clearReplacementEventLocked(ev.ID)
+		if out == nil || out.Canceled {
+			return nil
+		}
+
 		moved, err := MoveCard(g.Stack, g.Battlefield, top.InstanceID)
 		if err != nil {
 			return err
@@ -761,10 +877,16 @@ func (g *Game) resolveTopOfStackLocked() error {
 		for i := range g.Battlefield.Cards {
 			if g.Battlefield.Cards[i].InstanceID == moved.InstanceID {
 				g.Battlefield.Cards[i].Controller = item.Controller
+				if out.EntersTapped {
+					g.Battlefield.Cards[i].Tapped = true
+				}
 				break
 			}
 		}
 		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
+		for name, n := range out.EntersWithCounters {
+			_ = g.AddCounterForEffect(moved.InstanceID, name, n)
+		}
 		g.EmitEvent(Event{
 			Kind:    EventZoneMove,
 			Actor:   item.Controller,
@@ -1417,32 +1539,128 @@ func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) erro
 			break
 		}
 	}
+
+	// S17 sub-PR 6: route through the CR 614 replacement pipeline
+	// so the CR 903.9 commander-zone built-in can fire for dies-to-
+	// damage + wrath + SBA destroys. The built-in is Optional, so
+	// when the dying card is a commander the pipeline queues a
+	// yes/no prompt for the owner; the physical move waits for
+	// their answer via ResolveOptionalReplacement.
+	var defaultDest ZoneKind
+	var defaultOwner uuid.UUID
 	if owner == nil {
-		if _, err := MoveCard(g.Battlefield, g.Exile, cardID); err != nil {
-			return err
-		}
-		g.markCardKnownInZoneLocked(g.Exile, cardID)
-		g.EmitEvent(Event{
-			Kind:    EventZoneMove,
-			CardID:  cardID,
-			OldZone: ZoneBattlefield,
-			NewZone: ZoneExile,
-		})
-		g.EmitEvent(Event{Kind: EventLTB, CardID: cardID})
+		defaultDest = ZoneExile
+	} else {
+		defaultDest = ZoneGraveyard
+		defaultOwner = owner.ID
+	}
+	ev := &ReplacementEvent{
+		Kind:         RepEventMove,
+		CardID:       cardID,
+		OldZone:      ZoneBattlefield,
+		NewZone:      defaultDest,
+		NewZoneOwner: defaultOwner,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		// Prompt queued; resume runs the move after the owner
+		// answers. Return nil so SBA caller doesn't report failure.
 		return nil
 	}
-	if _, err := MoveCard(g.Battlefield, owner.Graveyard, cardID); err != nil {
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
 		return err
 	}
-	g.markCardKnownInZoneLocked(owner.Graveyard, cardID)
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		return nil
+	}
+	return g.executeBattlefieldLeaveLocked(cardID, out.NewZone, out.NewZoneOwner, owner)
+}
+
+// executeBattlefieldLeaveLocked runs the physical zone move after
+// the replacement pipeline has settled on a destination. Factored
+// out of routeBattlefieldCardToOwnerGraveyardLocked so the resume
+// path (ResolveOptionalReplacement → applyResolvedReplacementEventLocked)
+// shares the same implementation.
+//
+// Caller must hold g.mu.
+func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player) error {
+	var destZone *Zone
+	var actor uuid.UUID
+	switch dest {
+	case ZoneCommand:
+		// CR 903.9 commander-zone replacement landed. Find the
+		// owner via the card — defaultOwner may have been empty
+		// when the original owner had left the game.
+		card, ok := g.LookupCardForEffect(cardID)
+		if !ok {
+			return ErrCardNotFound
+		}
+		cmdOwner := g.playerByIDLocked(card.Owner)
+		if cmdOwner == nil {
+			// Owner gone — fall back to exile.
+			destZone = g.Exile
+			dest = ZoneExile
+		} else {
+			destZone = cmdOwner.Command
+			actor = cmdOwner.ID
+		}
+	case ZoneExile:
+		destZone = g.Exile
+	case ZoneGraveyard:
+		if owner != nil {
+			destZone = owner.Graveyard
+			actor = owner.ID
+		} else {
+			p := g.playerByIDLocked(destOwner)
+			if p == nil {
+				destZone = g.Exile
+				dest = ZoneExile
+			} else {
+				destZone = p.Graveyard
+				actor = p.ID
+			}
+		}
+	case ZoneHand:
+		if owner != nil {
+			destZone = owner.Hand
+			actor = owner.ID
+		} else {
+			p := g.playerByIDLocked(destOwner)
+			if p == nil {
+				return ErrPlayerNotFound
+			}
+			destZone = p.Hand
+			actor = p.ID
+		}
+	case ZoneLibrary:
+		if owner != nil {
+			destZone = owner.Library
+			actor = owner.ID
+		} else {
+			p := g.playerByIDLocked(destOwner)
+			if p == nil {
+				return ErrPlayerNotFound
+			}
+			destZone = p.Library
+			actor = p.ID
+		}
+	default:
+		return ErrZoneNotFound
+	}
+	if _, err := MoveCard(g.Battlefield, destZone, cardID); err != nil {
+		return err
+	}
+	g.markCardKnownInZoneLocked(destZone, cardID)
 	g.EmitEvent(Event{
 		Kind:    EventZoneMove,
-		Actor:   owner.ID,
+		Actor:   actor,
 		CardID:  cardID,
 		OldZone: ZoneBattlefield,
-		NewZone: ZoneGraveyard,
+		NewZone: dest,
 	})
-	g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, Actor: owner.ID})
+	g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, Actor: actor})
 	return nil
 }
 
@@ -1458,22 +1676,63 @@ func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) erro
 //
 // S13.1.
 func (g *Game) MarkDamage(cardID uuid.UUID, delta int) error {
+	return g.markDamageWithKind(uuid.Nil, cardID, delta, false)
+}
+
+// MarkCombatDamage is the combat-damage entry point used by the
+// combat resolver. Flags IsCombatDamage on the replacement event
+// so Fog-class effects (cancel combat damage this turn) key off
+// the right subset without intercepting spell damage too. Source
+// is the attacker/blocker whose damage is being dealt.
+//
+// S17 sub-PR 2.
+func (g *Game) MarkCombatDamage(source, cardID uuid.UUID, delta int) error {
+	return g.markDamageWithKind(source, cardID, delta, true)
+}
+
+// markDamageWithKind is the shared body for MarkDamage and
+// MarkCombatDamage. Takes g.mu; routes through the replacement
+// pipeline with ev.IsCombatDamage set from the caller. Sub-PR 2
+// registers zero damage-replacement effects, so behavior is byte-
+// for-byte identical to pre-S17.
+func (g *Game) markDamageWithKind(source, cardID uuid.UUID, delta int, isCombat bool) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	ev := &ReplacementEvent{
+		Kind:           RepEventDamage,
+		Source:         source,
+		DamageSource:   source,
+		DamageTarget:   cardID,
+		DamageAmount:   delta,
+		IsCombatDamage: isCombat,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		return nil
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return err
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		return nil
+	}
 	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID == cardID {
-			g.Battlefield.Cards[i].DamageMarked += delta
+		if g.Battlefield.Cards[i].InstanceID == out.DamageTarget {
+			g.Battlefield.Cards[i].DamageMarked += out.DamageAmount
 			if g.Battlefield.Cards[i].DamageMarked < 0 {
 				g.Battlefield.Cards[i].DamageMarked = 0
 			}
-			if delta > 0 {
+			if out.DamageAmount > 0 {
 				g.EmitEvent(Event{
 					Kind:   EventDealDamage,
-					Target: cardID,
-					Amount: delta,
+					Source: out.DamageSource,
+					Target: out.DamageTarget,
+					Amount: out.DamageAmount,
 				})
 			}
 			g.runStateChecksLocked()
@@ -1784,15 +2043,38 @@ func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCom
 	if srcZone == nil {
 		return ErrZoneNotFound
 	}
-	// Commander zone replacement (CR 903.9): if the caller flagged
-	// the move and the card is a commander headed to a destination
-	// the rule covers, rewrite dst to the owner's command zone
-	// before resolving the destination zone.
-	if asCommander {
-		if rewritten, ok := g.applyCommanderZoneReplacementLocked(dst, cardID); ok {
-			dst = rewritten
-		}
+
+	// S17 sub-PR 2: route through the replacement pipeline. The
+	// commander-zone built-in (replacements: commanderZoneReplacement)
+	// gates on ev.asCommanderMove && card.IsCommander && eligible
+	// destination; when it fires, ev.NewZone / ev.NewZoneOwner are
+	// rewritten to the owner's command zone. This replaces S13.1's
+	// inline applyCommanderZoneReplacementLocked — byte-for-byte
+	// identical behaviour, but now a generalised CR 614 pipeline hook.
+	ev := &ReplacementEvent{
+		Kind:            RepEventMove,
+		CardID:          cardID,
+		OldZone:         srcZone.Kind,
+		NewZone:         dst.Kind,
+		NewZoneOwner:    dst.Owner,
+		asCommanderMove: asCommander,
 	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		// CR 616 prompt queued; resume path will re-enter.
+		return nil
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return err
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		return nil
+	}
+	// Resolve the (possibly rewritten) destination.
+	dst = ZoneRef{Kind: out.NewZone, Owner: out.NewZoneOwner}
+
 	dstZone := g.zoneFromRefLocked(dst)
 	if dstZone == nil {
 		return ErrZoneNotFound
@@ -1809,6 +2091,27 @@ func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCom
 		return err
 	}
 	g.markCardKnownInZoneLocked(dstZone, cardID)
+
+	// S17 sub-PR 2: apply enters-tapped / enters-with-counters
+	// from ev BEFORE EventETB fires so listeners + the client see
+	// a consistent "entered with counters / tapped" state. Sub-PR 2
+	// registers zero catalog replacements that set these, so both
+	// branches are dead code paths today — they're here so sub-PR 4
+	// can ship Kismet + Hangarback Walker without further plumbing.
+	if dstZone.Kind == ZoneBattlefield {
+		if out.EntersTapped {
+			for i := range dstZone.Cards {
+				if dstZone.Cards[i].InstanceID == cardID {
+					dstZone.Cards[i].Tapped = true
+					break
+				}
+			}
+		}
+		for name, n := range out.EntersWithCounters {
+			_ = g.AddCounterForEffect(cardID, name, n)
+		}
+	}
+
 	g.EmitEvent(Event{
 		Kind:    EventZoneMove,
 		CardID:  cardID,
@@ -1831,35 +2134,6 @@ func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCom
 		}
 	}
 	return nil
-}
-
-// applyCommanderZoneReplacementLocked returns a rewritten ZoneRef
-// pointing at the owner's command zone if the move is eligible for
-// the CR 903.9 replacement (the card is a commander and the
-// destination is graveyard / exile / hand / library). Returns
-// (input, false) when not eligible. Caller must hold g.mu.
-func (g *Game) applyCommanderZoneReplacementLocked(dst ZoneRef, cardID uuid.UUID) (ZoneRef, bool) {
-	switch dst.Kind {
-	case ZoneGraveyard, ZoneExile, ZoneHand, ZoneLibrary:
-		// Eligible destination.
-	default:
-		return dst, false
-	}
-	// Find the card and confirm it's a commander.
-	z := g.findCardZoneLocked(cardID)
-	if z == nil {
-		return dst, false
-	}
-	for _, c := range z.Cards {
-		if c.InstanceID != cardID {
-			continue
-		}
-		if !c.IsCommander {
-			return dst, false
-		}
-		return ZoneRef{Kind: ZoneCommand, Owner: c.Owner}, true
-	}
-	return dst, false
 }
 
 // TapCard sets the tapped state of a card on the battlefield. Returns
@@ -2503,15 +2777,11 @@ func (g *Game) resolveCombatDamageLocked() {
 		atkPower := power[atkID]
 		blockedBy := blockers[atkID]
 		if len(blockedBy) == 0 {
-			// Unblocked — straight to the defending player.
-			if atkPower <= 0 {
-				continue
-			}
-			target := g.playerByIDLocked(c.AttackingTarget)
-			if target == nil {
-				continue
-			}
-			target.ChangeLife(-atkPower)
+			// Unblocked — straight to the defending player via the
+			// replacement pipeline (S17 sub-PR 5 — Fog etc. can
+			// cancel). Pipeline is a no-op when no combat-damage
+			// replacement is active.
+			g.markCombatDamageToPlayerLocked(c.AttackingTarget, atkID, atkPower)
 			continue
 		}
 		// Blocked — dump full power on the first blocker (sandbox
@@ -2549,23 +2819,98 @@ func (g *Game) resolveCombatDamageLocked() {
 // caller is responsible for invoking runStateChecksLocked once after
 // all combat damage is marked, so simultaneous-resolution semantics
 // (CR 510.1c) hold.
+//
+// S17 sub-PR 5: routes through the CR 614 replacement pipeline with
+// IsCombatDamage=true so Fog-class prevention effects intercept.
+// Damage can be modified (reduced) or canceled entirely.
 func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source uuid.UUID) {
 	if amount <= 0 {
 		return
 	}
+	ev := &ReplacementEvent{
+		Kind:           RepEventDamage,
+		Source:         source,
+		DamageSource:   source,
+		DamageTarget:   cardID,
+		DamageAmount:   amount,
+		IsCombatDamage: true,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		// CR 616 prompt queued; sandbox combat doesn't know how to
+		// resume combat damage mid-prompt today. Log + let damage
+		// pass through. Real-game prompts for combat-damage prevention
+		// land with S30.
+		return
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		return
+	}
+	if out.DamageAmount <= 0 {
+		return
+	}
 	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID != cardID {
+		if g.Battlefield.Cards[i].InstanceID != out.DamageTarget {
 			continue
 		}
-		g.Battlefield.Cards[i].DamageMarked += amount
+		g.Battlefield.Cards[i].DamageMarked += out.DamageAmount
 		g.EmitEvent(Event{
 			Kind:   EventDealDamage,
-			Source: source,
-			Target: cardID,
-			Amount: amount,
+			Source: out.DamageSource,
+			Target: out.DamageTarget,
+			Amount: out.DamageAmount,
 		})
 		return
 	}
+}
+
+// markCombatDamageToPlayerLocked applies combat damage to a player
+// via the replacement pipeline (Fog-class prevention + future
+// lifelink / redirect hooks). Zeroes out if canceled. Caller must
+// hold g.mu. Added in S17 sub-PR 5.
+func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount int) {
+	if amount <= 0 {
+		return
+	}
+	ev := &ReplacementEvent{
+		Kind:           RepEventDamage,
+		Source:         source,
+		DamageSource:   source,
+		DamageTarget:   playerID,
+		DamageAmount:   amount,
+		IsCombatDamage: true,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		return
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		return
+	}
+	if out.DamageAmount <= 0 {
+		return
+	}
+	p := g.playerByIDLocked(out.DamageTarget)
+	if p == nil {
+		return
+	}
+	p.ChangeLife(-out.DamageAmount)
+	g.EmitEvent(Event{
+		Kind:   EventDealDamage,
+		Source: out.DamageSource,
+		Target: out.DamageTarget,
+		Amount: out.DamageAmount,
+	})
 }
 
 // ClearCombat resets every card on the battlefield to "not attacking
@@ -2840,15 +3185,41 @@ func (g *Game) ChangePlayerLife(playerID uuid.UUID, delta int) (int, error) {
 	if g.State != StateActive {
 		return 0, ErrGameNotActive
 	}
-	p := g.playerByIDLocked(playerID)
+	// S17 sub-PR 2: replacement pipeline — no catalog life-change
+	// replacements yet, so behavior is byte-for-byte identical to
+	// pre-S17. A CR 616 prompt path is a no-op for sub-PR 2 (the
+	// caller sees newLife=0 and no error; the pipeline resumes
+	// when the prompt resolves).
+	ev := &ReplacementEvent{
+		Kind:       RepEventLife,
+		LifePlayer: playerID,
+		LifeDelta:  delta,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		return 0, nil
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return 0, err
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		p := g.playerByIDLocked(playerID)
+		if p == nil {
+			return 0, ErrPlayerNotFound
+		}
+		return p.Life, nil
+	}
+	p := g.playerByIDLocked(out.LifePlayer)
 	if p == nil {
 		return 0, ErrPlayerNotFound
 	}
-	newLife := p.ChangeLife(delta)
+	newLife := p.ChangeLife(out.LifeDelta)
 	g.EmitEvent(Event{
 		Kind:   EventChangeLife,
-		Target: playerID,
-		Amount: delta,
+		Target: out.LifePlayer,
+		Amount: out.LifeDelta,
 	})
 	return newLife, nil
 }
@@ -2868,15 +3239,47 @@ func (g *Game) AddCounter(cardID uuid.UUID, name string, delta int) error {
 	if name == "" {
 		return ErrInvalidParam
 	}
+	// S17 sub-PR 2: counter-placement replacements (Doubling Season
+	// doubles, Hardened Scales adds 1) will fire from here starting
+	// in sub-PR 3. For sub-PR 2 zero catalog counter-replacements
+	// are registered, so this is byte-for-byte identical to pre-S17.
+	ev := &ReplacementEvent{
+		Kind:          RepEventCounter,
+		CounterTarget: cardID,
+		CounterName:   name,
+		CounterDelta:  delta,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		return nil
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return err
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		return nil
+	}
+	return g.applyCounterLocked(out.CounterTarget, out.CounterName, out.CounterDelta)
+}
+
+// applyCounterLocked is the actual counter-map mutation, extracted
+// from AddCounter so the replacement pipeline and the AddCounterForEffect
+// helper can share the body. Caller must hold g.mu.
+func (g *Game) applyCounterLocked(cardID uuid.UUID, name string, delta int) error {
+	if name == "" {
+		return ErrInvalidParam
+	}
+	if delta == 0 {
+		return nil
+	}
 	z := g.findCardZoneLocked(cardID)
 	if z == nil {
 		return ErrCardNotFound
 	}
 	for i := range z.Cards {
 		if z.Cards[i].InstanceID == cardID {
-			if delta == 0 {
-				return nil
-			}
 			if z.Cards[i].Counters == nil {
 				z.Cards[i].Counters = make(map[string]int)
 			}

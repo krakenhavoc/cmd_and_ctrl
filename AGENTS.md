@@ -406,6 +406,82 @@ func init() {
 
 **Don't bypass the printed/effective split:** if an effect needs to read another card's characteristic, use `target.Effective()` not `target.Power` / `target.TypeLine`. Reading printed values inside `AppliesTo` or `Apply` is a layer-ordering bug waiting to happen.
 
+### Adding a replacement effect (S17+)
+
+Replacement effects ("enters tapped", "if that would place counters,
+place twice that many instead", "if a player would draw a card, that
+player mills instead") live on the same `Spec{}` struct via the
+optional `Replacements []game.ReplacementEffect` field. Used today by
+Doubling Season, Hardened Scales, Kismet, Stasis, Hangarback Walker,
+Fog, Library of Leng.
+
+Unlike static abilities, replacements fire **before** the event
+happens — the pipeline constructs a `game.ReplacementEvent`, the
+engine offers each applicable replacement a chance to mutate or
+cancel it, then the underlying mutation runs (or is skipped, if
+canceled). CR 616.1 iterative apply-loop, CR 614.5 once-per-event
+tracking, and CR 616 affected-player-chooses-order are enforced
+centrally.
+
+```go
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+func init() {
+    Register(Spec{
+        OracleID: "<uuid>",
+        Name:     "Doubling Season",
+        Replacements: []game.ReplacementEffect{
+            {
+                Watches: []game.EventKind{game.EventCounterPlaced},
+                AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+                    if ev.Kind != game.RepEventCounter { return false }
+                    target, ok := g.LookupCardForEffect(ev.CounterTarget)
+                    if !ok { return false }
+                    return target.Controller == src.Controller
+                },
+                Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
+                    ev.CounterDelta *= 2
+                    return nil
+                },
+                Controller: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) uuid.UUID {
+                    return src.Controller
+                },
+                Label: "Doubling Season: double counters",
+            },
+        },
+    })
+}
+```
+
+**Kind picker** (CR 614):
+
+| What the replacement watches | `ReplacementEventKind` | Relevant fields |
+|---|---|---|
+| Counter placement (+1/+1, loyalty, …) | `RepEventCounter` | `CounterTarget`, `CounterName`, `CounterDelta` |
+| Zone motion (ETB, LTB, draw-as-move) | `RepEventMove` | `CardID`, `OldZone`, `NewZone`, `NewZoneOwner`, `EntersTapped`, `EntersWithCounters` |
+| Card draw | `RepEventDraw` | `DrawPlayer` |
+| Life total change | `RepEventLife` | `LifePlayer`, `LifeDelta` |
+| Damage (combat and direct) | `RepEventDamage` | `DamageSource`, `DamageTarget`, `DamageAmount`, `IsCombatDamage` |
+| Step entry (skip-step) | `RepEventStepTransition` | `StepTransitionStep`, `StepTransitionSeat` |
+
+**`AppliesTo` patterns:**
+- "Counters go on a creature you control" — `target.Controller == src.Controller && target.IsCreature()`
+- "When a permanent enters the battlefield" — `ev.Kind == RepEventMove && ev.NewZone == ZoneBattlefield`
+- Self-replacement (Hangarback's X counters on own ETB) — `ev.CardID == src.InstanceID`
+- Opponents only (Kismet) — `controllerOf(ev.CardID) != src.Controller`
+
+**`Replace` patterns:**
+- Counter multiplier — `ev.CounterDelta *= 2` (Doubling Season)
+- Counter addition — `ev.CounterDelta += 1` (Hardened Scales)
+- Cancel — `ev.Cancel()` (Fog, Stasis)
+- Redirect move — `ev.NewZone = ZoneBottomOfLibrary` (Library of Leng)
+- Enters-tapped — `ev.EntersTapped = true` (Kismet)
+- Enters-with-counters — `ev.AddCounterAtETB("+1/+1", n)` (Hangarback Walker)
+
+**Tests** — see `server/internal/cards/effects/doubling_season_test.go` for the CR 616 ordering pattern (Doubling Season + Hardened Scales → the affected player picks order → `[HS, DS]` yields 4 counters, `[DS, HS]` yields 3). Use `pushBattlefieldCardWithTimestamp` to get the source on the battlefield + the listener to stamp `EnteredBattlefieldAt`; trigger the event with the public mutation (`AddCounter`, `DrawCard`, etc.) and assert on the resulting state plus any queued `PendingChoice`.
+
+**Don't use the replacement pipeline when a primitive flag suffices.** "This card does X to a land it fetches" (Cultivate, Path to Exile, Solemn Simulacrum) is a self-contained card behavior, not a general replacement. Declare `TappedOnEntry: true` on the `SearchLibrary` primitive rather than a full `ReplacementEffect`. The generic pipeline is for effects that watch *other* cards' events.
+
 ### When NOT to add a catalog entry
 
 - **Non-mana, non-static activated abilities** (planeswalker +1/-1
@@ -415,9 +491,11 @@ func init() {
 - **Triggered abilities on non-ETB events** (die-to-graveyard, attack
   triggers, "whenever you cast a spell") land with S19's listener pipeline.
   Don't use `OnETB` as a workaround.
-- **Replacement effects** ("enters tapped", "if would die, exile instead",
-  "draw 2 instead of 1") land with S17. Cultivate / Path's land-fetch
-  enters **untapped** in S14 — document the deferral in the card file.
+- **Cost-replacement effects** (Trinisphere, Thalia, Spellshift, Kambal)
+  touch the S15 cost engine rather than the S17 event pipeline. They
+  land with S28.
+- **Aura-attachment + control-change** (Mind Control) — requires
+  aura-attaching state the engine doesn't model. Lands with S24.
 - **Cards that need a pick-from-zone UI** the client doesn't have yet —
   e.g. "target card in any graveyard" (Regrowth / Eternal Witness) works
   today only because S14 sandbox auto-picks the top of the controller's

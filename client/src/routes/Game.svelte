@@ -191,12 +191,26 @@
   // already set `strict` (e.g. the override toast injects
   // force_cast=true and we want to skip the auto-stamp on that
   // path). Other action types pass through unchanged.
+  // lastCastByCardID stashes the most recent cast_spell payload per
+  // instance_id so retry dispatchers (castAnyway after insufficient_mana,
+  // confirmAutoTap) can replay the ORIGINAL payload with added flags.
+  // Fixes a bug where re-firing a cast with force_cast=true dropped the
+  // user's already-picked target[s] / modes / x_value / distribution,
+  // leaving the spell to resolve as a silent no-op.
+  const lastCastByCardID = new Map<string, Record<string, unknown>>();
+
   const sendAction = (type: string, params?: unknown, player?: string): void => {
     if (type === "cast_spell") {
       const strict = $settings.gameplay.strictMana;
       const incoming = (params ?? {}) as Record<string, unknown>;
       if (incoming.strict === undefined) {
         params = { ...incoming, strict };
+      }
+      // Stash by instance_id so retry paths can replay targets etc.
+      const stash = params as Record<string, unknown>;
+      const instanceID = stash.instance_id;
+      if (typeof instanceID === "string") {
+        lastCastByCardID.set(instanceID, { ...stash });
       }
     }
     client.sendAction(type, player, params);
@@ -227,11 +241,12 @@
     if (!manaOverride) return;
     const cardID = manaOverride.cardID;
     manaOverride = null;
-    sendAction(
-      "cast_spell",
-      { instance_id: cardID, strict: true, force_cast: true },
-      viewerID ?? undefined,
-    );
+    // Replay the original cast payload so targets / modes / X /
+    // distribution survive the retry. Fallback to a bare payload
+    // if the stash is missing (shouldn't happen — cast_spell
+    // always stashes before the error round-trip).
+    const prev = lastCastByCardID.get(cardID) ?? { instance_id: cardID };
+    sendAction("cast_spell", { ...prev, strict: true, force_cast: true }, viewerID ?? undefined);
   }
   function dismissManaOverride(): void {
     manaOverride = null;
@@ -254,14 +269,12 @@
     if (!autoTapCardID) return;
     const cardID = autoTapCardID;
     autoTapCardID = null;
+    // Same replay-original-payload pattern as castAnyway — the
+    // auto-tap retry path also dropped targets until this fix.
+    const prev = lastCastByCardID.get(cardID) ?? { instance_id: cardID };
     sendAction(
       "cast_spell",
-      {
-        instance_id: cardID,
-        strict: true,
-        auto_tap: true,
-        locked_sources: lockedSources,
-      },
+      { ...prev, strict: true, auto_tap: true, locked_sources: lockedSources },
       viewerID ?? undefined,
     );
   }

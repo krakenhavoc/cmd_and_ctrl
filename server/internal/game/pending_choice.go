@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"errors"
+
+	"github.com/google/uuid"
+)
 
 // pending_choice.go holds the S14+ generic "someone needs to make
 // a pick" infrastructure. Replaces ad-hoc per-effect deferred-
@@ -49,6 +53,25 @@ const (
 	// into the chooser's pool as one ManaToken sourced from the
 	// permanent that fired the ability. Added in S15 sub-PR 2.
 	PendingChoiceMana PendingChoiceKind = "mana_pick"
+
+	// PendingChoiceReplacementOrder — CR 616 affected-player-
+	// chooses-order prompt queued when ≥2 replacement effects
+	// apply to the same event. ReplacementEffectIDs carries the
+	// gathered IDs; the client renders a drag-reorder list with
+	// label + source-card context. On resolve the chooser submits
+	// the order as an `order []string` payload of the same IDs in
+	// their chosen order; ResolveReplacementOrder validates the
+	// permutation and resumes the pipeline. Added in S17 sub-PR 2.
+	PendingChoiceReplacementOrder PendingChoiceKind = "replacement_order"
+
+	// PendingChoiceOptionalReplacement — CR 614.10 yes/no prompt
+	// for an Optional replacement effect (today: CR 903.9
+	// commander-zone). Owner answers yes → Replace runs; no →
+	// effect is marked applied without running, event proceeds.
+	// On resolve the chooser submits `{apply: true|false}`;
+	// ResolveOptionalReplacement re-enters the pipeline. Added
+	// in S17 sub-PR 6.
+	PendingChoiceOptionalReplacement PendingChoiceKind = "optional_replacement"
 )
 
 // PendingChoice is one outstanding "someone needs to pick" entry
@@ -96,6 +119,35 @@ type PendingChoice struct {
 	// (commander-identity-filtered for Arcane Signet, the full five
 	// for Birds of Paradise). Added in S15 sub-PR 2.
 	ColorOptions []string
+
+	// ReplacementEffectIDs is the ordered set of applicable
+	// replacement-effect IDs the chooser must reorder for a
+	// PendingChoiceReplacementOrder entry. The resolve_choice
+	// payload returns the same IDs in the chosen order. Unused
+	// for other choice kinds. Added in S17 sub-PR 2.
+	ReplacementEffectIDs []ReplacementEffectID
+
+	// replacementResume is the server-only continuation frame for
+	// a PendingChoiceReplacementOrder entry: the in-flight
+	// ReplacementEvent + the gathered applicable list. Not
+	// serialised to the wire. Consumed by ResolveReplacementOrder
+	// on submit. Added in S17 sub-PR 2.
+	replacementResume *replacementResumeFrame
+}
+
+// replacementResumeFrame is the unexported per-prompt continuation
+// stash. Holds the ReplacementEvent being processed + the gathered
+// list so ResolveReplacementOrder can re-enter the apply-loop with
+// the chosen order locked in. Added in S17 sub-PR 2.
+//
+// For PendingChoiceOptionalReplacement (sub-PR 6), `applicable`
+// carries a single entry — the optional effect the prompt is
+// asking about. The resume path either fires that effect's
+// Replace (on yes) or skips it (on no), then re-enters the apply-
+// loop for CR 616.1 iteration.
+type replacementResumeFrame struct {
+	ev         *ReplacementEvent
+	applicable []activeReplacement
 }
 
 // QueueChoiceForEffect appends a PendingChoice to the game's queue.
@@ -255,6 +307,367 @@ func (g *Game) dequeueChoiceLocked(idx int) {
 	if len(g.PendingChoices) == 0 {
 		g.PendingChoices = nil
 	}
+}
+
+// queueOptionalReplacementPromptLocked queues a CR 614.10 yes/no
+// prompt for a single optional replacement effect. The chooser is
+// the effect's Controller (for CR 903.9 commander-zone: the
+// commander's owner). The resume path in ResolveOptionalReplacement
+// either fires the Replace (on yes) or marks it applied and skips
+// (on no), then re-enters the apply-loop.
+//
+// Caller must hold g.mu.
+func (g *Game) queueOptionalReplacementPromptLocked(ev *ReplacementEvent, chosen activeReplacement) {
+	var chooser uuid.UUID
+	if chosen.effect.Controller != nil {
+		chooser = chosen.effect.Controller(ev, g, chosen.source)
+	}
+	if chooser == uuid.Nil {
+		chooser = affectedPlayerForEvent(ev, []activeReplacement{chosen}, g)
+	}
+	reason := chosen.effect.PromptQuestion
+	if reason == "" {
+		reason = chosen.effect.Label
+	}
+	choice := PendingChoice{
+		Kind:                 PendingChoiceOptionalReplacement,
+		Chooser:              chooser,
+		Count:                1,
+		Reason:               reason,
+		ReplacementEffectIDs: []ReplacementEffectID{chosen.id},
+		replacementResume: &replacementResumeFrame{
+			ev:         ev,
+			applicable: []activeReplacement{chosen},
+		},
+	}
+	g.QueueChoiceForEffect(choice)
+}
+
+// ResolveOptionalReplacement processes a resolve_choice action
+// for a PendingChoiceOptionalReplacement entry. `apply` is the
+// owner's yes/no decision: true → fire the stashed Replace; false
+// → mark applied without firing. Either way, re-enters the apply-
+// loop so CR 616.1 can pick up any newly-applicable effects.
+//
+// Caller must NOT hold g.mu.
+func (g *Game) ResolveOptionalReplacement(choiceID, chooserID uuid.UUID, apply bool) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	idx := -1
+	for i, c := range g.PendingChoices {
+		if c != nil && c.ID == choiceID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ErrPendingChoiceNotFound
+	}
+	choice := g.PendingChoices[idx]
+	if choice.Kind != PendingChoiceOptionalReplacement {
+		return ErrInvalidParam
+	}
+	if choice.Chooser != chooserID {
+		return ErrNotTheChooser
+	}
+	frame := choice.replacementResume
+	g.dequeueChoiceLocked(idx)
+	if frame == nil || frame.ev == nil || len(frame.applicable) == 0 {
+		return ErrInvalidParam
+	}
+
+	ev := frame.ev
+	chosen := frame.applicable[0]
+	if g.replacementsAppliedThisEvent == nil {
+		g.replacementsAppliedThisEvent = make(map[ReplacementEventID]map[ReplacementEffectID]bool)
+	}
+	if _, ok := g.replacementsAppliedThisEvent[ev.ID]; !ok {
+		g.replacementsAppliedThisEvent[ev.ID] = make(map[ReplacementEffectID]bool)
+	}
+	// Mark applied regardless of yes/no so the apply-loop doesn't
+	// re-evaluate this effect again for this event (CR 614.10: the
+	// decision is once per event).
+	g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
+	if apply && chosen.effect.Replace != nil {
+		if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
+			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
+		}
+	}
+
+	// Re-enter the apply-loop for any newly-applicable effects.
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		return nil
+	}
+	if err != nil {
+		g.clearReplacementEventLocked(ev.ID)
+		return err
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		return nil
+	}
+	return g.applyResolvedReplacementEventLocked(out)
+}
+
+// queueReplacementOrderPromptLocked queues a CR 616 order-choose
+// prompt for ev. The chooser is the affected-player (inferred from
+// ev.Kind's target field). ReplacementEffectIDs are emitted in the
+// order the engine gathered them; the client renders a drag-
+// reorder list and returns the same IDs in the chosen order. The
+// resume frame stashes ev + applicable so ResolveReplacementOrder
+// can re-enter the apply-loop.
+//
+// Caller must hold g.mu.
+func (g *Game) queueReplacementOrderPromptLocked(ev *ReplacementEvent, applicable []activeReplacement) {
+	ids := make([]ReplacementEffectID, 0, len(applicable))
+	for _, a := range applicable {
+		ids = append(ids, a.id)
+	}
+	chooser := affectedPlayerForEvent(ev, applicable, g)
+	choice := PendingChoice{
+		Kind:                 PendingChoiceReplacementOrder,
+		Chooser:              chooser,
+		Count:                len(ids),
+		Reason:               "Order replacement effects",
+		ReplacementEffectIDs: ids,
+		replacementResume: &replacementResumeFrame{
+			ev:         ev,
+			applicable: applicable,
+		},
+	}
+	g.QueueChoiceForEffect(choice)
+}
+
+// affectedPlayerForEvent returns the chooser for a CR 616 prompt —
+// the player whose event is being replaced (the affected player).
+// Falls back to the first applicable replacement's Controller, then
+// to uuid.Nil. Callers are expected to have ≥1 applicable entry.
+func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement, g *Game) uuid.UUID {
+	if ev == nil {
+		return uuid.Nil
+	}
+	switch ev.Kind {
+	case RepEventDraw:
+		return ev.DrawPlayer
+	case RepEventLife:
+		return ev.LifePlayer
+	case RepEventCounter:
+		if card, ok := g.LookupCardForEffect(ev.CounterTarget); ok {
+			return card.Controller
+		}
+	case RepEventDamage:
+		if card, ok := g.LookupCardForEffect(ev.DamageTarget); ok {
+			return card.Controller
+		}
+		return ev.DamageTarget
+	case RepEventMove:
+		if card, ok := g.LookupCardForEffect(ev.CardID); ok {
+			return card.Controller
+		}
+	case RepEventStepTransition:
+		if ev.StepTransitionSeat >= 0 && ev.StepTransitionSeat < len(g.Seats) {
+			return g.Seats[ev.StepTransitionSeat].ID
+		}
+	}
+	if len(applicable) > 0 && applicable[0].effect.Controller != nil {
+		return applicable[0].effect.Controller(ev, g, applicable[0].source)
+	}
+	return uuid.Nil
+}
+
+// ResolveReplacementOrder processes a resolve_choice action for a
+// PendingChoiceReplacementOrder entry. Validates:
+//   - the choice ID exists in the queue
+//   - the chooserID matches the entry's Chooser
+//   - ordered is a permutation of the entry's ReplacementEffectIDs
+//
+// On success, re-enters the replacement apply-loop with the chosen
+// order locked in for the current iteration. Subsequent iterations
+// may queue another prompt (the chain unrolls asynchronously, one
+// resolve_choice per branch-point). After the apply-loop settles,
+// the pipeline function's resume helper re-invokes the underlying
+// mutation with the (possibly mutated / canceled) event.
+//
+// Caller must NOT hold g.mu.
+func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []ReplacementEffectID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	idx := -1
+	for i, c := range g.PendingChoices {
+		if c != nil && c.ID == choiceID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ErrPendingChoiceNotFound
+	}
+	choice := g.PendingChoices[idx]
+	if choice.Kind != PendingChoiceReplacementOrder {
+		return ErrInvalidParam
+	}
+	if choice.Chooser != chooserID {
+		return ErrNotTheChooser
+	}
+	if len(ordered) != len(choice.ReplacementEffectIDs) {
+		return ErrInvalidParam
+	}
+	// Permutation check: same multiset of IDs.
+	want := make(map[ReplacementEffectID]int, len(choice.ReplacementEffectIDs))
+	for _, id := range choice.ReplacementEffectIDs {
+		want[id]++
+	}
+	for _, id := range ordered {
+		if want[id] <= 0 {
+			return ErrInvalidParam
+		}
+		want[id]--
+	}
+	frame := choice.replacementResume
+	g.dequeueChoiceLocked(idx)
+	if frame == nil || frame.ev == nil {
+		return ErrInvalidParam
+	}
+
+	// Apply ALL chosen effects in the submitted order (CR 616: the
+	// affected player picks the order once; the engine fires them
+	// in that order without re-prompting). Then re-enter the apply-
+	// loop so CR 616.1 can pick up any newly-applicable effects
+	// (effects that weren't applicable until one of these fired).
+	//
+	// Earlier drafts fired only ordered[0] and relied on the apply-
+	// loop to re-queue a prompt for the remaining effects — that
+	// mis-read 616.1 and forced the user to submit the same order
+	// N times for N replacements. The right behavior is "one prompt
+	// = one ordering decision, apply them all in sequence."
+	applicableByID := make(map[ReplacementEffectID]activeReplacement, len(frame.applicable))
+	for _, a := range frame.applicable {
+		applicableByID[a.id] = a
+	}
+	ev := frame.ev
+	if g.replacementsAppliedThisEvent == nil {
+		g.replacementsAppliedThisEvent = make(map[ReplacementEventID]map[ReplacementEffectID]bool)
+	}
+	if _, ok := g.replacementsAppliedThisEvent[ev.ID]; !ok {
+		g.replacementsAppliedThisEvent[ev.ID] = make(map[ReplacementEffectID]bool)
+	}
+	for _, id := range ordered {
+		chosen, ok := applicableByID[id]
+		if !ok {
+			continue
+		}
+		if ev.Canceled {
+			// A prior Cancel short-circuits the remaining chain.
+			break
+		}
+		g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
+		if chosen.effect.Replace != nil {
+			if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
+				g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
+			}
+		}
+	}
+
+	// Resume the apply-loop to pick up any newly-applicable effects
+	// (CR 616.1 — one of the applied replacements may have enabled
+	// another that wasn't in the original prompt). Effects already
+	// in replacementsAppliedThisEvent are skipped by gather.
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		// Another prompt queued; unroll asynchronously.
+		return nil
+	}
+	if err != nil {
+		g.clearReplacementEventLocked(ev.ID)
+		return err
+	}
+
+	// Apply-loop settled. Dispatch the underlying mutation per
+	// ev.Kind using the (possibly mutated) event payload. Added in
+	// S17 sub-PR 3 so Doubling Season + Hardened Scales actually
+	// land counters after the CR 616 prompt resolves.
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		return nil
+	}
+	return g.applyResolvedReplacementEventLocked(out)
+}
+
+// applyResolvedReplacementEventLocked runs the underlying
+// mutation for a fully-settled ReplacementEvent — called from the
+// CR 616 resume path (ResolveReplacementOrder) after the
+// replacement apply-loop finishes with no pending prompts. The
+// event's payload may have been mutated by replacements (e.g.
+// Doubling Season doubled CounterDelta; Library of Leng rewrote
+// NewZone). Pipeline functions' initial (non-paused) path inlines
+// the same mutation; the resume path uses this central dispatcher.
+//
+// Caller must hold g.mu.
+func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
+	switch ev.Kind {
+	case RepEventCounter:
+		return g.applyCounterLocked(ev.CounterTarget, ev.CounterName, ev.CounterDelta)
+	case RepEventDraw:
+		return g.actuallyDrawCardLocked(ev.DrawPlayer)
+	case RepEventLife:
+		p := g.playerByIDLocked(ev.LifePlayer)
+		if p == nil {
+			return ErrPlayerNotFound
+		}
+		p.ChangeLife(ev.LifeDelta)
+		g.EmitEvent(Event{Kind: EventChangeLife, Target: ev.LifePlayer, Amount: ev.LifeDelta})
+		return nil
+	case RepEventDamage:
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == ev.DamageTarget {
+				g.Battlefield.Cards[i].DamageMarked += ev.DamageAmount
+				if g.Battlefield.Cards[i].DamageMarked < 0 {
+					g.Battlefield.Cards[i].DamageMarked = 0
+				}
+				if ev.DamageAmount > 0 {
+					g.EmitEvent(Event{
+						Kind:   EventDealDamage,
+						Source: ev.DamageSource,
+						Target: ev.DamageTarget,
+						Amount: ev.DamageAmount,
+					})
+				}
+				g.runStateChecksLocked()
+				return nil
+			}
+		}
+		return ErrCardNotFound
+	case RepEventMove:
+		// S17 sub-PR 6: resume path for battlefield-leave moves
+		// after the CR 903.9 commander-zone Optional prompt. The
+		// pipeline settled on ev.NewZone (either the original
+		// destination if owner said "no", or ZoneCommand if they
+		// said "yes"). Run the physical move through the shared
+		// executeBattlefieldLeaveLocked helper.
+		if ev.OldZone != ZoneBattlefield {
+			// Non-LTB moves (e.g. graveyard → battlefield for
+			// reanimate) don't have a resume path yet. Sub-PR 6
+			// only closes the battlefield-leave case.
+			return nil
+		}
+		var owner *Player
+		if card, ok := g.LookupCardForEffect(ev.CardID); ok {
+			owner = g.playerByIDLocked(card.Owner)
+		}
+		return g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner)
+	case RepEventStepTransition:
+		// Step-transition resumes land with sub-PR 4+ (Stasis
+		// skip-step). Sub-PR 6 doesn't add new prompt paths here.
+		return nil
+	}
+	return nil
 }
 
 // QueueDiscardFromRevealedHand is the Thoughtseize entry point.

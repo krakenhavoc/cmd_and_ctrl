@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"math/rand/v2"
 	"sync"
 	"sync/atomic"
@@ -219,6 +220,49 @@ type Game struct {
 	// without promoting the game's read lock. See layers.go.
 	recompute recomputeState
 
+	// BuiltinReplacements is the S17 replacement-effect registry
+	// populated at NewGame. Today: just the commander-zone
+	// replacement (refactored from S13.1's inline
+	// applyCommanderZoneReplacementLocked). Future built-ins
+	// register by appending here before Start. Catalog replacements
+	// flow through CatalogReplacements (see effect_hooks.go) and
+	// are NOT listed here. See replacements.go +
+	// builtin_replacements.go. Added in S17 sub-PR 2.
+	BuiltinReplacements []ReplacementEffect
+
+	// TurnScopedReplacements is the per-turn replacement slot —
+	// effects registered here live until the current turn's
+	// StepCleanup, then are cleared. Used by spells that create
+	// transient replacement effects (Fog's "prevent all combat
+	// damage this turn", future "until end of turn" damage
+	// prevention cards). Distinct from BuiltinReplacements (game-
+	// lifetime) and catalog replacements (battlefield-presence-
+	// gated via source card's AppliesTo). Added in S17 sub-PR 5.
+	TurnScopedReplacements []ReplacementEffect
+
+	// testReplacements is the test-only replacement injection slot
+	// populated by RegisterReplacementForTest. Unexported so
+	// production code has no path to it. Walked after built-ins +
+	// catalog in gatherActiveReplacementsLocked. Added in S17
+	// sub-PR 2.
+	testReplacements []ReplacementEffect
+
+	// replacementsAppliedThisEvent maps ReplacementEvent.ID → set
+	// of ReplacementEffectIDs that have already fired for that
+	// event (CR 614.5 / 616.1 once-per-event tracking). Scope is
+	// per-pipeline-call: pipeline functions defer-clear the entry
+	// for ev.ID at their outermost frame so CR 616 prompt pauses
+	// don't lose the entry mid-event. See replacements.go.
+	// Added in S17 sub-PR 2.
+	replacementsAppliedThisEvent map[ReplacementEventID]map[ReplacementEffectID]bool
+
+	// nextReplacementEventID mints the per-event keys stored in
+	// replacementsAppliedThisEvent. Atomic so pipeline functions
+	// can mint without promoting the lock (in practice they
+	// already hold g.mu, but atomic is defensive). Added in S17
+	// sub-PR 2.
+	nextReplacementEventID atomic.Uint64
+
 	mu sync.RWMutex
 }
 
@@ -238,6 +282,11 @@ func NewGame() *Game {
 	// abilities are active (battlefield zone moves) or what they
 	// apply to (counter changes). See layer_listener.go.
 	g.Listeners = append(g.Listeners, layerVersionBump{})
+	// S17 sub-PR 2: install the CR 903.9 commander-zone built-in
+	// replacement. Refactored from S13.1's inline
+	// applyCommanderZoneReplacementLocked. See
+	// builtin_replacements.go.
+	g.BuiltinReplacements = append(g.BuiltinReplacements, commanderZoneReplacement)
 	return g
 }
 
@@ -501,6 +550,37 @@ func (g *Game) onTurnAdvanceLocked(prev, next Turn) {
 //
 // Caller must hold g.mu.
 func (g *Game) runStepEntryHooksLocked() {
+	// S17 sub-PR 2: step-transition replacement hook. Stasis
+	// cancels StepUntap; "skip your next upkeep" cards would
+	// cancel StepUpkeep. The engine short-circuits on the cancel
+	// path: advance to the next step and recurse through this
+	// hook. Apply-loop iteration for skip-step is order-
+	// independent (multiple "skip this step" effects are
+	// idempotent) so even with ≥2 applicable the prompt path
+	// never actually queues — gatherActiveReplacementsLocked
+	// returns at most one eligible replacement in practice for
+	// sub-PR 2 (zero catalog replacements registered).
+	stepEv := &ReplacementEvent{
+		Kind:               RepEventStepTransition,
+		StepTransitionStep: g.Turn.Step,
+		StepTransitionSeat: g.Turn.ActiveSeat,
+	}
+	out, err := g.applyReplacementsLocked(stepEv)
+	if !errors.Is(err, errReplacementPending) {
+		defer g.clearReplacementEventLocked(stepEv.ID)
+		// Canceled events come back as (nil, nil) from
+		// applyReplacementsLocked — check err==nil + out==nil as
+		// the cancel signal, plus the belt-and-braces out.Canceled
+		// for any intermediate path that returns the event.
+		canceled := err == nil && (out == nil || out.Canceled)
+		if canceled {
+			// Step canceled — advance past and recurse so the
+			// cursor hits the next step's entry hook.
+			g.Turn = g.Turn.advance(len(g.Seats))
+			g.runStepEntryHooksLocked()
+			return
+		}
+	}
 	// CR 106.4: every player's mana pool empties at the end of each
 	// step / phase. We model this by clearing pools at the START of
 	// the next step's entry — equivalent net effect, and centralised
@@ -555,6 +635,11 @@ func (g *Game) runStepEntryHooksLocked() {
 		for i := range g.Battlefield.Cards {
 			g.Battlefield.Cards[i].DamageMarked = 0
 		}
+		// S17 sub-PR 5: "until end of turn" replacement effects
+		// (Fog's prevent-all-combat-damage, future prevention
+		// shields with a per-turn duration) clear at cleanup so
+		// next turn starts with a clean slate.
+		g.ClearTurnScopedReplacementsLocked()
 		// Auto-advance only when no player owes discard. Otherwise
 		// the cursor sits at Cleanup with PriorityHolder=NoPriority
 		// until DiscardSelection drains the pending map and re-fires
@@ -566,28 +651,29 @@ func (g *Game) runStepEntryHooksLocked() {
 	}
 }
 
-// populateDiscardPendingLocked scans seated, non-eliminated players
-// and records the over-max count for each one whose hand exceeds
-// their MaxHandSize. NoMaxHandSize (-1) is treated as "no cap" and
-// skipped. Caller must hold g.mu.
+// populateDiscardPendingLocked records an over-max discard count
+// for the ACTIVE player only when their hand exceeds their
+// MaxHandSize. Per CR 514.1 — cleanup-step discard is a turn-based
+// action performed only by the active player, not the whole table.
+// Eliminated player or NoMaxHandSize (-1) skips the check.
+// Caller must hold g.mu.
 func (g *Game) populateDiscardPendingLocked() {
 	g.DiscardPending = nil
-	for _, p := range g.Seats {
-		if p.Eliminated {
-			continue
-		}
-		if p.MaxHandSize == NoMaxHandSize {
-			continue
-		}
-		over := p.Hand.Size() - p.MaxHandSize
-		if over <= 0 {
-			continue
-		}
-		if g.DiscardPending == nil {
-			g.DiscardPending = make(map[uuid.UUID]int)
-		}
-		g.DiscardPending[p.ID] = over
+	if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
+		return
 	}
+	p := g.Seats[g.Turn.ActiveSeat]
+	if p == nil || p.Eliminated {
+		return
+	}
+	if p.MaxHandSize == NoMaxHandSize {
+		return
+	}
+	over := p.Hand.Size() - p.MaxHandSize
+	if over <= 0 {
+		return
+	}
+	g.DiscardPending = map[uuid.UUID]int{p.ID: over}
 }
 
 // ActivePlayer returns the player whose turn it currently is, or nil

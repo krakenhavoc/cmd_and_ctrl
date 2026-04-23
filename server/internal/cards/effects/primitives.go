@@ -227,8 +227,18 @@ type SearchLibrary struct {
 	Limit     int
 	Reveal    bool
 	Shuffle   bool
+	// TappedOnEntry stamps Card.Tapped = true on fetched permanents
+	// headed for the battlefield. Matches the literal card text on
+	// Cultivate / Path to Exile / Solemn Simulacrum — land enters
+	// tapped even when not otherwise specified by the destination.
+	// Only meaningful when Dest == ZoneBattlefield. Added in S17
+	// sub-PR 4 to close the S14 "enters untapped" deferrals for
+	// fetched-land cards.
+	TappedOnEntry bool
 }
 
 func (s SearchLibrary) Apply(ctx *Context) error {
-	return ctx.Game.SearchLibraryForEffect(s.Player, s.Predicate, s.Dest, s.Limit, s.Reveal, s.Shuffle)
+	return ctx.Game.SearchLibraryForEffectWithOptions(
+		s.Player, s.Predicate, s.Dest, s.Limit, s.Reveal, s.Shuffle, s.TappedOnEntry,
+	)
 }

@@ -11,7 +11,12 @@
   // is legally allowed to see arrive face-up; the rest arrive
   // redacted (backs). So this modal just renders options[] as-is.
 
-  import type { CardView, GameView, PendingChoiceView } from "../../protocol";
+  import type {
+    CardView,
+    GameView,
+    PendingChoiceView,
+    ReplacementOptionView,
+  } from "../../protocol";
   import Card from "./Card.svelte";
 
   interface Props {
@@ -47,6 +52,11 @@
   const isSelfSource = $derived(active && viewerID && active.from_player === viewerID);
 
   let selected = $state<Set<string>>(new Set());
+  // S17 replacement_order: array of effect IDs in the order the
+  // chooser has picked. Click a row to append; click again to
+  // remove (and subsequent positions compact down). Submit when
+  // the array covers every candidate.
+  let ordered = $state<string[]>([]);
 
   // Reset selection whenever the modal opens fresh (active changes
   // from null → non-null, or the choice ID changes).
@@ -55,6 +65,7 @@
     const nextID = active?.id ?? null;
     if (nextID !== lastChoiceID) {
       selected = new Set();
+      ordered = [];
       lastChoiceID = nextID;
     }
   });
@@ -104,6 +115,51 @@
     if (!active || !viewerID) return;
     sendAction("resolve_choice", { choice_id: active.id, color }, viewerID);
   }
+
+  // S17 replacement_order branch — CR 616 affected-player-chooses-
+  // order prompt. Click a row to append it to the `ordered` array;
+  // click a row already in the array to remove it (later rows
+  // compact down). Submit with { choice_id, order: [...] }.
+  const isReplacementOrder = $derived(active?.kind === "replacement_order");
+  const replacementOptions = $derived<ReplacementOptionView[]>(active?.replacement_options ?? []);
+
+  function toggleReplacement(id: string): void {
+    const idx = ordered.indexOf(id);
+    if (idx >= 0) {
+      ordered = [...ordered.slice(0, idx), ...ordered.slice(idx + 1)];
+    } else {
+      ordered = [...ordered, id];
+    }
+  }
+
+  function submitReplacementOrder(): void {
+    if (!active || !viewerID) return;
+    if (ordered.length !== replacementOptions.length) return;
+    sendAction("resolve_choice", { choice_id: active.id, order: ordered }, viewerID);
+  }
+
+  function positionFor(id: string): number {
+    return ordered.indexOf(id) + 1; // 1-indexed; 0 = unselected
+  }
+
+  function sourceCardName(opt: ReplacementOptionView): string {
+    if (!opt.source_card_id || !snap.battlefield) return "";
+    for (const c of snap.battlefield.cards) {
+      if (c.instance_id === opt.source_card_id) return c.name ?? "";
+    }
+    return "";
+  }
+
+  // S17 sub-PR 6 optional-replacement branch — CR 614.10 "may"
+  // prompt. Used by CR 903.9 commander-zone replacement today:
+  // commander's owner picks yes (route to command zone) or no
+  // (let the event proceed to graveyard/exile/hand/library).
+  const isOptionalReplacement = $derived(active?.kind === "optional_replacement");
+
+  function answerOptional(apply: boolean): void {
+    if (!active || !viewerID) return;
+    sendAction("resolve_choice", { choice_id: active.id, apply }, viewerID);
+  }
 </script>
 
 {#if open && active}
@@ -127,6 +183,55 @@
               <span class="color-name">{meta.label}</span>
             </button>
           {/each}
+        </div>
+      {:else if isOptionalReplacement}
+        <h2 id="choice-title">{active.reason || "Apply replacement?"}</h2>
+        <p class="hint">
+          CR 614.10 optional replacement — you (the affected player) decide whether this
+          substitution applies.
+        </p>
+        <div class="yes-no-row">
+          <button type="button" class="submit" onclick={() => answerOptional(true)}> Yes </button>
+          <button type="button" class="decline" onclick={() => answerOptional(false)}> No </button>
+        </div>
+      {:else if isReplacementOrder}
+        <h2 id="choice-title">{active.reason || "Order replacement effects"}</h2>
+        <p class="hint">
+          Click each effect in the order it should apply. Different orders can produce different
+          results — you choose as the affected player (CR 616).
+        </p>
+        <ul class="order-list">
+          {#each replacementOptions as opt (opt.id)}
+            {@const pos = positionFor(opt.id)}
+            {@const src = sourceCardName(opt)}
+            <li>
+              <button
+                type="button"
+                class="order-row"
+                class:selected={pos > 0}
+                onclick={() => toggleReplacement(opt.id)}
+                aria-pressed={pos > 0}
+                aria-label={`${pos > 0 ? "deselect" : "select"} ${opt.label || "effect"}`}
+              >
+                <span class="order-pos">{pos > 0 ? pos : "·"}</span>
+                <span class="order-label">
+                  <strong>{opt.label || "Replacement effect"}</strong>
+                  {#if src}<span class="order-src">{src}</span>{/if}
+                </span>
+              </button>
+            </li>
+          {/each}
+        </ul>
+        <div class="footer">
+          <span class="counter">{ordered.length} / {replacementOptions.length} ordered</span>
+          <button
+            type="button"
+            class="submit"
+            disabled={ordered.length !== replacementOptions.length}
+            onclick={submitReplacementOrder}
+          >
+            Apply in this order
+          </button>
         </div>
       {:else}
         <h2 id="choice-title">
@@ -349,5 +454,93 @@
     letter-spacing: 0.12em;
     text-transform: uppercase;
     opacity: 0.8;
+  }
+  .order-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 420px;
+  }
+  .order-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 2px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    cursor: pointer;
+    color: var(--fg);
+    text-align: left;
+    font: inherit;
+    transition:
+      border-color 120ms var(--ease),
+      background 120ms var(--ease),
+      transform 120ms var(--ease);
+  }
+  .order-row:hover {
+    border-color: var(--accent);
+    background: rgba(122, 167, 255, 0.08);
+  }
+  .order-row.selected {
+    border-color: var(--gold);
+    background: rgba(255, 208, 122, 0.08);
+    box-shadow: 0 0 0 1px rgba(255, 208, 122, 0.25);
+  }
+  .order-pos {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.35);
+    color: var(--gold);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+  .order-row.selected .order-pos {
+    background: linear-gradient(180deg, #ffe59a 0%, #e6b85f 100%);
+    color: #231806;
+  }
+  .order-label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 1.3;
+  }
+  .order-label strong {
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .order-src {
+    color: var(--fg-muted);
+    font-size: 12px;
+  }
+  .yes-no-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+    justify-content: flex-end;
+  }
+  .decline {
+    padding: 8px 22px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--fg);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+  }
+  .decline:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.24);
   }
 </style>

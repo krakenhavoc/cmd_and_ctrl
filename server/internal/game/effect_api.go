@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"errors"
+
+	"github.com/google/uuid"
+)
 
 // effect_api.go is the exported "locked-context" API that the
 // server/internal/cards/effects package calls from inside an
@@ -470,6 +474,12 @@ func (g *Game) counterAbilityLocked(abilityID uuid.UUID) error {
 // AddCounterForEffect adds (or removes, via negative delta) the
 // named counter on a card. Zero deltas are no-ops. Emits
 // EventCounterPlaced with the post-change count.
+//
+// S17 sub-PR 2: routes through the replacement pipeline so a card-
+// effect-driven counter placement (Hangarback Walker's ETB,
+// Tamiyo's +1 stamping loyalty, …) picks up Doubling Season /
+// Hardened Scales like the public AddCounter path. Caller must
+// already hold g.mu.
 func (g *Game) AddCounterForEffect(cardID uuid.UUID, name string, delta int) error {
 	if delta == 0 {
 		return nil
@@ -477,34 +487,27 @@ func (g *Game) AddCounterForEffect(cardID uuid.UUID, name string, delta int) err
 	if name == "" {
 		return ErrInvalidParam
 	}
-	z := g.findCardZoneLocked(cardID)
-	if z == nil {
-		return ErrCardNotFound
+	ev := &ReplacementEvent{
+		Kind:          RepEventCounter,
+		CounterTarget: cardID,
+		CounterName:   name,
+		CounterDelta:  delta,
 	}
-	for i := range z.Cards {
-		if z.Cards[i].InstanceID != cardID {
-			continue
+	out, err := g.applyReplacementsLocked(ev)
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		// errReplacementPending: the prompt queue is the caller's
+		// problem; return nil so the primitive keeps moving.
+		if errors.Is(err, errReplacementPending) {
+			return nil
 		}
-		if z.Cards[i].Counters == nil {
-			z.Cards[i].Counters = make(map[string]int)
-		}
-		z.Cards[i].Counters[name] += delta
-		newAmount := z.Cards[i].Counters[name]
-		if z.Cards[i].Counters[name] <= 0 {
-			delete(z.Cards[i].Counters, name)
-			if len(z.Cards[i].Counters) == 0 {
-				z.Cards[i].Counters = nil
-			}
-		}
-		g.EmitEvent(Event{
-			Kind:   EventCounterPlaced,
-			Target: cardID,
-			Label:  name,
-			Amount: newAmount,
-		})
+		g.clearReplacementEventLocked(ev.ID)
+		return err
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
 		return nil
 	}
-	return ErrCardNotFound
+	return g.applyCounterLocked(out.CounterTarget, out.CounterName, out.CounterDelta)
 }
 
 // ReturnFromGraveyardForEffect moves a card from a player's
@@ -578,6 +581,27 @@ func (g *Game) SearchLibraryForEffect(
 	reveal bool,
 	shuffle bool,
 ) error {
+	return g.SearchLibraryForEffectWithOptions(playerID, pred, dest, limit, reveal, shuffle, false)
+}
+
+// SearchLibraryForEffectWithOptions is the extended entry point
+// with a tappedOnEntry flag — fetched permanents enter the
+// battlefield tapped when true. Closes the S14 "enters untapped"
+// deferral for Cultivate / Path to Exile / Solemn Simulacrum.
+// Added in S17 sub-PR 4.
+//
+// The tapped flag is applied AFTER the push to destZone but
+// BEFORE EventETB fires — matching the replacement-pipeline's
+// EntersTapped semantics in MoveCardByIDAsCommander.
+func (g *Game) SearchLibraryForEffectWithOptions(
+	playerID uuid.UUID,
+	pred func(Card) bool,
+	dest ZoneKind,
+	limit int,
+	reveal bool,
+	shuffle bool,
+	tappedOnEntry bool,
+) error {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound
@@ -625,6 +649,19 @@ func (g *Game) SearchLibraryForEffect(
 				return err
 			}
 			g.markCardKnownInZoneLocked(destZone, id)
+			// S17 sub-PR 4: stamp Tapped on fetched permanents when
+			// the card text specifies "enters tapped" (Cultivate /
+			// Path to Exile / Solemn Simulacrum). Applied before
+			// EventETB fires so listeners + the client see the
+			// tapped state consistent with ETB.
+			if tappedOnEntry && destZone.Kind == ZoneBattlefield {
+				for i := range destZone.Cards {
+					if destZone.Cards[i].InstanceID == id {
+						destZone.Cards[i].Tapped = true
+						break
+					}
+				}
+			}
 			g.EmitEvent(Event{
 				Kind:    EventZoneMove,
 				Actor:   playerID,
