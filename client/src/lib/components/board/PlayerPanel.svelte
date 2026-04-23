@@ -132,7 +132,7 @@
       const delta = ev.altKey ? -1 : 1;
       sendAction(
         "add_counter",
-        { card_id: card.instance_id, name: "+1/+1", count: delta },
+        { instance_id: card.instance_id, name: "+1/+1", delta },
         viewerID ?? undefined,
       );
       return;
