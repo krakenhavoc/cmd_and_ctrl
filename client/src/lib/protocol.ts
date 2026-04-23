@@ -144,7 +144,7 @@ export interface GameView {
 // is pre-filtered to what the viewer is legally allowed to see.
 export interface PendingChoiceView {
   id: string;
-  kind: "discard_from_hand" | "mana_pick" | "replacement_order" | string;
+  kind: "discard_from_hand" | "mana_pick" | "replacement_order" | "optional_replacement" | string;
   chooser: string;
   from_player: string;
   count: number;

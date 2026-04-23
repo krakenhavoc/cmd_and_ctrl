@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"log/slog"
+
+	"github.com/google/uuid"
+)
 
 // events.go holds the per-game event log that the S14+ rules engine
 // reads from. Events are emitted by every rules-visible mutation
@@ -234,5 +238,17 @@ func (g *Game) EmitEvent(ev Event) {
 	g.eventSeq++
 	ev.Seq = g.eventSeq
 	g.Events = append(g.Events, ev)
+	// S17 sub-PR 6 diagnostic: effect-error events are otherwise
+	// silent (no client toast yet). Surfacing them in the server log
+	// so manual-test regressions have a visible breadcrumb. Keep
+	// until the client learns to render effect_error as a toast.
+	if ev.Kind == EventEffectError {
+		slog.Warn("effect error",
+			"seq", ev.Seq,
+			"game", g.ID.String(),
+			"source", ev.Source.String(),
+			"error", ev.ErrorMsg,
+		)
+	}
 	g.notifyListenersLocked(ev)
 }

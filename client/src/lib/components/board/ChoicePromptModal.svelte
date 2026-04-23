@@ -149,6 +149,17 @@
     }
     return "";
   }
+
+  // S17 sub-PR 6 optional-replacement branch — CR 614.10 "may"
+  // prompt. Used by CR 903.9 commander-zone replacement today:
+  // commander's owner picks yes (route to command zone) or no
+  // (let the event proceed to graveyard/exile/hand/library).
+  const isOptionalReplacement = $derived(active?.kind === "optional_replacement");
+
+  function answerOptional(apply: boolean): void {
+    if (!active || !viewerID) return;
+    sendAction("resolve_choice", { choice_id: active.id, apply }, viewerID);
+  }
 </script>
 
 {#if open && active}
@@ -172,6 +183,16 @@
               <span class="color-name">{meta.label}</span>
             </button>
           {/each}
+        </div>
+      {:else if isOptionalReplacement}
+        <h2 id="choice-title">{active.reason || "Apply replacement?"}</h2>
+        <p class="hint">
+          CR 614.10 optional replacement — you (the affected player) decide whether this
+          substitution applies.
+        </p>
+        <div class="yes-no-row">
+          <button type="button" class="submit" onclick={() => answerOptional(true)}> Yes </button>
+          <button type="button" class="decline" onclick={() => answerOptional(false)}> No </button>
         </div>
       {:else if isReplacementOrder}
         <h2 id="choice-title">{active.reason || "Order replacement effects"}</h2>
@@ -501,5 +522,25 @@
   .order-src {
     color: var(--fg-muted);
     font-size: 12px;
+  }
+  .yes-no-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+    justify-content: flex-end;
+  }
+  .decline {
+    padding: 8px 22px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--fg);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+  }
+  .decline:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.24);
   }
 </style>

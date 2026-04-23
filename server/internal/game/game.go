@@ -651,28 +651,29 @@ func (g *Game) runStepEntryHooksLocked() {
 	}
 }
 
-// populateDiscardPendingLocked scans seated, non-eliminated players
-// and records the over-max count for each one whose hand exceeds
-// their MaxHandSize. NoMaxHandSize (-1) is treated as "no cap" and
-// skipped. Caller must hold g.mu.
+// populateDiscardPendingLocked records an over-max discard count
+// for the ACTIVE player only when their hand exceeds their
+// MaxHandSize. Per CR 514.1 — cleanup-step discard is a turn-based
+// action performed only by the active player, not the whole table.
+// Eliminated player or NoMaxHandSize (-1) skips the check.
+// Caller must hold g.mu.
 func (g *Game) populateDiscardPendingLocked() {
 	g.DiscardPending = nil
-	for _, p := range g.Seats {
-		if p.Eliminated {
-			continue
-		}
-		if p.MaxHandSize == NoMaxHandSize {
-			continue
-		}
-		over := p.Hand.Size() - p.MaxHandSize
-		if over <= 0 {
-			continue
-		}
-		if g.DiscardPending == nil {
-			g.DiscardPending = make(map[uuid.UUID]int)
-		}
-		g.DiscardPending[p.ID] = over
+	if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
+		return
 	}
+	p := g.Seats[g.Turn.ActiveSeat]
+	if p == nil || p.Eliminated {
+		return
+	}
+	if p.MaxHandSize == NoMaxHandSize {
+		return
+	}
+	over := p.Hand.Size() - p.MaxHandSize
+	if over <= 0 {
+		return
+	}
+	g.DiscardPending = map[uuid.UUID]int{p.ID: over}
 }
 
 // ActivePlayer returns the player whose turn it currently is, or nil

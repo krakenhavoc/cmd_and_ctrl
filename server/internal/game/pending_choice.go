@@ -63,6 +63,15 @@ const (
 	// their chosen order; ResolveReplacementOrder validates the
 	// permutation and resumes the pipeline. Added in S17 sub-PR 2.
 	PendingChoiceReplacementOrder PendingChoiceKind = "replacement_order"
+
+	// PendingChoiceOptionalReplacement — CR 614.10 yes/no prompt
+	// for an Optional replacement effect (today: CR 903.9
+	// commander-zone). Owner answers yes → Replace runs; no →
+	// effect is marked applied without running, event proceeds.
+	// On resolve the chooser submits `{apply: true|false}`;
+	// ResolveOptionalReplacement re-enters the pipeline. Added
+	// in S17 sub-PR 6.
+	PendingChoiceOptionalReplacement PendingChoiceKind = "optional_replacement"
 )
 
 // PendingChoice is one outstanding "someone needs to pick" entry
@@ -130,6 +139,12 @@ type PendingChoice struct {
 // stash. Holds the ReplacementEvent being processed + the gathered
 // list so ResolveReplacementOrder can re-enter the apply-loop with
 // the chosen order locked in. Added in S17 sub-PR 2.
+//
+// For PendingChoiceOptionalReplacement (sub-PR 6), `applicable`
+// carries a single entry — the optional effect the prompt is
+// asking about. The resume path either fires that effect's
+// Replace (on yes) or skips it (on no), then re-enters the apply-
+// loop for CR 616.1 iteration.
 type replacementResumeFrame struct {
 	ev         *ReplacementEvent
 	applicable []activeReplacement
@@ -292,6 +307,110 @@ func (g *Game) dequeueChoiceLocked(idx int) {
 	if len(g.PendingChoices) == 0 {
 		g.PendingChoices = nil
 	}
+}
+
+// queueOptionalReplacementPromptLocked queues a CR 614.10 yes/no
+// prompt for a single optional replacement effect. The chooser is
+// the effect's Controller (for CR 903.9 commander-zone: the
+// commander's owner). The resume path in ResolveOptionalReplacement
+// either fires the Replace (on yes) or marks it applied and skips
+// (on no), then re-enters the apply-loop.
+//
+// Caller must hold g.mu.
+func (g *Game) queueOptionalReplacementPromptLocked(ev *ReplacementEvent, chosen activeReplacement) {
+	var chooser uuid.UUID
+	if chosen.effect.Controller != nil {
+		chooser = chosen.effect.Controller(ev, g, chosen.source)
+	}
+	if chooser == uuid.Nil {
+		chooser = affectedPlayerForEvent(ev, []activeReplacement{chosen}, g)
+	}
+	reason := chosen.effect.PromptQuestion
+	if reason == "" {
+		reason = chosen.effect.Label
+	}
+	choice := PendingChoice{
+		Kind:                 PendingChoiceOptionalReplacement,
+		Chooser:              chooser,
+		Count:                1,
+		Reason:               reason,
+		ReplacementEffectIDs: []ReplacementEffectID{chosen.id},
+		replacementResume: &replacementResumeFrame{
+			ev:         ev,
+			applicable: []activeReplacement{chosen},
+		},
+	}
+	g.QueueChoiceForEffect(choice)
+}
+
+// ResolveOptionalReplacement processes a resolve_choice action
+// for a PendingChoiceOptionalReplacement entry. `apply` is the
+// owner's yes/no decision: true → fire the stashed Replace; false
+// → mark applied without firing. Either way, re-enters the apply-
+// loop so CR 616.1 can pick up any newly-applicable effects.
+//
+// Caller must NOT hold g.mu.
+func (g *Game) ResolveOptionalReplacement(choiceID, chooserID uuid.UUID, apply bool) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	idx := -1
+	for i, c := range g.PendingChoices {
+		if c != nil && c.ID == choiceID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ErrPendingChoiceNotFound
+	}
+	choice := g.PendingChoices[idx]
+	if choice.Kind != PendingChoiceOptionalReplacement {
+		return ErrInvalidParam
+	}
+	if choice.Chooser != chooserID {
+		return ErrNotTheChooser
+	}
+	frame := choice.replacementResume
+	g.dequeueChoiceLocked(idx)
+	if frame == nil || frame.ev == nil || len(frame.applicable) == 0 {
+		return ErrInvalidParam
+	}
+
+	ev := frame.ev
+	chosen := frame.applicable[0]
+	if g.replacementsAppliedThisEvent == nil {
+		g.replacementsAppliedThisEvent = make(map[ReplacementEventID]map[ReplacementEffectID]bool)
+	}
+	if _, ok := g.replacementsAppliedThisEvent[ev.ID]; !ok {
+		g.replacementsAppliedThisEvent[ev.ID] = make(map[ReplacementEffectID]bool)
+	}
+	// Mark applied regardless of yes/no so the apply-loop doesn't
+	// re-evaluate this effect again for this event (CR 614.10: the
+	// decision is once per event).
+	g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
+	if apply && chosen.effect.Replace != nil {
+		if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
+			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
+		}
+	}
+
+	// Re-enter the apply-loop for any newly-applicable effects.
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		return nil
+	}
+	if err != nil {
+		g.clearReplacementEventLocked(ev.ID)
+		return err
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		return nil
+	}
+	return g.applyResolvedReplacementEventLocked(out)
 }
 
 // queueReplacementOrderPromptLocked queues a CR 616 order-choose
@@ -525,11 +644,27 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 			}
 		}
 		return ErrCardNotFound
-	case RepEventMove, RepEventStepTransition:
-		// Move + step-transition resumes land with sub-PR 4+
-		// (Kismet enters-tapped routing, Stasis skip-step). For
-		// sub-PR 3 no catalog card queues a multi-replacement
-		// prompt on these kinds, so this is a no-op TODO.
+	case RepEventMove:
+		// S17 sub-PR 6: resume path for battlefield-leave moves
+		// after the CR 903.9 commander-zone Optional prompt. The
+		// pipeline settled on ev.NewZone (either the original
+		// destination if owner said "no", or ZoneCommand if they
+		// said "yes"). Run the physical move through the shared
+		// executeBattlefieldLeaveLocked helper.
+		if ev.OldZone != ZoneBattlefield {
+			// Non-LTB moves (e.g. graveyard → battlefield for
+			// reanimate) don't have a resume path yet. Sub-PR 6
+			// only closes the battlefield-leave case.
+			return nil
+		}
+		var owner *Player
+		if card, ok := g.LookupCardForEffect(ev.CardID); ok {
+			owner = g.playerByIDLocked(card.Owner)
+		}
+		return g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner)
+	case RepEventStepTransition:
+		// Step-transition resumes land with sub-PR 4+ (Stasis
+		// skip-step). Sub-PR 6 doesn't add new prompt paths here.
 		return nil
 	}
 	return nil

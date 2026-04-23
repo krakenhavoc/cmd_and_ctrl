@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"log/slog"
 
 	"github.com/google/uuid"
 )
@@ -367,6 +368,22 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	}
 	if !found {
 		return ErrCardNotFound
+	}
+	// S17 sub-PR 6 follow-up: if the catalog declares a target_mode
+	// for this card, a cast without any target is a client bug (the
+	// targeting UI should have opened before firing cast_spell).
+	// Rejecting here turns the silent "spell resolves with no effect"
+	// failure into a visible ErrInvalidParam that the client's error
+	// toast surfaces. Non-catalog cards (empty TargetMode) pass
+	// through unchanged.
+	if mode := TargetModeFor(card.OracleID); mode != "" && len(params.Targets) == 0 {
+		slog.Warn("cast_spell rejected: targeted card arrived without targets",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"required_mode", mode,
+			"targets_received", len(params.Targets),
+		)
+		return ErrInvalidParam
 	}
 	// Sorcery-speed gate. Lands are special-action-fast (CR 305 is
 	// "you may play a land during your main phase if the stack is
@@ -1522,32 +1539,128 @@ func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) erro
 			break
 		}
 	}
+
+	// S17 sub-PR 6: route through the CR 614 replacement pipeline
+	// so the CR 903.9 commander-zone built-in can fire for dies-to-
+	// damage + wrath + SBA destroys. The built-in is Optional, so
+	// when the dying card is a commander the pipeline queues a
+	// yes/no prompt for the owner; the physical move waits for
+	// their answer via ResolveOptionalReplacement.
+	var defaultDest ZoneKind
+	var defaultOwner uuid.UUID
 	if owner == nil {
-		if _, err := MoveCard(g.Battlefield, g.Exile, cardID); err != nil {
-			return err
-		}
-		g.markCardKnownInZoneLocked(g.Exile, cardID)
-		g.EmitEvent(Event{
-			Kind:    EventZoneMove,
-			CardID:  cardID,
-			OldZone: ZoneBattlefield,
-			NewZone: ZoneExile,
-		})
-		g.EmitEvent(Event{Kind: EventLTB, CardID: cardID})
+		defaultDest = ZoneExile
+	} else {
+		defaultDest = ZoneGraveyard
+		defaultOwner = owner.ID
+	}
+	ev := &ReplacementEvent{
+		Kind:         RepEventMove,
+		CardID:       cardID,
+		OldZone:      ZoneBattlefield,
+		NewZone:      defaultDest,
+		NewZoneOwner: defaultOwner,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		// Prompt queued; resume runs the move after the owner
+		// answers. Return nil so SBA caller doesn't report failure.
 		return nil
 	}
-	if _, err := MoveCard(g.Battlefield, owner.Graveyard, cardID); err != nil {
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
 		return err
 	}
-	g.markCardKnownInZoneLocked(owner.Graveyard, cardID)
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		return nil
+	}
+	return g.executeBattlefieldLeaveLocked(cardID, out.NewZone, out.NewZoneOwner, owner)
+}
+
+// executeBattlefieldLeaveLocked runs the physical zone move after
+// the replacement pipeline has settled on a destination. Factored
+// out of routeBattlefieldCardToOwnerGraveyardLocked so the resume
+// path (ResolveOptionalReplacement → applyResolvedReplacementEventLocked)
+// shares the same implementation.
+//
+// Caller must hold g.mu.
+func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player) error {
+	var destZone *Zone
+	var actor uuid.UUID
+	switch dest {
+	case ZoneCommand:
+		// CR 903.9 commander-zone replacement landed. Find the
+		// owner via the card — defaultOwner may have been empty
+		// when the original owner had left the game.
+		card, ok := g.LookupCardForEffect(cardID)
+		if !ok {
+			return ErrCardNotFound
+		}
+		cmdOwner := g.playerByIDLocked(card.Owner)
+		if cmdOwner == nil {
+			// Owner gone — fall back to exile.
+			destZone = g.Exile
+			dest = ZoneExile
+		} else {
+			destZone = cmdOwner.Command
+			actor = cmdOwner.ID
+		}
+	case ZoneExile:
+		destZone = g.Exile
+	case ZoneGraveyard:
+		if owner != nil {
+			destZone = owner.Graveyard
+			actor = owner.ID
+		} else {
+			p := g.playerByIDLocked(destOwner)
+			if p == nil {
+				destZone = g.Exile
+				dest = ZoneExile
+			} else {
+				destZone = p.Graveyard
+				actor = p.ID
+			}
+		}
+	case ZoneHand:
+		if owner != nil {
+			destZone = owner.Hand
+			actor = owner.ID
+		} else {
+			p := g.playerByIDLocked(destOwner)
+			if p == nil {
+				return ErrPlayerNotFound
+			}
+			destZone = p.Hand
+			actor = p.ID
+		}
+	case ZoneLibrary:
+		if owner != nil {
+			destZone = owner.Library
+			actor = owner.ID
+		} else {
+			p := g.playerByIDLocked(destOwner)
+			if p == nil {
+				return ErrPlayerNotFound
+			}
+			destZone = p.Library
+			actor = p.ID
+		}
+	default:
+		return ErrZoneNotFound
+	}
+	if _, err := MoveCard(g.Battlefield, destZone, cardID); err != nil {
+		return err
+	}
+	g.markCardKnownInZoneLocked(destZone, cardID)
 	g.EmitEvent(Event{
 		Kind:    EventZoneMove,
-		Actor:   owner.ID,
+		Actor:   actor,
 		CardID:  cardID,
 		OldZone: ZoneBattlefield,
-		NewZone: ZoneGraveyard,
+		NewZone: dest,
 	})
-	g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, Actor: owner.ID})
+	g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, Actor: actor})
 	return nil
 }
 
