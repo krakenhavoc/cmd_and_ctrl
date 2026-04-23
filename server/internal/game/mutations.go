@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"log/slog"
 
 	"github.com/google/uuid"
 )
@@ -376,6 +377,12 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// toast surfaces. Non-catalog cards (empty TargetMode) pass
 	// through unchanged.
 	if mode := TargetModeFor(card.OracleID); mode != "" && len(params.Targets) == 0 {
+		slog.Warn("cast_spell rejected: targeted card arrived without targets",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"required_mode", mode,
+			"targets_received", len(params.Targets),
+		)
 		return ErrInvalidParam
 	}
 	// Sorcery-speed gate. Lands are special-action-fast (CR 305 is
