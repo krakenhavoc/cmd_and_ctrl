@@ -1,0 +1,295 @@
+# ADR 0014 — Combat keywords (S18)
+
+**Status:** Accepted · 2026-04-23 (planned) · Sprint S18
+
+## Context
+
+S16 shipped the CR 613 layer engine. S17 shipped the CR 614
+replacement-effect engine. The sandbox grants keyword strings via
+Layer 6 — Lord of Atlantis appends `"flying"`/`"islandwalk"` to
+`Characteristic.Abilities`, and the wire projection
+(`CardView.Abilities`) already exposes them. What the engine still
+does not do is *consume* those keywords: blocked attackers deal
+full power to the first blocker in slice order regardless of
+flying/menace/deathtouch; lifelink doesn't gain life; trample
+doesn't carry; vigilance doesn't untap; summoning sickness isn't
+tracked at all, so haste has nothing to bypass; flash isn't gated.
+
+S18 wires combat keywords into the engine. Twelve core keywords go
+live (flying, reach, deathtouch, lifelink, trample, vigilance,
+first strike, double strike, menace, defender, haste, flash) plus
+summoning sickness, a proper two-substep combat damage flow, and a
+multi-blocker damage-assignment prompt (CR 510.1c). Twelve catalog
+cards ship with each keyword exercised at least once. Niche keyword
+families (protection, indestructible, hexproof, ward, shroud, and
+the legacy/evergreen tail — banding, rampage, flanking, fear,
+intimidate, shadow, exalted, annihilator, persist, undying,
+tribute, prowess, cascade) are explicitly deferred — tracked on a
+dedicated umbrella issue so nothing leaks between sprints.
+
+The S16 #157 hotfix ("blocked attackers deal full power to the
+first blocker; blockers deal back; SBA fires after combat") is
+replaced by the proper flow here. The sandbox note on #68
+acknowledged the hotfix as a temporary stand-in.
+
+## Decisions
+
+### 1. Keywords are strings in `Characteristic.Abilities`, read via one helper
+
+Keywords are already a solved representation problem — Lord of
+Atlantis demonstrated in S16 that a Layer 6 `StaticAbility` can
+append a string to `Characteristic.Abilities` and everything from
+the layer engine to the wire projection picks it up. S18 does not
+introduce a richer "keyword ability" type.
+
+What's new is the consumer side. S18 adds
+[server/internal/game/keywords.go](../server/internal/game/keywords.go)
+with four readers:
+
+```go
+func HasKeyword(c *Card, kw string) bool
+func HasSummoningSickness(c *Card) bool
+func CanBlock(attacker, blocker *Card) bool
+func BlockerCountValid(attacker *Card, blockers []*Card) bool
+```
+
+Every combat-side consumer in the engine reads through these —
+`DeclareAttacker`, `DeclareBlocker`, `resolveCombatDamageLocked`,
+the cast-legality gate for flash. Inline `for _, a := range c.Effective().Abilities { if a == "flying" ... }`
+loops are banned; they drift as soon as one caller forgets to
+normalise case or spelling.
+
+**Why a function, not a method on `Card`:** pointer-receiver methods
+would force `Card` to grow combat-specific API surface and pull the
+layer engine's `Effective()` assumption into every caller. A bare
+function in a dedicated file localises the coupling.
+
+### 2. Summoning sickness: `Card.SummonedThisTurn bool`, cleared at controller's untap step
+
+Add a single bool to `Card`. Set true in the battlefield-entry
+paths (the same sites S17 routes through for
+enters-tapped/enters-with-counters); cleared at `StepUntap` entry
+inside `runStepEntryHooksLocked` by looping the active player's
+battlefield. Haste bypasses at *read time* in `HasSummoningSickness`:
+
+```go
+func HasSummoningSickness(c *Card) bool {
+    return c.SummonedThisTurn && !HasKeyword(c, "haste")
+}
+```
+
+**Why read-time bypass, not clear-on-ETB-with-haste:** control
+changes (S24) will reset `SummonedThisTurn` for creatures that
+change controllers across a turn boundary even if they already had
+haste. Keeping the flag pure makes that future work simpler.
+
+**Gates:** `DeclareAttacker` rejects sick creatures; tap-cost
+activation of creature abilities (e.g. mana abilities on a
+creature) rejects sick creatures. Land tap is exempt per CR 302.1
+(not a creature).
+
+### 3. Combat damage rewrite: split into two substeps (CR 510.2 + 510.3)
+
+Today `resolveCombatDamageLocked` is one pass. S18 rewrites it as:
+
+1. **First-strike substep** — creatures with `first strike` or
+   `double strike` assign and deal damage simultaneously. SBA fires
+   between substeps so dead creatures exit before the regular
+   substep.
+2. **Regular substep** — creatures with `double strike` or
+   *without* `first strike` assign and deal damage simultaneously.
+   SBA fires after.
+
+This is the CR 510 flow. `collectFirstStrikeCombatants` and
+`collectRegularCombatants` read live battlefield state each call
+so creatures killed in the first substep don't participate in the
+second.
+
+### 4. Damage assignment prompt — new `damage_assignment` PendingChoiceKind
+
+CR 510.1c: the attacker's controller divides combat damage among
+blockers, assigning at least lethal to each before assigning any
+to the next. S18 adds a fifth `PendingChoiceKind` alongside S13's
+`discard_from_hand` / S15's `mana_pick` / S17's
+`replacement_order` / `optional_replacement`.
+
+**Single-stage prompt** (versus two-stage). The CR 509.2 blocker
+ordering step is merged into the same prompt: the client can
+reorder blockers *and* assign amounts in one panel; server
+validates the ordered prefix-lethal rule atomically.
+
+**Why one stage:** two-stage doubles the client round-trips
+without adding any info the server needs earlier. If a user
+reports friction ("I wanted to decide the order first"), the
+prompt can be split later — the wire payload is extensible. The
+existing three PendingChoice kinds have proven robust at one
+stage.
+
+Trample is an extra parameter in the assignment payload —
+`trampleToPlayer` — which the server accepts only if the attacker
+has trample AND every blocker in the order got at-least-lethal.
+
+### 5. Deathtouch via `Card.MarkedLethalByDeathtouch`, not damage-count short-circuit
+
+CR 702.2c: a creature with deathtouch that deals any non-zero
+damage to a creature causes that creature to be destroyed at the
+next SBA. Two implementation paths:
+
+- **A — short-circuit** `DamageMarked >= Toughness` in the SBA to
+  `DamageMarked >= 1 || DeathtouchHit`.
+- **B — flag** `Card.MarkedLethalByDeathtouch bool`, set on damage
+  from a deathtouch source; SBA treats as lethal.
+
+**Chose B.** Cleaner intent: "this creature is marked for death"
+is an explicit state, not a recomputation from damage events. Also
+simpler cleanup: the flag zeroes at `StepCleanup` alongside
+`DamageMarked`. A short-circuit splits lethal logic across two
+predicates; a flag keeps it in one.
+
+### 6. Lifelink applies universally to the damage source, not just combat
+
+CR 702.15: "Damage dealt by a source with lifelink causes its
+controller to gain that much life." Covers *all* damage — combat,
+burn, triggered-ability, everything. S18 routes lifelink through
+the same code path that marks damage, so
+`DealDamageToCreatureForEffect` and `DealDamageToPlayerForEffect`
+(S17 catalog-effect helpers) also credit life. This is important:
+Vampire Nighthawk's combat lifelink and a hypothetical "deals 2
+damage to target creature" lifelink source should both gain life.
+
+The life-gain happens after the mark, in the same locked call. No
+replacement-pipeline queue needed — life gain is not itself
+replaceable by S18 cards (S17's `RepEventLife` replacements still
+see the +N, they just don't distinguish lifelink-sourced).
+
+### 7. Trample overflow = `power - sum(blocker.lethal_remaining)` when all blockers at-least-lethal
+
+Standard CR 702.19b math. Single-blocker case:
+`overflow = attacker.Power - max(0, blocker.CurrentToughness - blocker.DamageMarked)`.
+Multi-blocker case: the `damage_assignment` prompt accepts a
+`trampleToPlayer` parameter; the server validates that total
+assigned damage equals attacker power AND every blocker got at
+least their lethal remaining before spillover.
+
+Without trample, multi-blocker assignments must sum to exactly
+`attacker.Power` across the blockers. The prompt payload's
+`allow_trample` flag lets the client hide the
+"trample to player" input when trample isn't granted.
+
+### 8. Flash needs a keyword reader that works on cards *in hand*
+
+`card.Effective()` only maintains layer-engine output for
+battlefield cards — the layer engine runs over the battlefield
+slice. A creature in hand has no `Effective()` cache, so a naive
+`HasKeyword(card)` would miss the printed "Flash" on an Ambush
+Viper sitting in hand.
+
+Two paths:
+
+- **A** — generalise `Effective()` to fall back to
+  `printedCharacteristic()` for non-battlefield cards. Feasible,
+  but pulls the layer system into zones it wasn't built for.
+- **B** — add a dedicated `Spec.PrintedKeywords []string` slot.
+  `HasKeyword` branches: battlefield → `Effective().Abilities`;
+  anywhere else → `CatalogPrintedKeywords(card.OracleID)`.
+
+**Chose B.** Keywords are a special-enough consumer of ability
+data (they're the only thing we look up on cards off-battlefield
+today) that generalising `Effective()` is over-broad. The
+`PrintedKeywords` slot feeds two places:
+
+1. The battlefield path via a layer-6 `StaticAbility` auto-generated
+   at catalog load time (`AppliesTo: target == source`,
+   `Apply: append ... PrintedKeywords`). One per catalog card with
+   keywords; deduped against any hand-written `Spec.Static`.
+2. The off-battlefield path via direct
+   `CatalogPrintedKeywords(oracleID)` lookup inside `HasKeyword`.
+
+This keeps flash-gating server-side without wire-side changes.
+"Flash" badges in the hand view are a follow-up; the server-side
+fix is sufficient for S18's exit criteria.
+
+### 9. Menace enforced at `DeclareBlocker` close-out, not per-decl
+
+Menace requires at least two blockers total (or no blockers).
+Checking it on each `declare_blockers` action would false-trigger
+on the first of a planned two-blocker block.
+
+S18 enforces menace when the declare-blockers step closes (the
+transition to `StepCombatDamage`), via a validator at the top of
+`assignAndDealCombatDamageLocked`. If exactly one blocker is
+assigned to a menace attacker, clear that blocker's `BlockingTarget`
+(blocker effectively "didn't block") and emit a server-side
+`slog.Warn` for diagnostics. The attacker becomes unblocked.
+
+**Why not reject at declare time:** asymmetric to the player's
+mental model — they're halfway through choosing blockers and get
+a red error. "Close-out validates the final state" matches CR
+509's step semantics.
+
+### 10. Champion of Lambholt deferred to S19
+
+#68 originally listed "Champion of Lambholt block-restriction
+clause" as an S18 task (the counter half is a triggered ability,
+which lives in S19). Shipping only the block-restriction half
+ships a card with no in-engine way to pump itself — players would
+have to hand-feed counters via the S17 shift-click debug
+affordance. **S19 ships both halves together.** Memory note on
+#69 records the carry-in.
+
+### 11. Baneslayer Angel ships without protection clauses
+
+Protection from Demons / Dragons is CR 702.16; it's scoped out of
+S18 (S24 umbrella with Mind Control's control-change
+replacement). Baneslayer ships with flying + first strike + lifelink
+— three of S18's four most-used keywords in one card. The absent
+clauses are noted in the card file and the #68 decision log.
+
+### 12. No protocol version bump
+
+`PendingChoiceView.DamageAssignment *DamageAssignmentView` is a
+new optional field alongside S17's `ReplacementOptions`. The
+`damage_assignment` kind is a new discriminant value. Pre-S18
+clients ignore the field and don't render the prompt; the server
+doesn't queue it until an S18-capable block happens. Additive.
+
+## Out of scope (explicit deferrals)
+
+- **Protection** (CR 702.16) → **S24** [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76) alongside Mind Control.
+- **Indestructible** (CR 702.12), **damage-prevention shields with charges** (CR 615) → **S30** [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95).
+- **Hexproof, shroud, ward** — umbrella issue below.
+- **Legacy/evergreen tail** — banding, rampage, flanking, fear, intimidate, shadow, exalted, annihilator, persist, undying, tribute, prowess, cascade. Umbrella issue below.
+- **Champion of Lambholt** (both halves) → **S19** [#69](https://github.com/krakenhavoc/cmd_and_ctrl/issues/69).
+- **Flash-in-hand badge** — server gating is sufficient for S18; hand-view keyword surface follows with S20 smart-cast UI.
+- **Mycosynth Lattice mana-ability clauses** — originally slotted here per S17 planning. On review, the clauses ("lands tap for any color" + "no land's mana ability adds non-colorless") are mana-system work that predates the S15 mana-pool auto-tapper's final shape. Re-homed to the backlog pending a dedicated mana rewrite sprint; does not block S18 combat work.
+
+## Consequences (planned)
+
+Populated at sub-PR 7 once shipped. Placeholder list of what this
+ADR commits to:
+
+- 12 new catalog cards, each in `server/internal/cards/effects/`.
+- `Card.SummonedThisTurn` + `Card.MarkedLethalByDeathtouch` new fields.
+- `Spec.PrintedKeywords []string` new catalog field.
+- `CatalogPrintedKeywords` new function-var hook — 8th catalog hook alongside `EffectResolver` / `ETBEffectHook` / `IsCatalogCard` / `CatalogTargetMode` / `CatalogManaAbilities` / `CatalogStaticAbilities` / `CatalogReplacements`.
+- `server/internal/game/keywords.go` new (four helpers).
+- `resolveCombatDamageLocked` rewritten to two substeps.
+- `PendingChoiceDamageAssignment` + `ResolveDamageAssignment` + wire `DamageAssignmentView`.
+- Client `ChoicePromptModal.svelte` `damage_assignment` branch.
+- Client `CardTile.svelte` keyword-badge row.
+- No protocol version bump.
+
+## Decision log (planning round, 2026-04-23)
+
+1. Keywords represented as strings in `Characteristic.Abilities`; no richer keyword type.
+2. `Spec.PrintedKeywords` separate from `Spec.Static` so flash works on hand cards.
+3. Summoning sickness is a per-card bool cleared at controller's untap step; haste bypass is read-time.
+4. Combat damage rewritten to two substeps (510.2 + 510.3); double-strike participates in both.
+5. Deathtouch implemented via `Card.MarkedLethalByDeathtouch`, not SBA short-circuit.
+6. Lifelink applies to all damage from the source, not combat damage only.
+7. Damage-assignment prompt single-stage (order + amounts merged).
+8. Menace enforced at declare-blockers step close-out, not on each declare action.
+9. Champion of Lambholt deferred to S19 (both halves together).
+10. Baneslayer Angel ships without protection clauses.
+11. Mycosynth Lattice mana-ability clauses dropped from S18 scope (re-homed to backlog).
+12. No protocol version bump; `damage_assignment` PendingChoice + view field additive.
