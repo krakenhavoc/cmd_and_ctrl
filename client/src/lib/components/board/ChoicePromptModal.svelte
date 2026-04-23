@@ -187,16 +187,12 @@
       {:else if isOptionalReplacement}
         <h2 id="choice-title">{active.reason || "Apply replacement?"}</h2>
         <p class="hint">
-          CR 614.10 optional replacement — you (the affected player) decide
-          whether this substitution applies.
+          CR 614.10 optional replacement — you (the affected player) decide whether this
+          substitution applies.
         </p>
         <div class="yes-no-row">
-          <button type="button" class="submit" onclick={() => answerOptional(true)}>
-            Yes
-          </button>
-          <button type="button" class="decline" onclick={() => answerOptional(false)}>
-            No
-          </button>
+          <button type="button" class="submit" onclick={() => answerOptional(true)}> Yes </button>
+          <button type="button" class="decline" onclick={() => answerOptional(false)}> No </button>
         </div>
       {:else if isReplacementOrder}
         <h2 id="choice-title">{active.reason || "Order replacement effects"}</h2>
