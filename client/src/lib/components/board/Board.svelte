@@ -105,13 +105,6 @@
     // Otherwise fire cast_spell immediately (lands, sorceries with
     // no targets, vanilla permanents).
     const mode = card.target_mode as TargetingMode | undefined;
-    // S17 diagnostic: log so we can see what the wire delivered.
-    console.warn("[cast diagnostic]", {
-      name: card.name,
-      instance_id: card.instance_id,
-      target_mode: card.target_mode,
-      auto: card.auto,
-    });
     if (
       mode === "any" ||
       mode === "player" ||
@@ -125,26 +118,13 @@
     sendAction("cast_spell", { instance_id: card.instance_id }, viewerID ?? undefined);
   }
 
-  // S17 diagnostic: log when a targeting click completes so we can
-  // tell whether targeting was active at cast-dispatch time.
-  function logTargetComplete(kind: string, id: string): void {
-    console.warn("[cast diagnostic] completeTargetedCast", { kind, id });
-  }
-
   // completeTargetedCast fires cast_spell with the resolved target
   // and clears the targeting store. Called by targetable surfaces
   // (player portraits, battlefield creatures, stack items) when the
   // viewer clicks them while a targeting prompt is active.
   function completeTargetedCast(kind: "player" | "card", targetID: string): void {
     const state = $targeting;
-    if (!state) {
-      console.warn("[cast diagnostic] completeTargetedCast: no active targeting state", {
-        kind,
-        targetID,
-      });
-      return;
-    }
-    logTargetComplete(kind, targetID);
+    if (!state) return;
     const ref =
       kind === "player" ? { kind: "player", id: targetID } : { kind: "card", id: targetID };
     sendAction(

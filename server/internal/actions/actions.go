@@ -14,7 +14,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 
 	"github.com/google/uuid"
 
@@ -311,10 +310,6 @@ func Dispatch(g *game.Game, a Action) error {
 		if a.Player == uuid.Nil {
 			return ErrInvalidPlayer
 		}
-		// S17 diagnostic: log the raw params bytes on every cast_spell
-		// so we can see exactly what the wire delivered. Helps catch
-		// client bugs where targets are stripped mid-flight.
-		slog.Warn("cast_spell raw params", "bytes", string(a.Params))
 		if err := requirePriorityHolder(g, a.Caller); err != nil {
 			return err
 		}
