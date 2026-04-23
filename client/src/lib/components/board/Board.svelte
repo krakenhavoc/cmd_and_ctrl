@@ -28,6 +28,8 @@
   import StackOverlay from "./StackOverlay.svelte";
   import CombatArrows from "./CombatArrows.svelte";
   import VotingPanel from "./VotingPanel.svelte";
+  import ZoneBrowserModal from "./ZoneBrowserModal.svelte";
+  import { zoneBrowser, closeZoneBrowser } from "../../zoneBrowser";
   import {
     targeting,
     begin as beginTargeting,
@@ -284,6 +286,15 @@
     onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
   />
   <VotingPanel {view} {viewerID} {sendAction} />
+  {#if $zoneBrowser}
+    <ZoneBrowserModal
+      {view}
+      {viewerID}
+      zoneKind={$zoneBrowser.zoneKind}
+      ownerSeat={{ id: $zoneBrowser.ownerID, name: $zoneBrowser.ownerName }}
+      onClose={closeZoneBrowser}
+    />
+  {/if}
 </div>
 
 <style>

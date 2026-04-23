@@ -20,6 +20,7 @@
 
   import type { ActionPayload, CardView, ZoneView } from "../../protocol";
   import Card from "./Card.svelte";
+  import { openZoneBrowser } from "../../zoneBrowser";
 
   type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
 
@@ -80,6 +81,14 @@
   function handleDoubleClick(): void {
     castVisible();
   }
+
+  // S18.5 — "browse" affordance opens the ZoneBrowserModal for this
+  // player's command zone. Wired on both self (secondary to the
+  // cast button) and opponents (whose command zones previously had
+  // no click behaviour at all).
+  function openBrowser(): void {
+    openZoneBrowser({ zoneKind: "command", ownerID: seat.id, ownerName: seat.name });
+  }
 </script>
 
 <div
@@ -90,12 +99,19 @@
 >
   <div class="card-slot">
     {#if visibleCard}
-      <Card card={visibleCard} onClick={isSelf ? handleClick : undefined} />
+      <Card card={visibleCard} onClick={isSelf ? handleClick : openBrowser} />
       {#if visibleTax > 0}
         <span class="tax-badge" title={`commander tax · +${visibleTax} mana`}>+{visibleTax}</span>
       {/if}
-    {:else}
+    {:else if isSelf}
       <div class="empty-slot" aria-hidden="true"></div>
+    {:else}
+      <button
+        type="button"
+        class="empty-slot empty-slot-btn"
+        onclick={openBrowser}
+        aria-label={`browse ${seat.name}'s command zone`}
+      ></button>
     {/if}
   </div>
   <div class="meta">
@@ -125,6 +141,15 @@
       cast
     </button>
   {/if}
+  <button
+    type="button"
+    class="browse-hint"
+    onclick={openBrowser}
+    title={`browse ${seat.name}'s command zone`}
+    aria-label={`browse ${seat.name}'s command zone`}
+  >
+    browse
+  </button>
 </div>
 
 <style>
@@ -170,6 +195,15 @@
     height: 100%;
     border-radius: 4px;
     border: 1px dashed #2e3a55;
+    background: transparent;
+    box-sizing: border-box;
+    padding: 0;
+  }
+  .empty-slot-btn {
+    cursor: pointer;
+  }
+  .empty-slot-btn:hover {
+    border-color: var(--accent, #6a8dff);
   }
   .tax-badge {
     position: absolute;
@@ -210,7 +244,8 @@
     letter-spacing: -0.01em;
   }
   .cycle,
-  .cast-hint {
+  .cast-hint,
+  .browse-hint {
     margin-top: 2px;
     background: transparent;
     color: #c8a86a;
@@ -229,15 +264,30 @@
       color 120ms var(--ease),
       border-color 120ms var(--ease);
   }
+  .browse-hint {
+    /* Dim "browse" so it reads as the secondary affordance next to
+       the primary cast / cycle button. */
+    color: var(--fg-muted, #8a93a8);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
   .cycle:hover,
   .cast-hint:hover {
     background: rgba(255, 208, 122, 0.15);
     color: var(--gold);
     border-color: var(--gold);
   }
+  .browse-hint:hover {
+    background: rgba(122, 167, 255, 0.12);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
   .cast-hint:focus-visible,
   .cycle:focus-visible {
     outline: 1px solid var(--gold);
+    outline-offset: 1px;
+  }
+  .browse-hint:focus-visible {
+    outline: 1px solid var(--accent);
     outline-offset: 1px;
   }
 </style>
