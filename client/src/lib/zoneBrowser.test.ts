@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CardView, GameView, PlayerView, ZoneView } from "./protocol";
-import { cardsForZone } from "./zoneBrowser.logic";
+import { buildMovePayload, canManageZone, cardsForZone } from "./zoneBrowser.logic";
 
 // Tiny builders keep each test's setup near where the expectations
 // live. We only populate the fields the logic under test reads so
@@ -88,5 +88,84 @@ describe("cardsForZone", () => {
     const a = seat("a", "Alice", [card("x", "a")], []);
     const v = view([a]);
     expect(cardsForZone(v, "graveyard", "missing")).toEqual([]);
+  });
+});
+
+describe("canManageZone", () => {
+  it("allows the owner to manage their own graveyard", () => {
+    expect(canManageZone("graveyard", "a", "a")).toBe(true);
+  });
+  it("denies a non-owner", () => {
+    expect(canManageZone("graveyard", "b", "a")).toBe(false);
+  });
+  it("denies a spectator (null viewer)", () => {
+    expect(canManageZone("graveyard", null, "a")).toBe(false);
+  });
+  it("never allows stack management from the browser", () => {
+    expect(canManageZone("stack", "a", "a")).toBe(false);
+  });
+  it("applies to exile + command the same way", () => {
+    expect(canManageZone("exile", "a", "a")).toBe(true);
+    expect(canManageZone("exile", "b", "a")).toBe(false);
+    expect(canManageZone("command", "a", "a")).toBe(true);
+    expect(canManageZone("command", "b", "a")).toBe(false);
+  });
+});
+
+describe("buildMovePayload", () => {
+  it("builds a hand move with src + dst owner stamped to the viewer", () => {
+    const c = card("x", "a");
+    const p = buildMovePayload("graveyard", "a", "a", c, "hand");
+    expect(p).toEqual({
+      src: { kind: "graveyard", owner: "a" },
+      dst: { kind: "hand", owner: "a" },
+      instance_id: "x",
+    });
+  });
+
+  it("omits the dst owner for battlefield (shared zone)", () => {
+    const c = card("x", "a");
+    const p = buildMovePayload("graveyard", "a", "a", c, "battlefield");
+    expect(p).toEqual({
+      src: { kind: "graveyard", owner: "a" },
+      dst: { kind: "battlefield" },
+      instance_id: "x",
+    });
+  });
+
+  it("stamps the viewer as the dst owner for library moves", () => {
+    const c = card("x", "a");
+    const p = buildMovePayload("exile", "a", "a", c, "library");
+    expect(p).toEqual({
+      src: { kind: "exile", owner: "a" },
+      dst: { kind: "library", owner: "a" },
+      instance_id: "x",
+    });
+  });
+
+  it("returns null when the viewer is not the owner", () => {
+    const c = card("x", "a");
+    expect(buildMovePayload("graveyard", "a", "b", c, "hand")).toBeNull();
+  });
+
+  it("returns null when the card's controller differs from the viewer", () => {
+    // An exiled card the viewer owns but which is controlled by
+    // another player (e.g. Thassa's Oracle-style control-change)
+    // must not be movable by the viewer — defense in depth.
+    const c = card("x", "a", "b");
+    expect(buildMovePayload("exile", "a", "a", c, "hand")).toBeNull();
+  });
+
+  it("never builds a payload for the stack", () => {
+    const c = card("x", "a");
+    expect(buildMovePayload("stack", "a", "a", c, "hand")).toBeNull();
+  });
+
+  it("returns null when viewerID is empty (spectator sentinel)", () => {
+    const c = card("x", "a");
+    // buildMovePayload expects a non-empty viewerID — the component
+    // guards before calling — but belt-and-braces: pass "" which
+    // canManageZone treats as "no viewer" via the !viewerID check.
+    expect(buildMovePayload("graveyard", "a", "", c, "hand")).toBeNull();
   });
 });

@@ -292,6 +292,7 @@
       {viewerID}
       zoneKind={$zoneBrowser.zoneKind}
       ownerSeat={{ id: $zoneBrowser.ownerID, name: $zoneBrowser.ownerName }}
+      {sendAction}
       onClose={closeZoneBrowser}
     />
   {/if}

@@ -5,30 +5,34 @@
   // zone so every seated player can inspect the cards — graveyard and
   // exile are public, command is public, and the stack is public too.
   //
-  // Milestone 1: view-only browsable grid with hover-zoom. Owner
-  // action affordances (move card to hand / battlefield / library)
-  // land in milestone 2.
+  // Owner affordances: when the viewer owns the zone (owner ==
+  // controller of every card in it per MTG zone semantics), each card
+  // gets a small action button cluster (hand / battlefield / library).
+  // Non-owners see a view-only grid. All moves go through the existing
+  // `move_card` action — the server gates on controller match, so we
+  // don't need a new action kind.
   //
   // Hover-zoom works inside the modal because Card.svelte already
   // writes to the shared hoveredCard store on mouseenter; the existing
   // HoverZoomOverlay mounted by Board.svelte picks it up unchanged.
 
-  import type { CardView, GameView } from "../../protocol";
+  import type { ActionPayload, CardView, GameView } from "../../protocol";
   import Card from "./Card.svelte";
   import type { BrowsableZone } from "../../zoneBrowser";
-  import { cardsForZone } from "../../zoneBrowser.logic";
+  import { buildMovePayload, canManageZone, cardsForZone } from "../../zoneBrowser.logic";
+
+  type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
 
   interface Props {
     view: GameView;
     viewerID: string | null;
     zoneKind: BrowsableZone;
     ownerSeat: { id: string; name: string };
+    sendAction: ActionSender;
     onClose: () => void;
   }
 
-  // viewerID is accepted for forward-compatibility with the M2 owner
-  // action affordances; it's unused in the view-only M1 path.
-  const { view, viewerID: _viewerID, zoneKind, ownerSeat, onClose }: Props = $props();
+  const { view, viewerID, zoneKind, ownerSeat, sendAction, onClose }: Props = $props();
 
   // Source zone lookup — server broadcasts exile + stack as shared
   // top-level zones with per-card owner/controller, while graveyard
@@ -51,6 +55,25 @@
         return "stack";
     }
   });
+
+  // canManage is true when the viewer is the owner of the zone;
+  // stack is always false. Drives whether the per-card action
+  // cluster renders. Kept as a $derived so the modal reacts if the
+  // viewer's identity ever changes mid-modal (defence in depth;
+  // unlikely in practice).
+  const canManage = $derived(canManageZone(zoneKind, viewerID, ownerSeat.id));
+
+  // move fires move_card from the source zone to the chosen
+  // destination. buildMovePayload returns null when the client-side
+  // guard rejects the action (non-owner, stack, controller mismatch);
+  // the server gates independently, so the check here is for UX
+  // cleanliness (no speculative action frames).
+  function move(card: CardView, dest: "hand" | "battlefield" | "library"): void {
+    if (!viewerID) return;
+    const payload = buildMovePayload(zoneKind, ownerSeat.id, viewerID, card, dest);
+    if (!payload) return;
+    sendAction("move_card", payload, viewerID);
+  }
 
   function backdropClick(ev: MouseEvent): void {
     if (ev.target === ev.currentTarget) onClose();
@@ -90,6 +113,37 @@
         {#each zoneCards as card (card.instance_id)}
           <li class="cell">
             <Card {card} />
+            {#if canManage}
+              <div class="actions" aria-label="move card">
+                <button
+                  type="button"
+                  class="act"
+                  title="to hand"
+                  aria-label={`move ${card.name || "card"} to hand`}
+                  onclick={() => move(card, "hand")}
+                >
+                  hand
+                </button>
+                <button
+                  type="button"
+                  class="act"
+                  title="to battlefield"
+                  aria-label={`move ${card.name || "card"} to battlefield`}
+                  onclick={() => move(card, "battlefield")}
+                >
+                  field
+                </button>
+                <button
+                  type="button"
+                  class="act"
+                  title="to top of library"
+                  aria-label={`move ${card.name || "card"} to library`}
+                  onclick={() => move(card, "library")}
+                >
+                  lib
+                </button>
+              </div>
+            {/if}
           </li>
         {/each}
       </ul>
@@ -224,5 +278,37 @@
     flex-direction: column;
     align-items: center;
     gap: 6px;
+  }
+  .actions {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .act {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--fg);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    padding: 3px 9px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+    transition:
+      background 120ms var(--ease),
+      border-color 120ms var(--ease),
+      color 120ms var(--ease);
+  }
+  .act:hover {
+    background: rgba(122, 167, 255, 0.12);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .act:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: 1px;
   }
 </style>
