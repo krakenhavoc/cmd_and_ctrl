@@ -24,7 +24,7 @@
   import HoverZoomOverlay from "./HoverZoomOverlay.svelte";
   import StackOverlay from "./StackOverlay.svelte";
   import CombatArrows from "./CombatArrows.svelte";
-  import CommanderDamageGrid from "./CommanderDamageGrid.svelte";
+  import CommanderDamageTooltip from "./CommanderDamageTooltip.svelte";
   import VotingPanel from "./VotingPanel.svelte";
   import {
     targeting,
@@ -271,7 +271,7 @@
     }}
     onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
   />
-  <CommanderDamageGrid {view} {sendAction} />
+  <CommanderDamageTooltip {view} />
   <VotingPanel {view} {viewerID} {sendAction} />
 </div>
 
