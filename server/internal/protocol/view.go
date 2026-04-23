@@ -1025,14 +1025,22 @@ func viewOfCard(c game.Card) CardView {
 	// byte-for-byte via the parser round-trip.
 	eff := c.Effective()
 	view := CardView{
-		InstanceID:    c.InstanceID.String(),
-		Name:          eff.Name,
-		Owner:         c.Owner.String(),
-		Controller:    c.Controller.String(),
-		ScryfallID:    c.ScryfallID,
-		TypeLine:      effectiveTypeLine(c, eff),
-		Power:         eff.Power,
-		Toughness:     eff.Toughness,
+		InstanceID: c.InstanceID.String(),
+		Name:       eff.Name,
+		Owner:      c.Owner.String(),
+		Controller: c.Controller.String(),
+		ScryfallID: c.ScryfallID,
+		TypeLine:   effectiveTypeLine(c, eff),
+		// S16 sub-PR 1 + hotfix: CardView.power / .toughness is the
+		// COMBAT-RELEVANT value — effective P/T from the layer engine
+		// PLUS the +1/+1 / -1/-1 counter delta. S13.2's CurrentPower /
+		// CurrentToughness helpers encode this math so the SBA loop
+		// and combat-damage path use the same value the client pip
+		// renders. Prior code sent eff.Power / eff.Toughness only,
+		// which missed counter deltas — the on-card P/T pip would
+		// stay at printed even after +1/+1 counters landed.
+		Power:     c.CurrentPower(),
+		Toughness: c.CurrentToughness(),
 		Tapped:        c.Tapped,
 		Counters:      counters,
 		IsCommander:   c.IsCommander,
