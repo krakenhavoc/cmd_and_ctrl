@@ -26,9 +26,24 @@
     turn: TurnView;
     seats: PlayerView[];
     mulligansOpen: boolean;
+    // Priority controls — only rendered on the viewer's own panel
+    // (PlayerPanel gates the mount with `isSelf`), so these are
+    // always wired to *viewer* state.
+    viewerHasPriority: boolean;
+    autopassEnabled: boolean;
+    onPassPriority: () => void;
+    onToggleAutopass: () => void;
   }
 
-  const { turn, seats, mulligansOpen }: Props = $props();
+  const {
+    turn,
+    seats,
+    mulligansOpen,
+    viewerHasPriority,
+    autopassEnabled,
+    onPassPriority,
+    onToggleAutopass,
+  }: Props = $props();
 
   const activeSeat = $derived(turn.active_seat ?? 0);
   const prioritySeat = $derived(turn.priority_holder ?? 0);
@@ -140,6 +155,31 @@
         —
       </span>
     {/if}
+  </div>
+
+  <div class="row actions" role="group" aria-label="priority controls">
+    <button
+      type="button"
+      class="action next"
+      class:viewer-priority={viewerHasPriority}
+      disabled={!viewerHasPriority}
+      onclick={onPassPriority}
+      title={viewerHasPriority ? "pass priority — rotates to next seat" : "you don't hold priority"}
+    >
+      next
+    </button>
+    <button
+      type="button"
+      class="action autopass"
+      class:on={autopassEnabled}
+      aria-pressed={autopassEnabled}
+      onclick={onToggleAutopass}
+      title={autopassEnabled
+        ? "autopass ON — every time priority lands on you, it passes; click to turn off"
+        : "autopass OFF — click to pass every priority window (bypasses stops, smart-skip, and manual pins)"}
+    >
+      {autopassEnabled ? "autopass ✓" : "autopass"}
+    </button>
   </div>
 </div>
 
@@ -322,5 +362,60 @@
     color: var(--fg-dim);
     font-weight: 600;
     cursor: help;
+  }
+
+  /* Priority controls inside the box — two buttons split the row
+     evenly so the panel reads as a self-contained widget. Colours
+     echo the Game.svelte toolbar (green = you-have-priority,
+     amber = autopass-engaged) so players carry the same visual
+     grammar across surfaces. */
+  .actions {
+    gap: 6px;
+    margin-top: 2px;
+  }
+  .action {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--fg);
+    font-size: 0.85em;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition:
+      background 140ms var(--ease),
+      border-color 140ms var(--ease),
+      opacity 140ms var(--ease);
+  }
+  .action:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: color-mix(in srgb, var(--border) 60%, white 40%);
+  }
+  .action:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .action.next.viewer-priority {
+    background: linear-gradient(180deg, #b3e5b3 0%, #7fc87f 100%);
+    color: #0a1a0a;
+    font-weight: 700;
+    border-color: rgba(127, 200, 127, 0.6);
+  }
+  .action.next.viewer-priority:hover:not(:disabled) {
+    background: linear-gradient(180deg, #c4f0c4 0%, #8fd88f 100%);
+    border-color: rgba(127, 200, 127, 0.85);
+  }
+  .action.autopass.on {
+    background: linear-gradient(180deg, #f5c76b 0%, #d99a2e 100%);
+    color: #1a0e00;
+    font-weight: 700;
+    border-color: rgba(217, 154, 46, 0.75);
+  }
+  .action.autopass.on:hover:not(:disabled) {
+    background: linear-gradient(180deg, #ffda82 0%, #edaf47 100%);
+    border-color: rgba(217, 154, 46, 0.9);
   }
 </style>

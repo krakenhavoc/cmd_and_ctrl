@@ -910,18 +910,19 @@ Detailed plan: `/home/node/.claude/plans/s13-5-card-visibility-knownby.md`. Buil
 - [x] Settings.svelte gameplay tab: add the toggle with help text under the stops grid.
 - [x] `Game.svelte` autoPassPriority effect folds the predicate in — if the step is a configured stop but `hasAnyLegalResponse` is false and `smartAutoPass` is on, auto-pass anyway.
 
-**Client — `⇥ pass step` button:**
+**Client — pared-down priority toolbar (`next` + `autopass` + `pass turn`):**
 
-- [x] `passRound()` in Game.svelte — same 24-iteration shape as `passToEnd` / `passToNextStop`, exit on step boundary / active-seat change / stack change. Ignores the stops grid so the viewer can skip one configured stop without un-configuring it.
-- [x] Button placed between "pass priority" and "→ next stop" in the priority-controls toolbar.
+- [x] Removed the `next step`, `⇥ pass step`, and `→ next stop` buttons (`advanceStep`, `passRound`, `passToNextStop` functions deleted along with them). The intelligent auto-pass effect (stops grid + smartAutoPass + manual pins) makes the batch-pass buttons redundant.
+- [x] `next` = one-shot pass_priority (renamed from "pass priority"). Only active when the viewer holds priority.
+- [x] `autopass` = session toggle (not a one-shot). When on, every priority window the viewer holds auto-passes regardless of stepStops / smartAutoPass / manual pins / `settings.autoPassPriority`. Persists until toggled off or reload; the effect still requires actual viewer priority so opponents' turns don't generate "you do not hold priority" rejections.
+- [x] Toggle button uses amber active-state styling + aria-pressed so the on/off state reads at a glance without reading the label.
 
 **Client — manual one-time stops (click-to-pin on phase icons):**
 
 - [x] `client/src/lib/priorityStops.ts` — Svelte store of pinned `StepID`s with `toggleManualStop` / `hasManualStop` / `consumeManualStop` / `canManuallyStop` helpers. Rejects Untap + Cleanup (no priority).
 - [x] PhaseDisplay.svelte: priority-granting phase icons become `<button>` elements; click toggles a pin. Pinned icons show a small top-right dot + accent tint. No-priority steps stay non-interactive with a "no priority" tooltip.
-- [x] Game.svelte autoPassPriority effect: manual pins take precedence over everything else (stops grid, smartAutoPass). "Fake a game action" — viewer wants the cursor to hold even when the engine has nothing to offer.
+- [x] Game.svelte autoPassPriority effect: manual pins take precedence over everything else (stops grid, smartAutoPass) when autopass-mode is off. "Fake a game action" — viewer wants the cursor to hold even when the engine has nothing to offer. Autopass-mode overrides pins too (deliberately — the point of autopass is "no more asking").
 - [x] Game.svelte consumer: on step transition, consume the pin on the prior step (one-time semantics).
-- [x] `passToNextStop` treats manual pins as stops.
 
 **Tests:**
 
@@ -953,9 +954,9 @@ Detailed plan: `/home/node/.claude/plans/s13-5-card-visibility-knownby.md`. Buil
 1. Four-player game, all seats with `smartAutoPass` on, empty hands + empty boards → cursor walks Untap → Untap with zero `pass_priority` clicks.
 2. Seat 0 casts Lightning Bolt targeting seat 2. Seat 1 holds Counterspell + U available → cursor stops for seat 1. Seat 3 holds no instants → cursor auto-passes through seat 3.
 3. Toggle `smartAutoPass` off → every configured stop blocks on a manual click regardless of hand state (strict pre-S13.6 behaviour).
-4. `⇥ pass step` button advances exactly to the next step boundary (or stops early on seat / stack change), bounded by the 24-iteration cap.
-5. Click an upkeep icon on PhaseDisplay → next time priority lands on the viewer at upkeep, cursor holds even with `smartAutoPass` on and nothing legal to do; pin clears on the pass; next turn's upkeep is unpinned.
-6. ADR `0009-smart-priority-autopass.md` exists and explains the predicate's conservative stance, the "smartAutoPass default on" decision, the mana-affordability punt, and manual-stops as the highest-precedence override.
+4. Click `autopass` → button lights amber; every time priority lands on the viewer, cursor auto-passes (including through stepStops and manual pins). Click again → reverts to the intelligent default path.
+5. Click an upkeep icon on PhaseDisplay with autopass off → next time priority lands on the viewer at upkeep, cursor holds even with `smartAutoPass` on and nothing legal to do; pin clears on the pass; next turn's upkeep is unpinned.
+6. ADR `0009-smart-priority-autopass.md` exists and explains the predicate's conservative stance, the "smartAutoPass default on" decision, the mana-affordability punt, manual-stops as the highest-precedence override, and autopass-mode as the session-scoped override on top of everything.
 
 ---
 

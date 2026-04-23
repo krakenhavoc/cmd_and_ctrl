@@ -427,6 +427,25 @@
               regardless.&rdquo; Turn off to demand a click at every stop.
             </p>
 
+            <label class="danger">
+              <input
+                type="checkbox"
+                checked={$settings.gameplay.autopassPersistThroughTurns}
+                onchange={(e) =>
+                  change("gameplay", "autopassPersistThroughTurns", e.currentTarget.checked)}
+              />
+              Autopass persists through your own turns
+              {#if isFresh("gameplay.autopassPersistThroughTurns")}
+                <span class="saved">✓ saved</span>
+              {/if}
+            </label>
+            <p class="help danger-help">
+              <strong>WARNING: ENABLING THIS SETTING MAY CAUSE YOU TO SKIP YOUR OWN TURN.</strong>
+              By default, the autopass toggle in the phase display auto-clears when the cursor reaches
+              your own first main phase — a safety belt so a forgotten autopass doesn't cost you a turn.
+              Flip this on to keep autopass engaged indefinitely (until you click it off).
+            </p>
+
             <label>
               <input
                 type="checkbox"
@@ -692,6 +711,24 @@
     color: #888;
     font-size: 0.85rem;
     margin: 0.25rem 0 0.75rem 0;
+  }
+  /* Danger-flagged settings get amber/red framing so an opt-in
+     that might cost the player a turn can't be mistaken for a
+     routine preference. */
+  label.danger {
+    color: #f0a868;
+    font-weight: 600;
+  }
+  .danger-help {
+    color: #e8a95a;
+    border-left: 3px solid #d99a2e;
+    padding-left: 0.55rem;
+    background: rgba(217, 154, 46, 0.06);
+    border-radius: 0 3px 3px 0;
+  }
+  .danger-help strong {
+    color: #ffd07a;
+    letter-spacing: 0.03em;
   }
   .saved {
     color: #6cc07a;

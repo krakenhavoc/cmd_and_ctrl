@@ -159,21 +159,85 @@ with one-time semantics (a reload is a stronger signal than a step
 transition), and anyone who reloads mid-game probably wants the
 default stops behaviour to reassert.
 
-### 6. Accompanying `⇥ pass step` button
+### 6. Pared-down priority toolbar: just `next` + `autopass`
 
-**Decision:** Add a new priority-toolbar button between "pass
-priority" and "→ next stop." Fires `pass_priority` repeatedly
-until the step advances, the active seat changes, or the stack
-changes. Capped at 24 iterations (same safety belt as
-`passToEnd`).
+**Decision:** Replace the (pre-S13.6) six-button priority toolbar
+(next step / pass priority / ⇥ pass step / → next stop / pass
+until end of turn / pass turn) with two controls that live inside
+the PhaseDisplay box itself, below the priority pills:
 
-**Why not just reuse "next stop":** "next stop" respects the
-stops grid — if the current step _is_ a configured stop, pressing
-it once from there stops immediately on the very next iteration.
-The new button ignores stops entirely: "nothing here, move on to
-the next step boundary, I'll decide again there." Covers the
-"I've decided there's nothing to do at this one stop" case
-without forcing the player to temporarily un-configure the stop.
+- **`next`** — fires a single `pass_priority`. Labelled "next"
+  because the meaningful action is "move to the next priority
+  window," not "pass [the thing I have]."
+- **`autopass`** — a session toggle (not a one-shot). When on,
+  the auto-pass `$effect` ignores every gate (stops grid,
+  smartAutoPass predicate, manual pins, `settings.autoPassPriority`)
+  and fires `pass_priority` on every snapshot where the viewer
+  holds priority. Persists until clicked off or reload.
+
+`pass turn` (active-player-only whole-turn skip) and `undo` stay in
+the Game.svelte toolbar — they're not priority passes, and they
+belong with the other table-wide shortcuts.
+
+**Why the toolbar got pared down:**
+The intelligent auto-pass system (stops grid + smartAutoPass +
+manual pins) makes the batch-pass buttons redundant — the cursor
+advances to the next configured stop automatically. The only thing
+a player needs a button for is the two extreme cases: "one more
+step please" (`next`) and "I'm out, stop asking" (`autopass`).
+
+**Why autopass lives inside PhaseDisplay (not the main toolbar):**
+The priority pills + phase track + step label are the information
+context; the two buttons are actions against that context. Keeping
+them in the same visual box trims eye-travel and makes the widget
+self-contained. Game.svelte's main toolbar stays focused on
+one-shot game actions (draw, untap all, shuffle, life, pass turn,
+undo) that aren't priority-specific.
+
+**Why autopass must only fire when the viewer holds priority:**
+The first iteration of autopass was a `passToEnd`-style loop that
+bashed `pass_priority` until the step hit cleanup. That loop
+didn't check `viewerHasPriority` between sends — during an
+opponent's turn, priority rotates off the viewer, and every
+subsequent send was rejected with `bad_request: you do not hold
+priority`. The toggle form sidesteps this: the `$effect` fires
+only when `viewerHasPriority` is true, so opponents' turns don't
+generate rejection spam.
+
+### 7. Autopass safety belt (`autopassPersistThroughTurns: false`)
+
+**Decision:** The autopass toggle auto-clears the first time the
+cursor enters the viewer's own `precombat_main` step — preventing
+the nightmare case where a forgotten autopass skips your own turn.
+A new gameplay setting `autopassPersistThroughTurns` (default
+`false`, schema v6) is the opt-out: flip it on to keep autopass
+engaged indefinitely. Labelled DANGER in the Settings UI with
+explicit warning copy ("WARNING: ENABLING THIS SETTING MAY CAUSE
+YOU TO SKIP YOUR OWN TURN").
+
+**Why the safety is default on:**
+The autopass toggle is tempting to leave on across turns ("I'll
+turn it off when it matters"), but the failure mode — losing your
+entire main phase to a one-click-forgot — is much worse than the
+inconvenience of having to re-click autopass each rotation.
+Default-on safety puts the sharp edge behind an explicit opt-in.
+
+**Why precombat_main (not earlier):**
+A paranoid reading would clear autopass on the viewer's untap
+step, but that's premature: most players actively want autopass to
+carry them through their own upkeep and draw steps when they're
+tapped out and nothing is happening. The one step that almost
+universally matters is precombat_main — that's where you cast
+things. Disabling there is the minimum-surprise default.
+
+**Why a danger label (not just a toggle):**
+The opt-in doesn't merely change UX — it changes whether the
+player can lose a turn to a forgotten UI state. Danger styling
+(amber border, WARNING copy in caps) matches how other
+minefield-adjacent settings are marked in similar projects. The
+cost of over-warning a rare "I know what I'm doing" case is low;
+the cost of a player flipping the toggle without noticing is a
+missed turn.
 
 ## Consequences
 

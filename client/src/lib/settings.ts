@@ -104,6 +104,15 @@ export interface Settings {
     // "stop every time regardless." Flip off to restore strict
     // pre-S13.6 behaviour where every stop demands a click.
     smartAutoPass: boolean;
+    // S13.6 autopass-mode safety. When OFF (default), the autopass
+    // toggle auto-clears the first time the cursor reaches the
+    // viewer's own precombat_main — a safety belt so you don't
+    // skip your own turn because you forgot to turn off autopass
+    // before it cycled back to you. When ON, autopass stays
+    // engaged until manually toggled off. Labelled DANGER in the
+    // UI; anyone opting in has decided they'd rather eat the risk
+    // of a skipped turn than re-toggle every cycle.
+    autopassPersistThroughTurns: boolean;
   };
 
   accessibility: {
@@ -121,7 +130,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 5;
+export const SETTINGS_VERSION = 6;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -206,6 +215,10 @@ export function defaultSettings(): Settings {
       // affordance; smartAutoPass lets it mean "stop if I
       // might want to respond" instead of "stop every time."
       smartAutoPass: true,
+      // S13.6 default: OFF — the autopass toggle clears on the
+      // viewer's next precombat_main so a forgotten autopass
+      // doesn't skip their turn. Opt-in is a DANGER setting.
+      autopassPersistThroughTurns: false,
     },
     accessibility: {
       reduceMotion: reduced,
@@ -285,6 +298,11 @@ function migrate(raw: unknown): Settings {
   // v3→v4 migration — the shallow merge fills it from defaults
   // (true) for any v4 blob that omits the field. No user state
   // to rescue from the old world.
+  //
+  // v5 → v6 (S13.6): gameplay.autopassPersistThroughTurns. Defaults
+  // to false (safe); existing v5 blobs inherit the safe default via
+  // the shallow merge. The opt-in has a danger-warning banner in
+  // the UI so anyone flipping it knows the risk.
   return absorbLegacy(merged);
 }
 
