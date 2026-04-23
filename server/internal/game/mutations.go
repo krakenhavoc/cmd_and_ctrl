@@ -1393,6 +1393,16 @@ func (g *Game) stateBasedActionsLocked() bool {
 			}
 			if c.DamageMarked >= curT {
 				doomed = append(doomed, c.InstanceID)
+				continue
+			}
+			// S18 sub-PR 3: CR 702.2c — a creature hit by any nonzero
+			// damage from a deathtouch source is destroyed at the
+			// next SBA regardless of toughness. The flag stays set
+			// until cleanup (or the card's destruction, via the
+			// zone-move listener) so a subsequent SBA pass on the
+			// same event cycle doesn't "un-doom" the creature.
+			if c.MarkedLethalByDeathtouch {
+				doomed = append(doomed, c.InstanceID)
 			}
 			continue
 		}
@@ -2748,70 +2758,231 @@ func (g *Game) ResolveCombatDamage() {
 	g.resolveCombatDamageLocked()
 }
 
+// resolveCombatDamageLocked runs combat damage as two substeps
+// (CR 510.2 + 510.3). First-strike and double-strike creatures assign
+// in the first substep; SBA fires between; regular + double-strike
+// creatures assign in the second. A creature that died in the first
+// substep does not participate in the second — collectCombatants
+// re-reads live battlefield state each call.
+//
+// Each substep delegates to assignAndDealCombatDamageLocked which
+// handles unblocked straight-to-player damage, single-blocker damage
+// with trample overflow, multi-blocker via CR 510.1c
+// damage-assignment prompt, menace close-out validation, and the
+// lifelink / deathtouch hooks.
 func (g *Game) resolveCombatDamageLocked() {
 	if g.State != StateActive {
 		return
 	}
-	// S16: ensure post-layer effective P/T is current before reading
-	// CurrentPower for damage assignment. The fast-path no-ops when
-	// no relevant event has fired since the last recompute. Without
-	// this, an anthem-pumped attacker would deal printed-power damage
-	// instead of buffed.
+	// Ensure post-layer effective P/T + Abilities are current before
+	// reading CurrentPower / HasKeyword. The fast-path no-ops when
+	// no relevant event has fired since the last recompute.
 	g.RecomputeLayersIfStaleLocked()
 
-	// Build the per-attacker blocker list once. Sandbox damage
-	// assignment: an attacker's full power lands on the FIRST blocker
-	// in the list (by Battlefield slice order). Real CR 509.2
-	// "controller assigns lethal damage in order" comes with combat
-	// keywords (S18+); for now the simple split is good enough for a
-	// 1-vs-1 block to actually destroy creatures.
-	blockers := make(map[uuid.UUID][]uuid.UUID, len(g.Battlefield.Cards))
-	for _, c := range g.Battlefield.Cards {
+	// Substep 1 — first-strike damage (CR 510.2). Creatures with
+	// first strike or double strike participate.
+	if g.hasAnyFirstStrikeCombatants() {
+		g.assignAndDealCombatDamageLocked(true)
+		// SBA + trigger drain between substeps so creatures that
+		// died to first-strike damage exit before the regular pass.
+		g.runStateChecksLocked()
+		// Re-recompute in case something died that had a static
+		// ability (anthem off the field, etc.) and its absence
+		// affects the regular-substep attackers/blockers.
+		g.RecomputeLayersIfStaleLocked()
+	}
+
+	// Substep 2 — regular damage (CR 510.3). Creatures with
+	// double strike (re-hit) OR without first strike.
+	g.assignAndDealCombatDamageLocked(false)
+	g.runStateChecksLocked()
+
+	// Combat state is intentionally left in place. AdvanceStep's
+	// transition into end_combat invokes clearCombatLocked, which
+	// clears AttackingTarget / BlockingTarget. Deferring the clear
+	// lets the client keep combat arrows drawn for the full duration
+	// of the combat_damage step.
+}
+
+// hasAnyFirstStrikeCombatants reports whether at least one attacker
+// or blocker currently on the battlefield has first strike or
+// double strike. When zero, the first-strike substep is skipped.
+// Caller must hold g.mu.
+func (g *Game) hasAnyFirstStrikeCombatants() bool {
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.AttackingTarget == uuid.Nil && c.BlockingTarget == uuid.Nil {
+			continue
+		}
+		if HasKeyword(c, "first strike") || HasKeyword(c, "double strike") {
+			return true
+		}
+	}
+	return false
+}
+
+// participatesInSubstep reports whether a combatant deals damage in
+// the given substep. Per CR 702.4 / 702.7:
+//   - First-strike substep: creatures with first strike OR double strike
+//   - Regular substep: creatures with double strike OR without first strike
+func participatesInSubstep(c *Card, firstStrike bool) bool {
+	fs := HasKeyword(c, "first strike")
+	ds := HasKeyword(c, "double strike")
+	if firstStrike {
+		return fs || ds
+	}
+	return ds || !fs
+}
+
+// assignAndDealCombatDamageLocked assigns and applies damage for one
+// substep. Builds per-attacker blocker lists (filtered to
+// substep-participating blockers), snapshots power, then iterates
+// attackers:
+//
+//   - Unblocked → straight to AttackingTarget via
+//     markCombatDamageToPlayerLocked.
+//   - Single blocker → full power on the blocker; trample overflow
+//     spills to AttackingTarget if (i) the attacker has trample and
+//     (ii) the blocker was assigned at-least-lethal.
+//   - Multi-blocker → queue a PendingChoiceDamageAssignment prompt;
+//     the attacker's damage lands only after resolve.
+//
+// Blockers deal their power back to the attacker simultaneously
+// (CR 510.1d). Lifelink and deathtouch are dispatched inside the
+// damage-marking helpers so they fire uniformly via the replacement
+// pipeline.
+//
+// Menace enforcement (CR 702.110): a single blocker on a menace
+// attacker is silently reverted — clear BlockingTarget, leaving the
+// attacker unblocked. Done at the top of this function so the
+// subsequent blocker list reflects the final legal state.
+//
+// Caller must hold g.mu.
+func (g *Game) assignAndDealCombatDamageLocked(firstStrike bool) {
+	// Menace close-out: scan attackers, if any has menace and
+	// exactly one blocker assigned, revert that blocker.
+	menaceReversions := 0
+	blockersByAttacker := make(map[uuid.UUID][]int, len(g.Battlefield.Cards))
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
 		if c.BlockingTarget != uuid.Nil {
-			blockers[c.BlockingTarget] = append(blockers[c.BlockingTarget], c.InstanceID)
+			blockersByAttacker[c.BlockingTarget] = append(blockersByAttacker[c.BlockingTarget], i)
+		}
+	}
+	for atkID, blkIdxs := range blockersByAttacker {
+		atk := findBattlefieldCard(g, atkID)
+		if atk == nil {
+			continue
+		}
+		if !HasKeyword(atk, "menace") {
+			continue
+		}
+		if len(blkIdxs) == 1 {
+			g.Battlefield.Cards[blkIdxs[0]].BlockingTarget = uuid.Nil
+			menaceReversions++
+		}
+	}
+	if menaceReversions > 0 {
+		// Rebuild blocker map after reversions.
+		blockersByAttacker = make(map[uuid.UUID][]int, len(g.Battlefield.Cards))
+		for i := range g.Battlefield.Cards {
+			c := &g.Battlefield.Cards[i]
+			if c.BlockingTarget != uuid.Nil {
+				blockersByAttacker[c.BlockingTarget] = append(blockersByAttacker[c.BlockingTarget], i)
+			}
 		}
 	}
 
-	// Snapshot per-card power BEFORE marking any damage so simultaneous
-	// resolution (CR 510.1c) sees consistent inputs — Bear deals 2 to
-	// the attacker even if the attacker's power gets dropped to 0 by a
-	// future -1/-1 counter from this damage step.
+	// Snapshot per-card power BEFORE marking any damage so
+	// simultaneous resolution (CR 510.1c/d) sees consistent inputs.
 	power := make(map[uuid.UUID]int, len(g.Battlefield.Cards))
-	for _, c := range g.Battlefield.Cards {
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
 		if c.AttackingTarget != uuid.Nil || c.BlockingTarget != uuid.Nil {
 			power[c.InstanceID] = c.CurrentPower()
 		}
 	}
 
-	// First pass: unblocked attackers hit the defender; blocked
-	// attackers deal their power to their blockers; blockers deal
-	// their power back to the attacker. All marks happen via
-	// markDamageInPlaceLocked (no SBA between marks — the SBA loop
-	// below sees the full simultaneous state).
-	for _, c := range g.Battlefield.Cards {
-		if c.AttackingTarget == uuid.Nil {
+	// Collect attackers first so we don't re-iterate a slice we may
+	// mutate via the pending-prompt path (Battlefield stays stable,
+	// but keep the loop over an indexed snapshot for clarity).
+	attackerIDs := make([]uuid.UUID, 0, len(g.Battlefield.Cards))
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].AttackingTarget != uuid.Nil {
+			attackerIDs = append(attackerIDs, g.Battlefield.Cards[i].InstanceID)
+		}
+	}
+
+	for _, atkID := range attackerIDs {
+		atk := findBattlefieldCard(g, atkID)
+		if atk == nil {
+			continue // died during this substep's iteration
+		}
+		if !participatesInSubstep(atk, firstStrike) {
 			continue
 		}
-		atkID := c.InstanceID
 		atkPower := power[atkID]
-		blockedBy := blockers[atkID]
-		if len(blockedBy) == 0 {
-			// Unblocked — straight to the defending player via the
-			// replacement pipeline (S17 sub-PR 5 — Fog etc. can
-			// cancel). Pipeline is a no-op when no combat-damage
-			// replacement is active.
-			g.markCombatDamageToPlayerLocked(c.AttackingTarget, atkID, atkPower)
-			continue
+		// Blocker list for this attacker — only substep participants.
+		blkIdxs := blockersByAttacker[atkID]
+		liveBlockers := make([]uuid.UUID, 0, len(blkIdxs))
+		for _, bi := range blkIdxs {
+			blk := &g.Battlefield.Cards[bi]
+			if blk.BlockingTarget != atkID {
+				continue // reverted earlier in this substep
+			}
+			liveBlockers = append(liveBlockers, blk.InstanceID)
 		}
-		// Blocked — dump full power on the first blocker (sandbox
-		// damage assignment). Real lethal-spread + trample / multi-
-		// blocker assignment lands with S18.
-		if atkPower > 0 {
-			g.markCombatDamageOnCardLocked(blockedBy[0], atkPower, atkID)
+
+		// Attacker's damage
+		if len(liveBlockers) == 0 {
+			if atkPower > 0 {
+				g.markCombatDamageToPlayerLocked(atk.AttackingTarget, atkID, atkPower)
+			}
+		} else if len(liveBlockers) == 1 {
+			// Single blocker: attacker assigns all power. Trample
+			// overflows to the defending player if the blocker gets
+			// at-least-lethal (CR 702.19b).
+			blkID := liveBlockers[0]
+			blk := findBattlefieldCard(g, blkID)
+			if blk != nil && atkPower > 0 {
+				lethalThreshold := blk.CurrentToughness() - blk.DamageMarked
+				if HasKeyword(atk, "deathtouch") && lethalThreshold > 1 {
+					lethalThreshold = 1
+				}
+				if lethalThreshold < 0 {
+					lethalThreshold = 0
+				}
+				toBlocker := atkPower
+				toPlayer := 0
+				if HasKeyword(atk, "trample") && atkPower > lethalThreshold {
+					toBlocker = lethalThreshold
+					toPlayer = atkPower - lethalThreshold
+				}
+				if toBlocker > 0 {
+					g.markCombatDamageOnCardLocked(blkID, toBlocker, atkID)
+				}
+				if toPlayer > 0 {
+					g.markCombatDamageToPlayerLocked(atk.AttackingTarget, atkID, toPlayer)
+				}
+			}
+		} else {
+			// Multi-blocker → queue damage-assignment prompt. Server
+			// pauses here; the resume path fires the actual marks.
+			// Until resume, the attacker's damage is NOT applied.
+			// Blocker damage still flows (simultaneous) because
+			// blockers deal power back regardless of attacker's
+			// assignment (CR 510.1d).
+			g.queueDamageAssignmentPromptLocked(atk, liveBlockers, atkPower, firstStrike)
 		}
-		// Each blocker deals its full power to the attacker
-		// (simultaneous, so all blockers contribute).
-		for _, blkID := range blockedBy {
+
+		// Blockers assign damage to the attacker simultaneously
+		// (CR 510.1d). Each blocker's damage flows independently of
+		// the attacker's split.
+		for _, blkID := range liveBlockers {
+			blk := findBattlefieldCard(g, blkID)
+			if blk == nil || !participatesInSubstep(blk, firstStrike) {
+				continue
+			}
 			blkPower := power[blkID]
 			if blkPower <= 0 {
 				continue
@@ -2819,17 +2990,37 @@ func (g *Game) resolveCombatDamageLocked() {
 			g.markCombatDamageOnCardLocked(atkID, blkPower, blkID)
 		}
 	}
+}
 
-	// Run state-based actions so lethal-damage / 0-toughness destroy
-	// the casualties of this combat. Without this, marked-damage
-	// would sit on the cards until the next mutation triggered SBAs.
-	g.runStateChecksLocked()
-
-	// Combat state is intentionally left in place here. AdvanceStep's
-	// transition into end_combat invokes clearCombatLocked, which is
-	// what actually clears AttackingTarget / BlockingTarget. Deferring
-	// the clear lets the client keep combat arrows drawn for the full
-	// duration of the combat_damage step.
+// queueDamageAssignmentPromptLocked queues a CR 510.1c prompt for
+// multi-blocker damage assignment. The attacker's controller is the
+// chooser; the client renders a drag-reorder + per-blocker damage
+// input panel and returns
+// {assignments: [{blocker_id, amount}], trample_to_player}. The
+// ResolveDamageAssignment resume path dispatches the damage through
+// the same pipeline helpers so lifelink / deathtouch / Fog-style
+// replacement all fire uniformly.
+//
+// Caller must hold g.mu.
+func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UUID, atkPower int, firstStrike bool) {
+	frame := &DamageAssignmentFrame{
+		AttackerID:       atk.InstanceID,
+		BlockerIDs:       append([]uuid.UUID(nil), blockerIDs...),
+		AttackerPower:    atkPower,
+		AllowTrample:     HasKeyword(atk, "trample"),
+		HasDeathtouch:    HasKeyword(atk, "deathtouch"),
+		FirstStrike:      firstStrike,
+		SourceLifelink:   HasKeyword(atk, "lifelink"),
+		SourceController: atk.Controller,
+	}
+	g.QueueChoiceForEffect(PendingChoice{
+		Kind:             PendingChoiceDamageAssignment,
+		Chooser:          atk.Controller,
+		Count:            len(blockerIDs),
+		Source:           atk.InstanceID,
+		Reason:           "Assign combat damage",
+		DamageAssignment: frame,
+	})
 }
 
 // markCombatDamageOnCardLocked adds damage to a battlefield card and
@@ -2878,14 +3069,187 @@ func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source
 			continue
 		}
 		g.Battlefield.Cards[i].DamageMarked += out.DamageAmount
+		// S18 sub-PR 3: CR 702.2c — damage from a deathtouch source
+		// flags the creature for SBA destruction regardless of
+		// toughness.
+		if srcCard := findBattlefieldCard(g, out.DamageSource); srcCard != nil && HasKeyword(srcCard, "deathtouch") {
+			g.Battlefield.Cards[i].MarkedLethalByDeathtouch = true
+		}
 		g.EmitEvent(Event{
 			Kind:   EventDealDamage,
 			Source: out.DamageSource,
 			Target: out.DamageTarget,
 			Amount: out.DamageAmount,
 		})
+		// S18 sub-PR 3: CR 702.15 — lifelink credits the source's
+		// controller for the (post-replacement) damage amount. Fires
+		// uniformly for combat and non-combat damage.
+		g.applyLifelinkLocked(out.DamageSource, out.DamageAmount)
 		return
 	}
+}
+
+// markCombatDamageFromFrameLocked is the damage-to-creature router
+// for the CR 510.1c damage-assignment prompt's resume path. Same
+// shape as markCombatDamageOnCardLocked but sources the deathtouch
+// and lifelink keyword state from the prompt's DamageAssignmentFrame
+// instead of looking up the attacker via findBattlefieldCard —
+// critical because the attacker may have died to blocker damage
+// that resolved in the same substep before the prompt fires.
+//
+// Caller must hold g.mu.
+func (g *Game) markCombatDamageFromFrameLocked(cardID uuid.UUID, amount int, frame *DamageAssignmentFrame) {
+	if amount <= 0 || frame == nil {
+		return
+	}
+	ev := &ReplacementEvent{
+		Kind:           RepEventDamage,
+		Source:         frame.AttackerID,
+		DamageSource:   frame.AttackerID,
+		DamageTarget:   cardID,
+		DamageAmount:   amount,
+		IsCombatDamage: true,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		return
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		return
+	}
+	if out.DamageAmount <= 0 {
+		return
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID != out.DamageTarget {
+			continue
+		}
+		g.Battlefield.Cards[i].DamageMarked += out.DamageAmount
+		if frame.HasDeathtouch {
+			g.Battlefield.Cards[i].MarkedLethalByDeathtouch = true
+		}
+		g.EmitEvent(Event{
+			Kind:   EventDealDamage,
+			Source: out.DamageSource,
+			Target: out.DamageTarget,
+			Amount: out.DamageAmount,
+		})
+		if frame.SourceLifelink {
+			g.applyLifelinkFromFrameLocked(out.DamageAmount, frame)
+		}
+		return
+	}
+}
+
+// markCombatDamageToPlayerFromFrameLocked is the damage-to-player
+// counterpart of markCombatDamageFromFrameLocked — used by the
+// damage-assignment resume path for trample overflow to the
+// defending player. Sources lifelink state from the frame.
+//
+// Caller must hold g.mu.
+func (g *Game) markCombatDamageToPlayerFromFrameLocked(playerID uuid.UUID, amount int, frame *DamageAssignmentFrame) {
+	if amount <= 0 || frame == nil {
+		return
+	}
+	ev := &ReplacementEvent{
+		Kind:           RepEventDamage,
+		Source:         frame.AttackerID,
+		DamageSource:   frame.AttackerID,
+		DamageTarget:   playerID,
+		DamageAmount:   amount,
+		IsCombatDamage: true,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		return
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		return
+	}
+	if out.DamageAmount <= 0 {
+		return
+	}
+	p := g.playerByIDLocked(out.DamageTarget)
+	if p == nil {
+		return
+	}
+	p.ChangeLife(-out.DamageAmount)
+	g.EmitEvent(Event{
+		Kind:   EventDealDamage,
+		Source: out.DamageSource,
+		Target: out.DamageTarget,
+		Amount: out.DamageAmount,
+	})
+	if frame.SourceLifelink {
+		g.applyLifelinkFromFrameLocked(out.DamageAmount, frame)
+	}
+}
+
+// applyLifelinkFromFrameLocked credits the frame's cached source
+// controller with `amount` life. Used by the damage-assignment
+// resume path so lifelink still fires even if the attacker died
+// to blocker damage before the prompt resolved.
+//
+// Caller must hold g.mu.
+func (g *Game) applyLifelinkFromFrameLocked(amount int, frame *DamageAssignmentFrame) {
+	if amount <= 0 || frame == nil || !frame.SourceLifelink {
+		return
+	}
+	p := g.playerByIDLocked(frame.SourceController)
+	if p == nil {
+		return
+	}
+	p.ChangeLife(amount)
+	g.EmitEvent(Event{
+		Kind:   EventChangeLife,
+		Target: frame.SourceController,
+		Source: frame.AttackerID,
+		Amount: amount,
+	})
+}
+
+// applyLifelinkLocked credits the damage source's controller with
+// `amount` life if the source has the lifelink keyword (CR 702.15).
+// Called from both damage-to-card and damage-to-player routers so
+// lifelink fires for every damage event from a lifelink source —
+// combat and non-combat alike. Runs through ChangePlayerLife (not
+// the pipeline) because life gain from lifelink is not itself a
+// rules-visible replaceable event at S18 scope (replacement of the
+// life gain is an S28 cost/effect axis, not S18).
+//
+// Caller must hold g.mu.
+func (g *Game) applyLifelinkLocked(sourceID uuid.UUID, amount int) {
+	if amount <= 0 {
+		return
+	}
+	src := findBattlefieldCard(g, sourceID)
+	if src == nil {
+		return
+	}
+	if !HasKeyword(src, "lifelink") {
+		return
+	}
+	p := g.playerByIDLocked(src.Controller)
+	if p == nil {
+		return
+	}
+	p.ChangeLife(amount)
+	g.EmitEvent(Event{
+		Kind:   EventChangeLife,
+		Target: src.Controller,
+		Source: sourceID,
+		Amount: amount,
+	})
 }
 
 // markCombatDamageToPlayerLocked applies combat damage to a player
@@ -2930,6 +3294,10 @@ func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount
 		Target: out.DamageTarget,
 		Amount: out.DamageAmount,
 	})
+	// S18 sub-PR 3: lifelink credits the source's controller for
+	// damage dealt to a player too (CR 702.15 — all damage, not just
+	// damage to creatures).
+	g.applyLifelinkLocked(out.DamageSource, out.DamageAmount)
 }
 
 // ClearCombat resets every card on the battlefield to "not attacking

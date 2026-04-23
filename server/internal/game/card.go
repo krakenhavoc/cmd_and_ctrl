@@ -168,6 +168,15 @@ type Card struct {
 	// the battlefield; ignored in other zones. Added in S18 sub-PR 2.
 	SummonedThisTurn bool
 
+	// MarkedLethalByDeathtouch is the S18 deathtouch-mark flag (CR
+	// 702.2c — "any nonzero damage from a source with deathtouch
+	// causes that damage to be marked as lethal"). Set true when
+	// damage from a deathtouch source lands on this creature;
+	// read by the lethal-damage SBA. Cleared at StepCleanup
+	// alongside DamageMarked. Only meaningful on the battlefield.
+	// Added in S18 sub-PR 3.
+	MarkedLethalByDeathtouch bool
+
 	// effective is the cached post-layer-resolution characteristic
 	// for this card on the battlefield. Populated by the layer
 	// engine's recompute pass; nil ⇒ "no recompute has run since

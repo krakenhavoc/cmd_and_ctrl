@@ -13,6 +13,7 @@
 
   import type {
     CardView,
+    DamageAssignmentView,
     GameView,
     PendingChoiceView,
     ReplacementOptionView,
@@ -160,6 +161,94 @@
     if (!active || !viewerID) return;
     sendAction("resolve_choice", { choice_id: active.id, apply }, viewerID);
   }
+
+  // S18 damage_assignment branch — CR 510.1c multi-blocker combat
+  // damage prompt. The attacker's controller reorders the blockers
+  // (drag via up/down buttons since drag-and-drop UX lives outside
+  // this sprint) and assigns damage per blocker. Server validates
+  // at-least-lethal prefix + total = attacker_power, and trample
+  // overflow if AllowTrample.
+  const isDamageAssignment = $derived(active?.kind === "damage_assignment");
+  const damageFrame = $derived<DamageAssignmentView | null>(active?.damage_assignment ?? null);
+
+  // Ordered blocker IDs (reorderable). Damage amount per blocker,
+  // keyed by blocker ID. Trample-to-player bucket.
+  let blockerOrder = $state<string[]>([]);
+  let damageAmounts = $state<Record<string, number>>({});
+  let trampleToPlayer = $state(0);
+
+  // Reset assignment state when the prompt changes.
+  $effect(() => {
+    if (!damageFrame) return;
+    if (
+      blockerOrder.length === damageFrame.blocker_card_ids.length &&
+      blockerOrder.every((id, i) => id === damageFrame.blocker_card_ids[i])
+    )
+      return;
+    blockerOrder = [...damageFrame.blocker_card_ids];
+    const next: Record<string, number> = {};
+    for (const id of damageFrame.blocker_card_ids) next[id] = 0;
+    damageAmounts = next;
+    trampleToPlayer = 0;
+  });
+
+  const assignedTotal = $derived(
+    blockerOrder.reduce((acc, id) => acc + (damageAmounts[id] ?? 0), 0) + trampleToPlayer,
+  );
+
+  const canSubmitAssignment = $derived(
+    damageFrame !== null && assignedTotal === damageFrame.attacker_power,
+  );
+
+  function moveBlocker(id: string, delta: -1 | 1): void {
+    const idx = blockerOrder.indexOf(id);
+    if (idx < 0) return;
+    const target = idx + delta;
+    if (target < 0 || target >= blockerOrder.length) return;
+    const next = [...blockerOrder];
+    [next[idx], next[target]] = [next[target], next[idx]];
+    blockerOrder = next;
+  }
+
+  function setDamageAmount(id: string, raw: string): void {
+    const n = Math.max(0, Math.floor(Number(raw) || 0));
+    damageAmounts = { ...damageAmounts, [id]: n };
+  }
+
+  function setTrampleAmount(raw: string): void {
+    const n = Math.max(0, Math.floor(Number(raw) || 0));
+    trampleToPlayer = n;
+  }
+
+  function blockerName(id: string): string {
+    if (!snap.battlefield) return id.slice(0, 8);
+    const card = snap.battlefield.cards.find((c) => c.instance_id === id);
+    return card?.name ?? id.slice(0, 8);
+  }
+
+  function attackerName(id: string): string {
+    if (!snap.battlefield) return id.slice(0, 8);
+    const card = snap.battlefield.cards.find((c) => c.instance_id === id);
+    return card?.name ?? id.slice(0, 8);
+  }
+
+  function submitDamageAssignment(): void {
+    if (!active || !viewerID || !damageFrame) return;
+    if (!canSubmitAssignment) return;
+    const assignments = blockerOrder.map((id) => ({
+      blocker_id: id,
+      amount: damageAmounts[id] ?? 0,
+    }));
+    sendAction(
+      "resolve_choice",
+      {
+        choice_id: active.id,
+        assignments,
+        trample_to_player: trampleToPlayer,
+      },
+      viewerID,
+    );
+  }
 </script>
 
 {#if open && active}
@@ -193,6 +282,85 @@
         <div class="yes-no-row">
           <button type="button" class="submit" onclick={() => answerOptional(true)}> Yes </button>
           <button type="button" class="decline" onclick={() => answerOptional(false)}> No </button>
+        </div>
+      {:else if isDamageAssignment && damageFrame}
+        <h2 id="choice-title">{active.reason || "Assign combat damage"}</h2>
+        <p class="hint">
+          <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
+          is blocked by {damageFrame.blocker_card_ids.length} creatures. Order them and divide
+          {damageFrame.attacker_power} damage (CR 510.1c — earlier blockers must be dealt at-least-lethal
+          before the next gets any).
+          {#if damageFrame.allow_trample}
+            Trample lets leftover damage spill to the defending player.
+          {/if}
+          {#if damageFrame.has_deathtouch}
+            Deathtouch makes 1 damage lethal.
+          {/if}
+        </p>
+        <ul class="assign-list">
+          {#each blockerOrder as id, i (id)}
+            <li class="assign-row">
+              <div class="assign-order">
+                <button
+                  type="button"
+                  class="reorder-btn"
+                  disabled={i === 0}
+                  onclick={() => moveBlocker(id, -1)}
+                  aria-label={`move ${blockerName(id)} up`}
+                >
+                  ▲
+                </button>
+                <span class="assign-pos">{i + 1}</span>
+                <button
+                  type="button"
+                  class="reorder-btn"
+                  disabled={i === blockerOrder.length - 1}
+                  onclick={() => moveBlocker(id, 1)}
+                  aria-label={`move ${blockerName(id)} down`}
+                >
+                  ▼
+                </button>
+              </div>
+              <span class="assign-name">{blockerName(id)}</span>
+              <label class="assign-input">
+                <span class="sr-only">damage to {blockerName(id)}</span>
+                <input
+                  type="number"
+                  min="0"
+                  max={damageFrame.attacker_power}
+                  value={damageAmounts[id] ?? 0}
+                  oninput={(e) => setDamageAmount(id, (e.currentTarget as HTMLInputElement).value)}
+                />
+              </label>
+            </li>
+          {/each}
+          {#if damageFrame.allow_trample}
+            <li class="assign-row trample">
+              <div class="assign-order"><span class="assign-pos">→</span></div>
+              <span class="assign-name">Defending player (trample)</span>
+              <label class="assign-input">
+                <span class="sr-only">trample damage to defending player</span>
+                <input
+                  type="number"
+                  min="0"
+                  max={damageFrame.attacker_power}
+                  value={trampleToPlayer}
+                  oninput={(e) => setTrampleAmount((e.currentTarget as HTMLInputElement).value)}
+                />
+              </label>
+            </li>
+          {/if}
+        </ul>
+        <div class="footer">
+          <span class="counter">{assignedTotal} / {damageFrame.attacker_power} assigned</span>
+          <button
+            type="button"
+            class="submit"
+            disabled={!canSubmitAssignment}
+            onclick={submitDamageAssignment}
+          >
+            Deal damage
+          </button>
         </div>
       {:else if isReplacementOrder}
         <h2 id="choice-title">{active.reason || "Order replacement effects"}</h2>
@@ -542,5 +710,84 @@
   .decline:hover {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.24);
+  }
+  .assign-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 440px;
+  }
+  .assign-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 2px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+  }
+  .assign-row.trample {
+    border-color: rgba(255, 154, 133, 0.3);
+    background: rgba(255, 154, 133, 0.06);
+  }
+  .assign-order {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .assign-pos {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    background: rgba(122, 167, 255, 0.16);
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .reorder-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--fg);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .reorder-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+  }
+  .reorder-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+  .assign-name {
+    font-weight: 600;
+  }
+  .assign-input input {
+    width: 70px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--fg);
+    font: inherit;
+    text-align: right;
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 </style>

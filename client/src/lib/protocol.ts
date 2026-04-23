@@ -144,7 +144,13 @@ export interface GameView {
 // is pre-filtered to what the viewer is legally allowed to see.
 export interface PendingChoiceView {
   id: string;
-  kind: "discard_from_hand" | "mana_pick" | "replacement_order" | "optional_replacement" | string;
+  kind:
+    | "discard_from_hand"
+    | "mana_pick"
+    | "replacement_order"
+    | "optional_replacement"
+    | "damage_assignment"
+    | string;
   chooser: string;
   from_player: string;
   count: number;
@@ -164,6 +170,12 @@ export interface PendingChoiceView {
   // for other kinds. Wire modal lands in sub-PR 3 alongside
   // Doubling Season + Hardened Scales.
   replacement_options?: ReplacementOptionView[];
+  // S18: populated for kind "damage_assignment" — the CR 510.1c
+  // multi-blocker combat damage prompt. Client renders a per-blocker
+  // damage input panel (+ trample-to-player input when allow_trample
+  // is set) and submits resolve_choice with
+  // { assignments: [{blocker_id, amount}, ...], trample_to_player }.
+  damage_assignment?: DamageAssignmentView;
 }
 
 // ReplacementOptionView mirrors protocol.ReplacementOptionView —
@@ -176,6 +188,20 @@ export interface ReplacementOptionView {
   id: string;
   label?: string;
   source_card_id?: string;
+}
+
+// DamageAssignmentView mirrors protocol.DamageAssignmentView — the
+// wire shape of a CR 510.1c multi-blocker combat damage prompt.
+// The attacker's controller distributes attacker_power across the
+// blockers (respecting at-least-lethal-in-order) and, if
+// allow_trample, can overflow leftover to the defending player.
+// Added in S18 sub-PR 3.
+export interface DamageAssignmentView {
+  attacker_card_id: string;
+  blocker_card_ids: string[];
+  attacker_power: number;
+  allow_trample?: boolean;
+  has_deathtouch?: boolean;
 }
 
 // StackItemView mirrors `protocol.StackItemView` server-side: the

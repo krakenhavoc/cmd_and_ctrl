@@ -855,6 +855,14 @@ func Dispatch(g *game.Game, a Action) error {
 			// Pointer so we can disambiguate "absent" (nil) from
 			// "false" (&false) in the routing check.
 			OptionalApply *bool `json:"apply"`
+			// Assignments populates an S18 sub-PR 3
+			// PendingChoiceDamageAssignment pick — each entry is
+			// {blocker_id, amount}. The attacker's controller
+			// submits the ordered list; optional
+			// trample_to_player carries overflow when attacker has
+			// trample.
+			Assignments     []damageAssignmentParam `json:"assignments"`
+			TrampleToPlayer int                     `json:"trample_to_player"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -879,6 +887,20 @@ func Dispatch(g *game.Game, a Action) error {
 				order = append(order, id)
 			}
 			return g.ResolveReplacementOrder(choiceID, a.Player, order)
+		}
+		if len(p.Assignments) > 0 || p.TrampleToPlayer > 0 {
+			entries := make([]game.DamageAssignmentEntry, 0, len(p.Assignments))
+			for i, raw := range p.Assignments {
+				blockerID, err := uuid.Parse(raw.BlockerID)
+				if err != nil {
+					return fmt.Errorf("resolve_choice assignments[%d].blocker_id: %w", i, err)
+				}
+				entries = append(entries, game.DamageAssignmentEntry{
+					BlockerID: blockerID,
+					Amount:    raw.Amount,
+				})
+			}
+			return g.ResolveDamageAssignment(choiceID, a.Player, entries, p.TrampleToPlayer)
 		}
 		ids := make([]uuid.UUID, 0, len(p.CardIDs))
 		for i, raw := range p.CardIDs {
@@ -1001,6 +1023,16 @@ type zoneRefWire struct {
 type castTargetWire struct {
 	Kind string `json:"kind"`
 	ID   string `json:"id,omitempty"`
+}
+
+// damageAssignmentParam is one {blocker_id, amount} pair from a
+// resolve_choice action on a PendingChoiceDamageAssignment entry.
+// The attacker's controller submits an ordered list; the server's
+// ResolveDamageAssignment validates prefix-lethal and total. Added
+// in S18 sub-PR 3.
+type damageAssignmentParam struct {
+	BlockerID string `json:"blocker_id"`
+	Amount    int    `json:"amount"`
 }
 
 // buildAbilityParams marshals the wire-decoded fields of an
