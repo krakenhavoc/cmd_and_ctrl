@@ -558,7 +558,12 @@ func (g *Game) runStepEntryHooksLocked() {
 	out, err := g.applyReplacementsLocked(stepEv)
 	if !errors.Is(err, errReplacementPending) {
 		defer g.clearReplacementEventLocked(stepEv.ID)
-		if err == nil && out != nil && out.Canceled {
+		// Canceled events come back as (nil, nil) from
+		// applyReplacementsLocked — check err==nil + out==nil as
+		// the cancel signal, plus the belt-and-braces out.Canceled
+		// for any intermediate path that returns the event.
+		canceled := err == nil && (out == nil || out.Canceled)
+		if canceled {
 			// Step canceled — advance past and recurse so the
 			// cursor hits the next step's entry hook.
 			g.Turn = g.Turn.advance(len(g.Seats))

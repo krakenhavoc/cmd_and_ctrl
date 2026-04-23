@@ -581,6 +581,27 @@ func (g *Game) SearchLibraryForEffect(
 	reveal bool,
 	shuffle bool,
 ) error {
+	return g.SearchLibraryForEffectWithOptions(playerID, pred, dest, limit, reveal, shuffle, false)
+}
+
+// SearchLibraryForEffectWithOptions is the extended entry point
+// with a tappedOnEntry flag — fetched permanents enter the
+// battlefield tapped when true. Closes the S14 "enters untapped"
+// deferral for Cultivate / Path to Exile / Solemn Simulacrum.
+// Added in S17 sub-PR 4.
+//
+// The tapped flag is applied AFTER the push to destZone but
+// BEFORE EventETB fires — matching the replacement-pipeline's
+// EntersTapped semantics in MoveCardByIDAsCommander.
+func (g *Game) SearchLibraryForEffectWithOptions(
+	playerID uuid.UUID,
+	pred func(Card) bool,
+	dest ZoneKind,
+	limit int,
+	reveal bool,
+	shuffle bool,
+	tappedOnEntry bool,
+) error {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound
@@ -628,6 +649,19 @@ func (g *Game) SearchLibraryForEffect(
 				return err
 			}
 			g.markCardKnownInZoneLocked(destZone, id)
+			// S17 sub-PR 4: stamp Tapped on fetched permanents when
+			// the card text specifies "enters tapped" (Cultivate /
+			// Path to Exile / Solemn Simulacrum). Applied before
+			// EventETB fires so listeners + the client see the
+			// tapped state consistent with ETB.
+			if tappedOnEntry && destZone.Kind == ZoneBattlefield {
+				for i := range destZone.Cards {
+					if destZone.Cards[i].InstanceID == id {
+						destZone.Cards[i].Tapped = true
+						break
+					}
+				}
+			}
 			g.EmitEvent(Event{
 				Kind:    EventZoneMove,
 				Actor:   playerID,

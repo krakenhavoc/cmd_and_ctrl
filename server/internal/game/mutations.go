@@ -382,6 +382,32 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// Lands skip the stack entirely (CR 305). Move the card to the
 	// battlefield and stamp the controller — same shape as PlayCard.
 	if card.IsLand() {
+		// S17 sub-PR 4: run the CR 614 replacement pipeline so
+		// enters-tapped replacements (Kismet) + enters-with-counters
+		// effects fire before the land's ETB event. Pipeline runs
+		// pre-push so a future destination-rewriter replacement
+		// (e.g. a hypothetical "lands go to graveyard instead")
+		// would redirect cleanly.
+		ev := &ReplacementEvent{
+			Kind:    RepEventMove,
+			CardID:  cardID,
+			OldZone: src.Kind,
+			NewZone: ZoneBattlefield,
+			Actor:   playerID,
+		}
+		out, err := g.applyReplacementsLocked(ev)
+		if errors.Is(err, errReplacementPending) {
+			return nil
+		}
+		if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+			g.clearReplacementEventLocked(ev.ID)
+			return err
+		}
+		defer g.clearReplacementEventLocked(ev.ID)
+		if out == nil || out.Canceled {
+			return nil
+		}
+
 		moved, err := MoveCard(src, g.Battlefield, cardID)
 		if err != nil {
 			return err
@@ -389,9 +415,15 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		for i := range g.Battlefield.Cards {
 			if g.Battlefield.Cards[i].InstanceID == moved.InstanceID {
 				g.Battlefield.Cards[i].Controller = playerID
+				if out.EntersTapped {
+					g.Battlefield.Cards[i].Tapped = true
+				}
 			}
 		}
 		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
+		for name, n := range out.EntersWithCounters {
+			_ = g.AddCounterForEffect(moved.InstanceID, name, n)
+		}
 		g.EmitEvent(Event{
 			Kind:    EventZoneMove,
 			Actor:   playerID,
@@ -797,6 +829,30 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// Permanents resolve to the battlefield with the announce-time
 		// controller (which may differ from owner — e.g. cast via a
 		// "play this from exile" effect that change controller).
+		// S17 sub-PR 4: CR 614 replacement pipeline for enters-tapped
+		// (Kismet) + enters-with-counters. Pipeline runs pre-push;
+		// canceled permanents stay on the stack (rare in practice —
+		// "if X would enter, instead..." effects are edge cases).
+		ev := &ReplacementEvent{
+			Kind:    RepEventMove,
+			CardID:  top.InstanceID,
+			OldZone: ZoneStack,
+			NewZone: ZoneBattlefield,
+			Actor:   item.Controller,
+		}
+		out, err := g.applyReplacementsLocked(ev)
+		if errors.Is(err, errReplacementPending) {
+			return nil
+		}
+		if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+			g.clearReplacementEventLocked(ev.ID)
+			return err
+		}
+		defer g.clearReplacementEventLocked(ev.ID)
+		if out == nil || out.Canceled {
+			return nil
+		}
+
 		moved, err := MoveCard(g.Stack, g.Battlefield, top.InstanceID)
 		if err != nil {
 			return err
@@ -804,10 +860,16 @@ func (g *Game) resolveTopOfStackLocked() error {
 		for i := range g.Battlefield.Cards {
 			if g.Battlefield.Cards[i].InstanceID == moved.InstanceID {
 				g.Battlefield.Cards[i].Controller = item.Controller
+				if out.EntersTapped {
+					g.Battlefield.Cards[i].Tapped = true
+				}
 				break
 			}
 		}
 		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
+		for name, n := range out.EntersWithCounters {
+			_ = g.AddCounterForEffect(moved.InstanceID, name, n)
+		}
 		g.EmitEvent(Event{
 			Kind:    EventZoneMove,
 			Actor:   item.Controller,
