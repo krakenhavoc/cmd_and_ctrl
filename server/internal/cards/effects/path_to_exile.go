@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"errors"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Path to Exile — "Exile target creature. Its controller may
 // search their library for a basic land card, put it onto the
@@ -22,13 +26,21 @@ func init() {
 		Name:       "Path to Exile",
 		TargetMode: "creature",
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-				return nil
+			// Diagnostic: surface silent no-ops so they're visible in
+			// the event log as EventEffectError. Path appearing to
+			// "have no effect" was a user-report regression during
+			// S17 manual testing — without these returns the spell
+			// resolved to graveyard without any trace.
+			if len(item.Targets) == 0 {
+				return errors.New("Path to Exile: cast with no target (client UI skipped targeting?)")
+			}
+			if item.Targets[0].Kind != game.TargetCard {
+				return errors.New("Path to Exile: first target is not a card")
 			}
 			targetID := item.Targets[0].ID
 			card, ok := ctx.Game.LookupCardForEffect(targetID)
 			if !ok {
-				return nil
+				return errors.New("Path to Exile: target card not found in any zone")
 			}
 			controller := card.Controller
 			if err := (ExileTarget{Target: targetID}).Apply(ctx); err != nil {
