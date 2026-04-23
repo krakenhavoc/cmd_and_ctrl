@@ -18,6 +18,14 @@
 
   import { hoveredCard } from "../../cardTypes";
   import { metaFor, type CardMeta } from "../../cardMetaCache";
+  import type { GameView, PlayerView } from "../../protocol";
+  import { playerColor } from "../../avatarColor";
+  import { seatColor } from "../../colors";
+
+  interface Props {
+    view: GameView;
+  }
+  const { view }: Props = $props();
 
   const card = $derived($hoveredCard);
   const imgSrc = $derived(
@@ -48,6 +56,33 @@
           .map(([name, n]) => ({ name, n }))
       : [],
   );
+
+  // Commander-damage rows — only computed (and rendered) when the
+  // hovered card is a commander. Reads `commander_damage[instance_id]`
+  // on every OTHER seat so partner / token-copy commanders each show
+  // their own instance-scoped totals. The controller is excluded per
+  // CR (a player can't deal commander damage to themselves) and to
+  // avoid a muddy self-row.
+  const playerColors = $state<Record<string, string>>({});
+  $effect(() => {
+    if (!card?.is_commander) return;
+    for (const s of view.seats) {
+      const id = s.id;
+      playerColors[id] = playerColor(s, (c) => {
+        playerColors[id] = c;
+      });
+    }
+  });
+  const colorFor = (seat: PlayerView): string => playerColors[seat.id] ?? seatColor(seat.seat);
+  const cmdrRows = $derived.by(() => {
+    if (!card?.is_commander) return [];
+    const instanceID = card.instance_id;
+    const controllerID = card.controller;
+    return view.seats
+      .filter((s) => s.id !== controllerID)
+      .map((s) => ({ seat: s, amount: s.commander_damage?.[instanceID] ?? 0 }));
+  });
+  const cmdrHasDamage = $derived(cmdrRows.some((r) => r.amount > 0));
 
   // Display P/T with counter modifiers when present so the panel shows
   // the live combat value, not just the printed line. Matches the
@@ -111,6 +146,35 @@
           <span class="counter-chip">{chip.name} ×{chip.n}</span>
         {/each}
       </footer>
+      {#if card.is_commander}
+        <section class="cmdr-dmg" aria-label="commander damage dealt">
+          <header class="cmdr-head">
+            <span class="cmdr-dot" aria-hidden="true"></span>
+            <span class="cmdr-label">cmdr dmg dealt</span>
+          </header>
+          {#if cmdrHasDamage}
+            <ul class="cmdr-rows">
+              {#each cmdrRows as row (row.seat.id)}
+                <li class="cmdr-row" class:zero={row.amount === 0}>
+                  <span
+                    class="cmdr-name"
+                    style:--seat-color={colorFor(row.seat)}
+                    title={row.seat.name}
+                  >
+                    <span class="cmdr-name-dot" aria-hidden="true"></span>
+                    <span class="cmdr-name-text">{row.seat.name}</span>
+                  </span>
+                  <span class="cmdr-amount" class:lethal={row.amount >= 21}>
+                    {row.amount}
+                  </span>
+                </li>
+              {/each}
+            </ul>
+          {:else}
+            <div class="cmdr-empty">no commander damage dealt yet</div>
+          {/if}
+        </section>
+      {/if}
     </div>
   </div>
 {/if}
@@ -268,5 +332,96 @@
     background: #1a2335;
     color: #c8a86a;
     border: 1px solid #2e3a55;
+  }
+  /* Commander-damage section — lives at the bottom of the info
+     panel when the hovered card is a commander. Replaces the
+     free-floating CommanderDamageTooltip so the information is
+     anchored to the card the user is actually inspecting. */
+  .cmdr-dmg {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid #1a2335;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .cmdr-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .cmdr-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--gold, #c8a86a);
+    display: inline-block;
+  }
+  .cmdr-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--fg-dim, #6c7a99);
+    font-weight: 700;
+  }
+  .cmdr-rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .cmdr-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 1px 0;
+    font-size: 11px;
+  }
+  .cmdr-row.zero {
+    opacity: 0.55;
+  }
+  .cmdr-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    color: var(--fg);
+  }
+  .cmdr-name-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--seat-color, #888);
+    flex: 0 0 auto;
+  }
+  .cmdr-name-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 14ch;
+  }
+  .cmdr-amount {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: #c8a86a;
+    min-width: 2ch;
+    text-align: right;
+  }
+  .cmdr-amount.lethal {
+    color: #ff7a7a;
+    text-shadow: 0 0 6px rgba(255, 122, 122, 0.55);
+  }
+  .cmdr-row.zero .cmdr-amount {
+    color: var(--fg-dim, #6c7a99);
+    font-weight: 500;
+  }
+  .cmdr-empty {
+    font-size: 10px;
+    color: var(--fg-dim, #6c7a99);
+    font-style: italic;
+    padding: 2px 0;
   }
 </style>
