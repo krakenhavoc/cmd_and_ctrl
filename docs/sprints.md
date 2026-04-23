@@ -29,53 +29,54 @@ planned just-in-time from the S12 pain-point triage.
 
 ## Sprint index
 
-| # | Name | Phase | Issue | Due | Status |
-|---|---|---|---|---|---|
-| S01 | Go server + client scaffold | 0 | [#1](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1) | 2026-04-24 | **done** |
-| S02 | Core game state: zones + turns | 1 | [#2](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2) | 2026-05-08 | **done** |
-| S03 | Action protocol + state deltas | 1 | [#3](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3) | 2026-05-22 | **done** |
-| S04 | Lobby, auth, Scryfall pipeline | 2 | [#4](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4) | 2026-06-05 | **done** |
-| S05 | Deck import + 4-player table layout | 3 | [#5](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5) | 2026-06-19 | **done** |
-| S06 | Hand, battlefield, zones UI | 3 | [#6](https://github.com/krakenhavoc/cmd_and_ctrl/issues/6) | 2026-07-03 | **done** |
-| S06.5 | Dynamic deck import from URLs (mini) | 3 | [#37](https://github.com/krakenhavoc/cmd_and_ctrl/issues/37) | 2026-07-10 | **done** |
-| S07 | Turn/phase UI + chat + manual priority | 3 | [#7](https://github.com/krakenhavoc/cmd_and_ctrl/issues/7) | 2026-07-17 | **done** |
-| S08 | First playable sandbox (2-player, milestone) | 4 | [#8](https://github.com/krakenhavoc/cmd_and_ctrl/issues/8) | 2026-07-31 | **done** |
-| S08.5 | Game-logic cleanup pass (wave 1: gating + room + import) | 4 | [#43](https://github.com/krakenhavoc/cmd_and_ctrl/issues/43) | 2026-05-03 | **done** |
-| S09 | Polish I — animations + VFX | 5 | [#9](https://github.com/krakenhavoc/cmd_and_ctrl/issues/9) | 2026-08-14 | **done** |
-| S10 | Polish II — Commander UX (cmd damage, politics) | 5 | [#10](https://github.com/krakenhavoc/cmd_and_ctrl/issues/10) | 2026-08-28 | **done** |
-| S11 | Polish III — hover preview, undo, spectator | 5 | [#11](https://github.com/krakenhavoc/cmd_and_ctrl/issues/11) | 2026-09-11 | **done** |
-| S11.5 | Per-user settings and preferences (mini) | 5 | [#82](https://github.com/krakenhavoc/cmd_and_ctrl/issues/82) | 2026-09-18 | **done** |
-| S12 | Deploy + 4-player go-live with friends | 6 | [#12](https://github.com/krakenhavoc/cmd_and_ctrl/issues/12) | 2026-09-25 | planned |
-| S12.5 | Discord identity for players (OAuth + bot + presence) | 6 | [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59) | 2026-10-09 | planned |
-| S13 | Priority foundation (rules graft kickoff) | 7 | [#62](https://github.com/krakenhavoc/cmd_and_ctrl/issues/62) | 2026-05-17 | planned |
-| S13.1 | Stack: cast/resolve/target/counter/trigger/SBA | 7 | [#63](https://github.com/krakenhavoc/cmd_and_ctrl/issues/63) | 2026-06-14 | planned |
-| S13.2 | Counter mechanics (SBAs + player counters + UI) | 7 | [#79](https://github.com/krakenhavoc/cmd_and_ctrl/issues/79) | 2026-06-28 | planned |
-| S13.3 | Client-side timing affordance (greyed illegal actions) | 7 | [#99](https://github.com/krakenhavoc/cmd_and_ctrl/issues/99) | 2026-07-04 | planned |
-| S13.4 | Interactive cleanup discard + per-player MaxHandSize | 7 | [#103](https://github.com/krakenhavoc/cmd_and_ctrl/issues/103) | 2026-07-11 | planned |
-| S13.5 | Card visibility + known-by tracking | 7 | [#108](https://github.com/krakenhavoc/cmd_and_ctrl/issues/108) | 2026-07-25 | planned |
-| S14 | Card-effect catalog foundation | 7 | [#64](https://github.com/krakenhavoc/cmd_and_ctrl/issues/64) | 2026-07-12 | **done** |
-| S15 | Mana pool, cost model, and auto-tapper | 7 | [#65](https://github.com/krakenhavoc/cmd_and_ctrl/issues/65) | 2026-08-09 | **done** |
-| S16 | Continuous effects + layer system (CR 613) | 7 | [#66](https://github.com/krakenhavoc/cmd_and_ctrl/issues/66) | 2026-09-06 | **done** |
-| S17 | Replacement effects engine (CR 614) | 7 | [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67) | 2026-10-04 | **done** |
-| S18 | Combat keywords | 7 | [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68) | 2026-11-01 | planned |
-| S19 | Auto-fire triggered abilities | 7 | [#69](https://github.com/krakenhavoc/cmd_and_ctrl/issues/69) | 2026-11-29 | planned |
-| S20 | Auto-target legality + smart cast UI | 7 | [#70](https://github.com/krakenhavoc/cmd_and_ctrl/issues/70) | 2026-12-27 | planned |
-| S21 | Tokens, sacrifice, aristocrats | 7 | [#73](https://github.com/krakenhavoc/cmd_and_ctrl/issues/73) | 2027-01-24 | planned |
-| S22 | Card draw + library manipulation | 7 | [#74](https://github.com/krakenhavoc/cmd_and_ctrl/issues/74) | 2027-02-21 | planned |
-| S23 | Mass removal + boardwipes | 7 | [#75](https://github.com/krakenhavoc/cmd_and_ctrl/issues/75) | 2027-03-21 | planned |
-| S24 | Equipment, auras, attachments | 7 | [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76) | 2027-04-18 | planned |
-| S25 | Voltron / commander damage focus | 7 | [#77](https://github.com/krakenhavoc/cmd_and_ctrl/issues/77) | 2027-05-16 | planned |
-| S26 | Tribal / creature type matters | 7 | [#78](https://github.com/krakenhavoc/cmd_and_ctrl/issues/78) | 2027-06-13 | planned |
-| S27 | Card-type completeness (planeswalkers, sagas, vehicles, battles) | 7 | [#92](https://github.com/krakenhavoc/cmd_and_ctrl/issues/92) | 2027-07-04 | planned |
-| S28 | Cost modification + alternative casts | 7 | [#93](https://github.com/krakenhavoc/cmd_and_ctrl/issues/93) | 2027-07-25 | planned |
-| S29 | Alt-cast paths from non-hand zones (flashback, suspend, foretell, …) | 7 | [#94](https://github.com/krakenhavoc/cmd_and_ctrl/issues/94) | 2027-08-15 | planned |
-| S30 | Damage prevention, cloning, face-down, deferred protection keywords | 7 | [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95) | 2027-09-05 | planned |
-| Post-S30 | Rolling deck-driven catalog growth | 7 | TBD at S30 retro | rolling | not started |
-| S31 | AI bot seat (heuristic policy) | 8 | [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89) | 2027-09-26 | planned |
+| #        | Name                                                                 | Phase | Issue                                                          | Due        | Status      |
+| -------- | -------------------------------------------------------------------- | ----- | -------------------------------------------------------------- | ---------- | ----------- |
+| S01      | Go server + client scaffold                                          | 0     | [#1](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1)     | 2026-04-24 | **done**    |
+| S02      | Core game state: zones + turns                                       | 1     | [#2](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2)     | 2026-05-08 | **done**    |
+| S03      | Action protocol + state deltas                                       | 1     | [#3](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3)     | 2026-05-22 | **done**    |
+| S04      | Lobby, auth, Scryfall pipeline                                       | 2     | [#4](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4)     | 2026-06-05 | **done**    |
+| S05      | Deck import + 4-player table layout                                  | 3     | [#5](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5)     | 2026-06-19 | **done**    |
+| S06      | Hand, battlefield, zones UI                                          | 3     | [#6](https://github.com/krakenhavoc/cmd_and_ctrl/issues/6)     | 2026-07-03 | **done**    |
+| S06.5    | Dynamic deck import from URLs (mini)                                 | 3     | [#37](https://github.com/krakenhavoc/cmd_and_ctrl/issues/37)   | 2026-07-10 | **done**    |
+| S07      | Turn/phase UI + chat + manual priority                               | 3     | [#7](https://github.com/krakenhavoc/cmd_and_ctrl/issues/7)     | 2026-07-17 | **done**    |
+| S08      | First playable sandbox (2-player, milestone)                         | 4     | [#8](https://github.com/krakenhavoc/cmd_and_ctrl/issues/8)     | 2026-07-31 | **done**    |
+| S08.5    | Game-logic cleanup pass (wave 1: gating + room + import)             | 4     | [#43](https://github.com/krakenhavoc/cmd_and_ctrl/issues/43)   | 2026-05-03 | **done**    |
+| S09      | Polish I — animations + VFX                                          | 5     | [#9](https://github.com/krakenhavoc/cmd_and_ctrl/issues/9)     | 2026-08-14 | **done**    |
+| S10      | Polish II — Commander UX (cmd damage, politics)                      | 5     | [#10](https://github.com/krakenhavoc/cmd_and_ctrl/issues/10)   | 2026-08-28 | **done**    |
+| S11      | Polish III — hover preview, undo, spectator                          | 5     | [#11](https://github.com/krakenhavoc/cmd_and_ctrl/issues/11)   | 2026-09-11 | **done**    |
+| S11.5    | Per-user settings and preferences (mini)                             | 5     | [#82](https://github.com/krakenhavoc/cmd_and_ctrl/issues/82)   | 2026-09-18 | **done**    |
+| S12      | Deploy + 4-player go-live with friends                               | 6     | [#12](https://github.com/krakenhavoc/cmd_and_ctrl/issues/12)   | 2026-09-25 | planned     |
+| S12.5    | Discord identity for players (OAuth + bot + presence)                | 6     | [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59)   | 2026-10-09 | planned     |
+| S13      | Priority foundation (rules graft kickoff)                            | 7     | [#62](https://github.com/krakenhavoc/cmd_and_ctrl/issues/62)   | 2026-05-17 | planned     |
+| S13.1    | Stack: cast/resolve/target/counter/trigger/SBA                       | 7     | [#63](https://github.com/krakenhavoc/cmd_and_ctrl/issues/63)   | 2026-06-14 | planned     |
+| S13.2    | Counter mechanics (SBAs + player counters + UI)                      | 7     | [#79](https://github.com/krakenhavoc/cmd_and_ctrl/issues/79)   | 2026-06-28 | planned     |
+| S13.3    | Client-side timing affordance (greyed illegal actions)               | 7     | [#99](https://github.com/krakenhavoc/cmd_and_ctrl/issues/99)   | 2026-07-04 | planned     |
+| S13.4    | Interactive cleanup discard + per-player MaxHandSize                 | 7     | [#103](https://github.com/krakenhavoc/cmd_and_ctrl/issues/103) | 2026-07-11 | planned     |
+| S13.5    | Card visibility + known-by tracking                                  | 7     | [#108](https://github.com/krakenhavoc/cmd_and_ctrl/issues/108) | 2026-07-25 | planned     |
+| S14      | Card-effect catalog foundation                                       | 7     | [#64](https://github.com/krakenhavoc/cmd_and_ctrl/issues/64)   | 2026-07-12 | **done**    |
+| S15      | Mana pool, cost model, and auto-tapper                               | 7     | [#65](https://github.com/krakenhavoc/cmd_and_ctrl/issues/65)   | 2026-08-09 | **done**    |
+| S16      | Continuous effects + layer system (CR 613)                           | 7     | [#66](https://github.com/krakenhavoc/cmd_and_ctrl/issues/66)   | 2026-09-06 | **done**    |
+| S17      | Replacement effects engine (CR 614)                                  | 7     | [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67)   | 2026-10-04 | **done**    |
+| S18      | Combat keywords                                                      | 7     | [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68)   | 2026-11-01 | planned     |
+| S19      | Auto-fire triggered abilities                                        | 7     | [#69](https://github.com/krakenhavoc/cmd_and_ctrl/issues/69)   | 2026-11-29 | planned     |
+| S20      | Auto-target legality + smart cast UI                                 | 7     | [#70](https://github.com/krakenhavoc/cmd_and_ctrl/issues/70)   | 2026-12-27 | planned     |
+| S21      | Tokens, sacrifice, aristocrats                                       | 7     | [#73](https://github.com/krakenhavoc/cmd_and_ctrl/issues/73)   | 2027-01-24 | planned     |
+| S22      | Card draw + library manipulation                                     | 7     | [#74](https://github.com/krakenhavoc/cmd_and_ctrl/issues/74)   | 2027-02-21 | planned     |
+| S23      | Mass removal + boardwipes                                            | 7     | [#75](https://github.com/krakenhavoc/cmd_and_ctrl/issues/75)   | 2027-03-21 | planned     |
+| S24      | Equipment, auras, attachments                                        | 7     | [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76)   | 2027-04-18 | planned     |
+| S25      | Voltron / commander damage focus                                     | 7     | [#77](https://github.com/krakenhavoc/cmd_and_ctrl/issues/77)   | 2027-05-16 | planned     |
+| S26      | Tribal / creature type matters                                       | 7     | [#78](https://github.com/krakenhavoc/cmd_and_ctrl/issues/78)   | 2027-06-13 | planned     |
+| S27      | Card-type completeness (planeswalkers, sagas, vehicles, battles)     | 7     | [#92](https://github.com/krakenhavoc/cmd_and_ctrl/issues/92)   | 2027-07-04 | planned     |
+| S28      | Cost modification + alternative casts                                | 7     | [#93](https://github.com/krakenhavoc/cmd_and_ctrl/issues/93)   | 2027-07-25 | planned     |
+| S29      | Alt-cast paths from non-hand zones (flashback, suspend, foretell, …) | 7     | [#94](https://github.com/krakenhavoc/cmd_and_ctrl/issues/94)   | 2027-08-15 | planned     |
+| S30      | Damage prevention, cloning, face-down, deferred protection keywords  | 7     | [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95)   | 2027-09-05 | planned     |
+| Post-S30 | Rolling deck-driven catalog growth                                   | 7     | TBD at S30 retro                                               | rolling    | not started |
+| S31      | AI bot seat (heuristic policy)                                       | 8     | [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89)   | 2027-09-26 | planned     |
 
 ---
 
 ## S01 — Go server + client scaffold
+
 **Phase:** 0 · **Goal:** stand up both services and prove one round-trip.
 
 - [ ] `server/` Go module (`go mod init`), with lint (`golangci-lint`), format (`gofmt`), test (`go test`), `make dev` target
@@ -91,6 +92,7 @@ planned just-in-time from the S12 pain-point triage.
 ---
 
 ## S02 — Core game state: zones + turns
+
 **Phase:** 1 · **Goal:** authoritative in-memory game state covering 4-player Commander structure.
 
 - [ ] Domain types: `Game`, `Player`, `Zone`, `Card`, `Turn`, `Phase`, `Step`
@@ -105,6 +107,7 @@ planned just-in-time from the S12 pain-point triage.
 ---
 
 ## S03 — Action protocol + state deltas
+
 **Phase:** 1 · **Goal:** clients drive the game state via the action protocol.
 
 - [ ] Action types: `draw_card`, `play_card`, `move_card` (between zones), `tap`, `untap`, `untap_all`, `pass_priority`, `pass_turn`, `mulligan`, `shuffle_library`, `change_life`, `add_counter`, `set_commander_damage`
@@ -119,6 +122,7 @@ planned just-in-time from the S12 pain-point triage.
 ---
 
 ## S04 — Lobby, auth, Scryfall pipeline ✅
+
 **Phase:** 2 · **Goal:** the non-play parts of the app.
 
 - [x] HTTP endpoints: `POST /games`, `GET /games/:id`, `POST /games/:id/join`, `POST /games/:id/start`, `GET /me`
@@ -137,6 +141,7 @@ planned just-in-time from the S12 pain-point triage.
 ---
 
 ## S05 — Deck import + 4-player table layout ✅
+
 **Phase:** 3 · **Goal:** bring decks into games and render a 4-player table.
 
 - [x] Moxfield export parser (JSON)
@@ -157,6 +162,7 @@ planned just-in-time from the S12 pain-point triage.
 ---
 
 ## S06 — Hand, battlefield, zones UI
+
 **Phase:** 3 · **Goal:** render and manipulate the core game zones.
 
 - [x] Hand: fan layout, hover lift, drag to battlefield
@@ -173,6 +179,7 @@ planned just-in-time from the S12 pain-point triage.
 ---
 
 ## S06.5 — Dynamic deck import from URLs (mini)
+
 **Phase:** 3 · **Goal:** skip the copy-paste step — paste a Moxfield / Archidekt deck URL and have the server fetch, parse, and validate.
 
 One-week mini sprint slotted between S06 and S07 to address UX friction surfaced during S06 smoke testing. The paste-based flow works but is tedious for 100-card decks, and every paste-era bug on the S06 branch (single-slash MDFCs, art-series name collisions) would have been avoided by fetching the structured JSON directly from the source of truth.
@@ -192,6 +199,7 @@ One-week mini sprint slotted between S06 and S07 to address UX friction surfaced
 ---
 
 ## S07 — Turn/phase UI + chat + manual priority
+
 **Phase:** 3 · **Goal:** the fiddly but essential parts of a manually-driven game.
 
 - [x] Turn / phase / step indicator
@@ -208,6 +216,7 @@ One-week mini sprint slotted between S06 and S07 to address UX friction surfaced
 ---
 
 ## S08 — First playable sandbox (milestone)
+
 **Phase:** 4 · **Goal:** complete a 2-player sandbox game in a browser, end-to-end.
 
 - [x] Mulligan flow (take 7, keep/mulligan, scry for extra mulligans — or simplified to "take N")
@@ -223,6 +232,7 @@ One-week mini sprint slotted between S06 and S07 to address UX friction surfaced
 ---
 
 ## S08.5 — Game-logic cleanup pass (wave 1)
+
 **Phase:** 4 · **Goal:** fix the three frictions that bit hardest in S08 playtest.
 
 Originally deferred post-S08 retro because most candidate items would be subsumed by the S13+ rules graft. Re-activated for **wave 1** when 2-player play surfaced three items that don't overlap with rules work — they're UX/authorization issues that hurt now and the rules engine wouldn't help with later. The broader cleanup (turn-1 skip-draw, commander damage attribution, command-zone tax, token API, mulligan penalty, etc.) stays deferred to S13+.
@@ -242,6 +252,7 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 ---
 
 ## S09 — Polish I — animations + VFX
+
 **Phase:** 5 · **Goal:** make the table feel alive.
 
 - [x] GSAP integration (#58)
@@ -255,6 +266,7 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 ---
 
 ## S10 — Polish II — Commander UX
+
 **Phase:** 5 · **Goal:** the Commander-specific differentiators from PLAN.md §5.
 
 - [x] Command zone as a first-class UI element (#86)
@@ -269,6 +281,7 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 ---
 
 ## S11 — Polish III — hover preview, undo, spectator
+
 **Phase:** 5 · **Goal:** the Arena-feel features that Cockatrice and XMage both lack.
 
 - [x] Hover a card → detail panel with full Oracle text and current game context ([#98](https://github.com/krakenhavoc/cmd_and_ctrl/pull/98))
@@ -283,15 +296,17 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 ---
 
 ## S11.5 — Per-user settings and preferences (mini)
+
 **Phase:** 5 · **Goal:** one canonical settings panel that lets each player customise sound, animations, display, gameplay, and accessibility. Preferences persist in `localStorage`, respect OS-level accessibility hints, and unify the ad-hoc toggles otherwise scattered across S09/S10/S11/S12.5/S13. Lands before S12 deploy so friends' first real games open with configurable defaults.
 
-**Slot rationale.** Ships *after* the three polish sprints (S09 animations + sound, S10 Commander UX, S11 hover / undo / spectator) so the settings panel has real toggles to surface, and *before* S12 deploy so the go-live build ships with settings in place. 1-week mini-sprint scope — the infrastructure is small (single Svelte store + JSON schema + panel UI); most of the surface is wiring existing features up to toggles.
+**Slot rationale.** Ships _after_ the three polish sprints (S09 animations + sound, S10 Commander UX, S11 hover / undo / spectator) so the settings panel has real toggles to surface, and _before_ S12 deploy so the go-live build ships with settings in place. 1-week mini-sprint scope — the infrastructure is small (single Svelte store + JSON schema + panel UI); most of the surface is wiring existing features up to toggles.
 
 **Storage decision.** Client-only `localStorage`. Matches project ethos (hobby scale, 4–8 users, no DB). Cross-device sync becomes feasible post-S12.5 using Discord ID as the key; documented as a future follow-up, not this sprint.
 
 ### Tasks
 
 **Settings infrastructure (client):**
+
 - [x] `client/src/lib/settings.ts` — Svelte `writable` store, typed `Settings` interface, schema versioning (`cmdctrl.settings.v1`) with a migration function shape ready for future bumps ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
 - [x] Default values honour `window.matchMedia('(prefers-reduced-motion: reduce)')` at first load; subsequent OS changes are live-observed ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
 - [x] Reactive apply — changes take effect without page reload ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
@@ -300,12 +315,14 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 - [ ] Absorb S13's "per-step stops" `localStorage` preferences — **deferred to S13.3** ([#99](https://github.com/krakenhavoc/cmd_and_ctrl/issues/99)) when the per-step-stops mechanism actually lands. Schema has the empty `gameplay.stepStops` slot reserved.
 
 **Settings panel UI (Svelte):**
+
 - [x] New `client/src/lib/components/Settings.svelte` — modal panel with sidebar tabs ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
 - [x] Gear icon in `Game.svelte` header + keyboard shortcut `,` (comma); reachable from `Lobby.svelte` ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
 - [x] Each setting = label + control + short help text ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
 - [x] Changes apply instantly with a "saved ✓" flash beside the changed control ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
 
 **Audio:**
+
 - [x] Master volume slider (0–100) ([#117](https://github.com/krakenhavoc/cmd_and_ctrl/pull/117))
 - [x] Effects volume — folded with master into a single multiplier in `sounds.ts` ([#117](https://github.com/krakenhavoc/cmd_and_ctrl/pull/117))
 - [x] Music volume — slider exists but no-op until a music track ships ([#117](https://github.com/krakenhavoc/cmd_and_ctrl/pull/117))
@@ -313,6 +330,7 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 - [ ] `M` keyboard shortcut + per-category test buttons — deferred (low value; mute toggle in modal works)
 
 **Animations:**
+
 - [x] Animations master toggle — auto-off when `prefers-reduced-motion: reduce` on first load ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116) + [#117](https://github.com/krakenhavoc/cmd_and_ctrl/pull/117))
 - [x] Per-animation toggles: card draw / play / tap / untap / flip ([#117](https://github.com/krakenhavoc/cmd_and_ctrl/pull/117))
 - [x] Particle effects on ETB ([#117](https://github.com/krakenhavoc/cmd_and_ctrl/pull/117))
@@ -320,6 +338,7 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 - [x] Animation speed multiplier select: 0.5× / 1× / 1.5× / 2× ([#117](https://github.com/krakenhavoc/cmd_and_ctrl/pull/117))
 
 **Display:**
+
 - [~] Theme select — CSS palette scaffolded for dark / light / high-contrast, but the select is **disabled** until per-component `var()` migration ships. ([#119](https://github.com/krakenhavoc/cmd_and_ctrl/pull/119))
 - [x] Card size on battlefield: small / medium / large — drives `--card-scale` (self) + `--card-scale-opponent` (gentler curve to avoid opponent-row overflow) ([#118](https://github.com/krakenhavoc/cmd_and_ctrl/pull/118))
 - [x] Hand layout: fan (default) / stacked ([#118](https://github.com/krakenhavoc/cmd_and_ctrl/pull/118))
@@ -329,6 +348,7 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 - [ ] Show mana pip icons vs. text — deferred (no toggle implemented)
 
 **Gameplay:**
+
 - [ ] Per-step stops grid — **deferred to S13.3** ([#99](https://github.com/krakenhavoc/cmd_and_ctrl/issues/99))
 - [~] Auto-pass priority — wired for opponents' turns + empty stack. Full "nothing playable" check waits on S13.3's legality engine ([#118](https://github.com/krakenhavoc/cmd_and_ctrl/pull/118))
 - [x] Confirm before exiting an active game (back button + browser `beforeunload`) ([#118](https://github.com/krakenhavoc/cmd_and_ctrl/pull/118))
@@ -337,6 +357,7 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 - [ ] Discord Rich Presence toggle — **deferred to S12.5**
 
 **Accessibility:**
+
 - [x] Respect `prefers-reduced-motion` (live media query observer) ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
 - [x] Increased text size: 0.9× / 1.0× / 1.2× / 1.5× via `--font-scale` ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
 - [~] High-contrast mode — palette in CSS scaffold; needs the per-component `var()` migration before the toggle works
@@ -344,19 +365,23 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 - [x] Focus indicators always visible toggle ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
 
 **Keybindings:**
+
 - [ ] **Deferred wholesale.** Adding any kind of rebind UI without a conflict-detection layer gives users a way to lock themselves out of the app. The two existing shortcuts (`,` for settings, mute via the modal toggle) are hardcoded for now. Revisit once we have a meaningful set of bindings to manage.
 
 **Advanced:**
+
 - [x] Export settings to clipboard (JSON) ([#119](https://github.com/krakenhavoc/cmd_and_ctrl/pull/119))
 - [x] Import settings from clipboard (JSON, validates against schema) ([#119](https://github.com/krakenhavoc/cmd_and_ctrl/pull/119))
 - [x] "Copy my settings hash" — FNV-1a fingerprint ([#119](https://github.com/krakenhavoc/cmd_and_ctrl/pull/119))
 - [x] "Reset all settings" with confirm ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
 
 **Docs:**
+
 - [ ] ADR — deferred. Decision rationale captured in PR descriptions + commit messages; an ADR sweep can fold them in later.
 - [ ] Client-level "Customising your client" README section — deferred.
 
 **Tests:**
+
 - [x] Schema migration test (v0 → v1 defaults; corrupt-blob fallback; partial-blob field merge; legacy `cmdctrl.muted` absorption) ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
 - [x] Default settings load correctly when `localStorage` is empty ([#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116))
 - [ ] `prefers-reduced-motion: reduce` at page load — manually verified, no automated test (jsdom doesn't ship `matchMedia`; not worth a polyfill for one assertion)
@@ -365,6 +390,7 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 - [ ] Keybinding defaults — N/A, keybindings deferred
 
 ### Out of scope (explicit handoffs)
+
 - **Server-backed settings sync across devices** — future post-S12.5 work; feasible using Discord ID as the key once S12.5 ships
 - **Full keybinding re-bind UI** — deferred to a follow-up mini-sprint unless the 1-week scope has spare budget (JSON-edit + reset-to-defaults ships here)
 - **Custom themes beyond dark / light / high-contrast** — scaffolding ships, full theme catalog is a follow-up
@@ -373,13 +399,15 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 - **Per-game settings** ("music only in lobbies") — one level too deep for a hobby tool
 
 ### Risks / gotchas
-- S09 / S10 / S11 are in flight. This sprint assumes the polish work has landed; if S09 slips, S11.5's audio/animation toggles are wiring toggles into features that don't exist yet. Mitigation: order S11.5 strictly *after* S11 rather than overlapping; scope the toggles that refer to unshipped features as no-ops with a "feature not yet available" disabled state.
+
+- S09 / S10 / S11 are in flight. This sprint assumes the polish work has landed; if S09 slips, S11.5's audio/animation toggles are wiring toggles into features that don't exist yet. Mitigation: order S11.5 strictly _after_ S11 rather than overlapping; scope the toggles that refer to unshipped features as no-ops with a "feature not yet available" disabled state.
 - `prefers-reduced-motion` is a **live** media query — settings must observe changes mid-session, not just at load, or a user who toggles OS reduced-motion mid-game won't see the effect.
 - `localStorage` is per-origin, per-browser. Switching browsers or clearing site data wipes settings. Document this and ship the export/import path as the mitigation.
 - Keybindings are the deepest rabbit hole. Time-box aggressively — `Reset to defaults` + JSON-edit is a full backstop; polished per-key rebinding UI waits.
 - S13's per-step-stops `localStorage` prefs land on a different track (rules graft, due 2026-05-17 — well before S11.5). Ship a migration so players don't lose their stops config when S11.5's schema takes over.
 
 ### Exit criteria
+
 1. A gear icon opens the settings panel from the game header, the lobby, and the login screen. Keyboard `,` opens it from anywhere.
 2. Every setting persists across page reloads, tab closures, and re-opens of the browser.
 3. Muting sound effects makes the S09 card-tap sound silent immediately — no reload required.
@@ -390,9 +418,11 @@ Originally deferred post-S08 retro because most candidate items would be subsume
 8. S13's per-step-stops preferences are visible and editable from this panel (once S13 has shipped); existing S13 users don't lose their stops config on migration.
 
 ### Status
+
 **Done** across four PRs: [#116](https://github.com/krakenhavoc/cmd_and_ctrl/pull/116) infrastructure + modal shell, [#117](https://github.com/krakenhavoc/cmd_and_ctrl/pull/117) audio + animation consumers, [#118](https://github.com/krakenhavoc/cmd_and_ctrl/pull/118) display + gameplay consumers, [#119](https://github.com/krakenhavoc/cmd_and_ctrl/pull/119) export/import + fingerprint + theme palette scaffold.
 
 Deferred, with concrete pickup points:
+
 - **Per-step stops grid (Gameplay tab)** — waits on S13.3's priority-aware stops mechanism; schema slot reserved.
 - **Theme live-apply (Display tab)** — CSS palette scaffolded; needs a sweep to migrate hardcoded hex colours in `PlayerPanel.svelte` / `Card.svelte` / `Game.svelte` / etc. to `var(--bg)`/`var(--fg)`. Select is disabled in the UI until then.
 - **Keybinding rebind UI** — deferred wholesale; revisit once more shortcuts exist.
@@ -401,6 +431,7 @@ Deferred, with concrete pickup points:
 ---
 
 ## S12 — Deploy and go live with friends
+
 **Phase:** 6 · **Goal:** real games, real feedback.
 
 - [x] VPS provisioning script (Docker Compose or plain systemd units) — systemd unit on a LAN box at cmd.labxp.io
@@ -416,6 +447,7 @@ Deferred, with concrete pickup points:
 ---
 
 ## S12.5 — Discord identity for players
+
 **Phase:** 6 · **Goal:** the playgroup uses Discord for coordination already (S08.5 removed in-game chat in favour of it); lean all the way in. Invite links opened from Discord land the player in the game with their Discord display name and avatar; a bot posts/DMs invites from Discord itself; the player's presence reflects what they're doing in the game.
 
 Every "out of scope" deferral from the initial planning pass is pulled into this sprint — the user decided the full integration is worth a single ~2-week sprint rather than chaining three mini-sprints.
@@ -423,6 +455,7 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 ### Tasks
 
 **Discord OAuth (core):**
+
 - [ ] Register the Discord application; `CMDCTRL_DISCORD_CLIENT_ID` / `CMDCTRL_DISCORD_CLIENT_SECRET` env vars (dev + prod). Callback URLs for both environments registered with Discord.
 - [ ] Server routes: `GET /auth/discord/start?game=<id>&t=<invite>` builds the Discord authorize URL with PKCE + state; `GET /auth/discord/callback` exchanges the code, calls `/users/@me`, completes `Lobby.Join` on the bound invite, mints the session.
 - [ ] Server-side state store (`game_id`, `invite_token`, `pkce_verifier`, 5-minute TTL) — reuse the pattern from `auth.MemoryAuthenticator`; no schema migration.
@@ -431,12 +464,14 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 - [ ] Client: `Join.svelte` gets a primary "Sign in with Discord" button; manual name-entry kept as fallback.
 
 **Avatar rendering:**
+
 - [ ] `client/src/lib/protocol.ts` — `PlayerView` / `SeatInfo` grow the two optional fields.
 - [ ] `PlayerHeader.svelte` — render a 24px circular avatar before `.seat-dot` when present.
 - [ ] Lobby seat list, any S10 politics / commander-damage UI that names seats — pick up `displayName` / `avatarUrl`.
 - [ ] Server-side avatar cache (`$CMDCTRL_DATA_DIR/avatars/<discord_id>/<hash>.png`): on first fetch hit `cdn.discordapp.com`, cache with immutable headers, re-fetch when hash changes. Client requests `/avatars/<discord_id>`; server serves from cache or proxies on miss. (Avoids embedding Discord CDN URLs directly in the state stream.)
 
 **Discord bot (`cmd_and_ctrl-bot`):**
+
 - [x] New top-level directory `bot/` or a cmd under `server/cmd/bot/` — picked `server/cmd/bot/` + `server/internal/bot/` in ADR 0004 (shared module, separate binary). Go, using `bwmarrin/discordgo`. Allow-list gate via `CMDCTRL_DISCORD_GUILD_IDS`.
 - [x] Slash command `/cc-invite [name]` — calls server `POST /games` with admin credentials (bot holds `CMDCTRL_ADMIN_TOKEN` via env), posts the invite link back to the channel (channel-visible embed; ephemeral-toggle deferred).
 - [ ] Slash command `/cc-invite-dm @user [name]` — deferred (needs invite-side pre-bind of DiscordID; not in MVP).
@@ -444,22 +479,26 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 - [x] Bot deploys as a second systemd unit on the same VPS (S12 infra). Unit at `deploy/cmd-and-ctrl-bot.service`; env file separate from the server's (ADR 0004 §6).
 
 **Rich Presence:**
+
 - [ ] Opt-in toggle in the client ("Show this game on Discord"); stored in `localStorage` alongside the session.
 - [ ] When enabled, client uses Discord's RPC over the local IPC socket (`discord-rpc` from npm or a thin WebSocket wrapper) to publish presence: "In a Commander game — Turn 5, 3 opponents alive".
 - [ ] Presence updates on phase change + life change (throttled to 1 update / 15 s to stay inside Discord's rate limits).
 - [ ] Presence clears on game end / browser close.
 
 **Re-link after the fact:**
+
 - [ ] `GET /auth/discord/link` — already-signed-in player reopens the invite/OAuth loop to attach (or swap) their Discord identity onto an existing seat without leaving the game.
 - [ ] Client surfaces a "Link Discord" row in a session-settings panel (new — probably a small menu in the corner of `Game.svelte`).
 - [ ] Server merges Discord fields onto the existing `Principal` + broadcasts a `SeatInfo` update delta so opponents immediately see the avatar/name swap.
 
 **Docs:**
+
 - [x] `docs/decisions/0004-discord-identity.md` — ADR. Why OAuth + bot together; PKCE + state handling; bot deployment shape; gateway-vs-webhook rationale; secret-handling split (Rich Presence deferred, documented as out-of-scope).
 - [ ] `docs/lobby.md` — document the new auth routes + the `SeatInfo` field additions.
 - [x] `AGENTS.md` §5 — env vars (`CMDCTRL_DISCORD_CLIENT_ID` / `_SECRET` + bot token / app ID / guild IDs / server + client base URLs). RPC client ID lands with Rich Presence.
 
 ### Risks / gotchas
+
 - OAuth callback URLs must be whitelisted per environment — document dev, staging, prod in the ADR.
 - Bot token compromise gives admin access to the server (it holds `CMDCTRL_ADMIN_TOKEN`). Store it in `systemd` credential, not a plain `.env`.
 - Discord Rich Presence over IPC requires the Discord desktop client running on the user's machine; it silently no-ops on web-only / mobile. Document the gap, don't treat it as a failure mode.
@@ -467,6 +506,7 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 - Ratelimits: `/users/@me` is generous (once per join); bot's channel posts can hit per-guild limits if the sprint expands the command set later — budget headroom.
 
 ### Exit criteria
+
 1. A friend clicks an invite link shared in Discord, clicks "Sign in with Discord" once, and lands in the game with their Discord name + avatar already on the seat. No manual name prompt.
 2. `/cc-invite` in a Discord channel produces a game + pastes an invite link the playgroup can click.
 3. `/cc-invite-dm @alice` DMs Alice a link she can click for one-tap onboarding.
@@ -477,19 +517,22 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 ---
 
 ## S13 — Priority foundation (rules graft kickoff)
+
 **Phase:** 7 · **Goal:** model priority + turn-based actions per CR 117 / 502 / 504 / 514. The Untap and Cleanup steps stop granting priority. Untap and Draw fire automatically on step entry (with the Turn-1 skip-draw exception per CR 103.7c). Priority rotation skips eliminated seats. The client adds per-step "stops" preferences and a "Pass to my next stop" button so a 4-player turn doesn't require 30+ manual `pass_priority` clicks per cycle.
 
-This sprint is the *foundation* for the entire S13.x rules-graft track: S13.1 (stack), S13.2 (counter SBAs), S13.3 (greyed illegal actions), S13.4 (interactive cleanup discard), and S13.5 (card visibility) all assume the priority + turn-based-action shape lands here. Cleanup-discard is intentionally deferred to S13.4 — S13's cleanup step just auto-advances to the next turn without granting priority, and S13.4 will inject the discard pause into that gap.
+This sprint is the _foundation_ for the entire S13.x rules-graft track: S13.1 (stack), S13.2 (counter SBAs), S13.3 (greyed illegal actions), S13.4 (interactive cleanup discard), and S13.5 (card visibility) all assume the priority + turn-based-action shape lands here. Cleanup-discard is intentionally deferred to S13.4 — S13's cleanup step just auto-advances to the next turn without granting priority, and S13.4 will inject the discard pause into that gap.
 
 ### Tasks
 
 **Priority sentinel + no-priority steps (server):**
+
 - [ ] Define `game.NoPriority = -1` constant in [server/internal/game/turn.go](../server/internal/game/turn.go); document on `Turn.PriorityHolder`.
 - [ ] `Turn.advance()` sets `PriorityHolder = NoPriority` when the new step is `StepUntap` or `StepCleanup`; sets it to `ActiveSeat` for every other step.
 - [ ] `Game.PassPriority` returns an error (`ErrNoPriority`) if called while `PriorityHolder == NoPriority`. Existing `< 0` defensive guard at [actions.go:138](../server/internal/actions/actions.go) stays as the wire-level catch.
 - [ ] `protocol.ViewOfGame` round-trips `PriorityHolder == -1` to clients unchanged.
 
 **Auto turn-based actions on step entry (server):**
+
 - [ ] Extract a private `untapAllForLocked(seat)` from `UntapAll` so the step hook and the existing manual action share code.
 - [ ] Extract a private `drawCardLocked(playerID)` from `DrawCard` for the same reason.
 - [ ] Extend `runStepEntryHooksLocked` ([server/internal/game/game.go:327](../server/internal/game/game.go)):
@@ -499,35 +542,43 @@ This sprint is the *foundation* for the entire S13.x rules-graft track: S13.1 (s
 - [ ] Manual `TypeUntapAll` / `TypeDrawCard` actions stay dispatchable as sandbox overrides; gate them so they no-op (or return a soft error) during their auto-fire steps to avoid double-fire.
 
 **Eliminated-player skip in priority rotation (server):**
+
 - [ ] `Game.PassPriority`: replace `next = (PriorityHolder + 1) % numSeats` with a loop that walks past `Eliminated == true` seats (reuse the iteration shape from `advancePastEliminatedLocked` at [mutations.go:517](../server/internal/game/mutations.go)).
 - [ ] When wrapping back to the active seat through skips, trigger the same step-advance branch as the all-passed case.
 
 **Turn-1 skip-draw rule, CR 103.7c (server):**
+
 - [ ] Add `Game.StartingSeat int` field; set in `Game.Start()` to whichever seat is `ActiveSeat` at that moment.
 - [ ] `protocol.GameView` carries `starting_seat` so spectators / reconnects see the same skip-draw decision.
 - [ ] Used by the `StepDraw` auto-action above.
 
 **Per-step stops UI (client):**
+
 - [ ] Extract the 12-step list + labels from [Game.svelte](../client/src/routes/Game.svelte) (`STEP_LABELS`) into a shared `client/src/lib/turn.ts` constant so Settings and Game render identically.
 - [ ] Replace the empty `gameplay.stepStops: {}` seed in [client/src/lib/settings.ts](../client/src/lib/settings.ts) with sensible defaults (typical MTGO opt-ins: upkeep off, draw off, precombat_main on, declare_attackers on, declare_blockers on, end on, rest off). Bump `__version`; add a migration that fills defaults for users with an empty `stepStops`.
 - [ ] Settings.svelte gameplay tab: add a "Step stops" section — checkbox per step. Wires to `updateSettings('gameplay', 'stepStops', {...})`.
 
 **Auto-pass through unstopped steps (client):**
+
 - [ ] Extend the existing `autoPassPriority` effect in Game.svelte: fire `pass_priority` whenever the viewer holds priority, the stack is empty, and `settings.gameplay.stepStops[turn.step] === false`. Reuse the existing dedup-by-snapshot-seq pattern.
 
 **"Pass to my next stop" button (client):**
+
 - [ ] Add `passToNextStop()` next to `passToEnd()` in Game.svelte — same shape (24-iteration cap, await snapshot between sends), with the exit condition: stop when active seat changes, when stack changes, or when `settings.gameplay.stepStops[turn.step] === true`.
 - [ ] Render a "→ Next stop" button in the priority controls toolbar between "pass priority" and "pass until end of turn".
 
 **Hide priority indicator when no one holds priority (client):**
+
 - [ ] Priority pills row in Game.svelte: render only when `turn.priority_holder >= 0`; show a muted "—" marker during Untap / Cleanup so the bar doesn't visually pop.
 - [ ] PlayerHeader badge: verify `hasPriority` is false when `priority_holder === -1` (it already should be — `-1 === seatIndex` is always false).
 
 **Docs:**
+
 - [ ] `docs/decisions/0006-priority-foundation.md` — ADR. Topics: why `-1` sentinel vs a separate enum, why auto-fire lives in step entry hooks (vs a tick loop), why per-step stops are client-only (no protocol bump), why `Game.StartingSeat` is a separate field rather than inferred, why `TypeUntapAll` / `TypeDrawCard` actions are kept (sandbox / replay).
 - [ ] [docs/protocol.md](protocol.md): document `starting_seat` on `GameView` and the `PriorityHolder == -1` sentinel.
 
 **Tests:**
+
 - [ ] Server unit tests next to the existing `TestFullFourPlayerTurnCycle` pattern in [game_test.go](../server/internal/game/game_test.go):
   - Full 4-player turn cycle with all auto-actions firing; cursor lands on the next active seat's Upkeep without manual `untap_all` / `draw_card`.
   - Turn 1 starting-seat draw is skipped; turn 1 next seat draws normally; turn 2 starting-seat draws normally.
@@ -537,6 +588,7 @@ This sprint is the *foundation* for the entire S13.x rules-graft track: S13.1 (s
 - [ ] Snapshot/replay round-trip test for `StartingSeat` and `PriorityHolder == -1`.
 
 ### Out of scope (explicit handoffs)
+
 - **Stack, cast actions, SBAs, targeting, modes/X, hold-priority, split-second, commander cast tax + zone replacement** — S13.1 [#63](https://github.com/krakenhavoc/cmd_and_ctrl/issues/63).
 - **Counter SBAs (planeswalker loyalty 0, battle defense 0, +1/+1/-1/-1 cancel, poison, saga final chapter), player-level counters, marked-damage cleanup** — S13.2 [#79](https://github.com/krakenhavoc/cmd_and_ctrl/issues/79).
 - **Greyed illegal-action affordance** — S13.3 [#99](https://github.com/krakenhavoc/cmd_and_ctrl/issues/99).
@@ -545,6 +597,7 @@ This sprint is the *foundation* for the entire S13.x rules-graft track: S13.1 (s
 - **Per-commander damage tracking** — explicit S13 non-goal.
 
 ### Risks / gotchas
+
 - **Auto-action / manual-action collision.** `TypeUntapAll` and `TypeDrawCard` remain dispatchable. If the server has already auto-fired on step entry, a client-sent `draw_card` would draw again. Mitigation: gate the manual actions on `Turn.Step != StepUntap / StepDraw` so they no-op during the auto-fire window. Document in the ADR.
 - **Step-entry recursion.** Untap auto-untaps then auto-advances the step, which fires the next step's hook. The Cleanup → next-Untap → auto-untap → Upkeep chain runs synchronously inside one mutation. Verify the existing lock semantics in `AdvanceStep` ([game.go:301](../server/internal/game/game.go)) tolerate the chain (likely fine — `runStepEntryHooksLocked` already runs under the same write lock).
 - **Stops + auto-pass races.** The client effect that auto-passes on unstopped steps must dedup against the snapshot seq the same way the existing `autoPassPriority` effect does; otherwise a single step entry can fire two `pass_priority` actions.
@@ -553,6 +606,7 @@ This sprint is the *foundation* for the entire S13.x rules-graft track: S13.1 (s
 - **No stack yet ⇒ "stops" are partial UX.** Without S13.1's stack, "stop on upkeep" only lets the player see an empty upkeep. That's the intended hand-off — the affordance lands now, the value compounds when S13.1 ships.
 
 ### Exit criteria
+
 1. A 4-player game runs through full turns with **zero manual `untap_all` or `draw_card` clicks**. Cursor walks Untap → Upkeep → Draw → Main → ... → Cleanup → next seat's Untap.
 2. Turn 1's starting seat does not draw at its draw step. Turn 2 onwards, every seat draws normally.
 3. With seats 1 and 3 eliminated, priority rotation across non-eliminated seats works (`pass_priority` from seat 0 lands on seat 2, not seat 1).
@@ -564,6 +618,7 @@ This sprint is the *foundation* for the entire S13.x rules-graft track: S13.1 (s
 ---
 
 ## S13.1 — Stack: cast / resolve / target / counter / trigger / SBA
+
 **Phase:** 7 · **Goal:** all stack-adjacent items in one sprint.
 
 - [x] Type helpers (IsLand, IsInstant, IsSorcery, IsPlaneswalker, IsBattle, IsArtifact, IsEnchantment, IsPermanent)
@@ -588,6 +643,7 @@ This sprint is the *foundation* for the entire S13.x rules-graft track: S13.1 (s
 ---
 
 ## S13.2 — Counter mechanics (SBAs + player counters + UI)
+
 **Phase:** 7 · **Goal:** close out the "counters" surface the engine still has to resolve manually. S13.1 ships the four canonical Commander SBAs; this sprint adds the counter-specific SBAs (planeswalker loyalty, battle defense, +1/+1/-1/-1 cancel, poison player-loss, saga final-chapter), first-class UI treatment of counters, and a shared registry of MTG counter types. Sits between S13.1 and S14 so the effect catalog (S14) can rely on counters being fully modelled.
 
 Gap analysis behind this sprint: `Card.Counters` exists today ([server/internal/game/card.go](../server/internal/game/card.go)) and `CurrentPower()` already applies +1/+1 / -1/-1 to P/T. S13.1 covers the Commander SBAs but explicitly not the counter SBAs. S14's `AddCounters` primitive and S17's replacement engine assume counter data is a first-class shape. Nothing in the roadmap (as of issues [#62](https://github.com/krakenhavoc/cmd_and_ctrl/issues/62)–[#70](https://github.com/krakenhavoc/cmd_and_ctrl/issues/70)) covers player-level counters, counter-specific SBAs, or client pip rendering.
@@ -595,6 +651,7 @@ Gap analysis behind this sprint: `Card.Counters` exists today ([server/internal/
 ### Tasks
 
 **Counter-specific state-based actions (server):**
+
 - [x] CR 704.5i — planeswalker with 0 loyalty counters → owner's graveyard
 - [x] CR 704.5p — battle with 0 defense counters → owner's graveyard
 - [x] CR 704.5q — `+1/+1` and `-1/-1` cancel 1-for-1; runs BEFORE the lethal-damage / 0-toughness destruction passes (CR 704.3)
@@ -602,6 +659,7 @@ Gap analysis behind this sprint: `Card.Counters` exists today ([server/internal/
 - [ ] CR 704.5u — saga final-chapter sacrifice: deferred to S14+ alongside the effect catalog (needs per-card final-chapter metadata)
 
 **Player-level counters (server):**
+
 - [x] `Player.Counters map[string]int` alongside legacy Poison/Energy ints (kept synchronised)
 - [x] `Game.AddPlayerCounter(playerID, name, delta)` mutation with zero-clamp + map-sparse semantics
 - [x] Wire action `add_player_counter` (payload: `{ name, delta }` — player-scoped)
@@ -609,15 +667,18 @@ Gap analysis behind this sprint: `Card.Counters` exists today ([server/internal/
 - [x] Clone/restore round-trip carries `Player.Counters`
 
 **Counter-type registry (server + client):**
+
 - [x] `server/internal/game/counter_types.go` — named constants for engine-referenced types + KnownCardCounters / KnownPlayerCounters slice forms. Unknown names round-trip without validation.
 - [x] `client/src/lib/counterTypes.ts` — TS mirror with iconography (per-type color + glyph + abbr); `counterStyle()` falls back to neutral for homebrew
 
 **Marked-damage cleanup (CR 514.2):**
+
 - [x] `Card.DamageMarked int` (already shipped in S13.1 — feeds the lethal-damage SBA)
 - [x] Cleanup-step turn-based action zeros `DamageMarked` on every creature before the auto-advance
 - [x] Lethal-damage SBA reads `DamageMarked >= CurrentToughness` (S13.1)
 
 **Client UI (Svelte):**
+
 - [x] `CounterPips.svelte` — stacked pip overlay at top-right of every battlefield card; colour from the registry
 - [x] PlayerHeader counter row — poison/energy keep dedicated chips, generic loop renders other non-zero counters (experience ⭐, rad ☢, homebrew •); +/- routes through `add_player_counter`
 - [x] `damage_marked` badge on battlefield cards (red, bottom-right)
@@ -626,29 +687,34 @@ Gap analysis behind this sprint: `Card.Counters` exists today ([server/internal/
 - [ ] Animated counter placement — deferred; static rendering is enough for the foundation
 
 **Docs:**
+
 - [x] `docs/decisions/0008-counter-mechanics.md` — ADR
 - [x] `docs/protocol.md` — `add_player_counter` action + `counters` / `damage_marked` field documentation
 
 **Tests:**
+
 - [x] SBAs: planeswalker loyalty 0, battle defense 0, +1/+1 -1/-1 cancel (5-case table), poison ≥ 10 loss
 - [x] AddPlayerCounter clamps at zero; legacy Energy/Poison ints stay in sync
 - [x] Cleanup-step clears `DamageMarked`
 
 ### Out of scope (explicit handoffs)
+
 - **Counter-placement replacement effects** (Doubling Season, Hardened Scales, Branching Evolution) — S17 [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67)
 - **Counter-generating triggered abilities** (e.g. "when this ETBs, put a +1/+1 counter on target") — auto-fire in S19 [#69](https://github.com/krakenhavoc/cmd_and_ctrl/issues/69); manual `announce_trigger` from S13.1 still works here
-- **Infect / wither damage as counter placement** — depends on combat keyword layer (S18 [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68)); poison-counter SBA ships here but the *creature-inflicts-poison* mechanic lives with other combat keywords
+- **Infect / wither damage as counter placement** — depends on combat keyword layer (S18 [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68)); poison-counter SBA ships here but the _creature-inflicts-poison_ mechanic lives with other combat keywords
 - **Persist / undying counter-conditional triggers** — S19 (needs event log + trigger framework)
 - **Proliferate** — S14 effect primitive; ships alongside the effect catalog
 - **Counter animations beyond simple fade** — S09 polish work; not this sprint
 
 ### Risks / gotchas
+
 - `Card.CurrentPower()` already encodes layer-7d math; S16's layer system will eventually want to own this. Don't over-invest in refactoring `CurrentPower()` now — S16 will absorb it cleanly, and duplicating the +1/+1 math elsewhere will just create churn.
 - The canonical counter-type list is long and rarely-used types outnumber common types. Ship the list structured but small (top ~20 types get icons; rest are text-only) — over-designing the iconography is a trap.
-- `+1/+1 / -1/-1` SBA ordering matters: the cancel-SBA runs *before* the lethal-damage SBA, so a 2/2 with a -1/-1 counter and 1 marked damage shouldn't die if there's also a +1/+1 counter to cancel. Snapshot-test the ordering explicitly.
+- `+1/+1 / -1/-1` SBA ordering matters: the cancel-SBA runs _before_ the lethal-damage SBA, so a 2/2 with a -1/-1 counter and 1 marked damage shouldn't die if there's also a +1/+1 counter to cancel. Snapshot-test the ordering explicitly.
 - Poison counters currently have no home (`Player.Counters` doesn't exist). Adding the field is a protocol change — old client builds will silently drop it on decode. Fine for the friends-only deployment; document the bump in `docs/protocol.md`.
 
 ### Exit criteria
+
 1. Cast a planeswalker, activate its minus ability to 0 loyalty → the card moves to its owner's graveyard without manual `move_card`.
 2. Infect a player to 10 poison counters via `add_player_counter` → they lose immediately on the next SBA check.
 3. Put a +1/+1 and a -1/-1 counter on the same creature → both clear on the next SBA check; a 2/2 with +1/+1 and -1/-1 is still a 2/2 afterward.
@@ -660,13 +726,15 @@ Gap analysis behind this sprint: `Card.Counters` exists today ([server/internal/
 ---
 
 ## S13.3 — Client-side timing affordance (greyed illegal actions)
+
 **Phase:** 7 · **Goal:** the UI pre-disables illegal cast / activation affordances so players don't try actions the server will only reject after the click. Pure client work; consumes priority/step/stack/split-second/loyalty-this-turn state that S13 + S13.1 already publish.
 
-After S13 + S13.1, the server enforces timing: who holds priority, sorcery-speed window, split-second blocks, once-per-turn loyalty, etc. Today the only UI signal is an error toast *after* an illegal click. S13.3 closes the loop: hand cards grey out when not castable, ability buttons disable with a reason tooltip, the play-land button greys after the one-per-turn is used. Server enforcement stays authoritative — UI greyness is best-effort UX.
+After S13 + S13.1, the server enforces timing: who holds priority, sorcery-speed window, split-second blocks, once-per-turn loyalty, etc. Today the only UI signal is an error toast _after_ an illegal click. S13.3 closes the loop: hand cards grey out when not castable, ability buttons disable with a reason tooltip, the play-land button greys after the one-per-turn is used. Server enforcement stays authoritative — UI greyness is best-effort UX.
 
 ### Tasks
 
 **Client legality helpers (`client/src/lib/timing.ts`):**
+
 - [x] `canCastFromHand(card, snap, viewerID): { legal, reason? }` — checks priority + sorcery-speed window for non-instants + split-second clear; lands gated identically to sorceries (CR 305.3)
 - [x] `canActivateAbility(card, snap, viewerID)` — instant-speed activation predicate (priority + split-second clear)
 - [x] `canActivateLoyalty(card, snap, viewerID, alreadyActivated?)` — sorcery-speed + battlefield-presence; the once-per-turn flag is best-effort callee-tracked since `LoyaltyActivatedThisTurn` is server-only
@@ -674,25 +742,30 @@ After S13 + S13.1, the server enforces timing: who holds priority, sorcery-speed
 - [x] Reasons are plain English: "Not your priority", "Stack isn't empty", "Only at sorcery speed", "Split second on the stack", "Lands only on your main phase", "Already activated this turn"
 
 **Hand component:**
+
 - [x] Each card runs `canCastFromHand` in a `$derived`; illegal cards get `.timing-disabled` (opacity 0.55 + grayscale 0.4) and the click handler is detached
 - [x] Hover/zoom still works — only the click affordance is muted
 - [x] Tooltip on the slot exposes the legality reason
 
 **Toolbar / battlefield / ability dialog:**
+
 - [ ] Toolbar pass-priority button still uses pre-S13.3 `viewerHasPriority` derivation (matches `canPassPriority` for the common case); CastDialog / AbilityDialog UX integration follows when those land alongside S13.1's deferred dialogs
 - [ ] Loyalty greyness in the ability dialog ships with the dialog itself (S13.1 deferred UX batch)
 
 **Tests:**
+
 - [x] `client/src/lib/timing.test.ts` — 23 vitest cases covering every reason string + the spectator path
 - [ ] Manual smoke: 2-tab playtest (sorceries on opponent turn, instants OK, split-second blocking, etc.) — covered by the 5 exit criteria below
 
 ### Out of scope (stays for later)
+
 - **Mana-source prediction** ("can't afford this") — depends on [S15](#s15--mana-pool--auto-tapper-from-cost-vector) mana pool
 - **Target-predicate greyness** ("no legal targets") — [S20](#s20--auto-target-legality--smart-cast-ui) territory
 - **Alt-cast paths from non-hand zones** ("flashback not yet eligible") — [S29](#s29--alt-cast-paths-from-non-hand-zones)
 - **Animated un-grey transitions** — S11-ish polish
 
 ### Exit criteria
+
 1. On opponent's turn, viewer's hand sorceries are visibly greyed; instants render normally; tooltip on a greyed sorcery says "Not your turn".
 2. Cast a sorcery on your own main phase → other sorceries in your hand grey out with "Stack isn't empty"; un-grey when the stack resolves.
 3. Activate a planeswalker's loyalty → that planeswalker's ability list greys remaining options with "Already activated this turn"; resets next turn.
@@ -704,6 +777,7 @@ Detailed plan: `/home/node/.claude/plans/s13-3-client-timing-affordance.md`. Bui
 ---
 
 ## S13.4 — Interactive cleanup discard + per-player MaxHandSize
+
 **Phase:** 7 · **Goal:** close out S13's deferred interactive-discard item + lay the per-player `MaxHandSize` groundwork for hand-size-modifying effects (Reliquary Tower, Thought Vessel, Spellbook, Library of Leng, Null Profusion, Venser's Journal) to plug into later via S14/S16.
 
 S13's cleanup step auto-discards from the hand top as a placeholder — S13.4 replaces that with an interactive prompt: the cleanup step pauses, the active player picks which cards to discard, then the turn advances. Separately, the hardcoded "7" becomes a per-player `MaxHandSize int` (default 7, `-1` = no maximum) so later catalog cards can modify it. The catalog declarations themselves (Reliquary Tower et al.) ship via S14's effect catalog and S16's layer system writing to the field this sprint creates.
@@ -711,6 +785,7 @@ S13's cleanup step auto-discards from the hand top as a placeholder — S13.4 re
 ### Tasks
 
 **Server — engine + actions:**
+
 - [x] `Player.MaxHandSize int` field (default 7; `-1` = no max)
 - [x] `Game.DiscardPending map[playerID]int` populated by the cleanup-step-entry hook
 - [x] Cleanup hook auto-advances only when `DiscardPending` is empty; re-fires on `discard_selection` drain so the cursor resumes
@@ -719,19 +794,23 @@ S13's cleanup step auto-discards from the hand top as a placeholder — S13.4 re
 - [ ] APNAP order for multi-player simultaneous discard — single-prompt-at-a-time is fine for the friends-only deployment; revisit if/when Mindslicer / Painful Quandary land at the table
 
 **Server — wire:**
+
 - [x] `PlayerView.max_hand_size int` (always present so clients know the cap)
 - [x] `GameView.discard_pending map<playerID, count>` (omitempty)
 
 **Client:**
+
 - [x] `DiscardPromptModal.svelte` — opens when `discard_pending[viewerID] > 0`; multi-select exactly N cards; non-dismissible; auto-closes when the wire drains the entry
 - [ ] `PlayerHeader` shows non-default `MaxHandSize` next to hand-count — deferred until set_max_hand_size has a UI consumer
 - [ ] Settings panel toggle for `set_max_hand_size` — deferred, sandbox helper only
 
 **Tests:**
+
 - [x] Server: over-max prompts, selection resolves + advances, wrong count rejected, NoMaxHandSize bypass, set_max_hand_size validation
 - [ ] Manual 2-tab smoke through the 5 exit scenarios below
 
 ### Out of scope
+
 - **Static-ability declarations** for Reliquary Tower, Thought Vessel, Spellbook, Library of Leng, Null Profusion, Venser's Journal — these land as [S14](#s14--card-effect-catalog-foundation) catalog cards plugged into [S16](#s16--continuous-effects--layer-system-cr-613) layer pipeline, writing to the `MaxHandSize` field S13.4 creates
 - Replacement effects on discard (Library of Leng's "to top/bottom of library instead") — [S17](#s17--replacement-effects-engine-cr-614)
 - Triggers on discard (Asylum Visitor, madness) — [S19](#s19--auto-fire-triggered-abilities) + [S29](#s29--alt-cast-paths-from-non-hand-zones)
@@ -739,6 +818,7 @@ S13's cleanup step auto-discards from the hand top as a placeholder — S13.4 re
 - Multi-player simultaneous discard ordering UI (server handles APNAP correctly; only one modal at a time)
 
 ### Exit criteria
+
 1. End turn with 9 cards → modal opens on active-player tab prompting "discard 2 cards"; cannot close without selecting.
 2. Select 2 + submit → cards move to graveyard, modal closes, turn advances.
 3. Set `MaxHandSize = -1` → end turn with 15 cards, no modal, cleanup passes through.
@@ -750,6 +830,7 @@ Detailed plan: `/home/node/.claude/plans/s13-4-hand-size-and-interactive-discard
 ---
 
 ## S13.5 — Card visibility + known-by tracking
+
 **Phase:** 7 · **Goal:** Arena-style per-instance sticky visibility. Every `Card` carries a `KnownBy` set — who currently knows this specific instance's identity. Zone moves / reveals / shuffles mutate the set; hub filter redacts printed characteristics for non-`KnownBy` viewers; client renders card back with hover-reveal for viewers who previously saw the card face-up.
 
 Today's filter is zone-default-only — no way to express Thoughtseize reveals, bounced-but-known creatures, scry persistence, or morph-face-up-then-down with correct opponent knowledge. S13.5 replaces the zone-default heuristic with authoritative per-card `KnownBy`. [S22](#s22--card-draw--library-manipulation)'s transient reveal frames become animation sugar on top.
@@ -757,6 +838,7 @@ Today's filter is zone-default-only — no way to express Thoughtseize reveals, 
 ### Tasks
 
 **Server — card + mutations:**
+
 - [x] `Card.KnownBy map[uuid.UUID]bool` field; `Card.FaceDown bool` field
 - [x] Helpers: `AddKnower`, `AddKnowersAll`, `ClearKnown`, `IsKnownTo`
 - [x] `Game.Start` initialiser — library no knowers, starting hand → owner, command zone → all seated
@@ -766,31 +848,37 @@ Today's filter is zone-default-only — no way to express Thoughtseize reveals, 
 - [ ] Token / Clone ETB / spell-copy creation initializes `KnownBy = {all seated}` — deferred until those paths exist (S14+ effect catalog)
 
 **Server — wire:**
+
 - [x] `CardView.face_down bool` + `CardView.known_by_you bool` (per-viewer)
 - [x] Printed characteristics (name, type_line, scryfall_id, power, toughness, counters, is_commander) zeroed by FilterViewFor for non-knowers; instance_id, owner, controller, tapped, position, face_down, damage_marked always sent
 
 **Hub filter:**
+
 - [x] `FilterViewFor` walks every visible zone and per-card decides redaction via the unexported `knowers` map carried from `viewOfCard`. Opponent hand + library still get the S04 zone-wholesale hide; visible-zone cards get per-card redaction.
 - [x] `known_by_you` populated per viewer
 
 **Client:**
+
 - [x] `Card.svelte` renders the back when `face_down` or `known_by_you === false`; face-up otherwise
 - [x] `protocol.ts` mirrors `face_down` + `known_by_you`
 - [ ] Hover-reveal on face-down + known_by_you cards — deferred; the existing hover-zoom already shows the face for known cards via the imgSrc path
 - [ ] Mixed hand rendering (face-up for revealed-by-Thoughtseize cards) — deferred; depends on the opponent-hand-per-card filter, which is also deferred
 
 **Tests:**
+
 - [x] Server: Start initialises KnownBy correctly per zone; shuffle clears library; public-zone move grants all seats; draw adds owner only
 - [x] Hub filter: redaction on non-knower viewer keeps instance_id but zeroes printed chars; known cards keep characteristics + known_by_you=true
 - [ ] Client: face-down + known_by_you renders back with hover — manual smoke covered by exit criteria
 
 ### Out of scope
+
 - Long-term "opponent-X-saw-card-Y in the past" advisory UI — pure engine tracking is enough
 - Undo / take-back logic — falls out naturally from instance-sticky `KnownBy`
 - Rules-lawyering on face-down concealment (paper says no-characteristics; we match Arena's sticky model and document the deviation)
 - Replay "what did I know when" historical tracking
 
 ### Exit criteria
+
 1. **Scry persistence.** Scry 1, keep on top, next turn draw → card stays visible to you all along.
 2. **Bounce-known.** Cast Lightning Bolt (public on stack), opponent Unsummons it → renders face-up for everyone in your hand.
 3. **Thoughtseize-style reveal.** Opponent reveals your hand → cards stay known to opponent after the reveal; next turn's drawn cards unknown again.
@@ -803,7 +891,76 @@ Detailed plan: `/home/node/.claude/plans/s13-5-card-visibility-knownby.md`. Buil
 
 ---
 
+## S13.6 — Intelligent priority auto-pass (smart skip)
+
+**Phase:** 7 · **Goal:** make priority passing feel intelligent. S13 ships the per-step stops grid and `autoPassPriority`; S13.3 ships the client legality predicates. S13.6 joins them: the stops grid now means _"stop when there's something to consider"_, not _"stop every time."_ In practice an empty hand + empty board sees the cursor walk Untap → Untap with zero pointless clicks.
+
+### Tasks
+
+**Client — aggregate-legality predicate (`client/src/lib/priority.ts`):**
+
+- [x] `hasAnyLegalResponse(snap, viewerID, snapSeq?): boolean` — folds `canCastFromHand` + `canActivateAbility` across the viewer's hand, command zone, and viewer-controlled battlefield cards. Returns true as soon as any predicate returns legal.
+- [x] Memoised by `snap.seq` so the autoPassPriority effect + future consumers share one scan per snapshot window.
+- [x] Conservative by design: treats every viewer-controlled permanent as _potentially_ activatable (client doesn't carry per-card ability lists). False-positive-stop > false-negative-skip per ADR 0009 §3.
+
+**Client — smart-skip setting:**
+
+- [x] Settings schema v5: `gameplay.smartAutoPass: boolean` (default `true`); migration note added to `migrate()` hook.
+- [x] Settings.svelte gameplay tab: add the toggle with help text under the stops grid.
+- [x] `Game.svelte` autoPassPriority effect folds the predicate in — if the step is a configured stop but `hasAnyLegalResponse` is false and `smartAutoPass` is on, auto-pass anyway.
+
+**Client — pared-down priority toolbar (`next` + `autopass` + `pass turn`):**
+
+- [x] Removed the `next step`, `⇥ pass step`, and `→ next stop` buttons (`advanceStep`, `passRound`, `passToNextStop` functions deleted along with them). The intelligent auto-pass effect (stops grid + smartAutoPass + manual pins) makes the batch-pass buttons redundant.
+- [x] `next` = one-shot pass_priority (renamed from "pass priority"). Only active when the viewer holds priority.
+- [x] `autopass` = session toggle (not a one-shot). When on, every priority window the viewer holds auto-passes regardless of stepStops / smartAutoPass / manual pins / `settings.autoPassPriority`. Persists until toggled off or reload; the effect still requires actual viewer priority so opponents' turns don't generate "you do not hold priority" rejections.
+- [x] Toggle button uses amber active-state styling + aria-pressed so the on/off state reads at a glance without reading the label.
+
+**Client — manual one-time stops (click-to-pin on phase icons):**
+
+- [x] `client/src/lib/priorityStops.ts` — Svelte store of pinned `StepID`s with `toggleManualStop` / `hasManualStop` / `consumeManualStop` / `canManuallyStop` helpers. Rejects Untap + Cleanup (no priority).
+- [x] PhaseDisplay.svelte: priority-granting phase icons become `<button>` elements; click toggles a pin. Pinned icons show a small top-right dot + accent tint. No-priority steps stay non-interactive with a "no priority" tooltip.
+- [x] Game.svelte autoPassPriority effect: manual pins take precedence over everything else (stops grid, smartAutoPass) when autopass-mode is off. "Fake a game action" — viewer wants the cursor to hold even when the engine has nothing to offer. Autopass-mode overrides pins too (deliberately — the point of autopass is "no more asking").
+- [x] Game.svelte consumer: on step transition, consume the pin on the prior step (one-time semantics).
+
+**Tests:**
+
+- [x] `client/src/lib/priority.test.ts` — 14 vitest cases covering hand / command / battlefield / no-priority / split-second / memoisation paths.
+- [x] `client/src/lib/priorityStops.test.ts` — 10 vitest cases: toggle, no-op on no-priority steps, multi-pin, consume, subscriber observability.
+- [ ] Manual smoke: 4-player game with all stops configured, nobody has instants → cursor walks without clicks; one player casts Counterspell → cursor stops for opposing seats with the mana to respond.
+- [ ] Manual smoke: click a phase icon mid-game → cursor holds there next cycle; clears after one pass; multi-pin stacks.
+
+**Docs:**
+
+- [x] ADR `0009-smart-priority-autopass.md`.
+- [x] This sprint entry.
+
+### Out of scope (explicit handoffs)
+
+- **Mana affordability in the predicate.** Requires `/auto-tap-preview` on the hot path; perf cliff. Future sprint will precompute affordability once per snapshot if the value shows up in playtest.
+- **Triggered-ability responses.** S19 auto-fires them; the viewer doesn't dispatch them, so they don't gate priority-window UX.
+- **Opponent "thinking" / "nothing to do" indicators.** Accurate only post-S13.5 hand visibility across all seats (not granted today).
+- **Per-player granularity on the toggle.** Global for now; split on demand.
+
+### Risks / gotchas
+
+- **False-negative skip eats a response.** If `hasAnyLegalResponse` returns false but the viewer _could_ have acted, smart-skip passes their priority window. Mitigation: the predicate is deliberately permissive (viewer-controlled permanent → true) so the realistic failure mode is the opposite (stop when there's nothing to do). Turning the toggle off reverts to strict stops.
+- **Server / client legality divergence.** The client predicate doesn't know about every effect the server knows about. Smart-skip dispatches a real `pass_priority`; worst case is the same "viewer passed through a priority window they could have used" outcome as a manual click — survivable, undo still works.
+- **Toggle surprise on migration.** Default-on changes behaviour for existing users. Self-explanatory under the stops grid's help text; if a player finds their stops are getting skipped, the toggle is two clicks away.
+
+### Exit criteria
+
+1. Four-player game, all seats with `smartAutoPass` on, empty hands + empty boards → cursor walks Untap → Untap with zero `pass_priority` clicks.
+2. Seat 0 casts Lightning Bolt targeting seat 2. Seat 1 holds Counterspell + U available → cursor stops for seat 1. Seat 3 holds no instants → cursor auto-passes through seat 3.
+3. Toggle `smartAutoPass` off → every configured stop blocks on a manual click regardless of hand state (strict pre-S13.6 behaviour).
+4. Click `autopass` → button lights amber; every time priority lands on the viewer, cursor auto-passes (including through stepStops and manual pins). Click again → reverts to the intelligent default path.
+5. Click an upkeep icon on PhaseDisplay with autopass off → next time priority lands on the viewer at upkeep, cursor holds even with `smartAutoPass` on and nothing legal to do; pin clears on the pass; next turn's upkeep is unpinned.
+6. ADR `0009-smart-priority-autopass.md` exists and explains the predicate's conservative stance, the "smartAutoPass default on" decision, the mana-affordability punt, manual-stops as the highest-precedence override, and autopass-mode as the session-scoped override on top of everything.
+
+---
+
 ## S14 — Card-effect catalog foundation
+
 **Phase:** 7 · **Goal:** ~30 of the most-played Commander cards resolve end-to-end with zero manual intervention — cast Lightning Bolt at an opponent, the stack resolves on a full priority pass, opponent's life drops by 3, the card routes to graveyard, no `change_life` click required. Unimplemented cards keep today's Cockatrice-style manual posture; the catalog is opt-in per Scryfall ID.
 
 S14 lays the rules-engine infrastructure the rest of Phase 7 hangs off: a per-game append-only event log, a pull-based listener registry (pre-wired for S19 triggered abilities), a declarative Forge-style card-effect catalog, 15 composable effect primitives, and 30 starter cards picked to exercise the primitives without depending on mana (S15), layers (S16), replacement effects (S17), or combat keywords (S18).
@@ -822,6 +979,7 @@ S14 lays the rules-engine infrastructure the rest of Phase 7 hangs off: a per-ga
 ### Tasks
 
 **Event log infrastructure (server):**
+
 - [x] New `server/internal/game/events.go` — `Event` tagged struct (`{Kind, Actor, Source, Target, Amount, CardID, OldZone, NewZone, Seq}`), `EventKind` constants (Cast, Resolve, Fizzle, DealDamage, ChangeLife, DrawCard, DiscardCard, Mill, ZoneMove, TapCard, UntapCard, CounterPlaced, TokenCreated, SearchLibrary, CounterSpell, Concede, ETB, LTB, EffectError).
 - [x] `Game.Events []Event` field; `Game.EmitEvent(Event)` append point (caller holds `g.mu`).
 - [x] `server/internal/game/clone.go` — deep-copy `Events` slice; shallow-copy `Listeners`.
@@ -829,10 +987,12 @@ S14 lays the rules-engine infrastructure the rest of Phase 7 hangs off: a per-ga
 - [x] `protocol.GameView.events` (last-N window, omitempty) for client debugging / auto annotations.
 
 **Listener registry (server):**
+
 - [x] New `server/internal/game/listeners.go` — `Listener interface { OnEvent(*Game, Event) }`, `Game.RegisterListener(Listener)`, `Game.notifyListenersLocked(Event)` fired immediately after `EmitEvent`.
 - [x] Zero production listeners in S14. `noOpListener` in tests exercises the wiring.
 
 **Effect engine (server):**
+
 - [x] New subpackage `server/internal/cards/effects/` (separate from `cards` — keeps Scryfall-index concerns disentangled from effect concerns).
 - [x] `effects/registry.go` — `Spec` struct, `Register(Spec)`, `Lookup(scryfallID) (Spec, bool)`, `All() []Spec`. Duplicate-ScryfallID registration panics at package init.
 - [x] `effects/context.go` — `Context` wrapping `*game.Game` under-lock, helper accessors (`CreatureIDs`, `PlayerByID`, `ZoneOf`, `IsTargetLegal`).
@@ -842,21 +1002,25 @@ S14 lays the rules-engine infrastructure the rest of Phase 7 hangs off: a per-ga
 - [x] 30 card files under `effects/` (one per card).
 
 **Resolution integration (server):**
+
 - [x] `resolveTopOfStackLocked` (mutations.go) — after target-legality short-circuit, before zone routing: `if spec, ok := effects.Lookup(top.ScryfallID); ok && spec.OnResolve != nil { spec.OnResolve(item, ctx) }`. Errors emit `EventEffectError`, don't wedge resolution.
 - [x] ETB hook: after `MoveCard(Stack → Battlefield, …)`, call `spec.OnETB(&card, ctx)` if non-nil.
 - [x] Starting loyalty: `StartingLoyalty > 0` on the spec stamps `CounterLoyalty` counters in the ETB branch.
 
 **Wire protocol (server + client):**
+
 - [x] `protocol.CardView.auto bool` — set by `viewOfCard` when `effects.Lookup(c.ScryfallID).OnResolve != nil || .OnETB != nil`.
 - [x] `client/src/lib/protocol.ts` — mirror `CardView.auto` + `GameView.events`.
 - [x] `docs/protocol.md` — document new fields + `EventKind` constants.
 
 **Client (Svelte):**
+
 - [x] `client/src/lib/components/board/Card.svelte` — gold-leaf "auto" badge bottom-right when `card.auto === true`. Hover tooltip.
 - [x] `client/src/lib/components/board/StackOverlay.svelte` — "auto-resolve" chip next to the controller name on catalog stack items.
 - [x] `client/src/lib/events.ts` — derived store pulling `GameView.events`, surfaces last ~5 as 2s toast notifications ("Alice took 3 from Lightning Bolt"). Soft nudge against double-applying after an auto-resolve.
 
 **Tests:**
+
 - [x] `server/internal/game/events_test.go` — emit points + clone/restore round-trip + listener notification order.
 - [x] `server/internal/cards/effects/primitives_test.go` — each primitive in isolation.
 - [x] `server/internal/cards/effects/cards_test.go` — table-driven, one case per catalog card.
@@ -864,31 +1028,33 @@ S14 lays the rules-engine infrastructure the rest of Phase 7 hangs off: a per-ga
 - [x] Vitest — `Card.svelte` auto badge, `StackOverlay.svelte` auto chip.
 
 **Docs:**
+
 - [x] `docs/decisions/0010-card-effect-catalog.md` — ADR covering the decisions above.
 - [x] `docs/protocol.md` — wire docs for new fields.
 - [x] `AGENTS.md` — "how to add a new catalog card" recipe.
 
 ### Starter card list (31 cards)
 
-| Family | Cards | Primitives |
-|---|---|---|
-| Direct damage | Lightning Bolt, Shock, Lightning Helix, Pyroclasm | DealDamage + GainLife iteration |
-| Mass removal | Wrath of God, Damnation, Day of Judgment | DestroyTarget iteration |
-| Counter magic | Counterspell, Negate, Swan Song | CounterTarget + CreateToken |
-| Draw | Divination, Harmonize, Sign in Blood | DrawCards + ChangePlayerLife |
-| Mill / discard | Glimpse the Unthinkable (mill 10), Thoughtseize (random — UI deferred to S22), Mind Rot | MillCards + DiscardCards |
-| Targeted removal | Swords to Plowshares, Path to Exile (enters-tapped deferred) | ExileTarget + GainLife + SearchLibrary |
-| Bounce | Unsummon | BounceToHand |
-| Mana rocks (vanilla permanents this sprint) | Sol Ring, Arcane Signet | none — S15 wires mana abilities |
-| Tutors | Cultivate (both lands → hand — enters-tapped deferred to S17), Demonic Tutor, Vampiric Tutor | SearchLibrary (to hand / library-top) |
-| Recursion | Eternal Witness (`OnETB` direct-call hook → S19 migrates to listener), Regrowth | ReturnFromGraveyard |
-| ETB creatures | Solemn Simulacrum (enters-tapped land deferred), Acidic Slime | `OnETB` composition |
-| Vanilla creature placeholder | Birds of Paradise | none — mana ability lands in S15 |
-| **Planeswalker** | **The Wandering Emperor** (`OnETB` stamps starting loyalty 3 via `AddCounter`; activated abilities remain manual via S13.1's `activate_loyalty`) | **AddCounter on ETB** |
+| Family                                      | Cards                                                                                                                                            | Primitives                             |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------- |
+| Direct damage                               | Lightning Bolt, Shock, Lightning Helix, Pyroclasm                                                                                                | DealDamage + GainLife iteration        |
+| Mass removal                                | Wrath of God, Damnation, Day of Judgment                                                                                                         | DestroyTarget iteration                |
+| Counter magic                               | Counterspell, Negate, Swan Song                                                                                                                  | CounterTarget + CreateToken            |
+| Draw                                        | Divination, Harmonize, Sign in Blood                                                                                                             | DrawCards + ChangePlayerLife           |
+| Mill / discard                              | Glimpse the Unthinkable (mill 10), Thoughtseize (random — UI deferred to S22), Mind Rot                                                          | MillCards + DiscardCards               |
+| Targeted removal                            | Swords to Plowshares, Path to Exile (enters-tapped deferred)                                                                                     | ExileTarget + GainLife + SearchLibrary |
+| Bounce                                      | Unsummon                                                                                                                                         | BounceToHand                           |
+| Mana rocks (vanilla permanents this sprint) | Sol Ring, Arcane Signet                                                                                                                          | none — S15 wires mana abilities        |
+| Tutors                                      | Cultivate (both lands → hand — enters-tapped deferred to S17), Demonic Tutor, Vampiric Tutor                                                     | SearchLibrary (to hand / library-top)  |
+| Recursion                                   | Eternal Witness (`OnETB` direct-call hook → S19 migrates to listener), Regrowth                                                                  | ReturnFromGraveyard                    |
+| ETB creatures                               | Solemn Simulacrum (enters-tapped land deferred), Acidic Slime                                                                                    | `OnETB` composition                    |
+| Vanilla creature placeholder                | Birds of Paradise                                                                                                                                | none — mana ability lands in S15       |
+| **Planeswalker**                            | **The Wandering Emperor** (`OnETB` stamps starting loyalty 3 via `AddCounter`; activated abilities remain manual via S13.1's `activate_loyalty`) | **AddCounter on ETB**                  |
 
 **Primitive coverage summary:** 13 of 15 primitives exercised by catalog cards; TapTarget / UntapTarget ship as primitives with unit-test-only coverage so S15 has the hooks ready.
 
 ### Out of scope (explicit handoffs)
+
 - **Mana pool + cost validation** — S15. Sol Ring / Arcane Signet / Birds of Paradise ship as vanilla permanents; their mana abilities plug into `effects/` as activated-ability specs in S15.
 - **Continuous effects + layers** — S16. No S14 catalog card has a static ability.
 - **Replacement effects (ETB-tapped, "if-would-die-exile-instead")** — S17. Cultivate's "enters tapped" half, Path to Exile's tapped land, Solemn Simulacrum's tapped land all defer.
@@ -899,6 +1065,7 @@ S14 lays the rules-engine infrastructure the rest of Phase 7 hangs off: a per-ga
 - **Target legality validation at announce time** — S20 smart-cast UI. Effects re-check at resolve via CR 608.2b.
 
 ### Risks / gotchas
+
 - **Sandbox-override double-apply.** Player clicks "-3" manually after Lightning Bolt auto-resolves. Mitigation: recent life-change toast + gold-leaf "auto" badge as visual nudges. No server-side de-dup.
 - **Non-catalog-card regression.** Opt-in invariant is load-bearing; every non-catalog test must assert manual-only behaviour is unchanged. Canary: `TestCastNonCatalogSpellStaysSandbox`.
 - **Effect resolution under write lock.** Primitive calling a public locking mutator ⇒ deadlock. Enforce via godoc + code review (Go can't encode "locked context" at the type level).
@@ -909,6 +1076,7 @@ S14 lays the rules-engine infrastructure the rest of Phase 7 hangs off: a per-ga
 - **ETB hook migration to S19.** Direct-call path in S14 becomes listener-sugar in S19 — catalog cards untouched. Documented in ADR.
 
 ### Exit criteria
+
 1. **Lightning Bolt** — cast at opponent, pass priority round, opponent's life drops by 3, card in caster's graveyard. No manual clicks.
 2. **Counterspell** — opponent's Bolt on the stack, cast Counterspell, pass priority: Bolt in opponent's graveyard, no damage, Counterspell in caster's graveyard.
 3. **Cultivate** — cast, resolve: library shuffled, two basics in caster's hand, Cultivate in graveyard.
@@ -921,7 +1089,9 @@ S14 lays the rules-engine infrastructure the rest of Phase 7 hangs off: a per-ga
 10. **Undo** — cast Bolt, pass priority (auto-resolves), undo: life restored, Bolt back on stack.
 
 ### Sub-PR split
+
 Stop-and-show for manual testing at each.
+
 1. Event log + listener registry infrastructure. Zero visible changes; regression is "nothing breaks."
 2. `effects/` package skeleton + 15 primitives + unit tests. Still no visible change.
 3. Resolution integration + `auto` bit on CardView + auto badge in `Card.svelte` + StackOverlay chip. First visible change: catalog stubs (empty-body Lightning Bolt) render with the badge.
@@ -930,11 +1100,13 @@ Stop-and-show for manual testing at each.
 6. ADR + protocol docs final pass.
 
 ### Critical files
+
 - Server: [events.go](server/internal/game/events.go) (new), [listeners.go](server/internal/game/listeners.go) (new), [game.go](server/internal/game/game.go), [clone.go](server/internal/game/clone.go), [mutations.go](server/internal/game/mutations.go), [view.go](server/internal/protocol/view.go), new `server/internal/cards/effects/` subpackage (registry, context, primitives, spec, tokens, 30 card files).
 - Client: [Card.svelte](client/src/lib/components/board/Card.svelte), [StackOverlay.svelte](client/src/lib/components/board/StackOverlay.svelte), [protocol.ts](client/src/lib/protocol.ts), new [client/src/lib/events.ts](client/src/lib/events.ts).
 - Docs: new [docs/decisions/0010-card-effect-catalog.md](docs/decisions/0010-card-effect-catalog.md), [docs/protocol.md](docs/protocol.md), [AGENTS.md](AGENTS.md).
 
 ### Branch + commit conventions
+
 - Branch: `feat/s14-card-effect-catalog` (sub-PRs use `-s14-<slice>` suffixes).
 - Footer:
   ```
@@ -945,6 +1117,7 @@ Stop-and-show for manual testing at each.
 ---
 
 ## S15 — Mana pool, cost model, and auto-tapper
+
 **Phase:** 7 · **Goal:** bolt a real mana economy onto the sandbox — a server-side `ManaPool` per player, a cost parser that understands `{1}{R}`, `{W/U}`, `{X}`, `{W/P}`, `{S}`, and `{C}`, cost validation in `cast_spell` that defaults to warn-and-proceed but gates strictly under an opt-in setting, and a backtracking auto-tapper that returns a tap plan in microseconds for any real Commander manabase. The Sol Ring / Arcane Signet / Birds of Paradise vanilla catalog entries seeded in S14 light up this sprint with their activated mana abilities, tapping through the catalog on an `activate_mana_ability` action that also covers the synthetic "basic land → one mana" path.
 
 Mana abilities do NOT use the stack (CR 605.3); they resolve synchronously on activation and emit the same Event log the rest of the engine reads. This is distinct from S19's stack-aware activated-ability pipeline. Permissive-by-default keeps the Cockatrice feel for anyone who just wants to deal with mana on paper; strict opt-in gives the Arena-style "can't cast that yet" gate to players who want the engine to enforce it.
@@ -966,6 +1139,7 @@ Mana abilities do NOT use the stack (CR 605.3); they resolve synchronously on ac
 ### Tasks
 
 **Card data + Scryfall ingestion (server):**
+
 - [x] `cards.Card.ManaCost string` — raw Scryfall `mana_cost` string ("{1}{R}"); empty for lands.
 - [x] `cards.Card.ProducedMana []string` — Scryfall's `produced_mana` array (WUBRGC entries; empty for non-producers). Tracks which sources the auto-tapper is allowed to consider.
 - [x] `cards.index.go` JSON tags: `mana_cost` and `produced_mana` added to the struct; `Load()` streams them into the in-memory index.
@@ -974,6 +1148,7 @@ Mana abilities do NOT use the stack (CR 605.3); they resolve synchronously on ac
 - [x] `effects.ParseProducedMana(string) []ManaToken` helper for the synthetic basic-land ability (Forest → `[{Color:"G"}]`).
 
 **`ManaPool` + mana abilities (server):**
+
 - [x] `game.ManaToken struct { Color string; Source uuid.UUID; Restrictions []string }` in a new [server/internal/game/mana.go](../server/internal/game/mana.go).
 - [x] `Player.ManaPool []ManaToken` field with `AddMana`, `SpendMana(ParsedCost) (ok bool)`, `EmptyPool()` helpers. `SpendMana` is dry-run-safe (returns a boolean + the post-spend slice; caller commits).
 - [x] Step-change hook: `g.emptyAllManaPoolsLocked()` called from the step-advance boundary; one `EventManaPoolEmptied` per non-empty pool.
@@ -983,6 +1158,7 @@ Mana abilities do NOT use the stack (CR 605.3); they resolve synchronously on ac
 - [x] [sol_ring.go](../server/internal/cards/effects/sol_ring.go), [arcane_signet.go](../server/internal/cards/effects/arcane_signet.go), [birds_of_paradise.go](../server/internal/cards/effects/birds_of_paradise.go) grow their `Spec.ManaAbilities` declarations. Sol Ring: `{Tap}` → `"{C}{C}"`. Arcane Signet: `{Tap}` → `"{W|U|B|R|G}"` (server narrows to identity). Birds: `{Tap}` → `"{W|U|B|R|G}"`.
 
 **Cost validation in `cast_spell` (server):**
+
 - [x] New `CastSpellParams.ForceCast bool` — strict-mode override hatch ("Cast anyway"). Default false.
 - [x] `CastSpellParams.AutoTap bool` — when true, the server runs `AutoTapForCost` before the cost-check, taps the returned plan, and drops the produced mana into the pool. Per-source preview (sub-PR 5) is client-driven; the server path is a single atomic frame under `g.mu`.
 - [x] `Game.effectiveCostLocked(p *Player, card Card, params CastSpellParams) ParsedCost` — parses `card.ManaCost`, adds `{2}` per prior commander cast if `FromZone == "command"`.
@@ -990,12 +1166,14 @@ Mana abilities do NOT use the stack (CR 605.3); they resolve synchronously on ac
 - [x] On successful cast, deduct from `Player.ManaPool` (strict mode only; permissive mode leaves the pool alone so the affordance matches paper tracking).
 
 **Auto-tapper (server):**
+
 - [x] `Game.AutoTapForCost(controller uuid.UUID, cost ParsedCost) (plan []uuid.UUID, ok bool)` in new `server/internal/game/autotap.go`. Iterative-deepening backtracking over controller's untapped permanents with `ProducedMana`-non-empty. Restriction-first heuristic: permanents whose produced set is a strict subset of another's are tried first, so generic basics survive for the next cast.
 - [x] Budget cap: 10k node expansions (p99 benchmark target < 1 ms for a 38-land Bant manabase). Above budget → `(nil, false)` and the client falls back to manual tapping.
 - [x] Pre-tapped / lock-tap integration: `AutoTapForCostExcluding(controller, cost, excluded set)` where the lock-in sources are removed from the search set but their contribution is pre-credited to the cost.
 - [x] Unit tests: Cyclonic Rift overload `{1}{U}{U}{U}{U}{U}{U}` from Hallowed Fountain + Breeding Pool + 4 Islands → plan of 6 sources covers 6 blue, 1 generic; Lightning Bolt `{R}` from 3 basics + 1 Signet → picks the Signet first (pipe restriction), cheapest generic survives.
 
 **Wire protocol (server + client):**
+
 - [x] `PlayerView.mana_pool []string` — each entry a serialised token ("W", "U", "C"). Slice, not map. `omitempty` when empty.
 - [x] `CardView.mana_cost string` — raw Scryfall cost string for hand-zone cost-chip rendering.
 - [x] `CardView.mana_abilities []ManaAbilityView` — `{Index, Label, Cost, Produced}` for activation buttons on the battlefield.
@@ -1004,6 +1182,7 @@ Mana abilities do NOT use the stack (CR 605.3); they resolve synchronously on ac
 - [x] `protocol.ErrorFrame` (new or extend existing) carrying `{code: "insufficient_mana", message, missing: ["{R}", "{R}"]}` — structured so the client can render the strict-mode override affordance without string-matching.
 
 **Client:**
+
 - [x] [client/src/lib/protocol.ts](../client/src/lib/protocol.ts) — mirror `PlayerView.mana_pool`, `CardView.mana_cost`, `CardView.mana_abilities`, the new event kinds, and the structured error.
 - [x] [client/src/lib/settings.ts](../client/src/lib/settings.ts) — `gameplay.strictMana: boolean` field (default false), schema bump to v4, migration preserves prior v3 state and seeds strictMana=false.
 - [x] Settings panel toggle ("Strict mana enforcement") under the existing Gameplay group.
@@ -1016,6 +1195,7 @@ Mana abilities do NOT use the stack (CR 605.3); they resolve synchronously on ac
 - [x] New `PendingChoiceKind: "mana_pick"` branch in `ChoicePromptModal.svelte` — renders a 5-button color picker for Arcane Signet / Birds of Paradise. Color options filtered server-side per the produced-string pipe set intersection; client just renders the buttons the wire sends.
 
 **Tests:**
+
 - [x] Server: `effects/cost_test.go` — parse table over 100 cost strings including every pipe / `{X}` / `{W/P}` / `{S}` shape.
 - [x] Server: `game/mana_test.go` — `ManaPool.AddMana` / `SpendMana` / `EmptyPool` round-trips; step-change clears; undo rolls back.
 - [x] Server: `game/autotap_test.go` — Cyclonic Rift overload from Bant manabase; Lightning Bolt from 3 basics + Signet; unsolvable cost returns `(nil, false)`; lock-tap excluded set honoured.
@@ -1025,14 +1205,16 @@ Mana abilities do NOT use the stack (CR 605.3); they resolve synchronously on ac
 - [x] Manual 2-tab smoke through the exit-criteria list below.
 
 **Docs:**
+
 - [x] `docs/decisions/0011-mana-pool-and-auto-tapper.md` — ADR covering the pool-as-slice choice, pipe syntax, single-action dispatcher, auto-tapper algorithm, permissive-default rationale, strict-mode override hatch.
 - [x] `docs/protocol.md` — `mana_pool`, `mana_cost`, `mana_abilities`, new EventKinds, `insufficient_mana` error frame shape, `mana_pick` PendingChoice kind.
 - [x] `AGENTS.md` — "how to add a mana ability to a catalog card" recipe addendum.
 
 ### Out of scope (explicit handoffs)
+
 - **Filter lands** (Mystic Gate's "`{1}`, pay sub-mana: add `{W}{W}` or `{U}{U}`") — the sub-payment mechanic is an S17 replacement-effect collaboration. S15 treats filter lands as vanilla dual-produce sources for the auto-tapper (good enough until filter-only costs show up).
 - **Cavern of Souls tribe-locking** (the produced mana carries "spend this on a creature type X spell only") — the `ManaToken.Restrictions` slot is scaffolded, but the catalog card ships in a later sprint.
-- **Alternative costs** — Force of Will's pitch cost, suspend, flashback, madness, overload-as-alt-cost. Overload-AS-a-mode-choice is in-scope (Cyclonic Rift is an exit-criterion card) because overload is still a mana cost — just a *different* one announced at cast time via `Modes`.
+- **Alternative costs** — Force of Will's pitch cost, suspend, flashback, madness, overload-as-alt-cost. Overload-AS-a-mode-choice is in-scope (Cyclonic Rift is an exit-criterion card) because overload is still a mana cost — just a _different_ one announced at cast time via `Modes`.
 - **Phyrexian mana self-pay life cost.** `{W/P}` parses and the auto-tapper treats `W/P` symbols as payable by white mana; paying 2 life instead is NOT implemented. Announce-time "2 life or `{W}`" picker lands with replacement effects (S17) or when a phyrexian-mana card enters the catalog, whichever comes first. Documented in ADR.
 - **Hybrid mana preferences.** `{W/U}` parses; the auto-tapper picks one half greedily (whichever the restriction-first heuristic scores higher). No user-facing "I want to pay this with blue specifically" affordance.
 - **Snow mana sources.** `{S}` parses but every mana source counts as snow — no Snow-Covered Forest distinction. Real snow routing lands with the S16 layers work.
@@ -1047,7 +1229,7 @@ Mana abilities do NOT use the stack (CR 605.3); they resolve synchronously on ac
 - **Commander tax double-count.** The informational `CommanderCasts` counter is incremented in `CastSpell` after zone move (S13.1). The strict-mode surcharge reads `CommanderCasts[cardID]` at `effectiveCostLocked` time BEFORE the increment — so the first cast pays `cost+0`, second `cost+2`, matching CR 903.8. Unit-test the boundary: `TestCastCommanderTwiceStrictMode`.
 - **Mana pool clearing on step-change undo.** Step-advance is already one undo frame; the pool-empty event rides inside it, so undo rolls the pool back automatically. Explicit test: `TestManaPoolSurvivesStepAdvanceUndo`.
 - **Strict-mode-on with incomplete cost wedges the caster.** If a player toggles strict, gets their cost rejected, and doesn't know how to override, they're stuck. Mitigation: the `insufficient_mana` error frame carries a `missing` slice and the client surfaces an "Override strict mode for this cast" button (force_cast=true). Documented + tested.
-- **Synthetic basic-land ability vs. custom-printed lands with basic subtypes.** A "Dryad Arbor" (creature-land with type Forest) should get the Forest synthetic ability but not *only* that. For S15 the synthetic path keys on TypeLine containing a basic subtype AND no catalog entry existing; a catalog `ManaAbilities` slice overrides it wholesale. The test matrix covers basic Forest, basic Island, Sol Ring (catalog), and Birds of Paradise (catalog + creature).
+- **Synthetic basic-land ability vs. custom-printed lands with basic subtypes.** A "Dryad Arbor" (creature-land with type Forest) should get the Forest synthetic ability but not _only_ that. For S15 the synthetic path keys on TypeLine containing a basic subtype AND no catalog entry existing; a catalog `ManaAbilities` slice overrides it wholesale. The test matrix covers basic Forest, basic Island, Sol Ring (catalog), and Birds of Paradise (catalog + creature).
 - **Pipe-produce inside auto-tap-and-cast.** If the auto-tapper plans to tap an Arcane Signet for one of the cost's requirements, the mana-pick PendingChoice would ordinarily fire mid-cast — deadlocking the cast flow. Mitigation: the auto-tapper materialises a specific color choice inline (it already has the cost it's solving for, so the pick is determined); no PendingChoice is queued when the ability is fired via the auto-tap path.
 - **Pre-S15 replay snapshots.** No `mana_pool` / `mana_cost` fields ⇒ decodes as empty pool + empty costs ⇒ sandbox-equivalent behaviour. Confirmed non-breaking by replay round-trip test.
 
@@ -1067,7 +1249,9 @@ Mana abilities do NOT use the stack (CR 605.3); they resolve synchronously on ac
 12. **Non-catalog cast regression** — cast a card not in the catalog with permissive mode → cost warning event emitted, cast proceeds, sandbox posture unchanged. Confirmed the opt-in invariant still holds.
 
 ### Sub-PR split
+
 Stop-and-show for manual testing at each boundary.
+
 1. **Catalog scaffold + Scryfall ingestion.** `cards.Card.ManaCost` / `ProducedMana` + `game.Card` mirror + `effects.ParseCost` + `effects.ParseProducedMana`. No behavior change; cost strings render on hand-zone cards as inert chips.
 2. **`ManaPool` + manual mana abilities.** `Player.ManaPool` + `AddMana`/`SpendMana`/`EmptyPool` + step-change hook + `activate_mana_ability` action + the three catalog mana abilities + `PendingChoiceKind: "mana_pick"`. Stop-and-show: right-click Sol Ring, see pool fill; step advance, see it empty.
 3. **Cost validation in `cast_spell`.** Permissive default + `strictMana` setting migration + `ForceCast` override + commander-tax surcharge under strict. Stop-and-show: toggle strict, try to cast Bolt with no mana, see the override toast.
@@ -1076,11 +1260,13 @@ Stop-and-show for manual testing at each boundary.
 6. **ADR 0011 + protocol docs + sprint-sheet cleanup.** ADR, protocol updates, AGENTS recipe, S15 section rolled up.
 
 ### Critical files
+
 - Server: new [server/internal/game/mana.go](../server/internal/game/mana.go) (pool + tokens), new [server/internal/game/autotap.go](../server/internal/game/autotap.go), [server/internal/game/player.go](../server/internal/game/player.go) (ManaPool field), [server/internal/game/mutations.go](../server/internal/game/mutations.go) (CastSpell gate + ActivateManaAbility), [server/internal/game/turn.go](../server/internal/game/turn.go) (step-change pool empty), new [server/internal/cards/effects/cost.go](../server/internal/cards/effects/cost.go), [server/internal/cards/effects/spec.go](../server/internal/cards/effects/spec.go) (ManaAbilities slot), [sol_ring.go](../server/internal/cards/effects/sol_ring.go) / [arcane_signet.go](../server/internal/cards/effects/arcane_signet.go) / [birds_of_paradise.go](../server/internal/cards/effects/birds_of_paradise.go), [server/internal/cards/index.go](../server/internal/cards/index.go) (new JSON fields), [server/internal/deck/deck.go](../server/internal/deck/deck.go) (stamp onto game.Card), [server/internal/actions/actions.go](../server/internal/actions/actions.go) (new type), [server/internal/protocol/view.go](../server/internal/protocol/view.go) (PlayerView.ManaPool, CardView.ManaCost/ManaAbilities, error frame), [server/internal/game/pending_choice.go](../server/internal/game/pending_choice.go) (mana_pick kind).
 - Client: new `client/src/lib/components/board/ManaPoolPips.svelte`, new `client/src/lib/components/board/ManaAbilityMenu.svelte`, [PlayerHeader.svelte](../client/src/lib/components/board/PlayerHeader.svelte) (pip row), [Card.svelte](../client/src/lib/components/board/Card.svelte) (cost chip), [ChoicePromptModal.svelte](../client/src/lib/components/board/ChoicePromptModal.svelte) (mana_pick branch), [settings.ts](../client/src/lib/settings.ts) (v4 migration + strictMana), [protocol.ts](../client/src/lib/protocol.ts) (mirrors).
 - Docs: new [docs/decisions/0011-mana-pool-and-auto-tapper.md](decisions/0011-mana-pool-and-auto-tapper.md), [docs/protocol.md](protocol.md), [AGENTS.md](../AGENTS.md).
 
 ### Branch + commit conventions
+
 - Branch: `feat/s15-mana-pool-and-auto-tapper` (sub-PRs use `-s15-<slice>` suffixes — e.g. `feat/s15-catalog-ingest`, `feat/s15-auto-tapper`).
 - Footer:
   ```
@@ -1091,16 +1277,17 @@ Stop-and-show for manual testing at each boundary.
 ---
 
 ## S16 — Continuous effects + layer system (CR 613)
-**Phase:** 7 · **Goal:** ship the 7-layer continuous-effect engine (CR 613) with timestamp-only ordering. Add `Spec.Static []StaticAbility` to the S14 catalog spec, populated by 4 starter cards proving the in-scope layers: Glorious Anthem (7c), Mycosynth Lattice (Layer 4 type-add), Lord of Atlantis (Layer 6 ability-grant + 7c), Tarmogoyf (Layer 7a CDA). Wire-side `CardView.power`, `toughness`, `type_line`, and the new `abilities` field reflect post-layer *effective* characteristics; printed values stay server-only and feed the recompute. Recompute runs lazily via a `Game.LayerVersion` counter bumped by listener hooks; the snapshot path resolves stale versions before serialising.
 
-The hard sprint of the rules-engine arc — continuous effects are the second-most complex MTG subsystem after the stack. After this sprint, the catalog can include cards whose effects exist *while a permanent is on the battlefield*, not just on resolution. Co-requisite for S18 (combat keywords are layer-6 grants) and S17 (replacement effects need the layered characteristic snapshot).
+**Phase:** 7 · **Goal:** ship the 7-layer continuous-effect engine (CR 613) with timestamp-only ordering. Add `Spec.Static []StaticAbility` to the S14 catalog spec, populated by 4 starter cards proving the in-scope layers: Glorious Anthem (7c), Mycosynth Lattice (Layer 4 type-add), Lord of Atlantis (Layer 6 ability-grant + 7c), Tarmogoyf (Layer 7a CDA). Wire-side `CardView.power`, `toughness`, `type_line`, and the new `abilities` field reflect post-layer _effective_ characteristics; printed values stay server-only and feed the recompute. Recompute runs lazily via a `Game.LayerVersion` counter bumped by listener hooks; the snapshot path resolves stale versions before serialising.
+
+The hard sprint of the rules-engine arc — continuous effects are the second-most complex MTG subsystem after the stack. After this sprint, the catalog can include cards whose effects exist _while a permanent is on the battlefield_, not just on resolution. Co-requisite for S18 (combat keywords are layer-6 grants) and S17 (replacement effects need the layered characteristic snapshot).
 
 ### Architectural decisions
 
 - **Recompute-from-scratch with a version counter.** No incremental diffs. `Game.LayerVersion` bumps on every event that could affect continuous effects (battlefield zone changes, counter changes, control changes, step advance). `RecomputeLayersIfStaleLocked` runs only when `LayerVersion > LastResolvedVersion`. Snapshot path is the canonical caller — recomputes once per "settled" game state, not per individual mutation. Mirrors XMage / Forge.
 - **Two characteristic shapes**: `Card.printedCharacteristic()` (immutable, derived from existing fields) and `Card.Effective()` (cached, post-layer). Wire ships `Effective`; rules logic that needs printed values (mana cost, owner) keeps reading `Card` directly.
 - **Static abilities declared on `Spec.Static`** — new field on the existing S14 catalog spec, parallel to `OnETB`, `OnResolve`, `ManaAbilities`. Each entry is `{Layer, SubLayer, AppliesTo func, Apply func}`. Registered through the existing `Register()` flow; consumed via a 6th function-var hook (`CatalogStaticAbilities`) following the cycle-break pattern S14 established.
-- **Counter math stays in `CurrentPower()` / `CurrentToughness()`.** Layer 7d *calls* them rather than subsuming them — keeps S13.2's SBA suite green; minimal blast radius. Layer engine starts with anthems + CDAs + types; counter integration is one delegating Apply function in 7d.
+- **Counter math stays in `CurrentPower()` / `CurrentToughness()`.** Layer 7d _calls_ them rather than subsuming them — keeps S13.2's SBA suite green; minimal blast radius. Layer engine starts with anthems + CDAs + types; counter integration is one delegating Apply function in 7d.
 - **Skip dependency detection (CR 613.8).** Pure timestamp ordering works for ~95% of real cards. Opalescence + Humility is the canonical pathological case and never shows up in casual EDH. S16.5 follow-up if a real card surfaces.
 - **Layer 7 ships full sub-layer support** (7a CDA, 7b setting, 7c modifying, 7d counters, 7e switch) — Tarmogoyf needs 7a, anthems need 7c, counters need 7d. 7b and 7e ship as no-op-capable stubs.
 - **Battlefield-only** — CR 113.6 default. Continuous effects from non-battlefield zones (Yixlid Jailer in graveyard) deferred. Niche cards opt in later.
@@ -1110,11 +1297,13 @@ The hard sprint of the rules-engine arc — continuous effects are the second-mo
 ### Tasks
 
 **Server — characteristic snapshot:**
+
 - [x] New [server/internal/game/characteristic.go](../server/internal/game/characteristic.go) with `Characteristic{Power, Toughness, Loyalty, Types, Subtypes, Supertypes, Colors, Abilities, Name}`. Field choice mirrors what `viewOfCard` projects to the wire.
 - [x] `Card.printedCharacteristic() Characteristic` reads immutable printed fields off existing struct (no new storage on `Card` for printed; printed values ARE the existing fields).
 - [x] `Card.effective` private cache field (nil-able). `Card.Effective()` returns it or falls back to printed when nil.
 
 **Server — layer engine:**
+
 - [x] New [server/internal/game/layers.go](../server/internal/game/layers.go) with `Layer`/`SubLayer` enums, `ContinuousEffect` interface (`Layer`, `Timestamp`, `AppliesTo`, `Apply`).
 - [x] `Game.LayerVersion uint64` + `Game.LastResolvedVersion uint64`.
 - [x] `g.RecomputeLayersLocked()` — reset effective = printed; collect active continuous effects; for each layer in 1..7 (sub-layers in 7a..7e for Layer7PT): filter, sort by timestamp, apply.
@@ -1122,27 +1311,32 @@ The hard sprint of the rules-engine arc — continuous effects are the second-mo
 - [x] Layer 7d Apply delegates to `CurrentPower()` / `CurrentToughness()` for counter math.
 
 **Server — `Spec.Static` + catalog hook:**
+
 - [x] `Spec.Static []StaticAbility` field on [server/internal/cards/effects/spec.go](../server/internal/cards/effects/spec.go). `StaticAbility{Layer, SubLayer, AppliesTo func, Apply func}`.
 - [x] `CatalogStaticAbilities func(oracleID string) []StaticAbility` — sixth function-var hook in [game/effect_hooks.go](../server/internal/game/effect_hooks.go); populated by [effects/wire.go](../server/internal/cards/effects/wire.go).
 - [x] `g.activeStaticAbilitiesLocked()` — walks battlefield, looks each card's oracle ID up via the hook, adapts `StaticAbility` into a `ContinuousEffect` bound to source card's `EnteredBattlefieldAt` timestamp.
 - [x] `Card.EnteredBattlefieldAt int64` (Unix-nano timestamp) + `g.stampBattlefieldEntryLocked(cardID)` helper called by every existing battlefield-entry site.
 
 **Server — event hooks + listeners:**
+
 - [x] **Audit + emit `EventLTB`** on every battlefield-leave path. Mirrors existing `EventETB` emission at [mutations.go:336-341](../server/internal/game/mutations.go#L336-L341). Today only ETB fires; layer system needs LTB to invalidate.
 - [x] Built-in listener: `EventETB`, `EventLTB`, `EventCounterPlaced` (battlefield card), `EventControlChanged` (S16-new), step advance — all bump `g.LayerVersion`. Registered at game-start.
 - [x] Snapshot path: `ReadSnapshot` calls `g.RecomputeLayersIfStaleLocked()` inside the read closure before building views. Recompute uses a separate `sync.Mutex` so the read lock isn't promoted; double-check version after acquiring the recompute mutex to avoid duplicate work.
 
 **Server — wire projection:**
+
 - [x] `viewOfCard` ([protocol/view.go:954-1001](../server/internal/protocol/view.go#L954-L1001)) reads from `c.Effective()` for `Power`, `Toughness`, `TypeLine`, `Colors`, and the new `abilities []string` field.
 - [x] `redactCardForViewer` ([view.go:899-914](../server/internal/protocol/view.go#L899-L914)) — same redaction shape (fields are the same; values are now effective).
 - [x] `CardView.abilities []string` new wire field — drives S18's keyword renderer; ships now so S18 can plug in without a wire bump.
 - [x] **No protocol bump.** `power`/`toughness`/`type_line` keep the same key names; values become effective.
 
 **Server — replace S15 commander-identity proxy:**
+
 - [x] `commanderIdentityFor` ([mutations.go:2089-2131](../server/internal/game/mutations.go#L2089-L2131)) replaced with layer-aware computation: read commander's effective characteristic colors. `distinctColorsInManaCost` proxy stays as fallback for lobby-seeded placeholder commanders.
 - [x] Existing S15 tests (Arcane Signet commander-identity filtering) stay green — layer system produces same identity for test commanders.
 
 **Catalog cards (4):**
+
 - [x] **glorious_anthem.go** — Layer 7c. `AppliesTo`: target.IsCreature() && target.Controller == source.Controller. `Apply`: `c.Power++; c.Toughness++`.
 - [x] **mycosynth_lattice.go** — Layer 4. `AppliesTo`: every permanent. `Apply`: append `"Artifact"` to `c.Types` (idempotent). Lattice's other clauses (lands tap for any color, no mana ability adds non-colorless) are S17 territory — out of scope for S16.
 - [x] **lord_of_atlantis.go** — Two static abilities on one card:
@@ -1151,6 +1345,7 @@ The hard sprint of the rules-engine arc — continuous effects are the second-mo
 - [x] **tarmogoyf.go** — Layer 7a CDA. AppliesTo: target == source. Apply: `n := distinctCardTypesInAllGraveyards(g); c.Power = n; c.Toughness = n + 1`. Helper unions `Types` across every graveyard zone.
 
 **Tests:**
+
 - [x] `server/internal/game/layers_test.go` (new):
   - `TestSingleAnthemAddsPlusOne`, `TestTwoAnthemsStack`, `TestAnthemRespectsControllerBoundary`, `TestRemoveAnthemRevertsCreatures`.
   - `TestMycosynthLatticeAddsArtifact`, `TestLordOfAtlantisGrantsFlyingToMerfolkOnly`, `TestLordOfAtlantisDoesNotPlusItself`.
@@ -1162,12 +1357,14 @@ The hard sprint of the rules-engine arc — continuous effects are the second-mo
 - [x] S15 commander-identity regression stays green after proxy replacement.
 
 **Docs:**
+
 - [x] [docs/decisions/0012-layer-system.md](decisions/0012-layer-system.md) — ADR. Topics: recompute-from-scratch + version cache vs incremental diffs, timestamp-only ordering before dependency detection, Layer 7d delegating to `CurrentPower`/`CurrentToughness`, Layer 5 stub with no card, Layer 1/3 deferred, `Spec.Static` declarative-DSL consistency, commander-identity proxy replacement.
-- [x] [docs/protocol.md](protocol.md) — note `CardView.power`, `toughness`, `type_line`, `abilities` are now *effective* (post-layer); document new `EventLTB` event kind.
+- [x] [docs/protocol.md](protocol.md) — note `CardView.power`, `toughness`, `type_line`, `abilities` are now _effective_ (post-layer); document new `EventLTB` event kind.
 - [x] [docs/sprints.md](sprints.md) S16 section — this expansion lives here.
 - [x] [AGENTS.md](../AGENTS.md) §7 — extend catalog-card recipe with "Adding a static ability" sub-recipe (parallel to S15 mana-ability recipe), worked example using Glorious Anthem.
 
 ### Out of scope (explicit handoffs)
+
 - **Dependency detection (CR 613.8)** — Opalescence + Humility pathological case. S16.5 follow-up if a real card surfaces.
 - **Layer 1 copy effects** — Clone, Phyrexian Metamorph, Spark Double. Defer to S16.5.
 - **Layer 3 text-changing effects** — Mind Bend, Glamerdye. Engine ships layer 3 stub; no execution path.
@@ -1179,6 +1376,7 @@ The hard sprint of the rules-engine arc — continuous effects are the second-mo
 - **Continuous activated abilities** — non-mana activated abilities (planeswalker +1/-1, equip, cycling) are S19. S16 is static-ability-only.
 
 ### Risks / gotchas
+
 - **`EventLTB` audit miss.** Layer system correctness depends on LTB firing every battlefield-leave. Mitigation: grep audit every `g.Battlefield` removal site; regression test walks every public battlefield-leave mutation and asserts an `EventLTB`.
 - **Recompute under SBA loop.** SBA mutations emit zone-change events that bump `LayerVersion`. Recompute must NOT run inside the SBA loop (would interleave with SBA evaluation). Mitigation: only call `RecomputeLayersIfStaleLocked` inside `ReadSnapshot`'s read closure — never inside a write mutation.
 - **Layer 7d counter integration via `CurrentPower`.** 7d's Apply reads `c.CurrentPower() - c.Power` to derive counter delta. With a 7c anthem + 7d counter delta, effective power == `printed + 1 + counter_delta` — matches CR 613.5 layering. Test: `TestCounterAndAnthemStack`.
@@ -1188,6 +1386,7 @@ The hard sprint of the rules-engine arc — continuous effects are the second-mo
 - **No protocol bump but a behavior change.** Pre-S16 replays decoded with post-S16 servers re-resolve all layers from scratch. No-op for legacy replays (no static abilities ⇒ effective == printed). Confirm via replay round-trip test.
 
 ### Exit criteria
+
 1. **Anthem buffs creatures on the wire.** Cast Glorious Anthem; every controlled battlefield creature shows `power+1`/`toughness+1` in the next snapshot.
 2. **Removing the anthem reverts.** Move Glorious Anthem to graveyard; next snapshot shows printed P/T.
 3. **Anthems stack.** Two anthems → +2/+2.
@@ -1202,7 +1401,9 @@ The hard sprint of the rules-engine arc — continuous effects are the second-mo
 12. **ADR 0012 + protocol/AGENTS docs + sprint flip** all land in the docs sub-PR.
 
 ### Sub-PR split
+
 Stop-and-show for manual testing at each boundary, mirroring S15.
+
 1. **Sprint plan expansion (sub-PR 0).** This expansion in `docs/sprints.md` + GitHub issue #66 body. Pure docs.
 2. **Characteristic + layer-engine skeleton (sub-PR 1).** `Characteristic`, `Card.effective` cache, `Card.Effective()`, `g.LayerVersion`, `g.RecomputeLayersLocked` (no-op pass), `g.RecomputeLayersIfStaleLocked`, snapshot integration. **No static abilities yet** — engine runs but does nothing observable. Stop-and-show: server tests prove `viewOfCard` reads from `Effective()`; a 2/2 stays 2/2.
 3. **`EventLTB` + listener registration (sub-PR 2).** Audit + emit `EventLTB` on every battlefield-leave path; built-in listener bumps `LayerVersion`. Stop-and-show: zone-leave → events log shows `EventLTB`; `LayerVersion` ticks.
@@ -1212,12 +1413,14 @@ Stop-and-show for manual testing at each boundary, mirroring S15.
 7. **ADR 0012 + protocol + AGENTS recipe + sprint flip (sub-PR 6).** Docs leg, mirrors S15's sub-PR 6 shape.
 
 ### Critical files
+
 - **Server new:** [server/internal/game/characteristic.go](../server/internal/game/characteristic.go), [server/internal/game/layers.go](../server/internal/game/layers.go), [server/internal/game/layers_test.go](../server/internal/game/layers_test.go), [glorious_anthem.go](../server/internal/cards/effects/glorious_anthem.go), [mycosynth_lattice.go](../server/internal/cards/effects/mycosynth_lattice.go), [lord_of_atlantis.go](../server/internal/cards/effects/lord_of_atlantis.go), [tarmogoyf.go](../server/internal/cards/effects/tarmogoyf.go).
 - **Server modified:** [card.go](../server/internal/game/card.go) (`effective` cache, `Effective()`, `EnteredBattlefieldAt`), [game.go](../server/internal/game/game.go) (`LayerVersion`, `LastResolvedVersion`, recompute mutex), [effect_hooks.go](../server/internal/game/effect_hooks.go) (6th hook), [events.go](../server/internal/game/events.go) (`EventLTB` if missing), [listeners.go](../server/internal/game/listeners.go) (built-in version-bump), [mutations.go](../server/internal/game/mutations.go) (LTB audit, entry timestamp helper, `commanderIdentityFor` replacement), [spec.go](../server/internal/cards/effects/spec.go) (`Static` field), [wire.go](../server/internal/cards/effects/wire.go) (populate hook), [view.go](../server/internal/protocol/view.go) (read from `Effective()`, new `abilities` field).
 - **Client (small):** [protocol.ts](../client/src/lib/protocol.ts) (mirror new `CardView.abilities` for S18 readiness).
 - **Docs:** new [docs/decisions/0012-layer-system.md](decisions/0012-layer-system.md), [docs/protocol.md](protocol.md), [docs/sprints.md](sprints.md), [AGENTS.md](../AGENTS.md) §7.
 
 ### Branch + commit conventions
+
 - Branches: `feat/s16-sprint-plan-expansion`, `feat/s16-layer-engine`, `feat/s16-event-ltb`, `feat/s16-anthem`, `feat/s16-type-and-ability-grant`, `feat/s16-cda-and-identity`, `feat/s16-docs-and-sprint-flip`.
 - Footer:
   ```
@@ -1228,9 +1431,10 @@ Stop-and-show for manual testing at each boundary, mirroring S15.
 ---
 
 ## S17 — Replacement effects engine (CR 614)
+
 **Phase:** 7 · **Goal:** ship a pre-event replacement pipeline (CR 614/616) layered onto the five rules-visible mutation functions, plus step-transition hooks for skip-step. `ReplacementEvent` tagged-union value type is mutated or canceled by registered `ReplacementEffect`s declared on `Spec.Replacements`. CR 616.1 iterative apply-loop, CR 614.5 once-per-event tracking, CR 616 affected-player-chooses-order, and CR 614.10 "may" optional replacements all enforced centrally so card files stay declarative. S13.1's hand-rolled commander-zone replacement is refactored into a built-in that fires for EVERY commander move (spell-driven, SBA-driven, admin-driven) — closing a pre-existing gap.
 
-The second-most structural rules subsystem after the stack. Unblocks S18 combat keywords (replaceable triggers), S21 tokens, S22 draw manipulation, and S30 damage prevention. After this sprint, the catalog can describe cards whose effects intercept events *before* they happen.
+The second-most structural rules subsystem after the stack. Unblocks S18 combat keywords (replaceable triggers), S21 tokens, S22 draw manipulation, and S30 damage prevention. After this sprint, the catalog can describe cards whose effects intercept events _before_ they happen.
 
 **Shipped 2026-04-23** via PRs [#158](https://github.com/krakenhavoc/cmd_and_ctrl/pull/158), [#163](https://github.com/krakenhavoc/cmd_and_ctrl/pull/163), [#172](https://github.com/krakenhavoc/cmd_and_ctrl/pull/172), [#166](https://github.com/krakenhavoc/cmd_and_ctrl/pull/166), [#167](https://github.com/krakenhavoc/cmd_and_ctrl/pull/167), [#171](https://github.com/krakenhavoc/cmd_and_ctrl/pull/171). Closes [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67) and [#164](https://github.com/krakenhavoc/cmd_and_ctrl/issues/164).
 
@@ -1256,6 +1460,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 ### Tasks
 
 **Server — engine core:**
+
 - [x] New `server/internal/game/replacements.go` — `ReplacementEffect`, `ReplacementEvent`, `ReplacementEventKind`, `ReplacementEventID`, `ReplacementEffectID`, `applyReplacementsLocked`, iterative apply-loop with per-call once-per-event map.
 - [x] New `server/internal/game/builtin_replacements.go` — `commanderZoneReplacement` built-in; `Game.BuiltinReplacements []ReplacementEffect` field populated at `NewGame`.
 - [x] `server/internal/game/pending_choice.go` — `PendingChoiceReplacementOrder` kind + `ReplacementEffectIDs` field + server-only `replacementResume` frame + `ResolveReplacementOrder` method.
@@ -1266,6 +1471,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 - [x] `server/internal/game/game.go` — step-transition hook at top of `runStepEntryHooksLocked`, `TurnScopedReplacements` cleared at `StepCleanup`.
 
 **Server — pipeline integration:**
+
 - [x] `drawCardLocked` + `MoveCardByIDAsCommander` + `ChangePlayerLife` + `MarkDamage` (+ new `MarkCombatDamage` wrapper) + `AddCounter` — construct `ReplacementEvent`, call pipeline, branch.
 - [x] Parallel hooks in `effect_api.go`: `AddCounterForEffect`.
 - [x] Inline pipeline call at each battlefield-entry site (cast resolve, land play). Shared-helper refactor deferred — targeted per-site calls were lower risk.
@@ -1276,11 +1482,13 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 - [x] Cast-time target validation: `CastSpell` rejects `ErrInvalidParam` when `target_mode` is non-empty and `params.Targets` is empty (sub-PR 6, guards against client-side targeting skip).
 
 **Server — wire + dispatcher:**
+
 - [x] `server/internal/protocol/view.go` — `ReplacementOptionView{id, label, source_card_id}` + `PendingChoiceView.ReplacementOptions`.
 - [x] `server/internal/actions/actions.go` — `TypeResolveChoice` dispatcher legs for `order []string` → `ResolveReplacementOrder` and `apply bool` → `ResolveOptionalReplacement`.
 - [x] `viewOfCard` sends `CurrentPower()` / `CurrentToughness()` so the wire P/T includes the +1/+1 counter delta (previously missed; on-card pip showed printed P/T after counters landed).
 
 **Client:**
+
 - [x] `client/src/lib/components/board/ChoicePromptModal.svelte` — `replacement_order` click-to-order branch.
 - [x] `client/src/lib/components/board/ChoicePromptModal.svelte` — `optional_replacement` yes/no branch (sub-PR 6).
 - [x] `client/src/lib/protocol.ts` — mirror `PendingChoiceView.replacement_options`, `ReplacementOptionView`, `optional_replacement` kind.
@@ -1289,6 +1497,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 - [x] `Game.svelte.sendAction` stashes last cast_spell payload per card so `castAnyway` / `confirmAutoTap` retries replay original `targets` / modes / X / distribution (bug fix during sub-PR 6 manual testing).
 
 **Catalog cards shipped (6 new + 3 finishers):**
+
 - [x] **doubling_season.go** — RepEventCounter replacement; `ev.CounterDelta *= 2` for any counter placed on a permanent you control.
 - [x] **hardened_scales.go** — RepEventCounter replacement; `+1/+1` on creatures you control; `ev.CounterDelta += 1`.
 - [x] **branching_evolution.go** — same predicate shape as Hardened Scales but `*= 2`. Narrower Doubling Season.
@@ -1300,24 +1509,28 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 - [x] **solemn_simulacrum.go** — `TappedOnEntry = true` on the ETB fetch.
 
 **Deferred cards (not shipped in S17):**
+
 - Hangarback Walker — needs X-cost stack plumbing; future sub-PR.
 - Champion of Lambholt — both halves are triggered/static, not replacements; re-homed to S19 (triggers) + S18 (block-restriction). Dropped from S17.
 - Library of Leng — cleanup-discard picker UI has its own design surface; re-scoped to a later sub-PR. Gap tracked as [#160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/160) for the voluntariness nuance.
 - Mycosynth Lattice's "lands tap for any color" + "no mana ability adds non-colorless" clauses — sub-PR 6 pivoted to the CR 903.9 commander-zone fix instead. Lattice clauses re-homed to S18 (mana-ability rewrite) per [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68).
 
 **Tests:**
+
 - [x] `server/internal/game/replacements_test.go` — zero-replacement passthrough; commander-zone built-in routes to command zone on yes, graveyard on no; CR 903.9 SBA death queues prompt; once-per-event tracking; iteration cap; `ResolveReplacementOrder` permutation validation.
 - [x] `server/internal/cards/effects/doubling_season_test.go` — sprint exit criterion: `[HS, DS]` → 4 counters, `[DS, HS]` → 3 counters. Three-replacement single-prompt (no re-prompting after applying each).
 - [x] `server/internal/cards/effects/stasis_kismet_test.go` — Stasis skip; Kismet opponent-only; fetched-land TappedOnEntry for Cultivate + Path.
 - [x] `server/internal/cards/effects/fog_test.go` — combat damage canceled; non-combat damage unaffected; turn-scoped clear at cleanup.
 
 **Docs:**
+
 - [x] [docs/decisions/0013-replacement-effects.md](decisions/0013-replacement-effects.md) — ADR 0013 shipped with sub-PR 1.
 - [x] [docs/sprints.md](sprints.md) S17 section — this entry.
 - [x] [AGENTS.md](../AGENTS.md) §7 — "Adding a replacement effect (S17+)" subsection.
 - [ ] [docs/protocol.md](protocol.md) — document `replacement_order` + `optional_replacement` PendingChoice kinds. Rolling follow-up.
 
 **Tracking discipline (sub-PR 1 + 6):**
+
 - [x] GitHub issue updates: [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67) (S17), [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68) (S18), [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76) (S24), [#93](https://github.com/krakenhavoc/cmd_and_ctrl/issues/93) (S28), [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95) (S30).
 - [x] S16.5 milestone + tracking issue [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159).
 - [x] Library of Leng voluntariness follow-up [#160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/160).
@@ -1325,6 +1538,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 - [x] Admin context-menu mini-sprint [#170](https://github.com/krakenhavoc/cmd_and_ctrl/issues/170) — filed; shift+click counter is the stopgap.
 
 ### Out of scope (explicit handoffs)
+
 - **Aura / Equipment attachment infrastructure** (Mind Control) → **S24** [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76). S16 doc bundled this into S17; re-homed for aura + combat-state coupling.
 - **Cost-replacement effects** (Trinisphere, Thalia, Spellshift, Kambal) → **S28** [#93](https://github.com/krakenhavoc/cmd_and_ctrl/issues/93). S17 hooks touch the event-path; cost replacement touches the S15 cost engine — separate surface.
 - **Damage prevention shields with charges** (CR 615) → **S30** [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95). Fog in S17 is atomic cancel; stateful shields land in S30.
@@ -1336,6 +1550,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 - **Right-click admin context menu** → [#170](https://github.com/krakenhavoc/cmd_and_ctrl/issues/170) standalone mini-sprint. Shift+click counter is the S17-era stopgap.
 
 ### Exit criteria (all met)
+
 1. **CR 616 ordering works.** Doubling Season + Hardened Scales on battlefield; add +1/+1 counter; `replacement_order` modal pops; submit `[HS, DS]` → 4 counters land; retry with `[DS, HS]` → 3 counters land. Triple-stack with Branching Evolution → single prompt, no re-prompting per applied effect.
 2. **CR 903.9 commander-zone prompt.** Any commander move (spell-driven, SBA-driven, wrath-driven, admin-driven) to graveyard / exile / hand / library queues the `optional_replacement` yes/no prompt. Owner says yes → command zone. Owner says no → proceeds to destination.
 3. **Kismet taps opponents' permanents.** Opponent plays a creature / artifact / land → enters with `Tapped == true`. Your own permanents unaffected.
@@ -1346,6 +1561,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 8. **ADR 0013 + sprints.md + AGENTS.md §7 + GitHub issue updates** all landed.
 
 ### Sub-PR split (as shipped)
+
 1. **[#158](https://github.com/krakenhavoc/cmd_and_ctrl/pull/158) — ADR + sprints.md + AGENTS.md + tracking.** Zero code. Filed follow-up issues [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159), [#160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/160). Branch: `feat/s17-adr-plan`.
 2. **[#163](https://github.com/krakenhavoc/cmd_and_ctrl/pull/163) — Engine skeleton.** `replacements.go` + `builtin_replacements.go` + PendingChoice extensions + `ResolveReplacementOrder` + protocol view + dispatcher leg + 6 pipeline hooks + commander-zone built-in + deleted `applyCommanderZoneReplacementLocked`. Zero catalog replacements — byte-for-byte identical behavior. Branch: `feat/s17-engine-skeleton`.
 3. **[#172](https://github.com/krakenhavoc/cmd_and_ctrl/pull/172) — Prompt modal + counter cards.** `ChoicePromptModal.svelte` `replacement_order` branch + Doubling Season + Hardened Scales + Branching Evolution + exit-criterion test. Branch: `feat/s17-prompt-and-counter-cards`.
@@ -1353,16 +1569,19 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 5. **[#167](https://github.com/krakenhavoc/cmd_and_ctrl/pull/167) — Fog + turn-scoped damage prevention.** `Game.TurnScopedReplacements` slot cleared at `StepCleanup`. Library of Leng dropped to a later sub-PR. Branch: `feat/s17-fog-damage-prevention`.
 6. <a id="s17-sub-pr-6"></a>**[#171](https://github.com/krakenhavoc/cmd_and_ctrl/pull/171) — CR 903.9 commander-zone optional replacement (closes [#164](https://github.com/krakenhavoc/cmd_and_ctrl/issues/164)).** Widened commander-zone AppliesTo, added `ReplacementEffect.Optional` + `optional_replacement` prompt kind, routed `routeBattlefieldCardToOwnerGraveyardLocked` through the pipeline. Pivoted away from the originally-planned Mycosynth Lattice clauses after manual testing surfaced a higher-priority CR 903.9 gap. Branch: `feat/s17-commander-zone-prompt`.
 
-    Sub-PR 6 also gathered bug fixes that surfaced during manual testing: cleanup-step discard scoped to the active player only (CR 514.1); wire-side `CardView.power` / `.toughness` now source from `CurrentPower()` / `CurrentToughness()` so on-card P/T includes counter delta; CounterPips rendering disambiguation; `Game.svelte.sendAction` stashes cast_spell payloads so `castAnyway` / `confirmAutoTap` retries replay targets; server guards cast with empty targets when `target_mode` is non-empty.
+   Sub-PR 6 also gathered bug fixes that surfaced during manual testing: cleanup-step discard scoped to the active player only (CR 514.1); wire-side `CardView.power` / `.toughness` now source from `CurrentPower()` / `CurrentToughness()` so on-card P/T includes counter delta; CounterPips rendering disambiguation; `Game.svelte.sendAction` stashes cast_spell payloads so `castAnyway` / `confirmAutoTap` retries replay targets; server guards cast with empty targets when `target_mode` is non-empty.
+
 7. **#174 (this PR) — sprint flip + ADR consequences.** Flip S17 to `done` in sprints.md, fill in ADR 0013 Consequences, drop MEMORY entry for the arc. Branch: `feat/s17-docs`.
 
 ### Critical files (as shipped)
+
 - **Server new:** [server/internal/game/replacements.go](../server/internal/game/replacements.go), [server/internal/game/builtin_replacements.go](../server/internal/game/builtin_replacements.go), [server/internal/game/replacements_test.go](../server/internal/game/replacements_test.go), [doubling_season.go](../server/internal/cards/effects/doubling_season.go), [hardened_scales.go](../server/internal/cards/effects/hardened_scales.go), [branching_evolution.go](../server/internal/cards/effects/branching_evolution.go), [stasis.go](../server/internal/cards/effects/stasis.go), [kismet.go](../server/internal/cards/effects/kismet.go), [fog.go](../server/internal/cards/effects/fog.go), [doubling_season_test.go](../server/internal/cards/effects/doubling_season_test.go), [stasis_kismet_test.go](../server/internal/cards/effects/stasis_kismet_test.go), [fog_test.go](../server/internal/cards/effects/fog_test.go).
 - **Server modified:** [mutations.go](../server/internal/game/mutations.go) (pipeline hooks, `MarkCombatDamage` wrapper, `routeBattlefieldCardToOwnerGraveyardLocked` pipeline routing, `executeBattlefieldLeaveLocked` helper, target-required cast guard), [game.go](../server/internal/game/game.go) (`BuiltinReplacements`, `TurnScopedReplacements`, step-transition hook, cleanup-step discard scope), [pending_choice.go](../server/internal/game/pending_choice.go) (two new prompt kinds + resume methods), [effect_hooks.go](../server/internal/game/effect_hooks.go) (7th hook), [effect_api.go](../server/internal/game/effect_api.go) (`AddCounterForEffect` routing, `SearchLibraryForEffectWithOptions`), [events.go](../server/internal/game/events.go) (`EventStepTransition` sentinel + slog for effect errors), [spec.go](../server/internal/cards/effects/spec.go) (`Replacements` field), [wire.go](../server/internal/cards/effects/wire.go) (populate hook), [primitives.go](../server/internal/cards/effects/primitives.go) (`TappedOnEntry`), [cultivate.go](../server/internal/cards/effects/cultivate.go) + [path_to_exile.go](../server/internal/cards/effects/path_to_exile.go) + [solemn_simulacrum.go](../server/internal/cards/effects/solemn_simulacrum.go) (finishers), [view.go](../server/internal/protocol/view.go) (`ReplacementOptionView`, `CurrentPower`/`CurrentToughness` on the wire), [actions.go](../server/internal/actions/actions.go) (`TypeResolveChoice` legs).
 - **Client:** [ChoicePromptModal.svelte](../client/src/lib/components/board/ChoicePromptModal.svelte) (two new branches), [CounterPips.svelte](../client/src/lib/components/board/CounterPips.svelte) (abbr + count layout), [PlayerPanel.svelte](../client/src/lib/components/board/PlayerPanel.svelte) (shift+click counter), [protocol.ts](../client/src/lib/protocol.ts) (mirror fields), [Game.svelte](../client/src/routes/Game.svelte) (cast-payload stash).
 - **Docs:** new [docs/decisions/0013-replacement-effects.md](decisions/0013-replacement-effects.md), [docs/sprints.md](sprints.md), [AGENTS.md](../AGENTS.md) §7.
 
 ### Branch + commit conventions
+
 - Branches shipped: `feat/s17-adr-plan`, `feat/s17-engine-skeleton`, `feat/s17-prompt-and-counter-cards`, `feat/s17-enters-tapped-skip-step`, `feat/s17-fog-damage-prevention`, `feat/s17-commander-zone-prompt`, `feat/s17-docs`.
 - Footer:
   ```
@@ -1373,6 +1592,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 ---
 
 ## S18 — Combat keywords
+
 **Phase:** 7 · **Goal:** 12 keyword effects with full combat behavior + summoning sickness.
 
 - [x] **(shipped early via S16 hotfix [#157](https://github.com/krakenhavoc/cmd_and_ctrl/pull/157))** Bare-bones blocked-creature combat damage: blocked attackers deal full power to the FIRST blocker (slice order); each blocker deals full power back to the attacker; SBA fires after combat to destroy casualties. Caught during S16 manual testing — without it, blocking was a manual marker the engine ignored. Multi-blocker damage assignment, first strike, trample, deathtouch, etc. remain S18.
@@ -1394,6 +1614,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 ---
 
 ## S19 — Auto-fire triggered abilities
+
 **Phase:** 7 · **Goal:** ETB / dies / upkeep / cast / combat triggers fire automatically for catalog cards.
 
 - [ ] Auto-fire dispatcher: register listeners on zone change; LKI snapshot at trigger time (CR 603.10)
@@ -1407,6 +1628,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 ---
 
 ## S20 — Auto-target legality + smart cast UI
+
 **Phase:** 7 · **Goal:** capstone sprint — per-card targeting predicates; modal/X UI; structured cast dialog.
 
 - [ ] Predicate library (`AnyTarget`, `Creature`, `NonBlackCreature`, `Spell`, `PowerLE(n)`) + composers (`And`/`Or`/`Not`)
@@ -1423,6 +1645,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 ---
 
 ## S21 — Tokens, sacrifice, aristocrats
+
 **Phase:** 7 · **Goal:** an aristocrats Commander deck plays end-to-end.
 
 - [ ] Token catalog (Treasure, Food, Clue, Blood, Map, Powerstone, generic creatures)
@@ -1436,6 +1659,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 ---
 
 ## S22 — Card draw + library manipulation
+
 **Phase:** 7 · **Goal:** a draw-heavy Commander deck plays end-to-end.
 
 - [ ] `ScryN`, `SurveilN`, `Explore`, `RevealAndChoose`, `MillToZone`, `DrawAndScry` primitives
@@ -1449,6 +1673,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 ---
 
 ## S23 — Mass removal + boardwipes
+
 **Phase:** 7 · **Goal:** mass-effect cards work; boardwipes wipe correctly across decks.
 
 - [ ] `DestroyAllMatching`, `ExileAllMatching`, `BounceAllMatching`, `ReturnAllToHand` primitives
@@ -1461,6 +1686,7 @@ Detailed plan TBD; lands just-in-time after S22 ships.
 ---
 
 ## S24 — Equipment, auras, attachments
+
 **Phase:** 7 · **Goal:** equipment + auras work as attached state on creatures.
 
 - [ ] `Card.AttachedTo *uuid.UUID` field + wire shape
@@ -1473,6 +1699,7 @@ Detailed plan TBD; lands just-in-time after S23.
 ---
 
 ## S25 — Voltron / commander damage focus
+
 **Phase:** 7 · **Goal:** "make commander big and swing" decks work end-to-end.
 
 - [ ] `BoostUntilEOT`, `GiveKeywordUntilEOT`, `HexproofUntilEOT`, `IndestructibleUntilEOT` primitives
@@ -1486,6 +1713,7 @@ Detailed plan TBD; lands just-in-time after S24.
 ---
 
 ## S26 — Tribal / creature type matters
+
 **Phase:** 7 · **Goal:** tribal Commander decks (Goblins, Merfolk, Slivers, etc.) work end-to-end.
 
 - [ ] `ChooseCreatureTypeOnETB` primitive (per-permanent persistent state for Cavern of Souls' named tribe)
@@ -1498,6 +1726,7 @@ Detailed plan TBD; lands just-in-time after S25.
 ---
 
 ## S27 — Card-type completeness (planeswalkers, sagas, vehicles, battles)
+
 **Phase:** 7 · **Goal:** the four card types missing or only partially modeled by S13–S26 become full citizens.
 
 - [ ] `LoyaltyAbility{Cost, Effect}` — proper stack-item activation (CR 606); replaces S13.1's thin "delta-on-action" model
@@ -1514,6 +1743,7 @@ Detailed plan: `/home/node/.claude/plans/s27-card-type-completeness.md`. Builds 
 ---
 
 ## S28 — Cost modification + alternative casts
+
 **Phase:** 7 · **Goal:** the cost engine that the auto-tapper hooks before pool validation.
 
 - [ ] `CostModifier interface { Modify(*Cost, *Card, *Game, uuid.UUID) *Cost }` registered per static ability
@@ -1529,6 +1759,7 @@ Detailed plan: `/home/node/.claude/plans/s28-cost-modification.md`. Builds on S1
 ---
 
 ## S29 — Alt-cast paths from non-hand zones
+
 **Phase:** 7 · **Goal:** spells cast from graveyard, exile, or hand-with-special-marker.
 
 - [ ] `CastableZones []Zone` per card (default `[Hand]`); cast dialog walks all legal zones and surfaces all legal cast paths as separate buttons with their costs
@@ -1547,11 +1778,12 @@ Detailed plan: `/home/node/.claude/plans/s29-alt-cast-paths.md`. Builds on S14, 
 ---
 
 ## S30 — Damage prevention, cloning, face-down, deferred protection keywords
+
 **Phase:** 7 · **Goal:** engine-completeness capstone. After S30 there are no major missing primitives.
 
 - [ ] Damage prevention shields (CR 615) — replacement subtype with charges; integrates with S17 pipeline
 - [ ] Cloning (CR 706) — ETB replacement that captures copyable values; populates S16 layer 1 copy slot
-- [ ] Spell copies (CR 706.10) — `CopyTopOfStack`; controller chooses new targets *before* copy hits stack
+- [ ] Spell copies (CR 706.10) — `CopyTopOfStack`; controller chooses new targets _before_ copy hits stack
 - [ ] Morph / manifest (CR 702.36, 701.34, 707) — face-down zone state on `Card`; reuses S22 hidden-info wire frame
 - [ ] Protection (CR 702.16) — predicate-based guard at four DEBT hook points (damage / enchant-equip SBA / block / target)
 - [ ] Hexproof (CR 702.11) — targeting-by-opponent guard
@@ -1565,6 +1797,7 @@ Detailed plan: `/home/node/.claude/plans/s30-damage-cloning-protection.md`. Buil
 ---
 
 ## Post-S30 — Rolling deck-driven catalog growth
+
 **Phase:** 7 · **Status:** rolling, not started.
 
 After S30 the engine is feature-complete for major Commander mechanics and the catalog (~600 cards) is mature enough that incremental work fits in 1-2 day batches. Remaining mechanics (MDFCs, adventures, mutate, energy, day/night, monarch, vehicles-with-saddle, phasing) drop to on-demand work.
@@ -1579,6 +1812,7 @@ Triaged just-in-time from real-play feedback.
 ---
 
 ## S31 — AI bot seat (heuristic policy)
+
 **Phase:** 8 · **Goal:** fill an empty Commander seat with a bot good enough for solo practice and 1–3-friend games. After S27–S30 close the engine gaps (card-type completeness, cost modification, alt-cast paths, damage/cloning/face-down/protection), the engine is Arena-parity with a ~600-card catalog and structured `Effect` descriptors on every card — for the first time in the project, a competent AI is actually buildable. S31 ships that competence as a tiered, swappable policy framework.
 
 **Not in scope: tournament-strength AI.** Forge has spent 15+ years on rule-based heuristics and still plays "dumb but playable." XMage's MCTS variant takes minutes per turn. Academic MCTS + RL work (Cowling-Ward-Powley 2012; MageZero AlphaZero-style) is multi-year research. This sprint's bar is Forge's bar: makes legal moves, makes locally-sensible decisions, doesn't deadlock, uses removal on threats. A learning bot is a separate multi-sprint arc (S40+ or never).
@@ -1594,6 +1828,7 @@ Triaged just-in-time from real-play feedback.
 ### Tasks
 
 **Bot infrastructure (server/`bot/`):**
+
 - [ ] New package `server/internal/bot/` with `Policy interface`, `RandomPolicy` (baseline for tests), `HeuristicPolicy` (S31's deliverable)
 - [ ] `bot.Seat{PlayerID, Policy, Difficulty, MinThinkMs}` — the "virtual seat" abstraction
 - [ ] Goroutine-per-bot: subscribes to `ws.Room` state deltas using the same `FilterViewFor(playerID)` a client would; emits `Action`s via `actions.Dispatch`
@@ -1604,6 +1839,7 @@ Triaged just-in-time from real-play feedback.
 - [ ] Unknown-card handler: action choices involving cards without `Effect` specs are scored as "unknown, low priority"; never hard-fail
 
 **Heuristic policy (`server/internal/bot/heuristic/`):**
+
 - [ ] Board-state evaluation `score(view, perspective) float64`:
   - Life total × w_life (default 1.0); clamps to [-∞, 0] on death
   - Cards in hand × w_hand (default 3.0 — hand is resources)
@@ -1624,17 +1860,20 @@ Triaged just-in-time from real-play feedback.
 - [ ] Concede heuristic: if `score(self) < concede_threshold` for N consecutive turns AND no upswing potential in hand, bot emits a `concede` action (the sandbox concede path)
 
 **Difficulty tiers:**
+
 - [ ] `Easy`: `RandomPolicy` wrapped in legality filter — picks a random legal action per priority window. Baseline for testing and for new human players.
 - [ ] `Medium`: `HeuristicPolicy` with default weights. Default choice.
 - [ ] `Hard`: `HeuristicPolicy` with 1-ply lookahead (simulate each top-K candidate action, re-score). Latency allowance 1500ms; bounded by action set size.
 
 **Latency discipline:**
+
 - [ ] `MinThinkMs` per bot — default 600ms; a fast decision is artificially held so the game doesn't feel like the bot is precognitive
 - [ ] `MaxThinkMs` hard cap — default 2000ms (Easy), 2000ms (Medium), 4000ms (Hard); scoring budget above that forces a fallback to "best so far"
 - [ ] Per-decision instrumentation: log p50/p99/p999 decision latencies; surface in admin tools
 - [ ] Test: 4-bot game completes 20 turns in under 20 minutes wall-clock on dev hardware
 
 **Lobby integration:**
+
 - [ ] `POST /games/{id}/seats/bot` (admin-only) — adds a bot seat with `{deck_source, difficulty, personality_hint?}`. Counts toward `MaxPlayers`.
 - [ ] Curated bot decks in `server/internal/bot/decks/` — 6 starter decks covering the major Commander archetypes:
   - **Aggro** — Isshin, Two Heavens as One-style wide beatdown
@@ -1648,6 +1887,7 @@ Triaged just-in-time from real-play feedback.
 - [ ] Admin kick-bot action (`DELETE /games/{id}/seats/bot/{seat}`) for mid-lobby changes.
 
 **Client UI:**
+
 - [ ] Bot-seat visual treatment: `PlayerHeader.svelte` grows a small "BOT" chip with tooltip showing difficulty + deck archetype
 - [ ] Avatar slot shows a distinctive bot avatar (simple abstract mark; deliberate visual separation from Discord human avatars shipped in S12.5)
 - [ ] "Bot thinking…" indicator: during the bot's decision window, its `PlayerHeader` pulses with a subtle `animate-thinking` class (auto-disabled when S11.5 animations are off)
@@ -1656,12 +1896,14 @@ Triaged just-in-time from real-play feedback.
 - [ ] `client/src/lib/protocol.ts` — `PlayerView` grows `is_bot bool`, `bot_difficulty string?`, `bot_archetype string?`
 
 **Docs:**
+
 - [ ] New ADR `docs/decisions/00NN-bot-architecture.md` covering: why rule-based not MCTS/LLM (Forge-level bar justification), tiered `Policy` interface shape, bot-as-virtual-seat rationale, safety rails (loop detection / legality filter / unknown-card handling), 4-player targeting design (threat ranking, aggression rotation, concede)
 - [ ] `docs/bot.md` — user-facing: how to add a bot, difficulty tiers, curated deck list, known limitations (will make "dumb" plays sometimes, no politics / bluffing / deal-making, no inter-turn memory)
 - [ ] `AGENTS.md` §5 — env vars (if any) and bot package location
 - [ ] `docs/protocol.md` — document the `is_bot` / `bot_difficulty` fields on `PlayerView`
 
 **Tests:**
+
 - [ ] Bot-vs-bot smoke: 4 `HeuristicPolicy` bots play to a winner within 50 turns across 20 consecutive runs — no deadlocks, no infinite loops, no illegal actions
 - [ ] Visibility enforcement: bot receives filtered view only; golden test asserts the bot's `view` is byte-identical to what a human at the same seat would see
 - [ ] Illegal-action regression: 100-game randomized run emits zero engine-rejected actions (the loop fallback to `pass_priority` catches everything)
@@ -1699,10 +1941,10 @@ Triaged just-in-time from real-play feedback.
 7. Documentation covers: how to add a bot, difficulty tiers, curated deck list, what the bot explicitly does not do (politics, learning, deckbuilding).
 
 ### Prior art references
+
 - [Forge AI wiki](https://github.com/Card-Forge/forge/wiki/AI) — rule-based heuristics + per-card hints via `CardRanker`; ~95% of cards scripted, not hardcoded. Bar to match on "playable but dumb."
 - [XMage (magefree/mage)](https://github.com/magefree/mage) — `ComputerPlayer` + `ComputerPlayerMCTS` variants, target-score evaluation, reworked targeting logic. Inspiration for threat-weighted targeting.
 - [MageZero](https://github.com/WillWroble/MageZero) — AlphaZero-style RL over XMage as a gym. Long-horizon work; informs the `Policy` interface shape so this path stays open.
 - Cowling / Ward / Powley, ["Ensemble Determinization in Monte Carlo Tree Search for the Imperfect Information Card Game Magic: The Gathering"](https://eprints.whiterose.ac.uk/id/eprint/75050/1/EnsDetMagic.pdf), IEEE Transactions on Computational Intelligence and AI in Games, 2012 — the canonical MCTS-for-MTG paper; argues for ensemble determinization over hidden info. Out of scope for S31 but shapes the future `MCTSPolicy`.
 
 ---
-

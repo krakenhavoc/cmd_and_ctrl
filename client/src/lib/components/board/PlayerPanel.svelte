@@ -67,6 +67,12 @@
     // the tap-toggle / combat default). Returns false when no
     // prompt is active or the card isn't a legal target.
     onTargetCard?: (card: CardView) => boolean;
+    // Priority controls forwarded to PhaseDisplay — only the
+    // self panel mounts the widget, so these only matter when
+    // isSelf=true but they're plumbed uniformly for prop typing.
+    autopassEnabled?: boolean;
+    onPassPriority?: () => void;
+    onToggleAutopass?: () => void;
   }
 
   const {
@@ -92,6 +98,9 @@
     onDrawCard,
     onTargetPlayer,
     onTargetCard,
+    autopassEnabled = false,
+    onPassPriority,
+    onToggleAutopass,
   }: Props = $props();
 
   const buckets = $derived.by(() => {
@@ -238,6 +247,10 @@
         turn={view.turn}
         seats={view.seats}
         mulligansOpen={view.mulligans_open === true}
+        viewerHasPriority={hasPriority}
+        {autopassEnabled}
+        onPassPriority={onPassPriority ?? (() => {})}
+        onToggleAutopass={onToggleAutopass ?? (() => {})}
       />
     {/if}
   </div>

@@ -18,16 +18,32 @@
   import { seatColor } from "../../colors";
   import { avatarURL } from "../../api";
   import { getAvatarColor } from "../../avatarColor";
-  import { STEP_IDS, STEP_LABELS } from "../../turn";
+  import { STEP_IDS, STEP_LABELS, type StepID } from "../../turn";
+  import { canManuallyStop, manualStops, toggleManualStop } from "../../priorityStops";
   import PhaseIcon from "./PhaseIcon.svelte";
 
   interface Props {
     turn: TurnView;
     seats: PlayerView[];
     mulligansOpen: boolean;
+    // Priority controls — only rendered on the viewer's own panel
+    // (PlayerPanel gates the mount with `isSelf`), so these are
+    // always wired to *viewer* state.
+    viewerHasPriority: boolean;
+    autopassEnabled: boolean;
+    onPassPriority: () => void;
+    onToggleAutopass: () => void;
   }
 
-  const { turn, seats, mulligansOpen }: Props = $props();
+  const {
+    turn,
+    seats,
+    mulligansOpen,
+    viewerHasPriority,
+    autopassEnabled,
+    onPassPriority,
+    onToggleAutopass,
+  }: Props = $props();
 
   const activeSeat = $derived(turn.active_seat ?? 0);
   const prioritySeat = $derived(turn.priority_holder ?? 0);
@@ -59,6 +75,18 @@
   });
   const colorFor = (seat: PlayerView): string => playerColors[seat.id] ?? seatColor(seat.seat);
   const activeColor = $derived(activePlayer ? colorFor(activePlayer) : seatColor(activeSeat));
+
+  // S13.6: manual one-time stops. Click a priority-granting icon to
+  // pin the cursor there the next time the viewer holds priority.
+  // Overrides autoPassPriority + smartAutoPass so the viewer can
+  // "fake a game action" — stop to think / bluff / respond even
+  // when the engine sees nothing to do. Consumed on step transition
+  // by the consumer in Game.svelte.
+  const pinned = $derived($manualStops);
+  function onIconClick(id: StepID): void {
+    if (!canManuallyStop(id)) return;
+    toggleManualStop(id);
+  }
 </script>
 
 <div
@@ -79,14 +107,26 @@
       {#if BOUNDARIES.has(i)}
         <span class="track-gap" aria-hidden="true"></span>
       {/if}
-      <span
+      {@const clickable = canManuallyStop(id)}
+      {@const isPinned = pinned.has(id)}
+      <button
+        type="button"
         class="step-icon"
         class:current={turn.step === id}
-        title={STEP_LABELS[id]}
+        class:pinned={isPinned}
+        class:clickable
+        disabled={!clickable}
+        title={clickable
+          ? isPinned
+            ? `${STEP_LABELS[id]} — click to unpin`
+            : `${STEP_LABELS[id]} — click to pin a one-time stop`
+          : `${STEP_LABELS[id]} — no priority`}
         aria-current={turn.step === id ? "step" : undefined}
+        aria-pressed={clickable ? isPinned : undefined}
+        onclick={() => onIconClick(id)}
       >
         <PhaseIcon step={id} />
-      </span>
+      </button>
     {/each}
   </div>
 
@@ -115,6 +155,31 @@
         —
       </span>
     {/if}
+  </div>
+
+  <div class="row actions" role="group" aria-label="priority controls">
+    <button
+      type="button"
+      class="action next"
+      class:viewer-priority={viewerHasPriority}
+      disabled={!viewerHasPriority}
+      onclick={onPassPriority}
+      title={viewerHasPriority ? "pass priority — rotates to next seat" : "you don't hold priority"}
+    >
+      next
+    </button>
+    <button
+      type="button"
+      class="action autopass"
+      class:on={autopassEnabled}
+      aria-pressed={autopassEnabled}
+      onclick={onToggleAutopass}
+      title={autopassEnabled
+        ? "autopass ON — every time priority lands on you, it passes; click to turn off"
+        : "autopass OFF — click to pass every priority window (bypasses stops, smart-skip, and manual pins)"}
+    >
+      {autopassEnabled ? "autopass ✓" : "autopass"}
+    </button>
   </div>
 </div>
 
@@ -188,19 +253,61 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    /* Reset button chrome — we're reusing <button> for the
+       keyboard / click affordance, not the default look. */
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
     color: rgba(255, 255, 255, 0.3);
     opacity: 0.85;
+    cursor: default;
     transition:
       color 160ms var(--ease),
       opacity 160ms var(--ease),
       filter 160ms var(--ease),
       transform 160ms var(--ease);
   }
+  .step-icon.clickable {
+    cursor: pointer;
+  }
+  .step-icon.clickable:hover {
+    color: rgba(255, 255, 255, 0.55);
+  }
+  .step-icon.clickable:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
   .step-icon.current {
     color: var(--active-player-color);
     opacity: 1;
     transform: scale(1.18);
     filter: drop-shadow(0 0 6px color-mix(in srgb, var(--active-player-color) 70%, transparent));
+  }
+  /* Pinned: a small filled dot in the top-right corner. Uses
+     --accent so the pin reads as UI state, not game state (the
+     active-player colour is already load-bearing on the current
+     icon). Pairs with a subtle lift on opacity so pinned steps
+     feel distinct from the ambient row even when not current. */
+  .step-icon.pinned {
+    opacity: 1;
+    color: var(--accent);
+  }
+  .step-icon.pinned.current {
+    color: var(--active-player-color);
+  }
+  .step-icon.pinned::after {
+    content: "";
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 4px color-mix(in srgb, var(--accent) 75%, transparent);
   }
   .track-gap {
     width: 8px;
@@ -255,5 +362,60 @@
     color: var(--fg-dim);
     font-weight: 600;
     cursor: help;
+  }
+
+  /* Priority controls inside the box — two buttons split the row
+     evenly so the panel reads as a self-contained widget. Colours
+     echo the Game.svelte toolbar (green = you-have-priority,
+     amber = autopass-engaged) so players carry the same visual
+     grammar across surfaces. */
+  .actions {
+    gap: 6px;
+    margin-top: 2px;
+  }
+  .action {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--fg);
+    font-size: 0.85em;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition:
+      background 140ms var(--ease),
+      border-color 140ms var(--ease),
+      opacity 140ms var(--ease);
+  }
+  .action:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: color-mix(in srgb, var(--border) 60%, white 40%);
+  }
+  .action:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .action.next.viewer-priority {
+    background: linear-gradient(180deg, #b3e5b3 0%, #7fc87f 100%);
+    color: #0a1a0a;
+    font-weight: 700;
+    border-color: rgba(127, 200, 127, 0.6);
+  }
+  .action.next.viewer-priority:hover:not(:disabled) {
+    background: linear-gradient(180deg, #c4f0c4 0%, #8fd88f 100%);
+    border-color: rgba(127, 200, 127, 0.85);
+  }
+  .action.autopass.on {
+    background: linear-gradient(180deg, #f5c76b 0%, #d99a2e 100%);
+    color: #1a0e00;
+    font-weight: 700;
+    border-color: rgba(217, 154, 46, 0.75);
+  }
+  .action.autopass.on:hover:not(:disabled) {
+    background: linear-gradient(180deg, #ffda82 0%, #edaf47 100%);
+    border-color: rgba(217, 154, 46, 0.9);
   }
 </style>

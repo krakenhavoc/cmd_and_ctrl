@@ -45,6 +45,10 @@
     onSelectCombatCard: (cardID: string) => void;
     onDeclareAttack: (targetPlayerID: string) => void;
     onDeclareBlock: (attackerCardID: string) => void;
+    // Priority controls forwarded to the self-panel's PhaseDisplay.
+    autopassEnabled?: boolean;
+    onPassPriority?: () => void;
+    onToggleAutopass?: () => void;
   }
 
   const {
@@ -57,6 +61,9 @@
     onSelectCombatCard,
     onDeclareAttack,
     onDeclareBlock,
+    autopassEnabled,
+    onPassPriority,
+    onToggleAutopass,
   }: Props = $props();
 
   // Spectators have no perspective — there's no "self" seat to anchor
@@ -220,6 +227,9 @@
             onDrawCard={handleDrawCard}
             onTargetPlayer={handleTargetPlayer}
             onTargetCard={handleTargetCard}
+            {autopassEnabled}
+            {onPassPriority}
+            {onToggleAutopass}
           />
         </div>
       {/if}

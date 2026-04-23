@@ -14,7 +14,8 @@
   import type { PlayerView } from "../lib/protocol";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
-  import { grantsPriority } from "../lib/turn";
+  import { hasAnyLegalResponse } from "../lib/priority";
+  import { consumeManualStop, hasManualStop } from "../lib/priorityStops";
 
   interface Props {
     gameID: string;
@@ -94,18 +95,67 @@
   // hasn't pinned." Active-turn stops default-on for the main phases
   // and combat declarations, so the active player still gets stopped
   // for their plays even with autoPassPriority enabled.
+  // S13.6: autopass mode is a session-scoped toggle ("get me
+  // through this turn" / "I'm tapped out, don't ask me"). Stays on
+  // until the viewer clicks the button again — not a one-shot.
+  // When on, overrides every other gate: settings.autoPassPriority,
+  // stepStops grid, smartAutoPass predicate, manual pins. The
+  // effect still requires the viewer to actually hold priority (so
+  // we don't spam the server with "you do not hold priority"
+  // rejections on opponents' turns — the toggle is ambient intent,
+  // not a manual pass loop).
+  let autopassEnabled = $state(false);
   let lastAutoPassedSeq = $state(-1);
   $effect(() => {
-    if (!$settings.gameplay.autoPassPriority) return;
     if (!viewerHasPriority) return;
-    if ((view?.stack?.cards?.length ?? 0) > 0) return;
     if (mulligansOpen || gameEnded || viewerEliminated) return;
     const step = view?.turn?.step;
     if (!step) return;
-    // Stop here if the viewer has opted to stop on this step. The
-    // map omits no-priority steps (Untap / Cleanup); for those, the
-    // viewer can never hold priority anyway.
-    if ($settings.gameplay.stepStops[step] === true) return;
+
+    const autopass = autopassEnabled;
+
+    // S13.6 safety belt (gameplay.autopassPersistThroughTurns): when
+    // the flag is off (default), autopass auto-clears the first time
+    // the cursor enters the viewer's own precombat_main — so a
+    // forgotten toggle doesn't silently skip your turn. Users who
+    // know they want autopass to outlive their own main phase flip
+    // the danger setting on and accept the trade. We clear BEFORE
+    // firing pass_priority so the toggle going off means the cursor
+    // holds for the viewer's turn.
+    if (
+      autopass &&
+      step === "precombat_main" &&
+      viewerIsActive &&
+      !$settings.gameplay.autopassPersistThroughTurns
+    ) {
+      autopassEnabled = false;
+      return;
+    }
+
+    // Conventional (non-autopass) path: honour every gate.
+    if (!autopass) {
+      if (!$settings.gameplay.autoPassPriority) return;
+      if ((view?.stack?.cards?.length ?? 0) > 0) return;
+      // Manual one-time stops override everything below. Click a
+      // phase icon in PhaseDisplay to pin; the pin clears on step
+      // transition. "Fake a game action" — viewer gets the cursor
+      // even when the engine has nothing to offer (want to think /
+      // bluff / respond off-catalog).
+      if (hasManualStop(step)) return;
+      // Stop here if the viewer has opted to stop on this step. The
+      // map omits no-priority steps (Untap / Cleanup); for those,
+      // the viewer can never hold priority anyway. `smartAutoPass`
+      // adds an escape hatch: if the stop lands on the viewer but
+      // the legality engine reports no legal response, pass anyway.
+      // Predicate errs conservative (false-positive-stop > false-
+      // negative-skip per ADR 0009 §3).
+      if ($settings.gameplay.stepStops[step] === true) {
+        const smart = $settings.gameplay.smartAutoPass;
+        const canRespond = smart ? hasAnyLegalResponse(view, viewerID, $lastSeq) : true;
+        if (canRespond) return;
+      }
+    }
+
     // Dedupe by snapshot seq so we don't fire twice on the same
     // priority window if the effect re-runs for an unrelated reason
     // before the next snapshot lands.
@@ -113,6 +163,22 @@
     if (seq === lastAutoPassedSeq) return;
     lastAutoPassedSeq = seq;
     client.sendAction("pass_priority");
+  });
+
+  function toggleAutopass(): void {
+    autopassEnabled = !autopassEnabled;
+  }
+
+  // S13.6: consume manual one-time stops. When the snapshot step
+  // advances away from a pinned step, clear the pin — the whole
+  // point of "one-time" is that the next cycle of that step isn't
+  // held unless re-pinned. No-op for any step that wasn't pinned.
+  let lastStep = $state<string | null>(null);
+  $effect(() => {
+    const step = view?.turn?.step ?? null;
+    if (step === lastStep) return;
+    if (lastStep) consumeManualStop(lastStep);
+    lastStep = step;
   });
 
   // sendAction is a thin shim over GameClient.sendAction that the
@@ -329,100 +395,6 @@
 
   function passTurn(): void {
     client.sendAction("pass_turn");
-  }
-
-  // advanceStep is the sandbox shortcut that bumps the step cursor
-  // forward by one without requiring both players to pass priority.
-  // Used by the "next step" toolbar button and the "done" button in
-  // the combat panel — solo testing and casual play don't need to
-  // simulate the priority hand-off rigorously.
-  function advanceStep(): void {
-    client.sendAction("advance_step");
-  }
-
-  // "Pass until end of turn": send pass_priority repeatedly, waiting
-  // for each snapshot to settle, until the cursor reaches the cleanup
-  // step or the active seat changes. Capped at 24 iterations as a
-  // safety belt against an unexpected state machine loop.
-  let passingToEnd = $state(false);
-  async function passToEnd(): Promise<void> {
-    if (passingToEnd || !turn) return;
-    passingToEnd = true;
-    const startSeat = activeSeat;
-    const startSeq = $lastSeq;
-    let lastSeenSeq = startSeq;
-    try {
-      for (let i = 0; i < 24; i++) {
-        const v = $snapshot;
-        if (!v) break;
-        if (v.turn.active_seat !== startSeat) break;
-        if (v.turn.step === "cleanup") break;
-        client.sendAction("pass_priority");
-        // Wait for the snapshot store to tick at least once. Polling
-        // the lastSeq store is simpler than wiring a one-shot
-        // subscription and matches the other reactive paths in the
-        // route.
-        const before = lastSeenSeq;
-        const deadline = Date.now() + 1500;
-        while (Date.now() < deadline) {
-          await new Promise((r) => setTimeout(r, 25));
-          if ($lastSeq > before) {
-            lastSeenSeq = $lastSeq;
-            break;
-          }
-        }
-        if (lastSeenSeq === before) break;
-      }
-    } finally {
-      passingToEnd = false;
-    }
-  }
-
-  // "Pass to my next stop" (S13): same loop shape as passToEnd, but
-  // the exit condition is "stop at the next step the viewer has
-  // pinned in settings.gameplay.stepStops, or whenever the active
-  // seat / stack changes." Used by the "→ next stop" button so the
-  // viewer can skip past steps they don't want to babysit (their own
-  // upkeep, opponent post-combat main, etc.) without holding pass.
-  let passingToNextStop = $state(false);
-  async function passToNextStop(): Promise<void> {
-    if (passingToNextStop || !turn) return;
-    passingToNextStop = true;
-    const startSeat = activeSeat;
-    const startStack = view?.stack?.cards?.length ?? 0;
-    let lastSeenSeq = $lastSeq;
-    try {
-      for (let i = 0; i < 24; i++) {
-        const v = $snapshot;
-        if (!v) break;
-        if (v.turn.active_seat !== startSeat) break;
-        if ((v.stack?.cards?.length ?? 0) !== startStack) break;
-        // Stop on a configured stop (only meaningful when priority
-        // landed on the viewer; other priority-holders' loops are
-        // their own concern). The `i > 0` guard skips the very first
-        // iteration so pressing the button on a configured stop
-        // doesn't immediately exit without doing anything.
-        if (i > 0 && $settings.gameplay.stepStops[v.turn.step] === true) break;
-        // Server rejects pass_priority during no-priority steps —
-        // those auto-advance via the step-entry hook, so we can
-        // simply wait for the next snapshot rather than poke.
-        if (grantsPriority(v.turn.step)) {
-          client.sendAction("pass_priority");
-        }
-        const before = lastSeenSeq;
-        const deadline = Date.now() + 1500;
-        while (Date.now() < deadline) {
-          await new Promise((r) => setTimeout(r, 25));
-          if ($lastSeq > before) {
-            lastSeenSeq = $lastSeq;
-            break;
-          }
-        }
-        if (lastSeenSeq === before) break;
-      }
-    } finally {
-      passingToNextStop = false;
-    }
   }
 
   function draw(): void {
@@ -827,44 +799,6 @@
       </div>
       <div class="toolbar-group priority-controls">
         <button
-          onclick={advanceStep}
-          disabled={!viewerIsActive}
-          class:advance-step={viewerIsActive}
-          title={viewerIsActive
-            ? "advance the step cursor by one (sandbox shortcut — bypasses opponent priority pass)"
-            : `${activePlayer?.name ?? "another seat"} is the active player`}
-        >
-          next step
-        </button>
-        <button
-          onclick={passPriority}
-          disabled={!viewerHasPriority}
-          class:viewer-priority={viewerHasPriority}
-          title={viewerHasPriority
-            ? "pass priority — rotates to next seat"
-            : `${priorityPlayer?.name ?? "another seat"} holds priority`}
-        >
-          pass priority
-        </button>
-        <button
-          onclick={passToNextStop}
-          disabled={passingToNextStop || !viewerHasPriority}
-          title={viewerHasPriority
-            ? "auto-pass priority until the next step you've pinned in Settings"
-            : `${priorityPlayer?.name ?? "another seat"} holds priority`}
-        >
-          {passingToNextStop ? "passing…" : "→ next stop"}
-        </button>
-        <button
-          onclick={passToEnd}
-          disabled={passingToEnd || !viewerHasPriority}
-          title={viewerHasPriority
-            ? "pass priority repeatedly until end of this turn"
-            : `${priorityPlayer?.name ?? "another seat"} holds priority`}
-        >
-          {passingToEnd ? "passing…" : "pass until end of turn"}
-        </button>
-        <button
           onclick={passTurn}
           disabled={!viewerIsActive}
           title={viewerIsActive
@@ -951,6 +885,9 @@
         onSelectCombatCard={handleSelectCombatCard}
         onDeclareAttack={declareAttackTarget}
         onDeclareBlock={declareBlockTarget}
+        {autopassEnabled}
+        onPassPriority={passPriority}
+        onToggleAutopass={toggleAutopass}
       />
       <DiscardPromptModal snap={view} {viewerID} {sendAction} />
       <ChoicePromptModal snap={view} {viewerID} {sendAction} />
@@ -1505,32 +1442,6 @@
   }
   .life-time {
     font-size: 0.85em;
-  }
-  .priority-controls .viewer-priority {
-    background: linear-gradient(180deg, #b3e5b3 0%, #7fc87f 100%);
-    color: #0a1a0a;
-    font-weight: 700;
-    border-color: rgba(127, 200, 127, 0.6);
-    box-shadow:
-      0 4px 12px rgba(127, 200, 127, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  }
-  .priority-controls .viewer-priority:hover:not(:disabled) {
-    background: linear-gradient(180deg, #c4f0c4 0%, #8fd88f 100%);
-    border-color: rgba(127, 200, 127, 0.85);
-  }
-  .priority-controls .advance-step {
-    background: linear-gradient(180deg, #9bbfff 0%, #5a88ee 100%);
-    color: #0a1024;
-    font-weight: 700;
-    border-color: rgba(90, 136, 238, 0.65);
-    box-shadow:
-      0 4px 12px rgba(90, 136, 238, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  }
-  .priority-controls .advance-step:hover:not(:disabled) {
-    background: linear-gradient(180deg, #b4d0ff 0%, #7098f0 100%);
-    border-color: rgba(90, 136, 238, 0.9);
   }
 
   /* Pre-game deck import modal (S08.5 wave 1) — overlays the table
