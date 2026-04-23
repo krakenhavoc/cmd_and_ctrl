@@ -121,9 +121,7 @@
   // click a row already in the array to remove it (later rows
   // compact down). Submit with { choice_id, order: [...] }.
   const isReplacementOrder = $derived(active?.kind === "replacement_order");
-  const replacementOptions = $derived<ReplacementOptionView[]>(
-    active?.replacement_options ?? [],
-  );
+  const replacementOptions = $derived<ReplacementOptionView[]>(active?.replacement_options ?? []);
 
   function toggleReplacement(id: string): void {
     const idx = ordered.indexOf(id);
@@ -137,11 +135,7 @@
   function submitReplacementOrder(): void {
     if (!active || !viewerID) return;
     if (ordered.length !== replacementOptions.length) return;
-    sendAction(
-      "resolve_choice",
-      { choice_id: active.id, order: ordered },
-      viewerID,
-    );
+    sendAction("resolve_choice", { choice_id: active.id, order: ordered }, viewerID);
   }
 
   function positionFor(id: string): number {
@@ -182,9 +176,8 @@
       {:else if isReplacementOrder}
         <h2 id="choice-title">{active.reason || "Order replacement effects"}</h2>
         <p class="hint">
-          Click each effect in the order it should apply. Different orders can
-          produce different results — you choose as the affected player
-          (CR 616).
+          Click each effect in the order it should apply. Different orders can produce different
+          results — you choose as the affected player (CR 616).
         </p>
         <ul class="order-list">
           {#each replacementOptions as opt (opt.id)}
