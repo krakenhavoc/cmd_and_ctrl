@@ -390,6 +390,12 @@ export interface CardView {
   // field in each entry is what the activate_mana_ability action
   // carries as `ability_index`.
   mana_abilities?: ManaAbilityView[];
+  // S16/S18: effective keyword list — strings like "flying",
+  // "first strike", "trample". Layered effects (Lord of Atlantis
+  // grants "islandwalk" to other Merfolk) populate this alongside
+  // printed keywords (S18 Spec.PrintedKeywords). S18 renders
+  // keyword badges from this list via the KeywordBadgeRow component.
+  abilities?: string[];
 }
 
 // ManaAbilityView mirrors `protocol.ManaAbilityView` server-side —
