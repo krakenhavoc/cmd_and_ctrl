@@ -368,6 +368,16 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	if !found {
 		return ErrCardNotFound
 	}
+	// S17 sub-PR 6 follow-up: if the catalog declares a target_mode
+	// for this card, a cast without any target is a client bug (the
+	// targeting UI should have opened before firing cast_spell).
+	// Rejecting here turns the silent "spell resolves with no effect"
+	// failure into a visible ErrInvalidParam that the client's error
+	// toast surfaces. Non-catalog cards (empty TargetMode) pass
+	// through unchanged.
+	if mode := TargetModeFor(card.OracleID); mode != "" && len(params.Targets) == 0 {
+		return ErrInvalidParam
+	}
 	// Sorcery-speed gate. Lands are special-action-fast (CR 305 is
 	// "you may play a land during your main phase if the stack is
 	// empty"); they're handled implicitly by the same gate below.
