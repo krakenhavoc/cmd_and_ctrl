@@ -180,11 +180,7 @@
     // if the stash is missing (shouldn't happen — cast_spell
     // always stashes before the error round-trip).
     const prev = lastCastByCardID.get(cardID) ?? { instance_id: cardID };
-    sendAction(
-      "cast_spell",
-      { ...prev, strict: true, force_cast: true },
-      viewerID ?? undefined,
-    );
+    sendAction("cast_spell", { ...prev, strict: true, force_cast: true }, viewerID ?? undefined);
   }
   function dismissManaOverride(): void {
     manaOverride = null;
