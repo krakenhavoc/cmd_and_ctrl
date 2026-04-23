@@ -444,9 +444,29 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 		}
 	}
 
+	// Turn-scoped replacements — Fog-class effects registered via
+	// RegisterTurnScopedReplacement. Live until StepCleanup clears
+	// the slice. IDs in a dedicated range between catalog space
+	// and test space.
+	const turnScopedIDBase ReplacementEffectID = 1 << 50
+	for i := range g.TurnScopedReplacements {
+		id := turnScopedIDBase + ReplacementEffectID(i)
+		if applied[id] {
+			continue
+		}
+		eff := g.TurnScopedReplacements[i]
+		if !eventKindMatches(eff.Watches, ev.Kind) {
+			continue
+		}
+		if eff.AppliesTo != nil && !eff.AppliesTo(ev, g, nil) {
+			continue
+		}
+		out = append(out, activeReplacement{effect: eff, source: nil, id: id})
+	}
+
 	// Test replacements. IDs live in a dedicated range above the
-	// catalog space and below the built-in base.
-	const testReplacementIDBase ReplacementEffectID = 1 << 40
+	// catalog + turn-scoped spaces and below the built-in base.
+	const testReplacementIDBase ReplacementEffectID = 1 << 55
 	for i := range g.testReplacements {
 		id := testReplacementIDBase + ReplacementEffectID(i)
 		if applied[id] {
@@ -463,6 +483,23 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 	}
 
 	return out
+}
+
+// RegisterTurnScopedReplacement appends a replacement effect that
+// lives until the current turn's StepCleanup. Used by Fog and
+// similar "until end of turn" prevention cards. Caller must hold
+// g.mu.
+func (g *Game) RegisterTurnScopedReplacement(effect ReplacementEffect) {
+	g.TurnScopedReplacements = append(g.TurnScopedReplacements, effect)
+}
+
+// ClearTurnScopedReplacementsLocked drops every turn-scoped
+// replacement at StepCleanup. Called from runStepEntryHooksLocked.
+// Caller must hold g.mu.
+func (g *Game) ClearTurnScopedReplacementsLocked() {
+	if len(g.TurnScopedReplacements) > 0 {
+		g.TurnScopedReplacements = nil
+	}
 }
 
 // ReplacementOptionMetaForEffect returns the prompt label and
@@ -483,12 +520,21 @@ func (g *Game) ReplacementOptionMetaForEffect(id ReplacementEffectID) (string, u
 		}
 		return "", uuid.UUID{}
 	}
-	const testReplacementIDBase ReplacementEffectID = 1 << 40
+	const testReplacementIDBase ReplacementEffectID = 1 << 55
+	const turnScopedIDBase ReplacementEffectID = 1 << 50
 	// Test replacements.
 	if id >= testReplacementIDBase {
 		i := int(id - testReplacementIDBase)
 		if i >= 0 && i < len(g.testReplacements) {
 			return g.testReplacements[i].Label, uuid.UUID{}
+		}
+		return "", uuid.UUID{}
+	}
+	// Turn-scoped replacements (Fog etc.).
+	if id >= turnScopedIDBase {
+		i := int(id - turnScopedIDBase)
+		if i >= 0 && i < len(g.TurnScopedReplacements) {
+			return g.TurnScopedReplacements[i].Label, uuid.UUID{}
 		}
 		return "", uuid.UUID{}
 	}

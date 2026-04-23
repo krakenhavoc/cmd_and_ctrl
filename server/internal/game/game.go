@@ -230,6 +230,16 @@ type Game struct {
 	// builtin_replacements.go. Added in S17 sub-PR 2.
 	BuiltinReplacements []ReplacementEffect
 
+	// TurnScopedReplacements is the per-turn replacement slot —
+	// effects registered here live until the current turn's
+	// StepCleanup, then are cleared. Used by spells that create
+	// transient replacement effects (Fog's "prevent all combat
+	// damage this turn", future "until end of turn" damage
+	// prevention cards). Distinct from BuiltinReplacements (game-
+	// lifetime) and catalog replacements (battlefield-presence-
+	// gated via source card's AppliesTo). Added in S17 sub-PR 5.
+	TurnScopedReplacements []ReplacementEffect
+
 	// testReplacements is the test-only replacement injection slot
 	// populated by RegisterReplacementForTest. Unexported so
 	// production code has no path to it. Walked after built-ins +
@@ -625,6 +635,11 @@ func (g *Game) runStepEntryHooksLocked() {
 		for i := range g.Battlefield.Cards {
 			g.Battlefield.Cards[i].DamageMarked = 0
 		}
+		// S17 sub-PR 5: "until end of turn" replacement effects
+		// (Fog's prevent-all-combat-damage, future prevention
+		// shields with a per-turn duration) clear at cleanup so
+		// next turn starts with a clean slate.
+		g.ClearTurnScopedReplacementsLocked()
 		// Auto-advance only when no player owes discard. Otherwise
 		// the cursor sits at Cleanup with PriorityHolder=NoPriority
 		// until DiscardSelection drains the pending map and re-fires

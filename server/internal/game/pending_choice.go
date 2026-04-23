@@ -417,17 +417,20 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 		return ErrInvalidParam
 	}
 
-	// Apply the chosen order's first pick, then re-enter the
-	// apply-loop. Subsequent branches queue their own prompts as
-	// needed.
+	// Apply ALL chosen effects in the submitted order (CR 616: the
+	// affected player picks the order once; the engine fires them
+	// in that order without re-prompting). Then re-enter the apply-
+	// loop so CR 616.1 can pick up any newly-applicable effects
+	// (effects that weren't applicable until one of these fired).
+	//
+	// Earlier drafts fired only ordered[0] and relied on the apply-
+	// loop to re-queue a prompt for the remaining effects — that
+	// mis-read 616.1 and forced the user to submit the same order
+	// N times for N replacements. The right behavior is "one prompt
+	// = one ordering decision, apply them all in sequence."
 	applicableByID := make(map[ReplacementEffectID]activeReplacement, len(frame.applicable))
 	for _, a := range frame.applicable {
 		applicableByID[a.id] = a
-	}
-	first := ordered[0]
-	chosen, ok := applicableByID[first]
-	if !ok {
-		return ErrInvalidParam
 	}
 	ev := frame.ev
 	if g.replacementsAppliedThisEvent == nil {
@@ -436,17 +439,27 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 	if _, ok := g.replacementsAppliedThisEvent[ev.ID]; !ok {
 		g.replacementsAppliedThisEvent[ev.ID] = make(map[ReplacementEffectID]bool)
 	}
-	g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
-	if chosen.effect.Replace != nil {
-		if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
-			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
+	for _, id := range ordered {
+		chosen, ok := applicableByID[id]
+		if !ok {
+			continue
+		}
+		if ev.Canceled {
+			// A prior Cancel short-circuits the remaining chain.
+			break
+		}
+		g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
+		if chosen.effect.Replace != nil {
+			if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
+				g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
+			}
 		}
 	}
 
-	// Resume the apply-loop to pick up any further replacements
-	// (iterative CR 616.1 — one replacement might enable another).
-	// If more than one applicable remains, this call queues
-	// another prompt and returns early with errReplacementPending.
+	// Resume the apply-loop to pick up any newly-applicable effects
+	// (CR 616.1 — one of the applied replacements may have enabled
+	// another that wasn't in the original prompt). Effects already
+	// in replacementsAppliedThisEvent are skipped by gather.
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
 		// Another prompt queued; unroll asynchronously.

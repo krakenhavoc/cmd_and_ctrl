@@ -33,7 +33,8 @@
     {#each entries as [name, count] (name)}
       {@const style = counterStyle(name)}
       <span class="pip" style:background={style.color} title={`${count}× ${name}`}>
-        {style.abbr}{count > 1 ? "·" + count : ""}
+        <span class="pip-abbr">{style.abbr}</span>
+        <span class="pip-count">{count}</span>
       </span>
     {/each}
   </div>
@@ -51,7 +52,9 @@
     z-index: 4;
   }
   .pip {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
     padding: 2px 7px;
     border-radius: 999px;
     color: #0c1426;
@@ -64,5 +67,22 @@
       inset 0 -1px 0 rgba(0, 0, 0, 0.2);
     line-height: 1.2;
     letter-spacing: 0.01em;
+  }
+  .pip-abbr {
+    opacity: 0.85;
+    font-size: 9px;
+    letter-spacing: 0.02em;
+  }
+  .pip-count {
+    font-variant-numeric: tabular-nums;
+    font-weight: 900;
+    font-size: 11px;
+    padding: 0 2px;
+    background: rgba(0, 0, 0, 0.22);
+    border-radius: 999px;
+    min-width: 14px;
+    text-align: center;
+    text-shadow: none;
+    color: rgba(255, 255, 255, 0.95);
   }
 </style>
