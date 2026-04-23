@@ -1039,8 +1039,8 @@ func viewOfCard(c game.Card) CardView {
 		// renders. Prior code sent eff.Power / eff.Toughness only,
 		// which missed counter deltas — the on-card P/T pip would
 		// stay at printed even after +1/+1 counters landed.
-		Power:     c.CurrentPower(),
-		Toughness: c.CurrentToughness(),
+		Power:         c.CurrentPower(),
+		Toughness:     c.CurrentToughness(),
 		Tapped:        c.Tapped,
 		Counters:      counters,
 		IsCommander:   c.IsCommander,
