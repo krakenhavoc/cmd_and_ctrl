@@ -15,6 +15,7 @@
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
   import { grantsPriority } from "../lib/turn";
+  import { hasAnyLegalResponse } from "../lib/priority";
 
   interface Props {
     gameID: string;
@@ -105,7 +106,21 @@
     // Stop here if the viewer has opted to stop on this step. The
     // map omits no-priority steps (Untap / Cleanup); for those, the
     // viewer can never hold priority anyway.
-    if ($settings.gameplay.stepStops[step] === true) return;
+    //
+    // S13.6: `smartAutoPass` adds an escape hatch — if the stop
+    // lands on the viewer but the legality engine reports no legal
+    // response (no castable spell, no activatable ability, no
+    // commander cast), auto-pass anyway. The stops grid then means
+    // "stop when there's something to consider," not "stop always."
+    // Conservative by design: the predicate returns true on anything
+    // *potentially* castable, so false-positive-stop is the failure
+    // mode (cheap — one extra click), not false-negative-skip
+    // (expensive — eats the player's response).
+    if ($settings.gameplay.stepStops[step] === true) {
+      const smart = $settings.gameplay.smartAutoPass;
+      const canRespond = smart ? hasAnyLegalResponse(view, viewerID, $lastSeq) : true;
+      if (canRespond) return;
+    }
     // Dedupe by snapshot seq so we don't fire twice on the same
     // priority window if the effect re-runs for an unrelated reason
     // before the next snapshot lands.
@@ -362,6 +377,48 @@
       }
     } finally {
       passingToEnd = false;
+    }
+  }
+
+  // "Pass round" (S13.6): minimal batch pass. The loop fires
+  // pass_priority until the step advances, the active seat changes,
+  // or the stack changes — whichever comes first. Semantically:
+  // "nothing's happening this step, move on." Distinct from
+  // passToNextStop, which respects the user's stops grid (stops at
+  // the next configured stop); passRound stops at the next *step
+  // boundary* regardless. Useful when the step you're on *is* a
+  // configured stop but you've decided there's nothing to see here.
+  let passingRound = $state(false);
+  async function passRound(): Promise<void> {
+    if (passingRound || !turn) return;
+    passingRound = true;
+    const startSeat = activeSeat;
+    const startStep = turn.step;
+    const startStack = view?.stack?.cards?.length ?? 0;
+    let lastSeenSeq = $lastSeq;
+    try {
+      for (let i = 0; i < 24; i++) {
+        const v = $snapshot;
+        if (!v) break;
+        if (v.turn.active_seat !== startSeat) break;
+        if ((v.stack?.cards?.length ?? 0) !== startStack) break;
+        if (i > 0 && v.turn.step !== startStep) break;
+        if (grantsPriority(v.turn.step)) {
+          client.sendAction("pass_priority");
+        }
+        const before = lastSeenSeq;
+        const deadline = Date.now() + 1500;
+        while (Date.now() < deadline) {
+          await new Promise((r) => setTimeout(r, 25));
+          if ($lastSeq > before) {
+            lastSeenSeq = $lastSeq;
+            break;
+          }
+        }
+        if (lastSeenSeq === before) break;
+      }
+    } finally {
+      passingRound = false;
     }
   }
 
@@ -832,6 +889,15 @@
             : `${priorityPlayer?.name ?? "another seat"} holds priority`}
         >
           pass priority
+        </button>
+        <button
+          onclick={passRound}
+          disabled={passingRound || !viewerHasPriority}
+          title={viewerHasPriority
+            ? "pass priority through this step — skip to the next step boundary"
+            : `${priorityPlayer?.name ?? "another seat"} holds priority`}
+        >
+          {passingRound ? "passing…" : "⇥ pass step"}
         </button>
         <button
           onclick={passToNextStop}

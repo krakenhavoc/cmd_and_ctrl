@@ -47,12 +47,13 @@ planned just-in-time from the S12 pain-point triage.
 | S11.5 | Per-user settings and preferences (mini) | 5 | [#82](https://github.com/krakenhavoc/cmd_and_ctrl/issues/82) | 2026-09-18 | **done** |
 | S12 | Deploy + 4-player go-live with friends | 6 | [#12](https://github.com/krakenhavoc/cmd_and_ctrl/issues/12) | 2026-09-25 | planned |
 | S12.5 | Discord identity for players (OAuth + bot + presence) | 6 | [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59) | 2026-10-09 | planned |
-| S13 | Priority foundation (rules graft kickoff) | 7 | [#62](https://github.com/krakenhavoc/cmd_and_ctrl/issues/62) | 2026-05-17 | planned |
-| S13.1 | Stack: cast/resolve/target/counter/trigger/SBA | 7 | [#63](https://github.com/krakenhavoc/cmd_and_ctrl/issues/63) | 2026-06-14 | planned |
-| S13.2 | Counter mechanics (SBAs + player counters + UI) | 7 | [#79](https://github.com/krakenhavoc/cmd_and_ctrl/issues/79) | 2026-06-28 | planned |
-| S13.3 | Client-side timing affordance (greyed illegal actions) | 7 | [#99](https://github.com/krakenhavoc/cmd_and_ctrl/issues/99) | 2026-07-04 | planned |
-| S13.4 | Interactive cleanup discard + per-player MaxHandSize | 7 | [#103](https://github.com/krakenhavoc/cmd_and_ctrl/issues/103) | 2026-07-11 | planned |
-| S13.5 | Card visibility + known-by tracking | 7 | [#108](https://github.com/krakenhavoc/cmd_and_ctrl/issues/108) | 2026-07-25 | planned |
+| S13 | Priority foundation (rules graft kickoff) | 7 | [#62](https://github.com/krakenhavoc/cmd_and_ctrl/issues/62) | 2026-05-17 | **done** |
+| S13.1 | Stack: cast/resolve/target/counter/trigger/SBA | 7 | [#63](https://github.com/krakenhavoc/cmd_and_ctrl/issues/63) | 2026-06-14 | **done** |
+| S13.2 | Counter mechanics (SBAs + player counters + UI) | 7 | [#79](https://github.com/krakenhavoc/cmd_and_ctrl/issues/79) | 2026-06-28 | **done** |
+| S13.3 | Client-side timing affordance (greyed illegal actions) | 7 | [#99](https://github.com/krakenhavoc/cmd_and_ctrl/issues/99) | 2026-07-04 | **done** |
+| S13.4 | Interactive cleanup discard + per-player MaxHandSize | 7 | [#103](https://github.com/krakenhavoc/cmd_and_ctrl/issues/103) | 2026-07-11 | **done** |
+| S13.5 | Card visibility + known-by tracking | 7 | [#108](https://github.com/krakenhavoc/cmd_and_ctrl/issues/108) | 2026-07-25 | **done** |
+| S13.6 | Intelligent priority auto-pass (smart skip) | 7 | [#168](https://github.com/krakenhavoc/cmd_and_ctrl/issues/168) | 2026-04-23 | planned |
 | S14 | Card-effect catalog foundation | 7 | [#64](https://github.com/krakenhavoc/cmd_and_ctrl/issues/64) | 2026-07-12 | **done** |
 | S15 | Mana pool, cost model, and auto-tapper | 7 | [#65](https://github.com/krakenhavoc/cmd_and_ctrl/issues/65) | 2026-08-09 | **done** |
 | S16 | Continuous effects + layer system (CR 613) | 7 | [#66](https://github.com/krakenhavoc/cmd_and_ctrl/issues/66) | 2026-09-06 | **done** |
@@ -800,6 +801,53 @@ Today's filter is zone-default-only — no way to express Thoughtseize reveals, 
 7. **Token.** Creates with `KnownBy = {all}` immediately.
 
 Detailed plan: `/home/node/.claude/plans/s13-5-card-visibility-knownby.md`. Builds on S13 (turn/step primitives) + S22 (transient reveal frames become animation sugar). ~1.5 weeks, 3 sub-PRs.
+
+---
+
+## S13.6 — Intelligent priority auto-pass (smart skip)
+**Phase:** 7 · **Goal:** make priority passing feel intelligent. S13 ships the per-step stops grid and `autoPassPriority`; S13.3 ships the client legality predicates. S13.6 joins them: the stops grid now means *"stop when there's something to consider"*, not *"stop every time."* In practice an empty hand + empty board sees the cursor walk Untap → Untap with zero pointless clicks.
+
+### Tasks
+
+**Client — aggregate-legality predicate (`client/src/lib/priority.ts`):**
+- [x] `hasAnyLegalResponse(snap, viewerID, snapSeq?): boolean` — folds `canCastFromHand` + `canActivateAbility` across the viewer's hand, command zone, and viewer-controlled battlefield cards. Returns true as soon as any predicate returns legal.
+- [x] Memoised by `snap.seq` so the autoPassPriority effect + future consumers share one scan per snapshot window.
+- [x] Conservative by design: treats every viewer-controlled permanent as *potentially* activatable (client doesn't carry per-card ability lists). False-positive-stop > false-negative-skip per ADR 0009 §3.
+
+**Client — smart-skip setting:**
+- [x] Settings schema v5: `gameplay.smartAutoPass: boolean` (default `true`); migration note added to `migrate()` hook.
+- [x] Settings.svelte gameplay tab: add the toggle with help text under the stops grid.
+- [x] `Game.svelte` autoPassPriority effect folds the predicate in — if the step is a configured stop but `hasAnyLegalResponse` is false and `smartAutoPass` is on, auto-pass anyway.
+
+**Client — `⇥ pass step` button:**
+- [x] `passRound()` in Game.svelte — same 24-iteration shape as `passToEnd` / `passToNextStop`, exit on step boundary / active-seat change / stack change. Ignores the stops grid so the viewer can skip one configured stop without un-configuring it.
+- [x] Button placed between "pass priority" and "→ next stop" in the priority-controls toolbar.
+
+**Tests:**
+- [x] `client/src/lib/priority.test.ts` — 14 vitest cases covering hand / command / battlefield / no-priority / split-second / memoisation paths.
+- [ ] Manual smoke: 4-player game with all stops configured, nobody has instants → cursor walks without clicks; one player casts Counterspell → cursor stops for opposing seats with the mana to respond.
+
+**Docs:**
+- [x] ADR `0009-smart-priority-autopass.md`.
+- [x] This sprint entry.
+
+### Out of scope (explicit handoffs)
+- **Mana affordability in the predicate.** Requires `/auto-tap-preview` on the hot path; perf cliff. Future sprint will precompute affordability once per snapshot if the value shows up in playtest.
+- **Triggered-ability responses.** S19 auto-fires them; the viewer doesn't dispatch them, so they don't gate priority-window UX.
+- **Opponent "thinking" / "nothing to do" indicators.** Accurate only post-S13.5 hand visibility across all seats (not granted today).
+- **Per-player granularity on the toggle.** Global for now; split on demand.
+
+### Risks / gotchas
+- **False-negative skip eats a response.** If `hasAnyLegalResponse` returns false but the viewer *could* have acted, smart-skip passes their priority window. Mitigation: the predicate is deliberately permissive (viewer-controlled permanent → true) so the realistic failure mode is the opposite (stop when there's nothing to do). Turning the toggle off reverts to strict stops.
+- **Server / client legality divergence.** The client predicate doesn't know about every effect the server knows about. Smart-skip dispatches a real `pass_priority`; worst case is the same "viewer passed through a priority window they could have used" outcome as a manual click — survivable, undo still works.
+- **Toggle surprise on migration.** Default-on changes behaviour for existing users. Self-explanatory under the stops grid's help text; if a player finds their stops are getting skipped, the toggle is two clicks away.
+
+### Exit criteria
+1. Four-player game, all seats with `smartAutoPass` on, empty hands + empty boards → cursor walks Untap → Untap with zero `pass_priority` clicks.
+2. Seat 0 casts Lightning Bolt targeting seat 2. Seat 1 holds Counterspell + U available → cursor stops for seat 1. Seat 3 holds no instants → cursor auto-passes through seat 3.
+3. Toggle `smartAutoPass` off → every configured stop blocks on a manual click regardless of hand state (strict pre-S13.6 behaviour).
+4. `⇥ pass step` button advances exactly to the next step boundary (or stops early on seat / stack change), bounded by the 24-iteration cap.
+5. ADR `0009-smart-priority-autopass.md` exists and explains the predicate's conservative stance, the "smartAutoPass default on" decision, and the mana-affordability punt.
 
 ---
 

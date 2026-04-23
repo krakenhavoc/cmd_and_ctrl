@@ -414,6 +414,22 @@
             <label>
               <input
                 type="checkbox"
+                checked={$settings.gameplay.smartAutoPass}
+                onchange={(e) => change("gameplay", "smartAutoPass", e.currentTarget.checked)}
+              />
+              Smart auto-pass (skip stops with no legal response)
+              {#if isFresh("gameplay.smartAutoPass")}<span class="saved">✓ saved</span>{/if}
+            </label>
+            <p class="help">
+              Pairs with the stops grid. Auto-passes even at a pinned stop when the legality engine
+              can't find anything you could cast or activate — so &ldquo;stop on upkeep&rdquo; means
+              &ldquo;stop here if I have something to consider,&rdquo; not &ldquo;stop every time
+              regardless.&rdquo; Turn off to demand a click at every stop.
+            </p>
+
+            <label>
+              <input
+                type="checkbox"
                 checked={$settings.gameplay.strictMana}
                 onchange={(e) => change("gameplay", "strictMana", e.currentTarget.checked)}
               />

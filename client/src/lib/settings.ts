@@ -96,6 +96,14 @@ export interface Settings {
     // "Override strict mode for this cast" toast that re-fires
     // the action with `force_cast: true`.
     strictMana: boolean;
+    // S13.6: when a stopped step lands on the viewer but the
+    // legality engine reports no legal response (no castable hand
+    // cards, no battlefield activations, no commander cast),
+    // auto-pass anyway. Defaults on — the step-stops grid gets to
+    // mean "stop if there's something to consider" instead of
+    // "stop every time regardless." Flip off to restore strict
+    // pre-S13.6 behaviour where every stop demands a click.
+    smartAutoPass: boolean;
   };
 
   accessibility: {
@@ -113,7 +121,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 4;
+export const SETTINGS_VERSION = 5;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -194,6 +202,10 @@ export function defaultSettings(): Settings {
       // existing posture; players who want Arena-style "can't
       // cast yet" enforcement opt in via Settings.
       strictMana: false,
+      // S13.6 default: on. The step-stops grid is the intent
+      // affordance; smartAutoPass lets it mean "stop if I
+      // might want to respond" instead of "stop every time."
+      smartAutoPass: true,
     },
     accessibility: {
       reduceMotion: reduced,
@@ -268,6 +280,11 @@ function migrate(raw: unknown): Settings {
   // (false) for any v3 blob that omits the field; nothing else
   // to do here — calling it out so future migrations have a
   // hook to extend.
+  //
+  // v4 → v5 (S13.6): gameplay.smartAutoPass. Same shape as the
+  // v3→v4 migration — the shallow merge fills it from defaults
+  // (true) for any v4 blob that omits the field. No user state
+  // to rescue from the old world.
   return absorbLegacy(merged);
 }
 
