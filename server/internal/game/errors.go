@@ -143,4 +143,14 @@ var (
 	// class can still `errors.Is(err, ErrInsufficientMana)`.
 	// Added in S15 sub-PR 3.
 	ErrInsufficientMana = errors.New("game: insufficient mana")
+
+	// ErrSummoningSick is returned when a creature that entered
+	// the battlefield this turn is asked to attack or activate a
+	// tap-cost ability without haste (CR 302.1, 702.10). Added in
+	// S18 sub-PR 2.
+	ErrSummoningSick = errors.New("game: creature has summoning sickness")
+
+	// ErrDefender is returned by DeclareAttacker when the creature
+	// has the defender keyword (CR 702.3). Added in S18 sub-PR 2.
+	ErrDefender = errors.New("game: creature has defender and cannot attack")
 )

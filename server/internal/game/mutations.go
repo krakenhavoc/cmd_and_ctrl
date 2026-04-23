@@ -2501,6 +2501,13 @@ func (g *Game) untapAllForLocked(seat int) {
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].Controller == playerID {
 			g.Battlefield.Cards[i].Tapped = false
+			// S18 sub-PR 2: clear summoning sickness for this
+			// controller's creatures at the start of their untap
+			// step. CR 302.1 — a creature loses sickness at the
+			// beginning of its controller's untap step. Haste
+			// bypass is read-time (HasSummoningSickness), so
+			// clearing unconditionally here is correct.
+			g.Battlefield.Cards[i].SummonedThisTurn = false
 		}
 	}
 }
@@ -2617,14 +2624,15 @@ func (g *Game) stackHasItemsLocked() bool {
 //
 // Returns ErrWrongStep outside the declare_attackers step,
 // ErrNotACreature for non-creature cards, ErrPlayerNotFound for an
-// unknown target player, and ErrCardNotFound for an unknown
-// attacker card. Re-declaring the same attacker against a different
-// target overwrites the previous target.
+// unknown target player, ErrCardNotFound for an unknown attacker
+// card, ErrSummoningSick for a creature that entered this turn
+// without haste (CR 302.1, 702.10), and ErrDefender for a defender
+// creature (CR 702.3). Re-declaring the same attacker against a
+// different target overwrites the previous target.
 //
 // Caller authorization (was-it-the-controller) is intentionally
-// NOT enforced — sandbox flexibility for casual play. Untap state
-// and summoning sickness are also not enforced; those land with
-// rules enforcement in S13+.
+// NOT enforced — sandbox flexibility for casual play. Summoning
+// sickness and defender are enforced as of S18.
 func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -2637,16 +2645,27 @@ func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
 	if g.playerByIDLocked(targetPlayerID) == nil {
 		return ErrPlayerNotFound
 	}
+	// Layers must be fresh so HasKeyword reads the current effective
+	// characteristic (e.g. a creature granted haste via a Lightning
+	// Greaves equip this turn should be attackable).
+	g.RecomputeLayersIfStaleLocked()
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == attackerID {
-			if !g.Battlefield.Cards[i].IsCreature() {
+			card := &g.Battlefield.Cards[i]
+			if !card.IsCreature() {
 				return ErrNotACreature
 			}
-			g.Battlefield.Cards[i].AttackingTarget = targetPlayerID
+			if HasKeyword(card, "defender") {
+				return ErrDefender
+			}
+			if HasSummoningSickness(card) {
+				return ErrSummoningSick
+			}
+			card.AttackingTarget = targetPlayerID
 			// A card declared as attacker can't simultaneously be a
 			// blocker — clearing the other field keeps the per-card
 			// combat state coherent.
-			g.Battlefield.Cards[i].BlockingTarget = uuid.Nil
+			card.BlockingTarget = uuid.Nil
 			return nil
 		}
 	}

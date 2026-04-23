@@ -81,6 +81,12 @@ func stampBattlefieldEntryLocked(g *Game, cardID uuid.UUID) {
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cardID {
 			g.Battlefield.Cards[i].EnteredBattlefieldAt = now
+			// S18 sub-PR 2: every battlefield entry earns
+			// summoning sickness unconditionally. Haste bypass
+			// is evaluated at read time by HasSummoningSickness
+			// so a haste creature is attackable immediately this
+			// same turn without extra clear logic here.
+			g.Battlefield.Cards[i].SummonedThisTurn = true
 			// New entry => stale effective; let the next recompute
 			// rebuild from the fresh printed baseline.
 			g.Battlefield.Cards[i].effective = nil

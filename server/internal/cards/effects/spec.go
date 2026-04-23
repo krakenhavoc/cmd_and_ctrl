@@ -150,6 +150,33 @@ type Spec struct {
 	// in sub-PR 3 (Doubling Season, Hardened Scales, Branching
 	// Evolution).
 	Replacements []game.ReplacementEffect
+
+	// PrintedKeywords is the list of combat keywords printed on the
+	// card — entries like "flying", "reach", "deathtouch", "lifelink",
+	// "trample", "vigilance", "first strike", "double strike",
+	// "menace", "defender", "haste", "flash". Canonical lowercase
+	// tokens; see AGENTS.md §7 "Adding a combat-keyword card" for the
+	// complete table.
+	//
+	// Feeds two consumers:
+	//
+	//   1. On-battlefield: wire.go synthesizes a self-only Layer 6
+	//      StaticAbility per card that appends each entry to the
+	//      card's own `Characteristic.Abilities`, so the keyword
+	//      lands in `card.Effective().Abilities` alongside grants
+	//      from other cards' static abilities (Lord of Atlantis).
+	//   2. Off-battlefield: game.HasKeyword (keywords.go) falls back
+	//      to `CatalogPrintedKeywords(oracleID)` when the card has
+	//      no `effective` cache — needed for flash gating on a
+	//      card still in hand.
+	//
+	// Keyword behaviour itself is engine-side (flying block
+	// restriction, trample overflow, etc.); card files just declare
+	// the strings.
+	//
+	// Empty / nil for cards with no printed combat keywords (the
+	// S17 majority). Added in S18 sub-PR 2.
+	PrintedKeywords []string
 }
 
 // ManaAbility is one mana-producing activated ability on a permanent.
