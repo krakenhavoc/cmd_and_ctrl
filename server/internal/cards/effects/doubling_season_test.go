@@ -241,6 +241,61 @@ func replacementIDsForSources(t *testing.T, g *game.Game, ids []game.Replacement
 	return hsEff, dsEff
 }
 
+// TestThreeReplacementsSinglePrompt — with Doubling Season +
+// Hardened Scales + Branching Evolution all in play, adding a
+// +1/+1 counter should queue EXACTLY ONE prompt listing all 3,
+// and submitting the order should apply all 3 in that order
+// without re-prompting. Earlier drafts fired only the first pick
+// and re-queued for the rest, forcing the user to submit the same
+// order N times.
+func TestThreeReplacementsSinglePrompt(t *testing.T) {
+	g := newCatalogGame(t)
+	p0 := g.Seats[0].ID
+
+	hsID := seedReplacementPermanent(g, hardenedScalesOracle, "Hardened Scales", p0)
+	beID := seedReplacementPermanent(g, branchingEvolutionOracle, "Branching Evolution", p0)
+	dsID := seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season", p0)
+	bear := seedCreature(g, "Bears", p0)
+
+	if err := g.AddCounter(bear, "+1/+1", 1); err != nil {
+		t.Fatalf("AddCounter: %v", err)
+	}
+	if len(g.PendingChoices) != 1 {
+		t.Fatalf("pending choices = %d, want 1 prompt listing all 3 effects", len(g.PendingChoices))
+	}
+	prompt := g.PendingChoices[0]
+	if len(prompt.ReplacementEffectIDs) != 3 {
+		t.Fatalf("prompt has %d effect IDs, want 3", len(prompt.ReplacementEffectIDs))
+	}
+
+	// Find the three IDs by source card.
+	var hsEff, beEff, dsEff game.ReplacementEffectID
+	for _, id := range prompt.ReplacementEffectIDs {
+		_, src := g.ReplacementOptionMetaForEffect(id)
+		switch src {
+		case hsID:
+			hsEff = id
+		case beID:
+			beEff = id
+		case dsID:
+			dsEff = id
+		}
+	}
+
+	// Order: HS → BE → DS. (1+1)*2*2 = 8.
+	if err := g.ResolveReplacementOrder(prompt.ID, p0, []game.ReplacementEffectID{hsEff, beEff, dsEff}); err != nil {
+		t.Fatalf("ResolveReplacementOrder: %v", err)
+	}
+
+	// Critical regression: no second prompt queued.
+	if len(g.PendingChoices) != 0 {
+		t.Errorf("pending choices after resolve = %d, want 0 (single-submit should apply all 3)", len(g.PendingChoices))
+	}
+	if got := countersOn(g, bear, "+1/+1"); got != 8 {
+		t.Errorf("counters = %d, want 8 ((1+1)*2*2 with HS→BE→DS)", got)
+	}
+}
+
 // TestBranchingEvolutionStacksWithDoublingSeason — both are
 // "creatures only, +1/+1 only" doublers. With both + a third
 // counter on a creature, the prompt has 2 entries (same shape,
