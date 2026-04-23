@@ -1,6 +1,6 @@
 # ADR 0014 — Combat keywords (S18)
 
-**Status:** Accepted · 2026-04-23 (planned) · Sprint S18
+**Status:** Implemented · 2026-04-23 (planned + shipped) · Sprint S18
 
 ## Context
 
@@ -263,21 +263,99 @@ doesn't queue it until an S18-capable block happens. Additive.
 - **Flash-in-hand badge** — server gating is sufficient for S18; hand-view keyword surface follows with S20 smart-cast UI.
 - **Mycosynth Lattice mana-ability clauses** — originally slotted here per S17 planning. On review, the clauses ("lands tap for any color" + "no land's mana ability adds non-colorless") are mana-system work that predates the S15 mana-pool auto-tapper's final shape. Re-homed to the backlog pending a dedicated mana rewrite sprint; does not block S18 combat work.
 
-## Consequences (planned)
+## Consequences (as shipped 2026-04-23)
 
-Populated at sub-PR 7 once shipped. Placeholder list of what this
-ADR commits to:
-
-- 12 new catalog cards, each in `server/internal/cards/effects/`.
-- `Card.SummonedThisTurn` + `Card.MarkedLethalByDeathtouch` new fields.
-- `Spec.PrintedKeywords []string` new catalog field.
-- `CatalogPrintedKeywords` new function-var hook — 8th catalog hook alongside `EffectResolver` / `ETBEffectHook` / `IsCatalogCard` / `CatalogTargetMode` / `CatalogManaAbilities` / `CatalogStaticAbilities` / `CatalogReplacements`.
-- `server/internal/game/keywords.go` new (four helpers).
-- `resolveCombatDamageLocked` rewritten to two substeps.
-- `PendingChoiceDamageAssignment` + `ResolveDamageAssignment` + wire `DamageAssignmentView`.
-- Client `ChoicePromptModal.svelte` `damage_assignment` branch.
-- Client `CardTile.svelte` keyword-badge row.
-- No protocol version bump.
+- **12 catalog entries ship**: eight vanilla-keyword creatures
+  (Serra Angel, Colossal Dreadmaw, Giant Spider, Typhoid Rats,
+  Youthful Knight, Fencing Ace, Lightning Elemental, Wall of
+  Stone) + four multi-keyword creatures (Vampire Nighthawk,
+  Baneslayer Angel, Ambush Viper, Boggart Brute). Boggart Brute
+  swapped in for Dreg Mangler from the planned list after
+  oracle-text review showed Dreg Mangler carries scavenge+haste,
+  not menace.
+- **Eighth catalog hook** `CatalogPrintedKeywords` joins the
+  S14/S15/S16/S17 seven. Accessible via the function-var slot in
+  `effect_hooks.go`; populated by `wire.go` at init time.
+- **`Spec.PrintedKeywords []string`** new field on the catalog
+  spec. Feeds two consumers: on-battlefield via a synthesized
+  self-only Layer 6 `StaticAbility` generated in `wire.go` (so
+  the keyword lands in `Characteristic.Abilities` alongside
+  hand-written statics); off-battlefield via direct
+  `CatalogPrintedKeywords` lookup inside `HasKeyword` (required
+  for flash gating on a hand-resident Ambush Viper).
+- **`server/internal/game/keywords.go`** new file with four
+  helpers: `HasKeyword`, `HasSummoningSickness`, `CanBlock`,
+  `BlockerCountValid`. Single canonical reader surface — inline
+  `for _, a := range Effective().Abilities` loops are banned in
+  combat code.
+- **`Card.SummonedThisTurn bool`** new field set on every
+  battlefield entry by the layer listener (where
+  `EnteredBattlefieldAt` is stamped); cleared in
+  `untapAllForLocked` at the start of the controller's untap
+  step. Haste is a read-time bypass in `HasSummoningSickness`,
+  not a clear-on-ETB.
+- **`Card.MarkedLethalByDeathtouch bool`** new field flagged by
+  damage from a deathtouch source; read by the lethal-damage
+  SBA (destroys regardless of toughness, per CR 702.2c); cleared
+  at `StepCleanup` alongside `DamageMarked`.
+- **`DeclareAttacker` gates on summoning sickness** (returns
+  `ErrSummoningSick`) and defender (returns `ErrDefender`); calls
+  `RecomputeLayersIfStaleLocked` first so mid-turn haste grants
+  take effect immediately.
+- **`resolveCombatDamageLocked` rewritten** into two substeps
+  (CR 510.2 first-strike + CR 510.3 regular). SBA runs between;
+  dead creatures don't participate in the second pass. Double
+  strike participates in both; first strike only the first.
+- **`assignAndDealCombatDamageLocked`** is the per-substep
+  assigner. Unblocked → player; single blocker → full power
+  with trample overflow when blocker at-least-lethal;
+  multi-blocker → queue `PendingChoiceDamageAssignment` prompt.
+- **Menace close-out** (CR 702.110): a single blocker against a
+  menace attacker is silently reverted (clear
+  `BlockingTarget`); attacker becomes unblocked.
+- **`PendingChoiceDamageAssignment`** new kind + resume path.
+  `DamageAssignmentFrame` carries attacker ID, blocker IDs,
+  attacker power, trample/deathtouch/first-strike flags, AND
+  cached `SourceLifelink` + `SourceController` so lifelink still
+  fires if the attacker died to blocker damage before the
+  prompt resolves.
+- **`ResolveDamageAssignment`** validates permutation of
+  blocker IDs, sum == attacker power, prefix-lethal-in-order
+  (relaxed to 1 under deathtouch), trample-only-if-trample.
+- **`markCombatDamageFromFrameLocked` + `markCombatDamageToPlayerFromFrameLocked`**
+  are the damage routers for the resume path — sources keyword
+  state from the frame, not the (possibly dead) attacker card.
+- **Lifelink applies universally** (CR 702.15): creature-damage
+  AND player-damage pipelines credit the source's controller.
+  Fires via `applyLifelinkLocked` in the direct pipeline and
+  `applyLifelinkFromFrameLocked` in the resume path.
+- **Wire**: `PendingChoiceView.DamageAssignment *DamageAssignmentView`
+  (`attacker_card_id`, `blocker_card_ids`, `attacker_power`,
+  `allow_trample`, `has_deathtouch`) — additive, no version bump.
+- **`actions/actions.go` `TypeResolveChoice` dispatcher leg**
+  for `damage_assignment`: routes on `Assignments` / `TrampleToPlayer`.
+- **Client `ChoicePromptModal.svelte` `damage_assignment` branch**
+  renders reorder buttons (▲/▼) + per-blocker damage inputs +
+  trample-to-player input when `allow_trample`. Submits
+  `{assignments:[{blocker_id, amount}], trample_to_player}`.
+- **Client `KeywordBadgeRow.svelte`** new component — bottom-edge
+  row of abbreviated keyword badges (FLY / RCH / FS / DS / DT /
+  LL / TR / VIG / MEN / DEF / HST / FLS) with full-word
+  tooltips. Unknown keywords (e.g. Lord of Atlantis's
+  `islandwalk`) fall back to a 3-char truncated label.
+- **`CardView.abilities` added on the client** type (wire field
+  was already present server-side since S16 sub-PR 4).
+- **S19 inherits**: Champion of Lambholt both halves; the S18
+  machinery (HasKeyword, two-substep combat, damage-assignment
+  prompt) is the substrate.
+- **S24 inherits**: protection (CR 702.16) — Baneslayer Angel
+  ships here without protection clauses.
+- **S30 inherits**: indestructible (CR 702.12) — reads the SBA
+  branch from the opposite side of `MarkedLethalByDeathtouch`.
+  Damage-prevention shields with charges (CR 615) continue to
+  build on the S17 hook + turn-scoped pattern.
+- **No protocol version bump** — every wire addition is
+  additive.
 
 ## Decision log (planning round, 2026-04-23)
 
