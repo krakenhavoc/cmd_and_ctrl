@@ -108,7 +108,7 @@
     // S17 diagnostic: log so we can see what the wire delivered.
     console.warn("[cast diagnostic]", {
       name: card.name,
-      oracle_id: card.oracle_id,
+      instance_id: card.instance_id,
       target_mode: card.target_mode,
       auto: card.auto,
     });
