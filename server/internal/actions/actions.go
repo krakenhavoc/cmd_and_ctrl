@@ -848,6 +848,13 @@ func Dispatch(g *game.Game, a Action) error {
 			// other kinds. Dispatcher routes by presence. Added in
 			// S17 sub-PR 2.
 			Order []string `json:"order"`
+			// OptionalApply populates an S17 sub-PR 6
+			// PendingChoiceOptionalReplacement yes/no pick — the
+			// client returns {apply: true|false} for the CR 614.10
+			// "may" prompt (today: CR 903.9 commander-zone).
+			// Pointer so we can disambiguate "absent" (nil) from
+			// "false" (&false) in the routing check.
+			OptionalApply *bool `json:"apply"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -858,6 +865,9 @@ func Dispatch(g *game.Game, a Action) error {
 		}
 		if p.Color != "" {
 			return g.ResolveManaChoice(choiceID, a.Player, p.Color)
+		}
+		if p.OptionalApply != nil {
+			return g.ResolveOptionalReplacement(choiceID, a.Player, *p.OptionalApply)
 		}
 		if len(p.Order) > 0 {
 			order := make([]game.ReplacementEffectID, 0, len(p.Order))

@@ -250,6 +250,22 @@ type ReplacementEffect struct {
 	// ordering ever lands).
 	SelfReplacement bool
 
+	// Optional flags a CR 614.10 "may" replacement — the owner
+	// decides each time whether to apply it. When true, the apply-
+	// loop queues a yes/no prompt (PendingChoiceOptionalReplacement)
+	// before firing Replace. "Yes" → Replace runs normally; "No" →
+	// the effect is marked applied without running Replace, and
+	// the event proceeds unchanged (for this effect; other
+	// mandatory replacements still fire). Used by CR 903.9
+	// commander-zone replacement; future "may exile instead of
+	// graveyard" cards would use it too. Added in S17 sub-PR 6.
+	Optional bool
+
+	// PromptQuestion is the text rendered in the yes/no Optional
+	// prompt. Short — fits in a modal header. Defaults to Label
+	// when empty.
+	PromptQuestion string
+
 	// Label is the CR 616 prompt's header copy
 	// ("Doubling Season: double counters"). Kept server-side so
 	// the wire carries it; no localisation yet.
@@ -347,8 +363,16 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			g.queueReplacementOrderPromptLocked(ev, applicable)
 			return ev, errReplacementPending
 		}
-		// Exactly one applicable. Apply it and iterate.
+		// Exactly one applicable.
 		chosen := applicable[0]
+		if chosen.effect.Optional {
+			// CR 614.10 "may" — owner decides each time. Queue a
+			// yes/no prompt; the resume path either fires Replace
+			// (yes) or marks applied and skips (no).
+			g.queueOptionalReplacementPromptLocked(ev, chosen)
+			return ev, errReplacementPending
+		}
+		// Mandatory: fire Replace inline and iterate.
 		g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
 		if chosen.effect.Replace != nil {
 			if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {

@@ -18,26 +18,25 @@ import "github.com/google/uuid"
 // would be put into a library, hand, graveyard, or exile from
 // anywhere, its owner may put it into the command zone instead."
 //
-// Personal-sandbox simplification: we apply the replacement
-// automatically rather than prompting the owner. Matches today's
-// S13.1 behaviour byte-for-byte.
+// CR 614.10 "may" replacement — Optional=true triggers the apply-
+// loop's yes/no prompt path (PendingChoiceOptionalReplacement) so
+// the owner decides each time. Sub-PR 6 change: widened AppliesTo
+// (dropped the asCommanderMove gate) so the replacement fires for
+// every move that puts a commander into graveyard/exile/hand/
+// library — spell-driven (Wrath, Path, Swords), SBA-driven (dies
+// to damage), bounce (Unsummon), mill. S13.1's flag-gated single-
+// path implementation missed every case except the admin "move as
+// commander" UI action.
 //
-// Controlled by the commander's owner (drives CR 616 affected-
-// player ordering if another commander-zone-touching replacement
-// ever joins — today there's only one).
-//
-// The commander zone move is flagged by ev.asCommanderMove — set
-// by MoveCardByIDAsCommander when the caller passes asCommander =
-// true. The other MoveCardByID path (asCommander=false) routes
-// commanders to graveyard / exile normally, preserving S13.1's
-// semantics for admin moves.
+// Controlled by the commander's owner (drives both the CR 614.10
+// yes/no prompt and the CR 616 multi-replacement order prompt if
+// other commander-zone-touching replacements ever join).
 var commanderZoneReplacement = ReplacementEffect{
-	Watches: []EventKind{EventZoneMove},
+	Watches:        []EventKind{EventZoneMove},
+	Optional:       true,
+	PromptQuestion: "Send commander to command zone instead?",
 	AppliesTo: func(ev *ReplacementEvent, g *Game, _ *Card) bool {
 		if ev.Kind != RepEventMove {
-			return false
-		}
-		if !ev.asCommanderMove {
 			return false
 		}
 		switch ev.NewZone {
@@ -68,5 +67,5 @@ var commanderZoneReplacement = ReplacementEffect{
 		}
 		return card.Owner
 	},
-	Label: "Route commander to command zone",
+	Label: "Commander zone replacement",
 }
