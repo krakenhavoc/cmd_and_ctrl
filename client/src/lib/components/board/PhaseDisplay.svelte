@@ -18,7 +18,8 @@
   import { seatColor } from "../../colors";
   import { avatarURL } from "../../api";
   import { getAvatarColor } from "../../avatarColor";
-  import { STEP_IDS, STEP_LABELS } from "../../turn";
+  import { STEP_IDS, STEP_LABELS, type StepID } from "../../turn";
+  import { canManuallyStop, manualStops, toggleManualStop } from "../../priorityStops";
   import PhaseIcon from "./PhaseIcon.svelte";
 
   interface Props {
@@ -59,6 +60,18 @@
   });
   const colorFor = (seat: PlayerView): string => playerColors[seat.id] ?? seatColor(seat.seat);
   const activeColor = $derived(activePlayer ? colorFor(activePlayer) : seatColor(activeSeat));
+
+  // S13.6: manual one-time stops. Click a priority-granting icon to
+  // pin the cursor there the next time the viewer holds priority.
+  // Overrides autoPassPriority + smartAutoPass so the viewer can
+  // "fake a game action" — stop to think / bluff / respond even
+  // when the engine sees nothing to do. Consumed on step transition
+  // by the consumer in Game.svelte.
+  const pinned = $derived($manualStops);
+  function onIconClick(id: StepID): void {
+    if (!canManuallyStop(id)) return;
+    toggleManualStop(id);
+  }
 </script>
 
 <div
@@ -79,14 +92,26 @@
       {#if BOUNDARIES.has(i)}
         <span class="track-gap" aria-hidden="true"></span>
       {/if}
-      <span
+      {@const clickable = canManuallyStop(id)}
+      {@const isPinned = pinned.has(id)}
+      <button
+        type="button"
         class="step-icon"
         class:current={turn.step === id}
-        title={STEP_LABELS[id]}
+        class:pinned={isPinned}
+        class:clickable
+        disabled={!clickable}
+        title={clickable
+          ? isPinned
+            ? `${STEP_LABELS[id]} — click to unpin`
+            : `${STEP_LABELS[id]} — click to pin a one-time stop`
+          : `${STEP_LABELS[id]} — no priority`}
         aria-current={turn.step === id ? "step" : undefined}
+        aria-pressed={clickable ? isPinned : undefined}
+        onclick={() => onIconClick(id)}
       >
         <PhaseIcon step={id} />
-      </span>
+      </button>
     {/each}
   </div>
 
@@ -188,19 +213,61 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    /* Reset button chrome — we're reusing <button> for the
+       keyboard / click affordance, not the default look. */
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
     color: rgba(255, 255, 255, 0.3);
     opacity: 0.85;
+    cursor: default;
     transition:
       color 160ms var(--ease),
       opacity 160ms var(--ease),
       filter 160ms var(--ease),
       transform 160ms var(--ease);
   }
+  .step-icon.clickable {
+    cursor: pointer;
+  }
+  .step-icon.clickable:hover {
+    color: rgba(255, 255, 255, 0.55);
+  }
+  .step-icon.clickable:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
   .step-icon.current {
     color: var(--active-player-color);
     opacity: 1;
     transform: scale(1.18);
     filter: drop-shadow(0 0 6px color-mix(in srgb, var(--active-player-color) 70%, transparent));
+  }
+  /* Pinned: a small filled dot in the top-right corner. Uses
+     --accent so the pin reads as UI state, not game state (the
+     active-player colour is already load-bearing on the current
+     icon). Pairs with a subtle lift on opacity so pinned steps
+     feel distinct from the ambient row even when not current. */
+  .step-icon.pinned {
+    opacity: 1;
+    color: var(--accent);
+  }
+  .step-icon.pinned.current {
+    color: var(--active-player-color);
+  }
+  .step-icon.pinned::after {
+    content: "";
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 4px color-mix(in srgb, var(--accent) 75%, transparent);
   }
   .track-gap {
     width: 8px;

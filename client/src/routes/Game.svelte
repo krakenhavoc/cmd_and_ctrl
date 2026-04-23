@@ -16,6 +16,7 @@
   import { openSettings, settings } from "../lib/settings";
   import { grantsPriority } from "../lib/turn";
   import { hasAnyLegalResponse } from "../lib/priority";
+  import { consumeManualStop, hasManualStop } from "../lib/priorityStops";
 
   interface Props {
     gameID: string;
@@ -103,6 +104,12 @@
     if (mulligansOpen || gameEnded || viewerEliminated) return;
     const step = view?.turn?.step;
     if (!step) return;
+    // S13.6: manual one-time stops override everything below. Click
+    // a phase icon in PhaseDisplay to pin; the pin clears on step
+    // transition via the consumer below. "Fake a game action" —
+    // the viewer gets the cursor even when the engine has nothing
+    // to offer (want to think / bluff / respond off-catalog).
+    if (hasManualStop(step)) return;
     // Stop here if the viewer has opted to stop on this step. The
     // map omits no-priority steps (Untap / Cleanup); for those, the
     // viewer can never hold priority anyway.
@@ -128,6 +135,18 @@
     if (seq === lastAutoPassedSeq) return;
     lastAutoPassedSeq = seq;
     client.sendAction("pass_priority");
+  });
+
+  // S13.6: consume manual one-time stops. When the snapshot step
+  // advances away from a pinned step, clear the pin — the whole
+  // point of "one-time" is that the next cycle of that step isn't
+  // held unless re-pinned. No-op for any step that wasn't pinned.
+  let lastStep = $state<string | null>(null);
+  $effect(() => {
+    const step = view?.turn?.step ?? null;
+    if (step === lastStep) return;
+    if (lastStep) consumeManualStop(lastStep);
+    lastStep = step;
   });
 
   // sendAction is a thin shim over GameClient.sendAction that the
@@ -445,8 +464,11 @@
         // landed on the viewer; other priority-holders' loops are
         // their own concern). The `i > 0` guard skips the very first
         // iteration so pressing the button on a configured stop
-        // doesn't immediately exit without doing anything.
+        // doesn't immediately exit without doing anything. Manual
+        // one-time pins (S13.6) are treated the same — they're
+        // stops by intent, so the "next stop" button respects them.
         if (i > 0 && $settings.gameplay.stepStops[v.turn.step] === true) break;
+        if (i > 0 && hasManualStop(v.turn.step)) break;
         // Server rejects pass_priority during no-priority steps —
         // those auto-advance via the step-entry hook, so we can
         // simply wait for the next snapshot rather than poke.

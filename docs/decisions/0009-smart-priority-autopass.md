@@ -28,10 +28,11 @@ default `true`). When on, the existing `autoPassPriority` effect in
 `Game.svelte` folds in `hasAnyLegalResponse(snap, viewerID)`: if
 the viewer holds priority on a stopped step but the legality
 engine reports nothing legal, auto-pass anyway. The stops grid
-still controls *where the player wants to consider stopping*; the
+still controls _where the player wants to consider stopping_; the
 predicate decides whether there's actually anything to consider.
 
 **Why a new setting instead of just changing behaviour:**
+
 - Some players (especially sandbox testers) want every stop to
   hold open so they can think or fake plays that aren't in the
   catalog yet. Making this a toggle lets them opt out.
@@ -74,6 +75,7 @@ the command zone as castable via the same predicate as hand
 cards.
 
 **Why:**
+
 - Skipping a priority window the player wanted is the bad
   outcome. The grey-card UX recovers from a false positive (you
   see the grey, you click pass); there's no recovery from a
@@ -81,7 +83,7 @@ cards.
 - We don't know per-card ability lists on the client — the
   server's effect catalog (S14) does, but the client doesn't
   carry that metadata on-wire. Treating every permanent as
-  *potentially* activatable keeps the predicate's false-negative
+  _potentially_ activatable keeps the predicate's false-negative
   rate near zero.
 
 ### 4. Mana affordability is out of scope (S13.6 ships without it)
@@ -92,12 +94,13 @@ player with a 7-drop and zero lands still counts as "has a legal
 response" under this predicate.
 
 **Why not:**
+
 - Mana affordability requires the server's `/auto-tap-preview`
   endpoint (S15). Hitting it on every priority window for every
   card in hand, on every snapshot tick, is a perf cliff. The
   endpoint is designed for one-shot lookups, not hot-path
   scanning.
-- The predicate's job is to skip *dead air*, not to divine
+- The predicate's job is to skip _dead air_, not to divine
   intent. A player who can't afford their one sorcery usually
   still wants to see their upkeep land — if only to draw into
   something castable on the next priority window.
@@ -106,7 +109,57 @@ Future sprint (punted): a light affordance-precomputation on the
 client that runs once per snapshot would let the predicate
 tighten. Not shipping here.
 
-### 5. Accompanying `⇥ pass step` button
+### 5. Manual one-time stops (click-to-pin on phase icons)
+
+**Decision:** `client/src/lib/priorityStops.ts` owns a Svelte store
+of pinned `StepID`s. Clicking a priority-granting phase icon on the
+PhaseDisplay track toggles that step in the set. When the auto-pass
+effect sees a pinned step, it short-circuits before any other rule
+(stops grid, smartAutoPass) — the cursor holds regardless. The pin
+is consumed on the next snapshot step transition, so the next cycle
+of that step is unpinned unless re-clicked.
+
+**Precedence order (strongest first):**
+
+1. Manual pin → hold (this decision).
+2. `stepStops[step] === true` + `smartAutoPass=true` + predicate
+   says "something to consider" → hold.
+3. `stepStops[step] === true` + `smartAutoPass=false` → hold.
+4. Everything else → auto-pass.
+
+**Why manual stops override smartAutoPass:**
+The whole point of a manual pin is "I want the cursor even though
+the engine sees no reason for it." A player might want to think
+about an upcoming line, fake a cast to bluff a counter, or
+consider a play the catalog doesn't model yet (our coverage is
+opt-in; lots of legal actions aren't predicate-visible). If
+smartAutoPass could skip a pinned step, the affordance would be a
+lie — so pins sit above the predicate in the hierarchy.
+
+**Why priority-granting only:**
+Untap and Cleanup don't grant priority (CR 502.4 / 514.3). Pinning
+them would put a visible affordance on a step where the server
+actively rejects `pass_priority`. `canManuallyStop(step)` gates
+the toggle; the click handler no-ops on non-priority steps, and
+the rendered icon shows a "no priority" tooltip so the missing
+affordance is self-explanatory.
+
+**Why one-time, not sticky:**
+Sticky pins are the stops grid (persisted, persistent intent).
+Manual pins are now-intent ("this cycle I want to see declare
+attackers"). Sticky would duplicate the grid with worse ergonomics
+(no Settings UI to unpin) and risk "I pinned this days ago and
+forgot" stuck-cursor incidents. One-time consume on step
+transition matches the feature as described and keeps state
+disposable.
+
+**Why not persisted across reloads:**
+The store is process-scoped — a reload drops all pins. Consistent
+with one-time semantics (a reload is a stronger signal than a step
+transition), and anyone who reloads mid-game probably wants the
+default stops behaviour to reassert.
+
+### 6. Accompanying `⇥ pass step` button
 
 **Decision:** Add a new priority-toolbar button between "pass
 priority" and "→ next stop." Fires `pass_priority` repeatedly
@@ -115,7 +168,7 @@ changes. Capped at 24 iterations (same safety belt as
 `passToEnd`).
 
 **Why not just reuse "next stop":** "next stop" respects the
-stops grid — if the current step *is* a configured stop, pressing
+stops grid — if the current step _is_ a configured stop, pressing
 it once from there stops immediately on the very next iteration.
 The new button ignores stops entirely: "nothing here, move on to
 the next step boundary, I'll decide again there." Covers the
@@ -125,6 +178,7 @@ without forcing the player to temporarily un-configure the stop.
 ## Consequences
 
 ### Good
+
 - A four-player turn cycle where nobody has anything to respond
   with auto-walks from Untap to Untap with exactly the clicks
   players intentionally made — no drumbeat of pointless passes.
@@ -134,7 +188,8 @@ without forcing the player to temporarily un-configure the stop.
   affordability is worth precomputing, we can fold it in.
 
 ### Tradeoffs
-- False-positive-stop: the viewer controls *any* permanent →
+
+- False-positive-stop: the viewer controls _any_ permanent →
   `hasAnyLegalResponse` returns true. In Commander that's almost
   every mid-game priority window. Practically this means
   smart-auto-pass shines in empty-board and empty-hand scenarios
@@ -152,6 +207,7 @@ without forcing the player to temporarily un-configure the stop.
   you'd get by clicking pass by hand.
 
 ### Not done
+
 - **Opponent "thinking" indicator.** Accurate telegraph of
   "opponent can respond" requires their full hand / board
   visibility, which S13.5 doesn't grant across seats. Future
