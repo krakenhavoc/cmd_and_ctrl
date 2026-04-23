@@ -158,6 +158,16 @@ type Card struct {
 	// game's lifetime. Added in S16 sub-PR 3.
 	EnteredBattlefieldAt int64
 
+	// SummonedThisTurn is the summoning-sickness flag (CR 302.1).
+	// Set true whenever the card enters the battlefield; cleared at
+	// the start of the controller's untap step. Haste (CR 702.10)
+	// is a read-time bypass in HasSummoningSickness, NOT a
+	// clear-on-ETB — so a creature that gains haste mid-turn
+	// becomes attackable immediately, and one that loses haste
+	// mid-turn remains sick until next untap. Only meaningful on
+	// the battlefield; ignored in other zones. Added in S18 sub-PR 2.
+	SummonedThisTurn bool
+
 	// effective is the cached post-layer-resolution characteristic
 	// for this card on the battlefield. Populated by the layer
 	// engine's recompute pass; nil ⇒ "no recompute has run since

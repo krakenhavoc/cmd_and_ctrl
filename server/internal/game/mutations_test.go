@@ -657,6 +657,96 @@ func TestDeclareAttackerRejectsUnknownCard(t *testing.T) {
 	}
 }
 
+func TestDeclareAttackerRejectsSummoningSick(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	// Simulate ETB this turn by setting the flag the way the layer
+	// listener would when an EventZoneMove fires.
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == attacker {
+			g.Battlefield.Cards[i].SummonedThisTurn = true
+		}
+	}
+	advanceTo(t, g, StepDeclareAttackers)
+	if err := g.DeclareAttacker(attacker, g.Seats[1].ID); err != ErrSummoningSick {
+		t.Errorf("sick attacker: got %v, want ErrSummoningSick", err)
+	}
+}
+
+func TestDeclareAttackerAcceptsHasteCreatureSameTurn(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	// Sick + haste → can attack (haste is a read-time bypass).
+	// Seed `effective` with printed P/T so 0-toughness SBA doesn't
+	// destroy the card before combat. The layer engine re-derives
+	// from printed whenever layerVersion bumps; since this test
+	// doesn't trigger any static-ability-relevant events after the
+	// setup, the hand-set effective survives through the advance.
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == attacker {
+			g.Battlefield.Cards[i].SummonedThisTurn = true
+			g.Battlefield.Cards[i].effective = &Characteristic{
+				Power:     g.Battlefield.Cards[i].Power,
+				Toughness: g.Battlefield.Cards[i].Toughness,
+				Abilities: []string{"haste"},
+			}
+		}
+	}
+	advanceTo(t, g, StepDeclareAttackers)
+	if err := g.DeclareAttacker(attacker, g.Seats[1].ID); err != nil {
+		t.Errorf("haste attacker: got %v, want nil", err)
+	}
+}
+
+func TestDeclareAttackerRejectsDefender(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == attacker {
+			g.Battlefield.Cards[i].effective = &Characteristic{
+				Power:     g.Battlefield.Cards[i].Power,
+				Toughness: g.Battlefield.Cards[i].Toughness,
+				Abilities: []string{"defender"},
+			}
+		}
+	}
+	advanceTo(t, g, StepDeclareAttackers)
+	if err := g.DeclareAttacker(attacker, g.Seats[1].ID); err != ErrDefender {
+		t.Errorf("defender attacker: got %v, want ErrDefender", err)
+	}
+}
+
+func TestUntapStepClearsSummoningSickness(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == attacker {
+			g.Battlefield.Cards[i].SummonedThisTurn = true
+		}
+	}
+	// Advance a full turn cycle so the cursor wraps back to seat 0's
+	// untap step.
+	passedSeats := make(map[int]bool)
+	for i := 0; i < 100; i++ {
+		_, err := g.AdvanceStep()
+		if err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+		if g.Turn.ActiveSeat == 0 && g.Turn.Step == StepUpkeep {
+			break
+		}
+		passedSeats[g.Turn.ActiveSeat] = true
+	}
+	if g.Turn.ActiveSeat != 0 {
+		t.Fatalf("expected to wrap back to seat 0, got seat %d", g.Turn.ActiveSeat)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID == attacker && c.SummonedThisTurn {
+			t.Errorf("SummonedThisTurn should be cleared after seat 0's next untap step")
+		}
+	}
+}
+
 func TestDeclareAttackerOverwritesPreviousTarget(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])

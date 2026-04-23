@@ -21,6 +21,13 @@ const gloriousAnthemOracle = "e3886fe8-9b76-4613-8891-4ec74657c087"
 // battlefield AND fires EventZoneMove so the layer listener stamps
 // EnteredBattlefieldAt + bumps layerVersion. Prefer this over
 // raw PushTop for any test that exercises the layer engine.
+//
+// S18: the listener also sets SummonedThisTurn = true on entry.
+// Tests that use this helper are semantically "this card is
+// already in play and ready to act," not "this card just ETB'd
+// this turn" — so we clear the sickness flag post-stamp. Tests
+// specifically exercising summoning sickness should drive ETB
+// through the real MoveCardByID path.
 func pushBattlefieldCardWithTimestamp(g *game.Game, c game.Card) uuid.UUID {
 	g.Battlefield.PushTop(c)
 	g.WithWriteLock(func() {
@@ -30,6 +37,12 @@ func pushBattlefieldCardWithTimestamp(g *game.Game, c game.Card) uuid.UUID {
 			OldZone: game.ZoneHand,
 			NewZone: game.ZoneBattlefield,
 		})
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == c.InstanceID {
+				g.Battlefield.Cards[i].SummonedThisTurn = false
+				break
+			}
+		}
 	})
 	return c.InstanceID
 }
