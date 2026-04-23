@@ -1,6 +1,6 @@
 # ADR 0013 — Replacement effects engine (S17)
 
-**Status:** Accepted · 2026-04-22 · Sprint S17
+**Status:** Implemented · 2026-04-22 (planned), 2026-04-23 (shipped) · Sprint S17
 
 ## Context
 
@@ -300,45 +300,87 @@ user prompt. Either outcome is tracked (§Consequences below).
   "replace the event again" behavior beyond CR 614/616, flag for
   rules review.
 
-## Consequences
+## Consequences (as shipped 2026-04-23)
 
-- **12 catalog cards ship**: Doubling Season, Hardened Scales,
-  Branching Evolution, Champion of Lambholt (counter half),
-  Hangarback Walker, Stasis, Kismet, Fog, Library of Leng, plus
-  the three enters-tapped finishes for Cultivate / Path to Exile /
-  Solemn Simulacrum.
+- **9 catalog entries ship**: six new cards (Doubling Season,
+  Hardened Scales, Branching Evolution, Stasis, Kismet, Fog) plus
+  three S14 finishers (Cultivate / Path to Exile / Solemn Simulacrum)
+  that now set `SearchLibrary.TappedOnEntry`. Hangarback Walker,
+  Champion of Lambholt, Library of Leng, and the Mycosynth Lattice
+  clauses deferred — see Out of Scope below.
 - **Seventh catalog hook** `CatalogReplacements` joins the
   S14/S15/S16 six.
 - **`Spec.Replacements []game.ReplacementEffect`** new field on the
   catalog spec; parallel to `Static`.
-- **New PendingChoiceKind** `replacement_order` + new
-  `ResolveReplacementOrder` method + dispatcher leg for `order`
-  payload. Wire projection adds `ReplacementOptions`.
+- **Two new PendingChoiceKinds**: `replacement_order` (CR 616
+  multi-effect ordering) + `optional_replacement` (CR 614.10 yes/no).
+  Each has a resume method (`ResolveReplacementOrder`,
+  `ResolveOptionalReplacement`) and a dispatcher leg. Wire
+  projection adds `ReplacementOptions`.
+- **`ReplacementEffect.Optional bool`** (sub-PR 6) flags effects
+  that need owner opt-in before firing. Used today by the CR 903.9
+  commander-zone built-in; future home for "may exile instead" cards.
 - **S13.1 commander-zone replacement deleted**; built-in
-  replacement takes over. Behavior unchanged.
-- **`enterBattlefieldLocked`** new shared helper replacing ad-hoc
-  calls at four battlefield-entry sites.
+  replacement takes over AND widened: fires on EVERY commander
+  move (spell-driven, SBA-driven, admin-driven) instead of only
+  admin-flagged moves. Closes [#164](https://github.com/krakenhavoc/cmd_and_ctrl/issues/164).
+- **Battlefield-entry pipeline routing** is inline at each entry
+  site (cast resolve, land play, admin move). The planned
+  `enterBattlefieldLocked` shared-helper refactor was scoped out
+  in favor of targeted per-site calls — less churn, same behavior.
+- **`routeBattlefieldCardToOwnerGraveyardLocked` routes through
+  the pipeline** so SBA deaths + wrath destroys fire the commander-
+  zone replacement. New `executeBattlefieldLeaveLocked` helper
+  runs the physical move post-pipeline.
 - **`MarkCombatDamage(source, target, delta)`** new wrapper around
   `MarkDamage`; flags `IsCombatDamage=true` for Fog / combat-only
   prevention.
 - **`RepEventStepTransition`** engine-only event kind fired at the
   top of `runStepEntryHooksLocked` so Stasis can cancel StepUntap.
   Step advance still does not emit a wire `Event`.
+- **`Game.TurnScopedReplacements`** new per-turn replacement slot
+  cleared at `StepCleanup`. Fog-class transient effects live here.
 - **`SearchLibrary` primitive gains `TappedOnEntry bool`**;
   Cultivate / Path to Exile / Solemn Simulacrum stop shipping the
   "enters untapped" sandbox note.
-- **Library of Leng ships cleanup-path only**; an involuntary-
-  discard follow-up issue remains open.
-- **Mycosynth Lattice clauses** land in sub-PR 6 iff the scope
-  decision clears; otherwise re-homed to S18.
-- **S18** inherits aura attachment (via S24), combat keyword
-  behavior, and potentially the Mycosynth Lattice clauses.
-- **S24** inherits Mind Control + aura attachment infrastructure.
-- **S28** inherits cost-replacement effects.
+- **CR 514.1 cleanup-step discard scoped to active player only**
+  (sub-PR 6 bug fix). Pre-S17 the check populated `DiscardPending`
+  for every seated player; the correct rule is active-player-only.
+- **Wire P/T includes counter delta** — `viewOfCard` sources from
+  `c.CurrentPower()` / `c.CurrentToughness()` so the on-card P/T
+  pip matches the SBA + combat-damage reads. Pre-existing S13.2
+  bug surfaced by S17's first counter-placing scenario.
+- **Cast-payload retry stash** in `Game.svelte.sendAction` — the
+  insufficient-mana "Cast anyway" and "Auto-tap & cast" retries
+  now replay the original cast_spell payload (targets, modes, X,
+  distribution) instead of hand-rolling a bare payload. Pre-
+  existing S15 bug surfaced by a Path to Exile / Swords manual
+  test.
+- **`CastSpell` target-required guard** rejects cast_spell with
+  empty `params.Targets` when the card's `target_mode` is non-
+  empty. Turns silent "no effect" resolutions into visible
+  `ErrInvalidParam` toasts.
+- **Shift+click per-card `+1/+1` counter** in `PlayerPanel.svelte`
+  as a debug affordance until the right-click admin context menu
+  mini-sprint ([#170](https://github.com/krakenhavoc/cmd_and_ctrl/issues/170)) ships.
+- **`CounterPips.svelte` rendering** disambiguated — abbr + count
+  as two spans with a tabular-numeric badge (the previous `·`
+  separator read as `+` at 10px font).
+- **`EventEffectError` logged via `slog.Warn`** at emission time —
+  until the client learns to render effect errors as toasts,
+  server terminal output is the diagnostic surface.
+- **S18** inherits combat-keyword behavior + the Mycosynth Lattice
+  "lands tap for any color" + "no mana ability adds non-colorless"
+  clauses (re-homed from S17's provisional sub-PR 6).
+- **S24** inherits Mind Control + aura attachment infrastructure
+  (bundled out of S17 during planning).
+- **S28** inherits cost-replacement effects (Trinisphere, Thalia,
+  Spellshift, Kambal's life-gain-on-cast).
 - **S30** inherits damage-prevention shields with charges, built on
   top of the S17 `MarkCombatDamage` hook + turn-scoped prevention
   pattern.
-- **No protocol version bump.** `replacement_order` is additive.
+- **No protocol version bump.** New PendingChoice kinds + wire
+  fields are additive; old clients ignore them.
 
 ## Decision log (planning round, 2026-04-22)
 
