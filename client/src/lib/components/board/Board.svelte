@@ -22,9 +22,11 @@
   import { seatPlacements, type SeatPosition } from "../../cardTypes";
   import PlayerPanel from "./PlayerPanel.svelte";
   import HoverZoomOverlay from "./HoverZoomOverlay.svelte";
+  // CommanderDamageTooltip was folded into HoverZoomOverlay — the
+  // damage readout now lives inside the card preview panel instead
+  // of the lower-right corner.
   import StackOverlay from "./StackOverlay.svelte";
   import CombatArrows from "./CombatArrows.svelte";
-  import CommanderDamageTooltip from "./CommanderDamageTooltip.svelte";
   import VotingPanel from "./VotingPanel.svelte";
   import {
     targeting,
@@ -257,7 +259,7 @@
   {/if}
 
   <CombatArrows {view} {boardEl} />
-  <HoverZoomOverlay />
+  <HoverZoomOverlay {view} />
   <StackOverlay
     stack={view.stack}
     stackItems={view.stack_items ?? []}
@@ -271,7 +273,6 @@
     }}
     onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
   />
-  <CommanderDamageTooltip {view} />
   <VotingPanel {view} {viewerID} {sendAction} />
 </div>
 
