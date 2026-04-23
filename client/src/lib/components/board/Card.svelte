@@ -26,6 +26,7 @@
   import { play } from "../../sounds";
   import { settings } from "../../settings";
   import CounterPips from "./CounterPips.svelte";
+  import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
 
   interface Props {
@@ -257,6 +258,7 @@
       </span>
     {/if}
     <CounterPips counters={card.counters} />
+    <KeywordBadgeRow abilities={card.abilities} />
     {#if (card.damage_marked ?? 0) > 0}
       <span class="badge damage" title={`${card.damage_marked} damage marked`} aria-label="damage">
         {card.damage_marked}
@@ -292,6 +294,7 @@
       </span>
     {/if}
     <CounterPips counters={card.counters} />
+    <KeywordBadgeRow abilities={card.abilities} />
     {#if (card.damage_marked ?? 0) > 0}
       <span class="badge damage" title={`${card.damage_marked} damage marked`} aria-label="damage">
         {card.damage_marked}
