@@ -56,7 +56,7 @@ planned just-in-time from the S12 pain-point triage.
 | S14 | Card-effect catalog foundation | 7 | [#64](https://github.com/krakenhavoc/cmd_and_ctrl/issues/64) | 2026-07-12 | **done** |
 | S15 | Mana pool, cost model, and auto-tapper | 7 | [#65](https://github.com/krakenhavoc/cmd_and_ctrl/issues/65) | 2026-08-09 | **done** |
 | S16 | Continuous effects + layer system (CR 613) | 7 | [#66](https://github.com/krakenhavoc/cmd_and_ctrl/issues/66) | 2026-09-06 | **done** |
-| S17 | Replacement effects engine (CR 614) | 7 | [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67) | 2026-10-04 | planned |
+| S17 | Replacement effects engine (CR 614) | 7 | [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67) | 2026-10-04 | **done** |
 | S18 | Combat keywords | 7 | [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68) | 2026-11-01 | planned |
 | S19 | Auto-fire triggered abilities | 7 | [#69](https://github.com/krakenhavoc/cmd_and_ctrl/issues/69) | 2026-11-29 | planned |
 | S20 | Auto-target legality + smart cast UI | 7 | [#70](https://github.com/krakenhavoc/cmd_and_ctrl/issues/70) | 2026-12-27 | planned |
@@ -1228,9 +1228,13 @@ Stop-and-show for manual testing at each boundary, mirroring S15.
 ---
 
 ## S17 — Replacement effects engine (CR 614)
-**Phase:** 7 · **Goal:** ship a pre-event replacement pipeline (CR 614/616) layered onto the five rules-visible mutation functions, plus step-transition hooks for skip-step. `ReplacementEvent` tagged-union value type is mutated or canceled by registered `ReplacementEffect`s declared on `Spec.Replacements`. CR 616.1 iterative apply-loop, CR 614.5 once-per-event tracking, and CR 616 affected-player-chooses-order are enforced centrally so card files stay declarative. S13.1's hand-rolled commander-zone replacement is refactored into a built-in. 12 catalog cards ship (7 listed + 3 enters-tapped finishes from S14 + Library of Leng + Fog).
+**Phase:** 7 · **Goal:** ship a pre-event replacement pipeline (CR 614/616) layered onto the five rules-visible mutation functions, plus step-transition hooks for skip-step. `ReplacementEvent` tagged-union value type is mutated or canceled by registered `ReplacementEffect`s declared on `Spec.Replacements`. CR 616.1 iterative apply-loop, CR 614.5 once-per-event tracking, CR 616 affected-player-chooses-order, and CR 614.10 "may" optional replacements all enforced centrally so card files stay declarative. S13.1's hand-rolled commander-zone replacement is refactored into a built-in that fires for EVERY commander move (spell-driven, SBA-driven, admin-driven) — closing a pre-existing gap.
 
 The second-most structural rules subsystem after the stack. Unblocks S18 combat keywords (replaceable triggers), S21 tokens, S22 draw manipulation, and S30 damage prevention. After this sprint, the catalog can describe cards whose effects intercept events *before* they happen.
+
+**Shipped 2026-04-23** via PRs [#158](https://github.com/krakenhavoc/cmd_and_ctrl/pull/158), [#163](https://github.com/krakenhavoc/cmd_and_ctrl/pull/163), [#172](https://github.com/krakenhavoc/cmd_and_ctrl/pull/172), [#166](https://github.com/krakenhavoc/cmd_and_ctrl/pull/166), [#167](https://github.com/krakenhavoc/cmd_and_ctrl/pull/167), [#171](https://github.com/krakenhavoc/cmd_and_ctrl/pull/171). Closes [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67) and [#164](https://github.com/krakenhavoc/cmd_and_ctrl/issues/164).
+
+**Catalog cards shipped (6 new + 3 finishers):** Doubling Season, Hardened Scales, Branching Evolution, Stasis, Kismet, Fog. Plus TappedOnEntry finishers for Cultivate / Path to Exile / Solemn Simulacrum.
 
 ### Architectural decisions
 
@@ -1241,120 +1245,125 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 - **CR 616.1 iterative apply-loop, centrally enforced.** Engine owns iteration, the once-per-event map, and the CR 616 ordering prompt. Cards declare `AppliesTo` + `Replace`.
 - **Once-per-event tracking applies to all fired replacements**, not only `SelfReplacement`-flagged ones. Per-call scope, keyed on `(ReplacementEventID, ReplacementEffectID)`.
 - **CR 616 order-choose via new `replacement_order` PendingChoice kind.** Queue-and-return pattern reused from S13/S15 (synchronous, no goroutines). Wire surface is additive — no protocol bump.
+- **CR 614.10 optional replacements** via new `optional_replacement` PendingChoice kind (yes/no prompt). Added mid-sprint in [sub-PR 6](#s17-sub-pr-6) after manual testing surfaced the CR 903.9 auto-route gap. `ReplacementEffect.Optional bool` flags effects that need the owner's opt-in before firing.
 - **Six integration points**: `AddCounter`, `MoveCardByID`, `DrawCard`, `ChangePlayerLife`, `MarkDamage`, plus `runStepEntryHooksLocked` for skip-step. Parallel `*ForEffect` hooks in `effect_api.go` so catalog-driven mutations route through replacements too.
-- **`enterBattlefieldLocked` shared helper** consolidates all battlefield-entry sites so enters-tapped / enters-with-counters replacements fire uniformly.
-- **S13.1 commander-zone replacement refactored** into a built-in in `builtin_replacements.go`, registered at `NewGame`. Bespoke `applyCommanderZoneReplacementLocked` deleted; behavior preserved.
+- **Battlefield-entry pipeline routing** lives inline at each entry site (cast resolution, land play, `MoveCardByIDAsCommander`, `SearchLibrary` battlefield branch). The planned `enterBattlefieldLocked` shared helper refactor was scoped out in favor of targeted pipeline calls at each site — less risk, same behavior.
+- **S13.1 commander-zone replacement refactored** into a built-in in `builtin_replacements.go`, registered at `NewGame`. Bespoke `applyCommanderZoneReplacementLocked` deleted. Sub-PR 6 widened the `AppliesTo` (dropped the `asCommanderMove` gate) and flipped the effect to `Optional=true` so commanders dying to spells / SBAs / wrath now prompt the owner instead of going to graveyard silently.
 - **Fetched-land enters-tapped uses a primitive flag**, not the generic pipeline. `SearchLibrary.TappedOnEntry` closes the Cultivate / Path to Exile / Solemn Simulacrum deferrals cleanly.
-- **Library of Leng** scope limited to cleanup-step discard — strict voluntariness (CR 701.8a/c) tracked as a follow-up.
-- **Damage prevention hook only**; Fog ships as a turn-scoped atomic cancel. Full shield mechanic with charges stays in S30.
+- **`routeBattlefieldCardToOwnerGraveyardLocked` routes through the pipeline** so SBA deaths / wrath destroys fire the commander-zone replacement. A new `executeBattlefieldLeaveLocked` helper runs the physical move post-pipeline.
+- **Damage prevention hook only**; Fog ships as a turn-scoped atomic cancel via `Game.TurnScopedReplacements` cleared at `StepCleanup`. Full shield mechanic with charges stays in S30.
 
 ### Tasks
 
 **Server — engine core:**
-- [ ] New `server/internal/game/replacements.go` — `ReplacementEffect`, `ReplacementEvent`, `ReplacementEventKind`, `ReplacementEventID`, `ReplacementEffectID`, `applyReplacementsLocked`, iterative apply-loop with per-call once-per-event map.
-- [ ] New `server/internal/game/builtin_replacements.go` — `commanderZoneReplacement` built-in; `Game.BuiltinReplacements []ReplacementEffect` field populated at `NewGame`.
-- [ ] `server/internal/game/pending_choice.go` — `PendingChoiceReplacementOrder` kind + `ReplacementEffectIDs` field + server-only `replacementResume` frame + `ResolveReplacementOrder` method.
-- [ ] `server/internal/game/effect_hooks.go` — 7th function-var hook `CatalogReplacements`.
-- [ ] `server/internal/cards/effects/spec.go` — `Replacements []game.ReplacementEffect` field.
-- [ ] `server/internal/cards/effects/wire.go` — populate `game.CatalogReplacements`.
-- [ ] `server/internal/game/game.go` — step-transition hook at top of `runStepEntryHooksLocked`.
+- [x] New `server/internal/game/replacements.go` — `ReplacementEffect`, `ReplacementEvent`, `ReplacementEventKind`, `ReplacementEventID`, `ReplacementEffectID`, `applyReplacementsLocked`, iterative apply-loop with per-call once-per-event map.
+- [x] New `server/internal/game/builtin_replacements.go` — `commanderZoneReplacement` built-in; `Game.BuiltinReplacements []ReplacementEffect` field populated at `NewGame`.
+- [x] `server/internal/game/pending_choice.go` — `PendingChoiceReplacementOrder` kind + `ReplacementEffectIDs` field + server-only `replacementResume` frame + `ResolveReplacementOrder` method.
+- [x] `server/internal/game/pending_choice.go` — `PendingChoiceOptionalReplacement` kind + `ResolveOptionalReplacement` method (sub-PR 6, CR 614.10 yes/no).
+- [x] `server/internal/game/effect_hooks.go` — 7th function-var hook `CatalogReplacements`.
+- [x] `server/internal/cards/effects/spec.go` — `Replacements []game.ReplacementEffect` field.
+- [x] `server/internal/cards/effects/wire.go` — populate `game.CatalogReplacements`.
+- [x] `server/internal/game/game.go` — step-transition hook at top of `runStepEntryHooksLocked`, `TurnScopedReplacements` cleared at `StepCleanup`.
 
 **Server — pipeline integration:**
-- [ ] `drawCardLocked` + `MoveCardByIDAsCommander` + `ChangePlayerLife` + `MarkDamage` (+ new `MarkCombatDamage` wrapper) + `AddCounter` — construct `ReplacementEvent`, call pipeline, branch.
-- [ ] Parallel hooks in `effect_api.go`: `AddCounterForEffect`, `ChangePlayerLifeForEffect`, `DealDamageToCreatureForEffect`, `DealDamageToPlayerForEffect`.
-- [ ] New shared helper `enterBattlefieldLocked(cardID, controller)` consolidating [mutations.go:364](../server/internal/game/mutations.go#L364), [:780](../server/internal/game/mutations.go#L780), [:1828](../server/internal/game/mutations.go#L1828), and `SearchLibraryForEffect`'s battlefield branch.
-- [ ] Delete `applyCommanderZoneReplacementLocked`; built-in takes over.
-- [ ] `SearchLibrary` primitive gains `TappedOnEntry bool`.
+- [x] `drawCardLocked` + `MoveCardByIDAsCommander` + `ChangePlayerLife` + `MarkDamage` (+ new `MarkCombatDamage` wrapper) + `AddCounter` — construct `ReplacementEvent`, call pipeline, branch.
+- [x] Parallel hooks in `effect_api.go`: `AddCounterForEffect`.
+- [x] Inline pipeline call at each battlefield-entry site (cast resolve, land play). Shared-helper refactor deferred — targeted per-site calls were lower risk.
+- [x] `routeBattlefieldCardToOwnerGraveyardLocked` routes through the pipeline + new `executeBattlefieldLeaveLocked` for the physical move (sub-PR 6).
+- [x] Delete `applyCommanderZoneReplacementLocked`; built-in takes over (sub-PR 2).
+- [x] Widen commander-zone built-in AppliesTo + flip to `Optional=true` (sub-PR 6). Fires on every commander move, not just admin-flagged.
+- [x] `SearchLibrary` primitive gains `TappedOnEntry bool`.
+- [x] Cast-time target validation: `CastSpell` rejects `ErrInvalidParam` when `target_mode` is non-empty and `params.Targets` is empty (sub-PR 6, guards against client-side targeting skip).
 
 **Server — wire + dispatcher:**
-- [ ] `server/internal/protocol/view.go` — `ReplacementOptionView{id, label, source_card_id}` + `PendingChoiceView.ReplacementOptions []ReplacementOptionView`.
-- [ ] `server/internal/actions/actions.go` — `TypeResolveChoice` dispatcher third leg for `order []string` → `ResolveReplacementOrder`.
+- [x] `server/internal/protocol/view.go` — `ReplacementOptionView{id, label, source_card_id}` + `PendingChoiceView.ReplacementOptions`.
+- [x] `server/internal/actions/actions.go` — `TypeResolveChoice` dispatcher legs for `order []string` → `ResolveReplacementOrder` and `apply bool` → `ResolveOptionalReplacement`.
+- [x] `viewOfCard` sends `CurrentPower()` / `CurrentToughness()` so the wire P/T includes the +1/+1 counter delta (previously missed; on-card pip showed printed P/T after counters landed).
 
 **Client:**
-- [ ] `client/src/lib/components/board/ChoicePromptModal.svelte` — `replacement_order` branch with drag-reorder UI (or numbered-buttons fallback).
-- [ ] `client/src/lib/protocol.ts` — mirror `PendingChoiceView.replacement_options` + `ReplacementOptionView` shape.
+- [x] `client/src/lib/components/board/ChoicePromptModal.svelte` — `replacement_order` click-to-order branch.
+- [x] `client/src/lib/components/board/ChoicePromptModal.svelte` — `optional_replacement` yes/no branch (sub-PR 6).
+- [x] `client/src/lib/protocol.ts` — mirror `PendingChoiceView.replacement_options`, `ReplacementOptionView`, `optional_replacement` kind.
+- [x] `CounterPips.svelte` — abbr + tabular count rendering; fixed sub-pixel-ambiguous `·` separator.
+- [x] Shift+click battlefield card → add +1/+1 counter (debug affordance until right-click admin menu from [#170](https://github.com/krakenhavoc/cmd_and_ctrl/issues/170) ships).
+- [x] `Game.svelte.sendAction` stashes last cast_spell payload per card so `castAnyway` / `confirmAutoTap` retries replay original `targets` / modes / X / distribution (bug fix during sub-PR 6 manual testing).
 
-**Catalog cards (12):**
-- [ ] **doubling_season.go** — RepEventCounter replacement; `ev.CounterDelta *= 2` for `+1/+1` and `+1/+0` and loyalty counters.
-- [ ] **hardened_scales.go** — RepEventCounter replacement; `+1/+1` only; `ev.CounterDelta += 1`.
-- [ ] **branching_evolution.go** — same shape as Hardened Scales but `*= 2`; reads as Doubling Season for creatures only.
-- [ ] **champion_of_lambholt.go** — counter half only (the +1/+1 counter whenever a creature enters); block-restriction clause deferred to S18.
-- [ ] **hangarback_walker.go** — ETB enters with X +1/+1 counters via `ev.EntersWithCounters`.
-- [ ] **stasis.go** — RepEventStepTransition replacement; `AppliesTo`: `ev.StepTransitionStep == StepUntap`; `Replace`: `ev.Cancel()`.
-- [ ] **kismet.go** — RepEventMove replacement; opponents' creatures / artifacts / lands enter tapped.
-- [ ] **fog.go** — turn-scoped RepEventDamage replacement; `AppliesTo`: `ev.IsCombatDamage`; `Replace`: `ev.Cancel()`. Clears at StepCleanup.
-- [ ] **library_of_leng.go** — cleanup-step discard replacement; picker modal lets controller route each discarded card to top / bottom of library / graveyard.
-- [ ] **cultivate.go** — update: set `TappedOnEntry = true` on the second `SearchLibrary` invocation; remove the S14 "enters untapped" deferral comment.
-- [ ] **path_to_exile.go** — update: set `TappedOnEntry = true`; remove the S14 deferral comment.
-- [ ] **solemn_simulacrum.go** — update: set `TappedOnEntry = true`; remove the S14 deferral comment.
+**Catalog cards shipped (6 new + 3 finishers):**
+- [x] **doubling_season.go** — RepEventCounter replacement; `ev.CounterDelta *= 2` for any counter placed on a permanent you control.
+- [x] **hardened_scales.go** — RepEventCounter replacement; `+1/+1` on creatures you control; `ev.CounterDelta += 1`.
+- [x] **branching_evolution.go** — same predicate shape as Hardened Scales but `*= 2`. Narrower Doubling Season.
+- [x] **stasis.go** — RepEventStepTransition replacement; cancels `StepUntap` for any seat. Upkeep-sacrifice trigger deferred to S19.
+- [x] **kismet.go** — RepEventMove replacement; opponents' creatures / artifacts / lands enter tapped.
+- [x] **fog.go** — turn-scoped RepEventDamage replacement; cancels combat damage only (gated on `IsCombatDamage`).
+- [x] **cultivate.go** — `TappedOnEntry = true` on the battlefield fetch.
+- [x] **path_to_exile.go** — `TappedOnEntry = true` on the basic-land fetch.
+- [x] **solemn_simulacrum.go** — `TappedOnEntry = true` on the ETB fetch.
+
+**Deferred cards (not shipped in S17):**
+- Hangarback Walker — needs X-cost stack plumbing; future sub-PR.
+- Champion of Lambholt — both halves are triggered/static, not replacements; re-homed to S19 (triggers) + S18 (block-restriction). Dropped from S17.
+- Library of Leng — cleanup-discard picker UI has its own design surface; re-scoped to a later sub-PR. Gap tracked as [#160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/160) for the voluntariness nuance.
+- Mycosynth Lattice's "lands tap for any color" + "no mana ability adds non-colorless" clauses — sub-PR 6 pivoted to the CR 903.9 commander-zone fix instead. Lattice clauses re-homed to S18 (mana-ability rewrite) per [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68).
 
 **Tests:**
-- [ ] `server/internal/game/replacements_test.go` — zero-replacement passthrough; commander-zone built-in; once-per-event tracking; iteration cap → `EventEffectError`; `ResolveReplacementOrder` permutation validation.
-- [ ] Catalog tests per card under `server/internal/cards/effects/` — Doubling Season + Hardened Scales CR 616 order test (the sprint exit criterion: order `[HS, DS]` → 4 counters, order `[DS, HS]` → 3 counters).
-- [ ] `TestMoveCardByIDAsCommanderRoutesToCommandZone` regression after the commander-zone built-in refactor.
+- [x] `server/internal/game/replacements_test.go` — zero-replacement passthrough; commander-zone built-in routes to command zone on yes, graveyard on no; CR 903.9 SBA death queues prompt; once-per-event tracking; iteration cap; `ResolveReplacementOrder` permutation validation.
+- [x] `server/internal/cards/effects/doubling_season_test.go` — sprint exit criterion: `[HS, DS]` → 4 counters, `[DS, HS]` → 3 counters. Three-replacement single-prompt (no re-prompting after applying each).
+- [x] `server/internal/cards/effects/stasis_kismet_test.go` — Stasis skip; Kismet opponent-only; fetched-land TappedOnEntry for Cultivate + Path.
+- [x] `server/internal/cards/effects/fog_test.go` — combat damage canceled; non-combat damage unaffected; turn-scoped clear at cleanup.
 
 **Docs:**
-- [ ] [docs/decisions/0013-replacement-effects.md](decisions/0013-replacement-effects.md) — ADR.
-- [ ] [docs/protocol.md](protocol.md) — document `replacement_order` PendingChoice kind + `ReplacementOptions` field.
-- [ ] [docs/sprints.md](sprints.md) S17 section — this expansion lives here.
-- [ ] [AGENTS.md](../AGENTS.md) §7 — new "Adding a replacement effect (S17+)" subsection; remove the "Replacement effects land with S17" bullet from the "When NOT to add a catalog entry" list (it's now the subsection).
+- [x] [docs/decisions/0013-replacement-effects.md](decisions/0013-replacement-effects.md) — ADR 0013 shipped with sub-PR 1.
+- [x] [docs/sprints.md](sprints.md) S17 section — this entry.
+- [x] [AGENTS.md](../AGENTS.md) §7 — "Adding a replacement effect (S17+)" subsection.
+- [ ] [docs/protocol.md](protocol.md) — document `replacement_order` + `optional_replacement` PendingChoice kinds. Rolling follow-up.
 
-**Tracking discipline (non-negotiable — sub-PR 1):**
-- [ ] Update GitHub issue [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67) body with the sub-PR breakdown + link to ADR 0013 + scope decisions (aura → S24, cost-mod → S28, damage shields → S30).
-- [ ] Update [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68) S18 body: reference `RepEventStepTransition` hook for flying/trample/etc.; Mycosynth Lattice follow-up if sub-PR 6 defers.
-- [ ] Update [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76) S24 body: add explicit "Aura attach infrastructure + control-change replacement for Mind Control (deferred from S17 per ADR 0013)" bullet.
-- [ ] Update [#93](https://github.com/krakenhavoc/cmd_and_ctrl/issues/93) S28 body: add "Cost-replacement effects via replacement pipeline extension — Trinisphere, Thalia, Spellshift, Kambal (deferred from S17/S15; see ADR 0013 §out-of-scope)" bullet.
-- [ ] Update [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95) S30 body: confirm "Damage prevention shields (CR 615) with charges — builds on S17's `MarkCombatDamage` hook and turn-scoped `DamagePreventionUntilEndOfTurn` pattern" bullet.
-- [ ] Create S16.5 milestone + tracking issue — "Dependency detection (CR 613.8), Layer 1 copy effects. Deferred from S16; replacements in S17 do not need these."
-- [ ] Create follow-up issue — "Library of Leng strict voluntary-vs-involuntary discard detection" (un-milestoned; docs the S17 simplification).
+**Tracking discipline (sub-PR 1 + 6):**
+- [x] GitHub issue updates: [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67) (S17), [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68) (S18), [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76) (S24), [#93](https://github.com/krakenhavoc/cmd_and_ctrl/issues/93) (S28), [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95) (S30).
+- [x] S16.5 milestone + tracking issue [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159).
+- [x] Library of Leng voluntariness follow-up [#160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/160).
+- [x] CR 903.9 commander-zone gap [#164](https://github.com/krakenhavoc/cmd_and_ctrl/issues/164) — filed + closed by sub-PR 6.
+- [x] Admin context-menu mini-sprint [#170](https://github.com/krakenhavoc/cmd_and_ctrl/issues/170) — filed; shift+click counter is the stopgap.
 
 ### Out of scope (explicit handoffs)
-- **Aura / Equipment attachment infrastructure** (Mind Control) → **S24** [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76). S16 doc bundled this into S17; re-homed to S24 for aura + combat-state coupling.
+- **Aura / Equipment attachment infrastructure** (Mind Control) → **S24** [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76). S16 doc bundled this into S17; re-homed for aura + combat-state coupling.
 - **Cost-replacement effects** (Trinisphere, Thalia, Spellshift, Kambal) → **S28** [#93](https://github.com/krakenhavoc/cmd_and_ctrl/issues/93). S17 hooks touch the event-path; cost replacement touches the S15 cost engine — separate surface.
 - **Damage prevention shields with charges** (CR 615) → **S30** [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95). Fog in S17 is atomic cancel; stateful shields land in S30.
-- **Dependency detection** (CR 613.8) + **Layer 1 copy effects** → **S16.5** layer-system follow-ups.
-- **Library of Leng strict voluntariness** (CR 701.8a/c) → follow-up issue.
-- **Mycosynth Lattice clauses** — provisional sub-PR 6; may defer to S18 at PR-open time.
-- **Champion of Lambholt block-restriction clause** — S18 combat keywords.
+- **Dependency detection** (CR 613.8) + **Layer 1 copy effects** → **S16.5** [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159).
+- **Library of Leng** (including strict voluntariness CR 701.8a/c) → later sub-PR. Tracked at [#160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/160).
+- **Hangarback Walker** — needs X-cost stack plumbing; future on-demand PR.
+- **Champion of Lambholt** — counter half is a trigger (S19), block-restriction is S18. Not a replacement.
+- **Mycosynth Lattice clauses** — re-homed to S18 mana-ability rewrite.
+- **Right-click admin context menu** → [#170](https://github.com/krakenhavoc/cmd_and_ctrl/issues/170) standalone mini-sprint. Shift+click counter is the S17-era stopgap.
 
-### Risks / gotchas
-- **`enterBattlefieldLocked` refactor blast radius.** Four battlefield-entry sites must route through the shared helper or enters-tapped / enters-with-counters replacements will silently miss the path. Mitigation: explicit regression test walking every public battlefield-entry mutation + assertion on `RepEventMove` firing.
-- **Pipeline re-entrancy from CR 616 prompts.** Pipeline functions must emit no events before the prompt queues. Mitigation: the replacement loop runs entirely before the underlying mutation (`actuallyDrawCardLocked` et al). Invariant enforced by skeleton sub-PR's "byte-for-byte identical" regression test.
-- **Once-per-event map leak.** `defer delete(g.replacementsAppliedThisEvent, ev.ID)` must run even on prompt-pause paths. Mitigation: clear at the outermost pipeline function, not inside `applyReplacementsLocked`; test the prompt-pause-and-resume path explicitly.
-- **Step-transition recursion.** Stasis canceling StepUntap re-advances the turn, which re-fires `runStepEntryHooksLocked`. Mitigation: short-circuit the apply-loop for `RepEventStepTransition` (order-irrelevant; any cancel wins); cap total step skips per turn to guard against pathological loops.
-- **Commander-zone built-in + asCommander flag.** The refactor must preserve S13.1's semantics — `asCommander=false` on a commander-class card still sends it to graveyard. Mitigation: `AppliesTo` gates on `ev.asCommanderMove`; existing test stays unchanged.
-- **CR 616 permutation validation.** `ResolveReplacementOrder` must reject wrong-length / wrong-set / wrong-chooser submissions. Mitigation: dedicated validation tests; reject with `ErrInvalidParam`.
+### Exit criteria (all met)
+1. **CR 616 ordering works.** Doubling Season + Hardened Scales on battlefield; add +1/+1 counter; `replacement_order` modal pops; submit `[HS, DS]` → 4 counters land; retry with `[DS, HS]` → 3 counters land. Triple-stack with Branching Evolution → single prompt, no re-prompting per applied effect.
+2. **CR 903.9 commander-zone prompt.** Any commander move (spell-driven, SBA-driven, wrath-driven, admin-driven) to graveyard / exile / hand / library queues the `optional_replacement` yes/no prompt. Owner says yes → command zone. Owner says no → proceeds to destination.
+3. **Kismet taps opponents' permanents.** Opponent plays a creature / artifact / land → enters with `Tapped == true`. Your own permanents unaffected.
+4. **Stasis skips untap.** Advance through own turn; `StepUntap` skipped; `StepUpkeep` entered directly. Tapped permanents stay tapped across turn cycles.
+5. **Fog cancels combat damage only.** Cast Fog pre-combat; combat damage step lands 0 damage. Non-combat damage still lands. Clears at cleanup so next turn resolves normally.
+6. **Fetched lands enter tapped.** Cultivate / Path to Exile / Solemn Simulacrum → fetched land has `Tapped == true`.
+7. **No regression in S14–S16 catalog tests.** Every existing catalog card passes.
+8. **ADR 0013 + sprints.md + AGENTS.md §7 + GitHub issue updates** all landed.
 
-### Exit criteria
-1. **CR 616 ordering works.** Doubling Season + Hardened Scales on battlefield; add +1/+1 counter; `replacement_order` modal pops; submit `[HS, DS]` → 4 counters land; retry with `[DS, HS]` → 3 counters land.
-2. **Commander-zone regression green.** `move_card asCommander=true` on a commander routes to command zone; `asCommander=false` still routes to graveyard.
-3. **Kismet taps opponents' permanents.** Opponent plays a creature → enters with `Tapped == true`.
-4. **Stasis skips untap.** Advance through own turn; StepUntap skipped; StepUpkeep entered directly.
-5. **Fog cancels combat damage only.** Cast Fog pre-combat; combat damage step lands 0 damage; post-combat Lightning Bolt-style effect still resolves.
-6. **Hangarback Walker ETB counters.** Cast with X=3; ETB fires with 3 +1/+1 counters observable in the same snapshot as EventETB.
-7. **Library of Leng cleanup routing.** Hand over max at cleanup; pick discard + "top of library"; card lands on top of library not graveyard.
-8. **Fetched lands enter tapped.** Cultivate / Path to Exile / Solemn Simulacrum → fetched land has `Tapped == true`.
-9. **No regression in S14–S16 catalog tests.** Every existing catalog card passes with the new pipeline in place.
-10. **ADR 0013 + sprints.md + AGENTS.md §7 subsection + GitHub issue updates** all landed in the sub-PR 1 + sub-PR 7 docs legs.
+### Sub-PR split (as shipped)
+1. **[#158](https://github.com/krakenhavoc/cmd_and_ctrl/pull/158) — ADR + sprints.md + AGENTS.md + tracking.** Zero code. Filed follow-up issues [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159), [#160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/160). Branch: `feat/s17-adr-plan`.
+2. **[#163](https://github.com/krakenhavoc/cmd_and_ctrl/pull/163) — Engine skeleton.** `replacements.go` + `builtin_replacements.go` + PendingChoice extensions + `ResolveReplacementOrder` + protocol view + dispatcher leg + 6 pipeline hooks + commander-zone built-in + deleted `applyCommanderZoneReplacementLocked`. Zero catalog replacements — byte-for-byte identical behavior. Branch: `feat/s17-engine-skeleton`.
+3. **[#172](https://github.com/krakenhavoc/cmd_and_ctrl/pull/172) — Prompt modal + counter cards.** `ChoicePromptModal.svelte` `replacement_order` branch + Doubling Season + Hardened Scales + Branching Evolution + exit-criterion test. Branch: `feat/s17-prompt-and-counter-cards`.
+4. **[#166](https://github.com/krakenhavoc/cmd_and_ctrl/pull/166) — Enters-tapped + skip-step.** Stasis + Kismet + `SearchLibrary.TappedOnEntry` + Cultivate / Path / Solemn finishers. Hangarback + Champion of Lambholt dropped from scope. Branch: `feat/s17-enters-tapped-skip-step`.
+5. **[#167](https://github.com/krakenhavoc/cmd_and_ctrl/pull/167) — Fog + turn-scoped damage prevention.** `Game.TurnScopedReplacements` slot cleared at `StepCleanup`. Library of Leng dropped to a later sub-PR. Branch: `feat/s17-fog-damage-prevention`.
+6. <a id="s17-sub-pr-6"></a>**[#171](https://github.com/krakenhavoc/cmd_and_ctrl/pull/171) — CR 903.9 commander-zone optional replacement (closes [#164](https://github.com/krakenhavoc/cmd_and_ctrl/issues/164)).** Widened commander-zone AppliesTo, added `ReplacementEffect.Optional` + `optional_replacement` prompt kind, routed `routeBattlefieldCardToOwnerGraveyardLocked` through the pipeline. Pivoted away from the originally-planned Mycosynth Lattice clauses after manual testing surfaced a higher-priority CR 903.9 gap. Branch: `feat/s17-commander-zone-prompt`.
 
-### Sub-PR split
-Stop-and-show for manual testing at each boundary, mirroring S16.
-1. **ADR + sprints.md + AGENTS.md + tracking (sub-PR 1).** Zero code. ADR 0013, S17 expansion in `docs/sprints.md`, AGENTS.md §7 new subsection, GitHub issue updates (#67, #68, #76, #93, #95) + create S16.5 + Library-of-Leng-voluntariness issues. Branch: `feat/s17-adr-plan`.
-2. **Engine skeleton (sub-PR 2).** `replacements.go` + `builtin_replacements.go` + PendingChoice extensions + `ResolveReplacementOrder` + protocol view + dispatcher leg + `enterBattlefieldLocked` + 5 pipeline hooks + step-transition hook + commander-zone built-in + delete `applyCommanderZoneReplacementLocked`. Zero catalog replacements — behavior byte-for-byte identical. Engine unit tests. Branch: `feat/s17-engine-skeleton`.
-3. **Prompt modal + counter cards (sub-PR 3).** Client `ChoicePromptModal.svelte` `replacement_order` branch. Doubling Season + Hardened Scales + Branching Evolution. Sprint exit-criterion test. Stop-and-show: cast a counter-placing card with both on board; verify the modal + the 4-vs-3 counter result. Branch: `feat/s17-prompt-and-counter-cards`.
-4. **Enters-tapped + skip-step (sub-PR 4).** Kismet + Hangarback Walker + Champion of Lambholt + Stasis + `SearchLibrary.TappedOnEntry` + Cultivate / Path / Solemn finishes. Stop-and-show: opponent plays creature with Kismet → tapped; Stasis → Untap skipped. Branch: `feat/s17-enters-tapped-skip-step`.
-5. **Library of Leng + Fog + damage prevention scaffold (sub-PR 5).** Library of Leng (cleanup-path only) + Fog + turn-scoped `DamagePreventionUntilEndOfTurn`. Stop-and-show: cleanup-discard routing; Fog combat-damage cancel. Branch: `feat/s17-library-of-leng-fog`.
-6. **Mycosynth Lattice clauses (sub-PR 6, provisional).** Scope decision at PR-open — route through new `RepEventManaProduced` or defer to S18. Either outcome tracked. Branch: `feat/s17-mycosynth-lattice-clauses`.
-7. **ADR finalisation + AGENTS polish + sprint flip (sub-PR 7).** ADR consequences section updated with actual shipped cards; sprints.md S17 → `done`; MEMORY.md `s17_arc_complete.md` entry with don't-push-S18-autonomously note. Branch: `feat/s17-docs`.
+    Sub-PR 6 also gathered bug fixes that surfaced during manual testing: cleanup-step discard scoped to the active player only (CR 514.1); wire-side `CardView.power` / `.toughness` now source from `CurrentPower()` / `CurrentToughness()` so on-card P/T includes counter delta; CounterPips rendering disambiguation; `Game.svelte.sendAction` stashes cast_spell payloads so `castAnyway` / `confirmAutoTap` retries replay targets; server guards cast with empty targets when `target_mode` is non-empty.
+7. **#174 (this PR) — sprint flip + ADR consequences.** Flip S17 to `done` in sprints.md, fill in ADR 0013 Consequences, drop MEMORY entry for the arc. Branch: `feat/s17-docs`.
 
-### Critical files
-- **Server new:** [server/internal/game/replacements.go](../server/internal/game/replacements.go), [server/internal/game/builtin_replacements.go](../server/internal/game/builtin_replacements.go), [server/internal/game/replacements_test.go](../server/internal/game/replacements_test.go), [doubling_season.go](../server/internal/cards/effects/doubling_season.go), [hardened_scales.go](../server/internal/cards/effects/hardened_scales.go), [branching_evolution.go](../server/internal/cards/effects/branching_evolution.go), [champion_of_lambholt.go](../server/internal/cards/effects/champion_of_lambholt.go), [hangarback_walker.go](../server/internal/cards/effects/hangarback_walker.go), [stasis.go](../server/internal/cards/effects/stasis.go), [kismet.go](../server/internal/cards/effects/kismet.go), [fog.go](../server/internal/cards/effects/fog.go), [library_of_leng.go](../server/internal/cards/effects/library_of_leng.go).
-- **Server modified:** [mutations.go](../server/internal/game/mutations.go) (pipeline hooks, `enterBattlefieldLocked` refactor, delete `applyCommanderZoneReplacementLocked`, `MarkCombatDamage` wrapper), [game.go](../server/internal/game/game.go) (`BuiltinReplacements`, step-transition hook, once-per-event map fields), [pending_choice.go](../server/internal/game/pending_choice.go) (new kind + `ResolveReplacementOrder`), [effect_hooks.go](../server/internal/game/effect_hooks.go) (7th hook), [effect_api.go](../server/internal/game/effect_api.go) (`*ForEffect` wrappers), [spec.go](../server/internal/cards/effects/spec.go) (`Replacements` field), [wire.go](../server/internal/cards/effects/wire.go) (populate hook), [primitives.go](../server/internal/cards/effects/primitives.go) (`TappedOnEntry`), [cultivate.go](../server/internal/cards/effects/cultivate.go) + [path_to_exile.go](../server/internal/cards/effects/path_to_exile.go) + [solemn_simulacrum.go](../server/internal/cards/effects/solemn_simulacrum.go) (finishers), [view.go](../server/internal/protocol/view.go) (`ReplacementOptionView`), [actions.go](../server/internal/actions/actions.go) (`TypeResolveChoice` leg).
-- **Client (small):** [ChoicePromptModal.svelte](../client/src/lib/components/board/ChoicePromptModal.svelte) (`replacement_order` branch), [protocol.ts](../client/src/lib/protocol.ts) (mirror field).
-- **Docs:** new [docs/decisions/0013-replacement-effects.md](decisions/0013-replacement-effects.md), [docs/protocol.md](protocol.md), [docs/sprints.md](sprints.md), [AGENTS.md](../AGENTS.md) §7.
+### Critical files (as shipped)
+- **Server new:** [server/internal/game/replacements.go](../server/internal/game/replacements.go), [server/internal/game/builtin_replacements.go](../server/internal/game/builtin_replacements.go), [server/internal/game/replacements_test.go](../server/internal/game/replacements_test.go), [doubling_season.go](../server/internal/cards/effects/doubling_season.go), [hardened_scales.go](../server/internal/cards/effects/hardened_scales.go), [branching_evolution.go](../server/internal/cards/effects/branching_evolution.go), [stasis.go](../server/internal/cards/effects/stasis.go), [kismet.go](../server/internal/cards/effects/kismet.go), [fog.go](../server/internal/cards/effects/fog.go), [doubling_season_test.go](../server/internal/cards/effects/doubling_season_test.go), [stasis_kismet_test.go](../server/internal/cards/effects/stasis_kismet_test.go), [fog_test.go](../server/internal/cards/effects/fog_test.go).
+- **Server modified:** [mutations.go](../server/internal/game/mutations.go) (pipeline hooks, `MarkCombatDamage` wrapper, `routeBattlefieldCardToOwnerGraveyardLocked` pipeline routing, `executeBattlefieldLeaveLocked` helper, target-required cast guard), [game.go](../server/internal/game/game.go) (`BuiltinReplacements`, `TurnScopedReplacements`, step-transition hook, cleanup-step discard scope), [pending_choice.go](../server/internal/game/pending_choice.go) (two new prompt kinds + resume methods), [effect_hooks.go](../server/internal/game/effect_hooks.go) (7th hook), [effect_api.go](../server/internal/game/effect_api.go) (`AddCounterForEffect` routing, `SearchLibraryForEffectWithOptions`), [events.go](../server/internal/game/events.go) (`EventStepTransition` sentinel + slog for effect errors), [spec.go](../server/internal/cards/effects/spec.go) (`Replacements` field), [wire.go](../server/internal/cards/effects/wire.go) (populate hook), [primitives.go](../server/internal/cards/effects/primitives.go) (`TappedOnEntry`), [cultivate.go](../server/internal/cards/effects/cultivate.go) + [path_to_exile.go](../server/internal/cards/effects/path_to_exile.go) + [solemn_simulacrum.go](../server/internal/cards/effects/solemn_simulacrum.go) (finishers), [view.go](../server/internal/protocol/view.go) (`ReplacementOptionView`, `CurrentPower`/`CurrentToughness` on the wire), [actions.go](../server/internal/actions/actions.go) (`TypeResolveChoice` legs).
+- **Client:** [ChoicePromptModal.svelte](../client/src/lib/components/board/ChoicePromptModal.svelte) (two new branches), [CounterPips.svelte](../client/src/lib/components/board/CounterPips.svelte) (abbr + count layout), [PlayerPanel.svelte](../client/src/lib/components/board/PlayerPanel.svelte) (shift+click counter), [protocol.ts](../client/src/lib/protocol.ts) (mirror fields), [Game.svelte](../client/src/routes/Game.svelte) (cast-payload stash).
+- **Docs:** new [docs/decisions/0013-replacement-effects.md](decisions/0013-replacement-effects.md), [docs/sprints.md](sprints.md), [AGENTS.md](../AGENTS.md) §7.
 
 ### Branch + commit conventions
-- Branches: `feat/s17-adr-plan`, `feat/s17-engine-skeleton`, `feat/s17-prompt-and-counter-cards`, `feat/s17-enters-tapped-skip-step`, `feat/s17-library-of-leng-fog`, `feat/s17-mycosynth-lattice-clauses`, `feat/s17-docs`.
+- Branches shipped: `feat/s17-adr-plan`, `feat/s17-engine-skeleton`, `feat/s17-prompt-and-counter-cards`, `feat/s17-enters-tapped-skip-step`, `feat/s17-fog-damage-prevention`, `feat/s17-commander-zone-prompt`, `feat/s17-docs`.
 - Footer:
   ```
   Sprint: S17 — Replacement effects engine (CR 614)
