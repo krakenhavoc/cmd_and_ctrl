@@ -128,6 +128,28 @@ type Spec struct {
 	//
 	// Added in S16 sub-PR 3.
 	Static []game.StaticAbility
+
+	// Replacements is the list of CR 614 replacement effects the
+	// card contributes while on the battlefield. Each entry
+	// declares a `Watches` pre-filter (which event kinds it cares
+	// about), an `AppliesTo` predicate evaluated per candidate
+	// event, a `Replace` function that mutates or cancels the
+	// event, and metadata (Controller, SelfReplacement, Label) for
+	// the CR 616 order-choose prompt.
+	//
+	// Empty / nil for cards with no replacement effects (the S16
+	// majority). When non-empty, the replacements fire only while
+	// the card is on the battlefield (CR 113.6 default).
+	//
+	// Reaches directly into `game.ReplacementEffect` rather than a
+	// per-package adapter type because the function shapes already
+	// reference `game.ReplacementEvent` / `game.Game` / `game.Card` —
+	// parallels the S16 `Static []game.StaticAbility` pattern.
+	//
+	// Added in S17 sub-PR 2. Populated by catalog cards starting
+	// in sub-PR 3 (Doubling Season, Hardened Scales, Branching
+	// Evolution).
+	Replacements []game.ReplacementEffect
 }
 
 // ManaAbility is one mana-producing activated ability on a permanent.

@@ -87,6 +87,22 @@ var CatalogManaAbilities func(oracleID string) []ManaAbilityShape
 // S16 sub-PR 3.
 var CatalogStaticAbilities func(oracleID string) []StaticAbility
 
+// CatalogReplacements returns the registered replacement effects
+// for the given oracle ID (one entry per
+// `effects.Spec.Replacements` element), or nil when no catalog
+// entry exists / the entry has no replacements. The cards/effects
+// package populates this hook at init time alongside the other
+// catalog hooks. Nil hook ⇒ no card has a replacement effect ⇒
+// gatherActiveReplacementsLocked skips the catalog leg and returns
+// only built-ins + test replacements.
+//
+// Used by Game.gatherActiveReplacementsLocked at every apply-loop
+// iteration. Unlike static abilities, replacement effects fire
+// PRE-event — the engine walks the battlefield to find applicable
+// effects BEFORE any rule-visible mutation runs. See
+// replacements.go. Added in S17 sub-PR 2.
+var CatalogReplacements func(oracleID string) []ReplacementEffect
+
 // fireEffectResolverLocked invokes the registered EffectResolver
 // if non-nil, emits EventEffectError on failure, and swallows the
 // error so the resolution path keeps moving. Caller must hold g.mu.
