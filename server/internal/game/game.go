@@ -632,8 +632,14 @@ func (g *Game) runStepEntryHooksLocked() {
 		// fires. The lethal-damage SBA from S13.1 reads DamageMarked,
 		// so clearing it here means the per-turn damage doesn't
 		// carry over into the next turn.
+		//
+		// S18 sub-PR 3: MarkedLethalByDeathtouch is the companion
+		// flag (CR 702.2c) set by combat damage from deathtouch
+		// sources. Same per-turn scope as DamageMarked, cleared at
+		// the same site.
 		for i := range g.Battlefield.Cards {
 			g.Battlefield.Cards[i].DamageMarked = 0
+			g.Battlefield.Cards[i].MarkedLethalByDeathtouch = false
 		}
 		// S17 sub-PR 5: "until end of turn" replacement effects
 		// (Fog's prevent-all-combat-damage, future prevention
