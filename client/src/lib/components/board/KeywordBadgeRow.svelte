@@ -6,15 +6,13 @@
   // keywords via Layer 6 static abilities (Lord of Atlantis →
   // islandwalk on other Merfolk).
   //
-  // Canonical lowercase tokens come from the server; this
-  // component maps them to short labels + readable titles so the
-  // tiny battlefield thumbnails stay legible without sacrificing
-  // the full keyword name in the hover tooltip.
-  //
-  // Keywords not in KEYWORD_META are rendered with their raw token
-  // truncated to 3 characters — this handles unknown tokens
-  // gracefully (e.g. "islandwalk" grants from Lord of Atlantis
-  // show as "ISL" until S26 tribal gives them proper handling).
+  // Known keywords (the S18 set of 12) render as flat currentColor
+  // SVG icons from keywordIcons.ts. Unknown tokens fall back to a
+  // 3-letter text badge so a Lord of Atlantis "islandwalk" grant
+  // stays readable as "ISL" until S26 tribal landswalk handling
+  // lands. The tooltip carries the full keyword name in both cases.
+
+  import { KEYWORD_ICONS } from "../../keywordIcons";
 
   interface Props {
     abilities?: string[];
@@ -22,38 +20,45 @@
 
   const { abilities = [] }: Props = $props();
 
-  const KEYWORD_META: Record<string, { short: string; long: string }> = {
-    flying: { short: "FLY", long: "Flying" },
-    reach: { short: "RCH", long: "Reach" },
-    "first strike": { short: "FS", long: "First strike" },
-    "double strike": { short: "DS", long: "Double strike" },
-    deathtouch: { short: "DT", long: "Deathtouch" },
-    lifelink: { short: "LL", long: "Lifelink" },
-    trample: { short: "TR", long: "Trample" },
-    vigilance: { short: "VIG", long: "Vigilance" },
-    menace: { short: "MEN", long: "Menace" },
-    defender: { short: "DEF", long: "Defender" },
-    haste: { short: "HST", long: "Haste" },
-    flash: { short: "FLS", long: "Flash" },
+  const KEYWORD_LONG: Record<string, string> = {
+    flying: "Flying",
+    reach: "Reach",
+    "first strike": "First strike",
+    "double strike": "Double strike",
+    deathtouch: "Deathtouch",
+    lifelink: "Lifelink",
+    trample: "Trample",
+    vigilance: "Vigilance",
+    menace: "Menace",
+    defender: "Defender",
+    haste: "Haste",
+    flash: "Flash",
   };
 
-  function labelFor(kw: string): { short: string; long: string } {
-    const meta = KEYWORD_META[kw];
-    if (meta) return meta;
-    // Unknown keyword — take first 3 chars uppercased for the short
-    // label, full token for the tooltip. Handles Lord of Atlantis's
-    // "islandwalk" grant until S26 tribal landswalk handling.
-    return { short: kw.slice(0, 3).toUpperCase(), long: kw };
+  function labelFor(kw: string): string {
+    return KEYWORD_LONG[kw] ?? kw;
+  }
+
+  function fallbackShort(kw: string): string {
+    return kw.slice(0, 3).toUpperCase();
   }
 </script>
 
 {#if abilities.length > 0}
   <div class="keyword-row" aria-label="keywords">
     {#each abilities as kw (kw)}
-      {@const meta = labelFor(kw)}
-      <span class="kw-badge" title={meta.long} aria-label={meta.long}>
-        {meta.short}
-      </span>
+      {@const long = labelFor(kw)}
+      {@const icon = KEYWORD_ICONS[kw]}
+      {#if icon}
+        <span class="kw-badge kw-icon" title={long} aria-label={long}>
+          <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+          {@html icon}
+        </span>
+      {:else}
+        <span class="kw-badge kw-text" title={long} aria-label={long}>
+          {fallbackShort(kw)}
+        </span>
+      {/if}
     {/each}
   </div>
 {/if}
@@ -75,19 +80,31 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 1px 4px;
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
     color: #fff;
     background: rgba(0, 0, 0, 0.72);
     border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 4px;
+    border-radius: 3px;
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
-    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
     line-height: 1;
-    min-width: 16px;
+  }
+  .kw-icon {
+    width: 14px;
+    height: 14px;
+    padding: 1px;
+  }
+  .kw-icon :global(svg) {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .kw-text {
+    padding: 1px 3px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+    min-width: 14px;
     text-align: center;
   }
 </style>
