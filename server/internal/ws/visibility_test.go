@@ -191,3 +191,70 @@ func TestHubRejectsPlayerNotInGame(t *testing.T) {
 		t.Errorf("status: got %v, want %d", resp, http.StatusForbidden)
 	}
 }
+
+// TestSpectatorSeesFullCardData regresses issue #191: a WS client
+// that dials without a ?player= (spectator) had its playerID bound
+// to uuid.Nil, which stringifies to "00000000-..." — NOT the empty
+// string protocol.FilterViewFor documents as the spectator sentinel.
+// The non-empty zero-UUID string fell through the is-knower fast-
+// path and every visible card was redacted as "unknown", wiping
+// names / type lines / scryfall ids. The fix routes playerID
+// through viewerIDForFilter (coerces uuid.Nil → "") so spectators
+// see full card data on all public zones.
+//
+// We assert via the Command zone: both seats' commanders are public
+// (CR 406 — command zone is open information) and carry non-empty
+// Name + TypeLine at Game.Start. A spectator should see both.
+func TestSpectatorSeesFullCardData(t *testing.T) {
+	wsURL, rooms, cleanup := newMultiGameServer(t, 1)
+	defer cleanup()
+	room := rooms[0]
+
+	// Dial without ?player= → binding.PlayerID == uuid.Nil (spectator).
+	spec := dial(t, wsURL+"?game="+room.Game.ID.String())
+	defer spec.Close()
+
+	snap := readSnapshotFrame(t, spec)
+	if len(snap.Game.Seats) != 2 {
+		t.Fatalf("expected 2 seats in snapshot, got %d", len(snap.Game.Seats))
+	}
+	for i, seat := range snap.Game.Seats {
+		if seat.Command.Count == 0 {
+			t.Errorf("seat %d: command zone empty (expected commander from buildTestGame)", i)
+			continue
+		}
+		if len(seat.Command.Cards) == 0 {
+			t.Errorf("seat %d: command cards slice empty despite count=%d — spectator redaction likely stripped cards", i, seat.Command.Count)
+			continue
+		}
+		for j, c := range seat.Command.Cards {
+			// Name is the primary signal: buildTestGame stamps each
+			// commander with a label like "A-Cmdr-1". A redacted card
+			// zeroes Name out. TypeLine isn't asserted because
+			// buildTestGame doesn't populate it — the fixture is
+			// Name-only. A future tighter test could stamp TypeLine
+			// too and assert it too, but Name alone discriminates the
+			// bug unambiguously.
+			if c.Name == "" {
+				t.Errorf("seat %d command card %d: Name is empty; spectator got redacted card (uuid.Nil leaked to filter)", i, j)
+			}
+			if !c.KnownByYou {
+				t.Errorf("seat %d command card %d (%q): KnownByYou=false; spectator should see every public card as known", i, j, c.Name)
+			}
+		}
+	}
+}
+
+// TestViewerIDForFilterCoercesNil is a direct unit test of the
+// helper the hub uses to bridge uuid.Nil → "" at the FilterViewFor
+// boundary. Guards against a future refactor that drops the zero-
+// check and regresses issue #191.
+func TestViewerIDForFilterCoercesNil(t *testing.T) {
+	if got := viewerIDForFilter(uuid.Nil); got != "" {
+		t.Errorf("viewerIDForFilter(Nil): got %q, want \"\"", got)
+	}
+	id := uuid.New()
+	if got := viewerIDForFilter(id); got != id.String() {
+		t.Errorf("viewerIDForFilter(%s): got %q, want %q", id, got, id.String())
+	}
+}

@@ -364,7 +364,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	// non-blocking send inside sendRaw always succeeds here.
 	if room != nil {
 		if view, seq, err := room.Snapshot(); err == nil {
-			raw, marshalErr := marshalSnapshotFrame(seq, protocol.FilterViewFor(view, playerID.String()))
+			raw, marshalErr := marshalSnapshotFrame(seq, protocol.FilterViewFor(view, viewerIDForFilter(playerID)))
 			if marshalErr == nil {
 				client.sendRaw(raw)
 				client.log.Debug("pre-staged initial snapshot", "seq", seq)
@@ -480,6 +480,22 @@ func statusFor(err error) int {
 	return http.StatusBadRequest
 }
 
+// viewerIDForFilter converts a WS client's bound playerID into the
+// viewerID string that protocol.FilterViewFor expects. A seated
+// player's UUID stringifies as-is; a spectator / admin client's
+// playerID is uuid.Nil, which stringifies to the all-zero UUID —
+// NOT the empty string FilterViewFor documents as "no seat, show
+// me the spectator view." Without this coercion, the zero-UUID
+// string falls through the is-knower fast-path, every battlefield
+// card gets redacted as "unknown", and the spectator sees empty
+// tiles where the names and images should be. Bug #191 fix.
+func viewerIDForFilter(playerID uuid.UUID) string {
+	if playerID == uuid.Nil {
+		return ""
+	}
+	return playerID.String()
+}
+
 // broadcastToRoom sends a per-client filtered snapshot frame to every
 // currently connected client whose bound gameID matches. The hub's
 // read lock prevents unregister from closing any client's send
@@ -499,7 +515,7 @@ func (h *Hub) broadcastToRoom(gameID uuid.UUID, seq uint64, view protocol.GameVi
 		if c.gameID != gameID {
 			continue
 		}
-		raw, err := marshalSnapshotFrame(seq, protocol.FilterViewFor(view, c.playerID.String()))
+		raw, err := marshalSnapshotFrame(seq, protocol.FilterViewFor(view, viewerIDForFilter(c.playerID)))
 		if err != nil {
 			c.log.Error("marshal broadcast snapshot failed", "err", err)
 			continue
