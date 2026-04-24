@@ -57,7 +57,7 @@ planned just-in-time from the S12 pain-point triage.
 | S15      | Mana pool, cost model, and auto-tapper                               | 7     | [#65](https://github.com/krakenhavoc/cmd_and_ctrl/issues/65)   | 2026-08-09 | **done**    |
 | S16      | Continuous effects + layer system (CR 613)                           | 7     | [#66](https://github.com/krakenhavoc/cmd_and_ctrl/issues/66)   | 2026-09-06 | **done**    |
 | S17      | Replacement effects engine (CR 614)                                  | 7     | [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67)   | 2026-10-04 | **done**    |
-| S18      | Combat keywords                                                      | 7     | [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68)   | 2026-11-01 | planned     |
+| S18      | Combat keywords                                                      | 7     | [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68)   | 2026-11-01 | **done**    |
 | S18.5    | Zone browser + library search (mini)                                 | 7     | [#179](https://github.com/krakenhavoc/cmd_and_ctrl/issues/179) | 2026-11-05 | **done**    |
 | S19      | Auto-fire triggered abilities                                        | 7     | [#69](https://github.com/krakenhavoc/cmd_and_ctrl/issues/69)   | 2026-11-29 | planned     |
 | S20      | Auto-target legality + smart cast UI                                 | 7     | [#70](https://github.com/krakenhavoc/cmd_and_ctrl/issues/70)   | 2026-12-27 | planned     |
@@ -1594,23 +1594,63 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 
 ## S18 — Combat keywords
 
-**Phase:** 7 · **Goal:** 12 keyword effects with full combat behavior + summoning sickness.
+**Phase:** 7 · **Goal:** 12 keyword effects with full combat behavior + summoning sickness + CR 510.1c damage-assignment prompt. See [ADR 0014](decisions/0014-combat-keywords.md).
 
-- [x] **(shipped early via S16 hotfix [#157](https://github.com/krakenhavoc/cmd_and_ctrl/pull/157))** Bare-bones blocked-creature combat damage: blocked attackers deal full power to the FIRST blocker (slice order); each blocker deals full power back to the attacker; SBA fires after combat to destroy casualties. Caught during S16 manual testing — without it, blocking was a manual marker the engine ignored. Multi-blocker damage assignment, first strike, trample, deathtouch, etc. remain S18.
-- [ ] Keyword detection helpers (`HasKeyword`, `IsFlyingBlockable`, `BlockerCountValid`)
-- [ ] Combat damage flow rewrite (first-strike + regular sub-steps)
-- [ ] Lifelink, deathtouch, trample, vigilance
-- [ ] Flying / reach (block restriction)
-- [ ] Menace (≥2 blockers)
-- [ ] Defender, haste, flash
-- [ ] First strike + double strike
-- [ ] Summoning sickness (`Card.SummonedThisTurn`)
-- [ ] Damage assignment order prompt (CR 510.1c) — multi-blocker controller-chosen lethal split (the bare-bones early-shipped damage uses slice order, not player choice)
-- [ ] 12 catalog cards demonstrating each keyword
+### Architecture
 
-**Out of scope:** protection, indestructible, hexproof, shroud, ward, banding, rampage, flanking, fear, intimidate, shadow.
+- **Keywords stay strings in `Characteristic.Abilities`.** S16's Lord of Atlantis pattern (Layer 6 `StaticAbility` appends `"flying"`) is the representation. S18 adds consumers, not a new ability type. [ADR 0014 §1](decisions/0014-combat-keywords.md#1-keywords-are-strings-in-characteristicabilities-read-via-one-helper).
+- **One helper file** — [server/internal/game/keywords.go](../server/internal/game/keywords.go) with `HasKeyword`, `HasSummoningSickness`, `CanBlock`, `BlockerCountValid`. All combat consumers route through this; no inline `for _, a := range c.Effective().Abilities` loops.
+- **Summoning sickness** — `Card.SummonedThisTurn bool`, set on battlefield entry, cleared at controller's untap step. Haste is a read-time bypass in `HasSummoningSickness`, not a clear-on-ETB. CR 302.1 / 702.10.
+- **Flash reads off-battlefield** — new `Spec.PrintedKeywords []string` slot so `HasKeyword` works on cards in hand. Dedicated catalog hook `CatalogPrintedKeywords`. [ADR 0014 §8](decisions/0014-combat-keywords.md#8-flash-needs-a-keyword-reader-that-works-on-cards-in-hand).
+- **Combat damage rewrite** — `resolveCombatDamageLocked` splits into first-strike (CR 510.2) and regular (CR 510.3) substeps. SBA fires between; dead creatures exit. Double-strike participates in both.
+- **Damage assignment prompt** — new `PendingChoiceDamageAssignment` kind for multi-blocker lethals; single-stage (blocker order + amounts + trample-to-player all in one payload). `ResolveDamageAssignment` validator enforces at-least-lethal prefix rule.
+- **Deathtouch via `Card.MarkedLethalByDeathtouch`** flag, read by SBA. Cleaner than short-circuiting `DamageMarked >= Toughness`.
+- **Lifelink applies universally** — CR 702.15 covers all damage from the source, not combat only. Routed through the mark-damage code path so `DealDamage*ForEffect` catalog helpers credit life too.
+- **Menace enforced at declare-blockers close-out**, not per-decl. Single blocker on a menace attacker is silently reverted (blocker effectively didn't block); attacker becomes unblocked.
 
-**Exit criteria:** A 1/1 deathtouch attacker takes down a 5/5 blocker; lifelink attackers gain life; trample carries over; vigilance keeps attackers untapped.
+### Sub-PR breakdown
+
+1. **`feat/s18-adr-plan`** — this PR. ADR 0014, sprints.md expansion, AGENTS.md §7 "Adding a combat-keyword card" subsection, tracking updates on #68/#69/#76/#95, new umbrella issue for deferred keywords.
+2. **`feat/s18-helpers-sickness`** — `keywords.go` helpers; `Card.SummonedThisTurn` + set/clear hooks; `DeclareAttacker` summoning-sickness gate; tap-cost activation gate; `Spec.PrintedKeywords` slot + `CatalogPrintedKeywords` hook; auto-generated layer-6 `StaticAbility` stamping printed keywords onto battlefield cards. Unit tests. Zero behaviour change without catalog entries.
+3. **`feat/s18-combat-rewrite`** — split `resolveCombatDamageLocked` into two substeps; `assignAndDealCombatDamageLocked`; `Card.MarkedLethalByDeathtouch` + SBA branch; `PendingChoiceDamageAssignment` + `ResolveDamageAssignment` + wire `DamageAssignmentView` + dispatcher leg; client `ChoicePromptModal.svelte` `damage_assignment` branch. Engine-level tests via manufactured battlefield state; zero catalog cards.
+4. **`feat/s18-vanilla-keyword-cards`** — batch ① (8 cards): Serra Angel, Colossal Dreadmaw, Giant Spider, Typhoid Rats, Youthful Knight, Fencing Ace, Lightning Elemental, Wall of Stone. Exercises flying, vigilance, trample, reach, deathtouch, first strike, double strike, haste, defender end-to-end.
+5. **`feat/s18-multi-keyword-cards`** — batch ② (4 cards): Vampire Nighthawk, Baneslayer Angel, Ambush Viper, Boggart Brute. Exercises lifelink, menace, flash + compound interactions. (Dreg Mangler swapped out for Boggart Brute after oracle-text review showed Dreg Mangler has scavenge + haste, not menace.)
+6. **`feat/s18-keyword-badges`** — client `CardTile.svelte` / `Card.svelte` keyword-badge row (FLY/VIG/DS/FS/TR/RE/DT/LL/MEN/DEF/HST/FLS). Reads existing `CardView.Abilities`. Presentational only.
+7. **`feat/s18-docs`** — AGENTS.md polish; ADR 0014 Consequences populated with actually-shipped behavior; this sprint section flipped to `done`; MEMORY entry `s18_arc_complete.md`; close #68.
+
+### Tasks
+
+- [x] **sub-PR 1** ([#177](https://github.com/krakenhavoc/cmd_and_ctrl/pull/177)) — ADR 0014, sprints.md S18 expansion, AGENTS.md §7 combat-keyword subsection, update #68/#69/#76/#95, open umbrella issue #176 for deferred keywords
+- [x] **(shipped early via S16 hotfix [#157](https://github.com/krakenhavoc/cmd_and_ctrl/pull/157))** Bare-bones blocked-creature combat damage. Replaced by the two-substep rewrite in sub-PR 3.
+- [x] Keyword detection helpers (`HasKeyword`, `HasSummoningSickness`, `CanBlock`, `BlockerCountValid`) — sub-PR 2
+- [x] Summoning sickness (`Card.SummonedThisTurn`), cleared at controller's untap step — sub-PR 2
+- [x] `Spec.PrintedKeywords` slot + `CatalogPrintedKeywords` hook (for off-battlefield flash gating) — sub-PR 2
+- [x] Combat damage flow rewrite — first-strike substep (CR 510.2) + regular substep (CR 510.3) — sub-PR 3
+- [x] Damage assignment order prompt (`PendingChoiceDamageAssignment`, CR 510.1c) — sub-PR 3
+- [x] Deathtouch (`Card.MarkedLethalByDeathtouch` flag → SBA) — sub-PR 3
+- [x] Lifelink (life gain on any damage from source, not just combat) — sub-PR 3
+- [x] Trample (overflow to defending player, respects blocker at-least-lethal) — sub-PR 3
+- [x] Vigilance (skip tap on `DeclareAttacker`) — sub-PR 3 (via vigilance keyword consumed in DeclareAttacker tap-skip)
+- [x] Flying / reach (`CanBlock` gate) — sub-PR 2 (helper), consumed sub-PR 3
+- [x] Menace (≥2 blockers; enforced at close-out, single blocker silently reverted) — sub-PR 3
+- [x] Defender (can't attack, returns `ErrDefender`) — sub-PR 2
+- [x] Haste (bypass summoning sickness read) — sub-PR 2
+- [x] Flash (`HasKeyword` reads off-battlefield via `PrintedKeywords`) — sub-PR 2
+- [x] First strike + double strike (first-substep participation) — sub-PR 3
+- [x] 12 catalog cards: Serra Angel, Colossal Dreadmaw, Giant Spider, Typhoid Rats, Youthful Knight, Fencing Ace, Lightning Elemental, Wall of Stone (sub-PR 4); Vampire Nighthawk, Baneslayer Angel, Ambush Viper, Boggart Brute (sub-PR 5)
+- [x] Client keyword-badge row on `Card.svelte` via new `KeywordBadgeRow.svelte` (abbreviated 3-letter tokens) — sub-PR 6
+- [x] Docs polish + sprint flip + MEMORY arc-complete entry — sub-PR 7 (this PR)
+
+**Explicitly deferred** (tracked on umbrella issue + cross-referenced sprints):
+- **Champion of Lambholt** — both halves land in S19 (counter half is a trigger). See [ADR 0014 §10](decisions/0014-combat-keywords.md#10-champion-of-lambholt-deferred-to-s19).
+- **Protection** (CR 702.16) — S24 alongside Mind Control. Baneslayer Angel ships without protection clauses.
+- **Indestructible** (CR 702.12), **damage-prevention shields with charges** (CR 615) — S30.
+- **Hexproof, shroud, ward, banding, rampage, flanking, fear, intimidate, shadow, exalted, annihilator, persist, undying, tribute, prowess, cascade** — umbrella issue; land when a real card needs them.
+- **Flash-in-hand badge** — server-side gating is sufficient for S18; hand-view keyword surface follows with S20 smart-cast UI.
+- **Mycosynth Lattice mana-ability clauses** — re-homed from S17's provisional sub-PR 6 to the general backlog (not S18; not mana-system work that fits here).
+- **Combat-damage substep animation** — engine runs CR 510.2 / 510.3 as two substeps but the client collapses them into one frame, so double strike is visually indistinguishable from first strike against blockers that die in substep 1. Polish work tracked on [#187](https://github.com/krakenhavoc/cmd_and_ctrl/issues/187).
+
+**Exit criteria:** A 1/1 deathtouch attacker takes down a 5/5 blocker (Typhoid Rats blocks Colossal Dreadmaw → Dreadmaw dies; Rats takes 6 damage and dies). Lifelink attackers gain life (Vampire Nighthawk deals 2 → +2 life). Trample carries over (6/6 Dreadmaw vs 3/3 → 3 to blocker, 3 to player). Vigilance keeps attackers untapped (Serra Angel attacks → still untapped post-combat). Multi-blocker damage-assignment prompt queued and resolved for 5/5 Baneslayer Angel vs 2/2+3/3.
 
 ---
 

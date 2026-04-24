@@ -482,6 +482,66 @@ func init() {
 
 **Don't use the replacement pipeline when a primitive flag suffices.** "This card does X to a land it fetches" (Cultivate, Path to Exile, Solemn Simulacrum) is a self-contained card behavior, not a general replacement. Declare `TappedOnEntry: true` on the `SearchLibrary` primitive rather than a full `ReplacementEffect`. The generic pipeline is for effects that watch *other* cards' events.
 
+### Adding a combat-keyword card (S18+)
+
+Creatures with printed combat keywords (flying, reach, deathtouch,
+lifelink, trample, vigilance, first strike, double strike, menace,
+defender, haste, flash) declare those keywords through a single
+`Spec.PrintedKeywords []string` slot. The engine auto-generates a
+Layer 6 `StaticAbility` at catalog load time that appends each
+keyword to the card's own `Characteristic.Abilities`, so
+battlefield-side consumers see the same surface Lord of Atlantis
+uses for granted keywords. The same list feeds off-battlefield
+reads (flash gating on a card in hand).
+
+```go
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+func init() {
+    Register(Spec{
+        OracleID:        "<uuid>",
+        Name:            "Serra Angel",
+        PrintedKeywords: []string{"flying", "vigilance"},
+    })
+}
+```
+
+Keywords are bare strings, case-sensitive, matching the
+canonicalised forms the engine expects. Canonical tokens:
+
+| Token | Keyword |
+|---|---|
+| `"flying"` | Flying (CR 702.9) |
+| `"reach"` | Reach (CR 702.17) |
+| `"first strike"` | First strike (CR 702.7) |
+| `"double strike"` | Double strike (CR 702.4) |
+| `"deathtouch"` | Deathtouch (CR 702.2) |
+| `"lifelink"` | Lifelink (CR 702.15) |
+| `"trample"` | Trample (CR 702.19) |
+| `"vigilance"` | Vigilance (CR 702.20) |
+| `"menace"` | Menace (CR 702.110) |
+| `"defender"` | Defender (CR 702.3) |
+| `"haste"` | Haste (CR 702.10) |
+| `"flash"` | Flash (CR 702.8) |
+
+**Layer-granted keywords still use `Spec.Static`.** Lord of Atlantis
+grants `"flying"` to *other* Merfolk via a conditional Layer 6
+`StaticAbility` — that pattern stays. `PrintedKeywords` is only for
+the card's own printed keywords.
+
+**Tests** — assert `Effective().Abilities` contains the keyword
+strings after the card is pushed to the battlefield. See
+`server/internal/cards/effects/serra_angel_test.go` for the template.
+Combat behaviour (flying block restriction, trample overflow, etc.)
+is tested in `server/internal/game/combat_test.go` against
+manufactured battlefield state — card-level tests just verify the
+keyword strings are exposed.
+
+**Keyword behaviour is engine-side, not catalog-side.** You do not
+write flying/trample/deathtouch logic in the card file. The combat
+engine reads `HasKeyword(card, "flying")` and routes accordingly.
+Card files declare the strings; the engine does the rest.
+
 ### When NOT to add a catalog entry
 
 - **Non-mana, non-static activated abilities** (planeswalker +1/-1

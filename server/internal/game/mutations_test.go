@@ -657,6 +657,96 @@ func TestDeclareAttackerRejectsUnknownCard(t *testing.T) {
 	}
 }
 
+func TestDeclareAttackerRejectsSummoningSick(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	// Simulate ETB this turn by setting the flag the way the layer
+	// listener would when an EventZoneMove fires.
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == attacker {
+			g.Battlefield.Cards[i].SummonedThisTurn = true
+		}
+	}
+	advanceTo(t, g, StepDeclareAttackers)
+	if err := g.DeclareAttacker(attacker, g.Seats[1].ID); err != ErrSummoningSick {
+		t.Errorf("sick attacker: got %v, want ErrSummoningSick", err)
+	}
+}
+
+func TestDeclareAttackerAcceptsHasteCreatureSameTurn(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	// Sick + haste → can attack (haste is a read-time bypass).
+	// Seed `effective` with printed P/T so 0-toughness SBA doesn't
+	// destroy the card before combat. The layer engine re-derives
+	// from printed whenever layerVersion bumps; since this test
+	// doesn't trigger any static-ability-relevant events after the
+	// setup, the hand-set effective survives through the advance.
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == attacker {
+			g.Battlefield.Cards[i].SummonedThisTurn = true
+			g.Battlefield.Cards[i].effective = &Characteristic{
+				Power:     g.Battlefield.Cards[i].Power,
+				Toughness: g.Battlefield.Cards[i].Toughness,
+				Abilities: []string{"haste"},
+			}
+		}
+	}
+	advanceTo(t, g, StepDeclareAttackers)
+	if err := g.DeclareAttacker(attacker, g.Seats[1].ID); err != nil {
+		t.Errorf("haste attacker: got %v, want nil", err)
+	}
+}
+
+func TestDeclareAttackerRejectsDefender(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == attacker {
+			g.Battlefield.Cards[i].effective = &Characteristic{
+				Power:     g.Battlefield.Cards[i].Power,
+				Toughness: g.Battlefield.Cards[i].Toughness,
+				Abilities: []string{"defender"},
+			}
+		}
+	}
+	advanceTo(t, g, StepDeclareAttackers)
+	if err := g.DeclareAttacker(attacker, g.Seats[1].ID); err != ErrDefender {
+		t.Errorf("defender attacker: got %v, want ErrDefender", err)
+	}
+}
+
+func TestUntapStepClearsSummoningSickness(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == attacker {
+			g.Battlefield.Cards[i].SummonedThisTurn = true
+		}
+	}
+	// Advance a full turn cycle so the cursor wraps back to seat 0's
+	// untap step.
+	passedSeats := make(map[int]bool)
+	for i := 0; i < 100; i++ {
+		_, err := g.AdvanceStep()
+		if err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+		if g.Turn.ActiveSeat == 0 && g.Turn.Step == StepUpkeep {
+			break
+		}
+		passedSeats[g.Turn.ActiveSeat] = true
+	}
+	if g.Turn.ActiveSeat != 0 {
+		t.Fatalf("expected to wrap back to seat 0, got seat %d", g.Turn.ActiveSeat)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID == attacker && c.SummonedThisTurn {
+			t.Errorf("SummonedThisTurn should be cleared after seat 0's next untap step")
+		}
+	}
+}
+
 func TestDeclareAttackerOverwritesPreviousTarget(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
@@ -1477,6 +1567,43 @@ func TestS131SorcerySpeedGate(t *testing.T) {
 	instID := pushTypedCardToHand(p, "Lightning Bolt", "Instant")
 	if err := g.CastSpell(p.ID, instID, CastSpellParams{}); err != nil {
 		t.Errorf("instant on Upkeep should bypass sorcery gate: %v", err)
+	}
+}
+
+// TestFlashBypassesSorcerySpeedGate verifies CR 702.8: a creature
+// with flash can be cast at instant speed. Regression for the post-
+// S18 bug where CastSpell's sorcery-speed gate tested only
+// IsInstant() || IsLand() and ignored the flash keyword — Ambush
+// Viper was grayed out during opponents' turns.
+func TestFlashBypassesSorcerySpeedGate(t *testing.T) {
+	const flashOracle = "test-ambush-viper-oracle"
+	prev := CatalogPrintedKeywords
+	defer func() { CatalogPrintedKeywords = prev }()
+	CatalogPrintedKeywords = func(oracleID string) []string {
+		if oracleID == flashOracle {
+			return []string{"flash", "deathtouch"}
+		}
+		return nil
+	}
+	g := newActiveGame(t)
+	// Cursor after newActiveGame is StepUpkeep — not a main phase, so
+	// a vanilla creature would be rejected.
+	p := g.Seats[0]
+	vanilla := pushTypedCardToHand(p, "Grizzly Bears", "Creature — Bear")
+	if err := g.CastSpell(p.ID, vanilla, CastSpellParams{}); err != ErrSorcerySpeedRequired {
+		t.Errorf("vanilla creature on Upkeep: got %v, want ErrSorcerySpeedRequired", err)
+	}
+	// Same slot, but with flash via the catalog hook — should cast.
+	flashID := pushTypedCardToHand(p, "Ambush Viper", "Creature — Snake")
+	// Stamp the OracleID so HasKeyword's off-battlefield fallback
+	// (and printedCharacteristic's wire surface) resolves.
+	for i := range p.Hand.Cards {
+		if p.Hand.Cards[i].InstanceID == flashID {
+			p.Hand.Cards[i].OracleID = flashOracle
+		}
+	}
+	if err := g.CastSpell(p.ID, flashID, CastSpellParams{}); err != nil {
+		t.Errorf("flash creature on Upkeep should bypass sorcery gate: %v", err)
 	}
 }
 

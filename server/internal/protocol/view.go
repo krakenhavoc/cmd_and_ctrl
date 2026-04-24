@@ -124,6 +124,25 @@ type PendingChoiceView struct {
 	// chosen order as an `order []string` payload. Absent for
 	// non-replacement choices. Added in S17 sub-PR 2.
 	ReplacementOptions []ReplacementOptionView `json:"replacement_options,omitempty"`
+
+	// DamageAssignment populates the S18 "damage_assignment" kind:
+	// the attacker's controller assigns combat damage across an
+	// ordered blocker list (CR 510.1c). Absent for non-assignment
+	// choices. Added in S18 sub-PR 3.
+	DamageAssignment *DamageAssignmentView `json:"damage_assignment,omitempty"`
+}
+
+// DamageAssignmentView is the wire shape of the CR 510.1c
+// multi-blocker damage-assignment prompt. The attacker's
+// controller orders the blockers and assigns damage across them
+// (with at-least-lethal-in-order enforcement); with trample, the
+// leftover spills to the defending player. Added in S18 sub-PR 3.
+type DamageAssignmentView struct {
+	AttackerCardID string   `json:"attacker_card_id"`
+	BlockerCardIDs []string `json:"blocker_card_ids"`
+	AttackerPower  int      `json:"attacker_power"`
+	AllowTrample   bool     `json:"allow_trample,omitempty"`
+	HasDeathtouch  bool     `json:"has_deathtouch,omitempty"`
 }
 
 // ReplacementOptionView is one entry in a PendingChoiceView's
@@ -562,6 +581,23 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 					opt.SourceCardID = srcID.String()
 				}
 				v.ReplacementOptions = append(v.ReplacementOptions, opt)
+			}
+		}
+		// PendingChoiceDamageAssignment — S18 sub-PR 3. Emit the
+		// attacker + blocker IDs + attacker power + trample flag so
+		// the client can render the per-blocker damage picker.
+		if c.Kind == game.PendingChoiceDamageAssignment && c.DamageAssignment != nil {
+			frame := c.DamageAssignment
+			blockers := make([]string, len(frame.BlockerIDs))
+			for i, id := range frame.BlockerIDs {
+				blockers[i] = id.String()
+			}
+			v.DamageAssignment = &DamageAssignmentView{
+				AttackerCardID: frame.AttackerID.String(),
+				BlockerCardIDs: blockers,
+				AttackerPower:  frame.AttackerPower,
+				AllowTrample:   frame.AllowTrample,
+				HasDeathtouch:  frame.HasDeathtouch,
 			}
 		}
 		out = append(out, v)

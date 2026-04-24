@@ -59,6 +59,19 @@ type Characteristic struct {
 // initial color set.
 func (c Card) printedCharacteristic() Characteristic {
 	supertypes, types, subtypes := ParseTypeLine(c.TypeLine)
+	// Printed keywords live in the catalog's Spec.PrintedKeywords slot
+	// (S18 sub-PR 2). Including them here means off-battlefield
+	// CardView.Abilities surfaces the keyword on hand cards — the
+	// client's cast-timing gate needs flash to grey-enable Ambush
+	// Viper at instant speed. The on-battlefield synth adds these
+	// via a Layer 6 StaticAbility with a dedupe, so double-counting
+	// is impossible.
+	var abilities []string
+	if CatalogPrintedKeywords != nil && c.OracleID != "" {
+		if kws := CatalogPrintedKeywords(c.OracleID); len(kws) > 0 {
+			abilities = append(abilities, kws...)
+		}
+	}
 	return Characteristic{
 		Power:      c.Power,
 		Toughness:  c.Toughness,
@@ -67,6 +80,7 @@ func (c Card) printedCharacteristic() Characteristic {
 		Supertypes: supertypes,
 		Colors:     printedColorsFromCost(c.ManaCost),
 		Name:       c.Name,
+		Abilities:  abilities,
 	}
 }
 

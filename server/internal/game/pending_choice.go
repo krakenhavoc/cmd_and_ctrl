@@ -72,6 +72,21 @@ const (
 	// ResolveOptionalReplacement re-enters the pipeline. Added
 	// in S17 sub-PR 6.
 	PendingChoiceOptionalReplacement PendingChoiceKind = "optional_replacement"
+
+	// PendingChoiceDamageAssignment — CR 510.1c prompt queued
+	// when a multi-blocker combat damages step needs the
+	// attacker's controller to assign damage across the ordered
+	// blocker list. The chooser is the attacker's controller.
+	// The client renders a drag-to-reorder blocker list with a
+	// damage input per blocker (and, if the attacker has trample,
+	// a "damage to defending player" input for overflow).
+	//
+	// On resolve the chooser submits
+	// `{assignments: [{blocker_id, amount}, ...], trample_to_player: N}`.
+	// ResolveDamageAssignment validates at-least-lethal prefix,
+	// total = attacker power, and trample-only-if-trample. Added
+	// in S18 sub-PR 3.
+	PendingChoiceDamageAssignment PendingChoiceKind = "damage_assignment"
 )
 
 // PendingChoice is one outstanding "someone needs to pick" entry
@@ -133,6 +148,60 @@ type PendingChoice struct {
 	// serialised to the wire. Consumed by ResolveReplacementOrder
 	// on submit. Added in S17 sub-PR 2.
 	replacementResume *replacementResumeFrame
+
+	// DamageAssignment is the client-facing payload for a
+	// PendingChoiceDamageAssignment entry: the attacker's instance
+	// ID, ordered blocker instance IDs (in declared order; the
+	// client may re-order), attacker's effective power, and
+	// trample-allowed flag. Wire-serialised via
+	// PendingChoiceView.DamageAssignment. Added in S18 sub-PR 3.
+	DamageAssignment *DamageAssignmentFrame
+}
+
+// DamageAssignmentFrame is the payload for a
+// PendingChoiceDamageAssignment pending-choice entry. Both
+// client-facing (serialised to the wire projection) and
+// server-private (used by ResolveDamageAssignment to apply damage
+// after validation). Added in S18 sub-PR 3.
+type DamageAssignmentFrame struct {
+	// AttackerID is the combat-damage source (the attacker).
+	AttackerID uuid.UUID
+	// BlockerIDs lists the creatures blocking this attacker, in
+	// their declared order. The client re-orders via drag; the
+	// server validates the re-ordered permutation on submit.
+	BlockerIDs []uuid.UUID
+	// AttackerPower is the effective power of the attacker at the
+	// time of prompt queue. Total assigned damage must equal this
+	// value; with trample, the leftover spills to
+	// trample_to_player.
+	AttackerPower int
+	// AllowTrample is true when the attacker has the trample
+	// keyword. The client renders a "to player" input only when
+	// set; the server accepts trample_to_player > 0 only when set.
+	AllowTrample bool
+	// HasDeathtouch is true when the attacker has deathtouch (CR
+	// 702.2c — 1 damage is lethal). The server uses this to relax
+	// the at-least-lethal prefix rule: 1 damage satisfies the
+	// threshold regardless of the blocker's remaining toughness.
+	HasDeathtouch bool
+	// FirstStrike is true when the assignment prompt was queued
+	// from the first-strike substep. The resume path needs this
+	// to avoid re-routing damage through the regular substep
+	// hook.
+	FirstStrike bool
+
+	// SourceLifelink is the cached lifelink state of the attacker
+	// at prompt-queue time. Captured here because the attacker may
+	// have been destroyed by blocker damage (which resolves in the
+	// same substep before the prompt fires) — looking it up again
+	// at resume time would miss the keyword.
+	SourceLifelink bool
+
+	// SourceController is the attacker's controller at prompt-queue
+	// time. Captured for the same reason as SourceLifelink (lifelink
+	// credits this player even if the attacker is no longer on the
+	// battlefield).
+	SourceController uuid.UUID
 }
 
 // replacementResumeFrame is the unexported per-prompt continuation
@@ -708,4 +777,210 @@ func (g *Game) QueueDiscardFromRevealedHand(
 		Source:     source,
 		Reason:     reason,
 	})
+}
+
+// DamageAssignmentEntry is one {blocker, amount} pair from a
+// damage-assignment resolve. Added in S18 sub-PR 3.
+type DamageAssignmentEntry struct {
+	BlockerID uuid.UUID
+	Amount    int
+}
+
+// ResolveDamageAssignment processes a resolve_choice action for a
+// PendingChoiceDamageAssignment entry. Validates:
+//   - the choice ID exists in the queue
+//   - the chooserID matches the attacker's controller
+//   - ordered is a permutation of the blocker IDs from the frame
+//   - sum(amounts) + trampleToPlayer == attacker power
+//   - each ordered-prefix blocker is assigned at-least-lethal before
+//     the next one receives any damage (CR 510.1c). Deathtouch
+//     relaxes the threshold to 1.
+//   - trampleToPlayer > 0 only when the attacker has trample
+//
+// On success, applies damage via the regular combat-damage path so
+// replacement (Fog), lifelink (mark source's controller), and
+// deathtouch (flag target) all fire. Added in S18 sub-PR 3.
+//
+// Caller must NOT hold g.mu.
+func (g *Game) ResolveDamageAssignment(
+	choiceID, chooserID uuid.UUID,
+	ordered []DamageAssignmentEntry,
+	trampleToPlayer int,
+) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	idx := -1
+	for i, c := range g.PendingChoices {
+		if c != nil && c.ID == choiceID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ErrPendingChoiceNotFound
+	}
+	choice := g.PendingChoices[idx]
+	if choice.Kind != PendingChoiceDamageAssignment {
+		return ErrInvalidParam
+	}
+	if choice.Chooser != chooserID {
+		return ErrNotTheChooser
+	}
+	frame := choice.DamageAssignment
+	if frame == nil {
+		return ErrInvalidParam
+	}
+	if len(ordered) != len(frame.BlockerIDs) {
+		return ErrInvalidParam
+	}
+	// Permutation check.
+	want := make(map[uuid.UUID]int, len(frame.BlockerIDs))
+	for _, id := range frame.BlockerIDs {
+		want[id]++
+	}
+	for _, e := range ordered {
+		if want[e.BlockerID] <= 0 {
+			return ErrInvalidParam
+		}
+		want[e.BlockerID]--
+		if e.Amount < 0 {
+			return ErrInvalidParam
+		}
+	}
+	// Trample gate — the client may send 0 even without trample,
+	// which is fine; nonzero without trample is rejected.
+	if trampleToPlayer < 0 {
+		return ErrInvalidParam
+	}
+	if trampleToPlayer > 0 && !frame.AllowTrample {
+		return ErrInvalidParam
+	}
+	// Sum check.
+	total := trampleToPlayer
+	for _, e := range ordered {
+		total += e.Amount
+	}
+	if total != frame.AttackerPower {
+		return ErrInvalidParam
+	}
+	// Prefix-lethal check: every blocker before the last non-zero
+	// assignment must have received at-least-lethal damage. Lethal
+	// threshold = max(1, blocker.CurrentToughness - blocker.DamageMarked).
+	// Deathtouch collapses the threshold to 1.
+	assigned := make(map[uuid.UUID]int, len(ordered))
+	for i, e := range ordered {
+		lethal := 1
+		if !frame.HasDeathtouch {
+			blk := findBattlefieldCard(g, e.BlockerID)
+			if blk == nil {
+				// Blocker left the battlefield mid-prompt. Treat as
+				// lethal satisfied (no target).
+				lethal = 0
+			} else {
+				remaining := blk.CurrentToughness() - blk.DamageMarked
+				if remaining > 1 {
+					lethal = remaining
+				} else if remaining <= 0 {
+					// Already lethal-marked; damage still applies but
+					// threshold is satisfied.
+					lethal = 0
+				}
+			}
+		}
+		// Earlier blockers must be at-least-lethal before this one
+		// receives any damage (CR 510.1c "assigns damage in order").
+		for j := 0; j < i; j++ {
+			prior := ordered[j]
+			priorLethal := 1
+			if !frame.HasDeathtouch {
+				pblk := findBattlefieldCard(g, prior.BlockerID)
+				if pblk != nil {
+					priorRemaining := pblk.CurrentToughness() - pblk.DamageMarked
+					if priorRemaining > 1 {
+						priorLethal = priorRemaining
+					} else if priorRemaining <= 0 {
+						priorLethal = 0
+					}
+				}
+			}
+			if prior.Amount < priorLethal {
+				return ErrInvalidParam
+			}
+		}
+		// If this blocker got less than lethal AND anything downstream
+		// got non-zero damage OR trample spilled, reject.
+		if e.Amount < lethal {
+			for j := i + 1; j < len(ordered); j++ {
+				if ordered[j].Amount > 0 {
+					return ErrInvalidParam
+				}
+			}
+			if trampleToPlayer > 0 {
+				return ErrInvalidParam
+			}
+		}
+		assigned[e.BlockerID] = e.Amount
+	}
+	g.dequeueChoiceLocked(idx)
+
+	// Apply damage using the frame-cached source keywords: the
+	// attacker may have been destroyed by blocker damage (which
+	// resolved in the same substep before this prompt fires), so
+	// looking up HasKeyword on the attacker at resume time would
+	// miss deathtouch / lifelink. The frame captured those at
+	// queue time.
+	for _, e := range ordered {
+		if e.Amount <= 0 {
+			continue
+		}
+		g.markCombatDamageFromFrameLocked(e.BlockerID, e.Amount, frame)
+	}
+	if trampleToPlayer > 0 {
+		// Determine the defending player: find the attacker if
+		// still on battlefield; otherwise look at the prompt's
+		// original intent — trample-to-player was only allowed
+		// for a live attacker that had declared a target. Fall
+		// back to any seat that isn't the controller (best-effort).
+		var defenderID uuid.UUID
+		if atkCard := findBattlefieldCard(g, frame.AttackerID); atkCard != nil {
+			defenderID = atkCard.AttackingTarget
+		}
+		if defenderID == uuid.Nil {
+			for _, s := range g.Seats {
+				if s.ID != frame.SourceController {
+					defenderID = s.ID
+					break
+				}
+			}
+		}
+		if defenderID != uuid.Nil {
+			g.markCombatDamageToPlayerFromFrameLocked(defenderID, trampleToPlayer, frame)
+		}
+	}
+	// Blockers also deal their power back (simultaneous damage —
+	// CR 510.1d). The attacker loop in assignAndDealCombatDamageLocked
+	// already marked blocker→attacker damage before queuing the
+	// prompt, so we don't re-fire it here.
+	//
+	// Run SBAs so deaths from this assignment land before the next
+	// substep / step advance.
+	g.runStateChecksLocked()
+	return nil
+}
+
+// findBattlefieldCard returns a pointer to the battlefield card
+// with the given instance ID, or nil. Caller must hold g.mu.
+func findBattlefieldCard(g *Game, id uuid.UUID) *Card {
+	if g.Battlefield == nil {
+		return nil
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == id {
+			return &g.Battlefield.Cards[i]
+		}
+	}
+	return nil
 }

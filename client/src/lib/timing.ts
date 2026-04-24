@@ -93,13 +93,18 @@ export function canCastFromHand(
   const type = (card.type_line ?? "").toLowerCase();
   const isLand = type.includes("land");
   const isInstant = type.includes("instant");
+  // Flash (CR 702.8) lets a card be cast as if it had instant timing.
+  // Server-side Abilities for hand cards are sourced from the S18
+  // CatalogPrintedKeywords hook, surfaced through the same wire field
+  // the battlefield uses (characteristic.go:printedCharacteristic).
+  const hasFlash = (card.abilities ?? []).includes("flash");
   if (isLand) {
     if (!isMainPhase(snap)) return deny("Lands only on your main phase");
     if (!stackEmpty(snap)) return deny("Stack isn't empty");
     if (!isActivePlayer(snap, viewerID)) return deny("Not your turn");
     return LEGAL;
   }
-  if (isInstant) {
+  if (isInstant || hasFlash) {
     return LEGAL;
   }
   // Sorcery / non-instant non-land permanent. Sorcery-speed gate.
@@ -162,7 +167,10 @@ export function canActivateLoyalty(
 
 // canPassPriority returns the legality of clicking "pass priority"
 // right now. False when the cursor is on a no-priority step
-// (Untap / Cleanup) OR the viewer doesn't hold priority.
+// (Untap / Cleanup) OR the viewer doesn't hold priority OR a pending
+// choice addressed to *anyone* is still open — advancing past a
+// damage-assignment modal (CR 510.1c) would have the server reject
+// with invalid-parameters, so gate it here.
 export function canPassPriority(
   snap: GameView | null | undefined,
   viewerID: string | null,
@@ -176,5 +184,8 @@ export function canPassPriority(
     return deny("No one holds priority this step");
   }
   if (!hasPriority(snap, viewerID)) return deny("Not your priority");
+  if ((snap.pending_choices ?? []).length > 0) {
+    return deny("Pending choice in progress");
+  }
   return LEGAL;
 }

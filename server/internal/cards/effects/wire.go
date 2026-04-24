@@ -46,14 +46,52 @@ func init() {
 	}
 	// S16 sub-PR 3: static abilities flow straight through — the
 	// catalog declares them as `game.StaticAbility` already, so the
-	// hook is a thin lookup. Lookup-miss / no-static returns nil so
+	// hook is a thin lookup.
+	//
+	// S18 sub-PR 2: extended to synthesize a self-only Layer 6
+	// StaticAbility per card with `PrintedKeywords`, so declaring
+	// keywords in the dedicated slot lands them in
+	// `card.Effective().Abilities` alongside any hand-written
+	// statics. The synthesized ability is idempotent (dedupes
+	// against already-present strings) and applies only to the
+	// source card itself.
+	//
+	// Lookup-miss / no-static + no-printed-keywords returns nil so
 	// the layer engine treats the card as inert.
 	game.CatalogStaticAbilities = func(oracleID string) []game.StaticAbility {
 		spec, ok := Lookup(oracleID)
-		if !ok || len(spec.Static) == 0 {
+		if !ok {
 			return nil
 		}
-		return spec.Static
+		if len(spec.Static) == 0 && len(spec.PrintedKeywords) == 0 {
+			return nil
+		}
+		if len(spec.PrintedKeywords) == 0 {
+			return spec.Static
+		}
+		// Capture the slice by value so the closure sees a stable
+		// list even if a future mutation to `spec.PrintedKeywords`
+		// happened (in practice Specs are frozen after Register,
+		// but the defensive copy is cheap).
+		kws := append([]string(nil), spec.PrintedKeywords...)
+		synth := game.StaticAbility{
+			Layer:     game.Layer6Ability,
+			AppliesTo: selfOnly,
+			Apply: func(c *game.Characteristic, target *game.Card, g *game.Game, source *game.Card) {
+				for _, kw := range kws {
+					if !keywordSliceContains(c.Abilities, kw) {
+						c.Abilities = append(c.Abilities, kw)
+					}
+				}
+			},
+		}
+		if len(spec.Static) == 0 {
+			return []game.StaticAbility{synth}
+		}
+		out := make([]game.StaticAbility, 0, len(spec.Static)+1)
+		out = append(out, spec.Static...)
+		out = append(out, synth)
+		return out
 	}
 	// S17 sub-PR 2: replacement effects also declared directly as
 	// `game.ReplacementEffect`, same thin-lookup shape. Lookup-miss
@@ -66,6 +104,42 @@ func init() {
 		}
 		return spec.Replacements
 	}
+	// S18 sub-PR 2: printed combat keywords. Off-battlefield
+	// HasKeyword reads from this hook (the layer engine doesn't
+	// maintain Effective() outside the battlefield, so a
+	// hand-resident Ambush Viper needs this fallback for flash
+	// gating). Lookup-miss / no-printed-keywords returns nil.
+	game.CatalogPrintedKeywords = func(oracleID string) []string {
+		spec, ok := Lookup(oracleID)
+		if !ok || len(spec.PrintedKeywords) == 0 {
+			return nil
+		}
+		return spec.PrintedKeywords
+	}
+}
+
+// selfOnly is the AppliesTo predicate for the synthesized
+// printed-keyword StaticAbility — the keyword list applies only to
+// the card itself, not to any other battlefield card. Separated
+// here so the closure inside the hook is a bare reference rather
+// than an inline func literal per call.
+func selfOnly(target *game.Card, g *game.Game, source *game.Card) bool {
+	return target.InstanceID == source.InstanceID
+}
+
+// keywordSliceContains is a small helper for the synthesized
+// keyword apply — avoids re-appending a keyword already in the
+// slice (e.g. Lord of Atlantis grants "islandwalk" to a Merfolk
+// that already has printed islandwalk from its own
+// `PrintedKeywords`). Named to avoid colliding with the
+// `containsString` helper in test files in this package.
+func keywordSliceContains(xs []string, s string) bool {
+	for _, x := range xs {
+		if x == s {
+			return true
+		}
+	}
+	return false
 }
 
 // resolveSpell is the EffectResolver implementation. Called from

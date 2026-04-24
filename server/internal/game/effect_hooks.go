@@ -103,6 +103,26 @@ var CatalogStaticAbilities func(oracleID string) []StaticAbility
 // replacements.go. Added in S17 sub-PR 2.
 var CatalogReplacements func(oracleID string) []ReplacementEffect
 
+// CatalogPrintedKeywords returns the printed keyword list for the
+// given oracle ID (one entry per `effects.Spec.PrintedKeywords`
+// element), or nil when no catalog entry exists / the entry has no
+// printed keywords. Populated at init time by the cards/effects
+// package alongside the other catalog hooks.
+//
+// Two consumers:
+//   - On-battlefield: wire.go synthesizes a self-only Layer 6
+//     StaticAbility that appends each entry to the card's own
+//     Characteristic.Abilities, so HasKeyword naturally picks them
+//     up via Effective().Abilities.
+//   - Off-battlefield: HasKeyword (keywords.go) reads directly from
+//     this hook when the card has no `effective` cache (e.g. a card
+//     in hand needs flash gating before cast). The layer engine
+//     only maintains Effective() for battlefield cards.
+//
+// Nil hook ⇒ no catalog wired ⇒ off-battlefield keyword reads
+// return false for every card. Added in S18 sub-PR 2.
+var CatalogPrintedKeywords func(oracleID string) []string
+
 // fireEffectResolverLocked invokes the registered EffectResolver
 // if non-nil, emits EventEffectError on failure, and swallows the
 // error so the resolution path keeps moving. Caller must hold g.mu.
