@@ -15,6 +15,7 @@
   import type { ActionPayload, PlayerView, ZoneView } from "../../protocol";
   import PileButton from "./PileButton.svelte";
   import CommandZone from "./CommandZone.svelte";
+  import { openZoneBrowser } from "../../zoneBrowser";
 
   type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
 
@@ -27,11 +28,22 @@
   }
 
   const { seat, exile, isSelf, sendAction, onDrawCard }: Props = $props();
+
+  // S18.5 — graveyard + exile chips open the browser modal. Always
+  // available to every viewer (public-info zones). Library stays
+  // owner-only as a "draw the top card" affordance; a future S22
+  // pass adds search / scry / reorder to the library flow.
+  function openGraveyard(): void {
+    openZoneBrowser({ zoneKind: "graveyard", ownerID: seat.id, ownerName: seat.name });
+  }
+  function openExile(): void {
+    openZoneBrowser({ zoneKind: "exile", ownerID: seat.id, ownerName: seat.name });
+  }
 </script>
 
 <div class="pile-bar" aria-label={`${seat.name} piles`}>
-  <PileButton label="exile" zone={exile} />
-  <PileButton label="grave" zone={seat.graveyard} />
+  <PileButton label="exile" zone={exile} onClick={openExile} />
+  <PileButton label="grave" zone={seat.graveyard} onClick={openGraveyard} />
   <PileButton
     label="library"
     zone={seat.library}

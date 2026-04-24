@@ -58,6 +58,7 @@ planned just-in-time from the S12 pain-point triage.
 | S16      | Continuous effects + layer system (CR 613)                           | 7     | [#66](https://github.com/krakenhavoc/cmd_and_ctrl/issues/66)   | 2026-09-06 | **done**    |
 | S17      | Replacement effects engine (CR 614)                                  | 7     | [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67)   | 2026-10-04 | **done**    |
 | S18      | Combat keywords                                                      | 7     | [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68)   | 2026-11-01 | **done**    |
+| S18.5    | Zone browser + library search (mini)                                 | 7     | [#179](https://github.com/krakenhavoc/cmd_and_ctrl/issues/179) | 2026-11-05 | **done**    |
 | S19      | Auto-fire triggered abilities                                        | 7     | [#69](https://github.com/krakenhavoc/cmd_and_ctrl/issues/69)   | 2026-11-29 | planned     |
 | S20      | Auto-target legality + smart cast UI                                 | 7     | [#70](https://github.com/krakenhavoc/cmd_and_ctrl/issues/70)   | 2026-12-27 | planned     |
 | S21      | Tokens, sacrifice, aristocrats                                       | 7     | [#73](https://github.com/krakenhavoc/cmd_and_ctrl/issues/73)   | 2027-01-24 | planned     |
@@ -1650,6 +1651,28 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 - **Combat-damage substep animation** — engine runs CR 510.2 / 510.3 as two substeps but the client collapses them into one frame, so double strike is visually indistinguishable from first strike against blockers that die in substep 1. Polish work tracked on [#187](https://github.com/krakenhavoc/cmd_and_ctrl/issues/187).
 
 **Exit criteria:** A 1/1 deathtouch attacker takes down a 5/5 blocker (Typhoid Rats blocks Colossal Dreadmaw → Dreadmaw dies; Rats takes 6 damage and dies). Lifelink attackers gain life (Vampire Nighthawk deals 2 → +2 life). Trample carries over (6/6 Dreadmaw vs 3/3 → 3 to blocker, 3 to player). Vigilance keeps attackers untapped (Serra Angel attacks → still untapped post-combat). Multi-blocker damage-assignment prompt queued and resolved for 5/5 Baneslayer Angel vs 2/2+3/3.
+
+---
+
+## S18.5 — Zone browser + library search (mini) ✅
+
+**Phase:** 7 · **Goal:** close the S06/S11 promise of a clickable zone-browser modal for public zones, and give the tutor cards a player-facing pick UI to the extent the wire protocol supports it today.
+
+Mini sprint slotted after S18 started, to ship two pieces of long-promised client UX that never made it into their parent sprints:
+
+- S06 line 172 — "Graveyard / exile / command — clickable modal browser" deferred to S07, never shipped.
+- S11 line 173 — "Library — searchable / reorderable" deferred, never shipped.
+- S14 shipped the `SearchLibrary` primitive (Demonic/Vampiric Tutor, Cultivate) but the server auto-picks the first library match; there's no player-facing search UI today.
+
+- [x] `ZoneBrowserModal.svelte` — view-only grid for graveyard / exile / command / stack, opens from the pile chips and command-zone "browse" affordance; hover-zoom works unchanged via the shared `hoveredCard` store.
+- [x] Any seated player can open any other player's public zones (graveyard / exile / command / stack).
+- [x] Owner actions: per-card "hand / field / lib" buttons fire `move_card` through the existing wire path (no new action kind). Non-owners see view-only.
+- [x] Client-side `canManageZone` guard mirrors the server's `requireCardController` gate; `buildMovePayload` rejects speculative moves client-side so we never fire an action the server would bounce.
+- [ ] **Library search modal — deferred.** The SearchLibrary primitive today auto-picks server-side (`SearchLibraryForEffectWithOptions` picks the first library match and returns). There's no `PendingChoice` emitted, no `search_library` choice kind, no wire frame for the client to render against. Landing the search modal requires a new pending-choice kind (picker options = controller-known library slice filtered by predicate) on the server side — outside the "client UI only" fence this mini-sprint set up, and it's closer in scope to S22 (library manipulation — Scry/Surveil/Explore) than to S18.5. Captured in [ADR 0015](decisions/0015-zone-browser-library-search.md) so S22's kick-off picks it up.
+
+**Deferred:** library-bottom destination from the owner action cluster (ZoneKind doesn't distinguish top/bottom today; Library of Leng and Vampiric Tutor are rare enough that top-of-library is the useful default); stack browser "counter selected" integration (StackOverlay already owns that flow); library-search modal (see above).
+
+**Exit criteria:** Click graveyard / exile / command pile on any seat → modal opens listing cards with images; hover-zoom works; owner sees move cluster; non-owner sees view-only. ✅
 
 ---
 
