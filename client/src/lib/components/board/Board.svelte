@@ -374,10 +374,20 @@
      dimensions are chosen by total seat count (set on the .board
      itself via data-seat-count) — 1 = single panel, 2 = stacked, 3-4
      = 2x2. No 180° rotation: the spectator isn't sitting at any one
-     seat, so flipping anybody upside-down would just be confusing. */
+     seat, so flipping anybody upside-down would just be confusing.
+
+     `grid-template-areas: none` is load-bearing: the quadrant rules
+     above key on `.board[data-opp-count="N"]` and set named grid
+     areas ("self", "across", …). For spectators, `opponentCount`
+     derives to 0, so `[data-opp-count="0"]` matches and drops its
+     `grid-template-areas: "self"` onto the same element. Without an
+     explicit clear here, the named "self" area leaks in alongside
+     the column/row overrides and auto-placement of the spectator
+     panels produces a diagonal/quadrant layout instead of a stack. */
   .board.spectator {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr;
+    grid-template-areas: none;
   }
   .board.spectator[data-seat-count="2"] {
     grid-template-columns: 1fr;

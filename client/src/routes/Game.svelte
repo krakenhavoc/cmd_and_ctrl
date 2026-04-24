@@ -310,7 +310,15 @@
   const prioritySeat = $derived(turn?.priority_holder ?? 0);
   const activePlayer = $derived(seats[activeSeat]);
   const priorityPlayer = $derived(seats[prioritySeat]);
-  const viewerID = $derived(sess?.playerID ?? null);
+  // Spectators never have a viewerID, regardless of what the session
+  // happens to carry. The server's /spectate handler doesn't set
+  // player_id, but stale localStorage state, legacy player sessions
+  // demoted to spectator, and future code paths that surface a
+  // spectator-scoped id all get collapsed here to null so every
+  // downstream viewer-action gate (`{#if viewerID}`, `?? undefined`
+  // casts, targeting logic) uniformly denies spectators. Cheaper and
+  // safer than threading `!isSpectator` through every call site.
+  const viewerID = $derived(sess?.principal.role === "spectator" ? null : (sess?.playerID ?? null));
   const viewerSeat = $derived(seats.find((s) => s.id === viewerID) ?? null);
   const viewerHasPriority = $derived(viewerID !== null && priorityPlayer?.id === viewerID);
   const viewerIsActive = $derived(viewerID !== null && activePlayer?.id === viewerID);
