@@ -392,3 +392,118 @@ func TestResolveDamageAssignmentDeathtouchOneIsLethal(t *testing.T) {
 		t.Errorf("defender life = %d, want 37", g.Seats[1].Life)
 	}
 }
+
+// TestDeclareAttackerTapsWithoutVigilance verifies the CR 508.1f cost:
+// a creature without vigilance is tapped when declared as an attacker.
+// Regression for the post-S18 bug where DeclareAttacker set
+// AttackingTarget but never tapped the card — the vigilance-skip case
+// looked correct only because the base case also did nothing.
+func TestDeclareAttackerTapsWithoutVigilance(t *testing.T) {
+	g := newActiveGame(t)
+	bear := pushKeywordCreature(t, g, g.Seats[0], 2, 2)
+	advanceIntoStep(t, g, StepDeclareAttackers)
+	if err := g.DeclareAttacker(bear, g.Seats[1].ID); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
+	b := findCard(g, bear)
+	if b == nil {
+		t.Fatalf("bear missing after declare")
+	}
+	if !b.Tapped {
+		t.Errorf("attacker without vigilance should be tapped; Tapped=%v", b.Tapped)
+	}
+}
+
+// TestDeclareAttackerVigilanceSkipsTap verifies CR 702.20: a creature
+// with vigilance does NOT tap when declared as an attacker.
+func TestDeclareAttackerVigilanceSkipsTap(t *testing.T) {
+	g := newActiveGame(t)
+	angel := pushKeywordCreature(t, g, g.Seats[0], 4, 4, "vigilance")
+	advanceIntoStep(t, g, StepDeclareAttackers)
+	if err := g.DeclareAttacker(angel, g.Seats[1].ID); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
+	a := findCard(g, angel)
+	if a == nil {
+		t.Fatalf("angel missing after declare")
+	}
+	if a.Tapped {
+		t.Errorf("vigilance attacker should stay untapped; Tapped=%v", a.Tapped)
+	}
+}
+
+// TestDeclareBlockerFlyingRejectsGroundBlocker verifies the CR 509.1b
+// evasion gate: a vanilla ground creature cannot block a flyer.
+// Regression for the post-S18 bug where DeclareBlocker never called
+// CanBlock, so any creature could block anything.
+func TestDeclareBlockerFlyingRejectsGroundBlocker(t *testing.T) {
+	g := newActiveGame(t)
+	flyer := pushKeywordCreature(t, g, g.Seats[0], 2, 2, "flying")
+	ground := pushKeywordCreature(t, g, g.Seats[1], 2, 2)
+	advanceIntoStep(t, g, StepDeclareAttackers)
+	g.DeclareAttacker(flyer, g.Seats[1].ID)
+	advanceIntoStep(t, g, StepDeclareBlockers)
+	if err := g.DeclareBlocker(ground, flyer); err != ErrIllegalBlock {
+		t.Errorf("ground vs flying: got %v, want ErrIllegalBlock", err)
+	}
+}
+
+// TestDeclareBlockerReachCanBlockFlying verifies reach passes the
+// CanBlock gate for flyers.
+func TestDeclareBlockerReachCanBlockFlying(t *testing.T) {
+	g := newActiveGame(t)
+	flyer := pushKeywordCreature(t, g, g.Seats[0], 2, 2, "flying")
+	spider := pushKeywordCreature(t, g, g.Seats[1], 2, 4, "reach")
+	advanceIntoStep(t, g, StepDeclareAttackers)
+	g.DeclareAttacker(flyer, g.Seats[1].ID)
+	advanceIntoStep(t, g, StepDeclareBlockers)
+	if err := g.DeclareBlocker(spider, flyer); err != nil {
+		t.Errorf("reach should block flyer: %v", err)
+	}
+}
+
+// TestDeclareBlockerFlyingCanBlockFlying verifies flyer-on-flyer is
+// legal.
+func TestDeclareBlockerFlyingCanBlockFlying(t *testing.T) {
+	g := newActiveGame(t)
+	atk := pushKeywordCreature(t, g, g.Seats[0], 2, 2, "flying")
+	blk := pushKeywordCreature(t, g, g.Seats[1], 2, 2, "flying")
+	advanceIntoStep(t, g, StepDeclareAttackers)
+	g.DeclareAttacker(atk, g.Seats[1].ID)
+	advanceIntoStep(t, g, StepDeclareBlockers)
+	if err := g.DeclareBlocker(blk, atk); err != nil {
+		t.Errorf("flyer vs flyer: %v", err)
+	}
+}
+
+// TestCombatFirstStrikeBlockerDamagesVanillaAttacker verifies CR 510.2:
+// a first-strike blocker deals damage in the first-strike substep even
+// when the attacker itself has no first strike or double strike.
+// Regression for the post-S18 bug where assignAndDealCombatDamageLocked
+// skipped the entire attacker iteration (including the blocker-damage
+// loop) when the attacker didn't participate in the substep.
+func TestCombatFirstStrikeBlockerDamagesVanillaAttacker(t *testing.T) {
+	g := newActiveGame(t)
+	bear := pushKeywordCreature(t, g, g.Seats[0], 2, 2)
+	knight := pushKeywordCreature(t, g, g.Seats[1], 2, 1, "first strike")
+	ace := pushKeywordCreature(t, g, g.Seats[1], 1, 1, "double strike")
+	advanceIntoStep(t, g, StepDeclareAttackers)
+	g.DeclareAttacker(bear, g.Seats[1].ID)
+	advanceIntoStep(t, g, StepDeclareBlockers)
+	g.DeclareBlocker(knight, bear)
+	g.DeclareBlocker(ace, bear)
+	advanceIntoStep(t, g, StepCombatDamage)
+	// First-strike substep: Knight (FS) deals 2, Ace (DS) deals 1 →
+	// bear takes 3, dies via SBA before regular substep. Bear's 2
+	// damage never lands (vanilla, no FS/DS).
+	if findCard(g, bear) != nil {
+		t.Errorf("bear should be dead from first-strike damage (2+1=3)")
+	}
+	// Knight and Ace both survive — bear was dead before regular.
+	if findCard(g, knight) == nil {
+		t.Errorf("knight should survive; bear died before regular substep")
+	}
+	if findCard(g, ace) == nil {
+		t.Errorf("ace should survive; bear died before regular substep")
+	}
+}

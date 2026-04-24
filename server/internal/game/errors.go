@@ -153,4 +153,11 @@ var (
 	// ErrDefender is returned by DeclareAttacker when the creature
 	// has the defender keyword (CR 702.3). Added in S18 sub-PR 2.
 	ErrDefender = errors.New("game: creature has defender and cannot attack")
+
+	// ErrIllegalBlock is returned by DeclareBlocker when evasion
+	// keywords on the attacker (flying, menace, fear, shadow, etc.)
+	// rule out the proposed blocker. The CanBlock helper is the
+	// single source of truth. Post-S18 fix for the missing gate at
+	// the DeclareBlocker call site.
+	ErrIllegalBlock = errors.New("game: blocker cannot legally block this attacker")
 )

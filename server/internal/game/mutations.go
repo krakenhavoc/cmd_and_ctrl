@@ -388,9 +388,14 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// Sorcery-speed gate. Lands are special-action-fast (CR 305 is
 	// "you may play a land during your main phase if the stack is
 	// empty"); they're handled implicitly by the same gate below.
-	// Instants bypass the gate entirely. Anything else (sorceries,
-	// permanents that aren't instants) needs sorcery speed.
-	requiresSorcerySpeed := !card.IsInstant() && !card.IsLand()
+	// Instants bypass the gate entirely. Flash (CR 702.8) lets any
+	// card be cast as though it had the timing of an instant — so
+	// off-battlefield HasKeyword (backed by CatalogPrintedKeywords
+	// from S18 sub-PR 2) lifts the sorcery-speed restriction for
+	// hand-resident Ambush Viper and the like. Anything else
+	// (sorceries, permanents that aren't instants and don't have
+	// flash) needs sorcery speed.
+	requiresSorcerySpeed := !card.IsInstant() && !card.IsLand() && !HasKeyword(&card, "flash")
 	if card.IsLand() || requiresSorcerySpeed {
 		if !g.sorcerySpeedOpenLocked(playerID) {
 			return ErrSorcerySpeedRequired
@@ -2672,6 +2677,14 @@ func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
 				return ErrSummoningSick
 			}
 			card.AttackingTarget = targetPlayerID
+			// CR 508.1f: declaring an attacker taps it, unless the
+			// attacker has vigilance (CR 702.20). Vigilance is the
+			// one keyword whose job is specifically to skip this
+			// tap — without it, the creature is tapped as a cost of
+			// attacking.
+			if !HasKeyword(card, "vigilance") {
+				card.Tapped = true
+			}
 			// A card declared as attacker can't simultaneously be a
 			// blocker — clearing the other field keeps the per-card
 			// combat state coherent.
@@ -2703,25 +2716,38 @@ func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 	if g.Turn.Step != StepDeclareBlockers {
 		return ErrWrongStep
 	}
+	// Layers must be fresh so HasKeyword reads the current effective
+	// characteristic (flying granted by an anthem this turn has to
+	// be visible to CanBlock below).
+	g.RecomputeLayersIfStaleLocked()
 	// Verify the attacker exists on the battlefield. Without this the
 	// blocker would silently point at a non-existent attacker ID.
-	attackerExists := false
+	var attacker *Card
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == attackerID {
-			attackerExists = true
+			attacker = &g.Battlefield.Cards[i]
 			break
 		}
 	}
-	if !attackerExists {
+	if attacker == nil {
 		return ErrCardNotFound
 	}
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == blockerID {
-			if !g.Battlefield.Cards[i].IsCreature() {
+			blocker := &g.Battlefield.Cards[i]
+			if !blocker.IsCreature() {
 				return ErrNotACreature
 			}
-			g.Battlefield.Cards[i].BlockingTarget = attackerID
-			g.Battlefield.Cards[i].AttackingTarget = uuid.Nil
+			// CR 509.1b: evasion keywords (flying, menace, fear,
+			// shadow, …) restrict which creatures can be declared
+			// as blockers. CanBlock is the single helper that
+			// consolidates all current S18 evasion rules; future
+			// keywords (protection in S24, etc.) land there.
+			if !CanBlock(attacker, blocker) {
+				return ErrIllegalBlock
+			}
+			blocker.BlockingTarget = attackerID
+			blocker.AttackingTarget = uuid.Nil
 			return nil
 		}
 	}
@@ -2918,11 +2944,14 @@ func (g *Game) assignAndDealCombatDamageLocked(firstStrike bool) {
 		if atk == nil {
 			continue // died during this substep's iteration
 		}
-		if !participatesInSubstep(atk, firstStrike) {
-			continue
-		}
+		atkParticipates := participatesInSubstep(atk, firstStrike)
 		atkPower := power[atkID]
-		// Blocker list for this attacker — only substep participants.
+		// Blocker list for this attacker — taken as the live (not
+		// reverted) set. Per-substep participation is checked later
+		// per-blocker so a first-strike blocker can still hit a
+		// vanilla attacker in the first-strike substep even when the
+		// attacker itself doesn't participate (CR 510.2; blocker
+		// damage is independent of the attacker's keywords).
 		blkIdxs := blockersByAttacker[atkID]
 		liveBlockers := make([]uuid.UUID, 0, len(blkIdxs))
 		for _, bi := range blkIdxs {
@@ -2933,51 +2962,59 @@ func (g *Game) assignAndDealCombatDamageLocked(firstStrike bool) {
 			liveBlockers = append(liveBlockers, blk.InstanceID)
 		}
 
-		// Attacker's damage
-		if len(liveBlockers) == 0 {
-			if atkPower > 0 {
-				g.markCombatDamageToPlayerLocked(atk.AttackingTarget, atkID, atkPower)
+		// Attacker's damage — gated on the attacker participating
+		// in this substep. When it doesn't (e.g. a vanilla attacker
+		// in the first-strike substep), skip the whole attacker-
+		// side branch but fall through to blocker damage below.
+		if atkParticipates {
+			if len(liveBlockers) == 0 {
+				if atkPower > 0 {
+					g.markCombatDamageToPlayerLocked(atk.AttackingTarget, atkID, atkPower)
+				}
+			} else if len(liveBlockers) == 1 {
+				// Single blocker: attacker assigns all power. Trample
+				// overflows to the defending player if the blocker
+				// gets at-least-lethal (CR 702.19b).
+				blkID := liveBlockers[0]
+				blk := findBattlefieldCard(g, blkID)
+				if blk != nil && atkPower > 0 {
+					lethalThreshold := blk.CurrentToughness() - blk.DamageMarked
+					if HasKeyword(atk, "deathtouch") && lethalThreshold > 1 {
+						lethalThreshold = 1
+					}
+					if lethalThreshold < 0 {
+						lethalThreshold = 0
+					}
+					toBlocker := atkPower
+					toPlayer := 0
+					if HasKeyword(atk, "trample") && atkPower > lethalThreshold {
+						toBlocker = lethalThreshold
+						toPlayer = atkPower - lethalThreshold
+					}
+					if toBlocker > 0 {
+						g.markCombatDamageOnCardLocked(blkID, toBlocker, atkID)
+					}
+					if toPlayer > 0 {
+						g.markCombatDamageToPlayerLocked(atk.AttackingTarget, atkID, toPlayer)
+					}
+				}
+			} else {
+				// Multi-blocker → queue damage-assignment prompt.
+				// Server pauses here; the resume path fires the actual
+				// marks. Until resume, the attacker's damage is NOT
+				// applied. Blocker damage still flows (simultaneous)
+				// because blockers deal power back regardless of
+				// attacker's assignment (CR 510.1d).
+				g.queueDamageAssignmentPromptLocked(atk, liveBlockers, atkPower, firstStrike)
 			}
-		} else if len(liveBlockers) == 1 {
-			// Single blocker: attacker assigns all power. Trample
-			// overflows to the defending player if the blocker gets
-			// at-least-lethal (CR 702.19b).
-			blkID := liveBlockers[0]
-			blk := findBattlefieldCard(g, blkID)
-			if blk != nil && atkPower > 0 {
-				lethalThreshold := blk.CurrentToughness() - blk.DamageMarked
-				if HasKeyword(atk, "deathtouch") && lethalThreshold > 1 {
-					lethalThreshold = 1
-				}
-				if lethalThreshold < 0 {
-					lethalThreshold = 0
-				}
-				toBlocker := atkPower
-				toPlayer := 0
-				if HasKeyword(atk, "trample") && atkPower > lethalThreshold {
-					toBlocker = lethalThreshold
-					toPlayer = atkPower - lethalThreshold
-				}
-				if toBlocker > 0 {
-					g.markCombatDamageOnCardLocked(blkID, toBlocker, atkID)
-				}
-				if toPlayer > 0 {
-					g.markCombatDamageToPlayerLocked(atk.AttackingTarget, atkID, toPlayer)
-				}
-			}
-		} else {
-			// Multi-blocker → queue damage-assignment prompt. Server
-			// pauses here; the resume path fires the actual marks.
-			// Until resume, the attacker's damage is NOT applied.
-			// Blocker damage still flows (simultaneous) because
-			// blockers deal power back regardless of attacker's
-			// assignment (CR 510.1d).
-			g.queueDamageAssignmentPromptLocked(atk, liveBlockers, atkPower, firstStrike)
 		}
 
 		// Blockers assign damage to the attacker simultaneously
 		// (CR 510.1d). Each blocker's damage flows independently of
-		// the attacker's split.
+		// the attacker's split — and independently of whether the
+		// attacker itself participates in this substep, so a first-
+		// strike blocker can still hit a vanilla attacker in the
+		// first-strike substep (CR 510.2).
 		for _, blkID := range liveBlockers {
 			blk := findBattlefieldCard(g, blkID)
 			if blk == nil || !participatesInSubstep(blk, firstStrike) {

@@ -1570,6 +1570,43 @@ func TestS131SorcerySpeedGate(t *testing.T) {
 	}
 }
 
+// TestFlashBypassesSorcerySpeedGate verifies CR 702.8: a creature
+// with flash can be cast at instant speed. Regression for the post-
+// S18 bug where CastSpell's sorcery-speed gate tested only
+// IsInstant() || IsLand() and ignored the flash keyword — Ambush
+// Viper was grayed out during opponents' turns.
+func TestFlashBypassesSorcerySpeedGate(t *testing.T) {
+	const flashOracle = "test-ambush-viper-oracle"
+	prev := CatalogPrintedKeywords
+	defer func() { CatalogPrintedKeywords = prev }()
+	CatalogPrintedKeywords = func(oracleID string) []string {
+		if oracleID == flashOracle {
+			return []string{"flash", "deathtouch"}
+		}
+		return nil
+	}
+	g := newActiveGame(t)
+	// Cursor after newActiveGame is StepUpkeep — not a main phase, so
+	// a vanilla creature would be rejected.
+	p := g.Seats[0]
+	vanilla := pushTypedCardToHand(p, "Grizzly Bears", "Creature — Bear")
+	if err := g.CastSpell(p.ID, vanilla, CastSpellParams{}); err != ErrSorcerySpeedRequired {
+		t.Errorf("vanilla creature on Upkeep: got %v, want ErrSorcerySpeedRequired", err)
+	}
+	// Same slot, but with flash via the catalog hook — should cast.
+	flashID := pushTypedCardToHand(p, "Ambush Viper", "Creature — Snake")
+	// Stamp the OracleID so HasKeyword's off-battlefield fallback
+	// (and printedCharacteristic's wire surface) resolves.
+	for i := range p.Hand.Cards {
+		if p.Hand.Cards[i].InstanceID == flashID {
+			p.Hand.Cards[i].OracleID = flashOracle
+		}
+	}
+	if err := g.CastSpell(p.ID, flashID, CastSpellParams{}); err != nil {
+		t.Errorf("flash creature on Upkeep should bypass sorcery gate: %v", err)
+	}
+}
+
 // TestS131SplitSecondBlocksFurtherCasts verifies that
 // SplitSecondActive rejects subsequent casts (CR 702.79). Split-
 // second mana abilities and special actions remain legal — we only
