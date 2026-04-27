@@ -306,6 +306,9 @@ func (g *Game) ExileCardForEffect(cardID uuid.UUID) error {
 	if src == g.Exile {
 		return nil
 	}
+	if src.Kind == ZoneBattlefield {
+		g.snapshotLKILocked(cardID)
+	}
 	if _, err := MoveCard(src, g.Exile, cardID); err != nil {
 		return err
 	}
@@ -344,6 +347,9 @@ func (g *Game) BounceToHandForEffect(cardID uuid.UUID) error {
 	}
 	if src == owner.Hand {
 		return nil
+	}
+	if src.Kind == ZoneBattlefield {
+		g.snapshotLKILocked(cardID)
 	}
 	if _, err := MoveCard(src, owner.Hand, cardID); err != nil {
 		return err

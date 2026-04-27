@@ -1680,9 +1680,14 @@ Mini sprint slotted after S18 started, to ship two pieces of long-promised clien
 
 **Phase:** 7 · **Goal:** ETB / dies / upkeep / cast / combat triggers fire automatically for catalog cards.
 
-- [ ] Auto-fire dispatcher: register listeners on zone change; LKI snapshot at trigger time (CR 603.10)
-- [ ] Optional / modal trigger prompts via existing prompt frame
-- [ ] ~25 catalog cards: Mulldrifter, Eternal Witness, Reclamation Sage, Acidic Slime, Solemn Simulacrum, Smothering Tithe, Esper Sentinel, Edric Spymaster of Trest, Phyrexian Arena, Sylvan Library, …
+- [ ] **Sub-PR 1/8 — `s19-dispatcher`**: `TriggeredAbility` type + `triggerHarvester` listener + LKI snapshot (CR 603.10)
+- [ ] **Sub-PR 2/8 — `s19-prompt`**: optional / modal trigger prompts via existing prompt frame
+- [ ] **Sub-PR 3/8 — `s19-etb-triggers`**: 5 ETB cards (Mulldrifter, Eternal Witness migration, Reclamation Sage, Acidic Slime, Solemn Simulacrum)
+- [ ] **Sub-PR 4/8 — `s19-dies-triggers`**: 4 dies-trigger cards (Solemn Simulacrum dies half, Skullclamp migration, +2)
+- [ ] **Sub-PR 5/8 — `s19-upkeep-triggers`**: 4 upkeep / step cards (Phyrexian Arena, Sylvan Library, Mana Crypt, +1)
+- [ ] **Sub-PR 6/8 — `s19-cast-triggers`**: 4 cast / opponent-draws cards (Smothering Tithe, Esper Sentinel, +2)
+- [ ] **Sub-PR 7/8 — `s19-combat-triggers`**: 4 combat-damage cards (Edric Spymaster of Trest, Bident of Thassa, +2)
+- [ ] **Sub-PR 8/8 — `s19-tests`**: APNAP-ordering, LKI-correctness, optional/modal coverage, fallback-to-manual coverage
 
 **Manual fallback preserved:** `announce_trigger` from S13.1 stays for unimplemented cards and "hidden info" triggers.
 

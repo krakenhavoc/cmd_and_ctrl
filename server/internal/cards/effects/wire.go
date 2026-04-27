@@ -116,6 +116,18 @@ func init() {
 		}
 		return spec.PrintedKeywords
 	}
+	// S19 sub-PR 1: triggered abilities. Same thin-lookup shape as
+	// Static / Replacements. The harvester (game.triggerHarvester)
+	// walks the battlefield on every emit and reads this hook per
+	// card. Lookup-miss / no-triggers returns nil so the harvester's
+	// inner loop continues without allocating.
+	game.CatalogTriggers = func(oracleID string) []game.TriggeredAbility {
+		spec, ok := Lookup(oracleID)
+		if !ok || len(spec.Triggered) == 0 {
+			return nil
+		}
+		return spec.Triggered
+	}
 }
 
 // selfOnly is the AppliesTo predicate for the synthesized
