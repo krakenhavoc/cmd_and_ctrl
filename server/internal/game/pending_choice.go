@@ -87,6 +87,20 @@ const (
 	// total = attacker power, and trample-only-if-trample. Added
 	// in S18 sub-PR 3.
 	PendingChoiceDamageAssignment PendingChoiceKind = "damage_assignment"
+
+	// PendingChoiceTriggerPrompt — CR 603.4 "you may" yes/no
+	// prompt queued by the S19 trigger harvester when a matching
+	// TriggeredAbility has a non-nil OptionalPrompt. The chooser is
+	// the source's controller (or an override defined on
+	// OptionalPrompt.Chooser). On resolve `{apply: true}` the
+	// stashed Build closure runs against the captured event + LKI
+	// and the resulting StackItem appends to PendingTriggers; on
+	// `{apply: false}` the trigger drops without effect.
+	//
+	// Modal-choice triggers ("draw a card OR gain 3 life") are NOT
+	// covered here — sub-PR 2 ships the optional yes/no path only.
+	// Added in S19 sub-PR 2.
+	PendingChoiceTriggerPrompt PendingChoiceKind = "trigger_prompt"
 )
 
 // PendingChoice is one outstanding "someone needs to pick" entry
@@ -156,6 +170,25 @@ type PendingChoice struct {
 	// trample-allowed flag. Wire-serialised via
 	// PendingChoiceView.DamageAssignment. Added in S18 sub-PR 3.
 	DamageAssignment *DamageAssignmentFrame
+
+	// triggerResume is the server-only continuation frame for a
+	// PendingChoiceTriggerPrompt entry: the captured event +
+	// source-card value copy + LKI characteristics + the Build
+	// closure to invoke on `apply: true`. Not serialised to the
+	// wire. Consumed by ResolveTriggerPrompt on submit. Added in
+	// S19 sub-PR 2.
+	triggerResume *triggerResumeFrame
+}
+
+// triggerResumeFrame stashes the per-trigger continuation data the
+// harvester captured at OptionalPrompt-queue time. The Build closure
+// fires on `apply: true` against the value-copy source + LKI; on
+// `apply: false` the frame is discarded. Added in S19 sub-PR 2.
+type triggerResumeFrame struct {
+	ev     Event
+	source Card
+	lki    Characteristic
+	build  func(ev Event, source *Card, sourceLKI Characteristic, g *Game) *StackItem
 }
 
 // DamageAssignmentFrame is the payload for a
@@ -969,6 +1002,113 @@ func (g *Game) ResolveDamageAssignment(
 	// substep / step advance.
 	g.runStateChecksLocked()
 	return nil
+}
+
+// queueTriggerPromptLocked queues a CR 603.4 yes/no prompt for an
+// optional triggered ability that just matched. Captures the event,
+// a value copy of the source, and the LKI snapshot — all of which
+// the resume path will pass back into the Build closure on `apply:
+// true`. The chooser is the source's controller, unless the
+// ability's OptionalPrompt overrides it for opponent-prompted
+// triggers.
+//
+// Caller must hold g.mu. Added in S19 sub-PR 2.
+func (g *Game) queueTriggerPromptLocked(
+	ev Event,
+	source Card,
+	lki Characteristic,
+	ability TriggeredAbility,
+) {
+	chooser := source.Controller
+	if ability.OptionalPrompt != nil && ability.OptionalPrompt.Chooser != nil {
+		if override := ability.OptionalPrompt.Chooser(ev, &source, g); override != uuid.Nil {
+			chooser = override
+		}
+	}
+	question := ""
+	if ability.OptionalPrompt != nil {
+		question = ability.OptionalPrompt.Question
+	}
+	g.QueueChoiceForEffect(PendingChoice{
+		Kind:    PendingChoiceTriggerPrompt,
+		Chooser: chooser,
+		Count:   1,
+		Source:  source.InstanceID,
+		Reason:  question,
+		triggerResume: &triggerResumeFrame{
+			ev:     ev,
+			source: source,
+			lki:    lki,
+			build:  ability.Build,
+		},
+	})
+}
+
+// ResolveTriggerPrompt processes the controller's yes/no answer for
+// a PendingChoiceTriggerPrompt entry. On `apply: true` the stashed
+// Build closure runs against the captured event + LKI; the resulting
+// StackItem (if non-nil) appends to PendingTriggers via the same
+// queueHarvestedTriggerLocked the mandatory path uses. On `apply:
+// false` the entry is dropped silently — the trigger is treated as
+// having never been declared.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+// Added in S19 sub-PR 2.
+func (g *Game) ResolveTriggerPrompt(choiceID, chooserID uuid.UUID, apply bool) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	idx := -1
+	for i, c := range g.PendingChoices {
+		if c != nil && c.ID == choiceID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ErrPendingChoiceNotFound
+	}
+	choice := g.PendingChoices[idx]
+	if choice.Kind != PendingChoiceTriggerPrompt {
+		return ErrInvalidParam
+	}
+	if choice.Chooser != chooserID {
+		return ErrNotTheChooser
+	}
+	frame := choice.triggerResume
+	g.dequeueChoiceLocked(idx)
+	if !apply || frame == nil || frame.build == nil {
+		return nil
+	}
+	source := frame.source
+	item := frame.build(frame.ev, &source, frame.lki, g)
+	if item == nil {
+		return nil
+	}
+	g.queueHarvestedTriggerLocked(item)
+	return nil
+}
+
+// PendingChoiceKindFor returns the kind of the queue entry with the
+// given ID, or empty + false when no such entry exists. Used by the
+// resolve_choice action dispatcher to route a yes/no payload to the
+// right resolve method (S17 PendingChoiceOptionalReplacement vs S19
+// PendingChoiceTriggerPrompt — both consume `{apply: bool}` so the
+// dispatcher can't disambiguate from the payload shape alone).
+//
+// Caller must NOT hold g.mu — takes the read lock. Added in S19
+// sub-PR 2.
+func (g *Game) PendingChoiceKindFor(choiceID uuid.UUID) (PendingChoiceKind, bool) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	for _, c := range g.PendingChoices {
+		if c != nil && c.ID == choiceID {
+			return c.Kind, true
+		}
+	}
+	return "", false
 }
 
 // findBattlefieldCard returns a pointer to the battlefield card

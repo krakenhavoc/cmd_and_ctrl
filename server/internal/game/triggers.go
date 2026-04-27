@@ -62,14 +62,44 @@ type TriggeredAbility struct {
 
 	// Build constructs the StackItem to append to PendingTriggers.
 	// Returning nil suppresses the trigger — used for optional
-	// triggers ("you may draw a card") where the controller declined,
-	// or modal triggers waiting on a TriggerPrompt response (sub-PR 2
-	// adds the prompt path; sub-PR 1 returns nil-or-StackItem
-	// directly).
+	// triggers when the controller declines (sub-PR 2 routes the
+	// declination through OptionalPrompt; mandatory Build callbacks
+	// rarely return nil).
 	//
 	// Runs under g.mu held in write mode. MUST NOT call public
 	// locking mutators.
 	Build func(ev Event, source *Card, sourceLKI Characteristic, g *Game) *StackItem
+
+	// OptionalPrompt is the declarative "you may" gate for CR 603.4
+	// optional triggers. When non-nil, the harvester does NOT call
+	// Build immediately on a matching event — it queues a
+	// PendingChoiceTriggerPrompt to the source's controller (or the
+	// override-chooser specified in OptionalPrompt). On
+	// resolve_choice with `apply: true`, Build runs against the
+	// captured event + LKI and queues the StackItem. On `apply:
+	// false`, the trigger drops without effect.
+	//
+	// Nil means mandatory — Build runs unconditionally. Modal-choice
+	// triggers ("draw a card OR gain 3 life") aren't represented
+	// here; they need a separate ModePrompt slot when the first
+	// modal catalog card ships. Added in S19 sub-PR 2.
+	OptionalPrompt *TriggerOptionalPrompt
+}
+
+// TriggerOptionalPrompt is the declarative payload for the "ask
+// before firing" gate. Question is rendered in the client prompt
+// dialog; Chooser optionally overrides the default chooser
+// (source.Controller) for opponent-prompted triggers.
+type TriggerOptionalPrompt struct {
+	// Question is the dialog header text. Empty falls back to the
+	// source card's name on the client.
+	Question string
+
+	// Chooser overrides the default chooser (source.Controller) for
+	// triggers that prompt someone other than the source's
+	// controller. Nil means "use source.Controller". Runs under
+	// g.mu — MUST NOT take public locks.
+	Chooser func(ev Event, source *Card, g *Game) uuid.UUID
 }
 
 // triggerHarvester is the process-lifetime listener that
@@ -135,6 +165,10 @@ func (g *Game) harvestFromZone(ev Event, z *Zone) {
 			if t.AppliesTo != nil && !t.AppliesTo(ev, card, lki, g) {
 				continue
 			}
+			if t.OptionalPrompt != nil {
+				g.queueTriggerPromptLocked(ev, *card, lki, t)
+				continue
+			}
 			if t.Build == nil {
 				continue
 			}
@@ -184,6 +218,10 @@ func (g *Game) harvestLTB(ev Event) {
 			continue
 		}
 		if t.AppliesTo != nil && !t.AppliesTo(ev, card, lki, g) {
+			continue
+		}
+		if t.OptionalPrompt != nil {
+			g.queueTriggerPromptLocked(ev, *card, lki, t)
 			continue
 		}
 		if t.Build == nil {
