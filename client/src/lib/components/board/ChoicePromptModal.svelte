@@ -157,9 +157,43 @@
   // (let the event proceed to graveyard/exile/hand/library).
   const isOptionalReplacement = $derived(active?.kind === "optional_replacement");
 
+  // S19 sub-PR 2 trigger-prompt branch — CR 603.4 "you may" prompt
+  // for an optional triggered ability. Same {choice_id, apply}
+  // payload as optional-replacement; the server routes to
+  // ResolveTriggerPrompt vs ResolveOptionalReplacement by inspecting
+  // the choice's kind.
+  const isTriggerPrompt = $derived(active?.kind === "trigger_prompt");
+
   function answerOptional(apply: boolean): void {
     if (!active || !viewerID) return;
     sendAction("resolve_choice", { choice_id: active.id, apply }, viewerID);
+  }
+
+  // sourceCardName resolves the source-card display name for a
+  // trigger prompt. Walks battlefield + every seated player's
+  // graveyard + the shared exile zone — LTB triggers prompt after
+  // the source has already moved off the battlefield, so the
+  // lookup has to span destination zones. Falls back to a generic
+  // string when the card isn't visible to the viewer (redacted
+  // CardView entries arrive with empty names).
+  function triggerSourceName(sourceID?: string): string {
+    if (!sourceID) return "Triggered ability";
+    const seek = (cards: CardView[] | undefined) => {
+      if (!cards) return undefined;
+      for (const c of cards) {
+        if (c.instance_id === sourceID && c.name) return c.name;
+      }
+      return undefined;
+    };
+    const fromBF = seek(snap.battlefield?.cards);
+    if (fromBF) return fromBF;
+    const fromExile = seek(snap.exile?.cards);
+    if (fromExile) return fromExile;
+    for (const p of snap.seats ?? []) {
+      const fromGY = seek(p.graveyard?.cards);
+      if (fromGY) return fromGY;
+    }
+    return "Triggered ability";
   }
 
   // S18 damage_assignment branch — CR 510.1c multi-blocker combat
@@ -278,6 +312,17 @@
         <p class="hint">
           CR 614.10 optional replacement — you (the affected player) decide whether this
           substitution applies.
+        </p>
+        <div class="yes-no-row">
+          <button type="button" class="submit" onclick={() => answerOptional(true)}> Yes </button>
+          <button type="button" class="decline" onclick={() => answerOptional(false)}> No </button>
+        </div>
+      {:else if isTriggerPrompt}
+        <h2 id="choice-title">
+          {active.reason || `${triggerSourceName(active.source)} triggered`}
+        </h2>
+        <p class="hint">
+          CR 603.4 optional trigger — fire the ability, or let it pass without effect.
         </p>
         <div class="yes-no-row">
           <button type="button" class="submit" onclick={() => answerOptional(true)}> Yes </button>
