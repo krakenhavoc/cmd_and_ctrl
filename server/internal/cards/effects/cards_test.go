@@ -870,10 +870,14 @@ func TestRegrowthReturnsTopOfGraveyard(t *testing.T) {
 	}
 }
 
-// TestEternalWitnessETBReturnsTopGraveyard exercises the OnETB
-// direct-call hook by casting E-Witness as a spell (it resolves,
-// enters the battlefield, and the ETB fires inline during the
-// resolve mutation).
+// TestEternalWitnessETBReturnsTopGraveyard casts E-Witness, resolves
+// it, accepts the S19 OptionalPrompt (CR 603.4 "you may"), and
+// expects the top-of-graveyard sandbox auto-pick to land in hand.
+//
+// S14 ran the OnETB hook inline during the resolve mutation; S19
+// sub-PR 3 routes the same auto-pick through the listener path with
+// a yes/no prompt for the controller. The test now answers yes via
+// resolve_choice.
 func TestEternalWitnessETBReturnsTopGraveyard(t *testing.T) {
 	g := newCatalogGame(t)
 	caster := g.Seats[0]
@@ -885,15 +889,16 @@ func TestEternalWitnessETBReturnsTopGraveyard(t *testing.T) {
 		nil,
 	)
 	passPriorityAroundTable(t, g)
+	answerLatestTriggerPrompt(t, g, caster.ID, true)
 
 	if !caster.Hand.Contains(top) {
 		t.Errorf("E-Witness ETB did not return top-of-graveyard card")
 	}
 }
 
-// TestSolemnSimulacrumETBFetchesBasic casts the Golem and checks
-// that the ETB-driven land search found a Forest in the library
-// and moved it to the battlefield.
+// TestSolemnSimulacrumETBFetchesBasic casts the Golem, resolves it,
+// accepts the S19 OptionalPrompt, and expects the Forest auto-pick
+// to land tapped on the battlefield.
 func TestSolemnSimulacrumETBFetchesBasic(t *testing.T) {
 	g := newCatalogGame(t)
 	caster := g.Seats[0]
@@ -906,9 +911,159 @@ func TestSolemnSimulacrumETBFetchesBasic(t *testing.T) {
 		nil,
 	)
 	passPriorityAroundTable(t, g)
+	answerLatestTriggerPrompt(t, g, caster.ID, true)
 
 	if !g.Battlefield.Contains(forestID) {
 		t.Errorf("fetched Forest not on battlefield")
+	}
+}
+
+// answerLatestTriggerPrompt finds the most-recently-queued
+// PendingChoiceTriggerPrompt addressed to chooserID and submits the
+// given apply answer. Fails the test loudly when no such prompt is
+// pending — a missing prompt usually means the harvester didn't
+// fire (oracle ID typo, AppliesTo predicate wrong, or the trigger
+// declared without an OptionalPrompt). Added in S19 sub-PR 3.
+func answerLatestTriggerPrompt(t *testing.T, g *game.Game, chooserID uuid.UUID, apply bool) {
+	t.Helper()
+	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
+		c := g.PendingChoices[i]
+		if c == nil || c.Kind != game.PendingChoiceTriggerPrompt {
+			continue
+		}
+		if c.Chooser != chooserID {
+			continue
+		}
+		if err := g.ResolveTriggerPrompt(c.ID, chooserID, apply); err != nil {
+			t.Fatalf("ResolveTriggerPrompt: %v", err)
+		}
+		return
+	}
+	t.Fatalf("no PendingChoiceTriggerPrompt addressed to %s", chooserID)
+}
+
+// --- S19 sub-PR 3: ETB-trigger cards ---------------------------
+
+// TestMulldrifterETBDrawsTwo casts Mulldrifter and expects the
+// mandatory ETB trigger to draw 2 cards on resolve. No prompt
+// (mandatory trigger), so passPriorityAroundTable settles the
+// effect inline via the harvester.
+func TestMulldrifterETBDrawsTwo(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	handBefore := caster.Hand.Size()
+
+	castCatalogSpell(t, g, "Mulldrifter", "Creature — Elemental",
+		"8e7e5fb5-bb6f-4cad-bf03-c37bf5933dee",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+
+	if got := caster.Hand.Size() - handBefore; got != 2 {
+		t.Errorf("hand delta after Mulldrifter ETB: got %d, want 2", got)
+	}
+	// Mandatory trigger leaves no prompt behind.
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceTriggerPrompt {
+			t.Errorf("unexpected trigger prompt for mandatory Mulldrifter ETB")
+		}
+	}
+}
+
+// TestReclamationSageETBDestroysOpponentArtifact pre-seeds an
+// opponent-controlled artifact, casts Reclamation Sage, accepts the
+// optional ETB prompt, and verifies the auto-pick destroyed the
+// artifact.
+func TestReclamationSageETBDestroysOpponentArtifact(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	opp := g.Seats[1]
+
+	artifactID := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: artifactID,
+		Name:       "Test Sword",
+		TypeLine:   "Artifact",
+		Owner:      opp.ID,
+		Controller: opp.ID,
+	})
+
+	castCatalogSpell(t, g, "Reclamation Sage", "Creature — Elf Shaman",
+		"06aff70d-8d56-4af1-bd5b-ad12e3380344",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+	answerLatestTriggerPrompt(t, g, caster.ID, true)
+
+	if g.Battlefield.Contains(artifactID) {
+		t.Errorf("Reclamation Sage ETB did not destroy the opponent's artifact")
+	}
+	if !opp.Graveyard.Contains(artifactID) {
+		t.Errorf("destroyed artifact did not land in opponent's graveyard")
+	}
+}
+
+// TestReclamationSageETBDeclineSparesTarget exercises the optional
+// path: caster declines the prompt → effect does not fire → the
+// opponent's artifact stays on the battlefield.
+func TestReclamationSageETBDeclineSparesTarget(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	opp := g.Seats[1]
+
+	artifactID := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: artifactID,
+		Name:       "Test Sword",
+		TypeLine:   "Artifact",
+		Owner:      opp.ID,
+		Controller: opp.ID,
+	})
+
+	castCatalogSpell(t, g, "Reclamation Sage", "Creature — Elf Shaman",
+		"06aff70d-8d56-4af1-bd5b-ad12e3380344",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+	answerLatestTriggerPrompt(t, g, caster.ID, false)
+
+	if !g.Battlefield.Contains(artifactID) {
+		t.Errorf("declined Reclamation Sage prompt still destroyed the artifact")
+	}
+}
+
+// TestAcidicSlimeETBDestroysOpponentLand seeds an opponent's land,
+// casts Acidic Slime, and expects the mandatory ETB to destroy it
+// without prompting (no "you may" gate on Acidic Slime).
+func TestAcidicSlimeETBDestroysOpponentLand(t *testing.T) {
+	g := newCatalogGame(t)
+	opp := g.Seats[1]
+
+	landID := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: landID,
+		Name:       "Mountain",
+		TypeLine:   "Basic Land — Mountain",
+		Owner:      opp.ID,
+		Controller: opp.ID,
+	})
+
+	castCatalogSpell(t, g, "Acidic Slime", "Creature — Ooze",
+		"ff34ad03-9d5d-46a3-b00d-c6f6e92e3d4c",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+
+	if g.Battlefield.Contains(landID) {
+		t.Errorf("Acidic Slime ETB did not destroy the opponent's land")
+	}
+	if !opp.Graveyard.Contains(landID) {
+		t.Errorf("destroyed land did not land in opponent's graveyard")
+	}
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceTriggerPrompt {
+			t.Errorf("Acidic Slime is mandatory — no trigger prompt should queue")
+		}
 	}
 }
 
