@@ -20,7 +20,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // engine-completeness sweep.
 func init() {
 	Register(Spec{
-		OracleID:        "8e7e5fb5-bb6f-4cad-bf03-c37bf5933dee",
+		OracleID:        "24d0f5e7-0d9e-4b76-900e-a7274e80312d",
 		Name:            "Mulldrifter",
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{{
