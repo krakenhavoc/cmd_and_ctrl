@@ -8,8 +8,8 @@ import (
 
 // Reclamation Sage — 2/1 Elf Shaman for {2}{G}:
 //
-//   "When Reclamation Sage enters the battlefield, you may destroy
-//   target artifact or enchantment."
+//	"When Reclamation Sage enters the battlefield, you may destroy
+//	target artifact or enchantment."
 //
 // S19 sub-PR 3:
 //   - OptionalPrompt drives the "you may" gate. Controller picks

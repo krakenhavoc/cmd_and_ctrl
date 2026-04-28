@@ -4,9 +4,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Mulldrifter — 2/2 Elemental for {4}{U}:
 //
-//   "Flying. When Mulldrifter enters the battlefield, draw two cards.
-//   Evoke {2}{U} (You may cast this spell for its evoke cost. If you
-//   do, it's sacrificed when it enters the battlefield.)"
+//	"Flying. When Mulldrifter enters the battlefield, draw two cards.
+//	Evoke {2}{U} (You may cast this spell for its evoke cost. If you
+//	do, it's sacrificed when it enters the battlefield.)"
 //
 // S19 sub-PR 3 ships the ETB-draw half via the Triggered slot —
 // mandatory, no target, no opponent prompt. Evoke is an alt-cast
