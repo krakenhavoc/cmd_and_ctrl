@@ -4,8 +4,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Eternal Witness — 2/1 Human Shaman for {1}{G}{G}:
 //
-//   "When Eternal Witness enters the battlefield, you may return
-//   target card from your graveyard to your hand."
+//	"When Eternal Witness enters the battlefield, you may return
+//	target card from your graveyard to your hand."
 //
 // S19 sub-PR 3 migrates the S14 OnETB direct-call to the
 // Triggered slot. Behavior parity:
