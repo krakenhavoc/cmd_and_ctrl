@@ -504,8 +504,10 @@ func TestPendingChoiceKindForTriggerPrompt(t *testing.T) {
 			return nil
 		}
 		return []TriggeredAbility{{
-			Watches:        []EventKind{EventETB},
-			Build:          func(_ Event, src *Card, _ Characteristic, _ *Game) *StackItem { return &StackItem{SourceCardID: src.InstanceID} },
+			Watches: []EventKind{EventETB},
+			Build: func(_ Event, src *Card, _ Characteristic, _ *Game) *StackItem {
+				return &StackItem{SourceCardID: src.InstanceID}
+			},
 			OptionalPrompt: &TriggerOptionalPrompt{Question: "Pick me"},
 		}}
 	})
