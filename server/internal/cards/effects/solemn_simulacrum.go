@@ -5,10 +5,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Solemn Simulacrum ("Sad Robot") — 2/2 Artifact Creature — Golem
 // for {4}:
 //
-//   "When Solemn Simulacrum enters the battlefield, you may search
-//   your library for a basic land card, put that card onto the
-//   battlefield tapped, then shuffle.
-//   When Solemn Simulacrum dies, you may draw a card."
+//	"When Solemn Simulacrum enters the battlefield, you may search
+//	your library for a basic land card, put that card onto the
+//	battlefield tapped, then shuffle.
+//	When Solemn Simulacrum dies, you may draw a card."
 //
 // S19 sub-PR 3 migrates the ETB half from S14's OnETB direct-call
 // to the Triggered slot. The dies-trigger ships in sub-PR 4

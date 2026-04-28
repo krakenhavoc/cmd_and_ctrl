@@ -8,8 +8,8 @@ import (
 
 // Acidic Slime — 2/2 Ooze for {3}{G}{G}:
 //
-//   "Deathtouch. When Acidic Slime enters the battlefield, destroy
-//   target artifact, enchantment, or land."
+//	"Deathtouch. When Acidic Slime enters the battlefield, destroy
+//	target artifact, enchantment, or land."
 //
 // S19 sub-PR 3:
 //   - Mandatory ETB trigger (no "you may"). Build always runs.
