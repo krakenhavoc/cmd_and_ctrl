@@ -954,7 +954,7 @@ func TestMulldrifterETBDrawsTwo(t *testing.T) {
 	handBefore := caster.Hand.Size()
 
 	castCatalogSpell(t, g, "Mulldrifter", "Creature — Elemental",
-		"8e7e5fb5-bb6f-4cad-bf03-c37bf5933dee",
+		"24d0f5e7-0d9e-4b76-900e-a7274e80312d",
 		nil,
 	)
 	passPriorityAroundTable(t, g)
@@ -989,7 +989,7 @@ func TestReclamationSageETBDestroysOpponentArtifact(t *testing.T) {
 	})
 
 	castCatalogSpell(t, g, "Reclamation Sage", "Creature — Elf Shaman",
-		"06aff70d-8d56-4af1-bd5b-ad12e3380344",
+		"032ec6e2-6cc3-4a97-9cc7-3233f5e11904",
 		nil,
 	)
 	passPriorityAroundTable(t, g)
@@ -1021,7 +1021,7 @@ func TestReclamationSageETBDeclineSparesTarget(t *testing.T) {
 	})
 
 	castCatalogSpell(t, g, "Reclamation Sage", "Creature — Elf Shaman",
-		"06aff70d-8d56-4af1-bd5b-ad12e3380344",
+		"032ec6e2-6cc3-4a97-9cc7-3233f5e11904",
 		nil,
 	)
 	passPriorityAroundTable(t, g)
@@ -1049,7 +1049,7 @@ func TestAcidicSlimeETBDestroysOpponentLand(t *testing.T) {
 	})
 
 	castCatalogSpell(t, g, "Acidic Slime", "Creature — Ooze",
-		"ff34ad03-9d5d-46a3-b00d-c6f6e92e3d4c",
+		"21f45043-5419-4019-8b6c-e5294bd5f549",
 		nil,
 	)
 	passPriorityAroundTable(t, g)
