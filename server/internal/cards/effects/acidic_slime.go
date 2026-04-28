@@ -20,7 +20,7 @@ import (
 //   - If no legal target exists, the trigger no-ops silently.
 func init() {
 	Register(Spec{
-		OracleID:        "ff34ad03-9d5d-46a3-b00d-c6f6e92e3d4c",
+		OracleID:        "21f45043-5419-4019-8b6c-e5294bd5f549",
 		Name:            "Acidic Slime",
 		PrintedKeywords: []string{"deathtouch"},
 		Triggered: []game.TriggeredAbility{{

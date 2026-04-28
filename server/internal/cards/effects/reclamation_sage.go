@@ -22,7 +22,7 @@ import (
 //     yes-branch silently no-ops.
 func init() {
 	Register(Spec{
-		OracleID: "06aff70d-8d56-4af1-bd5b-ad12e3380344",
+		OracleID: "032ec6e2-6cc3-4a97-9cc7-3233f5e11904",
 		Name:     "Reclamation Sage",
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
