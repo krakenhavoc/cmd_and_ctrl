@@ -177,6 +177,29 @@ type Spec struct {
 	// Empty / nil for cards with no printed combat keywords (the
 	// S17 majority). Added in S18 sub-PR 2.
 	PrintedKeywords []string
+
+	// Triggered is the list of CR 603 triggered abilities the card
+	// declares for the S19 auto-fire dispatcher. Each entry watches a
+	// set of EventKinds, predicates whether a specific event triggers
+	// the source, and builds the StackItem to enqueue onto
+	// g.PendingTriggers — same queue the manual S13.1
+	// AnnounceTrigger feeds. The harvester (game.triggerHarvester)
+	// walks the battlefield + LKI map on every event emit and runs
+	// each declared TriggeredAbility's Watches → AppliesTo → Build
+	// pipeline.
+	//
+	// Empty / nil for cards with no auto-fire triggers (the S18
+	// majority). Sub-PR 1 ships the dispatcher framework with zero
+	// catalog declarations — sub-PRs 3-7 fill in cards. Manual
+	// AnnounceTrigger remains for non-catalog cards and "hidden info"
+	// triggers (cards in hand with cast-replacement triggers).
+	//
+	// Reaches directly into `game.TriggeredAbility` rather than a
+	// per-package adapter type — same rationale as Static and
+	// Replacements.
+	//
+	// Added in S19 sub-PR 1.
+	Triggered []game.TriggeredAbility
 }
 
 // ManaAbility is one mana-producing activated ability on a permanent.

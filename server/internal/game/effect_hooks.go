@@ -123,6 +123,20 @@ var CatalogReplacements func(oracleID string) []ReplacementEffect
 // return false for every card. Added in S18 sub-PR 2.
 var CatalogPrintedKeywords func(oracleID string) []string
 
+// CatalogTriggers returns the registered triggered abilities for the
+// given oracle ID (one entry per `effects.Spec.Triggered` element),
+// or nil when no catalog entry exists / the entry has no triggers.
+// The cards/effects package populates this hook at init time
+// alongside the other catalog hooks. Nil hook ⇒ no card has an
+// auto-fire trigger ⇒ the S19 harvester returns immediately on
+// every event (the layerVersionBump path keeps running normally).
+//
+// Used by triggerHarvester.OnEvent in triggers.go on every event
+// emit. Per-event walk is linear in battlefield size; the hook is
+// the inner-loop oracle lookup that happens per card. Added in S19
+// sub-PR 1.
+var CatalogTriggers func(oracleID string) []TriggeredAbility
+
 // fireEffectResolverLocked invokes the registered EffectResolver
 // if non-nil, emits EventEffectError on failure, and swallows the
 // error so the resolution path keeps moving. Caller must hold g.mu.

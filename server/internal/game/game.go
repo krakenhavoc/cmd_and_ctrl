@@ -182,10 +182,20 @@ type Game struct {
 	// Listeners is the per-game event subscriber list. Populated by
 	// RegisterListener; walked by notifyListenersLocked under the
 	// write lock. S14 ships the registry infrastructure with zero
-	// production listeners — S19 registers the first real one.
-	// Shallow-copied on Clone / RestoreFrom (listeners are process-
-	// lifetime singletons). Added in S14 sub-PR 1.
+	// production listeners; S16 added layerVersionBump; S19 sub-PR 1
+	// adds triggerHarvester (the auto-fire dispatcher). Shallow-
+	// copied on Clone / RestoreFrom (listeners are process-lifetime
+	// singletons). Added in S14 sub-PR 1.
 	Listeners []Listener
+
+	// lastKnownBattlefield holds CR 603.10 last-known-information
+	// snapshots for cards leaving the battlefield. Populated by
+	// snapshotLKILocked just before each battlefield-exit MoveCard;
+	// read + cleared by the S19 trigger harvester when EventLTB
+	// fires. Empty in steady state — entries live for the duration
+	// of one mutation that emits LTB. See triggers.go. Added in S19
+	// sub-PR 1.
+	lastKnownBattlefield map[uuid.UUID]Characteristic
 
 	// rng is captured from Start so that subsequent mutations that
 	// shuffle (Mulligan, ShuffleLibrary) use the same source of
@@ -282,6 +292,11 @@ func NewGame() *Game {
 	// abilities are active (battlefield zone moves) or what they
 	// apply to (counter changes). See layer_listener.go.
 	g.Listeners = append(g.Listeners, layerVersionBump{})
+	// S19 sub-PR 1: install the auto-fire trigger dispatcher. Walks
+	// the battlefield (and the LKI map for LTB events) on every
+	// emit, queues matching catalog-declared TriggeredAbility
+	// entries onto PendingTriggers. See triggers.go.
+	g.Listeners = append(g.Listeners, triggerHarvester{})
 	// S17 sub-PR 2: install the CR 903.9 commander-zone built-in
 	// replacement. Refactored from S13.1's inline
 	// applyCommanderZoneReplacementLocked. See

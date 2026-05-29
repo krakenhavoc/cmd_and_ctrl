@@ -1664,6 +1664,7 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	default:
 		return ErrZoneNotFound
 	}
+	g.snapshotLKILocked(cardID)
 	if _, err := MoveCard(g.Battlefield, destZone, cardID); err != nil {
 		return err
 	}
@@ -2101,6 +2102,9 @@ func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCom
 			return ErrCardNotFound
 		}
 		return nil
+	}
+	if srcZone.Kind == ZoneBattlefield {
+		g.snapshotLKILocked(cardID)
 	}
 	if _, err := MoveCard(srcZone, dstZone, cardID); err != nil {
 		return err
