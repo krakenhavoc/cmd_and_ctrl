@@ -41,6 +41,12 @@ func init() {
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Eternal Witness — return top of graveyard to hand?",
 			},
+			// Warn the chooser when the graveyard is empty — "Yes"
+			// would pass without effect otherwise.
+			HasLegalTarget: func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				controller := g.PlayerByIDForEffect(source.Controller)
+				return controller != nil && controller.Graveyard.Size() > 0
+			},
 		}},
 	})
 }
