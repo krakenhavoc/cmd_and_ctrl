@@ -604,6 +604,22 @@ func (g *Game) runStepEntryHooksLocked() {
 	// triggers the clear. Cheap to call on already-empty pools.
 	g.emptyAllManaPoolsLocked()
 	switch g.Turn.Step {
+	case StepUpkeep:
+		// S19 sub-PR 5: announce the upkeep so "at the beginning of
+		// your upkeep" triggers auto-fire through the harvester.
+		// Upkeep grants priority, so no auto-advance — just emit and
+		// fall through. Mulligans keep the cursor parked at Untap, so
+		// this is normally unreachable while they're open; guard
+		// anyway.
+		if g.MulligansOpen {
+			return
+		}
+		if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
+			g.EmitEvent(Event{
+				Kind:  EventBeginUpkeep,
+				Actor: g.Seats[g.Turn.ActiveSeat].ID,
+			})
+		}
 	case StepUntap:
 		// Mulligans still open → hold the cursor at Untap until
 		// KeepHand closes the window. KeepHand re-runs this hook.

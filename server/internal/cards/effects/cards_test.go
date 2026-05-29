@@ -1598,3 +1598,139 @@ func TestFiligreeFamiliarBounceDoesNotDraw(t *testing.T) {
 			libBefore, caster.Library.Size())
 	}
 }
+
+// --- S19 sub-PR 5: upkeep triggers (begin_upkeep) --------------
+
+// pushPermanentForTest seeds a non-creature catalog permanent (an
+// enchantment, here) onto the battlefield with its real OracleID so
+// the harvester can match its upkeep trigger.
+func pushPermanentForTest(g *game.Game, owner uuid.UUID, name, oracleID, typeLine string) uuid.UUID {
+	id := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: id,
+		Name:       name,
+		OracleID:   oracleID,
+		TypeLine:   typeLine,
+		Owner:      owner,
+		Controller: owner,
+	})
+	return id
+}
+
+// advanceToUpkeepOf walks the turn engine forward until the given
+// seat is the active player at its upkeep step — the point at which
+// EventBeginUpkeep fires and "your upkeep" triggers resolve. Fatals
+// if the cursor never lands there within a turn-cycle bound.
+func advanceToUpkeepOf(t *testing.T, g *game.Game, seat int) {
+	t.Helper()
+	for i := 0; i < 300; i++ {
+		if g.Turn.Step == game.StepUpkeep && g.Turn.ActiveSeat == seat {
+			return
+		}
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep toward upkeep of seat %d: %v", seat, err)
+		}
+	}
+	t.Fatalf("never reached upkeep of seat %d", seat)
+}
+
+// TestPhyrexianArenaUpkeepLosesLifeDraws verifies the mandatory
+// "your upkeep" trigger fires when its controller's upkeep begins.
+func TestPhyrexianArenaUpkeepLosesLifeDraws(t *testing.T) {
+	g := newCatalogGame(t)
+	owner := g.Seats[1]
+	pushPermanentForTest(g, owner.ID, "Phyrexian Arena",
+		"ee579a32-a048-4335-b966-231ba731cdea", "Enchantment")
+	lifeBefore := owner.Life
+	handBefore := owner.Hand.Size()
+
+	advanceToUpkeepOf(t, g, 1)
+
+	if owner.Life != lifeBefore-1 {
+		t.Errorf("Phyrexian Arena upkeep: life %d -> %d, want -1", lifeBefore, owner.Life)
+	}
+	if owner.Hand.Size() != handBefore+1 {
+		t.Errorf("Phyrexian Arena upkeep: hand delta %d, want +1", owner.Hand.Size()-handBefore)
+	}
+}
+
+// TestBitterblossomUpkeepLosesLifeMakesFaerie checks the life cost
+// plus the Faerie Rogue token.
+func TestBitterblossomUpkeepLosesLifeMakesFaerie(t *testing.T) {
+	g := newCatalogGame(t)
+	owner := g.Seats[1]
+	pushPermanentForTest(g, owner.ID, "Bitterblossom",
+		"fb868840-09fa-49b1-85cb-b08ad065e972", "Kindred Enchantment — Faerie")
+	lifeBefore := owner.Life
+
+	advanceToUpkeepOf(t, g, 1)
+
+	if owner.Life != lifeBefore-1 {
+		t.Errorf("Bitterblossom upkeep: life %d -> %d, want -1", lifeBefore, owner.Life)
+	}
+	faeries := 0
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Faerie Rogue" && c.Controller == owner.ID {
+			faeries++
+		}
+	}
+	if faeries != 1 {
+		t.Errorf("Bitterblossom upkeep: got %d Faerie tokens, want 1", faeries)
+	}
+}
+
+// TestSulfuricVortexUpkeepDamagesController checks the 2-damage
+// upkeep trigger.
+func TestSulfuricVortexUpkeepDamagesController(t *testing.T) {
+	g := newCatalogGame(t)
+	owner := g.Seats[1]
+	pushPermanentForTest(g, owner.ID, "Sulfuric Vortex",
+		"7652f328-e142-494b-a869-772ced10c26a", "Enchantment")
+	lifeBefore := owner.Life
+
+	advanceToUpkeepOf(t, g, 1)
+
+	if owner.Life != lifeBefore-2 {
+		t.Errorf("Sulfuric Vortex upkeep: life %d -> %d, want -2", lifeBefore, owner.Life)
+	}
+}
+
+// TestAwakeningZoneUpkeepMakesSpawn checks the token-only upkeep
+// trigger.
+func TestAwakeningZoneUpkeepMakesSpawn(t *testing.T) {
+	g := newCatalogGame(t)
+	owner := g.Seats[1]
+	pushPermanentForTest(g, owner.ID, "Awakening Zone",
+		"f955bc96-d602-4142-a9a2-87009cc7028c", "Enchantment")
+
+	advanceToUpkeepOf(t, g, 1)
+
+	spawns := 0
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Eldrazi Spawn" && c.Controller == owner.ID {
+			spawns++
+		}
+	}
+	if spawns != 1 {
+		t.Errorf("Awakening Zone upkeep: got %d Eldrazi Spawn tokens, want 1", spawns)
+	}
+}
+
+// TestUpkeepTriggerGatedToControllersUpkeep is the gating
+// regression: a Phyrexian Arena controlled by seat 2 must NOT fire
+// on seat 1's upkeep (seat 1's upkeep is reached before seat 2's
+// turn, so seat 2's life should be untouched).
+func TestUpkeepTriggerGatedToControllersUpkeep(t *testing.T) {
+	g := newCatalogGame(t)
+	other := g.Seats[2]
+	pushPermanentForTest(g, other.ID, "Phyrexian Arena",
+		"ee579a32-a048-4335-b966-231ba731cdea", "Enchantment")
+	lifeBefore := other.Life
+
+	advanceToUpkeepOf(t, g, 1)
+
+	if other.Life != lifeBefore {
+		t.Errorf("seat 2's Phyrexian Arena fired on seat 1's upkeep (life %d -> %d) — not gated to its own upkeep",
+			lifeBefore, other.Life)
+	}
+}

@@ -53,6 +53,32 @@ func SpiritToken() game.Card {
 	}
 }
 
+// FaerieRogueToken returns a template for Bitterblossom's 1/1 black
+// Faerie Rogue token with flying. Flying is cosmetic (token keywords
+// aren't mechanically enforced yet). Added in S19 sub-PR 5.
+func FaerieRogueToken() game.Card {
+	return game.Card{
+		Name:      "Faerie Rogue",
+		TypeLine:  "Token Creature — Faerie Rogue",
+		Power:     1,
+		Toughness: 1,
+	}
+}
+
+// EldraziSpawnToken returns a template for Awakening Zone's 0/1
+// colorless Eldrazi Spawn token. The real token has "Sacrifice this
+// creature: Add {C}", an activated mana ability deferred to the
+// cost-model follow-ups; here it's a vanilla 0/1. Added in S19
+// sub-PR 5.
+func EldraziSpawnToken() game.Card {
+	return game.Card{
+		Name:      "Eldrazi Spawn",
+		TypeLine:  "Token Creature — Eldrazi Spawn",
+		Power:     0,
+		Toughness: 1,
+	}
+}
+
 // PhyrexianWurmToken returns a template for Wurmcoil Engine's 3/3
 // colorless Phyrexian Wurm tokens. The real card makes two distinct
 // tokens — one with deathtouch, one with lifelink — but token
