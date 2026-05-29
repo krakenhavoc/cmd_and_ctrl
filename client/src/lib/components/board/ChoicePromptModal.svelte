@@ -164,6 +164,13 @@
   // the choice's kind.
   const isTriggerPrompt = $derived(active?.kind === "trigger_prompt");
 
+  // S19 follow-up: the server flags optional triggers whose effect
+  // has no legal target (Reclamation Sage with no opponent artifact,
+  // Eternal Witness with an empty graveyard). Until the S20 target
+  // picker lands, the auto-targeter silently no-ops in that case —
+  // which reads as a bug. Warn the chooser and relabel "Yes".
+  const noLegalTarget = $derived(active?.no_legal_target === true);
+
   function answerOptional(apply: boolean): void {
     if (!active || !viewerID) return;
     sendAction("resolve_choice", { choice_id: active.id, apply }, viewerID);
@@ -321,11 +328,20 @@
         <h2 id="choice-title">
           {active.reason || `${triggerSourceName(active.source)} triggered`}
         </h2>
-        <p class="hint">
-          CR 603.4 optional trigger — fire the ability, or let it pass without effect.
-        </p>
+        {#if noLegalTarget}
+          <p class="hint warn">
+            No legal target — answering “Yes” will pass without effect. (Target selection
+            arrives in a later update.)
+          </p>
+        {:else}
+          <p class="hint">
+            CR 603.4 optional trigger — fire the ability, or let it pass without effect.
+          </p>
+        {/if}
         <div class="yes-no-row">
-          <button type="button" class="submit" onclick={() => answerOptional(true)}> Yes </button>
+          <button type="button" class="submit" onclick={() => answerOptional(true)}>
+            {noLegalTarget ? "Yes (no effect)" : "Yes"}
+          </button>
           <button type="button" class="decline" onclick={() => answerOptional(false)}> No </button>
         </div>
       {:else if isDamageAssignment && damageFrame}
@@ -552,6 +568,9 @@
   .hint strong {
     color: var(--fg);
     font-weight: 600;
+  }
+  .hint.warn {
+    color: #e0b341;
   }
   .card-grid {
     display: grid;

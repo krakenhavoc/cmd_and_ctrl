@@ -176,6 +176,12 @@ export interface PendingChoiceView {
   // is set) and submits resolve_choice with
   // { assignments: [{blocker_id, amount}, ...], trample_to_player }.
   damage_assignment?: DamageAssignmentView;
+  // S19 follow-up: populated for kind "trigger_prompt" — true when
+  // the optional trigger has no legal target and answering "Yes"
+  // will pass without effect (Reclamation Sage with no opponent
+  // artifact, Eternal Witness with an empty graveyard, etc.). The
+  // modal warns the chooser. Absent/false otherwise.
+  no_legal_target?: boolean;
 }
 
 // ReplacementOptionView mirrors protocol.ReplacementOptionView —

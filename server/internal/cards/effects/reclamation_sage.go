@@ -41,6 +41,13 @@ func init() {
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Reclamation Sage — destroy target artifact or enchantment?",
 			},
+			// Warn the chooser when there's no opponent artifact /
+			// enchantment to hit — the sandbox auto-picker only targets
+			// opponents (S20 ships the real picker), so "Yes" would
+			// silently no-op without this hint.
+			HasLegalTarget: func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return pickFirstOpponentNonland(g, source.Controller, true, true, false) != uuid.Nil
+			},
 		}},
 	})
 }

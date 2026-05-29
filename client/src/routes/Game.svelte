@@ -109,6 +109,12 @@
   $effect(() => {
     if (!viewerHasPriority) return;
     if (mulligansOpen || gameEnded || viewerEliminated) return;
+    // Never auto-pass priority while the viewer has an open choice to
+    // make (e.g. an optional trigger's yes/no prompt). The choice
+    // persists server-side regardless, but auto-passing here would
+    // race the modal and let priority slip away before the player
+    // answers. The chooser must resolve their pending choice first.
+    if (view?.pending_choices?.some((c) => c.chooser === viewerID)) return;
     const step = view?.turn?.step;
     if (!step) return;
 

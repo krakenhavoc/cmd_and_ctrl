@@ -84,6 +84,23 @@ type TriggeredAbility struct {
 	// here; they need a separate ModePrompt slot when the first
 	// modal catalog card ships. Added in S19 sub-PR 2.
 	OptionalPrompt *TriggerOptionalPrompt
+
+	// HasLegalTarget reports whether the trigger has a legal
+	// target / will actually do something at fire time. Optional —
+	// nil means "assume the effect always has an effect" (e.g.
+	// Mulldrifter's unconditional draw). When set, the harvester
+	// evaluates it at OptionalPrompt-queue time and stamps the
+	// result onto the PendingChoice (NoLegalTarget). The client uses
+	// this to warn the chooser that answering "Yes" will pass without
+	// effect — the S19 sandbox auto-targeter (pickFirstOpponent*)
+	// only ever picks opponent-controlled permanents and there is no
+	// target-selection UI until S20, so a "Yes" with no legal target
+	// silently no-ops, which reads as a bug. Surfacing the warning
+	// removes that confusion until the S20 picker lands.
+	//
+	// Runs under g.mu held in write mode. MUST NOT call public
+	// locking mutators. Added in S19 follow-up.
+	HasLegalTarget func(ev Event, source *Card, sourceLKI Characteristic, g *Game) bool
 }
 
 // TriggerOptionalPrompt is the declarative payload for the "ask
