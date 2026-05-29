@@ -2,6 +2,18 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
+// cardDied reports whether an EventLTB marks `source` going to the
+// graveyard from the battlefield — i.e. it "died" (CR 700.4) — as
+// opposed to being exiled, bounced, or tucked into the library.
+// Dies-triggers gate their AppliesTo on this: a plain EventLTB fires
+// for every battlefield exit, so matching on the event kind alone
+// would mis-fire a "when ~ dies" ability on a bounce or a Path to
+// Exile. The harvester stamps EventLTB.NewZone at every exit site.
+// Added in S19 sub-PR 4.
+func cardDied(ev game.Event, source *game.Card) bool {
+	return ev.CardID == source.InstanceID && ev.NewZone == game.ZoneGraveyard
+}
+
 // IsBasicLand reports whether a card's type line contains the
 // "basic land" supertype (case-insensitive substring). Used by
 // tutor / fetch primitives that need to match Forest / Island /

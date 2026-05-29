@@ -119,6 +119,13 @@ const (
 	EventETB EventKind = "etb"
 
 	// EventLTB — a permanent left the battlefield (any reason).
+	// NewZone carries the destination zone so listeners can tell a
+	// "dies" (NewZone == ZoneGraveyard) apart from a bounce
+	// (ZoneHand), exile (ZoneExile), or library tuck (ZoneLibrary).
+	// CR 700.4: a permanent "dies" only when it goes to the
+	// graveyard from the battlefield — a dies-trigger must gate on
+	// ev.NewZone == ZoneGraveyard, not merely on EventLTB. Added in
+	// S19 sub-PR 4.
 	EventLTB EventKind = "ltb"
 
 	// EventTrigger — a triggered ability was announced onto

@@ -39,3 +39,32 @@ func WhiteSamuraiToken() game.Card {
 		Toughness: 2,
 	}
 }
+
+// SpiritToken returns a template for Doomed Traveler's 1/1 white
+// Spirit token with flying. Flying is cosmetic (token keywords
+// aren't mechanically enforced yet — see file header); the token
+// enters as a vanilla 1/1 for combat. Added in S19 sub-PR 4.
+func SpiritToken() game.Card {
+	return game.Card{
+		Name:      "Spirit",
+		TypeLine:  "Token Creature — Spirit",
+		Power:     1,
+		Toughness: 1,
+	}
+}
+
+// PhyrexianWurmToken returns a template for Wurmcoil Engine's 3/3
+// colorless Phyrexian Wurm tokens. The real card makes two distinct
+// tokens — one with deathtouch, one with lifelink — but token
+// keywords are cosmetic in the sandbox, so both halves use this
+// single 3/3 template (Wurmcoil's Build creates two of it). The
+// deathtouch / lifelink split lands when token keywords go live.
+// Added in S19 sub-PR 4.
+func PhyrexianWurmToken() game.Card {
+	return game.Card{
+		Name:      "Phyrexian Wurm",
+		TypeLine:  "Token Artifact Creature — Phyrexian Wurm",
+		Power:     3,
+		Toughness: 3,
+	}
+}
