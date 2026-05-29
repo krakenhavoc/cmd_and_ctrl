@@ -10,10 +10,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	battlefield tapped, then shuffle.
 //	When Solemn Simulacrum dies, you may draw a card."
 //
-// S19 sub-PR 3 migrates the ETB half from S14's OnETB direct-call
-// to the Triggered slot. The dies-trigger ships in sub-PR 4
-// (`s19-dies-triggers`) — keeping the two halves separate keeps
-// the per-PR diff focused on one event kind.
+// S19 sub-PR 3 migrated the ETB half from S14's OnETB direct-call
+// to the Triggered slot. Sub-PR 4 adds the dies half ("you may
+// draw a card") as a second Triggered entry watching EventLTB —
+// both halves now auto-fire off the same harvester.
 //
 // Sandbox parity with S14:
 //   - OptionalPrompt drives the "you may" gate (S14 treated may as
@@ -50,6 +50,24 @@ func init() {
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Solemn Simulacrum — search for a basic land?",
+			},
+		}, {
+			// "When Solemn Simulacrum dies, you may draw a card."
+			// S19 sub-PR 4 wires the dies half onto the LTB harvester
+			// (cardDied gates graveyard-only — a bounced/exiled Solemn
+			// does not draw). Optional, so it queues a prompt; drawing
+			// always has an effect, so no HasLegalTarget predicate.
+			Watches: []game.EventKind{game.EventLTB},
+			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return cardDied(ev, source)
+			},
+			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
+				ctx := NewContext(g, nil)
+				_ = DrawCards{Player: source.Controller, N: 1}.Apply(ctx)
+				return nil
+			},
+			OptionalPrompt: &game.TriggerOptionalPrompt{
+				Question: "Solemn Simulacrum — draw a card?",
 			},
 		}},
 	})

@@ -1676,7 +1676,7 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 		OldZone: ZoneBattlefield,
 		NewZone: dest,
 	})
-	g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, Actor: actor})
+	g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, Actor: actor, NewZone: dest})
 	return nil
 }
 
@@ -2138,7 +2138,7 @@ func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCom
 		NewZone: dstZone.Kind,
 	})
 	if srcZone.Kind == ZoneBattlefield {
-		g.EmitEvent(Event{Kind: EventLTB, CardID: cardID})
+		g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, NewZone: dstZone.Kind})
 	}
 	if dstZone.Kind == ZoneBattlefield {
 		g.EmitEvent(Event{Kind: EventETB, CardID: cardID})

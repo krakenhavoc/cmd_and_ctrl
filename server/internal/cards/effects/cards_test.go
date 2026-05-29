@@ -1470,3 +1470,131 @@ func TestNonCatalogSpellStaysSandbox(t *testing.T) {
 		t.Errorf("non-catalog spell did not route to graveyard")
 	}
 }
+
+// --- S19 sub-PR 4: dies-triggers (LTB) -------------------------
+
+// pushDiesCreatureForTest seeds a catalog creature onto the
+// battlefield with its real OracleID + type line so the LTB
+// harvester can match its dies-trigger. Returns the instance ID.
+func pushDiesCreatureForTest(g *game.Game, owner uuid.UUID, name, oracleID, typeLine string, power, toughness int) uuid.UUID {
+	id := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: id,
+		Name:       name,
+		OracleID:   oracleID,
+		TypeLine:   typeLine,
+		Power:      power,
+		Toughness:  toughness,
+		Owner:      owner,
+		Controller: owner,
+	})
+	return id
+}
+
+// TestFiligreeFamiliarDiesDrawsCard kills a Filigree Familiar with
+// Damnation and expects the mandatory dies-trigger to draw a card.
+func TestFiligreeFamiliarDiesDrawsCard(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	pushDiesCreatureForTest(g, caster.ID, "Filigree Familiar",
+		"b544f690-e4bf-4a5b-984d-9256518fd574", "Artifact Creature — Fox", 2, 2)
+	handBefore := caster.Hand.Size()
+
+	castCatalogSpell(t, g, "Damnation", "Sorcery",
+		"d57a8f0b-7989-4db5-8756-6f2690097252", nil)
+	passPriorityAroundTable(t, g)
+
+	if got := caster.Hand.Size() - handBefore; got != 1 {
+		t.Errorf("Filigree Familiar dies-draw: hand delta %d, want 1", got)
+	}
+}
+
+// TestDoomedTravelerDiesCreatesSpirit kills a Doomed Traveler and
+// expects one Spirit token under the controller.
+func TestDoomedTravelerDiesCreatesSpirit(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	pushDiesCreatureForTest(g, caster.ID, "Doomed Traveler",
+		"a30907c0-fbde-4fd3-a8c7-f304305fcea7", "Creature — Human Soldier", 1, 1)
+
+	castCatalogSpell(t, g, "Damnation", "Sorcery",
+		"d57a8f0b-7989-4db5-8756-6f2690097252", nil)
+	passPriorityAroundTable(t, g)
+
+	spirits := 0
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Spirit" && c.Controller == caster.ID {
+			spirits++
+		}
+	}
+	if spirits != 1 {
+		t.Errorf("Doomed Traveler dies: got %d Spirit tokens, want 1", spirits)
+	}
+}
+
+// TestWurmcoilEngineDiesCreatesTwoWurms kills a Wurmcoil Engine and
+// expects two Phyrexian Wurm tokens under the controller.
+func TestWurmcoilEngineDiesCreatesTwoWurms(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	pushDiesCreatureForTest(g, caster.ID, "Wurmcoil Engine",
+		"d1a60f44-7696-49ee-91fb-cab5b3102962", "Artifact Creature — Phyrexian Wurm", 6, 6)
+
+	castCatalogSpell(t, g, "Damnation", "Sorcery",
+		"d57a8f0b-7989-4db5-8756-6f2690097252", nil)
+	passPriorityAroundTable(t, g)
+
+	wurms := 0
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Phyrexian Wurm" && c.Controller == caster.ID {
+			wurms++
+		}
+	}
+	if wurms != 2 {
+		t.Errorf("Wurmcoil Engine dies: got %d Wurm tokens, want 2", wurms)
+	}
+}
+
+// TestSolemnSimulacrumDiesOptionalDraw exercises the optional dies
+// half: the prompt queues, and "Yes" draws a card.
+func TestSolemnSimulacrumDiesOptionalDraw(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	pushDiesCreatureForTest(g, caster.ID, "Solemn Simulacrum",
+		"00c0543c-2a1f-4425-8283-4062d74a1637", "Artifact Creature — Golem", 2, 2)
+	handBefore := caster.Hand.Size()
+
+	castCatalogSpell(t, g, "Damnation", "Sorcery",
+		"d57a8f0b-7989-4db5-8756-6f2690097252", nil)
+	passPriorityAroundTable(t, g)
+
+	answerLatestTriggerPrompt(t, g, caster.ID, true)
+	if got := caster.Hand.Size() - handBefore; got != 1 {
+		t.Errorf("Solemn dies-draw on Yes: hand delta %d, want 1", got)
+	}
+}
+
+// TestFiligreeFamiliarBounceDoesNotDraw is the gating regression:
+// bouncing the Familiar (Unsummon) is an LTB but NOT a death, so
+// cardDied must suppress the dies-draw. Verified via library size
+// (a draw would shrink it).
+func TestFiligreeFamiliarBounceDoesNotDraw(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	famID := pushDiesCreatureForTest(g, caster.ID, "Filigree Familiar",
+		"b544f690-e4bf-4a5b-984d-9256518fd574", "Artifact Creature — Fox", 2, 2)
+	libBefore := caster.Library.Size()
+
+	castCatalogSpell(t, g, "Unsummon", "Instant",
+		"837182db-1bf3-4a2c-bd01-1af9d9873561",
+		[]game.TargetRef{{Kind: game.TargetCard, ID: famID}})
+	passPriorityAroundTable(t, g)
+
+	if !caster.Hand.Contains(famID) {
+		t.Errorf("Unsummon did not return Filigree Familiar to hand")
+	}
+	if caster.Library.Size() != libBefore {
+		t.Errorf("bounced Familiar drew a card (lib %d -> %d) — dies-trigger mis-fired on a non-death LTB",
+			libBefore, caster.Library.Size())
+	}
+}

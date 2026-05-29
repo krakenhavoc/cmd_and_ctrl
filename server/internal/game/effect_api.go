@@ -320,7 +320,7 @@ func (g *Game) ExileCardForEffect(cardID uuid.UUID) error {
 		NewZone: ZoneExile,
 	})
 	if src.Kind == ZoneBattlefield {
-		g.EmitEvent(Event{Kind: EventLTB, CardID: cardID})
+		g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, NewZone: ZoneExile})
 	}
 	return nil
 }
@@ -363,7 +363,7 @@ func (g *Game) BounceToHandForEffect(cardID uuid.UUID) error {
 		NewZone: ZoneHand,
 	})
 	if src.Kind == ZoneBattlefield {
-		g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, Actor: owner.ID})
+		g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, Actor: owner.ID, NewZone: ZoneHand})
 	}
 	return nil
 }
