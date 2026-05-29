@@ -148,6 +148,15 @@ const (
 	// Added in S17 sub-PR 2.
 	EventStepTransition EventKind = "step_transition"
 
+	// EventBeginUpkeep — the active player's upkeep step began.
+	// Actor is the active player (whose upkeep it is). The S19
+	// harvester fans this out to "at the beginning of your upkeep"
+	// triggers; a card gates AppliesTo on ev.Actor == controller for
+	// "your upkeep" (vs "each upkeep"). Emitted from
+	// runStepEntryHooksLocked on entering StepUpkeep. Added in S19
+	// sub-PR 5.
+	EventBeginUpkeep EventKind = "begin_upkeep"
+
 	// EventManaAbilityActivated — a mana-producing ability fired.
 	// Actor = controller, Source = the permanent that produced the
 	// mana. S15 sub-PR 2.
