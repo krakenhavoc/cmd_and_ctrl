@@ -171,6 +171,15 @@ type PendingChoice struct {
 	// PendingChoiceView.DamageAssignment. Added in S18 sub-PR 3.
 	DamageAssignment *DamageAssignmentFrame
 
+	// NoLegalTarget marks a PendingChoiceTriggerPrompt whose effect
+	// has no legal target / will pass without effect if the chooser
+	// answers "Yes" (e.g. Reclamation Sage with no opponent artifact,
+	// Eternal Witness with an empty graveyard). Computed at queue
+	// time from the ability's HasLegalTarget predicate; serialised to
+	// the wire so the client can warn the chooser. False for prompts
+	// without a HasLegalTarget predicate. Added in S19 follow-up.
+	NoLegalTarget bool
+
 	// triggerResume is the server-only continuation frame for a
 	// PendingChoiceTriggerPrompt entry: the captured event +
 	// source-card value copy + LKI characteristics + the Build
@@ -1029,12 +1038,21 @@ func (g *Game) queueTriggerPromptLocked(
 	if ability.OptionalPrompt != nil {
 		question = ability.OptionalPrompt.Question
 	}
+	// Evaluate the legal-target predicate (if any) at queue time so
+	// the client can warn the chooser that "Yes" will pass without
+	// effect. nil predicate => assume the effect always does
+	// something (NoLegalTarget stays false).
+	noLegalTarget := false
+	if ability.HasLegalTarget != nil {
+		noLegalTarget = !ability.HasLegalTarget(ev, &source, lki, g)
+	}
 	g.QueueChoiceForEffect(PendingChoice{
-		Kind:    PendingChoiceTriggerPrompt,
-		Chooser: chooser,
-		Count:   1,
-		Source:  source.InstanceID,
-		Reason:  question,
+		Kind:          PendingChoiceTriggerPrompt,
+		Chooser:       chooser,
+		Count:         1,
+		Source:        source.InstanceID,
+		Reason:        question,
+		NoLegalTarget: noLegalTarget,
 		triggerResume: &triggerResumeFrame{
 			ev:     ev,
 			source: source,

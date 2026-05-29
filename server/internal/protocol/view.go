@@ -130,6 +130,14 @@ type PendingChoiceView struct {
 	// ordered blocker list (CR 510.1c). Absent for non-assignment
 	// choices. Added in S18 sub-PR 3.
 	DamageAssignment *DamageAssignmentView `json:"damage_assignment,omitempty"`
+
+	// NoLegalTarget marks a "trigger_prompt" whose effect has no
+	// legal target and will pass without effect if the chooser
+	// answers "Yes" (Reclamation Sage with no opponent artifact,
+	// Eternal Witness with an empty graveyard, etc.). The client
+	// warns the chooser. Absent (false) for prompts with a legal
+	// target or no target requirement. Added in S19 follow-up.
+	NoLegalTarget bool `json:"no_legal_target,omitempty"`
 }
 
 // DamageAssignmentView is the wire shape of the CR 510.1c
@@ -535,13 +543,14 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			continue
 		}
 		v := PendingChoiceView{
-			ID:         c.ID.String(),
-			Kind:       string(c.Kind),
-			Chooser:    c.Chooser.String(),
-			FromPlayer: c.FromPlayer.String(),
-			Count:      c.Count,
-			Source:     uuidStringOrEmpty(c.Source),
-			Reason:     c.Reason,
+			ID:            c.ID.String(),
+			Kind:          string(c.Kind),
+			Chooser:       c.Chooser.String(),
+			FromPlayer:    c.FromPlayer.String(),
+			Count:         c.Count,
+			Source:        uuidStringOrEmpty(c.Source),
+			Reason:        c.Reason,
+			NoLegalTarget: c.NoLegalTarget,
 		}
 		// For discard_from_hand, inline the source player's hand
 		// as Options. Per-viewer redaction in FilterViewFor

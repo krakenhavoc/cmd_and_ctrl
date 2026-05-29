@@ -1032,6 +1032,127 @@ func TestReclamationSageETBDeclineSparesTarget(t *testing.T) {
 	}
 }
 
+// latestTriggerPrompt returns the most-recently-queued
+// PendingChoiceTriggerPrompt addressed to chooserID, or nil. Used by
+// the no-legal-target regression tests below to inspect the
+// NoLegalTarget flag the harvester stamps at queue time.
+func latestTriggerPrompt(g *game.Game, chooserID uuid.UUID) *game.PendingChoice {
+	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
+		c := g.PendingChoices[i]
+		if c != nil && c.Kind == game.PendingChoiceTriggerPrompt && c.Chooser == chooserID {
+			return c
+		}
+	}
+	return nil
+}
+
+// TestReclamationSageETBNoLegalTargetWhenOnlyOwnArtifact pins the
+// behaviour that confused a manual tester: the S19 sandbox
+// auto-picker (pickFirstOpponentNonland) only targets OPPONENT
+// permanents, so when the only artifact in play is the caster's own,
+// Reclamation Sage's optional trigger has no legal target. The prompt
+// still queues (CR 603.4), but it's flagged NoLegalTarget so the
+// client can warn the chooser, and answering "Yes" spares the
+// caster's own artifact. Real target selection lands with S20.
+func TestReclamationSageETBNoLegalTargetWhenOnlyOwnArtifact(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+
+	// The ONLY artifact in play belongs to the caster — no opponent
+	// artifact exists.
+	ownArtifactID := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: ownArtifactID,
+		Name:       "Test Sol Ring",
+		TypeLine:   "Artifact",
+		Owner:      caster.ID,
+		Controller: caster.ID,
+	})
+
+	castCatalogSpell(t, g, "Reclamation Sage", "Creature — Elf Shaman",
+		"032ec6e2-6cc3-4a97-9cc7-3233f5e11904",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+
+	prompt := latestTriggerPrompt(g, caster.ID)
+	if prompt == nil {
+		t.Fatalf("expected a Reclamation Sage trigger prompt for the caster")
+	}
+	if !prompt.NoLegalTarget {
+		t.Errorf("expected NoLegalTarget=true when the only artifact is the caster's own")
+	}
+
+	answerLatestTriggerPrompt(t, g, caster.ID, true)
+
+	if !g.Battlefield.Contains(ownArtifactID) {
+		t.Errorf("Reclamation Sage destroyed the caster's OWN artifact — auto-picker must target opponents only")
+	}
+}
+
+// TestEternalWitnessETBNoLegalTargetEmptyGraveyard pins the other
+// half of the same confusion: Eternal Witness returns from the
+// caster's own graveyard, so an empty graveyard means no legal
+// target. The prompt is flagged NoLegalTarget and "Yes" is a no-op.
+func TestEternalWitnessETBNoLegalTargetEmptyGraveyard(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	if caster.Graveyard.Size() != 0 {
+		t.Fatalf("precondition: caster graveyard should start empty, got %d", caster.Graveyard.Size())
+	}
+
+	castCatalogSpell(t, g, "Eternal Witness", "Creature — Human Shaman",
+		"30b24e8e-3b0e-4d8e-90f3-f66eb7c1858c",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+
+	prompt := latestTriggerPrompt(g, caster.ID)
+	if prompt == nil {
+		t.Fatalf("expected an Eternal Witness trigger prompt for the caster")
+	}
+	if !prompt.NoLegalTarget {
+		t.Errorf("expected NoLegalTarget=true with an empty graveyard")
+	}
+
+	handBefore := caster.Hand.Size()
+	answerLatestTriggerPrompt(t, g, caster.ID, true)
+	if caster.Hand.Size() != handBefore {
+		t.Errorf("Eternal Witness returned a card from an empty graveyard")
+	}
+}
+
+// TestReclamationSageETBHasLegalTargetFlagFalseWithOpponentArtifact
+// is the positive control: with a genuine opponent artifact present,
+// the prompt is NOT flagged NoLegalTarget.
+func TestReclamationSageETBHasLegalTargetFlagFalseWithOpponentArtifact(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	opp := g.Seats[1]
+
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: uuid.New(),
+		Name:       "Test Sword",
+		TypeLine:   "Artifact",
+		Owner:      opp.ID,
+		Controller: opp.ID,
+	})
+
+	castCatalogSpell(t, g, "Reclamation Sage", "Creature — Elf Shaman",
+		"032ec6e2-6cc3-4a97-9cc7-3233f5e11904",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+
+	prompt := latestTriggerPrompt(g, caster.ID)
+	if prompt == nil {
+		t.Fatalf("expected a Reclamation Sage trigger prompt for the caster")
+	}
+	if prompt.NoLegalTarget {
+		t.Errorf("expected NoLegalTarget=false when an opponent artifact is in play")
+	}
+}
+
 // TestAcidicSlimeETBDestroysOpponentLand seeds an opponent's land,
 // casts Acidic Slime, and expects the mandatory ETB to destroy it
 // without prompting (no "you may" gate on Acidic Slime).
