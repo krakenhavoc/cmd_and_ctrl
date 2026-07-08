@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
@@ -33,7 +34,8 @@ var (
 // loopback HTTP. It holds a cached admin session token and
 // refreshes on demand when the server rejects it — the two-step
 // pattern keeps the hot path (create / list) a single HTTP call
-// when the token is still valid.
+// when the token is still valid, and stops every slash command
+// from minting a fresh 12h admin session that piles up server-side.
 //
 // Safe for concurrent use; the token mutex guards a single
 // string swap.
@@ -41,6 +43,9 @@ type ServerClient struct {
 	baseURL    string
 	adminToken string
 	http       *http.Client
+
+	mu      sync.Mutex
+	session string // cached admin session bearer; "" = not logged in
 }
 
 // NewServerClient builds a client rooted at baseURL. The
@@ -112,28 +117,83 @@ func (c *ServerClient) Login(ctx context.Context) (string, error) {
 	return lr.Token, nil
 }
 
-// CreateGame calls POST /games after logging in. The returned
-// GameMeta carries the invite token the bot posts back to
-// Discord.
-func (c *ServerClient) CreateGame(ctx context.Context, name string) (lobby.GameMeta, error) {
-	session, err := c.Login(ctx)
-	if err != nil {
-		return lobby.GameMeta{}, err
+// sessionToken returns the cached admin session bearer, logging in
+// to mint one only when the cache is empty. Held under the mutex so
+// concurrent slash commands share a single login round-trip.
+func (c *ServerClient) sessionToken(ctx context.Context) (string, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.session != "" {
+		return c.session, nil
 	}
+	tok, err := c.Login(ctx)
+	if err != nil {
+		return "", err
+	}
+	c.session = tok
+	return tok, nil
+}
+
+// invalidateSession drops the cached bearer iff it still equals the
+// one the server just rejected — a concurrent command may already
+// have replaced it with a fresh login, which must not be discarded.
+func (c *ServerClient) invalidateSession(stale string) {
+	c.mu.Lock()
+	if c.session == stale {
+		c.session = ""
+	}
+	c.mu.Unlock()
+}
+
+// doAuthorized runs `do` with a session token, re-logging in and
+// retrying exactly once when the server 401s the cached token
+// (expired TTL, server restart). `do` must build a fresh
+// *http.Request per call — request bodies are single-use. A 401 on
+// the retry surfaces to the caller as a normal response.
+func (c *ServerClient) doAuthorized(ctx context.Context, do func(token string) (*http.Response, error)) (*http.Response, error) {
+	tok, err := c.sessionToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := do(tok)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusUnauthorized {
+		return resp, nil
+	}
+	_ = resp.Body.Close()
+	c.invalidateSession(tok)
+	tok, err = c.sessionToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return do(tok)
+}
+
+// CreateGame calls POST /games with the cached admin session
+// (re-logging in once on a 401). The returned GameMeta carries the
+// invite token the bot posts back to Discord.
+func (c *ServerClient) CreateGame(ctx context.Context, name string) (lobby.GameMeta, error) {
 	body, err := json.Marshal(map[string]string{"name": name})
 	if err != nil {
 		return lobby.GameMeta{}, err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/games", bytes.NewReader(body))
+	resp, err := c.doAuthorized(ctx, func(token string) (*http.Response, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/games", bytes.NewReader(body))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp, err := c.http.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrServerUnreachable, err)
+		}
+		return resp, nil
+	})
 	if err != nil {
 		return lobby.GameMeta{}, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+session)
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return lobby.GameMeta{}, fmt.Errorf("%w: %v", ErrServerUnreachable, err)
 	}
 	defer resp.Body.Close()
 
@@ -154,23 +214,25 @@ func (c *ServerClient) CreateGame(ctx context.Context, name string) (lobby.GameM
 	return meta, nil
 }
 
-// ListGames calls GET /games. The server already strips invite
+// ListGames calls GET /games with the cached admin session
+// (re-logging in once on a 401). The server already strips invite
 // tokens from list responses (see lobby.Lobby.List), so the
 // slice is safe to forward directly to a Discord channel.
 func (c *ServerClient) ListGames(ctx context.Context) ([]lobby.GameMeta, error) {
-	session, err := c.Login(ctx)
+	resp, err := c.doAuthorized(ctx, func(token string) (*http.Response, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/games", nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp, err := c.http.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrServerUnreachable, err)
+		}
+		return resp, nil
+	})
 	if err != nil {
 		return nil, err
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/games", nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+session)
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrServerUnreachable, err)
 	}
 	defer resp.Body.Close()
 
