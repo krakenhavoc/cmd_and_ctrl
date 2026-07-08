@@ -110,6 +110,34 @@ func (g *Game) cloneLocked() *Game {
 		out.Listeners = make([]Listener, len(g.Listeners))
 		copy(out.Listeners, g.Listeners)
 	}
+	// Replacement registries (S17). Effects are immutable value
+	// structs (func fields are process-lifetime) — copying the slice
+	// headers into fresh backing arrays is enough; what matters is
+	// that an append/clear on the original after the snapshot can't
+	// reach the clone and vice versa.
+	if len(g.BuiltinReplacements) > 0 {
+		out.BuiltinReplacements = make([]ReplacementEffect, len(g.BuiltinReplacements))
+		copy(out.BuiltinReplacements, g.BuiltinReplacements)
+	}
+	if len(g.TurnScopedReplacements) > 0 {
+		out.TurnScopedReplacements = make([]ReplacementEffect, len(g.TurnScopedReplacements))
+		copy(out.TurnScopedReplacements, g.TurnScopedReplacements)
+	}
+	// CR 603.10 LKI snapshots (S19). Values are Characteristic copies
+	// that are never mutated after being stored, so a per-entry value
+	// copy is sufficient. Usually empty — entries live only for the
+	// duration of one LTB-emitting mutation.
+	if len(g.lastKnownBattlefield) > 0 {
+		out.lastKnownBattlefield = make(map[uuid.UUID]Characteristic, len(g.lastKnownBattlefield))
+		for k, v := range g.lastKnownBattlefield {
+			out.lastKnownBattlefield[k] = v
+		}
+	}
+	// S16 layer-engine version counters. Atomics can't be struct-
+	// copied; mirror via Load/Store so the clone's staleness state
+	// matches the original's at capture time.
+	out.layerVersion.Store(g.layerVersion.Load())
+	out.lastResolvedVersion.Store(g.lastResolvedVersion.Load())
 	return out
 }
 
@@ -136,6 +164,17 @@ func cloneCard(c Card) Card {
 		}
 	} else {
 		out.Counters = nil
+	}
+	// S13.5 knowledge set: a value copy would alias the live map, so
+	// reveals after the snapshot would leak into it and undo couldn't
+	// roll knowledge back.
+	if len(c.KnownBy) > 0 {
+		out.KnownBy = make(map[uuid.UUID]bool, len(c.KnownBy))
+		for k, v := range c.KnownBy {
+			out.KnownBy[k] = v
+		}
+	} else {
+		out.KnownBy = nil
 	}
 	return out
 }
@@ -221,6 +260,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		XValue:       s.XValue,
 		HoldPriority: s.HoldPriority,
 		SplitSecond:  s.SplitSecond,
+		Seq:          s.Seq,
 	}
 	if len(s.Targets) > 0 {
 		out.Targets = make([]TargetRef, len(s.Targets))
@@ -296,5 +336,16 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.eventSeq = src.eventSeq
 	g.Listeners = src.Listeners
 	g.PendingChoices = src.PendingChoices
+	g.BuiltinReplacements = src.BuiltinReplacements
+	g.TurnScopedReplacements = src.TurnScopedReplacements
+	g.lastKnownBattlefield = src.lastKnownBattlefield
 	g.rng = src.rng
+	// S16 layer-engine counters: adopt the snapshot's values via
+	// Store/Load (atomics can't be field-copied), then bump
+	// layerVersion past lastResolvedVersion so the next snapshot
+	// path runs a full recompute against the restored battlefield —
+	// the restored cards' `effective` caches were computed for the
+	// snapshot-time state and must not be served as-is.
+	g.lastResolvedVersion.Store(src.lastResolvedVersion.Load())
+	g.layerVersion.Store(src.layerVersion.Load() + 1)
 }
