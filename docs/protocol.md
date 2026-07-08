@@ -204,6 +204,14 @@ All are accepted at face value — there is no rules enforcement at S03.
 Rules enforcement grows incrementally in the S13+ B→C graft track (see
 PLAN.md §2.1).
 
+The client mirrors the accepted verbs as a string-literal `ActionType`
+union in `client/src/lib/protocol.ts`, so a mistyped action name is a
+compile error rather than a runtime `bad_request`. The server registry
+(`server/internal/actions/actions.go` plus the hub-level `undo` verb)
+remains the source of truth; the union is a client-side convenience and
+does **not** change the wire schema — add literals as the UI grows call
+sites for verbs the server already accepts.
+
 | `type` | `player` required | `params` shape | Effect |
 |---|---|---|---|
 | `draw_card` | yes | — | Moves the top of `player`'s library to their hand. S13: server-side no-op when called during the active player's `draw` step (the step-entry hook has already drawn automatically, except on the starting player's turn 1 per CR 103.7c). Outside that window the action behaves as before. |
