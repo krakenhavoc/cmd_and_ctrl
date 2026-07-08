@@ -90,6 +90,18 @@ lobby bucket.
 
 ## Consequences
 
+- The PAT is provisioned by the CD job, not by hand: the deploy
+  upserts it into `/etc/cmd_and_ctrl/env` from the
+  `CMDCTRL_GITHUB_TOKEN` Actions secret via
+  `sudo scripts/set-server-env.sh` (stdin transport, atomic replace,
+  owner/mode preserved). That path — not the `server.env` name ADR
+  0004 §6 sketched — is what the HomeLab cloud-init template
+  actually writes and what the systemd units read via
+  `EnvironmentFile=`; the file is `root:cmdctrl` `0640` and the
+  deploy user's cloud-init sudoers grant covers the write. Rotation
+  is "update the secret, rerun the deploy". Note the self-hosted
+  runner already holds SSH access to the host, so the secret adds no
+  new trust boundary beyond the PAT itself.
 - In-app issues arrive titled `[in-app] …` with the `bug` label —
   distinguishable from hand-written ones at a glance.
 - The operator's loop is: read issue → `GET /games/{id}/replay` with
