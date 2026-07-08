@@ -85,6 +85,13 @@ type Config struct {
 	// placeholder when the endpoint 503s, so an unconfigured
 	// deploy still renders a usable board.
 	DiscordAvatars *discord.AvatarCache
+
+	// BugReporter files in-app bug reports as GitHub issues
+	// (bugreport.go). Nil disables the surface: POST /bugreport
+	// returns 503 and GET /bugreport/config reports enabled:false
+	// so the client hides the report button. Production wires
+	// *github.Client when CMDCTRL_GITHUB_TOKEN is set.
+	BugReporter BugReporter
 }
 
 // GameEvictor is the subset of *ws.Hub that the lobby needs to close
@@ -179,6 +186,15 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /games/{id}/auto-tap-preview", auth.Middleware(c.Auth)(handlerFunc(c, autoTapPreview)))
 	mux.Handle("POST /games/{id}/decks", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, uploadDeck))))
 	mux.Handle("GET /me", auth.Middleware(c.Auth)(handlerFunc(c, me)))
+	// Bug reports (in-app button → GitHub issue). The config probe
+	// is unauthenticated and mirrors /auth/discord/config. POST is
+	// session-gated (any role — spectators hit bugs too) with its
+	// own tight bucket: every accepted report costs an outbound
+	// GitHub write, and one stuck retry loop shouldn't be able to
+	// wallpaper the tracker. ~1 report / 30 s with a burst of 3.
+	bugLimit := newLimiter(1.0/30, 3)
+	mux.Handle("GET /bugreport/config", handlerFunc(c, bugReportConfig))
+	mux.Handle("POST /bugreport", bugLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, bugReport))))
 	// Logout does not require an authenticated principal — a client
 	// with a stale or revoked token should still be able to clear
 	// browser state without a 401 dead-end. We just revoke whatever

@@ -189,6 +189,30 @@ jobs:
             krkn@${CMDCTRL_HOST}:/opt/cmd_and_ctrl/scripts/
           ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} 'chmod +x /opt/cmd_and_ctrl/scripts/*.sh'
 
+      # Provision the bug-report token (ADR 0017) into the server's
+      # env file (/etc/cmd_and_ctrl/env — written by the HomeLab
+      # cloud-init template, read by the systemd units) so nobody has
+      # to touch the host by hand. Source of truth is the
+      # CMDCTRL_GITHUB_TOKEN Actions secret; rotation = update the
+      # secret, rerun the deploy. The value travels over stdin (never
+      # ssh argv) so it can't surface in `ps` on the host; Actions
+      # masks it in logs. Runs after "Deploy scripts" (which lands
+      # set-server-env.sh) and before the restart that picks it up.
+      # Skips cleanly when the secret isn't configured — bug
+      # reporting simply stays disabled, same as an unset var. sudo
+      # because the env file is root:cmdctrl; krkn's cloud-init
+      # sudoers grant covers it (same as the restart steps).
+      - name: Sync server env (bug-report token)
+        env:
+          BUGREPORT_TOKEN: ${{ secrets.CMDCTRL_GITHUB_TOKEN }}
+        run: |
+          if [ -z "${BUGREPORT_TOKEN}" ]; then
+            echo "CMDCTRL_GITHUB_TOKEN secret not set; skipping (bug reporting stays disabled)."
+            exit 0
+          fi
+          printf '%s' "${BUGREPORT_TOKEN}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            'sudo /opt/cmd_and_ctrl/scripts/set-server-env.sh CMDCTRL_GITHUB_TOKEN'
+
       - name: Restart cmd-and-ctrl service
         run: |
           ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} 'sudo systemctl restart cmd-and-ctrl'
