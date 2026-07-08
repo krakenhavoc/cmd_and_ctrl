@@ -30,6 +30,10 @@ async function joinAsPlayer(
   await page.goto(`/#/games/${gameID}/join?t=${encodeURIComponent(inviteToken)}`);
   await page.getByPlaceholder("your name").fill(name);
   await page.getByRole("button", { name: "join" }).click();
+  // Players land in the lobby first — s085 (#43) — then a seated
+  // session can open the game route directly.
+  await expect(page).toHaveURL(/#\/lobby$/, { timeout: 10_000 });
+  await page.goto(`/#/games/${gameID}`);
   await expect(page).toHaveURL(new RegExp(`#/games/${gameID}$`), { timeout: 10_000 });
   const session = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("cmdctrl.session") ?? "null"),
@@ -75,18 +79,25 @@ test.describe("board layout", () => {
     // each BattlefieldRow / Hand / PileBar / PlayerHeader is the
     // contract used here.
     const page = alice.page;
-    await expect(page.getByRole("list", { name: "creatures" })).toBeVisible();
-    await expect(page.getByRole("list", { name: "lands" })).toBeVisible();
-    await expect(page.getByRole("list", { name: "enchant / artifact" })).toBeVisible();
+    // Scope to the self panel: every seat renders the same row labels,
+    // so an unscoped query matches the opponent's rows too.
+    const selfBoard = page.getByRole("region", { name: "your board" });
+    // toBeAttached, not toBeVisible: an empty row is a zero-height
+    // flex container (Playwright: "hidden") until a card lands in it.
+    await expect(selfBoard.getByRole("list", { name: "creatures" })).toBeAttached();
+    await expect(selfBoard.getByRole("list", { name: "lands" })).toBeAttached();
+    await expect(selfBoard.getByRole("list", { name: "enchant / artifact" })).toBeAttached();
     await expect(page.getByLabel("your hand")).toBeVisible();
     await expect(page.getByLabel("Alice piles")).toBeVisible();
 
-    // Pile buttons: EXILE / GRAVE / DECK / CMD all rendered with a
-    // count chip in their accessible name.
-    await expect(page.getByRole("button", { name: /exile: \d+/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /grave: \d+/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /deck: \d+/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /cmd: \d+/ })).toBeVisible();
+    // Pile zones: EXILE / GRAVE / LIBRARY as PileButtons, plus the
+    // command zone (its own affordance since the CMD pile button was
+    // replaced by the cast UI). Scoped to the self board — the
+    // opponent's panel renders the same piles.
+    await expect(selfBoard.getByRole("button", { name: /exile: \d+/ })).toBeVisible();
+    await expect(selfBoard.getByRole("button", { name: /grave: \d+/ })).toBeVisible();
+    await expect(selfBoard.getByRole("button", { name: /library: \d+/ })).toBeVisible();
+    await expect(selfBoard.getByLabel(/command zone, \d+ card/)).toBeVisible();
 
     // Stack overlay should be hidden when nothing is on the stack.
     await expect(page.getByLabel(/stack: \d+ on the stack/)).toHaveCount(0);
@@ -96,7 +107,7 @@ test.describe("board layout", () => {
     // entry); the toolbar's "draw" button works too but we want to
     // exercise the pile-button click path specifically.
     const handCardsBefore = await page.getByLabel("your hand").locator(".hand-slot").count();
-    await page.getByRole("button", { name: /deck: \d+/ }).click();
+    await selfBoard.getByRole("button", { name: /library: \d+/ }).click();
     await expect(page.getByLabel("your hand").locator(".hand-slot")).toHaveCount(
       handCardsBefore + 1,
       { timeout: 5_000 },

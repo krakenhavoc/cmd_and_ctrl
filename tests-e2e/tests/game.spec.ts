@@ -16,33 +16,44 @@ test.describe("game route", () => {
 
     // Seed the admin session in localStorage so the Game route can
     // authenticate without us going through the login form. The
-    // shape matches lib/session.ts:Session.
-    await page.goto("/"); // need a document so localStorage is addressable
-    await page.evaluate(
-      ([t, n]) => {
-        localStorage.setItem(
-          "cmdctrl.session",
-          JSON.stringify({
-            token: t,
-            expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-            principal: {
-              role: "admin",
-              issued_at: new Date().toISOString(),
-              expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-              name: "admin",
-            },
-          }),
-        );
-        void n; // unused but keeps parameter types happy
-      },
-      [token, "admin"],
-    );
+    // shape matches lib/session.ts:Session. addInitScript runs
+    // before any page script on every navigation — seeding after the
+    // app boots (goto + evaluate) is too late: the session store
+    // hydrates from localStorage at module init, and a hash-only
+    // navigation never re-runs it, so the client would connect
+    // anonymously and the server would reject the upgrade.
+    await page.context().addInitScript((t) => {
+      localStorage.setItem(
+        "cmdctrl.session",
+        JSON.stringify({
+          token: t,
+          expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+          principal: {
+            role: "admin",
+            issued_at: new Date().toISOString(),
+            expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+            name: "admin",
+          },
+        }),
+      );
+    }, token);
 
-    const wsPromise = page.waitForEvent("websocket", (ws) => ws.url().includes("/ws"));
+    // An authenticated upgrade is proven by a snapshot frame actually
+    // arriving — an anonymous socket is rejected before any frame.
+    // The listener must attach inside the websocket event handler:
+    // the server pre-stages the snapshot at upgrade time, so the
+    // frame can land in the same protocol batch as socket creation —
+    // a waitForEvent("framereceived") attached after an await would
+    // miss it forever.
+    const firstFrame = new Promise<string>((resolve) => {
+      page.on("websocket", (ws) => {
+        if (!ws.url().includes("/ws")) return;
+        ws.on("framereceived", () => resolve(ws.url()));
+      });
+    });
     await page.goto(`/#/games/${game.id}`);
-    const ws = await wsPromise;
-    expect(ws.url()).toContain(`game=${game.id}`);
-    expect(ws.url()).toContain(`token=${token}`);
+    const wsURL = await firstFrame;
+    expect(wsURL).toContain(`game=${game.id}`);
     // The page route committed — no redirect to login.
     await expect(page).toHaveURL(new RegExp(`#/games/${game.id}$`));
   });
@@ -57,10 +68,15 @@ test.describe("game route", () => {
     await page.goto(`/#/games/${game.id}/join?t=${encodeURIComponent(game.invite_token!)}`);
     await page.getByPlaceholder("your name").fill("Seat One");
     await page.getByRole("button", { name: "join" }).click();
+
+    // Players land in the lobby first (deck import) — s085 (#43);
+    // a seated session can then open the game route directly.
+    await expect(page).toHaveURL(/#\/lobby$/);
+    await page.goto(`/#/games/${game.id}`);
     await expect(page).toHaveURL(new RegExp(`#/games/${game.id}$`));
 
-    // Confirm the WS URL includes the player= param — this is what
-    // pins the seat for state-delta filtering (FilterViewFor).
+    // The seat is pinned by the session's player_id, which the WS
+    // authorizer resolves for state-delta filtering (FilterViewFor).
     const sessJson = await page.evaluate(() =>
       JSON.parse(localStorage.getItem("cmdctrl.session") ?? "null"),
     );

@@ -1,4 +1,4 @@
-.PHONY: help dev server-dev server-dev-skip-validation client-dev server-test client-check test lint
+.PHONY: help dev server-dev server-dev-skip-validation client-dev server-test client-check client-test test lint
 
 help:
 	@echo "cmd_and_ctrl — top-level targets"
@@ -8,7 +8,7 @@ help:
 	@echo "  make server-dev-skip-validation  Like server-dev, but bypasses deck validation"
 	@echo "                     (lets you import a 5-card test deck; never use in prod)"
 	@echo "  make client-dev    Run the Vite dev server (:5173, proxies /ws)"
-	@echo "  make test          Run server tests"
+	@echo "  make test          Run server tests, client typecheck, and client unit tests"
 	@echo "  make lint          Lint server and client"
 	@echo ""
 	@echo "Per-service targets live in server/Makefile and client/package.json."
@@ -32,7 +32,10 @@ server-test:
 client-check:
 	cd client && npm run check
 
-test: server-test client-check
+client-test:
+	cd client && npm test
+
+test: server-test client-check client-test
 
 lint:
 	$(MAKE) -C server vet

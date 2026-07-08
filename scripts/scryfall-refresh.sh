@@ -14,6 +14,12 @@
 # timestamp. Exit non-zero on any curl/jq failure — cron will mail the
 # operator.
 #
+# Freshness: if last-refresh is less than 24 hours old (and the dump
+# exists), the download is skipped — the ~400-500 MB dump only changes
+# daily. Pass --force to refresh regardless.
+#
+# Usage: scryfall-refresh.sh [--force]
+#
 # Environment:
 #   CMDCTRL_DATA_DIR — root of the server's data dir. Default "./data".
 #
@@ -21,12 +27,42 @@
 
 set -euo pipefail
 
+FORCE=0
+for arg in "$@"; do
+  case "$arg" in
+    --force) FORCE=1 ;;
+    *)
+      echo "scryfall-refresh: unknown argument: $arg" >&2
+      echo "usage: scryfall-refresh.sh [--force]" >&2
+      exit 2
+      ;;
+  esac
+done
+
 DATA_DIR="${CMDCTRL_DATA_DIR:-./data}"
 SCRYFALL_DIR="$DATA_DIR/scryfall"
 TARGET="$SCRYFALL_DIR/default-cards.json"
 STAMP="$SCRYFALL_DIR/last-refresh"
 
 mkdir -p "$SCRYFALL_DIR"
+
+# Freshness check — skip the download when the last refresh was under
+# 24h ago and the dump is still present. last-refresh holds a UTC
+# ISO-8601 timestamp (see the write at the bottom of this script);
+# parse with GNU date, falling back to BSD date for macOS devs. An
+# unparseable stamp counts as stale, so we fail open into a refresh.
+if [[ "$FORCE" -ne 1 && -s "$TARGET" && -f "$STAMP" ]]; then
+  last="$(cat "$STAMP")"
+  last_epoch="$(date -u -d "$last" +%s 2>/dev/null \
+    || date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$last" +%s 2>/dev/null \
+    || echo 0)"
+  now_epoch="$(date -u +%s)"
+  age=$(( now_epoch - last_epoch ))
+  if [[ "$last_epoch" -gt 0 && "$age" -ge 0 && "$age" -lt 86400 ]]; then
+    echo "scryfall-refresh: $TARGET refreshed ${age}s ago (<24h); skipping. Use --force to refresh anyway."
+    exit 0
+  fi
+fi
 
 # Step 1 — fetch the bulk-data catalog and pull out the download_uri
 # for the default_cards dataset. Scryfall rotates the URL daily, so

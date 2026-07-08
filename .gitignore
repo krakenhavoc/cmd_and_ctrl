@@ -12,6 +12,11 @@
 # tracked; the zip itself is provenance-only and bloats history.
 *.zip
 
+# Scratch deck lists used for manual S19 testing — referenced by
+# nothing in the repo; the e2e suites build their decks in code
+# (tests-e2e/tests/*deck-fixture.ts).
+/test-decks/
+
 # Secrets / env
 .env
 .env.*
