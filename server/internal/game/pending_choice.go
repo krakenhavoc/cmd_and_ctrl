@@ -244,6 +244,14 @@ type DamageAssignmentFrame struct {
 	// credits this player even if the attacker is no longer on the
 	// battlefield).
 	SourceController uuid.UUID
+
+	// SourceIsCommander + SourceOwner are the attacker's commander
+	// flag and owner at prompt-queue time, cached for the same
+	// died-before-resume reason as SourceLifelink. The trample-to-
+	// player resume path uses them to accrue CR 903.10a commander
+	// damage on the defending player.
+	SourceIsCommander bool
+	SourceOwner       uuid.UUID
 }
 
 // replacementResumeFrame is the unexported per-prompt continuation

@@ -3096,14 +3096,16 @@ func (g *Game) assignAndDealCombatDamageLocked(firstStrike bool) {
 // Caller must hold g.mu.
 func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UUID, atkPower int, firstStrike bool) {
 	frame := &DamageAssignmentFrame{
-		AttackerID:       atk.InstanceID,
-		BlockerIDs:       append([]uuid.UUID(nil), blockerIDs...),
-		AttackerPower:    atkPower,
-		AllowTrample:     HasKeyword(atk, "trample"),
-		HasDeathtouch:    HasKeyword(atk, "deathtouch"),
-		FirstStrike:      firstStrike,
-		SourceLifelink:   HasKeyword(atk, "lifelink"),
-		SourceController: atk.Controller,
+		AttackerID:        atk.InstanceID,
+		BlockerIDs:        append([]uuid.UUID(nil), blockerIDs...),
+		AttackerPower:     atkPower,
+		AllowTrample:      HasKeyword(atk, "trample"),
+		HasDeathtouch:     HasKeyword(atk, "deathtouch"),
+		FirstStrike:       firstStrike,
+		SourceLifelink:    HasKeyword(atk, "lifelink"),
+		SourceController:  atk.Controller,
+		SourceIsCommander: atk.IsCommander,
+		SourceOwner:       atk.Owner,
 	}
 	g.QueueChoiceForEffect(PendingChoice{
 		Kind:             PendingChoiceDamageAssignment,
@@ -3276,6 +3278,13 @@ func (g *Game) markCombatDamageToPlayerFromFrameLocked(playerID uuid.UUID, amoun
 		return
 	}
 	p.ChangeLife(-out.DamageAmount)
+	// CR 903.10a: trample overflow from a commander counts toward the
+	// 21-damage SBA. Read the cached frame flags — the attacker may
+	// have died to blocker damage before the prompt resolved, so a
+	// battlefield lookup would miss it.
+	if frame.SourceIsCommander {
+		p.RecordCommanderDamage(frame.SourceOwner, out.DamageAmount)
+	}
 	g.EmitEvent(Event{
 		Kind:   EventDealDamage,
 		Source: out.DamageSource,
@@ -3380,6 +3389,11 @@ func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount
 		return
 	}
 	p.ChangeLife(-out.DamageAmount)
+	// CR 903.10a: combat damage from a commander accrues toward the
+	// 21-damage loss SBA. The attacker is still on the battlefield in
+	// this path (unblocked attackers take no blocker damage before
+	// their own damage lands).
+	g.recordCommanderCombatDamageLocked(p, out.DamageSource, out.DamageAmount)
 	g.EmitEvent(Event{
 		Kind:   EventDealDamage,
 		Source: out.DamageSource,
@@ -3390,6 +3404,24 @@ func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount
 	// damage dealt to a player too (CR 702.15 — all damage, not just
 	// damage to creatures).
 	g.applyLifelinkLocked(out.DamageSource, out.DamageAmount)
+}
+
+// recordCommanderCombatDamageLocked notes combat damage on the
+// defending player's CommanderDamage map when the source is a
+// commander, feeding the 21-damage SBA (CR 903.10a /
+// IsDeadByCommanderDamage). Keyed by the commander's owner to match
+// the per-opponent map shape (see the note on Player.CommanderDamage).
+// No-op when the source isn't on the battlefield or isn't a
+// commander. Caller must hold g.mu.
+func (g *Game) recordCommanderCombatDamageLocked(target *Player, sourceID uuid.UUID, amount int) {
+	if amount <= 0 || target == nil {
+		return
+	}
+	src := findBattlefieldCard(g, sourceID)
+	if src == nil || !src.IsCommander {
+		return
+	}
+	target.RecordCommanderDamage(src.Owner, amount)
 }
 
 // ClearCombat resets every card on the battlefield to "not attacking

@@ -507,3 +507,136 @@ func TestCombatFirstStrikeBlockerDamagesVanillaAttacker(t *testing.T) {
 		t.Errorf("ace should survive; bear died before regular substep")
 	}
 }
+
+// TestCombatUnblockedCommanderDamageEliminatesAt21 closes the loop
+// the reviewer flagged: real combat never called
+// RecordCommanderDamage, so the CR 903.10a 21-damage SBA could only
+// fire from the manual set_commander_damage action. An unblocked
+// 7-power commander connecting three times must now eliminate the
+// defender through the production combat pipeline.
+func TestCombatUnblockedCommanderDamageEliminatesAt21(t *testing.T) {
+	g := newActiveGame(t)
+	atk, def := g.Seats[0], g.Seats[1]
+
+	cmdr := NewCommander("Test Commander", atk.ID)
+	cmdr.TypeLine = "Legendary Creature — Avatar"
+	cmdr.Power = 7
+	cmdr.Toughness = 7
+	g.Battlefield.PushTop(cmdr)
+
+	for hit := 1; hit <= 3; hit++ {
+		// Walk to seat 0's declare-attackers (skipping seat 1's
+		// combat steps on intervening turns).
+		for !(g.Turn.Step == StepDeclareAttackers && g.Turn.ActiveSeat == 0) {
+			if _, err := g.AdvanceStep(); err != nil {
+				t.Fatalf("hit %d: AdvanceStep: %v", hit, err)
+			}
+		}
+		if err := g.DeclareAttacker(cmdr.InstanceID, def.ID); err != nil {
+			t.Fatalf("hit %d: DeclareAttacker: %v", hit, err)
+		}
+		advanceIntoStep(t, g, StepCombatDamage)
+		if got, want := def.CommanderDamage[atk.ID], 7*hit; got != want {
+			t.Fatalf("hit %d: commander damage = %d, want %d", hit, got, want)
+		}
+	}
+
+	if def.Life != StartingLife-21 {
+		t.Errorf("defender life = %d, want %d", def.Life, StartingLife-21)
+	}
+	if !def.IsDeadByCommanderDamage() {
+		t.Error("IsDeadByCommanderDamage = false after 21 commander damage")
+	}
+	if !def.Eliminated {
+		t.Error("defender not eliminated by the 21-commander-damage SBA")
+	}
+	if g.State != StateEnded {
+		t.Errorf("game state = %q, want %q (last survivor)", g.State, StateEnded)
+	}
+}
+
+// TestCombatNonCommanderDamageNotRecorded guards the negative: a
+// vanilla unblocked attacker must not pollute the commander-damage
+// map.
+func TestCombatNonCommanderDamageNotRecorded(t *testing.T) {
+	g := newActiveGame(t)
+	atk, def := g.Seats[0], g.Seats[1]
+	bear := pushKeywordCreature(t, g, atk, 2, 2)
+	advanceIntoStep(t, g, StepDeclareAttackers)
+	if err := g.DeclareAttacker(bear, def.ID); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
+	advanceIntoStep(t, g, StepCombatDamage)
+	if def.Life != StartingLife-2 {
+		t.Errorf("defender life = %d, want %d", def.Life, StartingLife-2)
+	}
+	if got := def.CommanderDamage[atk.ID]; got != 0 {
+		t.Errorf("non-commander attack recorded %d commander damage, want 0", got)
+	}
+}
+
+// TestCombatCommanderTrampleOverflowRecordsCommanderDamage drives
+// the markCombatDamageToPlayerFromFrameLocked path: a multi-blocked
+// trampling commander queues the CR 510.1c assignment prompt, and
+// the resume's trample-to-player spill must accrue commander damage
+// from the frame's cached flags.
+func TestCombatCommanderTrampleOverflowRecordsCommanderDamage(t *testing.T) {
+	g := newActiveGame(t)
+	atk, def := g.Seats[0], g.Seats[1]
+
+	cmdr := NewCommander("Trampling Commander", atk.ID)
+	cmdr.TypeLine = "Legendary Creature — Wurm"
+	cmdr.Power = 6
+	cmdr.Toughness = 6
+	g.Battlefield.PushTop(cmdr)
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == cmdr.InstanceID {
+			g.Battlefield.Cards[i].effective = &Characteristic{
+				Power:     6,
+				Toughness: 6,
+				Abilities: []string{"trample"},
+			}
+		}
+	}
+	bear1 := pushKeywordCreature(t, g, def, 2, 2)
+	bear2 := pushKeywordCreature(t, g, def, 3, 3)
+
+	advanceIntoStep(t, g, StepDeclareAttackers)
+	if err := g.DeclareAttacker(cmdr.InstanceID, def.ID); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
+	advanceIntoStep(t, g, StepDeclareBlockers)
+	if err := g.DeclareBlocker(bear1, cmdr.InstanceID); err != nil {
+		t.Fatalf("DeclareBlocker bear1: %v", err)
+	}
+	if err := g.DeclareBlocker(bear2, cmdr.InstanceID); err != nil {
+		t.Fatalf("DeclareBlocker bear2: %v", err)
+	}
+	advanceIntoStep(t, g, StepCombatDamage)
+
+	var promptID uuid.UUID
+	for _, pc := range g.PendingChoices {
+		if pc.Kind == PendingChoiceDamageAssignment {
+			promptID = pc.ID
+			break
+		}
+	}
+	if promptID == uuid.Nil {
+		t.Fatalf("expected damage_assignment prompt")
+	}
+	// 2 + 3 lethal across the bears, 1 trample to the player.
+	if err := g.ResolveDamageAssignment(promptID, atk.ID,
+		[]DamageAssignmentEntry{
+			{BlockerID: bear1, Amount: 2},
+			{BlockerID: bear2, Amount: 3},
+		}, 1); err != nil {
+		t.Fatalf("ResolveDamageAssignment: %v", err)
+	}
+
+	if def.Life != StartingLife-1 {
+		t.Errorf("defender life = %d, want %d", def.Life, StartingLife-1)
+	}
+	if got := def.CommanderDamage[atk.ID]; got != 1 {
+		t.Errorf("trample overflow commander damage = %d, want 1", got)
+	}
+}
