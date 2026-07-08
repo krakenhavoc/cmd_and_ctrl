@@ -49,6 +49,7 @@ import (
 	_ "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/envflag"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
@@ -140,6 +141,22 @@ func main() {
 	}
 	avatarCache := discord.NewAvatarCache(avatarDir, nil)
 
+	// Bug reporting (in-app "report a bug" button → GitHub issue).
+	// Token unset = feature off; the client hides the button via
+	// GET /bugreport/config. The token should be a fine-grained PAT
+	// with Issues:write on the one repo — see ADR 0017.
+	var bugReporter lobby.BugReporter
+	ghRepo := os.Getenv("CMDCTRL_GITHUB_REPO")
+	if ghRepo == "" {
+		ghRepo = "krakenhavoc/cmd_and_ctrl"
+	}
+	if ghToken := os.Getenv("CMDCTRL_GITHUB_TOKEN"); ghToken != "" {
+		bugReporter = github.NewClient(ghToken, ghRepo)
+		log.Info("bug reporting enabled", "repo", ghRepo)
+	} else {
+		log.Info("bug reporting disabled — set CMDCTRL_GITHUB_TOKEN to enable")
+	}
+
 	mux.Handle("/", lobby.Handler(lobby.Config{
 		Lobby:             l,
 		Auth:              authenticator,
@@ -150,6 +167,7 @@ func main() {
 		Discord:           discordCfg,
 		DiscordStateStore: discord.NewStateStore(),
 		DiscordAvatars:    avatarCache,
+		BugReporter:       bugReporter,
 	}))
 
 	srv := &http.Server{
