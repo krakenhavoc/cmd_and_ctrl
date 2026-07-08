@@ -507,6 +507,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		Distribution: cloneDistributionLocked(params.Distribution),
 		HoldPriority: params.HoldPriority,
 		SplitSecond:  params.SplitSecond,
+		Seq:          g.nextStackSeqLocked(),
 	}
 	if params.SplitSecond {
 		g.SplitSecondActive = true
@@ -764,6 +765,22 @@ func (g *Game) sorcerySpeedOpenLocked(playerID uuid.UUID) bool {
 	return true
 }
 
+// nextStackSeqLocked mints the insertion sequence stamped onto a
+// StackItem as it lands in StackMeta. One above the current maximum
+// rather than a persistent counter: the scan is O(items-on-stack)
+// (single digits in practice) and survives Clone / RestoreFrom /
+// snapshot decode without any extra bookkeeping. Caller must hold
+// g.mu.
+func (g *Game) nextStackSeqLocked() uint64 {
+	var maxSeq uint64
+	for _, item := range g.StackMeta {
+		if item != nil && item.Seq > maxSeq {
+			maxSeq = item.Seq
+		}
+	}
+	return maxSeq + 1
+}
+
 // cloneDistributionLocked deep-copies the announce-time distribution
 // map so the caller's slice / map can't be mutated through StackMeta.
 // Returns nil for an empty input.
@@ -806,6 +823,14 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// not happen — but if it does, route to graveyard so the
 		// stack doesn't wedge.
 		return g.routeStackCardToGraveyardLocked(top)
+	}
+	// CR 608.1: spells and abilities share one LIFO stack. An ability
+	// item stamped with a higher Seq than the top spell was added
+	// later (activated or triggered in response) and must resolve
+	// first. Ties — including legacy zero-Seq items from snapshots
+	// predating the field — keep the old spell-first behaviour.
+	if ab := g.topAbilityLocked(); ab != nil && ab.Seq > item.Seq {
+		return g.resolveTopAbilityLocked()
 	}
 	delete(g.StackMeta, top.InstanceID)
 	defer g.recomputeSplitSecondLocked()
@@ -961,28 +986,39 @@ func targetStillExistsLocked(g *Game, t TargetRef) bool {
 	}
 }
 
-// resolveTopAbilityLocked resolves the most-recently-added ability
-// item in StackMeta (no underlying card on Game.Stack). Returns nil
-// if there are no abilities to resolve. Caller must hold g.mu.
-func (g *Game) resolveTopAbilityLocked() error {
-	if len(g.StackMeta) == 0 {
-		return nil
-	}
-	// Without an ordering hint, pick any ability item — sub-PR 6
-	// will replace this with proper LIFO ordering once
-	// activate_ability / announce_trigger are wired.
-	for id, item := range g.StackMeta {
-		if item != nil && (item.Kind == StackItemActivated || item.Kind == StackItemTriggered) {
-			delete(g.StackMeta, id)
-			g.recomputeSplitSecondLocked()
-			g.EmitEvent(Event{
-				Kind:   EventResolve,
-				Actor:  item.Controller,
-				Source: item.SourceCardID,
-			})
-			return nil
+// topAbilityLocked returns the ability item in StackMeta with the
+// highest insertion Seq — the most recently added one — or nil when
+// no activated / triggered items are pending. Caller must hold g.mu.
+func (g *Game) topAbilityLocked() *StackItem {
+	var top *StackItem
+	for _, item := range g.StackMeta {
+		if item == nil || (item.Kind != StackItemActivated && item.Kind != StackItemTriggered) {
+			continue
+		}
+		if top == nil || item.Seq > top.Seq {
+			top = item
 		}
 	}
+	return top
+}
+
+// resolveTopAbilityLocked resolves the most-recently-added ability
+// item in StackMeta (no underlying card on Game.Stack). "Most
+// recently added" is the highest insertion Seq — LIFO per CR 608.1,
+// deterministic regardless of map-iteration order. Returns nil if
+// there are no abilities to resolve. Caller must hold g.mu.
+func (g *Game) resolveTopAbilityLocked() error {
+	top := g.topAbilityLocked()
+	if top == nil {
+		return nil
+	}
+	delete(g.StackMeta, top.ID)
+	g.recomputeSplitSecondLocked()
+	g.EmitEvent(Event{
+		Kind:   EventResolve,
+		Actor:  top.Controller,
+		Source: top.SourceCardID,
+	})
 	return nil
 }
 
@@ -1084,6 +1120,7 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 		Modes:        append([]int(nil), params.Modes...),
 		XValue:       params.XValue,
 		Distribution: cloneDistributionLocked(params.Distribution),
+		Seq:          g.nextStackSeqLocked(),
 	}
 	return nil
 }
@@ -1442,8 +1479,15 @@ func (g *Game) stateBasedActionsLocked() bool {
 //
 // Bounded at 32 iterations as a safety belt against an unintended
 // SBA / trigger ping-pong; in practice the loop terminates after at
-// most a handful of passes (one creature destroyed → one Concede-
-// adjacent trigger → one resolution).
+// most a handful of passes (one creature destroyed → one trigger
+// drained onto the stack → one quiet re-check).
+//
+// Each iteration drains PendingTriggers onto the stack via the
+// APNAP drain — the drain empties the queue, so the loop terminates
+// once SBAs go quiet. (An earlier revision recursed on itself here
+// instead of draining; with nothing emptying the queue, a manually
+// announced trigger followed by any state check overflowed the
+// stack.)
 //
 // Caller must hold g.mu.
 func (g *Game) runStateChecksLocked() {
@@ -1455,7 +1499,7 @@ func (g *Game) runStateChecksLocked() {
 			return
 		}
 		if hasPending {
-			g.runStateChecksLocked()
+			g.drainPendingTriggersAPNAPLocked()
 		}
 	}
 }
@@ -1798,10 +1842,17 @@ func (g *Game) drainPendingTriggersAPNAPLocked() {
 	if g.StackMeta == nil {
 		g.StackMeta = make(map[uuid.UUID]*StackItem)
 	}
-	// APNAP: active player first, then clockwise.
+	// APNAP: active player first, then clockwise. Seq increases in
+	// drain order, so the active player's triggers (placed first)
+	// resolve last — CR 603.3b stacking order. One scan mints the
+	// starting Seq; incrementing locally keeps the drain O(triggers)
+	// instead of rescanning StackMeta per placement.
+	seq := g.nextStackSeqLocked()
 	for offset := 0; offset < numSeats; offset++ {
 		seat := (g.Turn.ActiveSeat + offset) % numSeats
 		for _, t := range bySeat[seat] {
+			t.Seq = seq
+			seq++
 			g.StackMeta[t.ID] = t
 		}
 	}
