@@ -277,6 +277,75 @@ bootstrap — "am I still logged in, and as what?"
 
 ---
 
+## Bug reports
+
+In-app "report a bug" button → GitHub issue, server-proxied so the
+GitHub token never reaches the browser. See
+[ADR 0017](decisions/0017-bug-report-button.md).
+
+### `GET /bugreport/config`
+
+Unauthenticated probe (mirrors `GET /auth/discord/config`): reports
+whether the server can file issues, so the client knows whether to
+render the report button.
+
+**Response 200**
+
+```json
+{ "enabled": true }
+```
+
+`enabled` is `false` when `CMDCTRL_GITHUB_TOKEN` is unset.
+
+### `POST /bugreport`
+
+File a bug report. Requires any authenticated session (player,
+spectator, or admin — spectators hit bugs too). Rate-limited to a
+burst of 3, then ~1 report / 30 s per client IP.
+
+**Request**
+
+```json
+{
+  "title": "cast dialog eats X value",
+  "description": "set X=4, dialog sent X=0",
+  "context": {
+    "game_id": "<uuid>",
+    "turn": 5,
+    "phase": "main1",
+    "step": "main",
+    "seq": 731,
+    "connection": "connected"
+  }
+}
+```
+
+`description` and `context` (and every field inside `context`) are
+optional. `title` is capped at 200 characters, `description` at
+5000. Context strings are clipped server-side and never trusted; the
+server adds the reporter identity, server time, and `User-Agent`
+itself. Game state (hands, libraries, decklists) is deliberately
+never embedded — the issue references `GET /games/{id}/replay` for
+the operator instead.
+
+**Response 201**
+
+```json
+{ "url": "https://github.com/krakenhavoc/cmd_and_ctrl/issues/123", "number": 123 }
+```
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | missing/oversized title or description, unknown field |
+| 401 | no valid session |
+| 429 | rate-limited |
+| 502 | GitHub rejected or timed out; retry later |
+| 503 | bug reporting not configured (`CMDCTRL_GITHUB_TOKEN` unset) |
+
+---
+
 ## Card routes (authenticated)
 
 Served by the `cards` package. Both routes require authentication.
