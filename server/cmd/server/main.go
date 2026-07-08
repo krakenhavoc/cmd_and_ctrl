@@ -84,6 +84,9 @@ func main() {
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
 	hub.SetAuthorizer(&lobby.WSAuthorizer{Auth: authenticator})
+	// Lobby HTTP mutations (join/deck/start) broadcast through the
+	// hub so clients already on the game page see them immediately.
+	l.SetStateBroadcaster(hub)
 	if len(cfg.AllowedOrigins) > 0 {
 		hub.SetAllowedOrigins(cfg.AllowedOrigins)
 		log.Info("ws allowed-origins configured", "hosts", cfg.AllowedOrigins)

@@ -141,6 +141,23 @@ func (r *Room) Apply(caller uuid.UUID, fn func() error) (protocol.GameView, uint
 	return r.captureLocked(true)
 }
 
+// ApplyExternal is Apply for lobby-side (HTTP) mutations — join, deck
+// upload, start. It runs fn under the room lock and captures seq +
+// view exactly like Apply, but records no undo entry: these are game
+// setup steps, not player actions a seat may take back. The returned
+// view + seq must still reach connected clients — see
+// Hub.BroadcastState; a lobby mutation that skips this path is
+// invisible to anyone already sitting on the game page.
+func (r *Room) ApplyExternal(fn func() error) (protocol.GameView, uint64, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if err := fn(); err != nil {
+		return protocol.GameView{}, 0, err
+	}
+	return r.captureLocked(true)
+}
+
 // Undo pops the most recent pre-mutation entry off the undo stack,
 // restores the live Game to that state, captures a fresh snapshot,
 // and returns it for broadcast.
@@ -241,6 +258,17 @@ func (r *Room) Snapshot() (protocol.GameView, uint64, error) {
 	return r.captureLocked(false)
 }
 
+// Seq returns the current sequence counter without capturing a view.
+// Cheap — the hub's post-admit re-check uses it to detect whether a
+// broadcast landed in the pre-stage→admit gap before paying for a
+// full Snapshot (which builds the whole view and rewrites the
+// crash-recovery dump).
+func (r *Room) Seq() uint64 {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.seq
+}
+
 // captureLocked is the common state-capture path used by both Apply
 // and Snapshot. Caller MUST hold r.mu.
 //
@@ -312,11 +340,10 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 //
 // Caller MUST hold r.mu. ReplayPath returns the on-disk location.
 func (r *Room) appendReplayLocked(payload []byte) error {
-	replayDir := filepath.Join(r.dumpDir, "replays")
-	if err := os.MkdirAll(replayDir, 0o755); err != nil {
+	path := replayPath(r.dumpDir, r.Game.ID)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	path := filepath.Join(replayDir, r.Game.ID.String()+".jsonl")
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
@@ -336,7 +363,20 @@ func (r *Room) ReplayPath() string {
 	if r.dumpDir == "" {
 		return ""
 	}
-	return filepath.Join(r.dumpDir, "replays", r.Game.ID.String()+".jsonl")
+	return replayPath(r.dumpDir, r.Game.ID)
+}
+
+// snapshotPath / replayPath are the single definition of the on-disk
+// artifact layout under dumpDir. Room's writers and RoomManager's
+// Delete cleanup both go through these, so the layout can't drift
+// between the writer and the reaper (a drifted reaper would silently
+// stop removing deleted games' files — os.IsNotExist hides the miss).
+func snapshotPath(dumpDir string, id uuid.UUID) string {
+	return filepath.Join(dumpDir, "games", id.String()+".json")
+}
+
+func replayPath(dumpDir string, id uuid.UUID) string {
+	return filepath.Join(dumpDir, "replays", id.String()+".jsonl")
 }
 
 // dumpSnapshotLocked writes the snapshot payload to the crash-recovery
@@ -346,7 +386,8 @@ func (r *Room) ReplayPath() string {
 // unique tmp filename even if we didn't, but the rest of Apply needs
 // the mutex anyway.
 func (r *Room) dumpSnapshotLocked(payload []byte) error {
-	gamesDir := filepath.Join(r.dumpDir, "games")
+	finalPath := snapshotPath(r.dumpDir, r.Game.ID)
+	gamesDir := filepath.Dir(finalPath)
 	if err := os.MkdirAll(gamesDir, 0o755); err != nil {
 		return err
 	}
@@ -376,7 +417,6 @@ func (r *Room) dumpSnapshotLocked(payload []byte) error {
 	}
 	tmp = nil // disable the defer's cleanup now that we're about to rename
 
-	finalPath := filepath.Join(gamesDir, r.Game.ID.String()+".json")
 	if err := os.Rename(tmpPath, finalPath); err != nil {
 		// Rename failed — the tmp file is still on disk. Remove it
 		// explicitly since the defer above was disarmed.

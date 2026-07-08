@@ -5,6 +5,8 @@ import (
 	"io"
 	"log/slog"
 	"math/rand/v2"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 
@@ -135,6 +137,45 @@ func TestRoomManagerDelete(t *testing.T) {
 	}
 	// Deleting an unknown ID is a no-op.
 	mgr.Delete(uuid.New())
+}
+
+// TestRoomManagerDeleteRemovesArtifacts proves Delete best-effort
+// removes the crash-recovery snapshot and the replay log so deleted
+// games stop accumulating on disk.
+func TestRoomManagerDeleteRemovesArtifacts(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	dir := t.TempDir()
+	mgr := NewRoomManager(log, dir)
+	g := buildTestGame(t, "A")
+	mgr.Create(g)
+
+	// Materialise both artifacts as the room would.
+	gamesDir := filepath.Join(dir, "games")
+	replaysDir := filepath.Join(dir, "replays")
+	for _, d := range []string{gamesDir, replaysDir} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", d, err)
+		}
+	}
+	snapPath := filepath.Join(gamesDir, g.ID.String()+".json")
+	replayPath := filepath.Join(replaysDir, g.ID.String()+".jsonl")
+	if err := os.WriteFile(snapPath, []byte("{}"), 0o644); err != nil {
+		t.Fatalf("write snapshot: %v", err)
+	}
+	if err := os.WriteFile(replayPath, []byte("{}\n"), 0o644); err != nil {
+		t.Fatalf("write replay: %v", err)
+	}
+
+	mgr.Delete(g.ID)
+
+	if _, err := os.Stat(snapPath); !os.IsNotExist(err) {
+		t.Errorf("snapshot survives delete; stat err = %v", err)
+	}
+	if _, err := os.Stat(replayPath); !os.IsNotExist(err) {
+		t.Errorf("replay survives delete; stat err = %v", err)
+	}
+	// Deleting a game with no artifacts on disk stays a quiet no-op.
+	mgr.Delete(g.ID)
 }
 
 // TestRoomManagerConcurrent exercises the manager under concurrent

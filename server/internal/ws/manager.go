@@ -2,6 +2,7 @@ package ws
 
 import (
 	"log/slog"
+	"os"
 	"sort"
 	"sync"
 
@@ -92,14 +93,32 @@ func (m *RoomManager) List() []*Room {
 	return out
 }
 
-// Delete removes a room from the manager. Does not close the room's
-// underlying game or notify connected clients — the hub is responsible
-// for evicting clients bound to the deleted game separately. At S04
-// this is unused; exposed for future lobby-level game eviction.
+// Delete removes a room from the manager and best-effort removes its
+// on-disk artifacts (the crash-recovery snapshot and the replay log
+// — without this, deleted games' files accumulate forever). Removal
+// failures are logged, never fatal: the in-memory delete is the
+// operation that matters. Does not close the room's underlying game
+// or notify connected clients — the hub is responsible for evicting
+// clients bound to the deleted game separately.
 func (m *RoomManager) Delete(id uuid.UUID) {
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	delete(m.rooms, id)
+	dumpDir := m.dumpDir
+	m.mu.Unlock()
+
+	if dumpDir == "" {
+		return
+	}
+	// snapshotPath / replayPath (room.go) are the same helpers the
+	// writers use, so the reaper can't drift from the layout.
+	for _, path := range []string{
+		snapshotPath(dumpDir, id),
+		replayPath(dumpDir, id),
+	} {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			m.log.Warn("delete game artifact failed", "path", path, "err", err)
+		}
+	}
 }
 
 // Count returns the number of registered rooms.

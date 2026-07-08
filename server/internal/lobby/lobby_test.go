@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
@@ -245,5 +246,82 @@ func TestGetUnknownGame(t *testing.T) {
 	l := newTestLobby(t)
 	if _, err := l.Get(uuid.New()); err != ErrGameNotFound {
 		t.Errorf("Get unknown: got %v, want ErrGameNotFound", err)
+	}
+}
+
+// recordingBroadcaster captures BroadcastState calls so tests can
+// assert lobby HTTP mutations reach connected clients (the bug this
+// guards: Game.Start used to bypass the room, so players already on
+// the game page never saw the game start).
+type recordingBroadcaster struct {
+	calls []struct {
+		gameID uuid.UUID
+		seq    uint64
+		state  string
+	}
+}
+
+func (r *recordingBroadcaster) BroadcastState(gameID uuid.UUID, seq uint64, view protocol.GameView) {
+	r.calls = append(r.calls, struct {
+		gameID uuid.UUID
+		seq    uint64
+		state  string
+	}{gameID, seq, view.State})
+}
+
+func TestLobbyMutationsBroadcastToRoom(t *testing.T) {
+	l := newTestLobby(t)
+	rec := &recordingBroadcaster{}
+	l.SetStateBroadcaster(rec)
+
+	meta, err := l.Create("FNM")
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	_, p1, err := l.Join(meta.ID, meta.InviteToken, "Alice")
+	if err != nil {
+		t.Fatalf("Join Alice: %v", err)
+	}
+	_, p2, err := l.Join(meta.ID, meta.InviteToken, "Bob")
+	if err != nil {
+		t.Fatalf("Join Bob: %v", err)
+	}
+	deck := []game.Card{
+		game.NewCommander("Cmdr", uuid.Nil),
+		game.NewCard("Filler", uuid.Nil),
+	}
+	if _, err := l.SetDeck(meta.ID, p1, "Deck A", deck); err != nil {
+		t.Fatalf("SetDeck p1: %v", err)
+	}
+	if _, err := l.SetDeck(meta.ID, p2, "Deck B", deck); err != nil {
+		t.Fatalf("SetDeck p2: %v", err)
+	}
+	if _, err := l.Start(meta.ID); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+
+	// 2 joins + 2 deck uploads + 1 start, every one broadcast with a
+	// strictly increasing seq, all for this game, ending active.
+	if len(rec.calls) != 5 {
+		t.Fatalf("broadcasts: got %d, want 5 (%+v)", len(rec.calls), rec.calls)
+	}
+	for i, c := range rec.calls {
+		if c.gameID != meta.ID {
+			t.Errorf("call %d: gameID %s, want %s", i, c.gameID, meta.ID)
+		}
+		if i > 0 && c.seq <= rec.calls[i-1].seq {
+			t.Errorf("call %d: seq %d not above previous %d", i, c.seq, rec.calls[i-1].seq)
+		}
+	}
+	if got := rec.calls[4].state; got != string(game.StateActive) {
+		t.Errorf("final broadcast state: got %q, want %q", got, game.StateActive)
+	}
+
+	// A failed mutation must not broadcast.
+	if _, _, err := l.Join(meta.ID, meta.InviteToken, "Carol"); err == nil {
+		t.Fatal("Join after start: expected error")
+	}
+	if len(rec.calls) != 5 {
+		t.Fatalf("failed join broadcast: got %d calls, want still 5", len(rec.calls))
 	}
 }
