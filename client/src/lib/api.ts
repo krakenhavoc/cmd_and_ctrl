@@ -183,11 +183,17 @@ export async function uploadDeck(
 // callers can use it as a render gate:
 //   const url = avatarURL(seat.discord_id, seat.discord_avatar_hash);
 //   {#if url}<img src={url}>{/if}
+// The endpoint is session-gated and <img> tags can't set an
+// Authorization header, so the token rides as ?token= (same pattern
+// as replayURL) — the session cookie alone isn't reliable (Secure-
+// flag mismatches, cleared cookies with a live localStorage session).
 // The /avatars handler 503s when the disk cache is unconfigured;
 // callers that care should treat a 503 as "fall back to initials".
 export function avatarURL(discordID?: string, avatarHash?: string): string | null {
   if (!discordID || !avatarHash) return null;
-  return `/avatars/${encodeURIComponent(discordID)}/${encodeURIComponent(avatarHash)}.png`;
+  const base = `/avatars/${encodeURIComponent(discordID)}/${encodeURIComponent(avatarHash)}.png`;
+  const token = currentSession()?.token;
+  return token ? `${base}?token=${encodeURIComponent(token)}` : base;
 }
 
 // discordAuthEnabled probes /auth/discord/config and reports whether

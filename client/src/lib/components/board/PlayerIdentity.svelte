@@ -9,7 +9,7 @@
   // The avatar wrapper carries data-seat-id so CombatArrows can anchor
   // attack arrows on it (see CombatArrows.svelte:161).
 
-  import type { ActionPayload, PlayerView } from "../../protocol";
+  import type { ActionPayload, ActionType, PlayerView } from "../../protocol";
   import { seatColor } from "../../colors";
   import { floatUp, fadeOut } from "../../animations";
   import { play } from "../../sounds";
@@ -17,7 +17,7 @@
   import { targeting, isTargetingPlayer } from "../../targeting";
   import ManaPoolPips from "./ManaPoolPips.svelte";
 
-  type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
+  type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
   interface Props {
     seat: PlayerView;

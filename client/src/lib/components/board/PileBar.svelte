@@ -12,12 +12,12 @@
   // (GameView.exile), so callers pass a pre-filtered ZoneView containing
   // just this player's owned exiled cards.
 
-  import type { ActionPayload, PlayerView, ZoneView } from "../../protocol";
+  import type { ActionPayload, ActionType, PlayerView, ZoneView } from "../../protocol";
   import PileButton from "./PileButton.svelte";
   import CommandZone from "./CommandZone.svelte";
   import { openZoneBrowser } from "../../zoneBrowser";
 
-  type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
+  type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
   interface Props {
     seat: PlayerView;
@@ -51,7 +51,13 @@
     disabled={!isSelf || !onDrawCard}
     onClick={isSelf ? onDrawCard : undefined}
   />
-  <CommandZone seat={{ id: seat.id, name: seat.name }} zone={seat.command} {isSelf} {sendAction} />
+  <CommandZone
+    seat={{ id: seat.id, name: seat.name }}
+    zone={seat.command}
+    {isSelf}
+    {sendAction}
+    commanderCasts={seat.commander_casts}
+  />
 </div>
 
 <style>

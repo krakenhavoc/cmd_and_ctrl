@@ -18,7 +18,7 @@
   // zone is filtered by owner so each panel's EXILE pile shows only
   // the cards that player owns.
 
-  import type { ActionPayload, CardView, GameView, ZoneView } from "../../protocol";
+  import type { ActionPayload, ActionType, CardView, GameView, ZoneView } from "../../protocol";
   import { seatPlacements, type SeatPosition } from "../../cardTypes";
   import PlayerPanel from "./PlayerPanel.svelte";
   import HoverZoomOverlay from "./HoverZoomOverlay.svelte";
@@ -37,7 +37,7 @@
     type TargetingMode,
   } from "../../targeting";
 
-  type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
+  type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
   interface Props {
     view: GameView;

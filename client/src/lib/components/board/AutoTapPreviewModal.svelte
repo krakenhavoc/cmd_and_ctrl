@@ -51,7 +51,18 @@
   // is read-only on this endpoint so the round-trip is cheap; a
   // small debounce isn't necessary because lock toggles are user-
   // driven (one click → one fetch).
+  //
+  // fetchSeq is a monotonically increasing request id (deliberately a
+  // plain let, not $state — it must not re-trigger this effect). Each
+  // run claims the next id; a response only lands if it's still the
+  // latest. Guarding by cardID alone isn't enough: two quick lock
+  // toggles for the same card leave two fetches in flight and the
+  // last to RESOLVE would win, possibly showing a plan computed for
+  // an outdated lockedSources set. Bumping before the early return
+  // also invalidates in-flight responses when the modal closes.
+  let fetchSeq = 0;
   $effect(() => {
+    const reqID = ++fetchSeq;
     if (!cardID) return;
     const card = cardID;
     const locked = lockedSources.slice();
@@ -59,17 +70,17 @@
     fetchError = null;
     fetchAutoTapPreview(gameID, card, { excluded: locked })
       .then((p) => {
-        if (cardID === card) {
+        if (reqID === fetchSeq) {
           preview = p;
         }
       })
       .catch((err: unknown) => {
-        if (cardID === card) {
+        if (reqID === fetchSeq) {
           fetchError = err instanceof Error ? err.message : "preview failed";
         }
       })
       .finally(() => {
-        if (cardID === card) loading = false;
+        if (reqID === fetchSeq) loading = false;
       });
   });
 

@@ -27,7 +27,14 @@
   // Pixi wireTapClick: combat select on your own creature, declare-
   // block on an incoming attacker, otherwise tap/untap.
 
-  import type { ActionPayload, CardView, GameView, PlayerView, ZoneView } from "../../protocol";
+  import type {
+    ActionPayload,
+    ActionType,
+    CardView,
+    GameView,
+    PlayerView,
+    ZoneView,
+  } from "../../protocol";
   import { bucketForBattlefield, isCreature } from "../../cardTypes";
   import BattlefieldRow from "./BattlefieldRow.svelte";
   import PileBar from "./PileBar.svelte";
@@ -36,7 +43,7 @@
   import PhaseDisplay from "./PhaseDisplay.svelte";
   import PromisesRow from "./PromisesRow.svelte";
 
-  type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
+  type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
   interface Props {
     seat: PlayerView;
@@ -181,7 +188,13 @@
   }
 </script>
 
-<div class="panel" class:self={isSelf} class:opponent={!isSelf}>
+<div
+  class="panel"
+  class:self={isSelf}
+  class:opponent={!isSelf}
+  role="region"
+  aria-label={isSelf ? "your board" : `${seat.name} board`}
+>
   <div class="grid-creatures">
     <BattlefieldRow
       label="creatures"

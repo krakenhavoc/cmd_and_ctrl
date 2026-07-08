@@ -6,32 +6,37 @@
   //
   // Click semantics on the viewer's own zone:
   //   - empty: no-op
-  //   - one commander present: send move_card from command → battlefield
+  //   - one commander present: cast_spell from the command zone — the
+  //     cast goes through the real pipeline (stack, sorcery-speed +
+  //     priority gates, strict-mana with CR 903.8 tax, ETB triggers)
+  //     and the server increments CommanderCasts on success.
   //   - multiple commanders (partner / Background): cycle visible top
   //     and click the visible one to cast it. Partner support on the
   //     deck-import side is currently `ErrUnsupportedMechanic`, so
   //     this path is forward-compatible padding rather than today's
   //     primary flow.
   //
-  // Casts increment a local tax counter shown in the UI. The tax is
-  // not yet tracked server-side (a future S13+ rules graft item once
-  // the cast pipeline exists); for now it's a viewer hint that mirrors
-  // what a casting player would track on paper.
+  // The "+N tax" badge reads the server-tracked commander_casts map
+  // (S13.1) off the seat's PlayerView — no local bookkeeping, so every
+  // viewer (not just the caster's tab) sees the same tax.
 
-  import type { ActionPayload, CardView, ZoneView } from "../../protocol";
+  import type { ActionPayload, ActionType, CardView, ZoneView } from "../../protocol";
   import Card from "./Card.svelte";
   import { openZoneBrowser } from "../../zoneBrowser";
 
-  type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
+  type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
   interface Props {
     seat: { id: string; name: string };
     zone: ZoneView;
     isSelf: boolean;
     sendAction: ActionSender;
+    // Server-side per-commander cast counts (PlayerView.commander_casts),
+    // keyed by commander instance UUID. Drives the "+N tax" badge.
+    commanderCasts?: Record<string, number>;
   }
 
-  const { seat, zone, isSelf, sendAction }: Props = $props();
+  const { seat, zone, isSelf, sendAction, commanderCasts }: Props = $props();
 
   let visibleIndex = $state(0);
   const commanders = $derived(zone.cards);
@@ -39,12 +44,10 @@
     commanders.length > 0 ? (commanders[visibleIndex % commanders.length] ?? null) : null,
   );
 
-  // Local-only tax counter (++ per cast). Reset when the underlying
-  // commander instance changes (the same commander returning to the
-  // command zone keeps the same instance ID, so its tax persists; a
-  // freshly-imported deck or a new game gets a fresh count).
-  let castCounts = $state<Record<string, number>>({});
-  const visibleTax = $derived(visibleCard ? (castCounts[visibleCard.instance_id] ?? 0) * 2 : 0);
+  // CR 903.8: each prior cast of this commander adds {2}.
+  const visibleTax = $derived(
+    visibleCard ? (commanderCasts?.[visibleCard.instance_id] ?? 0) * 2 : 0,
+  );
 
   function cycleVisible(): void {
     if (commanders.length <= 1) return;
@@ -53,17 +56,14 @@
 
   function castVisible(): void {
     if (!isSelf || !visibleCard) return;
-    const id = visibleCard.instance_id;
+    // Game.svelte's sendAction shim stamps the strict flag and stashes
+    // the payload for the cast-anyway / auto-tap retry paths, which
+    // replay it verbatim — so from_zone survives those retries too.
     sendAction(
-      "move_card",
-      {
-        src: { kind: "command", owner: seat.id },
-        dst: { kind: "battlefield" },
-        instance_id: id,
-      },
+      "cast_spell",
+      { instance_id: visibleCard.instance_id, from_zone: "command" },
       seat.id,
     );
-    castCounts = { ...castCounts, [id]: (castCounts[id] ?? 0) + 1 };
   }
 
   function handleClick(): void {

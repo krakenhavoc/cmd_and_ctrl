@@ -11,11 +11,12 @@
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
   import TargetingBanner from "../lib/components/board/TargetingBanner.svelte";
   import { cancel as cancelTargeting } from "../lib/targeting";
-  import type { PlayerView } from "../lib/protocol";
+  import type { ActionType, PlayerView } from "../lib/protocol";
+  import type { StepID } from "../lib/turn";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
   import { hasAnyLegalResponse } from "../lib/priority";
-  import { consumeManualStop, hasManualStop } from "../lib/priorityStops";
+  import { consumeManualStop, manualStops } from "../lib/priorityStops";
 
   interface Props {
     gameID: string;
@@ -146,8 +147,12 @@
       // phase icon in PhaseDisplay to pin; the pin clears on step
       // transition. "Fake a game action" — viewer gets the cursor
       // even when the engine has nothing to offer (want to think /
-      // bluff / respond off-catalog).
-      if (hasManualStop(step)) return;
+      // bluff / respond off-catalog). Read via the $manualStops
+      // subscription (not the non-reactive hasManualStop helper) so
+      // unpinning while holding priority re-runs this effect and
+      // resumes auto-pass immediately rather than on the next
+      // snapshot.
+      if ($manualStops.has(step as StepID)) return;
       // Stop here if the viewer has opted to stop on this step. The
       // map omits no-priority steps (Untap / Cleanup); for those,
       // the viewer can never hold priority anyway. `smartAutoPass`
@@ -205,7 +210,7 @@
   // leaving the spell to resolve as a silent no-op.
   const lastCastByCardID = new Map<string, Record<string, unknown>>();
 
-  const sendAction = (type: string, params?: unknown, player?: string): void => {
+  const sendAction = (type: ActionType, params?: unknown, player?: string): void => {
     if (type === "cast_spell") {
       const strict = $settings.gameplay.strictMana;
       const incoming = (params ?? {}) as Record<string, unknown>;
@@ -1018,6 +1023,20 @@
     background: rgba(255, 208, 122, 0.12);
     color: var(--gold);
     border-color: rgba(255, 208, 122, 0.35);
+  }
+  /* Auto-retry state — same amber family as "connecting" but pulsing
+     so a dropped link is visibly distinct from a first connect. The
+     global :root[data-reduce-motion] rule in app.css stills it. */
+  .tag-reconnecting {
+    background: rgba(255, 208, 122, 0.12);
+    color: var(--gold);
+    border-color: rgba(255, 208, 122, 0.55);
+    animation: tag-reconnect-pulse 1.2s var(--ease) infinite;
+  }
+  @keyframes tag-reconnect-pulse {
+    50% {
+      opacity: 0.55;
+    }
   }
   .tag-disconnected {
     background: rgba(255, 122, 122, 0.12);

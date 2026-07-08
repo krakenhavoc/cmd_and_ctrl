@@ -9,9 +9,9 @@
   // options field. Kept inline with the modal to keep the politics
   // surface in one place.
 
-  import type { ActionPayload, GameView } from "../../protocol";
+  import type { ActionPayload, ActionType, GameView } from "../../protocol";
 
-  type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
+  type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
   interface Props {
     view: GameView;

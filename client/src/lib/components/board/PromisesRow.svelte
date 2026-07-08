@@ -10,9 +10,9 @@
   // direction (opponent→viewer) is read-only here; the opponent
   // adjusts that side on their own identity.
 
-  import type { ActionPayload, GameView } from "../../protocol";
+  import type { ActionPayload, ActionType, GameView } from "../../protocol";
 
-  type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
+  type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
   interface Props {
     view: GameView;

@@ -11,13 +11,13 @@
   // order — only one viewer's modal is open at a time on each
   // client, since viewer != active-seat is read-only.
 
-  import type { GameView } from "../../protocol";
+  import type { ActionType, GameView } from "../../protocol";
   import Card from "./Card.svelte";
 
   interface Props {
     snap: GameView;
     viewerID: string | null;
-    sendAction: (type: string, params?: unknown, player?: string) => void;
+    sendAction: (type: ActionType, params?: unknown, player?: string) => void;
   }
 
   const { snap, viewerID, sendAction }: Props = $props();
