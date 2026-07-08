@@ -59,12 +59,16 @@ fmt-check:
 		exit 1; \
 	fi
 
+# Pinned golangci-lint, run via `go run` so no locally-installed
+# binary is needed and the version can't drift from the v1-format
+# config in .golangci.yml (v1.64.8 is the final v1.x release).
+# First invocation downloads + builds the tool; later runs hit the
+# Go build cache. Unlike the old target, this can never silently
+# skip linting.
+GOLANGCI_LINT := github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+
 lint:
-	@if ! command -v golangci-lint >/dev/null 2>&1; then \
-		echo "golangci-lint not installed; skipping. Install from https://golangci-lint.run/"; \
-		exit 0; \
-	fi
-	golangci-lint run $(PKGS)
+	go run $(GOLANGCI_LINT) run $(PKGS)
 
 tidy:
 	go mod tidy

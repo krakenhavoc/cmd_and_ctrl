@@ -53,12 +53,28 @@ export async function uploadDeckAs(
   playerID: string,
   source: string,
 ): Promise<{ deck_name: string; card_count: number; commanders: string[] }> {
-  const res = await req.post(`/games/${gameID}/decks`, {
-    data: { player_id: playerID, source, format: "text" },
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok()) throw new Error(`upload deck failed: ${res.status()} ${await res.text()}`);
-  return (await res.json()) as { deck_name: string; card_count: number; commanders: string[] };
+  // The server reports HTTP-ready before the ~500MB Scryfall index
+  // finishes loading and answers uploads with 503 until it has. The
+  // webServer readiness URL can't see that, so retry here — bounded,
+  // and only for that specific 503 — instead of sleeping in specs.
+  // Bounded well under the 90s test timeout so a genuinely missing
+  // index reports the 503 rather than a mute test-timeout.
+  const deadline = Date.now() + 45_000;
+  for (;;) {
+    const res = await req.post(`/games/${gameID}/decks`, {
+      data: { player_id: playerID, source, format: "text" },
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok()) {
+      return (await res.json()) as { deck_name: string; card_count: number; commanders: string[] };
+    }
+    const body = await res.text();
+    const indexLoading = res.status() === 503 && body.includes("card index not loaded");
+    if (!indexLoading || Date.now() > deadline) {
+      throw new Error(`upload deck failed: ${res.status()} ${body}`);
+    }
+    await new Promise((r) => setTimeout(r, 2000));
+  }
 }
 
 export async function startGameAs(

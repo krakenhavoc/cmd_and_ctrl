@@ -12,15 +12,19 @@ tests-e2e/
 ├── package.json
 ├── tsconfig.json
 └── tests/
-    ├── env.ts             # shared constants (admin token, etc.)
-    ├── lobby-api.ts       # thin HTTP wrapper for test setup shortcuts
-    ├── deck-fixture.ts    # minimal legal Commander deck (Kenrith + 99 Plains)
-    ├── smoke.spec.ts      # router + healthz
-    ├── auth.spec.ts       # admin login, logout, invite-URL paste
-    ├── lobby.spec.ts      # admin lobby create / list / refresh
-    ├── join.spec.ts       # invite-link → join flow
-    ├── game.spec.ts       # game route WS handshake
-    └── full-game.spec.ts  # 2-player game: join → upload → start → mulligan → turns
+    ├── auth.spec.ts           # admin login, logout, invite-URL paste
+    ├── board-layout.spec.ts   # HTML/CSS board: zones, pile buttons, draw-to-hand
+    ├── deck-fixture.ts        # minimal legal Commander deck (Kenrith + 99 Plains)
+    ├── env.ts                 # shared constants (admin token, etc.)
+    ├── full-game.spec.ts      # 2-player game: join → upload → start → mulligan → turns
+    ├── game.spec.ts           # game route WS handshake
+    ├── join.spec.ts           # invite-link → join flow
+    ├── lobby-api.ts           # thin HTTP wrapper for test setup shortcuts
+    ├── lobby.spec.ts          # admin lobby create / list / refresh
+    ├── s19-deck-fixture.ts    # two 100-card decks built around the S19 trigger cards
+    ├── s19-helpers.ts         # S19 game setup via admin WS (join, decks, keep_hand)
+    ├── s19-triggers.spec.ts   # S19 triggered abilities: chooser modal, targets, resolution
+    └── smoke.spec.ts          # router + healthz
 ```
 
 ## Setup
@@ -48,10 +52,11 @@ sudo apt-get install -y libnspr4 libnss3 libasound2t64 \
 Go is expected to be on `PATH` — the config runs `go run ./cmd/server`
 rather than a prebuilt binary.
 
-The `full-game.spec.ts` test imports a deck against the Scryfall
-bulk dump. Make sure `<repo>/data/scryfall/default-cards.json`
-exists before running that test — see `scripts/scryfall-refresh.sh`
-if it's not there yet. Every other test runs without card data.
+The `full-game.spec.ts`, `board-layout.spec.ts`, and S19 trigger
+suites import decks against the Scryfall bulk dump. Make sure
+`<repo>/data/scryfall/default-cards.json` exists before running
+them — see `scripts/scryfall-refresh.sh` if it's not there yet. The
+remaining tests run without card data.
 
 ## Running
 
@@ -81,10 +86,18 @@ those ports, so you can iterate against a long-lived dev stack.
   `lobby-api.ts` wrapper mints admin sessions and creates games over
   HTTP; the actual assertions still run through the browser. This
   keeps tests fast without sacrificing UI coverage.
-- **No Scryfall data required.** Tests avoid paths that depend on the
-  `default-cards.json` dump (image routes, deck upload happy-path).
-  Full deck-upload coverage lives in the server's Go tests, where
-  validation is exercised directly.
+- **Scryfall data needed only by the deck-driven suites.** Most tests
+  avoid paths that depend on the `default-cards.json` dump, and deck
+  validation itself is covered by the server's Go tests. But
+  `full-game.spec.ts` and `board-layout.spec.ts` each import a deck,
+  and the S19 trigger suite uploads two 100-card decks against the
+  bulk index — those need `data/scryfall/default-cards.json` present.
+- **Rate limits are relaxed for the spawned server.** The config sets
+  `CMDCTRL_DEV_RELAX_RATE_LIMITS=1` so serial suites that mint many
+  sessions (S19 spins up a fresh 2-player game per test) don't trip
+  the lobby join/login limiter between tests. If you attach the suite
+  to an already-running dev server instead, start that server with the
+  same variable set.
 
 ## Adding tests
 

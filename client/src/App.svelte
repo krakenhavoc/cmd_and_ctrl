@@ -108,7 +108,12 @@
 {:else if $route.name === "join"}
   <Join gameID={$route.gameID} inviteToken={$route.inviteToken} spectator={$route.spectator} />
 {:else if $route.name === "game"}
-  <Game gameID={$route.gameID} />
+  <!-- Keyed so navigating game A → game B tears down and remounts
+       the route (fresh GameClient, fresh per-game local state)
+       instead of reusing the old component with a swapped prop. -->
+  {#key $route.gameID}
+    <Game gameID={$route.gameID} />
+  {/key}
 {/if}
 
 <!-- Settings modal lives at the app shell so it overlays every

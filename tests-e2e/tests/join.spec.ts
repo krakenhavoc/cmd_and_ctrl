@@ -26,7 +26,7 @@ test.describe("invite → join", () => {
     await expect(page.getByPlaceholder("your name")).toHaveCount(0);
   });
 
-  test("valid invite link lands the player in the game route", async ({ page, request }) => {
+  test("valid invite link seats the player and lands them in the lobby", async ({ page, request }) => {
     const token = await adminLogin(request);
     const game = await createGame(request, token, `Join Flow ${Date.now()}`);
     expect(game.invite_token).toBeTruthy();
@@ -38,8 +38,10 @@ test.describe("invite → join", () => {
     await page.getByPlaceholder("your name").fill("E2E Player");
     await page.getByRole("button", { name: "join" }).click();
 
-    // Successful join redirects to the game view.
-    await expect(page).toHaveURL(new RegExp(`#/games/${game.id}$`));
+    // Players land in the lobby first (deck import, seat status)
+    // rather than the game route — s085 (#43). Spectators skip this.
+    await expect(page).toHaveURL(/#\/lobby$/);
+    await expect(page.getByText(/seat 0: E2E Player/)).toBeVisible();
 
     // We can't easily assert on the full Pixi canvas from here, but
     // the session store should now carry a player role tied to this

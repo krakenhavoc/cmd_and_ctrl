@@ -31,7 +31,11 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   timeout: 30_000,
-  expect: { timeout: 5_000 },
+  // 10s: the s19 helpers seed hands by pumping draw_card (the admin
+  // view can't address redacted library cards by name), so pages can
+  // be re-rendering 40+ card hands when an assertion polls — 5s
+  // loses that race on a loaded single-core runner.
+  expect: { timeout: 10_000 },
   use: {
     baseURL: "http://localhost:5173",
     trace: "retain-on-failure",
@@ -48,7 +52,9 @@ export default defineConfig({
     {
       // Run the Go server directly with `go run` so we don't depend on
       // a prebuilt binary. The env block pins a known admin token and
-      // a scratch data dir so the tests stay deterministic.
+      // points CMDCTRL_DATA_DIR at the shared dev `<repo>/data` dir
+      // (same as `make server-dev`) so the Scryfall index is available;
+      // e2e leftovers land in data/games and data/replays.
       command: "go run ./cmd/server",
       cwd: path.join(repoRoot, "server"),
       url: "http://localhost:8080/healthz",
@@ -60,6 +66,10 @@ export default defineConfig({
         CMDCTRL_ADMIN_TOKEN: ADMIN_TOKEN,
         CMDCTRL_DATA_DIR: serverDataDir,
         CMDCTRL_ADDR: ":8080",
+        // Lift the lobby join/login rate limits so serial suites that
+        // mint many sessions (S19 spins up a fresh 2-player game per
+        // test) don't have to sleep between tests. Dev/test only.
+        CMDCTRL_DEV_RELAX_RATE_LIMITS: "1",
       },
     },
     {

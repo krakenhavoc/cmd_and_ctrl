@@ -362,18 +362,35 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	// snapshot is guaranteed to be the first frame the new client
 	// sees. The channel is freshly-created and buffered at 16, so the
 	// non-blocking send inside sendRaw always succeeds here.
-	if room != nil {
-		if view, seq, err := room.Snapshot(); err == nil {
-			raw, marshalErr := marshalSnapshotFrame(seq, protocol.FilterViewFor(view, viewerIDForFilter(playerID)))
-			if marshalErr == nil {
-				client.sendRaw(raw)
-				client.log.Debug("pre-staged initial snapshot", "seq", seq)
-			} else {
-				client.log.Error("marshal initial snapshot failed", "err", marshalErr)
-			}
-		} else {
-			client.log.Error("build initial snapshot failed", "err", err)
+	//
+	// The pre-staged seq is remembered so the post-admit re-check
+	// below can detect a broadcast that landed in the gap between
+	// this Snapshot and admit — such a broadcast misses the client
+	// (not yet in h.clients) and would otherwise leave it rendering
+	// stale state until the next action.
+	// stageSnapshot captures the room's current state, filters it for
+	// this viewer, and queues it on the client's send channel. Shared
+	// by the pre-admit stage and the post-admit catch-up below so the
+	// filter/marshal/log sequence lives in one place.
+	stageSnapshot := func(label string) (uint64, bool) {
+		view, seq, err := room.Snapshot()
+		if err != nil {
+			client.log.Error("build "+label+" snapshot failed", "err", err)
+			return 0, false
 		}
+		raw, marshalErr := marshalSnapshotFrame(seq, protocol.FilterViewFor(view, viewerIDForFilter(playerID)))
+		if marshalErr != nil {
+			client.log.Error("marshal "+label+" snapshot failed", "err", marshalErr)
+			return 0, false
+		}
+		client.sendRaw(raw)
+		client.log.Debug("staged "+label+" snapshot", "seq", seq)
+		return seq, true
+	}
+	var preStagedSeq uint64
+	preStaged := false
+	if room != nil {
+		preStagedSeq, preStaged = stageSnapshot("initial")
 	}
 
 	// admit() atomically registers the client AND increments the wg
@@ -392,6 +409,21 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		)
 		_ = conn.Close()
 		return
+	}
+
+	// Post-admit re-check: now that the client is in h.clients, every
+	// future Apply broadcast reaches it — but one that fired between
+	// the pre-stage Snapshot and admit did not. If the room's seq has
+	// advanced past the pre-staged frame, stage a fresh snapshot so
+	// the client catches up immediately. The cheap Seq() probe guards
+	// the expensive full capture (view build + crash-dump rewrite) —
+	// in the common no-race case this costs one mutex hop. Ordering
+	// stays correct: the pre-staged frame is already first in the send
+	// channel, this one queues behind it, and any concurrent broadcast
+	// of the same seq is an idempotent duplicate (see Room.Snapshot's
+	// no-bump notes).
+	if preStaged && room.Seq() > preStagedSeq {
+		stageSnapshot("post-admit catch-up")
 	}
 	client.log.Info("ws client connected", "total", h.Count())
 
@@ -494,6 +526,16 @@ func viewerIDForFilter(playerID uuid.UUID) string {
 		return ""
 	}
 	return playerID.String()
+}
+
+// BroadcastState fans a lobby-applied state change out to every
+// client connected to gameID. HTTP-side mutations (join, deck upload,
+// start) bump seq via Room.ApplyExternal, but only the hub can reach
+// the connected clients — without this call a player already sitting
+// on the game page renders pre-mutation state until the next WS
+// action happens to broadcast.
+func (h *Hub) BroadcastState(gameID uuid.UUID, seq uint64, view protocol.GameView) {
+	h.broadcastToRoom(gameID, seq, view)
 }
 
 // broadcastToRoom sends a per-client filtered snapshot frame to every

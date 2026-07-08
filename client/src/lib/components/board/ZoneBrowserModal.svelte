@@ -16,12 +16,12 @@
   // writes to the shared hoveredCard store on mouseenter; the existing
   // HoverZoomOverlay mounted by Board.svelte picks it up unchanged.
 
-  import type { ActionPayload, CardView, GameView } from "../../protocol";
+  import type { ActionPayload, ActionType, CardView, GameView } from "../../protocol";
   import Card from "./Card.svelte";
   import type { BrowsableZone } from "../../zoneBrowser";
   import { buildMovePayload, canManageZone, cardsForZone } from "../../zoneBrowser.logic";
 
-  type ActionSender = (type: string, params?: ActionPayload["params"], player?: string) => void;
+  type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
   interface Props {
     view: GameView;

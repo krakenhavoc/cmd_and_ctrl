@@ -140,4 +140,12 @@ type StackItem struct {
 	// activations are legal except mana abilities and special
 	// actions. Game.SplitSecondActive mirrors this for fast lookup.
 	SplitSecond bool
+
+	// Seq is the StackMeta insertion order, stamped via
+	// nextStackSeqLocked when the item lands in the map. Ability
+	// resolution picks the highest Seq so abilities resolve LIFO
+	// (CR 608.1) instead of in map-iteration order. Items from
+	// snapshots predating the field carry 0 and tie-break
+	// arbitrarily among themselves.
+	Seq uint64
 }

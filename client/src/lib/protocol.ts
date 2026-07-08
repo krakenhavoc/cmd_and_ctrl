@@ -49,6 +49,46 @@ export interface ErrorPayload {
   card_id?: string;
 }
 
+// ActionType is the string-literal union of every action name this
+// client sends. Each literal is validated against the server's
+// registry — the Type constants in server/internal/actions/actions.go
+// plus the hub-level "undo" verb (server/internal/ws/hub.go) — so a
+// typo'd action name is a compile error here instead of a runtime
+// bad_request frame. The server accepts more action types than these
+// (play_card, advance_step, set_goaded, …); add literals as the UI
+// grows call sites for them.
+export type ActionType =
+  | "activate_mana_ability"
+  | "add_counter"
+  | "add_player_counter"
+  | "cast_spell"
+  | "cast_vote"
+  | "change_life"
+  | "concede"
+  | "counter_ability"
+  | "counter_spell"
+  | "declare_attacker"
+  | "declare_blocker"
+  | "discard_selection"
+  | "draw_card"
+  | "end_vote"
+  | "keep_hand"
+  | "move_card"
+  | "mulligan"
+  | "pass_priority"
+  | "pass_turn"
+  | "resolve_choice"
+  | "set_initiative"
+  | "set_monarch"
+  | "set_promise"
+  | "set_undo_limit"
+  | "shuffle_library"
+  | "start_vote"
+  | "tap"
+  | "undo"
+  | "untap"
+  | "untap_all";
+
 // ActionPayload is sent by the client to mutate game state. See
 // docs/protocol.md for the full catalog of action types and their
 // params shapes.

@@ -84,18 +84,18 @@
   });
   const cmdrHasDamage = $derived(cmdrRows.some((r) => r.amount > 0));
 
-  // Display P/T with counter modifiers when present so the panel shows
-  // the live combat value, not just the printed line. Matches the
-  // server's CurrentPower() math (printed +/- counters, clamped at 0).
+  // Live P/T comes straight off the wire: since S16 the server sends
+  // CurrentPower()/CurrentToughness() — effective P/T with +1/+1 and
+  // -1/-1 counter deltas already baked in — so re-adding counters
+  // here would double-count them. The printed parenthetical reads the
+  // Scryfall metadata (string-typed; handles "*" stats) and only
+  // renders once the meta fetch lands and the values actually differ.
   const livePT = $derived.by(() => {
     if (!card || card.power == null || card.toughness == null) return null;
-    const plusOnes = card.counters?.["+1/+1"] ?? 0;
-    const minusOnes = card.counters?.["-1/-1"] ?? 0;
-    const liveP = Math.max(0, card.power + plusOnes - minusOnes);
-    const liveT = Math.max(0, card.toughness + plusOnes - minusOnes);
-    const printed = `${card.power}/${card.toughness}`;
-    const live = `${liveP}/${liveT}`;
-    return live === printed ? printed : `${live} (${printed})`;
+    const live = `${card.power}/${card.toughness}`;
+    const printed =
+      meta?.power != null && meta?.toughness != null ? `${meta.power}/${meta.toughness}` : null;
+    return printed !== null && printed !== live ? `${live} (${printed})` : live;
   });
 </script>
 

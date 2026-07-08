@@ -11,6 +11,7 @@
 package lobby
 
 import (
+	"crypto/subtle"
 	"errors"
 	"strings"
 	"sync"
@@ -19,6 +20,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/token"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
@@ -85,10 +87,51 @@ type SeatInfo struct {
 
 // Lobby holds the set of games currently known to the server, keyed
 // by game ID. Safe for concurrent use.
+// StateBroadcaster pushes a captured game view to every WS client
+// connected to a game. Satisfied by *ws.Hub; narrow so lobby tests
+// can record broadcasts without standing up a hub.
+type StateBroadcaster interface {
+	BroadcastState(gameID uuid.UUID, seq uint64, view protocol.GameView)
+}
+
 type Lobby struct {
 	mu    sync.Mutex
 	games map[uuid.UUID]*gameEntry
 	mgr   *ws.RoomManager
+	// broadcast, when non-nil, receives the post-mutation view of
+	// every HTTP-side game mutation (join / deck upload / start) so
+	// clients already on the game page see it without waiting for
+	// the next WS action. Set once at boot via SetStateBroadcaster.
+	broadcast StateBroadcaster
+}
+
+// SetStateBroadcaster wires the hub in after construction (mirrors
+// hub.SetManager — lobby and hub are built in sequence at boot, so
+// one of the two references has to land via setter).
+func (l *Lobby) SetStateBroadcaster(b StateBroadcaster) {
+	l.broadcast = b
+}
+
+// applyLocked routes a game mutation through the room — bumping seq
+// and feeding the crash-dump/replay stream. Callers hold l.mu. On
+// success it returns a broadcast thunk the caller must run AFTER
+// releasing l.mu: the hub fan-out marshals a filtered snapshot per
+// connected client, and doing that under the lobby-wide mutex would
+// serialize every other game's lobby operations behind it (and
+// couple l.mu to the hub's lock for free). The returned error is
+// fn's error verbatim (or a capture failure after fn committed,
+// which callers surface as-is: rare, and the mutation has already
+// happened).
+func (l *Lobby) applyLocked(id uuid.UUID, entry *gameEntry, fn func() error) (func(), error) {
+	view, seq, err := entry.room.ApplyExternal(fn)
+	if err != nil {
+		return nil, err
+	}
+	if l.broadcast == nil {
+		return func() {}, nil
+	}
+	b := l.broadcast
+	return func() { b.BroadcastState(id, seq, view) }, nil
 }
 
 // gameEntry is the internal record for one game — the lobby-facing
@@ -206,6 +249,14 @@ func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identi
 		return GameMeta{}, uuid.Nil, ErrEmptyName
 	}
 
+	// Registered BEFORE the lock defer so it runs after l.mu is
+	// released (deferred calls run LIFO) — see applyLocked.
+	var broadcast func()
+	defer func() {
+		if broadcast != nil {
+			broadcast()
+		}
+	}()
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -213,10 +264,12 @@ func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identi
 	if !ok {
 		return GameMeta{}, uuid.Nil, ErrGameNotFound
 	}
-	if invite != entry.meta.InviteToken {
+	// Constant-time compare: the invite token IS the credential for
+	// this endpoint, so don't leak a prefix-match timing signal.
+	if subtle.ConstantTimeCompare([]byte(invite), []byte(entry.meta.InviteToken)) != 1 {
 		return GameMeta{}, uuid.Nil, ErrInvalidInvite
 	}
-	if entry.room.Game.State != game.StateLobby {
+	if entry.room.Game.CurrentState() != game.StateLobby {
 		return GameMeta{}, uuid.Nil, ErrGameStarted
 	}
 	if len(entry.meta.Players) >= game.MaxPlayers {
@@ -229,7 +282,30 @@ func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identi
 		game.NewCommander("Placeholder Commander ("+playerName+")", uuid.Nil),
 		game.NewCard("Placeholder Filler", uuid.Nil),
 	}
-	p, err := entry.room.Game.AddPlayer(playerName, deck)
+	var p *game.Player
+	var err error
+	broadcast, err = l.applyLocked(id, entry, func() error {
+		added, addErr := entry.room.Game.AddPlayer(playerName, deck)
+		if addErr != nil {
+			return addErr
+		}
+		p = added
+		if identity.Populated() {
+			// Mirror the identity onto the game.Player so it flows
+			// through PlayerView to the client without the snapshot
+			// path having to reach into lobby.SeatInfo for every
+			// seat render. Inside the room apply so the broadcast
+			// already carries the avatar.
+			if setErr := entry.room.Game.SetDiscordIdentity(p.ID, identity.ID, identity.AvatarHash, identity.DisplayName()); setErr != nil {
+				// Very narrow race: the game switched state between
+				// AddPlayer and SetDiscordIdentity. Log-worthy but not
+				// fatal — the seat still exists, the client just
+				// won't see the avatar until a future link flow.
+				_ = setErr
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		// game.AddPlayer returns ErrGameFull / ErrGameNotInLobby if
 		// state has drifted out from under the lobby's lock. Map them
@@ -254,23 +330,12 @@ func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identi
 		seat.DiscordID = identity.ID
 		seat.DiscordAvatarHash = identity.AvatarHash
 		seat.DisplayName = identity.DisplayName()
-		// Mirror the identity onto the game.Player so it flows
-		// through PlayerView to the client without the snapshot
-		// path having to reach into lobby.SeatInfo for every
-		// seat render.
-		if setErr := entry.room.Game.SetDiscordIdentity(p.ID, identity.ID, identity.AvatarHash, identity.DisplayName()); setErr != nil {
-			// Very narrow race: the game switched state between
-			// AddPlayer and SetDiscordIdentity. Log-worthy but not
-			// fatal — the seat still exists, the client just
-			// won't see the avatar until a future link flow.
-			_ = setErr
-		}
 	}
 	entry.meta.Players = append(entry.meta.Players, seat)
 	// The game's State flips to active on Start — the lobby drives
 	// Start only when an explicit POST /games/:id/start lands. Until
 	// then meta.State stays "lobby".
-	entry.meta.State = string(entry.room.Game.State)
+	entry.meta.State = string(entry.room.Game.CurrentState())
 
 	// Return a copy so callers can't mutate internal state via the
 	// returned meta. (json.Marshal would copy anyway, but defense in
@@ -296,7 +361,10 @@ func (l *Lobby) Spectate(id uuid.UUID, invite string) (GameMeta, error) {
 	if !ok {
 		return GameMeta{}, ErrGameNotFound
 	}
-	if invite == "" || invite != entry.meta.SpectatorInvite {
+	// Same constant-time discipline as the player invite. The empty-
+	// invite guard stays: an unset SpectatorInvite must never match
+	// an empty submission.
+	if invite == "" || subtle.ConstantTimeCompare([]byte(invite), []byte(entry.meta.SpectatorInvite)) != 1 {
 		return GameMeta{}, ErrInvalidInvite
 	}
 	return copyMeta(entry.meta), nil
@@ -316,6 +384,14 @@ var ErrDeckNotUploaded = errors.New("lobby: not every seat has uploaded a deck")
 // Marks the seat's DeckUploaded flag so Start can refuse to
 // transition until every seat has a real deck.
 func (l *Lobby) SetDeck(gameID, playerID uuid.UUID, deckName string, cards []game.Card) (GameMeta, error) {
+	// Registered before the lock defer so it runs after l.mu is
+	// released — see applyLocked.
+	var broadcast func()
+	defer func() {
+		if broadcast != nil {
+			broadcast()
+		}
+	}()
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -323,7 +399,7 @@ func (l *Lobby) SetDeck(gameID, playerID uuid.UUID, deckName string, cards []gam
 	if !ok {
 		return GameMeta{}, ErrGameNotFound
 	}
-	if entry.room.Game.State != game.StateLobby {
+	if entry.room.Game.CurrentState() != game.StateLobby {
 		return GameMeta{}, ErrGameStarted
 	}
 	// Confirm the player is seated in this game.
@@ -338,7 +414,10 @@ func (l *Lobby) SetDeck(gameID, playerID uuid.UUID, deckName string, cards []gam
 		return GameMeta{}, ErrPlayerNotInGame
 	}
 
-	if err := entry.room.Game.ReplaceDeck(playerID, cards); err != nil {
+	var err error
+	if broadcast, err = l.applyLocked(gameID, entry, func() error {
+		return entry.room.Game.ReplaceDeck(playerID, cards)
+	}); err != nil {
 		switch err {
 		case game.ErrGameNotInLobby:
 			return GameMeta{}, ErrGameStarted
@@ -363,6 +442,14 @@ func (l *Lobby) SetDeck(gameID, playerID uuid.UUID, deckName string, cards []gam
 // and start-button ownership is deferred until there's a reason to
 // differentiate them.
 func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
+	// Registered before the lock defer so it runs after l.mu is
+	// released — see applyLocked.
+	var broadcast func()
+	defer func() {
+		if broadcast != nil {
+			broadcast()
+		}
+	}()
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -370,7 +457,7 @@ func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
 	if !ok {
 		return GameMeta{}, ErrGameNotFound
 	}
-	if entry.room.Game.State == game.StateActive {
+	if entry.room.Game.CurrentState() == game.StateActive {
 		return copyMeta(entry.meta), nil
 	}
 	// Require every seat to have a real deck before we let them
@@ -383,12 +470,15 @@ func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
 			return GameMeta{}, ErrDeckNotUploaded
 		}
 	}
-	if err := entry.room.Game.Start(nil); err != nil {
+	var err error
+	if broadcast, err = l.applyLocked(id, entry, func() error {
+		return entry.room.Game.Start(nil)
+	}); err != nil {
 		// Most likely ErrNotEnoughPlayers — surface as-is; the HTTP
 		// handler turns it into 409.
 		return GameMeta{}, err
 	}
-	entry.meta.State = string(entry.room.Game.State)
+	entry.meta.State = string(entry.room.Game.CurrentState())
 	return copyMeta(entry.meta), nil
 }
 
@@ -402,7 +492,10 @@ func (l *Lobby) Get(id uuid.UUID) (GameMeta, error) {
 	if !ok {
 		return GameMeta{}, ErrGameNotFound
 	}
-	return copyMeta(entry.meta), nil
+	m := copyMeta(entry.meta)
+	// Live-state read — see the note in List.
+	m.State = string(entry.room.Game.CurrentState())
+	return m, nil
 }
 
 // LookupGame returns the live *game.Game pointer for id, or
@@ -431,6 +524,11 @@ func (l *Lobby) List() []GameMeta {
 	out := make([]GameMeta, 0, len(l.games))
 	for _, e := range l.games {
 		m := copyMeta(e.meta)
+		// meta.State is only rewritten on join/start; a game that
+		// ended via WS (concede → StateEnded) would otherwise report
+		// "active" here forever. Read the live state so the lobby UI
+		// can gate ended-only affordances (replay download).
+		m.State = string(e.room.Game.CurrentState())
 		m.InviteToken = ""
 		m.SpectatorInvite = ""
 		out = append(out, m)

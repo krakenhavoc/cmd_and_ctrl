@@ -50,6 +50,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/envflag"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
@@ -72,6 +73,12 @@ func main() {
 	if os.Getenv("CMDCTRL_DEV_SKIP_DECK_VALIDATION") != "" {
 		log.Warn("CMDCTRL_DEV_SKIP_DECK_VALIDATION is set; deck validation is BYPASSED. Do not use in production.")
 	}
+	// Same family: the e2e suite relaxes the lobby rate limiters via
+	// this knob (see lobby.Handler). Loud on boot for the same
+	// leaked-into-prod reason.
+	if envflag.Truthy(os.Getenv("CMDCTRL_DEV_RELAX_RATE_LIMITS")) {
+		log.Warn("CMDCTRL_DEV_RELAX_RATE_LIMITS is set; lobby rate limits are EFFECTIVELY DISABLED. Do not use in production.")
+	}
 
 	cfg := loadConfig(log)
 
@@ -84,6 +91,9 @@ func main() {
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
 	hub.SetAuthorizer(&lobby.WSAuthorizer{Auth: authenticator})
+	// Lobby HTTP mutations (join/deck/start) broadcast through the
+	// hub so clients already on the game page see them immediately.
+	l.SetStateBroadcaster(hub)
 	if len(cfg.AllowedOrigins) > 0 {
 		hub.SetAllowedOrigins(cfg.AllowedOrigins)
 		log.Info("ws allowed-origins configured", "hosts", cfg.AllowedOrigins)
@@ -146,6 +156,10 @@ func main() {
 		Addr:              cfg.Addr,
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
+		// Reap idle keep-alive connections so abandoned sockets don't
+		// pin fds indefinitely. NO WriteTimeout on purpose: it would
+		// sever long-lived WebSockets and replay streams mid-flight.
+		IdleTimeout: 120 * time.Second,
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

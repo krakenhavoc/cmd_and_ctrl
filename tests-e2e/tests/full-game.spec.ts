@@ -36,6 +36,10 @@ async function joinAsPlayer(
   await page.goto(`/#/games/${gameID}/join?t=${encodeURIComponent(inviteToken)}`);
   await page.getByPlaceholder("your name").fill(name);
   await page.getByRole("button", { name: "join" }).click();
+  // Players land in the lobby first — s085 (#43) — then a seated
+  // session can open the game route directly.
+  await expect(page).toHaveURL(/#\/lobby$/, { timeout: 10_000 });
+  await page.goto(`/#/games/${gameID}`);
   await expect(page).toHaveURL(new RegExp(`#/games/${gameID}$`), { timeout: 10_000 });
 
   const session = await page.evaluate(() =>

@@ -637,6 +637,8 @@ This sprint is the _foundation_ for the entire S13.x rules-graft track: S13.1 (s
 - [x] Leaving-game stack cleanup (CR 800.4a — spells exile, abilities + triggers vanish)
 - [ ] Heavier announce-time UX: CastDialog (target picker / X / modes / distribution), AbilityDialog, inline mark-damage on creature tiles — follow-up; the wire shape already accepts the data so the basic cast loop and counter affordance are testable today
 
+**Post-ship fix (`refactor/major-wip`, 2026-07):** stack items now resolve strictly LIFO by an insertion `Seq` (CR 608.1) instead of map-iteration order, so an ability activated/triggered in response to a spell resolves first; also closed a stack overflow where `runStateChecksLocked` recursed on itself instead of draining `PendingTriggers` (a manually announced trigger + any SBA check could blow the stack). Commit: `fix(game): resolve stack items LIFO by insertion sequence`.
+
 **Exit criteria:** a Commander player can cast Lightning Bolt, opponent counters with Counterspell on the stack, full priority/SBA loop works end-to-end.
 
 **Bright line — out of scope (S14+):** auto-fire of triggered abilities from card events, auto-validation of target legality at announce, auto-resolution of spell effects, mana pool, replacement effect engine generally, static abilities, combat keyword effects.
@@ -1607,6 +1609,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 - **Deathtouch via `Card.MarkedLethalByDeathtouch`** flag, read by SBA. Cleaner than short-circuiting `DamageMarked >= Toughness`.
 - **Lifelink applies universally** — CR 702.15 covers all damage from the source, not combat only. Routed through the mark-damage code path so `DealDamage*ForEffect` catalog helpers credit life too.
 - **Menace enforced at declare-blockers close-out**, not per-decl. Single blocker on a menace attacker is silently reverted (blocker effectively didn't block); attacker becomes unblocked.
+- **Post-ship fix (`refactor/major-wip`, 2026-07):** combat damage dealt by a commander now accrues toward the 21-damage loss SBA (CR 903.10a), including trample overflow routed through the damage-assignment prompt. The prompt frame caches the source's commander flag + owner so the damage still counts when the attacker dies to blocker damage before the prompt resolves. Commit: `fix(game): accrue commander combat damage toward the 21-damage SBA`.
 
 ### Sub-PR breakdown
 

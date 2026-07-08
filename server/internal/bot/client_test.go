@@ -23,6 +23,7 @@ type fakeServer struct {
 
 	loginStatus int
 	loginToken  string
+	loginCalls  int
 
 	createStatus int
 	createMeta   lobby.GameMeta
@@ -30,6 +31,11 @@ type fakeServer struct {
 
 	listStatus int
 	listMeta   []lobby.GameMeta
+
+	// requireBearer, when non-empty, makes /games reject any other
+	// Authorization value with 401 — lets the token-cache tests
+	// simulate a server-side session expiry / rotation.
+	requireBearer string
 
 	gotAuthHeaders []string
 }
@@ -68,6 +74,7 @@ func (fs *fakeServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if body.Token != "admin-secret" && fs.loginStatus == http.StatusOK {
 		fs.t.Errorf("unexpected admin token: got %q", body.Token)
 	}
+	fs.loginCalls++
 	w.WriteHeader(fs.loginStatus)
 	if fs.loginStatus == http.StatusOK {
 		_ = json.NewEncoder(w).Encode(map[string]string{"token": fs.loginToken})
@@ -76,6 +83,10 @@ func (fs *fakeServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 func (fs *fakeServer) handleGames(w http.ResponseWriter, r *http.Request) {
 	fs.gotAuthHeaders = append(fs.gotAuthHeaders, r.Header.Get("Authorization"))
+	if fs.requireBearer != "" && r.Header.Get("Authorization") != "Bearer "+fs.requireBearer {
+		http.Error(w, "stale session", http.StatusUnauthorized)
+		return
+	}
 	switch r.Method {
 	case http.MethodPost:
 		var body struct {
@@ -220,5 +231,64 @@ func TestNewServerClient_TrimsTrailingSlash(t *testing.T) {
 	c := NewServerClient("http://example:9000/", "tok")
 	if c.baseURL != "http://example:9000" {
 		t.Errorf("baseURL: got %q", c.baseURL)
+	}
+}
+
+// TestSessionTokenCachedAcrossCommands proves consecutive commands
+// reuse one admin session instead of minting a fresh 12h session per
+// slash command.
+func TestSessionTokenCachedAcrossCommands(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.createMeta = lobby.GameMeta{ID: uuid.New(), InviteToken: "inv"}
+
+	if _, err := c.ListGames(context.Background()); err != nil {
+		t.Fatalf("ListGames #1: %v", err)
+	}
+	if _, err := c.ListGames(context.Background()); err != nil {
+		t.Fatalf("ListGames #2: %v", err)
+	}
+	if _, err := c.CreateGame(context.Background(), "FNM"); err != nil {
+		t.Fatalf("CreateGame: %v", err)
+	}
+	if fs.loginCalls != 1 {
+		t.Errorf("login calls: got %d, want 1 (token must be cached)", fs.loginCalls)
+	}
+}
+
+// TestSessionTokenReloginOnce401 covers the refresh path: when the
+// server rejects the cached token (expiry / restart), the client
+// re-logins exactly once and retries with the fresh bearer.
+func TestSessionTokenReloginOnce401(t *testing.T) {
+	fs, c := newFakeServer(t)
+
+	// Warm the cache with the original session.
+	if _, err := c.ListGames(context.Background()); err != nil {
+		t.Fatalf("warm ListGames: %v", err)
+	}
+	if fs.loginCalls != 1 {
+		t.Fatalf("warm login calls: got %d, want 1", fs.loginCalls)
+	}
+
+	// Server-side rotation: only a NEW token is accepted from now on.
+	fs.loginToken = "rotated-token"
+	fs.requireBearer = "rotated-token"
+
+	if _, err := c.ListGames(context.Background()); err != nil {
+		t.Fatalf("ListGames after rotation: %v", err)
+	}
+	if fs.loginCalls != 2 {
+		t.Errorf("login calls after 401 retry: got %d, want 2", fs.loginCalls)
+	}
+	n := len(fs.gotAuthHeaders)
+	if n < 2 || fs.gotAuthHeaders[n-1] != "Bearer rotated-token" {
+		t.Errorf("retry did not carry the fresh bearer; headers: %v", fs.gotAuthHeaders)
+	}
+
+	// And a wholly-dead admin token still surfaces ErrUnauthorized
+	// (retry happens once, not forever).
+	fs.loginToken = "another"
+	fs.requireBearer = "never-matches"
+	if _, err := c.ListGames(context.Background()); !errors.Is(err, ErrUnauthorized) {
+		t.Errorf("persistent 401: got %v, want ErrUnauthorized", err)
 	}
 }

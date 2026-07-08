@@ -12,6 +12,7 @@
   // redacted (backs). So this modal just renders options[] as-is.
 
   import type {
+    ActionType,
     CardView,
     DamageAssignmentView,
     GameView,
@@ -23,7 +24,7 @@
   interface Props {
     snap: GameView;
     viewerID: string | null;
-    sendAction: (type: string, params?: unknown, player?: string) => void;
+    sendAction: (type: ActionType, params?: unknown, player?: string) => void;
   }
 
   const { snap, viewerID, sendAction }: Props = $props();
@@ -218,14 +219,17 @@
   let damageAmounts = $state<Record<string, number>>({});
   let trampleToPlayer = $state(0);
 
-  // Reset assignment state when the prompt changes.
+  // Reset assignment state when the prompt's identity changes — the
+  // same untracked last-id pattern as the selected/ordered reset
+  // above. Keying on content equality with blockerOrder here would
+  // make the user's own ▲/▼ reorder re-trigger the effect and revert
+  // their order (and zero their amounts) on the first click.
+  let lastDamageChoiceID: string | null = null;
   $effect(() => {
+    const nextID = active?.id ?? null;
+    if (nextID === lastDamageChoiceID) return;
+    lastDamageChoiceID = nextID;
     if (!damageFrame) return;
-    if (
-      blockerOrder.length === damageFrame.blocker_card_ids.length &&
-      blockerOrder.every((id, i) => id === damageFrame.blocker_card_ids[i])
-    )
-      return;
     blockerOrder = [...damageFrame.blocker_card_ids];
     const next: Record<string, number> = {};
     for (const id of damageFrame.blocker_card_ids) next[id] = 0;

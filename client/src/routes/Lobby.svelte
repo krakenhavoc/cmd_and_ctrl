@@ -68,24 +68,43 @@
     }
   }
 
-  function copyInvite(id: string): void {
+  // Transient "✓ copied" flash keyed by "<gameID>:<kind>" so the two
+  // copy buttons (player / spectator invite) on multiple game rows
+  // each flash independently. Mirrors the Settings.svelte export-copy
+  // pattern: status flash on success, surfaced error on failure
+  // (writeText rejects on insecure origins and unfocused tabs —
+  // silently swallowing that left users pasting nothing).
+  let copied = $state<string | null>(null);
+  const COPY_FLASH_MS = 1500;
+  async function copyToClipboard(url: string, key: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(url);
+      copied = key;
+      setTimeout(() => {
+        // Only clear if no newer copy came in meanwhile.
+        if (copied === key) copied = null;
+      }, COPY_FLASH_MS);
+    } catch {
+      error = "clipboard write failed — copy the link from a focused, HTTPS tab";
+    }
+  }
+
+  async function copyInvite(id: string): Promise<void> {
     const token = recentInvites.get(id);
     if (!token) {
       error = "no invite token cached for this game — re-open as admin to recover";
       return;
     }
-    const url = inviteURL(id, token);
-    void navigator.clipboard.writeText(url);
+    await copyToClipboard(inviteURL(id, token), `${id}:invite`);
   }
 
-  function copySpectatorInvite(id: string): void {
+  async function copySpectatorInvite(id: string): Promise<void> {
     const token = recentSpectatorInvites.get(id);
     if (!token) {
       error = "no spectator invite cached for this game — re-open as admin to recover";
       return;
     }
-    const url = spectatorInviteURL(id, token);
-    void navigator.clipboard.writeText(url);
+    await copyToClipboard(spectatorInviteURL(id, token), `${id}:spectator`);
   }
 
   function openGame(id: string): void {
@@ -162,10 +181,14 @@
             </div>
             <div class="row-actions">
               {#if recentInvites.has(g.id)}
-                <button onclick={() => copyInvite(g.id)}>copy invite</button>
+                <button onclick={() => copyInvite(g.id)}>
+                  {copied === `${g.id}:invite` ? "✓ copied" : "copy invite"}
+                </button>
               {/if}
               {#if recentSpectatorInvites.has(g.id)}
-                <button onclick={() => copySpectatorInvite(g.id)}>copy spectator link</button>
+                <button onclick={() => copySpectatorInvite(g.id)}>
+                  {copied === `${g.id}:spectator` ? "✓ copied" : "copy spectator link"}
+                </button>
               {/if}
               {#if canStart(g)}
                 <button onclick={() => onStart(g.id)}>start</button>
@@ -173,7 +196,11 @@
                 <button disabled title="waiting for all seats to upload a deck">start</button>
               {/if}
               <button onclick={() => openGame(g.id)}>open</button>
-              {#if g.state !== "lobby"}
+              <!-- Mirror the server's downloadReplay gate: admins may
+                   pull the replay any time after the lobby phase, but
+                   players get 403 until the game has ended (the JSONL
+                   carries unfiltered hidden information mid-game). -->
+              {#if g.state === "ended" || ($session?.principal.role === "admin" && g.state !== "lobby")}
                 {@const url = replayURL(g.id)}
                 {#if url}
                   <a class="linkish" href={url} download={`${g.id}.jsonl`}>download replay</a>

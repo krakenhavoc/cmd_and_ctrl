@@ -713,6 +713,17 @@ func (g *Game) populateDiscardPendingLocked() {
 	g.DiscardPending = map[uuid.UUID]int{p.ID: over}
 }
 
+// CurrentState returns the game's lifecycle state under the read
+// lock. Out-of-package pre-checks (lobby join / start / replay
+// gating) must use this instead of reading State directly — WS
+// actions mutate State under the write lock (e.g. a concede flips it
+// to StateEnded), so an unlocked read races.
+func (g *Game) CurrentState() State {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.State
+}
+
 // ActivePlayer returns the player whose turn it currently is, or nil
 // if the game has not yet started.
 func (g *Game) ActivePlayer() *Player {

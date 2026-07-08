@@ -3270,3 +3270,142 @@ func TestReadSnapshotConsistency(t *testing.T) {
 		t.Errorf("turn: %+v (want number=1 step=upkeep after S13 auto-advance from Untap)", turn)
 	}
 }
+
+// TestAnnounceTriggerThenAdvanceStepTerminates is the regression
+// guard for the runStateChecksLocked self-recursion bug: a manually
+// announced trigger followed by any state-check boundary
+// (advance_step here, exactly how the reviewer reproduced the
+// crash) used to recurse to a fatal stack overflow because nothing
+// in the loop drained the queue. The loop now drains via the APNAP
+// path, so the action returns with the trigger moved to the stack.
+func TestAnnounceTriggerThenAdvanceStepTerminates(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	src, err := p.Hand.Top()
+	if err != nil {
+		t.Fatalf("Hand.Top: %v", err)
+	}
+
+	if err := g.AnnounceTrigger(p.ID, src.InstanceID, AbilityParams{Label: "manual trigger"}); err != nil {
+		t.Fatalf("AnnounceTrigger: %v", err)
+	}
+	if len(g.PendingTriggers) != 1 {
+		t.Fatalf("pending triggers after announce: got %d, want 1", len(g.PendingTriggers))
+	}
+
+	// This call crashed the process (stack overflow) before the fix.
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatalf("AdvanceStep: %v", err)
+	}
+
+	if len(g.PendingTriggers) != 0 {
+		t.Errorf("pending triggers not drained at the state-check boundary: %d left", len(g.PendingTriggers))
+	}
+	drained := 0
+	for _, item := range g.StackMeta {
+		if item != nil && item.Kind == StackItemTriggered {
+			drained++
+		}
+	}
+	if drained != 1 {
+		t.Errorf("triggered items on stack after drain: got %d, want 1", drained)
+	}
+}
+
+// TestResolveTopAbilityLIFO pins CR 608.1 ordering for ability items:
+// with two abilities in StackMeta, resolution must take the most
+// recently added first — previously the pick came from map iteration
+// and was non-deterministic.
+func TestResolveTopAbilityLIFO(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	src, err := p.Hand.Top()
+	if err != nil {
+		t.Fatalf("Hand.Top: %v", err)
+	}
+
+	if err := g.ActivateAbility(p.ID, src.InstanceID, AbilityParams{Label: "first"}); err != nil {
+		t.Fatalf("ActivateAbility first: %v", err)
+	}
+	if err := g.ActivateAbility(p.ID, src.InstanceID, AbilityParams{Label: "second"}); err != nil {
+		t.Fatalf("ActivateAbility second: %v", err)
+	}
+
+	g.WithWriteLock(func() {
+		if err := g.resolveTopAbilityLocked(); err != nil {
+			t.Errorf("resolveTopAbilityLocked: %v", err)
+		}
+	})
+	if len(g.StackMeta) != 1 {
+		t.Fatalf("StackMeta after first resolution: got %d items, want 1", len(g.StackMeta))
+	}
+	for _, item := range g.StackMeta {
+		if item.Label != "first" {
+			t.Errorf("survivor after LIFO resolution: got %q, want %q (the second activation must resolve first)", item.Label, "first")
+		}
+	}
+
+	g.WithWriteLock(func() {
+		if err := g.resolveTopAbilityLocked(); err != nil {
+			t.Errorf("resolveTopAbilityLocked: %v", err)
+		}
+	})
+	if len(g.StackMeta) != 0 {
+		t.Errorf("StackMeta after second resolution: got %d items, want 0", len(g.StackMeta))
+	}
+}
+
+// TestResolveAbilityInResponseToSpellLIFO pins CR 608.1 across item
+// kinds: an ability activated while a spell is on the stack has a
+// higher Seq and must resolve before the spell — previously
+// resolveTopOfStackLocked resolved any spell first whenever
+// Game.Stack was non-empty.
+func TestResolveAbilityInResponseToSpellLIFO(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	src, err := p.Hand.Top()
+	if err != nil {
+		t.Fatalf("Hand.Top: %v", err)
+	}
+
+	// Hand-place a spell on the stack (bypasses cast legality — the
+	// ordering under test only cares about Seq stamps).
+	spell := NewCard("Test Spell", p.ID)
+	g.WithWriteLock(func() {
+		if g.StackMeta == nil {
+			g.StackMeta = make(map[uuid.UUID]*StackItem)
+		}
+		g.Stack.PushTop(spell)
+		g.StackMeta[spell.InstanceID] = &StackItem{
+			ID:         spell.InstanceID,
+			Kind:       StackItemSpell,
+			Controller: p.ID,
+			Seq:        g.nextStackSeqLocked(),
+		}
+	})
+
+	// Respond with an ability — later Seq, on top per CR 608.1.
+	if err := g.ActivateAbility(p.ID, src.InstanceID, AbilityParams{Label: "response"}); err != nil {
+		t.Fatalf("ActivateAbility: %v", err)
+	}
+
+	g.WithWriteLock(func() {
+		if err := g.resolveTopOfStackLocked(); err != nil {
+			t.Errorf("resolveTopOfStackLocked: %v", err)
+		}
+	})
+
+	// The response ability must be gone; the spell must still be
+	// waiting underneath.
+	if _, ok := g.StackMeta[spell.InstanceID]; !ok {
+		t.Error("spell resolved before the ability activated in response to it")
+	}
+	for _, item := range g.StackMeta {
+		if item != nil && item.Kind == StackItemActivated {
+			t.Error("response ability still on the stack after resolution")
+		}
+	}
+	if g.Stack.Size() != 1 {
+		t.Errorf("spell cards on stack: got %d, want 1", g.Stack.Size())
+	}
+}

@@ -510,6 +510,9 @@ export async function adminMoveByName(
     card = await seedHandWithCard(admin, ownerID, name);
     srcKind = "hand";
   }
+  // Both probes assign srcKind alongside card; this guard is
+  // unreachable but narrows the union for the compiler.
+  if (!srcKind) throw new Error(`${name}: source zone never resolved`);
 
   const dst: { kind: string; owner?: string } = { kind: dstKind };
   if (dstKind === "graveyard" || dstKind === "hand") {
@@ -600,10 +603,13 @@ export interface S19Setup {
 // admin WS to fire keep_hand for both seats — the game is in
 // StateActive with mulligans closed by the time this returns.
 //
-// Throttled by a 2-second pre-setup sleep so the lobby's join
-// rate limiter (5-burst, 1/second from one IP) refills between
-// consecutive tests. Without this, tests 3+ in a serial run hit
-// the limiter and the join-page localStorage check times out.
+// No pre-setup throttle: playwright.config.ts starts the server with
+// CMDCTRL_DEV_RELAX_RATE_LIMITS=1, which lifts the lobby's join/login
+// rate limiter (5-burst, 1/second from one IP) that used to require a
+// sleep between consecutive serial tests. If you attach the suite to
+// an already-running dev server (reuseExistingServer), start it with
+// that env var set, or tests 3+ may hit the limiter and time out on
+// the join-page localStorage check.
 //
 // The admin layer drives keep_hand instead of the player UIs because
 // the e2e suite focuses on trigger behaviour, not the mulligan modal
@@ -614,10 +620,6 @@ export async function setupS19Game(
   browser: Browser,
   request: APIRequestContext,
 ): Promise<S19Setup> {
-  // Sleep long enough for the join rate limiter (1 token/s) to
-  // refill the 4 tokens this test will consume (2 per browser
-  // join + slop) so the suite stays green when running serially.
-  await new Promise((r) => setTimeout(r, 4000));
   const adminToken = await adminLogin(request);
   const game = await createGame(request, adminToken, `S19 e2e ${Date.now()}`);
   if (!game.invite_token) throw new Error("invite token missing on fresh game");

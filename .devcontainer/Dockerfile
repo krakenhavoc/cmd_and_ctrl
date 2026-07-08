@@ -7,15 +7,12 @@ FROM mcr.microsoft.com/devcontainers/javascript-node:4-24-bookworm
 USER root
 RUN mkdir -p /home/node/.vscode-server \
   /home/node/.claude \
-  /home/node/.m2 \
   /home/node/.npm-global/bin \
   && touch /home/node/.vscode-server/.keep \
   /home/node/.claude/.keep \
-  /home/node/.m2/.keep \
   /home/node/.npm-global/.keep \
   && chown -R node:node /home/node/.vscode-server \
   /home/node/.claude \
-  /home/node/.m2 \
   /home/node/.npm-global
 
 # Keep npm at a known current stable release during image build.
