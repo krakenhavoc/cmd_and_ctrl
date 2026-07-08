@@ -176,6 +176,11 @@ func (c *AvatarCache) fetchAndStore(ctx context.Context, id, hash, path string) 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("cdn: status %d", resp.StatusCode)
 	}
+	// Cheap pre-check when the CDN declares a length. The post-read
+	// check below remains authoritative for chunked / lying responses.
+	if resp.ContentLength > avatarMaxBytes {
+		return fmt.Errorf("cdn: avatar is %d bytes, over the %d-byte cap", resp.ContentLength, avatarMaxBytes)
+	}
 
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("mkdir: %w", err)
@@ -188,10 +193,20 @@ func (c *AvatarCache) fetchAndStore(ctx context.Context, id, hash, path string) 
 	if err != nil {
 		return fmt.Errorf("create tmp: %w", err)
 	}
-	if _, err := io.Copy(f, io.LimitReader(resp.Body, avatarMaxBytes)); err != nil {
+	// Read up to cap+1: landing past the cap proves the body is
+	// oversized, and the response must be REJECTED, not silently
+	// truncated — a truncated PNG cached as immutable would serve a
+	// corrupt image for a day per client.
+	n, err := io.Copy(f, io.LimitReader(resp.Body, avatarMaxBytes+1))
+	if err != nil {
 		_ = f.Close()
 		_ = os.Remove(tmp)
 		return fmt.Errorf("write tmp: %w", err)
+	}
+	if n > avatarMaxBytes {
+		_ = f.Close()
+		_ = os.Remove(tmp)
+		return fmt.Errorf("cdn: avatar exceeds the %d-byte cap; not caching", avatarMaxBytes)
 	}
 	if err := f.Close(); err != nil {
 		_ = os.Remove(tmp)

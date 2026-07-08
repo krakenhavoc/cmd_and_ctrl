@@ -17,6 +17,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
@@ -542,11 +543,19 @@ func TestReplayDownloadWithDumpDir(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	// Seat two players through the public API so the game is startable.
-	_, alice, err := l.Join(meta.ID, meta.InviteToken, "Alice")
-	if err != nil {
-		t.Fatalf("Join Alice: %v", err)
+	// Seat Alice through the HTTP API so the test holds a real
+	// player session for the replay-gating assertions below; Bob
+	// joins via the lobby directly (no session needed, and it keeps
+	// the rate-limited request count under the bucket's burst).
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Alice"})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("join Alice status: got %d, want %d", resp.StatusCode, http.StatusOK)
 	}
+	var aliceSess sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&aliceSess)
+	resp.Body.Close()
+	alice := aliceSess.PlayerID
 	_, bob, err := l.Join(meta.ID, meta.InviteToken, "Bob")
 	if err != nil {
 		t.Fatalf("Join Bob: %v", err)
@@ -603,7 +612,8 @@ func TestReplayDownloadWithDumpDir(t *testing.T) {
 			respFrame.Kind, respFrame.Payload)
 	}
 
-	// Download the replay.
+	// Download the replay. Admins may pull it at any time, including
+	// mid-game.
 	resp = doGet(t, srv, "/games/"+meta.ID.String()+"/replay", adminSess.Token)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("replay status: got %d, want %d", resp.StatusCode, http.StatusOK)
@@ -614,9 +624,21 @@ func TestReplayDownloadWithDumpDir(t *testing.T) {
 		t.Errorf("content type: got %q, want %q", ct, "application/x-ndjson")
 	}
 	lines := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
-	if len(lines) != 1 {
-		t.Errorf("replay line count after one action: got %d, want 1\n---\n%s", len(lines), body)
+	// Lobby-phase mutations route through Room.ApplyExternal, so the
+	// replay records the full game setup too: 2 joins + 2 deck
+	// uploads + start, then the draw_card action.
+	if len(lines) != 6 {
+		t.Errorf("replay line count after setup + one action: got %d, want 6\n---\n%s", len(lines), body)
 	}
+
+	// Mid-game, a seated player must NOT get the replay — the JSONL
+	// carries the unfiltered view (opponents' hands + library order),
+	// which is live hidden information while the game runs.
+	resp = doGet(t, srv, "/games/"+meta.ID.String()+"/replay", aliceSess.Token)
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("mid-game player replay status: got %d, want %d", resp.StatusCode, http.StatusForbidden)
+	}
+	resp.Body.Close()
 
 	// Unauth request (no token) → 401.
 	resp = doGet(t, srv, "/games/"+meta.ID.String()+"/replay", "")
@@ -640,6 +662,18 @@ func TestReplayDownloadWithDumpDir(t *testing.T) {
 	resp = doGet(t, srv, "/games/"+meta.ID.String()+"/replay", intruderSess.Token)
 	if resp.StatusCode != http.StatusForbidden {
 		t.Errorf("cross-game replay status: got %d, want %d", resp.StatusCode, http.StatusForbidden)
+	}
+	resp.Body.Close()
+
+	// Once the game ends, the seated player can pull their replay.
+	g, err := l.LookupGame(meta.ID)
+	if err != nil {
+		t.Fatalf("LookupGame: %v", err)
+	}
+	g.End()
+	resp = doGet(t, srv, "/games/"+meta.ID.String()+"/replay", aliceSess.Token)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("post-game player replay status: got %d, want %d", resp.StatusCode, http.StatusOK)
 	}
 	resp.Body.Close()
 }
@@ -1232,4 +1266,110 @@ func newTestHTTPStackFull(t *testing.T, idx *cards.Index, deckClient *http.Clien
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return srv, l
+}
+
+// TestDevRelaxRateLimitsKnob proves CMDCTRL_DEV_RELAX_RATE_LIMITS
+// makes the credential-bearing limiters effectively unlimited: a
+// burst far past the default 5-token bucket must not 429. The knob
+// is read at Handler construction, so the env var is set before the
+// stack is built.
+func TestDevRelaxRateLimitsKnob(t *testing.T) {
+	t.Setenv("CMDCTRL_DEV_RELAX_RATE_LIMITS", "1")
+	srv, _, _ := newTestHTTPStack(t)
+
+	for i := 0; i < 25; i++ {
+		resp := postJSON(t, srv, "/admin/login", "", adminLoginRequest{Token: "shared-admin-token"})
+		if resp.StatusCode == http.StatusTooManyRequests {
+			t.Fatalf("request %d throttled despite CMDCTRL_DEV_RELAX_RATE_LIMITS", i)
+		}
+		resp.Body.Close()
+	}
+}
+
+// TestRateLimitDefaultStillThrottles is the inverse guard: without
+// the dev knob, the login bucket still throttles past its burst.
+func TestRateLimitDefaultStillThrottles(t *testing.T) {
+	t.Setenv("CMDCTRL_DEV_RELAX_RATE_LIMITS", "")
+	srv, _, _ := newTestHTTPStack(t)
+
+	throttled := false
+	for i := 0; i < 8; i++ {
+		resp := postJSON(t, srv, "/admin/login", "", adminLoginRequest{Token: "wrong-token-aaaa"})
+		if resp.StatusCode == http.StatusTooManyRequests {
+			throttled = true
+		}
+		resp.Body.Close()
+	}
+	if !throttled {
+		t.Error("8 rapid logins never hit 429; default limiter not enforced")
+	}
+}
+
+// TestSecureCookiesDecision covers the CMDCTRL_SECURE_COOKIES
+// override and the https-redirect-URI default.
+func TestSecureCookiesDecision(t *testing.T) {
+	httpsCfg := Config{Discord: discord.Config{RedirectURI: "https://cmd.example.io/auth/discord/callback"}}
+	httpCfg := Config{Discord: discord.Config{RedirectURI: "http://localhost:8080/auth/discord/callback"}}
+	bareCfg := Config{}
+
+	// Unset (blank counts as unset): follow the redirect-URI scheme.
+	t.Setenv("CMDCTRL_SECURE_COOKIES", "")
+	if !secureCookies(httpsCfg) {
+		t.Error("https redirect URI: want Secure by default")
+	}
+	if secureCookies(httpCfg) {
+		t.Error("http redirect URI: want Secure off by default")
+	}
+	if secureCookies(bareCfg) {
+		t.Error("no redirect URI (local dev): want Secure off by default")
+	}
+
+	// Explicit truthy forces Secure on even for local http.
+	t.Setenv("CMDCTRL_SECURE_COOKIES", "1")
+	if !secureCookies(bareCfg) {
+		t.Error("CMDCTRL_SECURE_COOKIES=1: want Secure on")
+	}
+	// Explicit falsy forces Secure off even behind https.
+	t.Setenv("CMDCTRL_SECURE_COOKIES", "false")
+	if secureCookies(httpsCfg) {
+		t.Error("CMDCTRL_SECURE_COOKIES=false: want Secure off")
+	}
+}
+
+// TestSessionCookieSecureAttribute end-to-ends the flag: with the
+// override on, the Set-Cookie from /admin/login must carry Secure.
+func TestSessionCookieSecureAttribute(t *testing.T) {
+	t.Setenv("CMDCTRL_SECURE_COOKIES", "1")
+	srv, _, _ := newTestHTTPStack(t)
+	resp := postJSON(t, srv, "/admin/login", "", adminLoginRequest{Token: "shared-admin-token"})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("login status: got %d, want 200", resp.StatusCode)
+	}
+	var found bool
+	for _, ck := range resp.Cookies() {
+		if ck.Name == auth.SessionCookie {
+			found = true
+			if !ck.Secure {
+				t.Error("session cookie missing Secure attribute with CMDCTRL_SECURE_COOKIES=1")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("no session cookie set by /admin/login")
+	}
+}
+
+// TestDecodeJSONBodyCap proves decodeJSON rejects oversized bodies
+// with 413 instead of streaming them into the decoder.
+func TestDecodeJSONBodyCap(t *testing.T) {
+	t.Setenv("CMDCTRL_DEV_RELAX_RATE_LIMITS", "1") // keep the limiter out of the way
+	srv, _, _ := newTestHTTPStack(t)
+
+	huge := strings.Repeat("x", (64<<10)+1024)
+	resp := postJSON(t, srv, "/admin/login", "", adminLoginRequest{Token: huge})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Errorf("oversized body status: got %d, want %d", resp.StatusCode, http.StatusRequestEntityTooLarge)
+	}
 }

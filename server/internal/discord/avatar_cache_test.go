@@ -145,3 +145,60 @@ func TestAvatarCache404FromCDN(t *testing.T) {
 		t.Errorf("404 should not leave a cached file; stat err = %v", statErr)
 	}
 }
+
+// TestAvatarCacheRejectsOversizedResponse proves an over-cap CDN
+// body is rejected outright instead of being truncated and cached
+// as an immutable-but-corrupt PNG. Stub serves avatarMaxBytes+1
+// bytes for the "huge" hash via chunked encoding (no Content-Length)
+// so the post-read check, not the header pre-check, does the work.
+func TestAvatarCacheRejectsOversizedResponse(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		big := make([]byte, avatarMaxBytes+1)
+		copy(big, pngBytes)
+		_, _ = w.Write(big)
+	}))
+	t.Cleanup(srv.Close)
+	c := newTestAvatarCache(t, srv)
+
+	req := httptest.NewRequest("GET", "/avatars/1/huge", nil)
+	w := httptest.NewRecorder()
+	err := c.Serve(w, req, "1", "huge")
+	if err == nil {
+		t.Fatal("expected error for oversized avatar")
+	}
+	if !strings.Contains(err.Error(), "cap") {
+		t.Errorf("error should mention the size cap; got %v", err)
+	}
+	// Neither the final file nor the tmp may remain.
+	if _, statErr := os.Stat(filepath.Join(c.Dir, "1", "huge.png")); !os.IsNotExist(statErr) {
+		t.Errorf("oversized fetch left a cached file; stat err = %v", statErr)
+	}
+	if _, statErr := os.Stat(filepath.Join(c.Dir, "1", "huge.png.tmp")); !os.IsNotExist(statErr) {
+		t.Errorf("oversized fetch left a tmp file; stat err = %v", statErr)
+	}
+}
+
+// TestAvatarCacheRejectsOversizedContentLength covers the cheap
+// header pre-check: a declared over-cap Content-Length errors before
+// any disk write.
+func TestAvatarCacheRejectsOversizedContentLength(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Content-Length", "2097152") // 2 MiB declared
+		big := make([]byte, 2<<20)
+		copy(big, pngBytes)
+		_, _ = w.Write(big)
+	}))
+	t.Cleanup(srv.Close)
+	c := newTestAvatarCache(t, srv)
+
+	req := httptest.NewRequest("GET", "/avatars/1/declared", nil)
+	w := httptest.NewRecorder()
+	if err := c.Serve(w, req, "1", "declared"); err == nil {
+		t.Fatal("expected error for over-cap Content-Length")
+	}
+	if _, statErr := os.Stat(filepath.Join(c.Dir, "1", "declared.png")); !os.IsNotExist(statErr) {
+		t.Errorf("over-cap declared fetch left a cached file; stat err = %v", statErr)
+	}
+}

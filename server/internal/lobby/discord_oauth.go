@@ -129,7 +129,7 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return fmt.Errorf("issue session: %w", err)
 	}
-	setSessionCookie(w, tok, issued.ExpiresAt)
+	setSessionCookie(c, w, tok, issued.ExpiresAt)
 
 	// Hand the session off to the SPA via a URL fragment. The SPA
 	// is served from the same origin, so a relative redirect is

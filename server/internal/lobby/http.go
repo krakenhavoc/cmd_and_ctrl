@@ -2,6 +2,7 @@ package lobby
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/envflag"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/ratelimit"
 )
 
@@ -111,16 +113,38 @@ func Handler(c Config) http.Handler {
 	}
 	mux := http.NewServeMux()
 
+	// Dev / e2e knob: with CMDCTRL_DEV_RELAX_RATE_LIMITS set (truthy),
+	// every limiter constructed here becomes effectively unlimited so
+	// test suites can hammer join/login without outwaiting the refill.
+	// Same family as CMDCTRL_DEV_SKIP_DECK_VALIDATION; main.go warns
+	// at startup when it's active. NEVER set this in production.
+	relaxed := envflag.Truthy(os.Getenv("CMDCTRL_DEV_RELAX_RATE_LIMITS"))
+	newLimiter := func(rate, burst float64) *ratelimit.Limiter {
+		if relaxed {
+			return ratelimit.New(1<<20, 1<<20)
+		}
+		return ratelimit.New(rate, burst)
+	}
+
 	// Rate-limit the two endpoints that accept untrusted credentials:
 	// /admin/login brute-forces the shared admin token, /join
 	// brute-forces invite tokens. 1 req/s with a 5-token burst per
 	// client IP is lenient for real humans, prohibitive for scripts.
-	limit := ratelimit.New(1, 5)
+	limit := newLimiter(1, 5)
 	// Deck upload has a separate, more permissive bucket: legitimate
 	// players may re-upload several times while iterating, but we still
 	// want a ceiling on how fast a single IP can stream megabyte-sized
 	// Moxfield blobs at the parser.
-	deckLimit := ratelimit.New(2, 10)
+	deckLimit := newLimiter(2, 10)
+	// Avatar fetches: a board render needs at most one request per
+	// seat (the response is cached immutable for a day), so a small
+	// steady rate caps how fast one session can make us hit Discord's
+	// CDN and write to disk. The burst is sized for several boards
+	// cold-loading in the same second THROUGH ONE BUCKET: without
+	// CMDCTRL_TRUST_FORWARDED, every client behind a reverse proxy
+	// keys to the proxy's address, and a 4-player game is up to 4
+	// avatars per viewer.
+	avatarLimit := newLimiter(5, 40)
 	mux.Handle("POST /admin/login", limit.Middleware(handlerFunc(c, adminLogin)))
 	mux.Handle("POST /games/{id}/join", limit.Middleware(handlerFunc(c, joinGame)))
 	mux.Handle("POST /games/{id}/spectate", limit.Middleware(handlerFunc(c, spectateGame)))
@@ -134,13 +158,13 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /auth/discord/config", handlerFunc(c, discordConfig))
 	mux.Handle("GET /auth/discord/start", limit.Middleware(handlerFunc(c, discordStart)))
 	mux.Handle("GET /auth/discord/callback", limit.Middleware(handlerFunc(c, discordCallback)))
-	// Discord avatar cache. Unauthenticated — the avatar hashes
-	// are effectively public (anyone in a shared guild already
-	// sees them via Discord's CDN) and a cached image tells the
-	// requester nothing they couldn't learn by watching the
-	// game's seat list. An authenticated gate would mean every
-	// <img> in the board has to carry a token.
-	mux.Handle("GET /avatars/{id}/{hash}", handlerFunc(c, discordAvatar))
+	// Discord avatar cache. Session-gated: the board's <img> tags are
+	// same-origin, so the httpOnly session cookie rides along without
+	// the client attaching a token. Rate-limited because each cold
+	// miss costs an outbound CDN fetch plus a disk write — without a
+	// ceiling the endpoint is an unmetered write-to-disk-forever
+	// primitive for anyone holding a session.
+	mux.Handle("GET /avatars/{id}/{hash}", avatarLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, discordAvatar))))
 	mux.Handle("POST /games", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, createGame)))
 	mux.Handle("DELETE /games/{id}", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, deleteGame)))
 	mux.Handle("GET /games", auth.Middleware(c.Auth)(handlerFunc(c, listGames)))
@@ -222,7 +246,7 @@ func adminLogin(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusServiceUnavailable, "admin login disabled")
 	}
 	var body adminLoginRequest
-	if err := decodeJSON(r, &body); err != nil {
+	if err := decodeJSON(w, r, &body); err != nil {
 		return err
 	}
 	if !constantTimeEqual(body.Token, c.AdminToken) {
@@ -233,7 +257,7 @@ func adminLogin(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	setSessionCookie(w, tok, issued.ExpiresAt)
+	setSessionCookie(c, w, tok, issued.ExpiresAt)
 	return writeJSON(w, http.StatusOK, sessionResponse{Token: tok, ExpiresAt: issued.ExpiresAt, Principal: issued})
 }
 
@@ -242,7 +266,7 @@ func adminLogin(c Config, w http.ResponseWriter, r *http.Request) error {
 // responsible for distributing the invite out-of-band.
 func createGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	var body createGameRequest
-	if err := decodeJSON(r, &body); err != nil {
+	if err := decodeJSON(w, r, &body); err != nil {
 		return err
 	}
 	meta, err := c.Lobby.Create(body.Name)
@@ -265,7 +289,7 @@ func joinGame(c Config, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	var body joinRequest
-	if err := decodeJSON(r, &body); err != nil {
+	if err := decodeJSON(w, r, &body); err != nil {
 		return err
 	}
 
@@ -288,7 +312,7 @@ func joinGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	setSessionCookie(w, tok, issued.ExpiresAt)
+	setSessionCookie(c, w, tok, issued.ExpiresAt)
 
 	// Strip both invite tokens from the returned meta — the joiner
 	// already has the player invite they used to get here, and the
@@ -318,7 +342,7 @@ func spectateGame(c Config, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	var body spectateRequest
-	if err := decodeJSON(r, &body); err != nil {
+	if err := decodeJSON(w, r, &body); err != nil {
 		return err
 	}
 
@@ -336,7 +360,7 @@ func spectateGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	setSessionCookie(w, tok, issued.ExpiresAt)
+	setSessionCookie(c, w, tok, issued.ExpiresAt)
 
 	// Spectators don't see either invite — neither the player nor
 	// the spectator one. They have what they need.
@@ -545,13 +569,12 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 // downstream consumer can deserialize line-by-line to reconstruct
 // the full game timeline.
 //
-// Authorization: admin or any seat (player or spectator) in this
-// game. The replay holds opponent hand contents in pre-filter form,
-// so it MUST NOT be served to unauthenticated callers — but a player
-// who was at the table has already seen these snapshots filtered for
-// their seat, and an admin / spectator who watched live likewise.
-// Sandbox-friendly default; if a deployment wants stricter
-// "admin-only replays", flip the role check below.
+// Authorization: the replay holds the UNFILTERED view — opponents'
+// hands and full library order — so it is live hidden information
+// for as long as the game runs. Admins may download at any time;
+// players and spectators bound to this game only once the game has
+// ended (by then every snapshot is post-game history, not an
+// in-progress scouting feed).
 func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 	id, err := gameIDFromPath(r)
 	if err != nil {
@@ -567,6 +590,9 @@ func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 	room := c.Lobby.RoomOf(id)
 	if room == nil {
 		return httpError(http.StatusNotFound, "game not found")
+	}
+	if p.Role != auth.RoleAdmin && room.Game.CurrentState() != game.StateEnded {
+		return httpError(http.StatusForbidden, "replay is available once the game has ended")
 	}
 	path := room.ReplayPath()
 	if path == "" {
@@ -584,23 +610,20 @@ func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 		return httpError(http.StatusInternalServerError, "stat replay: "+err.Error())
 	}
+	f, err := os.Open(path)
+	if err != nil {
+		return httpError(http.StatusInternalServerError, "open replay: "+err.Error())
+	}
+	// ServeContent does NOT close its ReadSeeker, and it completes
+	// before this handler returns — defer is the whole cleanup story.
+	defer f.Close()
 	w.Header().Set("Content-Type", "application/x-ndjson")
 	w.Header().Set(
 		"Content-Disposition",
 		`attachment; filename="`+id.String()+`.jsonl"`,
 	)
-	http.ServeContent(w, r, id.String()+".jsonl", info.ModTime(), mustOpen(path))
+	http.ServeContent(w, r, id.String()+".jsonl", info.ModTime(), f)
 	return nil
-}
-
-// mustOpen returns an *os.File for ServeContent. ServeContent needs
-// an io.ReadSeeker; os.File satisfies it. The defer-close lives in
-// http.ServeContent's lifetime via the response writer's flush — we
-// can't defer here because ServeContent reads from the file after
-// this function returns.
-func mustOpen(path string) *os.File {
-	f, _ := os.Open(path)
-	return f
 }
 
 func startGame(c Config, w http.ResponseWriter, r *http.Request) error {
@@ -856,7 +879,7 @@ func logout(c Config, w http.ResponseWriter, r *http.Request) error {
 		// client just wants its cookie cleared.
 		_ = c.Auth.Revoke(r.Context(), cred)
 	}
-	clearSessionCookie(w)
+	clearSessionCookie(c, w)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
@@ -883,16 +906,29 @@ func gameIDFromPath(r *http.Request) (uuid.UUID, error) {
 	return id, nil
 }
 
+// maxJSONBodyBytes caps the request bodies decodeJSON accepts. The
+// shapes routed through it (login, create, join, spectate) are a few
+// hundred bytes; 64 KiB is generous headroom while denying a hostile
+// client an unbounded stream at the decoder. Deck upload has its own
+// larger maxDeckBodyBytes limit.
+const maxJSONBodyBytes = 64 << 10
+
 // decodeJSON enforces Content-Type: application/json when a body is
 // present and rejects unknown fields so typos in request shapes
-// surface early. Returns a 400-bearing error.
-func decodeJSON(r *http.Request, dst any) error {
+// surface early. Returns a 400-bearing error (413 when the body
+// exceeds maxJSONBodyBytes).
+func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 	if r.Body == nil {
 		return httpError(http.StatusBadRequest, "missing body")
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(dst); err != nil {
+		var mbe *http.MaxBytesError
+		if errors.As(err, &mbe) {
+			return httpError(http.StatusRequestEntityTooLarge, fmt.Sprintf("body exceeds %d-byte limit", maxJSONBodyBytes))
+		}
 		return httpError(http.StatusBadRequest, fmt.Sprintf("invalid body: %s", err.Error()))
 	}
 	return nil
@@ -920,18 +956,36 @@ func writeDeckViolations(w http.ResponseWriter, summary string, fatal, warnings 
 	return writeJSON(w, http.StatusUnprocessableEntity, body)
 }
 
+// secureCookies decides the session cookie's Secure attribute.
+// CMDCTRL_SECURE_COOKIES, when set non-blank, is an explicit
+// truthy/falsy override. Unset, the default follows the deployment's
+// own TLS signal: the Discord OAuth redirect URI is configured with
+// the public origin, so an https:// prefix there means the server is
+// reachable over TLS and the cookie should be Secure. Local http dev
+// (no redirect URI, or an http:// one) keeps Secure off so the
+// cookie still flows. Read per request, matching the other CMDCTRL
+// runtime knobs.
+func secureCookies(c Config) bool {
+	if v, ok := os.LookupEnv("CMDCTRL_SECURE_COOKIES"); ok && strings.TrimSpace(v) != "" {
+		return envflag.Truthy(v)
+	}
+	return strings.HasPrefix(strings.ToLower(c.Discord.RedirectURI), "https://")
+}
+
 // setSessionCookie stamps the browser session cookie that transports
 // the credential on subsequent HTTP and same-origin WS requests.
 // HttpOnly prevents JS access; SameSite=Lax lets the invite-link
-// flow work (top-level navigation). Not Secure at S04 — this is a
-// local LAN service. Flip this in S12 when TLS lands.
-func setSessionCookie(w http.ResponseWriter, tok string, exp time.Time) {
+// flow work (top-level navigation). Secure is env-driven via
+// secureCookies — prod (HTTPS since S12) gets it by default through
+// the https redirect-URI heuristic.
+func setSessionCookie(c Config, w http.ResponseWriter, tok string, exp time.Time) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     auth.SessionCookie,
 		Value:    tok,
 		Path:     "/",
 		Expires:  exp,
 		HttpOnly: true,
+		Secure:   secureCookies(c),
 		SameSite: http.SameSiteLaxMode,
 	})
 }
@@ -939,8 +993,9 @@ func setSessionCookie(w http.ResponseWriter, tok string, exp time.Time) {
 // clearSessionCookie emits a Set-Cookie that evicts the browser's
 // current session cookie. MaxAge=-1 tells browsers to drop it
 // immediately; Expires in the past covers older clients that ignore
-// MaxAge.
-func clearSessionCookie(w http.ResponseWriter) {
+// MaxAge. Secure mirrors setSessionCookie so the eviction targets
+// the same cookie variant the login flow set.
+func clearSessionCookie(c Config, w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     auth.SessionCookie,
 		Value:    "",
@@ -948,6 +1003,7 @@ func clearSessionCookie(w http.ResponseWriter) {
 		Expires:  time.Unix(0, 0),
 		MaxAge:   -1,
 		HttpOnly: true,
+		Secure:   secureCookies(c),
 		SameSite: http.SameSiteLaxMode,
 	})
 }
@@ -1004,18 +1060,12 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
 }
 
-// constantTimeEqual compares two strings in constant time (byte-wise,
-// ignoring that the underlying lengths may differ — which is itself
-// a timing signal, but for admin-token comparison this is fine).
+// constantTimeEqual compares two strings in constant time via the
+// stdlib primitive (a length mismatch still short-circuits inside
+// ConstantTimeCompare — that length signal is fine for admin-token
+// comparison).
 func constantTimeEqual(a, b string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	var diff byte
-	for i := range len(a) {
-		diff |= a[i] ^ b[i]
-	}
-	return diff == 0
+	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
 }
 
 // compile-time assertion we haven't dropped context-awareness from
