@@ -5,6 +5,8 @@
   import { session } from "../lib/session";
   import { seatColor } from "../lib/colors";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
+  import BugReportModal from "../lib/components/BugReportModal.svelte";
+  import { bugReportEnabled } from "../lib/api";
   import Board from "../lib/components/board/Board.svelte";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
@@ -62,6 +64,16 @@
   // after the first call so reruns (new wsURL) are harmless.
   $effect(() => {
     armAudioOnFirstGesture();
+  });
+
+  // Report-a-bug affordance (ADR 0017). Probed once per mount: the
+  // server says whether it can file GitHub issues; when it can't
+  // (CMDCTRL_GITHUB_TOKEN unset) the button never renders — same
+  // hide-don't-503 posture as the Discord sign-in button.
+  let bugReportAvailable = $state(false);
+  let bugReportOpen = $state(false);
+  onMount(() => {
+    void bugReportEnabled().then((v) => (bugReportAvailable = v));
   });
 
   // settings.gameplay.confirmExit also covers the browser-level
@@ -576,6 +588,14 @@
       >
     {/if}
     <span class="muted">seq {$lastSeq}</span>
+    {#if bugReportAvailable}
+      <button
+        class="gear"
+        title="report a bug"
+        aria-label="report a bug"
+        onclick={() => (bugReportOpen = true)}>🐞</button
+      >
+    {/if}
     <button
       class="gear"
       title="settings (press , from anywhere)"
@@ -923,6 +943,16 @@
 
   {#if !view}
     <p class="muted centered">waiting for snapshot…</p>
+  {/if}
+
+  {#if bugReportOpen}
+    <BugReportModal
+      {gameID}
+      {view}
+      seq={$lastSeq}
+      connection={$status}
+      onclose={() => (bugReportOpen = false)}
+    />
   {/if}
 </section>
 

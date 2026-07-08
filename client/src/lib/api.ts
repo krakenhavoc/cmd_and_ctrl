@@ -1,4 +1,5 @@
 import { authFetch, currentSession, setSession, type ApiViolation, type Session } from "./session";
+import type { BugReportContext } from "./bugReport";
 
 // Re-export the violation shape so consumers of api.ts don't also
 // have to import from session.ts. ApiViolation is the canonical
@@ -213,6 +214,48 @@ export async function discordAuthEnabled(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// bugReportEnabled probes /bugreport/config and reports whether the
+// server can file GitHub issues (CMDCTRL_GITHUB_TOKEN configured).
+// Used by Game.svelte to decide whether to render the report-a-bug
+// button. Same posture as discordAuthEnabled: any failure → false,
+// the button simply doesn't render.
+export async function bugReportEnabled(): Promise<boolean> {
+  try {
+    const res = await fetch("/bugreport/config", {
+      method: "GET",
+      credentials: "same-origin",
+    });
+    if (!res.ok) return false;
+    const body = (await res.json()) as { enabled?: boolean };
+    return body.enabled === true;
+  } catch {
+    return false;
+  }
+}
+
+// BugReportResult mirrors the 201 body of POST /bugreport: the
+// created issue's URL + number, so the modal can link straight to it.
+export interface BugReportResult {
+  url: string;
+  number: number;
+}
+
+// submitBugReport files an in-app bug report. The server renders the
+// issue body and talks to GitHub; the browser never sees a token.
+// Throws LobbyApiError on 400 (validation), 429 (rate limit), 502
+// (GitHub upstream failure), 503 (feature disabled).
+export async function submitBugReport(
+  title: string,
+  description: string,
+  context?: BugReportContext,
+): Promise<BugReportResult> {
+  const res = await authFetch("/bugreport", {
+    method: "POST",
+    body: JSON.stringify({ title, description, context }),
+  });
+  return (await res.json()) as BugReportResult;
 }
 
 // AutoTapPreview mirrors the JSON returned by
