@@ -1074,9 +1074,9 @@ func (g *Game) queueTriggerPromptLocked(
 // a PendingChoiceTriggerPrompt entry. On `apply: true` the stashed
 // Build closure runs against the captured event + LKI; the resulting
 // StackItem (if non-nil) appends to PendingTriggers via the same
-// queueHarvestedTriggerLocked the mandatory path uses. On `apply:
-// false` the entry is dropped silently — the trigger is treated as
-// having never been declared.
+// queueHarvestedTriggerLocked the mandatory path uses and is drained
+// onto the stack right away. On `apply: false` the entry is dropped
+// silently — the trigger is treated as having never been declared.
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 // Added in S19 sub-PR 2.
@@ -1114,6 +1114,13 @@ func (g *Game) ResolveTriggerPrompt(choiceID, chooserID uuid.UUID, apply bool) e
 		return nil
 	}
 	g.queueHarvestedTriggerLocked(item)
+	// The prompt is answered outside any priority-wrap, so nothing
+	// downstream would drain the queue until the next pass around
+	// the table — and an empty stack at that wrap would advance the
+	// step first, stranding the trigger a step late. Drain now:
+	// answering "yes" is the moment the ability is put on the stack
+	// (CR 603.3), and SBAs run at the same boundary.
+	g.runStateChecksLocked()
 	return nil
 }
 

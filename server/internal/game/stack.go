@@ -148,4 +148,27 @@ type StackItem struct {
 	// snapshots predating the field carry 0 and tie-break
 	// arbitrarily among themselves.
 	Seq uint64
+
+	// Effect is the resolution callback for ability items (activated
+	// / triggered). resolveTopAbilityLocked runs it after the CR
+	// 608.2b target re-check passes and the EventResolve breadcrumb
+	// is emitted; the item has already been removed from StackMeta
+	// by then. Nil means the ability has no engine-side effect on
+	// resolution — the S13.1 manual-sandbox shape, where players
+	// resolve the ability by hand (AnnounceTrigger, ActivateAbility
+	// for non-catalog cards).
+	//
+	// Runs under g.mu held in write mode: the callback MUST NOT call
+	// public locking mutators — stay on the *ForEffect surface in
+	// effect_api.go. It receives the live game rather than capturing
+	// one so an item copied into an undo snapshot (cloneStackItem)
+	// resolves against whichever Game it's restored into. For the
+	// same reason it must not capture pointers into zone slices —
+	// read the source / controller / targets off `item` instead.
+	//
+	// Not serialised: StackItem never crosses the wire (the protocol
+	// package projects its own StackItemView) and games aren't
+	// persisted, so a func field is safe here. Added in S19 — the
+	// "triggers actually use the stack" completeness fix.
+	Effect func(g *Game, item *StackItem) error
 }

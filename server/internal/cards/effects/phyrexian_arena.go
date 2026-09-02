@@ -10,8 +10,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // S19 sub-PR 5: the first "your upkeep" trigger on the auto-fire
 // pipeline. EventBeginUpkeep carries the active player in Actor;
 // AppliesTo gates on Actor == Controller so the Arena only fires on
-// its own controller's upkeep (not every player's). Mandatory, so
-// Build runs inline — lose 1 life, then draw 1.
+// its own controller's upkeep (not every player's). Mandatory: the
+// trigger goes on the stack at upkeep and the life loss + draw
+// happen when it resolves.
 func init() {
 	Register(Spec{
 		OracleID: "ee579a32-a048-4335-b966-231ba731cdea",
@@ -21,11 +22,14 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Actor == source.Controller
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				ctx := NewContext(g, nil)
-				_ = g.ChangePlayerLifeForEffect(source.InstanceID, source.Controller, -1)
-				_ = DrawCards{Player: source.Controller, N: 1}.Apply(ctx)
-				return nil
+			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+				return game.NewTriggeredItem(source, "Phyrexian Arena — lose 1 life, draw a card",
+					func(g *game.Game, item *game.StackItem) error {
+						if err := g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -1); err != nil {
+							return err
+						}
+						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
+					})
 			},
 		}},
 	})

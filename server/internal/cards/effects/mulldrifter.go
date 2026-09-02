@@ -13,11 +13,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // path (CR 702.74) that lands with S29's alt-cast arc; Mulldrifter
 // just costs {4}{U} from hand for now.
 //
-// Sub-PR 3 sandbox pattern: Build runs the effect inline (DrawN via
-// effect_api) and returns nil so no StackItem queues. The
-// EventDrawCard breadcrumb supplies the "trigger fired" visibility;
-// CR-correct stack-resolution timing is deferred to a future
-// engine-completeness sweep.
+// Build returns a real stack item; the draw happens when the
+// trigger resolves, so opponents get their response window.
 func init() {
 	Register(Spec{
 		OracleID:        "24d0f5e7-0d9e-4b76-900e-a7274e80312d",
@@ -28,10 +25,11 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.CardID == source.InstanceID
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				ctx := NewContext(g, nil)
-				_ = DrawCards{Player: source.Controller, N: 2}.Apply(ctx)
-				return nil
+			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+				return game.NewTriggeredItem(source, "Mulldrifter — draw two cards",
+					func(g *game.Game, item *game.StackItem) error {
+						return DrawCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
+					})
 			},
 		}},
 	})

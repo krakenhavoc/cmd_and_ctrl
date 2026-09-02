@@ -83,7 +83,7 @@ cmd_and_ctrl/
     ├── protocol.md      # v0 wire format spec
     ├── lobby.md         # lobby HTTP API reference
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library, 0002 client framework, 0003 auth+lobby)
+    └── decisions/       # ADRs (0001 WS library … 0018 triggers on the stack)
 ```
 
 When you create a new top-level directory, add it here.
@@ -547,15 +547,106 @@ write flying/trample/deathtouch logic in the card file. The combat
 engine reads `HasKeyword(card, "flying")` and routes accordingly.
 Card files declare the strings; the engine does the rest.
 
+### Adding a triggered ability (S19+)
+
+Triggered abilities ("when ~ enters", "when ~ dies", "at the
+beginning of your upkeep") live on `Spec.Triggered
+[]game.TriggeredAbility`. A per-game harvester listens to the event
+log, runs `AppliesTo` for each watched event kind, and calls `Build`
+to put an item on the stack. The item resolves — and its `Effect`
+runs — only when every player has passed priority in succession,
+so opponents can respond (counter the ability, remove the target,
+sacrifice in response). See [ADR 0018](docs/decisions/0018-triggers-on-the-stack.md).
+
+```go
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+func init() {
+    Register(Spec{
+        OracleID: "<uuid>",
+        Name:     "Mulldrifter",
+        Triggered: []game.TriggeredAbility{{
+            Watches: []game.EventKind{game.EventETB},
+            AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+                return ev.CardID == source.InstanceID
+            },
+            Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+                return game.NewTriggeredItem(source, "Mulldrifter — draw two cards",
+                    func(g *game.Game, item *game.StackItem) error {
+                        return DrawCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
+                    })
+            },
+        }},
+    })
+}
+```
+
+**Event picker:**
+
+| Trigger text | `Watches` | `AppliesTo` |
+|---|---|---|
+| "When ~ enters the battlefield" | `EventETB` | `ev.CardID == source.InstanceID` |
+| "When ~ dies" | `EventLTB` | `cardDied(ev, source)` (graveyard-only; bounce / exile don't count) |
+| "At the beginning of your upkeep" | `EventBeginUpkeep` | `ev.Actor == source.Controller` |
+| "Whenever you cast a spell" | `EventCast` | `ev.Actor == source.Controller` (S19 sub-PR 6) |
+| "Whenever ~ deals combat damage to a player" | `EventDealDamage` | source + player target + combat flag (S19 sub-PR 7) |
+
+**The two rules that matter:**
+
+1. **`Build` builds; it does not resolve.** Do the work inside the
+   `Effect` closure passed to `NewTriggeredItem`, never in `Build`
+   itself. Applying the effect in `Build` skips the stack and denies
+   every player their response window. The only game reads `Build`
+   should do are the ones that pick targets.
+2. **The `Effect` closure reads everything off `item` and the `g` it
+   receives.** Don't capture `source *game.Card` (a pointer into a
+   zone slice) or the `*game.Game` from `Build`'s arguments — undo
+   restores a cloned game and the closure has to resolve against
+   that one. `item.Controller`, `item.SourceCardID`, `item.Targets`
+   carry what you need.
+
+**Targets** are chosen in `Build` (CR 603.3d) and stamped onto
+`item.Targets` — see `destroyTargetTrigger` in
+[acidic_slime.go](server/internal/cards/effects/acidic_slime.go). The
+engine re-checks them at resolution (CR 608.2b) and fizzles the
+trigger if every target is gone. Until S20's picker ships, the
+sandbox auto-picks (`pickFirstOpponentNonland`, top-of-graveyard);
+return `nil` from `Build` when there's no legal target so the
+trigger never reaches the stack.
+
+**"You may" triggers** set `OptionalPrompt: &game.TriggerOptionalPrompt{Question: "..."}`.
+The harvester queues a yes/no `PendingChoice` instead of calling
+`Build`; on "Yes", `Build` runs and the item goes straight onto the
+stack. Add `HasLegalTarget` when a "Yes" could no-op (the client
+warns the chooser).
+
+**Dies triggers** get the CR 603.10 last-known-information
+characteristics as the third `Build` argument — the card is already
+in the graveyard when `Build` runs, so read power / toughness /
+types from `sourceLKI`, not `source`.
+
+**Tests** — `castCatalogSpell` + `passPriorityAroundTable` settles
+the spell *and* the trigger it queues (the helper waits for
+`Game.Stack`, `StackMeta`, and `PendingTriggers` to all empty).
+Assert the trigger is on the stack with `triggerOnStack(g, cardID)`
+before the second pass if the timing is the point of the test. For
+optional triggers, `answerLatestTriggerPrompt` then
+`passPriorityAroundTable` again. Upkeep triggers: `advanceToUpkeepOf`
+then `passPriorityAroundTable`. See the S19 sections of
+[cards_test.go](server/internal/cards/effects/cards_test.go).
+
 ### When NOT to add a catalog entry
 
 - **Non-mana, non-static activated abilities** (planeswalker +1/-1
-  loyalty costs, equip, cycling, etc.) land with S19's activated-
+  loyalty costs, equip, cycling, etc.) land with a later activated-
   ability pipeline. Don't invent a shape; wait. (Mana abilities and
   static abilities are the exceptions — see the recipes above.)
-- **Triggered abilities on non-ETB events** (die-to-graveyard, attack
-  triggers, "whenever you cast a spell") land with S19's listener pipeline.
-  Don't use `OnETB` as a workaround.
+- **Triggers on events the engine doesn't emit yet** (attack
+  declarations, "whenever a creature enters under an opponent's
+  control", landfall-with-a-target) — check
+  [events.go](server/internal/game/events.go) for an `EventKind`
+  first. If there isn't one, the event plumbing is the PR, not the
+  card.
 - **Cost-replacement effects** (Trinisphere, Thalia, Spellshift, Kambal)
   touch the S15 cost engine rather than the S17 event pipeline. They
   land with S28.

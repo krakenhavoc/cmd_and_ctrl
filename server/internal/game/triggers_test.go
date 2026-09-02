@@ -369,8 +369,24 @@ func TestTriggerHarvesterOptionalPromptQueuesChoice(t *testing.T) {
 	if buildCalls != 1 {
 		t.Errorf("Build calls after apply=true: got %d, want 1", buildCalls)
 	}
-	if got := len(g.PendingTriggers) - pendingBefore; got != 1 {
-		t.Errorf("PendingTriggers delta after apply=true: got %d, want 1", got)
+	// Answering "yes" is the moment the ability goes on the stack:
+	// the resolver drains PendingTriggers straight into StackMeta
+	// rather than leaving the item stranded until the next
+	// priority wrap.
+	if got := len(g.PendingTriggers) - pendingBefore; got != 0 {
+		t.Errorf("PendingTriggers delta after apply=true: got %d, want 0 (drained onto the stack)", got)
+	}
+	var onStack *StackItem
+	for _, item := range g.StackMeta {
+		if item != nil && item.SourceCardID == cardID {
+			onStack = item
+		}
+	}
+	if onStack == nil {
+		t.Fatalf("accepted trigger not found in StackMeta")
+	}
+	if onStack.Kind != StackItemTriggered || onStack.Label != "Optional Pal trigger" {
+		t.Errorf("stack item: kind %q label %q", onStack.Kind, onStack.Label)
 	}
 	if got := len(g.PendingChoices) - choicesBefore; got != 0 {
 		t.Errorf("PendingChoices delta after resolve: got %d, want 0 (entry should be dequeued)", got)
@@ -550,5 +566,381 @@ func TestTriggerHarvesterNoCatalogIsNoop(t *testing.T) {
 	})
 	if got := len(g.PendingTriggers) - pendingBefore; got != 0 {
 		t.Errorf("PendingTriggers delta with nil CatalogTriggers: got %d, want 0", got)
+	}
+}
+
+// --- Triggers actually use the stack --------------------------------
+//
+// The S19 sub-PR 3-5 cards originally applied their effect inline
+// from Build and returned nil. The cases below pin the corrected
+// contract: Build returns a StackItem whose Effect runs only when
+// the item resolves off the stack, after a CR 608.2b target
+// re-check, with every player having had a chance to respond.
+
+// seedTriggerSource drops a catalog-shaped creature under owner and
+// returns its instance ID. The oracle ID is what withCatalogTriggers
+// keys on.
+func seedTriggerSource(g *Game, owner *Player, oracle string) uuid.UUID {
+	cardID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: cardID,
+		OracleID:   oracle,
+		Name:       "Trigger Source",
+		TypeLine:   "Creature — Test",
+		Power:      2,
+		Toughness:  2,
+		Owner:      owner.ID,
+		Controller: owner.ID,
+	})
+	return cardID
+}
+
+// findAbilityOnStack returns the StackMeta entry sourced from cardID,
+// or nil.
+func findAbilityOnStack(g *Game, cardID uuid.UUID) *StackItem {
+	for _, item := range g.StackMeta {
+		if item != nil && item.SourceCardID == cardID {
+			return item
+		}
+	}
+	return nil
+}
+
+// TestTriggeredItemEffectRunsOnResolutionNotOnBuild is the core
+// completeness fix: the effect must not fire when the trigger is
+// harvested, nor when it's drained onto the stack — only when it
+// resolves.
+func TestTriggeredItemEffectRunsOnResolutionNotOnBuild(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	const oracle = "test-stack-effect-oracle"
+	cardID := seedTriggerSource(g, owner, oracle)
+
+	var effectCalls int
+	var effectController uuid.UUID
+	withCatalogTriggers(t, func(id string) []TriggeredAbility {
+		if id != oracle {
+			return nil
+		}
+		return []TriggeredAbility{{
+			Watches: []EventKind{EventETB},
+			AppliesTo: func(ev Event, source *Card, _ Characteristic, _ *Game) bool {
+				return ev.CardID == source.InstanceID
+			},
+			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
+				return NewTriggeredItem(source, "gain 3 life", func(g *Game, item *StackItem) error {
+					effectCalls++
+					effectController = item.Controller
+					return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, 3)
+				})
+			},
+		}}
+	})
+
+	lifeBefore := owner.Life
+	g.WithWriteLock(func() {
+		g.EmitEvent(Event{Kind: EventETB, CardID: cardID, Actor: owner.ID})
+	})
+	if effectCalls != 0 {
+		t.Fatalf("Effect ran at harvest time (%d calls) — must wait for resolution", effectCalls)
+	}
+	if len(g.PendingTriggers) != 1 {
+		t.Fatalf("PendingTriggers: got %d, want 1", len(g.PendingTriggers))
+	}
+
+	// Drain onto the stack (any priority boundary does this).
+	g.WithWriteLock(func() { g.drainPendingTriggersAPNAPLocked() })
+	if effectCalls != 0 {
+		t.Fatalf("Effect ran at drain time (%d calls) — must wait for resolution", effectCalls)
+	}
+	item := findAbilityOnStack(g, cardID)
+	if item == nil {
+		t.Fatalf("trigger not on the stack after drain")
+	}
+	if item.Kind != StackItemTriggered || item.Controller != owner.ID || item.Owner != owner.ID {
+		t.Errorf("item shape: kind=%q controller=%s owner=%s", item.Kind, item.Controller, item.Owner)
+	}
+	if owner.Life != lifeBefore {
+		t.Errorf("life changed before resolution: %d -> %d", lifeBefore, owner.Life)
+	}
+
+	// Resolve — the effect fires exactly once against the live game.
+	g.WithWriteLock(func() {
+		if err := g.resolveTopAbilityLocked(); err != nil {
+			t.Fatalf("resolveTopAbilityLocked: %v", err)
+		}
+	})
+	if effectCalls != 1 {
+		t.Errorf("Effect calls after resolution: got %d, want 1", effectCalls)
+	}
+	if effectController != owner.ID {
+		t.Errorf("Effect saw controller %s, want %s", effectController, owner.ID)
+	}
+	if owner.Life != lifeBefore+3 {
+		t.Errorf("life after resolution: got %d, want %d", owner.Life, lifeBefore+3)
+	}
+	if findAbilityOnStack(g, cardID) != nil {
+		t.Errorf("resolved ability still in StackMeta")
+	}
+	// Breadcrumb: an EventResolve attributed to the source.
+	var resolved bool
+	for _, ev := range g.Events {
+		if ev.Kind == EventResolve && ev.Source == cardID && ev.Label == "gain 3 life" {
+			resolved = true
+		}
+	}
+	if !resolved {
+		t.Errorf("no EventResolve breadcrumb for the triggered item")
+	}
+}
+
+// TestTriggeredItemFizzlesWhenTargetGone pins the CR 608.2b re-check
+// for ability items: a trigger whose only target left the game
+// before resolution is countered by game rules — Effect never runs
+// and an EventFizzle is emitted instead of EventResolve.
+func TestTriggeredItemFizzlesWhenTargetGone(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	victim := g.Seats[1]
+	const oracle = "test-stack-fizzle-oracle"
+	cardID := seedTriggerSource(g, owner, oracle)
+	targetID := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: targetID,
+		Name:       "Doomed Target",
+		TypeLine:   "Artifact",
+		Owner:      victim.ID,
+		Controller: victim.ID,
+	})
+
+	var effectCalls int
+	withCatalogTriggers(t, func(id string) []TriggeredAbility {
+		if id != oracle {
+			return nil
+		}
+		return []TriggeredAbility{{
+			Watches: []EventKind{EventETB},
+			AppliesTo: func(ev Event, source *Card, _ Characteristic, _ *Game) bool {
+				return ev.CardID == source.InstanceID
+			},
+			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
+				item := NewTriggeredItem(source, "destroy target artifact", func(_ *Game, _ *StackItem) error {
+					effectCalls++
+					return nil
+				})
+				item.Targets = []TargetRef{{Kind: TargetCard, ID: targetID}}
+				return item
+			},
+		}}
+	})
+
+	g.WithWriteLock(func() {
+		g.EmitEvent(Event{Kind: EventETB, CardID: cardID, Actor: owner.ID})
+		g.drainPendingTriggersAPNAPLocked()
+	})
+	if findAbilityOnStack(g, cardID) == nil {
+		t.Fatalf("trigger not on the stack after drain")
+	}
+
+	// Remove the target from every zone the engine tracks, then
+	// resolve.
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == targetID {
+				g.Battlefield.Cards = append(g.Battlefield.Cards[:i], g.Battlefield.Cards[i+1:]...)
+				break
+			}
+		}
+		if err := g.resolveTopAbilityLocked(); err != nil {
+			t.Fatalf("resolveTopAbilityLocked: %v", err)
+		}
+	})
+	if effectCalls != 0 {
+		t.Errorf("Effect ran despite every target being illegal (%d calls)", effectCalls)
+	}
+	var fizzled, resolved bool
+	for _, ev := range g.Events {
+		if ev.Source != cardID {
+			continue
+		}
+		switch ev.Kind {
+		case EventFizzle:
+			fizzled = true
+		case EventResolve:
+			resolved = true
+		}
+	}
+	if !fizzled {
+		t.Errorf("no EventFizzle for the all-targets-illegal trigger")
+	}
+	if resolved {
+		t.Errorf("EventResolve emitted for a fizzled trigger")
+	}
+	if findAbilityOnStack(g, cardID) != nil {
+		t.Errorf("fizzled ability still in StackMeta")
+	}
+}
+
+// TestTriggeredItemEffectErrorSurfacesAndClearsStack: a failing
+// Effect must not wedge the stack — the item is gone, the error is
+// visible as EventEffectError, and the engine keeps going.
+func TestTriggeredItemEffectErrorSurfacesAndClearsStack(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	const oracle = "test-stack-error-oracle"
+	cardID := seedTriggerSource(g, owner, oracle)
+
+	withCatalogTriggers(t, func(id string) []TriggeredAbility {
+		if id != oracle {
+			return nil
+		}
+		return []TriggeredAbility{{
+			Watches: []EventKind{EventETB},
+			AppliesTo: func(ev Event, source *Card, _ Characteristic, _ *Game) bool {
+				return ev.CardID == source.InstanceID
+			},
+			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
+				return NewTriggeredItem(source, "explode", func(_ *Game, _ *StackItem) error {
+					return ErrInvalidParam
+				})
+			},
+		}}
+	})
+
+	g.WithWriteLock(func() {
+		g.EmitEvent(Event{Kind: EventETB, CardID: cardID, Actor: owner.ID})
+		g.drainPendingTriggersAPNAPLocked()
+		if err := g.resolveTopAbilityLocked(); err != nil {
+			t.Fatalf("resolveTopAbilityLocked returned %v — effect errors must not propagate", err)
+		}
+	})
+	if findAbilityOnStack(g, cardID) != nil {
+		t.Errorf("errored ability still in StackMeta")
+	}
+	var surfaced bool
+	for _, ev := range g.Events {
+		if ev.Kind == EventEffectError && ev.Source == cardID {
+			surfaced = true
+		}
+	}
+	if !surfaced {
+		t.Errorf("no EventEffectError breadcrumb for the failing Effect")
+	}
+}
+
+// TestTriggeredItemEffectSurvivesCloneAndRestore: undo snapshots go
+// through cloneStackItem. A trigger on the stack at snapshot time
+// must still resolve with its effect after the snapshot is restored
+// — and against the restored game, not the one Build ran in.
+func TestTriggeredItemEffectSurvivesCloneAndRestore(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	const oracle = "test-stack-clone-oracle"
+	cardID := seedTriggerSource(g, owner, oracle)
+
+	withCatalogTriggers(t, func(id string) []TriggeredAbility {
+		if id != oracle {
+			return nil
+		}
+		return []TriggeredAbility{{
+			Watches: []EventKind{EventETB},
+			AppliesTo: func(ev Event, source *Card, _ Characteristic, _ *Game) bool {
+				return ev.CardID == source.InstanceID
+			},
+			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
+				return NewTriggeredItem(source, "gain 5 life", func(g *Game, item *StackItem) error {
+					return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, 5)
+				})
+			},
+		}}
+	})
+
+	g.WithWriteLock(func() {
+		g.EmitEvent(Event{Kind: EventETB, CardID: cardID, Actor: owner.ID})
+		g.drainPendingTriggersAPNAPLocked()
+	})
+	lifeAtSnapshot := owner.Life
+	snap := g.Clone()
+
+	// Mutate the live game past the snapshot, then rewind.
+	g.WithWriteLock(func() {
+		if err := g.resolveTopAbilityLocked(); err != nil {
+			t.Fatalf("resolveTopAbilityLocked (pre-restore): %v", err)
+		}
+	})
+	if owner.Life != lifeAtSnapshot+5 {
+		t.Fatalf("pre-restore resolution: life %d, want %d", owner.Life, lifeAtSnapshot+5)
+	}
+	g.WithWriteLock(func() { g.RestoreFrom(snap) })
+
+	restoredOwner := g.Seats[0]
+	if restoredOwner.Life != lifeAtSnapshot {
+		t.Fatalf("restore did not rewind life: got %d, want %d", restoredOwner.Life, lifeAtSnapshot)
+	}
+	item := findAbilityOnStack(g, cardID)
+	if item == nil {
+		t.Fatalf("trigger missing from StackMeta after restore")
+	}
+	if item.Effect == nil {
+		t.Fatalf("Effect dropped by cloneStackItem")
+	}
+	g.WithWriteLock(func() {
+		if err := g.resolveTopAbilityLocked(); err != nil {
+			t.Fatalf("resolveTopAbilityLocked (post-restore): %v", err)
+		}
+	})
+	if restoredOwner.Life != lifeAtSnapshot+5 {
+		t.Errorf("post-restore resolution: life %d, want %d", restoredOwner.Life, lifeAtSnapshot+5)
+	}
+}
+
+// TestSandboxMoveDrainsTriggerOntoStack: the sandbox move_card verb
+// is a special action after which the mover keeps priority, so a
+// catalog creature dropped straight onto the battlefield must have
+// its ETB trigger drained onto the stack immediately — not left in
+// PendingTriggers for a later wrap (which, with an empty stack,
+// would advance the step before draining).
+func TestSandboxMoveDrainsTriggerOntoStack(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	const oracle = "test-move-drain-oracle"
+	cardID := uuid.New()
+	owner.Hand.PushTop(Card{
+		InstanceID: cardID,
+		OracleID:   oracle,
+		Name:       "Dropped Creature",
+		TypeLine:   "Creature — Test",
+		Power:      2,
+		Toughness:  2,
+		Owner:      owner.ID,
+		Controller: owner.ID,
+	})
+	withCatalogTriggers(t, func(id string) []TriggeredAbility {
+		if id != oracle {
+			return nil
+		}
+		return []TriggeredAbility{{
+			Watches: []EventKind{EventETB},
+			AppliesTo: func(ev Event, source *Card, _ Characteristic, _ *Game) bool {
+				return ev.CardID == source.InstanceID
+			},
+			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
+				return NewTriggeredItem(source, "dropped ETB", func(_ *Game, _ *StackItem) error { return nil })
+			},
+		}}
+	})
+
+	if err := g.MoveCardByID(
+		ZoneRef{Kind: ZoneHand, Owner: owner.ID},
+		ZoneRef{Kind: ZoneBattlefield},
+		cardID,
+	); err != nil {
+		t.Fatalf("MoveCardByID: %v", err)
+	}
+	if len(g.PendingTriggers) != 0 {
+		t.Errorf("trigger left in PendingTriggers after a sandbox move: %d", len(g.PendingTriggers))
+	}
+	if findAbilityOnStack(g, cardID) == nil {
+		t.Errorf("ETB trigger not on the stack after the sandbox move")
 	}
 }

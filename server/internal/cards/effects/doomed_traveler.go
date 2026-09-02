@@ -8,9 +8,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	token with flying."
 //
 // S19 sub-PR 4: a mandatory LTB trigger that creates one token via
-// the CreateToken primitive. Flying on the Spirit token is cosmetic
-// (token keywords aren't mechanically enforced yet). cardDied gates
-// the trigger to graveyard-only.
+// the CreateToken primitive when it resolves. Flying on the Spirit
+// token is cosmetic (token keywords aren't mechanically enforced
+// yet). cardDied gates the trigger to graveyard-only.
 func init() {
 	Register(Spec{
 		OracleID: "a30907c0-fbde-4fd3-a8c7-f304305fcea7",
@@ -20,14 +20,15 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return cardDied(ev, source)
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				ctx := NewContext(g, nil)
-				_ = CreateToken{
-					Controller: source.Controller,
-					Template:   SpiritToken(),
-					N:          1,
-				}.Apply(ctx)
-				return nil
+			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+				return game.NewTriggeredItem(source, "Doomed Traveler — create a 1/1 Spirit",
+					func(g *game.Game, item *game.StackItem) error {
+						return CreateToken{
+							Controller: item.Controller,
+							Template:   SpiritToken(),
+							N:          1,
+						}.Apply(NewContext(g, item))
+					})
 			},
 		}},
 	})

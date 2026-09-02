@@ -1683,14 +1683,15 @@ Mini sprint slotted after S18 started, to ship two pieces of long-promised clien
 
 **Phase:** 7 · **Goal:** ETB / dies / upkeep / cast / combat triggers fire automatically for catalog cards.
 
-- [ ] **Sub-PR 1/8 — `s19-dispatcher`**: `TriggeredAbility` type + `triggerHarvester` listener + LKI snapshot (CR 603.10)
-- [ ] **Sub-PR 2/8 — `s19-prompt`**: optional / modal trigger prompts via existing prompt frame
-- [ ] **Sub-PR 3/8 — `s19-etb-triggers`**: 5 ETB cards (Mulldrifter, Eternal Witness migration, Reclamation Sage, Acidic Slime, Solemn Simulacrum)
-- [ ] **Sub-PR 4/8 — `s19-dies-triggers`**: 4 dies-trigger cards (Solemn Simulacrum dies half, Skullclamp migration, +2)
-- [ ] **Sub-PR 5/8 — `s19-upkeep-triggers`**: 4 upkeep / step cards (Phyrexian Arena, Sylvan Library, Mana Crypt, +1)
-- [ ] **Sub-PR 6/8 — `s19-cast-triggers`**: 4 cast / opponent-draws cards (Smothering Tithe, Esper Sentinel, +2)
+- [x] **Sub-PR 1/8 — `s19-dispatcher`**: `TriggeredAbility` type + `triggerHarvester` listener + LKI snapshot (CR 603.10) — [#193](https://github.com/krakenhavoc/cmd_and_ctrl/pull/193)
+- [x] **Sub-PR 2/8 — `s19-prompt`**: optional trigger prompts via existing prompt frame (modal prompts deferred — no catalog card needs one yet)
+- [x] **Sub-PR 3/8 — `s19-etb-triggers`**: 5 ETB cards (Mulldrifter, Eternal Witness migration, Reclamation Sage, Acidic Slime, Solemn Simulacrum)
+- [x] **Sub-PR 4/8 — `s19-dies-triggers`**: 4 dies-trigger cards (Solemn Simulacrum dies half, Filigree Familiar, Doomed Traveler, Wurmcoil Engine) — [#200](https://github.com/krakenhavoc/cmd_and_ctrl/pull/200)
+- [x] **Sub-PR 5/8 — `s19-upkeep-triggers`**: 4 upkeep cards (Phyrexian Arena, Bitterblossom, Sulfuric Vortex, Awakening Zone) via `EventBeginUpkeep` — [#201](https://github.com/krakenhavoc/cmd_and_ctrl/pull/201)
+- [x] **Sub-PR 5.5/8 — `s19-triggers-on-stack`**: triggers actually use the stack. Sub-PRs 3–5 applied their effect inline from `Build` and returned nil — no stack item, no response window, no CR 608.2b re-check. `StackItem.Effect` + `NewTriggeredItem` + `resolveTopAbilityLocked` running the effect; all 12 cards migrated; prompt-yes / sandbox-move / play-land now drain onto the stack; wire order by `Seq`; client auto-pass stops for ability items (smart-skip escape). [ADR 0018](decisions/0018-triggers-on-the-stack.md).
+- [ ] **Sub-PR 6/8 — `s19-cast-triggers`**: 4 cast / opponent-draws cards (Smothering Tithe, Esper Sentinel, +2) — write in the `NewTriggeredItem` shape
 - [ ] **Sub-PR 7/8 — `s19-combat-triggers`**: 4 combat-damage cards (Edric Spymaster of Trest, Bident of Thassa, +2)
-- [ ] **Sub-PR 8/8 — `s19-tests`**: APNAP-ordering, LKI-correctness, optional/modal coverage, fallback-to-manual coverage
+- [ ] **Sub-PR 8/8 — `s19-tests`**: same-controller trigger ordering (CR 603.3b), LKI-correctness, fallback-to-manual coverage
 
 **Manual fallback preserved:** `announce_trigger` from S13.1 stays for unimplemented cards and "hidden info" triggers.
 

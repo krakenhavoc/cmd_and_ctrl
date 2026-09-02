@@ -261,6 +261,11 @@ func cloneStackItem(s *StackItem) *StackItem {
 		HoldPriority: s.HoldPriority,
 		SplitSecond:  s.SplitSecond,
 		Seq:          s.Seq,
+		// Effect takes the live *Game at resolve time rather than
+		// capturing one, so sharing the func between original and
+		// snapshot is safe — an undo that restores this item
+		// resolves it against the restored game.
+		Effect: s.Effect,
 	}
 	if len(s.Targets) > 0 {
 		out.Targets = make([]TargetRef, len(s.Targets))

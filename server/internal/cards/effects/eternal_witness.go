@@ -15,10 +15,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - Sandbox auto-pick: most-recently-added card in the
 //     controller's graveyard (top of pile), matching S14's
 //     simplification. A real target picker lands with S20.
-//   - Empty graveyard at fire time → trigger no-ops silently.
-//
-// OnETB is dropped — the listener now owns ETB dispatch for this
-// card. Cards still using OnETB stay on the direct-call path.
+//   - The pick is stamped onto item.Targets when the trigger is
+//     put on the stack. If the card has left the graveyard by the
+//     time the trigger resolves (someone exiled it in response),
+//     ReturnFromGraveyard returns ErrCardNotFound, which surfaces
+//     as an effect_error breadcrumb rather than wedging the stack.
+//   - Empty graveyard at fire time → a "yes" builds nothing and
+//     the trigger never reaches the stack.
 func init() {
 	Register(Spec{
 		OracleID: "30b24e8e-3b0e-4d8e-90f3-f66eb7c1858c",
@@ -34,9 +37,15 @@ func init() {
 					return nil
 				}
 				top := controller.Graveyard.Cards[controller.Graveyard.Size()-1].InstanceID
-				ctx := NewContext(g, nil)
-				_ = ReturnFromGraveyard{Target: top, Dest: game.ZoneHand}.Apply(ctx)
-				return nil
+				item := game.NewTriggeredItem(source, "Eternal Witness — return target card to hand",
+					func(g *game.Game, item *game.StackItem) error {
+						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+							return nil
+						}
+						return ReturnFromGraveyard{Target: item.Targets[0].ID, Dest: game.ZoneHand}.Apply(NewContext(g, item))
+					})
+				item.Targets = []game.TargetRef{{Kind: game.TargetCard, ID: top}}
+				return item
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Eternal Witness — return top of graveyard to hand?",
