@@ -115,19 +115,23 @@ every turn, that's visibly random. It now sorts by insertion `Seq`
 — the same order the engine resolves in — with stable ties keeping
 the legacy spell-cards-first behaviour for zero-`Seq` snapshots.
 
-### 5. Client auto-pass stops for ability items, with the smart escape
+### 5. Client: autopass passes through triggers; autopass off is full control
 
 The S13.6 auto-pass gate treated "stack non-empty" as "a card is
-on `Game.Stack`", so ability items didn't count and an opponent
-with auto-pass on would sail past every trigger — Counterspell in
-hand or not. The gate now stops for ability items too, but lets
-`smartAutoPass` (default on) wave the viewer through when
-`hasAnyLegalResponse` sees nothing they could respond with. Spells
-keep their always-stop behaviour. This is the Arena-style middle
-ground: a Bitterblossom upkeep trigger doesn't demand a click from
-every seat every turn, but an instant in hand is enough to hold
-the window open. Worth revisiting after a real 4-player session —
-it is a UX judgement, not a rules one.
+on `Game.Stack`", so ability items didn't count and the
+conventional (autopass-off) path would sail past every trigger —
+Counterspell in hand or not. The gate now stops for ability items
+exactly as it does for spells. The two modes mirror Arena:
+
+- **Autopass on** (the session toggle): every priority window
+  passes, triggers included — "get me through this turn".
+- **Autopass off**: full control. Every spell *and* every trigger
+  on the stack is a window the viewer answers by hand. Step stops
+  and the smart-skip predicate still govern empty-stack windows
+  as before; they never skip a non-empty stack.
+
+No smart-skip escape for triggers: a player who wants routine
+upkeep triggers to fly by turns autopass on.
 
 ## Out of scope (explicit deferrals)
 

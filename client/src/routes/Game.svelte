@@ -155,20 +155,13 @@
     // Conventional (non-autopass) path: honour every gate.
     if (!autopass) {
       if (!$settings.gameplay.autoPassPriority) return;
-      // A spell on the stack always stops — someone cast something
-      // and the viewer gets to answer it.
-      if ((view?.stack?.cards?.length ?? 0) > 0) return;
-      // S19: triggered abilities live on the stack too (no card on
-      // Game.Stack, only a stack_items entry). Stop for them as
-      // well — but let smartAutoPass wave the viewer through when
-      // the legality engine sees nothing they could respond with,
-      // so a Bitterblossom upkeep trigger doesn't demand a click
-      // from every seat every turn. Predicate errs conservative
-      // (ADR 0009 §3): an instant in hand is enough to stop.
-      if (!stackEmpty(view)) {
-        const smart = $settings.gameplay.smartAutoPass;
-        if (!smart || hasAnyLegalResponse(view, viewerID, $lastSeq)) return;
-      }
+      // Anything on the stack stops: a spell card OR an ability
+      // item (S19 triggers have no card on Game.Stack, only a
+      // stack_items entry). Autopass off means Arena-style "full
+      // control" — every trigger is a window the viewer gets to
+      // answer. The autopass toggle above is the way through
+      // routine upkeep triggers.
+      if (!stackEmpty(view)) return;
       // Manual one-time stops override everything below. Click a
       // phase icon in PhaseDisplay to pin; the pin clears on step
       // transition. "Fake a game action" — viewer gets the cursor

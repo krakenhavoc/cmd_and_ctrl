@@ -71,8 +71,10 @@ test.describe("S19 ETB triggers", () => {
     // No trigger prompt should queue for a mandatory ability.
     expect(staged.pending_choices ?? []).toHaveLength(0);
     // The stack overlay shows the trigger to both seats.
-    await expect(caster.page.getByText(/Mulldrifter — draw two cards/i)).toBeVisible();
-    await expect(opponent.page.getByText(/Mulldrifter — draw two cards/i)).toBeVisible();
+    // (The overlay renders the label twice — fallback art + title —
+    // so anchor on the first match.)
+    await expect(caster.page.getByText(/Mulldrifter — draw two cards/i).first()).toBeVisible();
+    await expect(opponent.page.getByText(/Mulldrifter — draw two cards/i).first()).toBeVisible();
 
     await resolveStack(setup);
 
