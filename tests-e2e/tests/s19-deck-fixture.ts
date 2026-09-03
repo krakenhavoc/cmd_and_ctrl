@@ -37,7 +37,9 @@ const CASTER_NON_BASICS = [
 // Opponent deck — these permanents are the destroy targets for
 // Reclamation Sage / Acidic Slime. Sol Ring and Glorious Anthem
 // double as artifact + enchantment; Plains supplies the land row.
-const OPPONENT_NON_BASICS = ["Sol Ring", "Glorious Anthem", "Plains"];
+// Smothering Tithe (sub-PR 6) sits here too: it's the opponent's
+// card so the CASTER is the one taxed on a draw.
+const OPPONENT_NON_BASICS = ["Sol Ring", "Glorious Anthem", "Plains", "Smothering Tithe"];
 
 function buildDeck(nonBasics: string[], filler: string, fillerCount: number): string {
   const lines: string[] = [];
@@ -63,11 +65,11 @@ export function makeS19CasterDeck(): string {
 }
 
 // makeS19OpponentDeck builds the 100-card opponent deck. 1
-// commander + 3 non-basics + 96 Plains = 100 mainboard. Plains
+// commander + 4 non-basics + 95 Plains = 100 mainboard. Plains
 // gives Acidic Slime a default land target without needing the
 // other player to admin-place a basic.
 export function makeS19OpponentDeck(): string {
-  return buildDeck(OPPONENT_NON_BASICS, "Plains", 96);
+  return buildDeck(OPPONENT_NON_BASICS, "Plains", 95);
 }
 
 // CARDS surfaces the named cards we'll look up by name from the
@@ -83,6 +85,8 @@ export const CARDS = {
   LightningBolt: "Lightning Bolt",
   SolRing: "Sol Ring",
   GloriousAnthem: "Glorious Anthem",
+  SmotheringTithe: "Smothering Tithe",
+  Treasure: "Treasure",
   Plains: "Plains",
   Forest: "Forest",
 } as const;

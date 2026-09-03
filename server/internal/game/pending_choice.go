@@ -101,6 +101,18 @@ const (
 	// covered here — sub-PR 2 ships the optional yes/no path only.
 	// Added in S19 sub-PR 2.
 	PendingChoiceTriggerPrompt PendingChoiceKind = "trigger_prompt"
+
+	// PendingChoicePayUnless is the "unless that player pays {N}"
+	// prompt (Rhystic Study, Smothering Tithe, Esper Sentinel — CR
+	// 118.12 / 603.2). Queued by a triggered ability's Effect at
+	// resolution; the chooser is the player being asked to pay,
+	// not the ability's controller. `{apply: true}` attempts the
+	// payment from the chooser's pool, auto-tapping their untapped
+	// sources if the pool is short; `{apply: false}` — or a payment
+	// that can't be made — runs the "unless" consequence. PayCost
+	// carries the printed cost string for the client. Added in S19
+	// sub-PR 6.
+	PendingChoicePayUnless PendingChoiceKind = "pay_unless"
 )
 
 // PendingChoice is one outstanding "someone needs to pick" entry
@@ -187,6 +199,27 @@ type PendingChoice struct {
 	// wire. Consumed by ResolveTriggerPrompt on submit. Added in
 	// S19 sub-PR 2.
 	triggerResume *triggerResumeFrame
+
+	// PayCost is the printed cost string ("{2}", "{1}", "{X}"
+	// already substituted) for a PendingChoicePayUnless entry.
+	// Wire-serialised so the client can label the "Pay" button.
+	// Added in S19 sub-PR 6.
+	PayCost string
+
+	// payUnlessResume is the server-only continuation for a
+	// PendingChoicePayUnless entry: the parsed cost plus the
+	// "unless" consequence to run when the chooser declines or
+	// can't pay. Not serialised. Added in S19 sub-PR 6.
+	payUnlessResume *payUnlessFrame
+}
+
+// payUnlessFrame carries a pay-unless prompt's parsed cost and the
+// decline consequence. onDecline receives the live *Game (not a
+// captured one) for the same undo-safety reason StackItem.Effect
+// does. Added in S19 sub-PR 6.
+type payUnlessFrame struct {
+	cost      ParsedCost
+	onDecline func(g *Game) error
 }
 
 // triggerResumeFrame stashes the per-trigger continuation data the
@@ -1122,6 +1155,148 @@ func (g *Game) ResolveTriggerPrompt(choiceID, chooserID uuid.UUID, apply bool) e
 	// (CR 603.3), and SBAs run at the same boundary.
 	g.runStateChecksLocked()
 	return nil
+}
+
+// QueuePayUnlessForEffect queues an "unless that player pays
+// <cost>" prompt for `chooser`. Called from a triggered ability's
+// Effect at resolution (Rhystic Study: "you may draw a card unless
+// that player pays {1}") — the ability has resolved, and what's
+// left is the payer's decision. `question` is the dialog header;
+// `source` attributes the prompt to the card for the client.
+// onDecline runs when the chooser answers "no" OR answers "yes"
+// but cannot produce the mana (pool + auto-tap).
+//
+// A chooser who is no longer seated / is eliminated can't be
+// asked; the consequence runs immediately (the "unless" clause
+// fails when there is nobody to pay). An unparseable cost is a
+// programming error surfaced as EventEffectError, and the
+// consequence runs so the card still does something.
+//
+// Caller must hold g.mu. Added in S19 sub-PR 6.
+func (g *Game) QueuePayUnlessForEffect(
+	chooser, source uuid.UUID,
+	cost, question string,
+	onDecline func(g *Game) error,
+) error {
+	parsed, err := ParseCost(cost)
+	if err != nil {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Source:   source,
+			ErrorMsg: "pay-unless: unparseable cost " + cost + ": " + err.Error(),
+		})
+		if onDecline != nil {
+			return onDecline(g)
+		}
+		return nil
+	}
+	if p := g.playerByIDLocked(chooser); p == nil || p.Eliminated {
+		if onDecline != nil {
+			return onDecline(g)
+		}
+		return nil
+	}
+	g.QueueChoiceForEffect(PendingChoice{
+		Kind:    PendingChoicePayUnless,
+		Chooser: chooser,
+		Count:   1,
+		Source:  source,
+		Reason:  question,
+		PayCost: cost,
+		payUnlessResume: &payUnlessFrame{
+			cost:      parsed,
+			onDecline: onDecline,
+		},
+	})
+	return nil
+}
+
+// ResolvePayUnless processes the chooser's answer to a
+// PendingChoicePayUnless entry. `apply: true` means "I pay": the
+// cost is deducted from the chooser's pool, auto-tapping their
+// untapped mana sources first if the pool is short (same planner
+// CastSpell's AutoTap uses, no exclusions). If neither covers it
+// the answer degrades to a decline — the player said yes to a bill
+// they can't settle — and the "unless" consequence runs. `apply:
+// false` runs the consequence directly.
+//
+// Either way the prompt is dequeued and the SBA / trigger drain
+// runs, since the consequence (a draw, a token) may itself have
+// triggered something.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+// Added in S19 sub-PR 6.
+func (g *Game) ResolvePayUnless(choiceID, chooserID uuid.UUID, apply bool) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	idx := -1
+	for i, c := range g.PendingChoices {
+		if c != nil && c.ID == choiceID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ErrPendingChoiceNotFound
+	}
+	choice := g.PendingChoices[idx]
+	if choice.Kind != PendingChoicePayUnless {
+		return ErrInvalidParam
+	}
+	if choice.Chooser != chooserID {
+		return ErrNotTheChooser
+	}
+	frame := choice.payUnlessResume
+	g.dequeueChoiceLocked(idx)
+	if frame == nil {
+		return nil
+	}
+	paid := false
+	if apply {
+		if p := g.playerByIDLocked(chooserID); p != nil {
+			paid = g.payCostLocked(p, frame.cost, choice.Source)
+		}
+	}
+	if !paid && frame.onDecline != nil {
+		if err := frame.onDecline(g); err != nil {
+			g.EmitEvent(Event{
+				Kind:     EventEffectError,
+				Actor:    chooserID,
+				Source:   choice.Source,
+				ErrorMsg: err.Error(),
+			})
+		}
+	}
+	g.runStateChecksLocked()
+	return nil
+}
+
+// payCostLocked deducts `cost` (no X) from p's pool, auto-tapping
+// untapped mana sources into the pool first when it's short.
+// Returns false — with nothing tapped or spent — when the cost
+// can't be met. Emits EventManaSpent on success so the client's
+// pool display and the event log line up with the cast path.
+// Caller must hold g.mu.
+func (g *Game) payCostLocked(p *Player, cost ParsedCost, source uuid.UUID) bool {
+	if !p.ManaPool.CanPay(cost, 0) {
+		plan, ok := g.autoTapLocked(p.ID, cost, 0, nil)
+		if !ok {
+			return false
+		}
+		g.materializePlanLocked(p, plan, cost)
+	}
+	if !p.ManaPool.SpendMana(cost, 0) {
+		return false
+	}
+	g.EmitEvent(Event{
+		Kind:   EventManaSpent,
+		Actor:  p.ID,
+		Source: source,
+	})
+	return true
 }
 
 // PendingChoiceKindFor returns the kind of the queue entry with the

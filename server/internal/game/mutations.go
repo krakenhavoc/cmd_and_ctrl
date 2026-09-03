@@ -104,7 +104,14 @@ func (g *Game) DrawCard(playerID uuid.UUID) error {
 	if g.Turn.Step == StepDraw && g.activeSeatIDLocked() == playerID {
 		return nil
 	}
-	return g.drawCardLocked(playerID)
+	if err := g.drawCardLocked(playerID); err != nil {
+		return err
+	}
+	// Sandbox draw is a special action; the drawer keeps priority
+	// and CR 117.5 puts SBAs + the trigger drain here (Smothering
+	// Tithe, Consecrated Sphinx watch draws).
+	g.runStateChecksLocked()
+	return nil
 }
 
 // drawCardLocked is the unlocked draw used both by the public
@@ -527,12 +534,29 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		}
 		p.CommanderCasts[cardID]++
 	}
+	// S19 sub-PR 6: per-turn cast tally, bumped BEFORE EventCast so
+	// "first noncreature spell each turn" predicates see this spell
+	// counted (Noncreature == 1 means "this is the first").
+	if g.SpellsCastThisTurn == nil {
+		g.SpellsCastThisTurn = make(map[uuid.UUID]CastTally)
+	}
+	tally := g.SpellsCastThisTurn[playerID]
+	tally.Total++
+	if !card.IsCreature() {
+		tally.Noncreature++
+	}
+	g.SpellsCastThisTurn[playerID] = tally
 	g.EmitEvent(Event{
 		Kind:   EventCast,
 		Actor:  playerID,
 		Source: cardID,
 		CardID: cardID,
 	})
+	// The caster receives priority right after casting (CR 117.3c),
+	// and CR 603.3 puts any cast-triggered abilities (Rhystic Study,
+	// Beast Whisperer) on the stack at that moment — above the
+	// spell, so they resolve first.
+	g.runStateChecksLocked()
 	return nil
 }
 

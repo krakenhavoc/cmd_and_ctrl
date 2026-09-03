@@ -94,3 +94,16 @@ func PhyrexianWurmToken() game.Card {
 		Toughness: 3,
 	}
 }
+
+// TreasureToken returns a template for the Treasure artifact token
+// ("{T}, Sacrifice this artifact: Add one mana of any color").
+// Sandbox: the sac-for-mana ability is inert — sacrifice-cost mana
+// abilities are rejected at activation until S21's "sacrifice as a
+// cost" lands — so a Treasure is a countable artifact and nothing
+// more for now. Added in S19 sub-PR 6 for Smothering Tithe.
+func TreasureToken() game.Card {
+	return game.Card{
+		Name:     "Treasure",
+		TypeLine: "Token Artifact — Treasure",
+	}
+}

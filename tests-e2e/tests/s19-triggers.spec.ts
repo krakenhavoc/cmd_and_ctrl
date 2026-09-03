@@ -487,4 +487,63 @@ test.describe("S19 ETB triggers", () => {
       caster.page.getByText(prompt!.reason!, { exact: false }),
     ).toBeVisible({ timeout: 5000 });
   });
+
+  // S19 sub-PR 6: pay-unless. The opponent's Smothering Tithe taxes
+  // the caster's draw; the caster (not the Tithe's controller) gets
+  // the pay prompt, declines, and the opponent gets a Treasure.
+  test("Smothering Tithe: opponent's draw → pay {2} prompt → Don't pay → Treasure", async ({
+    browser,
+    request,
+  }) => {
+    test.slow();
+    setup = await setupS19Game(browser, request);
+    const { admin, caster, opponent } = setup;
+
+    // Stage the Tithe under the opponent AFTER any hand seeding —
+    // seeding draws cards, and each draw would trigger it.
+    await adminMoveByName(admin, opponent.playerID, CARDS.SmotheringTithe, "library", "battlefield");
+    await admin.waitFor(
+      (v) => findCardOnBattlefield(v, CARDS.SmotheringTithe) !== null,
+      "Smothering Tithe on battlefield",
+    );
+
+    // Caster draws one card → trigger on the stack (mandatory, no
+    // prompt yet — the question comes at resolution).
+    await admin.sendActionAsPlayer(caster.playerID, "draw_card", {});
+    await admin.waitFor(
+      (v) => triggerOnStack(v, CARDS.SmotheringTithe) !== null,
+      "Tithe trigger on the stack after the caster drew",
+    );
+    expect(admin.snapshot().pending_choices ?? []).toHaveLength(0);
+
+    await resolveStack(setup);
+
+    // Resolution queues the pay prompt for the CASTER.
+    const prompted = await admin.waitFor(
+      (v) =>
+        (v.pending_choices ?? []).some(
+          (c) => c.kind === "pay_unless" && c.chooser === caster.playerID,
+        ),
+      "pay_unless prompt queued for the caster",
+    );
+    const prompt = (prompted.pending_choices ?? []).find((c) => c.kind === "pay_unless");
+    expect(prompt?.pay_cost).toBe("{2}");
+
+    // Caster's browser shows the pay dialog; the opponent's doesn't.
+    await expect(caster.page.getByRole("button", { name: /^Pay \{2\}$/ })).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(opponent.page.getByRole("button", { name: /^Pay \{2\}$/ })).toHaveCount(0);
+
+    await caster.page.getByRole("button", { name: /^Don't pay$/ }).click();
+
+    const after = await admin.waitFor(
+      (v) => {
+        const t = findCardOnBattlefield(v, CARDS.Treasure);
+        return t !== null && t.controller === opponent.playerID;
+      },
+      "Treasure created under the Tithe's controller",
+    );
+    expect(after.pending_choices ?? []).toHaveLength(0);
+  });
 });

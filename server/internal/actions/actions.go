@@ -875,9 +875,10 @@ func Dispatch(g *game.Game, a Action) error {
 			return g.ResolveManaChoice(choiceID, a.Player, p.Color)
 		}
 		if p.OptionalApply != nil {
-			// Two yes/no kinds share the {apply: bool} payload shape:
-			// PendingChoiceOptionalReplacement (S17) and
-			// PendingChoiceTriggerPrompt (S19). Disambiguate by
+			// Three yes/no kinds share the {apply: bool} payload
+			// shape: PendingChoiceOptionalReplacement (S17),
+			// PendingChoiceTriggerPrompt (S19) and
+			// PendingChoicePayUnless (S19 sub-PR 6). Disambiguate by
 			// looking up the choice's kind on the engine.
 			kind, ok := g.PendingChoiceKindFor(choiceID)
 			if !ok {
@@ -886,6 +887,10 @@ func Dispatch(g *game.Game, a Action) error {
 			switch kind {
 			case game.PendingChoiceTriggerPrompt:
 				return g.ResolveTriggerPrompt(choiceID, a.Player, *p.OptionalApply)
+			case game.PendingChoicePayUnless:
+				// S19 sub-PR 6: "unless that player pays {N}" — apply
+				// means "I pay".
+				return g.ResolvePayUnless(choiceID, a.Player, *p.OptionalApply)
 			default:
 				return g.ResolveOptionalReplacement(choiceID, a.Player, *p.OptionalApply)
 			}

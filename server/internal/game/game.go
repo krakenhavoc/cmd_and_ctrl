@@ -133,6 +133,16 @@ type Game struct {
 	// Added in S13.1.
 	LoyaltyActivatedThisTurn map[uuid.UUID]bool
 
+	// SpellsCastThisTurn tallies, per player, the spells that player
+	// has cast this turn (CR 700.7-style "first spell each turn"
+	// bookkeeping; also the storm count once storm ships). Bumped
+	// in CastSpell before EventCast is emitted, so a "whenever a
+	// player casts their first noncreature spell each turn" trigger
+	// reads Noncreature == 1 for the spell that just fired the
+	// event. Cleared on Turn.advance to a new turn. Keyed by player
+	// ID. Added in S19 sub-PR 6.
+	SpellsCastThisTurn map[uuid.UUID]CastTally
+
 	// DiscardPending is the cleanup-step pause map (S13.4): keys
 	// are player IDs that need to discard, values are the count
 	// each player must discard. Set at cleanup-step entry by
@@ -531,6 +541,27 @@ func (g *Game) onTurnAdvanceLocked(prev, next Turn) {
 	if g.LoyaltyActivatedThisTurn != nil {
 		g.LoyaltyActivatedThisTurn = nil
 	}
+	if g.SpellsCastThisTurn != nil {
+		g.SpellsCastThisTurn = nil
+	}
+}
+
+// CastTally is one player's per-turn spell count. Total counts every
+// spell; Noncreature counts those without the creature type (per the
+// card's printed type line at cast time). Added in S19 sub-PR 6.
+type CastTally struct {
+	Total       int
+	Noncreature int
+}
+
+// CastTallyFor returns p's tally for the current turn (zero value
+// when they haven't cast anything). Read-only helper for triggered
+// abilities' AppliesTo predicates. Caller must hold g.mu.
+func (g *Game) CastTallyFor(playerID uuid.UUID) CastTally {
+	if g.SpellsCastThisTurn == nil {
+		return CastTally{}
+	}
+	return g.SpellsCastThisTurn[playerID]
 }
 
 // runStepEntryHooksLocked dispatches the per-step side effects that

@@ -190,6 +190,8 @@ export interface PendingChoiceView {
     | "replacement_order"
     | "optional_replacement"
     | "damage_assignment"
+    | "trigger_prompt"
+    | "pay_unless"
     | string;
   chooser: string;
   from_player: string;
@@ -222,6 +224,12 @@ export interface PendingChoiceView {
   // artifact, Eternal Witness with an empty graveyard, etc.). The
   // modal warns the chooser. Absent/false otherwise.
   no_legal_target?: boolean;
+  // S19 sub-PR 6: populated for kind "pay_unless" — the cost the
+  // chooser is being asked to pay ("{2}"). Same {choice_id, apply}
+  // payload as the other yes/no kinds: apply=true pays (from pool,
+  // auto-tapping if short), apply=false declines and the card's
+  // "unless" consequence fires.
+  pay_cost?: string;
 }
 
 // ReplacementOptionView mirrors protocol.ReplacementOptionView —

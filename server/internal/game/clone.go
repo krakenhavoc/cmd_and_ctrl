@@ -59,6 +59,12 @@ func (g *Game) cloneLocked() *Game {
 			out.LoyaltyActivatedThisTurn[k] = v
 		}
 	}
+	if len(g.SpellsCastThisTurn) > 0 {
+		out.SpellsCastThisTurn = make(map[uuid.UUID]CastTally, len(g.SpellsCastThisTurn))
+		for k, v := range g.SpellsCastThisTurn {
+			out.SpellsCastThisTurn[k] = v
+		}
+	}
 	if len(g.DiscardPending) > 0 {
 		out.DiscardPending = make(map[uuid.UUID]int, len(g.DiscardPending))
 		for k, v := range g.DiscardPending {
@@ -334,6 +340,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.StackMeta = src.StackMeta
 	g.PendingTriggers = src.PendingTriggers
 	g.LoyaltyActivatedThisTurn = src.LoyaltyActivatedThisTurn
+	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.DiscardPending = src.DiscardPending
 	g.Promises = src.Promises
 	g.Vote = src.Vote

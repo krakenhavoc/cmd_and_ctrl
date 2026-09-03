@@ -165,6 +165,15 @@
   // the choice's kind.
   const isTriggerPrompt = $derived(active?.kind === "trigger_prompt");
 
+  // S19 sub-PR 6 pay-unless branch — CR 118.12 "unless that player
+  // pays {N}" (Rhystic Study, Smothering Tithe, Esper Sentinel).
+  // The chooser is the player being taxed, not the card's
+  // controller. Same {choice_id, apply} payload; the server routes
+  // to ResolvePayUnless by kind. "Pay" spends from the pool and
+  // auto-taps untapped sources if the pool is short; a "Pay" the
+  // player can't cover degrades to a decline server-side.
+  const isPayUnless = $derived(active?.kind === "pay_unless");
+
   // S19 follow-up: the server flags optional triggers whose effect
   // has no legal target (Reclamation Sage with no opponent artifact,
   // Eternal Witness with an empty graveyard). Until the S20 target
@@ -344,6 +353,22 @@
         <div class="yes-no-row">
           <button type="button" class="submit" onclick={() => answerOptional(true)}> Yes </button>
           <button type="button" class="decline" onclick={() => answerOptional(false)}> No </button>
+        </div>
+      {:else if isPayUnless}
+        <h2 id="choice-title">
+          {active.reason || `${triggerSourceName(active.source)} — pay ${active.pay_cost ?? ""}?`}
+        </h2>
+        <p class="hint">
+          Pay {active.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short),
+          or don't and let {triggerSourceName(active.source)} do its thing.
+        </p>
+        <div class="yes-no-row">
+          <button type="button" class="submit" onclick={() => answerOptional(true)}>
+            Pay {active.pay_cost ?? ""}
+          </button>
+          <button type="button" class="decline" onclick={() => answerOptional(false)}>
+            Don't pay
+          </button>
         </div>
       {:else if isDamageAssignment && damageFrame}
         <h2 id="choice-title">{active.reason || "Assign combat damage"}</h2>
