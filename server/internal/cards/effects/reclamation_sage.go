@@ -13,13 +13,17 @@ import (
 //
 // S19 sub-PR 3:
 //   - OptionalPrompt drives the "you may" gate. Controller picks
-//     yes → effect runs; no → trigger drops.
+//     yes → the trigger goes on the stack; no → trigger drops.
 //   - Sandbox auto-pick: first opponent-controlled artifact or
 //     enchantment, scanning g.BattlefieldCardsForEffect in the
 //     order the cards arrived. Real target-picker UI is S20.
+//   - The pick is stamped onto item.Targets when the trigger is
+//     put on the stack (Build runs on "yes"), so the stack overlay
+//     shows it and the CR 608.2b re-check fizzles the trigger if
+//     the target leaves before resolution.
 //   - If no legal target exists at fire time, the prompt still
-//     queues (controller may want to confirm visibility) but the
-//     yes-branch silently no-ops.
+//     queues (HasLegalTarget flags the warning) and a "yes" builds
+//     nothing — the trigger never reaches the stack.
 func init() {
 	Register(Spec{
 		OracleID: "032ec6e2-6cc3-4a97-9cc7-3233f5e11904",
@@ -34,9 +38,7 @@ func init() {
 				if target == uuid.Nil {
 					return nil
 				}
-				ctx := NewContext(g, nil)
-				_ = DestroyTarget{Target: target}.Apply(ctx)
-				return nil
+				return destroyTargetTrigger(source, "Reclamation Sage — destroy target artifact or enchantment", target)
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Reclamation Sage — destroy target artifact or enchantment?",

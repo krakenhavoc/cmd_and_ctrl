@@ -8,8 +8,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	1/1 black Faerie Rogue creature token with flying."
 //
 // S19 sub-PR 5: a "your upkeep" trigger combining a life cost with
-// a token. Mandatory; Build runs inline. The Faerie token's flying
-// is cosmetic (token keywords aren't enforced yet).
+// a token. Mandatory; the trigger goes on the stack at upkeep and
+// resolves to the life loss + token. The Faerie token's flying is
+// cosmetic (token keywords aren't enforced yet).
 func init() {
 	Register(Spec{
 		OracleID: "fb868840-09fa-49b1-85cb-b08ad065e972",
@@ -19,15 +20,18 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Actor == source.Controller
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				ctx := NewContext(g, nil)
-				_ = g.ChangePlayerLifeForEffect(source.InstanceID, source.Controller, -1)
-				_ = CreateToken{
-					Controller: source.Controller,
-					Template:   FaerieRogueToken(),
-					N:          1,
-				}.Apply(ctx)
-				return nil
+			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+				return game.NewTriggeredItem(source, "Bitterblossom — lose 1 life, create a Faerie Rogue",
+					func(g *game.Game, item *game.StackItem) error {
+						if err := g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -1); err != nil {
+							return err
+						}
+						return CreateToken{
+							Controller: item.Controller,
+							Template:   FaerieRogueToken(),
+							N:          1,
+						}.Apply(NewContext(g, item))
+					})
 			},
 		}},
 	})

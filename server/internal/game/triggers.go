@@ -30,6 +30,37 @@ import "github.com/google/uuid"
 //
 // Sub-PR 1 ships the dispatcher framework with zero card migrations.
 // Sub-PRs 3-7 fill in the per-card Triggered declarations.
+//
+// Stack timing: a harvested item goes PendingTriggers → StackMeta
+// (APNAP drain at the next priority boundary) → resolveTopAbilityLocked
+// when every player passes in succession, which runs the item's
+// Effect callback. Sub-PRs 3-5 originally applied effects inline
+// from Build and returned nil (no stack item, no response window);
+// that shortcut was retired — Build now returns a real item via
+// NewTriggeredItem and the effect waits for resolution.
+
+// NewTriggeredItem builds the StackItem for a triggered ability
+// whose source is `source`: Kind StackItemTriggered, controller and
+// owner = source.Controller, Label for the stack overlay, and an
+// Effect callback that runs at resolution. Targets / Modes / X are
+// left empty — a targeted trigger sets item.Targets on the returned
+// value before handing it back from Build so the CR 608.2b re-check
+// applies at resolve time.
+//
+// The ID is left Nil; queueHarvestedTriggerLocked mints one. The
+// effect must read the controller / source / targets off the item
+// it receives (not off `source`, which is a pointer into a zone
+// slice that may have been reallocated or moved by resolve time).
+func NewTriggeredItem(source *Card, label string, effect func(g *Game, item *StackItem) error) *StackItem {
+	return &StackItem{
+		Kind:         StackItemTriggered,
+		Controller:   source.Controller,
+		Owner:        source.Controller,
+		SourceCardID: source.InstanceID,
+		Label:        label,
+		Effect:       effect,
+	}
+}
 
 // TriggeredAbility declares one auto-fire trigger on a catalog card.
 // Cards declare a list (effects.Spec.Triggered) — typical creatures
@@ -61,10 +92,16 @@ type TriggeredAbility struct {
 	AppliesTo func(ev Event, source *Card, sourceLKI Characteristic, g *Game) bool
 
 	// Build constructs the StackItem to append to PendingTriggers.
-	// Returning nil suppresses the trigger — used for optional
-	// triggers when the controller declines (sub-PR 2 routes the
-	// declination through OptionalPrompt; mandatory Build callbacks
-	// rarely return nil).
+	// The item carries the trigger's announce-time choices (targets
+	// picked now, per CR 603.3d) and an Effect callback that runs
+	// when the item resolves off the stack — see NewTriggeredItem
+	// for the one-liner most cards want. Build itself must NOT
+	// mutate game state: the ability hasn't resolved yet, and
+	// applying the effect here would deny every player their
+	// response window (Stifle, counter-the-trigger, sacrifice in
+	// response). Returning nil suppresses the trigger — e.g. a
+	// targeted trigger with no legal target (CR 603.3d: it's removed
+	// from the stack / never put there).
 	//
 	// Runs under g.mu held in write mode. MUST NOT call public
 	// locking mutators.

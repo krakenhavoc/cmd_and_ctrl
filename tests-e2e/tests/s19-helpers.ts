@@ -65,11 +65,30 @@ export interface PendingChoice {
   reason?: string;
 }
 
+export interface SnapshotStackItem {
+  id: string;
+  kind: string;
+  controller: string;
+  source_card_id: string;
+  label?: string;
+}
+
+export interface SnapshotTurn {
+  active_seat: number;
+  priority_holder: number;
+  step: string;
+}
+
 export interface SnapshotView {
   state: string;
   seats: SnapshotPlayer[];
   battlefield: SnapshotZone;
   exile: SnapshotZone;
+  turn?: SnapshotTurn;
+  // Spells AND ability items on the stack, bottom..top. S19
+  // triggers show up here (kind "triggered") with no card in the
+  // stack zone — see viewOfStackItemsInStackOrder server-side.
+  stack_items?: SnapshotStackItem[];
   pending_choices?: PendingChoice[];
 }
 
@@ -596,6 +615,74 @@ export interface S19Setup {
   // call this in a final cleanup step (or via test.afterEach when
   // the suite uses a beforeAll fixture).
   shutdown(): Promise<void>;
+}
+
+// triggerOnStack returns the triggered-ability stack item sourced
+// from the named battlefield card, or null. S19 triggers sit on the
+// stack (kind "triggered", no card in the stack zone) until every
+// player passes priority in succession — tests assert the trigger
+// is waiting here before resolving it with resolveStack.
+export function triggerOnStack(v: SnapshotView, sourceName: string): SnapshotStackItem | null {
+  const src = findCardOnBattlefield(v, sourceName) ?? findCardAnywhere(v, sourceName);
+  if (!src) return null;
+  return (
+    (v.stack_items ?? []).find(
+      (it) => it.kind === "triggered" && it.source_card_id === src.instance_id,
+    ) ?? null
+  );
+}
+
+function findCardAnywhere(v: SnapshotView, name: string): SnapshotCard | null {
+  for (const seat of v.seats) {
+    for (const z of [seat.hand, seat.graveyard, seat.library, seat.command]) {
+      const c = findCardInZone(z, name);
+      if (c) return c;
+    }
+  }
+  return findCardInZone(v.exile, name);
+}
+
+// resolveStack passes priority around the table — through each
+// player's own browser, by clicking the "next" button in whichever
+// seat currently holds priority — until stack_items is empty. Going
+// through the UI (rather than an admin pass_priority) keeps the
+// server's holds-priority gate in play, so a browser that already
+// auto-passed can't be double-passed into a step advance.
+//
+// Returns the first snapshot with an empty stack. Bounded at
+// `maxPasses` clicks so a wedged stack fails loudly instead of
+// spinning.
+export async function resolveStack(setup: S19Setup, maxPasses = 12): Promise<SnapshotView> {
+  const { admin, caster, opponent } = setup;
+  for (let i = 0; i < maxPasses; i++) {
+    const v = admin.snapshot();
+    const items = v.stack_items ?? [];
+    if (items.length === 0) return v;
+    const holderSeat = v.turn?.priority_holder ?? -1;
+    const holder = v.seats.find((s) => s.seat === holderSeat);
+    const page =
+      holder?.id === caster.playerID
+        ? caster.page
+        : holder?.id === opponent.playerID
+          ? opponent.page
+          : null;
+    if (!page) {
+      throw new Error(`resolveStack: no browser bound to priority holder seat ${holderSeat}`);
+    }
+    const before = items.length;
+    const next = page.getByRole("button", { name: /^next$/ });
+    // The holder's browser may auto-pass on its own (smart skip);
+    // only click when the button is actually enabled for them.
+    if (await next.isEnabled()) {
+      await next.click();
+    }
+    await admin.waitFor(
+      (nv) =>
+        (nv.stack_items ?? []).length < before || (nv.turn?.priority_holder ?? -1) !== holderSeat,
+      `priority rotates or stack shrinks (pass ${i + 1})`,
+    );
+  }
+  throw new Error(`resolveStack: stack still non-empty after ${maxPasses} passes`);
 }
 
 // setupS19Game spins up a 2-player game seeded with the S19 caster

@@ -11,8 +11,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // S19 sub-PR 5 implements the upkeep-damage trigger. The static
 // "players can't gain life" clause is a continuous effect deferred
 // to a later batch (it needs the life-gain replacement hook).
-// Mandatory; Build deals 2 damage to the controller, sourced by the
-// Vortex itself so combat-style damage routing is consistent.
+// Mandatory; on resolution the Vortex deals 2 damage to its
+// controller, sourced by the Vortex itself so damage routing (and
+// any future prevention) is consistent with combat-style damage.
 func init() {
 	Register(Spec{
 		OracleID: "7652f328-e142-494b-a869-772ced10c26a",
@@ -22,14 +23,15 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Actor == source.Controller
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				ctx := NewContext(g, nil)
-				_ = DealDamage{
-					Source: source.InstanceID,
-					Target: source.Controller,
-					Amount: 2,
-				}.Apply(ctx)
-				return nil
+			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+				return game.NewTriggeredItem(source, "Sulfuric Vortex — 2 damage to you",
+					func(g *game.Game, item *game.StackItem) error {
+						return DealDamage{
+							Source: item.SourceCardID,
+							Target: item.Controller,
+							Amount: 2,
+						}.Apply(NewContext(g, item))
+					})
 			},
 		}},
 	})

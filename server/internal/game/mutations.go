@@ -459,6 +459,10 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			CardID: moved.InstanceID,
 		})
 		g.fireETBHookLocked(moved.InstanceID, moved.OracleID)
+		// Playing a land is a special action (CR 116.2a); the player
+		// keeps priority and CR 117.5 drains any landfall-style
+		// triggers onto the stack here rather than at the next wrap.
+		g.runStateChecksLocked()
 		return nil
 	}
 	// S15 sub-PR 5 auto-tap. When AutoTap is set, plan a tap of the
@@ -1007,6 +1011,14 @@ func (g *Game) topAbilityLocked() *StackItem {
 // recently added" is the highest insertion Seq — LIFO per CR 608.1,
 // deterministic regardless of map-iteration order. Returns nil if
 // there are no abilities to resolve. Caller must hold g.mu.
+//
+// Resolution mirrors the spell path in resolveTopOfStackLocked:
+// the item leaves StackMeta, the CR 608.2b target re-check runs
+// (every targeted slot illegal → "countered by game rules",
+// EventFizzle, no effect), then EventResolve is emitted and the
+// item's Effect callback — if any — runs. Errors from Effect
+// surface as EventEffectError and do not wedge the stack; the
+// ability has ceased to exist either way (CR 608.2m).
 func (g *Game) resolveTopAbilityLocked() error {
 	top := g.topAbilityLocked()
 	if top == nil {
@@ -1014,11 +1026,31 @@ func (g *Game) resolveTopAbilityLocked() error {
 	}
 	delete(g.StackMeta, top.ID)
 	g.recomputeSplitSecondLocked()
+	if spellAllTargetsIllegalLocked(g, top) {
+		g.EmitEvent(Event{
+			Kind:   EventFizzle,
+			Actor:  top.Controller,
+			Source: top.SourceCardID,
+			Label:  top.Label,
+		})
+		return nil
+	}
 	g.EmitEvent(Event{
 		Kind:   EventResolve,
 		Actor:  top.Controller,
 		Source: top.SourceCardID,
+		Label:  top.Label,
 	})
+	if top.Effect != nil {
+		if err := top.Effect(g, top); err != nil {
+			g.EmitEvent(Event{
+				Kind:     EventEffectError,
+				Actor:    top.Controller,
+				Source:   top.SourceCardID,
+				ErrorMsg: err.Error(),
+			})
+		}
+	}
 	return nil
 }
 
@@ -2203,6 +2235,13 @@ func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCom
 			}
 		}
 	}
+	// A sandbox move is a special action: the mover keeps priority
+	// afterwards (CR 116.3c), and CR 117.5 puts SBAs + the APNAP
+	// trigger drain at that boundary. Without this, a catalog
+	// creature dropped straight onto the battlefield would leave its
+	// ETB trigger stranded in PendingTriggers until the next pass /
+	// step — and an empty-stack wrap would advance the step first.
+	g.runStateChecksLocked()
 	return nil
 }
 

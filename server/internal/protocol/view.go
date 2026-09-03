@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -631,34 +632,52 @@ func viewOfDiscardPending(in map[uuid.UUID]int) map[string]int {
 	return out
 }
 
-// viewOfStackItemsInStackOrder projects every stack item, ordered by
-// the underlying Game.Stack zone (bottom..top). Spell items are
-// matched to cards via InstanceID; ability items (which don't have a
-// real card on the stack) are appended in StackMeta iteration order
-// after the spell items. Returns nil for an empty stack so json
-// omitempty drops the field.
+// viewOfStackItemsInStackOrder projects every stack item bottom..top
+// in resolution order — the inverse of the LIFO the engine uses
+// (CR 608.1): items are sorted by insertion Seq, so an ability
+// triggered in response to a spell sits above it. Spell items are
+// matched to cards via InstanceID and, for equal Seq (legacy
+// zero-Seq snapshots), keep Game.Stack zone order ahead of ability
+// items — the pre-Seq behaviour. Returns nil for an empty stack so
+// json omitempty drops the field.
 func viewOfStackItemsInStackOrder(g *game.Game) []StackItemView {
 	if len(g.StackMeta) == 0 {
 		return nil
 	}
-	out := make([]StackItemView, 0, len(g.StackMeta))
+	type entry struct {
+		seq  uint64
+		view StackItemView
+	}
+	entries := make([]entry, 0, len(g.StackMeta))
 	seen := make(map[uuid.UUID]bool, len(g.StackMeta))
 	if g.Stack != nil {
 		for _, c := range g.Stack.Cards {
 			if item, ok := g.StackMeta[c.InstanceID]; ok && item != nil {
-				out = append(out, viewOfStackItem(item))
+				entries = append(entries, entry{item.Seq, viewOfStackItem(item)})
 				seen[item.ID] = true
 			}
 		}
 	}
+	// Ability items have no card on Game.Stack; collect them by Seq
+	// so the projection is deterministic regardless of map order.
+	abilities := make([]*game.StackItem, 0, len(g.StackMeta))
 	for id, item := range g.StackMeta {
 		if seen[id] || item == nil {
 			continue
 		}
-		out = append(out, viewOfStackItem(item))
+		abilities = append(abilities, item)
 	}
-	if len(out) == 0 {
+	sort.SliceStable(abilities, func(i, j int) bool { return abilities[i].Seq < abilities[j].Seq })
+	for _, item := range abilities {
+		entries = append(entries, entry{item.Seq, viewOfStackItem(item)})
+	}
+	sort.SliceStable(entries, func(i, j int) bool { return entries[i].seq < entries[j].seq })
+	if len(entries) == 0 {
 		return nil
+	}
+	out := make([]StackItemView, len(entries))
+	for i, e := range entries {
+		out[i] = e.view
 	}
 	return out
 }

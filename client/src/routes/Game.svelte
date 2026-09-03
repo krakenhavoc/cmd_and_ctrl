@@ -18,6 +18,7 @@
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
   import { hasAnyLegalResponse } from "../lib/priority";
+  import { stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
 
   interface Props {
@@ -154,7 +155,13 @@
     // Conventional (non-autopass) path: honour every gate.
     if (!autopass) {
       if (!$settings.gameplay.autoPassPriority) return;
-      if ((view?.stack?.cards?.length ?? 0) > 0) return;
+      // Anything on the stack stops: a spell card OR an ability
+      // item (S19 triggers have no card on Game.Stack, only a
+      // stack_items entry). Autopass off means Arena-style "full
+      // control" — every trigger is a window the viewer gets to
+      // answer. The autopass toggle above is the way through
+      // routine upkeep triggers.
+      if (!stackEmpty(view)) return;
       // Manual one-time stops override everything below. Click a
       // phase icon in PhaseDisplay to pin; the pin clears on step
       // transition. "Fake a game action" — viewer gets the cursor

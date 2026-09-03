@@ -6,8 +6,10 @@ import {
   findCardInPlayerHand,
   findCardOnBattlefield,
   playerByID,
+  resolveStack,
   seedHandWithCard,
   setupS19Game,
+  triggerOnStack,
   type S19Setup,
 } from "./s19-helpers";
 
@@ -23,6 +25,12 @@ import {
 // wrong target pick, or stuck PendingChoice surfaces as a hard
 // failure here. The browser-side dialog assertions cover the UI
 // rendering layer that the Go integration tests can't reach.
+//
+// Triggers use the stack: a harvested trigger (or an optional one
+// answered "Yes") sits in stack_items until both players pass
+// priority. Each test asserts the trigger is waiting there, then
+// resolves it through the players' own "next" buttons via
+// resolveStack before asserting on the effect.
 
 test.describe("S19 ETB triggers", () => {
   test.describe.configure({ mode: "serial" });
@@ -38,7 +46,7 @@ test.describe("S19 ETB triggers", () => {
   test("Mulldrifter mandatory ETB draws 2 cards (no prompt)", async ({ browser, request }) => {
     test.slow();
     setup = await setupS19Game(browser, request);
-    const { admin, caster } = setup;
+    const { admin, caster, opponent } = setup;
 
     // Seed Mulldrifter into the caster's hand FIRST, then capture
     // the pre-move hand size — the seed step itself drew an
@@ -53,6 +61,23 @@ test.describe("S19 ETB triggers", () => {
       instance_id: mulldrifter.instance_id,
     });
 
+    // The mandatory trigger goes straight onto the stack; the hand
+    // only shrinks by the Mulldrifter itself until it resolves.
+    const staged = await admin.waitFor(
+      (v) => triggerOnStack(v, CARDS.Mulldrifter) !== null,
+      "Mulldrifter ETB trigger on the stack",
+    );
+    expect(playerByID(staged, caster.playerID).hand.count).toBe(handBefore - 1);
+    // No trigger prompt should queue for a mandatory ability.
+    expect(staged.pending_choices ?? []).toHaveLength(0);
+    // The stack overlay shows the trigger to both seats.
+    // (The overlay renders the label twice — fallback art + title —
+    // so anchor on the first match.)
+    await expect(caster.page.getByText(/Mulldrifter — draw two cards/i).first()).toBeVisible();
+    await expect(opponent.page.getByText(/Mulldrifter — draw two cards/i).first()).toBeVisible();
+
+    await resolveStack(setup);
+
     // Mulldrifter leaves the hand (-1) and the trigger draws 2 (+2)
     // → net hand delta is +1.
     const after = await admin.waitFor(
@@ -61,8 +86,6 @@ test.describe("S19 ETB triggers", () => {
     );
     const handAfter = playerByID(after, caster.playerID).hand.count;
     expect(handAfter).toBe(handBefore + 1);
-
-    // No trigger prompt should queue for a mandatory ability.
     expect(after.pending_choices ?? []).toHaveLength(0);
 
     // Caster's browser should not have a trigger prompt dialog.
@@ -115,6 +138,18 @@ test.describe("S19 ETB triggers", () => {
     // Click "Yes" in the caster's dialog.
     await caster.page.getByRole("button", { name: /^Yes$/ }).click();
 
+    // "Yes" puts the trigger on the stack; the Sol Ring survives
+    // until it resolves.
+    const staged = await admin.waitFor(
+      (v) =>
+        (v.pending_choices ?? []).length === 0 &&
+        triggerOnStack(v, CARDS.ReclamationSage) !== null,
+      "Reclamation Sage trigger on the stack after Yes",
+    );
+    expect(findCardOnBattlefield(staged, CARDS.SolRing)).not.toBeNull();
+
+    await resolveStack(setup);
+
     // The Sol Ring should be in the opponent's graveyard, off the
     // battlefield, and the prompt should clear.
     const after = await admin.waitFor(
@@ -156,7 +191,9 @@ test.describe("S19 ETB triggers", () => {
       (v) => (v.pending_choices ?? []).length === 0,
       "prompt drained after No",
     );
-    // Sol Ring still on battlefield; not in graveyard.
+    // Declined: nothing reaches the stack, Sol Ring still on
+    // battlefield, not in graveyard.
+    expect(triggerOnStack(after, CARDS.ReclamationSage)).toBeNull();
     expect(findCardOnBattlefield(after, CARDS.SolRing)).not.toBeNull();
     expect(findCardInPlayerGraveyard(after, opponent.playerID, CARDS.SolRing)).toBeNull();
   });
@@ -172,6 +209,15 @@ test.describe("S19 ETB triggers", () => {
     await adminMoveByName(admin, opponent.playerID, CARDS.SolRing, "library", "battlefield");
 
     await adminMoveByName(admin, caster.playerID, CARDS.AcidicSlime, "library", "battlefield");
+
+    const staged = await admin.waitFor(
+      (v) => triggerOnStack(v, CARDS.AcidicSlime) !== null,
+      "Acidic Slime ETB trigger on the stack",
+    );
+    expect(findCardOnBattlefield(staged, CARDS.SolRing)).not.toBeNull();
+    expect(staged.pending_choices ?? []).toHaveLength(0);
+
+    await resolveStack(setup);
 
     const after = await admin.waitFor(
       (v) => findCardInPlayerGraveyard(v, opponent.playerID, CARDS.SolRing) !== null,
@@ -217,6 +263,16 @@ test.describe("S19 ETB triggers", () => {
     await expect(caster.page.getByText(/Eternal Witness/i, { exact: false })).toBeVisible();
 
     await caster.page.getByRole("button", { name: /^Yes$/ }).click();
+
+    const staged = await admin.waitFor(
+      (v) =>
+        (v.pending_choices ?? []).length === 0 &&
+        triggerOnStack(v, CARDS.EternalWitness) !== null,
+      "Eternal Witness trigger on the stack after Yes",
+    );
+    expect(findCardInPlayerHand(staged, caster.playerID, CARDS.LightningBolt)).toBeNull();
+
+    await resolveStack(setup);
 
     const after = await admin.waitFor(
       (v) => findCardInPlayerHand(v, caster.playerID, CARDS.LightningBolt) !== null,
@@ -293,6 +349,16 @@ test.describe("S19 ETB triggers", () => {
     await expect(caster.page.getByText(/Solemn Simulacrum/i, { exact: false })).toBeVisible();
 
     await caster.page.getByRole("button", { name: /^Yes$/ }).click();
+
+    const staged = await admin.waitFor(
+      (v) =>
+        (v.pending_choices ?? []).length === 0 &&
+        triggerOnStack(v, CARDS.SolemnSimulacrum) !== null,
+      "Solemn trigger on the stack after Yes",
+    );
+    expect(findCardOnBattlefield(staged, CARDS.Forest)).toBeNull();
+
+    await resolveStack(setup);
 
     // A Forest now lives on the battlefield, tapped, controlled by
     // the caster.

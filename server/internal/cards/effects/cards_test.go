@@ -69,18 +69,46 @@ func castCatalogSpell(t *testing.T, g *game.Game, name, typeLine, oracleID strin
 }
 
 // passPriorityAroundTable passes priority until the stack is empty
-// (bounded at 16 to catch runaway loops).
+// — no spell cards on Game.Stack, no ability items in StackMeta,
+// and no triggers waiting in PendingTriggers to be drained onto it
+// (bounded at 32 to catch runaway loops). Triggered abilities
+// harvested while a spell resolves land on the stack at the next
+// priority boundary and need their own trip around the table, so
+// a single call settles "cast creature → ETB trigger → effect".
+//
+// Stops short of a pending trigger *prompt*: an optional trigger
+// waits for its yes/no before anything reaches the stack. Answer
+// it (answerLatestTriggerPrompt) then call this again.
 func passPriorityAroundTable(t *testing.T, g *game.Game) {
 	t.Helper()
-	for i := 0; i < 16; i++ {
-		if g.Stack.Size() == 0 {
+	for i := 0; i < 32; i++ {
+		if stackFullyEmpty(g) {
 			return
 		}
 		if err := g.PassPriority(); err != nil {
 			t.Fatalf("PassPriority iter %d: %v", i, err)
 		}
 	}
-	t.Fatalf("stack did not empty after 16 priority passes")
+	t.Fatalf("stack did not empty after 32 priority passes")
+}
+
+// stackFullyEmpty reports whether nothing is on or headed for the
+// stack: Game.Stack, StackMeta, and PendingTriggers are all empty.
+func stackFullyEmpty(g *game.Game) bool {
+	return g.Stack.Size() == 0 && len(g.StackMeta) == 0 && len(g.PendingTriggers) == 0
+}
+
+// triggerOnStack returns the triggered-ability item in StackMeta
+// sourced from cardID, or nil. Tests use it to assert a trigger is
+// actually waiting on the stack (with its label and targets)
+// before priority passes resolve it.
+func triggerOnStack(g *game.Game, cardID uuid.UUID) *game.StackItem {
+	for _, item := range g.StackMeta {
+		if item != nil && item.Kind == game.StackItemTriggered && item.SourceCardID == cardID {
+			return item
+		}
+	}
+	return nil
 }
 
 func pushCreatureToBattlefieldForTest(g *game.Game, owner uuid.UUID, name string) uuid.UUID {
@@ -884,12 +912,26 @@ func TestEternalWitnessETBReturnsTopGraveyard(t *testing.T) {
 	pushGraveyardCardForTest(caster, "Older Body")
 	top := pushGraveyardCardForTest(caster, "Latest Body")
 
-	castCatalogSpell(t, g, "Eternal Witness", "Creature — Human Shaman",
+	witnessID := castCatalogSpell(t, g, "Eternal Witness", "Creature — Human Shaman",
 		"30b24e8e-3b0e-4d8e-90f3-f66eb7c1858c",
 		nil,
 	)
 	passPriorityAroundTable(t, g)
 	answerLatestTriggerPrompt(t, g, caster.ID, true)
+
+	// "Yes" puts the trigger on the stack with the auto-picked
+	// target; nothing moves until it resolves.
+	item := triggerOnStack(g, witnessID)
+	if item == nil {
+		t.Fatalf("E-Witness trigger not on the stack after accepting the prompt")
+	}
+	if len(item.Targets) != 1 || item.Targets[0].ID != top {
+		t.Errorf("trigger targets = %+v, want the top-of-graveyard card %s", item.Targets, top)
+	}
+	if caster.Hand.Contains(top) {
+		t.Fatalf("card returned before the trigger resolved")
+	}
+	passPriorityAroundTable(t, g)
 
 	if !caster.Hand.Contains(top) {
 		t.Errorf("E-Witness ETB did not return top-of-graveyard card")
@@ -906,12 +948,19 @@ func TestSolemnSimulacrumETBFetchesBasic(t *testing.T) {
 		Name: "Forest", TypeLine: "Basic Land — Forest",
 	})
 
-	castCatalogSpell(t, g, "Solemn Simulacrum", "Artifact Creature — Golem",
+	solemnID := castCatalogSpell(t, g, "Solemn Simulacrum", "Artifact Creature — Golem",
 		"00c0543c-2a1f-4425-8283-4062d74a1637",
 		nil,
 	)
 	passPriorityAroundTable(t, g)
 	answerLatestTriggerPrompt(t, g, caster.ID, true)
+	if triggerOnStack(g, solemnID) == nil {
+		t.Fatalf("Solemn ETB trigger not on the stack after accepting the prompt")
+	}
+	if g.Battlefield.Contains(forestID) {
+		t.Fatalf("Forest fetched before the trigger resolved")
+	}
+	passPriorityAroundTable(t, g)
 
 	if !g.Battlefield.Contains(forestID) {
 		t.Errorf("fetched Forest not on battlefield")
@@ -945,18 +994,39 @@ func answerLatestTriggerPrompt(t *testing.T, g *game.Game, chooserID uuid.UUID, 
 // --- S19 sub-PR 3: ETB-trigger cards ---------------------------
 
 // TestMulldrifterETBDrawsTwo casts Mulldrifter and expects the
-// mandatory ETB trigger to draw 2 cards on resolve. No prompt
-// (mandatory trigger), so passPriorityAroundTable settles the
-// effect inline via the harvester.
+// mandatory ETB trigger to go on the stack when the creature
+// resolves, then draw 2 cards when the trigger itself resolves.
+// No prompt (mandatory trigger); passPriorityAroundTable settles
+// both the spell and the trigger it queues.
 func TestMulldrifterETBDrawsTwo(t *testing.T) {
 	g := newCatalogGame(t)
 	caster := g.Seats[0]
 	handBefore := caster.Hand.Size()
 
-	castCatalogSpell(t, g, "Mulldrifter", "Creature — Elemental",
+	mullID := castCatalogSpell(t, g, "Mulldrifter", "Creature — Elemental",
 		"24d0f5e7-0d9e-4b76-900e-a7274e80312d",
 		nil,
 	)
+	// Resolve the creature spell only: the ETB trigger must be on
+	// the stack, and the draw must not have happened yet.
+	for i := 0; i < 8 && g.Stack.Size() > 0; i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	if !g.Battlefield.Contains(mullID) {
+		t.Fatalf("Mulldrifter did not resolve to the battlefield")
+	}
+	item := triggerOnStack(g, mullID)
+	if item == nil {
+		t.Fatalf("Mulldrifter ETB trigger not on the stack after the creature resolved")
+	}
+	if item.Controller != caster.ID {
+		t.Errorf("trigger controller = %s, want caster %s", item.Controller, caster.ID)
+	}
+	if got := caster.Hand.Size() - handBefore; got != 0 {
+		t.Fatalf("hand changed before the trigger resolved: delta %d", got)
+	}
 	passPriorityAroundTable(t, g)
 
 	if got := caster.Hand.Size() - handBefore; got != 2 {
@@ -988,12 +1058,24 @@ func TestReclamationSageETBDestroysOpponentArtifact(t *testing.T) {
 		Controller: opp.ID,
 	})
 
-	castCatalogSpell(t, g, "Reclamation Sage", "Creature — Elf Shaman",
+	sageID := castCatalogSpell(t, g, "Reclamation Sage", "Creature — Elf Shaman",
 		"032ec6e2-6cc3-4a97-9cc7-3233f5e11904",
 		nil,
 	)
 	passPriorityAroundTable(t, g)
 	answerLatestTriggerPrompt(t, g, caster.ID, true)
+
+	item := triggerOnStack(g, sageID)
+	if item == nil {
+		t.Fatalf("Reclamation Sage trigger not on the stack after accepting the prompt")
+	}
+	if len(item.Targets) != 1 || item.Targets[0].Kind != game.TargetCard || item.Targets[0].ID != artifactID {
+		t.Errorf("trigger targets = %+v, want the opponent's artifact %s", item.Targets, artifactID)
+	}
+	if !g.Battlefield.Contains(artifactID) {
+		t.Fatalf("artifact destroyed before the trigger resolved")
+	}
+	passPriorityAroundTable(t, g)
 
 	if g.Battlefield.Contains(artifactID) {
 		t.Errorf("Reclamation Sage ETB did not destroy the opponent's artifact")
@@ -1569,6 +1651,10 @@ func TestSolemnSimulacrumDiesOptionalDraw(t *testing.T) {
 	passPriorityAroundTable(t, g)
 
 	answerLatestTriggerPrompt(t, g, caster.ID, true)
+	if got := caster.Hand.Size() - handBefore; got != 0 {
+		t.Fatalf("Solemn dies-draw fired before the trigger resolved: hand delta %d", got)
+	}
+	passPriorityAroundTable(t, g)
 	if got := caster.Hand.Size() - handBefore; got != 1 {
 		t.Errorf("Solemn dies-draw on Yes: hand delta %d, want 1", got)
 	}
@@ -1617,6 +1703,17 @@ func pushPermanentForTest(g *game.Game, owner uuid.UUID, name, oracleID, typeLin
 	return id
 }
 
+// findBattlefieldByName returns the instance ID of the first
+// battlefield card with the given name, or uuid.Nil.
+func findBattlefieldByName(g *game.Game, name string) uuid.UUID {
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == name {
+			return c.InstanceID
+		}
+	}
+	return uuid.Nil
+}
+
 // advanceToUpkeepOf walks the turn engine forward until the given
 // seat is the active player at its upkeep step — the point at which
 // EventBeginUpkeep fires and "your upkeep" triggers resolve. Fatals
@@ -1645,6 +1742,15 @@ func TestPhyrexianArenaUpkeepLosesLifeDraws(t *testing.T) {
 	handBefore := owner.Hand.Size()
 
 	advanceToUpkeepOf(t, g, 1)
+	// The trigger is on the stack at upkeep; nothing has happened
+	// yet. Priority passes resolve it.
+	if arenaID := findBattlefieldByName(g, "Phyrexian Arena"); triggerOnStack(g, arenaID) == nil {
+		t.Fatalf("Phyrexian Arena trigger not on the stack at the controller's upkeep")
+	}
+	if owner.Life != lifeBefore || owner.Hand.Size() != handBefore {
+		t.Fatalf("Phyrexian Arena applied before its trigger resolved")
+	}
+	passPriorityAroundTable(t, g)
 
 	if owner.Life != lifeBefore-1 {
 		t.Errorf("Phyrexian Arena upkeep: life %d -> %d, want -1", lifeBefore, owner.Life)
@@ -1664,6 +1770,7 @@ func TestBitterblossomUpkeepLosesLifeMakesFaerie(t *testing.T) {
 	lifeBefore := owner.Life
 
 	advanceToUpkeepOf(t, g, 1)
+	passPriorityAroundTable(t, g)
 
 	if owner.Life != lifeBefore-1 {
 		t.Errorf("Bitterblossom upkeep: life %d -> %d, want -1", lifeBefore, owner.Life)
@@ -1689,6 +1796,7 @@ func TestSulfuricVortexUpkeepDamagesController(t *testing.T) {
 	lifeBefore := owner.Life
 
 	advanceToUpkeepOf(t, g, 1)
+	passPriorityAroundTable(t, g)
 
 	if owner.Life != lifeBefore-2 {
 		t.Errorf("Sulfuric Vortex upkeep: life %d -> %d, want -2", lifeBefore, owner.Life)
@@ -1704,6 +1812,7 @@ func TestAwakeningZoneUpkeepMakesSpawn(t *testing.T) {
 		"f955bc96-d602-4142-a9a2-87009cc7028c", "Enchantment")
 
 	advanceToUpkeepOf(t, g, 1)
+	passPriorityAroundTable(t, g)
 
 	spawns := 0
 	for _, c := range g.Battlefield.Cards {
@@ -1728,9 +1837,163 @@ func TestUpkeepTriggerGatedToControllersUpkeep(t *testing.T) {
 	lifeBefore := other.Life
 
 	advanceToUpkeepOf(t, g, 1)
+	if !stackFullyEmpty(g) {
+		t.Fatalf("something reached the stack at seat 1's upkeep — seat 2's Arena should not have triggered")
+	}
+	passPriorityAroundTable(t, g)
 
 	if other.Life != lifeBefore {
 		t.Errorf("seat 2's Phyrexian Arena fired on seat 1's upkeep (life %d -> %d) — not gated to its own upkeep",
 			lifeBefore, other.Life)
+	}
+}
+
+// --- S19: triggers use the stack ---------------------------------
+//
+// The cases below exist because the sub-PR 3-5 cards originally
+// applied their effect inline from Build. They pin the two things
+// that behaviour denied players: a window to respond to a trigger,
+// and the CR 608.2b re-check when the response removes the target.
+
+// TestTriggerOnStackCanBeCountered: Mulldrifter's ETB trigger sits
+// on the stack after the creature resolves; countering the ability
+// (Stifle-style) means no cards are drawn.
+func TestTriggerOnStackCanBeCountered(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	handBefore := caster.Hand.Size()
+
+	mullID := castCatalogSpell(t, g, "Mulldrifter", "Creature — Elemental",
+		"24d0f5e7-0d9e-4b76-900e-a7274e80312d", nil)
+	for i := 0; i < 8 && g.Stack.Size() > 0; i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	item := triggerOnStack(g, mullID)
+	if item == nil {
+		t.Fatalf("Mulldrifter ETB trigger not on the stack")
+	}
+	if err := g.CounterAbility(item.ID); err != nil {
+		t.Fatalf("CounterAbility: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+
+	if got := caster.Hand.Size() - handBefore; got != 0 {
+		t.Errorf("countered Mulldrifter trigger still drew: hand delta %d, want 0", got)
+	}
+}
+
+// TestTriggerFizzlesWhenTargetRemovedInResponse: Reclamation Sage's
+// trigger targets the opponent's artifact when it goes on the
+// stack. Exiling that artifact in response leaves the trigger with
+// no legal target — it's countered by game rules (EventFizzle) and
+// nothing else is destroyed.
+func TestTriggerFizzlesWhenTargetRemovedInResponse(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	opp := g.Seats[1]
+
+	firstID := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: firstID, Name: "First Sword", TypeLine: "Artifact",
+		Owner: opp.ID, Controller: opp.ID,
+	})
+	secondID := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: secondID, Name: "Second Sword", TypeLine: "Artifact",
+		Owner: opp.ID, Controller: opp.ID,
+	})
+
+	sageID := castCatalogSpell(t, g, "Reclamation Sage", "Creature — Elf Shaman",
+		"032ec6e2-6cc3-4a97-9cc7-3233f5e11904", nil)
+	passPriorityAroundTable(t, g)
+	answerLatestTriggerPrompt(t, g, caster.ID, true)
+
+	item := triggerOnStack(g, sageID)
+	if item == nil {
+		t.Fatalf("Reclamation Sage trigger not on the stack")
+	}
+	if len(item.Targets) != 1 || item.Targets[0].ID != firstID {
+		t.Fatalf("trigger targets = %+v, want the first artifact %s", item.Targets, firstID)
+	}
+
+	// "In response": the targeted artifact leaves the game entirely
+	// (the existence check only fails when no tracked zone holds
+	// the card — exile alone would still count as existing).
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == firstID {
+				g.Battlefield.Cards = append(g.Battlefield.Cards[:i], g.Battlefield.Cards[i+1:]...)
+				break
+			}
+		}
+	})
+	passPriorityAroundTable(t, g)
+
+	if !g.Battlefield.Contains(secondID) {
+		t.Errorf("fizzled trigger destroyed a different artifact — targets must not be re-picked at resolution")
+	}
+	var fizzled bool
+	for _, ev := range g.Events {
+		if ev.Kind == game.EventFizzle && ev.Source == sageID {
+			fizzled = true
+		}
+	}
+	if !fizzled {
+		t.Errorf("no EventFizzle for the Reclamation Sage trigger whose target left")
+	}
+}
+
+// TestDiesTriggersFromOneWrathStackAPNAP: two dies-trigger creatures
+// under different controllers die to one Damnation. Both triggers
+// reach the stack (APNAP: the active player's first, so the
+// non-active player's resolves first) and both effects land only
+// after resolution.
+func TestDiesTriggersFromOneWrathStackAPNAP(t *testing.T) {
+	g := newCatalogGame(t)
+	active := g.Seats[0]
+	other := g.Seats[2]
+	travelerID := pushDiesCreatureForTest(g, active.ID, "Doomed Traveler",
+		"a30907c0-fbde-4fd3-a8c7-f304305fcea7", "Creature — Human Soldier", 1, 1)
+	familiarID := pushDiesCreatureForTest(g, other.ID, "Filigree Familiar",
+		"b544f690-e4bf-4a5b-984d-9256518fd574", "Artifact Creature — Fox", 2, 2)
+	otherHandBefore := other.Hand.Size()
+
+	castCatalogSpell(t, g, "Damnation", "Sorcery",
+		"d57a8f0b-7989-4db5-8756-6f2690097252", nil)
+	for i := 0; i < 8 && g.Stack.Size() > 0; i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+
+	travelerTrig := triggerOnStack(g, travelerID)
+	familiarTrig := triggerOnStack(g, familiarID)
+	if travelerTrig == nil || familiarTrig == nil {
+		t.Fatalf("both dies triggers should be on the stack: traveler=%v familiar=%v", travelerTrig != nil, familiarTrig != nil)
+	}
+	// APNAP: active player's trigger is placed first (lower Seq) and
+	// therefore resolves last.
+	if !(travelerTrig.Seq < familiarTrig.Seq) {
+		t.Errorf("APNAP order: active player's trigger Seq %d should be below the non-active player's %d",
+			travelerTrig.Seq, familiarTrig.Seq)
+	}
+	if other.Hand.Size() != otherHandBefore {
+		t.Fatalf("Filigree Familiar drew before its trigger resolved")
+	}
+	passPriorityAroundTable(t, g)
+
+	if got := other.Hand.Size() - otherHandBefore; got != 1 {
+		t.Errorf("Filigree Familiar dies-draw: hand delta %d, want 1", got)
+	}
+	spirits := 0
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Spirit" && c.Controller == active.ID {
+			spirits++
+		}
+	}
+	if spirits != 1 {
+		t.Errorf("Doomed Traveler dies: got %d Spirit tokens, want 1", spirits)
 	}
 }
