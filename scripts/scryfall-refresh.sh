@@ -64,28 +64,47 @@ if [[ "$FORCE" -ne 1 && -s "$TARGET" && -f "$STAMP" ]]; then
   fi
 fi
 
-# Step 1 — fetch the bulk-data catalog and pull out the download_uri
+# Step 1 — fetch the bulk-data catalog and pull out the download URI
 # for the default_cards dataset. Scryfall rotates the URL daily, so
 # we never hardcode it.
+#
+# As of Sept 2026 Scryfall dropped the JSON-array `download_uri` and
+# only publishes `jsonl_download_uri` (gzipped JSON Lines). The server
+# (cards.Index.Load) streams a top-level JSON array, so we convert on
+# the fly below. `download_uri` is still preferred if it ever returns.
 catalog_uri="https://api.scryfall.com/bulk-data"
-download_uri="$(curl --fail --silent --show-error --max-time 30 "$catalog_uri" \
-  | jq -r '.data[] | select(.type == "default_cards") | .download_uri')"
+catalog="$(curl --fail --silent --show-error --max-time 30 \
+  -H 'Accept: application/json' -A 'cmd_and_ctrl-scryfall-refresh/1.0' \
+  "$catalog_uri")"
+entry="$(jq -c '.data[] | select(.type == "default_cards")' <<<"$catalog")"
+download_uri="$(jq -r '.download_uri // empty' <<<"$entry")"
+jsonl_uri="$(jq -r '.jsonl_download_uri // empty' <<<"$entry")"
 
-if [[ -z "$download_uri" ]]; then
-  echo "scryfall-refresh: could not locate default_cards in bulk-data catalog" >&2
+if [[ -z "$download_uri" && -z "$jsonl_uri" ]]; then
+  echo "scryfall-refresh: could not locate a default_cards download URI in bulk-data catalog" >&2
   exit 1
 fi
-
-echo "scryfall-refresh: downloading $download_uri"
 
 # Step 2 — stream download into a tmp file under the same directory
 # so the atomic rename below is within one filesystem.
 tmp="$(mktemp "$SCRYFALL_DIR/default-cards.XXXXXX.json.tmp")"
 trap 'rm -f "$tmp"' EXIT
 
-curl --fail --silent --show-error --location --max-time 600 \
-     --output "$tmp" \
-     "$download_uri"
+if [[ -n "$download_uri" ]]; then
+  echo "scryfall-refresh: downloading $download_uri"
+  curl --fail --silent --show-error --location --max-time 600 \
+       --output "$tmp" \
+       "$download_uri"
+else
+  echo "scryfall-refresh: downloading $jsonl_uri (JSONL → JSON array)"
+  # Streamed: gunzip → wrap lines in [ , ] without buffering the whole
+  # ~500 MB dump in memory (jq -s would). Blank lines are skipped.
+  curl --fail --silent --show-error --location --max-time 600 \
+       "$jsonl_uri" \
+    | gzip -dc \
+    | awk 'BEGIN { printf "[" } NF { if (n++) printf ","; printf "%s", $0 } END { print "]" }' \
+    > "$tmp"
+fi
 
 # Step 3 — sanity check that the downloaded file is a JSON array
 # (Scryfall occasionally serves HTML error pages on maintenance).
