@@ -242,3 +242,30 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		s.Player, s.Predicate, s.Dest, s.Limit, s.Reveal, s.Shuffle, s.TappedOnEntry,
 	)
 }
+
+// PayUnless queues the CR 118.12 "unless that player pays <Cost>"
+// prompt for Chooser. The calling effect has already resolved;
+// what remains is the payer's decision, which arrives later via
+// resolve_choice. On "no" — or "yes" without the mana in pool +
+// untapped sources — OnDecline runs against a fresh Context bound
+// to the same stack item, so it can read Controller / Source the
+// way the outer effect did. Used by Rhystic Study, Smothering
+// Tithe, Esper Sentinel. Added in S19 sub-PR 6.
+type PayUnless struct {
+	Chooser   uuid.UUID
+	Cost      string
+	Question  string
+	OnDecline func(ctx *Context) error
+}
+
+func (p PayUnless) Apply(ctx *Context) error {
+	item := ctx.Item
+	decline := p.OnDecline
+	return ctx.Game.QueuePayUnlessForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question,
+		func(g *game.Game) error {
+			if decline == nil {
+				return nil
+			}
+			return decline(NewContext(g, item))
+		})
+}

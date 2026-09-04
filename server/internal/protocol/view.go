@@ -139,6 +139,12 @@ type PendingChoiceView struct {
 	// warns the chooser. Absent (false) for prompts with a legal
 	// target or no target requirement. Added in S19 follow-up.
 	NoLegalTarget bool `json:"no_legal_target,omitempty"`
+
+	// PayCost populates the S19 "pay_unless" kind: the printed cost
+	// the chooser is being asked to pay ("{2}"). `{apply: true}`
+	// pays, `{apply: false}` declines. Absent for other kinds.
+	// Added in S19 sub-PR 6.
+	PayCost string `json:"pay_cost,omitempty"`
 }
 
 // DamageAssignmentView is the wire shape of the CR 510.1c
@@ -552,6 +558,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			Source:        uuidStringOrEmpty(c.Source),
 			Reason:        c.Reason,
 			NoLegalTarget: c.NoLegalTarget,
+			PayCost:       c.PayCost,
 		}
 		// For discard_from_hand, inline the source player's hand
 		// as Options. Per-viewer redaction in FilterViewFor

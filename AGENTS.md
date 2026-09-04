@@ -588,7 +588,9 @@ func init() {
 | "When ~ enters the battlefield" | `EventETB` | `ev.CardID == source.InstanceID` |
 | "When ~ dies" | `EventLTB` | `cardDied(ev, source)` (graveyard-only; bounce / exile don't count) |
 | "At the beginning of your upkeep" | `EventBeginUpkeep` | `ev.Actor == source.Controller` |
-| "Whenever you cast a spell" | `EventCast` | `ev.Actor == source.Controller` (S19 sub-PR 6) |
+| "Whenever you cast a creature spell" | `EventCast` | `ev.Actor == source.Controller` + `g.LookupCardForEffect(ev.CardID)` for the spell's type |
+| "Whenever an opponent casts their first noncreature spell each turn" | `EventCast` | `g.CastTallyFor(ev.Actor).Noncreature == 1` (tally is bumped before the event fires) |
+| "Whenever an opponent draws a card" | `EventDrawCard` | `ev.Actor != uuid.Nil && ev.Actor != source.Controller` — fires once per card |
 | "Whenever ~ deals combat damage to a player" | `EventDealDamage` | source + player target + combat flag (S19 sub-PR 7) |
 
 **The two rules that matter:**
@@ -619,6 +621,16 @@ The harvester queues a yes/no `PendingChoice` instead of calling
 `Build`; on "Yes", `Build` runs and the item goes straight onto the
 stack. Add `HasLegalTarget` when a "Yes" could no-op (the client
 warns the chooser).
+
+**"Unless that player pays {N}"** (Rhystic Study, Smothering Tithe,
+Esper Sentinel) is a `PayUnless` primitive the trigger's `Effect`
+applies: it queues a `pay_unless` prompt for the taxed player and
+returns; the "unless" consequence runs later as `OnDecline` when
+they answer "Don't pay" — or "Pay" without the mana in pool +
+untapped sources. Capture the payer's ID in `Build` (it's
+`ev.Actor` for cast / draw events) and read the controller off the
+`Context` inside `OnDecline`. See
+[rhystic_study.go](server/internal/cards/effects/rhystic_study.go).
 
 **Dies triggers** get the CR 603.10 last-known-information
 characteristics as the third `Build` argument — the card is already

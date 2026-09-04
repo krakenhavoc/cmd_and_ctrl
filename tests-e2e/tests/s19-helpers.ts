@@ -63,6 +63,7 @@ export interface PendingChoice {
   chooser: string;
   source?: string;
   reason?: string;
+  pay_cost?: string;
 }
 
 export interface SnapshotStackItem {
@@ -656,12 +657,15 @@ function findCardAnywhere(v: SnapshotView, name: string): SnapshotCard | null {
 // server's holds-priority gate in play, so a browser that already
 // auto-passed can't be double-passed into a step advance.
 //
-// Returns the first snapshot with an empty stack. Bounded at
-// `maxPasses` clicks so a wedged stack fails loudly instead of
-// spinning.
-export async function resolveStack(setup: S19Setup, maxPasses = 12): Promise<SnapshotView> {
+// Priority can move under us between reading the admin snapshot
+// and clicking (a browser auto-pass, a no-priority step the engine
+// walks through on its own), so every click is short-timeout and
+// best-effort: a click that finds the button disabled just
+// re-reads the snapshot and tries the new holder. Bounded at
+// `maxAttempts` so a wedged stack fails loudly instead of spinning.
+export async function resolveStack(setup: S19Setup, maxAttempts = 20): Promise<SnapshotView> {
   const { admin, caster, opponent } = setup;
-  for (let i = 0; i < maxPasses; i++) {
+  for (let i = 0; i < maxAttempts; i++) {
     const v = admin.snapshot();
     const items = v.stack_items ?? [];
     if (items.length === 0) return v;
@@ -674,22 +678,36 @@ export async function resolveStack(setup: S19Setup, maxPasses = 12): Promise<Sna
           ? opponent.page
           : null;
     if (!page) {
-      throw new Error(`resolveStack: no browser bound to priority holder seat ${holderSeat}`);
+      // No-priority step (untap / cleanup) — the engine advances
+      // past it by itself; give it a beat and re-read.
+      await new Promise((r) => setTimeout(r, 250));
+      continue;
     }
     const before = items.length;
-    const next = page.getByRole("button", { name: /^next$/ });
-    // The holder's browser may auto-pass on its own (smart skip);
-    // only click when the button is actually enabled for them.
-    if (await next.isEnabled()) {
-      await next.click();
+    try {
+      await page.getByRole("button", { name: /^next$/ }).click({ timeout: 2000 });
+    } catch {
+      // Button went disabled under us — priority moved. Re-read.
+      continue;
     }
-    await admin.waitFor(
-      (nv) =>
-        (nv.stack_items ?? []).length < before || (nv.turn?.priority_holder ?? -1) !== holderSeat,
-      `priority rotates or stack shrinks (pass ${i + 1})`,
-    );
+    try {
+      await admin.waitFor(
+        (nv) =>
+          (nv.stack_items ?? []).length < before ||
+          (nv.turn?.priority_holder ?? -1) !== holderSeat,
+        `priority rotates or stack shrinks (pass ${i + 1})`,
+        5000,
+      );
+    } catch {
+      // Fall through and re-evaluate from the latest snapshot.
+    }
   }
-  throw new Error(`resolveStack: stack still non-empty after ${maxPasses} passes`);
+  const last = admin.snapshot();
+  throw new Error(
+    `resolveStack: stack still non-empty after ${maxAttempts} attempts ` +
+      `(step=${last.turn?.step} holder=${last.turn?.priority_holder} ` +
+      `stack_items=${JSON.stringify((last.stack_items ?? []).map((it) => it.label ?? it.kind))})`,
+  );
 }
 
 // setupS19Game spins up a 2-player game seeded with the S19 caster
@@ -747,6 +765,17 @@ export async function setupS19Game(
   // flips false. The hub may still be flushing snapshots — wait
   // until the admin sees the cleared state.
   await admin.waitFor((v) => v.state === "active", "game state active");
+
+  // Both browsers auto-pass upkeep → draw → precombat main (the
+  // active player's default stop). Wait for the cursor to settle
+  // there before handing control to the test: staging a trigger
+  // while a browser's pass_priority is still in flight lets that
+  // pass rotate priority under the test's feet.
+  await admin.waitFor(
+    (v) => v.turn?.step === "precombat_main" && v.turn?.priority_holder === v.turn?.active_seat,
+    "cursor settled on the active player's precombat main",
+    15_000,
+  );
 
   return {
     game,

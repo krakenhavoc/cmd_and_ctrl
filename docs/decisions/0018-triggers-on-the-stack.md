@@ -133,14 +133,44 @@ exactly as it does for spells. The two modes mirror Arena:
 No smart-skip escape for triggers: a player who wants routine
 upkeep triggers to fly by turns autopass on.
 
+### 6. "Unless that player pays" is a pending choice queued at resolution
+
+Rhystic Study, Smothering Tithe and Esper Sentinel (sub-PR 6) ask
+a *different* player a question when the trigger resolves. That is
+`PendingChoicePayUnless`: the trigger's `Effect` queues it for the
+taxed player (`PayUnless` primitive) and returns; the ability has
+resolved and left the stack. The answer arrives as
+`resolve_choice {apply}` like the other yes/no kinds. "Pay" spends
+from the chooser's pool, auto-tapping their untapped sources first
+via the S15 planner (no exclusions); a "Pay" they can't cover
+degrades to a decline. Decline runs the card's consequence
+(`OnDecline`) against a fresh `Context` for the original item.
+
+Sandbox looseness, accepted: priority isn't gated on the pending
+prompt, so play can continue while a Rhystic tax is unanswered.
+It matches how the table plays it in paper ("you paying for that?"
+while the next spell is already being cast) and avoids a modal
+lockstep across four browsers.
+
+Two more drains fell out of the sub-PR 6 cards: `CastSpell` (the
+caster gets priority right after casting, CR 117.3c — Rhystic's
+trigger must be on the stack by then) and the sandbox `draw_card`
+verb (Tithe / Sphinx watch draws). `Game.SpellsCastThisTurn` is
+bumped before `EventCast` fires so "first noncreature spell each
+turn" reads `Noncreature == 1` for the spell that triggered it.
+
 ## Out of scope (explicit deferrals)
+
+- **Treasure's sac-for-mana** is inert until S21 ships sacrifice
+  as a cost component; Smothering Tithe makes countable artifacts.
+- **"You may draw"** on Rhystic Study is treated as "draw".
 
 - **Modal triggers** ("draw a card or gain 3 life") still need a
   `ModePrompt` slot; nothing in the catalog needs one yet.
 - **Trigger ordering UI** for one player's simultaneous triggers
   (CR 603.3b) — the queue order is harvest order. S19 sub-PR 8.
-- **Cast / combat-damage triggers** — S19 sub-PRs 6 and 7, now to
-  be written in the `NewTriggeredItem` shape from the start.
+- **Combat-damage triggers** — S19 sub-PR 7, written in the
+  `NewTriggeredItem` shape from the start (sub-PR 6 was).
 - **Stack overlay art for ability items.** The client looks the
   item's `id` up in the stack zone for an image; abilities have no
   card there and render the label glyph. Showing the source card's
