@@ -113,6 +113,17 @@ const (
 	// carries the printed cost string for the client. Added in S19
 	// sub-PR 6.
 	PendingChoicePayUnless PendingChoiceKind = "pay_unless"
+
+	// PendingChoiceTriggerOrder — CR 603.3b "you choose the order"
+	// prompt for a player with two or more differing triggered
+	// abilities waiting to go on the stack at the same time. The
+	// APNAP drain holds every pending trigger until each such seat
+	// has answered; the chooser submits `order []string` of the
+	// trigger IDs in the order they should RESOLVE (first entry
+	// resolves first), and the engine places them on the stack in
+	// reverse. Identical triggers (same source, same label — two
+	// Bident of Thassa draws) never prompt. Added in S19 sub-PR 8.
+	PendingChoiceTriggerOrder PendingChoiceKind = "trigger_order"
 )
 
 // PendingChoice is one outstanding "someone needs to pick" entry
@@ -191,6 +202,13 @@ type PendingChoice struct {
 	// the wire so the client can warn the chooser. False for prompts
 	// without a HasLegalTarget predicate. Added in S19 follow-up.
 	NoLegalTarget bool
+
+	// TriggerOrderIDs is the set of pending-trigger item IDs a
+	// PendingChoiceTriggerOrder entry asks the chooser to order.
+	// Wire-serialised (with label + source per ID) so the client
+	// renders the reorder list; the resolve payload returns the same
+	// IDs in resolution order. Added in S19 sub-PR 8.
+	TriggerOrderIDs []uuid.UUID
 
 	// triggerResume is the server-only continuation frame for a
 	// PendingChoiceTriggerPrompt entry: the captured event +
@@ -1297,6 +1315,97 @@ func (g *Game) payCostLocked(p *Player, cost ParsedCost, source uuid.UUID) bool 
 		Source: source,
 	})
 	return true
+}
+
+// ResolveTriggerOrder processes the chooser's answer to a
+// PendingChoiceTriggerOrder entry. `resolutionOrder` lists the
+// prompt's trigger IDs in the order the chooser wants them to
+// RESOLVE (first resolves first). The engine reorders that seat's
+// pending triggers so that placement puts the last-to-resolve item
+// on the stack first, marks them Ordered, dequeues the prompt, and
+// re-runs the APNAP drain — which proceeds if no other seat is
+// still being asked.
+//
+// Triggers that arrived after the prompt was queued (not in the
+// prompt's ID set) keep their harvest position after the ordered
+// block and stay un-Ordered, so the next drain asks again with the
+// full list.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+// Added in S19 sub-PR 8.
+func (g *Game) ResolveTriggerOrder(choiceID, chooserID uuid.UUID, resolutionOrder []uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	idx := -1
+	for i, c := range g.PendingChoices {
+		if c != nil && c.ID == choiceID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ErrPendingChoiceNotFound
+	}
+	choice := g.PendingChoices[idx]
+	if choice.Kind != PendingChoiceTriggerOrder {
+		return ErrInvalidParam
+	}
+	if choice.Chooser != chooserID {
+		return ErrNotTheChooser
+	}
+	if len(resolutionOrder) != len(choice.TriggerOrderIDs) {
+		return ErrInvalidParam
+	}
+	want := make(map[uuid.UUID]int, len(choice.TriggerOrderIDs))
+	for _, id := range choice.TriggerOrderIDs {
+		want[id]++
+	}
+	for _, id := range resolutionOrder {
+		if want[id] <= 0 {
+			return ErrInvalidParam
+		}
+		want[id]--
+	}
+	g.dequeueChoiceLocked(idx)
+
+	// Rebuild PendingTriggers: other seats' items keep their
+	// positions; this seat's prompted items are replaced, in place
+	// of the first of them, by the chosen order reversed (placement
+	// order = reverse of resolution order); this seat's un-prompted
+	// items keep their relative order after the block.
+	byID := make(map[uuid.UUID]*StackItem, len(g.PendingTriggers))
+	for _, t := range g.PendingTriggers {
+		byID[t.ID] = t
+	}
+	placement := make([]*StackItem, 0, len(resolutionOrder))
+	for i := len(resolutionOrder) - 1; i >= 0; i-- {
+		if t, ok := byID[resolutionOrder[i]]; ok {
+			t.Ordered = true
+			placement = append(placement, t)
+		}
+	}
+	inPrompt := make(map[uuid.UUID]bool, len(resolutionOrder))
+	for _, id := range resolutionOrder {
+		inPrompt[id] = true
+	}
+	rebuilt := make([]*StackItem, 0, len(g.PendingTriggers))
+	inserted := false
+	for _, t := range g.PendingTriggers {
+		if inPrompt[t.ID] {
+			if !inserted {
+				rebuilt = append(rebuilt, placement...)
+				inserted = true
+			}
+			continue
+		}
+		rebuilt = append(rebuilt, t)
+	}
+	g.PendingTriggers = rebuilt
+	g.runStateChecksLocked()
+	return nil
 }
 
 // PendingChoiceKindFor returns the kind of the queue entry with the

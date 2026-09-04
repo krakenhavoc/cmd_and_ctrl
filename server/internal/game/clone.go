@@ -100,6 +100,9 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.ColorOptions) > 0 {
 				cloned.ColorOptions = append([]string(nil), c.ColorOptions...)
 			}
+			if len(c.TriggerOrderIDs) > 0 {
+				cloned.TriggerOrderIDs = append([]uuid.UUID(nil), c.TriggerOrderIDs...)
+			}
 			out.PendingChoices[i] = &cloned
 		}
 	}
@@ -271,7 +274,8 @@ func cloneStackItem(s *StackItem) *StackItem {
 		// capturing one, so sharing the func between original and
 		// snapshot is safe — an undo that restores this item
 		// resolves it against the restored game.
-		Effect: s.Effect,
+		Effect:  s.Effect,
+		Ordered: s.Ordered,
 	}
 	if len(s.Targets) > 0 {
 		out.Targets = make([]TargetRef, len(s.Targets))

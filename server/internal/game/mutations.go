@@ -1554,8 +1554,10 @@ func (g *Game) runStateChecksLocked() {
 		if !fired && !hasPending {
 			return
 		}
-		if hasPending {
-			g.drainPendingTriggersAPNAPLocked()
+		if hasPending && !g.drainPendingTriggersAPNAPLocked() && !fired {
+			// Held behind a CR 603.3b ordering prompt and SBAs are
+			// quiet — nothing more to do until the chooser answers.
+			return
 		}
 	}
 }
@@ -1867,14 +1869,19 @@ func (g *Game) markDamageWithKind(source, cardID uuid.UUID, delta int, isCombat 
 // Called from PassPriority and other priority-grant boundaries.
 // Caller must hold g.mu.
 //
+// Returns false when the queue is being held behind a CR 603.3b
+// ordering prompt (S19 sub-PR 8) — the caller's loop should stop
+// spinning until ResolveTriggerOrder re-runs the drain. Returns
+// true when the queue is empty or was drained.
+//
 // S13.1.
-func (g *Game) drainPendingTriggersAPNAPLocked() {
+func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	if len(g.PendingTriggers) == 0 {
-		return
+		return true
 	}
 	numSeats := len(g.Seats)
 	if numSeats == 0 {
-		return
+		return true
 	}
 	// Bucket triggers by controller seat so we can drain in seat
 	// order. Preserves per-controller queue order via stable
@@ -1893,6 +1900,36 @@ func (g *Game) drainPendingTriggersAPNAPLocked() {
 			continue
 		}
 		bySeat[seat] = append(bySeat[seat], t)
+	}
+	// CR 603.3b: a player with two or more differing simultaneous
+	// triggers chooses their relative order. Ask each such seat
+	// (once — items already Ordered don't re-prompt) and hold the
+	// WHOLE queue until every ordering prompt is answered, so the
+	// APNAP placement below still sees all seats at once.
+	held := false
+	for seat, items := range bySeat {
+		if !seatNeedsTriggerOrder(items) {
+			continue
+		}
+		held = true
+		p := g.Seats[seat]
+		if g.hasTriggerOrderPromptLocked(p.ID) {
+			continue
+		}
+		ids := make([]uuid.UUID, len(items))
+		for i, t := range items {
+			ids[i] = t.ID
+		}
+		g.QueueChoiceForEffect(PendingChoice{
+			Kind:            PendingChoiceTriggerOrder,
+			Chooser:         p.ID,
+			Count:           len(ids),
+			Reason:          "Order your triggers",
+			TriggerOrderIDs: ids,
+		})
+	}
+	if held {
+		return false
 	}
 	g.PendingTriggers = nil
 	if g.StackMeta == nil {
@@ -1913,6 +1950,40 @@ func (g *Game) drainPendingTriggersAPNAPLocked() {
 		}
 	}
 	g.recomputeSplitSecondLocked()
+	return true
+}
+
+// seatNeedsTriggerOrder reports whether a seat's batch of pending
+// triggers needs a CR 603.3b ordering prompt: at least two items,
+// not all identical (same source card + same label — two Bident
+// draws are interchangeable and asking would be noise), and at
+// least one not yet Ordered by an answered prompt.
+func seatNeedsTriggerOrder(items []*StackItem) bool {
+	if len(items) < 2 {
+		return false
+	}
+	allOrdered := true
+	allSame := true
+	for _, t := range items {
+		if !t.Ordered {
+			allOrdered = false
+		}
+		if t.SourceCardID != items[0].SourceCardID || t.Label != items[0].Label {
+			allSame = false
+		}
+	}
+	return !allOrdered && !allSame
+}
+
+// hasTriggerOrderPromptLocked reports whether chooser already has a
+// PendingChoiceTriggerOrder waiting. Caller must hold g.mu.
+func (g *Game) hasTriggerOrderPromptLocked(chooser uuid.UUID) bool {
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == PendingChoiceTriggerOrder && c.Chooser == chooser {
+			return true
+		}
+	}
+	return false
 }
 
 // DiscardSelection processes the active player's interactive

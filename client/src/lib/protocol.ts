@@ -192,6 +192,7 @@ export interface PendingChoiceView {
     | "damage_assignment"
     | "trigger_prompt"
     | "pay_unless"
+    | "trigger_order"
     | string;
   chooser: string;
   from_player: string;
@@ -212,6 +213,12 @@ export interface PendingChoiceView {
   // for other kinds. Wire modal lands in sub-PR 3 alongside
   // Doubling Season + Hardened Scales.
   replacement_options?: ReplacementOptionView[];
+  // S19 sub-PR 8: populated for kind "trigger_order" — the CR 603.3b
+  // "you choose the order of your simultaneous triggers" prompt.
+  // Same {id, label, source_card_id} shape as replacement_options;
+  // the client submits resolve_choice { order: string[] } of these
+  // IDs in RESOLUTION order (first entry resolves first).
+  trigger_options?: ReplacementOptionView[];
   // S18: populated for kind "damage_assignment" — the CR 510.1c
   // multi-blocker combat damage prompt. Client renders a per-blocker
   // damage input panel (+ trample-to-player input when allow_trample

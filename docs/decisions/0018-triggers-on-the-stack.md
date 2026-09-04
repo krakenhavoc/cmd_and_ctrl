@@ -167,14 +167,17 @@ turn" reads `Noncreature == 1` for the spell that triggered it.
 
 - **Modal triggers** ("draw a card or gain 3 life") still need a
   `ModePrompt` slot; nothing in the catalog needs one yet.
-- **Trigger ordering UI** for one player's simultaneous triggers
-  (CR 603.3b) — the queue order is harvest order. S19 sub-PR 8.
-- **Combat-damage triggers** — S19 sub-PR 7, written in the
-  `NewTriggeredItem` shape from the start (sub-PR 6 was).
-- **Stack overlay art for ability items.** The client looks the
-  item's `id` up in the stack zone for an image; abilities have no
-  card there and render the label glyph. Showing the source card's
-  art via `source_card_id` is a small client follow-up.
+- ~~**Trigger ordering UI** for one player's simultaneous triggers
+  (CR 603.3b)~~ — shipped in sub-PR 8: `PendingChoiceTriggerOrder`
+  holds the APNAP drain until each seat with ≥2 *differing*
+  triggers has ordered them (identical ones auto-order; the
+  submitted order is resolution order). A trigger arriving while a
+  prompt is open re-asks with the full list.
+- ~~**Cast / combat-damage triggers**~~ — shipped in sub-PRs 6 and 7
+  in the `NewTriggeredItem` shape.
+- ~~**Stack overlay art for ability items.**~~ Shipped in sub-PR 8:
+  the overlay resolves `source_card_id` against battlefield / exile
+  / graveyards for art, title and target names.
 - **`PlayCard`** (hand → battlefield sandbox drop, pre-S13.1) still
   emits no ETB at all. Left alone; `move_card` is the verb the
   client uses.
