@@ -241,6 +241,17 @@ type Event struct {
 
 	// ErrorMsg carries the failure reason on EventEffectError.
 	ErrorMsg string `json:"error_msg,omitempty"`
+
+	// Combat marks an EventDealDamage as combat damage (CR 510) —
+	// dealt by an attacking or blocking creature in the combat
+	// damage step, including trample overflow routed through the
+	// damage-assignment prompt. False for spell / ability damage
+	// (Lightning Bolt, Sulfuric Vortex). Combat-damage events also
+	// carry the dealing creature's controller in Actor, captured at
+	// emit time (the creature may die to simultaneous damage before
+	// a downstream prompt is answered). "Whenever ~ deals combat
+	// damage to a player" triggers read both. Added in S19 sub-PR 7.
+	Combat bool `json:"combat,omitempty"`
 }
 
 // EmitEvent appends ev to the game's event log under the existing

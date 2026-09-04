@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // cardDied reports whether an EventLTB marks `source` going to the
 // graveyard from the battlefield — i.e. it "died" (CR 700.4) — as
@@ -50,4 +54,24 @@ func containsFoldASCII(haystack, needle string) bool {
 		}
 	}
 	return false
+}
+
+// combatDamageToPlayerBy reports whether ev is combat damage dealt
+// to a player by a creature that `controller` controls. The
+// creature is looked up live: combat damage is dealt before SBAs
+// run, so an attacker that traded with its blocker is still on the
+// battlefield when its damage event fires. "Whenever a creature you
+// control deals combat damage to a player" (Bident of Thassa,
+// Coastal Piracy) gates on this. Added in S19 sub-PR 7.
+//
+// Caller must hold g.mu.
+func combatDamageToPlayerBy(ev game.Event, controller uuid.UUID, g *game.Game) bool {
+	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 {
+		return false
+	}
+	if p := g.PlayerByIDForEffect(ev.Target); p == nil {
+		return false
+	}
+	src, ok := g.LookupCardForEffect(ev.Source)
+	return ok && src.IsCreature() && src.Controller == controller
 }

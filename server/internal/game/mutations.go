@@ -3234,9 +3234,11 @@ func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source
 		}
 		g.EmitEvent(Event{
 			Kind:   EventDealDamage,
+			Actor:  g.controllerOfBattlefieldCardLocked(out.DamageSource),
 			Source: out.DamageSource,
 			Target: out.DamageTarget,
 			Amount: out.DamageAmount,
+			Combat: true,
 		})
 		// S18 sub-PR 3: CR 702.15 — lifelink credits the source's
 		// controller for the (post-replacement) damage amount. Fires
@@ -3292,9 +3294,11 @@ func (g *Game) markCombatDamageFromFrameLocked(cardID uuid.UUID, amount int, fra
 		}
 		g.EmitEvent(Event{
 			Kind:   EventDealDamage,
+			Actor:  frame.SourceController,
 			Source: out.DamageSource,
 			Target: out.DamageTarget,
 			Amount: out.DamageAmount,
+			Combat: true,
 		})
 		if frame.SourceLifelink {
 			g.applyLifelinkFromFrameLocked(out.DamageAmount, frame)
@@ -3350,9 +3354,11 @@ func (g *Game) markCombatDamageToPlayerFromFrameLocked(playerID uuid.UUID, amoun
 	}
 	g.EmitEvent(Event{
 		Kind:   EventDealDamage,
+		Actor:  frame.SourceController,
 		Source: out.DamageSource,
 		Target: out.DamageTarget,
 		Amount: out.DamageAmount,
+		Combat: true,
 	})
 	if frame.SourceLifelink {
 		g.applyLifelinkFromFrameLocked(out.DamageAmount, frame)
@@ -3459,9 +3465,11 @@ func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount
 	g.recordCommanderCombatDamageLocked(p, out.DamageSource, out.DamageAmount)
 	g.EmitEvent(Event{
 		Kind:   EventDealDamage,
+		Actor:  g.controllerOfBattlefieldCardLocked(out.DamageSource),
 		Source: out.DamageSource,
 		Target: out.DamageTarget,
 		Amount: out.DamageAmount,
+		Combat: true,
 	})
 	// S18 sub-PR 3: lifelink credits the source's controller for
 	// damage dealt to a player too (CR 702.15 — all damage, not just
@@ -4163,4 +4171,17 @@ func (g *Game) SetEnergy(playerID uuid.UUID, amount int) error {
 	// S13.2: keep the unified Counters map in sync.
 	setPlayerCounterLocked(p, CounterEnergy, amount)
 	return nil
+}
+
+// controllerOfBattlefieldCardLocked returns the controller of the
+// battlefield card with the given ID, or uuid.Nil if it isn't
+// there. Used to stamp Actor on combat-damage events so "its
+// controller may draw" triggers (Edric) don't have to re-find a
+// creature that may have died to simultaneous combat damage by the
+// time their prompt is answered. Caller must hold g.mu.
+func (g *Game) controllerOfBattlefieldCardLocked(cardID uuid.UUID) uuid.UUID {
+	if c := findBattlefieldCard(g, cardID); c != nil {
+		return c.Controller
+	}
+	return uuid.Nil
 }
