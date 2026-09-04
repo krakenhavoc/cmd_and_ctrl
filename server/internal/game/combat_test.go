@@ -640,3 +640,54 @@ func TestCombatCommanderTrampleOverflowRecordsCommanderDamage(t *testing.T) {
 		t.Errorf("trample overflow commander damage = %d, want 1", got)
 	}
 }
+
+// TestCombatDamageEventCarriesCombatFlag — S19 sub-PR 7: the
+// EventDealDamage emitted by the combat damage step is flagged
+// Combat so "deals combat damage to a player" triggers can tell it
+// apart from Lightning Bolt. Covers the unblocked-attacker path
+// (player target) and the blocked path (creature target).
+func TestCombatDamageEventCarriesCombatFlag(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := pushKeywordCreature(t, g, g.Seats[0], 3, 3)
+	blockedAttacker := pushKeywordCreature(t, g, g.Seats[0], 2, 2)
+	blocker := pushKeywordCreature(t, g, g.Seats[1], 4, 4)
+	advanceIntoStep(t, g, StepDeclareAttackers)
+	for _, id := range []uuid.UUID{attacker, blockedAttacker} {
+		if err := g.DeclareAttacker(id, g.Seats[1].ID); err != nil {
+			t.Fatalf("DeclareAttacker: %v", err)
+		}
+	}
+	advanceIntoStep(t, g, StepDeclareBlockers)
+	if err := g.DeclareBlocker(blocker, blockedAttacker); err != nil {
+		t.Fatalf("DeclareBlocker: %v", err)
+	}
+	advanceIntoStep(t, g, StepCombatDamage)
+
+	var toPlayer, toCreature, fromBlocker bool
+	for _, ev := range g.Events {
+		if ev.Kind != EventDealDamage || !ev.Combat {
+			continue
+		}
+		switch {
+		case ev.Source == attacker && ev.Target == g.Seats[1].ID && ev.Amount == 3:
+			toPlayer = true
+		case ev.Source == blockedAttacker && ev.Target == blocker:
+			toCreature = true
+		case ev.Source == blocker && ev.Target == blockedAttacker:
+			fromBlocker = true
+		}
+	}
+	if !toPlayer || !toCreature || !fromBlocker {
+		t.Errorf("combat-flagged damage events: toPlayer=%v toCreature=%v fromBlocker=%v (want all true)",
+			toPlayer, toCreature, fromBlocker)
+	}
+
+	// Non-combat damage stays unflagged.
+	g.WithWriteLock(func() {
+		_ = g.DealDamageToPlayerForEffect(attacker, g.Seats[1].ID, 1)
+	})
+	last := g.Events[len(g.Events)-1]
+	if last.Kind != EventDealDamage || last.Combat {
+		t.Errorf("effect damage event: kind=%s combat=%v, want deal_damage / false", last.Kind, last.Combat)
+	}
+}
