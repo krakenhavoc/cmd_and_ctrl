@@ -59,7 +59,7 @@ planned just-in-time from the S12 pain-point triage.
 | S17      | Replacement effects engine (CR 614)                                  | 7     | [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67)   | 2026-10-04 | **done**    |
 | S18      | Combat keywords                                                      | 7     | [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68)   | 2026-11-01 | **done**    |
 | S18.5    | Zone browser + library search (mini)                                 | 7     | [#179](https://github.com/krakenhavoc/cmd_and_ctrl/issues/179) | 2026-11-05 | **done**    |
-| S19      | Auto-fire triggered abilities                                        | 7     | [#69](https://github.com/krakenhavoc/cmd_and_ctrl/issues/69)   | 2026-11-29 | planned     |
+| S19      | Auto-fire triggered abilities                                        | 7     | [#69](https://github.com/krakenhavoc/cmd_and_ctrl/issues/69)   | 2026-11-29 | **done**    |
 | S20      | Auto-target legality + smart cast UI                                 | 7     | [#70](https://github.com/krakenhavoc/cmd_and_ctrl/issues/70)   | 2026-12-27 | planned     |
 | S21      | Tokens, sacrifice, aristocrats                                       | 7     | [#73](https://github.com/krakenhavoc/cmd_and_ctrl/issues/73)   | 2027-01-24 | planned     |
 | S22      | Card draw + library manipulation                                     | 7     | [#74](https://github.com/krakenhavoc/cmd_and_ctrl/issues/74)   | 2027-02-21 | planned     |
@@ -1694,6 +1694,8 @@ Mini sprint slotted after S18 started, to ship two pieces of long-promised clien
 - [x] **Sub-PR 8/8 — `s19-trigger-ordering`**: CR 603.3b same-controller ordering — a seat with ≥2 differing simultaneous triggers gets a `trigger_order` prompt (identical triggers, e.g. two Bident draws, never ask); the APNAP drain holds the whole queue until every such seat answers; submitted order = resolution order. Client reorder modal reuses the CR 616 list; stack overlay now shows ability items with their source card's art. Tests: ordering via a real Damnation double-kill, LKI under Glorious Anthem, non-catalog manual-announce canary.
 
 **Manual fallback preserved:** `announce_trigger` from S13.1 stays for unimplemented cards and "hidden info" triggers.
+
+**Deferred** (detail in [ADR 0018 → Out of scope](decisions/0018-triggers-on-the-stack.md)): Skullclamp — its trigger keys off the *equipped* creature dying, so it needs the attachment layer ([S24](#s24--equipment-auras-attachments)); Sylvan Library and Mana Crypt — draw-step life-payment / library reorder and a coin flip, both better after the [S20](#s20--auto-target-legality--smart-cast-ui) choice UI; Treasure's sac-for-mana is inert until [S21](#s21--tokens-sacrifice-aristocrats) ships sacrifice as a cost; modal triggers ("draw a card or gain 3 life") wait on a `ModePrompt` slot until a catalog card needs one.
 
 **Exit criteria:** Cast Mulldrifter → on resolve, you draw 2 cards automatically; advance to upkeep with Phyrexian Arena → trigger goes on stack automatically.
 
