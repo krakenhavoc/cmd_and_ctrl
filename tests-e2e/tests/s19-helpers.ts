@@ -162,6 +162,13 @@ async function openAdminConnection(
   asSeatID: string,
 ): Promise<AdminConnection> {
   const url = `ws://localhost:8080/ws?game=${gameID}&player=${encodeURIComponent(asSeatID)}&token=${encodeURIComponent(adminToken)}`;
+  // Node-side WebSocket: global since Node 22. Node 20 throws a bare
+  // ReferenceError here, which is how the nightly went red in Sept 2026.
+  if (typeof WebSocket === "undefined") {
+    throw new Error(
+      `global WebSocket is unavailable (Node ${process.version}); tests-e2e requires Node >= 22`,
+    );
+  }
   const ws = new WebSocket(url);
   let latest: SnapshotView | null = null;
   type Listener = (v: SnapshotView) => void;

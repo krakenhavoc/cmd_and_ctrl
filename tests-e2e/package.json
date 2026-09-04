@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Playwright end-to-end tests for the cmd_and_ctrl sandbox client.",
   "engines": {
-    "node": ">=20.11"
+    "node": ">=22"
   },
   "scripts": {
     "test": "playwright test",
