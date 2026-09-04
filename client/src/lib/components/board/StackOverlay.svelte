@@ -16,6 +16,12 @@
 
   interface Props {
     stack: ZoneView;
+    // S19 sub-PR 8: the zones an ability item's SOURCE card (and a
+    // trigger's target) can live in. Abilities have no card in the
+    // stack zone, so their art + target names resolve against
+    // these. Optional — the overlay degrades to the label glyph.
+    battlefield?: ZoneView;
+    exile?: ZoneView;
     stackItems: StackItemView[];
     pendingTriggers: StackItemView[];
     seats: PlayerView[];
@@ -27,6 +33,8 @@
 
   const {
     stack,
+    battlefield,
+    exile,
     stackItems,
     pendingTriggers,
     seats,
@@ -48,6 +56,26 @@
     }
     return out;
   });
+
+  // Every card the overlay might need to name or draw: stack (spell
+  // items), battlefield (ability sources + most targets), exile and
+  // graveyards (dies-trigger sources, exiled targets).
+  const anyCardByID = $derived.by(() => {
+    const out = new Map<string, CardView>(cardByID);
+    for (const c of battlefield?.cards ?? []) out.set(c.instance_id, c);
+    for (const c of exile?.cards ?? []) out.set(c.instance_id, c);
+    for (const s of seats) {
+      for (const c of s.graveyard?.cards ?? []) out.set(c.instance_id, c);
+    }
+    return out;
+  });
+
+  // The card whose art represents an item: the spell itself, or an
+  // ability's source permanent.
+  function artCardFor(item: StackItemView): CardView | undefined {
+    if (item.kind === "spell") return cardByID.get(item.id);
+    return anyCardByID.get(item.source_card_id);
+  }
 
   const seatBySeatID = $derived.by(() => {
     const out = new Map<string, PlayerView>();
@@ -72,7 +100,7 @@
         if (t.kind === "player") {
           return seatBySeatID.get(t.id ?? "")?.name ?? "player";
         }
-        const c = cardByID.get(t.id ?? "");
+        const c = anyCardByID.get(t.id ?? "");
         return c?.name ?? "card";
       })
       .join(" / ");
@@ -80,15 +108,19 @@
   }
 
   function imgSrcFor(item: StackItemView): string | null {
-    const c = cardByID.get(item.id);
+    const c = artCardFor(item);
     if (!c || !c.scryfall_id) return null;
     return `/cards/${c.scryfall_id}/image?size=normal`;
   }
 
   function titleFor(item: StackItemView): string {
-    const c = cardByID.get(item.id);
-    if (c?.name) return c.name;
+    if (item.kind === "spell") {
+      const c = cardByID.get(item.id);
+      if (c?.name) return c.name;
+    }
     if (item.label) return item.label;
+    const src = anyCardByID.get(item.source_card_id);
+    if (src?.name) return src.name;
     return item.kind === "triggered" ? "trigger" : "ability";
   }
 

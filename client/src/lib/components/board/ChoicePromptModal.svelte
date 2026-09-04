@@ -123,7 +123,15 @@
   // click a row already in the array to remove it (later rows
   // compact down). Submit with { choice_id, order: [...] }.
   const isReplacementOrder = $derived(active?.kind === "replacement_order");
-  const replacementOptions = $derived<ReplacementOptionView[]>(active?.replacement_options ?? []);
+  // S19 sub-PR 8 trigger_order — CR 603.3b: the same reorder list,
+  // fed from trigger_options. Submitted order = resolution order
+  // (top of the list resolves first); the server stacks in reverse.
+  const isTriggerOrder = $derived(active?.kind === "trigger_order");
+  const replacementOptions = $derived<ReplacementOptionView[]>(
+    active?.kind === "trigger_order"
+      ? (active?.trigger_options ?? [])
+      : (active?.replacement_options ?? []),
+  );
 
   function toggleReplacement(id: string): void {
     const idx = ordered.indexOf(id);
@@ -149,7 +157,10 @@
     for (const c of snap.battlefield.cards) {
       if (c.instance_id === opt.source_card_id) return c.name ?? "";
     }
-    return "";
+    // S19 dies-triggers: the source has already left for a
+    // graveyard / exile by the time an ordering prompt shows.
+    const elsewhere = triggerSourceName(opt.source_card_id);
+    return elsewhere === "Triggered ability" ? "" : elsewhere;
   }
 
   // S17 sub-PR 6 optional-replacement branch — CR 614.10 "may"
@@ -449,11 +460,18 @@
             Deal damage
           </button>
         </div>
-      {:else if isReplacementOrder}
-        <h2 id="choice-title">{active.reason || "Order replacement effects"}</h2>
+      {:else if isReplacementOrder || isTriggerOrder}
+        <h2 id="choice-title">
+          {active.reason || (isTriggerOrder ? "Order your triggers" : "Order replacement effects")}
+        </h2>
         <p class="hint">
-          Click each effect in the order it should apply. Different orders can produce different
-          results — you choose as the affected player (CR 616).
+          {#if isTriggerOrder}
+            Two or more of your abilities triggered at once. Click them in the order they should
+            resolve — the first you pick resolves first (CR 603.3b).
+          {:else}
+            Click each effect in the order it should apply. Different orders can produce different
+            results — you choose as the affected player (CR 616).
+          {/if}
         </p>
         <ul class="order-list">
           {#each replacementOptions as opt (opt.id)}
@@ -485,7 +503,7 @@
             disabled={ordered.length !== replacementOptions.length}
             onclick={submitReplacementOrder}
           >
-            Apply in this order
+            {isTriggerOrder ? "Resolve in this order" : "Apply in this order"}
           </button>
         </div>
       {:else}

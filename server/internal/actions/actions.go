@@ -896,6 +896,20 @@ func Dispatch(g *game.Game, a Action) error {
 			}
 		}
 		if len(p.Order) > 0 {
+			// Two reorder kinds share the {order: []string} payload:
+			// S17 replacement_order (effect IDs) and S19 sub-PR 8
+			// trigger_order (stack-item UUIDs). Route by kind.
+			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceTriggerOrder {
+				ids := make([]uuid.UUID, 0, len(p.Order))
+				for i, raw := range p.Order {
+					id, err := uuid.Parse(raw)
+					if err != nil {
+						return fmt.Errorf("resolve_choice order[%d]: %w", i, err)
+					}
+					ids = append(ids, id)
+				}
+				return g.ResolveTriggerOrder(choiceID, a.Player, ids)
+			}
 			order := make([]game.ReplacementEffectID, 0, len(p.Order))
 			for i, raw := range p.Order {
 				id, err := game.ReplacementEffectIDFromString(raw)

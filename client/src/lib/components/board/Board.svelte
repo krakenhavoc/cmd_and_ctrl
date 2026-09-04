@@ -274,6 +274,8 @@
   <HoverZoomOverlay {view} />
   <StackOverlay
     stack={view.stack}
+    battlefield={view.battlefield}
+    exile={view.exile}
     stackItems={view.stack_items ?? []}
     pendingTriggers={view.pending_triggers ?? []}
     seats={view.seats}

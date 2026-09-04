@@ -171,4 +171,14 @@ type StackItem struct {
 	// persisted, so a func field is safe here. Added in S19 — the
 	// "triggers actually use the stack" completeness fix.
 	Effect func(g *Game, item *StackItem) error
+
+	// Ordered marks a pending trigger whose controller has already
+	// answered a CR 603.3b ordering prompt covering it. The APNAP
+	// drain re-prompts a seat only when it holds ≥2 differing
+	// triggers of which at least one is not yet Ordered — so a
+	// resolved prompt drains without asking again, while a trigger
+	// that arrives afterwards re-opens the question with the full
+	// list. Meaningless once the item is on the stack. Added in S19
+	// sub-PR 8.
+	Ordered bool
 }

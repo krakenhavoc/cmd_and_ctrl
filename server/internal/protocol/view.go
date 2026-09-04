@@ -132,6 +132,14 @@ type PendingChoiceView struct {
 	// choices. Added in S18 sub-PR 3.
 	DamageAssignment *DamageAssignmentView `json:"damage_assignment,omitempty"`
 
+	// TriggerOptions populates the S19 "trigger_order" kind: one
+	// entry per pending trigger the chooser is ordering (CR
+	// 603.3b), with label + source card for context. The client
+	// renders the same reorder list as replacement_order and
+	// submits `order []string` of these IDs in RESOLUTION order
+	// (first entry resolves first). Added in S19 sub-PR 8.
+	TriggerOptions []ReplacementOptionView `json:"trigger_options,omitempty"`
+
 	// NoLegalTarget marks a "trigger_prompt" whose effect has no
 	// legal target and will pass without effect if the chooser
 	// answers "Yes" (Reclamation Sage with no opponent artifact,
@@ -598,6 +606,23 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 					opt.SourceCardID = srcID.String()
 				}
 				v.ReplacementOptions = append(v.ReplacementOptions, opt)
+			}
+		}
+		// PendingChoiceTriggerOrder — S19 sub-PR 8. Resolve each
+		// pending-trigger ID to its label + source so the reorder
+		// list reads as card names, not UUIDs.
+		if c.Kind == game.PendingChoiceTriggerOrder && len(c.TriggerOrderIDs) > 0 {
+			v.TriggerOptions = make([]ReplacementOptionView, 0, len(c.TriggerOrderIDs))
+			for _, id := range c.TriggerOrderIDs {
+				opt := ReplacementOptionView{ID: id.String()}
+				for _, t := range g.PendingTriggers {
+					if t != nil && t.ID == id {
+						opt.Label = t.Label
+						opt.SourceCardID = t.SourceCardID.String()
+						break
+					}
+				}
+				v.TriggerOptions = append(v.TriggerOptions, opt)
 			}
 		}
 		// PendingChoiceDamageAssignment — S18 sub-PR 3. Emit the
