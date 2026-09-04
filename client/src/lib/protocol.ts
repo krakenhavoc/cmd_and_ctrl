@@ -438,6 +438,11 @@ export interface CardView {
   // announce time. Empty/absent ⇒ cast immediately with no target.
   // See client/src/lib/targeting.ts for the full enum.
   target_mode?: string;
+  // S20: for a card in the viewer's own hand / command zone with a
+  // structured TargetSpec — the players and card instance IDs its
+  // target slot accepts right now. Absent for free-form cards. Both
+  // lists empty = no legal target = not castable right now.
+  legal_targets?: { players?: string[]; cards?: string[] };
   // S15: raw Scryfall mana-cost string ("{1}{R}", "{W/U}", "{X}{B}"),
   // rendered as a read-only chip on hand-zone cards. Omitted for
   // lands and for placeholder / demo-seed cards. Also zeroed on the

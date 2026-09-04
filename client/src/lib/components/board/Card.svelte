@@ -25,6 +25,7 @@
   import { animateTap } from "../../animations";
   import { play } from "../../sounds";
   import { settings } from "../../settings";
+  import { targeting, isLegalCardTarget } from "../../targeting";
   import CounterPips from "./CounterPips.svelte";
   import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
@@ -56,6 +57,13 @@
     onActivateManaAbility?: (abilityIndex: number) => void;
     onClick?: (card: CardView, ev: MouseEvent) => void;
   }
+
+  // S20: while a cast-targeting prompt is live, cards in the legal
+  // set get a ring so the player can see what they may click.
+  const targetable = $derived.by(() => {
+    const t = $targeting;
+    return t !== null && isLegalCardTarget(t, card.instance_id);
+  });
 
   const {
     card,
@@ -210,6 +218,7 @@
   class:face-down={showBack}
   class:tapped={card.tapped}
   class:selected
+  class:targetable
   class:attacking
   class:blocking
   class:clickable={!!onClick}
@@ -510,6 +519,13 @@
       0 0 22px rgba(255, 208, 122, 0.6),
       0 10px 22px rgba(0, 0, 0, 0.5),
       inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+  .card.targetable {
+    box-shadow:
+      0 0 0 2px #6fe3a4,
+      0 0 18px rgba(111, 227, 164, 0.6),
+      0 6px 16px rgba(0, 0, 0, 0.5);
+    cursor: crosshair;
   }
   .card.attacking {
     box-shadow:

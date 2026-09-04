@@ -440,3 +440,72 @@ func TestActionPayloadRoundTrip(t *testing.T) {
 		t.Errorf("action payload lost fields: %+v", back)
 	}
 }
+
+// TestLegalTargetsStampedForOwnerOnly — S20 sub-PR 1: a hand card
+// with a TargetSpec carries legal_targets computed from its owner's
+// point of view; the same card is stripped of them on the wire an
+// opponent sees (even when revealed), and non-catalog cards never
+// carry the field.
+func TestLegalTargetsStampedForOwnerOnly(t *testing.T) {
+	g := buildActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	const oracle = "test-view-target-spec"
+	prev := game.CatalogTargetSpec
+	game.CatalogTargetSpec = func(id string) *game.TargetSpec {
+		if id != oracle {
+			return nil
+		}
+		return &game.TargetSpec{
+			Mode:  "creature",
+			Zones: []game.ZoneKind{game.ZoneBattlefield},
+			CardOK: func(_ *game.Game, _ uuid.UUID, c game.Card, _ game.ZoneKind) bool {
+				return c.IsCreature()
+			},
+			Min: 1, Max: 1,
+		}
+	}
+	t.Cleanup(func() { game.CatalogTargetSpec = prev })
+
+	bear := game.NewCard("Bear", opp.ID)
+	bear.TypeLine = "Creature — Bear"
+	g.Battlefield.PushTop(bear)
+	rock := game.NewCard("Rock", opp.ID)
+	rock.TypeLine = "Artifact"
+	g.Battlefield.PushTop(rock)
+	spell := game.NewCard("Removal", me.ID)
+	spell.TypeLine = "Instant"
+	spell.OracleID = oracle
+	// Revealed to the opponent too, to prove the strip isn't just
+	// the hand-hiding.
+	spell.KnownBy = map[uuid.UUID]bool{me.ID: true, opp.ID: true}
+	me.Hand.PushTop(spell)
+
+	mine := ViewOfGameFor(g, me.ID.String())
+	var found *CardView
+	for i := range mine.Seats[0].Hand.Cards {
+		if mine.Seats[0].Hand.Cards[i].InstanceID == spell.InstanceID.String() {
+			found = &mine.Seats[0].Hand.Cards[i]
+		}
+	}
+	if found == nil || found.LegalTargets == nil {
+		t.Fatalf("owner's view: legal_targets missing on the targeted spell")
+	}
+	if len(found.LegalTargets.Cards) != 1 || found.LegalTargets.Cards[0] != bear.InstanceID.String() {
+		t.Errorf("legal cards = %v, want just the bear", found.LegalTargets.Cards)
+	}
+	if len(found.LegalTargets.Players) != 0 {
+		t.Errorf("creature spec must not list players")
+	}
+	for _, c := range mine.Seats[0].Hand.Cards {
+		if c.InstanceID != spell.InstanceID.String() && c.LegalTargets != nil {
+			t.Errorf("non-catalog hand card %q carries legal_targets", c.Name)
+		}
+	}
+
+	theirs := ViewOfGameFor(g, opp.ID.String())
+	for _, c := range theirs.Seats[0].Hand.Cards {
+		if c.InstanceID == spell.InstanceID.String() && c.LegalTargets != nil {
+			t.Errorf("opponent's view of a revealed hand card must not carry legal_targets")
+		}
+	}
+}

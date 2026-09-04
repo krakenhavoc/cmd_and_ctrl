@@ -137,6 +137,23 @@ describe("canCastFromHand", () => {
     expect(canCastFromHand(c, s, "p0").legal).toBe(true);
   });
 
+  // S20: a targeted spell with an empty legal set can't be cast.
+  it("targeted spell with no legal target = illegal", () => {
+    const s = snap({ activeSeat: 0, priorityHolder: 0 });
+    const blade = card("Doom Blade", "Instant", { legal_targets: { cards: [] } });
+    const got = canCastFromHand(blade, s, "p0");
+    expect(got.legal).toBe(false);
+    expect(got.reason).toBe("No legal target");
+  });
+
+  it("targeted spell with a legal target = legal; free-form card untouched", () => {
+    const s = snap({ activeSeat: 0, priorityHolder: 0 });
+    const blade = card("Doom Blade", "Instant", { legal_targets: { cards: ["c-Bear"] } });
+    expect(canCastFromHand(blade, s, "p0").legal).toBe(true);
+    const freeForm = card("Homebrew", "Instant", { target_mode: "creature" });
+    expect(canCastFromHand(freeForm, s, "p0").legal).toBe(true);
+  });
+
   it("sorcery on opponent's turn = illegal (not your turn)", () => {
     const s = snap({ activeSeat: 1, priorityHolder: 0 });
     const c = card("Wrath", "Sorcery");

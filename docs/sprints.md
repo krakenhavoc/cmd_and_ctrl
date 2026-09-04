@@ -1705,12 +1705,12 @@ Mini sprint slotted after S18 started, to ship two pieces of long-promised clien
 
 **Phase:** 7 · **Goal:** capstone sprint — per-card targeting predicates; modal/X UI; structured cast dialog.
 
-- [ ] Predicate library (`AnyTarget`, `Creature`, `NonBlackCreature`, `Spell`, `PowerLE(n)`) + composers (`And`/`Or`/`Not`)
-- [ ] Extended `TargetSpec` (predicate + AllowSelf + AllowSameTarget)
+- [x] **Sub-PR 1 — `s20-target-predicates`**: predicate library (`Creature`, `NonBlack`, `Noncreature`, `PowerLE(n)`, `OpponentControls`, `YouOwn`, …) + `And`/`Or`/`Not`; `game.TargetSpec` (zones, player/card predicates, Min/Max); `LegalTargetsFor`; `ErrIllegalTarget` at announce; `CardView.legal_targets` on the viewer's own hand; client picker highlights the legal set, "No legal target" greys the card; 13 `TargetMode` cards migrated + Doom Blade. [ADR 0019](decisions/0019-structured-targeting.md).
+- [ ] Extended `TargetSpec` — multi-target (Min/Max > 1), AllowSameTarget; trigger target picking (`pick_target` prompt replacing the `pickFirstOpponent*` auto-picker)
 - [ ] `ModeSpec` for modal spells (Min/Max choose)
 - [ ] Cast dialog rewrite: filter target candidates by predicate; structured mode picker; X-cost live validation
-- [ ] Resolution-time re-check using same predicates (CR 608.2b)
-- [ ] Catalog updates: add `TargetSpec` predicates to all S14/S17/S18/S19 catalog cards
+- [x] Resolution-time re-check using same predicates (CR 608.2b) — sub-PR 1
+- [ ] Catalog updates: `TargetSpec` on the S19 trigger cards' auto-picked targets (Reclamation Sage, Acidic Slime, Eternal Witness) once `pick_target` lands
 
 **Free-form fallback preserved:** cards without structured predicates use S13.1's free-form picker.
 

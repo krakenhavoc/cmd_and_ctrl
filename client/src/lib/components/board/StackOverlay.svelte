@@ -12,7 +12,7 @@
 
   import type { CardView, PlayerView, StackItemView, ZoneView } from "../../protocol";
   import { seatColor } from "../../colors";
-  import { targeting, isTargetingStack } from "../../targeting";
+  import { targeting, isLegalCardTarget } from "../../targeting";
 
   interface Props {
     stack: ZoneView;
@@ -44,10 +44,13 @@
     onTargetStackItem,
   }: Props = $props();
 
-  const stackTargetable = $derived.by(() => {
+  // S20: per-item legality — with a server legal set only the
+  // matching spells light up (Negate can't point at a creature
+  // spell); free-form prompts fall back to "any stack item".
+  function itemTargetable(item: StackItemView): boolean {
     const t = $targeting;
-    return t !== null && isTargetingStack(t.mode);
-  });
+    return t !== null && isLegalCardTarget(t, item.id);
+  }
 
   const cardByID = $derived.by(() => {
     const out = new Map<string, CardView>();
@@ -148,6 +151,7 @@
       {#each displayItems as item (item.id)}
         {@const seatNum = controllerSeatNum(item)}
         {@const src = imgSrcFor(item)}
+        {@const stackTargetable = itemTargetable(item)}
         <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
         <div
           class="item"

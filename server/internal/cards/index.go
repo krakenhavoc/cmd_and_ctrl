@@ -97,6 +97,13 @@ type Card struct {
 	// solving a cost; basic lands get a synthetic ability derived
 	// from their TypeLine instead. Added in S15 sub-PR 1.
 	ProducedMana []string `json:"produced_mana"`
+	// Colors is Scryfall's computed color list for the card —
+	// uppercase single letters from {"W","U","B","R","G"} — which
+	// already accounts for color indicators, Devoid, and hybrid
+	// symbols. Empty for colorless. S20 targeting predicates
+	// ("non-black creature") read this via game.Card.Colors. Added
+	// in S20 sub-PR 1.
+	Colors []string `json:"colors"`
 }
 
 // CardFace is one printed side of a double-faced / split / flip

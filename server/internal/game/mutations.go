@@ -392,6 +392,21 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		)
 		return ErrInvalidParam
 	}
+	// S20: structured targeting. Cards with a TargetSpec get their
+	// announce-time targets validated against it (CR 601.2c) —
+	// zone, count, and predicate. Cards without one keep the S13.1
+	// free-form behaviour (any ID the client sent is accepted).
+	if spec := TargetSpecFor(card.OracleID); spec != nil {
+		if err := g.validateTargetsLocked(playerID, spec, params.Targets); err != nil {
+			slog.Warn("cast_spell rejected: illegal target",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"targets_received", len(params.Targets),
+				"err", err,
+			)
+			return err
+		}
+	}
 	// Sorcery-speed gate. Lands are special-action-fast (CR 305 is
 	// "you may play a land during your main phase if the stack is
 	// empty"); they're handled implicitly by the same gate below.
@@ -876,7 +891,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// Self / none targets don't re-check (self is the caster; none
 	// has no referent) and count as always-legal for the all-illegal
 	// short-circuit.
-	if spellAllTargetsIllegalLocked(g, item) {
+	if spellAllTargetsIllegalLocked(g, item, TargetSpecFor(top.OracleID)) {
 		// "Countered by game rules" — permanents and non-permanents
 		// alike go to the owner's graveyard (CR 608.2b). The
 		// announce-time choices on StackMeta are discarded along
@@ -966,12 +981,16 @@ func (g *Game) resolveTopOfStackLocked() error {
 
 // spellAllTargetsIllegalLocked reports whether a resolved stack item
 // has at least one targeted slot (player or card) and every one of
-// those targets is now illegal per the CR 608.2b existence check.
-// A slot with Kind Self or None is always legal. Items with no
-// targets at all return false (nothing to re-check).
+// those targets is now illegal per CR 608.2b. With a TargetSpec
+// (S20) "illegal" is the full predicate — a Doom Blade target that
+// became black, a creature that stopped being a creature — checked
+// from the item's controller's point of view; without one it's the
+// S13.1 existence check. A slot with Kind Self or None is always
+// legal. Items with no targets at all return false (nothing to
+// re-check).
 //
 // Caller must hold g.mu.
-func spellAllTargetsIllegalLocked(g *Game, item *StackItem) bool {
+func spellAllTargetsIllegalLocked(g *Game, item *StackItem, spec *TargetSpec) bool {
 	if item == nil || len(item.Targets) == 0 {
 		return false
 	}
@@ -986,7 +1005,13 @@ func spellAllTargetsIllegalLocked(g *Game, item *StackItem) bool {
 			continue
 		case TargetPlayer, TargetCard:
 			hadTargeted = true
-			if targetStillExistsLocked(g, t) {
+			legal := false
+			if spec != nil {
+				legal = g.targetLegalLocked(item.Controller, spec, t)
+			} else {
+				legal = targetStillExistsLocked(g, t)
+			}
+			if legal {
 				anyLegal = true
 			}
 		}
@@ -1050,7 +1075,7 @@ func (g *Game) resolveTopAbilityLocked() error {
 	}
 	delete(g.StackMeta, top.ID)
 	g.recomputeSplitSecondLocked()
-	if spellAllTargetsIllegalLocked(g, top) {
+	if spellAllTargetsIllegalLocked(g, top, nil) {
 		g.EmitEvent(Event{
 			Kind:   EventFizzle,
 			Actor:  top.Controller,

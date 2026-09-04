@@ -14,7 +14,7 @@
   import { floatUp, fadeOut } from "../../animations";
   import { play } from "../../sounds";
   import { avatarURL } from "../../api";
-  import { targeting, isTargetingPlayer } from "../../targeting";
+  import { targeting, isLegalPlayerTarget } from "../../targeting";
   import ManaPoolPips from "./ManaPoolPips.svelte";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
@@ -48,7 +48,7 @@
   const targetableByCast = $derived.by(() => {
     const t = $targeting;
     if (!t) return false;
-    if (!isTargetingPlayer(t.mode)) return false;
+    if (!isLegalPlayerTarget(t, seat.id)) return false;
     return !seat.eliminated;
   });
 

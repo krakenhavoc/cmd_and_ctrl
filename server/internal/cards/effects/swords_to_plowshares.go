@@ -11,9 +11,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // zone changes and the lookup could miss.
 func init() {
 	Register(Spec{
-		OracleID:   "b1544f21-7e98-461b-aed5-e748b0168c52",
-		Name:       "Swords to Plowshares",
-		TargetMode: "creature",
+		OracleID: "b1544f21-7e98-461b-aed5-e748b0168c52",
+		Name:     "Swords to Plowshares",
+		Targets:  TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

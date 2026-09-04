@@ -86,7 +86,22 @@ type Spec struct {
 	//
 	// Target count is always 1 in S14; multi-target (Arcing Lightning
 	// style "distribute 3 damage") is S22 territory.
+	//
+	// S20: prefer Targets. When Targets is set, TargetMode is derived
+	// from Targets.Mode and this field is ignored. Cards still on a
+	// bare TargetMode get the S13.1 free-form picker with no
+	// server-side legality check.
 	TargetMode string
+
+	// Targets is the S20 structured targeting clause: which zones and
+	// players the single target slot accepts, and the predicate a
+	// candidate must pass. Drives the client's legal-target set, the
+	// announce-time check (CR 601.2c) and the resolution re-check
+	// (CR 608.2b). Build it with the constructors in targets.go —
+	// TargetAny(), TargetCreature("target non-black creature",
+	// NonBlack()), TargetSpell(…), TargetCardInGraveyard(…). Nil
+	// means no structured targeting.
+	Targets *game.TargetSpec
 
 	// ManaAbilities is the list of activated mana abilities the card
 	// exposes from the battlefield. Each entry is one tap-or-cost-

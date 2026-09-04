@@ -22,9 +22,9 @@ import (
 // deferral; matches the card text.
 func init() {
 	Register(Spec{
-		OracleID:   "d683d985-9888-4d21-8b5f-69e69ce4a03b",
-		Name:       "Path to Exile",
-		TargetMode: "creature",
+		OracleID: "d683d985-9888-4d21-8b5f-69e69ce4a03b",
+		Name:     "Path to Exile",
+		Targets:  TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			// Diagnostic: surface silent no-ops so they're visible in
 			// the event log as EventEffectError. Path appearing to

@@ -166,6 +166,9 @@ func cloneZone(z *Zone) *Zone {
 
 func cloneCard(c Card) Card {
 	out := c
+	if len(c.Colors) > 0 {
+		out.Colors = append([]string(nil), c.Colors...)
+	}
 	if len(c.Counters) > 0 {
 		out.Counters = make(map[string]int, len(c.Counters))
 		for k, v := range c.Counters {

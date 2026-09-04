@@ -90,6 +90,15 @@ export function canCastFromHand(
   if (!snap || !viewerID) return deny("Spectator can't cast");
   if (!hasPriority(snap, viewerID)) return deny("Not your priority");
   if (snap.split_second_active) return deny("Split second on the stack");
+  // S20: a targeted spell with nothing legal to point at can't be
+  // cast (CR 601.2c — you must choose a legal target to cast it).
+  if (
+    card.legal_targets &&
+    (card.legal_targets.players?.length ?? 0) === 0 &&
+    (card.legal_targets.cards?.length ?? 0) === 0
+  ) {
+    return deny("No legal target");
+  }
   const type = (card.type_line ?? "").toLowerCase();
   const isLand = type.includes("land");
   const isInstant = type.includes("instant");

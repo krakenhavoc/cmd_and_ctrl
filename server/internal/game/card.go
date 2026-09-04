@@ -70,6 +70,14 @@ type Card struct {
 	// here. Added in S15 sub-PR 1.
 	ProducedMana []string
 
+	// Colors is the card's printed color list — uppercase letters
+	// from {"W","U","B","R","G"} — as Scryfall computes it (color
+	// indicators and Devoid included). Empty means colorless OR
+	// "not stamped" (tokens, test fixtures); HasColor / IsColorless
+	// fall back to deriving colors from ManaCost in that case. S20
+	// targeting predicates read this. Added in S20 sub-PR 1.
+	Colors []string
+
 	// Owner is the player who brought this card to the game. Ownership
 	// is fixed at deck-build time and never changes.
 	Owner uuid.UUID
@@ -386,4 +394,44 @@ func NewCommander(name string, owner uuid.UUID) Card {
 	c := NewCard(name, owner)
 	c.IsCommander = true
 	return c
+}
+
+// EffectiveColors returns the card's colors: the stamped Colors list
+// when present, otherwise the colored symbols found in ManaCost
+// (hybrid "{W/U}" contributes both). Layer 5 color-changing effects
+// aren't modelled yet; when they are, this is the seam. Added in
+// S20 sub-PR 1.
+func (c Card) EffectiveColors() []string {
+	if len(c.Colors) > 0 {
+		return c.Colors
+	}
+	seen := map[byte]bool{}
+	var out []string
+	for i := 0; i < len(c.ManaCost); i++ {
+		switch ch := c.ManaCost[i]; ch {
+		case 'W', 'U', 'B', 'R', 'G':
+			if !seen[ch] {
+				seen[ch] = true
+				out = append(out, string(ch))
+			}
+		}
+	}
+	return out
+}
+
+// HasColor reports whether the card is the given color ("B" for
+// black, etc.). Added in S20 sub-PR 1.
+func (c Card) HasColor(color string) bool {
+	for _, col := range c.EffectiveColors() {
+		if col == color {
+			return true
+		}
+	}
+	return false
+}
+
+// IsColorless reports whether the card has no colors. Added in S20
+// sub-PR 1.
+func (c Card) IsColorless() bool {
+	return len(c.EffectiveColors()) == 0
 }
