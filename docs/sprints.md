@@ -1706,11 +1706,12 @@ Mini sprint slotted after S18 started, to ship two pieces of long-promised clien
 **Phase:** 7 · **Goal:** capstone sprint — per-card targeting predicates; modal/X UI; structured cast dialog.
 
 - [x] **Sub-PR 1 — `s20-target-predicates`**: predicate library (`Creature`, `NonBlack`, `Noncreature`, `PowerLE(n)`, `OpponentControls`, `YouOwn`, …) + `And`/`Or`/`Not`; `game.TargetSpec` (zones, player/card predicates, Min/Max); `LegalTargetsFor`; `ErrIllegalTarget` at announce; `CardView.legal_targets` on the viewer's own hand; client picker highlights the legal set, "No legal target" greys the card; 13 `TargetMode` cards migrated + Doom Blade. [ADR 0019](decisions/0019-structured-targeting.md).
-- [ ] Extended `TargetSpec` — multi-target (Min/Max > 1), AllowSameTarget; trigger target picking (`pick_target` prompt replacing the `pickFirstOpponent*` auto-picker)
+- [x] **Sub-PR 2 — `s20-trigger-target-picker`**: targeted triggers choose on the board. `TriggeredAbility.Targets` → the harvester computes the legal set at trigger time (empty → trigger removed, CR 603.3d), asks "you may" first, then queues a `pick_target` prompt the controller answers by clicking the board (or a card in the zone browser). Chosen ref stamped on the item + re-checked at resolution. Reclamation Sage / Acidic Slime / Eternal Witness off the auto-picker.
+- [ ] Extended `TargetSpec` — multi-target (Min/Max > 1), AllowSameTarget
 - [ ] `ModeSpec` for modal spells (Min/Max choose)
 - [ ] Cast dialog rewrite: filter target candidates by predicate; structured mode picker; X-cost live validation
 - [x] Resolution-time re-check using same predicates (CR 608.2b) — sub-PR 1
-- [ ] Catalog updates: `TargetSpec` on the S19 trigger cards' auto-picked targets (Reclamation Sage, Acidic Slime, Eternal Witness) once `pick_target` lands
+- [x] Catalog updates: `TargetSpec` on the S19 trigger cards (Reclamation Sage, Acidic Slime, Eternal Witness) — sub-PR 2
 
 **Free-form fallback preserved:** cards without structured predicates use S13.1's free-form picker.
 

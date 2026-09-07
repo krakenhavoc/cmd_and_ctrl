@@ -32,6 +32,17 @@ import {
 // resolves it through the players' own "next" buttons via
 // resolveStack before asserting on the effect.
 
+// waitForPickTarget resolves once a pick_target prompt is queued for
+// chooserID (S20 sub-PR 2 — targeted triggers ask for their target
+// on the board instead of auto-picking).
+async function waitForPickTarget(setup: S19Setup, chooserID: string) {
+  return setup.admin.waitFor(
+    (v) =>
+      (v.pending_choices ?? []).some((c) => c.kind === "pick_target" && c.chooser === chooserID),
+    "pick_target prompt queued",
+  );
+}
+
 test.describe("S19 ETB triggers", () => {
   test.describe.configure({ mode: "serial" });
   let setup: S19Setup | null = null;
@@ -138,7 +149,17 @@ test.describe("S19 ETB triggers", () => {
     // Click "Yes" in the caster's dialog.
     await caster.page.getByRole("button", { name: /^Yes$/ }).click();
 
-    // "Yes" puts the trigger on the stack; the Sol Ring survives
+    // S20: "Yes" asks WHICH artifact or enchantment. The caster's
+    // board enters targeting mode; the Sol Ring is a legal target
+    // and gets clicked.
+    await waitForPickTarget(setup, caster.playerID);
+    await expect(caster.page.getByText(/Reclamation Sage.*triggered/i)).toBeVisible();
+    await caster.page
+      .locator("[aria-label='Opponent board']")
+      .getByRole("button", { name: "Sol Ring" })
+      .click();
+
+    // The pick puts the trigger on the stack; the Sol Ring survives
     // until it resolves.
     const staged = await admin.waitFor(
       (v) =>
@@ -191,8 +212,9 @@ test.describe("S19 ETB triggers", () => {
       (v) => (v.pending_choices ?? []).length === 0,
       "prompt drained after No",
     );
-    // Declined: nothing reaches the stack, Sol Ring still on
-    // battlefield, not in graveyard.
+    // Declined: no target prompt, nothing reaches the stack, Sol
+    // Ring still on battlefield, not in graveyard.
+    expect((after.pending_choices ?? []).some((c) => c.kind === "pick_target")).toBe(false);
     expect(triggerOnStack(after, CARDS.ReclamationSage)).toBeNull();
     expect(findCardOnBattlefield(after, CARDS.SolRing)).not.toBeNull();
     expect(findCardInPlayerGraveyard(after, opponent.playerID, CARDS.SolRing)).toBeNull();
@@ -209,6 +231,15 @@ test.describe("S19 ETB triggers", () => {
     await adminMoveByName(admin, opponent.playerID, CARDS.SolRing, "library", "battlefield");
 
     await adminMoveByName(admin, caster.playerID, CARDS.AcidicSlime, "library", "battlefield");
+
+    // S20: mandatory trigger → straight to the target pick (no
+    // yes/no). Click the Sol Ring on the opponent's board.
+    const picking = await waitForPickTarget(setup, caster.playerID);
+    expect((picking.pending_choices ?? []).some((c) => c.kind === "trigger_prompt")).toBe(false);
+    await caster.page
+      .locator("[aria-label='Opponent board']")
+      .getByRole("button", { name: "Sol Ring" })
+      .click();
 
     const staged = await admin.waitFor(
       (v) => triggerOnStack(v, CARDS.AcidicSlime) !== null,
@@ -264,11 +295,20 @@ test.describe("S19 ETB triggers", () => {
 
     await caster.page.getByRole("button", { name: /^Yes$/ }).click();
 
+    // S20: pick the card — open the caster's own graveyard browser
+    // and click the Bolt.
+    await waitForPickTarget(setup, caster.playerID);
+    await caster.page
+      .locator("[aria-label='your board']")
+      .getByRole("button", { name: /^grave: / })
+      .click();
+    await caster.page.getByRole("dialog").getByRole("button", { name: "Lightning Bolt" }).click();
+
     const staged = await admin.waitFor(
       (v) =>
         (v.pending_choices ?? []).length === 0 &&
         triggerOnStack(v, CARDS.EternalWitness) !== null,
-      "Eternal Witness trigger on the stack after Yes",
+      "Eternal Witness trigger on the stack after Yes + pick",
     );
     expect(findCardInPlayerHand(staged, caster.playerID, CARDS.LightningBolt)).toBeNull();
 

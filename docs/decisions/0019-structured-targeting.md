@@ -84,12 +84,30 @@ adds latency to the most common click in the game, and the same
 data is what the S13.3 greyed-illegal-actions affordance needs on
 every render anyway.
 
+### 6. Triggers pick on the board too (sub-PR 2)
+
+`TriggeredAbility.Targets` gives a trigger the same clause. The
+harvester computes the legal set the moment the trigger fires (CR
+603.3d: targets are chosen as the ability is put on the stack); an
+empty set removes the trigger with no prompt at all — no more
+"Yes" that silently does nothing, which is what the S19
+`HasLegalTarget` warning papered over. A "you may" prompt still
+comes first; on "yes" (or immediately for a mandatory trigger) a
+`pick_target` pending choice carries the frozen legal set. The
+client doesn't render it as a modal: it enters the ordinary
+board-click targeting flow with the prompt's set (graveyard
+targets via the zone browser), and the click answers
+`resolve_choice {target}`. `ResolvePickTarget` re-validates the
+pick against the live board, stamps it on the built item together
+with the spec, and the item's resolution runs the same CR 608.2b
+re-check spells get.
+
+The prompt can't be cancelled from the client — the server owns a
+trigger that needs a target — and it pre-empts any cast-targeting
+prompt in flight.
+
 ## Out of scope (next sub-PRs)
 
-- **Trigger target picking.** The S19 ETB-destroy cards still
-  auto-pick; a `pick_target` pending choice built from the same
-  `LegalTargets` walk replaces `pickFirstOpponentNonland` and the
-  `HasLegalTarget` warning.
 - **Multi-target** (`Min`/`Max` > 1, "up to N", distribute) and
   **AllowSameTarget**.
 - **Modes and X** — `ModeSpec`, the mode picker, X live validation.

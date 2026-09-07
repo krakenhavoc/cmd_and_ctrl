@@ -122,6 +122,18 @@ type TriggeredAbility struct {
 	// modal catalog card ships. Added in S19 sub-PR 2.
 	OptionalPrompt *TriggerOptionalPrompt
 
+	// Targets is the S20 structured target clause for a targeted
+	// trigger ("destroy target artifact or enchantment"). When set,
+	// the harvester computes the legal set at trigger time (CR
+	// 603.3d — targets are chosen as the ability is put on the
+	// stack): an empty set drops the trigger without any prompt; a
+	// non-empty one queues a pick_target prompt for the controller
+	// (after the OptionalPrompt's "yes", if there is one). The chosen
+	// TargetRef is stamped onto the built item's Targets, the item
+	// remembers the spec, and resolution re-checks it (CR 608.2b).
+	// Build / Effect read item.Targets[0]. Added in S20 sub-PR 2.
+	Targets *TargetSpec
+
 	// HasLegalTarget reports whether the trigger has a legal
 	// target / will actually do something at fire time. Optional —
 	// nil means "assume the effect always has an effect" (e.g.
@@ -219,20 +231,54 @@ func (g *Game) harvestFromZone(ev Event, z *Zone) {
 			if t.AppliesTo != nil && !t.AppliesTo(ev, card, lki, g) {
 				continue
 			}
-			if t.OptionalPrompt != nil {
-				g.queueTriggerPromptLocked(ev, *card, lki, t)
-				continue
-			}
-			if t.Build == nil {
-				continue
-			}
-			item := t.Build(ev, card, lki, g)
-			if item == nil {
-				continue
-			}
-			g.queueHarvestedTriggerLocked(item)
+			g.dispatchTriggerLocked(ev, *card, lki, t)
 		}
 	}
+}
+
+// dispatchTriggerLocked takes a matched TriggeredAbility from
+// "AppliesTo said yes" to either a queued prompt or an item on
+// PendingTriggers:
+//
+//  1. Targeted (Targets != nil) with no legal target right now →
+//     the trigger is removed without any prompt (CR 603.3d).
+//  2. OptionalPrompt → the yes/no prompt; on "yes" the flow re-enters
+//     here at step 3 via ResolveTriggerPrompt.
+//  3. Targeted → pick_target prompt; on the pick, Build runs and the
+//     chosen ref is stamped onto the item.
+//  4. Otherwise Build → queue.
+//
+// Caller must hold g.mu. Added in S20 sub-PR 2 (steps 1 and 3).
+func (g *Game) dispatchTriggerLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility) {
+	if t.Targets != nil {
+		lt := g.legalTargetsLocked(source.Controller, t.Targets)
+		if len(lt.Players) == 0 && len(lt.Cards) == 0 {
+			return
+		}
+	}
+	if t.OptionalPrompt != nil {
+		g.queueTriggerPromptLocked(ev, source, lki, t)
+		return
+	}
+	g.buildOrPickTriggerLocked(ev, source, lki, t)
+}
+
+// buildOrPickTriggerLocked is the post-"yes" half of the dispatch:
+// queue the target picker for a targeted trigger, or Build and queue
+// the item directly. Caller must hold g.mu.
+func (g *Game) buildOrPickTriggerLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility) {
+	if t.Build == nil {
+		return
+	}
+	if t.Targets != nil {
+		g.queuePickTargetLocked(ev, source, lki, t)
+		return
+	}
+	item := t.Build(ev, &source, lki, g)
+	if item == nil {
+		return
+	}
+	g.queueHarvestedTriggerLocked(item)
 }
 
 // harvestLTB walks LTB triggers for a card whose battlefield exit
@@ -274,18 +320,7 @@ func (g *Game) harvestLTB(ev Event) {
 		if t.AppliesTo != nil && !t.AppliesTo(ev, card, lki, g) {
 			continue
 		}
-		if t.OptionalPrompt != nil {
-			g.queueTriggerPromptLocked(ev, *card, lki, t)
-			continue
-		}
-		if t.Build == nil {
-			continue
-		}
-		item := t.Build(ev, card, lki, g)
-		if item == nil {
-			continue
-		}
-		g.queueHarvestedTriggerLocked(item)
+		g.dispatchTriggerLocked(ev, *card, lki, t)
 	}
 }
 

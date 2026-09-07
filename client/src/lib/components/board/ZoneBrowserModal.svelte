@@ -30,9 +30,14 @@
     ownerSeat: { id: string; name: string };
     sendAction: ActionSender;
     onClose: () => void;
+    // S20: while a targeting prompt is live, clicking a browsed card
+    // (a graveyard card for Eternal Witness) offers it as the
+    // target. Returns true when the click was consumed.
+    onTargetCard?: (card: CardView) => boolean;
   }
 
-  const { view, viewerID, zoneKind, ownerSeat, sendAction, onClose }: Props = $props();
+  const { view, viewerID, zoneKind, ownerSeat, sendAction, onClose, onTargetCard }: Props =
+    $props();
 
   // Source zone lookup — server broadcasts exile + stack as shared
   // top-level zones with per-card owner/controller, while graveyard
@@ -112,7 +117,7 @@
       <ul class="grid">
         {#each zoneCards as card (card.instance_id)}
           <li class="cell">
-            <Card {card} />
+            <Card {card} onClick={onTargetCard ? () => void onTargetCard?.(card) : undefined} />
             {#if canManage}
               <div class="actions" aria-label="move card">
                 <button

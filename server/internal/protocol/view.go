@@ -140,6 +140,13 @@ type PendingChoiceView struct {
 	// (first entry resolves first). Added in S19 sub-PR 8.
 	TriggerOptions []ReplacementOptionView `json:"trigger_options,omitempty"`
 
+	// PickTarget populates the S20 "pick_target" kind: the legal
+	// players / cards a targeted trigger's controller may choose
+	// from, computed when the trigger fired. The client enters its
+	// board-click targeting flow with this set and answers with
+	// resolve_choice {target: {kind, id}}. Added in S20 sub-PR 2.
+	PickTarget *LegalTargetsView `json:"pick_target,omitempty"`
+
 	// NoLegalTarget marks a "trigger_prompt" whose effect has no
 	// legal target and will pass without effect if the chooser
 	// answers "Yes" (Reclamation Sage with no opponent artifact,
@@ -663,6 +670,17 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				}
 				v.ReplacementOptions = append(v.ReplacementOptions, opt)
 			}
+		}
+		// PendingChoicePickTarget — S20 sub-PR 2: the frozen legal set.
+		if c.Kind == game.PendingChoicePickTarget {
+			pt := &LegalTargetsView{}
+			for _, id := range c.PickTargetPlayers {
+				pt.Players = append(pt.Players, id.String())
+			}
+			for _, id := range c.PickTargetCards {
+				pt.Cards = append(pt.Cards, id.String())
+			}
+			v.PickTarget = pt
 		}
 		// PendingChoiceTriggerOrder — S19 sub-PR 8. Resolve each
 		// pending-trigger ID to its label + source so the reorder

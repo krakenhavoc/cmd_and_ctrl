@@ -181,4 +181,12 @@ type StackItem struct {
 	// list. Meaningless once the item is on the stack. Added in S19
 	// sub-PR 8.
 	Ordered bool
+
+	// targetSpec is the S20 TargetSpec a targeted ability item was
+	// built against, so resolveTopAbilityLocked can run the same
+	// predicate re-check spells get (CR 608.2b). Nil for spells
+	// (their spec is looked up by oracle ID) and for free-form
+	// abilities (existence check only). Unexported: set by the
+	// harvester, copied by cloneStackItem. Added in S20 sub-PR 2.
+	targetSpec *TargetSpec
 }

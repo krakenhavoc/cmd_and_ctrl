@@ -1,5 +1,5 @@
 import { writable, type Writable } from "svelte/store";
-import type { CardView } from "./protocol";
+import type { CardView, PendingChoiceView } from "./protocol";
 
 // targeting.ts is the shared-store plumbing for the S14 "cast a
 // catalog card, pick a target" flow. When a player clicks a hand
@@ -41,6 +41,15 @@ export interface TargetingState {
   // CardView.legal_targets). Undefined for free-form cards, where
   // legality falls back to the mode heuristics below.
   legal?: { players: Set<string>; cards: Set<string> };
+  // S20 sub-PR 2: set when the prompt answers a pick_target pending
+  // choice (a triggered ability choosing its target) rather than a
+  // cast. The click resolves the choice instead of firing
+  // cast_spell, and the prompt can't be cancelled — the trigger
+  // needs a target.
+  choiceID?: string;
+  // Human-readable clause for the banner ("target artifact or
+  // enchantment"); the server's TargetSpec label.
+  label?: string;
 }
 
 export const targeting: Writable<TargetingState | null> = writable(null);
@@ -78,9 +87,31 @@ export function legalTargetCount(t: TargetingState): number {
   return t.legal.players.size + t.legal.cards.size;
 }
 
+// beginChoice enters a targeting prompt for a pick_target pending
+// choice. `card` is the trigger's source (for the banner); the
+// legal set comes from the choice itself.
+export function beginChoice(choice: PendingChoiceView, card: CardView): void {
+  const pt = choice.pick_target ?? {};
+  targeting.set({
+    card,
+    mode: "any",
+    legal: { players: new Set(pt.players ?? []), cards: new Set(pt.cards ?? []) },
+    choiceID: choice.id,
+    label: choice.reason,
+  });
+}
+
 // cancel clears the prompt without firing cast_spell. Wired to the
-// Escape keybinding in Game.svelte.
+// Escape keybinding in Game.svelte. A pick_target prompt is not
+// cancellable — the server is waiting for a target — so cancel is a
+// no-op for it (the banner hides its Cancel button too).
 export function cancel(): void {
+  let current: TargetingState | null = null;
+  targeting.update((t) => {
+    current = t;
+    return t;
+  });
+  if (current && (current as TargetingState).choiceID) return;
   targeting.set(null);
 }
 

@@ -124,6 +124,17 @@ const (
 	// reverse. Identical triggers (same source, same label — two
 	// Bident of Thassa draws) never prompt. Added in S19 sub-PR 8.
 	PendingChoiceTriggerOrder PendingChoiceKind = "trigger_order"
+
+	// PendingChoicePickTarget — S20 sub-PR 2: a targeted triggered
+	// ability asks its controller to choose the target as it goes
+	// on the stack (CR 603.3d). PickTargetPlayers / PickTargetCards
+	// carry the legal set computed at trigger time; the chooser
+	// answers with `{target: {kind, id}}`, ResolvePickTarget
+	// validates it against the same TargetSpec, builds the item with
+	// the ref stamped on, and drains it onto the stack. The client
+	// renders this as the ordinary board-click targeting flow, not
+	// a modal.
+	PendingChoicePickTarget PendingChoiceKind = "pick_target"
 )
 
 // PendingChoice is one outstanding "someone needs to pick" entry
@@ -203,6 +214,20 @@ type PendingChoice struct {
 	// without a HasLegalTarget predicate. Added in S19 follow-up.
 	NoLegalTarget bool
 
+	// PickTargetPlayers / PickTargetCards are the legal-target set a
+	// PendingChoicePickTarget offers, computed when the trigger fired.
+	// Wire-serialised (as ID lists) so the client can highlight the
+	// same surfaces the cast picker does. Added in S20 sub-PR 2.
+	PickTargetPlayers []uuid.UUID
+	PickTargetCards   []uuid.UUID
+
+	// pickTargetResume is the server-only continuation for a
+	// PendingChoicePickTarget: the captured event / source / LKI,
+	// the Build closure, and the spec the pick is validated against
+	// (and stamped onto the item for the resolution re-check).
+	// Added in S20 sub-PR 2.
+	pickTargetResume *pickTargetFrame
+
 	// TriggerOrderIDs is the set of pending-trigger item IDs a
 	// PendingChoiceTriggerOrder entry asks the chooser to order.
 	// Wire-serialised (with label + source per ID) so the client
@@ -240,6 +265,16 @@ type payUnlessFrame struct {
 	onDecline func(g *Game) error
 }
 
+// pickTargetFrame is the continuation for a targeted trigger's
+// pick_target prompt. Added in S20 sub-PR 2.
+type pickTargetFrame struct {
+	ev     Event
+	source Card
+	lki    Characteristic
+	build  func(ev Event, source *Card, sourceLKI Characteristic, g *Game) *StackItem
+	spec   *TargetSpec
+}
+
 // triggerResumeFrame stashes the per-trigger continuation data the
 // harvester captured at OptionalPrompt-queue time. The Build closure
 // fires on `apply: true` against the value-copy source + LKI; on
@@ -249,6 +284,10 @@ type triggerResumeFrame struct {
 	source Card
 	lki    Characteristic
 	build  func(ev Event, source *Card, sourceLKI Characteristic, g *Game) *StackItem
+	// ability is the full declaration so a "yes" on a TARGETED
+	// optional trigger can continue into the pick_target step
+	// (S20 sub-PR 2) instead of building straight away.
+	ability TriggeredAbility
 }
 
 // DamageAssignmentFrame is the payload for a
@@ -1113,12 +1152,100 @@ func (g *Game) queueTriggerPromptLocked(
 		Reason:        question,
 		NoLegalTarget: noLegalTarget,
 		triggerResume: &triggerResumeFrame{
+			ev:      ev,
+			source:  source,
+			lki:     lki,
+			build:   ability.Build,
+			ability: ability,
+		},
+	})
+}
+
+// queuePickTargetLocked queues the CR 603.3d target choice for a
+// targeted trigger. The legal set is computed now (the caller
+// already confirmed it's non-empty) and frozen onto the prompt;
+// ResolvePickTarget re-validates the pick against the spec anyway,
+// since the board can change while the prompt is open. Caller must
+// hold g.mu. Added in S20 sub-PR 2.
+func (g *Game) queuePickTargetLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility) {
+	lt := g.legalTargetsLocked(source.Controller, t.Targets)
+	label := t.Targets.Label
+	if label == "" {
+		label = "Choose a target"
+	}
+	g.QueueChoiceForEffect(PendingChoice{
+		Kind:              PendingChoicePickTarget,
+		Chooser:           source.Controller,
+		Count:             1,
+		Source:            source.InstanceID,
+		Reason:            label,
+		PickTargetPlayers: lt.Players,
+		PickTargetCards:   lt.Cards,
+		pickTargetResume: &pickTargetFrame{
 			ev:     ev,
 			source: source,
 			lki:    lki,
-			build:  ability.Build,
+			build:  t.Build,
+			spec:   t.Targets,
 		},
 	})
+}
+
+// ResolvePickTarget processes the controller's target choice for a
+// PendingChoicePickTarget. The ref is validated against the spec
+// against the CURRENT board (ErrIllegalTarget if it no longer
+// qualifies — the chooser's client will re-render with the fresh
+// legal set), then Build runs, the ref is stamped onto the item
+// along with the spec for the resolution re-check, and the item
+// drains onto the stack.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+// Added in S20 sub-PR 2.
+func (g *Game) ResolvePickTarget(choiceID, chooserID uuid.UUID, target TargetRef) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	idx := -1
+	for i, c := range g.PendingChoices {
+		if c != nil && c.ID == choiceID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ErrPendingChoiceNotFound
+	}
+	choice := g.PendingChoices[idx]
+	if choice.Kind != PendingChoicePickTarget {
+		return ErrInvalidParam
+	}
+	if choice.Chooser != chooserID {
+		return ErrNotTheChooser
+	}
+	frame := choice.pickTargetResume
+	if frame == nil || frame.build == nil || frame.spec == nil {
+		g.dequeueChoiceLocked(idx)
+		return nil
+	}
+	if target.Kind != TargetPlayer && target.Kind != TargetCard {
+		return ErrInvalidParam
+	}
+	if !g.targetLegalLocked(chooserID, frame.spec, target) {
+		return ErrIllegalTarget
+	}
+	g.dequeueChoiceLocked(idx)
+	source := frame.source
+	item := frame.build(frame.ev, &source, frame.lki, g)
+	if item == nil {
+		return nil
+	}
+	item.Targets = []TargetRef{target}
+	item.targetSpec = frame.spec
+	g.queueHarvestedTriggerLocked(item)
+	g.runStateChecksLocked()
+	return nil
 }
 
 // ResolveTriggerPrompt processes the controller's yes/no answer for
@@ -1159,12 +1286,9 @@ func (g *Game) ResolveTriggerPrompt(choiceID, chooserID uuid.UUID, apply bool) e
 	if !apply || frame == nil || frame.build == nil {
 		return nil
 	}
-	source := frame.source
-	item := frame.build(frame.ev, &source, frame.lki, g)
-	if item == nil {
-		return nil
-	}
-	g.queueHarvestedTriggerLocked(item)
+	// S20: a targeted optional trigger continues into the target
+	// pick; an untargeted one builds straight away.
+	g.buildOrPickTriggerLocked(frame.ev, frame.source, frame.lki, frame.ability)
 	// The prompt is answered outside any priority-wrap, so nothing
 	// downstream would drain the queue until the next pass around
 	// the table — and an empty stack at that wrap would advance the

@@ -37,13 +37,19 @@
     aria-label={`Select target for ${state.card.name}`}
   >
     <span class="prompt">
-      Click {modeHint(state.mode)} to target
-      <strong>{state.card.name}</strong>
+      {#if state.choiceID}
+        <strong>{state.card.name}</strong> triggered — click {state.label || "a target"}
+      {:else}
+        Click {modeHint(state.mode)} to target
+        <strong>{state.card.name}</strong>
+      {/if}
       {#if count >= 0}
         <span class="count">· {count} legal</span>
       {/if}
     </span>
-    <button type="button" class="cancel" onclick={cancel} title="cancel (Esc)"> Cancel </button>
+    {#if !state.choiceID}
+      <button type="button" class="cancel" onclick={cancel} title="cancel (Esc)"> Cancel </button>
+    {/if}
   </div>
 {/if}
 
