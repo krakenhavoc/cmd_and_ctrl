@@ -392,6 +392,12 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		)
 		return ErrInvalidParam
 	}
+	// S20 sub-PR 3: X is a non-negative announce-time choice (CR
+	// 601.2b). The cost gate multiplies it into the generic demand;
+	// a negative would let a caster be refunded mana.
+	if params.XValue < 0 {
+		return ErrInvalidParam
+	}
 	// S20: structured targeting. Cards with a TargetSpec get their
 	// announce-time targets validated against it (CR 601.2c) —
 	// zone, count, and predicate. Cards without one keep the S13.1

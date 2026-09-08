@@ -59,6 +59,33 @@ func (c *Context) Source() uuid.UUID {
 	return c.Item.SourceCardID
 }
 
+// X returns the announce-time value of X for the current stack
+// item (0 when the spell has no X or none was announced). The cost
+// engine already charged X·generic at cast time; effects read it
+// here to scale damage / draw / life. Added in S20 sub-PR 3.
+func (c *Context) X() int {
+	if c.Item == nil || c.Item.XValue < 0 {
+		return 0
+	}
+	return c.Item.XValue
+}
+
+// Opponents returns the IDs of every seated, non-eliminated player
+// other than the current item's controller, in seat order. "Each
+// opponent" effects (Exsanguinate) iterate this. Added in S20
+// sub-PR 3.
+func (c *Context) Opponents() []uuid.UUID {
+	me := c.Controller()
+	var out []uuid.UUID
+	for _, p := range c.Game.Seats {
+		if p == nil || p.Eliminated || p.ID == me {
+			continue
+		}
+		out = append(out, p.ID)
+	}
+	return out
+}
+
 // Targets returns the announce-time target slots. Callers that
 // assume a specific cardinality should bounds-check — effects run
 // in sandbox-adjacent territory where the UI might send too few

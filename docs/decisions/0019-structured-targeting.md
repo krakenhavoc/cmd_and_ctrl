@@ -110,6 +110,9 @@ prompt in flight.
 
 - **Multi-target** (`Min`/`Max` > 1, "up to N", distribute) and
   **AllowSameTarget**.
-- **Modes and X** — `ModeSpec`, the mode picker, X live validation.
+- **Modes** — `ModeSpec` and the mode picker. (X shipped in sub-PR
+  3: an `{X}` card opens an X prompt whose live check is the S15
+  auto-tap preview at that X; the value rides `cast_spell` and
+  effects read `Context.X()`.)
 - **Hexproof / shroud / protection** as target-legality
   modifiers — the predicate hook is where they'll go.

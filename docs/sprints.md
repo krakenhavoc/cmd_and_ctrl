@@ -1708,8 +1708,9 @@ Mini sprint slotted after S18 started, to ship two pieces of long-promised clien
 - [x] **Sub-PR 1 — `s20-target-predicates`**: predicate library (`Creature`, `NonBlack`, `Noncreature`, `PowerLE(n)`, `OpponentControls`, `YouOwn`, …) + `And`/`Or`/`Not`; `game.TargetSpec` (zones, player/card predicates, Min/Max); `LegalTargetsFor`; `ErrIllegalTarget` at announce; `CardView.legal_targets` on the viewer's own hand; client picker highlights the legal set, "No legal target" greys the card; 13 `TargetMode` cards migrated + Doom Blade. [ADR 0019](decisions/0019-structured-targeting.md).
 - [x] **Sub-PR 2 — `s20-trigger-target-picker`**: targeted triggers choose on the board. `TriggeredAbility.Targets` → the harvester computes the legal set at trigger time (empty → trigger removed, CR 603.3d), asks "you may" first, then queues a `pick_target` prompt the controller answers by clicking the board (or a card in the zone browser). Chosen ref stamped on the item + re-checked at resolution. Reclamation Sage / Acidic Slime / Eternal Witness off the auto-picker.
 - [ ] Extended `TargetSpec` — multi-target (Min/Max > 1), AllowSameTarget
+- [x] **Sub-PR 3 — `s20-x-costs`**: X spells end to end. Clicking an `{X}` card opens an X prompt with live affordability from the auto-tap preview (pool + untapped sources) before targeting / cast; `x_value` rides the payload, the S15 gate charges it, negative X rejected. `Context.X()` / `Context.Opponents()` for effects. Blaze, Exsanguinate, Stroke of Genius.
 - [ ] `ModeSpec` for modal spells (Min/Max choose)
-- [ ] Cast dialog rewrite: filter target candidates by predicate; structured mode picker; X-cost live validation
+- [ ] Cast dialog rewrite: structured mode picker (targets + X now done piecemeal)
 - [x] Resolution-time re-check using same predicates (CR 608.2b) — sub-PR 1
 - [x] Catalog updates: `TargetSpec` on the S19 trigger cards (Reclamation Sage, Acidic Slime, Eternal Witness) — sub-PR 2
 

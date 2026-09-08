@@ -4,6 +4,7 @@ import { get } from "svelte/store";
 import {
   begin,
   cancel,
+  hasXCost,
   isLegalCardTarget,
   isLegalPlayerTarget,
   legalTargetCount,
@@ -37,6 +38,20 @@ describe("targeting store — S20 legal sets", () => {
     expect(legalTargetCount(t)).toBe(-1);
     begin(card(), "player");
     expect(isLegalPlayerTarget(get(targeting)!, "p1")).toBe(true);
+    cancel();
+  });
+});
+
+describe("hasXCost + xValue on the prompt — S20 sub-PR 3", () => {
+  it("detects {X} in the printed cost", () => {
+    expect(hasXCost(card({ mana_cost: "{X}{R}" }))).toBe(true);
+    expect(hasXCost(card({ mana_cost: "{2}{U}" }))).toBe(false);
+    expect(hasXCost(card({}))).toBe(false);
+  });
+
+  it("carries the announced X through the targeting prompt", () => {
+    begin(card({ mana_cost: "{X}{R}", legal_targets: { players: ["p1"] } }), "any", 4);
+    expect(get(targeting)?.xValue).toBe(4);
     cancel();
   });
 });

@@ -47,6 +47,9 @@ export interface TargetingState {
   // cast_spell, and the prompt can't be cancelled — the trigger
   // needs a target.
   choiceID?: string;
+  // S20 sub-PR 3: the announced X for an {X} spell, chosen in the X
+  // prompt before targeting; rides the cast_spell payload.
+  xValue?: number;
   // Human-readable clause for the banner ("target artifact or
   // enchantment"); the server's TargetSpec label.
   label?: string;
@@ -57,12 +60,18 @@ export const targeting: Writable<TargetingState | null> = writable(null);
 // begin enters a targeting prompt. Overwrites any existing prompt
 // — the last cast wins. The caller has already verified the
 // card's target_mode is non-empty.
-export function begin(card: CardView, mode: TargetingMode): void {
+export function begin(card: CardView, mode: TargetingMode, xValue?: number): void {
   const lt = card.legal_targets;
   const legal = lt
     ? { players: new Set(lt.players ?? []), cards: new Set(lt.cards ?? []) }
     : undefined;
-  targeting.set({ card, mode, legal });
+  targeting.set({ card, mode, legal, xValue });
+}
+
+// hasXCost reports whether a card's printed cost includes {X} — the
+// cue to open the X prompt before casting.
+export function hasXCost(card: CardView): boolean {
+  return (card.mana_cost ?? "").includes("{X}");
 }
 
 // isLegalCardTarget / isLegalPlayerTarget answer "can I click this
