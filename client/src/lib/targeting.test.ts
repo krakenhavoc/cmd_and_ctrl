@@ -3,6 +3,7 @@ import { get } from "svelte/store";
 
 import {
   begin,
+  beginForAbility,
   beginForMode,
   cancel,
   hasXCost,
@@ -13,7 +14,7 @@ import {
   legalTargetCount,
   targeting,
 } from "./targeting";
-import type { CardView } from "./protocol";
+import type { ActivatedAbilityView, CardView } from "./protocol";
 
 function card(extras: Partial<CardView> = {}): CardView {
   return { instance_id: "spell", name: "Spell", owner: "p0", controller: "p0", ...extras };
@@ -104,5 +105,35 @@ describe("modal targeting", () => {
     expect(isLegalPlayerTarget(t, "p0")).toBe(false);
     expect(isLegalCardTarget(t, "c-anything")).toBe(false);
     cancel();
+  });
+});
+
+// --- S21 sub-PR 2: activated abilities ----------------------------
+
+describe("activated-ability targeting", () => {
+  const bombardment = {
+    instance_id: "c-bomb",
+    name: "Goblin Bombardment",
+  } as unknown as CardView;
+  const ability = {
+    index: 0,
+    label: "Sacrifice a creature: deal 1 damage to any target",
+    sacrifice_label: "a creature",
+    sacrifice_options: { cards: ["c-fodder"] },
+    target_mode: "any",
+    legal_targets: { players: ["p1"], cards: ["c-bear"] },
+  } as unknown as ActivatedAbilityView;
+
+  it("carries the ability index and the paid sacrifice through the prompt", () => {
+    beginForAbility(bombardment, ability, ["c-fodder"]);
+    const t = get(targeting)!;
+    expect(t.mode).toBe("any");
+    expect(t.ability).toEqual({ index: 0, sacrificeIDs: ["c-fodder"] });
+    // The legal set comes from the ability, not the source card.
+    expect(isLegalPlayerTarget(t, "p1")).toBe(true);
+    expect(isLegalCardTarget(t, "c-bear")).toBe(true);
+    expect(isLegalCardTarget(t, "c-fodder")).toBe(false);
+    cancel();
+    expect(get(targeting)).toBeNull();
   });
 });

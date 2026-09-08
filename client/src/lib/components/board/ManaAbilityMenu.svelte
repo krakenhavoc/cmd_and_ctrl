@@ -11,19 +11,56 @@
   // layout concerns out of this component lets the battlefield
   // figure out overflow / flip-to-top-if-near-edge itself.
 
-  import type { ManaAbilityView } from "../../protocol";
+  import type { ActivatedAbilityView, ManaAbilityView } from "../../protocol";
 
   interface Props {
     abilities: ManaAbilityView[];
     tapped: boolean;
     onActivate: (abilityIndex: number) => void;
+    // S21 sub-PR 2: CR 602 activated abilities, listed below the
+    // mana abilities in the same popover. Costs that need a further
+    // choice (sacrifice, target) are collected by the parent after
+    // the click.
+    activated?: ActivatedAbilityView[];
+    onActivateAbility?: (abilityIndex: number) => void;
+    summoningSick?: boolean;
     onClose?: () => void;
   }
 
-  const { abilities, tapped, onActivate, onClose }: Props = $props();
+  const {
+    abilities,
+    tapped,
+    onActivate,
+    activated = [],
+    onActivateAbility,
+    summoningSick = false,
+    onClose,
+  }: Props = $props();
 
   function activate(index: number): void {
     onActivate(index);
+    onClose?.();
+  }
+
+  // An activated ability is unavailable when its tap cost can't be
+  // paid, or when a sacrifice cost has nothing to pay it with. The
+  // server re-checks everything; this is just the affordance.
+  function abilityBlocked(a: ActivatedAbilityView): string {
+    if (a.tap_cost && tapped) return "already tapped";
+    if (a.tap_cost && summoningSick) return "summoning sickness";
+    if (a.sacrifice_options) {
+      const n = a.sacrifice_options.cards?.length ?? 0;
+      if (n === 0) return `nothing to sacrifice (${a.sacrifice_label ?? "a permanent"})`;
+    }
+    if (a.legal_targets) {
+      const n = (a.legal_targets.players?.length ?? 0) + (a.legal_targets.cards?.length ?? 0);
+      if (n === 0) return "no legal target";
+    }
+    return "";
+  }
+
+  function activateAbility(index: number): void {
+    onActivateAbility?.(index);
     onClose?.();
   }
 
@@ -37,7 +74,7 @@
 
 <svelte:window onkeydown={onKey} />
 
-<div class="mana-menu" role="menu" aria-label="mana abilities">
+<div class="mana-menu" role="menu" aria-label="abilities">
   {#each abilities as a (a.index)}
     {@const disabled = !!a.tap_cost && tapped}
     <button
@@ -57,9 +94,39 @@
       {/if}
     </button>
   {/each}
+  {#if activated.length > 0}
+    {#if abilities.length > 0}
+      <div class="divider" role="separator"></div>
+    {/if}
+    {#each activated as a (a.index)}
+      {@const blocked = abilityBlocked(a)}
+      <button
+        type="button"
+        class="menu-item"
+        role="menuitem"
+        disabled={!!blocked}
+        title={blocked || a.label}
+        onclick={(ev) => {
+          ev.stopPropagation();
+          if (!blocked) activateAbility(a.index);
+        }}
+      >
+        <span class="label">{a.label || "activate"}</span>
+        {#if a.tap_cost}
+          <span class="cost" aria-label="tap cost">↻</span>
+        {/if}
+      </button>
+    {/each}
+  {/if}
 </div>
 
 <style>
+  .divider {
+    height: 1px;
+    margin: 4px 2px;
+    background: rgba(200, 168, 106, 0.35);
+  }
+
   .mana-menu {
     display: flex;
     flex-direction: column;

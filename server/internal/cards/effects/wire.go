@@ -41,6 +41,24 @@ func init() {
 		}
 		return nil
 	}
+	// S21 sub-PR 2: activated abilities. Nil for cards with none.
+	game.CatalogActivatedAbilities = func(oracleID string) []game.ActivatedAbilityShape {
+		spec, ok := Lookup(oracleID)
+		if !ok || len(spec.Activated) == 0 {
+			return nil
+		}
+		out := make([]game.ActivatedAbilityShape, len(spec.Activated))
+		for i, a := range spec.Activated {
+			out[i] = game.ActivatedAbilityShape{
+				Label:        a.Label,
+				Cost:         a.Cost,
+				Targets:      a.Targets,
+				SorcerySpeed: a.SorcerySpeed,
+				Effect:       a.Effect,
+			}
+		}
+		return out
+	}
 	// S20 sub-PR 4: modal spells. Nil for non-modal cards.
 	game.CatalogModeSpec = func(oracleID string) *game.ModeSpec {
 		if spec, ok := Lookup(oracleID); ok {

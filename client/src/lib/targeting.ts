@@ -1,5 +1,5 @@
 import { writable, type Writable } from "svelte/store";
-import type { CardView, ModeOptionView, PendingChoiceView } from "./protocol";
+import type { ActivatedAbilityView, CardView, ModeOptionView, PendingChoiceView } from "./protocol";
 
 // targeting.ts is the shared-store plumbing for the S14 "cast a
 // catalog card, pick a target" flow. When a player clicks a hand
@@ -50,6 +50,10 @@ export interface TargetingState {
   // S20 sub-PR 3: the announced X for an {X} spell, chosen in the X
   // prompt before targeting; rides the cast_spell payload.
   xValue?: number;
+  // S21 sub-PR 2: set when the prompt collects targets for an
+  // ACTIVATED ability rather than a cast. The confirm fires
+  // activate_ability with these announce-time choices.
+  ability?: { index: number; sacrificeIDs: string[] };
   // Human-readable clause for the banner ("target artifact or
   // enchantment"); the server's TargetSpec label.
   label?: string;
@@ -108,6 +112,23 @@ export function modeOptionCastable(option: ModeOptionView): boolean {
 // cue to open the X prompt before casting.
 export function hasXCost(card: CardView): boolean {
   return (card.mana_cost ?? "").includes("{X}");
+}
+
+// beginForAbility enters a targeting prompt for an activated
+// ability's target clause. `card` is the source permanent; the
+// legal set comes from the ability, not the card.
+export function beginForAbility(
+  card: CardView,
+  ability: ActivatedAbilityView,
+  sacrificeIDs: string[],
+): void {
+  const lt = ability.legal_targets;
+  targeting.set({
+    card,
+    mode: (ability.target_mode || "any") as TargetingMode,
+    legal: lt ? { players: new Set(lt.players ?? []), cards: new Set(lt.cards ?? []) } : undefined,
+    ability: { index: ability.index, sacrificeIDs },
+  });
 }
 
 // isLegalCardTarget / isLegalPlayerTarget answer "can I click this

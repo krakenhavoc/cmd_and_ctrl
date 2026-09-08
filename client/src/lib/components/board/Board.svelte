@@ -18,7 +18,14 @@
   // zone is filtered by owner so each panel's EXILE pile shows only
   // the cards that player owns.
 
-  import type { ActionPayload, ActionType, CardView, GameView, ZoneView } from "../../protocol";
+  import type {
+    ActionPayload,
+    ActionType,
+    ActivatedAbilityView,
+    CardView,
+    GameView,
+    ZoneView,
+  } from "../../protocol";
   import { seatPlacements, type SeatPosition } from "../../cardTypes";
   import PlayerPanel from "./PlayerPanel.svelte";
   import HoverZoomOverlay from "./HoverZoomOverlay.svelte";
@@ -35,6 +42,7 @@
     begin as beginTargeting,
     cancel as cancelTargeting,
     beginChoice as beginTargetingChoice,
+    beginForAbility as beginTargetingForAbility,
     beginForMode as beginTargetingForMode,
     hasXCost,
     isModal,
@@ -43,6 +51,7 @@
     type TargetingMode,
   } from "../../targeting";
   import XCostModal from "./XCostModal.svelte";
+  import SacrificeCostModal from "./SacrificeCostModal.svelte";
   import ModePickerModal from "./ModePickerModal.svelte";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
@@ -228,11 +237,84 @@
       targeting.set(null);
       return;
     }
+    // S21 sub-PR 2: the prompt belongs to an activated ability, not
+    // a cast — its cost was already paid at announce.
+    if (state.ability) {
+      sendAction(
+        "activate_ability",
+        {
+          source_card_id: state.card.instance_id,
+          ability_index: state.ability.index,
+          sacrifice_ids: state.ability.sacrificeIDs,
+          targets: [ref],
+        },
+        viewerID ?? undefined,
+      );
+      targeting.set(null);
+      return;
+    }
     const params: Record<string, unknown> = { instance_id: state.card.instance_id, targets: [ref] };
     if (state.xValue !== undefined) params.x_value = state.xValue;
     if (state.modes !== undefined) params.modes = state.modes;
     sendAction("cast_spell", params, viewerID ?? undefined);
     cancelTargeting();
+  }
+
+  // --- S21 sub-PR 2: activated abilities ------------------------
+  //
+  // Order of operations mirrors CR 601.2 / 602.2: choose the mode
+  // (n/a today), pay the costs, then choose targets. So a sacrifice
+  // cost is picked BEFORE targeting, and both are sent together in
+  // one activate_ability — the server pays and announces atomically.
+  let sacrificePrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+  } | null>(null);
+
+  const sacrificeOptions = $derived.by(() => {
+    const p = sacrificePrompt;
+    if (!p) return [];
+    const ids = new Set(p.ability.sacrifice_options?.cards ?? []);
+    return view.battlefield.cards.filter((c) => ids.has(c.instance_id));
+  });
+
+  function handleActivateAbility(card: CardView, index: number): void {
+    const ability = (card.activated_abilities ?? []).find((a) => a.index === index);
+    if (!ability) return;
+    if (ability.sacrifice_options) {
+      sacrificePrompt = { card, ability };
+      return;
+    }
+    continueActivation(card, ability, []);
+  }
+
+  function confirmSacrifice(instanceID: string): void {
+    const p = sacrificePrompt;
+    sacrificePrompt = null;
+    if (!p) return;
+    continueActivation(p.card, p.ability, [instanceID]);
+  }
+
+  // continueActivation is the post-cost half: enter targeting for an
+  // ability that targets, or fire straight away.
+  function continueActivation(
+    card: CardView,
+    ability: ActivatedAbilityView,
+    sacrificeIDs: string[],
+  ): void {
+    if (ability.legal_targets) {
+      beginTargetingForAbility(card, ability, sacrificeIDs);
+      return;
+    }
+    sendAction(
+      "activate_ability",
+      {
+        source_card_id: card.instance_id,
+        ability_index: ability.index,
+        sacrifice_ids: sacrificeIDs,
+      },
+      viewerID ?? undefined,
+    );
   }
 
   // S20 sub-PR 2: a pick_target pending choice addressed to the
@@ -346,6 +428,7 @@
             {autopassEnabled}
             {onPassPriority}
             {onToggleAutopass}
+            onActivateAbility={handleActivateAbility}
           />
         </div>
       {/if}
@@ -400,6 +483,13 @@
     onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
   />
   <VotingPanel {view} {viewerID} {sendAction} />
+  <SacrificeCostModal
+    source={sacrificePrompt?.card ?? null}
+    label={sacrificePrompt?.ability.sacrifice_label ?? "a permanent"}
+    options={sacrificeOptions}
+    onConfirm={confirmSacrifice}
+    onCancel={() => (sacrificePrompt = null)}
+  />
   <XCostModal
     gameID={view.id}
     card={xPromptCard}

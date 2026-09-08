@@ -144,3 +144,15 @@ func TreasureToken() game.Card {
 		}},
 	}
 }
+
+// RedGoblinToken returns a template for the 1/1 red Goblin token
+// Krenko, Mob Boss makes. Added in S21 sub-PR 2.
+func RedGoblinToken() game.Card {
+	return game.Card{
+		Name:      "Goblin",
+		TypeLine:  "Token Creature — Goblin",
+		Power:     1,
+		Toughness: 1,
+		Colors:    []string{"R"},
+	}
+}

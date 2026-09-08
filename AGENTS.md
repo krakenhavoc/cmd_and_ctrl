@@ -618,6 +618,30 @@ func init() {
 }
 ```
 
+**Adding an activated ability (S21+):** put it in
+`Spec.Activated`, one entry per printed ability, with the cost built
+from the constructors in
+[activated.go](server/internal/cards/effects/activated.go):
+
+```go
+Activated: []ActivatedAbility{{
+    Label:   "Sacrifice a creature: deal 1 damage to any target",
+    Cost:    SacrificeACreature(),          // or TapCost(), SacrificeThis(),
+    Targets: TargetAny(),                   // ManaCost("{1}{B}"), PayLife(2),
+    Effect: func(g *game.Game, item *game.StackItem) error {
+        // Same contract as a triggered ability's item: never
+        // capture a *Card; read the source via NewContext(g, item).
+    },
+}},
+```
+
+Compose multi-part costs with `Plus(ManaCost("{2}"), TapCost())`.
+The engine validates every component before paying any of them, and
+pays at announce — so a sacrifice cost's dies-triggers land on the
+stack above the ability and resolve first. Mana abilities do NOT go
+here (they skip the stack, CR 605.3a); they stay in `ManaAbilities`.
+See [ADR 0020](docs/decisions/0020-activated-abilities.md).
+
 **Event picker:**
 
 | Trigger text | `Watches` | `AppliesTo` |
