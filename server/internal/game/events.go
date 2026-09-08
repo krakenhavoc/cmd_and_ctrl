@@ -128,6 +128,23 @@ const (
 	// S19 sub-PR 4.
 	EventLTB EventKind = "ltb"
 
+	// EventSacrifice — a permanent was sacrificed (CR 701.17):
+	// its controller moved it to the graveyard as a cost or as
+	// part of an effect's instruction. Emitted immediately BEFORE
+	// the zone move, so a listener sees the permanent still on the
+	// battlefield; the ordinary EventLTB (NewZone == ZoneGraveyard)
+	// follows, which means a sacrificed creature fires dies-triggers
+	// too. Actor is the sacrificing player (the controller), CardID
+	// the permanent.
+	//
+	// Sacrifice is NOT destruction: it ignores indestructible and
+	// regeneration, and "if a creature would die" replacements that
+	// key on destruction don't see it. Aristocrats payoffs ("whenever
+	// you sacrifice a permanent") watch this kind; "whenever a
+	// creature dies" payoffs watch EventLTB as before. Added in S21
+	// sub-PR 1.
+	EventSacrifice EventKind = "sacrifice"
+
 	// EventTrigger — a triggered ability was announced onto
 	// PendingTriggers. Legacy (manual) announce goes through
 	// AnnounceTrigger in S13.1; S19's auto-announce will flow

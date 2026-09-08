@@ -119,6 +119,19 @@ func (d DestroyTarget) Apply(ctx *Context) error {
 	return ctx.Game.DestroyPermanentForEffect(d.Target)
 }
 
+// SacrificePermanent sacrifices a battlefield permanent on behalf
+// of its controller (CR 701.17). Distinct from DestroyTarget:
+// sacrifice ignores indestructible / regeneration and fires
+// EventSacrifice as well as the ordinary dies-trigger, which is
+// what aristocrats payoffs watch. Added in S21 sub-PR 1.
+type SacrificePermanent struct {
+	Target uuid.UUID
+}
+
+func (s SacrificePermanent) Apply(ctx *Context) error {
+	return ctx.Game.SacrificePermanentForEffect(s.Target)
+}
+
 // ExileTarget moves a card from whichever zone it's in to the
 // shared exile zone. Works for battlefield permanents and hand
 // / graveyard cards alike.

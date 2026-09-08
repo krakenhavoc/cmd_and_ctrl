@@ -172,6 +172,12 @@ func cloneZone(z *Zone) *Zone {
 
 func cloneCard(c Card) Card {
 	out := c
+	if len(c.Keywords) > 0 {
+		out.Keywords = append([]string(nil), c.Keywords...)
+	}
+	if len(c.ManaAbilities) > 0 {
+		out.ManaAbilities = append([]ManaAbilityShape(nil), c.ManaAbilities...)
+	}
 	if len(c.Colors) > 0 {
 		out.Colors = append([]string(nil), c.Colors...)
 	}
