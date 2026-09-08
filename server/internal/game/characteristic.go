@@ -72,6 +72,9 @@ func (c Card) printedCharacteristic() Characteristic {
 			abilities = append(abilities, kws...)
 		}
 	}
+	// S21 sub-PR 1: tokens carry their keywords on the card object —
+	// there's no oracle ID for the catalog hook to key on.
+	abilities = append(abilities, c.Keywords...)
 	return Characteristic{
 		Power:      c.Power,
 		Toughness:  c.Toughness,

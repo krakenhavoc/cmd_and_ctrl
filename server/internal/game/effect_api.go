@@ -295,6 +295,23 @@ func (g *Game) DestroyPermanentForEffect(cardID uuid.UUID) error {
 	return g.routeBattlefieldCardToOwnerGraveyardLocked(cardID)
 }
 
+// SacrificePermanentForEffect sacrifices a battlefield permanent on
+// behalf of its controller (CR 701.17): EventSacrifice fires while
+// the card is still on the battlefield, then it takes the ordinary
+// route to its owner's graveyard (emitting ZoneMove + LTB, so
+// dies-triggers see it and the CR 903.9 commander-zone replacement
+// still gets its say).
+//
+// Sacrifice is not destruction — no indestructible / regeneration
+// check applies, which is why this doesn't reuse the destroy path's
+// naming. A card that isn't on the battlefield returns
+// ErrCardNotFound and emits nothing.
+//
+// Caller must hold g.mu. Added in S21 sub-PR 1.
+func (g *Game) SacrificePermanentForEffect(cardID uuid.UUID) error {
+	return g.sacrificePermanentLocked(cardID)
+}
+
 // ExileCardForEffect moves a card from whatever zone it's in to
 // the shared exile zone. The source zone is found by scanning; if
 // the card is already in exile, the call is a no-op.

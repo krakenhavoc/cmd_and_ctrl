@@ -1724,9 +1724,10 @@ Mini sprint slotted after S18 started, to ship two pieces of long-promised clien
 
 **Phase:** 7 · **Goal:** an aristocrats Commander deck plays end-to-end.
 
-- [ ] Token catalog (Treasure, Food, Clue, Blood, Map, Powerstone, generic creatures)
-- [ ] `SacrificePermanent`, `Proliferate`, `CreateTokenAdvanced` primitives
-- [ ] Sacrifice as a cost component
+- [x] **Sub-PR 1 — `s21-sacrifice`**: sacrifice as an engine operation (CR 701.17). `EventSacrifice` fires while the permanent is still on the battlefield, then it takes the ordinary route to the graveyard, so dies-triggers and the CR 903.9 commander replacement keep working; not destruction, so indestructible / regeneration never apply. `SacrificePermanentForEffect` + the `SacrificePermanent` primitive + a `sacrifice_permanent` action. Sacrifice-cost mana abilities are live, closing the S19 Treasure deferral. Tokens carry their own rules: `Card.Keywords` / `Card.ManaAbilities` (a token has no oracle ID for the catalog hooks), so flying tokens fly, Wurmcoil makes one deathtouch and one lifelink Wurm as printed, and Treasure / Eldrazi Spawn crack for mana through the existing right-click menu with no client change.
+- [ ] Token catalog (Food, Clue, Blood, Map, Powerstone, generic creatures)
+- [ ] `Proliferate`, `CreateTokenAdvanced` primitives
+- [ ] Sacrifice as an activated-ability cost (`Spec.Activated` — the missing fourth ability type; sac outlets need it)
 - [ ] ~40 cards: token producers, sacrifice outlets, aristocrats payoffs, proliferate cards
 - [ ] Theme-deck smoke test (Korvold-style aristocrats deck plays 3 turns)
 

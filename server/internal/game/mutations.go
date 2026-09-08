@@ -2476,19 +2476,33 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int) e
 		return ErrInvalidParam
 	}
 	ab := abilities[abilityIdx]
-	// Pay costs. Tap: the card must be untapped; we flip it, emit the
-	// tap event. Sacrifice: not exercised by S15 catalog; rejected
-	// here as unsupported so a future Lotus-Petal-style spec fails
-	// loudly rather than silently producing mana without a cost.
-	if ab.SacrificeCost {
-		return ErrInvalidParam
+	// Pay costs, tap before sacrifice (CR 601.2h — costs are paid
+	// together, but the tap has to happen while the permanent is
+	// still on the battlefield, and a tapped permanent can't pay a
+	// {T} cost). Both are checked before either is paid so a
+	// half-paid cost can't strand the permanent.
+	if ab.TapCost && card.Tapped {
+		return ErrAlreadyTapped
 	}
 	if ab.TapCost {
-		if card.Tapped {
-			return ErrAlreadyTapped
-		}
 		card.Tapped = true
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
+	}
+	// S21 sub-PR 1: sacrifice costs are real now (Treasure, Eldrazi
+	// Spawn, Lotus Petal). The mana still lands in the pool below —
+	// CR 605.3a: a mana ability resolves immediately, without the
+	// stack, so the sacrifice and the mana are one atomic step.
+	if ab.SacrificeCost {
+		if err := g.sacrificePermanentLocked(cardID); err != nil {
+			return err
+		}
+		// The card left the battlefield; `card` now dangles. Nothing
+		// below touches it (the produced-mana path reads `ab`).
+		card = nil
+		// The sacrifice can queue dies- / sacrifice-triggers (Blood
+		// Artist cracking a Treasure). Drain them on the way out, so
+		// the mana is already in the pool when they resolve.
+		defer g.runStateChecksLocked()
 	}
 	g.EmitEvent(Event{
 		Kind:   EventManaAbilityActivated,
@@ -2549,6 +2563,11 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int) e
 // incoming ability index. Caller must hold g.mu (the fallback path
 // reads the card's TypeLine, which is stable under lock).
 func ManaAbilitiesForCard(c Card) []ManaAbilityShape {
+	// S21 sub-PR 1: intrinsic abilities win — a token has no oracle
+	// ID for the catalog to key on.
+	if len(c.ManaAbilities) > 0 {
+		return c.ManaAbilities
+	}
 	if CatalogManaAbilities != nil {
 		if list := CatalogManaAbilities(c.OracleID); len(list) > 0 {
 			return list

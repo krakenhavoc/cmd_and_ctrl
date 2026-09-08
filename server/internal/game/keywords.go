@@ -34,8 +34,9 @@ package game
 // On-battlefield: reads c.Effective().Abilities, so keywords granted
 // by static abilities (Lord of Atlantis's islandwalk on other
 // Merfolk) are included alongside the card's own printed keywords.
-// Off-battlefield: falls back to CatalogPrintedKeywords(c.OracleID),
-// which returns the `Spec.PrintedKeywords` slot. Granted keywords
+// Off-battlefield: falls back to the card's own `Keywords` (token
+// templates) and then CatalogPrintedKeywords(c.OracleID), which
+// returns the `Spec.PrintedKeywords` slot. Granted keywords
 // don't apply off the battlefield (CR 113.6 — continuous effects
 // from static abilities only apply while the source permanent is on
 // the battlefield), so the fallback is correct.
@@ -60,8 +61,16 @@ func HasKeyword(c *Card, kw string) bool {
 		}
 		return false
 	}
-	// Off-battlefield path: catalog printed keywords. Lookup-miss
-	// (non-catalog card) returns nil → no keywords → false.
+	// Off-battlefield path: the card's own printed keywords first
+	// (S21 sub-PR 1 — token templates carry them on the Card, since
+	// a token has no oracle ID for the catalog to key on), then the
+	// catalog. Lookup-miss (non-catalog card) returns nil → no
+	// keywords → false.
+	for _, a := range c.Keywords {
+		if a == kw {
+			return true
+		}
+	}
 	if CatalogPrintedKeywords == nil || c.OracleID == "" {
 		return false
 	}

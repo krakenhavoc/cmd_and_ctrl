@@ -88,6 +88,12 @@ const (
 	// 0-based offset into the catalog's Spec.ManaAbilities (or 0 for
 	// the synthetic basic-land ability derived from TypeLine).
 	TypeActivateManaAbility Type = "activate_mana_ability"
+	// S21 sub-PR 1 — sacrifice a permanent you control (CR 701.17).
+	// Params carry `{instance_id}`. Distinct from a manual
+	// move_card to the graveyard: it emits EventSacrifice, so
+	// "whenever you sacrifice" payoffs fire. Only the permanent's
+	// controller may sacrifice it.
+	TypeSacrificePermanent Type = "sacrifice_permanent"
 )
 
 // ErrUnknownType is returned when Dispatch receives an action type it
@@ -983,6 +989,22 @@ func Dispatch(g *game.Game, a Action) error {
 			return err
 		}
 		return g.SetMaxHandSize(a.Player, p.Value)
+
+	case TypeSacrificePermanent:
+		var p struct {
+			InstanceID string `json:"instance_id"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		instanceID, err := uuid.Parse(p.InstanceID)
+		if err != nil {
+			return fmt.Errorf("sacrifice_permanent instance_id: %w", err)
+		}
+		if err := requireCardController(g, a.Caller, instanceID); err != nil {
+			return err
+		}
+		return g.SacrificePermanent(a.Player, instanceID)
 
 	case TypeMarkDamage:
 		var p struct {

@@ -78,6 +78,25 @@ type Card struct {
 	// targeting predicates read this. Added in S20 sub-PR 1.
 	Colors []string
 
+	// Keywords are printed keyword abilities carried on the card
+	// object itself rather than looked up in the catalog by oracle
+	// ID. Tokens are the reason this exists: a token has no oracle
+	// ID, so CatalogPrintedKeywords can never find it, and before
+	// S21 every token's flying / deathtouch was cosmetic. The token
+	// template declares them here and printedCharacteristic folds
+	// them in, so the layer engine treats them like any other
+	// printed keyword. Empty for ordinary cards, which keep using
+	// the catalog. Added in S21 sub-PR 1.
+	Keywords []string
+
+	// ManaAbilities are mana abilities carried on the card object,
+	// for the same reason as Keywords: a Treasure token's "{T},
+	// Sacrifice this artifact: Add one mana of any color" can't come
+	// from a catalog lookup. ManaAbilitiesForCard prefers these over
+	// the catalog and the synthetic basic-land shape. Added in S21
+	// sub-PR 1.
+	ManaAbilities []ManaAbilityShape
+
 	// Owner is the player who brought this card to the game. Ownership
 	// is fixed at deck-build time and never changes.
 	Owner uuid.UUID
