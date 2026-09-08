@@ -155,6 +155,14 @@ type PendingChoiceView struct {
 	PayCost string `json:"pay_cost,omitempty"`
 }
 
+// LegalTargetsView is the wire shape of game.LegalTargets: player
+// UUID strings and card instance-ID strings the spell's target slot
+// accepts right now. Added in S20 sub-PR 1.
+type LegalTargetsView struct {
+	Players []string `json:"players,omitempty"`
+	Cards   []string `json:"cards,omitempty"`
+}
+
 // DamageAssignmentView is the wire shape of the CR 510.1c
 // multi-blocker damage-assignment prompt. The attacker's
 // controller orders the blockers and assigns damage across them
@@ -382,6 +390,11 @@ type CardView struct {
 	// the wire — the only consumer is the in-process per-viewer
 	// projection. Added in S13.5.
 	knowers map[string]bool
+
+	// oracleID is the card's catalog key, kept off the wire (the
+	// client keys art on scryfall_id) so the post-projection
+	// legal-target stamp can look the TargetSpec up. Added in S20.
+	oracleID string
 	// BattleX, BattleY are the normalised battlefield position in
 	// [0, 1]. Emitted only for cards on the battlefield (other zones
 	// clear them to zero on exit); clients should ignore these fields
@@ -414,6 +427,16 @@ type CardView struct {
 	// not a catalog card, or a catalog card with no targeting
 	// prompt — e.g. Pyroclasm, Wrath of God). Added in S14 sub-PR 4.
 	TargetMode string `json:"target_mode,omitempty"`
+	// LegalTargets is the S20 structured-targeting answer for a card
+	// its controller could cast right now: the players and card IDs
+	// the card's TargetSpec accepts against the current board. Only
+	// present on cards in the viewer's own hand / command zone (an
+	// opponent's hand card never carries it). Absent for cards
+	// without a TargetSpec — those keep the S13.1 free-form picker
+	// keyed off target_mode alone. An empty-but-present entry means
+	// "no legal target right now", which the client treats as
+	// uncastable. Added in S20 sub-PR 1.
+	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
 	// ManaCost is the printed casting cost as Scryfall returns it —
 	// "{1}{R}", "{W/U}", "{X}{B}{B}", etc. Empty for lands and for
 	// placeholder / demo-seed cards. Rendered by the client as a
@@ -540,8 +563,41 @@ func ViewOfGame(g *game.Game) GameView {
 			DiscardPending:    viewOfDiscardPending(g.DiscardPending),
 			PendingChoices:    viewOfPendingChoices(g),
 		}
+		stampLegalTargets(g, view.Seats)
 	})
 	return view
+}
+
+// stampLegalTargets fills CardView.LegalTargets for every hand and
+// command-zone card that has a TargetSpec, from its owner's point
+// of view. Runs under the read lock ViewOfGame already holds; the
+// per-viewer filter strips the field from opponents' hands.
+func stampLegalTargets(g *game.Game, seats []PlayerView) {
+	for si := range seats {
+		seat := &seats[si]
+		caster, err := uuid.Parse(seat.ID)
+		if err != nil {
+			continue
+		}
+		for _, zone := range []*ZoneView{&seat.Hand, &seat.Command} {
+			for ci := range zone.Cards {
+				c := &zone.Cards[ci]
+				spec := game.TargetSpecFor(c.oracleID)
+				if spec == nil {
+					continue
+				}
+				lt := g.LegalTargetsForEffect(caster, spec)
+				view := &LegalTargetsView{}
+				for _, id := range lt.Players {
+					view.Players = append(view.Players, id.String())
+				}
+				for _, id := range lt.Cards {
+					view.Cards = append(view.Cards, id.String())
+				}
+				c.LegalTargets = view
+			}
+		}
+	}
 }
 
 // viewOfPendingChoices materialises the PendingChoices queue,
@@ -1091,6 +1147,9 @@ func keepKnownInHandZone(z ZoneView) ZoneView {
 	}
 	for _, c := range z.Cards {
 		if c.KnownByYou {
+			// S20: legal targets are computed from the OWNER's point
+			// of view and only meaningful to them.
+			c.LegalTargets = nil
 			out.Cards = append(out.Cards, c)
 		}
 	}
@@ -1146,6 +1205,7 @@ func viewOfCard(c game.Card) CardView {
 		FaceDown:      c.FaceDown,
 		Auto:          game.IsAutoCard(c.OracleID),
 		TargetMode:    game.TargetModeFor(c.OracleID),
+		oracleID:      c.OracleID,
 		ManaCost:      c.ManaCost,
 		ManaAbilities: viewOfManaAbilities(c),
 		Abilities:     eff.Abilities,

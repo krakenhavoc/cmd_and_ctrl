@@ -8,9 +8,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // themselves or punish an opponent's hand.
 func init() {
 	Register(Spec{
-		OracleID:   "c6207f6a-a624-4754-88f5-dbe700c841ff",
-		Name:       "Sign in Blood",
-		TargetMode: "player",
+		OracleID: "c6207f6a-a624-4754-88f5-dbe700c841ff",
+		Name:     "Sign in Blood",
+		Targets:  TargetPlayer("target player"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 				return nil

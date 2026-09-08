@@ -34,6 +34,8 @@
     targeting,
     begin as beginTargeting,
     cancel as cancelTargeting,
+    isLegalCardTarget,
+    isLegalPlayerTarget,
     type TargetingMode,
   } from "../../targeting";
 
@@ -120,6 +122,7 @@
       mode === "any" ||
       mode === "player" ||
       mode === "creature" ||
+      mode === "permanent" ||
       mode === "stack_spell" ||
       mode === "card_in_graveyard"
     ) {
@@ -152,6 +155,8 @@
   }
 
   function handleTargetPlayer(targetPlayerID: string): void {
+    const state = $targeting;
+    if (!state || !isLegalPlayerTarget(state, targetPlayerID)) return;
     completeTargetedCast("player", targetPlayerID);
   }
 
@@ -162,26 +167,12 @@
   function handleTargetCard(card: CardView): boolean {
     const state = $targeting;
     if (!state) return false;
-    const mode = state.mode;
-    // For "any" / "creature" modes, the target must be on the
-    // battlefield. The card view doesn't carry its zone, but
-    // battlefield cards are the only ones with controller + tap
-    // state; heuristic: card.controller is set and the card is a
-    // creature (type-line check) or any permanent (mode "any").
-    // Simpler: trust the caller to only route battlefield cards.
-    if (mode === "creature" || mode === "any") {
-      completeTargetedCast("card", card.instance_id);
-      return true;
-    }
-    if (mode === "stack_spell") {
-      completeTargetedCast("card", card.instance_id);
-      return true;
-    }
-    if (mode === "card_in_graveyard") {
-      completeTargetedCast("card", card.instance_id);
-      return true;
-    }
-    return false;
+    // S20: with a server legal set, membership decides; free-form
+    // cards fall back to the mode heuristic (the caller only routes
+    // battlefield / stack / graveyard clicks here).
+    if (!isLegalCardTarget(state, card.instance_id)) return false;
+    completeTargetedCast("card", card.instance_id);
+    return true;
   }
 
   // The four quadrant positions. Iteration order doesn't matter for

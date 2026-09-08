@@ -22,7 +22,13 @@ import type { CardView } from "./protocol";
 //   "stack_spell" — a spell currently on the stack
 //   "card_in_graveyard" — a card in any graveyard (Regrowth, Eternal
 //                         Witness)
-export type TargetingMode = "any" | "player" | "creature" | "stack_spell" | "card_in_graveyard";
+export type TargetingMode =
+  | "any"
+  | "player"
+  | "creature"
+  | "permanent"
+  | "stack_spell"
+  | "card_in_graveyard";
 
 // TargetingState is the active prompt. `card` is the spell being
 // cast; `mode` is what the UI should accept as a click. The caller
@@ -31,6 +37,10 @@ export type TargetingMode = "any" | "player" | "creature" | "stack_spell" | "car
 export interface TargetingState {
   card: CardView;
   mode: TargetingMode;
+  // S20: the server-computed legal set for this card (from
+  // CardView.legal_targets). Undefined for free-form cards, where
+  // legality falls back to the mode heuristics below.
+  legal?: { players: Set<string>; cards: Set<string> };
 }
 
 export const targeting: Writable<TargetingState | null> = writable(null);
@@ -39,7 +49,33 @@ export const targeting: Writable<TargetingState | null> = writable(null);
 // — the last cast wins. The caller has already verified the
 // card's target_mode is non-empty.
 export function begin(card: CardView, mode: TargetingMode): void {
-  targeting.set({ card, mode });
+  const lt = card.legal_targets;
+  const legal = lt
+    ? { players: new Set(lt.players ?? []), cards: new Set(lt.cards ?? []) }
+    : undefined;
+  targeting.set({ card, mode, legal });
+}
+
+// isLegalCardTarget / isLegalPlayerTarget answer "can I click this
+// right now?" for a live prompt. With a server legal set (S20
+// structured targeting) it's membership; without one (free-form
+// S13.1 cards) it's the mode heuristic and the caller's zone
+// routing.
+export function isLegalCardTarget(t: TargetingState, instanceID: string): boolean {
+  if (t.legal) return t.legal.cards.has(instanceID);
+  return isTargetingCreature(t.mode) || isTargetingStack(t.mode) || isTargetingGraveyard(t.mode);
+}
+
+export function isLegalPlayerTarget(t: TargetingState, playerID: string): boolean {
+  if (t.legal) return t.legal.players.has(playerID);
+  return isTargetingPlayer(t.mode);
+}
+
+// legalTargetCount is the banner's "N legal targets" figure; -1 when
+// the prompt is free-form.
+export function legalTargetCount(t: TargetingState): number {
+  if (!t.legal) return -1;
+  return t.legal.players.size + t.legal.cards.size;
 }
 
 // cancel clears the prompt without firing cast_spell. Wired to the
@@ -55,7 +91,7 @@ export function isTargetingPlayer(mode: TargetingMode): boolean {
 }
 
 export function isTargetingCreature(mode: TargetingMode): boolean {
-  return mode === "any" || mode === "creature";
+  return mode === "any" || mode === "creature" || mode === "permanent";
 }
 
 export function isTargetingStack(mode: TargetingMode): boolean {

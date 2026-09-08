@@ -55,6 +55,15 @@ var (
 	// negative hand size on Mulligan).
 	ErrInvalidParam = errors.New("game: invalid parameter")
 
+	// ErrIllegalTarget is returned by CastSpell when a target the
+	// client sent fails the card's TargetSpec (CR 601.2c) — a black
+	// creature for Doom Blade, an opponent's spell for a "target
+	// spell you control" clause, a card in the wrong zone. The
+	// client's picker only offers legal targets, so hitting this
+	// means a stale snapshot or a hand-built payload. Added in S20
+	// sub-PR 1.
+	ErrIllegalTarget = errors.New("game: illegal target")
+
 	// ErrPlayerEliminated is returned when a mutation targets a player
 	// whose Eliminated flag is set, or when an eliminated player tries
 	// to concede a second time.

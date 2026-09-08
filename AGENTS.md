@@ -258,10 +258,28 @@ surface tiny.
    `*Game` (under a lock caller already holds — follow the existing naming
    in [server/internal/game/effect_api.go](server/internal/game/effect_api.go)).
 
-3. **Pick a `TargetMode`.** If the card has a target, declare it via
-   `Spec.TargetMode` so the client pops the targeting UI before
-   `cast_spell`. Valid values: `"any"`, `"player"`, `"creature"`,
-   `"stack_spell"`, `"card_in_graveyard"`. Empty means no prompt.
+3. **Declare the target (S20).** If the card has a target, build a
+   `Spec.Targets` from the constructors in
+   [targets.go](server/internal/cards/effects/targets.go) so it reads
+   like the oracle text:
+   ```go
+   Targets: TargetAny(),                                           // Lightning Bolt
+   Targets: TargetCreature("target nonblack creature", NonBlack()), // Doom Blade
+   Targets: TargetSpell("target noncreature spell", Noncreature()), // Negate
+   Targets: TargetPlayer("target opponent", Opponent()),
+   Targets: TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
+   Targets: TargetCardInGraveyard("target card in your graveyard", YouOwn()),
+   ```
+   Predicates compose with `And` / `Or` / `Not`; add missing ones to
+   `targets.go`, not to the card file. The engine computes the legal
+   set for the client's picker on every snapshot, rejects an illegal
+   pick at announce (`ErrIllegalTarget`, CR 601.2c), and re-runs the
+   same predicate at resolution (CR 608.2b). Colour predicates read
+   `Card.Colors` (Scryfall's computed colours; mana-cost fallback for
+   fixtures). See [ADR 0019](docs/decisions/0019-structured-targeting.md).
+   The legacy `TargetMode` string is derived from `Targets.Mode` —
+   set it directly only for a card you deliberately leave on the
+   free-form picker. Empty means no prompt.
 
 4. **Write the card file.** One file per card at
    `server/internal/cards/effects/<snake_name>.go`:

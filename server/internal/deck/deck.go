@@ -266,6 +266,7 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		Toughness:    toughness,
 		ManaCost:     c.ManaCost,
 		ProducedMana: append([]string(nil), c.ProducedMana...),
+		Colors:       append([]string(nil), c.Colors...),
 		IsCommander:  isCommander,
 	}
 }

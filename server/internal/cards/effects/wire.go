@@ -24,9 +24,22 @@ func init() {
 	game.IsCatalogCard = Has
 	game.CatalogTargetMode = func(oracleID string) string {
 		if spec, ok := Lookup(oracleID); ok {
+			// S20: a structured TargetSpec is the source of truth
+			// for the client hint too.
+			if spec.Targets != nil {
+				return spec.Targets.Mode
+			}
 			return spec.TargetMode
 		}
 		return ""
+	}
+	// S20 sub-PR 1: structured targeting. Nil for cards without a
+	// TargetSpec — the engine falls back to the free-form picker.
+	game.CatalogTargetSpec = func(oracleID string) *game.TargetSpec {
+		if spec, ok := Lookup(oracleID); ok {
+			return spec.Targets
+		}
+		return nil
 	}
 	game.CatalogManaAbilities = func(oracleID string) []game.ManaAbilityShape {
 		spec, ok := Lookup(oracleID)

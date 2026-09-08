@@ -4,9 +4,10 @@
   // once by Game.svelte; visible only while the targeting store is
   // non-null.
 
-  import { targeting, cancel } from "../../targeting";
+  import { targeting, cancel, legalTargetCount } from "../../targeting";
 
   const state = $derived($targeting);
+  const count = $derived(state ? legalTargetCount(state) : -1);
 
   function modeHint(mode: string | undefined): string {
     switch (mode) {
@@ -16,6 +17,8 @@
         return "a player";
       case "creature":
         return "a creature";
+      case "permanent":
+        return "a permanent";
       case "stack_spell":
         return "a spell on the stack";
       case "card_in_graveyard":
@@ -36,6 +39,9 @@
     <span class="prompt">
       Click {modeHint(state.mode)} to target
       <strong>{state.card.name}</strong>
+      {#if count >= 0}
+        <span class="count">· {count} legal</span>
+      {/if}
     </span>
     <button type="button" class="cancel" onclick={cancel} title="cancel (Esc)"> Cancel </button>
   </div>
@@ -97,5 +103,10 @@
   .cancel:hover {
     background: rgba(58, 46, 20, 0.95);
     border-color: var(--gold);
+  }
+  .count {
+    opacity: 0.7;
+    font-size: 0.9em;
+    margin-left: 0.25em;
   }
 </style>
