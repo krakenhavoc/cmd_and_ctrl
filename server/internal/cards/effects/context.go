@@ -59,6 +59,55 @@ func (c *Context) Source() uuid.UUID {
 	return c.Item.SourceCardID
 }
 
+// X returns the announce-time value of X for the current stack
+// item (0 when the spell has no X or none was announced). The cost
+// engine already charged X·generic at cast time; effects read it
+// here to scale damage / draw / life. Added in S20 sub-PR 3.
+func (c *Context) X() int {
+	if c.Item == nil || c.Item.XValue < 0 {
+		return 0
+	}
+	return c.Item.XValue
+}
+
+// Opponents returns the IDs of every seated, non-eliminated player
+// other than the current item's controller, in seat order. "Each
+// opponent" effects (Exsanguinate) iterate this. Added in S20
+// sub-PR 3.
+func (c *Context) Opponents() []uuid.UUID {
+	me := c.Controller()
+	var out []uuid.UUID
+	for _, p := range c.Game.Seats {
+		if p == nil || p.Eliminated || p.ID == me {
+			continue
+		}
+		out = append(out, p.ID)
+	}
+	return out
+}
+
+// Modes returns the announce-time mode indexes of a modal spell
+// (empty for non-modal cards). Added in S20 sub-PR 4.
+func (c *Context) Modes() []int {
+	if c.Item == nil {
+		return nil
+	}
+	return c.Item.Modes
+}
+
+// HasMode reports whether option i of the spell's ModeSpec was
+// chosen at announce. A modal card's OnResolve is a sequence of
+// `if ctx.HasMode(0) { … }` blocks in option order (CR 700.2c:
+// modes resolve in printed order). Added in S20 sub-PR 4.
+func (c *Context) HasMode(i int) bool {
+	for _, m := range c.Modes() {
+		if m == i {
+			return true
+		}
+	}
+	return false
+}
+
 // Targets returns the announce-time target slots. Callers that
 // assume a specific cardinality should bounds-check — effects run
 // in sandbox-adjacent territory where the UI might send too few

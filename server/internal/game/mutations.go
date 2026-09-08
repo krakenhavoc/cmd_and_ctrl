@@ -392,11 +392,38 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		)
 		return ErrInvalidParam
 	}
-	// S20: structured targeting. Cards with a TargetSpec get their
-	// announce-time targets validated against it (CR 601.2c) —
-	// zone, count, and predicate. Cards without one keep the S13.1
-	// free-form behaviour (any ID the client sent is accepted).
-	if spec := TargetSpecFor(card.OracleID); spec != nil {
+	// S20 sub-PR 3: X is a non-negative announce-time choice (CR
+	// 601.2b). The cost gate multiplies it into the generic demand;
+	// a negative would let a caster be refunded mana.
+	if params.XValue < 0 {
+		return ErrInvalidParam
+	}
+	// S20 sub-PR 4: modal spells — the chosen modes must be distinct,
+	// in range and the right count (CR 601.2b, 700.2).
+	modeSpec := ModeSpecFor(card.OracleID)
+	if err := validateModes(modeSpec, params.Modes); err != nil {
+		slog.Warn("cast_spell rejected: bad mode choice",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"modes_received", params.Modes,
+		)
+		return err
+	}
+	// S20: structured targeting. Cards with a TargetSpec — declared
+	// on the card, or on the chosen mode of a modal card — get their
+	// announce-time targets validated against it (CR 601.2c): zone,
+	// count, and predicate. Cards without one keep the S13.1
+	// free-form behaviour (any ID the client sent is accepted),
+	// except that a modal card whose chosen modes take no target
+	// must arrive with none.
+	spec, err := castTargetSpec(card.OracleID, params.Modes)
+	if err != nil {
+		return err
+	}
+	if spec == nil && modeSpec != nil && len(params.Targets) > 0 {
+		return ErrInvalidParam
+	}
+	if spec != nil {
 		if err := g.validateTargetsLocked(playerID, spec, params.Targets); err != nil {
 			slog.Warn("cast_spell rejected: illegal target",
 				"card_name", card.Name,
@@ -891,7 +918,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// Self / none targets don't re-check (self is the caster; none
 	// has no referent) and count as always-legal for the all-illegal
 	// short-circuit.
-	if spellAllTargetsIllegalLocked(g, item, TargetSpecFor(top.OracleID)) {
+	if spellAllTargetsIllegalLocked(g, item, castTargetSpecForItem(top.OracleID, item)) {
 		// "Countered by game rules" — permanents and non-permanents
 		// alike go to the owner's graveyard (CR 608.2b). The
 		// announce-time choices on StackMeta are discarded along

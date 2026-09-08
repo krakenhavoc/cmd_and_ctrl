@@ -146,6 +146,42 @@ describe("canCastFromHand", () => {
     expect(got.reason).toBe("No legal target");
   });
 
+  // S20 sub-PR 4: a modal spell is castable while enough options
+  // are — untargeted ones always, targeted ones with a legal target.
+  it("modal spell: castable when an untargeted option exists, not when every option lacks a target", () => {
+    const s = snap({ activeSeat: 0, priorityHolder: 0 });
+    const charm = card("Rakdos Charm", "Instant", {
+      modes: {
+        prompt: "Choose one",
+        min: 1,
+        max: 1,
+        options: [
+          {
+            label: "Destroy target artifact.",
+            target_mode: "permanent",
+            legal_targets: { cards: [] },
+          },
+          { label: "Each creature deals 1 damage to its controller." },
+        ],
+      },
+    });
+    expect(canCastFromHand(charm, s, "p0").legal).toBe(true);
+    const stuck = card("Charm", "Instant", {
+      modes: {
+        prompt: "Choose one",
+        min: 1,
+        max: 1,
+        options: [
+          { label: "A", target_mode: "permanent", legal_targets: { cards: [] } },
+          { label: "B", target_mode: "player", legal_targets: { players: [] } },
+        ],
+      },
+    });
+    const got = canCastFromHand(stuck, s, "p0");
+    expect(got.legal).toBe(false);
+    expect(got.reason).toBe("No castable mode");
+  });
+
   it("targeted spell with a legal target = legal; free-form card untouched", () => {
     const s = snap({ activeSeat: 0, priorityHolder: 0 });
     const blade = card("Doom Blade", "Instant", { legal_targets: { cards: ["c-Bear"] } });

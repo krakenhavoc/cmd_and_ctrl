@@ -3,7 +3,11 @@ import { get } from "svelte/store";
 
 import {
   begin,
+  beginForMode,
   cancel,
+  hasXCost,
+  isModal,
+  modeOptionCastable,
   isLegalCardTarget,
   isLegalPlayerTarget,
   legalTargetCount,
@@ -37,6 +41,68 @@ describe("targeting store — S20 legal sets", () => {
     expect(legalTargetCount(t)).toBe(-1);
     begin(card(), "player");
     expect(isLegalPlayerTarget(get(targeting)!, "p1")).toBe(true);
+    cancel();
+  });
+});
+
+describe("hasXCost + xValue on the prompt — S20 sub-PR 3", () => {
+  it("detects {X} in the printed cost", () => {
+    expect(hasXCost(card({ mana_cost: "{X}{R}" }))).toBe(true);
+    expect(hasXCost(card({ mana_cost: "{2}{U}" }))).toBe(false);
+    expect(hasXCost(card({}))).toBe(false);
+  });
+
+  it("carries the announced X through the targeting prompt", () => {
+    begin(card({ mana_cost: "{X}{R}", legal_targets: { players: ["p1"] } }), "any", 4);
+    expect(get(targeting)?.xValue).toBe(4);
+    cancel();
+  });
+});
+
+// --- S20 sub-PR 4: modal spells ----------------------------------
+
+describe("modal targeting", () => {
+  const charm = {
+    instance_id: "c-charm",
+    name: "Rakdos Charm",
+    modes: {
+      prompt: "Choose one",
+      min: 1,
+      max: 1,
+      options: [
+        {
+          label: "Exile target player's graveyard.",
+          target_mode: "player",
+          legal_targets: { players: ["p1"] },
+        },
+        {
+          label: "Destroy target artifact.",
+          target_mode: "permanent",
+          legal_targets: { cards: [] },
+        },
+        { label: "Each creature deals 1 damage to its controller." },
+      ],
+    },
+  } as unknown as CardView;
+
+  it("isModal / modeOptionCastable", () => {
+    expect(isModal(charm)).toBe(true);
+    expect(isModal({ instance_id: "x", name: "Bolt" } as unknown as CardView)).toBe(false);
+    expect(modeOptionCastable(charm.modes!.options[0])).toBe(true);
+    expect(modeOptionCastable(charm.modes!.options[1])).toBe(false);
+    expect(modeOptionCastable(charm.modes!.options[2])).toBe(true);
+  });
+
+  it("beginForMode takes the option's legal set and label, and carries the modes", () => {
+    beginForMode(charm, charm.modes!.options[0], [0], 3);
+    const t = get(targeting)!;
+    expect(t.mode).toBe("player");
+    expect(t.label).toBe("Exile target player's graveyard.");
+    expect(t.modes).toEqual([0]);
+    expect(t.xValue).toBe(3);
+    expect(isLegalPlayerTarget(t, "p1")).toBe(true);
+    expect(isLegalPlayerTarget(t, "p0")).toBe(false);
+    expect(isLegalCardTarget(t, "c-anything")).toBe(false);
     cancel();
   });
 });

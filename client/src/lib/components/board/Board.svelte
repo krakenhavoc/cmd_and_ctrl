@@ -35,10 +35,15 @@
     begin as beginTargeting,
     cancel as cancelTargeting,
     beginChoice as beginTargetingChoice,
+    beginForMode as beginTargetingForMode,
+    hasXCost,
+    isModal,
     isLegalCardTarget,
     isLegalPlayerTarget,
     type TargetingMode,
   } from "../../targeting";
+  import XCostModal from "./XCostModal.svelte";
+  import ModePickerModal from "./ModePickerModal.svelte";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -103,6 +108,24 @@
     return { kind: "exile", owner: ownerID, count: cards.length, cards };
   }
 
+  // S20 sub-PR 3: a starting suggestion for the X prompt — floating
+  // mana plus untapped permanents the viewer controls that produce
+  // mana (basic lands + anything with a mana ability), minus the
+  // coloured part of the cost the prompt itself shows. Rough by
+  // design; the modal's live preview is the real check.
+  const suggestedX = $derived.by(() => {
+    if (!viewerID) return 0;
+    const me = view.seats.find((s) => s.id === viewerID);
+    const floating = me?.mana_pool?.length ?? 0;
+    let sources = 0;
+    for (const c of view.battlefield.cards) {
+      if (c.controller !== viewerID || c.tapped) continue;
+      const t = (c.type_line ?? "").toLowerCase();
+      if (t.includes("land") || (c.mana_abilities?.length ?? 0) > 0) sources++;
+    }
+    return Math.max(0, floating + sources - 1);
+  });
+
   const activeSeatID = $derived(view.seats[view.turn.active_seat]?.id ?? null);
   const prioritySeatID = $derived(view.seats[view.turn.priority_holder]?.id ?? null);
   const monarchID = $derived(view.monarch ?? null);
@@ -112,7 +135,56 @@
     sendAction(card.tapped ? "untap" : "tap", { instance_id: card.instance_id });
   }
 
+  // S20 sub-PR 3: an {X} spell asks for X first. The modal's
+  // confirm continues into targeting / cast with the chosen value.
+  let xPromptCard = $state<CardView | null>(null);
+  function confirmX(x: number): void {
+    const card = xPromptCard;
+    xPromptCard = null;
+    if (!card) return;
+    continueCast(card, x);
+  }
+
   function handlePlayCard(card: CardView): void {
+    if (hasXCost(card)) {
+      xPromptCard = card;
+      return;
+    }
+    continueCast(card, undefined);
+  }
+
+  // S20 sub-PR 4: a modal spell asks for its mode(s) after X and
+  // before targeting. The picker's confirm continues with the
+  // chosen indexes; a targeted option enters targeting with that
+  // option's legal set, otherwise the cast fires straight away.
+  let modePromptCard = $state<CardView | null>(null);
+  let modePromptX: number | undefined;
+  function confirmModes(modes: number[]): void {
+    const card = modePromptCard;
+    const xValue = modePromptX;
+    modePromptCard = null;
+    modePromptX = undefined;
+    if (!card) return;
+    const targeted = modes.find((i) => card.modes?.options[i]?.legal_targets !== undefined);
+    if (targeted !== undefined) {
+      const option = card.modes!.options[targeted];
+      beginTargetingForMode(card, option, modes, xValue);
+      return;
+    }
+    const params: Record<string, unknown> = { instance_id: card.instance_id, modes };
+    if (xValue !== undefined) params.x_value = xValue;
+    sendAction("cast_spell", params, viewerID ?? undefined);
+  }
+
+  // continueCast is the post-X half of the cast flow: pick modes for
+  // a modal card, enter targeting for a targeted card, or fire
+  // cast_spell straight away.
+  function continueCast(card: CardView, xValue: number | undefined): void {
+    if (isModal(card)) {
+      modePromptX = xValue;
+      modePromptCard = card;
+      return;
+    }
     // S14: if the card declares a target_mode (catalog cards with
     // a target slot — Lightning Bolt, Counterspell), enter the
     // targeting flow and wait for a second click on a legal target.
@@ -127,10 +199,12 @@
       mode === "stack_spell" ||
       mode === "card_in_graveyard"
     ) {
-      beginTargeting(card, mode);
+      beginTargeting(card, mode, xValue);
       return;
     }
-    sendAction("cast_spell", { instance_id: card.instance_id }, viewerID ?? undefined);
+    const params: Record<string, unknown> = { instance_id: card.instance_id };
+    if (xValue !== undefined) params.x_value = xValue;
+    sendAction("cast_spell", params, viewerID ?? undefined);
   }
 
   // completeTargetedCast fires cast_spell with the resolved target
@@ -154,11 +228,10 @@
       targeting.set(null);
       return;
     }
-    sendAction(
-      "cast_spell",
-      { instance_id: state.card.instance_id, targets: [ref] },
-      viewerID ?? undefined,
-    );
+    const params: Record<string, unknown> = { instance_id: state.card.instance_id, targets: [ref] };
+    if (state.xValue !== undefined) params.x_value = state.xValue;
+    if (state.modes !== undefined) params.modes = state.modes;
+    sendAction("cast_spell", params, viewerID ?? undefined);
     cancelTargeting();
   }
 
@@ -327,6 +400,21 @@
     onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
   />
   <VotingPanel {view} {viewerID} {sendAction} />
+  <XCostModal
+    gameID={view.id}
+    card={xPromptCard}
+    suggestedMax={suggestedX}
+    onConfirm={confirmX}
+    onCancel={() => (xPromptCard = null)}
+  />
+  <ModePickerModal
+    card={modePromptCard}
+    onConfirm={confirmModes}
+    onCancel={() => {
+      modePromptCard = null;
+      modePromptX = undefined;
+    }}
+  />
   {#if $zoneBrowser}
     <ZoneBrowserModal
       {view}

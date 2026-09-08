@@ -281,6 +281,25 @@ surface tiny.
    set it directly only for a card you deliberately leave on the
    free-form picker. Empty means no prompt.
 
+   **Modal cards ("Choose one —", S20 sub-PR 4)** declare
+   `Spec.Modes` instead of `Spec.Targets`, with the target clause on
+   the option that has one:
+   ```go
+   Modes: ChooseOne(
+       Mode("Exile target player's graveyard.", TargetPlayer("target player")),
+       Mode("Destroy target artifact.", TargetPermanent("target artifact", Artifact())),
+       Mode("Each creature deals 1 damage to its controller."),
+   ),
+   // "Choose two —": ChooseN("Choose two", 2, 2, Mode(…), Mode(…), …)
+   ```
+   `OnResolve` is a run of `if ctx.HasMode(i) { … }` blocks in
+   printed order (CR 700.2c). The engine validates the choice at
+   announce and applies the chosen option's target clause exactly as
+   it would a card-level one; the client shows a mode picker before
+   targeting. Limit: one targeted option per cast — `Register`
+   panics on a `Max > 1` card with two targeted options (per-mode
+   target slots ride with multi-target).
+
 4. **Write the card file.** One file per card at
    `server/internal/cards/effects/<snake_name>.go`:
    ```go

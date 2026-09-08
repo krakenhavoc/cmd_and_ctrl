@@ -27,6 +27,21 @@ func Register(spec Spec) {
 		panic(fmt.Sprintf("effects.Register: duplicate OracleID %s (existing %q, new %q)",
 			spec.OracleID, existing.Name, spec.Name))
 	}
+	if spec.Modes != nil {
+		if spec.Targets != nil {
+			panic(fmt.Sprintf("effects.Register: %q declares both Targets and Modes — put the target clause on the mode", spec.Name))
+		}
+		targeted := 0
+		for _, o := range spec.Modes.Options {
+			if o.Targets != nil {
+				targeted++
+			}
+		}
+		if spec.Modes.Max > 1 && targeted > 1 {
+			panic(fmt.Sprintf("effects.Register: %q has %d targeted modes with Max %d — per-mode target slots are unsupported (S20 sub-PR 4)",
+				spec.Name, targeted, spec.Modes.Max))
+		}
+	}
 	registry[spec.OracleID] = spec
 }
 
