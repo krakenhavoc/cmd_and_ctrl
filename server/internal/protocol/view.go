@@ -168,6 +168,12 @@ type PendingChoiceView struct {
 type LegalTargetsView struct {
 	Players []string `json:"players,omitempty"`
 	Cards   []string `json:"cards,omitempty"`
+	// Min / Max are the clause's target count (S20 sub-PR 5): the
+	// client's picker completes on the first click at 1 / 1, and
+	// otherwise accumulates picks until the player confirms with at
+	// least Min. Max 0 means unbounded.
+	Min int `json:"min"`
+	Max int `json:"max"`
 }
 
 // ModeSpecView / ModeOptionView are the wire shape of game.ModeSpec
@@ -663,14 +669,14 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 				if spec == nil {
 					continue
 				}
-				c.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(caster, spec))
+				c.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(caster, spec), spec)
 			}
 		}
 	}
 }
 
-func viewOfLegalTargets(lt game.LegalTargets) *LegalTargetsView {
-	view := &LegalTargetsView{}
+func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
+	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max}
 	for _, id := range lt.Players {
 		view.Players = append(view.Players, id.String())
 	}
@@ -689,7 +695,7 @@ func viewOfModeSpec(g *game.Game, caster uuid.UUID, ms *game.ModeSpec) *ModeSpec
 		ov := ModeOptionView{Label: o.Label}
 		if o.Targets != nil {
 			ov.TargetMode = o.Targets.Mode
-			ov.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(caster, o.Targets))
+			ov.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(caster, o.Targets), o.Targets)
 		}
 		out.Options = append(out.Options, ov)
 	}
@@ -791,7 +797,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		}
 		// PendingChoicePickTarget — S20 sub-PR 2: the frozen legal set.
 		if c.Kind == game.PendingChoicePickTarget {
-			pt := &LegalTargetsView{}
+			pt := &LegalTargetsView{Min: c.PickTargetMin, Max: c.PickTargetMax}
 			for _, id := range c.PickTargetPlayers {
 				pt.Players = append(pt.Players, id.String())
 			}

@@ -271,7 +271,14 @@ surface tiny.
    Targets: TargetCardInGraveyard("target card in your graveyard", YouOwn()),
    ```
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
-   `targets.go`, not to the card file. The engine computes the legal
+   `targets.go`, not to the card file. Multi-target clauses set the
+   count on the same spec — `TargetCreature("two target nonartifact
+   creatures", Not(Artifact())).WithCount(2, 2)`, `.WithCount(0, 2)`
+   for "up to two", `.WithCount(1, 0)` for "any number" — and their
+   `OnResolve` iterates `ctx.LegalTargets()` (or indexes
+   `item.Targets` with `ctx.IsTargetLegal` per slot when the order
+   matters, as in Arc Trail) so a target that left in response is
+   skipped rather than erroring. The engine computes the legal
    set for the client's picker on every snapshot, rejects an illegal
    pick at announce (`ErrIllegalTarget`, CR 601.2c), and re-runs the
    same predicate at resolution (CR 608.2b). Colour predicates read

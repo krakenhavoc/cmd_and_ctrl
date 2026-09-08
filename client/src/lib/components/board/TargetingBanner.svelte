@@ -4,10 +4,27 @@
   // once by Game.svelte; visible only while the targeting store is
   // non-null.
 
-  import { targeting, cancel, legalTargetCount } from "../../targeting";
+  import {
+    targeting,
+    cancel,
+    confirm,
+    legalTargetCount,
+    isMultiPick,
+    canConfirm,
+  } from "../../targeting";
 
   const state = $derived($targeting);
   const count = $derived(state ? legalTargetCount(state) : -1);
+  // S20 sub-PR 5: multi-target clauses show the pick tally and a
+  // Done button instead of completing on the first click.
+  const multi = $derived(state !== null && isMultiPick(state));
+  const confirmable = $derived(state !== null && canConfirm(state));
+  const tally = $derived.by(() => {
+    if (!state || !multi) return "";
+    const n = state.picked.length;
+    if (state.max > 0) return `${n}/${state.max} picked`;
+    return `${n} picked`;
+  });
 
   function modeHint(mode: string | undefined): string {
     switch (mode) {
@@ -46,7 +63,23 @@
       {#if count >= 0}
         <span class="count">· {count} legal</span>
       {/if}
+      {#if multi}
+        <span class="count">· {tally}</span>
+      {/if}
     </span>
+    {#if multi}
+      <button
+        type="button"
+        class="done"
+        disabled={!confirmable}
+        onclick={confirm}
+        title={state.min > 0 && state.picked.length < state.min
+          ? `pick at least ${state.min}`
+          : "confirm targets (Enter)"}
+      >
+        Done
+      </button>
+    {/if}
     {#if !state.choiceID}
       <button type="button" class="cancel" onclick={cancel} title="cancel (Esc)"> Cancel </button>
     {/if}
@@ -109,6 +142,23 @@
   .cancel:hover {
     background: rgba(58, 46, 20, 0.95);
     border-color: var(--gold);
+  }
+  .done {
+    padding: 4px 12px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+    background: #2d5a3f;
+    color: #e6f7ec;
+    border: 1px solid #3f7a55;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: none;
+  }
+  .done:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
   .count {
     opacity: 0.7;

@@ -225,7 +225,7 @@ export interface PendingChoiceView {
   // trigger's controller chooses its target. The client enters the
   // board-click targeting flow with this legal set (no modal) and
   // answers resolve_choice { target: {kind, id} }.
-  pick_target?: { players?: string[]; cards?: string[] };
+  pick_target?: LegalTargetsView;
   // S18: populated for kind "damage_assignment" — the CR 510.1c
   // multi-blocker combat damage prompt. Client renders a per-blocker
   // damage input panel (+ trample-to-player input when allow_trample
@@ -421,7 +421,16 @@ export interface ActivatedAbilityView {
 export interface ModeOptionView {
   label: string;
   target_mode?: string;
-  legal_targets?: { players?: string[]; cards?: string[] };
+  legal_targets?: LegalTargetsView;
+}
+
+// LegalTargetsView is a clause's legal set right now plus its
+// target count (S20 sub-PR 5): min..max picks, max 0 = unbounded.
+export interface LegalTargetsView {
+  players?: string[];
+  cards?: string[];
+  min?: number;
+  max?: number;
 }
 
 export interface CardView {
@@ -486,7 +495,7 @@ export interface CardView {
   // structured TargetSpec — the players and card instance IDs its
   // target slot accepts right now. Absent for free-form cards. Both
   // lists empty = no legal target = not castable right now.
-  legal_targets?: { players?: string[]; cards?: string[] };
+  legal_targets?: LegalTargetsView;
   // S20 sub-PR 4: for a modal card in the viewer's own hand — the
   // "Choose one" clause. Each option carries its label and, when it
   // targets, its own target_mode + legal set. The cast flow shows a

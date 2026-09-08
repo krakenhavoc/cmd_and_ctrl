@@ -60,6 +60,19 @@ export interface TargetingState {
   // S20 sub-PR 4: the chosen mode indexes of a modal spell; ride the
   // cast_spell payload as `modes`.
   modes?: number[];
+  // S20 sub-PR 5: the clause's target count. At max 1 the first
+  // click completes the prompt; otherwise clicks toggle into
+  // `picked` (in click order — positional clauses read it) and the
+  // banner's Done fires once at least `min` are picked. max 0 =
+  // unbounded.
+  min: number;
+  max: number;
+  picked: TargetRef[];
+}
+
+export interface TargetRef {
+  kind: "player" | "card";
+  id: string;
 }
 
 export const targeting: Writable<TargetingState | null> = writable(null);
@@ -72,7 +85,52 @@ export function begin(card: CardView, mode: TargetingMode, xValue?: number): voi
   const legal = lt
     ? { players: new Set(lt.players ?? []), cards: new Set(lt.cards ?? []) }
     : undefined;
-  targeting.set({ card, mode, legal, xValue });
+  targeting.set({ card, mode, legal, xValue, ...countOf(lt), picked: [] });
+}
+
+// countOf reads a clause's min / max off the wire; free-form cards
+// (no legal set) are single-target.
+function countOf(lt: { min?: number; max?: number } | undefined): { min: number; max: number } {
+  if (!lt) return { min: 1, max: 1 };
+  return { min: lt.min ?? 1, max: lt.max ?? 1 };
+}
+
+// isMultiPick reports whether the prompt accumulates picks rather
+// than completing on the first click.
+export function isMultiPick(t: TargetingState): boolean {
+  return t.max !== 1;
+}
+
+// isPicked reports whether a target is already in the pick list.
+export function isPicked(t: TargetingState, id: string): boolean {
+  return t.picked.some((p) => p.id === id);
+}
+
+// togglePick adds a target to (or removes it from) a multi-pick
+// prompt. Refuses a pick beyond max. Returns the new state.
+export function togglePick(t: TargetingState, ref: TargetRef): TargetingState {
+  if (isPicked(t, ref.id)) {
+    return { ...t, picked: t.picked.filter((p) => p.id !== ref.id) };
+  }
+  if (t.max > 0 && t.picked.length >= t.max) return t;
+  return { ...t, picked: [...t.picked, ref] };
+}
+
+// canConfirm reports whether Done may fire: at least min picked.
+export function canConfirm(t: TargetingState): boolean {
+  return t.picked.length >= t.min;
+}
+
+// The banner (mounted by Game.svelte) and the cast flow (Board)
+// are separate components; Board registers the handler that turns
+// the pick list into a cast_spell / resolve_choice, and the banner's
+// Done calls confirm().
+let confirmHandler: (() => void) | null = null;
+export function setConfirmHandler(fn: (() => void) | null): void {
+  confirmHandler = fn;
+}
+export function confirm(): void {
+  confirmHandler?.();
 }
 
 // beginForMode enters a targeting prompt for the targeted option of
@@ -90,7 +148,16 @@ export function beginForMode(
   const legal = lt
     ? { players: new Set(lt.players ?? []), cards: new Set(lt.cards ?? []) }
     : undefined;
-  targeting.set({ card, mode, legal, xValue, modes, label: option.label });
+  targeting.set({
+    card,
+    mode,
+    legal,
+    xValue,
+    modes,
+    label: option.label,
+    ...countOf(lt),
+    picked: [],
+  });
 }
 
 // isModal reports whether a card needs the mode picker before it
@@ -105,7 +172,7 @@ export function isModal(card: CardView): boolean {
 export function modeOptionCastable(option: ModeOptionView): boolean {
   const lt = option.legal_targets;
   if (!lt) return true;
-  return (lt.players?.length ?? 0) + (lt.cards?.length ?? 0) > 0;
+  return (lt.players?.length ?? 0) + (lt.cards?.length ?? 0) >= (lt.min ?? 1);
 }
 
 // hasXCost reports whether a card's printed cost includes {X} — the
@@ -164,6 +231,8 @@ export function beginChoice(choice: PendingChoiceView, card: CardView): void {
     legal: { players: new Set(pt.players ?? []), cards: new Set(pt.cards ?? []) },
     choiceID: choice.id,
     label: choice.reason,
+    ...countOf(pt),
+    picked: [],
   });
 }
 

@@ -48,7 +48,13 @@
     isModal,
     isLegalCardTarget,
     isLegalPlayerTarget,
+    isMultiPick,
+    togglePick,
+    canConfirm,
+    setConfirmHandler,
     type TargetingMode,
+    type TargetingState,
+    type TargetRef,
   } from "../../targeting";
   import XCostModal from "./XCostModal.svelte";
   import SacrificeCostModal from "./SacrificeCostModal.svelte";
@@ -223,17 +229,32 @@
   function completeTargetedCast(kind: "player" | "card", targetID: string): void {
     const state = $targeting;
     if (!state) return;
-    const ref =
-      kind === "player" ? { kind: "player", id: targetID } : { kind: "card", id: targetID };
+    const ref: TargetRef = { kind, id: targetID };
+    // S20 sub-PR 5: a multi-target clause accumulates clicks; the
+    // banner's Done (confirmTargets) fires the action.
+    if (isMultiPick(state)) {
+      targeting.set(togglePick(state, ref));
+      return;
+    }
+    fireTargets(state, [ref]);
+  }
+
+  function confirmTargets(): void {
+    const state = $targeting;
+    if (!state || !canConfirm(state)) return;
+    fireTargets(state, state.picked);
+  }
+  $effect(() => {
+    setConfirmHandler(confirmTargets);
+    return () => setConfirmHandler(null);
+  });
+
+  function fireTargets(state: TargetingState, targets: TargetRef[]): void {
     if (state.choiceID) {
       // S20 sub-PR 2: answering a triggered ability's pick_target
       // prompt. The store clears when the next snapshot no longer
       // carries the choice (see the effect below).
-      sendAction(
-        "resolve_choice",
-        { choice_id: state.choiceID, target: ref },
-        viewerID ?? undefined,
-      );
+      sendAction("resolve_choice", { choice_id: state.choiceID, targets }, viewerID ?? undefined);
       targeting.set(null);
       return;
     }
@@ -246,14 +267,14 @@
           source_card_id: state.card.instance_id,
           ability_index: state.ability.index,
           sacrifice_ids: state.ability.sacrificeIDs,
-          targets: [ref],
+          targets,
         },
         viewerID ?? undefined,
       );
       targeting.set(null);
       return;
     }
-    const params: Record<string, unknown> = { instance_id: state.card.instance_id, targets: [ref] };
+    const params: Record<string, unknown> = { instance_id: state.card.instance_id, targets };
     if (state.xValue !== undefined) params.x_value = state.xValue;
     if (state.modes !== undefined) params.modes = state.modes;
     sendAction("cast_spell", params, viewerID ?? undefined);
