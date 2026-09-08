@@ -213,6 +213,20 @@ jobs:
           printf '%s' "${BUGREPORT_TOKEN}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
             'sudo /opt/cmd_and_ctrl/scripts/set-server-env.sh CMDCTRL_GITHUB_TOKEN'
 
+      # Bug-report screenshots need a PUBLIC origin: a GitHub issue can
+      # only render an image its proxy can fetch, so the server has to
+      # know the URL it is reachable at from the outside. Not a secret —
+      # a repo variable, defaulting to the production hostname — but
+      # provisioned the same way so the env file stays the single source
+      # of truth on the host. Unset leaves attachments off and text
+      # reports working (see ADR 0017 §6).
+      - name: Sync server env (public base URL)
+        env:
+          PUBLIC_BASE_URL: ${{ vars.CMDCTRL_PUBLIC_BASE_URL || 'https://cmd.labxp.io' }}
+        run: |
+          printf '%s' "${PUBLIC_BASE_URL}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            'sudo /opt/cmd_and_ctrl/scripts/set-server-env.sh CMDCTRL_PUBLIC_BASE_URL'
+
       - name: Restart cmd-and-ctrl service
         run: |
           ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} 'sudo systemctl restart cmd-and-ctrl'
