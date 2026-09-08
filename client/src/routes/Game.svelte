@@ -6,7 +6,7 @@
   import { seatColor } from "../lib/colors";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import BugReportModal from "../lib/components/BugReportModal.svelte";
-  import { bugReportEnabled } from "../lib/api";
+  import { fetchBugReportConfig } from "../lib/api";
   import Board from "../lib/components/board/Board.svelte";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
@@ -51,7 +51,7 @@
   // chat UI was removed in S08.5 wave 1 in favour of out-of-band
   // (Discord) coordination. Re-add `chat` to this destructure when
   // a chat panel returns.
-  const { status, snapshot, lastSeq, lastError } = client;
+  const { status, snapshot, lastSeq, lastError, log } = client;
 
   $effect(() => {
     client.disconnect();
@@ -72,9 +72,17 @@
   // (CMDCTRL_GITHUB_TOKEN unset) the button never renders — same
   // hide-don't-503 posture as the Discord sign-in button.
   let bugReportAvailable = $state(false);
+  // Attachment support is probed alongside the feature flag: a server
+  // with a GitHub token but no data dir files text reports fine and
+  // can't host screenshots, so the modal hides its picker rather than
+  // offering an upload that 503s.
+  let bugReportAttachments = $state(false);
   let bugReportOpen = $state(false);
   onMount(() => {
-    void bugReportEnabled().then((v) => (bugReportAvailable = v));
+    void fetchBugReportConfig().then((cfg) => {
+      bugReportAvailable = cfg.enabled;
+      bugReportAttachments = cfg.attachments;
+    });
   });
 
   // settings.gameplay.confirmExit also covers the browser-level
@@ -958,6 +966,8 @@
       {view}
       seq={$lastSeq}
       connection={$status}
+      wsLog={$log}
+      attachments={bugReportAttachments}
       onclose={() => (bugReportOpen = false)}
     />
   {/if}

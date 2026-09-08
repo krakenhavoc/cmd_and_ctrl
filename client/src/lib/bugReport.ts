@@ -54,3 +54,130 @@ export function validateBugReport(title: string, description: string): string | 
     return `description is too long (max ${BUG_DESC_MAX} characters)`;
   return null;
 }
+
+// --- attachments ---
+//
+// These mirror the server caps in server/internal/bugstore/store.go.
+// Duplicated so the modal can refuse a 12 MiB screenshot before
+// spending thirty seconds uploading it; the server is still the
+// authority (it re-checks, and sniffs the bytes rather than trusting
+// the type the browser reports).
+export const BUG_MAX_IMAGES = 4;
+export const BUG_MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+export const BUG_MAX_TOTAL_IMAGE_BYTES = 10 * 1024 * 1024;
+
+// BUG_IMAGE_TYPES is the set GitHub renders inline. SVG is absent on
+// purpose: the server refuses it because an unauthenticated route
+// serving attacker-supplied SVG is a stored-XSS hole, so offering it
+// here would only produce a confusing rejection.
+export const BUG_IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+
+// --- client log ---
+
+export const BUG_LOG_MAX_ENTRIES = 200;
+
+export type BugLogKind = "sent" | "received" | "error" | "info" | "console";
+
+// BugLogEntry mirrors lobby.bugLogEntry. `at` is epoch milliseconds
+// from this browser's clock; the server formats it and labels it as
+// the reporter's clock rather than pretending it is server time.
+export interface BugLogEntry {
+  at: number;
+  kind: BugLogKind;
+  text: string;
+}
+
+// WsLogLike is the shape of ws.LogEntry that this module needs.
+// Structural rather than an import so these helpers stay free of the
+// WebSocket client — the same reason they live outside the component.
+export interface WsLogLike {
+  at: Date;
+  direction: string;
+  text: string;
+}
+
+// ConsoleLogLike is the shape of clientErrors.ClientErrorEntry.
+export interface ConsoleLogLike {
+  at: number;
+  text: string;
+}
+
+const LOG_KINDS: BugLogKind[] = ["sent", "received", "error", "info", "console"];
+
+// collectBugLog merges the protocol log with the captured JS errors
+// into one timeline and keeps the newest `limit` entries.
+//
+// Merged rather than sent as two lists because the useful signal is
+// the interleaving: "action sent, then a TypeError, then no snapshot"
+// is a diagnosis, whereas the same three facts in two separate blocks
+// are three facts.
+//
+// The tail is what's kept — a bug report is filed just after the thing
+// went wrong, so the end of the log is the relevant part.
+export function collectBugLog(
+  wsLog: readonly WsLogLike[],
+  consoleLog: readonly ConsoleLogLike[],
+  limit: number = BUG_LOG_MAX_ENTRIES,
+): BugLogEntry[] {
+  const merged: BugLogEntry[] = [
+    ...wsLog.map((e) => ({
+      at: e.at instanceof Date ? e.at.getTime() : 0,
+      kind: (LOG_KINDS as string[]).includes(e.direction) ? (e.direction as BugLogKind) : "info",
+      text: e.text,
+    })),
+    ...consoleLog.map((e) => ({ at: e.at, kind: "console" as BugLogKind, text: e.text })),
+  ];
+  // Stable sort by timestamp: entries stamped in the same millisecond
+  // keep the order they were recorded in, which for the protocol log is
+  // causal order.
+  merged.sort((a, b) => a.at - b.at);
+  return limit > 0 && merged.length > limit ? merged.slice(-limit) : merged;
+}
+
+// formatBytes renders a size for the modal's counter. Deliberately
+// coarse — the reporter needs "3.2 MB of 10 MB", not exact bytes.
+export function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// AttachmentLike is the subset of File the validator reads, so tests
+// don't need a real File.
+export interface AttachmentLike {
+  name: string;
+  type: string;
+  size: number;
+}
+
+// validateAttachments returns a human-readable problem with the
+// proposed set, or null when it is submittable. Checks the whole set at
+// once because two of the three limits (count, aggregate size) are
+// properties of the set rather than of any one file.
+export function validateAttachments(files: readonly AttachmentLike[]): string | null {
+  if (files.length > BUG_MAX_IMAGES) {
+    return `at most ${BUG_MAX_IMAGES} images per report`;
+  }
+  let total = 0;
+  for (const f of files) {
+    if (!BUG_IMAGE_TYPES.includes(f.type)) {
+      return `${f.name || "that file"} isn't a PNG, JPEG, GIF, or WebP image`;
+    }
+    if (f.size > BUG_MAX_IMAGE_BYTES) {
+      return `${f.name || "that file"} is ${formatBytes(f.size)} — the limit is ${formatBytes(BUG_MAX_IMAGE_BYTES)} per image`;
+    }
+    total += f.size;
+  }
+  if (total > BUG_MAX_TOTAL_IMAGE_BYTES) {
+    return `attachments total ${formatBytes(total)} — the limit is ${formatBytes(BUG_MAX_TOTAL_IMAGE_BYTES)}`;
+  }
+  return null;
+}
+
+// acceptableImages filters a dropped/pasted/picked FileList down to
+// the image types the server will take, so a paste that also carried
+// text/html parts doesn't surface as a validation error the reporter
+// can't act on.
+export function acceptableImages(files: readonly AttachmentLike[]): AttachmentLike[] {
+  return files.filter((f) => BUG_IMAGE_TYPES.includes(f.type));
+}
