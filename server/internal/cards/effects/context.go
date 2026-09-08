@@ -86,6 +86,28 @@ func (c *Context) Opponents() []uuid.UUID {
 	return out
 }
 
+// Modes returns the announce-time mode indexes of a modal spell
+// (empty for non-modal cards). Added in S20 sub-PR 4.
+func (c *Context) Modes() []int {
+	if c.Item == nil {
+		return nil
+	}
+	return c.Item.Modes
+}
+
+// HasMode reports whether option i of the spell's ModeSpec was
+// chosen at announce. A modal card's OnResolve is a sequence of
+// `if ctx.HasMode(0) { … }` blocks in option order (CR 700.2c:
+// modes resolve in printed order). Added in S20 sub-PR 4.
+func (c *Context) HasMode(i int) bool {
+	for _, m := range c.Modes() {
+		if m == i {
+			return true
+		}
+	}
+	return false
+}
+
 // Targets returns the announce-time target slots. Callers that
 // assume a specific cardinality should bounds-check — effects run
 // in sandbox-adjacent territory where the UI might send too few

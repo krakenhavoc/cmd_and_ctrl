@@ -99,6 +99,16 @@ export function canCastFromHand(
   ) {
     return deny("No legal target");
   }
+  // S20 sub-PR 4: a modal spell needs enough castable options to
+  // meet its minimum — untargeted options always count, targeted
+  // ones only with a legal target.
+  if (card.modes && card.modes.options.length > 0) {
+    const castable = card.modes.options.filter((o) => {
+      if (!o.legal_targets) return true;
+      return (o.legal_targets.players?.length ?? 0) + (o.legal_targets.cards?.length ?? 0) > 0;
+    }).length;
+    if (castable < card.modes.min) return deny("No castable mode");
+  }
   const type = (card.type_line ?? "").toLowerCase();
   const isLand = type.includes("land");
   const isInstant = type.includes("instant");

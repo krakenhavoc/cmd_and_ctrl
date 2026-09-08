@@ -106,13 +106,45 @@ The prompt can't be cancelled from the client — the server owns a
 trigger that needs a target — and it pre-empts any cast-targeting
 prompt in flight.
 
+### 7. Modes carry their own target clause (sub-PR 4)
+
+A modal card declares `Spec.Modes` — a `game.ModeSpec` with the
+prompt ("Choose one"), the option labels, `Min`/`Max`, and per
+option an optional `TargetSpec`. The card-level `Targets` stays
+nil: Rakdos Charm's first bullet targets a player, its second an
+artifact, its third nothing, and there is no single clause that
+describes the card. The engine derives the cast's effective spec
+from the chosen options (`castTargetSpec`), so announce validation
+and the resolution re-check are the same code paths a Doom Blade
+uses; the option's spec is what the picker highlights.
+
+Two consequences follow. First, an untargeted chosen mode must
+arrive with no targets and a targeted one with exactly its count —
+the modal card is never free-form. Second, sub-PR 4 supports **one
+targeted option per cast**: "choose two" cards whose options each
+target (Cryptic Command, Kolaghan's Command) need per-mode target
+slots on the wire and on `StackItem.Targets`, which is the same
+plumbing multi-target needs, so it ships with that work rather than
+as a special case here. `Register` panics if a card declares more
+than one targeted option with `Max > 1`, so the limit fails at boot
+rather than at the table.
+
+On the wire the owner's hand card carries `modes` with each
+option's `target_mode` + `legal_targets`, computed from the same
+snapshot pass as `legal_targets`. The client's cast flow is now X
+prompt → mode picker → board targeting → `cast_spell {modes,
+targets, x_value}`; each step is its own small surface rather than
+one consolidated dialog, because each has exactly one thing to ask.
+`canCastFromHand` greys a modal card when fewer castable options
+than `Min` remain (targeted options need a legal target to count).
+
+Effects read the choice back with `ctx.HasMode(i)` and resolve the
+chosen bullets in printed order (CR 700.2c).
+
 ## Out of scope (next sub-PRs)
 
-- **Multi-target** (`Min`/`Max` > 1, "up to N", distribute) and
-  **AllowSameTarget**.
-- **Modes** — `ModeSpec` and the mode picker. (X shipped in sub-PR
-  3: an `{X}` card opens an X prompt whose live check is the S15
-  auto-tap preview at that X; the value rides `cast_spell` and
-  effects read `Context.X()`.)
+- **Multi-target** (`Min`/`Max` > 1, "up to N", distribute),
+  **AllowSameTarget**, and per-mode target slots for "choose two"
+  cards with several targeted options.
 - **Hexproof / shroud / protection** as target-legality
   modifiers — the predicate hook is where they'll go.

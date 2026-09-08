@@ -215,6 +215,20 @@ type Spec struct {
 	//
 	// Added in S19 sub-PR 1.
 	Triggered []game.TriggeredAbility
+
+	// Modes is the S20 sub-PR 4 modal-spell clause ("Choose one —").
+	// Each option carries its oracle bullet and, when the bullet
+	// targets, its own TargetSpec; the engine derives the cast's
+	// effective target clause from the chosen options and the client
+	// shows a mode picker before targeting. OnResolve reads the
+	// choice back with ctx.HasMode(i). Build it with ChooseOne /
+	// ChooseN in modes.go. Nil for non-modal cards.
+	//
+	// Sub-PR 4 limit: at most one chosen option may target, so a
+	// "choose two" card may carry targets on at most one option
+	// (Register panics otherwise). Per-mode target slots are the
+	// deferred multi-target work.
+	Modes *game.ModeSpec
 }
 
 // ManaAbility is one mana-producing activated ability on a permanent.

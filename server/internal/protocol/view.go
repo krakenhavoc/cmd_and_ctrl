@@ -170,6 +170,24 @@ type LegalTargetsView struct {
 	Cards   []string `json:"cards,omitempty"`
 }
 
+// ModeSpecView / ModeOptionView are the wire shape of game.ModeSpec
+// for the owner's hand cards. Added in S20 sub-PR 4.
+type ModeSpecView struct {
+	Prompt  string           `json:"prompt"`
+	Min     int              `json:"min"`
+	Max     int              `json:"max"`
+	Options []ModeOptionView `json:"options"`
+}
+
+type ModeOptionView struct {
+	Label string `json:"label"`
+	// TargetMode / LegalTargets mirror CardView.target_mode /
+	// legal_targets for the option's own target clause; both absent
+	// for untargeted options.
+	TargetMode   string            `json:"target_mode,omitempty"`
+	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+}
+
 // DamageAssignmentView is the wire shape of the CR 510.1c
 // multi-blocker damage-assignment prompt. The attacker's
 // controller orders the blockers and assigns damage across them
@@ -444,6 +462,13 @@ type CardView struct {
 	// "no legal target right now", which the client treats as
 	// uncastable. Added in S20 sub-PR 1.
 	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+	// Modes is the S20 sub-PR 4 modal-spell clause for a card in the
+	// viewer's own hand / command zone: the prompt, how many options
+	// to pick, and each option's label plus — for targeted options —
+	// its target mode and legal set right now. Absent for non-modal
+	// cards and stripped from opponents' hands. The client shows a
+	// mode picker between the X prompt and targeting.
+	Modes *ModeSpecView `json:"modes,omitempty"`
 	// ManaCost is the printed casting cost as Scryfall returns it —
 	// "{1}{R}", "{W/U}", "{X}{B}{B}", etc. Empty for lands and for
 	// placeholder / demo-seed cards. Rendered by the client as a
@@ -589,22 +614,44 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 		for _, zone := range []*ZoneView{&seat.Hand, &seat.Command} {
 			for ci := range zone.Cards {
 				c := &zone.Cards[ci]
+				if ms := game.ModeSpecFor(c.oracleID); ms != nil {
+					c.Modes = viewOfModeSpec(g, caster, ms)
+				}
 				spec := game.TargetSpecFor(c.oracleID)
 				if spec == nil {
 					continue
 				}
-				lt := g.LegalTargetsForEffect(caster, spec)
-				view := &LegalTargetsView{}
-				for _, id := range lt.Players {
-					view.Players = append(view.Players, id.String())
-				}
-				for _, id := range lt.Cards {
-					view.Cards = append(view.Cards, id.String())
-				}
-				c.LegalTargets = view
+				c.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(caster, spec))
 			}
 		}
 	}
+}
+
+func viewOfLegalTargets(lt game.LegalTargets) *LegalTargetsView {
+	view := &LegalTargetsView{}
+	for _, id := range lt.Players {
+		view.Players = append(view.Players, id.String())
+	}
+	for _, id := range lt.Cards {
+		view.Cards = append(view.Cards, id.String())
+	}
+	return view
+}
+
+// viewOfModeSpec projects a modal card's options with each targeted
+// option's legal set from the caster's point of view. Caller must
+// hold g.mu.
+func viewOfModeSpec(g *game.Game, caster uuid.UUID, ms *game.ModeSpec) *ModeSpecView {
+	out := &ModeSpecView{Prompt: ms.Prompt, Min: ms.Min, Max: ms.Max, Options: make([]ModeOptionView, 0, len(ms.Options))}
+	for _, o := range ms.Options {
+		ov := ModeOptionView{Label: o.Label}
+		if o.Targets != nil {
+			ov.TargetMode = o.Targets.Mode
+			ov.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(caster, o.Targets))
+		}
+		out.Options = append(out.Options, ov)
+	}
+	return out
 }
 
 // viewOfPendingChoices materialises the PendingChoices queue,
@@ -1168,6 +1215,7 @@ func keepKnownInHandZone(z ZoneView) ZoneView {
 			// S20: legal targets are computed from the OWNER's point
 			// of view and only meaningful to them.
 			c.LegalTargets = nil
+			c.Modes = nil
 			out.Cards = append(out.Cards, c)
 		}
 	}
