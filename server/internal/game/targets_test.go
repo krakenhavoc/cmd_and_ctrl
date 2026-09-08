@@ -457,3 +457,222 @@ func TestTargetedTriggerRecheckFizzlesWhenTargetStopsQualifying(t *testing.T) {
 		t.Errorf("no EventFizzle for the ability whose target stopped qualifying")
 	}
 }
+
+// --- S20 sub-PR 5: multi-target --------------------------------
+
+// twoCreaturesSpec is "two target creatures".
+func twoCreaturesSpec() *TargetSpec {
+	return (&TargetSpec{
+		Mode:  "creature",
+		Zones: []ZoneKind{ZoneBattlefield},
+		CardOK: func(_ *Game, _ uuid.UUID, c Card, _ ZoneKind) bool {
+			return c.IsCreature()
+		},
+	}).WithCount(2, 2)
+}
+
+func TestValidateTargetsCountAndDistinct(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	a := pushColoredCreature(g, opp, "A", "{W}")
+	b := pushColoredCreature(g, opp, "B", "{W}")
+	rock := pushArtifact(g, opp, "Rock")
+	refs := func(ids ...uuid.UUID) []TargetRef {
+		out := make([]TargetRef, 0, len(ids))
+		for _, id := range ids {
+			out = append(out, TargetRef{Kind: TargetCard, ID: id})
+		}
+		return out
+	}
+	g.WithWriteLock(func() {
+		exact := twoCreaturesSpec()
+		if err := g.validateTargetsLocked(me.ID, exact, refs(a, b)); err != nil {
+			t.Errorf("two distinct creatures: %v", err)
+		}
+		if err := g.validateTargetsLocked(me.ID, exact, refs(a)); err != ErrInvalidParam {
+			t.Errorf("one of two: %v, want ErrInvalidParam", err)
+		}
+		if err := g.validateTargetsLocked(me.ID, exact, refs(a, a)); err != ErrInvalidParam {
+			t.Errorf("same creature twice: %v, want ErrInvalidParam", err)
+		}
+		if err := g.validateTargetsLocked(me.ID, exact, refs(a, rock)); err != ErrIllegalTarget {
+			t.Errorf("creature + artifact: %v, want ErrIllegalTarget", err)
+		}
+		same := twoCreaturesSpec()
+		same.AllowSame = true
+		if err := g.validateTargetsLocked(me.ID, same, refs(a, a)); err != nil {
+			t.Errorf("AllowSame duplicate: %v", err)
+		}
+		upTo := twoCreaturesSpec().WithCount(0, 2)
+		if err := g.validateTargetsLocked(me.ID, upTo, nil); err != nil {
+			t.Errorf("up to two with none: %v", err)
+		}
+		if err := g.validateTargetsLocked(me.ID, upTo, refs(a, b)); err != nil {
+			t.Errorf("up to two with two: %v", err)
+		}
+		unbounded := twoCreaturesSpec().WithCount(1, 0)
+		if err := g.validateTargetsLocked(me.ID, unbounded, refs(a, b)); err != nil {
+			t.Errorf("unbounded with two: %v", err)
+		}
+	})
+}
+
+// A two-target spell whose targets split at resolution: one is gone
+// → the spell resolves (not fizzled) and TargetStillLegalForEffect
+// reports the surviving slot only. Both gone → fizzle.
+func TestMultiTargetPartialAndFullFizzle(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	for g.Turn.Step != StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const oracle = "test-two-creatures"
+	withCatalogTargetSpec(t, func(id string) *TargetSpec {
+		if id == oracle {
+			return twoCreaturesSpec()
+		}
+		return nil
+	})
+	a := pushColoredCreature(g, opp, "A", "{W}")
+	b := pushColoredCreature(g, opp, "B", "{W}")
+	cast := func() uuid.UUID {
+		spell := NewCard("Pair", me.ID)
+		spell.TypeLine = "Instant"
+		spell.OracleID = oracle
+		me.Hand.PushTop(spell)
+		if err := g.CastSpell(me.ID, spell.InstanceID, CastSpellParams{
+			Targets: []TargetRef{{Kind: TargetCard, ID: a}, {Kind: TargetCard, ID: b}},
+		}); err != nil {
+			t.Fatalf("CastSpell: %v", err)
+		}
+		return spell.InstanceID
+	}
+	first := cast()
+	item := g.StackMeta[first]
+	if item == nil || item.targetSpec == nil {
+		t.Fatalf("spell item must remember its spec")
+	}
+	// A leaves in response.
+	g.WithWriteLock(func() {
+		if err := g.DestroyPermanentForEffect(a); err != nil {
+			t.Fatal(err)
+		}
+		if g.TargetStillLegalForEffect(item, TargetRef{Kind: TargetCard, ID: a}) {
+			t.Errorf("destroyed target reported legal")
+		}
+		if !g.TargetStillLegalForEffect(item, TargetRef{Kind: TargetCard, ID: b}) {
+			t.Errorf("surviving target reported illegal")
+		}
+		if spellAllTargetsIllegalLocked(g, item, item.targetSpec) {
+			t.Errorf("one legal target left: must not fizzle")
+		}
+		if err := g.resolveTopOfStackLocked(); err != nil {
+			t.Fatal(err)
+		}
+	})
+	for _, ev := range g.Events {
+		if ev.Kind == EventFizzle && ev.CardID == first {
+			t.Errorf("partially-illegal spell was fizzled")
+		}
+	}
+	// Second cast: b is the only creature now, so re-add one.
+	c := pushColoredCreature(g, opp, "C", "{W}")
+	spell := NewCard("Pair", me.ID)
+	spell.TypeLine = "Instant"
+	spell.OracleID = oracle
+	me.Hand.PushTop(spell)
+	if err := g.CastSpell(me.ID, spell.InstanceID, CastSpellParams{
+		Targets: []TargetRef{{Kind: TargetCard, ID: b}, {Kind: TargetCard, ID: c}},
+	}); err != nil {
+		t.Fatalf("CastSpell 2: %v", err)
+	}
+	g.WithWriteLock(func() {
+		_ = g.DestroyPermanentForEffect(b)
+		_ = g.DestroyPermanentForEffect(c)
+		if err := g.resolveTopOfStackLocked(); err != nil {
+			t.Fatal(err)
+		}
+	})
+	var fizzled bool
+	for _, ev := range g.Events {
+		if ev.Kind == EventFizzle && ev.CardID == spell.InstanceID {
+			fizzled = true
+		}
+	}
+	if !fizzled {
+		t.Errorf("both targets gone: spell should be countered by game rules")
+	}
+}
+
+// A pick_target prompt whose clause takes two targets accepts two
+// refs and rejects one / duplicates.
+func TestPickTargetsMultiSlot(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	const oracle = "test-etb-two-artifacts"
+	var destroyed []uuid.UUID
+	withCatalogTriggers(t, func(id string) []TriggeredAbility {
+		if id != oracle {
+			return nil
+		}
+		return []TriggeredAbility{{
+			Watches: []EventKind{EventETB},
+			AppliesTo: func(ev Event, source *Card, _ Characteristic, _ *Game) bool {
+				return ev.CardID == source.InstanceID
+			},
+			Targets: opponentArtifactSpec().WithCount(2, 2),
+			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
+				return NewTriggeredItem(source, "destroy two artifacts", func(g *Game, item *StackItem) error {
+					for _, t := range item.Targets {
+						destroyed = append(destroyed, t.ID)
+						_ = g.DestroyPermanentForEffect(t.ID)
+					}
+					return nil
+				})
+			},
+		}}
+	})
+	r1 := pushArtifact(g, opp, "Rock 1")
+	r2 := pushArtifact(g, opp, "Rock 2")
+	src := NewCard("Slime", me.ID)
+	src.TypeLine = "Creature — Ooze"
+	src.OracleID = oracle
+	g.WithWriteLock(func() {
+		g.Battlefield.PushTop(src)
+		g.EmitEvent(Event{Kind: EventETB, Actor: me.ID, CardID: src.InstanceID})
+		g.runStateChecksLocked()
+	})
+	choice := findPickTarget(g, me.ID)
+	if choice == nil {
+		t.Fatalf("no pick_target prompt")
+	}
+	if choice.PickTargetMin != 2 || choice.PickTargetMax != 2 {
+		t.Errorf("prompt count = %d/%d, want 2/2", choice.PickTargetMin, choice.PickTargetMax)
+	}
+	one := []TargetRef{{Kind: TargetCard, ID: r1}}
+	if err := g.ResolvePickTargets(choice.ID, me.ID, one); err != ErrInvalidParam {
+		t.Fatalf("one of two: %v, want ErrInvalidParam", err)
+	}
+	dup := []TargetRef{{Kind: TargetCard, ID: r1}, {Kind: TargetCard, ID: r1}}
+	if err := g.ResolvePickTargets(choice.ID, me.ID, dup); err != ErrInvalidParam {
+		t.Fatalf("duplicate: %v, want ErrInvalidParam", err)
+	}
+	both := []TargetRef{{Kind: TargetCard, ID: r2}, {Kind: TargetCard, ID: r1}}
+	if err := g.ResolvePickTargets(choice.ID, me.ID, both); err != nil {
+		t.Fatalf("two refs: %v", err)
+	}
+	if findPickTarget(g, me.ID) != nil {
+		t.Fatalf("prompt should be consumed")
+	}
+	// Resolve the trigger.
+	for i := 0; i < 8 && len(g.StackMeta) > 0; i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(destroyed) != 2 || destroyed[0] != r2 || destroyed[1] != r1 {
+		t.Errorf("destroyed = %v, want [r2 r1] in click order", destroyed)
+	}
+}

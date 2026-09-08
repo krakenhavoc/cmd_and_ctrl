@@ -220,6 +220,10 @@ type PendingChoice struct {
 	// same surfaces the cast picker does. Added in S20 sub-PR 2.
 	PickTargetPlayers []uuid.UUID
 	PickTargetCards   []uuid.UUID
+	// PickTargetMin / PickTargetMax are the clause's count (S20
+	// sub-PR 5) so the client knows whether one click answers the
+	// prompt or picks accumulate.
+	PickTargetMin, PickTargetMax int
 
 	// pickTargetResume is the server-only continuation for a
 	// PendingChoicePickTarget: the captured event / source / LKI,
@@ -1181,6 +1185,8 @@ func (g *Game) queuePickTargetLocked(ev Event, source Card, lki Characteristic, 
 		Reason:            label,
 		PickTargetPlayers: lt.Players,
 		PickTargetCards:   lt.Cards,
+		PickTargetMin:     t.Targets.Min,
+		PickTargetMax:     t.Targets.Max,
 		pickTargetResume: &pickTargetFrame{
 			ev:     ev,
 			source: source,
@@ -1202,6 +1208,14 @@ func (g *Game) queuePickTargetLocked(ev Event, source Card, lki Characteristic, 
 // Caller must NOT hold g.mu — this method takes the write lock.
 // Added in S20 sub-PR 2.
 func (g *Game) ResolvePickTarget(choiceID, chooserID uuid.UUID, target TargetRef) error {
+	return g.ResolvePickTargets(choiceID, chooserID, []TargetRef{target})
+}
+
+// ResolvePickTargets is the multi-slot form (S20 sub-PR 5): the
+// chooser's refs are validated together against the prompt's spec —
+// count within Min..Max, each legal, distinct — and stamped on the
+// built item in the order given.
+func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []TargetRef) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -1229,11 +1243,13 @@ func (g *Game) ResolvePickTarget(choiceID, chooserID uuid.UUID, target TargetRef
 		g.dequeueChoiceLocked(idx)
 		return nil
 	}
-	if target.Kind != TargetPlayer && target.Kind != TargetCard {
-		return ErrInvalidParam
+	for _, t := range targets {
+		if t.Kind != TargetPlayer && t.Kind != TargetCard {
+			return ErrInvalidParam
+		}
 	}
-	if !g.targetLegalLocked(chooserID, frame.spec, target) {
-		return ErrIllegalTarget
+	if err := g.validateTargetsLocked(chooserID, frame.spec, targets); err != nil {
+		return err
 	}
 	g.dequeueChoiceLocked(idx)
 	source := frame.source
@@ -1241,7 +1257,7 @@ func (g *Game) ResolvePickTarget(choiceID, chooserID uuid.UUID, target TargetRef
 	if item == nil {
 		return nil
 	}
-	item.Targets = []TargetRef{target}
+	item.Targets = append([]TargetRef(nil), targets...)
 	item.targetSpec = frame.spec
 	g.queueHarvestedTriggerLocked(item)
 	g.runStateChecksLocked()

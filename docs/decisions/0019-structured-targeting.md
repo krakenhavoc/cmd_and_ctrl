@@ -141,10 +141,40 @@ than `Min` remain (targeted options need a legal target to count).
 Effects read the choice back with `ctx.HasMode(i)` and resolve the
 chosen bullets in printed order (CR 700.2c).
 
-## Out of scope (next sub-PRs)
+### 8. One clause, N slots; partial illegality resolves (sub-PR 5)
 
-- **Multi-target** (`Min`/`Max` > 1, "up to N", distribute),
-  **AllowSameTarget**, and per-mode target slots for "choose two"
-  cards with several targeted options.
+A multi-target clause is the same `TargetSpec` with `Min`/`Max`
+set — "two target creatures" is one predicate chosen twice, "up to
+two" is `0..2`, "any number" is `1..0` (unbounded). Announce
+rejects duplicates unless `AllowSame` (CR 115.3), and preserves the
+order the player clicked in, so a positional clause ("2 damage to
+any target and 1 damage to any other target") reads slots by index.
+
+The spell's item now remembers the spec it was announced under,
+the way trigger items already did. That makes the per-slot check
+cheap: `Context.IsTargetLegal` runs the announced predicate, not
+just an existence check, and `Context.LegalTargets()` is the
+surviving subset. The all-illegal short-circuit still fizzles the
+spell before `OnResolve`; with one target left the spell resolves
+and does what it can (CR 608.2b) — Ashes to Ashes still deals its
+5 to the caster with one creature gone.
+
+On the wire `legal_targets` and `pick_target` carry `min`/`max`.
+The client keeps one targeting store: at `max 1` the first click
+completes the prompt as before; otherwise clicks toggle into a pick
+list (gold ring on picked cards / portraits), the banner shows
+"n/max picked" and a Done button that enables at `min`, and Enter
+confirms. Trigger prompts share the flow and answer with
+`resolve_choice {targets: [...]}`.
+
+## Out of scope
+
+- **Per-mode target slots** for "choose two" cards whose options
+  each target (Cryptic Command, Kolaghan's Command) — needs
+  `StackItem.Targets` grouped by mode and a two-step picker.
+- **Divided damage** (`Distribution` already rides the item; no
+  UI or predicate yet) and cost-per-target clauses (Fireball's
+  `{1}` per extra target: the X prompt runs before targets are
+  known).
 - **Hexproof / shroud / protection** as target-legality
   modifiers — the predicate hook is where they'll go.

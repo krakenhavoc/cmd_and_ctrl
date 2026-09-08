@@ -25,7 +25,7 @@
   import { animateTap } from "../../animations";
   import { play } from "../../sounds";
   import { settings } from "../../settings";
-  import { targeting, isLegalCardTarget } from "../../targeting";
+  import { targeting, isLegalCardTarget, isPicked } from "../../targeting";
   import CounterPips from "./CounterPips.svelte";
   import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
@@ -63,6 +63,11 @@
   const targetable = $derived.by(() => {
     const t = $targeting;
     return t !== null && isLegalCardTarget(t, card.instance_id);
+  });
+  // S20 sub-PR 5: already picked in a multi-target prompt.
+  const picked = $derived.by(() => {
+    const t = $targeting;
+    return t !== null && isPicked(t, card.instance_id);
   });
 
   const {
@@ -219,6 +224,7 @@
   class:tapped={card.tapped}
   class:selected
   class:targetable
+  class:picked
   class:attacking
   class:blocking
   class:clickable={!!onClick}
@@ -526,6 +532,12 @@
       0 0 18px rgba(111, 227, 164, 0.6),
       0 6px 16px rgba(0, 0, 0, 0.5);
     cursor: crosshair;
+  }
+  .card.picked {
+    box-shadow:
+      0 0 0 3px #ffe69a,
+      0 0 22px rgba(255, 230, 154, 0.7),
+      0 6px 16px rgba(0, 0, 0, 0.5);
   }
   .card.attacking {
     box-shadow:

@@ -92,12 +92,14 @@ export function canCastFromHand(
   if (snap.split_second_active) return deny("Split second on the stack");
   // S20: a targeted spell with nothing legal to point at can't be
   // cast (CR 601.2c — you must choose a legal target to cast it).
-  if (
-    card.legal_targets &&
-    (card.legal_targets.players?.length ?? 0) === 0 &&
-    (card.legal_targets.cards?.length ?? 0) === 0
-  ) {
-    return deny("No legal target");
+  // S20 sub-PR 5: a clause needs at least `min` legal candidates
+  // ("two target creatures" with one creature out is uncastable);
+  // "up to N" (min 0) is always castable.
+  if (card.legal_targets) {
+    const lt = card.legal_targets;
+    const n = (lt.players?.length ?? 0) + (lt.cards?.length ?? 0);
+    const min = lt.min ?? 1;
+    if (n < min) return deny(min > 1 ? `Needs ${min} legal targets` : "No legal target");
   }
   // S20 sub-PR 4: a modal spell needs enough castable options to
   // meet its minimum — untargeted options always count, targeted
@@ -105,7 +107,8 @@ export function canCastFromHand(
   if (card.modes && card.modes.options.length > 0) {
     const castable = card.modes.options.filter((o) => {
       if (!o.legal_targets) return true;
-      return (o.legal_targets.players?.length ?? 0) + (o.legal_targets.cards?.length ?? 0) > 0;
+      const n = (o.legal_targets.players?.length ?? 0) + (o.legal_targets.cards?.length ?? 0);
+      return n >= (o.legal_targets.min ?? 1);
     }).length;
     if (castable < card.modes.min) return deny("No castable mode");
   }

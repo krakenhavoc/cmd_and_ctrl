@@ -14,7 +14,7 @@
   import { floatUp, fadeOut } from "../../animations";
   import { play } from "../../sounds";
   import { avatarURL } from "../../api";
-  import { targeting, isLegalPlayerTarget } from "../../targeting";
+  import { targeting, isLegalPlayerTarget, isPicked } from "../../targeting";
   import ManaPoolPips from "./ManaPoolPips.svelte";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
@@ -50,6 +50,11 @@
     if (!t) return false;
     if (!isLegalPlayerTarget(t, seat.id)) return false;
     return !seat.eliminated;
+  });
+  // S20 sub-PR 5: already in a multi-target pick list.
+  const pickedByCast = $derived.by(() => {
+    const t = $targeting;
+    return t !== null && isPicked(t, seat.id);
   });
 
   function handleAvatarClick(): void {
@@ -121,6 +126,7 @@
   class:priority={hasPriority}
   class:targetable={attackTargetable}
   class:cast-targetable={targetableByCast}
+  class:cast-picked={pickedByCast}
   class:eliminated={seat.eliminated}
   style:--seat-color={seatColor(seat.seat)}
 >
@@ -417,6 +423,12 @@
     box-shadow:
       0 0 0 3px var(--gold),
       0 0 28px rgba(255, 208, 122, 0.75);
+  }
+  .identity.cast-picked .avatar-wrap {
+    border-color: #ffe69a;
+    box-shadow:
+      0 0 0 3px #ffe69a,
+      0 0 28px rgba(255, 230, 154, 0.8);
   }
   .identity.eliminated {
     opacity: 0.5;
