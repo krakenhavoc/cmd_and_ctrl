@@ -229,6 +229,37 @@ type Spec struct {
 	// (Register panics otherwise). Per-mode target slots are the
 	// deferred multi-target work.
 	Modes *game.ModeSpec
+
+	// Activated is the list of CR 602 activated abilities the card
+	// offers from the battlefield — the fourth ability type, added
+	// in S21 sub-PR 2. Each entry declares its cost (tap, sacrifice
+	// this / sacrifice another matching a spec, mana, life), an
+	// optional target clause validated like a spell's, and the
+	// Effect that runs when the ability resolves off the stack.
+	//
+	// Mana abilities do NOT belong here — they don't use the stack
+	// (CR 605.3a) and keep their own ManaAbilities slot.
+	//
+	// Build the entries with the constructors in activated.go:
+	//
+	//	Activated: []ActivatedAbility{{
+	//		Label: "Sacrifice a creature: This enchantment deals 1 damage to any target.",
+	//		Cost:  SacrificeACreature(),
+	//		Targets: TargetAny(),
+	//		Effect: ...,
+	//	}},
+	Activated []ActivatedAbility
+}
+
+// ActivatedAbility is one activated ability on a permanent. Mirrors
+// game.ActivatedAbilityShape; the wire hook converts. Added in S21
+// sub-PR 2.
+type ActivatedAbility struct {
+	Label        string
+	Cost         game.AbilityCost
+	Targets      *game.TargetSpec
+	SorcerySpeed bool
+	Effect       func(g *game.Game, item *game.StackItem) error
 }
 
 // ManaAbility is one mana-producing activated ability on a permanent.

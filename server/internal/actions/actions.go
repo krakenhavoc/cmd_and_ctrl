@@ -767,6 +767,13 @@ func Dispatch(g *game.Game, a Action) error {
 			Modes        []int            `json:"modes,omitempty"`
 			XValue       int              `json:"x_value,omitempty"`
 			Distribution map[string]int   `json:"distribution,omitempty"`
+			// S21 sub-PR 2 — catalog activated abilities. AbilityIndex
+			// selects the entry in Spec.Activated; sacrifice_ids names
+			// the permanents paid to a "Sacrifice a creature" cost.
+			AbilityIndex *int     `json:"ability_index,omitempty"`
+			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+			Strict       bool     `json:"strict,omitempty"`
+			AutoTap      bool     `json:"auto_tap,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -774,6 +781,36 @@ func Dispatch(g *game.Game, a Action) error {
 		srcID, err := uuid.Parse(p.SourceCardID)
 		if err != nil {
 			return fmt.Errorf("activate_ability source_card_id: %w", err)
+		}
+		// S21 sub-PR 2: when the payload names a catalog ability
+		// index, route to the real activation path — cost validated
+		// and paid, effect stamped on the stack item. Without an
+		// index we keep the S13.1 free-form announce (a labelled
+		// item players resolve by hand), which is still how
+		// non-catalog cards work.
+		if p.AbilityIndex != nil {
+			sacIDs := make([]uuid.UUID, 0, len(p.SacrificeIDs))
+			for _, raw := range p.SacrificeIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability sacrifice_ids: %w", err)
+				}
+				sacIDs = append(sacIDs, id)
+			}
+			refs := make([]game.TargetRef, 0, len(p.Targets))
+			for _, t := range p.Targets {
+				ref, err := t.toRef()
+				if err != nil {
+					return fmt.Errorf("activate_ability targets: %w", err)
+				}
+				refs = append(refs, ref)
+			}
+			return g.ActivateCatalogAbility(a.Player, srcID, *p.AbilityIndex, game.ActivateAbilityParams{
+				SacrificeIDs: sacIDs,
+				Targets:      refs,
+				Strict:       p.Strict,
+				AutoTap:      p.AutoTap,
+			})
 		}
 		params, err := buildAbilityParams(p.Label, p.Targets, p.Modes, p.XValue, p.Distribution)
 		if err != nil {

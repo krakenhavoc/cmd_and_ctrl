@@ -74,6 +74,11 @@
     // the tap-toggle / combat default). Returns false when no
     // prompt is active or the card isn't a legal target.
     onTargetCard?: (card: CardView) => boolean;
+    // S21 sub-PR 2: a CR 602 activated ability on one of this
+    // seat's permanents was chosen from the card menu. Board owns
+    // the follow-up (sacrifice pick, targeting) because those are
+    // board-wide modals. Only wired for the viewer's own panel.
+    onActivateAbility?: (card: CardView, abilityIndex: number) => void;
     // Priority controls forwarded to PhaseDisplay — only the
     // self panel mounts the widget, so these only matter when
     // isSelf=true but they're plumbed uniformly for prop typing.
@@ -108,6 +113,7 @@
     autopassEnabled = false,
     onPassPriority,
     onToggleAutopass,
+    onActivateAbility,
   }: Props = $props();
 
   const buckets = $derived.by(() => {
@@ -203,6 +209,7 @@
       {selectedCombatCardID}
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
+      onActivateAbility={isSelf ? onActivateAbility : undefined}
     />
   </div>
   <div class="grid-lands">
@@ -213,6 +220,7 @@
       {selectedCombatCardID}
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
+      onActivateAbility={isSelf ? onActivateAbility : undefined}
     />
   </div>
   <div class="grid-enchant">
@@ -223,6 +231,7 @@
       {selectedCombatCardID}
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
+      onActivateAbility={isSelf ? onActivateAbility : undefined}
     />
   </div>
   <div class="grid-bottombar">

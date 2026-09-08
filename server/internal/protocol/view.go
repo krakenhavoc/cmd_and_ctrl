@@ -475,6 +475,17 @@ type CardView struct {
 	// cards and stripped from opponents' hands. The client shows a
 	// mode picker between the X prompt and targeting.
 	Modes *ModeSpecView `json:"modes,omitempty"`
+	// ActivatedAbilities are the CR 602 activated abilities this
+	// permanent offers, from its controller's point of view (public
+	// information, so present on every viewer's copy). Absent off
+	// the battlefield and for cards with none. Added in S21 sub-PR 2.
+	ActivatedAbilities []ActivatedAbilityView `json:"activated_abilities,omitempty"`
+	// SummoningSick reports CR 302.1 sickness: the creature entered
+	// this turn and has no haste, so it can't attack or pay a {T}
+	// cost. Battlefield creatures only. Added in S21 sub-PR 2 for
+	// the activated-ability menu's affordance; the server does the
+	// real check.
+	SummoningSick bool `json:"summoning_sick,omitempty"`
 	// ManaCost is the printed casting cost as Scryfall returns it —
 	// "{1}{R}", "{W/U}", "{X}{B}{B}", etc. Empty for lands and for
 	// placeholder / demo-seed cards. Rendered by the client as a
@@ -507,6 +518,36 @@ type CardView struct {
 // game.ManaAbilityShape projection, so the client can render the
 // button labels without reaching into the catalog directly. Added
 // in S15 sub-PR 2.
+// ActivatedAbilityView is one CR 602 activated ability on a
+// battlefield permanent, from its controller's point of view. The
+// cost flags tell the client what to collect before firing
+// activate_ability with `ability_index`: a sacrifice pick from
+// SacrificeOptions, a target from LegalTargets. Only stamped for
+// the controller — an opponent's menu isn't theirs to open.
+// Added in S21 sub-PR 2.
+type ActivatedAbilityView struct {
+	Index int    `json:"index"`
+	Label string `json:"label,omitempty"`
+	// Cost components. TapCost greys the entry when the source is
+	// tapped or summoning-sick; ManaCost / LifeCost are advisory
+	// (the server does the real check).
+	TapCost       bool   `json:"tap_cost,omitempty"`
+	SacrificeSelf bool   `json:"sacrifice_self,omitempty"`
+	ManaCost      string `json:"mana_cost,omitempty"`
+	LifeCost      int    `json:"life_cost,omitempty"`
+	SorcerySpeed  bool   `json:"sorcery_speed,omitempty"`
+	// SacrificeLabel / SacrificeOptions describe a "Sacrifice a
+	// creature"-style cost: the clause and the permanents the
+	// controller may pay with right now. Absent when the cost has
+	// no sacrifice component.
+	SacrificeLabel   string            `json:"sacrifice_label,omitempty"`
+	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
+	// TargetMode / LegalTargets mirror the cast-time targeting
+	// fields for an ability that targets.
+	TargetMode   string            `json:"target_mode,omitempty"`
+	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+}
+
 type ManaAbilityView struct {
 	// Index is the 0-based position in the card's ability list;
 	// what the activate_mana_ability payload carries.
@@ -602,6 +643,7 @@ func ViewOfGame(g *game.Game) GameView {
 			PendingChoices:    viewOfPendingChoices(g),
 		}
 		stampLegalTargets(g, view.Seats)
+		stampActivatedAbilities(g, &view.Battlefield)
 	})
 	return view
 }
@@ -658,6 +700,35 @@ func viewOfModeSpec(g *game.Game, caster uuid.UUID, ms *game.ModeSpec) *ModeSpec
 		out.Options = append(out.Options, ov)
 	}
 	return out
+}
+
+// stampActivatedAbilities fills CardView.ActivatedAbilities for
+// every battlefield permanent, computed from its CONTROLLER's point
+// of view (they're the only player who can activate it). A
+// permanent's abilities are public information in Magic, so unlike
+// hand-card legal targets these are not stripped per viewer — the
+// client simply doesn't offer the menu on permanents you don't
+// control. Runs under the read lock ViewOfGame already holds.
+func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
+	for i := range bf.Cards {
+		c := &bf.Cards[i]
+		if c.oracleID == "" {
+			continue
+		}
+		controller, err := uuid.Parse(c.Controller)
+		if err != nil {
+			continue
+		}
+		instanceID, err := uuid.Parse(c.InstanceID)
+		if err != nil {
+			continue
+		}
+		card, ok := g.LookupCardForEffect(instanceID)
+		if !ok {
+			continue
+		}
+		c.ActivatedAbilities = viewOfActivatedAbilities(g, card, controller)
+	}
 }
 
 // viewOfPendingChoices materialises the PendingChoices queue,
@@ -1280,6 +1351,7 @@ func viewOfCard(c game.Card) CardView {
 		oracleID:      c.OracleID,
 		ManaCost:      c.ManaCost,
 		ManaAbilities: viewOfManaAbilities(c),
+		SummoningSick: game.HasSummoningSickness(&c),
 		Abilities:     eff.Abilities,
 		knowers:       knowers,
 	}
@@ -1377,6 +1449,76 @@ func equalStrings(a, b []string) bool {
 // Birds of Paradise + every basic land (via the synthetic path).
 // Cheap — ManaAbilitiesForCard is a single catalog lookup + a
 // TypeLine substring scan. Added in S15 sub-PR 2.
+// viewOfActivatedAbilities projects a battlefield permanent's
+// catalog activated abilities (S21 sub-PR 2). The client renders
+// them in the same right-click menu the mana abilities use; the
+// cost flags tell it which extra picks to collect before firing
+// activate_ability (a sacrifice choice, a target).
+func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []ActivatedAbilityView {
+	raw := game.ActivatedAbilitiesForCard(c)
+	if len(raw) == 0 {
+		return nil
+	}
+	out := make([]ActivatedAbilityView, len(raw))
+	for i, a := range raw {
+		v := ActivatedAbilityView{
+			Index:         i,
+			Label:         a.Label,
+			TapCost:       a.Cost.Tap,
+			SacrificeSelf: a.Cost.SacrificeSelf,
+			ManaCost:      a.Cost.Mana,
+			LifeCost:      a.Cost.Life,
+			SorcerySpeed:  a.SorcerySpeed,
+		}
+		if a.Cost.SacrificeOther != nil {
+			v.SacrificeLabel = a.Cost.SacrificeOther.Label
+			v.SacrificeOptions = abilityLegalTargets(g, caster, a.Cost.SacrificeOther)
+			// A sacrifice cost can only be paid with your own
+			// permanents (CR 701.17b); the legal-target walk doesn't
+			// know that, so filter here.
+			v.SacrificeOptions.Cards = filterToController(g, v.SacrificeOptions.Cards, caster)
+			v.SacrificeOptions.Players = nil
+		}
+		if a.Targets != nil {
+			v.TargetMode = a.Targets.Mode
+			v.LegalTargets = abilityLegalTargets(g, caster, a.Targets)
+		}
+		out[i] = v
+	}
+	return out
+}
+
+// abilityLegalTargets is the legal set for one of an ability's
+// clauses (its target clause, or the permanents that can pay its
+// sacrifice cost). Caller must hold g.mu.
+func abilityLegalTargets(g *game.Game, caster uuid.UUID, spec *game.TargetSpec) *LegalTargetsView {
+	lt := g.LegalTargetsForEffect(caster, spec)
+	out := &LegalTargetsView{}
+	for _, id := range lt.Players {
+		out.Players = append(out.Players, id.String())
+	}
+	for _, id := range lt.Cards {
+		out.Cards = append(out.Cards, id.String())
+	}
+	return out
+}
+
+// filterToController drops card IDs not controlled by the given
+// player. Caller must hold g.mu.
+func filterToController(g *game.Game, ids []string, controller uuid.UUID) []string {
+	out := ids[:0]
+	for _, id := range ids {
+		parsed, err := uuid.Parse(id)
+		if err != nil {
+			continue
+		}
+		if c, ok := g.LookupCardForEffect(parsed); ok && c.Controller == controller {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
 func viewOfManaAbilities(c game.Card) []ManaAbilityView {
 	raw := game.ManaAbilitiesForCard(c)
 	if len(raw) == 0 {

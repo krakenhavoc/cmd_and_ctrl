@@ -58,6 +58,7 @@ export interface ErrorPayload {
 // (play_card, advance_step, set_goaded, …); add literals as the UI
 // grows call sites for them.
 export type ActionType =
+  | "activate_ability"
   | "activate_mana_ability"
   | "add_counter"
   | "add_player_counter"
@@ -395,6 +396,28 @@ export interface ModeSpecView {
   options: ModeOptionView[];
 }
 
+// ActivatedAbilityView is one CR 602 activated ability on a
+// battlefield permanent (S21 sub-PR 2). Public information, so it
+// rides every viewer's snapshot; the client only offers the menu on
+// permanents the viewer controls. `index` is what the
+// activate_ability payload carries as `ability_index`.
+export interface ActivatedAbilityView {
+  index: number;
+  label?: string;
+  tap_cost?: boolean;
+  sacrifice_self?: boolean;
+  mana_cost?: string;
+  life_cost?: number;
+  sorcery_speed?: boolean;
+  // A "Sacrifice a creature"-style cost: the clause, and the
+  // permanents the controller can pay it with right now.
+  sacrifice_label?: string;
+  sacrifice_options?: { players?: string[]; cards?: string[] };
+  // Present when the ability targets.
+  target_mode?: string;
+  legal_targets?: { players?: string[]; cards?: string[] };
+}
+
 export interface ModeOptionView {
   label: string;
   target_mode?: string;
@@ -479,6 +502,11 @@ export interface CardView {
   // mode picker before targeting. Absent for non-modal cards and on
   // opponents' hands.
   modes?: ModeSpecView;
+  // S21 sub-PR 2: activated abilities offered by this permanent.
+  activated_abilities?: ActivatedAbilityView[];
+  // S21 sub-PR 2: CR 302.1 summoning sickness — entered this turn
+  // without haste, so it can't attack or pay a {T} cost.
+  summoning_sick?: boolean;
   // S15: raw Scryfall mana-cost string ("{1}{R}", "{W/U}", "{X}{B}"),
   // rendered as a read-only chip on hand-zone cards. Omitted for
   // lands and for placeholder / demo-seed cards. Also zeroed on the

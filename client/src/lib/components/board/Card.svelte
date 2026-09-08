@@ -55,6 +55,9 @@
     // the menu entirely (hand cards, opponent permanents, zones
     // where activations aren't meaningful).
     onActivateManaAbility?: (abilityIndex: number) => void;
+    // S21 sub-PR 2: same menu, CR 602 activated abilities. Set by
+    // parents for battlefield permanents the viewer controls.
+    onActivateAbility?: (abilityIndex: number) => void;
     onClick?: (card: CardView, ev: MouseEvent) => void;
   }
 
@@ -79,6 +82,7 @@
     size = "small",
     showManaCost = false,
     onActivateManaAbility,
+    onActivateAbility,
     onClick,
   }: Props = $props();
 
@@ -89,7 +93,8 @@
   // click elsewhere (the window-level onclick handler below).
   let manaMenuOpen = $state(false);
   const hasManaAbilities = $derived(
-    !!onActivateManaAbility && !!card.mana_abilities && card.mana_abilities.length > 0,
+    (!!onActivateManaAbility && !!card.mana_abilities && card.mana_abilities.length > 0) ||
+      (!!onActivateAbility && !!card.activated_abilities && card.activated_abilities.length > 0),
   );
 
   const imgSrc = $derived(
@@ -331,12 +336,15 @@
       {/if}
     {/if}
   {/if}
-  {#if manaMenuOpen && hasManaAbilities && onActivateManaAbility && card.mana_abilities}
+  {#if manaMenuOpen && hasManaAbilities}
     <div class="mana-menu-anchor">
       <ManaAbilityMenu
-        abilities={card.mana_abilities}
+        abilities={onActivateManaAbility ? (card.mana_abilities ?? []) : []}
         tapped={!!card.tapped}
-        onActivate={(idx) => onActivateManaAbility(idx)}
+        onActivate={(idx) => onActivateManaAbility?.(idx)}
+        activated={onActivateAbility ? (card.activated_abilities ?? []) : []}
+        onActivateAbility={(idx) => onActivateAbility?.(idx)}
+        summoningSick={!!card.summoning_sick}
         onClose={() => (manaMenuOpen = false)}
       />
     </div>

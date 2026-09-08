@@ -25,6 +25,8 @@
     // Card.svelte so the right-click / context menu can hit it.
     // Undefined suppresses the menu entirely (opponent panels).
     onActivateManaAbility?: (card: CardView, abilityIndex: number) => void;
+    // S21 sub-PR 2: CR 602 activated abilities, same menu.
+    onActivateAbility?: (card: CardView, abilityIndex: number) => void;
   }
 
   const {
@@ -33,6 +35,7 @@
     selectedCombatCardID = null,
     onCardClick,
     onActivateManaAbility,
+    onActivateAbility,
   }: Props = $props();
 
   const sorted = $derived([...cards].sort((a, b) => (a.battle_x ?? 0) - (b.battle_x ?? 0)));
@@ -52,6 +55,7 @@
           onActivateManaAbility={onActivateManaAbility
             ? (idx) => onActivateManaAbility(c, idx)
             : undefined}
+          onActivateAbility={onActivateAbility ? (idx) => onActivateAbility(c, idx) : undefined}
         />
       </div>
     {/each}
