@@ -12,7 +12,7 @@
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
   import TargetingBanner from "../lib/components/board/TargetingBanner.svelte";
-  import { cancel as cancelTargeting } from "../lib/targeting";
+  import { cancel as cancelTargeting, confirm as confirmTargeting } from "../lib/targeting";
   import type { ActionType, PlayerView } from "../lib/protocol";
   import type { StepID } from "../lib/turn";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
@@ -966,6 +966,9 @@
 <svelte:window
   onkeydown={(ev: KeyboardEvent) => {
     if (ev.key === "Escape") cancelTargeting();
+    // S20 sub-PR 5: Enter confirms a multi-target pick list (no-op
+    // for single-target prompts and when fewer than min are picked).
+    if (ev.key === "Enter" && !(ev.target instanceof HTMLInputElement)) confirmTargeting();
   }}
 />
 

@@ -382,8 +382,10 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// Rejecting here turns the silent "spell resolves with no effect"
 	// failure into a visible ErrInvalidParam that the client's error
 	// toast surfaces. Non-catalog cards (empty TargetMode) pass
-	// through unchanged.
-	if mode := TargetModeFor(card.OracleID); mode != "" && len(params.Targets) == 0 {
+	// through unchanged. S20: cards with a structured TargetSpec are
+	// counted by validateTargetsLocked below instead — an "up to N"
+	// clause legitimately arrives with none.
+	if mode := TargetModeFor(card.OracleID); mode != "" && len(params.Targets) == 0 && TargetSpecFor(card.OracleID) == nil {
 		slog.Warn("cast_spell rejected: targeted card arrived without targets",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -561,6 +563,9 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		HoldPriority: params.HoldPriority,
 		SplitSecond:  params.SplitSecond,
 		Seq:          g.nextStackSeqLocked(),
+		// S20: remember the clause the targets were validated under so
+		// the resolution re-check and per-slot effect checks use it.
+		targetSpec: spec,
 	}
 	if params.SplitSecond {
 		g.SplitSecondActive = true

@@ -867,6 +867,10 @@ func Dispatch(g *game.Game, a Action) error {
 			// answer: the {kind, id} ref the trigger's controller
 			// clicked on the board. Same shape as cast_spell targets.
 			Target *castTargetWire `json:"target"`
+			// Targets is the multi-slot form (S20 sub-PR 5) for a
+			// pick_target prompt whose clause takes several targets
+			// ("up to two target creatures"). Ordered as clicked.
+			Targets []castTargetWire `json:"targets"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -884,6 +888,17 @@ func Dispatch(g *game.Game, a Action) error {
 				return fmt.Errorf("resolve_choice target: %w", err)
 			}
 			return g.ResolvePickTarget(choiceID, a.Player, ref)
+		}
+		if p.Targets != nil {
+			refs := make([]game.TargetRef, 0, len(p.Targets))
+			for _, t := range p.Targets {
+				ref, err := t.toRef()
+				if err != nil {
+					return fmt.Errorf("resolve_choice targets: %w", err)
+				}
+				refs = append(refs, ref)
+			}
+			return g.ResolvePickTargets(choiceID, a.Player, refs)
 		}
 		if p.OptionalApply != nil {
 			// Three yes/no kinds share the {apply: bool} payload

@@ -16,10 +16,15 @@ import "github.com/google/uuid"
 // sent was accepted. TargetMode survives as the derived hint the
 // client uses for banner copy; TargetSpec is the truth.
 
-// TargetSpec declares a spell's or ability's single target slot.
-// Multi-target ("up to two target creatures", "divide damage") is
-// S22 territory — Min / Max are carried now so the wire shape
-// doesn't churn, but sub-PR 1 only ever sets 1 / 1.
+// TargetSpec declares a spell's or ability's target clause: one
+// predicate, chosen Min..Max times. "Target creature" is 1 / 1;
+// "two target creatures" 2 / 2; "up to three target cards" 0 / 3;
+// "any number of targets" 1 / 0 (Max 0 = unbounded). Targets are
+// distinct unless AllowSame (CR 115.3: one object can't be chosen
+// more than once for a single instance of the word "target").
+// Announce-time order is preserved on StackItem.Targets, so a
+// positional clause ("2 damage to any target and 1 damage to any
+// other target") reads Targets[0] / Targets[1].
 type TargetSpec struct {
 	// Mode is the client-facing hint derived from the spec: "any",
 	// "player", "creature", "permanent", "stack_spell",
@@ -54,8 +59,22 @@ type TargetSpec struct {
 	// locking rule as CardOK.
 	PlayerOK func(g *Game, caster uuid.UUID, p *Player) bool
 
-	// Min / Max bound the number of targets. Sub-PR 1: 1 / 1.
+	// Min / Max bound the number of targets. Max 0 means unbounded.
 	Min, Max int
+
+	// AllowSame permits the same player / card in more than one
+	// slot. Off for every ordinary clause; reserved for effects
+	// whose wording uses separate "target" words that may coincide.
+	AllowSame bool
+}
+
+// WithCount returns the spec with its Min / Max replaced — the
+// catalog's way to turn a single-target constructor into "two
+// target creatures" (2, 2) or "up to three" (0, 3). Mutates and
+// returns the receiver for chaining.
+func (s *TargetSpec) WithCount(min, max int) *TargetSpec {
+	s.Min, s.Max = min, max
+	return s
 }
 
 // CatalogTargetSpec is the catalog hook the effects package wires
@@ -111,6 +130,26 @@ func (g *Game) legalTargetsLocked(caster uuid.UUID, spec *TargetSpec) LegalTarge
 		}
 	}
 	return out
+}
+
+// TargetStillLegalForEffect is the per-slot CR 608.2b check for an
+// item mid-resolution: the ref still exists in an allowed zone and
+// still passes the item's spec (the one it was announced under).
+// Items without a spec fall back to the existence check. Effects
+// with several targets call this per slot and skip the illegal ones
+// — "if only some targets are illegal, the spell does as much as it
+// can" — while the all-illegal fizzle runs before OnResolve fires.
+func (g *Game) TargetStillLegalForEffect(item *StackItem, ref TargetRef) bool {
+	switch ref.Kind {
+	case TargetSelf, TargetNone:
+		return true
+	case TargetPlayer, TargetCard:
+		if item != nil && item.targetSpec != nil {
+			return g.targetLegalLocked(item.Controller, item.targetSpec, ref)
+		}
+		return targetStillExistsLocked(g, ref)
+	}
+	return false
 }
 
 // LegalTargetsForEffect is the *ForEffect-surface wrapper around
@@ -207,16 +246,24 @@ func (g *Game) targetLegalLocked(caster uuid.UUID, spec *TargetSpec, ref TargetR
 }
 
 // validateTargetsLocked is the announce-time gate (CR 601.2c): the
-// number of targeted slots must fall within Min..Max and each must
-// be legal. Returns ErrInvalidParam for a count violation and
+// number of targeted slots must fall within Min..Max, each must be
+// legal, and (unless AllowSame) no two may name the same object.
+// Returns ErrInvalidParam for a count / duplicate violation and
 // ErrIllegalTarget for a bad pick. Caller must hold g.mu.
 func (g *Game) validateTargetsLocked(caster uuid.UUID, spec *TargetSpec, targets []TargetRef) error {
 	n := 0
+	seen := make(map[uuid.UUID]bool, len(targets))
 	for _, t := range targets {
 		if t.Kind == TargetSelf || t.Kind == TargetNone {
 			continue
 		}
 		n++
+		if !spec.AllowSame {
+			if seen[t.ID] {
+				return ErrInvalidParam
+			}
+			seen[t.ID] = true
+		}
 		if !g.targetLegalLocked(caster, spec, t) {
 			return ErrIllegalTarget
 		}

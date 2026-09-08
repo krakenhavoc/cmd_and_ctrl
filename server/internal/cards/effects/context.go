@@ -126,23 +126,33 @@ func (c *Context) PlayerByID(id uuid.UUID) *game.Player {
 	return c.Game.PlayerByIDForEffect(id)
 }
 
-// IsTargetLegal reruns the CR 608.2b existence check for a single
-// target ref. Primitives use this when they want to silently skip
+// LegalTargets returns the announce-time target slots that are still
+// legal now, in announce order (S20 sub-PR 5). A multi-target effect
+// iterates this instead of Targets() so a slot whose target left or
+// stopped qualifying is skipped — CR 608.2b's "does as much as it
+// can" — while the all-illegal fizzle has already run before
+// OnResolve. Positional effects (Arc Trail) index Targets() and check
+// IsTargetLegal per slot instead, since skipping would shift the
+// slots.
+func (c *Context) LegalTargets() []game.TargetRef {
+	var out []game.TargetRef
+	for _, t := range c.Targets() {
+		if c.IsTargetLegal(t) {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// IsTargetLegal reruns the CR 608.2b check for a single target ref
+// under the item's announced clause (existence only for items with
+// no structured spec). Primitives use this when they want to silently skip
 // a now-illegal slot (the "partial targets illegal" case) without
 // aborting the whole resolution. The "all targets illegal" short-
 // circuit runs before OnResolve even fires, so primitives don't
 // need to handle the all-fizzle case themselves.
 func (c *Context) IsTargetLegal(t game.TargetRef) bool {
-	switch t.Kind {
-	case game.TargetSelf, game.TargetNone:
-		return true
-	case game.TargetPlayer:
-		p := c.Game.PlayerByIDForEffect(t.ID)
-		return p != nil && !p.Eliminated
-	case game.TargetCard:
-		return c.Game.FindCardZoneForEffect(t.ID) != nil
-	}
-	return false
+	return c.Game.TargetStillLegalForEffect(c.Item, t)
 }
 
 // CreatureIDs returns the InstanceIDs of every creature currently
