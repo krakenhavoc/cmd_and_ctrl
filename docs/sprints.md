@@ -1730,10 +1730,11 @@ Mini sprint slotted after S18 started, to ship two pieces of long-promised clien
 - [ ] Token catalog (Food, Clue, Blood, Map, Powerstone, generic creatures)
 - [ ] `Proliferate`, `CreateTokenAdvanced` primitives
 - [x] **Sub-PR 2 — `s21-activated`**: activated abilities in the catalog (CR 602) — the fifth way a card does something, after spells, triggers, statics and replacements. `Spec.Activated` with a struct cost (`Tap` / `SacrificeSelf` / `SacrificeOther` / `Mana` / `Life`), an optional target clause validated like a spell's, and the same `Effect` closure S19 gave triggers, so resolution needed no new code. Costs are validated in full before any is paid, and paid at announce — so a creature sacrificed to Goblin Bombardment puts its dies-trigger on the stack ABOVE the ability, which is what makes aristocrats work. Tap costs enforce summoning sickness (`CardView.summoning_sick` on the wire for the affordance). Cards: Goblin Bombardment, Carrion Feeder, Krenko Mob Boss. Client: activated abilities join the right-click menu; a sacrifice cost opens a picker before targeting. [ADR 0020](decisions/0020-activated-abilities.md).
-- [ ] ~40 cards: token producers, sacrifice outlets, aristocrats payoffs, proliferate cards
+- [x] **Sub-PR 3 — `s21-aristocrats`**: the payoffs. Blood Artist (any creature's death, including its own, targeted drain), Zulaport Cutthroat (your creatures only, every opponent, gain exactly 1), Mayhem Devil (the first `EventSacrifice` consumer — any player, any permanent, and pointedly NOT destruction), Midnight Reaper (nontoken only, the first card to care about the token split). `diedCreature` / `IsToken` helpers. **Exit criteria met and pinned by a test.**
+- [ ] ~40 cards: more token producers, sacrifice outlets, proliferate cards (10 of ~40 so far across sub-PRs 1–3)
 - [ ] Theme-deck smoke test (Korvold-style aristocrats deck plays 3 turns)
 
-**Exit criteria:** Cast Goblin Bombardment + Blood Artist + Krenko, Mob Boss; sacrifice tokens to Bombardment one at a time → opponent's life ticks down (Blood Artist + Bombardment damage); your life ticks up (Blood Artist gain).
+**Exit criteria:** Cast Goblin Bombardment + Blood Artist + Krenko, Mob Boss; sacrifice tokens to Bombardment one at a time → opponent's life ticks down (Blood Artist + Bombardment damage); your life ticks up (Blood Artist gain). — **met** in `TestS21ExitCriteriaAristocratsCombo` (effects/aristocrats_test.go).
 
 ---
 
