@@ -41,6 +41,13 @@ func init() {
 		}
 		return nil
 	}
+	// S20 sub-PR 4: modal spells. Nil for non-modal cards.
+	game.CatalogModeSpec = func(oracleID string) *game.ModeSpec {
+		if spec, ok := Lookup(oracleID); ok {
+			return spec.Modes
+		}
+		return nil
+	}
 	game.CatalogManaAbilities = func(oracleID string) []game.ManaAbilityShape {
 		spec, ok := Lookup(oracleID)
 		if !ok || len(spec.ManaAbilities) == 0 {

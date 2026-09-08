@@ -35,12 +35,15 @@
     begin as beginTargeting,
     cancel as cancelTargeting,
     beginChoice as beginTargetingChoice,
+    beginForMode as beginTargetingForMode,
     hasXCost,
+    isModal,
     isLegalCardTarget,
     isLegalPlayerTarget,
     type TargetingMode,
   } from "../../targeting";
   import XCostModal from "./XCostModal.svelte";
+  import ModePickerModal from "./ModePickerModal.svelte";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -150,9 +153,38 @@
     continueCast(card, undefined);
   }
 
-  // continueCast is the post-X half of the cast flow: enter
-  // targeting for a targeted card, or fire cast_spell straight away.
+  // S20 sub-PR 4: a modal spell asks for its mode(s) after X and
+  // before targeting. The picker's confirm continues with the
+  // chosen indexes; a targeted option enters targeting with that
+  // option's legal set, otherwise the cast fires straight away.
+  let modePromptCard = $state<CardView | null>(null);
+  let modePromptX: number | undefined;
+  function confirmModes(modes: number[]): void {
+    const card = modePromptCard;
+    const xValue = modePromptX;
+    modePromptCard = null;
+    modePromptX = undefined;
+    if (!card) return;
+    const targeted = modes.find((i) => card.modes?.options[i]?.legal_targets !== undefined);
+    if (targeted !== undefined) {
+      const option = card.modes!.options[targeted];
+      beginTargetingForMode(card, option, modes, xValue);
+      return;
+    }
+    const params: Record<string, unknown> = { instance_id: card.instance_id, modes };
+    if (xValue !== undefined) params.x_value = xValue;
+    sendAction("cast_spell", params, viewerID ?? undefined);
+  }
+
+  // continueCast is the post-X half of the cast flow: pick modes for
+  // a modal card, enter targeting for a targeted card, or fire
+  // cast_spell straight away.
   function continueCast(card: CardView, xValue: number | undefined): void {
+    if (isModal(card)) {
+      modePromptX = xValue;
+      modePromptCard = card;
+      return;
+    }
     // S14: if the card declares a target_mode (catalog cards with
     // a target slot — Lightning Bolt, Counterspell), enter the
     // targeting flow and wait for a second click on a legal target.
@@ -198,6 +230,7 @@
     }
     const params: Record<string, unknown> = { instance_id: state.card.instance_id, targets: [ref] };
     if (state.xValue !== undefined) params.x_value = state.xValue;
+    if (state.modes !== undefined) params.modes = state.modes;
     sendAction("cast_spell", params, viewerID ?? undefined);
     cancelTargeting();
   }
@@ -373,6 +406,14 @@
     suggestedMax={suggestedX}
     onConfirm={confirmX}
     onCancel={() => (xPromptCard = null)}
+  />
+  <ModePickerModal
+    card={modePromptCard}
+    onConfirm={confirmModes}
+    onCancel={() => {
+      modePromptCard = null;
+      modePromptX = undefined;
+    }}
   />
   {#if $zoneBrowser}
     <ZoneBrowserModal

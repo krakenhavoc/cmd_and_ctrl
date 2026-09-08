@@ -386,6 +386,21 @@ export interface ZoneView {
   cards: CardView[];
 }
 
+// ModeSpecView is the wire shape of a modal spell's options
+// (S20 sub-PR 4). Indexes into `options` ride cast_spell as `modes`.
+export interface ModeSpecView {
+  prompt: string;
+  min: number;
+  max: number;
+  options: ModeOptionView[];
+}
+
+export interface ModeOptionView {
+  label: string;
+  target_mode?: string;
+  legal_targets?: { players?: string[]; cards?: string[] };
+}
+
 export interface CardView {
   instance_id: string;
   name: string;
@@ -449,6 +464,12 @@ export interface CardView {
   // target slot accepts right now. Absent for free-form cards. Both
   // lists empty = no legal target = not castable right now.
   legal_targets?: { players?: string[]; cards?: string[] };
+  // S20 sub-PR 4: for a modal card in the viewer's own hand — the
+  // "Choose one" clause. Each option carries its label and, when it
+  // targets, its own target_mode + legal set. The cast flow shows a
+  // mode picker before targeting. Absent for non-modal cards and on
+  // opponents' hands.
+  modes?: ModeSpecView;
   // S15: raw Scryfall mana-cost string ("{1}{R}", "{W/U}", "{X}{B}"),
   // rendered as a read-only chip on hand-zone cards. Omitted for
   // lands and for placeholder / demo-seed cards. Also zeroed on the

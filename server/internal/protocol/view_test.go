@@ -509,3 +509,73 @@ func TestLegalTargetsStampedForOwnerOnly(t *testing.T) {
 		}
 	}
 }
+
+// TestModesStampedForOwnerOnly — S20 sub-PR 4: a modal hand card
+// carries its options with per-option legal sets for its owner, and
+// nothing for an opponent.
+func TestModesStampedForOwnerOnly(t *testing.T) {
+	g := buildActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	const oracle = "test-view-mode-spec"
+	prev := game.CatalogModeSpec
+	game.CatalogModeSpec = func(id string) *game.ModeSpec {
+		if id != oracle {
+			return nil
+		}
+		return &game.ModeSpec{
+			Prompt: "Choose one",
+			Options: []game.ModeOption{
+				{Label: "Destroy target artifact.", Targets: &game.TargetSpec{
+					Mode: "permanent", Zones: []game.ZoneKind{game.ZoneBattlefield},
+					CardOK: func(_ *game.Game, _ uuid.UUID, c game.Card, _ game.ZoneKind) bool {
+						return c.IsArtifact()
+					},
+					Min: 1, Max: 1,
+				}},
+				{Label: "Do nothing."},
+			},
+			Min: 1, Max: 1,
+		}
+	}
+	t.Cleanup(func() { game.CatalogModeSpec = prev })
+
+	rock := game.NewCard("Rock", opp.ID)
+	rock.TypeLine = "Artifact"
+	g.Battlefield.PushTop(rock)
+	charm := game.NewCard("Charm", me.ID)
+	charm.TypeLine = "Instant"
+	charm.OracleID = oracle
+	charm.KnownBy = map[uuid.UUID]bool{me.ID: true, opp.ID: true}
+	me.Hand.PushTop(charm)
+
+	mine := ViewOfGameFor(g, me.ID.String())
+	var found *CardView
+	for i := range mine.Seats[0].Hand.Cards {
+		if mine.Seats[0].Hand.Cards[i].InstanceID == charm.InstanceID.String() {
+			found = &mine.Seats[0].Hand.Cards[i]
+		}
+	}
+	if found == nil || found.Modes == nil {
+		t.Fatalf("owner's view: modes missing on the modal card")
+	}
+	if found.Modes.Prompt != "Choose one" || found.Modes.Min != 1 || found.Modes.Max != 1 || len(found.Modes.Options) != 2 {
+		t.Fatalf("modes = %+v", found.Modes)
+	}
+	o0, o1 := found.Modes.Options[0], found.Modes.Options[1]
+	if o0.TargetMode != "permanent" || o0.LegalTargets == nil || len(o0.LegalTargets.Cards) != 1 || o0.LegalTargets.Cards[0] != rock.InstanceID.String() {
+		t.Errorf("targeted option = %+v, want permanent mode with just the rock", o0)
+	}
+	if o1.TargetMode != "" || o1.LegalTargets != nil {
+		t.Errorf("untargeted option must carry no target fields: %+v", o1)
+	}
+	if found.LegalTargets != nil {
+		t.Errorf("modal card must not carry card-level legal_targets")
+	}
+
+	theirs := ViewOfGameFor(g, opp.ID.String())
+	for _, c := range theirs.Seats[0].Hand.Cards {
+		if c.InstanceID == charm.InstanceID.String() && c.Modes != nil {
+			t.Errorf("opponent's view of a revealed modal card must not carry modes")
+		}
+	}
+}

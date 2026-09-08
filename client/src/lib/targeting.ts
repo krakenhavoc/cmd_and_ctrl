@@ -1,5 +1,5 @@
 import { writable, type Writable } from "svelte/store";
-import type { CardView, PendingChoiceView } from "./protocol";
+import type { CardView, ModeOptionView, PendingChoiceView } from "./protocol";
 
 // targeting.ts is the shared-store plumbing for the S14 "cast a
 // catalog card, pick a target" flow. When a player clicks a hand
@@ -53,6 +53,9 @@ export interface TargetingState {
   // Human-readable clause for the banner ("target artifact or
   // enchantment"); the server's TargetSpec label.
   label?: string;
+  // S20 sub-PR 4: the chosen mode indexes of a modal spell; ride the
+  // cast_spell payload as `modes`.
+  modes?: number[];
 }
 
 export const targeting: Writable<TargetingState | null> = writable(null);
@@ -66,6 +69,39 @@ export function begin(card: CardView, mode: TargetingMode, xValue?: number): voi
     ? { players: new Set(lt.players ?? []), cards: new Set(lt.cards ?? []) }
     : undefined;
   targeting.set({ card, mode, legal, xValue });
+}
+
+// beginForMode enters a targeting prompt for the targeted option of
+// a modal spell: the legal set and banner clause come from the
+// option, not the card. `modes` is the full chosen set (the targeted
+// option plus any untargeted ones) and rides the cast.
+export function beginForMode(
+  card: CardView,
+  option: ModeOptionView,
+  modes: number[],
+  xValue?: number,
+): void {
+  const mode = (option.target_mode || "any") as TargetingMode;
+  const lt = option.legal_targets;
+  const legal = lt
+    ? { players: new Set(lt.players ?? []), cards: new Set(lt.cards ?? []) }
+    : undefined;
+  targeting.set({ card, mode, legal, xValue, modes, label: option.label });
+}
+
+// isModal reports whether a card needs the mode picker before it
+// can be cast.
+export function isModal(card: CardView): boolean {
+  return (card.modes?.options?.length ?? 0) > 0;
+}
+
+// modeOptionCastable reports whether an option can be chosen right
+// now: untargeted options always can; targeted ones need at least
+// one legal target.
+export function modeOptionCastable(option: ModeOptionView): boolean {
+  const lt = option.legal_targets;
+  if (!lt) return true;
+  return (lt.players?.length ?? 0) + (lt.cards?.length ?? 0) > 0;
 }
 
 // hasXCost reports whether a card's printed cost includes {X} — the
