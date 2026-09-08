@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -15,6 +16,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
@@ -92,6 +94,22 @@ type Config struct {
 	// so the client hides the report button. Production wires
 	// *github.Client when CMDCTRL_GITHUB_TOKEN is set.
 	BugReporter BugReporter
+
+	// BugStore persists the artifacts a report carries: reporter
+	// screenshots (served publicly so GitHub's image proxy can render
+	// them) and a pinned copy of the game's replay (admin-only). Nil
+	// or unconfigured means text-only reports: POST /bugreport still
+	// files issues, the attachment routes 503, and
+	// /bugreport/config reports attachments:false so the modal hides
+	// its file picker. See ADR 0017 §6.
+	BugStore *bugstore.Store
+
+	// Log is used for the handful of non-fatal conditions where
+	// swallowing the error silently would cost a later debugging
+	// session — a bug-report manifest that failed to write, a replay
+	// that couldn't be pinned. Nil disables those warnings; nothing
+	// in the request path depends on it.
+	Log *slog.Logger
 }
 
 // GameEvictor is the subset of *ws.Hub that the lobby needs to close
@@ -193,8 +211,22 @@ func Handler(c Config) http.Handler {
 	// GitHub write, and one stuck retry loop shouldn't be able to
 	// wallpaper the tracker. ~1 report / 30 s with a burst of 3.
 	bugLimit := newLimiter(1.0/30, 3)
+	// Attachment reads get their own, much looser bucket. This route
+	// is fetched by GitHub's Camo proxy (once per image, from GitHub's
+	// address space) and then by whoever opens the issue, so the tight
+	// filing limit would starve legitimate renders. The limit here is
+	// only a brake on enumeration attempts, which 404 anyway.
+	bugAttachLimit := newLimiter(5, 60)
 	mux.Handle("GET /bugreport/config", handlerFunc(c, bugReportConfig))
 	mux.Handle("POST /bugreport", bugLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, bugReport))))
+	// Unauthenticated by necessity — Camo presents no session. The
+	// report ID in the path is the capability, and it only ever
+	// appears inside a private-repo issue. bugstore enforces the
+	// magic-byte allowlist and the inert response headers.
+	mux.Handle("GET /bugreport/att/{id}/{name}", bugAttachLimit.Middleware(handlerFunc(c, bugAttachment)))
+	// The pinned replay is the raw unfiltered view — admin only, with
+	// no game-has-ended relaxation (see bugPinnedReplay).
+	mux.Handle("GET /bugreport/{id}/replay", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, bugPinnedReplay)))
 	// Logout does not require an authenticated principal — a client
 	// with a stale or revoked token should still be able to clear
 	// browser state without a 401 dead-end. We just revoke whatever
@@ -948,6 +980,16 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 		return httpError(http.StatusBadRequest, fmt.Sprintf("invalid body: %s", err.Error()))
 	}
 	return nil
+}
+
+// decodeJSONString decodes a JSON document already held in memory —
+// the `report` part of a multipart bug report. Same strictness as
+// decodeJSON (unknown fields rejected) minus the Content-Type and
+// body-size concerns, which the multipart parser has already handled.
+func decodeJSONString(raw string, dst any) error {
+	dec := json.NewDecoder(strings.NewReader(raw))
+	dec.DisallowUnknownFields()
+	return dec.Decode(dst)
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) error {

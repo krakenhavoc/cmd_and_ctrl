@@ -292,10 +292,18 @@ render the report button.
 **Response 200**
 
 ```json
-{ "enabled": true }
+{ "enabled": true, "attachments": true, "max_images": 4, "max_bytes": 4194304 }
 ```
 
 `enabled` is `false` when `CMDCTRL_GITHUB_TOKEN` is unset.
+
+`attachments` is reported separately because the two halves fail
+independently: a server with a GitHub token but no `CMDCTRL_DATA_DIR`
+or no `CMDCTRL_PUBLIC_BASE_URL` files text reports perfectly well and
+cannot host screenshots. The client hides its file picker in that case
+rather than offering an upload that would 503. `max_images` and
+`max_bytes` are the server's caps, echoed so the modal can refuse an
+oversized file before uploading it.
 
 ### `POST /bugreport`
 
@@ -320,29 +328,142 @@ burst of 3, then ~1 report / 30 s per client IP.
 }
 ```
 
-`description` and `context` (and every field inside `context`) are
-optional. `title` is capped at 200 characters, `description` at
-5000. Context strings are clipped server-side and never trusted; the
-server adds the reporter identity, server time, and `User-Agent`
-itself. Game state (hands, libraries, decklists) is deliberately
-never embedded — the issue references `GET /games/{id}/replay` for
-the operator instead.
+`description`, `context`, and `log` (and every field inside them) are
+optional. `title` is capped at 200 characters, `description` at 5000.
+Context strings are clipped server-side and never trusted; the server
+adds the reporter identity, server time, and `User-Agent` itself.
+
+`log` is the reporter's client-side activity ring buffer — up to 200
+entries, kept from the tail:
+
+```json
+{
+  "log": [
+    { "at": 1789223415250, "kind": "sent", "text": "action cast_spell id=8f2a1b3c" },
+    { "at": 1789223415310, "kind": "received", "text": "snapshot seq=731 turn=5" },
+    { "at": 1789223415340, "kind": "console", "text": "TypeError: x is undefined" }
+  ]
+}
+```
+
+`at` is epoch milliseconds **from the reporter's clock** — the server
+formats it and labels it as such rather than passing off a client
+timestamp as server time. `kind` is one of `sent`, `received`,
+`error`, `info`, `console`; anything else renders as `info`. Text is
+clipped to 240 bytes and stripped of backticks and control characters
+(it lands inside a fenced code block, and log lines can contain chat
+other players typed).
+
+The log holds only what the reporter's own browser already saw. Game
+state — hands, libraries, decklists, any `GameView` content — is still
+never embedded in an issue; see the replay handling below and
+[ADR 0017 §7](decisions/0017-bug-report-button.md).
+
+**Request — `multipart/form-data`**
+
+To attach screenshots, send the same JSON as a `report` field plus up
+to 4 `image` file parts:
+
+```
+POST /bugreport
+Content-Type: multipart/form-data; boundary=…
+
+--…
+Content-Disposition: form-data; name="report"
+
+{"title":"board rendered wrong","description":"see shots","context":{…}}
+--…
+Content-Disposition: form-data; name="image"; filename="shot.png"
+Content-Type: image/png
+
+<PNG bytes>
+--…--
+```
+
+Images must be PNG, JPEG, GIF, or WebP — decided by **sniffing the
+bytes**, not by the declared `Content-Type`. SVG is refused (it is a
+script carrier, and the route that serves these is unauthenticated).
+Limits: 4 images, 4 MiB each, 10 MiB per report, 12 MiB for the whole
+request.
+
+**Replay pinning.** When the report carries a `context.game_id` whose
+game the caller is entitled to (admins anywhere; everyone else only
+their own game), the server snapshots that game's replay JSONL
+alongside the report and puts the report ID in the issue. The snapshot
+is why this exists: the live `/games/{id}/replay` file keeps growing
+after the report is filed and disappears when the game is evicted.
 
 **Response 201**
 
 ```json
-{ "url": "https://github.com/krakenhavoc/cmd_and_ctrl/issues/123", "number": 123 }
+{
+  "url": "https://github.com/krakenhavoc/cmd_and_ctrl/issues/123",
+  "number": 123,
+  "report_id": "6f1c0b7e-9a2d-4c31-8f55-1b2d3e4f5a60"
+}
 ```
+
+`report_id` is present only when the report stored artifacts (images,
+a pinned replay, or both). It is the key for both routes below.
 
 **Errors**
 
 | Status | Reason |
 |---|---|
-| 400 | missing/oversized title or description, unknown field |
+| 400 | missing/oversized title or description, unknown field, non-image attachment, missing `report` part |
 | 401 | no valid session |
+| 413 | an image over 4 MiB, attachments over 10 MiB, or a request over 12 MiB |
 | 429 | rate-limited |
 | 502 | GitHub rejected or timed out; retry later |
-| 503 | bug reporting not configured (`CMDCTRL_GITHUB_TOKEN` unset) |
+| 503 | bug reporting not configured (`CMDCTRL_GITHUB_TOKEN` unset), or attachments sent to a server with no artifact storage |
+
+A rejected attachment fails the whole report — no issue is filed — and
+a report whose GitHub call fails has its stored artifacts deleted, so
+an outage never leaves orphaned images at live URLs.
+
+### `GET /bugreport/att/{report_id}/{name}`
+
+Serves one stored screenshot. **Unauthenticated**, by necessity:
+GitHub renders an issue image by fetching it through its Camo proxy,
+which presents no session and follows no login.
+
+The `report_id` is the capability — a v4 uuid that appears only inside
+a private-repo issue body. There is no listing endpoint, and an
+unknown id is indistinguishable from a pruned one. `name` must match
+`att-N.{png,jpg,gif,webp}`; the pinned replay and the manifest sitting
+in the same directory are not reachable here.
+
+Responses carry `X-Content-Type-Options: nosniff`, an allowlisted
+`Content-Type` re-sniffed from the bytes on the way out,
+`Content-Disposition: inline`, and
+`Content-Security-Policy: default-src 'none'; sandbox`.
+
+Artifacts are pruned after 90 days.
+
+| Status | Reason |
+|---|---|
+| 404 | unknown report, malformed id or name, pruned, or not an allowlisted image |
+| 429 | rate-limited (loose: 5/s, burst 60 — Camo plus readers) |
+| 503 | artifact storage not configured |
+
+### `GET /bugreport/{report_id}/replay`
+
+Streams the replay JSONL pinned when the report was filed, as
+`application/x-ndjson`.
+
+**Admin only** — and unlike `GET /games/{id}/replay` there is no
+"once the game has ended" relaxation for players. The pinned copy is
+the UNFILTERED view (opponents' hands, full library order) and has no
+live game whose state could justify loosening the rule. This is what
+keeps a filed issue from being a hidden-information side channel for a
+reporter who is also a repo collaborator.
+
+| Status | Reason |
+|---|---|
+| 401 | no valid session |
+| 403 | not an admin |
+| 404 | unknown report, or the report pinned no replay |
+| 503 | artifact storage not configured |
 
 ---
 

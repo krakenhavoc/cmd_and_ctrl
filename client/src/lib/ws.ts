@@ -43,6 +43,12 @@ export interface ChatMessage {
 // and not part of crash recovery.
 const CHAT_LOG_LIMIT = 200;
 
+// WS_LOG_LIMIT caps the protocol log ring buffer. This buffer is what
+// an in-app bug report attaches (ADR 0017 §7), so it is sized to match
+// the report's own cap — a smaller window here would silently truncate
+// reports, and a larger one would be trimmed server-side anyway.
+export const WS_LOG_LIMIT = 200;
+
 // ERROR_TOAST_TTL_MS is how long a server error sticks in the
 // lastError store before auto-clearing. Long enough to read, short
 // enough that an unread error doesn't stay on screen indefinitely.
@@ -428,6 +434,6 @@ export class GameClient {
       direction,
       text,
     };
-    this.log.update((entries) => [...entries.slice(-99), entry]);
+    this.log.update((entries) => [...entries.slice(-(WS_LOG_LIMIT - 1)), entry]);
   }
 }

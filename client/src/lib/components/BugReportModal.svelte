@@ -1,17 +1,41 @@
 <script lang="ts">
   // BugReportModal — the in-app "report a bug" form (ADR 0017).
-  // Collects a title + description, optionally snapshots game
-  // context (game ID, turn, phase/step, seq, connection status),
-  // and POSTs /bugreport; the server renders the issue body and
-  // files it in the project's GitHub repo. On success the modal
-  // links straight to the created issue.
   //
-  // Unlike the server-driven prompt modals (discard / choice), this
-  // one is user-opened and user-dismissable: Cancel closes it and
-  // nothing is sent.
+  // Collects a title, a description, screenshots, and two kinds of
+  // automatic context: the game coordinates (game ID, turn, phase/step,
+  // seq, connection) and the client log — the last 200 protocol frames
+  // and JS errors this browser saw. POSTs the lot to /bugreport, where
+  // the server renders the issue body and files it in the project repo.
+  //
+  // Both automatic attachments are opt-out and both are shown before
+  // sending, in full, in a disclosure. That is deliberate: a report
+  // that quietly ships a log is a report people stop filing once they
+  // notice. The log holds nothing the reporter hasn't already seen —
+  // including their own chat — but "trust me" is not the same as
+  // "here it is".
+  //
+  // Unlike the server-driven prompt modals (discard / choice), this one
+  // is user-opened and user-dismissable: Cancel closes it and nothing
+  // is sent.
 
+  import { onDestroy, untrack } from "svelte";
   import { submitBugReport } from "../api";
-  import { BUG_DESC_MAX, BUG_TITLE_MAX, buildBugContext, validateBugReport } from "../bugReport";
+  import {
+    BUG_DESC_MAX,
+    BUG_MAX_IMAGES,
+    BUG_MAX_TOTAL_IMAGE_BYTES,
+    BUG_TITLE_MAX,
+    BUG_IMAGE_TYPES,
+    acceptableImages,
+    buildBugContext,
+    collectBugLog,
+    formatBytes,
+    validateAttachments,
+    validateBugReport,
+    type BugLogEntry,
+  } from "../bugReport";
+  import { recentClientErrors } from "../clientErrors";
+  import type { LogEntry } from "../ws";
   import type { GameView } from "../protocol";
 
   interface Props {
@@ -19,32 +43,123 @@
     view: GameView | null;
     seq: number;
     connection: string;
+    // wsLog is GameClient's protocol ring buffer, passed in rather than
+    // subscribed to here so this component stays renderable in
+    // isolation and the modal can't outlive the client it read from.
+    wsLog: LogEntry[];
+    // attachments is false when the server has a GitHub token but
+    // nowhere to store files; the picker hides rather than offering an
+    // upload that would 503.
+    attachments: boolean;
     onclose: () => void;
   }
 
-  const { gameID, view, seq, connection, onclose }: Props = $props();
+  const { gameID, view, seq, connection, wsLog, attachments, onclose }: Props = $props();
 
   let title = $state("");
   let description = $state("");
   let includeContext = $state(true);
+  let includeLog = $state(true);
+  let showLog = $state(false);
+  let images = $state<File[]>([]);
   let submitting = $state(false);
   let error = $state<string | null>(null);
   let filedURL = $state<string | null>(null);
   let filedNumber = $state<number | null>(null);
+  let fileInput = $state<HTMLInputElement | null>(null);
 
-  // Context is snapshotted at submit time, but summarised live so
-  // the reporter can see what the checkbox will attach.
+  // Snapshotted once when the modal opens, not recomputed as frames
+  // keep arriving: the log the reporter reviews in the disclosure has
+  // to be the log that gets sent, and a live buffer would mean those
+  // two differ by however long they spent typing.
+  // untrack makes the one-shot read explicit: wsLog keeps growing while
+  // the modal is open, and subscribing here would let the reviewed log
+  // and the submitted log drift apart.
+  const capturedLog: BugLogEntry[] = untrack(() => collectBugLog(wsLog, recentClientErrors()));
+
+  // Context is snapshotted at submit time, but summarised live so the
+  // reporter can see what the checkbox will attach.
   const contextSummary = $derived.by(() => {
     const ctx = buildBugContext(gameID, view, seq, connection);
     const bits = [`game ${gameID.slice(0, 8)}`];
     if (ctx.turn) bits.push(`turn ${ctx.turn}, ${ctx.phase}/${ctx.step}`);
     if (ctx.seq) bits.push(`seq ${ctx.seq}`);
     if (ctx.connection) bits.push(`ws ${ctx.connection}`);
-    return bits.join(" · ");
+    return bits.join(" \u00b7 ");
   });
 
+  const totalImageBytes = $derived(images.reduce((n, f) => n + f.size, 0));
+
+  // Object URLs for the thumbnails, revoked when the set changes or the
+  // modal closes — a leaked blob URL pins the whole image in memory for
+  // the life of the tab.
+  let previews = $state<string[]>([]);
+  $effect(() => {
+    const urls = images.map((f) => URL.createObjectURL(f));
+    previews = urls;
+    return () => urls.forEach((u) => URL.revokeObjectURL(u));
+  });
+  onDestroy(() => previews.forEach((u) => URL.revokeObjectURL(u)));
+
+  // addFiles vets and appends. Non-image entries are dropped silently
+  // when they arrived alongside images (a clipboard paste carries
+  // text/html parts too) but reported when they were the whole
+  // selection — otherwise picking a PDF looks like the button is broken.
+  function addFiles(incoming: File[]): void {
+    if (incoming.length === 0) return;
+    const usable = acceptableImages(incoming) as File[];
+    if (usable.length === 0) {
+      error = "attachments must be PNG, JPEG, GIF, or WebP images";
+      return;
+    }
+    const next = [...images, ...usable];
+    const problem = validateAttachments(next);
+    if (problem) {
+      error = problem;
+      return;
+    }
+    error = null;
+    images = next;
+  }
+
+  function onPick(ev: Event): void {
+    const input = ev.currentTarget as HTMLInputElement;
+    addFiles(Array.from(input.files ?? []));
+    // Clear the input so re-picking the same file fires change again.
+    input.value = "";
+  }
+
+  // Paste is the fast path: screenshot to clipboard, Ctrl+V into the
+  // modal. Bound on the modal container rather than the textarea so it
+  // works wherever the caret happens to be.
+  function onPaste(ev: ClipboardEvent): void {
+    const files = Array.from(ev.clipboardData?.files ?? []);
+    if (files.length === 0) return;
+    ev.preventDefault();
+    addFiles(files);
+  }
+
+  function onDrop(ev: DragEvent): void {
+    const files = Array.from(ev.dataTransfer?.files ?? []);
+    if (files.length === 0) return;
+    ev.preventDefault();
+    addFiles(files);
+  }
+
+  // Without preventDefault on dragover the browser refuses the drop and
+  // navigates to the file instead. Narrowed to file drags so an
+  // in-app drag (a card, say) is untouched.
+  function onDragOver(ev: DragEvent): void {
+    if (ev.dataTransfer?.types.includes("Files")) ev.preventDefault();
+  }
+
+  function removeImage(i: number): void {
+    images = images.filter((_, j) => j !== i);
+    error = null;
+  }
+
   async function submit(): Promise<void> {
-    const problem = validateBugReport(title, description);
+    const problem = validateBugReport(title, description) ?? validateAttachments(images);
     if (problem) {
       error = problem;
       return;
@@ -52,8 +167,13 @@
     submitting = true;
     error = null;
     try {
-      const ctx = includeContext ? buildBugContext(gameID, view, seq, connection) : undefined;
-      const res = await submitBugReport(title.trim(), description, ctx);
+      const res = await submitBugReport({
+        title: title.trim(),
+        description,
+        context: includeContext ? buildBugContext(gameID, view, seq, connection) : undefined,
+        log: includeLog ? capturedLog : undefined,
+        images,
+      });
       filedURL = res.url;
       filedNumber = res.number;
     } catch (e) {
@@ -62,7 +182,22 @@
       submitting = false;
     }
   }
+
+  // Same fixed-width shape the server renders, so what the reporter
+  // reviews here matches what lands in the issue.
+  function logLine(e: BugLogEntry): string {
+    const t = e.at > 0 ? new Date(e.at).toISOString().slice(11, 23) : "--:--:--.---";
+    return `${t}  ${e.kind.padEnd(8)}  ${e.text}`;
+  }
 </script>
+
+<!-- Paste and drop listen at the window rather than on an element:
+     the modal is modal, so nothing else should be receiving either, and
+     hanging drop handlers off the dialog div would demand a tabindex on
+     a container that has no business taking focus. Both handlers no-op
+     unless the event actually carries files, so pasting text into the
+     textarea behaves normally. -->
+<svelte:window onpaste={onPaste} ondrop={onDrop} ondragover={onDragOver} />
 
 <div class="backdrop" role="dialog" aria-modal="true" aria-labelledby="bug-report-title">
   <div class="modal">
@@ -104,10 +239,88 @@
           disabled={submitting}
         ></textarea>
       </label>
+
+      {#if attachments}
+        <div class="field">
+          <span class="field-label">
+            Screenshots
+            <span class="muted">
+              — paste, drop, or pick · {images.length}/{BUG_MAX_IMAGES}
+              {#if images.length > 0}
+                · {formatBytes(totalImageBytes)} of {formatBytes(BUG_MAX_TOTAL_IMAGE_BYTES)}
+              {/if}
+            </span>
+          </span>
+          {#if images.length > 0}
+            <ul class="shots">
+              {#each images as file, i (file.name + file.size + i)}
+                <li>
+                  <img src={previews[i]} alt={file.name} />
+                  <button
+                    type="button"
+                    class="remove"
+                    title="remove {file.name}"
+                    aria-label="remove {file.name}"
+                    onclick={() => removeImage(i)}
+                    disabled={submitting}>×</button
+                  >
+                  <span class="shot-size">{formatBytes(file.size)}</span>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+          <div class="pick-row">
+            <button
+              type="button"
+              class="pick"
+              onclick={() => fileInput?.click()}
+              disabled={submitting || images.length >= BUG_MAX_IMAGES}
+            >
+              Add image…
+            </button>
+            <span class="muted small">or press Ctrl/⌘+V to paste one</span>
+          </div>
+          <input
+            bind:this={fileInput}
+            type="file"
+            accept={BUG_IMAGE_TYPES.join(",")}
+            multiple
+            hidden
+            onchange={onPick}
+          />
+        </div>
+      {/if}
+
       <label class="context">
         <input type="checkbox" bind:checked={includeContext} disabled={submitting} />
         <span>attach game context <span class="muted">({contextSummary})</span></span>
       </label>
+
+      {#if capturedLog.length > 0}
+        <label class="context">
+          <input type="checkbox" bind:checked={includeLog} disabled={submitting} />
+          <span>
+            attach recent activity log
+            <span class="muted">({capturedLog.length} entries)</span>
+            <button
+              type="button"
+              class="peek"
+              onclick={(e) => {
+                e.preventDefault();
+                showLog = !showLog;
+              }}>{showLog ? "hide" : "show"}</button
+            >
+          </span>
+        </label>
+        {#if showLog}
+          <pre class="logpeek">{capturedLog.map(logLine).join("\n")}</pre>
+          <p class="muted small">
+            Frames this browser sent and received, plus any JavaScript errors. No hidden game state
+            — nothing here that wasn't already on your screen.
+          </p>
+        {/if}
+      {/if}
+
       {#if error}
         <p class="error" role="alert">{error}</p>
       {/if}
@@ -279,5 +492,101 @@
     opacity: 0.4;
     cursor: not-allowed;
     box-shadow: none;
+  }
+
+  .shots {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 8px;
+    padding: 0;
+  }
+  .shots li {
+    position: relative;
+    width: 96px;
+  }
+  .shots img {
+    width: 96px;
+    height: 64px;
+    object-fit: cover;
+    display: block;
+    border-radius: var(--radius);
+    border: 1px solid rgba(122, 167, 255, 0.28);
+    background: rgba(0, 0, 0, 0.4);
+  }
+  .shot-size {
+    display: block;
+    font-size: 10px;
+    color: var(--fg-muted);
+    text-align: center;
+    margin-top: 2px;
+  }
+  .remove {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 20px;
+    height: 20px;
+    line-height: 1;
+    border-radius: 999px;
+    background: rgba(12, 16, 26, 0.95);
+    color: var(--fg);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    cursor: pointer;
+    font-size: 13px;
+    padding: 0;
+  }
+  .remove:hover:not(:disabled) {
+    color: #ff8a8a;
+    border-color: #ff8a8a;
+  }
+  .pick-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .pick {
+    padding: 5px 14px;
+    border-radius: 999px;
+    background: rgba(122, 167, 255, 0.12);
+    color: var(--fg);
+    border: 1px solid rgba(122, 167, 255, 0.32);
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .pick:hover:not(:disabled) {
+    border-color: var(--accent);
+  }
+  .pick:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .peek {
+    background: none;
+    border: none;
+    padding: 0 0 0 6px;
+    color: var(--accent);
+    font-size: 11px;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  .logpeek {
+    max-height: 200px;
+    overflow: auto;
+    margin: 6px 0 0;
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(122, 167, 255, 0.18);
+    border-radius: var(--radius);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: var(--fg-muted);
+    white-space: pre;
+  }
+  .small {
+    font-size: 11px;
+    line-height: 1.4;
   }
 </style>

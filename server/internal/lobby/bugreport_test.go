@@ -169,6 +169,7 @@ func TestBugReportFilesIssue(t *testing.T) {
 		"turn 5, main1/main",
 		"seq 731",
 		"GET /games/" + gameID + "/replay",
+		"not pinned",
 		"User agent: test-browser/1.0",
 	} {
 		if !strings.Contains(body, want) {
@@ -238,7 +239,7 @@ func TestRenderBugIssueBodyClipsHostileContext(t *testing.T) {
 		Phase:  "main1\ninjected",
 		Step:   "main",
 	}
-	body := renderBugIssueBody(p, "desc", bctx, "", time.Unix(0, 0).UTC())
+	body := renderBugIssueBody(bugIssue{Principal: p, Desc: "desc", Ctx: bctx, Now: time.Unix(0, 0).UTC()})
 	if strings.Contains(body, "\n- Fake row") {
 		t.Error("newline in game_id must not create a fake list row")
 	}

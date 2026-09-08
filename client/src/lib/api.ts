@@ -1,5 +1,5 @@
 import { authFetch, currentSession, setSession, type ApiViolation, type Session } from "./session";
-import type { BugReportContext } from "./bugReport";
+import type { BugLogEntry, BugReportContext } from "./bugReport";
 
 // Re-export the violation shape so consumers of api.ts don't also
 // have to import from session.ts. ApiViolation is the canonical
@@ -216,46 +216,107 @@ export async function discordAuthEnabled(): Promise<boolean> {
   }
 }
 
-// bugReportEnabled probes /bugreport/config and reports whether the
-// server can file GitHub issues (CMDCTRL_GITHUB_TOKEN configured).
-// Used by Game.svelte to decide whether to render the report-a-bug
-// button. Same posture as discordAuthEnabled: any failure → false,
-// the button simply doesn't render.
-export async function bugReportEnabled(): Promise<boolean> {
+// BugReportConfig mirrors the JSON from GET /bugreport/config.
+//
+// `attachments` is separate from `enabled` because the two halves fail
+// independently: a server with a GitHub token but no data dir (or no
+// public base URL) files text reports perfectly well and simply can't
+// host screenshots. The modal hides its file picker in that case rather
+// than offering an upload that would 503.
+export interface BugReportConfig {
+  enabled: boolean;
+  attachments: boolean;
+  maxImages: number;
+  maxBytes: number;
+}
+
+const BUG_REPORT_DISABLED: BugReportConfig = {
+  enabled: false,
+  attachments: false,
+  maxImages: 0,
+  maxBytes: 0,
+};
+
+// fetchBugReportConfig probes whether the server can file GitHub issues
+// and whether it can store attachments. Used by Game.svelte to decide
+// whether to render the report-a-bug button at all. Same posture as
+// discordAuthEnabled: any failure → disabled, the button simply
+// doesn't render.
+export async function fetchBugReportConfig(): Promise<BugReportConfig> {
   try {
     const res = await fetch("/bugreport/config", {
       method: "GET",
       credentials: "same-origin",
     });
-    if (!res.ok) return false;
-    const body = (await res.json()) as { enabled?: boolean };
-    return body.enabled === true;
+    if (!res.ok) return BUG_REPORT_DISABLED;
+    const body = (await res.json()) as {
+      enabled?: boolean;
+      attachments?: boolean;
+      max_images?: number;
+      max_bytes?: number;
+    };
+    return {
+      enabled: body.enabled === true,
+      attachments: body.attachments === true,
+      maxImages: body.max_images ?? 0,
+      maxBytes: body.max_bytes ?? 0,
+    };
   } catch {
-    return false;
+    return BUG_REPORT_DISABLED;
   }
 }
 
 // BugReportResult mirrors the 201 body of POST /bugreport: the
 // created issue's URL + number, so the modal can link straight to it.
+// `reportID` is present only when the report stored artifacts — it is
+// the key the operator uses to pull the pinned replay.
 export interface BugReportResult {
   url: string;
   number: number;
+  reportID?: string;
+}
+
+// BugReportDraft is everything a report can carry.
+export interface BugReportDraft {
+  title: string;
+  description: string;
+  context?: BugReportContext;
+  log?: BugLogEntry[];
+  images?: File[];
 }
 
 // submitBugReport files an in-app bug report. The server renders the
 // issue body and talks to GitHub; the browser never sees a token.
-// Throws LobbyApiError on 400 (validation), 429 (rate limit), 502
-// (GitHub upstream failure), 503 (feature disabled).
-export async function submitBugReport(
-  title: string,
-  description: string,
-  context?: BugReportContext,
-): Promise<BugReportResult> {
-  const res = await authFetch("/bugreport", {
-    method: "POST",
-    body: JSON.stringify({ title, description, context }),
-  });
-  return (await res.json()) as BugReportResult;
+//
+// Two encodings, chosen by whether there are images: multipart when
+// there are (files can't ride in JSON without base64 inflating them by
+// a third), plain JSON when there aren't. The JSON shape is the
+// documented one and the one a curl-wielding operator will reach for,
+// so it stays the default rather than becoming a legacy path.
+//
+// Throws LobbyApiError on 400 (validation), 413 (too large), 429 (rate
+// limit), 502 (GitHub upstream failure), 503 (feature disabled).
+export async function submitBugReport(draft: BugReportDraft): Promise<BugReportResult> {
+  const report = {
+    title: draft.title,
+    description: draft.description,
+    context: draft.context,
+    log: draft.log && draft.log.length > 0 ? draft.log : undefined,
+  };
+  let body: BodyInit;
+  if (draft.images && draft.images.length > 0) {
+    const form = new FormData();
+    form.append("report", JSON.stringify(report));
+    for (const f of draft.images) {
+      form.append("image", f, f.name);
+    }
+    body = form;
+  } else {
+    body = JSON.stringify(report);
+  }
+  const res = await authFetch("/bugreport", { method: "POST", body });
+  const parsed = (await res.json()) as { url: string; number: number; report_id?: string };
+  return { url: parsed.url, number: parsed.number, reportID: parsed.report_id };
 }
 
 // AutoTapPreview mirrors the JSON returned by

@@ -41,6 +41,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	// Blank import: effects/wire.go's init() populates the S14
 	// EffectResolver / ETBEffectHook / IsCatalogCard callbacks on
@@ -157,6 +158,37 @@ func main() {
 		log.Info("bug reporting disabled — set CMDCTRL_GITHUB_TOKEN to enable")
 	}
 
+	// Bug-report artifacts: screenshots and pinned replays, under the
+	// same data dir as the scryfall index, avatars, and replay dumps.
+	//
+	// Attachments additionally need a PUBLIC base URL, because a
+	// GitHub issue can only render an image it can fetch — see ADR
+	// 0017 §6. There is deliberately no default: a wrong origin
+	// produces issues full of broken images, which is worse than a
+	// deploy where the modal simply doesn't offer file upload.
+	var bugDir string
+	if cfg.DataDir != "" {
+		bugDir = filepath.Join(cfg.DataDir, "bugreports")
+	}
+	publicBase := os.Getenv("CMDCTRL_PUBLIC_BASE_URL")
+	if publicBase == "" {
+		publicBase = os.Getenv("CMDCTRL_CLIENT_BASE_URL")
+	}
+	bugStore := bugstore.New(bugDir, publicBase)
+	if bugStore.Enabled() {
+		log.Info("bug report attachments enabled", "dir", bugDir, "public_base_url", publicBase)
+		// Enforce retention once at boot as well as after each report,
+		// so a server that files nothing for months still reclaims the
+		// artifacts of the reports it filed before.
+		if n, err := bugStore.Prune(bugstore.DefaultRetention, bugstore.DefaultMaxStoreBytes); err != nil {
+			log.Warn("pruning old bug reports failed", "err", err)
+		} else if n > 0 {
+			log.Info("pruned expired bug reports", "count", n)
+		}
+	} else if bugReporter != nil {
+		log.Info("bug report attachments disabled — needs CMDCTRL_DATA_DIR and CMDCTRL_PUBLIC_BASE_URL; text reports still work")
+	}
+
 	mux.Handle("/", lobby.Handler(lobby.Config{
 		Lobby:             l,
 		Auth:              authenticator,
@@ -168,6 +200,8 @@ func main() {
 		DiscordStateStore: discord.NewStateStore(),
 		DiscordAvatars:    avatarCache,
 		BugReporter:       bugReporter,
+		BugStore:          bugStore,
+		Log:               log,
 	}))
 
 	srv := &http.Server{
