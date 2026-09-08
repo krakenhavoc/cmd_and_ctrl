@@ -627,20 +627,25 @@ func init() {
    that one. `item.Controller`, `item.SourceCardID`, `item.Targets`
    carry what you need.
 
-**Targets** are chosen in `Build` (CR 603.3d) and stamped onto
-`item.Targets` — see `destroyTargetTrigger` in
-[acidic_slime.go](server/internal/cards/effects/acidic_slime.go). The
-engine re-checks them at resolution (CR 608.2b) and fizzles the
-trigger if every target is gone. Until S20's picker ships, the
-sandbox auto-picks (`pickFirstOpponentNonland`, top-of-graveyard);
-return `nil` from `Build` when there's no legal target so the
-trigger never reaches the stack.
+**Targeted triggers** declare the clause on the ability, exactly
+like a spell's `Spec.Targets`:
+```go
+Targets: TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
+```
+The engine does the rest (S20): it computes the legal set when the
+trigger fires and removes the trigger if the set is empty (CR
+603.3d — no prompt at all), asks "you may" if there is one, then
+queues a `pick_target` prompt the controller answers by clicking
+the board. The chosen ref arrives in `item.Targets[0]` — your
+`Effect` reads it from there (see `destroyChosenTargetTrigger` in
+[acidic_slime.go](server/internal/cards/effects/acidic_slime.go)) —
+and resolution re-checks it (CR 608.2b). Never pick a target
+inside `Build`.
 
 **"You may" triggers** set `OptionalPrompt: &game.TriggerOptionalPrompt{Question: "..."}`.
 The harvester queues a yes/no `PendingChoice` instead of calling
-`Build`; on "Yes", `Build` runs and the item goes straight onto the
-stack. Add `HasLegalTarget` when a "Yes" could no-op (the client
-warns the chooser).
+`Build`; on "Yes", `Build` runs (via the target pick first, if the
+trigger is targeted) and the item goes onto the stack.
 
 **"Unless that player pays {N}"** (Rhystic Study, Smothering Tithe,
 Esper Sentinel) is a `PayUnless` primitive the trigger's `Effect`

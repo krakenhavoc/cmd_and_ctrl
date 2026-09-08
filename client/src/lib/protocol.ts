@@ -193,6 +193,7 @@ export interface PendingChoiceView {
     | "trigger_prompt"
     | "pay_unless"
     | "trigger_order"
+    | "pick_target"
     | string;
   chooser: string;
   from_player: string;
@@ -219,6 +220,11 @@ export interface PendingChoiceView {
   // the client submits resolve_choice { order: string[] } of these
   // IDs in RESOLUTION order (first entry resolves first).
   trigger_options?: ReplacementOptionView[];
+  // S20 sub-PR 2: populated for kind "pick_target" — a targeted
+  // trigger's controller chooses its target. The client enters the
+  // board-click targeting flow with this legal set (no modal) and
+  // answers resolve_choice { target: {kind, id} }.
+  pick_target?: { players?: string[]; cards?: string[] };
   // S18: populated for kind "damage_assignment" — the CR 510.1c
   // multi-blocker combat damage prompt. Client renders a per-blocker
   // damage input panel (+ trample-to-player input when allow_trample

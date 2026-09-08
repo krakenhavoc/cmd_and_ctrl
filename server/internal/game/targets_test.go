@@ -232,3 +232,228 @@ func TestSpecWithoutPredicateKeepsExistenceCheck(t *testing.T) {
 		t.Fatalf("free-form ability with an arbitrary target: %v", err)
 	}
 }
+
+// --- S20 sub-PR 2: targeted triggers ----------------------------
+
+// artifactSpec is "target artifact an opponent controls".
+func opponentArtifactSpec() *TargetSpec {
+	return &TargetSpec{
+		Mode:  "permanent",
+		Label: "target artifact an opponent controls",
+		Zones: []ZoneKind{ZoneBattlefield},
+		CardOK: func(_ *Game, caster uuid.UUID, c Card, _ ZoneKind) bool {
+			return c.IsArtifact() && c.Controller != caster
+		},
+		Min: 1, Max: 1,
+	}
+}
+
+func pushArtifact(g *Game, owner *Player, name string) uuid.UUID {
+	c := NewCard(name, owner.ID)
+	c.TypeLine = "Artifact"
+	g.Battlefield.PushTop(c)
+	return c.InstanceID
+}
+
+// targetedETB registers a stub "when ~ enters, destroy target
+// artifact an opponent controls" trigger under oracle; the Effect
+// destroys item.Targets[0] and records it in *destroyed.
+func targetedETB(t *testing.T, oracle string, optional bool, destroyed *[]uuid.UUID) {
+	t.Helper()
+	withCatalogTriggers(t, func(id string) []TriggeredAbility {
+		if id != oracle {
+			return nil
+		}
+		ab := TriggeredAbility{
+			Watches: []EventKind{EventETB},
+			AppliesTo: func(ev Event, source *Card, _ Characteristic, _ *Game) bool {
+				return ev.CardID == source.InstanceID
+			},
+			Targets: opponentArtifactSpec(),
+			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
+				return NewTriggeredItem(source, "destroy target artifact", func(g *Game, item *StackItem) error {
+					if len(item.Targets) == 0 {
+						return nil
+					}
+					*destroyed = append(*destroyed, item.Targets[0].ID)
+					return g.DestroyPermanentForEffect(item.Targets[0].ID)
+				})
+			},
+		}
+		if optional {
+			ab.OptionalPrompt = &TriggerOptionalPrompt{Question: "Destroy an artifact?"}
+		}
+		return []TriggeredAbility{ab}
+	})
+}
+
+func findPickTarget(g *Game, chooser uuid.UUID) *PendingChoice {
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == PendingChoicePickTarget && c.Chooser == chooser {
+			return c
+		}
+	}
+	return nil
+}
+
+func TestTargetedTriggerPromptsPickThenBuildsWithTarget(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	const oracle = "test-targeted-etb"
+	var destroyed []uuid.UUID
+	targetedETB(t, oracle, false, &destroyed)
+	rockA := pushArtifact(g, opp, "Rock A")
+	rockB := pushArtifact(g, opp, "Rock B")
+	mine := pushArtifact(g, me, "My Rock")
+	srcID := seedTriggerSource(g, me, oracle)
+
+	g.WithWriteLock(func() {
+		g.EmitEvent(Event{Kind: EventETB, CardID: srcID, Actor: me.ID})
+	})
+	if len(g.PendingTriggers) != 0 || findAbilityOnStack(g, srcID) != nil {
+		t.Fatalf("targeted trigger must not build before the target is chosen")
+	}
+	prompt := findPickTarget(g, me.ID)
+	if prompt == nil {
+		t.Fatalf("no pick_target prompt for the controller")
+	}
+	if prompt.Reason != "target artifact an opponent controls" {
+		t.Errorf("prompt label = %q", prompt.Reason)
+	}
+	legal := map[uuid.UUID]bool{}
+	for _, id := range prompt.PickTargetCards {
+		legal[id] = true
+	}
+	if !legal[rockA] || !legal[rockB] || legal[mine] {
+		t.Errorf("legal set = %v (want both opponent rocks, not mine)", prompt.PickTargetCards)
+	}
+
+	// Illegal pick (my own artifact) is rejected and the prompt stays.
+	if err := g.ResolvePickTarget(prompt.ID, me.ID, TargetRef{Kind: TargetCard, ID: mine}); err != ErrIllegalTarget {
+		t.Fatalf("own artifact: got %v, want ErrIllegalTarget", err)
+	}
+	if findPickTarget(g, me.ID) == nil {
+		t.Fatalf("rejected pick must leave the prompt open")
+	}
+	if err := g.ResolvePickTarget(prompt.ID, opp.ID, TargetRef{Kind: TargetCard, ID: rockA}); err != ErrNotTheChooser {
+		t.Fatalf("wrong chooser: got %v, want ErrNotTheChooser", err)
+	}
+
+	// Legal pick: item built with the target, on the stack.
+	if err := g.ResolvePickTarget(prompt.ID, me.ID, TargetRef{Kind: TargetCard, ID: rockB}); err != nil {
+		t.Fatalf("ResolvePickTarget: %v", err)
+	}
+	item := findAbilityOnStack(g, srcID)
+	if item == nil {
+		t.Fatalf("trigger not on the stack after the pick")
+	}
+	if len(item.Targets) != 1 || item.Targets[0].ID != rockB {
+		t.Errorf("item targets = %+v, want rock B", item.Targets)
+	}
+	g.WithWriteLock(func() {
+		if err := g.resolveTopAbilityLocked(); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if len(destroyed) != 1 || destroyed[0] != rockB {
+		t.Errorf("destroyed = %v, want [rockB]", destroyed)
+	}
+	if g.Battlefield.Contains(rockB) || !g.Battlefield.Contains(rockA) {
+		t.Errorf("wrong artifact destroyed")
+	}
+}
+
+func TestTargetedTriggerWithNoLegalTargetIsRemoved(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	const oracle = "test-targeted-etb-none"
+	var destroyed []uuid.UUID
+	targetedETB(t, oracle, true, &destroyed) // optional: still no yes/no when nothing is legal
+	pushArtifact(g, me, "My Rock")           // only my own — not a legal target
+	srcID := seedTriggerSource(g, me, oracle)
+	g.WithWriteLock(func() {
+		g.EmitEvent(Event{Kind: EventETB, CardID: srcID, Actor: me.ID})
+	})
+	if len(g.PendingChoices) != 0 || len(g.PendingTriggers) != 0 {
+		t.Errorf("a targeted trigger with no legal target must be removed silently (CR 603.3d): choices=%d pending=%d",
+			len(g.PendingChoices), len(g.PendingTriggers))
+	}
+}
+
+func TestOptionalTargetedTriggerYesThenPick(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	const oracle = "test-targeted-etb-optional"
+	var destroyed []uuid.UUID
+	targetedETB(t, oracle, true, &destroyed)
+	rock := pushArtifact(g, opp, "Rock")
+	srcID := seedTriggerSource(g, me, oracle)
+	g.WithWriteLock(func() {
+		g.EmitEvent(Event{Kind: EventETB, CardID: srcID, Actor: me.ID})
+	})
+	// Yes/no first.
+	var yn *PendingChoice
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == PendingChoiceTriggerPrompt {
+			yn = c
+		}
+	}
+	if yn == nil || findPickTarget(g, me.ID) != nil {
+		t.Fatalf("optional targeted trigger must ask yes/no before the pick")
+	}
+	if err := g.ResolveTriggerPrompt(yn.ID, me.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	prompt := findPickTarget(g, me.ID)
+	if prompt == nil {
+		t.Fatalf("no pick_target prompt after yes")
+	}
+	if err := g.ResolvePickTarget(prompt.ID, me.ID, TargetRef{Kind: TargetCard, ID: rock}); err != nil {
+		t.Fatal(err)
+	}
+	if findAbilityOnStack(g, srcID) == nil {
+		t.Errorf("trigger not on the stack after yes + pick")
+	}
+}
+
+func TestTargetedTriggerRecheckFizzlesWhenTargetStopsQualifying(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	const oracle = "test-targeted-etb-recheck"
+	var destroyed []uuid.UUID
+	targetedETB(t, oracle, false, &destroyed)
+	rock := pushArtifact(g, opp, "Rock")
+	srcID := seedTriggerSource(g, me, oracle)
+	g.WithWriteLock(func() {
+		g.EmitEvent(Event{Kind: EventETB, CardID: srcID, Actor: me.ID})
+	})
+	prompt := findPickTarget(g, me.ID)
+	if err := g.ResolvePickTarget(prompt.ID, me.ID, TargetRef{Kind: TargetCard, ID: rock}); err != nil {
+		t.Fatal(err)
+	}
+	// In response: the rock stops being an artifact (still on the
+	// battlefield, so the old existence check would have let the
+	// ability resolve).
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == rock {
+				g.Battlefield.Cards[i].TypeLine = "Enchantment"
+			}
+		}
+		if err := g.resolveTopAbilityLocked(); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if len(destroyed) != 0 {
+		t.Errorf("effect ran on a target that no longer satisfies the spec")
+	}
+	var fizzled bool
+	for _, ev := range g.Events {
+		if ev.Kind == EventFizzle && ev.Source == srcID {
+			fizzled = true
+		}
+	}
+	if !fizzled {
+		t.Errorf("no EventFizzle for the ability whose target stopped qualifying")
+	}
+}

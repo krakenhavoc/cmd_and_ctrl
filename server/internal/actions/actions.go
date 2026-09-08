@@ -863,6 +863,10 @@ func Dispatch(g *game.Game, a Action) error {
 			// trample.
 			Assignments     []damageAssignmentParam `json:"assignments"`
 			TrampleToPlayer int                     `json:"trample_to_player"`
+			// Target populates an S20 sub-PR 2 PendingChoicePickTarget
+			// answer: the {kind, id} ref the trigger's controller
+			// clicked on the board. Same shape as cast_spell targets.
+			Target *castTargetWire `json:"target"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -873,6 +877,13 @@ func Dispatch(g *game.Game, a Action) error {
 		}
 		if p.Color != "" {
 			return g.ResolveManaChoice(choiceID, a.Player, p.Color)
+		}
+		if p.Target != nil {
+			ref, err := p.Target.toRef()
+			if err != nil {
+				return fmt.Errorf("resolve_choice target: %w", err)
+			}
+			return g.ResolvePickTarget(choiceID, a.Player, ref)
 		}
 		if p.OptionalApply != nil {
 			// Three yes/no kinds share the {apply: bool} payload

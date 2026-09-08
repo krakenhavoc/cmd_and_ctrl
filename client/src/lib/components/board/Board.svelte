@@ -34,6 +34,7 @@
     targeting,
     begin as beginTargeting,
     cancel as cancelTargeting,
+    beginChoice as beginTargetingChoice,
     isLegalCardTarget,
     isLegalPlayerTarget,
     type TargetingMode,
@@ -141,12 +142,59 @@
     if (!state) return;
     const ref =
       kind === "player" ? { kind: "player", id: targetID } : { kind: "card", id: targetID };
+    if (state.choiceID) {
+      // S20 sub-PR 2: answering a triggered ability's pick_target
+      // prompt. The store clears when the next snapshot no longer
+      // carries the choice (see the effect below).
+      sendAction(
+        "resolve_choice",
+        { choice_id: state.choiceID, target: ref },
+        viewerID ?? undefined,
+      );
+      targeting.set(null);
+      return;
+    }
     sendAction(
       "cast_spell",
       { instance_id: state.card.instance_id, targets: [ref] },
       viewerID ?? undefined,
     );
     cancelTargeting();
+  }
+
+  // S20 sub-PR 2: a pick_target pending choice addressed to the
+  // viewer drives the same targeting UI a cast does. Enter it when
+  // one appears; leave it when it's gone (answered, or resolved
+  // elsewhere). A cast prompt already in flight is replaced — the
+  // trigger's target is owed first.
+  $effect(() => {
+    const mine = (view.pending_choices ?? []).find(
+      (c) => c.kind === "pick_target" && c.chooser === viewerID,
+    );
+    const cur = $targeting;
+    if (mine) {
+      if (cur?.choiceID === mine.id) return;
+      const source = findCardAnywhere(mine.source) ?? {
+        instance_id: mine.source ?? "",
+        name: "Triggered ability",
+        owner: viewerID ?? "",
+        controller: viewerID ?? "",
+      };
+      beginTargetingChoice(mine, source);
+    } else if (cur?.choiceID) {
+      targeting.set(null);
+    }
+  });
+
+  function findCardAnywhere(id: string | undefined): CardView | undefined {
+    if (!id) return undefined;
+    for (const c of view.battlefield.cards) if (c.instance_id === id) return c;
+    for (const c of view.exile?.cards ?? []) if (c.instance_id === id) return c;
+    for (const s of view.seats) {
+      for (const c of s.graveyard?.cards ?? []) if (c.instance_id === id) return c;
+      for (const c of s.hand?.cards ?? []) if (c.instance_id === id) return c;
+    }
+    return undefined;
   }
 
   function handleDrawCard(): void {
@@ -287,6 +335,7 @@
       ownerSeat={{ id: $zoneBrowser.ownerID, name: $zoneBrowser.ownerName }}
       {sendAction}
       onClose={closeZoneBrowser}
+      onTargetCard={handleTargetCard}
     />
   {/if}
 </div>

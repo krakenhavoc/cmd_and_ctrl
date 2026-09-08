@@ -1075,7 +1075,7 @@ func (g *Game) resolveTopAbilityLocked() error {
 	}
 	delete(g.StackMeta, top.ID)
 	g.recomputeSplitSecondLocked()
-	if spellAllTargetsIllegalLocked(g, top, nil) {
+	if spellAllTargetsIllegalLocked(g, top, top.targetSpec) {
 		g.EmitEvent(Event{
 			Kind:   EventFizzle,
 			Actor:  top.Controller,

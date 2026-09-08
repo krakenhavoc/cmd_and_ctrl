@@ -36,6 +36,9 @@
   const active = $derived.by((): PendingChoiceView | null => {
     if (!viewerID || !snap.pending_choices) return null;
     for (const c of snap.pending_choices) {
+      // S20 sub-PR 2: pick_target is answered by clicking the board
+      // (Board.svelte drives the targeting store), not by a modal.
+      if (c.kind === "pick_target") continue;
       if (c.chooser === viewerID) return c;
     }
     return null;
