@@ -4,7 +4,7 @@
 // renderer (the client is node-only at test time). The component
 // delegates all derivations here so there's no behavioural drift.
 
-import type { CardView, GameView } from "./protocol";
+import type { CardView, ExilePlayView, GameView } from "./protocol";
 import type { BrowsableZone } from "./zoneBrowser";
 
 // cardsForZone returns the viewable card slice for a given zone +
@@ -74,4 +74,41 @@ export function buildMovePayload(
   const dst: ZoneRef = { kind: dest };
   if (dest === "hand" || dest === "library") dst.owner = viewerID;
   return { src, dst, instance_id: card.instance_id };
+}
+
+// --- S21 sub-PR 6: impulse exile ---------------------------------
+//
+// A card in exile can carry a grant naming a player who may play it
+// this turn — Ragavan exiles off the top of the player he hit and
+// lets YOU cast it. So the affordance is keyed on the grant, not on
+// zone ownership like the move buttons: the card is in the victim's
+// exile slice, and the thief is the one who gets a button.
+
+// impulseGrantFor returns the grant on `card` if the viewer is the
+// one it names, or null.
+export function impulseGrantFor(
+  card: CardView,
+  zoneKind: BrowsableZone,
+  viewerID: string | null,
+): ExilePlayView | null {
+  if (zoneKind !== "exile" || !viewerID) return null;
+  const grant = card.exile_play;
+  return grant && grant.player === viewerID ? grant : null;
+}
+
+// impulseActionLabel is the verb for the button, or null when there
+// is no action to offer. Ragavan says "you may CAST that card", so
+// a land under a cast-only grant is stranded and gets no button;
+// Breeches says "you may PLAY those cards", so its land is playable.
+export function impulseActionLabel(
+  card: CardView,
+  zoneKind: BrowsableZone,
+  viewerID: string | null,
+): "cast" | "play" | null {
+  const grant = impulseGrantFor(card, zoneKind, viewerID);
+  if (!grant) return null;
+  if ((card.type_line ?? "").toLowerCase().includes("land")) {
+    return grant.cast_only ? null : "play";
+  }
+  return "cast";
 }

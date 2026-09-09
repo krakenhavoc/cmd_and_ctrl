@@ -6,26 +6,25 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 //	"Worn Powerstone enters tapped. {T}: Add {C}{C}."
 //
-// The enters-tapped clause is the drawback that makes a two-mana
-// rock cost three, so it is implemented rather than deferred: OnETB
-// taps the permanent as it lands. That is a beat later than the real
-// replacement effect (it enters untapped and is then tapped, rather
-// than entering tapped), which is observable only by something
-// watching for an untapped-to-tapped transition on ETB. Nothing in
-// the catalog does, and a true enters-tapped needs a CR 614
-// replacement on a self-referential event the engine builds after
-// the card is already placed.
+// The enters-tapped clause is the drawback that makes a two-mana rock
+// cost three, so it is implemented rather than deferred.
+//
+// It used to be an OnETB tap — enter untapped, then tap — with a note
+// that a true enters-tapped needed a CR 614 replacement on an event the
+// engine builds before the card is placed. That machinery exists now
+// (SelfEntersTapped, added with the Temple cycle), so this is the real
+// replacement: the Powerstone is never untapped on the battlefield.
+// The old approximation was observable to anything watching for a tap
+// or for an untapped permanent entering.
 func init() {
 	Register(Spec{
-		OracleID: "b166b670-febc-4821-855e-f8d465644c03",
-		Name:     "Worn Powerstone",
+		OracleID:     "b166b670-febc-4821-855e-f8d465644c03",
+		Name:         "Worn Powerstone",
+		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}{C}",
 			Label:    "Add {C}{C}",
 		}},
-		OnETB: func(card *game.Card, ctx *Context) error {
-			return TapTarget{Target: card.InstanceID}.Apply(ctx)
-		},
 	})
 }

@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/google/uuid"
 )
@@ -774,4 +775,110 @@ func (g *Game) CreateTokenForEffect(controller uuid.UUID, template Card, n int) 
 		})
 	}
 	return nil
+}
+
+// ScryForEffect performs a scry N (CR 701.18): the player looks at the
+// top N cards of their library and then decides which go to the bottom
+// and in what order the rest go back on top.
+//
+// Returns the number of cards actually looked at, which is fewer than n
+// when the library is short and zero when it is empty — a scry with an
+// empty library is not an error, it simply does nothing, and no choice
+// is queued.
+//
+// Scry is LOOK AT, not reveal. Only the scrying player becomes a knower
+// of the cards, so the per-viewer wire filter redacts them for everyone
+// else. Marking every seat a knower — which is what "reveal" does, and
+// what a copy-paste from SearchLibraryForEffect would give you — would
+// hand the whole table the top of a library, which is a real
+// information advantage rather than a cosmetic slip.
+//
+// Nothing moves here. The cards stay on top until the choice is
+// answered, so a scry left unanswered leaves the library exactly as it
+// was rather than in a half-applied order.
+//
+// Caller must hold g.mu.
+func (g *Game) ScryForEffect(playerID, source uuid.UUID, n int) int {
+	return g.ScryThenForEffect(playerID, source, n, nil)
+}
+
+// ScryThenForEffect is scry N with a continuation: `after` runs once the
+// player has finished putting the cards back, with the library in the
+// order they chose.
+//
+// This exists because of the word "then". Preordain is "Scry 2, THEN
+// draw a card" — the card left on top is the card drawn, so the draw
+// cannot happen in the same step that queues the choice. Running it
+// eagerly would draw one of the very cards the player is still deciding
+// about, and would then leave the choice unanswerable, because that
+// card is no longer in the library for ResolveScry to put back.
+//
+// `after` still runs when the scry looked at nothing (an empty
+// library): the instruction after "then" is not conditional on the
+// scry having had cards to look at.
+//
+// Caller must hold g.mu.
+func (g *Game) ScryThenForEffect(playerID, source uuid.UUID, n int, after func(g *Game) error) int {
+	runAfter := func() {
+		if after != nil {
+			if err := after(g); err != nil {
+				g.EmitEvent(Event{
+					Kind:     EventEffectError,
+					Actor:    playerID,
+					Source:   source,
+					ErrorMsg: err.Error(),
+				})
+			}
+		}
+	}
+	if n <= 0 {
+		runAfter()
+		return 0
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil || p.Library == nil {
+		runAfter()
+		return 0
+	}
+	size := p.Library.Size()
+	if size == 0 {
+		runAfter()
+		return 0
+	}
+	if n > size {
+		n = size
+	}
+	// Library top is the LAST element, so the top n cards are the tail
+	// — collected top-first so the chooser sees them in draw order.
+	ids := make([]uuid.UUID, 0, n)
+	for i := 0; i < n; i++ {
+		idx := size - 1 - i
+		p.Library.Cards[idx].AddKnower(playerID)
+		ids = append(ids, p.Library.Cards[idx].InstanceID)
+	}
+	g.QueueChoiceForEffect(PendingChoice{
+		Kind:       PendingChoiceScry,
+		Chooser:    playerID,
+		FromPlayer: playerID,
+		Count:      len(ids),
+		Source:     source,
+		Reason:     scryReason(len(ids)),
+		ScryCards:  ids,
+		scryResume: after,
+	})
+	return len(ids)
+}
+
+// scryReason is the picker's banner copy, phrased as the card prints
+// it.
+func scryReason(n int) string {
+	switch n {
+	case 1:
+		return "Scry 1"
+	case 2:
+		return "Scry 2"
+	case 3:
+		return "Scry 3"
+	}
+	return "Scry " + strconv.Itoa(n)
 }

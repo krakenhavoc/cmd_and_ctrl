@@ -204,6 +204,13 @@ type AdditionalCostView struct {
 	// DiscardCards is how many cards the caster must discard. The
 	// picked instance IDs ride back on cast_spell's discard_ids.
 	DiscardCards int `json:"discard_cards,omitempty"`
+	// SacrificeOptions lists the permanents that may pay a
+	// "sacrifice a creature" clause, already filtered to the
+	// caster's own board (CR 701.17b). The picked instance ID rides
+	// back on cast_spell's sacrifice_ids. Absent when the cost has
+	// no sacrifice component; present-and-empty means the cost is
+	// unpayable, which makes the spell uncastable.
+	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
 	// Label is the clause as printed ("Discard a card"), shown
 	// above the picker.
 	Label string `json:"label,omitempty"`
@@ -497,6 +504,10 @@ type CardView struct {
 	// before firing cast_spell — the server rejects a cast that
 	// arrives without it.
 	AdditionalCost *AdditionalCostView `json:"additional_cost,omitempty"`
+	// ExilePlay is the S21 sub-PR 6 impulse-exile grant. Present
+	// only while the card is in exile with a live permission;
+	// absent — which is nearly always — the card is inert exile.
+	ExilePlay *ExilePlayView `json:"exile_play,omitempty"`
 	// ActivatedAbilities are the CR 602 activated abilities this
 	// permanent offers, from its controller's point of view (public
 	// information, so present on every viewer's copy). Absent off
@@ -540,6 +551,23 @@ type CardView struct {
 // game.ManaAbilityShape projection, so the client can render the
 // button labels without reaching into the catalog directly. Added
 // in S15 sub-PR 2.
+// ExilePlayView is the impulse-exile grant on a card in exile —
+// "exile the top card of that player's library, you may play it
+// this turn" (S21 sub-PR 6). Public information: the trigger that
+// created it resolved in the open, so every viewer sees who may
+// play the card. The client offers the action only to `player`.
+type ExilePlayView struct {
+	// Player is the instance ID of the player who may play it —
+	// usually not the card's owner.
+	Player string `json:"player"`
+	// CastOnly marks a grant that permits casting but not playing a
+	// land (Ragavan). The client labels the action accordingly.
+	CastOnly bool `json:"cast_only,omitempty"`
+	// AnyColor marks "you may spend mana as though it were mana of
+	// any color" (Breeches).
+	AnyColor bool `json:"any_color,omitempty"`
+}
+
 // ActivatedAbilityView is one CR 602 activated ability on a
 // battlefield permanent, from its controller's point of view. The
 // cost flags tell the client what to collect before firing
@@ -579,11 +607,21 @@ type ManaAbilityView struct {
 	// Produced string on the client side.
 	Label string `json:"label,omitempty"`
 	// TapCost reflects the "{T}:" portion of the ability. Drives
-	// the client's "can't tap — already tapped" greying of the
-	// menu entry. SacrificeCost mirrors the sacrifice-cost flag
-	// but is unused by S15 catalog.
+	// the client's greying of the menu entry when the source is
+	// tapped — or, for a creature source like Birds of Paradise,
+	// summoning-sick (CardView.SummoningSick carries that).
+	// SacrificeCost is a sacrifice-SELF cost (Treasure, Lotus
+	// Petal); both went live in S21 sub-PR 1.
 	TapCost       bool `json:"tap_cost,omitempty"`
 	SacrificeCost bool `json:"sacrifice_cost,omitempty"`
+	// SacrificeLabel / SacrificeOptions describe a sacrifice-ANOTHER
+	// cost — Ashnod's Altar's "Sacrifice a creature" — exactly as
+	// ActivatedAbilityView carries them, so the client reuses one
+	// picker for both ability kinds. Absent when the cost has no
+	// such component. Stamped by stampActivatedAbilities, which is
+	// the pass that has the game handle to compute a legal set.
+	SacrificeLabel   string            `json:"sacrifice_label,omitempty"`
+	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
 	// Produced is the raw production string ("{C}{C}",
 	// "{W|U|B|R|G}"). Lets the client render the produced-mana
 	// pills alongside the activation button even when Label is
@@ -692,6 +730,12 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 						DiscardCards: ac.DiscardCards,
 						Label:        ac.Label,
 					}
+					if ac.Sacrifice != nil {
+						opts := viewOfLegalTargets(g.LegalTargetsForEffect(caster, ac.Sacrifice), ac.Sacrifice)
+						opts.Cards = filterToController(g, opts.Cards, caster)
+						opts.Players = nil
+						c.AdditionalCost.SacrificeOptions = opts
+					}
 				}
 				spec := game.TargetSpecFor(c.oracleID)
 				if spec == nil {
@@ -756,6 +800,33 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 			continue
 		}
 		c.ActivatedAbilities = viewOfActivatedAbilities(g, card, controller)
+		stampManaSacrificeOptions(g, card, controller, c.ManaAbilities)
+	}
+}
+
+// stampManaSacrificeOptions fills the sacrifice clause on a
+// permanent's MANA abilities (Ashnod's Altar, Phyrexian Altar).
+//
+// Split from viewOfManaAbilities because that runs while building the
+// base card view, which has no game handle — computing a legal set
+// needs one. Same division the activated abilities already use, and
+// the same CR 701.17b filter: a sacrifice cost may only be paid with
+// permanents you control, which the generic legal-target walk doesn't
+// know.
+func stampManaSacrificeOptions(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView) {
+	raw := game.ManaAbilitiesForCard(card)
+	for i := range views {
+		if i >= len(raw) || raw[i].SacrificeOther == nil {
+			continue
+		}
+		views[i].SacrificeLabel = raw[i].SacrificeOther.Label
+		opts := abilityLegalTargets(g, controller, raw[i].SacrificeOther)
+		if opts == nil {
+			continue
+		}
+		opts.Cards = filterToController(g, opts.Cards, controller)
+		opts.Players = nil
+		views[i].SacrificeOptions = opts
 	}
 }
 
@@ -794,6 +865,31 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.Options = make([]CardView, len(fromP.Hand.Cards))
 				for i, card := range fromP.Hand.Cards {
 					v.Options[i] = viewOfCard(card)
+				}
+			}
+		}
+		// PendingChoiceSacrifice — "each player sacrifices a
+		// creature". Inline the chooser's own candidate permanents as
+		// Options so the picker renders card faces rather than UUIDs.
+		// Battlefield cards are public, so no redaction concern.
+		if c.Kind == game.PendingChoiceSacrifice && len(c.SacrificeOptions) > 0 {
+			v.Options = make([]CardView, 0, len(c.SacrificeOptions))
+			for _, id := range c.SacrificeOptions {
+				if card, ok := g.LookupCardForEffect(id); ok {
+					v.Options = append(v.Options, viewOfCard(card))
+				}
+			}
+		}
+		// PendingChoiceScry — the looked-at cards, top-first, as
+		// Options. Scry is "look at", not "reveal": only the chooser
+		// was marked a knower, so FilterViewFor redacts these to backs
+		// for every other seat and the top of the library stays
+		// private.
+		if c.Kind == game.PendingChoiceScry && len(c.ScryCards) > 0 {
+			v.Options = make([]CardView, 0, len(c.ScryCards))
+			for _, id := range c.ScryCards {
+				if card, ok := g.LookupCardForEffect(id); ok {
+					v.Options = append(v.Options, viewOfCard(card))
 				}
 			}
 		}
@@ -1391,6 +1487,16 @@ func viewOfCard(c game.Card) CardView {
 	}
 	if c.GoadedBy != uuid.Nil {
 		view.GoadedBy = c.GoadedBy.String()
+	}
+	// S21 sub-PR 6: the impulse-exile grant rides the card itself,
+	// so no per-viewer stamping pass is needed — and it's zeroed as
+	// the card leaves exile, so this can't linger on a permanent.
+	if c.ExilePlay.Granted() {
+		view.ExilePlay = &ExilePlayView{
+			Player:   c.ExilePlay.Player.String(),
+			CastOnly: c.ExilePlay.CastOnly,
+			AnyColor: c.ExilePlay.AnyColor,
+		}
 	}
 	return view
 }

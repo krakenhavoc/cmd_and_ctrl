@@ -82,10 +82,11 @@ func init() {
 		out := make([]game.ManaAbilityShape, len(spec.ManaAbilities))
 		for i, a := range spec.ManaAbilities {
 			out[i] = game.ManaAbilityShape{
-				TapCost:       a.Cost.Tap,
-				SacrificeCost: a.Cost.Sacrifice,
-				Produced:      a.Produced,
-				Label:         a.Label,
+				TapCost:        a.Cost.Tap,
+				SacrificeCost:  a.Cost.Sacrifice,
+				SacrificeOther: a.Cost.SacrificeOther,
+				Produced:       a.Produced,
+				Label:          a.Label,
 			}
 		}
 		return out

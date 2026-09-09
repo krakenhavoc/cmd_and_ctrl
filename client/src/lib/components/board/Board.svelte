@@ -25,6 +25,7 @@
     ActivatedAbilityView,
     CardView,
     GameView,
+    ManaAbilityView,
     ZoneView,
   } from "../../protocol";
   import { seatPlacements, type SeatPosition } from "../../cardTypes";
@@ -49,6 +50,7 @@
     hasXCost,
     isModal,
     discardCostOf,
+    sacrificeCostOptions,
     isLegalCardTarget,
     isLegalPlayerTarget,
     isMultiPick,
@@ -164,13 +166,16 @@
   // confirm continues into targeting / cast with the chosen value.
   let xPromptCard = $state<CardView | null>(null);
   let xPromptDiscardIDs: string[] | undefined;
+  let xPromptSacrificeIDs: string[] | undefined;
   function confirmX(x: number): void {
     const card = xPromptCard;
     const discardIDs = xPromptDiscardIDs;
+    const sacrificeIDs = xPromptSacrificeIDs;
     xPromptCard = null;
     xPromptDiscardIDs = undefined;
+    xPromptSacrificeIDs = undefined;
     if (!card) return;
-    continueCast(card, x, discardIDs);
+    continueCast(card, x, discardIDs, sacrificeIDs);
   }
 
   // S21 sub-PR 5: a spell with an additional cost ("As an
@@ -195,12 +200,58 @@
     const card = discardPromptCard;
     discardPromptCard = null;
     if (!card) return;
+    afterDiscardCost(card, ids);
+  }
+
+  // S21 sub-PR 6: the sacrifice half of an additional cost ("As an
+  // additional cost to cast this spell, sacrifice a creature").
+  // Reuses SacrificeCostModal, the same picker the CR 602 activated
+  // abilities open. No printed card charges both a discard and a
+  // sacrifice, but the two prompts chain rather than exclude each
+  // other, so one that did would work.
+  let sacrificePromptCard = $state<CardView | null>(null);
+  let sacrificePromptDiscardIDs: string[] | undefined;
+
+  const castSacrificeOptions = $derived.by(() => {
+    const card = sacrificePromptCard;
+    if (!card) return [];
+    const ids = new Set(sacrificeCostOptions(card) ?? []);
+    return view.battlefield.cards.filter((c) => ids.has(c.instance_id));
+  });
+
+  function confirmSacrificeCost(instanceID: string): void {
+    const card = sacrificePromptCard;
+    const discardIDs = sacrificePromptDiscardIDs;
+    sacrificePromptCard = null;
+    sacrificePromptDiscardIDs = undefined;
+    if (!card) return;
+    afterCastCosts(card, discardIDs, [instanceID]);
+  }
+
+  // afterDiscardCost / afterCastCosts are the two seams between the
+  // cost prompts and the rest of the cast flow, so adding a cost
+  // kind doesn't mean editing every earlier prompt's confirm.
+  function afterDiscardCost(card: CardView, discardIDs: string[] | undefined): void {
+    if (sacrificeCostOptions(card) !== undefined) {
+      sacrificePromptDiscardIDs = discardIDs;
+      sacrificePromptCard = card;
+      return;
+    }
+    afterCastCosts(card, discardIDs, undefined);
+  }
+
+  function afterCastCosts(
+    card: CardView,
+    discardIDs: string[] | undefined,
+    sacrificeIDs: string[] | undefined,
+  ): void {
     if (hasXCost(card)) {
-      xPromptDiscardIDs = ids;
+      xPromptDiscardIDs = discardIDs;
+      xPromptSacrificeIDs = sacrificeIDs;
       xPromptCard = card;
       return;
     }
-    continueCast(card, undefined, ids);
+    continueCast(card, undefined, discardIDs, sacrificeIDs);
   }
 
   function handlePlayCard(card: CardView): void {
@@ -208,11 +259,7 @@
       discardPromptCard = card;
       return;
     }
-    if (hasXCost(card)) {
-      xPromptCard = card;
-      return;
-    }
-    continueCast(card, undefined);
+    afterDiscardCost(card, undefined);
   }
 
   // S20 sub-PR 4: a modal spell asks for its mode(s) after X and
@@ -222,33 +269,43 @@
   let modePromptCard = $state<CardView | null>(null);
   let modePromptX: number | undefined;
   let modePromptDiscardIDs: string[] | undefined;
+  let modePromptSacrificeIDs: string[] | undefined;
   function confirmModes(modes: number[]): void {
     const card = modePromptCard;
     const xValue = modePromptX;
     const discardIDs = modePromptDiscardIDs;
+    const sacrificeIDs = modePromptSacrificeIDs;
     modePromptCard = null;
     modePromptX = undefined;
     modePromptDiscardIDs = undefined;
+    modePromptSacrificeIDs = undefined;
     if (!card) return;
     const targeted = modes.find((i) => card.modes?.options[i]?.legal_targets !== undefined);
     if (targeted !== undefined) {
       const option = card.modes!.options[targeted];
-      beginTargetingForMode(card, option, modes, xValue, discardIDs);
+      beginTargetingForMode(card, option, modes, xValue, discardIDs, sacrificeIDs);
       return;
     }
     const params: Record<string, unknown> = { instance_id: card.instance_id, modes };
     if (xValue !== undefined) params.x_value = xValue;
     if (discardIDs !== undefined) params.discard_ids = discardIDs;
+    if (sacrificeIDs !== undefined) params.sacrifice_ids = sacrificeIDs;
     sendAction("cast_spell", params, viewerID ?? undefined);
   }
 
   // continueCast is the post-X half of the cast flow: pick modes for
   // a modal card, enter targeting for a targeted card, or fire
   // cast_spell straight away.
-  function continueCast(card: CardView, xValue: number | undefined, discardIDs?: string[]): void {
+  function continueCast(
+    card: CardView,
+    xValue: number | undefined,
+    discardIDs?: string[],
+    sacrificeIDs?: string[],
+  ): void {
     if (isModal(card)) {
       modePromptX = xValue;
       modePromptDiscardIDs = discardIDs;
+      modePromptSacrificeIDs = sacrificeIDs;
       modePromptCard = card;
       return;
     }
@@ -266,12 +323,13 @@
       mode === "stack_spell" ||
       mode === "card_in_graveyard"
     ) {
-      beginTargeting(card, mode, xValue, discardIDs);
+      beginTargeting(card, mode, xValue, discardIDs, sacrificeIDs);
       return;
     }
     const params: Record<string, unknown> = { instance_id: card.instance_id };
     if (xValue !== undefined) params.x_value = xValue;
     if (discardIDs !== undefined) params.discard_ids = discardIDs;
+    if (sacrificeIDs !== undefined) params.sacrifice_ids = sacrificeIDs;
     sendAction("cast_spell", params, viewerID ?? undefined);
   }
 
@@ -331,6 +389,7 @@
     if (state.xValue !== undefined) params.x_value = state.xValue;
     if (state.modes !== undefined) params.modes = state.modes;
     if (state.discardIDs !== undefined) params.discard_ids = state.discardIDs;
+    if (state.sacrificeIDs !== undefined) params.sacrifice_ids = state.sacrificeIDs;
     sendAction("cast_spell", params, viewerID ?? undefined);
     cancelTargeting();
   }
@@ -341,10 +400,17 @@
   // (n/a today), pay the costs, then choose targets. So a sacrifice
   // cost is picked BEFORE targeting, and both are sent together in
   // one activate_ability — the server pays and announces atomically.
-  let sacrificePrompt = $state<{
-    card: CardView;
-    ability: ActivatedAbilityView;
-  } | null>(null);
+  //
+  // The same modal serves both ability kinds: a CR 602 activated
+  // ability (which may go on to target) and a CR 605 mana ability
+  // whose cost sacrifices another permanent (Ashnod's Altar). The
+  // prompt is tagged so confirm knows which action to send — mana
+  // abilities never target, so they fire immediately.
+  type SacrificePrompt =
+    | { kind: "ability"; card: CardView; ability: ActivatedAbilityView }
+    | { kind: "mana"; card: CardView; ability: ManaAbilityView };
+
+  let sacrificePrompt = $state<SacrificePrompt | null>(null);
 
   const sacrificeOptions = $derived.by(() => {
     const p = sacrificePrompt;
@@ -357,16 +423,34 @@
     const ability = (card.activated_abilities ?? []).find((a) => a.index === index);
     if (!ability) return;
     if (ability.sacrifice_options) {
-      sacrificePrompt = { card, ability };
+      sacrificePrompt = { kind: "ability", card, ability };
       return;
     }
     continueActivation(card, ability, []);
+  }
+
+  // S21: a mana ability with a sacrifice-another cost, handed up by
+  // PlayerPanel because the picker is board-wide.
+  function handleManaSacrificeCost(card: CardView, ability: ManaAbilityView): void {
+    sacrificePrompt = { kind: "mana", card, ability };
   }
 
   function confirmSacrifice(instanceID: string): void {
     const p = sacrificePrompt;
     sacrificePrompt = null;
     if (!p) return;
+    if (p.kind === "mana") {
+      sendAction(
+        "activate_mana_ability",
+        {
+          card_id: p.card.instance_id,
+          ability_index: p.ability.index,
+          sacrifice_ids: [instanceID],
+        },
+        viewerID ?? undefined,
+      );
+      return;
+    }
     continueActivation(p.card, p.ability, [instanceID]);
   }
 
@@ -511,6 +595,7 @@
             {onPassPriority}
             {onToggleAutopass}
             onActivateAbility={handleActivateAbility}
+            onManaSacrificeCost={handleManaSacrificeCost}
           />
         </div>
       {/if}
@@ -586,6 +671,13 @@
     options={discardCostOptions}
     onConfirm={confirmDiscardCost}
     onCancel={() => (discardPromptCard = null)}
+  />
+  <SacrificeCostModal
+    source={sacrificePromptCard}
+    label={sacrificePromptCard?.additional_cost?.label ?? "a permanent"}
+    options={castSacrificeOptions}
+    onConfirm={confirmSacrificeCost}
+    onCancel={() => (sacrificePromptCard = null)}
   />
   <XCostModal
     gameID={view.id}

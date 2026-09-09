@@ -269,6 +269,15 @@ type CastSpellParams struct {
 	// Added in S21 sub-PR 5.
 	DiscardIDs []uuid.UUID
 
+	// SacrificeIDs names the permanent paid to an additional cost of
+	// the form "As an additional cost to cast this spell, sacrifice a
+	// creature" (Village Rites, Deadly Dispute). Same discipline as
+	// DiscardIDs: validated at announce, paid with the spell already
+	// on the stack so the dies-triggers resolve above it, and
+	// rejected rather than ignored on a card that charges no such
+	// cost. Added in S21 sub-PR 6.
+	SacrificeIDs []uuid.UUID
+
 	// Strict enables the S15 mana-cost gate. When set, the server
 	// parses the card's ManaCost into an effective cost (plus
 	// commander tax for casts from the command zone), checks the
@@ -385,6 +394,22 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	if !found {
 		return ErrCardNotFound
 	}
+	// S21 sub-PR 6: casting out of exile needs a live impulse-exile
+	// grant naming this player. Checked before every other gate
+	// because it's the one that decides whether the card is yours to
+	// touch at all.
+	if src.Kind == ZoneExile {
+		perm := card.ExilePlay
+		if !perm.Active(playerID, g.Turn.Number) {
+			return ErrNoPlayPermission
+		}
+		// "You may CAST that card" (Ragavan) does not let you play a
+		// land: playing a land is a special action, not a cast
+		// (CR 305.1, 115.2a).
+		if perm.CastOnly && card.IsLand() {
+			return ErrNoPlayPermission
+		}
+	}
 	// S17 sub-PR 6 follow-up: if the catalog declares a target_mode
 	// for this card, a cast without any target is a client bug (the
 	// targeting UI should have opened before firing cast_spell).
@@ -450,11 +475,12 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// down once the spell is on the stack — validate-all-then-pay,
 	// so a rejected cast never leaves a card in the graveyard.
 	addCost := AdditionalCostFor(card.OracleID)
-	if err := g.validateAdditionalCostLocked(playerID, cardID, addCost, params.DiscardIDs); err != nil {
+	if err := g.validateAdditionalCostLocked(playerID, cardID, addCost, params.DiscardIDs, params.SacrificeIDs); err != nil {
 		slog.Warn("cast_spell rejected: bad additional cost payment",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
 			"discards_received", len(params.DiscardIDs),
+			"sacrifices_received", len(params.SacrificeIDs),
 			"err", err,
 		)
 		return err
@@ -514,6 +540,10 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 				if out.EntersTapped {
 					g.Battlefield.Cards[i].Tapped = true
 				}
+				// The impulse grant is spent. Zeroing it here means a
+				// later effect that exiles this card again can't
+				// inherit a permission it never granted.
+				g.Battlefield.Cards[i].ExilePlay = ExilePlayPermission{}
 			}
 		}
 		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
@@ -568,6 +598,12 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	if _, err := MoveCard(src, g.Stack, cardID); err != nil {
 		return err
 	}
+	// The impulse grant is spent — see the land branch above.
+	for i := range g.Stack.Cards {
+		if g.Stack.Cards[i].InstanceID == cardID {
+			g.Stack.Cards[i].ExilePlay = ExilePlayPermission{}
+		}
+	}
 	// S13.5: cast spells are public on the stack.
 	g.markCardKnownInZoneLocked(g.Stack, cardID)
 	if g.StackMeta == nil {
@@ -593,10 +629,11 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// CR 601.2h: pay the costs. The mana component was charged
 	// above (pre-move, as S15 wrote it); the additional cost is
 	// paid HERE, with the spell already on the stack, because a
-	// discard payoff that triggers off it must resolve before the
+	// discard payoff — or an aristocrats payoff watching the
+	// sacrifice — that triggers off it must resolve before the
 	// spell does. Validation happened at announce, so a failure
 	// past this point is an engine bug rather than a bad request.
-	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs); err != nil {
+	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs, params.SacrificeIDs); err != nil {
 		slog.Error("cast_spell: additional cost failed after validation",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -842,6 +879,13 @@ func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams)
 		tax := p.CommanderCasts[card.InstanceID]
 		cost.Generic += tax * 2
 	}
+	// S21 sub-PR 6: "you may spend mana as though it were mana of any
+	// color to cast those spells" (Breeches, Brazen Plunderer). Folds
+	// the colored slots into the generic demand, which is exactly
+	// equivalent for the solver.
+	if card.ExilePlay.AnyColor && card.ExilePlay.Active(p.ID, g.Turn.Number) {
+		cost = asAnyColorCost(cost)
+	}
 	return cost, nil
 }
 
@@ -855,6 +899,12 @@ func (g *Game) castSourceZoneLocked(p *Player, fromZone string) (*Zone, error) {
 		return p.Hand, nil
 	case "command":
 		return p.Command, nil
+	case "exile":
+		// S21 sub-PR 6: impulse exile. Exile is a SHARED zone, so
+		// unlike hand and command the zone lookup grants nothing on
+		// its own — CastSpell checks the per-card permission before
+		// it will move anything.
+		return g.Exile, nil
 	default:
 		return nil, ErrZoneNotFound
 	}
@@ -1873,6 +1923,13 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 		NewZone: dest,
 	})
 	g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, Actor: actor, NewZone: dest})
+	// A permanent leaving the battlefield is the one event that can
+	// invalidate a queued "sacrifice a creature of your choice" prompt
+	// (Grave Pact), so re-check them here rather than in
+	// runStateChecksLocked — a queued choice stops priority from
+	// passing, so the state-check loop is exactly what does NOT run
+	// while such a prompt is outstanding. No-op when none is queued.
+	g.pruneSacrificeChoicesLocked()
 	return nil
 }
 
@@ -2485,7 +2542,21 @@ func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 // controller's commander's color identity before queuing the pick.
 //
 // Added in S15 sub-PR 2.
-func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int) error {
+// ManaAbilityParams carries the choices a mana ability's cost needs
+// from the activator. Empty for the common case — a bare "{T}: Add
+// {C}" needs nothing.
+//
+// Mana abilities don't use the stack (CR 605.3a), so unlike
+// ActivateAbilityParams there is no target list here: a mana ability
+// that targeted would have to resolve, and none does.
+type ManaAbilityParams struct {
+	// SacrificeIDs names the permanents paying a SacrificeOther
+	// component. Exactly one for a single-permanent clause; empty
+	// when the ability has no such cost.
+	SacrificeIDs []uuid.UUID
+}
+
+func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, params ManaAbilityParams) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -2518,32 +2589,62 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int) e
 		return ErrInvalidParam
 	}
 	ab := abilities[abilityIdx]
-	// Pay costs, tap before sacrifice (CR 601.2h — costs are paid
-	// together, but the tap has to happen while the permanent is
-	// still on the battlefield, and a tapped permanent can't pay a
-	// {T} cost). Both are checked before either is paid so a
-	// half-paid cost can't strand the permanent.
-	if ab.TapCost && card.Tapped {
-		return ErrAlreadyTapped
+	// --- validate every cost before paying any ------------------
+	//
+	// Same discipline as ActivateCatalogAbility: a half-paid cost
+	// must never strand the permanent. Ashnod's Altar with a tapped
+	// source has to fail WITHOUT eating the creature.
+	if ab.TapCost {
+		if card.Tapped {
+			return ErrAlreadyTapped
+		}
+		// CR 302.1: a creature's {T} ability needs it to have been
+		// under your control since your most recent turn began.
+		// Birds of Paradise, Llanowar Merfolk and Palladium Myr all
+		// live here; before this check they tapped for mana the turn
+		// they landed, which is simply wrong. Non-creature sources
+		// (Sol Ring, a land) are never sick, and haste exempts a
+		// creature — HasSummoningSickness handles both.
+		if card.IsCreature() && HasSummoningSickness(card) {
+			return ErrSummoningSick
+		}
 	}
+	sacrifices, err := g.validateSacrificeCostLocked(playerID, cardID, AbilityCost{
+		SacrificeSelf:  ab.SacrificeCost,
+		SacrificeOther: ab.SacrificeOther,
+	}, params.SacrificeIDs)
+	if err != nil {
+		return err
+	}
+
+	// --- pay ----------------------------------------------------
+	//
+	// Tap before sacrifice: the tap has to happen while the
+	// permanent is still on the battlefield, and sacrifices move
+	// cards, which invalidates `card`.
 	if ab.TapCost {
 		card.Tapped = true
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
 	}
-	// S21 sub-PR 1: sacrifice costs are real now (Treasure, Eldrazi
-	// Spawn, Lotus Petal). The mana still lands in the pool below —
-	// CR 605.3a: a mana ability resolves immediately, without the
-	// stack, so the sacrifice and the mana are one atomic step.
-	if ab.SacrificeCost {
-		if err := g.sacrificePermanentLocked(cardID); err != nil {
-			return err
+	// S21 sub-PR 1 made sacrifice-self costs real (Treasure, Eldrazi
+	// Spawn, Lotus Petal); the mana-cost pass adds sacrifice-another
+	// (Ashnod's Altar, Phyrexian Altar). The mana still lands in the
+	// pool below — CR 605.3a: a mana ability resolves immediately,
+	// without the stack, so the sacrifices and the mana are one
+	// atomic step.
+	if len(sacrifices) > 0 {
+		for _, id := range sacrifices {
+			if err := g.sacrificePermanentLocked(id); err != nil {
+				return err
+			}
 		}
-		// The card left the battlefield; `card` now dangles. Nothing
-		// below touches it (the produced-mana path reads `ab`).
+		// A sacrificed source leaves `card` dangling. Nothing below
+		// touches it (the produced-mana path reads `ab`).
 		card = nil
 		// The sacrifice can queue dies- / sacrifice-triggers (Blood
-		// Artist cracking a Treasure). Drain them on the way out, so
-		// the mana is already in the pool when they resolve.
+		// Artist feeding off an Altar). Drain them on the way out, so
+		// the mana is already in the pool when they resolve — which
+		// is what makes an Altar plus a payoff a real engine.
 		defer g.runStateChecksLocked()
 	}
 	g.EmitEvent(Event{
@@ -2553,6 +2654,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int) e
 	})
 	// Materialise the produced mana.
 	slots, err := ParseProducedMana(ab.Produced)
+	_ = card // card is deliberately nil after a sacrifice; keep the intent explicit
 	if err != nil {
 		// Mal-formed produced string: emit an effect-error event and
 		// stop short of adding mana. The cost has already been paid —

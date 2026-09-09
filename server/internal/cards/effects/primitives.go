@@ -282,3 +282,85 @@ func (p PayUnless) Apply(ctx *Context) error {
 			return decline(NewContext(g, item))
 		})
 }
+
+// EachPlayerSacrifices is "each player sacrifices a creature" (Fleshbag
+// Marauder), "each other player sacrifices a creature" (Grave Pact) or
+// "each opponent sacrifices a creature" (Butcher of Malakir) — CR
+// 701.17a.
+//
+// Every affected player chooses their own, so this fans out one prompt
+// per player rather than picking for them; that is the whole rules
+// content of the card, and it is why the effect is not targeted. A
+// creature with hexproof or protection is still a legal choice, and
+// the effect resolves whether or not anyone has a creature.
+//
+// Set ExceptController for "each OTHER player" / "each opponent".
+// Leave Match nil for "a permanent"; pass Creature() for the usual
+// "a creature".
+type EachPlayerSacrifices struct {
+	// ExceptController skips the effect's controller — the
+	// difference between Grave Pact ("each other player") and
+	// Fleshbag Marauder ("each player", you included).
+	ExceptController bool
+
+	// Match narrows what may be chosen. Nil means any permanent.
+	Match CardPredicate
+
+	// Label is the picker's banner copy: "a creature".
+	Label string
+}
+
+func (e EachPlayerSacrifices) Apply(ctx *Context) error {
+	except := uuid.Nil
+	if e.ExceptController {
+		except = ctx.Controller()
+	}
+	var spec *game.TargetSpec
+	if e.Match != nil {
+		spec = sacrificeSpec(e.Label, e.Match)
+	}
+	label := e.Label
+	if label == "" {
+		label = "a permanent"
+	}
+	ctx.Game.EachPlayerSacrificesForEffect(ctx.Source(), except, spec, "Sacrifice "+label)
+	return nil
+}
+
+// Scry is "scry N" (CR 701.18) — look at the top N cards of your
+// library, then put any number on the bottom and the rest back on top
+// in any order.
+//
+// The whole effect is a choice, so this queues a prompt rather than
+// doing anything to the library: nothing moves until the player
+// answers. A scry with an empty library is not an error and queues
+// nothing.
+//
+// Scry is "look at", not "reveal" — only the scrying player sees the
+// cards. The engine handles that; a card's effect never needs to.
+type Scry struct {
+	Player uuid.UUID
+	N      int
+
+	// Then is the rest of the effect, for a card whose text says
+	// "Scry N, THEN ..." (Preordain: "Scry 2, then draw a card"). It
+	// runs once the player has put the cards back, so the card left on
+	// top is the card drawn.
+	//
+	// Anything after "then" MUST go here rather than after this
+	// primitive returns. Apply only queues the prompt, so a draw
+	// written as the next statement happens BEFORE the player has
+	// chosen — a different card, and it also leaves the prompt
+	// unanswerable, because the drawn card is no longer in the library
+	// for the reorder to put back.
+	Then func(g *game.Game) error
+}
+
+func (s Scry) Apply(ctx *Context) error {
+	player := s.Player
+	if player == uuid.Nil {
+		player = ctx.Controller()
+	}
+	ctx.Game.ScryThenForEffect(player, ctx.Source(), s.N, s.Then)
+	return nil
+}

@@ -391,10 +391,35 @@ PendingChoice for the controller to resolve:
   the engine narrows the pipe set against the controller's commander
   identity at activation time.
 
-Sacrifice-cost abilities (Lotus Petal) parse but reject at activation
-in S15 — `ManaAbilityCost{Tap: true, Sacrifice: true}` will fail with
-`ErrInvalidParam`. Keep adding them to specs; the activation gate
-opens in a later sprint.
+Mana abilities can carry cost components beyond `{T}`:
+
+| Cost | Field | Card |
+| --- | --- | --- |
+| `{T}` | `ManaAbilityCost{Tap: true}` | Sol Ring |
+| Sacrifice this | `ManaAbilityCost{Sacrifice: true}` | Lotus Petal, Treasure |
+| Sacrifice another permanent | `ManaAbilityCost{SacrificeOther: SacrificeACreature().SacrificeOther}` | Ashnod's Altar, Phyrexian Altar |
+
+`SacrificeOther` takes a `*game.TargetSpec`, the same shape the CR 602
+activated abilities use — build it with the `SacrificeACreature()` /
+`SacrificeAPermanent()` helpers and take their `.SacrificeOther` field
+rather than writing a spec by hand. The engine filters the candidate
+set to the controller's own permanents (CR 701.17b), stamps it onto
+`ManaAbilityView.SacrificeOptions`, and the client reuses
+`SacrificeCostModal` to pick one. The chosen card comes back in the
+`activate_mana_ability` payload as `sacrifice_ids`, and
+`ManaAbilityParams.SacrificeIDs` carries it into the engine.
+
+`ActivateManaAbility` validates every component before paying any of
+them, so an illegal sacrifice choice leaves the source untapped. Mana
+lands in the pool first and the dies-triggers go on the stack after
+(CR 605.3a — a mana ability doesn't use the stack, but the sacrifice
+still triggers), which is what makes Ashnod's Altar + a drain outlet
+work.
+
+Summoning sickness applies to any mana ability with a tap cost on a
+creature source (CR 302.1) — Birds of Paradise, Palladium Myr. The
+engine enforces it inside `ActivateManaAbility`; specs don't declare
+it.
 
 For non-mana, non-static activated abilities (planeswalker +1/-1,
 equip, cycling, etc.), wait — see the deferral list below.
@@ -670,6 +695,153 @@ before the X / mode / target prompts; they ride `cast_spell` as
 `discard_ids` and the engine validates them at announce (the spell
 itself is never a legal pick — CR 601.2a already moved it to the
 stack). See [ADR 0021](docs/decisions/0021-additional-costs.md).
+
+**Impulse exile (S21 sub-PR 6):** "exile the top card of that
+player's library — until end of turn, you may cast that card" is
+the `ExileTopWithPermission` primitive:
+
+```go
+ExileTopWithPermission{
+    From:     victim,            // whose library
+    GrantTo:  item.Controller,   // who may play it — usually not the owner
+    N:        1,
+    CastOnly: true,              // "you may CAST" (Ragavan); omit for "play" (Breeches)
+    AnyColor: true,              // "spend mana as though it were mana of any color"
+}.Apply(ctx)
+```
+
+The permission rides `Card.ExilePlay` and expires at end of turn.
+`CastOnly` is not a detail: a land exiled by Ragavan is stranded,
+because playing a land is not casting (CR 305.1), and the client
+shows no button on it. Timing still applies on top — the grant says
+you *may* play the card, not *when*. See
+[ADR 0022](docs/decisions/0022-impulse-exile.md).
+
+The same slot takes a **sacrifice** clause (S21):
+
+```go
+AdditionalCost: SacrificeCost("a creature", Creature()),           // Village Rites, Altar's Reap
+AdditionalCost: SacrificeCost("an artifact or creature",           // Deadly Dispute
+    Or(Artifact(), Creature())),
+```
+
+Identical reasoning one zone over: the creature dies with the spell
+on the stack, so Blood Artist and Zulaport Cutthroat drain BEFORE the
+cards are drawn, and countering the spell doesn't hand the creature
+back. With nothing to sacrifice the spell is uncastable — the view
+stamps `AdditionalCostView.SacrificeOptions` filtered to the caster's
+own permanents (CR 701.17b), and an empty list is what
+`canCastFromHand` greys the card on. The pick rides `cast_spell` as
+`sacrifice_ids`, and the client reuses `SacrificeCostModal`, the same
+picker the CR 602 abilities open.
+
+`SacrificeCost` builds its spec with the shared `sacrificeSpec`
+helper, so a sacrifice cost is validated by the same code whether it
+hangs off a spell, an activated ability or a mana ability.
+
+**"Each player sacrifices a creature of their choice" (S21):** use the
+`EachPlayerSacrifices` primitive, not a loop over opponents:
+
+```go
+EachPlayerSacrifices{ExceptController: true, Match: Creature(), Label: "a creature"}  // Grave Pact
+EachPlayerSacrifices{Match: Creature(), Label: "a creature"}                          // Fleshbag Marauder
+```
+
+"Of their choice" is the rules content: it fans out one
+`PendingChoiceSacrifice` per affected player, each addressed to that
+player and offering only their own permanents, so nobody picks for
+anyone else. `ExceptController` is the difference between "each other
+player" / "each opponent" and "each player" (Fleshbag includes you, and
+is a legal answer to its own trigger).
+
+Two things this deliberately is **not**:
+
+- **Not a targeting prompt.** The effect doesn't target, so hexproof,
+  shroud, protection and "can't be the target" are all irrelevant, and
+  it resolves fine when nobody has a creature. Reusing
+  `PendingChoiceSacrifice` rather than `PendingChoicePickTarget` is
+  what keeps those restrictions from leaking in.
+- **Not optional.** A player with legal permanents must pick one; a
+  player with none is skipped at queue time rather than prompted and
+  allowed to decline.
+
+Prompts are pruned in `executeBattlefieldLeaveLocked` — the single
+choke point for a permanent leaving the battlefield — because an
+outstanding choice *stops priority from passing*, so
+`runStateChecksLocked` is exactly what does not run while one is
+waiting. Put the re-check anywhere else and a creature that dies to a
+drain mid-resolution leaves a prompt nobody can answer.
+
+The client answers it through the shared `ChoicePromptModal` card grid
+with the ordinary `{choice_id, card_ids}` payload; the dispatcher routes
+that shape by the choice's kind, as it already does for `{apply}` and
+`{order}`.
+
+**Scry (S21):** use the `Scry` primitive. Anything the card says
+*after* "then" goes in `Then`, not on the next line:
+
+```go
+Scry{Player: ctx.Controller(), N: 1}                       // Viscera Seer
+Scry{Player: c, N: 2, Then: func(g *game.Game) error {     // Preordain: "Scry 2, then draw"
+    return g.DrawNForEffect(c, 1)
+}}
+```
+
+`Scry` only QUEUES a prompt — nothing moves until the player answers.
+So a draw written as the statement after it resolves FIRST, which is
+wrong twice over: it takes one of the cards the player is still
+deciding about, and it leaves the prompt permanently unanswerable,
+because that card is no longer in the library for the reorder to put
+back. (That was a real bug in the first draft; there's a test pinning
+the ordering.)
+
+Two other things the engine handles so a card never has to:
+
+- **Scry is "look at", not "reveal".** Only the scrying player is
+  marked a knower, so the wire redacts the cards for every other seat.
+  A copy-paste from `SearchLibraryForEffect`'s reveal path would mark
+  every seat and hand the table the top of a library — a real
+  information advantage, not a cosmetic slip.
+- **An empty library is not an error.** The scry looks at nothing,
+  queues no prompt, and `Then` still runs — the instruction after
+  "then" isn't conditional on there having been cards to look at.
+
+The answer is `{bottom, top_order}` with `top_order` **top-first**, and
+every looked-at card must appear in exactly one list: scry moves all of
+them, so an answer that omits one is a client bug, not shorthand for
+"leave it".
+
+**"This permanent enters tapped" (S21):** declare a self-replacement,
+not an `OnETB` tap:
+
+```go
+Replacements: []game.ReplacementEffect{SelfEntersTapped()},
+```
+
+The two are observably different, which is why the machinery exists: an
+`OnETB` tap means the permanent enters UNTAPPED and is tapped a beat
+later, emitting `EventTapCard`, so anything watching for a tap or for an
+untapped permanent entering sees the wrong thing. A replacement emits
+none. (Worn Powerstone used the workaround and said so in a comment; it
+now uses the real thing, and the test pins the difference by counting
+tap events rather than by checking `Tapped`, which both approaches
+satisfy.)
+
+This needed an engine change worth knowing about: the replacement
+pipeline runs **pre-push**, so an entering card is not on the
+battlefield and the ordinary catalog walk in
+`gatherActiveReplacementsLocked` cannot find its own effect.
+There is now a third gathering block that consults the ENTERING card's
+own replacements, passing the card itself as `source` so an `AppliesTo`
+comparing `ev.CardID` to `source.InstanceID` identifies "this
+permanent". It is skipped for a card already on the battlefield, so a
+permanent in play can never match both blocks and apply the same effect
+twice.
+
+Lands may carry `OnETB` and mana abilities like any other permanent —
+the ten-Temple cycle in `temples.go` combines all three (enters tapped,
+ETB scry, pipe-syntax dual) and is written as a loop over a table, since
+ten near-identical files is ten places to fix one mistake.
 
 **Event picker:**
 

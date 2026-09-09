@@ -2,8 +2,9 @@ package game
 
 import "github.com/google/uuid"
 
-// additional_cost.go — S21 sub-PR 5: "As an additional cost to cast
-// this spell, discard a card" (CR 601.2f–h). The third kind of cost
+// additional_cost.go — S21: "As an additional cost to cast this
+// spell, discard a card" (sub-PR 5) or "sacrifice a creature"
+// (sub-PR 6) — CR 601.2f–h. The third kind of cost
 // the engine knows about, after a spell's mana cost (S15) and an
 // activated ability's cost (S21 sub-PR 2).
 //
@@ -31,6 +32,21 @@ type AdditionalCost struct {
 	// are paid, so it is no longer in hand.
 	DiscardCards int
 
+	// Sacrifice is "sacrifice a creature" (Village Rites, Altar's
+	// Reap) or "sacrifice an artifact or creature" (Deadly Dispute),
+	// as a spec matched against the caster's permanents. The caster
+	// names one in CastSpellParams.SacrificeIDs.
+	//
+	// Same reasoning as DiscardCards, one zone over: the creature
+	// dies while the spell is on the stack, so a Blood Artist or
+	// Zulaport Cutthroat trigger goes ABOVE the spell and drains
+	// before it resolves. Sacrificing in OnResolve inverts that, and
+	// also hands the creature back when the spell is countered.
+	//
+	// Unlike a discard, the spell being cast is never a candidate for
+	// a different reason: it is on the stack, not the battlefield.
+	Sacrifice *TargetSpec
+
 	// Label is the cost clause as printed ("Discard a card"), shown
 	// in the client's cost picker so the prompt reads like the card
 	// rather than like a schema.
@@ -39,7 +55,7 @@ type AdditionalCost struct {
 
 // Empty reports whether the cost demands nothing. Nil-safe.
 func (c *AdditionalCost) Empty() bool {
-	return c == nil || c.DiscardCards == 0
+	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil)
 }
 
 // CatalogAdditionalCost is the catalog hook the effects package
@@ -65,9 +81,9 @@ func AdditionalCostFor(oracleID string) *AdditionalCost {
 // client bug, not a no-op: rejecting it keeps the wire honest.
 //
 // Caller must hold g.mu.
-func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, cost *AdditionalCost, discardIDs []uuid.UUID) error {
+func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, cost *AdditionalCost, discardIDs, sacrificeIDs []uuid.UUID) error {
 	if cost.Empty() {
-		if len(discardIDs) > 0 {
+		if len(discardIDs) > 0 || len(sacrificeIDs) > 0 {
 			return ErrInvalidParam
 		}
 		return nil
@@ -89,17 +105,38 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, cost *Ad
 			return ErrCardNotFound
 		}
 	}
+	// The sacrifice clause reuses the activated-ability validator, so
+	// "you may only sacrifice what you control" (CR 701.17b) and the
+	// spec's own predicate are enforced in one place rather than two.
+	if cost.Sacrifice == nil {
+		if len(sacrificeIDs) > 0 {
+			return ErrInvalidParam
+		}
+		return nil
+	}
+	if _, err := g.validateSacrificeCostLocked(playerID, castID, AbilityCost{
+		SacrificeOther: cost.Sacrifice,
+	}, sacrificeIDs); err != nil {
+		return err
+	}
 	return nil
 }
 
-// payAdditionalCostLocked discards the named cards to their owner's
-// graveyard, emitting EventDiscardCard for each so discard payoffs
-// trigger. Call only after validateAdditionalCostLocked has passed
+// payAdditionalCostLocked pays the cost's components: sacrifices the
+// named permanents (emitting EventSacrifice and routing them to their
+// owners' graveyards, so aristocrats payoffs trigger) and discards the
+// named cards to their owner's graveyard, emitting EventDiscardCard
+// for each so discard payoffs trigger. Call only after validateAdditionalCostLocked has passed
 // and after the spell itself has moved to the stack (CR 601.2a
 // before 601.2h), so a discard trigger sees the spell above it.
 //
 // Caller must hold g.mu.
-func (g *Game) payAdditionalCostLocked(playerID uuid.UUID, discardIDs []uuid.UUID) error {
+func (g *Game) payAdditionalCostLocked(playerID uuid.UUID, discardIDs, sacrificeIDs []uuid.UUID) error {
+	for _, id := range sacrificeIDs {
+		if err := g.sacrificePermanentLocked(id); err != nil {
+			return err
+		}
+	}
 	if len(discardIDs) == 0 {
 		return nil
 	}
