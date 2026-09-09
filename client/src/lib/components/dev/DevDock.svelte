@@ -15,16 +15,27 @@
   import type { GameView } from "../../protocol";
   import FrameInspector from "./FrameInspector.svelte";
   import CardSpawner from "./CardSpawner.svelte";
+  import SeatSwitcher from "./SeatSwitcher.svelte";
+  import { canSwapSeats } from "../../gameURL";
+  import { session } from "../../session";
 
   interface Props {
     client: GameClient;
     gameID: string;
     snapshot: GameView | null;
+    // Seat currently being viewed, or null for the spectator view.
+    seat: string | null;
+    onseatchange: (seatID: string | null) => void;
   }
-  const { client, gameID, snapshot }: Props = $props();
+  const { client, gameID, snapshot, seat, onseatchange }: Props = $props();
 
   const showFrames = devFeature("frame_inspector");
   const showSpawn = devFeature("card_spawn");
+  const seatSwapFlag = devFeature("seat_swap");
+  // Only offered to admin sessions: for anyone else the server
+  // resolves the seat from the principal and ignores the request, so
+  // the control would silently do nothing. See gameURL.canSwapSeats.
+  const showSeats = $derived($seatSwapFlag && canSwapSeats($session));
 
   const frames = $derived(client.frames);
 
@@ -43,7 +54,7 @@
   });
 </script>
 
-{#if $showFrames || $showSpawn}
+{#if $showFrames || $showSpawn || showSeats}
   <div class="dock">
     {#if open}
       <div class="panel">
@@ -56,6 +67,9 @@
     {/if}
 
     <div class="tabs" role="group" aria-label="Developer tools">
+      {#if showSeats}
+        <SeatSwitcher seats={snapshot?.seats ?? []} current={seat} onchange={onseatchange} />
+      {/if}
       {#if $showSpawn}
         <button
           class:active={open === "spawn"}

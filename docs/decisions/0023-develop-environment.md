@@ -135,8 +135,15 @@ spawning a card mid-game.
 - The nightly e2e workflow still targets production only. Pointing it
   at dev is a follow-up.
 - Dev features land behind their flags one at a time: the frame
-  inspector ships with this ADR and the card spawner in the PR that
-  follows it; seat swap and the replay scrubber come next.
+  inspector ships with this ADR, then the card spawner, then seat
+  swap; the replay scrubber comes next.
+- Seat swap needed no server change at all, contrary to the estimate
+  when this ADR was written. `WSAuthorizer` already accepts
+  `?player=` for an admin session and the hub already stamps the
+  bound seat onto every action, so an admin could always drive any
+  seat by hand-editing the WebSocket URL. The dev feature is the
+  control, not the capability — which is why its flag gates a client
+  component and nothing else.
 - The card spawner is HTTP (`GET /dev/cards`,
   `POST /games/{id}/dev/spawn`) rather than a new WS action type. The
   card index already lives in `lobby.Config`, the lobby already owns
@@ -145,5 +152,6 @@ spawning a card mid-game.
   `actions.Dispatch` would have meant threading the index into a
   package that deliberately depends on nothing but `game`, plus a
   second environment gate on the WS side — more surface for the same
-  result. If a later dev feature genuinely needs to be an action
-  (seat swap will), that gate gets built then, once.
+  result. No dev feature has needed that gate yet — seat swap, the
+  obvious candidate, turned out to need no server change — so it
+  stays unbuilt until one does.
