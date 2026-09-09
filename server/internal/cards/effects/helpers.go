@@ -76,38 +76,6 @@ func combatDamageToPlayerBy(ev game.Event, controller uuid.UUID, g *game.Game) b
 	return ok && src.IsCreature() && src.Controller == controller
 }
 
-// --- S21 sub-PR 3: aristocrats helpers ---------------------------
-
-// diedCreature resolves the creature that just died from a dies
-// (EventLTB → graveyard) event: the card as it now sits in the
-// graveyard, plus ok=false when the event isn't a creature death.
-//
-// The card is read post-move, so Tapped / Counters are already
-// cleared (CR 400.7) but TypeLine, Controller and Owner survive —
-// which is what "another creature YOU CONTROL dies" needs. A
-// creature that stopped being a creature before it died is a
-// sandbox gap: we read the printed type line rather than the
-// battlefield LKI, because the LKI map is keyed to the dying card's
-// own triggers and isn't reachable from a watcher's AppliesTo.
-func diedCreature(ev game.Event, g *game.Game) (game.Card, bool) {
-	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
-		return game.Card{}, false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || !c.IsCreature() {
-		return game.Card{}, false
-	}
-	return c, true
-}
-
-// IsToken reports whether a card is a token. Token type lines are
-// stamped "Token Creature — Spirit" by the templates in tokens.go;
-// "Token" isn't one of the supertypes ParseTypeLine knows, so a
-// substring check on the printed line is the reliable test.
-func IsToken(c game.Card) bool {
-	return containsFoldASCII(c.TypeLine, "token")
-}
-
 // --- Pirates deck helpers ----------------------------------------
 
 // artifactEnteredUnderYourControl reports whether ev is an ETB for
@@ -178,4 +146,82 @@ func lootOne(g *game.Game, item *game.StackItem, n int) error {
 	}
 	g.DiscardChoiceForEffect(item.Controller, n)
 	return nil
+}
+
+// --- S21 sub-PR 3: aristocrats helpers ---------------------------
+
+// diedCreature resolves the creature that just died from a dies
+// (EventLTB → graveyard) event: the card as it now sits in the
+// graveyard, plus ok=false when the event isn't a creature death.
+//
+// The card is read post-move, so Tapped / Counters are already
+// cleared (CR 400.7) but TypeLine, Controller and Owner survive —
+// which is what "another creature YOU CONTROL dies" needs. A
+// creature that stopped being a creature before it died is a
+// sandbox gap: we read the printed type line rather than the
+// battlefield LKI, because the LKI map is keyed to the dying card's
+// own triggers and isn't reachable from a watcher's AppliesTo.
+func diedCreature(ev game.Event, g *game.Game) (game.Card, bool) {
+	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
+		return game.Card{}, false
+	}
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	if !ok || !c.IsCreature() {
+		return game.Card{}, false
+	}
+	return c, true
+}
+
+// IsToken reports whether a card is a token. Token type lines are
+// stamped "Token Creature — Spirit" by the templates in tokens.go;
+// "Token" isn't one of the supertypes ParseTypeLine knows, so a
+// substring check on the printed line is the reliable test.
+func IsToken(c game.Card) bool {
+	return containsFoldASCII(c.TypeLine, "token")
+}
+
+// --- staples helpers (Commander staples pass) --------------------
+
+// IsLandWithSubtype returns a SearchLibrary predicate matching any
+// land whose type line carries `subtype`. Distinct from IsBasicLand:
+// Nature's Lore fetches "a Forest card", which is any land with the
+// Forest subtype — a Snow-Covered Forest or a Bayou both qualify,
+// while IsBasicLand would admit an Island.
+//
+// Case-insensitive substring on the printed line, same posture as
+// IsBasicLand. It does not verify the card is a land when the
+// subtype is unambiguous, so callers wanting "basic" semantics
+// should compose with IsBasicLand instead.
+func IsLandWithSubtype(subtype string) func(game.Card) bool {
+	return func(c game.Card) bool {
+		return containsFoldASCII(c.TypeLine, "land") && containsFoldASCII(c.TypeLine, subtype)
+	}
+}
+
+// IsBasicLandExcept returns a predicate matching a basic land whose
+// type line does NOT carry `subtype` — Farseek's "Plains, Island,
+// Swamp, or Mountain" expressed as "a basic land that isn't a
+// Forest". Cheaper and more future-proof than enumerating four
+// subtypes, and it keeps the Wastes case out by accident rather
+// than by omission (Wastes has no basic land type Farseek names,
+// but it also isn't a Forest — a known sandbox over-permission,
+// noted on the card).
+func IsBasicLandExcept(subtype string) func(game.Card) bool {
+	return func(c game.Card) bool {
+		return IsBasicLand(c) && !containsFoldASCII(c.TypeLine, subtype)
+	}
+}
+
+// controllerOfTarget resolves the controller of a targeted card, for
+// the "its controller …" clause on Beast Within / Generous Gift /
+// Nature's Claim. Returns ok=false when the target has left the
+// battlefield between announce and resolution — the caller has
+// already destroyed nothing in that case, so it just skips the
+// rider rather than guessing whose token it is.
+func controllerOfTarget(ctx *Context, target uuid.UUID) (uuid.UUID, bool) {
+	c, ok := ctx.Game.LookupCardForEffect(target)
+	if !ok {
+		return uuid.Nil, false
+	}
+	return c.Controller, true
 }
