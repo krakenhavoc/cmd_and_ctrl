@@ -206,7 +206,7 @@ func TestLlanowarElvesTapsForGreen(t *testing.T) {
 	me := g.Seats[0]
 	elf := pushCatalogPermanent(g, me.ID, "Llanowar Elves", "Creature — Elf Druid", llanowarElvesOracle, false)
 
-	if err := g.ActivateManaAbility(me.ID, elf, 0); err != nil {
+	if err := g.ActivateManaAbility(me.ID, elf, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
 	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "G" {
@@ -218,34 +218,31 @@ func TestLlanowarElvesTapsForGreen(t *testing.T) {
 	}
 }
 
-// KNOWN ENGINE GAP, pinned deliberately: a summoning-sick creature
-// CAN currently tap for mana.
+// A summoning-sick creature cannot tap for mana (CR 302.1).
 //
-// Game.ActivateManaAbility checks card.Tapped and nothing else — it
-// never asks about CR 302.1 — while the S21 activated-ability path
-// right next door does (activated.go: `if source.IsCreature() &&
-// HasSummoningSickness(source) { return ErrSummoningSick }`). So the
-// two ability kinds disagree about the same rule.
+// This test shipped in #243 pinning the OPPOSITE — a known engine
+// gap where Game.ActivateManaAbility checked card.Tapped and nothing
+// else, so a turn-one Elf tapped for mana. #233 closed the gap in
+// the same hour, and #243's own comment named flipping this test as
+// the fix's acceptance criterion. The two merged three minutes
+// apart without either seeing the other, which is why the flip
+// arrives separately.
 //
-// This predates these cards: Birds of Paradise has shipped with it
-// since S15. It is pinned here rather than fixed because the fix
-// lands inside ActivateManaAbility, which an open PR is editing.
-//
-// The fix is three lines beside the existing Tapped check, and
-// flipping this test to want an error is its acceptance criterion.
-func TestLlanowarElvesTapsWhileSummoningSick_KnownGap(t *testing.T) {
+// Validate-before-pay: the refused activation leaves the Elf
+// untapped and the pool empty, not a tapped Elf with no mana.
+func TestLlanowarElvesCannotTapWhileSummoningSick(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	elf := pushCatalogPermanent(g, me.ID, "Llanowar Elves", "Creature — Elf Druid", llanowarElvesOracle, true)
 
-	if err := g.ActivateManaAbility(me.ID, elf, 0); err != nil {
-		t.Fatalf("ActivateManaAbility: %v", err)
+	if err := g.ActivateManaAbility(me.ID, elf, 0, game.ManaAbilityParams{}); err != game.ErrSummoningSick {
+		t.Fatalf("summoning-sick Elf: got %v, want ErrSummoningSick", err)
 	}
-	if len(me.ManaPool) != 1 {
-		t.Fatalf("mana pool %+v, want 1 token", me.ManaPool)
+	if len(me.ManaPool) != 0 {
+		t.Errorf("mana pool %+v, want empty — a sick creature produced mana", me.ManaPool)
 	}
-	if !game.HasSummoningSickness(&game.Card{SummonedThisTurn: true}) {
-		t.Fatal("HasSummoningSickness no longer reports a fresh creature as sick")
+	if got, ok := aangCardOnBF(g, elf); !ok || got.Tapped {
+		t.Error("a refused activation must not tap the Elf")
 	}
 }
 
@@ -275,7 +272,7 @@ func TestLotusPetalCracksForAnyColor(t *testing.T) {
 	me := g.Seats[0]
 	petal := pushArtifactToBattlefieldForTest(g, me.ID, "Lotus Petal", "Artifact", lotusPetalOracle)
 
-	if err := g.ActivateManaAbility(me.ID, petal, 0); err != nil {
+	if err := g.ActivateManaAbility(me.ID, petal, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
 	if _, still := aangCardOnBF(g, petal); still {
