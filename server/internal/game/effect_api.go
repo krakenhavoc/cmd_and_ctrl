@@ -162,17 +162,48 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 	if amount <= 0 {
 		return nil
 	}
-	p := g.playerByIDLocked(playerID)
+	if g.playerByIDLocked(playerID) == nil {
+		return ErrPlayerNotFound
+	}
+	// S22: route through the CR 614 replacement pipeline, the way
+	// combat damage to a player already did. Before this, damage
+	// dealt to a PLAYER by a spell or ability skipped replacements
+	// entirely — so a damage doubler (Angrath's Marauders) or a
+	// prevention shield could never see a Lightning Bolt, only
+	// combat damage and damage marked on creatures. The three other
+	// damage entry points were already routed; this was the hole.
+	ev := &ReplacementEvent{
+		Kind:         RepEventDamage,
+		Source:       source,
+		DamageSource: source,
+		DamageTarget: playerID,
+		DamageAmount: amount,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		// A replacement queued a choice (CR 616 ordering); the
+		// pipeline resumes when it's answered.
+		return nil
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return err
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled || out.DamageAmount <= 0 {
+		return nil
+	}
+	p := g.playerByIDLocked(out.DamageTarget)
 	if p == nil {
 		return ErrPlayerNotFound
 	}
 	g.EmitEvent(Event{
 		Kind:   EventDealDamage,
-		Source: source,
-		Target: playerID,
-		Amount: amount,
+		Source: out.DamageSource,
+		Target: out.DamageTarget,
+		Amount: out.DamageAmount,
 	})
-	p.ChangeLife(-amount)
+	p.ChangeLife(-out.DamageAmount)
 	return nil
 }
 
