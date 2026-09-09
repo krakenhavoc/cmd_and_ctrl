@@ -271,17 +271,18 @@ fi
 
 head_ "Still to do by hand"
 cat <<MANUALSTEPS
-  1. Reverse proxy: a vhost for dev.cmd.labxp.io -> 127.0.0.1${DEV_ADDR},
-     static root ${DEV_WEB_ROOT}, WebSocket upgrade on /ws.
-     BOTH vhosts (dev and production) need /config proxied; dev also
-     needs /dev. Until then the client falls back to production
-     defaults, which hides every dev feature.
-  2. TLS certificate for dev.cmd.labxp.io.
-  3. Discord: add ${DEV_PUBLIC_URL}/auth/discord/callback to the
+  1. Caddy site block (TLS is automatic, no certbot step):
+       sudo cp deploy/caddy/dev.cmd.labxp.io.caddyfile /etc/caddy/conf.d/
+       sudo caddy validate --config /etc/caddy/Caddyfile
+       sudo systemctl reload caddy
+     PRODUCTION also needs /config added to its existing matcher.
+     Until then the client falls back to production defaults, which
+     silently hides every dev feature on dev.
+  2. Discord: add ${DEV_PUBLIC_URL}/auth/discord/callback to the
      existing application's redirect URIs. Same client id/secret.
-  4. GitHub repo variable CMDCTRL_DEV_PUBLIC_BASE_URL=${DEV_PUBLIC_URL}
+  3. GitHub repo variable CMDCTRL_DEV_PUBLIC_BASE_URL=${DEV_PUBLIC_URL}
      and branch protection on 'develop'.
-  5. Push the branches, merge into develop, and watch the deploy.
+  4. Push the branches, merge into develop, and watch the deploy.
 MANUALSTEPS
 for m in "${MANUAL[@]:-}"; do [[ -n "$m" ]] && printf '  ! %s\n' "$m"; done
 

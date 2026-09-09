@@ -166,27 +166,42 @@ symlinking inside production.
 The Discord client id and secret *are* copied from production, on
 purpose: same application, one extra redirect URI (ADR 0023 §6).
 
-### Reverse proxy
+### Reverse proxy (Caddy)
 
-Add a vhost for `dev.cmd.labxp.io` mirroring the production one,
-proxying to `127.0.0.1:8081` with the client dist at
-`/var/www/cmdctrl-client-dev`, plus a TLS certificate.
+```sh
+sudo cp deploy/caddy/dev.cmd.labxp.io.caddyfile /etc/caddy/conf.d/
+sudo caddy validate --config /etc/caddy/Caddyfile
+sudo systemctl reload caddy
+```
 
-**Both vhosts need `/config`; the dev vhost also needs `/dev`.**
-Production needs `/config` too — add it alongside `/games`, `/cards`,
-`/me`, `/auth`, `/avatars`, `/admin`, `/bugreport`, `/healthz`.
+If that host has no `conf.d` (and no `import conf.d/*` in its
+Caddyfile), paste the site block into `/etc/caddy/Caddyfile` instead.
+**TLS is automatic** — Caddy provisions and renews the certificate
+itself, so there is no certbot step; the DNS record just has to
+resolve to this host first.
+
+**Production needs a one-line change too.** `GET /config` is a new
+route: add `/config` to whatever matcher already routes `/games`,
+`/cards` and `/me` to `127.0.0.1:8080`.
 
 Rollout order does not matter, but the failure is silent in both
 directions, so it is worth knowing what it looks like:
 
 | Missing | Symptom |
 |---|---|
-| `/config` on either vhost | the client falls back to production defaults — on dev, every dev feature stays hidden with no error |
-| `/dev` on the dev vhost | the card search renders "No matches" forever (`searchDevCards` swallows failures by design) |
+| `/config` on either site | the client falls back to production defaults — on dev, every dev feature stays hidden with no error |
+| `/dev` on the dev site | the card search renders "No matches" forever (`searchDevCards` swallows failures by design) |
 
 The same trap applies to `client/vite.config.ts` for local
-development: a new top-level route needs an entry there *and* a
-location here.
+development: a new top-level route needs an entry there *and* in the
+`@api` matcher.
+
+One thing not to "fix": the site block deliberately does **not** set
+`header_up Host`. Caddy forwards the original Host by default, and
+the game server's WebSocket `CheckOrigin` compares the Origin
+header's host against the request Host. Rewriting Host to the
+upstream makes every `/ws` upgrade 403 while ordinary HTTP keeps
+working.
 
 ### Discord
 
