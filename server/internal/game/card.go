@@ -213,6 +213,14 @@ type Card struct {
 	// Added in S18 sub-PR 3.
 	MarkedLethalByDeathtouch bool
 
+	// ExilePlay is the impulse-exile permission (S21 sub-PR 6):
+	// "exile the top card of your library — you may play it this
+	// turn". Meaningful only while the card is in exile, and only
+	// for the player it names, who is usually not the owner. Zero
+	// value means the card is inert exile like any other. Cleared
+	// as the card leaves exile and swept at cleanup.
+	ExilePlay ExilePlayPermission
+
 	// effective is the cached post-layer-resolution characteristic
 	// for this card on the battlefield. Populated by the layer
 	// engine's recompute pass; nil ⇒ "no recompute has run since

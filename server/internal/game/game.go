@@ -708,6 +708,11 @@ func (g *Game) runStepEntryHooksLocked() {
 		// shields with a per-turn duration) clear at cleanup so
 		// next turn starts with a clean slate.
 		g.ClearTurnScopedReplacementsLocked()
+		// S21 sub-PR 6: impulse-exile permissions ("you may play it
+		// this turn") lapse here for the same reason — the turn they
+		// were granted for is over. The exiled card stays exiled; it
+		// just stops being playable.
+		g.clearExpiredExilePlayLocked()
 		// Auto-advance only when no player owes discard. Otherwise
 		// the cursor sits at Cleanup with PriorityHolder=NoPriority
 		// until DiscardSelection drains the pending map and re-fires
