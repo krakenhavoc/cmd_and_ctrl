@@ -756,6 +756,40 @@ with the ordinary `{choice_id, card_ids}` payload; the dispatcher routes
 that shape by the choice's kind, as it already does for `{apply}` and
 `{order}`.
 
+**Scry (S21):** use the `Scry` primitive. Anything the card says
+*after* "then" goes in `Then`, not on the next line:
+
+```go
+Scry{Player: ctx.Controller(), N: 1}                       // Viscera Seer
+Scry{Player: c, N: 2, Then: func(g *game.Game) error {     // Preordain: "Scry 2, then draw"
+    return g.DrawNForEffect(c, 1)
+}}
+```
+
+`Scry` only QUEUES a prompt — nothing moves until the player answers.
+So a draw written as the statement after it resolves FIRST, which is
+wrong twice over: it takes one of the cards the player is still
+deciding about, and it leaves the prompt permanently unanswerable,
+because that card is no longer in the library for the reorder to put
+back. (That was a real bug in the first draft; there's a test pinning
+the ordering.)
+
+Two other things the engine handles so a card never has to:
+
+- **Scry is "look at", not "reveal".** Only the scrying player is
+  marked a knower, so the wire redacts the cards for every other seat.
+  A copy-paste from `SearchLibraryForEffect`'s reveal path would mark
+  every seat and hand the table the top of a library — a real
+  information advantage, not a cosmetic slip.
+- **An empty library is not an error.** The scry looks at nothing,
+  queues no prompt, and `Then` still runs — the instruction after
+  "then" isn't conditional on there having been cards to look at.
+
+The answer is `{bottom, top_order}` with `top_order` **top-first**, and
+every looked-at card must appear in exactly one list: scry moves all of
+them, so an answer that omits one is a client bug, not shorthand for
+"leave it".
+
 **Event picker:**
 
 | Trigger text | `Watches` | `AppliesTo` |

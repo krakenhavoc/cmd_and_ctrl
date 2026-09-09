@@ -200,6 +200,10 @@ export interface PendingChoiceView {
     // {choice_id, card_ids} payload — one entry — and rendered by the
     // shared card grid with sacrifice copy.
     | "sacrifice_choice"
+    // S21: scry N (CR 701.18). Options carries the looked-at cards
+    // top-first, redacted to the chooser alone — scry is "look at",
+    // not "reveal". Answered with {bottom, top_order}.
+    | "scry"
     | string;
   chooser: string;
   from_player: string;

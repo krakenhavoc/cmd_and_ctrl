@@ -859,6 +859,19 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				}
 			}
 		}
+		// PendingChoiceScry — the looked-at cards, top-first, as
+		// Options. Scry is "look at", not "reveal": only the chooser
+		// was marked a knower, so FilterViewFor redacts these to backs
+		// for every other seat and the top of the library stays
+		// private.
+		if c.Kind == game.PendingChoiceScry && len(c.ScryCards) > 0 {
+			v.Options = make([]CardView, 0, len(c.ScryCards))
+			for _, id := range c.ScryCards {
+				if card, ok := g.LookupCardForEffect(id); ok {
+					v.Options = append(v.Options, viewOfCard(card))
+				}
+			}
+		}
 		// PendingChoiceMana carries a color-option list server-
 		// filtered against the chooser's commander identity (see
 		// ActivateManaAbility). Clone the slice so post-wire

@@ -199,6 +199,71 @@
   // chooser controls — a player with none was never prompted.
   const isSacrifice = $derived(active?.kind === "sacrifice_choice");
 
+  // S21 scry branch — CR 701.18. Every looked-at card goes somewhere:
+  // back on top (in an order the player controls) or to the bottom.
+  // Default is "keep everything, in the order shown", so the common
+  // case — bottom the one bad card, or accept the top — is one click
+  // or none.
+  //
+  // Answered with {bottom, top_order}; top_order is TOP-FIRST, so its
+  // first entry is the next card drawn.
+  const isScry = $derived(active?.kind === "scry");
+
+  let scryTop = $state<string[]>([]);
+  let scryBottom = $state<string[]>([]);
+
+  // Seed the default whenever a scry prompt opens: everything stays on
+  // top, in the order the server listed it (which is current library
+  // order).
+  let lastScryID: string | null = null;
+  $effect(() => {
+    if (!isScry || !active) {
+      lastScryID = null;
+      return;
+    }
+    if (active.id === lastScryID) return;
+    lastScryID = active.id;
+    scryTop = (active.options ?? []).map((c) => c.instance_id);
+    scryBottom = [];
+  });
+
+  function scryToBottom(id: string): void {
+    scryTop = scryTop.filter((x) => x !== id);
+    if (!scryBottom.includes(id)) scryBottom = [...scryBottom, id];
+  }
+
+  function scryToTop(id: string): void {
+    scryBottom = scryBottom.filter((x) => x !== id);
+    if (!scryTop.includes(id)) scryTop = [...scryTop, id];
+  }
+
+  // Move a kept card one place closer to the top. The only ordering
+  // control needed: scry N is 1 or 2 on every printed card, so "swap
+  // these two" is the whole requirement, and this generalises to 3.
+  function scryMoveUp(id: string): void {
+    const i = scryTop.indexOf(id);
+    if (i <= 0) return;
+    const next = [...scryTop];
+    [next[i - 1], next[i]] = [next[i], next[i - 1]];
+    scryTop = next;
+  }
+
+  function scryCardName(id: string): string {
+    const c = (active?.options ?? []).find((o) => o.instance_id === id);
+    return c?.name || "card";
+  }
+
+  function submitScry(): void {
+    if (!active || !viewerID) return;
+    const total = (active.options ?? []).length;
+    if (scryTop.length + scryBottom.length !== total) return;
+    sendAction(
+      "resolve_choice",
+      { choice_id: active.id, bottom: scryBottom, top_order: scryTop },
+      viewerID,
+    );
+  }
+
   // S19 follow-up: the server flags optional triggers whose effect
   // has no legal target (Reclamation Sage with no opponent artifact,
   // Eternal Witness with an empty graveyard). Until the S20 target
@@ -333,7 +398,77 @@
 {#if open && active}
   <div class="backdrop" role="dialog" aria-modal="true" aria-labelledby="choice-title">
     <div class="modal">
-      {#if isManaPick}
+      {#if isScry}
+        <h2 id="choice-title">{active.reason || "Scry"}</h2>
+        <p class="hint">
+          {#if scryTop.length + scryBottom.length === 1}
+            Keep it on top, or put it on the bottom of your library.
+          {:else}
+            Keep any of these on top — the topmost is your next draw — and put the rest on the
+            bottom.
+          {/if}
+          Only you can see them.
+        </p>
+        <div class="scry-lane">
+          <h3 class="lane-label">On top ({scryTop.length})</h3>
+          {#if scryTop.length === 0}
+            <p class="lane-empty">Nothing — your next draw comes from under these.</p>
+          {:else}
+            <ol class="scry-list">
+              {#each scryTop as id, i (id)}
+                <li>
+                  <span class="pos">{i + 1}</span>
+                  <span class="scry-name">{scryCardName(id)}</span>
+                  <button
+                    type="button"
+                    class="lane-btn"
+                    disabled={i === 0}
+                    title="move closer to the top"
+                    aria-label={`move ${scryCardName(id)} up`}
+                    onclick={() => scryMoveUp(id)}>↑</button
+                  >
+                  <button
+                    type="button"
+                    class="lane-btn"
+                    onclick={() => scryToBottom(id)}
+                    aria-label={`put ${scryCardName(id)} on the bottom`}>To bottom</button
+                  >
+                </li>
+              {/each}
+            </ol>
+          {/if}
+        </div>
+        <div class="scry-lane">
+          <h3 class="lane-label">On the bottom ({scryBottom.length})</h3>
+          {#if scryBottom.length === 0}
+            <p class="lane-empty">None.</p>
+          {:else}
+            <ul class="scry-list">
+              {#each scryBottom as id (id)}
+                <li>
+                  <span class="scry-name">{scryCardName(id)}</span>
+                  <button
+                    type="button"
+                    class="lane-btn"
+                    onclick={() => scryToTop(id)}
+                    aria-label={`keep ${scryCardName(id)} on top`}>Keep on top</button
+                  >
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </div>
+        <div class="card-grid">
+          {#each optionCards as c (c.instance_id)}
+            <div class="card-pick" class:bottomed={scryBottom.includes(c.instance_id)}>
+              <Card card={c} />
+            </div>
+          {/each}
+        </div>
+        <div class="footer">
+          <button type="button" class="submit" onclick={submitScry}>Done</button>
+        </div>
+      {:else if isManaPick}
         <h2 id="choice-title">{active.reason || "Pick a color"}</h2>
         <p class="hint">Choose a color to add to your mana pool.</p>
         <div class="color-row">
@@ -572,6 +707,64 @@
 {/if}
 
 <style>
+  .scry-lane {
+    margin: 6px 0;
+  }
+  .lane-label {
+    margin: 0 0 4px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0.75;
+  }
+  .lane-empty {
+    margin: 0;
+    font-size: 12px;
+    opacity: 0.6;
+  }
+  .scry-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .scry-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .pos {
+    min-width: 1.4em;
+    text-align: center;
+    font-weight: 700;
+    opacity: 0.8;
+  }
+  .scry-name {
+    flex: 1;
+  }
+  .lane-btn {
+    background: transparent;
+    color: inherit;
+    border: 1px solid rgba(200, 168, 106, 0.5);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .lane-btn:hover:not(:disabled) {
+    background: rgba(200, 168, 106, 0.18);
+  }
+  .lane-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .card-pick.bottomed {
+    opacity: 0.45;
+  }
+
   .backdrop {
     position: fixed;
     inset: 0;

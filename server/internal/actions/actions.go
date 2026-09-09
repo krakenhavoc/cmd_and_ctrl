@@ -941,6 +941,12 @@ func Dispatch(g *game.Game, a Action) error {
 			// pick_target prompt whose clause takes several targets
 			// ("up to two target creatures"). Ordered as clicked.
 			Targets []castTargetWire `json:"targets"`
+			// Bottom / TopOrder answer a PendingChoiceScry (CR
+			// 701.18): the looked-at cards going under the library,
+			// and the ones staying on top listed TOP-FIRST. Every
+			// looked-at card must appear in exactly one list.
+			Bottom   []string `json:"bottom"`
+			TopOrder []string `json:"top_order"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -951,6 +957,25 @@ func Dispatch(g *game.Game, a Action) error {
 		}
 		if p.Color != "" {
 			return g.ResolveManaChoice(choiceID, a.Player, p.Color)
+		}
+		if p.Bottom != nil || p.TopOrder != nil {
+			bottom := make([]uuid.UUID, 0, len(p.Bottom))
+			for i, raw := range p.Bottom {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("resolve_choice bottom[%d]: %w", i, err)
+				}
+				bottom = append(bottom, id)
+			}
+			top := make([]uuid.UUID, 0, len(p.TopOrder))
+			for i, raw := range p.TopOrder {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("resolve_choice top_order[%d]: %w", i, err)
+				}
+				top = append(top, id)
+			}
+			return g.ResolveScry(choiceID, a.Player, bottom, top)
 		}
 		if p.Target != nil {
 			ref, err := p.Target.toRef()

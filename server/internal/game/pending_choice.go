@@ -154,6 +154,23 @@ const (
 	// and they are skipped at queue time rather than prompted and
 	// allowed to decline.
 	PendingChoiceSacrifice PendingChoiceKind = "sacrifice_choice"
+
+	// PendingChoiceScry — "look at the top N cards of your library.
+	// Put any number of them on the bottom of your library and the
+	// rest on top in any order." (CR 701.18)
+	//
+	// Private, not revealed: only the chooser becomes a knower of the
+	// looked-at cards, so the wire redacts them for everyone else.
+	// Getting that backwards would leak the top of a library to the
+	// whole table, which is a real information advantage rather than
+	// a cosmetic bug.
+	//
+	// Answered with {bottom: []string, top_order: []string}. Every
+	// looked-at card must appear in exactly one of the two lists —
+	// scry moves all of them, it does not leave any in place — and
+	// top_order is top-first, so its first entry is the next card
+	// drawn.
+	PendingChoiceScry PendingChoiceKind = "scry"
 )
 
 // PendingChoice is one outstanding "someone needs to pick" entry
@@ -260,6 +277,13 @@ type PendingChoice struct {
 	// sacrifice can trigger something that removes a creature).
 	SacrificeOptions []uuid.UUID
 
+	// ScryCards is the set of cards a PendingChoiceScry's chooser is
+	// looking at, in top-to-bottom library order (so the first entry
+	// is the card that would be drawn next if nothing moves).
+	// Wire-serialised via PendingChoiceView.Options, redacted to the
+	// chooser alone.
+	ScryCards []uuid.UUID
+
 	// TriggerOrderIDs is the set of pending-trigger item IDs a
 	// PendingChoiceTriggerOrder entry asks the chooser to order.
 	// Wire-serialised (with label + source per ID) so the client
@@ -286,6 +310,14 @@ type PendingChoice struct {
 	// "unless" consequence to run when the chooser declines or
 	// can't pay. Not serialised. Added in S19 sub-PR 6.
 	payUnlessResume *payUnlessFrame
+
+	// scryResume is the continuation for a PendingChoiceScry: the
+	// rest of the effect, which must not run until the player has
+	// finished the scry. Preordain's "Scry 2, THEN draw a card" is the
+	// case that forces it — the card you leave on top is the card you
+	// draw, so a draw that happens before the reorder is a different
+	// card. Not serialised to the wire.
+	scryResume func(g *Game) error
 }
 
 // payUnlessFrame carries a pay-unless prompt's parsed cost and the
@@ -1703,4 +1735,117 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 		}
 		c.SacrificeOptions = live
 	}
+}
+
+// ResolveScry answers a PendingChoiceScry (CR 701.18): `bottom` are the
+// looked-at cards going to the bottom of the library, `topOrder` are the
+// ones staying on top, listed top-first.
+//
+// Every looked-at card must appear in exactly one list. Scry moves all
+// of the cards it looked at — a card the chooser "leaves alone" is
+// still being put back on top, which is a choice about order, so an
+// answer that omits one is a client bug rather than a shorthand for
+// "leave it".
+//
+// Relative order within `bottom` is not observable (the cards go under
+// the whole library, and nothing in this sandbox reads library-bottom
+// order), so it is applied as given rather than being validated.
+//
+// Caller must NOT hold g.mu.
+func (g *Game) ResolveScry(choiceID, chooserID uuid.UUID, bottom, topOrder []uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	idx := -1
+	for i, c := range g.PendingChoices {
+		if c != nil && c.ID == choiceID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ErrPendingChoiceNotFound
+	}
+	choice := g.PendingChoices[idx]
+	if choice.Kind != PendingChoiceScry {
+		return ErrInvalidParam
+	}
+	if choice.Chooser != chooserID {
+		return ErrNotTheChooser
+	}
+	p := g.playerByIDLocked(chooserID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	// The two lists must partition the looked-at set exactly: same
+	// cards, no duplicates, nothing invented.
+	want := make(map[uuid.UUID]bool, len(choice.ScryCards))
+	for _, id := range choice.ScryCards {
+		want[id] = true
+	}
+	seen := make(map[uuid.UUID]bool, len(want))
+	for _, list := range [][]uuid.UUID{bottom, topOrder} {
+		for _, id := range list {
+			if !want[id] || seen[id] {
+				return ErrInvalidParam
+			}
+			seen[id] = true
+		}
+	}
+	if len(seen) != len(want) {
+		return ErrInvalidParam
+	}
+	// Everything still has to be in the library. A scry resolves
+	// atomically, so nothing should have moved — but the check is
+	// cheap and turns a desync into a rejection rather than a
+	// half-applied reorder.
+	for id := range want {
+		if !p.Library.Contains(id) {
+			return ErrCardNotFound
+		}
+	}
+	g.dequeueChoiceLocked(idx)
+
+	// Pull all of them out first, then put them back, so the
+	// intermediate state can't depend on removal order.
+	pulled := make(map[uuid.UUID]Card, len(want))
+	for id := range want {
+		c, err := p.Library.Remove(id)
+		if err != nil {
+			return err
+		}
+		pulled[id] = c
+	}
+	for _, id := range bottom {
+		p.Library.PushBottom(pulled[id])
+	}
+	// topOrder is top-first and PushTop appends to the top, so walk it
+	// backwards: the last push lands on top and must be the caller's
+	// first entry.
+	for i := len(topOrder) - 1; i >= 0; i-- {
+		p.Library.PushTop(pulled[topOrder[i]])
+	}
+	g.EmitEvent(Event{
+		Kind:   EventScry,
+		Actor:  chooserID,
+		Source: choice.Source,
+		Amount: len(bottom),
+	})
+	// The rest of the effect, now that the library is in the order the
+	// player chose. Preordain's draw happens here, which is what makes
+	// "then" mean what it says.
+	if choice.scryResume != nil {
+		if err := choice.scryResume(g); err != nil {
+			g.EmitEvent(Event{
+				Kind:     EventEffectError,
+				Actor:    chooserID,
+				Source:   choice.Source,
+				ErrorMsg: err.Error(),
+			})
+		}
+	}
+	g.runStateChecksLocked()
+	return nil
 }
