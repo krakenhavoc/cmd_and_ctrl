@@ -124,6 +124,14 @@ func PhyrexianWurmLifelinkToken() game.Card {
 	return t
 }
 
+// --- the artifact token cycle ------------------------------------
+//
+// Treasure, Food, Clue and Blood are defined entirely by the ability
+// printed on them — strip it and they're blank artifacts. They carry
+// it on the template (ManaAbilities for Treasure, ActivatedAbilities
+// for the rest), because the catalog's hooks key on oracle ID and a
+// token hasn't got one. Added across S21 sub-PRs 1 and 4.
+
 // TreasureToken returns a template for the Treasure artifact token
 // ("{T}, Sacrifice this artifact: Add one mana of any color").
 // Added in S19 sub-PR 6 for Smothering Tithe; the sac-for-mana
@@ -141,6 +149,91 @@ func TreasureToken() game.Card {
 			SacrificeCost: true,
 			Produced:      "{W|U|B|R|G}",
 			Label:         "{T}, Sacrifice: Add one mana of any color",
+		}},
+	}
+}
+
+// FoodToken — "{2}, {T}, Sacrifice this artifact: You gain 3 life."
+func FoodToken() game.Card {
+	return game.Card{
+		Name:     "Food",
+		TypeLine: "Token Artifact — Food",
+		ActivatedAbilities: []game.ActivatedAbilityShape{{
+			Label: "{2}, {T}, Sacrifice this artifact: You gain 3 life",
+			Cost: game.AbilityCost{
+				Tap:           true,
+				SacrificeSelf: true,
+				Mana:          "{2}",
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return GainLife{Player: item.Controller, Amount: 3}.Apply(NewContext(g, item))
+			},
+		}},
+	}
+}
+
+// ClueToken — "{2}, Sacrifice this artifact: Draw a card." No tap in
+// the cost, so a Clue can be cracked the turn it's made.
+func ClueToken() game.Card {
+	return game.Card{
+		Name:     "Clue",
+		TypeLine: "Token Artifact — Clue",
+		ActivatedAbilities: []game.ActivatedAbilityShape{{
+			Label: "{2}, Sacrifice this artifact: Draw a card",
+			Cost: game.AbilityCost{
+				SacrificeSelf: true,
+				Mana:          "{2}",
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
+			},
+		}},
+	}
+}
+
+// BloodToken — "{1}, {T}, Discard a card, Sacrifice this artifact:
+// Draw a card."
+//
+// Sandbox gap: the discard component of the cost isn't modelled —
+// AbilityCost has no "discard a card" field, and adding one wants
+// the same card-choice plumbing a sacrifice cost has. Until then
+// the Blood token loots for free, which is strictly better than
+// printed. Noted rather than silently wrong.
+func BloodToken() game.Card {
+	return game.Card{
+		Name:     "Blood",
+		TypeLine: "Token Artifact — Blood",
+		ActivatedAbilities: []game.ActivatedAbilityShape{{
+			Label: "{1}, {T}, Sacrifice this artifact: Draw a card (discard cost not yet modelled)",
+			Cost: game.AbilityCost{
+				Tap:           true,
+				SacrificeSelf: true,
+				Mana:          "{1}",
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
+			},
+		}},
+	}
+}
+
+// PowerstoneToken — "{T}: Add {C}. This mana can't be spent to cast
+// a nonartifact spell."
+//
+// Sandbox gap: the spend restriction isn't modelled. ManaToken
+// carries a colour and a source, not a restriction, so enforcing it
+// wants a restriction field on the pool plus a check at every spend
+// site. The Powerstone therefore taps for unrestricted {C} — a real
+// power increase over the printed card, so it stays out of any
+// deck fixture until the restriction lands.
+func PowerstoneToken() game.Card {
+	return game.Card{
+		Name:     "Powerstone",
+		TypeLine: "Token Artifact — Powerstone",
+		ManaAbilities: []game.ManaAbilityShape{{
+			TapCost:  true,
+			Produced: "{C}",
+			Label:    "{T}: Add {C} (spend restriction not yet modelled)",
 		}},
 	}
 }

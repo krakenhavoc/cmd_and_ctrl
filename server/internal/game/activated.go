@@ -94,6 +94,12 @@ var CatalogActivatedAbilities func(oracleID string) []ActivatedAbilityShape
 // synthetic fallback, because there's no ability every card of some
 // type implicitly has.
 func ActivatedAbilitiesForCard(c Card) []ActivatedAbilityShape {
+	// S21 sub-PR 4: intrinsic abilities win — a token has no oracle
+	// ID for the catalog to key on, and Food / Clue / Blood ARE
+	// their activated ability.
+	if len(c.ActivatedAbilities) > 0 {
+		return c.ActivatedAbilities
+	}
 	if CatalogActivatedAbilities == nil || c.OracleID == "" {
 		return nil
 	}
