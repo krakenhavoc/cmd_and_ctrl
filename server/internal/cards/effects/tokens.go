@@ -249,3 +249,13 @@ func PowerstoneToken() game.Card {
 		}},
 	}
 }
+
+// TappedTreasureToken is a Treasure that enters tapped — Mary Read
+// and Anne Bonny's discard trigger makes one. CreateTokenForEffect
+// copies the template wholesale apart from identity fields, so the
+// Tapped flag rides along.
+func TappedTreasureToken() game.Card {
+	t := TreasureToken()
+	t.Tapped = true
+	return t
+}

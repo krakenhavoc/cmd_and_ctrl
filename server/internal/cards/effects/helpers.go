@@ -107,3 +107,75 @@ func diedCreature(ev game.Event, g *game.Game) (game.Card, bool) {
 func IsToken(c game.Card) bool {
 	return containsFoldASCII(c.TypeLine, "token")
 }
+
+// --- Pirates deck helpers ----------------------------------------
+
+// artifactEnteredUnderYourControl reports whether ev is an ETB for
+// an artifact controlled by source's controller — the trigger
+// condition shared by Reckless Fireweaver, Ingenious Artillerist and
+// Quicksmith Genius.
+//
+// Batching gap (CR 603.1): the real cards read "whenever one or more
+// artifacts you control enter", one trigger for a simultaneous
+// batch. The engine emits one EventETB per card, so a mass token
+// creation fires the trigger once per artifact instead of once with
+// a count. For every card here that means the same total damage —
+// it only diverges for a card that cares about the batch size in a
+// nonlinear way.
+func artifactEnteredUnderYourControl(ev game.Event, source *game.Card, g *game.Game) bool {
+	if ev.Kind != game.EventETB || ev.CardID == source.InstanceID {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	return ok && c.IsArtifact() && c.Controller == source.Controller
+}
+
+// discardedByYou reports whether ev is a discard by source's
+// controller.
+func discardedByYou(ev game.Event, source *game.Card) bool {
+	return ev.Kind == game.EventDiscardCard && ev.Actor == source.Controller
+}
+
+// discardedCardHasType reports whether the card just discarded has
+// any of the given type-line words ("Island", "Pirate", "Vehicle").
+// The card is read from the graveyard, where its printed type line
+// is intact.
+// Needles must be lowercase — containsFoldASCII folds the haystack,
+// not the needle.
+func discardedCardHasType(ev game.Event, g *game.Game, words ...string) bool {
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	if !ok {
+		return false
+	}
+	for _, w := range words {
+		if containsFoldASCII(c.TypeLine, w) {
+			return true
+		}
+	}
+	return false
+}
+
+// damageToEachOpponent deals n damage to every opponent of the
+// source's controller. The shared body of the "pings the table"
+// pirates.
+func damageToEachOpponent(g *game.Game, item *game.StackItem, n int) error {
+	ctx := NewContext(g, item)
+	for _, opp := range ctx.Opponents() {
+		if err := g.DealDamageToPlayerForEffect(ctx.Source(), opp, n); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// lootOne draws a card then queues the discard choice — "draw a
+// card, then discard a card" in the printed order, so the drawn card
+// is a legal discard exactly as it is in paper.
+func lootOne(g *game.Game, item *game.StackItem, n int) error {
+	ctx := NewContext(g, item)
+	if err := (DrawCards{Player: item.Controller, N: n}).Apply(ctx); err != nil {
+		return err
+	}
+	g.DiscardChoiceForEffect(item.Controller, n)
+	return nil
+}
