@@ -7,15 +7,17 @@ on:
   push:
     branches:
       - main
+      - develop
   pull_request:
 
 concurrency:
   group: cmdctrl-cd-${{ github.ref }}
   # Cancel superseded runs on PRs/topic branches so the single
-  # self-hosted runner doesn't queue stale builds. Keep main
-  # serialized (never cancel) so an in-flight deploy can't be
-  # aborted mid-rsync.
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  # self-hosted runner doesn't queue stale builds. Keep the two
+  # deploying branches serialized (never cancel) so an in-flight
+  # deploy can't be aborted mid-rsync.
+  cancel-in-progress: >-
+    ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
 jobs:
   cmdctrl-ci:
@@ -125,10 +127,29 @@ jobs:
   cmdctrl-cd:
     runs-on: self-hosted
     needs: cmdctrl-ci
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     env:
       CMDCTRL_HOST: ${{ vars.CMDCTRL_HOST }}
       SSH_OPTS: -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10
+      # Everything below is the only difference between deploying
+      # production and deploying the develop preview. Both live on the
+      # same host (ADR 0023); they share nothing but the box and a
+      # read-only Scryfall dump.
+      IS_DEV: ${{ github.ref == 'refs/heads/develop' }}
+      DEPLOY_ROOT: >-
+        ${{ github.ref == 'refs/heads/develop' && '/opt/cmd_and_ctrl-dev' || '/opt/cmd_and_ctrl' }}
+      WEB_ROOT: >-
+        ${{ github.ref == 'refs/heads/develop' && '/var/www/cmdctrl-client-dev' || '/var/www/cmdctrl-client' }}
+      ENV_FILE: >-
+        ${{ github.ref == 'refs/heads/develop' && '/etc/cmd_and_ctrl/dev.env' || '/etc/cmd_and_ctrl/env' }}
+      SERVICE: >-
+        ${{ github.ref == 'refs/heads/develop' && 'cmd-and-ctrl-dev' || 'cmd-and-ctrl' }}
+      APP_ENV: ${{ github.ref == 'refs/heads/develop' && 'dev' || 'prod' }}
+      # Loopback port the service binds (CMDCTRL_ADDR in its env file).
+      # Used only by the post-deploy environment check below.
+      LOCAL_PORT: ${{ github.ref == 'refs/heads/develop' && '8081' || '8080' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -140,6 +161,10 @@ jobs:
             exit 1
           fi
           echo "Deploy target: krkn@${CMDCTRL_HOST}"
+          echo "Environment:   ${APP_ENV}"
+          echo "Service:       ${SERVICE}"
+          echo "Deploy root:   ${DEPLOY_ROOT}"
+          echo "Web root:      ${WEB_ROOT}"
 
       - name: Download server binary
         uses: actions/download-artifact@v6
@@ -166,9 +191,15 @@ jobs:
         run: |
           rsync -a -e "ssh ${SSH_OPTS}" \
             server/bin/cmd_and_ctrl-server \
-            krkn@${CMDCTRL_HOST}:/opt/cmd_and_ctrl/server/bin/
+            krkn@${CMDCTRL_HOST}:${DEPLOY_ROOT}/server/bin/
 
+      # Production only, on purpose. A second bot process logged into
+      # the same Discord application would answer every slash command
+      # twice; the develop deployment therefore never ships or restarts
+      # the bot. Slash commands are tested against prod or a private
+      # test guild, not here. See ADR 0023 sec. "Discord".
       - name: Deploy bot binary
+        if: env.IS_DEV != 'true'
         run: |
           rsync -a -e "ssh ${SSH_OPTS}" \
             server/bin/cmd_and_ctrl-bot \
@@ -180,14 +211,14 @@ jobs:
         run: |
           rsync -a --delete -e "ssh ${SSH_OPTS}" \
             client/dist/ \
-            krkn@${CMDCTRL_HOST}:/var/www/cmdctrl-client/
+            krkn@${CMDCTRL_HOST}:${WEB_ROOT}/
 
       - name: Deploy scripts
         run: |
           rsync -a -e "ssh ${SSH_OPTS}" \
             scripts/ \
-            krkn@${CMDCTRL_HOST}:/opt/cmd_and_ctrl/scripts/
-          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} 'chmod +x /opt/cmd_and_ctrl/scripts/*.sh'
+            krkn@${CMDCTRL_HOST}:${DEPLOY_ROOT}/scripts/
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} "chmod +x ${DEPLOY_ROOT}/scripts/"'*.sh'
 
       # Provision the bug-report token (ADR 0017) into the server's
       # env file (/etc/cmd_and_ctrl/env — written by the HomeLab
@@ -202,6 +233,17 @@ jobs:
       # reporting simply stays disabled, same as an unset var. sudo
       # because the env file is root:cmdctrl; krkn's cloud-init
       # sudoers grant covers it (same as the restart steps).
+      # Stamp the deployment identity into the env file on every
+      # deploy of both branches. This is what makes the environments
+      # unable to drift: prod is rewritten to CMDCTRL_ENV=prod even if
+      # someone hand-edited it to dev, and vice versa. The server
+      # refuses to boot on an unrecognised value, and every dev-only
+      # route and action is gated on it server-side (ADR 0023).
+      - name: Sync server env (deployment identity)
+        run: |
+          printf '%s' "${APP_ENV}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh CMDCTRL_ENV ${ENV_FILE}"
+
       - name: Sync server env (bug-report token)
         env:
           BUGREPORT_TOKEN: ${{ secrets.CMDCTRL_GITHUB_TOKEN }}
@@ -211,7 +253,7 @@ jobs:
             exit 0
           fi
           printf '%s' "${BUGREPORT_TOKEN}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
-            'sudo /opt/cmd_and_ctrl/scripts/set-server-env.sh CMDCTRL_GITHUB_TOKEN'
+            "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh CMDCTRL_GITHUB_TOKEN ${ENV_FILE}"
 
       # Bug-report screenshots need a PUBLIC origin: a GitHub issue can
       # only render an image its proxy can fetch, so the server has to
@@ -222,16 +264,21 @@ jobs:
       # reports working (see ADR 0017 §6).
       - name: Sync server env (public base URL)
         env:
-          PUBLIC_BASE_URL: ${{ vars.CMDCTRL_PUBLIC_BASE_URL || 'https://cmd.labxp.io' }}
+          PUBLIC_BASE_URL: >-
+            ${{ github.ref == 'refs/heads/develop'
+                && (vars.CMDCTRL_DEV_PUBLIC_BASE_URL || 'https://dev.cmd.labxp.io')
+                || (vars.CMDCTRL_PUBLIC_BASE_URL || 'https://cmd.labxp.io') }}
         run: |
           printf '%s' "${PUBLIC_BASE_URL}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
-            'sudo /opt/cmd_and_ctrl/scripts/set-server-env.sh CMDCTRL_PUBLIC_BASE_URL'
+            "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh CMDCTRL_PUBLIC_BASE_URL ${ENV_FILE}"
 
-      - name: Restart cmd-and-ctrl service
+      - name: Restart game server service
         run: |
-          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} 'sudo systemctl restart cmd-and-ctrl'
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} "sudo systemctl restart ${SERVICE}"
 
       - name: Restart cmd-and-ctrl-bot service (if enabled)
+        # Production only — see "Deploy bot binary" above.
+        if: env.IS_DEV != 'true'
         # Conditional so CI keeps passing before the operator
         # installs the bot systemd unit for the first time.
         # Once the unit is enabled, this branch is the steady state.
@@ -248,4 +295,26 @@ jobs:
       - name: Verify service is active
         run: |
           ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
-            'systemctl is-active cmd-and-ctrl && systemctl status cmd-and-ctrl --no-pager --lines=10'
+            "systemctl is-active ${SERVICE} && systemctl status ${SERVICE} --no-pager --lines=10"
+
+      # Prove the deployment is answering as the environment we just
+      # told it to be. Catches the failure this whole scheme exists to
+      # prevent: a develop deploy that comes up believing it is prod,
+      # or — far worse — a main deploy that comes up as dev with card
+      # spawning enabled on the live table.
+      #
+      # Queried over loopback on the host so it tests the service
+      # itself, not the reverse proxy or DNS.
+      - name: Verify reported environment
+        run: |
+          body=$(ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "curl -fsS --retry 5 --retry-delay 2 --retry-connrefused http://127.0.0.1:${LOCAL_PORT}/config")
+          echo "GET /config -> ${body}"
+          case "${body}" in
+            *'"env":"'"${APP_ENV}"'"'*) ;;
+            *)
+              echo "::error::${SERVICE} did not report env=${APP_ENV}. Check CMDCTRL_ENV in ${ENV_FILE}."
+              exit 1
+              ;;
+          esac
+          echo "Confirmed: ${SERVICE} is running as ${APP_ENV}."

@@ -12,10 +12,18 @@
   import Join from "./routes/Join.svelte";
   import Game from "./routes/Game.svelte";
   import Settings from "./lib/components/Settings.svelte";
+  import EnvBadge from "./lib/components/EnvBadge.svelte";
   import { route, navigate } from "./lib/router";
   import { session, setSession } from "./lib/session";
   import { settings } from "./lib/settings";
   import { armMusicOnFirstGesture } from "./lib/music";
+  import { loadAppConfig } from "./lib/env";
+
+  // Ask the server which deployment this is, once, at shell mount.
+  // Deliberately not awaited: every consumer defaults to production
+  // (no dev features, no badge), so a slow or missing /config delays
+  // nothing and degrades to the safe answer. See lib/env.ts.
+  loadAppConfig();
 
   // Ambient music spans the entire app shell (login → lobby →
   // game), so arm it here rather than in Game.svelte where SFX
@@ -115,6 +123,11 @@
     <Game gameID={$route.gameID} />
   {/key}
 {/if}
+
+<!-- Environment marker. Renders nothing in production; on dev it is a
+     fixed, non-dismissible corner badge so no one mistakes this
+     deployment for the live table. -->
+<EnvBadge />
 
 <!-- Settings modal lives at the app shell so it overlays every
      route and the keyboard shortcut / reactive store works from

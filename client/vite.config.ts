@@ -31,6 +31,11 @@ export default defineConfig({
       "/games": { target: "http://localhost:8080", changeOrigin: true },
       "/cards": { target: "http://localhost:8080", changeOrigin: true },
       "/me": { target: "http://localhost:8080", changeOrigin: true },
+      // Deployment identity + dev feature flags (ADR 0023). The client
+      // fetches this at shell mount; without the proxy Vite answers
+      // with index.html, the JSON parse fails, and env.ts falls back
+      // to production — i.e. no dev features in `make client-dev`.
+      "/config": { target: "http://localhost:8080", changeOrigin: true },
       "/healthz": { target: "http://localhost:8080", changeOrigin: true },
       // S12.5: Discord OAuth round-trip. The redirect from Discord
       // lands on /auth/discord/callback; without this proxy the

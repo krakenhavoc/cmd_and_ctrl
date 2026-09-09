@@ -93,6 +93,27 @@ When you create a new top-level directory, add it here.
 
 ## 4. Sprint and tracking discipline
 
+### Branches and environments
+
+`develop` is the integration branch; `main` is the release branch.
+Feature branches PR into **`develop`**, which auto-deploys to
+`https://dev.cmd.labxp.io`. Promotion to production is a `develop` →
+`main` PR. Full matrix and host runbook:
+[docs/environments.md](docs/environments.md); rationale:
+[ADR 0023](docs/decisions/0023-develop-environment.md).
+
+Two rules that are easy to get wrong:
+
+- **Dev-only features are gated server-side.** `CMDCTRL_ENV=dev`
+  is the only switch that can enable one, and `appenv.LoadFeatures`
+  refuses to enable anything outside a dev deployment. Wrap every
+  dev-only route in `requireDev`. Hiding a control behind a
+  client-side `if` is not gating it — spawning cards and acting as
+  another seat are cheats on a live table.
+- **Never deploy or restart the Discord bot from `develop`.** Two bot
+  processes on the same application answer every slash command twice.
+  CD enforces it; don't hand-install the bot unit on the dev box.
+
 Work is organised into 2-week sprints tracked in:
 
 - **Project board:** https://github.com/users/krakenhavoc/projects/5

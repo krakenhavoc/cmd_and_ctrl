@@ -49,6 +49,31 @@ const CHAT_LOG_LIMIT = 200;
 // reports, and a larger one would be trimmed server-side anyway.
 export const WS_LOG_LIMIT = 200;
 
+// FRAME_LOG_LIMIT caps the dev frame inspector's ring buffer. A busy
+// four-player turn is a few dozen frames, so 500 covers "what just
+// happened" without letting a long game grow the heap unbounded.
+export const FRAME_LOG_LIMIT = 500;
+
+// FrameRecord is one raw WebSocket frame captured for the dev frame
+// inspector (docs/decisions/0023-develop-environment.md). Recording is
+// off unless a dev deployment turns it on via setFrameRecording, so
+// production pays one boolean check per frame and nothing else.
+export interface FrameRecord {
+  // "in" is server -> client, "out" is client -> server.
+  dir: "in" | "out";
+  at: number;
+  kind: string;
+  // Frame id, for correlating an outbound action with the snapshot or
+  // error it produced.
+  id: string;
+  // Snapshot sequence number, when the frame carries one.
+  seq?: number;
+  // Serialised size, so an unexpectedly fat snapshot is visible.
+  bytes: number;
+  // The parsed frame, for the detail pane.
+  frame: unknown;
+}
+
 // ERROR_TOAST_TTL_MS is how long a server error sticks in the
 // lastError store before auto-clearing. Long enough to read, short
 // enough that an unread error doesn't stay on screen indefinitely.
@@ -85,6 +110,11 @@ export class GameClient {
   // consumers that care about ordering don't have to derive it.
   readonly snapshot: Writable<GameView | null> = writable(null);
   readonly lastSeq: Writable<number> = writable(0);
+  // frames is the dev frame inspector's ring buffer. Empty and never
+  // written unless setFrameRecording(true) has been called, which
+  // only happens on a dev deployment with the frame_inspector feature
+  // enabled — see lib/env.ts.
+  readonly frames: Writable<FrameRecord[]> = writable([]);
   // chat is the rolling list of server-stamped chat messages received
   // on this connection. Capped to CHAT_LOG_LIMIT entries; older
   // messages drop off the front. Chat is ephemeral — a fresh connect
@@ -120,8 +150,49 @@ export class GameClient {
   // reconnectAttempts counts consecutive failed opens since the last
   // successful one — the exponent for the backoff ladder.
   private reconnectAttempts = 0;
+  // recordFrames gates every capture. Kept as a plain boolean rather
+  // than reading a store per frame so the disabled path is a single
+  // branch on the hot receive loop.
+  private recordFrames = false;
 
   constructor(private url: string) {}
+
+  // setFrameRecording turns raw frame capture on or off. Callers are
+  // responsible for only enabling it when the server reports the
+  // frame_inspector dev feature; this method itself is unprivileged
+  // (it reveals nothing the client did not already send or receive).
+  // Turning it off clears the buffer so a captured game state does not
+  // linger in memory after the drawer is closed.
+  setFrameRecording(on: boolean): void {
+    this.recordFrames = on;
+    if (!on) {
+      this.frames.set([]);
+    }
+  }
+
+  // clearFrames empties the ring buffer without changing the
+  // recording state — the inspector's "clear" button.
+  clearFrames(): void {
+    this.frames.set([]);
+  }
+
+  private recordFrame(dir: FrameRecord["dir"], frame: Frame, serialised: string): void {
+    if (!this.recordFrames) return;
+    const seq = (frame.payload as { seq?: unknown } | undefined)?.seq;
+    const rec: FrameRecord = {
+      dir,
+      at: Date.now(),
+      kind: String(frame.kind ?? "?"),
+      id: String(frame.id ?? ""),
+      seq: typeof seq === "number" ? seq : undefined,
+      bytes: serialised.length,
+      frame,
+    };
+    this.frames.update((prev) => {
+      const next = [...prev, rec];
+      return next.length > FRAME_LOG_LIMIT ? next.slice(-FRAME_LOG_LIMIT) : next;
+    });
+  }
 
   // setURL swaps the target URL. Does not affect an already-open
   // socket — callers who want the new URL to take effect should
@@ -275,7 +346,9 @@ export class GameClient {
       id: uuid(),
       payload: { msg },
     };
-    this.socket.send(JSON.stringify(frame));
+    const wire = JSON.stringify(frame);
+    this.socket.send(wire);
+    this.recordFrame("out", frame, wire);
     this.append("sent", `ping id=${frame.id.slice(0, 8)} msg=${JSON.stringify(msg)}`);
   }
 
@@ -299,7 +372,9 @@ export class GameClient {
       id,
       payload: { author_name: "", text: trimmed, timestamp: "" },
     };
-    this.socket.send(JSON.stringify(frame));
+    const wire = JSON.stringify(frame);
+    this.socket.send(wire);
+    this.recordFrame("out", frame, wire);
     this.append("sent", `chat id=${id.slice(0, 8)} text=${JSON.stringify(trimmed)}`);
     return id;
   }
@@ -322,7 +397,9 @@ export class GameClient {
       id,
       payload: { type, player, params },
     };
-    this.socket.send(JSON.stringify(frame));
+    const wire = JSON.stringify(frame);
+    this.socket.send(wire);
+    this.recordFrame("out", frame, wire);
     this.append("sent", `action ${type} id=${id.slice(0, 8)}`);
     return id;
   }
@@ -339,6 +416,9 @@ export class GameClient {
       this.append("error", "malformed JSON from server");
       return;
     }
+    // Recorded before the version gate so a v-mismatch — the exact
+    // thing you would open the inspector to diagnose — is visible.
+    this.recordFrame("in", frame, raw);
     if (frame.v !== PROTOCOL_VERSION) {
       this.append("error", `server spoke v${frame.v}, expected v${PROTOCOL_VERSION}`);
       return;
