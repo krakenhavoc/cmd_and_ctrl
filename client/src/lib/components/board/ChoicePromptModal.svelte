@@ -188,29 +188,88 @@
   // player can't cover degrades to a decline server-side.
   const isPayUnless = $derived(active?.kind === "pay_unless");
 
+  // S21 sacrifice_choice branch — "each player sacrifices a creature
+  // of their choice" (Grave Pact, Fleshbag Marauder). Reuses the
+  // generic card grid and its {choice_id, card_ids} payload; only the
+  // copy differs, because the default grid describes a discard from a
+  // hand and this is a sacrifice from the battlefield.
+  //
+  // There is no cancel. A sacrifice cost of this kind isn't optional,
+  // and the server has already filtered the options to permanents the
+  // chooser controls — a player with none was never prompted.
+  const isSacrifice = $derived(active?.kind === "sacrifice_choice");
+
+  // S21 scry branch — CR 701.18. Every looked-at card goes somewhere:
+  // back on top (in an order the player controls) or to the bottom.
+  // Default is "keep everything, in the order shown", so the common
+  // case — bottom the one bad card, or accept the top — is one click
+  // or none.
+  //
+  // Answered with {bottom, top_order}; top_order is TOP-FIRST, so its
+  // first entry is the next card drawn.
+  const isScry = $derived(active?.kind === "scry");
+
+  let scryTop = $state<string[]>([]);
+  let scryBottom = $state<string[]>([]);
+
+  // Seed the default whenever a scry prompt opens: everything stays on
+  // top, in the order the server listed it (which is current library
+  // order).
+  let lastScryID: string | null = null;
+  $effect(() => {
+    if (!isScry || !active) {
+      lastScryID = null;
+      return;
+    }
+    if (active.id === lastScryID) return;
+    lastScryID = active.id;
+    scryTop = (active.options ?? []).map((c) => c.instance_id);
+    scryBottom = [];
+  });
+
+  function scryToBottom(id: string): void {
+    scryTop = scryTop.filter((x) => x !== id);
+    if (!scryBottom.includes(id)) scryBottom = [...scryBottom, id];
+  }
+
+  function scryToTop(id: string): void {
+    scryBottom = scryBottom.filter((x) => x !== id);
+    if (!scryTop.includes(id)) scryTop = [...scryTop, id];
+  }
+
+  // Move a kept card one place closer to the top. The only ordering
+  // control needed: scry N is 1 or 2 on every printed card, so "swap
+  // these two" is the whole requirement, and this generalises to 3.
+  function scryMoveUp(id: string): void {
+    const i = scryTop.indexOf(id);
+    if (i <= 0) return;
+    const next = [...scryTop];
+    [next[i - 1], next[i]] = [next[i], next[i - 1]];
+    scryTop = next;
+  }
+
+  function scryCardName(id: string): string {
+    const c = (active?.options ?? []).find((o) => o.instance_id === id);
+    return c?.name || "card";
+  }
+
+  function submitScry(): void {
+    if (!active || !viewerID) return;
+    const total = (active.options ?? []).length;
+    if (scryTop.length + scryBottom.length !== total) return;
+    sendAction(
+      "resolve_choice",
+      { choice_id: active.id, bottom: scryBottom, top_order: scryTop },
+      viewerID,
+    );
+  }
+
   // S19 follow-up: the server flags optional triggers whose effect
   // has no legal target (Reclamation Sage with no opponent artifact,
   // Eternal Witness with an empty graveyard). Until the S20 target
   // picker lands, the auto-targeter silently no-ops in that case —
   // which reads as a bug. Warn the chooser and relabel "Yes".
   const noLegalTarget = $derived(active?.no_legal_target === true);
-
-  // Y / N answer the yes-no prompts (optional replacement, may-
-  // trigger, pay-unless) from the keyboard; the footer shows the
-  // hint. Ignored while typing in a field.
-  const isYesNo = $derived(isOptionalReplacement || isTriggerPrompt || isPayUnless);
-  function handleKey(e: KeyboardEvent): void {
-    if (!open || !isYesNo) return;
-    const t = e.target as HTMLElement | null;
-    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
-    if (e.key === "y" || e.key === "Y") {
-      e.preventDefault();
-      answerOptional(true);
-    } else if (e.key === "n" || e.key === "N") {
-      e.preventDefault();
-      answerOptional(false);
-    }
-  }
 
   function answerOptional(apply: boolean): void {
     if (!active || !viewerID) return;
@@ -337,14 +396,81 @@
 </script>
 
 {#if open && active}
-  <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="choice-title">
-    <div class="prompt-modal">
-      {#if isManaPick}
-        <h2 id="choice-title">
-          {active.reason || "Pick a color"}
-          <span class="prompt-src" aria-hidden="true">mana ability</span>
-        </h2>
-        <p class="prompt-hint">Choose a color to add to your mana pool.</p>
+  <div class="backdrop" role="dialog" aria-modal="true" aria-labelledby="choice-title">
+    <div class="modal">
+      {#if isScry}
+        <h2 id="choice-title">{active.reason || "Scry"}</h2>
+        <p class="hint">
+          {#if scryTop.length + scryBottom.length === 1}
+            Keep it on top, or put it on the bottom of your library.
+          {:else}
+            Keep any of these on top — the topmost is your next draw — and put the rest on the
+            bottom.
+          {/if}
+          Only you can see them.
+        </p>
+        <div class="scry-lane">
+          <h3 class="lane-label">On top ({scryTop.length})</h3>
+          {#if scryTop.length === 0}
+            <p class="lane-empty">Nothing — your next draw comes from under these.</p>
+          {:else}
+            <ol class="scry-list">
+              {#each scryTop as id, i (id)}
+                <li>
+                  <span class="pos">{i + 1}</span>
+                  <span class="scry-name">{scryCardName(id)}</span>
+                  <button
+                    type="button"
+                    class="lane-btn"
+                    disabled={i === 0}
+                    title="move closer to the top"
+                    aria-label={`move ${scryCardName(id)} up`}
+                    onclick={() => scryMoveUp(id)}>↑</button
+                  >
+                  <button
+                    type="button"
+                    class="lane-btn"
+                    onclick={() => scryToBottom(id)}
+                    aria-label={`put ${scryCardName(id)} on the bottom`}>To bottom</button
+                  >
+                </li>
+              {/each}
+            </ol>
+          {/if}
+        </div>
+        <div class="scry-lane">
+          <h3 class="lane-label">On the bottom ({scryBottom.length})</h3>
+          {#if scryBottom.length === 0}
+            <p class="lane-empty">None.</p>
+          {:else}
+            <ul class="scry-list">
+              {#each scryBottom as id (id)}
+                <li>
+                  <span class="scry-name">{scryCardName(id)}</span>
+                  <button
+                    type="button"
+                    class="lane-btn"
+                    onclick={() => scryToTop(id)}
+                    aria-label={`keep ${scryCardName(id)} on top`}>Keep on top</button
+                  >
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </div>
+        <div class="card-grid">
+          {#each optionCards as c (c.instance_id)}
+            <div class="card-pick" class:bottomed={scryBottom.includes(c.instance_id)}>
+              <Card card={c} />
+            </div>
+          {/each}
+        </div>
+        <div class="footer">
+          <button type="button" class="submit" onclick={submitScry}>Done</button>
+        </div>
+      {:else if isManaPick}
+        <h2 id="choice-title">{active.reason || "Pick a color"}</h2>
+        <p class="hint">Choose a color to add to your mana pool.</p>
         <div class="color-row">
           {#each colorOptions as color (color)}
             {@const meta = COLOR_META[color] ?? { label: color, fill: "#ccc" }}
@@ -362,61 +488,55 @@
           {/each}
         </div>
       {:else if isOptionalReplacement}
-        <h2 id="choice-title">
-          {active.reason || "Apply replacement?"}
-          <span class="prompt-src" aria-hidden="true">optional replacement · CR 614.10</span>
-        </h2>
-        <p class="prompt-hint">
-          You (the affected player) decide whether this substitution applies.
+        <h2 id="choice-title">{active.reason || "Apply replacement?"}</h2>
+        <p class="hint">
+          CR 614.10 optional replacement — you (the affected player) decide whether this
+          substitution applies.
         </p>
-        <div class="prompt-foot">
-          <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
-          <button type="button" onclick={() => answerOptional(false)}>No</button>
-          <button type="button" class="primary" onclick={() => answerOptional(true)}>Yes</button>
+        <div class="yes-no-row">
+          <button type="button" class="submit" onclick={() => answerOptional(true)}> Yes </button>
+          <button type="button" class="decline" onclick={() => answerOptional(false)}> No </button>
         </div>
       {:else if isTriggerPrompt}
         <h2 id="choice-title">
           {active.reason || `${triggerSourceName(active.source)} triggered`}
-          <span class="prompt-src" aria-hidden="true">may trigger · CR 603.4</span>
         </h2>
         {#if noLegalTarget}
-          <p class="prompt-hint warn">
+          <p class="hint warn">
             No legal target — “Yes” passes without effect (picker lands in S20).
           </p>
         {:else}
-          <p class="prompt-hint">Fire the ability, or let it pass without effect.</p>
+          <p class="hint">
+            CR 603.4 optional trigger — fire the ability, or let it pass without effect.
+          </p>
         {/if}
-        <div class="prompt-foot">
-          <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
-          <button type="button" onclick={() => answerOptional(false)}>No</button>
-          <button type="button" class="primary" onclick={() => answerOptional(true)}>Yes</button>
+        <div class="yes-no-row">
+          <button type="button" class="submit" onclick={() => answerOptional(true)}> Yes </button>
+          <button type="button" class="decline" onclick={() => answerOptional(false)}> No </button>
         </div>
       {:else if isPayUnless}
         <h2 id="choice-title">
           {active.reason || `${triggerSourceName(active.source)} — pay ${active.pay_cost ?? ""}?`}
-          <span class="prompt-src" aria-hidden="true">pay unless</span>
         </h2>
-        <p class="prompt-hint">
+        <p class="hint">
           Pay {active.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short),
           or don't and let {triggerSourceName(active.source)} do its thing.
         </p>
-        <div class="prompt-foot">
-          <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
-          <button type="button" onclick={() => answerOptional(false)}>Don't pay</button>
-          <button type="button" class="primary" onclick={() => answerOptional(true)}>
+        <div class="yes-no-row">
+          <button type="button" class="submit" onclick={() => answerOptional(true)}>
             Pay {active.pay_cost ?? ""}
+          </button>
+          <button type="button" class="decline" onclick={() => answerOptional(false)}>
+            Don't pay
           </button>
         </div>
       {:else if isDamageAssignment && damageFrame}
-        <h2 id="choice-title">
-          {active.reason || "Assign combat damage"}
-          <span class="prompt-src" aria-hidden="true">CR 510.1c</span>
-        </h2>
-        <p class="prompt-hint">
+        <h2 id="choice-title">{active.reason || "Assign combat damage"}</h2>
+        <p class="hint">
           <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
           is blocked by {damageFrame.blocker_card_ids.length} creatures. Order them and divide
-          {damageFrame.attacker_power} damage — earlier blockers must be dealt at-least-lethal before
-          the next gets any.
+          {damageFrame.attacker_power} damage (CR 510.1c — earlier blockers must be dealt at-least-lethal
+          before the next gets any).
           {#if damageFrame.allow_trample}
             Trample lets leftover damage spill to the defending player.
           {/if}
@@ -478,11 +598,11 @@
             </li>
           {/if}
         </ul>
-        <div class="prompt-foot">
-          <span class="prompt-count">{assignedTotal} / {damageFrame.attacker_power} assigned</span>
+        <div class="footer">
+          <span class="counter">{assignedTotal} / {damageFrame.attacker_power} assigned</span>
           <button
             type="button"
-            class="primary"
+            class="submit"
             disabled={!canSubmitAssignment}
             onclick={submitDamageAssignment}
           >
@@ -492,33 +612,30 @@
       {:else if isReplacementOrder || isTriggerOrder}
         <h2 id="choice-title">
           {active.reason || (isTriggerOrder ? "Order your triggers" : "Order replacement effects")}
-          <span class="prompt-src" aria-hidden="true"
-            >{isTriggerOrder ? "CR 603.3b" : "CR 616"}</span
-          >
         </h2>
-        <p class="prompt-hint">
+        <p class="hint">
           {#if isTriggerOrder}
             Two or more of your abilities triggered at once. Click them in the order they should
-            resolve — the first you pick resolves first.
+            resolve — the first you pick resolves first (CR 603.3b).
           {:else}
             Click each effect in the order it should apply. Different orders can produce different
-            results — you choose as the affected player.
+            results — you choose as the affected player (CR 616).
           {/if}
         </p>
-        <ul class="prompt-options">
+        <ul class="order-list">
           {#each replacementOptions as opt (opt.id)}
             {@const pos = positionFor(opt.id)}
             {@const src = sourceCardName(opt)}
             <li>
               <button
                 type="button"
-                class="prompt-opt"
-                class:on={pos > 0}
+                class="order-row"
+                class:selected={pos > 0}
                 onclick={() => toggleReplacement(opt.id)}
                 aria-pressed={pos > 0}
                 aria-label={`${pos > 0 ? "deselect" : "select"} ${opt.label || "effect"}`}
               >
-                <span class="prompt-num">{pos > 0 ? pos : "·"}</span>
+                <span class="order-pos">{pos > 0 ? pos : "·"}</span>
                 <span class="order-label">
                   <strong>{opt.label || "Replacement effect"}</strong>
                   {#if src}<span class="order-src">{src}</span>{/if}
@@ -527,11 +644,11 @@
             </li>
           {/each}
         </ul>
-        <div class="prompt-foot">
-          <span class="prompt-count">{ordered.length} / {replacementOptions.length} ordered</span>
+        <div class="footer">
+          <span class="counter">{ordered.length} / {replacementOptions.length} ordered</span>
           <button
             type="button"
-            class="primary"
+            class="submit"
             disabled={ordered.length !== replacementOptions.length}
             onclick={submitReplacementOrder}
           >
@@ -540,11 +657,17 @@
         </div>
       {:else}
         <h2 id="choice-title">
-          {active.reason || "Choose"} — pick {active.count} card{active.count === 1 ? "" : "s"}
-          <span class="prompt-src" aria-hidden="true">{isSelfSource ? "discard" : "reveal"}</span>
+          {#if isSacrifice}
+            {active.reason || "Sacrifice a permanent"}
+          {:else}
+            {active.reason || "Choose"} — pick {active.count} card{active.count === 1 ? "" : "s"}
+          {/if}
         </h2>
-        <p class="prompt-hint">
-          {#if isSelfSource}
+        <p class="hint">
+          {#if isSacrifice}
+            Choose {active.count === 1 ? "a permanent" : `${active.count} permanents`} you control to
+            sacrifice. This isn't optional — {triggerSourceName(active.source)} is making you.
+          {:else if isSelfSource}
             Pick {active.count} card{active.count === 1 ? "" : "s"} from your hand to discard.
           {:else}
             Pick {active.count} card{active.count === 1 ? "" : "s"} from
@@ -567,15 +690,15 @@
             </button>
           {/each}
         </div>
-        <div class="prompt-foot">
-          <span class="prompt-count">{selected.size} / {active.count} selected</span>
+        <div class="footer">
+          <span class="counter">{selected.size} / {active.count} selected</span>
           <button
             type="button"
-            class="primary"
+            class="submit"
             disabled={selected.size !== active.count}
             onclick={submit}
           >
-            Confirm
+            {isSacrifice ? "Sacrifice" : "Confirm"}
           </button>
         </div>
       {/if}
@@ -583,9 +706,130 @@
   </div>
 {/if}
 
-<svelte:window onkeydown={handleKey} />
-
 <style>
+  .scry-lane {
+    margin: 6px 0;
+  }
+  .lane-label {
+    margin: 0 0 4px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0.75;
+  }
+  .lane-empty {
+    margin: 0;
+    font-size: 12px;
+    opacity: 0.6;
+  }
+  .scry-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .scry-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .pos {
+    min-width: 1.4em;
+    text-align: center;
+    font-weight: 700;
+    opacity: 0.8;
+  }
+  .scry-name {
+    flex: 1;
+  }
+  .lane-btn {
+    background: transparent;
+    color: inherit;
+    border: 1px solid rgba(200, 168, 106, 0.5);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .lane-btn:hover:not(:disabled) {
+    background: rgba(200, 168, 106, 0.18);
+  }
+  .lane-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .card-pick.bottomed {
+    opacity: 0.45;
+  }
+
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 8, 16, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    animation: fade-in 160ms var(--ease);
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .modal {
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg-2) 100%);
+    border: 1px solid rgba(122, 167, 255, 0.22);
+    border-radius: var(--radius-xl);
+    padding: 22px 26px;
+    max-width: 760px;
+    max-height: 86vh;
+    overflow: auto;
+    box-shadow:
+      0 30px 80px rgba(0, 0, 0, 0.7),
+      0 0 0 1px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    animation: modal-in 220ms var(--ease);
+  }
+  @keyframes modal-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  h2 {
+    margin: 0 0 6px;
+    font-size: 18px;
+    letter-spacing: -0.01em;
+    color: var(--gold);
+    text-transform: none;
+    font-weight: 700;
+  }
+  .hint {
+    color: var(--fg-muted);
+    font-size: 13px;
+    line-height: 1.4;
+    margin: 0 0 14px;
+  }
+  .hint strong {
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .hint.warn {
+    color: #e0b341;
+  }
   .card-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
@@ -604,22 +848,61 @@
       box-shadow 120ms var(--ease);
   }
   .card-pick:hover:not(:disabled) {
-    border-color: var(--border-strong);
-    background: transparent;
+    border-color: var(--accent);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
     transform: translateY(-2px);
   }
   .card-pick.selected {
     border-color: var(--gold);
-    box-shadow: 0 0 16px rgba(217, 180, 92, 0.35);
+    box-shadow:
+      0 0 18px rgba(255, 208, 122, 0.55),
+      0 6px 18px rgba(0, 0, 0, 0.4);
   }
   .card-pick:disabled {
     opacity: 0.4;
     cursor: not-allowed;
   }
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    gap: 12px;
+  }
+  .counter {
+    font-size: 12px;
+    color: var(--fg-muted);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+  .submit {
+    padding: 8px 22px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #ffe59a 0%, #e6b85f 100%);
+    color: #231806;
+    border: 1px solid rgba(255, 230, 160, 0.6);
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    box-shadow:
+      0 6px 18px rgba(255, 208, 122, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+  .submit:hover:not(:disabled) {
+    filter: brightness(1.04);
+  }
+  .submit:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
   .color-row {
     display: flex;
-    gap: 10px;
     flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 4px;
   }
   .color-pick {
     display: inline-flex;
@@ -630,12 +913,14 @@
     padding: 14px 18px;
     background: var(--fill);
     color: #0a0e1a;
-    border: 1px solid rgba(0, 0, 0, 0.35);
+    border: 2px solid rgba(0, 0, 0, 0.4);
     border-radius: 10px;
     font-weight: 800;
     cursor: pointer;
     min-width: 88px;
-    box-shadow: var(--shadow-sm);
+    box-shadow:
+      0 6px 16px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25);
     transition:
       transform 120ms var(--ease),
       box-shadow 120ms var(--ease),
@@ -643,11 +928,12 @@
   }
   .color-pick:hover,
   .color-pick:focus-visible {
-    background: var(--fill);
-    border-color: rgba(0, 0, 0, 0.35);
     transform: translateY(-2px);
-    box-shadow: var(--shadow);
+    box-shadow:
+      0 12px 24px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25);
     filter: brightness(1.05);
+    outline: none;
   }
   .color-letter {
     font-size: 22px;
@@ -659,6 +945,60 @@
     text-transform: uppercase;
     opacity: 0.8;
   }
+  .order-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 420px;
+  }
+  .order-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 2px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    cursor: pointer;
+    color: var(--fg);
+    text-align: left;
+    font: inherit;
+    transition:
+      border-color 120ms var(--ease),
+      background 120ms var(--ease),
+      transform 120ms var(--ease);
+  }
+  .order-row:hover {
+    border-color: var(--accent);
+    background: rgba(122, 167, 255, 0.08);
+  }
+  .order-row.selected {
+    border-color: var(--gold);
+    background: rgba(255, 208, 122, 0.08);
+    box-shadow: 0 0 0 1px rgba(255, 208, 122, 0.25);
+  }
+  .order-pos {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.35);
+    color: var(--gold);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+  .order-row.selected .order-pos {
+    background: linear-gradient(180deg, #ffe59a 0%, #e6b85f 100%);
+    color: #231806;
+  }
   .order-label {
     display: flex;
     flex-direction: column;
@@ -666,12 +1006,32 @@
     line-height: 1.3;
   }
   .order-label strong {
-    font-weight: 600;
-    font-size: 13px;
+    font-weight: 700;
+    font-size: 14px;
   }
   .order-src {
     color: var(--fg-muted);
-    font-size: 11.5px;
+    font-size: 12px;
+  }
+  .yes-no-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+    justify-content: flex-end;
+  }
+  .decline {
+    padding: 8px 22px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--fg);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+  }
+  .decline:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.24);
   }
   .assign-list {
     list-style: none;
@@ -679,21 +1039,22 @@
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    min-width: min(440px, calc(100vw - 80px));
+    gap: 8px;
+    min-width: 440px;
   }
   .assign-row {
     display: grid;
     grid-template-columns: auto 1fr auto;
     align-items: center;
-    gap: 12px;
-    padding: 8px 12px;
-    background: var(--surface-sunken);
-    border: 1px solid var(--border);
+    gap: 14px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 2px solid rgba(255, 255, 255, 0.08);
     border-radius: 10px;
   }
   .assign-row.trample {
-    border-color: rgba(255, 107, 107, 0.35);
+    border-color: rgba(255, 154, 133, 0.3);
+    background: rgba(255, 154, 133, 0.06);
   }
   .assign-order {
     display: inline-flex;
@@ -704,30 +1065,41 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
-    background: var(--surface-raised);
-    color: var(--fg-dim);
-    font-family: var(--font-mono);
-    font-size: 11px;
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    background: rgba(122, 167, 255, 0.16);
+    color: var(--accent);
     font-weight: 700;
   }
   .reorder-btn {
-    padding: 2px 7px;
-    font-size: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--fg);
     border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .reorder-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+  }
+  .reorder-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
   }
   .assign-name {
     font-weight: 600;
-    font-size: 13px;
   }
   .assign-input input {
     width: 70px;
-    padding: 5px 10px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--fg);
+    font: inherit;
     text-align: right;
-    font-family: var(--font-mono);
-    font-size: 13px;
   }
   .sr-only {
     position: absolute;
