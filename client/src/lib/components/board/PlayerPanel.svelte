@@ -7,7 +7,7 @@
   //   ├──────────────────────┬──────────────────────┤
   //   │  lands               │  enchant / artifact  │
   //   ├─────────────────────────────────────────────┤
-  //   │  ⭕ piles  hand (peek) ………………… phases (self)│
+  //   │  ⭕ piles  hand (peek) ……………… phases (self)│
   //   └─────────────────────────────────────────────┘
   //
   // The bottombar is a single flex row: avatar anchors bottom-left,
