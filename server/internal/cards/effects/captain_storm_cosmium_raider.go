@@ -1,0 +1,37 @@
+package effects
+
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+// Captain Storm, Cosmium Raider — 2/2 Legendary Creature — Human
+// Pirate for {U}{R}:
+//
+//	"Whenever an artifact you control enters, put a +1/+1 counter on
+//	 target Pirate you control."
+//
+// The deck makes artifacts constantly — every Treasure off the
+// commander, Corsair Captain, Ragavan — so this is a two-drop that
+// turns the Treasure engine into a clock. First card in the catalog
+// to pair the artifact-ETB watcher with a target clause.
+func init() {
+	Register(Spec{
+		OracleID: "431e85e3-15e6-471b-ba71-6058394c9a96",
+		Name:     "Captain Storm, Cosmium Raider",
+		Triggered: []game.TriggeredAbility{{
+			Watches: []game.EventKind{game.EventETB},
+			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return artifactEnteredUnderYourControl(ev, source, g)
+			},
+			Targets: TargetPermanent("target Pirate you control", YouControl(), IsPirateCard()),
+			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+				return game.NewTriggeredItem(source, "Captain Storm — +1/+1 counter on a Pirate",
+					func(g *game.Game, item *game.StackItem) error {
+						ctx := NewContext(g, item)
+						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+							return nil
+						}
+						return AddCounter{Target: item.Targets[0].ID, Kind: "+1/+1", N: 1}.Apply(ctx)
+					})
+			},
+		}},
+	})
+}
