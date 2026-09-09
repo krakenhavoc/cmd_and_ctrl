@@ -74,22 +74,19 @@
     align-items: center;
     justify-content: flex-start;
     gap: 4px;
-    padding: 6px 4px 4px;
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(0, 0, 0, 0.25) 100%),
-      var(--surface-sunken, #0a1122);
-    border: 1px solid var(--border, #273049);
+    padding: 5px 3px 4px;
+    background: var(--surface-raised);
+    border: 1px solid transparent;
     border-radius: var(--radius);
     color: inherit;
     font: inherit;
     cursor: pointer;
-    width: var(--pile-w, 64px);
+    width: 100%;
     box-sizing: border-box;
     box-shadow: none;
     transition:
       border-color 140ms var(--ease),
-      background 140ms var(--ease),
-      transform 140ms var(--ease);
+      background 140ms var(--ease);
   }
   .pile:disabled,
   .pile.disabled {
@@ -97,10 +94,9 @@
     opacity: 0.55;
   }
   .pile:not(:disabled):hover {
-    border-color: var(--accent);
-    background:
-      linear-gradient(180deg, var(--accent-soft) 0%, rgba(0, 0, 0, 0.3) 100%), var(--surface-sunken);
-    transform: translateY(-1px);
+    border-color: rgba(217, 180, 92, 0.45);
+    background: var(--surface-hover);
+    transform: none;
   }
   .pile:focus-visible {
     outline: 2px solid var(--accent);
@@ -119,7 +115,7 @@
     width: 100%;
     height: 100%;
     border-radius: 4px;
-    border: 1px dashed var(--border-strong, #3a4570);
+    border: 1px dashed var(--border-strong);
     background: rgba(0, 0, 0, 0.25);
   }
   .meta {
@@ -130,17 +126,18 @@
     gap: 2px;
   }
   .label {
+    font-family: var(--font-mono);
     font-size: 8px;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--fg-dim, #6c7a99);
+    letter-spacing: 0.08em;
+    color: var(--fg-dim);
     font-weight: 600;
   }
   .count {
-    font-size: 14px;
-    font-weight: 800;
-    color: var(--fg, #e0e6f5);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--fg);
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.01em;
   }
 </style>
