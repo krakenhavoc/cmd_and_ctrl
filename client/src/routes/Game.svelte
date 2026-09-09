@@ -21,6 +21,7 @@
   import { stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
   import { devFeature } from "../lib/env";
+  import { gameWSURL } from "../lib/gameURL";
   import DevDock from "../lib/components/dev/DevDock.svelte";
 
   interface Props {
@@ -35,13 +36,12 @@
   // may omit ?player= and fall through to the spectator view.
   const baseURL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
   const sess = $derived($session);
-  const wsURL = $derived.by(() => {
-    const params = new URLSearchParams();
-    params.set("game", gameID);
-    if (sess?.token) params.set("token", sess.token);
-    if (sess?.playerID && sess.gameID === gameID) params.set("player", sess.playerID);
-    return `${baseURL}?${params.toString()}`;
-  });
+  // Dev seat swap (ADR 0023): the seat an admin has chosen to view
+  // and act as, or null for the spectator view. Always null outside a
+  // dev deployment — nothing sets it, because DevDock only renders
+  // the control when the seat_swap feature is live.
+  let devSeat: string | null = $state(null);
+  const wsURL = $derived(gameWSURL({ baseURL, gameID, session: sess, seatOverride: devSeat }));
 
   // One GameClient per component instance. Start with an empty URL
   // — the $effect below installs the real URL on first run and
@@ -73,7 +73,8 @@
   // a FrameRecord.
   const showFrameInspector = devFeature("frame_inspector");
   const showCardSpawner = devFeature("card_spawn");
-  const showDevDock = $derived($showFrameInspector || $showCardSpawner);
+  const showSeatSwap = devFeature("seat_swap");
+  const showDevDock = $derived($showFrameInspector || $showCardSpawner || $showSeatSwap);
   $effect(() => {
     client.setFrameRecording($showFrameInspector);
   });
@@ -1004,7 +1005,13 @@
      with at least one dev feature enabled; see lib/env.ts and
      docs/decisions/0023-develop-environment.md. -->
 {#if showDevDock}
-  <DevDock {client} {gameID} snapshot={$snapshot} />
+  <DevDock
+    {client}
+    {gameID}
+    snapshot={$snapshot}
+    seat={devSeat}
+    onseatchange={(s) => (devSeat = s)}
+  />
 {/if}
 
 <style>
