@@ -121,6 +121,13 @@ var (
 	// S13.1.
 	ErrSorcerySpeedRequired = errors.New("game: sorcery speed required")
 
+	// ErrNoPlayPermission is returned when a player tries to play a
+	// card from exile without a live impulse-exile grant — the grant
+	// belongs to someone else, has expired, was never made, or is
+	// cast-only and the card is a land (CR 305.1: playing a land is
+	// not casting). Added in S21 sub-PR 6.
+	ErrNoPlayPermission = errors.New("game: no permission to play this card from exile")
+
 	// ErrCardNotOnStack is returned by counter_spell / counter_ability
 	// when the targeted item is not currently on the stack (already
 	// resolved, never cast, or wrong instance ID). Added in S13.1.

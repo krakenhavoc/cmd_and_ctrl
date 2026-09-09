@@ -19,7 +19,13 @@
   import type { ActionPayload, ActionType, CardView, GameView } from "../../protocol";
   import Card from "./Card.svelte";
   import type { BrowsableZone } from "../../zoneBrowser";
-  import { buildMovePayload, canManageZone, cardsForZone } from "../../zoneBrowser.logic";
+  import {
+    buildMovePayload,
+    canManageZone,
+    cardsForZone,
+    impulseActionLabel,
+    impulseGrantFor,
+  } from "../../zoneBrowser.logic";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -67,6 +73,23 @@
   // viewer's identity ever changes mid-modal (defence in depth;
   // unlikely in practice).
   const canManage = $derived(canManageZone(zoneKind, viewerID, ownerSeat.id));
+
+  // S21 sub-PR 6: impulse exile. The button is keyed on the grant
+  // rather than on zone ownership — the stolen card sits in the
+  // victim's exile slice, and the thief is the one who may play it.
+  // Both derivations live in zoneBrowser.logic.ts so vitest can
+  // exercise them without a renderer.
+  const grantFor = (card: CardView) => impulseGrantFor(card, zoneKind, viewerID);
+  const labelFor = (card: CardView) => impulseActionLabel(card, zoneKind, viewerID);
+
+  function playFromExile(card: CardView): void {
+    sendAction(
+      "cast_spell",
+      { instance_id: card.instance_id, from_zone: "exile" },
+      viewerID ?? undefined,
+    );
+    onClose();
+  }
 
   // move fires move_card from the source zone to the chosen
   // destination. buildMovePayload returns null when the client-side
@@ -118,6 +141,21 @@
         {#each zoneCards as card (card.instance_id)}
           <li class="cell">
             <Card {card} onClick={onTargetCard ? () => void onTargetCard?.(card) : undefined} />
+            {#if labelFor(card)}
+              <div class="actions" aria-label="play from exile">
+                <button
+                  type="button"
+                  class="act impulse"
+                  title={grantFor(card)?.any_color
+                    ? "spend mana as though it were any colour"
+                    : "playable until end of turn"}
+                  aria-label={`${labelFor(card)} ${card.name || "card"} from exile`}
+                  onclick={() => playFromExile(card)}
+                >
+                  {labelFor(card)}
+                </button>
+              </div>
+            {/if}
             {#if canManage}
               <div class="actions" aria-label="move card">
                 <button
@@ -283,6 +321,10 @@
     flex-direction: column;
     align-items: center;
     gap: 6px;
+  }
+  .act.impulse {
+    border-color: var(--gold, #c9a227);
+    color: var(--gold, #c9a227);
   }
   .actions {
     display: flex;
