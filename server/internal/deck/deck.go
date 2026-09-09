@@ -249,6 +249,14 @@ func (l *List) ToGameCards() []game.Card {
 	return out
 }
 
+// ToGameCard converts one indexed Scryfall card into the game.Card
+// the engine plays with. Exported so the develop environment's card
+// spawner (ADR 0023) produces instances identical to imported ones
+// rather than a lookalike that drifts from this function.
+func ToGameCard(c cards.Card, isCommander bool) game.Card {
+	return toGameCard(c, isCommander)
+}
+
 func toGameCard(c cards.Card, isCommander bool) game.Card {
 	// Parse Scryfall's printed power/toughness strings to ints.
 	// Non-numeric values ("*", "1+*", "?", empty) parse to zero —

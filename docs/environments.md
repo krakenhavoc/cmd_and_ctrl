@@ -44,7 +44,7 @@ turned **on** in production.
 | Feature | Variable | Status |
 |---|---|---|
 | Raw protocol frame inspector | `CMDCTRL_DEV_FRAME_INSPECTOR` | shipped |
-| Card spawn + state inspector | `CMDCTRL_DEV_CARD_SPAWN` | planned |
+| Card spawn | `CMDCTRL_DEV_CARD_SPAWN` | shipped |
 | Drive all seats from one browser | `CMDCTRL_DEV_SEAT_SWAP` | planned |
 | Replay scrubber + seeded shuffles | `CMDCTRL_DEV_REPLAY_SCRUBBER` | planned |
 
@@ -56,6 +56,42 @@ $ curl -s https://dev.cmd.labxp.io/config
 $ curl -s https://cmd.labxp.io/config
 {"env":"prod","features":{"card_spawn":false,"seat_swap":false,"frame_inspector":false,"replay_scrubber":false}}
 ```
+
+### Card spawner
+
+Open the **SPAWN** tab in the dev dock (bottom-left of the game
+screen). Search by card name, pick a seat and a zone, spawn. The two
+routes behind it:
+
+```console
+$ curl -s "$DEV/dev/cards?q=blood artist" -H "Authorization: Bearer $TOKEN"
+$ curl -s -X POST "$DEV/games/$GAME/dev/spawn" -H "Authorization: Bearer $TOKEN" \
+    -d '{"name":"Blood Artist","player_id":"'"$SEAT"'","zone":"battlefield","count":2}'
+```
+
+Worth knowing:
+
+- Spawned cards go through `deck.ToGameCard`, the same conversion the
+  deck importer uses, so they carry a real OracleID and the S14+
+  effect catalog matches them. A spawned Blood Artist actually
+  watches for deaths.
+- **Battlefield spawns fire ETB triggers**, so a spawn can put things
+  on the stack. That is the point — but it means the resulting
+  snapshot may differ by more than the cards you asked for.
+- The game must be **active**. Spawning into a lobby-state game would
+  be erased by `Start` dealing opening hands.
+- Zones: `battlefield`, `hand`, `graveyard`, `exile`, `library`,
+  `command`. The stack is refused — spawn to hand and cast it, so the
+  card gets a real cast context.
+- Count is capped at 20 per request.
+- Spawns route through the room like every other mutation, so they
+  land in the replay: a bug found on a spawned board is still
+  reproducible from the recording.
+
+Life totals, counters, poison, energy and phase are **not** here —
+an admin session can already set those on any seat through the
+ordinary action protocol, and a second UI for them would just be a
+duplicate to keep in sync.
 
 **Adding a dev feature.** Add the field to `appenv.Features`, register
 its variable in `featureVars`, mirror the JSON key in

@@ -1,12 +1,12 @@
 <script lang="ts">
   // Dev-only raw WebSocket frame log.
   //
-  // Mounted by Game.svelte only when the server reports env=dev AND
-  // the frame_inspector feature. Purely client-side: it reads frames
-  // the GameClient already handled, so there is no route to gate and
-  // nothing here is privileged. The value is turning "the board
-  // desynced" into a frame id, a seq number, and a payload you can
-  // paste into a bug report.
+  // Rendered inside DevDock, which owns the corner strip, the tab and
+  // the feature gate; this component is just the panel body. Purely
+  // client-side: it reads frames the GameClient already handled, so
+  // there is no route to gate and nothing here is privileged. The
+  // value is turning "the board desynced" into a frame id, a seq
+  // number, and a payload you can paste into a bug report.
   import type { GameClient, FrameRecord } from "../../ws";
 
   interface Props {
@@ -17,7 +17,6 @@
 
   const frames = $derived(client.frames);
 
-  let open = $state(false);
   let selectedID: string | null = $state(null);
   let filter: "all" | "in" | "out" = $state("all");
   // Kinds are low-cardinality; a free-text box would be overkill.
@@ -68,115 +67,66 @@
   }
 </script>
 
-<div class="inspector" class:open>
-  <button class="handle" onclick={() => (open = !open)} aria-expanded={open}>
-    <span class="label">FRAMES</span>
-    <span class="count">{$frames.length}</span>
-  </button>
-
-  {#if open}
-    <div class="body">
-      <div class="toolbar">
-        <div class="seg" role="group" aria-label="Direction filter">
-          {#each ["all", "in", "out"] as const as d (d)}
-            <button class:active={filter === d} onclick={() => (filter = d)}>{d}</button>
-          {/each}
-        </div>
-        <select bind:value={kindFilter} aria-label="Frame kind filter">
-          <option value="">all kinds</option>
-          {#each kinds as k (k)}<option value={k}>{k}</option>{/each}
-        </select>
-        <button onclick={togglePause} class:active={paused}>
-          {paused ? "resume" : "pause"}
-        </button>
-        <button onclick={() => client.clearFrames()}>clear</button>
-      </div>
-
-      <div class="split">
-        <ol class="list">
-          {#each shown as f (f.id + f.at)}
-            <li>
-              <button
-                class="row"
-                class:sel={selectedID === f.id + f.at}
-                onclick={() => (selectedID = f.id + f.at)}
-              >
-                <span class="dir {f.dir}">{f.dir === "in" ? "←" : "→"}</span>
-                <span class="kind">{f.kind}</span>
-                <span class="seq">{f.seq ?? ""}</span>
-                <span class="bytes">{fmtBytes(f.bytes)}</span>
-                <span class="time">{fmtTime(f.at)}</span>
-              </button>
-            </li>
-          {:else}
-            <li class="empty">
-              {source.length === 0 ? "No frames captured yet." : "No frames match this filter."}
-            </li>
-          {/each}
-        </ol>
-
-        <div class="detail">
-          {#if selected}
-            <div class="detail-head">
-              <code>{selected.id || "(no id)"}</code>
-              <button onclick={copySelected}>copy</button>
-            </div>
-            <pre>{JSON.stringify(selected.frame, null, 2)}</pre>
-          {:else}
-            <p class="hint">Select a frame to see its payload.</p>
-          {/if}
-        </div>
-      </div>
+<div class="body">
+  <div class="toolbar">
+    <div class="seg" role="group" aria-label="Direction filter">
+      {#each ["all", "in", "out"] as const as d (d)}
+        <button class:active={filter === d} onclick={() => (filter = d)}>{d}</button>
+      {/each}
     </div>
-  {/if}
+    <select bind:value={kindFilter} aria-label="Frame kind filter">
+      <option value="">all kinds</option>
+      {#each kinds as k (k)}<option value={k}>{k}</option>{/each}
+    </select>
+    <button onclick={togglePause} class:active={paused}>
+      {paused ? "resume" : "pause"}
+    </button>
+    <button onclick={() => client.clearFrames()}>clear</button>
+  </div>
+
+  <div class="split">
+    <ol class="list">
+      {#each shown as f (f.id + f.at)}
+        <li>
+          <button
+            class="row"
+            class:sel={selectedID === f.id + f.at}
+            onclick={() => (selectedID = f.id + f.at)}
+          >
+            <span class="dir {f.dir}">{f.dir === "in" ? "←" : "→"}</span>
+            <span class="kind">{f.kind}</span>
+            <span class="seq">{f.seq ?? ""}</span>
+            <span class="bytes">{fmtBytes(f.bytes)}</span>
+            <span class="time">{fmtTime(f.at)}</span>
+          </button>
+        </li>
+      {:else}
+        <li class="empty">
+          {source.length === 0 ? "No frames captured yet." : "No frames match this filter."}
+        </li>
+      {/each}
+    </ol>
+
+    <div class="detail">
+      {#if selected}
+        <div class="detail-head">
+          <code>{selected.id || "(no id)"}</code>
+          <button onclick={copySelected}>copy</button>
+        </div>
+        <pre>{JSON.stringify(selected.frame, null, 2)}</pre>
+      {:else}
+        <p class="hint">Select a frame to see its payload.</p>
+      {/if}
+    </div>
+  </div>
 </div>
 
 <style>
-  .inspector {
-    position: fixed;
-    left: 0;
-    bottom: 0;
-    z-index: 9998;
-    font-family: var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace);
-    font-size: 0.7rem;
-    color: var(--fg, #e6ecff);
-  }
-
-  .handle {
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
-    padding: 0.3rem 0.7rem;
-    border: 1px solid var(--border-strong, #3a4570);
-    border-left: none;
-    border-bottom: none;
-    border-top-right-radius: var(--radius, 8px);
-    background: var(--bg-1, #0b1220);
-    color: var(--fg-muted, #9aa5cd);
-    font: inherit;
-    letter-spacing: 0.1em;
-    cursor: pointer;
-  }
-  .handle:hover {
-    color: var(--fg, #e6ecff);
-  }
-  .count {
-    padding: 0 0.4em;
-    border-radius: var(--radius-sm, 4px);
-    background: var(--surface-raised, #17213a);
-    color: var(--accent, #7aa7ff);
-  }
-
   .body {
-    width: min(46rem, 100vw);
-    height: min(24rem, 50vh);
+    flex: 1;
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--border-strong, #3a4570);
-    border-left: none;
-    border-bottom: none;
-    background: var(--bg, #070b14);
-    box-shadow: var(--shadow-lg, 0 12px 32px rgba(0, 0, 0, 0.55));
+    min-height: 0;
   }
 
   .toolbar {
