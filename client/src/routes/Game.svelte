@@ -23,6 +23,7 @@
   import { devFeature } from "../lib/env";
   import { gameWSURL } from "../lib/gameURL";
   import DevDock from "../lib/components/dev/DevDock.svelte";
+  import type { ReplayFrame } from "../lib/replay";
 
   interface Props {
     gameID: string;
@@ -40,7 +41,7 @@
   // and act as, or null for the spectator view. Always null outside a
   // dev deployment — nothing sets it, because DevDock only renders
   // the control when the seat_swap feature is live.
-  let devSeat: string | null = $state(null);
+  let devSeat = $state<string | null>(null);
   const wsURL = $derived(gameWSURL({ baseURL, gameID, session: sess, seatOverride: devSeat }));
 
   // One GameClient per component instance. Start with an empty URL
@@ -74,7 +75,18 @@
   const showFrameInspector = devFeature("frame_inspector");
   const showCardSpawner = devFeature("card_spawn");
   const showSeatSwap = devFeature("seat_swap");
-  const showDevDock = $derived($showFrameInspector || $showCardSpawner || $showSeatSwap);
+  const showReplayScrubber = devFeature("replay_scrubber");
+  const showDevDock = $derived(
+    $showFrameInspector || $showCardSpawner || $showSeatSwap || $showReplayScrubber,
+  );
+
+  // Dev replay scrubber (ADR 0023). When a frame is selected the board
+  // renders that past state instead of the live snapshot, and the
+  // quick-action toolbar is hidden — those buttons would mutate the
+  // LIVE game while you are looking at history, which is the one way
+  // a read-only inspection tool could do damage.
+  let replayFrame = $state<ReplayFrame | null>(null);
+  let replayIndex = $state<number | null>(null);
   $effect(() => {
     client.setFrameRecording($showFrameInspector);
   });
@@ -360,7 +372,7 @@
 
   // ---- Turn / priority / quick actions ----
 
-  const view = $derived($snapshot);
+  const view = $derived(replayFrame?.game ?? $snapshot);
   const seats = $derived<PlayerView[]>(view?.seats ?? []);
   const turn = $derived(view?.turn);
   const activeSeat = $derived(turn?.active_seat ?? 0);
@@ -782,7 +794,7 @@
        turn/step/priority UI now lives with the player it concerns. -->
 
   {#if view && viewerID}
-    <div class="toolbar" aria-label="quick actions">
+    <div class="toolbar" aria-label="quick actions" hidden={replayFrame !== null}>
       <div class="toolbar-group">
         <button onclick={draw}>draw</button>
         <button onclick={untapAll}>untap all</button>
@@ -1011,6 +1023,11 @@
     snapshot={$snapshot}
     seat={devSeat}
     onseatchange={(s) => (devSeat = s)}
+    {replayIndex}
+    onreplayselect={(f, i) => {
+      replayFrame = f;
+      replayIndex = i;
+    }}
   />
 {/if}
 

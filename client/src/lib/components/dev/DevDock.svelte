@@ -16,6 +16,8 @@
   import FrameInspector from "./FrameInspector.svelte";
   import CardSpawner from "./CardSpawner.svelte";
   import SeatSwitcher from "./SeatSwitcher.svelte";
+  import ReplayScrubber from "./ReplayScrubber.svelte";
+  import type { ReplayFrame } from "../../replay";
   import { canSwapSeats } from "../../gameURL";
   import { session } from "../../session";
 
@@ -26,12 +28,17 @@
     // Seat currently being viewed, or null for the spectator view.
     seat: string | null;
     onseatchange: (seatID: string | null) => void;
+    // Index of the replay frame being rendered, or null for live.
+    replayIndex: number | null;
+    onreplayselect: (frame: ReplayFrame | null, index: number | null) => void;
   }
-  const { client, gameID, snapshot, seat, onseatchange }: Props = $props();
+  const { client, gameID, snapshot, seat, onseatchange, replayIndex, onreplayselect }: Props =
+    $props();
 
   const showFrames = devFeature("frame_inspector");
   const showSpawn = devFeature("card_spawn");
   const seatSwapFlag = devFeature("seat_swap");
+  const showReplay = devFeature("replay_scrubber");
   // Only offered to admin sessions: for anyone else the server
   // resolves the seat from the principal and ignores the request, so
   // the control would silently do nothing. See gameURL.canSwapSeats.
@@ -39,7 +46,7 @@
 
   const frames = $derived(client.frames);
 
-  type Tab = "frames" | "spawn";
+  type Tab = "frames" | "spawn" | "replay";
   let open: Tab | null = $state(null);
 
   function toggle(tab: Tab) {
@@ -51,10 +58,11 @@
   $effect(() => {
     if (open === "frames" && !$showFrames) open = null;
     if (open === "spawn" && !$showSpawn) open = null;
+    if (open === "replay" && !$showReplay) open = null;
   });
 </script>
 
-{#if $showFrames || $showSpawn || showSeats}
+{#if $showFrames || $showSpawn || $showReplay || showSeats}
   <div class="dock">
     {#if open}
       <div class="panel">
@@ -62,6 +70,8 @@
           <FrameInspector {client} />
         {:else if open === "spawn"}
           <CardSpawner {gameID} {snapshot} />
+        {:else if open === "replay"}
+          <ReplayScrubber {gameID} index={replayIndex} onselect={onreplayselect} />
         {/if}
       </div>
     {/if}
@@ -77,6 +87,16 @@
           onclick={() => toggle("spawn")}
         >
           SPAWN
+        </button>
+      {/if}
+      {#if $showReplay}
+        <button
+          class:active={open === "replay"}
+          aria-expanded={open === "replay"}
+          onclick={() => toggle("replay")}
+        >
+          REPLAY
+          {#if replayIndex !== null}<span class="count">past</span>{/if}
         </button>
       {/if}
       {#if $showFrames}
