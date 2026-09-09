@@ -20,6 +20,8 @@
   import { hasAnyLegalResponse } from "../lib/priority";
   import { stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
+  import { devFeature } from "../lib/env";
+  import FrameInspector from "../lib/components/dev/FrameInspector.svelte";
 
   interface Props {
     gameID: string;
@@ -58,6 +60,15 @@
     client.setURL(wsURL);
     client.connect();
     return () => client.disconnect();
+  });
+
+  // Dev frame inspector (ADR 0023). Recording stays off — and the
+  // buffer stays empty — unless the server reports env=dev with the
+  // frame_inspector feature enabled. On a production build this
+  // resolves false once and never allocates a FrameRecord.
+  const showFrameInspector = devFeature("frame_inspector");
+  $effect(() => {
+    client.setFrameRecording($showFrameInspector);
   });
 
   // Autoplay-policy unlock. The first pointerdown / keydown anywhere in
@@ -981,6 +992,13 @@
     if (ev.key === "Enter" && !(ev.target instanceof HTMLInputElement)) confirmTargeting();
   }}
 />
+
+<!-- Dev-only raw protocol frame log. Renders nothing unless the
+     server reports env=dev with the frame_inspector feature; see
+     lib/env.ts and docs/decisions/0023-develop-environment.md. -->
+{#if $showFrameInspector}
+  <FrameInspector {client} />
+{/if}
 
 <style>
   /* The Game route needs the whole viewport, not the 800px column
