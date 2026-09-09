@@ -1,6 +1,7 @@
 # ADR 0023 — A `develop` branch with its own preview deployment
 
 **Status:** Implemented · 2026-09-09 · Branch `chore/develop-environment`
+**Revised:** 2026-09-09 · §2 replaced · Branch `chore/dev-env-second-vm`
 
 ## Context
 
@@ -34,23 +35,43 @@ flags only — was rejected because the redesign is a coordinated
 change across ~20 components; flagging it at that granularity costs
 more than a branch does.
 
-### 2. One VPS, two fully namespaced deployments
+### 2. Two VMs, one definition *(revised)*
 
-The dev deployment gets its own service user (`cmdctrl-dev`), env
-file (`/etc/cmd_and_ctrl/dev.env`), deploy root
-(`/opt/cmd_and_ctrl-dev`), data directory
-(`/var/lib/cmd_and_ctrl-dev`), web root
-(`/var/www/cmdctrl-client-dev`), port (`:8081`), and vhost. It shares
-only the box and a read-only symlink to production's Scryfall bulk
-dump — a 2 GB file that is identical in both environments and has its
-own refresh cron.
+The develop preview is its own Proxmox VM, `cmd-and-ctrl-dev`, behind
+`dev.cmd.labxp.io`. It is declared in the HomeLab repo as a second
+entry in a `for_each` over an environments map, sharing the cloud-init
+template, the systemd unit, the Caddy config and the data-disk layout
+with production.
 
-`cmdctrl-dev` is not in the `cmdctrl` group, so the dev process
-cannot read production replays or bug-report artifacts. The unit
-carries `MemoryMax=768M` and `CPUWeight=50` so a runaway dev process
-is OOM-killed rather than pushing production into swap. That cap is
-the price of sharing a box; a separate VPS was rejected on cost for a
-solo project, and per-PR ephemeral environments on machinery.
+**The two hosts are identical below the fqdn.** Same paths, same
+service name, same service user, same listen port. The only
+differences are hostname, fqdn, the two tokens, and `CMDCTRL_ENV`.
+That is the property worth having: the CD recipe that deploys to the
+preview is byte-for-byte the recipe that deploys to production, so a
+preview deploy actually rehearses the thing it is meant to rehearse.
+An environment reached by a *different* deploy path is testing the
+deploy path as much as the code.
+
+> **This section replaces the original.** The first version put a
+> second service unit on production's box — own user, own env file,
+> `/opt/cmd_and_ctrl-dev`, port `:8081`, `MemoryMax=768M`, and a
+> read-only symlink to production's Scryfall dump — and justified the
+> sharing on the cost of a second rented VPS. The host is not a rented
+> VPS. It is a Proxmox node driven by Terraform, where another VM is a
+> map entry and its Cloudflare tunnel can be declared beside it. Once
+> that was clear the comparison inverted, and the namespacing, the
+> memory cap and the provisioning script all became machinery serving
+> a constraint that did not exist.
+>
+> The isolation argument stands on its own regardless of cost: sharing
+> a box meant a runaway preview process could push production into
+> swap, and `MemoryMax` bounded that rather than removing it. Separate
+> VMs remove it.
+
+The cost is ~4 GB of RAM and a 20 GB data disk on the Proxmox node,
+plus a second Scryfall dump on its own refresh timer. Per-PR ephemeral
+environments were still rejected — dynamic hostnames, tunnel
+provisioning and teardown are a lot of machinery for a solo project.
 
 ### 3. `CMDCTRL_ENV` is the single gate, and it fails closed
 
@@ -60,11 +81,11 @@ than a silent fallback: `CMDCTRL_ENV=development` quietly behaving as
 prod would strip every dev feature off the dev box with no signal
 except a missing button.
 
-CD rewrites `CMDCTRL_ENV` into the env file on **every** deploy of
-both branches, so neither environment can drift into the other's
-identity through a hand edit. A post-deploy step then curls
-`/config` over loopback and fails the run if the service does not
-report the environment it was just told to be.
+The value is written three times over, deliberately. Terraform stamps
+it into the env file at build; CD rewrites it on **every** deploy of
+both branches, so a hand edit cannot outlive a restart; and a
+post-deploy step curls `/config` over loopback and fails the run if
+the service does not report the environment it was just told to be.
 
 ### 4. Dev features cannot be enabled in production, even deliberately
 
@@ -91,14 +112,17 @@ dev-only actions are refused by the action registry on the same
 check. Flipping a flag in devtools reveals a button that 404s.
 
 `requireDev` answers **404, not 403**: production should not confirm
-that a dev route exists.
+that a dev route exists. It also wraps **outside** `auth.Middleware`,
+because wrapped the other way an unauthenticated probe gets 401 —
+which confirms the route exists just as surely.
 
 The rule for anyone adding a dev feature: *if the only thing stopping
 a curl against production is a client-side `if`, it is not gated.*
 Spawning a card, mutating life, and acting as another seat are
 outright cheats on a live table, so this is the one invariant in this
 ADR with a test asserting it directly
-(`TestLoadFeaturesProdIgnoresOverrides`, `TestRequireDev`).
+(`TestLoadFeaturesProdIgnoresOverrides`, `TestRequireDev`,
+`TestDevRoutesAreAbsentInProduction`).
 
 ### 6. Discord: a second redirect URI, and no bot on dev
 
@@ -121,21 +145,36 @@ when it matters. The failure it guards against is human: filing a bug
 against dev thinking it was prod, or assuming prod is dev and
 spawning a card mid-game.
 
+### 8. The two admin tokens are different, and Terraform enforces it
+
+The preview exposes card spawning and seat swapping to any admin
+session. Sharing production's `CMDCTRL_ADMIN_TOKEN` would make a leak
+from the lower-trust box a compromise of the live table, so the
+HomeLab variable carries a validation rejecting equal tokens.
+
 ## Consequences
 
-- Production's reverse proxy must learn to route `/config`. Until it
-  does, the client's fetch 404s and `env.ts` falls back to production
-  defaults — the correct answer for production — so client and proxy
-  can be rolled out in either order.
-- `deploy/cmd-and-ctrl.service` does not exist in the repo; the
-  production unit has only ever lived on the host. `deploy/README.md`
-  documents capturing it with `systemctl cat` rather than
-  reconstructing it, because a guessed unit copied over the working
-  one is how a preview environment takes down production.
+- Both Caddy sites must route `/config`, and the dev site also `/dev`.
+  Until they do, the client's fetch gets `index.html` back, fails to
+  parse, and falls back to production defaults — the correct answer
+  for production, and a silently featureless preview on dev.
+- Reading the cloud-init template to add the dev VM turned up a
+  production gap: the Caddyfile proxied only `/ws`, `/healthz`,
+  `/games*`, `/cards/*`, `/admin/*` and `/me`. Discord OAuth, avatars,
+  bug reports and logout were never routed, so those features depended
+  on a hand-edit that a VM rebuild would have reverted. Fixed in the
+  same change, along with `CMDCTRL_TRUST_FORWARDED` — without which
+  every client shares one rate-limit bucket, since cloudflared
+  forwards from `127.0.0.1`.
+- `deploy/cmd-and-ctrl.service` does not exist in this repo; the unit
+  is written by the HomeLab cloud-init template, which is now the
+  single source of truth for both hosts. `deploy/README.md` points
+  there.
 - The nightly e2e workflow still targets production only. Pointing it
-  at dev is a follow-up.
+  at dev is a follow-up, and now genuinely safe: the preview is a
+  separate machine.
 - Dev features land behind their flags one at a time: the frame
-  inspector ships with this ADR, then the card spawner, then seat
+  inspector shipped with this ADR, then the card spawner, then seat
   swap, then the replay scrubber. Three of the four turned out to be
   client-only; only the card spawner needed a server route. The
   action-registry gate this ADR anticipated was never built, because
