@@ -156,3 +156,27 @@ func RedGoblinToken() game.Card {
 		Colors:    []string{"R"},
 	}
 }
+
+// GreenBeastToken is the 3/3 green Beast that Beast Within hands to
+// the permanent's controller — the drawback half of the card, and
+// the reason it's "destroy anything" rather than pure removal.
+func GreenBeastToken() game.Card {
+	return game.Card{
+		Name:      "Beast",
+		TypeLine:  "Token Creature — Beast",
+		Power:     3,
+		Toughness: 3,
+	}
+}
+
+// WhiteElephantToken is Generous Gift's 3/3 Elephant. Same shape as
+// the Beast; kept as its own constructor so the two cards read as
+// the printed cards do rather than sharing a misleading name.
+func WhiteElephantToken() game.Card {
+	return game.Card{
+		Name:      "Elephant",
+		TypeLine:  "Token Creature — Elephant",
+		Power:     3,
+		Toughness: 3,
+	}
+}

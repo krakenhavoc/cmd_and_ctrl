@@ -107,3 +107,49 @@ func diedCreature(ev game.Event, g *game.Game) (game.Card, bool) {
 func IsToken(c game.Card) bool {
 	return containsFoldASCII(c.TypeLine, "token")
 }
+
+// --- staples helpers (Commander staples pass) --------------------
+
+// IsLandWithSubtype returns a SearchLibrary predicate matching any
+// land whose type line carries `subtype`. Distinct from IsBasicLand:
+// Nature's Lore fetches "a Forest card", which is any land with the
+// Forest subtype — a Snow-Covered Forest or a Bayou both qualify,
+// while IsBasicLand would admit an Island.
+//
+// Case-insensitive substring on the printed line, same posture as
+// IsBasicLand. It does not verify the card is a land when the
+// subtype is unambiguous, so callers wanting "basic" semantics
+// should compose with IsBasicLand instead.
+func IsLandWithSubtype(subtype string) func(game.Card) bool {
+	return func(c game.Card) bool {
+		return containsFoldASCII(c.TypeLine, "land") && containsFoldASCII(c.TypeLine, subtype)
+	}
+}
+
+// IsBasicLandExcept returns a predicate matching a basic land whose
+// type line does NOT carry `subtype` — Farseek's "Plains, Island,
+// Swamp, or Mountain" expressed as "a basic land that isn't a
+// Forest". Cheaper and more future-proof than enumerating four
+// subtypes, and it keeps the Wastes case out by accident rather
+// than by omission (Wastes has no basic land type Farseek names,
+// but it also isn't a Forest — a known sandbox over-permission,
+// noted on the card).
+func IsBasicLandExcept(subtype string) func(game.Card) bool {
+	return func(c game.Card) bool {
+		return IsBasicLand(c) && !containsFoldASCII(c.TypeLine, subtype)
+	}
+}
+
+// controllerOfTarget resolves the controller of a targeted card, for
+// the "its controller …" clause on Beast Within / Generous Gift /
+// Nature's Claim. Returns ok=false when the target has left the
+// battlefield between announce and resolution — the caller has
+// already destroyed nothing in that case, so it just skips the
+// rider rather than guessing whose token it is.
+func controllerOfTarget(ctx *Context, target uuid.UUID) (uuid.UUID, bool) {
+	c, ok := ctx.Game.LookupCardForEffect(target)
+	if !ok {
+		return uuid.Nil, false
+	}
+	return c.Controller, true
+}
