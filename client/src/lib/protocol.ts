@@ -396,6 +396,16 @@ export interface ModeSpecView {
   options: ModeOptionView[];
 }
 
+// AdditionalCostView is the "As an additional cost to cast this
+// spell, discard a card" clause on a card in the viewer's own hand
+// (S21 sub-PR 5). The picked instance IDs ride cast_spell as
+// `discard_ids`; the server rejects a cast that arrives without
+// them.
+export interface AdditionalCostView {
+  discard_cards?: number;
+  label?: string;
+}
+
 // ActivatedAbilityView is one CR 602 activated ability on a
 // battlefield permanent (S21 sub-PR 2). Public information, so it
 // rides every viewer's snapshot; the client only offers the menu on
@@ -502,6 +512,11 @@ export interface CardView {
   // mode picker before targeting. Absent for non-modal cards and on
   // opponents' hands.
   modes?: ModeSpecView;
+  // S21 sub-PR 5: for a card in the viewer's own hand with an
+  // additional cost ("As an additional cost to cast this spell,
+  // discard a card"). The cast flow collects the payment before
+  // firing cast_spell. Absent for the vast majority of cards.
+  additional_cost?: AdditionalCostView;
   // S21 sub-PR 2: activated abilities offered by this permanent.
   activated_abilities?: ActivatedAbilityView[];
   // S21 sub-PR 2: CR 302.1 summoning sickness — entered this turn

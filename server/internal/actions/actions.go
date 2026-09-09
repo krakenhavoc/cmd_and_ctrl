@@ -341,6 +341,10 @@ func Dispatch(g *game.Game, a Action) error {
 			// list (permanents the player has reserved).
 			AutoTap       bool     `json:"auto_tap,omitempty"`
 			LockedSources []string `json:"locked_sources,omitempty"`
+			// S21 sub-PR 5 — cards paid to an additional cost of the
+			// form "As an additional cost to cast this spell,
+			// discard a card". Empty for every card without one.
+			DiscardIDs []string `json:"discard_ids,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -358,6 +362,16 @@ func Dispatch(g *game.Game, a Action) error {
 			Strict:       p.Strict,
 			ForceCast:    p.ForceCast,
 			AutoTap:      p.AutoTap,
+		}
+		if len(p.DiscardIDs) > 0 {
+			params.DiscardIDs = make([]uuid.UUID, 0, len(p.DiscardIDs))
+			for i, raw := range p.DiscardIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("cast_spell discard_ids[%d]: %w", i, err)
+				}
+				params.DiscardIDs = append(params.DiscardIDs, id)
+			}
 		}
 		if len(p.LockedSources) > 0 {
 			params.LockedSources = make([]uuid.UUID, 0, len(p.LockedSources))

@@ -24,6 +24,18 @@ from being played, rather than which cards happen to be easy.
 
 Already in the catalog from earlier sprints: Sol Ring, Counterspell.
 
+## Done (batch 2 — additional costs on cast)
+
+| Card | What it exercises |
+|---|---|
+| Thrill of Possibility | the discard is a **cast cost**, so the payoffs trigger above the spell |
+| Big Score | same cost, plus two Treasures for the artifact payoffs above |
+| Unexpected Windfall | the same card at a different price; the deck runs both |
+
+Read the Runes stays blocked: its cost is per-card-drawn and offers a
+choice between discarding and sacrificing, which is a different shape
+from a fixed "discard a card".
+
 ### Two engine findings from this batch
 
 1. **Damage to a player from a spell or ability skipped the CR 614
@@ -52,12 +64,12 @@ Ragavan (dash), Cyclonic Rift (overload), Deflecting Swat (free
 cast), Improvisation Capstone. The cards work without them; only the
 extra mode is missing.
 
-**Additional costs on cast** — 4 cards: Thrill of Possibility, Big
-Score, Unexpected Windfall ("as an additional cost, discard a card"),
-Read the Runes (discard-or-sacrifice per card drawn).
-`CastSpellParams` has no cost-payment slot, so these can't be cast
-correctly at all. Cheapest high-value unlock in the list: one field
-plus a prompt, and it turns three dead cards live.
+**Additional costs on cast** — ~~4 cards~~ 1 card left. Three shipped
+in batch 2 (`Spec.AdditionalCost` + `CastSpellParams.DiscardIDs`,
+[ADR 0021](../decisions/0021-additional-costs.md)). **Read the Runes**
+remains: its cost is X-many payments, each a choice between discarding
+a card and sacrificing a permanent, which wants a per-payment prompt
+rather than a fixed count.
 
 **Discard as an ability cost** — 3 cards: Glint-Horn's activated
 half, Solphim's indestructible ability, Bag of Holding. Wants the
@@ -96,7 +108,9 @@ matches on exact face name and these need the `card_faces` path.
 
 ## Suggested order
 
-1. Additional costs on cast — 3 cards, small change.
+1. ~~Additional costs on cast~~ — **done** (batch 2).
 2. Impulse exile — 5 cards, and it's the archetype's engine.
-3. Discard as an ability cost — 3 cards, reuses the sacrifice picker.
+3. Discard as an ability cost — 3 cards, reuses the sacrifice picker,
+   and `AdditionalCost.DiscardCards` is the shape to copy onto
+   `AbilityCost`. Also closes the Blood token's declared gap.
 4. Vehicles — 3 cards, and the commander references the type.

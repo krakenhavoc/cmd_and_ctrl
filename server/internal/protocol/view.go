@@ -194,6 +194,21 @@ type ModeOptionView struct {
 	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
 }
 
+// AdditionalCostView is the wire shape of game.AdditionalCost — the
+// "As an additional cost to cast this spell, discard a card" clause
+// on a card in the viewer's own hand. The client opens its cost
+// picker on this before the mode / X / target prompts, because
+// that's the order the costs are actually locked in (CR 601.2f
+// precedes 601.2h). Added in S21 sub-PR 5.
+type AdditionalCostView struct {
+	// DiscardCards is how many cards the caster must discard. The
+	// picked instance IDs ride back on cast_spell's discard_ids.
+	DiscardCards int `json:"discard_cards,omitempty"`
+	// Label is the clause as printed ("Discard a card"), shown
+	// above the picker.
+	Label string `json:"label,omitempty"`
+}
+
 // DamageAssignmentView is the wire shape of the CR 510.1c
 // multi-blocker damage-assignment prompt. The attacker's
 // controller orders the blockers and assigns damage across them
@@ -475,6 +490,13 @@ type CardView struct {
 	// cards and stripped from opponents' hands. The client shows a
 	// mode picker between the X prompt and targeting.
 	Modes *ModeSpecView `json:"modes,omitempty"`
+	// AdditionalCost is the S21 sub-PR 5 "As an additional cost to
+	// cast this spell, …" clause for a card in the viewer's own
+	// hand / command zone. Absent for the overwhelming majority of
+	// cards, which have none. The client must collect the payment
+	// before firing cast_spell — the server rejects a cast that
+	// arrives without it.
+	AdditionalCost *AdditionalCostView `json:"additional_cost,omitempty"`
 	// ActivatedAbilities are the CR 602 activated abilities this
 	// permanent offers, from its controller's point of view (public
 	// information, so present on every viewer's copy). Absent off
@@ -664,6 +686,12 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 				c := &zone.Cards[ci]
 				if ms := game.ModeSpecFor(c.oracleID); ms != nil {
 					c.Modes = viewOfModeSpec(g, caster, ms)
+				}
+				if ac := game.AdditionalCostFor(c.oracleID); !ac.Empty() {
+					c.AdditionalCost = &AdditionalCostView{
+						DiscardCards: ac.DiscardCards,
+						Label:        ac.Label,
+					}
 				}
 				spec := game.TargetSpecFor(c.oracleID)
 				if spec == nil {

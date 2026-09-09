@@ -60,6 +60,10 @@ export interface TargetingState {
   // S20 sub-PR 4: the chosen mode indexes of a modal spell; ride the
   // cast_spell payload as `modes`.
   modes?: number[];
+  // S21 sub-PR 5: instance IDs of the cards paid to an additional
+  // cost ("discard a card"), collected before this prompt opened;
+  // ride the cast_spell payload as `discard_ids`.
+  discardIDs?: string[];
   // S20 sub-PR 5: the clause's target count. At max 1 the first
   // click completes the prompt; otherwise clicks toggle into
   // `picked` (in click order — positional clauses read it) and the
@@ -80,12 +84,17 @@ export const targeting: Writable<TargetingState | null> = writable(null);
 // begin enters a targeting prompt. Overwrites any existing prompt
 // — the last cast wins. The caller has already verified the
 // card's target_mode is non-empty.
-export function begin(card: CardView, mode: TargetingMode, xValue?: number): void {
+export function begin(
+  card: CardView,
+  mode: TargetingMode,
+  xValue?: number,
+  discardIDs?: string[],
+): void {
   const lt = card.legal_targets;
   const legal = lt
     ? { players: new Set(lt.players ?? []), cards: new Set(lt.cards ?? []) }
     : undefined;
-  targeting.set({ card, mode, legal, xValue, ...countOf(lt), picked: [] });
+  targeting.set({ card, mode, legal, xValue, discardIDs, ...countOf(lt), picked: [] });
 }
 
 // countOf reads a clause's min / max off the wire; free-form cards
@@ -142,6 +151,7 @@ export function beginForMode(
   option: ModeOptionView,
   modes: number[],
   xValue?: number,
+  discardIDs?: string[],
 ): void {
   const mode = (option.target_mode || "any") as TargetingMode;
   const lt = option.legal_targets;
@@ -153,6 +163,7 @@ export function beginForMode(
     mode,
     legal,
     xValue,
+    discardIDs,
     modes,
     label: option.label,
     ...countOf(lt),
@@ -164,6 +175,13 @@ export function beginForMode(
 // can be cast.
 export function isModal(card: CardView): boolean {
   return (card.modes?.options?.length ?? 0) > 0;
+}
+
+// discardCostOf returns how many cards a card demands as an
+// additional cost to cast, or 0 for the vast majority that demand
+// none.
+export function discardCostOf(card: CardView): number {
+  return card.additional_cost?.discard_cards ?? 0;
 }
 
 // modeOptionCastable reports whether an option can be chosen right
