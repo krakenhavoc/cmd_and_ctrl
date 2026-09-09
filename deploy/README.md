@@ -1,31 +1,33 @@
 # deploy/
 
-Unit files for the systemd services that run cmd_and_ctrl on the VPS.
-Host provisioning and the full environment matrix live in
-[`docs/environments.md`](../docs/environments.md).
-
 | File | Service | Deployed by |
 |---|---|---|
-| `cmd-and-ctrl-dev.service` | develop preview game server | push to `develop` |
 | `cmd-and-ctrl-bot.service` | Discord bot (production only) | push to `main` |
 
-## Missing: the production game-server unit
+## The game server's unit is not here
 
-`cmd-and-ctrl.service` is **not** in this directory. It was installed
-by hand (via the HomeLab cloud-init template) and has only ever
-existed on the host, which means the running production configuration
-is not under version control.
+Both hosts get `cmd-and-ctrl.service`, the Caddyfile and
+`/etc/cmd_and_ctrl/env` from the cloud-init template in
+[krakenhavoc/HomeLab](https://github.com/krakenhavoc/HomeLab):
+`terraform/deployments/lab/templates/setup-cmd_and_ctrl.yaml.tftpl`.
 
-Capture it rather than reconstructing it — a guessed unit that gets
-copied over the working one is how a preview environment takes down
-production:
+That template is the single source of truth for both production and the
+develop preview. To change host configuration, change it there and
+apply — do not edit files on the box. A rebuild reverts them, which is
+how production ended up serving Discord OAuth from a Caddyfile the
+template did not contain.
+
+See [docs/environments.md](../docs/environments.md).
+
+## The bot unit is still here
+
+Because the bot is production-only and is installed by hand:
 
 ```sh
-ssh krkn@$CMDCTRL_HOST 'systemctl cat cmd-and-ctrl' \
-  | sed '1d' > deploy/cmd-and-ctrl.service
+sudo cp deploy/cmd-and-ctrl-bot.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now cmd-and-ctrl-bot
 ```
 
-Review the result (drop any host-specific absolute paths that belong
-in the env file instead), commit it, and only then treat this
-directory as the source of truth for production. Until that happens,
-do **not** `cp` anything from here over `/etc/systemd/system/cmd-and-ctrl.service`.
+Never install it on the preview host. Two bot processes logged into the
+same Discord application both answer every slash command.
