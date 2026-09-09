@@ -18,6 +18,7 @@
   // zone is filtered by owner so each panel's EXILE pile shows only
   // the cards that player owns.
 
+  import type { Snippet } from "svelte";
   import type {
     ActionPayload,
     ActionType,
@@ -28,6 +29,7 @@
   } from "../../protocol";
   import { seatPlacements, type SeatPosition } from "../../cardTypes";
   import PlayerPanel from "./PlayerPanel.svelte";
+  import { settings } from "../../settings";
   import HoverZoomOverlay from "./HoverZoomOverlay.svelte";
   // CommanderDamageTooltip was folded into HoverZoomOverlay — the
   // damage readout now lives inside the card preview panel instead
@@ -78,6 +80,11 @@
     autopassEnabled?: boolean;
     onPassPriority?: () => void;
     onToggleAutopass?: () => void;
+    // Game.svelte's live prompts (targeting, combat hint, mulligan
+    // roll-call, toasts, game end) render inside the attention strip
+    // under the stack card so every "look here" surface shares one
+    // anchor over the table.
+    attention?: Snippet;
   }
 
   const {
@@ -93,6 +100,7 @@
     autopassEnabled,
     onPassPriority,
     onToggleAutopass,
+    attention,
   }: Props = $props();
 
   // Spectators have no perspective — there's no "self" seat to anchor
@@ -442,6 +450,10 @@
     // battlefield / stack / graveyard clicks here).
     if (!isLegalCardTarget(state, card.instance_id)) return false;
     completeTargetedCast("card", card.instance_id);
+    // A pick that completed the prompt (single target — the store is
+    // cleared once the action fires) closes the zone browser so the
+    // table is back in view. Multi-pick keeps it open for more picks.
+    if ($targeting === null) closeZoneBrowser();
     return true;
   }
 
@@ -472,6 +484,9 @@
           <PlayerPanel
             {seat}
             isSelf={pos === "self"}
+            flipped={$settings.display.tableLayout === "row"
+              ? pos !== "self"
+              : pos === "across" || pos === "across_next"}
             isActive={seat.id === activeSeatID}
             hasPriority={seat.id === prioritySeatID}
             {viewerID}
@@ -534,21 +549,30 @@
 
   <CombatArrows {view} {boardEl} />
   <HoverZoomOverlay {view} />
-  <StackOverlay
-    stack={view.stack}
-    battlefield={view.battlefield}
-    exile={view.exile}
-    stackItems={view.stack_items ?? []}
-    pendingTriggers={view.pending_triggers ?? []}
-    seats={view.seats}
-    viewerHasPriority={prioritySeatID === viewerID}
-    splitSecondActive={view.split_second_active === true}
-    onCounter={(item) => {
-      const verb = item.kind === "spell" ? "counter_spell" : "counter_ability";
-      sendAction(verb, { instance_id: item.id });
-    }}
-    onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
-  />
+  <!-- Attention strip: one column over the table (the middle
+       opponent's hand row in the row layout, the top-left seat's
+       hand row otherwise) that stacks every live prompt — the stack
+       card first, then whatever Game.svelte renders in `attention`. -->
+  <div class="strip">
+    <StackOverlay
+      stack={view.stack}
+      battlefield={view.battlefield}
+      exile={view.exile}
+      stackItems={view.stack_items ?? []}
+      pendingTriggers={view.pending_triggers ?? []}
+      seats={view.seats}
+      viewerHasPriority={prioritySeatID === viewerID}
+      priorityHolderName={view.seats[view.turn.priority_holder]?.name ?? null}
+      splitSecondActive={view.split_second_active === true}
+      onCounter={(item) => {
+        const verb = item.kind === "spell" ? "counter_spell" : "counter_ability";
+        sendAction(verb, { instance_id: item.id });
+      }}
+      onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
+      onPass={onPassPriority}
+    />
+    {@render attention?.()}
+  </div>
   <VotingPanel {view} {viewerID} {sendAction} />
   <SacrificeCostModal
     source={sacrificePrompt?.card ?? null}
@@ -606,10 +630,9 @@
        spotlight anchors the eye at the stack/centre area without
        drawing attention from the panels themselves. */
     background:
-      radial-gradient(60% 55% at 50% 50%, rgba(80, 120, 220, 0.08) 0%, rgba(6, 10, 20, 0) 60%),
-      radial-gradient(120% 100% at 50% 100%, rgba(10, 15, 35, 0), rgba(2, 4, 10, 0.6) 70%),
-      radial-gradient(120% 100% at 50% 0%, rgba(10, 15, 35, 0), rgba(2, 4, 10, 0.6) 70%),
-      linear-gradient(180deg, #070c18 0%, #0a1122 60%, #050811 100%);
+      radial-gradient(60% 55% at 50% 50%, rgba(217, 180, 92, 0.05) 0%, rgba(0, 0, 0, 0) 60%),
+      radial-gradient(120% 100% at 50% 100%, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.45) 80%),
+      var(--bg-1);
   }
   .board::before {
     /* Very subtle tiling noise to break up the flat gradients — makes
@@ -626,6 +649,33 @@
   .slot {
     min-height: 0;
     min-width: 0;
+  }
+
+  /* The attention strip. Fixed-width column, grows downward, capped
+     to one panel's width minus its rail (104px + gaps) so it only
+     ever covers an opponent's face-down hand row — never a rail.
+     pointer-events pass through the gaps so the cards under it stay
+     clickable. */
+  .strip {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    width: min(512px, calc(50% - 132px));
+    max-height: calc(100% - 20px);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 40;
+    pointer-events: none;
+  }
+  .strip > :global(*) {
+    pointer-events: auto;
+    flex: 0 1 auto;
+    min-height: 0;
+  }
+  :global(:root[data-table-layout="row"]) .board[data-opp-count="3"] .strip {
+    left: calc(33.333% + 6px);
+    width: min(512px, calc(33.333% - 132px));
   }
 
   /* Quadrant templates per opponent count. The bottom row (next +
@@ -657,22 +707,37 @@
   .board[data-opp-count="3"] {
     grid-template-columns: 1fr 1fr;
     grid-template-rows: minmax(0, 0.7fr) minmax(0, 1.3fr);
+    /* Turn order runs clockwise around the screen: self (bottom-
+       right) → next (bottom-left) → across (top-LEFT, diagonal)
+       → across_next (top-right, directly above self). Putting
+       "across" top-right instead made the order zig-zag. */
     grid-template-areas:
-      "across_next across"
-      "next        self";
+      "across across_next"
+      "next   self";
   }
 
-  /* Top-row opponents are flipped so the layout reads "across the
-     table" — their hand strip ends up at the top of the screen
-     (closest to them) and their header strip ends up at the bottom
-     of the slot (closest to the centre, and the viewer). Bottom-row
-     opponents stay upright; the user's mental model is "this player
-     sits next to me, facing the same direction I do." */
-  .slot[data-pos="across"] :global(.panel),
-  .slot[data-pos="across_next"] :global(.panel) {
-    transform: rotate(180deg);
-    transform-origin: center;
+  /* Row layout (settings.display.tableLayout = "row"; quadrant is the
+     default):
+     every opponent sits in the top row in turn order, left to right,
+     and the self panel takes the full width below. All opponents
+     are `flipped` (hand at the top edge). */
+  :global(:root[data-table-layout="row"]) .board[data-opp-count="2"] {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "next across"
+      "self self";
   }
+  :global(:root[data-table-layout="row"]) .board[data-opp-count="3"] {
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-areas:
+      "next across across_next"
+      "self self   self";
+  }
+
+  /* Top-row opponents are laid out flipped (hand at the top edge,
+     creatures toward the centre) by PlayerPanel's `flipped` prop —
+     the same "across the table" reading the old 180° rotation gave,
+     with upright text and art. */
 
   /* Spectator layout: no "around the table" perspective, so every
      seat renders upright and gets equal screen real estate. The grid
