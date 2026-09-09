@@ -135,5 +135,15 @@ spawning a card mid-game.
 - The nightly e2e workflow still targets production only. Pointing it
   at dev is a follow-up.
 - Dev features land behind their flags one at a time: the frame
-  inspector ships with this ADR; card spawn, seat swap, and the
-  replay scrubber follow as separate PRs onto `develop`.
+  inspector ships with this ADR and the card spawner in the PR that
+  follows it; seat swap and the replay scrubber come next.
+- The card spawner is HTTP (`GET /dev/cards`,
+  `POST /games/{id}/dev/spawn`) rather than a new WS action type. The
+  card index already lives in `lobby.Config`, the lobby already owns
+  the mutate-and-broadcast path that deck upload uses, and
+  `requireDevFeature` already gates HTTP. Routing it through
+  `actions.Dispatch` would have meant threading the index into a
+  package that deliberately depends on nothing but `game`, plus a
+  second environment gate on the WS side — more surface for the same
+  result. If a later dev feature genuinely needs to be an action
+  (seat swap will), that gate gets built then, once.
