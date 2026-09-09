@@ -7,7 +7,7 @@
   //   ├──────────────────────┬──────────────────────┤
   //   │  lands               │  enchant / artifact  │
   //   ├─────────────────────────────────────────────┤
-  //   │  ⭕ piles  hand (peek) ……………… phases (self)│
+  //   │  ⭕ piles  hand (peek) ………………… phases (self)│
   //   └─────────────────────────────────────────────┘
   //
   // The bottombar is a single flex row: avatar anchors bottom-left,
@@ -85,6 +85,11 @@
     autopassEnabled?: boolean;
     onPassPriority?: () => void;
     onToggleAutopass?: () => void;
+    // flipped — top-row opponents. The panel keeps its zones in the
+    // same grid but reverses the row order (hand at the top edge,
+    // creatures toward the table centre) instead of rotating 180°,
+    // so text and card art stay upright.
+    flipped?: boolean;
   }
 
   const {
@@ -114,7 +119,24 @@
     onPassPriority,
     onToggleAutopass,
     onActivateAbility,
+    flipped = false,
   }: Props = $props();
+
+  // The seat's commander, wherever it is right now: the command zone
+  // first, then the shared zones (battlefield, stack, exile) and its
+  // graveyard. Feeds the art-crop avatar fallback in PlayerIdentity.
+  const commanderScryfallID = $derived.by((): string | null => {
+    const inCommand = seat.command?.cards?.find((c) => c.scryfall_id);
+    if (inCommand?.scryfall_id) return inCommand.scryfall_id;
+    const zones = [view.battlefield, view.stack, view.exile, seat.graveyard];
+    for (const z of zones) {
+      const hit = z?.cards?.find(
+        (c) => c.is_commander && (c.owner === seat.id || c.controller === seat.id) && c.scryfall_id,
+      );
+      if (hit?.scryfall_id) return hit.scryfall_id;
+    }
+    return null;
+  });
 
   const buckets = $derived.by(() => {
     const out = { creature: [] as CardView[], land: [] as CardView[], right: [] as CardView[] };
@@ -198,6 +220,7 @@
   class="panel"
   class:self={isSelf}
   class:opponent={!isSelf}
+  class:flipped
   role="region"
   aria-label={isSelf ? "your board" : `${seat.name} board`}
 >
@@ -209,52 +232,36 @@
       {selectedCombatCardID}
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
-      onActivateAbility={isSelf ? onActivateAbility : undefined}
+      {onActivateAbility}
     />
   </div>
-  <div class="grid-lands">
-    <BattlefieldRow
-      label="lands"
-      cards={buckets.land}
-      {viewerID}
-      {selectedCombatCardID}
-      onCardClick={handleCardClick}
-      onActivateManaAbility={activateManaAbility}
-      onActivateAbility={isSelf ? onActivateAbility : undefined}
-    />
-  </div>
-  <div class="grid-enchant">
+  <div class="grid-middle">
     <BattlefieldRow
       label="enchant / artifact"
       cards={buckets.right}
+      compact
       {viewerID}
       {selectedCombatCardID}
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
-      onActivateAbility={isSelf ? onActivateAbility : undefined}
+      {onActivateAbility}
+    />
+    <BattlefieldRow
+      label="lands"
+      cards={buckets.land}
+      compact
+      strip
+      {viewerID}
+      {selectedCombatCardID}
+      onCardClick={handleCardClick}
+      onActivateManaAbility={activateManaAbility}
+      {onActivateAbility}
     />
   </div>
-  <div class="grid-bottombar">
-    <PlayerIdentity
-      {seat}
-      {isSelf}
-      {isActive}
-      {hasPriority}
-      {attackTargetable}
-      {isMonarch}
-      {isInitiative}
-      {sendAction}
-      {onDeclareAttack}
-      {onTargetPlayer}
-    />
-    <PileBar {seat} {exile} {isSelf} {sendAction} onDrawCard={isSelf ? onDrawCard : undefined} />
-    {#if !isSelf}
-      <PromisesRow {view} {viewerID} opponentID={seat.id} {sendAction} />
-    {/if}
-    <!-- Hand sits inline with the piles so its clipped-bottom line
-         coincides with the pile baseline (panel bottom) instead of
-         floating in a gap above the bottombar. flex: 1 lets it absorb
-         the remaining width between piles and phases. -->
+  <div class="grid-bottom">
+    <!-- Hand sits inline with the phase widget; its clipped-bottom
+         line coincides with the panel edge. flex: 1 lets it absorb
+         the width the rail freed up. -->
     <div class="hand-zone">
       <Hand
         hand={seat.hand}
@@ -264,6 +271,9 @@
         {viewerID}
       />
     </div>
+    {#if !isSelf}
+      <PromisesRow {view} {viewerID} opponentID={seat.id} {sendAction} />
+    {/if}
     {#if isSelf && view.turn}
       <PhaseDisplay
         turn={view.turn}
@@ -276,109 +286,125 @@
       />
     {/if}
   </div>
+  <!-- The rail is the player card: identity, floating mana and
+       markers on top, the four piles below. It frees the bottom row
+       for the hand and the phase widget. -->
+  <div class="rail">
+    <PlayerIdentity
+      {seat}
+      {commanderScryfallID}
+      {isSelf}
+      {isActive}
+      {hasPriority}
+      {attackTargetable}
+      {isMonarch}
+      {isInitiative}
+      {sendAction}
+      {onDeclareAttack}
+      {onTargetPlayer}
+    />
+    <div class="rail-gap"></div>
+    <PileBar {seat} {exile} {isSelf} {sendAction} onDrawCard={isSelf ? onDrawCard : undefined} />
+  </div>
 </div>
 
 <style>
   .panel {
-    /* S16.5 redesign: identity-first 4×4 grid. Creatures sit at the
-       top, a middle band splits Lands and Enchant/Artifact side-by-
-       side, and the bottom cluster groups hand-over-avatar in the
-       centre with piles to the left and phase-display to the right.
-       On opponent panels the whole thing rotates 180° (Board.svelte)
-       so the avatar reads "across the table".
+    /* Sept 2026 redesign: zones on the left, a player rail on the
+       right. Creatures on top at full size; the middle band splits
+       artifacts/enchantments and the land strip, both one size down;
+       the bottom row is the hand plus (self only) the phase widget.
+       Top-row opponents set `flipped`, which reverses the row order
+       instead of rotating the panel.
 
-       min-height: 0 on every grid item lets cards shrink to fit
-       instead of forcing the panel to grow past its container.
-
-       --card-w / --card-h cascade into every nested Card so the
-       opponent panels can shrink the whole board with one rule
-       (see .panel.opponent below). --pile-w / --thumb-w /
-       --thumb-h play the same role for the PileBar. */
+       --card-w / --card-h cascade into every nested Card; the
+       compact rows override them with --card-w-sm / --card-h-sm.
+       --thumb-w / --thumb-h size the pile thumbnails in the rail. */
     --card-w: calc(120px * var(--card-scale, 1));
     --card-h: calc(168px * var(--card-scale, 1));
-    --pile-w: calc(94px * var(--card-scale, 1));
-    --thumb-w: calc(75px * var(--card-scale, 1));
-    --thumb-h: calc(105px * var(--card-scale, 1));
+    --card-w-sm: calc(88px * var(--card-scale, 1));
+    --card-h-sm: calc(123px * var(--card-scale, 1));
+    --thumb-w: calc(40px * var(--card-scale, 1));
+    --thumb-h: calc(56px * var(--card-scale, 1));
+    --avatar-size-base: 84px;
+    --rail-w: 112px;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1.3fr) minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) var(--rail-w);
+    grid-template-rows: minmax(0, 1fr) auto auto;
     grid-template-areas:
-      "creatures creatures"
-      "lands     enchant"
-      "bottombar bottombar";
+      "creatures rail"
+      "middle    rail"
+      "bottom    rail";
     gap: 6px;
     width: 100%;
     height: 100%;
     box-sizing: border-box;
     padding: 8px;
-    /* Layered surface: subtle inner highlight at the top for a sheen,
-       gentle gradient from raised→sunken so the panel reads like a
-       felt-topped playmat rather than a flat rectangle. */
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0%, rgba(255, 255, 255, 0) 20%),
-      linear-gradient(180deg, #131c34 0%, #0b1325 100%);
-    border: 1px solid rgba(122, 167, 255, 0.1);
-    border-radius: var(--radius-lg);
-    box-shadow:
-      0 12px 30px rgba(0, 0, 0, 0.4),
-      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
     overflow: hidden;
     position: relative;
   }
-  /* Self panel carries a subtle amber accent along the bottom to
-     remind the user which row is theirs without drawing too much
-     attention. */
+  /* Self panel carries a gold hairline so the row that's yours reads
+     without drawing attention from the cards. */
   .panel.self {
-    border-color: rgba(255, 208, 122, 0.18);
-    box-shadow:
-      0 14px 34px rgba(0, 0, 0, 0.45),
-      inset 0 -1px 0 rgba(255, 208, 122, 0.18),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    border-color: rgba(217, 180, 92, 0.28);
+    box-shadow: inset 0 0 0 1px rgba(217, 180, 92, 0.08);
   }
   .panel.opponent {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 20%),
-      linear-gradient(180deg, #0f1628 0%, #080d1b 100%);
-    /* Opponent baseline is shrunk vs. pre-S11.5 (78×110 → 66×92)
-       to leave headroom for the rotated-180° hand fan's bounding
-       box, which adds ~20px above the card height. Scales by
-       --card-scale-opponent (defined on :root by the S11.5
-       settings panel), which uses a gentler curve than self
-       (0.85 / 1 / 1.1) so a "large" setting doesn't overflow the
-       fixed 0.7fr opponent row in the Board grid. */
-    --card-w: calc(66px * var(--card-scale-opponent, 1));
-    --card-h: calc(92px * var(--card-scale-opponent, 1));
-    --pile-w: calc(56px * var(--card-scale-opponent, 1));
-    --thumb-w: calc(44px * var(--card-scale-opponent, 1));
-    --thumb-h: calc(62px * var(--card-scale-opponent, 1));
+    /* Upright opponent (the "next" seat) gets the medium scale — it
+       has the tall row to itself. Scales by --card-scale-opponent
+       (settings) with a gentler curve than self. */
+    --card-w: calc(88px * var(--card-scale-opponent, 1));
+    --card-h: calc(123px * var(--card-scale-opponent, 1));
+    --card-w-sm: calc(64px * var(--card-scale-opponent, 1));
+    --card-h-sm: calc(90px * var(--card-scale-opponent, 1));
+    --thumb-w: calc(36px * var(--card-scale-opponent, 1));
+    --thumb-h: calc(50px * var(--card-scale-opponent, 1));
+    --avatar-size-base: 72px;
+    --rail-w: 104px;
+  }
+  .panel.opponent.flipped {
+    /* Across-table seats: one more size down (the top row is the
+       short one), rows reversed so the hand hugs the top edge and
+       creatures face the centre of the table. */
+    --card-w: calc(64px * var(--card-scale-opponent, 1));
+    --card-h: calc(90px * var(--card-scale-opponent, 1));
+    --card-w-sm: calc(48px * var(--card-scale-opponent, 1));
+    --card-h-sm: calc(67px * var(--card-scale-opponent, 1));
+    --thumb-w: calc(32px * var(--card-scale-opponent, 1));
+    --thumb-h: calc(45px * var(--card-scale-opponent, 1));
+    --avatar-size-base: 60px;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas:
+      "bottom    rail"
+      "middle    rail"
+      "creatures rail";
   }
   .grid-creatures {
     grid-area: creatures;
     min-height: 0;
     min-width: 0;
   }
-  .grid-lands {
-    grid-area: lands;
+  .grid-middle {
+    grid-area: middle;
     min-height: 0;
     min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    gap: 6px;
   }
-  .grid-enchant {
-    grid-area: enchant;
-    min-height: 0;
-    min-width: 0;
-  }
-  /* Bottombar: avatar anchors bottom-left, piles immediately beside
-     it, the hand takes the flex-grow slot in the centre (peeking up
-     from the pile baseline), phase-display (self only) floats bottom-
-     right. All items bottom-align so the clipped hand bottoms line up
-     with the pile bottoms. */
-  .grid-bottombar {
-    grid-area: bottombar;
+  .grid-bottom {
+    grid-area: bottom;
     min-height: 0;
     min-width: 0;
     display: flex;
     align-items: flex-end;
     gap: 8px;
+  }
+  .flipped .grid-bottom {
+    align-items: flex-start;
   }
   .hand-zone {
     flex: 1 1 0;
@@ -387,9 +413,42 @@
     /* Fixed rest-state height matches the Hand's clipped peek. Keeping
        it explicit means the Hand's hover lift (max-height: none plus a
        translateY transform) doesn't grow this wrapper and push the
-       bottombar row taller — the lift stays purely visual. */
+       row taller — the lift stays purely visual. */
     height: calc(var(--card-h, 168px) * 0.55);
     overflow: visible;
     position: relative;
+  }
+  .flipped .hand-zone {
+    align-self: flex-start;
+  }
+  .rail {
+    grid-area: rail;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0 2px 8px;
+    border-left: 1px solid var(--border);
+  }
+  .rail-gap {
+    flex: 1 1 0;
+  }
+  .flipped .rail-gap {
+    flex: 0 0 4px;
+  }
+  /* Short panels (the top row at 900px tall) must never clip the
+     piles: the rail scrolls before it hides anything, and the
+     across-table rails drop the pile labels (the tile's title and
+     aria-label still carry them) and the command-zone hints. */
+  .rail {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .flipped .rail :global(.pile .label),
+  .flipped .rail :global(.cmd-zone .label),
+  .flipped .rail :global(.cmd-zone .hints) {
+    display: none;
   }
 </style>
