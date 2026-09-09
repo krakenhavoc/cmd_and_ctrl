@@ -718,6 +718,44 @@ picker the CR 602 abilities open.
 helper, so a sacrifice cost is validated by the same code whether it
 hangs off a spell, an activated ability or a mana ability.
 
+**"Each player sacrifices a creature of their choice" (S21):** use the
+`EachPlayerSacrifices` primitive, not a loop over opponents:
+
+```go
+EachPlayerSacrifices{ExceptController: true, Match: Creature(), Label: "a creature"}  // Grave Pact
+EachPlayerSacrifices{Match: Creature(), Label: "a creature"}                          // Fleshbag Marauder
+```
+
+"Of their choice" is the rules content: it fans out one
+`PendingChoiceSacrifice` per affected player, each addressed to that
+player and offering only their own permanents, so nobody picks for
+anyone else. `ExceptController` is the difference between "each other
+player" / "each opponent" and "each player" (Fleshbag includes you, and
+is a legal answer to its own trigger).
+
+Two things this deliberately is **not**:
+
+- **Not a targeting prompt.** The effect doesn't target, so hexproof,
+  shroud, protection and "can't be the target" are all irrelevant, and
+  it resolves fine when nobody has a creature. Reusing
+  `PendingChoiceSacrifice` rather than `PendingChoicePickTarget` is
+  what keeps those restrictions from leaking in.
+- **Not optional.** A player with legal permanents must pick one; a
+  player with none is skipped at queue time rather than prompted and
+  allowed to decline.
+
+Prompts are pruned in `executeBattlefieldLeaveLocked` — the single
+choke point for a permanent leaving the battlefield — because an
+outstanding choice *stops priority from passing*, so
+`runStateChecksLocked` is exactly what does not run while one is
+waiting. Put the re-check anywhere else and a creature that dies to a
+drain mid-resolution leaves a prompt nobody can answer.
+
+The client answers it through the shared `ChoicePromptModal` card grid
+with the ordinary `{choice_id, card_ids}` payload; the dispatcher routes
+that shape by the choice's kind, as it already does for `{apply}` and
+`{order}`.
+
 **Event picker:**
 
 | Trigger text | `Watches` | `AppliesTo` |

@@ -1038,6 +1038,17 @@ func Dispatch(g *game.Game, a Action) error {
 			}
 			ids = append(ids, id)
 		}
+		// Two card-pick kinds share the {card_ids: []string} payload:
+		// discard_from_hand (S14) and sacrifice_choice ("each player
+		// sacrifices a creature"). Route by kind, as the {apply} and
+		// {order} payloads already do, rather than minting a third
+		// wire field for the same shape.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceSacrifice {
+			if len(ids) != 1 {
+				return game.ErrInvalidParam
+			}
+			return g.ResolveSacrificeChoice(choiceID, a.Player, ids[0])
+		}
 		return g.ResolvePendingChoice(choiceID, a.Player, ids)
 
 	case TypeActivateManaAbility:

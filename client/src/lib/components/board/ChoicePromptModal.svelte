@@ -188,6 +188,17 @@
   // player can't cover degrades to a decline server-side.
   const isPayUnless = $derived(active?.kind === "pay_unless");
 
+  // S21 sacrifice_choice branch — "each player sacrifices a creature
+  // of their choice" (Grave Pact, Fleshbag Marauder). Reuses the
+  // generic card grid and its {choice_id, card_ids} payload; only the
+  // copy differs, because the default grid describes a discard from a
+  // hand and this is a sacrifice from the battlefield.
+  //
+  // There is no cancel. A sacrifice cost of this kind isn't optional,
+  // and the server has already filtered the options to permanents the
+  // chooser controls — a player with none was never prompted.
+  const isSacrifice = $derived(active?.kind === "sacrifice_choice");
+
   // S19 follow-up: the server flags optional triggers whose effect
   // has no legal target (Reclamation Sage with no opponent artifact,
   // Eternal Witness with an empty graveyard). Until the S20 target
@@ -511,10 +522,17 @@
         </div>
       {:else}
         <h2 id="choice-title">
-          {active.reason || "Choose"} — pick {active.count} card{active.count === 1 ? "" : "s"}
+          {#if isSacrifice}
+            {active.reason || "Sacrifice a permanent"}
+          {:else}
+            {active.reason || "Choose"} — pick {active.count} card{active.count === 1 ? "" : "s"}
+          {/if}
         </h2>
         <p class="hint">
-          {#if isSelfSource}
+          {#if isSacrifice}
+            Choose {active.count === 1 ? "a permanent" : `${active.count} permanents`} you control to
+            sacrifice. This isn't optional — {triggerSourceName(active.source)} is making you.
+          {:else if isSelfSource}
             Pick {active.count} card{active.count === 1 ? "" : "s"} from your hand to discard.
           {:else}
             Pick {active.count} card{active.count === 1 ? "" : "s"} from
@@ -545,7 +563,7 @@
             disabled={selected.size !== active.count}
             onclick={submit}
           >
-            Confirm
+            {isSacrifice ? "Sacrifice" : "Confirm"}
           </button>
         </div>
       {/if}

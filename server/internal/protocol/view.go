@@ -847,6 +847,18 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				}
 			}
 		}
+		// PendingChoiceSacrifice — "each player sacrifices a
+		// creature". Inline the chooser's own candidate permanents as
+		// Options so the picker renders card faces rather than UUIDs.
+		// Battlefield cards are public, so no redaction concern.
+		if c.Kind == game.PendingChoiceSacrifice && len(c.SacrificeOptions) > 0 {
+			v.Options = make([]CardView, 0, len(c.SacrificeOptions))
+			for _, id := range c.SacrificeOptions {
+				if card, ok := g.LookupCardForEffect(id); ok {
+					v.Options = append(v.Options, viewOfCard(card))
+				}
+			}
+		}
 		// PendingChoiceMana carries a color-option list server-
 		// filtered against the chooser's commander identity (see
 		// ActivateManaAbility). Clone the slice so post-wire

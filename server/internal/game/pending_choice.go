@@ -135,6 +135,25 @@ const (
 	// renders this as the ordinary board-click targeting flow, not
 	// a modal.
 	PendingChoicePickTarget PendingChoiceKind = "pick_target"
+
+	// PendingChoiceSacrifice — "each player sacrifices a creature"
+	// (Grave Pact, Dictate of Erebos, Fleshbag Marauder — CR
+	// 701.17a). One choice per affected player, addressed to that
+	// player, carrying the permanents they may choose from.
+	//
+	// Deliberately NOT PendingChoicePickTarget. The effect does not
+	// target, and the difference is observable: a creature with
+	// hexproof, shroud, protection or "can't be the target of
+	// spells or abilities" can still be sacrificed to Grave Pact,
+	// and Grave Pact needs no legal target to resolve. Reusing the
+	// targeting prompt would inherit all of those restrictions
+	// silently.
+	//
+	// The choice is also not optional. A player with legal
+	// permanents must pick one; only a player with none is skipped,
+	// and they are skipped at queue time rather than prompted and
+	// allowed to decline.
+	PendingChoiceSacrifice PendingChoiceKind = "sacrifice_choice"
 )
 
 // PendingChoice is one outstanding "someone needs to pick" entry
@@ -231,6 +250,15 @@ type PendingChoice struct {
 	// (and stamped onto the item for the resolution re-check).
 	// Added in S20 sub-PR 2.
 	pickTargetResume *pickTargetFrame
+
+	// SacrificeOptions is the set of permanents a
+	// PendingChoiceSacrifice's chooser may pick from — their own
+	// permanents matching the effect's spec, computed when the
+	// effect resolved. Wire-serialised so the client can highlight
+	// exactly those cards. Re-checked on submit, since the board can
+	// change between the prompt and the answer (an earlier player's
+	// sacrifice can trigger something that removes a creature).
+	SacrificeOptions []uuid.UUID
 
 	// TriggerOrderIDs is the set of pending-trigger item IDs a
 	// PendingChoiceTriggerOrder entry asks the chooser to order.
@@ -1580,4 +1608,99 @@ func findBattlefieldCard(g *Game, id uuid.UUID) *Card {
 		}
 	}
 	return nil
+}
+
+// ResolveSacrificeChoice answers a PendingChoiceSacrifice: the chooser
+// names one of their own permanents and it is sacrificed (CR 701.17a).
+//
+// The option list is re-checked rather than trusted. Grave Pact
+// prompts every other player at once, and an earlier answer can change
+// a later player's board — a Blood Artist drain that kills something,
+// a sacrifice that triggers a Butcher of Malakir. A card that has left
+// the battlefield, or is no longer theirs, is refused; the choice
+// stays queued so they can pick again.
+//
+// A choice whose chooser has no legal permanent left is dropped rather
+// than left blocking the queue: the requirement is "sacrifice a
+// creature if you can", and they no longer can.
+//
+// Caller must NOT hold g.mu.
+func (g *Game) ResolveSacrificeChoice(choiceID, chooserID, cardID uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	idx := -1
+	for i, c := range g.PendingChoices {
+		if c != nil && c.ID == choiceID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ErrPendingChoiceNotFound
+	}
+	choice := g.PendingChoices[idx]
+	if choice.Kind != PendingChoiceSacrifice {
+		return ErrInvalidParam
+	}
+	if choice.Chooser != chooserID {
+		return ErrNotTheChooser
+	}
+	offered := false
+	for _, id := range choice.SacrificeOptions {
+		if id == cardID {
+			offered = true
+			break
+		}
+	}
+	if !offered {
+		return ErrInvalidParam
+	}
+	// Still theirs, still on the battlefield?
+	c := findBattlefieldCard(g, cardID)
+	if c == nil {
+		return ErrCardNotFound
+	}
+	if c.Controller != chooserID {
+		return ErrCardCallerMismatch
+	}
+	g.dequeueChoiceLocked(idx)
+	if err := g.sacrificePermanentLocked(cardID); err != nil {
+		return err
+	}
+	g.runStateChecksLocked()
+	return nil
+}
+
+// pruneSacrificeChoicesLocked drops any queued sacrifice choice whose
+// chooser has run out of legal permanents, and trims option lists to
+// what is still on the battlefield under that chooser's control.
+//
+// Called after each sacrifice resolves, because one player's answer
+// can empty another player's board. Without it a Grave Pact whose
+// last creature died to a drain would leave a prompt nobody can
+// answer, wedging the queue.
+//
+// Caller must hold g.mu.
+func (g *Game) pruneSacrificeChoicesLocked() {
+	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
+		c := g.PendingChoices[i]
+		if c == nil || c.Kind != PendingChoiceSacrifice {
+			continue
+		}
+		live := make([]uuid.UUID, 0, len(c.SacrificeOptions))
+		for _, id := range c.SacrificeOptions {
+			card := findBattlefieldCard(g, id)
+			if card != nil && card.Controller == c.Chooser {
+				live = append(live, id)
+			}
+		}
+		if len(live) == 0 {
+			g.dequeueChoiceLocked(i)
+			continue
+		}
+		c.SacrificeOptions = live
+	}
 }

@@ -195,6 +195,11 @@ export interface PendingChoiceView {
     | "pay_unless"
     | "trigger_order"
     | "pick_target"
+    // S21: "each player sacrifices a creature of their choice"
+    // (Grave Pact, Fleshbag Marauder). Answered with the generic
+    // {choice_id, card_ids} payload — one entry — and rendered by the
+    // shared card grid with sacrifice copy.
+    | "sacrifice_choice"
     | string;
   chooser: string;
   from_player: string;

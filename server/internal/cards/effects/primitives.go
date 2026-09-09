@@ -282,3 +282,47 @@ func (p PayUnless) Apply(ctx *Context) error {
 			return decline(NewContext(g, item))
 		})
 }
+
+// EachPlayerSacrifices is "each player sacrifices a creature" (Fleshbag
+// Marauder), "each other player sacrifices a creature" (Grave Pact) or
+// "each opponent sacrifices a creature" (Butcher of Malakir) — CR
+// 701.17a.
+//
+// Every affected player chooses their own, so this fans out one prompt
+// per player rather than picking for them; that is the whole rules
+// content of the card, and it is why the effect is not targeted. A
+// creature with hexproof or protection is still a legal choice, and
+// the effect resolves whether or not anyone has a creature.
+//
+// Set ExceptController for "each OTHER player" / "each opponent".
+// Leave Match nil for "a permanent"; pass Creature() for the usual
+// "a creature".
+type EachPlayerSacrifices struct {
+	// ExceptController skips the effect's controller — the
+	// difference between Grave Pact ("each other player") and
+	// Fleshbag Marauder ("each player", you included).
+	ExceptController bool
+
+	// Match narrows what may be chosen. Nil means any permanent.
+	Match CardPredicate
+
+	// Label is the picker's banner copy: "a creature".
+	Label string
+}
+
+func (e EachPlayerSacrifices) Apply(ctx *Context) error {
+	except := uuid.Nil
+	if e.ExceptController {
+		except = ctx.Controller()
+	}
+	var spec *game.TargetSpec
+	if e.Match != nil {
+		spec = sacrificeSpec(e.Label, e.Match)
+	}
+	label := e.Label
+	if label == "" {
+		label = "a permanent"
+	}
+	ctx.Game.EachPlayerSacrificesForEffect(ctx.Source(), except, spec, "Sacrifice "+label)
+	return nil
+}

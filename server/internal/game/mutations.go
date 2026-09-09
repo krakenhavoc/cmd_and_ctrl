@@ -1884,6 +1884,13 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 		NewZone: dest,
 	})
 	g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, Actor: actor, NewZone: dest})
+	// A permanent leaving the battlefield is the one event that can
+	// invalidate a queued "sacrifice a creature of your choice" prompt
+	// (Grave Pact), so re-check them here rather than in
+	// runStateChecksLocked — a queued choice stops priority from
+	// passing, so the state-check loop is exactly what does NOT run
+	// while such a prompt is outstanding. No-op when none is queued.
+	g.pruneSacrificeChoicesLocked()
 	return nil
 }
 
