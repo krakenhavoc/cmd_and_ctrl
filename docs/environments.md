@@ -45,7 +45,7 @@ turned **on** in production.
 |---|---|---|
 | Raw protocol frame inspector | `CMDCTRL_DEV_FRAME_INSPECTOR` | shipped |
 | Card spawn | `CMDCTRL_DEV_CARD_SPAWN` | shipped |
-| Drive all seats from one browser | `CMDCTRL_DEV_SEAT_SWAP` | planned |
+| Drive all seats from one browser | `CMDCTRL_DEV_SEAT_SWAP` | shipped |
 | Replay scrubber + seeded shuffles | `CMDCTRL_DEV_REPLAY_SCRUBBER` | planned |
 
 `GET /config` reports the live answer:
@@ -92,6 +92,34 @@ Life totals, counters, poison, energy and phase are **not** here —
 an admin session can already set those on any seat through the
 ordinary action protocol, and a second UI for them would just be a
 duplicate to keep in sync.
+
+### Seat swap
+
+The **SEAT** dropdown in the dev dock switches which seat you view
+and act as. Admin sessions only.
+
+This adds no server capability — an admin session could always bind
+to any seat by putting `?player=<uuid>` on the WebSocket URL
+(`WSAuthorizer`, `case auth.RoleAdmin`). What the control adds is one
+click instead of hand-editing a URL, which is the difference between
+the capability existing and it being used.
+
+Two things that surprise people:
+
+- **Binding to a seat gives up the admin bypass.** The hub stamps the
+  bound seat onto every action as its caller, so player-scoped gates
+  (priority, active player, "you may not act for another seat") now
+  apply to you as that seat. That is usually what you want when
+  testing what a seat can do — but if you need the moderator
+  override, switch back to *— spectate —*.
+- **Switching reconnects.** `ws.ts` treats a URL change as a retarget
+  and resets the seq watermark and rendered snapshot. The new seat
+  starts from its own first snapshot, so a brief blank frame is
+  expected, not a bug.
+
+A player or spectator session never sees the control, and forging the
+parameter would not help: `WSAuthorizer` resolves the seat from the
+principal for those roles and ignores `?player=` entirely.
 
 **Adding a dev feature.** Add the field to `appenv.Features`, register
 its variable in `featureVars`, mirror the JSON key in
