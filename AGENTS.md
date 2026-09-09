@@ -811,6 +811,38 @@ every looked-at card must appear in exactly one list: scry moves all of
 them, so an answer that omits one is a client bug, not shorthand for
 "leave it".
 
+**"This permanent enters tapped" (S21):** declare a self-replacement,
+not an `OnETB` tap:
+
+```go
+Replacements: []game.ReplacementEffect{SelfEntersTapped()},
+```
+
+The two are observably different, which is why the machinery exists: an
+`OnETB` tap means the permanent enters UNTAPPED and is tapped a beat
+later, emitting `EventTapCard`, so anything watching for a tap or for an
+untapped permanent entering sees the wrong thing. A replacement emits
+none. (Worn Powerstone used the workaround and said so in a comment; it
+now uses the real thing, and the test pins the difference by counting
+tap events rather than by checking `Tapped`, which both approaches
+satisfy.)
+
+This needed an engine change worth knowing about: the replacement
+pipeline runs **pre-push**, so an entering card is not on the
+battlefield and the ordinary catalog walk in
+`gatherActiveReplacementsLocked` cannot find its own effect.
+There is now a third gathering block that consults the ENTERING card's
+own replacements, passing the card itself as `source` so an `AppliesTo`
+comparing `ev.CardID` to `source.InstanceID` identifies "this
+permanent". It is skipped for a card already on the battlefield, so a
+permanent in play can never match both blocks and apply the same effect
+twice.
+
+Lands may carry `OnETB` and mana abilities like any other permanent —
+the ten-Temple cycle in `temples.go` combines all three (enters tapped,
+ETB scry, pipe-syntax dual) and is written as a loop over a table, since
+ten near-identical files is ten places to fix one mistake.
+
 **Event picker:**
 
 | Trigger text | `Watches` | `AppliesTo` |
