@@ -57,8 +57,8 @@ export function bucketForBattlefield(c: CardView): BattlefieldBucket {
 // SeatPosition is one of four quadrants on the table:
 //   - self          : bottom-right, upright (the viewer)
 //   - next          : bottom-left, upright (sits next to self)
-//   - across        : top-right, rotated 180° (sits across from self)
-//   - across_next   : top-left, rotated 180° (sits across, next to "across")
+//   - across        : top-left, rotated 180° (two seats on, diagonal from self)
+//   - across_next   : top-right, rotated 180° (three seats on, directly across)
 //
 // Quadrants — not rotated 90° edges — because a 3- or 4-player game
 // reads better when every panel is either upright (the bottom row) or
@@ -82,8 +82,9 @@ export type SeatPlacements = Record<SeatPosition, PlayerView | null>;
 // "Clockwise from self" matches the prior table-renderer ordering and
 // the way real Commander tables seat people: the next player to your
 // left takes the next turn. With three opponents, that's
-// left → across → right, which maps to next → across → across_next
-// in the quadrant scheme.
+// bottom-left → top-left → top-right, which maps to next → across →
+// across_next in the quadrant scheme (Board.svelte places them so the
+// order really does run clockwise on screen).
 //
 // Spectators (no viewerID) fall back to original seat order across
 // self → next → across → across_next so the board still renders

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { uploadDeck, type UploadDeckResponse } from "../api";
   import { LobbyApiError, type ApiViolation } from "../session";
+  import Icon from "./Icon.svelte";
 
   // DeckUploadForm is the shared deck-import textarea + URL field +
   // submit button + violation/warning rendering used by both
@@ -88,13 +89,16 @@
 
 <div class="deck-upload-form">
   <textarea
-    rows="8"
+    rows="7"
     placeholder={"https://moxfield.com/decks/abc123\n\n— or —\n\nCommander:\n1 Atraxa, Praetors' Voice\n\nMainboard:\n1 Sol Ring\n..."}
     bind:value={source}
     aria-label="decklist source"
   ></textarea>
   <div class="row-actions">
-    <button onclick={submit} disabled={busy}>
+    {#if successMessage}
+      <p class="success"><Icon name="check" size={13} /> {successMessage}</p>
+    {/if}
+    <button class="primary" onclick={submit} disabled={busy}>
       {#if busy}
         {#if looksLikeURL(source)}
           fetching from {sourceHostname(source)}…
@@ -109,77 +113,91 @@
     </button>
   </div>
   {#if errorMessage}
-    <pre class="error deck-error">{errorMessage}</pre>
+    <pre class="deck-error">{errorMessage}</pre>
   {/if}
-  {#if violations.length}
-    <ul class="violations">
+  {#if violations.length || warnings.length}
+    <ul class="viol">
       {#each violations as v (v.code + (v.card ?? "") + v.message)}
-        <li><span class="code">{v.code}</span> · {violationLabel(v)}</li>
+        <li class="vi"><span class="code">{v.code}</span>{violationLabel(v)}</li>
       {/each}
-    </ul>
-  {/if}
-  {#if warnings.length}
-    <ul class="warnings">
       {#each warnings as v (v.code + (v.card ?? "") + v.message)}
-        <li><span class="code">{v.code}</span> · {violationLabel(v)}</li>
+        <li class="vi warn"><span class="code">{v.code}</span>{violationLabel(v)}</li>
       {/each}
     </ul>
-  {/if}
-  {#if successMessage}
-    <p class="success">{successMessage}</p>
   {/if}
 </div>
 
 <style>
   textarea {
     width: 100%;
-    font-family: monospace;
-    font-size: 0.9em;
-    padding: 0.5rem;
-    margin-top: 0.5rem;
+    min-height: 128px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.5;
+    padding: 10px 12px;
+    margin-top: 10px;
     box-sizing: border-box;
+    resize: vertical;
   }
   .row-actions {
     display: flex;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-  }
-  .error {
-    color: #c00;
+    gap: 12px;
+    align-items: center;
+    justify-content: flex-end;
+    margin-top: 8px;
   }
   .deck-error {
     white-space: pre-wrap;
-    margin-top: 0.5rem;
-    background: #fee;
-    padding: 0.5rem;
-    border-radius: 3px;
+    margin: 10px 0 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(255, 107, 107, 0.08);
+    border: 1px solid rgba(255, 107, 107, 0.3);
+    color: var(--fg);
+    font-family: var(--font-ui);
+    font-size: 12.5px;
   }
-  .violations,
-  .warnings {
-    margin-top: 0.5rem;
-    padding: 0.5rem 0.75rem 0.5rem 1.5rem;
-    border-radius: 3px;
-    font-size: 0.85em;
+  .viol {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
-  .violations {
-    background: #fee;
-    color: #900;
+  .vi {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(255, 107, 107, 0.08);
+    border: 1px solid rgba(255, 107, 107, 0.3);
+    font-size: 12.5px;
+    color: var(--fg);
   }
-  .warnings {
-    background: #ffb;
-    color: #660;
+  .vi .code {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--danger);
+    font-weight: 700;
+    flex: 0 0 auto;
   }
-  .violations li,
-  .warnings li {
-    margin: 0.15rem 0;
+  .vi.warn {
+    background: var(--gold-soft);
+    border-color: rgba(217, 180, 92, 0.4);
   }
-  .code {
-    font-family: monospace;
-    font-size: 0.9em;
-    opacity: 0.75;
+  .vi.warn .code {
+    color: var(--gold-strong);
   }
   .success {
-    color: #060;
-    margin-top: 0.5rem;
+    margin: 0;
+    margin-right: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--mint);
+    font-size: 12.5px;
   }
 </style>

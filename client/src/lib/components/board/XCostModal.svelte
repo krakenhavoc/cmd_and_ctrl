@@ -92,12 +92,18 @@
 </script>
 
 {#if card}
-  <div class="backdrop" role="dialog" aria-modal="true" aria-labelledby="x-cost-title">
-    <div class="modal">
-      <h2 id="x-cost-title">Choose X for {card.name}</h2>
-      <p class="cost">cost: <span class="mono">{card.mana_cost ?? "{X}"}</span></p>
+  <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="x-cost-title">
+    <div class="prompt-modal x-modal">
+      <h2 id="x-cost-title">
+        Choose X for {card.name}
+        <span class="prompt-src" aria-hidden="true">{card.mana_cost ?? "{X}"}</span>
+      </h2>
+      <p class="prompt-hint">
+        Pick a value for X. The check below reads your untapped sources and says whether auto-tap
+        can pay for it.
+      </p>
       <label class="x-row">
-        <span>X =</span>
+        <span class="x-label">X =</span>
         <input
           type="number"
           min="0"
@@ -106,108 +112,74 @@
           oninput={(e) => clampX((e.currentTarget as HTMLInputElement).value)}
           aria-label="X value"
         />
-      </label>
-      <p class="status" class:ok={preview?.ok === true} class:bad={preview?.ok === false}>
-        {#if loading && !preview}
-          checking…
-        {:else if preview?.ok}
-          affordable — auto-tap would use {preview.plan?.length ?? 0} source{(preview.plan
-            ?.length ?? 0) === 1
-            ? ""
-            : "s"}
-        {:else if preview}
-          not affordable
-          {#if preview.missing && preview.missing.length > 0}
-            — missing {preview.missing.join(" ")}
+        <span class="status" class:ok={preview?.ok === true} class:bad={preview?.ok === false}>
+          {#if loading && !preview}
+            checking…
+          {:else if preview?.ok}
+            affordable — auto-tap would use {preview.plan?.length ?? 0} source{(preview.plan
+              ?.length ?? 0) === 1
+              ? ""
+              : "s"}
+          {:else if preview}
+            not affordable
+            {#if preview.missing && preview.missing.length > 0}
+              — missing {preview.missing.join(" ")}
+            {/if}
+          {:else}
+            &nbsp;
           {/if}
-        {:else}
-          &nbsp;
-        {/if}
-      </p>
-      <div class="actions">
-        <button type="button" class="cancel" onclick={onCancel}>Cancel</button>
-        <button type="button" class="confirm" onclick={confirm}>Cast with X = {x}</button>
+        </span>
+      </label>
+      <div class="prompt-foot">
+        <button type="button" class="ghost" onclick={onCancel}
+          >Cancel <span class="kbd">Esc</span></button
+        >
+        <button type="button" class="primary" onclick={confirm}>
+          Cast with X = {x} <span class="kbd">↵</span>
+        </button>
       </div>
     </div>
   </div>
 {/if}
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.65);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1100;
-  }
-  .modal {
-    background: #1c1f2a;
-    color: #e6e8ee;
-    border: 1px solid #3a4055;
-    border-radius: 6px;
-    padding: 1.25rem 1.5rem;
-    min-width: 320px;
-    max-width: 440px;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
-  }
-  h2 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.05rem;
-    color: #f4ead5;
-  }
-  .cost {
-    margin: 0 0 0.75rem 0;
-    color: #aab2c8;
-    font-size: 0.9rem;
-  }
-  .mono {
-    font-family: "Menlo", "Monaco", monospace;
-    color: #e6e8ee;
+  .x-modal {
+    width: min(440px, calc(100vw - 32px));
   }
   .x-row {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 1rem;
+    gap: 10px;
+    font-size: 14px;
+  }
+  .x-label {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--fg);
   }
   .x-row input {
     width: 5rem;
-    font-size: 1.1rem;
-    padding: 0.25rem 0.4rem;
-    background: #0f1118;
-    color: #e6e8ee;
-    border: 1px solid #3a4055;
-    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 15px;
+    padding: 6px 10px;
+    text-align: center;
   }
   .status {
-    margin: 0.6rem 0 0.9rem 0;
-    font-size: 0.85rem;
-    color: #aab2c8;
-    min-height: 1.2em;
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    color: var(--fg-muted);
+    line-height: 1.35;
   }
   .status.ok {
-    color: #6fe3a4;
+    color: var(--mint);
   }
   .status.bad {
-    color: #ff9a9a;
+    color: var(--danger);
   }
-  .actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-  }
-  .actions button {
-    padding: 0.4rem 0.8rem;
-    border-radius: 4px;
-    border: 1px solid #3a4055;
-    background: #262a38;
-    color: #e6e8ee;
-    cursor: pointer;
-  }
-  .actions .confirm {
-    background: #2d5a3f;
-    border-color: #3f7a55;
+  .primary .kbd {
+    color: var(--accent-fg);
+    border-color: rgba(28, 21, 3, 0.35);
+    opacity: 0.8;
   }
 </style>
