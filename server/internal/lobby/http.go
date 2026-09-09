@@ -126,6 +126,7 @@ type GameEvictor interface {
 //	GET  /games             — authenticated: list known games
 //	GET  /games/{id}        — authenticated: game metadata
 //	POST /games/{id}/join   — invite + name → session + player_id
+//	GET  /games/{id}/preview?t=<invite> — table name / state / seats for an invite holder
 //	POST /games/{id}/start  — authenticated: transition lobby → active
 //	GET  /me                — authenticated: principal echo (for client bootstrap)
 //	POST /logout            — revoke the caller's session server-side
@@ -173,6 +174,9 @@ func Handler(c Config) http.Handler {
 	mux.Handle("POST /admin/login", limit.Middleware(handlerFunc(c, adminLogin)))
 	mux.Handle("POST /games/{id}/join", limit.Middleware(handlerFunc(c, joinGame)))
 	mux.Handle("POST /games/{id}/spectate", limit.Middleware(handlerFunc(c, spectateGame)))
+	// Invite-page preview: same bucket as join, since the invite in
+	// the query string is the credential being brute-forced.
+	mux.Handle("GET /games/{id}/preview", limit.Middleware(handlerFunc(c, previewGame)))
 
 	// Discord OAuth (S12.5). All three are unauthenticated — they
 	// either run before any session exists or carry their own
@@ -374,6 +378,33 @@ func joinGame(c Config, w http.ResponseWriter, r *http.Request) error {
 		Principal: issued,
 		Game:      &meta,
 		PlayerID:  playerID,
+	})
+}
+
+// previewResponse is the body of GET /games/{id}/preview.
+type previewResponse struct {
+	Game     GameMeta    `json:"game"`
+	Invite   PreviewKind `json:"invite"`
+	MaxSeats int         `json:"max_seats"`
+}
+
+// previewGame lets an invite holder see the table before joining:
+// GET /games/{id}/preview?t=<invite>. Unauthenticated — the invite
+// is the credential — and rate-limited with join. The meta comes
+// back scrubbed (see Lobby.Preview).
+func previewGame(c Config, w http.ResponseWriter, r *http.Request) error {
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	meta, kind, err := c.Lobby.Preview(id, r.URL.Query().Get("t"))
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, previewResponse{
+		Game:     meta,
+		Invite:   kind,
+		MaxSeats: game.MaxPlayers,
 	})
 }
 
