@@ -1119,7 +1119,7 @@ func TestSolRingTapAddsTwoColorless(t *testing.T) {
 		"6ad8011d-3471-4369-9d68-b264cc027487",
 	)
 
-	if err := g.ActivateManaAbility(caster.ID, solID, 0); err != nil {
+	if err := g.ActivateManaAbility(caster.ID, solID, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
 	if len(caster.ManaPool) != 2 {
@@ -1140,7 +1140,7 @@ func TestSolRingTapAddsTwoColorless(t *testing.T) {
 		}
 	}
 	// Re-activating while tapped should fail.
-	if err := g.ActivateManaAbility(caster.ID, solID, 0); err == nil {
+	if err := g.ActivateManaAbility(caster.ID, solID, 0, game.ManaAbilityParams{}); err == nil {
 		t.Errorf("second activation on tapped Sol Ring should have returned an error")
 	}
 	// No PendingChoice — no pipe in the produced string.
@@ -1156,7 +1156,7 @@ func TestBirdsOfParadiseTapQueuesMagicChoice(t *testing.T) {
 		"d3a0b660-358c-41bd-9cd2-41fbf3491b1a",
 	)
 
-	if err := g.ActivateManaAbility(caster.ID, birdID, 0); err != nil {
+	if err := g.ActivateManaAbility(caster.ID, birdID, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
 	// No mana lands in the pool yet — deferred to resolve_choice.
@@ -1210,7 +1210,7 @@ func TestArcaneSignetNarrowsToCommanderIdentity(t *testing.T) {
 		"0bc7f093-bef0-4f1a-852c-4b75ebf54838",
 	)
 
-	if err := g.ActivateManaAbility(caster.ID, signetID, 0); err != nil {
+	if err := g.ActivateManaAbility(caster.ID, signetID, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
 	if len(g.PendingChoices) != 1 {
@@ -1251,7 +1251,7 @@ func TestBasicLandSyntheticAbilityAddsOneMana(t *testing.T) {
 		Controller: caster.ID,
 	})
 
-	if err := g.ActivateManaAbility(caster.ID, forestID, 0); err != nil {
+	if err := g.ActivateManaAbility(caster.ID, forestID, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility on Forest: %v", err)
 	}
 	if len(caster.ManaPool) != 1 || caster.ManaPool[0].Color != "G" {

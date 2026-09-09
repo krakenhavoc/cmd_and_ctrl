@@ -1034,6 +1034,11 @@ func Dispatch(g *game.Game, a Action) error {
 		var p struct {
 			CardID       string `json:"card_id"`
 			AbilityIndex int    `json:"ability_index"`
+			// sacrifice_ids names the permanents paid to a
+			// sacrifice-another cost (Ashnod's Altar). Same field
+			// name and shape as activate_ability's, so the client
+			// reuses one picker for both ability kinds.
+			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1042,7 +1047,16 @@ func Dispatch(g *game.Game, a Action) error {
 		if err != nil {
 			return fmt.Errorf("activate_mana_ability card_id: %w", err)
 		}
-		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex)
+		sacIDs := make([]uuid.UUID, 0, len(p.SacrificeIDs))
+		for _, raw := range p.SacrificeIDs {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return fmt.Errorf("activate_mana_ability sacrifice_ids: %w", err)
+			}
+			sacIDs = append(sacIDs, id)
+		}
+		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex,
+			game.ManaAbilityParams{SacrificeIDs: sacIDs})
 
 	case TypeSetMaxHandSize:
 		if a.Player == uuid.Nil {

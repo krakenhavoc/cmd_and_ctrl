@@ -553,6 +553,14 @@ export interface ManaAbilityView {
   tap_cost?: boolean;
   sacrifice_cost?: boolean;
   produced?: string;
+  // S21: "Sacrifice a creature: Add {C}{C}" (Ashnod's Altar) — a
+  // mana ability whose cost sacrifices ANOTHER permanent. Mirrors
+  // the identically-named fields on ActivatedAbilityView: the label
+  // is the clause for the modal banner, and sacrifice_options lists
+  // the legal choices already filtered to the controller
+  // (CR 701.17b). Absent means the cost needs no extra choice.
+  sacrifice_label?: string;
+  sacrifice_options?: LegalTargetsView;
 }
 
 export interface TurnView {

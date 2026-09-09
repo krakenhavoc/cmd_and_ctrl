@@ -32,6 +32,7 @@
     ActionType,
     CardView,
     GameView,
+    ManaAbilityView,
     PlayerView,
     ZoneView,
   } from "../../protocol";
@@ -79,6 +80,11 @@
     // the follow-up (sacrifice pick, targeting) because those are
     // board-wide modals. Only wired for the viewer's own panel.
     onActivateAbility?: (card: CardView, abilityIndex: number) => void;
+    // S21: a mana ability on one of this seat's permanents needs a
+    // sacrifice chosen before it can be activated. Board owns that
+    // modal, so the panel forwards the click instead of sending the
+    // action. Only wired for the viewer's own panel.
+    onManaSacrificeCost?: (card: CardView, ability: ManaAbilityView) => void;
     // Priority controls forwarded to PhaseDisplay — only the
     // self panel mounts the widget, so these only matter when
     // isSelf=true but they're plumbed uniformly for prop typing.
@@ -114,6 +120,7 @@
     onPassPriority,
     onToggleAutopass,
     onActivateAbility,
+    onManaSacrificeCost,
   }: Props = $props();
 
   const buckets = $derived.by(() => {
@@ -128,14 +135,26 @@
   // the viewer controls. Only installed on the viewer's own panel;
   // opponent panels pass undefined down so the context menu stays
   // closed on cards they don't control.
+  //
+  // S21: a mana ability whose cost sacrifices ANOTHER permanent
+  // (Ashnod's Altar) needs a choice first, and that modal is
+  // board-wide — so the click is handed to Board, which owns the
+  // same SacrificeCostModal the CR 602 abilities use and sends the
+  // action itself once a card is picked.
   const activateManaAbility = $derived(
     isSelf
-      ? (card: CardView, abilityIndex: number) =>
+      ? (card: CardView, abilityIndex: number) => {
+          const ability = (card.mana_abilities ?? []).find((a) => a.index === abilityIndex);
+          if (ability?.sacrifice_options && onManaSacrificeCost) {
+            onManaSacrificeCost(card, ability);
+            return;
+          }
           sendAction(
             "activate_mana_ability",
             { card_id: card.instance_id, ability_index: abilityIndex },
             seat.id,
-          )
+          );
+        }
       : undefined,
   );
 

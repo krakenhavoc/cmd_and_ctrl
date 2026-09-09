@@ -24,6 +24,7 @@
     ActivatedAbilityView,
     CardView,
     GameView,
+    ManaAbilityView,
     ZoneView,
   } from "../../protocol";
   import { seatPlacements, type SeatPosition } from "../../cardTypes";
@@ -333,10 +334,17 @@
   // (n/a today), pay the costs, then choose targets. So a sacrifice
   // cost is picked BEFORE targeting, and both are sent together in
   // one activate_ability — the server pays and announces atomically.
-  let sacrificePrompt = $state<{
-    card: CardView;
-    ability: ActivatedAbilityView;
-  } | null>(null);
+  //
+  // The same modal serves both ability kinds: a CR 602 activated
+  // ability (which may go on to target) and a CR 605 mana ability
+  // whose cost sacrifices another permanent (Ashnod's Altar). The
+  // prompt is tagged so confirm knows which action to send — mana
+  // abilities never target, so they fire immediately.
+  type SacrificePrompt =
+    | { kind: "ability"; card: CardView; ability: ActivatedAbilityView }
+    | { kind: "mana"; card: CardView; ability: ManaAbilityView };
+
+  let sacrificePrompt = $state<SacrificePrompt | null>(null);
 
   const sacrificeOptions = $derived.by(() => {
     const p = sacrificePrompt;
@@ -349,16 +357,34 @@
     const ability = (card.activated_abilities ?? []).find((a) => a.index === index);
     if (!ability) return;
     if (ability.sacrifice_options) {
-      sacrificePrompt = { card, ability };
+      sacrificePrompt = { kind: "ability", card, ability };
       return;
     }
     continueActivation(card, ability, []);
+  }
+
+  // S21: a mana ability with a sacrifice-another cost, handed up by
+  // PlayerPanel because the picker is board-wide.
+  function handleManaSacrificeCost(card: CardView, ability: ManaAbilityView): void {
+    sacrificePrompt = { kind: "mana", card, ability };
   }
 
   function confirmSacrifice(instanceID: string): void {
     const p = sacrificePrompt;
     sacrificePrompt = null;
     if (!p) return;
+    if (p.kind === "mana") {
+      sendAction(
+        "activate_mana_ability",
+        {
+          card_id: p.card.instance_id,
+          ability_index: p.ability.index,
+          sacrifice_ids: [instanceID],
+        },
+        viewerID ?? undefined,
+      );
+      return;
+    }
     continueActivation(p.card, p.ability, [instanceID]);
   }
 
@@ -496,6 +522,7 @@
             {onPassPriority}
             {onToggleAutopass}
             onActivateAbility={handleActivateAbility}
+            onManaSacrificeCost={handleManaSacrificeCost}
           />
         </div>
       {/if}

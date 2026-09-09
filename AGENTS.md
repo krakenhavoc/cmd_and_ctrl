@@ -391,10 +391,35 @@ PendingChoice for the controller to resolve:
   the engine narrows the pipe set against the controller's commander
   identity at activation time.
 
-Sacrifice-cost abilities (Lotus Petal) parse but reject at activation
-in S15 — `ManaAbilityCost{Tap: true, Sacrifice: true}` will fail with
-`ErrInvalidParam`. Keep adding them to specs; the activation gate
-opens in a later sprint.
+Mana abilities can carry cost components beyond `{T}`:
+
+| Cost | Field | Card |
+| --- | --- | --- |
+| `{T}` | `ManaAbilityCost{Tap: true}` | Sol Ring |
+| Sacrifice this | `ManaAbilityCost{Sacrifice: true}` | Lotus Petal, Treasure |
+| Sacrifice another permanent | `ManaAbilityCost{SacrificeOther: SacrificeACreature().SacrificeOther}` | Ashnod's Altar, Phyrexian Altar |
+
+`SacrificeOther` takes a `*game.TargetSpec`, the same shape the CR 602
+activated abilities use — build it with the `SacrificeACreature()` /
+`SacrificeAPermanent()` helpers and take their `.SacrificeOther` field
+rather than writing a spec by hand. The engine filters the candidate
+set to the controller's own permanents (CR 701.17b), stamps it onto
+`ManaAbilityView.SacrificeOptions`, and the client reuses
+`SacrificeCostModal` to pick one. The chosen card comes back in the
+`activate_mana_ability` payload as `sacrifice_ids`, and
+`ManaAbilityParams.SacrificeIDs` carries it into the engine.
+
+`ActivateManaAbility` validates every component before paying any of
+them, so an illegal sacrifice choice leaves the source untapped. Mana
+lands in the pool first and the dies-triggers go on the stack after
+(CR 605.3a — a mana ability doesn't use the stack, but the sacrifice
+still triggers), which is what makes Ashnod's Altar + a drain outlet
+work.
+
+Summoning sickness applies to any mana ability with a tap cost on a
+creature source (CR 302.1) — Birds of Paradise, Palladium Myr. The
+engine enforces it inside `ActivateManaAbility`; specs don't declare
+it.
 
 For non-mana, non-static activated abilities (planeswalker +1/-1,
 equip, cycling, etc.), wait — see the deferral list below.

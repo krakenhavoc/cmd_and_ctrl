@@ -2485,7 +2485,21 @@ func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 // controller's commander's color identity before queuing the pick.
 //
 // Added in S15 sub-PR 2.
-func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int) error {
+// ManaAbilityParams carries the choices a mana ability's cost needs
+// from the activator. Empty for the common case — a bare "{T}: Add
+// {C}" needs nothing.
+//
+// Mana abilities don't use the stack (CR 605.3a), so unlike
+// ActivateAbilityParams there is no target list here: a mana ability
+// that targeted would have to resolve, and none does.
+type ManaAbilityParams struct {
+	// SacrificeIDs names the permanents paying a SacrificeOther
+	// component. Exactly one for a single-permanent clause; empty
+	// when the ability has no such cost.
+	SacrificeIDs []uuid.UUID
+}
+
+func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, params ManaAbilityParams) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -2518,32 +2532,62 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int) e
 		return ErrInvalidParam
 	}
 	ab := abilities[abilityIdx]
-	// Pay costs, tap before sacrifice (CR 601.2h — costs are paid
-	// together, but the tap has to happen while the permanent is
-	// still on the battlefield, and a tapped permanent can't pay a
-	// {T} cost). Both are checked before either is paid so a
-	// half-paid cost can't strand the permanent.
-	if ab.TapCost && card.Tapped {
-		return ErrAlreadyTapped
+	// --- validate every cost before paying any ------------------
+	//
+	// Same discipline as ActivateCatalogAbility: a half-paid cost
+	// must never strand the permanent. Ashnod's Altar with a tapped
+	// source has to fail WITHOUT eating the creature.
+	if ab.TapCost {
+		if card.Tapped {
+			return ErrAlreadyTapped
+		}
+		// CR 302.1: a creature's {T} ability needs it to have been
+		// under your control since your most recent turn began.
+		// Birds of Paradise, Llanowar Merfolk and Palladium Myr all
+		// live here; before this check they tapped for mana the turn
+		// they landed, which is simply wrong. Non-creature sources
+		// (Sol Ring, a land) are never sick, and haste exempts a
+		// creature — HasSummoningSickness handles both.
+		if card.IsCreature() && HasSummoningSickness(card) {
+			return ErrSummoningSick
+		}
 	}
+	sacrifices, err := g.validateSacrificeCostLocked(playerID, cardID, AbilityCost{
+		SacrificeSelf:  ab.SacrificeCost,
+		SacrificeOther: ab.SacrificeOther,
+	}, params.SacrificeIDs)
+	if err != nil {
+		return err
+	}
+
+	// --- pay ----------------------------------------------------
+	//
+	// Tap before sacrifice: the tap has to happen while the
+	// permanent is still on the battlefield, and sacrifices move
+	// cards, which invalidates `card`.
 	if ab.TapCost {
 		card.Tapped = true
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
 	}
-	// S21 sub-PR 1: sacrifice costs are real now (Treasure, Eldrazi
-	// Spawn, Lotus Petal). The mana still lands in the pool below —
-	// CR 605.3a: a mana ability resolves immediately, without the
-	// stack, so the sacrifice and the mana are one atomic step.
-	if ab.SacrificeCost {
-		if err := g.sacrificePermanentLocked(cardID); err != nil {
-			return err
+	// S21 sub-PR 1 made sacrifice-self costs real (Treasure, Eldrazi
+	// Spawn, Lotus Petal); the mana-cost pass adds sacrifice-another
+	// (Ashnod's Altar, Phyrexian Altar). The mana still lands in the
+	// pool below — CR 605.3a: a mana ability resolves immediately,
+	// without the stack, so the sacrifices and the mana are one
+	// atomic step.
+	if len(sacrifices) > 0 {
+		for _, id := range sacrifices {
+			if err := g.sacrificePermanentLocked(id); err != nil {
+				return err
+			}
 		}
-		// The card left the battlefield; `card` now dangles. Nothing
-		// below touches it (the produced-mana path reads `ab`).
+		// A sacrificed source leaves `card` dangling. Nothing below
+		// touches it (the produced-mana path reads `ab`).
 		card = nil
 		// The sacrifice can queue dies- / sacrifice-triggers (Blood
-		// Artist cracking a Treasure). Drain them on the way out, so
-		// the mana is already in the pool when they resolve.
+		// Artist feeding off an Altar). Drain them on the way out, so
+		// the mana is already in the pool when they resolve — which
+		// is what makes an Altar plus a payoff a real engine.
 		defer g.runStateChecksLocked()
 	}
 	g.EmitEvent(Event{
@@ -2553,6 +2597,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int) e
 	})
 	// Materialise the produced mana.
 	slots, err := ParseProducedMana(ab.Produced)
+	_ = card // card is deliberately nil after a sacrifice; keep the intent explicit
 	if err != nil {
 		// Mal-formed produced string: emit an effect-error event and
 		// stop short of adding mana. The cost has already been paid —
