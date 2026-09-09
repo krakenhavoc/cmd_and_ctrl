@@ -21,7 +21,7 @@
   import { stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
   import { devFeature } from "../lib/env";
-  import FrameInspector from "../lib/components/dev/FrameInspector.svelte";
+  import DevDock from "../lib/components/dev/DevDock.svelte";
 
   interface Props {
     gameID: string;
@@ -62,11 +62,18 @@
     return () => client.disconnect();
   });
 
-  // Dev frame inspector (ADR 0023). Recording stays off — and the
-  // buffer stays empty — unless the server reports env=dev with the
-  // frame_inspector feature enabled. On a production build this
-  // resolves false once and never allocates a FrameRecord.
+  // Dev tools (ADR 0023). Every tool is gated inside DevDock on its
+  // own feature flag; this route only needs to know whether ANY of
+  // them is live so it can decide to mount the dock at all.
+  //
+  // Frame recording is wired here rather than in the inspector so
+  // capture survives opening and closing the panel — the frames you
+  // want are usually the ones from just before you thought to look.
+  // On a production build it resolves false once and never allocates
+  // a FrameRecord.
   const showFrameInspector = devFeature("frame_inspector");
+  const showCardSpawner = devFeature("card_spawn");
+  const showDevDock = $derived($showFrameInspector || $showCardSpawner);
   $effect(() => {
     client.setFrameRecording($showFrameInspector);
   });
@@ -993,11 +1000,11 @@
   }}
 />
 
-<!-- Dev-only raw protocol frame log. Renders nothing unless the
-     server reports env=dev with the frame_inspector feature; see
-     lib/env.ts and docs/decisions/0023-develop-environment.md. -->
-{#if $showFrameInspector}
-  <FrameInspector {client} />
+<!-- Dev tool dock. Renders nothing unless the server reports env=dev
+     with at least one dev feature enabled; see lib/env.ts and
+     docs/decisions/0023-develop-environment.md. -->
+{#if showDevDock}
+  <DevDock {client} {gameID} snapshot={$snapshot} />
 {/if}
 
 <style>
