@@ -27,11 +27,10 @@ func newTestStore(t *testing.T) *Store {
 	return New(t.TempDir(), testBaseURL)
 }
 
-func TestDisabledWithoutDirOrBaseURL(t *testing.T) {
+func TestDisabledWithoutDir(t *testing.T) {
 	for name, s := range map[string]*Store{
-		"no dir":      New("", testBaseURL),
-		"no base URL": New(t.TempDir(), ""),
-		"neither":     New("", ""),
+		"no dir":  New("", testBaseURL),
+		"neither": New("", ""),
 	} {
 		if s.Enabled() {
 			t.Errorf("%s: Enabled() = true, want false", name)
@@ -39,6 +38,23 @@ func TestDisabledWithoutDirOrBaseURL(t *testing.T) {
 		if _, err := s.NewReport(); !errors.Is(err, ErrDisabled) {
 			t.Errorf("%s: NewReport err = %v, want ErrDisabled", name, err)
 		}
+	}
+}
+
+func TestNoBaseURLDisablesAttachmentsOnly(t *testing.T) {
+	s := New(t.TempDir(), "")
+	if !s.Enabled() {
+		t.Fatal("Enabled() = false, want true with data dir present")
+	}
+	if s.AttachmentsEnabled() {
+		t.Fatal("AttachmentsEnabled() = true, want false without base URL")
+	}
+	r, err := s.NewReport()
+	if err != nil {
+		t.Fatalf("NewReport: %v", err)
+	}
+	if _, err := r.AddImage(pngBytes(64)); !errors.Is(err, ErrDisabled) {
+		t.Fatalf("AddImage err = %v, want ErrDisabled", err)
 	}
 }
 

@@ -87,11 +87,11 @@ const (
 // Errors surfaced to the HTTP layer. The handler maps these to
 // statuses; none of them carry a filesystem path.
 var (
-	// ErrDisabled means no data dir or no public base URL was
-	// configured, so there is nowhere to put artifacts (or no URL
-	// that GitHub could fetch them from). Text-only reports still
-	// work — the caller degrades rather than failing.
-	ErrDisabled = errors.New("bugstore: disabled (no data dir or public base URL)")
+	// ErrDisabled means the requested store feature is unavailable:
+	// either no data dir (nothing to store in) or no public base URL
+	// for image hosting. Text-only reports still work — the caller
+	// degrades rather than failing.
+	ErrDisabled = errors.New("bugstore: disabled")
 
 	// ErrUnsupportedType means the bytes are not one of the raster
 	// formats GitHub renders. Notably SVG is rejected: it is a script
@@ -142,11 +142,10 @@ const manifestFileName = "manifest.json"
 
 // Store owns the bug-report artifact directory.
 //
-// dir == "" or baseURL == "" leaves the store disabled: every method
-// returns ErrDisabled and the report path degrades to text-only. This
-// is the house nil-means-off convention (cf. discord.AvatarCache with
-// an empty Dir), and it means a dev stack with no data dir doesn't
-// have to configure anything to keep the bug button working.
+// dir == "" leaves the store disabled entirely: there is nowhere to
+// keep report artifacts. baseURL == "" leaves only image hosting
+// disabled; replay pinning still works because it is admin-only and
+// not fetched by GitHub's image proxy.
 type Store struct {
 	dir     string
 	baseURL string
@@ -160,8 +159,12 @@ func New(dir, baseURL string) *Store {
 	return &Store{dir: dir, baseURL: strings.TrimRight(baseURL, "/")}
 }
 
-// Enabled reports whether artifacts can be stored and served.
-func (s *Store) Enabled() bool { return s != nil && s.dir != "" && s.baseURL != "" }
+// Enabled reports whether report artifacts can be stored on disk.
+func (s *Store) Enabled() bool { return s != nil && s.dir != "" }
+
+// AttachmentsEnabled reports whether screenshots can be hosted at
+// public URLs for GitHub issue rendering.
+func (s *Store) AttachmentsEnabled() bool { return s != nil && s.dir != "" && s.baseURL != "" }
 
 // Image describes one stored screenshot.
 type Image struct {
@@ -233,6 +236,9 @@ func (r *Report) Replay() *ReplayPin { return r.replay }
 // HTML is exactly the trick this route has to refuse, since the
 // response is served from our own origin.
 func (r *Report) AddImage(data []byte) (Image, error) {
+	if r == nil || r.store == nil || !r.store.AttachmentsEnabled() {
+		return Image{}, ErrDisabled
+	}
 	if len(r.images) >= MaxImages {
 		return Image{}, ErrTooMany
 	}
@@ -364,7 +370,7 @@ func (r *Report) Discard() {
 // make the response inert if it somehow gets navigated to directly
 // rather than loaded as an <img>.
 func (s *Store) ServeImage(w http.ResponseWriter, r *http.Request, id, name string) error {
-	if !s.Enabled() {
+	if !s.AttachmentsEnabled() {
 		return ErrDisabled
 	}
 	if !reportIDPattern.MatchString(id) || !imageNamePattern.MatchString(name) {

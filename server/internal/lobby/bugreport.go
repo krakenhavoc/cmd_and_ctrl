@@ -145,7 +145,7 @@ type bugReportRequest struct {
 func bugReportConfig(c Config, w http.ResponseWriter, _ *http.Request) error {
 	return writeJSON(w, http.StatusOK, map[string]any{
 		"enabled":     c.BugReporter != nil,
-		"attachments": c.BugStore.Enabled(),
+		"attachments": c.BugStore.AttachmentsEnabled(),
 		"max_images":  bugstore.MaxImages,
 		"max_bytes":   bugstore.MaxImageBytes,
 	})
@@ -395,7 +395,7 @@ func decodeBugMultipart(w http.ResponseWriter, r *http.Request) (bugReportReques
 // the capability is the report ID itself, which only ever appears
 // inside a private-repo issue body.
 func bugAttachment(c Config, w http.ResponseWriter, r *http.Request) error {
-	if !c.BugStore.Enabled() {
+	if !c.BugStore.AttachmentsEnabled() {
 		return httpError(http.StatusServiceUnavailable, "attachments are not configured on this server")
 	}
 	err := c.BugStore.ServeImage(w, r, r.PathValue("id"), r.PathValue("name"))

@@ -176,7 +176,11 @@ func main() {
 	}
 	bugStore := bugstore.New(bugDir, publicBase)
 	if bugStore.Enabled() {
-		log.Info("bug report attachments enabled", "dir", bugDir, "public_base_url", publicBase)
+		if bugStore.AttachmentsEnabled() {
+			log.Info("bug report attachments enabled", "dir", bugDir, "public_base_url", publicBase)
+		} else {
+			log.Info("bug report attachment hosting disabled — set CMDCTRL_PUBLIC_BASE_URL to enable screenshots; replay pinning remains enabled", "dir", bugDir)
+		}
 		// Enforce retention once at boot as well as after each report,
 		// so a server that files nothing for months still reclaims the
 		// artifacts of the reports it filed before.

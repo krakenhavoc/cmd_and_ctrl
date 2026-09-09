@@ -32,11 +32,12 @@ func pngBytes(pad int) []byte {
 	return append([]byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a}, bytes.Repeat([]byte{0}, pad)...)
 }
 
-// attachStack builds a stack with a real bugstore plus a room manager
-// rooted at a temp dump dir. Returns the server, the lobby (so tests
-// can create games whose rooms actually exist), the authenticator, the
-// store, and the dump dir the replay files live under.
-func attachStack(t *testing.T, rep BugReporter) (*httptest.Server, *Lobby, auth.Authenticator, *bugstore.Store, string) {
+// attachStackWithStore builds a stack with the supplied bugstore plus
+// a room manager rooted at a temp dump dir. Returns the server, the
+// lobby (so tests can create games whose rooms actually exist), the
+// authenticator, the store, and the dump dir the replay files live
+// under.
+func attachStackWithStore(t *testing.T, rep BugReporter, store *bugstore.Store) (*httptest.Server, *Lobby, auth.Authenticator, *bugstore.Store, string) {
 	t.Helper()
 	t.Setenv("CMDCTRL_DEV_RELAX_RATE_LIMITS", "1")
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -44,7 +45,6 @@ func attachStack(t *testing.T, rep BugReporter) (*httptest.Server, *Lobby, auth.
 	mgr := ws.NewRoomManager(log, dumpDir)
 	l := NewLobby(mgr)
 	a := auth.NewMemoryAuthenticator()
-	store := bugstore.New(t.TempDir(), "https://cmd.example.test")
 
 	srv := httptest.NewServer(Handler(Config{
 		Lobby:       l,
@@ -56,6 +56,13 @@ func attachStack(t *testing.T, rep BugReporter) (*httptest.Server, *Lobby, auth.
 	}))
 	t.Cleanup(srv.Close)
 	return srv, l, a, store, dumpDir
+}
+
+// attachStack is the default test stack with a bugstore that can host
+// attachments.
+func attachStack(t *testing.T, rep BugReporter) (*httptest.Server, *Lobby, auth.Authenticator, *bugstore.Store, string) {
+	t.Helper()
+	return attachStackWithStore(t, rep, bugstore.New(t.TempDir(), "https://cmd.example.test"))
 }
 
 // playerSession issues a player token bound to gameID.
@@ -163,6 +170,21 @@ func TestBugReportConfigReportsAttachmentSupport(t *testing.T) {
 		}
 		if body.Attachments {
 			t.Error("attachments = true with no store configured")
+		}
+	})
+
+	t.Run("store without public base URL", func(t *testing.T) {
+		srv, _, _, _, _ := attachStackWithStore(t, &recordingReporter{}, bugstore.New(t.TempDir(), ""))
+		var body struct {
+			Enabled     bool `json:"enabled"`
+			Attachments bool `json:"attachments"`
+		}
+		getJSON(t, srv, "/bugreport/config", &body)
+		if !body.Enabled {
+			t.Error("enabled = false, want true")
+		}
+		if body.Attachments {
+			t.Error("attachments = true without public base URL")
 		}
 	})
 }
@@ -393,6 +415,40 @@ func TestBugReportPinsReplayAndServesItToAdminsOnly(t *testing.T) {
 	}
 	if u := doAuthGet(t, srv, "/bugreport/"+out.ReportID+"/replay", ""); u.code != http.StatusUnauthorized {
 		t.Errorf("unauthenticated replay status = %d, want 401", u.code)
+	}
+}
+
+func TestBugReportPinsReplayWithoutPublicAttachmentURL(t *testing.T) {
+	rep := &recordingReporter{}
+	srv, l, a, _, dumpDir := attachStackWithStore(t, rep, bugstore.New(t.TempDir(), ""))
+	meta, err := l.Create("FNM")
+	if err != nil {
+		t.Fatalf("create game: %v", err)
+	}
+	gameID := meta.ID
+	tok := playerSession(t, a, gameID)
+	writeReplay(t, dumpDir, gameID, "{\"seq\":1}\n")
+
+	resp := postMultipartReport(t, srv, tok, map[string]any{
+		"title":   "replay only",
+		"context": map[string]any{"game_id": gameID.String()},
+	})
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusCreated {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("status = %d body = %s", resp.StatusCode, b)
+	}
+	var out struct {
+		ReportID string `json:"report_id"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if out.ReportID == "" {
+		t.Fatal("missing report_id")
+	}
+	if !strings.Contains(rep.bodies[0], "Pinned replay: `GET /bugreport/"+out.ReportID+"/replay` (admin)") {
+		t.Errorf("body missing pinned replay row\n----\n%s", rep.bodies[0])
 	}
 }
 
