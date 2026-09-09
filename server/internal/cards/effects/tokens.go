@@ -124,6 +124,14 @@ func PhyrexianWurmLifelinkToken() game.Card {
 	return t
 }
 
+// --- the artifact token cycle ------------------------------------
+//
+// Treasure, Food, Clue and Blood are defined entirely by the ability
+// printed on them — strip it and they're blank artifacts. They carry
+// it on the template (ManaAbilities for Treasure, ActivatedAbilities
+// for the rest), because the catalog's hooks key on oracle ID and a
+// token hasn't got one. Added across S21 sub-PRs 1 and 4.
+
 // TreasureToken returns a template for the Treasure artifact token
 // ("{T}, Sacrifice this artifact: Add one mana of any color").
 // Added in S19 sub-PR 6 for Smothering Tithe; the sac-for-mana
@@ -144,50 +152,6 @@ func TreasureToken() game.Card {
 		}},
 	}
 }
-
-// RedGoblinToken returns a template for the 1/1 red Goblin token
-// Krenko, Mob Boss makes. Added in S21 sub-PR 2.
-func RedGoblinToken() game.Card {
-	return game.Card{
-		Name:      "Goblin",
-		TypeLine:  "Token Creature — Goblin",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"R"},
-	}
-}
-
-// GreenBeastToken is the 3/3 green Beast that Beast Within hands to
-// the permanent's controller — the drawback half of the card, and
-// the reason it's "destroy anything" rather than pure removal.
-func GreenBeastToken() game.Card {
-	return game.Card{
-		Name:      "Beast",
-		TypeLine:  "Token Creature — Beast",
-		Power:     3,
-		Toughness: 3,
-	}
-}
-
-// WhiteElephantToken is Generous Gift's 3/3 Elephant. Same shape as
-// the Beast; kept as its own constructor so the two cards read as
-// the printed cards do rather than sharing a misleading name.
-func WhiteElephantToken() game.Card {
-	return game.Card{
-		Name:      "Elephant",
-		TypeLine:  "Token Creature — Elephant",
-		Power:     3,
-		Toughness: 3,
-	}
-}
-
-// --- S21 sub-PR 4: the artifact token cycle ----------------------
-//
-// Food, Clue and Blood are defined entirely by their activated
-// ability — strip it and they're blank artifacts. They carry it on
-// the template via Card.ActivatedAbilities, the same way Treasure
-// carries its mana ability, because the catalog's hooks key on
-// oracle ID and a token hasn't got one.
 
 // FoodToken — "{2}, {T}, Sacrifice this artifact: You gain 3 life."
 func FoodToken() game.Card {
@@ -271,5 +235,17 @@ func PowerstoneToken() game.Card {
 			Produced: "{C}",
 			Label:    "{T}: Add {C} (spend restriction not yet modelled)",
 		}},
+	}
+}
+
+// RedGoblinToken returns a template for the 1/1 red Goblin token
+// Krenko, Mob Boss makes. Added in S21 sub-PR 2.
+func RedGoblinToken() game.Card {
+	return game.Card{
+		Name:      "Goblin",
+		TypeLine:  "Token Creature — Goblin",
+		Power:     1,
+		Toughness: 1,
+		Colors:    []string{"R"},
 	}
 }
