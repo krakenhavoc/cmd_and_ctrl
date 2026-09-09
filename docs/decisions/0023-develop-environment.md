@@ -136,7 +136,14 @@ spawning a card mid-game.
   at dev is a follow-up.
 - Dev features land behind their flags one at a time: the frame
   inspector ships with this ADR, then the card spawner, then seat
-  swap; the replay scrubber comes next.
+  swap, then the replay scrubber. Three of the four turned out to be
+  client-only; only the card spawner needed a server route. The
+  action-registry gate this ADR anticipated was never built, because
+  nothing has needed it.
+- Seeded shuffles were scoped with the scrubber and dropped. The card
+  spawner reaches a chosen board state directly, which is most of
+  what a deterministic shuffle was wanted for; the rest did not
+  justify threading a seed through the game-start RNG.
 - Seat swap needed no server change at all, contrary to the estimate
   when this ADR was written. `WSAuthorizer` already accepts
   `?player=` for an admin session and the hub already stamps the

@@ -46,7 +46,7 @@ turned **on** in production.
 | Raw protocol frame inspector | `CMDCTRL_DEV_FRAME_INSPECTOR` | shipped |
 | Card spawn | `CMDCTRL_DEV_CARD_SPAWN` | shipped |
 | Drive all seats from one browser | `CMDCTRL_DEV_SEAT_SWAP` | shipped |
-| Replay scrubber + seeded shuffles | `CMDCTRL_DEV_REPLAY_SCRUBBER` | planned |
+| Replay scrubber | `CMDCTRL_DEV_REPLAY_SCRUBBER` | shipped |
 
 `GET /config` reports the live answer:
 
@@ -120,6 +120,37 @@ Two things that surprise people:
 A player or spectator session never sees the control, and forging the
 parameter would not help: `WSAuthorizer` resolves the seat from the
 principal for those roles and ignores `?player=` entirely.
+
+### Replay scrubber
+
+The **REPLAY** tab loads this game's recorded snapshots and steps the
+board through them. Transport controls, a slider, playback at four
+speeds, and a per-frame readout of what changed.
+
+No new server route: `GET /games/{id}/replay` has existed since S11
+and already streams JSONL of complete snapshots, one per applied
+action. Rendering frame N is picking a line and handing it to the
+same board the live game uses — there is no re-simulation, so what
+you see is exactly what the server recorded.
+
+- **Frames are unfiltered.** A replay shows every hand and every
+  library. That is the point when debugging, and why the route is
+  admin-gated while a game is in progress.
+- **Scrubbing hides the quick-action toolbar.** Those buttons act on
+  the *live* game; leaving them clickable while the board shows a
+  past state is the one way a read-only inspection tool could do
+  damage.
+- **The log grows while you watch.** "reload" picks up frames added
+  since you loaded. A download taken mid-write can end in a
+  half-written line; the parser drops it and keeps everything before.
+- Only actions produce frames. A game nobody has acted on has an
+  empty replay, and the panel says so rather than erroring.
+
+Seeded shuffles (`CMDCTRL_DEV_SEED`) were scoped alongside this and
+deliberately dropped: the card spawner reaches a specific board state
+directly, which is what the seed was mostly wanted for, and the
+remaining value did not justify threading a seed through the
+game-start RNG. Say so if you want it.
 
 **Adding a dev feature.** Add the field to `appenv.Features`, register
 its variable in `featureVars`, mirror the JSON key in
