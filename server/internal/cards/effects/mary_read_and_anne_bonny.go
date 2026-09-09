@@ -42,11 +42,25 @@ func init() {
 					func(g *game.Game, item *game.StackItem) error {
 						return CreateToken{
 							Controller: item.Controller,
-							Template:   TappedTreasureToken(),
+							Template:   tappedTreasureToken(),
 							N:          1,
 						}.Apply(NewContext(g, item))
 					})
 			},
 		}},
 	})
+}
+
+// tappedTreasureToken is a Treasure that enters tapped. It lives
+// here rather than in tokens.go because Mary Read is the only card
+// that makes one — and because tokens.go is a registry every card
+// pass appends to, so a one-card helper parked there is a merge
+// conflict waiting to happen.
+//
+// CreateTokenForEffect copies the template wholesale apart from the
+// identity fields, so the Tapped flag rides along.
+func tappedTreasureToken() game.Card {
+	t := TreasureToken()
+	t.Tapped = true
+	return t
 }
