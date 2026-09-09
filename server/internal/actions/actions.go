@@ -345,6 +345,9 @@ func Dispatch(g *game.Game, a Action) error {
 			// form "As an additional cost to cast this spell,
 			// discard a card". Empty for every card without one.
 			DiscardIDs []string `json:"discard_ids,omitempty"`
+			// S21 sub-PR 6 — the permanent paid to a "sacrifice a
+			// creature" additional cost (Village Rites).
+			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -371,6 +374,16 @@ func Dispatch(g *game.Game, a Action) error {
 					return fmt.Errorf("cast_spell discard_ids[%d]: %w", i, err)
 				}
 				params.DiscardIDs = append(params.DiscardIDs, id)
+			}
+		}
+		if len(p.SacrificeIDs) > 0 {
+			params.SacrificeIDs = make([]uuid.UUID, 0, len(p.SacrificeIDs))
+			for i, raw := range p.SacrificeIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("cast_spell sacrifice_ids[%d]: %w", i, err)
+				}
+				params.SacrificeIDs = append(params.SacrificeIDs, id)
 			}
 		}
 		if len(p.LockedSources) > 0 {

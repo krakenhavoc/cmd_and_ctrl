@@ -204,6 +204,13 @@ type AdditionalCostView struct {
 	// DiscardCards is how many cards the caster must discard. The
 	// picked instance IDs ride back on cast_spell's discard_ids.
 	DiscardCards int `json:"discard_cards,omitempty"`
+	// SacrificeOptions lists the permanents that may pay a
+	// "sacrifice a creature" clause, already filtered to the
+	// caster's own board (CR 701.17b). The picked instance ID rides
+	// back on cast_spell's sacrifice_ids. Absent when the cost has
+	// no sacrifice component; present-and-empty means the cost is
+	// unpayable, which makes the spell uncastable.
+	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
 	// Label is the clause as printed ("Discard a card"), shown
 	// above the picker.
 	Label string `json:"label,omitempty"`
@@ -701,6 +708,12 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 					c.AdditionalCost = &AdditionalCostView{
 						DiscardCards: ac.DiscardCards,
 						Label:        ac.Label,
+					}
+					if ac.Sacrifice != nil {
+						opts := viewOfLegalTargets(g.LegalTargetsForEffect(caster, ac.Sacrifice), ac.Sacrifice)
+						opts.Cards = filterToController(g, opts.Cards, caster)
+						opts.Players = nil
+						c.AdditionalCost.SacrificeOptions = opts
 					}
 				}
 				spec := game.TargetSpecFor(c.oracleID)

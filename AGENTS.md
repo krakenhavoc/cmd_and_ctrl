@@ -696,6 +696,28 @@ before the X / mode / target prompts; they ride `cast_spell` as
 itself is never a legal pick — CR 601.2a already moved it to the
 stack). See [ADR 0021](docs/decisions/0021-additional-costs.md).
 
+The same slot takes a **sacrifice** clause (S21 sub-PR 6):
+
+```go
+AdditionalCost: SacrificeCost("a creature", Creature()),           // Village Rites, Altar's Reap
+AdditionalCost: SacrificeCost("an artifact or creature",           // Deadly Dispute
+    Or(Artifact(), Creature())),
+```
+
+Identical reasoning one zone over: the creature dies with the spell
+on the stack, so Blood Artist and Zulaport Cutthroat drain BEFORE the
+cards are drawn, and countering the spell doesn't hand the creature
+back. With nothing to sacrifice the spell is uncastable — the view
+stamps `AdditionalCostView.SacrificeOptions` filtered to the caster's
+own permanents (CR 701.17b), and an empty list is what
+`canCastFromHand` greys the card on. The pick rides `cast_spell` as
+`sacrifice_ids`, and the client reuses `SacrificeCostModal`, the same
+picker the CR 602 abilities open.
+
+`SacrificeCost` builds its spec with the shared `sacrificeSpec`
+helper, so a sacrifice cost is validated by the same code whether it
+hangs off a spell, an activated ability or a mana ability.
+
 **Event picker:**
 
 | Trigger text | `Watches` | `AppliesTo` |

@@ -403,6 +403,12 @@ export interface ModeSpecView {
 // them.
 export interface AdditionalCostView {
   discard_cards?: number;
+  // S21 sub-PR 6: the permanents that may pay a "sacrifice a
+  // creature" clause, already filtered to the caster's own board.
+  // The picked ID rides cast_spell as `sacrifice_ids`.
+  // Present-and-empty means the cost is unpayable, so the spell is
+  // uncastable.
+  sacrifice_options?: LegalTargetsView;
   label?: string;
 }
 

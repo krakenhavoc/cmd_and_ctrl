@@ -269,6 +269,15 @@ type CastSpellParams struct {
 	// Added in S21 sub-PR 5.
 	DiscardIDs []uuid.UUID
 
+	// SacrificeIDs names the permanent paid to an additional cost of
+	// the form "As an additional cost to cast this spell, sacrifice a
+	// creature" (Village Rites, Deadly Dispute). Same discipline as
+	// DiscardIDs: validated at announce, paid with the spell already
+	// on the stack so the dies-triggers resolve above it, and
+	// rejected rather than ignored on a card that charges no such
+	// cost. Added in S21 sub-PR 6.
+	SacrificeIDs []uuid.UUID
+
 	// Strict enables the S15 mana-cost gate. When set, the server
 	// parses the card's ManaCost into an effective cost (plus
 	// commander tax for casts from the command zone), checks the
@@ -450,11 +459,12 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// down once the spell is on the stack — validate-all-then-pay,
 	// so a rejected cast never leaves a card in the graveyard.
 	addCost := AdditionalCostFor(card.OracleID)
-	if err := g.validateAdditionalCostLocked(playerID, cardID, addCost, params.DiscardIDs); err != nil {
+	if err := g.validateAdditionalCostLocked(playerID, cardID, addCost, params.DiscardIDs, params.SacrificeIDs); err != nil {
 		slog.Warn("cast_spell rejected: bad additional cost payment",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
 			"discards_received", len(params.DiscardIDs),
+			"sacrifices_received", len(params.SacrificeIDs),
 			"err", err,
 		)
 		return err
@@ -593,10 +603,11 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// CR 601.2h: pay the costs. The mana component was charged
 	// above (pre-move, as S15 wrote it); the additional cost is
 	// paid HERE, with the spell already on the stack, because a
-	// discard payoff that triggers off it must resolve before the
+	// discard payoff — or an aristocrats payoff watching the
+	// sacrifice — that triggers off it must resolve before the
 	// spell does. Validation happened at announce, so a failure
 	// past this point is an engine bug rather than a bad request.
-	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs); err != nil {
+	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs, params.SacrificeIDs); err != nil {
 		slog.Error("cast_spell: additional cost failed after validation",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
