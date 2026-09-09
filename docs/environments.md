@@ -129,64 +129,79 @@ against production is a client-side `if`, it is not gated.
 
 ## One-time host provisioning
 
-Run once, as a user with sudo on the VPS. Nothing here is repeated by
-CD; CD assumes it has been done.
+Run once on the VPS. `deploy/provision-dev.sh` does everything that
+can be automated; the reverse proxy, TLS, Discord and GitHub steps
+below are the remainder.
 
 ```sh
-# 1. Service user and directories.
-sudo useradd --system --no-create-home --shell /usr/sbin/nologin cmdctrl-dev
-sudo mkdir -p /opt/cmd_and_ctrl-dev/server/bin \
-              /opt/cmd_and_ctrl-dev/scripts \
-              /var/www/cmdctrl-client-dev
-sudo chown -R krkn:krkn /opt/cmd_and_ctrl-dev /var/www/cmdctrl-client-dev
-
-# 2. Env file. Mode 0640, group cmdctrl-dev — CD rewrites
-#    CMDCTRL_ENV, CMDCTRL_PUBLIC_BASE_URL and the bug-report token
-#    into it on every deploy; the rest is set once here.
-sudo install -o root -g cmdctrl-dev -m 0640 /dev/null /etc/cmd_and_ctrl/dev.env
-sudo tee -a /etc/cmd_and_ctrl/dev.env >/dev/null <<'ENV'
-CMDCTRL_ENV=dev
-CMDCTRL_ADDR=:8081
-CMDCTRL_DATA_DIR=/var/lib/cmd_and_ctrl-dev
-CMDCTRL_ADMIN_TOKEN=<a DIFFERENT long random string from production>
-CMDCTRL_SECURE_COOKIES=1
-CMDCTRL_TRUST_FORWARDED=1
-CMDCTRL_DISCORD_CLIENT_ID=<same app as prod>
-CMDCTRL_DISCORD_CLIENT_SECRET=<same app as prod>
-CMDCTRL_DISCORD_REDIRECT_URI=https://dev.cmd.labxp.io/auth/discord/callback
-ENV
-
-# 3. systemd unit.
-sudo cp deploy/cmd-and-ctrl-dev.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now cmd-and-ctrl-dev
-
-# 4. Share the Scryfall dump read-only rather than downloading a
-#    second 2 GB copy. Replace PROD_DATA with production's real
-#    CMDCTRL_DATA_DIR.
-PROD_DATA=/var/lib/cmd_and_ctrl
-sudo ln -s "$PROD_DATA/scryfall" /var/lib/cmd_and_ctrl-dev/scryfall
-sudo chgrp -R cmdctrl "$PROD_DATA/scryfall"
-sudo chmod -R g+rX "$PROD_DATA/scryfall"
-sudo usermod -aG cmdctrl cmdctrl-dev   # read-only: the dir is g+rX, not g+w
+sudo deploy/provision-dev.sh --check   # report only, changes nothing
+sudo deploy/provision-dev.sh
 ```
 
-> The last line is the one place the two environments touch. If you
-> would rather they touch nowhere at all, drop it and give dev its own
-> `scryfall-refresh.sh` cron and its own 2 GB copy.
+It is idempotent — re-run it after a failed step, or to fix drift.
+Every value it writes is written only when absent, so a second run
+never rotates a token out from under a live session.
 
-### Reverse proxy
+What it does: creates the `cmdctrl-dev` service user, the deploy and
+web roots (owned by the user CI rsyncs as), and the data directory;
+writes `/etc/cmd_and_ctrl/dev.env` with a **freshly generated** admin
+token distinct from production's; installs and enables the systemd
+unit; and symlinks production's Scryfall dump read-only rather than
+downloading a second 2 GB copy.
 
-Add a vhost for `dev.cmd.labxp.io` mirroring the production one,
-proxying to `127.0.0.1:8081` with the client dist at
-`/var/www/cmdctrl-client-dev`, plus a TLS certificate.
+Three things it deliberately does *not* do:
 
-**Both vhosts need a new location for `/config`.** Production's needs
-it too — add it alongside `/games`, `/cards`, `/me`, `/auth`,
-`/avatars`, `/admin`, `/bugreport`, `/healthz`. Order does not
-matter: until the proxy routes it the client's fetch 404s and falls
-back to production defaults, which is the correct answer for
-production and merely means dev features stay hidden on dev.
+- **Copy production's admin token.** It generates one. Read it back
+  with `sudo grep CMDCTRL_ADMIN_TOKEN /etc/cmd_and_ctrl/dev.env`.
+- **Copy `CMDCTRL_GITHUB_TOKEN`.** CD provisions that, and a preview
+  deployment filing bug reports into the real tracker is noise.
+- **Write to `/etc/cmd_and_ctrl/env`.** It reads production's env file
+  — that is how it learns the real `CMDCTRL_DATA_DIR` instead of
+  asking you to substitute it by hand — and never writes there.
+
+It refuses to start if any dev path resolves to its production
+counterpart, so a mistyped override cannot end up chowning or
+symlinking inside production.
+
+The Discord client id and secret *are* copied from production, on
+purpose: same application, one extra redirect URI (ADR 0023 §6).
+
+### Reverse proxy (Caddy)
+
+```sh
+sudo cp deploy/caddy/dev.cmd.labxp.io.caddyfile /etc/caddy/conf.d/
+sudo caddy validate --config /etc/caddy/Caddyfile
+sudo systemctl reload caddy
+```
+
+If that host has no `conf.d` (and no `import conf.d/*` in its
+Caddyfile), paste the site block into `/etc/caddy/Caddyfile` instead.
+**TLS is automatic** — Caddy provisions and renews the certificate
+itself, so there is no certbot step; the DNS record just has to
+resolve to this host first.
+
+**Production needs a one-line change too.** `GET /config` is a new
+route: add `/config` to whatever matcher already routes `/games`,
+`/cards` and `/me` to `127.0.0.1:8080`.
+
+Rollout order does not matter, but the failure is silent in both
+directions, so it is worth knowing what it looks like:
+
+| Missing | Symptom |
+|---|---|
+| `/config` on either site | the client falls back to production defaults — on dev, every dev feature stays hidden with no error |
+| `/dev` on the dev site | the card search renders "No matches" forever (`searchDevCards` swallows failures by design) |
+
+The same trap applies to `client/vite.config.ts` for local
+development: a new top-level route needs an entry there *and* in the
+`@api` matcher.
+
+One thing not to "fix": the site block deliberately does **not** set
+`header_up Host`. Caddy forwards the original Host by default, and
+the game server's WebSocket `CheckOrigin` compares the Origin
+header's host against the request Host. Rewriting Host to the
+upstream makes every `/ws` upgrade 403 while ordinary HTTP keeps
+working.
 
 ### Discord
 
