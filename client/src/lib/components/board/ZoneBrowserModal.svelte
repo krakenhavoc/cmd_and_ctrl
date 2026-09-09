@@ -18,8 +18,7 @@
 
   import type { ActionPayload, ActionType, CardView, GameView } from "../../protocol";
   import Card from "./Card.svelte";
-  import { openZoneBrowser, type BrowsableZone } from "../../zoneBrowser";
-  import Icon from "../Icon.svelte";
+  import type { BrowsableZone } from "../../zoneBrowser";
   import {
     buildMovePayload,
     canManageZone,
@@ -104,26 +103,6 @@
     sendAction("move_card", payload, viewerID);
   }
 
-  // Tabs switch zones for the same owner without closing (the stack
-  // is a shared zone with no owner, so it stays a single view).
-  const tabs: { kind: BrowsableZone; label: string }[] = [
-    { kind: "graveyard", label: "graveyard" },
-    { kind: "exile", label: "exile" },
-    { kind: "command", label: "command" },
-  ];
-  const showTabs = $derived(zoneKind !== "stack");
-  function switchZone(kind: BrowsableZone): void {
-    if (kind === zoneKind) return;
-    openZoneBrowser({ zoneKind: kind, ownerID: ownerSeat.id, ownerName: ownerSeat.name });
-  }
-
-  let query = $state("");
-  const shown = $derived.by(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return zoneCards;
-    return zoneCards.filter((c) => (c.name ?? "").toLowerCase().includes(q));
-  });
-
   function backdropClick(ev: MouseEvent): void {
     if (ev.target === ev.currentTarget) onClose();
   }
@@ -139,7 +118,7 @@
 <svelte:window on:keydown={onKey} />
 
 <div
-  class="prompt-backdrop"
+  class="backdrop"
   role="dialog"
   aria-modal="true"
   aria-labelledby="zone-browser-title"
@@ -147,58 +126,23 @@
   onclick={backdropClick}
   onkeydown={onKey}
 >
-  <div class="prompt-modal zb-modal">
-    <header class="zb-head">
+  <div class="modal">
+    <header>
       <h2 id="zone-browser-title">
         {ownerSeat.name}<span class="sep">·</span><span class="zone">{zoneLabel}</span>
         <span class="count">({zoneCards.length})</span>
-        {#if !canManage && zoneKind !== "stack"}
-          <span class="prompt-src" aria-hidden="true">read only</span>
-        {/if}
       </h2>
-      <button type="button" class="ghost close" onclick={onClose} aria-label="close">
-        <Icon name="x" size={14} />
-      </button>
+      <button type="button" class="close" onclick={onClose} aria-label="close">×</button>
     </header>
-    <div class="zb-tools">
-      {#if showTabs}
-        <div class="tabs" role="tablist" aria-label="zone">
-          {#each tabs as t (t.kind)}
-            <button
-              type="button"
-              class="tab"
-              class:on={t.kind === zoneKind}
-              role="tab"
-              aria-selected={t.kind === zoneKind}
-              onclick={() => switchZone(t.kind)}
-            >
-              {t.label}
-            </button>
-          {/each}
-        </div>
-      {/if}
-      <input
-        class="search"
-        type="text"
-        placeholder="search this zone"
-        aria-label="search cards"
-        bind:value={query}
-      />
-    </div>
     {#if zoneCards.length === 0}
       <p class="empty">No cards in this zone.</p>
-    {:else if shown.length === 0}
-      <p class="empty">Nothing matches “{query}”.</p>
     {:else}
       <ul class="grid">
-        {#each shown as card (card.instance_id)}
+        {#each zoneCards as card (card.instance_id)}
           <li class="cell">
             <Card {card} onClick={onTargetCard ? () => void onTargetCard?.(card) : undefined} />
             {#if labelFor(card)}
-              <!-- The impulse grant is the one action that shouldn't wait
-                   for a hover: the thief needs to see that the card is
-                   theirs to play. -->
-              <div class="actions always" aria-label="play from exile">
+              <div class="actions" aria-label="play from exile">
                 <button
                   type="button"
                   class="act impulse"
@@ -251,98 +195,120 @@
 </div>
 
 <style>
-  .zb-modal {
-    min-width: min(560px, calc(100vw - 32px));
-    max-width: min(920px, calc(100vw - 32px));
-    overflow: hidden;
-    gap: 10px;
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 8, 16, 0.7);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 190;
+    animation: fade-in 160ms var(--ease);
   }
-  .zb-head {
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .modal {
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg-2) 100%);
+    border: 1px solid rgba(122, 167, 255, 0.22);
+    border-radius: var(--radius-xl, 14px);
+    padding: 18px 22px 22px;
+    min-width: 480px;
+    max-width: 90vw;
+    max-height: 86vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow:
+      0 30px 80px rgba(0, 0, 0, 0.7),
+      0 0 0 1px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    animation: modal-in 220ms var(--ease);
+  }
+  @keyframes modal-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    margin-bottom: 12px;
     gap: 12px;
   }
+  h2 {
+    margin: 0;
+    font-size: 16px;
+    letter-spacing: 0.02em;
+    color: var(--fg);
+    text-transform: none;
+    font-weight: 700;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
   .sep {
-    color: var(--fg-dim);
+    color: var(--fg-muted);
     font-weight: 400;
+    opacity: 0.6;
   }
   .zone {
-    color: var(--gold-strong);
+    color: var(--gold);
     text-transform: uppercase;
     letter-spacing: 0.12em;
-    font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
   }
   .count {
     color: var(--fg-muted);
-    font-family: var(--font-mono);
     font-weight: 500;
-    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
   }
   .close {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--fg);
     width: 28px;
     height: 28px;
-    padding: 0;
     border-radius: 50%;
-    flex: 0 0 auto;
-  }
-  .zb-tools {
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+    justify-content: center;
+    padding: 0;
   }
-  .tabs {
-    display: inline-flex;
-    gap: 2px;
-    padding: 3px;
-    border-radius: 9px;
-    background: var(--surface-sunken);
-    border: 1px solid var(--border);
-  }
-  .tab {
-    height: 26px;
-    padding: 0 12px;
-    border: 1px solid transparent;
-    border-radius: 7px;
-    background: transparent;
-    color: var(--fg-muted);
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    font-weight: 700;
-  }
-  .tab:hover {
-    background: var(--surface-raised);
-    color: var(--fg);
-  }
-  .tab.on {
-    background: var(--surface-raised);
-    border-color: var(--border-strong);
-    color: var(--gold-strong);
-  }
-  .search {
-    flex: 1 1 160px;
-    min-width: 140px;
-    margin: 0;
-    padding: 5px 10px;
-    font-size: 12.5px;
+  .close:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.24);
   }
   .empty {
     color: var(--fg-muted);
     font-size: 13px;
-    margin: 4px 0 0;
+    margin: 8px 0 0;
   }
   .grid {
     list-style: none;
-    padding: 4px 4px 8px;
+    padding: 4px;
     margin: 0;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 12px 10px;
+    gap: 14px;
     overflow: auto;
     /* The Card inside uses --card-w/--card-h; we bump them up from
        the pile thumb size so the modal grid feels like a browsable
@@ -355,38 +321,41 @@
     flex-direction: column;
     align-items: center;
     gap: 6px;
-    position: relative;
   }
   .act.impulse {
-    border-color: rgba(217, 180, 92, 0.6);
-    color: var(--gold-strong);
+    border-color: var(--gold, #c9a227);
+    color: var(--gold, #c9a227);
   }
-  /* Moves ride under the hovered / focused card; other cells keep a
-     spacer so the grid doesn't reflow. */
   .actions {
     display: flex;
     gap: 4px;
+    flex-wrap: wrap;
     justify-content: center;
-    opacity: 0;
-    transition: opacity 120ms var(--ease);
-  }
-  .cell:hover .actions,
-  .cell:focus-within .actions,
-  .actions.always {
-    opacity: 1;
   }
   .act {
-    height: 22px;
-    padding: 0 8px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--fg);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 999px;
-    font-family: var(--font-mono);
-    font-size: 9.5px;
+    padding: 3px 9px;
+    font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.1em;
+    cursor: pointer;
+    font-family: inherit;
     font-weight: 600;
+    transition:
+      background 120ms var(--ease),
+      border-color 120ms var(--ease),
+      color 120ms var(--ease);
   }
   .act:hover {
-    color: var(--gold-strong);
-    border-color: rgba(217, 180, 92, 0.5);
+    background: rgba(122, 167, 255, 0.12);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .act:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: 1px;
   }
 </style>
