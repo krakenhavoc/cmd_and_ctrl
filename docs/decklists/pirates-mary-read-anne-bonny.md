@@ -60,6 +60,42 @@ didn't build:
   ledger* ("choose one that hasn't been chosen this turn"). That's
   new machinery on `TriggeredAbility`, not on exile. Still blocked.
 
+## Done (batch 4 — everything that needed no engine work)
+
+Fourteen cards written against machinery that already existed, once
+batches 2 and 3 had landed. No engine, wire or client changes.
+
+| Card | What it exercises |
+|---|---|
+| Captain Storm, Cosmium Raider | artifact-ETB watcher **plus** a target clause — first pairing |
+| Imperial Recruiter | `SearchLibrary` with a power ceiling |
+| Magmakin Artillerist | discard → damage to each opponent |
+| Malcolm, Keen-Eyed Navigator | Pirate combat damage → a Treasure per damaged opponent |
+| Scrounging Skyray | Marauding Mako with evasion |
+| Weftstalker Ardent | Reckless Fireweaver widened to creatures, with "another" |
+| Gemcutter Buccaneer | Pirate-ETB → tapped Treasure (Equipment half declared) |
+| Solphim, Mayhem Dominus | the damage doubler, narrowed to noncombat and to opponents |
+| Gamble | tutor + random discard |
+| Windfall | every hand pitched before anyone draws |
+| An Offer You Can't Refuse | the Treasures go to the **countered** spell's controller |
+| Decaying Time Loop | count taken before the draw |
+| Pull from Tomorrow | X draw, then a queued discard |
+| Frantic Search | loot 2, untap up to three lands |
+
+That is **31 of the 65 nonland cards** in the catalog.
+
+### A correction to batch 1
+
+**Quicksmith Genius was never actually written.** It appears in this
+deck and was listed as shipped; it is not in the registry. It is also
+genuinely blocked, which is presumably why: "whenever an artifact you
+control enters, you may discard a card. If you do, draw a card"
+needs the draw to happen *after* the player has chosen what to
+discard. `DiscardChoiceForEffect` queues the choice and returns, so
+the draw would land first — turning a rummage into a loot, which is a
+strictly better card. Wants a continuation on the discard prompt, the
+same shape `PayUnless.OnDecline` already has.
+
 ### Two engine findings from this batch
 
 1. **Damage to a player from a spell or ability skipped the CR 614
@@ -80,67 +116,132 @@ didn't build:
 ## Blocked, by machinery needed
 
 Grouped by what would unblock them — each group is a candidate
-sprint item, and the deck says how much each one buys.
+sprint item, and the deck says how much each one buys. Re-derived
+against the full 65-card list after batch 4, which turned up several
+groups the first pass missed.
 
 **Alternative cast paths (S29)** — 7 cards: Faithless Looting
-(flashback), Impulsive Pilferer (encore), Marauding Mako (cycling),
-Ragavan (dash), Cyclonic Rift (overload), Deflecting Swat (free
-cast), Improvisation Capstone. The cards work without them; only the
-extra mode is missing.
+(flashback), Impulsive Pilferer (encore), Marauding Mako and
+Scrounging Skyray (cycling), Ragavan (dash), Weftstalker Ardent
+(warp), Decaying Time Loop (retrace), Cyclonic Rift (overload),
+Deflecting Swat (free cast), Improvisation Capstone. The cards all
+work without them; only the extra mode is missing.
 
-**Additional costs on cast** — ~~4 cards~~ 1 card left. Three shipped
-in batch 2 (`Spec.AdditionalCost` + `CastSpellParams.DiscardIDs`,
-[ADR 0021](../decisions/0021-additional-costs.md)). **Read the Runes**
-remains: its cost is X-many payments, each a choice between discarding
-a card and sacrificing a permanent, which wants a per-payment prompt
-rather than a fixed count.
+**Additional costs on cast** — 1 card left. Three shipped in batch 2
+([ADR 0021](../decisions/0021-additional-costs.md)). **Read the
+Runes** remains: its cost is X-many payments, each a choice between
+discarding a card and sacrificing a permanent, which wants a
+per-payment prompt rather than a fixed count.
+
+**Impulse exile** — shipped in batch 3
+([ADR 0022](../decisions/0022-impulse-exile.md)) for Ragavan and
+Breeches, Brazen Plunderer. Breeches, Eager Pillager remains, blocked
+on modal triggers below.
+
+**Modal triggered abilities with a once-per-turn ledger** — 2 cards:
+Breeches, Eager Pillager and Monument to Endurance. Both read "choose
+one that hasn't been chosen this turn". `ModeSpec` exists for spells;
+this needs it on `TriggeredAbility` plus a per-turn record of which
+options a source has already used. Two cards makes it worth doing,
+and it's the last impulse-exile holdout.
 
 **Discard as an ability cost** — 3 cards: Glint-Horn's activated
 half, Solphim's indestructible ability, Bag of Holding. Wants the
-same card-choice plumbing `SacrificeOther` already has.
+same card-choice plumbing `SacrificeOther` already has, and
+`AdditionalCost.DiscardCards` is the shape to copy onto
+`AbilityCost`. Also closes the Blood token's declared gap from S21
+sub-PR 4.
 
-**Vehicles / crew** — 3 cards: Smuggler's Copter, Magmatic Galleon,
-RMS Titanic. No `Vehicle` handling and no crew action. Notable
-because the commander's trigger explicitly names Vehicle cards, so
-the deck is built around a type the engine can't represent.
+**Vehicles / crew** — 4 cards: Smuggler's Copter, Magmatic Galleon,
+RMS Titanic, Jackdaw. No `Vehicle` type handling and no crew action.
+Notable because the commander's trigger explicitly names Vehicle
+cards, so the deck is built around a type the engine can't represent.
+The Indomitable is a fifth, and also wants cast-from-graveyard.
+
+**Until-end-of-turn pumps (S25)** — 2 cards: Captain Lannery Storm's
+sacrifice payoff and Captain Howler's +2/+0. Both otherwise trivial.
+
+**Attack triggers** — 2 cards: Captain Lannery Storm, Breeches Eager
+Pillager. There is no attack event at all — `DeclareAttacker` mutates
+state without emitting one — so "whenever ~ attacks" is unreachable.
+Cheap to add and it unblocks a very common template.
+
+**End-step triggers** — 1 card: Unstoppable Plan. `EventStepTransition`
+exists but is an engine-internal sentinel for the replacement
+pipeline, not a trigger source; upkeep has its own `EventBeginUpkeep`
+and end step has no equivalent.
+
+**Token-creation replacements** — 1 card: Academy Manufactor ("if you
+would create a Clue, Food, or Treasure token, instead create one of
+each"). The CR 614 pipeline has no token-creation event kind. Worth
+noting that Doubling Season already wants the same hook.
+
+**Per-turn discard tally** — 1 card: Change of Fortune ("draw a card
+for each card you've discarded this turn"). Same shape as
+`Game.SpellsCastThisTurn`, which already exists for cast counting.
 
 **Sagas / chapter counters** — 2 cards: Fable of the Mirror-Breaker,
 Brass's Tunnel-Grinder.
 
-**Impulse exile ("exile the top card, you may play it this turn")** —
-~~5 cards~~ **shipped** in batch 3 for Ragavan and Breeches, Brazen
-Plunderer (`Card.ExilePlay` + a `cast_spell` path out of exile,
-[ADR 0022](../decisions/0022-impulse-exile.md)). The count was wrong:
-Malcolm and Coin of Mastery aren't this mechanic at all — see batch 3
-above. **Breeches, Eager Pillager** remains, blocked on modal
-triggers with a once-per-turn-per-mode ledger.
+**Class enchantments with levels** — 1 card: Cool but Rude.
 
-**Control change** — 1 card: Coercive Recruiter ("gain control until
-end of turn"). Needs a controller-change effect with end-of-turn
-cleanup.
+**Coin flips and spell copying** — 2 cards: Breeches, the Blastmaker
+and Echocasting Symposium (which also wants Paradigm).
+
+**Discover** — 1 card: Hit the Mother Lode.
+
+**Per-mode target slots** — 2 cards: Mishra's Command and Prismari
+Command. Both are "choose two" with more than one targeted option,
+which `Register` panics on today (S20 sub-PR 4's declared limit).
+
+**Restricted counterspells** — 1 card: Siren Stormtamer, which
+counters only a spell "that targets you or a creature you control".
+`TargetSpell` predicates see the candidate card, not what that card
+is targeting, so the restriction isn't expressible. Implementing it
+without the restriction would be a strictly stronger card.
+
+**Control change** — 1 card: Coercive Recruiter. Needs a
+controller-change effect with end-of-turn cleanup.
 
 **Type/ability overwrite** — 1 card: Kitesail Larcenist (permanents
-*become* Treasures and lose all abilities). Layer 4 + 6 + a new
-ability-granting shape.
+*become* Treasures and lose all abilities). Layer 4 + 6 plus a new
+ability-removal shape.
 
-**Batched triggers (CR 603.1)** — cosmetic here. "Whenever one or
-more X" fires once per X instead of once per batch. Same totals for
-every card in this deck; it would matter for a card that reads the
-batch size nonlinearly.
+**Graveyard provenance** — 1 card: Ghost of Ramirez DePietro, which
+cares whether a card "was discarded or put there from a library this
+turn". Nothing records how a card reached a graveyard.
 
-**Not in the local Scryfall snapshot** — Fable of the Mirror-Breaker,
-Ojer Axonil, Storm the Vault. Double-faced or renamed; the importer
-matches on exact face name and these need the `card_faces` path.
+**Mana-source provenance** — 1 card: Coin of Mastery, whose counters
+scale with "mana from an artifact source spent to cast it".
+`ManaToken.Source` exists, so this is closer than it looks, but
+nothing tracks which tokens paid which spell.
+
+**Becomes-the-target triggers + evasion restrictions** — 1 card:
+Departed Deckhand.
+
+**Batched triggers (CR 603.1)** — cosmetic for most of this deck.
+"Whenever one or more X" fires once per X instead of once per batch.
+Same totals everywhere here **except** Malcolm and Breeches, where
+two Pirates hitting the *same* opponent produces two payouts instead
+of one.
+
+**Not in the local Scryfall snapshot** — Ojer Axonil and Storm the
+Vault, both double-faced; the importer matches on exact face name and
+these need the `card_faces` path. (Fable of the Mirror-Breaker is
+also DFC.) Note that the dump's `last-refresh` stamp understates the
+data's real coverage — check the sets, not the stamp.
 
 ## Suggested order
 
 1. ~~Additional costs on cast~~ — **done** (batch 2).
-2. ~~Impulse exile~~ — **done** (batch 3), bar Breeches, Eager
-   Pillager.
-3. Discard as an ability cost — 3 cards, reuses the sacrifice picker,
-   and `AdditionalCost.DiscardCards` is the shape to copy onto
-   `AbilityCost`. Also closes the Blood token's declared gap.
-4. Vehicles — 3 cards, and the commander references the type.
-5. Modal triggered abilities with a once-per-turn ledger — 1 card
-   (Breeches, Eager Pillager), but it's the last impulse-exile
-   holdout and `ModeSpec` already exists for spells.
+2. ~~Impulse exile~~ — **done** (batch 3).
+3. **Attack triggers** — an event the engine simply doesn't emit.
+   Cheapest item on the list, unblocks 2 cards here and a very
+   common template everywhere else.
+4. **Modal triggered abilities with a once-per-turn ledger** —
+   2 cards, and it's the last impulse-exile holdout.
+5. **Discard as an ability cost** — 3 cards, reuses the sacrifice
+   picker, and closes the Blood token's declared gap.
+6. **Vehicles / crew** — 4–5 cards, and the commander references the
+   type.
+7. **Until-end-of-turn pumps** — 2 cards, and S25 wants it anyway.
