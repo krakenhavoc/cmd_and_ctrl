@@ -21,6 +21,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/appenv"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/envflag"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/ratelimit"
 )
@@ -43,6 +44,14 @@ type Config struct {
 	Lobby      *Lobby
 	Auth       auth.Authenticator
 	AdminToken string // shared admin token; empty disables admin flow
+	// Env is the deployment identity (prod / dev). The zero value is
+	// the empty string, which IsDev() reports false for — so a Config
+	// built without thinking about it (every existing test) gets
+	// production behaviour and no dev surfaces.
+	Env appenv.Env
+	// Features are the dev-only capabilities this deployment exposes.
+	// Always the zero value in production; see package appenv.
+	Features   appenv.Features
 	SessionTTL time.Duration
 	AllowAnon  bool // allow unauthenticated /games/{id}/join via invite (default: true)
 	// Cards is the Scryfall index used by the deck-upload endpoint.
@@ -180,6 +189,12 @@ func Handler(c Config) http.Handler {
 	// are rate-limited alongside admin-login + join because state
 	// generation involves crypto/rand and the upstream calls are
 	// the most expensive thing we forward to Discord.
+	// GET /config — deployment identity + dev feature flags. Sits
+	// alongside the other unauthenticated capability probes
+	// (/auth/discord/config, /bugreport/config) and is fetched by the
+	// client before login so the env banner renders on the login
+	// screen. Constant and secret-free in production.
+	mux.Handle("GET /config", handlerFunc(c, clientConfig))
 	mux.Handle("GET /auth/discord/config", handlerFunc(c, discordConfig))
 	mux.Handle("GET /auth/discord/start", limit.Middleware(handlerFunc(c, discordStart)))
 	mux.Handle("GET /auth/discord/callback", limit.Middleware(handlerFunc(c, discordCallback)))
