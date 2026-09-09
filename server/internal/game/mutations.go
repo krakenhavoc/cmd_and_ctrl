@@ -260,6 +260,15 @@ type CastSpellParams struct {
 	HoldPriority bool
 	SplitSecond  bool
 
+	// DiscardIDs names the cards paid to an additional cost of the
+	// form "As an additional cost to cast this spell, discard a
+	// card" (CR 601.2f). Validated at announce against the card's
+	// AdditionalCost and paid once the spell is on the stack, so
+	// discard payoffs trigger above it. Empty for every card
+	// without such a cost — and non-empty for one is rejected.
+	// Added in S21 sub-PR 5.
+	DiscardIDs []uuid.UUID
+
 	// Strict enables the S15 mana-cost gate. When set, the server
 	// parses the card's ManaCost into an effective cost (plus
 	// commander tax for casts from the command zone), checks the
@@ -436,6 +445,20 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			return err
 		}
 	}
+	// S21 sub-PR 5: additional costs (CR 601.2f). Validated here,
+	// with the rest of the announce-time choices, and paid further
+	// down once the spell is on the stack — validate-all-then-pay,
+	// so a rejected cast never leaves a card in the graveyard.
+	addCost := AdditionalCostFor(card.OracleID)
+	if err := g.validateAdditionalCostLocked(playerID, cardID, addCost, params.DiscardIDs); err != nil {
+		slog.Warn("cast_spell rejected: bad additional cost payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"discards_received", len(params.DiscardIDs),
+			"err", err,
+		)
+		return err
+	}
 	// Sorcery-speed gate. Lands are special-action-fast (CR 305 is
 	// "you may play a land during your main phase if the stack is
 	// empty"); they're handled implicitly by the same gate below.
@@ -566,6 +589,20 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		// S20: remember the clause the targets were validated under so
 		// the resolution re-check and per-slot effect checks use it.
 		targetSpec: spec,
+	}
+	// CR 601.2h: pay the costs. The mana component was charged
+	// above (pre-move, as S15 wrote it); the additional cost is
+	// paid HERE, with the spell already on the stack, because a
+	// discard payoff that triggers off it must resolve before the
+	// spell does. Validation happened at announce, so a failure
+	// past this point is an engine bug rather than a bad request.
+	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs); err != nil {
+		slog.Error("cast_spell: additional cost failed after validation",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"err", err,
+		)
+		return err
 	}
 	if params.SplitSecond {
 		g.SplitSecondActive = true

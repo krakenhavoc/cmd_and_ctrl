@@ -66,6 +66,14 @@ func init() {
 		}
 		return nil
 	}
+	// S21 sub-PR 5: additional costs on cast. Nil for cards without
+	// one, which is nearly all of them.
+	game.CatalogAdditionalCost = func(oracleID string) *game.AdditionalCost {
+		if spec, ok := Lookup(oracleID); ok {
+			return spec.AdditionalCost
+		}
+		return nil
+	}
 	game.CatalogManaAbilities = func(oracleID string) []game.ManaAbilityShape {
 		spec, ok := Lookup(oracleID)
 		if !ok || len(spec.ManaAbilities) == 0 {

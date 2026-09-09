@@ -46,6 +46,7 @@
     beginForMode as beginTargetingForMode,
     hasXCost,
     isModal,
+    discardCostOf,
     isLegalCardTarget,
     isLegalPlayerTarget,
     isMultiPick,
@@ -59,6 +60,7 @@
   import XCostModal from "./XCostModal.svelte";
   import SacrificeCostModal from "./SacrificeCostModal.svelte";
   import ModePickerModal from "./ModePickerModal.svelte";
+  import DiscardCostModal from "./DiscardCostModal.svelte";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -153,14 +155,51 @@
   // S20 sub-PR 3: an {X} spell asks for X first. The modal's
   // confirm continues into targeting / cast with the chosen value.
   let xPromptCard = $state<CardView | null>(null);
+  let xPromptDiscardIDs: string[] | undefined;
   function confirmX(x: number): void {
     const card = xPromptCard;
+    const discardIDs = xPromptDiscardIDs;
     xPromptCard = null;
+    xPromptDiscardIDs = undefined;
     if (!card) return;
-    continueCast(card, x);
+    continueCast(card, x, discardIDs);
+  }
+
+  // S21 sub-PR 5: a spell with an additional cost ("As an
+  // additional cost to cast this spell, discard a card") asks for
+  // the payment first. The picked IDs thread through the rest of
+  // the cast flow the way xValue does and ride cast_spell as
+  // discard_ids; the server validates them at announce and pays
+  // them once the spell is on the stack.
+  let discardPromptCard = $state<CardView | null>(null);
+
+  // Everything in the caster's hand except the spell itself — CR
+  // 601.2a puts it on the stack before costs are paid, so it can't
+  // pay for itself.
+  const discardCostOptions = $derived.by(() => {
+    const card = discardPromptCard;
+    if (!card || !viewerID) return [];
+    const me = view.seats.find((s) => s.id === viewerID);
+    return (me?.hand.cards ?? []).filter((c) => c.instance_id !== card.instance_id);
+  });
+
+  function confirmDiscardCost(ids: string[]): void {
+    const card = discardPromptCard;
+    discardPromptCard = null;
+    if (!card) return;
+    if (hasXCost(card)) {
+      xPromptDiscardIDs = ids;
+      xPromptCard = card;
+      return;
+    }
+    continueCast(card, undefined, ids);
   }
 
   function handlePlayCard(card: CardView): void {
+    if (discardCostOf(card) > 0) {
+      discardPromptCard = card;
+      return;
+    }
     if (hasXCost(card)) {
       xPromptCard = card;
       return;
@@ -174,29 +213,34 @@
   // option's legal set, otherwise the cast fires straight away.
   let modePromptCard = $state<CardView | null>(null);
   let modePromptX: number | undefined;
+  let modePromptDiscardIDs: string[] | undefined;
   function confirmModes(modes: number[]): void {
     const card = modePromptCard;
     const xValue = modePromptX;
+    const discardIDs = modePromptDiscardIDs;
     modePromptCard = null;
     modePromptX = undefined;
+    modePromptDiscardIDs = undefined;
     if (!card) return;
     const targeted = modes.find((i) => card.modes?.options[i]?.legal_targets !== undefined);
     if (targeted !== undefined) {
       const option = card.modes!.options[targeted];
-      beginTargetingForMode(card, option, modes, xValue);
+      beginTargetingForMode(card, option, modes, xValue, discardIDs);
       return;
     }
     const params: Record<string, unknown> = { instance_id: card.instance_id, modes };
     if (xValue !== undefined) params.x_value = xValue;
+    if (discardIDs !== undefined) params.discard_ids = discardIDs;
     sendAction("cast_spell", params, viewerID ?? undefined);
   }
 
   // continueCast is the post-X half of the cast flow: pick modes for
   // a modal card, enter targeting for a targeted card, or fire
   // cast_spell straight away.
-  function continueCast(card: CardView, xValue: number | undefined): void {
+  function continueCast(card: CardView, xValue: number | undefined, discardIDs?: string[]): void {
     if (isModal(card)) {
       modePromptX = xValue;
+      modePromptDiscardIDs = discardIDs;
       modePromptCard = card;
       return;
     }
@@ -214,11 +258,12 @@
       mode === "stack_spell" ||
       mode === "card_in_graveyard"
     ) {
-      beginTargeting(card, mode, xValue);
+      beginTargeting(card, mode, xValue, discardIDs);
       return;
     }
     const params: Record<string, unknown> = { instance_id: card.instance_id };
     if (xValue !== undefined) params.x_value = xValue;
+    if (discardIDs !== undefined) params.discard_ids = discardIDs;
     sendAction("cast_spell", params, viewerID ?? undefined);
   }
 
@@ -277,6 +322,7 @@
     const params: Record<string, unknown> = { instance_id: state.card.instance_id, targets };
     if (state.xValue !== undefined) params.x_value = state.xValue;
     if (state.modes !== undefined) params.modes = state.modes;
+    if (state.discardIDs !== undefined) params.discard_ids = state.discardIDs;
     sendAction("cast_spell", params, viewerID ?? undefined);
     cancelTargeting();
   }
@@ -510,6 +556,12 @@
     options={sacrificeOptions}
     onConfirm={confirmSacrifice}
     onCancel={() => (sacrificePrompt = null)}
+  />
+  <DiscardCostModal
+    card={discardPromptCard}
+    options={discardCostOptions}
+    onConfirm={confirmDiscardCost}
+    onCancel={() => (discardPromptCard = null)}
   />
   <XCostModal
     gameID={view.id}

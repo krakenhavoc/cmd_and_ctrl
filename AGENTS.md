@@ -651,6 +651,26 @@ stack above the ability and resolve first. Mana abilities do NOT go
 here (they skip the stack, CR 605.3a); they stay in `ManaAbilities`.
 See [ADR 0020](docs/decisions/0020-activated-abilities.md).
 
+**Adding an additional cost to cast (S21 sub-PR 5):** "As an
+additional cost to cast this spell, discard a card" goes in
+`Spec.AdditionalCost`, not in `OnResolve`:
+
+```go
+AdditionalCost: DiscardCost(1),   // Thrill of Possibility, Big Score
+```
+
+The distinction is observable, which is why it's modelled: the cost
+is paid to CAST the spell, so the discard happens with the spell
+already on the stack and a discard payoff (Mary Read and Anne Bonny,
+Marauding Mako) triggers ABOVE it and resolves first. It is also
+paid whether or not the spell resolves — countering it doesn't give
+the card back. Fold the discard into `OnResolve` and both of those
+go wrong. The caster picks the cards in a client prompt that opens
+before the X / mode / target prompts; they ride `cast_spell` as
+`discard_ids` and the engine validates them at announce (the spell
+itself is never a legal pick — CR 601.2a already moved it to the
+stack). See [ADR 0021](docs/decisions/0021-additional-costs.md).
+
 **Event picker:**
 
 | Trigger text | `Watches` | `AppliesTo` |

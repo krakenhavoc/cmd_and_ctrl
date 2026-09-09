@@ -230,6 +230,17 @@ type Spec struct {
 	// deferred multi-target work.
 	Modes *game.ModeSpec
 
+	// AdditionalCost is the S21 sub-PR 5 "As an additional cost to
+	// cast this spell, …" clause (CR 601.2f). Only the discard shape
+	// exists today: Thrill of Possibility, Big Score, Unexpected
+	// Windfall. The caster picks the cards in a client prompt that
+	// opens BEFORE targeting, matching the order costs are paid in,
+	// and the engine pays the cost with the spell already on the
+	// stack so discard payoffs (Mary Read and Anne Bonny, Marauding
+	// Mako) trigger above it. Build it with DiscardCost(n). Nil for
+	// cards with no additional cost.
+	AdditionalCost *game.AdditionalCost
+
 	// Activated is the list of CR 602 activated abilities the card
 	// offers from the battlefield — the fourth ability type, added
 	// in S21 sub-PR 2. Each entry declares its cost (tap, sacrifice

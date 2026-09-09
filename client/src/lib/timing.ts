@@ -112,6 +112,17 @@ export function canCastFromHand(
     }).length;
     if (castable < card.modes.min) return deny("No castable mode");
   }
+  // S21 sub-PR 5: an additional cost you can't pay makes the spell
+  // uncastable (CR 601.2h). "Discard a card" with an empty hand is
+  // the whole case — the spell itself doesn't count, since it's on
+  // the stack by the time costs are paid.
+  const discards = card.additional_cost?.discard_cards ?? 0;
+  if (discards > 0) {
+    const hand = snap.seats.find((s) => s.id === viewerID)?.hand.cards ?? [];
+    const payable = hand.filter((c) => c.instance_id !== card.instance_id).length;
+    if (payable < discards)
+      return deny(discards > 1 ? `Needs ${discards} cards to discard` : "No card to discard");
+  }
   const type = (card.type_line ?? "").toLowerCase();
   const isLand = type.includes("land");
   const isInstant = type.includes("instant");
