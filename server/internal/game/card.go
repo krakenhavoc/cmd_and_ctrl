@@ -97,6 +97,15 @@ type Card struct {
 	// sub-PR 1.
 	ManaAbilities []ManaAbilityShape
 
+	// ActivatedAbilities are CR 602 activated abilities carried on
+	// the card object — the third and last of the catalog hooks a
+	// token can't reach, since all three key on oracle ID. Food,
+	// Clue and Blood tokens are defined entirely by their activated
+	// ability ("{2}, Sacrifice this artifact: Draw a card"), so
+	// without this they'd be blank artifacts. ActivatedAbilitiesForCard
+	// prefers these over the catalog. Added in S21 sub-PR 4.
+	ActivatedAbilities []ActivatedAbilityShape
+
 	// Owner is the player who brought this card to the game. Ownership
 	// is fixed at deck-build time and never changes.
 	Owner uuid.UUID

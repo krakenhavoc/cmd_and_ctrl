@@ -178,6 +178,9 @@ func cloneCard(c Card) Card {
 	if len(c.ManaAbilities) > 0 {
 		out.ManaAbilities = append([]ManaAbilityShape(nil), c.ManaAbilities...)
 	}
+	if len(c.ActivatedAbilities) > 0 {
+		out.ActivatedAbilities = append([]ActivatedAbilityShape(nil), c.ActivatedAbilities...)
+	}
 	if len(c.Colors) > 0 {
 		out.Colors = append([]string(nil), c.Colors...)
 	}
