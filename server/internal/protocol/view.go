@@ -504,6 +504,10 @@ type CardView struct {
 	// before firing cast_spell — the server rejects a cast that
 	// arrives without it.
 	AdditionalCost *AdditionalCostView `json:"additional_cost,omitempty"`
+	// ExilePlay is the S21 sub-PR 6 impulse-exile grant. Present
+	// only while the card is in exile with a live permission;
+	// absent — which is nearly always — the card is inert exile.
+	ExilePlay *ExilePlayView `json:"exile_play,omitempty"`
 	// ActivatedAbilities are the CR 602 activated abilities this
 	// permanent offers, from its controller's point of view (public
 	// information, so present on every viewer's copy). Absent off
@@ -547,6 +551,23 @@ type CardView struct {
 // game.ManaAbilityShape projection, so the client can render the
 // button labels without reaching into the catalog directly. Added
 // in S15 sub-PR 2.
+// ExilePlayView is the impulse-exile grant on a card in exile —
+// "exile the top card of that player's library, you may play it
+// this turn" (S21 sub-PR 6). Public information: the trigger that
+// created it resolved in the open, so every viewer sees who may
+// play the card. The client offers the action only to `player`.
+type ExilePlayView struct {
+	// Player is the instance ID of the player who may play it —
+	// usually not the card's owner.
+	Player string `json:"player"`
+	// CastOnly marks a grant that permits casting but not playing a
+	// land (Ragavan). The client labels the action accordingly.
+	CastOnly bool `json:"cast_only,omitempty"`
+	// AnyColor marks "you may spend mana as though it were mana of
+	// any color" (Breeches).
+	AnyColor bool `json:"any_color,omitempty"`
+}
+
 // ActivatedAbilityView is one CR 602 activated ability on a
 // battlefield permanent, from its controller's point of view. The
 // cost flags tell the client what to collect before firing
@@ -1466,6 +1487,16 @@ func viewOfCard(c game.Card) CardView {
 	}
 	if c.GoadedBy != uuid.Nil {
 		view.GoadedBy = c.GoadedBy.String()
+	}
+	// S21 sub-PR 6: the impulse-exile grant rides the card itself,
+	// so no per-viewer stamping pass is needed — and it's zeroed as
+	// the card leaves exile, so this can't linger on a permanent.
+	if c.ExilePlay.Granted() {
+		view.ExilePlay = &ExilePlayView{
+			Player:   c.ExilePlay.Player.String(),
+			CastOnly: c.ExilePlay.CastOnly,
+			AnyColor: c.ExilePlay.AnyColor,
+		}
 	}
 	return view
 }

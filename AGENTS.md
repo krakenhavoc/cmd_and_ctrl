@@ -696,7 +696,28 @@ before the X / mode / target prompts; they ride `cast_spell` as
 itself is never a legal pick — CR 601.2a already moved it to the
 stack). See [ADR 0021](docs/decisions/0021-additional-costs.md).
 
-The same slot takes a **sacrifice** clause (S21 sub-PR 6):
+**Impulse exile (S21 sub-PR 6):** "exile the top card of that
+player's library — until end of turn, you may cast that card" is
+the `ExileTopWithPermission` primitive:
+
+```go
+ExileTopWithPermission{
+    From:     victim,            // whose library
+    GrantTo:  item.Controller,   // who may play it — usually not the owner
+    N:        1,
+    CastOnly: true,              // "you may CAST" (Ragavan); omit for "play" (Breeches)
+    AnyColor: true,              // "spend mana as though it were mana of any color"
+}.Apply(ctx)
+```
+
+The permission rides `Card.ExilePlay` and expires at end of turn.
+`CastOnly` is not a detail: a land exiled by Ragavan is stranded,
+because playing a land is not casting (CR 305.1), and the client
+shows no button on it. Timing still applies on top — the grant says
+you *may* play the card, not *when*. See
+[ADR 0022](docs/decisions/0022-impulse-exile.md).
+
+The same slot takes a **sacrifice** clause (S21):
 
 ```go
 AdditionalCost: SacrificeCost("a creature", Creature()),           // Village Rites, Altar's Reap

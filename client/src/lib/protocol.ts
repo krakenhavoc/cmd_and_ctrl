@@ -421,6 +421,18 @@ export interface AdditionalCostView {
   label?: string;
 }
 
+// ExilePlayView is the impulse-exile grant on a card in exile —
+// "exile the top card of that player's library, you may play it
+// this turn" (S21 sub-PR 6). Public information; the client offers
+// the action only when `player` is the viewer.
+export interface ExilePlayView {
+  player: string;
+  // Casting only — a land under this grant is stranded (Ragavan).
+  cast_only?: boolean;
+  // "Spend mana as though it were mana of any color" (Breeches).
+  any_color?: boolean;
+}
+
 // ActivatedAbilityView is one CR 602 activated ability on a
 // battlefield permanent (S21 sub-PR 2). Public information, so it
 // rides every viewer's snapshot; the client only offers the menu on
@@ -532,6 +544,9 @@ export interface CardView {
   // discard a card"). The cast flow collects the payment before
   // firing cast_spell. Absent for the vast majority of cards.
   additional_cost?: AdditionalCostView;
+  // S21 sub-PR 6: present on a card in exile that someone may play
+  // this turn. Absent for ordinary exile, which is nearly all of it.
+  exile_play?: ExilePlayView;
   // S21 sub-PR 2: activated abilities offered by this permanent.
   activated_abilities?: ActivatedAbilityView[];
   // S21 sub-PR 2: CR 302.1 summoning sickness — entered this turn

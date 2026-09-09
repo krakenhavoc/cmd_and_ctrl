@@ -36,6 +36,30 @@ Read the Runes stays blocked: its cost is per-card-drawn and offers a
 choice between discarding and sacrificing, which is a different shape
 from a fixed "discard a card".
 
+## Done (batch 3 — impulse exile)
+
+| Card | What it exercises |
+|---|---|
+| Ragavan, Nimble Pilferer | the first card played from a zone that isn't yours; Treasure + cast-only steal |
+| Breeches, Brazen Plunderer | the same, with "play" instead of "cast" and the any-colour mana relaxation |
+
+**The triage overcounted this group.** It listed five cards; only
+three are impulse exile, and one of those needs machinery this batch
+didn't build:
+
+- **Malcolm, Alluring Scoundrel** is not impulse exile. It loots on
+  combat damage and, at four chorus counters, lets you cast the
+  *discarded* card for free — cast-from-graveyard with an alternative
+  cost, which is a different mechanic (and closer to S29's
+  alternative cast paths).
+- **Coin of Mastery** is not impulse exile either — it's an
+  enters-with-counters replacement plus a Treasure ability. Both
+  halves are already expressible; it was mis-filed.
+- **Breeches, Eager Pillager** is impulse exile in one of three
+  modes, but its trigger is *modal with a once-per-turn-per-mode
+  ledger* ("choose one that hasn't been chosen this turn"). That's
+  new machinery on `TriggeredAbility`, not on exile. Still blocked.
+
 ### Two engine findings from this batch
 
 1. **Damage to a player from a spell or ability skipped the CR 614
@@ -84,10 +108,12 @@ the deck is built around a type the engine can't represent.
 Brass's Tunnel-Grinder.
 
 **Impulse exile ("exile the top card, you may play it this turn")** —
-5 cards: Ragavan, Breeches (both), Malcolm, Coin of Mastery. Needs an
-exile-with-permission zone and a cast-from-exile path. This is the
-deck's whole card-advantage engine, so a Pirates deck plays badly
-without it even though every individual card "works".
+~~5 cards~~ **shipped** in batch 3 for Ragavan and Breeches, Brazen
+Plunderer (`Card.ExilePlay` + a `cast_spell` path out of exile,
+[ADR 0022](../decisions/0022-impulse-exile.md)). The count was wrong:
+Malcolm and Coin of Mastery aren't this mechanic at all — see batch 3
+above. **Breeches, Eager Pillager** remains, blocked on modal
+triggers with a once-per-turn-per-mode ledger.
 
 **Control change** — 1 card: Coercive Recruiter ("gain control until
 end of turn"). Needs a controller-change effect with end-of-turn
@@ -109,8 +135,12 @@ matches on exact face name and these need the `card_faces` path.
 ## Suggested order
 
 1. ~~Additional costs on cast~~ — **done** (batch 2).
-2. Impulse exile — 5 cards, and it's the archetype's engine.
+2. ~~Impulse exile~~ — **done** (batch 3), bar Breeches, Eager
+   Pillager.
 3. Discard as an ability cost — 3 cards, reuses the sacrifice picker,
    and `AdditionalCost.DiscardCards` is the shape to copy onto
    `AbilityCost`. Also closes the Blood token's declared gap.
 4. Vehicles — 3 cards, and the commander references the type.
+5. Modal triggered abilities with a once-per-turn ledger — 1 card
+   (Breeches, Eager Pillager), but it's the last impulse-exile
+   holdout and `ModeSpec` already exists for spells.

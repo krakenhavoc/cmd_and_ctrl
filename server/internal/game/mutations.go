@@ -394,6 +394,22 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	if !found {
 		return ErrCardNotFound
 	}
+	// S21 sub-PR 6: casting out of exile needs a live impulse-exile
+	// grant naming this player. Checked before every other gate
+	// because it's the one that decides whether the card is yours to
+	// touch at all.
+	if src.Kind == ZoneExile {
+		perm := card.ExilePlay
+		if !perm.Active(playerID, g.Turn.Number) {
+			return ErrNoPlayPermission
+		}
+		// "You may CAST that card" (Ragavan) does not let you play a
+		// land: playing a land is a special action, not a cast
+		// (CR 305.1, 115.2a).
+		if perm.CastOnly && card.IsLand() {
+			return ErrNoPlayPermission
+		}
+	}
 	// S17 sub-PR 6 follow-up: if the catalog declares a target_mode
 	// for this card, a cast without any target is a client bug (the
 	// targeting UI should have opened before firing cast_spell).
@@ -524,6 +540,10 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 				if out.EntersTapped {
 					g.Battlefield.Cards[i].Tapped = true
 				}
+				// The impulse grant is spent. Zeroing it here means a
+				// later effect that exiles this card again can't
+				// inherit a permission it never granted.
+				g.Battlefield.Cards[i].ExilePlay = ExilePlayPermission{}
 			}
 		}
 		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
@@ -577,6 +597,12 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// Game.Stack; the announce-time choices live in StackMeta.
 	if _, err := MoveCard(src, g.Stack, cardID); err != nil {
 		return err
+	}
+	// The impulse grant is spent — see the land branch above.
+	for i := range g.Stack.Cards {
+		if g.Stack.Cards[i].InstanceID == cardID {
+			g.Stack.Cards[i].ExilePlay = ExilePlayPermission{}
+		}
 	}
 	// S13.5: cast spells are public on the stack.
 	g.markCardKnownInZoneLocked(g.Stack, cardID)
@@ -853,6 +879,13 @@ func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams)
 		tax := p.CommanderCasts[card.InstanceID]
 		cost.Generic += tax * 2
 	}
+	// S21 sub-PR 6: "you may spend mana as though it were mana of any
+	// color to cast those spells" (Breeches, Brazen Plunderer). Folds
+	// the colored slots into the generic demand, which is exactly
+	// equivalent for the solver.
+	if card.ExilePlay.AnyColor && card.ExilePlay.Active(p.ID, g.Turn.Number) {
+		cost = asAnyColorCost(cost)
+	}
 	return cost, nil
 }
 
@@ -866,6 +899,12 @@ func (g *Game) castSourceZoneLocked(p *Player, fromZone string) (*Zone, error) {
 		return p.Hand, nil
 	case "command":
 		return p.Command, nil
+	case "exile":
+		// S21 sub-PR 6: impulse exile. Exile is a SHARED zone, so
+		// unlike hand and command the zone lookup grants nothing on
+		// its own — CastSpell checks the per-card permission before
+		// it will move anything.
+		return g.Exile, nil
 	default:
 		return nil, ErrZoneNotFound
 	}
