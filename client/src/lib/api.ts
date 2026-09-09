@@ -450,3 +450,18 @@ export async function spawnDevCard(gameID: string, req: DevSpawnRequest): Promis
   });
   return (await res.json()) as DevSpawnResult;
 }
+
+// fetchReplay downloads the per-game replay log (JSONL, one snapshot
+// per line — see lib/replay.ts). The route is not dev-only: it has
+// existed since S11 and is admin-gated for a game still in progress,
+// player-accessible once the game has ended. The dev scrubber is just
+// its first interactive consumer.
+//
+// A 204 means the route is there but the game has produced no Apply
+// yet; returns an empty string so the caller renders "no frames"
+// rather than an error.
+export async function fetchReplay(gameID: string): Promise<string> {
+  const res = await authFetch(`/games/${encodeURIComponent(gameID)}/replay`, { method: "GET" });
+  if (res.status === 204) return "";
+  return await res.text();
+}
