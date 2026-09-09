@@ -219,6 +219,22 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /games/{id}/auto-tap-preview", auth.Middleware(c.Auth)(handlerFunc(c, autoTapPreview)))
 	mux.Handle("POST /games/{id}/decks", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, uploadDeck))))
 	mux.Handle("GET /me", auth.Middleware(c.Auth)(handlerFunc(c, me)))
+
+	// Develop-environment card spawner (ADR 0023). Both routes are
+	// wrapped in requireDevFeature: in production they are 404s, and
+	// they stay 404s on a dev deployment that has switched the
+	// card_spawn feature off. Session-gated but not admin-gated --
+	// on a preview box anyone at the table is a tester.
+	//
+	// The gate is the outermost wrapper on purpose: an unauthenticated
+	// probe against production must not be able to tell these apart
+	// from any other unrouted path, and auth.Middleware would answer
+	// 401 first and confirm the route exists.
+	devSpawn := func(h http.Handler) http.Handler {
+		return requireDevFeature(c, func(f appenv.Features) bool { return f.CardSpawn }, h)
+	}
+	mux.Handle("GET /dev/cards", devSpawn(auth.Middleware(c.Auth)(handlerFunc(c, devCardSearch))))
+	mux.Handle("POST /games/{id}/dev/spawn", devSpawn(auth.Middleware(c.Auth)(handlerFunc(c, devSpawnCard))))
 	// Bug reports (in-app button → GitHub issue). The config probe
 	// is unauthenticated and mirrors /auth/discord/config. POST is
 	// session-gated (any role — spectators hit bugs too) with its
@@ -1120,6 +1136,8 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusConflict
 	case errors.Is(err, ErrPlayerNotInGame):
 		status = http.StatusForbidden
+	case errors.Is(err, ErrGameNotActiveForSpawn):
+		status = http.StatusConflict
 	case errors.Is(err, ErrEmptyName):
 		status = http.StatusBadRequest
 	case errors.Is(err, auth.ErrInvalidCredential),
