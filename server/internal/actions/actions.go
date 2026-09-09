@@ -345,6 +345,9 @@ func Dispatch(g *game.Game, a Action) error {
 			// form "As an additional cost to cast this spell,
 			// discard a card". Empty for every card without one.
 			DiscardIDs []string `json:"discard_ids,omitempty"`
+			// S21 sub-PR 6 — the permanent paid to a "sacrifice a
+			// creature" additional cost (Village Rites).
+			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -371,6 +374,16 @@ func Dispatch(g *game.Game, a Action) error {
 					return fmt.Errorf("cast_spell discard_ids[%d]: %w", i, err)
 				}
 				params.DiscardIDs = append(params.DiscardIDs, id)
+			}
+		}
+		if len(p.SacrificeIDs) > 0 {
+			params.SacrificeIDs = make([]uuid.UUID, 0, len(p.SacrificeIDs))
+			for i, raw := range p.SacrificeIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("cast_spell sacrifice_ids[%d]: %w", i, err)
+				}
+				params.SacrificeIDs = append(params.SacrificeIDs, id)
 			}
 		}
 		if len(p.LockedSources) > 0 {
@@ -928,6 +941,12 @@ func Dispatch(g *game.Game, a Action) error {
 			// pick_target prompt whose clause takes several targets
 			// ("up to two target creatures"). Ordered as clicked.
 			Targets []castTargetWire `json:"targets"`
+			// Bottom / TopOrder answer a PendingChoiceScry (CR
+			// 701.18): the looked-at cards going under the library,
+			// and the ones staying on top listed TOP-FIRST. Every
+			// looked-at card must appear in exactly one list.
+			Bottom   []string `json:"bottom"`
+			TopOrder []string `json:"top_order"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -938,6 +957,25 @@ func Dispatch(g *game.Game, a Action) error {
 		}
 		if p.Color != "" {
 			return g.ResolveManaChoice(choiceID, a.Player, p.Color)
+		}
+		if p.Bottom != nil || p.TopOrder != nil {
+			bottom := make([]uuid.UUID, 0, len(p.Bottom))
+			for i, raw := range p.Bottom {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("resolve_choice bottom[%d]: %w", i, err)
+				}
+				bottom = append(bottom, id)
+			}
+			top := make([]uuid.UUID, 0, len(p.TopOrder))
+			for i, raw := range p.TopOrder {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("resolve_choice top_order[%d]: %w", i, err)
+				}
+				top = append(top, id)
+			}
+			return g.ResolveScry(choiceID, a.Player, bottom, top)
 		}
 		if p.Target != nil {
 			ref, err := p.Target.toRef()
@@ -1025,6 +1063,17 @@ func Dispatch(g *game.Game, a Action) error {
 			}
 			ids = append(ids, id)
 		}
+		// Two card-pick kinds share the {card_ids: []string} payload:
+		// discard_from_hand (S14) and sacrifice_choice ("each player
+		// sacrifices a creature"). Route by kind, as the {apply} and
+		// {order} payloads already do, rather than minting a third
+		// wire field for the same shape.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceSacrifice {
+			if len(ids) != 1 {
+				return game.ErrInvalidParam
+			}
+			return g.ResolveSacrificeChoice(choiceID, a.Player, ids[0])
+		}
 		return g.ResolvePendingChoice(choiceID, a.Player, ids)
 
 	case TypeActivateManaAbility:
@@ -1034,6 +1083,11 @@ func Dispatch(g *game.Game, a Action) error {
 		var p struct {
 			CardID       string `json:"card_id"`
 			AbilityIndex int    `json:"ability_index"`
+			// sacrifice_ids names the permanents paid to a
+			// sacrifice-another cost (Ashnod's Altar). Same field
+			// name and shape as activate_ability's, so the client
+			// reuses one picker for both ability kinds.
+			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1042,7 +1096,16 @@ func Dispatch(g *game.Game, a Action) error {
 		if err != nil {
 			return fmt.Errorf("activate_mana_ability card_id: %w", err)
 		}
-		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex)
+		sacIDs := make([]uuid.UUID, 0, len(p.SacrificeIDs))
+		for _, raw := range p.SacrificeIDs {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return fmt.Errorf("activate_mana_ability sacrifice_ids: %w", err)
+			}
+			sacIDs = append(sacIDs, id)
+		}
+		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex,
+			game.ManaAbilityParams{SacrificeIDs: sacIDs})
 
 	case TypeSetMaxHandSize:
 		if a.Player == uuid.Nil {

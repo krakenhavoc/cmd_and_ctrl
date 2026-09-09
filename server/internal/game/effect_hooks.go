@@ -58,10 +58,26 @@ var CatalogTargetMode func(oracleID string) string
 // activate_mana_ability call to look up the ability's cost shape +
 // produced-mana string.
 type ManaAbilityShape struct {
-	TapCost       bool
+	TapCost bool
+	// SacrificeCost sacrifices the SOURCE as part of the cost
+	// (Treasure, Lotus Petal, an Eldrazi Spawn).
 	SacrificeCost bool
-	Produced      string
-	Label         string
+	// SacrificeOther sacrifices one OTHER permanent the activator
+	// controls, matched against this spec — Ashnod's Altar's
+	// "Sacrifice a creature". The activator names it in
+	// ManaAbilityParams.SacrificeIDs.
+	//
+	// Distinct from SacrificeCost because the two compose: a card
+	// could in principle eat itself and something else. The source
+	// is a legal choice when the spec admits it, exactly as on an
+	// activated ability's SacrificeOther (Carrion Feeder eats
+	// itself), so validation rejects naming the same permanent
+	// twice rather than assuming they differ.
+	//
+	// Added in the S21 mana-cost pass.
+	SacrificeOther *TargetSpec
+	Produced       string
+	Label          string
 }
 
 // CatalogManaAbilities returns the registered mana abilities for

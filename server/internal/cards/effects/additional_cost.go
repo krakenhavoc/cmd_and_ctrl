@@ -10,10 +10,9 @@ import (
 // AdditionalCost, the "As an additional cost to cast this spell, …"
 // clause (CR 601.2f).
 //
-// One shape so far. Sacrifice-as-an-additional-cost and
-// exile-from-graveyard have no card in the current decklists, and a
-// constructor with no caller is a guess about an API rather than an
-// API.
+// Two shapes so far. Exile-from-graveyard still has no card in the
+// current decklists, and a constructor with no caller is a guess about
+// an API rather than an API.
 
 // DiscardCost is "As an additional cost to cast this spell, discard
 // N cards." The engine validates the caster's picks at announce and
@@ -35,4 +34,19 @@ func discardLabel(n int) string {
 		return "Discard three cards"
 	}
 	return "Discard " + strconv.Itoa(n) + " cards"
+}
+
+// SacrificeCost is "As an additional cost to cast this spell,
+// sacrifice a creature" (Village Rites, Altar's Reap) — or any wider
+// clause, via the predicates. Build the spec with the same
+// sacrificeSpec helper the activated and mana abilities use, so
+// "you may only sacrifice what you control" is enforced in one place.
+//
+// Paid with the spell already on the stack, so an aristocrats payoff
+// watching the death triggers above the spell and drains first.
+func SacrificeCost(label string, preds ...CardPredicate) *game.AdditionalCost {
+	return &game.AdditionalCost{
+		Sacrifice: sacrificeSpec(label, preds...),
+		Label:     "Sacrifice " + label,
+	}
 }

@@ -131,3 +131,47 @@ which would leave the spell announced but not paid for while the
 prompt sits open — a state the rules don't have, and one that
 another player could act in. Announce-time collection keeps the
 cast atomic.
+
+## Amendment — sacrifice as an additional cost (S21 sub-PR 6)
+
+`AdditionalCost` gains a second component, `Sacrifice *TargetSpec`,
+for Village Rites, Altar's Reap and Deadly Dispute. The decision
+above holds unchanged; this records what the second component
+settled.
+
+**It is the same decision, one zone over.** The three reasons the
+discard is a cost rather than an `OnResolve` effect apply verbatim to
+the sacrifice: the creature dies with the spell on the stack, so
+Blood Artist and Zulaport Cutthroat drain before the cards are drawn;
+a countered Village Rites still costs the creature; and with nothing
+to sacrifice the spell cannot be cast at all. The aristocrats
+archetype is built on the first of those the way the Pirates list is
+built on the discard ordering, so it is asserted directly — the test
+checks that Blood Artist's target prompt exists *while Village Rites
+is still on the stack*, which an `OnResolve` implementation cannot
+produce.
+
+**Validation is shared, not duplicated.** The clause reuses
+`validateSacrificeCostLocked`, the activated-ability validator, so
+"you may only sacrifice what you control" (CR 701.17b) and the
+predicate check live in one place across all three cost sites
+(spell, activated ability, mana ability). `SacrificeCost` likewise
+builds its spec with the same `sacrificeSpec` helper the abilities
+use.
+
+**A sacrifice needs no self-exclusion.** The discard component has to
+exclude the spell being cast; the sacrifice component gets that for
+free, because the spell is on the stack and the clause only matches
+permanents on the battlefield.
+
+**Still out, and still for the reason above:** kicker and other
+*optional* additional costs. A choice of whether to pay changes the
+spell's effect rather than its price.
+
+### Known debt
+
+On the client, `xValue`, `discardIDs` and `sacrificeIDs` are now
+three parallel announce-time payments threaded side by side through
+`begin` / `beginForMode` / `continueCast`. A fourth should bundle
+them into one `CastChoices` object rather than adding a parameter;
+noted in `targeting.ts` at the declaration.

@@ -123,6 +123,14 @@ export function canCastFromHand(
     if (payable < discards)
       return deny(discards > 1 ? `Needs ${discards} cards to discard` : "No card to discard");
   }
+  // S21 sub-PR 6: same rule for a sacrifice clause. The server has
+  // already filtered the options to permanents this caster controls,
+  // so an empty list is exactly "nothing to sacrifice" — Village
+  // Rites with an empty board is uncastable, not a failed click.
+  const sacrificeOptions = card.additional_cost?.sacrifice_options;
+  if (sacrificeOptions && (sacrificeOptions.cards?.length ?? 0) === 0) {
+    return deny("Nothing to sacrifice");
+  }
   const type = (card.type_line ?? "").toLowerCase();
   const isLand = type.includes("land");
   const isInstant = type.includes("instant");

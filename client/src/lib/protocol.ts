@@ -195,6 +195,15 @@ export interface PendingChoiceView {
     | "pay_unless"
     | "trigger_order"
     | "pick_target"
+    // S21: "each player sacrifices a creature of their choice"
+    // (Grave Pact, Fleshbag Marauder). Answered with the generic
+    // {choice_id, card_ids} payload — one entry — and rendered by the
+    // shared card grid with sacrifice copy.
+    | "sacrifice_choice"
+    // S21: scry N (CR 701.18). Options carries the looked-at cards
+    // top-first, redacted to the chooser alone — scry is "look at",
+    // not "reveal". Answered with {bottom, top_order}.
+    | "scry"
     | string;
   chooser: string;
   from_player: string;
@@ -403,6 +412,12 @@ export interface ModeSpecView {
 // them.
 export interface AdditionalCostView {
   discard_cards?: number;
+  // S21 sub-PR 6: the permanents that may pay a "sacrifice a
+  // creature" clause, already filtered to the caster's own board.
+  // The picked ID rides cast_spell as `sacrifice_ids`.
+  // Present-and-empty means the cost is unpayable, so the spell is
+  // uncastable.
+  sacrifice_options?: LegalTargetsView;
   label?: string;
 }
 
@@ -568,6 +583,14 @@ export interface ManaAbilityView {
   tap_cost?: boolean;
   sacrifice_cost?: boolean;
   produced?: string;
+  // S21: "Sacrifice a creature: Add {C}{C}" (Ashnod's Altar) — a
+  // mana ability whose cost sacrifices ANOTHER permanent. Mirrors
+  // the identically-named fields on ActivatedAbilityView: the label
+  // is the clause for the modal banner, and sacrifice_options lists
+  // the legal choices already filtered to the controller
+  // (CR 701.17b). Absent means the cost needs no extra choice.
+  sacrifice_label?: string;
+  sacrifice_options?: LegalTargetsView;
 }
 
 export interface TurnView {

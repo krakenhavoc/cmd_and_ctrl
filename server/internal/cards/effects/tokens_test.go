@@ -59,7 +59,7 @@ func TestCrackingATreasureProducesManaAndSacrifices(t *testing.T) {
 	tok.Owner, tok.Controller = me.ID, me.ID
 	g.Battlefield.PushTop(tok)
 
-	if err := g.ActivateManaAbility(me.ID, tok.InstanceID, 0); err != nil {
+	if err := g.ActivateManaAbility(me.ID, tok.InstanceID, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("crack the Treasure: %v", err)
 	}
 	if g.Battlefield.Contains(tok.InstanceID) {
