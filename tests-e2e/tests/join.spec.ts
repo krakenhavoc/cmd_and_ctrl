@@ -41,7 +41,7 @@ test.describe("invite → join", () => {
     // Players land in the lobby first (deck import, seat status)
     // rather than the game route — s085 (#43). Spectators skip this.
     await expect(page).toHaveURL(/#\/lobby$/);
-    await expect(page.getByText(/seat 0: E2E Player/)).toBeVisible();
+    await expect(page.getByText(/seat 1: E2E Player/)).toBeVisible();
 
     // We can't easily assert on the full Pixi canvas from here, but
     // the session store should now carry a player role tied to this

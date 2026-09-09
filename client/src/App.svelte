@@ -94,6 +94,7 @@
     const root = document.documentElement;
     root.style.setProperty("--font-scale", String(s.accessibility.textScale));
     root.dataset.cardSize = s.display.cardSize;
+    root.dataset.tableLayout = s.display.tableLayout;
     root.dataset.reduceMotion = s.accessibility.reduceMotion ? "1" : "0";
     root.dataset.alwaysShowFocus = s.accessibility.alwaysShowFocus ? "1" : "0";
   });
@@ -102,7 +103,7 @@
 {#if $route.name === "login"}
   <Login />
 {:else if $route.name === "adminLogin"}
-  <Login />
+  <Login admin />
 {:else if $route.name === "lobby"}
   <Lobby />
 {:else if $route.name === "join"}
