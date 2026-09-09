@@ -195,6 +195,22 @@ export function beginForAbility(
     mode: (ability.target_mode || "any") as TargetingMode,
     legal: lt ? { players: new Set(lt.players ?? []), cards: new Set(lt.cards ?? []) } : undefined,
     ability: { index: ability.index, sacrificeIDs },
+    // Single-target by contract, not by omission. Unlike CardView,
+    // ModeOptionView and pick_target — which all carry a
+    // LegalTargetsView and read their count via countOf — S21 sub-PR
+    // 2 gave ActivatedAbilityView its own inline
+    // `{players?, cards?}`, with no min/max on the wire. So there is
+    // no count to read here, and an ability clause behaves as
+    // exactly one pick (isMultiPick is false, the first click
+    // completes the prompt), which is what the ability menu expects.
+    //
+    // If a multi-target activated ability is ever wanted, the fix is
+    // to make ActivatedAbilityView use LegalTargetsView and emit the
+    // count server-side, then switch these two lines to
+    // `...countOf(lt)` like the three siblings.
+    min: 1,
+    max: 1,
+    picked: [],
   });
 }
 
