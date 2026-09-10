@@ -135,6 +135,31 @@ type StackItem struct {
 	// keeps PriorityHolder unchanged for one cycle.
 	HoldPriority bool
 
+	// CastFromZone is the zone a spell was cast from — "hand", or
+	// "command" for a commander, or "exile" under an impulse grant
+	// (S21 sub-PR 6). Empty for ability items, which aren't cast from
+	// anywhere.
+	//
+	// Stamped at announce because it stops being readable a moment
+	// later: CR 601.2a moves the card to the stack, and nothing on
+	// the card remembers where it came from. Wash Away's "target
+	// spell that wasn't cast from its owner's hand" is the first
+	// consumer; the source-zone question is a common one in
+	// Commander (Appa's "whenever you cast a spell from exile" wants
+	// the same fact on EventCast). Added in S22.
+	CastFromZone ZoneKind
+
+	// AltCost is the Key of the alternative cost paid to cast this
+	// spell — "overload", "evoke", "cleave" — or empty when the
+	// caster paid the printed mana cost (CR 118.9). Read back at
+	// resolution through effects.Context.PaidAltCost, so a card whose
+	// text changes with the cost branches on it: an overloaded
+	// Cyclonic Rift bounces everything, a hard-cast one bounces one
+	// thing, and they are the same StackItem shape apart from this
+	// field. Also drives evoke's sacrifice-on-entry trigger and the
+	// CR 608.2b re-check's choice of target clause. Added in S22.
+	AltCost string
+
 	// SplitSecond marks an item as having split second (CR 702.79).
 	// While any stack item has SplitSecond set, no further casts /
 	// activations are legal except mana abilities and special

@@ -164,6 +164,33 @@ func YouOwn() CardPredicate {
 	return func(_ *game.Game, caster uuid.UUID, c game.Card) bool { return c.Owner == caster }
 }
 
+// --- stack-origin predicates -------------------------------------
+
+// CastFromOwnersHand passes for a spell on the stack that was cast
+// from its owner's hand — the ordinary case, and the one Wash Away's
+// bracketed clause excludes with Not(CastFromOwnersHand()).
+//
+// "Its owner's" needs no separate check here: the engine only lets a
+// player cast out of their OWN hand (castSourceZoneLocked resolves
+// "hand" to the caster's), so a spell cast from a hand was cast from
+// its owner's hand. Casts from the command zone and from an impulse
+// exile grant are the ones this excludes, and a commander is exactly
+// the case the printed clause is aimed at.
+//
+// A stack card with no announce record can't happen through the cast
+// path, but if one appears it reads as an ordinary hand cast: the
+// restrictive answer is the one that can't over-permit a narrow
+// clause. Added in S22.
+func CastFromOwnersHand() CardPredicate {
+	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
+		item := g.StackItemForEffect(c.InstanceID)
+		if item == nil {
+			return true
+		}
+		return item.CastFromZone == game.ZoneHand
+	}
+}
+
 // NotSelf excludes the spell / source itself — for "another target
 // creature" clauses and for stack targets that shouldn't be able to
 // counter themselves.

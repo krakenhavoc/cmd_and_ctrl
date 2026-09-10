@@ -8,10 +8,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	Evoke {2}{U} (You may cast this spell for its evoke cost. If you
 //	do, it's sacrificed when it enters the battlefield.)"
 //
-// S19 sub-PR 3 ships the ETB-draw half via the Triggered slot —
-// mandatory, no target, no opponent prompt. Evoke is an alt-cast
-// path (CR 702.74) that lands with S29's alt-cast arc; Mulldrifter
-// just costs {4}{U} from hand for now.
+// S19 sub-PR 3 shipped the ETB-draw half via the Triggered slot —
+// mandatory, no target, no opponent prompt. S22 adds the other half:
+// evoke for {2}{U} is the mode the card is famous for, three mana to
+// draw two and lose the body.
+//
+// Both halves are real and they compose in the right order, which is
+// the point of modelling evoke's sacrifice as a triggered ability
+// (CR 702.74b) rather than as part of resolution. Evoked, Mulldrifter
+// enters, the ETB trigger and the evoke sacrifice trigger both go on
+// the stack, and the draw happens whichever order their controller
+// stacks them — because the creature genuinely entered.
 //
 // Build returns a real stack item; the draw happens when the
 // trigger resolves, so opponents get their response window.
@@ -20,6 +27,9 @@ func init() {
 		OracleID:        "24d0f5e7-0d9e-4b76-900e-a7274e80312d",
 		Name:            "Mulldrifter",
 		PrintedKeywords: []string{"flying"},
+		AlternativeCosts: []game.AlternativeCost{
+			Evoke("{2}{U}"),
+		},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

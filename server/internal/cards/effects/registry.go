@@ -42,6 +42,21 @@ func Register(spec Spec) {
 				spec.Name, targeted, spec.Modes.Max))
 		}
 	}
+	// S22: an alternative cost is claimed by name on the wire, so a
+	// blank or duplicated key is unaddressable — the cast either
+	// can't name it or names two of them. Both are copy-paste
+	// mistakes, and both fail loudly at boot rather than as a
+	// mysteriously-rejected cast mid-game.
+	seenAlt := make(map[string]bool, len(spec.AlternativeCosts))
+	for _, ac := range spec.AlternativeCosts {
+		if ac.Key == "" {
+			panic(fmt.Sprintf("effects.Register: %q declares an alternative cost with no Key", spec.Name))
+		}
+		if seenAlt[ac.Key] {
+			panic(fmt.Sprintf("effects.Register: %q declares two alternative costs keyed %q", spec.Name, ac.Key))
+		}
+		seenAlt[ac.Key] = true
+	}
 	registry[spec.OracleID] = spec
 }
 

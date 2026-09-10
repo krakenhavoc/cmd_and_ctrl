@@ -20,8 +20,8 @@ describe("additional costs on cast — S21 sub-PR 5", () => {
   });
 
   it("carries the paid cards through a targeting prompt", () => {
-    begin(card({ additional_cost: { discard_cards: 1 } }), "any", undefined, ["fodder"]);
-    expect(get(targeting)!.discardIDs).toEqual(["fodder"]);
+    begin(card({ additional_cost: { discard_cards: 1 } }), "any", { discardIDs: ["fodder"] });
+    expect(get(targeting)!.choices?.discardIDs).toEqual(["fodder"]);
     cancel();
   });
 
@@ -31,17 +31,17 @@ describe("additional costs on cast — S21 sub-PR 5", () => {
       target_mode: "creature",
       legal_targets: { cards: ["bear"], min: 1, max: 1 },
     };
-    beginForMode(card(), option, [0], 3, ["fodder", "chaff"]);
+    beginForMode(card(), option, [0], { xValue: 3, discardIDs: ["fodder", "chaff"] });
     const t = get(targeting)!;
-    expect(t.discardIDs).toEqual(["fodder", "chaff"]);
-    expect(t.xValue).toBe(3);
+    expect(t.choices?.discardIDs).toEqual(["fodder", "chaff"]);
+    expect(t.choices?.xValue).toBe(3);
     expect(t.modes).toEqual([0]);
     cancel();
   });
 
   it("leaves discardIDs undefined when no cost was paid, so the payload omits it", () => {
     begin(card(), "any");
-    expect(get(targeting)!.discardIDs).toBeUndefined();
+    expect(get(targeting)!.choices?.discardIDs).toBeUndefined();
     cancel();
   });
 });
