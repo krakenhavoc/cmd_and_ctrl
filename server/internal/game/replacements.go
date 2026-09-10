@@ -468,6 +468,46 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 		}
 	}
 
+	// Self-replacements — a card replacing its OWN entry ("This land
+	// enters tapped": every Temple, Guildgate and tri-land).
+	//
+	// These are invisible to the battlefield walk above, and that is
+	// the whole reason this block exists: the replacement pipeline runs
+	// PRE-push, so a card that is entering the battlefield is not on it
+	// yet and cannot find its own effect. Worn Powerstone's OnETB
+	// workaround — enter untapped, then tap — was the previous best
+	// available, and it is observably different: the permanent really
+	// does become tapped a beat after entering.
+	//
+	// Only consulted for a card that is NOT already on the
+	// battlefield, so a permanent already in play can never match here
+	// as well as in the walk above and apply the same effect twice.
+	if CatalogReplacements != nil && ev.CardID != uuid.Nil && !g.Battlefield.Contains(ev.CardID) {
+		const selfReplacementIDBase ReplacementEffectID = 1 << 45
+		if entering, ok := g.LookupCardForEffect(ev.CardID); ok {
+			reps := CatalogReplacements(entering.OracleID)
+			for repIdx := range reps {
+				id := selfReplacementIDBase + ReplacementEffectID(repIdx)
+				if applied[id] {
+					continue
+				}
+				eff := reps[repIdx]
+				if !eventKindMatches(eff.Watches, ev.Kind) {
+					continue
+				}
+				// `source` is the entering card itself, so an AppliesTo
+				// comparing ev.CardID to source.InstanceID identifies
+				// "this permanent" the same way it would on the
+				// battlefield.
+				src := entering
+				if eff.AppliesTo != nil && !eff.AppliesTo(ev, g, &src) {
+					continue
+				}
+				out = append(out, activeReplacement{effect: eff, source: &src, id: id})
+			}
+		}
+	}
+
 	// Turn-scoped replacements — Fog-class effects registered via
 	// RegisterTurnScopedReplacement. Live until StepCleanup clears
 	// the slice. IDs in a dedicated range between catalog space

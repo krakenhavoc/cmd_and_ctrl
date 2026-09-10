@@ -112,7 +112,7 @@ func TestSacrificeCostManaAbilityCracksThePermanent(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	id := pushIntrinsicPermanent(g, me, "Treasure", "Token Artifact — Treasure", treasureAbility(), nil)
-	if err := g.ActivateManaAbility(me.ID, id, 0); err != nil {
+	if err := g.ActivateManaAbility(me.ID, id, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
 	if g.Battlefield.Contains(id) {
@@ -140,7 +140,7 @@ func TestSacrificeCostNotPaidWhenTapCostFails(t *testing.T) {
 			g.Battlefield.Cards[i].Tapped = true
 		}
 	}
-	if err := g.ActivateManaAbility(me.ID, id, 0); err != ErrAlreadyTapped {
+	if err := g.ActivateManaAbility(me.ID, id, 0, ManaAbilityParams{}); err != ErrAlreadyTapped {
 		t.Fatalf("tapped Treasure: %v, want ErrAlreadyTapped", err)
 	}
 	if !g.Battlefield.Contains(id) {
@@ -163,7 +163,7 @@ func TestSacrificeOnlyCostIgnoresTapState(t *testing.T) {
 			g.Battlefield.Cards[i].Tapped = true
 		}
 	}
-	if err := g.ActivateManaAbility(me.ID, id, 0); err != nil {
+	if err := g.ActivateManaAbility(me.ID, id, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("sacrifice-only ability while tapped: %v", err)
 	}
 	if g.Battlefield.Contains(id) {

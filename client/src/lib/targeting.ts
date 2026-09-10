@@ -64,6 +64,16 @@ export interface TargetingState {
   // cost ("discard a card"), collected before this prompt opened;
   // ride the cast_spell payload as `discard_ids`.
   discardIDs?: string[];
+  // S21 sub-PR 6: the permanent paid to a "sacrifice a creature"
+  // additional cost, collected before this prompt opened; rides the
+  // cast_spell payload as `sacrifice_ids`.
+  //
+  // NOTE: xValue, discardIDs and sacrificeIDs are now three parallel
+  // announce-time payments threaded through begin / beginForMode /
+  // continueCast side by side. A fourth should be the trigger to
+  // bundle them into one CastChoices object rather than adding
+  // another parameter.
+  sacrificeIDs?: string[];
   // S20 sub-PR 5: the clause's target count. At max 1 the first
   // click completes the prompt; otherwise clicks toggle into
   // `picked` (in click order — positional clauses read it) and the
@@ -89,12 +99,22 @@ export function begin(
   mode: TargetingMode,
   xValue?: number,
   discardIDs?: string[],
+  sacrificeIDs?: string[],
 ): void {
   const lt = card.legal_targets;
   const legal = lt
     ? { players: new Set(lt.players ?? []), cards: new Set(lt.cards ?? []) }
     : undefined;
-  targeting.set({ card, mode, legal, xValue, discardIDs, ...countOf(lt), picked: [] });
+  targeting.set({
+    card,
+    mode,
+    legal,
+    xValue,
+    discardIDs,
+    sacrificeIDs,
+    ...countOf(lt),
+    picked: [],
+  });
 }
 
 // countOf reads a clause's min / max off the wire; free-form cards
@@ -152,6 +172,7 @@ export function beginForMode(
   modes: number[],
   xValue?: number,
   discardIDs?: string[],
+  sacrificeIDs?: string[],
 ): void {
   const mode = (option.target_mode || "any") as TargetingMode;
   const lt = option.legal_targets;
@@ -164,6 +185,7 @@ export function beginForMode(
     legal,
     xValue,
     discardIDs,
+    sacrificeIDs,
     modes,
     label: option.label,
     ...countOf(lt),
@@ -182,6 +204,15 @@ export function isModal(card: CardView): boolean {
 // none.
 export function discardCostOf(card: CardView): number {
   return card.additional_cost?.discard_cards ?? 0;
+}
+
+// sacrificeCostOptions returns the permanents that may pay a
+// "sacrifice a creature" additional cost, or undefined when the card
+// charges no such cost. An empty array means the cost is unpayable.
+export function sacrificeCostOptions(card: CardView): string[] | undefined {
+  const opts = card.additional_cost?.sacrifice_options;
+  if (!opts) return undefined;
+  return opts.cards ?? [];
 }
 
 // modeOptionCastable reports whether an option can be chosen right

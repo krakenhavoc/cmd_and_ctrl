@@ -1,4 +1,11 @@
-import { authFetch, currentSession, setSession, type ApiViolation, type Session } from "./session";
+import {
+  authFetch,
+  currentSession,
+  setSession,
+  LobbyApiError,
+  type ApiViolation,
+  type Session,
+} from "./session";
 import type { BugLogEntry, BugReportContext } from "./bugReport";
 
 // Re-export the violation shape so consumers of api.ts don't also
@@ -28,6 +35,12 @@ export interface SeatInfo {
   seat: number;
   deck_name?: string;
   deck_uploaded: boolean;
+  // Discord OAuth seats (S12.5): the client builds the cached avatar
+  // URL from discord_id + discord_avatar_hash; display_name carries
+  // the friendly global_name. All empty for name-form joins.
+  discord_id?: string;
+  discord_avatar_hash?: string;
+  display_name?: string;
 }
 
 // UploadDeckResponse mirrors lobby.uploadDeckResponse.
@@ -74,6 +87,36 @@ export async function listGames(): Promise<GameMeta[]> {
   // means the UI degrades to a visible empty-seats row instead of a
   // vanished list.
   return body.games.map((g) => ({ ...g, players: g.players ?? [] }));
+}
+
+// GamePreview mirrors lobby.previewResponse: what an invite holder
+// may see before joining. Seats come back scrubbed (no player IDs,
+// no Discord identity) and both invite tokens are stripped.
+export interface GamePreview {
+  game: GameMeta;
+  invite: "player" | "spectator";
+  max_seats: number;
+}
+
+// previewGame is unauthenticated — the invite token is the
+// credential — so it uses plain fetch: authFetch would read the
+// 401 for a bad invite as an expired session and clear it.
+export async function previewGame(id: string, inviteToken: string): Promise<GamePreview> {
+  const res = await fetch(`/games/${id}/preview?t=${encodeURIComponent(inviteToken)}`, {
+    headers: { Accept: "application/json" },
+    credentials: "same-origin",
+  });
+  if (!res.ok) {
+    let message = `${res.status} ${res.statusText}`;
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (body.error) message = body.error;
+    } catch {
+      // not JSON — keep the status line
+    }
+    throw new LobbyApiError(res.status, message);
+  }
+  return (await res.json()) as GamePreview;
 }
 
 export async function getGame(id: string): Promise<GameMeta> {

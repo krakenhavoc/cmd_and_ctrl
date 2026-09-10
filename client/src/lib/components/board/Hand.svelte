@@ -154,7 +154,6 @@
     flex-direction: row;
     align-items: flex-start;
     justify-content: center;
-    gap: -24px;
     min-height: 0;
     padding: 4px;
     /* Default "peek" state: clip to the top ~55% of a card so the hand
@@ -186,7 +185,7 @@
     overflow: hidden;
   }
   .hand-slot {
-    margin-left: -24px;
+    margin-left: calc(var(--card-w, 80px) * -0.5);
     transform-origin: bottom center;
     transition: transform 80ms ease;
   }

@@ -83,6 +83,11 @@
       .map((s) => ({ seat: s, amount: s.commander_damage?.[instanceID] ?? 0 }));
   });
   const cmdrHasDamage = $derived(cmdrRows.some((r) => r.amount > 0));
+  // Bars are tinted with the commander's controller colour (the seat
+  // dealing the damage) and flip to danger at lethal.
+  const controllerColor = $derived(
+    seatColor(view.seats.find((s) => s.id === card?.controller)?.seat ?? 0),
+  );
 
   // Live P/T comes straight off the wire: since S16 the server sends
   // CurrentPower()/CurrentToughness() — effective P/T with +1/+1 and
@@ -101,57 +106,60 @@
 
 {#if card}
   <div class="overlay" aria-hidden="true">
-    {#if imgSrc}
-      <img src={imgSrc} alt="" />
-    {:else}
-      <div class="name-fallback">{card.name}</div>
-    {/if}
+    <div class="scan">
+      {#if imgSrc}
+        <!-- keyed so a new card never shows the previous card's scan
+             while its own image is still loading -->
+        {#key imgSrc}
+          <img src={imgSrc} alt="" />
+        {/key}
+      {:else}
+        <div class="name-fallback">{card.name}</div>
+      {/if}
+    </div>
     <div class="info">
       <header class="info-head">
         <span class="title">{meta?.name ?? card.name}</span>
-        {#if meta?.mana_cost}
-          <span class="cost">{meta.mana_cost}</span>
+        {#if livePT}
+          <span class="pt" title="live power/toughness (printed in parens)">{livePT}</span>
+        {:else if meta?.loyalty}
+          <span class="pt" title="starting loyalty">◈ {meta.loyalty}</span>
         {/if}
       </header>
-      {#if meta?.type_line}
-        <div class="type-line">{meta.type_line}</div>
-      {/if}
+      <div class="type-line">
+        {#if meta?.type_line}<span>{meta.type_line}</span>{/if}
+        {#if meta?.mana_cost}<span class="cost">{meta.mana_cost}</span>{/if}
+      </div>
       {#if meta?.oracle_text}
         <div class="oracle">{meta.oracle_text}</div>
       {:else if meta === null}
         <div class="oracle dim">…</div>
       {/if}
-      <footer class="info-foot">
-        {#if livePT}
-          <span class="pt" title="live power/toughness (printed in parens)">{livePT}</span>
-        {:else if meta?.loyalty}
-          <span class="loyalty" title="starting loyalty">◈ {meta.loyalty}</span>
-        {/if}
-        {#if card.tapped}
-          <span class="state state-tapped">tapped</span>
-        {/if}
-        {#if card.attacking_target}
-          <span class="state state-attack">attacking</span>
-        {/if}
-        {#if card.blocking_target}
-          <span class="state state-block">blocking</span>
-        {/if}
-        {#if card.goaded_by}
-          <span class="state state-goad">goaded</span>
-        {/if}
-        {#if card.is_commander}
-          <span class="state state-cmd">commander</span>
-        {/if}
-        {#each counterChips as chip (chip.name)}
-          <span class="counter-chip">{chip.name} ×{chip.n}</span>
-        {/each}
-      </footer>
+      {#if card.tapped || card.attacking_target || card.blocking_target || card.goaded_by || card.is_commander || counterChips.length > 0}
+        <footer class="info-foot">
+          {#if card.is_commander}
+            <span class="state state-cmd">commander</span>
+          {/if}
+          {#if card.tapped}
+            <span class="state">tapped</span>
+          {/if}
+          {#if card.attacking_target}
+            <span class="state state-attack">attacking</span>
+          {/if}
+          {#if card.blocking_target}
+            <span class="state">blocking</span>
+          {/if}
+          {#if card.goaded_by}
+            <span class="state state-attack">goaded</span>
+          {/if}
+          {#each counterChips as chip (chip.name)}
+            <span class="state">{chip.name} ×{chip.n}</span>
+          {/each}
+        </footer>
+      {/if}
       {#if card.is_commander}
         <section class="cmdr-dmg" aria-label="commander damage dealt">
-          <header class="cmdr-head">
-            <span class="cmdr-dot" aria-hidden="true"></span>
-            <span class="cmdr-label">cmdr dmg dealt</span>
-          </header>
+          <span class="cmdr-label">commander damage dealt</span>
           {#if cmdrHasDamage}
             <ul class="cmdr-rows">
               {#each cmdrRows as row (row.seat.id)}
@@ -164,12 +172,17 @@
                     <span class="cmdr-name-dot" aria-hidden="true"></span>
                     <span class="cmdr-name-text">{row.seat.name}</span>
                   </span>
-                  <span class="cmdr-amount" class:lethal={row.amount >= 21}>
-                    {row.amount}
+                  <span class="bar-track">
+                    <i
+                      style:width={`${Math.min(100, (row.amount / 21) * 100)}%`}
+                      style:background={row.amount >= 21 ? "var(--danger)" : controllerColor}
+                    ></i>
                   </span>
+                  <span class="cmdr-amount" class:lethal={row.amount >= 21}>{row.amount}</span>
                 </li>
               {/each}
             </ul>
+            <div class="cmdr-empty">lethal at 21</div>
           {:else}
             <div class="cmdr-empty">no commander damage dealt yet</div>
           {/if}
@@ -184,19 +197,18 @@
     position: absolute;
     /* Pin to the top-right corner of the board with a small inset so
        the panel always fits inside the viewport regardless of width. */
-    right: 12px;
-    top: 12px;
-    width: clamp(220px, 26vw, 380px);
-    max-height: calc(100vh - 24px);
-    background: linear-gradient(180deg, rgba(19, 26, 44, 0.92) 0%, rgba(8, 12, 24, 0.92) 100%);
+    right: 10px;
+    top: 10px;
+    width: min(332px, calc(50% - 132px));
+    max-height: calc(100% - 20px);
+    background: color-mix(in srgb, var(--surface) 96%, transparent);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(122, 167, 255, 0.22);
-    border-radius: var(--radius-lg);
-    box-shadow:
-      0 12px 40px rgba(0, 0, 0, 0.6),
-      0 0 0 1px rgba(0, 0, 0, 0.4),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    box-shadow: var(--shadow-lg);
+    padding: 12px;
+    box-sizing: border-box;
     pointer-events: none;
     /* 300 sits above the modal-backdrop layer (200) so the preview
        isn't blurred by backdrop-filter when the user is picking
@@ -205,18 +217,29 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    gap: 10px;
     color: var(--fg);
     font-size: 12px;
   }
+  .scan {
+    width: min(240px, 100%);
+    aspect-ratio: 63 / 88;
+    align-self: center;
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface-sunken);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    flex: 0 0 auto;
+  }
   img {
     width: 100%;
-    aspect-ratio: 63 / 88;
-    object-fit: contain;
-    background: #0b1220;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
   .name-fallback {
     width: 100%;
-    aspect-ratio: 63 / 88;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -224,19 +247,17 @@
     padding: 12px;
     box-sizing: border-box;
     font-size: 14px;
-    background: #1a2335;
+    color: var(--fg-muted);
   }
   .info {
-    padding: 8px 10px 10px;
     display: flex;
     flex-direction: column;
     gap: 4px;
     min-height: 0;
-    border-top: 1px solid #1a2335;
   }
   .info-head {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     gap: 8px;
   }
@@ -249,16 +270,27 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .cost {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 11px;
-    color: #c8a86a;
+  .pt {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--fg);
     flex: 0 0 auto;
+    font-variant-numeric: tabular-nums;
   }
   .type-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11.5px;
+    color: var(--fg-muted);
+  }
+  .cost {
+    font-family: var(--font-mono);
     font-size: 11px;
-    color: #9ec7ff;
-    text-transform: lowercase;
+    color: var(--fg-dim);
+    flex: 0 0 auto;
   }
   .oracle {
     /* Long cards (Cyclonic Rift, Counterspell) get a scroll once we
@@ -266,13 +298,14 @@
        viewport. clamp height keeps the panel proportional. */
     max-height: clamp(80px, 18vh, 220px);
     overflow-y: auto;
-    font-size: 11px;
-    line-height: 1.35;
-    color: #e0e6f5;
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: var(--fg);
     white-space: pre-wrap;
-    background: #07101e;
-    padding: 6px 8px;
-    border-radius: 4px;
+    background: var(--surface-sunken);
+    padding: 8px 10px;
+    border-radius: 8px;
+    margin-top: 4px;
     /* Suppress the default scrollbar in the floating overlay; the panel
        is non-interactive (pointer-events: none on the wrapper) so a
        scrollbar would just be visual noise. Long oracle text fades
@@ -281,7 +314,7 @@
     mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
   }
   .oracle.dim {
-    color: #6c7a99;
+    color: var(--fg-dim);
     font-style: italic;
   }
   .info-foot {
@@ -289,79 +322,44 @@
     flex-wrap: wrap;
     gap: 4px;
     align-items: center;
-    margin-top: 2px;
-  }
-  .pt,
-  .loyalty {
-    font-weight: 700;
-    color: #ffd07a;
-    font-variant-numeric: tabular-nums;
-    margin-right: 4px;
+    margin-top: 4px;
   }
   .state {
-    font-size: 9px;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding: 1px 5px;
-    border-radius: 3px;
-    background: rgba(0, 0, 0, 0.35);
-    color: #c8c8c8;
-  }
-  .state-tapped {
-    color: #9ec7ff;
+    letter-spacing: 0.1em;
+    padding: 2px 7px;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    color: var(--fg-muted);
   }
   .state-attack {
-    color: #ff7a7a;
-  }
-  .state-block {
-    color: #9ec7ff;
-  }
-  .state-goad {
-    color: #ff7a7a;
-    background: rgba(80, 0, 0, 0.4);
+    color: var(--danger);
+    border-color: rgba(255, 107, 107, 0.5);
   }
   .state-cmd {
-    color: #ffd07a;
-  }
-  .counter-chip {
-    font-size: 9px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    padding: 1px 5px;
-    border-radius: 3px;
-    background: #1a2335;
-    color: #c8a86a;
-    border: 1px solid #2e3a55;
+    color: var(--gold-strong);
+    border-color: rgba(217, 180, 92, 0.5);
   }
   /* Commander-damage section — lives at the bottom of the info
      panel when the hovered card is a commander. Replaces the
      free-floating CommanderDamageTooltip so the information is
      anchored to the card the user is actually inspecting. */
   .cmdr-dmg {
-    margin-top: 8px;
-    padding-top: 6px;
-    border-top: 1px solid #1a2335;
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     gap: 4px;
   }
-  .cmdr-head {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .cmdr-dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: var(--gold, #c8a86a);
-    display: inline-block;
-  }
   .cmdr-label {
-    font-size: 9px;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
     text-transform: uppercase;
     letter-spacing: 0.14em;
-    color: var(--fg-dim, #6c7a99);
+    color: var(--fg-dim);
     font-weight: 700;
   }
   .cmdr-rows {
@@ -370,29 +368,29 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
   }
   .cmdr-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 8px;
-    padding: 1px 0;
-    font-size: 11px;
+    font-size: 12px;
+    color: var(--fg-muted);
   }
   .cmdr-row.zero {
-    opacity: 0.55;
+    opacity: 0.5;
   }
   .cmdr-name {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
     min-width: 0;
-    color: var(--fg);
+    flex: 0 0 auto;
+    width: 30%;
   }
   .cmdr-name-dot {
-    width: 6px;
-    height: 6px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     background: var(--seat-color, #888);
     flex: 0 0 auto;
@@ -401,27 +399,35 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 14ch;
+  }
+  .bar-track {
+    flex: 1;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--surface-hover);
+    position: relative;
+  }
+  .bar-track i {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 4px;
+    border-radius: 999px;
   }
   .cmdr-amount {
+    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
     font-weight: 700;
-    color: #c8a86a;
+    color: var(--fg);
     min-width: 2ch;
     text-align: right;
   }
   .cmdr-amount.lethal {
-    color: #ff7a7a;
-    text-shadow: 0 0 6px rgba(255, 122, 122, 0.55);
-  }
-  .cmdr-row.zero .cmdr-amount {
-    color: var(--fg-dim, #6c7a99);
-    font-weight: 500;
+    color: var(--danger);
   }
   .cmdr-empty {
-    font-size: 10px;
-    color: var(--fg-dim, #6c7a99);
-    font-style: italic;
-    padding: 2px 0;
+    font-size: 10.5px;
+    color: var(--fg-dim);
+    padding: 2px 0 0;
   }
 </style>

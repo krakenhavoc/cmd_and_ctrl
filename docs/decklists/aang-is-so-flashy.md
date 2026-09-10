@@ -11,8 +11,10 @@ gaps actually stop a game from being played.
 Counts below were recomputed from the deck's actual 77 entries resolved
 against the Scryfall dump, not from the deck page. **9 entries are
 lands** (including Island ×14 and Plains ×14 as two entries), leaving
-**68 nonland cards**. Of those, **13 are in the catalog** — four from
-earlier sprints plus the nine in batch 1 — and **55 are blocked**.
+**68 nonland cards**. Of those, **14 are in the catalog** — four from
+earlier sprints, nine in batch 1, and Aetherize in batch 2 — and **54
+are blocked**. On the land side, Command Tower and Azorius Chancery are
+in, and the 28 basics work.
 
 ## Card index
 
@@ -48,6 +50,24 @@ Already in the catalog from earlier sprints: **Sol Ring, Arcane Signet,
 Solemn Simulacrum, The Wandering Emperor**, plus **Command Tower** on the
 land side.
 
+## Done (batch 2)
+
+| Card | What it exercises |
+|---|---|
+| Azorius Chancery | first bounce land — enters-tapped + a mandatory ETB bounce that can legally take itself |
+| Aetherize | reads combat **state** (`Card.AttackingTarget`) rather than waiting on an event |
+
+Building Chancery turned up an engine limitation worth recording: **a
+catalog replacement effect cannot fire on its own source's entry.**
+`gatherActiveReplacementsLocked` gathers catalog replacements by walking
+`g.Battlefield.Cards`, and the entering card is not on the battlefield
+yet when the pipeline runs. Confirmed by probe. So enters-tapped uses
+the Worn Powerstone pattern (`OnETB` taps as it lands), and the
+"self-replacement — `ev.CardID == src.InstanceID`" pattern in
+AGENTS.md §7 is unreachable for catalog cards as the engine stands —
+the Hangarback Walker it cites is not in the catalog, so nothing
+exercised it.
+
 ### Sandbox simplifications declared in this batch
 
 - **Fellwar Stone** offers the full five-colour pipe rather than the
@@ -82,15 +102,51 @@ Plains card" is expressible by neither `IsBasicLand` (any basic) nor
 
 Grouped by what would unblock them, ordered by how many cards each buys.
 
-**Airbend — exile with a cast-from-exile permission (6 cards).**
+**Airbend — 6 cards, but no longer one gap (updated after #232).**
 Aang (all three), Appa Steadfast Guardian, Monk Gyatso, Avatar's Wrath.
 "Exile it. While it's exiled, its owner may cast it for {2} rather than
-its mana cost." Needs exile that carries a durable per-card permission
-plus an alternative cost, and casting from the exile zone. **This is the
-same machinery as the Pirates list's impulse exile** — together the
-single highest-value unlock across both decks. Note the deck is *named*
-for it. Appa also pays it off directly: "whenever you cast a spell from
-exile, create a 1/1 Ally".
+its mana cost."
+
+S21 sub-PR 6 (#232) landed the hard half: `Card.ExilePlay` is a durable
+per-card permission naming a holder, `castSourceZoneLocked` accepts
+`exile`, and the grant survives `Clone` for undo. Airbend can reuse all
+of that — it grants to the card's *owner* rather than to the exiler,
+which the `Player` field already allows.
+
+**Three shared pieces are still missing:**
+
+1. **An alternative cost.** "{2} rather than its mana cost" has no
+   expression. #230's `AdditionalCost` is an *extra* cost, not a
+   replacement for the mana cost. This is the expensive one — and it is
+   *not* airbend-specific (see the cost group below), which is why the
+   suggested order now puts it first.
+2. **A permission with no expiry.** `ExilePlayPermission.UntilTurn`
+   gates on `turn <= UntilTurn`; airbend is "while it's exiled", i.e.
+   unbounded. Small.
+3. **Exile-a-target-permanent-with-permission.** #232's primitive
+   exiles the top N of a *library*. Airbend exiles a targeted permanent
+   from the battlefield. Moderate, and it reuses the hard part above.
+
+**Doing all three unlocks exactly one of these six cards** — Aang, the
+Last Airbender, whose only other clause is "whenever you cast a Lesson
+spell" (a subtype check). Every other airbend card carries an
+independent blocker, so this group should not be counted as six:
+
+- **Monk Gyatso** — "whenever another creature you control becomes the
+  target of a spell or ability". There is no targeting event of any
+  kind in `events.go`. Blocked regardless of airbend.
+- **Appa, Steadfast Guardian** — "whenever you cast a spell *from
+  exile*". `EventCast` is emitted with only Kind / Actor / Source /
+  CardID; it carries no source zone, so this cannot be written even
+  though `Event` has `OldZone` for other kinds. One field.
+- **Aang, Swift Savior** — a transform DFC (multi-face, below), and it
+  airbends a *spell* off the stack rather than a permanent, plus
+  waterbend {8}.
+- **Avatar's Wrath** — mass airbend, self-exile on resolution, and a
+  continuous "opponents can't cast spells from anywhere other than
+  their hands" restriction.
+- **Aang, Airbending Master** — experience counters (no player-scoped
+  counter store) and "leave the battlefield *without dying*".
 
 **Flicker — exile and return, immediately or at the next end step (9
 cards).** Thassa Deep-Dwelling, Y'shtola Rhul, Waterbender's
@@ -114,13 +170,17 @@ Skycoach Conductor // All Aboard (prepare), Fortune Teller's Talent
 also affects **deck import and validation**, not just resolution, so it
 is bigger than its card count suggests.
 
-**Alternative and additional cast costs (7 cards).** Evoke
-(Slithermuse), cleave (Wash Away), spree (Three Steps Ahead), foretell
-(Cosmic Intervention, Ranar), plot (Aven Interrupter), warp
-(Anticausal Vestige). Same family as the Pirates list's group — the
-base cards mostly work, only the extra mode is missing. Note S21
-sub-PR 5 has since landed `game.AdditionalCost`, which is the hook the
-waterbend group below would extend.
+**Alternative cast costs — the actual keystone (7 cards here, more
+elsewhere).** Evoke (Slithermuse), cleave (Wash Away), spree (Three
+Steps Ahead), foretell (Cosmic Intervention, Ranar), plot (Aven
+Interrupter), warp (Anticausal Vestige). Every one of these is "pay
+something *instead of* the mana cost", and none of it exists: #230's
+`game.AdditionalCost` is an extra cost paid *alongside*. The same gap
+already has three cards in the catalog shipping with their headline
+mode missing — overload on Vandalblast and Cyclonic Rift, evoke on
+Slithermuse — and it is piece 1 of the three airbend needs above. That
+overlap is why it now leads the suggested order: one mechanism, this
+group plus airbend plus three already-shipped cards.
 
 **Tap permanents as a cost — convoke and waterbend (7 cards).** Clever
 Concealment and The Wandering Rescuer (convoke); Aang Swift Savior,
@@ -132,6 +192,11 @@ a different name and no colour clause). One cost component serves both.
 Titan's attack half, and The Mighty Thor. There is no `EventAttack` in
 `events.go` — the event plumbing is the PR, not the cards. Cheapest item
 on this list by a wide margin.
+
+Note the distinction batch 2 drew: combat **state** already exists
+(`DeclareAttacker` stamps `Card.AttackingTarget`, `ClearCombat` wipes
+it), so a *spell* that reads it at resolution needs nothing new — which
+is why Aetherize shipped. It is only *triggers* that want the event.
 
 **Copy effects (3 cards).** Clone, Three Steps Ahead, Skycoach
 Conductor.
@@ -169,11 +234,7 @@ once-activated state gate).
 
 ## Lands
 
-28 basics and Command Tower work today.
-
-**Azorius Chancery is a clean batch-2 candidate**: enters-tapped
-replacement, an ETB that returns a land you control to hand, and a
-`{W}{U}` mana ability — all existing machinery.
+28 basics, Command Tower and **Azorius Chancery** (batch 2) work today.
 
 **Demolition Field is a partial**: the three-part activated cost
 (`{2}`, `{T}`, sacrifice) has a precedent in Mind Stone, but the
@@ -194,8 +255,19 @@ tapped" / surveil ETB clauses.
 
 ## Suggested order
 
-1. **Cast-from-exile** — airbend here plus the Pirates list's impulse exile. The largest unlock across both decks, and this deck is named for it.
-2. **Attack triggers** — one event kind, 4 cards here and more elsewhere.
-3. **Flicker + delayed triggers** — 9 cards, and the delayed-trigger slot is reusable far beyond this deck.
-4. **Tap-permanents-as-cost** — convoke and waterbend together, 7 cards, and `game.AdditionalCost` from S21 sub-PR 5 is the hook.
-5. **Multi-face cards** — 7 cards, but it touches import, protocol and client, so it is a sprint of its own.
+Re-sequenced after #232 (impulse exile) landed the cast-from-exile half
+of what airbend needs. Cast-from-exile was #1 in the previous revision;
+it is now partly done, and the analysis above showed the remaining
+airbend work is mostly *not* airbend-specific.
+
+1. **Alternative cast costs.** "Pay X instead of the mana cost." Serves the 7-card cost group, is piece 1 of the 3 airbend still needs, and retro-fixes overload on Vandalblast / Cyclonic Rift and evoke on Slithermuse — three cards already in the catalog shipping without their headline mode.
+2. **Attack triggers** — one new `EventKind`, 4 cards here and more elsewhere. Still the cheapest item by a wide margin.
+3. **Finish airbend** — the no-expiry permission and an exile-a-target-permanent primitive, on top of (1). Unlocks Aang, the Last Airbender outright; the other five each need something further, listed above.
+4. **Flicker + delayed triggers** — 9 cards, and the delayed-trigger slot is reusable far beyond this deck.
+5. **Tap-permanents-as-cost** — convoke and waterbend together, 7 cards.
+6. **Multi-face cards** — 7 cards, but it touches import, protocol and client, so it is a sprint of its own.
+
+Two one-field additions worth folding into whichever PR is nearby:
+a source zone on `EventCast` (unblocks Appa's "cast a spell from
+exile"), and a targeting event (Monk Gyatso, and nothing else in this
+deck — but "becomes the target of" is a common Commander clause).

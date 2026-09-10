@@ -16,6 +16,7 @@
   import { avatarURL } from "../../api";
   import { targeting, isLegalPlayerTarget, isPicked } from "../../targeting";
   import ManaPoolPips from "./ManaPoolPips.svelte";
+  import Icon from "../Icon.svelte";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -30,6 +31,10 @@
     sendAction: ActionSender;
     onDeclareAttack?: (targetPlayerID: string) => void;
     onTargetPlayer?: (targetPlayerID: string) => void;
+    // Scryfall id of the seat's commander (command zone or
+    // battlefield), for the art-crop avatar when the seat has no
+    // Discord avatar. Precedence: Discord → commander art → seat disc.
+    commanderScryfallID?: string | null;
   }
 
   const {
@@ -43,6 +48,7 @@
     sendAction,
     onDeclareAttack,
     onTargetPlayer,
+    commanderScryfallID = null,
   }: Props = $props();
 
   const targetableByCast = $derived.by(() => {
@@ -66,10 +72,19 @@
     onDeclareAttack?.(seat.id);
   }
 
-  const avatar = $derived(avatarURL(seat.discord_id, seat.discord_avatar_hash));
-  const displayLabel = $derived(seat.display_name ?? seat.name);
+  const discordAvatar = $derived(avatarURL(seat.discord_id, seat.discord_avatar_hash));
+  const commanderArt = $derived(
+    commanderScryfallID ? `/cards/${commanderScryfallID}/image?size=art_crop` : null,
+  );
+  // Discord avatar first, the commander's art crop when there is
+  // none, the seat-colour disc when neither loads.
   let failedAvatarURL = $state<string | null>(null);
-  const avatarFailed = $derived(avatar !== null && failedAvatarURL === avatar);
+  const avatar = $derived.by(() => {
+    if (discordAvatar && failedAvatarURL !== discordAvatar) return discordAvatar;
+    if (commanderArt && failedAvatarURL !== commanderArt) return commanderArt;
+    return null;
+  });
+  const displayLabel = $derived(seat.display_name ?? seat.name);
 
   function changeLife(delta: number): void {
     sendAction("change_life", { delta }, seat.id);
@@ -157,14 +172,16 @@
         ? `attack ${displayLabel}`
         : `${displayLabel}, ${seat.life} life`}
     >
-      {#if avatar && !avatarFailed}
-        <img
-          class="avatar"
-          src={avatar}
-          alt=""
-          aria-hidden="true"
-          onerror={() => (failedAvatarURL = avatar)}
-        />
+      {#if avatar}
+        {#key avatar}
+          <img
+            class="avatar"
+            src={avatar}
+            alt=""
+            aria-hidden="true"
+            onerror={() => (failedAvatarURL = avatar)}
+          />
+        {/key}
       {:else}
         <span class="avatar seat-dot-fallback" aria-hidden="true"></span>
       {/if}
@@ -235,7 +252,7 @@
             onclick={(e) => {
               e.stopPropagation();
               toggleMonarch();
-            }}>👑</button
+            }}><Icon name="crown" size={13} /></button
           >
           <button
             type="button"
@@ -247,11 +264,11 @@
             onclick={(e) => {
               e.stopPropagation();
               toggleInitiative();
-            }}>⚔</button
+            }}><Icon name="sword" size={13} /></button
           >
         </div>
         <span class="counter-inline poison" title="poison counters">
-          <span class="counter-icon" aria-hidden="true">🟢</span>
+          <span class="counter-icon" aria-hidden="true"><Icon name="drop" size={11} /></span>
           <button
             type="button"
             class="counter-btn"
@@ -273,7 +290,7 @@
           >
         </span>
         <span class="counter-inline energy" title="energy counters">
-          <span class="counter-icon" aria-hidden="true">⚡</span>
+          <span class="counter-icon" aria-hidden="true"><Icon name="bolt" size={11} /></span>
           <button
             type="button"
             class="counter-btn"
@@ -296,26 +313,36 @@
         </span>
       {:else}
         {#if isMonarch}
-          <span class="marker monarch active" title="monarch" aria-label="monarch">👑</span>
+          <span class="marker monarch active" title="monarch" aria-label="monarch"
+            ><Icon name="crown" size={12} /></span
+          >
         {/if}
         {#if isInitiative}
-          <span class="marker initiative active" title="initiative" aria-label="initiative">⚔</span>
+          <span class="marker initiative active" title="initiative" aria-label="initiative"
+            ><Icon name="sword" size={12} /></span
+          >
         {/if}
         {#if (seat.poison ?? 0) > 0}
           <span class="marker poison" title={`${seat.poison} poison`} aria-label="poison">
-            🟢{seat.poison}
+            <Icon name="drop" size={11} />{seat.poison}
           </span>
         {/if}
         {#if (seat.energy ?? 0) > 0}
           <span class="marker energy" title={`${seat.energy} energy`} aria-label="energy">
-            ⚡{seat.energy}
+            <Icon name="bolt" size={11} />{seat.energy}
           </span>
         {/if}
         {#if seat.counters}
           {#each Object.entries(seat.counters) as [name, count] (name)}
             {#if count > 0 && name !== "poison" && name !== "energy"}
               <span class="marker counter" title={`${count} ${name}`} aria-label={name}>
-                {name === "experience" ? "⭐" : name === "rad" ? "☢" : "•"}{count}
+                {#if name === "experience"}<Icon
+                    name="star"
+                    size={11}
+                  />{:else if name === "rad"}<Icon name="rad" size={11} />{:else}<Icon
+                    name="dot"
+                    size={11}
+                  />{/if}{count}
               </span>
             {/if}
           {/each}
@@ -331,7 +358,7 @@
 
 <style>
   .identity {
-    --avatar-size: calc(88px * var(--card-scale, 1));
+    --avatar-size: calc(var(--avatar-size-base, 88px) * var(--card-scale, 1));
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -360,13 +387,9 @@
     display: grid;
     place-items: center;
     padding: 3px;
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 60%),
-      color-mix(in srgb, var(--seat-color, #888) 22%, #0f1829);
-    border: 2px solid color-mix(in srgb, var(--seat-color, #888) 55%, #2e3a55);
-    box-shadow:
-      0 6px 18px rgba(0, 0, 0, 0.45),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    background: var(--surface-raised);
+    border: 2.5px solid color-mix(in srgb, var(--seat-color, #888) 55%, var(--surface));
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
     transition:
       box-shadow 160ms var(--ease),
       border-color 160ms var(--ease);
@@ -523,25 +546,33 @@
      full marker set (crown + sword + poison + energy) is roughly the
      same height as the avatar, keeping the panel compact. */
   .core-row {
+    /* In the rail everything stacks: avatar, then the floating mana
+       pool, then the marker chips as a wrapping row. */
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
+    gap: 6px;
     max-width: 100%;
   }
   .side {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 4px;
     flex: 0 0 auto;
     min-width: 0;
-    max-width: 90px;
+    max-width: 100%;
   }
   .side.left {
-    align-items: flex-end;
+    order: 1;
+  }
+  .side.left[aria-hidden="true"] {
+    display: none;
   }
   .side.right {
-    align-items: flex-start;
+    order: 2;
+    margin-top: 6px;
   }
   /* Crown + sword sit on a single row so monarch/initiative read as
      peer toggles rather than a tall stack. */

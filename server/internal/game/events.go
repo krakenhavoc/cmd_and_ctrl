@@ -128,6 +128,14 @@ const (
 	// S19 sub-PR 4.
 	EventLTB EventKind = "ltb"
 
+	// EventScry — Actor finished a scry (CR 701.18). Emitted after
+	// the cards have been put back, with Amount = how many went to
+	// the bottom, so a "whenever you scry" payoff sees a completed
+	// scry rather than an in-flight one. Source is the card that
+	// scried. Not emitted when the scry looked at nothing (an empty
+	// library), because no scry happened.
+	EventScry EventKind = "scry"
+
 	// EventSacrifice — a permanent was sacrificed (CR 701.17):
 	// its controller moved it to the graveyard as a cost or as
 	// part of an effect's instruction. Emitted immediately BEFORE

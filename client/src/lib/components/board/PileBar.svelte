@@ -1,6 +1,6 @@
 <script lang="ts">
-  // PileBar renders the four bottom-left pile controls in the order
-  // shown on the wireframe: EXILE / GRAVEYARD / LIBRARY / CMD ZONE.
+  // PileBar renders the four pile controls as a 2×2 grid in the
+  // player rail: LIBRARY / GRAVEYARD on top, EXILE / CMD ZONE below.
   //
   // The CMD slot is no longer a face-down PileButton; it's the
   // first-class CommandZone component (face-up commander, tax badge,
@@ -42,8 +42,6 @@
 </script>
 
 <div class="pile-bar" aria-label={`${seat.name} piles`}>
-  <PileButton label="exile" zone={exile} onClick={openExile} />
-  <PileButton label="grave" zone={seat.graveyard} onClick={openGraveyard} />
   <PileButton
     label="library"
     zone={seat.library}
@@ -51,6 +49,8 @@
     disabled={!isSelf || !onDrawCard}
     onClick={isSelf ? onDrawCard : undefined}
   />
+  <PileButton label="grave" zone={seat.graveyard} onClick={openGraveyard} />
+  <PileButton label="exile" zone={exile} onClick={openExile} />
   <CommandZone
     seat={{ id: seat.id, name: seat.name }}
     zone={seat.command}
@@ -61,9 +61,13 @@
 </div>
 
 <style>
+  /* 2×2 in the player rail: library / grave on top, exile / command
+     below. Tiles size to the rail; the thumb inside sizes from
+     --thumb-w / --thumb-h set by PlayerPanel. */
   .pile-bar {
-    display: flex;
-    gap: 6px;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    width: 100%;
   }
 </style>

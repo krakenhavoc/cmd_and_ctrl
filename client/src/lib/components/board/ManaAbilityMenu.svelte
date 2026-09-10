@@ -42,10 +42,21 @@
     onClose?.();
   }
 
-  // An activated ability is unavailable when its tap cost can't be
-  // paid, or when a sacrifice cost has nothing to pay it with. The
-  // server re-checks everything; this is just the affordance.
-  function abilityBlocked(a: ActivatedAbilityView): string {
+  // An ability is unavailable when its tap cost can't be paid, or
+  // when a sacrifice cost has nothing to pay it with. The server
+  // re-checks everything; this is just the affordance.
+  //
+  // Mana and activated abilities share the cost-shaped fields, so
+  // one predicate covers both — the activated-only clauses (targets)
+  // simply don't appear on a ManaAbilityView.
+  type CostShaped = {
+    tap_cost?: boolean;
+    sacrifice_label?: string;
+    sacrifice_options?: { players?: string[]; cards?: string[] };
+    legal_targets?: { players?: string[]; cards?: string[] };
+  };
+
+  function abilityBlocked(a: CostShaped): string {
     if (a.tap_cost && tapped) return "already tapped";
     if (a.tap_cost && summoningSick) return "summoning sickness";
     if (a.sacrifice_options) {
@@ -76,21 +87,24 @@
 
 <div class="mana-menu" role="menu" aria-label="abilities">
   {#each abilities as a (a.index)}
-    {@const disabled = !!a.tap_cost && tapped}
+    {@const blocked = abilityBlocked(a)}
     <button
       type="button"
       class="menu-item"
       role="menuitem"
-      {disabled}
-      title={disabled ? "already tapped" : a.produced ? `produces ${a.produced}` : a.label}
+      disabled={!!blocked}
+      title={blocked || (a.produced ? `produces ${a.produced}` : a.label)}
       onclick={(ev) => {
         ev.stopPropagation();
-        if (!disabled) activate(a.index);
+        if (!blocked) activate(a.index);
       }}
     >
       <span class="label">{a.label || a.produced || "activate"}</span>
       {#if a.tap_cost}
         <span class="cost" aria-label="tap cost">↻</span>
+      {/if}
+      {#if a.sacrifice_cost || a.sacrifice_options}
+        <span class="cost" aria-label="sacrifice cost">†</span>
       {/if}
     </button>
   {/each}

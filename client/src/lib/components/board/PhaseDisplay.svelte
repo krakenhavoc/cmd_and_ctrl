@@ -46,7 +46,6 @@
   }: Props = $props();
 
   const activeSeat = $derived(turn.active_seat ?? 0);
-  const prioritySeat = $derived(turn.priority_holder ?? 0);
   const priorityHeld = $derived((turn.priority_holder ?? -1) >= 0);
   const activePlayer = $derived(seats[activeSeat]);
   const stepLabel = $derived(STEP_LABELS[turn.step as keyof typeof STEP_LABELS] ?? turn.step);
@@ -130,29 +129,14 @@
     {/each}
   </div>
 
-  <div class="row step-label">{stepLabel}</div>
-
-  <div class="row pills" role="group" aria-label="priority indicator">
-    {#each seats as seat (seat.id)}
-      <span
-        class="pill"
-        class:has-priority={priorityHeld && seat.seat === prioritySeat && !seat.eliminated}
-        class:is-active={seat.seat === activeSeat && !seat.eliminated}
-        class:eliminated={seat.eliminated}
-        style="--seat-color: {colorFor(seat)}"
-        title={seat.eliminated
-          ? `${seat.name} — eliminated`
-          : `${seat.name}${priorityHeld && seat.seat === prioritySeat ? " (priority)" : ""}${seat.seat === activeSeat ? " (active)" : ""}`}
-      >
-        {seat.name}{seat.eliminated ? " ✕" : ""}
-      </span>
-    {/each}
+  <div class="row step-label">
+    {stepLabel}
     {#if !priorityHeld && !mulligansOpen}
       <span
         class="no-priority"
         title={`no player holds priority during ${stepLabel} (turn-based actions auto-fire)`}
       >
-        —
+        · no priority
       </span>
     {/if}
   </div>
@@ -322,53 +306,19 @@
     color: var(--fg);
   }
 
-  .pills {
-    gap: 4px;
-  }
-  .pill {
-    padding: 1px 7px;
-    border-radius: 999px;
-    font-size: 0.75em;
-    border: 1px solid var(--seat-color);
-    color: var(--fg);
-    background: transparent;
-    opacity: 0.5;
-    font-weight: 600;
-    max-width: 10ch;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    transition:
-      opacity 140ms var(--ease),
-      box-shadow 140ms var(--ease);
-  }
-  .pill.is-active {
-    opacity: 1;
-  }
-  .pill.has-priority {
-    background: var(--seat-color);
-    color: #0c1426;
-    font-weight: 700;
-    box-shadow:
-      0 0 12px var(--seat-color),
-      inset 0 1px 0 rgba(255, 255, 255, 0.25);
-  }
-  .pill.eliminated {
-    opacity: 0.3;
-    text-decoration: line-through;
-    border-style: dashed;
-  }
   .no-priority {
     color: var(--fg-dim);
-    font-weight: 600;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
     cursor: help;
   }
 
   /* Priority controls inside the box — two buttons split the row
-     evenly so the panel reads as a self-contained widget. Colours
-     echo the Game.svelte toolbar (green = you-have-priority,
-     amber = autopass-engaged) so players carry the same visual
-     grammar across surfaces. */
+     evenly so the panel reads as a self-contained widget. The pass
+     button is the one gold primary on the table (gold = priority
+     everywhere: avatar ring, this button); autopass-engaged is the
+     soft gold fill. */
   .actions {
     gap: 6px;
     margin-top: 2px;
@@ -399,23 +349,23 @@
     cursor: not-allowed;
   }
   .action.next.viewer-priority {
-    background: linear-gradient(180deg, #b3e5b3 0%, #7fc87f 100%);
-    color: #0a1a0a;
+    background: var(--accent);
+    color: var(--accent-fg);
     font-weight: 700;
-    border-color: rgba(127, 200, 127, 0.6);
+    border-color: var(--accent-strong);
   }
   .action.next.viewer-priority:hover:not(:disabled) {
-    background: linear-gradient(180deg, #c4f0c4 0%, #8fd88f 100%);
-    border-color: rgba(127, 200, 127, 0.85);
+    background: var(--accent-strong);
+    border-color: var(--accent-strong);
   }
   .action.autopass.on {
-    background: linear-gradient(180deg, #f5c76b 0%, #d99a2e 100%);
-    color: #1a0e00;
+    background: var(--accent-soft);
+    color: var(--accent-strong);
     font-weight: 700;
-    border-color: rgba(217, 154, 46, 0.75);
+    border-color: rgba(217, 180, 92, 0.55);
   }
   .action.autopass.on:hover:not(:disabled) {
-    background: linear-gradient(180deg, #ffda82 0%, #edaf47 100%);
-    border-color: rgba(217, 154, 46, 0.9);
+    background: rgba(217, 180, 92, 0.24);
+    border-color: var(--accent);
   }
 </style>

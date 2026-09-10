@@ -57,3 +57,83 @@ func (g *Game) SacrificePermanent(playerID, cardID uuid.UUID) error {
 	g.runStateChecksLocked()
 	return nil
 }
+
+// EachPlayerSacrificesForEffect queues one PendingChoiceSacrifice per
+// affected player, in APNAP seat order starting from the active
+// player — "each player sacrifices a creature" (Fleshbag Marauder),
+// "each other player sacrifices a creature" (Grave Pact), "each
+// opponent sacrifices a creature" (Butcher of Malakir).
+//
+// `spec` narrows what may be chosen; nil means any permanent.
+// `except` is the player who does NOT sacrifice ("each OTHER
+// player" / "each opponent"), or uuid.Nil when everyone does.
+//
+// Each player chooses their own, which is why this is a fan-out of
+// prompts rather than one effect: the controller of Grave Pact does
+// not get to pick which of your creatures dies. Players with no legal
+// permanent are skipped at queue time — the requirement is "if you
+// can", and prompting them with an empty list would wedge the queue.
+//
+// Returns the number of prompts queued, so a caller can tell "nobody
+// had a creature" from "everyone was asked".
+//
+// The choices are queued in APNAP order and answered in whatever
+// order the players click. Strictly, CR 701.17a makes the sacrifices
+// simultaneous after all choices are made; sequential resolution is
+// observable only through a payoff that counts them (a Blood Artist
+// sees the same number of deaths either way, just spread across more
+// trigger batches). Simultaneous choice-then-sacrifice would need the
+// whole fan-out held in a resume frame, which is a lot of machinery
+// for a difference no card in the catalog can see today.
+//
+// Caller must hold g.mu (it is an effect-time helper).
+func (g *Game) EachPlayerSacrificesForEffect(source uuid.UUID, except uuid.UUID, spec *TargetSpec, reason string) int {
+	queued := 0
+	numSeats := len(g.Seats)
+	if numSeats == 0 {
+		return 0
+	}
+	start := g.Turn.ActiveSeat
+	for i := 0; i < numSeats; i++ {
+		p := g.Seats[(start+i)%numSeats]
+		if p == nil || p.Eliminated || p.ID == except {
+			continue
+		}
+		options := g.sacrificeCandidatesLocked(p.ID, spec)
+		if len(options) == 0 {
+			continue
+		}
+		g.QueueChoiceForEffect(PendingChoice{
+			Kind:             PendingChoiceSacrifice,
+			Chooser:          p.ID,
+			FromPlayer:       p.ID,
+			Count:            1,
+			Source:           source,
+			Reason:           reason,
+			SacrificeOptions: options,
+		})
+		queued++
+	}
+	return queued
+}
+
+// sacrificeCandidatesLocked lists the permanents a player controls
+// that match spec. Nil spec means every permanent they control.
+//
+// Note this is NOT LegalTargetsForEffect: the effect doesn't target,
+// so a hexproof or protected creature is still a legal choice. Only
+// the spec's own card predicate and control matter.
+func (g *Game) sacrificeCandidatesLocked(playerID uuid.UUID, spec *TargetSpec) []uuid.UUID {
+	var out []uuid.UUID
+	for i := range g.Battlefield.Cards {
+		c := g.Battlefield.Cards[i]
+		if c.Controller != playerID {
+			continue
+		}
+		if spec != nil && spec.CardOK != nil && !spec.CardOK(g, playerID, c, ZoneBattlefield) {
+			continue
+		}
+		out = append(out, c.InstanceID)
+	}
+	return out
+}

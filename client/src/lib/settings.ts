@@ -66,6 +66,11 @@ export interface Settings {
     cardSize: "small" | "medium" | "large";
     // Hand fan vs. stack — fan is the existing S06 default.
     handLayout: "fan" | "stacked";
+    // Table layout (Sept 2026 redesign). "quadrant" (default) keeps
+    // the around-the-table seating (next seat bottom-left, the two
+    // across-table seats on top); "row" puts every opponent in turn
+    // order across the top and gives your panel the full width.
+    tableLayout: "row" | "quadrant";
     // Hover preview delay in milliseconds, 0..1000. S11 hover
     // preview reads this as its activation threshold.
     hoverDelayMs: number;
@@ -195,6 +200,7 @@ export function defaultSettings(): Settings {
       theme: "dark",
       cardSize: "medium",
       handLayout: "fan",
+      tableLayout: "quadrant",
       hoverDelayMs: 300,
       showOpponentHandCount: true,
     },

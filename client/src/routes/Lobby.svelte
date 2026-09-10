@@ -7,11 +7,15 @@
     replayURL,
     startGame,
     type GameMeta,
+    type SeatInfo,
   } from "../lib/api";
   import { inviteURL, spectatorInviteURL, navigate } from "../lib/router";
   import { session, LobbyApiError } from "../lib/session";
   import { openSettings } from "../lib/settings";
+  import { seatColor } from "../lib/colors";
+  import { avatarURL } from "../lib/api";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
+  import Icon from "../lib/components/Icon.svelte";
 
   // Lobby is the admin + player landing page. Admins see a create-
   // game form and the invite token for each game they've created;
@@ -131,102 +135,269 @@
     return g.state === "lobby" && g.players.length >= 2 && g.players.every((p) => p.deck_uploaded);
   }
 
+  // startReason explains a disabled primary action in one line —
+  // the admin's Start table, or a seated player's Enter table.
+  function startReason(g: GameMeta): string {
+    if (g.state !== "lobby") return "";
+    const me = mySeat(g);
+    if (me && !me.deck_uploaded) return "Upload your deck below";
+    if (g.players.length < 2) return "Needs at least two seats";
+    const pending = g.players.filter((p) => !p.deck_uploaded);
+    if (pending.length === 1) return `Waiting on ${seatName(pending[0])}'s deck`;
+    if (pending.length > 1) return `Waiting on ${pending.length} decks`;
+    return me ? "Waiting for the admin to start" : "";
+  }
+
+  function seatName(p: SeatInfo): string {
+    return p.display_name || p.name;
+  }
+
+  function initials(p: SeatInfo): string {
+    return seatName(p).trim().slice(0, 1).toUpperCase() || "?";
+  }
+
+  // Commander tables seat four; pad the grid with open slots so the
+  // card reads as a table rather than a list.
+  const TABLE_SEATS = 4;
+  function seatSlots(g: GameMeta): (SeatInfo | null)[] {
+    const sorted = [...g.players].sort((a, b) => a.seat - b.seat);
+    const slots: (SeatInfo | null)[] = [...sorted];
+    while (slots.length < TABLE_SEATS) slots.push(null);
+    return slots;
+  }
+
+  function timeAgo(iso: string): string {
+    const ms = Date.now() - Date.parse(iso);
+    if (!Number.isFinite(ms) || ms < 0) return "just now";
+    const m = Math.floor(ms / 60_000);
+    if (m < 1) return "just now";
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    const d = Math.floor(h / 24);
+    return `${d}d ago`;
+  }
+
+  // Players see their own table only (the list endpoint returns
+  // every game); admins and spectators see the whole room. Falls
+  // back to the full list if the seated game isn't in it.
+  const visibleGames = $derived.by(() => {
+    const s = $session;
+    if (s?.principal.role !== "player" || !s.gameID) return games;
+    const mine = games.filter((g) => g.id === s.gameID);
+    return mine.length > 0 ? mine : games;
+  });
+
+  const summary = $derived.by(() => {
+    const list = visibleGames;
+    if (list.length === 0) return "No tables yet.";
+    const live = list.filter((g) => g.state === "active").length;
+    const waiting = list.filter((g) => g.state === "lobby").length;
+    const parts = [`${list.length} table${list.length === 1 ? "" : "s"}`];
+    if (live) parts.push(`${live} in progress`);
+    if (waiting) parts.push(`${waiting} in the lobby`);
+    return parts.join(" · ");
+  });
+
+  // Poll while any visible table is still in the lobby so seats,
+  // decks and the admin's Start show up without a manual refresh
+  // (the lobby has no WebSocket; the game route does).
+  const POLL_MS = 5000;
   onMount(() => {
     void refresh();
+    const t = setInterval(() => {
+      if (visibleGames.some((g) => g.state === "lobby")) void refresh();
+    }, POLL_MS);
+    return () => clearInterval(t);
   });
 </script>
 
-<section>
-  <header>
-    <h1>cmd_and_ctrl · lobby</h1>
-    <p>
-      logged in as <strong>{$session?.principal.role}</strong>
-      {#if $session?.principal.name}
-        ({$session.principal.name})
+<section class="lobby">
+  <header class="bar">
+    <span class="wordmark" aria-hidden="true"><i></i>CMD &amp; CTRL</span>
+    <h1 class="crumb" aria-label="cmd_and_ctrl · lobby"><b>/</b> Tables</h1>
+    <span class="bar-spacer"></span>
+    <span class="uchip">
+      {#if $session?.principal.name && $session.principal.name !== $session.principal.role}
+        {$session.principal.name}
       {/if}
-      <button
-        class="linkish gear"
-        title="settings (press , from anywhere)"
-        aria-label="open settings"
-        onclick={openSettings}>⚙</button
-      >
-      <button class="linkish" onclick={logout}>log out</button>
-    </p>
+      <b>{$session?.principal.role}</b>
+    </span>
+    <button
+      class="ibtn"
+      title="settings (press , from anywhere)"
+      aria-label="open settings"
+      onclick={openSettings}><Icon name="gear" size={17} /></button
+    >
+    <button class="ghost" onclick={logout}>log out</button>
   </header>
+
+  <div class="head">
+    <div>
+      <h2 class="title">Tables</h2>
+      <p class="sub">{summary}</p>
+    </div>
+    {#if $session?.principal.role === "admin"}
+      <form class="create" onsubmit={onCreate}>
+        <h2 class="panel-h">create game</h2>
+        <input type="text" placeholder="game name" bind:value={newName} />
+        <button type="submit" class="primary" disabled={busy || !newName.trim()}>create</button>
+      </form>
+    {/if}
+  </div>
 
   {#if error}
     <p class="error">{error}</p>
   {/if}
 
-  {#if $session?.principal.role === "admin"}
-    <h2>create game</h2>
-    <form onsubmit={onCreate}>
-      <input type="text" placeholder="game name" bind:value={newName} />
-      <button type="submit" disabled={busy || !newName.trim()}>create</button>
-    </form>
-  {/if}
-
-  <h2>games</h2>
-  {#if games.length === 0}
-    <p class="muted">no games yet.</p>
+  {#if visibleGames.length === 0}
+    <p class="muted empty">
+      {#if $session?.principal.role === "admin"}
+        Create a table, then send the invite link to your pod.
+      {:else}
+        You're not seated at a table yet — ask for an invite link.
+      {/if}
+    </p>
   {:else}
     <ul class="games">
-      {#each games as g (g.id)}
+      {#each visibleGames as g (g.id)}
         {@const seat = mySeat(g)}
-        <li>
-          <div class="row">
-            <div>
-              <strong>{g.name}</strong>
-              <span class="muted">· {g.state} · {g.players.length} player(s)</span>
-            </div>
-            <div class="row-actions">
-              {#if recentInvites.has(g.id)}
-                <button onclick={() => copyInvite(g.id)}>
-                  {copied === `${g.id}:invite` ? "✓ copied" : "copy invite"}
-                </button>
-              {/if}
-              {#if recentSpectatorInvites.has(g.id)}
-                <button onclick={() => copySpectatorInvite(g.id)}>
-                  {copied === `${g.id}:spectator` ? "✓ copied" : "copy spectator link"}
-                </button>
-              {/if}
-              {#if canStart(g)}
-                <button onclick={() => onStart(g.id)}>start</button>
-              {:else if g.state === "lobby" && g.players.length >= 2}
-                <button disabled title="waiting for all seats to upload a deck">start</button>
-              {/if}
-              <button onclick={() => openGame(g.id)}>open</button>
-              <!-- Mirror the server's downloadReplay gate: admins may
-                   pull the replay any time after the lobby phase, but
-                   players get 403 until the game has ended (the JSONL
-                   carries unfiltered hidden information mid-game). -->
-              {#if g.state === "ended" || ($session?.principal.role === "admin" && g.state !== "lobby")}
-                {@const url = replayURL(g.id)}
-                {#if url}
-                  <a class="linkish" href={url} download={`${g.id}.jsonl`}>download replay</a>
+        {@const reason = startReason(g)}
+        <li class="tcard" class:mine={seat !== null}>
+          <div class="trow">
+            <div class="tid">
+              <div class="tname">{g.name}</div>
+              <div class="chips">
+                {#if g.state === "active"}
+                  <span class="chip live"><i class="dot"></i>In progress</span>
+                {:else if g.state === "ended"}
+                  <span class="chip ended">Ended</span>
+                {:else}
+                  <span class="chip">Lobby</span>
                 {/if}
+                <span class="meta">{g.players.length} of {TABLE_SEATS} seats</span>
+                <span class="meta">·</span>
+                <span class="meta">created {timeAgo(g.created_at)}</span>
+              </div>
+            </div>
+            <div class="actions">
+              <div class="arow">
+                {#if recentInvites.has(g.id)}
+                  <button class:on={copied === `${g.id}:invite`} onclick={() => copyInvite(g.id)}>
+                    {#if copied === `${g.id}:invite`}
+                      <Icon name="check" size={13} /> Invite copied
+                    {:else}
+                      <Icon name="link" size={13} /> copy invite
+                    {/if}
+                  </button>
+                {/if}
+                {#if recentSpectatorInvites.has(g.id)}
+                  <button
+                    class:on={copied === `${g.id}:spectator`}
+                    onclick={() => copySpectatorInvite(g.id)}
+                  >
+                    {#if copied === `${g.id}:spectator`}
+                      <Icon name="check" size={13} /> Link copied
+                    {:else}
+                      <Icon name="link" size={13} /> Spectator link
+                    {/if}
+                  </button>
+                {/if}
+                <!-- Mirror the server's downloadReplay gate: admins may
+                     pull the replay any time after the lobby phase, but
+                     players get 403 until the game has ended (the JSONL
+                     carries unfiltered hidden information mid-game). -->
+                {#if g.state === "ended" || ($session?.principal.role === "admin" && g.state !== "lobby")}
+                  {@const url = replayURL(g.id)}
+                  {#if url}
+                    <a class="btn-link" href={url} download={`${g.id}.jsonl`}>
+                      <Icon name="draw" size={13} /> Replay
+                    </a>
+                  {/if}
+                {/if}
+                {#if g.state === "lobby" && seat}
+                  <!-- Seated players wait for the admin; the button goes
+                       live once the poll sees the table start. -->
+                  <button class="primary" disabled title="waiting for the admin to start">
+                    enter table <Icon name="chevronRight" size={13} />
+                  </button>
+                {:else if g.state === "lobby"}
+                  <button onclick={() => openGame(g.id)}>open table</button>
+                  {#if g.players.length >= 2}
+                    <button
+                      class="primary"
+                      disabled={!canStart(g)}
+                      title={reason || "start the game"}
+                      onclick={() => onStart(g.id)}
+                    >
+                      start table <Icon name="chevronRight" size={13} />
+                    </button>
+                  {/if}
+                {:else if g.state === "active"}
+                  <button class="primary" onclick={() => openGame(g.id)}>
+                    {seat ? "enter table" : "open table"}
+                    <Icon name="chevronRight" size={13} />
+                  </button>
+                {:else}
+                  <button class="ghost" onclick={() => openGame(g.id)}>open table</button>
+                {/if}
+              </div>
+              {#if reason}
+                <div class="reason">{reason}</div>
               {/if}
             </div>
           </div>
-          <ul class="seats">
-            {#each g.players as p (p.player_id)}
-              <li>
-                seat {p.seat}: {p.name}
-                {#if p.deck_uploaded}
-                  <span class="badge-ok">✓ {p.deck_name || "deck ready"}</span>
-                {:else}
-                  <span class="badge-pending">deck pending</span>
-                {/if}
-              </li>
+
+          <ul class="seats" aria-label="seats">
+            {#each seatSlots(g) as p, i (p?.player_id ?? `open-${i}`)}
+              {#if p}
+                {@const avatar = avatarURL(p.discord_id, p.discord_avatar_hash)}
+                <li class="seat" class:you={p.player_id === $session?.playerID}>
+                  <span class="sav" style:border-color={seatColor(p.seat)}>
+                    {#if avatar}
+                      <img src={avatar} alt="" />
+                    {:else}
+                      <i style:background={seatColor(p.seat)}>{initials(p)}</i>
+                    {/if}
+                  </span>
+                  <div class="sinfo">
+                    <div class="sname">
+                      seat {p.seat + 1}: {seatName(p)}
+                      {#if p.player_id === $session?.playerID}<b>you</b>{/if}
+                    </div>
+                    {#if p.deck_uploaded}
+                      <div class="sstat"><i class="dot ok"></i>{p.deck_name || "deck ready"}</div>
+                    {:else}
+                      <div class="sstat pend">deck pending</div>
+                    {/if}
+                  </div>
+                </li>
+              {:else}
+                <li class="seat open">
+                  <span class="sav open"></span>
+                  <div class="sinfo">
+                    <div class="sname dim">Open seat</div>
+                    <div class="sstat dim">
+                      {g.state === "lobby" ? "send the invite link" : "—"}
+                    </div>
+                  </div>
+                </li>
+              {/if}
             {/each}
           </ul>
 
           {#if seat && g.state === "lobby" && $session?.playerID}
             <details class="deck-upload" open={!seat.deck_uploaded}>
               <summary>
-                {seat.deck_uploaded ? "replace your deck" : "upload your deck"}
+                <span class="panel-h">
+                  {seat.deck_uploaded ? "replace your deck" : "upload your deck"}
+                </span>
+                {#if seat.deck_uploaded}
+                  <span class="deck-ok"><i class="dot ok"></i>{seat.deck_name || "deck ready"}</span
+                  >
+                {/if}
               </summary>
-              <p class="muted">
+              <p class="hint">
                 Paste a Moxfield or Archidekt deck URL, a Moxfield JSON export, or a plain-text
                 decklist. The server validates against Commander rules (100-card singleton, color
                 identity, format legality).
@@ -243,182 +414,438 @@
     </ul>
   {/if}
 
-  <p>
-    <button onclick={refresh}>refresh</button>
+  <p class="foot">
+    <button class="ghost" onclick={refresh}><Icon name="undo" size={13} /> refresh</button>
   </p>
 </section>
 
 <style>
-  section {
-    max-width: 760px;
-    margin: 2rem auto;
-    padding: 1.5rem;
+  .lobby {
+    max-width: 1080px;
+    margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 18px;
   }
-  header {
+  /* Same command bar as the game route, minus the game controls. */
+  .bar {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    gap: 1rem;
-    padding: 0.25rem 0 0.75rem;
+    gap: 12px;
+    height: 44px;
+    margin: -1.5rem -1.5rem 8px;
+    padding: 0 14px;
+    background: var(--bg-1);
     border-bottom: 1px solid var(--border);
   }
-  header h1 {
-    margin: 0;
-    font-size: 1.5rem;
-    letter-spacing: -0.02em;
-  }
-  header p {
-    margin: 0;
-    color: var(--fg-muted);
-    font-size: 0.9rem;
+  .wordmark {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: 0.18em;
+    color: var(--fg);
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 8px;
   }
-  header strong {
+  .wordmark i {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--gold);
+    transform: rotate(45deg);
+    border-radius: 3px;
+    box-sizing: border-box;
+  }
+  h1.crumb {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0;
+    color: var(--fg-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .crumb b {
+    color: var(--fg-dim);
+    font-weight: 400;
+  }
+  .bar-spacer {
+    flex: 1;
+  }
+  .uchip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 12.5px;
+    font-weight: 600;
     color: var(--fg);
+  }
+  .uchip b {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gold-strong);
+    font-weight: 700;
+  }
+  .ibtn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--fg-muted);
+  }
+  .ibtn:hover {
+    color: var(--fg);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--border);
+  }
+
+  .head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  h2.title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--fg);
+    text-transform: none;
+    line-height: 1.1;
+  }
+  .sub {
+    margin: 4px 0 0;
+    font-size: 12.5px;
+    color: var(--fg-muted);
+  }
+  .panel-h {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-dim);
     font-weight: 600;
   }
+  .create {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .create input {
+    width: 240px;
+    margin: 0;
+    height: 36px;
+    padding: 0 12px;
+    box-sizing: border-box;
+    font-size: 13px;
+  }
+  .create button {
+    height: 36px;
+  }
+  .error {
+    color: var(--danger);
+    margin: 0;
+    font-size: 13px;
+  }
+  .muted {
+    color: var(--fg-muted);
+  }
+  .empty {
+    margin: 12px 0;
+    font-size: 13.5px;
+  }
+
   .games {
     list-style: none;
     padding: 0;
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 14px;
   }
-  .games > li {
-    background: linear-gradient(180deg, var(--surface) 0%, var(--bg-2) 100%);
+  .tcard {
+    background: var(--surface);
     border: 1px solid var(--border);
-    padding: 1rem 1.1rem;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow);
-    transition:
-      border-color 140ms var(--ease),
-      transform 140ms var(--ease);
-  }
-  .games > li:hover {
-    border-color: var(--border-strong);
-  }
-  .row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-  .row > div:first-child strong {
-    font-size: 1.05rem;
-  }
-  .row-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-  .row-actions button {
-    padding: 0.4rem 0.8rem;
-    font-size: 0.85rem;
-  }
-  .seats {
-    list-style: none;
-    margin: 0.75rem 0 0;
-    padding: 0;
-    color: var(--fg-muted);
-    font-size: 0.9em;
+    border-radius: 14px;
+    padding: 18px 22px 20px;
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 16px;
   }
-  .seats li {
+  .tcard.mine {
+    border-color: rgba(217, 180, 92, 0.3);
+    box-shadow: inset 0 0 0 1px rgba(217, 180, 92, 0.08);
+  }
+  .trow {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .tid {
+    min-width: 0;
+  }
+  .tname {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--fg);
+  }
+  .chips {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: var(--radius-sm);
-    background: var(--surface-sunken);
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
   }
-  .muted {
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 20px;
+    padding: 0 8px;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     color: var(--fg-muted);
+    font-weight: 600;
+  }
+  .chip.live {
+    color: var(--gold-strong);
+    border-color: rgba(217, 180, 92, 0.5);
+    background: var(--gold-soft);
+  }
+  .chip.ended {
+    color: var(--fg-dim);
+    border-color: var(--border);
+  }
+  .dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+    flex: 0 0 auto;
+  }
+  .dot.ok {
+    background: var(--mint);
+  }
+  .meta {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--fg-dim);
+    letter-spacing: 0.04em;
+  }
+  .actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    flex: 0 0 auto;
+  }
+  .arow {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .arow button,
+  .btn-link {
+    height: 32px;
+    padding: 0 12px;
+    font-size: 12.5px;
+  }
+  .arow button.on {
+    color: var(--mint);
+    border-color: rgba(95, 212, 164, 0.4);
+  }
+  .btn-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-strong);
+    background: var(--surface-raised);
+    color: var(--fg);
+    font-weight: 600;
+    text-decoration: none;
+    box-sizing: border-box;
+  }
+  .btn-link:hover {
+    background: var(--surface-hover);
+    color: var(--fg);
+  }
+  .reason {
+    font-size: 11px;
+    color: var(--fg-dim);
+    text-align: right;
+  }
+
+  .seats {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+  @media (max-width: 760px) {
+    .seats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  .seat {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--surface-sunken);
+    border: 1px solid transparent;
+    min-width: 0;
+  }
+  .seat.you {
+    border-color: rgba(217, 180, 92, 0.4);
+  }
+  .seat.open {
+    border: 1px dashed var(--border-strong);
+    background: transparent;
+  }
+  .sav {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--border-strong);
+    padding: 2px;
+    box-sizing: border-box;
+    background: var(--surface-raised);
+    flex: 0 0 auto;
+    overflow: hidden;
+  }
+  .sav img,
+  .sav i {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    font-style: normal;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 14px;
+    color: #1c1503;
+  }
+  .sav.open {
+    border: 2px dashed var(--border-strong);
+    background: transparent;
+  }
+  .sinfo {
+    min-width: 0;
+  }
+  .sname {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--fg);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sname b {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gold-strong);
+    font-weight: 700;
+    margin-left: 5px;
+  }
+  .sname.dim,
+  .sstat.dim {
+    color: var(--fg-dim);
     font-weight: 500;
   }
-  .error {
-    color: var(--danger);
-    padding: 0.6rem 0.85rem;
-    border-radius: var(--radius);
-    background: rgba(255, 122, 122, 0.08);
-    border: 1px solid rgba(255, 122, 122, 0.3);
-    margin: 0;
+  .sstat {
+    font-size: 11px;
+    color: var(--fg-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
   }
-  .badge-ok {
-    display: inline-block;
-    padding: 1px 8px;
-    border-radius: 999px;
-    color: var(--mint);
-    background: rgba(122, 255, 154, 0.12);
-    border: 1px solid rgba(122, 255, 154, 0.3);
-    margin-left: 0.25rem;
-    font-weight: 600;
-    font-size: 0.8em;
+  .sstat.pend {
+    color: var(--gold-strong);
   }
-  .badge-pending {
-    display: inline-block;
-    padding: 1px 8px;
-    border-radius: 999px;
-    color: var(--gold);
-    background: var(--gold-soft);
-    border: 1px solid rgba(255, 208, 122, 0.3);
-    margin-left: 0.25rem;
-    font-weight: 600;
-    font-size: 0.8em;
-  }
+
   .deck-upload {
-    margin-top: 0.75rem;
-    padding: 0.6rem 0.75rem;
-    background: var(--surface-sunken);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
   }
   .deck-upload summary {
     cursor: pointer;
-    font-weight: 600;
-    color: var(--accent-strong);
-    padding: 0.25rem 0;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
-  .deck-upload summary:hover {
+  .deck-upload summary::-webkit-details-marker {
+    display: none;
+  }
+  .deck-upload summary::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-right: 1.5px solid var(--fg-dim);
+    border-bottom: 1.5px solid var(--fg-dim);
+    transform: rotate(-45deg);
+    transition: transform 120ms var(--ease);
+  }
+  .deck-upload[open] summary::before {
+    transform: rotate(45deg);
+  }
+  .deck-upload summary:hover .panel-h {
     color: var(--fg);
   }
-  form {
-    display: flex;
-    gap: 0.5rem;
+  .deck-ok {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--fg-muted);
   }
-  input {
-    flex: 1;
+  .hint {
+    font-size: 12px;
+    color: var(--fg-muted);
+    line-height: 1.5;
+    margin: 10px 0 0;
   }
-  .linkish {
-    background: none;
-    border: none;
-    color: var(--accent-strong);
-    text-decoration: none;
-    cursor: pointer;
-    padding: 0.3rem 0.55rem;
-    margin-left: 0.25rem;
-    border-radius: var(--radius-sm);
-    font-weight: 500;
-    box-shadow: none;
-    font-size: 0.85rem;
-    transition: background 120ms var(--ease);
-  }
-  .linkish:hover {
-    background: var(--accent-soft);
-    color: var(--accent-strong);
-    box-shadow: none;
-  }
-  .linkish.gear {
-    font-size: 1.1rem;
-    padding: 0.3rem 0.5rem;
-    line-height: 1;
+  .foot {
+    margin: 0;
   }
 </style>
