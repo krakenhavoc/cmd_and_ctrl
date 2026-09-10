@@ -478,6 +478,24 @@
               overriding the gate for that one spell. Default is off — the sandbox treats mana as
               paper-tracked.
             </p>
+
+            <label>
+              <input
+                type="checkbox"
+                checked={$settings.gameplay.adminOverrides}
+                onchange={(e) => change("gameplay", "adminOverrides", e.currentTarget.checked)}
+              />
+              Enable admin overrides (right-click menu)
+              {#if isFresh("gameplay.adminOverrides")}<span class="saved">✓ saved</span>{/if}
+            </label>
+            <p class="help">
+              Right-click any card for a menu of manual overrides: move it to another zone, add or
+              remove counters, mark or clear damage, declare it as an attacker or blocker, sacrifice
+              it. Every option maps to an action the server already supports, so a card the engine
+              gets wrong can still be played by hand. You only get overrides on cards you control;
+              admins get every card. Default is off, which leaves right-click showing a permanent's
+              abilities — with it on, those abilities are the menu's first section.
+            </p>
           {:else if activeTab === "accessibility"}
             <h3>Accessibility</h3>
             <label>

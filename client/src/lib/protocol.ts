@@ -55,7 +55,7 @@ export interface ErrorPayload {
 // plus the hub-level "undo" verb (server/internal/ws/hub.go) — so a
 // typo'd action name is a compile error here instead of a runtime
 // bad_request frame. The server accepts more action types than these
-// (play_card, advance_step, set_goaded, …); add literals as the UI
+// (play_card, advance_step, set_poison, …); add literals as the UI
 // grows call sites for them.
 export type ActionType =
   | "activate_ability"
@@ -65,6 +65,7 @@ export type ActionType =
   | "cast_spell"
   | "cast_vote"
   | "change_life"
+  | "clear_combat"
   | "concede"
   | "counter_ability"
   | "counter_spell"
@@ -74,11 +75,14 @@ export type ActionType =
   | "draw_card"
   | "end_vote"
   | "keep_hand"
+  | "mark_damage"
   | "move_card"
   | "mulligan"
   | "pass_priority"
   | "pass_turn"
   | "resolve_choice"
+  | "sacrifice_permanent"
+  | "set_goaded"
   | "set_initiative"
   | "set_monarch"
   | "set_promise"

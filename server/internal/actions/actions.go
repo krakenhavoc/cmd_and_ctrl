@@ -424,6 +424,7 @@ func Dispatch(g *game.Game, a Action) error {
 			Dst         zoneRefWire `json:"dst"`
 			InstanceID  string      `json:"instance_id"`
 			AsCommander bool        `json:"as_commander,omitempty"`
+			ToBottom    bool        `json:"to_bottom,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -442,6 +443,13 @@ func Dispatch(g *game.Game, a Action) error {
 		}
 		if err := requireCardController(g, a.Caller, instanceID); err != nil {
 			return err
+		}
+		// #170: `to_bottom` seats the card at the bottom of the
+		// destination instead of the top. Only meaningful for a
+		// library destination; the admin context menu's "Library
+		// (bottom)" override is the only caller today.
+		if p.ToBottom {
+			return g.MoveCardByIDToBottom(srcRef, dstRef, instanceID, p.AsCommander)
 		}
 		return g.MoveCardByIDAsCommander(srcRef, dstRef, instanceID, p.AsCommander)
 

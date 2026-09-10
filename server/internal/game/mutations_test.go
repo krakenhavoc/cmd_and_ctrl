@@ -171,6 +171,54 @@ func TestMoveCardByIDSrcEqualsDstBogusCard(t *testing.T) {
 	}
 }
 
+func TestMoveCardByIDToBottomSeatsAtLibraryBottom(t *testing.T) {
+	// #170: the admin context menu's "Library (bottom)" override.
+	// MoveCard always PushTops, so the bottom destination is a
+	// post-move reorder — assert it actually lands on the bottom and
+	// doesn't disturb the rest of the library.
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	if err := g.DrawCard(p.ID); err != nil {
+		t.Fatalf("DrawCard: %v", err)
+	}
+	card, _ := p.Hand.Top()
+	libBefore := p.Library.Size()
+	oldTop, err := p.Library.Top()
+	if err != nil {
+		t.Fatalf("Library.Top: %v", err)
+	}
+
+	err = g.MoveCardByIDToBottom(
+		ZoneRef{Kind: ZoneHand, Owner: p.ID},
+		ZoneRef{Kind: ZoneLibrary, Owner: p.ID},
+		card.InstanceID,
+		false,
+	)
+	if err != nil {
+		t.Fatalf("MoveCardByIDToBottom: %v", err)
+	}
+	if p.Hand.Contains(card.InstanceID) {
+		t.Error("card still in hand after move")
+	}
+	if p.Library.Size() != libBefore+1 {
+		t.Errorf("library size: got %d, want %d", p.Library.Size(), libBefore+1)
+	}
+	bottom, err := p.Library.Bottom()
+	if err != nil {
+		t.Fatalf("Library.Bottom: %v", err)
+	}
+	if bottom.InstanceID != card.InstanceID {
+		t.Errorf("bottom card: got %v, want %v", bottom.InstanceID, card.InstanceID)
+	}
+	newTop, err := p.Library.Top()
+	if err != nil {
+		t.Fatalf("Library.Top after move: %v", err)
+	}
+	if newTop.InstanceID != oldTop.InstanceID {
+		t.Errorf("top card changed: got %v, want %v", newTop.InstanceID, oldTop.InstanceID)
+	}
+}
+
 func TestPlayCardMovesToBattlefield(t *testing.T) {
 	g := newActiveGame(t)
 	p := g.Seats[0]
