@@ -118,6 +118,15 @@ export interface Settings {
     // UI; anyone opting in has decided they'd rather eat the risk
     // of a skipped turn than re-toggle every cycle.
     autopassPersistThroughTurns: boolean;
+    // #170: right-click any card for a per-card override menu —
+    // move between zones, add / remove counters, mark damage,
+    // declare combat by hand. Off by default, so right-click keeps
+    // its historic meaning (the mana / activated-ability popover)
+    // until a player opts in. NOT gated on the admin role: every
+    // action the menu can send is already gated server-side to the
+    // caller's own cards (requireCardController), so a seated
+    // player who turns it on gains a surface, not authority.
+    adminOverrides: boolean;
   };
 
   accessibility: {
@@ -135,7 +144,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 6;
+export const SETTINGS_VERSION = 7;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -225,6 +234,10 @@ export function defaultSettings(): Settings {
       // viewer's next precombat_main so a forgotten autopass
       // doesn't skip their turn. Opt-in is a DANGER setting.
       autopassPersistThroughTurns: false,
+      // #170 default: OFF. Right-click keeps meaning "show this
+      // permanent's abilities" until the player opts in to the
+      // override menu.
+      adminOverrides: false,
     },
     accessibility: {
       reduceMotion: reduced,
@@ -309,6 +322,11 @@ function migrate(raw: unknown): Settings {
   // to false (safe); existing v5 blobs inherit the safe default via
   // the shallow merge. The opt-in has a danger-warning banner in
   // the UI so anyone flipping it knows the risk.
+  //
+  // v6 → v7 (#170): gameplay.adminOverrides. Same shape again — the
+  // shallow merge fills it from defaults (false) for any v6 blob
+  // that omits the field. Nothing to rescue: the affordance it
+  // replaces (Shift+click for a +1/+1 counter) had no stored state.
   return absorbLegacy(merged);
 }
 

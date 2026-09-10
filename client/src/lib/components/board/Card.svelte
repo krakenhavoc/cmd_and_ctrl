@@ -26,6 +26,7 @@
   import { play } from "../../sounds";
   import { settings } from "../../settings";
   import { targeting, isLegalCardTarget, isPicked } from "../../targeting";
+  import { openCardMenu } from "../../contextMenu";
   import CounterPips from "./CounterPips.svelte";
   import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
@@ -185,7 +186,20 @@
     onClick?.(card, ev);
   }
 
+  // Right-click routing (#170). With admin overrides enabled the
+  // gesture belongs to the per-card override menu, which subsumes the
+  // ability popover — CardContextMenu lists mana / activated
+  // abilities as its first section, so nothing is lost. With the
+  // setting off (the default) the historic ability popover is the
+  // only thing right-click does.
   function handleContextMenu(ev: MouseEvent): void {
+    if ($settings.gameplay.adminOverrides) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      manaMenuOpen = false;
+      openCardMenu({ card, x: ev.clientX, y: ev.clientY });
+      return;
+    }
     if (!hasManaAbilities) return;
     ev.preventDefault();
     ev.stopPropagation();

@@ -1,0 +1,614 @@
+// contextMenu.logic — pure menu assembly behind CardContextMenu.
+// Lives outside the component (the same split zoneBrowser.logic.ts
+// uses) so vitest can pin the option set and the wire payloads for
+// every zone without rendering Svelte: the client's test runner is
+// node-only, with no jsdom.
+//
+// Design contract for #170: the menu never invents an action type.
+// Every item resolves to one of the verbs the server already
+// implements in server/internal/actions/actions.go — move_card,
+// add_counter, tap / untap, mark_damage, declare_attacker,
+// declare_blocker, clear_combat, set_goaded, sacrifice_permanent.
+// That keeps the "escape hatch" honest: anything the menu offers is
+// something the engine could already have been driven to do from
+// gamecli, just without a discoverable surface.
+//
+// The same MenuItem tree is what #164's forced commander-zone prompt
+// can render once it needs a per-card surface — an item is a label
+// plus either an action, a nested list, or a prompt marker, so a
+// caller that wants a two-option "yes / no" menu builds one section
+// with two action items and reuses the component verbatim.
+
+import type { ActionType, CardView, GameView } from "./protocol";
+import {
+  COUNTER_CHARGE,
+  COUNTER_DEFENSE,
+  COUNTER_LORE,
+  COUNTER_LOYALTY,
+  COUNTER_MINUS_ONE,
+  COUNTER_PLUS_ONE,
+  COUNTER_SHIELD,
+  COUNTER_STUN,
+} from "./counterTypes";
+
+// MenuZone is every zone a card can be right-clicked in. Mirrors
+// game.ZoneKind server-side.
+export type MenuZone =
+  | "battlefield"
+  | "hand"
+  | "graveyard"
+  | "exile"
+  | "command"
+  | "library"
+  | "stack";
+
+export const ZONE_LABELS: Record<MenuZone, string> = {
+  battlefield: "battlefield",
+  hand: "hand",
+  graveyard: "graveyard",
+  exile: "exile",
+  command: "command zone",
+  library: "library",
+  stack: "stack",
+};
+
+// COMBAT_STEPS gates the attack / block items. Outside combat those
+// declarations are meaningless (and the server would have nothing to
+// clear), so the section is dropped rather than shown disabled.
+export const COMBAT_STEPS: ReadonlySet<string> = new Set([
+  "begin_combat",
+  "declare_attackers",
+  "declare_blockers",
+  "combat_damage",
+  "end_combat",
+]);
+
+// QUICK_COUNTERS get their own add / remove rows at the top level.
+// Everything else is one level down under "Other counters".
+export const QUICK_COUNTERS: readonly string[] = [
+  COUNTER_PLUS_ONE,
+  COUNTER_MINUS_ONE,
+  COUNTER_LOYALTY,
+];
+
+// CARD_COUNTER_NAMES is every card-level counter the pip renderer
+// knows how to style. Player-level counters (poison, energy,
+// experience, rad) are deliberately absent — this is a card menu,
+// and those live on the player panel.
+export const CARD_COUNTER_NAMES: readonly string[] = [
+  COUNTER_PLUS_ONE,
+  COUNTER_MINUS_ONE,
+  COUNTER_LOYALTY,
+  COUNTER_DEFENSE,
+  COUNTER_CHARGE,
+  COUNTER_STUN,
+  COUNTER_SHIELD,
+  COUNTER_LORE,
+];
+
+// MenuZoneRef mirrors the `src` / `dst` shape of a move_card action.
+// Owner is omitted for the shared zones (battlefield, exile, stack)
+// exactly as the server's zoneRefWire expects.
+export interface MenuZoneRef {
+  kind: string;
+  owner?: string;
+}
+
+// MenuAction is a ready-to-send wire action. `player` is the seat the
+// action is attributed to; card-scoped verbs leave it undefined and
+// let the connection's own principal stand.
+export interface MenuAction {
+  type: ActionType;
+  params?: Record<string, unknown>;
+  player?: string;
+}
+
+// MenuPrompt marks an item that needs one more piece of input before
+// it can fire. The component renders a tiny inline form for it.
+export type MenuPrompt = "custom_counter" | "mark_damage";
+
+// MenuActivate marks an item that hands off to the board's existing
+// ability flows instead of sending a bare action. Activating an
+// ability can open a sacrifice picker or enter targeting, and both
+// of those modals are board-wide, so the menu forwards rather than
+// firing itself.
+export interface MenuActivate {
+  kind: "mana" | "ability";
+  index: number;
+}
+
+export interface MenuItem {
+  // Stable key for the {#each} block and for tests.
+  id: string;
+  label: string;
+  // Tooltip / secondary copy.
+  hint?: string;
+  // Red styling for destructive overrides.
+  danger?: boolean;
+  // Rendered but not clickable (e.g. "Remove +1/+1" with none on).
+  disabled?: boolean;
+  action?: MenuAction;
+  prompt?: MenuPrompt;
+  activate?: MenuActivate;
+  // Leave the menu open after firing. Set on the incremental rows
+  // (counters, damage) because "add three +1/+1 counters" is three
+  // clicks and re-opening the menu between each would be hostile.
+  repeat?: boolean;
+  // Non-empty for a submenu row.
+  items?: MenuItem[];
+}
+
+export interface MenuSection {
+  id: string;
+  label?: string;
+  items: MenuItem[];
+}
+
+export interface CardLocation {
+  zone: MenuZone;
+  // The seat whose zone holds the card. For the shared zones this is
+  // the card's own owner, which is what a "back to your hand" move
+  // needs anyway.
+  ownerID: string;
+}
+
+// locateCard finds which zone a card currently sits in. The context
+// menu is opened from a Card component that doesn't know its own
+// zone, so the lookup happens here against the authoritative
+// snapshot rather than being prop-drilled through five components.
+export function locateCard(view: GameView, instanceID: string): CardLocation | null {
+  for (const c of view.battlefield?.cards ?? []) {
+    if (c.instance_id === instanceID) return { zone: "battlefield", ownerID: c.owner };
+  }
+  for (const c of view.stack?.cards ?? []) {
+    if (c.instance_id === instanceID) return { zone: "stack", ownerID: c.owner };
+  }
+  for (const c of view.exile?.cards ?? []) {
+    if (c.instance_id === instanceID) return { zone: "exile", ownerID: c.owner };
+  }
+  for (const s of view.seats) {
+    for (const c of s.hand?.cards ?? []) {
+      if (c.instance_id === instanceID) return { zone: "hand", ownerID: s.id };
+    }
+    for (const c of s.graveyard?.cards ?? []) {
+      if (c.instance_id === instanceID) return { zone: "graveyard", ownerID: s.id };
+    }
+    for (const c of s.command?.cards ?? []) {
+      if (c.instance_id === instanceID) return { zone: "command", ownerID: s.id };
+    }
+    for (const c of s.library?.cards ?? []) {
+      if (c.instance_id === instanceID) return { zone: "library", ownerID: s.id };
+    }
+  }
+  return null;
+}
+
+// findCard resolves an instance ID against the current snapshot. The
+// menu captures the CardView it was opened on, but re-resolving on
+// every snapshot keeps counter totals, tapped state and damage live
+// while the menu stays open.
+export function findCard(view: GameView, instanceID: string): CardView | null {
+  const lists: CardView[][] = [
+    view.battlefield?.cards ?? [],
+    view.stack?.cards ?? [],
+    view.exile?.cards ?? [],
+  ];
+  for (const s of view.seats) {
+    lists.push(s.hand?.cards ?? []);
+    lists.push(s.graveyard?.cards ?? []);
+    lists.push(s.command?.cards ?? []);
+    lists.push(s.library?.cards ?? []);
+  }
+  for (const list of lists) {
+    for (const c of list) {
+      if (c.instance_id === instanceID) return c;
+    }
+  }
+  return null;
+}
+
+// canOverride mirrors the server's requireCardController gate: a
+// seated player may drive their own cards, an admin may drive
+// anyone's. Showing items the server would bounce is worse than
+// showing none, so a non-controller gets an empty menu.
+export function canOverride(card: CardView, viewerID: string | null, isAdmin: boolean): boolean {
+  if (isAdmin) return true;
+  if (!viewerID) return false;
+  return card.controller === viewerID;
+}
+
+export function zoneRefFor(zone: MenuZone, ownerID: string): MenuZoneRef {
+  if (zone === "battlefield" || zone === "exile" || zone === "stack") return { kind: zone };
+  return { kind: zone, owner: ownerID };
+}
+
+export interface MoveDest {
+  id: string;
+  label: string;
+  zone: MenuZone;
+  // Seat the card at the BOTTOM of the destination instead of the
+  // top. Only meaningful for the library.
+  bottom?: boolean;
+}
+
+// MOVE_DESTINATIONS is the full destination list, in the order the
+// submenu renders them. The stack is deliberately not a destination:
+// a card pushed into the stack zone without a matching StackMeta
+// entry would render as an item nobody can resolve. Moving a card
+// OFF the stack (a manual fizzle) is supported.
+export const MOVE_DESTINATIONS: readonly MoveDest[] = [
+  { id: "hand", label: "Hand", zone: "hand" },
+  { id: "battlefield", label: "Battlefield", zone: "battlefield" },
+  { id: "graveyard", label: "Graveyard", zone: "graveyard" },
+  { id: "exile", label: "Exile", zone: "exile" },
+  { id: "library-top", label: "Library (top)", zone: "library" },
+  { id: "library-bottom", label: "Library (bottom)", zone: "library", bottom: true },
+  { id: "command", label: "Command zone", zone: "command" },
+];
+
+// moveDestinations drops the zone the card is already in — a
+// same-zone move is a server-side no-op and the menu shouldn't
+// pretend otherwise.
+export function moveDestinations(from: MenuZone): MoveDest[] {
+  return MOVE_DESTINATIONS.filter((d) => d.zone !== from);
+}
+
+// buildMoveAction assembles a move_card payload. The destination's
+// owner is the card's OWNER, not its controller: a stolen creature
+// dies to its owner's graveyard (CR 400.3), and the same holds for
+// every manual override here.
+export function buildMoveAction(
+  card: CardView,
+  from: CardLocation,
+  dest: MoveDest,
+  asCommander = false,
+): MenuAction {
+  const params: Record<string, unknown> = {
+    src: zoneRefFor(from.zone, from.ownerID),
+    dst: zoneRefFor(dest.zone, card.owner),
+    instance_id: card.instance_id,
+  };
+  if (dest.bottom) params.to_bottom = true;
+  if (asCommander) params.as_commander = true;
+  return { type: "move_card", params };
+}
+
+export function counterAction(card: CardView, name: string, delta: number): MenuAction {
+  return {
+    type: "add_counter",
+    params: { instance_id: card.instance_id, name, delta },
+  };
+}
+
+export function damageAction(card: CardView, delta: number): MenuAction {
+  return {
+    type: "mark_damage",
+    params: { instance_id: card.instance_id, delta },
+  };
+}
+
+// AbilityCost is the cost-shaped subset shared by ManaAbilityView and
+// ActivatedAbilityView, so one predicate covers both. Mirrors the
+// identically-shaped local type in ManaAbilityMenu.svelte.
+interface AbilityCost {
+  tap_cost?: boolean;
+  sacrifice_label?: string;
+  sacrifice_options?: { players?: string[]; cards?: string[] };
+  legal_targets?: { players?: string[]; cards?: string[] };
+}
+
+// abilityBlocked returns the reason an ability can't be activated
+// right now, or "" when it can. Advisory only — the server re-checks
+// every cost; this just greys the row and explains why.
+export function abilityBlocked(a: AbilityCost, tapped: boolean, sick: boolean): string {
+  if (a.tap_cost && tapped) return "already tapped";
+  if (a.tap_cost && sick) return "summoning sickness";
+  if (a.sacrifice_options && (a.sacrifice_options.cards?.length ?? 0) === 0) {
+    return `nothing to sacrifice (${a.sacrifice_label ?? "a permanent"})`;
+  }
+  if (a.legal_targets) {
+    const n = (a.legal_targets.players?.length ?? 0) + (a.legal_targets.cards?.length ?? 0);
+    if (n === 0) return "no legal target";
+  }
+  return "";
+}
+
+// abilityItems folds the permanent's mana abilities and CR 602
+// activated abilities into the menu. Right-click used to open the
+// dedicated ManaAbilityMenu popover; with the admin menu bound to
+// the same gesture, these rows keep that surface reachable instead
+// of the override menu shadowing it.
+function abilityItems(card: CardView): MenuItem[] {
+  const tapped = !!card.tapped;
+  const sick = !!card.summoning_sick;
+  const items: MenuItem[] = [];
+  for (const a of card.mana_abilities ?? []) {
+    const blocked = abilityBlocked(a, tapped, sick);
+    items.push({
+      id: `mana-${a.index}`,
+      label: a.label || a.produced || "add mana",
+      hint: blocked || undefined,
+      disabled: !!blocked,
+      activate: { kind: "mana", index: a.index },
+    });
+  }
+  for (const a of card.activated_abilities ?? []) {
+    const blocked = abilityBlocked(a, tapped, sick);
+    items.push({
+      id: `ability-${a.index}`,
+      label: a.label || "activate",
+      hint: blocked || undefined,
+      disabled: !!blocked,
+      activate: { kind: "ability", index: a.index },
+    });
+  }
+  return items;
+}
+
+function tapItems(card: CardView): MenuItem[] {
+  const tapped = !!card.tapped;
+  return [
+    {
+      id: "tap",
+      label: "Tap",
+      disabled: tapped,
+      action: { type: "tap", params: { instance_id: card.instance_id } },
+    },
+    {
+      id: "untap",
+      label: "Untap",
+      disabled: !tapped,
+      action: { type: "untap", params: { instance_id: card.instance_id } },
+    },
+  ];
+}
+
+function goadItems(card: CardView, viewerID: string | null): MenuItem[] {
+  if (!viewerID) return [];
+  if (card.goaded_by) {
+    return [
+      {
+        id: "goad-clear",
+        label: "Clear goad",
+        action: {
+          type: "set_goaded",
+          params: { instance_id: card.instance_id, by: "" },
+        },
+      },
+    ];
+  }
+  return [
+    {
+      id: "goad",
+      label: "Goad (by you)",
+      hint: "sandbox marker — must-attack is not enforced",
+      action: {
+        type: "set_goaded",
+        params: { instance_id: card.instance_id, by: viewerID },
+      },
+    },
+  ];
+}
+
+function otherCounterItems(card: CardView): MenuItem[] {
+  const seen = new Set<string>(QUICK_COUNTERS);
+  const names: string[] = [];
+  for (const n of CARD_COUNTER_NAMES) {
+    if (seen.has(n)) continue;
+    seen.add(n);
+    names.push(n);
+  }
+  // Anything already on the card that isn't in the styled registry
+  // (a homebrew counter placed by an earlier custom prompt) still
+  // needs a way back off.
+  for (const n of Object.keys(card.counters ?? {})) {
+    if (seen.has(n)) continue;
+    seen.add(n);
+    names.push(n);
+  }
+  const items: MenuItem[] = [];
+  for (const name of names) {
+    const have = card.counters?.[name] ?? 0;
+    items.push({
+      id: `counter-other-add-${name}`,
+      label: `${name} +1`,
+      repeat: true,
+      action: counterAction(card, name, 1),
+    });
+    items.push({
+      id: `counter-other-remove-${name}`,
+      label: `${name} −1`,
+      disabled: have <= 0,
+      repeat: true,
+      action: counterAction(card, name, -1),
+    });
+  }
+  return items;
+}
+
+function counterItems(card: CardView): MenuItem[] {
+  const items: MenuItem[] = [];
+  for (const name of QUICK_COUNTERS) {
+    const have = card.counters?.[name] ?? 0;
+    items.push({
+      id: `counter-add-${name}`,
+      label: `Add ${name}`,
+      hint: have > 0 ? `${have} on this card` : undefined,
+      repeat: true,
+      action: counterAction(card, name, 1),
+    });
+    items.push({
+      id: `counter-remove-${name}`,
+      label: `Remove ${name}`,
+      disabled: have <= 0,
+      repeat: true,
+      action: counterAction(card, name, -1),
+    });
+  }
+  items.push({
+    id: "counter-other",
+    label: "Other counters",
+    items: otherCounterItems(card),
+  });
+  items.push({
+    id: "counter-custom",
+    label: "Custom counter…",
+    prompt: "custom_counter",
+  });
+  return items;
+}
+
+function damageItems(card: CardView): MenuItem[] {
+  const marked = card.damage_marked ?? 0;
+  return [
+    {
+      id: "damage-add",
+      label: "Mark 1 damage",
+      hint: marked > 0 ? `${marked} marked` : undefined,
+      repeat: true,
+      action: damageAction(card, 1),
+    },
+    {
+      id: "damage-remove",
+      label: "Remove 1 damage",
+      disabled: marked <= 0,
+      repeat: true,
+      action: damageAction(card, -1),
+    },
+    {
+      id: "damage-clear",
+      label: "Clear all damage",
+      disabled: marked <= 0,
+      action: damageAction(card, -marked),
+    },
+    {
+      id: "damage-set",
+      label: "Mark damage…",
+      prompt: "mark_damage",
+    },
+  ];
+}
+
+function combatItems(view: GameView, card: CardView): MenuItem[] {
+  const items: MenuItem[] = [];
+  const defenders = view.seats.filter((s) => s.id !== card.controller && !s.eliminated);
+  if (defenders.length > 0) {
+    items.push({
+      id: "combat-attack",
+      label: card.attacking_target ? "Re-declare attacker" : "Declare attacker",
+      items: defenders.map((s) => ({
+        id: `combat-attack-${s.id}`,
+        label: s.display_name || s.name,
+        action: {
+          type: "declare_attacker" as ActionType,
+          params: { attacker: card.instance_id, target: s.id },
+        },
+      })),
+    });
+  }
+  const attackers = (view.battlefield?.cards ?? []).filter(
+    (c) => !!c.attacking_target && c.controller !== card.controller,
+  );
+  if (attackers.length > 0) {
+    items.push({
+      id: "combat-block",
+      label: card.blocking_target ? "Re-declare blocker" : "Declare blocker",
+      items: attackers.map((a) => ({
+        id: `combat-block-${a.instance_id}`,
+        label: a.name || "unknown attacker",
+        action: {
+          type: "declare_blocker" as ActionType,
+          params: { blocker: card.instance_id, attacker: a.instance_id },
+        },
+      })),
+    });
+  }
+  items.push({
+    id: "combat-clear",
+    label: "Clear ALL combat",
+    hint: "wipes every attack and block declaration on the table",
+    danger: true,
+    action: { type: "clear_combat" },
+  });
+  return items;
+}
+
+function moveItems(card: CardView, location: CardLocation): MenuItem[] {
+  const items: MenuItem[] = moveDestinations(location.zone).map((d) => ({
+    id: `move-${d.id}`,
+    label: d.label,
+    action: buildMoveAction(card, location, d),
+  }));
+  // CR 903.9 — route a commander leaving the battlefield through the
+  // replacement pipeline instead of dropping it straight in the
+  // command zone. This is the path #164 widens, so having a manual
+  // trigger for it makes the replacement testable by hand today.
+  if (card.is_commander && location.zone === "battlefield") {
+    const gy: MoveDest = { id: "graveyard", label: "Graveyard", zone: "graveyard" };
+    items.push({
+      id: "move-commander-903-9",
+      label: "Graveyard → command zone (CR 903.9)",
+      hint: "fires the commander-zone replacement rather than moving directly",
+      action: buildMoveAction(card, location, gy, true),
+    });
+  }
+  return items;
+}
+
+// buildMenuSections is the whole menu for one card, in render order.
+// An empty result means "the viewer may not override this card" and
+// the component says so rather than showing a bare frame.
+export function buildMenuSections(
+  view: GameView,
+  card: CardView,
+  viewerID: string | null,
+  isAdmin: boolean,
+): MenuSection[] {
+  const location = locateCard(view, card.instance_id);
+  if (!location) return [];
+  if (!canOverride(card, viewerID, isAdmin)) return [];
+
+  const sections: MenuSection[] = [];
+  if (location.zone === "battlefield") {
+    const abilities = abilityItems(card);
+    if (abilities.length > 0) {
+      sections.push({ id: "abilities", label: "abilities", items: abilities });
+    }
+    sections.push({
+      id: "state",
+      label: "state",
+      items: [...tapItems(card), ...goadItems(card, viewerID)],
+    });
+    sections.push({ id: "counters", label: "counters", items: counterItems(card) });
+    sections.push({ id: "damage", label: "damage", items: damageItems(card) });
+    if (COMBAT_STEPS.has(view.turn?.step ?? "")) {
+      sections.push({ id: "combat", label: "combat", items: combatItems(view, card) });
+    }
+  }
+
+  sections.push({
+    id: "move",
+    label: "move to",
+    items: moveItems(card, location),
+  });
+
+  if (location.zone === "battlefield") {
+    sections.push({
+      id: "extras",
+      items: [
+        {
+          id: "sacrifice",
+          label: "Sacrifice",
+          hint: "emits a sacrifice event, so aristocrats payoffs fire",
+          danger: true,
+          action: {
+            type: "sacrifice_permanent",
+            params: { instance_id: card.instance_id },
+            player: card.controller,
+          },
+        },
+      ],
+    });
+  }
+  return sections;
+}

@@ -4554,3 +4554,41 @@ func (g *Game) controllerOfBattlefieldCardLocked(cardID uuid.UUID) uuid.UUID {
 	}
 	return uuid.Nil
 }
+
+// MoveCardByIDToBottom is MoveCardByIDAsCommander with the card
+// seated at the BOTTOM of the destination zone instead of the top.
+// It backs the move_card action's `to_bottom` flag, which the admin
+// context menu (#170) needs for "put this on the bottom of your
+// library" — the one destination MoveCard (which always PushTops)
+// can't express.
+//
+// Implemented as a post-move reorder rather than a second copy of the
+// replacement pipeline: the move runs exactly as it always does
+// (replacements, LKI snapshot, LTB / ETB events, state-based checks),
+// then the card is pulled back out of the destination and re-pushed
+// at the bottom. If a replacement rewrote the destination — a
+// commander routed to the command zone by CR 903.9 — the card isn't
+// in `dst` at all, Remove fails, and the reorder is a no-op. That is
+// the behaviour we want: the replacement's destination wins.
+//
+// The two-phase locking (the move takes g.mu and releases it, then
+// this retakes it) is safe because ws.Room.Apply holds the room lock
+// across the whole of actions.Dispatch, so no other action can
+// interleave between the move and the reorder.
+func (g *Game) MoveCardByIDToBottom(src, dst ZoneRef, cardID uuid.UUID, asCommander bool) error {
+	if err := g.MoveCardByIDAsCommander(src, dst, cardID, asCommander); err != nil {
+		return err
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	z := g.zoneFromRefLocked(dst)
+	if z == nil {
+		return nil
+	}
+	c, err := z.Remove(cardID)
+	if err != nil {
+		return nil
+	}
+	z.PushBottom(c)
+	return nil
+}

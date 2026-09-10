@@ -331,10 +331,20 @@ func (c CreateToken) Apply(ctx *Context) error {
 type ReturnFromGraveyard struct {
 	Target uuid.UUID
 	Dest   game.ZoneKind
+
+	// Controller is who the card lands under the control of, and is
+	// meaningful only for Dest == ZoneBattlefield. Zero value means
+	// "its owner", which is right for "return target creature card
+	// FROM YOUR GRAVEYARD" (Zombify) and wrong for "put target
+	// creature card from A GRAVEYARD onto the battlefield UNDER YOUR
+	// CONTROL" (Reanimate) — set it to ctx.Controller() for the
+	// second. Reanimating an opponent's creature and handing it back
+	// to the opponent is the failure mode this field exists to stop.
+	Controller uuid.UUID
 }
 
 func (r ReturnFromGraveyard) Apply(ctx *Context) error {
-	return ctx.Game.ReturnFromGraveyardForEffect(r.Target, r.Dest)
+	return ctx.Game.ReturnFromGraveyardUnderControlForEffect(r.Target, r.Dest, r.Controller)
 }
 
 // SearchLibrary looks through `Player`'s library for up to `Limit`
