@@ -7,6 +7,7 @@ import {
   findCardOnBattlefield,
   playerByID,
   resolveStack,
+  returnToLibrary,
   seedHandWithCard,
   setupS19Game,
   triggerOnStack,
@@ -58,9 +59,14 @@ async function waitForPickTarget(setup: S19Setup, chooser: JoinedPlayer, sourceN
       ),
     "pick_target prompt queued",
   );
+  // 20s, not the project's 10s default: three browser contexts, two
+  // dev servers and four sockets share one self-hosted runner, and a
+  // player page has been observed a full 10s behind the admin socket
+  // under that load. The wait is bounded well inside the 90s
+  // test.slow() budget, so a genuinely stuck prompt still fails.
   await expect(
     chooser.page.getByRole("dialog", { name: new RegExp(`Select target for ${sourceName}`, "i") }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 20_000 });
   return view;
 }
 
@@ -85,6 +91,10 @@ test.describe("S19 ETB triggers", () => {
     // unpredictable number of cards out of the library, so any
     // baseline taken before seeding would be off by N.
     const mulldrifter = await seedHandWithCard(admin, caster.playerID, CARDS.Mulldrifter);
+    // Seeding drains the library; the ETB draws two, so guarantee
+    // there are two to draw. Done before the baseline below, so the
+    // hand arithmetic still holds.
+    await returnToLibrary(admin, caster.playerID, CARDS.Forest, 3);
     const handBefore = playerByID(admin.snapshot(), caster.playerID).hand.count;
 
     await admin.sendActionAsPlayer(caster.playerID, "move_card", {
@@ -398,19 +408,25 @@ test.describe("S19 ETB triggers", () => {
     setup = await setupS19Game(browser, request);
     const { admin, caster } = setup;
 
-    // Library card identities are redacted on the wire (CR 400.2
-    // private zone), so we can't search by Forest name directly.
-    // Confirm there's a non-trivial library to fetch from instead —
-    // the caster deck ships with 91 Forests + 8 non-basics + commander.
-    expect(playerByID(admin.snapshot(), caster.playerID).library.count).toBeGreaterThan(50);
+    // Seed Solemn into the hand FIRST, then restock the library
+    // before putting it onto the battlefield.
+    //
+    // This ordering is load-bearing. seedHandWithCard finds a card by
+    // drawing until it surfaces, so an unlucky shuffle leaves the
+    // caster with a one-card library and every Forest stranded in
+    // hand. "Search your library for a basic land" then correctly
+    // finds nothing, and this test fails on deck order rather than on
+    // engine behaviour — which is exactly how it failed the first
+    // time the suite got far enough to run it.
+    const solemn = await seedHandWithCard(admin, caster.playerID, CARDS.SolemnSimulacrum);
+    await returnToLibrary(admin, caster.playerID, CARDS.Forest, 3);
+    expect(playerByID(admin.snapshot(), caster.playerID).library.count).toBeGreaterThanOrEqual(3);
 
-    await adminMoveByName(
-      admin,
-      caster.playerID,
-      CARDS.SolemnSimulacrum,
-      "library",
-      "battlefield",
-    );
+    await admin.sendActionAsPlayer(caster.playerID, "move_card", {
+      src: { kind: "hand", owner: caster.playerID },
+      dst: { kind: "battlefield" },
+      instance_id: solemn.instance_id,
+    });
 
     await admin.waitFor(
       (v) =>

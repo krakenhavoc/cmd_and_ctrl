@@ -557,6 +557,41 @@ export async function adminMoveByName(
   });
 }
 
+// returnToLibrary moves up to `n` cards named `name` from ownerID's
+// hand back into their library, and returns the last snapshot.
+//
+// Why this exists: seedHandWithCard finds a card by DRAWING until it
+// surfaces, because library contents are redacted on the wire (CR
+// 400.2). On an unlucky shuffle that empties the library — basics
+// included. Any effect that then reads the library (Solemn's "search
+// for a basic land", Mulldrifter's "draw two") legally does nothing,
+// and the test's assertion becomes a coin flip on deck order rather
+// than a statement about the engine. Restocking makes the
+// precondition explicit instead of lucky.
+export async function returnToLibrary(
+  admin: AdminClient,
+  ownerID: string,
+  name: string,
+  n: number,
+): Promise<SnapshotView> {
+  let last = admin.snapshot();
+  let moved = 0;
+  for (let i = 0; i < n; i++) {
+    const card = findCardInZone(playerByID(admin.snapshot(), ownerID).hand, name);
+    if (!card) break;
+    last = await admin.sendActionAsPlayer(ownerID, "move_card", {
+      src: { kind: "hand", owner: ownerID },
+      dst: { kind: "library", owner: ownerID },
+      instance_id: card.instance_id,
+    });
+    moved++;
+  }
+  if (moved === 0) {
+    throw new Error(`returnToLibrary: no ${name} in ${ownerID}'s hand to put back`);
+  }
+  return last;
+}
+
 // --- Browser orchestration -----------------------------------
 
 export interface JoinedPlayer {
