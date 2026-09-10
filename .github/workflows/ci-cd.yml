@@ -26,6 +26,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      # Cheap, toolchain-free, and first because deploy/Caddyfile is the
+      # one artifact in this repo whose mistakes surface only at deploy
+      # time, on the production host, after everything else has passed.
+      # `caddy validate` is not enough on its own -- see the script.
+      - name: Deploy config -- check Caddyfile
+        run: deploy/check-caddyfile.sh
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -215,6 +222,17 @@ jobs:
       # content actually changed, so repeat deploys do not bounce the proxy.
       # A syntactically broken Caddyfile fails the deploy instead of taking
       # the site down. The previous file is kept as a timestamped backup.
+      #
+      # The reload falls back to a restart because `caddy reload` can only
+      # apply a config through the RUNNING instance's admin API. A host whose
+      # caddy was started from a config with the admin endpoint off -- which
+      # is what the HomeLab cloud-init placeholder ships -- has no such API,
+      # so the first reload after this file starts being managed here fails
+      # with a connection refused on localhost:2019 while the old config keeps
+      # serving. That was run 34507228563. One restart per host clears it; the
+      # Caddyfile in this repo keeps the endpoint on so reloads stay
+      # zero-downtime thereafter, and deploy/check-caddyfile.sh fails CI if
+      # anyone turns it off again.
       - name: Deploy Caddy config
         run: |
           rsync -a -e "ssh ${SSH_OPTS}" deploy/Caddyfile \
@@ -228,8 +246,19 @@ jobs:
               sudo cp -a /etc/caddy/Caddyfile \
                 "/etc/caddy/Caddyfile.bak.$(date +%Y%m%d-%H%M%S)"
               sudo install -o root -g root -m 0644 /tmp/Caddyfile.new /etc/caddy/Caddyfile
-              sudo systemctl reload caddy
-              echo "Caddyfile updated; Caddy reloaded."
+              if sudo systemctl reload caddy; then
+                echo "Caddyfile updated; Caddy reloaded."
+              else
+                echo "::warning::systemctl reload caddy failed; falling back to a restart. Expected at most once per host: the running instance was started from a config with the admin endpoint disabled, so caddy reload has no admin API to POST to. Once it has restarted on the current config the endpoint exists and reloads are zero-downtime again. If this warning repeats, the reload is failing for some other reason -- read the journal dump above."
+                sudo journalctl -u caddy.service -n 20 --no-pager || true
+                sudo systemctl restart caddy
+                echo "Caddyfile updated; Caddy restarted."
+              fi
+              systemctl is-active --quiet caddy || {
+                echo "::error::caddy is not running after installing the new config; the previous file is at the newest /etc/caddy/Caddyfile.bak.* on the host"
+                sudo journalctl -u caddy.service -n 40 --no-pager || true
+                exit 1
+              }
             fi
             rm -f /tmp/Caddyfile.new
           '

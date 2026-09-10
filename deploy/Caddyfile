@@ -20,8 +20,27 @@
 # HTTP only. The Cloudflare tunnel terminates TLS at the edge and forwards
 # plain HTTP to this origin, so Caddy must not try to obtain its own
 # certificate -- hence auto_https off.
+#
+# The admin endpoint must stay ON. `caddy reload` -- what the packaged
+# unit runs as ExecReload, and therefore what `systemctl reload caddy`
+# does -- adapts this file and POSTs the result to the RUNNING instance's
+# admin API. Caddy picks the address in cmd/commandfuncs.go
+# (DetermineAdminAPIAddress), which reads only `admin.listen` and never
+# `admin.disabled`: with `admin off` it falls back to the default
+# localhost:2019, finds nothing listening, and exits 1 with
+#     Error: sending configuration to instance: performing request:
+#     Post "http://localhost:2019/load": dial tcp 127.0.0.1:2019:
+#     connect: connection refused
+# `caddy validate` passes throughout -- the config is perfectly valid;
+# it is the reload MECHANISM that `admin off` makes impossible. That
+# cost one red production deploy already (Actions run 34507228563).
+#
+# localhost:2019 is Caddy's default and binds loopback only. The
+# Cloudflare tunnel forwards to :80, so the admin API is not reachable
+# from outside the host. Pinned explicitly rather than left implicit so
+# the invariant is visible to whoever edits this block next.
 {
-	admin off
+	admin localhost:2019
 	auto_https off
 }
 
