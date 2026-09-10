@@ -3052,6 +3052,13 @@ func (g *Game) stackHasItemsLocked() bool {
 // Caller authorization (was-it-the-controller) is intentionally
 // NOT enforced — sandbox flexibility for casual play. Summoning
 // sickness and defender are enforced as of S18.
+//
+// S22: a creature's FIRST successful declaration emits EventAttack
+// (one per attacking creature — see events.go) and then runs the
+// state checks, so "whenever ~ attacks" triggers reach the stack
+// immediately, inside the declare-attackers step and ahead of
+// blockers. Re-declaring an already-attacking creature against a
+// different target still overwrites the target but emits nothing.
 func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -3080,6 +3087,13 @@ func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
 			if HasSummoningSickness(card) {
 				return ErrSummoningSick
 			}
+			// S22: a creature is declared as an attacker once (CR
+			// 508.1). The sandbox additionally lets a player re-point
+			// an already-attacking creature at a different defender;
+			// that is a correction, not a second attack, so it must
+			// not fire attack triggers again.
+			firstDeclaration := card.AttackingTarget == uuid.Nil
+			controller := card.Controller
 			card.AttackingTarget = targetPlayerID
 			// CR 508.1f: declaring an attacker taps it, unless the
 			// attacker has vigilance (CR 702.20). Vigilance is the
@@ -3093,6 +3107,27 @@ func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
 			// blocker — clearing the other field keeps the per-card
 			// combat state coherent.
 			card.BlockingTarget = uuid.Nil
+			if !firstDeclaration {
+				return nil
+			}
+			// S22: "whenever ~ attacks" triggers. One event per
+			// attacking creature; `card` must not be read past this
+			// point, because the state checks below can reallocate the
+			// battlefield slice out from under the pointer.
+			g.EmitEvent(Event{
+				Kind:   EventAttack,
+				Actor:  controller,
+				CardID: attackerID,
+				Target: targetPlayerID,
+			})
+			// CR 508.2 / 117.5: attackers are declared as a turn-based
+			// action, after which the active player receives priority —
+			// the boundary where SBAs run and harvested triggers go on
+			// the stack. Without this drain the trigger would sit in
+			// PendingTriggers until the next pass and land a step late,
+			// after blockers. Same reasoning as the MoveCardByID /
+			// CastSpell drains (ADR 0018 §3).
+			g.runStateChecksLocked()
 			return nil
 		}
 	}
