@@ -567,11 +567,42 @@ func (g *Game) AddCounterForEffect(cardID uuid.UUID, name string, delta int) err
 
 // ReturnFromGraveyardForEffect moves a card from a player's
 // graveyard to one of: owner's hand (default), battlefield (for
-// Reanimate-style effects — not used in S14 catalog), or library
-// top (top-of-library). The dest ZoneKind is one of ZoneHand,
-// ZoneBattlefield, ZoneLibrary. Errors if the card isn't in a
-// graveyard.
+// Reanimate-style effects), or library top (top-of-library). The
+// dest ZoneKind is one of ZoneHand, ZoneBattlefield, ZoneLibrary.
+// Errors if the card isn't in a graveyard.
+//
+// The card lands under its OWNER's control. Reanimation that says
+// "under your control" must use
+// ReturnFromGraveyardUnderControlForEffect instead — see the note
+// there for why the difference is not cosmetic.
 func (g *Game) ReturnFromGraveyardForEffect(cardID uuid.UUID, dest ZoneKind) error {
+	return g.ReturnFromGraveyardUnderControlForEffect(cardID, dest, uuid.Nil)
+}
+
+// ReturnFromGraveyardUnderControlForEffect is
+// ReturnFromGraveyardForEffect with an explicit controller for the
+// battlefield case: "put target creature card from A GRAVEYARD onto
+// the battlefield UNDER YOUR CONTROL" (Reanimate, Portal to
+// Phyrexia). uuid.Nil means "under its owner's control", which is
+// the older behaviour and what Zombify-style "from your graveyard"
+// text wants.
+//
+// This exists because the two were previously the same thing, and
+// that was a real bug the moment a card reached across the table:
+// the destination was picked off the graveyard's owner, so
+// reanimating an opponent's creature handed the creature back to the
+// opponent — the single most valuable line in a reanimator deck,
+// silently inverted. Hand / library destinations are unaffected;
+// those genuinely do go to the owner's zones, whoever cast the
+// spell.
+//
+// The controller is stamped BEFORE the events fire, not after, so
+// the layer listener, the trigger harvester and anything watching
+// EventETB all see the permanent under the right control. Actor on
+// both events is the new controller for the same reason.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnFromGraveyardUnderControlForEffect(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID) error {
 	src := g.findCardZoneLocked(cardID)
 	if src == nil || src.Kind != ZoneGraveyard {
 		return ErrCardNotFound
@@ -599,15 +630,42 @@ func (g *Game) ReturnFromGraveyardForEffect(cardID uuid.UUID, dest ZoneKind) err
 		return err
 	}
 	g.markCardKnownInZoneLocked(destZone, cardID)
+	actor := ownerID
+	var oracleID string
+	if destZone.Kind == ZoneBattlefield {
+		newController := controller
+		if newController == uuid.Nil {
+			newController = ownerID
+		}
+		if p := g.playerByIDLocked(newController); p == nil {
+			newController = ownerID
+		}
+		for i := range destZone.Cards {
+			if destZone.Cards[i].InstanceID == cardID {
+				destZone.Cards[i].Controller = newController
+				oracleID = destZone.Cards[i].OracleID
+				break
+			}
+		}
+		actor = newController
+	}
 	g.EmitEvent(Event{
 		Kind:    EventZoneMove,
-		Actor:   ownerID,
+		Actor:   actor,
 		CardID:  cardID,
 		OldZone: ZoneGraveyard,
 		NewZone: destZone.Kind,
 	})
 	if destZone.Kind == ZoneBattlefield {
-		g.EmitEvent(Event{Kind: EventETB, Actor: ownerID, CardID: cardID})
+		g.EmitEvent(Event{Kind: EventETB, Actor: actor, CardID: cardID})
+		// A reanimated permanent enters the battlefield like any
+		// other, so the catalog's OnETB / StartingLoyalty hook has to
+		// run — otherwise reanimating Solemn Simulacrum fetches
+		// nothing and reanimating a planeswalker gives it no loyalty.
+		// Every other path onto the battlefield already fires this;
+		// this one was the omission. A no-op for a card with no
+		// oracle ID (tokens, fixtures) or no catalog entry.
+		g.fireETBHookLocked(cardID, oracleID)
 	}
 	return nil
 }
