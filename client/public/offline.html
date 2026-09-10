@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0a09" />
+    <meta name="color-scheme" content="dark" />
+    <title>CMD &amp; CTRL — offline</title>
+    <style>
+      /* Self-contained on purpose: the service worker serves this page
+         when the network is gone, so it can reference nothing but
+         itself -- no stylesheet, no webfont, no script. The palette is
+         copied from src/app.css for the same reason. */
+      :root {
+        color-scheme: dark;
+        --bg: #0b0a09;
+        --fg: #f1ece2;
+        --fg-muted: #a9a195;
+        --fg-dim: #6f685d;
+        --gold: #d9b45c;
+        --surface: #1a1816;
+        --border: rgba(255, 255, 255, 0.14);
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+      body {
+        display: grid;
+        place-items: center;
+        box-sizing: border-box;
+        min-height: 100vh;
+        padding: 2rem 1.5rem;
+        padding-left: calc(1.5rem + env(safe-area-inset-left));
+        padding-right: calc(1.5rem + env(safe-area-inset-right));
+        background: var(--bg);
+        color: var(--fg);
+        font-family: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      main {
+        max-width: 30rem;
+        text-align: center;
+      }
+      h1 {
+        margin: 1.25rem 0 0.75rem;
+        font-family: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+        font-weight: 800;
+        font-size: 1.5rem;
+        letter-spacing: -0.01em;
+      }
+      p {
+        margin: 0 0 0.75rem;
+        line-height: 1.55;
+        color: var(--fg-muted);
+        font-size: 0.95rem;
+      }
+      ul {
+        margin: 1.25rem 0 1.5rem;
+        padding: 0;
+        list-style: none;
+        color: var(--fg-muted);
+        font-size: 0.85rem;
+        line-height: 1.9;
+      }
+      button {
+        background: var(--surface);
+        color: var(--fg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.6rem 1.2rem;
+        font: inherit;
+        font-weight: 600;
+        font-size: 0.85rem;
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: var(--gold);
+        color: var(--gold);
+      }
+      .mono {
+        font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+        font-size: 0.7rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--fg-dim);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <svg width="72" height="72" viewBox="0 0 64 64" role="img" aria-label="CMD &amp; CTRL">
+        <g transform="rotate(45 32 32)">
+          <rect
+            x="13"
+            y="13"
+            width="38"
+            height="38"
+            rx="6"
+            fill="none"
+            stroke="#d9b45c"
+            stroke-width="4"
+          />
+          <rect x="26" y="26" width="12" height="12" rx="2" fill="#d9b45c" />
+        </g>
+      </svg>
+      <p class="mono">No connection</p>
+      <h1>The table needs a connection</h1>
+      <p>CMD &amp; CTRL is a live multiplayer game, so there is nothing to play offline.</p>
+      <ul>
+        <li>Your seat is held server-side; reconnecting drops you back into the game.</li>
+        <li>Nothing was lost — the client never holds authoritative game state.</li>
+      </ul>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </main>
+  </body>
+</html>

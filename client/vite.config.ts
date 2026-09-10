@@ -1,8 +1,12 @@
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { serviceWorkerPlugin } from "./vite-plugin-sw";
 
 export default defineConfig({
-  plugins: [svelte()],
+  // serviceWorkerPlugin is build-only: it stamps the precache list and a
+  // content-derived build id into src/sw/service-worker.js and emits /sw.js.
+  // Nothing registers a worker in dev (see src/lib/pwa.ts).
+  plugins: [svelte(), serviceWorkerPlugin()],
   server: {
     port: 5173,
     strictPort: true,
