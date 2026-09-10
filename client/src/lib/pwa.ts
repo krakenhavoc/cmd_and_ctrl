@@ -80,32 +80,38 @@ export function registerServiceWorker(): void {
   });
 
   window.addEventListener("load", () => {
-    navigator.serviceWorker
-      // updateViaCache: "none" keeps the browser's HTTP cache out of the
-      // update check. Without it a cached sw.js can pin a client to an old
-      // build for up to 24h.
-      .register("/sw.js", { updateViaCache: "none" })
-      .then((registration) => {
-        lastCheck = Date.now();
-        // A worker may already be waiting from a previous visit.
-        promote(registration);
+    void register();
+  });
+}
 
-        registration.addEventListener("updatefound", () => {
-          const installing = registration.installing;
-          if (!installing) return;
-          installing.addEventListener("statechange", () => {
-            if (installing.state === "installed") promote(registration);
-          });
-        });
+async function register(): Promise<void> {
+  let registration: ServiceWorkerRegistration;
+  try {
+    // updateViaCache: "none" keeps the browser's HTTP cache out of the update
+    // check. Without it a cached sw.js can pin a client to an old build for
+    // up to 24 hours.
+    const options: RegistrationOptions = { updateViaCache: "none" };
+    registration = await navigator.serviceWorker.register("/sw.js", options);
+  } catch {
+    // A failed registration is not worth bothering the player about: the app
+    // works exactly as it did before there was a service worker.
+    return;
+  }
 
-        setInterval(() => checkForUpdate(registration), UPDATE_POLL_MS);
-        document.addEventListener("visibilitychange", () => {
-          if (document.visibilityState === "visible") checkForUpdate(registration);
-        });
-      })
-      .catch(() => {
-        // A failed registration is not worth bothering the player about: the
-        // app works exactly as it did before there was a service worker.
-      });
+  lastCheck = Date.now();
+  // A worker may already be waiting from a previous visit.
+  promote(registration);
+
+  registration.addEventListener("updatefound", () => {
+    const installing = registration.installing;
+    if (!installing) return;
+    installing.addEventListener("statechange", () => {
+      if (installing.state === "installed") promote(registration);
+    });
+  });
+
+  setInterval(() => checkForUpdate(registration), UPDATE_POLL_MS);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") checkForUpdate(registration);
   });
 }

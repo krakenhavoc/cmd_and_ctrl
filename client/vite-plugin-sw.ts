@@ -131,6 +131,15 @@ export function serviceWorkerPlugin(): Plugin {
         .replace(PRECACHE_TOKEN, JSON.stringify(precache, null, 2));
 
       this.emitFile({ type: "asset", fileName: "sw.js", source });
+
+      // Printed on purpose: the precache list is generated, so the build log
+      // is the only place anyone can see what a given deploy will hold
+      // offline -- and the build id is what a stale-cache report should be
+      // matched against.
+      console.log(
+        `\n[sw] emitted /sw.js — build ${buildID}, ${precache.length} precached files:\n` +
+          precache.map((path) => `     ${path}`).join("\n"),
+      );
     },
   };
 }
