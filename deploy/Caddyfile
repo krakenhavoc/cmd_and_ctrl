@@ -45,6 +45,7 @@
 	# against the request Host. Rewriting Host to the upstream 403s every /ws
 	# upgrade while ordinary HTTP keeps working -- an unpleasant way to spend
 	# an afternoon.
+
 	# --- PWA (docs/decisions/0031-progressive-web-app.md) ------------------
 	#
 	# No `try_files` is needed and none should be added: the client routes on
@@ -61,8 +62,8 @@
 	#
 	# Cache-Control: the deploy rsyncs with --delete, so a browser that has an
 	# old index.html or an old sw.js in its HTTP cache can be pinned to a
-	# build whose hashed assets no longer exist on the origin. These five
-	# entry points must always be revalidated. (The service worker registers
+	# build whose hashed assets no longer exist on the origin. The entry
+	# points below must always be revalidated. (The service worker registers
 	# with updateViaCache: "none" as well; this is the belt to that's braces,
 	# and covers browsers with no service worker at all.)
 	@shell path / /index.html /sw.js /offline.html
