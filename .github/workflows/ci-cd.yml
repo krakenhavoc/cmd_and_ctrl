@@ -211,10 +211,25 @@ jobs:
       # running host -- that VM carries lifecycle ignore_changes on its
       # cloud-init -- so this step is the only thing that maintains it.
       #
-      # Validated before installation, and Caddy is reloaded only when the
-      # content actually changed, so repeat deploys do not bounce the proxy.
-      # A syntactically broken Caddyfile fails the deploy instead of taking
-      # the site down. The previous file is kept as a timestamped backup.
+      # RESTART, not reload. The unit's ExecReload is
+      # `caddy reload --config ... --force`, which pushes the config through the
+      # admin API on localhost:2019, and deploy/Caddyfile sets `admin off`. So
+      # reload always fails with "connection refused" no matter how valid the
+      # config is. Caddy restarts in well under a second and the tunnel
+      # reconnects on its own.
+      #
+      # And it restarts unconditionally rather than only when the file changed.
+      # With `admin off` there is no way to ask Caddy what it is currently
+      # serving, so "the file on disk matches the repo" does not prove "Caddy
+      # loaded it" -- those diverge exactly when a previous deploy installed the
+      # file and then failed to reload, which is how this bug was found. An
+      # unconditional restart is the only version of this step that heals that
+      # state instead of preserving it forever.
+      #
+      # Validated before installation, so a broken config fails the deploy
+      # rather than taking the site down. If the restart itself fails the
+      # previous file is put back and Caddy restarted again, so the site does
+      # not stay down on a config that passed validation but not startup.
       - name: Deploy Caddy config
         run: |
           rsync -a -e "ssh ${SSH_OPTS}" deploy/Caddyfile \
@@ -222,15 +237,18 @@ jobs:
           ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} '
             set -eu
             caddy validate --config /tmp/Caddyfile.new --adapter caddyfile
-            if sudo cmp -s /tmp/Caddyfile.new /etc/caddy/Caddyfile; then
-              echo "Caddyfile already current; not reloading."
+            BACKUP="/etc/caddy/Caddyfile.bak.$(date +%Y%m%d-%H%M%S)"
+            sudo cp -a /etc/caddy/Caddyfile "$BACKUP"
+            sudo install -o root -g root -m 0644 /tmp/Caddyfile.new /etc/caddy/Caddyfile
+            if sudo systemctl restart caddy; then
+              echo "Caddy restarted with the config from this deploy."
             else
-              sudo cp -a /etc/caddy/Caddyfile \
-                "/etc/caddy/Caddyfile.bak.$(date +%Y%m%d-%H%M%S)"
-              sudo install -o root -g root -m 0644 /tmp/Caddyfile.new /etc/caddy/Caddyfile
-              sudo systemctl reload caddy
-              echo "Caddyfile updated; Caddy reloaded."
+              echo "::error::Caddy failed to start; restoring $BACKUP" >&2
+              sudo install -o root -g root -m 0644 "$BACKUP" /etc/caddy/Caddyfile
+              sudo systemctl restart caddy || true
+              exit 1
             fi
+            systemctl is-active caddy
             rm -f /tmp/Caddyfile.new
           '
 
