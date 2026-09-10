@@ -119,6 +119,18 @@ type Game struct {
 	// S13.1.
 	PendingTriggers []*StackItem
 
+	// DelayedTriggers is the queue of CR 603.7 delayed triggered
+	// abilities — "at the beginning of the next end step, return
+	// that card to the battlefield". Each entry sits dormant until
+	// the turn cursor ENTERS the step it names, at which point
+	// runStepEntryHooksLocked drains it onto PendingTriggers like
+	// any other trigger, so it uses the stack and can be responded
+	// to. Unlike TriggeredAbility these are not declared on a
+	// catalog Spec and need no source permanent in play: the card
+	// that created one is usually already in a graveyard. See
+	// delayed.go. Added in S22.
+	DelayedTriggers []*DelayedTrigger
+
 	// SplitSecondActive mirrors "any item on the stack has
 	// SplitSecond set" (CR 702.79). While true, cast_spell and
 	// activate_ability return ErrSplitSecondActive. Mana abilities
@@ -586,6 +598,10 @@ func (g *Game) CastTallyFor(playerID uuid.UUID) CastTally {
 //   - StepDraw (S13): draw 1 for the active seat, except when the
 //     starting player would draw on turn 1 (CR 103.7c skip).
 //   - StepCombatDamage: auto-resolve unblocked attacker damage.
+//   - StepEnd (S22): emit EventBeginEndStep so "at the beginning of
+//     your end step" triggers fire. The delayed-trigger drain that
+//     runs just before the switch covers "at the beginning of the
+//     next end step" for the same boundary.
 //   - StepEndCombat: clear AttackingTarget / BlockingTarget on every
 //     battlefield card. Deferring the clear until end_combat (rather
 //     than combat_damage) lets the client keep its combat-arrow
@@ -634,7 +650,24 @@ func (g *Game) runStepEntryHooksLocked() {
 	// recursion through Untap → Upkeep and Cleanup → next-Untap)
 	// triggers the clear. Cheap to call on already-empty pools.
 	g.emptyAllManaPoolsLocked()
+	// S22: CR 603.7 delayed triggered abilities fire on ENTRY to the
+	// step they name. Draining here — before the per-step turn-based
+	// actions below — is what makes "the NEXT end step" work without
+	// any created-this-step bookkeeping: an ability scheduled during
+	// an end step is queued after this hook has already run for that
+	// step, so it waits for the following one. See delayed.go.
+	g.fireDelayedTriggersLocked(g.Turn.Step)
 	switch g.Turn.Step {
+	case StepEnd:
+		// S22: announce the end step so "at the beginning of your
+		// end step" triggers auto-fire through the harvester. The
+		// end step grants priority, so no auto-advance.
+		if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
+			g.EmitEvent(Event{
+				Kind:  EventBeginEndStep,
+				Actor: g.Seats[g.Turn.ActiveSeat].ID,
+			})
+		}
 	case StepUpkeep:
 		// S19 sub-PR 5: announce the upkeep so "at the beginning of
 		// your upkeep" triggers auto-fire through the harvester.
