@@ -10,6 +10,7 @@ import {
   seedHandWithCard,
   setupS19Game,
   triggerOnStack,
+  type JoinedPlayer,
   type S19Setup,
 } from "./s19-helpers";
 
@@ -33,14 +34,34 @@ import {
 // resolveStack before asserting on the effect.
 
 // waitForPickTarget resolves once a pick_target prompt is queued for
-// chooserID (S20 sub-PR 2 — targeted triggers ask for their target
-// on the board instead of auto-picking).
-async function waitForPickTarget(setup: S19Setup, chooserID: string) {
-  return setup.admin.waitFor(
+// `chooser` (S20 sub-PR 2 — targeted triggers ask for their target on
+// the board instead of auto-picking) AND that player's browser has
+// actually entered targeting mode.
+//
+// Both halves matter. The admin snapshot is not the chooser's page:
+// clicking a board card before the page has processed the delta is a
+// SILENT no-op — PlayerPanel falls through to its tap/untap default,
+// which a non-controller isn't allowed to do — so the click is
+// swallowed and the test then waits out the clock for a pick that
+// never happened. Every board-click target pick has to gate on the
+// targeting banner, which is the page's own proof it is ready.
+//
+// (Modal clicks don't need this: the button doesn't exist until the
+// modal renders, so Playwright's own actionability wait covers it.
+// A battlefield card is on screen the whole time, so there is
+// nothing for it to wait on.)
+async function waitForPickTarget(setup: S19Setup, chooser: JoinedPlayer, sourceName: string) {
+  const view = await setup.admin.waitFor(
     (v) =>
-      (v.pending_choices ?? []).some((c) => c.kind === "pick_target" && c.chooser === chooserID),
+      (v.pending_choices ?? []).some(
+        (c) => c.kind === "pick_target" && c.chooser === chooser.playerID,
+      ),
     "pick_target prompt queued",
   );
+  await expect(
+    chooser.page.getByRole("dialog", { name: new RegExp(`Select target for ${sourceName}`, "i") }),
+  ).toBeVisible();
+  return view;
 }
 
 test.describe("S19 ETB triggers", () => {
@@ -156,10 +177,7 @@ test.describe("S19 ETB triggers", () => {
     // S20: "Yes" asks WHICH artifact or enchantment. The caster's
     // board enters targeting mode; the Sol Ring is a legal target
     // and gets clicked.
-    await waitForPickTarget(setup, caster.playerID);
-    await expect(
-      caster.page.getByRole("dialog", { name: /Select target for Reclamation Sage/i }),
-    ).toBeVisible();
+    await waitForPickTarget(setup, caster, CARDS.ReclamationSage);
     await caster.page
       .getByRole("region", { name: "Opponent board" })
       .getByRole("button", { name: "Sol Ring", exact: true })
@@ -240,7 +258,7 @@ test.describe("S19 ETB triggers", () => {
 
     // S20: mandatory trigger → straight to the target pick (no
     // yes/no). Click the Sol Ring on the opponent's board.
-    const picking = await waitForPickTarget(setup, caster.playerID);
+    const picking = await waitForPickTarget(setup, caster, CARDS.AcidicSlime);
     expect((picking.pending_choices ?? []).some((c) => c.kind === "trigger_prompt")).toBe(false);
     await caster.page
       .getByRole("region", { name: "Opponent board" })
@@ -310,7 +328,7 @@ test.describe("S19 ETB triggers", () => {
     //   * every card in a manageable zone renders three sibling
     //     "move <name> to <zone>" buttons, so an inexact name match
     //     resolves to four elements. exact:true picks the card.
-    await waitForPickTarget(setup, caster.playerID);
+    await waitForPickTarget(setup, caster, CARDS.EternalWitness);
     await caster.page
       .getByRole("region", { name: "your board" })
       .getByRole("button", { name: /^grave: / })
