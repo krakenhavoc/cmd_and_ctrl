@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { ADMIN_TOKEN } from "./env";
+import { adminLogin, createGame, joinViaAPI } from "./lobby-api";
 
 test.describe("lobby — admin flow", () => {
   test.beforeEach(async ({ page }) => {
@@ -54,6 +55,48 @@ test.describe("lobby — admin flow", () => {
     await page.getByRole("button", { name: "refresh" }).click();
     await refreshPromise;
     await expect(page.locator("ul.games > li").filter({ hasText: name })).toBeVisible();
+  });
+
+  test("a fresh table offers both invite links", async ({ page }) => {
+    // The player invite and the spectator invite are different
+    // tokens — handing a spectator the player link would let them
+    // claim a seat — so the lobby surfaces them as two buttons.
+    // Both are session-cached client-side: the list endpoint strips
+    // them, so they only appear on the table you just created.
+    const name = `Two Invites ${Date.now()}`;
+    await page.getByPlaceholder("game name").fill(name);
+    await page.getByRole("button", { name: "create" }).click();
+
+    const row = page.locator("ul.games > li").filter({ hasText: name });
+    await expect(row.getByRole("button", { name: "copy invite" })).toBeVisible();
+    await expect(row.getByRole("button", { name: "Spectator link" })).toBeVisible();
+  });
+
+  test("the table card renders four seats and fills them as players join", async ({
+    page,
+    request,
+  }) => {
+    // #244 turned each lobby row into a table card: a four-seat
+    // roster padded with open slots, each seat showing its deck
+    // status. The lobby has no WebSocket, so it polls — a seat
+    // claimed out-of-band must appear without a reload.
+    const adminToken = await adminLogin(request);
+    const game = await createGame(request, adminToken, `Seats ${Date.now()}`);
+    await page.getByRole("button", { name: "refresh" }).click();
+
+    const row = page.locator("ul.games > li").filter({ hasText: game.name });
+    await expect(row).toBeVisible();
+    const seats = row.getByRole("list", { name: "seats" });
+    await expect(seats.getByRole("listitem")).toHaveCount(4);
+    await expect(seats.getByText("Open seat")).toHaveCount(4);
+    await expect(row).toContainText("0 of 4 seats");
+
+    await joinViaAPI(request, game.id, game.invite_token!, "Late Arrival");
+
+    // The poll (5s) picks the new seat up on its own.
+    await expect(seats.getByText("seat 1: Late Arrival")).toBeVisible({ timeout: 15_000 });
+    await expect(seats.getByText("Open seat")).toHaveCount(3);
+    await expect(seats.getByText("deck pending")).toBeVisible();
   });
 
   test("opening a game navigates to the game route", async ({ page }) => {

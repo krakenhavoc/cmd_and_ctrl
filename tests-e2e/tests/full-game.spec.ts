@@ -1,6 +1,7 @@
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { adminLogin, createGame, uploadDeckAs, startGameAs, getGameAs } from "./lobby-api";
 import { makeCommanderDeck } from "./deck-fixture";
+import { joinAsPlayer } from "./players";
 
 // End-to-end happy path: two players join, upload decks, start the
 // game, keep their opening hands, and each take a turn. This exercises
@@ -12,44 +13,6 @@ import { makeCommanderDeck } from "./deck-fixture";
 //   - Server running with the dev-default admin token (make server-dev).
 //   - Scryfall bulk dump present at <repo>/data/scryfall/default-cards.json
 //     so the deck fixture's cards (Kenrith, Plains) resolve.
-
-interface JoinedPlayer {
-  context: BrowserContext;
-  page: Page;
-  name: string;
-  token: string;
-  playerID: string;
-}
-
-// joinAsPlayer walks the public invite-link flow in a fresh browser
-// context, entering `name` and capturing the issued session. The
-// resulting token + playerID lets the test drive that player's seat
-// either via the UI (this page) or the server API (admin helpers).
-async function joinAsPlayer(
-  browser: import("@playwright/test").Browser,
-  gameID: string,
-  inviteToken: string,
-  name: string,
-): Promise<JoinedPlayer> {
-  const context = await browser.newContext();
-  const page = await context.newPage();
-  await page.goto(`/#/games/${gameID}/join?t=${encodeURIComponent(inviteToken)}`);
-  await page.getByPlaceholder("your name").fill(name);
-  await page.getByRole("button", { name: "join" }).click();
-  // Players land in the lobby first — s085 (#43) — then a seated
-  // session can open the game route directly.
-  await expect(page).toHaveURL(/#\/lobby$/, { timeout: 10_000 });
-  await page.goto(`/#/games/${gameID}`);
-  await expect(page).toHaveURL(new RegExp(`#/games/${gameID}$`), { timeout: 10_000 });
-
-  const session = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("cmdctrl.session") ?? "null"),
-  );
-  if (!session?.token || !session?.playerID) {
-    throw new Error(`${name}: session missing after join`);
-  }
-  return { context, page, name, token: session.token, playerID: session.playerID };
-}
 
 test.describe("full game", () => {
   test("2 players: join, upload decks, start, keep hands, play 2 turns", async ({

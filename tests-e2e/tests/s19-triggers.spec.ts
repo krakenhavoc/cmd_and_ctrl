@@ -7,9 +7,11 @@ import {
   findCardOnBattlefield,
   playerByID,
   resolveStack,
+  returnToLibrary,
   seedHandWithCard,
   setupS19Game,
   triggerOnStack,
+  type JoinedPlayer,
   type S19Setup,
 } from "./s19-helpers";
 
@@ -33,14 +35,39 @@ import {
 // resolveStack before asserting on the effect.
 
 // waitForPickTarget resolves once a pick_target prompt is queued for
-// chooserID (S20 sub-PR 2 — targeted triggers ask for their target
-// on the board instead of auto-picking).
-async function waitForPickTarget(setup: S19Setup, chooserID: string) {
-  return setup.admin.waitFor(
+// `chooser` (S20 sub-PR 2 — targeted triggers ask for their target on
+// the board instead of auto-picking) AND that player's browser has
+// actually entered targeting mode.
+//
+// Both halves matter. The admin snapshot is not the chooser's page:
+// clicking a board card before the page has processed the delta is a
+// SILENT no-op — PlayerPanel falls through to its tap/untap default,
+// which a non-controller isn't allowed to do — so the click is
+// swallowed and the test then waits out the clock for a pick that
+// never happened. Every board-click target pick has to gate on the
+// targeting banner, which is the page's own proof it is ready.
+//
+// (Modal clicks don't need this: the button doesn't exist until the
+// modal renders, so Playwright's own actionability wait covers it.
+// A battlefield card is on screen the whole time, so there is
+// nothing for it to wait on.)
+async function waitForPickTarget(setup: S19Setup, chooser: JoinedPlayer, sourceName: string) {
+  const view = await setup.admin.waitFor(
     (v) =>
-      (v.pending_choices ?? []).some((c) => c.kind === "pick_target" && c.chooser === chooserID),
+      (v.pending_choices ?? []).some(
+        (c) => c.kind === "pick_target" && c.chooser === chooser.playerID,
+      ),
     "pick_target prompt queued",
   );
+  // 20s, not the project's 10s default: three browser contexts, two
+  // dev servers and four sockets share one self-hosted runner, and a
+  // player page has been observed a full 10s behind the admin socket
+  // under that load. The wait is bounded well inside the 90s
+  // test.slow() budget, so a genuinely stuck prompt still fails.
+  await expect(
+    chooser.page.getByRole("dialog", { name: new RegExp(`Select target for ${sourceName}`, "i") }),
+  ).toBeVisible({ timeout: 20_000 });
+  return view;
 }
 
 test.describe("S19 ETB triggers", () => {
@@ -64,6 +91,10 @@ test.describe("S19 ETB triggers", () => {
     // unpredictable number of cards out of the library, so any
     // baseline taken before seeding would be off by N.
     const mulldrifter = await seedHandWithCard(admin, caster.playerID, CARDS.Mulldrifter);
+    // Seeding drains the library; the ETB draws two, so guarantee
+    // there are two to draw. Done before the baseline below, so the
+    // hand arithmetic still holds.
+    await returnToLibrary(admin, caster.playerID, CARDS.Forest, 3);
     const handBefore = playerByID(admin.snapshot(), caster.playerID).hand.count;
 
     await admin.sendActionAsPlayer(caster.playerID, "move_card", {
@@ -141,10 +172,14 @@ test.describe("S19 ETB triggers", () => {
     expect(prompt?.reason).toMatch(/Reclamation Sage/i);
 
     // Caster's browser shows the dialog; opponent's does not.
-    await expect(caster.page.getByText(/Reclamation Sage/i, { exact: false })).toBeVisible({
-      timeout: 5000,
-    });
-    await expect(opponent.page.getByText(/Reclamation Sage —/i, { exact: false })).toHaveCount(0);
+    // Anchor on the modal's accessible name (its <h2> is the
+    // server's Question copy) rather than a bare page-wide text
+    // scan: that also matched the stack overlay and the targeting
+    // banner, and it raced the WS delta on a 5s budget.
+    await expect(caster.page.getByRole("dialog", { name: /Reclamation Sage —/i })).toBeVisible();
+    await expect(opponent.page.getByRole("dialog", { name: /Reclamation Sage —/i })).toHaveCount(
+      0,
+    );
 
     // Click "Yes" in the caster's dialog.
     await caster.page.getByRole("button", { name: /^Yes$/ }).click();
@@ -152,11 +187,10 @@ test.describe("S19 ETB triggers", () => {
     // S20: "Yes" asks WHICH artifact or enchantment. The caster's
     // board enters targeting mode; the Sol Ring is a legal target
     // and gets clicked.
-    await waitForPickTarget(setup, caster.playerID);
-    await expect(caster.page.getByText(/Reclamation Sage.*triggered/i)).toBeVisible();
+    await waitForPickTarget(setup, caster, CARDS.ReclamationSage);
     await caster.page
-      .locator("[aria-label='Opponent board']")
-      .getByRole("button", { name: "Sol Ring" })
+      .getByRole("region", { name: "Opponent board" })
+      .getByRole("button", { name: "Sol Ring", exact: true })
       .click();
 
     // The pick puts the trigger on the stack; the Sol Ring survives
@@ -234,11 +268,11 @@ test.describe("S19 ETB triggers", () => {
 
     // S20: mandatory trigger → straight to the target pick (no
     // yes/no). Click the Sol Ring on the opponent's board.
-    const picking = await waitForPickTarget(setup, caster.playerID);
+    const picking = await waitForPickTarget(setup, caster, CARDS.AcidicSlime);
     expect((picking.pending_choices ?? []).some((c) => c.kind === "trigger_prompt")).toBe(false);
     await caster.page
-      .locator("[aria-label='Opponent board']")
-      .getByRole("button", { name: "Sol Ring" })
+      .getByRole("region", { name: "Opponent board" })
+      .getByRole("button", { name: "Sol Ring", exact: true })
       .click();
 
     const staged = await admin.waitFor(
@@ -291,18 +325,27 @@ test.describe("S19 ETB triggers", () => {
       "Eternal Witness prompt queued",
     );
 
-    await expect(caster.page.getByText(/Eternal Witness/i, { exact: false })).toBeVisible();
+    await expect(caster.page.getByRole("dialog", { name: /Eternal Witness —/i })).toBeVisible();
 
     await caster.page.getByRole("button", { name: /^Yes$/ }).click();
 
     // S20: pick the card — open the caster's own graveyard browser
     // and click the Bolt.
-    await waitForPickTarget(setup, caster.playerID);
+    //
+    // Two selectors here need care; both used to fail:
+    //   * the targeting banner is ALSO role="dialog", so the zone
+    //     browser has to be addressed by its own accessible name;
+    //   * every card in a manageable zone renders three sibling
+    //     "move <name> to <zone>" buttons, so an inexact name match
+    //     resolves to four elements. exact:true picks the card.
+    await waitForPickTarget(setup, caster, CARDS.EternalWitness);
     await caster.page
-      .locator("[aria-label='your board']")
+      .getByRole("region", { name: "your board" })
       .getByRole("button", { name: /^grave: / })
       .click();
-    await caster.page.getByRole("dialog").getByRole("button", { name: "Lightning Bolt" }).click();
+    const graveBrowser = caster.page.getByRole("dialog", { name: /graveyard/i });
+    await expect(graveBrowser).toBeVisible();
+    await graveBrowser.getByRole("button", { name: "Lightning Bolt", exact: true }).click();
 
     const staged = await admin.waitFor(
       (v) =>
@@ -365,19 +408,25 @@ test.describe("S19 ETB triggers", () => {
     setup = await setupS19Game(browser, request);
     const { admin, caster } = setup;
 
-    // Library card identities are redacted on the wire (CR 400.2
-    // private zone), so we can't search by Forest name directly.
-    // Confirm there's a non-trivial library to fetch from instead —
-    // the caster deck ships with 91 Forests + 8 non-basics + commander.
-    expect(playerByID(admin.snapshot(), caster.playerID).library.count).toBeGreaterThan(50);
+    // Seed Solemn into the hand FIRST, then restock the library
+    // before putting it onto the battlefield.
+    //
+    // This ordering is load-bearing. seedHandWithCard finds a card by
+    // drawing until it surfaces, so an unlucky shuffle leaves the
+    // caster with a one-card library and every Forest stranded in
+    // hand. "Search your library for a basic land" then correctly
+    // finds nothing, and this test fails on deck order rather than on
+    // engine behaviour — which is exactly how it failed the first
+    // time the suite got far enough to run it.
+    const solemn = await seedHandWithCard(admin, caster.playerID, CARDS.SolemnSimulacrum);
+    await returnToLibrary(admin, caster.playerID, CARDS.Forest, 3);
+    expect(playerByID(admin.snapshot(), caster.playerID).library.count).toBeGreaterThanOrEqual(3);
 
-    await adminMoveByName(
-      admin,
-      caster.playerID,
-      CARDS.SolemnSimulacrum,
-      "library",
-      "battlefield",
-    );
+    await admin.sendActionAsPlayer(caster.playerID, "move_card", {
+      src: { kind: "hand", owner: caster.playerID },
+      dst: { kind: "battlefield" },
+      instance_id: solemn.instance_id,
+    });
 
     await admin.waitFor(
       (v) =>
@@ -386,7 +435,7 @@ test.describe("S19 ETB triggers", () => {
         ),
       "Solemn prompt queued",
     );
-    await expect(caster.page.getByText(/Solemn Simulacrum/i, { exact: false })).toBeVisible();
+    await expect(caster.page.getByRole("dialog", { name: /Solemn Simulacrum —/i })).toBeVisible();
 
     await caster.page.getByRole("button", { name: /^Yes$/ }).click();
 
@@ -485,11 +534,11 @@ test.describe("S19 ETB triggers", () => {
     // Caster sees the dialog with Yes/No buttons; opponent has no
     // trigger dialog at all (the only legitimate dialog they could
     // see is mulligan, which has long since closed).
-    await expect(caster.page.getByRole("button", { name: /^Yes$/ })).toBeVisible({
-      timeout: 5000,
-    });
+    await expect(caster.page.getByRole("button", { name: /^Yes$/ })).toBeVisible();
     await expect(caster.page.getByRole("button", { name: /^No$/ })).toBeVisible();
-    await expect(opponent.page.getByText(/Reclamation Sage —/i)).toHaveCount(0);
+    await expect(opponent.page.getByRole("dialog", { name: /Reclamation Sage —/i })).toHaveCount(
+      0,
+    );
     await expect(opponent.page.getByRole("button", { name: /^Yes$/ })).toHaveCount(0);
   });
 
@@ -522,10 +571,10 @@ test.describe("S19 ETB triggers", () => {
 
     // Client-side modal should render the same text — proves the
     // wire shape's `reason` field flows through to the dialog
-    // without truncation or escape errors.
-    await expect(
-      caster.page.getByText(prompt!.reason!, { exact: false }),
-    ).toBeVisible({ timeout: 5000 });
+    // without truncation or escape errors. The modal's <h2> IS its
+    // aria-labelledby target, so the reason is the dialog's
+    // accessible name.
+    await expect(caster.page.getByRole("dialog", { name: prompt!.reason! })).toBeVisible();
   });
 
   // S19 sub-PR 6: pay-unless. The opponent's Smothering Tithe taxes
@@ -570,9 +619,7 @@ test.describe("S19 ETB triggers", () => {
     expect(prompt?.pay_cost).toBe("{2}");
 
     // Caster's browser shows the pay dialog; the opponent's doesn't.
-    await expect(caster.page.getByRole("button", { name: /^Pay \{2\}$/ })).toBeVisible({
-      timeout: 5000,
-    });
+    await expect(caster.page.getByRole("button", { name: /^Pay \{2\}$/ })).toBeVisible();
     await expect(opponent.page.getByRole("button", { name: /^Pay \{2\}$/ })).toHaveCount(0);
 
     await caster.page.getByRole("button", { name: /^Don't pay$/ }).click();
