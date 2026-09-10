@@ -182,6 +182,16 @@ const (
 	// sub-PR 5.
 	EventBeginUpkeep EventKind = "begin_upkeep"
 
+	// EventBeginEndStep — the active player's end step began. Actor
+	// is the active player (whose end step it is). "At the beginning
+	// of your end step" (Thassa, Y'shtola Rhul) gates AppliesTo on
+	// ev.Actor == controller; "at the beginning of the end step"
+	// (any player's) does not. Emitted from runStepEntryHooksLocked
+	// on entering StepEnd, alongside the delayed-trigger drain —
+	// both are "beginning of the end step" triggers and land on
+	// PendingTriggers together. Added in S22.
+	EventBeginEndStep EventKind = "begin_end_step"
+
 	// EventManaAbilityActivated — a mana-producing ability fired.
 	// Actor = controller, Source = the permanent that produced the
 	// mana. S15 sub-PR 2.
