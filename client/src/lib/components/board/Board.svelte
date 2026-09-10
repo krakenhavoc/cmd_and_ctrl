@@ -40,6 +40,9 @@
   import VotingPanel from "./VotingPanel.svelte";
   import ZoneBrowserModal from "./ZoneBrowserModal.svelte";
   import { zoneBrowser, closeZoneBrowser } from "../../zoneBrowser";
+  import CardContextMenu from "./CardContextMenu.svelte";
+  import { cardMenu, closeCardMenu } from "../../contextMenu";
+  import type { MenuActivate } from "../../contextMenu.logic";
   import {
     targeting,
     begin as beginTargeting,
@@ -435,6 +438,23 @@
     sacrificePrompt = { kind: "mana", card, ability };
   }
 
+  // #170: an ability row picked from the admin context menu. Same two
+  // destinations PlayerPanel routes to — the sacrifice picker when the
+  // cost needs one, otherwise straight to the action / targeting flow.
+  function handleMenuActivate(card: CardView, activate: MenuActivate): void {
+    if (activate.kind === "ability") {
+      handleActivateAbility(card, activate.index);
+      return;
+    }
+    const ability = (card.mana_abilities ?? []).find((a) => a.index === activate.index);
+    if (ability?.sacrifice_options) {
+      handleManaSacrificeCost(card, ability);
+      return;
+    }
+    const params = { card_id: card.instance_id, ability_index: activate.index };
+    sendAction("activate_mana_ability", params, card.controller);
+  }
+
   function confirmSacrifice(instanceID: string): void {
     const p = sacrificePrompt;
     sacrificePrompt = null;
@@ -703,6 +723,17 @@
       {sendAction}
       onClose={closeZoneBrowser}
       onTargetCard={handleTargetCard}
+    />
+  {/if}
+  {#if $cardMenu}
+    <CardContextMenu
+      {view}
+      {viewerID}
+      {isAdmin}
+      open={$cardMenu}
+      {sendAction}
+      onActivate={handleMenuActivate}
+      onClose={closeCardMenu}
     />
   {/if}
 </div>
