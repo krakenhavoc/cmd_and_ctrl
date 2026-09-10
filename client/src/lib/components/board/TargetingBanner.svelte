@@ -1,8 +1,8 @@
 <script lang="ts">
-  // TargetingBanner is the floating "click a target for X" prompt
-  // that appears while a cast-with-targets is in flight. Mounted
-  // once by Game.svelte; visible only while the targeting store is
-  // non-null.
+  // TargetingBanner is the "click a target for X" row of the
+  // board's attention strip, shown while a cast-with-targets is in
+  // flight. Mounted once by Game.svelte (inside Board's `attention`
+  // snippet); visible only while the targeting store is non-null.
 
   import {
     targeting,
@@ -12,6 +12,7 @@
     isMultiPick,
     canConfirm,
   } from "../../targeting";
+  import Icon from "../Icon.svelte";
 
   const state = $derived($targeting);
   const count = $derived(state ? legalTargetCount(state) : -1);
@@ -53,6 +54,7 @@
     aria-live="polite"
     aria-label={`Select target for ${state.card.name}`}
   >
+    <span class="label"><Icon name="sword" size={12} /> target</span>
     <span class="prompt">
       {#if state.choiceID}
         <strong>{state.card.name}</strong> triggered — click {state.label || "a target"}
@@ -70,7 +72,7 @@
     {#if multi}
       <button
         type="button"
-        class="done"
+        class="primary done"
         disabled={!confirmable}
         onclick={confirm}
         title={state.min > 0 && state.picked.length < state.min
@@ -81,88 +83,92 @@
       </button>
     {/if}
     {#if !state.choiceID}
-      <button type="button" class="cancel" onclick={cancel} title="cancel (Esc)"> Cancel </button>
+      <button type="button" class="ghost cancel" onclick={cancel} title="cancel (Esc)">
+        Cancel <kbd>Esc</kbd>
+      </button>
     {/if}
   </div>
 {/if}
 
 <style>
   .banner {
-    position: absolute;
-    top: 12px;
-    left: 50%;
-    transform: translateX(-50%);
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 18px;
-    border-radius: 999px;
-    background: linear-gradient(180deg, rgba(80, 60, 0, 0.94) 0%, rgba(50, 38, 0, 0.94) 100%);
-    color: var(--gold);
-    border: 1px solid rgba(200, 168, 106, 0.7);
+    gap: 10px;
+    padding: 9px 10px 9px 14px;
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(217, 180, 92, 0.45);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    color: var(--fg-muted);
     font-size: 13px;
-    z-index: 60;
-    box-shadow:
-      0 10px 30px rgba(0, 0, 0, 0.55),
-      0 0 24px rgba(255, 208, 122, 0.18),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(6px);
+    line-height: 1.35;
+    box-sizing: border-box;
     animation: banner-in 200ms var(--ease);
   }
   @keyframes banner-in {
     from {
       opacity: 0;
-      transform: translate(-50%, -8px);
+      transform: translateY(-6px);
     }
     to {
       opacity: 1;
-      transform: translate(-50%, 0);
+      transform: translateY(0);
     }
   }
-  .prompt strong {
-    color: #ffe69a;
+  .label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
     font-weight: 700;
+    color: var(--gold-strong);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+  }
+  .prompt {
+    flex: 1;
+    min-width: 0;
+  }
+  .prompt strong {
+    color: var(--fg);
+    font-weight: 700;
+  }
+  .count {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--fg-dim);
+    margin-left: 4px;
+    white-space: nowrap;
+  }
+  .done,
+  .cancel {
+    flex: 0 0 auto;
+    height: 28px;
+    padding: 0 10px;
+    font-size: 11.5px;
+    border-radius: 7px;
   }
   .cancel {
-    padding: 4px 12px;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-weight: 700;
-    background: rgba(42, 32, 16, 0.9);
-    color: var(--gold);
-    border: 1px solid rgba(200, 168, 106, 0.6);
-    border-radius: 999px;
-    cursor: pointer;
-    box-shadow: none;
-    transition:
-      background 120ms var(--ease),
-      border-color 120ms var(--ease);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
   }
-  .cancel:hover {
-    background: rgba(58, 46, 20, 0.95);
-    border-color: var(--gold);
-  }
-  .done {
-    padding: 4px 12px;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-weight: 700;
-    background: #2d5a3f;
-    color: #e6f7ec;
-    border: 1px solid #3f7a55;
-    border-radius: 999px;
-    cursor: pointer;
-    box-shadow: none;
+  .cancel kbd {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: var(--fg-dim);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0 4px;
+    line-height: 16px;
   }
   .done:disabled {
     opacity: 0.45;
     cursor: not-allowed;
-  }
-  .count {
-    opacity: 0.7;
-    font-size: 0.9em;
-    margin-left: 0.25em;
   }
 </style>

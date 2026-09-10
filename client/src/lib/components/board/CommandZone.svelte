@@ -129,27 +129,29 @@
       </button>
     {/if}
   </div>
-  {#if isSelf && commanders.length === 1}
+  <div class="hints">
+    {#if isSelf && commanders.length === 1}
+      <button
+        type="button"
+        class="cast-hint"
+        onclick={castVisible}
+        ondblclick={handleDoubleClick}
+        title="cast commander"
+        aria-label="cast commander"
+      >
+        cast
+      </button>
+    {/if}
     <button
       type="button"
-      class="cast-hint"
-      onclick={castVisible}
-      ondblclick={handleDoubleClick}
-      title="cast commander"
-      aria-label="cast commander"
+      class="browse-hint"
+      onclick={openBrowser}
+      title={`browse ${seat.name}'s command zone`}
+      aria-label={`browse ${seat.name}'s command zone`}
     >
-      cast
+      browse
     </button>
-  {/if}
-  <button
-    type="button"
-    class="browse-hint"
-    onclick={openBrowser}
-    title={`browse ${seat.name}'s command zone`}
-    aria-label={`browse ${seat.name}'s command zone`}
-  >
-    browse
-  </button>
+  </div>
 </div>
 
 <style>
@@ -158,19 +160,15 @@
     flex-direction: column;
     align-items: center;
     gap: 4px;
-    padding: 6px 4px 4px;
-    background:
-      linear-gradient(180deg, rgba(255, 208, 122, 0.08) 0%, rgba(0, 0, 0, 0.25) 100%), #0f1324;
-    border: 1px solid #5a4520;
+    padding: 5px 3px 4px;
+    background: var(--surface-raised);
+    border: 1px solid rgba(217, 180, 92, 0.25);
     border-radius: var(--radius);
     box-sizing: border-box;
-    width: var(--pile-w, 64px);
+    width: 100%;
   }
   .cmd-zone.self {
-    border-color: var(--gold);
-    box-shadow:
-      0 0 12px rgba(255, 208, 122, 0.28),
-      inset 0 1px 0 rgba(255, 208, 122, 0.12);
+    border-color: rgba(217, 180, 92, 0.5);
   }
   .cmd-zone.empty {
     border-style: dashed;
@@ -194,7 +192,7 @@
     width: 100%;
     height: 100%;
     border-radius: 4px;
-    border: 1px dashed #2e3a55;
+    border: 1px dashed var(--border-strong);
     background: transparent;
     box-sizing: border-box;
     padding: 0;
@@ -203,24 +201,21 @@
     cursor: pointer;
   }
   .empty-slot-btn:hover {
-    border-color: var(--accent, #6a8dff);
+    border-color: var(--accent);
   }
   .tax-badge {
     position: absolute;
     top: 3px;
     right: 3px;
-    background: linear-gradient(180deg, #8a6a2e 0%, #5a4520 100%);
-    color: var(--gold);
-    font-size: 10px;
-    font-weight: 800;
-    padding: 2px 6px;
+    background: rgba(8, 7, 6, 0.9);
+    color: var(--gold-strong);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 5px;
     border-radius: 999px;
-    border: 1px solid rgba(255, 208, 122, 0.55);
-    box-shadow:
-      0 2px 6px rgba(0, 0, 0, 0.45),
-      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(217, 180, 92, 0.5);
     pointer-events: none;
-    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
   }
   .meta {
     display: flex;
@@ -229,11 +224,18 @@
     line-height: 1.2;
     gap: 2px;
   }
+  .hints {
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
   .label {
+    font-family: var(--font-mono);
     font-size: 8px;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: #c8a86a;
+    letter-spacing: 0.08em;
+    color: var(--gold-strong);
     font-weight: 600;
   }
   .count {
@@ -246,19 +248,19 @@
   .cycle,
   .cast-hint,
   .browse-hint {
-    margin-top: 2px;
     background: transparent;
-    color: #c8a86a;
-    border: 1px solid #5a4520;
+    color: var(--gold-strong);
+    border: 1px solid rgba(217, 180, 92, 0.35);
     border-radius: 999px;
-    font-size: 9px;
+    font-family: var(--font-mono);
+    font-size: 8px;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    padding: 2px 8px;
+    letter-spacing: 0.08em;
+    padding: 1px 6px;
     cursor: pointer;
-    font-family: inherit;
     font-weight: 700;
     box-shadow: none;
+    line-height: 1.4;
     transition:
       background 120ms var(--ease),
       color 120ms var(--ease),
@@ -267,18 +269,18 @@
   .browse-hint {
     /* Dim "browse" so it reads as the secondary affordance next to
        the primary cast / cycle button. */
-    color: var(--fg-muted, #8a93a8);
-    border-color: rgba(255, 255, 255, 0.12);
+    color: var(--fg-dim);
+    border-color: var(--border);
   }
   .cycle:hover,
   .cast-hint:hover {
-    background: rgba(255, 208, 122, 0.15);
-    color: var(--gold);
+    background: var(--accent-soft);
+    color: var(--gold-strong);
     border-color: var(--gold);
   }
   .browse-hint:hover {
-    background: rgba(122, 167, 255, 0.12);
-    color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-strong);
     border-color: var(--accent);
   }
   .cast-hint:focus-visible,

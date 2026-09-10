@@ -153,24 +153,31 @@
 </script>
 
 {#if cardID}
-  <div class="backdrop" role="dialog" aria-modal="true" aria-labelledby="auto-tap-title">
-    <div class="modal">
-      <h2 id="auto-tap-title">Auto-tap & cast</h2>
+  <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="auto-tap-title">
+    <div class="prompt-modal tap-modal">
+      <h2 id="auto-tap-title">
+        Auto-tap & cast
+        {#if preview}
+          <span class="prompt-src" aria-hidden="true">{preview.cost || "no cost"}</span>
+        {/if}
+      </h2>
       {#if loading && !preview}
-        <p class="muted">planning…</p>
+        <p class="prompt-hint">planning…</p>
       {:else if fetchError}
-        <p class="error">preview failed: {fetchError}</p>
+        <p class="prompt-hint error">preview failed: {fetchError}</p>
       {:else if preview}
-        <p class="cost">cost: <span class="mono">{preview.cost || "(none)"}</span></p>
         {#if preview.ok}
-          <p class="hint">tap these {preview.plan?.length ?? 0} permanent(s):</p>
-          <ul class="plan">
+          <p class="prompt-hint">
+            These {preview.plan?.length ?? 0} permanent(s) tap to pay for it. Lock a source to keep it
+            for a later cast.
+          </p>
+          <ul class="prompt-options plan">
             {#each planCards() as row (row.id)}
-              <li>
+              <li class="prompt-opt src-row">
                 <span class="card-name">{row.name}</span>
                 <button
                   type="button"
-                  class="lock-btn"
+                  class="ghost lock-btn"
                   onclick={() => toggleLock(row.id)}
                   title="reserve this source for a later cast"
                 >
@@ -180,22 +187,22 @@
             {/each}
           </ul>
         {:else}
-          <p class="error">
-            insufficient mana
+          <p class="prompt-hint error">
+            Insufficient mana
             {#if preview.missing && preview.missing.length > 0}
               — missing {preview.missing.join(" ")}
             {/if}
           </p>
         {/if}
         {#if lockedSources.length > 0}
-          <p class="hint locked-label">locked sources:</p>
-          <ul class="locked">
+          <p class="locked-label">locked sources</p>
+          <ul class="prompt-options locked">
             {#each lockedCards() as row (row.id)}
-              <li>
+              <li class="prompt-opt src-row on">
                 <span class="card-name">{row.name}</span>
                 <button
                   type="button"
-                  class="lock-btn unlock"
+                  class="ghost lock-btn"
                   onclick={() => toggleLock(row.id)}
                   title="release this source back to the auto-tapper"
                 >
@@ -206,10 +213,12 @@
           </ul>
         {/if}
       {/if}
-      <div class="actions">
-        <button type="button" class="cancel" onclick={onCancel}>cancel (esc)</button>
-        <button type="button" class="confirm" onclick={confirm} disabled={!preview?.ok || loading}>
-          cast (enter)
+      <div class="prompt-foot">
+        <button type="button" class="ghost" onclick={onCancel}
+          >Cancel <span class="kbd">Esc</span></button
+        >
+        <button type="button" class="primary" onclick={confirm} disabled={!preview?.ok || loading}>
+          Cast <span class="kbd">↵</span>
         </button>
       </div>
     </div>
@@ -217,126 +226,38 @@
 {/if}
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.65);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1100;
+  .tap-modal {
+    width: min(460px, calc(100vw - 32px));
   }
-  .modal {
-    background: #1c1f2a;
-    color: #e6e8ee;
-    border: 1px solid #3a4055;
-    border-radius: 6px;
-    padding: 1.25rem 1.5rem;
-    min-width: 340px;
-    max-width: 480px;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
-  }
-  h2 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.05rem;
-    color: #f4ead5;
-  }
-  .cost {
-    margin: 0 0 0.75rem 0;
-    color: #aab2c8;
-    font-size: 0.9rem;
-  }
-  .mono {
-    font-family: "Menlo", "Monaco", monospace;
-    color: #e6e8ee;
-  }
-  .hint {
-    margin: 0.5rem 0 0.25rem 0;
-    color: #aab2c8;
-    font-size: 0.85rem;
-  }
-  .locked-label {
-    margin-top: 1rem;
-    color: #ff9a85;
-  }
-  .error {
-    margin: 0.5rem 0;
-    color: #ff9a85;
-    font-size: 0.9rem;
-  }
-  .muted {
-    margin: 0.5rem 0;
-    color: #6b7280;
-    font-size: 0.85rem;
-  }
-  ul.plan,
-  ul.locked {
-    list-style: none;
-    margin: 0.25rem 0 0 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-  ul.plan li,
-  ul.locked li {
-    display: flex;
-    align-items: center;
+  .src-row {
     justify-content: space-between;
-    background: #252a37;
-    padding: 0.4rem 0.6rem;
-    border-radius: 4px;
-    font-size: 0.9rem;
-  }
-  ul.locked li {
-    background: #3a2a2a;
+    padding: 6px 6px 6px 12px;
+    cursor: default;
   }
   .card-name {
-    color: #e6e8ee;
+    font-size: 13px;
+    font-weight: 500;
   }
   .lock-btn {
-    background: transparent;
-    color: #aab2c8;
-    border: 1px solid #3a4055;
-    border-radius: 3px;
-    padding: 0.15rem 0.5rem;
-    font-size: 0.75rem;
-    cursor: pointer;
+    height: 26px;
+    padding: 0 10px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
   }
-  .lock-btn:hover {
-    color: #f4ead5;
-    border-color: #6b7280;
+  .locked-label {
+    margin: 2px 0 -6px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-dim);
+    font-weight: 700;
   }
-  .lock-btn.unlock {
-    color: #ff9a85;
-    border-color: #6b3030;
-  }
-  .actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    margin-top: 1rem;
-  }
-  .actions button {
-    padding: 0.4rem 0.9rem;
-    border-radius: 4px;
-    border: 1px solid #3a4055;
-    background: #252a37;
-    color: #e6e8ee;
-    cursor: pointer;
-    font-size: 0.9rem;
-  }
-  .actions .confirm {
-    background: #3b6f3b;
-    border-color: #4f9a4f;
-  }
-  .actions .confirm:disabled {
-    background: #2a3a2a;
-    border-color: #3a4055;
-    color: #6b7280;
-    cursor: not-allowed;
-  }
-  .actions .cancel:hover {
-    border-color: #6b7280;
+  .primary .kbd {
+    color: var(--accent-fg);
+    border-color: rgba(28, 21, 3, 0.35);
+    opacity: 0.8;
   }
 </style>

@@ -370,6 +370,56 @@ func (l *Lobby) Spectate(id uuid.UUID, invite string) (GameMeta, error) {
 	return copyMeta(entry.meta), nil
 }
 
+// PreviewKind says which invite unlocked a Preview.
+type PreviewKind string
+
+const (
+	PreviewPlayer    PreviewKind = "player"
+	PreviewSpectator PreviewKind = "spectator"
+)
+
+// Preview is what an invite link may show BEFORE the holder joins:
+// the table's name, state and seats, so the invite page can present
+// the pod instead of a bare name field. Either invite (player or
+// spectator) unlocks it; the invite is the credential, compared in
+// constant time like Join / Spectate. The returned meta is scrubbed
+// for an unauthenticated reader: both invite tokens, every seat's
+// player ID and Discord identity are blanked (the avatar endpoint
+// needs a session anyway); names, display names and deck names
+// stay. Added Sept 2026 for the redesigned join page.
+func (l *Lobby) Preview(id uuid.UUID, invite string) (GameMeta, PreviewKind, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	entry, ok := l.games[id]
+	if !ok {
+		return GameMeta{}, "", ErrGameNotFound
+	}
+	if invite == "" {
+		return GameMeta{}, "", ErrInvalidInvite
+	}
+	var kind PreviewKind
+	switch {
+	case subtle.ConstantTimeCompare([]byte(invite), []byte(entry.meta.InviteToken)) == 1:
+		kind = PreviewPlayer
+	case entry.meta.SpectatorInvite != "" &&
+		subtle.ConstantTimeCompare([]byte(invite), []byte(entry.meta.SpectatorInvite)) == 1:
+		kind = PreviewSpectator
+	default:
+		return GameMeta{}, "", ErrInvalidInvite
+	}
+	m := copyMeta(entry.meta)
+	m.State = string(entry.room.Game.CurrentState())
+	m.InviteToken = ""
+	m.SpectatorInvite = ""
+	for i := range m.Players {
+		m.Players[i].PlayerID = uuid.Nil
+		m.Players[i].DiscordID = ""
+		m.Players[i].DiscordAvatarHash = ""
+	}
+	return m, kind, nil
+}
+
 // ErrDeckNotUploaded is returned by Start when one or more seats
 // haven't uploaded a real deck yet. The HTTP handler maps this to
 // 409 so the lobby UI can show which seats are blocking the start.

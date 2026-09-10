@@ -74,12 +74,13 @@
 </script>
 
 {#if open}
-  <div class="backdrop" role="dialog" aria-modal="true" aria-labelledby="discard-title">
-    <div class="modal">
+  <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="discard-title">
+    <div class="prompt-modal">
       <h2 id="discard-title">
         Discard {owedCount} card{owedCount === 1 ? "" : "s"}
+        <span class="prompt-src" aria-hidden="true">{isCleanupContext ? "cleanup" : "effect"}</span>
       </h2>
-      <p class="hint">
+      <p class="prompt-hint">
         {#if isCleanupContext}
           Your hand size exceeds your maximum ({viewerSeat?.max_hand_size ?? 7}). Pick exactly
           {owedCount} card{owedCount === 1 ? "" : "s"} to send to the graveyard. Cleanup resumes once
@@ -104,11 +105,11 @@
           </button>
         {/each}
       </div>
-      <div class="footer">
-        <span class="counter">{selected.size} / {owedCount} selected</span>
+      <div class="prompt-foot">
+        <span class="prompt-count">{selected.size} / {owedCount} selected</span>
         <button
           type="button"
-          class="submit"
+          class="primary"
           disabled={selected.size !== owedCount}
           onclick={submit}
         >
@@ -120,68 +121,10 @@
 {/if}
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(4, 8, 16, 0.7);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 200;
-    animation: fade-in 160ms var(--ease);
-  }
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-  .modal {
-    background: linear-gradient(180deg, var(--surface) 0%, var(--bg-2) 100%);
-    border: 1px solid rgba(122, 167, 255, 0.22);
-    border-radius: var(--radius-xl);
-    padding: 22px 26px;
-    max-width: 760px;
-    max-height: 86vh;
-    overflow: auto;
-    box-shadow:
-      0 30px 80px rgba(0, 0, 0, 0.7),
-      0 0 0 1px rgba(0, 0, 0, 0.4),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-    animation: modal-in 220ms var(--ease);
-  }
-  @keyframes modal-in {
-    from {
-      opacity: 0;
-      transform: translateY(12px) scale(0.98);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
-  h2 {
-    margin: 0 0 6px;
-    font-size: 18px;
-    letter-spacing: -0.01em;
-    color: var(--gold);
-    text-transform: none;
-    font-weight: 700;
-  }
-  .hint {
-    color: var(--fg-muted);
-    font-size: 13px;
-    line-height: 1.4;
-    margin: 0 0 14px;
-  }
   .card-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-    gap: 10px;
+    gap: 8px;
   }
   .card-pick {
     background: transparent;
@@ -196,54 +139,16 @@
       box-shadow 120ms var(--ease);
   }
   .card-pick:hover:not(:disabled) {
-    border-color: var(--accent);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+    border-color: var(--border-strong);
+    background: transparent;
     transform: translateY(-2px);
   }
   .card-pick.selected {
     border-color: var(--gold);
-    box-shadow:
-      0 0 18px rgba(255, 208, 122, 0.55),
-      0 6px 18px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 0 16px rgba(217, 180, 92, 0.35);
   }
   .card-pick:disabled {
     opacity: 0.4;
     cursor: not-allowed;
-  }
-  .footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 16px;
-    padding-top: 14px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    gap: 12px;
-  }
-  .counter {
-    font-size: 12px;
-    color: var(--fg-muted);
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.02em;
-  }
-  .submit {
-    padding: 8px 22px;
-    border-radius: 999px;
-    background: linear-gradient(180deg, #ffe59a 0%, #e6b85f 100%);
-    color: #231806;
-    border: 1px solid rgba(255, 230, 160, 0.6);
-    font-weight: 800;
-    letter-spacing: 0.02em;
-    cursor: pointer;
-    box-shadow:
-      0 6px 18px rgba(255, 208, 122, 0.25),
-      inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  }
-  .submit:hover:not(:disabled) {
-    filter: brightness(1.04);
-  }
-  .submit:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    box-shadow: none;
   }
 </style>

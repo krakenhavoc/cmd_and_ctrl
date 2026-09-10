@@ -327,6 +327,23 @@
             </label>
 
             <label class="slider-row">
+              <span>Table layout</span>
+              <select
+                value={$settings.display.tableLayout}
+                onchange={(e) =>
+                  change("display", "tableLayout", e.currentTarget.value as "row" | "quadrant")}
+              >
+                <option value="quadrant">Quadrant (default)</option>
+                <option value="row">Row</option>
+              </select>
+              {#if isFresh("display.tableLayout")}<span class="saved">✓</span>{/if}
+            </label>
+            <p class="help">
+              Quadrant keeps the around-the-table seating. Row seats the opponents in turn order
+              across the top and gives your board the full width.
+            </p>
+
+            <label class="slider-row">
               <span>Hand layout</span>
               <select
                 value={$settings.display.handLayout}
@@ -577,48 +594,65 @@
 {/if}
 
 <style>
+  /* Sept 2026 redesign: the settings shell shares the prompt-modal
+     vocabulary (dimmed blur backdrop, flat raised panel), a left
+     nav of quiet rows, and one grid row per setting — label and help
+     on the left, the control on the right. Checkboxes render as
+     switches, ranges get the gold accent. Markup is unchanged. */
   .settings-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.55);
+    background: rgba(11, 10, 9, 0.72);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 200;
   }
   .settings-panel {
-    background: #1f2024;
-    color: #eee;
-    border-radius: 6px;
-    width: min(720px, 92vw);
-    max-height: min(88vh, 720px);
+    background: var(--surface);
+    color: var(--fg);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    width: min(780px, 92vw);
+    max-height: min(88vh, 640px);
     display: flex;
     flex-direction: column;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
   }
   header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid #333;
+    padding: 14px 18px 14px 22px;
+    border-bottom: 1px solid var(--border);
   }
   header h2 {
     margin: 0;
-    font-size: 1.1rem;
-    letter-spacing: 0.02em;
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-transform: none;
+    color: var(--fg);
   }
   .close {
-    background: none;
-    border: none;
-    color: #aaa;
-    font-size: 1.4rem;
-    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 8px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--fg-muted);
+    font-size: 20px;
     line-height: 1;
-    padding: 0 0.25rem;
   }
   .close:hover {
-    color: #fff;
+    color: var(--fg);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--border);
   }
   .body {
     display: flex;
@@ -628,173 +662,253 @@
   nav {
     display: flex;
     flex-direction: column;
-    width: 160px;
-    border-right: 1px solid #333;
-    padding: 0.5rem 0;
+    gap: 2px;
+    width: 180px;
+    border-right: 1px solid var(--border);
+    padding: 10px;
     flex-shrink: 0;
   }
   nav button {
-    background: none;
-    border: none;
-    color: #bbb;
+    display: flex;
+    align-items: center;
+    height: 34px;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--fg-muted);
     text-align: left;
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 13px;
+    font-weight: 500;
+    justify-content: flex-start;
   }
   nav button:hover {
-    background: #2a2b30;
-    color: #fff;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--fg);
   }
   nav button.active {
-    background: #2f6fb8;
-    color: #fff;
+    background: var(--surface-raised);
+    color: var(--fg);
+    font-weight: 600;
+    border-color: var(--border);
   }
   section {
     flex: 1;
-    padding: 1rem 1.25rem;
+    padding: 18px 26px 22px;
     overflow-y: auto;
+    min-width: 0;
   }
   section h3 {
-    margin: 0 0 0.75rem 0;
-    font-size: 1rem;
+    margin: 0 0 6px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-dim);
+    font-weight: 600;
   }
+  section h3:not(:first-child) {
+    margin-top: 18px;
+  }
+  /* One row per setting. Switches (checkbox inputs) go to the right
+     via flex order; the text nodes stay on the left. */
   label {
-    display: block;
-    margin: 0.4rem 0;
-    cursor: pointer;
-  }
-  label.inline {
-    display: inline-block;
-    margin-right: 1rem;
-  }
-  label.slider-row {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 10px;
+    padding: 9px 0;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--fg);
+    border-bottom: 1px solid var(--border);
+  }
+  label > input[type="checkbox"] {
+    order: 2;
+    margin-left: auto;
+  }
+  label .saved {
+    order: 1;
+    margin-left: auto;
+  }
+  label > input[type="checkbox"] ~ .saved,
+  label.slider-row .saved {
+    margin-left: 0;
+  }
+  label.inline {
+    display: inline-flex;
+    border-bottom: none;
+    padding: 4px 0;
+    margin-right: 14px;
+    font-weight: 500;
+  }
+  label.inline > input[type="checkbox"] {
+    order: 0;
+    margin-left: 0;
   }
   label.slider-row > span:first-child {
     min-width: 11rem;
+    flex: 1;
   }
   label.slider-row .value {
     min-width: 2.5rem;
     text-align: right;
-    color: #aaa;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--fg-muted);
   }
   label.disabled {
     opacity: 0.5;
   }
+  /* Switch: the native checkbox with appearance:none. */
+  input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 38px;
+    height: 22px;
+    border-radius: 999px;
+    background: var(--surface-hover);
+    border: 1px solid var(--border-strong);
+    position: relative;
+    cursor: pointer;
+    flex: 0 0 auto;
+    margin: 0;
+    transition:
+      background 140ms var(--ease),
+      border-color 140ms var(--ease);
+  }
+  input[type="checkbox"]::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--fg-muted);
+    transition:
+      left 140ms var(--ease),
+      background 140ms var(--ease);
+  }
+  input[type="checkbox"]:checked {
+    background: var(--gold);
+    border-color: var(--gold-strong);
+  }
+  input[type="checkbox"]:checked::after {
+    left: 18px;
+    background: var(--accent-fg);
+  }
+  input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 2px;
+  }
   input[type="range"] {
-    flex: 1;
+    flex: 0 0 180px;
+    accent-color: var(--gold);
+    margin: 0;
   }
   select {
-    background: #2a2b30;
-    color: #eee;
-    border: 1px solid #444;
-    padding: 0.25rem 0.5rem;
+    flex: 0 0 auto;
+    min-width: 160px;
+    padding: 6px 10px;
+    font-size: 12.5px;
+    margin: 0;
   }
   fieldset {
-    border: 1px solid #333;
-    border-radius: 4px;
-    padding: 0.5rem 0.75rem;
-    margin: 0.75rem 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 14px 12px;
+    margin: 12px 0;
+    background: var(--surface-sunken);
   }
   fieldset[disabled] {
     opacity: 0.45;
   }
   legend {
-    color: #888;
-    font-size: 0.85rem;
-    padding: 0 0.25rem;
+    color: var(--fg-muted);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 0 6px;
   }
   .help {
-    color: #888;
-    font-size: 0.85rem;
-    margin: 0.25rem 0 0.75rem 0;
+    color: var(--fg-dim);
+    font-size: 11.5px;
+    line-height: 1.45;
+    margin: 4px 0 8px;
   }
-  /* Danger-flagged settings get amber/red framing so an opt-in
-     that might cost the player a turn can't be mistaken for a
-     routine preference. */
+  /* Danger-flagged settings get gold framing so an opt-in that might
+     cost the player a turn can't be mistaken for a routine
+     preference. */
   label.danger {
-    color: #f0a868;
-    font-weight: 600;
+    color: var(--gold-strong);
   }
   .danger-help {
-    color: #e8a95a;
-    border-left: 3px solid #d99a2e;
-    padding-left: 0.55rem;
-    background: rgba(217, 154, 46, 0.06);
-    border-radius: 0 3px 3px 0;
+    color: var(--fg-muted);
+    border-left: 2px solid var(--gold);
+    padding: 6px 10px;
+    background: var(--gold-soft);
+    border-radius: 0 8px 8px 0;
   }
   .danger-help strong {
-    color: #ffd07a;
+    color: var(--gold-strong);
     letter-spacing: 0.03em;
   }
   .saved {
-    color: #6cc07a;
-    font-size: 0.8rem;
-    margin-left: 0.5rem;
+    color: var(--mint);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
   kbd {
-    background: #2a2b30;
-    border: 1px solid #444;
-    padding: 0 0.3rem;
-    border-radius: 3px;
-    font-family: ui-monospace, monospace;
-    font-size: 0.85em;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    padding: 0 5px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--fg-muted);
   }
   .danger {
-    background: #6b2020;
-    color: #fff;
-    border: 1px solid #8b2828;
+    background: rgba(255, 107, 107, 0.1);
+    border: 1px solid rgba(255, 107, 107, 0.4);
+    color: var(--danger);
     padding: 0.5rem 0.9rem;
-    border-radius: 3px;
+    border-radius: var(--radius);
     cursor: pointer;
   }
   .danger:hover {
-    background: #8b2828;
+    background: rgba(255, 107, 107, 0.18);
   }
   .adv-section {
-    margin: 0.25rem 0 1.25rem 0;
+    margin: 0 0 18px;
   }
   .adv-section h4 {
-    margin: 0 0 0.25rem 0;
-    font-size: 0.95rem;
-    color: #ddd;
+    margin: 0 0 4px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--fg);
   }
   .adv-section button {
-    background: #2a2b30;
-    color: #eee;
-    border: 1px solid #444;
     padding: 0.4rem 0.8rem;
-    border-radius: 3px;
-    cursor: pointer;
-  }
-  .adv-section button:hover:not(:disabled) {
-    background: #34363c;
-  }
-  .adv-section button:disabled {
-    opacity: 0.5;
-    cursor: default;
+    font-size: 12.5px;
   }
   .adv-section button.danger {
-    background: #6b2020;
-    border-color: #8b2828;
+    background: rgba(255, 107, 107, 0.1);
+    border-color: rgba(255, 107, 107, 0.4);
+    color: var(--danger);
   }
-  .adv-section button.danger:hover {
-    background: #8b2828;
+  .adv-section button.danger:hover:not(:disabled) {
+    background: rgba(255, 107, 107, 0.18);
   }
   .adv-section textarea {
     width: 100%;
     box-sizing: border-box;
-    background: #15161a;
-    color: #eee;
-    border: 1px solid #333;
-    border-radius: 3px;
-    padding: 0.5rem;
-    font-family: ui-monospace, monospace;
-    font-size: 0.85em;
+    padding: 8px 10px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
     resize: vertical;
+    margin: 0;
   }
   .adv-row {
     display: flex;
@@ -803,39 +917,54 @@
     margin-top: 0.4rem;
   }
   .import-status.ok {
-    color: #6cc07a;
-    font-size: 0.85rem;
+    color: var(--mint);
+    font-size: 12px;
   }
   .import-status.err {
-    color: #d77;
-    font-size: 0.85rem;
+    color: var(--danger);
+    font-size: 12px;
   }
   .fingerprint {
-    background: #15161a;
-    border: 1px solid #333;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
     padding: 0.25rem 0.5rem;
-    border-radius: 3px;
-    font-family: ui-monospace, monospace;
-    font-size: 0.95em;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 12px;
     user-select: all;
   }
   .step-stops {
-    margin-top: 1rem;
+    margin-top: 12px;
   }
   .step-stops-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 0.35rem 0.75rem;
-    margin-top: 0.4rem;
+    gap: 2px 14px;
+    margin-top: 4px;
   }
   .step-stop-row {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 0.95em;
+    gap: 8px;
+    font-size: 12.5px;
+    font-weight: 500;
+    padding: 5px 0;
+    border-bottom: none;
+  }
+  .step-stop-row > input[type="checkbox"] {
+    order: 0;
+    margin-left: 0;
+    width: 30px;
+    height: 18px;
+  }
+  .step-stop-row > input[type="checkbox"]::after {
+    width: 12px;
+    height: 12px;
+  }
+  .step-stop-row > input[type="checkbox"]:checked::after {
+    left: 14px;
   }
   .step-stop-row .saved {
-    color: #6c9;
-    font-size: 0.85em;
+    margin-left: auto;
   }
 </style>

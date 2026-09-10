@@ -12,6 +12,7 @@
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
   import TargetingBanner from "../lib/components/board/TargetingBanner.svelte";
+  import Icon from "../lib/components/Icon.svelte";
   import { cancel as cancelTargeting, confirm as confirmTargeting } from "../lib/targeting";
   import type { ActionType, PlayerView } from "../lib/protocol";
   import type { StepID } from "../lib/turn";
@@ -464,11 +465,6 @@
     client.sendAction("mulligan", viewerID, { hand_size: n });
     play("shuffle");
   }
-  function changeLife(delta: number): void {
-    if (!viewerID) return;
-    client.sendAction("change_life", viewerID, { delta });
-  }
-
   // ---- Combat ----
   // Two-click flow: click an attacker (or blocker) row to "select"
   // it, click a target row to commit. Selection state is local to
@@ -573,14 +569,30 @@
     play("shuffle");
   }
 
-  function concede(): void {
+  // Concede is irreversible — it asks first, in a styled popover
+  // anchored to the command bar rather than window.confirm.
+  let concedeConfirm = $state(false);
+  function requestConcede(): void {
     if (!viewerID || viewerEliminated || gameEnded) return;
-    // Concede is irreversible — confirm to guard against misclicks.
-    // window.confirm is acceptable for a hobby-scale sandbox; a proper
-    // styled modal can land alongside the S09 polish pass if needed.
-    const ok = window.confirm("Concede the game? This cannot be undone.");
-    if (!ok) return;
+    menuOpen = false;
+    concedeConfirm = true;
+  }
+  function confirmConcede(): void {
+    concedeConfirm = false;
+    if (!viewerID || viewerEliminated || gameEnded) return;
     client.sendAction("concede", viewerID);
+  }
+
+  // The ⋯ menu in the command bar holds the sandbox utilities
+  // (draw / untap / shuffle / mulligan / undo) and table actions so
+  // the bar itself stays status + three icon buttons + pass turn.
+  let menuOpen = $state(false);
+  function closeMenu(): void {
+    menuOpen = false;
+  }
+  function viaMenu(fn: () => void): void {
+    menuOpen = false;
+    fn();
   }
 
   function fmtTime(d: Date): string {
@@ -592,330 +604,252 @@
 </script>
 
 <section>
-  <header>
-    <button onclick={back}>← lobby</button>
-    <h1>game {gameID.slice(0, 8)}</h1>
-    <span class={`tag tag-${$status}`}>{$status}</span>
+  <header class="bar">
+    <button class="ghost bar-nav" onclick={back}><Icon name="chevronLeft" size={14} /> Lobby</button
+    >
+    <span class="bar-sep" aria-hidden="true"></span>
+    <span class="wordmark" aria-hidden="true"><i></i>CMD &amp; CTRL</span>
+    <h1 class="crumb"><b>/</b><span class="mono">{gameID.slice(0, 8)}</span></h1>
+    <span class="bar-spacer"></span>
     {#if isSpectator}
       <span
         class="tag tag-spectator"
         title="read-only — your action frames are rejected by the server">spectating</span
       >
     {/if}
-    <span class="muted">seq {$lastSeq}</span>
-    {#if bugReportAvailable}
+    <span class={`status status-${$status}`} title={`seq ${$lastSeq}`}>
+      <i class="dot" aria-hidden="true"></i>{$status}
+      <span class="seq">· seq {$lastSeq}</span>
+    </span>
+    {#if view && viewerID}
       <button
-        class="gear"
-        title="report a bug"
-        aria-label="report a bug"
-        onclick={() => (bugReportOpen = true)}>🐞</button
+        class="bar-btn"
+        onclick={passTurn}
+        disabled={!viewerIsActive}
+        title={viewerIsActive
+          ? "skip the rest of your turn"
+          : `${activePlayer?.name ?? "another seat"} is the active player`}
       >
+        Pass turn
+      </button>
     {/if}
-    <button
-      class="gear"
-      title="settings (press , from anywhere)"
-      aria-label="open settings"
-      onclick={openSettings}>⚙</button
-    >
+    <div class="bar-icons">
+      <button
+        type="button"
+        class="ibtn"
+        onclick={onToggleMute}
+        aria-pressed={muted}
+        aria-label={muted ? "unmute sound effects" : "mute sound effects"}
+        title={muted ? "sounds muted — click to unmute" : "sounds on — click to mute"}
+      >
+        {#if muted}<Icon name="volumeOff" size={17} />{:else}<Icon name="volume" size={17} />{/if}
+      </button>
+      <button
+        class="ibtn"
+        title="settings (press , from anywhere)"
+        aria-label="open settings"
+        onclick={openSettings}><Icon name="gear" size={17} /></button
+      >
+      {#if view && viewerID}
+        <div class="more">
+          <button
+            class="ibtn"
+            class:on={menuOpen}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-label="more actions"
+            title="sandbox actions and more"
+            onclick={() => (menuOpen = !menuOpen)}><Icon name="more" size={17} /></button
+          >
+          {#if menuOpen}
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div class="menu-backdrop" onclick={closeMenu}></div>
+            <div class="menu" role="menu" aria-label="game actions">
+              <div class="menu-h">Sandbox</div>
+              <button class="mi" role="menuitem" onclick={() => viaMenu(draw)}>
+                <Icon name="draw" size={15} /> Draw a card
+              </button>
+              <button class="mi" role="menuitem" onclick={() => viaMenu(untapAll)}>
+                <Icon name="untap" size={15} /> Untap all
+              </button>
+              <button class="mi" role="menuitem" onclick={() => viaMenu(shuffle)}>
+                <Icon name="shuffle" size={15} /> Shuffle library
+              </button>
+              <div class="mi mi-row">
+                <Icon name="hand" size={15} />
+                <span>Mulligan to</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="20"
+                  bind:value={mulliganTo}
+                  aria-label="mulligan hand size"
+                />
+                <button class="sm" onclick={() => viaMenu(mulligan)}>Go</button>
+              </div>
+              <button
+                class="mi"
+                role="menuitem"
+                onclick={() => viaMenu(() => client.sendAction("undo"))}
+                disabled={!isAdmin && (viewerSeat?.undos_remaining ?? 0) <= 0}
+                title={isAdmin
+                  ? "rewind the most recent action (admin — bypasses caller / budget gates)"
+                  : (viewerSeat?.undos_remaining ?? 0) <= 0
+                    ? "no undos remaining this turn (refreshes on your next untap)"
+                    : `undo your most recent action — ${viewerSeat?.undos_remaining ?? 0} left this turn`}
+              >
+                <Icon name="undo" size={15} /> Undo
+                {#if !isAdmin && viewerSeat}
+                  <span class="mi-r">{viewerSeat.undos_remaining ?? 0} left</span>
+                {/if}
+              </button>
+              <label
+                class="mi mi-row"
+                title="per-player undo budget refreshed each turn (any seat may change)"
+              >
+                <span class="mi-indent">Undo limit</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="20"
+                  value={view?.undo_limit ?? 1}
+                  onchange={(e) => {
+                    const next = Number((e.currentTarget as HTMLInputElement).value);
+                    if (Number.isFinite(next) && next >= 0) {
+                      client.sendAction("set_undo_limit", undefined, { limit: next });
+                    }
+                  }}
+                />
+              </label>
+              <button
+                class="mi"
+                role="menuitem"
+                onclick={() => viaMenu(() => (showLifeHistory = true))}
+              >
+                <Icon name="drop" size={15} /> Life history
+              </button>
+              <div class="sep"></div>
+              <div class="menu-h">Table</div>
+              {#if bugReportAvailable}
+                <button
+                  class="mi"
+                  role="menuitem"
+                  onclick={() => viaMenu(() => (bugReportOpen = true))}
+                >
+                  <Icon name="bug" size={15} /> Report a bug
+                </button>
+              {/if}
+              <button class="mi" role="menuitem" onclick={() => viaMenu(back)}>
+                <Icon name="chevronLeft" size={15} /> Back to lobby
+              </button>
+              <div class="sep"></div>
+              <button
+                class="mi danger"
+                role="menuitem"
+                onclick={requestConcede}
+                disabled={viewerEliminated || gameEnded}
+                title={viewerEliminated
+                  ? "you are already eliminated"
+                  : gameEnded
+                    ? "the game has ended"
+                    : "concede the game (irreversible)"}
+              >
+                <Icon name="flag" size={15} /> Concede…
+              </button>
+            </div>
+          {/if}
+        </div>
+      {/if}
+    </div>
+    {#if concedeConfirm}
+      <div class="confirm" role="dialog" aria-modal="true" aria-label="concede the game?">
+        <div class="confirm-title">Concede the game?</div>
+        <p class="confirm-body">
+          You'll be eliminated and keep watching as a spectator. This can't be undone.
+        </p>
+        <div class="confirm-actions">
+          <button onclick={() => (concedeConfirm = false)}>Keep playing</button>
+          <button class="danger" onclick={confirmConcede}
+            ><Icon name="flag" size={14} /> Concede</button
+          >
+        </div>
+      </div>
+    {/if}
+    {#if showLifeHistory}
+      <div class="life-history-popover" id="life-history-popover" role="dialog">
+        <header class="life-history-header">
+          <span>life history — all seats</span>
+          <button
+            type="button"
+            class="life-history-close"
+            onclick={() => (showLifeHistory = false)}
+            aria-label="close life history"
+          >
+            <Icon name="x" size={14} />
+          </button>
+        </header>
+        <div class="life-history-body">
+          {#each seats as seat (seat.id)}
+            <section class="life-history-seat">
+              <h4 class="life-history-seat-name">
+                <span class="seat-dot" style="background:{seatColor(seat.seat)}"></span>
+                {seat.name}
+                <span class="muted">· now {seat.life}</span>
+              </h4>
+              {#if (seat.life_history?.length ?? 0) === 0}
+                <p class="muted life-history-empty">no changes yet</p>
+              {:else}
+                <ol class="life-history-entries">
+                  {#each seat.life_history.slice().reverse() as entry, idx (idx)}
+                    <li>
+                      <span
+                        class="life-delta"
+                        class:gain={entry.delta > 0}
+                        class:loss={entry.delta < 0}
+                      >
+                        {entry.delta > 0 ? "+" : ""}{entry.delta}
+                      </span>
+                      <span class="life-newtotal">→ {entry.new_total}</span>
+                      <span class="life-time muted">{fmtTime(new Date(entry.at))}</span>
+                    </li>
+                  {/each}
+                </ol>
+              {/if}
+            </section>
+          {/each}
+        </div>
+      </div>
+    {/if}
   </header>
 
   {#if viewerNeedsDeck && !deckImportDismissed && viewerID}
     <div
-      class="deck-import-modal-backdrop"
+      class="prompt-backdrop deck-import-modal-backdrop"
       role="dialog"
       aria-modal="true"
       aria-labelledby="deck-import-title"
     >
-      <div class="deck-import-modal">
-        <h2 id="deck-import-title">import your deck</h2>
-        <p class="muted">
-          The game hasn't started yet. Paste a Moxfield or Archidekt deck URL, a Moxfield JSON
-          export, or a plain-text decklist. The server validates against Commander rules (100-card
-          singleton, color identity, format legality).
+      <div class="prompt-modal deck-import-modal">
+        <h2 id="deck-import-title">
+          Import your deck
+          <span class="prompt-src" aria-hidden="true">before the game starts</span>
+        </h2>
+        <p class="prompt-hint">
+          Paste a Moxfield or Archidekt deck URL, a Moxfield JSON export, or a plain-text decklist.
+          The server validates against Commander rules (100-card singleton, color identity, format
+          legality).
         </p>
         <DeckUploadForm
           {gameID}
           playerID={viewerID}
           onSuccess={() => (deckImportDismissed = true)}
         />
-        <p class="muted import-hint">
+        <p class="prompt-hint import-hint">
           You can also manage decks (and other seats) from the
           <button class="linkish" onclick={back}>lobby</button>.
         </p>
       </div>
-    </div>
-  {/if}
-
-  {#if mulligansOpen && !gameEnded}
-    <div class="mulligan-banner" aria-label="opening hand decisions">
-      <strong>Opening hand:</strong>
-      {#each seats as seat (seat.id)}
-        <span
-          class="mulligan-seat"
-          class:waiting={!seat.hand_kept && !seat.eliminated}
-          style="--seat-color: {seatColor(seat.seat)}"
-        >
-          <span class="seat-dot" style="background:{seatColor(seat.seat)}"></span>
-          {seat.name}
-          {#if seat.eliminated}
-            <span class="muted">eliminated</span>
-          {:else if seat.hand_kept}
-            <span class="kept">kept ✓</span>
-          {:else}
-            <span class="deciding">deciding…</span>
-          {/if}
-          {#if (seat.mulligans_taken ?? 0) > 0}
-            <span class="muted mull-count">×{seat.mulligans_taken}</span>
-          {/if}
-        </span>
-      {/each}
-    </div>
-  {/if}
-
-  {#if viewerNeedsToDecide}
-    <div class="mulligan-dialog" role="dialog" aria-label="keep or mulligan your hand">
-      <header>
-        <h2>Your opening hand</h2>
-        {#if (viewerSeat?.mulligans_taken ?? 0) > 0}
-          <p class="muted">
-            Mulligans taken: {viewerSeat?.mulligans_taken}. You'll redraw 7 cards (simplified London
-            — no bottom-N penalty yet).
-          </p>
-        {:else}
-          <p class="muted">Hand size: {viewerSeat?.hand.count ?? 0}. Keep or mulligan?</p>
-        {/if}
-      </header>
-      {#if (viewerSeat?.hand.cards.length ?? 0) > 0}
-        <div class="mulligan-cards" role="list" aria-label="your opening hand">
-          {#each viewerSeat?.hand.cards ?? [] as card (card.instance_id)}
-            <div class="mulligan-card" role="listitem" title={card.name}>
-              {#if card.scryfall_id}
-                <img
-                  src={`/cards/${card.scryfall_id}/image?size=small`}
-                  alt={card.name}
-                  loading="lazy"
-                />
-              {:else}
-                <span class="mulligan-card-fallback">{card.name}</span>
-              {/if}
-            </div>
-          {/each}
-        </div>
-      {/if}
-      <div class="mulligan-actions">
-        <button class="primary" onclick={keepHand}>Keep hand</button>
-        <button onclick={mulliganDecide}>Mulligan</button>
-      </div>
-    </div>
-  {/if}
-
-  {#if manaOverride}
-    <div class="error-toast mana-override" role="alert" aria-live="polite">
-      <strong>insufficient mana</strong>
-      {#if manaOverride.missing.length > 0}
-        <span class="muted">missing {manaOverride.missing.join(" ")}</span>
-      {/if}
-      <button type="button" class="override-btn" onclick={openAutoTap}>Auto-tap & cast</button>
-      <button type="button" class="override-btn" onclick={castAnyway}>Cast anyway</button>
-      <button
-        type="button"
-        class="error-toast-close"
-        onclick={dismissManaOverride}
-        aria-label="dismiss"
-      >
-        ×
-      </button>
-    </div>
-  {:else if $lastError}
-    <div class="error-toast" role="alert" aria-live="polite">
-      <strong>server rejected action:</strong>
-      {$lastError.message}
-      <span class="muted">({$lastError.code})</span>
-      <button
-        type="button"
-        class="error-toast-close"
-        onclick={() => lastError.set(null)}
-        aria-label="dismiss"
-      >
-        ×
-      </button>
-    </div>
-  {/if}
-
-  {#if gameEnded}
-    <div class="game-end-banner" role="alert">
-      {#if winner}
-        <strong>
-          <span class="seat-dot" style="background:{seatColor(winner.seat)}"></span>
-          {winner.name}
-        </strong>
-        wins the game.
-      {:else}
-        Game ended — no survivors.
-      {/if}
-    </div>
-  {:else if viewerEliminated}
-    <div class="eliminated-banner" role="status">You have been eliminated. Spectating.</div>
-  {/if}
-
-  <!-- S16.5: the global turn-bar moved into the self PlayerPanel's
-       grid-phases slot as PhaseDisplay. Single source of truth for
-       turn/step/priority UI now lives with the player it concerns. -->
-
-  {#if view && viewerID}
-    <div class="toolbar" aria-label="quick actions">
-      <div class="toolbar-group">
-        <button onclick={draw}>draw</button>
-        <button onclick={untapAll}>untap all</button>
-        <button onclick={shuffle}>shuffle</button>
-        <span class="mulligan-group">
-          <button onclick={mulligan}>mulligan</button>
-          <input
-            type="number"
-            min="0"
-            max="20"
-            bind:value={mulliganTo}
-            aria-label="mulligan hand size"
-          />
-        </span>
-        <button
-          type="button"
-          class="mute-toggle"
-          onclick={onToggleMute}
-          aria-pressed={muted}
-          aria-label={muted ? "unmute sound effects" : "mute sound effects"}
-          title={muted ? "sounds muted — click to unmute" : "sounds on — click to mute"}
-        >
-          {muted ? "🔇" : "🔊"}
-        </button>
-      </div>
-      <div class="toolbar-group life-group">
-        <button
-          class="life-label"
-          type="button"
-          onclick={() => (showLifeHistory = !showLifeHistory)}
-          aria-expanded={showLifeHistory}
-          aria-controls="life-history-popover"
-          title="click to toggle life-change history"
-        >
-          life {viewerSeat?.life ?? "—"}
-        </button>
-        <button onclick={() => changeLife(-5)}>−5</button>
-        <button onclick={() => changeLife(-1)}>−1</button>
-        <button onclick={() => changeLife(1)}>+1</button>
-        <button onclick={() => changeLife(5)}>+5</button>
-
-        {#if showLifeHistory}
-          <div class="life-history-popover" id="life-history-popover" role="dialog">
-            <header class="life-history-header">
-              <span>life history — all seats</span>
-              <button
-                type="button"
-                class="life-history-close"
-                onclick={() => (showLifeHistory = false)}
-                aria-label="close life history"
-              >
-                ×
-              </button>
-            </header>
-            <div class="life-history-body">
-              {#each seats as seat (seat.id)}
-                <section class="life-history-seat">
-                  <h4 class="life-history-seat-name">
-                    <span class="seat-dot" style="background:{seatColor(seat.seat)}"></span>
-                    {seat.name}
-                    <span class="muted">· now {seat.life}</span>
-                  </h4>
-                  {#if (seat.life_history?.length ?? 0) === 0}
-                    <p class="muted life-history-empty">no changes yet</p>
-                  {:else}
-                    <ol class="life-history-entries">
-                      {#each seat.life_history.slice().reverse() as entry, idx (idx)}
-                        <li>
-                          <span
-                            class="life-delta"
-                            class:gain={entry.delta > 0}
-                            class:loss={entry.delta < 0}
-                          >
-                            {entry.delta > 0 ? "+" : ""}{entry.delta}
-                          </span>
-                          <span class="life-newtotal">→ {entry.new_total}</span>
-                          <span class="life-time muted">{fmtTime(new Date(entry.at))}</span>
-                        </li>
-                      {/each}
-                    </ol>
-                  {/if}
-                </section>
-              {/each}
-            </div>
-          </div>
-        {/if}
-      </div>
-      <div class="toolbar-group priority-controls">
-        <button
-          onclick={passTurn}
-          disabled={!viewerIsActive}
-          title={viewerIsActive
-            ? "skip the rest of your turn"
-            : `${activePlayer?.name ?? "another seat"} is the active player`}
-        >
-          pass turn
-        </button>
-        <button
-          onclick={() => client.sendAction("undo")}
-          disabled={!isAdmin && (viewerSeat?.undos_remaining ?? 0) <= 0}
-          title={isAdmin
-            ? "rewind the most recent action (admin — bypasses caller / budget gates)"
-            : (viewerSeat?.undos_remaining ?? 0) <= 0
-              ? "no undos remaining this turn (refreshes on your next untap)"
-              : `undo your most recent action — ${viewerSeat?.undos_remaining ?? 0} left this turn`}
-        >
-          undo {!isAdmin && viewerSeat ? `(${viewerSeat.undos_remaining ?? 0})` : ""}
-        </button>
-        <label
-          class="undo-limit"
-          title="per-player undo budget refreshed each turn (any seat may change)"
-        >
-          limit
-          <input
-            type="number"
-            min="0"
-            max="20"
-            value={view?.undo_limit ?? 1}
-            onchange={(e) => {
-              const next = Number((e.currentTarget as HTMLInputElement).value);
-              if (Number.isFinite(next) && next >= 0) {
-                client.sendAction("set_undo_limit", undefined, { limit: next });
-              }
-            }}
-          />
-        </label>
-        <button
-          onclick={concede}
-          disabled={viewerEliminated || gameEnded}
-          class="concede"
-          title={viewerEliminated
-            ? "you are already eliminated"
-            : gameEnded
-              ? "the game has ended"
-              : "concede the game (irreversible)"}
-        >
-          concede
-        </button>
-      </div>
-    </div>
-  {/if}
-
-  {#if combatSelection && !mulligansOpen}
-    <div class="combat-hint" role="status" aria-live="polite">
-      {#if combatSelection.kind === "attacker"}
-        Attacking with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an opponent's
-        seat to commit, or click the creature again to cancel.
-      {:else}
-        Blocking with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an incoming attacker
-        to commit, or click the creature again to cancel.
-      {/if}
-      <button class="combat-cancel" onclick={() => (combatSelection = null)}>cancel</button>
     </div>
   {/if}
 
@@ -942,7 +876,160 @@
         {autopassEnabled}
         onPassPriority={passPriority}
         onToggleAutopass={toggleAutopass}
-      />
+      >
+        <!-- Everything that asks for the viewer's attention shares the
+             board's strip (under the stack card): targeting prompt,
+             combat hint, opening-hand roll-call, toasts, game end.
+             Nothing here pushes the table around. -->
+        {#snippet attention()}
+          <TargetingBanner />
+
+          {#if combatSelection && !mulligansOpen}
+            <div class="att combat-hint" role="status" aria-live="polite">
+              <span class="att-label danger">
+                <Icon name="sword" size={12} />
+                {combatSelection.kind === "attacker" ? "attack" : "block"}
+              </span>
+              <span class="att-text">
+                {#if combatSelection.kind === "attacker"}
+                  Attacking with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an
+                  opponent's seat to commit, or the creature again to cancel.
+                {:else}
+                  Blocking with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an incoming
+                  attacker to commit, or the creature again to cancel.
+                {/if}
+              </span>
+              <button type="button" class="ghost att-btn" onclick={() => (combatSelection = null)}>
+                Cancel <kbd>Esc</kbd>
+              </button>
+            </div>
+          {/if}
+
+          {#if mulligansOpen && !gameEnded}
+            <div class="att mulligan-banner" aria-label="opening hand decisions">
+              <span class="att-label">Opening hands</span>
+              {#each seats as seat (seat.id)}
+                <span
+                  class="mull"
+                  class:waiting={!seat.hand_kept && !seat.eliminated}
+                  class:kept={seat.hand_kept && !seat.eliminated}
+                  style="--seat-color: {seatColor(seat.seat)}"
+                >
+                  <span class="seat-dot" style="background:{seatColor(seat.seat)}"></span>
+                  <b>{seat.name}</b>
+                  {#if seat.eliminated}
+                    <span class="muted">eliminated</span>
+                  {:else if seat.hand_kept}
+                    kept <Icon name="check" size={11} />
+                  {:else}
+                    deciding…
+                  {/if}
+                  {#if (seat.mulligans_taken ?? 0) > 0}
+                    <span class="muted mull-count">×{seat.mulligans_taken}</span>
+                  {/if}
+                </span>
+              {/each}
+            </div>
+          {/if}
+
+          {#if manaOverride}
+            <div class="att toast mana-override" role="alert" aria-live="polite">
+              <span class="att-label gold">mana</span>
+              <span class="att-text">
+                <strong>Insufficient mana</strong>
+                {#if manaOverride.missing.length > 0}
+                  <span class="muted">· missing {manaOverride.missing.join(" ")}</span>
+                {/if}
+              </span>
+              <button type="button" class="primary att-btn" onclick={openAutoTap}>
+                Auto-tap & cast
+              </button>
+              <button type="button" class="att-btn" onclick={castAnyway}>Cast anyway</button>
+              <button
+                type="button"
+                class="ghost att-close"
+                onclick={dismissManaOverride}
+                aria-label="dismiss"
+              >
+                <Icon name="x" size={12} />
+              </button>
+            </div>
+          {:else if $lastError}
+            <div class="att toast error" role="alert" aria-live="polite">
+              <span class="att-label danger">rejected</span>
+              <span class="att-text">
+                {$lastError.message}
+                <span class="muted mono">({$lastError.code})</span>
+              </span>
+              <button
+                type="button"
+                class="ghost att-close"
+                onclick={() => lastError.set(null)}
+                aria-label="dismiss"
+              >
+                <Icon name="x" size={12} />
+              </button>
+            </div>
+          {/if}
+
+          {#if gameEnded}
+            <div class="att game-end" role="alert">
+              <span class="att-label gold"><Icon name="crown" size={12} /> game over</span>
+              <span class="att-text">
+                {#if winner}
+                  <span class="seat-dot" style="background:{seatColor(winner.seat)}"></span>
+                  <strong>{winner.name}</strong> wins the game.
+                {:else}
+                  Game ended — no survivors.
+                {/if}
+              </span>
+              <button type="button" class="primary att-btn" onclick={back}> Back to lobby </button>
+            </div>
+          {:else if viewerEliminated}
+            <div class="att eliminated" role="status">
+              <span class="att-label danger">eliminated</span>
+              <span class="att-text">You have been eliminated. Spectating.</span>
+            </div>
+          {/if}
+        {/snippet}
+      </Board>
+      {#if viewerNeedsToDecide}
+        <div class="mulligan-scrim"></div>
+        <div class="mulligan-dialog" role="dialog" aria-label="keep or mulligan your hand">
+          <header>
+            <h2>Your opening hand</h2>
+            {#if (viewerSeat?.mulligans_taken ?? 0) > 0}
+              <p class="muted">
+                Mulligans taken: {viewerSeat?.mulligans_taken}. You'll redraw 7 cards (simplified
+                London — no bottom-N penalty yet).
+              </p>
+            {:else}
+              <p class="muted">Hand size: {viewerSeat?.hand.count ?? 0}. Keep or mulligan?</p>
+            {/if}
+          </header>
+          {#if (viewerSeat?.hand.cards.length ?? 0) > 0}
+            <div class="mulligan-cards" role="list" aria-label="your opening hand">
+              {#each viewerSeat?.hand.cards ?? [] as card (card.instance_id)}
+                <div class="mulligan-card" role="listitem" title={card.name}>
+                  {#if card.scryfall_id}
+                    <img
+                      src={`/cards/${card.scryfall_id}/image?size=normal`}
+                      alt={card.name}
+                      loading="lazy"
+                    />
+                  {:else}
+                    <span class="mulligan-card-fallback">{card.name}</span>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          {/if}
+          <div class="mulligan-actions">
+            <button onclick={mulliganDecide}>Mulligan</button>
+            <button class="primary" onclick={keepHand}>Keep hand</button>
+          </div>
+        </div>
+      {/if}
       <DiscardPromptModal snap={view} {viewerID} {sendAction} />
       <ChoicePromptModal snap={view} {viewerID} {sendAction} />
       <AutoTapPreviewModal
@@ -952,7 +1039,6 @@
         onConfirm={confirmAutoTap}
         onCancel={cancelAutoTap}
       />
-      <TargetingBanner />
     {/if}
   </div>
 
@@ -975,7 +1061,11 @@
 
 <svelte:window
   onkeydown={(ev: KeyboardEvent) => {
-    if (ev.key === "Escape") cancelTargeting();
+    if (ev.key === "Escape") {
+      cancelTargeting();
+      menuOpen = false;
+      concedeConfirm = false;
+    }
     // S20 sub-PR 5: Enter confirms a multi-target pick list (no-op
     // for single-target prompts and when fewer than min are picked).
     if (ev.key === "Enter" && !(ev.target instanceof HTMLInputElement)) confirmTargeting();
@@ -993,45 +1083,280 @@
   section {
     position: fixed;
     inset: 0;
-    padding: 0.45rem 0.6rem;
+    padding: 0.45rem 0.6rem 0.6rem;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
     overflow: hidden;
   }
-  header {
+  /* Command bar: lobby · wordmark · game · status · pass turn · icons.
+     Sandbox utilities and table actions live behind the ⋯ menu. */
+  .bar {
     display: flex;
-    gap: 0.75rem;
     align-items: center;
-    margin: 0;
+    gap: 12px;
+    height: 44px;
+    margin: -0.45rem -0.6rem 0;
+    padding: 0 14px;
+    background: var(--bg-1);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    z-index: 40;
   }
-  header :global(h1) {
-    font-size: 1rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    margin: 0;
+  .bar-nav {
+    margin-left: -6px;
   }
-  .gear {
-    margin-left: auto;
-    background: none;
-    border: 1px solid transparent;
+  .bar-sep {
+    width: 1px;
+    height: 18px;
+    background: var(--border-strong);
+  }
+  .wordmark {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: 0.18em;
+    color: var(--fg);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .wordmark i {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--gold);
+    transform: rotate(45deg);
+    border-radius: 3px;
+    box-sizing: border-box;
+  }
+  .bar :global(h1.crumb) {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0;
     color: var(--fg-muted);
-    font-size: 1.1rem;
-    cursor: pointer;
-    padding: 0.25rem 0.5rem;
-    border-radius: var(--radius);
-    line-height: 1;
-    box-shadow: none;
-    transition:
-      background 120ms var(--ease),
-      color 120ms var(--ease),
-      border-color 120ms var(--ease);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
   }
-  .gear:hover {
+  .crumb b {
+    color: var(--fg-dim);
+    font-weight: 400;
+  }
+  .mono {
+    font-family: var(--font-mono);
+  }
+  .bar-spacer {
+    flex: 1;
+  }
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--fg-muted);
+  }
+  .status .seq {
+    color: var(--fg-dim);
+  }
+  .status .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--fg-dim);
+  }
+  .status-connected .dot {
+    background: var(--mint);
+    box-shadow: 0 0 8px var(--mint);
+  }
+  .status-connecting .dot,
+  .status-reconnecting .dot {
+    background: var(--gold);
+    box-shadow: 0 0 8px var(--gold);
+  }
+  .status-reconnecting .dot {
+    animation: status-pulse 1.2s var(--ease) infinite;
+  }
+  @keyframes status-pulse {
+    50% {
+      opacity: 0.45;
+    }
+  }
+  .status-disconnected .dot {
+    background: var(--danger);
+    box-shadow: 0 0 8px var(--danger);
+  }
+  .tag-spectator {
+    background: rgba(176, 138, 255, 0.15);
+    color: var(--magenta);
+    border: 1px solid rgba(176, 138, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.7em;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-family: var(--font-mono);
+  }
+  .bar-btn {
+    height: 30px;
+    padding: 0 12px;
+    font-size: 12.5px;
+  }
+  .bar-icons {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+  }
+  .ibtn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--fg-muted);
+  }
+  .ibtn:hover,
+  .ibtn.on {
     color: var(--fg);
     background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.1);
+    border-color: var(--border);
+  }
+  .more {
+    position: relative;
+  }
+  .menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+  }
+  .menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    width: 284px;
+    z-index: 60;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    padding: 6px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .menu-h {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-dim);
+    padding: 8px 10px 4px;
+  }
+  .mi {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 32px;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--fg);
+    font-size: 12.5px;
+    font-weight: 500;
+    width: 100%;
+    justify-content: flex-start;
+    text-align: left;
+    box-shadow: none;
+    box-sizing: border-box;
+  }
+  .mi:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: transparent;
+  }
+  .mi:disabled {
+    opacity: 0.45;
+  }
+  .mi.danger {
+    color: var(--danger);
+  }
+  .mi-r {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--fg-muted);
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px 6px;
+  }
+  .mi-row {
+    cursor: default;
+  }
+  .mi-row input {
+    width: 44px;
+    padding: 3px 6px;
+    margin: 0 0 0 auto;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    border-radius: 6px;
+  }
+  .mi-row .sm {
+    height: 24px;
+    padding: 0 8px;
+    font-size: 11.5px;
+    border-radius: 6px;
+  }
+  .mi-indent {
+    margin-left: 25px;
+    color: var(--fg-muted);
+  }
+  .sep {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 6px;
+  }
+  .confirm {
+    position: absolute;
+    right: 60px;
+    top: calc(100% + 6px);
+    width: 300px;
+    z-index: 60;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    padding: 14px 14px 12px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .confirm-title {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--fg);
+  }
+  .confirm-body {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--fg-muted);
+    line-height: 1.45;
+  }
+  .confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 4px;
   }
   .play-area {
     /* Single-column layout since S08.5 removed the chat sidebar.
@@ -1056,145 +1381,209 @@
     text-align: center;
     margin-top: 1rem;
   }
-  .tag {
-    padding: 0.15rem 0.5rem;
-    border-radius: 999px;
-    font-size: 0.72em;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    border: 1px solid transparent;
+
+  /* ---- Attention strip rows (rendered inside Board's .strip) ----
+     One flat card per live prompt: mono label on the left, text in
+     the middle, actions on the right. Same shell as StackOverlay and
+     TargetingBanner so the column reads as one instrument. */
+  .att {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px 9px 14px;
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    color: var(--fg-muted);
+    font-size: 13px;
+    line-height: 1.35;
+    box-sizing: border-box;
+    animation: att-in 200ms var(--ease);
   }
-  .tag-connected {
-    background: rgba(122, 255, 154, 0.12);
-    color: var(--mint);
-    border-color: rgba(122, 255, 154, 0.35);
-  }
-  .tag-connecting {
-    background: rgba(255, 208, 122, 0.12);
-    color: var(--gold);
-    border-color: rgba(255, 208, 122, 0.35);
-  }
-  /* Auto-retry state — same amber family as "connecting" but pulsing
-     so a dropped link is visibly distinct from a first connect. The
-     global :root[data-reduce-motion] rule in app.css stills it. */
-  .tag-reconnecting {
-    background: rgba(255, 208, 122, 0.12);
-    color: var(--gold);
-    border-color: rgba(255, 208, 122, 0.55);
-    animation: tag-reconnect-pulse 1.2s var(--ease) infinite;
-  }
-  @keyframes tag-reconnect-pulse {
-    50% {
-      opacity: 0.55;
+  @keyframes att-in {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
   }
-  .tag-disconnected {
-    background: rgba(255, 122, 122, 0.12);
-    color: var(--danger);
-    border-color: rgba(255, 122, 122, 0.35);
-  }
-  .tag-spectator {
-    background: rgba(176, 138, 255, 0.15);
-    color: #b08aff;
-    border: 1px solid rgba(176, 138, 255, 0.5);
+  .att-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-size: 0.7em;
     font-weight: 700;
-  }
-
-  /* Mulligan window */
-  .mulligan-banner {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 0.75rem;
-    align-items: center;
-    padding: 0.55rem 0.9rem;
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(0, 0, 0, 0.15) 100%),
-      var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--fg-muted);
-    font-size: 0.9em;
-    box-shadow: var(--shadow-sm);
-  }
-  .mulligan-seat {
+    color: var(--fg-dim);
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
+    gap: 6px;
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
-  .mulligan-seat.waiting {
-    border-bottom: 2px dotted var(--seat-color);
-    padding-bottom: 0.05rem;
+  .att-label.gold {
+    color: var(--gold-strong);
   }
-  .kept {
-    color: #b3e5b3;
+  .att-label.danger {
+    color: var(--danger);
+  }
+  .att-text {
+    flex: 1;
+    min-width: 0;
+  }
+  .att-text strong {
+    color: var(--fg);
+    font-weight: 700;
+  }
+  .att-text .mono {
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+  .att-btn {
+    flex: 0 0 auto;
+    height: 28px;
+    padding: 0 10px;
+    font-size: 11.5px;
+    border-radius: 7px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .att-btn kbd {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: var(--fg-dim);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0 4px;
+    line-height: 16px;
+  }
+  .att-close {
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+  }
+  .att .seat-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    vertical-align: middle;
+    margin-right: 4px;
+  }
+  .combat-hint,
+  .mana-override,
+  .game-end {
+    border-color: rgba(217, 180, 92, 0.45);
+  }
+  .toast.error,
+  .eliminated {
+    border-color: rgba(255, 107, 107, 0.4);
+  }
+
+  /* Opening-hand roll-call: one pill per seat. */
+  .mulligan-banner {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .mull {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--fg-muted);
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+  }
+  .mull b {
+    color: var(--fg);
     font-weight: 600;
   }
-  .deciding {
-    color: #ffd07a;
-    font-style: italic;
+  .mull.kept {
+    color: var(--mint);
+  }
+  .mull.waiting {
+    border-color: rgba(217, 180, 92, 0.5);
+    color: var(--gold-strong);
   }
   .mull-count {
-    font-size: 0.85em;
+    font-family: var(--font-mono);
+    font-size: 10px;
+  }
+
+  /* The viewer's own keep-or-mulligan decision: the table dims and
+     the dialog docks low with large cards, so the hand is the only
+     thing in focus. */
+  .mulligan-scrim {
+    /* Sits under Board's attention strip (z 40) so the opening-hand
+       roll-call stays readable while the table behind it dims. */
+    position: absolute;
+    inset: 0;
+    z-index: 38;
+    background: rgba(11, 10, 9, 0.6);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
   }
   .mulligan-dialog {
-    padding: 0.9rem 1.1rem;
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(0, 0, 0, 0.2) 100%), var(--surface);
-    border: 1px solid rgba(179, 229, 179, 0.55);
-    border-radius: var(--radius-lg);
+    position: absolute;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    z-index: 71;
+    width: min(880px, calc(100% - 48px));
+    padding: 16px 18px 14px;
+    background: var(--surface);
+    border: 1px solid rgba(217, 180, 92, 0.4);
+    border-radius: var(--radius-xl);
     color: var(--fg);
-    box-shadow:
-      0 10px 28px rgba(0, 0, 0, 0.45),
-      0 0 20px rgba(179, 229, 179, 0.14),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    box-shadow: var(--shadow-lg);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .mulligan-dialog header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
   }
   .mulligan-dialog header h2 {
-    margin: 0 0 0.25rem 0;
-    font-size: 1.05em;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
   }
   .mulligan-dialog header p {
-    margin: 0 0 0.6rem 0;
-    font-size: 0.9em;
-  }
-  .mulligan-actions {
-    display: flex;
-    gap: 0.5rem;
-  }
-  .mulligan-actions button {
-    padding: 0.4rem 1rem;
-    font-size: 0.95em;
-  }
-  .mulligan-actions button.primary {
-    background: linear-gradient(180deg, #c3f0c3 0%, #8acc8a 100%);
-    color: #0c1426;
-    font-weight: 700;
-    border: 1px solid rgba(138, 204, 138, 0.7);
-    box-shadow:
-      0 6px 14px rgba(138, 204, 138, 0.25),
-      inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  }
-  .mulligan-actions button.primary:hover {
-    filter: brightness(1.04);
+    margin: 0;
+    font-size: 12.5px;
   }
   .mulligan-cards {
     display: flex;
-    gap: 0.4rem;
+    gap: 8px;
     overflow-x: auto;
-    padding: 0.4rem 0;
-    margin-bottom: 0.6rem;
+    padding: 2px 0;
   }
   .mulligan-card {
     flex: 0 0 auto;
-    width: 96px;
-    height: 134px;
-    border-radius: var(--radius);
+    width: 112px;
+    height: 157px;
+    border-radius: 7px;
     overflow: hidden;
     background: var(--surface-sunken);
     border: 1px solid var(--border);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    box-shadow: var(--shadow-sm);
   }
   .mulligan-card img {
     display: block;
@@ -1208,242 +1597,27 @@
     height: 100%;
     align-items: center;
     justify-content: center;
-    padding: 0.3rem;
+    padding: 6px;
     text-align: center;
-    font-size: 0.75em;
-    color: #cfd6ee;
-  }
-
-  /* Combat: just the active selection hint. The actual combat UI
-     is canvas-only — click your creature, click an opponent's seat. */
-  .combat-hint {
-    padding: 0.55rem 0.9rem;
-    background:
-      linear-gradient(180deg, rgba(80, 60, 0, 0.55) 0%, rgba(40, 28, 0, 0.55) 100%), var(--surface);
-    border: 1px solid rgba(200, 168, 106, 0.7);
-    border-radius: var(--radius);
-    color: var(--gold);
-    font-size: 0.9em;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    box-shadow:
-      0 4px 12px rgba(0, 0, 0, 0.3),
-      0 0 14px rgba(255, 208, 122, 0.12),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  }
-  .combat-hint strong {
-    color: #fff;
-  }
-  .combat-cancel {
-    margin-left: auto;
-    padding: 0.15rem 0.6rem;
-    font-size: 0.85em;
-    background: #2a3550;
-    color: #cfd6ee;
-    border: 1px solid #3a4570;
-  }
-
-  /* Server-error toast */
-  .error-toast {
-    padding: 0.55rem 0.9rem;
-    background: linear-gradient(180deg, rgba(90, 30, 30, 0.9) 0%, rgba(60, 18, 18, 0.9) 100%);
-    border: 1px solid rgba(255, 122, 122, 0.5);
-    border-radius: var(--radius);
-    color: #ffd0d0;
-    font-size: 0.9em;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    box-shadow:
-      0 6px 18px rgba(0, 0, 0, 0.35),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  }
-  .error-toast strong {
-    color: #fff;
-  }
-  .error-toast-close {
-    margin-left: auto;
-    background: transparent;
-    border: none;
-    color: #ffd0d0;
-    font-size: 1.2em;
-    line-height: 1;
-    cursor: pointer;
-    padding: 0 0.25rem;
-  }
-  /* S15 strict-mode override toast — same shell as the error
-     toast but with the gold "Cast anyway" affordance. */
-  .error-toast.mana-override {
-    background: linear-gradient(180deg, rgba(78, 56, 18, 0.95) 0%, rgba(54, 36, 8, 0.95) 100%);
-    border-color: rgba(200, 168, 106, 0.65);
-    color: #f4ead5;
-  }
-  .override-btn {
-    margin-left: 0.5rem;
-    padding: 0.3rem 0.85rem;
-    border-radius: 999px;
-    background: linear-gradient(180deg, #ffe59a 0%, #e6b85f 100%);
-    color: #231806;
-    border: 1px solid rgba(255, 230, 160, 0.6);
-    font-weight: 800;
-    letter-spacing: 0.02em;
-    cursor: pointer;
-    font-size: 0.85em;
-  }
-  .override-btn:hover {
-    filter: brightness(1.05);
-  }
-
-  /* End-of-game banners */
-  .game-end-banner {
-    padding: 0.75rem 1rem;
-    background: linear-gradient(90deg, rgba(42, 90, 42, 0.65) 0%, rgba(26, 37, 64, 0.65) 100%);
-    border: 1px solid rgba(122, 255, 154, 0.45);
-    border-radius: var(--radius);
-    color: #e0ffe0;
-    font-size: 1.05em;
-    text-align: center;
-    box-shadow:
-      0 8px 22px rgba(0, 0, 0, 0.35),
-      0 0 18px rgba(122, 255, 154, 0.15),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    font-weight: 600;
-  }
-  .game-end-banner strong {
-    color: #fff;
-    margin-right: 0.3rem;
-  }
-  .eliminated-banner {
-    padding: 0.55rem 0.9rem;
-    background: linear-gradient(180deg, rgba(58, 26, 26, 0.85) 0%, rgba(42, 18, 18, 0.85) 100%);
-    border: 1px solid rgba(255, 122, 122, 0.4);
-    border-radius: var(--radius);
-    color: #ffd0d0;
-    font-size: 0.95em;
-    text-align: center;
-    box-shadow:
-      0 4px 14px rgba(0, 0, 0, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  }
-  .toolbar .undo-limit {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 10px;
-    color: var(--fg-dim);
-    text-transform: lowercase;
-  }
-  .toolbar .undo-limit input {
-    width: 36px;
-    padding: 2px 6px;
-    background: var(--surface-sunken);
-    border: 1px solid var(--border);
-    color: var(--fg);
-    border-radius: var(--radius-sm);
-    font: inherit;
     font-size: 11px;
-    margin: 0;
+    color: var(--fg-muted);
+    box-sizing: border-box;
   }
-  .toolbar button.concede {
-    margin-left: 0.5rem;
-    background: linear-gradient(180deg, rgba(90, 30, 30, 0.9) 0%, rgba(60, 18, 18, 0.9) 100%);
-    color: #ffd0d0;
-    border: 1px solid rgba(255, 122, 122, 0.4);
-    box-shadow: none;
-  }
-  .toolbar button.concede:hover:not(:disabled) {
-    background: linear-gradient(180deg, rgba(110, 40, 40, 0.95) 0%, rgba(80, 24, 24, 0.95) 100%);
-    border-color: rgba(255, 122, 122, 0.65);
-  }
-  .toolbar button.concede:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
+  .mulligan-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
   }
 
-  /* Toolbar */
-  .toolbar {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    align-items: center;
-    padding: 0.4rem 0.6rem;
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.15) 100%),
-      var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--fg-muted);
-    font-size: 0.8em;
-    box-shadow: var(--shadow-sm);
-  }
-  .toolbar button {
-    padding: 0.3rem 0.7rem;
-    font-size: 0.9em;
-    background: linear-gradient(180deg, var(--bg-3) 0%, var(--bg-2) 100%);
-    color: var(--fg);
-    border: 1px solid var(--border);
-    font-weight: 500;
-    box-shadow: none;
-    transition:
-      background 120ms var(--ease),
-      border-color 120ms var(--ease),
-      transform 120ms var(--ease);
-  }
-  .toolbar button:hover:not(:disabled) {
-    background: linear-gradient(180deg, var(--bg-2) 0%, var(--bg-3) 100%);
-    border-color: var(--border-strong);
-  }
-  .toolbar button:disabled {
-    background: rgba(0, 0, 0, 0.25);
-    border-color: var(--border);
-    color: var(--fg-dim);
-  }
-  .toolbar-group {
-    display: flex;
-    gap: 0.35rem;
-    align-items: center;
-  }
-  .mulligan-group input {
-    width: 3em;
-    padding: 0.1rem 0.3rem;
-  }
-  .mute-toggle {
-    padding: 0.15rem 0.45rem;
-    font-size: 0.95em;
-    line-height: 1;
-  }
-  .mute-toggle[aria-pressed="true"] {
-    background: #3a1a1a;
-    color: #ffd0d0;
-    border: 1px solid #6a3a3a;
-  }
-  .life-label {
-    color: #e0e8ff;
-    margin-right: 0.25rem;
-    background: transparent;
-    border: 1px solid transparent;
-    padding: 0.15rem 0.4rem;
-    cursor: pointer;
-    font: inherit;
-  }
-  .life-label:hover {
-    border-color: #2a3550;
-    border-radius: 3px;
-  }
-  .life-group {
-    position: relative;
-  }
   .life-history-popover {
     position: absolute;
-    top: calc(100% + 0.5rem);
-    left: 0;
-    z-index: 5;
+    top: calc(100% + 6px);
+    right: 14px;
+    z-index: 60;
     width: min(320px, calc(100vw - 2rem));
     max-height: 360px;
-    background: linear-gradient(180deg, rgba(19, 26, 44, 0.96) 0%, rgba(8, 12, 24, 0.96) 100%);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(122, 167, 255, 0.22);
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
     border-radius: var(--radius-lg);
     color: var(--fg-muted);
     font-size: 0.85em;
@@ -1468,8 +1642,7 @@
   .life-history-close {
     background: transparent;
     border: none;
-    color: #888;
-    font-size: 1.2em;
+    color: var(--fg-muted);
     line-height: 1;
     cursor: pointer;
     padding: 0 0.25rem;
@@ -1488,7 +1661,7 @@
     margin: 0 0 0.25rem 0;
     font-size: 0.95em;
     font-weight: 600;
-    color: #e0e8ff;
+    color: var(--fg);
   }
   .life-history-empty {
     margin: 0 0 0 1.1rem;
@@ -1514,57 +1687,30 @@
     text-align: right;
   }
   .life-delta.gain {
-    color: #b3e5b3;
+    color: var(--mint);
   }
   .life-delta.loss {
-    color: #ffadad;
+    color: var(--danger);
   }
   .life-newtotal {
-    color: #cfd6ee;
+    color: var(--fg-muted);
     font-variant-numeric: tabular-nums;
   }
   .life-time {
     font-size: 0.85em;
   }
 
-  /* Pre-game deck import modal (S08.5 wave 1) — overlays the table
-     for a freshly-joined player who hasn't uploaded a deck yet. The
-     light card-on-dark-backdrop palette borrows from the lobby's
-     deck-upload panel rather than the table's chrome (#1a2540) so
-     the form's #fee / #ffb violation banners stay readable. */
+  /* Pre-game deck import modal (S08.5 wave 1) — the shared prompt
+     shell, sitting under the settings / bug-report modals. */
   .deck-import-modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(4, 8, 16, 0.7);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
     z-index: 50;
     padding: 1rem;
   }
   .deck-import-modal {
-    background: linear-gradient(180deg, var(--surface) 0%, var(--bg-2) 100%);
-    color: var(--fg);
-    border: 1px solid rgba(122, 167, 255, 0.22);
-    border-radius: var(--radius-xl);
-    padding: 1.4rem 1.6rem;
-    max-width: 640px;
-    width: 100%;
-    max-height: calc(100vh - 2rem);
-    overflow-y: auto;
-    box-shadow:
-      0 30px 80px rgba(0, 0, 0, 0.7),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  }
-  .deck-import-modal h2 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.15em;
+    width: min(640px, 100%);
   }
   .import-hint {
-    margin-top: 1rem;
-    font-size: 0.85em;
+    margin-top: 4px;
   }
   .linkish {
     background: none;

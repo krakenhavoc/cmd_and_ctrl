@@ -27,6 +27,13 @@
     onActivateManaAbility?: (card: CardView, abilityIndex: number) => void;
     // S21 sub-PR 2: CR 602 activated abilities, same menu.
     onActivateAbility?: (card: CardView, abilityIndex: number) => void;
+    // compact — one card size down (PlayerPanel's --card-w-sm). Used
+    // for the middle band: non-creature permanents and lands.
+    compact?: boolean;
+    // strip — overlapped horizontal strip instead of a wrapping grid.
+    // Lands: seven of them fit in half a panel, and tapped ones sort
+    // to the right so the untapped count reads at a glance.
+    strip?: boolean;
   }
 
   const {
@@ -36,16 +43,26 @@
     onCardClick,
     onActivateManaAbility,
     onActivateAbility,
+    compact = false,
+    strip = false,
   }: Props = $props();
 
-  const sorted = $derived([...cards].sort((a, b) => (a.battle_x ?? 0) - (b.battle_x ?? 0)));
+  const sorted = $derived.by(() => {
+    const byX = [...cards].sort((a, b) => (a.battle_x ?? 0) - (b.battle_x ?? 0));
+    if (!strip) return byX;
+    // Stable partition: untapped first, tapped after, order kept within each.
+    return [...byX.filter((c) => !c.tapped), ...byX.filter((c) => c.tapped)];
+  });
 </script>
 
-<div class="row" data-zone={label}>
-  <span class="row-label" aria-hidden="true">{label}</span>
+<div class="row" class:compact class:strip data-zone={label}>
+  <span class="row-label" aria-hidden="true">
+    {label}
+    {#if cards.length > 0}<span class="row-count">{cards.length}</span>{/if}
+  </span>
   <div class="row-cards" role="list" aria-label={label}>
     {#each sorted as c (c.instance_id)}
-      <div role="listitem" use:etbPulse>
+      <div role="listitem" class:tapped={!!c.tapped} use:etbPulse>
         <Card
           card={c}
           selected={selectedCombatCardID === c.instance_id}
@@ -65,27 +82,34 @@
 <style>
   .row {
     position: relative;
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(0, 0, 0, 0.15) 100%),
-      var(--surface-sunken);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 18px 10px 10px;
+    padding: 18px 6px 6px;
     min-height: 0;
     min-width: 0;
     overflow: auto;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+  }
+  .row.compact {
+    --card-w: var(--card-w-sm, 88px);
+    --card-h: var(--card-h-sm, 123px);
   }
   .row-label {
     position: absolute;
-    top: 5px;
-    left: 10px;
-    font-size: 9px;
+    top: 4px;
+    left: 6px;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.14em;
     color: var(--fg-dim);
     pointer-events: none;
-    font-weight: 700;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .row-count {
+    letter-spacing: 0;
+    font-weight: 500;
   }
   .row-cards {
     display: flex;
@@ -93,6 +117,31 @@
     flex-wrap: wrap;
     gap: 8px;
     align-content: flex-start;
+    align-items: flex-start;
     height: 100%;
+  }
+  /* Land strip: no wrap, each card overlaps the previous so the name
+     band stays readable; tapped cards (rotated by Card.svelte) are
+     sorted to the end and given room for their rotated width. */
+  .row.strip .row-cards {
+    flex-wrap: nowrap;
+    gap: 0;
+    padding-right: calc(var(--card-h, 123px) * 0.2);
+  }
+  .row.strip .row-cards > [role="listitem"] {
+    flex: 0 0 auto;
+    margin-left: calc(var(--card-w, 88px) * -0.6);
+  }
+  .row.strip .row-cards > [role="listitem"]:first-child {
+    margin-left: 0;
+  }
+  .row.strip .row-cards > [role="listitem"].tapped {
+    margin-left: calc(var(--card-w, 88px) * -0.35);
+  }
+  .row.strip .row-cards > [role="listitem"]:not(.tapped) + [role="listitem"].tapped {
+    margin-left: calc(var(--card-h, 123px) * 0.2);
+  }
+  .row.strip .row-cards > [role="listitem"]:hover {
+    z-index: 6;
   }
 </style>

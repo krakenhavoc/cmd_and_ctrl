@@ -263,6 +263,68 @@ func TestJoinBadInviteFails(t *testing.T) {
 	resp.Body.Close()
 }
 
+// TestPreviewShowsTheTableToInviteHolders covers GET /games/{id}/preview:
+// the player invite and the spectator invite both unlock a scrubbed
+// view of the table (no tokens, no player IDs, no Discord identity),
+// a wrong or missing invite is 401, and the kind reports which
+// invite was used.
+func TestPreviewShowsTheTableToInviteHolders(t *testing.T) {
+	srv, l, _ := newTestHTTPStack(t)
+	m, _ := l.Create("FNM")
+	if _, _, err := l.Join(m.ID, m.InviteToken, "Alice"); err != nil {
+		t.Fatalf("Join Alice: %v", err)
+	}
+	base := "/games/" + m.ID.String() + "/preview"
+
+	get := func(q string) (*http.Response, previewResponse) {
+		resp, err := http.Get(srv.URL + base + q)
+		if err != nil {
+			t.Fatalf("GET preview: %v", err)
+		}
+		var body previewResponse
+		if resp.StatusCode == http.StatusOK {
+			_ = json.NewDecoder(resp.Body).Decode(&body)
+		}
+		resp.Body.Close()
+		return resp, body
+	}
+
+	resp, body := get("?t=" + m.InviteToken)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("player invite: got %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+	if body.Invite != PreviewPlayer {
+		t.Errorf("invite kind: got %q, want %q", body.Invite, PreviewPlayer)
+	}
+	if body.MaxSeats != game.MaxPlayers {
+		t.Errorf("max_seats: got %d, want %d", body.MaxSeats, game.MaxPlayers)
+	}
+	if body.Game.Name != "FNM" || body.Game.State != "lobby" {
+		t.Errorf("meta: got name=%q state=%q", body.Game.Name, body.Game.State)
+	}
+	if body.Game.InviteToken != "" || body.Game.SpectatorInvite != "" {
+		t.Error("preview leaked an invite token")
+	}
+	if len(body.Game.Players) != 1 || body.Game.Players[0].Name != "Alice" {
+		t.Fatalf("players: got %+v, want Alice", body.Game.Players)
+	}
+	if body.Game.Players[0].PlayerID != uuid.Nil {
+		t.Error("preview leaked a player ID")
+	}
+
+	resp, body = get("?t=" + m.SpectatorInvite)
+	if resp.StatusCode != http.StatusOK || body.Invite != PreviewSpectator {
+		t.Errorf("spectator invite: got %d / %q, want 200 / %q", resp.StatusCode, body.Invite, PreviewSpectator)
+	}
+
+	for _, q := range []string{"", "?t=", "?t=not-the-real-one"} {
+		resp, _ = get(q)
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Errorf("preview %q: got %d, want %d", q, resp.StatusCode, http.StatusUnauthorized)
+		}
+	}
+}
+
 // TestWSUpgradeWithPlayerSession drives the full onboarding flow:
 // join → open WS with the session cookie → receive initial snapshot.
 // This is the critical end-to-end guarantee the S04 auth seam has to

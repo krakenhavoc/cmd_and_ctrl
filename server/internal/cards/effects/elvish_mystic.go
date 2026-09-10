@@ -8,8 +8,8 @@ package effects
 // that want the effect want four of it and settle for two, which is
 // why both are top-of-list in a singleton format.
 //
-// Inherits the same summoning-sickness gap documented on Llanowar
-// Elves.
+// Summoning sickness applies, as on Llanowar Elves (CR 302.1,
+// enforced by ActivateManaAbility since #233).
 func init() {
 	Register(Spec{
 		OracleID: "3f3b2c10-21f8-4e13-be83-4ef3fa36e123",
