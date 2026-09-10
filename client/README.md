@@ -59,3 +59,22 @@ client/
   `server/internal/protocol/protocol.go`. When the spec in
   `docs/protocol.md` changes, update both sides in lockstep.
 - Svelte 5 runes (`$state`, etc.) are used throughout.
+
+## PWA
+
+The client installs as a progressive web app. See
+[ADR 0031](../docs/decisions/0031-progressive-web-app.md) for the full
+rationale; the short version:
+
+- `public/manifest.webmanifest` + `public/icons/` make it installable.
+  Regenerate the PNGs from the SVG sources with `tools/gen-icons.sh`.
+- `src/sw/service-worker.js` is a **template**. `vite-plugin-sw.ts` stamps a
+  content-derived build id and the precache list into it at build time and
+  emits `/sw.js`. It is deny-by-default: `/ws` and every `@api` route in
+  `deploy/Caddyfile` are network-only, and only the app shell, hashed
+  `/assets/*` and immutable card art (`/cards/{id}/image`) are cached.
+- The worker is **not registered in dev**. To exercise it, run
+  `npm run build && npm run preview`.
+- A new build never reloads the page by itself: it waits, and
+  `lib/components/UpdatePrompt.svelte` asks the player. Do not add
+  `skipWaiting()` anywhere else.

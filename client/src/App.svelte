@@ -12,6 +12,7 @@
   import Join from "./routes/Join.svelte";
   import Game from "./routes/Game.svelte";
   import Settings from "./lib/components/Settings.svelte";
+  import UpdatePrompt from "./lib/components/UpdatePrompt.svelte";
   import { route, navigate } from "./lib/router";
   import { session, setSession } from "./lib/session";
   import { settings } from "./lib/settings";
@@ -122,3 +123,9 @@
      lobby, game, join, and login. The component self-renders
      based on settingsOpen — mounting it here just plugs it in. -->
 <Settings />
+
+<!-- Service-worker update toast (ADR 0031). Self-hiding until a new
+     build is installed and waiting; mounted at the shell so it can
+     appear on any route, and deliberately non-modal so it never
+     interrupts a game. -->
+<UpdatePrompt />

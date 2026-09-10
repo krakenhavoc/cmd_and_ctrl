@@ -166,6 +166,19 @@ body {
   padding: 1.5rem;
 }
 
+/* Installed as a PWA (ADR 0031) the app draws under the notch and the home
+   indicator — index.html sets viewport-fit=cover — so pay the insets back
+   here. Scoped to standalone: in a browser tab the insets are 0 anyway, and
+   this keeps the change inert for every non-installed player. */
+@media (display-mode: standalone) {
+  #app {
+    padding-top: calc(1.5rem + env(safe-area-inset-top));
+    padding-right: calc(1.5rem + env(safe-area-inset-right));
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+    padding-left: calc(1.5rem + env(safe-area-inset-left));
+  }
+}
+
 h1,
 h2,
 h3 {
