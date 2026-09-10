@@ -180,6 +180,35 @@ func IsToken(c game.Card) bool {
 	return containsFoldASCII(c.TypeLine, "token")
 }
 
+// --- S22: attack triggers ----------------------------------------
+
+// attackDeclared reports whether ev is `source` itself being
+// declared as an attacker — "whenever this creature attacks"
+// (Krenko, Tin Street Kingpin).
+//
+// EventAttack carries the attacking creature in CardID, exactly as
+// EventETB carries the entering permanent. That is deliberate: a
+// card printed "whenever this creature enters or attacks" (Sun
+// Titan) is ONE ability with two trigger conditions, and the shared
+// field lets it watch both kinds with the bare
+// `ev.CardID == source.InstanceID` rather than a kind switch.
+func attackDeclared(ev game.Event, source *game.Card) bool {
+	return ev.Kind == game.EventAttack && ev.CardID == source.InstanceID
+}
+
+// attackDeclaredByYou reports whether ev is any creature controlled
+// by `controller` being declared as an attacker — "whenever a
+// creature you control attacks" (Hellrider). EventAttack stamps the
+// attacking creature's controller in Actor at declaration time.
+//
+// This deliberately includes the source itself when the source is
+// the creature that attacked: the printed text is "a creature you
+// control", not "another". A card that wants the "another" reading
+// adds `ev.CardID != source.InstanceID`.
+func attackDeclaredByYou(ev game.Event, controller uuid.UUID) bool {
+	return ev.Kind == game.EventAttack && ev.Actor == controller
+}
+
 // --- staples helpers (Commander staples pass) --------------------
 
 // IsLandWithSubtype returns a SearchLibrary predicate matching any
