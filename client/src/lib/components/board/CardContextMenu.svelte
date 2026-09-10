@@ -21,7 +21,7 @@
   // fixed-position box means no second layer of overflow maths, and
   // it works the same on a narrow window.
 
-  import { tick } from "svelte";
+  import { tick, untrack } from "svelte";
   import type { ActionPayload, ActionType, CardView, GameView } from "../../protocol";
   import type { CardMenuOpen } from "../../contextMenu";
   import {
@@ -83,8 +83,12 @@
   let damageDelta = $state(1);
 
   let el: HTMLDivElement | null = $state(null);
-  let left = $state(open.x);
-  let top = $state(open.y);
+  // untrack makes the one-shot read explicit: these seed the panel at the
+  // cursor so it paints in the right place on the very first frame, and
+  // place() owns them from then on. Reading open.x reactively here would
+  // fight that clamp. Same pattern as BugReportModal's captured log.
+  let left = $state(untrack(() => open.x));
+  let top = $state(untrack(() => open.y));
 
   // place clamps the panel inside the viewport once it has a measured
   // size, then moves focus to the first thing in it. Called on mount
