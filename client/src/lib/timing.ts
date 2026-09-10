@@ -11,7 +11,7 @@
 // path predicates depend on later sprints (S15, S20, S29) and are
 // out of scope here.
 
-import type { CardView, GameView } from "./protocol";
+import type { CardView, GameView, LegalTargetsView } from "./protocol";
 import { grantsPriority, NO_PRIORITY_STEPS } from "./turn";
 
 // Legality is a predicate result: legal=true means "the action
@@ -28,6 +28,16 @@ const LEGAL: Legality = { legal: true };
 
 function deny(reason: string): Legality {
   return { legal: false, reason };
+}
+
+// hasSatisfiableTargets reports whether a target clause has enough
+// legal candidates on the board to be announced (CR 601.2c). An
+// absent clause is trivially satisfiable — the spell targets
+// nothing, which is always fine; "up to N" (min 0) likewise.
+function hasSatisfiableTargets(lt: LegalTargetsView | undefined): boolean {
+  if (!lt) return true;
+  const n = (lt.players?.length ?? 0) + (lt.cards?.length ?? 0);
+  return n >= (lt.min ?? 1);
 }
 
 // hasPriority reports whether the given viewer ID currently holds
@@ -95,11 +105,20 @@ export function canCastFromHand(
   // S20 sub-PR 5: a clause needs at least `min` legal candidates
   // ("two target creatures" with one creature out is uncastable);
   // "up to N" (min 0) is always castable.
-  if (card.legal_targets) {
-    const lt = card.legal_targets;
-    const n = (lt.players?.length ?? 0) + (lt.cards?.length ?? 0);
-    const min = lt.min ?? 1;
-    if (n < min) return deny(min > 1 ? `Needs ${min} legal targets` : "No legal target");
+  // S22: the printed clause is not the only way to cast the card.
+  // An alternative cost can rewrite it — an overloaded Cyclonic Rift
+  // has no target clause at all — so the card is castable if ANY of
+  // its cost options has a satisfiable one. Cards with no
+  // alternative costs, which is nearly all of them, behave exactly
+  // as before.
+  if (card.legal_targets && !hasSatisfiableTargets(card.legal_targets)) {
+    const castableSomehow = (card.alternative_costs ?? []).some((a) =>
+      hasSatisfiableTargets(a.legal_targets),
+    );
+    if (!castableSomehow) {
+      const min = card.legal_targets.min ?? 1;
+      return deny(min > 1 ? `Needs ${min} legal targets` : "No legal target");
+    }
   }
   // S20 sub-PR 4: a modal spell needs enough castable options to
   // meet its minimum — untargeted options always count, targeted

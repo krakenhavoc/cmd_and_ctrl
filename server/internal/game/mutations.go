@@ -278,6 +278,20 @@ type CastSpellParams struct {
 	// cost. Added in S21 sub-PR 6.
 	SacrificeIDs []uuid.UUID
 
+	// AlternativeCost names the cost the caster is paying INSTEAD of
+	// the mana cost (CR 118.9) — the Key of one of the card's
+	// declared game.AlternativeCost entries, "overload" / "evoke" /
+	// "cleave". Empty is the ordinary case: pay the printed cost.
+	//
+	// Unlike DiscardIDs and SacrificeIDs this is a CHOICE, not a
+	// demand — the caster may always decline and pay the printed
+	// cost instead. What it is not is a discount on top of the
+	// additional costs: those are charged either way. A key the
+	// card doesn't offer is rejected rather than ignored, because
+	// silently charging full price for a cast the player meant to
+	// overload is the worst available failure. Added in S22.
+	AlternativeCost string
+
 	// Strict enables the S15 mana-cost gate. When set, the server
 	// parses the card's ManaCost into an effective cost (plus
 	// commander tax for casts from the command zone), checks the
@@ -410,6 +424,21 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			return ErrNoPlayPermission
 		}
 	}
+	// S22: an alternative cost is claimed at announce and replaces
+	// the mana cost (CR 118.9). Resolved before every targeting gate
+	// below, because overload and cleave rewrite the target clause —
+	// the spell's legality has to be judged under the cost actually
+	// being paid, not under the printed one.
+	alt, err := validateAlternativeCost(card.OracleID, params.AlternativeCost, params.Targets)
+	if err != nil {
+		slog.Warn("cast_spell rejected: bad alternative cost claim",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"alternative_cost", params.AlternativeCost,
+			"targets_received", len(params.Targets),
+		)
+		return err
+	}
 	// S17 sub-PR 6 follow-up: if the catalog declares a target_mode
 	// for this card, a cast without any target is a client bug (the
 	// targeting UI should have opened before firing cast_spell).
@@ -418,8 +447,10 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// toast surfaces. Non-catalog cards (empty TargetMode) pass
 	// through unchanged. S20: cards with a structured TargetSpec are
 	// counted by validateTargetsLocked below instead — an "up to N"
-	// clause legitimately arrives with none.
-	if mode := TargetModeFor(card.OracleID); mode != "" && len(params.Targets) == 0 && TargetSpecFor(card.OracleID) == nil {
+	// clause legitimately arrives with none. S22: an overloaded spell
+	// has no target clause left to satisfy.
+	if mode := TargetModeFor(card.OracleID); mode != "" && len(params.Targets) == 0 &&
+		TargetSpecFor(card.OracleID) == nil && !alt.Clears() {
 		slog.Warn("cast_spell rejected: targeted card arrived without targets",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -456,6 +487,11 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	if err != nil {
 		return err
 	}
+	// S22: the alternative cost gets the last word on the clause —
+	// overload deletes it, cleave swaps a wider one in. Applied after
+	// the modal derivation so a modal card with an alternative cost
+	// would compose rather than conflict.
+	spec = TargetSpecUnderAlternativeCost(spec, alt)
 	if spec == nil && modeSpec != nil && len(params.Targets) > 0 {
 		return ErrInvalidParam
 	}
@@ -621,6 +657,8 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		Distribution: cloneDistributionLocked(params.Distribution),
 		HoldPriority: params.HoldPriority,
 		SplitSecond:  params.SplitSecond,
+		AltCost:      params.AlternativeCost,
+		CastFromZone: src.Kind,
 		Seq:          g.nextStackSeqLocked(),
 		// S20: remember the clause the targets were validated under so
 		// the resolution re-check and per-slot effect checks use it.
@@ -862,8 +900,10 @@ func pickColorForSlot(options []string, pending *[]ColorRequirement) string {
 	return options[0]
 }
 
-// effectiveCostLocked parses the card's printed ManaCost and adds
-// the commander tax surcharge for casts from the command zone
+// effectiveCostLocked parses the cost the cast actually owes — the
+// card's printed ManaCost, or the alternative cost claimed at
+// announce (S22) — and adds the commander tax surcharge for casts
+// from the command zone
 // (CR 903.8 — each previous cast of THIS commander adds {2} to the
 // cost). The CommanderCasts counter is incremented AFTER CastSpell
 // reaches the stack, so reading it here returns the prior-cast
@@ -871,7 +911,11 @@ func pickColorForSlot(options []string, pending *[]ColorRequirement) string {
 // cost+4. Non-command casts return the raw parsed cost. Errors on
 // an unparseable ManaCost.
 func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams) (ParsedCost, error) {
-	cost, err := ParseCost(card.ManaCost)
+	// S22: an alternative cost replaces the printed one outright
+	// (CR 118.9). The commander tax below is layered on top of
+	// whichever cost was chosen, because CR 903.8 taxes the cost
+	// being paid, not the cost printed in the corner.
+	cost, err := ParseCost(alternativeCostString(card, params.AlternativeCost))
 	if err != nil {
 		return ParsedCost{}, err
 	}
@@ -1092,6 +1136,10 @@ func (g *Game) resolveTopOfStackLocked() error {
 			CardID: moved.InstanceID,
 		})
 		g.fireETBHookLocked(moved.InstanceID, moved.OracleID)
+		// S22: evoke's "it's sacrificed when it enters" (CR 702.74b).
+		// Queued here because this is the last moment the StackItem —
+		// and so the cost that was actually paid — is still reachable.
+		g.queueAltCostEntryTriggerLocked(moved, item)
 		return nil
 	}
 	// Instants / sorceries: resolve to the owner's graveyard.

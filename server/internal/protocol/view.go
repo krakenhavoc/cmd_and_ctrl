@@ -224,6 +224,35 @@ type AdditionalCostView struct {
 	Label string `json:"label,omitempty"`
 }
 
+// AlternativeCostView is the wire shape of one game.AlternativeCost
+// — "you may cast this spell for its overload / evoke / cleave cost"
+// — on a card in the viewer's own hand or command zone. Added in
+// S22.
+//
+// Unlike AdditionalCostView this is an OFFER, not a demand: the
+// client shows a picker with "pay the printed cost" alongside each
+// entry, and a cast that names none is the ordinary case. `key` is
+// what rides back on cast_spell as `alternative_cost`.
+type AlternativeCostView struct {
+	// Key is the stable identifier the cast names to claim this
+	// cost.
+	Key string `json:"key"`
+	// Label is the clause as printed ("Overload {4}{R}").
+	Label string `json:"label,omitempty"`
+	// ManaCost is what this cost charges, in brace notation. Empty
+	// means free.
+	ManaCost string `json:"mana_cost,omitempty"`
+	// TargetMode / LegalTargets describe the target clause the spell
+	// has WHEN THIS COST IS PAID, already resolved against the
+	// alternative cost's rewrite — cleave's wider clause, or the
+	// card's own when the cost leaves it alone. Both absent when
+	// paying the cost leaves the spell with no targets at all
+	// (overload), which is why the client can key off their presence
+	// rather than reasoning about the rewrite itself.
+	TargetMode   string            `json:"target_mode,omitempty"`
+	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+}
+
 // DamageAssignmentView is the wire shape of the CR 510.1c
 // multi-blocker damage-assignment prompt. The attacker's
 // controller orders the blockers and assigns damage across them
@@ -266,6 +295,13 @@ type StackItemView struct {
 	Distribution map[string]int  `json:"distribution,omitempty"`
 	HoldPriority bool            `json:"hold_priority,omitempty"`
 	SplitSecond  bool            `json:"split_second,omitempty"`
+	// AltCost is the key of the alternative cost this spell was cast
+	// for — "overload", "evoke", "cleave" — empty for an ordinary
+	// cast (S22). Public information the moment it is announced, and
+	// load-bearing for the table: an overloaded Cyclonic Rift is a
+	// one-sided board wipe and a hard-cast one bounces a single
+	// permanent, so a responder needs to see which is on the stack.
+	AltCost string `json:"alt_cost,omitempty"`
 }
 
 // DelayedTriggerView is the wire shape of one queued CR 603.7
@@ -527,6 +563,13 @@ type CardView struct {
 	// before firing cast_spell — the server rejects a cast that
 	// arrives without it.
 	AdditionalCost *AdditionalCostView `json:"additional_cost,omitempty"`
+	// AlternativeCosts are the S22 "you may cast this spell for its
+	// overload / evoke / cleave cost" offers for a card in the
+	// viewer's own hand / command zone. Absent for the overwhelming
+	// majority of cards. Optional, unlike AdditionalCost: the client
+	// offers them alongside "pay the printed cost", and a cast that
+	// names none is the ordinary case.
+	AlternativeCosts []AlternativeCostView `json:"alternative_costs,omitempty"`
 	// ExilePlay is the S21 sub-PR 6 impulse-exile grant. Present
 	// only while the card is in exile with a live permission;
 	// absent — which is nearly always — the card is inert exile.
@@ -762,6 +805,12 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 					}
 				}
 				spec := game.TargetSpecFor(c.oracleID)
+				// S22: the alternative costs are stamped before the
+				// early-out below, because a card can offer one
+				// without having any target clause of its own.
+				if alts := game.AlternativeCostsFor(c.oracleID); len(alts) > 0 {
+					c.AlternativeCosts = viewOfAlternativeCosts(g, caster, spec, alts)
+				}
 				if spec == nil {
 					continue
 				}
@@ -780,6 +829,30 @@ func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTarge
 		view.Cards = append(view.Cards, id.String())
 	}
 	return view
+}
+
+// viewOfAlternativeCosts projects a card's "you may cast this for
+// its overload / evoke / cleave cost" offers, each already resolved
+// against the target clause it would leave the spell with (S22).
+// `base` is the card's own clause, or nil when it has none.
+//
+// Resolving the rewrite here rather than on the client is what lets
+// the picker be dumb: an entry with no target_mode casts straight
+// away, an entry with one enters targeting on the legal set it
+// carries, and neither case needs the client to know what the word
+// "overload" means. Caller must hold g.mu.
+func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, base *game.TargetSpec, alts []game.AlternativeCost) []AlternativeCostView {
+	out := make([]AlternativeCostView, 0, len(alts))
+	for i := range alts {
+		ac := alts[i]
+		v := AlternativeCostView{Key: ac.Key, Label: ac.Label, ManaCost: ac.ManaCost}
+		if spec := game.TargetSpecUnderAlternativeCost(base, &ac); spec != nil {
+			v.TargetMode = spec.Mode
+			v.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(caster, spec), spec)
+		}
+		out = append(out, v)
+	}
+	return out
 }
 
 // viewOfModeSpec projects a modal card's options with each targeted
@@ -1126,6 +1199,7 @@ func viewOfStackItem(it *game.StackItem) StackItemView {
 		XValue:       it.XValue,
 		HoldPriority: it.HoldPriority,
 		SplitSecond:  it.SplitSecond,
+		AltCost:      it.AltCost,
 	}
 	if len(it.Targets) > 0 {
 		view.Targets = make([]TargetRefView, len(it.Targets))
@@ -1435,6 +1509,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.IsCommander = false
 	out.ManaCost = ""
 	out.Abilities = nil
+	// S22: an alternative cost names the card as loudly as its mana
+	// cost does — "Overload {6}{U}" on a face-down card would give
+	// away the Cyclonic Rift.
+	out.AlternativeCosts = nil
 	return out
 }
 
@@ -1470,9 +1548,12 @@ func keepKnownInHandZone(z ZoneView) ZoneView {
 	for _, c := range z.Cards {
 		if c.KnownByYou {
 			// S20: legal targets are computed from the OWNER's point
-			// of view and only meaningful to them.
+			// of view and only meaningful to them. S22 folds the
+			// alternative-cost offers in for the same reason — they
+			// carry their own legal sets.
 			c.LegalTargets = nil
 			c.Modes = nil
+			c.AlternativeCosts = nil
 			out.Cards = append(out.Cards, c)
 		}
 	}

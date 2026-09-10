@@ -108,13 +108,14 @@ func castTargetSpec(oracleID string, modes []int) (*TargetSpec, error) {
 }
 
 // castTargetSpecForItem is the resolution-time twin: the spec the
-// item was announced under, read back from its stamped modes.
-// Unsupported combinations were rejected at announce, so the error
-// is dropped here.
+// item was announced under, read back from its stamped modes and —
+// S22 — the alternative cost it was cast for. Unsupported
+// combinations were rejected at announce, so the error is dropped
+// here.
 func castTargetSpecForItem(oracleID string, item *StackItem) *TargetSpec {
 	if item == nil {
 		return TargetSpecFor(oracleID)
 	}
 	spec, _ := castTargetSpec(oracleID, item.Modes)
-	return spec
+	return TargetSpecUnderAlternativeCost(spec, AlternativeCostByKey(oracleID, item.AltCost))
 }

@@ -1,5 +1,11 @@
 import { writable, type Writable } from "svelte/store";
-import type { ActivatedAbilityView, CardView, ModeOptionView, PendingChoiceView } from "./protocol";
+import type {
+  ActivatedAbilityView,
+  AlternativeCostView,
+  CardView,
+  ModeOptionView,
+  PendingChoiceView,
+} from "./protocol";
 
 // targeting.ts is the shared-store plumbing for the S14 "cast a
 // catalog card, pick a target" flow. When a player clicks a hand
@@ -30,6 +36,44 @@ export type TargetingMode =
   | "stack_spell"
   | "card_in_graveyard";
 
+// CastChoices bundles every announce-time decision collected before
+// targeting opens, so a cast rides one object instead of a growing
+// tail of positional parameters (the debt ADR 0021 flagged when
+// xValue, discardIDs and sacrificeIDs became three of them; S22's
+// alternative cost was the fourth and paid it off).
+//
+// Every field is optional and every field maps to exactly one
+// cast_spell param, so applyCastChoices is the single place that
+// knows the wire names.
+export interface CastChoices {
+  // S20 sub-PR 3: the announced X for an {X} spell.
+  xValue?: number;
+  // S21 sub-PR 5: instance IDs paid to a "discard a card" additional
+  // cost.
+  discardIDs?: string[];
+  // S21 sub-PR 6: the permanent paid to a "sacrifice a creature"
+  // additional cost.
+  sacrificeIDs?: string[];
+  // S22: the key of the alternative cost being paid INSTEAD of the
+  // mana cost ("overload", "evoke", "cleave"). Undefined is the
+  // ordinary "pay the printed cost" case.
+  altCost?: string;
+}
+
+// applyCastChoices writes a CastChoices onto a cast_spell payload.
+// Undefined fields are omitted rather than sent as null — the server
+// distinguishes "no additional cost paid" from "paid nothing".
+export function applyCastChoices(
+  params: Record<string, unknown>,
+  choices: CastChoices | undefined,
+): void {
+  if (!choices) return;
+  if (choices.xValue !== undefined) params.x_value = choices.xValue;
+  if (choices.discardIDs !== undefined) params.discard_ids = choices.discardIDs;
+  if (choices.sacrificeIDs !== undefined) params.sacrifice_ids = choices.sacrificeIDs;
+  if (choices.altCost !== undefined) params.alternative_cost = choices.altCost;
+}
+
 // TargetingState is the active prompt. `card` is the spell being
 // cast; `mode` is what the UI should accept as a click. The caller
 // is responsible for calling cast_spell with the resolved target
@@ -47,9 +91,12 @@ export interface TargetingState {
   // cast_spell, and the prompt can't be cancelled — the trigger
   // needs a target.
   choiceID?: string;
-  // S20 sub-PR 3: the announced X for an {X} spell, chosen in the X
-  // prompt before targeting; rides the cast_spell payload.
-  xValue?: number;
+  // S22: the announce-time payments and choices collected before
+  // this prompt opened — X, additional-cost picks, the alternative
+  // cost being paid. They ride the cast_spell payload verbatim via
+  // applyCastChoices. Absent for pick_target and ability prompts,
+  // which aren't casts.
+  choices?: CastChoices;
   // S21 sub-PR 2: set when the prompt collects targets for an
   // ACTIVATED ability rather than a cast. The confirm fires
   // activate_ability with these announce-time choices.
@@ -60,20 +107,6 @@ export interface TargetingState {
   // S20 sub-PR 4: the chosen mode indexes of a modal spell; ride the
   // cast_spell payload as `modes`.
   modes?: number[];
-  // S21 sub-PR 5: instance IDs of the cards paid to an additional
-  // cost ("discard a card"), collected before this prompt opened;
-  // ride the cast_spell payload as `discard_ids`.
-  discardIDs?: string[];
-  // S21 sub-PR 6: the permanent paid to a "sacrifice a creature"
-  // additional cost, collected before this prompt opened; rides the
-  // cast_spell payload as `sacrifice_ids`.
-  //
-  // NOTE: xValue, discardIDs and sacrificeIDs are now three parallel
-  // announce-time payments threaded through begin / beginForMode /
-  // continueCast side by side. A fourth should be the trigger to
-  // bundle them into one CastChoices object rather than adding
-  // another parameter.
-  sacrificeIDs?: string[];
   // S20 sub-PR 5: the clause's target count. At max 1 the first
   // click completes the prompt; otherwise clicks toggle into
   // `picked` (in click order — positional clauses read it) and the
@@ -94,14 +127,20 @@ export const targeting: Writable<TargetingState | null> = writable(null);
 // begin enters a targeting prompt. Overwrites any existing prompt
 // — the last cast wins. The caller has already verified the
 // card's target_mode is non-empty.
+//
+// `alt` is the alternative cost being paid, when one is (S22): its
+// clause replaces the card's, because the spell's targets are
+// whatever the cost it was cast for says they are. Wash Away hard-cast
+// can only hit a spell that wasn't cast from its owner's hand;
+// cleaved it can hit any spell, and the legal set differs
+// accordingly.
 export function begin(
   card: CardView,
   mode: TargetingMode,
-  xValue?: number,
-  discardIDs?: string[],
-  sacrificeIDs?: string[],
+  choices?: CastChoices,
+  alt?: AlternativeCostView,
 ): void {
-  const lt = card.legal_targets;
+  const lt = alt ? alt.legal_targets : card.legal_targets;
   const legal = lt
     ? { players: new Set(lt.players ?? []), cards: new Set(lt.cards ?? []) }
     : undefined;
@@ -109,9 +148,7 @@ export function begin(
     card,
     mode,
     legal,
-    xValue,
-    discardIDs,
-    sacrificeIDs,
+    choices,
     ...countOf(lt),
     picked: [],
   });
@@ -170,9 +207,7 @@ export function beginForMode(
   card: CardView,
   option: ModeOptionView,
   modes: number[],
-  xValue?: number,
-  discardIDs?: string[],
-  sacrificeIDs?: string[],
+  choices?: CastChoices,
 ): void {
   const mode = (option.target_mode || "any") as TargetingMode;
   const lt = option.legal_targets;
@@ -183,9 +218,7 @@ export function beginForMode(
     card,
     mode,
     legal,
-    xValue,
-    discardIDs,
-    sacrificeIDs,
+    choices,
     modes,
     label: option.label,
     ...countOf(lt),
@@ -213,6 +246,24 @@ export function sacrificeCostOptions(card: CardView): string[] | undefined {
   const opts = card.additional_cost?.sacrifice_options;
   if (!opts) return undefined;
   return opts.cards ?? [];
+}
+
+// alternativeCostsOf returns the "cast this for its overload / evoke
+// / cleave cost instead" offers on a card, or an empty list for the
+// vast majority that have none (S22).
+export function alternativeCostsOf(card: CardView): AlternativeCostView[] {
+  return card.alternative_costs ?? [];
+}
+
+// alternativeCostByKey finds the offer a cast is paying. Undefined
+// for the ordinary case — `key` undefined means "paying the printed
+// mana cost", which is not an offer and has no view.
+export function alternativeCostByKey(
+  card: CardView,
+  key: string | undefined,
+): AlternativeCostView | undefined {
+  if (key === undefined) return undefined;
+  return alternativeCostsOf(card).find((a) => a.key === key);
 }
 
 // modeOptionCastable reports whether an option can be chosen right

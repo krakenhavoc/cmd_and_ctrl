@@ -60,8 +60,8 @@ describe("hasXCost + xValue on the prompt — S20 sub-PR 3", () => {
   });
 
   it("carries the announced X through the targeting prompt", () => {
-    begin(card({ mana_cost: "{X}{R}", legal_targets: { players: ["p1"] } }), "any", 4);
-    expect(get(targeting)?.xValue).toBe(4);
+    begin(card({ mana_cost: "{X}{R}", legal_targets: { players: ["p1"] } }), "any", { xValue: 4 });
+    expect(get(targeting)?.choices?.xValue).toBe(4);
     cancel();
   });
 });
@@ -101,12 +101,12 @@ describe("modal targeting", () => {
   });
 
   it("beginForMode takes the option's legal set and label, and carries the modes", () => {
-    beginForMode(charm, charm.modes!.options[0], [0], 3);
+    beginForMode(charm, charm.modes!.options[0], [0], { xValue: 3 });
     const t = get(targeting)!;
     expect(t.mode).toBe("player");
     expect(t.label).toBe("Exile target player's graveyard.");
     expect(t.modes).toEqual([0]);
-    expect(t.xValue).toBe(3);
+    expect(t.choices?.xValue).toBe(3);
     expect(isLegalPlayerTarget(t, "p1")).toBe(true);
     expect(isLegalPlayerTarget(t, "p0")).toBe(false);
     expect(isLegalCardTarget(t, "c-anything")).toBe(false);
