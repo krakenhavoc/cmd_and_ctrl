@@ -9,6 +9,19 @@ on:
       - main
       - develop
   pull_request:
+  # Validate any branch on demand: Actions -> this workflow -> Run workflow.
+  #
+  # Topic-branch pushes deliberately trigger nothing (the push filter above is
+  # main/develop only), so a branch that never opens a pull request gets no
+  # build, no tests and no gofmt. That is a real gap when work is prepared on
+  # a branch before anyone is ready to open a PR for it.
+  #
+  # This is deploy-safe by construction: cmdctrl-cd is gated on
+  # `github.event_name == 'push'`, so a manual run can only ever execute
+  # cmdctrl-ci. The artifact-upload steps are gated the same way, so a
+  # dispatch also publishes nothing -- it compiles, tests and typechecks,
+  # and stops there.
+  workflow_dispatch:
 
 concurrency:
   group: cmdctrl-cd-${{ github.ref }}
