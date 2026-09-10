@@ -13,10 +13,9 @@ import (
 // these tests are about the three cards that shipped without their
 // headline mode, plus the one new card the mechanism unlocked.
 
-const (
-	washAwayOracle    = "a4630da0-fe9b-4ead-9621-eac4b7825c35"
-	mulldrifterOracle = "24d0f5e7-0d9e-4b76-900e-a7274e80312d"
-)
+// mulldrifterOracle is declared in flicker_test.go — same package, and
+// that batch got there first.
+const washAwayOracle = "a4630da0-fe9b-4ead-9621-eac4b7825c35"
 
 // castWithAltCost is castCatalogSpell with an alternative cost
 // claimed. Seeds the card in the active seat's hand, walks to a main
