@@ -26,7 +26,7 @@ tractable for one person.
 ### 1. `develop` is the integration branch; `main` stays the release branch
 
 Feature branches PR into `develop`. `develop` deploys to
-`dev.cmd.labxp.io` on every push. Promotion to production is a PR
+`cmd-dev.labxp.io` on every push. Promotion to production is a PR
 from `develop` to `main`, which deploys to `cmd.labxp.io`.
 
 `main` remains exactly what it is today, so nothing about the
@@ -38,7 +38,7 @@ more than a branch does.
 ### 2. Two VMs, one definition *(revised)*
 
 The develop preview is its own Proxmox VM, `cmd-and-ctrl-dev`, behind
-`dev.cmd.labxp.io`. It is declared in the HomeLab repo as a second
+`cmd-dev.labxp.io`. It is declared in the HomeLab repo as a second
 entry in a `for_each` over an environments map, sharing the cloud-init
 template, the systemd unit, the Caddy config and the data-disk layout
 with production.
@@ -127,7 +127,7 @@ ADR with a test asserting it directly
 ### 6. Discord: a second redirect URI, and no bot on dev
 
 The existing Discord application gains
-`https://dev.cmd.labxp.io/auth/discord/callback` as an additional
+`https://cmd-dev.labxp.io/auth/discord/callback` as an additional
 redirect URI, so sign-in works on dev with no second app to keep in
 sync.
 
