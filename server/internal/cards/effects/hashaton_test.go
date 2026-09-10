@@ -73,8 +73,8 @@ func seedLandOnBattlefield(g *game.Game, owner uuid.UUID, name, typeLine string)
 func emptyHandToLibrary(g *game.Game, p *game.Player) {
 	g.WithWriteLock(func() {
 		for p.Hand.Size() > 0 {
-			c, ok := p.Hand.Top()
-			if !ok {
+			c, err := p.Hand.Top()
+			if err != nil {
 				return
 			}
 			_, _ = game.MoveCard(p.Hand, p.Library, c.InstanceID)
