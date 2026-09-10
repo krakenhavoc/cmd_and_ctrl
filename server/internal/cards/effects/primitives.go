@@ -6,7 +6,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// primitives.go declares the 15 composable effect primitives. Each
+// primitives.go declares the composable effect primitives. Each
 // is a plain struct carrying the parameters the effect needs, with
 // an Apply(ctx *Context) error method that delegates to the game's
 // locked-context API (effect_api.go).
@@ -141,6 +141,117 @@ type ExileTarget struct {
 
 func (e ExileTarget) Apply(ctx *Context) error {
 	return ctx.Game.ExileCardForEffect(e.Target)
+}
+
+// ReturnFromExile puts a card that is currently in exile back onto
+// the battlefield — the other half of a flicker, and the primitive
+// the catalog was missing entirely before S22 (ExileTarget could
+// send a permanent to exile; nothing brought one back).
+//
+// Controller is who it returns under; leave it zero for "under its
+// owner's control", which is what nearly every card says. Set Tapped
+// for "return that card to the battlefield tapped".
+//
+// The returned permanent is a NEW OBJECT with a fresh InstanceID
+// (CR 400.7) and re-triggers ETB — both the `Triggered` /
+// `EventETB` path and the direct `OnETB` hook. A target that is no
+// longer in exile is silently skipped: a delayed return whose card
+// moved on in the meantime does nothing rather than erroring.
+type ReturnFromExile struct {
+	Target     uuid.UUID
+	Controller uuid.UUID
+	Tapped     bool
+}
+
+func (r ReturnFromExile) Apply(ctx *Context) error {
+	z := ctx.Game.FindCardZoneForEffect(r.Target)
+	if z == nil || z.Kind != game.ZoneExile {
+		return nil
+	}
+	_, err := ctx.Game.ReturnFromExileToBattlefieldForEffect(r.Target, r.Controller, r.Tapped)
+	return err
+}
+
+// Flicker is "exile it, then return it to the battlefield" resolved
+// in one go — Y'shtola Rhul, Thassa, Restoration Angel, Ephemerate.
+// The permanent is gone for no observable window at all, but it
+// still comes back as a new object, so counters and damage fall off
+// and every ETB fires again.
+//
+// The delayed variant ("exile it. At the beginning of the next end
+// step, return it") is NOT this: it exiles now and schedules a
+// separate delayed trigger for the return — see
+// ScheduleDelayedTrigger.
+type Flicker struct {
+	Target     uuid.UUID
+	Controller uuid.UUID
+	Tapped     bool
+}
+
+func (f Flicker) Apply(ctx *Context) error {
+	if err := (ExileTarget{Target: f.Target}).Apply(ctx); err != nil {
+		return err
+	}
+	return ReturnFromExile{Target: f.Target, Controller: f.Controller, Tapped: f.Tapped}.Apply(ctx)
+}
+
+// ScheduleDelayedTrigger registers a CR 603.7 delayed triggered
+// ability: "at the beginning of the next end step, <do X>". The
+// instruction sits on the Game rather than on any card — the spell
+// that created it is usually in a graveyard by the time it fires —
+// and goes on the stack when the named step begins, so every player
+// gets a response window before it resolves.
+//
+// "Next" needs no bookkeeping: the queue is drained on step ENTRY,
+// so an ability scheduled during an end step waits for the following
+// one. That is observable — a blink cast in an opponent's end step
+// returns the permanent a whole turn later.
+//
+// Cards is the payload, stamped onto the fired stack item's Targets;
+// Effect reads it back from item.Targets rather than closing over it,
+// which is what keeps the trigger correct across a Clone / undo.
+type ScheduleDelayedTrigger struct {
+	// At is the step whose beginning fires the trigger. Zero means
+	// game.StepEnd — "the next end step" is the overwhelmingly
+	// common case.
+	At game.Step
+
+	// Label is the stack-overlay copy, phrased like a trigger's:
+	// "Waterbender's Restoration — return the exiled creatures".
+	Label string
+
+	// Controller is who controls the delayed ability. Zero means the
+	// controller of the effect scheduling it (CR 603.7d).
+	Controller uuid.UUID
+
+	// Cards is the instance IDs the effect acts on.
+	Cards []uuid.UUID
+
+	// Effect runs when the trigger's stack item resolves. Same
+	// contract as a triggered ability's: read everything off `item`
+	// and the `g` handed in, capture neither a *Game nor a pointer
+	// into a zone slice.
+	Effect func(g *game.Game, item *game.StackItem) error
+}
+
+func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
+	controller := s.Controller
+	if controller == uuid.Nil {
+		controller = ctx.Controller()
+	}
+	at := s.At
+	if at == "" {
+		at = game.StepEnd
+	}
+	ctx.Game.ScheduleDelayedTriggerForEffect(game.DelayedTrigger{
+		Controller:   controller,
+		SourceCardID: ctx.Source(),
+		Label:        s.Label,
+		At:           at,
+		Cards:        s.Cards,
+		Effect:       s.Effect,
+	})
+	return nil
 }
 
 // BounceToHand returns a card to its owner's hand. Used by

@@ -7,15 +7,30 @@ on:
   push:
     branches:
       - main
+      - develop
   pull_request:
+  # Validate any branch on demand: Actions -> this workflow -> Run workflow.
+  #
+  # Topic-branch pushes deliberately trigger nothing (the push filter above is
+  # main/develop only), so a branch that never opens a pull request gets no
+  # build, no tests and no gofmt. That is a real gap when work is prepared on
+  # a branch before anyone is ready to open a PR for it.
+  #
+  # This is deploy-safe by construction: cmdctrl-cd is gated on
+  # `github.event_name == 'push'`, so a manual run can only ever execute
+  # cmdctrl-ci. The artifact-upload steps are gated the same way, so a
+  # dispatch also publishes nothing -- it compiles, tests and typechecks,
+  # and stops there.
+  workflow_dispatch:
 
 concurrency:
   group: cmdctrl-cd-${{ github.ref }}
   # Cancel superseded runs on PRs/topic branches so the single
-  # self-hosted runner doesn't queue stale builds. Keep main
-  # serialized (never cancel) so an in-flight deploy can't be
-  # aborted mid-rsync.
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  # self-hosted runner doesn't queue stale builds. Keep both deploy
+  # branches serialized (never cancel) so an in-flight deploy can't be
+  # aborted mid-rsync -- that would leave a host with a new binary and
+  # a half-written client bundle.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
 jobs:
   cmdctrl-ci:
@@ -125,21 +140,35 @@ jobs:
   cmdctrl-cd:
     runs-on: self-hosted
     needs: cmdctrl-ci
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     env:
-      CMDCTRL_HOST: ${{ vars.CMDCTRL_HOST }}
+      # main deploys production, develop deploys the preview box. Distinct
+      # variable names rather than deployment environments on purpose: an
+      # environment variable that someone forgets to define silently falls
+      # back to the repo-level value, which here would mean deploying the
+      # develop branch onto production. An unset CMDCTRL_DEV_HOST instead
+      # fails the guard step below.
+      DEPLOY_ENV: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+      CMDCTRL_HOST: >-
+        ${{ github.ref == 'refs/heads/main' && vars.CMDCTRL_HOST || vars.CMDCTRL_DEV_HOST }}
       SSH_OPTS: -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Verify CMDCTRL_HOST is set
+      - name: Verify the deploy target is set
         run: |
           if [ -z "${CMDCTRL_HOST}" ]; then
-            echo "::error::Repo variable CMDCTRL_HOST is not set. Configure under Settings → Secrets and variables → Actions → Variables."
+            if [ "${DEPLOY_ENV}" = "prod" ]; then
+              echo "::error::Repo variable CMDCTRL_HOST is not set. Configure under Settings → Secrets and variables → Actions → Variables."
+            else
+              echo "::error::Repo variable CMDCTRL_DEV_HOST is not set, so the develop branch has nowhere to deploy. Configure under Settings → Secrets and variables → Actions → Variables."
+            fi
             exit 1
           fi
-          echo "Deploy target: krkn@${CMDCTRL_HOST}"
+          echo "Deploy target: krkn@${CMDCTRL_HOST} (${DEPLOY_ENV})"
 
       - name: Download server binary
         uses: actions/download-artifact@v6
@@ -189,6 +218,53 @@ jobs:
             krkn@${CMDCTRL_HOST}:/opt/cmd_and_ctrl/scripts/
           ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} 'chmod +x /opt/cmd_and_ctrl/scripts/*.sh'
 
+      # Caddy's config ships from this repo because its @api matcher mirrors
+      # the server's route table (see deploy/Caddyfile). The HomeLab cloud-init
+      # template only writes a first-boot placeholder and cannot update a
+      # running host -- that VM carries lifecycle ignore_changes on its
+      # cloud-init -- so this step is the only thing that maintains it.
+      #
+      # RESTART, not reload. The unit's ExecReload is
+      # `caddy reload --config ... --force`, which pushes the config through the
+      # admin API on localhost:2019, and deploy/Caddyfile sets `admin off`. So
+      # reload always fails with "connection refused" no matter how valid the
+      # config is. Caddy restarts in well under a second and the tunnel
+      # reconnects on its own.
+      #
+      # And it restarts unconditionally rather than only when the file changed.
+      # With `admin off` there is no way to ask Caddy what it is currently
+      # serving, so "the file on disk matches the repo" does not prove "Caddy
+      # loaded it" -- those diverge exactly when a previous deploy installed the
+      # file and then failed to reload, which is how this bug was found. An
+      # unconditional restart is the only version of this step that heals that
+      # state instead of preserving it forever.
+      #
+      # Validated before installation, so a broken config fails the deploy
+      # rather than taking the site down. If the restart itself fails the
+      # previous file is put back and Caddy restarted again, so the site does
+      # not stay down on a config that passed validation but not startup.
+      - name: Deploy Caddy config
+        run: |
+          rsync -a -e "ssh ${SSH_OPTS}" deploy/Caddyfile \
+            krkn@${CMDCTRL_HOST}:/tmp/Caddyfile.new
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} '
+            set -eu
+            caddy validate --config /tmp/Caddyfile.new --adapter caddyfile
+            BACKUP="/etc/caddy/Caddyfile.bak.$(date +%Y%m%d-%H%M%S)"
+            sudo cp -a /etc/caddy/Caddyfile "$BACKUP"
+            sudo install -o root -g root -m 0644 /tmp/Caddyfile.new /etc/caddy/Caddyfile
+            if sudo systemctl restart caddy; then
+              echo "Caddy restarted with the config from this deploy."
+            else
+              echo "::error::Caddy failed to start; restoring $BACKUP" >&2
+              sudo install -o root -g root -m 0644 "$BACKUP" /etc/caddy/Caddyfile
+              sudo systemctl restart caddy || true
+              exit 1
+            fi
+            systemctl is-active caddy
+            rm -f /tmp/Caddyfile.new
+          '
+
       # Provision the bug-report token (ADR 0017) into the server's
       # env file (/etc/cmd_and_ctrl/env — written by the HomeLab
       # cloud-init template, read by the systemd units) so nobody has
@@ -222,10 +298,78 @@ jobs:
       # reports working (see ADR 0017 §6).
       - name: Sync server env (public base URL)
         env:
-          PUBLIC_BASE_URL: ${{ vars.CMDCTRL_PUBLIC_BASE_URL || 'https://cmd.labxp.io' }}
+          PUBLIC_BASE_URL: >-
+            ${{ github.ref == 'refs/heads/main'
+                && (vars.CMDCTRL_PUBLIC_BASE_URL || 'https://cmd.labxp.io')
+                || (vars.CMDCTRL_DEV_PUBLIC_BASE_URL || 'https://cmd-dev.labxp.io') }}
         run: |
           printf '%s' "${PUBLIC_BASE_URL}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
             'sudo /opt/cmd_and_ctrl/scripts/set-server-env.sh CMDCTRL_PUBLIC_BASE_URL'
+
+      # Facts about how these hosts are reached, not preferences, so they are
+      # set unconditionally rather than exposed as variables.
+      #
+      # TRUST_FORWARDED: cloudflared forwards to Caddy from 127.0.0.1, so every
+      # request reaches the server from the loopback address. Without this the
+      # per-IP rate limiters key every client in the world to one bucket -- see
+      # the avatar limiter in server/internal/lobby/http.go.
+      #
+      # SECURE_COOKIES: the browser's connection is https at the Cloudflare
+      # edge even though this origin speaks plain http, so session cookies
+      # should carry Secure.
+      - name: Sync server env (proxy and cookie flags)
+        run: |
+          for KEY in CMDCTRL_TRUST_FORWARDED CMDCTRL_SECURE_COOKIES; do
+            printf '%s' "1" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+              "sudo /opt/cmd_and_ctrl/scripts/set-server-env.sh ${KEY}"
+            echo "set ${KEY}=1"
+          done
+
+      # Discord OAuth sign-in. All three are required -- discord.Config.Enabled()
+      # is false if any is blank, /auth/discord/start returns 503 and the client
+      # hides the sign-in button via /auth/discord/config -- so they are set
+      # together or not at all. None of them was provisioned by any pipeline
+      # before this, which is why Discord sign-in could not have worked even
+      # once Caddy started proxying /auth/*.
+      #
+      # REDIRECT_URI must EXACTLY match a redirect registered on the Discord
+      # application, and prod and dev necessarily differ, so both values must be
+      # registered there. Mismatch is the most common failure here; the callback
+      # handler deliberately surfaces Discord's error code verbatim.
+      #
+      # The bot's three variables (CMDCTRL_DISCORD_BOT_TOKEN, _APP_ID,
+      # _GUILD_IDS) are deliberately NOT set here. The bot is a separate unit
+      # reading a separate file as a separate user
+      # (EnvironmentFile=/etc/cmd_and_ctrl/bot.env, User=cmdctrl-bot), and none
+      # of that exists yet on either host -- no unit, no bot.env, no
+      # cmdctrl-bot user. Writing them into the server's env file would put
+      # them somewhere the bot never reads. Provisioning the bot is its own
+      # piece of work; see ADR 0004 section on the bot environment.
+      - name: Sync server env (Discord sign-in)
+        env:
+          CMDCTRL_DISCORD_CLIENT_ID: ${{ secrets.CMDCTRL_DISCORD_CLIENT_ID }}
+          CMDCTRL_DISCORD_CLIENT_SECRET: ${{ secrets.CMDCTRL_DISCORD_CLIENT_SECRET }}
+          CMDCTRL_DISCORD_REDIRECT_URI: >-
+            ${{ github.ref == 'refs/heads/main'
+                && vars.CMDCTRL_DISCORD_REDIRECT_URI
+                || vars.CMDCTRL_DEV_DISCORD_REDIRECT_URI }}
+        run: |
+          missing=0
+          for KEY in CMDCTRL_DISCORD_CLIENT_ID CMDCTRL_DISCORD_CLIENT_SECRET \
+                     CMDCTRL_DISCORD_REDIRECT_URI; do
+            VALUE="${!KEY}"
+            if [ -z "${VALUE}" ]; then
+              echo "::warning::${KEY} is not configured; skipping."
+              missing=$((missing + 1))
+              continue
+            fi
+            printf '%s' "${VALUE}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+              "sudo /opt/cmd_and_ctrl/scripts/set-server-env.sh ${KEY}"
+            echo "set ${KEY}"
+          done
+          if [ "${missing}" -gt 0 ]; then
+            echo "::notice::${missing} of 3 Discord sign-in values unset -- /auth/discord/start will return 503 and the client will hide the sign-in button."
+          fi
 
       - name: Restart cmd-and-ctrl service
         run: |

@@ -153,6 +153,39 @@ const (
 	// sub-PR 1.
 	EventSacrifice EventKind = "sacrifice"
 
+	// EventAttack — CardID was declared as an attacker. Actor is the
+	// attacking creature's controller; Target is the player it is
+	// attacking. Fires once per attacking creature, the way
+	// EventDrawCard fires per card: a three-creature alpha strike
+	// produces three events, so "whenever a creature you control
+	// attacks" (Hellrider) triggers three times rather than once with
+	// a count. Cards printed as "whenever one or more creatures you
+	// control attack" therefore over-fire — the same CR 603.1 batching
+	// gap EventETB already has, and no card in the catalog has that
+	// wording.
+	//
+	// Emitted from DeclareAttacker at the moment the creature is
+	// stamped — inside the declare-attackers step, before blockers
+	// exist — and only on a creature's FIRST declaration. The sandbox
+	// lets a player re-point an already-attacking creature at a
+	// different defender (paper does not); re-pointing is not a second
+	// attack and must not fire the trigger twice.
+	//
+	// Target is always a player. DeclareAttacker takes a player ID and
+	// validates it against the seats — the engine has no
+	// attack-a-planeswalker path at all — so "the player or
+	// planeswalker it's attacking" collapses to the player. When
+	// planeswalker defenders land, Target widens to "player or
+	// permanent" the way EventDealDamage's already is, and existing
+	// consumers keep working because they read Target as an opaque ID.
+	//
+	// Combat STATE is older and separate: DeclareAttacker stamps
+	// Card.AttackingTarget and ClearCombat wipes it, so a spell that
+	// reads the board at resolution (Aetherize) needs no event. This
+	// kind exists for triggers, which need the moment rather than the
+	// state. Added in S22.
+	EventAttack EventKind = "attack"
+
 	// EventTrigger — a triggered ability was announced onto
 	// PendingTriggers. Legacy (manual) announce goes through
 	// AnnounceTrigger in S13.1; S19's auto-announce will flow
@@ -181,6 +214,16 @@ const (
 	// runStepEntryHooksLocked on entering StepUpkeep. Added in S19
 	// sub-PR 5.
 	EventBeginUpkeep EventKind = "begin_upkeep"
+
+	// EventBeginEndStep — the active player's end step began. Actor
+	// is the active player (whose end step it is). "At the beginning
+	// of your end step" (Thassa, Y'shtola Rhul) gates AppliesTo on
+	// ev.Actor == controller; "at the beginning of the end step"
+	// (any player's) does not. Emitted from runStepEntryHooksLocked
+	// on entering StepEnd, alongside the delayed-trigger drain —
+	// both are "beginning of the end step" triggers and land on
+	// PendingTriggers together. Added in S22.
+	EventBeginEndStep EventKind = "begin_end_step"
 
 	// EventManaAbilityActivated — a mana-producing ability fired.
 	// Actor = controller, Source = the permanent that produced the

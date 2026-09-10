@@ -940,3 +940,123 @@ func scryReason(n int) string {
 	}
 	return "Scry " + strconv.Itoa(n)
 }
+
+// ReturnFromExileToBattlefieldForEffect is the other half of a
+// flicker: it takes a card sitting in exile and puts it back onto the
+// battlefield. ExileCardForEffect could already send a permanent
+// there; until S22 nothing could bring one back, which is why
+// "exile it, then return it" had no expression at all.
+//
+// `controller` is who it returns under — uuid.Nil (or a player who
+// has left) means "under its owner's control", which is what almost
+// every card says; Thassa's "under your control" passes the
+// controller explicitly. `tapped` covers "return that card to the
+// battlefield tapped".
+//
+// The returned permanent is a NEW OBJECT (CR 400.7): it gets a fresh
+// InstanceID and none of the old object's battlefield state — no
+// counters, no damage, no combat declarations, no summoning-sickness
+// or timestamp history, and no lingering exile-play permission. That
+// is the rules-correct behaviour and it is what makes blink a removal
+// answer (counters fall off, a stolen creature goes home) as well as
+// an ETB engine. Returns the new instance ID; a caller that needs to
+// keep referring to the permanent must use it, because the pre-exile
+// ID now names nothing.
+//
+// The entry runs through the CR 614 replacement pipeline exactly as
+// an ordinary battlefield entry does, so Authority of the Consuls
+// taps the blinked creature and a self "enters tapped" replacement
+// still applies. The pipeline is consulted BEFORE the card is lifted
+// out of exile: if it queues a CR 616 ordering prompt the card has
+// not moved yet, so the return simply doesn't happen rather than
+// stranding the card between zones. (That path needs two competing
+// replacements on one entry; no card in the catalog produces it
+// today.)
+//
+// Both EventETB and the catalog's OnETB hook fire, so the permanent
+// re-triggers everything a fresh entry would.
+//
+// Caller must hold g.mu. Added in S22.
+func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUID, tapped bool) (uuid.UUID, error) {
+	if g.Exile == nil || !g.Exile.Contains(cardID) {
+		return uuid.Nil, ErrCardNotFound
+	}
+	// Resolve the destination controller before the pipeline runs: a
+	// replacement that asks "is the entering permanent mine?"
+	// (Authority of the Consuls) reads Card.Controller, and while the
+	// card sits in exile that field still names whoever controlled it
+	// before it left.
+	newController := controller
+	for i := range g.Exile.Cards {
+		if g.Exile.Cards[i].InstanceID != cardID {
+			continue
+		}
+		if newController == uuid.Nil || g.playerByIDLocked(newController) == nil {
+			newController = g.Exile.Cards[i].Owner
+		}
+		g.Exile.Cards[i].Controller = newController
+		break
+	}
+	ev := &ReplacementEvent{
+		Kind:    RepEventMove,
+		Actor:   newController,
+		CardID:  cardID,
+		OldZone: ZoneExile,
+		NewZone: ZoneBattlefield,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		// A CR 616 ordering prompt is open. Nothing has moved; the
+		// card stays in exile and the return is dropped.
+		return uuid.Nil, nil
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return uuid.Nil, err
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled || out.NewZone != ZoneBattlefield {
+		// Canceled, or redirected elsewhere by a replacement. There
+		// is no generic "put it wherever the pipeline said" helper
+		// for an exile source, so a redirect is treated as a cancel
+		// rather than guessed at.
+		return uuid.Nil, nil
+	}
+	card, err := g.Exile.Remove(cardID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	newID := uuid.New()
+	card.InstanceID = newID
+	card.Controller = newController
+	card.Tapped = tapped || out.EntersTapped
+	card.Counters = nil
+	card.KnownBy = nil
+	card.ExilePlay = ExilePlayPermission{}
+	card.DamageMarked = 0
+	card.MarkedLethalByDeathtouch = false
+	card.AttackingTarget = uuid.Nil
+	card.BlockingTarget = uuid.Nil
+	card.GoadedBy = uuid.Nil
+	card.FaceDown = false
+	card.BattleX = 0
+	card.BattleY = 0
+	card.EnteredBattlefieldAt = 0
+	card.SummonedThisTurn = false
+	card.effective = nil
+	g.Battlefield.PushTop(card)
+	g.markCardKnownInZoneLocked(g.Battlefield, newID)
+	for name, n := range out.EntersWithCounters {
+		_ = g.AddCounterForEffect(newID, name, n)
+	}
+	g.EmitEvent(Event{
+		Kind:    EventZoneMove,
+		Actor:   newController,
+		CardID:  newID,
+		OldZone: ZoneExile,
+		NewZone: ZoneBattlefield,
+	})
+	g.EmitEvent(Event{Kind: EventETB, Actor: newController, CardID: newID})
+	g.fireETBHookLocked(newID, card.OracleID)
+	return newID, nil
+}

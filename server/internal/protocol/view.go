@@ -74,6 +74,14 @@ type GameView struct {
 	// next priority-grant boundary. Empty when no triggers are
 	// pending. Added in S13.1.
 	PendingTriggers []StackItemView `json:"pending_triggers,omitempty"`
+	// DelayedTriggers is the queue of CR 603.7 delayed triggered
+	// abilities still owed — "at the beginning of the next end step,
+	// return that card to the battlefield". Public information: the
+	// ability was announced when its source resolved, and the cards
+	// it names sit in the shared exile zone, so no per-viewer
+	// redaction applies. Empty when nothing is pending. Added in
+	// S22.
+	DelayedTriggers []DelayedTriggerView `json:"delayed_triggers,omitempty"`
 	// SplitSecondActive mirrors `Game.SplitSecondActive` — true
 	// while any item with split second is on the stack (CR 702.79).
 	// Drives the client's "no responses allowed" UI gating. Added
@@ -258,6 +266,21 @@ type StackItemView struct {
 	Distribution map[string]int  `json:"distribution,omitempty"`
 	HoldPriority bool            `json:"hold_priority,omitempty"`
 	SplitSecond  bool            `json:"split_second,omitempty"`
+}
+
+// DelayedTriggerView is the wire shape of one queued CR 603.7
+// delayed triggered ability. Mirrors `game.DelayedTrigger` with
+// UUIDs serialised as strings; the Effect closure has no wire form
+// (Label is what the client renders). See
+// server/internal/game/delayed.go. Added in S22.
+type DelayedTriggerView struct {
+	ID          string   `json:"id"`
+	Controller  string   `json:"controller"`
+	Source      string   `json:"source,omitempty"`
+	Label       string   `json:"label,omitempty"`
+	At          string   `json:"at"`
+	CreatedTurn int      `json:"created_turn,omitempty"`
+	Cards       []string `json:"cards,omitempty"`
 }
 
 // TargetRefView is the wire shape of a single announce-time target
@@ -698,6 +721,7 @@ func ViewOfGame(g *game.Game) GameView {
 			StartingSeat:      g.StartingSeat,
 			StackItems:        viewOfStackItemsInStackOrder(g),
 			PendingTriggers:   viewOfStackItemSlice(g.PendingTriggers),
+			DelayedTriggers:   viewOfDelayedTriggers(g.DelayedTriggers),
 			SplitSecondActive: g.SplitSecondActive,
 			DiscardPending:    viewOfDiscardPending(g.DiscardPending),
 			PendingChoices:    viewOfPendingChoices(g),
@@ -1056,6 +1080,37 @@ func viewOfStackItemSlice(items []*game.StackItem) []StackItemView {
 	return out
 }
 
+// viewOfDelayedTriggers mirrors the queue of CR 603.7 delayed
+// triggered abilities. Nil for an empty queue so json.Marshal's
+// omitempty drops the field. Added in S22.
+func viewOfDelayedTriggers(queue []*game.DelayedTrigger) []DelayedTriggerView {
+	if len(queue) == 0 {
+		return nil
+	}
+	out := make([]DelayedTriggerView, 0, len(queue))
+	for _, dt := range queue {
+		if dt == nil {
+			continue
+		}
+		view := DelayedTriggerView{
+			ID:          dt.ID.String(),
+			Controller:  uuidStringOrEmpty(dt.Controller),
+			Source:      uuidStringOrEmpty(dt.SourceCardID),
+			Label:       dt.Label,
+			At:          string(dt.At),
+			CreatedTurn: dt.CreatedTurn,
+		}
+		for _, cardID := range dt.Cards {
+			view.Cards = append(view.Cards, cardID.String())
+		}
+		out = append(out, view)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
 // viewOfStackItem mirrors a single game.StackItem to its wire shape.
 // Distribution and Targets are reallocated; scalar fields are
 // stringified UUIDs.
@@ -1310,6 +1365,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		StartingSeat:      v.StartingSeat,
 		StackItems:        v.StackItems,
 		PendingTriggers:   v.PendingTriggers,
+		DelayedTriggers:   v.DelayedTriggers,
 		SplitSecondActive: v.SplitSecondActive,
 		DiscardPending:    v.DiscardPending,
 		PendingChoices:    filterPendingChoices(v.PendingChoices, isKnower),
