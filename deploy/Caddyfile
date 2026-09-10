@@ -1,0 +1,48 @@
+# Caddy configuration for the cmd_and_ctrl hosts.
+#
+# Authoritative and shipped by the CD job in .github/workflows/ci-cd.yml,
+# which validates it with `caddy validate` and reloads Caddy only when the
+# content actually changes.
+#
+# This file lives in THIS repo deliberately. The @api matcher mirrors the
+# routes registered in server/cmd/server/main.go, server/internal/lobby/http.go
+# and server/internal/cards/http.go, so a new route and its proxy entry belong
+# in the same pull request. While it lived in the HomeLab cloud-init template
+# nobody editing routes ever opened it: /auth/*, /avatars/*, /bugreport* and
+# /logout were never added, and for months they served index.html instead of
+# reaching the server. The client then failed to parse the HTML and hid the
+# feature, so Discord sign-in and bug reports looked absent rather than broken.
+#
+# The HomeLab template writes a placeholder at first boot and does not manage
+# this file afterwards -- the VM carries lifecycle ignore_changes on its
+# cloud-init, so Terraform cannot update a running host anyway.
+#
+# HTTP only. The Cloudflare tunnel terminates TLS at the edge and forwards
+# plain HTTP to this origin, so Caddy must not try to obtain its own
+# certificate -- hence auto_https off.
+{
+	admin off
+	auto_https off
+}
+
+:80 {
+	encode zstd gzip
+
+	# ONE `path` directive with many arguments. Arguments to a single matcher
+	# are OR'ed; repeating the directive would AND them and match nothing.
+	#
+	# Keep in sync with the server's route table and client/vite.config.ts.
+	# A missing entry fails silently: the path falls through to file_server,
+	# the client receives index.html, JSON parsing fails, and the feature
+	# quietly disappears instead of erroring.
+	@api path /ws /healthz /me /logout /games /games/* /cards/ /cards/* /admin/* /auth/* /avatars/* /bugreport /bugreport/*
+	reverse_proxy @api 127.0.0.1:8080
+
+	# Do NOT add `header_up Host`. Caddy forwards the original Host by default,
+	# and the server's WebSocket CheckOrigin compares the Origin header's host
+	# against the request Host. Rewriting Host to the upstream 403s every /ws
+	# upgrade while ordinary HTTP keeps working -- an unpleasant way to spend
+	# an afternoon.
+	root * /var/www/cmdctrl-client
+	file_server
+}

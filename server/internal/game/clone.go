@@ -53,6 +53,17 @@ func (g *Game) cloneLocked() *Game {
 			out.PendingTriggers[i] = cloneStackItem(t)
 		}
 	}
+	// S22 delayed triggers. Deep-copied for the same reason
+	// PendingTriggers is: an undo that rewinds past the spell which
+	// scheduled the return must un-schedule it, and one that rewinds
+	// to a point where it was still owed must restore it intact.
+	// The Effect func is shared — see cloneDelayedTrigger.
+	if len(g.DelayedTriggers) > 0 {
+		out.DelayedTriggers = make([]*DelayedTrigger, len(g.DelayedTriggers))
+		for i, d := range g.DelayedTriggers {
+			out.DelayedTriggers[i] = cloneDelayedTrigger(d)
+		}
+	}
 	if len(g.LoyaltyActivatedThisTurn) > 0 {
 		out.LoyaltyActivatedThisTurn = make(map[uuid.UUID]bool, len(g.LoyaltyActivatedThisTurn))
 		for k, v := range g.LoyaltyActivatedThisTurn {
@@ -364,6 +375,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.SplitSecondActive = src.SplitSecondActive
 	g.StackMeta = src.StackMeta
 	g.PendingTriggers = src.PendingTriggers
+	g.DelayedTriggers = src.DelayedTriggers
 	g.LoyaltyActivatedThisTurn = src.LoyaltyActivatedThisTurn
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.DiscardPending = src.DiscardPending

@@ -164,6 +164,12 @@ export interface GameView {
   // APNAP-ordered queue of triggered abilities waiting to hit the
   // stack (S13.1, CR 603.3b). Empty when no triggers are pending.
   pending_triggers?: StackItemView[];
+  // Queue of CR 603.7 delayed triggered abilities still owed — "at
+  // the beginning of the next end step, return that card to the
+  // battlefield" (S22). Public information: the ability was
+  // announced when its source resolved and the cards it names sit in
+  // the shared exile zone. Empty when nothing is pending.
+  delayed_triggers?: DelayedTriggerView[];
   // Mirrors `Game.SplitSecondActive` — true while any item with
   // split second is on the stack (S13.1, CR 702.79). Drives the
   // client's "no responses allowed" UI gating.
@@ -279,6 +285,20 @@ export interface DamageAssignmentView {
   attacker_power: number;
   allow_trample?: boolean;
   has_deathtouch?: boolean;
+}
+
+// DelayedTriggerView mirrors `protocol.DelayedTriggerView`
+// server-side: one queued CR 603.7 delayed triggered ability. `at`
+// is the step whose beginning fires it ("end", "upkeep"); `cards`
+// are the instance IDs the effect acts on. Added in S22.
+export interface DelayedTriggerView {
+  id: string;
+  controller: string;
+  source?: string;
+  label?: string;
+  at: string;
+  created_turn?: number;
+  cards?: string[];
 }
 
 // StackItemView mirrors `protocol.StackItemView` server-side: the
