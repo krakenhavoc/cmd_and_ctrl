@@ -141,10 +141,14 @@ test.describe("S19 ETB triggers", () => {
     expect(prompt?.reason).toMatch(/Reclamation Sage/i);
 
     // Caster's browser shows the dialog; opponent's does not.
-    await expect(caster.page.getByText(/Reclamation Sage/i, { exact: false })).toBeVisible({
-      timeout: 5000,
-    });
-    await expect(opponent.page.getByText(/Reclamation Sage —/i, { exact: false })).toHaveCount(0);
+    // Anchor on the modal's accessible name (its <h2> is the
+    // server's Question copy) rather than a bare page-wide text
+    // scan: that also matched the stack overlay and the targeting
+    // banner, and it raced the WS delta on a 5s budget.
+    await expect(caster.page.getByRole("dialog", { name: /Reclamation Sage —/i })).toBeVisible();
+    await expect(opponent.page.getByRole("dialog", { name: /Reclamation Sage —/i })).toHaveCount(
+      0,
+    );
 
     // Click "Yes" in the caster's dialog.
     await caster.page.getByRole("button", { name: /^Yes$/ }).click();
@@ -153,10 +157,12 @@ test.describe("S19 ETB triggers", () => {
     // board enters targeting mode; the Sol Ring is a legal target
     // and gets clicked.
     await waitForPickTarget(setup, caster.playerID);
-    await expect(caster.page.getByText(/Reclamation Sage.*triggered/i)).toBeVisible();
+    await expect(
+      caster.page.getByRole("dialog", { name: /Select target for Reclamation Sage/i }),
+    ).toBeVisible();
     await caster.page
-      .locator("[aria-label='Opponent board']")
-      .getByRole("button", { name: "Sol Ring" })
+      .getByRole("region", { name: "Opponent board" })
+      .getByRole("button", { name: "Sol Ring", exact: true })
       .click();
 
     // The pick puts the trigger on the stack; the Sol Ring survives
@@ -237,8 +243,8 @@ test.describe("S19 ETB triggers", () => {
     const picking = await waitForPickTarget(setup, caster.playerID);
     expect((picking.pending_choices ?? []).some((c) => c.kind === "trigger_prompt")).toBe(false);
     await caster.page
-      .locator("[aria-label='Opponent board']")
-      .getByRole("button", { name: "Sol Ring" })
+      .getByRole("region", { name: "Opponent board" })
+      .getByRole("button", { name: "Sol Ring", exact: true })
       .click();
 
     const staged = await admin.waitFor(
@@ -291,18 +297,27 @@ test.describe("S19 ETB triggers", () => {
       "Eternal Witness prompt queued",
     );
 
-    await expect(caster.page.getByText(/Eternal Witness/i, { exact: false })).toBeVisible();
+    await expect(caster.page.getByRole("dialog", { name: /Eternal Witness —/i })).toBeVisible();
 
     await caster.page.getByRole("button", { name: /^Yes$/ }).click();
 
     // S20: pick the card — open the caster's own graveyard browser
     // and click the Bolt.
+    //
+    // Two selectors here need care; both used to fail:
+    //   * the targeting banner is ALSO role="dialog", so the zone
+    //     browser has to be addressed by its own accessible name;
+    //   * every card in a manageable zone renders three sibling
+    //     "move <name> to <zone>" buttons, so an inexact name match
+    //     resolves to four elements. exact:true picks the card.
     await waitForPickTarget(setup, caster.playerID);
     await caster.page
-      .locator("[aria-label='your board']")
+      .getByRole("region", { name: "your board" })
       .getByRole("button", { name: /^grave: / })
       .click();
-    await caster.page.getByRole("dialog").getByRole("button", { name: "Lightning Bolt" }).click();
+    const graveBrowser = caster.page.getByRole("dialog", { name: /graveyard/i });
+    await expect(graveBrowser).toBeVisible();
+    await graveBrowser.getByRole("button", { name: "Lightning Bolt", exact: true }).click();
 
     const staged = await admin.waitFor(
       (v) =>
@@ -386,7 +401,7 @@ test.describe("S19 ETB triggers", () => {
         ),
       "Solemn prompt queued",
     );
-    await expect(caster.page.getByText(/Solemn Simulacrum/i, { exact: false })).toBeVisible();
+    await expect(caster.page.getByRole("dialog", { name: /Solemn Simulacrum —/i })).toBeVisible();
 
     await caster.page.getByRole("button", { name: /^Yes$/ }).click();
 
@@ -485,11 +500,11 @@ test.describe("S19 ETB triggers", () => {
     // Caster sees the dialog with Yes/No buttons; opponent has no
     // trigger dialog at all (the only legitimate dialog they could
     // see is mulligan, which has long since closed).
-    await expect(caster.page.getByRole("button", { name: /^Yes$/ })).toBeVisible({
-      timeout: 5000,
-    });
+    await expect(caster.page.getByRole("button", { name: /^Yes$/ })).toBeVisible();
     await expect(caster.page.getByRole("button", { name: /^No$/ })).toBeVisible();
-    await expect(opponent.page.getByText(/Reclamation Sage —/i)).toHaveCount(0);
+    await expect(opponent.page.getByRole("dialog", { name: /Reclamation Sage —/i })).toHaveCount(
+      0,
+    );
     await expect(opponent.page.getByRole("button", { name: /^Yes$/ })).toHaveCount(0);
   });
 
@@ -522,10 +537,10 @@ test.describe("S19 ETB triggers", () => {
 
     // Client-side modal should render the same text — proves the
     // wire shape's `reason` field flows through to the dialog
-    // without truncation or escape errors.
-    await expect(
-      caster.page.getByText(prompt!.reason!, { exact: false }),
-    ).toBeVisible({ timeout: 5000 });
+    // without truncation or escape errors. The modal's <h2> IS its
+    // aria-labelledby target, so the reason is the dialog's
+    // accessible name.
+    await expect(caster.page.getByRole("dialog", { name: prompt!.reason! })).toBeVisible();
   });
 
   // S19 sub-PR 6: pay-unless. The opponent's Smothering Tithe taxes
@@ -570,9 +585,7 @@ test.describe("S19 ETB triggers", () => {
     expect(prompt?.pay_cost).toBe("{2}");
 
     // Caster's browser shows the pay dialog; the opponent's doesn't.
-    await expect(caster.page.getByRole("button", { name: /^Pay \{2\}$/ })).toBeVisible({
-      timeout: 5000,
-    });
+    await expect(caster.page.getByRole("button", { name: /^Pay \{2\}$/ })).toBeVisible();
     await expect(opponent.page.getByRole("button", { name: /^Pay \{2\}$/ })).toHaveCount(0);
 
     await caster.page.getByRole("button", { name: /^Don't pay$/ }).click();

@@ -1,6 +1,7 @@
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { adminLogin, createGame, uploadDeckAs, startGameAs } from "./lobby-api";
 import { makeCommanderDeck } from "./deck-fixture";
+import { joinAsPlayer } from "./players";
 
 // board-layout: smoke-tests the new HTML/CSS player panel that replaces
 // the PixiJS canvas board. Asserts the wireframe is wired up — each
@@ -10,39 +11,6 @@ import { makeCommanderDeck } from "./deck-fixture";
 // that the resulting card lands in the hand strip with a real image.
 //
 // Prereqs match full-game.spec.ts: server + Scryfall bulk dump.
-
-interface JoinedPlayer {
-  context: BrowserContext;
-  page: Page;
-  name: string;
-  token: string;
-  playerID: string;
-}
-
-async function joinAsPlayer(
-  browser: import("@playwright/test").Browser,
-  gameID: string,
-  inviteToken: string,
-  name: string,
-): Promise<JoinedPlayer> {
-  const context = await browser.newContext();
-  const page = await context.newPage();
-  await page.goto(`/#/games/${gameID}/join?t=${encodeURIComponent(inviteToken)}`);
-  await page.getByPlaceholder("your name").fill(name);
-  await page.getByRole("button", { name: "join" }).click();
-  // Players land in the lobby first — s085 (#43) — then a seated
-  // session can open the game route directly.
-  await expect(page).toHaveURL(/#\/lobby$/, { timeout: 10_000 });
-  await page.goto(`/#/games/${gameID}`);
-  await expect(page).toHaveURL(new RegExp(`#/games/${gameID}$`), { timeout: 10_000 });
-  const session = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("cmdctrl.session") ?? "null"),
-  );
-  if (!session?.token || !session?.playerID) {
-    throw new Error(`${name}: session missing after join`);
-  }
-  return { context, page, name, token: session.token, playerID: session.playerID };
-}
 
 test.describe("board layout", () => {
   test("self panel renders all wireframe zones; deck pile draws a card", async ({

@@ -19,6 +19,10 @@ export interface GameMeta {
   name: string;
   created_at: string;
   invite_token?: string;
+  // The spectator invite is a distinct token from the player invite:
+  // handing a spectator the player link would let them claim a seat.
+  // Only present on the create response (List strips both).
+  spectator_invite?: string;
   players: SeatInfo[];
   state: "lobby" | "active" | "ended";
 }
@@ -99,4 +103,21 @@ export async function getGameAs(
   });
   if (!res.ok()) throw new Error(`get game failed: ${res.status()} ${await res.text()}`);
   return (await res.json()) as GameMeta;
+}
+
+// joinViaAPI claims a seat without a browser. Used to stage a table
+// into a particular shape (partly seated, full) before a test loads
+// the invite page — walking N browser contexts through the UI just to
+// fill seats is slow and tests nothing the join spec doesn't already.
+export async function joinViaAPI(
+  req: APIRequestContext,
+  gameID: string,
+  inviteToken: string,
+  name: string,
+): Promise<{ token: string; player_id: string }> {
+  const res = await req.post(`/games/${gameID}/join`, {
+    data: { invite_token: inviteToken, name },
+  });
+  if (!res.ok()) throw new Error(`join failed: ${res.status()} ${await res.text()}`);
+  return (await res.json()) as { token: string; player_id: string };
 }

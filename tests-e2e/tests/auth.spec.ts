@@ -13,7 +13,7 @@ test.describe("admin login", () => {
   test("wrong token surfaces a visible error", async ({ page }) => {
     await page.getByPlaceholder("admin token").fill("not-the-real-token-but-long");
     await page.getByRole("button", { name: "log in" }).click();
-    await expect(page.locator("p.error")).toBeVisible();
+    await expect(page.getByRole("alert")).toBeVisible();
     // We stay on the login page — no redirect to lobby.
     await expect(page).not.toHaveURL(/#\/lobby/);
   });
@@ -55,8 +55,8 @@ test.describe("admin login", () => {
 
   test("pasting a full invite URL navigates to the join view", async ({ page }) => {
     const url = `${page.url().split("#")[0]}#/games/11111111-2222-3333-4444-555555555555/join?t=xyz`;
-    await page.getByPlaceholder(/https:\/\/.*join/).fill(url);
-    await page.locator("form").filter({ hasText: "open" }).getByRole("button").click();
+    await page.getByLabel("invite link").fill(url);
+    await page.getByRole("button", { name: "open" }).click();
     await expect(page).toHaveURL(/#\/games\/[0-9a-f-]+\/join\?t=xyz$/);
     await expect(page.getByRole("heading", { name: "join game" })).toBeVisible();
   });

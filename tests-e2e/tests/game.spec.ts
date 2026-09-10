@@ -2,12 +2,10 @@ import { expect, test } from "@playwright/test";
 import { adminLogin, createGame } from "./lobby-api";
 import { ADMIN_TOKEN } from "./env";
 
-// These tests exercise the game route (Game.svelte). The route mounts
-// a PixiJS canvas and opens a WebSocket. We don't assert on rendered
-// card geometry — that's a visual concern better covered by screenshot
-// tests once the layout stabilises. Instead we assert on the things
-// Playwright can see without reaching into Pixi: the WS handshake, the
-// session wiring, and the URL router.
+// These tests exercise the game route (Game.svelte) at the transport
+// layer: the WebSocket handshake, the session wiring, and the URL
+// router. Rendering is covered by board-layout / mulligan /
+// zone-browser, which assert on the HTML board's roles and labels.
 
 test.describe("game route", () => {
   test("admin opens a game → WS connects, snapshot arrives", async ({ page, request }) => {

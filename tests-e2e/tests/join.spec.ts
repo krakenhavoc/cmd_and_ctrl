@@ -14,7 +14,7 @@ test.describe("invite → join", () => {
     await expect(page.getByRole("heading", { name: "join game" })).toBeVisible();
     await page.getByPlaceholder("your name").fill("Rejected Player");
     await page.getByRole("button", { name: "join" }).click();
-    await expect(page.locator("p.error")).toBeVisible();
+    await expect(page.getByRole("alert")).toBeVisible();
     // We stay on the join page — no redirect to the game view.
     await expect(page).toHaveURL(/\/join\?t=/);
   });
