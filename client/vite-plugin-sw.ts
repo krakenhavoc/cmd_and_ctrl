@@ -81,6 +81,14 @@ export function serviceWorkerPlugin(): Plugin {
         .map((name) => "/" + name)
         .sort();
 
+      // This plugin runs `enforce: "post"`, so Vite's html plugin has already
+      // emitted index.html. If that ever stops being true the shell would
+      // quietly stop being precached and cold starts would silently go back
+      // to the network -- fail the build instead.
+      if (!emitted.includes("/index.html")) {
+        this.error("index.html is not in the bundle; the service worker cannot precache the shell");
+      }
+
       // 2. Static files, verified on disk and hashed into the build id.
       const staticDigests: string[] = [];
       for (const path of STATIC_PRECACHE) {

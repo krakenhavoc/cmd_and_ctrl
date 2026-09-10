@@ -96,7 +96,8 @@ installed.
 | Any cross-origin request, Google Fonts included | **Network only** |
 | Any request carrying a `Range` header | **Network only** |
 | `/ws` | **Network only** |
-| `/healthz`, `/me`, `/logout`, `/games`, `/games/*` | **Network only** |
+| `/healthz`, `/me`, `/logout`, `/config`, `/games`, `/games/*` | **Network only** |
+| `/dev`, `/dev/*` | **Network only** |
 | `/cards/`, `/cards/*` — except the row below | **Network only** |
 | `/admin/*`, `/auth/*`, `/avatars/*`, `/bugreport`, `/bugreport/*` | **Network only** |
 | `GET /cards/{id}/image?size=…` | **Cache-first**, card cache, LRU-capped |
@@ -107,8 +108,12 @@ installed.
 
 The API deny list is a regex that mirrors the `@api` path matcher in
 `deploy/Caddyfile`, and is deliberately *broader* than it: a bare
-`/auth` or `/bugreport` is denied too. Over-denying costs a cache
-hit; under-denying corrupts what a player sees.
+`/auth` or `/bugreport` is denied too, and `/config` + `/dev` are
+denied ahead of PR #260 adding them to that matcher. Over-denying
+costs a cache hit; under-denying corrupts what a player sees. **A new
+API route belongs in three places in the same pull request:** the
+server's route table, the `@api` matcher, and `API_PATH` in the
+worker.
 
 `/ws` is listed for completeness and defence in depth. Browsers do
 not route WebSocket handshakes through a worker's fetch handler at

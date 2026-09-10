@@ -69,7 +69,13 @@ const CARD_IMAGE_PATH = /^\/cards\/[^/]+\/image$/;
 // /ws is listed for completeness. Browsers do not route WebSocket handshakes
 // through a service worker's fetch handler at all, so this worker cannot
 // interfere with the live connection even by accident.
-const API_PATH = /^\/(ws|healthz|me|logout|games|cards|admin|auth|avatars|bugreport)(\/|$)/;
+//
+// /config and /dev are included ahead of PR #260, which adds them to the @api
+// matcher: denying a route that does not exist yet costs nothing, and the
+// alternative is a client that starts serving a stale /config from cache the
+// day the route lands.
+const API_PATH =
+  /^\/(ws|healthz|me|logout|config|games|cards|admin|auth|avatars|bugreport|dev)(\/|$)/;
 
 // Hashed build output. Vite content-hashes these filenames, so a given URL's
 // bytes never change and cache-first is always correct.
@@ -156,12 +162,17 @@ async function putCardImage(request, response) {
 
 // Cache-first. On a full battlefield this is the difference between hundreds
 // of network round-trips and none.
-async function cardImage(request) {
+//
+// The cache write is handed to waitUntil rather than awaited: the image
+// resolves as soon as the network does, and the worker is kept alive long
+// enough to finish storing it.
+async function cardImage(event) {
+  const request = event.request;
   const cached = await caches.match(request, { cacheName: CARD_CACHE });
   if (cached) return cached;
   const response = await fetch(request);
   if (cacheable(response)) {
-    await putCardImage(request, response.clone());
+    event.waitUntil(putCardImage(request, response.clone()));
   }
   return response;
 }
@@ -169,12 +180,12 @@ async function cardImage(request) {
 // Cache-first on the precached shell, which is what makes a cold start
 // instant. The shell is only ever replaced by a new service worker
 // activating, and the player decides when that happens (see lib/pwa.ts).
-async function shell(request) {
+async function shell(event) {
   const cache = await caches.open(SHELL_CACHE);
   const cached = await cache.match("/index.html");
   if (cached) return cached;
   try {
-    return await fetch(request);
+    return await fetch(event.request);
   } catch {
     const offline = await cache.match("/offline.html");
     if (offline) return offline;
@@ -183,13 +194,14 @@ async function shell(request) {
 }
 
 // Cache-first for content-hashed assets and precached static files.
-async function asset(request) {
+async function asset(event) {
+  const request = event.request;
   const cache = await caches.open(SHELL_CACHE);
   const cached = await cache.match(request);
   if (cached) return cached;
   const response = await fetch(request);
   if (cacheable(response)) {
-    cache.put(request, response.clone()).catch(() => {});
+    event.waitUntil(cache.put(request, response.clone()).catch(() => {}));
   }
   return response;
 }
@@ -241,13 +253,13 @@ self.addEventListener("fetch", (event) => {
 
   switch (classify(url, request.method, request.mode)) {
     case "card-image":
-      event.respondWith(cardImage(request));
+      event.respondWith(cardImage(event));
       return;
     case "shell":
-      event.respondWith(shell(request));
+      event.respondWith(shell(event));
       return;
     case "asset":
-      event.respondWith(asset(request));
+      event.respondWith(asset(event));
       return;
     default:
       // Deny by default: no respondWith at all, so the browser performs the

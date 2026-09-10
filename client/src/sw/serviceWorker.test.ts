@@ -72,6 +72,10 @@ describe("service worker routing", () => {
     "/healthz",
     "/me",
     "/logout",
+    // /config and /dev land with PR #260; denying them early is free.
+    "/config",
+    "/dev",
+    "/dev/seed",
     "/games",
     "/games/7f3c",
     "/games/7f3c/seats",

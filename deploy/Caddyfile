@@ -31,7 +31,9 @@
 	# ONE `path` directive with many arguments. Arguments to a single matcher
 	# are OR'ed; repeating the directive would AND them and match nothing.
 	#
-	# Keep in sync with the server's route table and client/vite.config.ts.
+	# Keep in sync with the server's route table, client/vite.config.ts and
+	# API_PATH in client/src/sw/service-worker.js -- the service worker keeps
+	# its own copy of this list so it can refuse to cache any of it (ADR 0031).
 	# A missing entry fails silently: the path falls through to file_server,
 	# the client receives index.html, JSON parsing fails, and the feature
 	# quietly disappears instead of erroring.
