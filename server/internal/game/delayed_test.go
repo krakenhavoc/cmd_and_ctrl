@@ -13,21 +13,6 @@ import (
 // so undo neither loses a pending return nor resurrects a cancelled
 // one.
 
-// advanceToStep walks the turn engine forward until the cursor lands
-// on `step`. Fatals if it never does within a couple of turn cycles.
-func advanceToStep(t *testing.T, g *Game, step Step) {
-	t.Helper()
-	for i := 0; i < 300; i++ {
-		if g.Turn.Step == step {
-			return
-		}
-		if _, err := g.AdvanceStep(); err != nil {
-			t.Fatalf("AdvanceStep toward %s: %v", step, err)
-		}
-	}
-	t.Fatalf("never reached step %s", step)
-}
-
 // settleStack passes priority until nothing is on, or headed for,
 // the stack. Mirrors the effects package's passPriorityAroundTable.
 func settleStack(t *testing.T, g *Game) {
@@ -72,7 +57,7 @@ func TestDelayedTriggerFiresAtItsStep(t *testing.T) {
 		t.Fatal("ScheduleDelayedTriggerForEffect returned a nil ID")
 	}
 
-	advanceToStep(t, g, StepPrecombatMain)
+	advanceTo(t, g, StepPrecombatMain)
 	if len(g.DelayedTriggers) != 1 {
 		t.Fatalf("delayed trigger drained before its step: queue=%d", len(g.DelayedTriggers))
 	}
@@ -80,7 +65,7 @@ func TestDelayedTriggerFiresAtItsStep(t *testing.T) {
 		t.Fatalf("effect ran early: fired=%d", fired)
 	}
 
-	advanceToStep(t, g, StepEnd)
+	advanceTo(t, g, StepEnd)
 	if len(g.DelayedTriggers) != 0 {
 		t.Errorf("queue still holds %d triggers after the end step began", len(g.DelayedTriggers))
 	}
@@ -105,7 +90,7 @@ func TestDelayedTriggerFiresAtItsStep(t *testing.T) {
 // blink cards depend on.
 func TestDelayedTriggerWaitsForTheNextOccurrence(t *testing.T) {
 	g := newActiveGame(t)
-	advanceToStep(t, g, StepEnd)
+	advanceTo(t, g, StepEnd)
 
 	fired := 0
 	scheduleProbe(g, StepEnd, g.Seats[0].ID, &fired)
@@ -120,8 +105,8 @@ func TestDelayedTriggerWaitsForTheNextOccurrence(t *testing.T) {
 	}
 
 	// Walk off this end step, then on to the next one.
-	advanceToStep(t, g, StepUpkeep)
-	advanceToStep(t, g, StepEnd)
+	advanceTo(t, g, StepUpkeep)
+	advanceTo(t, g, StepEnd)
 	settleStack(t, g)
 	if fired != 1 {
 		t.Errorf("trigger fired %d times at the next end step, want 1", fired)
@@ -141,13 +126,13 @@ func TestDelayedTriggerAtUpkeep(t *testing.T) {
 	fired := 0
 	scheduleProbe(g, StepUpkeep, g.Seats[1].ID, &fired)
 
-	advanceToStep(t, g, StepEnd)
+	advanceTo(t, g, StepEnd)
 	settleStack(t, g)
 	if fired != 0 {
 		t.Fatalf("upkeep trigger fired somewhere other than an upkeep: fired=%d", fired)
 	}
 
-	advanceToStep(t, g, StepUpkeep)
+	advanceTo(t, g, StepUpkeep)
 	settleStack(t, g)
 	if fired != 1 {
 		t.Errorf("trigger fired %d times at the next upkeep, want 1", fired)
@@ -186,7 +171,7 @@ func TestDelayedTriggerStampsPayloadOntoTheStackItem(t *testing.T) {
 		})
 	})
 
-	advanceToStep(t, g, StepEnd)
+	advanceTo(t, g, StepEnd)
 	settleStack(t, g)
 	if len(seen) != 1 || seen[0] != cardID {
 		t.Errorf("effect saw payload %v, want [%v]", seen, cardID)
@@ -229,7 +214,7 @@ func TestCloneAndRestorePreserveDelayedTriggers(t *testing.T) {
 		t.Fatalf("RestoreFrom did not rewind the queue: %#v", g.DelayedTriggers)
 	}
 
-	advanceToStep(t, g, StepEnd)
+	advanceTo(t, g, StepEnd)
 	settleStack(t, g)
 	if fired != 1 {
 		t.Errorf("restored trigger fired %d times, want 1", fired)
@@ -261,7 +246,7 @@ func TestScheduleDelayedTriggerRejectsMalformed(t *testing.T) {
 // player.
 func TestEndStepEmitsBeginEndStep(t *testing.T) {
 	g := newActiveGame(t)
-	advanceToStep(t, g, StepEnd)
+	advanceTo(t, g, StepEnd)
 	active := g.Seats[g.Turn.ActiveSeat].ID
 	found := false
 	for _, ev := range g.Events {
