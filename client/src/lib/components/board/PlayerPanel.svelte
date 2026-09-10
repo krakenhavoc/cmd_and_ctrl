@@ -184,22 +184,14 @@
     !isSelf && !seat.eliminated && combatMode === "attack" && !!selectedCombatCardID,
   );
 
-  function handleCardClick(card: CardView, ev: MouseEvent): void {
-    // S17 sub-PR 5 debug affordance: Shift+click on any battlefield
-    // card the viewer controls (or admin) adds a +1/+1 counter;
-    // Shift+Alt+click subtracts one. Required for manual testing
-    // of the Doubling Season / Hardened Scales / Branching Evolution
-    // replacement-order prompt until a proper per-card counter UI
-    // ships. Documented in the Game.svelte toolbar hint.
-    if (ev.shiftKey && (card.controller === viewerID || isAdmin)) {
-      const delta = ev.altKey ? -1 : 1;
-      sendAction(
-        "add_counter",
-        { instance_id: card.instance_id, name: "+1/+1", delta },
-        viewerID ?? undefined,
-      );
-      return;
-    }
+  function handleCardClick(card: CardView): void {
+    // The S17 sub-PR 5 Shift+click / Shift+Alt+click +1/+1 debug
+    // chord used to live here. #170 retired it: the right-click
+    // override menu offers both directions on every counter type
+    // (and every other manual override) from a surface the player
+    // can find without being told it exists. Enable it under
+    // Settings → Gameplay → "Enable admin overrides".
+    //
     // S14: targeting intercept. If a cast-targeting prompt is live
     // and this card is a legal target (battlefield creature for
     // "any" / "creature" modes), route through onTargetCard. Board

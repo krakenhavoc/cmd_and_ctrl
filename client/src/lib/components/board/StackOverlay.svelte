@@ -216,6 +216,10 @@
                 {#if item.x_value}
                   <span class="chip">X = {item.x_value}</span>
                 {/if}
+                <!-- S22: an overloaded Rift wipes and a hard-cast one bounces one thing. -->
+                {#if item.alt_cost}
+                  <span class="chip flag">{item.alt_cost}</span>
+                {/if}
                 {#if item.modes && item.modes.length > 0}
                   <span class="chip">modes: {item.modes.join(", ")}</span>
                 {/if}

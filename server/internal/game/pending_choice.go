@@ -321,12 +321,25 @@ type PendingChoice struct {
 }
 
 // payUnlessFrame carries a pay-unless prompt's parsed cost and the
-// decline consequence. onDecline receives the live *Game (not a
-// captured one) for the same undo-safety reason StackItem.Effect
-// does. Added in S19 sub-PR 6.
+// consequence of each answer. Both callbacks receive the live *Game
+// (not a captured one) for the same undo-safety reason
+// StackItem.Effect does. Added in S19 sub-PR 6.
+//
+// The two callbacks are the two shapes the same prompt serves:
+//
+//   - onDecline is CR 118.12 "unless that player pays {N}" — Rhystic
+//     Study, Esper Sentinel. The effect happens when the payment does
+//     NOT.
+//   - onPay is "you may pay {N}. If you do, ..." — Hashaton. The
+//     effect happens when the payment does.
+//
+// A card sets one or the other; nothing stops it setting both, and
+// the prompt is identical either way, which is why they share a
+// frame rather than getting a second PendingChoice kind.
 type payUnlessFrame struct {
 	cost      ParsedCost
 	onDecline func(g *Game) error
+	onPay     func(g *Game) error
 }
 
 // pickTargetFrame is the continuation for a targeted trigger's
@@ -1429,6 +1442,57 @@ func (g *Game) QueuePayUnlessForEffect(
 	return nil
 }
 
+// QueueMayPayForEffect queues a "you may pay <cost>. If you do,
+// ..." prompt for `chooser` — the same dialog QueuePayUnlessForEffect
+// raises, with the consequence hanging off the other answer.
+// Hashaton, Scarab's Fist ("whenever you discard a creature card,
+// you may pay {2}{U}. If you do, create a token that's a copy of
+// that card") is the shape it was written for.
+//
+// onPay runs only when the chooser answers "Pay" AND the mana
+// actually materialises (pool + auto-tap). A "yes" the chooser can't
+// fund degrades to a decline exactly as it does for pay-unless, and
+// with no onDecline that simply means nothing happens — which is the
+// right reading of "if you do".
+//
+// A chooser who is no longer seated / is eliminated is not asked and
+// onPay does not run. Note this is the OPPOSITE default from
+// pay-unless, and correct for both: the consequence is attached to
+// the answer that can no longer be given.
+//
+// Caller must hold g.mu.
+func (g *Game) QueueMayPayForEffect(
+	chooser, source uuid.UUID,
+	cost, question string,
+	onPay func(g *Game) error,
+) error {
+	parsed, err := ParseCost(cost)
+	if err != nil {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Source:   source,
+			ErrorMsg: "may-pay: unparseable cost " + cost + ": " + err.Error(),
+		})
+		return nil
+	}
+	if p := g.playerByIDLocked(chooser); p == nil || p.Eliminated {
+		return nil
+	}
+	g.QueueChoiceForEffect(PendingChoice{
+		Kind:    PendingChoicePayUnless,
+		Chooser: chooser,
+		Count:   1,
+		Source:  source,
+		Reason:  question,
+		PayCost: cost,
+		payUnlessResume: &payUnlessFrame{
+			cost:  parsed,
+			onPay: onPay,
+		},
+	})
+	return nil
+}
+
 // ResolvePayUnless processes the chooser's answer to a
 // PendingChoicePayUnless entry. `apply: true` means "I pay": the
 // cost is deducted from the chooser's pool, auto-tapping their
@@ -1478,8 +1542,16 @@ func (g *Game) ResolvePayUnless(choiceID, chooserID uuid.UUID, apply bool) error
 			paid = g.payCostLocked(p, frame.cost, choice.Source)
 		}
 	}
-	if !paid && frame.onDecline != nil {
-		if err := frame.onDecline(g); err != nil {
+	// Exactly one of the two branches runs. `paid` is the real
+	// question, not `apply`: a chooser who said "Pay" and could not
+	// fund it has declined, so the pay-unless consequence fires and
+	// the may-pay one does not.
+	consequence := frame.onDecline
+	if paid {
+		consequence = frame.onPay
+	}
+	if consequence != nil {
+		if err := consequence(g); err != nil {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
 				Actor:    chooserID,

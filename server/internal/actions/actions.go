@@ -348,6 +348,11 @@ func Dispatch(g *game.Game, a Action) error {
 			// S21 sub-PR 6 — the permanent paid to a "sacrifice a
 			// creature" additional cost (Village Rites).
 			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+			// S22 — the alternative cost being paid INSTEAD of the
+			// mana cost: the key of one of the card's declared
+			// alternative costs ("overload", "evoke", "cleave").
+			// Empty is the ordinary "pay the printed cost" case.
+			AlternativeCost string `json:"alternative_cost,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -357,14 +362,15 @@ func Dispatch(g *game.Game, a Action) error {
 			return fmt.Errorf("cast_spell instance_id: %w", err)
 		}
 		params := game.CastSpellParams{
-			FromZone:     p.FromZone,
-			Modes:        append([]int(nil), p.Modes...),
-			XValue:       p.XValue,
-			HoldPriority: p.HoldPriority,
-			SplitSecond:  p.SplitSecond,
-			Strict:       p.Strict,
-			ForceCast:    p.ForceCast,
-			AutoTap:      p.AutoTap,
+			FromZone:        p.FromZone,
+			Modes:           append([]int(nil), p.Modes...),
+			XValue:          p.XValue,
+			HoldPriority:    p.HoldPriority,
+			SplitSecond:     p.SplitSecond,
+			Strict:          p.Strict,
+			ForceCast:       p.ForceCast,
+			AutoTap:         p.AutoTap,
+			AlternativeCost: p.AlternativeCost,
 		}
 		if len(p.DiscardIDs) > 0 {
 			params.DiscardIDs = make([]uuid.UUID, 0, len(p.DiscardIDs))
@@ -424,6 +430,7 @@ func Dispatch(g *game.Game, a Action) error {
 			Dst         zoneRefWire `json:"dst"`
 			InstanceID  string      `json:"instance_id"`
 			AsCommander bool        `json:"as_commander,omitempty"`
+			ToBottom    bool        `json:"to_bottom,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -442,6 +449,13 @@ func Dispatch(g *game.Game, a Action) error {
 		}
 		if err := requireCardController(g, a.Caller, instanceID); err != nil {
 			return err
+		}
+		// #170: `to_bottom` seats the card at the bottom of the
+		// destination instead of the top. Only meaningful for a
+		// library destination; the admin context menu's "Library
+		// (bottom)" override is the only caller today.
+		if p.ToBottom {
+			return g.MoveCardByIDToBottom(srcRef, dstRef, instanceID, p.AsCommander)
 		}
 		return g.MoveCardByIDAsCommander(srcRef, dstRef, instanceID, p.AsCommander)
 

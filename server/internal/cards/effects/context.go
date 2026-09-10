@@ -108,6 +108,19 @@ func (c *Context) HasMode(i int) bool {
 	return false
 }
 
+// PaidAltCost reports whether the spell was cast for the named
+// alternative cost (CR 118.9) — "overload", "evoke", "cleave". False
+// for an ordinary cast and for every ability item. Added in S22.
+//
+// A card whose text changes with the cost is a run of
+// `if ctx.PaidAltCost("overload") { … sweep … }` against the printed
+// single-target branch — the same shape HasMode gives a modal card,
+// and for the same reason: the choice was made at announce and the
+// resolution just reads it back.
+func (c *Context) PaidAltCost(key string) bool {
+	return c.Item != nil && c.Item.AltCost == key && key != ""
+}
+
 // Targets returns the announce-time target slots. Callers that
 // assume a specific cardinality should bounds-check — effects run
 // in sandbox-adjacent territory where the UI might send too few

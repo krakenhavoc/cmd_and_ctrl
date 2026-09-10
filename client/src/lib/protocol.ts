@@ -55,7 +55,7 @@ export interface ErrorPayload {
 // plus the hub-level "undo" verb (server/internal/ws/hub.go) — so a
 // typo'd action name is a compile error here instead of a runtime
 // bad_request frame. The server accepts more action types than these
-// (play_card, advance_step, set_goaded, …); add literals as the UI
+// (play_card, advance_step, set_poison, …); add literals as the UI
 // grows call sites for them.
 export type ActionType =
   | "activate_ability"
@@ -65,6 +65,7 @@ export type ActionType =
   | "cast_spell"
   | "cast_vote"
   | "change_life"
+  | "clear_combat"
   | "concede"
   | "counter_ability"
   | "counter_spell"
@@ -74,11 +75,14 @@ export type ActionType =
   | "draw_card"
   | "end_vote"
   | "keep_hand"
+  | "mark_damage"
   | "move_card"
   | "mulligan"
   | "pass_priority"
   | "pass_turn"
   | "resolve_choice"
+  | "sacrifice_permanent"
+  | "set_goaded"
   | "set_initiative"
   | "set_monarch"
   | "set_promise"
@@ -316,6 +320,11 @@ export interface StackItemView {
   distribution?: Record<string, number>;
   hold_priority?: boolean;
   split_second?: boolean;
+  // S22: the alternative cost this spell was cast for — "overload",
+  // "evoke", "cleave" — absent for an ordinary cast. Load-bearing
+  // for anyone deciding whether to respond: an overloaded Cyclonic
+  // Rift is a one-sided wipe, a hard-cast one is a single bounce.
+  alt_cost?: string;
 }
 
 // TargetRefView mirrors `protocol.TargetRefView` server-side: a
@@ -441,6 +450,24 @@ export interface AdditionalCostView {
   label?: string;
 }
 
+// AlternativeCostView is one "you may cast this spell for its
+// overload / evoke / cleave cost" offer on a card in the viewer's own
+// hand (S22). Unlike an additional cost this is optional: the picker
+// lists these alongside "pay the printed cost", and a cast that names
+// none is the ordinary case. `key` rides cast_spell as
+// `alternative_cost`.
+export interface AlternativeCostView {
+  key: string;
+  label?: string;
+  mana_cost?: string;
+  // The target clause the spell has WHEN THIS COST IS PAID, already
+  // resolved server-side against the cost's rewrite. Absent means the
+  // spell has no targets under this cost (overload), so the cast
+  // fires straight away.
+  target_mode?: string;
+  legal_targets?: LegalTargetsView;
+}
+
 // ExilePlayView is the impulse-exile grant on a card in exile —
 // "exile the top card of that player's library, you may play it
 // this turn" (S21 sub-PR 6). Public information; the client offers
@@ -564,6 +591,11 @@ export interface CardView {
   // discard a card"). The cast flow collects the payment before
   // firing cast_spell. Absent for the vast majority of cards.
   additional_cost?: AdditionalCostView;
+  // S22: for a card in the viewer's own hand that offers a cost paid
+  // INSTEAD of its mana cost — overload, evoke, cleave. The cast flow
+  // opens a picker before every other prompt, because the choice
+  // changes what the rest of them ask. Absent for nearly every card.
+  alternative_costs?: AlternativeCostView[];
   // S21 sub-PR 6: present on a card in exile that someone may play
   // this turn. Absent for ordinary exile, which is nearly all of it.
   exile_play?: ExilePlayView;

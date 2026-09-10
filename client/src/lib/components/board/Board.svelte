@@ -40,6 +40,9 @@
   import VotingPanel from "./VotingPanel.svelte";
   import ZoneBrowserModal from "./ZoneBrowserModal.svelte";
   import { zoneBrowser, closeZoneBrowser } from "../../zoneBrowser";
+  import CardContextMenu from "./CardContextMenu.svelte";
+  import { cardMenu, closeCardMenu } from "../../contextMenu";
+  import type { MenuActivate } from "../../contextMenu.logic";
   import {
     targeting,
     begin as beginTargeting,
@@ -51,12 +54,16 @@
     isModal,
     discardCostOf,
     sacrificeCostOptions,
+    alternativeCostsOf,
+    alternativeCostByKey,
+    applyCastChoices,
     isLegalCardTarget,
     isLegalPlayerTarget,
     isMultiPick,
     togglePick,
     canConfirm,
     setConfirmHandler,
+    type CastChoices,
     type TargetingMode,
     type TargetingState,
     type TargetRef,
@@ -65,6 +72,7 @@
   import SacrificeCostModal from "./SacrificeCostModal.svelte";
   import ModePickerModal from "./ModePickerModal.svelte";
   import DiscardCostModal from "./DiscardCostModal.svelte";
+  import AlternativeCostModal from "./AlternativeCostModal.svelte";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -162,20 +170,42 @@
     sendAction(card.tapped ? "untap" : "tap", { instance_id: card.instance_id });
   }
 
-  // S20 sub-PR 3: an {X} spell asks for X first. The modal's
-  // confirm continues into targeting / cast with the chosen value.
+  // The cast flow is a chain of announce-time prompts, each handing
+  // the accumulated CastChoices to the next: alternative cost →
+  // discard cost → sacrifice cost → X → modes → targeting → fire.
+  // Every stage stashes the choices alongside its own prompt card,
+  // because a Svelte modal's confirm arrives on a later tick.
+  //
+  // Ordering note (S22): the alternative cost goes FIRST, and unlike
+  // the rest of the order that is not a UI preference. Overload and
+  // cleave rewrite the target clause, so the choice decides what the
+  // targeting prompt is even allowed to offer — asking afterwards
+  // would mean re-opening it.
+
+  // S20 sub-PR 3: an {X} spell asks for X. The modal's confirm
+  // continues into targeting / cast with the chosen value.
   let xPromptCard = $state<CardView | null>(null);
-  let xPromptDiscardIDs: string[] | undefined;
-  let xPromptSacrificeIDs: string[] | undefined;
+  let xPromptChoices: CastChoices = {};
   function confirmX(x: number): void {
     const card = xPromptCard;
-    const discardIDs = xPromptDiscardIDs;
-    const sacrificeIDs = xPromptSacrificeIDs;
+    const choices = xPromptChoices;
     xPromptCard = null;
-    xPromptDiscardIDs = undefined;
-    xPromptSacrificeIDs = undefined;
+    xPromptChoices = {};
     if (!card) return;
-    continueCast(card, x, discardIDs, sacrificeIDs);
+    continueCast(card, { ...choices, xValue: x });
+  }
+
+  // S22: a card that offers a cost paid INSTEAD of its mana cost
+  // ("Overload {6}{U}", "Evoke {3}{U}", "Cleave {1}{U}{U}") asks
+  // which one before anything else. Declining is a first-class
+  // answer — the picker always offers the printed cost — and is what
+  // the vast majority of casts of these cards will be.
+  let altCostPromptCard = $state<CardView | null>(null);
+  function confirmAltCost(key: string | undefined): void {
+    const card = altCostPromptCard;
+    altCostPromptCard = null;
+    if (!card) return;
+    afterAltCost(card, key === undefined ? {} : { altCost: key });
   }
 
   // S21 sub-PR 5: a spell with an additional cost ("As an
@@ -185,6 +215,7 @@
   // discard_ids; the server validates them at announce and pays
   // them once the spell is on the stack.
   let discardPromptCard = $state<CardView | null>(null);
+  let discardPromptChoices: CastChoices = {};
 
   // Everything in the caster's hand except the spell itself — CR
   // 601.2a puts it on the stack before costs are paid, so it can't
@@ -198,9 +229,11 @@
 
   function confirmDiscardCost(ids: string[]): void {
     const card = discardPromptCard;
+    const choices = discardPromptChoices;
     discardPromptCard = null;
+    discardPromptChoices = {};
     if (!card) return;
-    afterDiscardCost(card, ids);
+    afterDiscardCost(card, { ...choices, discardIDs: ids });
   }
 
   // S21 sub-PR 6: the sacrifice half of an additional cost ("As an
@@ -210,7 +243,7 @@
   // sacrifice, but the two prompts chain rather than exclude each
   // other, so one that did would work.
   let sacrificePromptCard = $state<CardView | null>(null);
-  let sacrificePromptDiscardIDs: string[] | undefined;
+  let sacrificePromptChoices: CastChoices = {};
 
   const castSacrificeOptions = $derived.by(() => {
     const card = sacrificePromptCard;
@@ -221,45 +254,54 @@
 
   function confirmSacrificeCost(instanceID: string): void {
     const card = sacrificePromptCard;
-    const discardIDs = sacrificePromptDiscardIDs;
+    const choices = sacrificePromptChoices;
     sacrificePromptCard = null;
-    sacrificePromptDiscardIDs = undefined;
+    sacrificePromptChoices = {};
     if (!card) return;
-    afterCastCosts(card, discardIDs, [instanceID]);
+    afterCastCosts(card, { ...choices, sacrificeIDs: [instanceID] });
   }
 
-  // afterDiscardCost / afterCastCosts are the two seams between the
-  // cost prompts and the rest of the cast flow, so adding a cost
-  // kind doesn't mean editing every earlier prompt's confirm.
-  function afterDiscardCost(card: CardView, discardIDs: string[] | undefined): void {
-    if (sacrificeCostOptions(card) !== undefined) {
-      sacrificePromptDiscardIDs = discardIDs;
-      sacrificePromptCard = card;
-      return;
-    }
-    afterCastCosts(card, discardIDs, undefined);
-  }
-
-  function afterCastCosts(
-    card: CardView,
-    discardIDs: string[] | undefined,
-    sacrificeIDs: string[] | undefined,
-  ): void {
-    if (hasXCost(card)) {
-      xPromptDiscardIDs = discardIDs;
-      xPromptSacrificeIDs = sacrificeIDs;
-      xPromptCard = card;
-      return;
-    }
-    continueCast(card, undefined, discardIDs, sacrificeIDs);
-  }
-
-  function handlePlayCard(card: CardView): void {
+  // afterAltCost / afterDiscardCost / afterCastCosts are the seams
+  // between the cost prompts and the rest of the cast flow, so adding
+  // a cost kind doesn't mean editing every earlier prompt's confirm.
+  //
+  // An alternative cost REPLACES the mana cost but not the additional
+  // costs (CR 601.2f is evaluated independently), so the chain
+  // continues through the discard / sacrifice prompts rather than
+  // short-circuiting past them.
+  function afterAltCost(card: CardView, choices: CastChoices): void {
     if (discardCostOf(card) > 0) {
+      discardPromptChoices = choices;
       discardPromptCard = card;
       return;
     }
-    afterDiscardCost(card, undefined);
+    afterDiscardCost(card, choices);
+  }
+
+  function afterDiscardCost(card: CardView, choices: CastChoices): void {
+    if (sacrificeCostOptions(card) !== undefined) {
+      sacrificePromptChoices = choices;
+      sacrificePromptCard = card;
+      return;
+    }
+    afterCastCosts(card, choices);
+  }
+
+  function afterCastCosts(card: CardView, choices: CastChoices): void {
+    if (hasXCost(card)) {
+      xPromptChoices = choices;
+      xPromptCard = card;
+      return;
+    }
+    continueCast(card, choices);
+  }
+
+  function handlePlayCard(card: CardView): void {
+    if (alternativeCostsOf(card).length > 0) {
+      altCostPromptCard = card;
+      return;
+    }
+    afterAltCost(card, {});
   }
 
   // S20 sub-PR 4: a modal spell asks for its mode(s) after X and
@@ -267,45 +309,36 @@
   // chosen indexes; a targeted option enters targeting with that
   // option's legal set, otherwise the cast fires straight away.
   let modePromptCard = $state<CardView | null>(null);
-  let modePromptX: number | undefined;
-  let modePromptDiscardIDs: string[] | undefined;
-  let modePromptSacrificeIDs: string[] | undefined;
+  let modePromptChoices: CastChoices = {};
   function confirmModes(modes: number[]): void {
     const card = modePromptCard;
-    const xValue = modePromptX;
-    const discardIDs = modePromptDiscardIDs;
-    const sacrificeIDs = modePromptSacrificeIDs;
+    const choices = modePromptChoices;
     modePromptCard = null;
-    modePromptX = undefined;
-    modePromptDiscardIDs = undefined;
-    modePromptSacrificeIDs = undefined;
+    modePromptChoices = {};
     if (!card) return;
     const targeted = modes.find((i) => card.modes?.options[i]?.legal_targets !== undefined);
     if (targeted !== undefined) {
       const option = card.modes!.options[targeted];
-      beginTargetingForMode(card, option, modes, xValue, discardIDs, sacrificeIDs);
+      beginTargetingForMode(card, option, modes, choices);
       return;
     }
     const params: Record<string, unknown> = { instance_id: card.instance_id, modes };
-    if (xValue !== undefined) params.x_value = xValue;
-    if (discardIDs !== undefined) params.discard_ids = discardIDs;
-    if (sacrificeIDs !== undefined) params.sacrifice_ids = sacrificeIDs;
+    applyCastChoices(params, choices);
     sendAction("cast_spell", params, viewerID ?? undefined);
   }
 
-  // continueCast is the post-X half of the cast flow: pick modes for
-  // a modal card, enter targeting for a targeted card, or fire
+  // continueCast is the post-cost half of the cast flow: pick modes
+  // for a modal card, enter targeting for a targeted card, or fire
   // cast_spell straight away.
-  function continueCast(
-    card: CardView,
-    xValue: number | undefined,
-    discardIDs?: string[],
-    sacrificeIDs?: string[],
-  ): void {
+  //
+  // S22: the target clause is whichever one the chosen cost leaves
+  // the spell with, and the server has already resolved that — an
+  // overloaded Cyclonic Rift's offer carries no target_mode at all,
+  // so this falls through to the immediate cast without the client
+  // needing to know what "overload" does.
+  function continueCast(card: CardView, choices: CastChoices): void {
     if (isModal(card)) {
-      modePromptX = xValue;
-      modePromptDiscardIDs = discardIDs;
-      modePromptSacrificeIDs = sacrificeIDs;
+      modePromptChoices = choices;
       modePromptCard = card;
       return;
     }
@@ -314,7 +347,8 @@
     // targeting flow and wait for a second click on a legal target.
     // Otherwise fire cast_spell immediately (lands, sorceries with
     // no targets, vanilla permanents).
-    const mode = card.target_mode as TargetingMode | undefined;
+    const alt = alternativeCostByKey(card, choices.altCost);
+    const mode = (alt ? alt.target_mode : card.target_mode) as TargetingMode | undefined;
     if (
       mode === "any" ||
       mode === "player" ||
@@ -323,13 +357,11 @@
       mode === "stack_spell" ||
       mode === "card_in_graveyard"
     ) {
-      beginTargeting(card, mode, xValue, discardIDs, sacrificeIDs);
+      beginTargeting(card, mode, choices, alt);
       return;
     }
     const params: Record<string, unknown> = { instance_id: card.instance_id };
-    if (xValue !== undefined) params.x_value = xValue;
-    if (discardIDs !== undefined) params.discard_ids = discardIDs;
-    if (sacrificeIDs !== undefined) params.sacrifice_ids = sacrificeIDs;
+    applyCastChoices(params, choices);
     sendAction("cast_spell", params, viewerID ?? undefined);
   }
 
@@ -386,10 +418,8 @@
       return;
     }
     const params: Record<string, unknown> = { instance_id: state.card.instance_id, targets };
-    if (state.xValue !== undefined) params.x_value = state.xValue;
     if (state.modes !== undefined) params.modes = state.modes;
-    if (state.discardIDs !== undefined) params.discard_ids = state.discardIDs;
-    if (state.sacrificeIDs !== undefined) params.sacrifice_ids = state.sacrificeIDs;
+    applyCastChoices(params, state.choices);
     sendAction("cast_spell", params, viewerID ?? undefined);
     cancelTargeting();
   }
@@ -433,6 +463,23 @@
   // PlayerPanel because the picker is board-wide.
   function handleManaSacrificeCost(card: CardView, ability: ManaAbilityView): void {
     sacrificePrompt = { kind: "mana", card, ability };
+  }
+
+  // #170: an ability row picked from the admin context menu. Same two
+  // destinations PlayerPanel routes to — the sacrifice picker when the
+  // cost needs one, otherwise straight to the action / targeting flow.
+  function handleMenuActivate(card: CardView, activate: MenuActivate): void {
+    if (activate.kind === "ability") {
+      handleActivateAbility(card, activate.index);
+      return;
+    }
+    const ability = (card.mana_abilities ?? []).find((a) => a.index === activate.index);
+    if (ability?.sacrifice_options) {
+      handleManaSacrificeCost(card, ability);
+      return;
+    }
+    const params = { card_id: card.instance_id, ability_index: activate.index };
+    sendAction("activate_mana_ability", params, card.controller);
   }
 
   function confirmSacrifice(instanceID: string): void {
@@ -666,32 +713,46 @@
     onConfirm={confirmSacrifice}
     onCancel={() => (sacrificePrompt = null)}
   />
+  <AlternativeCostModal
+    card={altCostPromptCard}
+    onConfirm={confirmAltCost}
+    onCancel={() => (altCostPromptCard = null)}
+  />
   <DiscardCostModal
     card={discardPromptCard}
     options={discardCostOptions}
     onConfirm={confirmDiscardCost}
-    onCancel={() => (discardPromptCard = null)}
+    onCancel={() => {
+      discardPromptCard = null;
+      discardPromptChoices = {};
+    }}
   />
   <SacrificeCostModal
     source={sacrificePromptCard}
     label={sacrificePromptCard?.additional_cost?.label ?? "a permanent"}
     options={castSacrificeOptions}
     onConfirm={confirmSacrificeCost}
-    onCancel={() => (sacrificePromptCard = null)}
+    onCancel={() => {
+      sacrificePromptCard = null;
+      sacrificePromptChoices = {};
+    }}
   />
   <XCostModal
     gameID={view.id}
     card={xPromptCard}
     suggestedMax={suggestedX}
     onConfirm={confirmX}
-    onCancel={() => (xPromptCard = null)}
+    onCancel={() => {
+      xPromptCard = null;
+      xPromptChoices = {};
+    }}
   />
   <ModePickerModal
     card={modePromptCard}
     onConfirm={confirmModes}
     onCancel={() => {
       modePromptCard = null;
-      modePromptX = undefined;
+      modePromptChoices = {};
     }}
   />
   {#if $zoneBrowser}
@@ -703,6 +764,17 @@
       {sendAction}
       onClose={closeZoneBrowser}
       onTargetCard={handleTargetCard}
+    />
+  {/if}
+  {#if $cardMenu}
+    <CardContextMenu
+      {view}
+      {viewerID}
+      {isAdmin}
+      open={$cardMenu}
+      {sendAction}
+      onActivate={handleMenuActivate}
+      onClose={closeCardMenu}
     />
   {/if}
 </div>

@@ -241,6 +241,21 @@ type Spec struct {
 	// cards with no additional cost.
 	AdditionalCost *game.AdditionalCost
 
+	// AlternativeCosts is the S22 "you may cast this spell for its
+	// overload / evoke / cleave cost" clause (CR 118.9) — a cost paid
+	// INSTEAD of the mana cost, not alongside it like AdditionalCost.
+	// Build the entries with Overload / Evoke / Cleave in
+	// alternative_cost.go, never by hand: each keyword bundles a
+	// text rewrite with its price, and the rewrite is the half a
+	// card file would forget.
+	//
+	//	AlternativeCosts: []game.AlternativeCost{Overload("{4}{R}")},
+	//
+	// A slice because a card can offer more than one (spree, the
+	// modal-cost cards). Nil for nearly every card. OnResolve reads
+	// the choice back with ctx.PaidAltCost("overload").
+	AlternativeCosts []game.AlternativeCost
+
 	// Activated is the list of CR 602 activated abilities the card
 	// offers from the battlefield — the fourth ability type, added
 	// in S21 sub-PR 2. Each entry declares its cost (tap, sacrifice

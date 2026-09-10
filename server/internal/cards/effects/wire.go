@@ -74,6 +74,15 @@ func init() {
 		}
 		return nil
 	}
+	// S22: alternative costs to cast — overload, evoke, cleave. Nil
+	// for cards that offer none, which is nearly all of them.
+	game.CatalogAlternativeCosts = func(oracleID string) []game.AlternativeCost {
+		spec, ok := Lookup(oracleID)
+		if !ok || len(spec.AlternativeCosts) == 0 {
+			return nil
+		}
+		return spec.AlternativeCosts
+	}
 	game.CatalogManaAbilities = func(oracleID string) []game.ManaAbilityShape {
 		spec, ok := Lookup(oracleID)
 		if !ok || len(spec.ManaAbilities) == 0 {

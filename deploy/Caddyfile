@@ -31,11 +31,13 @@
 	# ONE `path` directive with many arguments. Arguments to a single matcher
 	# are OR'ed; repeating the directive would AND them and match nothing.
 	#
-	# Keep in sync with the server's route table and client/vite.config.ts.
+	# Keep in sync with the server's route table, client/vite.config.ts and
+	# API_PATH in client/src/sw/service-worker.js -- the service worker keeps
+	# its own copy of this list so it can refuse to cache any of it (ADR 0031).
 	# A missing entry fails silently: the path falls through to file_server,
 	# the client receives index.html, JSON parsing fails, and the feature
 	# quietly disappears instead of erroring.
-	@api path /ws /healthz /me /logout /games /games/* /cards/ /cards/* /admin/* /auth/* /avatars/* /bugreport /bugreport/*
+	@api path /ws /healthz /me /logout /config /games /games/* /cards/ /cards/* /admin/* /auth/* /avatars/* /bugreport /bugreport/* /dev /dev/*
 	reverse_proxy @api 127.0.0.1:8080
 
 	# Do NOT add `header_up Host`. Caddy forwards the original Host by default,
@@ -43,6 +45,43 @@
 	# against the request Host. Rewriting Host to the upstream 403s every /ws
 	# upgrade while ordinary HTTP keeps working -- an unpleasant way to spend
 	# an afternoon.
+
+	# --- PWA (docs/decisions/0031-progressive-web-app.md) ------------------
+	#
+	# No `try_files` is needed and none should be added: the client routes on
+	# location.hash (see client/src/lib/router.ts), so every deep link --
+	# invite links included -- is requested from this server as `/`. Adding a
+	# catch-all rewrite here would instead start answering unknown paths with
+	# index.html, which is precisely the silent failure the @api comment above
+	# describes.
+	#
+	# Content-Type: Go's mime table does not know .webmanifest on every host,
+	# and file_server would fall back to sniffing it as text/plain. Caddy's
+	# header handler runs before file_server, which only sets a Content-Type
+	# when one is not already present.
+	#
+	# Cache-Control: the deploy rsyncs with --delete, so a browser that has an
+	# old index.html or an old sw.js in its HTTP cache can be pinned to a
+	# build whose hashed assets no longer exist on the origin. The entry
+	# points below must always be revalidated. (The service worker registers
+	# with updateViaCache: "none" as well; this is the belt to that's braces,
+	# and covers browsers with no service worker at all.)
+	@shell path / /index.html /sw.js /offline.html
+	header @shell {
+		Cache-Control "no-cache"
+	}
+
+	header /manifest.webmanifest {
+		Content-Type "application/manifest+json"
+		Cache-Control "no-cache"
+	}
+
+	# Vite content-hashes everything under /assets/, so those URLs are
+	# immutable by construction and safe to pin for a year.
+	header /assets/* {
+		Cache-Control "public, max-age=31536000, immutable"
+	}
+
 	root * /var/www/cmdctrl-client
 	file_server
 }

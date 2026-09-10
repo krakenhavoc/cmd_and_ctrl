@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="CMD &amp; CTRL">
+  <!-- Tab-sized variant: heavier stroke and a larger pip so the mark
+       still reads at 16px, where the 512px icon's hairline vanishes. -->
+  <rect width="64" height="64" rx="12" fill="#0b0a09" />
+  <g transform="rotate(45 32 32)">
+    <rect x="13" y="13" width="38" height="38" rx="6" fill="none" stroke="#d9b45c" stroke-width="5" />
+    <rect x="26" y="26" width="12" height="12" rx="2" fill="#d9b45c" />
+  </g>
+</svg>

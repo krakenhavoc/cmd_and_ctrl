@@ -16,6 +16,17 @@ export default [
     },
   },
   {
+    // The service-worker template runs in a ServiceWorkerGlobalScope, not a
+    // window: `clients`, `skipWaiting` and a self-typed `self` are globals
+    // there and undefined everywhere else.
+    files: ["src/sw/service-worker.js"],
+    languageOptions: {
+      globals: {
+        ...globals.serviceworker,
+      },
+    },
+  },
+  {
     files: ["**/*.svelte"],
     languageOptions: {
       parserOptions: {
