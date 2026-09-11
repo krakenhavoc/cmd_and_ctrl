@@ -21,8 +21,8 @@ import (
 // does, off the keyword.
 //
 // The affected set is snapshotted at resolution (CR 611.2c), which
-// BoostUntilEOT and GrantKeywordUntilEOT both do for free: a creature
-// the targeted player casts afterwards gets neither half.
+// both until-end-of-turn primitives do for free: a creature the
+// targeted player casts afterwards gets neither half.
 //
 // Two primitives rather than one because the P/T change is layer 7c
 // and the type grant is layer 4 — a single entry could not sort into
