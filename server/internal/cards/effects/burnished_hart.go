@@ -15,6 +15,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Cost is mana + sacrifice with NO tap, so the Hart can cash itself
 // in the turn it arrives.
+//
+// S22: one search with Limit 2 — the two single-card passes this
+// used to make were a workaround for the first-match picker, and the
+// chooser makes "up to two basic land cards" literal.
 func init() {
 	Register(Spec{
 		OracleID: "893fed41-c144-433f-af88-bc7d419b7fb3",
@@ -26,27 +30,16 @@ func init() {
 				Mana:          "{3}",
 			},
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (SearchLibrary{
-					Player:        item.Controller,
-					Predicate:     IsBasicLand,
-					Dest:          game.ZoneBattlefield,
-					Limit:         1,
-					Reveal:        true,
-					Shuffle:       false,
-					TappedOnEntry: true,
-				}).Apply(ctx); err != nil {
-					return err
-				}
 				return SearchLibrary{
 					Player:        item.Controller,
 					Predicate:     IsBasicLand,
 					Dest:          game.ZoneBattlefield,
-					Limit:         1,
+					Limit:         2,
 					Reveal:        true,
 					Shuffle:       true,
 					TappedOnEntry: true,
-				}.Apply(ctx)
+					Reason:        "Burnished Hart — up to two basic lands",
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})

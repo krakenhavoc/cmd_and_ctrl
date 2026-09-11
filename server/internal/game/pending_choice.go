@@ -171,6 +171,29 @@ const (
 	// top_order is top-first, so its first entry is the next card
 	// drawn.
 	PendingChoiceScry PendingChoiceKind = "scry"
+
+	// PendingChoiceSearchLibrary — "search your library for ..."
+	// (CR 701.19). The searcher picks which of the matching cards
+	// they take; picking none is always legal ("you may fail to
+	// find", CR 701.19c), so this prompt has a minimum of zero and a
+	// maximum of the effect's limit.
+	//
+	// LOOK AT, not reveal — and the distinction is the whole reason
+	// the prompt is safe to render at all. The candidates are marked
+	// known to the CHOOSER alone, and the wire withholds the option
+	// list from every other seat, so opponents learn neither which
+	// cards matched nor how many did. Only the cards actually taken
+	// by a "reveal those cards" effect become public, and the
+	// post-search shuffle wipes the chooser's own positional
+	// knowledge again.
+	//
+	// The chooser is always the library's owner — Assassin's Trophy
+	// makes the VICTIM search their own library, not the caster —
+	// so no information crosses the table.
+	//
+	// Answered with {card_ids: []string}; an empty or absent list is
+	// "fail to find".
+	PendingChoiceSearchLibrary PendingChoiceKind = "search_library"
 )
 
 // PendingChoice is one outstanding "someone needs to pick" entry
@@ -310,6 +333,26 @@ type PendingChoice struct {
 	// "unless" consequence to run when the chooser declines or
 	// can't pay. Not serialised. Added in S19 sub-PR 6.
 	payUnlessResume *payUnlessFrame
+
+	// SearchCards is the set of library cards a
+	// PendingChoiceSearchLibrary's chooser may take, in library
+	// order. Wire-serialised via PendingChoiceView.Options — and,
+	// unlike every other Options-bearing kind, withheld from
+	// non-choosers entirely, because the length of this list is
+	// itself hidden information about a hidden zone.
+	SearchCards []uuid.UUID
+
+	// SearchMax is how many of SearchCards the chooser may take.
+	// The minimum is always zero: CR 701.19c lets a player fail to
+	// find however hard they looked.
+	SearchMax int
+
+	// searchResume is the server-only continuation for a
+	// PendingChoiceSearchLibrary: the whole SearchLibrarySpec, which
+	// carries the destination, the reveal / shuffle / tapped flags
+	// and the rest of the effect (Fabled Passage's "then untap that
+	// land", Gamble's random discard). Not serialised to the wire.
+	searchResume *searchResumeFrame
 
 	// scryResume is the continuation for a PendingChoiceScry: the
 	// rest of the effect, which must not run until the player has

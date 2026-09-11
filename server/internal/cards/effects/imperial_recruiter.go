@@ -27,6 +27,7 @@ func init() {
 				Limit:   1,
 				Reveal:  true,
 				Shuffle: true,
+				Reason:  "Imperial Recruiter — a creature with power 2 or less",
 			}.Apply(ctx)
 		},
 	})

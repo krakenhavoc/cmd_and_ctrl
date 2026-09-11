@@ -32,6 +32,7 @@ func init() {
 				Reveal:        true,
 				Shuffle:       true,
 				TappedOnEntry: true,
+				Reason:        "Farseek — a Plains, Island, Swamp or Mountain",
 			}.Apply(ctx)
 		},
 	})

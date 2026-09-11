@@ -20,11 +20,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // sharing the body would have quietly upgraded Evolving Wilds or
 // downgraded this.
 //
-// Inherits the family's sandbox gap, stated once in
-// fetchland_helpers.go: SearchLibrary takes the FIRST match in
-// library order, so the player does not choose which basic. That
-// bites less here than on a dual-fetching fetchland — the choice is
-// between basics — but it is still a choice the card gives you.
+// S22: the player picks which basic, like every other search. On
+// this card that is the whole ability — a five-colour deck cracks a
+// Vista for the colour it is short of, which the old first-match
+// picker turned into whatever sat lowest in the library.
 func init() {
 	Register(Spec{
 		OracleID: "032b8a0d-491a-4a12-ab9f-689010054d5b",
@@ -40,6 +39,7 @@ func init() {
 					Limit:     1,
 					Reveal:    true,
 					Shuffle:   true,
+					Reason:    "Prismatic Vista — a basic land",
 				}.Apply(NewContext(g, item))
 			},
 		}},

@@ -152,6 +152,9 @@ func TestCultivateFetchedLandEntersTapped(t *testing.T) {
 		nil,
 	)
 	passPriorityAroundTable(t, g)
+	// The battlefield half prompts (two basics, one pick); the hand
+	// half chains off it with one Forest left and takes it silently.
+	answerSearchByID(t, g, caster.ID, forest1)
 
 	// Whichever forest is on the battlefield should be tapped.
 	var fieldForest uuid.UUID
@@ -204,6 +207,8 @@ func TestPathToExileFetchedLandEntersTapped(t *testing.T) {
 		[]game.TargetRef{{Kind: game.TargetCard, ID: creatureID}},
 	)
 	passPriorityAroundTable(t, g)
+	// Path's "may" is the victim's, so they answer the prompt.
+	answerSearchByID(t, g, victim.ID, forestID)
 
 	if !g.Battlefield.Contains(forestID) {
 		t.Fatalf("Path to Exile did not fetch a basic land onto the battlefield")

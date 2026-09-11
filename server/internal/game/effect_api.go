@@ -626,12 +626,9 @@ func (g *Game) ReturnFromGraveyardUnderControlForEffect(cardID uuid.UUID, dest Z
 	default:
 		return ErrZoneNotFound
 	}
-	if _, err := MoveCard(src, destZone, cardID); err != nil {
-		return err
-	}
-	g.markCardKnownInZoneLocked(destZone, cardID)
 	actor := ownerID
-	var oracleID string
+	var entersTapped bool
+	var enterCounters map[string]int
 	if destZone.Kind == ZoneBattlefield {
 		newController := controller
 		if newController == uuid.Nil {
@@ -640,14 +637,69 @@ func (g *Game) ReturnFromGraveyardUnderControlForEffect(cardID uuid.UUID, dest Z
 		if p := g.playerByIDLocked(newController); p == nil {
 			newController = ownerID
 		}
-		for i := range destZone.Cards {
-			if destZone.Cards[i].InstanceID == cardID {
-				destZone.Cards[i].Controller = newController
-				oracleID = destZone.Cards[i].OracleID
+		// Stamp the controller BEFORE the pipeline runs. A
+		// replacement that asks "is this entering permanent mine?"
+		// (Authority of the Consuls) reads Card.Controller, and while
+		// the card sits in the graveyard that field still names
+		// whoever controlled it when it died — which, for a
+		// reanimated opponent's creature, is the wrong player.
+		for i := range src.Cards {
+			if src.Cards[i].InstanceID == cardID {
+				src.Cards[i].Controller = newController
 				break
 			}
 		}
 		actor = newController
+		// #263: a reanimated permanent enters the battlefield like
+		// any other, so the CR 614 entry pipeline has to run on it.
+		// Skipping it meant a reanimated shockland ignored its own
+		// enters-tapped clause and a creature reanimated under an
+		// opponent's nose dodged Authority of the Consuls.
+		ev := &ReplacementEvent{
+			Kind:    RepEventMove,
+			Actor:   newController,
+			CardID:  cardID,
+			OldZone: ZoneGraveyard,
+			NewZone: ZoneBattlefield,
+		}
+		out, err := g.applyReplacementsLocked(ev)
+		if errors.Is(err, errReplacementPending) {
+			// A CR 616 ordering prompt is open. Nothing has moved —
+			// the card is still in the graveyard — so the return is
+			// dropped rather than stranded mid-zone. Same posture the
+			// land-play and exile-return paths take.
+			return nil
+		}
+		if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+			g.clearReplacementEventLocked(ev.ID)
+			return err
+		}
+		defer g.clearReplacementEventLocked(ev.ID)
+		if out == nil || out.Canceled || out.NewZone != ZoneBattlefield {
+			return nil
+		}
+		entersTapped = out.EntersTapped
+		enterCounters = out.EntersWithCounters
+	}
+	if _, err := MoveCard(src, destZone, cardID); err != nil {
+		return err
+	}
+	g.markCardKnownInZoneLocked(destZone, cardID)
+	var oracleID string
+	if destZone.Kind == ZoneBattlefield {
+		for i := range destZone.Cards {
+			if destZone.Cards[i].InstanceID == cardID {
+				destZone.Cards[i].Controller = actor
+				if entersTapped {
+					destZone.Cards[i].Tapped = true
+				}
+				oracleID = destZone.Cards[i].OracleID
+				break
+			}
+		}
+		for name, n := range enterCounters {
+			_ = g.AddCounterForEffect(cardID, name, n)
+		}
 	}
 	g.EmitEvent(Event{
 		Kind:    EventZoneMove,
@@ -670,22 +722,98 @@ func (g *Game) ReturnFromGraveyardUnderControlForEffect(cardID uuid.UUID, dest Z
 	return nil
 }
 
-// SearchLibraryForEffect scans playerID's library for the first
-// (up to `limit`) cards matching `pred`, moves them to the given
-// destination zone, reveals (via KnownBy) to all seated players
-// when `reveal` is true, and shuffles the library when `shuffle`
-// is true.
+// SearchLibrarySpec is the full description of one "search your
+// library for ..." effect. Every field except Player and Pred has a
+// useful zero value, so the older positional entry points below stay
+// one-line wrappers over it.
+//
+// The spec exists because a search is no longer a single synchronous
+// mutation: when the library offers more matches than the effect may
+// take, the searcher gets a real PendingChoiceSearchLibrary prompt
+// and the rest of the effect has to wait for their answer. `Then`
+// is that continuation.
+type SearchLibrarySpec struct {
+	// Player is the searcher — always the owner of the library being
+	// searched. Assassin's Trophy makes the VICTIM search, so this is
+	// not necessarily the resolving spell's controller.
+	Player uuid.UUID
+
+	// Source is the card that caused the search, used only as prompt
+	// context on the wire. Optional.
+	Source uuid.UUID
+
+	// Pred filters the library. nil matches every card (Gamble).
+	Pred func(Card) bool
+
+	// Dest is one of ZoneHand, ZoneBattlefield, ZoneLibrary.
+	Dest ZoneKind
+
+	// Limit is the maximum number of cards taken. <= 0 means 1.
+	Limit int
+
+	// Reveal marks the TAKEN cards known to every seated player (CR
+	// "reveal"). It never reveals the cards that were merely
+	// considered — see queueSearchChoiceLocked for why that
+	// distinction is load-bearing.
+	Reveal bool
+
+	// Shuffle shuffles the library once the search is finished, and
+	// wipes per-card knowledge with it.
+	Shuffle bool
+
+	// TappedOnEntry forces a fetched permanent tapped. It expresses
+	// the FETCHING effect's printed text ("put it onto the
+	// battlefield tapped" — Cultivate, Solemn Simulacrum, Path to
+	// Exile), NOT the fetched card's own enters-tapped clause; the
+	// CR 614 pipeline owns that one. The two are OR-ed: a Darkslick
+	// Shores fetched by Cultivate is tapped because Cultivate says
+	// so, and one fetched by Skyshroud Claim is tapped only if its
+	// own condition fires.
+	TappedOnEntry bool
+
+	// Optional marks a "you MAY search" (CR 701.19c). It forces the
+	// prompt even when the pick is otherwise forced, so the searcher
+	// can decline — Assassin's Trophy's victim keeps the right to
+	// refuse the land and the shuffle.
+	Optional bool
+
+	// Reason is the prompt's banner copy. Defaults to a generic
+	// "Search your library".
+	Reason string
+
+	// Validate is an extra legality check on the picked SET, for
+	// clauses the per-card predicate cannot express. Myriad
+	// Landscape's "two basic land cards that SHARE A LAND TYPE" is
+	// the case: no predicate over one card can say it. Called with
+	// the chosen cards (possibly zero of them, which is always
+	// legal — you may always fail to find).
+	Validate func([]Card) bool
+
+	// Then is the rest of the effect, run once the search has
+	// finished — immediately when no prompt was needed, and from
+	// ResolveSearchLibrary when one was. It receives the instance
+	// IDs actually taken, in the order they were taken, so an effect
+	// like Fabled Passage's "then ... untap THAT LAND" can name what
+	// it found instead of re-deriving it.
+	Then func(g *Game, found []uuid.UUID) error
+}
+
+// SearchLibraryForEffect scans playerID's library for cards matching
+// `pred`, moves up to `limit` of them to the given destination zone,
+// reveals (via KnownBy) to all seated players when `reveal` is true,
+// and shuffles the library when `shuffle` is true.
 //
 // dest is one of ZoneHand, ZoneBattlefield, ZoneLibrary (library-
 // top is not distinguishable from library via ZoneKind; a future
-// "top N" primitive can extend this). Used by Cultivate (dest=Hand,
-// limit=2, reveal=true, shuffle=true), Demonic Tutor (dest=Hand,
-// limit=1, reveal=false, shuffle=true), Vampiric Tutor (dest=
-// Library, limit=1, ...).
+// "top N" primitive can extend this). Used by Demonic Tutor
+// (dest=Hand, limit=1, reveal=false, shuffle=true), Vampiric Tutor
+// (dest=Library, limit=1, ...).
 //
-// Sandbox simplification: the picker is deterministic — first match
-// wins. A real "you choose" UI is deferred to S22. Effects that
-// need a specific card pass a tight predicate (e.g. basic land type).
+// The searcher picks which matches they take (S22) — see
+// SearchLibraryThenForEffect. This wrapper has no continuation, so
+// it suits only effects that do nothing after the search.
+//
+// Caller must hold g.mu.
 func (g *Game) SearchLibraryForEffect(
 	playerID uuid.UUID,
 	pred func(Card) bool,
@@ -697,15 +825,12 @@ func (g *Game) SearchLibraryForEffect(
 	return g.SearchLibraryForEffectWithOptions(playerID, pred, dest, limit, reveal, shuffle, false)
 }
 
-// SearchLibraryForEffectWithOptions is the extended entry point
-// with a tappedOnEntry flag — fetched permanents enter the
-// battlefield tapped when true. Closes the S14 "enters untapped"
-// deferral for Cultivate / Path to Exile / Solemn Simulacrum.
-// Added in S17 sub-PR 4.
+// SearchLibraryForEffectWithOptions is SearchLibraryForEffect with
+// the forced-tap flag. Retained as a positional wrapper because a
+// dozen catalog cards call it; new callers should build a
+// SearchLibrarySpec instead.
 //
-// The tapped flag is applied AFTER the push to destZone but
-// BEFORE EventETB fires — matching the replacement-pipeline's
-// EntersTapped semantics in MoveCardByIDAsCommander.
+// Caller must hold g.mu.
 func (g *Game) SearchLibraryForEffectWithOptions(
 	playerID uuid.UUID,
 	pred func(Card) bool,
@@ -715,86 +840,320 @@ func (g *Game) SearchLibraryForEffectWithOptions(
 	shuffle bool,
 	tappedOnEntry bool,
 ) error {
-	p := g.playerByIDLocked(playerID)
+	return g.SearchLibraryThenForEffect(SearchLibrarySpec{
+		Player:        playerID,
+		Pred:          pred,
+		Dest:          dest,
+		Limit:         limit,
+		Reveal:        reveal,
+		Shuffle:       shuffle,
+		TappedOnEntry: tappedOnEntry,
+	})
+}
+
+// SearchLibraryThenForEffect is the real entry point: it runs the
+// search described by spec and then spec.Then.
+//
+// The searcher chooses. Until S22 the engine took the first matches
+// in library order, which made a fetchland's entire strategic content
+// — which dual do I want? — a property of deck-list order, and made
+// Myriad Landscape's "share a land type" whatever the bottom-most
+// basic happened to be. That simplification is gone: when the library
+// offers a real choice, the searcher gets a prompt.
+//
+// "A real choice" means: more matches than the effect may take, or
+// an Optional ("you may search") clause, or a Validate constraint the
+// whole match set does not already satisfy. With nothing to decide —
+// a Rampant Growth into a library holding exactly one Forest — the
+// engine takes the match and moves on, because a modal offering one
+// button is worse than no modal.
+//
+// Hidden information (CR 400.2): a library is a hidden zone, and the
+// prompt does not change that for anybody but the searcher. The
+// candidates are marked known to the SEARCHER ALONE, the per-viewer
+// wire filter redacts them for every other seat, and the search
+// prompt's option list is withheld from non-choosers entirely so the
+// NUMBER of matches does not leak either. The searcher is always the
+// library's owner, so nothing crosses the table.
+//
+// Caller must hold g.mu.
+func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
+	p := g.playerByIDLocked(spec.Player)
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	if limit <= 0 {
-		limit = 1
+	if spec.Limit <= 0 {
+		spec.Limit = 1
 	}
-	var destZone *Zone
+	if _, err := g.searchDestZoneLocked(p, spec.Dest); err != nil {
+		return err
+	}
+	// Collect every match, not just the first `limit` — the whole
+	// point of the chooser is that the searcher sees the full set.
+	matches := make([]uuid.UUID, 0, len(p.Library.Cards))
+	matched := make([]Card, 0, len(p.Library.Cards))
+	for _, c := range p.Library.Cards {
+		if spec.Pred == nil || spec.Pred(c) {
+			matches = append(matches, c.InstanceID)
+			matched = append(matched, c)
+		}
+	}
+	if len(matches) == 0 {
+		// Nothing to find. Still a search: the event fires and the
+		// shuffle happens, because the card said "then shuffle"
+		// unconditionally.
+		return g.finishSearchLocked(spec, p, nil)
+	}
+	if !spec.Optional && len(matches) <= spec.Limit &&
+		(spec.Validate == nil || spec.Validate(matched)) {
+		// No decision to make — take them all.
+		found := g.executeSearchTakeLocked(spec, p, matches)
+		return g.finishSearchLocked(spec, p, found)
+	}
+	g.queueSearchChoiceLocked(spec, p, matches)
+	return nil
+}
+
+// searchDestZoneLocked resolves a search's destination ZoneKind to
+// the concrete zone. Caller must hold g.mu.
+func (g *Game) searchDestZoneLocked(p *Player, dest ZoneKind) (*Zone, error) {
 	switch dest {
 	case ZoneHand:
-		destZone = p.Hand
+		return p.Hand, nil
 	case ZoneBattlefield:
-		destZone = g.Battlefield
+		return g.Battlefield, nil
 	case ZoneLibrary:
-		destZone = p.Library
-	default:
-		return ErrZoneNotFound
+		return p.Library, nil
 	}
-	// Collect the matching card IDs up to limit. Walk the library
-	// slice without mutating, then move by ID.
-	matchIDs := make([]uuid.UUID, 0, limit)
-	for _, c := range p.Library.Cards {
-		if len(matchIDs) >= limit {
+	return nil, ErrZoneNotFound
+}
+
+// queueSearchChoiceLocked opens the search prompt. The candidates
+// are marked known to the searcher only: they are looking through
+// their own library, which is exactly the knowledge the rules grant
+// them and no more. `Reveal` is deliberately NOT applied here —
+// "reveal those cards" on Cultivate names the cards you take, not
+// every basic you flipped past on the way, and revealing the whole
+// match set would hand the table a census of the library.
+//
+// Caller must hold g.mu.
+func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matches []uuid.UUID) {
+	known := make(map[uuid.UUID]bool, len(matches))
+	for _, id := range matches {
+		known[id] = true
+	}
+	for i := range p.Library.Cards {
+		if known[p.Library.Cards[i].InstanceID] {
+			p.Library.Cards[i].AddKnower(spec.Player)
+		}
+	}
+	reason := spec.Reason
+	if reason == "" {
+		reason = "Search your library"
+	}
+	g.QueueChoiceForEffect(PendingChoice{
+		Kind:         PendingChoiceSearchLibrary,
+		Chooser:      spec.Player,
+		FromPlayer:   spec.Player,
+		Count:        spec.Limit,
+		Source:       spec.Source,
+		Reason:       reason,
+		SearchCards:  append([]uuid.UUID(nil), matches...),
+		SearchMax:    spec.Limit,
+		searchResume: &searchResumeFrame{spec: spec},
+	})
+}
+
+// executeSearchTakeLocked moves the chosen cards out of the library
+// and returns the IDs that actually made it. Shared by the
+// no-decision path and by ResolveSearchLibrary, so a fetched
+// permanent enters identically either way.
+//
+// Caller must hold g.mu.
+func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []uuid.UUID) []uuid.UUID {
+	destZone, err := g.searchDestZoneLocked(p, spec.Dest)
+	if err != nil || destZone == p.Library {
+		// ZoneLibrary is "leave it where it is" (Vampiric Tutor's
+		// put-on-top is not modelled yet); only the reveal applies.
+		if err == nil && spec.Reveal {
+			g.revealLibraryCardsLocked(p, ids)
+		}
+		return nil
+	}
+	found := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if !p.Library.Contains(id) {
+			continue
+		}
+		if spec.Reveal {
+			g.revealLibraryCardsLocked(p, []uuid.UUID{id})
+		}
+		if destZone.Kind == ZoneBattlefield {
+			moved, ok := g.searchEnterBattlefieldLocked(spec, p, id)
+			if !ok {
+				continue
+			}
+			found = append(found, moved)
+			continue
+		}
+		if _, err := MoveCard(p.Library, destZone, id); err != nil {
+			continue
+		}
+		g.markCardKnownInZoneLocked(destZone, id)
+		g.EmitEvent(Event{
+			Kind:    EventZoneMove,
+			Actor:   spec.Player,
+			CardID:  id,
+			OldZone: ZoneLibrary,
+			NewZone: destZone.Kind,
+		})
+		found = append(found, id)
+	}
+	return found
+}
+
+// searchEnterBattlefieldLocked puts one fetched card onto the
+// battlefield through the CR 614 entry pipeline (#263).
+//
+// Before this, the search path pushed the card straight onto the
+// battlefield and emitted EventZoneMove / EventETB without ever
+// calling applyReplacementsLocked — so a fetched Darkslick Shores
+// ignored its own "enters tapped unless" clause, every conditional
+// dual cycle came in strictly better than printed, and a creature an
+// opponent fetched walked past Authority of the Consuls. The ad-hoc
+// TappedOnEntry flag hid it for the always-tapped cases and could not
+// express a conditional one.
+//
+// The pipeline is consulted BEFORE the card leaves the library, for
+// the same reason the exile-return path does it: a CR 616 ordering
+// prompt means bailing, and bailing with the card already lifted out
+// of its zone would strand it. On that bail this card is simply not
+// found — the same posture the land-play path takes when its own
+// pipeline call pauses.
+//
+// DECLARED SIMPLIFICATION — the bail has no resume. A replacement
+// that pauses the pipeline (a CR 616 ordering prompt, or a CR 614.10
+// "may" such as a shockland's pay-2-life choice) drops this card
+// from the search rather than reopening the entry when the prompt is
+// answered. Nothing is stranded — the card is still in the library
+// and the pipeline paused before anything moved — but the search
+// finds one card fewer than it should have.
+//
+// Giving the search path a faithful resume means reconstructing the
+// SearchLibrarySpec (destination, reveal, forced-tap, and the Then
+// continuation) at answer time, which is a second continuation frame
+// stacked under the first. It is deliberately not built here. A
+// concurrent branch is adding an `entryResumable` flag to
+// ReplacementEvent that gates whether a paused entry may be resumed
+// by executeEntryToBattlefieldLocked; this event does NOT set it, so
+// after that merge a search-fetched permanent whose entry would have
+// prompted takes the un-paid branch (enters tapped, no choice
+// offered) rather than stranding. That is the safe direction and is
+// stated here rather than left to be discovered.
+//
+// Returns the moved card's ID and whether it moved.
+//
+// Caller must hold g.mu.
+func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, id uuid.UUID) (uuid.UUID, bool) {
+	// The controller has to be stamped before the pipeline runs:
+	// Authority of the Consuls asks whose permanent is entering, and
+	// a self-replacement's condition ("unless you control two or
+	// fewer other lands") counts the lands of whoever that is.
+	for i := range p.Library.Cards {
+		if p.Library.Cards[i].InstanceID == id {
+			p.Library.Cards[i].Controller = spec.Player
 			break
 		}
-		if pred == nil || pred(c) {
-			matchIDs = append(matchIDs, c.InstanceID)
-		}
 	}
-	for _, id := range matchIDs {
-		if reveal {
-			// All seated players see the card identity (CR: "reveal").
-			for i := range p.Library.Cards {
-				if p.Library.Cards[i].InstanceID != id {
-					continue
-				}
-				for _, seat := range g.Seats {
-					p.Library.Cards[i].AddKnower(seat.ID)
-				}
-				break
-			}
+	ev := &ReplacementEvent{
+		Kind:    RepEventMove,
+		Actor:   spec.Player,
+		CardID:  id,
+		OldZone: ZoneLibrary,
+		NewZone: ZoneBattlefield,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		return uuid.Nil, false
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return uuid.Nil, false
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled || out.NewZone != ZoneBattlefield {
+		return uuid.Nil, false
+	}
+	moved, err := MoveCard(p.Library, g.Battlefield, id)
+	if err != nil {
+		return uuid.Nil, false
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID != moved.InstanceID {
+			continue
 		}
-		if destZone != p.Library {
-			if _, err := MoveCard(p.Library, destZone, id); err != nil {
-				return err
-			}
-			g.markCardKnownInZoneLocked(destZone, id)
-			// S17 sub-PR 4: stamp Tapped on fetched permanents when
-			// the card text specifies "enters tapped" (Cultivate /
-			// Path to Exile / Solemn Simulacrum). Applied before
-			// EventETB fires so listeners + the client see the
-			// tapped state consistent with ETB.
-			if tappedOnEntry && destZone.Kind == ZoneBattlefield {
-				for i := range destZone.Cards {
-					if destZone.Cards[i].InstanceID == id {
-						destZone.Cards[i].Tapped = true
-						break
-					}
-				}
-			}
-			g.EmitEvent(Event{
-				Kind:    EventZoneMove,
-				Actor:   playerID,
-				CardID:  id,
-				OldZone: ZoneLibrary,
-				NewZone: destZone.Kind,
-			})
-			if destZone.Kind == ZoneBattlefield {
-				g.EmitEvent(Event{Kind: EventETB, Actor: playerID, CardID: id})
-			}
+		g.Battlefield.Cards[i].Controller = spec.Player
+		// TappedOnEntry is the fetching effect's own "tapped"
+		// clause; out.EntersTapped is everything the CR 614 pipeline
+		// decided. Either one taps it.
+		if spec.TappedOnEntry || out.EntersTapped {
+			g.Battlefield.Cards[i].Tapped = true
 		}
+		break
+	}
+	g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
+	for name, n := range out.EntersWithCounters {
+		_ = g.AddCounterForEffect(moved.InstanceID, name, n)
 	}
 	g.EmitEvent(Event{
-		Kind:   EventSearchLibrary,
-		Actor:  playerID,
-		Amount: len(matchIDs),
+		Kind:    EventZoneMove,
+		Actor:   spec.Player,
+		CardID:  moved.InstanceID,
+		OldZone: ZoneLibrary,
+		NewZone: ZoneBattlefield,
 	})
-	if shuffle {
+	g.EmitEvent(Event{Kind: EventETB, Actor: spec.Player, CardID: moved.InstanceID})
+	// Same omission as the reanimation path had: a fetched permanent
+	// enters like any other, so its catalog OnETB hook runs.
+	g.fireETBHookLocked(moved.InstanceID, moved.OracleID)
+	return moved.InstanceID, true
+}
+
+// revealLibraryCardsLocked marks the named library cards known to
+// every seated player — the CR sense of "reveal". Caller must hold
+// g.mu.
+func (g *Game) revealLibraryCardsLocked(p *Player, ids []uuid.UUID) {
+	want := make(map[uuid.UUID]bool, len(ids))
+	for _, id := range ids {
+		want[id] = true
+	}
+	for i := range p.Library.Cards {
+		if !want[p.Library.Cards[i].InstanceID] {
+			continue
+		}
+		for _, seat := range g.Seats {
+			p.Library.Cards[i].AddKnower(seat.ID)
+		}
+	}
+}
+
+// finishSearchLocked emits EventSearchLibrary, shuffles if the card
+// said to, and runs the continuation. Caller must hold g.mu.
+func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uuid.UUID) error {
+	g.EmitEvent(Event{
+		Kind:   EventSearchLibrary,
+		Actor:  spec.Player,
+		Amount: len(found),
+	})
+	if spec.Shuffle {
 		p.Library.Shuffle(g.rng)
+		// The shuffle is what un-knows the library again: whatever
+		// the searcher saw while looking, they no longer know where
+		// any of it is.
 		clearKnownInZoneLocked(p.Library)
+	}
+	if spec.Then != nil {
+		return spec.Then(g, found)
 	}
 	return nil
 }

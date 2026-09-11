@@ -1077,16 +1077,27 @@ func Dispatch(g *game.Game, a Action) error {
 			}
 			ids = append(ids, id)
 		}
-		// Two card-pick kinds share the {card_ids: []string} payload:
-		// discard_from_hand (S14) and sacrifice_choice ("each player
-		// sacrifices a creature"). Route by kind, as the {apply} and
-		// {order} payloads already do, rather than minting a third
-		// wire field for the same shape.
-		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceSacrifice {
-			if len(ids) != 1 {
-				return game.ErrInvalidParam
+		// Three card-pick kinds share the {card_ids: []string}
+		// payload: discard_from_hand (S14), sacrifice_choice ("each
+		// player sacrifices a creature") and search_library (S22).
+		// Route by kind, as the {apply} and {order} payloads already
+		// do, rather than minting another wire field for the same
+		// shape.
+		//
+		// search_library is the one that accepts an EMPTY list: "you
+		// may fail to find" (CR 701.19c) arrives as {choice_id} with
+		// no card_ids at all, which is why this lookup happens before
+		// the count-based guards below rather than after.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok {
+			switch kind {
+			case game.PendingChoiceSacrifice:
+				if len(ids) != 1 {
+					return game.ErrInvalidParam
+				}
+				return g.ResolveSacrificeChoice(choiceID, a.Player, ids[0])
+			case game.PendingChoiceSearchLibrary:
+				return g.ResolveSearchLibrary(choiceID, a.Player, ids)
 			}
-			return g.ResolveSacrificeChoice(choiceID, a.Player, ids[0])
 		}
 		return g.ResolvePendingChoice(choiceID, a.Player, ids)
 
