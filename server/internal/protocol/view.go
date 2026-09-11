@@ -589,6 +589,22 @@ type CardView struct {
 	// Omitted when false so non-catalog cards (the majority) don't
 	// carry the field on the wire. Added in S14 sub-PR 3.
 	Auto bool `json:"auto,omitempty"`
+	// Unimplemented is the honest inverse of Auto, and it is
+	// deliberately NOT !Auto. Most cards in a real deck have no
+	// catalog Spec and do not need one: printed keywords are
+	// enforced for every card in the dump since #317 / #319 / #320,
+	// a vanilla creature is complete, a basic land taps off its type
+	// line. This bit is set only when the card prints rules the
+	// engine will not run — the case behind reports #321, #324,
+	// #325, #332 and #333, where five uncatalogued cards resolved
+	// into silence and the player had no way to tell that was by
+	// design. See game.Unimplemented.
+	//
+	// Omitted when false. The client surfaces it where a player
+	// forms an expectation and nowhere else — the hover/inspect
+	// panel and the stack, not as a permanent board badge, which on
+	// a real battlefield would be most of the cards on the table.
+	Unimplemented bool `json:"unimplemented,omitempty"`
 	// TargetMode tells the client what kind of target to prompt
 	// for at cast time. See effects.Spec.TargetMode for the enum.
 	// Empty when the card takes no announce-time targets (either
@@ -781,6 +797,20 @@ type TurnView struct {
 	PriorityHolder int    `json:"priority_holder"`
 	Phase          string `json:"phase"`
 	Step           string `json:"step"`
+	// BlockDecisionSeats lists the seat indices that owe a
+	// declare-blockers decision right now — under attack, with at
+	// least one creature that could legally block one of the
+	// attackers (CR 509.1a / 509.1b). Empty and omitted outside the
+	// declare_blockers step.
+	//
+	// #328: blocking is a turn-based action, not a response, so the
+	// client's "does this player have a legal response?" auto-pass
+	// predicate could never see it and happily passed the defending
+	// player's one chance to block. This field is what the client
+	// consults to refuse to auto-pass the window. Public
+	// information — attackers and untapped creatures are both on the
+	// board — so it survives per-viewer filtering unredacted.
+	BlockDecisionSeats []int `json:"block_decision_seats,omitempty"`
 }
 
 // ViewOfGameFor builds a per-viewer wire snapshot. Same shape as
@@ -830,6 +860,10 @@ func ViewOfGame(g *game.Game) GameView {
 				PriorityHolder: g.Turn.PriorityHolder,
 				Phase:          string(g.Turn.Phase),
 				Step:           string(g.Turn.Step),
+				// #328: who still owes a block declaration. Read
+				// surface takes the lock we already hold and the
+				// layers ReadSnapshot just refreshed.
+				BlockDecisionSeats: g.SeatsOwingBlockDecisionLocked(),
 			},
 			MulligansOpen:     g.MulligansOpen,
 			Monarch:           uuidStringOrEmpty(g.Monarch),
@@ -1650,6 +1684,11 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// away the Cyclonic Rift.
 	out.AlternativeCosts = nil
 	out.TapCost = nil
+	// Weak evidence of identity, but evidence: it partitions the
+	// card into "prints rules we don't run" or not. Cleared for the
+	// same reason as the cost fields above rather than because
+	// anyone could read much from it.
+	out.Unimplemented = false
 	return out
 }
 
@@ -1746,6 +1785,7 @@ func viewOfCard(c game.Card) CardView {
 		DamageMarked:  c.DamageMarked,
 		FaceDown:      c.FaceDown,
 		Auto:          game.IsAutoCard(c.OracleID),
+		Unimplemented: game.Unimplemented(c),
 		TargetMode:    game.TargetModeFor(c.OracleID),
 		oracleID:      c.OracleID,
 		ManaCost:      c.ManaCost,

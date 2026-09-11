@@ -47,6 +47,42 @@ function cacheKey(seq: number, viewerID: string): string {
   return viewerID;
 }
 
+// owesBlockDecision reports whether the viewer is facing a
+// declare-blockers decision they have not been given the chance to
+// make: they're under attack and hold at least one creature that
+// could legally block one of the attackers.
+//
+// #328. Blocking is a TURN-BASED ACTION (CR 509.1), not a response to
+// anything, so no amount of "does this player have a legal response?"
+// reasoning can see it — which is why every auto-pass gate in this
+// module sailed straight through the one window a defending player
+// cannot afford to lose. The reporter's replay has them passing
+// declare_blockers 2ms after the snapshot arrived and dropping from
+// 26 to 18 life against three unblocked attackers, with an untapped
+// creature on the table the whole time.
+//
+// The answer is the server's: block legality is a rules question
+// (CR 509.1a untapped, CR 509.1b evasion) and re-deriving it in
+// TypeScript is how client and engine drift apart. The engine ships
+// `turn.block_decision_seats` and this predicate just asks whether
+// the viewer's seat is in it.
+//
+// Deliberately independent of who holds priority. The active player
+// gets priority first on entering the step, so the defender's seat is
+// listed before priority ever reaches them; the auto-pass effect
+// needs the guard to already be true when it does.
+export function owesBlockDecision(
+  snap: GameView | null | undefined,
+  viewerID: string | null,
+): boolean {
+  if (!snap || !viewerID) return false;
+  const seats = snap.turn?.block_decision_seats;
+  if (!seats || seats.length === 0) return false;
+  const idx = snap.seats?.findIndex((s) => s.id === viewerID) ?? -1;
+  if (idx < 0) return false;
+  return seats.includes(idx);
+}
+
 // hasAnyLegalResponse reports whether the viewer could fire *any*
 // priority-gated action against the current snapshot. Used by the
 // smart-skip auto-pass to decide whether to pass through a step the
@@ -54,6 +90,12 @@ function cacheKey(seq: number, viewerID: string): string {
 //
 // Returns false for spectators, for viewers who don't hold priority,
 // and for any snap where the timing helpers reject every card.
+//
+// #328: an owed declare-blockers decision also counts as "you have
+// something to do here", even though it isn't a response. Folding it
+// in here rather than only at the auto-pass call site keeps every
+// consumer — the skip decision and any UI badge — agreeing about
+// whether the window is live.
 export function hasAnyLegalResponse(
   snap: GameView | null | undefined,
   viewerID: string | null,
@@ -74,6 +116,11 @@ export function hasAnyLegalResponse(
 function compute(snap: GameView, viewerID: string): boolean {
   const seat = snap.seats?.find((s) => s.id === viewerID);
   if (!seat) return false;
+
+  // #328: an owed block declaration first — it's the one entry here
+  // that isn't a priority-gated action, and the one whose absence
+  // silently costs the player the game.
+  if (owesBlockDecision(snap, viewerID)) return true;
 
   // Hand: any castable card?
   for (const card of seat.hand?.cards ?? []) {

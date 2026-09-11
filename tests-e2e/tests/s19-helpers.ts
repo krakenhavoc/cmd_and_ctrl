@@ -38,6 +38,9 @@ export interface SnapshotCard {
   controller?: string;
   owner?: string;
   tapped?: boolean;
+  // Player ID this card is declared to attack. #328's spec reads it
+  // to confirm an attack landed before the blocking window opens.
+  attacking_target?: string;
 }
 
 export interface SnapshotZone {
@@ -78,6 +81,9 @@ export interface SnapshotTurn {
   active_seat: number;
   priority_holder: number;
   step: string;
+  // #328: seat indices that owe a declare-blockers decision. Present
+  // only during declare_blockers.
+  block_decision_seats?: number[];
 }
 
 export interface SnapshotView {

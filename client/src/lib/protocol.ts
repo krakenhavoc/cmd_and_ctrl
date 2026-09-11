@@ -70,6 +70,9 @@ export type ActionType =
   | "counter_ability"
   | "counter_spell"
   | "declare_attacker"
+  // Bulk attacking-set declaration (#318) — one action, one undo
+  // entry, one broadcast, however wide the board.
+  | "declare_attackers"
   | "declare_blocker"
   | "discard_selection"
   | "draw_card"
@@ -633,6 +636,20 @@ export interface CardView {
   // non-catalog cards (the majority) don't carry the field. Drives
   // the gold-leaf "auto" badge on Card.svelte.
   auto?: boolean;
+  // The honest inverse of `auto`, and deliberately not !auto. Most
+  // cards have no catalog entry and don't need one — printed
+  // keywords are enforced for every card in the dump, a vanilla
+  // creature is complete, a basic land taps off its type line. This
+  // is set only when the card prints rules the engine will not run,
+  // which is the case behind reports #321 / #324 / #325 / #332 /
+  // #333: five uncatalogued cards resolved into silence and the
+  // player had no way to tell that from a defect.
+  //
+  // Surfaced at the moments a player forms an expectation — the
+  // hover/inspect panel and the stack — and NOT as a board badge.
+  // Most of a real battlefield would carry one, and a badge on
+  // everything is a badge nobody reads.
+  unimplemented?: boolean;
   // target_mode tells the cast-click flow what to prompt for at
   // announce time. Empty/absent ⇒ cast immediately with no target.
   // See client/src/lib/targeting.ts for the full enum.
@@ -727,6 +744,16 @@ export interface TurnView {
   priority_holder: number;
   phase: string;
   step: string;
+  // #328: seat indices that owe a declare-blockers decision — under
+  // attack, holding at least one creature that could legally block
+  // one of the attackers. Absent outside the declare_blockers step.
+  //
+  // The server computes this because block legality is a rules
+  // question (CR 509.1a untapped, CR 509.1b evasion) that the client
+  // must not re-derive in TypeScript. It exists because blocking is a
+  // turn-based action rather than a response, so the auto-pass
+  // "legal response?" predicate structurally could not see it.
+  block_decision_seats?: number[];
 }
 
 // uuid generates a v4 UUID. Uses crypto.randomUUID when available (all
