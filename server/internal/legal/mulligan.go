@@ -1,6 +1,10 @@
 package legal
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
 
 type mulliganParams struct {
 	HandSize int `json:"hand_size"`
@@ -35,4 +39,36 @@ func (e *enumerator) mulliganMoves() {
 			Params: mustJSON(mulliganParams{HandSize: next}),
 		})
 	}
+}
+
+type discardSelectionParams struct {
+	CardIDs []string `json:"card_ids"`
+}
+
+// cleanupDiscardMoves enumerates the cleanup-step discard owed by this
+// seat (Game.DiscardPending), one move per hand subset of the owed
+// size, capped. Returns true when a discard is owed.
+func (e *enumerator) cleanupDiscardMoves() bool {
+	n, owed := e.g.DiscardPending[e.seat]
+	if !owed || n <= 0 || e.p.Hand == nil {
+		return owed && n > 0
+	}
+	pool := make([]uuid.UUID, 0, len(e.p.Hand.Cards))
+	for _, c := range e.p.Hand.Cards {
+		pool = append(pool, c.InstanceID)
+	}
+	for _, set := range combinations(pool, n, n, e.opts.MaxExpansionPerSource) {
+		label := "Discard to hand size:"
+		for _, id := range set {
+			label += " " + cardName(e.g, id)
+		}
+		e.add(Move{
+			Type:   TypeDiscardSelection,
+			Player: e.seat,
+			Kind:   KindChoice,
+			Label:  label,
+			Params: mustJSON(discardSelectionParams{CardIDs: idStrings(set)}),
+		})
+	}
+	return true
 }

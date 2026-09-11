@@ -147,6 +147,11 @@ var cardFields = plan(
 	"SummonedThisTurn", carried, "",
 	"MarkedLethalByDeathtouch", carried, "",
 	"ExilePlay", carried, "",
+	// S24 attachments (ADR 0036). Carried, not rebuilt: which sword
+	// is on which creature is not derivable from anything else, and
+	// a restore that dropped it would silently un-equip the board.
+	"AttachedTo", carried, "",
+	"AttachedAt", carried, "",
 
 	"ManaAbilities", rebuilt, "closures; re-looked-up from the catalog by oracle ID, or censused when the card has none (a true token)",
 	"ActivatedAbilities", rebuilt, "same as ManaAbilities",

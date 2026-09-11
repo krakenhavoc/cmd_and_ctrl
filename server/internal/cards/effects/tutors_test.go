@@ -30,7 +30,6 @@ const (
 	worldlyTutorOracle     = "e8863518-0bfa-49c3-8c6e-6c9116a81051"
 	mysticalTutorOracle    = "fb81f95c-70f8-4eb7-8d15-15d0ae23ec03"
 	imperialSealOracle     = "16cd0b90-f70c-4efa-b252-8de8784ef9a3"
-	fabricateOracle        = "422e1869-134f-463d-9fa1-86b66a998b3e"
 	beseechOracle          = "cf94cafc-527e-4b27-8a28-7807435aaccf"
 )
 
@@ -163,22 +162,11 @@ func TestPutOnTopSurvivesTheShuffle(t *testing.T) {
 }
 
 // --- to-hand tutors -------------------------------------------------
-
-func TestFabricateFindsAnArtifactForHand(t *testing.T) {
-	g := newCatalogGame(t)
-	me := g.Seats[0]
-	needle := pushLibraryCardForTest(me, game.Card{Name: "Mind Stone", TypeLine: "Artifact"})
-
-	castCatalogSpell(t, g, "Fabricate", "Sorcery", fabricateOracle, nil)
-	passPriorityAroundTable(t, g)
-	if searchChoiceFor(g, me.ID) != nil {
-		answerSearchByID(t, g, me.ID, needle)
-	}
-
-	if !me.Hand.Contains(needle) {
-		t.Error("Fabricate did not put the artifact in hand")
-	}
-}
+//
+// Fabricate is covered by batch03_test.go's
+// TestFabricateTutorsAnArtifactToHand — it landed on main from the
+// card roadmap while this branch was open, and its version of the
+// card is the incumbent.
 
 // TestBeseechTheQueenIsCappedByLandCount — the card's whole design is
 // the ceiling, so the test that matters is the one where the ceiling

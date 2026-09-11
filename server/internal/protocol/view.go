@@ -584,6 +584,20 @@ type CardView struct {
 	// when not goaded. Cleared on zone exit. Sandbox marker — the
 	// must-attack-not-the-goader rule is not enforced. Added in S10.
 	GoadedBy string `json:"goaded_by,omitempty"`
+	// AttachedTo is the CR 301.5c / CR 303.4 attachment relation for
+	// an Equipment or an Aura: the permanent or player this card is
+	// attached to. Omitted for the overwhelming majority of cards,
+	// which are attached to nothing.
+	//
+	// One direction only. The reverse list ("what is attached to
+	// this creature") is DERIVED on the client by partitioning the
+	// battlefield, the same shape PlayerPanel already uses for its
+	// type buckets — two wire representations of one relation can
+	// disagree, and one cannot.
+	//
+	// Not redacted: attachment is public battlefield state exactly
+	// like attacking_target. Added in S24 (ADR 0036 decision 13).
+	AttachedTo *TargetRefView `json:"attached_to,omitempty"`
 	// Auto signals that this card is in the S14 effect catalog —
 	// when it resolves (or ETBs), a registered effect fires
 	// automatically rather than relying on manual sandbox clicks.
@@ -1902,6 +1916,16 @@ func viewOfCard(c game.Card) CardView {
 	}
 	if c.GoadedBy != uuid.Nil {
 		view.GoadedBy = c.GoadedBy.String()
+	}
+	if c.IsAttached() {
+		id := ""
+		if c.AttachedTo.ID != uuid.Nil {
+			id = c.AttachedTo.ID.String()
+		}
+		view.AttachedTo = &TargetRefView{
+			Kind: string(c.AttachedTo.Kind),
+			ID:   id,
+		}
 	}
 	// S21 sub-PR 6: the impulse-exile grant rides the card itself,
 	// so no per-viewer stamping pass is needed — and it's zeroed as
