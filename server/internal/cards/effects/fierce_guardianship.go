@@ -5,28 +5,35 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Fierce Guardianship — Instant {2}{U}:
 //
 //	"If you control a commander, you may cast this spell without
-//	paying its mana cost.
+//	 paying its mana cost.
 //	 Counter target noncreature spell."
 //
 // The most-played of the Commander Legends free spells: a Negate that
 // costs nothing while your commander is out, which is the difference
 // between holding up interaction and tapping out.
 //
-// SANDBOX SIMPLIFICATION — the alternative cost is NOT implemented,
-// exactly as on Deadly Rollick. The spell costs {2}{U} here, which is
-// strictly WEAKER than printed. See deadly_rollick.go for why the
-// engine has no seam for CR 118.9 alternative costs, and
-// docs/decklists/top-100-commander-staples.md for the other cards the
-// same gap holds back.
+// S28: the alternative cost is now real. It shipped in S22 as a plain
+// {2}{U} Negate — strictly weaker than printed — because the engine's
+// CR 118.9 machinery had no way to express a CONDITIONAL offer. It
+// does now: AlternativeCost.Condition gates the offer in the view as
+// well as at announce, so a player with no commander on the
+// battlefield is never shown a button the server would reject.
 //
-// The counter half is Negate's, predicate and all: the picker only
-// offers noncreature spells and the engine rejects a creature spell
-// at announce (CR 601.2c).
+// "You control a commander" is a permanent you CONTROL, not one you
+// own: a commander sitting in the command zone does not switch this
+// on, and a commander you have stolen does.
+//
+// Deadly Rollick and the rest of the cycle can follow the same
+// two-line pattern — see docs/decklists/top-100-commander-staples.md
+// for the list.
 func init() {
 	Register(Spec{
 		OracleID: "d09c9cba-fdd2-479b-ad5d-d05181c3e3f9",
 		Name:     "Fierce Guardianship",
 		Targets:  TargetSpell("target noncreature spell", Noncreature()),
+		AlternativeCosts: []game.AlternativeCost{
+			FreeIfYouControlCommander("Cast without paying its mana cost (you control a commander)"),
+		},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {
 				return nil

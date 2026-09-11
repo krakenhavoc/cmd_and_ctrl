@@ -79,6 +79,48 @@ type AlternativeCost struct {
 	// otherwise is confused about which cost it is paying.
 	ClearsTargets bool
 
+	// Condition gates the OFFER — "IF YOU CONTROL A COMMANDER, you
+	// may cast this spell without paying its mana cost" (Fierce
+	// Guardianship), "IF YOU CONTROL A SWAMP, you may pay 4 life
+	// rather than pay this spell's mana cost" (Snuff Out).
+	//
+	// Checked at announce and again in the view, so an offer the
+	// caster cannot take is neither shown nor accepted. Nil means
+	// unconditional, which is what overload, evoke and cleave are.
+	//
+	// Read-only, under g.mu. Added in S28.
+	Condition func(g *Game, controller uuid.UUID) bool
+
+	// Life is a "pay N life" component of the alternative cost (CR
+	// 118.4) — Force of Will's 1 life, Snuff Out's 4.
+	//
+	// A COST, not a drawback: it is validated before anything is
+	// paid, so a player below N life cannot claim the offer at all.
+	// (CR 118.4 lets a player pay life down to exactly zero, and the
+	// state-based action kills them afterwards — that is a legal, if
+	// unwise, Force of Will.)
+	Life int
+
+	// ExileFromHand is "exile a blue card from your hand" (Force of
+	// Will) or "exile a white card from your hand" (Solitude's evoke
+	// cost), as a spec matched against the caster's hand. The caster
+	// names the card in CastSpellParams.AltCostIDs.
+	//
+	// The spell being cast is never a legal choice: CR 601.2a moves
+	// it to the stack before costs are paid, so it is no longer in
+	// hand. Force of Will cannot pitch itself.
+	ExileFromHand *TargetSpec
+
+	// ReturnToHand is "return an Island you control to its owner's
+	// hand" (Daze), matched against the caster's permanents. Also
+	// named in CastSpellParams.AltCostIDs.
+	ReturnToHand *TargetSpec
+
+	// PayLabel is the picker's prompt copy for the ExileFromHand /
+	// ReturnToHand component ("a blue card", "an Island you
+	// control"). Empty falls back to Label.
+	PayLabel string
+
 	// SacrificeOnEntry is evoke's "it's sacrificed when it enters".
 	// Modelled as what CR 702.74b says it is — a triggered ability —
 	// rather than as an immediate sacrifice inside the resolution.
@@ -151,6 +193,139 @@ func validateAlternativeCost(oracleID, key string, targets []TargetRef) (*Altern
 		return nil, ErrInvalidParam
 	}
 	return alt, nil
+}
+
+// PaysCards reports whether this cost has a component the caster
+// must name a card for. Nil-safe.
+func (a *AlternativeCost) PaysCards() bool {
+	return a != nil && (a.ExileFromHand != nil || a.ReturnToHand != nil)
+}
+
+// Available reports whether a player may claim this offer right now
+// — its Condition, and nothing else. The payment components are
+// checked separately, at announce, because "you control no Swamp" is
+// a reason to hide the offer while "you named the wrong card" is a
+// reason to reject a cast.
+//
+// Nil-safe and nil-Condition-safe: an offer with no condition is
+// always available. Caller must hold g.mu.
+func (a *AlternativeCost) Available(g *Game, controller uuid.UUID) bool {
+	if a == nil {
+		return false
+	}
+	return a.Condition == nil || a.Condition(g, controller)
+}
+
+// validateAlternativeCostPaymentLocked checks the non-mana half of a
+// claimed alternative cost without paying any of it — the same
+// validate-all-then-pay discipline the additional cost follows, so a
+// rejected cast never leaves a half-paid cost behind.
+//
+// `castID` is the spell being cast, which is never a legal pitch: CR
+// 601.2a has already moved it to the stack.
+//
+// An offer whose Condition is false is rejected here rather than
+// silently downgraded to the printed cost, for the reason
+// validateAlternativeCost gives about unknown keys: charging full
+// price for a cast the player thought was free is the worst available
+// failure.
+//
+// Caller must hold g.mu.
+func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID) error {
+	if alt == nil {
+		if len(ids) > 0 {
+			return ErrInvalidParam
+		}
+		return nil
+	}
+	if !alt.Available(g, playerID) {
+		return ErrInvalidParam
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	if alt.Life > 0 && p.Life < alt.Life {
+		return ErrInvalidParam
+	}
+	spec := alt.ExileFromHand
+	zone := ZoneHand
+	if spec == nil {
+		spec, zone = alt.ReturnToHand, ZoneBattlefield
+	}
+	if spec == nil {
+		if len(ids) > 0 {
+			return ErrInvalidParam
+		}
+		return nil
+	}
+	if len(ids) != 1 {
+		return ErrInvalidParam
+	}
+	id := ids[0]
+	if id == castID {
+		return ErrInvalidParam
+	}
+	// Not a target — a cost is not targeted (CR 601.2h), so hexproof
+	// and shroud do not apply and the spec is matched directly
+	// against the card rather than through the targeting gate.
+	c, ok := g.cardInZoneLocked(g.zoneForAltCostLocked(p, zone), id)
+	if !ok {
+		return ErrCardNotFound
+	}
+	if zone == ZoneBattlefield && c.Controller != playerID {
+		return ErrInvalidParam
+	}
+	if spec.CardOK != nil && !spec.CardOK(g, playerID, c, zone) {
+		return ErrInvalidParam
+	}
+	return nil
+}
+
+// zoneForAltCostLocked picks the zone an alternative cost's card
+// component is paid from: the caster's own hand, or the shared
+// battlefield.
+func (g *Game) zoneForAltCostLocked(p *Player, kind ZoneKind) *Zone {
+	if kind == ZoneHand {
+		return p.Hand
+	}
+	return g.Battlefield
+}
+
+// payAlternativeCostLocked pays the non-mana components of a claimed
+// alternative cost. Call only after
+// validateAlternativeCostPaymentLocked has passed and after the spell
+// itself has reached the stack (CR 601.2a before 601.2h), so anything
+// watching the exile, the life payment or the bounce triggers ABOVE
+// the spell and resolves first.
+//
+// That window is the whole reason this is not folded into the
+// resolution: a Daze that returned its Island on resolution would
+// hand the opponent a turn of information, and an exiled Force of
+// Will pitch that never happened because the spell was countered
+// would make Force of Will free.
+//
+// Caller must hold g.mu.
+func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID) error {
+	if alt == nil {
+		return nil
+	}
+	if alt.Life > 0 {
+		if err := g.ChangePlayerLifeForEffect(uuid.Nil, playerID, -alt.Life); err != nil {
+			return err
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	id := ids[0]
+	if alt.ExileFromHand != nil {
+		return g.ExileCardForEffect(id)
+	}
+	if alt.ReturnToHand != nil {
+		return g.BounceToHandForEffect(id)
+	}
+	return nil
 }
 
 // alternativeCostString is the "pay" half: the mana cost a cast

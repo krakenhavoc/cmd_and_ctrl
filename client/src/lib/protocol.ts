@@ -498,6 +498,19 @@ export interface AlternativeCostView {
   // fires straight away.
   target_mode?: string;
   legal_targets?: LegalTargetsView;
+  // S28: the "pay N life" half of the cost (Force of Will's 1, Snuff
+  // Out's 4). Absent for the costs that charge none. The server
+  // enforces the life total; this is for the label.
+  life?: number;
+  // S28: the cards that can pay the cost's card-shaped half — the
+  // blue cards in your hand for Force of Will, the Islands you
+  // control for Daze. The chosen instance ID rides back on cast_spell
+  // as `alt_cost_ids`. Absent when the cost charges no cards (every
+  // S22 keyword); present-and-empty means you have nothing that can
+  // pay, so the offer is visible but unusable.
+  pay_options?: LegalTargetsView;
+  // S28: the picker's prompt copy for `pay_options` ("a blue card").
+  pay_label?: string;
 }
 
 // TapCostView is the "tap permanents you control to help pay for
