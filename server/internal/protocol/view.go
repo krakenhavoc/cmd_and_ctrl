@@ -848,6 +848,21 @@ type ActivatedAbilityView struct {
 	// no sacrifice component.
 	SacrificeLabel   string            `json:"sacrifice_label,omitempty"`
 	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
+	// CrewCost is the crew number of a Vehicle's crew ability
+	// (CR 702.122a) — "Crew 3" ships 3. Zero and absent for every
+	// ability that is not a crew ability.
+	//
+	// CrewOptions is the set of creatures that could pay it right
+	// now: untapped creatures the controller controls, summoning
+	// sickness deliberately NOT filtered out, because tapping to
+	// crew is not paying a {T} cost and a creature cast this turn
+	// may crew. The client collects a subset whose total power
+	// reaches CrewCost and sends them as `crew_ids`; the server
+	// re-checks. Each option's power is already on the CardView the
+	// client holds, so the running total is computable client-side
+	// without a second round trip. Added in S27.
+	CrewCost    int               `json:"crew_cost,omitempty"`
+	CrewOptions *LegalTargetsView `json:"crew_options,omitempty"`
 	// TargetMode / LegalTargets mirror the cast-time targeting
 	// fields for an ability that targets.
 	TargetMode   string            `json:"target_mode,omitempty"`
@@ -2123,11 +2138,38 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 			v.SacrificeOptions.Cards = filterToController(g, v.SacrificeOptions.Cards, caster)
 			v.SacrificeOptions.Players = nil
 		}
+		if a.Cost.Crew > 0 {
+			v.CrewCost = a.Cost.Crew
+			v.CrewOptions = crewOptions(g, caster)
+		}
 		if a.Targets != nil {
 			v.TargetMode = a.Targets.Mode
 			v.LegalTargets = abilityLegalTargets(g, caster, a.Targets)
 		}
 		out[i] = v
+	}
+	return out
+}
+
+// crewOptions is the set of creatures that can pay a crew cost right
+// now: untapped creatures the activator controls (CR 702.122a).
+//
+// Not built through abilityLegalTargets, and that is the point: crew
+// does not TARGET. Routing it through the targeting machinery would
+// apply the CR 702 keyword gate, and a hexproof creature you control
+// can crew your Vehicle exactly as a hexproof creature you control
+// can be sacrificed to a cost. The same reasoning keeps sacrifice
+// costs off targetLegalLocked in the engine.
+//
+// Summoning-sick creatures are included deliberately — tapping to
+// crew is not paying a {T} cost (CR 702.122b). Caller must hold g.mu.
+func crewOptions(g *game.Game, caster uuid.UUID) *LegalTargetsView {
+	out := &LegalTargetsView{Min: 1, Max: 0}
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller != caster || !c.IsCreature() || c.Tapped {
+			continue
+		}
+		out.Cards = append(out.Cards, c.InstanceID.String())
 	}
 	return out
 }
