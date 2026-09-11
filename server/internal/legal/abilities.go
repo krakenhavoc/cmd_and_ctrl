@@ -118,7 +118,10 @@ func (e *enumerator) activatedMoves() {
 // also sacrifices the source (the engine rejects paying one
 // permanent twice).
 func (e *enumerator) sacrificePool(sourceID uuid.UUID, selfToo bool, spec *game.TargetSpec) []uuid.UUID {
-	lt := e.g.LegalTargetsForEffect(e.seat, spec)
+	// Sacrificing is a cost, not targeting, so this is the
+	// candidate walk rather than the legal-TARGET walk — the
+	// hexproof / shroud gate must not shrink the pool.
+	lt := e.g.SpecCandidatesForEffect(e.seat, spec)
 	var pool []uuid.UUID
 	for _, id := range lt.Cards {
 		if selfToo && id == sourceID {

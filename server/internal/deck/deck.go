@@ -305,6 +305,7 @@ func printedKeywords(c cards.Card) []string {
 	if len(c.CardFaces) > 1 {
 		front = keywordLines(c.CardFaces[0].OracleText)
 	}
+	var confirm map[string]bool
 	out := make([]string, 0, len(c.Keywords))
 	for _, raw := range c.Keywords {
 		kw, ok := game.CanonicalKeyword(raw)
@@ -314,10 +315,55 @@ func printedKeywords(c cards.Card) []string {
 		if front != nil && !front[kw] {
 			continue
 		}
+		// A keyword with a NARROWER printed variant has to be
+		// confirmed against the oracle text, because Scryfall tags
+		// the variant with the broad name as well. 21 cards —
+		// Knight of Grace, Garruk's Harbinger, Sphinx of the
+		// Guildpact, six Jaheiras — print only "Hexproof from
+		// black" / "Hexproof from monocolored" and carry BOTH
+		// "Hexproof" and "Hexproof from" in the array. Taking the
+		// array at its word would make every one of them fully
+		// untargetable by opponents: STRONGER than printed, which
+		// is the direction this repo never errs in. The line scan
+		// finds "Hexproof from black" as its own entry, which is
+		// not the bare keyword, so the broad grant is dropped and
+		// the card keeps the narrow ability it prints — as a
+		// simplification, that narrow ability is then not enforced
+		// at all, which errs weaker.
+		if narrowVariantKeywords[kw] {
+			if confirm == nil {
+				confirm = keywordLinesOf(c)
+			}
+			if !confirm[kw] {
+				continue
+			}
+		}
 		out = append(out, kw)
 	}
 	if len(out) == 0 {
 		return nil
+	}
+	return out
+}
+
+// narrowVariantKeywords lists the canonical tokens whose Scryfall
+// entry can be a superset of what the card prints, so a bare
+// keyword-ability line is required before the token is stamped.
+// "Hexproof" is the only one today ("Hexproof from <quality>");
+// shroud and the combat keywords have no parameterised form.
+var narrowVariantKeywords = map[string]bool{"hexproof": true}
+
+// keywordLinesOf unions the keyword-ability lines across every
+// oracle text a printing carries — the top-level one for a
+// single-faced card, each face's for a multi-faced one. The
+// multi-face NARROWING above is a separate, stricter check; this is
+// only asked whether the bare keyword is printed anywhere at all.
+func keywordLinesOf(c cards.Card) map[string]bool {
+	out := keywordLines(c.OracleText)
+	for _, f := range c.CardFaces {
+		for kw := range keywordLines(f.OracleText) {
+			out[kw] = true
+		}
 	}
 	return out
 }
