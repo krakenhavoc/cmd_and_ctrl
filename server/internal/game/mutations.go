@@ -278,6 +278,20 @@ type CastSpellParams struct {
 	// cost. Added in S21 sub-PR 6.
 	SacrificeIDs []uuid.UUID
 
+	// TapIDs names the untapped permanents the caster is tapping to
+	// help pay for the spell — convoke's "your creatures can help
+	// cast this spell", waterbend's "you can tap your artifacts and
+	// creatures to help". Each one pays for {1}, or (convoke only)
+	// for one mana of that permanent's colour.
+	//
+	// Same discipline as DiscardIDs and SacrificeIDs: validated at
+	// announce, paid with the spell already on the stack, and
+	// rejected rather than ignored on a card that offers no such
+	// cost. Unlike those two it is OPTIONAL — "you MAY tap any
+	// number", so an empty list is always a legal answer and the
+	// caster simply pays the whole cost with mana. Added in S22.
+	TapIDs []uuid.UUID
+
 	// AlternativeCost names the cost the caster is paying INSTEAD of
 	// the mana cost (CR 118.9) — the Key of one of the card's
 	// declared game.AlternativeCost entries, "overload" / "evoke" /
@@ -492,6 +506,31 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// the modal derivation so a modal card with an alternative cost
 	// would compose rather than conflict.
 	spec = TargetSpecUnderAlternativeCost(spec, alt)
+	// S22: "Exile X target creatures you control" — the clause's
+	// count is the X announced at 601.2b, so resolve it into a
+	// concrete Min / Max before anything validates against it. The
+	// copy (rather than a mutation) matters: the catalog's TargetSpec
+	// is shared by every cast of the card.
+	if spec != nil && spec.CountFromX {
+		// Max 0 means "unbounded" everywhere else in TargetSpec, so
+		// an X of zero has to be rejected here rather than left to
+		// the count check below — otherwise announcing X=0 would buy
+		// an unbounded clause for free, which is the exact shape of
+		// the bug this field exists to close.
+		if n := countRealTargets(params.Targets); n != params.XValue {
+			slog.Warn("cast_spell rejected: X-defined target count mismatch",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"x_value", params.XValue,
+				"targets_received", n,
+			)
+			return ErrInvalidParam
+		}
+		resolved := *spec
+		resolved.Min, resolved.Max = params.XValue, params.XValue
+		resolved.CountFromX = false
+		spec = &resolved
+	}
 	if spec == nil && modeSpec != nil && len(params.Targets) > 0 {
 		return ErrInvalidParam
 	}
@@ -520,6 +559,29 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			"err", err,
 		)
 		return err
+	}
+	// S22: tap-permanents-as-a-cost — convoke and waterbend. Checked
+	// here with the other announce-time choices and paid further
+	// down once the spell is on the stack, same validate-all-then-pay
+	// discipline the additional cost uses. The budget is measured
+	// against the cost the cast owes BEFORE any tapping, so a caster
+	// can't tap five creatures at a three-mana spell.
+	tapCost := TapPermanentsCostFor(card.OracleID)
+	if !tapCost.Empty() || len(params.TapIDs) > 0 {
+		budget := 0
+		if base, berr := g.printedCostLocked(p, card, params); berr == nil {
+			budget = tapPermanentsBudget(tapCost, base, params.XValue)
+		}
+		if err := g.validateTapPermanentsCostLocked(playerID, tapCost, params.TapIDs, budget); err != nil {
+			slog.Warn("cast_spell rejected: bad tap-permanents cost payment",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"taps_received", len(params.TapIDs),
+				"budget", budget,
+				"err", err,
+			)
+			return err
+		}
 	}
 	// Sorcery-speed gate. Lands are special-action-fast (CR 305 is
 	// "you may play a land during your main phase if the stack is
@@ -685,6 +747,12 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		)
 		return err
 	}
+	// S22: the convoke / waterbend taps are a cost too, and land in
+	// the same window and for the same reason — with the spell
+	// already on the stack, so anything watching the taps triggers
+	// above it. The mana side of the payment was already folded into
+	// the cost gate above; this is the board half.
+	g.payTapPermanentsCostLocked(playerID, params.TapIDs)
 	if params.SplitSecond {
 		g.SplitSecondActive = true
 	}
@@ -828,8 +896,15 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	if p.ManaPool.CanPay(cost, params.XValue) {
 		return nil
 	}
-	excluded := make(map[uuid.UUID]bool, len(params.LockedSources))
+	excluded := make(map[uuid.UUID]bool, len(params.LockedSources)+len(params.TapIDs))
 	for _, id := range params.LockedSources {
+		excluded[id] = true
+	}
+	// S22: a permanent tapped for convoke or waterbend is already
+	// spent. Without this the auto-tapper would happily plan a mana
+	// tap of the same Birds of Paradise the caster just convoked,
+	// and the two payments would race for one untapped creature.
+	for _, id := range params.TapIDs {
 		excluded[id] = true
 	}
 	plan, ok := g.autoTapLocked(p.ID, cost, params.XValue, excluded)
@@ -932,6 +1007,33 @@ func pickColorForSlot(options []string, pending *[]ColorRequirement) string {
 // cost+4. Non-command casts return the raw parsed cost. Errors on
 // an unparseable ManaCost.
 func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams) (ParsedCost, error) {
+	cost, err := g.printedCostLocked(p, card, params)
+	if err != nil {
+		return ParsedCost{}, err
+	}
+	// S22: convoke / waterbend. Applied LAST, because it is the only
+	// component that spends against the cost rather than adding to
+	// it — the tax, the any-colour fold and the alternative-cost swap
+	// all have to have settled before we know what the tapped
+	// permanents are paying for. A card with no such cost, or a cast
+	// that tapped nothing, gets the cost back unchanged.
+	tapCost := TapPermanentsCostFor(card.OracleID)
+	if !tapCost.Empty() {
+		cost = tapPermanentsAdjusted(cost, tapCost, g.tapPermanentsPayersLocked(params.TapIDs), params.XValue)
+	}
+	return cost, nil
+}
+
+// printedCostLocked is effectiveCostLocked minus the tap-permanents
+// component: the mana this cast owes before convoke or waterbend
+// spends anything against it. Split out because the announce-time
+// validator needs that number to compute the tap budget, and asking
+// effectiveCostLocked for it would be circular — the budget decides
+// how many permanents may be tapped, and the tapping is what
+// effectiveCostLocked subtracts.
+//
+// Caller must hold g.mu.
+func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (ParsedCost, error) {
 	// S22: an alternative cost replaces the printed one outright
 	// (CR 118.9). The commander tax below is layered on top of
 	// whichever cost was chosen, because CR 903.8 taxes the cost

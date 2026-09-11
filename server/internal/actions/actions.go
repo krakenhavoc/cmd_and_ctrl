@@ -348,6 +348,11 @@ func Dispatch(g *game.Game, a Action) error {
 			// S21 sub-PR 6 — the permanent paid to a "sacrifice a
 			// creature" additional cost (Village Rites).
 			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+			// S22 — the untapped permanents tapped to help pay
+			// (convoke, waterbend). Optional even on a card that
+			// offers the cost: tapping nothing and paying the whole
+			// cost with mana is always legal.
+			TapIDs []string `json:"tap_ids,omitempty"`
 			// S22 — the alternative cost being paid INSTEAD of the
 			// mana cost: the key of one of the card's declared
 			// alternative costs ("overload", "evoke", "cleave").
@@ -390,6 +395,16 @@ func Dispatch(g *game.Game, a Action) error {
 					return fmt.Errorf("cast_spell sacrifice_ids[%d]: %w", i, err)
 				}
 				params.SacrificeIDs = append(params.SacrificeIDs, id)
+			}
+		}
+		if len(p.TapIDs) > 0 {
+			params.TapIDs = make([]uuid.UUID, 0, len(p.TapIDs))
+			for i, raw := range p.TapIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("cast_spell tap_ids[%d]: %w", i, err)
+				}
+				params.TapIDs = append(params.TapIDs, id)
 			}
 		}
 		if len(p.LockedSources) > 0 {

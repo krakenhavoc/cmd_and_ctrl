@@ -1,6 +1,10 @@
 package effects
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // registry is the package-level card-effect catalog. Populated at
 // init() time by each per-card file calling Register(Spec{...}).
@@ -56,6 +60,20 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q declares two alternative costs keyed %q", spec.Name, ac.Key))
 		}
 		seenAlt[ac.Key] = true
+	}
+	// S22: a tap-permanents cost with no pool of legal permanents can
+	// never be paid, and one whose extra cost doesn't parse would
+	// silently charge nothing — both are copy-paste mistakes in a
+	// card file, and both fail at boot rather than mid-game.
+	if tc := spec.TapCost; tc != nil {
+		if tc.Key == "" || tc.Spec == nil {
+			panic(fmt.Sprintf("effects.Register: %q declares a tap cost with no key or no legal permanents — build it with Convoke() or Waterbend()", spec.Name))
+		}
+		if tc.Extra != "" {
+			if _, err := game.ParseCost(tc.Extra); err != nil {
+				panic(fmt.Sprintf("effects.Register: %q declares an unparseable tap cost %q: %v", spec.Name, tc.Extra, err))
+			}
+		}
 	}
 	registry[spec.OracleID] = spec
 }
