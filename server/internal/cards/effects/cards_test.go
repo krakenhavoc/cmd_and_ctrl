@@ -717,6 +717,9 @@ func TestPathToExileExilesAndFetchesBasic(t *testing.T) {
 	if !g.Exile.Contains(creatureID) {
 		t.Errorf("creature not exiled")
 	}
+	// S22: Path's "may search" is real, so the creature's controller
+	// is prompted and accepts.
+	answerSearchByID(t, g, opponent.ID, forestID)
 	if !g.Battlefield.Contains(forestID) {
 		t.Errorf("fetched Forest not on battlefield")
 	}
@@ -758,12 +761,14 @@ func TestUnsummonBouncesToHand(t *testing.T) {
 // --- Tutors + recursion + ETB (sub-PR 6) -----------------------
 
 // pushLibraryCardForTest pushes a specific Card onto the BOTTOM of
-// a player's library. SearchLibrary iterates bottom-to-top and picks
-// the first predicate match, so bottom placement guarantees the
-// seeded card wins for accept-all predicates (Demonic / Vampiric
-// Tutor). For tutors with a selective predicate (Cultivate,
-// Solemn Simulacrum) the filler library is IsBasicLand-negative,
-// so bottom placement still wins deterministically.
+// a player's library, and returns its instance ID so the caller can
+// name it later.
+//
+// Placement no longer decides which card a search takes — since S22
+// the searcher does, via a PendingChoiceSearchLibrary prompt (see
+// search_chooser_test.go's answerSearchByID). Bottom placement is
+// kept only because it keeps the seeded card out of the way of draw
+// steps.
 func pushLibraryCardForTest(p *game.Player, c game.Card) uuid.UUID {
 	if c.InstanceID == uuid.Nil {
 		c.InstanceID = uuid.New()
@@ -809,6 +814,9 @@ func TestDemonicTutorSearchesIntoHand(t *testing.T) {
 		nil,
 	)
 	passPriorityAroundTable(t, g)
+	// Demonic Tutor matches every card in the library, so the
+	// chooser always gets a prompt — which is the card.
+	answerSearchByID(t, g, caster.ID, needle)
 
 	if !caster.Hand.Contains(needle) {
 		t.Errorf("needle card not tutored into hand")
@@ -833,6 +841,7 @@ func TestVampiricTutorSearchesAndLosesLife(t *testing.T) {
 		nil,
 	)
 	passPriorityAroundTable(t, g)
+	answerSearchByID(t, g, caster.ID, needle)
 
 	if !caster.Hand.Contains(needle) {
 		t.Errorf("needle not tutored into hand")
@@ -858,6 +867,11 @@ func TestCultivateFetchesOneToFieldOneToHand(t *testing.T) {
 		nil,
 	)
 	passPriorityAroundTable(t, g)
+	// S22: two matches and one pick, so the battlefield half prompts.
+	// The hand half is CHAINED off it (Then) and only runs once this
+	// is answered — by which point one Forest is left, so there is
+	// nothing to decide and it takes it without a second prompt.
+	answerSearchByID(t, g, caster.ID, forest1)
 
 	// Two basics moved out of the library.
 	onField := g.Battlefield.Contains(forest1) || g.Battlefield.Contains(forest2)

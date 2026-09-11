@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -21,16 +19,18 @@ import (
 // Three components on the sacrifice cost — mana, tap and the land
 // itself — the shape Mind Stone established.
 //
-// SANDBOX SIMPLIFICATION — "two basic land cards THAT SHARE A LAND
-// TYPE" is resolved by looking at the first basic in library order,
-// taking its land type, and fetching up to two basics of that type.
-// A real chooser would let the controller name the type; the
-// deterministic first-match rule is the same one every SearchLibrary
-// card in the catalog uses, and this card is the one where it bites
-// hardest — a library whose bottom-most basic is a Plains fetches
-// Plains even when the deck wanted Forests. That is neither stronger
-// nor weaker than printed, just less controllable, and a search
-// chooser fixes it for every card at once.
+// S22 — "two basic land cards that SHARE A LAND TYPE" is now the
+// player's call. It used to be resolved by reading the land type off
+// the first basic in library order and fetching that type, which is
+// neither stronger nor weaker than printed but is not a choice: a
+// library whose bottom-most basic was a Plains fetched Plains even
+// when the deck wanted Forests.
+//
+// The clause is the one thing no per-card predicate can express — it
+// is a property of the PAIR, not of either card — so it rides on the
+// search's Validate hook instead: every basic with a land type is a
+// candidate, and the engine rejects a submitted pair that does not
+// share one. Taking a single basic, or none, is legal ("up to two").
 func init() {
 	Register(Spec{
 		OracleID:     "2549bc57-9ffb-4053-9f10-f2a5f792b845",
@@ -50,44 +50,52 @@ func init() {
 }
 
 func myriadLandscapeFetch(g *game.Game, item *game.StackItem) error {
-	subtype := firstBasicLandSubtype(g, item.Controller)
-	if subtype == "" {
-		// No basic in the library at all. The cost is still paid
-		// (CR 601.2h) — the search simply finds nothing.
-		return nil
-	}
 	return SearchLibrary{
 		Player:        item.Controller,
-		Predicate:     func(c game.Card) bool { return IsBasicLand(c) && containsFoldASCII(c.TypeLine, subtype) },
+		Predicate:     func(c game.Card) bool { return basicLandSubtypeOf(c) != "" },
 		Dest:          game.ZoneBattlefield,
 		Limit:         2,
 		Reveal:        true,
 		Shuffle:       true,
 		TappedOnEntry: true,
+		Reason:        "Myriad Landscape — up to two basic lands that share a land type",
+		Validate:      basicsShareALandType,
 	}.Apply(NewContext(g, item))
 }
 
-// firstBasicLandSubtype returns the lowercase basic land type of the
-// first basic in the player's library, walking the slice in the same
-// order SearchLibrary does. Empty string when the library holds no
-// basic land.
+// basicsShareALandType is Myriad Landscape's pair constraint. One
+// card trivially shares a type with itself, and zero cards is a
+// legal "fail to find", so only a two-card pick can fail.
+func basicsShareALandType(picked []game.Card) bool {
+	if len(picked) < 2 {
+		return true
+	}
+	shared := basicLandSubtypeOf(picked[0])
+	if shared == "" {
+		return false
+	}
+	for _, c := range picked[1:] {
+		if basicLandSubtypeOf(c) != shared {
+			return false
+		}
+	}
+	return true
+}
+
+// basicLandSubtypeOf returns the lowercase basic land type of a
+// basic land card, or "" when the card is not a basic land or
+// carries no basic land type.
 //
 // Only the five ordinary basic types are recognised. Wastes has no
-// basic land type at all (CR 305.6), so a Wastes-only library
-// correctly finds nothing to share a type with.
-func firstBasicLandSubtype(g *game.Game, playerID uuid.UUID) string {
-	p := g.PlayerByIDForEffect(playerID)
-	if p == nil || p.Library == nil {
+// basic land type at all (CR 305.6), so a Wastes has nothing to
+// share a type with and is correctly not a candidate.
+func basicLandSubtypeOf(c game.Card) string {
+	if !IsBasicLand(c) {
 		return ""
 	}
-	for _, c := range p.Library.Cards {
-		if !IsBasicLand(c) {
-			continue
-		}
-		for _, sub := range []string{"plains", "island", "swamp", "mountain", "forest"} {
-			if containsFoldASCII(c.TypeLine, sub) {
-				return sub
-			}
+	for _, sub := range []string{"plains", "island", "swamp", "mountain", "forest"} {
+		if containsFoldASCII(c.TypeLine, sub) {
+			return sub
 		}
 	}
 	return ""

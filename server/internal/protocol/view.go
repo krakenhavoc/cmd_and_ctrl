@@ -168,6 +168,12 @@ type PendingChoiceView struct {
 	// pays, `{apply: false}` declines. Absent for other kinds.
 	// Added in S19 sub-PR 6.
 	PayCost string `json:"pay_cost,omitempty"`
+
+	// SearchMax populates the S22 "search_library" kind: how many of
+	// Options the searcher may take. The minimum is always zero —
+	// CR 701.19c permits failing to find — so the client's submit
+	// button is live from the first render. Absent for other kinds.
+	SearchMax int `json:"search_max,omitempty"`
 }
 
 // LegalTargetsView is the wire shape of game.LegalTargets: player
@@ -1087,6 +1093,21 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				}
 			}
 		}
+		// PendingChoiceSearchLibrary — the matching library cards the
+		// searcher may take. Only the chooser was marked a knower, so
+		// FilterViewFor redacts these for every other seat — and then
+		// drops the list outright for non-choosers, because the
+		// COUNT of matches is itself information about a hidden zone
+		// that nobody else is entitled to.
+		if c.Kind == game.PendingChoiceSearchLibrary && len(c.SearchCards) > 0 {
+			v.SearchMax = c.SearchMax
+			v.Options = make([]CardView, 0, len(c.SearchCards))
+			for _, id := range c.SearchCards {
+				if card, ok := g.LookupCardForEffect(id); ok {
+					v.Options = append(v.Options, viewOfCard(card))
+				}
+			}
+		}
 		// PendingChoiceMana carries a color-option list server-
 		// filtered against the chooser's commander identity (see
 		// ActivateManaAbility). Clone the slice so post-wire
@@ -1539,7 +1560,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		DelayedTriggers:   v.DelayedTriggers,
 		SplitSecondActive: v.SplitSecondActive,
 		DiscardPending:    v.DiscardPending,
-		PendingChoices:    filterPendingChoices(v.PendingChoices, isKnower),
+		PendingChoices:    filterPendingChoices(v.PendingChoices, isKnower, viewerID),
 	}
 }
 
@@ -1547,13 +1568,25 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 // viewer's knower filter. Unknown cards come back redacted (backs)
 // so an opponent browsing the wire can't peek at a Thoughtseize-
 // revealed hand.
-func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool) []PendingChoiceView {
+//
+// A "search_library" prompt goes further and drops its Options for
+// anyone but the chooser. Redaction alone would still ship one card
+// back per match, which tells the table how many Islands are left in
+// a library mid-fetch — a number CR 400.2 does not entitle them to.
+// Spectators and admins (empty viewerID) are held to the same rule
+// here rather than being handed the whole match set.
+func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool, viewerID string) []PendingChoiceView {
 	if len(src) == 0 {
 		return nil
 	}
 	out := make([]PendingChoiceView, len(src))
 	for i, c := range src {
 		out[i] = c
+		if c.Kind == string(game.PendingChoiceSearchLibrary) && c.Chooser != viewerID {
+			out[i].Options = nil
+			out[i].SearchMax = 0
+			continue
+		}
 		if len(c.Options) > 0 {
 			opts := make([]CardView, len(c.Options))
 			for j, card := range c.Options {

@@ -9,14 +9,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // card batch editing that file doesn't collide with this one — the
 // convention aang_helpers.go and pirates_batch2_helpers.go set.
 //
-// One sandbox gap runs through every card here, and it is worth
-// stating once rather than ten times: SearchLibrary takes the FIRST
-// match in library order, and choosing WHICH dual to fetch is a
-// fetchland's entire strategic content. Rampant Growth, Cultivate,
-// Nature's Lore and Three Visits already ship with that
-// simplification, so nothing new is conceded — but it bites harder
-// here, and a search chooser is now the highest-value gap standing
-// between this catalog and the top of the play-rate list.
+// Choosing WHICH dual to fetch is a fetchland's entire strategic
+// content, and until S22 the engine chose for you: SearchLibrary
+// took the first match in library order. The search chooser closes
+// that for this whole family at once — crack a Polluted Delta and
+// you are shown every Island and Swamp card in the library and pick
+// the one you want, including declining to find at all.
 
 // fetchlandCost is "{T}, Pay 1 life, Sacrifice this land" — the
 // activation cost shared by the ten Zendikar / Onslaught
@@ -59,6 +57,7 @@ func fetchDual(a, b string) func(*game.Game, *game.StackItem) error {
 			Limit:     1,
 			Reveal:    true,
 			Shuffle:   true,
+			Reason:    "Fetchland — choose a land to put onto the battlefield",
 		}.Apply(NewContext(g, item))
 	}
 }
@@ -76,5 +75,6 @@ func fetchBasicTapped(g *game.Game, item *game.StackItem) error {
 		Reveal:        true,
 		Shuffle:       true,
 		TappedOnEntry: true,
+		Reason:        "Choose a basic land to put onto the battlefield tapped",
 	}.Apply(NewContext(g, item))
 }

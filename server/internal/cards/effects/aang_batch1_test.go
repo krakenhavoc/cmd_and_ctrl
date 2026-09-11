@@ -209,6 +209,10 @@ func TestArchivistOfOghmaTriggersOnlyOnOpponentSearch(t *testing.T) {
 		_ = g.SearchLibraryForEffect(p1.ID, func(game.Card) bool { return true },
 			game.ZoneHand, 1, false, false)
 	})
+	// S22: an accept-all predicate over a real library always offers
+	// a choice, so the searcher answers before the search finishes
+	// and EventSearchLibrary fires.
+	answerSearchByID(t, g, p1.ID, p1.Library.Cards[0].InstanceID)
 	passPriorityAroundTable(t, g)
 
 	if p0.Life != lifeBefore+1 {
@@ -223,6 +227,7 @@ func TestArchivistOfOghmaTriggersOnlyOnOpponentSearch(t *testing.T) {
 		_ = g.SearchLibraryForEffect(p0.ID, func(game.Card) bool { return true },
 			game.ZoneHand, 1, false, false)
 	})
+	answerSearchByID(t, g, p0.ID, p0.Library.Cards[0].InstanceID)
 	passPriorityAroundTable(t, g)
 
 	if p0.Life != lifeMid {

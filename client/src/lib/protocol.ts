@@ -221,6 +221,13 @@ export interface PendingChoiceView {
     // prompt is open; the answer is what decides how it enters.
     // pay_cost carries the payment ("2 life").
     | "entry_pay_life"
+    // S22: "search your library for ..." (CR 701.19). Options carries
+    // the matching cards, sent ONLY to the chooser — a library is a
+    // hidden zone and even the number of matches is private. Answered
+    // with the generic {choice_id, card_ids} payload; an empty list
+    // is a legal "fail to find" (CR 701.19c), so search_max is the
+    // ceiling and the floor is zero.
+    | "search_library"
     | string;
   chooser: string;
   from_player: string;
@@ -271,6 +278,12 @@ export interface PendingChoiceView {
   // "unless" consequence fires. Also carries the life payment ("2
   // life") for kind "entry_pay_life".
   pay_cost?: string;
+  // S22: populated for kind "search_library" — how many of `options`
+  // the searcher may take. The minimum is always zero, so the submit
+  // button is live from the first render. Absent for every other
+  // kind, and absent for non-chooser viewers, who are not told what
+  // the search is for.
+  search_max?: number;
 }
 
 // ReplacementOptionView mirrors protocol.ReplacementOptionView —

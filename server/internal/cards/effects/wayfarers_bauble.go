@@ -34,6 +34,7 @@ func init() {
 					Reveal:        true,
 					Shuffle:       true,
 					TappedOnEntry: true,
+					Reason:        "Wayfarer's Bauble — a basic land",
 				}.Apply(NewContext(g, item))
 			},
 		}},

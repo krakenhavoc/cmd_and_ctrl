@@ -26,6 +26,7 @@ func init() {
 				Limit:     1,
 				Reveal:    true,
 				Shuffle:   true,
+				Reason:    "Wood Elves — a Forest card",
 			}.Apply(ctx)
 		},
 	})

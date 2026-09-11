@@ -350,10 +350,18 @@ func (r ReturnFromGraveyard) Apply(ctx *Context) error {
 // SearchLibrary looks through `Player`'s library for up to `Limit`
 // cards matching `Predicate`, moves them to `Dest`, optionally
 // reveals them to all seated players (via KnownBy), and optionally
-// shuffles the library afterwards. Sandbox simplification: picks
-// the first match in library order (no "you choose" UI — deferred
-// to S22). Effects that need a specific card pass a tight
-// predicate (e.g. "basic land named Forest").
+// shuffles the library afterwards.
+//
+// S22: the SEARCHER chooses. When the library holds more matches
+// than Limit — or the clause is a "you may search", or a Validate
+// constraint is in play — the engine queues a search prompt and this
+// primitive returns immediately; the cards move when the searcher
+// answers. When there is nothing to decide it stays synchronous.
+//
+// That asynchrony is why `Then` exists: anything the card does AFTER
+// the search ("then shuffle" aside) has to run in the continuation,
+// not on the line below the Apply call. Fabled Passage's "untap that
+// land" and Gamble's random discard are the two shapes.
 type SearchLibrary struct {
 	Player    uuid.UUID
 	Predicate func(game.Card) bool
@@ -365,16 +373,49 @@ type SearchLibrary struct {
 	// headed for the battlefield. Matches the literal card text on
 	// Cultivate / Path to Exile / Solemn Simulacrum — land enters
 	// tapped even when not otherwise specified by the destination.
-	// Only meaningful when Dest == ZoneBattlefield. Added in S17
-	// sub-PR 4 to close the S14 "enters untapped" deferrals for
-	// fetched-land cards.
+	// Only meaningful when Dest == ZoneBattlefield.
+	//
+	// It is the FETCHING effect's tapped clause, not the fetched
+	// card's. Since S22 the fetched card's own enters-tapped
+	// replacement runs too (#263), and the two are OR-ed.
 	TappedOnEntry bool
+	// Optional is "you MAY search" (CR 701.19c) — Assassin's Trophy,
+	// Path to Exile, Solemn Simulacrum. Forces the prompt so the
+	// searcher can decline the card AND the shuffle.
+	Optional bool
+	// Reason is the prompt banner. Name the card.
+	Reason string
+	// Validate is a legality check on the picked SET, for clauses no
+	// per-card predicate can express — Myriad Landscape's "two basic
+	// land cards that share a land type".
+	Validate func([]game.Card) bool
+	// Then is the rest of the effect, receiving the cards actually
+	// found. Runs inline when no prompt was needed and from the
+	// resolve path when one was.
+	Then func(g *game.Game, found []uuid.UUID) error
+	// Source is the card that caused the search — prompt context.
+	Source uuid.UUID
 }
 
 func (s SearchLibrary) Apply(ctx *Context) error {
-	return ctx.Game.SearchLibraryForEffectWithOptions(
-		s.Player, s.Predicate, s.Dest, s.Limit, s.Reveal, s.Shuffle, s.TappedOnEntry,
-	)
+	source := s.Source
+	if source == uuid.Nil && ctx != nil {
+		source = ctx.Source()
+	}
+	return ctx.Game.SearchLibraryThenForEffect(game.SearchLibrarySpec{
+		Player:        s.Player,
+		Source:        source,
+		Pred:          s.Predicate,
+		Dest:          s.Dest,
+		Limit:         s.Limit,
+		Reveal:        s.Reveal,
+		Shuffle:       s.Shuffle,
+		TappedOnEntry: s.TappedOnEntry,
+		Optional:      s.Optional,
+		Reason:        s.Reason,
+		Validate:      s.Validate,
+		Then:          s.Then,
+	})
 }
 
 // PayUnless queues the CR 118.12 "unless that player pays <Cost>"

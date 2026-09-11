@@ -10,12 +10,14 @@ import (
 // search their library for a basic land card, put it onto the
 // battlefield tapped, then shuffle."
 //
-// S14 sandbox simplifications retained:
-//   - "May" is treated as always. If the exiled creature's
-//     controller has a basic land, it always fetches.
-//   - Capture the controller BEFORE ExileTarget fires — post-move
-//     the card is in exile and its controller is still stamped,
-//     but the lookup is cleaner to do upfront.
+// Capture the controller BEFORE ExileTarget fires — post-move the
+// card is in exile and its controller is still stamped, but the
+// lookup is cleaner to do upfront.
+//
+// S22: the "may" is real. The search is Optional, so the creature's
+// controller is prompted and can decline the land — and with it the
+// shuffle, which is the half a player with a stacked top of library
+// actually cares about. S14 treated may as always.
 //
 // S17 sub-PR 4: fetched land enters TAPPED via
 // SearchLibrary.TappedOnEntry. Closes the S14 "enters untapped"
@@ -55,6 +57,8 @@ func init() {
 				Reveal:        true,
 				Shuffle:       true,
 				TappedOnEntry: true,
+				Optional:      true,
+				Reason:        "Path to Exile — you may search for a basic land",
 			}.Apply(ctx)
 		},
 	})
