@@ -228,6 +228,16 @@ type Game struct {
 	// sub-PR 1.
 	lastKnownBattlefield map[uuid.UUID]Characteristic
 
+	// simultaneousExit holds copies of the permanents currently
+	// leaving the battlefield as ONE event — a board wipe, or one
+	// state-based-action sweep. Non-empty only for the duration of
+	// that sweep; the trigger harvester reads it so a watcher that
+	// died earlier in the same wipe still sees its neighbours die
+	// (CR 700.4 / 603.10). See simultaneous.go. Transient by
+	// construction, so Clone / RestoreFrom do not carry it: no
+	// snapshot is ever taken mid-sweep. Added in S23.
+	simultaneousExit []Card
+
 	// rng is captured from Start so that subsequent mutations that
 	// shuffle (Mulligan, ShuffleLibrary) use the same source of
 	// randomness as the initial library shuffle. nil means "use the

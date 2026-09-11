@@ -610,7 +610,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// down once the spell is on the stack — validate-all-then-pay,
 	// so a rejected cast never leaves a card in the graveyard.
 	addCost := AdditionalCostFor(CatalogKey(card))
-	if err := g.validateAdditionalCostLocked(playerID, cardID, addCost, params.DiscardIDs, params.SacrificeIDs); err != nil {
+	if err := g.validateAdditionalCostLocked(playerID, cardID, addCost, params.DiscardIDs, params.SacrificeIDs, params.XValue); err != nil {
 		slog.Warn("cast_spell rejected: bad additional cost payment",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -835,7 +835,11 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// sacrifice — that triggers off it must resolve before the
 	// spell does. Validation happened at announce, so a failure
 	// past this point is an engine bug rather than a bad request.
-	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs, params.SacrificeIDs); err != nil {
+	payLife := 0
+	if addCost != nil && addCost.PayLifeX {
+		payLife = params.XValue
+	}
+	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs, params.SacrificeIDs, payLife); err != nil {
 		slog.Error("cast_spell: additional cost failed after validation",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -2075,10 +2079,16 @@ func (g *Game) stateBasedActionsLocked() bool {
 			continue
 		}
 	}
-	for _, id := range doomed {
-		if err := g.routeBattlefieldCardToOwnerGraveyardLocked(id); err == nil {
-			fired = true
-		}
+	// S23: one SBA pass is ONE event (CR 704.3 — all applicable
+	// state-based actions are performed simultaneously as a single
+	// event). The collection above already worked off a single
+	// consistent board; routing the executions through the
+	// simultaneous-exit batch makes the TRIGGERS agree, so a Blood
+	// Artist that Pyroclasm or Toxic Deluge killed alongside the rest
+	// of the board still sees every one of those deaths. See
+	// simultaneous.go.
+	if g.destroyPermanentsLocked(doomed) > 0 {
+		fired = true
 	}
 
 	return fired
