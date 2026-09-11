@@ -98,7 +98,6 @@ var gameFields = plan(
 	"Listeners", rebuilt, "process-lifetime singletons installed by NewGame; a new binary's listener set wins",
 	"BuiltinReplacements", rebuilt, "registered by NewGame, not per-game state",
 	"rng", rebuilt, "rebuilt by wrapping the restored rngState",
-	"recompute", rebuilt, "a mutex guarding recompute work; zero value is correct",
 	"mu", rebuilt, "a fresh receiver owns its own lock, exactly as Clone does",
 
 	"TurnScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.TurnScopedStatics",

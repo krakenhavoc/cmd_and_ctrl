@@ -2,7 +2,6 @@ package game
 
 import (
 	"sort"
-	"sync"
 
 	"github.com/google/uuid"
 )
@@ -153,12 +152,11 @@ func (e staticContinuousEffect) Apply(c *Characteristic, target *Card, g *Game) 
 //     registry (turn_scoped_statics.go), which has no battlefield
 //     source and expires on a clock instead (CR 514.2).
 //
-// Caller must hold either g.mu (write) or g.recompute.mu (the
-// recompute serialisation mutex used during snapshot).
+// Caller must hold g.mu in write mode.
 //
 // The returned source pointers reference into g.Battlefield.Cards
 // — safe for the duration of the recompute pass that holds the
-// recompute mutex; not safe to retain across mutations.
+// write lock; not safe to retain across mutations.
 func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 	// S32: floating "until end of turn" effects first. They are
 	// gathered unconditionally — they outlive their source card, so
@@ -316,37 +314,33 @@ func DistinctCardTypesInAllGraveyards(g *Game) int {
 	return len(seen)
 }
 
-// recomputeMu serializes layer-engine recomputes against each other.
-// The Game's read lock is held by snapshot callers, so the recompute
-// can't promote to a write lock — instead it serialises through this
-// dedicated mutex and double-checks the version after acquire to
-// avoid duplicate work. Sub-PR 1 ships the mutex but the recompute
-// is a no-op; sub-PR 3 starts populating Card.effective behind it.
+// RecomputeLayersIfStaleLocked is the entry point every mutator
+// calls before it reads an effective characteristic, and the one
+// ReadSnapshot calls on behalf of the snapshot path. Fast-path no-op
+// when the version counters match.
 //
-// Held only for the duration of a single recompute pass; never held
-// across a snapshot or mutation.
-type recomputeState struct {
-	mu sync.Mutex
-}
-
-// RecomputeLayersIfStaleLocked is the public entry point the
-// snapshot path calls before serialising views. Fast-path no-op when
-// the version counters match. Safe to call under the game's read
-// lock — version reads + writes are atomic; the recompute mutex
-// serialises the body against duplicate work.
+// **Caller must hold the game's WRITE lock.** A recompute is a
+// write, not a read: it reassigns Card.effective on every
+// battlefield card and — since the S24 layer-2 control change —
+// Card.Controller, Card.SummonedThisTurn, Card.AttackingTarget and
+// Card.BlockingTarget on any permanent whose controller just moved.
 //
-// Sub-PR 1 ships the no-op pass: increments the recompute counter
-// (so the fast-path test can assert it), then advances
-// lastResolvedVersion to the current layerVersion. Sub-PR 3 fills in
-// the actual layer-application body.
+// This used to advertise itself as read-lock-safe on the strength of
+// a dedicated recompute mutex. That mutex serialised recomputes
+// against EACH OTHER and did nothing about a reader holding only the
+// shared read lock, so every concurrent read-lock holder raced the
+// pass — `Game.AutoTapForCostExcluding` (lobby /autotap) and
+// `Game.ControllerOfCard` (actions authorization) both read
+// Card.Controller off the battlefield from their own goroutines. A
+// torn 16-byte uuid.UUID there silently attributes a permanent to
+// the wrong seat. The write lock is now the serialiser, so the
+// separate mutex is gone; `ReadSnapshot` upgrades rather than
+// recomputing in place. Pinned by layers_concurrency_test.go.
+//
+// Advances lastResolvedVersion to the current layerVersion on
+// completion, and bumps the recompute counter so the fast-path test
+// can assert it ran exactly once.
 func (g *Game) RecomputeLayersIfStaleLocked() {
-	if g.layerVersion.Load() == g.lastResolvedVersion.Load() {
-		return
-	}
-	g.recompute.mu.Lock()
-	defer g.recompute.mu.Unlock()
-	// Double-check after acquiring the recompute mutex — another
-	// caller may have just resolved while we waited.
 	if g.layerVersion.Load() == g.lastResolvedVersion.Load() {
 		return
 	}
@@ -364,9 +358,11 @@ func (g *Game) RecomputeLayersIfStaleLocked() {
 //     effects to that bucket, sort by source timestamp ascending,
 //     apply each effect across every battlefield card it AppliesTo.
 //
-// Caller must hold the recompute mutex (RecomputeLayersIfStaleLocked
-// acquires it). The recompute counter bumps on every call so the
-// fast-path test can assert it ran exactly once.
+// Caller must hold g.mu in write mode — the pass writes
+// Card.effective on every battlefield card and, via
+// materialiseControlLocked, Card.Controller on any permanent layer 2
+// moved. The recompute counter bumps on every call so the fast-path
+// test can assert it ran exactly once.
 func (g *Game) recomputeLayersLocked() {
 	g.recomputeCount.Add(1)
 	if g.Battlefield != nil {
@@ -422,7 +418,10 @@ func (g *Game) recomputeLayersLocked() {
 // Both fire only on an actual delta, so a recompute that changes
 // nothing touches nothing.
 //
-// Caller holds the recompute mutex.
+// Caller holds g.mu in write mode. This is the step that made the
+// layer engine's lock contract load-bearing: Card.Controller is read
+// all over the engine under the READ lock, so writing it needs
+// exclusivity, not the shared lock the recompute used to run under.
 func (g *Game) materialiseControlLocked() {
 	if g.Battlefield == nil {
 		return
