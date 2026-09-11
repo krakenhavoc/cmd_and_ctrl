@@ -1,0 +1,79 @@
+package effects
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Farewell — Sorcery {4}{W}{W} (EDHREC rank 172):
+//
+//	"Choose one or more —
+//	 • Exile all artifacts.
+//	 • Exile all creatures.
+//	 • Exile all enchantments.
+//	 • Exile all graveyards."
+//
+// The most-played sweeper in the format because it is the most
+// selective one: a Treasure deck exiles creatures and keeps its
+// rocks, an enchantress board wipes everything but enchantments,
+// and every mode is EXILE — no dies-triggers, no recursion, no
+// indestructible (see merciless_eviction.go for why that decides
+// games against the catalog's aristocrats payoffs).
+//
+// "Choose one or more" is ChooseN with Min 1 and Max 4 — every
+// subset of the four is a legal cast. The three battlefield modes
+// are Merciless Eviction's, resolved in printed order (CR 700.2c)
+// with the IDs snapshotted before each sweep; the fourth walks
+// every seat's graveyard, the caster's included, through the same
+// helper Bojuka Bog uses.
+//
+// No simplification.
+func init() {
+	Register(Spec{
+		OracleID: "4eb813fd-2d5a-4b02-8193-662681ef4e7d",
+		Name:     "Farewell",
+		Modes: ChooseN("Choose one or more", 1, 4,
+			Mode("Exile all artifacts."),
+			Mode("Exile all creatures."),
+			Mode("Exile all enchantments."),
+			Mode("Exile all graveyards."),
+		),
+		OnResolve: func(item *game.StackItem, ctx *Context) error {
+			sweeps := []func(game.Card) bool{
+				func(c game.Card) bool { return c.IsArtifact() },
+				func(c game.Card) bool { return c.IsCreature() },
+				func(c game.Card) bool { return c.IsEnchantment() },
+			}
+			for i, matches := range sweeps {
+				if !ctx.HasMode(i) {
+					continue
+				}
+				// Snapshot before exiling: ExileTarget removes cards
+				// from the zone we would otherwise be ranging over.
+				var doomed []uuid.UUID
+				for _, c := range ctx.Game.BattlefieldCardsForEffect() {
+					if matches(c) {
+						doomed = append(doomed, c.InstanceID)
+					}
+				}
+				for _, id := range doomed {
+					if err := (ExileTarget{Target: id}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+			}
+			if ctx.HasMode(3) {
+				for _, p := range ctx.Game.Seats {
+					if p == nil {
+						continue
+					}
+					if err := exileGraveyardForEffect(ctx.Game, item, p.ID); err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		},
+	})
+}

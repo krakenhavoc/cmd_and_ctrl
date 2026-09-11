@@ -284,3 +284,37 @@ func TestAsAnyColorCostFoldsColorsButNotColorless(t *testing.T) {
 		t.Errorf("two red should not pay {1}{C} even under any-color")
 	}
 }
+
+// TestExileTopWithPermissionTakesTheTopNotTheBottom pins the
+// library-order bug the roadmap's batch 01 found: the helper read
+// Cards[0], which is the BOTTOM of the library (PopTop, draw and
+// mill all take the last element), and every earlier test seeded a
+// one-card library where the two coincide. Ragavan and Breeches
+// were exiling the bottom card.
+func TestExileTopWithPermissionTakesTheTopNotTheBottom(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	me.Library.Cards = nil
+	bottom := uuid.New()
+	top := uuid.New()
+	me.Library.PushTop(Card{InstanceID: bottom, Name: "Bottom", TypeLine: "Instant", Owner: me.ID, Controller: me.ID})
+	me.Library.PushTop(Card{InstanceID: top, Name: "Top", TypeLine: "Instant", Owner: me.ID, Controller: me.ID})
+
+	var got []uuid.UUID
+	var err error
+	g.WithWriteLock(func() {
+		got, err = g.ExileTopWithPermissionForEffect(me.ID, me.ID, 1, ExilePlayPermission{})
+	})
+	if err != nil {
+		t.Fatalf("ExileTopWithPermissionForEffect: %v", err)
+	}
+	if len(got) != 1 || got[0] != top {
+		t.Fatalf("exiled %v, want the top card %v", got, top)
+	}
+	if !g.Exile.Contains(top) || g.Exile.Contains(bottom) {
+		t.Error("the wrong end of the library was exiled")
+	}
+	if c, err := me.Library.Top(); err != nil || c.InstanceID != bottom {
+		t.Errorf("library top after the exile = %v, want the former bottom card", c.InstanceID)
+	}
+}

@@ -224,6 +224,13 @@ type ScheduleDelayedTrigger struct {
 	// controller of the effect scheduling it (CR 603.7d).
 	Controller uuid.UUID
 
+	// ControllerTurnOnly is "at the beginning of YOUR next <step>"
+	// (Mana Drain's main phase) as opposed to "the next turn's
+	// <step>" (Arcane Denial's upkeep, which the very next player's
+	// upkeep satisfies). Leave it false unless the printed text says
+	// "your".
+	ControllerTurnOnly bool
+
 	// Cards is the instance IDs the effect acts on.
 	Cards []uuid.UUID
 
@@ -244,12 +251,13 @@ func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
 		at = game.StepEnd
 	}
 	ctx.Game.ScheduleDelayedTriggerForEffect(game.DelayedTrigger{
-		Controller:   controller,
-		SourceCardID: ctx.Source(),
-		Label:        s.Label,
-		At:           at,
-		Cards:        s.Cards,
-		Effect:       s.Effect,
+		Controller:         controller,
+		SourceCardID:       ctx.Source(),
+		Label:              s.Label,
+		At:                 at,
+		ControllerTurnOnly: s.ControllerTurnOnly,
+		Cards:              s.Cards,
+		Effect:             s.Effect,
 	})
 	return nil
 }

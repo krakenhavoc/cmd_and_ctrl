@@ -444,6 +444,25 @@
               regardless.&rdquo; Turn off to demand a click at every stop.
             </p>
 
+            <label>
+              <input
+                type="checkbox"
+                checked={$settings.gameplay.autoPassOwnStack}
+                onchange={(e) => change("gameplay", "autoPassOwnStack", e.currentTarget.checked)}
+              />
+              Auto-pass your own spells and triggers on the stack
+              {#if isFresh("gameplay.autoPassOwnStack")}<span class="saved">✓ saved</span>{/if}
+            </label>
+            <p class="help">
+              Casting is already the decision, so the client doesn't ask &ldquo;Counter or
+              Pass?&rdquo; about a stack holding only your own items — it passes and lets them
+              resolve. A stack with <em>anything</em> an opponent put on it still stops for you.
+              When you do want to respond to your own spell or trigger (stacking two effects,
+              holding up a counter, responding to your own ETB), click <strong>hold</strong> in the
+              phase widget or the stack card <em>before</em> you cast — the pass fires the instant the
+              spell is announced. Turn this off to stop on every stack, always.
+            </p>
+
             <label class="danger">
               <input
                 type="checkbox"
