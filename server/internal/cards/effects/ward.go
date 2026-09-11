@@ -101,7 +101,11 @@ func Ward(cost WardCost, label string) game.TriggeredAbility {
 			if itemID == uuid.Nil || payer == uuid.Nil {
 				return nil
 			}
-			return game.NewTriggeredItem(source, label+" — "+cost.Mana+" or counter",
+			// The label is the card's own, unadorned: the cost is
+			// already in it ("Hulking Raptor — ward {2}"), and the
+			// pay-or-counter wording belongs on the PROMPT, which is
+			// where the decision is actually made.
+			return game.NewTriggeredItem(source, label,
 				func(g *game.Game, item *game.StackItem) error {
 					return wardPayOrCounter(g, item, itemID, payer, cost)
 				})
