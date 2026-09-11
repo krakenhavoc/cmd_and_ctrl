@@ -241,6 +241,19 @@ type Spec struct {
 	// cards with no additional cost.
 	AdditionalCost *game.AdditionalCost
 
+	// CantBeCountered is the S23 "This spell can't be countered"
+	// rider (Supreme Verdict). A spell that declares it is still a
+	// legal target for Counterspell — the counter resolves and does
+	// nothing (CR 701.5a), which is a different and observable thing
+	// from the counterspell fizzling.
+	//
+	// Only a card's OWN printed rider belongs here. A GRANT
+	// ("creature spells you control can't be countered", Cavern of
+	// Souls) is a continuous effect over the stack and the layer
+	// system does not reach the stack; see
+	// server/internal/game/cant_be_countered.go.
+	CantBeCountered bool
+
 	// AlternativeCosts is the S22 "you may cast this spell for its
 	// overload / evoke / cleave cost" clause (CR 118.9) — a cost paid
 	// INSTEAD of the mana cost, not alongside it like AdditionalCost.

@@ -64,6 +64,21 @@ describe("hasXCost + xValue on the prompt — S20 sub-PR 3", () => {
     expect(get(targeting)?.choices?.xValue).toBe(4);
     cancel();
   });
+
+  // S23: Toxic Deluge prints a flat {2}{B} and still has an X to
+  // announce, because its "pay X life" additional cost carries one.
+  // A card whose mana cost alone decided this would never open the
+  // prompt and would always cast for X = 0.
+  it("detects an X on a pay-X-life additional cost", () => {
+    expect(
+      hasXCost(
+        card({ mana_cost: "{2}{B}", additional_cost: { demands_x: true, label: "Pay X life" } }),
+      ),
+    ).toBe(true);
+    expect(hasXCost(card({ mana_cost: "{2}{B}", additional_cost: { discard_cards: 1 } }))).toBe(
+      false,
+    );
+  });
 });
 
 // --- S20 sub-PR 4: modal spells ----------------------------------

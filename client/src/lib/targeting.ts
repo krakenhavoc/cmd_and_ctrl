@@ -337,8 +337,14 @@ export function modeOptionCastable(option: ModeOptionView): boolean {
 // of the card's, so Waterbender's Restoration prints {U}{U} and
 // still has an X to announce — and that X is also the number of
 // creatures its clause targets.
+//
+// S23 adds the third, and it is the same shape once more: Toxic
+// Deluge's "pay X life" is an additional cost with its own X, the
+// printed mana cost is a flat {2}{B}, and the announced X is also
+// the -X/-X the spell hands out.
 export function hasXCost(card: CardView): boolean {
   if (card.tap_cost?.demands_x) return true;
+  if (card.additional_cost?.demands_x) return true;
   return (card.mana_cost ?? "").includes("{X}");
 }
 
