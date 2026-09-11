@@ -20,7 +20,10 @@ import (
 // Effective().Subtypes alone would have passed before this branch
 // and is exactly the check that let the gap survive four sprints.
 
-const urborgOracle = "db6174d7-211d-4817-b8e4-8384594c83f9"
+const (
+	urborgOracle        = "db6174d7-211d-4817-b8e4-8384594c83f9"
+	sunpetalGroveOracle = "402ec768-76fb-474e-ae74-babc90d833c4"
+)
 
 // seedLand puts a land on the battlefield through the layer-aware
 // push so the listener stamps EnteredBattlefieldAt and invalidates
@@ -191,6 +194,28 @@ func TestUrborgTurnsOnACheckland(t *testing.T) {
 
 	id := playLandFromHand(t, g, "Drowned Catacomb", drownedCatacombOracle)
 	top100AssertEnteredUntapped(t, g, id, "Drowned Catacomb")
+}
+
+// TestUrborgAddsBlackToACatalogDualWithoutDoublingIt pins the merge
+// rule in ManaAbilitiesForCard. Sunpetal Grove declares a "{G} or
+// {W}" pipe; Urborg gives it the {B} the pipe cannot make, and does
+// not hand it a second way to make {G}. Drowned Catacomb's pipe
+// already covers {B}, so it gains nothing at all and its client row
+// stays one click.
+func TestUrborgAddsBlackToACatalogDualWithoutDoublingIt(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	grove := seedLand(g, me.ID, "Sunpetal Grove", "Land — Forest Plains", sunpetalGroveOracle)
+	catacomb := seedLand(g, me.ID, "Drowned Catacomb", "Land — Island Swamp", drownedCatacombOracle)
+	seedLand(g, me.ID, "Urborg, Tomb of Yawgmoth", "Legendary Land", urborgOracle)
+
+	got := manaAbilityProduced(t, g, grove)
+	if len(got) != 2 || got[0] != "{G|W}" || got[1] != "{B}" {
+		t.Errorf("Sunpetal Grove under Urborg produces %v, want [{G|W} {B}]", got)
+	}
+	if got := manaAbilityProduced(t, g, catacomb); len(got) != 1 || got[0] != "{U|B}" {
+		t.Errorf("Drowned Catacomb under Urborg produces %v, want just its [{U|B}] pipe", got)
+	}
 }
 
 // manaAbilityProduced returns the Produced string of each mana
