@@ -163,7 +163,12 @@ func (g *Game) ExileTopWithPermissionForEffect(fromPlayer, grantTo uuid.UUID, n 
 		if owner.Library.Size() == 0 {
 			return out, nil
 		}
-		top := owner.Library.Cards[0].InstanceID
+		// The library's top is the LAST element — PopTop, and so every
+		// draw and mill, takes it from there. This used to read index
+		// 0, the bottom card, and no test caught it because they all
+		// seeded a one-card library. (Roadmap batch 01, Professional
+		// Face-Breaker.)
+		top := owner.Library.Cards[len(owner.Library.Cards)-1].InstanceID
 		if _, err := MoveCard(owner.Library, g.Exile, top); err != nil {
 			return out, err
 		}

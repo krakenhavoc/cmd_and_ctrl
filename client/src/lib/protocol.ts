@@ -71,6 +71,9 @@ export type ActionType =
   | "counter_ability"
   | "counter_spell"
   | "declare_attacker"
+  // Bulk attacking-set declaration (#318) — one action, one undo
+  // entry, one broadcast, however wide the board.
+  | "declare_attackers"
   | "declare_blocker"
   | "discard_selection"
   | "draw_card"
@@ -644,6 +647,20 @@ export interface CardView {
   // non-catalog cards (the majority) don't carry the field. Drives
   // the gold-leaf "auto" badge on Card.svelte.
   auto?: boolean;
+  // The honest inverse of `auto`, and deliberately not !auto. Most
+  // cards have no catalog entry and don't need one — printed
+  // keywords are enforced for every card in the dump, a vanilla
+  // creature is complete, a basic land taps off its type line. This
+  // is set only when the card prints rules the engine will not run,
+  // which is the case behind reports #321 / #324 / #325 / #332 /
+  // #333: five uncatalogued cards resolved into silence and the
+  // player had no way to tell that from a defect.
+  //
+  // Surfaced at the moments a player forms an expectation — the
+  // hover/inspect panel and the stack — and NOT as a board badge.
+  // Most of a real battlefield would carry one, and a badge on
+  // everything is a badge nobody reads.
+  unimplemented?: boolean;
   // target_mode tells the cast-click flow what to prompt for at
   // announce time. Empty/absent ⇒ cast immediately with no target.
   // See client/src/lib/targeting.ts for the full enum.

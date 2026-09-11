@@ -1,8 +1,9 @@
 package effects
 
-// painlands.go — the eight most-played "painlands" (Ice Age's allied
-// five, Apocalypse's enemy five; the two the top-100 triage did not
-// rank are left for whoever wants the full ten):
+// painlands.go — the full ten "painlands" (Ice Age's allied five,
+// Apocalypse's enemy five). Eight landed with the mana-rider batch
+// (#267); Karplusan Forest and Brushland, the two the top-100 triage
+// did not rank, arrive with the roadmap's batch 01 (#294):
 //
 //	"{T}: Add {C}."
 //	"{T}: Add {A} or {B}. This land deals 1 damage to you."
@@ -38,6 +39,9 @@ func init() {
 		{"857febd9-cdd7-4f8e-a852-d88084b0cfbc", "Underground River", "U", "B"},
 		{"d5ad26cc-2bdb-46b7-b8bf-dd099d5fa09b", "Adarkar Wastes", "W", "U"},
 		{"f5c38c01-4a40-469f-91a0-7479daf4e8e7", "Sulfurous Springs", "B", "R"},
+		// Roadmap batch 01 (#294) — the last two of the ten.
+		{"bd912666-f37f-4767-af6f-9e6d0fcccacf", "Karplusan Forest", "R", "G"},
+		{"5eb8b497-ec9a-4a89-ad29-1ec3ca82da7c", "Brushland", "G", "W"},
 	} {
 		Register(Spec{
 			OracleID: land.oracleID,

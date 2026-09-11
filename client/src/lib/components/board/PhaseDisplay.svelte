@@ -20,6 +20,7 @@
   import { getAvatarColor } from "../../avatarColor";
   import { STEP_IDS, STEP_LABELS, type StepID } from "../../turn";
   import { canManuallyStop, manualStops, toggleManualStop } from "../../priorityStops";
+  import { holdPriority, toggleHoldPriority } from "../../holdPriority";
   import PhaseIcon from "./PhaseIcon.svelte";
 
   interface Props {
@@ -151,6 +152,24 @@
       title={viewerHasPriority ? "pass priority — rotates to next seat" : "you don't hold priority"}
     >
       next
+    </button>
+    <!-- #323: the escape hatch for "I DO want to respond to my own
+         spell". Lives next to `next` because it has to be clickable
+         BEFORE the cast — once the spell is announced the client
+         auto-passes on the following snapshot and there is no moment
+         left to interrupt. Sticky until clicked off, so `hold ✓` is
+         exactly the pre-#323 behaviour: every stack stops. -->
+    <button
+      type="button"
+      class="action hold"
+      class:on={$holdPriority}
+      aria-pressed={$holdPriority}
+      onclick={toggleHoldPriority}
+      title={$holdPriority
+        ? "hold ON — your own spells and triggers keep the cursor so you can respond to them; click to release"
+        : "hold OFF — your own spells and triggers resolve without asking. Click before you cast to keep priority and respond to them"}
+    >
+      {$holdPriority ? "hold ✓" : "hold"}
     </button>
     <button
       type="button"
@@ -324,8 +343,14 @@
     margin-top: 2px;
   }
   .action {
-    flex: 1 1 0;
+    /* basis auto (not 0) since #323 added a third button: the row
+       sizes each label to its own text and shares the slack, so
+       "autopass ✓" can't get squeezed narrower than it reads. The
+       row wraps rather than clipping if the panel is at its 220px
+       floor. */
+    flex: 1 1 auto;
     min-width: 0;
+    white-space: nowrap;
     padding: 4px 8px;
     border-radius: 6px;
     border: 1px solid var(--border);
@@ -357,6 +382,19 @@
   .action.next.viewer-priority:hover:not(:disabled) {
     background: var(--accent-strong);
     border-color: var(--accent-strong);
+  }
+  /* Hold engaged reads in the "user override" colour rather than
+     gold — gold is priority everywhere on the table and hold isn't
+     priority, it's a standing instruction about it. */
+  .action.hold.on {
+    background: color-mix(in srgb, var(--magenta) 18%, transparent);
+    color: var(--magenta);
+    font-weight: 700;
+    border-color: color-mix(in srgb, var(--magenta) 55%, transparent);
+  }
+  .action.hold.on:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--magenta) 28%, transparent);
+    border-color: var(--magenta);
   }
   .action.autopass.on {
     background: var(--accent-soft);

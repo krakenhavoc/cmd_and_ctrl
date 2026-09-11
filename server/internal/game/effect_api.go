@@ -1431,3 +1431,60 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 	g.fireETBHookLocked(newID, card.OracleID)
 	return newID, nil
 }
+
+// AddManaForEffect adds the mana a SPELL or a non-mana ability
+// produces to playerID's pool — Dark Ritual's "Add {B}{B}{B}", Mana
+// Drain's delayed "add an amount of {C}", Jeska's Will. Every other
+// mana in the engine arrives through ActivateManaAbility (CR 605); a
+// spell that adds mana resolves off the stack like any other spell
+// and lands its mana here, in the same resolution frame, with the
+// same EventManaAdded per unit the mana-ability path emits.
+//
+// `produced` is the Scryfall brace grammar ParseProducedMana reads,
+// pipe syntax included: a single-colour slot goes straight into the
+// pool, a multi-option slot queues the same PendingChoiceMana pick a
+// Birds of Paradise activation does, narrowed to the controller's
+// commander identity exactly as Treasure and Phyrexian Altar are.
+// `source` is the card the mana is attributed to (the spell itself
+// for Dark Ritual); it rides on each ManaToken.
+//
+// The pool still empties at the end of the step (CR 106.4), so mana
+// added by a spell has to be spent in the step it resolved in — the
+// printed behaviour, and the reason Dark Ritual is cast in a main
+// phase.
+//
+// An eliminated or unseated player gets nothing and no error: the
+// spell resolved, there was just nobody to give the mana to.
+//
+// Caller must hold g.mu.
+func (g *Game) AddManaForEffect(playerID, source uuid.UUID, produced string) error {
+	p := g.playerByIDLocked(playerID)
+	if p == nil || p.Eliminated {
+		return nil
+	}
+	slots, err := ParseProducedMana(produced)
+	if err != nil {
+		return err
+	}
+	for _, slot := range slots {
+		options := slot.Options
+		if len(options) == 0 {
+			continue
+		}
+		if len(options) == 1 {
+			p.ManaPool.AddMana(ManaToken{Color: options[0], Source: source})
+			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: source})
+			continue
+		}
+		g.QueueChoiceForEffect(PendingChoice{
+			Kind:         PendingChoiceMana,
+			Chooser:      playerID,
+			FromPlayer:   playerID,
+			Count:        1,
+			Source:       source,
+			Reason:       "Add one mana of any color",
+			ColorOptions: filterPipeByCommanderIdentity(options, p),
+		})
+	}
+	return nil
+}
