@@ -150,9 +150,42 @@
     return null;
   });
 
+  // S24 (ADR 0036 decisions 13 + 14): the wire carries attachment in
+  // one direction — each Equipment / Aura names its host — and the
+  // reverse list is derived here rather than shipped, so the two can
+  // never disagree. Keyed by host instance ID over the WHOLE
+  // battlefield, not just this seat's cards: an Aura you control on
+  // a creature an opponent controls is drawn on the creature, which
+  // is where the rules put it.
+  const attachmentsByHost = $derived.by(() => {
+    const out: Record<string, CardView[]> = {};
+    for (const c of view.battlefield?.cards ?? []) {
+      if (c.attached_to?.kind !== "card" || !c.attached_to.id) continue;
+      (out[c.attached_to.id] ??= []).push(c);
+    }
+    return out;
+  });
+
+  // Every battlefield card that is drawn behind a host rather than in
+  // its own type row. A dangling attachment — the host has left but
+  // the state-based action has not swept the relation yet — keeps its
+  // own row, so an Equipment never vanishes mid-frame.
+  const hostedCardIDs = $derived.by(() => {
+    const onBattlefield = new Set((view.battlefield?.cards ?? []).map((c) => c.instance_id));
+    const out = new Set<string>();
+    for (const c of view.battlefield?.cards ?? []) {
+      const host = c.attached_to;
+      if (host?.kind === "card" && host.id && onBattlefield.has(host.id)) {
+        out.add(c.instance_id);
+      }
+    }
+    return out;
+  });
+
   const buckets = $derived.by(() => {
     const out = { creature: [] as CardView[], land: [] as CardView[], right: [] as CardView[] };
     for (const c of controlledCards) {
+      if (hostedCardIDs.has(c.instance_id)) continue;
       out[bucketForBattlefield(c)].push(c);
     }
     return out;
@@ -254,6 +287,7 @@
   <div class="grid-creatures">
     <BattlefieldRow
       label="creatures"
+      {attachmentsByHost}
       cards={buckets.creature}
       {viewerID}
       {selectedCombatCardID}
@@ -265,6 +299,7 @@
   <div class="grid-middle">
     <BattlefieldRow
       label="enchant / artifact"
+      {attachmentsByHost}
       cards={buckets.right}
       compact
       {viewerID}
@@ -275,6 +310,7 @@
     />
     <BattlefieldRow
       label="lands"
+      {attachmentsByHost}
       cards={buckets.land}
       compact
       strip
