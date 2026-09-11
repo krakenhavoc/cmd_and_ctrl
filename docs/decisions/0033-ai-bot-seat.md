@@ -1,4 +1,4 @@
-# ADR 0024 — AI bot seat: legal-move enumeration, virtual seats, tiered policies
+# ADR 0033 — AI bot seat: legal-move enumeration, virtual seats, tiered policies
 
 **Status:** proposed
 **Supersedes:** the architecture section of [S31](../sprints.md#s31--ai-bot-seat-heuristic-policy) (heuristic-only, gated behind S27–S30).
@@ -38,7 +38,9 @@ expansion of source × target × mode into discrete moves, and combat.
 That is a real sprint of work, not half the project.
 
 **2. The engine is a sandbox with rules grafted on, not a rules
-engine.** 201 cards carry effect specs. There is no attachment layer,
+engine.** Roughly 290 cards carry effect specs (289 registered as of
+#270 on 2026-09-11; `grep -c 'Register(Spec{'` undercounts — several
+cycles register in loops). There is no attachment layer,
 so Equipment and Auras are inert (S24). Sagas do not exist beyond a `lore` counter type with no chapter
 triggers and no 704.5u state-based action (S27).
 Mass-removal primitives are S23. A bot cannot be better than the
@@ -262,8 +264,8 @@ against `effects.All()` and fails the build on any gap — without it,
 S31's six proposed decks, Voltron and any Equipment or Aura strategy
 are unbuildable until S24 lands the attachment layer; Aristocrats
 needs more of S21/S23 than exists; Combo is a bad idea regardless.
-Aggro, ramp-stompy, and a thin spell-based control deck are what 201
-cards actually support. Ship three good decks, not six thin ones.
+Aggro, ramp-stompy, and a thin spell-based control deck are what
+today's catalog actually supports. Ship three good decks, not six thin ones.
 
 Any-deck support — where the bot improvises from oracle text — is a
 later tier, gated behind decision 8 being proven in practice.
@@ -338,8 +340,8 @@ table never waits on a model.
 - The heuristic policy is not optional. It is the fallback for every
   model failure, so the "LLM bot" cannot ship without the "heuristic
   bot" underneath it.
-- Play quality is capped by catalog coverage, not by the model. At 201
-  cards a bot will be a competent player of a deliberately small
+- Play quality is capped by catalog coverage, not by the model. At a
+  few hundred cards a bot will be a competent player of a deliberately small
   format. That is the honest expectation to set.
 - Model calls put an outbound API dependency and a key on the VPS for
   the first time in a *gameplay* path. Discord, GitHub and Scryfall
@@ -358,7 +360,7 @@ actions. Rejected.
 
 **Heuristic-only, S31 as written.** Deterministic, free, testable. It
 is also the option the roadmap gates behind S27–S30 for good reasons,
-and at 201 cards a pure heuristic has very little structured signal to
+and at a few hundred cards a pure heuristic has little structured signal to
 reason over. The hybrid gets a playable bot sooner and degrades to
 exactly this when the model is unavailable.
 

@@ -1897,9 +1897,9 @@ Triaged just-in-time from real-play feedback.
 
 ## S31 — AI bot seat (legal-move enumeration + tiered policy)
 
-**Phase:** 8 · **Goal:** any player at an unstarted table can add up to four bot seats that play the game. Pulled forward from its post-S30 slot; architecture per [ADR 0024](decisions/0024-ai-bot-seat.md), which supersedes the heuristic-only design this section previously carried.
+**Phase:** 8 · **Goal:** any player at an unstarted table can add up to four bot seats that play the game. Pulled forward from its post-S30 slot; architecture per [ADR 0033](decisions/0033-ai-bot-seat.md), which supersedes the heuristic-only design this section previously carried.
 
-**The bar is Forge's bar,** not tournament strength: makes legal moves, makes locally-sensible decisions, doesn't deadlock, uses removal on threats. Play quality is capped by catalog coverage (201 cards), not by the policy — see ADR 0024 §7 on which archetypes are actually buildable today.
+**The bar is Forge's bar,** not tournament strength: makes legal moves, makes locally-sensible decisions, doesn't deadlock, uses removal on threats. Play quality is capped by catalog coverage (a few hundred cards), not by the policy — see ADR 0033 §7 on which archetypes are actually buildable today.
 
 **Four deliverables, in dependency order:** a public game log (the engine has none today), the legal-move enumerator (which the client also consumes, deleting its duplicated timing predicates), the virtual-seat runner with a heuristic policy, and the model-backed tiers on top.
 
@@ -1949,7 +1949,7 @@ The engine has no event history: `GameView` carries none, the client has none, a
 
 ### Sub-PR 5 — curated decks + coverage test
 
-- [ ] `internal/aiseat/decks/` — **three** decks that 201 cards actually support: aggro, ramp-stompy, spell-based control
+- [ ] `internal/aiseat/decks/` — **three** decks that today's catalog actually supports: aggro, ramp-stompy, spell-based control
 - [ ] Build-failing test: every card in every bot deck resolves to a registered `effects.Spec`
 - [ ] Explicitly deferred: Voltron and any Equipment/Aura deck (needs S24 attachment layer), Aristocrats (needs more of S21/S23), Combo
 
