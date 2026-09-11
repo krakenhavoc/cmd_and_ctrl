@@ -779,12 +779,27 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		tally.Noncreature++
 	}
 	g.SpellsCastThisTurn[playerID] = tally
+	// S22 airbend: OldZone stamps where the spell was cast FROM.
+	// CR 601.2a moves the card to the stack and nothing on the card
+	// remembers the zone it left, so "whenever you cast a spell from
+	// exile" (Appa) has no other way to ask. The StackItem half of
+	// this fact landed with #257 (CastFromZone); this is the event
+	// half, and it reuses the ZoneMove-shaped fields rather than
+	// growing a new one, because a cast IS a zone move — hand (or
+	// exile, or the command zone) to the stack.
 	g.EmitEvent(Event{
-		Kind:   EventCast,
-		Actor:  playerID,
-		Source: cardID,
-		CardID: cardID,
+		Kind:    EventCast,
+		Actor:   playerID,
+		Source:  cardID,
+		CardID:  cardID,
+		OldZone: src.Kind,
+		NewZone: ZoneStack,
 	})
+	// CR 115.7: the objects named at 601.2c have now become targets.
+	// Emitted after EventCast so a "becomes the target" trigger and
+	// a "whenever a player casts a spell" trigger queue in printed
+	// order.
+	g.emitBecameTargetLocked(playerID, cardID, params.Targets)
 	// The caster receives priority right after casting (CR 117.3c),
 	// and CR 603.3 puts any cast-triggered abilities (Rhystic Study,
 	// Beast Whisperer) on the stack at that moment — above the
@@ -1023,7 +1038,18 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// (CR 118.9). The commander tax below is layered on top of
 	// whichever cost was chosen, because CR 903.8 taxes the cost
 	// being paid, not the cost printed in the corner.
-	cost, err := ParseCost(alternativeCostString(card, params.AlternativeCost))
+	costString := alternativeCostString(card, params.AlternativeCost)
+	// S22 airbend: an exile-play grant can carry its own "rather than
+	// its mana cost" price ({2}), which belongs to the exiled
+	// INSTANCE rather than to the card, so it can't come from the
+	// oracle-ID-keyed AlternativeCost catalog above. It wins over the
+	// printed cost and is layered BEFORE the commander tax for the
+	// same reason the alternative cost is: CR 903.8 taxes whatever
+	// cost is actually being paid.
+	if ov := card.ExilePlay.CostOverride; ov != "" && card.ExilePlay.Active(p.ID, g.Turn.Number) {
+		costString = ov
+	}
+	cost, err := ParseCost(costString)
 	if err != nil {
 		return ParsedCost{}, err
 	}
@@ -1608,6 +1634,9 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 		Source: sourceCardID,
 		Label:  params.Label,
 	})
+	// CR 603.3d: a manually-announced trigger chooses its targets as
+	// it goes on the stack, same as the harvested kind.
+	g.emitBecameTargetLocked(playerID, sourceCardID, params.Targets)
 	return nil
 }
 

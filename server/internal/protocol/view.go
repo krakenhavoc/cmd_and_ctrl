@@ -682,6 +682,12 @@ type ExilePlayView struct {
 	// AnyColor marks "you may spend mana as though it were mana of
 	// any color" (Breeches).
 	AnyColor bool `json:"any_color,omitempty"`
+	// CostOverride is the mana cost the holder pays INSTEAD of the
+	// card's printed one — airbend's "{2} rather than its mana
+	// cost". Empty for impulse exile, which charges the printed
+	// cost. The card's `mana_cost` field still carries the printed
+	// value, so a client that ignores this shows the wrong price.
+	CostOverride string `json:"cost_override,omitempty"`
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a
@@ -1723,9 +1729,10 @@ func viewOfCard(c game.Card) CardView {
 	// the card leaves exile, so this can't linger on a permanent.
 	if c.ExilePlay.Granted() {
 		view.ExilePlay = &ExilePlayView{
-			Player:   c.ExilePlay.Player.String(),
-			CastOnly: c.ExilePlay.CastOnly,
-			AnyColor: c.ExilePlay.AnyColor,
+			Player:       c.ExilePlay.Player.String(),
+			CastOnly:     c.ExilePlay.CastOnly,
+			AnyColor:     c.ExilePlay.AnyColor,
+			CostOverride: c.ExilePlay.CostOverride,
 		}
 	}
 	return view
