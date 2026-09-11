@@ -21,6 +21,7 @@ func init() {
 				Limit:     1,
 				Reveal:    true,
 				Shuffle:   true,
+				Reason:    "Three Visits — a Forest card",
 			}.Apply(ctx)
 		},
 	})

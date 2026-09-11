@@ -120,6 +120,13 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.PickTargetCards) > 0 {
 				cloned.PickTargetCards = append([]uuid.UUID(nil), c.PickTargetCards...)
 			}
+			// S22 search chooser: the candidate list is a slice, so
+			// it needs its own backing array for the same reason
+			// every other slice here does — an undo that shared it
+			// would let the restored game mutate the live one.
+			if len(c.SearchCards) > 0 {
+				cloned.SearchCards = append([]uuid.UUID(nil), c.SearchCards...)
+			}
 			out.PendingChoices[i] = &cloned
 		}
 	}

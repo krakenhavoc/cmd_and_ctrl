@@ -83,6 +83,14 @@ func init() {
 		}
 		return spec.AlternativeCosts
 	}
+	// S22: convoke / waterbend — tapping permanents to help pay.
+	// Nil for cards that offer none, which is nearly all of them.
+	game.CatalogTapPermanentsCost = func(oracleID string) *game.TapPermanentsCost {
+		if spec, ok := Lookup(oracleID); ok {
+			return spec.TapCost
+		}
+		return nil
+	}
 	game.CatalogManaAbilities = func(oracleID string) []game.ManaAbilityShape {
 		spec, ok := Lookup(oracleID)
 		if !ok || len(spec.ManaAbilities) == 0 {
@@ -94,8 +102,15 @@ func init() {
 				TapCost:        a.Cost.Tap,
 				SacrificeCost:  a.Cost.Sacrifice,
 				SacrificeOther: a.Cost.SacrificeOther,
+				LifeCost:       a.Cost.Life,
 				Produced:       a.Produced,
 				Label:          a.Label,
+				// S22 mana-ability riders: the post-production
+				// callback and the commander-identity opt-out both
+				// flow straight through, same thin projection the
+				// cost fields get.
+				Rider:                   a.Rider,
+				IgnoreCommanderIdentity: a.IgnoreCommanderIdentity,
 			}
 		}
 		return out

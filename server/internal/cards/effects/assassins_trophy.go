@@ -16,18 +16,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // which is what separates this from Beast Within's 3/3: a Trophy on
 // turn three is nearly free for the opponent.
 //
-// SANDBOX SIMPLIFICATION — the "may" is not offered. The opponent
-// always searches, because a yes/no prompt on someone else's
-// resolution needs the PayUnless-style deferred-choice plumbing and
-// this effect has no such hook. The forced search is the WEAKER
-// direction for the caster (it hands the victim a land they might
-// have declined), never the stronger one. It also means a victim
-// who would rather keep their library unshuffled — the Brainstorm /
-// tutor-on-top case — cannot decline the shuffle.
-//
-// The victim's search picks the first basic in library order, the
-// same deterministic pick every other SearchLibrary card in the
-// catalog makes.
+// S22 — the "may" is real. The search is Optional, so the VICTIM
+// gets the prompt (they are searching their own library, so they are
+// the chooser) and may decline both the land and the shuffle. That
+// second half matters more than it looks: a victim who has just set
+// up a Brainstorm or a tutor-on-top keeps their stack by saying no.
+// Until the search chooser existed, the engine forced the search,
+// which erred toward the WEAKER direction for the caster but took
+// the decision away from the player whose card it is.
 func init() {
 	Register(Spec{
 		OracleID: "ac10d218-f9a6-4058-9cda-a15ca1b0b7b5",
@@ -52,6 +48,8 @@ func init() {
 				Limit:     1,
 				Reveal:    true,
 				Shuffle:   true,
+				Optional:  true,
+				Reason:    "Assassin's Trophy — you may search for a basic land",
 			}.Apply(ctx)
 		},
 	})

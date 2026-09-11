@@ -23,14 +23,13 @@ import (
 // ("Then if you control four or more lands") and it is why a Passage
 // cracked with three lands already out comes in untapped.
 //
-// SANDBOX SIMPLIFICATION — SearchLibrary takes the FIRST basic in
-// library order, the same deterministic pick every other search card
-// in the catalog makes. That is why the effect peeks at the library
-// before searching rather than reading the search's result: the
-// primitive returns no handle on what it moved, so "that land" is
-// resolved by running the same first-match rule the search will run.
-// The two are the same walk over the same slice under the same lock,
-// so they cannot disagree.
+// S22: "that land" is whatever the SEARCHER chose, delivered by the
+// search's Then continuation. This card used to peek at the library
+// and re-derive the first-match pick before searching, because the
+// primitive returned no handle on what it moved and the pick was
+// deterministic. Neither half of that is true any more — the player
+// picks, and the pick may arrive several client round-trips later —
+// so the untap runs inside the continuation instead.
 func init() {
 	Register(Spec{
 		OracleID: "0c85b8f7-0bd0-4680-9ec5-d4b110460a54",
@@ -44,49 +43,32 @@ func init() {
 }
 
 func fabledPassageFetch(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	fetched := firstBasicInLibrary(g, item.Controller)
-	if err := (SearchLibrary{
-		Player:        item.Controller,
+	controller := item.Controller
+	return SearchLibrary{
+		Player:        controller,
 		Predicate:     IsBasicLand,
 		Dest:          game.ZoneBattlefield,
 		Limit:         1,
 		Reveal:        true,
 		Shuffle:       true,
 		TappedOnEntry: true,
-	}).Apply(ctx); err != nil {
-		return err
-	}
-	// A whiffed search still cost the land; there is nothing to untap.
-	if fetched == uuid.Nil {
-		return nil
-	}
-	lands := 0
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.IsLand() && c.Controller == item.Controller {
-			lands++
-		}
-	}
-	if lands < 4 {
-		return nil
-	}
-	return UntapTarget{Target: fetched}.Apply(ctx)
-}
-
-// firstBasicInLibrary returns the InstanceID SearchLibrary will pick
-// for an IsBasicLand predicate — the first match walking the library
-// slice from the bottom, which is the order
-// SearchLibraryForEffectWithOptions itself walks. uuid.Nil when the
-// library holds no basic.
-func firstBasicInLibrary(g *game.Game, playerID uuid.UUID) uuid.UUID {
-	p := g.PlayerByIDForEffect(playerID)
-	if p == nil || p.Library == nil {
-		return uuid.Nil
-	}
-	for _, c := range p.Library.Cards {
-		if IsBasicLand(c) {
-			return c.InstanceID
-		}
-	}
-	return uuid.Nil
+		Reason:        "Fabled Passage — a basic land",
+		Then: func(g *game.Game, found []uuid.UUID) error {
+			// A whiffed or declined search still cost the land; there
+			// is nothing to untap.
+			if len(found) == 0 {
+				return nil
+			}
+			lands := 0
+			for _, c := range g.BattlefieldCardsForEffect() {
+				if c.IsLand() && c.Controller == controller {
+					lands++
+				}
+			}
+			if lands < 4 {
+				return nil
+			}
+			return g.UntapTargetForEffect(found[0])
+		},
+	}.Apply(NewContext(g, item))
 }

@@ -29,6 +29,7 @@ func init() {
 					Reveal:        true,
 					Shuffle:       true,
 					TappedOnEntry: true,
+					Reason:        "Sakura-Tribe Elder — a basic land",
 				}.Apply(NewContext(g, item))
 			},
 		}},
