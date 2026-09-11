@@ -219,3 +219,70 @@ func TestBlockerCountValidMenace(t *testing.T) {
 		t.Error("nil attacker must return true")
 	}
 }
+
+// TestCanonicalKeyword pins the normalisation the deck importer
+// applies to Scryfall's `keywords` array: capitalisation and
+// surrounding whitespace are Scryfall's business, the closed set is
+// the engine's.
+func TestCanonicalKeyword(t *testing.T) {
+	for in, want := range map[string]string{
+		"Flying":        "flying",
+		"First strike":  "first strike",
+		"Double strike": "double strike",
+		" Flash\n":      "flash",
+		"VIGILANCE":     "vigilance",
+	} {
+		got, ok := CanonicalKeyword(in)
+		if !ok || got != want {
+			t.Errorf("CanonicalKeyword(%q) = (%q, %v), want (%q, true)", in, got, ok, want)
+		}
+	}
+	// Mechanics the engine does not enforce are dropped rather than
+	// passed through as unknown ability strings.
+	for _, in := range []string{"Prepared", "Waterbend", "Airbend", "Transform", "Ward", "Cycling", ""} {
+		if got, ok := CanonicalKeyword(in); ok {
+			t.Errorf("CanonicalKeyword(%q) = (%q, true), want not-canonical", in, got)
+		}
+	}
+}
+
+// TestPrintedCharacteristicMergesKeywordSources covers the overlap
+// the #317 / #319 / #320 fix created: a card can now carry printed
+// keywords on the Card AND have a catalog entry declaring the same
+// ones. Both sources land in Abilities, each keyword once — a
+// duplicate is invisible to HasKeyword but renders as a second
+// badge on the client's keyword row.
+func TestPrintedCharacteristicMergesKeywordSources(t *testing.T) {
+	prev := CatalogPrintedKeywords
+	defer func() { CatalogPrintedKeywords = prev }()
+
+	const oracle = "ambush-viper-oracle-test"
+	CatalogPrintedKeywords = func(oracleID string) []string {
+		if oracleID == oracle {
+			return []string{"flash", "deathtouch"}
+		}
+		return nil
+	}
+
+	c := Card{
+		InstanceID: uuid.New(),
+		OracleID:   oracle,
+		TypeLine:   "Creature — Snake",
+		// The importer stamps the same two off Scryfall, plus one
+		// the catalog spec doesn't mention.
+		Keywords: []string{"flash", "deathtouch", "reach"},
+	}
+	got := c.Effective().Abilities
+	counts := map[string]int{}
+	for _, a := range got {
+		counts[a]++
+	}
+	for _, kw := range []string{"flash", "deathtouch", "reach"} {
+		if counts[kw] != 1 {
+			t.Errorf("abilities %v: %q appears %d times, want exactly 1", got, kw, counts[kw])
+		}
+	}
+	if len(got) != 3 {
+		t.Errorf("abilities = %v, want exactly the three keywords", got)
+	}
+}

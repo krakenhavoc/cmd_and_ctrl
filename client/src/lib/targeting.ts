@@ -64,6 +64,14 @@ export interface CastChoices {
   // waterbend. Undefined and empty are the same thing to the server;
   // tapping nothing is always legal.
   tapIDs?: string[];
+  // ADR 0034: which printed face of a modal DFC is being cast or
+  // played. Undefined and 0 are both "the front face", which is
+  // every single-faced card. The face is chosen FIRST — before the
+  // alternative cost, the modes, X and the targets — because it
+  // decides what the card even is: Sea Gate Restoration and Sea
+  // Gate, Reborn have different types, different costs and, via
+  // the composite catalog key, different rules.
+  face?: number;
 }
 
 // applyCastChoices writes a CastChoices onto a cast_spell payload.
@@ -79,6 +87,10 @@ export function applyCastChoices(
   if (choices.sacrificeIDs !== undefined) params.sacrifice_ids = choices.sacrificeIDs;
   if (choices.altCost !== undefined) params.alternative_cost = choices.altCost;
   if (choices.tapIDs !== undefined && choices.tapIDs.length > 0) params.tap_ids = choices.tapIDs;
+  // Face 0 is omitted rather than sent explicitly: it is the server
+  // default, and `omitempty` on the Go side means an explicit zero
+  // and an absent field are the same byte on the wire anyway.
+  if (choices.face !== undefined && choices.face > 0) params.face = choices.face;
 }
 
 // TargetingState is the active prompt. `card` is the spell being
@@ -183,9 +195,16 @@ function countOf(
 }
 
 // isMultiPick reports whether the prompt accumulates picks rather
-// than completing on the first click.
+// than completing on the first click — which is also what decides
+// whether the banner grows a Done button.
+//
+// `min < 1` is the "up to one target" case (Teferi, Time Raveler's
+// −3, The Wandering Emperor's −2). Exactly one pick is allowed, but
+// zero is a legal answer, so the prompt cannot complete on the first
+// click: the player needs a way to say "none". Done is that way, and
+// canConfirm lets it fire at zero.
 export function isMultiPick(t: TargetingState): boolean {
-  return t.max !== 1;
+  return t.max !== 1 || t.min < 1;
 }
 
 // isPicked reports whether a target is already in the pick list.
@@ -337,21 +356,14 @@ export function beginForAbility(
     mode: (ability.target_mode || "any") as TargetingMode,
     legal: lt ? { players: new Set(lt.players ?? []), cards: new Set(lt.cards ?? []) } : undefined,
     ability: { index: ability.index, sacrificeIDs },
-    // Single-target by contract, not by omission. Unlike CardView,
-    // ModeOptionView and pick_target — which all carry a
-    // LegalTargetsView and read their count via countOf — S21 sub-PR
-    // 2 gave ActivatedAbilityView its own inline
-    // `{players?, cards?}`, with no min/max on the wire. So there is
-    // no count to read here, and an ability clause behaves as
-    // exactly one pick (isMultiPick is false, the first click
-    // completes the prompt), which is what the ability menu expects.
-    //
-    // If a multi-target activated ability is ever wanted, the fix is
-    // to make ActivatedAbilityView use LegalTargetsView and emit the
-    // count server-side, then switch these two lines to
-    // `...countOf(lt)` like the three siblings.
-    min: 1,
-    max: 1,
+    // The count comes off the wire like every other clause's. This
+    // used to be a hard-coded 1 / 1 with a note explaining that
+    // ActivatedAbilityView carried an inline `{players?, cards?}`
+    // with no min / max, and naming the fix: give it a
+    // LegalTargetsView and emit the count server-side. #334 needed
+    // exactly that — Teferi's "up to one target" is Min 0 — so the
+    // note is now the code.
+    ...countOf(lt),
     picked: [],
   });
 }

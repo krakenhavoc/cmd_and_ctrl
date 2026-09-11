@@ -127,6 +127,29 @@ func main() {
 	// the cron has landed its first dump.
 	cardIdx, imgCache := loadCardAssets(log, cfg.DataDir)
 
+	// Restore games that were live when the previous process exited.
+	// This is the read half of persistence — see internal/game/
+	// snapshot.go and internal/ws/persist.go.
+	//
+	// It runs here, before any route is registered, so no client can
+	// observe a half-built lobby. It runs after the card assets load
+	// because a restored board is projected through the same view
+	// path a live one is; the card-effect catalog it also needs is
+	// wired by the effects package's init, which has already fired.
+	//
+	// A game this binary cannot rebuild is abandoned rather than
+	// guessed at — the players get the "game not found" they would
+	// have got from any restart before this feature existed. Nothing
+	// here is fatal: a bad restore point must never stop a boot.
+	//
+	// NOTE: auth sessions do NOT survive a restart
+	// (auth.MemoryAuthenticator is explicit about it), so players
+	// re-authenticate through their invite link. That link is why
+	// lobby metadata is persisted alongside the engine snapshot.
+	if n := l.RestoreFromDisk(log); n > 0 {
+		log.Info("resumed games from the previous process", "count", n)
+	}
+
 	// Optional demo game for the gamecli dev path. Creates a game
 	// directly (bypassing the lobby's invite flow) so you can dial
 	// the ws endpoint with any admin token and a ?game=<demo-id>

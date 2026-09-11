@@ -150,7 +150,57 @@ export function canCastFromHand(
   if (sacrificeOptions && (sacrificeOptions.cards?.length ?? 0) === 0) {
     return deny("Nothing to sacrifice");
   }
-  const type = (card.type_line ?? "").toLowerCase();
+  // ADR 0034: a modal DFC in hand is legal to PLAY if EITHER face is
+  // legal right now, because the player has not chosen yet — the
+  // face picker opens after this gate, not before it. Sea Gate
+  // Restoration at instant speed is an illegal sorcery and a legal…
+  // no, also illegal land; but Malakir Rebirth, whose front face is
+  // an instant, stays castable in combat even though its land back
+  // is not.
+  //
+  // This is the one client file whose BEHAVIOUR changes for faces.
+  // Everything else keeps working untouched because the wire now
+  // hands it one clean type line per face instead of a
+  // concatenation — see the note on CardView.faces.
+  const typeLines = castableFaceTypeLines(card);
+  let lastDenial: Legality = LEGAL;
+  for (const typeLine of typeLines) {
+    const legality = castTimingForTypeLine(typeLine, card, snap, viewerID);
+    if (legality.legal) return LEGAL;
+    lastDenial = legality;
+  }
+  return lastDenial;
+}
+
+/**
+ * castableFaceTypeLines returns the type lines the player could be
+ * choosing between when playing this card from hand.
+ *
+ * Only a modal DFC offers a real choice (CR 712.12a). A transform
+ * card is always cast as its front face (CR 712.4), and adventure /
+ * split are deferred, so those all report exactly one type line —
+ * which for a single-faced card is simply `card.type_line` and makes
+ * this loop run once, as it always effectively did.
+ */
+function castableFaceTypeLines(card: CardView): string[] {
+  if (card.layout === "modal_dfc" && card.faces && card.faces.length > 1) {
+    return card.faces.map((f) => f.type_line ?? "");
+  }
+  return [card.type_line ?? ""];
+}
+
+/**
+ * castTimingForTypeLine is the CR 307.1 / 305.1 / 702.8 timing gate
+ * for one face. Lifted verbatim out of canCastCard so it can be run
+ * once per castable face.
+ */
+function castTimingForTypeLine(
+  rawTypeLine: string,
+  card: CardView,
+  snap: GameView,
+  viewerID: string,
+): Legality {
+  const type = rawTypeLine.toLowerCase();
   const isLand = type.includes("land");
   const isInstant = type.includes("instant");
   // Flash (CR 702.8) lets a card be cast as if it had instant timing.
@@ -195,17 +245,26 @@ export function canActivateAbility(
   return LEGAL;
 }
 
-// canActivateLoyalty mirrors the server's ActivateLoyalty guards:
-// sorcery-speed window + once-per-turn. The once-per-turn bit
-// requires server state we don't currently surface on the wire
-// (Game.LoyaltyActivatedThisTurn is server-only); the predicate is
-// best-effort and falls back to the server rejection if a player
-// races a second activation through the dialog.
+// canActivateLoyalty mirrors the engine's CR 606.5 gates: the
+// sorcery-speed window plus once per turn per planeswalker. It is
+// what greys a loyalty row in the card menu — see
+// contextMenu.logic.ts `abilityItems`, its only production caller.
 //
-// `alreadyActivated` is the optional caller-tracked "has this
-// planeswalker activated this turn" hint — the ability dialog can
-// memoise it from the last successful activation. When unset the
-// predicate optimistically returns legal (server still gates).
+// Until #334 this function had NO callers at all. It was written in
+// S13.1, ticked off as delivered in docs/sprints.md:733, and reached
+// only by its own unit tests, while the action it gates
+// (`activate_loyalty`) was not even a member of the ActionType
+// union. Both halves of that are fixed here.
+//
+// The once-per-turn bit now comes off the wire: CardView carries
+// `loyalty_activated`, stamped by the server from
+// Game.LoyaltyActivatedThisTurn. `alreadyActivated` survives as an
+// override for a caller that knows better (an optimistic local
+// update between snapshots); it ORs with the server's flag rather
+// than replacing it, so a stale `false` can never re-enable a row
+// the server has already closed.
+//
+// Advisory, like every predicate in this file: the server re-checks.
 export function canActivateLoyalty(
   card: CardView,
   snap: GameView | null | undefined,
@@ -218,11 +277,28 @@ export function canActivateLoyalty(
   if (!isMainPhase(snap)) return deny("Sorcery-speed only");
   if (!stackEmpty(snap)) return deny("Stack isn't empty");
   if (!isActivePlayer(snap, viewerID)) return deny("Not your turn");
-  if (alreadyActivated) return deny("Already activated this turn");
+  if (alreadyActivated || card.loyalty_activated) return deny("Already activated this turn");
   // Source must be on the battlefield.
   const onBattlefield = snap.battlefield?.cards?.some((c) => c.instance_id === card.instance_id);
   if (!onBattlefield) return deny("Planeswalker not on the battlefield");
   return LEGAL;
+}
+
+// loyaltyOf reads a planeswalker's current loyalty counters, which
+// is the number CR 606.3 measures a −N cost against.
+export function loyaltyOf(card: CardView): number {
+  return card.counters?.loyalty ?? 0;
+}
+
+// canPayLoyaltyCost is CR 606.3: a cost that REMOVES N loyalty
+// counters can only be activated with at least N there. A + or [0]
+// cost is always payable. Returns "" when payable, otherwise the
+// reason to show in the greyed row's hint.
+export function canPayLoyaltyCost(card: CardView, cost: number | undefined): string {
+  if (cost === undefined || cost >= 0) return "";
+  const have = loyaltyOf(card);
+  if (have >= -cost) return "";
+  return `not enough loyalty (${have} of ${-cost})`;
 }
 
 // canPassPriority returns the legality of clicking "pass priority"

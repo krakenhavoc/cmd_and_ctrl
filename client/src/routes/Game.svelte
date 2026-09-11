@@ -7,6 +7,7 @@
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import BugReportModal from "../lib/components/BugReportModal.svelte";
   import { fetchBugReportConfig } from "../lib/api";
+  import { cardImageURL } from "../lib/cardImage";
   import Board from "../lib/components/board/Board.svelte";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
@@ -18,9 +19,17 @@
   import type { StepID } from "../lib/turn";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
-  import { hasAnyLegalResponse } from "../lib/priority";
+  import { hasAnyLegalResponse, owesBlockDecision } from "../lib/priority";
+  import {
+    attackAllLabel,
+    attackAllParams,
+    blockedSummary,
+    planAttackAll,
+    seatLabel,
+  } from "../lib/attackAll";
   import { stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
+  import { holdPriority, ownsEveryStackItem } from "../lib/holdPriority";
   import { devFeature } from "../lib/env";
   import { gameWSURL } from "../lib/gameURL";
   import DevDock from "../lib/components/dev/DevDock.svelte";
@@ -170,6 +179,21 @@
     // race the modal and let priority slip away before the player
     // answers. The chooser must resolve their pending choice first.
     if (view?.pending_choices?.some((c) => c.chooser === viewerID)) return;
+    // #328: never auto-pass a declare-blockers window the viewer can
+    // actually block in. This sits with the mulligan and pending-
+    // choice guards, ABOVE the autopass toggle, because it is the
+    // same kind of thing: a turn-based action the player owes, not a
+    // priority response they may decline to make. Declining to block
+    // is still legal — an explicit pass is how you decline — but a
+    // human has to be the one who does it. The reporter had the
+    // toggle on and lost 8 life to three unblocked attackers with an
+    // untapped creature out; a skipped block cannot be undone and
+    // there is no workaround.
+    //
+    // Holds while ANY eligible blocker remains, not just until the
+    // first declaration — otherwise auto-pass would slam the window
+    // shut the moment you assigned one blocker of an intended two.
+    if (owesBlockDecision(view, viewerID)) return;
     const step = view?.turn?.step;
     if (!step) return;
 
@@ -196,15 +220,10 @@
     // Conventional (non-autopass) path: honour every gate.
     if (!autopass) {
       if (!$settings.gameplay.autoPassPriority) return;
-      // Anything on the stack stops: a spell card OR an ability
-      // item (S19 triggers have no card on Game.Stack, only a
-      // stack_items entry). Autopass off means Arena-style "full
-      // control" — every trigger is a window the viewer gets to
-      // answer. The autopass toggle above is the way through
-      // routine upkeep triggers.
-      if (!stackEmpty(view)) return;
-      // Manual one-time stops override everything below. Click a
-      // phase icon in PhaseDisplay to pin; the pin clears on step
+      // Manual one-time stops override everything below — including
+      // the #323 own-stack pass, so a pinned step still hands you
+      // the cursor with your own spell on the stack. Click a phase
+      // icon in PhaseDisplay to pin; the pin clears on step
       // transition. "Fake a game action" — viewer gets the cursor
       // even when the engine has nothing to offer (want to think /
       // bluff / respond off-catalog). Read via the $manualStops
@@ -213,14 +232,37 @@
       // resumes auto-pass immediately rather than on the next
       // snapshot.
       if ($manualStops.has(step as StepID)) return;
-      // Stop here if the viewer has opted to stop on this step. The
-      // map omits no-priority steps (Untap / Cleanup); for those,
-      // the viewer can never hold priority anyway. `smartAutoPass`
-      // adds an escape hatch: if the stop lands on the viewer but
-      // the legality engine reports no legal response, pass anyway.
-      // Predicate errs conservative (false-positive-stop > false-
-      // negative-skip per ADR 0009 §3).
-      if ($settings.gameplay.stepStops[step] === true) {
+      if (!stackEmpty(view)) {
+        // A non-empty stack stops: a spell card OR an ability item
+        // (S19 triggers have no card on Game.Stack, only a
+        // stack_items entry). Every trigger and every spell an
+        // OPPONENT put up is a window the viewer gets to answer,
+        // and nothing below weakens that.
+        //
+        // #323 carves out exactly one case: a stack on which every
+        // item is the viewer's own. Casting the spell was already
+        // the decision — being asked "Counter or Pass?" about your
+        // own spell is the friction the issue reports. The hatch is
+        // the session `hold` toggle (phase widget + stack header),
+        // which has to be armed BEFORE the cast because the pass
+        // fires on the very next snapshot. With it on, or with the
+        // persistent setting off, this is the pre-#323 behaviour.
+        // ownsEveryStackItem also refuses while pending_triggers is
+        // still draining, since those may belong to anyone.
+        if ($holdPriority) return;
+        if (!$settings.gameplay.autoPassOwnStack) return;
+        if (!ownsEveryStackItem(view, viewerID)) return;
+        // Fall through to pass: the step-stops grid below is about
+        // "give me the cursor at this step", a question the viewer
+        // already answered by casting during it.
+      } else if ($settings.gameplay.stepStops[step] === true) {
+        // Stop here if the viewer has opted to stop on this step.
+        // The map omits no-priority steps (Untap / Cleanup); for
+        // those, the viewer can never hold priority anyway.
+        // `smartAutoPass` adds an escape hatch: if the stop lands on
+        // the viewer but the legality engine reports no legal
+        // response, pass anyway. Predicate errs conservative
+        // (false-positive-stop > false-negative-skip per ADR 0009 §3).
         const smart = $settings.gameplay.smartAutoPass;
         const canRespond = smart ? hasAnyLegalResponse(view, viewerID, $lastSeq) : true;
         if (canRespond) return;
@@ -569,6 +611,54 @@
     combatSelection = null;
     play("attack");
   }
+  // ---- Attack with all (#318) ----
+  // Declaring a wide board one creature at a time is the loudest
+  // ergonomics complaint from live play. The cluster below sits in
+  // the attention strip for the whole declare-attackers step and
+  // offers one button per attackable opponent.
+  //
+  // "Attack all" is ambiguous at a Commander table, so this never
+  // guesses: it does NOT spread creatures across opponents. Every
+  // eligible creature goes at ONE named seat, and the seat's name is
+  // on the button the player presses. Splitting an attack is a
+  // strategic choice with no defensible default, so it stays on the
+  // two-click flow and the per-card context menu.
+  //
+  // The whole set goes out as a single `declare_attackers` action.
+  // Looping the per-creature verb would push one undo entry and one
+  // broadcast per creature — a twelve-creature alpha strike would
+  // need twelve undo presses against a per-turn budget of one. One
+  // action means one snapshot and one exact inverse.
+  const attackPlan = $derived(planAttackAll(view, viewerID));
+  const attackAllReady = $derived(
+    canDeclareAttackers && attackPlan.eligible.length > 0 && attackPlan.defenders.length > 0,
+  );
+  const attackBlockedHint = $derived(blockedSummary(attackPlan.blocked));
+
+  function attackAllAt(defenderSeatID: string): void {
+    const params = attackAllParams(attackPlan, defenderSeatID);
+    if (!params) return;
+    combatSelection = null;
+    client.sendAction("declare_attackers", undefined, params);
+    play("attack");
+  }
+
+  // The inverse of a wide declaration is undo, not a bulk "unattack":
+  // nothing in the engine records which creatures the declaration
+  // tapped, so clearing declarations afterwards would strand them
+  // tapped and not attacking — strictly worse than never having
+  // clicked. Because the bulk declare is one room.Apply, a single
+  // undo restores tap state and declarations together. That is why
+  // this button is here rather than only in the ⋯ menu.
+  const canUndoDeclaration = $derived(
+    canDeclareAttackers &&
+      attackPlan.declared.length > 0 &&
+      (isAdmin || (viewerSeat?.undos_remaining ?? 0) > 0),
+  );
+  function undoDeclaration(): void {
+    client.sendAction("undo");
+  }
+
   function declareBlockTarget(attackerCardID: string): void {
     if (!viewerID || combatSelection?.kind !== "blocker") return;
     client.sendAction("declare_blocker", undefined, {
@@ -922,6 +1012,75 @@
         {#snippet attention()}
           <TargetingBanner />
 
+          <!-- #318: the attack-with-all cluster. Present for the whole
+               declare-attackers step so the count stays live as
+               creatures are declared one by one; it disappears the
+               moment nothing is left that could attack. -->
+          {#if canDeclareAttackers && !mulligansOpen && !gameEnded && (attackAllReady || canUndoDeclaration)}
+            <div class="att attack-all" aria-label="declare attackers">
+              <span class="att-label danger">
+                <Icon name="sword" size={12} />
+                attack
+              </span>
+              <span class="att-text">
+                {#if attackAllReady}
+                  <strong>{attackPlan.eligible.length}</strong>
+                  ready to attack
+                  {#if attackPlan.declared.length > 0}
+                    <span class="muted">· {attackPlan.declared.length} already declared</span>
+                  {/if}
+                  {#if attackBlockedHint}
+                    <span class="muted">· can't: {attackBlockedHint}</span>
+                  {/if}
+                {:else}
+                  <strong>{attackPlan.declared.length}</strong>
+                  declared
+                  {#if attackBlockedHint}
+                    <span class="muted">· {attackBlockedHint} can't attack</span>
+                  {/if}
+                {/if}
+              </span>
+              {#if attackAllReady}
+                {#if attackPlan.defenders.length === 1}
+                  <button
+                    type="button"
+                    class="primary att-btn"
+                    title={attackAllLabel(attackPlan, attackPlan.defenders[0])}
+                    onclick={() => attackAllAt(attackPlan.defenders[0].id)}
+                  >
+                    {attackAllLabel(attackPlan, attackPlan.defenders[0])}
+                  </button>
+                {:else}
+                  <!-- Multi-opponent: one button per seat rather than a
+                       bare "attack all", so the control always says who
+                       gets hit. Nothing here spreads an attack. -->
+                  <span class="att-text all-at">Attack all →</span>
+                  {#each attackPlan.defenders as opp (opp.id)}
+                    <button
+                      type="button"
+                      class="att-btn opp-btn"
+                      title={attackAllLabel(attackPlan, opp)}
+                      onclick={() => attackAllAt(opp.id)}
+                    >
+                      <span class="seat-dot" style="background:{seatColor(opp.seat)}"></span>
+                      {seatLabel(opp)}
+                    </button>
+                  {/each}
+                {/if}
+              {/if}
+              {#if canUndoDeclaration}
+                <button
+                  type="button"
+                  class="ghost att-btn"
+                  title="take back your last declaration — restores tap state too"
+                  onclick={undoDeclaration}
+                >
+                  <Icon name="undo" size={12} /> Undo
+                </button>
+              {/if}
+            </div>
+          {/if}
+
           {#if combatSelection && !mulligansOpen}
             <div class="att combat-hint" role="status" aria-live="polite">
               <span class="att-label danger">
@@ -1050,11 +1209,7 @@
               {#each viewerSeat?.hand.cards ?? [] as card (card.instance_id)}
                 <div class="mulligan-card" role="listitem" title={card.name}>
                   {#if card.scryfall_id}
-                    <img
-                      src={`/cards/${card.scryfall_id}/image?size=normal`}
-                      alt={card.name}
-                      loading="lazy"
-                    />
+                    <img src={cardImageURL(card, "normal")} alt={card.name} loading="lazy" />
                   {:else}
                     <span class="mulligan-card-fallback">{card.name}</span>
                   {/if}
@@ -1541,6 +1696,25 @@
   .mana-override,
   .game-end {
     border-color: rgba(217, 180, 92, 0.45);
+  }
+
+  /* #318 attack-with-all cluster. Wraps rather than overflowing —
+     a four-player table puts three opponent buttons in the strip and
+     the strip is only ~512px wide. */
+  .attack-all {
+    flex-wrap: wrap;
+    border-color: rgba(255, 122, 122, 0.4);
+  }
+  .attack-all .all-at {
+    flex: 0 0 auto;
+    color: var(--fg-dim);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .attack-all .opp-btn {
+    border-color: rgba(255, 122, 122, 0.35);
   }
   .toast.error,
   .eliminated {

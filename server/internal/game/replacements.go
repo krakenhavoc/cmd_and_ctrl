@@ -493,7 +493,7 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 	if CatalogReplacements != nil {
 		for cardIdx := range g.Battlefield.Cards {
 			card := &g.Battlefield.Cards[cardIdx]
-			reps := CatalogReplacements(card.OracleID)
+			reps := CatalogReplacements(CatalogKey(*card))
 			if len(reps) == 0 {
 				continue
 			}
@@ -531,7 +531,7 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 	if CatalogReplacements != nil && ev.CardID != uuid.Nil && !g.Battlefield.Contains(ev.CardID) {
 		const selfReplacementIDBase ReplacementEffectID = 1 << 45
 		if entering, ok := g.LookupCardForEffect(ev.CardID); ok {
-			reps := CatalogReplacements(entering.OracleID)
+			reps := CatalogReplacements(CatalogKey(entering))
 			for repIdx := range reps {
 				id := selfReplacementIDBase + ReplacementEffectID(repIdx)
 				if applied[id] {
@@ -659,7 +659,7 @@ func (g *Game) ReplacementOptionMetaForEffect(id ReplacementEffectID) (string, u
 		return "", uuid.UUID{}
 	}
 	card := &g.Battlefield.Cards[cardIdx]
-	reps := CatalogReplacements(card.OracleID)
+	reps := CatalogReplacements(CatalogKey(*card))
 	if repIdx < 0 || repIdx >= len(reps) {
 		return "", card.InstanceID
 	}

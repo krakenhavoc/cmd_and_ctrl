@@ -78,10 +78,11 @@ func (e *enumerator) combatMoves() {
 		}
 		for i := range g.Battlefield.Cards {
 			b := &g.Battlefield.Cards[i]
-			if b.Controller != e.seat || !b.IsCreature() || b.Tapped {
-				continue
-			}
-			if b.BlockingTarget != uuid.Nil {
+			// #328: the same per-card eligibility test the wire's
+			// block_decision_seats signal uses, so the enumerator and
+			// the auto-pass guard can never disagree about whether a
+			// seat has a block available.
+			if !game.BlockerEligible(b, e.seat) {
 				continue
 			}
 			for _, a := range attackers {

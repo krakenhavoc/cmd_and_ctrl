@@ -227,6 +227,12 @@ func TestIzzetCharmDealsTwoToCreature(t *testing.T) {
 	}
 }
 
+// TestIzzetCharmDrawTwoDiscardTwo — #338 stale-simplification fix.
+// Mode 2 used to discard at RANDOM, behind a note saying the "you
+// choose" picker was deferred; the picker (DiscardChoiceForEffect,
+// via lootOne) had shipped and Faithless Looting was already using
+// it. The controller now picks, so the two discards are PENDING
+// after resolution rather than already in the graveyard.
 func TestIzzetCharmDrawTwoDiscardTwo(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
@@ -238,17 +244,41 @@ func TestIzzetCharmDrawTwoDiscardTwo(t *testing.T) {
 	handBefore, libBefore, gyBefore := me.Hand.Size(), me.Library.Size(), me.Graveyard.Size()
 	castModal(t, g, "Izzet Charm", "Instant", izzetCharmOracle, []int{2}, nil)
 	passPriorityAroundTable(t, g)
-	// castModal seeds the Charm then casts it (net 0); draw two /
-	// discard two is net 0 too. The Charm itself lands in the
-	// graveyard alongside the two discards.
-	if me.Hand.Size() != handBefore {
-		t.Errorf("hand %d -> %d, want unchanged", handBefore, me.Hand.Size())
+
+	// Both cards drawn; nothing discarded yet — the controller owes
+	// the choice. castModal seeds the Charm then casts it (net 0 on
+	// hand), so hand is +2 and the graveyard holds only the Charm.
+	if me.Hand.Size() != handBefore+2 {
+		t.Errorf("hand %d -> %d, want +2 (drawn, not yet discarded)",
+			handBefore, me.Hand.Size())
 	}
 	if me.Library.Size() != libBefore-2 {
 		t.Errorf("library %d -> %d, want -2", libBefore, me.Library.Size())
 	}
+	if me.Graveyard.Size() != gyBefore+1 {
+		t.Errorf("graveyard %d -> %d, want +1 (the Charm only)",
+			gyBefore, me.Graveyard.Size())
+	}
+	if g.DiscardPending[me.ID] != 2 {
+		t.Fatalf("DiscardPending[me]: got %d, want 2 — the controller "+
+			"should be choosing, not discarding at random",
+			g.DiscardPending[me.ID])
+	}
+
+	// The controller names their two discards.
+	picks := []uuid.UUID{
+		me.Hand.Cards[0].InstanceID,
+		me.Hand.Cards[1].InstanceID,
+	}
+	if err := g.DiscardSelection(me.ID, picks); err != nil {
+		t.Fatalf("DiscardSelection: %v", err)
+	}
+	if me.Hand.Size() != handBefore {
+		t.Errorf("post-selection hand %d, want %d", me.Hand.Size(), handBefore)
+	}
 	if me.Graveyard.Size() != gyBefore+3 {
-		t.Errorf("graveyard %d -> %d, want +3 (charm + two discards)", gyBefore, me.Graveyard.Size())
+		t.Errorf("post-selection graveyard %d -> %d, want +3 (charm + two discards)",
+			gyBefore, me.Graveyard.Size())
 	}
 }
 

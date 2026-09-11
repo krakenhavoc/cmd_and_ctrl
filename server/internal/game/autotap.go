@@ -155,7 +155,24 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if picked == nil {
 			continue
 		}
-		slots, err := ParseProducedMana(picked.Produced)
+		// S32 (#352): a gated ability is only a source while its
+		// gate holds. Temple of the False God with four lands out
+		// is not a mana source, and planning it would produce a
+		// plan the executor then refuses with ErrConditionNotMet,
+		// stranding whatever it had already tapped.
+		if picked.Condition != nil && !picked.Condition(g, controller, c.InstanceID) {
+			continue
+		}
+		// A derived or scaled ability declares nothing useful in
+		// Produced — Exotic Orchard's colours and Cabal Coffers'
+		// count only exist once computed. Read-only under the lock
+		// the caller already holds, same contract the activation
+		// path gives the callback.
+		producedStr := picked.Produced
+		if picked.ProducedFunc != nil {
+			producedStr = picked.ProducedFunc(g, controller, c.InstanceID)
+		}
+		slots, err := ParseProducedMana(producedStr)
 		if err != nil || len(slots) == 0 {
 			continue
 		}
@@ -191,14 +208,30 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 // (materializePlanLocked) so the two can never disagree about which
 // ability index a planned card is going to be tapped for.
 //
-// Three exclusions, all for the same reason — the auto-tapper's
+// Five exclusions, all for the same reason — the auto-tapper's
 // contract is "no further player decisions and no hidden costs":
 //
 //   - a sacrifice cost needs a permanent named (S15's original note);
 //   - a life cost spends a resource the player never agreed to spend
 //     (Mana Confluence);
 //   - a rider spends one too, one the player can't decline (Ancient
-//     Tomb's 2 damage).
+//     Tomb's 2 damage);
+//   - a MANA cost is recursive (the Signet cycle, Cabal Coffers): the
+//     planner would have to solve a second cost to fund the first,
+//     and the activation path deliberately refuses to auto-tap into a
+//     mana ability anyway. Signets stay hand-activated;
+//   - RESTRICTED output is a decision, not a resource (Ancient
+//     Ziggurat, Eldrazi Temple, Delighted Halfling's coloured half).
+//     Spending a restricted token on the cast in front of you may be
+//     right or may waste the only mana that could have cast the
+//     creature you were saving it for, and the planner cannot know
+//     which. It plans around them; the player clicks them.
+//
+// The last two are simplifications, both in the WEAKER-than-printed
+// direction: the cards are fully activatable by hand from the
+// permanent's ability menu, and mana already floated from them is
+// spent by the cast path like any other (that is the point of the
+// spend context — see mana_restriction.go).
 //
 // The painland and Talisman cycles come through this filter intact,
 // because on those cards the painless "{T}: Add {C}" is ability 0 and
@@ -225,6 +258,9 @@ func autoTapAbilityFor(abilities []ManaAbilityShape) *ManaAbilityShape {
 			continue
 		}
 		if a.LifeCost > 0 || a.Rider != nil {
+			continue
+		}
+		if a.ManaCost != "" || len(a.Restrictions) > 0 {
 			continue
 		}
 		return &a

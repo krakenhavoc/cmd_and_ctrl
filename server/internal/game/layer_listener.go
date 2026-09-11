@@ -31,9 +31,16 @@ import (
 //     can flip mid-game lands, add an EventControlChanged kind +
 //     bump here.
 //
-// EventETB and EventLTB are also covered by EventZoneMove (every
-// zone change emits both), so the listener doesn't double-bump on
-// those — the ZoneMove path is the single source of truth.
+// EventETB and EventLTB are also covered by EventZoneMove for every
+// CARD (every zone change emits both), so the listener doesn't
+// double-bump on those. A TOKEN is the exception: CreateTokenForEffect
+// puts it on the battlefield from nowhere and emits EventTokenCreated
+// + EventETB with no ZoneMove at all, so the listener also handles
+// EventTokenCreated as an entry — bump and stamp — or a Goblin made
+// under Glorious Anthem stays 1/1 until something unrelated
+// invalidates the cache, and its CR 613 timestamp is never set.
+// (Found by the roadmap's batch 01: Storm-Kiln Artist counting the
+// Treasure its own trigger made.)
 
 // layerVersionBump is the `Listener` that auto-installs into every
 // game to invalidate the layer engine's cached resolution when
@@ -61,7 +68,20 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		if ev.OldZone == ZoneBattlefield {
 			clearEffectiveCacheLocked(g, ev.CardID)
 		}
+	case EventTokenCreated:
+		g.layerVersion.Add(1)
+		stampBattlefieldEntryLocked(g, ev.CardID)
 	case EventCounterPlaced:
+		g.layerVersion.Add(1)
+	case EventTapCard, EventUntapCard:
+		// Tap state is an AppliesTo input, not just a display flag:
+		// The Wandering Rescuer grants hexproof to "other TAPPED
+		// creatures you control", so a creature that taps or untaps
+		// changes which permanents its static covers. Without this
+		// bump the cached resolution survives the tap and the grant
+		// appears or disappears only when some unrelated event
+		// happens to invalidate — which is how the S22 card looked
+		// half-working even once the keyword table honoured it.
 		g.layerVersion.Add(1)
 	}
 }

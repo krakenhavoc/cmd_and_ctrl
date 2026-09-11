@@ -25,7 +25,10 @@
   // Click routing for battlefield cards lives here so combat vs.
   // tap-toggle logic stays in one place. The router mirrors the old
   // Pixi wireTapClick: combat select on your own creature, declare-
-  // block on an incoming attacker, otherwise tap/untap.
+  // block on an incoming attacker, otherwise tap/untap — except for
+  // planeswalkers, whose click opens the card menu (#329). The
+  // decision itself is battlefieldClickIntent, in contextMenu.logic,
+  // so it is testable without rendering Svelte.
 
   import type {
     ActionPayload,
@@ -37,6 +40,8 @@
     ZoneView,
   } from "../../protocol";
   import { bucketForBattlefield, isCreature } from "../../cardTypes";
+  import { battlefieldClickIntent } from "../../contextMenu.logic";
+  import { openCardMenu } from "../../contextMenu";
   import BattlefieldRow from "./BattlefieldRow.svelte";
   import PileBar from "./PileBar.svelte";
   import Hand from "./Hand.svelte";
@@ -184,7 +189,7 @@
     !isSelf && !seat.eliminated && combatMode === "attack" && !!selectedCombatCardID,
   );
 
-  function handleCardClick(card: CardView): void {
+  function handleCardClick(card: CardView, ev?: MouseEvent): void {
     // The S17 sub-PR 5 Shift+click / Shift+Alt+click +1/+1 debug
     // chord used to live here. #170 retired it: the right-click
     // override menu offers both directions on every counter type
@@ -221,9 +226,20 @@
       onDeclareBlock(card.instance_id);
       return;
     }
-    // Default: tap/untap if the viewer controls it (or is admin).
-    if (card.controller !== viewerID && !isAdmin) return;
-    onTapToggle(card);
+    // #329: a planeswalker's click means "which loyalty ability?",
+    // not "tap it". The card menu is the surface that already
+    // renders activated abilities (ADR 0028), and it carries the
+    // manual loyalty rows for the planeswalkers with no catalog
+    // entry — which is still most of them.
+    switch (battlefieldClickIntent(card, viewerID, isAdmin)) {
+      case "none":
+        return;
+      case "abilities":
+        openCardMenu({ card, x: ev?.clientX ?? 0, y: ev?.clientY ?? 0 });
+        return;
+      case "tap":
+        onTapToggle(card);
+    }
   }
 </script>
 

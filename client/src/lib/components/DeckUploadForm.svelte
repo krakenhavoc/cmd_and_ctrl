@@ -32,6 +32,11 @@
   let violations = $state<ApiViolation[]>([]);
   let warnings = $state<ApiViolation[]>([]);
   let successMessage = $state("");
+  // Cards in the accepted deck whose printed rules the engine does
+  // not carry out. Rendered collapsed: the count is the part that
+  // sets expectations, and on a typical Commander deck the list is
+  // most of the 100 — worth having, not worth unfurling by default.
+  let unimplemented = $state<string[]>([]);
 
   function violationLabel(v: ApiViolation): string {
     return v.card ? `${v.card}: ${v.message}` : v.message;
@@ -57,6 +62,7 @@
     violations = [];
     warnings = [];
     successMessage = "";
+    unimplemented = [];
   }
 
   async function submit(): Promise<void> {
@@ -71,6 +77,7 @@
       const res = await uploadDeck(gameID, playerID, source);
       successMessage = `uploaded ${res.deck_name || "deck"}: ${res.card_count} cards, commander: ${res.commanders.join(", ")}`;
       if (res.warnings && res.warnings.length > 0) warnings = res.warnings;
+      if (res.unimplemented && res.unimplemented.length > 0) unimplemented = res.unimplemented;
       source = "";
       onSuccess?.(res);
     } catch (err) {
@@ -124,6 +131,26 @@
         <li class="vi warn"><span class="code">{v.code}</span>{violationLabel(v)}</li>
       {/each}
     </ul>
+  {/if}
+  {#if unimplemented.length}
+    <!-- Not a violation and not a warning: the deck is legal and
+         installed. This is the one honest sentence about what the
+         engine will and won't do for it, delivered before anyone has
+         cast anything. Collapsed by default — the count is what sets
+         the expectation; the names are for the player who wants to
+         know which ones. -->
+    <details class="unimpl">
+      <summary>
+        {unimplemented.length} of these cards {unimplemented.length === 1 ? "has" : "have"} rules the
+        engine doesn't implement yet — {unimplemented.length === 1 ? "it" : "they"} behave as manual sandbox
+        cards
+      </summary>
+      <ul>
+        {#each unimplemented as name (name)}
+          <li>{name}</li>
+        {/each}
+      </ul>
+    </details>
   {/if}
 </div>
 
@@ -190,6 +217,36 @@
   }
   .vi.warn .code {
     color: var(--gold-strong);
+  }
+  /* Muted on purpose. Red is for a deck that was rejected and gold
+     for one that lost something; this deck is fine, and the note is
+     information rather than a problem. Styling it like a warning
+     would teach players to dismiss it. */
+  .unimpl {
+    margin-top: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    font-size: 12.5px;
+    color: var(--fg-muted);
+  }
+  .unimpl summary {
+    cursor: pointer;
+    line-height: 1.45;
+  }
+  .unimpl ul {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+    max-height: 180px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--fg-dim);
   }
   .success {
     margin: 0;

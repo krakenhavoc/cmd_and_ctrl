@@ -62,8 +62,8 @@ planned just-in-time from the S12 pain-point triage.
 | S18.5    | Zone browser + library search (mini)                                 | 7     | [#179](https://github.com/krakenhavoc/cmd_and_ctrl/issues/179) | 2026-11-05 | **done**    |
 | S19      | Auto-fire triggered abilities                                        | 7     | [#69](https://github.com/krakenhavoc/cmd_and_ctrl/issues/69)   | 2026-11-29 | **done**    |
 | S20      | Auto-target legality + smart cast UI                                 | 7     | [#70](https://github.com/krakenhavoc/cmd_and_ctrl/issues/70)   | 2026-12-27 | **done**    |
-| S21      | Tokens, sacrifice, aristocrats                                       | 7     | [#73](https://github.com/krakenhavoc/cmd_and_ctrl/issues/73)   | 2027-01-24 | planned     |
-| S22      | Card draw + library manipulation                                     | 7     | [#74](https://github.com/krakenhavoc/cmd_and_ctrl/issues/74)   | 2027-02-21 | planned     |
+| S21      | Tokens, sacrifice, aristocrats                                       | 7     | [#73](https://github.com/krakenhavoc/cmd_and_ctrl/issues/73)   | 2027-01-24 | **done**    |
+| S22      | Card draw + library manipulation                                     | 7     | [#74](https://github.com/krakenhavoc/cmd_and_ctrl/issues/74)   | 2027-02-21 | partial     |
 | S23      | Mass removal + boardwipes                                            | 7     | [#75](https://github.com/krakenhavoc/cmd_and_ctrl/issues/75)   | 2027-03-21 | planned     |
 | S24      | Equipment, auras, attachments                                        | 7     | [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76)   | 2027-04-18 | planned     |
 | S25      | Voltron / commander damage focus                                     | 7     | [#77](https://github.com/krakenhavoc/cmd_and_ctrl/issues/77)   | 2027-05-16 | planned     |
@@ -74,6 +74,24 @@ planned just-in-time from the S12 pain-point triage.
 | S30      | Damage prevention, cloning, face-down, deferred protection keywords  | 7     | [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95)   | 2027-09-05 | planned     |
 | Post-S30 | Rolling deck-driven catalog growth                                   | 7     | TBD at S30 retro                                               | rolling    | not started |
 | S31      | AI bot seat (legal-move enumeration + tiered policy)                 | 8     | [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89)   | 2027-09-26 | planned     |
+
+### How to read the status column
+
+`**done**` means the sprint's own **exit criteria** are met, not that every checklist box is ticked
+— most sprints leave a primitive or a card-count line behind, and a sprint is not held open by one.
+`partial` means load-bearing work has shipped under that sprint's name but the exit criteria are
+demonstrably unmet. `planned` means nothing has shipped, and it is the row that does real damage
+when it is wrong: a `planned` row is read by agents as "this mechanic is unbuilt", which is how
+several of them concluded that shipped features were blocked.
+
+**The `feat(sNN)` commit scope has drifted away from this table, and S22 is where it shows.** Nine
+commits carry `feat(s22)` — attack triggers (#254), flicker and delayed triggers (#255),
+alternative cast costs (#257), the Hashaton deck (#258), staples batches (#261, #267), shocklands
+(#268), airbend (#269) and convoke (#271) — and **none of them is card draw or library
+manipulation**, which is what S22 actually is. They belong to S19, S22, S28 and rolling catalog
+growth respectively. When the two disagree, the sprint *section* below is the scope and the commit
+tag is just a label someone typed. Retitling S22–S30 as themed epics, so PRs can reference the
+sprint they are really in, is tracked on [#281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/281).
 
 ---
 
@@ -1739,7 +1757,9 @@ Mini sprint slotted after S18 started, to ship two pieces of long-promised clien
 - [ ] ~40 cards: more token producers, sacrifice outlets, proliferate cards (26 of ~40 so far across sub-PRs 1–6 plus the Pirates batch)
 - [ ] Theme-deck smoke test (Korvold-style aristocrats deck plays 3 turns)
 
-**Exit criteria:** Cast Goblin Bombardment + Blood Artist + Krenko, Mob Boss; sacrifice tokens to Bombardment one at a time → opponent's life ticks down (Blood Artist + Bombardment damage); your life ticks up (Blood Artist gain). — **met** in `TestS21ExitCriteriaAristocratsCombo` (effects/aristocrats_test.go).
+**Exit criteria:** Cast Goblin Bombardment + Blood Artist + Krenko, Mob Boss; sacrifice tokens to Bombardment one at a time → opponent's life ticks down (Blood Artist + Bombardment damage); your life ticks up (Blood Artist gain). — **met** in `TestS21ExitCriteriaAristocratsCombo` (`server/internal/cards/effects/aristocrats_test.go:211`).
+
+**Status: done.** All six sub-PRs merged (#216, #217, #219, #225, #230, #232) plus the Pirates batch. Three items are left behind deliberately and do not hold the sprint open: `Proliferate` and `CreateTokenAdvanced` (zero hits anywhere in `server/`), the ~40-card tally (bookkeeping — the catalog is well past it, nobody has re-tallied which cards belong to this theme), and the theme-deck smoke test (**no theme-deck harness exists for any sprint**; either build one once and apply it to every sprint, or drop the line from all of them). [#73](https://github.com/krakenhavoc/cmd_and_ctrl/issues/73) stays open only for that remainder.
 
 ---
 
@@ -1754,6 +1774,8 @@ Mini sprint slotted after S18 started, to ship two pieces of long-promised clien
 - [ ] Theme-deck smoke test (blue draw deck plays 3 turns)
 
 **Exit criteria:** Activate Sensei's Divining Top → personal-only modal shows top 3 cards → reorder → confirm. Necropotence: activate to exile a card → advance to end step → card moves to hand automatically.
+
+**Status: partial — and less of it is done than the commit log suggests.** Exactly one checklist item has shipped: the delayed-trigger mechanism, as `Game.DelayedTriggers` in `server/internal/game/delayed.go` ([ADR 0026](decisions/0026-delayed-triggers.md), #255), which is the half of the Necropotence exit criterion that does not involve drawing cards. **Every draw and library primitive is still absent** — `ScryN`, `SurveilN`, `Explore`, `RevealAndChoose`, `MillToZone`, `DrawAndScry`, `KindLookAtCards` and `KindRevealCards` each return zero hits across `server/internal/`. Neither exit criterion can be met today: there is no personal-only look-at-cards frame and no scry/reorder UI. The nine `feat(s22)` commits on `main` shipped attack triggers, flicker, alternative cast costs (which is S28 scope — see that section) and roughly fifty cards; they are good work under a misleading tag. See the note under the sprint index.
 
 ---
 
@@ -1825,6 +1847,14 @@ Detailed plan TBD; lands just-in-time after S25.
 
 Detailed plan: `/home/node/.claude/plans/s27-card-type-completeness.md`. Builds on S13.1, S13.2 (counters + counter SBAs already shipped), S14, S15, S16, S18, S19, S25.
 
+**Re-scoped 2026-09-11 against [ADR 0032](decisions/0032-planeswalkers.md) (#285).** Two corrections to the list above, neither of which shrinks the sprint's card count but both of which change what the engine work actually is:
+
+- **`LoyaltyAbility` is much smaller than it reads.** It is written as though a whole activation pipeline has to be built; it does not. The stack item, the targeting clause, the `Effect` closure and the sorcery-speed flag all shipped with S21's activated abilities (`server/internal/game/activated.go:65`, `:84`). The **entire** remainder is a `Loyalty int` component on `AbilityCost` (`activated.go:35-59` — today exactly `Tap`, `SacrificeSelf`, `SacrificeOther`, `Mana`, `Life`; [ADR 0020](decisions/0020-activated-abilities.md) excluded loyalty on purpose), its payment step, and moving the once-per-turn gate into `ActivateAbility`. After that the S13.1 `ActivateLoyalty` action is **retired**, not extended. ADR 0032 §7 states this in as many words.
+- **Half of the `LoyaltyCost` item is already done.** `LoyaltyActivatedThisTurn` exists (`server/internal/game/game.go:141-146`), enforces CR 606.5 in `ActivateLoyalty` (`mutations.go:1546`), is flushed on turn advance (`game.go:554-563`) and is carried through `Clone` / `RestoreFrom` (`clone.go:67-70`, `:392`). It needs re-wiring, not writing.
+- **A prerequisite this sprint assumed was fixed underneath it.** Planeswalkers now enter with their printed loyalty (`Card.StartingLoyalty`, `card.go:96`, stamped at deck import) instead of only when a catalog entry supplied it, which is what made every planeswalker but one die instantly to CR 704.5i. That was #274, not S27, but S27's eight planeswalkers were unplayable without it.
+
+Everything else in the list is untouched and verified absent on `f26c961`: CR 704.5j has zero hits; `ChapterTrigger`, `CrewCost`, `BattleSpec` and `ProtectorPlayerID` have zero hits; `Card.AttackingTarget` (`card.go:162`) is still a player ID, so the polymorphic `declare_attacker` is unstarted.
+
 ---
 
 ## S28 — Cost modification + alternative casts
@@ -1838,6 +1868,10 @@ Detailed plan: `/home/node/.claude/plans/s27-card-type-completeness.md`. Builds 
 - [ ] Cascade primitive (CR 702.85) — exile-until-CMC-less, may cast for free
 - [ ] ~25 cards: 6 reducers, 6 increasers (Stax pieces), 4 free-cast, 4 additional-cost, 5 cascade
 - [ ] Theme-deck smoke test (Maelstrom Wanderer cascade chain with Goblin Electromancer + Trinisphere on table)
+
+**Partly shipped under the S22 tag, 2026-09-11.** The **alternative-cost half of this sprint is live on `main`** and was landed as `feat(s22)` by #257: `Spec.AlternativeCosts` (`server/internal/cards/effects/spec.go:257`) with `Overload` / `Evoke` / `Cleave` builders, plus [ADR 0025](decisions/0025-alternative-costs.md), which also labels itself S22. The "alternative-cost slots in cast dialog" item above is therefore substantially done — for the keyword forms; Force of Will's pitch and Fierce Guardianship's commander condition are not among them. S21 had already delivered the **additional**-cost slot as `Spec.AdditionalCost` ([ADR 0021](decisions/0021-additional-costs.md)).
+
+The **cost-modification half — which is this sprint's actual goal — is untouched**: `CostModifier` returns zero hits across `server/internal/`, there is no CR 601.2f ordering, no reducers, no increasers and no cascade. Do not read the shipped alternative costs as progress on the cost engine; they bypass it rather than hook it.
 
 Detailed plan: `/home/node/.claude/plans/s28-cost-modification.md`. Builds on S14, S15, S20. Convoke / Improvise / Delve / Affinity stay deferred (state-scanning at cast time + different UX).
 
@@ -1903,6 +1937,14 @@ Triaged just-in-time from real-play feedback.
 **The bar is Forge's bar,** not tournament strength: makes legal moves, makes locally-sensible decisions, doesn't deadlock, uses removal on threats. Play quality is capped by catalog coverage (a few hundred cards), not by the policy — see ADR 0033 §7 on which archetypes are actually buildable today.
 
 **Four deliverables, in dependency order:** a public game log (the engine has none today), the legal-move enumerator (which the client also consumes, deleting its duplicated timing predicates), the virtual-seat runner with a heuristic policy, and the model-backed tiers on top.
+
+**Prerequisites — three, and one of them is not on this sprint's list.** Verified against `f26c961`:
+
+1. **The legal-move enumerator** — `server/internal/legal/` (sub-PR 1, #286). **Shipped.** This is the closed move list the whole design rests on; nothing bot-shaped is safe to build before it.
+2. **`protocol.LogEvent` and a bounded public log on `GameView`** (sub-PR 0). **Not shipped** — zero hits for `LogEvent` across `server/internal/protocol/`. ADR 0033 §4 argues this is a prerequisite rather than a refinement: a policy handed only a snapshot cannot see that the seat to its left wiped the board last turn, and that is most of what a Commander player reasons about. Players want it independently.
+3. **Attachments — equipment and auras** ([#280](https://github.com/krakenhavoc/cmd_and_ctrl/issues/280), spike in S32, implementation S33). **Not shipped**; `Card.AttachedTo` and the `Attach` / `Detach` / `EquipPay` family have zero hits. This is the constraint on *decks*, not on plumbing: without it, Voltron and every Equipment or Aura strategy is unbuildable, and the archetypes today's catalog actually supports are aggro, ramp-stompy and thin spell-based control. **Ship three bot decks, not six** — sub-PR 5 already says three, and #280 is the reason.
+
+Sub-PRs 0 through 4 can proceed without #280; only sub-PR 5's deck list depends on it.
 
 ### Sub-PR 0 — public game log
 

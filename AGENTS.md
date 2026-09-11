@@ -84,7 +84,7 @@ cmd_and_ctrl/
     ├── protocol.md      # v0 wire format spec
     ├── lobby.md         # lobby HTTP API reference
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0018 triggers on the stack)
+    └── decisions/       # ADRs (0001 WS library … 0033 AI bot seat) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -126,6 +126,26 @@ checklist of sub-tasks. Commits reference the sprint issue number.
 **Every commit and pull request must reference the sprint and issue it relates
 to.** This is non-negotiable — it's how we keep a part-time, multi-month project
 coherent.
+
+### Picking an ADR number
+
+**Check every branch, not just the one you are on.** ADR files live in `docs/decisions/` and the
+number is in the filename *and* the H1, so two branches that both grab "the next number" collide
+silently and only conflict at merge time — by which point the number is in commit messages, issue
+bodies and cross-links in other ADRs.
+
+```bash
+git fetch --all --prune
+for b in $(git branch -r --format='%(refname:short)' | grep -v HEAD); do
+  git ls-tree --name-only "$b" docs/decisions/
+done | sed 's|.*/||' | cut -d- -f1 | sort -u
+```
+
+Take the first number that does not appear, and say in the PR body which branches you checked.
+Numbers are **not** reused when an ADR is renumbered or abandoned — `0005`, `0024`, `0029` and
+`0030` are permanently unused for exactly that reason. If a number you already used turns out to be
+taken, renumber **your** file (title, filename and every inbound link) rather than asking the other
+branch to move; the one that merges first keeps the number.
 
 ### Commit message format
 
@@ -951,12 +971,30 @@ ScheduleDelayedTrigger{
 
 `At` defaults to `game.StepEnd`; the queue is drained on step **entry**,
 so an ability scheduled during an end step waits for the following one.
+Set `ControllerTurnOnly: true` when the printed text says "at the
+beginning of **your** next <step>" (Mana Drain): a matching step on
+another player's turn then leaves the trigger queued. Leave it unset
+for "the next turn's upkeep" (Arcane Denial), which the very next
+upkeep at the table satisfies.
 The instruction lives on the `Game`, not on a card — the spell that
 created it is usually in a graveyard by the time it fires — and it goes
 on the stack when the step begins, so every player gets a response
 window. Declare `Effect` as a package-level func so it captures nothing:
 a delayed trigger survives `Clone` / undo by sharing its `Effect` with
 the snapshot, and reads its payload off the item it is handed.
+
+**Mana from a spell (roadmap batch 01):** "Add {B}{B}{B}" on a SPELL
+(Dark Ritual) or a non-mana ability (Mana Drain's refund) is the
+`AddMana` primitive in `add_mana.go`, not a `ManaAbility` — a mana
+ability never uses the stack (CR 605.3a) and these do, which is why
+they can be countered and why Storm-Kiln Artist triggers on them:
+
+```go
+AddMana{Produced: "{B}{B}{B}"}.Apply(ctx)   // Player defaults to the controller
+```
+
+Pipe syntax queues the same colour pick a Birds activation does. The
+mana empties with the pool at the end of the step (CR 106.4).
 
 **Flicker (S22):** two shapes, and the difference is observable:
 
@@ -1012,6 +1050,9 @@ and still unimplemented: that is CR 613 layer 1, deferred to S16.5.
 | "Whenever an opponent draws a card" | `EventDrawCard` | `ev.Actor != uuid.Nil && ev.Actor != source.Controller` — fires once per card |
 | "Whenever ~ deals combat damage to a player" | `EventDealDamage` | `ev.Source == source.InstanceID && combatDamageToPlayerBy(ev, source.Controller, g)` |
 | "Whenever a creature you control deals combat damage to a player" | `EventDealDamage` | `combatDamageToPlayerBy(ev, source.Controller, g)` — checks `ev.Combat`, player target, creature source |
+| "Whenever **one or more** creatures you control deal combat damage to a player" | `EventDealDamage` | `combatDamageToPlayerBy(…) && !triggerAlreadyPendingFrom(g, source)` (Professional Face-Breaker) — the engine emits one event per creature, so the second is declined while the first trigger is still on `PendingTriggers`. Without the dedup the card ships **stronger** than printed |
+| "Whenever a creature / land you control enters" (landfall) | `EventETB` | `enteredUnderYourControl(ev, source, g, false)` then `c.IsCreature()` / `c.IsLand()` (Impact Tremors, Tireless Provisioner) |
+| "Whenever you create or sacrifice a token" | `EventTokenCreated` + `EventSacrifice` on one ability | `ev.Actor == source.Controller`, and for the sacrifice half `IsToken(LookupCardForEffect(ev.CardID))` — the sacrifice event fires **before** the zone move, so the token is still findable (Mirkwood Bats) |
 | "…its controller may draw" (Edric) | `EventDealDamage` | `ev.Actor` is the dealing creature's controller; use it for both `OptionalPrompt.Chooser` and the draw |
 
 **The two rules that matter:**
@@ -1097,8 +1138,9 @@ then `passPriorityAroundTable`. See the S19 sections of
   cost has no shape, leave the CARD out.
 - **Triggers on events the engine doesn't emit yet** ("whenever a
   creature enters under an opponent's control", landfall-with-a-target,
-  "whenever you attack with one or more creatures" as a single batched
-  trigger) — check
+  "at the beginning of your precombat main phase" — Black Market
+  Connections — "whenever you attack with one or more creatures" as a
+  single batched trigger) — check
   [events.go](server/internal/game/events.go) for an `EventKind`
   first. If there isn't one, the event plumbing is the PR, not the
   card. Two things that used to be on this list are not any more:

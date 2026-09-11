@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"fmt"
 	"sort"
 	"time"
 
@@ -461,6 +462,12 @@ type PlayerView struct {
 	// seated player; -1 sentinel disables the cap (Reliquary Tower
 	// / Thought Vessel). Surfaced on the wire so clients can
 	// render "8 / ∞" or "3 / 2" next to the hand-count badge.
+	//
+	// This is the EFFECTIVE cap, not the raw Player.MaxHandSize:
+	// a controlled permanent with Spec.NoMaxHandSize reports -1
+	// here without the underlying field being written. Otherwise the
+	// badge would keep saying "10 / 7" for a player the cleanup step
+	// is (correctly) never going to prompt (#338).
 	MaxHandSize int `json:"max_hand_size"`
 
 	// ManaPool is the player's current mana pool projection — one
@@ -583,6 +590,22 @@ type CardView struct {
 	// Omitted when false so non-catalog cards (the majority) don't
 	// carry the field on the wire. Added in S14 sub-PR 3.
 	Auto bool `json:"auto,omitempty"`
+	// Unimplemented is the honest inverse of Auto, and it is
+	// deliberately NOT !Auto. Most cards in a real deck have no
+	// catalog Spec and do not need one: printed keywords are
+	// enforced for every card in the dump since #317 / #319 / #320,
+	// a vanilla creature is complete, a basic land taps off its type
+	// line. This bit is set only when the card prints rules the
+	// engine will not run — the case behind reports #321, #324,
+	// #325, #332 and #333, where five uncatalogued cards resolved
+	// into silence and the player had no way to tell that was by
+	// design. See game.Unimplemented.
+	//
+	// Omitted when false. The client surfaces it where a player
+	// forms an expectation and nowhere else — the hover/inspect
+	// panel and the stack, not as a permanent board badge, which on
+	// a real battlefield would be most of the cards on the table.
+	Unimplemented bool `json:"unimplemented,omitempty"`
 	// TargetMode tells the client what kind of target to prompt
 	// for at cast time. See effects.Spec.TargetMode for the enum.
 	// Empty when the card takes no announce-time targets (either
@@ -641,6 +664,14 @@ type CardView struct {
 	// the activated-ability menu's affordance; the server does the
 	// real check.
 	SummoningSick bool `json:"summoning_sick,omitempty"`
+	// LoyaltyActivated reports CR 606.5: this planeswalker has
+	// already had a loyalty ability activated this turn, so every
+	// entry in ActivatedAbilities carrying a LoyaltyCost is greyed
+	// until the turn cursor moves on. Battlefield planeswalkers
+	// only. Before S27 this lived only in the server's
+	// Game.LoyaltyActivatedThisTurn map, which is why the client's
+	// canActivateLoyalty had to guess. Added in S27 (#329, #334).
+	LoyaltyActivated bool `json:"loyalty_activated,omitempty"`
 	// ManaCost is the printed casting cost as Scryfall returns it —
 	// "{1}{R}", "{W/U}", "{X}{B}{B}", etc. Empty for lands and for
 	// placeholder / demo-seed cards. Rendered by the client as a
@@ -666,6 +697,53 @@ type CardView struct {
 	// (engine ships, no card declares a static ability yet).
 	// Added in S16 sub-PR 1.
 	Abilities []string `json:"abilities,omitempty"`
+
+	// Layout is Scryfall's printing layout ("modal_dfc",
+	// "transform", "adventure", …), omitted for the ordinary
+	// single-faced card. The client reads it to decide whether
+	// playing this card needs a face prompt at all. Added by
+	// ADR 0034.
+	Layout string `json:"layout,omitempty"`
+
+	// Faces is every printed face of a multi-face card, front
+	// first, and it is PURELY ADDITIVE: Name, TypeLine, ManaCost,
+	// Power and Toughness above continue to mean "the ACTIVE
+	// face's", which is what keeps the client change small. All
+	// twenty-odd client-side type checks — cardTypes.ts,
+	// Card.svelte's regexes, timing.ts's cast gate, the mana-source
+	// estimator — keep working with zero edits, because they now
+	// receive one clean type line instead of a concatenation.
+	//
+	// What this feeds is the face picker and the hover overlay's
+	// back-face panel. Absent for single-faced cards.
+	Faces []CardFaceView `json:"faces,omitempty"`
+
+	// ActiveFace indexes Faces. Omitted when zero, which is the
+	// front face and every single-faced card.
+	ActiveFace int `json:"active_face,omitempty"`
+}
+
+// CardFaceView is one printed face on the wire (ADR 0034). Enough
+// to render a picker row and a hover panel: what it is called, what
+// it costs, what it is, and where its art lives.
+type CardFaceView struct {
+	Name     string `json:"name"`
+	TypeLine string `json:"type_line,omitempty"`
+	ManaCost string `json:"mana_cost,omitempty"`
+	// OracleText is the face's rules text, so the picker can show
+	// what each half actually does without a round-trip to
+	// GET /cards/{id}.
+	OracleText string `json:"oracle_text,omitempty"`
+	// Power and Toughness for a creature face. Both omitted when
+	// zero, as on CardView.
+	Power     int `json:"power,omitempty"`
+	Toughness int `json:"toughness,omitempty"`
+	// Image is the path to this face's art:
+	// "/cards/{scryfall_id}/image?face=N". Built server-side so the
+	// client never has to know that the face index is a query
+	// parameter, and empty for a card with no Scryfall ID
+	// (fixtures, the demo seed).
+	Image string `json:"image,omitempty"`
 }
 
 // ManaAbilityView is the wire shape of one activated mana ability
@@ -714,6 +792,13 @@ type ActivatedAbilityView struct {
 	ManaCost      string `json:"mana_cost,omitempty"`
 	LifeCost      int    `json:"life_cost,omitempty"`
 	SorcerySpeed  bool   `json:"sorcery_speed,omitempty"`
+	// LoyaltyCost is the loyalty component of a planeswalker's
+	// loyalty ability: +N / 0 / −N (CR 606.1). A POINTER because [0]
+	// is a real printed cost and `omitempty` would erase it — the
+	// client needs "no loyalty component" and "costs zero loyalty"
+	// to stay different, since only the first leaves the ability
+	// activatable more than once a turn. Added in S27 (#329, #334).
+	LoyaltyCost *int `json:"loyalty_cost,omitempty"`
 	// SacrificeLabel / SacrificeOptions describe a "Sacrifice a
 	// creature"-style cost: the clause and the permanents the
 	// controller may pay with right now. Absent when the cost has
@@ -758,10 +843,29 @@ type ManaAbilityView struct {
 	// appear here — it's part of the ability's Label.
 	// Added in the S22 mana-ability-rider pass.
 	LifeCost int `json:"life_cost,omitempty"`
+	// ManaCost is a mana component of the activation cost — the
+	// Signet cycle's "{1}, {T}", Cabal Coffers' "{2}, {T}".
+	// Advisory, like LifeCost: the client renders the cost chip so
+	// the player knows to float the mana first, and the server does
+	// the real check. The engine deliberately does NOT auto-tap
+	// into a mana ability, so an ability with this set can only be
+	// fired against mana the player has already produced.
+	// Added in the S32 mana-pipeline pass (#352).
+	ManaCost string `json:"mana_cost,omitempty"`
+	// Restrictions are the "spend this mana only on …" tags the
+	// produced tokens will carry — Ancient Ziggurat, Eldrazi
+	// Temple, the coloured half of Delighted Halfling. Present so
+	// the client can warn before a player floats mana they cannot
+	// spend on what they were about to cast. Purely informational;
+	// enforcement is server-side, in the pool solver.
+	// Added in the S32 mana-pipeline pass (#352).
+	Restrictions []string `json:"restrictions,omitempty"`
 	// Produced is the raw production string ("{C}{C}",
 	// "{W|U|B|R|G}"). Lets the client render the produced-mana
 	// pills alongside the activation button even when Label is
-	// empty.
+	// empty. EMPTY for a derived or scaled ability (Exotic Orchard,
+	// Cabal Coffers), whose output only exists once computed at
+	// activation — those carry the description in Label instead.
 	Produced string `json:"produced,omitempty"`
 }
 
@@ -775,6 +879,20 @@ type TurnView struct {
 	PriorityHolder int    `json:"priority_holder"`
 	Phase          string `json:"phase"`
 	Step           string `json:"step"`
+	// BlockDecisionSeats lists the seat indices that owe a
+	// declare-blockers decision right now — under attack, with at
+	// least one creature that could legally block one of the
+	// attackers (CR 509.1a / 509.1b). Empty and omitted outside the
+	// declare_blockers step.
+	//
+	// #328: blocking is a turn-based action, not a response, so the
+	// client's "does this player have a legal response?" auto-pass
+	// predicate could never see it and happily passed the defending
+	// player's one chance to block. This field is what the client
+	// consults to refuse to auto-pass the window. Public
+	// information — attackers and untapped creatures are both on the
+	// board — so it survives per-viewer filtering unredacted.
+	BlockDecisionSeats []int `json:"block_decision_seats,omitempty"`
 }
 
 // ViewOfGameFor builds a per-viewer wire snapshot. Same shape as
@@ -814,7 +932,7 @@ func ViewOfGame(g *game.Game) GameView {
 		view = GameView{
 			ID:          g.ID.String(),
 			State:       string(g.State),
-			Seats:       viewOfSeats(g.Seats),
+			Seats:       viewOfSeats(g, g.Seats),
 			Battlefield: viewOfZone(g.Battlefield),
 			Stack:       viewOfZone(g.Stack),
 			Exile:       viewOfZone(g.Exile),
@@ -824,6 +942,10 @@ func ViewOfGame(g *game.Game) GameView {
 				PriorityHolder: g.Turn.PriorityHolder,
 				Phase:          string(g.Turn.Phase),
 				Step:           string(g.Turn.Step),
+				// #328: who still owes a block declaration. Read
+				// surface takes the lock we already hold and the
+				// layers ReadSnapshot just refreshed.
+				BlockDecisionSeats: g.SeatsOwingBlockDecisionLocked(),
 			},
 			MulligansOpen:     g.MulligansOpen,
 			Monarch:           uuidStringOrEmpty(g.Monarch),
@@ -868,7 +990,12 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 						Label:        ac.Label,
 					}
 					if ac.Sacrifice != nil {
-						opts := viewOfLegalTargets(g.LegalTargetsForEffect(caster, ac.Sacrifice), ac.Sacrifice)
+						// SpecCandidatesForEffect, not
+						// LegalTargetsForEffect: an additional
+						// sacrifice cost doesn't target, so the
+						// hexproof / shroud gate must not narrow the
+						// list the client offers.
+						opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, ac.Sacrifice), ac.Sacrifice)
 						opts.Cards = filterToController(g, opts.Cards, caster)
 						opts.Players = nil
 						c.AdditionalCost.SacrificeOptions = opts
@@ -1000,6 +1127,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 			continue
 		}
 		c.ActivatedAbilities = viewOfActivatedAbilities(g, card, controller)
+		c.LoyaltyActivated = g.LoyaltyActivatedThisTurn[instanceID]
 		stampManaSacrificeOptions(g, card, controller, c.ManaAbilities)
 	}
 }
@@ -1337,15 +1465,15 @@ func viewOfStackItem(it *game.StackItem) StackItemView {
 	return view
 }
 
-func viewOfSeats(seats []*game.Player) []PlayerView {
+func viewOfSeats(g *game.Game, seats []*game.Player) []PlayerView {
 	out := make([]PlayerView, len(seats))
 	for i, p := range seats {
-		out[i] = viewOfPlayer(p)
+		out[i] = viewOfPlayer(g, p)
 	}
 	return out
 }
 
-func viewOfPlayer(p *game.Player) PlayerView {
+func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 	cmdrDamage := make(map[string]int, len(p.CommanderDamage))
 	for k, v := range p.CommanderDamage {
 		cmdrDamage[k.String()] = v
@@ -1395,7 +1523,7 @@ func viewOfPlayer(p *game.Player) PlayerView {
 		DisplayName:       p.DisplayName,
 		CommanderCasts:    cmdrCasts,
 		Counters:          cloneStringIntMap(p.Counters),
-		MaxHandSize:       p.MaxHandSize,
+		MaxHandSize:       g.EffectiveMaxHandSizeLocked(p),
 		ManaPool:          manaPool,
 	}
 }
@@ -1644,6 +1772,18 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// away the Cyclonic Rift.
 	out.AlternativeCosts = nil
 	out.TapCost = nil
+	// Weak evidence of identity, but evidence: it partitions the
+	// card into "prints rules we don't run" or not. Cleared for the
+	// same reason as the cost fields above rather than because
+	// anyone could read much from it.
+	out.Unimplemented = false
+	// ADR 0034: the face list names the card twice over — both
+	// halves, their costs and their type lines. A face-down Sea Gate
+	// Restoration that still shipped "Sea Gate, Reborn // Land" in
+	// its faces array would be the loudest leak on the wire.
+	out.Faces = nil
+	out.Layout = ""
+	out.ActiveFace = 0
 	return out
 }
 
@@ -1739,14 +1879,18 @@ func viewOfCard(c game.Card) CardView {
 		BattleY:       c.BattleY,
 		DamageMarked:  c.DamageMarked,
 		FaceDown:      c.FaceDown,
-		Auto:          game.IsAutoCard(c.OracleID),
-		TargetMode:    game.TargetModeFor(c.OracleID),
+		Auto:          game.IsAutoCard(game.CatalogKey(c)),
+		Unimplemented: game.Unimplemented(c),
+		TargetMode:    game.TargetModeFor(game.CatalogKey(c)),
 		oracleID:      c.OracleID,
 		ManaCost:      c.ManaCost,
 		ManaAbilities: viewOfManaAbilities(c),
 		SummoningSick: game.HasSummoningSickness(&c),
 		Abilities:     eff.Abilities,
 		knowers:       knowers,
+		Layout:        c.Layout,
+		Faces:         viewOfFaces(c),
+		ActiveFace:    c.ActiveFace,
 	}
 	if c.AttackingTarget != uuid.Nil {
 		view.AttackingTarget = c.AttackingTarget.String()
@@ -1873,6 +2017,13 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 			ManaCost:      a.Cost.Mana,
 			LifeCost:      a.Cost.Life,
 			SorcerySpeed:  a.SorcerySpeed,
+			LoyaltyCost:   a.Cost.Loyalty,
+		}
+		// CR 606.5 is carried by the loyalty component itself, so a
+		// catalog entry doesn't have to remember to set SorcerySpeed
+		// — but the client greys on this flag, so stamp it.
+		if a.Cost.Loyalty != nil {
+			v.SorcerySpeed = true
 		}
 		if a.Cost.SacrificeOther != nil {
 			v.SacrificeLabel = a.Cost.SacrificeOther.Label
@@ -1897,7 +2048,14 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 // sacrifice cost). Caller must hold g.mu.
 func abilityLegalTargets(g *game.Game, caster uuid.UUID, spec *game.TargetSpec) *LegalTargetsView {
 	lt := g.LegalTargetsForEffect(caster, spec)
-	out := &LegalTargetsView{}
+	// Min / Max come off the spec, exactly as the cast-time path
+	// stamps them (viewOfLegalTargets). Omitting them shipped every
+	// ability clause to the client as min 0 / max 0 — "unbounded,
+	// confirm with nothing picked" — which is right for no clause
+	// the catalog actually declares. Teferi's "up to one target"
+	// is the first clause whose Min is genuinely 0, so the
+	// difference became visible.
+	out := &LegalTargetsView{Min: spec.Min, Max: spec.Max}
 	for _, id := range lt.Players {
 		out.Players = append(out.Players, id.String())
 	}
@@ -1923,6 +2081,32 @@ func filterToController(g *game.Game, ids []string, controller uuid.UUID) []stri
 	return out
 }
 
+// viewOfFaces projects a multi-face card's printed faces onto the
+// wire. Returns nil for single-faced cards, which is every one of
+// the ~33,000 ordinary oracle IDs — the field is omitempty, so their
+// CardView is byte-identical to what it was before ADR 0034.
+func viewOfFaces(c game.Card) []CardFaceView {
+	if len(c.Faces) < 2 {
+		return nil
+	}
+	out := make([]CardFaceView, 0, len(c.Faces))
+	for i, f := range c.Faces {
+		v := CardFaceView{
+			Name:       f.Name,
+			TypeLine:   f.TypeLine,
+			ManaCost:   f.ManaCost,
+			OracleText: f.OracleText,
+			Power:      f.Power,
+			Toughness:  f.Toughness,
+		}
+		if c.ScryfallID != "" {
+			v.Image = fmt.Sprintf("/cards/%s/image?face=%d", c.ScryfallID, i)
+		}
+		out = append(out, v)
+	}
+	return out
+}
+
 func viewOfManaAbilities(c game.Card) []ManaAbilityView {
 	raw := game.ManaAbilitiesForCard(c)
 	if len(raw) == 0 {
@@ -1936,6 +2120,8 @@ func viewOfManaAbilities(c game.Card) []ManaAbilityView {
 			TapCost:       a.TapCost,
 			SacrificeCost: a.SacrificeCost,
 			LifeCost:      a.LifeCost,
+			ManaCost:      a.ManaCost,
+			Restrictions:  a.Restrictions,
 			Produced:      a.Produced,
 		}
 	}

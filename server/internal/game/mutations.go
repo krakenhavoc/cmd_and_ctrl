@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -217,6 +218,12 @@ func (g *Game) PlayCard(playerID, cardID uuid.UUID) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// The card being played is in a hand, so its own types are
+	// printed either way — but a land's enters-tapped replacement
+	// asks about the BATTLEFIELD ("unless you control a Swamp"),
+	// and under Urborg the answer is a layer answer. Fast-path
+	// no-op when nothing changed.
+	g.RecomputeLayersIfStaleLocked()
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound
@@ -305,6 +312,27 @@ type CastSpellParams struct {
 	// silently charging full price for a cast the player meant to
 	// overload is the worst available failure. Added in S22.
 	AlternativeCost string
+
+	// Face names which printed face of a multi-face card is being
+	// cast or played (ADR 0034). Zero — the front face — is the
+	// answer for every single-faced card in the game and for every
+	// client that has never heard of faces, which is what makes the
+	// field safe to add.
+	//
+	// It is an announce-time PARAMETER, not a PendingChoice, for the
+	// same reason the alternative cost, the modes, X, the additional
+	// cost and the targets are: every other announce decision is a
+	// client-side prompt whose answer rides the cast_spell action.
+	// The PendingChoice machinery resumes replacement, search and
+	// trigger frames; it has no frame for a half-validated cast and
+	// should not grow one.
+	//
+	// A face the card does not offer is REJECTED (ErrInvalidFace)
+	// rather than clamped to the front. Silently casting the wrong
+	// half of a modal DFC is the worst available failure: the player
+	// meant to play a land and got a seven-mana sorcery, or vice
+	// versa.
+	Face int
 
 	// Strict enables the S15 mana-cost gate. When set, the server
 	// parses the card's ManaCost into an effective cost (plus
@@ -395,6 +423,12 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// CR 601.2c's announce-time target check runs against the
+	// battlefield through predicates that read effective types, so
+	// the engine has to be caught up before a Doom Blade is told
+	// whether that land is a creature. Fast-path no-op when nothing
+	// changed.
+	g.RecomputeLayersIfStaleLocked()
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound
@@ -422,6 +456,32 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	if !found {
 		return ErrCardNotFound
 	}
+	// ADR 0034, and the single highest-leverage line in the whole
+	// multi-face model. `card` is a VALUE COPY taken out of the
+	// source zone, and everything below reads that copy ten more
+	// times before anything moves: IsLand(), validateAlternativeCost,
+	// TargetModeFor / TargetSpecFor, ModeSpecFor, castTargetSpec,
+	// AdditionalCostFor, TapPermanentsCostFor, the sorcery-speed
+	// gate, the land branch, and printedCostLocked. Materialising
+	// the chosen face HERE makes every one of them face-correct for
+	// free.
+	//
+	// Concretely, for Sea Gate Restoration // Sea Gate, Reborn:
+	// face 0 stops passing IsLand() (its type line is "Sorcery", not
+	// "Sorcery // Land"), so the land branch no longer fires and the
+	// cost gate finally sees {4}{U}{U}{U} instead of "" — which is
+	// both halves of #289 and all of #265.
+	if !faceCastable(card, params.Face) {
+		slog.Warn("cast_spell rejected: face not offered by this card",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"layout", card.Layout,
+			"face_requested", params.Face,
+			"faces", card.FaceCount(),
+		)
+		return ErrInvalidFace
+	}
+	card.SetFace(params.Face)
 	// S21 sub-PR 6: casting out of exile needs a live impulse-exile
 	// grant naming this player. Checked before every other gate
 	// because it's the one that decides whether the card is yours to
@@ -443,7 +503,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// below, because overload and cleave rewrite the target clause —
 	// the spell's legality has to be judged under the cost actually
 	// being paid, not under the printed one.
-	alt, err := validateAlternativeCost(card.OracleID, params.AlternativeCost, params.Targets)
+	alt, err := validateAlternativeCost(CatalogKey(card), params.AlternativeCost, params.Targets)
 	if err != nil {
 		slog.Warn("cast_spell rejected: bad alternative cost claim",
 			"card_name", card.Name,
@@ -463,8 +523,8 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// counted by validateTargetsLocked below instead — an "up to N"
 	// clause legitimately arrives with none. S22: an overloaded spell
 	// has no target clause left to satisfy.
-	if mode := TargetModeFor(card.OracleID); mode != "" && len(params.Targets) == 0 &&
-		TargetSpecFor(card.OracleID) == nil && !alt.Clears() {
+	if mode := TargetModeFor(CatalogKey(card)); mode != "" && len(params.Targets) == 0 &&
+		TargetSpecFor(CatalogKey(card)) == nil && !alt.Clears() {
 		slog.Warn("cast_spell rejected: targeted card arrived without targets",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -481,7 +541,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	}
 	// S20 sub-PR 4: modal spells — the chosen modes must be distinct,
 	// in range and the right count (CR 601.2b, 700.2).
-	modeSpec := ModeSpecFor(card.OracleID)
+	modeSpec := ModeSpecFor(CatalogKey(card))
 	if err := validateModes(modeSpec, params.Modes); err != nil {
 		slog.Warn("cast_spell rejected: bad mode choice",
 			"card_name", card.Name,
@@ -497,7 +557,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// free-form behaviour (any ID the client sent is accepted),
 	// except that a modal card whose chosen modes take no target
 	// must arrive with none.
-	spec, err := castTargetSpec(card.OracleID, params.Modes)
+	spec, err := castTargetSpec(CatalogKey(card), params.Modes)
 	if err != nil {
 		return err
 	}
@@ -549,7 +609,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// with the rest of the announce-time choices, and paid further
 	// down once the spell is on the stack — validate-all-then-pay,
 	// so a rejected cast never leaves a card in the graveyard.
-	addCost := AdditionalCostFor(card.OracleID)
+	addCost := AdditionalCostFor(CatalogKey(card))
 	if err := g.validateAdditionalCostLocked(playerID, cardID, addCost, params.DiscardIDs, params.SacrificeIDs); err != nil {
 		slog.Warn("cast_spell rejected: bad additional cost payment",
 			"card_name", card.Name,
@@ -566,7 +626,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// discipline the additional cost uses. The budget is measured
 	// against the cost the cast owes BEFORE any tapping, so a caster
 	// can't tap five creatures at a three-mana spell.
-	tapCost := TapPermanentsCostFor(card.OracleID)
+	tapCost := TapPermanentsCostFor(CatalogKey(card))
 	if !tapCost.Empty() || len(params.TapIDs) > 0 {
 		budget := 0
 		if base, berr := g.printedCostLocked(p, card, params); berr == nil {
@@ -602,6 +662,23 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// Lands skip the stack entirely (CR 305). Move the card to the
 	// battlefield and stamp the controller — same shape as PlayCard.
 	if card.IsLand() {
+		// ADR 0034: the chosen face has to exist on the card IN THE
+		// SOURCE ZONE, not just on the local copy, before the
+		// replacement pipeline runs.
+		//
+		// The pipeline resolves the entering card by ID through
+		// LookupCardForEffect to find its own self-replacement
+		// (replacements.go:531) — that is how a land finds its
+		// "as this enters, you may pay N life" clause, and an MDFC
+		// land back finds it under CatalogKey "<oracle>#1" only if
+		// its ActiveFace is already 1. The entry-choice resume path
+		// re-enters later with nothing but the card ID, so the face
+		// has to survive the pause too.
+		//
+		// Restored on the failure and cancel paths below: a cast
+		// that does not happen must not leave a card in hand wearing
+		// its back face.
+		wasFace := setFaceInZoneLocked(src, cardID, params.Face)
 		// S17 sub-PR 4: run the CR 614 replacement pipeline so
 		// enters-tapped replacements (Kismet) + enters-with-counters
 		// effects fire before the land's ETB event. Pipeline runs
@@ -627,15 +704,18 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		}
 		if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
 			g.clearReplacementEventLocked(ev.ID)
+			setFaceInZoneLocked(src, cardID, wasFace)
 			return err
 		}
 		defer g.clearReplacementEventLocked(ev.ID)
 		if out == nil || out.Canceled {
+			setFaceInZoneLocked(src, cardID, wasFace)
 			return nil
 		}
 
 		moved, err := MoveCard(src, g.Battlefield, cardID)
 		if err != nil {
+			setFaceInZoneLocked(src, cardID, wasFace)
 			return err
 		}
 		for i := range g.Battlefield.Cards {
@@ -673,7 +753,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			Actor:  playerID,
 			CardID: moved.InstanceID,
 		})
-		g.fireETBHookLocked(moved.InstanceID, moved.OracleID)
+		g.fireETBHookLocked(moved.InstanceID, CatalogKey(moved))
 		// Playing a land is a special action (CR 116.2a); the player
 		// keeps priority and CR 117.5 drains any landfall-style
 		// triggers onto the stack here rather than at the next wrap.
@@ -700,7 +780,8 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// pool; strict + not payable + not forced rejects with a
 	// structured InsufficientManaError; permissive or forced emits
 	// an EventCostWarning and proceeds without touching the pool
-	// (sandbox posture — paper tracking remains valid).
+	// (sandbox posture — paper tracking remains valid). A cost the
+	// parser can't read rejects in every mode (#289).
 	if err := g.applyCastCostLocked(p, card, params, cardID); err != nil {
 		return err
 	}
@@ -713,6 +794,14 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	for i := range g.Stack.Cards {
 		if g.Stack.Cards[i].InstanceID == cardID {
 			g.Stack.Cards[i].ExilePlay = ExilePlayPermission{}
+			// ADR 0034: the spell on the stack IS the chosen face.
+			// Everything downstream of here reads the card out of
+			// the stack zone rather than from the local copy — the
+			// resolution target re-check, the effect resolver, the
+			// graveyard route, and the client's stack overlay — so
+			// the face has to be stamped on the real card, not just
+			// the copy the announce gates were judged against.
+			g.Stack.Cards[i].SetFace(params.Face)
 		}
 	}
 	// S13.5: cast spells are public on the stack.
@@ -833,22 +922,32 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 //
 // The "effective cost" parses the printed ManaCost and adds
 // {2}-per-prior-cast for casts from the command zone (CR 903.8).
-// Empty / unparseable ManaCost short-circuits the gate (treats
-// the card as costless — matches the sandbox posture for cards
-// the importer couldn't parse). Caller must hold g.mu.
+// An EMPTY ManaCost still short-circuits to costless — ParseCost
+// treats "" as the zero cost, matching land behaviour — but an
+// UNPARSEABLE one now rejects the cast outright, before any of
+// the three outcomes above. Caller must hold g.mu.
 func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams, cardID uuid.UUID) error {
 	cost, err := g.effectiveCostLocked(p, card, params)
 	if err != nil {
-		// Unparseable ManaCost — treat as costless so a Scryfall
-		// gap doesn't wedge sandbox casts. Emit a warning for
-		// debug visibility.
+		// #289: this used to return nil, silently making the card
+		// FREE. Split and adventure cards import a joined cost
+		// ("{1}{R} // {1}{U}") that ParseCost rightly rejects, so
+		// ~1,047 cards cast for nothing with no error on the wire.
+		//
+		// Refusing is the honest answer, and it is deliberately
+		// mode-independent. Permissive mode's bargain is "the
+		// engine knows the cost, you pay it on paper" — void when
+		// the engine cannot read the cost at all. ForceCast
+		// overrides the strict-mana GATE, not the parser: there is
+		// no cost for the player to have paid. The card stays in
+		// hand and the player sees why.
 		g.EmitEvent(Event{
 			Kind:     EventCostWarning,
 			Actor:    p.ID,
 			Source:   cardID,
 			ErrorMsg: err.Error(),
 		})
-		return nil
+		return fmt.Errorf("%w for %s: %w", ErrUnparseableCost, card.Name, err)
 	}
 	if !params.Strict || params.ForceCast {
 		// Permissive default OR strict-mode override. Don't touch
@@ -861,11 +960,16 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 		})
 		return nil
 	}
-	if !p.ManaPool.CanPay(cost, params.XValue) {
-		return &InsufficientManaError{Missing: p.ManaPool.Missing(cost, params.XValue)}
+	// S32 (#352): the spend context is what lets restricted mana pay
+	// — and what stops it paying for the wrong thing. Ancient
+	// Ziggurat's {G} funds a creature spell here and is invisible to
+	// a Lightning Bolt.
+	spendCtx := ManaSpendForCast(card)
+	if !p.ManaPool.CanPayFor(cost, params.XValue, spendCtx) {
+		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, spendCtx)}
 	}
 	// Payable under strict mode — commit the spend.
-	p.ManaPool.SpendMana(cost, params.XValue)
+	p.ManaPool.SpendManaFor(cost, params.XValue, spendCtx)
 	g.EmitEvent(Event{
 		Kind:   EventManaSpent,
 		Actor:  p.ID,
@@ -881,8 +985,10 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 //
 // Flow:
 //  1. Parse the effective cost (printed cost + commander tax).
-//     Unparseable cost short-circuits to nil — applyCastCostLocked
-//     will emit the warning and proceed permissively.
+//     Unparseable cost short-circuits to nil WITHOUT tapping
+//     anything — applyCastCostLocked runs next and rejects the
+//     cast with ErrUnparseableCost, so tapping here would strand
+//     the caster's lands for a cast that never happens.
 //  2. If the pool already covers the cost, skip — auto-tap is
 //     idempotent on a funded pool.
 //  3. Build the excluded set from LockedSources.
@@ -900,7 +1006,10 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	if err != nil {
 		return nil
 	}
-	if p.ManaPool.CanPay(cost, params.XValue) {
+	// Same context applyCastCostLocked will pay under, so the
+	// "already funded, skip planning" shortcut can't be fooled by
+	// restricted mana this cast cannot legally spend.
+	if p.ManaPool.CanPayFor(cost, params.XValue, ManaSpendForCast(card)) {
 		return nil
 	}
 	excluded := make(map[uuid.UUID]bool, len(params.LockedSources)+len(params.TapIDs))
@@ -916,7 +1025,7 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	}
 	plan, ok := g.autoTapLocked(p.ID, cost, params.XValue, excluded)
 	if !ok {
-		return &InsufficientManaError{Missing: p.ManaPool.Missing(cost, params.XValue)}
+		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, ManaSpendForCast(card))}
 	}
 	g.materializePlanLocked(p, plan, cost)
 	return nil
@@ -950,7 +1059,20 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 		if ab == nil {
 			continue
 		}
-		slots, err := ParseProducedMana(ab.Produced)
+		// S32 (#352): the gate and the derived/scaled output are
+		// re-evaluated here rather than carried over from planning,
+		// so the executor and the planner can never disagree about
+		// what a source produces. A gate that has stopped holding
+		// since the plan was made drops the source silently, exactly
+		// as a source that got tapped in between does.
+		if ab.Condition != nil && !ab.Condition(g, p.ID, cardID) {
+			continue
+		}
+		producedStr := ab.Produced
+		if ab.ProducedFunc != nil {
+			producedStr = ab.ProducedFunc(g, p.ID, cardID)
+		}
+		slots, err := ParseProducedMana(producedStr)
 		if err != nil {
 			continue
 		}
@@ -974,7 +1096,17 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 			if color == "" {
 				continue
 			}
-			p.ManaPool.AddMana(ManaToken{Color: color, Source: cardID})
+			// Restrictions ride here too. autoTapAbilityFor already
+			// refuses restricted abilities, so this is belt-and-
+			// braces — but "the auto-tapper is the one path that
+			// mints unrestricted copies of restricted mana" is
+			// precisely the bug #259 warns about, and one line is
+			// cheaper than trusting a filter two files away.
+			p.ManaPool.AddMana(ManaToken{
+				Color:        color,
+				Source:       cardID,
+				Restrictions: copyRestrictions(ab.Restrictions),
+			})
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: cardID})
 		}
 	}
@@ -1044,7 +1176,7 @@ func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams)
 	// all have to have settled before we know what the tapped
 	// permanents are paying for. A card with no such cost, or a cast
 	// that tapped nothing, gets the cost back unchanged.
-	tapCost := TapPermanentsCostFor(card.OracleID)
+	tapCost := TapPermanentsCostFor(CatalogKey(card))
 	if !tapCost.Empty() {
 		cost = tapPermanentsAdjusted(cost, tapCost, g.tapPermanentsPayersLocked(params.TapIDs), params.XValue)
 	}
@@ -1215,7 +1347,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// Self / none targets don't re-check (self is the caster; none
 	// has no referent) and count as always-legal for the all-illegal
 	// short-circuit.
-	if spellAllTargetsIllegalLocked(g, item, castTargetSpecForItem(top.OracleID, item)) {
+	if spellAllTargetsIllegalLocked(g, item, castTargetSpecForItem(CatalogKey(top), item)) {
 		// "Countered by game rules" — permanents and non-permanents
 		// alike go to the owner's graveyard (CR 608.2b). The
 		// announce-time choices on StackMeta are discarded along
@@ -1238,8 +1370,22 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// and zone routing. Non-catalog cards return nil (no-op); catalog
 	// spells fire their effect here. Errors emit EventEffectError
 	// via fireEffectResolverLocked and do not wedge resolution.
-	g.fireEffectResolverLocked(item, top.OracleID, top.InstanceID)
+	g.fireEffectResolverLocked(item, CatalogKey(top), top.InstanceID)
 	if top.IsPermanent() {
+		// ADR 0034: settle which face the PERMANENT keeps before the
+		// replacement pipeline runs, so the entering card's
+		// self-replacement is looked up under the right catalog key.
+		//
+		// An MDFC keeps the face that was cast — the other one never
+		// returns. Everything else resolves front-up: an adventure's
+		// creature half is the permanent no matter which half was
+		// cast, and a transform card always enters face 0 (CR 712.4)
+		// whatever an effect does to it afterwards. Today that makes
+		// this a no-op for every layout but modal_dfc, since
+		// CastableFaces refuses a non-zero face on the others; it is
+		// written out because it is where the adventure reroute lands.
+		setFaceInZoneLocked(g.Stack, top.InstanceID, faceOnResolve(top.Layout, top.ActiveFace))
+		top.SetFace(faceOnResolve(top.Layout, top.ActiveFace))
 		// Permanents resolve to the battlefield with the announce-time
 		// controller (which may differ from owner — e.g. cast via a
 		// "play this from exile" effect that change controller).
@@ -1296,7 +1442,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 			Actor:  item.Controller,
 			CardID: moved.InstanceID,
 		})
-		g.fireETBHookLocked(moved.InstanceID, moved.OracleID)
+		g.fireETBHookLocked(moved.InstanceID, CatalogKey(moved))
 		// S22: evoke's "it's sacrificed when it enters" (CR 702.74b).
 		// Queued here because this is the last moment the StackItem —
 		// and so the cost that was actually paid — is still reachable.
@@ -1505,6 +1651,12 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// Activation legality reads the source's effective types (the
+	// CR 302.1 summoning-sickness gate only applies to a creature)
+	// and the target predicates read every candidate's. Both are
+	// layer-dependent since the type predicates were rerouted
+	// through Effective(); fast-path no-op when nothing changed.
+	g.RecomputeLayersIfStaleLocked()
 	if g.SplitSecondActive {
 		return ErrSplitSecondActive
 	}
@@ -1534,33 +1686,51 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 	return nil
 }
 
-// ActivateLoyalty applies a planeswalker's loyalty ability. Sandbox
-// shape: the engine doesn't model the activation as a proper stack
-// item (full loyalty-on-stack lands in S14+ alongside the effect
-// catalog). Instead, the loyalty delta is applied immediately and
-// the once-per-turn flag is set. Sorcery-speed gate enforced per
-// CR 606.5.
+// ActivateLoyalty applies a planeswalker's loyalty ability by hand.
+// Sandbox shape: no stack item, no effect — the loyalty delta is
+// applied immediately and the once-per-turn flag is set, and the
+// players work out what the ability did between themselves.
+//
+// This is NOT the path a catalog planeswalker takes. A loyalty
+// ability the catalog knows about is an ordinary CR 602 activation
+// with an AbilityCost.Loyalty component (see activated.go): it goes
+// on the stack, it can target, and it runs an Effect. This action
+// survives for the ~thousand planeswalkers with no catalog entry,
+// the same way manual `tap` survives for cards whose abilities the
+// engine can't express — which is the engine's non-catalog promise
+// (ADR 0032).
 //
 // `delta` is the loyalty change announced by the ability:
-// +1 / +2 / -3 / etc. Applied via AddCounter to the planeswalker's
-// "loyalty" counter; negative deltas that would drive loyalty below
-// zero are clamped (the planeswalker leaves via SBA in sub-PR 7).
+// +1 / +2 / -3 / etc, applied to the planeswalker's "loyalty"
+// counter.
 //
 // Returns:
 //   - ErrCardNotFound if planeswalkerID is not on the battlefield.
+//   - ErrNotAPlaneswalker if it is on the battlefield but isn't one
+//     (CR 606.1). Before #329 this action would hand loyalty
+//     counters to a Mountain.
+//   - ErrCardCallerMismatch if the activator doesn't control it.
+//   - ErrInsufficientLoyalty if a negative delta would remove more
+//     counters than the planeswalker has (CR 606.3). Paying down to
+//     exactly zero is legal; the 704.5i SBA takes it from there.
 //   - ErrSorcerySpeedRequired if the gate is closed.
 //   - ErrLoyaltyAlreadyActivated if the planeswalker has already
 //     activated a loyalty ability this turn (CR 606.5).
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 //
-// S13.1.
+// S13.1; gates tightened in S27 (#329, #334).
 func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string, delta int) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// Gated on IsPlaneswalker, which is now a layer read — a
+	// creature-land that a Layer-4 effect has turned into a
+	// planeswalker has loyalty abilities and one that hasn't
+	// doesn't. Fast-path no-op when nothing changed.
+	g.RecomputeLayersIfStaleLocked()
 	if g.SplitSecondActive {
 		return ErrSplitSecondActive
 	}
@@ -1584,21 +1754,31 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	if pw == nil {
 		return ErrCardNotFound
 	}
-	if pw.Counters == nil {
-		pw.Counters = make(map[string]int)
+	// CR 606.1 / 606.2: a loyalty ability belongs to a planeswalker,
+	// and only its controller may activate it. Neither was checked
+	// before #329, so this action was a counter faucet pointed at
+	// any card on the table.
+	if !pw.IsPlaneswalker() {
+		return ErrNotAPlaneswalker
 	}
-	pw.Counters["loyalty"] += delta
-	if pw.Counters["loyalty"] <= 0 {
-		// Loyalty reaching zero is the SBA's responsibility (sub-PR 7);
-		// here we just keep the bookkeeping clean by removing the key
-		// when it drops to zero. SBA will pick up "loyalty == 0" by
-		// counting positive entries.
-		if pw.Counters["loyalty"] == 0 {
-			delete(pw.Counters, "loyalty")
-		}
-		// Negative is allowed for the moment — clamping would discard
-		// "minus more than you have" intent that the SBA needs to
-		// see. Sub-PR 7 will read this as "loyalty <= 0".
+	if pw.Controller != playerID {
+		return ErrCardCallerMismatch
+	}
+	// CR 606.3: can't remove more loyalty than is there. The old
+	// comment here argued for letting the counter go negative so the
+	// SBA could see the intent, but the SBA reads "loyalty <= 0" and
+	// an activation the rules forbid should be refused at announce,
+	// not paid and then cleaned up.
+	if delta < 0 && pw.Counters[CounterLoyalty] < -delta {
+		return ErrInsufficientLoyalty
+	}
+	// applyCounterLocked deletes the key at zero and emits the
+	// counter event, which is what every other counter mutation in
+	// the engine does; the hand-rolled map write here predated it.
+	// Paying a cost is not an effect (CR 121.1), so this
+	// deliberately bypasses the CR 614 counter-replacement pipeline.
+	if err := g.applyCounterLocked(planeswalkerID, CounterLoyalty, delta); err != nil {
+		return err
 	}
 	if g.LoyaltyActivatedThisTurn == nil {
 		g.LoyaltyActivatedThisTurn = make(map[uuid.UUID]bool)
@@ -2688,7 +2868,7 @@ func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCom
 		// the destination zone to pull its Scryfall ID.
 		for _, c := range dstZone.Cards {
 			if c.InstanceID == cardID {
-				g.fireETBHookLocked(cardID, c.OracleID)
+				g.fireETBHookLocked(cardID, CatalogKey(c))
 				break
 			}
 		}
@@ -2712,6 +2892,10 @@ func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// The summoning-sickness gate below only binds creatures, and
+	// whether this permanent is one is a layer answer. Fast-path
+	// no-op when nothing changed.
+	g.RecomputeLayersIfStaleLocked()
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cardID {
 			g.Battlefield.Cards[i].Tapped = tapped
@@ -2792,6 +2976,13 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// The ability list this resolves an index against is partly
+	// type-derived (CR 305.6), so it moves when a Layer-4 static
+	// does: under Urborg every land gains "{T}: Add {B}" and loses
+	// it again when Urborg does. Catch the engine up before
+	// indexing or a player's {B} click lands on a stale list.
+	// Fast-path no-op when nothing has changed.
+	g.RecomputeLayersIfStaleLocked()
 	// Locate the card on the battlefield.
 	var card *Card
 	for i := range g.Battlefield.Cards {
@@ -2819,6 +3010,15 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		return ErrInvalidParam
 	}
 	ab := abilities[abilityIdx]
+	// --- gate ----------------------------------------------------
+	//
+	// "Activate only if you control five or more lands" (Temple of
+	// the False God), "…three or more artifacts" (Mox Opal). CR
+	// 602.5a: an activation restriction is checked before anything
+	// is paid, so a failed gate costs the player nothing.
+	if ab.Condition != nil && !ab.Condition(g, playerID, cardID) {
+		return ErrConditionNotMet
+	}
 	// --- validate every cost before paying any ------------------
 	//
 	// Same discipline as ActivateCatalogAbility: a half-paid cost
@@ -2853,6 +3053,32 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		// AbilityCost.Life.
 		return ErrInvalidParam
 	}
+	// A mana component in the cost — the Signet cycle's "{1}, {T}",
+	// Cabal Coffers' "{2}, {T}". Parsed and checked here, spent
+	// below with everything else, so an unaffordable Signet fails
+	// with the source still untapped.
+	//
+	// Deliberately no auto-tap. A mana ability resolves with no
+	// priority window (CR 605.3a), and tapping three lands to feed a
+	// Signet is a decision with consequences the planner cannot
+	// weigh — the player floats the {1} first, which is how the card
+	// is played on paper anyway.
+	var manaCost ParsedCost
+	if ab.ManaCost != "" {
+		parsed, perr := ParseCost(ab.ManaCost)
+		if perr != nil {
+			return ErrInvalidParam
+		}
+		manaCost = parsed
+		// The mana pays an ACTIVATION (CR 602.2b), and the source
+		// permanent's own characteristics are what a restricted
+		// token is tested against — Eldrazi Temple mana can fund a
+		// colorless Eldrazi's ability, not a Signet's.
+		spendCtx := ManaSpendForAbility(*card)
+		if !p.ManaPool.CanPayFor(manaCost, 0, spendCtx) {
+			return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
+		}
+	}
 
 	// needStateChecks is set by any component of this activation
 	// that can kill a player or a permanent — a sacrifice, a life
@@ -2863,9 +3089,20 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 
 	// --- pay ----------------------------------------------------
 	//
+	// Mana first, then tap, then life, then sacrifice — the
+	// component order ActivateCatalogAbility pays an AbilityCost in.
 	// Tap before sacrifice: the tap has to happen while the
 	// permanent is still on the battlefield, and sacrifices move
 	// cards, which invalidates `card`.
+	if ab.ManaCost != "" {
+		// Same context the validation above used. Spending under a
+		// different context than the check would let a restricted
+		// token pay for something it was never cleared for.
+		if !p.ManaPool.SpendManaFor(manaCost, 0, ManaSpendForAbility(*card)) {
+			return &InsufficientManaError{Missing: []string{ab.ManaCost}}
+		}
+		g.EmitEvent(Event{Kind: EventManaSpent, Actor: playerID, Source: cardID})
+	}
 	if ab.TapCost {
 		card.Tapped = true
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
@@ -2911,8 +3148,16 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		Actor:  playerID,
 		Source: cardID,
 	})
-	// Materialise the produced mana.
-	slots, err := ParseProducedMana(ab.Produced)
+	// Materialise the produced mana. An ability with a ProducedFunc
+	// computes its output now, from the board as it stands AFTER the
+	// cost was paid — which is what CR 605.3a's "resolves
+	// immediately" means, and what makes Cabal Coffers count the
+	// Swamps that are still there.
+	produced := ab.Produced
+	if ab.ProducedFunc != nil {
+		produced = ab.ProducedFunc(g, playerID, cardID)
+	}
+	slots, err := ParseProducedMana(produced)
 	_ = card // card is deliberately nil after a sacrifice; keep the intent explicit
 	if err != nil {
 		// Mal-formed produced string: emit an effect-error event and
@@ -2933,8 +3178,17 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			continue
 		}
 		if len(options) == 1 {
-			// Single-color slot — straight into the pool.
-			p.ManaPool.AddMana(ManaToken{Color: options[0], Source: cardID})
+			// Single-color slot — straight into the pool, carrying
+			// the ability's spend restrictions (Eldrazi Temple's
+			// "colorless Eldrazi only"). Copy the slice: the token
+			// outlives this call and clone.go deep-copies it, so
+			// aliasing the catalog's backing array would let an undo
+			// reach a shared one.
+			p.ManaPool.AddMana(ManaToken{
+				Color:        options[0],
+				Source:       cardID,
+				Restrictions: copyRestrictions(ab.Restrictions),
+			})
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: cardID})
 			continue
 		}
@@ -2952,15 +3206,21 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		if !ab.IgnoreCommanderIdentity {
 			filtered = filterPipeByCommanderIdentity(options, p)
 		}
-		// Queue the pick.
+		// Queue the pick. The restrictions ride ON THE CHOICE, not
+		// just on the ability: the token is minted later, in
+		// ResolveManaChoice, and without this a Delighted Halfling
+		// pick would land in the pool unrestricted — the #259
+		// direction, and the easiest place in this whole seam to
+		// leak it.
 		g.QueueChoiceForEffect(PendingChoice{
-			Kind:         PendingChoiceMana,
-			Chooser:      playerID,
-			FromPlayer:   playerID,
-			Count:        1,
-			Source:       cardID,
-			Reason:       ab.Label,
-			ColorOptions: filtered,
+			Kind:             PendingChoiceMana,
+			Chooser:          playerID,
+			FromPlayer:       playerID,
+			Count:            1,
+			Source:           cardID,
+			Reason:           ab.Label,
+			ColorOptions:     filtered,
+			ManaRestrictions: copyRestrictions(ab.Restrictions),
 		})
 	}
 	// --- rider --------------------------------------------------
@@ -2990,57 +3250,155 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	return nil
 }
 
-// ManaAbilitiesForCard returns the abilities available on a card,
-// preferring the catalog declaration and falling back to the
-// synthetic basic-land shape (Forest → "{G}", etc.) when the catalog
-// has nothing registered. The protocol layer calls this to stamp
+// ManaAbilitiesForCard returns the abilities available on a card:
+// the ones carried on the instance, else the catalog's, PLUS the
+// CR 305.6 intrinsic abilities the card's effective land types give
+// it for free. The protocol layer calls this to stamp
 // CardView.ManaAbilities; the dispatcher calls it to resolve an
-// incoming ability index. Caller must hold g.mu (the fallback path
-// reads the card's TypeLine, which is stable under lock).
+// incoming ability index.
+//
+// Caller must hold g.mu, and — for the intrinsic half to be
+// current — must have let the layer engine catch up first
+// (ReadSnapshot does; write paths call RecomputeLayersIfStaleLocked).
+//
+// The intrinsic half is where Urborg, Tomb of Yawgmoth becomes a
+// real card. #258 declined to catalogue it because its Layer-4
+// static "would apply cleanly and do nothing" — the synthetic mana
+// ability read the printed TypeLine, so a Mountain that the layer
+// engine had made a Swamp still only tapped for {R}.
 func ManaAbilitiesForCard(c Card) []ManaAbilityShape {
-	// S21 sub-PR 1: intrinsic abilities win — a token has no oracle
+	var declared []ManaAbilityShape
+	switch {
+	// S21 sub-PR 1: instance abilities win — a token has no oracle
 	// ID for the catalog to key on.
-	if len(c.ManaAbilities) > 0 {
-		return c.ManaAbilities
+	case len(c.ManaAbilities) > 0:
+		declared = c.ManaAbilities
+	// CatalogKey, not c.OracleID: an MDFC back face keys on
+	// "<oracle_id>#N" (#357). A bare OracleID here would silently
+	// resolve a back face to face 0's spec.
+	case CatalogManaAbilities != nil:
+		declared = CatalogManaAbilities(CatalogKey(c))
 	}
-	if CatalogManaAbilities != nil {
-		if list := CatalogManaAbilities(c.OracleID); len(list) > 0 {
-			return list
+	intrinsic := intrinsicLandManaAbilities(c)
+	if len(intrinsic) == 0 {
+		return declared
+	}
+	if len(declared) == 0 {
+		return intrinsic
+	}
+	// A declared ability and an intrinsic one can name the same
+	// colour — every catalog dual land ("{T}: Add {B} or {G}") is
+	// printed with the land types that would have produced the
+	// same mana, and doubling it up would put two ways to make {B}
+	// in the client's ability row. Keep the declared shape (it may
+	// carry a rider or a pipe) and add only colours it cannot make.
+	covered := producibleColors(declared)
+	out := make([]ManaAbilityShape, 0, len(declared)+len(intrinsic))
+	out = append(out, declared...)
+	for _, ab := range intrinsic {
+		if covered[landTypeColorOf(ab)] {
+			continue
 		}
+		out = append(out, ab)
 	}
-	if color := basicLandColor(c.TypeLine); color != "" {
-		return []ManaAbilityShape{{
-			TapCost:  true,
-			Produced: "{" + color + "}",
-			Label:    "Add {" + color + "}",
-		}}
-	}
-	return nil
+	return out
 }
 
-// basicLandColor returns the single-letter mana color produced by a
-// basic land subtype on a card's TypeLine. Lowercase substring check
-// so "Basic Land — Forest" and "Land — Forest" both match.
-// Multi-type basic lands (Snow-Covered basics, Wastes) fall out of
-// this path and would need catalog entries; for S15 we ship only
-// the five plain basics.
-func basicLandColor(typeLine string) string {
-	if !typeLineHas(typeLine, "basic") || !typeLineHas(typeLine, "land") {
+// landTypeMana lists the five basic land types (CR 305.6) with the
+// mana their intrinsic ability produces. Order is only a tie-break
+// for cards whose effective subtypes are unordered; the real
+// ordering comes from the subtype list itself.
+var landTypeMana = [...]struct{ Subtype, Color string }{
+	{"Plains", "W"},
+	{"Island", "U"},
+	{"Swamp", "B"},
+	{"Mountain", "R"},
+	{"Forest", "G"},
+}
+
+// intrinsicLandManaAbilities builds the CR 305.6 abilities a land's
+// EFFECTIVE subtypes grant it: "{T}: Add {W}" for Plains, "{T}: Add
+// {U}" for Island, and so on, one per distinct basic land type.
+//
+// Two things changed here versus the S15 basicLandColor it
+// replaces, and they are the same change seen twice:
+//
+//   - It reads effective subtypes, so a Layer-4 type-granting
+//     static (Urborg) is load-bearing rather than cosmetic.
+//   - It keys off the basic land TYPE, not the Basic SUPERTYPE.
+//     CR 305.6 has never mentioned the supertype; requiring it was
+//     an S15 shortcut that left every printed dual — Bayou,
+//     Overgrown Tomb, a Triome — producing nothing at all unless
+//     someone hand-wrote a catalog entry for it. battle_lands.go
+//     documents that shortcut as the reason its cycle declares a
+//     pipe ability the printed card puts in reminder text.
+//
+// Emitted in the order the subtypes appear, so a land with no
+// static on it keeps the exact ability list (and therefore the
+// exact ability indices, and the exact auto-tapper first choice)
+// it had before.
+func intrinsicLandManaAbilities(c Card) []ManaAbilityShape {
+	if !c.IsLand() {
+		return nil
+	}
+	var subtypes []string
+	if c.effective != nil {
+		subtypes = c.effective.Subtypes
+	} else {
+		_, _, subtypes = ParseTypeLine(c.TypeLine)
+	}
+	if len(subtypes) == 0 {
+		return nil
+	}
+	var out []ManaAbilityShape
+	// One bit per entry in landTypeMana rather than a map: this runs
+	// once per land per card view, and five lands is already a
+	// thousand map allocations a minute at snapshot rates.
+	var seen uint8
+	for _, sub := range subtypes {
+		for i, lt := range landTypeMana {
+			if !equalFoldASCII(sub, lt.Subtype) || seen&(1<<i) != 0 {
+				continue
+			}
+			seen |= 1 << i
+			out = append(out, ManaAbilityShape{
+				TapCost:  true,
+				Produced: "{" + lt.Color + "}",
+				Label:    "Add {" + lt.Color + "}",
+			})
+		}
+	}
+	return out
+}
+
+// landTypeColorOf returns the single colour letter an intrinsic
+// land ability produces. Only ever called on shapes this file
+// built, so the "{X}" form is guaranteed.
+func landTypeColorOf(ab ManaAbilityShape) string {
+	if len(ab.Produced) != 3 {
 		return ""
 	}
-	switch {
-	case typeLineHas(typeLine, "plains"):
-		return "W"
-	case typeLineHas(typeLine, "island"):
-		return "U"
-	case typeLineHas(typeLine, "swamp"):
-		return "B"
-	case typeLineHas(typeLine, "mountain"):
-		return "R"
-	case typeLineHas(typeLine, "forest"):
-		return "G"
+	return ab.Produced[1:2]
+}
+
+// producibleColors is the set of colour letters a declared ability
+// list can make, pipes included — City of Brass's "{W|U|B|R|G}"
+// covers all five. Unparseable declarations contribute nothing
+// rather than failing the merge.
+func producibleColors(abilities []ManaAbilityShape) map[string]bool {
+	out := map[string]bool{}
+	for _, ab := range abilities {
+		slots, err := ParseProducedMana(ab.Produced)
+		if err != nil {
+			continue
+		}
+		for _, slot := range slots {
+			for _, opt := range slot.Options {
+				out[opt] = true
+			}
+		}
 	}
-	return ""
+	return out
 }
 
 // filterPipeByCommanderIdentity narrows `options` to just the colors
@@ -3050,9 +3408,11 @@ func basicLandColor(typeLine string) string {
 // raw options unchanged — Birds of Paradise falls through this path
 // with the full 5-color set intact.
 func filterPipeByCommanderIdentity(options []string, p *Player) []string {
-	// Find the player's commander on the battlefield or in the
-	// command zone. The color identity is on game.Card directly
-	// (copied at deck-import time via cards.Card.ColorIdentity).
+	// Find the player's commander in the command zone. Since #276
+	// the colour identity really is on game.Card directly, copied
+	// at deck-import time from cards.Card.ColorIdentity — this
+	// comment described that code for several sprints before it
+	// existed, which is why the gap went unnoticed.
 	// For S15 we scan the command zone only — post-move commanders
 	// on the battlefield still carry identity, but CR 903.4 keys
 	// identity off the printed card, so either source would work.
@@ -3083,19 +3443,30 @@ func filterPipeByCommanderIdentity(options []string, p *Player) []string {
 // present. Sandbox: picks the first card in the command zone — the
 // partner-pair union is S20 polish territory.
 //
-// S16: reads the commander's post-layer Effective().Colors rather
-// than scanning the printed cost directly. Today the printed-color
-// derivation flows through printedCharacteristic.Colors (populated
-// from ManaCost in characteristic.go), so the result matches the
-// pre-S16 proxy for every commander whose identity is fully
-// captured by their mana cost. Future Layer-5 color-change effects
-// (Painter's Servant on a commander, etc.) would mutate
-// Effective().Colors and the identity computation here picks the
-// change up automatically.
+// Three sources, in order:
 //
-// Falls back to distinctColorsInManaCost when Effective().Colors is
-// empty — covers placeholder commanders whose ManaCost is empty
-// (the demo seed) and the lobby-time pre-effects-init path.
+//  1. **Card.ColorIdentity** — Scryfall's own `color_identity`,
+//     copied at deck import. This is the only one of the three that
+//     is actually CR 903.4: it folds in mana symbols in rules text
+//     and BOTH faces of a double-faced card. Issue #276: a
+//     transform / modal-DFC commander has a null top-level
+//     mana_cost and colors (the real ones live on card_faces[0]),
+//     so sources 2 and 3 both returned empty and every "any colour
+//     in your commander's identity" pipe skipped narrowing —
+//     Command Tower offered all five colours to an Azorius deck.
+//  2. **Effective().Colors** (S16) — the commander's post-layer
+//     colours. Not identity, but a good proxy for any commander
+//     whose identity is fully captured by their mana cost, and it
+//     picks up Layer-5 colour-change effects (Painter's Servant on
+//     a commander) automatically.
+//  3. **distinctColorsInManaCost** — the original S15 proxy.
+//     Covers placeholder commanders with no stamped colours (the
+//     demo seed) and the lobby-time pre-effects-init path.
+//
+// Note the fallbacks can only ever be narrower than the truth, and
+// every call site uses the result to NARROW a mana pipe, so the
+// pre-#276 behaviour was permissive (offering colours that don't
+// exist) rather than restrictive.
 func commanderIdentityFor(p *Player) []string {
 	if p == nil || p.Command == nil {
 		return nil
@@ -3103,6 +3474,9 @@ func commanderIdentityFor(p *Player) []string {
 	for _, c := range p.Command.Cards {
 		if !c.IsCommander {
 			continue
+		}
+		if len(c.ColorIdentity) > 0 {
+			return c.ColorIdentity
 		}
 		eff := c.Effective()
 		if len(eff.Colors) > 0 {
@@ -3423,6 +3797,122 @@ func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
 		}
 	}
 	return ErrCardNotFound
+}
+
+// AttackDeclaration is one (attacker, defending player) pair inside a
+// bulk DeclareAttackers submission. The set as a whole is the
+// attacking player's declaration for the turn (CR 508.1).
+type AttackDeclaration struct {
+	Attacker uuid.UUID
+	Target   uuid.UUID
+}
+
+// DeclareAttackers declares an entire attacking set in ONE mutation.
+// It exists because the per-creature DeclareAttacker is the wrong
+// granularity for a wide board: the client's "attack with all" only
+// has the per-creature verb, so a 12-creature alpha strike becomes 12
+// room.Apply calls — 12 full-game clones on the undo stack, 12
+// snapshot broadcasts, and an "undo" that needs 12 presses against a
+// per-turn budget of one. One action means one undo entry, so undo is
+// the exact inverse of "attack with everything" (#318).
+//
+// It is also closer to the rules than the loop is. CR 508.1 declares
+// attackers simultaneously and CR 508.2 gives the active player
+// priority afterwards, at which point every "whenever ~ attacks"
+// trigger goes on the stack together in APNAP order. Declaring one at
+// a time instead fires each trigger through its own state-check drain,
+// interleaving resolutions between declarations. Here every card is
+// mutated first, then every EventAttack is emitted, then a single
+// runStateChecksLocked drains the batch.
+//
+// Eligibility is STRICT and silent, unlike DeclareAttacker, which is
+// deliberately lax so the sandbox can force odd board states by hand.
+// A bulk "attack with everything" must never turn one ineligible
+// creature into a failed alpha strike, so entries that are unknown,
+// not creatures, tapped, summoning-sick (CR 302.1), defenders
+// (CR 702.3), already declared this combat, or pointed at a
+// nonexistent / eliminated / self seat are skipped without error.
+// Callers that need the lax behaviour keep using DeclareAttacker.
+//
+// Returns the instance IDs actually declared, in submission order.
+// Returns ErrNoLegalAttackers when the whole batch was skipped, so
+// the room layer neither records an undo entry nor broadcasts a
+// snapshot for a no-op. Caller authorization (does this seat control
+// these creatures) is enforced one layer up, in actions.Dispatch.
+func (g *Game) DeclareAttackers(decls []AttackDeclaration) ([]uuid.UUID, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return nil, ErrGameNotActive
+	}
+	if g.Turn.Step != StepDeclareAttackers {
+		return nil, ErrWrongStep
+	}
+	// Layers must be fresh so HasKeyword reads current effective
+	// characteristics — a creature handed haste or vigilance this turn
+	// has to be judged on the granted keyword, not the printed one.
+	g.RecomputeLayersIfStaleLocked()
+
+	// attackEvent captures what EmitEvent needs by value. Card
+	// pointers must not survive the mutation loop: emitting events
+	// and running state checks can reallocate the battlefield slice.
+	type attackEvent struct {
+		attacker   uuid.UUID
+		controller uuid.UUID
+		target     uuid.UUID
+	}
+	declared := make([]uuid.UUID, 0, len(decls))
+	events := make([]attackEvent, 0, len(decls))
+
+	for _, d := range decls {
+		defender := g.playerByIDLocked(d.Target)
+		if defender == nil || defender.Eliminated {
+			continue
+		}
+		card := findBattlefieldCard(g, d.Attacker)
+		if card == nil || !card.IsCreature() {
+			continue
+		}
+		// A creature may not attack its own controller, and a card
+		// already declared this combat keeps the target its controller
+		// picked — re-pointing is a correction, which stays on the
+		// single-card verb.
+		if card.Controller == d.Target || card.AttackingTarget != uuid.Nil {
+			continue
+		}
+		if card.Tapped || HasKeyword(card, "defender") || HasSummoningSickness(card) {
+			continue
+		}
+		card.AttackingTarget = d.Target
+		// CR 508.1f: declaring an attacker taps it unless it has
+		// vigilance (CR 702.20).
+		if !HasKeyword(card, "vigilance") {
+			card.Tapped = true
+		}
+		// Attacking and blocking are mutually exclusive per card.
+		card.BlockingTarget = uuid.Nil
+		declared = append(declared, d.Attacker)
+		events = append(events, attackEvent{
+			attacker:   d.Attacker,
+			controller: card.Controller,
+			target:     d.Target,
+		})
+	}
+	if len(declared) == 0 {
+		return nil, ErrNoLegalAttackers
+	}
+	for _, ev := range events {
+		g.EmitEvent(Event{
+			Kind:   EventAttack,
+			Actor:  ev.controller,
+			CardID: ev.attacker,
+			Target: ev.target,
+		})
+	}
+	// One drain for the whole declaration — see the CR 508.2 note in
+	// the doc comment.
+	g.runStateChecksLocked()
+	return declared, nil
 }
 
 // DeclareBlocker marks a battlefield card as blocking a specific

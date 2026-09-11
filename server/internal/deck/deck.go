@@ -257,25 +257,163 @@ func ToGameCard(c cards.Card, isCommander bool) game.Card {
 	return toGameCard(c, isCommander)
 }
 
-// printedLoyalty parses Scryfall's printed starting loyalty to an
-// int. Scryfall puts loyalty at the top level for ordinary cards and
-// on the FACE for double-faced ones, so the face list is the
-// fallback — otherwise every transforming planeswalker would import
-// with zero loyalty and die to CR 704.5i the instant it resolved.
+// printedLoyalty parses Scryfall's top-level printed starting
+// loyalty to an int (CR 306.5b).
+//
+// It used to fall back to "the first face that prints a loyalty",
+// because Scryfall puts loyalty on the FACE for double-faced cards
+// and leaves the top-level field empty — without which every
+// transforming planeswalker imported with zero loyalty and died to
+// the CR 704.5i SBA the instant it resolved (#274).
+//
+// ADR 0034 makes that fallback both unnecessary and wrong. Per-face
+// loyalty now lives on game.Face and SetFace(0) materialises the
+// FRONT face's, which for Nissa, Vastwood Seer // Nissa, Sage
+// Animist is correctly zero: the front face is a 4/4 Elf Scout, and
+// handing it the back face's 3 was the whole-card fallback papering
+// over the missing face model.
 //
 // Non-numeric values ("X" on the handful of X-loyalty designs) parse
 // to zero, matching how power / toughness handle "*". Those cards
 // stay a manual-sandbox case: the player adds counters by hand.
 func printedLoyalty(c cards.Card) int {
-	if n, err := strconv.Atoi(strings.TrimSpace(c.Loyalty)); err == nil {
-		return n
+	n, _ := strconv.Atoi(strings.TrimSpace(c.Loyalty))
+	return n
+}
+
+// printedKeywords translates Scryfall's `keywords` array into the
+// engine's canonical keyword tokens. Scryfall capitalises as the
+// card prints ("Flying", "First strike") and lists every mechanic
+// on the card, including set-specific ones the engine has never
+// heard of ("Prepared", "Waterbend"), so game.CanonicalKeyword
+// lowercases and drops anything outside the enforced set.
+//
+// Issues #317 / #319 / #320: before this, printed keywords existed
+// ONLY in the opt-in effect catalog, which covers a few hundred
+// cards. Vigilance, flash, flying, trample, deathtouch, lifelink,
+// first / double strike, menace, reach, haste and defender were all
+// inert on every other card — the attacker tapped, the flash spell
+// was refused at instant speed, the flier was blocked by ground
+// creatures. Keywords are printed card data, like power / toughness
+// and starting loyalty (#274), so they travel the same road.
+//
+// The multi-face narrowing is the one subtlety. Scryfall puts
+// `keywords` at the TOP level even for double-faced cards, where it
+// is the UNION over every face and the faces carry no arrays of
+// their own: Aang, Swift Savior // Aang and La, Ocean's Fury lists
+// flash and flying (front) next to reach and trample (back). A
+// game.Card is the front face for every purpose that reads keywords
+// today, so a keyword the front face's oracle text does not print
+// is dropped. The match is against comma-separated entries of a
+// line, which is how keyword abilities are printed ("Reach,
+// trample"), so prose that merely mentions a keyword ("target
+// creature gains trample") can't smuggle one in.
+func printedKeywords(c cards.Card) []string {
+	if len(c.Keywords) == 0 {
+		return nil
 	}
+	var front map[string]bool
+	if len(c.CardFaces) > 1 {
+		front = keywordLines(c.CardFaces[0].OracleText)
+	}
+	var confirm map[string]bool
+	out := make([]string, 0, len(c.Keywords))
+	for _, raw := range c.Keywords {
+		kw, ok := game.CanonicalKeyword(raw)
+		if !ok {
+			continue
+		}
+		if front != nil && !front[kw] {
+			continue
+		}
+		// A keyword with a NARROWER printed variant has to be
+		// confirmed against the oracle text, because Scryfall tags
+		// the variant with the broad name as well. 21 cards —
+		// Knight of Grace, Garruk's Harbinger, Sphinx of the
+		// Guildpact, six Jaheiras — print only "Hexproof from
+		// black" / "Hexproof from monocolored" and carry BOTH
+		// "Hexproof" and "Hexproof from" in the array. Taking the
+		// array at its word would make every one of them fully
+		// untargetable by opponents: STRONGER than printed, which
+		// is the direction this repo never errs in. The line scan
+		// finds "Hexproof from black" as its own entry, which is
+		// not the bare keyword, so the broad grant is dropped and
+		// the card keeps the narrow ability it prints — as a
+		// simplification, that narrow ability is then not enforced
+		// at all, which errs weaker.
+		if narrowVariantKeywords[kw] {
+			if confirm == nil {
+				confirm = keywordLinesOf(c)
+			}
+			if !confirm[kw] {
+				continue
+			}
+		}
+		out = append(out, kw)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// narrowVariantKeywords lists the canonical tokens whose Scryfall
+// entry can be a superset of what the card prints, so a bare
+// keyword-ability line is required before the token is stamped.
+// "Hexproof" is the only one today ("Hexproof from <quality>");
+// shroud and the combat keywords have no parameterised form.
+var narrowVariantKeywords = map[string]bool{"hexproof": true}
+
+// keywordLinesOf unions the keyword-ability lines across every
+// oracle text a printing carries — the top-level one for a
+// single-faced card, each face's for a multi-faced one. The
+// multi-face NARROWING above is a separate, stricter check; this is
+// only asked whether the bare keyword is printed anywhere at all.
+func keywordLinesOf(c cards.Card) map[string]bool {
+	out := keywordLines(c.OracleText)
 	for _, f := range c.CardFaces {
-		if n, err := strconv.Atoi(strings.TrimSpace(f.Loyalty)); err == nil {
-			return n
+		for kw := range keywordLines(f.OracleText) {
+			out[kw] = true
 		}
 	}
-	return 0
+	return out
+}
+
+// keywordLines collects the canonical keywords printed as keyword
+// abilities in one face's oracle text. A keyword ability occupies
+// its own line, alone or comma-separated from its neighbours
+// ("Flash", "Flying, vigilance", "Reach, trample"); reminder text
+// in parentheses is stripped first so a reminder that names another
+// keyword doesn't count. Only exact matches after the split are
+// kept, so a sentence is never mistaken for a keyword line.
+func keywordLines(text string) map[string]bool {
+	out := map[string]bool{}
+	for _, line := range strings.Split(text, "\n") {
+		if i := strings.IndexByte(line, '('); i >= 0 {
+			line = line[:i]
+		}
+		for _, part := range strings.Split(line, ",") {
+			if kw, ok := game.CanonicalKeyword(part); ok {
+				out[kw] = true
+			}
+		}
+	}
+	return out
+}
+
+// oracleTexts returns every oracle text a printing carries: the
+// top-level one, then one per face. Scryfall fills exactly one of
+// those in — a single-faced card has top-level text and no faces, a
+// transform / modal card has null at the top level and text on each
+// face — so the union is the whole of the card's printed rules
+// without the caller having to know which shape it got.
+func oracleTexts(c cards.Card) []string {
+	out := make([]string, 0, 1+len(c.CardFaces))
+	out = append(out, c.OracleText)
+	for _, f := range c.CardFaces {
+		out = append(out, f.OracleText)
+	}
+	return out
 }
 
 func toGameCard(c cards.Card, isCommander bool) game.Card {
@@ -285,7 +423,7 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 	// sandbox lets players manually adjust life for the exotic cases.
 	power, _ := strconv.Atoi(strings.TrimSpace(c.Power))
 	toughness, _ := strconv.Atoi(strings.TrimSpace(c.Toughness))
-	return game.Card{
+	out := game.Card{
 		InstanceID: uuid.New(),
 		Name:       c.Name,
 		ScryfallID: c.ID.String(),
@@ -298,9 +436,106 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		// it the 704.5i SBA eats the walker on the next priority
 		// boundary (issue #274).
 		StartingLoyalty: printedLoyalty(c),
-		ManaCost:        c.ManaCost,
-		ProducedMana:    append([]string(nil), c.ProducedMana...),
-		Colors:          append([]string(nil), c.Colors...),
-		IsCommander:     isCommander,
+		// CR 702 — printed keyword abilities. The engine's combat
+		// and cast-timing gates read these through
+		// game.HasKeyword; before they were carried here they
+		// existed only for catalog cards (#317 / #319 / #320).
+		Keywords: printedKeywords(c),
+		// Does the engine have a generic path for what this card
+		// prints, or does it need a hand-written Spec? Answered here
+		// because this is the last place the Scryfall record is in
+		// scope — game.Card carries no oracle text. See
+		// game.NeedsCatalogEffect; the catalog half of the join
+		// happens in game.Unimplemented.
+		NeedsEffect:  game.NeedsCatalogEffect(c.TypeLine, oracleTexts(c)...),
+		ManaCost:     c.ManaCost,
+		ProducedMana: append([]string(nil), c.ProducedMana...),
+		Colors:       append([]string(nil), c.Colors...),
+		// CR 903.4 Commander colour identity. Already parsed off
+		// the Scryfall record and already trusted by
+		// deck/validate.go; issue #276 was that it had no path onto
+		// game.Card, so commanderIdentityFor fell back to the
+		// printed mana cost — empty for a double-faced commander,
+		// whose cost Scryfall puts on card_faces[0].
+		ColorIdentity: append([]string(nil), c.ColorIdentity...),
+		IsCommander:   isCommander,
+		// ADR 0034 — the printing's layout and its printed faces.
+		// Layout decides what "choose a face" MEANS at announce time
+		// (modal DFC: either half; transform: front only), and Faces
+		// carries the per-face cost / type / colours that Scryfall
+		// leaves null at the TOP level for exactly those layouts.
+		Layout: c.Layout,
+		Faces:  printedFaces(c),
 	}
+	// Materialise face 0. For the ~33,000 single-faced oracle IDs
+	// this is a no-op and every field above stands as written; for a
+	// multi-face card it OVERWRITES Name / TypeLine / ManaCost /
+	// Colors / Power / Toughness / StartingLoyalty with the front
+	// face's — which is the point, because the top-level values it
+	// replaces are the ones that were null ("" cost ⇒ a free spell)
+	// or joined ("Sorcery // Land" ⇒ a sorcery that passed IsLand()
+	// and skipped the cost gate entirely, #289).
+	out.SetFace(0)
+	return out
+}
+
+// printedFaces builds the engine's face list from Scryfall's
+// card_faces array. Returns nil for a single-faced printing, which
+// leaves Card.Faces nil and SetFace a no-op — the entire
+// single-faced world is untouched by this change.
+//
+// A one-element card_faces array is treated as single-faced too.
+// Scryfall does not ship those today, but a face list that cannot
+// offer a choice is indistinguishable from no face list, and nil is
+// the cheaper representation of the same fact.
+func printedFaces(c cards.Card) []game.Face {
+	if len(c.CardFaces) < 2 {
+		return nil
+	}
+	out := make([]game.Face, 0, len(c.CardFaces))
+	for _, f := range c.CardFaces {
+		// Same posture as the top-level parse: non-numeric printed
+		// values ("*", "1+*", "X") land as zero and stay a manual
+		// sandbox case.
+		power, _ := strconv.Atoi(strings.TrimSpace(f.Power))
+		toughness, _ := strconv.Atoi(strings.TrimSpace(f.Toughness))
+		loyalty, _ := strconv.Atoi(strings.TrimSpace(f.Loyalty))
+		out = append(out, game.Face{
+			Name:            f.Name,
+			TypeLine:        f.TypeLine,
+			ManaCost:        f.ManaCost,
+			Colors:          faceColors(f),
+			Power:           power,
+			Toughness:       toughness,
+			StartingLoyalty: loyalty,
+			OracleText:      f.OracleText,
+		})
+	}
+	return out
+}
+
+// faceColors resolves one face's colours. The order matters, because
+// the two Scryfall multi-face shapes populate different fields:
+//
+//	transform / modal_dfc  `colors` is populated per face.
+//	adventure / split      `colors` is null per face; the face's
+//	                       mana cost is the only signal.
+//	transform BACK faces   have no mana cost at all, and Scryfall
+//	                       expresses their colour as CR 105.2c's
+//	                       colour indicator — Jace, Telepath Unbound
+//	                       is blue by indicator and by nothing else.
+//
+// So: colors, then color_indicator, then derive from the cost.
+// Returns nil rather than an empty slice for a genuinely colourless
+// face, because game.Card reads a nil Colors as "not stamped" and
+// falls back to the cost — which for a colourless face yields nil
+// again, so the two agree.
+func faceColors(f cards.CardFace) []string {
+	if len(f.Colors) > 0 {
+		return append([]string(nil), f.Colors...)
+	}
+	if len(f.ColorIndicator) > 0 {
+		return append([]string(nil), f.ColorIndicator...)
+	}
+	return game.ColorsInManaCost(f.ManaCost)
 }

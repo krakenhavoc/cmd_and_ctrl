@@ -78,6 +78,26 @@ type Card struct {
 	// targeting predicates read this. Added in S20 sub-PR 1.
 	Colors []string
 
+	// ColorIdentity is the card's Commander colour identity (CR
+	// 903.4) — uppercase letters from {"W","U","B","R","G"}, copied
+	// verbatim from Scryfall's top-level `color_identity` at deck
+	// import. Distinct from Colors: identity folds in mana symbols
+	// in rules text, colour indicators, and — crucially — BOTH
+	// faces of a double-faced card, which is why it is the only
+	// colour data that survives Scryfall's null top-level
+	// mana_cost / colors on a `transform` or `modal_dfc` record.
+	//
+	// Issue #276: commanderIdentityFor used to derive identity from
+	// Effective().Colors, falling back to the printed mana cost.
+	// Both are empty for a DFC commander, so the identity came back
+	// empty and every "any colour in your commander's identity"
+	// pipe (Command Tower, Arcane Signet, Fellwar Stone) skipped
+	// narrowing and offered all five colours. deck/validate.go has
+	// always read this field off cards.Card correctly — it simply
+	// had no path onto game.Card. Empty for tokens and fixtures,
+	// where the pre-#276 derivation still applies.
+	ColorIdentity []string
+
 	// StartingLoyalty is the printed loyalty a planeswalker enters
 	// the battlefield with (CR 306.5b), parsed from Scryfall's
 	// `loyalty` string at deck-import time. Zero for every other
@@ -102,9 +122,45 @@ type Card struct {
 	// S21 every token's flying / deathtouch was cosmetic. The token
 	// template declares them here and printedCharacteristic folds
 	// them in, so the layer engine treats them like any other
-	// printed keyword. Empty for ordinary cards, which keep using
-	// the catalog. Added in S21 sub-PR 1.
+	// printed keyword. Added in S21 sub-PR 1.
+	//
+	// Since #317 / #319 / #320 this is also the road ORDINARY cards
+	// travel: the deck importer stamps Scryfall's `keywords` array
+	// here (lowercased and filtered to the keywords the engine
+	// enforces — see deck.printedKeywords and CanonicalKeyword).
+	// Before that, a printed keyword only existed if someone had
+	// hand-written a catalog Spec for the card, which left
+	// vigilance, flash, flying and the rest inert on roughly 7,500
+	// cards — the bird that tapped when it attacked, the flash
+	// creature the server refused at instant speed. The catalog's
+	// Spec.PrintedKeywords survives alongside it, merged and
+	// deduped by printedCharacteristic, for cards that never go
+	// through deck import.
+	//
+	// Empty for cards from neither source (test fixtures) and for
+	// the ~78% of real cards that print no keyword at all.
 	Keywords []string
+
+	// NeedsEffect records that this card's printed text describes
+	// rules only a hand-written catalog Spec can carry out — it is
+	// NOT "has oracle text" and it is NOT "is missing from the
+	// catalog". A vanilla creature is false; a creature whose whole
+	// text is enforced keywords is false; a Forest is false. See
+	// coverage.go for the reasoning and NeedsCatalogEffect for the
+	// derivation.
+	//
+	// Stamped by the deck importer from the Scryfall record, the
+	// same road Keywords and StartingLoyalty travel, and joined with
+	// catalog membership by game.Unimplemented — the one definition
+	// the deck-upload summary, the card view and the stack view all
+	// read, so they cannot disagree.
+	//
+	// False for cards that never went through deck import (tokens,
+	// fixtures, the demo seed), which means they are never flagged.
+	// Deliberate: a missed signal costs a player nothing they
+	// weren't already going to learn, and a false one costs the
+	// signal its credibility.
+	NeedsEffect bool
 
 	// ManaAbilities are mana abilities carried on the card object,
 	// for the same reason as Keywords: a Treasure token's "{T},
@@ -238,6 +294,38 @@ type Card struct {
 	// as the card leaves exile and swept at cleanup.
 	ExilePlay ExilePlayPermission
 
+	// Layout is Scryfall's printing layout, copied verbatim at deck
+	// import: "normal", "transform", "modal_dfc", "adventure",
+	// "split", "prepare", … The cast path branches on it to decide
+	// what a face CHOICE means — see CastableFaces and faceOnResolve
+	// in face.go. Empty for tokens, fixtures and the demo seed,
+	// which are all single-faced. Added by ADR 0034.
+	Layout string
+
+	// Faces is every printed face of a multi-face card, front first.
+	// nil for the ~33,000 single-faced oracle IDs, which keep the
+	// pre-ADR-0034 behaviour to the byte.
+	//
+	// The flat printed fields above (Name, TypeLine, ManaCost,
+	// Colors, Power, Toughness, StartingLoyalty) are the
+	// MATERIALISATION of Faces[ActiveFace], not an independent copy
+	// of Scryfall's top-level record. That is deliberate: making
+	// them methods would have rewritten 293 TypeLine: struct-literal
+	// sites and 389 Card{} literals, whereas leaving them as fields
+	// means all 74 Is*() call sites keep compiling and START being
+	// right, since "the characteristics of the face that's currently
+	// up" is exactly CR 711.2.
+	Faces []Face
+
+	// ActiveFace indexes Faces.
+	//
+	// INVARIANT: the flat printed fields equal Faces[ActiveFace].
+	// Maintained by SetFace and by nothing else — never assign this
+	// field directly, or the card desynchronises and no test will
+	// catch it. AssertFaceInvariant (face_test.go) walks a finished
+	// game and checks exactly this.
+	ActiveFace int
+
 	// effective is the cached post-layer-resolution characteristic
 	// for this card on the battlefield. Populated by the layer
 	// engine's recompute pass; nil ⇒ "no recompute has run since
@@ -340,54 +428,76 @@ func (c Card) CurrentToughness() int {
 	return t
 }
 
-// IsCreature reports whether the card's TypeLine identifies it as a
-// creature. Case-insensitive substring check against "creature";
-// covers "Creature — Human Wizard" and "Legendary Artifact Creature
-// — Golem" alike. Empty TypeLine returns false (placeholder cards
-// from the demo seed are conservatively treated as non-creatures).
-func (c Card) IsCreature() bool {
-	return typeLineHas(c.TypeLine, "creature")
-}
+// --- card-type predicates ------------------------------------
+//
+// These read the card's EFFECTIVE types — the post-CR-613 view the
+// layer engine computes — not the printed type line. That is the
+// whole of #255 / #258 / #344 / #348: before this, layer 4 was
+// computed, projected onto the wire, and then invisible to combat,
+// state-based actions, targeting and the catalog's own Creature()
+// predicate, because every one of them landed here and here read
+// Card.TypeLine.
+//
+// Three properties make the reroute safe:
+//
+//  1. Card.Effective() is a pure read of the cached resolution. It
+//     never triggers a recompute, so a static ability's AppliesTo
+//     predicate can call IsLand() from inside the layer pass
+//     without re-entering it. A type predicate that DID kick off a
+//     recompute would recurse through applyLayerLocked forever;
+//     keeping Effective() passive is the invariant that forbids it.
+//  2. Off the battlefield the cache is nil and these fall through
+//     to the printed type line verbatim — byte-identical to the
+//     pre-change behaviour for every card in a hand, library,
+//     graveyard, exile or on the stack. CR 113.6: a static ability
+//     only does anything while its source is on the battlefield,
+//     so there is nothing for the effective view to say there.
+//  3. Freshness is the caller's job, exactly as it already was for
+//     CurrentPower / CurrentToughness: a write path that reads
+//     types after a state change calls
+//     g.RecomputeLayersIfStaleLocked first. Every read path goes
+//     through ReadSnapshot, which does it for them.
+//
+// Callers that genuinely want the PRINTED type — CR 707.2 copiable
+// values, a deck-construction check, anything that must not move
+// when a Blood Moon lands — use the PrintedIs* accessors below.
 
-// IsLand reports whether the card's TypeLine identifies it as a land.
-func (c Card) IsLand() bool {
-	return typeLineHas(c.TypeLine, "land")
-}
+// IsCreature reports whether the card is a creature right now,
+// after continuous effects. Covers "Creature — Human Wizard" and
+// "Legendary Artifact Creature — Golem" alike, plus a land a
+// Layer-4 static has animated and a Theros god whose devotion gate
+// is unmet. An empty type line with no layer effect on it returns
+// false (placeholder cards from the demo seed are conservatively
+// treated as non-creatures).
+func (c Card) IsCreature() bool { return c.HasCardType("creature") }
+
+// IsLand reports whether the card is a land after continuous
+// effects.
+func (c Card) IsLand() bool { return c.HasCardType("land") }
 
 // IsInstant reports whether the card is an instant. Instants share
 // the priority window with activated abilities — they're castable
 // any time the caller holds priority.
-func (c Card) IsInstant() bool {
-	return typeLineHas(c.TypeLine, "instant")
-}
+func (c Card) IsInstant() bool { return c.HasCardType("instant") }
 
 // IsSorcery reports whether the card is a sorcery. Sorceries are
 // sorcery-speed only — main phase, stack empty, caller is the
 // active player.
-func (c Card) IsSorcery() bool {
-	return typeLineHas(c.TypeLine, "sorcery")
-}
+func (c Card) IsSorcery() bool { return c.HasCardType("sorcery") }
 
-// IsArtifact reports whether the card is an artifact. Artifacts are
-// permanents (resolution route: battlefield).
-func (c Card) IsArtifact() bool {
-	return typeLineHas(c.TypeLine, "artifact")
-}
+// IsArtifact reports whether the card is an artifact after
+// continuous effects — Mycosynth Lattice's "all permanents are
+// artifacts in addition to their other types" lands here.
+func (c Card) IsArtifact() bool { return c.HasCardType("artifact") }
 
 // IsEnchantment reports whether the card is an enchantment.
-func (c Card) IsEnchantment() bool {
-	return typeLineHas(c.TypeLine, "enchantment")
-}
+func (c Card) IsEnchantment() bool { return c.HasCardType("enchantment") }
 
 // IsPlaneswalker reports whether the card is a planeswalker.
-func (c Card) IsPlaneswalker() bool {
-	return typeLineHas(c.TypeLine, "planeswalker")
-}
+func (c Card) IsPlaneswalker() bool { return c.HasCardType("planeswalker") }
 
 // IsBattle reports whether the card is a battle (post-MoM card type).
-func (c Card) IsBattle() bool {
-	return typeLineHas(c.TypeLine, "battle")
-}
+func (c Card) IsBattle() bool { return c.HasCardType("battle") }
 
 // IsPermanent reports whether the card resolves to the battlefield.
 // Per CR 110.4, the permanent types are artifact, creature,
@@ -400,6 +510,89 @@ func (c Card) IsPermanent() bool {
 		c.IsLand() ||
 		c.IsPlaneswalker() ||
 		c.IsBattle()
+}
+
+// HasCardType reports whether the card's effective card types
+// include `lowerType`, which MUST be lowercase (every caller in
+// this package passes a literal).
+//
+// The nil-cache branch is not only an optimisation that keeps a
+// hot predicate allocation-free: it makes the off-battlefield
+// answer bit-for-bit the pre-layer answer, so a card that never
+// reaches the layer engine cannot change behaviour because of this
+// file. The cached branch compares whole type tokens instead of
+// searching for a substring, which is strictly more accurate —
+// "Island" no longer contains a "land" type by accident of
+// spelling.
+func (c Card) HasCardType(lowerType string) bool {
+	if c.effective == nil {
+		return typeLineHas(c.TypeLine, lowerType)
+	}
+	return typeListHas(c.effective.Types, lowerType)
+}
+
+// HasSubtype reports whether the card's effective subtypes include
+// `subtype`, case-insensitively. This is the accessor a Layer-4
+// land-type grant (Urborg, Tomb of Yawgmoth) becomes visible
+// through: CR 305.6's intrinsic mana abilities key off the basic
+// land TYPE, never off the Basic supertype.
+func (c Card) HasSubtype(subtype string) bool {
+	if c.effective == nil {
+		_, _, printed := ParseTypeLine(c.TypeLine)
+		return typeListHas(printed, subtype)
+	}
+	return typeListHas(c.effective.Subtypes, subtype)
+}
+
+// --- printed card-type predicates -----------------------------
+//
+// The deliberate other half of the split. These read the printed
+// type line and are immune to every continuous effect, which is
+// what CR 707.2's copiable values and any "what does this card
+// actually say" question need. A separate, explicitly named
+// surface rather than a bool argument, so a call site's choice
+// between the two is visible in the diff that makes it.
+
+// PrintedIsCreature reports whether the PRINTED type line says
+// creature, ignoring every continuous effect.
+func (c Card) PrintedIsCreature() bool { return typeLineHas(c.TypeLine, "creature") }
+
+// PrintedIsLand reports whether the PRINTED type line says land,
+// ignoring every continuous effect.
+func (c Card) PrintedIsLand() bool { return typeLineHas(c.TypeLine, "land") }
+
+// typeListHas reports whether `types` holds `needle` as a whole
+// token, case-insensitively.
+func typeListHas(types []string, needle string) bool {
+	for _, t := range types {
+		if equalFoldASCII(t, needle) {
+			return true
+		}
+	}
+	return false
+}
+
+// equalFoldASCII is strings.EqualFold restricted to ASCII. Type and
+// subtype names are ASCII in every Scryfall type line, and this
+// runs once per candidate per predicate per snapshot, so the
+// allocation-free byte loop earns its place.
+func equalFoldASCII(a, b string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := 0; i < len(a); i++ {
+		x, y := a[i], b[i]
+		if x >= 'A' && x <= 'Z' {
+			x += 'a' - 'A'
+		}
+		if y >= 'A' && y <= 'Z' {
+			y += 'a' - 'A'
+		}
+		if x != y {
+			return false
+		}
+	}
+	return true
 }
 
 // typeLineHas does a case-insensitive substring check against the

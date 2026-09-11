@@ -39,7 +39,15 @@ func (g *Game) cloneLocked() *Game {
 		UndoLimit:         g.UndoLimit,
 		StartingSeat:      g.StartingSeat,
 		SplitSecondActive: g.SplitSecondActive,
-		rng:               g.rng,
+		// Both halves of the randomness are shared, not copied, on
+		// exactly the contract the file header describes: a clone
+		// re-applying actions must draw from the source the original
+		// would have. Undo therefore does NOT rewind the random
+		// stream, which is deliberate and long-standing. Snapshot
+		// restore is the opposite — it captures the stream position
+		// and resumes from it. See snapshot.go.
+		rng:      g.rng,
+		rngState: g.rngState,
 	}
 	if len(g.StackMeta) > 0 {
 		out.StackMeta = make(map[uuid.UUID]*StackItem, len(g.StackMeta))
@@ -117,6 +125,16 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.ColorOptions) > 0 {
 				cloned.ColorOptions = append([]string(nil), c.ColorOptions...)
 			}
+			// S32 mana pipeline (#352): the spend restrictions a
+			// PendingChoiceMana will stamp onto the token it mints.
+			// New game state, so it needs its own backing array for
+			// exactly the reason ColorOptions does — an undo that
+			// shared it would let the restored game mutate the live
+			// one, and the thing being shared here decides what the
+			// mana may legally pay for.
+			if len(c.ManaRestrictions) > 0 {
+				cloned.ManaRestrictions = append([]string(nil), c.ManaRestrictions...)
+			}
 			if len(c.TriggerOrderIDs) > 0 {
 				cloned.TriggerOrderIDs = append([]uuid.UUID(nil), c.TriggerOrderIDs...)
 			}
@@ -161,6 +179,18 @@ func (g *Game) cloneLocked() *Game {
 	if len(g.TurnScopedReplacements) > 0 {
 		out.TurnScopedReplacements = make([]ReplacementEffect, len(g.TurnScopedReplacements))
 		copy(out.TurnScopedReplacements, g.TurnScopedReplacements)
+	}
+	// S32 turn-scoped statics — the layer-engine twin of the slice
+	// above, and the same reasoning: a ScopedStatic is written once
+	// at registration and never mutated (see the immutability
+	// contract on the type), so a fresh backing array is enough.
+	// What must not be shared is the array itself — the cleanup-step
+	// sweep replaces the slice rather than compacting in place
+	// precisely so an undo snapshot taken mid-turn still holds the
+	// grants that were live when it was taken.
+	if len(g.TurnScopedStatics) > 0 {
+		out.TurnScopedStatics = make([]ScopedStatic, len(g.TurnScopedStatics))
+		copy(out.TurnScopedStatics, g.TurnScopedStatics)
 	}
 	// CR 603.10 LKI snapshots (S19). Values are Characteristic copies
 	// that are never mutated after being stored, so a per-entry value
@@ -207,6 +237,22 @@ func cloneCard(c Card) Card {
 	}
 	if len(c.Colors) > 0 {
 		out.Colors = append([]string(nil), c.Colors...)
+	}
+	// ADR 0034 faces. ActiveFace and Layout are scalars and ride the
+	// value copy, but Faces is a slice of structs each holding its
+	// own Colors slice — two levels of aliasing, both of which would
+	// survive an undo. The face list itself is immutable printed data
+	// today (only SetFace reads it), so this is belt-and-braces; a
+	// later transform effect that rewrites a face in place would make
+	// it load-bearing, and by then the aliasing bug would be silent.
+	if len(c.Faces) > 0 {
+		out.Faces = make([]Face, len(c.Faces))
+		copy(out.Faces, c.Faces)
+		for i := range out.Faces {
+			if len(c.Faces[i].Colors) > 0 {
+				out.Faces[i].Colors = append([]string(nil), c.Faces[i].Colors...)
+			}
+		}
 	}
 	if len(c.Counters) > 0 {
 		out.Counters = make(map[string]int, len(c.Counters))
@@ -401,8 +447,10 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.PendingChoices = src.PendingChoices
 	g.BuiltinReplacements = src.BuiltinReplacements
 	g.TurnScopedReplacements = src.TurnScopedReplacements
+	g.TurnScopedStatics = src.TurnScopedStatics
 	g.lastKnownBattlefield = src.lastKnownBattlefield
 	g.rng = src.rng
+	g.rngState = src.rngState
 	// S16 layer-engine counters: adopt the snapshot's values via
 	// Store/Load (atomics can't be field-copied), then bump
 	// layerVersion past lastResolvedVersion so the next snapshot

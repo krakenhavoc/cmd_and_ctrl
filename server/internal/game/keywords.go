@@ -17,25 +17,145 @@ package game
 // Effective().Abilities on the battlefield.
 //
 // Off the battlefield (cards in hand, library, graveyard, exile),
-// HasKeyword falls back to CatalogPrintedKeywords — the catalog-side
-// hook populated by wire.go. The layer engine only maintains
-// Effective() for battlefield cards, so flash (the only keyword that
-// matters off the battlefield today) needs this fallback to gate a
-// cast of an Ambush Viper from the caster's hand.
+// HasKeyword falls back to the card's own `Keywords` slice and then
+// to CatalogPrintedKeywords — the catalog-side hook populated by
+// wire.go. The layer engine only maintains Effective() for
+// battlefield cards, so flash (the only keyword that matters off
+// the battlefield today) needs this fallback to gate a cast of an
+// Ambush Viper from the caster's hand — or, since #319 / #320, of
+// any of the ~640 cards that print flash and have no catalog entry,
+// from hand or from the command zone.
 //
 // Added in S18 sub-PR 2.
+
+import (
+	"strings"
+
+	"github.com/google/uuid"
+)
+
+// canonicalKeywords is the set of keyword abilities this engine
+// actually enforces — the S18 table, one entry per consumer in the
+// combat / cast paths above, plus the S23 targeting pair (hexproof,
+// shroud), whose consumer is the targeting choke point in
+// targets.go. The tokens are the canonical lowercase wire form; the
+// client's KEYWORD_ICONS map is keyed by exactly these strings.
+//
+// The set is deliberately CLOSED. Scryfall publishes a `keywords`
+// array carrying every mechanic printed on a card — "Prepared",
+// "Waterbend", "Cycling", "Ward" — and the deck importer filters
+// against this table before stamping Card.Keywords. Letting the
+// rest through would put strings the engine can't act on into
+// Characteristic.Abilities, where they would render as badges the
+// player can't rely on and read as promises the rules layer never
+// makes. A keyword joins this table in the same change that
+// teaches the engine to honour it.
+var canonicalKeywords = map[string]bool{
+	"flying":        true,
+	"reach":         true,
+	"first strike":  true,
+	"double strike": true,
+	"deathtouch":    true,
+	"lifelink":      true,
+	"trample":       true,
+	"vigilance":     true,
+	"menace":        true,
+	"defender":      true,
+	"haste":         true,
+	"flash":         true,
+	"hexproof":      true,
+	"shroud":        true,
+}
+
+// CanBeTargetedBy reports whether `caster` may choose this card as
+// the target of a spell or ability they control, under the CR 702
+// protection-style keywords the engine honours:
+//
+//   - shroud (CR 702.18a) — can't be the target of spells or
+//     abilities AT ALL, its own controller's included.
+//   - hexproof (CR 702.11b) — can't be the target of spells or
+//     abilities your OPPONENTS control.
+//
+// Two keywords that belong to the same family are deliberately
+// ABSENT, and each is absent for a structural reason rather than
+// for lack of time (see docs/decisions/0038-protection-style-keywords.md):
+//
+//   - ward — CR 702.21a makes ward a TRIGGERED ability, not a
+//     targeting restriction. A warded permanent is a perfectly
+//     legal target; the trigger then counters the spell unless its
+//     controller pays. Enforcing it here would be the wrong rule in
+//     the wrong place — it would refuse the target outright instead
+//     of offering the payment.
+//   - protection — CR 702.16e tests the quality against the SOURCE
+//     of the spell or ability. This choke point receives only the
+//     controller's ID and never the source object, so the test it
+//     needs cannot be expressed here at all.
+//
+// Both are also PARAMETERISED keywords ("ward {2}", "protection
+// from red") and Characteristic.Abilities is a []string of bare
+// tokens, so there is nowhere to put the cost or the quality.
+//
+// Only the battlefield is checked. Both keywords are abilities of a
+// permanent (CR 113.6 — a continuous effect from a static ability
+// applies only while its source is on the battlefield, and the
+// printed abilities name a permanent), so a creature card sitting in
+// a graveyard that happens to print hexproof is a legal target for
+// Regrowth. Without this zone guard the off-battlefield HasKeyword
+// fallback — which reads the card's own printed Keywords — would
+// wrongly protect it there.
+//
+// Players are not covered: hexproof on a PLAYER (Leyline of
+// Sanctity) has no home yet, because Player carries no keyword
+// slice. TargetPlayer refs pass this gate by not reaching it.
+//
+// nil card returns true: a caller that has lost the card has an
+// existence problem, not a targeting one, and the zone walk that
+// wraps this reports that separately.
+func CanBeTargetedBy(c *Card, zone ZoneKind, caster uuid.UUID) bool {
+	if c == nil || zone != ZoneBattlefield {
+		return true
+	}
+	if HasKeyword(c, "shroud") {
+		return false
+	}
+	if HasKeyword(c, "hexproof") && c.Controller != caster {
+		return false
+	}
+	return true
+}
+
+// CanonicalKeyword normalises one printed keyword string to the
+// engine's wire token, reporting whether the engine knows it.
+// Scryfall capitalises its keyword arrays as the card prints them
+// ("Flying", "First strike", "Double strike"), so normalisation is
+// a lowercase plus a whitespace trim; anything outside
+// canonicalKeywords returns ("", false).
+//
+// Exported for the deck importer, which is the only caller —
+// keeping the table in this package means the reader
+// (HasKeyword) and the writer (deck.printedKeywords) can never
+// drift on spelling. Added with the #317 / #319 / #320 fix.
+func CanonicalKeyword(s string) (string, bool) {
+	kw := strings.ToLower(strings.TrimSpace(s))
+	if !canonicalKeywords[kw] {
+		return "", false
+	}
+	return kw, true
+}
 
 // HasKeyword reports whether the card has the named keyword. kw
 // must be a canonical lowercase token (see AGENTS.md §7 "Adding a
 // combat-keyword card" for the table): "flying", "reach",
 // "first strike", "double strike", "deathtouch", "lifelink",
-// "trample", "vigilance", "menace", "defender", "haste", "flash".
+// "trample", "vigilance", "menace", "defender", "haste", "flash",
+// "hexproof", "shroud".
 //
 // On-battlefield: reads c.Effective().Abilities, so keywords granted
 // by static abilities (Lord of Atlantis's islandwalk on other
 // Merfolk) are included alongside the card's own printed keywords.
-// Off-battlefield: falls back to the card's own `Keywords` (token
-// templates) and then CatalogPrintedKeywords(c.OracleID), which
+// Off-battlefield: falls back to the card's own `Keywords` (every
+// deck-imported card since #317 / #319 / #320; token templates
+// before that) and then CatalogPrintedKeywords(c.OracleID), which
 // returns the `Spec.PrintedKeywords` slot. Granted keywords
 // don't apply off the battlefield (CR 113.6 — continuous effects
 // from static abilities only apply while the source permanent is on
@@ -74,7 +194,7 @@ func HasKeyword(c *Card, kw string) bool {
 	if CatalogPrintedKeywords == nil || c.OracleID == "" {
 		return false
 	}
-	for _, a := range CatalogPrintedKeywords(c.OracleID) {
+	for _, a := range CatalogPrintedKeywords(CatalogKey(*c)) {
 		if a == kw {
 			return true
 		}

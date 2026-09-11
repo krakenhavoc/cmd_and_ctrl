@@ -304,6 +304,35 @@ func TestValidateDFCLegendaryCommander(t *testing.T) {
 	}
 }
 
+// TestToGameCardCarriesColorIdentity is the deck-import half of
+// issue #276. A transform / modal-DFC record has a null top-level
+// mana_cost and colors — Scryfall puts them on card_faces[0] — so
+// the only colour data that survives import is color_identity.
+// deck/validate.go has always read it correctly off cards.Card; it
+// simply had no path onto game.Card, leaving commanderIdentityFor
+// with nothing to narrow Command Tower by.
+func TestToGameCardCarriesColorIdentity(t *testing.T) {
+	dfc := basicLegal("Aang, Swift Savior // Aang and La, Ocean's Fury", "Legendary Creature — Avatar // Legendary Creature — Avatar", "W", "U")
+	// The shape Scryfall actually delivers for layout: "transform".
+	dfc.ManaCost = ""
+	dfc.Colors = nil
+	dfc.CardFaces = []cards.CardFace{
+		{Name: "Aang, Swift Savior", TypeLine: "Legendary Creature — Avatar"},
+		{Name: "Aang and La, Ocean's Fury", TypeLine: "Legendary Creature — Avatar"},
+	}
+
+	got := toGameCard(dfc, true)
+	if len(got.ColorIdentity) != 2 || got.ColorIdentity[0] != "W" || got.ColorIdentity[1] != "U" {
+		t.Fatalf("ColorIdentity: got %v, want [W U]", got.ColorIdentity)
+	}
+	// The copy must not alias the source slice — game.Card instances
+	// outlive the index record they came from.
+	got.ColorIdentity[0] = "B"
+	if dfc.ColorIdentity[0] != "W" {
+		t.Errorf("toGameCard aliased the index record's ColorIdentity slice")
+	}
+}
+
 // --- validation ---
 
 // buildValidDeck returns a List that passes every validation rule.
@@ -525,8 +554,18 @@ func TestPrintedLoyaltyStampedOnGameCard(t *testing.T) {
 				Name:     "Nissa, Vastwood Seer // Nissa, Sage Animist",
 				TypeLine: "Legendary Creature — Elf Scout // Legendary Planeswalker — Nissa",
 				CardFaces: []cards.CardFace{
-					{Name: "Nissa, Vastwood Seer"},
-					{Name: "Nissa, Sage Animist", Loyalty: "3"},
+					{
+						Name:      "Nissa, Vastwood Seer",
+						TypeLine:  "Legendary Creature — Elf Scout",
+						ManaCost:  "{2}{G}",
+						Power:     "4",
+						Toughness: "4",
+					},
+					{
+						Name:     "Nissa, Sage Animist",
+						TypeLine: "Legendary Planeswalker — Nissa",
+						Loyalty:  "3",
+					},
 				},
 			},
 			{
@@ -547,11 +586,18 @@ func TestPrintedLoyaltyStampedOnGameCard(t *testing.T) {
 	}
 
 	want := map[string]int{
-		"Teferi, Temporal Archmage":                   5,
-		"Teferi, Time Raveler":                        4,
-		"Nissa, Vastwood Seer // Nissa, Sage Animist": 3,
-		"X-Loyalty Walker":                            0,
-		"Grizzly Bears":                               0,
+		"Teferi, Temporal Archmage": 5,
+		"Teferi, Time Raveler":      4,
+		// ADR 0034: a double-faced card imports as its FRONT face,
+		// name and loyalty together. Nissa, Vastwood Seer is a 4/4
+		// Elf Scout — it has no loyalty, and the pre-0034 whole-card
+		// "first face that prints a number" fallback handing it the
+		// BACK face's 3 was the missing face model papering over
+		// itself. The back's loyalty now lives on Faces[1] and
+		// arrives when (if) something transforms her.
+		"Nissa, Vastwood Seer": 0,
+		"X-Loyalty Walker":     0,
+		"Grizzly Bears":        0,
 	}
 	for _, gc := range list.ToGameCards() {
 		w, ok := want[gc.Name]

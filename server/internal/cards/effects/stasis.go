@@ -10,11 +10,16 @@ import (
 // the upkeep of Stasis's controller, they sacrifice Stasis unless
 // they pay {U}."
 //
-// S17 ships only the skip-untap half via a RepEventStepTransition
-// replacement. The upkeep-sacrifice half is a triggered ability
-// that lands with S19. Documented simplification: sandbox players
-// can manually sacrifice Stasis on their upkeep until S19 wires
-// the trigger.
+// Both halves are implemented: the skip-untap replacement (S17) and
+// the upkeep sacrifice-unless-you-pay-{U} trigger.
+//
+// #338 stale-simplification sweep: the trigger was left declared
+// "lands with S19, sandbox players can manually sacrifice Stasis on
+// their upkeep" long after S19 shipped triggered abilities and the
+// PayUnless prompt. That left the card with no off switch — a
+// Stasis on the battlefield locked the table's untap steps
+// indefinitely, because the clause that is supposed to end it every
+// upkeep simply never fired.
 //
 // The replacement AppliesTo fires on any RepEventStepTransition
 // where the step being entered is StepUntap, regardless of seat —
@@ -42,5 +47,28 @@ func init() {
 				Label: "Stasis: skip untap step",
 			},
 		},
+		Triggered: []game.TriggeredAbility{{
+			// "At the beginning of the upkeep of Stasis's
+			// controller" — the controller's upkeep only, unlike the
+			// skip-untap half, which hits every seat.
+			Watches: []game.EventKind{game.EventBeginUpkeep},
+			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return ev.Actor == source.Controller
+			},
+			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+				return game.NewTriggeredItem(source, "Stasis — sacrifice unless you pay {U}",
+					func(g *game.Game, item *game.StackItem) error {
+						sourceID := item.SourceCardID
+						return PayUnless{
+							Chooser:  item.Controller,
+							Cost:     "{U}",
+							Question: "Stasis — pay {U} or sacrifice Stasis?",
+							OnDecline: func(ctx *Context) error {
+								return SacrificePermanent{Target: sourceID}.Apply(ctx)
+							},
+						}.Apply(NewContext(g, item))
+					})
+			},
+		}},
 	})
 }

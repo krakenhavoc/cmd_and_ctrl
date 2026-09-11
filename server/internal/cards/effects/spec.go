@@ -294,6 +294,32 @@ type Spec struct {
 	//		Effect: ...,
 	//	}},
 	Activated []ActivatedAbility
+
+	// NoMaxHandSize declares the printed static "You have no maximum
+	// hand size" (Thought Vessel, Reliquary Tower, Spellbook,
+	// Venser's Journal). True while the permanent is on the
+	// battlefield; the controller skips the CR 402.2 cleanup-step
+	// discard entirely.
+	//
+	// This is deliberately NOT a `Static` entry. Every other
+	// continuous effect in the catalog modifies a characteristic of
+	// an OBJECT, which is what the CR 613 layer engine models —
+	// game.StaticAbility's Apply takes a *Characteristic and a
+	// target *Card, and there is no seat in that signature. "You
+	// have no maximum hand size" modifies a PLAYER, so it has no
+	// characteristic to sit in and no layer to sit at.
+	//
+	// Rather than grow a parallel player-layer pipeline for one
+	// clause, the engine DERIVES the answer: at cleanup it asks the
+	// battlefield whether the active player controls any permanent
+	// with this bit set (game.Game.EffectiveMaxHandSizeLocked, fed
+	// by the game.CatalogNoMaxHandSize hook). Nothing is written to
+	// Player.MaxHandSize, so nothing has to be restored when the
+	// permanent leaves — which is what makes two copies, and one of
+	// two leaving, come out right without any bookkeeping.
+	//
+	// Issue #338.
+	NoMaxHandSize bool
 }
 
 // ActivatedAbility is one activated ability on a permanent. Mirrors
@@ -356,6 +382,57 @@ type ManaAbility struct {
 	//
 	// Added in the S22 mana-ability-rider pass.
 	IgnoreCommanderIdentity bool
+
+	// ProducedFunc computes Produced at activation time instead of
+	// declaring it. Two card families need it and they are the same
+	// mechanism (#352 sub-gaps 3 and 4):
+	//
+	//   - DERIVED colours: Exotic Orchard ("one mana of any color
+	//     that a land an opponent controls could produce"),
+	//     Reflecting Pool, Fellwar Stone, Mox Amber. Return a pipe
+	//     string — "{W|U|G}".
+	//   - SCALED amounts: Cabal Coffers ("{B} for each Swamp you
+	//     control"), Gaea's Cradle. Return the slot repeated —
+	//     "{B}{B}{B}".
+	//
+	// Wins over Produced when non-nil. Returning "" adds no mana,
+	// which is the printed behaviour when the derivation finds
+	// nothing — Exotic Orchard on an empty opposing board, Gaea's
+	// Cradle with no creatures. The source still taps.
+	//
+	// READ-ONLY, and it runs under g.mu: ActivateManaAbility holds
+	// the write lock and the auto-tapper holds the read lock. Read
+	// g.Battlefield and the *ForEffect accessors; a public locking
+	// mutator deadlocks. Build one with ProducedFromLands,
+	// ProducedRepeated or a sibling in mana_derivation.go rather
+	// than by hand.
+	ProducedFunc func(g *game.Game, controller, source uuid.UUID) string
+
+	// Condition gates activation — "Activate only if you control
+	// five or more lands" (Temple of the False God), "…three or
+	// more artifacts" (Mox Opal). Checked before any cost is
+	// validated, so a failed gate taps nothing and spends nothing
+	// (CR 602.5a). Same read-only-under-the-lock contract as
+	// ProducedFunc.
+	//
+	// Added in the S32 mana-pipeline pass (#352 sub-gap 5).
+	Condition func(g *game.Game, controller, source uuid.UUID) bool
+
+	// Restrictions are the "spend this mana only on …" tags stamped
+	// onto every token this ability produces — Ancient Ziggurat,
+	// Eldrazi Temple, Shrine of the Forsaken Gods, the coloured half
+	// of Delighted Halfling. Build them with the game package's
+	// ManaRestrict* constructors; the spend-time matcher lives in
+	// game/mana_restriction.go.
+	//
+	// All tags must hold for the token to be spendable (AND), and an
+	// unknown tag denies. A restricted ability drops out of auto-tap
+	// planning — see autoTapAbilityFor.
+	//
+	// Declaring this WITHOUT the engine honouring it would ship
+	// every card in the group stronger than printed, which is the
+	// #259 rule; the two halves landed together in #352.
+	Restrictions []string
 }
 
 // ManaAbilityCost names the activation cost of one mana ability.
@@ -396,6 +473,22 @@ type ManaAbilityCost struct {
 	// the source does not tap. "Add {R}. This land deals 1 damage to
 	// you" is the other thing — see ManaAbility.Rider.
 	Life int
+
+	// Mana is a mana component of the activation cost — the Signet
+	// cycle's "{1}, {T}: Add {W}{U}", Cabal Coffers' "{2}, {T}",
+	// the filter lands' "{W/U}, {T}". Scryfall brace grammar.
+	//
+	// Paid out of the controller's pool before the source taps, and
+	// validated with every other component first, so an unaffordable
+	// activation fails with the source untouched. No auto-tap: the
+	// player floats the mana first, which is how a Signet is played
+	// on paper — see ActivateManaAbility.
+	//
+	// This is the last of S15's "mana / life / counter sub-costs
+	// land with later sprints when a catalog card demands them"
+	// note. #267 took life; #352 takes mana, and the counter case
+	// still has no card asking for it.
+	Mana string
 }
 
 // ZeroUUID is an alias for uuid.Nil. Mostly used in tests to

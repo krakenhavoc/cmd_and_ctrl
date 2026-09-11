@@ -235,6 +235,29 @@ type Game struct {
 	// *rand.Rand here to get reproducible snapshots.
 	rng *rngSource
 
+	// rngState is the marshalable source backing rng, when the
+	// engine minted it itself. Start(nil) — the only shape
+	// production uses — seeds a *rand.PCG from crypto/rand and
+	// keeps it here alongside the *rand.Rand that wraps it.
+	//
+	// This exists solely so the game's randomness can be
+	// PERSISTED. math/rand/v2's *rand.Rand exposes no accessor for
+	// its Source, so a game that only held `rng` could not have its
+	// position in the random stream written to disk and resumed:
+	// a restored game would shuffle from a different stream than
+	// the one the players were in. *rand.PCG implements
+	// encoding.BinaryMarshaler, so holding the source separately
+	// makes the stream snapshot-able. See snapshot.go.
+	//
+	// nil when a caller supplied its own *rand.Rand (tests do, for
+	// determinism) — that source's state is unreachable and the
+	// snapshot records it as unpersistable rather than silently
+	// reseeding. Also nil before Start.
+	//
+	// Not concurrency-safe on its own; every read goes through a
+	// path already holding g.mu in write mode.
+	rngState *rand.PCG
+
 	// layerVersion is the S16 continuous-effect-engine invalidation
 	// counter. Bumped by listeners on every event that could change
 	// which static abilities are active or what they apply to —
@@ -280,6 +303,16 @@ type Game struct {
 	// lifetime) and catalog replacements (battlefield-presence-
 	// gated via source card's AppliesTo). Added in S17 sub-PR 5.
 	TurnScopedReplacements []ReplacementEffect
+
+	// TurnScopedStatics is the per-turn CONTINUOUS-EFFECT slot —
+	// the layer-engine twin of TurnScopedReplacements. Entries are
+	// floating static abilities with a duration rather than a
+	// battlefield source: Giant Growth's +3/+3, Overrun's mass pump
+	// and trample grant, a loyalty ability's "+2/+2 and first strike
+	// until end of turn". Consulted by activeStaticAbilitiesLocked
+	// alongside the battlefield walk and swept at StepCleanup
+	// (CR 514.2). See turn_scoped_statics.go. Added in S32.
+	TurnScopedStatics []ScopedStatic
 
 	// testReplacements is the test-only replacement injection slot
 	// populated by RegisterReplacementForTest. Unexported so
@@ -428,15 +461,67 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 
 // Start transitions the game from lobby to active, initialises the
 // turn cursor at seat 0 / turn 1 / untap step, and shuffles each
-// player's library using the supplied RNG (nil for the package
-// default). The RNG is retained on the game and reused by subsequent
-// shuffles (Mulligan, ShuffleLibrary) so that tests starting with a
-// deterministic seed stay deterministic through all shuffles in the
-// game — not just the initial one.
+// player's library using the supplied RNG. The RNG is retained on
+// the game and reused by subsequent shuffles (Mulligan,
+// ShuffleLibrary) so that tests starting with a deterministic seed
+// stay deterministic through all shuffles in the game — not just the
+// initial one.
+//
+// Pass nil to have the engine mint its own crypto-seeded source.
+// That is what production does, and unlike the process-global source
+// it used to fall back to, an engine-owned source can be written to
+// a snapshot and resumed after a restart (see Game.rngState).
 //
 // Returns ErrNotEnoughPlayers if fewer than MinPlayers are seated,
 // and ErrGameAlreadyStarted if the game is not in lobby.
 func (g *Game) Start(r *rand.Rand) error {
+	// A caller-supplied source wins (tests seed deterministically).
+	// Otherwise mint one the engine owns: a crypto-seeded *rand.PCG
+	// wrapped in a *rand.Rand. Production always lands here.
+	//
+	// Before persistence this branch left g.rng nil and every
+	// shuffle drew from math/rand/v2's process-global source. That
+	// was unpredictable, but it was also unrecordable — a restart
+	// could not resume the stream, it could only start a new one.
+	// Owning the source makes the stream a piece of game state like
+	// any other: it round-trips through a snapshot, so a deploy
+	// resumes the library order the players were actually headed
+	// for. The seed is minted from crypto/rand and never leaves the
+	// server, so it stays unguessable.
+	if r == nil {
+		src := newCryptoSeededPCG()
+		return g.start(rand.New(src), src)
+	}
+	// A *rand.Rand the caller built themselves: math/rand/v2 offers
+	// no way to read its Source back out, so the stream position
+	// cannot be snapshotted. The game runs fine; CaptureSnapshot
+	// records it as unpersistable rather than silently reseeding on
+	// restore. Use StartWithSource to get determinism AND
+	// persistence.
+	return g.start(r, nil)
+}
+
+// StartWithSource is Start on a caller-supplied PCG source.
+//
+// It exists because the two things a caller might want from Start's
+// RNG argument — a reproducible stream, and a stream that survives a
+// restart — are only compatible if the caller hands over the SOURCE
+// rather than a *rand.Rand wrapping it. math/rand/v2's Rand keeps its
+// Source private, so Start(rand.New(pcg)) throws away the only handle
+// that could have been marshalled.
+//
+// Pass nil to get the same crypto-seeded source Start(nil) mints.
+func (g *Game) StartWithSource(src *rand.PCG) error {
+	if src == nil {
+		src = newCryptoSeededPCG()
+	}
+	return g.start(rand.New(src), src)
+}
+
+// start is the shared body. rng is the source every shuffle in the
+// game will draw from; state is its marshalable form, or nil when the
+// caller owns a source we cannot read back.
+func (g *Game) start(r *rand.Rand, state *rand.PCG) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -448,6 +533,7 @@ func (g *Game) Start(r *rand.Rand) error {
 	}
 
 	g.rng = r
+	g.rngState = state
 	if g.UndoLimit <= 0 {
 		g.UndoLimit = DefaultUndoLimit
 	}
@@ -459,7 +545,10 @@ func (g *Game) Start(r *rand.Rand) error {
 	}
 	for _, p := range g.Seats {
 		p.UndosRemaining = g.UndoLimit
-		p.Library.Shuffle(r)
+		// g.rng, not r: when the caller passed nil we minted our own
+		// source above, and the opening shuffle must draw from the
+		// same stream every later shuffle will.
+		p.Library.Shuffle(g.rng)
 		// Deal an opening hand of 7. If the library is too short to
 		// satisfy 7 (a malformed deck), stop early — the partial hand
 		// is still valid and tests can use small decks.
@@ -763,6 +852,15 @@ func (g *Game) runStepEntryHooksLocked() {
 		// shields with a per-turn duration) clear at cleanup so
 		// next turn starts with a clean slate.
 		g.ClearTurnScopedReplacementsLocked()
+		// S32: "until end of turn" CONTINUOUS effects (Giant
+		// Growth's +3/+3, Overrun's trample grant) expire here for
+		// the same reason and by the same rule — CR 514.2 ends them
+		// during the cleanup step, before the turn-based discard.
+		// This is also what makes a grant created during the END
+		// step end this turn rather than next: the sweep keys on the
+		// turn number stamped at registration, not on "the next
+		// cleanup after the one I saw".
+		g.ClearExpiredTurnScopedStaticsLocked()
 		// S21 sub-PR 6: impulse-exile permissions ("you may play it
 		// this turn") lapse here for the same reason — the turn they
 		// were granted for is over. The exiled card stays exiled; it
@@ -794,10 +892,15 @@ func (g *Game) populateDiscardPendingLocked() {
 	if p == nil || p.Eliminated {
 		return
 	}
-	if p.MaxHandSize == NoMaxHandSize {
+	// #338: the cap is DERIVED, not read straight off the player.
+	// A Thought Vessel on the battlefield lifts it without ever
+	// writing to Player.MaxHandSize, so nothing has to be restored
+	// when the permanent leaves.
+	max := g.EffectiveMaxHandSizeLocked(p)
+	if max == NoMaxHandSize {
 		return
 	}
-	over := p.Hand.Size() - p.MaxHandSize
+	over := p.Hand.Size() - max
 	if over <= 0 {
 		return
 	}

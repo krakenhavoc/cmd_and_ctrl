@@ -274,3 +274,64 @@ func TestKismetLeavesOwnCreatureUntapped(t *testing.T) {
 	}
 	_ = p0
 }
+
+// walkToUpkeepOfSeat0 advances the cursor to seat 0's upkeep on a
+// later turn, which is when Stasis's own sacrifice trigger fires.
+func walkToUpkeepOfSeat0(t *testing.T, g *game.Game) {
+	t.Helper()
+	for i := 0; i < 80; i++ {
+		if g.Turn.ActiveSeat == 0 && g.Turn.Step == game.StepUpkeep && g.Turn.Number >= 2 {
+			return
+		}
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep iter %d: %v", i, err)
+		}
+	}
+	t.Fatalf("never reached seat 0 upkeep: turn=%d seat=%d step=%v",
+		g.Turn.Number, g.Turn.ActiveSeat, g.Turn.Step)
+}
+
+// TestStasisUpkeepSacrificeOnDecline — #338 stale-simplification
+// fix. Stasis shipped with only its skip-untap half; the "sacrifice
+// Stasis unless you pay {U}" upkeep trigger was left declared as
+// "lands with S19" long after S19 shipped triggers and PayUnless.
+// Without it the card had no off switch and locked the table's
+// untap steps indefinitely.
+//
+// Declining the payment sacrifices Stasis.
+func TestStasisUpkeepSacrificeOnDecline(t *testing.T) {
+	g := newCatalogGame(t)
+	p0 := g.Seats[0].ID
+	stasisID := seedReplacementPermanent(g, stasisOracle, "Stasis", p0)
+
+	walkToUpkeepOfSeat0(t, g)
+	passPriorityAroundTable(t, g)
+	answerPayUnless(t, g, p0, false)
+
+	if g.Battlefield.Contains(stasisID) {
+		t.Errorf("Stasis still on the battlefield after declining {U}")
+	}
+}
+
+// TestStasisUpkeepPayingKeepsIt is the other branch: pay the {U}
+// and Stasis stays, which is what makes the lock a real recurring
+// cost rather than a one-turn effect.
+func TestStasisUpkeepPayingKeepsIt(t *testing.T) {
+	g := newCatalogGame(t)
+	p0 := g.Seats[0].ID
+	stasisID := seedReplacementPermanent(g, stasisOracle, "Stasis", p0)
+
+	walkToUpkeepOfSeat0(t, g)
+	passPriorityAroundTable(t, g)
+	// Float the {U} now — pools empty at every step change, so it
+	// has to go in after the walk and before the answer.
+	g.Seats[0].ManaPool.AddMana(game.ManaToken{Color: "U"})
+	answerPayUnless(t, g, p0, true)
+
+	if !g.Battlefield.Contains(stasisID) {
+		t.Errorf("Stasis sacrificed despite paying {U}")
+	}
+	if len(g.Seats[0].ManaPool) != 0 {
+		t.Errorf("the {U} was not actually spent: pool %v", g.Seats[0].ManaPool)
+	}
+}

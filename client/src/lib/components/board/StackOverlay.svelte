@@ -10,11 +10,32 @@
   // Items stack top-to-bottom with the top of the visual stack
   // (most-recently-cast, resolves first) at the top of the overlay.
   // The container scrolls if a deep stack overflows the strip.
+  //
+  // #322 — hover preview. The rows are compact by design, which made
+  // the stack the one zone you could not actually read: it renders
+  // its own <img> thumbs rather than mounting Card.svelte, and
+  // Card.svelte was the only writer of the shared `hoveredCard`
+  // store, so HoverZoomOverlay never heard about a stack row. Fixed
+  // by writing the store from here on pointerenter, honouring the
+  // same settings.display.hoverDelayMs dwell as the table. The
+  // overlay pins top-right and the strip pins top-left, so the big
+  // preview lands beside the stack rather than over it — which is
+  // why this is the fix instead of permanently growing the rows and
+  // paying board space every turn for a read that only happens while
+  // the stack is live.
+  //
+  // For an ability item the previewed card is the source permanent
+  // (abilities have no card of their own on the stack) — the same
+  // card artCardFor() already draws the thumb from.
 
   import type { CardView, PlayerView, StackItemView, ZoneView } from "../../protocol";
   import { seatColor } from "../../colors";
+  import { cardImageURL } from "../../cardImage";
   import Icon from "../Icon.svelte";
   import { targeting, isLegalCardTarget } from "../../targeting";
+  import { hoveredCard } from "../../cardTypes";
+  import { settings } from "../../settings";
+  import { holdPriority, toggleHoldPriority } from "../../holdPriority";
 
   interface Props {
     stack: ZoneView;
@@ -120,9 +141,7 @@
   }
 
   function imgSrcFor(item: StackItemView): string | null {
-    const c = artCardFor(item);
-    if (!c || !c.scryfall_id) return null;
-    return `/cards/${c.scryfall_id}/image?size=small`;
+    return cardImageURL(artCardFor(item), "small");
   }
 
   function titleFor(item: StackItemView): string {
@@ -143,6 +162,87 @@
   const displayItems = $derived([...(stackItems ?? [])].reverse());
   const triggers = $derived(pendingTriggers ?? []);
   const visible = $derived(displayItems.length > 0 || triggers.length > 0 || stack.count > 0);
+
+  // ---- #322 hover preview -------------------------------------
+  // Deliberately plain `let`, not `$state`: the cleanup effect below
+  // wants to react to the stack changing under the cursor, not to
+  // its own bookkeeping writes.
+  let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+  let hoveredItemID: string | null = null;
+  let previewedInstanceID: string | null = null;
+
+  function cancelHoverTimer(): void {
+    if (hoverTimer !== null) {
+      clearTimeout(hoverTimer);
+      hoverTimer = null;
+    }
+  }
+
+  // previewCardFor is the card the overlay should show for an item:
+  // the spell itself, or an ability's source permanent. Returns null
+  // for anything the viewer isn't allowed to read — same redaction
+  // rule Card.svelte applies before writing the store.
+  function previewCardFor(item: StackItemView): CardView | null {
+    const c = artCardFor(item);
+    if (!c || c.known_by_you === false) return null;
+    return c;
+  }
+
+  // clearPreview drops our own write to the shared store, never
+  // anyone else's — a battlefield card hovered after us owns the
+  // slot and must survive.
+  function clearPreview(): void {
+    const inst = previewedInstanceID;
+    hoveredItemID = null;
+    previewedInstanceID = null;
+    if (!inst) return;
+    hoveredCard.update((c) => (c?.instance_id === inst ? null : c));
+  }
+
+  function handleItemEnter(item: StackItemView): void {
+    const c = previewCardFor(item);
+    if (!c) return;
+    cancelHoverTimer();
+    hoveredItemID = item.id;
+    const delay = $settings.display.hoverDelayMs;
+    if (delay <= 0) {
+      previewedInstanceID = c.instance_id;
+      hoveredCard.set(c);
+      return;
+    }
+    hoverTimer = setTimeout(() => {
+      hoverTimer = null;
+      previewedInstanceID = c.instance_id;
+      hoveredCard.set(c);
+    }, delay);
+  }
+
+  function handleItemLeave(item: StackItemView): void {
+    cancelHoverTimer();
+    if (hoveredItemID !== item.id) return;
+    clearPreview();
+  }
+
+  // A stack item resolves out from under the cursor without ever
+  // firing pointerleave — the row is simply removed. Without this the
+  // preview of a resolved spell would hang around until the user
+  // hovered something else.
+  $effect(() => {
+    const items = displayItems;
+    if (hoveredItemID === null) return;
+    if (items.some((it) => it.id === hoveredItemID)) return;
+    cancelHoverTimer();
+    clearPreview();
+  });
+
+  // Unmount (last item resolved, game over, seat switch) is the other
+  // way the row can vanish mid-hover.
+  $effect(() => {
+    return () => {
+      cancelHoverTimer();
+      clearPreview();
+    };
+  });
 </script>
 
 {#if visible}
@@ -158,20 +258,46 @@
       {:else if priorityHolderName}
         <span class="hint">{priorityHolderName} holds priority</span>
       {/if}
+      <!-- #323: the same session hold as the phase widget's button,
+           mirrored here because this card is on screen exactly when
+           the stack is live — the moment the reporter is in when
+           they want to change their mind. Armed, your own spells and
+           triggers keep the cursor instead of auto-passing; it has
+           to be armed before the cast, since the pass fires on the
+           next snapshot. -->
+      <button
+        type="button"
+        class="hold-toggle"
+        class:on={$holdPriority}
+        aria-pressed={$holdPriority}
+        onclick={toggleHoldPriority}
+        title={$holdPriority
+          ? "hold ON — your own spells and triggers keep the cursor so you can respond to them; click to release"
+          : "hold OFF — your own spells and triggers resolve without asking. Click before you cast to keep priority and respond to them"}
+      >
+        {$holdPriority ? "hold ✓" : "hold"}
+      </button>
     </header>
     <div class="items">
       {#each displayItems as item, i (item.id)}
         {@const seatNum = controllerSeatNum(item)}
         {@const src = imgSrcFor(item)}
         {@const stackTargetable = itemTargetable(item)}
+        {@const previewable = previewCardFor(item) !== null}
         <div class="line">
           <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
           <div
             class="item"
             class:top={i === 0}
             class:cast-targetable={stackTargetable}
+            class:previewable
             style:--seat-color={seatColor(seatNum)}
             data-stack-item-id={item.id}
+            title={previewable ? `${titleFor(item)} — hover to preview` : titleFor(item)}
+            onpointerenter={() => handleItemEnter(item)}
+            onpointerleave={() => handleItemLeave(item)}
+            onfocusin={() => handleItemEnter(item)}
+            onfocusout={() => handleItemLeave(item)}
             onclick={stackTargetable ? () => onTargetStackItem?.(item) : undefined}
             onkeydown={(e) => {
               if (stackTargetable && (e.key === "Enter" || e.key === " ")) {
@@ -211,6 +337,22 @@
                     title="this card auto-resolves — effect fires when priority passes to empty stack"
                   >
                     auto
+                  </span>
+                {/if}
+                <!-- The moment the expectation forms. The spell is on
+                     the stack, everyone is looking at it, and in a
+                     second it will resolve and appear to do nothing.
+                     Saying so here is what reports #321 / #324 /
+                     #325 / #332 / #333 each needed and none of them
+                     got. Transient by construction — the chip leaves
+                     with the stack item, so it never becomes board
+                     furniture. -->
+                {#if cardByID.get(item.id)?.unimplemented}
+                  <span
+                    class="chip manual"
+                    title="this card's rules aren't implemented yet — it resolves with no effect, so resolve it by hand"
+                  >
+                    manual
                   </span>
                 {/if}
                 {#if item.x_value}
@@ -331,6 +473,38 @@
     vertical-align: -2px;
     margin-right: 4px;
   }
+  /* #323 hold toggle — the mono micro-chip vocabulary the rest of
+     this card already uses for `.chip`, sized to sit on the header
+     baseline. Engaged uses --magenta (a standing user instruction),
+     never gold: gold means priority everywhere on the table. */
+  .hold-toggle {
+    flex: 0 0 auto;
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--fg-dim);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 2px 8px;
+    cursor: pointer;
+    transition:
+      color 120ms var(--ease),
+      border-color 120ms var(--ease),
+      background 120ms var(--ease);
+  }
+  .hold-toggle:hover {
+    color: var(--fg);
+    border-color: var(--border-strong);
+  }
+  .hold-toggle.on {
+    color: var(--magenta);
+    border-color: color-mix(in srgb, var(--magenta) 55%, transparent);
+    background: color-mix(in srgb, var(--magenta) 16%, transparent);
+    font-weight: 700;
+  }
   .hint.split-second {
     color: var(--danger);
     font-family: var(--font-mono);
@@ -378,6 +552,21 @@
   }
   .item.cast-targetable:hover {
     background: var(--surface-hover);
+  }
+  /* #322: the row is the hover-preview trigger, so it needs to look
+     like one. zoom-in reads as "there is more of this to see"; the
+     border lift is the same 120ms transition the row already
+     declares. Targeting wins the cursor when it's live — a click
+     there means "point my spell at this", not "show me the art". */
+  .item.previewable {
+    cursor: zoom-in;
+  }
+  .item.previewable:hover {
+    border-color: var(--border-strong);
+    background: var(--surface-hover);
+  }
+  .item.cast-targetable.previewable {
+    cursor: pointer;
   }
   .thumb {
     width: 40px;
@@ -454,6 +643,14 @@
   .chip.flag {
     color: var(--gold-strong);
     border-color: rgba(217, 180, 92, 0.45);
+  }
+  /* Dashed rather than coloured. The gold `flag` chips mark things
+     the engine is doing; this one marks the absence of one, and an
+     outline with a gap in it says that without competing with them
+     for attention. */
+  .chip.manual {
+    border-style: dashed;
+    border-color: var(--border-strong);
   }
   .act {
     flex: 0 0 auto;

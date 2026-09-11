@@ -137,24 +137,38 @@ func (e staticContinuousEffect) Apply(c *Characteristic, target *Card, g *Game) 
 	e.ability.Apply(c, target, g, e.source)
 }
 
-// activeStaticAbilitiesLocked walks the battlefield, looks up each
-// card's catalog static abilities via the CatalogStaticAbilities
-// hook, and returns the resulting list of `ContinuousEffect`s
-// bound to source pointers + timestamps. Caller must hold either
-// g.mu (write) or g.recompute.mu (the recompute serialisation
-// mutex used during snapshot).
+// activeStaticAbilitiesLocked collects every continuous effect in
+// play from its two sources and returns them as
+// `ContinuousEffect`s bound to source pointers + timestamps:
+//
+//  1. Battlefield permanents — walks g.Battlefield and looks each
+//     card's catalog static abilities up via the
+//     CatalogStaticAbilities hook. These live exactly as long as
+//     the source permanent does (CR 113.6).
+//  2. Turn-scoped statics — the S32 floating "until end of turn"
+//     registry (turn_scoped_statics.go), which has no battlefield
+//     source and expires on a clock instead (CR 514.2).
+//
+// Caller must hold either g.mu (write) or g.recompute.mu (the
+// recompute serialisation mutex used during snapshot).
 //
 // The returned source pointers reference into g.Battlefield.Cards
 // — safe for the duration of the recompute pass that holds the
 // recompute mutex; not safe to retain across mutations.
 func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
+	// S32: floating "until end of turn" effects first. They are
+	// gathered unconditionally — they outlive their source card, so
+	// neither an empty battlefield nor a missing catalog hook can
+	// switch them off. Order within this slice is irrelevant: the
+	// per-bucket sort in applyLayerLocked re-orders everything by
+	// timestamp (CR 613.7) before applying.
+	out := g.turnScopedContinuousEffectsLocked()
 	if g.Battlefield == nil || CatalogStaticAbilities == nil {
-		return nil
+		return out
 	}
-	var out []ContinuousEffect
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
-		abilities := CatalogStaticAbilities(src.OracleID)
+		abilities := CatalogStaticAbilities(CatalogKey(*src))
 		if len(abilities) == 0 {
 			continue
 		}

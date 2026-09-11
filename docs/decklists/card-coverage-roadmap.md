@@ -1,0 +1,539 @@
+# The card-coverage roadmap — the next 2000 Commander cards
+
+Source: **`edhrec_rank`** on every card in the local Scryfall bulk dump
+(`data/scryfall/default-cards.json`, refreshed 2026-09-09). Lower rank
+means more played. Nothing here was scraped, recalled, or guessed — one
+pass over the dump and one probe of the live registry produced every
+number below.
+
+This is the whole-format sequel to
+[the top-100 staples triage](top-100-commander-staples.md): that file
+ranked the first 100 cards of the gap and shipped 32 of them, this one
+ranks the next **2000** and splits them into 20 tracked batches of 100.
+Tracking issue: **#293**.
+
+## Progress
+
+The map is being walked. This section is the running tally; the
+per-card detail lives on each batch's issue, and every simplification
+is a comment on its card file.
+
+| Batch | Issue | Registered | Skipped (declared) | Still blocked | Notes |
+|---|---|---:|---:|---:|---|
+| 01 | #294 | **29** | 2 | 69 | first pass — the "no new machinery" group, plus 3 cards two engine changes unblocked |
+| 02 | #295 | **38** | 19 | 43 | landed in three streams — #351 (25), this branch (11), #356's mana pipeline (Boros Signet, Mox Opal) |
+| 03–20 | #296–#313 | 0 | 0 | — | not started |
+
+**Catalog: 366 → 377**, measured with `len(effects.All())` minus the
+flicker probe — 366 on `origin/main` at `badd530`, 377 with this
+branch's eleven. (The test binary reports 367 and 378; the probe is
+explained below.)
+
+Always MEASURE this line, never derive it. The batch-01 entry derived
+"319" by adding up what it believed had landed when the registry
+actually held 320, and the count has since been moved by three
+concurrent work streams that no single batch author could see.
+
+Batch 01 moved play-rate coverage by **+2 in the top 100** (Dark
+Ritual, Arcane Denial), **+17 in the top 200**, **+29 in the top 300**;
+batch 02 adds **+18 more in the top 300** and **+20 between rank 301
+and 360**.
+
+### Batch 01 — what shipped
+
+26 of the 28 "no new machinery" cards, in rank order: Arcane Denial,
+Mana Drain, Victimize, Spectator Seating, Vault of Champions, Farewell,
+Undergrowth Stadium, Dreamroot Cascade, Tireless Provisioner,
+Stormcarved Coast, Spire Garden, Buried Ruin, Impact Tremors,
+Phyrexian Tower, Storm-Kiln Artist, Stroke of Midnight, Rapid
+Hybridization, Professional Face-Breaker, Bountiful Promenade,
+Fyndhorn Elves, Ornithopter of Paradise, Karplusan Forest, Terminate,
+Rockfall Vale, Mirkwood Bats, Brushland. That completes three land
+cycles — all ten bond lands, all ten painlands, six of the ten
+slowlands.
+
+Three more from the blocked groups, because the blockers moved:
+
+- **Dark Ritual** (rank 33, mana pipeline). A spell that adds mana had
+  no way to reach a pool — every mana in the engine came from
+  `ActivateManaAbility`. `AddManaForEffect` on `*Game` and the
+  `AddMana` primitive (`add_mana.go`) are the whole change; Mana Drain's
+  refund rides the same helper.
+- **Return of the Wildspeaker** and **Boros Charm** (until EOT). #314
+  landed `BoostUntilEOT` / `GrantKeywordUntilEOT` after the triage was
+  written, and both cards are those two primitives on modes.
+
+Two engine seams grew to make the ready cards honest:
+
+- **`DelayedTrigger.ControllerTurnOnly`** — "at the beginning of
+  **your** next main phase" (Mana Drain) as opposed to "the next
+  turn's upkeep" (Arcane Denial). Without it the refund fired on the
+  next opponent's main phase and emptied unused.
+- **`triggerAlreadyPendingFrom`** — the "whenever **one or more**
+  creatures you control deal combat damage" dedup (Professional
+  Face-Breaker). The engine emits one damage event per creature; the
+  helper declines the second while the first trigger is still queued.
+  Without it the card ships stronger than printed, which is the #259
+  direction.
+
+### Batch 01 — simplifications, all weaker than printed
+
+- **Arcane Denial** — "may draw up to two" is "draws two", and both
+  draws ride one delayed trigger (two simultaneous triggers under one
+  controller would pop a meaningless ordering prompt every upkeep).
+- **Mana Drain** — fires at your next **precombat** main phase; a
+  Drain cast in your own precombat main waits a turn instead of paying
+  out in that turn's postcombat main.
+- **Victimize** — the sacrifice is an additional cost to cast, not a
+  resolution-time action (no sacrifice-then-continue prompt exists).
+  The engine validates targets before it pays the cost, so the
+  sacrificed creature can never be one of the two targets — same as
+  printed. The returned creatures enter untapped and are tapped a beat
+  later.
+- **Tireless Provisioner** — always a Treasure, never a Food (no
+  resolution-time option prompt for a trigger).
+- **Storm-Kiln Artist** — "cast or **copy**": no spell-copy event
+  exists, so copies make no Treasure.
+- **Boros Charm** — the indestructible mode is inert (nothing in the
+  destroy path reads the keyword); the label says so.
+
+### Batch 01 — skipped from the "ready" group, with the missing seam
+
+The mechanical triage was optimistic about two:
+
+- **Black Market Connections** — needs a beginning-of-main-phase
+  trigger event (only upkeep and end step exist) **and** a
+  resolution-time "choose one or more" prompt for a trigger (the modal
+  machinery is cast-time only).
+- **Growth Spiral** — "you may put a land card from your hand onto the
+  battlefield" needs a pick-from-hand prompt with a continuation and a
+  hand-to-battlefield move; neither exists. Shipping the draw alone
+  would be a misleading cantrip, the Chromatic Lantern reasoning.
+
+And from the until-EOT group, still blocked despite #314: Heroic
+Intervention (hexproof and indestructible are both inert, so the whole
+card would be a no-op), Rogue's Passage ("can't be blocked" is a combat
+restriction), Toxic Deluge ("pay X life" as an additional cost has no
+shape), Akroma's Will (the "choose both if you control a commander"
+clause plus two inert keywords), Teferi's Protection and The One Ring
+(the protection family, #95).
+
+### Two engine bugs batch 01 found, both fixed with a regression test
+
+- **Impulse exile took the bottom card.** `ExileTopWithPermissionForEffect`
+  read `Library.Cards[0]`; the library's top is the **last** element
+  (`PopTop`, and so every draw and mill). Every earlier test seeded a
+  one-card library, where the two coincide — Ragavan and Breeches had
+  been exiling the wrong end of the library since S21.
+- **A token entering never invalidated the layer cache.**
+  `CreateTokenForEffect` emits no `EventZoneMove`, which was the only
+  entry event the layer listener watched, so a Goblin made under
+  Glorious Anthem stayed 1/1 until something unrelated forced a
+  recompute, and tokens never got a CR 613 timestamp. The listener now
+  treats `EventTokenCreated` as an entry.
+
+### Batch 02 — what shipped, in three streams
+
+38 cards of the 100 at `edhrec_rank` 238–360, landed by **three work
+streams, two of which were the same issue worked in parallel without
+either session knowing**. Recording that here because the near-miss is
+the reusable lesson, not the trivia:
+
+- **First pass — PR #351, 25 cards.** The "no new machinery" group.
+- **Second pass — this branch, 11 cards.** What the first pass did not
+  reach: Ketria Triome, Darksteel Citadel, Entomb, Buried Alive,
+  Seething Song, Mana Geyser, Harrow, Diabolic Intent, Gray Merchant of
+  Asphodel, Craterhoof Behemoth, Decanter of Endless Water. Nine of
+  them because the triage had filed them under a blocker that had
+  already moved; two (Entomb, Buried Alive) because they needed a
+  one-case engine fix that ships with them.
+- **Third stream — #356, 2 cards.** The mana-pipeline work picked up
+  Boros Signet and Mox Opal on its way past. Nobody planned that as
+  part of #295.
+
+**Six oracle IDs were written twice into differently-named files** —
+`original_duals.go` / `original_dual_lands.go` and `bounce_lands.go` /
+`karoo_lands.go`. Git reports **no conflict** when the filenames
+differ, and `Register()` panics on a duplicate oracle ID, so the
+collision would have been a hard boot failure discoverable only by
+running the tests. The second pass deleted its own copies and took the
+merged ones.
+
+The one place this did NOT happen is `slowlands.go`, because both
+sessions appended rows to the existing cycle table instead of creating
+a second file. **That is the rule the near-miss argues for: a card that
+belongs to an existing cycle goes in that cycle's table, never in a new
+file of its own.** The cycle ended at ten rows with no duplicates.
+
+**Four land cycles closed or extended.** The last four slowlands
+(Sundown Pass, Haunted Ridge, Overgrown Farmland, Deathcap Glade)
+finish that cycle at ten; four original duals (Underground Sea,
+Volcanic Island, Tropical Island, Tundra), two tri-lands (Arcane
+Sanctum, Jungle Shrine), two bounce lands (Simic Growth Chamber,
+Golgari Rot Farm), plus Ketria Triome, Seat of the Synod, Darksteel
+Citadel and Scavenger Grounds.
+
+**Spells and permanents.** Infernal Grasp, Withering Torment, Baleful
+Strix, Entomb, Buried Alive, Damn, Snap, Seething Song, Mana Geyser,
+Harrow, Diabolic Intent, Gray Merchant of Asphodel, Archmage Emeritus,
+Syr Konrad the Grim, Lotus Cobra, Guardian Project, Loran of the Third
+Path, Avenger of Zendikar, Craterhoof Behemoth, Decanter of Endless
+Water.
+
+**Ten the #295 triage filed as blocked (or as would-ship-stronger) were
+writable after all** — five because the blocker moved in the days
+before the batch, five because they were mis-filed. Nine of the ten are
+the second pass's whole contribution; only **Damn** was also caught by
+#351. A triage written days before a batch is worked is the thing to
+re-check first, and this is how much it was worth here:
+
+- **Decanter of Endless Water** — filed "player / game-rule statics".
+  `Spec.NoMaxHandSize` landed with Thought Vessel (#338).
+- **Craterhoof Behemoth** — filed "cost modification, until EOT". The
+  until-EOT half is S32's `BoostUntilEOT` / `GrantKeywordUntilEOT`;
+  the cost half was never real.
+- **Damn** — filed "would ship stronger than printed". Overload is a
+  real alternative cost now, and the "can't be regenerated" clause is
+  vacuous in an engine with no regeneration, so nothing is missing.
+- **Seething Song** and **Mana Geyser** — filed "mana pipeline".
+  `AddMana` from batch 01 is the whole requirement; Mana Geyser's
+  derived count was always ordinary Go.
+- **Harrow** and **Diabolic Intent** — filed "cost modification". Both
+  are CR 601.2f *additional* costs, and `SacrificeCost` has existed
+  since S21.
+- **Gray Merchant of Asphodel** — filed "cost modification". Devotion
+  only reads mana costs; it modifies nothing.
+- **Ketria Triome** — filed "other-zone casting" for its cycling.
+  Raffine's Tower already ships without cycling as a declared
+  simplification; the same call applies.
+- **Darksteel Citadel** — filed "protection / prevention". Two of its
+  three lines are live; indestructible is declared in
+  `PrintedKeywords` and inert until #176, which is the weaker
+  direction and allowed.
+
+### Batch 02 — the 19 declared skips, each with its missing seam
+
+- **A card choice inside a replacement effect** (7): Mox Diamond, and
+  the six reveal-lands — Choked Estuary, Foreboding Ruins, Port Town,
+  Fortified Village, Frostboil Snarl, Furycalm Snarl. All are "as this
+  enters, you may reveal / discard <a card you pick>", and the
+  replacement pipeline is synchronous with no per-card prompt.
+  `ReplacementEffect.Optional` is a bare yes/no and carries a hazard
+  besides — see below.
+- **`ManaAbilityCost` had no mana component** (5): the filter lands —
+  Cascade Bluffs, Flooded Grove, Fetid Heath, Twilight Mire, Rugged
+  Prairie. The triage called these ready; they were blocked on exactly
+  what Boros Signet and Skycloud Expanse were blocked on.
+
+  **This skip was already stale when it was written.** #356 (the mana
+  pipeline) landed `ManaAbilityCost.Mana` while this branch was in
+  flight — `signets.go` uses it for Boros Signet's "{1}, {T}: Add
+  {R}{W}" — so the stated blocker is gone. What remains unverified for
+  the filter lands is only the three-way OUTPUT choice ("Add {U}{U},
+  {U}{R}, or {R}{R}"), which is a different question from the cost.
+  **These five are the obvious next pickup**, and they are deliberately
+  not taken here: the mana pipeline is another session's lane and this
+  batch has already collided once. Recording the staleness rather than
+  leaving it to rot is the #350 lesson.
+- **No replacement on *triggering*** (1): Panharmonicon. There is no
+  `RepEvent` for an ability triggering.
+- **No replacement on *token creation*** (1): Academy Manufactor. Same
+  shape, different event that does not exist.
+- **A per-turn tally** (1): Morbid Opportunist's "this ability triggers
+  only once each turn". Shipping without the limiter would be stronger
+  than printed, so it is skipped rather than shipped.
+- **Leave-the-battlefield counter LKI** (1): The Ozolith needs the
+  counters a permanent *had* as it left, and CR 400.7 has already
+  cleared them by the time a watcher sees the event.
+- **No untap-step trigger** (1): Seedborn Muse. `EventStepTransition`
+  is deliberately not in the public event log, so only a replacement
+  can see it — and a replacement that does not cancel re-fires until
+  the 32-iteration cap.
+- **An opponent-paid *choice* that is not a mana cost** (1): Braids,
+  Arisen Nightmare. `PayUnless` prices a decision in mana; "each
+  opponent may sacrifice a permanent sharing a card type" has no
+  shape.
+- **A static that applies from the graveyard** (1): Anger. `Spec.Static`
+  applies only while the card is on the battlefield (CR 113.6 default).
+
+### What batch 02 found in the engine
+
+- **FIXED — a library search could not put a card into a graveyard.**
+  `searchDestZoneLocked` handled hand, battlefield and library and
+  returned `ErrZoneNotFound` for everything else, so Entomb and Buried
+  Alive emitted an effect error and found nothing. The generic
+  `MoveCard` branch already handled the destination correctly; only the
+  zone lookup was missing. One case added, with tests on both cards.
+- **OPEN — `ReplacementEffect.Optional` has no `entryResumable`
+  guard.** `EntryLifeCost` checks `ev.entryResumable` before queuing
+  its prompt (`entry_choice.go`), because only the land-play path can
+  resume a paused battlefield entry. The `Optional` branch of the same
+  apply-loop queues unconditionally and returns
+  `errReplacementPending`. An `Optional` self-replacement on a
+  permanent entering by any other route would therefore pause with no
+  resume path. No catalog card can reach it today, which is why it is
+  reported rather than patched — but it is the reason the six
+  reveal-lands were skipped rather than written against `Optional`.
+- **STALE COMMENT — `azorius_chancery.go`** still says a catalog
+  replacement "cannot fire on its own source's entry at all". That was
+  true when written and stopped being true with the Temple cycle, which
+  added the entering card's own replacements as a third gathering
+  block. Three land cycles depend on the behaviour it says is
+  impossible. `karoo_lands.go` records the correction; the Chancery
+  itself still taps via `OnETB` and could now use `SelfEntersTapped()`.
+
+## The audited catalog count — 288 (at the time of the audit)
+
+Not 289, and not the number `grep -c 'OracleID:'` reports. This is the
+number the 2000-card gap below was computed against; the running
+count is in the Progress section above.
+
+Cards register from **tables inside `for` loops** — `temples.go`,
+`check_lands.go`, `battle_lands.go`, `bond_lands.go`, `shocklands.go`,
+`painlands.go`, `talismans.go`, the fetchland and Talisman cycles — so one
+literal `Register(Spec{` site can be ten cards. Counting `Register` sites
+is not counting cards; `len(effects.All())` is. That undercount has
+produced two wrong numbers in the last week (191 against a real 201, then
+225 against a real 261).
+
+There is a second, subtler correction on top of it. `len(effects.All())`
+measured **from a test** reports **289**, because `flicker_test.go`'s
+`init()` registers a non-card probe spec keyed `test-flicker-etb-probe`
+to count direct `OnETB` hook fires. It is test-binary-only and correct to
+exist — it just is not a card. The shipped registry holds **288**, and
+all 288 resolve to real, Commander-legal Scryfall oracle IDs. No tokens,
+no helpers, no strays.
+
+## Method — reproducible
+
+### 1. The registry, honestly
+
+A throwaway test inside the toolchain container, deleted before commit:
+
+```go
+// server/internal/cards/effects/zz_probe_test.go
+package effects
+
+import ("os"; "sort"; "testing")
+
+func TestZZProbeCatalog(t *testing.T) {
+	all := All()
+	lines := make([]string, 0, len(all))
+	for _, s := range all {
+		lines = append(lines, s.OracleID+"\t"+s.Name)
+	}
+	sort.Strings(lines)
+	f, _ := os.Create("/w/catalog_probe.txt")
+	defer f.Close()
+	for _, l := range lines {
+		f.WriteString(l + "\n")
+	}
+	t.Logf("REGISTERED_COUNT=%d", len(all))
+}
+```
+
+```bash
+IMG=$(docker images --format '{{.Repository}}:{{.Tag}}' \
+      | grep '^vsc-cmd_and_ctrl-' | grep -v features | head -1)
+docker run --rm -v "$PWD":/w -w /w/server "$IMG" \
+  bash -lc 'go test ./internal/cards/effects/ -run TestZZProbeCatalog -v'
+# REGISTERED_COUNT=289   → 288 cards + the flicker probe
+```
+
+### 2. The gap, in one pass
+
+One Python pass over the 629 MB dump, ~5 s. **Load it once** — the file is
+a single-line JSON array, so decode it incrementally with
+`json.JSONDecoder().raw_decode` rather than shelling out per card.
+
+- **Skip placeholder printings.** `type_line == "Card // Card"`, and
+  layouts `art_series` / `token` / `double_faced_token` (plus `emblem` /
+  `vanguard` / `scheme` / `planar`). **6,456 printings rejected**, 2,712
+  of them on the `"Card // Card"` type line alone. These mis-resolve real
+  single-faced cards as multi-face; the trap has caused a wrong triage
+  twice and it is the reason #278 carries a warning about it.
+- Dedupe by `oracle_id`, preferring a `layout: normal` printing, carrying
+  `edhrec_rank` and Commander legality across from any printing that has
+  them. 117,738 printings → **34,936 distinct oracle IDs**.
+- Keep `legalities.commander == "legal"` → 31,830. Drop basic lands →
+  31,824. Drop the 288 already registered → **31,536 missing**, of which
+  **31,474 carry an `edhrec_rank`**.
+- Sort ascending by rank, take 2000, chunk into 20 batches of 100.
+
+The top 2000 spans **rank 9 to rank 2,234** — near the top of the format
+the catalog already owns most slots (74 of the top 100), so 2000 cards
+only consumes ~2,234 rank positions.
+
+### 3. The mechanic triage
+
+Each of the 2000 is checked against the primitive set that actually exists
+on `main` — the `effects.Spec` slots (`Targets`, `Modes`, `Static`,
+`Replacements`, `Triggered`, `Activated`, `ManaAbilities`,
+`AdditionalCost`, `AlternativeCosts`, `TapCost`, `PrintedKeywords`) and the
+`*ForEffect` helpers on `*game.Game` — using regexes over oracle text plus
+Scryfall's `keywords`, `layout` and `type_line`.
+
+**This triage is mechanical, and that is its limit.** It is a starting
+point good enough to schedule work against, not a verdict: a card marked
+"no new machinery" can still turn out to need a seam that does not exist,
+and the card-file author is the final arbiter. Where it errs it errs
+toward optimism, because the detectors key off printed text and the engine
+gaps that bite are usually the unprinted ones.
+
+## What the catalog covers today
+
+288 cards, by shape:
+
+| Slice | Cards |
+|---|---:|
+| Lands | 83 |
+| Creatures (bodies, ETB / dies payoffs) | 50 |
+| Other (enchantments, artifacts, utility) | 49 |
+| Ramp / mana rocks | 37 |
+| Removal / interaction | 36 |
+| Card draw / selection | 33 |
+
+By play rate: **74 of the top 100**, 123 of the top 200, 143 of the top
+300, 168 of the top 500, 196 of the top 1000, 219 of the top 2000.
+
+Lands are over-represented on purpose. The land cycles are where one
+helper buys ten cards — `SelfEntersTappedUnless` alone covers the
+checklands, battle lands and bond lands — and #267/#268 finished the
+painlands, Talismans and shocklands on the same logic.
+
+Recent batches, newest first: **#271** tap-as-cost (convoke / waterbend),
+**#269** airbend, **#268** shocklands, **#267** mana-ability riders and
+`ManaAbilityCost.Life`, **#261** the top-100 staples batch (32 cards, 20
+of them conditional-dual lands), **#258** Hashaton, on top of the S19–S21
+engine work: triggered abilities, activated abilities, modal spells,
+structured targeting, additional and alternative costs.
+
+## The ranked missing mechanics — the key result
+
+Across all 2000 cards. **"Unlocks alone"** counts cards where the named
+mechanic is the *only* missing piece — build it and those cards become
+writable that day. **"Appears in"** counts every card that needs it at
+all, whether or not something else also blocks. **"Dominant blocker for"**
+is the grouping the batch issues use.
+
+Ordered by "unlocks alone", because that is the column that answers
+"what should we build next".
+
+| Rank | Missing mechanic | Unlocks alone | Appears in | Dominant blocker for | Tracking |
+|---:|---|---:|---:|---:|---|
+| 1 | Cost modification, alternative casts and costs computed at activation | **120** | 241 | 205 | #93 |
+| 2 | Mana pipeline — restricted / derived mana, mana from a spell, gated or scaled mana abilities | **98** | 183 | 115 | #352 |
+| 3 | Protection / hexproof / ward / indestructible / shroud, damage prevention, copying | **78** | 242 | 119 | #95 / #176 |
+| 4 | Until-end-of-turn continuous effects (turn-scoped statics) | **59** | 232 | 171 | #279 |
+| 5 | Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse) | **59** | 106 | 95 | — |
+| 6 | Attachments — Equipment and Auras | **47** | 105 | 104 | #280 |
+| 7 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **45** | 98 | 61 | — |
+| 8 | Player-scoped and game-rule effects (hand size, extra turns / combats / land drops, command zone) | **39** | 95 | 45 | — |
+| 9 | Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling…) | **28** | 96 | 28 | #176 |
+| 10 | Keyword actions with no primitive (proliferate, surveil, explore, connive, amass…) | **24** | 54 | 28 | — |
+| 11 | Exile-and-return (blink) and exile-until-leaves | **24** | 52 | 29 | — |
+| 12 | "As this enters, choose …" — creature type / colour / name a card | **23** | 47 | 24 | — |
+| 13 | Attack / block restrictions and taxes (can't be blocked, attack taxes, must attack) | **21** | 77 | 32 | — |
+| 14 | Multi-face cards (MDFC / transform / adventure / split / class / case) | **18** | 69 | 69 | #278 |
+| 15 | Card-type completeness — planeswalkers, sagas, vehicles, battles, classes | **13** | 49 | 44 | #92 |
+| 16 | Layer-4 type-changing statics feeding mana derivation (Urborg / Yavimaya / Blood Moon) | **9** | 29 | 14 | — |
+| 17 | Per-player / per-turn tallies (storm, second-spell, cast counts, lifegain counts) | **9** | 23 | 9 | — |
+| 18 | Change of control (gain control, exchange control) | **7** | 16 | 8 | #76 |
+| 19 | Shuffle a card or permanent into a library | **5** | 10 | 6 | — |
+| 20 | Recurring self-drawbacks (cumulative upkeep, echo, fading, vanishing, doesn't untap) | **4** | 9 | 4 | — |
+| 21 | Table-state mechanics (monarch, initiative, day/night, The Ring, dungeons, speed) | **4** | 6 | 4 | — |
+| 22 | Face-down permanents (morph, manifest, disguise, cloak, mutate) | **3** | 14 | 13 | #95 |
+| 23 | Regeneration, phasing, totem armor | **2** | 14 | 3 | #176 |
+| 24 | Counters on players (energy, experience, poison, rad, ticket) | **0** | 10 | 1 | — |
+
+**769 of the 2000 (38%) need no new machinery at all.** That is the most
+actionable number in this document: there is more than a sprint of
+card-writing available before the next primitive has to land, and it is
+spread across every batch rather than bunched at the front.
+
+Three readings worth pulling out:
+
+- **Cost modification (#93) is the biggest single unlock in the format** —
+  120 cards on its own, 241 touched. It is also not one thing: cost
+  reducers and increasers are a `CostModifier` hook on the S15 cost
+  computation; free casts (Force of Will, Flawless Maneuver, the "if you
+  control a commander" cycle) are CR 118.9 alternative costs, which
+  `AlternativeCosts` almost covers already; kicker and cascade are
+  separate again. Splitting #93 by sub-mechanic would probably move the
+  first tranche inside one sprint.
+- **The mana pipeline is second — tracked as #352 since S32.** 98 cards
+  on its own. Four sub-gaps, same as the top-100 triage found: colours
+  derived from the board (Exotic Orchard, Reflecting Pool, Chrome Mox,
+  Mox Amber), spend restrictions (Cavern of Souls, Delighted Halfling),
+  an activation gate (`Temple of the False God`, Mox Opal), and a mana
+  component inside a *mana* ability's cost — which is the entire Signet
+  cycle, cards that look trivial and were, until #352, unwritable.
+
+  All four shipped in S32 (ADR 0040): `ManaAbilityCost.Mana`,
+  `ManaAbility.Condition`, `ManaAbility.ProducedFunc` and
+  `ManaAbility.Restrictions`, the last enforced at **spend** time via
+  `ManaSpendContext` — the production half alone would have made every
+  restricted-mana card stronger than printed, the #259 direction. 20
+  cards registered against it (the ten Signets, Cabal Coffers, Gaea's
+  Cradle, Temple of the False God, Mox Opal, Exotic Orchard, Reflecting
+  Pool, Mox Amber, Delighted Halfling, Shrine of the Forsaken Gods,
+  Eldrazi Temple) plus a fix to Fellwar Stone, whose declared
+  five-colour simplification was over-permissive. Of the 96 cards still
+  naming it as their dominant blocker, at least 29 now need no engine
+  work at all — the ten Odyssey filter lands, the seven Verges, the four
+  Tainted lands and a dozen more are pure data.
+- **Until-end-of-turn (#279) is the clearest case of leverage over
+  count.** Only 59 cards name it as their sole blocker, but it appears in
+  **232** — nearly one card in eight. It is in flight in S32 and the
+  ranking supports that.
+
+## Known traps across the 2000
+
+Orthogonal to the blockers: a card can be implementable today and still be
+one of these.
+
+| Trap | Cards | What it means |
+|---|---:|---|
+| `search_chooser` | 138 | rides the catalog-wide **deterministic search pick** until a search chooser lands |
+| `opponent_paid` | 106 | needs an **opponent-paid cost or an opponent's choice** (PayUnless / MayPay plumbing) |
+| `intervening_if` | 70 | carries an **intervening-if clause** — checked on announce, not re-checked on resolution |
+| `per_player_tally` | 68 | needs a **per-player tally** kept across the turn (cast counts, life gained, cards drawn, deaths) |
+| `stronger_than_printed` | 27 | would ship **stronger than printed** — the drawback half has no seam (the #259 rule) |
+
+`stronger_than_printed` is the one that changes decisions rather than
+effort. The rule from #259: a simplification that makes a card **weaker**
+than printed is acceptable and must be declared; one that makes it
+**stronger** is not, and the card gets skipped instead.
+
+## The 20 batches
+
+| Batch | Rank range | Ready today | Dominant blocking mechanic | Runner-up | Issue |
+|---|---|---:|---|---|---|
+| 01 | 9–237 | 28 | mana pipeline (16) | cost modification (8) | #294 |
+| 02 | 238–360 | 46 | cost modification (12) | mana pipeline (9) | #295 |
+| 03 | 361–471 | 48 | mana pipeline (10) | cost modification (9) | #296 |
+| 04 | 472–577 | 38 | until EOT (11) | other-zone casting (8) | #297 |
+| 05 | 578–693 | 35 | cost modification (13) | other-zone casting (8) | #298 |
+| 06 | 694–797 | 35 | cost modification (13) | mana pipeline (10) | #299 |
+| 07 | 798–901 | 40 | mana pipeline (9) | cost modification (8) | #300 |
+| 08 | 902–1004 | 43 | protection / prevention (8) | cost modification (8) | #301 |
+| 09 | 1005–1110 | 44 | until EOT (10) | cost modification (9) | #302 |
+| 10 | 1111–1213 | 38 | cost modification (13) | until EOT (12) | #303 |
+| 11 | 1214–1315 | 38 | cost modification (11) | protection / prevention (9) | #304 |
+| 12 | 1316–1420 | 36 | cost modification (11) | until EOT (9) | #305 |
+| 13 | 1421–1524 | 43 | protection / prevention (9) | cost modification (8) | #306 |
+| 14 | 1525–1625 | 45 | cost modification (15) | attachments (9) | #307 |
+| 15 | 1626–1726 | 35 | until EOT (9) | cost modification (9) | #308 |
+| 16 | 1727–1829 | 38 | cost modification (9) | protection / prevention (8) | #309 |
+| 17 | 1830–1929 | 38 | cost modification (11) | other-zone casting (9) | #310 |
+| 18 | 1930–2031 | 45 | until EOT (12) | cost modification (6) | #311 |
+| 19 | 2032–2132 | 27 | until EOT (13) | protection / prevention (10) | #312 |
+| 20 | 2133–2234 | 29 | cost modification (15) | until EOT (9) | #313 |
+
+## What "done" means for a batch
+
+Every card in a batch's table is either **registered** in
+`server/internal/cards/effects/` with a test, or **declared skipped** with
+the reason on that batch's issue. Simplifications go on the card file as
+comments. Batches need not land in one PR, and within a batch the "no new
+machinery" group is the part that can start immediately.

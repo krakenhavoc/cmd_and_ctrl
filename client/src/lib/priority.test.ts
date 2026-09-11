@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 
-import { hasAnyLegalResponse, _resetCacheForTests } from "./priority";
+import { hasAnyLegalResponse, owesBlockDecision, _resetCacheForTests } from "./priority";
 import type { CardView, GameView, PlayerView, StackItemView, TurnView, ZoneView } from "./protocol";
 
 // Fixture helpers mirror the shape used in timing.test.ts. Kept
@@ -180,5 +180,85 @@ describe("hasAnyLegalResponse", () => {
     // answer re-computes against the new state.
     const s2 = snap({ hand: [] });
     expect(hasAnyLegalResponse(s2, "p0", 2)).toBe(false);
+  });
+});
+
+// #328 — the defending player's declare-blockers window. Blocking is
+// a turn-based action, not a priority response, so it was invisible
+// to every auto-pass gate: the player in the bug report had their one
+// chance to block passed for them and took eight unblocked damage
+// with an untapped creature on the table.
+describe("owesBlockDecision", () => {
+  beforeEach(() => _resetCacheForTests());
+
+  // blockSnap builds a declare-blockers snapshot on the opponent's
+  // turn where the viewer (p0, seat 0) holds priority — the exact
+  // shape of replay seq 307 in the bug report.
+  function blockSnap(seats: number[] | undefined): GameView {
+    const s = snap({
+      step: "declare_blockers",
+      activeSeat: 1,
+      priorityHolder: 0,
+    });
+    s.turn.block_decision_seats = seats;
+    return s;
+  }
+
+  it("is true when the server says the viewer's seat owes a decision", () => {
+    expect(owesBlockDecision(blockSnap([0]), "p0")).toBe(true);
+  });
+
+  it("is false when only another seat owes a decision", () => {
+    expect(owesBlockDecision(blockSnap([1]), "p0")).toBe(false);
+  });
+
+  it("is false when the field is absent or empty", () => {
+    expect(owesBlockDecision(blockSnap(undefined), "p0")).toBe(false);
+    expect(owesBlockDecision(blockSnap([]), "p0")).toBe(false);
+  });
+
+  it("is false for a null snap, a null viewer, or an unseated viewer", () => {
+    expect(owesBlockDecision(null, "p0")).toBe(false);
+    expect(owesBlockDecision(blockSnap([0]), null)).toBe(false);
+    expect(owesBlockDecision(blockSnap([0]), "nobody")).toBe(false);
+  });
+
+  it("does not require the viewer to hold priority", () => {
+    // The active player holds priority first on entering the step.
+    // The defender still owes the decision, and the guard must hold
+    // when priority reaches them a moment later.
+    const s = blockSnap([0]);
+    s.turn.priority_holder = 1;
+    expect(owesBlockDecision(s, "p0")).toBe(true);
+  });
+});
+
+describe("hasAnyLegalResponse — #328 blocking window", () => {
+  beforeEach(() => _resetCacheForTests());
+
+  it("is true when the viewer owes a block decision and has nothing else to do", () => {
+    // Empty hand, empty command, and not one battlefield card the
+    // viewer controls — every pre-existing branch says "nothing to
+    // do", which is precisely how smart-skip would eat the window.
+    const s = snap({
+      step: "declare_blockers",
+      activeSeat: 1,
+      priorityHolder: 0,
+      battlefield: [card("enemy", "Creature", { controller: "p1" })],
+    });
+    expect(hasAnyLegalResponse(s, "p0", 500)).toBe(false);
+    s.turn.block_decision_seats = [0];
+    expect(hasAnyLegalResponse(s, "p0", 501)).toBe(true);
+  });
+
+  it("still passes a declare-blockers window the viewer cannot block in", () => {
+    const s = snap({
+      step: "declare_blockers",
+      activeSeat: 1,
+      priorityHolder: 0,
+      battlefield: [card("enemy", "Creature", { controller: "p1" })],
+    });
+    s.turn.block_decision_seats = [1];
+    expect(hasAnyLegalResponse(s, "p0", 502)).toBe(false);
   });
 });

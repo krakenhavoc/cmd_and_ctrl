@@ -108,6 +108,20 @@ var (
 	// wraps to the next ActiveSeat. Added in S13.1.
 	ErrLoyaltyAlreadyActivated = errors.New("game: planeswalker loyalty already activated this turn")
 
+	// ErrInsufficientLoyalty is returned when a loyalty ability's
+	// cost would remove more loyalty counters than the planeswalker
+	// has (CR 606.3). Paying down to exactly zero is legal — the
+	// 704.5i SBA takes it from there — so this fires only on a
+	// genuine overpayment. Added in S27 (#329, #334).
+	ErrInsufficientLoyalty = errors.New("game: not enough loyalty to pay that cost")
+
+	// ErrNotAPlaneswalker is returned when a loyalty cost is
+	// activated on something that isn't a planeswalker (CR 606.1).
+	// Guards both the catalog path (a miswritten Spec) and the
+	// S13.1 sandbox action, which used to take any battlefield card
+	// and hand it loyalty counters. Added in S27 (#329, #334).
+	ErrNotAPlaneswalker = errors.New("game: source is not a planeswalker")
+
 	// ErrInvalidStackDestination is returned by counter_spell when the
 	// requested destination zone is invalid (battlefield, stack — a
 	// counter must move the spell off the stack). Added in S13.1.
@@ -160,11 +174,45 @@ var (
 	// Added in S15 sub-PR 3.
 	ErrInsufficientMana = errors.New("game: insufficient mana")
 
+	// ErrUnparseableCost is returned by CastSpell when the card's
+	// printed ManaCost can't be parsed. Split and adventure cards
+	// import a joined cost ("{1}{R} // {1}{U}") that ParseCost
+	// rightly rejects; before this sentinel existed the cost gate
+	// swallowed the parse error and let the spell through for FREE
+	// — see #289. Refusing the cast is the honest answer: the
+	// engine does not know what the card costs, so neither the
+	// strict gate nor permissive paper-tracking can be trusted.
+	// Callers wrap it with the offending cost string for the
+	// client-facing message.
+	ErrUnparseableCost = errors.New("game: unparseable mana cost")
+
+	// ErrInvalidFace is returned by CastSpell when the requested
+	// printed face is not one this card offers (ADR 0034): a
+	// negative or out-of-range index, or the back face of anything
+	// that is not a modal DFC — a transform card's back is reached
+	// by transforming the permanent, never by casting it (CR 712.4),
+	// and an adventure's second half needs the exile-and-recast
+	// permission that is not built yet.
+	//
+	// Rejecting rather than clamping to the front face is
+	// deliberate. A player who meant to play Sea Gate, Reborn as a
+	// land and silently got a seven-mana sorcery on the stack has
+	// been handed the worst available failure; an error toast is
+	// strictly better.
+	ErrInvalidFace = errors.New("game: invalid card face")
+
 	// ErrSummoningSick is returned when a creature that entered
 	// the battlefield this turn is asked to attack or activate a
 	// tap-cost ability without haste (CR 302.1, 702.10). Added in
 	// S18 sub-PR 2.
 	ErrSummoningSick = errors.New("game: creature has summoning sickness")
+
+	// ErrConditionNotMet is returned when an ability carries an
+	// activation restriction (CR 602.5a — "Activate only if you
+	// control five or more lands") that the board does not satisfy.
+	// Checked before any cost is validated or paid, so the source is
+	// untouched. Added in the S32 mana-pipeline pass (#352).
+	ErrConditionNotMet = errors.New("game: ability's activation condition is not met")
 
 	// ErrDefender is returned by DeclareAttacker when the creature
 	// has the defender keyword (CR 702.3). Added in S18 sub-PR 2.
@@ -176,4 +224,12 @@ var (
 	// single source of truth. Post-S18 fix for the missing gate at
 	// the DeclareBlocker call site.
 	ErrIllegalBlock = errors.New("game: blocker cannot legally block this attacker")
+
+	// ErrNoLegalAttackers is returned by DeclareAttackers when every
+	// entry in a bulk declaration was skipped — all tapped, sick,
+	// defenders, already declared, or aimed at a seat that can't be
+	// attacked. Surfaced rather than swallowed so the room layer
+	// leaves the undo stack and the snapshot sequence untouched for
+	// what is, in the end, a no-op. Added in S31 for #318.
+	ErrNoLegalAttackers = errors.New("game: no creature in the declaration is able to attack")
 )

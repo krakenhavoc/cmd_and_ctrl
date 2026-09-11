@@ -318,3 +318,64 @@ describe("canPassPriority", () => {
     expect(canPassPriority(snap(), "p0").legal).toBe(true);
   });
 });
+
+// ADR 0034 — a modal DFC in hand is legal to play when EITHER face
+// is legal right now, because the player has not chosen yet: the
+// face picker opens AFTER this gate, not before it. This is the one
+// client file whose BEHAVIOUR the face model changes; everywhere
+// else keeps working untouched because the wire now hands it one
+// clean type line per face instead of a "Sorcery // Land"
+// concatenation.
+describe("canCastFromHand over multiple faces", () => {
+  function mdfc(frontType: string, backType: string): CardView {
+    return card("Modal", frontType, {
+      layout: "modal_dfc",
+      faces: [
+        { name: "Front", type_line: frontType },
+        { name: "Back", type_line: backType },
+      ],
+    });
+  }
+
+  it("a sorcery-front / land-back MDFC is illegal outside a main phase", () => {
+    const s = snap({ step: "declare_attackers" });
+    expect(canCastFromHand(mdfc("Sorcery", "Land"), s, "p0").legal).toBe(false);
+  });
+
+  it("an INSTANT-front / land-back MDFC stays castable in combat", () => {
+    const s = snap({ step: "declare_attackers" });
+    expect(canCastFromHand(mdfc("Instant", "Land"), s, "p0").legal).toBe(true);
+  });
+
+  it("a creature-front / land-back MDFC is legal in a main phase", () => {
+    const s = snap({ step: "precombat_main" });
+    expect(canCastFromHand(mdfc("Creature — Elephant", "Land"), s, "p0").legal).toBe(true);
+  });
+
+  it("reports a face's denial rather than a blank refusal", () => {
+    const s = snap({ step: "draw" });
+    const got = canCastFromHand(mdfc("Sorcery", "Land"), s, "p0");
+    expect(got.legal).toBe(false);
+    expect(got.reason).toBeTruthy();
+  });
+
+  it("a transform card is gated on its FRONT face alone — CR 712.4", () => {
+    const s = snap({ step: "declare_attackers" });
+    const jace = card("Jace", "Legendary Creature — Human Wizard", {
+      layout: "transform",
+      faces: [
+        { name: "Jace, Vryn's Prodigy", type_line: "Legendary Creature — Human Wizard" },
+        // An instant back face must NOT make the front castable at
+        // instant speed: the back cannot be cast at all.
+        { name: "Back", type_line: "Instant" },
+      ],
+    });
+    expect(canCastFromHand(jace, s, "p0").legal).toBe(false);
+  });
+
+  it("single-faced cards take exactly the path they always did", () => {
+    const s = snap({ step: "declare_attackers" });
+    expect(canCastFromHand(card("Bolt", "Instant"), s, "p0").legal).toBe(true);
+    expect(canCastFromHand(card("Wrath", "Sorcery"), s, "p0").legal).toBe(false);
+  });
+});

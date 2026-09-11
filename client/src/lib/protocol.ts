@@ -59,6 +59,7 @@ export interface ErrorPayload {
 // grows call sites for them.
 export type ActionType =
   | "activate_ability"
+  | "activate_loyalty"
   | "activate_mana_ability"
   | "add_counter"
   | "add_player_counter"
@@ -70,6 +71,9 @@ export type ActionType =
   | "counter_ability"
   | "counter_spell"
   | "declare_attacker"
+  // Bulk attacking-set declaration (#318) — one action, one undo
+  // entry, one broadcast, however wide the board.
+  | "declare_attackers"
   | "declare_blocker"
   | "discard_selection"
   | "draw_card"
@@ -550,13 +554,23 @@ export interface ActivatedAbilityView {
   mana_cost?: string;
   life_cost?: number;
   sorcery_speed?: boolean;
+  // loyalty_cost is the +N / 0 / −N of a planeswalker's loyalty
+  // ability (CR 606.1). Its PRESENCE, not its value, is what marks
+  // the ability as a loyalty ability — 0 is a real printed cost —
+  // so test for `!== undefined`, never for truthiness. Added with
+  // #329 / #334.
+  loyalty_cost?: number;
   // A "Sacrifice a creature"-style cost: the clause, and the
   // permanents the controller can pay it with right now.
   sacrifice_label?: string;
   sacrifice_options?: { players?: string[]; cards?: string[] };
-  // Present when the ability targets.
+  // Present when the ability targets. A full LegalTargetsView since
+  // #334: the server now stamps the clause's min / max (it always
+  // had them; abilityLegalTargets just never copied them across),
+  // which is what lets an "up to one target" ability — Teferi's −3,
+  // the Emperor's −2 — be confirmed with nothing picked.
   target_mode?: string;
-  legal_targets?: { players?: string[]; cards?: string[] };
+  legal_targets?: LegalTargetsView;
 }
 
 export interface ModeOptionView {
@@ -579,8 +593,29 @@ export interface LegalTargetsView {
   count_from_x?: boolean;
 }
 
+/**
+ * One printed face of a multi-face card (ADR 0034). Enough to render
+ * a picker row and a hover panel.
+ */
+export interface CardFaceView {
+  name: string;
+  type_line?: string;
+  mana_cost?: string;
+  oracle_text?: string;
+  power?: number;
+  toughness?: number;
+  /** "/cards/{scryfall_id}/image?face=N", built server-side. */
+  image?: string;
+}
+
 export interface CardView {
   instance_id: string;
+  /**
+   * The ACTIVE face's name. For the ~33,000 single-faced oracle IDs
+   * this is simply the card's name, as it always was; for a modal
+   * DFC or a transform card it is the name of the side that is
+   * currently up — never Scryfall's "A // B" composite.
+   */
   name: string;
   owner: string;
   controller: string;
@@ -633,6 +668,20 @@ export interface CardView {
   // non-catalog cards (the majority) don't carry the field. Drives
   // the gold-leaf "auto" badge on Card.svelte.
   auto?: boolean;
+  // The honest inverse of `auto`, and deliberately not !auto. Most
+  // cards have no catalog entry and don't need one — printed
+  // keywords are enforced for every card in the dump, a vanilla
+  // creature is complete, a basic land taps off its type line. This
+  // is set only when the card prints rules the engine will not run,
+  // which is the case behind reports #321 / #324 / #325 / #332 /
+  // #333: five uncatalogued cards resolved into silence and the
+  // player had no way to tell that from a defect.
+  //
+  // Surfaced at the moments a player forms an expectation — the
+  // hover/inspect panel and the stack — and NOT as a board badge.
+  // Most of a real battlefield would carry one, and a badge on
+  // everything is a badge nobody reads.
+  unimplemented?: boolean;
   // target_mode tells the cast-click flow what to prompt for at
   // announce time. Empty/absent ⇒ cast immediately with no target.
   // See client/src/lib/targeting.ts for the full enum.
@@ -671,6 +720,12 @@ export interface CardView {
   // S21 sub-PR 2: CR 302.1 summoning sickness — entered this turn
   // without haste, so it can't attack or pay a {T} cost.
   summoning_sick?: boolean;
+  // CR 606.5: a loyalty ability has already been activated on this
+  // planeswalker this turn, so every loyalty row in its menu is
+  // greyed until the turn cursor moves on. Before #334 this state
+  // was server-only, which is why canActivateLoyalty had to take
+  // the caller's guess as an argument.
+  loyalty_activated?: boolean;
   // S15: raw Scryfall mana-cost string ("{1}{R}", "{W/U}", "{X}{B}"),
   // rendered as a read-only chip on hand-zone cards. Omitted for
   // lands and for placeholder / demo-seed cards. Also zeroed on the
@@ -690,6 +745,19 @@ export interface CardView {
   // printed keywords (S18 Spec.PrintedKeywords). S18 renders
   // keyword badges from this list via the KeywordBadgeRow component.
   abilities?: string[];
+  // ADR 0034 — Scryfall's printing layout, absent for the ordinary
+  // single-faced card. "modal_dfc" is the one the client acts on:
+  // it means playing this card needs a face choice first.
+  layout?: string;
+  // ADR 0034 — every printed face, front first. PURELY ADDITIVE:
+  // name / type_line / mana_cost / power / toughness above continue
+  // to mean "the ACTIVE face's", which is why every existing type
+  // check in cardTypes.ts, Card.svelte and timing.ts kept working
+  // unchanged — they now receive one clean type line instead of a
+  // "Sorcery // Land" concatenation. Absent for single-faced cards.
+  faces?: CardFaceView[];
+  // ADR 0034 — index into `faces`. Absent (0) is the front face.
+  active_face?: number;
 }
 
 // ManaAbilityView mirrors `protocol.ManaAbilityView` server-side —
@@ -716,6 +784,16 @@ export interface ManaAbilityView {
   // damage to you", the painlands / Ancient Tomb) is NOT a cost and
   // never appears here — it is spelled out in `label` instead.
   life_cost?: number;
+  // S32 (#352): a mana component of the activation cost — the Signet
+  // cycle's "{1}, {T}", Cabal Coffers' "{2}, {T}". Advisory like
+  // life_cost. The server never auto-taps into a mana ability, so the
+  // player has to float this mana before the entry will fire.
+  mana_cost?: string;
+  // S32 (#352): spend restrictions the produced mana will carry —
+  // Ancient Ziggurat's "only to cast a creature spell", Eldrazi
+  // Temple's "only colorless Eldrazi". Informational; the server's
+  // pool solver is what actually refuses an illegal payment.
+  restrictions?: string[];
 }
 
 export interface TurnView {
@@ -727,6 +805,16 @@ export interface TurnView {
   priority_holder: number;
   phase: string;
   step: string;
+  // #328: seat indices that owe a declare-blockers decision — under
+  // attack, holding at least one creature that could legally block
+  // one of the attackers. Absent outside the declare_blockers step.
+  //
+  // The server computes this because block legality is a rules
+  // question (CR 509.1a untapped, CR 509.1b evasion) that the client
+  // must not re-derive in TypeScript. It exists because blocking is a
+  // turn-based action rather than a response, so the auto-pass
+  // "legal response?" predicate structurally could not see it.
+  block_decision_seats?: number[];
 }
 
 // uuid generates a v4 UUID. Uses crypto.randomUUID when available (all

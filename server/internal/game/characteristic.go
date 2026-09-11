@@ -53,38 +53,98 @@ type Characteristic struct {
 // Characteristic with empty type slices — safe for downstream
 // layers to iterate.
 //
-// Colors are NOT derived here — there's no per-card color field on
-// the Card struct yet (S15 added ManaCost only). When S16's catalog
-// adds color-changing effects, this will need a parsed-from-cost
-// initial color set.
+// Colors come from printedColors: Card.Colors when the importer
+// stamped it, the mana cost otherwise. (This comment used to say
+// colours were not derived here at all — true at S16 sub-PR 1, wrong
+// since S20 stamped Card.Colors, and wrong in a way that mattered:
+// the cost-only derivation was what made every colour-indicator face
+// read as colourless.)
 func (c Card) printedCharacteristic() Characteristic {
 	supertypes, types, subtypes := ParseTypeLine(c.TypeLine)
-	// Printed keywords live in the catalog's Spec.PrintedKeywords slot
-	// (S18 sub-PR 2). Including them here means off-battlefield
+	// Printed keywords come from two places. The catalog's
+	// Spec.PrintedKeywords slot (S18 sub-PR 2) is the older one;
+	// including it here means off-battlefield
 	// CardView.Abilities surfaces the keyword on hand cards — the
 	// client's cast-timing gate needs flash to grey-enable Ambush
 	// Viper at instant speed. The on-battlefield synth adds these
 	// via a Layer 6 StaticAbility with a dedupe, so double-counting
 	// is impossible.
+	//
+	// Card.Keywords is the printed-data road: the deck importer
+	// stamps Scryfall's `keywords` array onto every imported card
+	// (#317 / #319 / #320), and token templates declare theirs
+	// inline because a token has no oracle ID for the catalog hook
+	// to key on (S21 sub-PR 1). The catalog remains a fallback and
+	// an override for cards that never go through deck import —
+	// fixtures, tokens, and any spec that deliberately states a
+	// keyword Scryfall doesn't.
+	//
+	// The two sources overlap for every catalog card that is also
+	// imported from a decklist, so the merge dedupes: a doubled
+	// "flash" is harmless to HasKeyword but renders as two badges
+	// on the client's keyword row.
 	var abilities []string
 	if CatalogPrintedKeywords != nil && c.OracleID != "" {
-		if kws := CatalogPrintedKeywords(c.OracleID); len(kws) > 0 {
+		if kws := CatalogPrintedKeywords(CatalogKey(c)); len(kws) > 0 {
 			abilities = append(abilities, kws...)
 		}
 	}
-	// S21 sub-PR 1: tokens carry their keywords on the card object —
-	// there's no oracle ID for the catalog hook to key on.
-	abilities = append(abilities, c.Keywords...)
+	for _, kw := range c.Keywords {
+		if !containsKeyword(abilities, kw) {
+			abilities = append(abilities, kw)
+		}
+	}
 	return Characteristic{
 		Power:      c.Power,
 		Toughness:  c.Toughness,
 		Types:      types,
 		Subtypes:   subtypes,
 		Supertypes: supertypes,
-		Colors:     printedColorsFromCost(c.ManaCost),
+		Colors:     printedColors(c),
 		Name:       c.Name,
 		Abilities:  abilities,
 	}
+}
+
+// containsKeyword reports whether xs already holds kw. Used by the
+// printed-characteristic merge; the battlefield's Layer 6 keyword
+// synth keeps its own copy over in cards/effects, where the name
+// would otherwise collide with that package's test helpers.
+func containsKeyword(xs []string, kw string) bool {
+	for _, x := range xs {
+		if x == kw {
+			return true
+		}
+	}
+	return false
+}
+
+// printedColors is the printed-colour rule for a whole card: the
+// STAMPED Colors list when the importer gave us one, falling back to
+// the colours in the mana cost.
+//
+// It used to be the cost alone, which is wrong for three classes of
+// card and was a latent bug independent of faces:
+//
+//   - Devoid (CR 702.114) prints a cost with coloured pips and is
+//     colourless anyway. Scryfall's `colors` says so; the cost does
+//     not.
+//   - CR 105.2c colour indicators — the coloured dot on a card with
+//     no mana cost. Every transform back face is in this class:
+//     Jace, Telepath Unbound has cost "" and reads as colourless
+//     from the cost, blue from the indicator.
+//   - Land faces of a modal DFC, which are correctly colourless but
+//     used to be indistinguishable from "not stamped".
+//
+// Empty Colors still means "not stamped" rather than "colourless" —
+// tokens and test fixtures never set it — so the cost fallback is
+// kept rather than replaced. That matches the posture
+// Card.EffectiveColors has taken since S20.
+func printedColors(c Card) []string {
+	if len(c.Colors) > 0 {
+		return append([]string(nil), c.Colors...)
+	}
+	return printedColorsFromCost(c.ManaCost)
 }
 
 // printedColorsFromCost extracts the unique WUBRG letters from a

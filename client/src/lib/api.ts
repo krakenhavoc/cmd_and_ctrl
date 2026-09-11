@@ -50,6 +50,13 @@ export interface UploadDeckResponse {
   card_count: number;
   commanders: string[];
   warnings?: ApiViolation[];
+  // Distinct names of the accepted deck's cards that print rules the
+  // engine will not carry out. Not an error and not a warning — the
+  // deck is legal and the game will run; those cards behave as
+  // manual sandbox cards. Told here because deck upload is the best
+  // moment there is to say it: once, before the game, instead of
+  // once per surprise mid-combat.
+  unimplemented?: string[];
 }
 
 interface SessionResponse {
