@@ -135,6 +135,13 @@
       {:else if meta === null}
         <div class="oracle dim">…</div>
       {/if}
+      <!-- Directly under the oracle text, which is the text it is
+           about. Inspecting a card is the one moment a player is
+           already asking what it does, so it costs nothing to answer
+           the other half of the question here. -->
+      {#if card.unimplemented}
+        <div class="not-implemented">rules not implemented — resolve this card by hand</div>
+      {/if}
       {#if card.tapped || card.attacking_target || card.blocking_target || card.goaded_by || card.is_commander || counterChips.length > 0}
         <footer class="info-foot">
           {#if card.is_commander}
@@ -316,6 +323,16 @@
   .oracle.dim {
     color: var(--fg-dim);
     font-style: italic;
+  }
+  /* Deliberately quiet — dim, small, no colour of its own. This is a
+     statement about the engine, not about the card, and it sits
+     beside oracle text the player is trying to read. */
+  .not-implemented {
+    margin-top: 4px;
+    font-size: 10.5px;
+    line-height: 1.35;
+    letter-spacing: 0.02em;
+    color: var(--fg-dim);
   }
   .info-foot {
     display: flex;

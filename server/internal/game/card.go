@@ -141,6 +141,27 @@ type Card struct {
 	// the ~78% of real cards that print no keyword at all.
 	Keywords []string
 
+	// NeedsEffect records that this card's printed text describes
+	// rules only a hand-written catalog Spec can carry out — it is
+	// NOT "has oracle text" and it is NOT "is missing from the
+	// catalog". A vanilla creature is false; a creature whose whole
+	// text is enforced keywords is false; a Forest is false. See
+	// coverage.go for the reasoning and NeedsCatalogEffect for the
+	// derivation.
+	//
+	// Stamped by the deck importer from the Scryfall record, the
+	// same road Keywords and StartingLoyalty travel, and joined with
+	// catalog membership by game.Unimplemented — the one definition
+	// the deck-upload summary, the card view and the stack view all
+	// read, so they cannot disagree.
+	//
+	// False for cards that never went through deck import (tokens,
+	// fixtures, the demo seed), which means they are never flagged.
+	// Deliberate: a missed signal costs a player nothing they
+	// weren't already going to learn, and a false one costs the
+	// signal its credibility.
+	NeedsEffect bool
+
 	// ManaAbilities are mana abilities carried on the card object,
 	// for the same reason as Keywords: a Treasure token's "{T},
 	// Sacrifice this artifact: Add one mana of any color" can't come
