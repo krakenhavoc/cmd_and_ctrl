@@ -323,6 +323,29 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 			}
 		}
 	}
+
+	// Restore point (see persist.go). Distinct from the dump above:
+	// that one is a protocol.GameView for forensics and cannot
+	// rebuild a game; this one is the domain snapshot that can.
+	//
+	// Written only when the resulting state holds no live Go
+	// continuations, so what sits on disk is always the most recent
+	// state a restart can rebuild EXACTLY. A game mid-prompt skips
+	// the write and keeps its previous restore point — the deploy
+	// rewinds it rather than resurrecting it wrong.
+	//
+	// Failure is warn-only for the same reason the dump's is: losing
+	// a restore point costs a rewind on the next deploy; refusing the
+	// player's action costs them the move they just made.
+	if r.dumpDir != "" && advanceSeq {
+		if r.Game.CurrentState() == game.StateEnded {
+			// Nothing left to resume. Drop the file so every future
+			// boot does not rebuild a finished table.
+			r.RemoveRestorePoint()
+		} else if _, err := r.writeRestorePointLocked(nextSeq); err != nil {
+			r.log.Warn("restore point write failed", "err", err, "seq", nextSeq)
+		}
+	}
 	return view, nextSeq, nil
 }
 

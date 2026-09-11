@@ -750,6 +750,16 @@ export interface ManaAbilityView {
   // damage to you", the painlands / Ancient Tomb) is NOT a cost and
   // never appears here — it is spelled out in `label` instead.
   life_cost?: number;
+  // S32 (#352): a mana component of the activation cost — the Signet
+  // cycle's "{1}, {T}", Cabal Coffers' "{2}, {T}". Advisory like
+  // life_cost. The server never auto-taps into a mana ability, so the
+  // player has to float this mana before the entry will fire.
+  mana_cost?: string;
+  // S32 (#352): spend restrictions the produced mana will carry —
+  // Ancient Ziggurat's "only to cast a creature spell", Eldrazi
+  // Temple's "only colorless Eldrazi". Informational; the server's
+  // pool solver is what actually refuses an illegal payment.
+  restrictions?: string[];
 }
 
 export interface TurnView {

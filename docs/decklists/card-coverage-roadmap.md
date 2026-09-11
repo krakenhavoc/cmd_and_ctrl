@@ -403,7 +403,7 @@ Ordered by "unlocks alone", because that is the column that answers
 | Rank | Missing mechanic | Unlocks alone | Appears in | Dominant blocker for | Tracking |
 |---:|---|---:|---:|---:|---|
 | 1 | Cost modification, alternative casts and costs computed at activation | **120** | 241 | 205 | #93 |
-| 2 | Mana pipeline — restricted / derived mana, mana from a spell, gated or scaled mana abilities | **98** | 183 | 115 | — |
+| 2 | Mana pipeline — restricted / derived mana, mana from a spell, gated or scaled mana abilities | **98** | 183 | 115 | #352 |
 | 3 | Protection / hexproof / ward / indestructible / shroud, damage prevention, copying | **78** | 242 | 119 | #95 / #176 |
 | 4 | Until-end-of-turn continuous effects (turn-scoped statics) | **59** | 232 | 171 | #279 |
 | 5 | Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse) | **59** | 106 | 95 | — |
@@ -442,13 +442,27 @@ Three readings worth pulling out:
   `AlternativeCosts` almost covers already; kicker and cascade are
   separate again. Splitting #93 by sub-mechanic would probably move the
   first tranche inside one sprint.
-- **The mana pipeline is second and has no tracking issue.** 98 cards on
-  its own. Four sub-gaps, same as the top-100 triage found: colours
+- **The mana pipeline is second — tracked as #352 since S32.** 98 cards
+  on its own. Four sub-gaps, same as the top-100 triage found: colours
   derived from the board (Exotic Orchard, Reflecting Pool, Chrome Mox,
   Mox Amber), spend restrictions (Cavern of Souls, Delighted Halfling),
   an activation gate (`Temple of the False God`, Mox Opal), and a mana
   component inside a *mana* ability's cost — which is the entire Signet
-  cycle, five cards that look trivial and are currently unwritable.
+  cycle, cards that look trivial and were, until #352, unwritable.
+
+  All four shipped in S32 (ADR 0040): `ManaAbilityCost.Mana`,
+  `ManaAbility.Condition`, `ManaAbility.ProducedFunc` and
+  `ManaAbility.Restrictions`, the last enforced at **spend** time via
+  `ManaSpendContext` — the production half alone would have made every
+  restricted-mana card stronger than printed, the #259 direction. 20
+  cards registered against it (the ten Signets, Cabal Coffers, Gaea's
+  Cradle, Temple of the False God, Mox Opal, Exotic Orchard, Reflecting
+  Pool, Mox Amber, Delighted Halfling, Shrine of the Forsaken Gods,
+  Eldrazi Temple) plus a fix to Fellwar Stone, whose declared
+  five-colour simplification was over-permissive. Of the 96 cards still
+  naming it as their dominant blocker, at least 29 now need no engine
+  work at all — the ten Odyssey filter lands, the seven Verges, the four
+  Tainted lands and a dozen more are pure data.
 - **Until-end-of-turn (#279) is the clearest case of leverage over
   count.** Only 59 cards name it as their sole blocker, but it appears in
   **232** — nearly one card in eight. It is in flight in S32 and the

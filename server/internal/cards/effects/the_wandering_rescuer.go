@@ -19,20 +19,25 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // are one loop — you tap the team, they become hexproof, and the
 // sweeper aimed at them misses.
 //
-// S22 sandbox simplification — **the hexproof grant is inert.**
-// "Hexproof" is not one of the twelve keywords the engine's
-// targeting and combat code honours (PrintedKeywords accepts flying,
-// reach, deathtouch, lifelink, trample, vigilance, first strike,
-// double strike, menace, defender, haste, flash), so the static
-// ability below really does append the string to every other tapped
-// creature you control, and nothing reads it. The grant is declared
-// rather than omitted so that the day hexproof lands in the
-// targeting gate this card starts working without being touched.
+// Fully implemented as printed. The Layer 6 static below grants
+// "hexproof" to every other tapped creature you control, and since
+// S23 the targeting choke point (game.CanBeTargetedBy, called from
+// targets.go at both the CR 601.2c announce gate and the CR 608.2b
+// resolution re-check) reads it: an opponent's removal spell cannot
+// be announced at one of those creatures, and one already on the
+// stack fizzles if its target becomes tapped — and therefore
+// hexproof — in response.
 //
-// The simplification is strictly WEAKER than printed: the creatures
-// convoked to cast this are targetable when paper says they would
-// not be. The flash, the convoke, and the double strike are all
-// real.
+// Shipped S22 with the grant declared but INERT, because hexproof
+// was not yet in the engine's enforced keyword table; the note that
+// said so was removed when the table gained it. Nothing about this
+// card had to change for it to start working, which was the point
+// of declaring the grant rather than omitting it.
+//
+// The grant is a Layer 6 ability-adding effect keyed on a state the
+// layer engine recomputes (Tapped), so it comes and goes with the
+// tap: untapping the creature removes the hexproof on the next
+// recompute, exactly as printed.
 func init() {
 	Register(Spec{
 		OracleID:        "b8ef65df-f8e7-44e3-9864-9c127232a2b6",

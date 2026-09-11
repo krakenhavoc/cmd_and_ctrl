@@ -53,13 +53,17 @@ func init() {
 
 // isPirate reports whether a card is a Pirate creature.
 //
-// It reads the PRINTED type line rather than Effective().Subtypes,
-// because this runs inside a Layer 6/7 AppliesTo predicate — the
-// target's effective characteristics are mid-rebuild at that point,
-// so asking for them recurses into the computation being performed.
-// The cost is that a creature turned into a Pirate by another effect
-// isn't counted by the lord; that wants the layer engine to expose a
-// partially-applied view, which it doesn't today.
+// It reads EFFECTIVE subtypes, so a creature something else turned
+// into a Pirate is counted by the lord. The note that used to sit
+// here said asking for them "recurses into the computation being
+// performed" — it doesn't: Card.Effective() is a pure read of the
+// cached resolution and never starts a layer pass. What this
+// predicate really sees, running inside a Layer 6/7 AppliesTo, is a
+// PARTIALLY applied view: layers 1-4 done, 6 and 7 in progress.
+// That is not a hazard, it is CR 613 — a Layer-6 effect is supposed
+// to see post-Layer-4 types, which is exactly why a Conspiracy
+// naming Pirate would work. Lord of Atlantis has read
+// Effective().Subtypes from the same position since S16.
 func isPirate(c game.Card) bool {
-	return c.IsCreature() && containsFoldASCII(c.TypeLine, "pirate")
+	return c.IsCreature() && c.HasSubtype("Pirate")
 }

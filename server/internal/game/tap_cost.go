@@ -362,7 +362,10 @@ func (g *Game) validateTapPermanentsCostLocked(playerID uuid.UUID, c *TapPermane
 		if card.Controller != playerID || card.Tapped {
 			return ErrInvalidParam
 		}
-		if !g.targetLegalLocked(playerID, c.Spec, TargetRef{Kind: TargetCard, ID: id}) {
+		// specMatchLocked, not targetLegalLocked: tapping a permanent
+		// to pay a cost (convoke, waterbend) does not target it, so a
+		// shrouded or hexproof creature is still a legal tap.
+		if !g.specMatchLocked(playerID, c.Spec, TargetRef{Kind: TargetCard, ID: id}, false) {
 			return ErrInvalidParam
 		}
 	}

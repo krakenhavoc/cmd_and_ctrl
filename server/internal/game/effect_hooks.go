@@ -109,6 +109,74 @@ type ManaAbilityShape struct {
 	// Added in the S22 mana-ability-rider pass.
 	LifeCost int
 
+	// ManaCost is a mana component in the activation cost — the
+	// Signet cycle's "{1}, {T}: Add {W}{U}", Cabal Coffers' "{2},
+	// {T}". Scryfall brace grammar, parsed with ParseCost.
+	//
+	// Paid out of the controller's pool BEFORE the source taps, and
+	// validated alongside every other component first, so a Signet
+	// activated on an empty pool fails without tapping. There is no
+	// auto-tap here: ActivateManaAbility will not tap other
+	// permanents to fund a mana ability, because a mana ability
+	// resolves with no priority window (CR 605.3a) and the player
+	// has to have floated the mana deliberately.
+	//
+	// This closes the last of S15's "mana / life / counter
+	// sub-costs land with later sprints" note (#352 sub-gap 1).
+	ManaCost string
+
+	// Condition gates activation — "Activate only if you control
+	// five or more lands" (Temple of the False God), "Activate only
+	// if you control three or more artifacts" (Mox Opal). Checked
+	// before any cost is validated or paid; a false return is
+	// ErrConditionNotMet and nothing is spent or tapped.
+	//
+	// READ-ONLY and runs under g.mu, which ActivateManaAbility
+	// holds for write and the auto-tapper holds for read. Inspect
+	// g.Battlefield / *ForEffect accessors; a public locking
+	// mutator deadlocks.
+	//
+	// Nil means "no gate", which is nearly every mana ability.
+	//
+	// Added in the S32 mana-pipeline pass (#352 sub-gap 5).
+	Condition func(g *Game, controller, source uuid.UUID) bool
+
+	// ProducedFunc computes the produced-mana string at activation
+	// time, for abilities whose output the printed text derives
+	// from the board rather than naming:
+	//
+	//   - DERIVED colours — Exotic Orchard ("any color that a land
+	//     an opponent controls could produce"), Reflecting Pool,
+	//     Fellwar Stone, Mox Amber. Returns a pipe string.
+	//   - SCALED amounts — Cabal Coffers ("{B} for each Swamp you
+	//     control"), Gaea's Cradle. Returns the slot repeated.
+	//
+	// Wins over Produced when non-nil. Returning "" produces no
+	// mana at all, which is the printed behaviour for Exotic
+	// Orchard with no opponent lands and for Gaea's Cradle with no
+	// creatures — the ability is still activatable and the source
+	// still taps.
+	//
+	// Same locking contract as Condition: read-only, under g.mu.
+	//
+	// Added in the S32 mana-pipeline pass (#352 sub-gaps 3 and 4).
+	ProducedFunc func(g *Game, controller, source uuid.UUID) string
+
+	// Restrictions are the tags stamped onto every ManaToken this
+	// ability produces — "spend this mana only to cast a creature
+	// spell" (Ancient Ziggurat), "only to cast colorless Eldrazi
+	// spells or activate abilities of colorless Eldrazi" (Eldrazi
+	// Temple). Build them with the ManaRestrict* constructors in
+	// mana_restriction.go, which is also where the spend-time
+	// matching lives.
+	//
+	// Empty for ordinary mana. A non-empty list makes this ability
+	// invisible to the auto-tapper (autoTapAbilityFor) — restricted
+	// mana is a decision the planner cannot make for the player.
+	//
+	// Added in the S32 mana-pipeline pass (#352 sub-gap 2).
+	Restrictions []string
+
 	Produced string
 	Label    string
 
