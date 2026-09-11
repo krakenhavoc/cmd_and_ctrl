@@ -66,7 +66,7 @@ planned just-in-time from the S12 pain-point triage.
 | S22      | Card draw + library manipulation                                     | 7     | [#74](https://github.com/krakenhavoc/cmd_and_ctrl/issues/74)   | 2027-02-21 | partial     |
 | S23      | Mass removal + boardwipes                                            | 7     | [#75](https://github.com/krakenhavoc/cmd_and_ctrl/issues/75)   | 2027-03-21 | planned     |
 | S24      | Equipment, auras, attachments                                        | 7     | [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76)   | 2027-04-18 | planned     |
-| S25      | Voltron / commander damage focus                                     | 7     | [#77](https://github.com/krakenhavoc/cmd_and_ctrl/issues/77)   | 2027-05-16 | planned     |
+| S25      | Voltron / commander damage focus                                     | 7     | [#77](https://github.com/krakenhavoc/cmd_and_ctrl/issues/77)   | 2027-05-16 | partial     |
 | S26      | Tribal / creature type matters                                       | 7     | [#78](https://github.com/krakenhavoc/cmd_and_ctrl/issues/78)   | 2027-06-13 | planned     |
 | S27      | Card-type completeness (planeswalkers, sagas, vehicles, battles)     | 7     | [#92](https://github.com/krakenhavoc/cmd_and_ctrl/issues/92)   | 2027-07-04 | planned     |
 | S28      | Cost modification + alternative casts                                | 7     | [#93](https://github.com/krakenhavoc/cmd_and_ctrl/issues/93)   | 2027-07-25 | planned     |
@@ -1811,13 +1811,16 @@ Detailed plan TBD; lands just-in-time after S23.
 
 **Phase:** 7 · **Goal:** "make commander big and swing" decks work end-to-end.
 
-- [ ] `BoostUntilEOT`, `GiveKeywordUntilEOT`, `HexproofUntilEOT`, `IndestructibleUntilEOT` primitives
-- [ ] Until-end-of-turn effect lifecycle (cleanup-step removal of one-shot continuous effects)
-- [ ] Per-commander damage UX from S13.1 exercised heavily
-- [ ] ~30 cards: Bruna Light of Alabaster, Uril the Miststalker, voltron commanders + support, ramp + protection, big-equipment cards, …
-- [ ] Theme-deck smoke test (voltron deck deals 21 commander damage in 3 turns)
-
-Detailed plan TBD; lands just-in-time after S24.
+- [x] `BoostUntilEOT`, `GiveKeywordUntilEOT`, `HexproofUntilEOT`, `IndestructibleUntilEOT` primitives — shipped as **two** primitives, not four. `BoostUntilEOT` and `GrantKeywordUntilEOT` landed with #314 (`server/internal/cards/effects/until_end_of_turn.go`); the hexproof and indestructible variants are that second primitive with a different token, since a duration is orthogonal to which keyword is granted. What was actually missing was the CONSUMER for `indestructible` — see below.
+- [x] Until-end-of-turn effect lifecycle (cleanup-step removal of one-shot continuous effects) — shipped with #314: `server/internal/game/turn_scoped_statics.go`, swept by `ClearExpiredTurnScopedStaticsLocked` at the cleanup-step hook. [ADR 0035](decisions/0035-until-end-of-turn-effects.md).
+- [x] **Indestructible (CR 702.12)** — not on the original checklist, and the actual blocker behind two of its items. `server/internal/game/indestructible.go` gates `DestroyPermanentForEffect` and the two damage-driven creature SBAs. Un-blocks Boros Charm's mode 1 and Darksteel Citadel, both of which were shipped with declared-inert grants betting on exactly this. Closes the indestructible line of [#176](https://github.com/krakenhavoc/cmd_and_ctrl/issues/176).
+- [x] Per-commander damage UX from S13.1 exercised heavily — and found broken. `Player.CommanderDamage` was keyed by opposing PLAYER id while the client's `HoverZoomOverlay` bar chart read it by commander INSTANCE id, so every row rendered 0. Rekeyed to the commander (CR 903.14a), which also fixes partner commanders pooling two 21-damage clocks into one.
+- [x] Cards (13): Heroic Intervention, Blossoming Defense, Ranger's Guile, Snakeskin Veil, Tamiyo's Safekeeping, Make a Stand, Titanic Growth, Avacyn Angel of Hope, Bastion Protector, Selfless Spirit, Dauntless Escort, Zurgo Helmsmasher, Uril the Miststalker, Sigarda Host of Herons, Gladecover Scout, Slippery Bogle.
+- [x] **Uril, the Miststalker is complete**, Aura count included. It was written with that clause declared as a deferral — there was no attachment relation when this sprint started — and S24's [#374](https://github.com/krakenhavoc/cmd_and_ctrl/pull/374) landed the relation on `main` partway through. The deferral note had predicted "a one-line predicate over that field the day it lands"; it was. Layer 7c over `Card.AttachedTo`, filtered to `IsAura()` so Equipment on the same field doesn't double-count.
+- [ ] **Bruna, Light of Alabaster** — still deferred, but no longer on the relation. Her trigger attaches *any number* of Auras drawn from the battlefield, the graveyard AND the hand in one resolution, which needs a multi-select prompt spanning three zones that the attachment UX does not yet have. Belongs with the S24 attachment-cards work ([#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76)) rather than here.
+- [ ] Big-equipment cards — belong to S24 ([#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76)), which owns the relation and is shipping the Equipment/Aura card batch.
+- [ ] Theme-deck smoke test (voltron deck deals 21 commander damage in 3 turns) — waits on the Equipment/Aura card batch; a voltron deck with neither is not the deck under test.
+- [ ] "ramp + protection" — the protection half shipped (above). Ramp was already covered by S14–S22 (Sol Ring, Cultivate, Arcane Signet, the signet/rock suite) and needed nothing here.
 
 ---
 

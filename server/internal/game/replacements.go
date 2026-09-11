@@ -395,7 +395,24 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		if len(applicable) > 1 {
 			// CR 616: affected player picks order. Queue a prompt
 			// and stash the resume frame; caller returns without
-			// applying.
+			// applying — unless nobody is left to answer it, in
+			// which case the gathered order stands and the effects
+			// fire inline (an eliminated player's prompt would block
+			// the table forever; S31 fuzzer finding).
+			if chooser := affectedPlayerForEvent(ev, applicable, g); g.chooserGoneLocked(chooser) {
+				for _, chosen := range applicable {
+					if ev.Canceled {
+						break
+					}
+					g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
+					if chosen.effect.Replace != nil {
+						if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
+							g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
+						}
+					}
+				}
+				continue
+			}
 			g.queueReplacementOrderPromptLocked(ev, applicable)
 			return ev, errReplacementPending
 		}
@@ -414,7 +431,14 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		if chosen.effect.Optional {
 			// CR 614.10 "may" — owner decides each time. Queue a
 			// yes/no prompt; the resume path either fires Replace
-			// (yes) or marks applied and skips (no).
+			// (yes) or marks applied and skips (no). A chooser who
+			// has left the game gets the "no" inline: the commander
+			// of an eliminated player going to the graveyard rather
+			// than the command zone changes nothing for anyone.
+			if g.chooserGoneLocked(g.optionalReplacementChooserLocked(ev, chosen)) {
+				g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
+				continue
+			}
 			g.queueOptionalReplacementPromptLocked(ev, chosen)
 			return ev, errReplacementPending
 		}
@@ -736,4 +760,15 @@ func eventKindMatches(watches []EventKind, kind ReplacementEventKind) bool {
 		}
 	}
 	return false
+}
+
+// chooserGoneLocked reports whether a prompt addressed to id could
+// never be answered: no such seat, or the seat has been eliminated.
+// Caller must hold g.mu.
+func (g *Game) chooserGoneLocked(id uuid.UUID) bool {
+	if id == uuid.Nil {
+		return false
+	}
+	p := g.playerByIDLocked(id)
+	return p == nil || p.Eliminated
 }

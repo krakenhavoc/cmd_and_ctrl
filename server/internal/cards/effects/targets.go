@@ -322,3 +322,49 @@ func TargetCardInGraveyard(label string, preds ...CardPredicate) *game.TargetSpe
 		Min: 1, Max: 1,
 	}
 }
+
+// --- S27 predicates --------------------------------------------
+
+// OfSubtype matches a permanent whose EFFECTIVE subtypes include
+// `subtype`, case-insensitively — "Knights you control" (History of
+// Benalia), "Vehicle you control" (Heart of Kiran's crew clause).
+//
+// Effective, not printed: a Layer-4 type grant is exactly the sort of
+// thing a tribal card is supposed to see, and Card.HasSubtype already
+// reads the post-layer view on the battlefield and falls back to the
+// printed type line everywhere else.
+func OfSubtype(subtype string) CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		return c.HasSubtype(subtype)
+	}
+}
+
+// GreatestPowerYouControl matches a creature the caster controls
+// whose power is not exceeded by any other creature they control
+// (Triumph of Gerrard's "target creature you control with the
+// greatest power").
+//
+// Ties all match, which is the rule (CR 700.3 — "the greatest" picks
+// out a SET, and the player chooses among it); that is why this is a
+// target predicate rather than a lookup that returns one card.
+//
+// Reads CurrentPower so counters and anthems count, and re-runs at
+// resolution like every other target predicate, so a pump in response
+// can legally take the target out of the set (CR 608.2b).
+func GreatestPowerYouControl() CardPredicate {
+	return func(g *game.Game, caster uuid.UUID, c game.Card) bool {
+		if !c.IsCreature() || c.Controller != caster {
+			return false
+		}
+		best := c.CurrentPower()
+		for _, other := range g.BattlefieldCardsForEffect() {
+			if other.Controller != caster || !other.IsCreature() {
+				continue
+			}
+			if other.CurrentPower() > best {
+				return false
+			}
+		}
+		return true
+	}
+}

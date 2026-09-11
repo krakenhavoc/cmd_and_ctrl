@@ -92,6 +92,15 @@ func init() {
 		}
 		return spec.AlternativeCosts
 	}
+	// S29: the zones a card may be cast from beyond hand. Nil for
+	// nearly every card, which CastableZonesFor reads as "hand only".
+	game.CatalogCastableZones = func(oracleID string) []game.ZoneKind {
+		spec, ok := Lookup(oracleID)
+		if !ok || len(spec.CastableZones) == 0 {
+			return nil
+		}
+		return spec.CastableZones
+	}
 	// S22: convoke / waterbend — tapping permanents to help pay.
 	// Nil for cards that offer none, which is nearly all of them.
 	game.CatalogTapPermanentsCost = func(oracleID string) *game.TapPermanentsCost {

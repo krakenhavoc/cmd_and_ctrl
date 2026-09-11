@@ -60,6 +60,13 @@ type Room struct {
 	// (Caller == uuid.Nil) bypasses the gate. This prevents one
 	// player from rewinding an opponent's action mid-game.
 	undoStack []undoEntry
+
+	// subs are the commit observers registered via Subscribe — today
+	// the S31 bot runners. Guarded by subMu, never by mu: notify runs
+	// AFTER mu is released so an observer may call Apply from its
+	// wake without deadlocking. Added in S31 sub-PR 3.
+	subMu sync.Mutex
+	subs  map[chan struct{}]struct{}
 }
 
 // undoEntry is one slot on Room.undoStack — the pre-action game
@@ -121,6 +128,14 @@ func NewRoom(g *game.Game, log *slog.Logger, dumpDir string) *Room {
 // sequence, so two concurrent clients cannot interleave state and
 // cannot observe non-monotonic (seq, state) pairs.
 func (r *Room) Apply(caller uuid.UUID, fn func() error) (protocol.GameView, uint64, error) {
+	view, seq, err := r.apply(caller, fn)
+	if err == nil {
+		r.notify()
+	}
+	return view, seq, err
+}
+
+func (r *Room) apply(caller uuid.UUID, fn func() error) (protocol.GameView, uint64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -149,6 +164,14 @@ func (r *Room) Apply(caller uuid.UUID, fn func() error) (protocol.GameView, uint
 // Hub.BroadcastState; a lobby mutation that skips this path is
 // invisible to anyone already sitting on the game page.
 func (r *Room) ApplyExternal(fn func() error) (protocol.GameView, uint64, error) {
+	view, seq, err := r.applyExternal(fn)
+	if err == nil {
+		r.notify()
+	}
+	return view, seq, err
+}
+
+func (r *Room) applyExternal(fn func() error) (protocol.GameView, uint64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -156,6 +179,44 @@ func (r *Room) ApplyExternal(fn func() error) (protocol.GameView, uint64, error)
 		return protocol.GameView{}, 0, err
 	}
 	return r.captureLocked(true)
+}
+
+// Subscribe registers a commit observer and returns its wake channel
+// plus an unsubscribe func. The channel is edge-triggered with
+// capacity 1 and a non-blocking send: a subscriber that is busy sees
+// ONE wake for any number of commits that happened meanwhile and is
+// expected to re-read the room (Snapshot, or the game directly) on
+// wake rather than trust any payload — there is none. Fired after
+// every successful Apply / ApplyExternal / Undo, after r.mu has been
+// released, so a subscriber may call back into the room from its wake.
+// Added in S31 sub-PR 3 for the bot runners.
+func (r *Room) Subscribe() (<-chan struct{}, func()) {
+	ch := make(chan struct{}, 1)
+	r.subMu.Lock()
+	if r.subs == nil {
+		r.subs = make(map[chan struct{}]struct{})
+	}
+	r.subs[ch] = struct{}{}
+	r.subMu.Unlock()
+	return ch, func() {
+		r.subMu.Lock()
+		delete(r.subs, ch)
+		r.subMu.Unlock()
+	}
+}
+
+// notify wakes every subscriber. Non-blocking: a full channel means a
+// wake is already pending for that subscriber, which is all an
+// edge-trigger promises. Caller must NOT hold r.mu.
+func (r *Room) notify() {
+	r.subMu.Lock()
+	defer r.subMu.Unlock()
+	for ch := range r.subs {
+		select {
+		case ch <- struct{}{}:
+		default:
+		}
+	}
 }
 
 // Undo pops the most recent pre-mutation entry off the undo stack,
@@ -178,6 +239,14 @@ func (r *Room) ApplyExternal(fn func() error) (protocol.GameView, uint64, error)
 // frame and don't have to special-case the rewind. The undo itself
 // is NOT pushed onto the stack — no redo at v1.
 func (r *Room) Undo(caller uuid.UUID) (protocol.GameView, uint64, error) {
+	view, seq, err := r.undo(caller)
+	if err == nil {
+		r.notify()
+	}
+	return view, seq, err
+}
+
+func (r *Room) undo(caller uuid.UUID) (protocol.GameView, uint64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if len(r.undoStack) == 0 {
