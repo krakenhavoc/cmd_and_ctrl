@@ -2,50 +2,28 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-// Guardian Project — Enchantment for {3}{G}:
+// Guardian Project — Enchantment {3}{G} (EDHREC rank 321):
 //
 //	"Whenever a nontoken creature you control enters, if it doesn't
 //	 have the same name as another creature you control or a creature
 //	 card in your graveyard, draw a card."
 //
-// Green's Beast Whisperer with a singleton clause bolted on — which
-// costs nothing in Commander, where the deck is singleton by rule and
-// the only repeats are tokens (already excluded) and a recurring
-// creature you have already drawn off once.
+// The singleton format's Glimpse of Nature: in Commander every
+// nontoken creature is a fresh name, so it reads "whenever a
+// nontoken creature you control enters, draw a card" — the clause
+// exists to stop token and clone decks abusing it.
 //
-// Three filters, all of them ordinary reads:
+// The name check is an intervening-if (CR 603.4), evaluated when
+// the trigger would go on the stack: the entering creature is
+// compared against every OTHER creature its controller controls
+// (itself excluded by instance ID) and every creature card in that
+// player's graveyard. Same posture as every intervening-if card in
+// the catalog — checked at trigger time, not re-checked on
+// resolution — which cannot make this card stronger: a duplicate
+// that appears in response would only have made the printed trigger
+// do nothing.
 //
-//   - NONTOKEN: IsToken reads the "Token" supertype the token
-//     templates stamp. Excluding tokens is what stops an Avenger of
-//     Zendikar from drawing a dozen cards.
-//   - YOU CONTROL: the entering creature's controller, not its owner.
-//   - THE NAME CHECK: no other creature YOU CONTROL and no creature
-//     card in YOUR graveyard shares the name. "Another" excludes the
-//     entering creature itself, which is already on the battlefield
-//     when EventETB fires — without that exclusion the trigger would
-//     never fire at all, which is the failure mode this comment
-//     exists to stop the next reader from reintroducing.
-//
-// "Your graveyard" is the CONTROLLER's graveyard, and a card in a
-// graveyard is always in its owner's, so the walk is over the
-// controller's graveyard zone directly.
-//
-// DECLARED SIMPLIFICATION — THE INTERVENING-IF IS CHECKED ONCE. CR
-// 603.4: an intervening-if clause is checked when the ability would
-// trigger AND again as it resolves, and the ability does nothing if
-// the condition is false either time. This checks it at trigger time
-// only (in AppliesTo). The difference shows up when a second copy of
-// the same name arrives, or a same-named creature card is milled
-// into your graveyard, in RESPONSE to the trigger: printed, the
-// trigger is removed from the stack and draws nothing; here it still
-// draws. That is a card marginally STRONGER than printed in a narrow
-// window, and it is the one thing on this card worth watching. It is
-// declared rather than engineered around because Spec has no
-// resolution-time condition hook — a re-check would have to live
-// inside the Build closure's effect, and the effect has no access to
-// the entering card's identity once the event is gone. The clean fix
-// is a `Condition` field on game.TriggeredAbility consulted at both
-// points.
+// No simplification beyond that shared intervening-if posture.
 func init() {
 	Register(Spec{
 		OracleID: "4f9e07ae-6341-4b46-9f77-f17ab659d266",
@@ -53,26 +31,23 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				entering, ok := g.LookupCardForEffect(ev.CardID)
-				if !ok || !entering.IsCreature() || IsToken(entering) {
+				c, ok := enteredUnderYourControl(ev, source, g, false)
+				if !ok || !c.IsCreature() || IsToken(c) {
 					return false
 				}
-				if entering.Controller != source.Controller {
-					return false
-				}
-				for _, c := range g.BattlefieldCardsForEffect() {
-					if c.InstanceID == entering.InstanceID {
-						continue
-					}
-					if c.Controller == source.Controller && c.IsCreature() && c.Name == entering.Name {
+				for _, other := range g.BattlefieldCardsForEffect() {
+					if other.InstanceID != c.InstanceID && other.Controller == source.Controller &&
+						other.IsCreature() && other.Name == c.Name {
 						return false
 					}
 				}
-				if p := g.PlayerByIDForEffect(source.Controller); p != nil && p.Graveyard != nil {
-					for _, c := range p.Graveyard.Cards {
-						if c.IsCreature() && c.Name == entering.Name {
-							return false
-						}
+				p := g.PlayerByIDForEffect(source.Controller)
+				if p == nil || p.Graveyard == nil {
+					return true
+				}
+				for _, gc := range p.Graveyard.Cards {
+					if gc.IsCreature() && gc.Name == c.Name {
+						return false
 					}
 				}
 				return true

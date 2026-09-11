@@ -2,29 +2,19 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-// Baleful Strix — Artifact Creature — Bird, {U}{B}, 1/1:
+// Baleful Strix — Artifact Creature — Bird {U}{B}, 1/1 (EDHREC rank
+// 360):
 //
-//	"Flying, deathtouch"
-//	"When this creature enters, draw a card."
+//	"Flying, deathtouch
+//	 When this creature enters, draw a card."
 //
-// Two mana that replaces itself and then blanks the biggest creature
-// on the table for the rest of the game. Every word of it is live:
-// flying and deathtouch are both among the twelve keywords the
-// combat code honours, so the Strix really does block a 12/12 and
-// kill it.
+// A cantrip that trades with anything: both keywords are printed
+// and enforced by the combat engine (flying restricts blockers,
+// deathtouch makes any damage lethal), and the ETB draw is
+// Mulldrifter's trigger. Being an artifact creature, it also counts
+// for artifact-count clauses, off the printed type line.
 //
-// The ETB draw is a TRIGGERED ability, not an OnETB hook. The
-// difference is observable and the printed card is unambiguous —
-// "When this creature enters" goes on the stack, so opponents get a
-// response window and the draw can be countered or responded to.
-// OnETB would resolve it invisibly as part of the creature entering.
-//
-// "Draw a card" is the controller's draw, so it reads
-// item.Controller off the trigger rather than the card's owner: a
-// Strix stolen with a Control Magic draws for whoever controls it
-// when it enters.
-//
-// No simplifications.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:        "37688720-03de-4eca-a82d-a0afe8d58adc",

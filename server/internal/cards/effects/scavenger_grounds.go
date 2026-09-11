@@ -1,43 +1,25 @@
 package effects
 
-import (
-	"github.com/google/uuid"
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
-
-// Scavenger Grounds — Land — Desert:
+// Scavenger Grounds — Land — Desert (EDHREC rank 300):
 //
-//	"{T}: Add {C}."
-//	"{2}, {T}, Sacrifice a Desert: Exile all graveyards."
+//	"{T}: Add {C}.
+//	 {2}, {T}, Sacrifice a Desert: Exile all graveyards."
 //
-// The colourless graveyard-hate land: it costs a deck nothing to
-// run and answers a whole archetype once. Registered for the usual
-// nonbasic-land reason (no BASIC supertype, so nothing derives its
-// mana) and for the ability, which is the point of the card.
+// Bojuka Bog at instant speed for every graveyard at once, on a
+// land that taps for mana until the moment it is needed. The
+// sacrifice cost is "a Desert" — usually itself, which is why the
+// cost is SacrificeOther with a Desert predicate rather than
+// SacrificeThis: the Grounds is a Desert, so it is always a legal
+// choice, and a deck with a second Desert may keep the Grounds and
+// feed it the other one, exactly as printed. The predicate reads the
+// post-layer subtype.
 //
-// The cost is three components at once and every one of them is a
-// real AbilityCost field today: {2} mana, {T}, and a sacrifice
-// matched against a spec. Scavenger Grounds is ITSELF a Desert and
-// sacrificing itself is the normal line — AbilityCost.SacrificeOther
-// admits the source when the spec does, exactly as Carrion Feeder
-// eats itself. The tap and the sacrifice are independent costs, so
-// the land must be untapped to activate even though it is about to
-// die.
+// Exile-all-graveyards is Farewell's fourth mode: every seat's
+// pile, the controller's included.
 //
-// "A Desert" reads the post-layer subtype rather than the card name,
-// so a Desert that arrived as a copy of something else, or a
-// hypothetical nonland Desert, is still one. Same posture as
-// isTreasure.
-//
-// "Exile all graveyards" is every card in every player's graveyard,
-// not just opponents' — the controller's own graveyard goes too, and
-// that symmetry is why the card is played in decks that do not care
-// about their own yard. The IDs are snapshotted before the first
-// exile because ExileCardForEffect mutates the zone slices underneath
-// the walk.
-//
-// No simplifications.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID: "5ece7d03-9ee7-4953-a06e-9d8e41874903",
@@ -49,36 +31,9 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label: "{2}, {T}, Sacrifice a Desert: Exile all graveyards.",
-			Cost: Plus(
-				ManaCost("{2}"),
-				TapCost(),
-				game.AbilityCost{SacrificeOther: sacrificeSpec("a Desert", isDesert)},
-			),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				var doomed []uuid.UUID
-				for _, p := range g.Seats {
-					if p == nil || p.Graveyard == nil {
-						continue
-					}
-					for _, c := range p.Graveyard.Cards {
-						doomed = append(doomed, c.InstanceID)
-					}
-				}
-				for _, id := range doomed {
-					if err := (ExileTarget{Target: id}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
-			},
+			Cost: Plus(ManaCost("{2}"), TapCost(),
+				game.AbilityCost{SacrificeOther: sacrificeSpec("a Desert", b02IsDesert)}),
+			Effect: b02ExileAllGraveyards,
 		}},
 	})
-}
-
-// isDesert is the sacrifice-cost predicate for "Sacrifice a Desert".
-// Reads the post-layer subtype, not the name, so a Desert by way of
-// a copy or a type-adding effect counts.
-func isDesert(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-	return hasSubtype(c, "Desert")
 }

@@ -1,24 +1,18 @@
 package effects
 
-// Seat of the Synod — Artifact Land:
+// Seat of the Synod — Artifact Land (EDHREC rank 317):
 //
 //	"{T}: Add {U}."
 //
-// The whole card. Its value is the type line, not the text: it is a
-// land that is also an ARTIFACT, which is what turns on metalcraft,
-// affinity, Foundry Inspector, Inventors' Fair and every other
-// artifact count on the table — all of which read the printed type
-// line through Card.IsArtifact() and need nothing declared here.
+// An Island that is also an artifact — the affinity and
+// artifact-count decks' free artifact. The type line is printed
+// "Artifact Land" with no basic type, so the engine's synthetic
+// land ability (basic supertype only) gives it nothing; the one
+// fixed {U} is declared here. IsArtifact reads the printed type
+// line, so it counts for Storm-Kiln Artist and any "artifacts you
+// control" clause.
 //
-// Registered because an unregistered nonbasic land taps for nothing:
-// the engine's synthetic mana ability (ManaAbilitiesForCard →
-// basicLandColor) only fires for lands carrying the BASIC supertype,
-// and "Artifact Land" has no basic land type to derive from.
-//
-// No enters-tapped clause — the Mirrodin artifact lands famously
-// have none, which is the other half of why they are played.
-//
-// No simplifications.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID: "39451b4d-cd7a-40da-b457-cb51b609173f",

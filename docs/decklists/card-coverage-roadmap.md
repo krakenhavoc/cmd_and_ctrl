@@ -128,17 +128,42 @@ clause plus two inert keywords), Teferi's Protection and The One Ring
   recompute, and tokens never got a CR 613 timestamp. The listener now
   treats `EventTokenCreated` as an entry.
 
-### Batch 02 — what shipped
+### Batch 02 — what shipped, in two passes
 
-36 cards of the 100 at `edhrec_rank` 238–360.
+36 cards of the 100 at `edhrec_rank` 238–360, landed by **two sessions
+that worked #295 in parallel without knowing it**. Recording that here
+because the near-miss is the reusable lesson, not the trivia:
+
+- **First pass — PR #351, 25 cards.** The "no new machinery" group.
+- **Second pass — this branch, 11 cards.** What the first pass did not
+  reach: Ketria Triome, Darksteel Citadel, Entomb, Buried Alive,
+  Seething Song, Mana Geyser, Harrow, Diabolic Intent, Gray Merchant of
+  Asphodel, Craterhoof Behemoth, Decanter of Endless Water. Nine of
+  them because the triage had filed them under a blocker that had
+  already moved; two (Entomb, Buried Alive) because they needed a
+  one-case engine fix that ships with them.
+
+**Six oracle IDs were written twice into differently-named files** —
+`original_duals.go` / `original_dual_lands.go` and `bounce_lands.go` /
+`karoo_lands.go`. Git reports **no conflict** when the filenames
+differ, and `Register()` panics on a duplicate oracle ID, so the
+collision would have been a hard boot failure discoverable only by
+running the tests. The second pass deleted its own copies and took the
+merged ones.
+
+The one place this did NOT happen is `slowlands.go`, because both
+sessions appended rows to the existing cycle table instead of creating
+a second file. **That is the rule the near-miss argues for: a card that
+belongs to an existing cycle goes in that cycle's table, never in a new
+file of its own.** The cycle ended at ten rows with no duplicates.
 
 **Four land cycles closed or extended.** The last four slowlands
 (Sundown Pass, Haunted Ridge, Overgrown Farmland, Deathcap Glade)
 finish that cycle at ten; four original duals (Underground Sea,
 Volcanic Island, Tropical Island, Tundra), two tri-lands (Arcane
-Sanctum, Jungle Shrine), two karoos (Simic Growth Chamber, Golgari Rot
-Farm), plus Ketria Triome, Seat of the Synod, Darksteel Citadel and
-Scavenger Grounds.
+Sanctum, Jungle Shrine), two bounce lands (Simic Growth Chamber,
+Golgari Rot Farm), plus Ketria Triome, Seat of the Synod, Darksteel
+Citadel and Scavenger Grounds.
 
 **Spells and permanents.** Infernal Grasp, Withering Torment, Baleful
 Strix, Entomb, Buried Alive, Damn, Snap, Seething Song, Mana Geyser,
@@ -149,7 +174,10 @@ Water.
 
 **Ten the #295 triage filed as blocked (or as would-ship-stronger) were
 writable after all** — five because the blocker moved in the days
-before the batch, five because they were mis-filed:
+before the batch, five because they were mis-filed. Nine of the ten are
+the second pass's whole contribution; only **Damn** was also caught by
+#351. A triage written days before a batch is worked is the thing to
+re-check first, and this is how much it was worth here:
 
 - **Decanter of Endless Water** — filed "player / game-rule statics".
   `Spec.NoMaxHandSize` landed with Thought Vessel (#338).

@@ -2,53 +2,37 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-// Snap — Instant for {1}{U}:
+// Snap — Instant {1}{U} (EDHREC rank 273):
 //
 //	"Return target creature to its owner's hand. Untap up to two
 //	 lands."
 //
-// Free interaction: the two lands pay for the two mana, so Snap is a
-// net-zero-mana Unsummon and a storm-deck staple. The untap is the
-// whole reason the card is played, so it runs whether or not the
-// bounce did anything (it cannot — an illegal target fizzles the
-// spell before OnResolve).
+// A free bounce spell: two mana in, two lands back. The bounce is
+// Unsummon's; the refund runs after it, in printed order.
 //
-// Printed order matters and is preserved: bounce first, untap
-// second. Bouncing a creature never taps a land, so the order is not
-// observable here, but writing it in printed order is how the next
-// card that DOES care stays correct.
-//
-// DECLARED SIMPLIFICATION — THE UNTAP IS NOT A CHOICE. Printed, "up
-// to two lands" lets the controller pick any two lands on the
-// table, including an opponent's. untapUpToLands takes the first two
-// TAPPED LANDS THE CONTROLLER CONTROLS in battlefield order instead
-// of opening a picker. Two deviations, both in the weaker direction:
-//
-//   - An opponent's land is never untapped. Untapping an opponent's
-//     land is a real printed option and essentially never a good one;
-//     removing it can only cost the controller.
-//   - Which two of the controller's own lands is not chosen. That is
-//     a real loss when the lands differ (a Volcanic Island is not a
-//     Wastes), and it is the reason this is declared rather than
-//     waved through.
-//
-// This is the same call Frantic Search's file makes, in the same
-// helper, with the same reasoning stated there: they are your own
-// tapped lands and untapping them is strictly good. It stops being
-// true exactly when the lands are not interchangeable, which is why
-// the note names that case.
+// Sandbox simplification, declared: "untap up to two lands" prints
+// no "target" and no "you control" — printed, it is a resolution-time
+// choice among every land at the table. The engine has no
+// resolution-time pick-a-permanent prompt for a spell, so this
+// untaps the first two TAPPED lands the caster controls, in
+// battlefield order. That is the outcome a player chooses in every
+// real game, it is one the printed card allows, and it is never
+// stronger — only less controllable (you cannot pick WHICH two of
+// your tapped lands, nor untap an opponent's). With fewer than two
+// tapped lands it untaps what there is.
 func init() {
 	Register(Spec{
 		OracleID: "ac914d98-221e-426c-8a50-342896b15f9e",
 		Name:     "Snap",
 		Targets:  TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) > 0 && item.Targets[0].Kind == game.TargetCard {
-				if err := (BounceToHand{Target: item.Targets[0].ID}).Apply(ctx); err != nil {
-					return err
-				}
+			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+				return nil
 			}
-			return untapUpToLands(ctx.Game, item.Controller, 2)
+			if err := (BounceToHand{Target: item.Targets[0].ID}).Apply(ctx); err != nil {
+				return err
+			}
+			return b02UntapLandsYouControl(ctx, ctx.Controller(), 2)
 		},
 	})
 }

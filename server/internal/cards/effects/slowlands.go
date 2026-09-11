@@ -9,19 +9,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 lands."
 //	"{T}: Add {X} or {Y}."
 //
-// All ten: the three the Hashaton deck plays, the three the
-// roadmap's batch 01 (#294) ranks in the top 230 — Dreamroot
-// Cascade, Stormcarved Coast and Rockfall Vale — and the last four,
-// which batch 02 (#295) ranks at 263–350. The exact inverse of
+// All ten: the three the Hashaton deck plays, the three the roadmap's
+// batch 01 (#294) ranks in the top 230, and the four batch 02 (#295)
+// finishes the cycle with. The exact inverse of
 // a fastland, and deliberately implemented as the same helper with
 // the comparison flipped rather than as its own scan — the two
 // cycles are one mechanic printed with opposite signs, and a reader
 // comparing the files should be able to see that.
-//
-// The cycle is registered from ONE table rather than one file per
-// card precisely because Register panics on a duplicate oracle ID:
-// two batches each adding "their" four slowlands from differently-
-// named files would not conflict in git and would crash at boot.
 func init() {
 	for _, t := range []struct {
 		oracleID string
