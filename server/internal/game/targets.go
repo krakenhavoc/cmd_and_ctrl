@@ -62,6 +62,20 @@ type TargetSpec struct {
 	// Min / Max bound the number of targets. Max 0 means unbounded.
 	Min, Max int
 
+	// CountFromX makes the clause's target count the announced X
+	// rather than a printed constant — "Exile X target creatures you
+	// control" (Waterbender's Restoration), where X is defined by the
+	// waterbend cost paid at announce. The cast path replaces Min and
+	// Max with the announced XValue before validating, and stores the
+	// resolved copy on the stack item, so the resolution re-check and
+	// every downstream reader see a concrete count.
+	//
+	// Without this the clause would have to ship as "any number of
+	// target creatures", which is what it read as while the waterbend
+	// cost was uncharged — and which was strictly stronger than the
+	// printed card (issue #259).
+	CountFromX bool
+
 	// AllowSame permits the same player / card in more than one
 	// slot. Off for every ordinary clause; reserved for effects
 	// whose wording uses separate "target" words that may coincide.
@@ -88,6 +102,20 @@ func TargetSpecFor(oracleID string) *TargetSpec {
 		return nil
 	}
 	return CatalogTargetSpec(oracleID)
+}
+
+// countRealTargets counts the target slots a caster actually filled,
+// ignoring the TargetSelf / TargetNone placeholders validateTargetsLocked
+// also skips.
+func countRealTargets(targets []TargetRef) int {
+	n := 0
+	for _, t := range targets {
+		if t.Kind == TargetSelf || t.Kind == TargetNone {
+			continue
+		}
+		n++
+	}
+	return n
 }
 
 // LegalTargets is the set of targets a spec accepts right now, for

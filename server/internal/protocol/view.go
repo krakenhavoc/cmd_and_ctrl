@@ -188,6 +188,12 @@ type LegalTargetsView struct {
 	// least Min. Max 0 means unbounded.
 	Min int `json:"min"`
 	Max int `json:"max"`
+	// CountFromX marks a clause whose count is the announced X
+	// rather than a printed constant — "Exile X target creatures you
+	// control". Min / Max are meaningless while X is unknown, so the
+	// client substitutes the X it collected in the cost prompts.
+	// Added in S22 alongside convoke / waterbend.
+	CountFromX bool `json:"count_from_x,omitempty"`
 }
 
 // ModeSpecView / ModeOptionView are the wire shape of game.ModeSpec
@@ -257,6 +263,44 @@ type AlternativeCostView struct {
 	// rather than reasoning about the rewrite itself.
 	TargetMode   string            `json:"target_mode,omitempty"`
 	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+}
+
+// TapCostView is the wire shape of game.TapPermanentsCost — the
+// "tap permanents you control to help pay for this" clause that
+// convoke and waterbend share — on a card in the viewer's own hand
+// or command zone. Added in S22.
+//
+// Like an alternative cost this is an OFFER, not a demand: "you MAY
+// tap any number", and a cast that taps nothing and pays the whole
+// cost with mana is always legal. Unlike one, it does not replace
+// anything — it spends against a cost that is still owed. The picked
+// instance IDs ride back on cast_spell as `tap_ids`.
+type TapCostView struct {
+	// Key names the mechanic on the wire ("convoke", "waterbend").
+	Key string `json:"key"`
+	// Label is the clause as printed ("Convoke", "Waterbend {X}").
+	Label string `json:"label,omitempty"`
+	// Options are the untapped permanents that may be tapped, already
+	// filtered to the viewer's own board. Present-and-empty means
+	// there is nothing to tap, which is not an error — the caster
+	// pays the whole cost with mana.
+	Options *LegalTargetsView `json:"options,omitempty"`
+	// ColorClause is convoke's "or one mana of that creature's
+	// color". The client shows it in the picker's hint so a player
+	// can see why tapping a white creature at a {W} is worth more
+	// than tapping a colorless one. Absent for waterbend, where every
+	// permanent pays exactly {1}.
+	ColorClause bool `json:"color_clause,omitempty"`
+	// Max is how many permanents may be tapped: the mana value of
+	// what the cast owes. 0 means "derive it from the announced X" —
+	// a waterbend {X} cost, whose size the caster has not chosen yet
+	// when this snapshot is built.
+	Max int `json:"max,omitempty"`
+	// DemandsX marks a keyword cost that carries its own {X}
+	// (waterbend {X}) on a card whose PRINTED cost has none.
+	// Waterbender's Restoration costs {U}{U} and still needs the X
+	// prompt; without this the client would never open it.
+	DemandsX bool `json:"demands_x,omitempty"`
 }
 
 // DamageAssignmentView is the wire shape of the CR 510.1c
@@ -576,6 +620,12 @@ type CardView struct {
 	// offers them alongside "pay the printed cost", and a cast that
 	// names none is the ordinary case.
 	AlternativeCosts []AlternativeCostView `json:"alternative_costs,omitempty"`
+	// TapCost is the S22 convoke / waterbend clause for a card in the
+	// viewer's own hand / command zone: which of your untapped
+	// permanents may be tapped to help pay, and how many. Absent for
+	// the overwhelming majority of cards. Optional like the
+	// alternative costs — tapping nothing is always a legal cast.
+	TapCost *TapCostView `json:"tap_cost,omitempty"`
 	// ExilePlay is the S21 sub-PR 6 impulse-exile grant. Present
 	// only while the card is in exile with a live permission;
 	// absent — which is nearly always — the card is inert exile.
@@ -824,6 +874,13 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 						c.AdditionalCost.SacrificeOptions = opts
 					}
 				}
+				// S22: convoke / waterbend. Stamped before the target
+				// clause because the caster pays it first, and the
+				// count of a "X target creatures" clause depends on
+				// what they paid.
+				if tc := game.TapPermanentsCostFor(c.oracleID); !tc.Empty() {
+					c.TapCost = viewOfTapCost(g, caster, c, tc)
+				}
 				spec := game.TargetSpecFor(c.oracleID)
 				// S22: the alternative costs are stamped before the
 				// early-out below, because a card can offer one
@@ -841,7 +898,7 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 }
 
 func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
-	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max}
+	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX}
 	for _, id := range lt.Players {
 		view.Players = append(view.Players, id.String())
 	}
@@ -849,6 +906,32 @@ func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTarge
 		view.Cards = append(view.Cards, id.String())
 	}
 	return view
+}
+
+// viewOfTapCost projects a card's convoke / waterbend clause: the
+// untapped permanents the caster may tap and the cap on how many.
+//
+// The cap is computed from the card's printed cost rather than from
+// the cost the cast will actually owe, because the alternative cost
+// and the commander tax are not chosen yet when a hand snapshot is
+// built. It is an affordance, not the gate — the server re-derives
+// the real budget at announce and rejects an over-tap there.
+//
+// Caller must hold g.mu.
+func viewOfTapCost(g *game.Game, caster uuid.UUID, c *CardView, tc *game.TapPermanentsCost) *TapCostView {
+	v := &TapCostView{
+		Key:         tc.Key,
+		Label:       tc.Label,
+		ColorClause: tc.ColorClause,
+		DemandsX:    tc.DemandsX(),
+	}
+	opts := viewOfLegalTargets(g.LegalTargetsForEffect(caster, tc.Spec), tc.Spec)
+	opts.Cards = filterToController(g, opts.Cards, caster)
+	opts.Players = nil
+	opts.Min, opts.Max, opts.CountFromX = 0, 0, false
+	v.Options = opts
+	v.Max = game.TapPermanentsBudgetFor(tc, c.ManaCost, 0)
+	return v
 }
 
 // viewOfAlternativeCosts projects a card's "you may cast this for
@@ -1560,6 +1643,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// cost does — "Overload {6}{U}" on a face-down card would give
 	// away the Cyclonic Rift.
 	out.AlternativeCosts = nil
+	out.TapCost = nil
 	return out
 }
 
@@ -1601,6 +1685,7 @@ func keepKnownInHandZone(z ZoneView) ZoneView {
 			c.LegalTargets = nil
 			c.Modes = nil
 			c.AlternativeCosts = nil
+			c.TapCost = nil
 			out.Cards = append(out.Cards, c)
 		}
 	}

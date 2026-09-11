@@ -54,6 +54,8 @@
     isModal,
     discardCostOf,
     sacrificeCostOptions,
+    tapCostOf,
+    tapCostLimit,
     alternativeCostsOf,
     alternativeCostByKey,
     applyCastChoices,
@@ -73,6 +75,7 @@
   import ModePickerModal from "./ModePickerModal.svelte";
   import DiscardCostModal from "./DiscardCostModal.svelte";
   import AlternativeCostModal from "./AlternativeCostModal.svelte";
+  import TapCostModal from "./TapCostModal.svelte";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -192,7 +195,7 @@
     xPromptCard = null;
     xPromptChoices = {};
     if (!card) return;
-    continueCast(card, { ...choices, xValue: x });
+    afterXCost(card, { ...choices, xValue: x });
   }
 
   // S22: a card that offers a cost paid INSTEAD of its mana cost
@@ -261,6 +264,36 @@
     afterCastCosts(card, { ...choices, sacrificeIDs: [instanceID] });
   }
 
+  // S22: convoke / waterbend — "you may tap your own untapped
+  // permanents to help pay for this". Opens after the X prompt,
+  // because a waterbend {X} cost has no size until X is announced,
+  // and before targeting, because paying is what makes the spell
+  // castable at all. Tapping nothing is always a legal answer.
+  let tapPromptCard = $state<CardView | null>(null);
+  let tapPromptChoices: CastChoices = {};
+
+  const tapCostOptions = $derived.by(() => {
+    const card = tapPromptCard;
+    if (!card) return [];
+    const ids = new Set(tapCostOf(card)?.options?.cards ?? []);
+    return view.battlefield.cards.filter((c) => ids.has(c.instance_id));
+  });
+
+  const tapCostCap = $derived.by(() => {
+    const tc = tapPromptCard ? tapCostOf(tapPromptCard) : undefined;
+    if (!tc) return 0;
+    return tapCostLimit(tc, tapPromptChoices.xValue);
+  });
+
+  function confirmTapCost(ids: string[]): void {
+    const card = tapPromptCard;
+    const choices = tapPromptChoices;
+    tapPromptCard = null;
+    tapPromptChoices = {};
+    if (!card) return;
+    continueCast(card, { ...choices, tapIDs: ids });
+  }
+
   // afterAltCost / afterDiscardCost / afterCastCosts are the seams
   // between the cost prompts and the rest of the cast flow, so adding
   // a cost kind doesn't mean editing every earlier prompt's confirm.
@@ -291,6 +324,20 @@
     if (hasXCost(card)) {
       xPromptChoices = choices;
       xPromptCard = card;
+      return;
+    }
+    afterXCost(card, choices);
+  }
+
+  // afterXCost is the seam between the X prompt and targeting, and
+  // the only reason the tap picker isn't in afterCastCosts with the
+  // others: a waterbend {X} cost can't size its picker until X is
+  // known, so this step has to come after the X prompt rather than
+  // before it.
+  function afterXCost(card: CardView, choices: CastChoices): void {
+    if (tapCostOf(card)) {
+      tapPromptChoices = choices;
+      tapPromptCard = card;
       return;
     }
     continueCast(card, choices);
@@ -745,6 +792,17 @@
     onCancel={() => {
       xPromptCard = null;
       xPromptChoices = {};
+    }}
+  />
+  <TapCostModal
+    card={tapPromptCard}
+    cost={tapPromptCard ? (tapCostOf(tapPromptCard) ?? null) : null}
+    options={tapCostOptions}
+    limit={tapCostCap}
+    onConfirm={confirmTapCost}
+    onCancel={() => {
+      tapPromptCard = null;
+      tapPromptChoices = {};
     }}
   />
   <ModePickerModal
