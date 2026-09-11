@@ -275,6 +275,54 @@ type Spec struct {
 	// as `tap_ids`; tapping nothing is always legal.
 	TapCost *game.TapPermanentsCost
 
+	// CostModifiers is the S28 "spells cost {N} more / {N} less to
+	// cast" static (CR 601.2f) the card contributes while it is on
+	// the battlefield — Sphere of Resistance, Thalia, Goblin
+	// Electromancer, Heartless Summoning, Trinisphere.
+	//
+	// Deliberately NOT a `Static` entry, for the same reason
+	// NoMaxHandSize isn't. The CR 613 layer engine models continuous
+	// effects that change a CHARACTERISTIC OF AN OBJECT, and
+	// game.StaticAbility's Apply signature is exactly that shape —
+	// a *Characteristic and a target *Card. A cost modifier changes
+	// neither: it changes what someone PAYS to cast something that
+	// is not on the battlefield and has no Characteristic at all.
+	// Mana value is explicitly untouched (CR 202.3c), so there is
+	// no layer for it to sit in.
+	//
+	// So the engine derives it instead, exactly the way it derives
+	// the hand-size answer: the cast path asks the battlefield for
+	// every modifier in play and prices the spell through them in
+	// CR 601.2f order. Nothing is written anywhere, so nothing has
+	// to be unwound when the permanent leaves.
+	//
+	// Build the entries with CostsMore / CostsLess / CostsAtLeast
+	// in cost_modifier.go. Nil for nearly every card.
+	CostModifiers []game.CostModifier
+
+	// CastableZones is the S29 "you may cast this card from
+	// somewhere other than your hand" declaration (CR 601.2, and
+	// every keyword in CR 702 that grants an alternative cast
+	// path). Nil — nearly every card — means hand only.
+	//
+	// The zone is only the PLACE. The PRICE rides
+	// AlternativeCost.FromZone, and the two are declared together:
+	//
+	//	CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
+	//	AlternativeCosts: []game.AlternativeCost{Flashback("{2}{R}")},
+	//
+	// Register panics on a zone-bound cost whose zone is not listed
+	// here, because such an offer can never be claimed.
+	//
+	// Hand is implicit and need not be listed — declaring the
+	// graveyard ADDS a path, it never removes the ordinary cast.
+	// Listing ZoneCommand is pointless (CR 903.4 grants that one to
+	// the format, not the card) and listing ZoneExile is for cards
+	// whose own text grants the permission; the impulse-exile /
+	// airbend / madness family grants it to a single exiled
+	// instance instead, through game.ExilePlayPermission.
+	CastableZones []game.ZoneKind
+
 	// Activated is the list of CR 602 activated abilities the card
 	// offers from the battlefield — the fourth ability type, added
 	// in S21 sub-PR 2. Each entry declares its cost (tap, sacrifice

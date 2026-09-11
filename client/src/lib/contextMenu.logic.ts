@@ -22,7 +22,12 @@
 import { attackAllLabel, attackAllParams, planAttackAll, seatLabel } from "./attackAll";
 import { isPlaneswalker } from "./cardTypes";
 import type { ActionType, CardView, GameView } from "./protocol";
-import { canActivateLoyalty, canPayLoyaltyCost, loyaltyOf } from "./timing";
+import {
+  canActivateLoyalty,
+  canActivateSorcerySpeedAbility,
+  canPayLoyaltyCost,
+  loyaltyOf,
+} from "./timing";
 import {
   COUNTER_CHARGE,
   COUNTER_DEFENSE,
@@ -338,6 +343,14 @@ interface AbilityCost {
   // Present, at any value including 0, on a planeswalker's loyalty
   // ability. Mana abilities never carry it.
   loyalty_cost?: number;
+  // S24: "Activate only as a sorcery" (CR 602.5d). Equip is the
+  // catalog's first; a loyalty ability gets the same window from its
+  // own arm below rather than from this flag.
+  sorcery_speed?: boolean;
+  // S27: a Vehicle's crew number and the creatures that could pay
+  // it. Mana abilities never carry either.
+  crew_cost?: number;
+  crew_options?: { players?: string[]; cards?: string[] };
 }
 
 // abilityBlocked returns the reason an ability can't be activated
@@ -354,6 +367,15 @@ export function abilityBlocked(
   if (a.sacrifice_options && (a.sacrifice_options.cards?.length ?? 0) === 0) {
     return `nothing to sacrifice (${a.sacrifice_label ?? "a permanent"})`;
   }
+  // CR 702.122a: a crew cost with no untapped creature to pay it is
+  // unpayable. Only the empty case is judged here — whether the
+  // creatures that DO exist add up to the crew number is arithmetic
+  // the prompt does, with the running total in front of the player,
+  // and duplicating the sum in the menu row would put two answers on
+  // screen at once.
+  if (a.crew_cost && (a.crew_options?.cards?.length ?? 0) === 0) {
+    return "no untapped creatures to crew with";
+  }
   // CR 606: a loyalty ability answers to the sorcery-speed window,
   // the once-per-turn flag, and "you have enough counters to pay".
   // The value 0 is a real cost, so this tests for presence.
@@ -362,6 +384,13 @@ export function abilityBlocked(
     if (!timing.legal) return timing.reason ?? "can't activate right now";
     const unpayable = canPayLoyaltyCost(loyalty.card, a.loyalty_cost);
     if (unpayable) return unpayable;
+  }
+  // CR 602.5d — "activate only as a sorcery". Equip is the first
+  // catalog ability to declare it. Checked after the loyalty arm so
+  // a loyalty row keeps its more specific reason.
+  if (a.sorcery_speed && a.loyalty_cost === undefined && loyalty) {
+    const timing = canActivateSorcerySpeedAbility(loyalty.view, loyalty.viewerID);
+    if (!timing.legal) return timing.reason ?? "sorcery-speed only";
   }
   if (a.legal_targets) {
     const n = (a.legal_targets.players?.length ?? 0) + (a.legal_targets.cards?.length ?? 0);

@@ -43,10 +43,6 @@
       r.name === "login" ||
       r.name === "adminLogin" ||
       r.name === "join" ||
-      // The card catalogue is a public showcase; /catalog on the
-      // server takes no session either, so gating it here would
-      // break a link that works.
-      r.name === "catalog" ||
       r.name === "oauthComplete";
     if (!s && !isPublic) {
       navigate("#/login");

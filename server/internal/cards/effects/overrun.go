@@ -8,9 +8,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 turn."
 //
 // The mass half of the S32 acceptance pair, and deliberately chosen
-// over Heroic Intervention: hexproof and indestructible are still
+// over Heroic Intervention: at the time indestructible was still
 // unenforced (#176), so Heroic Intervention would have shipped as a
-// declared no-op, whereas every word of Overrun is live. Trample IS
+// declared no-op, whereas every word of Overrun is live. (S25's #77
+// closed that gap and Heroic Intervention now ships for real — see
+// heroic_intervention.go.) Trample IS
 // one of the twelve keywords the combat code honours — the
 // combat-damage assignment reads HasKeyword(attacker, "trample")
 // off the post-layer effective characteristic, so a granted trample

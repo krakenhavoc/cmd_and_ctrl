@@ -150,6 +150,45 @@ type TriggeredAbility struct {
 	// Runs under g.mu held in write mode. MUST NOT call public
 	// locking mutators. Added in S19 follow-up.
 	HasLegalTarget func(ev Event, source *Card, sourceLKI Characteristic, g *Game) bool
+
+	// FromStack marks a trigger that fires while its source is a
+	// SPELL ON THE STACK rather than a permanent on the battlefield
+	// — "When you cast this spell, ..." (cascade, CR 702.85a; storm;
+	// the ripple / replicate family). Nothing else in the catalog
+	// triggers from there.
+	//
+	// The harvester scans the battlefield, because that is where
+	// abilities live (CR 113.6). A trigger like cascade's is not on
+	// a permanent: it is on an object that exists only between
+	// announce and resolution, and by the time it would reach the
+	// battlefield the event has long passed.
+	//
+	// An opt-in FLAG rather than a blanket stack scan, and the
+	// distinction matters. A creature spell sitting on the stack
+	// carries its permanent's declared triggers with it — "whenever
+	// another creature enters, ..." — and a blanket scan would fire
+	// those from the stack, a turn early and from a zone where the
+	// ability does not exist. The flagged scan is narrow in both
+	// directions: only EventCast, and only the card that event names.
+	//
+	// Added in S28.
+	FromStack bool
+
+	// Chapter is the Saga chapter number this ability is printed
+	// against — 1 for "I —", 3 for "III —" (CR 714.2c). Zero for
+	// every ability that is not a chapter, which is every ability on
+	// every card that is not a Saga.
+	//
+	// It is declarative data, not a second trigger condition: the
+	// ability still watches EventSagaChapter and still predicates on
+	// the chapter number, exactly as effects.ChapterTrigger writes
+	// it. What this field adds is a way for the ENGINE to read the
+	// card's FINAL chapter off the declarations, which is what the
+	// CR 704.5s sacrifice needs and what nothing else on the card can
+	// tell it. See game.SagaFinalChapter.
+	//
+	// Added in S27.
+	Chapter int
 }
 
 // TriggerOptionalPrompt is the declarative payload for the "ask
@@ -195,6 +234,14 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 		return
 	}
 	g.harvestFromZone(ev, g.Battlefield)
+	// S28: "When you cast this spell, ..." — cascade. The source is
+	// the spell that was just announced, which is on the stack and
+	// invisible to the battlefield scan above. Narrow on purpose:
+	// only EventCast, only the one card the event names, and only
+	// abilities that declared FromStack.
+	if ev.Kind == EventCast && ev.CardID != uuid.Nil {
+		g.harvestCastFromStack(ev)
+	}
 	// LTB-style events: the source has already moved off the
 	// battlefield, so harvestFromZone(BF) won't find it. The card
 	// lives in its destination zone now (graveyard / exile / hand);
@@ -233,6 +280,42 @@ func (g *Game) harvestFromZone(ev Event, z *Zone) {
 			}
 			g.dispatchTriggerLocked(ev, *card, lki, t)
 		}
+	}
+}
+
+// harvestCastFromStack fires the FromStack triggers of the spell
+// named by an EventCast — cascade's "when you cast this spell".
+//
+// Finds the one card the event names in the stack zone rather than
+// walking it, because "this spell" means exactly that object: a
+// second cascading spell already on the stack under this one does
+// not re-trigger when something is cast above it.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) harvestCastFromStack(ev Event) {
+	if g.Stack == nil || CatalogTriggers == nil {
+		return
+	}
+	for i := range g.Stack.Cards {
+		card := &g.Stack.Cards[i]
+		if card.InstanceID != ev.CardID {
+			continue
+		}
+		oracle := CatalogKey(*card)
+		if oracle == "" {
+			return
+		}
+		lki := card.Effective()
+		for _, t := range CatalogTriggers(oracle) {
+			if !t.FromStack || !triggerWatches(t.Watches, ev.Kind) {
+				continue
+			}
+			if t.AppliesTo != nil && !t.AppliesTo(ev, card, lki, g) {
+				continue
+			}
+			g.dispatchTriggerLocked(ev, *card, lki, t)
+		}
+		return
 	}
 }
 

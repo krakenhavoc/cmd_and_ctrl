@@ -168,15 +168,24 @@ func main() {
 	})
 	mux.HandleFunc("GET /ws", hub.ServeWS)
 	mux.Handle("/cards/", auth.Middleware(authenticator)(cards.Handler(cardIdx, imgCache)))
-	// The public card catalog. Mounted WITHOUT auth.Middleware on
-	// purpose — it is a showcase of what the engine automates and has
-	// to render for a signed-out visitor — and not behind requireDev,
-	// because it ships in production. catalog.Handler's doc explains
-	// why an unauthenticated image route is safe here and not on
-	// /cards/. Both patterns are more specific than "/", so the lobby
-	// catch-all below does not shadow them.
-	mux.Handle("GET /catalog", catalog.Handler(cardIdx, imgCache))
-	mux.Handle("/catalog/", catalog.Handler(cardIdx, imgCache))
+	// The card catalog: a browsable list of every card the engine
+	// actually automates, with each entry's declared completeness.
+	//
+	// Behind auth.Middleware, like /cards/. It was built unauthenticated
+	// as a public showcase, and it is gated because AGENTS.md §1 and §8
+	// describe this project as private and personal-use: serving card
+	// art to anonymous visitors is a different posture from the one the
+	// repo states, and the page is no less useful to a signed-in
+	// player. Not behind requireDev — it ships in production, it is
+	// simply not public.
+	//
+	// catalog.Handler's own doc explains why its image route is scoped
+	// to registered cards rather than proxying all ~35k Scryfall UUIDs;
+	// that scoping still matters, since a session is cheap to obtain.
+	// Both patterns are more specific than "/", so the lobby catch-all
+	// below does not shadow them.
+	mux.Handle("GET /catalog", auth.Middleware(authenticator)(catalog.Handler(cardIdx, imgCache)))
+	mux.Handle("/catalog/", auth.Middleware(authenticator)(catalog.Handler(cardIdx, imgCache)))
 	discordCfg := discord.ConfigFromEnv()
 	if discordCfg.Enabled() {
 		log.Info("discord oauth enabled", "redirect_uri", discordCfg.RedirectURI)
