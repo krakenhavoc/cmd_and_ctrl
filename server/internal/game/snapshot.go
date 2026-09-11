@@ -326,6 +326,7 @@ type pendingChoiceSnapshot struct {
 	Source               uuid.UUID              `json:"source"`
 	Reason               string                 `json:"reason,omitempty"`
 	ColorOptions         []string               `json:"colorOptions,omitempty"`
+	ManaRestrictions     []string               `json:"manaRestrictions,omitempty"`
 	ReplacementEffectIDs []ReplacementEffectID  `json:"replacementEffectIds,omitempty"`
 	DamageAssignment     *DamageAssignmentFrame `json:"damageAssignment,omitempty"`
 	NoLegalTarget        bool                   `json:"noLegalTarget"`
@@ -827,6 +828,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		Source:               c.Source,
 		Reason:               c.Reason,
 		ColorOptions:         copyStrings(c.ColorOptions),
+		ManaRestrictions:     copyStrings(c.ManaRestrictions),
 		ReplacementEffectIDs: copyReplacementEffectIDs(c.ReplacementEffectIDs),
 		NoLegalTarget:        c.NoLegalTarget,
 		PickTargetPlayers:    copyUUIDs(c.PickTargetPlayers),
@@ -1242,6 +1244,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		Source:               c.Source,
 		Reason:               c.Reason,
 		ColorOptions:         copyStrings(c.ColorOptions),
+		ManaRestrictions:     copyStrings(c.ManaRestrictions),
 		ReplacementEffectIDs: copyReplacementEffectIDs(c.ReplacementEffectIDs),
 		NoLegalTarget:        c.NoLegalTarget,
 		PickTargetPlayers:    copyUUIDs(c.PickTargetPlayers),

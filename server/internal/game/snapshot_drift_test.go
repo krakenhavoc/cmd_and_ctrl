@@ -225,6 +225,11 @@ var pendingChoiceFields = plan(
 	"Source", carried, "",
 	"Reason", carried, "",
 	"ColorOptions", carried, "",
+	// Added by the mana pipeline (#352/#356). A restricted mana token
+	// is game state that survives undo — clone.go deep-copies it at
+	// clone.go:135 — so the snapshot must carry it too, or a restored
+	// game would let the player spend restricted mana on anything.
+	"ManaRestrictions", carried, "",
 	"ReplacementEffectIDs", carried, "",
 	"DamageAssignment", carried, "",
 	"NoLegalTarget", carried, "",
