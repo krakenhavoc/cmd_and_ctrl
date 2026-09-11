@@ -496,3 +496,70 @@ func assertHasViolation(t *testing.T, err error, code string) {
 	}
 	t.Errorf("missing violation %q in %+v", code, ve.Violations)
 }
+
+// TestPrintedLoyaltyStampedOnGameCard pins the #274 ingestion half:
+// Scryfall's printed `loyalty` has to reach game.Card, because the
+// engine turns it into loyalty counters on battlefield entry
+// (CR 306.5b). Before this, loyalty existed only in the opt-in
+// effect catalog, so non-catalog planeswalkers entered at 0 loyalty
+// and were swept to the graveyard by CR 704.5i.
+func TestPrintedLoyaltyStampedOnGameCard(t *testing.T) {
+	list := &List{
+		Commanders: []cards.Card{{
+			ID:       uuid.New(),
+			Name:     "Teferi, Temporal Archmage",
+			TypeLine: "Legendary Planeswalker — Teferi",
+			Loyalty:  "5",
+		}},
+		Mainboard: []cards.Card{
+			{
+				ID:       uuid.New(),
+				Name:     "Teferi, Time Raveler",
+				TypeLine: "Legendary Planeswalker — Teferi",
+				Loyalty:  "4",
+			},
+			{
+				// Double-faced: Scryfall puts loyalty on the FACE and
+				// leaves the top-level field empty.
+				ID:       uuid.New(),
+				Name:     "Nissa, Vastwood Seer // Nissa, Sage Animist",
+				TypeLine: "Legendary Creature — Elf Scout // Legendary Planeswalker — Nissa",
+				CardFaces: []cards.CardFace{
+					{Name: "Nissa, Vastwood Seer"},
+					{Name: "Nissa, Sage Animist", Loyalty: "3"},
+				},
+			},
+			{
+				// Non-numeric loyalty parses to zero, like "*" power.
+				ID:       uuid.New(),
+				Name:     "X-Loyalty Walker",
+				TypeLine: "Legendary Planeswalker — Test",
+				Loyalty:  "X",
+			},
+			{
+				ID:        uuid.New(),
+				Name:      "Grizzly Bears",
+				TypeLine:  "Creature — Bear",
+				Power:     "2",
+				Toughness: "2",
+			},
+		},
+	}
+
+	want := map[string]int{
+		"Teferi, Temporal Archmage":                   5,
+		"Teferi, Time Raveler":                        4,
+		"Nissa, Vastwood Seer // Nissa, Sage Animist": 3,
+		"X-Loyalty Walker":                            0,
+		"Grizzly Bears":                               0,
+	}
+	for _, gc := range list.ToGameCards() {
+		w, ok := want[gc.Name]
+		if !ok {
+			t.Fatalf("unexpected card %q", gc.Name)
+		}
+		if gc.StartingLoyalty != w {
+			t.Errorf("%s: StartingLoyalty = %d, want %d", gc.Name, gc.StartingLoyalty, w)
+		}
+	}
+}

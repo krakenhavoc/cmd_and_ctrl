@@ -249,6 +249,27 @@ func (l *List) ToGameCards() []game.Card {
 	return out
 }
 
+// printedLoyalty parses Scryfall's printed starting loyalty to an
+// int. Scryfall puts loyalty at the top level for ordinary cards and
+// on the FACE for double-faced ones, so the face list is the
+// fallback — otherwise every transforming planeswalker would import
+// with zero loyalty and die to CR 704.5i the instant it resolved.
+//
+// Non-numeric values ("X" on the handful of X-loyalty designs) parse
+// to zero, matching how power / toughness handle "*". Those cards
+// stay a manual-sandbox case: the player adds counters by hand.
+func printedLoyalty(c cards.Card) int {
+	if n, err := strconv.Atoi(strings.TrimSpace(c.Loyalty)); err == nil {
+		return n
+	}
+	for _, f := range c.CardFaces {
+		if n, err := strconv.Atoi(strings.TrimSpace(f.Loyalty)); err == nil {
+			return n
+		}
+	}
+	return 0
+}
+
 func toGameCard(c cards.Card, isCommander bool) game.Card {
 	// Parse Scryfall's printed power/toughness strings to ints.
 	// Non-numeric values ("*", "1+*", "?", empty) parse to zero —
@@ -257,16 +278,21 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 	power, _ := strconv.Atoi(strings.TrimSpace(c.Power))
 	toughness, _ := strconv.Atoi(strings.TrimSpace(c.Toughness))
 	return game.Card{
-		InstanceID:   uuid.New(),
-		Name:         c.Name,
-		ScryfallID:   c.ID.String(),
-		OracleID:     c.OracleID.String(),
-		TypeLine:     c.TypeLine,
-		Power:        power,
-		Toughness:    toughness,
-		ManaCost:     c.ManaCost,
-		ProducedMana: append([]string(nil), c.ProducedMana...),
-		Colors:       append([]string(nil), c.Colors...),
-		IsCommander:  isCommander,
+		InstanceID: uuid.New(),
+		Name:       c.Name,
+		ScryfallID: c.ID.String(),
+		OracleID:   c.OracleID.String(),
+		TypeLine:   c.TypeLine,
+		Power:      power,
+		Toughness:  toughness,
+		// CR 306.5b — printed starting loyalty. The engine turns
+		// this into loyalty counters on battlefield entry; without
+		// it the 704.5i SBA eats the walker on the next priority
+		// boundary (issue #274).
+		StartingLoyalty: printedLoyalty(c),
+		ManaCost:        c.ManaCost,
+		ProducedMana:    append([]string(nil), c.ProducedMana...),
+		Colors:          append([]string(nil), c.Colors...),
+		IsCommander:     isCommander,
 	}
 }

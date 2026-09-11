@@ -347,9 +347,19 @@ surface tiny.
    }
    ```
    For permanents with an ETB trigger, populate `OnETB` instead of
-   (or alongside) `OnResolve`. For planeswalkers, set
-   `StartingLoyalty` — the ETB hook stamps loyalty counters
-   automatically.
+   (or alongside) `OnResolve`.
+
+   **Planeswalkers: leave `StartingLoyalty` alone.** Starting loyalty
+   is printed card data, not card-effect data. The deck importer
+   parses Scryfall's `loyalty` onto `game.Card.StartingLoyalty` and
+   the engine stamps the counters on every battlefield entry, catalog
+   entry or not — see
+   [ADR 0032](docs/decisions/0032-planeswalkers.md). `Spec.StartingLoyalty`
+   survives only as a fallback for cards that never go through deck
+   import (tokens, fixtures); setting it on a real card is redundant
+   at best. Loyalty *abilities* are still deferred — `AbilityCost` has
+   no loyalty component, so don't invent one (see the deferral list
+   below).
 
 5. **Add a test case** in
    [cards_test.go](server/internal/cards/effects/cards_test.go). Use

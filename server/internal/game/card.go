@@ -78,6 +78,23 @@ type Card struct {
 	// targeting predicates read this. Added in S20 sub-PR 1.
 	Colors []string
 
+	// StartingLoyalty is the printed loyalty a planeswalker enters
+	// the battlefield with (CR 306.5b), parsed from Scryfall's
+	// `loyalty` string at deck-import time. Zero for every other
+	// card type, and for planeswalkers whose printed loyalty is
+	// non-numeric (Chandra, Fire of Kaladesh's back face prints a
+	// number, but X-loyalty walkers and tokens do not).
+	//
+	// This lives on the card — not in the effect catalog — because
+	// it is printed data like Power / Toughness / ManaCost, not
+	// card-effect data. Issue #274: while the only source was
+	// effects.Spec.StartingLoyalty, every planeswalker outside the
+	// opt-in catalog entered with zero loyalty counters and was
+	// immediately moved to the graveyard by the CR 704.5i SBA.
+	// The catalog value survives as a fallback for cards with no
+	// printed data (tokens, fixtures) — see CatalogStartingLoyalty.
+	StartingLoyalty int
+
 	// Keywords are printed keyword abilities carried on the card
 	// object itself rather than looked up in the catalog by oracle
 	// ID. Tokens are the reason this exists: a token has no oracle
