@@ -673,6 +673,24 @@ func (g *Game) onTurnAdvanceLocked(prev, next Turn) {
 	if !prev.IsNewTurn(next) {
 		return
 	}
+	// S25 (#77): invalidate the layer cache. A continuous effect
+	// whose AppliesTo reads the TURN rather than the battlefield —
+	// Zurgo Helmsmasher's "during your turn, ~ has indestructible" is
+	// the first in the catalog — changes its answer here and nowhere
+	// else, so nothing would otherwise mark the cached
+	// characteristics stale and the keyword would stick around on the
+	// wrong player's turn.
+	//
+	// This is the bump layer_listener.go's header predicted and
+	// deliberately deferred ("Step / phase advance … when they
+	// arrive in a later sprint, advance the version inside the
+	// step-advance helper directly — no event for it today"). It
+	// lands here rather than in the listener for the reason that note
+	// gives: there is no event for a turn change to listen to.
+	//
+	// Cost is one recompute per turn, against a cache that is already
+	// invalidated by every zone move and every counter placed.
+	g.layerVersion.Add(1)
 	if g.LoyaltyActivatedThisTurn != nil {
 		g.LoyaltyActivatedThisTurn = nil
 	}

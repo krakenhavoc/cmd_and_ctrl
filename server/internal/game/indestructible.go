@@ -1,0 +1,127 @@
+package game
+
+import "github.com/google/uuid"
+
+// indestructible.go teaches the engine CR 702.12 — the keyword that
+// until S25 was a string the catalog could write and nothing could
+// read.
+//
+// # Why it needed its own file rather than a line in keywords.go
+//
+// Indestructible is the first keyword in `canonicalKeywords` whose
+// consumer is NOT the combat or targeting path. Flying, menace and
+// reach are read by `CanBlock` / `BlockerCountValid`; hexproof and
+// shroud by `CanBeTargetedBy`. Indestructible is read by the
+// DESTRUCTION path, which runs through the SBA loop and the effect
+// API — two call sites in two other files that have nothing else in
+// common. Putting the rule and its rationale here gives it one home,
+// and keeps the diff off `mutations.go`, where every concurrent
+// sprint is also editing.
+//
+// # What indestructible actually stops, and what it does not
+//
+// CR 702.12b: "A permanent with indestructible can't be destroyed.
+// Such permanents aren't destroyed by lethal damage, and they ignore
+// the state-based action that checks for lethal damage."
+//
+// That sentence is narrower than players remember, so the engine
+// enumerates it explicitly. Indestructible SAVES a permanent from:
+//
+//	CR 701.7   a "destroy" effect (Wrath of God, Doom Blade, …)
+//	CR 704.5g  the lethal-marked-damage state-based action
+//	CR 704.5h  the deathtouch state-based action
+//
+// and does NOT save it from:
+//
+//	CR 704.5f  toughness 0 or less — that SBA PUTS the creature into
+//	           the graveyard, it does not destroy it. A 2/2 with
+//	           indestructible under two -1/-1 counters still dies.
+//	CR 704.5i  a planeswalker at 0 loyalty — also "put into its
+//	           owner's graveyard", which is why an indestructible
+//	           planeswalker still dies to its own minus ability.
+//	CR 704.5p  a battle at 0 defense counters — sacrificed.
+//	CR 701.17b sacrifice, which is never destruction. This is the
+//	           reason the check CANNOT live in
+//	           routeBattlefieldCardToOwnerGraveyardLocked: that
+//	           function is the shared exit ramp for destruction,
+//	           sacrifice AND every zero-counter SBA above
+//	           (sacrifice.go:32 routes through it), and a check
+//	           there would wrongly protect all five.
+//	           Exile, bounce, and "put into a graveyard" likewise.
+//
+// So the gate goes at the two places that mean "destroy" and nowhere
+// else: `DestroyPermanentForEffect` (effect_api.go — the entry point
+// every catalog `DestroyTarget` reaches) and the two damage branches
+// of the SBA `doomed` pre-pass (mutations.go).
+//
+// # Damage is still marked
+//
+// CR 702.12b again: an indestructible creature is dealt damage
+// normally and the damage stays marked until cleanup. Nothing in the
+// damage-marking path consults this file. That matters for two
+// downstream rules that keep working unchanged: lifelink still gains
+// life off damage dealt to an indestructible blocker, and a creature
+// that LOSES indestructible later in the turn (a turn-scoped grant
+// expiring at cleanup is the common case, but a control-change or
+// text-change effect could do it mid-turn) is destroyed by the very
+// next SBA pass on the damage it accumulated while protected. Storing
+// "was protected when the damage landed" instead would get that
+// backwards.
+//
+// The same reasoning is why the deathtouch branch is filtered HERE
+// rather than by skipping `MarkedLethalByDeathtouch` at marking time:
+// the flag records a fact about the damage event, and indestructible
+// is a fact about the permanent right now.
+//
+// Added in S25 (#77). Before this, `"indestructible"` reached
+// `Characteristic.Abilities` from `Spec.PrintedKeywords`
+// (Darksteel Citadel) and from `GrantKeywordUntilEOT` (Boros Charm
+// mode 1) and rendered as a badge that promised a rule the engine
+// never made.
+
+// IsIndestructible reports whether the permanent currently has
+// indestructible (CR 702.12a).
+//
+// Reads through `HasKeyword`, so it sees the full layer-6 picture:
+// the card's own printed keyword (Avacyn, Darksteel Citadel), a
+// battlefield static granting it to others (Avacyn's second line,
+// Bastion Protector's commander clause) and a turn-scoped grant
+// (Heroic Intervention, Boros Charm) all land in the same
+// `Effective().Abilities` slice.
+//
+// CALLER MUST HAVE FRESH LAYERS. `HasKeyword` reads the cached
+// `effective` characteristic; a grant registered earlier in the same
+// resolution frame is only visible after a recompute. The SBA loop
+// already calls `RecomputeLayersIfStaleLocked` at its top;
+// `DestroyPermanentForEffect` calls it explicitly for exactly this
+// reason (Heroic Intervention resolving in response to a Wrath is
+// the case that breaks otherwise).
+//
+// nil card returns false, matching `HasKeyword`.
+func IsIndestructible(c *Card) bool {
+	return HasKeyword(c, "indestructible")
+}
+
+// destroyBattlefieldPermanentLocked is the engine's single
+// destruction verb (CR 701.7): it routes the permanent to its
+// owner's graveyard UNLESS the permanent is indestructible, in which
+// case nothing happens at all — "the permanent remains on the
+// battlefield", not "the permanent is moved and then returned".
+//
+// Returns nil for an indestructible permanent and for a card that
+// isn't on the battlefield, because a destroy that finds nothing to
+// destroy is a no-op in the rules, not an error. Wrath-style callers
+// iterate a snapshot of the battlefield and would otherwise have to
+// swallow an error per protected creature.
+//
+// Caller must hold g.mu.
+func (g *Game) destroyBattlefieldPermanentLocked(cardID uuid.UUID) error {
+	// A grant registered moments ago in this same resolution frame
+	// bumps layerVersion but does not refresh `effective` until
+	// something asks. Ask.
+	g.RecomputeLayersIfStaleLocked()
+	if c := findBattlefieldCard(g, cardID); c != nil && IsIndestructible(c) {
+		return nil
+	}
+	return g.routeBattlefieldCardToOwnerGraveyardLocked(cardID)
+}
