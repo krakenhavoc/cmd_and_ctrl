@@ -2117,13 +2117,13 @@ contract alone cannot express them:
 
 ### Sub-PR 7 — Layer A rules filter + Layer C model policy
 
-- [ ] Layer A: resolve forced/trivial windows with no model call — note S13.6's auto-pass is **client-side only**, so Layer A inherits nothing and must do the whole job; instrument the absorption rate — **if it is under 80%, stop and fix the funnel before tuning anything else**
-- [ ] Prompt assembly from `Input` only; import test forbids `aiseat/policy` from importing `internal/game`
-- [ ] Prompt-cache the static block (rules primer, decklist + oracle text, archetype plan); per-decision delta is board state + move list
-- [ ] Cheap model for routine, frontier model on escalation: stack items targeting the bot, attacks, blocks, removal/counter availability against a high-threat board, top-two candidates within ε, modal/X/multi-target choices
-- [ ] Model returns a `Moves` **index**, never an action; out-of-range or malformed → Layer B
-- [ ] Tiers: `random`, `heuristic`, `assisted`, `strong`
-- [ ] Per-decision instrumentation: layer used, latency, tokens, escalation reason
+- [x] Layer A: `internal/aiseat/rules/` resolves forced/trivial windows with no model call — three rules, each defensible as a fact about the game rather than an opinion about the board: one legal move, only floating mana on offer (casts auto-tap, CR 106.4 empties the pool), and interchangeable copies of one land. **Measured absorption: 91.3%** over 5,207 windows across two four-bot games (90.1% over 7,810 across three), against ADR 0033 §5's 80% floor — `mana-only` carries ~51% of it and `forced` ~38%. The rate is asserted, not just logged, and the same games cross-check every absorbed window against the heuristic: 4,753 windows, 0 disagreements
+- [x] Prompt assembly from `Input` only — the board half of the prompt reads `aiseat.Input` and nothing else; the static half is a `DeckProfile` handed to the seat at construction. The existing import test in `aiseat/heuristic` walks the whole subtree, so `rules/`, `model/` and `tiers/` are covered without a second one
+- [x] Prompt-cache the static block; per-decision delta is board state + move list. Three tests hold it: the cache breakpoint sits on the last system block and nowhere else, the static half is byte-identical across a whole game's calls, and a reordered decklist does not change a byte
+- [x] Cheap model for routine, frontier model on escalation, with all five triggers from ADR 0033 §5. **Measured escalation rate: ~60–70% of surviving windows**, an order above the ADR's "~20%" estimate and driven almost entirely by the combat trigger — every attack and block declaration escalates by design. Recorded rather than tuned away; the thresholds are all in `model.Config`
+- [x] Model returns a `Moves` **index**, never an action; out-of-range, malformed, timed out, errored or absent → Layer B. Exercised as a unit table covering all six shapes, and in a whole game by the outage drill
+- [x] Tiers: `random`, `heuristic`, `assisted`, `strong` in `internal/aiseat/tiers/`, each with its ADR 0033 §10 `MaxThink`. **`strong`'s "1-ply sim on top-K" is not implemented** and will not be: simulating a move needs a `*game.Game`, which a policy may not hold — the same collision sub-PR 6 hit with "Δscore on a cloned game", resolved the same way. What `strong` buys is the frontier model on every surviving window and a wider candidate list
+- [x] Per-decision instrumentation: layer, rule, escalation reasons, model id, latency, model latency, tokens (including cache read/write) and the fallback cause, as a bounded ring plus aggregate counters
 
 ### Sub-PR 8 — improvisation, announced
 
@@ -2141,7 +2141,7 @@ contract alone cannot express them:
 - [x] Zero engine-rejected actions across a 100-game randomized run — and across 60 four-`heuristic` and 60 mixed games through the same soak harness (`AISEAT_SOAK_POLICY=heuristic|mixed`)
 - [x] `heuristic` beats `random` head-to-head: 40/40 decided games, alternating seats
 - [x] Heuristic decision latency: p50 8.5µs, p99 52µs, max 276µs over 2,715 decisions — four orders of magnitude inside the 2s `MaxThink`
-- [ ] Model-outage drill: Layer C hard-fails, game completes on Layer B, no frozen table
+- [x] Model-outage drill: Layer C hard-fails, game completes on Layer B, no frozen table. `TestModelOutageDrill` — the endpoint answers 25 calls and then fails forever, the four-bot game plays to a single survivor, the runner's own fallback counter stays at zero, and 2,382 of 2,407 windows were answered without a usable model. A sibling proves the other half of §10: a model that never answers costs its budget and hands over, and the runner still never force-passes
 - [ ] Human undo of a bot improvisation succeeds without the admin token, and the bundle reverts as one entry
 
 ### Exit criteria
