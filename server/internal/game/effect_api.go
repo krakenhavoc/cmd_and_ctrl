@@ -919,6 +919,22 @@ type SearchLibrarySpec struct {
 	// like Fabled Passage's "then ... untap THAT LAND" can name what
 	// it found instead of re-deriving it.
 	Then func(g *Game, found []uuid.UUID) error
+
+	// ToTop puts the found cards on TOP of the library, after the
+	// shuffle, when Dest is ZoneLibrary. It is what the "search your
+	// library for a card, then shuffle and PUT THAT CARD ON TOP"
+	// tutors print — Vampiric Tutor, Enlightened Tutor, Worldly
+	// Tutor, Mystical Tutor, Imperial Seal.
+	//
+	// The ordering is the whole clause. Shuffling first and placing
+	// second is what makes the card a known quantity on an unknown
+	// library; doing it the other way round would shuffle the card
+	// you just tutored back into the deck.
+	//
+	// With ToTop false, Dest: ZoneLibrary keeps its older meaning —
+	// "leave it where it is", which is a search that only reveals.
+	// Ignored for any other destination. Added in S22.
+	ToTop bool
 }
 
 // SearchLibraryForEffect scans playerID's library for cards matching
@@ -1104,10 +1120,19 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []uuid.UUID) []uuid.UUID {
 	destZone, err := g.searchDestZoneLocked(p, spec.Dest)
 	if err != nil || destZone == p.Library {
-		// ZoneLibrary is "leave it where it is" (Vampiric Tutor's
-		// put-on-top is not modelled yet); only the reveal applies.
-		if err == nil && spec.Reveal {
+		// ZoneLibrary means the card does not leave the library.
+		// With ToTop set it will be moved to the top AFTER the
+		// shuffle, in finishSearchLocked — so the IDs are returned
+		// as found, and nothing is moved here. Without it the clause
+		// is "leave it where it is" and only the reveal applies.
+		if err != nil {
+			return nil
+		}
+		if spec.Reveal {
 			g.revealLibraryCardsLocked(p, ids)
+		}
+		if spec.ToTop {
+			return ids
 		}
 		return nil
 	}
@@ -1294,6 +1319,32 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 		// the searcher saw while looking, they no longer know where
 		// any of it is.
 		clearKnownInZoneLocked(p.Library)
+	}
+	// "... then shuffle and put that card on top." AFTER the shuffle,
+	// which is the whole clause — the tutored card is a known
+	// quantity sitting on an unknown library. Doing it before would
+	// shuffle the card straight back into the deck.
+	//
+	// Knowledge has to be re-granted here because the shuffle just
+	// wiped the whole zone, and the tutored card is the one card in
+	// it nobody has forgotten: the searcher chose it and watched it
+	// go on top. If the card also said "reveal", the whole table
+	// watched — Enlightened Tutor tells everyone what your next draw
+	// is, and that is a real cost of the card.
+	if spec.ToTop && spec.Dest == ZoneLibrary {
+		for i := len(found) - 1; i >= 0; i-- {
+			c, err := p.Library.Remove(found[i])
+			if err != nil {
+				continue
+			}
+			c.AddKnower(spec.Player)
+			if spec.Reveal {
+				for _, seat := range g.Seats {
+					c.AddKnower(seat.ID)
+				}
+			}
+			p.Library.PushTop(c)
+		}
 	}
 	if spec.Then != nil {
 		return spec.Then(g, found)

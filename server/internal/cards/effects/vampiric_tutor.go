@@ -2,17 +2,25 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-// Vampiric Tutor — "Search your library for a card, then shuffle
-// and put that card on top of your library. You lose 2 life."
+// Vampiric Tutor — Instant {B}:
 //
-// S14 sandbox simplifications:
-//   - The tutored card goes directly to HAND rather than on top of
-//     the library. The "put on top + draw next turn" nuance matters
-//     when racing or dodging discard; the net-card-selection effect
-//     is identical. Revisit in S17 when we model replacement timing
-//     / mulligan-in-game flows.
+//	"Search your library for a card, then shuffle and put that card
+//	 on top of your library. You lose 2 life."
 //
-// The controller picks which card (S22).
+// S22: the put-on-top is real. This shipped in S14 sending the
+// tutored card straight to HAND with a note saying the difference
+// "matters when racing or dodging discard" and would be revisited.
+// It is revisited: SearchLibrary.ToTop places the card after the
+// shuffle, which is the whole clause — the card is a known quantity
+// sitting on an unknown library, and it costs you a draw step to
+// collect it.
+//
+// That card-disadvantage is what makes this a one-mana tutor instead
+// of Demonic Tutor's three, so modelling it as a to-hand search was
+// quietly printing a much better card.
+//
+// No reveal: Vampiric Tutor does not say "reveal it", so only the
+// controller knows what is on top.
 func init() {
 	Register(Spec{
 		OracleID: "ededbdae-d9dc-4206-9335-d7158f2d7700",
@@ -20,7 +28,8 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := (SearchLibrary{
 				Player:  ctx.Controller(),
-				Dest:    game.ZoneHand,
+				Dest:    game.ZoneLibrary,
+				ToTop:   true,
 				Limit:   1,
 				Reveal:  false,
 				Shuffle: true,

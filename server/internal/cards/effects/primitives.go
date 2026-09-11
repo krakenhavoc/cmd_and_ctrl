@@ -403,6 +403,13 @@ type SearchLibrary struct {
 	Then func(g *game.Game, found []uuid.UUID) error
 	// Source is the card that caused the search — prompt context.
 	Source uuid.UUID
+	// ToTop is the "... then shuffle and put that card ON TOP"
+	// clause the one-mana tutors print (Enlightened, Worldly,
+	// Mystical, Vampiric, Imperial Seal). Set it with
+	// Dest: game.ZoneLibrary. The card never leaves the library; it
+	// is placed after the shuffle, which is what makes the clause
+	// mean anything.
+	ToTop bool
 }
 
 func (s SearchLibrary) Apply(ctx *Context) error {
@@ -423,6 +430,7 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		Reason:        s.Reason,
 		Validate:      s.Validate,
 		Then:          s.Then,
+		ToTop:         s.ToTop,
 	})
 }
 

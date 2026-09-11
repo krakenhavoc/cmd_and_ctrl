@@ -831,11 +831,19 @@ func TestDemonicTutorSearchesIntoHand(t *testing.T) {
 	}
 }
 
+// TestVampiricTutorSearchesAndLosesLife — S22 retired this card's
+// to-hand simplification. "Then shuffle and put that card on top" is
+// now modelled as printed: the card never leaves the library, and it
+// is placed AFTER the shuffle. That delay is the whole reason this
+// costs one mana where Demonic Tutor costs three, so a to-hand search
+// was quietly printing a much better card.
 func TestVampiricTutorSearchesAndLosesLife(t *testing.T) {
 	g := newCatalogGame(t)
 	caster := g.Seats[0]
 	needle := pushLibraryCardForTest(caster, game.Card{Name: "Vamp Needle"})
 	lifeBefore := caster.Life
+	libBefore := caster.Library.Size()
+	handBefore := caster.Hand.Size()
 
 	castCatalogSpell(t, g, "Vampiric Tutor", "Instant",
 		"ededbdae-d9dc-4206-9335-d7158f2d7700",
@@ -844,8 +852,24 @@ func TestVampiricTutorSearchesAndLosesLife(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	answerSearchByID(t, g, caster.ID, needle)
 
-	if !caster.Hand.Contains(needle) {
-		t.Errorf("needle not tutored into hand")
+	if caster.Hand.Contains(needle) {
+		t.Error("the needle went to hand; Vampiric Tutor puts it on TOP of the library")
+	}
+	if caster.Hand.Size() != handBefore {
+		t.Errorf("hand is %d, want %d — nothing is drawn", caster.Hand.Size(), handBefore)
+	}
+	if caster.Library.Size() != libBefore {
+		t.Errorf("library is %d, want %d — the card never leaves it",
+			caster.Library.Size(), libBefore)
+	}
+	top, err := caster.Library.Top()
+	if err != nil || top.InstanceID != needle {
+		t.Error("the needle is not on top of the library")
+	}
+	// The searcher knows what they put there; a shuffle that wiped
+	// the zone must not take that back.
+	if !top.IsKnownTo(caster.ID) {
+		t.Error("the searcher does not know the card they just tutored onto their own library")
 	}
 	if caster.Life != lifeBefore-2 {
 		t.Errorf("caster life: got %d, want %d", caster.Life, lifeBefore-2)
