@@ -3,11 +3,14 @@ package effects
 // Arcane Signet — "{T}: Add one mana of any color in your
 // commander's color identity." Color-identity-restricted mana rock.
 //
-// S14 sandbox: same posture as Sol Ring — activated mana abilities
-// land with the S19 pipeline. Registered here as a vanilla catalog
-// entry so the AUTO badge reads consistently across Commander
-// staples, and the future activated-ability wiring has a Spec to
-// attach to.
+// Fully implemented, same as Sol Ring: the S15 mana pipeline
+// resolves the ability off-stack, and ActivateManaAbility narrows
+// the five-colour pipe to the controller's commander's colour
+// identity — which is exactly what this card's printed text asks
+// for, and why it does NOT set IgnoreCommanderIdentity.
+//
+// The S14 note claiming the pipeline was still pending outlived its
+// fix; corrected in the #338 stale-simplification sweep.
 func init() {
 	// Arcane Signet's produced string uses the full pipe set; the
 	// engine narrows the options to the controller's commander's

@@ -7,10 +7,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"At the beginning of your upkeep, create a 0/1 colorless Eldrazi
 //	Spawn creature token. It has 'Sacrifice this creature: Add {C}.'"
 //
-// S19 sub-PR 5: a pure token-generating "your upkeep" trigger. The
-// token's sac-for-mana activated ability is deferred (cost model
-// follow-up); here it's a vanilla 0/1. Mandatory; the token arrives
-// when the trigger resolves.
+// S19 sub-PR 5: a pure token-generating "your upkeep" trigger.
+// Mandatory; the token arrives when the trigger resolves.
+//
+// No simplification remains. The Spawn's "Sacrifice this creature:
+// Add {C}" went live in S21 sub-PR 1 — EldraziSpawnToken declares it
+// on Card.ManaAbilities with no tap in the cost, so a Spawn can be
+// cracked the turn it arrives. The note here calling it deferred
+// outlived the fix; corrected in the #338 sweep.
 func init() {
 	Register(Spec{
 		OracleID: "f955bc96-d602-4142-a9a2-87009cc7028c",
