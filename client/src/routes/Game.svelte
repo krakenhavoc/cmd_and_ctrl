@@ -961,8 +961,10 @@
                   {/if}
                 {:else}
                   <strong>{attackPlan.declared.length}</strong>
-                  declared — everything else is
-                  {attackBlockedHint || "already attacking"}
+                  declared
+                  {#if attackBlockedHint}
+                    <span class="muted">· {attackBlockedHint} can't attack</span>
+                  {/if}
                 {/if}
               </span>
               {#if attackAllReady}
