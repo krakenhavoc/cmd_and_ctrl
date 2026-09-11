@@ -977,21 +977,41 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 // `options` matches a still-unsatisfied requirement, returning
 // that color. Otherwise returns the first option (generic-eligible
 // fall-through). Empty options returns "".
+//
+// EVERY slot books its requirement, single-option slots included.
+// Issue #273: a one-option slot used to short-circuit straight to
+// its colour without ticking the requirement off, so the {W} a
+// Plains had just paid stayed on the pending list and the next
+// multi-option slot — Command Tower, the only blue source on the
+// board — spent itself re-paying it. Teferi's {U} never arrived and
+// the strict gate refused a cast the solver had already proved
+// payable.
+//
+// Among the requirements this slot can satisfy, the most restrictive
+// one (fewest legal colours) wins. A source that can pay a hybrid
+// {W/U} and a plain {U} should take the {U}, leaving the hybrid for
+// whatever comes next — same restriction-first instinct the solver
+// itself uses when it picks sources.
 func pickColorForSlot(options []string, pending *[]ColorRequirement) string {
 	if len(options) == 0 {
 		return ""
 	}
-	if len(options) == 1 {
-		return options[0]
-	}
+	best, bestOpt := -1, ""
 	for i := range *pending {
 		req := (*pending)[i]
 		for _, opt := range options {
-			if matchColor(opt, req.Options) {
-				*pending = append((*pending)[:i], (*pending)[i+1:]...)
-				return opt
+			if !matchColor(opt, req.Options) {
+				continue
 			}
+			if best < 0 || len(req.Options) < len((*pending)[best].Options) {
+				best, bestOpt = i, opt
+			}
+			break
 		}
+	}
+	if best >= 0 {
+		*pending = append((*pending)[:best], (*pending)[best+1:]...)
+		return bestOpt
 	}
 	return options[0]
 }

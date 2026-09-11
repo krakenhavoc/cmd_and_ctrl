@@ -252,9 +252,22 @@ surface tiny.
    `oracle_id` (NOT `scryfall_id`) is the catalog key — stable across
    printings.
 
+   **Skip placeholder printings.** The dump carries ~3,200 entries that
+   are not playable cards: art-series cards (`layout: "art_series"`,
+   `type_line: "Card // Card"`, and a name that is the real card's name
+   **doubled** — `"Appa, Steadfast Guardian // Appa, Steadfast
+   Guardian"`), plus `front_card` / token placeholders with
+   `type_line: "Card"`. Any name match looser than `==` picks them up,
+   and then an ordinary single-faced creature looks like a DFC. Filter
+   `c['type_line'] not in ('Card', 'Card // Card')` before reading
+   `layout`, `type_line`, `mana_cost` or `card_faces` off a printing.
+
 2. **Pick a primitive composition.** See
    [server/internal/cards/effects/primitives.go](server/internal/cards/effects/primitives.go)
-   for the 15 primitives. Most cards are 1-2 primitives sequenced. A
+   for the primitives (22 in `primitives.go` as of S22, plus a few that
+   live in their own files — `CreateTokenCopy` in `token_copy.go`,
+   the flicker helpers in `flicker.go`). Most cards are 1-2 primitives
+   sequenced. A
    card that can't be expressed with existing primitives either needs a new
    primitive (add it to `primitives.go`) or a new `*ForEffect` helper on
    `*Game` (under a lock caller already holds — follow the existing naming
@@ -553,7 +566,7 @@ func init() {
 **`AppliesTo` patterns:**
 - "Counters go on a creature you control" — `target.Controller == src.Controller && target.IsCreature()`
 - "When a permanent enters the battlefield" — `ev.Kind == RepEventMove && ev.NewZone == ZoneBattlefield`
-- Self-replacement (Hangarback's X counters on own ETB) — `ev.CardID == src.InstanceID`
+- Self-replacement (Hangarback's X counters on own ETB; every "this land enters tapped") — `ev.CardID == src.InstanceID`. This works even though the entering card is not on the battlefield yet: `gatherActiveReplacementsLocked` has a dedicated block for a card that is NOT on the battlefield, which passes the entering card itself as `src` ([replacements.go](server/internal/game/replacements.go), the `!g.Battlefield.Contains(ev.CardID)` branch). Prefer `SelfEntersTapped()` over an `OnETB` tap — see the "enters tapped" note below.
 - Opponents only (Kismet) — `controllerOf(ev.CardID) != src.Controller`
 
 **`Replace` patterns:**
@@ -567,6 +580,25 @@ func init() {
 **Tests** — see `server/internal/cards/effects/doubling_season_test.go` for the CR 616 ordering pattern (Doubling Season + Hardened Scales → the affected player picks order → `[HS, DS]` yields 4 counters, `[DS, HS]` yields 3). Use `pushBattlefieldCardWithTimestamp` to get the source on the battlefield + the listener to stamp `EnteredBattlefieldAt`; trigger the event with the public mutation (`AddCounter`, `DrawCard`, etc.) and assert on the resulting state plus any queued `PendingChoice`.
 
 **Don't use the replacement pipeline when a primitive flag suffices.** "This card does X to a land it fetches" (Cultivate, Path to Exile, Solemn Simulacrum) is a self-contained card behavior, not a general replacement. Declare `TappedOnEntry: true` on the `SearchLibrary` primitive rather than a full `ReplacementEffect`. The generic pipeline is for effects that watch *other* cards' events.
+
+> **History, and one declared gap.** That `TappedOnEntry` flag used to be
+> the *only* thing standing in for the pipeline on the search path, which
+> is how a fetched fastland entered untapped
+> ([#263](https://github.com/krakenhavoc/cmd_and_ctrl/issues/263),
+> **fixed**). The search path — and the reanimation path, which had the
+> same hole and was not in the issue — now both run
+> `applyReplacementsLocked` before the card leaves its zone, and both
+> fire `fireETBHookLocked`.
+>
+> What remains is deliberate: neither entry site is `entryResumable`, so
+> an entry replacement that wants to **ask** something cannot. A fetched
+> shockland enters tapped with **no payment offered** — weaker than
+> printed, never stronger, which is the posture
+> `ReplacementEvent.entryResumable` exists to enforce. Resuming
+> generically would finish the move without the search's continuation and
+> skip the library shuffle, and a missing shuffle silently leaks library
+> order. `TestFetchedShocklandEntersTappedWithNoPaymentOffered` pins the
+> gap and flips when it closes.
 
 ### Adding a combat-keyword card (S18+)
 
@@ -853,6 +885,91 @@ the ten-Temple cycle in `temples.go` combines all three (enters tapped,
 ETB scry, pipe-syntax dual) and is written as a loop over a table, since
 ten near-identical files is ten places to fix one mistake.
 
+**An alternative cast cost (S22):** "you may cast this spell for its
+<keyword> cost **rather than** its mana cost" (CR 118.9) goes in
+`Spec.AlternativeCosts`, built from the constructors in
+[alternative_cost.go](server/internal/cards/effects/alternative_cost.go).
+This is NOT `AdditionalCost`, which is a cost paid *alongside* the mana
+cost:
+
+```go
+AlternativeCosts: []game.AlternativeCost{Overload("{4}{R}")},        // Vandalblast, Cyclonic Rift
+AlternativeCosts: []game.AlternativeCost{Evoke("{3}{U}")},           // Slithermuse
+AlternativeCosts: []game.AlternativeCost{                            // Wash Away
+    Cleave("{1}{U}{U}", TargetSpell("target spell")),
+},
+```
+
+One constructor per keyword rather than a generic builder, because each
+keyword bundles a rewrite with its price: overload also **deletes** the
+target clause (`ClearsTargets`), evoke also attaches the
+sacrifice-on-entry trigger, cleave **swaps** the target clause for the
+wider bracketed-words-removed one. Hand-rolling
+`game.AlternativeCost{ManaCost: "{4}{R}"}` compiles, casts for four, and
+still demands a target — a strictly worse Vandalblast that looks right.
+
+The `Key` is the wire contract: it rides `cast_spell` as
+`alternative_cost`, lands on `StackItem.AltCost`, and the card's
+`OnResolve` branches on `ctx.PaidAltCost("overload")`. Keys must be
+non-empty and unique per card; `Register` panics otherwise. Only
+overload / evoke / cleave exist — foretell, plot, spree, warp and
+"prepare" have no shape yet, and a card carrying one of those ships
+without it (say so in the card comment, as Cosmic Intervention does).
+
+**A delayed trigger (S22):** "at the beginning of the next end step,
+<do X>" (CR 603.7) is `ScheduleDelayedTrigger`, not a closure that runs
+now:
+
+```go
+ScheduleDelayedTrigger{
+    Label:  "Waterbender's Restoration — return the exiled creatures",
+    Cards:  exiled,                      // instance IDs, stamped onto the fired item's Targets
+    Effect: returnExiledCardsToOwners,   // a package-level func, NOT a closure
+}.Apply(ctx)
+```
+
+`At` defaults to `game.StepEnd`; the queue is drained on step **entry**,
+so an ability scheduled during an end step waits for the following one.
+The instruction lives on the `Game`, not on a card — the spell that
+created it is usually in a graveyard by the time it fires — and it goes
+on the stack when the step begins, so every player gets a response
+window. Declare `Effect` as a package-level func so it captures nothing:
+a delayed trigger survives `Clone` / undo by sharing its `Effect` with
+the snapshot, and reads its payload off the item it is handed.
+
+**Flicker (S22):** two shapes, and the difference is observable:
+
+```go
+Flicker{Target: id}                                  // "exile it, then return it" — one go
+ExileTarget{Target: id} + ScheduleDelayedTrigger{…}  // "exile it. At the next end step, return it"
+ReturnFromExile{Target: id, Tapped: true}            // "…return it tapped"
+```
+
+Either way the permanent returns as a **new object** — fresh
+`InstanceID`, no counters, no damage, summoning-sick again — and
+re-triggers every ETB it has. Leave `Controller` zero for "under its
+owner's control"; set it only for "under your control". See
+[flicker.go](server/internal/cards/effects/flicker.go).
+
+**A token that's a copy (S22):** `CreateTokenCopy`, not a hand-written
+template:
+
+```go
+CreateTokenCopy{Controller: item.Controller, Copy: cardID, N: 1,
+    Except: func(t *game.Card) { /* "except it's a 4/4 black Zombie" */ }}.Apply(ctx)
+```
+
+`Copy` may be in **any** zone (graveyard for Hashaton, exile for
+eternalize, battlefield for a Clone-style copy). The copied card's
+oracle ID rides onto the token, so its triggered / static / mana /
+activated abilities all come along for free — every one of those hooks
+does a catalog lookup rather than reading a field. Two gaps worth
+knowing: the copied card's `Spec.OnETB` does **not** fire (its
+`Triggered` `EventETB` abilities do), and per-instance state (counters,
+`ExilePlay`, the cached characteristic) is deliberately not copied — CR
+707.2. "Enters as a copy" for a real card (Clone) is a different thing
+and still unimplemented: that is CR 613 layer 1, deferred to S16.5.
+
 **Event picker:**
 
 | Trigger text | `Watches` | `AppliesTo` |
@@ -862,7 +979,13 @@ ten near-identical files is ten places to fix one mistake.
 | "Whenever you sacrifice a permanent" | `EventSacrifice` | `ev.Actor == source.Controller` — fires while the permanent is still on the battlefield, before its `EventLTB` |
 | "Whenever a player sacrifices a permanent" | `EventSacrifice` | `ev.CardID != uuid.Nil` (Mayhem Devil) — any player, any permanent type |
 | "Whenever another creature dies" | `EventLTB` | `diedCreature(ev, g)` — resolves the dying card post-move; add `dead.Controller == source.Controller` for "you control", `!IsToken(dead)` for "nontoken" |
+| "Whenever ~ attacks" | `EventAttack` | `attackDeclared(ev, source)` — `EventAttack` carries the attacking creature in `CardID`, exactly as `EventETB` carries the entering permanent |
+| "Whenever a creature you control attacks" | `EventAttack` | `attackDeclaredByYou(ev, source.Controller)` — reads `ev.Actor` (the attacker's controller); fires **once per attacking creature**, so a three-creature alpha strike triggers three times. Add `ev.CardID != source.InstanceID` for "another". `ev.Target` is the defending player |
+| "Whenever ~ enters or attacks" | `EventETB` + `EventAttack` on **one** ability | `ev.CardID == source.InstanceID` — one printed ability with two trigger conditions is one `TriggeredAbility` watching two kinds, not two declarations (Sun Titan) |
+| "Whenever ~ becomes the target of a spell or ability" | `EventBecomesTarget` | `ev.CardID == source.InstanceID` — `CardID` repeats `Target` when the target is a card and is `uuid.Nil` for a player, so reading `CardID` is what keeps a player-targeting spell from matching. `ev.Actor` is the targeting player, `ev.Source` its source |
+| "Whenever another creature you control becomes the target…" | `EventBecomesTarget` | `targetedAnotherCreatureYouControl(ev, source, g)` (Monk Gyatso) — excludes the source, checks the target is still on the battlefield, then reads its type and controller. Fires once per target **slot**, at **announce** (CR 115.7), so the trigger goes on the stack ABOVE the spell that targeted and resolves first — which is the whole card |
 | "At the beginning of your upkeep" | `EventBeginUpkeep` | `ev.Actor == source.Controller` |
+| "At the beginning of your end step" | `EventBeginEndStep` | `ev.Actor == source.Controller` — drop the check for "the beginning of the end step" (any player's) |
 | "Whenever you cast a creature spell" | `EventCast` | `ev.Actor == source.Controller` + `g.LookupCardForEffect(ev.CardID)` for the spell's type |
 | "Whenever an opponent casts their first noncreature spell each turn" | `EventCast` | `g.CastTallyFor(ev.Actor).Noncreature == 1` (tally is bumped before the event fires) |
 | "Whenever an opponent draws a card" | `EventDrawCard` | `ev.Actor != uuid.Nil && ev.Actor != source.Controller` — fires once per card |
@@ -931,26 +1054,49 @@ then `passPriorityAroundTable`. See the S19 sections of
 
 ### When NOT to add a catalog entry
 
-- **Non-mana, non-static activated abilities** (planeswalker +1/-1
-  loyalty costs, equip, cycling, etc.) land with a later activated-
-  ability pipeline. Don't invent a shape; wait. (Mana abilities and
-  static abilities are the exceptions — see the recipes above.)
-- **Triggers on events the engine doesn't emit yet** (attack
-  declarations, "whenever a creature enters under an opponent's
-  control", landfall-with-a-target) — check
+- **Activated abilities whose cost has no component** — `AbilityCost`
+  carries tap-this, sacrifice-this, sacrifice-another, mana and life
+  ([activated.go](server/internal/game/activated.go)) and nothing else.
+  So planeswalker **loyalty** costs, **equip**, cycling, and
+  **convoke / waterbend on an ACTIVATED ability** still have no shape —
+  don't invent one. (Convoke and waterbend on a *spell* do have one since
+  S22: `Spec.TapCost`, built with `Convoke()` / `Waterbend("{X}")`. The
+  activated-ability seam is separate and still open — Katara, Water
+  Tribe's Hope is the card waiting on it.) (Ordinary activated abilities built from
+  those five components are fine since S21: see `Spec.Activated`
+  above. Loyalty has a manual path — `ActivateLoyalty` moves the
+  counter and enforces CR 606.5 — but no catalog hook for the
+  ability's effect.) Shipping a card with a cost the engine
+  can't express simply omitted makes it **stronger than printed**, which
+  is the wrong direction for a simplification:
+  [#259](https://github.com/krakenhavoc/cmd_and_ctrl/issues/259) was that
+  mistake reaching the catalog (Waterbender's Restoration shipped as a
+  two-mana mass blink) and is now **closed**, but it stood for a sprint
+  and was caught by writing a decklist doc rather than by a test. If the
+  cost has no shape, leave the CARD out.
+- **Triggers on events the engine doesn't emit yet** ("whenever a
+  creature enters under an opponent's control", landfall-with-a-target,
+  "whenever you attack with one or more creatures" as a single batched
+  trigger) — check
   [events.go](server/internal/game/events.go) for an `EventKind`
   first. If there isn't one, the event plumbing is the PR, not the
-  card.
+  card. Two things that used to be on this list are not any more:
+  **attack declarations** (`EventAttack`) and **"becomes the target of a
+  spell or ability"** (`EventBecomesTarget`), both S22 — see the event
+  picker above.
 - **Cost-replacement effects** (Trinisphere, Thalia, Spellshift, Kambal)
   touch the S15 cost engine rather than the S17 event pipeline. They
   land with S28.
 - **Aura-attachment + control-change** (Mind Control) — requires
   aura-attaching state the engine doesn't model. Lands with S24.
-- **Cards that need a pick-from-zone UI** the client doesn't have yet —
-  e.g. "target card in any graveyard" (Regrowth / Eternal Witness) works
-  today only because S14 sandbox auto-picks the top of the controller's
-  graveyard. If the picker UX is load-bearing for the card, wait for S20
-  smart-cast.
+- ~~**Cards that need a pick-from-zone UI**~~ — no longer a blocker.
+  S20 shipped structured targeting and S18.5 the zone browser, so
+  "target card in your graveyard" is a real target clause:
+  `TargetCardInGraveyard(label, preds…)`
+  ([targets.go](server/internal/cards/effects/targets.go)), answered by
+  clicking the card in the zone browser. Eternal Witness and Sun Titan
+  both use it. The S14 "auto-pick the top of the graveyard" fallback is
+  only for cards that never declared a clause.
 
 ### When in doubt
 
