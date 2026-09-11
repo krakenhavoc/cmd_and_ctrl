@@ -23,15 +23,18 @@ import (
 // TargetAny (no creatures) and wider than TargetPlayer — so it is
 // built by hand here rather than borrowed from targets.go.
 //
-// Sandbox simplification, declared on the mode label too so the
-// picker is honest: mode 1's INDESTRUCTIBLE is inert. The grant
-// appends the keyword string for the turn, but nothing in the
-// engine reads it — DestroyPermanentForEffect and the lethal-damage
-// SBA consult no keywords — so the mode currently protects nothing.
-// Weaker than printed; it starts working untouched the day
-// indestructible lands in the destroy path (the posture The
-// Wandering Rescuer's hexproof takes). Mode 2's double strike is
-// real: the combat engine honours it.
+// No simplifications as of S25 (#77). Mode 1 used to carry one:
+// the indestructible grant appended a keyword string that nothing in
+// the engine read, so the mode protected nothing and the mode label
+// said so. S25 taught DestroyPermanentForEffect and the two
+// damage-driven creature SBAs CR 702.12 (server/internal/game/
+// indestructible.go), and — exactly as that note predicted — the
+// mode started working without a line of card code changing. Only
+// the disclaimer in the label came out.
+//
+// All three modes are now real: 4 damage, a turn-scoped
+// indestructible grant over every permanent you control, and a
+// double-strike grant the combat engine honours.
 func init() {
 	Register(Spec{
 		OracleID: "2679d0dd-ba30-4a1c-b6a0-b3ac6c790496",
@@ -39,7 +42,7 @@ func init() {
 		Modes: ChooseOne(
 			Mode("Boros Charm deals 4 damage to target player or planeswalker.",
 				targetPlayerOrPlaneswalker("target player or planeswalker")),
-			Mode("Permanents you control gain indestructible until end of turn. (Indestructible is not yet enforced.)"),
+			Mode("Permanents you control gain indestructible until end of turn."),
 			Mode("Target creature gains double strike until end of turn.",
 				TargetCreature("target creature")),
 		),

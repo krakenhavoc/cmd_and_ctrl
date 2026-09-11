@@ -142,6 +142,23 @@ var (
 	// not casting). Added in S21 sub-PR 6.
 	ErrNoPlayPermission = errors.New("game: no permission to play this card from exile")
 
+	// ErrCastZoneNotAllowed is returned by cast_spell when the card
+	// does not declare the source zone as one it can be cast from —
+	// an ordinary sorcery named as a graveyard cast — or when a
+	// zone-bound alternative cost is claimed from the wrong zone
+	// (flashback named on a card in hand). Distinct from
+	// ErrZoneNotFound, which means the `from_zone` string itself did
+	// not name a zone. Added in S29.
+	ErrCastZoneNotAllowed = errors.New("game: card cannot be cast from that zone")
+
+	// ErrCastCostRequired is returned by cast_spell when the card is
+	// castable from the source zone only by paying a cost bound to
+	// that zone, and the cast named none — a graveyard cast of a
+	// flashback card that did not claim flashback. Paying the
+	// printed cost instead would be strictly better than the card.
+	// Added in S29.
+	ErrCastCostRequired = errors.New("game: casting from that zone requires its alternative cost")
+
 	// ErrCardNotOnStack is returned by counter_spell / counter_ability
 	// when the targeted item is not currently on the stack (already
 	// resolved, never cast, or wrong instance ID). Added in S13.1.

@@ -588,6 +588,8 @@ func Dispatch(g *game.Game, a Action) error {
 		return g.AddCounter(instanceID, p.Name, p.Delta)
 
 	case TypeSetCommanderDamage:
+		// `from` is a COMMANDER CARD instance ID since S25 (#77); it
+		// was an opposing player ID before the CR 903.14a rekey.
 		var p struct {
 			From   string `json:"from"`
 			To     string `json:"to"`
