@@ -343,8 +343,14 @@
     margin-top: 2px;
   }
   .action {
-    flex: 1 1 0;
+    /* basis auto (not 0) since #323 added a third button: the row
+       sizes each label to its own text and shares the slack, so
+       "autopass ✓" can't get squeezed narrower than it reads. The
+       row wraps rather than clipping if the panel is at its 220px
+       floor. */
+    flex: 1 1 auto;
     min-width: 0;
+    white-space: nowrap;
     padding: 4px 8px;
     border-radius: 6px;
     border: 1px solid var(--border);
