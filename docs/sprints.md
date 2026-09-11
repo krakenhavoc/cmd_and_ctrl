@@ -1082,7 +1082,7 @@ S14 lays the rules-engine infrastructure the rest of Phase 7 hangs off: a per-ga
 - **Replacement effects (ETB-tapped, "if-would-die-exile-instead")** — S17. Cultivate's "enters tapped" half, Path to Exile's tapped land, Solemn Simulacrum's tapped land all defer.
 - **Combat keywords (trample, lifelink, flying)** — S18.
 - **Auto-fire triggered abilities from catalog cards** — S19. ETB hooks use the direct-call path in S14 and migrate for free.
-- **Scry / surveil / look-at-top-N + Brainstorm's "put 2 back" half** — S22 library-manipulation polish. Brainstorm is NOT in the S14 catalog.
+- **Scry / surveil / look-at-top-N + Brainstorm's "put 2 back" half** — S22 library-manipulation polish. Scry, surveil and look-at-top-N shipped in S22; Brainstorm's "put two cards from your HAND back" is a different shape (it picks from a hand, not from a looked-at library slice) and is still NOT in the catalog.
 - **Target-picker UX for Thoughtseize (pick-from-revealed-hand)** — S22. S14 ships random-pick sandbox.
 - **Target legality validation at announce time** — S20 smart-cast UI. Effects re-check at resolve via CR 608.2b.
 
@@ -1767,15 +1767,39 @@ Mini sprint slotted after S18 started, to ship two pieces of long-promised clien
 
 **Phase:** 7 · **Goal:** a draw-heavy Commander deck plays end-to-end.
 
-- [ ] `ScryN`, `SurveilN`, `Explore`, `RevealAndChoose`, `MillToZone`, `DrawAndScry` primitives
-- [ ] Delayed-trigger mechanism (`Game.DelayedTriggers`) for "at the next end step" patterns
-- [ ] `KindLookAtCards` / `KindRevealCards` wire frames (controller-only with redacted view)
+- [x] `ScryN` (as the `Scry` primitive), `SurveilN` (`Surveil`), `MillToZone`, `DrawAndScry` (as `Scry.Then`) primitives — `Explore` and `RevealAndChoose` still open
+- [x] Delayed-trigger mechanism (`Game.DelayedTriggers`) for "at the next end step" patterns
+- [x] `KindLookAtCards` wire frame (controller-only with redacted view) — shipped as the `scry` / `surveil` / `look_at_top` PendingChoice kinds; `KindRevealCards` (broadcast) still open
 - [ ] ~40 cards: passive draw engines, top-of-library manipulation, tutoring, mill, big draw payoffs
 - [ ] Theme-deck smoke test (blue draw deck plays 3 turns)
 
 **Exit criteria:** Activate Sensei's Divining Top → personal-only modal shows top 3 cards → reorder → confirm. Necropotence: activate to exile a card → advance to end step → card moves to hand automatically.
 
-**Status: partial — and less of it is done than the commit log suggests.** Exactly one checklist item has shipped: the delayed-trigger mechanism, as `Game.DelayedTriggers` in `server/internal/game/delayed.go` ([ADR 0026](decisions/0026-delayed-triggers.md), #255), which is the half of the Necropotence exit criterion that does not involve drawing cards. **Every draw and library primitive is still absent** — `ScryN`, `SurveilN`, `Explore`, `RevealAndChoose`, `MillToZone`, `DrawAndScry`, `KindLookAtCards` and `KindRevealCards` each return zero hits across `server/internal/`. Neither exit criterion can be met today: there is no personal-only look-at-cards frame and no scry/reorder UI. The nine `feat(s22)` commits on `main` shipped attack triggers, flicker, alternative cast costs (which is S28 scope — see that section) and roughly fifty cards; they are good work under a misleading tag. See the note under the sprint index.
+**Status: the library-manipulation half is done; the passive-draw-engine half is not.**
+
+The **first exit criterion is met.** Sensei's Divining Top is in the catalog and both its abilities work: `{1}` opens the controller-only reorder modal on the top three, and `{T}` draws then tucks the Top itself, in that order. The **second is still blocked** — Necropotence needs face-down exile plus an exile→hand move, and `exile_play.go` offers neither (its permission grants "you may cast", and its doc comment says the exiled cards are deliberately public).
+
+Shipped:
+
+- **The scry family.** One mechanism, three `PendingChoice` kinds that differ only in where the cards that leave the top go: `scry` (bottom of library, CR 701.18, S21), `surveil` (graveyard, CR 701.42) and `look_at_top` ("put them back in any order"). All three are "look at", not "reveal" — only the chooser is marked a knower, and `FilterViewFor` projects them as backs for every other seat. The count stays public, which is right: "scry 2" is a printed number. The `resolve_choice` dispatcher routes them **by the choice's kind**, not by payload shape, because all three carry `top_order`.
+- **`MillToZone`**, generalising `MillCards` along the three axes printed cards need: a destination zone (exile, which is not a mill and does not emit `EventMill`), a stopping predicate, and the list of what moved.
+- **`SearchLibrarySpec.ToTop`** — "shuffle, then put that card on top", which retires Vampiric Tutor's S14 to-hand simplification. The delay is the discount on a one-mana tutor; modelling it as to-hand was printing a strictly better card.
+- **`TuckToLibraryForEffect`** and **`EventBeginDrawStep`**.
+- **~20 cards**: the three surveil lands now surveil; Sensei's Divining Top, Ponder, Crystal Ball, Otherworldly Gaze, Thought Scour, Reliquary Tower; Enlightened / Worldly / Mystical Tutor, Imperial Seal, Fabricate, Beseech the Queen; Psychosis Crawler, The Locust God, Howling Mine, Hedron Crab.
+
+Still open, each blocked on something specific rather than on time:
+
+- **`Explore`** and **`RevealAndChoose`** — no card in the catalog needs them yet.
+- **`KindRevealCards`** (broadcast reveal) — Fact or Fiction is the card that would force it.
+- **Necropotence** — face-down exile + exile→hand, neither of which exists.
+- **Sylvan Library** — needs a repeated per-card "pay 4 life or put it back" prompt; the choice queue has no prompt-after-a-prompt composition.
+- **Mystic Remora** — cumulative upkeep.
+- **Soothsaying** and **Helm of Obedience** — `AbilityCost` has no `{X}` component.
+- **Mesmeric Orb** — `untapAllForLocked` does not emit `EventUntapCard`, so the untap step is silent to the trigger system.
+- **Bruvac the Grandiloquent** — needs a `RepEventMill` replacement kind; `MillToZoneForEffect` moves cards directly and never enters the replacement pipeline the way `drawCardLocked` does.
+- **Psychosis Crawler's P/T goes stale between layer recomputes** — the invalidation list does not include hand-size changes, and two tests in `internal/game` deliberately guard against widening it. Declared on the card.
+
+The nine older `feat(s22)` commits on `main` shipped attack triggers, flicker, alternative cast costs (which is S28 scope — see that section) and roughly fifty cards; they are good work under a misleading tag. See the note under the sprint index.
 
 ---
 
