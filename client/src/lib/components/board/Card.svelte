@@ -60,6 +60,13 @@
     // S21 sub-PR 2: same menu, CR 602 activated abilities. Set by
     // parents for battlefield permanents the viewer controls.
     onActivateAbility?: (abilityIndex: number) => void;
+    // S31: why the CR 307.1 sorcery-speed window is shut, or "" when
+    // it is open. Passed straight through to ManaAbilityMenu, which
+    // greys `sorcery_speed` abilities with it. Card has no snapshot
+    // of its own, and computing this per card would be wasteful —
+    // the window is a property of the turn, so PlayerPanel derives it
+    // once and hands it down.
+    sorcerySpeedBlocked?: string;
     onClick?: (card: CardView, ev: MouseEvent) => void;
   }
 
@@ -85,6 +92,7 @@
     showManaCost = false,
     onActivateManaAbility,
     onActivateAbility,
+    sorcerySpeedBlocked = "",
     onClick,
   }: Props = $props();
 
@@ -362,6 +370,7 @@
         activated={onActivateAbility ? (card.activated_abilities ?? []) : []}
         onActivateAbility={(idx) => onActivateAbility?.(idx)}
         summoningSick={!!card.summoning_sick}
+        {sorcerySpeedBlocked}
         onClose={() => (manaMenuOpen = false)}
       />
     </div>

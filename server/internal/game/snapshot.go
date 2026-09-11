@@ -30,7 +30,7 @@ package game
 //   - StackItem.Effect — what an ability does when it resolves
 //   - StackItem.targetSpec — the clause its targets were legal under
 //   - DelayedTrigger.Effect — "at the beginning of the next end step"
-//   - PendingChoice's five resume frames + scryResume — a paused
+//   - PendingChoice's six resume frames + scryResume — a paused
 //     game literally holds the rest of the effect as a continuation
 //   - ScopedStatic.Ability's AppliesTo / Apply — Giant Growth's +3/+3
 //   - TurnScopedReplacements' AppliesTo / Replace — Fog
@@ -296,6 +296,7 @@ type stackItemSnapshot struct {
 	CastFromZone ZoneKind          `json:"castFromZone,omitempty"`
 	AltCost      string            `json:"altCost,omitempty"`
 	SplitSecond  bool              `json:"splitSecond"`
+	IsCopy       bool              `json:"isCopy,omitempty"`
 	Seq          uint64            `json:"seq"`
 	Ordered      bool              `json:"ordered"`
 
@@ -322,7 +323,7 @@ type delayedTriggerSnapshot struct {
 	HasEffect          bool        `json:"hasEffect,omitempty"`
 }
 
-// pendingChoiceSnapshot mirrors PendingChoice's DATA. Its six
+// pendingChoiceSnapshot mirrors PendingChoice's DATA. Its seven
 // continuation frames are the sharpest edge of this whole file: a
 // game sitting on a prompt is a game whose next step is a Go closure.
 // The data comes back; the continuation does not, which is precisely
@@ -350,6 +351,7 @@ type pendingChoiceSnapshot struct {
 	PayCost              string                 `json:"payCost,omitempty"`
 	SearchCards          []uuid.UUID            `json:"searchCards,omitempty"`
 	SearchMax            int                    `json:"searchMax"`
+	MayCastCard          uuid.UUID              `json:"mayCastCard,omitempty"`
 
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
@@ -771,6 +773,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		CastFromZone:  s.CastFromZone,
 		AltCost:       s.AltCost,
 		SplitSecond:   s.SplitSecond,
+		IsCopy:        s.IsCopy,
 		Seq:           s.Seq,
 		Ordered:       s.Ordered,
 		HasEffect:     s.Effect != nil,
@@ -856,6 +859,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		PayCost:              c.PayCost,
 		SearchCards:          copyUUIDs(c.SearchCards),
 		SearchMax:            c.SearchMax,
+		MayCastCard:          c.MayCastCard,
 	}
 	if c.DamageAssignment != nil {
 		// Pure data (see the type), so a value copy with its own
@@ -868,8 +872,10 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 	for name, present := range map[string]bool{
 		"replacementResume": c.replacementResume != nil,
 		"pickTargetResume":  c.pickTargetResume != nil,
+		"copySpellResume":   c.copySpellResume != nil,
 		"triggerResume":     c.triggerResume != nil,
 		"payUnlessResume":   c.payUnlessResume != nil,
+		"mayCastResume":     c.mayCastResume != nil,
 		"searchResume":      c.searchResume != nil,
 		"scryResume":        c.scryResume != nil,
 	} {
@@ -1223,6 +1229,7 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		CastFromZone: s.CastFromZone,
 		AltCost:      s.AltCost,
 		SplitSecond:  s.SplitSecond,
+		IsCopy:       s.IsCopy,
 		Seq:          s.Seq,
 		Ordered:      s.Ordered,
 		// Effect stays nil. A SPELL does not need one — resolution
@@ -1277,9 +1284,10 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PayCost:              c.PayCost,
 		SearchCards:          copyUUIDs(c.SearchCards),
 		SearchMax:            c.SearchMax,
-		// The six resume frames stay nil. This is the phase-1 line in
-		// the sand, and the census is how it is enforced rather than
-		// hoped for.
+		MayCastCard:          c.MayCastCard,
+		// The seven resume frames stay nil. This is the phase-1 line
+		// in the sand, and the census is how it is enforced rather
+		// than hoped for.
 	}
 	if c.DamageAssignment != nil {
 		da := *c.DamageAssignment

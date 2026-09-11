@@ -899,8 +899,12 @@ func Dispatch(g *game.Game, a Action) error {
 			// the permanents paid to a "Sacrifice a creature" cost.
 			AbilityIndex *int     `json:"ability_index,omitempty"`
 			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
-			Strict       bool     `json:"strict,omitempty"`
-			AutoTap      bool     `json:"auto_tap,omitempty"`
+			// S27 — crew_ids names the creatures tapped to pay a
+			// Vehicle's crew cost (CR 702.122a). Any number of them;
+			// what the server checks is the total power.
+			CrewIDs []string `json:"crew_ids,omitempty"`
+			Strict  bool     `json:"strict,omitempty"`
+			AutoTap bool     `json:"auto_tap,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -924,6 +928,14 @@ func Dispatch(g *game.Game, a Action) error {
 				}
 				sacIDs = append(sacIDs, id)
 			}
+			crewIDs := make([]uuid.UUID, 0, len(p.CrewIDs))
+			for _, raw := range p.CrewIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability crew_ids: %w", err)
+				}
+				crewIDs = append(crewIDs, id)
+			}
 			refs := make([]game.TargetRef, 0, len(p.Targets))
 			for _, t := range p.Targets {
 				ref, err := t.toRef()
@@ -934,6 +946,7 @@ func Dispatch(g *game.Game, a Action) error {
 			}
 			return g.ActivateCatalogAbility(a.Player, srcID, *p.AbilityIndex, game.ActivateAbilityParams{
 				SacrificeIDs: sacIDs,
+				CrewIDs:      crewIDs,
 				Targets:      refs,
 				Strict:       p.Strict,
 				AutoTap:      p.AutoTap,
@@ -1115,11 +1128,12 @@ func Dispatch(g *game.Game, a Action) error {
 			return g.ResolvePickTargets(choiceID, a.Player, refs)
 		}
 		if p.OptionalApply != nil {
-			// Four yes/no kinds share the {apply: bool} payload
+			// Five yes/no kinds share the {apply: bool} payload
 			// shape: PendingChoiceOptionalReplacement (S17),
 			// PendingChoiceTriggerPrompt (S19),
-			// PendingChoicePayUnless (S19 sub-PR 6) and
-			// PendingChoiceEntryPayLife (shocklands). Disambiguate
+			// PendingChoicePayUnless (S19 sub-PR 6),
+			// PendingChoiceEntryPayLife (shocklands) and
+			// PendingChoiceMayCast (S28 cascade). Disambiguate
 			// by looking up the choice's kind on the engine.
 			kind, ok := g.PendingChoiceKindFor(choiceID)
 			if !ok {
@@ -1132,6 +1146,11 @@ func Dispatch(g *game.Game, a Action) error {
 				// S19 sub-PR 6: "unless that player pays {N}" — apply
 				// means "I pay".
 				return g.ResolvePayUnless(choiceID, a.Player, *p.OptionalApply)
+			case game.PendingChoiceMayCast:
+				// S28 cascade: "you may cast it without paying its
+				// mana cost" — apply means "I'll take it", and the
+				// engine stamps a free-cast permission on the card.
+				return g.ResolveMayCast(choiceID, a.Player, *p.OptionalApply)
 			case game.PendingChoiceEntryPayLife:
 				// Shocklands: "as this enters, you may pay 2 life" —
 				// apply means "I pay", and paying is what keeps the

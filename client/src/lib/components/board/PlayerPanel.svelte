@@ -41,6 +41,7 @@
   } from "../../protocol";
   import { bucketForBattlefield, isCreature } from "../../cardTypes";
   import { battlefieldClickIntent } from "../../contextMenu.logic";
+  import { canActivateSorcerySpeedAbility } from "../../timing";
   import { openCardMenu } from "../../contextMenu";
   import BattlefieldRow from "./BattlefieldRow.svelte";
   import PileBar from "./PileBar.svelte";
@@ -182,6 +183,20 @@
     return out;
   });
 
+  // S31: the CR 307.1 sorcery-speed window, derived once per panel
+  // and handed down to every Card so the ability popover can grey an
+  // "activate only as a sorcery" row. The flag has ridden the wire as
+  // ActivatedAbilityView.sorcery_speed since S21 and nothing read it,
+  // so those abilities stayed clickable through combat and an
+  // opponent's turn and came back rejected — the live example
+  // ADR 0033 §1 cites for why the client stopped re-deriving timing.
+  //
+  // Empty string means "open, no opinion"; opponents' panels are
+  // never gated on the VIEWER's window, so they get "" too.
+  const sorcerySpeedBlocked = $derived(
+    isSelf ? (canActivateSorcerySpeedAbility(view, viewerID).reason ?? "") : "",
+  );
+
   const buckets = $derived.by(() => {
     const out = { creature: [] as CardView[], land: [] as CardView[], right: [] as CardView[] };
     for (const c of controlledCards) {
@@ -294,6 +309,7 @@
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
       {onActivateAbility}
+      {sorcerySpeedBlocked}
     />
   </div>
   <div class="grid-middle">
@@ -307,6 +323,7 @@
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
       {onActivateAbility}
+      {sorcerySpeedBlocked}
     />
     <BattlefieldRow
       label="lands"
@@ -319,6 +336,7 @@
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
       {onActivateAbility}
+      {sorcerySpeedBlocked}
     />
   </div>
   <div class="grid-bottom">

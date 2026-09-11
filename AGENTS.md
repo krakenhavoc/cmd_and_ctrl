@@ -698,6 +698,15 @@ change that teaches the engine to honour it.** Declaring a token the
 engine does not read puts a badge on the card that promises a rule
 nothing enforces.
 
+**Two protection-family keywords are deliberately outside the
+table**, for reasons [ADR 0038](docs/decisions/0038-protection-style-keywords.md)
+§7 sets out. *Ward* is a triggered ability, not a targeting
+restriction, and it ships per-card via the `effects.Ward(WardMana(…))`
+helper (S30) — it stays out of the table because the COST is a
+parameter a bare token has nowhere to put. *Protection* tests its
+quality against the SOURCE of a spell or ability, which the targeting
+choke point never receives; it is not implemented.
+
 **Layer-granted keywords still use `Spec.Static`.** Lord of Atlantis
 grants `"flying"` to *other* Merfolk via a conditional Layer 6
 `StaticAbility` — that pattern stays. `PrintedKeywords` is only for
@@ -968,20 +977,18 @@ The `Key` is the wire contract: it rides `cast_spell` as
 `alternative_cost`, lands on `StackItem.AltCost`, and the card's
 `OnResolve` branches on `ctx.PaidAltCost("overload")`. Keys must be
 non-empty and unique per card; `Register` panics otherwise. Only
-overload / evoke / cleave exist — foretell, plot, spree and "prepare"
-have no shape yet, and a card carrying one of those ships without it
-(say so in the card comment, as Cosmic Intervention does).
+overload / evoke / cleave / flashback / warp exist — foretell, plot,
+spree and "prepare" have no shape yet, and a card carrying one of
+those ships without it (say so in the card comment, as Cosmic
+Intervention does).
 
 **Casting from somewhere other than hand (S29):** a card whose text
 opens another cast zone declares it in `Spec.CastableZones`, and the
 price of that path rides `AlternativeCost.FromZone`:
 
 ```go
-CastableZones: []game.ZoneKind{game.ZoneGraveyard},   // flashback, escape, Gravecrawler
-AlternativeCosts: []game.AlternativeCost{{            // use the keyword constructor once
-    Key: "flashback", Label: "Flashback {2}{R}",      // its mechanic lands — see above
-    ManaCost: "{2}{R}", FromZone: game.ZoneGraveyard,
-}},
+CastableZones:    []game.ZoneKind{game.ZoneGraveyard},          // Faithless Looting
+AlternativeCosts: []game.AlternativeCost{Flashback("{2}{R}")},
 ```
 
 The zone is the **place** and the alternative cost is the **price**,
@@ -993,6 +1000,26 @@ be flashed back for its printed `{R}`); a zone with no bound offer
 charges the printed cost, which is Gravecrawler. `Register` panics on
 an offer whose `FromZone` is not in `CastableZones`, because such an
 offer is unclaimable.
+
+Use the keyword constructor, never a hand-rolled `game.AlternativeCost`,
+for the same reason overload and evoke have one: `Flashback` bundles
+**three** things — the price, `FromZone: ZoneGraveyard`, and
+`ExileOnLeavingStack`. The last is CR 702.34a's "exile this card
+instead of putting it anywhere else any time it would leave the
+stack", and it is a *replacement*, so it also catches a flashed-back
+spell that fizzles and one answered by Hinder. A card that wrote the
+cost by hand would flash back, land in the graveyard, and flash back
+again every turn forever.
+
+**Warp (S29)** is the other half of the same idea and the reason the
+zone and the price are separate fields. `Warp("{R}")` is paid from
+**hand**, so it needs no `CastableZones` at all — the discount is now,
+the real card is later. Its constructor bundles `WarpExile`, which
+schedules a CR 603.7 delayed trigger to exile the permanent at the
+next end step and leaves an `ExilePlayPermission` behind carrying a
+`NotBeforeTurn` floor for "on a later turn". The later cast is then an
+ordinary cast from exile for the printed cost, through the button the
+impulse-exile grant already renders.
 
 Two zones are **not** card properties and must not be declared:
 `ZoneCommand` (CR 903.4 grants that to the format) and — for the

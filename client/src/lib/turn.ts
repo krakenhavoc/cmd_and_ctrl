@@ -63,11 +63,6 @@ export function stepLabel(step: string | undefined | null): string {
   return STEP_LABELS[step as StepID] ?? step;
 }
 
-// grantsPriority reports whether the named step grants priority. The
-// auto-pass and pass-to-next-stop helpers consult this so they don't
-// queue pass_priority calls on Untap / Cleanup (the server would
-// reject them with ErrNoPriority anyway).
-export function grantsPriority(step: string | undefined | null): boolean {
-  if (!step) return false;
-  return !NO_PRIORITY_STEPS.has(step as StepID);
-}
+// grantsPriority lived here until S31 sub-PR 2. Its only caller was
+// timing.ts's canPassPriority, which had no callers of its own and
+// went with it; priorityStops.ts asks NO_PRIORITY_STEPS directly.
