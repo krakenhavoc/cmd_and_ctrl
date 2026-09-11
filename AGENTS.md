@@ -968,9 +968,38 @@ The `Key` is the wire contract: it rides `cast_spell` as
 `alternative_cost`, lands on `StackItem.AltCost`, and the card's
 `OnResolve` branches on `ctx.PaidAltCost("overload")`. Keys must be
 non-empty and unique per card; `Register` panics otherwise. Only
-overload / evoke / cleave exist — foretell, plot, spree, warp and
-"prepare" have no shape yet, and a card carrying one of those ships
-without it (say so in the card comment, as Cosmic Intervention does).
+overload / evoke / cleave exist — foretell, plot, spree and "prepare"
+have no shape yet, and a card carrying one of those ships without it
+(say so in the card comment, as Cosmic Intervention does).
+
+**Casting from somewhere other than hand (S29):** a card whose text
+opens another cast zone declares it in `Spec.CastableZones`, and the
+price of that path rides `AlternativeCost.FromZone`:
+
+```go
+CastableZones: []game.ZoneKind{game.ZoneGraveyard},   // flashback, escape, Gravecrawler
+AlternativeCosts: []game.AlternativeCost{{            // use the keyword constructor once
+    Key: "flashback", Label: "Flashback {2}{R}",      // its mechanic lands — see above
+    ManaCost: "{2}{R}", FromZone: game.ZoneGraveyard,
+}},
+```
+
+The zone is the **place** and the alternative cost is the **price**,
+and they are checked independently. Hand is implicit and never has to
+be listed — declaring the graveyard *adds* a path. An offer bound to a
+zone can only be claimed from that zone, and a zone that has a bound
+offer can only be cast from by claiming it (so Faithless Looting cannot
+be flashed back for its printed `{R}`); a zone with no bound offer
+charges the printed cost, which is Gravecrawler. `Register` panics on
+an offer whose `FromZone` is not in `CastableZones`, because such an
+offer is unclaimable.
+
+Two zones are **not** card properties and must not be declared:
+`ZoneCommand` (CR 903.4 grants that to the format) and — for the
+impulse-exile / airbend family — `ZoneExile`, whose permission belongs
+to one exiled *instance* and rides `game.ExilePlayPermission` instead.
+Declare `ZoneExile` only when the card's own printed text grants the
+cast.
 
 **A delayed trigger (S22):** "at the beginning of the next end step,
 <do X>" (CR 603.7) is `ScheduleDelayedTrigger`, not a closure that runs

@@ -24,9 +24,11 @@
     buildMovePayload,
     canManageZone,
     cardsForZone,
+    castableFromZone,
     impulseActionLabel,
     impulseGrantFor,
   } from "../../zoneBrowser.logic";
+  import type { CastSourceZone } from "../../targeting";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -41,10 +43,25 @@
     // (a graveyard card for Eternal Witness) offers it as the
     // target. Returns true when the click was consumed.
     onTargetCard?: (card: CardView) => boolean;
+    // S29: a flashback / escape card in the viewer's own graveyard
+    // casts through the Board's ordinary prompt chain — cost picker,
+    // additional cost, X, modes, targeting — rather than firing a
+    // bare payload the way the exile impulse button does. The modal
+    // hands the card up with the zone it came out of and closes;
+    // everything after that is the same code path a hand cast takes.
+    onCastCard?: (card: CardView, fromZone: CastSourceZone) => void;
   }
 
-  const { view, viewerID, zoneKind, ownerSeat, sendAction, onClose, onTargetCard }: Props =
-    $props();
+  const {
+    view,
+    viewerID,
+    zoneKind,
+    ownerSeat,
+    sendAction,
+    onClose,
+    onTargetCard,
+    onCastCard,
+  }: Props = $props();
 
   // Source zone lookup — server broadcasts exile + stack as shared
   // top-level zones with per-card owner/controller, while graveyard
@@ -82,6 +99,26 @@
   // exercise them without a renderer.
   const grantFor = (card: CardView) => impulseGrantFor(card, zoneKind, viewerID);
   const labelFor = (card: CardView) => impulseActionLabel(card, zoneKind, viewerID);
+
+  // S29: "cast from here" for the zones whose permission is printed
+  // on the card rather than granted to an instance. Only the
+  // graveyard today; the gate lives in zoneBrowser.logic.ts so
+  // vitest can exercise it without a renderer.
+  const castableFor = (card: CardView) =>
+    castableFromZone(card, zoneKind, viewerID, ownerSeat.id) && onCastCard !== undefined;
+
+  // The label is the printed clause when the card offers exactly one
+  // way in ("Flashback {2}{R}"), so the button reads like the card.
+  // Two or more offers, or none, fall back to the verb — the Board's
+  // picker is about to ask anyway.
+  const castLabelFor = (card: CardView) =>
+    card.alternative_costs?.length === 1 ? card.alternative_costs[0].label || "cast" : "cast";
+
+  function castFromZone(card: CardView): void {
+    if (!onCastCard || zoneKind !== "graveyard") return;
+    onCastCard(card, "graveyard");
+    onClose();
+  }
 
   function playFromExile(card: CardView): void {
     sendAction(
@@ -209,6 +246,24 @@
                   onclick={() => playFromExile(card)}
                 >
                   {labelFor(card)}
+                </button>
+              </div>
+            {/if}
+            {#if castableFor(card)}
+              <!-- S29: same always-visible treatment as the impulse
+                   button, and for the same reason — a flashback card
+                   in the graveyard is a resource, and a player who
+                   has to hover to discover that will not discover
+                   it. -->
+              <div class="actions always" aria-label="cast from graveyard">
+                <button
+                  type="button"
+                  class="act impulse"
+                  title="cast from your graveyard"
+                  aria-label={`cast ${card.name || "card"} from graveyard`}
+                  onclick={() => castFromZone(card)}
+                >
+                  {castLabelFor(card)}
                 </button>
               </div>
             {/if}
