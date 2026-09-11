@@ -123,6 +123,26 @@ type AlternativeCost struct {
 	// its own printed text, and an escaped Kroxa does not exile at
 	// all. Flashback is the keyword that carries the clause.
 	ExileOnLeavingStack bool
+
+	// WarpExile is warp's "exile this permanent at the beginning of
+	// the next end step, then you may cast it from exile on a later
+	// turn" (CR 702.183a).
+	//
+	// The sibling of SacrificeOnEntry, and modelled the same way:
+	// the cost attaches a clause to the permanent's ENTRY, and the
+	// clause uses the ordinary machinery rather than a bespoke one.
+	// Evoke queues a triggered ability; warp schedules a CR 603.7
+	// delayed trigger, and the grant it leaves behind is the same
+	// ExilePlayPermission airbend uses — unbounded (the window is
+	// "for as long as it remains exiled") with a NotBeforeTurn floor
+	// for the "on a later turn" clause.
+	//
+	// A warped creature is therefore a two-for-one paid in tempo:
+	// the cheap body now, the real body later. Nothing about the
+	// second cast is special — it is an ordinary cast from exile,
+	// for the printed mana cost, through the same grant the impulse
+	// button already renders.
+	WarpExile bool
 }
 
 // Clears reports whether paying this cost deletes the spell's target
@@ -230,21 +250,35 @@ func TargetSpecUnderAlternativeCost(base *TargetSpec, alt *AlternativeCost) *Tar
 	return base
 }
 
-// queueAltCostEntryTriggerLocked puts evoke's "it's sacrificed when
-// it enters" onto the pending-trigger queue as an ordinary triggered
-// ability (CR 702.74b). Called from the resolution path right after
-// the permanent lands and its ETB hook fires, which is the last
-// moment the StackItem — and so the cost that was paid — is still in
-// hand.
+// queueAltCostEntryTriggerLocked applies the clauses an alternative
+// cost attaches to the permanent's ENTRY: evoke's "it's sacrificed
+// when it enters" (CR 702.74b) and warp's "exile this at the
+// beginning of the next end step, then you may cast it from exile on
+// a later turn" (CR 702.183a).
+//
+// Called from the resolution path right after the permanent lands
+// and its ETB hook fires, which is the last moment the StackItem —
+// and so the cost that was paid — is still in hand.
+//
+// The two clauses use different machinery, and deliberately: evoke's
+// sacrifice happens NOW and uses the stack, so it is an ordinary
+// triggered ability; warp's exile happens at a later step, so it is
+// a CR 603.7 delayed trigger. Neither gets a bespoke loop.
 //
 // No-op for a spell cast for its mana cost, and for an alternative
-// cost that doesn't carry the clause. Caller must hold g.mu.
+// cost that carries neither clause. Caller must hold g.mu.
 func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 	if item == nil || item.AltCost == "" {
 		return
 	}
 	alt := AlternativeCostByKey(CatalogKey(card), item.AltCost)
-	if alt == nil || !alt.SacrificeOnEntry {
+	if alt == nil {
+		return
+	}
+	if alt.WarpExile {
+		g.scheduleWarpExileLocked(card, item, alt)
+	}
+	if !alt.SacrificeOnEntry {
 		return
 	}
 	g.queueHarvestedTriggerLocked(&StackItem{
@@ -262,6 +296,54 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 				return nil
 			}
 			return g.sacrificePermanentLocked(it.SourceCardID)
+		},
+	})
+}
+
+// scheduleWarpExileLocked schedules warp's "exile this permanent at
+// the beginning of the next end step, then you may cast it from
+// exile on a later turn" (CR 702.183a).
+//
+// The "later turn" floor is computed HERE, at schedule time, rather
+// than inside the effect. Both readings give the same answer for a
+// creature warped at sorcery speed on its controller's own turn —
+// which is every printed warp card — but computing it at schedule
+// time is the reading that survives a warped creature with flash:
+// the floor is one past the turn the spell was cast, not one past
+// whichever turn the end step happened to arrive in.
+//
+// Caller must hold g.mu.
+func (g *Game) scheduleWarpExileLocked(card Card, item *StackItem, alt *AlternativeCost) {
+	notBefore := g.Turn.Number + 1
+	g.ScheduleDelayedTriggerForEffect(DelayedTrigger{
+		Controller:   item.Controller,
+		SourceCardID: card.InstanceID,
+		Label:        card.Name + " — " + alt.Label + ", exile it",
+		At:           StepEnd,
+		Cards:        []uuid.UUID{card.InstanceID},
+		Effect: func(g *Game, it *StackItem) error {
+			for _, t := range it.Targets {
+				if t.Kind != TargetCard {
+					continue
+				}
+				// The permanent may have died, been exiled by
+				// something else, or bounced since the warp. Nothing
+				// to exile is not an error — CR 608.2c — and the
+				// grant simply never lands.
+				if g.controllerOfBattlefieldCardLocked(t.ID) == uuid.Nil {
+					continue
+				}
+				if err := g.ExileCardWithPermissionForEffect(t.ID, ExilePlayPermission{
+					// Zero Player means "the card's owner", which is
+					// what warp says: YOU cast it later, and the
+					// warping player owns the card.
+					WhileExiled:   true,
+					NotBeforeTurn: notBefore,
+				}); err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 	})
 }

@@ -539,6 +539,11 @@ export interface ExilePlayView {
   // impulse exile, which charges the printed cost. Note that
   // `mana_cost` on the card still carries the printed value.
   cost_override?: string;
+  // S29 warp: the earliest turn number the grant is live on — "you
+  // may cast it from exile ON A LATER TURN". Absent for every grant
+  // that is live as soon as it is made, which is all of impulse
+  // exile and airbend.
+  not_before_turn?: number;
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a

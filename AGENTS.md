@@ -968,9 +968,10 @@ The `Key` is the wire contract: it rides `cast_spell` as
 `alternative_cost`, lands on `StackItem.AltCost`, and the card's
 `OnResolve` branches on `ctx.PaidAltCost("overload")`. Keys must be
 non-empty and unique per card; `Register` panics otherwise. Only
-overload / evoke / cleave / flashback exist — foretell, plot, spree,
-warp and "prepare" have no shape yet, and a card carrying one of those ships without it
-(say so in the card comment, as Cosmic Intervention does).
+overload / evoke / cleave / flashback / warp exist — foretell, plot,
+spree and "prepare" have no shape yet, and a card carrying one of
+those ships without it (say so in the card comment, as Cosmic
+Intervention does).
 
 **Casting from somewhere other than hand (S29):** a card whose text
 opens another cast zone declares it in `Spec.CastableZones`, and the
@@ -1000,6 +1001,16 @@ stack", and it is a *replacement*, so it also catches a flashed-back
 spell that fizzles and one answered by Hinder. A card that wrote the
 cost by hand would flash back, land in the graveyard, and flash back
 again every turn forever.
+
+**Warp (S29)** is the other half of the same idea and the reason the
+zone and the price are separate fields. `Warp("{R}")` is paid from
+**hand**, so it needs no `CastableZones` at all — the discount is now,
+the real card is later. Its constructor bundles `WarpExile`, which
+schedules a CR 603.7 delayed trigger to exile the permanent at the
+next end step and leaves an `ExilePlayPermission` behind carrying a
+`NotBeforeTurn` floor for "on a later turn". The later cast is then an
+ordinary cast from exile for the printed cost, through the button the
+impulse-exile grant already renders.
 
 Two zones are **not** card properties and must not be declared:
 `ZoneCommand` (CR 903.4 grants that to the format) and — for the
