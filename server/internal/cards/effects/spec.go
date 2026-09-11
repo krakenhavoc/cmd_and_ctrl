@@ -256,6 +256,25 @@ type Spec struct {
 	// the choice back with ctx.PaidAltCost("overload").
 	AlternativeCosts []game.AlternativeCost
 
+	// TapCost is the S22 "tap permanents you control to help pay"
+	// cost component — convoke (CR 702.51) and waterbend, which are
+	// the same mechanic under two names. Unlike the other cost slots
+	// this one does not add a demand, it SPENDS against one: each
+	// permanent tapped pays for {1}, or (convoke only) for one mana
+	// of that permanent's colour.
+	//
+	// Build it with Convoke() or Waterbend("{X}") in tap_cost.go,
+	// never by hand: the keyword carries the pool of legal permanents
+	// and the colour rule with it, and a card file that got the
+	// colour rule wrong would ship a card stronger than printed.
+	//
+	//	TapCost: Convoke(),
+	//	TapCost: Waterbend("{X}"),
+	//
+	// Nil for nearly every card. The caster's picks ride cast_spell
+	// as `tap_ids`; tapping nothing is always legal.
+	TapCost *game.TapPermanentsCost
+
 	// Activated is the list of CR 602 activated abilities the card
 	// offers from the battlefield — the fourth ability type, added
 	// in S21 sub-PR 2. Each entry declares its cost (tap, sacrifice

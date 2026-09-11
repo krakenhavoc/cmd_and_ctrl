@@ -288,11 +288,21 @@ func TestWaterbendersRestorationReturnsAtTheNextEndStep(t *testing.T) {
 	probe := pushFlickerCreature(g, me.ID, "Probe", flickerProbeOracle)
 	flickerProbeETBs = 0
 
-	castCatalogSpell(t, g, "Waterbender's Restoration", "Instant — Lesson",
-		waterbendersRestorationOracle, []game.TargetRef{
+	// S22: waterbend {X} is charged now (issue #259), so the blink is
+	// "exile X target creatures" with X announced at cast time — two
+	// targets means X=2, and the {2} is paid by tapping two of the
+	// caster's own permanents rather than arriving free.
+	helpers := pushTapCostSoldiers(g, me.ID, 2)
+	if err := castRestoration(t, g, game.CastSpellParams{
+		XValue: 2,
+		TapIDs: helpers,
+		Targets: []game.TargetRef{
 			{Kind: game.TargetCard, ID: drifter},
 			{Kind: game.TargetCard, ID: probe},
-		})
+		},
+	}); err != nil {
+		t.Fatalf("CastSpell Waterbender's Restoration: %v", err)
+	}
 	passPriorityAroundTable(t, g)
 
 	if !exileHas(g, drifter) || !exileHas(g, probe) {

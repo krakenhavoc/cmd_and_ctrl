@@ -83,6 +83,14 @@ func init() {
 		}
 		return spec.AlternativeCosts
 	}
+	// S22: convoke / waterbend — tapping permanents to help pay.
+	// Nil for cards that offer none, which is nearly all of them.
+	game.CatalogTapPermanentsCost = func(oracleID string) *game.TapPermanentsCost {
+		if spec, ok := Lookup(oracleID); ok {
+			return spec.TapCost
+		}
+		return nil
+	}
 	game.CatalogManaAbilities = func(oracleID string) []game.ManaAbilityShape {
 		spec, ok := Lookup(oracleID)
 		if !ok || len(spec.ManaAbilities) == 0 {
