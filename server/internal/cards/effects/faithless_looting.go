@@ -15,8 +15,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (S29) and isn't modelled.
 func init() {
 	Register(Spec{
-		OracleID: "3d6fa57a-aa53-4b5c-b8af-a7612c823117",
-		Name:     "Faithless Looting",
+		OracleID:     "3d6fa57a-aa53-4b5c-b8af-a7612c823117",
+		Name:         "Faithless Looting",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Flashback isn't implemented — the spell can only be cast from hand, never recast from your graveyard."},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return lootOne(ctx.Game, item, 2)
 		},

@@ -17,8 +17,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "7e00b0cd-d212-4604-ba07-da21f4fe00b0",
-		Name:     "Sram, Senior Edificer",
+		OracleID:     "7e00b0cd-d212-4604-ba07-da21f4fe00b0",
+		Name:         "Sram, Senior Edificer",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCast},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

@@ -16,8 +16,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Warp is an alternative cast path (S29) and isn't modelled.
 func init() {
 	Register(Spec{
-		OracleID: "926d52a5-4db1-46ce-9567-17c28bf56ae7",
-		Name:     "Weftstalker Ardent",
+		OracleID:     "926d52a5-4db1-46ce-9567-17c28bf56ae7",
+		Name:         "Weftstalker Ardent",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Warp isn't implemented — it can only be cast for its normal mana cost."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

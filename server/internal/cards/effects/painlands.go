@@ -44,8 +44,9 @@ func init() {
 		{"5eb8b497-ec9a-4a89-ad29-1ec3ca82da7c", "Brushland", "G", "W"},
 	} {
 		Register(Spec{
-			OracleID: land.oracleID,
-			Name:     land.name,
+			OracleID:     land.oracleID,
+			Name:         land.name,
+			Completeness: CompletenessFull,
 			ManaAbilities: []ManaAbility{
 				painlessColorless(),
 				painDual(land.a, land.b, "This land"),

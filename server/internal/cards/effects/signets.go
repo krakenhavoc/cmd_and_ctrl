@@ -55,8 +55,9 @@ func init() {
 	} {
 		produced := "{" + s.a + "}{" + s.b + "}"
 		Register(Spec{
-			OracleID: s.oracleID,
-			Name:     s.name,
+			OracleID:     s.oracleID,
+			Name:         s.name,
+			Completeness: CompletenessFull,
 			ManaAbilities: []ManaAbility{{
 				Cost:     ManaAbilityCost{Tap: true, Mana: "{1}"},
 				Produced: produced,

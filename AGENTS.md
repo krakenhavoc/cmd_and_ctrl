@@ -61,6 +61,7 @@ cmd_and_ctrl/
 │   │   ├── auth/        # pluggable Authenticator interface + MemoryAuthenticator + HTTP middleware
 │   │   ├── lobby/       # GameMeta registry, invite flow, lobby HTTP handler, WSAuthorizer, deck upload
 │   │   ├── cards/       # Scryfall index (streaming load) + disk-backed image cache + /cards routes
+│   │   ├── catalog/     # public /catalog routes — what the engine automates + how completely (ADR 0042)
 │   │   ├── bugstore/    # bug-report artifacts: reporter screenshots (public, Camo-reachable) + pinned replays (admin-only)
 │   │   └── deck/        # decklist parsers (Moxfield, plain text) + Commander validation
 │   ├── Makefile
@@ -219,7 +220,7 @@ unused — they can be removed in a later cleanup PR.)
 - `make -C server fmt` — `gofmt -s -w .`
 - `make -C server build` — produces `server/bin/cmd_and_ctrl-server`
 - `cd server && go run ./cmd/gamecli -addr ws://localhost:8080/ws` — drive the demo game from a terminal; reads action JSON on stdin or via `-script path.json`
-- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](docs/lobby.md)), `/cards/*` image + metadata routes
+- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](docs/lobby.md)), `/cards/*` image + metadata routes, `GET /catalog` + `GET /catalog/image/{id}` (public, no session — the card catalogue, [ADR 0042](docs/decisions/0042-card-catalog-page.md))
 - Env vars:
   - `CMDCTRL_ADDR` — listen addr (default `:8080`)
   - `CMDCTRL_DATA_DIR` — data root (default `./data`; empty string disables disk writes + card cache)
@@ -377,9 +378,10 @@ surface tiny.
    // deferred and to which future sprint.
    func init() {
        Register(Spec{
-           OracleID:   "<uuid from step 1>",
-           Name:       "Card Name",
-           TargetMode: "<player / creature / ...>",
+           OracleID:     "<uuid from step 1>",
+           Name:         "Card Name",
+           Completeness: CompletenessFull,
+           TargetMode:   "<player / creature / ...>",
            OnResolve: func(item *game.StackItem, ctx *Context) error {
                // primitive composition here
                return nil
@@ -389,6 +391,37 @@ surface tiny.
    ```
    For permanents with an ETB trigger, populate `OnETB` instead of
    (or alongside) `OnResolve`.
+
+   **Declare `Completeness`.** Since
+   [ADR 0042](docs/decisions/0042-card-catalog-page.md) the prose
+   simplification note above has a machine-readable twin, because the
+   public catalogue page at `#/catalog` publishes it:
+
+   ```go
+   Completeness: CompletenessFull,        // everything printed happens
+   // …or:
+   Completeness: CompletenessCaveats,
+   Caveats:      []string{"Cycling is not implemented — the land can only be played."},
+   ```
+
+   Three rules, and they are the whole contract:
+
+   - **The zero value is `CompletenessUnreviewed`, and that is a legal
+     thing to ship.** It publishes the card as unaudited, which is
+     true, and nothing fails. Do not stamp `CompletenessFull` to tidy
+     it up — a card falsely marked complete is the one outcome the
+     field exists to prevent.
+   - **`Caveats` is required with `CompletenessCaveats` and rejected
+     without it.** `Register` panics either way, at boot.
+   - **Write `Caveats` for a player, not for the next engineer.** One
+     sentence, no engine vocabulary: "Flashback isn't implemented — the
+     spell can only be cast from hand." The reason it is deferred, the
+     sprint it lands in and the machinery it waits on all belong in
+     the doc comment, where there is room. A test enforces the tone.
+
+   Keep the prose note too. The field says *what*; the comment says
+   *why*, and the comment is what stops the next person reopening a
+   decision you already made.
 
    **Planeswalkers: leave `StartingLoyalty` alone.** Starting loyalty
    is printed card data, not card-effect data. The deck importer

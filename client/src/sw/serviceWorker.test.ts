@@ -81,6 +81,7 @@ describe("service worker routing", () => {
     "/games/7f3c/seats",
     "/cards/",
     "/cards/search?q=sol+ring",
+    "/catalog",
     "/admin/games",
     "/auth/discord/callback",
     "/avatars/123.png",
@@ -106,6 +107,21 @@ describe("service worker routing", () => {
     expect(kind("/cards/4f1b")).toBe("bypass");
     expect(kind("/cards/4f1b/image/extra")).toBe("bypass");
     expect(kind("/cards/4f1b/meta")).toBe("bypass");
+  });
+
+  // The public catalogue serves the same immutable bytes from its own
+  // path, because /cards/<id>/image needs a session and the catalogue
+  // page does not. It must land in the card-image cache and not be
+  // swallowed by "catalog" in the API deny list.
+  it("caches catalogue art the same way as card art", () => {
+    expect(kind("/catalog/image/4f1b?size=normal")).toBe("card-image");
+    expect(kind("/catalog/image/4f1b?size=small&face=1")).toBe("card-image");
+  });
+
+  it("does not mistake the catalogue JSON for card art", () => {
+    expect(kind("/catalog")).toBe("bypass");
+    expect(kind("/catalog/image")).toBe("bypass");
+    expect(kind("/catalog/image/4f1b/extra")).toBe("bypass");
   });
 
   it("bypasses every non-GET method, card art included", () => {

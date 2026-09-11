@@ -48,6 +48,7 @@ import (
 	// the game package. Without this import the catalog stays cold
 	// and every card falls through to manual sandbox resolution.
 	_ "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
@@ -167,6 +168,15 @@ func main() {
 	})
 	mux.HandleFunc("GET /ws", hub.ServeWS)
 	mux.Handle("/cards/", auth.Middleware(authenticator)(cards.Handler(cardIdx, imgCache)))
+	// The public card catalog. Mounted WITHOUT auth.Middleware on
+	// purpose — it is a showcase of what the engine automates and has
+	// to render for a signed-out visitor — and not behind requireDev,
+	// because it ships in production. catalog.Handler's doc explains
+	// why an unauthenticated image route is safe here and not on
+	// /cards/. Both patterns are more specific than "/", so the lobby
+	// catch-all below does not shadow them.
+	mux.Handle("GET /catalog", catalog.Handler(cardIdx, imgCache))
+	mux.Handle("/catalog/", catalog.Handler(cardIdx, imgCache))
 	discordCfg := discord.ConfigFromEnv()
 	if discordCfg.Enabled() {
 		log.Info("discord oauth enabled", "redirect_uri", discordCfg.RedirectURI)

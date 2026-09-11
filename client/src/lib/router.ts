@@ -14,6 +14,10 @@ export type Route =
   | { name: "lobby" }
   | { name: "join"; gameID: string; inviteToken: string; spectator: boolean }
   | { name: "game"; gameID: string }
+  // The public card catalogue: every card the engine automates, and
+  // how completely. Public on purpose — it is a showcase, and the
+  // server route behind it needs no session either.
+  | { name: "catalog" }
   // S12.5: /auth/discord/callback (server-side) redirects here with
   // the session details in the URL fragment. App.svelte's effect
   // reads them, installs the session, and navigates onward.
@@ -36,6 +40,8 @@ function parseHash(hash: string): Route {
       return { name: "adminLogin" };
     case "lobby":
       return { name: "lobby" };
+    case "catalog":
+      return { name: "catalog" };
     case "games":
       // /games/:id/join?t=<token> → Join
       // /games/:id                → Game

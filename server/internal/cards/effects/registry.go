@@ -75,6 +75,25 @@ func Register(spec Spec) {
 			}
 		}
 	}
+	// The completeness declaration is published verbatim on the
+	// public catalog page, so the two ways of getting it wrong are
+	// both caught at boot rather than shipped to a reader.
+	//
+	// Note what is NOT checked: an absent declaration. The zero
+	// value means "unreviewed", which is a legal and honest thing
+	// for a spec to say — completeness.go explains why a hard gate
+	// would make the catalog less truthful, not more.
+	if spec.Completeness == CompletenessCaveats && len(spec.Caveats) == 0 {
+		panic(fmt.Sprintf("effects.Register: %q declares CompletenessCaveats with no Caveats — say what the caveat is", spec.Name))
+	}
+	if spec.Completeness != CompletenessCaveats && len(spec.Caveats) > 0 {
+		panic(fmt.Sprintf("effects.Register: %q lists Caveats but declares %s — use CompletenessCaveats", spec.Name, spec.Completeness))
+	}
+	for _, cv := range spec.Caveats {
+		if cv == "" {
+			panic(fmt.Sprintf("effects.Register: %q declares an empty caveat", spec.Name))
+		}
+	}
 	registry[spec.OracleID] = spec
 }
 

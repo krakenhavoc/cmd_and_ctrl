@@ -11,6 +11,7 @@
   import Lobby from "./routes/Lobby.svelte";
   import Join from "./routes/Join.svelte";
   import Game from "./routes/Game.svelte";
+  import Catalog from "./routes/Catalog.svelte";
   import Settings from "./lib/components/Settings.svelte";
   import UpdatePrompt from "./lib/components/UpdatePrompt.svelte";
   import EnvBadge from "./lib/components/EnvBadge.svelte";
@@ -42,6 +43,10 @@
       r.name === "login" ||
       r.name === "adminLogin" ||
       r.name === "join" ||
+      // The card catalogue is a public showcase; /catalog on the
+      // server takes no session either, so gating it here would
+      // break a link that works.
+      r.name === "catalog" ||
       r.name === "oauthComplete";
     if (!s && !isPublic) {
       navigate("#/login");
@@ -115,6 +120,8 @@
   <Login admin />
 {:else if $route.name === "lobby"}
   <Lobby />
+{:else if $route.name === "catalog"}
+  <Catalog />
 {:else if $route.name === "join"}
   <Join gameID={$route.gameID} inviteToken={$route.inviteToken} spectator={$route.spectator} />
 {:else if $route.name === "game"}

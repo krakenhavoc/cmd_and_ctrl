@@ -29,8 +29,9 @@ import (
 // this step" so the turn cursor advances to Upkeep.
 func init() {
 	Register(Spec{
-		OracleID: "a8cf1379-0195-4e11-b994-481ef1284245",
-		Name:     "Stasis",
+		OracleID:     "a8cf1379-0195-4e11-b994-481ef1284245",
+		Name:         "Stasis",
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			{
 				Watches: []game.EventKind{game.EventStepTransition},

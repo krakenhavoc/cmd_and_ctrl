@@ -45,8 +45,10 @@ import (
 //     one wins.
 func init() {
 	Register(Spec{
-		OracleID: "cddccc2a-a76e-48b3-b4dd-dfeab89e1619",
-		Name:     "Cosmic Intervention",
+		OracleID:     "cddccc2a-a76e-48b3-b4dd-dfeab89e1619",
+		Name:         "Cosmic Intervention",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Foretell isn't implemented, so it can only be cast for its normal cost; a dying commander still goes to the command zone instead of being saved."},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			// Capture plain IDs, never pointers: the replacement is
 			// value-copied onto the undo stack and has to keep

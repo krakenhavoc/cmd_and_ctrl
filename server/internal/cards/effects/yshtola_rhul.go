@@ -20,8 +20,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // than printed. Nothing else about the card is approximated.
 func init() {
 	Register(Spec{
-		OracleID: "a6a7bf77-0560-4572-a826-3bc9df1f78d1",
-		Name:     "Y'shtola Rhul",
+		OracleID:     "a6a7bf77-0560-4572-a826-3bc9df1f78d1",
+		Name:         "Y'shtola Rhul",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The extra end step is not created, so it blinks a creature only once per turn instead of twice."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventBeginEndStep},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

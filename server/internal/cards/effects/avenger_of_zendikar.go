@@ -24,8 +24,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "4ba5b3f6-503b-43e6-b66e-4f8c55cffed7",
-		Name:     "Avenger of Zendikar",
+		OracleID:     "4ba5b3f6-503b-43e6-b66e-4f8c55cffed7",
+		Name:         "Avenger of Zendikar",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			{
 				Watches: []game.EventKind{game.EventETB},

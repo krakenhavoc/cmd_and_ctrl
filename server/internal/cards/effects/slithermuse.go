@@ -28,8 +28,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // player picker.
 func init() {
 	Register(Spec{
-		OracleID: "4b6512aa-535e-4edf-8797-43df2b8463de",
-		Name:     "Slithermuse",
+		OracleID:     "4b6512aa-535e-4edf-8797-43df2b8463de",
+		Name:         "Slithermuse",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"You don't get to choose the opponent — it always uses the opponent holding the most cards."},
 		AlternativeCosts: []game.AlternativeCost{
 			Evoke("{3}{U}"),
 		},

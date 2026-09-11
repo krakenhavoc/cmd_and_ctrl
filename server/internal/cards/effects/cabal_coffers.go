@@ -28,8 +28,9 @@ package effects
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "7358e164-5704-4e78-9b21-6a9bf2a968ce",
-		Name:     "Cabal Coffers",
+		OracleID:     "7358e164-5704-4e78-9b21-6a9bf2a968ce",
+		Name:         "Cabal Coffers",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:         ManaAbilityCost{Tap: true, Mana: "{2}"},
 			ProducedFunc: ProducedPerPermanent("B", MatchLandSubtype("Swamp")),

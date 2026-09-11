@@ -29,6 +29,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "b3d81980-76f2-44e2-b1c9-01e30c726312",
 		Name:            "Loran of the Third Path",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},

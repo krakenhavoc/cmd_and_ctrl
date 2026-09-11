@@ -35,6 +35,8 @@ func b04BounceLand(oracleID, name, produced string) Spec {
 	return Spec{
 		OracleID:     oracleID,
 		Name:         name,
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"You pick the land to return when the trigger goes on the stack rather than on resolution, so opponents can respond to the choice."},
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
