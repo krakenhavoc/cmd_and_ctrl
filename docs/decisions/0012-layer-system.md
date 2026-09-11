@@ -36,8 +36,9 @@ every event that could change which static abilities are active or
 what they apply to. `Game.lastResolvedVersion` mirrors the most
 recent version the recompute pass has caught up to. The snapshot
 path's `RecomputeLayersIfStaleLocked` no-ops when they match;
-otherwise it serialises through a dedicated `recompute.mu` mutex
-(double-checks the version after acquire) and runs the body.
+otherwise it runs the body. (As specified it serialised through a
+dedicated `recompute.mu` mutex; the S24 amendment to decision 11
+replaced that with the game's write lock.)
 
 **Why:** XMage / Forge approach. Maintaining incremental diffs is a
 correctness nightmare — every possible mutation has to know which
