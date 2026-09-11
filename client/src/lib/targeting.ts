@@ -119,7 +119,7 @@ export interface TargetingState {
   // S21 sub-PR 2: set when the prompt collects targets for an
   // ACTIVATED ability rather than a cast. The confirm fires
   // activate_ability with these announce-time choices.
-  ability?: { index: number; sacrificeIDs: string[] };
+  ability?: { index: number; sacrificeIDs: string[]; crewIDs: string[] };
   // Human-readable clause for the banner ("target artifact or
   // enchantment"); the server's TargetSpec label.
   label?: string;
@@ -349,13 +349,14 @@ export function beginForAbility(
   card: CardView,
   ability: ActivatedAbilityView,
   sacrificeIDs: string[],
+  crewIDs: string[] = [],
 ): void {
   const lt = ability.legal_targets;
   targeting.set({
     card,
     mode: (ability.target_mode || "any") as TargetingMode,
     legal: lt ? { players: new Set(lt.players ?? []), cards: new Set(lt.cards ?? []) } : undefined,
-    ability: { index: ability.index, sacrificeIDs },
+    ability: { index: ability.index, sacrificeIDs, crewIDs },
     // The count comes off the wire like every other clause's. This
     // used to be a hard-coded 1 / 1 with a note explaining that
     // ActivatedAbilityView carried an inline `{players?, cards?}`

@@ -85,6 +85,35 @@ type AbilityCost struct {
 	//
 	// SorcerySpeed therefore does not need to be set alongside it.
 	Loyalty *int
+
+	// Crew is the crew number of a Vehicle's crew ability (CR
+	// 702.122a): "Tap any number of untapped creatures you control
+	// with total power N or more". Zero means "not a crew cost",
+	// which is every ability that is not printed on a Vehicle.
+	//
+	// A plain int rather than a pointer, unlike Loyalty: crew 0 is
+	// not a printed cost, so zero and absent are the same thing.
+	//
+	// Three things make crew different from every other cost here
+	// and are enforced in ActivateCatalogAbility rather than asked of
+	// each card:
+	//
+	//	CR 702.122b  the creatures tapped are NOT the source, so
+	//	             Tap must stay false — a crewed Vehicle is
+	//	             untapped and can attack.
+	//	CR 702.122b  summoning sickness does not apply. Tapping a
+	//	             creature to crew is not paying a {T} cost, so a
+	//	             creature that arrived this turn may crew.
+	//	CR 702.122c  power is read at the moment the cost is paid,
+	//	             from the post-layer effective value, so an
+	//	             anthem and +1/+1 counters both count.
+	//
+	// The activator names the creatures in
+	// ActivateAbilityParams.CrewIDs. Any number is legal as long as
+	// the total clears the bar, and a single 5-power creature crews a
+	// Vehicle that says crew 3 — the printed text is a floor, not an
+	// exact amount.
+	Crew int
 }
 
 // ActivatedAbilityShape is one activated ability on a permanent, as
@@ -144,6 +173,12 @@ type ActivateAbilityParams struct {
 	// wire shape survives contact with Altar of Dementia-style
 	// costs.
 	SacrificeIDs []uuid.UUID
+
+	// CrewIDs names the creatures tapped to pay a Crew cost, in the
+	// order the activator picked them. Any number is legal; what
+	// matters is that their total effective power clears the crew
+	// number (CR 702.122a).
+	CrewIDs []uuid.UUID
 
 	// Targets are the ability's targets, validated against the
 	// ability's spec.
@@ -236,6 +271,10 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	if err != nil {
 		return err
 	}
+	crew, err := g.validateCrewCostLocked(playerID, ab.Cost, params.CrewIDs)
+	if err != nil {
+		return err
+	}
 	if ab.Cost.Life > 0 && p.Life < ab.Cost.Life {
 		// CR 118.8 forbids paying more life than you have. Paying
 		// down to exactly 0 is legal; the SBA loop ends the game
@@ -262,6 +301,15 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	if ab.Cost.Tap {
 		source.Tapped = true
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
+	}
+	for _, id := range crew {
+		// The crewing creatures tap, the Vehicle does not (CR
+		// 702.122b) — which is the whole point, since a Vehicle that
+		// tapped to crew itself could never attack.
+		if c := findBattlefieldCard(g, id); c != nil {
+			c.Tapped = true
+			g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: id})
+		}
 	}
 	if ab.Cost.Life > 0 {
 		if err := g.ChangePlayerLifeForEffect(cardID, playerID, -ab.Cost.Life); err != nil {
@@ -324,6 +372,76 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// ability on the stack, which is where paying a cost puts them.
 	g.runStateChecksLocked()
 	return nil
+}
+
+// validateCrewCostLocked resolves a Crew cost into the concrete list
+// of creatures to tap, without tapping anything (CR 702.122a).
+//
+// What it enforces, and what it deliberately does not:
+//
+//   - Every named card must be an untapped creature the activator
+//     controls, and must be named once. Naming the same creature
+//     twice would let one 3-power creature crew a 6.
+//   - Total EFFECTIVE power must reach the crew number. Effective,
+//     so an anthem and +1/+1 counters both count (CurrentPower), and
+//     read at payment time (CR 702.122c) rather than at declaration.
+//   - Summoning sickness is NOT checked. Tapping a creature to crew
+//     is not paying a {T} cost, so a creature that arrived this turn
+//     may crew (CR 702.122b). This is the rule most implementations
+//     get wrong in the strict direction; getting it wrong the other
+//     way is impossible here, because the check simply isn't made.
+//   - Overshooting is legal. The printed number is a floor.
+//
+// The clause is "creatures you control", with no "another", so a
+// Vehicle that something else has already animated is a legal
+// crewer — of a different Vehicle, or in principle of itself. That
+// is deliberately not special-cased: the rule says what it says, and
+// self-crewing taps the Vehicle and strands it, which is a bad play
+// rather than an illegal one.
+//
+// Caller must hold g.mu.
+func (g *Game) validateCrewCostLocked(playerID uuid.UUID, cost AbilityCost, chosen []uuid.UUID) ([]uuid.UUID, error) {
+	if cost.Crew <= 0 {
+		if len(chosen) > 0 {
+			return nil, ErrInvalidParam
+		}
+		return nil, nil
+	}
+	if len(chosen) == 0 {
+		return nil, ErrInsufficientCrew
+	}
+	// Effective characteristics have to be fresh: a creature that
+	// gained +2/+2 this turn crews for its current power, not its
+	// printed one.
+	g.RecomputeLayersIfStaleLocked()
+	seen := make(map[uuid.UUID]bool, len(chosen))
+	total := 0
+	out := make([]uuid.UUID, 0, len(chosen))
+	for _, id := range chosen {
+		if seen[id] {
+			return nil, ErrInvalidParam
+		}
+		seen[id] = true
+		c := findBattlefieldCard(g, id)
+		if c == nil {
+			return nil, ErrCardNotFound
+		}
+		if c.Controller != playerID {
+			return nil, ErrCardCallerMismatch
+		}
+		if !c.IsCreature() {
+			return nil, ErrNotACreature
+		}
+		if c.Tapped {
+			return nil, ErrAlreadyTapped
+		}
+		total += c.CurrentPower()
+		out = append(out, id)
+	}
+	if total < cost.Crew {
+		return nil, ErrInsufficientCrew
+	}
+	return out, nil
 }
 
 // validateSacrificeCostLocked resolves the SacrificeSelf /
