@@ -2007,11 +2007,40 @@ The engine has no event history: `GameView` carries none, the client has none, a
 
 ### Sub-PR 6 — heuristic policy (Layer B)
 
-- [ ] `score(view, perspective) float64` — life, hand, board (power + toughness + keyword table), non-creature permanents, untapped mana, commander tax
-- [ ] Threat ranking across three opponents; aggression rotation after three ineffective turns on one target
-- [ ] Move selection by `Δscore` on a cloned game; blocks minimise incoming damage subject to not trading up
-- [ ] Concede heuristic, deliberately conservative
-- [ ] This is also the fallback under every model failure — it must stand alone
+- [x] `score(view, perspective) float64` — life, hand, board (power + toughness + keyword table), non-creature permanents, untapped mana, commander tax
+- [x] Threat ranking across three opponents; aggression rotation after three ineffective turns on one target
+- [x] Move selection by `Δscore`; blocks minimise incoming damage subject to not trading up
+- [x] Concede heuristic, deliberately conservative
+- [x] This is also the fallback under every model failure — it must stand alone
+- [x] Import test: no package under `aiseat/` may import `internal/game` (ADR 0033 §3's type gate, promised by `aiseat/policy.go`'s package doc)
+
+**"Δscore on a cloned game" was dropped, deliberately.** Cloning a game
+needs a `*game.Game`, and a `Policy` is handed a `protocol.GameView`
+and a `[]legal.Move` precisely so that it cannot hold one — that is
+the whole hidden-information guarantee in ADR 0033 §3, and the import
+test above fails the build over it. The two requirements are
+incompatible and the guarantee is the more important of the pair. The
+delta is **estimated** in the same units the score uses, from what the
+move does to the visible board, rather than simulated. The honest
+limitation: with no oracle text on the wire for a single-faced card,
+the policy reads a spell's intent from what it may target and what it
+costs, not from what it says. `Input.Oracle` is what closes that gap,
+and it lands with the model tiers.
+
+**Two additive hooks on `aiseat`**, both because the `Decision{Index}`
+contract alone cannot express them:
+
+- `aiseat.Decline` (`Index == -1`) — "none of these". A defender is
+  offered blocks *before* priority reaches it, so a blocks-only window
+  has no pass to take, and without a decline a bot would have to keep
+  declaring blocks until it ran out of creatures. Honoured only when
+  the seat does not hold priority; the runner turns it into the pass
+  whenever one is on offer, so it can never stall a table.
+- `aiseat.Conceder` — conceding is not a legal *move*. `legal`
+  deliberately does not enumerate it (a random policy that could
+  concede would scoop out of its own fuzzer), so a policy expresses it
+  out of band and the runner dispatches it through `actions.Dispatch`
+  like everything else.
 
 ### Sub-PR 7 — Layer A rules filter + Layer C model policy
 
@@ -2035,8 +2064,10 @@ The engine has no event history: `GameView` carries none, the client has none, a
 - [x] Enumerator agrees with `timing.ts` across a table-driven state matrix, both directions (sub-PR 2: `internal/legal/testdata/timing_agreement.json`, asserted from Go and from vitest against one hand-written expectation table)
 - [ ] Visibility: policy `Input.View` byte-identical to a human view at that seat; import test enforces the type gate
 - [ ] Four `random` bots play to a winner across 20 consecutive unattended runs — no deadlocks, no illegal actions, replays captured
-- [ ] Four `heuristic` bots play to a winner within 50 turns
-- [ ] Zero engine-rejected actions across a 100-game randomized run
+- [x] Four `heuristic` bots play to a winner within 50 turns — 20/20 seeds, 13–20 turns each (`AISEAT_HEURISTIC_GAMES=20`)
+- [x] Zero engine-rejected actions across a 100-game randomized run — and across 60 four-`heuristic` and 60 mixed games through the same soak harness (`AISEAT_SOAK_POLICY=heuristic|mixed`)
+- [x] `heuristic` beats `random` head-to-head: 40/40 decided games, alternating seats
+- [x] Heuristic decision latency: p50 8.5µs, p99 52µs, max 276µs over 2,715 decisions — four orders of magnitude inside the 2s `MaxThink`
 - [ ] Model-outage drill: Layer C hard-fails, game completes on Layer B, no frozen table
 - [ ] Human undo of a bot improvisation succeeds without the admin token, and the bundle reverts as one entry
 
