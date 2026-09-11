@@ -326,6 +326,49 @@ type Card struct {
 	// game and checks exactly this.
 	ActiveFace int
 
+	// AttachedTo is the CR 301.5c / CR 303.4 attachment relation,
+	// stored on the ATTACHED object (the Equipment or the Aura) and
+	// pointing at its host. Zero value (Kind == "") means
+	// "unattached", which is every card in every zone but a handful
+	// of battlefield permanents.
+	//
+	// TargetRef rather than a bare uuid.UUID because a Curse
+	// enchants a PLAYER and an Aura or Equipment enchants a CARD,
+	// and player IDs and card instance IDs are both UUIDs with
+	// nothing to tell them apart. TargetRef already carries that
+	// discrimination, it is already what the targeting pipeline
+	// produces, and it is already on the wire as TargetRefView — so
+	// the aura attach path assigns item.Targets[0] verbatim.
+	//
+	// A VALUE type, not a pointer, deliberately: cloneCard starts
+	// `out := c` and deep-copies only the slice / map fields by
+	// hand, so a pointer here would alias between the live game and
+	// every undo snapshot. Same reason AttackingTarget /
+	// BlockingTarget / GoadedBy are uuid.Nil-sentinel values.
+	//
+	// Cleared on battlefield exit by MoveCard alongside Tapped and
+	// the combat relations. The REVERSE direction (a host that
+	// left) is not swept eagerly — a dangling ref fails the CR
+	// 704.5m/n state-based action on the next pass, which is
+	// exactly why those rules are state-based actions. Added in
+	// S24, per ADR 0036 decision 1.
+	AttachedTo TargetRef
+
+	// AttachedAt is the CR 613.7d timestamp: an Equipment's or
+	// Aura's continuous effect gets a NEW timestamp when it becomes
+	// attached, not the one it got when it entered the
+	// battlefield. The layer engine prefers this over
+	// EnteredBattlefieldAt when non-zero. Zero means "not attached"
+	// (or attached before this field mattered), and the engine
+	// falls back to the entry stamp.
+	//
+	// Unobservable for every card in S24's first cut — every
+	// attachment static in the catalog is a layer 6 grant or a 7c
+	// modify, and both are commutative. It exists so that the first
+	// 7b "set" that meets a 7c "modify" is right by construction.
+	// Added in S24, per ADR 0036 decision 2.
+	AttachedAt int64
+
 	// effective is the cached post-layer-resolution characteristic
 	// for this card on the battlefield. Populated by the layer
 	// engine's recompute pass; nil ⇒ "no recompute has run since

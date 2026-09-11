@@ -22,18 +22,20 @@ import (
 //
 // Things this listener INTENTIONALLY does NOT bump on:
 //   - Turn advance. Handled, but not here: S25 (#77) put the bump in
-//     `onTurnAdvanceLocked` (game.go) exactly as this note
-//     prescribed, because there is no event for a turn change to
+//     `onTurnAdvanceLocked` (game.go) exactly as this note used to
+//     prescribe, because there is no event for a turn change to
 //     listen to. Zurgo Helmsmasher's "during your turn, ~ has
 //     indestructible" is the forcing function — a static whose
 //     predicate reads the turn rather than the battlefield.
 //     (Turn-scoped "until end of turn" effects do NOT depend on that
 //     bump: `ClearExpiredTurnScopedStaticsLocked` bumps the version
 //     itself when it sweeps.)
-//   - Control changes. Mind Control / aura attach is deferred to
-//     S17. When the first "creatures you control" predicate that
-//     can flip mid-game lands, add an EventControlChanged kind +
-//     bump here.
+//   - Control changes. Mind Control's layer-2 control change is
+//     still deferred; when the first "creatures you control"
+//     predicate that can flip mid-game lands, add an
+//     EventControlChanged kind + bump here. Aura and Equipment
+//     ATTACHMENT is no longer on this list — S24 added
+//     EventAttach / EventUnattach below.
 //
 // EventETB and EventLTB are also covered by EventZoneMove for every
 // CARD (every zone change emits both), so the listener doesn't
@@ -76,6 +78,14 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		g.layerVersion.Add(1)
 		stampBattlefieldEntryLocked(g, ev.CardID)
 	case EventCounterPlaced:
+		g.layerVersion.Add(1)
+	case EventAttach, EventUnattach:
+		// S24: attachment is an AppliesTo input for every
+		// "equipped creature" / "enchanted creature" static, and
+		// CR 613.7d gives the attachment a fresh timestamp when it
+		// lands. Without this bump the cached resolution survives
+		// the equip and the sword grants nothing until some
+		// unrelated event invalidates.
 		g.layerVersion.Add(1)
 	case EventTapCard, EventUntapCard:
 		// Tap state is an AppliesTo input, not just a display flag:

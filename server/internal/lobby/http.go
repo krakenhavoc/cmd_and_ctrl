@@ -23,6 +23,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/appenv"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/envflag"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/ratelimit"
 )
@@ -45,6 +46,14 @@ type Config struct {
 	Lobby      *Lobby
 	Auth       auth.Authenticator
 	AdminToken string // shared admin token; empty disables admin flow
+	// Env is the deployment identity (prod / dev). The zero value is
+	// the empty string, which IsDev() reports false for — so a Config
+	// built without thinking about it (every existing test) gets
+	// production behaviour and no dev surfaces.
+	Env appenv.Env
+	// Features are the dev-only capabilities this deployment exposes.
+	// Always the zero value in production; see package appenv.
+	Features   appenv.Features
 	SessionTTL time.Duration
 	AllowAnon  bool // allow unauthenticated /games/{id}/join via invite (default: true)
 	// Cards is the Scryfall index used by the deck-upload endpoint.
@@ -186,6 +195,12 @@ func Handler(c Config) http.Handler {
 	// are rate-limited alongside admin-login + join because state
 	// generation involves crypto/rand and the upstream calls are
 	// the most expensive thing we forward to Discord.
+	// GET /config — deployment identity + dev feature flags. Sits
+	// alongside the other unauthenticated capability probes
+	// (/auth/discord/config, /bugreport/config) and is fetched by the
+	// client before login so the env banner renders on the login
+	// screen. Constant and secret-free in production.
+	mux.Handle("GET /config", handlerFunc(c, clientConfig))
 	mux.Handle("GET /auth/discord/config", handlerFunc(c, discordConfig))
 	mux.Handle("GET /auth/discord/start", limit.Middleware(handlerFunc(c, discordStart)))
 	mux.Handle("GET /auth/discord/callback", limit.Middleware(handlerFunc(c, discordCallback)))
@@ -210,6 +225,22 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /games/{id}/auto-tap-preview", auth.Middleware(c.Auth)(handlerFunc(c, autoTapPreview)))
 	mux.Handle("POST /games/{id}/decks", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, uploadDeck))))
 	mux.Handle("GET /me", auth.Middleware(c.Auth)(handlerFunc(c, me)))
+
+	// Develop-environment card spawner (ADR 0023). Both routes are
+	// wrapped in requireDevFeature: in production they are 404s, and
+	// they stay 404s on a dev deployment that has switched the
+	// card_spawn feature off. Session-gated but not admin-gated --
+	// on a preview box anyone at the table is a tester.
+	//
+	// The gate is the outermost wrapper on purpose: an unauthenticated
+	// probe against production must not be able to tell these apart
+	// from any other unrouted path, and auth.Middleware would answer
+	// 401 first and confirm the route exists.
+	devSpawn := func(h http.Handler) http.Handler {
+		return requireDevFeature(c, func(f appenv.Features) bool { return f.CardSpawn }, h)
+	}
+	mux.Handle("GET /dev/cards", devSpawn(auth.Middleware(c.Auth)(handlerFunc(c, devCardSearch))))
+	mux.Handle("POST /games/{id}/dev/spawn", devSpawn(auth.Middleware(c.Auth)(handlerFunc(c, devSpawnCard))))
 	// Bug reports (in-app button → GitHub issue). The config probe
 	// is unauthenticated and mirrors /auth/discord/config. POST is
 	// session-gated (any role — spectators hit bugs too) with its
@@ -1242,6 +1273,8 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusConflict
 	case errors.Is(err, ErrPlayerNotInGame):
 		status = http.StatusForbidden
+	case errors.Is(err, ErrGameNotActiveForSpawn):
+		status = http.StatusConflict
 	case errors.Is(err, ErrEmptyName):
 		status = http.StatusBadRequest
 	case errors.Is(err, auth.ErrInvalidCredential),

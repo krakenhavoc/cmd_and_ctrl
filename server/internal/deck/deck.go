@@ -249,6 +249,14 @@ func (l *List) ToGameCards() []game.Card {
 	return out
 }
 
+// ToGameCard converts one indexed Scryfall card into the game.Card
+// the engine plays with. Exported so the develop environment's card
+// spawner (ADR 0023) produces instances identical to imported ones
+// rather than a lookalike that drifts from this function.
+func ToGameCard(c cards.Card, isCommander bool) game.Card {
+	return toGameCard(c, isCommander)
+}
+
 // printedLoyalty parses Scryfall's top-level printed starting
 // loyalty to an int (CR 306.5b).
 //

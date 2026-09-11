@@ -91,6 +91,25 @@ const (
 	// KnownCardCounters) was placed on CardID. Amount is the new
 	// count of that counter kind on the card. Fires on AddCounter
 	// and on the SBA +1/+1 / -1/-1 cancel.
+	// EventAttach fires when an Equipment or Aura becomes attached
+	// to a permanent or player (CR 301.5c, CR 303.4). CardID and
+	// Source are the attachment; Target is the host. Emitted by
+	// AttachForEffect, which is the only writer of Card.AttachedTo
+	// outside the state-based action.
+	//
+	// An event rather than a bare layerVersion bump because
+	// attachment has more consumers than the layer engine — "becomes
+	// attached" triggers read it, and the replay log and public game
+	// log both want it greppable. Added in S24 (ADR 0036 decision 7).
+	EventAttach EventKind = "attach"
+
+	// EventUnattach is the other half: the link broke. Emitted by
+	// UnattachForEffect and by the CR 704.5m/n state-based action,
+	// in the latter case BEFORE an illegally attached Aura is routed
+	// to its owner's graveyard, so a listener still sees what it was
+	// attached to. Added in S24.
+	EventUnattach EventKind = "unattach"
+
 	EventCounterPlaced EventKind = "counter_placed"
 
 	// EventTokenCreated — a token was created under Actor's control.

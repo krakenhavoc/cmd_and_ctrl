@@ -624,7 +624,7 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	if g.State != StateActive {
 		return Turn{}, ErrGameNotActive
 	}
-	g.advanceTurnCursorLocked()
+	g.advanceCursorLocked()
 	g.runStepEntryHooksLocked()
 	// CR 117.5 / 704.3: SBAs fire whenever a player would get
 	// priority. AdvanceStep lands on a priority-granting step (Untap
@@ -636,31 +636,30 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	return g.Turn, nil
 }
 
-// advanceTurnCursorLocked moves the turn cursor one step and runs
-// the new-turn hook. Every cursor advance goes through here.
+// advanceCursorLocked moves the step cursor forward by one — the
+// single seam every step transition goes through. On a turn wrap it
+// skips seats that have left the game (CR 800.4a: an eliminated
+// player's turns are skipped) and fires onTurnAdvanceLocked so the
+// per-turn caches clear.
 //
-// S25 (#77) introduced it because the direct `g.Turn =
-// g.Turn.advance(...)` it replaces appeared in FOUR places and only
-// one of them — AdvanceStep — called `onTurnAdvanceLocked`. The other
-// three are inside `runStepEntryHooksLocked`, which is where the
-// active seat actually changes in normal play: the cursor never
-// rests on Cleanup, so End → Cleanup → next seat's Untap happens as
-// one recursion inside the hook, and the AdvanceStep call that
-// started it compared End against Cleanup, saw the same seat, and
-// concluded no new turn had begun.
-//
-// The per-turn caches `onTurnAdvanceLocked` clears
-// (LoyaltyActivatedThisTurn, SpellsCastThisTurn, LandsPlayedThisTurn)
-// were therefore surviving across turns on the ordinary path. Each
-// of those is a "once per turn" or "first spell this turn" gate, so
-// the effect was a permission that never came back — a planeswalker
-// whose loyalty ability stayed spent, a land drop that never
-// refreshed in the legal-move enumerator.
-//
-// Caller must hold g.mu.
-func (g *Game) advanceTurnCursorLocked() {
+// Both halves fix bugs the S31 bot fuzzer found on its first run:
+// Turn.advance rotated into eliminated seats, handing priority to a
+// player who could not act (humans had been escaping with
+// advance_step), and the cleanup hook's wrap never called
+// onTurnAdvanceLocked, so SpellsCastThisTurn / LoyaltyActivatedThisTurn
+// survived every ordinary turn change. Caller must hold g.mu.
+func (g *Game) advanceCursorLocked() {
 	prev := g.Turn
-	g.Turn = g.Turn.advance(len(g.Seats))
+	n := len(g.Seats)
+	g.Turn = g.Turn.advance(n)
+	if prev.IsNewTurn(g.Turn) {
+		for i := 0; i < n && g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < n && g.Seats[g.Turn.ActiveSeat].Eliminated; i++ {
+			// Wrap again from this seat's (never-taken) cleanup.
+			skipped := g.Turn
+			skipped.Step = StepCleanup
+			g.Turn = skipped.advance(n)
+		}
+	}
 	g.onTurnAdvanceLocked(prev, g.Turn)
 }
 
@@ -793,7 +792,7 @@ func (g *Game) runStepEntryHooksLocked() {
 		if canceled {
 			// Step canceled — advance past and recurse so the
 			// cursor hits the next step's entry hook.
-			g.advanceTurnCursorLocked()
+			g.advanceCursorLocked()
 			g.runStepEntryHooksLocked()
 			return
 		}
@@ -850,7 +849,7 @@ func (g *Game) runStepEntryHooksLocked() {
 			g.untapAllForLocked(g.Turn.ActiveSeat)
 		}
 		// Untap grants no priority; recurse into the next step.
-		g.advanceTurnCursorLocked()
+		g.advanceCursorLocked()
 		g.runStepEntryHooksLocked()
 	case StepDraw:
 		if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
@@ -915,7 +914,7 @@ func (g *Game) runStepEntryHooksLocked() {
 		// until DiscardSelection drains the pending map and re-fires
 		// this hook.
 		if len(g.DiscardPending) == 0 {
-			g.advanceTurnCursorLocked()
+			g.advanceCursorLocked()
 			g.runStepEntryHooksLocked()
 		}
 	}

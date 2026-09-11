@@ -172,11 +172,21 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 		if len(abilities) == 0 {
 			continue
 		}
+		// CR 613.7d: an Equipment's or Aura's continuous effect
+		// takes a NEW timestamp when it becomes attached, not the
+		// one it got when it entered the battlefield. Unobservable
+		// for every card in the S24 catalog (layer 6 grants and 7c
+		// modifies are both commutative), and right by construction
+		// for the first 7b "set" that meets a 7c "modify".
+		ts := src.EnteredBattlefieldAt
+		if src.AttachedAt != 0 {
+			ts = src.AttachedAt
+		}
 		for _, ab := range abilities {
 			out = append(out, staticContinuousEffect{
 				ability:   ab,
 				source:    src,
-				timestamp: src.EnteredBattlefieldAt,
+				timestamp: ts,
 			})
 		}
 	}

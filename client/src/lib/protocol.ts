@@ -662,6 +662,15 @@ export interface CardView {
   // Cleared on zone exit. Sandbox marker; must-attack-not-the-goader
   // is not enforced server-side. Added in S10.
   goaded_by?: string;
+  // S24 (ADR 0036): the attachment relation for an Equipment or an
+  // Aura — the permanent (`kind: "card"`) or player
+  // (`kind: "player"`) this card is attached to. Omitted for every
+  // card attached to nothing, which is nearly all of them.
+  //
+  // One direction only: "what is attached to this creature" is
+  // derived by partitioning the battlefield on this field, so the
+  // two directions cannot disagree.
+  attached_to?: TargetRefView;
   // S14: card is in the server's effect catalog — when it resolves
   // (or ETBs), a registered effect fires automatically rather than
   // requiring manual sandbox clicks. Omitted when false so
