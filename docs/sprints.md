@@ -47,12 +47,13 @@ planned just-in-time from the S12 pain-point triage.
 | S11.5    | Per-user settings and preferences (mini)                             | 5     | [#82](https://github.com/krakenhavoc/cmd_and_ctrl/issues/82)   | 2026-09-18 | **done**    |
 | S12      | Deploy + 4-player go-live with friends                               | 6     | [#12](https://github.com/krakenhavoc/cmd_and_ctrl/issues/12)   | 2026-09-25 | planned     |
 | S12.5    | Discord identity for players (OAuth + bot + presence)                | 6     | [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59)   | 2026-10-09 | planned     |
-| S13      | Priority foundation (rules graft kickoff)                            | 7     | [#62](https://github.com/krakenhavoc/cmd_and_ctrl/issues/62)   | 2026-05-17 | planned     |
-| S13.1    | Stack: cast/resolve/target/counter/trigger/SBA                       | 7     | [#63](https://github.com/krakenhavoc/cmd_and_ctrl/issues/63)   | 2026-06-14 | planned     |
-| S13.2    | Counter mechanics (SBAs + player counters + UI)                      | 7     | [#79](https://github.com/krakenhavoc/cmd_and_ctrl/issues/79)   | 2026-06-28 | planned     |
-| S13.3    | Client-side timing affordance (greyed illegal actions)               | 7     | [#99](https://github.com/krakenhavoc/cmd_and_ctrl/issues/99)   | 2026-07-04 | planned     |
-| S13.4    | Interactive cleanup discard + per-player MaxHandSize                 | 7     | [#103](https://github.com/krakenhavoc/cmd_and_ctrl/issues/103) | 2026-07-11 | planned     |
-| S13.5    | Card visibility + known-by tracking                                  | 7     | [#108](https://github.com/krakenhavoc/cmd_and_ctrl/issues/108) | 2026-07-25 | planned     |
+| S13      | Priority foundation (rules graft kickoff)                            | 7     | [#62](https://github.com/krakenhavoc/cmd_and_ctrl/issues/62)   | 2026-05-17 | **done**    |
+| S13.1    | Stack: cast/resolve/target/counter/trigger/SBA                       | 7     | [#63](https://github.com/krakenhavoc/cmd_and_ctrl/issues/63)   | 2026-06-14 | **done**    |
+| S13.2    | Counter mechanics (SBAs + player counters + UI)                      | 7     | [#79](https://github.com/krakenhavoc/cmd_and_ctrl/issues/79)   | 2026-06-28 | **done**    |
+| S13.3    | Client-side timing affordance (greyed illegal actions)               | 7     | [#99](https://github.com/krakenhavoc/cmd_and_ctrl/issues/99)   | 2026-07-04 | **done**    |
+| S13.4    | Interactive cleanup discard + per-player MaxHandSize                 | 7     | [#103](https://github.com/krakenhavoc/cmd_and_ctrl/issues/103) | 2026-07-11 | **done**    |
+| S13.5    | Card visibility + known-by tracking                                  | 7     | [#108](https://github.com/krakenhavoc/cmd_and_ctrl/issues/108) | 2026-07-25 | **done**    |
+| S13.6    | Intelligent priority auto-pass (smart skip)                          | 7     | [#168](https://github.com/krakenhavoc/cmd_and_ctrl/issues/168) | —          | **done**    |
 | S14      | Card-effect catalog foundation                                       | 7     | [#64](https://github.com/krakenhavoc/cmd_and_ctrl/issues/64)   | 2026-07-12 | **done**    |
 | S15      | Mana pool, cost model, and auto-tapper                               | 7     | [#65](https://github.com/krakenhavoc/cmd_and_ctrl/issues/65)   | 2026-08-09 | **done**    |
 | S16      | Continuous effects + layer system (CR 613)                           | 7     | [#66](https://github.com/krakenhavoc/cmd_and_ctrl/issues/66)   | 2026-09-06 | **done**    |
@@ -60,7 +61,7 @@ planned just-in-time from the S12 pain-point triage.
 | S18      | Combat keywords                                                      | 7     | [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68)   | 2026-11-01 | **done**    |
 | S18.5    | Zone browser + library search (mini)                                 | 7     | [#179](https://github.com/krakenhavoc/cmd_and_ctrl/issues/179) | 2026-11-05 | **done**    |
 | S19      | Auto-fire triggered abilities                                        | 7     | [#69](https://github.com/krakenhavoc/cmd_and_ctrl/issues/69)   | 2026-11-29 | **done**    |
-| S20      | Auto-target legality + smart cast UI                                 | 7     | [#70](https://github.com/krakenhavoc/cmd_and_ctrl/issues/70)   | 2026-12-27 | planned     |
+| S20      | Auto-target legality + smart cast UI                                 | 7     | [#70](https://github.com/krakenhavoc/cmd_and_ctrl/issues/70)   | 2026-12-27 | **done**    |
 | S21      | Tokens, sacrifice, aristocrats                                       | 7     | [#73](https://github.com/krakenhavoc/cmd_and_ctrl/issues/73)   | 2027-01-24 | planned     |
 | S22      | Card draw + library manipulation                                     | 7     | [#74](https://github.com/krakenhavoc/cmd_and_ctrl/issues/74)   | 2027-02-21 | planned     |
 | S23      | Mass removal + boardwipes                                            | 7     | [#75](https://github.com/krakenhavoc/cmd_and_ctrl/issues/75)   | 2027-03-21 | planned     |

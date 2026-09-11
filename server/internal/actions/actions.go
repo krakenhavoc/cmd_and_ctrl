@@ -348,6 +348,11 @@ func Dispatch(g *game.Game, a Action) error {
 			// S21 sub-PR 6 — the permanent paid to a "sacrifice a
 			// creature" additional cost (Village Rites).
 			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+			// S22 — the untapped permanents tapped to help pay
+			// (convoke, waterbend). Optional even on a card that
+			// offers the cost: tapping nothing and paying the whole
+			// cost with mana is always legal.
+			TapIDs []string `json:"tap_ids,omitempty"`
 			// S22 — the alternative cost being paid INSTEAD of the
 			// mana cost: the key of one of the card's declared
 			// alternative costs ("overload", "evoke", "cleave").
@@ -390,6 +395,16 @@ func Dispatch(g *game.Game, a Action) error {
 					return fmt.Errorf("cast_spell sacrifice_ids[%d]: %w", i, err)
 				}
 				params.SacrificeIDs = append(params.SacrificeIDs, id)
+			}
+		}
+		if len(p.TapIDs) > 0 {
+			params.TapIDs = make([]uuid.UUID, 0, len(p.TapIDs))
+			for i, raw := range p.TapIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("cast_spell tap_ids[%d]: %w", i, err)
+				}
+				params.TapIDs = append(params.TapIDs, id)
 			}
 		}
 		if len(p.LockedSources) > 0 {
@@ -1010,11 +1025,12 @@ func Dispatch(g *game.Game, a Action) error {
 			return g.ResolvePickTargets(choiceID, a.Player, refs)
 		}
 		if p.OptionalApply != nil {
-			// Three yes/no kinds share the {apply: bool} payload
+			// Four yes/no kinds share the {apply: bool} payload
 			// shape: PendingChoiceOptionalReplacement (S17),
-			// PendingChoiceTriggerPrompt (S19) and
-			// PendingChoicePayUnless (S19 sub-PR 6). Disambiguate by
-			// looking up the choice's kind on the engine.
+			// PendingChoiceTriggerPrompt (S19),
+			// PendingChoicePayUnless (S19 sub-PR 6) and
+			// PendingChoiceEntryPayLife (shocklands). Disambiguate
+			// by looking up the choice's kind on the engine.
 			kind, ok := g.PendingChoiceKindFor(choiceID)
 			if !ok {
 				return game.ErrPendingChoiceNotFound
@@ -1026,6 +1042,11 @@ func Dispatch(g *game.Game, a Action) error {
 				// S19 sub-PR 6: "unless that player pays {N}" — apply
 				// means "I pay".
 				return g.ResolvePayUnless(choiceID, a.Player, *p.OptionalApply)
+			case game.PendingChoiceEntryPayLife:
+				// Shocklands: "as this enters, you may pay 2 life" —
+				// apply means "I pay", and paying is what keeps the
+				// permanent from entering tapped.
+				return g.ResolveEntryPayLife(choiceID, a.Player, *p.OptionalApply)
 			default:
 				return g.ResolveOptionalReplacement(choiceID, a.Player, *p.OptionalApply)
 			}
@@ -1077,16 +1098,27 @@ func Dispatch(g *game.Game, a Action) error {
 			}
 			ids = append(ids, id)
 		}
-		// Two card-pick kinds share the {card_ids: []string} payload:
-		// discard_from_hand (S14) and sacrifice_choice ("each player
-		// sacrifices a creature"). Route by kind, as the {apply} and
-		// {order} payloads already do, rather than minting a third
-		// wire field for the same shape.
-		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceSacrifice {
-			if len(ids) != 1 {
-				return game.ErrInvalidParam
+		// Three card-pick kinds share the {card_ids: []string}
+		// payload: discard_from_hand (S14), sacrifice_choice ("each
+		// player sacrifices a creature") and search_library (S22).
+		// Route by kind, as the {apply} and {order} payloads already
+		// do, rather than minting another wire field for the same
+		// shape.
+		//
+		// search_library is the one that accepts an EMPTY list: "you
+		// may fail to find" (CR 701.19c) arrives as {choice_id} with
+		// no card_ids at all, which is why this lookup happens before
+		// the count-based guards below rather than after.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok {
+			switch kind {
+			case game.PendingChoiceSacrifice:
+				if len(ids) != 1 {
+					return game.ErrInvalidParam
+				}
+				return g.ResolveSacrificeChoice(choiceID, a.Player, ids[0])
+			case game.PendingChoiceSearchLibrary:
+				return g.ResolveSearchLibrary(choiceID, a.Player, ids)
 			}
-			return g.ResolveSacrificeChoice(choiceID, a.Player, ids[0])
 		}
 		return g.ResolvePendingChoice(choiceID, a.Player, ids)
 

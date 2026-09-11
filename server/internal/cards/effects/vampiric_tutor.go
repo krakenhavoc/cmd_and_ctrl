@@ -11,22 +11,26 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     when racing or dodging discard; the net-card-selection effect
 //     is identical. Revisit in S17 when we model replacement timing
 //     / mulligan-in-game flows.
-//   - Auto-picks the first library match (see Demonic Tutor note).
+//
+// The controller picks which card (S22).
 func init() {
 	Register(Spec{
 		OracleID: "ededbdae-d9dc-4206-9335-d7158f2d7700",
 		Name:     "Vampiric Tutor",
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := (SearchLibrary{
-				Player:    ctx.Controller(),
-				Predicate: func(game.Card) bool { return true },
-				Dest:      game.ZoneHand,
-				Limit:     1,
-				Reveal:    false,
-				Shuffle:   true,
+				Player:  ctx.Controller(),
+				Dest:    game.ZoneHand,
+				Limit:   1,
+				Reveal:  false,
+				Shuffle: true,
+				Reason:  "Vampiric Tutor — search your library for a card",
 			}).Apply(ctx); err != nil {
 				return err
 			}
+			// The life loss is a separate sentence and does not wait
+			// on the search, so it stays inline rather than riding
+			// the Then continuation.
 			return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -2)
 		},
 	})

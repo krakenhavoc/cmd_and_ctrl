@@ -21,9 +21,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - OptionalPrompt drives the "you may" gate (S14 treated may as
 //     do; S19 lets the controller decline if the basics pile is
 //     known empty or they want to skip).
-//   - SearchLibrary picks the first basic in library order
-//     (predicate IsBasicLand) and enters it tapped via
-//     TappedOnEntry — matching the literal card text.
+//   - The land enters tapped via TappedOnEntry, matching the
+//     literal card text. S22: the controller picks WHICH basic;
+//     the "you may" half is already covered by OptionalPrompt, so
+//     the search itself is not marked Optional as well.
 //   - Empty / no-basic library → SearchLibrary no-ops silently.
 //
 // OnETB is dropped — the listener now owns ETB dispatch for this
@@ -48,6 +49,7 @@ func init() {
 							Reveal:        true,
 							Shuffle:       true,
 							TappedOnEntry: true,
+							Reason:        "Solemn Simulacrum — a basic land",
 						}.Apply(NewContext(g, item))
 					})
 			},

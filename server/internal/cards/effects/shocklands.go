@@ -1,56 +1,128 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"fmt"
 
-// shocklands.go — the Ravnica "shockland" cycle:
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// shocklands.go — the Ravnica "shockland" cycle, all ten:
 //
 //	"({T}: Add {X} or {Y}.)"
 //	"As this land enters, you may pay 2 life. If you don't, it
 //	 enters tapped."
 //
-// Three of the ten, the three this deck plays. The mana ability is
-// declared rather than left to the synthetic basic-land shape: a
-// shockland is a NONBASIC land that happens to carry two basic land
-// types, and the reminder-text ability comes from those types.
-// Declaring it is also what lets the pipe syntax offer one picker
-// instead of two menu entries.
+// The mana ability is declared rather than left to the synthetic
+// basic-land shape: a shockland is a NONBASIC land that happens to
+// carry two basic land types, and the reminder-text ability comes
+// from those types. Declaring it is also what lets the pipe syntax
+// offer one picker instead of two menu entries.
 //
-// # Declared sandbox simplification: enters tapped, then untaps
+// # The entry is replaced, not patched up afterwards
 //
-// "As this land enters, you may pay 2 life" is a REPLACEMENT with a
-// choice in it, and the replacement pipeline is synchronous — it has
-// no way to stop and ask a player anything. So this ships as the
-// honest half-measure rather than a fixed guess:
+// This cycle first shipped (PR #258) as a declared simplification:
+// the land entered tapped and an optional ETB trigger untapped it
+// for 2 life. The choice was right and everything around it was
+// wrong — a tapped window between entering and the trigger
+// resolving, an untap event nothing should have seen, and a trip
+// through the stack that handed opponents priority in the middle of
+// something that is not a trigger at all.
 //
-//	enters tapped (real CR 614 self-replacement)
-//	+ an optional ETB trigger "pay 2 life to untap it"
+// It is now a real CR 614 self-replacement with the decision inside
+// it. EntryLifeCost tells the apply-loop to stop and ask the
+// controller before anything moves (see entry_choice.go): paying
+// means the replacement never fires and the land enters untapped;
+// declining — or being unable to pay, CR 118.4 — fires it and the
+// land ENTERS tapped. No tapped window, no untap event, no priority
+// pass. The tests count tap events rather than reading Tapped,
+// because that is the only thing that tells the two implementations
+// apart.
 //
-// The CHOICE survives, which is the part that matters — a player at
-// 3 life can decline, and one who wants the untapped land pays for
-// it. What is observably wrong:
+// # Declared limit: only a PLAYED shockland gets the choice
 //
-//   - The land is tapped for the window between entering and the
-//     trigger resolving, and it emits an untap event when it
-//     resolves. Nothing watches for that today.
-//   - The trigger uses the stack, so opponents get priority in
-//     between. In paper nobody does; "as this enters" is not a
-//     trigger at all.
+// The prompt is offered on the land-play path (from hand, or from an
+// impulse exile). A shockland put onto the battlefield by an EFFECT
+// — a fetchland cracking for it, a Farseek — now runs this same
+// replacement (#263 routed the library-search path through the CR
+// 614 pipeline), but that entry site is not entryResumable, so the
+// pipeline cannot pause there to ask. It takes the un-paid branch
+// and the land ENTERS TAPPED, with no payment offered.
 //
-// The alternative — picking one branch at build time and always
-// taking it — would be strictly wrong in one of the two cases and
-// silent about it, which is worse than being slow and correct about
-// the choice.
+// That is weaker than printed and never stronger, and it is a strict
+// improvement on what came before, where a fetched shockland ignored
+// its entry clause entirely and arrived untapped for free. Closing
+// it the rest of the way needs the search's own continuation (the
+// shuffle, and "then untap that land") to survive an entry prompt —
+// see the note on searchEnterBattlefieldLocked.
 //
-// The trigger is offered only when the controller has at least 2
-// life, so it cannot be used to pay a cost the player cannot afford.
+// Where the pipeline DOES run but the entry site has no resume for
+// a paused prompt, the engine takes the un-paid branch and the land
+// enters tapped: weaker than printed, never stronger. See
+// ReplacementEvent.entryResumable.
+
+// EntersTappedUnlessYouPayLife is "as this permanent enters, you may
+// pay N life. If you don't, it enters tapped." The prompt is queued
+// by the replacement pipeline before the permanent moves, so the
+// answer decides how it ENTERS.
+//
+// The Controller hook names the payer: the player performing the
+// play (ev.Actor, which the land path stamps) is the shockland case;
+// the card's own controller / owner is the fallback for an entry
+// driven by something else, such as an effect putting the land onto
+// the battlefield.
+func EntersTappedUnlessYouPayLife(name string, life int) game.ReplacementEffect {
+	return game.ReplacementEffect{
+		Watches:         []game.EventKind{game.EventZoneMove},
+		SelfReplacement: true,
+		EntryLifeCost:   life,
+		Label:           name,
+		PromptQuestion:  fmt.Sprintf("%s — pay %d life so it enters untapped?", name, life),
+		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
+			return ev.Kind == game.RepEventMove &&
+				ev.NewZone == game.ZoneBattlefield &&
+				src != nil && ev.CardID == src.InstanceID
+		},
+		Controller: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+			if ev != nil && ev.Actor != uuid.Nil {
+				return ev.Actor
+			}
+			if src == nil {
+				return uuid.Nil
+			}
+			if src.Controller != uuid.Nil {
+				return src.Controller
+			}
+			return src.Owner
+		},
+		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+			ev.EntersTapped = true
+			return nil
+		},
+	}
+}
+
+// shocklandLifeCost is the payment every member of the cycle asks
+// for. Named rather than inlined so the prompt copy and the cost can
+// never drift apart.
+const shocklandLifeCost = 2
+
 func init() {
 	for _, t := range []struct {
 		oracleID string
 		name     string
 		a, b     string
 	}{
+		{"43985bbc-a0f6-4812-984e-392bc8562633", "Blood Crypt", "B", "R"},
+		{"20283c4a-f1f0-42f0-bc08-6da87474426b", "Breeding Pool", "G", "U"},
 		{"73864fcc-1bde-4bc0-831e-2b93e546e417", "Godless Shrine", "W", "B"},
 		{"f1750962-a87c-49f6-b731-02ae971ac6ea", "Hallowed Fountain", "W", "U"},
+		{"975ec9a3-6f20-4177-8211-82526e092538", "Overgrown Tomb", "B", "G"},
+		{"45181cb8-2090-4471-ba90-e5a8f04d525f", "Sacred Foundry", "R", "W"},
+		{"17039058-822d-409f-938c-b727a366ba63", "Steam Vents", "U", "R"},
+		{"16052b52-ade1-406f-a06b-ce7ea607fb63", "Stomping Ground", "R", "G"},
+		{"f413a83d-a40d-434c-b20a-4c707c0527fa", "Temple Garden", "G", "W"},
 		{"fc9ec820-4245-4a96-b009-5308a818ca58", "Watery Grave", "U", "B"},
 	} {
 		// Capture per iteration: the closures below outlive the loop
@@ -58,33 +130,12 @@ func init() {
 		// the last entry's name.
 		name := t.name
 		Register(Spec{
-			OracleID:      t.oracleID,
-			Name:          name,
-			Replacements:  []game.ReplacementEffect{SelfEntersTapped()},
+			OracleID: t.oracleID,
+			Name:     name,
+			Replacements: []game.ReplacementEffect{
+				EntersTappedUnlessYouPayLife(name, shocklandLifeCost),
+			},
 			ManaAbilities: []ManaAbility{dualManaAbility(t.a, t.b)},
-			Triggered: []game.TriggeredAbility{{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					if ev.CardID != source.InstanceID {
-						return false
-					}
-					p := g.PlayerByIDForEffect(source.Controller)
-					return p != nil && p.Life >= 2
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, name+" — pay 2 life to untap it",
-						func(g *game.Game, item *game.StackItem) error {
-							ctx := NewContext(g, item)
-							if err := g.ChangePlayerLifeForEffect(ctx.Source(), item.Controller, -2); err != nil {
-								return err
-							}
-							return UntapTarget{Target: item.SourceCardID}.Apply(ctx)
-						})
-				},
-				OptionalPrompt: &game.TriggerOptionalPrompt{
-					Question: name + " — pay 2 life so it is untapped?",
-				},
-			}},
 		})
 	}
 }

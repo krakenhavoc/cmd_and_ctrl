@@ -278,6 +278,20 @@ type CastSpellParams struct {
 	// cost. Added in S21 sub-PR 6.
 	SacrificeIDs []uuid.UUID
 
+	// TapIDs names the untapped permanents the caster is tapping to
+	// help pay for the spell — convoke's "your creatures can help
+	// cast this spell", waterbend's "you can tap your artifacts and
+	// creatures to help". Each one pays for {1}, or (convoke only)
+	// for one mana of that permanent's colour.
+	//
+	// Same discipline as DiscardIDs and SacrificeIDs: validated at
+	// announce, paid with the spell already on the stack, and
+	// rejected rather than ignored on a card that offers no such
+	// cost. Unlike those two it is OPTIONAL — "you MAY tap any
+	// number", so an empty list is always a legal answer and the
+	// caster simply pays the whole cost with mana. Added in S22.
+	TapIDs []uuid.UUID
+
 	// AlternativeCost names the cost the caster is paying INSTEAD of
 	// the mana cost (CR 118.9) — the Key of one of the card's
 	// declared game.AlternativeCost entries, "overload" / "evoke" /
@@ -492,6 +506,31 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// the modal derivation so a modal card with an alternative cost
 	// would compose rather than conflict.
 	spec = TargetSpecUnderAlternativeCost(spec, alt)
+	// S22: "Exile X target creatures you control" — the clause's
+	// count is the X announced at 601.2b, so resolve it into a
+	// concrete Min / Max before anything validates against it. The
+	// copy (rather than a mutation) matters: the catalog's TargetSpec
+	// is shared by every cast of the card.
+	if spec != nil && spec.CountFromX {
+		// Max 0 means "unbounded" everywhere else in TargetSpec, so
+		// an X of zero has to be rejected here rather than left to
+		// the count check below — otherwise announcing X=0 would buy
+		// an unbounded clause for free, which is the exact shape of
+		// the bug this field exists to close.
+		if n := countRealTargets(params.Targets); n != params.XValue {
+			slog.Warn("cast_spell rejected: X-defined target count mismatch",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"x_value", params.XValue,
+				"targets_received", n,
+			)
+			return ErrInvalidParam
+		}
+		resolved := *spec
+		resolved.Min, resolved.Max = params.XValue, params.XValue
+		resolved.CountFromX = false
+		spec = &resolved
+	}
 	if spec == nil && modeSpec != nil && len(params.Targets) > 0 {
 		return ErrInvalidParam
 	}
@@ -520,6 +559,29 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			"err", err,
 		)
 		return err
+	}
+	// S22: tap-permanents-as-a-cost — convoke and waterbend. Checked
+	// here with the other announce-time choices and paid further
+	// down once the spell is on the stack, same validate-all-then-pay
+	// discipline the additional cost uses. The budget is measured
+	// against the cost the cast owes BEFORE any tapping, so a caster
+	// can't tap five creatures at a three-mana spell.
+	tapCost := TapPermanentsCostFor(card.OracleID)
+	if !tapCost.Empty() || len(params.TapIDs) > 0 {
+		budget := 0
+		if base, berr := g.printedCostLocked(p, card, params); berr == nil {
+			budget = tapPermanentsBudget(tapCost, base, params.XValue)
+		}
+		if err := g.validateTapPermanentsCostLocked(playerID, tapCost, params.TapIDs, budget); err != nil {
+			slog.Warn("cast_spell rejected: bad tap-permanents cost payment",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"taps_received", len(params.TapIDs),
+				"budget", budget,
+				"err", err,
+			)
+			return err
+		}
 	}
 	// Sorcery-speed gate. Lands are special-action-fast (CR 305 is
 	// "you may play a land during your main phase if the stack is
@@ -552,6 +614,12 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			OldZone: src.Kind,
 			NewZone: ZoneBattlefield,
 			Actor:   playerID,
+			// A land's entry can now pause on a prompt (the
+			// shockland's "pay 2 life"), and this branch returns to
+			// the client when it does. Flag the event so the resume
+			// path knows it may finish the push on this branch's
+			// behalf — see executeEntryToBattlefieldLocked.
+			entryResumable: true,
 		}
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
@@ -679,6 +747,12 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		)
 		return err
 	}
+	// S22: the convoke / waterbend taps are a cost too, and land in
+	// the same window and for the same reason — with the spell
+	// already on the stack, so anything watching the taps triggers
+	// above it. The mana side of the payment was already folded into
+	// the cost gate above; this is the board half.
+	g.payTapPermanentsCostLocked(playerID, params.TapIDs)
 	if params.SplitSecond {
 		g.SplitSecondActive = true
 	}
@@ -705,12 +779,27 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		tally.Noncreature++
 	}
 	g.SpellsCastThisTurn[playerID] = tally
+	// S22 airbend: OldZone stamps where the spell was cast FROM.
+	// CR 601.2a moves the card to the stack and nothing on the card
+	// remembers the zone it left, so "whenever you cast a spell from
+	// exile" (Appa) has no other way to ask. The StackItem half of
+	// this fact landed with #257 (CastFromZone); this is the event
+	// half, and it reuses the ZoneMove-shaped fields rather than
+	// growing a new one, because a cast IS a zone move — hand (or
+	// exile, or the command zone) to the stack.
 	g.EmitEvent(Event{
-		Kind:   EventCast,
-		Actor:  playerID,
-		Source: cardID,
-		CardID: cardID,
+		Kind:    EventCast,
+		Actor:   playerID,
+		Source:  cardID,
+		CardID:  cardID,
+		OldZone: src.Kind,
+		NewZone: ZoneStack,
 	})
+	// CR 115.7: the objects named at 601.2c have now become targets.
+	// Emitted after EventCast so a "becomes the target" trigger and
+	// a "whenever a player casts a spell" trigger queue in printed
+	// order.
+	g.emitBecameTargetLocked(playerID, cardID, params.Targets)
 	// The caster receives priority right after casting (CR 117.3c),
 	// and CR 603.3 puts any cast-triggered abilities (Rhystic Study,
 	// Beast Whisperer) on the stack at that moment — above the
@@ -807,8 +896,15 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	if p.ManaPool.CanPay(cost, params.XValue) {
 		return nil
 	}
-	excluded := make(map[uuid.UUID]bool, len(params.LockedSources))
+	excluded := make(map[uuid.UUID]bool, len(params.LockedSources)+len(params.TapIDs))
 	for _, id := range params.LockedSources {
+		excluded[id] = true
+	}
+	// S22: a permanent tapped for convoke or waterbend is already
+	// spent. Without this the auto-tapper would happily plan a mana
+	// tap of the same Birds of Paradise the caster just convoked,
+	// and the two payments would race for one untapped creature.
+	for _, id := range params.TapIDs {
 		excluded[id] = true
 	}
 	plan, ok := g.autoTapLocked(p.ID, cost, params.XValue, excluded)
@@ -843,15 +939,7 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 		if card == nil || card.Tapped {
 			continue
 		}
-		abilities := ManaAbilitiesForCard(*card)
-		var ab *ManaAbilityShape
-		for i := range abilities {
-			a := abilities[i]
-			if a.TapCost && !a.SacrificeCost {
-				ab = &a
-				break
-			}
-		}
+		ab := autoTapAbilityFor(ManaAbilitiesForCard(*card))
 		if ab == nil {
 			continue
 		}
@@ -864,8 +952,16 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 		g.EmitEvent(Event{Kind: EventManaAbilityActivated, Actor: p.ID, Source: cardID})
 		for _, slot := range slots {
 			options := slot.Options
-			if len(options) > 1 && len(identity) > 0 {
-				options = intersectColors(options, identity)
+			if len(options) > 1 && len(identity) > 0 && !ab.IgnoreCommanderIdentity {
+				// Mirror ActivateManaAbility's narrowing, including
+				// its no-overlap fallback: an intersection that came
+				// back empty means the identity says nothing useful
+				// about this slot, and dropping the mana on the floor
+				// would silently short the plan the solver just
+				// validated against the raw option set.
+				if narrowed := intersectColors(options, identity); len(narrowed) > 0 {
+					options = narrowed
+				}
 			}
 			color := pickColorForSlot(options, &pending)
 			if color == "" {
@@ -881,21 +977,41 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 // `options` matches a still-unsatisfied requirement, returning
 // that color. Otherwise returns the first option (generic-eligible
 // fall-through). Empty options returns "".
+//
+// EVERY slot books its requirement, single-option slots included.
+// Issue #273: a one-option slot used to short-circuit straight to
+// its colour without ticking the requirement off, so the {W} a
+// Plains had just paid stayed on the pending list and the next
+// multi-option slot — Command Tower, the only blue source on the
+// board — spent itself re-paying it. Teferi's {U} never arrived and
+// the strict gate refused a cast the solver had already proved
+// payable.
+//
+// Among the requirements this slot can satisfy, the most restrictive
+// one (fewest legal colours) wins. A source that can pay a hybrid
+// {W/U} and a plain {U} should take the {U}, leaving the hybrid for
+// whatever comes next — same restriction-first instinct the solver
+// itself uses when it picks sources.
 func pickColorForSlot(options []string, pending *[]ColorRequirement) string {
 	if len(options) == 0 {
 		return ""
 	}
-	if len(options) == 1 {
-		return options[0]
-	}
+	best, bestOpt := -1, ""
 	for i := range *pending {
 		req := (*pending)[i]
 		for _, opt := range options {
-			if matchColor(opt, req.Options) {
-				*pending = append((*pending)[:i], (*pending)[i+1:]...)
-				return opt
+			if !matchColor(opt, req.Options) {
+				continue
 			}
+			if best < 0 || len(req.Options) < len((*pending)[best].Options) {
+				best, bestOpt = i, opt
+			}
+			break
 		}
+	}
+	if best >= 0 {
+		*pending = append((*pending)[:best], (*pending)[best+1:]...)
+		return bestOpt
 	}
 	return options[0]
 }
@@ -911,11 +1027,49 @@ func pickColorForSlot(options []string, pending *[]ColorRequirement) string {
 // cost+4. Non-command casts return the raw parsed cost. Errors on
 // an unparseable ManaCost.
 func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams) (ParsedCost, error) {
+	cost, err := g.printedCostLocked(p, card, params)
+	if err != nil {
+		return ParsedCost{}, err
+	}
+	// S22: convoke / waterbend. Applied LAST, because it is the only
+	// component that spends against the cost rather than adding to
+	// it — the tax, the any-colour fold and the alternative-cost swap
+	// all have to have settled before we know what the tapped
+	// permanents are paying for. A card with no such cost, or a cast
+	// that tapped nothing, gets the cost back unchanged.
+	tapCost := TapPermanentsCostFor(card.OracleID)
+	if !tapCost.Empty() {
+		cost = tapPermanentsAdjusted(cost, tapCost, g.tapPermanentsPayersLocked(params.TapIDs), params.XValue)
+	}
+	return cost, nil
+}
+
+// printedCostLocked is effectiveCostLocked minus the tap-permanents
+// component: the mana this cast owes before convoke or waterbend
+// spends anything against it. Split out because the announce-time
+// validator needs that number to compute the tap budget, and asking
+// effectiveCostLocked for it would be circular — the budget decides
+// how many permanents may be tapped, and the tapping is what
+// effectiveCostLocked subtracts.
+//
+// Caller must hold g.mu.
+func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (ParsedCost, error) {
 	// S22: an alternative cost replaces the printed one outright
 	// (CR 118.9). The commander tax below is layered on top of
 	// whichever cost was chosen, because CR 903.8 taxes the cost
 	// being paid, not the cost printed in the corner.
-	cost, err := ParseCost(alternativeCostString(card, params.AlternativeCost))
+	costString := alternativeCostString(card, params.AlternativeCost)
+	// S22 airbend: an exile-play grant can carry its own "rather than
+	// its mana cost" price ({2}), which belongs to the exiled
+	// INSTANCE rather than to the card, so it can't come from the
+	// oracle-ID-keyed AlternativeCost catalog above. It wins over the
+	// printed cost and is layered BEFORE the commander tax for the
+	// same reason the alternative cost is: CR 903.8 taxes whatever
+	// cost is actually being paid.
+	if ov := card.ExilePlay.CostOverride; ov != "" && card.ExilePlay.Active(p.ID, g.Turn.Number) {
+		costString = ov
+	}
+	cost, err := ParseCost(costString)
 	if err != nil {
 		return ParsedCost{}, err
 	}
@@ -1500,6 +1654,9 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 		Source: sourceCardID,
 		Label:  params.Label,
 	})
+	// CR 603.3d: a manually-announced trigger chooses its targets as
+	// it goes on the stack, same as the harvested kind.
+	g.emitBecameTargetLocked(playerID, sourceCardID, params.Targets)
 	return nil
 }
 
@@ -2587,7 +2744,25 @@ func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 // (ErrAlreadyTapped), or the ability index is out of bounds
 // (ErrInvalidParam). Commander-identity filtering for Arcane Signet
 // happens inline: the engine intersects the pipe set with the
-// controller's commander's color identity before queuing the pick.
+// controller's commander's color identity before queuing the pick —
+// unless the ability set IgnoreCommanderIdentity, which City of Brass
+// and the painland duals do because their printed text names their
+// colours outright.
+//
+// S22 adds the last two pieces the painland / Talisman / Ancient Tomb
+// / Mana Confluence batch needed:
+//
+//   - ManaAbilityShape.LifeCost, a "Pay N life" cost component,
+//     validated alongside the tap and sacrifice components before any
+//     of them is paid (so a rejected activation never leaves the
+//     source tapped) and paid between the tap and the sacrifice;
+//   - ManaAbilityShape.Rider, everything the oracle text says after
+//     the "Add …" clause, run once the produced mana is in the pool.
+//
+// Any activation that pays life, sacrifices, or fires a rider runs a
+// state-based-action pass on the way out, so a player who taps
+// Ancient Tomb at 2 life loses here rather than at the next priority
+// boundary.
 //
 // Added in S15 sub-PR 2.
 // ManaAbilityParams carries the choices a mana ability's cost needs
@@ -2664,6 +2839,20 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	if err != nil {
 		return err
 	}
+	if ab.LifeCost > 0 && p.Life < ab.LifeCost {
+		// CR 118.8: you can't pay more life than you have. Paying
+		// down to exactly 0 is legal and the SBA loop ends the game
+		// after. Same gate ActivateCatalogAbility applies to
+		// AbilityCost.Life.
+		return ErrInvalidParam
+	}
+
+	// needStateChecks is set by any component of this activation
+	// that can kill a player or a permanent — a sacrifice, a life
+	// payment, a damage rider. A single deferred pass covers all of
+	// them, so a painland activated at 1 life loses the game on the
+	// way out of this call rather than at some later boundary.
+	needStateChecks := false
 
 	// --- pay ----------------------------------------------------
 	//
@@ -2673,6 +2862,16 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	if ab.TapCost {
 		card.Tapped = true
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
+	}
+	// Life after tap, before sacrifice — the same component order
+	// ActivateCatalogAbility pays an AbilityCost in (mana → tap →
+	// life → sacrifice). It matters only for the event log, since
+	// every component was validated above.
+	if ab.LifeCost > 0 {
+		if err := g.ChangePlayerLifeForEffect(cardID, playerID, -ab.LifeCost); err != nil {
+			return err
+		}
+		needStateChecks = true
 	}
 	// S21 sub-PR 1 made sacrifice-self costs real (Treasure, Eldrazi
 	// Spawn, Lotus Petal); the mana-cost pass adds sacrifice-another
@@ -2693,8 +2892,13 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		// Artist feeding off an Altar). Drain them on the way out, so
 		// the mana is already in the pool when they resolve — which
 		// is what makes an Altar plus a payoff a real engine.
-		defer g.runStateChecksLocked()
+		needStateChecks = true
 	}
+	defer func() {
+		if needStateChecks {
+			g.runStateChecksLocked()
+		}
+	}()
 	g.EmitEvent(Event{
 		Kind:   EventManaAbilityActivated,
 		Actor:  playerID,
@@ -2732,7 +2936,15 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		// identity is empty (placeholder commanders from the demo seed),
 		// fall through to the raw option set so Birds of Paradise still
 		// offers the full five colors.
-		filtered := filterPipeByCommanderIdentity(options, p)
+		//
+		// S22: an ability whose printed text does NOT mention the
+		// commander's identity opts out — City of Brass says "any
+		// color", a painland names two specific colors, and neither
+		// should shrink because of who's in the command zone.
+		filtered := options
+		if !ab.IgnoreCommanderIdentity {
+			filtered = filterPipeByCommanderIdentity(options, p)
+		}
 		// Queue the pick.
 		g.QueueChoiceForEffect(PendingChoice{
 			Kind:         PendingChoiceMana,
@@ -2743,6 +2955,30 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			Reason:       ab.Label,
 			ColorOptions: filtered,
 		})
+	}
+	// --- rider --------------------------------------------------
+	//
+	// CR 605.3a: a mana ability resolves the instant it's activated,
+	// so everything after the "Add …" clause — the painland cycle's
+	// "This land deals 1 damage to you", Ancient Tomb's 2 — happens
+	// here, with the mana already in the pool and no priority window
+	// in between. A pipe slot that queued a PendingChoiceMana above
+	// is no exception: the colour is still unpicked, but the damage
+	// is not waiting on it.
+	//
+	// The rider runs even when the produced mana went nowhere, which
+	// is what the printed cards say: "This land deals 1 damage to
+	// you" is not conditional on the mana being useful.
+	if ab.Rider != nil {
+		needStateChecks = true
+		if err := ab.Rider(g, playerID, cardID); err != nil {
+			g.EmitEvent(Event{
+				Kind:     EventEffectError,
+				Actor:    playerID,
+				Source:   cardID,
+				ErrorMsg: err.Error(),
+			})
+		}
 	}
 	return nil
 }

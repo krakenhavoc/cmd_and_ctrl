@@ -3,8 +3,10 @@ import type {
   ActivatedAbilityView,
   AlternativeCostView,
   CardView,
+  LegalTargetsView,
   ModeOptionView,
   PendingChoiceView,
+  TapCostView,
 } from "./protocol";
 
 // targeting.ts is the shared-store plumbing for the S14 "cast a
@@ -58,6 +60,10 @@ export interface CastChoices {
   // mana cost ("overload", "evoke", "cleave"). Undefined is the
   // ordinary "pay the printed cost" case.
   altCost?: string;
+  // S22: the untapped permanents tapped to help pay — convoke and
+  // waterbend. Undefined and empty are the same thing to the server;
+  // tapping nothing is always legal.
+  tapIDs?: string[];
 }
 
 // applyCastChoices writes a CastChoices onto a cast_spell payload.
@@ -72,6 +78,7 @@ export function applyCastChoices(
   if (choices.discardIDs !== undefined) params.discard_ids = choices.discardIDs;
   if (choices.sacrificeIDs !== undefined) params.sacrifice_ids = choices.sacrificeIDs;
   if (choices.altCost !== undefined) params.alternative_cost = choices.altCost;
+  if (choices.tapIDs !== undefined && choices.tapIDs.length > 0) params.tap_ids = choices.tapIDs;
 }
 
 // TargetingState is the active prompt. `card` is the spell being
@@ -149,15 +156,29 @@ export function begin(
     mode,
     legal,
     choices,
-    ...countOf(lt),
+    ...countOf(lt, choices),
     picked: [],
   });
 }
 
 // countOf reads a clause's min / max off the wire; free-form cards
 // (no legal set) are single-target.
-function countOf(lt: { min?: number; max?: number } | undefined): { min: number; max: number } {
+//
+// S22: a clause counted by X ("Exile X target creatures you
+// control") carries no usable min / max — the server can't know X
+// when it builds the snapshot — so the count comes from the X the
+// caster announced in the cost prompts instead. The server rejects
+// any other count, so getting this wrong is a rejected cast rather
+// than a wrong one.
+function countOf(
+  lt: LegalTargetsView | undefined,
+  choices?: CastChoices,
+): { min: number; max: number } {
   if (!lt) return { min: 1, max: 1 };
+  if (lt.count_from_x) {
+    const x = choices?.xValue ?? 0;
+    return { min: x, max: x };
+  }
   return { min: lt.min ?? 1, max: lt.max ?? 1 };
 }
 
@@ -221,7 +242,7 @@ export function beginForMode(
     choices,
     modes,
     label: option.label,
-    ...countOf(lt),
+    ...countOf(lt, choices),
     picked: [],
   });
 }
@@ -246,6 +267,21 @@ export function sacrificeCostOptions(card: CardView): string[] | undefined {
   const opts = card.additional_cost?.sacrifice_options;
   if (!opts) return undefined;
   return opts.cards ?? [];
+}
+
+// tapCostOf returns a card's convoke / waterbend clause, or
+// undefined for the vast majority of cards that offer none (S22).
+export function tapCostOf(card: CardView): TapCostView | undefined {
+  return card.tap_cost;
+}
+
+// tapCostLimit is how many permanents the picker may accept: the cap
+// the server sent, or — for a waterbend {X}, whose size the server
+// couldn't know when it built the snapshot — the X the caster just
+// announced.
+export function tapCostLimit(tc: TapCostView, xValue: number | undefined): number {
+  if (tc.max && tc.max > 0) return tc.max;
+  return xValue ?? 0;
 }
 
 // alternativeCostsOf returns the "cast this for its overload / evoke
@@ -275,9 +311,15 @@ export function modeOptionCastable(option: ModeOptionView): boolean {
   return (lt.players?.length ?? 0) + (lt.cards?.length ?? 0) >= (lt.min ?? 1);
 }
 
-// hasXCost reports whether a card's printed cost includes {X} — the
-// cue to open the X prompt before casting.
+// hasXCost reports whether a cast needs the X prompt.
+//
+// Usually that is an {X} in the printed cost. S22 adds a second
+// source: a waterbend {X} cost is a cost of its own, layered on top
+// of the card's, so Waterbender's Restoration prints {U}{U} and
+// still has an X to announce — and that X is also the number of
+// creatures its clause targets.
 export function hasXCost(card: CardView): boolean {
+  if (card.tap_cost?.demands_x) return true;
   return (card.mana_cost ?? "").includes("{X}");
 }
 

@@ -214,6 +214,20 @@ export interface PendingChoiceView {
     // top-first, redacted to the chooser alone — scry is "look at",
     // not "reveal". Answered with {bottom, top_order}.
     | "scry"
+    // Shocklands: "as this land enters, you may pay 2 life. If you
+    // don't, it enters tapped." Answered with the shared yes/no
+    // {choice_id, apply} payload — apply=true pays and the land
+    // enters untapped. The permanent has NOT entered while this
+    // prompt is open; the answer is what decides how it enters.
+    // pay_cost carries the payment ("2 life").
+    | "entry_pay_life"
+    // S22: "search your library for ..." (CR 701.19). Options carries
+    // the matching cards, sent ONLY to the chooser — a library is a
+    // hidden zone and even the number of matches is private. Answered
+    // with the generic {choice_id, card_ids} payload; an empty list
+    // is a legal "fail to find" (CR 701.19c), so search_max is the
+    // ceiling and the floor is zero.
+    | "search_library"
     | string;
   chooser: string;
   from_player: string;
@@ -261,8 +275,15 @@ export interface PendingChoiceView {
   // chooser is being asked to pay ("{2}"). Same {choice_id, apply}
   // payload as the other yes/no kinds: apply=true pays (from pool,
   // auto-tapping if short), apply=false declines and the card's
-  // "unless" consequence fires.
+  // "unless" consequence fires. Also carries the life payment ("2
+  // life") for kind "entry_pay_life".
   pay_cost?: string;
+  // S22: populated for kind "search_library" — how many of `options`
+  // the searcher may take. The minimum is always zero, so the submit
+  // button is live from the first render. Absent for every other
+  // kind, and absent for non-chooser viewers, who are not told what
+  // the search is for.
+  search_max?: number;
 }
 
 // ReplacementOptionView mirrors protocol.ReplacementOptionView —
@@ -468,6 +489,37 @@ export interface AlternativeCostView {
   legal_targets?: LegalTargetsView;
 }
 
+// TapCostView is the "tap permanents you control to help pay for
+// this" clause convoke and waterbend share, on a card in the
+// viewer's own hand (S22). Like an alternative cost it is an OFFER —
+// tapping nothing and paying the whole cost with mana is always
+// legal — but unlike one it replaces nothing: it spends against a
+// cost that is still owed. The picked instance IDs ride cast_spell
+// as `tap_ids`.
+export interface TapCostView {
+  // "convoke" or "waterbend".
+  key: string;
+  // The clause as printed ("Convoke", "Waterbend {X}").
+  label?: string;
+  // The untapped permanents that may be tapped, already filtered to
+  // the viewer's own board. Present-and-empty is not an error: the
+  // caster simply has nothing to tap and pays in mana.
+  options?: LegalTargetsView;
+  // Convoke's "or one mana of that creature's color", shown in the
+  // picker's hint. Absent for waterbend, where each permanent pays
+  // exactly {1}.
+  color_clause?: boolean;
+  // How many permanents may be tapped — the mana value of what the
+  // cast owes. 0 means "as many as the announced X", which is how a
+  // waterbend {X} cost arrives (its size isn't chosen yet when the
+  // snapshot is built).
+  max?: number;
+  // The keyword's own cost carries an {X} the caster must announce,
+  // on a card whose PRINTED cost has none. Waterbender's Restoration
+  // costs {U}{U} and still needs the X prompt.
+  demands_x?: boolean;
+}
+
 // ExilePlayView is the impulse-exile grant on a card in exile —
 // "exile the top card of that player's library, you may play it
 // this turn" (S21 sub-PR 6). Public information; the client offers
@@ -478,6 +530,11 @@ export interface ExilePlayView {
   cast_only?: boolean;
   // "Spend mana as though it were mana of any color" (Breeches).
   any_color?: boolean;
+  // S22 airbend: the mana cost the holder pays INSTEAD of the card's
+  // printed one ("{2} rather than its mana cost"). Absent for
+  // impulse exile, which charges the printed cost. Note that
+  // `mana_cost` on the card still carries the printed value.
+  cost_override?: string;
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a
@@ -515,6 +572,11 @@ export interface LegalTargetsView {
   cards?: string[];
   min?: number;
   max?: number;
+  // S22: the clause's count is the announced X, not a printed
+  // constant ("Exile X target creatures you control"). min / max are
+  // meaningless until X is chosen, so the picker substitutes the X
+  // collected in the cost prompts.
+  count_from_x?: boolean;
 }
 
 export interface CardView {
@@ -596,6 +658,11 @@ export interface CardView {
   // opens a picker before every other prompt, because the choice
   // changes what the rest of them ask. Absent for nearly every card.
   alternative_costs?: AlternativeCostView[];
+  // S22: for a card in the viewer's own hand that lets you tap your
+  // own permanents to help pay — convoke and waterbend. The cast
+  // flow opens a picker after X and before targeting. Absent for
+  // nearly every card.
+  tap_cost?: TapCostView;
   // S21 sub-PR 6: present on a card in exile that someone may play
   // this turn. Absent for ordinary exile, which is nearly all of it.
   exile_play?: ExilePlayView;
@@ -643,6 +710,12 @@ export interface ManaAbilityView {
   // (CR 701.17b). Absent means the cost needs no extra choice.
   sacrifice_label?: string;
   sacrifice_options?: LegalTargetsView;
+  // S22: a "Pay N life" component of the activation cost — Mana
+  // Confluence's "{T}, Pay 1 life:". Advisory only; the server does
+  // the real CR 118.8 check. A damage RIDER ("This land deals 1
+  // damage to you", the painlands / Ancient Tomb) is NOT a cost and
+  // never appears here — it is spelled out in `label` instead.
+  life_cost?: number;
 }
 
 export interface TurnView {

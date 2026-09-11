@@ -38,6 +38,7 @@ func init() {
 							Reveal:        true,
 							Shuffle:       true,
 							TappedOnEntry: true,
+							Reason:        "Loyal Warhound — a basic Plains",
 						}.Apply(NewContext(g, item))
 					})
 			},
