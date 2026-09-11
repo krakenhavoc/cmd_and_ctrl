@@ -32,6 +32,8 @@ func init() {
 	Register(Spec{
 		OracleID:        "8dc067bf-f78f-4ac4-b6e7-b305c42cf0bc",
 		Name:            "Darksteel Citadel",
+		Completeness:    CompletenessCaveats,
+		Caveats:         []string{"Indestructible is not enforced yet, so the Citadel is destroyed by board wipes and removal like a normal land."},
 		PrintedKeywords: []string{"indestructible"},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

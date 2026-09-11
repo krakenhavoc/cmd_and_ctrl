@@ -36,6 +36,8 @@ func init() {
 		Register(Spec{
 			OracleID:     land.oracleID,
 			Name:         land.name,
+			Completeness: CompletenessCaveats,
+			Caveats:      []string{"You pick the land to return when the trigger goes on the stack, not on resolution, and it's a target that can be removed in response."},
 			Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 			ManaAbilities: []ManaAbility{{
 				Cost:     ManaAbilityCost{Tap: true},

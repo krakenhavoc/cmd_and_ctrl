@@ -36,8 +36,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "f25351e3-539b-4bbc-b92d-6480acf4d722",
-		Name:     "City of Brass",
+		OracleID:     "f25351e3-539b-4bbc-b92d-6480acf4d722",
+		Name:         "City of Brass",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:                    ManaAbilityCost{Tap: true},
 			Produced:                "{W|U|B|R|G}",

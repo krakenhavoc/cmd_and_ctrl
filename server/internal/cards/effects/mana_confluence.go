@@ -33,8 +33,9 @@ package effects
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "d0ee5bdc-2b69-4b73-9a20-ffcc18783b29",
-		Name:     "Mana Confluence",
+		OracleID:     "d0ee5bdc-2b69-4b73-9a20-ffcc18783b29",
+		Name:         "Mana Confluence",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:                    ManaAbilityCost{Tap: true, Life: 1},
 			Produced:                "{W|U|B|R|G}",

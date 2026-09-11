@@ -35,6 +35,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "2549bc57-9ffb-4053-9f10-f2a5f792b845",
 		Name:         "Myriad Landscape",
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

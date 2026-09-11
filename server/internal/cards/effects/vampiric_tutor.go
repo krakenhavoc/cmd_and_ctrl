@@ -15,8 +15,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The controller picks which card (S22).
 func init() {
 	Register(Spec{
-		OracleID: "ededbdae-d9dc-4206-9335-d7158f2d7700",
-		Name:     "Vampiric Tutor",
+		OracleID:     "ededbdae-d9dc-4206-9335-d7158f2d7700",
+		Name:         "Vampiric Tutor",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The card you find goes straight to your hand instead of on top of your library."},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := (SearchLibrary{
 				Player:  ctx.Controller(),

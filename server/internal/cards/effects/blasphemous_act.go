@@ -23,8 +23,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // would be wrong in the other direction.
 func init() {
 	Register(Spec{
-		OracleID: "7a2484a9-04fd-41a0-8224-610c1c07ed10",
-		Name:     "Blasphemous Act",
+		OracleID:     "7a2484a9-04fd-41a0-8224-610c1c07ed10",
+		Name:         "Blasphemous Act",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The cost reduction is missing — it always costs the full {8}{R} no matter how many creatures are on the battlefield."},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return damageEachMatching(ctx, Creature(), 13)
 		},

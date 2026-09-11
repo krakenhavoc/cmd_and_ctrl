@@ -22,8 +22,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "ecc435e2-deb1-420a-a79f-01dd08747314",
-		Name:     "Pyroblast",
+		OracleID:     "ecc435e2-deb1-420a-a79f-01dd08747314",
+		Name:         "Pyroblast",
+		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			Mode("Counter target spell if it's blue.", TargetSpell("target spell")),
 			Mode("Destroy target permanent if it's blue.", TargetPermanent("target permanent")),
