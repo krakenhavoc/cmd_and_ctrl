@@ -396,6 +396,12 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// CR 601.2c's announce-time target check runs against the
+	// battlefield through predicates that read effective types, so
+	// the engine has to be caught up before a Doom Blade is told
+	// whether that land is a creature. Fast-path no-op when nothing
+	// changed.
+	g.RecomputeLayersIfStaleLocked()
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound
@@ -1519,6 +1525,12 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// Activation legality reads the source's effective types (the
+	// CR 302.1 summoning-sickness gate only applies to a creature)
+	// and the target predicates read every candidate's. Both are
+	// layer-dependent since the type predicates were rerouted
+	// through Effective(); fast-path no-op when nothing changed.
+	g.RecomputeLayersIfStaleLocked()
 	if g.SplitSecondActive {
 		return ErrSplitSecondActive
 	}
@@ -1588,6 +1600,11 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// Gated on IsPlaneswalker, which is now a layer read — a
+	// creature-land that a Layer-4 effect has turned into a
+	// planeswalker has loyalty abilities and one that hasn't
+	// doesn't. Fast-path no-op when nothing changed.
+	g.RecomputeLayersIfStaleLocked()
 	if g.SplitSecondActive {
 		return ErrSplitSecondActive
 	}
@@ -2749,6 +2766,10 @@ func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// The summoning-sickness gate below only binds creatures, and
+	// whether this permanent is one is a layer answer. Fast-path
+	// no-op when nothing changed.
+	g.RecomputeLayersIfStaleLocked()
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cardID {
 			g.Battlefield.Cards[i].Tapped = tapped
@@ -2829,6 +2850,13 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// The ability list this resolves an index against is partly
+	// type-derived (CR 305.6), so it moves when a Layer-4 static
+	// does: under Urborg every land gains "{T}: Add {B}" and loses
+	// it again when Urborg does. Catch the engine up before
+	// indexing or a player's {B} click lands on a stale list.
+	// Fast-path no-op when nothing has changed.
+	g.RecomputeLayersIfStaleLocked()
 	// Locate the card on the battlefield.
 	var card *Card
 	for i := range g.Battlefield.Cards {
@@ -3027,57 +3055,149 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	return nil
 }
 
-// ManaAbilitiesForCard returns the abilities available on a card,
-// preferring the catalog declaration and falling back to the
-// synthetic basic-land shape (Forest → "{G}", etc.) when the catalog
-// has nothing registered. The protocol layer calls this to stamp
+// ManaAbilitiesForCard returns the abilities available on a card:
+// the ones carried on the instance, else the catalog's, PLUS the
+// CR 305.6 intrinsic abilities the card's effective land types give
+// it for free. The protocol layer calls this to stamp
 // CardView.ManaAbilities; the dispatcher calls it to resolve an
-// incoming ability index. Caller must hold g.mu (the fallback path
-// reads the card's TypeLine, which is stable under lock).
+// incoming ability index.
+//
+// Caller must hold g.mu, and — for the intrinsic half to be
+// current — must have let the layer engine catch up first
+// (ReadSnapshot does; write paths call RecomputeLayersIfStaleLocked).
+//
+// The intrinsic half is where Urborg, Tomb of Yawgmoth becomes a
+// real card. #258 declined to catalogue it because its Layer-4
+// static "would apply cleanly and do nothing" — the synthetic mana
+// ability read the printed TypeLine, so a Mountain that the layer
+// engine had made a Swamp still only tapped for {R}.
 func ManaAbilitiesForCard(c Card) []ManaAbilityShape {
-	// S21 sub-PR 1: intrinsic abilities win — a token has no oracle
+	var declared []ManaAbilityShape
+	switch {
+	// S21 sub-PR 1: instance abilities win — a token has no oracle
 	// ID for the catalog to key on.
-	if len(c.ManaAbilities) > 0 {
-		return c.ManaAbilities
+	case len(c.ManaAbilities) > 0:
+		declared = c.ManaAbilities
+	case CatalogManaAbilities != nil:
+		declared = CatalogManaAbilities(c.OracleID)
 	}
-	if CatalogManaAbilities != nil {
-		if list := CatalogManaAbilities(c.OracleID); len(list) > 0 {
-			return list
+	intrinsic := intrinsicLandManaAbilities(c)
+	if len(intrinsic) == 0 {
+		return declared
+	}
+	if len(declared) == 0 {
+		return intrinsic
+	}
+	// A declared ability and an intrinsic one can name the same
+	// colour — every catalog dual land ("{T}: Add {B} or {G}") is
+	// printed with the land types that would have produced the
+	// same mana, and doubling it up would put two ways to make {B}
+	// in the client's ability row. Keep the declared shape (it may
+	// carry a rider or a pipe) and add only colours it cannot make.
+	covered := producibleColors(declared)
+	out := make([]ManaAbilityShape, 0, len(declared)+len(intrinsic))
+	out = append(out, declared...)
+	for _, ab := range intrinsic {
+		if covered[landTypeColorOf(ab)] {
+			continue
 		}
+		out = append(out, ab)
 	}
-	if color := basicLandColor(c.TypeLine); color != "" {
-		return []ManaAbilityShape{{
-			TapCost:  true,
-			Produced: "{" + color + "}",
-			Label:    "Add {" + color + "}",
-		}}
-	}
-	return nil
+	return out
 }
 
-// basicLandColor returns the single-letter mana color produced by a
-// basic land subtype on a card's TypeLine. Lowercase substring check
-// so "Basic Land — Forest" and "Land — Forest" both match.
-// Multi-type basic lands (Snow-Covered basics, Wastes) fall out of
-// this path and would need catalog entries; for S15 we ship only
-// the five plain basics.
-func basicLandColor(typeLine string) string {
-	if !typeLineHas(typeLine, "basic") || !typeLineHas(typeLine, "land") {
+// landTypeMana lists the five basic land types (CR 305.6) with the
+// mana their intrinsic ability produces. Order is only a tie-break
+// for cards whose effective subtypes are unordered; the real
+// ordering comes from the subtype list itself.
+var landTypeMana = [...]struct{ Subtype, Color string }{
+	{"Plains", "W"},
+	{"Island", "U"},
+	{"Swamp", "B"},
+	{"Mountain", "R"},
+	{"Forest", "G"},
+}
+
+// intrinsicLandManaAbilities builds the CR 305.6 abilities a land's
+// EFFECTIVE subtypes grant it: "{T}: Add {W}" for Plains, "{T}: Add
+// {U}" for Island, and so on, one per distinct basic land type.
+//
+// Two things changed here versus the S15 basicLandColor it
+// replaces, and they are the same change seen twice:
+//
+//   - It reads effective subtypes, so a Layer-4 type-granting
+//     static (Urborg) is load-bearing rather than cosmetic.
+//   - It keys off the basic land TYPE, not the Basic SUPERTYPE.
+//     CR 305.6 has never mentioned the supertype; requiring it was
+//     an S15 shortcut that left every printed dual — Bayou,
+//     Overgrown Tomb, a Triome — producing nothing at all unless
+//     someone hand-wrote a catalog entry for it. battle_lands.go
+//     documents that shortcut as the reason its cycle declares a
+//     pipe ability the printed card puts in reminder text.
+//
+// Emitted in the order the subtypes appear, so a land with no
+// static on it keeps the exact ability list (and therefore the
+// exact ability indices, and the exact auto-tapper first choice)
+// it had before.
+func intrinsicLandManaAbilities(c Card) []ManaAbilityShape {
+	if !c.IsLand() {
+		return nil
+	}
+	var subtypes []string
+	if c.effective != nil {
+		subtypes = c.effective.Subtypes
+	} else {
+		_, _, subtypes = ParseTypeLine(c.TypeLine)
+	}
+	if len(subtypes) == 0 {
+		return nil
+	}
+	var out []ManaAbilityShape
+	seen := map[string]bool{}
+	for _, sub := range subtypes {
+		for _, lt := range landTypeMana {
+			if !equalFoldASCII(sub, lt.Subtype) || seen[lt.Color] {
+				continue
+			}
+			seen[lt.Color] = true
+			out = append(out, ManaAbilityShape{
+				TapCost:  true,
+				Produced: "{" + lt.Color + "}",
+				Label:    "Add {" + lt.Color + "}",
+			})
+		}
+	}
+	return out
+}
+
+// landTypeColorOf returns the single colour letter an intrinsic
+// land ability produces. Only ever called on shapes this file
+// built, so the "{X}" form is guaranteed.
+func landTypeColorOf(ab ManaAbilityShape) string {
+	if len(ab.Produced) != 3 {
 		return ""
 	}
-	switch {
-	case typeLineHas(typeLine, "plains"):
-		return "W"
-	case typeLineHas(typeLine, "island"):
-		return "U"
-	case typeLineHas(typeLine, "swamp"):
-		return "B"
-	case typeLineHas(typeLine, "mountain"):
-		return "R"
-	case typeLineHas(typeLine, "forest"):
-		return "G"
+	return ab.Produced[1:2]
+}
+
+// producibleColors is the set of colour letters a declared ability
+// list can make, pipes included — City of Brass's "{W|U|B|R|G}"
+// covers all five. Unparseable declarations contribute nothing
+// rather than failing the merge.
+func producibleColors(abilities []ManaAbilityShape) map[string]bool {
+	out := map[string]bool{}
+	for _, ab := range abilities {
+		slots, err := ParseProducedMana(ab.Produced)
+		if err != nil {
+			continue
+		}
+		for _, slot := range slots {
+			for _, opt := range slot.Options {
+				out[opt] = true
+			}
+		}
 	}
-	return ""
+	return out
 }
 
 // filterPipeByCommanderIdentity narrows `options` to just the colors
