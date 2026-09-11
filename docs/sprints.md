@@ -64,7 +64,7 @@ planned just-in-time from the S12 pain-point triage.
 | S20      | Auto-target legality + smart cast UI                                 | 7     | [#70](https://github.com/krakenhavoc/cmd_and_ctrl/issues/70)   | 2026-12-27 | **done**    |
 | S21      | Tokens, sacrifice, aristocrats                                       | 7     | [#73](https://github.com/krakenhavoc/cmd_and_ctrl/issues/73)   | 2027-01-24 | **done**    |
 | S22      | Card draw + library manipulation                                     | 7     | [#74](https://github.com/krakenhavoc/cmd_and_ctrl/issues/74)   | 2027-02-21 | partial     |
-| S23      | Mass removal + boardwipes                                            | 7     | [#75](https://github.com/krakenhavoc/cmd_and_ctrl/issues/75)   | 2027-03-21 | planned     |
+| S23      | Mass removal + boardwipes                                            | 7     | [#75](https://github.com/krakenhavoc/cmd_and_ctrl/issues/75)   | 2027-03-21 | partial     |
 | S24      | Equipment, auras, attachments                                        | 7     | [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76)   | 2027-04-18 | planned     |
 | S25      | Voltron / commander damage focus                                     | 7     | [#77](https://github.com/krakenhavoc/cmd_and_ctrl/issues/77)   | 2027-05-16 | planned     |
 | S26      | Tribal / creature type matters                                       | 7     | [#78](https://github.com/krakenhavoc/cmd_and_ctrl/issues/78)   | 2027-06-13 | planned     |
@@ -1783,12 +1783,83 @@ Mini sprint slotted after S18 started, to ship two pieces of long-promised clien
 
 **Phase:** 7 · **Goal:** mass-effect cards work; boardwipes wipe correctly across decks.
 
-- [ ] `DestroyAllMatching`, `ExileAllMatching`, `BounceAllMatching`, `ReturnAllToHand` primitives
-- [ ] Predicate-driven mass effects with non-X exclusions
-- [ ] ~30 cards: Wrath of God (extended), Damnation, Toxic Deluge, Vandalblast, Austere Command, Farewell, Merciless Eviction, Cyclonic Rift overload (extended), …
+- [x] `DestroyAllMatching`, `ExileAllMatching`, `BounceAllMatching`, `ReturnAllToHand` primitives
+- [x] Predicate-driven mass effects with non-X exclusions
+- [x] ~30 cards: Wrath of God (extended), Damnation, Toxic Deluge, Vandalblast, Austere Command, Farewell, Merciless Eviction, Cyclonic Rift overload (extended), …
 - [ ] Theme-deck smoke test (control deck plays 3 turns including a boardwipe)
 
-Detailed plan TBD; lands just-in-time after S22 ships.
+**The plan, written just-in-time and then executed.** Four sub-parts, in dependency
+order, because each one is what makes the next honest.
+
+**1. Simultaneity first, because every card depends on it.** A board wipe is ONE
+event (CR 700.4), and this engine destroyed permanents one at a time. The trigger
+harvester answers each `EventLTB` by walking the live battlefield, so a Blood
+Artist wiped alongside three other creatures was found only for the deaths that
+happened to be processed after it — a Zulaport Cutthroat at the front of the
+battlefield slice drained for **one** death instead of four, and the number
+depended on insertion order. The fix is `server/internal/game/simultaneous.go`:
+publish the batch's pre-move copies before the first move, and let the harvester
+scan those alongside the live zone, skipping anything still on the battlefield
+(`harvestFromZone` has it) and the card whose own death is being reported
+(`harvestLTB` has it). The moves stay sequential; the *observation* becomes
+simultaneous, which is the half with rules consequences. The same batch wraps the
+state-based-action sweep (`mutations.go` §704.3), so damage wipes and `-X/-X`
+wipes get it too. `TestWrathDeathsAreSimultaneousForAristocratsPayoffs` and
+`TestShrinkWipeDeathsAreSimultaneousToo` both fail by exactly this margin with the
+hook removed.
+
+**2. The four primitives** (`server/internal/cards/effects/mass.go`), each a
+predicate plus a batched mover plus a `Then` that receives the count — because
+"for each creature destroyed this way" (Fumigate, Deadly Tempest, Bane of
+Progress) is unanswerable from a fire-and-forget loop. `ReturnAllToHand` is the
+explicit-set sibling of `BounceAllMatching` for sets that are not battlefield
+predicates (Aetherize's attackers live in combat state).
+
+**3. The exclusion vocabulary**, built on S20's predicate library rather than
+beside it — `Except`, `Subtype`, `AnySubtype`, `ControlledBy`, `Multicolored` in
+`targets.go`. "All creatures except for Krakens, Leviathans, Octopuses, and
+Serpents" is `Except(Creature(), AnySubtype(…))` in the printed order; "you don't
+control" is the existing `OpponentControls()`; "non-Dragon" is
+`Except(Creature(), Subtype("Dragon"))`, built from the same predicate object as
+Crux of Fate's other mode so the two provably partition the board.
+
+**4. The cards.** Twelve existing wipes rewritten onto the primitives (Wrath,
+Damnation, Day of Judgment, Blasphemous Act, Damn, Pyroclasm, Austere Command,
+Farewell, Merciless Eviction, Cyclonic Rift, Vandalblast, Aetherize) and eighteen
+new ones. (Chandra's Ignition was a nineteenth until the roadmap batch landed it
+on `main` mid-flight; S23's copy was dropped at rebase and only its test kept.)
+Two pieces of cost machinery came with them: `AdditionalCost.PayLifeX`
+for Toxic Deluge's "pay X life" (CR 601.2f, with CR 119.4 enforced at announce,
+and a third source for the client's X prompt), and `Spec.CantBeCountered` for
+Supreme Verdict, honoured at the counter choke point so a Counterspell aimed at it
+*resolves* and does nothing rather than fizzling (CR 701.5a).
+
+**One real bug fixed in passing.** Blasphemous Act was registered as "destroy all
+creatures" since S14; the card deals 13 damage. Damage is survivable by
+indestructible, stoppable by prevention, profitable for lifelink, and kills on the
+SBA rather than immediately. It now deals damage.
+
+**Deliberately not registered**, per [ADR 0037 §5](decisions/0037-unimplemented-card-signal.md)
+("a card joins the catalog when its whole printed text is carried out, or it does
+not join") — recorded so the next person does not re-derive the blocker:
+
+| Card | Blocked on |
+|---|---|
+| Star of Extinction, Brotherhood's End | "damage to each planeswalker". `DealDamageToCreatureForEffect` only increments `DamageMarked`, and the planeswalker SBA reads loyalty counters (`mutations.go` 704.5i) — damage to a planeswalker removes no loyalty anywhere in the engine. |
+| Akroma's Vengeance, Rout | Cycling and "cast as though it had flash for {2} more" — both alternative cast paths that `AlternativeCost` does not carry (it pairs a price with a text rewrite, not a timing change). |
+| Vanquish the Horde, Hour of Revelation | Cost reduction, which has no `Spec` hook (S28). Blasphemous Act's pre-existing exception is not a licence to add more. |
+| Devastation Tide | Miracle. |
+| The Meathook Massacre | Its ETB reads the X paid when it was cast; `Card` does not carry the announced X past resolution. |
+| Bontu's Last Reckoning | "Lands you control don't untap during your next untap step" — `untapAllForLocked` has no hook, the same gap ADR 0037 records for Ty Lee. |
+| Hallowed Burial | "On the bottom of their owners' libraries" needs a battlefield→library mass move, a fifth primitive outside this sprint's four. |
+| Wildfire | "Each player sacrifices FOUR lands"; `EachPlayerSacrifices` has no count. |
+| Sunfall, Anger of the Gods, Kindred Dominance, Slaughter the Strong, Living Death, Culling Ritual, Urza's Ruinous Blast | Incubate, a die-replacement, a creature-type prompt, a multi-select prompt, a three-phase mass reanimation, a mana-colour prompt, and the legendary-sorcery cast restriction, respectively. |
+
+**Known gaps this sprint did NOT close**, and did not pretend to: indestructible,
+regeneration and totem armor are still absent from the engine, so "destroy all
+creatures" really does destroy all creatures and "they can't be regenerated" is
+still cosmetic. `DestroyAllMatching` is where all three will be honoured when they
+land. The theme-deck smoke test is the one checklist item still open.
 
 ---
 
