@@ -21,6 +21,7 @@
   import { hasAnyLegalResponse } from "../lib/priority";
   import { stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
+  import { holdPriority, ownsEveryStackItem } from "../lib/holdPriority";
 
   interface Props {
     gameID: string;
@@ -164,15 +165,10 @@
     // Conventional (non-autopass) path: honour every gate.
     if (!autopass) {
       if (!$settings.gameplay.autoPassPriority) return;
-      // Anything on the stack stops: a spell card OR an ability
-      // item (S19 triggers have no card on Game.Stack, only a
-      // stack_items entry). Autopass off means Arena-style "full
-      // control" — every trigger is a window the viewer gets to
-      // answer. The autopass toggle above is the way through
-      // routine upkeep triggers.
-      if (!stackEmpty(view)) return;
-      // Manual one-time stops override everything below. Click a
-      // phase icon in PhaseDisplay to pin; the pin clears on step
+      // Manual one-time stops override everything below — including
+      // the #323 own-stack pass, so a pinned step still hands you
+      // the cursor with your own spell on the stack. Click a phase
+      // icon in PhaseDisplay to pin; the pin clears on step
       // transition. "Fake a game action" — viewer gets the cursor
       // even when the engine has nothing to offer (want to think /
       // bluff / respond off-catalog). Read via the $manualStops
@@ -181,14 +177,37 @@
       // resumes auto-pass immediately rather than on the next
       // snapshot.
       if ($manualStops.has(step as StepID)) return;
-      // Stop here if the viewer has opted to stop on this step. The
-      // map omits no-priority steps (Untap / Cleanup); for those,
-      // the viewer can never hold priority anyway. `smartAutoPass`
-      // adds an escape hatch: if the stop lands on the viewer but
-      // the legality engine reports no legal response, pass anyway.
-      // Predicate errs conservative (false-positive-stop > false-
-      // negative-skip per ADR 0009 §3).
-      if ($settings.gameplay.stepStops[step] === true) {
+      if (!stackEmpty(view)) {
+        // A non-empty stack stops: a spell card OR an ability item
+        // (S19 triggers have no card on Game.Stack, only a
+        // stack_items entry). Every trigger and every spell an
+        // OPPONENT put up is a window the viewer gets to answer,
+        // and nothing below weakens that.
+        //
+        // #323 carves out exactly one case: a stack on which every
+        // item is the viewer's own. Casting the spell was already
+        // the decision — being asked "Counter or Pass?" about your
+        // own spell is the friction the issue reports. The hatch is
+        // the session `hold` toggle (phase widget + stack header),
+        // which has to be armed BEFORE the cast because the pass
+        // fires on the very next snapshot. With it on, or with the
+        // persistent setting off, this is the pre-#323 behaviour.
+        // ownsEveryStackItem also refuses while pending_triggers is
+        // still draining, since those may belong to anyone.
+        if ($holdPriority) return;
+        if (!$settings.gameplay.autoPassOwnStack) return;
+        if (!ownsEveryStackItem(view, viewerID)) return;
+        // Fall through to pass: the step-stops grid below is about
+        // "give me the cursor at this step", a question the viewer
+        // already answered by casting during it.
+      } else if ($settings.gameplay.stepStops[step] === true) {
+        // Stop here if the viewer has opted to stop on this step.
+        // The map omits no-priority steps (Untap / Cleanup); for
+        // those, the viewer can never hold priority anyway.
+        // `smartAutoPass` adds an escape hatch: if the stop lands on
+        // the viewer but the legality engine reports no legal
+        // response, pass anyway. Predicate errs conservative
+        // (false-positive-stop > false-negative-skip per ADR 0009 §3).
         const smart = $settings.gameplay.smartAutoPass;
         const canRespond = smart ? hasAnyLegalResponse(view, viewerID, $lastSeq) : true;
         if (canRespond) return;
