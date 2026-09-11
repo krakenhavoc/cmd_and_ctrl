@@ -794,6 +794,16 @@ func (g *Game) runStepEntryHooksLocked() {
 	// step, so it waits for the following one. See delayed.go.
 	g.fireDelayedTriggersLocked(g.Turn.Step)
 	switch g.Turn.Step {
+	case StepPrecombatMain:
+		// S27 / CR 714.2b: "after your draw step, put a lore counter
+		// on each Saga you control" is a turn-based action performed
+		// as the precombat main phase begins. Precombat main grants
+		// priority, so there is no auto-advance — the chapter
+		// triggers this queues are drained onto the stack by the
+		// caller's drainPendingTriggersAPNAPLocked / runStateChecks,
+		// which is the same boundary every other turn-based action
+		// uses.
+		g.advanceSagasForActiveSeatLocked()
 	case StepEnd:
 		// S22: announce the end step so "at the beginning of your
 		// end step" triggers auto-fire through the harvester. The
