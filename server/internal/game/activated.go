@@ -56,6 +56,35 @@ type AbilityCost struct {
 	// Life is a life payment (CR 118.8). Paying life is legal at any
 	// total above the payment; the SBA loop handles the rest.
 	Life int
+
+	// Loyalty is the loyalty-counter component of a planeswalker's
+	// loyalty ability (CR 606.1): +N adds N counters to the source,
+	// −N removes N, and [0] neither. Nil means "this is not a
+	// loyalty ability", which is every other ability in the catalog.
+	//
+	// A POINTER, not a plain int, because [0] is a real printed cost
+	// (Jace's [0]: Brainstorm) and has to be distinguishable from
+	// "no loyalty component" — the difference decides whether the
+	// activation burns the turn's once-per-turn window.
+	//
+	// ADR 0020 deliberately kept loyalty OUT of AbilityCost and let
+	// the S13.1 ActivateLoyalty sandbox action carry it. ADR 0032 §7
+	// re-audited that call: the sandbox action moves a counter and
+	// runs no effect, so no planeswalker in the game could do
+	// anything, which is what #329 and #334 report. Reversing the
+	// exclusion is what makes a loyalty ability an ordinary CR 602
+	// activation — same stack item, same Effect closure, same
+	// targeting.
+	//
+	// Three rules ride along with a non-nil Loyalty and are enforced
+	// in ActivateCatalogAbility rather than asked of each card:
+	//
+	//	CR 606.1  the source must be a planeswalker you control
+	//	CR 606.3  a −N cost needs at least N loyalty counters
+	//	CR 606.5  sorcery speed, once per turn per planeswalker
+	//
+	// SorcerySpeed therefore does not need to be set alongside it.
+	Loyalty *int
 }
 
 // ActivatedAbilityShape is one activated ability on a permanent, as
@@ -163,11 +192,34 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	ab := abilities[index]
 
 	// --- timing -------------------------------------------------
-	if ab.SorcerySpeed && !g.sorcerySpeedOpenLocked(playerID) {
+	// CR 606.5: a loyalty ability is sorcery-speed whether or not
+	// the catalog entry bothered to say so — the loyalty component
+	// carries the restriction, so a card can't forget it.
+	if (ab.SorcerySpeed || ab.Cost.Loyalty != nil) && !g.sorcerySpeedOpenLocked(playerID) {
 		return ErrSorcerySpeedRequired
 	}
 
 	// --- validate every cost before paying any ------------------
+	if ab.Cost.Loyalty != nil {
+		// CR 606.1: loyalty abilities live on planeswalkers. The
+		// controller check above already covers "a planeswalker you
+		// control".
+		if !source.IsPlaneswalker() {
+			return ErrNotAPlaneswalker
+		}
+		// CR 606.5: once per turn per planeswalker. The flag was
+		// S13.1's and only the sandbox action consulted it; this is
+		// the path that matters now.
+		if g.LoyaltyActivatedThisTurn[cardID] {
+			return ErrLoyaltyAlreadyActivated
+		}
+		// CR 606.3: you can't activate a −N ability with fewer than
+		// N loyalty counters. Paying down to exactly 0 is legal and
+		// the 704.5i SBA sweeps the walker afterwards.
+		if n := *ab.Cost.Loyalty; n < 0 && source.Counters[CounterLoyalty] < -n {
+			return ErrInsufficientLoyalty
+		}
+	}
 	if ab.Cost.Tap {
 		if source.Tapped {
 			return ErrAlreadyTapped
@@ -212,6 +264,20 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		if err := g.ChangePlayerLifeForEffect(cardID, playerID, -ab.Cost.Life); err != nil {
 			return err
 		}
+	}
+	if ab.Cost.Loyalty != nil {
+		// applyCounterLocked, not AddCounterForEffect: paying a cost
+		// is not an effect (CR 121.1 / 606.2), so counter-doubling
+		// replacements do NOT apply to a loyalty ability's + cost.
+		// Doubling Season really does nothing here, and routing
+		// through the CR 614 pipeline would silently make it.
+		if err := g.applyCounterLocked(cardID, CounterLoyalty, *ab.Cost.Loyalty); err != nil {
+			return err
+		}
+		if g.LoyaltyActivatedThisTurn == nil {
+			g.LoyaltyActivatedThisTurn = make(map[uuid.UUID]bool)
+		}
+		g.LoyaltyActivatedThisTurn[cardID] = true
 	}
 	// Sacrifices last: they move cards, which invalidates `source`.
 	for _, id := range sacrifices {

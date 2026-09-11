@@ -59,6 +59,7 @@ export interface ErrorPayload {
 // grows call sites for them.
 export type ActionType =
   | "activate_ability"
+  | "activate_loyalty"
   | "activate_mana_ability"
   | "add_counter"
   | "add_player_counter"
@@ -553,13 +554,23 @@ export interface ActivatedAbilityView {
   mana_cost?: string;
   life_cost?: number;
   sorcery_speed?: boolean;
+  // loyalty_cost is the +N / 0 / −N of a planeswalker's loyalty
+  // ability (CR 606.1). Its PRESENCE, not its value, is what marks
+  // the ability as a loyalty ability — 0 is a real printed cost —
+  // so test for `!== undefined`, never for truthiness. Added with
+  // #329 / #334.
+  loyalty_cost?: number;
   // A "Sacrifice a creature"-style cost: the clause, and the
   // permanents the controller can pay it with right now.
   sacrifice_label?: string;
   sacrifice_options?: { players?: string[]; cards?: string[] };
-  // Present when the ability targets.
+  // Present when the ability targets. A full LegalTargetsView since
+  // #334: the server now stamps the clause's min / max (it always
+  // had them; abilityLegalTargets just never copied them across),
+  // which is what lets an "up to one target" ability — Teferi's −3,
+  // the Emperor's −2 — be confirmed with nothing picked.
   target_mode?: string;
-  legal_targets?: { players?: string[]; cards?: string[] };
+  legal_targets?: LegalTargetsView;
 }
 
 export interface ModeOptionView {
@@ -688,6 +699,12 @@ export interface CardView {
   // S21 sub-PR 2: CR 302.1 summoning sickness — entered this turn
   // without haste, so it can't attack or pay a {T} cost.
   summoning_sick?: boolean;
+  // CR 606.5: a loyalty ability has already been activated on this
+  // planeswalker this turn, so every loyalty row in its menu is
+  // greyed until the turn cursor moves on. Before #334 this state
+  // was server-only, which is why canActivateLoyalty had to take
+  // the caller's guess as an argument.
+  loyalty_activated?: boolean;
   // S15: raw Scryfall mana-cost string ("{1}{R}", "{W/U}", "{X}{B}"),
   // rendered as a read-only chip on hand-zone cards. Omitted for
   // lands and for placeholder / demo-seed cards. Also zeroed on the

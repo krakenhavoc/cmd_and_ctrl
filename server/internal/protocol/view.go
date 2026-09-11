@@ -657,6 +657,14 @@ type CardView struct {
 	// the activated-ability menu's affordance; the server does the
 	// real check.
 	SummoningSick bool `json:"summoning_sick,omitempty"`
+	// LoyaltyActivated reports CR 606.5: this planeswalker has
+	// already had a loyalty ability activated this turn, so every
+	// entry in ActivatedAbilities carrying a LoyaltyCost is greyed
+	// until the turn cursor moves on. Battlefield planeswalkers
+	// only. Before S27 this lived only in the server's
+	// Game.LoyaltyActivatedThisTurn map, which is why the client's
+	// canActivateLoyalty had to guess. Added in S27 (#329, #334).
+	LoyaltyActivated bool `json:"loyalty_activated,omitempty"`
 	// ManaCost is the printed casting cost as Scryfall returns it —
 	// "{1}{R}", "{W/U}", "{X}{B}{B}", etc. Empty for lands and for
 	// placeholder / demo-seed cards. Rendered by the client as a
@@ -730,6 +738,13 @@ type ActivatedAbilityView struct {
 	ManaCost      string `json:"mana_cost,omitempty"`
 	LifeCost      int    `json:"life_cost,omitempty"`
 	SorcerySpeed  bool   `json:"sorcery_speed,omitempty"`
+	// LoyaltyCost is the loyalty component of a planeswalker's
+	// loyalty ability: +N / 0 / −N (CR 606.1). A POINTER because [0]
+	// is a real printed cost and `omitempty` would erase it — the
+	// client needs "no loyalty component" and "costs zero loyalty"
+	// to stay different, since only the first leaves the ability
+	// activatable more than once a turn. Added in S27 (#329, #334).
+	LoyaltyCost *int `json:"loyalty_cost,omitempty"`
 	// SacrificeLabel / SacrificeOptions describe a "Sacrifice a
 	// creature"-style cost: the clause and the permanents the
 	// controller may pay with right now. Absent when the cost has
@@ -1034,6 +1049,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 			continue
 		}
 		c.ActivatedAbilities = viewOfActivatedAbilities(g, card, controller)
+		c.LoyaltyActivated = g.LoyaltyActivatedThisTurn[instanceID]
 		stampManaSacrificeOptions(g, card, controller, c.ManaAbilities)
 	}
 }
@@ -1913,6 +1929,13 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 			ManaCost:      a.Cost.Mana,
 			LifeCost:      a.Cost.Life,
 			SorcerySpeed:  a.SorcerySpeed,
+			LoyaltyCost:   a.Cost.Loyalty,
+		}
+		// CR 606.5 is carried by the loyalty component itself, so a
+		// catalog entry doesn't have to remember to set SorcerySpeed
+		// — but the client greys on this flag, so stamp it.
+		if a.Cost.Loyalty != nil {
+			v.SorcerySpeed = true
 		}
 		if a.Cost.SacrificeOther != nil {
 			v.SacrificeLabel = a.Cost.SacrificeOther.Label
@@ -1937,7 +1960,14 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 // sacrifice cost). Caller must hold g.mu.
 func abilityLegalTargets(g *game.Game, caster uuid.UUID, spec *game.TargetSpec) *LegalTargetsView {
 	lt := g.LegalTargetsForEffect(caster, spec)
-	out := &LegalTargetsView{}
+	// Min / Max come off the spec, exactly as the cast-time path
+	// stamps them (viewOfLegalTargets). Omitting them shipped every
+	// ability clause to the client as min 0 / max 0 — "unbounded,
+	// confirm with nothing picked" — which is right for no clause
+	// the catalog actually declares. Teferi's "up to one target"
+	// is the first clause whose Min is genuinely 0, so the
+	// difference became visible.
+	out := &LegalTargetsView{Min: spec.Min, Max: spec.Max}
 	for _, id := range lt.Players {
 		out.Players = append(out.Players, id.String())
 	}

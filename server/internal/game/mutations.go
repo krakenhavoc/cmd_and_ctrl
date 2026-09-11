@@ -1548,27 +1548,40 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 	return nil
 }
 
-// ActivateLoyalty applies a planeswalker's loyalty ability. Sandbox
-// shape: the engine doesn't model the activation as a proper stack
-// item (full loyalty-on-stack lands in S14+ alongside the effect
-// catalog). Instead, the loyalty delta is applied immediately and
-// the once-per-turn flag is set. Sorcery-speed gate enforced per
-// CR 606.5.
+// ActivateLoyalty applies a planeswalker's loyalty ability by hand.
+// Sandbox shape: no stack item, no effect — the loyalty delta is
+// applied immediately and the once-per-turn flag is set, and the
+// players work out what the ability did between themselves.
+//
+// This is NOT the path a catalog planeswalker takes. A loyalty
+// ability the catalog knows about is an ordinary CR 602 activation
+// with an AbilityCost.Loyalty component (see activated.go): it goes
+// on the stack, it can target, and it runs an Effect. This action
+// survives for the ~thousand planeswalkers with no catalog entry,
+// the same way manual `tap` survives for cards whose abilities the
+// engine can't express — which is the engine's non-catalog promise
+// (ADR 0032).
 //
 // `delta` is the loyalty change announced by the ability:
-// +1 / +2 / -3 / etc. Applied via AddCounter to the planeswalker's
-// "loyalty" counter; negative deltas that would drive loyalty below
-// zero are clamped (the planeswalker leaves via SBA in sub-PR 7).
+// +1 / +2 / -3 / etc, applied to the planeswalker's "loyalty"
+// counter.
 //
 // Returns:
 //   - ErrCardNotFound if planeswalkerID is not on the battlefield.
+//   - ErrNotAPlaneswalker if it is on the battlefield but isn't one
+//     (CR 606.1). Before #329 this action would hand loyalty
+//     counters to a Mountain.
+//   - ErrCardCallerMismatch if the activator doesn't control it.
+//   - ErrInsufficientLoyalty if a negative delta would remove more
+//     counters than the planeswalker has (CR 606.3). Paying down to
+//     exactly zero is legal; the 704.5i SBA takes it from there.
 //   - ErrSorcerySpeedRequired if the gate is closed.
 //   - ErrLoyaltyAlreadyActivated if the planeswalker has already
 //     activated a loyalty ability this turn (CR 606.5).
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 //
-// S13.1.
+// S13.1; gates tightened in S27 (#329, #334).
 func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string, delta int) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -1598,21 +1611,31 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	if pw == nil {
 		return ErrCardNotFound
 	}
-	if pw.Counters == nil {
-		pw.Counters = make(map[string]int)
+	// CR 606.1 / 606.2: a loyalty ability belongs to a planeswalker,
+	// and only its controller may activate it. Neither was checked
+	// before #329, so this action was a counter faucet pointed at
+	// any card on the table.
+	if !pw.IsPlaneswalker() {
+		return ErrNotAPlaneswalker
 	}
-	pw.Counters["loyalty"] += delta
-	if pw.Counters["loyalty"] <= 0 {
-		// Loyalty reaching zero is the SBA's responsibility (sub-PR 7);
-		// here we just keep the bookkeeping clean by removing the key
-		// when it drops to zero. SBA will pick up "loyalty == 0" by
-		// counting positive entries.
-		if pw.Counters["loyalty"] == 0 {
-			delete(pw.Counters, "loyalty")
-		}
-		// Negative is allowed for the moment — clamping would discard
-		// "minus more than you have" intent that the SBA needs to
-		// see. Sub-PR 7 will read this as "loyalty <= 0".
+	if pw.Controller != playerID {
+		return ErrCardCallerMismatch
+	}
+	// CR 606.3: can't remove more loyalty than is there. The old
+	// comment here argued for letting the counter go negative so the
+	// SBA could see the intent, but the SBA reads "loyalty <= 0" and
+	// an activation the rules forbid should be refused at announce,
+	// not paid and then cleaned up.
+	if delta < 0 && pw.Counters[CounterLoyalty] < -delta {
+		return ErrInsufficientLoyalty
+	}
+	// applyCounterLocked deletes the key at zero and emits the
+	// counter event, which is what every other counter mutation in
+	// the engine does; the hand-rolled map write here predated it.
+	// Paying a cost is not an effect (CR 121.1), so this
+	// deliberately bypasses the CR 614 counter-replacement pipeline.
+	if err := g.applyCounterLocked(planeswalkerID, CounterLoyalty, delta); err != nil {
+		return err
 	}
 	if g.LoyaltyActivatedThisTurn == nil {
 		g.LoyaltyActivatedThisTurn = make(map[uuid.UUID]bool)

@@ -37,8 +37,20 @@ func (e *enumerator) activatedMoves() {
 		}
 		abilities := game.ActivatedAbilitiesForCard(*source)
 		for idx, ab := range abilities {
-			if ab.SorcerySpeed && !speed {
+			if (ab.SorcerySpeed || ab.Cost.Loyalty != nil) && !speed {
 				continue
+			}
+			// CR 606: a loyalty ability needs a planeswalker, one
+			// activation per turn, and enough counters to pay a −N.
+			// Mirrors ActivateCatalogAbility so a policy never
+			// proposes a move the engine will bounce.
+			if ab.Cost.Loyalty != nil {
+				if !source.IsPlaneswalker() || g.LoyaltyActivatedThisTurn[source.InstanceID] {
+					continue
+				}
+				if n := *ab.Cost.Loyalty; n < 0 && source.Counters[game.CounterLoyalty] < -n {
+					continue
+				}
 			}
 			if ab.Cost.Tap {
 				if source.Tapped {
