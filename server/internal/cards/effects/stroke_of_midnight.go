@@ -16,9 +16,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "9a107e48-3d50-4941-95b1-10f2b29a4245",
-		Name:     "Stroke of Midnight",
-		Targets:  TargetPermanent("target nonland permanent", Nonland()),
+		OracleID:     "9a107e48-3d50-4941-95b1-10f2b29a4245",
+		Name:         "Stroke of Midnight",
+		Completeness: CompletenessFull,
+		Targets:      TargetPermanent("target nonland permanent", Nonland()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

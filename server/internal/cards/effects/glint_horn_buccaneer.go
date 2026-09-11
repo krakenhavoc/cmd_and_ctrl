@@ -20,6 +20,8 @@ func init() {
 	Register(Spec{
 		OracleID:        "64ad5657-78e9-4f34-8877-18c4f51fff9a",
 		Name:            "Glint-Horn Buccaneer",
+		Completeness:    CompletenessCaveats,
+		Caveats:         []string{"The \"{1}{R}, discard a card: draw a card\" ability while attacking cannot be activated; only the discard damage trigger works."},
 		PrintedKeywords: []string{"haste"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDiscardCard},

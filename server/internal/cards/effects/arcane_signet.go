@@ -18,8 +18,9 @@ func init() {
 	// up showing only the legal colors (W/U/G for a Bant deck, all
 	// five for a Sisay deck, etc.).
 	Register(Spec{
-		OracleID: "0bc7f093-bef0-4f1a-852c-4b75ebf54838",
-		Name:     "Arcane Signet",
+		OracleID:     "0bc7f093-bef0-4f1a-852c-4b75ebf54838",
+		Name:         "Arcane Signet",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",

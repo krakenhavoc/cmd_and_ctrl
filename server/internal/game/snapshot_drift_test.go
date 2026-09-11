@@ -98,7 +98,6 @@ var gameFields = plan(
 	"Listeners", rebuilt, "process-lifetime singletons installed by NewGame; a new binary's listener set wins",
 	"BuiltinReplacements", rebuilt, "registered by NewGame, not per-game state",
 	"rng", rebuilt, "rebuilt by wrapping the restored rngState",
-	"recompute", rebuilt, "a mutex guarding recompute work; zero value is correct",
 	"mu", rebuilt, "a fresh receiver owns its own lock, exactly as Clone does",
 
 	"TurnScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.TurnScopedStatics",
@@ -107,6 +106,7 @@ var gameFields = plan(
 	"replacementsAppliedThisEvent", dropped, "per-pipeline-call scope, defer-cleared; always empty between Applies",
 	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty",
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
+	"simultaneousExit", dropped, "per-sweep scope, defer-cleared; a snapshot is never taken mid-wipe, so it is always empty between mutations",
 )
 
 var cardFields = plan(
@@ -152,6 +152,10 @@ var cardFields = plan(
 	// a restore that dropped it would silently un-equip the board.
 	"AttachedTo", carried, "",
 	"AttachedAt", carried, "",
+	// The layer-2 control baseline. Carried rather than rebuilt: a
+	// restore that dropped it would re-capture the CURRENT (stolen)
+	// controller as the base, and the creature would never go home.
+	"BaseController", carried, "",
 	// S16.5 copy effects (#159 / #335). Which card a permanent is a
 	// copy of is not derivable from anything else on the board, and
 	// a restore that lost it would resurrect every clone as the 0/0
@@ -213,6 +217,11 @@ var stackItemFields = plan(
 	"CastFromZone", carried, "",
 	"AltCost", carried, "",
 	"SplitSecond", carried, "",
+	// S30 spell copies (#95). Carried, and it has to be: a restore
+	// that lost the flag would route a resolving copy to a graveyard
+	// as though it were a card, putting a phantom Twincast in
+	// somebody's yard where Tarmogoyf can count it.
+	"IsCopy", carried, "",
 	"Seq", carried, "",
 	"Ordered", carried, "",
 
@@ -261,11 +270,19 @@ var pendingChoiceFields = plan(
 	"PayCost", carried, "",
 	"SearchCards", carried, "",
 	"SearchMax", carried, "",
+	// S28 cascade: which card the "you may cast it without paying
+	// its mana cost" prompt is offering. Carried for the same reason
+	// SacrificeOptions is — the prompt is meaningless without it, and
+	// a restored game that forgot it would render an offer about
+	// nothing.
+	"MayCastCard", carried, "",
 
 	"replacementResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"pickTargetResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"copySpellResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"triggerResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"payUnlessResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"mayCastResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"searchResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"scryResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
 )

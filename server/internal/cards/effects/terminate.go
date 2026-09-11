@@ -16,9 +16,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // with Pongify and Rapid Hybridization — grep for this sentence.
 func init() {
 	Register(Spec{
-		OracleID: "6257c2fd-005f-41e3-8a72-af76df1eb134",
-		Name:     "Terminate",
-		Targets:  TargetCreature("target creature"),
+		OracleID:     "6257c2fd-005f-41e3-8a72-af76df1eb134",
+		Name:         "Terminate",
+		Completeness: CompletenessFull,
+		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

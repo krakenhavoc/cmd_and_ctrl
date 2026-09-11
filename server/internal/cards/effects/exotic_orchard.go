@@ -39,8 +39,10 @@ package effects
 // planner evaluates the same ProducedFunc the activation will.
 func init() {
 	Register(Spec{
-		OracleID: "27b047e3-0d41-45e2-98e9-9391d7923a1e",
-		Name:     "Exotic Orchard",
+		OracleID:     "27b047e3-0d41-45e2-98e9-9391d7923a1e",
+		Name:         "Exotic Orchard",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Opposing lands that themselves copy other lands' mana (Reflecting Pool, another Exotic Orchard) are ignored when working out the colors available."},
 		ManaAbilities: []ManaAbility{{
 			Cost:         ManaAbilityCost{Tap: true},
 			ProducedFunc: ProducedFromOpponentLands(),

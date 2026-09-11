@@ -20,9 +20,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // stack, not in the graveyard, so it is never a legal candidate.
 func init() {
 	Register(Spec{
-		OracleID: "e6e4a8bd-5c40-4654-8de1-0da9afed90fd",
-		Name:     "Regrowth",
-		Targets:  TargetCardInGraveyard("target card in your graveyard", YouOwn()),
+		OracleID:     "e6e4a8bd-5c40-4654-8de1-0da9afed90fd",
+		Name:         "Regrowth",
+		Completeness: CompletenessFull,
+		Targets:      TargetCardInGraveyard("target card in your graveyard", YouOwn()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

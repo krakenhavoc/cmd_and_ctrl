@@ -58,6 +58,7 @@
     tapCostLimit,
     alternativeCostsOf,
     alternativeCostByKey,
+    altCostPayOptions,
     applyCastChoices,
     isLegalCardTarget,
     isLegalPlayerTarget,
@@ -66,12 +67,15 @@
     canConfirm,
     setConfirmHandler,
     type CastChoices,
+    type CastSourceZone,
     type TargetingMode,
     type TargetingState,
     type TargetRef,
   } from "../../targeting";
   import XCostModal from "./XCostModal.svelte";
   import SacrificeCostModal from "./SacrificeCostModal.svelte";
+  import CrewCostModal from "./CrewCostModal.svelte";
+  import AltCostPaymentModal from "./AltCostPaymentModal.svelte";
   import ModePickerModal from "./ModePickerModal.svelte";
   import DiscardCostModal from "./DiscardCostModal.svelte";
   import AlternativeCostModal from "./AlternativeCostModal.svelte";
@@ -299,6 +303,42 @@
     continueCast(card, { ...choices, tapIDs: ids });
   }
 
+  // S28: the non-mana half of a chosen alternative cost — Force of
+  // Will's "exile a blue card from your hand", Daze's "return an
+  // Island you control", Solitude's evoke pitch. Opens immediately
+  // after the alternative-cost picker, because it pays the cost that
+  // picker just chose; every other cost prompt comes after it.
+  //
+  // The options can live in either zone (hand for a pitch,
+  // battlefield for a bounce), so the lookup searches both rather
+  // than assuming one.
+  let altPayPromptCard = $state<CardView | null>(null);
+  let altPayPromptChoices: CastChoices = {};
+
+  const altPayOffer = $derived(
+    altPayPromptCard
+      ? alternativeCostByKey(altPayPromptCard, altPayPromptChoices.altCost)
+      : undefined,
+  );
+
+  const altPayOptions = $derived.by(() => {
+    if (!altPayPromptCard || !viewerID) return [];
+    const ids = new Set(altCostPayOptions(altPayOffer) ?? []);
+    if (ids.size === 0) return [];
+    const me = view.seats.find((s) => s.id === viewerID);
+    const pool = [...(me?.hand.cards ?? []), ...view.battlefield.cards];
+    return pool.filter((c) => ids.has(c.instance_id));
+  });
+
+  function confirmAltPay(instanceID: string): void {
+    const card = altPayPromptCard;
+    const choices = altPayPromptChoices;
+    altPayPromptCard = null;
+    altPayPromptChoices = {};
+    if (!card) return;
+    afterAltCostPayment(card, { ...choices, altCostIDs: [instanceID] });
+  }
+
   // afterAltCost / afterDiscardCost / afterCastCosts are the seams
   // between the cost prompts and the rest of the cast flow, so adding
   // a cost kind doesn't mean editing every earlier prompt's confirm.
@@ -308,6 +348,18 @@
   // continues through the discard / sacrifice prompts rather than
   // short-circuiting past them.
   function afterAltCost(card: CardView, choices: CastChoices): void {
+    // The chosen offer may charge a card as well as — or instead of —
+    // mana. Ask for it before anything else, matching the order the
+    // server validates the cast in.
+    if (altCostPayOptions(alternativeCostByKey(card, choices.altCost)) !== undefined) {
+      altPayPromptChoices = choices;
+      altPayPromptCard = card;
+      return;
+    }
+    afterAltCostPayment(card, choices);
+  }
+
+  function afterAltCostPayment(card: CardView, choices: CastChoices): void {
     if (discardCostOf(card) > 0) {
       discardPromptChoices = choices;
       discardPromptCard = card;
@@ -357,12 +409,15 @@
   // this one — costs, modes, targets, even whether the card touches
   // the stack at all — depends on which of them the player meant.
   let facePromptCard = $state<CardView | null>(null);
+  let facePromptZone: CastSourceZone | undefined;
   function confirmFace(face: number): void {
     const card = facePromptCard;
+    const fromZone = facePromptZone;
     facePromptCard = null;
+    facePromptZone = undefined;
     if (!card) return;
     if (face <= 0) {
-      afterFace(card, {});
+      afterFace(card, fromZone ? { fromZone } : {});
       return;
     }
     // Run the rest of the chain against the CHOSEN face, so the
@@ -370,7 +425,7 @@
     // rather than the front's. cardAsFace drops the announce-prompt
     // fields, which describe face 0's catalog spec and would be
     // wrong here — see the note on cardAsFace.
-    afterFace(cardAsFace(card, face), { face });
+    afterFace(cardAsFace(card, face), fromZone ? { face, fromZone } : { face });
   }
 
   function afterFace(card: CardView, choices: CastChoices): void {
@@ -382,12 +437,23 @@
     afterAltCost(card, choices);
   }
 
-  function handlePlayCard(card: CardView): void {
+  // handlePlayCard is the head of the chain. `fromZone` is undefined
+  // for the hand, which is every cast the board's own surfaces fire;
+  // S29's zone browser passes "graveyard" so a flashback cast walks
+  // the identical prompt chain and lands the zone on the payload via
+  // CastChoices.
+  //
+  // The face picker's confirm re-enters at afterFace with its own
+  // choices object, so the zone has to be seeded here rather than at
+  // the end — otherwise a modal DFC cast out of the graveyard would
+  // lose it.
+  function handlePlayCard(card: CardView, fromZone?: CastSourceZone): void {
     if (needsFacePicker(card)) {
+      facePromptZone = fromZone;
       facePromptCard = card;
       return;
     }
-    afterFace(card, {});
+    afterFace(card, fromZone ? { fromZone } : {});
   }
 
   // S20 sub-PR 4: a modal spell asks for its mode(s) after X and
@@ -496,6 +562,7 @@
           source_card_id: state.card.instance_id,
           ability_index: state.ability.index,
           sacrifice_ids: state.ability.sacrificeIDs,
+          crew_ids: state.ability.crewIDs,
           targets,
         },
         viewerID ?? undefined,
@@ -535,6 +602,18 @@
     return view.battlefield.cards.filter((c) => ids.has(c.instance_id));
   });
 
+  // S27: a Vehicle's crew cost. Its own prompt rather than a reuse of
+  // the sacrifice picker because crew is a many-pick with a POWER
+  // floor, not a single pick — see CrewCostModal.
+  let crewPrompt = $state<{ card: CardView; ability: ActivatedAbilityView } | null>(null);
+
+  const crewOptions = $derived.by(() => {
+    const p = crewPrompt;
+    if (!p) return [];
+    const ids = new Set(p.ability.crew_options?.cards ?? []);
+    return view.battlefield.cards.filter((c) => ids.has(c.instance_id));
+  });
+
   function handleActivateAbility(card: CardView, index: number): void {
     const ability = (card.activated_abilities ?? []).find((a) => a.index === index);
     if (!ability) return;
@@ -542,7 +621,18 @@
       sacrificePrompt = { kind: "ability", card, ability };
       return;
     }
+    if (ability.crew_cost) {
+      crewPrompt = { card, ability };
+      return;
+    }
     continueActivation(card, ability, []);
+  }
+
+  function confirmCrew(instanceIDs: string[]): void {
+    const p = crewPrompt;
+    crewPrompt = null;
+    if (!p) return;
+    continueActivation(p.card, p.ability, [], instanceIDs);
   }
 
   // S21: a mana ability with a sacrifice-another cost, handed up by
@@ -593,9 +683,10 @@
     card: CardView,
     ability: ActivatedAbilityView,
     sacrificeIDs: string[],
+    crewIDs: string[] = [],
   ): void {
     if (ability.legal_targets) {
-      beginTargetingForAbility(card, ability, sacrificeIDs);
+      beginTargetingForAbility(card, ability, sacrificeIDs, crewIDs);
       return;
     }
     sendAction(
@@ -604,6 +695,7 @@
         source_card_id: card.instance_id,
         ability_index: ability.index,
         sacrifice_ids: sacrificeIDs,
+        crew_ids: crewIDs,
       },
       viewerID ?? undefined,
     );
@@ -615,15 +707,20 @@
   // elsewhere). A cast prompt already in flight is replaced — the
   // trigger's target is owed first.
   $effect(() => {
+    // S27: the legend rule is answered through the same flow — it is
+    // the same question shape (pick one from a server-computed set)
+    // and the banner's confirm sends the same payload. The server
+    // routes by the choice's kind, so the client needs no second
+    // component and no second code path.
     const mine = (view.pending_choices ?? []).find(
-      (c) => c.kind === "pick_target" && c.chooser === viewerID,
+      (c) => (c.kind === "pick_target" || c.kind === "legend_rule") && c.chooser === viewerID,
     );
     const cur = $targeting;
     if (mine) {
       if (cur?.choiceID === mine.id) return;
       const source = findCardAnywhere(mine.source) ?? {
         instance_id: mine.source ?? "",
-        name: "Triggered ability",
+        name: mine.kind === "legend_rule" ? "Legend rule" : "Triggered ability",
         owner: viewerID ?? "",
         controller: viewerID ?? "",
       };
@@ -799,6 +896,13 @@
     onConfirm={confirmSacrifice}
     onCancel={() => (sacrificePrompt = null)}
   />
+  <CrewCostModal
+    card={crewPrompt?.card ?? null}
+    ability={crewPrompt?.ability ?? null}
+    options={crewOptions}
+    onConfirm={confirmCrew}
+    onCancel={() => (crewPrompt = null)}
+  />
   <FacePickerModal
     card={facePromptCard}
     onConfirm={confirmFace}
@@ -810,6 +914,16 @@
     onCancel={() => {
       altCostPromptCard = null;
       altCostPromptChoices = {};
+    }}
+  />
+  <AltCostPaymentModal
+    card={altPayPromptCard}
+    offer={altPayOffer ?? null}
+    options={altPayOptions}
+    onConfirm={confirmAltPay}
+    onCancel={() => {
+      altPayPromptCard = null;
+      altPayPromptChoices = {};
     }}
   />
   <DiscardCostModal
@@ -869,6 +983,7 @@
       {sendAction}
       onClose={closeZoneBrowser}
       onTargetCard={handleTargetCard}
+      onCastCard={handlePlayCard}
     />
   {/if}
   {#if $cardMenu}

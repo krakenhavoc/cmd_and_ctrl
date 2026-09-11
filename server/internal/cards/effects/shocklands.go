@@ -130,8 +130,10 @@ func init() {
 		// the last entry's name.
 		name := t.name
 		Register(Spec{
-			OracleID: t.oracleID,
-			Name:     name,
+			OracleID:     t.oracleID,
+			Name:         name,
+			Completeness: CompletenessCaveats,
+			Caveats:      []string{"A shockland put onto the battlefield by another spell always enters tapped — the chance to pay 2 life is only offered when you play it as a land."},
 			Replacements: []game.ReplacementEffect{
 				EntersTappedUnlessYouPayLife(name, shocklandLifeCost),
 			},

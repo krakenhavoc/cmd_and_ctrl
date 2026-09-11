@@ -326,6 +326,24 @@ type Card struct {
 	// game and checks exactly this.
 	ActiveFace int
 
+	// BaseController is the controller this permanent reverts to when
+	// every control-changing continuous effect on it ends (CR 613.1b)
+	// — the player who controlled it when it entered the
+	// battlefield.
+	//
+	// Captured LAZILY by the layer recompute (which runs before
+	// anything can read a control-changed value, because every
+	// battlefield entry bumps the layer version) and cleared by
+	// MoveCard on battlefield exit, so it is zero exactly when "the
+	// current controller IS the base" holds. That is why no write
+	// site had to learn about it: all ~15 places that assign
+	// Card.Controller do so as a permanent ENTERS, before the
+	// capture.
+	//
+	// Meaningless off the battlefield. Added in S24 with the layer-2
+	// control change (Mind Control).
+	BaseController uuid.UUID
+
 	// AttachedTo is the CR 301.5c / CR 303.4 attachment relation,
 	// stored on the ATTACHED object (the Equipment or the Aura) and
 	// pointing at its host. Zero value (Kind == "") means

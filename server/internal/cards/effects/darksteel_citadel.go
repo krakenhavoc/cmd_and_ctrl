@@ -14,31 +14,26 @@ package effects
 // ability only fires for lands with the BASIC supertype, so an
 // unregistered Citadel taps for nothing.
 //
-// DECLARED SIMPLIFICATION — INDESTRUCTIBLE IS INERT TODAY. The
-// keyword is declared in PrintedKeywords so it lands in
-// Card.Effective().Abilities and reads correctly to anything
-// inspecting the card, but the engine does not yet ENFORCE it:
-// game/keywords.go honours twelve combat keywords (flying, reach,
-// first strike, double strike, deathtouch, lifelink, trample,
-// vigilance, menace, defender, haste, flash) and indestructible is
-// not among them, so DestroyPermanentForEffect routes the Citadel to
-// the graveyard like any other permanent. That is #176.
+// INDESTRUCTIBLE IS LIVE AS OF S25 (#77). This file used to carry a
+// declared simplification saying the keyword was inert — declared in
+// PrintedKeywords so it read correctly to anything inspecting the
+// card, but enforced nowhere, so DestroyPermanentForEffect routed
+// the Citadel to the graveyard like any other permanent. S25 taught
+// the destruction path CR 702.12 (server/internal/game/
+// indestructible.go), and the prediction that note made came true
+// exactly: nothing on this card changed. The keyword was already
+// declared, so enforcement picked it up for free, and deleting the
+// note was the entire diff.
 //
-// This ships the card WEAKER than printed, never stronger, which is
-// the acceptable direction. It is declared here rather than left
-// implicit because #350 is the ticket about simplification notes
-// outliving their blockers: when #176 lands, this note is the thing
-// to delete, and nothing else on the card needs to change — the
-// keyword is already declared, so enforcement picks it up for free.
-//
-// Compare Overrun's file, which declined to ship Heroic Intervention
-// because EVERY word of that card would have been a declared no-op.
-// Two of Darksteel Citadel's three lines — the artifact land type and
-// the mana ability — are fully live.
+// All three of the Citadel's lines are now live: the artifact land
+// type, the mana ability, and indestructible. It really does survive
+// the sweepers its decks fear.
 func init() {
 	Register(Spec{
 		OracleID:        "8dc067bf-f78f-4ac4-b6e7-b305c42cf0bc",
 		Name:            "Darksteel Citadel",
+		Completeness:    CompletenessCaveats,
+		Caveats:         []string{"Indestructible is not enforced yet, so the Citadel is destroyed by board wipes and removal like a normal land."},
 		PrintedKeywords: []string{"indestructible"},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

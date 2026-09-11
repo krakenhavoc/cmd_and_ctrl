@@ -35,6 +35,13 @@ const flash = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill=
 // everyone including you.
 const hexproof = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L 5 5.5 L 5 11 C 5 15.5 8 19.5 12 21 C 16 19.5 19 15.5 19 11 L 19 5.5 Z"/><circle cx="12" cy="11.5" r="3"/><path d="M9.2 8.7 L 14.8 14.3"/></svg>`;
 
+// S25 indestructible — a shield with a crack that stops short of
+// going through it. Deliberately NOT the hexproof shield with a
+// different overlay: the two keywords protect against different
+// things and a player scanning a badge row should not have to read
+// the interior to tell them apart.
+const indestructible = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 L 4 4.5 L 4 11.5 C 4 16.5 7.5 20.5 12 22 C 16.5 20.5 20 16.5 20 11.5 L 20 4.5 Z"/><path d="M12 5 L 9.5 10 L 13 12 L 10.5 17"/></svg>`;
+
 const shroud = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4 C 8 7 16 7 20 4 L 20 15 C 20 19 16.5 21 12 21 C 7.5 21 4 19 4 15 Z"/><path d="M8 11 L 16 11"/><path d="M8.5 15 L 15.5 15"/></svg>`;
 
 export const KEYWORD_ICONS: Record<string, string> = {
@@ -52,4 +59,5 @@ export const KEYWORD_ICONS: Record<string, string> = {
   flash,
   hexproof,
   shroud,
+  indestructible,
 };

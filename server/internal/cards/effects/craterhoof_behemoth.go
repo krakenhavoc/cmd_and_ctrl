@@ -57,6 +57,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "8c52bd39-0586-48ca-b263-17210cf9feb6",
 		Name:            "Craterhoof Behemoth",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"haste"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},

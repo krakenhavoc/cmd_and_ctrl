@@ -274,6 +274,27 @@ func (g *Game) zonesOfKindLocked(kind ZoneKind) []*Zone {
 			}
 		}
 		return out
+	case ZoneHand:
+		// S28: "exile a blue card from your hand" (Force of Will,
+		// Solitude). Every seat's hand, narrowed by the spec's own
+		// predicate — which for every clause that reaches here says
+		// "YOUR hand", so the constructor in the effects package
+		// (CardInYourHand) bakes the ownership check in rather than
+		// leaving it to a card file to remember.
+		//
+		// Hidden-zone caution: nothing in the catalog TARGETS a card
+		// in hand, and nothing should — a hand is hidden information
+		// and a legal-target list over it would leak an opponent's
+		// hand size and contents to the picker. The one consumer is
+		// the NON-targeting candidate scan (SpecCandidatesForEffect),
+		// computed per viewer for their own hand.
+		out := make([]*Zone, 0, len(g.Seats))
+		for _, p := range g.Seats {
+			if p != nil && p.Hand != nil {
+				out = append(out, p.Hand)
+			}
+		}
+		return out
 	}
 	return nil
 }

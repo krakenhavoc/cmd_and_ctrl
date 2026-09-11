@@ -21,8 +21,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (draw first, so a drawn card is a legal discard).
 func init() {
 	Register(Spec{
-		OracleID: "a07698f6-5ad5-49a3-9da2-f82d407f5cd7",
-		Name:     "Izzet Charm",
+		OracleID:     "a07698f6-5ad5-49a3-9da2-f82d407f5cd7",
+		Name:         "Izzet Charm",
+		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			Mode("Counter target noncreature spell unless its controller pays {2}.",
 				TargetSpell("target noncreature spell", Noncreature())),

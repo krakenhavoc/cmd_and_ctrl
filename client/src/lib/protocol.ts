@@ -191,6 +191,44 @@ export interface GameView {
   // discarder. Each entry carries its own options[] already filtered
   // per the viewer's visibility.
   pending_choices?: PendingChoiceView[];
+  // S31: the closed list of moves THE VIEWER'S OWN SEAT may make
+  // right now, enumerated server-side by `internal/legal`. The server
+  // never ships another seat's list — an opponent's moves name the
+  // cards in their hand — so this is always "mine".
+  //
+  // Absent means NO INFORMATION, not "nothing is legal": the field is
+  // omitted whenever the seat owes no decision, and an older server
+  // omits it entirely. Client predicates stay permissive when it is
+  // missing and let the server do the rejecting.
+  legal_moves?: LegalMoveView[];
+}
+
+// LegalMoveView mirrors `legal.Move` server-side (ADR 0033 §1): one
+// fully-specified thing the viewer's seat may do right now.
+//
+// `params` is EXACTLY the ActionPayload params that perform the move,
+// so `{ type, player, params }` can be sent to the server unaltered
+// and is contractually guaranteed to be accepted.
+//
+// Two caps apply, and both matter to anything reading this list.
+// Target and mode expansion is capped at 12 moves per source card,
+// and the whole list is capped at 48 — past which the server keeps
+// one move per (source, kind) and drops the alternatives. The
+// invariant you may rely on is "every card with a legal move has at
+// least one entry here". Do NOT read it as the complete set of legal
+// targets; that is what CardView.legal_targets is for.
+export interface LegalMoveView {
+  type: string;
+  player: string;
+  params?: Record<string, unknown>;
+  kind: "pass" | "land" | "cast" | "activate" | "mana" | "attack" | "block" | "choice" | "mulligan";
+  label: string;
+  // Instance ID of the card the move is about, when there is one.
+  // Moves with no card (pass_priority, keep_hand, mulligan) carry the
+  // nil UUID rather than omitting the key — Go's omitempty does not
+  // apply to a UUID array — so join on equality with a real instance
+  // ID and never on presence.
+  source?: string;
 }
 
 // PendingChoiceView mirrors `protocol.PendingChoiceView` server-side.
@@ -232,6 +270,13 @@ export interface PendingChoiceView {
     // is a legal "fail to find" (CR 701.19c), so search_max is the
     // ceiling and the floor is zero.
     | "search_library"
+    // S28 cascade (CR 702.85): "you may cast it without paying its
+    // mana cost". Answered with the shared yes/no {choice_id, apply}
+    // payload — apply=true takes the offer, and the server stamps a
+    // free-cast permission on the card so it can be cast out of exile
+    // this turn. `options` carries the one card being offered, so the
+    // prompt shows the card rather than naming it in a sentence.
+    | "may_cast"
     // S16.5: "you may have this creature enter as a copy of ..."
     // (Clone, Phyrexian Metamorph, Spark Double, Sakashima the
     // Impostor). Options carries the permanents that may be copied —
@@ -360,6 +405,10 @@ export interface StackItemView {
   // for anyone deciding whether to respond: an overloaded Cyclonic
   // Rift is a one-sided wipe, a hard-cast one is a single bounce.
   alt_cost?: string;
+  // S30: a CR 706.10 spell copy rather than a cast card. The copy
+  // and its source look identical on the stack, and which is which
+  // decides what countering one leaves behind.
+  is_copy?: boolean;
 }
 
 // TargetRefView mirrors `protocol.TargetRefView` server-side: a
@@ -482,6 +531,11 @@ export interface AdditionalCostView {
   // Present-and-empty means the cost is unpayable, so the spell is
   // uncastable.
   sacrifice_options?: LegalTargetsView;
+  // S23: a "pay X life" clause (Toxic Deluge). The X prompt has to
+  // open for this card even though its printed mana cost has no {X},
+  // and the announced X is both the life paid and the number the
+  // spell's own text uses.
+  demands_x?: boolean;
   label?: string;
 }
 
@@ -501,6 +555,19 @@ export interface AlternativeCostView {
   // fires straight away.
   target_mode?: string;
   legal_targets?: LegalTargetsView;
+  // S28: the "pay N life" half of the cost (Force of Will's 1, Snuff
+  // Out's 4). Absent for the costs that charge none. The server
+  // enforces the life total; this is for the label.
+  life?: number;
+  // S28: the cards that can pay the cost's card-shaped half — the
+  // blue cards in your hand for Force of Will, the Islands you
+  // control for Daze. The chosen instance ID rides back on cast_spell
+  // as `alt_cost_ids`. Absent when the cost charges no cards (every
+  // S22 keyword); present-and-empty means you have nothing that can
+  // pay, so the offer is visible but unusable.
+  pay_options?: LegalTargetsView;
+  // S28: the picker's prompt copy for `pay_options` ("a blue card").
+  pay_label?: string;
 }
 
 // TapCostView is the "tap permanents you control to help pay for
@@ -549,6 +616,11 @@ export interface ExilePlayView {
   // impulse exile, which charges the printed cost. Note that
   // `mana_cost` on the card still carries the printed value.
   cost_override?: string;
+  // S29 warp: the earliest turn number the grant is live on — "you
+  // may cast it from exile ON A LATER TURN". Absent for every grant
+  // that is live as soon as it is made, which is all of impulse
+  // exile and airbend.
+  not_before_turn?: number;
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a
@@ -574,6 +646,18 @@ export interface ActivatedAbilityView {
   // permanents the controller can pay it with right now.
   sacrifice_label?: string;
   sacrifice_options?: { players?: string[]; cards?: string[] };
+  // S27: a Vehicle's crew cost (CR 702.122a). crew_cost is the
+  // number that the tapped creatures' TOTAL POWER must reach;
+  // crew_options lists the creatures that could pay it right now —
+  // untapped creatures the controller controls, summoning-sick ones
+  // INCLUDED, because tapping to crew is not paying a {T} cost.
+  //
+  // Unlike a sacrifice cost this is a many-pick prompt with a floor
+  // rather than a count: any number of creatures is legal as long as
+  // the running total reaches crew_cost, and overshooting is fine.
+  // The picks ride activate_ability as `crew_ids`.
+  crew_cost?: number;
+  crew_options?: LegalTargetsView;
   // Present when the ability targets. A full LegalTargetsView since
   // #334: the server now stamps the clause's min / max (it always
   // had them; abilityLegalTargets just never copied them across),
@@ -731,6 +815,14 @@ export interface CardView {
   // flow opens a picker after X and before targeting. Absent for
   // nearly every card.
   tap_cost?: TapCostView;
+  // S29: set on a card sitting in a zone its own text opens as a
+  // cast source — a flashback card in the graveyard. The zone
+  // browser keys its cast button off this, the way exile keys its
+  // impulse button off `exile_play`. Never set on hand or
+  // command-zone cards: those surfaces are cast surfaces for
+  // everything in them. The cost to pay rides `alternative_costs`,
+  // already filtered to the offers claimable from this zone.
+  castable_here?: boolean;
   // S21 sub-PR 6: present on a card in exile that someone may play
   // this turn. Absent for ordinary exile, which is nearly all of it.
   exile_play?: ExilePlayView;

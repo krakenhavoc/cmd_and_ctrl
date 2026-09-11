@@ -61,6 +61,7 @@ cmd_and_ctrl/
 │   │   ├── auth/        # pluggable Authenticator interface + MemoryAuthenticator + HTTP middleware
 │   │   ├── lobby/       # GameMeta registry, invite flow, lobby HTTP handler, WSAuthorizer, deck upload
 │   │   ├── cards/       # Scryfall index (streaming load) + disk-backed image cache + /cards routes
+│   │   ├── catalog/     # public /catalog routes — what the engine automates + how completely (ADR 0042)
 │   │   ├── bugstore/    # bug-report artifacts: reporter screenshots (public, Camo-reachable) + pinned replays (admin-only)
 │   │   └── deck/        # decklist parsers (Moxfield, plain text) + Commander validation
 │   ├── Makefile
@@ -219,7 +220,7 @@ unused — they can be removed in a later cleanup PR.)
 - `make -C server fmt` — `gofmt -s -w .`
 - `make -C server build` — produces `server/bin/cmd_and_ctrl-server`
 - `cd server && go run ./cmd/gamecli -addr ws://localhost:8080/ws` — drive the demo game from a terminal; reads action JSON on stdin or via `-script path.json`
-- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](docs/lobby.md)), `/cards/*` image + metadata routes
+- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](docs/lobby.md)), `/cards/*` image + metadata routes, `GET /catalog` + `GET /catalog/image/{id}` (public, no session — the card catalogue, [ADR 0042](docs/decisions/0042-card-catalog-page.md))
 - Env vars:
   - `CMDCTRL_ADDR` — listen addr (default `:8080`)
   - `CMDCTRL_DATA_DIR` — data root (default `./data`; empty string disables disk writes + card cache)
@@ -377,9 +378,10 @@ surface tiny.
    // deferred and to which future sprint.
    func init() {
        Register(Spec{
-           OracleID:   "<uuid from step 1>",
-           Name:       "Card Name",
-           TargetMode: "<player / creature / ...>",
+           OracleID:     "<uuid from step 1>",
+           Name:         "Card Name",
+           Completeness: CompletenessFull,
+           TargetMode:   "<player / creature / ...>",
            OnResolve: func(item *game.StackItem, ctx *Context) error {
                // primitive composition here
                return nil
@@ -389,6 +391,37 @@ surface tiny.
    ```
    For permanents with an ETB trigger, populate `OnETB` instead of
    (or alongside) `OnResolve`.
+
+   **Declare `Completeness`.** Since
+   [ADR 0042](docs/decisions/0042-card-catalog-page.md) the prose
+   simplification note above has a machine-readable twin, because the
+   public catalogue page at `#/catalog` publishes it:
+
+   ```go
+   Completeness: CompletenessFull,        // everything printed happens
+   // …or:
+   Completeness: CompletenessCaveats,
+   Caveats:      []string{"Cycling is not implemented — the land can only be played."},
+   ```
+
+   Three rules, and they are the whole contract:
+
+   - **The zero value is `CompletenessUnreviewed`, and that is a legal
+     thing to ship.** It publishes the card as unaudited, which is
+     true, and nothing fails. Do not stamp `CompletenessFull` to tidy
+     it up — a card falsely marked complete is the one outcome the
+     field exists to prevent.
+   - **`Caveats` is required with `CompletenessCaveats` and rejected
+     without it.** `Register` panics either way, at boot.
+   - **Write `Caveats` for a player, not for the next engineer.** One
+     sentence, no engine vocabulary: "Flashback isn't implemented — the
+     spell can only be cast from hand." The reason it is deferred, the
+     sprint it lands in and the machinery it waits on all belong in
+     the doc comment, where there is room. A test enforces the tone.
+
+   Keep the prose note too. The field says *what*; the comment says
+   *why*, and the comment is what stops the next person reopening a
+   decision you already made.
 
    **Planeswalkers: leave `StartingLoyalty` alone.** Starting loyalty
    is printed card data, not card-effect data. The deck importer
@@ -746,6 +779,30 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"defender"` | Defender (CR 702.3) |
 | `"haste"` | Haste (CR 702.10) |
 | `"flash"` | Flash (CR 702.8) |
+| `"hexproof"` | Hexproof (CR 702.11) — S23, targeting gate |
+| `"shroud"` | Shroud (CR 702.18) — S23, targeting gate |
+| `"indestructible"` | Indestructible (CR 702.12) — S25, destruction path |
+
+The last three are not combat keywords, but they ride the same
+`PrintedKeywords` slot and the same `HasKeyword` reader. Their
+consumers are `CanBeTargetedBy` (hexproof, shroud) and
+`DestroyPermanentForEffect` + the damage-driven creature SBAs
+(indestructible — see `server/internal/game/indestructible.go` for
+what it deliberately does *not* stop).
+
+The table is closed on purpose: **a keyword joins it in the same
+change that teaches the engine to honour it.** Declaring a token the
+engine does not read puts a badge on the card that promises a rule
+nothing enforces.
+
+**Two protection-family keywords are deliberately outside the
+table**, for reasons [ADR 0038](docs/decisions/0038-protection-style-keywords.md)
+§7 sets out. *Ward* is a triggered ability, not a targeting
+restriction, and it ships per-card via the `effects.Ward(WardMana(…))`
+helper (S30) — it stays out of the table because the COST is a
+parameter a bare token has nowhere to put. *Protection* tests its
+quality against the SOURCE of a spell or ability, which the targeting
+choke point never receives; it is not implemented.
 
 **Layer-granted keywords still use `Spec.Static`.** Lord of Atlantis
 grants `"flying"` to *other* Merfolk via a conditional Layer 6
@@ -1017,9 +1074,56 @@ The `Key` is the wire contract: it rides `cast_spell` as
 `alternative_cost`, lands on `StackItem.AltCost`, and the card's
 `OnResolve` branches on `ctx.PaidAltCost("overload")`. Keys must be
 non-empty and unique per card; `Register` panics otherwise. Only
-overload / evoke / cleave exist — foretell, plot, spree, warp and
-"prepare" have no shape yet, and a card carrying one of those ships
-without it (say so in the card comment, as Cosmic Intervention does).
+overload / evoke / cleave / flashback / warp exist — foretell, plot,
+spree and "prepare" have no shape yet, and a card carrying one of
+those ships without it (say so in the card comment, as Cosmic
+Intervention does).
+
+**Casting from somewhere other than hand (S29):** a card whose text
+opens another cast zone declares it in `Spec.CastableZones`, and the
+price of that path rides `AlternativeCost.FromZone`:
+
+```go
+CastableZones:    []game.ZoneKind{game.ZoneGraveyard},          // Faithless Looting
+AlternativeCosts: []game.AlternativeCost{Flashback("{2}{R}")},
+```
+
+The zone is the **place** and the alternative cost is the **price**,
+and they are checked independently. Hand is implicit and never has to
+be listed — declaring the graveyard *adds* a path. An offer bound to a
+zone can only be claimed from that zone, and a zone that has a bound
+offer can only be cast from by claiming it (so Faithless Looting cannot
+be flashed back for its printed `{R}`); a zone with no bound offer
+charges the printed cost, which is Gravecrawler. `Register` panics on
+an offer whose `FromZone` is not in `CastableZones`, because such an
+offer is unclaimable.
+
+Use the keyword constructor, never a hand-rolled `game.AlternativeCost`,
+for the same reason overload and evoke have one: `Flashback` bundles
+**three** things — the price, `FromZone: ZoneGraveyard`, and
+`ExileOnLeavingStack`. The last is CR 702.34a's "exile this card
+instead of putting it anywhere else any time it would leave the
+stack", and it is a *replacement*, so it also catches a flashed-back
+spell that fizzles and one answered by Hinder. A card that wrote the
+cost by hand would flash back, land in the graveyard, and flash back
+again every turn forever.
+
+**Warp (S29)** is the other half of the same idea and the reason the
+zone and the price are separate fields. `Warp("{R}")` is paid from
+**hand**, so it needs no `CastableZones` at all — the discount is now,
+the real card is later. Its constructor bundles `WarpExile`, which
+schedules a CR 603.7 delayed trigger to exile the permanent at the
+next end step and leaves an `ExilePlayPermission` behind carrying a
+`NotBeforeTurn` floor for "on a later turn". The later cast is then an
+ordinary cast from exile for the printed cost, through the button the
+impulse-exile grant already renders.
+
+Two zones are **not** card properties and must not be declared:
+`ZoneCommand` (CR 903.4 grants that to the format) and — for the
+impulse-exile / airbend family — `ZoneExile`, whose permission belongs
+to one exiled *instance* and rides `game.ExilePlayPermission` instead.
+Declare `ZoneExile` only when the card's own printed text grants the
+cast.
 
 **A delayed trigger (S22):** "at the beginning of the next end step,
 <do X>" (CR 603.7) is `ScheduleDelayedTrigger`, not a closure that runs

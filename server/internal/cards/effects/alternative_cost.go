@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // alternative_cost.go — S22: constructors for Spec.AlternativeCosts,
 // the "you may cast this spell for its <keyword> cost rather than its
@@ -71,5 +75,199 @@ func Cleave(cost string, targets *game.TargetSpec) game.AlternativeCost {
 		Label:    "Cleave " + cost,
 		ManaCost: cost,
 		Targets:  targets,
+	}
+}
+
+// Flashback is "Flashback {cost} (You may cast this card from your
+// graveyard for its flashback cost. Then exile it.)" — CR 702.34.
+//
+// The first alternative cost that is also a cast PATH. It carries
+// two things a card file must not be trusted to remember separately:
+//
+//   - FromZone. The offer is claimable only out of the graveyard,
+//     and a card that declares it must also list ZoneGraveyard in
+//     Spec.CastableZones (Register panics otherwise). Without the
+//     binding the cost would be claimable from hand, which on Deep
+//     Analysis or a Past-in-Flames-fuelled Past in Flames is a real
+//     discount rather than a cosmetic one.
+//   - ExileOnLeavingStack. This is what keeps flashback from being
+//     infinite, and it is a REPLACEMENT (CR 702.34a says "any time
+//     it would leave the stack"), not an exile appended to the
+//     resolution — so a flashed-back spell that fizzles is exiled,
+//     and one answered by Hinder is exiled rather than shuffled
+//     away. A card file that wrote the cost by hand would get a
+//     spell that flashes back, lands in the graveyard, and flashes
+//     back again every turn forever.
+//
+// The card file still has to open the zone; the constructor cannot
+// do it, because CastableZones and AlternativeCosts are separate
+// fields on the Spec:
+//
+//	CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
+//	AlternativeCosts: []game.AlternativeCost{Flashback("{2}{R}")},
+func Flashback(cost string) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:                 "flashback",
+		Label:               "Flashback " + cost,
+		ManaCost:            cost,
+		FromZone:            game.ZoneGraveyard,
+		ExileOnLeavingStack: true,
+	}
+}
+
+// Warp is "Warp {cost} (You may cast this card from your hand for
+// its warp cost. Exile this creature at the beginning of the next
+// end step, then you may cast it from exile on a later turn.)" —
+// CR 702.183, and the fix for #324.
+//
+// Unlike flashback, warp is paid from HAND: it is a discount now in
+// exchange for the real card later, which is why it needs no
+// CastableZones declaration. The later cast is an ordinary cast from
+// exile for the printed mana cost, riding the same
+// ExilePlayPermission impulse exile and airbend already use — so
+// the client's existing exile button renders it with no new code.
+//
+// The constructor bundles the exile clause for the same reason
+// Evoke bundles its sacrifice: a card file that wrote
+// `game.AlternativeCost{ManaCost: "{R}"}` by hand would ship a
+// creature that costs one mana and stays on the battlefield forever,
+// which is not a discount but a strictly better card.
+func Warp(cost string) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:       "warp",
+		Label:     "Warp " + cost,
+		ManaCost:  cost,
+		WarpExile: true,
+	}
+}
+
+// --- S28: the free-spell family ----------------------------------
+//
+// Four more shapes of "rather than pay this spell's mana cost", all
+// on the same AlternativeCost the S22 keywords ride. What they add is
+// a CONDITION ("if you control a commander") and NON-MANA components
+// (pitch a card, pay life, bounce a land) — which is why they are
+// constructors here rather than a parallel mechanism: the announce
+// gate, the target rewrite, the wire key and the view projection all
+// already exist, and none of them needed to learn a new word.
+
+// FreeIfYouControlCommander is the Commander Legends free-spell
+// cycle's clause: "If you control a commander, you may cast this
+// spell without paying its mana cost." Fierce Guardianship, Deadly
+// Rollick, Deflecting Swat and their three siblings.
+//
+// The condition is checked in the view as well as at announce, so a
+// player with no commander on the battlefield is never shown the
+// offer rather than being shown one the server would reject.
+//
+// "You control a commander" means a commander PERMANENT you control,
+// which is not the same as owning one: a commander in the command
+// zone does not count, and a commander you have stolen does.
+func FreeIfYouControlCommander(label string) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:       "free",
+		Label:     label,
+		ManaCost:  "",
+		Condition: controlsACommander,
+	}
+}
+
+// controlsACommander is the cycle's condition: the caster controls at
+// least one permanent that is somebody's commander.
+func controlsACommander(g *game.Game, controller uuid.UUID) bool {
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.IsCommander && c.Controller == controller {
+			return true
+		}
+	}
+	return false
+}
+
+// Pitch is the Force of Will clause: "You may pay N life and exile a
+// <spec> card from your hand rather than pay this spell's mana cost."
+//
+// Both halves are COSTS and both are validated before either is paid,
+// so a player at 1 life with no blue card gets a rejected cast rather
+// than a dead player and a spell still in hand. The exile happens with
+// the spell already on the stack (CR 601.2a before 601.2h), which is
+// why a countered Force of Will still costs you the pitched card —
+// the part a resolution-time implementation would get backwards.
+func Pitch(label string, life int, from *game.TargetSpec, payLabel string) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:           "pitch",
+		Label:         label,
+		ManaCost:      "",
+		Life:          life,
+		ExileFromHand: from,
+		PayLabel:      payLabel,
+	}
+}
+
+// EvokePitch is evoke with a card, not mana: "Evoke—Exile a white
+// card from your hand" (Solitude and the rest of the Modern Horizons
+// 2 incarnation cycle).
+//
+// Evoke() with a mana cost and this share a key, and deliberately: it
+// is the same keyword, and a card offers one or the other, never
+// both. What it keeps from Evoke() is the half a card file would
+// forget — SacrificeOnEntry, the triggered ability that makes the
+// creature enter, fire its ETB and only then die (CR 702.74b). Without
+// it Solitude would be a five-mana Swords to Plowshares that stays on
+// the battlefield.
+func EvokePitch(from *game.TargetSpec, payLabel string) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:              "evoke",
+		Label:            "Evoke—Exile " + payLabel,
+		ManaCost:         "",
+		ExileFromHand:    from,
+		PayLabel:         payLabel,
+		SacrificeOnEntry: true,
+	}
+}
+
+// PayLifeInstead is Snuff Out's clause: "If you control a Swamp, you
+// may pay 4 life rather than pay this spell's mana cost."
+//
+// `condition` may be nil for an unconditional version; Snuff Out's is
+// the Swamp check.
+func PayLifeInstead(label string, life int, condition func(g *game.Game, controller uuid.UUID) bool) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:       "pay_life",
+		Label:     label,
+		ManaCost:  "",
+		Life:      life,
+		Condition: condition,
+	}
+}
+
+// ReturnInstead is Daze's clause: "You may return an Island you
+// control to its owner's hand rather than pay this spell's mana
+// cost."
+//
+// The bounce is a cost, so it happens at announce with the Daze
+// already on the stack — the Island is back in hand before the spell
+// Daze is answering has resolved, and before its controller decides
+// whether to pay the {1}.
+func ReturnInstead(label string, from *game.TargetSpec, payLabel string) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:          "return",
+		Label:        label,
+		ManaCost:     "",
+		ReturnToHand: from,
+		PayLabel:     payLabel,
+	}
+}
+
+// ControlsA builds a "if you control a <subtype>" condition — Snuff
+// Out's Swamp. Reads effective subtypes, so a land animated or
+// type-changed into a Swamp counts.
+func ControlsA(subtype string) func(g *game.Game, controller uuid.UUID) bool {
+	return func(g *game.Game, controller uuid.UUID) bool {
+		for _, c := range g.BattlefieldCardsForEffect() {
+			if c.Controller == controller && hasSubtype(c, subtype) {
+				return true
+			}
+		}
+		return false
 	}
 }

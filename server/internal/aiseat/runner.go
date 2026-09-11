@@ -215,7 +215,18 @@ func (r *Runner) step(ctx context.Context) bool {
 			Seat:  r.seat,
 			Moves: moves,
 		}
+		if r.concede(ctx, in) {
+			return false
+		}
 		idx, reason := r.decide(ctx, in)
+		if idx == Decline {
+			// The policy wants nothing from this window and does not
+			// hold priority (decide turns a decline into a pass when
+			// one is on offer), so nothing is waiting on us. Sleep
+			// until the next commit.
+			r.log.Debug("bot declines", "reason", reason)
+			return true
+		}
 		if rejects >= r.cfg.MaxConsecutiveRejects {
 			// The board keeps changing under us; stop guessing and
 			// yield priority if we can.
@@ -271,6 +282,14 @@ func (r *Runner) decide(ctx context.Context, in Input) (int, string) {
 	switch {
 	case err != nil:
 		r.log.Warn("policy failed; falling back", "err", err)
+	case d.Index == Decline:
+		// A decline from a seat that holds priority would stall the
+		// table, so it becomes the pass it was standing in for.
+		r.decisions.Add(1)
+		if pi := PassIndex(in.Moves); pi >= 0 {
+			return pi, "decline → pass"
+		}
+		return Decline, d.Reason
 	case d.Index < 0 || d.Index >= len(in.Moves):
 		r.log.Warn("policy returned an out-of-range move; falling back", "index", d.Index, "moves", len(in.Moves))
 	default:

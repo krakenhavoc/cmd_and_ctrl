@@ -29,8 +29,9 @@ package effects
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "23467047-6dba-4498-b783-1ebc4f74b8c2",
-		Name:     "Ancient Tomb",
+		OracleID:     "23467047-6dba-4498-b783-1ebc4f74b8c2",
+		Name:         "Ancient Tomb",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}{C}",

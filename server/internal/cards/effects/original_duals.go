@@ -27,6 +27,7 @@ func init() {
 		Register(Spec{
 			OracleID:      land.oracleID,
 			Name:          land.name,
+			Completeness:  CompletenessFull,
 			ManaAbilities: []ManaAbility{dualManaAbility(land.a, land.b)},
 		})
 	}

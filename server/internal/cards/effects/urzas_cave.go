@@ -19,8 +19,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "4474ecee-0ec3-409b-90df-738d9313fe3c",
-		Name:     "Urza's Cave",
+		OracleID:     "4474ecee-0ec3-409b-90df-738d9313fe3c",
+		Name:         "Urza's Cave",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}",
