@@ -46,11 +46,11 @@ const (
 	eldraziTempleOracle    = "7fab8d65-af51-47d3-8f10-2676bf6e8ba3"
 )
 
-// seedLand puts a land on the battlefield with an explicit
+// seedManaLand puts a land on the battlefield with an explicit
 // ProducedMana list, which is how the deck importer stamps Scryfall's
 // `produced_mana` and therefore what the derivation reads for lands
 // outside the catalog.
-func seedLand(g *game.Game, owner uuid.UUID, name, typeLine string, produces ...string) uuid.UUID {
+func seedManaLand(g *game.Game, owner uuid.UUID, name, typeLine string, produces ...string) uuid.UUID {
 	id := uuid.New()
 	g.Battlefield.PushTop(game.Card{
 		InstanceID:   id,
@@ -138,10 +138,10 @@ func TestCabalCoffersScalesWithSwampsAndCostsTwo(t *testing.T) {
 	me := g.Seats[0]
 	coffers := seedPermanentWithOracle(g, me.ID, "Cabal Coffers", "Land", cabalCoffersOracle)
 	for i := 0; i < 3; i++ {
-		seedLand(g, me.ID, "Swamp", "Basic Land — Swamp", "B")
+		seedManaLand(g, me.ID, "Swamp", "Basic Land — Swamp", "B")
 	}
 	// An opponent's Swamps are not yours.
-	seedLand(g, g.Seats[1].ID, "Swamp", "Basic Land — Swamp", "B")
+	seedManaLand(g, g.Seats[1].ID, "Swamp", "Basic Land — Swamp", "B")
 	me.ManaPool.AddMana(game.ManaToken{Color: "C"}, game.ManaToken{Color: "C"})
 
 	if err := g.ActivateManaAbility(me.ID, coffers, 0, game.ManaAbilityParams{}); err != nil {
@@ -161,7 +161,7 @@ func TestCabalCoffersWithoutTheTwoManaIsRefused(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	coffers := seedPermanentWithOracle(g, me.ID, "Cabal Coffers", "Land", cabalCoffersOracle)
-	seedLand(g, me.ID, "Swamp", "Basic Land — Swamp", "B")
+	seedManaLand(g, me.ID, "Swamp", "Basic Land — Swamp", "B")
 	me.ManaPool.AddMana(game.ManaToken{Color: "C"})
 
 	if err := g.ActivateManaAbility(me.ID, coffers, 0, game.ManaAbilityParams{}); err == nil {
@@ -197,7 +197,7 @@ func TestTempleOfTheFalseGodNeedsFiveLands(t *testing.T) {
 	me := g.Seats[0]
 	temple := seedPermanentWithOracle(g, me.ID, "Temple of the False God", "Land", templeFalseGodOracle)
 	for i := 0; i < 3; i++ {
-		seedLand(g, me.ID, "Wastes", "Basic Land — Wastes", "C")
+		seedManaLand(g, me.ID, "Wastes", "Basic Land — Wastes", "C")
 	}
 
 	// Four lands including the Temple — one short.
@@ -209,7 +209,7 @@ func TestTempleOfTheFalseGodNeedsFiveLands(t *testing.T) {
 	}
 
 	// The fifth land switches it on. The Temple counts itself.
-	seedLand(g, me.ID, "Wastes", "Basic Land — Wastes", "C")
+	seedManaLand(g, me.ID, "Wastes", "Basic Land — Wastes", "C")
 	if err := g.ActivateManaAbility(me.ID, temple, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility at five lands: %v", err)
 	}
@@ -243,12 +243,12 @@ func TestExoticOrchardDerivesOpponentColours(t *testing.T) {
 	g := newCatalogGame(t)
 	me, them := g.Seats[0], g.Seats[1]
 	orchard := seedPermanentWithOracle(g, me.ID, "Exotic Orchard", "Land", exoticOrchardOracle)
-	seedLand(g, them.ID, "Island", "Basic Land — Island", "U")
-	seedLand(g, them.ID, "Mountain", "Basic Land — Mountain", "R")
+	seedManaLand(g, them.ID, "Island", "Basic Land — Island", "U")
+	seedManaLand(g, them.ID, "Mountain", "Basic Land — Mountain", "R")
 	// Colorless is not a colour: an opposing Wastes adds nothing.
-	seedLand(g, them.ID, "Wastes", "Basic Land — Wastes", "C")
+	seedManaLand(g, them.ID, "Wastes", "Basic Land — Wastes", "C")
 	// Your own Forest is irrelevant — the card reads opponents only.
-	seedLand(g, me.ID, "Forest", "Basic Land — Forest", "G")
+	seedManaLand(g, me.ID, "Forest", "Basic Land — Forest", "G")
 
 	if err := g.ActivateManaAbility(me.ID, orchard, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
@@ -288,8 +288,8 @@ func TestReflectingPoolIncludesColorlessBecauseItSaysType(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	pool := seedPermanentWithOracle(g, me.ID, "Reflecting Pool", "Land", reflectingPoolOracle)
-	seedLand(g, me.ID, "Wastes", "Basic Land — Wastes", "C")
-	seedLand(g, me.ID, "Plains", "Basic Land — Plains", "W")
+	seedManaLand(g, me.ID, "Wastes", "Basic Land — Wastes", "C")
+	seedManaLand(g, me.ID, "Plains", "Basic Land — Plains", "W")
 
 	if err := g.ActivateManaAbility(me.ID, pool, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
@@ -330,7 +330,7 @@ func TestFellwarStoneNoLongerOffersColoursNoOpponentCanMake(t *testing.T) {
 	g := newCatalogGame(t)
 	me, them := g.Seats[0], g.Seats[1]
 	stone := seedPermanentWithOracle(g, me.ID, "Fellwar Stone", "Artifact", fellwarStoneOracle)
-	seedLand(g, them.ID, "Forest", "Basic Land — Forest", "G")
+	seedManaLand(g, them.ID, "Forest", "Basic Land — Forest", "G")
 
 	if err := g.ActivateManaAbility(me.ID, stone, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
@@ -497,13 +497,13 @@ func TestShrineOfTheForsakenGodsGatesAndRestricts(t *testing.T) {
 
 	// The gate first: six lands is not seven.
 	for i := 0; i < 5; i++ {
-		seedLand(g, me.ID, "Wastes", "Basic Land — Wastes", "C")
+		seedManaLand(g, me.ID, "Wastes", "Basic Land — Wastes", "C")
 	}
 	if err := g.ActivateManaAbility(me.ID, shrine, 1, game.ManaAbilityParams{}); !errors.Is(err, game.ErrConditionNotMet) {
 		t.Fatalf("err = %v, want ErrConditionNotMet at six lands", err)
 	}
 
-	seedLand(g, me.ID, "Wastes", "Basic Land — Wastes", "C")
+	seedManaLand(g, me.ID, "Wastes", "Basic Land — Wastes", "C")
 	if err := g.ActivateManaAbility(me.ID, shrine, 1, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility at seven lands: %v", err)
 	}
