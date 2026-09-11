@@ -40,6 +40,7 @@ func TestWireTypesMatchActions(t *testing.T) {
 		legal.TypeResolveChoice:       actions.TypeResolveChoice,
 		legal.TypeKeepHand:            actions.TypeKeepHand,
 		legal.TypeMulligan:            actions.TypeMulligan,
+		legal.TypeDiscardSelection:    actions.TypeDiscardSelection,
 	}
 	for got, want := range pairs {
 		if got != string(want) {
@@ -738,5 +739,143 @@ func TestExpansionCapIsHonoured(t *testing.T) {
 	}
 	if n != 5 {
 		t.Errorf("cap of 5 should yield 5 Bolt moves, got %d", n)
+	}
+}
+
+// --- cleanup discard ----------------------------------------------
+
+func TestCleanupDiscardToHandSize(t *testing.T) {
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	clearHand(active)
+	for i := 0; i < 9; i++ {
+		handCard(active, creature(fmt.Sprintf("Card %d", i), "{1}", 1, 1))
+	}
+	// Walk to end of turn; the cleanup hook parks the cursor.
+	advanceTo(t, g, game.StepEnd)
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatal(err)
+	}
+	if g.Turn.Step != game.StepCleanup || len(g.DiscardPending) == 0 {
+		t.Fatalf("expected a cleanup discard pause, at %s pending=%v", g.Turn.Step, g.DiscardPending)
+	}
+	moves := legal.EnumerateFor(g, active.ID)
+	dispatchAll(t, g, active.ID, moves)
+	// 9 cards, max 7 → discard 2: C(9,2)=36 capped at the default 12.
+	if len(moves) != 12 {
+		t.Fatalf("want 12 capped discard moves, got %d: %v", len(moves), labels(moves))
+	}
+	for _, m := range moves {
+		if m.Type != legal.TypeDiscardSelection {
+			t.Errorf("only discard_selection is legal at a cleanup pause: %q", m.Label)
+		}
+	}
+	// Nobody else has anything to do.
+	for _, p := range g.Seats {
+		if p.ID != active.ID {
+			if m := legal.EnumerateFor(g, p.ID); len(m) != 0 {
+				t.Errorf("%s should have no moves during another seat's discard: %v", p.Name, labels(m))
+			}
+		}
+	}
+	// Discarding clears the pause and the turn advances.
+	if err := actions.Dispatch(g, actions.Action{Type: actions.TypeDiscardSelection, Player: active.ID, Caller: active.ID, Params: moves[0].Params}); err != nil {
+		t.Fatal(err)
+	}
+	if g.Turn.Step == game.StepCleanup {
+		t.Errorf("turn should have advanced after the discard; still at cleanup")
+	}
+}
+
+// --- S22 choice kinds: search_library, entry_pay_life ---------------
+
+const (
+	oraclePollutedDelta    = "ef86989d-ce80-4e55-aece-7d11710eeffa"
+	oracleHallowedFountain = "f1750962-a87c-49f6-b731-02ae971ac6ea"
+)
+
+func TestSearchLibraryOffersFailToFindAndEachCandidate(t *testing.T) {
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	clearHand(active)
+	delta := battlefieldCard(g, active, game.Card{Name: "Polluted Delta", TypeLine: "Land", OracleID: oraclePollutedDelta})
+	// Two matching lands in the library → a real choice (limit 1).
+	for _, n := range []string{"Island A", "Island B"} {
+		c := game.Card{InstanceID: uuid.New(), Name: n, TypeLine: "Basic Land — Island", Owner: active.ID, Controller: active.ID}
+		active.Library.PushTop(c)
+	}
+	advanceTo(t, g, game.StepPrecombatMain)
+	moves := legal.EnumerateFor(g, active.ID)
+	var crack *legal.Move
+	for i := range moves {
+		if moves[i].Source == delta && moves[i].Kind == legal.KindActivate {
+			crack = &moves[i]
+		}
+	}
+	if crack == nil {
+		t.Fatalf("Polluted Delta's ability not offered: %v", labels(moves))
+	}
+	if err := actions.Dispatch(g, actions.Action{Type: actions.Type(crack.Type), Player: active.ID, Caller: active.ID, Params: crack.Params}); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 8 && len(g.PendingChoices) == 0; i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Kind != game.PendingChoiceSearchLibrary {
+		t.Fatalf("expected a search prompt, got %+v", g.PendingChoices)
+	}
+	moves = legal.EnumerateFor(g, active.ID)
+	dispatchAll(t, g, active.ID, moves)
+	fail, takes := 0, 0
+	for _, m := range moves {
+		switch {
+		case strings.HasSuffix(m.Label, ": fail to find"):
+			fail++
+		case strings.Contains(m.Label, ": take Island"):
+			takes++
+		}
+	}
+	if len(moves) != 3 || fail != 1 || takes != 2 {
+		t.Errorf("want fail-to-find + one take per candidate (3), got %v", labels(moves))
+	}
+}
+
+func TestShocklandEntryOffersPayOrTapped(t *testing.T) {
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	clearHand(active)
+	fountain := handCard(active, game.Card{Name: "Hallowed Fountain", TypeLine: "Land — Plains Island", OracleID: oracleHallowedFountain})
+	advanceTo(t, g, game.StepPrecombatMain)
+	moves := legal.EnumerateFor(g, active.ID)
+	var play *legal.Move
+	for i := range moves {
+		if moves[i].Source == fountain {
+			play = &moves[i]
+		}
+	}
+	if play == nil {
+		t.Fatalf("land drop not offered: %v", labels(moves))
+	}
+	if err := actions.Dispatch(g, actions.Action{Type: actions.Type(play.Type), Player: active.ID, Caller: active.ID, Params: play.Params}); err != nil {
+		t.Fatal(err)
+	}
+	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Kind != game.PendingChoiceEntryPayLife {
+		t.Fatalf("expected the pay-life prompt, got %+v", g.PendingChoices)
+	}
+	moves = legal.EnumerateFor(g, active.ID)
+	dispatchAll(t, g, active.ID, moves)
+	pay, tapped := 0, 0
+	for _, m := range moves {
+		switch {
+		case strings.HasSuffix(m.Label, ": pay 2 life"):
+			pay++
+		case strings.HasSuffix(m.Label, ": enter tapped"):
+			tapped++
+		}
+	}
+	if len(moves) != 2 || pay != 1 || tapped != 1 {
+		t.Errorf("want pay / enter tapped, got %v", labels(moves))
 	}
 }

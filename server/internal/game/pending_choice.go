@@ -650,13 +650,7 @@ func (g *Game) dequeueChoiceLocked(idx int) {
 //
 // Caller must hold g.mu.
 func (g *Game) queueOptionalReplacementPromptLocked(ev *ReplacementEvent, chosen activeReplacement) {
-	var chooser uuid.UUID
-	if chosen.effect.Controller != nil {
-		chooser = chosen.effect.Controller(ev, g, chosen.source)
-	}
-	if chooser == uuid.Nil {
-		chooser = affectedPlayerForEvent(ev, []activeReplacement{chosen}, g)
-	}
+	chooser := g.optionalReplacementChooserLocked(ev, chosen)
 	reason := chosen.effect.PromptQuestion
 	if reason == "" {
 		reason = chosen.effect.Label
@@ -673,6 +667,21 @@ func (g *Game) queueOptionalReplacementPromptLocked(ev *ReplacementEvent, chosen
 		},
 	}
 	g.QueueChoiceForEffect(choice)
+}
+
+// optionalReplacementChooserLocked is who answers a CR 614.10 "may"
+// prompt: the effect's Controller when it names one (the commander's
+// owner for CR 903.9), else the event's affected player. Caller must
+// hold g.mu.
+func (g *Game) optionalReplacementChooserLocked(ev *ReplacementEvent, chosen activeReplacement) uuid.UUID {
+	var chooser uuid.UUID
+	if chosen.effect.Controller != nil {
+		chooser = chosen.effect.Controller(ev, g, chosen.source)
+	}
+	if chooser == uuid.Nil {
+		chooser = affectedPlayerForEvent(ev, []activeReplacement{chosen}, g)
+	}
+	return chooser
 }
 
 // ResolveOptionalReplacement processes a resolve_choice action
@@ -1174,22 +1183,29 @@ func (g *Game) ResolveDamageAssignment(
 		}
 		// Earlier blockers must be at-least-lethal before this one
 		// receives any damage (CR 510.1c "assigns damage in order").
-		for j := 0; j < i; j++ {
-			prior := ordered[j]
-			priorLethal := 1
-			if !frame.HasDeathtouch {
-				pblk := findBattlefieldCard(g, prior.BlockerID)
-				if pblk != nil {
-					priorRemaining := pblk.CurrentToughness() - pblk.DamageMarked
-					if priorRemaining > 1 {
-						priorLethal = priorRemaining
-					} else if priorRemaining <= 0 {
-						priorLethal = 0
+		// Only a blocker that actually receives damage constrains its
+		// predecessors: with three blockers and two power, [2, 0, 0]
+		// is the only legal split, and checking the zero entries'
+		// priors rejected it — no assignment could ever be accepted
+		// and the table wedged. Found by the S31 bot fuzzer.
+		if e.Amount > 0 {
+			for j := 0; j < i; j++ {
+				prior := ordered[j]
+				priorLethal := 1
+				if !frame.HasDeathtouch {
+					pblk := findBattlefieldCard(g, prior.BlockerID)
+					if pblk != nil {
+						priorRemaining := pblk.CurrentToughness() - pblk.DamageMarked
+						if priorRemaining > 1 {
+							priorLethal = priorRemaining
+						} else if priorRemaining <= 0 {
+							priorLethal = 0
+						}
 					}
 				}
-			}
-			if prior.Amount < priorLethal {
-				return ErrInvalidParam
+				if prior.Amount < priorLethal {
+					return ErrInvalidParam
+				}
 			}
 		}
 		// If this blocker got less than lethal AND anything downstream

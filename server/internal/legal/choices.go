@@ -187,6 +187,38 @@ func (e *enumerator) choiceMoves() bool {
 				e.addChoice(c, reason+": sacrifice "+cardName(g, id), p)
 			}
 
+		case game.PendingChoiceSearchLibrary:
+			// CR 701.19: take up to SearchMax of the matching cards;
+			// failing to find (an empty list) is always legal.
+			p := base()
+			p.CardIDs = []string{}
+			e.addChoice(c, reason+": fail to find", p)
+			for _, set := range combinations(c.SearchCards, 1, c.SearchMax, e.opts.MaxExpansionPerSource) {
+				p := base()
+				p.CardIDs = idStrings(set)
+				label := reason + ": take"
+				for _, id := range set {
+					label += " " + cardName(g, id)
+				}
+				e.addChoice(c, label, p)
+			}
+
+		case game.PendingChoiceEntryPayLife:
+			// "As this enters, you may pay N life." The engine only
+			// asks when the payer can afford it, and a pay it can no
+			// longer afford degrades to a decline; both answers are
+			// always accepted.
+			for _, apply := range []bool{true, false} {
+				a := apply
+				p := base()
+				p.Apply = &a
+				verb := "enter tapped"
+				if apply {
+					verb = "pay " + c.PayCost
+				}
+				e.addChoice(c, reason+": "+verb, p)
+			}
+
 		case game.PendingChoiceScry:
 			cards := c.ScryCards
 			all := idStrings(cards)
