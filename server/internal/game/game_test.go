@@ -474,8 +474,11 @@ func TestEndTransitionsToEnded(t *testing.T) {
 // AdvanceStep saw End → Cleanup, same seat, no new turn, and the
 // caches survived the turn boundary forever.
 //
-// Routing every advance through advanceTurnCursorLocked is the fix;
-// this test walks a real turn boundary and checks all three.
+// Routing every advance through `advanceCursorLocked` is the fix. S31's
+// bot fuzzer (#287) found the same bug independently, hours apart, and
+// its version of that seam also skips eliminated seats per CR 800.4a;
+// this test guards that implementation. It walks a real turn boundary
+// and checks all three caches.
 func TestTurnAdvanceClearsPerTurnCaches(t *testing.T) {
 	g := NewGame()
 	for i := 0; i < 2; i++ {
