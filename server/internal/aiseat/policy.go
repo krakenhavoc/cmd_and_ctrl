@@ -7,8 +7,10 @@
 // an Input built only from the seat's filtered protocol.GameView and
 // the legal.Move list, never a *game.Game. Real policies (heuristic,
 // model-backed) land in subpackages under aiseat/ that are forbidden
-// from importing internal/game; the import test ships with the first
-// of them (sub-PR 6).
+// from importing internal/game. That ban is enforced by
+// TestPolicyPackagesDoNotImportGame in aiseat/heuristic — it walks
+// every package under aiseat/ rather than just its own, so a policy
+// written later is covered without its author having to know.
 package aiseat
 
 import (
@@ -36,6 +38,37 @@ type Input struct {
 type Decision struct {
 	Index  int
 	Reason string
+}
+
+// Decline is the Decision.Index a policy returns to mean "I do not
+// want to do any of these right now".
+//
+// It exists because not every window the enumerator opens is a window
+// the seat must act in. The one that matters is declare-blockers: a
+// defender is offered blocks BEFORE priority reaches it (blocking is
+// a turn-based action, not a response), so the move list is blocks
+// and nothing else, and a policy that has finished assigning its
+// blockers has no pass to reach for. Without a decline it would have
+// to keep declaring blocks until it ran out of creatures — which is
+// exactly the "chump-block with everything" behaviour a heuristic
+// policy exists to avoid.
+//
+// Declining is only honoured when the seat does NOT hold priority.
+// When a pass is on offer the runner converts a decline into that
+// pass, because a seat that holds priority and does nothing stalls
+// the table: no action, no commit, no wake, no game.
+const Decline = -1
+
+// Conceder is an optional Policy extension. A policy that implements
+// it is asked, before each decision, whether the position is lost;
+// answering true makes the runner concede the seat and exit.
+//
+// It is separate from Decide because conceding is not a legal MOVE:
+// `legal` deliberately does not enumerate it (a random policy that
+// could concede would scoop out of the fuzzer's first game), so the
+// only way a policy can express "I am done" is out of band.
+type Conceder interface {
+	ShouldConcede(in Input) bool
 }
 
 // Policy decides. Decide must respect ctx — the runner imposes a

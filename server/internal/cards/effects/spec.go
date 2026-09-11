@@ -275,6 +275,31 @@ type Spec struct {
 	// as `tap_ids`; tapping nothing is always legal.
 	TapCost *game.TapPermanentsCost
 
+	// CostModifiers is the S28 "spells cost {N} more / {N} less to
+	// cast" static (CR 601.2f) the card contributes while it is on
+	// the battlefield — Sphere of Resistance, Thalia, Goblin
+	// Electromancer, Heartless Summoning, Trinisphere.
+	//
+	// Deliberately NOT a `Static` entry, for the same reason
+	// NoMaxHandSize isn't. The CR 613 layer engine models continuous
+	// effects that change a CHARACTERISTIC OF AN OBJECT, and
+	// game.StaticAbility's Apply signature is exactly that shape —
+	// a *Characteristic and a target *Card. A cost modifier changes
+	// neither: it changes what someone PAYS to cast something that
+	// is not on the battlefield and has no Characteristic at all.
+	// Mana value is explicitly untouched (CR 202.3c), so there is
+	// no layer for it to sit in.
+	//
+	// So the engine derives it instead, exactly the way it derives
+	// the hand-size answer: the cast path asks the battlefield for
+	// every modifier in play and prices the spell through them in
+	// CR 601.2f order. Nothing is written anywhere, so nothing has
+	// to be unwound when the permanent leaves.
+	//
+	// Build the entries with CostsMore / CostsLess / CostsAtLeast
+	// in cost_modifier.go. Nil for nearly every card.
+	CostModifiers []game.CostModifier
+
 	// CastableZones is the S29 "you may cast this card from
 	// somewhere other than your hand" declaration (CR 601.2, and
 	// every keyword in CR 702 that grants an alternative cast

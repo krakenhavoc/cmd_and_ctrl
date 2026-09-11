@@ -73,7 +73,7 @@ planned just-in-time from the S12 pain-point triage.
 | S29      | Alt-cast paths from non-hand zones (flashback, suspend, foretell, …) | 7     | [#94](https://github.com/krakenhavoc/cmd_and_ctrl/issues/94)   | 2027-08-15 | planned     |
 | S30      | Damage prevention, cloning, face-down, deferred protection keywords  | 7     | [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95)   | 2027-09-05 | planned     |
 | Post-S30 | Rolling deck-driven catalog growth                                   | 7     | TBD at S30 retro                                               | rolling    | not started |
-| S31      | AI bot seat (legal-move enumeration + tiered policy)                 | 8     | [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89)   | 2027-09-26 | planned     |
+| S31      | AI bot seat (legal-move enumeration + tiered policy)                 | 8     | [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89)   | 2027-09-26 | partial     |
 
 ### How to read the status column
 
@@ -1945,9 +1945,9 @@ Triaged just-in-time from real-play feedback.
 
 1. **The legal-move enumerator** — `server/internal/legal/` (sub-PR 1, #286). **Shipped.** This is the closed move list the whole design rests on; nothing bot-shaped is safe to build before it.
 2. **`protocol.LogEvent` and a bounded public log on `GameView`** (sub-PR 0). **Not shipped** — zero hits for `LogEvent` across `server/internal/protocol/`. ADR 0033 §4 argues this is a prerequisite rather than a refinement: a policy handed only a snapshot cannot see that the seat to its left wiped the board last turn, and that is most of what a Commander player reasons about. Players want it independently.
-3. **Attachments — equipment and auras** ([#280](https://github.com/krakenhavoc/cmd_and_ctrl/issues/280), spike in S32, implementation S33). **Not shipped**; `Card.AttachedTo` and the `Attach` / `Detach` / `EquipPay` family have zero hits. This is the constraint on *decks*, not on plumbing: without it, Voltron and every Equipment or Aura strategy is unbuildable, and the archetypes today's catalog actually supports are aggro, ramp-stompy and thin spell-based control. **Ship three bot decks, not six** — sub-PR 5 already says three, and #280 is the reason.
+3. ~~**Attachments — equipment and auras**~~ ([#280](https://github.com/krakenhavoc/cmd_and_ctrl/issues/280)). **Shipped** on 2026-09-11, after this paragraph was written: the relation in [#374](https://github.com/krakenhavoc/cmd_and_ctrl/pull/374) (`game/attach.go`, `Card.AttachedTo`, the CR 704.5m/n SBA), then the first attachments in [#379](https://github.com/krakenhavoc/cmd_and_ctrl/pull/379) and [#380](https://github.com/krakenhavoc/cmd_and_ctrl/pull/380). This no longer blocks sub-PR 5 — see the note there for what the deck list ended up being and why Voltron still isn't one of them.
 
-Sub-PRs 0 through 4 can proceed without #280; only sub-PR 5's deck list depends on it.
+Nothing is now blocked on #280. Sub-PR 5's deck list was the only thing that ever was, and it shipped four decks without needing it.
 
 ### Sub-PR 0 — public game log
 
@@ -1969,11 +1969,14 @@ The engine has no event history: `GameView` carries none, the client has none, a
 
 ### Sub-PR 2 — serve the move list to the client, delete the TS duplication
 
-- [ ] `GameView` grows `legal_moves` for the viewer's own seat only, populated when the seat holds priority or owes a choice
-- [ ] `client/src/lib/timing.ts` becomes a lookup over `legal_moves`. Scope honestly: `canActivateLoyalty` and `canPassPriority` have no callers and can just be deleted; `canActivateAbility` serves only the auto-pass heuristic; `canCastFromHand` is the one real port, and its target/mode/cost branches already read server-stamped fields — the **timing** logic is what moves
-- [ ] Delete the now-dead client-side rules reimplementation; keep `targeting.ts`'s presentation logic
-- [ ] Fixes a live bug in passing: `sorcery_speed` ships on the wire and the client never reads it, so sorcery-speed abilities are currently offered at instant speed and then refused by the server
-- [ ] View-size check: measure the frame growth on a full four-player board and gate on it staying under budget
+**Shipped** ([#429](https://github.com/krakenhavoc/cmd_and_ctrl/pull/429)). Notes on where the checklist and the code parted company are inline below.
+
+- [x] `GameView` grows `legal_moves` for the viewer's own seat only, populated when the seat holds priority or owes a choice. Enumerated per seat into an unexported map by `ViewOfGame`; `FilterViewFor` hands back the viewer's own entry and nothing else, so the unfiltered frame that reaches the crash dump and the replay log carries no seat's moves at all
+- [x] `client/src/lib/timing.ts` becomes a lookup over `legal_moves`. **One correction to the scope line:** `canActivateLoyalty` gained a caller in #334 / #371 (`contextMenu.logic.ts`) and — more to the point — `activate_loyalty` is a sandbox verb `internal/legal` deliberately does not enumerate, so there is no move list to look it up in. It stays, as the file's only surviving rules derivation. `canPassPriority` and `canActivateAbility` were deleted as written
+- [x] Delete the now-dead client-side rules reimplementation; keep `targeting.ts`'s presentation logic. Gone: `castTimingForTypeLine`, `castableFaceTypeLines`, `canActivateAbility`, `canPassPriority`, and `priority.ts`'s whole hand/command/battlefield walk. Kept: the snapshot readers and `canCastFromHand`'s target / mode / additional-cost branches, which read server-stamped fields and supply the tooltip sentence behind the server's verdict
+- [x] Fixes a live bug in passing: `sorcery_speed` ships on the wire and the client never reads it. **Half of it fixed itself while this was in flight** — the S24 equip work (#379, #380) taught `contextMenu.logic.ts`'s `abilityBlocked` to honour the flag and landed `canActivateSorcerySpeedAbility`, which this branch had independently written under another name and now adopts. The half fixed here is `ManaAbilityMenu.svelte`'s own copy of `abilityBlocked`, which is the DEFAULT right-click popover (`adminOverrides` is off by default) and so the path most players were actually hitting
+- [x] View-size check: measure the frame growth on a full four-player board and gate on it staying under budget. **14.0 KB / +38–55%** on the worst realistic frame (39 moves); 0 B on any frame where the seat owes no decision. The enumerator's cap is per SOURCE, which does not bound a board, so the wire projection adds a 48-move global cap that degrades to one move per `(source, kind)` rather than truncating. Gated by `TestLegalMovesFrameBudget` at 24 KiB — **coordinate with sub-PR 0 before spending the rest**
+- [x] Both-directions agreement: `server/internal/legal/testdata/timing_agreement.json` carries eight hand-declared scenarios plus the real filtered wire frames. `agreement_test.go` asserts the enumerator matches the declarations; `client/src/lib/timingAgreement.test.ts` asserts `canCastFromHand` matches the same declarations against the same frames. Neither side is the other's oracle
 
 ### Sub-PR 3 — `Room` observers + `internal/aiseat` runner
 
@@ -1995,17 +1998,49 @@ The engine has no event history: `GameView` carries none, the client has none, a
 
 ### Sub-PR 5 — curated decks + coverage test
 
-- [ ] `internal/aiseat/decks/` — **three** decks that today's catalog actually supports: aggro, ramp-stompy, spell-based control
-- [ ] Build-failing test: every card in every bot deck resolves to a registered `effects.Spec`
-- [ ] Explicitly deferred: Voltron and any Equipment/Aura deck (needs S24 attachment layer), Aristocrats (needs more of S21/S23), Combo
+- [x] `internal/aiseat/decks/` — **four** decks, one more than this section originally scoped. Aggro (Izzet, Mary Read and Anne Bonny), ramp-stompy (Simic, Tatyova), spell-based control (Esper, Hashaton) — plus **aristocrats** (mono-black, Syr Konrad), which this section deferred on the grounds that S21/S23 were missing. They landed: the sacrifice outlets and death payoffs are in the catalog, and so are the board wipes.
+- [x] Build-failing test: every card in every bot deck resolves to a registered `effects.Spec`, with the MDFC back-face keys (`<oracle_id>#1`) explicitly rejected — a card is not covered because its back face registered
+- [x] `decks.Lookup(id)` / `decks.All()` / `decks.Load(idx, id)` — sub-PR 4's interface. `Load` runs the same `ParseText` → `Resolve` → `Validate` pipeline a player upload runs, so a bot deck is held to exactly the rules a human deck is
+- [x] Offline tests for count, singleton and colour identity; a `CMDCTRL_SCRYFALL_DUMP`-gated test runs the full `deck.Validate` against the real dump (all four decks pass against 117,738 printings)
+- [ ] **Voltron / Equipment / Aura: still deferred, but the reason has changed.** The attachment layer is no longer the blocker — the relation shipped in #374 and the first attachments in #379 and #380. There are seven of them (Bonesplitter, Lightning Greaves, Skullclamp, Swiftfoot Boots, Sword of Feast and Famine, Sword of Fire and Ice, Rancor). A Voltron deck wants fifteen to twenty-five. This is now a card-count problem that clears as the catalog grows, with no engine work in front of it
+- [ ] Combo: still out, per ADR 0033 §7 — bad idea for a bot regardless of coverage
 
 ### Sub-PR 6 — heuristic policy (Layer B)
 
-- [ ] `score(view, perspective) float64` — life, hand, board (power + toughness + keyword table), non-creature permanents, untapped mana, commander tax
-- [ ] Threat ranking across three opponents; aggression rotation after three ineffective turns on one target
-- [ ] Move selection by `Δscore` on a cloned game; blocks minimise incoming damage subject to not trading up
-- [ ] Concede heuristic, deliberately conservative
-- [ ] This is also the fallback under every model failure — it must stand alone
+- [x] `score(view, perspective) float64` — life, hand, board (power + toughness + keyword table), non-creature permanents, untapped mana, commander tax
+- [x] Threat ranking across three opponents; aggression rotation after three ineffective turns on one target
+- [x] Move selection by `Δscore`; blocks minimise incoming damage subject to not trading up
+- [x] Concede heuristic, deliberately conservative
+- [x] This is also the fallback under every model failure — it must stand alone
+- [x] Import test: no package under `aiseat/` may import `internal/game` (ADR 0033 §3's type gate, promised by `aiseat/policy.go`'s package doc)
+
+**"Δscore on a cloned game" was dropped, deliberately.** Cloning a game
+needs a `*game.Game`, and a `Policy` is handed a `protocol.GameView`
+and a `[]legal.Move` precisely so that it cannot hold one — that is
+the whole hidden-information guarantee in ADR 0033 §3, and the import
+test above fails the build over it. The two requirements are
+incompatible and the guarantee is the more important of the pair. The
+delta is **estimated** in the same units the score uses, from what the
+move does to the visible board, rather than simulated. The honest
+limitation: with no oracle text on the wire for a single-faced card,
+the policy reads a spell's intent from what it may target and what it
+costs, not from what it says. `Input.Oracle` is what closes that gap,
+and it lands with the model tiers.
+
+**Two additive hooks on `aiseat`**, both because the `Decision{Index}`
+contract alone cannot express them:
+
+- `aiseat.Decline` (`Index == -1`) — "none of these". A defender is
+  offered blocks *before* priority reaches it, so a blocks-only window
+  has no pass to take, and without a decline a bot would have to keep
+  declaring blocks until it ran out of creatures. Honoured only when
+  the seat does not hold priority; the runner turns it into the pass
+  whenever one is on offer, so it can never stall a table.
+- `aiseat.Conceder` — conceding is not a legal *move*. `legal`
+  deliberately does not enumerate it (a random policy that could
+  concede would scoop out of its own fuzzer), so a policy expresses it
+  out of band and the runner dispatches it through `actions.Dispatch`
+  like everything else.
 
 ### Sub-PR 7 — Layer A rules filter + Layer C model policy
 
@@ -2026,11 +2061,13 @@ The engine has no event history: `GameView` carries none, the client has none, a
 
 ### Tests
 
-- [ ] Enumerator agrees with `timing.ts` across a table-driven state matrix, both directions
+- [x] Enumerator agrees with `timing.ts` across a table-driven state matrix, both directions (sub-PR 2: `internal/legal/testdata/timing_agreement.json`, asserted from Go and from vitest against one hand-written expectation table)
 - [ ] Visibility: policy `Input.View` byte-identical to a human view at that seat; import test enforces the type gate
 - [ ] Four `random` bots play to a winner across 20 consecutive unattended runs — no deadlocks, no illegal actions, replays captured
-- [ ] Four `heuristic` bots play to a winner within 50 turns
-- [ ] Zero engine-rejected actions across a 100-game randomized run
+- [x] Four `heuristic` bots play to a winner within 50 turns — 20/20 seeds, 13–20 turns each (`AISEAT_HEURISTIC_GAMES=20`)
+- [x] Zero engine-rejected actions across a 100-game randomized run — and across 60 four-`heuristic` and 60 mixed games through the same soak harness (`AISEAT_SOAK_POLICY=heuristic|mixed`)
+- [x] `heuristic` beats `random` head-to-head: 40/40 decided games, alternating seats
+- [x] Heuristic decision latency: p50 8.5µs, p99 52µs, max 276µs over 2,715 decisions — four orders of magnitude inside the 2s `MaxThink`
 - [ ] Model-outage drill: Layer C hard-fails, game completes on Layer B, no frozen table
 - [ ] Human undo of a bot improvisation succeeds without the admin token, and the bundle reverts as one entry
 

@@ -203,6 +203,20 @@ var (
 	// client-facing message.
 	ErrUnparseableCost = errors.New("game: unparseable mana cost")
 
+	// ErrCostModifier is returned by CastSpell when a cost modifier
+	// (CR 601.2f — "spells cost {1} more / {2} less to cast")
+	// produces an amount the engine won't price: a negative
+	// increase, a negative reduction, a negative floor.
+	//
+	// A refusal rather than a clamp, for the #289 reason. The
+	// failure mode of clamping is a spell that comes out CHEAPER
+	// than printed because a card file's Amount hook had a sign
+	// error, and a free spell nobody ordered is the worst thing
+	// this path can produce. The cast is rejected, the card stays
+	// in hand, and the player sees which permanent misbehaved.
+	// Added in S28.
+	ErrCostModifier = errors.New("game: invalid cost modifier")
+
 	// ErrInvalidFace is returned by CastSpell when the requested
 	// printed face is not one this card offers (ADR 0034): a
 	// negative or out-of-range index, or the back face of anything
@@ -264,4 +278,10 @@ var (
 	// sense for a battle — choosing its protector — names a permanent
 	// that is not one. Added in S27.
 	ErrNotABattle = errors.New("game: card is not a battle")
+	// ErrInsufficientCrew is returned when the creatures named to pay
+	// a Vehicle's crew cost do not add up to the crew number
+	// (CR 702.122a) — including the case where none were named at
+	// all. Distinct from ErrInvalidParam so the client can say "tap
+	// more power" rather than "bad request". Added in S27.
+	ErrInsufficientCrew = errors.New("game: crewing creatures' total power is below the crew number")
 )

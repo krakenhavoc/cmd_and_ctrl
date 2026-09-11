@@ -348,6 +348,10 @@ interface AbilityCost {
   // catalog's first; a loyalty ability gets the same window from its
   // own arm below rather than from this flag.
   sorcery_speed?: boolean;
+  // S27: a Vehicle's crew number and the creatures that could pay
+  // it. Mana abilities never carry either.
+  crew_cost?: number;
+  crew_options?: { players?: string[]; cards?: string[] };
 }
 
 // abilityBlocked returns the reason an ability can't be activated
@@ -363,6 +367,15 @@ export function abilityBlocked(
   if (a.tap_cost && sick) return "summoning sickness";
   if (a.sacrifice_options && (a.sacrifice_options.cards?.length ?? 0) === 0) {
     return `nothing to sacrifice (${a.sacrifice_label ?? "a permanent"})`;
+  }
+  // CR 702.122a: a crew cost with no untapped creature to pay it is
+  // unpayable. Only the empty case is judged here — whether the
+  // creatures that DO exist add up to the crew number is arithmetic
+  // the prompt does, with the running total in front of the player,
+  // and duplicating the sum in the menu row would put two answers on
+  // screen at once.
+  if (a.crew_cost && (a.crew_options?.cards?.length ?? 0) === 0) {
+    return "no untapped creatures to crew with";
   }
   // CR 606: a loyalty ability answers to the sorcery-speed window,
   // the once-per-turn flag, and "you have enough counters to pay".

@@ -919,7 +919,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// Emitted after EventCast so a "becomes the target" trigger and
 	// a "whenever a player casts a spell" trigger queue in printed
 	// order.
-	g.emitBecameTargetLocked(playerID, cardID, params.Targets)
+	g.emitBecameTargetLocked(playerID, cardID, cardID, params.Targets)
 	// The caster receives priority right after casting (CR 117.3c),
 	// and CR 603.3 puts any cast-triggered abilities (Rhystic Study,
 	// Beast Whisperer) on the stack at that moment — above the
@@ -1194,6 +1194,28 @@ func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams)
 	if err != nil {
 		return ParsedCost{}, err
 	}
+	// S28: cost modifiers (CR 601.2f) — increases, then reductions,
+	// then Trinisphere-style cost-setting effects. Layered AFTER the
+	// alternative-cost swap and the commander tax because both of
+	// those settle what the spell "would cost", which is the number
+	// every modifier is written against: Thalia taxes an overloaded
+	// spell's overload cost, and Trinisphere looks at the taxed
+	// commander's total rather than the corner of the card.
+	//
+	// Applied BEFORE the convoke subtraction below for the same
+	// reason the tax is: tapping creatures is a way of PAYING the
+	// total cost, and CR 601.2f settles the total before anything
+	// is paid against it.
+	cost, err = g.applyCostModifiersLocked(cost, CostQuery{
+		Game:       g,
+		Card:       card,
+		Controller: p.ID,
+		FromZone:   castFromZoneKind(params.FromZone),
+		XValue:     params.XValue,
+	})
+	if err != nil {
+		return ParsedCost{}, err
+	}
 	// S22: convoke / waterbend. Applied LAST, because it is the only
 	// component that spends against the cost rather than adding to
 	// it — the tax, the any-colour fold and the alternative-cost swap
@@ -1248,6 +1270,23 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 		cost = asAnyColorCost(cost)
 	}
 	return cost, nil
+}
+
+// castFromZoneKind maps CastSpellParams.FromZone onto the ZoneKind a
+// cost modifier's predicate reads. Mirrors castSourceZoneLocked's
+// switch — including its "unknown falls back to hand" posture, which
+// keeps an older client's omitted field meaning what it always meant.
+// Split out because the cost-modifier query wants the kind without
+// wanting the zone pointer (and without wanting a *Player).
+func castFromZoneKind(fromZone string) ZoneKind {
+	switch fromZone {
+	case "command":
+		return ZoneCommand
+	case "exile":
+		return ZoneExile
+	default:
+		return ZoneHand
+	}
 }
 
 // castSourceZoneLocked resolves the FromZone string to the zone
@@ -1361,8 +1400,9 @@ func (g *Game) resolveTopOfStackLocked() error {
 	if !ok || item == nil {
 		// Defensive: a card on the stack without a meta entry should
 		// not happen — but if it does, route to graveyard so the
-		// stack doesn't wedge.
-		return g.routeStackCardToGraveyardLocked(top)
+		// stack doesn't wedge. No meta means no record of the cost
+		// that was paid, so no flashback replacement either.
+		return g.routeStackCardToGraveyardLocked(top, "")
 	}
 	// CR 608.1: spells and abilities share one LIFO stack. An ability
 	// item stamped with a higher Seq than the top spell was added
@@ -1399,7 +1439,18 @@ func (g *Game) resolveTopOfStackLocked() error {
 			Source: top.InstanceID,
 			CardID: top.InstanceID,
 		})
-		return g.routeStackCardToGraveyardLocked(top)
+		// A COPY has no way out of the stack at all: CR 706.10 says
+		// it is not a card, so "countered by game rules" leaves it
+		// nowhere to go. Checked BEFORE the flashback branch below
+		// because a copy of a flashed-back spell is still not a card
+		// — the exile replacement has no object to act on.
+		if item.IsCopy {
+			return g.ceaseToExistLocked(top.InstanceID)
+		}
+		// S29: a flashed-back spell that fizzles is still exiled —
+		// CR 702.34a replaces every way out of the stack, not just
+		// the resolution.
+		return g.routeStackCardToGraveyardLocked(top, item.AltCost)
 	}
 	g.EmitEvent(Event{
 		Kind:   EventResolve,
@@ -1412,6 +1463,24 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// spells fire their effect here. Errors emit EventEffectError
 	// via fireEffectResolverLocked and do not wedge resolution.
 	g.fireEffectResolverLocked(item, CatalogKey(top), top.InstanceID)
+	// CR 707.10: a resolving copy of a PERMANENT spell becomes a
+	// token. This engine has no token-from-stack-item path, and
+	// letting the copy fall through to the battlefield branch below
+	// would be worse than doing nothing — it would put a second
+	// card-shaped object carrying the original's oracle ID into
+	// play, which a bounce spell then duplicates into a hand. Every
+	// S30 copy card targets an instant or sorcery, so this is
+	// unreachable today; it is written out because it is where the
+	// token rule lands.
+	if item.IsCopy && top.IsPermanent() {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Actor:    item.Controller,
+			CardID:   top.InstanceID,
+			ErrorMsg: "copying a permanent spell is not implemented (CR 707.10 token)",
+		})
+		return g.ceaseToExistLocked(top.InstanceID)
+	}
 	if top.IsPermanent() {
 		// ADR 0034: settle which face the PERMANENT keeps before the
 		// replacement pipeline runs, so the entering card's
@@ -1497,8 +1566,16 @@ func (g *Game) resolveTopOfStackLocked() error {
 		g.queueAltCostEntryTriggerLocked(moved, item)
 		return nil
 	}
-	// Instants / sorceries: resolve to the owner's graveyard.
-	return g.routeStackCardToGraveyardLocked(top)
+	// CR 706.10 — a COPY is not a card, so it has no graveyard to go
+	// to and no flashback exile to be caught by either. It ceases to
+	// exist, having already run its effect above. See spell_copy.go
+	// for why this branch is load-bearing rather than cosmetic.
+	if item.IsCopy {
+		return g.ceaseToExistLocked(top.InstanceID)
+	}
+	// Instants / sorceries: resolve to the owner's graveyard — or to
+	// exile, when the flashback cost was paid (CR 702.34a).
+	return g.routeStackCardToGraveyardLocked(top, item.AltCost)
 }
 
 // spellAllTargetsIllegalLocked reports whether a resolved stack item
@@ -1628,9 +1705,35 @@ func (g *Game) resolveTopAbilityLocked() error {
 // routeStackCardToGraveyardLocked moves a card off Game.Stack and
 // into its owner's graveyard. Used by resolveTopOfStackLocked for
 // instants / sorceries and by the "countered by game rules" path
-// (sub-PR 3) when every target is illegal on resolve. Caller must
-// hold g.mu.
-func (g *Game) routeStackCardToGraveyardLocked(c Card) error {
+// (sub-PR 3) when every target is illegal on resolve.
+//
+// `altCost` is the key of the cost the spell was cast for, because
+// S29's flashback replaces this destination: "exile this card
+// instead of putting it anywhere else any time it would leave the
+// stack" (CR 702.34a). Pass "" for a spell cast for its printed
+// cost, and for the defensive no-StackMeta path where there is no
+// cost to read.
+//
+// Caller must hold g.mu.
+func (g *Game) routeStackCardToGraveyardLocked(c Card, altCost string) error {
+	// S29 flashback. Checked before the owner lookup because it does
+	// not depend on one: the destination is the shared exile zone
+	// either way, which is also where a card whose owner has left
+	// the game already goes.
+	if altCostExilesFromStack(c, altCost) {
+		if _, err := MoveCard(g.Stack, g.Exile, c.InstanceID); err != nil {
+			return err
+		}
+		g.markCardKnownInZoneLocked(g.Exile, c.InstanceID)
+		g.EmitEvent(Event{
+			Kind:    EventZoneMove,
+			Actor:   c.Owner,
+			CardID:  c.InstanceID,
+			OldZone: ZoneStack,
+			NewZone: ZoneExile,
+		})
+		return nil
+	}
 	owner := g.playerByIDLocked(c.Owner)
 	if owner == nil {
 		// Owner is no longer seated — drop the card to exile so the
@@ -1891,7 +1994,7 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 	})
 	// CR 603.3d: a manually-announced trigger chooses its targets as
 	// it goes on the stack, same as the harvested kind.
-	g.emitBecameTargetLocked(playerID, sourceCardID, params.Targets)
+	g.emitBecameTargetLocked(playerID, sourceCardID, id, params.Targets)
 	return nil
 }
 
@@ -2801,6 +2904,19 @@ func (g *Game) CounterSpell(spellID uuid.UUID, dst *ZoneRef) error {
 		destZone = g.zoneFromRefLocked(*dst)
 		if destZone == nil {
 			return ErrZoneNotFound
+		}
+	}
+	// S29 flashback: "exile this card instead of putting it anywhere
+	// else ANY TIME it would leave the stack" (CR 702.34a). It beats
+	// the counter's chosen destination, so a flashed-back spell
+	// answered by Hinder is exiled rather than shuffled away — which
+	// is the whole difference between a replacement effect and an
+	// exile bolted onto the resolution, and the only place in the
+	// engine where it is observable.
+	for _, c := range g.Stack.Cards {
+		if c.InstanceID == spellID && altCostExilesFromStack(c, item.AltCost) {
+			destZone = g.Exile
+			break
 		}
 	}
 	if _, err := MoveCard(g.Stack, destZone, spellID); err != nil {
