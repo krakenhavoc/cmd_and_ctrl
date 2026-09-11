@@ -191,6 +191,44 @@ export interface GameView {
   // discarder. Each entry carries its own options[] already filtered
   // per the viewer's visibility.
   pending_choices?: PendingChoiceView[];
+  // S31: the closed list of moves THE VIEWER'S OWN SEAT may make
+  // right now, enumerated server-side by `internal/legal`. The server
+  // never ships another seat's list — an opponent's moves name the
+  // cards in their hand — so this is always "mine".
+  //
+  // Absent means NO INFORMATION, not "nothing is legal": the field is
+  // omitted whenever the seat owes no decision, and an older server
+  // omits it entirely. Client predicates stay permissive when it is
+  // missing and let the server do the rejecting.
+  legal_moves?: LegalMoveView[];
+}
+
+// LegalMoveView mirrors `legal.Move` server-side (ADR 0033 §1): one
+// fully-specified thing the viewer's seat may do right now.
+//
+// `params` is EXACTLY the ActionPayload params that perform the move,
+// so `{ type, player, params }` can be sent to the server unaltered
+// and is contractually guaranteed to be accepted.
+//
+// Two caps apply, and both matter to anything reading this list.
+// Target and mode expansion is capped at 12 moves per source card,
+// and the whole list is capped at 48 — past which the server keeps
+// one move per (source, kind) and drops the alternatives. The
+// invariant you may rely on is "every card with a legal move has at
+// least one entry here". Do NOT read it as the complete set of legal
+// targets; that is what CardView.legal_targets is for.
+export interface LegalMoveView {
+  type: string;
+  player: string;
+  params?: Record<string, unknown>;
+  kind: "pass" | "land" | "cast" | "activate" | "mana" | "attack" | "block" | "choice" | "mulligan";
+  label: string;
+  // Instance ID of the card the move is about, when there is one.
+  // Moves with no card (pass_priority, keep_hand, mulligan) carry the
+  // nil UUID rather than omitting the key — Go's omitempty does not
+  // apply to a UUID array — so join on equality with a real instance
+  // ID and never on presence.
+  source?: string;
 }
 
 // PendingChoiceView mirrors `protocol.PendingChoiceView` server-side.

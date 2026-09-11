@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
 
 // view.go holds the wire-format projection of the server's
@@ -102,7 +103,37 @@ type GameView struct {
 	// every client sees what its viewer is legally allowed to).
 	// Drained by resolve_choice actions. Added in S14 sub-PR 5.
 	PendingChoices []PendingChoiceView `json:"pending_choices,omitempty"`
+	// LegalMoves is the closed list of things the VIEWER'S OWN seat
+	// may do right now, straight out of internal/legal. Empty
+	// whenever that seat owes no decision — which is most frames,
+	// because the enumerator returns nothing for a seat that holds
+	// neither priority nor a pending choice nor a combat
+	// declaration.
+	//
+	// OWN SEAT ONLY, and that is a hard rule rather than a
+	// nicety: an opponent's move list names the cards in their hand
+	// they could cast, which is the whole of hidden information.
+	// The field is therefore never populated by ViewOfGame — it is
+	// projected out of the unexported legalBySeat map by
+	// FilterViewFor, the same shape the knowers map uses, so the
+	// unfiltered view that goes to the crash dump and the replay log
+	// carries no seat's moves at all. Added in S31 sub-PR 2.
+	LegalMoves []LegalMoveView `json:"legal_moves,omitempty"`
+	// legalBySeat is the per-seat enumeration, keyed by player UUID
+	// string. Unexported, so encoding/json never writes it: the only
+	// way a move list reaches a client is through FilterViewFor
+	// picking out that client's own key. Cleared by construction on
+	// every filtered copy, which keeps repeated FilterViewFor calls
+	// idempotent.
+	legalBySeat map[string][]LegalMoveView
 }
+
+// LegalMoveView is one entry of the viewer's legal-move list. It is
+// legal.Move verbatim rather than a parallel struct: the
+// enumerator's JSON tags ARE the wire contract (ADR 0033 §1 — "the
+// same list is what the client consumes"), and a copy here would be
+// one more thing to keep in sync for no gain.
+type LegalMoveView = legal.Move
 
 // PendingChoiceView is the wire shape of a PendingChoice.
 // Serialised per-viewer with Options pre-filtered to the cards
@@ -1030,8 +1061,95 @@ func ViewOfGame(g *game.Game) GameView {
 		}
 		stampLegalTargets(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
+		view.legalBySeat = enumerateLegalMoves(g)
 	})
 	return view
+}
+
+// enumerateLegalMoves runs the legal-move enumerator once per seat
+// and returns the result keyed by player UUID string. Runs under the
+// read lock ViewOfGame already holds, hence EnumerateLocked.
+//
+// Every seat, not just the one holding priority, and deliberately so:
+// "who owes a decision right now" is a question the enumerator
+// already answers — a seat with neither priority nor a pending choice
+// nor a combat declaration gets an empty list and costs two map
+// lookups to find that out. Re-deriving the predicate here would be
+// a second copy of the rule, and the one case it would get wrong is
+// the expensive one: a defender declaring blockers holds no priority
+// (the active player still does), and blocking is the window a
+// client must never be left guessing about (#328).
+//
+// A nil map is fine — FilterViewFor reads it with a comma-less index
+// and gets nil back for every seat.
+func enumerateLegalMoves(g *game.Game) map[string][]LegalMoveView {
+	var out map[string][]LegalMoveView
+	for _, p := range g.Seats {
+		if p == nil {
+			continue
+		}
+		moves := capLegalMoves(legal.EnumerateLocked(g, p.ID, legal.Options{}))
+		if len(moves) == 0 {
+			continue
+		}
+		if out == nil {
+			out = make(map[string][]LegalMoveView, len(g.Seats))
+		}
+		out[p.ID.String()] = moves
+	}
+	return out
+}
+
+// legalMovesWireCap bounds how many moves one seat's list may put on
+// the wire before it degrades.
+//
+// The enumerator's own cap is PER SOURCE (legal.Options
+// MaxExpansionPerSource, 12), which bounds one card and not the
+// board. A seat with a Lightning Bolt, two sacrifice outlets and a
+// modal spell out is four crossed products, and the measured cost of
+// a single expanded source on a four-player table is ~5 KB — so
+// "capped" without a global bound is not actually capped. This is
+// that bound.
+//
+// 48 lands the worst realistic frame just under the 24 KiB the
+// protocol tests budget for the field. The bot is unaffected either
+// way: internal/aiseat enumerates in-process at full fidelity and
+// never reads this projection.
+const legalMovesWireCap = 48
+
+// capLegalMoves degrades an over-long move list instead of truncating
+// it, because truncation would be a correctness bug rather than a
+// size one: the client's question is "does this card have a move?",
+// and dropping the tail would grey out a card that is perfectly
+// playable — the exact class of "greyed in the UI, accepted by the
+// server" bug this whole sub-PR exists to kill.
+//
+// So the degraded list keeps the FIRST move of every (source, kind)
+// pair and drops only the alternatives. Every card that had a move
+// still has one; what is lost is the choice between its twelve
+// targets, which no client consumes today (targeting is driven by
+// CardView.legal_targets, and targeting.ts stays the presentation
+// layer for it). docs/protocol.md states this as part of the field's
+// contract.
+func capLegalMoves(moves []LegalMoveView) []LegalMoveView {
+	if len(moves) <= legalMovesWireCap {
+		return moves
+	}
+	type key struct {
+		source uuid.UUID
+		kind   legal.Kind
+	}
+	seen := make(map[key]bool, len(moves))
+	out := make([]LegalMoveView, 0, legalMovesWireCap)
+	for _, m := range moves {
+		k := key{m.Source, m.Kind}
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, m)
+	}
+	return out
 }
 
 // stampLegalTargets fills CardView.LegalTargets for every card in a
@@ -1787,7 +1905,25 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		SplitSecondActive: v.SplitSecondActive,
 		DiscardPending:    v.DiscardPending,
 		PendingChoices:    filterPendingChoices(v.PendingChoices, isKnower, viewerID),
+		LegalMoves:        legalMovesFor(v.legalBySeat, viewerID),
 	}
+}
+
+// legalMovesFor picks the viewer's own move list out of the per-seat
+// enumeration and drops every other seat's.
+//
+// The empty viewerID — spectator, admin, replay reader — gets
+// nothing, which is the one place this parts company with the rest of
+// FilterViewFor's "empty means see everything" convention. A move
+// list is not a view of the board, it is a view of what a specific
+// player is holding: "cast Lightning Bolt targeting Kess" names a
+// card in a hand. There is no seat whose moves an unseated viewer is
+// entitled to, so there is nothing to hand back.
+func legalMovesFor(bySeat map[string][]LegalMoveView, viewerID string) []LegalMoveView {
+	if viewerID == "" || len(bySeat) == 0 {
+		return nil
+	}
+	return bySeat[viewerID]
 }
 
 // filterPendingChoices projects each choice's Options through the

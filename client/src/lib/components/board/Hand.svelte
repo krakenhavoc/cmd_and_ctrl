@@ -90,10 +90,12 @@
   }
 
   // legalityFor computes the cast-from-hand legality for a single
-  // card. Cheap enough to call on every render; the predicate just
-  // walks a few snapshot fields. Returns a "spectator" Legality for
-  // opponent hands so the .timing-disabled class stays off (we
-  // never grey opponent hands — face-down already says "not yours").
+  // card. Cheap enough to call on every render: since S31 the
+  // verdict is a scan of the server's own `legal_moves` list rather
+  // than a derivation. Returns a "spectator" Legality for opponent
+  // hands so the .timing-disabled class stays off (we never grey
+  // opponent hands — face-down already says "not yours", and the
+  // wire ships no move list for anyone but the viewer anyway).
   function legalityFor(c: CardView): Legality {
     if (!isSelf) return { legal: true };
     return canCastFromHand(c, snap, viewerID);

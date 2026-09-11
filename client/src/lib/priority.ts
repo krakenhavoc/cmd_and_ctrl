@@ -1,51 +1,26 @@
 // S13.6 — intelligent priority auto-pass.
 //
-// Folds the S13.3 timing predicates (canCastFromHand /
-// canActivateAbility) into a single "does the viewer have any legal
-// response right now?" question. The autoPassPriority effect uses
-// this to skip *stopped* steps where the viewer would otherwise have
-// to click pass with nothing to do.
+// Answers one question: "does the viewer have anything to do in this
+// priority window?" The autoPassPriority effect uses it to skip
+// *stopped* steps where the viewer would otherwise have to click pass
+// with nothing to do.
 //
-// Scope:
-//   - Checks cards in the viewer's hand + command zone (cast paths)
-//     and cards the viewer controls on the battlefield (activated
-//     abilities via canActivateAbility, which is the generic
-//     instant-speed gate).
-//   - Does NOT check mana affordability — that needs the server's
-//     AutoTapForCost preview endpoint, which we deliberately keep
-//     off the priority hot path. The predicate stays conservative:
-//     false positives (claims "you could do something" when you
-//     actually can't afford it) are safe — they just mean we stop
-//     at a step where the player gets to decide. False negatives
-//     (claims "nothing to do" when something IS castable) would
-//     eat the player's priority window, so we err on the true side.
-//   - Does NOT consider triggered-ability responses — those aren't
-//     priority-gated actions from the viewer's perspective, and S19
-//     will auto-fire them anyway.
+// S31 sub-PR 2 turned this from a derivation into a lookup. It used
+// to walk the viewer's hand, command zone and battlefield running the
+// S13.3 timing predicates over every card, which meant it inherited
+// every bug in those predicates plus one of its own: it could not see
+// mana, so "you have a response" meant "you hold a card that is legal
+// at this speed", affordable or not. The server now enumerates the
+// seat's legal moves and ships them as `legal_moves`, so the question
+// is `legal_moves.some(m => m.kind !== "pass")` — the engine's own
+// answer, mana and targets and all.
 //
 // The server is still authoritative for every action; this module
 // exists purely to decide whether the client should auto-pass
 // priority on the viewer's behalf when `smartAutoPass` is on.
 
-import { canActivateAbility, canCastFromHand, hasPriority } from "./timing";
+import { hasNonPassMove, hasPriority } from "./timing";
 import type { GameView } from "./protocol";
-
-// Cache the result per (snap.seq, viewerID). Computing
-// hasAnyLegalResponse can scan dozens of cards across hand +
-// battlefield + command; a single snapshot tick can trigger
-// multiple callers (the autoPassPriority effect + any UI surface
-// that wants to badge "you have a response available") and we
-// don't want each to re-walk the same state.
-const cache = new Map<string, boolean>();
-let cacheSeq = -1;
-
-function cacheKey(seq: number, viewerID: string): string {
-  if (seq !== cacheSeq) {
-    cache.clear();
-    cacheSeq = seq;
-  }
-  return viewerID;
-}
 
 // owesBlockDecision reports whether the viewer is facing a
 // declare-blockers decision they have not been given the chance to
@@ -71,6 +46,12 @@ function cacheKey(seq: number, viewerID: string): string {
 // gets priority first on entering the step, so the defender's seat is
 // listed before priority ever reaches them; the auto-pass effect
 // needs the guard to already be true when it does.
+//
+// Kept as its own signal even though `legal_moves` now carries
+// `block` moves too: this one has to be readable on a frame where the
+// defender holds no priority, and the enumerator's answer is derived
+// from the same server-side eligibility test anyway (#328), so the
+// two cannot disagree.
 export function owesBlockDecision(
   snap: GameView | null | undefined,
   viewerID: string | null,
@@ -84,73 +65,41 @@ export function owesBlockDecision(
 }
 
 // hasAnyLegalResponse reports whether the viewer could fire *any*
-// priority-gated action against the current snapshot. Used by the
-// smart-skip auto-pass to decide whether to pass through a step the
-// viewer has pinned in their stops grid.
+// action against the current snapshot. Used by the smart-skip
+// auto-pass to decide whether to pass through a step the viewer has
+// pinned in their stops grid.
 //
-// Returns false for spectators, for viewers who don't hold priority,
-// and for any snap where the timing helpers reject every card.
+// Returns false for spectators and for viewers who don't hold
+// priority. An owed declare-blockers decision counts as "you have
+// something to do here" even though it isn't a response (#328).
 //
-// #328: an owed declare-blockers decision also counts as "you have
-// something to do here", even though it isn't a response. Folding it
-// in here rather than only at the auto-pass call site keeps every
-// consumer — the skip decision and any UI badge — agreeing about
-// whether the window is live.
+// `snapSeq` is vestigial: the answer is one scan of a field the
+// server already computed, so the per-seq memo the card walk needed
+// is gone. The parameter stays so call sites don't churn.
 export function hasAnyLegalResponse(
   snap: GameView | null | undefined,
   viewerID: string | null,
   snapSeq = -1,
 ): boolean {
+  void snapSeq;
   if (!snap || !viewerID) return false;
-  if (!hasPriority(snap, viewerID)) return false;
 
-  const key = cacheKey(snapSeq, viewerID);
-  const cached = cache.get(key);
-  if (cached !== undefined) return cached;
-
-  const answer = compute(snap, viewerID);
-  cache.set(key, answer);
-  return answer;
-}
-
-function compute(snap: GameView, viewerID: string): boolean {
-  const seat = snap.seats?.find((s) => s.id === viewerID);
-  if (!seat) return false;
-
-  // #328: an owed block declaration first — it's the one entry here
-  // that isn't a priority-gated action, and the one whose absence
-  // silently costs the player the game.
+  // #328 first: it's the one entry here that isn't a priority-gated
+  // action, and the one whose absence silently costs the player the
+  // game.
   if (owesBlockDecision(snap, viewerID)) return true;
 
-  // Hand: any castable card?
-  for (const card of seat.hand?.cards ?? []) {
-    if (canCastFromHand(card, snap, viewerID).legal) return true;
-  }
+  if (!hasPriority(snap, viewerID)) return false;
 
-  // Command zone: same predicate shape — a commander you could cast
-  // counts as a legal response on your own main phase.
-  for (const card of seat.command?.cards ?? []) {
-    if (canCastFromHand(card, snap, viewerID).legal) return true;
-  }
-
-  // Battlefield: any card the viewer controls that could fire an
-  // instant-speed activation. canActivateAbility is intentionally
-  // permissive (the engine doesn't know per-card ability lists) —
-  // any battlefield card you control during a priority window is
-  // treated as "could activate something." Conservative but matches
-  // S13.3's existing UX: the grey/un-grey dance on the battlefield
-  // already signals when activation is legal.
-  for (const card of snap.battlefield?.cards ?? []) {
-    if (card.controller !== viewerID) continue;
-    if (canActivateAbility(card, snap, viewerID).legal) return true;
-  }
-
-  return false;
+  // No move list on a frame where the viewer holds priority means a
+  // server older than S31, or a field we dropped; err toward
+  // stopping. A false positive costs one click, a false negative eats
+  // a window the player was entitled to — the asymmetry ADR 0009 §3
+  // calls for.
+  return hasNonPassMove(snap) ?? true;
 }
 
-// Testing hook: clears the memo cache. Intended for vitest teardown
-// only — production calls are invalidated by snap.seq changes.
-export function _resetCacheForTests(): void {
-  cache.clear();
-  cacheSeq = -1;
-}
+// Testing hook: retained as a no-op. The memo cache it used to clear
+// went away with the card walk, but vitest teardowns still call it
+// and a missing export is a worse failure than a no-op.
+export function _resetCacheForTests(): void {}
