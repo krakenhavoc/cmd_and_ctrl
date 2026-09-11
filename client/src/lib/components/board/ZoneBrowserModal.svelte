@@ -97,8 +97,13 @@
   // victim's exile slice, and the thief is the one who may play it.
   // Both derivations live in zoneBrowser.logic.ts so vitest can
   // exercise them without a renderer.
-  const grantFor = (card: CardView) => impulseGrantFor(card, zoneKind, viewerID);
-  const labelFor = (card: CardView) => impulseActionLabel(card, zoneKind, viewerID);
+  //
+  // S29 warp added a floor to the window: a warped creature's grant
+  // is stamped the moment the end step exiles it and stays dark
+  // until the next turn, so the turn number rides both derivations.
+  const grantFor = (card: CardView) => impulseGrantFor(card, zoneKind, viewerID, view.turn.number);
+  const labelFor = (card: CardView) =>
+    impulseActionLabel(card, zoneKind, viewerID, view.turn.number);
 
   // S29: "cast from here" for the zones whose permission is printed
   // on the card rather than granted to an instance. Only the

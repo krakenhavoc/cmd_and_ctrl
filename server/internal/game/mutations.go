@@ -1361,8 +1361,9 @@ func (g *Game) resolveTopOfStackLocked() error {
 	if !ok || item == nil {
 		// Defensive: a card on the stack without a meta entry should
 		// not happen — but if it does, route to graveyard so the
-		// stack doesn't wedge.
-		return g.routeStackCardToGraveyardLocked(top)
+		// stack doesn't wedge. No meta means no record of the cost
+		// that was paid, so no flashback replacement either.
+		return g.routeStackCardToGraveyardLocked(top, "")
 	}
 	// CR 608.1: spells and abilities share one LIFO stack. An ability
 	// item stamped with a higher Seq than the top spell was added
@@ -1399,7 +1400,10 @@ func (g *Game) resolveTopOfStackLocked() error {
 			Source: top.InstanceID,
 			CardID: top.InstanceID,
 		})
-		return g.routeStackCardToGraveyardLocked(top)
+		// S29: a flashed-back spell that fizzles is still exiled —
+		// CR 702.34a replaces every way out of the stack, not just
+		// the resolution.
+		return g.routeStackCardToGraveyardLocked(top, item.AltCost)
 	}
 	g.EmitEvent(Event{
 		Kind:   EventResolve,
@@ -1497,8 +1501,9 @@ func (g *Game) resolveTopOfStackLocked() error {
 		g.queueAltCostEntryTriggerLocked(moved, item)
 		return nil
 	}
-	// Instants / sorceries: resolve to the owner's graveyard.
-	return g.routeStackCardToGraveyardLocked(top)
+	// Instants / sorceries: resolve to the owner's graveyard — or to
+	// exile, when the flashback cost was paid (CR 702.34a).
+	return g.routeStackCardToGraveyardLocked(top, item.AltCost)
 }
 
 // spellAllTargetsIllegalLocked reports whether a resolved stack item
@@ -1628,9 +1633,35 @@ func (g *Game) resolveTopAbilityLocked() error {
 // routeStackCardToGraveyardLocked moves a card off Game.Stack and
 // into its owner's graveyard. Used by resolveTopOfStackLocked for
 // instants / sorceries and by the "countered by game rules" path
-// (sub-PR 3) when every target is illegal on resolve. Caller must
-// hold g.mu.
-func (g *Game) routeStackCardToGraveyardLocked(c Card) error {
+// (sub-PR 3) when every target is illegal on resolve.
+//
+// `altCost` is the key of the cost the spell was cast for, because
+// S29's flashback replaces this destination: "exile this card
+// instead of putting it anywhere else any time it would leave the
+// stack" (CR 702.34a). Pass "" for a spell cast for its printed
+// cost, and for the defensive no-StackMeta path where there is no
+// cost to read.
+//
+// Caller must hold g.mu.
+func (g *Game) routeStackCardToGraveyardLocked(c Card, altCost string) error {
+	// S29 flashback. Checked before the owner lookup because it does
+	// not depend on one: the destination is the shared exile zone
+	// either way, which is also where a card whose owner has left
+	// the game already goes.
+	if altCostExilesFromStack(c, altCost) {
+		if _, err := MoveCard(g.Stack, g.Exile, c.InstanceID); err != nil {
+			return err
+		}
+		g.markCardKnownInZoneLocked(g.Exile, c.InstanceID)
+		g.EmitEvent(Event{
+			Kind:    EventZoneMove,
+			Actor:   c.Owner,
+			CardID:  c.InstanceID,
+			OldZone: ZoneStack,
+			NewZone: ZoneExile,
+		})
+		return nil
+	}
 	owner := g.playerByIDLocked(c.Owner)
 	if owner == nil {
 		// Owner is no longer seated — drop the card to exile so the
@@ -2789,6 +2820,19 @@ func (g *Game) CounterSpell(spellID uuid.UUID, dst *ZoneRef) error {
 		destZone = g.zoneFromRefLocked(*dst)
 		if destZone == nil {
 			return ErrZoneNotFound
+		}
+	}
+	// S29 flashback: "exile this card instead of putting it anywhere
+	// else ANY TIME it would leave the stack" (CR 702.34a). It beats
+	// the counter's chosen destination, so a flashed-back spell
+	// answered by Hinder is exiled rather than shuffled away — which
+	// is the whole difference between a replacement effect and an
+	// exile bolted onto the resolution, and the only place in the
+	// engine where it is observable.
+	for _, c := range g.Stack.Cards {
+		if c.InstanceID == spellID && altCostExilesFromStack(c, item.AltCost) {
+			destZone = g.Exile
+			break
 		}
 	}
 	if _, err := MoveCard(g.Stack, destZone, spellID); err != nil {

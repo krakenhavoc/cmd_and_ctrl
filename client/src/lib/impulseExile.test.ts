@@ -64,3 +64,30 @@ describe("impulse exile — cast vs play", () => {
     expect(impulseActionLabel(exiled(), "exile", "thief")).toBeNull();
   });
 });
+
+// --- S29 warp: the window has a floor -----------------------------
+//
+// A warped creature's grant is stamped the moment the end step exiles
+// it — on the turn it was warped — and the card says "you may cast it
+// from exile ON A LATER TURN". An unbounded grant with no floor would
+// light the button up immediately, during the very end step that took
+// the creature away.
+
+describe("impulse exile — warp's not-before-turn floor", () => {
+  const warped = { player: "thief", not_before_turn: 5 };
+
+  it("withholds the button on the turn the grant was made", () => {
+    expect(impulseGrantFor(exiled({ exile_play: warped }), "exile", "thief", 4)).toBeNull();
+    expect(impulseActionLabel(exiled({ exile_play: warped }), "exile", "thief", 4)).toBeNull();
+  });
+
+  it("offers it from the named turn onwards", () => {
+    expect(impulseGrantFor(exiled({ exile_play: warped }), "exile", "thief", 5)).toEqual(warped);
+    expect(impulseGrantFor(exiled({ exile_play: warped }), "exile", "thief", 9)).toEqual(warped);
+    expect(impulseActionLabel(exiled({ exile_play: warped }), "exile", "thief", 5)).toBe("cast");
+  });
+
+  it("leaves floorless grants — impulse exile, airbend — alone", () => {
+    expect(impulseGrantFor(exiled({ exile_play: mine }), "exile", "thief", 1)).toEqual(mine);
+  });
+});

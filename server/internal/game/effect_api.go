@@ -1221,6 +1221,59 @@ func (g *Game) CreateTokenForEffect(controller uuid.UUID, template Card, n int) 
 	return nil
 }
 
+// CreateTokensAttackingForEffect is CreateTokenForEffect for
+// "create N tokens … that are attacking" (Parhelion II, Hanweir
+// Garrison): the tokens are put onto the battlefield already
+// attacking `defender`.
+//
+// CR 506.3c is the reason this is a separate entry point rather than
+// a flag: a permanent PUT onto the battlefield attacking was never
+// DECLARED as an attacker, so it fires no "whenever ~ attacks"
+// trigger and nothing that watches attack declarations sees it.
+// Setting AttackingTarget directly and emitting no EventAttack is
+// exactly that rule, and routing through DeclareAttacker — which
+// emits the event, checks summoning sickness and taps — would be
+// wrong on all four counts.
+//
+// A zero `defender`, or a defender that is not a seated player,
+// creates the tokens untapped and not attacking rather than
+// erroring: the ability that called this has already resolved, and
+// the tokens are the part of it that can still be delivered.
+//
+// Caller must hold g.mu.
+func (g *Game) CreateTokensAttackingForEffect(controller uuid.UUID, template Card, n int, defender uuid.UUID) error {
+	if n <= 0 {
+		return nil
+	}
+	attacking := defender != uuid.Nil && g.playerByIDLocked(defender) != nil
+	for i := 0; i < n; i++ {
+		tok := template
+		tok.InstanceID = uuid.New()
+		tok.Owner = controller
+		tok.Controller = controller
+		tok.Counters = nil
+		tok.KnownBy = nil
+		if attacking {
+			tok.AttackingTarget = defender
+		}
+		for _, seat := range g.Seats {
+			tok.AddKnower(seat.ID)
+		}
+		g.Battlefield.PushTop(tok)
+		g.EmitEvent(Event{
+			Kind:   EventTokenCreated,
+			Actor:  controller,
+			CardID: tok.InstanceID,
+		})
+		g.EmitEvent(Event{
+			Kind:   EventETB,
+			Actor:  controller,
+			CardID: tok.InstanceID,
+		})
+	}
+	return nil
+}
+
 // ScryForEffect performs a scry N (CR 701.18): the player looks at the
 // top N cards of their library and then decides which go to the bottom
 // and in what order the rest go back on top.

@@ -292,6 +292,16 @@ func battlefieldSpec(mode, label string, pred CardPredicate) *game.TargetSpec {
 	}
 }
 
+// IsTokenPredicate matches a token — "target token you control"
+// (Esika's Chariot). Named with the suffix because IsToken is
+// already the plain card helper in helpers.go and the two are used
+// side by side. Added in S27.
+func IsTokenPredicate() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		return IsToken(c)
+	}
+}
+
 // TargetSpell — "target spell" on the stack, narrowed by predicates
 // (Noncreature() for Negate, Creature() for Essence Scatter).
 func TargetSpell(label string, preds ...CardPredicate) *game.TargetSpec {
