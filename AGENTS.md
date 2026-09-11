@@ -571,15 +571,24 @@ func init() {
 
 **Don't use the replacement pipeline when a primitive flag suffices.** "This card does X to a land it fetches" (Cultivate, Path to Exile, Solemn Simulacrum) is a self-contained card behavior, not a general replacement. Declare `TappedOnEntry: true` on the `SearchLibrary` primitive rather than a full `ReplacementEffect`. The generic pipeline is for effects that watch *other* cards' events.
 
-> **Known bug, being fixed:** that `TappedOnEntry` flag is currently the
-> *only* thing standing in for the pipeline on the search path —
-> `SearchLibraryForEffectWithOptions` never calls
-> `applyReplacementsLocked`, so a permanent that arrives via a fetch
-> skips **every** entry replacement ([#263](https://github.com/krakenhavoc/cmd_and_ctrl/issues/263):
-> a fetched fastland enters untapped; 20 catalog files declare
-> `Replacements:` and all are affected). A fix is in flight on
-> `fix/search-entry-pipeline` — check the issue before writing a card
-> whose entry replacement can be reached by a tutor.
+> **History, and one declared gap.** That `TappedOnEntry` flag used to be
+> the *only* thing standing in for the pipeline on the search path, which
+> is how a fetched fastland entered untapped
+> ([#263](https://github.com/krakenhavoc/cmd_and_ctrl/issues/263),
+> **fixed**). The search path — and the reanimation path, which had the
+> same hole and was not in the issue — now both run
+> `applyReplacementsLocked` before the card leaves its zone, and both
+> fire `fireETBHookLocked`.
+>
+> What remains is deliberate: neither entry site is `entryResumable`, so
+> an entry replacement that wants to **ask** something cannot. A fetched
+> shockland enters tapped with **no payment offered** — weaker than
+> printed, never stronger, which is the posture
+> `ReplacementEvent.entryResumable` exists to enforce. Resuming
+> generically would finish the move without the search's continuation and
+> skip the library shuffle, and a missing shuffle silently leaks library
+> order. `TestFetchedShocklandEntersTappedWithNoPaymentOffered` pins the
+> gap and flips when it closes.
 
 ### Adding a combat-keyword card (S18+)
 
@@ -963,6 +972,8 @@ and still unimplemented: that is CR 613 layer 1, deferred to S16.5.
 | "Whenever ~ attacks" | `EventAttack` | `attackDeclared(ev, source)` — `EventAttack` carries the attacking creature in `CardID`, exactly as `EventETB` carries the entering permanent |
 | "Whenever a creature you control attacks" | `EventAttack` | `attackDeclaredByYou(ev, source.Controller)` — reads `ev.Actor` (the attacker's controller); fires **once per attacking creature**, so a three-creature alpha strike triggers three times. Add `ev.CardID != source.InstanceID` for "another". `ev.Target` is the defending player |
 | "Whenever ~ enters or attacks" | `EventETB` + `EventAttack` on **one** ability | `ev.CardID == source.InstanceID` — one printed ability with two trigger conditions is one `TriggeredAbility` watching two kinds, not two declarations (Sun Titan) |
+| "Whenever ~ becomes the target of a spell or ability" | `EventBecomesTarget` | `ev.CardID == source.InstanceID` — `CardID` repeats `Target` when the target is a card and is `uuid.Nil` for a player, so reading `CardID` is what keeps a player-targeting spell from matching. `ev.Actor` is the targeting player, `ev.Source` its source |
+| "Whenever another creature you control becomes the target…" | `EventBecomesTarget` | `targetedAnotherCreatureYouControl(ev, source, g)` (Monk Gyatso) — excludes the source, checks the target is still on the battlefield, then reads its type and controller. Fires once per target **slot**, at **announce** (CR 115.7), so the trigger goes on the stack ABOVE the spell that targeted and resolves first — which is the whole card |
 | "At the beginning of your upkeep" | `EventBeginUpkeep` | `ev.Actor == source.Controller` |
 | "At the beginning of your end step" | `EventBeginEndStep` | `ev.Actor == source.Controller` — drop the check for "the beginning of the end step" (any player's) |
 | "Whenever you cast a creature spell" | `EventCast` | `ev.Actor == source.Controller` + `g.LookupCardForEffect(ev.CardID)` for the spell's type |
@@ -1036,25 +1047,33 @@ then `passPriorityAroundTable`. See the S19 sections of
 - **Activated abilities whose cost has no component** — `AbilityCost`
   carries tap-this, sacrifice-this, sacrifice-another, mana and life
   ([activated.go](server/internal/game/activated.go)) and nothing else.
-  So planeswalker **loyalty** costs, **equip**, **convoke** /
-  **waterbend** (tap *other* permanents) and cycling still have no
-  shape — don't invent one. (Ordinary activated abilities built from
+  So planeswalker **loyalty** costs, **equip**, cycling, and
+  **convoke / waterbend on an ACTIVATED ability** still have no shape —
+  don't invent one. (Convoke and waterbend on a *spell* do have one since
+  S22: `Spec.TapCost`, built with `Convoke()` / `Waterbend("{X}")`. The
+  activated-ability seam is separate and still open — Katara, Water
+  Tribe's Hope is the card waiting on it.) (Ordinary activated abilities built from
   those five components are fine since S21: see `Spec.Activated`
   above. Loyalty has a manual path — `ActivateLoyalty` moves the
   counter and enforces CR 606.5 — but no catalog hook for the
-  ability's effect.) Shipping a card with its tap-other cost simply
-  omitted makes it **stronger than printed**, which is the wrong
-  direction for a simplification —
-  [#259](https://github.com/krakenhavoc/cmd_and_ctrl/issues/259) is that
-  mistake already in the catalog (Waterbender's Restoration), with a fix
-  in flight on `feat/tap-as-cost`.
-- **Triggers on events the engine doesn't emit yet** ("becomes the
-  target of a spell or ability", "whenever a creature enters under an
-  opponent's control", landfall-with-a-target) — check
+  ability's effect.) Shipping a card with a cost the engine
+  can't express simply omitted makes it **stronger than printed**, which
+  is the wrong direction for a simplification:
+  [#259](https://github.com/krakenhavoc/cmd_and_ctrl/issues/259) was that
+  mistake reaching the catalog (Waterbender's Restoration shipped as a
+  two-mana mass blink) and is now **closed**, but it stood for a sprint
+  and was caught by writing a decklist doc rather than by a test. If the
+  cost has no shape, leave the CARD out.
+- **Triggers on events the engine doesn't emit yet** ("whenever a
+  creature enters under an opponent's control", landfall-with-a-target,
+  "whenever you attack with one or more creatures" as a single batched
+  trigger) — check
   [events.go](server/internal/game/events.go) for an `EventKind`
   first. If there isn't one, the event plumbing is the PR, not the
-  card. **Attack declarations are no longer on this list**:
-  `EventAttack` shipped in S22 — see the event picker above.
+  card. Two things that used to be on this list are not any more:
+  **attack declarations** (`EventAttack`) and **"becomes the target of a
+  spell or ability"** (`EventBecomesTarget`), both S22 — see the event
+  picker above.
 - **Cost-replacement effects** (Trinisphere, Thalia, Spellshift, Kambal)
   touch the S15 cost engine rather than the S17 event pipeline. They
   land with S28.

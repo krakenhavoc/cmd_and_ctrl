@@ -8,7 +8,12 @@ shape as [the Pirates list](pirates-mary-read-anne-bonny.md): a deck is
 a better forcing function than a card count, because it says which
 gaps actually stop a game from being played.
 
-**Re-triaged 2026-09-11** against `main` @ `5cc2a87`. Every number below
+**Re-triaged 2026-09-11** against `main` @ `0f82505` — re-run after
+[#267](https://github.com/krakenhavoc/cmd_and_ctrl/pull/267),
+[#268](https://github.com/krakenhavoc/cmd_and_ctrl/pull/268),
+[#269](https://github.com/krakenhavoc/cmd_and_ctrl/pull/269),
+[#271](https://github.com/krakenhavoc/cmd_and_ctrl/pull/271) and
+[#272](https://github.com/krakenhavoc/cmd_and_ctrl/pull/272) landed. Every number below
 was recomputed, not carried forward: the deck's 77 entries were resolved
 in one pass over `data/scryfall/default-cards.json` and joined against
 the oracle IDs the catalog actually registers. Several claims in the
@@ -23,19 +28,19 @@ the same mistakes are easy to make again.
 | Deck entries | 77 |
 | Land entries | 9 (Island ×14 and Plains ×14 are two of them) |
 | Nonland entries | 68 |
-| Nonland **in the catalog** | **19** |
-| Nonland **blocked** | **49** |
+| Nonland **in the catalog** | **23** |
+| Nonland **blocked** | **45** |
 | Land entries playable today | 7 of 9 |
-| Catalog size (whole registry) | **261** registered specs |
+| Catalog size (whole registry) | **289** registered specs |
 
 **Counting the catalog honestly.** `grep -c 'OracleID:'` across the
-non-test files in `server/internal/cards/effects/` returns **225**, and
+non-test files in `server/internal/cards/effects/` returns **234**, and
 that number is wrong — cards register from *tables* in `for` loops
 (`temples.go`, `check_lands.go`, `shocklands.go`, `verges.go`,
 `surveil_lands.go`, `battle_lands.go`, `bond_lands.go`,
 `fastlands.go`, `slowlands.go`, the fetchlands…), so one literal
 `OracleID: t.oracleID` stands for ten cards. The registry is the only
-honest source: `len(effects.All())` is **261**
+honest source: `len(effects.All())` is **289**
 ([registry.go:80](../../server/internal/cards/effects/registry.go)). An
 earlier pass reported 191 for what was then 201 for exactly this reason.
 
@@ -120,20 +125,27 @@ land side.
 | Azorius Chancery | first bounce land — enters-tapped + a mandatory ETB bounce that can legally take itself |
 | Aetherize | reads combat **state** (`Card.AttackingTarget`) rather than waiting on an event |
 
-## Done (S22 engine sprints — five more nonland, three more lands)
+## Done (S22 engine sprints — nine more nonland, three more lands)
 
-Landed after the previous revision of this doc was written:
+Landed after the previous revision of this doc was written. The last
+four rows landed while this correction pass was being written, which is
+why the earlier revision of this file described three of them as "in
+flight".
 
 | Card | Landed in | What it exercises |
 |---|---|---|
 | Sun Titan | [#254](https://github.com/krakenhavoc/cmd_and_ctrl/pull/254) | "enters **or** attacks" as ONE ability watching two event kinds; graveyard→battlefield recursion |
 | Wash Away | [#257](https://github.com/krakenhavoc/cmd_and_ctrl/pull/257) | cleave — the first alternative cost that *widens* a target clause; `StackItem.CastFromZone` |
-| Waterbender's Restoration | [#255](https://github.com/krakenhavoc/cmd_and_ctrl/pull/255) | delayed blink — exile now, return at the next end step (ships uncosted, see below) |
+| Waterbender's Restoration | [#255](https://github.com/krakenhavoc/cmd_and_ctrl/pull/255), costed in [#271](https://github.com/krakenhavoc/cmd_and_ctrl/pull/271) | delayed blink — exile now, return at the next end step; **waterbend {X} is now paid**, and `TargetSpec.CountFromX` ties the target count to the announced X |
 | Cosmic Intervention | [#255](https://github.com/krakenhavoc/cmd_and_ctrl/pull/255) | a turn-scoped replacement that redirects to exile + schedules the return (ships without foretell) |
 | Y'shtola Rhul | [#255](https://github.com/krakenhavoc/cmd_and_ctrl/pull/255) | immediate flicker on an end-step trigger |
-| Hallowed Fountain | [#258](https://github.com/krakenhavoc/cmd_and_ctrl/pull/258) | shockland — enters tapped + an optional "pay 2 life to untap it" trigger |
+| Hallowed Fountain | [#258](https://github.com/krakenhavoc/cmd_and_ctrl/pull/258), fixed in [#268](https://github.com/krakenhavoc/cmd_and_ctrl/pull/268) | shockland — now a **real self-replacement with the choice inside it** (`EntryLifeCost`): the pipeline stops and asks before anything moves, so there is no tapped window and no untap event |
 | Floodfarm Verge | [#258](https://github.com/krakenhavoc/cmd_and_ctrl/pull/258) | verge — **only the unconditional {W} half** ships |
 | Meticulous Archive | [#258](https://github.com/krakenhavoc/cmd_and_ctrl/pull/258) | surveil land — enters tapped + duals; **surveil is not implemented** |
+| Aang, the Last Airbender | [#269](https://github.com/krakenhavoc/cmd_and_ctrl/pull/269) | first airbend — `ExileWithPermission` + an unbounded grant (`WhileExiled`) carrying a `CostOverride` |
+| Appa, Steadfast Guardian | [#269](https://github.com/krakenhavoc/cmd_and_ctrl/pull/269) | airbends **any number** of targets, and "whenever you cast a spell **from exile**" — `EventCast` now carries `OldZone` |
+| Monk Gyatso | [#269](https://github.com/krakenhavoc/cmd_and_ctrl/pull/269) | first `EventBecomesTarget` consumer (CR 115.7) — the trigger lands *above* the spell that targeted, so the removal fizzles |
+| The Wandering Rescuer | [#271](https://github.com/krakenhavoc/cmd_and_ctrl/pull/271) | first convoke — `Spec.TapCost`, creatures tapped at cast time pay {1} or one mana of their colour |
 
 ### Corrections to batch 2's engine findings
 
@@ -165,15 +177,19 @@ previous revision had the old number.
 
 ### Sandbox simplifications declared for this deck
 
-- **Waterbender's Restoration ships uncosted** — waterbend {X} is free
-  ([#259](https://github.com/krakenhavoc/cmd_and_ctrl/issues/259)). It is
-  **stronger than printed**: you exile and return X creatures for {U}{U}
-  with no tapping at all. `AbilityCost` has tap-this / sacrifice / mana /
-  life and no "tap other permanents" component
-  ([activated.go:35–60](../../server/internal/game/activated.go)). *A
-  sibling agent is fixing this now on `feat/tap-as-cost`* — expect this
-  entry to move to the convoke/waterbend group and out of
-  simplifications.
+- ~~**Waterbender's Restoration ships uncosted**~~ — **resolved.**
+  [#259](https://github.com/krakenhavoc/cmd_and_ctrl/issues/259) is
+  closed by [#271](https://github.com/krakenhavoc/cmd_and_ctrl/pull/271).
+  For one sprint this was the only card in the catalog knowingly
+  *stronger* than paper: with no tap-permanents-as-a-cost component and
+  no {X} in the printed mana cost there was nothing to charge, so a
+  two-mana mass blink shipped. It is costed now — `TapCost:
+  Waterbend("{X}")`, X announced at cast time, artifacts and creatures
+  tapping for {1} apiece (or mana, or both), and `CountFromX`
+  ([targets.go:65–77](../../server/internal/game/targets.go)) tying the
+  target count to that same X, so blinking three creatures costs {U}{U}
+  plus three. No simplifications remain on the card. Worth keeping the
+  history: the gap was found by writing this doc, not by a test.
 - **Cosmic Intervention ships without foretell**, for the same reason
   overload was missing from Vandalblast and Cyclonic Rift before
   [#257](https://github.com/krakenhavoc/cmd_and_ctrl/pull/257): foretell
@@ -187,11 +203,16 @@ previous revision had the old number.
   ability has no shape (`ManaAbilityCost` has no condition slot), so the
   card is strictly *worse* than printed
   ([verges.go](../../server/internal/cards/effects/verges.go)).
-- **Hallowed Fountain enters tapped, then offers to untap for 2 life.**
-  "As this land enters, you may pay 2 life" is a replacement with a
-  choice in it and the replacement pipeline is synchronous, so the
-  choice survives as an optional ETB trigger instead
-  ([shocklands.go:18–40](../../server/internal/cards/effects/shocklands.go)).
+- ~~**Hallowed Fountain enters tapped, then offers to untap for 2
+  life**~~ — **superseded** by
+  [#268](https://github.com/krakenhavoc/cmd_and_ctrl/pull/268), which
+  made the whole cycle a real CR 614 self-replacement with the decision
+  inside it (`EntryLifeCost` → the apply-loop stops and asks before
+  anything moves). Paying means the replacement never fires and the land
+  enters untapped; declining, or being unable to pay (CR 118.4), fires it
+  and the land *enters* tapped. No tapped window, no untap event, no
+  priority pass. One declared limit remains, and it is the fetch case
+  below.
 - **Fellwar Stone** offers the full five-colour pipe rather than the
   intersection of what opponents' lands could produce.
 - **Peregrine Drake** untaps up to five *tapped lands its controller
@@ -202,20 +223,45 @@ previous revision had the old number.
 - **Slithermuse** auto-picks the opponent holding the most cards. Its
   evoke is now real ([#257](https://github.com/krakenhavoc/cmd_and_ctrl/pull/257)).
 
-### Known live bug that touches this deck
+### Fetched and reanimated permanents — #263, fixed, with one declared gap
 
-**[#263](https://github.com/krakenhavoc/cmd_and_ctrl/issues/263) —
-search-to-battlefield bypasses the CR 614 replacement pipeline.** Any
-permanent that reaches the battlefield via a *search / fetch* effect
-skips every entry replacement that would otherwise apply to it, because
-`SearchLibraryForEffectWithOptions` never calls
-`applyReplacementsLocked`. Twenty catalog files declare `Replacements:`
-and all of them are affected; a fetched fastland enters **untapped**.
-In this deck it is reachable through Solemn Simulacrum and Loyal
-Warhound. *A sibling agent is fixing it right now on
-`fix/search-entry-pipeline`* — treat it as known-and-being-fixed, not as
-a standing limitation, and re-read the issue before writing anything
-that depends on the search path.
+**[#263](https://github.com/krakenhavoc/cmd_and_ctrl/issues/263) is
+closed** by [#272](https://github.com/krakenhavoc/cmd_and_ctrl/pull/272).
+A permanent reaching the battlefield via a search / fetch used to skip
+every entry replacement — a fetched fastland arrived **untapped**, and a
+creature an opponent fetched walked past Authority of the Consuls. Both
+paths now run `applyReplacementsLocked` before the card leaves its zone,
+and both now fire `fireETBHookLocked`.
+
+Two things about the fix are worth carrying forward:
+
+- **The reanimation path had the same hole and was not in the issue.**
+  `ReturnFromGraveyardUnderControlForEffect` neither ran the pipeline nor
+  fired the ETB hook, so a reanimated shockland ignored its enters-tapped
+  clause and a reanimated Solemn Simulacrum fetched nothing
+  ([effect_api.go:640–722](../../server/internal/game/effect_api.go)). It
+  was found by fixing the neighbour, which is an argument for reading the
+  sibling entry sites whenever one of them turns out to be wrong.
+- **A declared gap remains, and it points the safe way.** The search
+  entry site is deliberately **not** `entryResumable`
+  ([replacements.go:140–160](../../server/internal/game/replacements.go)),
+  so a **fetched** shockland enters **tapped with no payment offered** —
+  weaker than printed, never stronger, and a strict improvement on the
+  old "untapped for free". The reasoning is recorded on
+  `searchEnterBattlefieldLocked`
+  ([effect_api.go:1034–1056](../../server/internal/game/effect_api.go)):
+  `executeEntryToBattlefieldLocked` can finish the *move* but knows
+  nothing about the search that started it, so resuming generically would
+  skip the library shuffle — and a missing shuffle silently leaks library
+  order, which is worse than a missing prompt. A faithful version needs
+  the search's own continuation to survive the entry prompt.
+
+  The gap is executable rather than merely written down:
+  `TestFetchedShocklandEntersTappedWithNoPaymentOffered`
+  (`search_chooser_test.go`) pins it, and **flips** to "a prompt is
+  queued and the land enters untapped if you pay" when the continuation
+  lands. In this deck the case is live — Solemn Simulacrum and Loyal
+  Warhound both fetch, and Hallowed Fountain is the shockland.
 
 ### One engine finding worth keeping
 
@@ -229,9 +275,9 @@ documented on `IsBasicLandWithSubtype`.
 
 ## Blocked, by machinery needed
 
-**49 of the 68 nonland entries.** Groups **overlap** — Aang, Swift
+**45 of the 68 nonland entries.** Groups **overlap** — Aang, Swift
 Savior alone is in four of them — so the group sizes below do not sum to
-49 and are not meant to. Each group says what would unblock it and what
+45 and are not meant to. Each group says what would unblock it and what
 would still be in the way afterwards.
 
 ### Writable today — no engine gap found (4)
@@ -252,63 +298,83 @@ the engine is missing for them, which was not true a week ago:
   check. (The deck plays no Equipment other than Sword of Hearth and
   Home, so the second clause is mostly cosmetic here.)
 - **Vega, the Watcher** — "whenever you cast a spell from anywhere other
-  than your hand, draw a card." **Correction:** the previous revision
-  said this shape was blocked because `EventCast` carries no source zone.
-  The zone is stamped on the stack item at announce
-  (`StackItem.CastFromZone`,
-  [stack.go:150](../../server/internal/game/stack.go), written at
-  [mutations.go:661](../../server/internal/game/mutations.go)), the
-  `EventCast` emit happens *after* that at `mutations.go:709`, and
-  `g.StackItemForEffect(ev.CardID)`
-  ([effect_api.go:37](../../server/internal/game/effect_api.go)) reads it
-  back — `StackMeta` is keyed by the spell's own instance ID. Wash Away
-  already targets on this fact via the `CastFromOwnersHand()` predicate.
+  than your hand, draw a card." **Correction, twice over:** the original
+  revision called this blocked because `EventCast` carried no source
+  zone; the first correction pointed at `StackItem.CastFromZone` as the
+  workaround. Neither is the current answer —
+  [#269](https://github.com/krakenhavoc/cmd_and_ctrl/pull/269) put the
+  zone **on the event**, reusing the existing `OldZone` / `NewZone`
+  fields (`OldZone` is where it was cast from, `NewZone` is always
+  `ZoneStack` —
+  [events.go:36–45](../../server/internal/game/events.go)). Appa reads
+  exactly this. So the trigger is a plain `AppliesTo` on
+  `ev.OldZone != game.ZoneHand`, with no stack-item lookup at all.
 - **Wan Shi Tong, Librarian** — `{X}{U}{U}`, X +1/+1 counters, "draw half
   X rounded down", and an opponent-searches-their-library trigger.
   X costs are S20 sub-PR 3; the search trigger is Archivist of Oghma's.
 
-### Airbend — 6 cards, three shared pieces still missing
+### Airbend — shipped; 3 of the 6 cards are in the catalog
 
-Aang (all three), Appa Steadfast Guardian, Monk Gyatso, Avatar's Wrath.
-"Exile it. While it's exiled, its owner may cast it for {2} rather than
-its mana cost."
+**This section said "doing all three unlocks exactly one of the six".
+That was wrong within a day:**
+[#269](https://github.com/krakenhavoc/cmd_and_ctrl/pull/269) shipped
+**Aang, the Last Airbender, Appa Steadfast Guardian and Monk Gyatso**.
 
-What already exists: `Card.ExilePlay` is a durable per-card permission
-naming a holder, `castSourceZoneLocked` accepts `exile`, the grant
-survives `Clone`, and **the exile half of "exile a target permanent" now
-exists too** (`ExileTarget`, `Flicker` —
-[primitives.go:138, :185](../../server/internal/cards/effects/primitives.go)).
+The three missing pieces the previous revision named were all built, and
+two of them are on `ExilePlayPermission` rather than beside it
+([exile_play.go](../../server/internal/game/exile_play.go)):
 
-What is still missing:
+1. **`CostOverride`** — a mana cost carried by the *grant*, paid instead
+   of the card's printed cost. Deliberately **not** an
+   `AlternativeCost`: that one is a property of the CARD, looked up by
+   oracle ID and offered to anyone casting it, while this is a property
+   of a single exiled INSTANCE — two copies of the same card in exile can
+   carry different grants, one airbent and one impulse-exiled.
+2. **`WhileExiled`** — the unbounded grant. `Active()` short-circuits
+   `turn <= UntilTurn` when it is set, and the cleanup sweep skips those
+   permissions.
+3. **`ExileWithPermission`**
+   ([airbend.go](../../server/internal/cards/effects/airbend.go)) — the
+   battlefield-facing sibling of `ExileTopWithPermission`. The difference
+   that matters is who gets the grant: impulse exile hands the card to
+   the player who exiled it; airbend hands it back to its **owner**
+   (`GrantTo` zero means the owner, which is not the same as "the
+   controller of the effect").
 
-1. **An instance-scoped alternative cost.** S22's alternative costs
-   ([alternative_cost.go](../../server/internal/cards/effects/alternative_cost.go))
-   are declared on a card's own `Spec` and claimed by key at cast time
-   (`AlternativeCostByKey(oracleID, key)`). Airbend prices a cost onto
-   *whatever card it exiled*, which that lookup cannot express —
-   `ExilePlayPermission` has `CastOnly` and `AnyColor` and no cost
-   override at all
-   ([exile_play.go:24–47](../../server/internal/game/exile_play.go)).
-   This is the expensive piece, and the S22 work did **not** deliver it.
-2. **A permission with no expiry.** `Active()` gates on
-   `turn <= UntilTurn` ([exile_play.go:51](../../server/internal/game/exile_play.go));
-   airbend is "while it's exiled", unbounded. Small.
-3. **A grant on exile from the battlefield.** The only granting API is
-   `ExileTopWithPermissionForEffect`
-   ([exile_play.go:85](../../server/internal/game/exile_play.go)), which
-   takes cards off a library's top. Now that `ExileTarget` exists this is
-   plumbing rather than design.
+**Two reusable events came with it**, and both are worth more than the
+cards that motivated them:
 
-**Doing all three unlocks exactly one of the six** — Aang, the Last
-Airbender, and even that needs one more thing (below). The others each
-carry an independent blocker:
+- **`EventCast` now carries the source zone** (`OldZone` / `NewZone`) —
+  Appa's "whenever you cast a spell from exile", and anything else that
+  cares where a spell came from.
+- **`EventBecomesTarget`** (CR 115.7,
+  [events.go:196–225](../../server/internal/game/events.go)) — fires once
+  per target **slot** at announce, from four sites (cast, two activated
+  paths, and the triggered-ability target pick). Announce rather than
+  resolution is the whole point: it still fires for a spell that is later
+  countered, and the triggers it produces go on the stack ABOVE that
+  spell, which is what makes Monk Gyatso work — his trigger resolves
+  first, exiles the creature, and the removal fizzles for want of a
+  target. The previous revision said "there is no targeting event of any
+  kind"; there is now, and "becomes the target of" is a common Commander
+  clause well beyond this deck.
 
-- **Monk Gyatso** — "whenever another creature you control becomes the
-  target of a spell or ability". There is still **no targeting event of
-  any kind** in `events.go`. Blocked regardless of airbend.
-- **Appa, Steadfast Guardian** — **correction:** its second clause
-  ("whenever you cast a spell from exile") is **no longer blocked**; see
-  Vega above. Appa is blocked on airbend alone.
+**Two declared simplifications, both weaker than printed:**
+
+- **Airbend's {2} is charged, not offered.** Printed airbend says the
+  owner *may* cast it for {2} **rather than** its mana cost — both prices
+  are legal, so a {W} creature is cheaper at its printed cost. The engine
+  charges {2} unconditionally, so the cheaper option is unavailable on a
+  card printed below {2}. An offer of two prices narrowed to one of them:
+  never stronger.
+- **Aang, the Last Airbender's Lesson clause is omitted.** "Aang gains
+  lifelink until end of turn" needs a continuous effect with a turn
+  duration and the layer engine has nowhere to put one (below). Granting
+  it permanently would be stronger than printed, so the clause is left
+  out entirely.
+
+**Still blocked, and none of them on airbend itself:**
+
 - **Aang, Swift Savior** — transform DFC, waterbend {8}, and it airbends
   a *spell* off the stack rather than a permanent.
 - **Avatar's Wrath** — mass airbend, self-exile on resolution, and a
@@ -318,10 +384,8 @@ carry an independent blocker:
   "leave the battlefield *without dying*", which `EventLTB` can express
   today via `ev.NewZone != ZoneGraveyard`
   ([events.go:122–127](../../server/internal/game/events.go)).
-- **Aang, the Last Airbender** — "gains lifelink **until end of turn**",
-  which nothing in the layer engine can represent (below).
 
-### Continuous effects with a duration — "until end of turn" (4)
+### Continuous effects with a duration — "until end of turn" (3 blocked, 1 already shipped without it)
 
 **New group, and it is not small.** Every continuous effect in the engine
 is sourced from a permanent on the battlefield:
@@ -332,12 +396,19 @@ floating effect, no duration field, and nothing that expires at end of
 turn. Grep for "until end of turn" in `server/internal/` and the only
 hits are comments and the *replacement* pipeline's turn-scoped slot.
 
-Affected here: **Aang, the Last Airbender** (lifelink UEOT), **Ambrosia
-Whiteheart** (landfall +1/+0 UEOT — its ETB bounce works today), **Katara,
-Water Tribe's Hope** (base P/T X/X UEOT), **The Wind Crystal** (mass
-flying + lifelink UEOT). It also blocks two of The Wandering Emperor's
-three loyalty abilities, and it is the reason a pump spell has never
-appeared in the catalog.
+Blocked here: **Ambrosia Whiteheart** (landfall +1/+0 UEOT — its ETB
+bounce works today), **Katara, Water Tribe's Hope** (base P/T X/X UEOT,
+on top of the activated-ability waterbend seam), **The Wind Crystal**
+(mass flying + lifelink UEOT).
+
+And one card that is **already in the catalog with the clause left out**:
+**Aang, the Last Airbender** ships without "whenever you cast a Lesson
+spell, Aang gains lifelink until end of turn", because granting it
+permanently would be stronger than printed. That is the sharpest argument
+for this item — it is no longer a gap that keeps cards out, it is a gap
+that makes a shipped card wrong. It also blocks two of The Wandering
+Emperor's three loyalty abilities, and it is the reason a pump spell has
+never appeared in the catalog.
 
 ### Alternative cast costs the S22 slot does not cover (5)
 
@@ -355,16 +426,36 @@ it), **plot** (Aven Interrupter), **spree** (Three Steps Ahead),
 the five also cast from a zone other than the hand, which is S29's
 subject rather than S28's.
 
-### Tap permanents as a cost — convoke and waterbend (6)
+### Tap permanents as a cost — convoke and waterbend (shipped; 4 left, each on something else)
 
-Clever Concealment and The Wandering Rescuer (convoke); Aang Swift
-Savior, Katara Water Tribe's Hope, The Legend of Kuruk, The Unagi of
-Kyoshi Island (waterbend). One cost component serves both — waterbend is
-convoke with a different name and no colour clause. Waterbender's
-Restoration already shipped *without* it, which is
-[#259](https://github.com/krakenhavoc/cmd_and_ctrl/issues/259); *the fix
-is in flight on `feat/tap-as-cost`*, and when it lands this group is the
-natural follow-on.
+[#271](https://github.com/krakenhavoc/cmd_and_ctrl/pull/271) built the
+shared component — one `Spec.TapCost` serves both, because waterbend is
+convoke with a different name and no colour clause — and shipped **The
+Wandering Rescuer** (convoke) and the costing of **Waterbender's
+Restoration** (waterbend {X}), closing
+[#259](https://github.com/krakenhavoc/cmd_and_ctrl/issues/259).
+
+The Wandering Rescuer carries one declared simplification: **its hexproak
+grant is inert.** The static ability really does append `"hexproof"` to
+every other tapped creature you control, and nothing in the engine reads
+it (below) — so the creatures convoked to cast it are targetable when
+paper says they would not be. Weaker than printed, and written that way
+deliberately so the card starts working untouched the day hexproof lands
+in the targeting gate.
+
+The remaining four each have a **second, independent** blocker, so none
+of them is waiting on the cost component any more:
+
+- **Clever Concealment** — phasing. No implementation anywhere.
+- **Aang, Swift Savior** and **The Legend of Kuruk** — multi-face.
+- **Katara, Water Tribe's Hope** — its waterbend is on an **activated
+  ability**, which is a different seam: `Spec.TapCost` prices a *spell*,
+  and `AbilityCost` still has only tap-this / sacrifice-self /
+  sacrifice-other / mana / life
+  ([activated.go:35–60](../../server/internal/game/activated.go)). Plus
+  base P/T until end of turn.
+- **The Unagi of Kyoshi Island** — ward, which is a cost paid by the
+  *opponent*, not by the controller.
 
 ### Multi-face cards (7)
 
@@ -423,6 +514,22 @@ else. That is exactly how The Wandering Emperor ships today
 ([wandering_emperor.go](../../server/internal/cards/effects/wandering_emperor.go)).
 Teferi, Who Slows the Sunset also needs an emblem.
 
+**Both Teferis are worse off than "no abilities", and it is a live bug.**
+Starting loyalty is stamped only from the catalog's
+`Spec.StartingLoyalty` — the ETB hook is what applies it
+([effect_hooks.go:34–39](../../server/internal/game/effect_hooks.go)) —
+so a planeswalker with **no catalog entry** enters with zero loyalty
+counters and dies to the CR 704.5i state-based action immediately. That
+is [#274](https://github.com/krakenhavoc/cmd_and_ctrl/issues/274), an
+in-app report of exactly that ("after casting Teferi… the planeswalker
+goes straight to the graveyard"). Neither Teferi in this deck is
+registered, so both currently hit the graveyard on resolution. *A sibling
+is working on it on `fix/planeswalkers-274`, along with
+`docs/decisions/0032-planeswalkers.md`* — read that ADR rather than this
+paragraph once it lands, and note that registering a planeswalker with
+nothing but `StartingLoyalty` (the Wandering Emperor pattern) is
+currently also the workaround for the bug.
+
 ### Experience counters (2)
 
 Aang Airbending Master, Katara Waterbending Master. **Correction:** the
@@ -447,9 +554,12 @@ cast-during-an-opponent's-turn trigger, both of which exist.
 canonical list is twelve combat tokens. Beyond that list nothing reads
 the keyword at all:
 
-- **hexproof** — Lotus Field (land), Stoic Sphinx, The Wandering Rescuer.
-  Nothing in `targets.go` consults it; S20 explicitly deferred
-  hexproof / shroud / protection as target-legality modifiers.
+- **hexproof** — Lotus Field (land), Stoic Sphinx, and **The Wandering
+  Rescuer, which is now in the catalog with the grant declared and
+  inert**. Nothing in `targets.go` consults the keyword; S20 explicitly
+  deferred hexproof / shroud / protection as target-legality modifiers.
+  This is the one gap on the list with a card already shipped against it,
+  so closing it makes a catalog card better without touching the card.
 - **indestructible** — Thassa, The Mind Stone, The Seriema. Only
   mentioned in comments explaining that *sacrifice* ignores it.
 - **ward** — The Unagi of Kyoshi Island. No implementation.
@@ -498,10 +608,12 @@ entry, rather than writing the groups by hand from memory.
 
 **5 of the 9 land entries are registered** — Azorius Chancery, Command
 Tower, Floodfarm Verge, Hallowed Fountain and Meticulous Archive (the
-last three in [#258](https://github.com/krakenhavoc/cmd_and_ctrl/pull/258),
-each with the simplification noted above). The two basics entries (28
-cards) need no registration: a card with a basic-land subtype gets a
-synthetic mana ability server-side. That leaves **2 blocked**:
+last three in [#258](https://github.com/krakenhavoc/cmd_and_ctrl/pull/258);
+Hallowed Fountain's entry clause became a real self-replacement in
+[#268](https://github.com/krakenhavoc/cmd_and_ctrl/pull/268), and the
+verge and surveil simplifications above still stand). The two basics
+entries (28 cards) need no registration: a card with a basic-land subtype
+gets a synthetic mana ability server-side. That leaves **2 blocked**:
 
 **Demolition Field** — the three-part activated cost (`{2}`, `{T}`,
 sacrifice) is expressible (`Plus(ManaCost("{2}"), TapCost())` +
@@ -517,39 +629,49 @@ pipe syntax — three `{W|U|B|R|G}` slots would let the controller pick a
 
 ## Suggested order
 
-Re-sequenced after the S22 merges. Cast-from-exile, attack triggers,
-flicker + delayed triggers and the first tranche of alternative costs are
-all **done**; what is left is different work than the last revision
-assumed.
+Re-sequenced again after #267 / #268 / #269 / #271 / #272. **Everything
+the last two revisions put at the top has shipped** — alternative costs,
+attack triggers, flicker + delayed triggers, airbend, tap-permanents-
+as-a-cost, and the search/reanimation entry pipeline with its chooser.
+What is left is mostly *card-shaped* work plus four engine gaps, and the
+order below is by how much each buys:
 
-1. **Write the four cards that are already writable** — Phelia, The
-   Mighty Thor, Vega, Wan Shi Tong. No engine work at all, and Phelia is
-   one of the deck's headline cards. Do this first because it is the
-   only item here with no dependency on anyone else.
-2. **Two one-accessor additions**, each of which unlocks a card
-   outright: an unlocked player-counter accessor (→ Katara, Waterbending
-   Master) and a per-turn draw tally alongside `CastTally` (→ Faerie
-   Mastermind).
-3. **Tap permanents as a cost** — convoke + waterbend, 6 cards, and it
-   closes [#259](https://github.com/krakenhavoc/cmd_and_ctrl/issues/259)
-   rather than leaving a card in the catalog stronger than printed.
-   *In flight on `feat/tap-as-cost`.*
-4. **Durations on continuous effects** ("until end of turn") — 4 cards
-   here, two of The Wandering Emperor's three loyalty abilities, and
-   every pump spell that has never been attempted. The most reusable item
-   on the list.
-5. **Airbend** — the instance-scoped alternative cost, the no-expiry
-   permission, and the grant-on-exile-from-battlefield. Unlocks Aang, the
-   Last Airbender (with item 4); the other five each need something
-   further.
+1. **Write the four cards that need no engine work** — Phelia, The Mighty
+   Thor, Vega, Wan Shi Tong. Still true after this week's merges, and
+   Vega got easier: `EventCast` now carries `OldZone`, so its trigger is
+   a one-line `AppliesTo`. Phelia is a headline card of the deck. No
+   dependency on anyone else.
+2. **Two one-accessor additions**, each unlocking a card outright: an
+   unlocked player-counter accessor (→ Katara, Waterbending Master, whose
+   other two clauses both exist) and a per-turn draw tally alongside
+   `CastTally` (→ Faerie Mastermind).
+3. **Durations on continuous effects** ("until end of turn"). Now the
+   biggest single item: 4 cards here, the omitted Lesson clause on a card
+   *already in the catalog* (Aang, the Last Airbender), two of The
+   Wandering Emperor's three loyalty abilities, and every pump spell the
+   catalog has never attempted.
+4. **Honour hexproof and indestructible** — 6 cards, and one of them
+   (The Wandering Rescuer) is already in the catalog shipping with an
+   inert grant, so this makes a live card better without editing it.
+5. **Planeswalkers** — [#274](https://github.com/krakenhavoc/cmd_and_ctrl/issues/274)
+   first (a non-catalog planeswalker dies on arrival, which is worse than
+   a missing ability), then loyalty-ability effects for the two Teferis.
+   *In flight on `fix/planeswalkers-274`, with ADR 0032.*
 6. **Multi-face cards** — 7 cards, an open in-app bug
    ([#265](https://github.com/krakenhavoc/cmd_and_ctrl/issues/265)), and
    it touches import, protocol and client. A sprint of its own.
-7. **Cost reduction (S28)** and **the remaining alt-cast costs (S29)** —
-   4 and 5 cards respectively, already scheduled.
+7. **Copy effects / CR 613 layer 1** (Clone), **cost reduction (S28)**
+   and **the remaining alt-cast costs — foretell, plot, spree, warp,
+   prepare (S29)**. Already scheduled; 1, 4 and 5 cards respectively.
 
-Two small additions worth folding into whichever PR is nearby: a
-targeting event (Monk Gyatso, and nothing else in this deck — but
-"becomes the target of" is a common Commander clause), and a
+Two smaller follow-ups with a card each already waiting on them: finish
+the fetched-entry prompt (the `entryResumable` gap above — the test flips
+when it lands) and the waterbend-on-an-activated-ability seam
+(→ Katara, Water Tribe's Hope, together with item 3).
+
+One small addition worth folding into whichever PR is nearby: a
 spell-bounce primitive for returning a spell from the stack to its
-owner's hand (Venser, Hullbreaker Horror).
+owner's hand (Venser, Shaper Savant and Hullbreaker Horror, and nothing
+else here). The targeting event that used to sit beside it in this
+paragraph shipped as `EventBecomesTarget` in
+[#269](https://github.com/krakenhavoc/cmd_and_ctrl/pull/269).
