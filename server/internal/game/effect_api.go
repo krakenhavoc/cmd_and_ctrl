@@ -1031,25 +1031,29 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 // found — the same posture the land-play path takes when its own
 // pipeline call pauses.
 //
-// DECLARED SIMPLIFICATION — the bail has no resume. A replacement
-// that pauses the pipeline (a CR 616 ordering prompt, or a CR 614.10
-// "may" such as a shockland's pay-2-life choice) drops this card
-// from the search rather than reopening the entry when the prompt is
-// answered. Nothing is stranded — the card is still in the library
-// and the pipeline paused before anything moved — but the search
-// finds one card fewer than it should have.
+// DECLARED SIMPLIFICATION — this event is NOT entryResumable, so a
+// fetched permanent never gets an entry prompt.
 //
-// Giving the search path a faithful resume means reconstructing the
-// SearchLibrarySpec (destination, reveal, forced-tap, and the Then
-// continuation) at answer time, which is a second continuation frame
-// stacked under the first. It is deliberately not built here. A
-// concurrent branch is adding an `entryResumable` flag to
-// ReplacementEvent that gates whether a paused entry may be resumed
-// by executeEntryToBattlefieldLocked; this event does NOT set it, so
-// after that merge a search-fetched permanent whose entry would have
-// prompted takes the un-paid branch (enters tapped, no choice
-// offered) rather than stranding. That is the safe direction and is
-// stated here rather than left to be discovered.
+// The concrete case is a fetchland cracking for a shockland. On the
+// play path the controller is asked "pay 2 life so it enters
+// untapped?"; fetched, they are not asked, and the land enters
+// tapped. Weaker than printed, never stronger — which is exactly the
+// posture ReplacementEvent.entryResumable exists to enforce, and a
+// strict improvement on the old behaviour, where a fetched shockland
+// ignored its entry clause altogether and arrived untapped for free.
+//
+// Setting entryResumable here would be actively worse, not better.
+// executeEntryToBattlefieldLocked can finish the MOVE, but it knows
+// nothing about the search that started it: the library would never
+// be shuffled, EventSearchLibrary would never fire, and the Then
+// continuation — Fabled Passage's "untap that land", Gamble's random
+// discard — would never run. A missing shuffle is worse than a
+// missing prompt, because it silently leaks library order.
+//
+// A faithful version needs the search's own continuation to survive
+// the entry prompt: a second frame stacked under the replacement
+// one, plus a hook in the entry resume to run it. That is its own
+// change, not a rider on this one.
 //
 // Returns the moved card's ID and whether it moved.
 //
@@ -1071,6 +1075,14 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 		CardID:  id,
 		OldZone: ZoneLibrary,
 		NewZone: ZoneBattlefield,
+		// The fetching effect's own "put it onto the battlefield
+		// TAPPED" clause is seeded onto the event rather than OR-ed
+		// in after the pipeline. Same result for the inline path, and
+		// it is the difference between right and wrong for any resume
+		// path: a resume reads ev.EntersTapped and has no idea what
+		// spell sent the card, so a Cultivate-fetched land that
+		// paused for a prompt would otherwise come back untapped.
+		EntersTapped: spec.TappedOnEntry,
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
@@ -1093,10 +1105,10 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 			continue
 		}
 		g.Battlefield.Cards[i].Controller = spec.Player
-		// TappedOnEntry is the fetching effect's own "tapped"
-		// clause; out.EntersTapped is everything the CR 614 pipeline
-		// decided. Either one taps it.
-		if spec.TappedOnEntry || out.EntersTapped {
+		// out.EntersTapped carries both inputs: the fetching effect's
+		// printed "tapped" clause, seeded onto the event above, and
+		// whatever the CR 614 pipeline added on top.
+		if out.EntersTapped {
 			g.Battlefield.Cards[i].Tapped = true
 		}
 		break

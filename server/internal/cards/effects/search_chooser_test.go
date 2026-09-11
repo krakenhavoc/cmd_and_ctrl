@@ -552,3 +552,54 @@ func TestGambleDiscardsAfterTheSearchPromptIsAnswered(t *testing.T) {
 		t.Error("the fetched card should have been the random discard")
 	}
 }
+
+// --- the declared limit, pinned -----------------------------------
+
+// A fetched shockland enters TAPPED and nobody is asked to pay.
+//
+// This is the declared simplification on searchEnterBattlefieldLocked
+// made executable. The search path now runs the CR 614 pipeline, so
+// the shockland's entry replacement IS consulted — but the search
+// entry site is not entryResumable, so the pipeline cannot pause
+// there to ask the question, and takes the un-paid branch.
+//
+// Weaker than printed, never stronger, and a strict improvement on
+// the pre-#263 behaviour where the clause was skipped entirely and
+// the land arrived untapped for free. When the search path learns to
+// carry its continuation through an entry prompt, this test flips to
+// "a prompt is queued and the land enters untapped if you pay".
+func TestFetchedShocklandEntersTappedWithNoPaymentOffered(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	lifeBefore := me.Life
+	seedSearchLibrary(me, game.Card{
+		Name:     "Blood Crypt",
+		TypeLine: "Land — Swamp Mountain",
+		OracleID: bloodCryptOracle,
+	})
+
+	g.WithWriteLock(func() {
+		_ = g.SearchLibraryForEffect(me.ID,
+			func(c game.Card) bool { return c.Name == "Blood Crypt" },
+			game.ZoneBattlefield, 1, false, false)
+	})
+
+	card, ok := searchFetchedCard(g, "Blood Crypt")
+	if !ok {
+		t.Fatal("Blood Crypt was not fetched onto the battlefield")
+	}
+	if !card.Tapped {
+		t.Error("a fetched shockland entered UNTAPPED for free — the entry clause was skipped")
+	}
+	if searchChoiceFor(g, me.ID) != nil {
+		t.Error("a search prompt is open; the fetch had exactly one candidate")
+	}
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceEntryPayLife {
+			t.Error("the fetched entry queued a pay-life prompt it has no resume for")
+		}
+	}
+	if me.Life != lifeBefore {
+		t.Errorf("life %d -> %d; nothing should have been paid", lifeBefore, me.Life)
+	}
+}
