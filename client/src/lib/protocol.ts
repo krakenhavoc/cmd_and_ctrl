@@ -593,8 +593,29 @@ export interface LegalTargetsView {
   count_from_x?: boolean;
 }
 
+/**
+ * One printed face of a multi-face card (ADR 0034). Enough to render
+ * a picker row and a hover panel.
+ */
+export interface CardFaceView {
+  name: string;
+  type_line?: string;
+  mana_cost?: string;
+  oracle_text?: string;
+  power?: number;
+  toughness?: number;
+  /** "/cards/{scryfall_id}/image?face=N", built server-side. */
+  image?: string;
+}
+
 export interface CardView {
   instance_id: string;
+  /**
+   * The ACTIVE face's name. For the ~33,000 single-faced oracle IDs
+   * this is simply the card's name, as it always was; for a modal
+   * DFC or a transform card it is the name of the side that is
+   * currently up — never Scryfall's "A // B" composite.
+   */
   name: string;
   owner: string;
   controller: string;
@@ -724,6 +745,19 @@ export interface CardView {
   // printed keywords (S18 Spec.PrintedKeywords). S18 renders
   // keyword badges from this list via the KeywordBadgeRow component.
   abilities?: string[];
+  // ADR 0034 — Scryfall's printing layout, absent for the ordinary
+  // single-faced card. "modal_dfc" is the one the client acts on:
+  // it means playing this card needs a face choice first.
+  layout?: string;
+  // ADR 0034 — every printed face, front first. PURELY ADDITIVE:
+  // name / type_line / mana_cost / power / toughness above continue
+  // to mean "the ACTIVE face's", which is why every existing type
+  // check in cardTypes.ts, Card.svelte and timing.ts kept working
+  // unchanged — they now receive one clean type line instead of a
+  // "Sorcery // Land" concatenation. Absent for single-faced cards.
+  faces?: CardFaceView[];
+  // ADR 0034 — index into `faces`. Absent (0) is the front face.
+  active_face?: number;
 }
 
 // ManaAbilityView mirrors `protocol.ManaAbilityView` server-side —

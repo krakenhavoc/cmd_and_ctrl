@@ -2,6 +2,7 @@ package deck
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
@@ -29,6 +30,11 @@ const (
 	CodeSingleton            = "singleton_violation"
 	CodeNotLegalInFormat     = "not_legal_in_format"
 	CodeSideboardUnsupported = "sideboard_not_supported_in_commander"
+	// CodeUnsupportedLayout names cards whose printing carries more
+	// faces than the engine can play (ADR 0034). Non-fatal: the card
+	// imports as its front face and works as that half. The message
+	// says which half, and what is lost.
+	CodeUnsupportedLayout = "unsupported_layout"
 	// CodeUnknownCard flags a decklist row whose name did not resolve
 	// against the Scryfall index. Surfaced via UnknownCardError and
 	// translated into the 422 violations[] list so the client can
@@ -206,6 +212,16 @@ func Validate(list *List) error {
 		})
 	}
 
+	// ADR 0034 — declared simplifications on multi-face layouts, in
+	// the same non-fatal shape as the sideboard warning above.
+	//
+	// Refusing the import would reject a whole deck over a card that
+	// is merely cosmetically wrong; SILENCE is what produced #265,
+	// where a Sea Gate Restoration arrived on the battlefield as a
+	// land with no prompt and nothing said why. A yellow banner is
+	// the correct middle.
+	vs = append(vs, unsupportedLayoutViolations(list)...)
+
 	if len(vs) == 0 {
 		return nil
 	}
@@ -271,4 +287,80 @@ func identitySet(syms []string) map[string]struct{} {
 		out[strings.ToUpper(s)] = struct{}{}
 	}
 	return out
+}
+
+// layoutSimplifications names, per Scryfall layout, what the engine
+// does with a card the multi-face model does not fully play yet
+// (ADR 0034).
+//
+// modal_dfc is deliberately ABSENT: both its faces are playable and
+// the face picker chooses between them, so there is nothing to warn
+// about. So is `normal` and every other single-faced layout.
+var layoutSimplifications = map[string]string{
+	"transform": "imports as its front face; transforming it isn't implemented yet",
+	"adventure": "casts as its creature half only; the adventure half isn't implemented yet",
+	"split":     "casts as its left half only; fusing isn't implemented yet",
+	"prepare":   "casts as its creature half only; preparing isn't implemented yet",
+	"flip":      "imports as its front face only",
+	"meld":      "imports as its front face only; melding isn't implemented yet",
+}
+
+// unsupportedLayoutViolations reports one non-fatal violation per
+// distinct simplification, naming the cards it applies to.
+//
+// Grouped by layout rather than emitted per card because a deck can
+// legitimately hold a dozen transform cards and twelve identical
+// banners is noise, not information. The cards are named inside the
+// message so the player can still see exactly which of their deck is
+// affected.
+func unsupportedLayoutViolations(list *List) []Violation {
+	byLayout := map[string][]string{}
+	seen := map[string]bool{}
+	for _, c := range allCards(list) {
+		note, ok := layoutSimplifications[c.Layout]
+		if !ok || note == "" {
+			continue
+		}
+		// One mention per distinct card — a deck running four copies
+		// of a transform card lists it once.
+		key := c.Layout + "\x00" + c.Name
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		byLayout[c.Layout] = append(byLayout[c.Layout], frontFaceName(c))
+	}
+	if len(byLayout) == 0 {
+		return nil
+	}
+	layouts := make([]string, 0, len(byLayout))
+	for layout := range byLayout {
+		layouts = append(layouts, layout)
+	}
+	sort.Strings(layouts)
+
+	out := make([]Violation, 0, len(layouts))
+	for _, layout := range layouts {
+		names := byLayout[layout]
+		sort.Strings(names)
+		out = append(out, Violation{
+			Code: CodeUnsupportedLayout,
+			Card: names[0],
+			Message: fmt.Sprintf("%s: %s (%s)",
+				strings.Join(names, ", "),
+				layoutSimplifications[layout],
+				layout),
+		})
+	}
+	return out
+}
+
+// frontFaceName is the name a player will actually see once the card
+// is imported — the front face's, not Scryfall's "A // B"
+// composite, which is what game.Card carries since ADR 0034.
+func frontFaceName(c cards.Card) string {
+	if len(c.CardFaces) > 1 && c.CardFaces[0].Name != "" {
+		return c.CardFaces[0].Name
+	}
+	return c.Name
 }

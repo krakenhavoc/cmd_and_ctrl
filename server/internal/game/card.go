@@ -294,6 +294,38 @@ type Card struct {
 	// as the card leaves exile and swept at cleanup.
 	ExilePlay ExilePlayPermission
 
+	// Layout is Scryfall's printing layout, copied verbatim at deck
+	// import: "normal", "transform", "modal_dfc", "adventure",
+	// "split", "prepare", … The cast path branches on it to decide
+	// what a face CHOICE means — see CastableFaces and faceOnResolve
+	// in face.go. Empty for tokens, fixtures and the demo seed,
+	// which are all single-faced. Added by ADR 0034.
+	Layout string
+
+	// Faces is every printed face of a multi-face card, front first.
+	// nil for the ~33,000 single-faced oracle IDs, which keep the
+	// pre-ADR-0034 behaviour to the byte.
+	//
+	// The flat printed fields above (Name, TypeLine, ManaCost,
+	// Colors, Power, Toughness, StartingLoyalty) are the
+	// MATERIALISATION of Faces[ActiveFace], not an independent copy
+	// of Scryfall's top-level record. That is deliberate: making
+	// them methods would have rewritten 293 TypeLine: struct-literal
+	// sites and 389 Card{} literals, whereas leaving them as fields
+	// means all 74 Is*() call sites keep compiling and START being
+	// right, since "the characteristics of the face that's currently
+	// up" is exactly CR 711.2.
+	Faces []Face
+
+	// ActiveFace indexes Faces.
+	//
+	// INVARIANT: the flat printed fields equal Faces[ActiveFace].
+	// Maintained by SetFace and by nothing else — never assign this
+	// field directly, or the card desynchronises and no test will
+	// catch it. AssertFaceInvariant (face_test.go) walks a finished
+	// game and checks exactly this.
+	ActiveFace int
+
 	// effective is the cached post-layer-resolution characteristic
 	// for this card on the battlefield. Populated by the layer
 	// engine's recompute pass; nil ⇒ "no recompute has run since

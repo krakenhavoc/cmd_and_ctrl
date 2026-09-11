@@ -920,6 +920,14 @@ func classifyActionError(err error) (code, message string) {
 		return protocol.CodeBadRequest,
 			"this card's mana cost can't be read, so it can't be cast yet — " +
 				strings.TrimPrefix(err.Error(), "game: ")
+	case errors.Is(err, game.ErrInvalidFace):
+		// ADR 0034: the client asked for a printed face this card
+		// does not offer. Either a stale client sending a face for a
+		// single-faced card, or an attempt at a transform card's
+		// back — which is reached by transforming the permanent, not
+		// by casting it (CR 712.4).
+		return protocol.CodeBadRequest,
+			"that isn't a face you can play on this card"
 	}
 	// Everything else is traceable to a client-supplied input — bad
 	// player ID, bad card ID, bad zone, unknown action type, etc.

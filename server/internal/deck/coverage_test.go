@@ -283,7 +283,11 @@ func TestUnimplementedNamesThroughTheImporter(t *testing.T) {
 	}
 	got := game.UnimplementedNames(list.ToGameCards())
 	want := []string{
-		"Aang, Swift Savior // Aang and La, Ocean's Fury",
+		// ADR 0034: game.Card.Name is the ACTIVE FACE's name, so a
+		// multi-face card reports its front face rather than
+		// Scryfall's composite. Same card, named the way it reads
+		// on the table.
+		"Aang, Swift Savior",
 		"Lotus Field",
 		"Enduring Curiosity",
 	}

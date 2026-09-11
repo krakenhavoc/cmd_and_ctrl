@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -32,6 +33,20 @@ var ValidSizes = map[string]struct{}{
 // ErrInvalidSize is returned when the requested size is not one of the
 // Scryfall-blessed variants. The HTTP handler maps this to 400.
 var ErrInvalidSize = errors.New("cards: invalid image size")
+
+// MaxFaceIndex bounds the ?face= parameter. No printing in the
+// Scryfall dump has more than two faces; the cap is generous and its
+// job is not accuracy but keeping a caller-supplied integer from
+// growing into an unbounded filename component. See pathForFace.
+const MaxFaceIndex = 7
+
+// ErrInvalidFace is returned when ?face= is negative or beyond
+// MaxFaceIndex. The HTTP handler maps this to 400. A face index that
+// is in range but that this particular card does not have resolves
+// to no image URI at all and comes back as ErrNoImage / 404 —
+// "that's not a face" and "that card has no such face" are different
+// answers and are reported differently.
+var ErrInvalidFace = errors.New("cards: invalid image face")
 
 // ImageCache is a disk-backed on-demand image fetcher. First request
 // for a given card pulls the image from Scryfall's CDN and writes it
@@ -79,13 +94,31 @@ var ErrNoImage = errors.New("cards: no image uri for card")
 // returns ErrInvalidSize — this guard is what keeps a caller-supplied
 // size from becoming a path-traversal vector through pathFor.
 func (c *ImageCache) Fetch(ctx context.Context, idx *Index, id uuid.UUID, size string) (string, error) {
+	return c.FetchFace(ctx, idx, id, size, 0)
+}
+
+// FetchFace is Fetch for one printed face of a multi-face card (ADR
+// 0034). Face 0 is the front and produces exactly the paths Fetch
+// always produced, so no cached image is orphaned by this change.
+//
+// The face index is part of the ON-DISK KEY, not just the URL:
+// without that, the first request for either face would poison the
+// cache for the other, and they are different pictures. It is bounds
+// checked before it reaches pathForFace for the same reason `size`
+// is — a caller-supplied component of a filesystem path is a
+// traversal vector until it is proven to be a small non-negative
+// integer.
+func (c *ImageCache) FetchFace(ctx context.Context, idx *Index, id uuid.UUID, size string, face int) (string, error) {
 	if size == "" {
 		size = c.DefaultSize
 	}
 	if _, ok := ValidSizes[size]; !ok {
 		return "", ErrInvalidSize
 	}
-	path := c.pathFor(id, size)
+	if face < 0 || face > MaxFaceIndex {
+		return "", ErrInvalidFace
+	}
+	path := c.pathForFace(id, size, face)
 	if _, err := os.Stat(path); err == nil {
 		return path, nil
 	} else if !errors.Is(err, os.ErrNotExist) {
@@ -98,7 +131,7 @@ func (c *ImageCache) Fetch(ctx context.Context, idx *Index, id uuid.UUID, size s
 	if !ok {
 		return "", fmt.Errorf("cards: unknown card %s", id)
 	}
-	uri := ImageURI(card, size)
+	uri := ImageURIForFace(card, size, face)
 	if uri == "" {
 		return "", ErrNoImage
 	}
@@ -123,8 +156,25 @@ func (c *ImageCache) Fetch(ctx context.Context, idx *Index, id uuid.UUID, size s
 // first two hex characters so ls-ing the root directory remains
 // manageable.
 func (c *ImageCache) pathFor(id uuid.UUID, size string) string {
+	return c.pathForFace(id, size, 0)
+}
+
+// pathForFace is pathFor with the printed face folded into the key.
+//
+// Face 0 keeps the ORIGINAL filename, unsuffixed. That is not
+// cosmetic: every image already on disk in every deployment was
+// written under that name, and a scheme that suffixed the front face
+// too would silently orphan the entire cache and re-download it.
+//
+// `face` must already have been bounds-checked by the caller
+// (FetchFace does it) — it becomes part of a filesystem path.
+func (c *ImageCache) pathForFace(id uuid.UUID, size string, face int) string {
 	s := id.String()
-	return filepath.Join(c.root, s[:2], s+"."+size+".jpg")
+	name := s + "." + size + ".jpg"
+	if face > 0 {
+		name = s + ".face" + strconv.Itoa(face) + "." + size + ".jpg"
+	}
+	return filepath.Join(c.root, s[:2], name)
 }
 
 // lockFor returns the per-id mutex, creating it on first use. Uses

@@ -693,7 +693,7 @@ func (g *Game) ReturnFromGraveyardUnderControlForEffect(cardID uuid.UUID, dest Z
 				if entersTapped {
 					destZone.Cards[i].Tapped = true
 				}
-				oracleID = destZone.Cards[i].OracleID
+				oracleID = CatalogKey(destZone.Cards[i])
 				break
 			}
 		}
@@ -1127,7 +1127,7 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 	g.EmitEvent(Event{Kind: EventETB, Actor: spec.Player, CardID: moved.InstanceID})
 	// Same omission as the reanimation path had: a fetched permanent
 	// enters like any other, so its catalog OnETB hook runs.
-	g.fireETBHookLocked(moved.InstanceID, moved.OracleID)
+	g.fireETBHookLocked(moved.InstanceID, CatalogKey(moved))
 	return moved.InstanceID, true
 }
 
@@ -1428,7 +1428,7 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 		NewZone: ZoneBattlefield,
 	})
 	g.EmitEvent(Event{Kind: EventETB, Actor: newController, CardID: newID})
-	g.fireETBHookLocked(newID, card.OracleID)
+	g.fireETBHookLocked(newID, CatalogKey(card))
 	return newID, nil
 }
 

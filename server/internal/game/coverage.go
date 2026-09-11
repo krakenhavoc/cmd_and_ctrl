@@ -90,7 +90,7 @@ func NeedsCatalogEffect(typeLine string, texts ...string) bool {
 // this predicate — with no catalog wired, nothing auto-resolves, and
 // every card really is unimplemented in that binary.
 func Unimplemented(c Card) bool {
-	return c.NeedsEffect && !IsAutoCard(c.OracleID)
+	return c.NeedsEffect && !IsAutoCard(CatalogKey(c))
 }
 
 // UnimplementedNames returns the distinct names of the cards in the

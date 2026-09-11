@@ -129,7 +129,7 @@ func HasKeyword(c *Card, kw string) bool {
 	if CatalogPrintedKeywords == nil || c.OracleID == "" {
 		return false
 	}
-	for _, a := range CatalogPrintedKeywords(c.OracleID) {
+	for _, a := range CatalogPrintedKeywords(CatalogKey(*c)) {
 		if a == kw {
 			return true
 		}

@@ -307,6 +307,27 @@ type CastSpellParams struct {
 	// overload is the worst available failure. Added in S22.
 	AlternativeCost string
 
+	// Face names which printed face of a multi-face card is being
+	// cast or played (ADR 0034). Zero — the front face — is the
+	// answer for every single-faced card in the game and for every
+	// client that has never heard of faces, which is what makes the
+	// field safe to add.
+	//
+	// It is an announce-time PARAMETER, not a PendingChoice, for the
+	// same reason the alternative cost, the modes, X, the additional
+	// cost and the targets are: every other announce decision is a
+	// client-side prompt whose answer rides the cast_spell action.
+	// The PendingChoice machinery resumes replacement, search and
+	// trigger frames; it has no frame for a half-validated cast and
+	// should not grow one.
+	//
+	// A face the card does not offer is REJECTED (ErrInvalidFace)
+	// rather than clamped to the front. Silently casting the wrong
+	// half of a modal DFC is the worst available failure: the player
+	// meant to play a land and got a seven-mana sorcery, or vice
+	// versa.
+	Face int
+
 	// Strict enables the S15 mana-cost gate. When set, the server
 	// parses the card's ManaCost into an effective cost (plus
 	// commander tax for casts from the command zone), checks the
@@ -423,6 +444,32 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	if !found {
 		return ErrCardNotFound
 	}
+	// ADR 0034, and the single highest-leverage line in the whole
+	// multi-face model. `card` is a VALUE COPY taken out of the
+	// source zone, and everything below reads that copy ten more
+	// times before anything moves: IsLand(), validateAlternativeCost,
+	// TargetModeFor / TargetSpecFor, ModeSpecFor, castTargetSpec,
+	// AdditionalCostFor, TapPermanentsCostFor, the sorcery-speed
+	// gate, the land branch, and printedCostLocked. Materialising
+	// the chosen face HERE makes every one of them face-correct for
+	// free.
+	//
+	// Concretely, for Sea Gate Restoration // Sea Gate, Reborn:
+	// face 0 stops passing IsLand() (its type line is "Sorcery", not
+	// "Sorcery // Land"), so the land branch no longer fires and the
+	// cost gate finally sees {4}{U}{U}{U} instead of "" — which is
+	// both halves of #289 and all of #265.
+	if !faceCastable(card, params.Face) {
+		slog.Warn("cast_spell rejected: face not offered by this card",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"layout", card.Layout,
+			"face_requested", params.Face,
+			"faces", card.FaceCount(),
+		)
+		return ErrInvalidFace
+	}
+	card.SetFace(params.Face)
 	// S21 sub-PR 6: casting out of exile needs a live impulse-exile
 	// grant naming this player. Checked before every other gate
 	// because it's the one that decides whether the card is yours to
@@ -444,7 +491,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// below, because overload and cleave rewrite the target clause —
 	// the spell's legality has to be judged under the cost actually
 	// being paid, not under the printed one.
-	alt, err := validateAlternativeCost(card.OracleID, params.AlternativeCost, params.Targets)
+	alt, err := validateAlternativeCost(CatalogKey(card), params.AlternativeCost, params.Targets)
 	if err != nil {
 		slog.Warn("cast_spell rejected: bad alternative cost claim",
 			"card_name", card.Name,
@@ -464,8 +511,8 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// counted by validateTargetsLocked below instead — an "up to N"
 	// clause legitimately arrives with none. S22: an overloaded spell
 	// has no target clause left to satisfy.
-	if mode := TargetModeFor(card.OracleID); mode != "" && len(params.Targets) == 0 &&
-		TargetSpecFor(card.OracleID) == nil && !alt.Clears() {
+	if mode := TargetModeFor(CatalogKey(card)); mode != "" && len(params.Targets) == 0 &&
+		TargetSpecFor(CatalogKey(card)) == nil && !alt.Clears() {
 		slog.Warn("cast_spell rejected: targeted card arrived without targets",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -482,7 +529,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	}
 	// S20 sub-PR 4: modal spells — the chosen modes must be distinct,
 	// in range and the right count (CR 601.2b, 700.2).
-	modeSpec := ModeSpecFor(card.OracleID)
+	modeSpec := ModeSpecFor(CatalogKey(card))
 	if err := validateModes(modeSpec, params.Modes); err != nil {
 		slog.Warn("cast_spell rejected: bad mode choice",
 			"card_name", card.Name,
@@ -498,7 +545,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// free-form behaviour (any ID the client sent is accepted),
 	// except that a modal card whose chosen modes take no target
 	// must arrive with none.
-	spec, err := castTargetSpec(card.OracleID, params.Modes)
+	spec, err := castTargetSpec(CatalogKey(card), params.Modes)
 	if err != nil {
 		return err
 	}
@@ -550,7 +597,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// with the rest of the announce-time choices, and paid further
 	// down once the spell is on the stack — validate-all-then-pay,
 	// so a rejected cast never leaves a card in the graveyard.
-	addCost := AdditionalCostFor(card.OracleID)
+	addCost := AdditionalCostFor(CatalogKey(card))
 	if err := g.validateAdditionalCostLocked(playerID, cardID, addCost, params.DiscardIDs, params.SacrificeIDs); err != nil {
 		slog.Warn("cast_spell rejected: bad additional cost payment",
 			"card_name", card.Name,
@@ -567,7 +614,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// discipline the additional cost uses. The budget is measured
 	// against the cost the cast owes BEFORE any tapping, so a caster
 	// can't tap five creatures at a three-mana spell.
-	tapCost := TapPermanentsCostFor(card.OracleID)
+	tapCost := TapPermanentsCostFor(CatalogKey(card))
 	if !tapCost.Empty() || len(params.TapIDs) > 0 {
 		budget := 0
 		if base, berr := g.printedCostLocked(p, card, params); berr == nil {
@@ -603,6 +650,23 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// Lands skip the stack entirely (CR 305). Move the card to the
 	// battlefield and stamp the controller — same shape as PlayCard.
 	if card.IsLand() {
+		// ADR 0034: the chosen face has to exist on the card IN THE
+		// SOURCE ZONE, not just on the local copy, before the
+		// replacement pipeline runs.
+		//
+		// The pipeline resolves the entering card by ID through
+		// LookupCardForEffect to find its own self-replacement
+		// (replacements.go:531) — that is how a land finds its
+		// "as this enters, you may pay N life" clause, and an MDFC
+		// land back finds it under CatalogKey "<oracle>#1" only if
+		// its ActiveFace is already 1. The entry-choice resume path
+		// re-enters later with nothing but the card ID, so the face
+		// has to survive the pause too.
+		//
+		// Restored on the failure and cancel paths below: a cast
+		// that does not happen must not leave a card in hand wearing
+		// its back face.
+		wasFace := setFaceInZoneLocked(src, cardID, params.Face)
 		// S17 sub-PR 4: run the CR 614 replacement pipeline so
 		// enters-tapped replacements (Kismet) + enters-with-counters
 		// effects fire before the land's ETB event. Pipeline runs
@@ -628,15 +692,18 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		}
 		if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
 			g.clearReplacementEventLocked(ev.ID)
+			setFaceInZoneLocked(src, cardID, wasFace)
 			return err
 		}
 		defer g.clearReplacementEventLocked(ev.ID)
 		if out == nil || out.Canceled {
+			setFaceInZoneLocked(src, cardID, wasFace)
 			return nil
 		}
 
 		moved, err := MoveCard(src, g.Battlefield, cardID)
 		if err != nil {
+			setFaceInZoneLocked(src, cardID, wasFace)
 			return err
 		}
 		for i := range g.Battlefield.Cards {
@@ -674,7 +741,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			Actor:  playerID,
 			CardID: moved.InstanceID,
 		})
-		g.fireETBHookLocked(moved.InstanceID, moved.OracleID)
+		g.fireETBHookLocked(moved.InstanceID, CatalogKey(moved))
 		// Playing a land is a special action (CR 116.2a); the player
 		// keeps priority and CR 117.5 drains any landfall-style
 		// triggers onto the stack here rather than at the next wrap.
@@ -715,6 +782,14 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	for i := range g.Stack.Cards {
 		if g.Stack.Cards[i].InstanceID == cardID {
 			g.Stack.Cards[i].ExilePlay = ExilePlayPermission{}
+			// ADR 0034: the spell on the stack IS the chosen face.
+			// Everything downstream of here reads the card out of
+			// the stack zone rather than from the local copy — the
+			// resolution target re-check, the effect resolver, the
+			// graveyard route, and the client's stack overlay — so
+			// the face has to be stamped on the real card, not just
+			// the copy the announce gates were judged against.
+			g.Stack.Cards[i].SetFace(params.Face)
 		}
 	}
 	// S13.5: cast spells are public on the stack.
@@ -1058,7 +1133,7 @@ func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams)
 	// all have to have settled before we know what the tapped
 	// permanents are paying for. A card with no such cost, or a cast
 	// that tapped nothing, gets the cost back unchanged.
-	tapCost := TapPermanentsCostFor(card.OracleID)
+	tapCost := TapPermanentsCostFor(CatalogKey(card))
 	if !tapCost.Empty() {
 		cost = tapPermanentsAdjusted(cost, tapCost, g.tapPermanentsPayersLocked(params.TapIDs), params.XValue)
 	}
@@ -1229,7 +1304,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// Self / none targets don't re-check (self is the caster; none
 	// has no referent) and count as always-legal for the all-illegal
 	// short-circuit.
-	if spellAllTargetsIllegalLocked(g, item, castTargetSpecForItem(top.OracleID, item)) {
+	if spellAllTargetsIllegalLocked(g, item, castTargetSpecForItem(CatalogKey(top), item)) {
 		// "Countered by game rules" — permanents and non-permanents
 		// alike go to the owner's graveyard (CR 608.2b). The
 		// announce-time choices on StackMeta are discarded along
@@ -1252,8 +1327,22 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// and zone routing. Non-catalog cards return nil (no-op); catalog
 	// spells fire their effect here. Errors emit EventEffectError
 	// via fireEffectResolverLocked and do not wedge resolution.
-	g.fireEffectResolverLocked(item, top.OracleID, top.InstanceID)
+	g.fireEffectResolverLocked(item, CatalogKey(top), top.InstanceID)
 	if top.IsPermanent() {
+		// ADR 0034: settle which face the PERMANENT keeps before the
+		// replacement pipeline runs, so the entering card's
+		// self-replacement is looked up under the right catalog key.
+		//
+		// An MDFC keeps the face that was cast — the other one never
+		// returns. Everything else resolves front-up: an adventure's
+		// creature half is the permanent no matter which half was
+		// cast, and a transform card always enters face 0 (CR 712.4)
+		// whatever an effect does to it afterwards. Today that makes
+		// this a no-op for every layout but modal_dfc, since
+		// CastableFaces refuses a non-zero face on the others; it is
+		// written out because it is where the adventure reroute lands.
+		setFaceInZoneLocked(g.Stack, top.InstanceID, faceOnResolve(top.Layout, top.ActiveFace))
+		top.SetFace(faceOnResolve(top.Layout, top.ActiveFace))
 		// Permanents resolve to the battlefield with the announce-time
 		// controller (which may differ from owner — e.g. cast via a
 		// "play this from exile" effect that change controller).
@@ -1310,7 +1399,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 			Actor:  item.Controller,
 			CardID: moved.InstanceID,
 		})
-		g.fireETBHookLocked(moved.InstanceID, moved.OracleID)
+		g.fireETBHookLocked(moved.InstanceID, CatalogKey(moved))
 		// S22: evoke's "it's sacrificed when it enters" (CR 702.74b).
 		// Queued here because this is the last moment the StackItem —
 		// and so the cost that was actually paid — is still reachable.
@@ -2725,7 +2814,7 @@ func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCom
 		// the destination zone to pull its Scryfall ID.
 		for _, c := range dstZone.Cards {
 			if c.InstanceID == cardID {
-				g.fireETBHookLocked(cardID, c.OracleID)
+				g.fireETBHookLocked(cardID, CatalogKey(c))
 				break
 			}
 		}
@@ -3041,7 +3130,7 @@ func ManaAbilitiesForCard(c Card) []ManaAbilityShape {
 		return c.ManaAbilities
 	}
 	if CatalogManaAbilities != nil {
-		if list := CatalogManaAbilities(c.OracleID); len(list) > 0 {
+		if list := CatalogManaAbilities(CatalogKey(c)); len(list) > 0 {
 			return list
 		}
 	}

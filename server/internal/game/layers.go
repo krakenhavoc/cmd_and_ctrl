@@ -168,7 +168,7 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 	}
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
-		abilities := CatalogStaticAbilities(src.OracleID)
+		abilities := CatalogStaticAbilities(CatalogKey(*src))
 		if len(abilities) == 0 {
 			continue
 		}
