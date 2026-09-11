@@ -352,7 +352,11 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 	if c.Controller != playerID {
 		return nil, ErrCardCallerMismatch
 	}
-	if !g.targetLegalLocked(playerID, cost.SacrificeOther, TargetRef{Kind: TargetCard, ID: id}) {
+	// specMatchLocked, not targetLegalLocked: sacrificing a permanent
+	// to pay a cost does not target it (CR 601.2h), so the CR 702
+	// keyword gate must not apply — Carrion Feeder can still eat your
+	// own hexproof creature.
+	if !g.specMatchLocked(playerID, cost.SacrificeOther, TargetRef{Kind: TargetCard, ID: id}, false) {
 		return nil, ErrIllegalTarget
 	}
 	// Paying the same permanent twice (self-sacrifice plus the same

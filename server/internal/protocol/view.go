@@ -942,7 +942,12 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 						Label:        ac.Label,
 					}
 					if ac.Sacrifice != nil {
-						opts := viewOfLegalTargets(g.LegalTargetsForEffect(caster, ac.Sacrifice), ac.Sacrifice)
+						// SpecCandidatesForEffect, not
+						// LegalTargetsForEffect: an additional
+						// sacrifice cost doesn't target, so the
+						// hexproof / shroud gate must not narrow the
+						// list the client offers.
+						opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, ac.Sacrifice), ac.Sacrifice)
 						opts.Cards = filterToController(g, opts.Cards, caster)
 						opts.Players = nil
 						c.AdditionalCost.SacrificeOptions = opts
