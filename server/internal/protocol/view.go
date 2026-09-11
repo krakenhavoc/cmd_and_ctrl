@@ -102,6 +102,12 @@ type GameView struct {
 	// every client sees what its viewer is legally allowed to).
 	// Drained by resolve_choice actions. Added in S14 sub-PR 5.
 	PendingChoices []PendingChoiceView `json:"pending_choices,omitempty"`
+	// Log is the public game log: the last PublicLogMax table-visible
+	// events, oldest first. A projection of game.Game.Events, not a
+	// stored buffer — see log.go. Every card reference in it goes
+	// through the same S13.5 knower redaction as every CardView, in
+	// FilterViewFor. Added in S31 sub-PR 0 (ADR 0033 §4).
+	Log []LogEvent `json:"log,omitempty"`
 }
 
 // PendingChoiceView is the wire shape of a PendingChoice.
@@ -1006,6 +1012,11 @@ func ViewOfGame(g *game.Game) GameView {
 		}
 		stampLegalTargets(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
+		// S31 sub-PR 0: the public log resolves card names and knower
+		// sets out of the view that was just assembled, so it must run
+		// last — and inside the same read lock, so the log and the
+		// board it describes come from one consistent read.
+		view.Log = publicLogOf(g, &view)
 	})
 	return view
 }
@@ -1762,6 +1773,11 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		SplitSecondActive: v.SplitSecondActive,
 		DiscardPending:    v.DiscardPending,
 		PendingChoices:    filterPendingChoices(v.PendingChoices, isKnower, viewerID),
+		// S31 sub-PR 0: the public log rides the same isKnower closure
+		// as every zone above it. Not a parallel visibility model —
+		// literally the same predicate, applied to the card each entry
+		// names.
+		Log: redactLogForViewer(v.Log, isKnower),
 	}
 }
 

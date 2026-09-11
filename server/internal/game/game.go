@@ -804,6 +804,19 @@ func (g *Game) runStepEntryHooksLocked() {
 	// recursion through Untap → Upkeep and Cleanup → next-Untap)
 	// triggers the clear. Cheap to call on already-empty pools.
 	g.emptyAllManaPoolsLocked()
+	// S31 sub-PR 0: announce the step for the public game log. Placed
+	// after the skip-step replacement window so a cancelled step never
+	// announces, and before the per-step turn-based actions so the
+	// entries they produce read as happening INSIDE this step. No
+	// rules machinery listens for this kind.
+	if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) && g.Seats[g.Turn.ActiveSeat] != nil {
+		g.EmitEvent(Event{
+			Kind:   EventStepBegan,
+			Actor:  g.Seats[g.Turn.ActiveSeat].ID,
+			Amount: g.Turn.Number,
+			Label:  string(g.Turn.Step),
+		})
+	}
 	// S22: CR 603.7 delayed triggered abilities fire on ENTRY to the
 	// step they name. Draining here — before the per-step turn-based
 	// actions below — is what makes "the NEXT end step" work without

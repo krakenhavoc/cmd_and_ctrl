@@ -4119,8 +4119,23 @@ func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 			if !CanBlock(attacker, blocker) {
 				return ErrIllegalBlock
 			}
+			// S31 sub-PR 0: announce the declaration for the public
+			// game log, but only when the pairing is NEW. The sandbox
+			// lets a defender re-point a blocker at a different
+			// attacker; that is one decision being revised, not two
+			// blocks, and EventAttack draws the same line.
+			announce := blocker.BlockingTarget != attackerID
 			blocker.BlockingTarget = attackerID
 			blocker.AttackingTarget = uuid.Nil
+			if announce {
+				g.EmitEvent(Event{
+					Kind:   EventBlock,
+					Actor:  blocker.Controller,
+					Source: blocker.InstanceID,
+					CardID: blocker.InstanceID,
+					Target: attackerID,
+				})
+			}
 			return nil
 		}
 	}
