@@ -44,15 +44,18 @@ import (
 //
 // The prompt is offered on the land-play path (from hand, or from an
 // impulse exile). A shockland put onto the battlefield by an EFFECT
-// — a fetchland cracking for it, a Farseek — is unchanged from
-// before this work and still wrong in the same direction: the
-// library-search path doesn't run the CR 614 pipeline at all, so the
-// land arrives untapped and nobody pays. (The previous
-// implementation leaked the same way, by a different route: the
-// search path skipped its enters-tapped replacement too, and the
-// untap trigger was then free money.) Routing search through the
-// pipeline closes it — the replacement below is already the right
-// one, it just isn't consulted from there.
+// — a fetchland cracking for it, a Farseek — now runs this same
+// replacement (#263 routed the library-search path through the CR
+// 614 pipeline), but that entry site is not entryResumable, so the
+// pipeline cannot pause there to ask. It takes the un-paid branch
+// and the land ENTERS TAPPED, with no payment offered.
+//
+// That is weaker than printed and never stronger, and it is a strict
+// improvement on what came before, where a fetched shockland ignored
+// its entry clause entirely and arrived untapped for free. Closing
+// it the rest of the way needs the search's own continuation (the
+// shuffle, and "then untap that land") to survive an entry prompt —
+// see the note on searchEnterBattlefieldLocked.
 //
 // Where the pipeline DOES run but the entry site has no resume for
 // a paused prompt, the engine takes the un-paid branch and the land

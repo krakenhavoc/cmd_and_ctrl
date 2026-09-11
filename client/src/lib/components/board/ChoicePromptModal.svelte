@@ -75,17 +75,32 @@
     }
   });
 
+  // S22 search_library — "search your library for ..." (CR 701.19).
+  // Shares the card grid and the {choice_id, card_ids} payload with
+  // discard / sacrifice; what differs is the floor. Every other
+  // card-grid kind demands exactly `count` picks, but a search may
+  // always find FEWER than it looked for, including none at all
+  // (CR 701.19c "you may fail to find"). So search_max is a ceiling
+  // and zero is a legal answer.
+  const isSearch = $derived(active?.kind === "search_library");
+
+  // How many cards this prompt accepts, and how few it will settle
+  // for. Only search moves the floor off the ceiling.
+  const pickMax = $derived(isSearch ? (active?.search_max ?? 1) : (active?.count ?? 0));
+  const pickMin = $derived(isSearch ? 0 : (active?.count ?? 0));
+  const canSubmit = $derived(selected.size >= pickMin && selected.size <= pickMax);
+
   function toggle(id: string): void {
     if (!active) return;
     const next = new Set(selected);
     if (next.has(id)) next.delete(id);
-    else if (next.size < active.count) next.add(id);
+    else if (next.size < pickMax) next.add(id);
     selected = next;
   }
 
   function submit(): void {
     if (!active || !viewerID) return;
-    if (selected.size !== active.count) return;
+    if (!canSubmit) return;
     sendAction(
       "resolve_choice",
       { choice_id: active.id, card_ids: Array.from(selected) },
@@ -721,6 +736,9 @@
           {#if isSacrifice}
             {active.reason || "Sacrifice a permanent"}
             <span class="prompt-src" aria-hidden="true">sacrifice</span>
+          {:else if isSearch}
+            {active.reason || "Search your library"}
+            <span class="prompt-src" aria-hidden="true">search · CR 701.19</span>
           {:else}
             {active.reason || "Choose"} — pick {active.count} card{active.count === 1 ? "" : "s"}
             <span class="prompt-src" aria-hidden="true">{isSelfSource ? "discard" : "reveal"}</span>
@@ -730,6 +748,13 @@
           {#if isSacrifice}
             Choose {active.count === 1 ? "a permanent" : `${active.count} permanents`} you control to
             sacrifice. This isn't optional — {triggerSourceName(active.source)} is making you.
+          {:else if isSearch}
+            {#if pickMax === 1}
+              Take one of these, or none.
+            {:else}
+              Take up to {pickMax} of these, or none.
+            {/if}
+            Only you can see them, and your library is shuffled either way.
           {:else if isSelfSource}
             Pick {active.count} card{active.count === 1 ? "" : "s"} from your hand to discard.
           {:else}
@@ -744,7 +769,7 @@
               type="button"
               class="card-pick"
               class:selected={selected.has(c.instance_id)}
-              disabled={!selected.has(c.instance_id) && selected.size >= active.count}
+              disabled={!selected.has(c.instance_id) && selected.size >= pickMax}
               onclick={() => toggle(c.instance_id)}
               aria-pressed={selected.has(c.instance_id)}
               aria-label={`select ${c.name || "card"}`}
@@ -754,14 +779,24 @@
           {/each}
         </div>
         <div class="prompt-foot">
-          <span class="prompt-count">{selected.size} / {active.count} selected</span>
-          <button
-            type="button"
-            class="primary"
-            disabled={selected.size !== active.count}
-            onclick={submit}
-          >
-            {isSacrifice ? "Sacrifice" : "Confirm"}
+          <span class="prompt-count">{selected.size} / {pickMax} selected</span>
+          {#if isSearch}
+            <button
+              type="button"
+              onclick={() => (selected = new Set())}
+              disabled={selected.size === 0}
+            >
+              Clear
+            </button>
+          {/if}
+          <button type="button" class="primary" disabled={!canSubmit} onclick={submit}>
+            {#if isSacrifice}
+              Sacrifice
+            {:else if isSearch}
+              {selected.size === 0 ? "Fail to find" : "Take"}
+            {:else}
+              Confirm
+            {/if}
           </button>
         </div>
       {/if}

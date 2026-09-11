@@ -444,6 +444,9 @@ func TestAssassinsTrophyDestroysAndReplacesWithAnUntappedBasic(t *testing.T) {
 	if g.Battlefield.Contains(target) {
 		t.Error("Assassin's Trophy did not destroy its target")
 	}
+	// S22: the "may" is real, so the VICTIM is prompted and here
+	// accepts the replacement land.
+	answerSearchByID(t, g, victim.ID, basic)
 	got, ok := battlefieldCard(g, basic)
 	if !ok {
 		t.Fatal("the victim did not get their replacement basic")
@@ -804,17 +807,13 @@ func TestMyriadLandscapeEntersTapped(t *testing.T) {
 	top100AssertEnteredTapped(t, g, id, "Myriad Landscape")
 }
 
-// Two basics that SHARE a type, both tapped. The type is taken from
-// the first basic the search would find; a Forest sitting alongside
-// two Plains must not come along for the ride.
+// Two basics that SHARE a type, both tapped. S22: the controller
+// picks the pair, and the engine enforces the share-a-type clause on
+// the pair rather than deriving a type from library order.
 func TestMyriadLandscapeFetchesTwoBasicsOfOneType(t *testing.T) {
 	g := newCatalogGame(t)
 	me := top100ActiveSeat(g)
 	landscape := pushCatalogPermanent(g, me.ID, "Myriad Landscape", "Land", myriadLandscapeOracle, false)
-	// stapleLibraryCard pushes to the BOTTOM, and the search walks
-	// bottom-first — so the last card seeded here is the one the
-	// deterministic pick lands on, and it is the one that names the
-	// shared land type.
 	forest := stapleLibraryCard(me, "Forest", "Basic Land — Forest")
 	plainsA := stapleLibraryCard(me, "Plains", "Basic Land — Plains")
 	plainsB := stapleLibraryCard(me, "Plains", "Basic Land — Plains")
@@ -823,6 +822,16 @@ func TestMyriadLandscapeFetchesTwoBasicsOfOneType(t *testing.T) {
 		t.Fatalf("activate: %v", err)
 	}
 	passPriorityAroundTable(t, g)
+
+	// A mismatched pair is refused — that is the whole clause.
+	c := searchChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("Myriad Landscape did not prompt for a pick")
+	}
+	if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{forest, plainsA}); err == nil {
+		t.Error("a Forest + Plains pair was accepted; they share no land type")
+	}
+	answerSearchByID(t, g, me.ID, plainsA, plainsB)
 
 	for _, id := range []uuid.UUID{plainsA, plainsB} {
 		got, ok := battlefieldCard(g, id)

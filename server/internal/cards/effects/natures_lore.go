@@ -26,6 +26,7 @@ func init() {
 				Limit:     1,
 				Reveal:    true,
 				Shuffle:   true,
+				Reason:    "Nature's Lore — a Forest card",
 			}.Apply(ctx)
 		},
 	})
