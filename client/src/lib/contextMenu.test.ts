@@ -306,6 +306,44 @@ describe("buildMenuSections — combat", () => {
     });
   });
 
+  // #318: the bulk affordance sits next to the per-card one and
+  // reuses its "pick a defender" submenu shape.
+  it("offers attack-with-all per opponent, aiming the whole board at one seat", () => {
+    const bf = [
+      card("c1", "a", { type_line: "Creature — Bear" }),
+      card("c2", "a", { type_line: "Creature — Bear" }),
+      card("c3", "a", { type_line: "Creature — Wall", tapped: true }),
+    ];
+    const v = view([seat("a", "Alice"), seat("b", "Bob"), seat("c", "Carol")], {
+      battlefield: bf,
+      step: "declare_attackers",
+    });
+    const sections = buildMenuSections(v, bf[0], "a", false);
+    expect(itemById(sections, "combat-attack-all")?.label).toBe("Attack with all 2");
+    expect(itemById(sections, "combat-attack-all-c")?.action).toEqual({
+      type: "declare_attackers",
+      params: {
+        attackers: [
+          { attacker: "c1", target: "c" },
+          { attacker: "c2", target: "c" },
+        ],
+      },
+    });
+    // Never the controller's own seat.
+    expect(itemById(sections, "combat-attack-all-a")).toBeUndefined();
+  });
+
+  it("disables attack-with-all when nothing on the board can attack", () => {
+    const c = card("c1", "a", { type_line: "Creature — Wall", abilities: ["defender"] });
+    const v = view([seat("a", "Alice"), seat("b", "Bob")], {
+      battlefield: [c],
+      step: "declare_attackers",
+    });
+    const item = itemById(buildMenuSections(v, c, "a", false), "combat-attack-all");
+    expect(item?.disabled).toBe(true);
+    expect(item?.items).toBeUndefined();
+  });
+
   it("always offers the clear-combat escape hatch during combat", () => {
     const c = card("c1", "a");
     const v = view([seat("a", "Alice")], { battlefield: [c], step: "combat_damage" });

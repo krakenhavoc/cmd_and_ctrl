@@ -70,6 +70,9 @@ export type ActionType =
   | "counter_ability"
   | "counter_spell"
   | "declare_attacker"
+  // Bulk attacking-set declaration (#318) — one action, one undo
+  // entry, one broadcast, however wide the board.
+  | "declare_attackers"
   | "declare_blocker"
   | "discard_selection"
   | "draw_card"
