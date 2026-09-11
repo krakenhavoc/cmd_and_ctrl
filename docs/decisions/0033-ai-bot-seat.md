@@ -244,14 +244,15 @@ reaching for a cheaper model.
 > measured rather than estimated, from four-bot games against the real
 > engine (`aiseat/funnel_game_test.go`, `aiseat/model_game_test.go`).
 >
-> **Layer A absorbs 90.1%** of priority windows — 7,036 of 7,810 over
-> three games — comfortably past the 80% floor. The distribution is
+> **Layer A absorbs ~90%** of priority windows — 4,753 of 5,207 over
+> the two games the gate runs by default, and 7,036 of 7,810 over
+> three — comfortably past the 80% floor. The distribution is
 > the interesting part: `mana-only` alone is 51.4% (the enumerator
 > offers a mana ability for every untapped land in every window where
 > the seat holds priority, and floating mana is never the play because
-> casts auto-tap) and `forced` is 38.2% (the pass-only window, which
-> is most of what a four-player table consists of). The land rule is
-> 0.5%. Three rules, and two of them do all the work.
+> casts auto-tap) and `forced` is around 38% (the pass-only window,
+> which is most of what a four-player table consists of). The land
+> rule is half a percent. Three rules, and two of them do all the work.
 >
 > **Escalation is ~60–70% of surviving windows, not ~20%.** The
 > estimate above was wrong by a factor of three, and it is worth

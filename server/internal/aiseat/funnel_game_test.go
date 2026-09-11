@@ -23,35 +23,59 @@ import (
 // fails the build.
 //
 // It reuses heuristic_game_test.go's harness: playGame seats one
-// policy per player, runs to a winner, and fails on a stall.
+// policy per player, runs to a winner, and fails the test on a stall.
+//
+// **On the game budget.** This package already spends ~330s in CI
+// before anything here runs, against a 10-minute per-package cap, so
+// whole games are rationed: the two assertions below share one set of
+// games rather than each taking their own, and the turn budget is the
+// smallest that still finishes. `AISEAT_FUNNEL_GAMES=N` widens the
+// sample when somebody is actually tuning.
 
 // absorptionTarget is ADR 0033 §5's number, verbatim.
 const absorptionTarget = 0.80
 
-// A four-bot table on the Layer A + Layer B stack, measured. Every
-// seat shares one Meter, so the rate is a property of the table
+// Two assertions over one set of four-bot games:
+//
+//  1. Layer A absorbs more than 80% of priority windows.
+//  2. Every window it absorbed, the heuristic underneath would have
+//     answered identically — so the filter is a cost optimisation and
+//     not a play regression hiding inside one.
+//
+// Every seat shares one Meter, so the rate is a property of the table
 // rather than of a seat that happened to get a quiet game.
-func TestLayerAAbsorbsMostWindows(t *testing.T) {
-	games := 3
+func TestLayerAAbsorbsMostWindowsAndAgreesWithTheHeuristic(t *testing.T) {
+	games := 2
 	if n, err := strconv.Atoi(os.Getenv("AISEAT_FUNNEL_GAMES")); err == nil && n > 0 {
 		games = n
 	}
 	const (
-		turnBudget = 50
+		turnBudget = 40
 		wall       = 120 * time.Second
 	)
 	var meter rules.Meter
+	var checked int
+	var disagreements []string
+
 	for i := 0; i < games; i++ {
 		seed := uint64(3100 + i)
 		policies := make([]aiseat.Policy, 4)
+		checkers := make([]*agreementPolicy, 4)
 		for j := range policies {
-			policies[j] = rules.NewFilter(heuristic.New(), &meter)
+			inner := heuristic.New()
+			checkers[j] = &agreementPolicy{inner: inner, filter: rules.NewFilter(inner, &meter)}
+			policies[j] = checkers[j]
 		}
 		res := playGame(t, seed, policies, turnBudget, wall)
 		assertNoEnumeratorBugs(t, res)
 		if res.state != game.StateEnded {
 			t.Errorf("seed %d: game did not finish inside %d turns (state %s, lives %v)",
 				seed, turnBudget, res.state, res.lives)
+		}
+		for _, c := range checkers {
+			n, d := c.report()
+			checked += n
+			disagreements = append(disagreements, d...)
 		}
 	}
 
@@ -69,39 +93,11 @@ func TestLayerAAbsorbsMostWindows(t *testing.T) {
 			"the funnel is leaking routine decisions to the paid layers and that is what to fix first",
 			st.Rate()*100, absorptionTarget*100)
 	}
-}
 
-// The Layer A filter must not change how the heuristic tier PLAYS. It
-// answers the windows the rules settle; if it ever answered one the
-// heuristic would have answered differently, that is a play
-// regression hiding inside a cost optimisation.
-func TestLayerAAgreesWithTheHeuristicOnEveryWindowItAbsorbs(t *testing.T) {
-	const (
-		turnBudget = 40
-		wall       = 120 * time.Second
-	)
-	var meter rules.Meter
-	policies := make([]aiseat.Policy, 4)
-	checkers := make([]*agreementPolicy, 4)
-	for j := range policies {
-		inner := heuristic.New()
-		checkers[j] = &agreementPolicy{inner: inner, filter: rules.NewFilter(inner, &meter)}
-		policies[j] = checkers[j]
-	}
-	res := playGame(t, 3199, policies, turnBudget, wall)
-	assertNoEnumeratorBugs(t, res)
-
-	var checked int
-	var disagreements []string
-	for _, c := range checkers {
-		n, d := c.report()
-		checked += n
-		disagreements = append(disagreements, d...)
-	}
 	t.Logf("Layer A verdicts cross-checked against the heuristic: %d absorbed windows, %d disagreements",
 		checked, len(disagreements))
 	if checked < 100 {
-		t.Fatalf("only %d absorbed windows cross-checked; the test measured nothing", checked)
+		t.Fatalf("only %d absorbed windows cross-checked; that half of the test measured nothing", checked)
 	}
 	for _, d := range disagreements {
 		t.Error(d)
