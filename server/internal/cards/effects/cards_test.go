@@ -784,8 +784,9 @@ func pushLibraryCardForTest(p *game.Player, c game.Card) uuid.UUID {
 }
 
 // pushGraveyardCardForTest seeds a card into a player's graveyard
-// pile. Regrowth / Eternal Witness sandbox-pick the TOP (most
-// recently pushed) card, so push order matters in the tests.
+// pile. Both Regrowth and Eternal Witness take a real target now
+// (S20 for the Witness, #338 for Regrowth), so push order no longer
+// decides which card comes back — the test names the one it wants.
 func pushGraveyardCardForTest(p *game.Player, name string) uuid.UUID {
 	id := uuid.New()
 	p.Graveyard.PushTop(game.Card{
@@ -891,24 +892,34 @@ func TestCultivateFetchesOneToFieldOneToHand(t *testing.T) {
 	}
 }
 
-func TestRegrowthReturnsTopOfGraveyard(t *testing.T) {
+// TestRegrowthReturnsTheTargetedCard is the #338 stale-simplification
+// fix. Regrowth shipped in S14 auto-picking the top of the
+// graveyard; S20 built the graveyard picker and converted Eternal
+// Witness but not Regrowth. The card the caster NAMES must come
+// back — specifically the one that is NOT on top, so an auto-pick
+// regression fails here rather than passing by luck.
+func TestRegrowthReturnsTheTargetedCard(t *testing.T) {
 	g := newCatalogGame(t)
 	caster := g.Seats[0]
-	// Older card at bottom, target on top.
-	pushGraveyardCardForTest(caster, "Older Body")
+	// The wanted card goes in first, so it is NOT the top of the pile.
+	wanted := pushGraveyardCardForTest(caster, "Older Body")
 	top := pushGraveyardCardForTest(caster, "Latest Body")
 
 	castCatalogSpell(t, g, "Regrowth", "Sorcery",
 		"e6e4a8bd-5c40-4654-8de1-0da9afed90fd",
-		nil,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: wanted}},
 	)
 	passPriorityAroundTable(t, g)
 
-	if !caster.Hand.Contains(top) {
-		t.Errorf("top-of-graveyard card not returned to hand")
+	if !caster.Hand.Contains(wanted) {
+		t.Errorf("targeted graveyard card not returned to hand")
 	}
-	if caster.Graveyard.Contains(top) {
+	if caster.Graveyard.Contains(wanted) {
 		t.Errorf("returned card still in graveyard")
+	}
+	if caster.Hand.Contains(top) {
+		t.Errorf("top-of-graveyard card returned instead of the target " +
+			"(the S14 auto-pick is back)")
 	}
 }
 
@@ -1346,6 +1357,27 @@ func TestFiligreeFamiliarDiesDrawsCard(t *testing.T) {
 
 	if got := caster.Hand.Size() - handBefore; got != 1 {
 		t.Errorf("Filigree Familiar dies-draw: hand delta %d, want 1", got)
+	}
+}
+
+// TestFiligreeFamiliarETBGainsTwoLife — #338 stale-simplification
+// fix. S19 shipped only the dies half and left the ETB lifegain
+// "deferred to a later batch"; ETB triggers had long since become
+// routine, so the card was quietly missing a printed clause.
+func TestFiligreeFamiliarETBGainsTwoLife(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	lifeBefore := caster.Life
+
+	castCatalogSpell(t, g, "Filigree Familiar", "Artifact Creature — Fox",
+		"b544f690-e4bf-4a5b-984d-9256518fd574", nil)
+	passPriorityAroundTable(t, g)
+	// The ETB trigger goes on the stack when the Familiar lands;
+	// pass again to resolve it.
+	passPriorityAroundTable(t, g)
+
+	if got := caster.Life - lifeBefore; got != 2 {
+		t.Errorf("Filigree Familiar ETB: life delta %d, want 2", got)
 	}
 }
 
