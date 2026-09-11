@@ -4,6 +4,7 @@ import {
   canCastFromHand,
   canActivateAbility,
   canActivateLoyalty,
+  canActivateSorcerySpeedAbility,
   canPassPriority,
   hasPriority,
   isActivePlayer,
@@ -262,6 +263,30 @@ describe("canActivateAbility", () => {
     expect(canActivateAbility(c, snap({ splitSecond: true }), "p0").reason).toBe(
       "Split second on the stack",
     );
+  });
+});
+
+// S24: equip is the catalog's first "activate only as a sorcery"
+// ability, and this is the window it answers to.
+describe("canActivateSorcerySpeedAbility", () => {
+  it("legal on your own main phase with an empty stack", () => {
+    expect(canActivateSorcerySpeedAbility(snap(), "p0").legal).toBe(true);
+  });
+
+  it("rejects outside a main phase", () => {
+    expect(canActivateSorcerySpeedAbility(snap({ step: "upkeep" }), "p0").reason).toBe(
+      "Sorcery-speed only",
+    );
+  });
+
+  it("rejects on an opponent's turn", () => {
+    expect(
+      canActivateSorcerySpeedAbility(snap({ activeSeat: 1, priorityHolder: 0 }), "p0").reason,
+    ).toBe("Not your turn");
+  });
+
+  it("rejects a spectator", () => {
+    expect(canActivateSorcerySpeedAbility(snap(), null).reason).toBe("Spectator can't activate");
   });
 });
 

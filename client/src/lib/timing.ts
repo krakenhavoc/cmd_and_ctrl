@@ -245,6 +245,28 @@ export function canActivateAbility(
   return LEGAL;
 }
 
+// canActivateSorcerySpeedAbility is CR 602.5d's "activate only as a
+// sorcery" window, shared by every activated ability that declares
+// it — equip (CR 702.6b) is the first in the catalog, and a
+// planeswalker's loyalty ability answers to the same three gates
+// plus two of its own (see canActivateLoyalty).
+//
+// Advisory, like every predicate in this file: the server rejects
+// with ErrSorcerySpeedRequired regardless. This exists so the menu
+// row greys with a reason instead of looking available and failing.
+export function canActivateSorcerySpeedAbility(
+  snap: GameView | null | undefined,
+  viewerID: string | null,
+): Legality {
+  if (!snap || !viewerID) return deny("Spectator can't activate");
+  if (!hasPriority(snap, viewerID)) return deny("Not your priority");
+  if (snap.split_second_active) return deny("Split second on the stack");
+  if (!isMainPhase(snap)) return deny("Sorcery-speed only");
+  if (!stackEmpty(snap)) return deny("Stack isn't empty");
+  if (!isActivePlayer(snap, viewerID)) return deny("Not your turn");
+  return LEGAL;
+}
+
 // canActivateLoyalty mirrors the engine's CR 606.5 gates: the
 // sorcery-speed window plus once per turn per planeswalker. It is
 // what greys a loyalty row in the card menu — see

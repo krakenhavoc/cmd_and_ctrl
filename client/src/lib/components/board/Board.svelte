@@ -67,6 +67,7 @@
     canConfirm,
     setConfirmHandler,
     type CastChoices,
+    type CastSourceZone,
     type TargetingMode,
     type TargetingState,
     type TargetRef,
@@ -407,12 +408,15 @@
   // this one — costs, modes, targets, even whether the card touches
   // the stack at all — depends on which of them the player meant.
   let facePromptCard = $state<CardView | null>(null);
+  let facePromptZone: CastSourceZone | undefined;
   function confirmFace(face: number): void {
     const card = facePromptCard;
+    const fromZone = facePromptZone;
     facePromptCard = null;
+    facePromptZone = undefined;
     if (!card) return;
     if (face <= 0) {
-      afterFace(card, {});
+      afterFace(card, fromZone ? { fromZone } : {});
       return;
     }
     // Run the rest of the chain against the CHOSEN face, so the
@@ -420,7 +424,7 @@
     // rather than the front's. cardAsFace drops the announce-prompt
     // fields, which describe face 0's catalog spec and would be
     // wrong here — see the note on cardAsFace.
-    afterFace(cardAsFace(card, face), { face });
+    afterFace(cardAsFace(card, face), fromZone ? { face, fromZone } : { face });
   }
 
   function afterFace(card: CardView, choices: CastChoices): void {
@@ -432,12 +436,23 @@
     afterAltCost(card, choices);
   }
 
-  function handlePlayCard(card: CardView): void {
+  // handlePlayCard is the head of the chain. `fromZone` is undefined
+  // for the hand, which is every cast the board's own surfaces fire;
+  // S29's zone browser passes "graveyard" so a flashback cast walks
+  // the identical prompt chain and lands the zone on the payload via
+  // CastChoices.
+  //
+  // The face picker's confirm re-enters at afterFace with its own
+  // choices object, so the zone has to be seeded here rather than at
+  // the end — otherwise a modal DFC cast out of the graveyard would
+  // lose it.
+  function handlePlayCard(card: CardView, fromZone?: CastSourceZone): void {
     if (needsFacePicker(card)) {
+      facePromptZone = fromZone;
       facePromptCard = card;
       return;
     }
-    afterFace(card, {});
+    afterFace(card, fromZone ? { fromZone } : {});
   }
 
   // S20 sub-PR 4: a modal spell asks for its mode(s) after X and
@@ -929,6 +944,7 @@
       {sendAction}
       onClose={closeZoneBrowser}
       onTargetCard={handleTargetCard}
+      onCastCard={handlePlayCard}
     />
   {/if}
   {#if $cardMenu}

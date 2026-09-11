@@ -23,12 +23,12 @@ import (
 //     does not refund it.
 
 const (
-	forceOfWillOracle        = "956381ba-6d37-4a8a-846c-bad79222dbee"
-	snuffOutOracle           = "324824cb-f938-401c-b9b5-d8908b431ef0"
-	dazeOracle               = "70486bee-6ee7-41ea-b834-8caf4699302b"
-	solitudeOracle           = "dcb9c2a7-ae54-4ddc-a567-640bf4bf4366"
-	pactOfNegationOracle     = "f3e213a4-ba5a-468a-93b3-c0a34e1bd725"
-	kambalOracle             = "4987c458-604a-4727-b360-170616e91e67"
+	forceOfWillOracle    = "956381ba-6d37-4a8a-846c-bad79222dbee"
+	snuffOutOracle       = "324824cb-f938-401c-b9b5-d8908b431ef0"
+	dazeOracle           = "70486bee-6ee7-41ea-b834-8caf4699302b"
+	solitudeOracle       = "dcb9c2a7-ae54-4ddc-a567-640bf4bf4366"
+	pactOfNegationOracle = "f3e213a4-ba5a-468a-93b3-c0a34e1bd725"
+	kambalOracle         = "4987c458-604a-4727-b360-170616e91e67"
 )
 
 // handCardFull seeds a fully-specified card into a hand. The oracle

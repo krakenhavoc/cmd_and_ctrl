@@ -60,6 +60,16 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q declares two alternative costs keyed %q", spec.Name, ac.Key))
 		}
 		seenAlt[ac.Key] = true
+		// S29: an offer bound to a zone the card cannot be cast from
+		// is unclaimable — the cast path rejects the zone before it
+		// ever looks at the price. A card file that wrote one meant
+		// to list the zone as well, and finding out at boot is far
+		// cheaper than finding out when a flashback button never
+		// appears.
+		if ac.FromZone != "" && ac.FromZone != game.ZoneHand && !zoneDeclared(spec.CastableZones, ac.FromZone) {
+			panic(fmt.Sprintf("effects.Register: %q offers %q from %s but does not list that zone in CastableZones",
+				spec.Name, ac.Key, ac.FromZone))
+		}
 	}
 	// S22: a tap-permanents cost with no pool of legal permanents can
 	// never be paid, and one whose extra cost doesn't parse would
@@ -76,6 +86,18 @@ func Register(spec Spec) {
 		}
 	}
 	registry[spec.OracleID] = spec
+}
+
+// zoneDeclared reports whether `zone` appears in a Spec's
+// CastableZones. S29's Register guard, kept out of the loop body so
+// the panic message above reads as one thought.
+func zoneDeclared(zones []game.ZoneKind, zone game.ZoneKind) bool {
+	for _, z := range zones {
+		if z == zone {
+			return true
+		}
+	}
+	return false
 }
 
 // Lookup returns the Spec for a given oracle ID. The second return

@@ -173,6 +173,22 @@ type TriggeredAbility struct {
 	//
 	// Added in S28.
 	FromStack bool
+
+	// Chapter is the Saga chapter number this ability is printed
+	// against — 1 for "I —", 3 for "III —" (CR 714.2c). Zero for
+	// every ability that is not a chapter, which is every ability on
+	// every card that is not a Saga.
+	//
+	// It is declarative data, not a second trigger condition: the
+	// ability still watches EventSagaChapter and still predicates on
+	// the chapter number, exactly as effects.ChapterTrigger writes
+	// it. What this field adds is a way for the ENGINE to read the
+	// card's FINAL chapter off the declarations, which is what the
+	// CR 704.5s sacrifice needs and what nothing else on the card can
+	// tell it. See game.SagaFinalChapter.
+	//
+	// Added in S27.
+	Chapter int
 }
 
 // TriggerOptionalPrompt is the declarative payload for the "ask
