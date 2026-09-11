@@ -19,9 +19,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // graveyard for the same reason.
 func init() {
 	Register(Spec{
-		OracleID: "31bf199b-dfb1-428e-96a5-eb25104e2b43",
-		Name:     "Late to Dinner",
-		Targets:  targetCreatureInYourGraveyard(),
+		OracleID:     "31bf199b-dfb1-428e-96a5-eb25104e2b43",
+		Name:         "Late to Dinner",
+		Completeness: CompletenessFull,
+		Targets:      targetCreatureInYourGraveyard(),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			_, _ = reanimateSingleTarget(ctx, ctx.Controller())
 			return CreateToken{

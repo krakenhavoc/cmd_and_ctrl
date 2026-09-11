@@ -98,7 +98,6 @@ var gameFields = plan(
 	"Listeners", rebuilt, "process-lifetime singletons installed by NewGame; a new binary's listener set wins",
 	"BuiltinReplacements", rebuilt, "registered by NewGame, not per-game state",
 	"rng", rebuilt, "rebuilt by wrapping the restored rngState",
-	"recompute", rebuilt, "a mutex guarding recompute work; zero value is correct",
 	"mu", rebuilt, "a fresh receiver owns its own lock, exactly as Clone does",
 
 	"TurnScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.TurnScopedStatics",
@@ -152,6 +151,10 @@ var cardFields = plan(
 	// a restore that dropped it would silently un-equip the board.
 	"AttachedTo", carried, "",
 	"AttachedAt", carried, "",
+	// The layer-2 control baseline. Carried rather than rebuilt: a
+	// restore that dropped it would re-capture the CURRENT (stolen)
+	// controller as the base, and the creature would never go home.
+	"BaseController", carried, "",
 
 	"ManaAbilities", rebuilt, "closures; re-looked-up from the catalog by oracle ID, or censused when the card has none (a true token)",
 	"ActivatedAbilities", rebuilt, "same as ManaAbilities",

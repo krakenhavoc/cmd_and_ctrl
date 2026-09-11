@@ -67,8 +67,9 @@ import (
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID: "38f3b157-0df4-409b-89cc-086e1531cd5b",
-		Name:     "Gray Merchant of Asphodel",
+		OracleID:     "38f3b157-0df4-409b-89cc-086e1531cd5b",
+		Name:         "Gray Merchant of Asphodel",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

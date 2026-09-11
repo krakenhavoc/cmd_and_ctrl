@@ -36,9 +36,11 @@ import (
 // bigger — weaker than printed, and only in that one case.
 func init() {
 	Register(Spec{
-		OracleID: "74d3277a-38e5-4732-afed-084a56148f20",
-		Name:     "Mana Drain",
-		Targets:  TargetSpell("target spell"),
+		OracleID:     "74d3277a-38e5-4732-afed-084a56148f20",
+		Name:         "Mana Drain",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"If you cast it during your own turn the mana arrives on your next turn's first main phase, not that turn's second main phase."},
+		Targets:      TargetSpell("target spell"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {
 				return nil

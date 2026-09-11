@@ -24,8 +24,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // declared.
 func init() {
 	Register(Spec{
-		OracleID: "8ad91f64-ccab-4edc-bd54-b2ee9267d614",
-		Name:     "Lotus Cobra",
+		OracleID:     "8ad91f64-ccab-4edc-bd54-b2ee9267d614",
+		Name:         "Lotus Cobra",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The landfall mana is limited to your commander's color identity instead of any color."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

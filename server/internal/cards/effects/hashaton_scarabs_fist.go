@@ -46,8 +46,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     fireETBHookLocked. See the note on CreateTokenCopy.
 func init() {
 	Register(Spec{
-		OracleID: "db266661-f783-4907-9e52-6963eec05431",
-		Name:     "Hashaton, Scarab's Fist",
+		OracleID:     "db266661-f783-4907-9e52-6963eec05431",
+		Name:         "Hashaton, Scarab's Fist",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Token copies skip the enters-the-battlefield effect on some cards, and a discarded card exiled in response is still copied."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDiscardCard},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

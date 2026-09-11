@@ -13,9 +13,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // now — only the hand-picking is deferred.
 func init() {
 	Register(Spec{
-		OracleID: "ad44cf74-b717-48fb-9fa2-77512024d76a",
-		Name:     "Mind Rot",
-		Targets:  TargetPlayer("target player"),
+		OracleID:     "ad44cf74-b717-48fb-9fa2-77512024d76a",
+		Name:         "Mind Rot",
+		Completeness: CompletenessFull,
+		Targets:      TargetPlayer("target player"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 				return nil

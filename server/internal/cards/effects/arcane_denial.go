@@ -45,9 +45,11 @@ import (
 // declared here rather than hidden.
 func init() {
 	Register(Spec{
-		OracleID: "ab1cc360-b9de-48d9-9983-4dfe4a7d2a37",
-		Name:     "Arcane Denial",
-		Targets:  TargetSpell("target spell"),
+		OracleID:     "ab1cc360-b9de-48d9-9983-4dfe4a7d2a37",
+		Name:         "Arcane Denial",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The countered spell's controller always draws two cards and can't choose to draw fewer, which matters only with a nearly empty library."},
+		Targets:      TargetSpell("target spell"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {
 				return nil

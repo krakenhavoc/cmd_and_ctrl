@@ -41,8 +41,10 @@ func init() {
 		{"d71bda4c-3dee-4398-8fd0-f77d8743b887", "Gloomlake Verge", "U"},
 	} {
 		Register(Spec{
-			OracleID: t.oracleID,
-			Name:     t.name,
+			OracleID:     t.oracleID,
+			Name:         t.name,
+			Completeness: CompletenessCaveats,
+			Caveats:      []string{"Only the unconditional half is available — the second, conditional color the verge can make is missing, so it taps for one color."},
 			ManaAbilities: []ManaAbility{{
 				Cost:     ManaAbilityCost{Tap: true},
 				Produced: "{" + t.free + "}",

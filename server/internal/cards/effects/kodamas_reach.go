@@ -29,8 +29,9 @@ import (
 // would offer a card that is mid-flight.
 func init() {
 	Register(Spec{
-		OracleID: "1593ea18-2f2f-4ab4-83fb-6ccc0bec8a90",
-		Name:     "Kodama's Reach",
+		OracleID:     "1593ea18-2f2f-4ab4-83fb-6ccc0bec8a90",
+		Name:         "Kodama's Reach",
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller := ctx.Controller()
 			source := ctx.Source()
