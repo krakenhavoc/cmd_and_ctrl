@@ -153,6 +153,27 @@ func TreasureToken() game.Card {
 	}
 }
 
+// GoldToken returns a template for the Gold artifact token
+// ("Sacrifice this token: Add one mana of any color"). Treasure
+// without the tap — a Gold can be cracked the turn it is made, which
+// is the whole point of Curse of Opulence handing them out in the
+// middle of somebody else's attack.
+//
+// Same five-colour pipe as Treasure, so it runs through the same
+// commander-identity filter rather than offering a five-way prompt in
+// a mono-coloured deck.
+func GoldToken() game.Card {
+	return game.Card{
+		Name:     "Gold",
+		TypeLine: "Token Artifact — Gold",
+		ManaAbilities: []game.ManaAbilityShape{{
+			SacrificeCost: true,
+			Produced:      "{W|U|B|R|G}",
+			Label:         "Sacrifice: Add one mana of any color",
+		}},
+	}
+}
+
 // FoodToken — "{2}, {T}, Sacrifice this artifact: You gain 3 life."
 func FoodToken() game.Card {
 	return game.Card{
