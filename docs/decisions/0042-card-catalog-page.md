@@ -33,8 +33,8 @@ The obvious answer is to parse the existing comments. Surveying all
   gap ("Sandbox simplification:", "DECLARED SIMPLIFICATION —", "Shape
   notes and simplifications:", …).
 
-- **Silence is ambiguous, and it is the majority case.** 220 of the
-  505 registry entries sit in files that never mention the subject.
+- **Silence is ambiguous, and it is the majority case.** 219 of the
+  504 registry entries sit in files that never mention the subject.
   Reading them, Mind Stone and Blaze turn out to be complete
   implementations whose authors saw nothing worth saying — and there
   is no way to tell those from a card nobody ever checked. A parser
@@ -87,17 +87,21 @@ wrong.
 
 **3. The backfill declares only what a human actually decided.**
 
-505 registry entries were classified as follows, and the page's numbers
-are exactly this and nothing more:
+The 504 registry entries were classified as follows, and the page's
+numbers are exactly this and nothing more:
 
 | Bucket | Entries | Where it came from |
 | --- | ---: | --- |
 | `CompletenessFull` | 141 | 84 files whose comment plainly declares "No simplification", plus the 24 reviewed files found to have no current gap |
 | `CompletenessCaveats` | 144 | 63 of the 87 reviewed files, each read against its code and given a one-sentence player-facing caveat, plus 3 cycle/helper files adjudicated by hand |
-| `CompletenessUnreviewed` | 220 | everything else — left at the zero value |
+| `CompletenessUnreviewed` | 219 | everything else — left at the zero value |
+
+(`len(effects.All())` reports 505 inside the test binary: `flicker_test.go`
+registers a probe spec. 504 is the production catalog, and what the
+page serves.)
 
 Nothing was inferred. A card is `Full` only where someone looked and
-said so. The 220 unreviewed entries are not a defect in this ADR; they
+said so. The 219 unreviewed entries are not a defect in this ADR; they
 are the pre-existing state of the catalog, now visible instead of
 implicit.
 
@@ -157,8 +161,12 @@ This ships in production, which is the whole point.
   an automatic caveat naming it. This was invisible before the page
   existed.
 - Adding a card without touching `Completeness` still works, and
-  publishes as unreviewed. Reviewing the 220 is ordinary follow-up
+  publishes as unreviewed. Reviewing the 219 is ordinary follow-up
   work, one card at a time, and the page is the worklist.
+- `GET /catalog` rebuilds the whole response per request: 504 entries,
+  228 KB raw and 53 KB after Caddy's gzip, with a five-minute browser
+  cache. Measured, not estimated. At this size a cache would be a
+  worse bug (stale after a deploy) than the pass is a cost.
 
 ## Alternatives rejected
 

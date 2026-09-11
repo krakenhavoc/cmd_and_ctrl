@@ -187,15 +187,16 @@ func build(specs []effects.Spec, idx *cards.Index) Response {
 func buildEntry(idx *cards.Index, oracleID string, specs map[int]effects.Spec) Entry {
 	e := Entry{OracleID: oracleID}
 
-	// Name: prefer the printing's, fall back to whichever spec has
-	// one. Face 0's name is the card's name; a back-face-only spec
-	// names the back ("Akoum Teeth"), so it is the last resort.
+	// Name: the printing's wins below. This is the fallback for a
+	// card the dump has no printing for, and it takes the lowest
+	// registered face — face 0's name is the card's name, while a
+	// back-face-only spec names just the back ("Akoum Teeth"), which
+	// is the best available answer in that case and no worse than
+	// showing a bare UUID.
 	for _, face := range sortedFaces(specs) {
-		if n := specs[face].Name; n != "" && e.Name == "" {
-			e.Name = n
-		}
-		if face == 0 && specs[face].Name != "" {
+		if specs[face].Name != "" {
 			e.Name = specs[face].Name
+			break
 		}
 	}
 
