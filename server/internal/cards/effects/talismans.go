@@ -1,8 +1,9 @@
 package effects
 
-// talismans.go — the six most-played Talismans (Mirrodin's allied
-// cycle was reprinted alongside Modern Horizons' enemy cycle; these
-// six are the ones the top-100 triage ranked):
+// talismans.go — the Talismans (Mirrodin's allied cycle was
+// reprinted alongside Modern Horizons' enemy cycle). Six landed with
+// the mana-rider batch (#267); Talisman of Curiosity and Talisman of
+// Resilience arrive with the roadmap's batch 04 (#297):
 //
 //	Artifact {2}
 //	"{T}: Add {C}."
@@ -30,6 +31,9 @@ func init() {
 		{"b693c3de-2eaf-4850-b405-e79d00adefda", "Talisman of Hierarchy", "W", "B"},
 		{"00e35322-1a9a-41e3-9ce1-359c8eaa3bc7", "Talisman of Progress", "W", "U"},
 		{"6c326439-5620-4ec6-a56a-fe9c3d5d2a46", "Talisman of Conviction", "R", "W"},
+		// Roadmap batch 04 (#297) — two more of the ten.
+		{"8c34b089-aad1-476e-958a-3077bf1bbb51", "Talisman of Curiosity", "G", "U"},
+		{"42b8aa14-10bc-4bd6-88d9-4bb287eadd19", "Talisman of Resilience", "B", "G"},
 	} {
 		Register(Spec{
 			OracleID: t.oracleID,
