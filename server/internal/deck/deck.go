@@ -270,6 +270,80 @@ func printedLoyalty(c cards.Card) int {
 	return 0
 }
 
+// printedKeywords translates Scryfall's `keywords` array into the
+// engine's canonical keyword tokens. Scryfall capitalises as the
+// card prints ("Flying", "First strike") and lists every mechanic
+// on the card, including set-specific ones the engine has never
+// heard of ("Prepared", "Waterbend"), so game.CanonicalKeyword
+// lowercases and drops anything outside the enforced set.
+//
+// Issues #317 / #319 / #320: before this, printed keywords existed
+// ONLY in the opt-in effect catalog, which covers a few hundred
+// cards. Vigilance, flash, flying, trample, deathtouch, lifelink,
+// first / double strike, menace, reach, haste and defender were all
+// inert on every other card — the attacker tapped, the flash spell
+// was refused at instant speed, the flier was blocked by ground
+// creatures. Keywords are printed card data, like power / toughness
+// and starting loyalty (#274), so they travel the same road.
+//
+// The multi-face narrowing is the one subtlety. Scryfall puts
+// `keywords` at the TOP level even for double-faced cards, where it
+// is the UNION over every face and the faces carry no arrays of
+// their own: Aang, Swift Savior // Aang and La, Ocean's Fury lists
+// flash and flying (front) next to reach and trample (back). A
+// game.Card is the front face for every purpose that reads keywords
+// today, so a keyword the front face's oracle text does not print
+// is dropped. The match is against comma-separated entries of a
+// line, which is how keyword abilities are printed ("Reach,
+// trample"), so prose that merely mentions a keyword ("target
+// creature gains trample") can't smuggle one in.
+func printedKeywords(c cards.Card) []string {
+	if len(c.Keywords) == 0 {
+		return nil
+	}
+	var front map[string]bool
+	if len(c.CardFaces) > 1 {
+		front = keywordLines(c.CardFaces[0].OracleText)
+	}
+	out := make([]string, 0, len(c.Keywords))
+	for _, raw := range c.Keywords {
+		kw, ok := game.CanonicalKeyword(raw)
+		if !ok {
+			continue
+		}
+		if front != nil && !front[kw] {
+			continue
+		}
+		out = append(out, kw)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// keywordLines collects the canonical keywords printed as keyword
+// abilities in one face's oracle text. A keyword ability occupies
+// its own line, alone or comma-separated from its neighbours
+// ("Flash", "Flying, vigilance", "Reach, trample"); reminder text
+// in parentheses is stripped first so a reminder that names another
+// keyword doesn't count. Only exact matches after the split are
+// kept, so a sentence is never mistaken for a keyword line.
+func keywordLines(text string) map[string]bool {
+	out := map[string]bool{}
+	for _, line := range strings.Split(text, "\n") {
+		if i := strings.IndexByte(line, '('); i >= 0 {
+			line = line[:i]
+		}
+		for _, part := range strings.Split(line, ",") {
+			if kw, ok := game.CanonicalKeyword(part); ok {
+				out[kw] = true
+			}
+		}
+	}
+	return out
+}
+
 func toGameCard(c cards.Card, isCommander bool) game.Card {
 	// Parse Scryfall's printed power/toughness strings to ints.
 	// Non-numeric values ("*", "1+*", "?", empty) parse to zero —
@@ -290,9 +364,14 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		// it the 704.5i SBA eats the walker on the next priority
 		// boundary (issue #274).
 		StartingLoyalty: printedLoyalty(c),
-		ManaCost:        c.ManaCost,
-		ProducedMana:    append([]string(nil), c.ProducedMana...),
-		Colors:          append([]string(nil), c.Colors...),
-		IsCommander:     isCommander,
+		// CR 702 — printed keyword abilities. The engine's combat
+		// and cast-timing gates read these through
+		// game.HasKeyword; before they were carried here they
+		// existed only for catalog cards (#317 / #319 / #320).
+		Keywords:     printedKeywords(c),
+		ManaCost:     c.ManaCost,
+		ProducedMana: append([]string(nil), c.ProducedMana...),
+		Colors:       append([]string(nil), c.Colors...),
+		IsCommander:  isCommander,
 	}
 }

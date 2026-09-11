@@ -102,8 +102,23 @@ type Card struct {
 	// S21 every token's flying / deathtouch was cosmetic. The token
 	// template declares them here and printedCharacteristic folds
 	// them in, so the layer engine treats them like any other
-	// printed keyword. Empty for ordinary cards, which keep using
-	// the catalog. Added in S21 sub-PR 1.
+	// printed keyword. Added in S21 sub-PR 1.
+	//
+	// Since #317 / #319 / #320 this is also the road ORDINARY cards
+	// travel: the deck importer stamps Scryfall's `keywords` array
+	// here (lowercased and filtered to the keywords the engine
+	// enforces — see deck.printedKeywords and CanonicalKeyword).
+	// Before that, a printed keyword only existed if someone had
+	// hand-written a catalog Spec for the card, which left
+	// vigilance, flash, flying and the rest inert on roughly 7,500
+	// cards — the bird that tapped when it attacked, the flash
+	// creature the server refused at instant speed. The catalog's
+	// Spec.PrintedKeywords survives alongside it, merged and
+	// deduped by printedCharacteristic, for cards that never go
+	// through deck import.
+	//
+	// Empty for cards from neither source (test fixtures) and for
+	// the ~78% of real cards that print no keyword at all.
 	Keywords []string
 
 	// ManaAbilities are mana abilities carried on the card object,

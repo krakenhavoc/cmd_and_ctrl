@@ -17,13 +17,67 @@ package game
 // Effective().Abilities on the battlefield.
 //
 // Off the battlefield (cards in hand, library, graveyard, exile),
-// HasKeyword falls back to CatalogPrintedKeywords — the catalog-side
-// hook populated by wire.go. The layer engine only maintains
-// Effective() for battlefield cards, so flash (the only keyword that
-// matters off the battlefield today) needs this fallback to gate a
-// cast of an Ambush Viper from the caster's hand.
+// HasKeyword falls back to the card's own `Keywords` slice and then
+// to CatalogPrintedKeywords — the catalog-side hook populated by
+// wire.go. The layer engine only maintains Effective() for
+// battlefield cards, so flash (the only keyword that matters off
+// the battlefield today) needs this fallback to gate a cast of an
+// Ambush Viper from the caster's hand — or, since #319 / #320, of
+// any of the ~640 cards that print flash and have no catalog entry,
+// from hand or from the command zone.
 //
 // Added in S18 sub-PR 2.
+
+import "strings"
+
+// canonicalKeywords is the set of keyword abilities this engine
+// actually enforces — the S18 table, one entry per consumer in the
+// combat / cast paths above. The tokens are the canonical lowercase
+// wire form; the client's KEYWORD_ICONS map is keyed by exactly
+// these twelve strings.
+//
+// The set is deliberately CLOSED. Scryfall publishes a `keywords`
+// array carrying every mechanic printed on a card — "Prepared",
+// "Waterbend", "Cycling", "Ward" — and the deck importer filters
+// against this table before stamping Card.Keywords. Letting the
+// rest through would put strings the engine can't act on into
+// Characteristic.Abilities, where they would render as badges the
+// player can't rely on and read as promises the rules layer never
+// makes. A keyword joins this table in the same change that
+// teaches the engine to honour it.
+var canonicalKeywords = map[string]bool{
+	"flying":        true,
+	"reach":         true,
+	"first strike":  true,
+	"double strike": true,
+	"deathtouch":    true,
+	"lifelink":      true,
+	"trample":       true,
+	"vigilance":     true,
+	"menace":        true,
+	"defender":      true,
+	"haste":         true,
+	"flash":         true,
+}
+
+// CanonicalKeyword normalises one printed keyword string to the
+// engine's wire token, reporting whether the engine knows it.
+// Scryfall capitalises its keyword arrays as the card prints them
+// ("Flying", "First strike", "Double strike"), so normalisation is
+// a lowercase plus a whitespace trim; anything outside
+// canonicalKeywords returns ("", false).
+//
+// Exported for the deck importer, which is the only caller —
+// keeping the table in this package means the reader
+// (HasKeyword) and the writer (deck.printedKeywords) can never
+// drift on spelling. Added with the #317 / #319 / #320 fix.
+func CanonicalKeyword(s string) (string, bool) {
+	kw := strings.ToLower(strings.TrimSpace(s))
+	if !canonicalKeywords[kw] {
+		return "", false
+	}
+	return kw, true
+}
 
 // HasKeyword reports whether the card has the named keyword. kw
 // must be a canonical lowercase token (see AGENTS.md §7 "Adding a
@@ -34,8 +88,9 @@ package game
 // On-battlefield: reads c.Effective().Abilities, so keywords granted
 // by static abilities (Lord of Atlantis's islandwalk on other
 // Merfolk) are included alongside the card's own printed keywords.
-// Off-battlefield: falls back to the card's own `Keywords` (token
-// templates) and then CatalogPrintedKeywords(c.OracleID), which
+// Off-battlefield: falls back to the card's own `Keywords` (every
+// deck-imported card since #317 / #319 / #320; token templates
+// before that) and then CatalogPrintedKeywords(c.OracleID), which
 // returns the `Spec.PrintedKeywords` slot. Granted keywords
 // don't apply off the battlefield (CR 113.6 — continuous effects
 // from static abilities only apply while the source permanent is on
