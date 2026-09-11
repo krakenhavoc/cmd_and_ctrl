@@ -2061,6 +2061,21 @@ func (g *Game) stateBasedActionsLocked() bool {
 		}
 	}
 
+	// 704.5s (S27) — a Saga at or past its final chapter, with no
+	// chapter ability of its own still on the stack, is SACRIFICED by
+	// its controller. Separate from the `doomed` loop above because
+	// sacrifice is not destruction: it emits EventSacrifice (which
+	// aristocrats payoffs watch) and it ignores indestructible.
+	//
+	// Runs after the destruction pass so a Saga that was also going
+	// to die for another reason has already gone, and the "chapter
+	// still on the stack" check sees the settled queue.
+	for _, id := range g.sagasReadyToSacrificeLocked() {
+		if err := g.sacrificePermanentLocked(id); err == nil {
+			fired = true
+		}
+	}
+
 	return fired
 }
 
