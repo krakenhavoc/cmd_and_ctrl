@@ -293,6 +293,13 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		ManaCost:        c.ManaCost,
 		ProducedMana:    append([]string(nil), c.ProducedMana...),
 		Colors:          append([]string(nil), c.Colors...),
-		IsCommander:     isCommander,
+		// CR 903.4 Commander colour identity. Already parsed off
+		// the Scryfall record and already trusted by
+		// deck/validate.go; issue #276 was that it had no path onto
+		// game.Card, so commanderIdentityFor fell back to the
+		// printed mana cost — empty for a double-faced commander,
+		// whose cost Scryfall puts on card_faces[0].
+		ColorIdentity: append([]string(nil), c.ColorIdentity...),
+		IsCommander:   isCommander,
 	}
 }

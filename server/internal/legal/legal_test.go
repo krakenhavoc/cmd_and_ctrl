@@ -287,6 +287,51 @@ func TestMainPhaseLandAndCasts(t *testing.T) {
 	}
 }
 
+// TestUnparseableCostIsNotEnumerated covers the enumerator half of
+// #289. A split card imports a joined cost ("{1}{R} // {1}{U}") that
+// ParseCost rejects. The enumerator used to mirror the engine's old
+// silent downgrade and offer the cast as FREE; the engine now
+// rejects it with ErrUnparseableCost, so offering the move would
+// hand the client an action guaranteed to fail.
+func TestUnparseableCostIsNotEnumerated(t *testing.T) {
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	clearHand(active)
+	split := handCard(active, game.Card{
+		Name:     "Fire // Ice",
+		TypeLine: "Instant",
+		ManaCost: "{1}{R} // {1}{U}",
+	})
+	bolt := handCard(active, game.Card{
+		Name:     "Lightning Bolt",
+		TypeLine: "Instant",
+		ManaCost: "{R}",
+		OracleID: oracleLightningBolt,
+	})
+	battlefieldCard(g, active, basic("Mountain", "Mountain"))
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	moves := legal.EnumerateFor(g, active.ID)
+	dispatchAll(t, g, active.ID, moves)
+
+	for _, m := range moves {
+		if m.Source == split {
+			t.Errorf("split card with an unparseable cost must not be enumerated: %q", m.Label)
+		}
+	}
+	// The sibling card with a readable cost is unaffected — this is
+	// a targeted refusal, not a blanket one.
+	seenBolt := false
+	for _, m := range moves {
+		if m.Source == bolt {
+			seenBolt = true
+		}
+	}
+	if !seenBolt {
+		t.Errorf("Lightning Bolt should still be enumerated: %v", labels(moves))
+	}
+}
+
 func TestOpponentPriorityOnlyInstants(t *testing.T) {
 	g := newTable(t)
 	active := g.Seats[g.Turn.ActiveSeat]

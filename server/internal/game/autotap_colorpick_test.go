@@ -53,6 +53,86 @@ func setCommanderCostForTest(t *testing.T, p *Player, cost string) {
 	t.Fatalf("no commander in %s's command zone", p.Name)
 }
 
+// setCommanderIdentityForTest stamps a transform-DFC commander into
+// the seat's command zone: the shape Scryfall actually delivers for
+// `layout: "transform"` / `"modal_dfc"`, where the top-level
+// mana_cost and colors are null and the real values live on
+// card_faces[0]. Only color_identity survives at the top level.
+func setCommanderIdentityForTest(t *testing.T, p *Player, identity []string) {
+	t.Helper()
+	for i := range p.Command.Cards {
+		if p.Command.Cards[i].IsCommander {
+			p.Command.Cards[i].Name = "Aang, Swift Savior // Aang and La, Ocean's Fury"
+			p.Command.Cards[i].ManaCost = ""
+			p.Command.Cards[i].Colors = nil
+			p.Command.Cards[i].ColorIdentity = identity
+			return
+		}
+	}
+	t.Fatalf("no commander in %s's command zone", p.Name)
+}
+
+// TestTransformDFCCommanderHasColorIdentity is the issue #276 repro.
+// A transform-DFC commander arrives as game.Card{ManaCost: "",
+// Colors: nil} because Scryfall puts both on card_faces[0], so
+// commanderIdentityFor's Effective().Colors →
+// distinctColorsInManaCost chain returned EMPTY — and an empty
+// identity makes filterPipeByCommanderIdentity skip narrowing
+// entirely. Command Tower, Arcane Signet and Fellwar Stone then
+// offered all five colours to an Azorius deck (game fe34c746).
+//
+// game.Card now carries ColorIdentity, copied straight from the
+// Scryfall record at deck import, and commanderIdentityFor prefers
+// it. The narrowing is permissive-to-restrictive only: it can remove
+// colours that should never have been on offer, never add any.
+func TestTransformDFCCommanderHasColorIdentity(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	setCommanderIdentityForTest(t, p, []string{"W", "U"})
+
+	got := commanderIdentityFor(p)
+	want := []string{"W", "U"}
+	if len(got) != len(want) {
+		t.Fatalf("commanderIdentityFor: got %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("commanderIdentityFor: got %v, want %v", got, want)
+		}
+	}
+
+	// The consequence the issue actually reported: the any-colour
+	// pipe must narrow to Azorius.
+	pipe := filterPipeByCommanderIdentity([]string{"W", "U", "B", "R", "G"}, p)
+	if len(pipe) != 2 {
+		t.Fatalf("Command Tower pipe: got %v, want [W U]", pipe)
+	}
+	for _, c := range pipe {
+		if c != "W" && c != "U" {
+			t.Errorf("Command Tower offered %q to an Azorius commander: %v", c, pipe)
+		}
+	}
+}
+
+// TestCommanderIdentityFallsBackToManaCost guards the fix's blast
+// radius. Cards with no stamped ColorIdentity — the demo seed,
+// tokens, test fixtures — must keep the pre-#276 behaviour of
+// deriving identity from Effective().Colors / the printed cost.
+func TestCommanderIdentityFallsBackToManaCost(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	setCommanderCostForTest(t, p, "{1}{W}{U}")
+
+	got := commanderIdentityFor(p)
+	if len(got) != 2 {
+		t.Fatalf("identity from printed cost: got %v, want two colours", got)
+	}
+	pipe := filterPipeByCommanderIdentity([]string{"W", "U", "B", "R", "G"}, p)
+	if len(pipe) != 2 {
+		t.Errorf("pipe from printed-cost identity: got %v, want [W U]", pipe)
+	}
+}
+
 // TestAutoTapCommandTowerPaysTheColorTheFixedSourceCannot is the
 // issue #273 repro. One Plains, one Sol Ring, one Command Tower, an
 // Azorius commander, and Teferi, Time Raveler ({1}{W}{U}). The only

@@ -87,19 +87,23 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 		return
 	}
 
-	// Cost. Unparseable costs are treated as free by the engine; we
-	// mirror that rather than refuse the cast.
-	cost, costErr := game.ParseCost(card.ManaCost)
-	if from == "command" && costErr == nil {
+	// Cost. A cost the parser can't read is not enumerable: since
+	// #289 the engine rejects such a cast with ErrUnparseableCost
+	// (split and adventure cards import a joined "{1}{R} // {1}{U}"),
+	// so offering the move would hand the client an action that is
+	// guaranteed to fail. Enumerating it free — what this used to
+	// do, mirroring the engine's old silent downgrade — is worse:
+	// it advertises a free spell that isn't one.
+	cost, err := game.ParseCost(card.ManaCost)
+	if err != nil {
+		return
+	}
+	if from == "command" {
 		cost.Generic += p.CommanderCasts[card.InstanceID] * 2
 	}
-	x := 0
-	if costErr == nil {
-		var ok bool
-		x, ok = e.affordableX(cost)
-		if !ok {
-			return
-		}
+	x, ok := e.affordableX(cost)
+	if !ok {
+		return
 	}
 
 	// Modes → each choice of modes yields a target spec (at most one
