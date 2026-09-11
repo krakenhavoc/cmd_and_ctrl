@@ -232,6 +232,12 @@ export interface PendingChoiceView {
     // is a legal "fail to find" (CR 701.19c), so search_max is the
     // ceiling and the floor is zero.
     | "search_library"
+    // S26: "as this permanent enters, choose a creature type" (CR
+    // 614.12) — Cavern of Souls, Door of Destinies, Vanquisher's
+    // Banner, Adaptive Automaton. type_options carries the whole CR
+    // 205.3m vocabulary for the picker to filter; answered with
+    // resolve_choice { creature_type: "Elf" }.
+    | "choose_creature_type"
     | string;
   chooser: string;
   from_player: string;
@@ -245,6 +251,11 @@ export interface PendingChoiceView {
   // against commander identity for Arcane Signet; full 5-color for
   // Birds of Paradise.
   color_options?: string[];
+  // S26: populated for kind "choose_creature_type" — every creature
+  // type the engine knows, sorted. The list is long by design (the CR
+  // 205.3m vocabulary is ~345 entries), so the picker filters it
+  // rather than rendering it whole.
+  type_options?: string[];
   // S17: populated for kind "replacement_order" — the CR 616
   // affected-player-chooses-order prompt. Client renders a drag-
   // reorder list of these entries and submits the IDs in the

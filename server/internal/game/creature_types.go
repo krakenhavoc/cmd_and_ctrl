@@ -100,13 +100,14 @@ var AllCreatureTypes = []string{
 	"Worm", "Wraith", "Wurm", "Xindi", "Yeti", "Zombie", "Zubera",
 }
 
-// creatureTypeSet is AllCreatureTypes keyed by its lowercase form, so
-// IsCreatureType is a map hit rather than a 345-entry scan. Built
-// once at package init.
-var creatureTypeSet = func() map[string]struct{} {
-	out := make(map[string]struct{}, len(AllCreatureTypes))
+// creatureTypeSet maps a creature type's lowercase form to its
+// canonical spelling, so IsCreatureType is a map hit rather than a
+// 345-entry scan and CanonicalCreatureType can normalise a client's
+// input. Built once at package init.
+var creatureTypeSet = func() map[string]string {
+	out := make(map[string]string, len(AllCreatureTypes))
 	for _, t := range AllCreatureTypes {
-		out[lowerASCII(t)] = struct{}{}
+		out[lowerASCII(t)] = t
 	}
 	return out
 }()
@@ -116,11 +117,27 @@ var creatureTypeSet = func() map[string]struct{} {
 // ("Equipment"), enchantment types ("Aura") and for anything the
 // vocabulary has not heard of.
 func IsCreatureType(s string) bool {
-	if s == "" {
-		return false
-	}
-	_, ok := creatureTypeSet[lowerASCII(s)]
+	_, ok := CanonicalCreatureType(s)
 	return ok
+}
+
+// CanonicalCreatureType normalises a creature type to the spelling in
+// AllCreatureTypes, reporting whether it is one at all.
+//
+// Normalising rather than accepting the caller's string is what keeps
+// Card.NamedTribe comparable: the type is chosen once through a wire
+// action and then compared against subtype lists on every layer
+// recompute, and "elf" vs "Elf" has to not be the difference between
+// a lord pumping and not. The comparison itself is still
+// case-insensitive (typeListHas folds), so this is belt and braces —
+// but it is also what the prompt echoes back on the wire, and a
+// lower-case tribe name in the UI reads as a bug.
+func CanonicalCreatureType(s string) (string, bool) {
+	if s == "" {
+		return "", false
+	}
+	t, ok := creatureTypeSet[lowerASCII(s)]
+	return t, ok
 }
 
 // lowerASCII lowercases an ASCII string, allocating only when the
