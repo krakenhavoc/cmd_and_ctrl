@@ -420,3 +420,91 @@ export async function logout(): Promise<void> {
   }
   setSession(null);
 }
+
+// --- develop-environment card spawner (ADR 0023) ---------------------
+//
+// These call routes that exist only on a dev deployment. In
+// production they 404, which is the intended answer: the UI that
+// reaches them is gated on the card_spawn feature from /config, so
+// nothing should be calling them there in the first place.
+
+export interface DevCardResult {
+  id: string;
+  name: string;
+  type_line: string;
+  mana_cost: string;
+  set: string;
+}
+
+export type DevSpawnZone = "battlefield" | "hand" | "graveyard" | "exile" | "library" | "command";
+
+// searchDevCards queries the Scryfall index by name.
+//
+// Swallows every failure into an empty list: this runs on a debounce
+// as the user types, so a 404 (wrong environment), a 503 (index not
+// loaded yet), or an aborted in-flight request are all "nothing to
+// show right now" rather than something to interrupt typing with.
+// The spawn call is where a real error gets surfaced.
+export async function searchDevCards(q: string, signal?: AbortSignal): Promise<DevCardResult[]> {
+  try {
+    const res = await authFetch(`/dev/cards?q=${encodeURIComponent(q)}`, {
+      method: "GET",
+      signal,
+    });
+    const body = (await res.json()) as { cards?: DevCardResult[] };
+    return body.cards ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export interface DevSpawnRequest {
+  scryfallID?: string;
+  name?: string;
+  playerID: string;
+  zone: DevSpawnZone;
+  count?: number;
+  commander?: boolean;
+}
+
+export interface DevSpawnResult {
+  spawned: string[];
+  name: string;
+  zone: string;
+  count: number;
+}
+
+// spawnDevCard puts cards into a zone. Lets authFetch's LobbyApiError
+// propagate so the panel can render the server's own message —
+// "card index not loaded", "game must be active to spawn cards" and
+// "spawn count must be between 1 and 20" are all things the user
+// needs to read verbatim rather than as a generic failure.
+export async function spawnDevCard(gameID: string, req: DevSpawnRequest): Promise<DevSpawnResult> {
+  const res = await authFetch(`/games/${encodeURIComponent(gameID)}/dev/spawn`, {
+    method: "POST",
+    body: JSON.stringify({
+      scryfall_id: req.scryfallID,
+      name: req.name,
+      player_id: req.playerID,
+      zone: req.zone,
+      count: req.count,
+      commander: req.commander,
+    }),
+  });
+  return (await res.json()) as DevSpawnResult;
+}
+
+// fetchReplay downloads the per-game replay log (JSONL, one snapshot
+// per line — see lib/replay.ts). The route is not dev-only: it has
+// existed since S11 and is admin-gated for a game still in progress,
+// player-accessible once the game has ended. The dev scrubber is just
+// its first interactive consumer.
+//
+// A 204 means the route is there but the game has produced no Apply
+// yet; returns an empty string so the caller renders "no frames"
+// rather than an error.
+export async function fetchReplay(gameID: string): Promise<string> {
+  const res = await authFetch(`/games/${encodeURIComponent(gameID)}/replay`, { method: "GET" });
+  if (res.status === 204) return "";
+  return await res.text();
+}

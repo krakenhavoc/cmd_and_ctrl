@@ -21,6 +21,10 @@
   import { hasAnyLegalResponse } from "../lib/priority";
   import { stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
+  import { devFeature } from "../lib/env";
+  import { gameWSURL } from "../lib/gameURL";
+  import DevDock from "../lib/components/dev/DevDock.svelte";
+  import type { ReplayFrame } from "../lib/replay";
 
   interface Props {
     gameID: string;
@@ -34,13 +38,12 @@
   // may omit ?player= and fall through to the spectator view.
   const baseURL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
   const sess = $derived($session);
-  const wsURL = $derived.by(() => {
-    const params = new URLSearchParams();
-    params.set("game", gameID);
-    if (sess?.token) params.set("token", sess.token);
-    if (sess?.playerID && sess.gameID === gameID) params.set("player", sess.playerID);
-    return `${baseURL}?${params.toString()}`;
-  });
+  // Dev seat swap (ADR 0023): the seat an admin has chosen to view
+  // and act as, or null for the spectator view. Always null outside a
+  // dev deployment — nothing sets it, because DevDock only renders
+  // the control when the seat_swap feature is live.
+  let devSeat = $state<string | null>(null);
+  const wsURL = $derived(gameWSURL({ baseURL, gameID, session: sess, seatOverride: devSeat }));
 
   // One GameClient per component instance. Start with an empty URL
   // — the $effect below installs the real URL on first run and
@@ -59,6 +62,35 @@
     client.setURL(wsURL);
     client.connect();
     return () => client.disconnect();
+  });
+
+  // Dev tools (ADR 0023). Every tool is gated inside DevDock on its
+  // own feature flag; this route only needs to know whether ANY of
+  // them is live so it can decide to mount the dock at all.
+  //
+  // Frame recording is wired here rather than in the inspector so
+  // capture survives opening and closing the panel — the frames you
+  // want are usually the ones from just before you thought to look.
+  // On a production build it resolves false once and never allocates
+  // a FrameRecord.
+  const showFrameInspector = devFeature("frame_inspector");
+  const showCardSpawner = devFeature("card_spawn");
+  const showSeatSwap = devFeature("seat_swap");
+  const showReplayScrubber = devFeature("replay_scrubber");
+  const showDevDock = $derived(
+    $showFrameInspector || $showCardSpawner || $showSeatSwap || $showReplayScrubber,
+  );
+
+  // Dev replay scrubber (ADR 0023). When a frame is selected the board
+  // renders that past state instead of the live snapshot, and the bar's
+  // action controls are withheld — those buttons would mutate the LIVE
+  // game while you are looking at history, which is the one way a
+  // read-only inspection tool could do damage.
+  let replayFrame = $state<ReplayFrame | null>(null);
+  let replayIndex = $state<number | null>(null);
+  const replaying = $derived(replayFrame !== null);
+  $effect(() => {
+    client.setFrameRecording($showFrameInspector);
   });
 
   // Autoplay-policy unlock. The first pointerdown / keydown anywhere in
@@ -342,7 +374,7 @@
 
   // ---- Turn / priority / quick actions ----
 
-  const view = $derived($snapshot);
+  const view = $derived(replayFrame?.game ?? $snapshot);
   const seats = $derived<PlayerView[]>(view?.seats ?? []);
   const turn = $derived(view?.turn);
   const activeSeat = $derived(turn?.active_seat ?? 0);
@@ -621,7 +653,10 @@
       <i class="dot" aria-hidden="true"></i>{$status}
       <span class="seq">· seq {$lastSeq}</span>
     </span>
-    {#if view && viewerID}
+    <!-- Withheld while the dev replay scrubber is showing a past frame:
+         `view` is history then, but every control here still acts on the
+         LIVE game. See the replay-scrubber note in the script block. -->
+    {#if view && viewerID && !replaying}
       <button
         class="bar-btn"
         onclick={passTurn}
@@ -650,7 +685,10 @@
         aria-label="open settings"
         onclick={openSettings}><Icon name="gear" size={17} /></button
       >
-      {#if view && viewerID}
+      <!-- Same reasoning as "Pass turn" above: the Sandbox entries, undo
+           and concede all mutate the live game, so the menu is withheld
+           while a past frame is on screen. -->
+      {#if view && viewerID && !replaying}
         <div class="more">
           <button
             class="ibtn"
@@ -1071,6 +1109,24 @@
     if (ev.key === "Enter" && !(ev.target instanceof HTMLInputElement)) confirmTargeting();
   }}
 />
+
+<!-- Dev tool dock. Renders nothing unless the server reports env=dev
+     with at least one dev feature enabled; see lib/env.ts and
+     docs/decisions/0023-develop-environment.md. -->
+{#if showDevDock}
+  <DevDock
+    {client}
+    {gameID}
+    snapshot={$snapshot}
+    seat={devSeat}
+    onseatchange={(s) => (devSeat = s)}
+    {replayIndex}
+    onreplayselect={(f, i) => {
+      replayFrame = f;
+      replayIndex = i;
+    }}
+  />
+{/if}
 
 <style>
   /* The Game route needs the whole viewport, not the 800px column

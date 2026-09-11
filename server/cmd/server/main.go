@@ -52,6 +52,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/appenv"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/envflag"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
@@ -83,6 +84,24 @@ func main() {
 	}
 
 	cfg := loadConfig(log)
+
+	// Say which deployment this is on every boot. The dev banner in
+	// the client comes from the same value, so a mismatch between the
+	// journal and the browser is the first thing to check when
+	// "why is this feature missing on dev" comes up.
+	if cfg.Env.IsDev() {
+		log.Warn("running in DEVELOP environment; dev-only features are exposed. Never point this at production data.",
+			"env", cfg.Env.String(), "features", fmt.Sprintf("%+v", cfg.Features))
+	} else {
+		log.Info("running in production environment", "env", cfg.Env.String())
+	}
+	// A CMDCTRL_DEV_* line copied into the prod env file does nothing
+	// (appenv refuses to enable features outside dev), but it means
+	// someone believes it does — surface it rather than let the
+	// misconception sit in the file.
+	for _, k := range appenv.StrayProdOverrides(cfg.Env) {
+		log.Warn("dev feature override set in a production deployment; it has no effect and should be removed", "var", k)
+	}
 
 	// Auth + room manager are global singletons for the lifetime of
 	// the process. They outlive individual games.
@@ -198,6 +217,8 @@ func main() {
 		Auth:              authenticator,
 		AdminToken:        cfg.AdminToken,
 		SessionTTL:        cfg.SessionTTL,
+		Env:               cfg.Env,
+		Features:          cfg.Features,
 		Cards:             cardIdx,
 		Evictor:           hub,
 		Discord:           discordCfg,
@@ -262,6 +283,12 @@ type config struct {
 	// separated list for LAN clients reaching the server from a
 	// different host/port than the one it binds on.
 	AllowedOrigins []string
+	// Env is the deployment identity from CMDCTRL_ENV. Unset means
+	// production — a forgotten variable fails closed.
+	Env appenv.Env
+	// Features are the dev-only capabilities this deployment exposes,
+	// derived entirely from Env. Always zero in production.
+	Features appenv.Features
 }
 
 // loadConfig pulls the server's env vars, applies defaults, and
@@ -269,11 +296,22 @@ type config struct {
 // missing. This runs BEFORE the server does any work so misconfig
 // shows up immediately instead of 500-ing the first login attempt.
 func loadConfig(log *slog.Logger) config {
+	env, err := appenv.Parse(os.Getenv(appenv.EnvVar))
+	if err != nil {
+		// Fatal rather than defaulting: silently treating an
+		// unrecognised value as prod would strip every dev feature off
+		// the dev box with no signal but a missing button.
+		log.Error("invalid deployment environment", "err", err)
+		os.Exit(1)
+	}
+
 	c := config{
 		Addr:       envOr("CMDCTRL_ADDR", ":8080"),
 		AdminToken: os.Getenv("CMDCTRL_ADMIN_TOKEN"),
 		SeedDemo:   os.Getenv("CMDCTRL_SEED_DEMO") == "1",
 		SessionTTL: 12 * time.Hour,
+		Env:        env,
+		Features:   appenv.LoadFeatures(env),
 	}
 
 	if raw := os.Getenv("CMDCTRL_SESSION_TTL"); raw != "" {
