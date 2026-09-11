@@ -534,3 +534,46 @@ func (s Scry) Apply(ctx *Context) error {
 	ctx.Game.ScryThenForEffect(player, ctx.Source(), s.N, s.Then)
 	return nil
 }
+
+// Surveil is "surveil N" (CR 701.42) — look at the top N cards of
+// your library, then put any number of them into your graveyard and
+// the rest back on top in any order.
+//
+// Scry with the bottom-of-library leg replaced by the graveyard, and
+// that replacement is the entire reason the keyword exists: a card
+// binned by a surveil is somewhere you can reanimate, delve or escape
+// it from, not buried under the rest of your deck.
+//
+// Like Scry, the whole effect is a choice, so Apply queues a prompt
+// and nothing moves until the player answers. A surveil with an empty
+// library is not an error and queues nothing.
+//
+// Surveil is "look at", not "reveal" — only the surveilling player
+// sees the cards. The engine handles that; a card's effect never
+// needs to.
+type Surveil struct {
+	Player uuid.UUID
+	N      int
+
+	// Then is the rest of the effect, for a card whose text says
+	// "Surveil N, THEN ...". It runs once the player has put the
+	// cards back, so it sees the library and graveyard the player
+	// chose.
+	//
+	// The same warning as Scry.Then applies, for the same reason:
+	// anything after "then" MUST go here rather than after this
+	// primitive returns. Apply only queues the prompt, so a draw
+	// written as the next statement happens BEFORE the player has
+	// chosen — and also leaves the prompt unanswerable, because the
+	// drawn card is no longer in the library to put back.
+	Then func(g *game.Game) error
+}
+
+func (s Surveil) Apply(ctx *Context) error {
+	player := s.Player
+	if player == uuid.Nil {
+		player = ctx.Controller()
+	}
+	ctx.Game.SurveilThenForEffect(player, ctx.Source(), s.N, s.Then)
+	return nil
+}

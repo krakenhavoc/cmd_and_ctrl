@@ -143,6 +143,20 @@ const (
 	// library), because no scry happened.
 	EventScry EventKind = "scry"
 
+	// EventSurveil — Actor finished a surveil (CR 701.42). Same
+	// shape as EventScry: emitted after the cards have been put
+	// back, with Amount = how many went to the GRAVEYARD (not the
+	// bottom — surveil has no bottom leg), so a "whenever you
+	// surveil" payoff sees a completed surveil. Source is the card
+	// that surveilled. Not emitted when the surveil looked at
+	// nothing (an empty library).
+	//
+	// Deliberately a distinct kind from EventScry rather than a
+	// flag on it: the two are different keywords with different
+	// payoffs, and a card that cares about surveil must not fire on
+	// an ordinary scry. Added in S22.
+	EventSurveil EventKind = "surveil"
+
 	// EventSacrifice — a permanent was sacrificed (CR 701.17):
 	// its controller moved it to the graveyard as a cost or as
 	// part of an effect's instruction. Emitted immediately BEFORE

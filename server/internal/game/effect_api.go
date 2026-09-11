@@ -1256,6 +1256,40 @@ func (g *Game) ScryForEffect(playerID, source uuid.UUID, n int) int {
 //
 // Caller must hold g.mu.
 func (g *Game) ScryThenForEffect(playerID, source uuid.UUID, n int, after func(g *Game) error) int {
+	return g.lookAtTopForEffect(PendingChoiceScry, playerID, source, n, scryReason, after)
+}
+
+// SurveilThenForEffect is surveil N with a continuation (CR 701.42):
+// the player looks at the top N cards of their library and puts any
+// number of them into their graveyard, the rest back on top in any
+// order.
+//
+// Scry's mechanism with the bottom-of-library leg replaced by the
+// graveyard — see lookAtTopForEffect for the shared queueing and
+// ResolveSurveil for what happens on submit. `after` carries anything
+// the card prints after "then", for the same reason Preordain's draw
+// does: it must not run until the library is in the order the player
+// chose.
+//
+// Caller must hold g.mu.
+func (g *Game) SurveilThenForEffect(playerID, source uuid.UUID, n int, after func(g *Game) error) int {
+	return g.lookAtTopForEffect(PendingChoiceSurveil, playerID, source, n, surveilReason, after)
+}
+
+// lookAtTopForEffect queues the "look at the top N cards of your
+// library, then put them somewhere" prompt that scry and surveil
+// share. It marks the chooser — and ONLY the chooser — a knower of
+// each card, which is what makes both keywords "look at" rather than
+// "reveal"; the wire redaction in protocol.FilterViewFor keys off
+// exactly that.
+//
+// Returns how many cards the player is actually looking at, which is
+// min(n, library size) and can be zero. `after` runs immediately when
+// there is nothing to look at: the instruction after "then" is not
+// conditional on the library having had cards in it.
+//
+// Caller must hold g.mu.
+func (g *Game) lookAtTopForEffect(kind PendingChoiceKind, playerID, source uuid.UUID, n int, reason func(int) string, after func(g *Game) error) int {
 	runAfter := func() {
 		if after != nil {
 			if err := after(g); err != nil {
@@ -1294,12 +1328,12 @@ func (g *Game) ScryThenForEffect(playerID, source uuid.UUID, n int, after func(g
 		ids = append(ids, p.Library.Cards[idx].InstanceID)
 	}
 	g.QueueChoiceForEffect(PendingChoice{
-		Kind:       PendingChoiceScry,
+		Kind:       kind,
 		Chooser:    playerID,
 		FromPlayer: playerID,
 		Count:      len(ids),
 		Source:     source,
-		Reason:     scryReason(len(ids)),
+		Reason:     reason(len(ids)),
 		ScryCards:  ids,
 		scryResume: after,
 	})
@@ -1318,6 +1352,20 @@ func scryReason(n int) string {
 		return "Scry 3"
 	}
 	return "Scry " + strconv.Itoa(n)
+}
+
+// surveilReason is the picker's banner copy, phrased as the card
+// prints it.
+func surveilReason(n int) string {
+	switch n {
+	case 1:
+		return "Surveil 1"
+	case 2:
+		return "Surveil 2"
+	case 3:
+		return "Surveil 3"
+	}
+	return "Surveil " + strconv.Itoa(n)
 }
 
 // ReturnFromExileToBattlefieldForEffect is the other half of a

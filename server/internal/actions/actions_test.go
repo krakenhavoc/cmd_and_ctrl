@@ -866,3 +866,103 @@ func mustJSON(v any) json.RawMessage {
 	}
 	return raw
 }
+
+// pendingChoiceOfKind returns the last queued choice of a kind.
+func pendingChoiceOfKind(g *game.Game, kind game.PendingChoiceKind) *game.PendingChoice {
+	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
+		if c := g.PendingChoices[i]; c != nil && c.Kind == kind {
+			return c
+		}
+	}
+	return nil
+}
+
+// TestDispatchResolveChoiceRoutesSurveilNotScry — scry and surveil
+// answers both carry `top_order`, so the dispatcher cannot route on
+// that. It routes on which destination key is present, and this is the
+// test that catches it routing on the wrong one: a surveil sent to
+// ResolveScry would bury the card under the library instead of putting
+// it in the graveyard, and the two are only distinguishable by looking
+// at where the card ended up.
+func TestDispatchResolveChoiceRoutesSurveilNotScry(t *testing.T) {
+	g := newGame(t)
+	p := g.Seats[0]
+
+	libBefore := p.Library.Size()
+	topID := p.Library.Cards[libBefore-1].InstanceID
+	g.WithWriteLock(func() {
+		g.SurveilThenForEffect(p.ID, uuid.Nil, 1, nil)
+	})
+	choice := pendingChoiceOfKind(g, game.PendingChoiceSurveil)
+	if choice == nil {
+		t.Fatal("SurveilThenForEffect queued no prompt")
+	}
+
+	// The wire shape a client sends for "bin it": graveyard names the
+	// card, top_order is present and empty.
+	a, err := Decode(string(TypeResolveChoice), p.ID.String(), params(t, map[string]any{
+		"choice_id": choice.ID.String(),
+		"graveyard": []string{topID.String()},
+		"top_order": []string{},
+	}))
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+
+	if p.Graveyard.Size() != 1 {
+		t.Fatalf("graveyard has %d cards, want 1 — the surveil was routed to the scry resolver",
+			p.Graveyard.Size())
+	}
+	if p.Graveyard.Cards[0].InstanceID != topID {
+		t.Error("the wrong card was binned")
+	}
+	if p.Library.Size() != libBefore-1 {
+		t.Errorf("library is %d, want %d", p.Library.Size(), libBefore-1)
+	}
+	if bottom, _ := p.Library.Bottom(); bottom.InstanceID == topID {
+		t.Error("the card went to the bottom of the library; that is a scry, not a surveil")
+	}
+}
+
+// TestDispatchResolveChoiceStillRoutesScry — the other half: an answer
+// with no `graveyard` key is a scry and must keep bottoming.
+func TestDispatchResolveChoiceStillRoutesScry(t *testing.T) {
+	g := newGame(t)
+	p := g.Seats[0]
+
+	libBefore := p.Library.Size()
+	topID := p.Library.Cards[libBefore-1].InstanceID
+	g.WithWriteLock(func() {
+		g.ScryThenForEffect(p.ID, uuid.Nil, 1, nil)
+	})
+	choice := pendingChoiceOfKind(g, game.PendingChoiceScry)
+	if choice == nil {
+		t.Fatal("ScryThenForEffect queued no prompt")
+	}
+
+	a, err := Decode(string(TypeResolveChoice), p.ID.String(), params(t, map[string]any{
+		"choice_id": choice.ID.String(),
+		"bottom":    []string{topID.String()},
+		"top_order": []string{},
+	}))
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+
+	if p.Graveyard.Size() != 0 {
+		t.Error("a scry put a card in the graveyard")
+	}
+	if p.Library.Size() != libBefore {
+		t.Errorf("library is %d, want %d unchanged — a scry moves cards within it",
+			p.Library.Size(), libBefore)
+	}
+	if bottom, _ := p.Library.Bottom(); bottom.InstanceID != topID {
+		t.Error("the scried card was not put on the bottom")
+	}
+}

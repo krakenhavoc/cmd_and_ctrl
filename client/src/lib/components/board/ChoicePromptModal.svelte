@@ -232,15 +232,34 @@
   // first entry is the next card drawn.
   const isScry = $derived(active?.kind === "scry");
 
+  // S22 surveil branch — CR 701.42. Structurally identical to scry:
+  // same prompt, same two lanes, same ordering control. The only
+  // difference is where the cards that leave the top go, so this
+  // shares every line of the scry branch and swaps the destination
+  // in the copy and in the submitted payload key.
+  //
+  // The distinction is worth the copy: a card put on the bottom of a
+  // library is gone, and a card put in a graveyard is a resource. A
+  // dialog that said "to bottom" on a surveil would be offering the
+  // wrong move.
+  const isSurveil = $derived(active?.kind === "surveil");
+
+  // The shared branch. Everything below keys off this; isScry /
+  // isSurveil only pick the wording and the payload.
+  const isLookAtTop = $derived(isScry || isSurveil);
+
+  // The lane the cards leaving the top go to, as the card prints it.
+  const awayLabel = $derived(isSurveil ? "graveyard" : "bottom");
+
   let scryTop = $state<string[]>([]);
   let scryBottom = $state<string[]>([]);
 
-  // Seed the default whenever a scry prompt opens: everything stays on
-  // top, in the order the server listed it (which is current library
-  // order).
+  // Seed the default whenever a scry / surveil prompt opens:
+  // everything stays on top, in the order the server listed it (which
+  // is current library order).
   let lastScryID: string | null = null;
   $effect(() => {
-    if (!isScry || !active) {
+    if (!isLookAtTop || !active) {
       lastScryID = null;
       return;
     }
@@ -276,15 +295,16 @@
     return c?.name || "card";
   }
 
+  // The two keywords answer on different payload keys, and the server
+  // routes on exactly that: `graveyard` present means surveil,
+  // `bottom` means scry. Sending both, or the wrong one, would bin
+  // cards that should have gone under the library or vice versa.
   function submitScry(): void {
     if (!active || !viewerID) return;
     const total = (active.options ?? []).length;
     if (scryTop.length + scryBottom.length !== total) return;
-    sendAction(
-      "resolve_choice",
-      { choice_id: active.id, bottom: scryBottom, top_order: scryTop },
-      viewerID,
-    );
+    const away = isSurveil ? { graveyard: scryBottom } : { bottom: scryBottom };
+    sendAction("resolve_choice", { choice_id: active.id, ...away, top_order: scryTop }, viewerID);
   }
 
   // S19 follow-up: the server flags optional triggers whose effect
@@ -440,17 +460,20 @@
 {#if open && active}
   <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="choice-title">
     <div class="prompt-modal">
-      {#if isScry}
+      {#if isLookAtTop}
         <h2 id="choice-title">
-          {active.reason || "Scry"}
-          <span class="prompt-src" aria-hidden="true">CR 701.18</span>
+          {active.reason || (isSurveil ? "Surveil" : "Scry")}
+          <span class="prompt-src" aria-hidden="true">{isSurveil ? "CR 701.42" : "CR 701.18"}</span>
         </h2>
         <p class="prompt-hint">
           {#if scryTop.length + scryBottom.length === 1}
-            Keep it on top, or put it on the bottom of your library.
+            Keep it on top, or put it {isSurveil
+              ? "into your graveyard"
+              : "on the bottom of your library"}.
           {:else}
-            Keep any of these on top — the topmost is your next draw — and put the rest on the
-            bottom.
+            Keep any of these on top — the topmost is your next draw — and put the rest {isSurveil
+              ? "into your graveyard"
+              : "on the bottom"}.
           {/if}
           Only you can see them.
         </p>
@@ -476,7 +499,9 @@
                     type="button"
                     class="lane-btn"
                     onclick={() => scryToBottom(id)}
-                    aria-label={`put ${scryCardName(id)} on the bottom`}>To bottom</button
+                    aria-label={`put ${scryCardName(id)} ${
+                      isSurveil ? "into your graveyard" : "on the bottom"
+                    }`}>To {awayLabel}</button
                   >
                 </li>
               {/each}
@@ -484,7 +509,9 @@
           {/if}
         </div>
         <div class="scry-lane">
-          <h3 class="lane-label">On the bottom ({scryBottom.length})</h3>
+          <h3 class="lane-label">
+            {isSurveil ? "Into your graveyard" : "On the bottom"} ({scryBottom.length})
+          </h3>
           {#if scryBottom.length === 0}
             <p class="lane-empty">None.</p>
           {:else}
@@ -512,7 +539,8 @@
         </div>
         <div class="prompt-foot">
           <span class="prompt-count"
-            >{scryTop.length} on top · {scryBottom.length} on the bottom</span
+            >{scryTop.length} on top · {scryBottom.length}
+            {isSurveil ? "in the graveyard" : "on the bottom"}</span
           >
           <button type="button" class="primary" onclick={submitScry}>Done</button>
         </div>

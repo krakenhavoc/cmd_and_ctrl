@@ -24,6 +24,11 @@ type choiceParams struct {
 	Targets     []targetWire  `json:"targets"`
 	Bottom      []string      `json:"bottom"`
 	TopOrder    []string      `json:"top_order"`
+	// Graveyard is the surveil answer's bin leg. No omitempty, for
+	// the same reason Bottom/TopOrder have none: "keep all on top"
+	// is the empty slice, and omitempty would erase it into absent,
+	// which is how the dispatcher tells a surveil from a scry.
+	Graveyard []string `json:"graveyard"`
 }
 
 type assignParam struct {
@@ -217,6 +222,36 @@ func (e *enumerator) choiceMoves() bool {
 						}
 					}
 					e.addChoice(c, reason+": bottom "+cardName(g, id), p)
+				}
+			}
+
+		case game.PendingChoiceSurveil:
+			// Same permutation shape as scry, with "bottom" replaced
+			// by "graveyard" — and the canonical set matters more
+			// here, because "bin all" and "keep all" are the two
+			// answers a surveil deck actually gives.
+			cards := c.ScryCards
+			all := idStrings(cards)
+			p := base()
+			p.TopOrder = all
+			p.Graveyard = []string{}
+			e.addChoice(c, reason+": keep all on top", p)
+			if len(cards) > 0 {
+				p = base()
+				p.Graveyard = all
+				p.TopOrder = []string{}
+				e.addChoice(c, reason+": all to graveyard", p)
+			}
+			if len(cards) > 1 {
+				for i, id := range cards {
+					p = base()
+					p.Graveyard = []string{id.String()}
+					for j, other := range cards {
+						if j != i {
+							p.TopOrder = append(p.TopOrder, other.String())
+						}
+					}
+					e.addChoice(c, reason+": "+cardName(g, id)+" to graveyard", p)
 				}
 			}
 		}

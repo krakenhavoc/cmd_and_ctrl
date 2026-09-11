@@ -1045,6 +1045,14 @@ func Dispatch(g *game.Game, a Action) error {
 			// looked-at card must appear in exactly one list.
 			Bottom   []string `json:"bottom"`
 			TopOrder []string `json:"top_order"`
+			// Graveyard answers a PendingChoiceSurveil (CR 701.42)
+			// alongside TopOrder: the looked-at cards going to the
+			// chooser's graveyard. Its PRESENCE is what distinguishes
+			// a surveil answer from a scry one, since both carry
+			// top_order — so a client must send `graveyard` (even as
+			// []) on a surveil and must not send it on a scry.
+			// Added in S22.
+			Graveyard []string `json:"graveyard"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1055,6 +1063,28 @@ func Dispatch(g *game.Game, a Action) error {
 		}
 		if p.Color != "" {
 			return g.ResolveManaChoice(choiceID, a.Player, p.Color)
+		}
+		// Surveil is checked BEFORE scry: a surveil answer carries
+		// top_order too, so routing on that alone would send it to
+		// ResolveScry and bottom the cards instead of binning them.
+		if p.Graveyard != nil {
+			gy := make([]uuid.UUID, 0, len(p.Graveyard))
+			for i, raw := range p.Graveyard {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("resolve_choice graveyard[%d]: %w", i, err)
+				}
+				gy = append(gy, id)
+			}
+			top := make([]uuid.UUID, 0, len(p.TopOrder))
+			for i, raw := range p.TopOrder {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("resolve_choice top_order[%d]: %w", i, err)
+				}
+				top = append(top, id)
+			}
+			return g.ResolveSurveil(choiceID, a.Player, gy, top)
 		}
 		if p.Bottom != nil || p.TopOrder != nil {
 			bottom := make([]uuid.UUID, 0, len(p.Bottom))
