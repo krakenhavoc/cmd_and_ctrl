@@ -123,6 +123,12 @@ var cardFields = plan(
 	"ColorIdentity", carried, "",
 	"StartingLoyalty", carried, "",
 	"Keywords", carried, "",
+	// Multi-face model (#357). Printed per-face data: which face is
+	// up decides TypeLine, ManaCost and P/T, so a restore that lost
+	// ActiveFace would resurrect an MDFC on the wrong side.
+	"Layout", carried, "",
+	"Faces", carried, "",
+	"ActiveFace", carried, "",
 	"NeedsEffect", carried, "",
 	"Owner", carried, "",
 	"Controller", carried, "",

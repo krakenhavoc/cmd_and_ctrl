@@ -21,6 +21,7 @@
   // within-row reordering when the UX is designed for it.
 
   import type { CardView } from "../../protocol";
+  import { cardImageURL } from "../../cardImage";
   import { hoveredCard } from "../../cardTypes";
   import { animateTap } from "../../animations";
   import { play } from "../../sounds";
@@ -98,9 +99,11 @@
       (!!onActivateAbility && !!card.activated_abilities && card.activated_abilities.length > 0),
   );
 
-  const imgSrc = $derived(
-    card.scryfall_id ? `/cards/${card.scryfall_id}/image?size=${size}` : null,
-  );
+  // cardImageURL defaults to the card's ACTIVE face, so a modal DFC
+  // played as its land half — or, later, a transformed permanent —
+  // shows the side that is actually up without this component
+  // knowing faces exist.
+  const imgSrc = $derived(cardImageURL(card, size));
 
   // Real MTG card back bundled as a static asset under client/public.
   // Two sizes to keep hand/battlefield thumbnails snappy while the

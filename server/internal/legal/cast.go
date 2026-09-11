@@ -21,6 +21,9 @@ type castParams struct {
 	SacrificeIDs []string     `json:"sacrifice_ids,omitempty"`
 	Strict       bool         `json:"strict,omitempty"`
 	AutoTap      bool         `json:"auto_tap,omitempty"`
+	// Face is the printed face being cast or played (ADR 0034).
+	// Omitted — the front — for every single-faced card.
+	Face int `json:"face,omitempty"`
 }
 
 // castMoves enumerates land drops and spell casts from the seat's
@@ -45,24 +48,42 @@ func (e *enumerator) castMoves() {
 			continue
 		}
 		for _, c := range zone.z.Cards {
-			card := c
-			if card.IsLand() {
-				// CR 305: main phase, empty stack, your turn, and one
-				// per turn. The engine enforces the first three and
-				// not the fourth; we enforce all four.
-				if zone.from == "hand" && speed && landOwed {
-					e.add(Move{
-						Type:   TypeCastSpell,
-						Player: e.seat,
-						Kind:   KindLand,
-						Label:  "Play " + card.Name,
-						Source: card.InstanceID,
-						Params: mustJSON(castParams{InstanceID: card.InstanceID.String(), FromZone: "hand"}),
-					})
+			// ADR 0034: a modal DFC is two playable objects sharing
+			// one instance, so enumerate each face as its own move
+			// and let the bot pick between them. CastableFaces
+			// returns [0] for everything else, so this loop runs once
+			// for every single-faced card and the enumeration is
+			// unchanged for them.
+			//
+			// The face is materialised onto a COPY, exactly as
+			// CastSpell does, so all the type, cost and catalog reads
+			// below see the chosen half without any of them learning
+			// about faces.
+			for _, face := range c.CastableFaces() {
+				card := c
+				card.SetFace(face)
+				if card.IsLand() {
+					// CR 305: main phase, empty stack, your turn, and
+					// one per turn. The engine enforces the first
+					// three and not the fourth; we enforce all four.
+					if zone.from == "hand" && speed && landOwed {
+						e.add(Move{
+							Type:   TypeCastSpell,
+							Player: e.seat,
+							Kind:   KindLand,
+							Label:  "Play " + card.Name,
+							Source: card.InstanceID,
+							Params: mustJSON(castParams{
+								InstanceID: card.InstanceID.String(),
+								FromZone:   "hand",
+								Face:       face,
+							}),
+						})
+					}
+					continue
 				}
-				continue
+				e.castMovesForCard(card, zone.from, speed)
 			}
-			e.castMovesForCard(card, zone.from, speed)
 		}
 	}
 }
@@ -83,7 +104,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 	// A card the catalog marks as targeted the S13.1 way (free-form
 	// target_mode, no structured spec) cannot be enumerated: the
 	// engine demands a target but nothing says which are legal.
-	if game.TargetModeFor(card.OracleID) != "" && game.TargetSpecFor(card.OracleID) == nil {
+	if game.TargetModeFor(game.CatalogKey(card)) != "" && game.TargetSpecFor(game.CatalogKey(card)) == nil {
 		return
 	}
 
@@ -109,7 +130,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 	// Modes → each choice of modes yields a target spec (at most one
 	// chosen mode may carry a target clause; the engine rejects two).
 	modeSets := [][]int{nil}
-	if ms := game.ModeSpecFor(card.OracleID); ms != nil {
+	if ms := game.ModeSpecFor(game.CatalogKey(card)); ms != nil {
 		modeSets = legalModeSets(ms)
 		if len(modeSets) == 0 {
 			return
@@ -119,7 +140,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 	// Additional costs (CR 601.2f). Discards choose from the rest of
 	// the hand; a sacrifice chooses from the seat's own permanents
 	// matching the clause.
-	addCost := game.AdditionalCostFor(card.OracleID)
+	addCost := game.AdditionalCostFor(game.CatalogKey(card))
 	discardSets := [][]uuid.UUID{nil}
 	sacrificeSets := [][]uuid.UUID{nil}
 	if addCost != nil && !addCost.Empty() {
@@ -153,7 +174,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 
 	budget := e.opts.MaxExpansionPerSource
 	for _, modes := range modeSets {
-		spec := castTargetSpec(card.OracleID, modes)
+		spec := castTargetSpec(game.CatalogKey(card), modes)
 		targetSets := [][]game.TargetRef{nil}
 		if spec != nil {
 			targetSets = e.legalTargetSets(spec, budget)
@@ -192,6 +213,10 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 							SacrificeIDs: idStrings(sacs),
 							Strict:       true,
 							AutoTap:      true,
+							// ADR 0034: `card` has already had
+							// SetFace applied by the caller, so
+							// ActiveFace IS the face this move casts.
+							Face: card.ActiveFace,
 						}),
 					})
 				}

@@ -75,6 +75,8 @@
   import ModePickerModal from "./ModePickerModal.svelte";
   import DiscardCostModal from "./DiscardCostModal.svelte";
   import AlternativeCostModal from "./AlternativeCostModal.svelte";
+  import FacePickerModal from "./FacePickerModal.svelte";
+  import { cardAsFace, needsFacePicker } from "../../faces";
   import TapCostModal from "./TapCostModal.svelte";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
@@ -204,11 +206,14 @@
   // answer — the picker always offers the printed cost — and is what
   // the vast majority of casts of these cards will be.
   let altCostPromptCard = $state<CardView | null>(null);
+  let altCostPromptChoices: CastChoices = {};
   function confirmAltCost(key: string | undefined): void {
     const card = altCostPromptCard;
+    const choices = altCostPromptChoices;
     altCostPromptCard = null;
+    altCostPromptChoices = {};
     if (!card) return;
-    afterAltCost(card, key === undefined ? {} : { altCost: key });
+    afterAltCost(card, key === undefined ? choices : { ...choices, altCost: key });
   }
 
   // S21 sub-PR 5: a spell with an additional cost ("As an
@@ -343,12 +348,46 @@
     continueCast(card, choices);
   }
 
-  function handlePlayCard(card: CardView): void {
+  // ADR 0034: a modal double-faced card asks which HALF first —
+  // ahead of even the alternative cost, and for a stronger reason
+  // than the one that put the alternative cost ahead of targeting.
+  // An overload rewrites a spell's target clause; a face choice
+  // decides what the card IS. Sea Gate Restoration is a seven-mana
+  // sorcery and Sea Gate, Reborn is a land, and every prompt after
+  // this one — costs, modes, targets, even whether the card touches
+  // the stack at all — depends on which of them the player meant.
+  let facePromptCard = $state<CardView | null>(null);
+  function confirmFace(face: number): void {
+    const card = facePromptCard;
+    facePromptCard = null;
+    if (!card) return;
+    if (face <= 0) {
+      afterFace(card, {});
+      return;
+    }
+    // Run the rest of the chain against the CHOSEN face, so the
+    // prompts and the cast-timing checks see its type line and cost
+    // rather than the front's. cardAsFace drops the announce-prompt
+    // fields, which describe face 0's catalog spec and would be
+    // wrong here — see the note on cardAsFace.
+    afterFace(cardAsFace(card, face), { face });
+  }
+
+  function afterFace(card: CardView, choices: CastChoices): void {
     if (alternativeCostsOf(card).length > 0) {
+      altCostPromptChoices = choices;
       altCostPromptCard = card;
       return;
     }
-    afterAltCost(card, {});
+    afterAltCost(card, choices);
+  }
+
+  function handlePlayCard(card: CardView): void {
+    if (needsFacePicker(card)) {
+      facePromptCard = card;
+      return;
+    }
+    afterFace(card, {});
   }
 
   // S20 sub-PR 4: a modal spell asks for its mode(s) after X and
@@ -760,10 +799,18 @@
     onConfirm={confirmSacrifice}
     onCancel={() => (sacrificePrompt = null)}
   />
+  <FacePickerModal
+    card={facePromptCard}
+    onConfirm={confirmFace}
+    onCancel={() => (facePromptCard = null)}
+  />
   <AlternativeCostModal
     card={altCostPromptCard}
     onConfirm={confirmAltCost}
-    onCancel={() => (altCostPromptCard = null)}
+    onCancel={() => {
+      altCostPromptCard = null;
+      altCostPromptChoices = {};
+    }}
   />
   <DiscardCostModal
     card={discardPromptCard}

@@ -238,6 +238,22 @@ func cloneCard(c Card) Card {
 	if len(c.Colors) > 0 {
 		out.Colors = append([]string(nil), c.Colors...)
 	}
+	// ADR 0034 faces. ActiveFace and Layout are scalars and ride the
+	// value copy, but Faces is a slice of structs each holding its
+	// own Colors slice — two levels of aliasing, both of which would
+	// survive an undo. The face list itself is immutable printed data
+	// today (only SetFace reads it), so this is belt-and-braces; a
+	// later transform effect that rewrites a face in place would make
+	// it load-bearing, and by then the aliasing bug would be silent.
+	if len(c.Faces) > 0 {
+		out.Faces = make([]Face, len(c.Faces))
+		copy(out.Faces, c.Faces)
+		for i := range out.Faces {
+			if len(c.Faces[i].Colors) > 0 {
+				out.Faces[i].Colors = append([]string(nil), c.Faces[i].Colors...)
+			}
+		}
+	}
 	if len(c.Counters) > 0 {
 		out.Counters = make(map[string]int, len(c.Counters))
 		for k, v := range c.Counters {

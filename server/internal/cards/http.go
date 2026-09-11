@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -55,16 +56,33 @@ func Handler(idx *Index, cache *ImageCache) http.Handler {
 			return
 		}
 		size := r.URL.Query().Get("size")
+		// ADR 0034: ?face=N picks a printed face. Absent — which is
+		// every request a pre-0034 client makes, and every request
+		// for a single-faced card — is face 0, the front, and serves
+		// exactly the bytes it always did. A non-numeric value is a
+		// client bug and is refused rather than silently coerced to
+		// the front face.
+		face := 0
+		if raw := r.URL.Query().Get("face"); raw != "" {
+			n, convErr := strconv.Atoi(raw)
+			if convErr != nil {
+				writeErr(w, http.StatusBadRequest, "invalid image face")
+				return
+			}
+			face = n
+		}
 		// Bound the total time a single image request can hold; a
 		// hung CDN shouldn't tie up request goroutines.
 		ctx, cancel := contextWithTimeout(r, 15*time.Second)
 		defer cancel()
 
-		path, err := cache.Fetch(ctx, idx, id, size)
+		path, err := cache.FetchFace(ctx, idx, id, size, face)
 		if err != nil {
 			switch {
 			case errors.Is(err, ErrInvalidSize):
 				writeErr(w, http.StatusBadRequest, "invalid image size")
+			case errors.Is(err, ErrInvalidFace):
+				writeErr(w, http.StatusBadRequest, "invalid image face")
 			case errors.Is(err, ErrNoImage):
 				writeErr(w, http.StatusNotFound, "no image for this card")
 			case errors.Is(err, os.ErrNotExist):

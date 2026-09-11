@@ -554,8 +554,18 @@ func TestPrintedLoyaltyStampedOnGameCard(t *testing.T) {
 				Name:     "Nissa, Vastwood Seer // Nissa, Sage Animist",
 				TypeLine: "Legendary Creature — Elf Scout // Legendary Planeswalker — Nissa",
 				CardFaces: []cards.CardFace{
-					{Name: "Nissa, Vastwood Seer"},
-					{Name: "Nissa, Sage Animist", Loyalty: "3"},
+					{
+						Name:      "Nissa, Vastwood Seer",
+						TypeLine:  "Legendary Creature — Elf Scout",
+						ManaCost:  "{2}{G}",
+						Power:     "4",
+						Toughness: "4",
+					},
+					{
+						Name:     "Nissa, Sage Animist",
+						TypeLine: "Legendary Planeswalker — Nissa",
+						Loyalty:  "3",
+					},
 				},
 			},
 			{
@@ -576,11 +586,18 @@ func TestPrintedLoyaltyStampedOnGameCard(t *testing.T) {
 	}
 
 	want := map[string]int{
-		"Teferi, Temporal Archmage":                   5,
-		"Teferi, Time Raveler":                        4,
-		"Nissa, Vastwood Seer // Nissa, Sage Animist": 3,
-		"X-Loyalty Walker":                            0,
-		"Grizzly Bears":                               0,
+		"Teferi, Temporal Archmage": 5,
+		"Teferi, Time Raveler":      4,
+		// ADR 0034: a double-faced card imports as its FRONT face,
+		// name and loyalty together. Nissa, Vastwood Seer is a 4/4
+		// Elf Scout — it has no loyalty, and the pre-0034 whole-card
+		// "first face that prints a number" fallback handing it the
+		// BACK face's 3 was the missing face model papering over
+		// itself. The back's loyalty now lives on Faces[1] and
+		// arrives when (if) something transforms her.
+		"Nissa, Vastwood Seer": 0,
+		"X-Loyalty Walker":     0,
+		"Grizzly Bears":        0,
 	}
 	for _, gc := range list.ToGameCards() {
 		w, ok := want[gc.Name]

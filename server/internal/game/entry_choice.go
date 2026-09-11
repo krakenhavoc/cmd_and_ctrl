@@ -311,6 +311,23 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) error {
 	for name, n := range ev.EntersWithCounters {
 		_ = g.AddCounterForEffect(moved.InstanceID, name, n)
 	}
+	// Per-turn land-drop tally. The land branch in CastSpell bumps
+	// this on the path where nothing pauses; this branch is the same
+	// land play finishing after a prompt, and it was never bumping
+	// it — so every shockland played since PR #268, and now every
+	// MDFC land back, was a land drop the legal-move enumerator
+	// never saw. Found by the MDFC back-face test; the bug is older
+	// and applies to the whole pay-life cycle.
+	//
+	// entryResumable is set on exactly one entry site (the land
+	// branch), so reaching here at all means a land was played; the
+	// IsLand guard is belt-and-braces against a future third site.
+	if moved.IsLand() && ev.Actor != uuid.Nil {
+		if g.LandsPlayedThisTurn == nil {
+			g.LandsPlayedThisTurn = make(map[uuid.UUID]int)
+		}
+		g.LandsPlayedThisTurn[ev.Actor]++
+	}
 	g.EmitEvent(Event{
 		Kind:    EventZoneMove,
 		Actor:   ev.Actor,
@@ -323,7 +340,7 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) error {
 		Actor:  ev.Actor,
 		CardID: moved.InstanceID,
 	})
-	g.fireETBHookLocked(moved.InstanceID, moved.OracleID)
+	g.fireETBHookLocked(moved.InstanceID, CatalogKey(moved))
 	g.runStateChecksLocked()
 	return nil
 }

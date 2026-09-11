@@ -132,7 +132,7 @@ func ActivatedAbilitiesForCard(c Card) []ActivatedAbilityShape {
 	if CatalogActivatedAbilities == nil || c.OracleID == "" {
 		return nil
 	}
-	return CatalogActivatedAbilities(c.OracleID)
+	return CatalogActivatedAbilities(CatalogKey(c))
 }
 
 // ActivateAbilityParams carries the announce-time choices for a

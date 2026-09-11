@@ -1,6 +1,55 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"strconv"
+
+	"github.com/google/uuid"
+)
+
+// CatalogKey returns the effect-catalog key for a card's ACTIVE
+// face (ADR 0034 §5).
+//
+// Scryfall issues one oracle_id per CARD, not per face, so the two
+// halves of Sea Gate Restoration collide onto a single spec slot —
+// and effects.Register PANICS on a duplicate oracle ID, deliberately,
+// because a collision otherwise means one card silently shadowing
+// another. Rather than weaken that panic, the key becomes composite:
+//
+//	face 0  →  "<oracle_id>"        (bare — unchanged)
+//	face N  →  "<oracle_id>#N"
+//
+// Face 0 keeping the bare ID is what makes this a no-op for all ~241
+// registered specs and every single-faced card in the game. A back
+// face registers under "<oracle_id>#1" and cannot collide with
+// anything, so Register's duplicate check stays exactly as strict as
+// it was — it simply now has a second, distinct key to reject
+// duplicates within.
+//
+// Register, Lookup, Has and Spec are untouched: they already take and
+// hold opaque strings. The work was swapping the ~25 production call
+// sites from a bare c.OracleID to CatalogKey(c), which is mechanical
+// — and because CastSpell has already called SetFace by the time any
+// of them run, announce-time and battlefield-time hooks both resolve
+// to the correct half with no further plumbing.
+//
+// The cost, stated plainly: a call site that FORGETS CatalogKey
+// silently resolves to face 0's spec rather than erroring.
+func CatalogKey(c Card) string {
+	if c.ActiveFace == 0 || c.OracleID == "" {
+		return c.OracleID
+	}
+	return c.OracleID + "#" + strconv.Itoa(c.ActiveFace)
+}
+
+// CatalogKeyForFace is CatalogKey for a face other than the one
+// currently active — used by the legal-move enumerator, which has to
+// price BOTH halves of a modal DFC without mutating the card.
+func CatalogKeyForFace(oracleID string, face int) string {
+	if face == 0 || oracleID == "" {
+		return oracleID
+	}
+	return oracleID + "#" + strconv.Itoa(face)
+}
 
 // effect_hooks.go holds the function-variable slots that the S14
 // card-effect catalog populates from its own init() block. The
@@ -348,7 +397,7 @@ func (g *Game) EffectiveMaxHandSizeLocked(p *Player) int {
 		if c.Controller != p.ID || c.OracleID == "" {
 			continue
 		}
-		if CatalogNoMaxHandSize(c.OracleID) {
+		if CatalogNoMaxHandSize(CatalogKey(*c)) {
 			return NoMaxHandSize
 		}
 	}

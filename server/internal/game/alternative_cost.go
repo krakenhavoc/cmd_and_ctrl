@@ -158,7 +158,7 @@ func validateAlternativeCost(oracleID, key string, targets []TargetRef) (*Altern
 // back, which is the difference between this file and
 // additional_cost.go.
 func alternativeCostString(card Card, key string) string {
-	if alt := AlternativeCostByKey(card.OracleID, key); alt != nil {
+	if alt := AlternativeCostByKey(CatalogKey(card), key); alt != nil {
 		return alt.ManaCost
 	}
 	return card.ManaCost
@@ -197,7 +197,7 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 	if item == nil || item.AltCost == "" {
 		return
 	}
-	alt := AlternativeCostByKey(card.OracleID, item.AltCost)
+	alt := AlternativeCostByKey(CatalogKey(card), item.AltCost)
 	if alt == nil || !alt.SacrificeOnEntry {
 		return
 	}

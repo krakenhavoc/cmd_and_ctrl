@@ -382,6 +382,11 @@ func Dispatch(g *game.Game, a Action) error {
 			// alternative costs ("overload", "evoke", "cleave").
 			// Empty is the ordinary "pay the printed cost" case.
 			AlternativeCost string `json:"alternative_cost,omitempty"`
+			// ADR 0034 — which printed face of a multi-face card is
+			// being cast or played. Absent (0) is the front face,
+			// which is the right answer for every single-faced card
+			// and for any client that predates the face picker.
+			Face int `json:"face,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -400,6 +405,7 @@ func Dispatch(g *game.Game, a Action) error {
 			ForceCast:       p.ForceCast,
 			AutoTap:         p.AutoTap,
 			AlternativeCost: p.AlternativeCost,
+			Face:            p.Face,
 		}
 		if len(p.DiscardIDs) > 0 {
 			params.DiscardIDs = make([]uuid.UUID, 0, len(p.DiscardIDs))

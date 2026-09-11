@@ -1009,7 +1009,15 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		var ve *deck.ValidationError
 		if errors.As(verr, &ve) {
 			for _, v := range ve.Violations {
-				if v.Code == deck.CodeSideboardUnsupported {
+				// The non-fatal classes: the deck imports and plays,
+				// with something declared. ADR 0034 added the second
+				// — a transform or split card is imported as its
+				// front half rather than refused, and the banner
+				// says so. Rejecting a whole deck over a card that
+				// is merely cosmetically simplified is the wrong
+				// trade; saying nothing is what produced #265.
+				if v.Code == deck.CodeSideboardUnsupported ||
+					v.Code == deck.CodeUnsupportedLayout {
 					warnings = append(warnings, v)
 					continue
 				}
