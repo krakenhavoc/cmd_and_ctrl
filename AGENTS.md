@@ -1114,6 +1114,76 @@ optional triggers, `answerLatestTriggerPrompt` then
 then `passPriorityAroundTable`. See the S19 sections of
 [cards_test.go](server/internal/cards/effects/cards_test.go).
 
+### Adding a creature-type card (S26+)
+
+Tribal cards come in three shapes, and the shared builders live in
+[tribal.go](server/internal/cards/effects/tribal.go).
+
+**A lord** ("Other Goblin creatures you control get +1/+1 and have
+haste") is a `TribeFilter` plus one or two builders:
+
+```go
+goblins := TribeFilter{Tribes: []string{"Goblin"}, Others: true, YoursOnly: true}
+Static: []game.StaticAbility{
+    TribalAnthem(goblins, 1, 1),              // layer 7c
+    TribalKeywordGrant(goblins, "haste"),     // layer 6
+},
+```
+
+`Others` is the "other" in "other Goblins"; `YoursOnly` is the "you
+control". **Read the printed card for the second one.** Half the
+classic lords — Lord of Atlantis, Goblin King, Elvish Champion —
+have no controller clause at all and buff the whole table, which is
+a real and printed drawback. Inventing one is the most common way to
+get a lord wrong, and the reason it is a named field rather than a
+hand-written predicate.
+
+**A named-tribe permanent** ("As this enters, choose a creature
+type") carries the CR 614.12 prompt on `OnETB` and reads the answer
+back through `TribeFilter{Chosen: true}`:
+
+```go
+OnETB:  ChooseCreatureTypeOnETB("Vanquisher's Banner"),
+Static: []game.StaticAbility{TribalAnthem(TribeFilter{Chosen: true, YoursOnly: true}, 1, 1)},
+```
+
+The answer lands on `Card.NamedTribe` — per-instance state, carried
+by the snapshot, cleared on battlefield-leave. Until the controller
+answers, it is empty and the filter matches nothing; a static that
+read an empty tribe as "everything" would be the dangerous
+direction, so never write one. A mana ability whose restriction
+names the chosen type uses `RestrictionsFunc`, not `Restrictions`
+(see `ChosenTypeManaRestrictions`).
+
+**Changeling** (CR 702.73a) is an enforced keyword since S26, so a
+**vanilla changeling needs no catalog entry at all** — the deck
+importer stamps it from Scryfall like any other printed keyword, and
+`Card.HasSubtype` answers true for every creature type in every
+zone. Only write a file when the card does something else too
+(Irregular Cohort's token). A TOKEN declares it on the template's
+`Keywords`, since a token has no oracle ID.
+
+"Is every creature type" is ALWAYS the `game.KeywordChangeling`
+token in the ability list — for a printed changeling, for a grant
+(Maskwood Nexus, via `TribalKeywordGrant`), and for an
+until-end-of-turn grant (`GrantAllCreatureTypesUntilEOT`). Do not
+append the ~345 entries of `game.AllCreatureTypes` to
+`Characteristic.Subtypes`: it makes the wire type line unreadable
+and every subtype loop quadratic, for a property one map lookup
+answers.
+
+Ask "do these two creatures share a type" with
+`game.SharesCreatureType`, never with a subtype-slice intersection —
+the helper knows Forest on Dryad Arbor is a land type and that a
+changeling shares nothing with a creature that has no creature type
+at all. `OfCreatureType("Goblin")` is the targeting predicate.
+
+**Tests** — `pushNamedTribePermanent` in
+[tribal_test.go](server/internal/cards/effects/tribal_test.go) seeds
+a permanent and answers its prompt in one call. Assert through
+`effectivePower` / `effectiveAbilities` / `effectiveSubtypes` like
+any other layer card.
+
 ### When NOT to add a catalog entry
 
 - **Activated abilities whose cost has no component** — `AbilityCost`
