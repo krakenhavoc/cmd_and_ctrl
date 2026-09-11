@@ -99,22 +99,46 @@ func (g *Game) EachPlayerSacrificesForEffect(source uuid.UUID, except uuid.UUID,
 		if p == nil || p.Eliminated || p.ID == except {
 			continue
 		}
-		options := g.sacrificeCandidatesLocked(p.ID, spec)
-		if len(options) == 0 {
-			continue
-		}
-		g.QueueChoiceForEffect(PendingChoice{
-			Kind:             PendingChoiceSacrifice,
-			Chooser:          p.ID,
-			FromPlayer:       p.ID,
-			Count:            1,
-			Source:           source,
-			Reason:           reason,
-			SacrificeOptions: options,
-		})
-		queued++
+		queued += g.PlayerSacrificesForEffect(source, p.ID, spec, reason)
 	}
 	return queued
+}
+
+// PlayerSacrificesForEffect queues ONE sacrifice prompt, for one
+// player — "sacrifice another permanent" (Korvold), "sacrifice a
+// creature" as the rider on a resolving effect rather than as a
+// cost. The single-seat half of EachPlayerSacrificesForEffect, which
+// is now written in terms of it.
+//
+// Same contract as the fan-out version: `spec` narrows what may be
+// chosen (nil means any permanent they control), the player chooses
+// their own, and a player with no legal permanent is skipped rather
+// than prompted with an empty list — a mandatory sacrifice with
+// nothing to sacrifice does nothing (CR 701.17b).
+//
+// Returns 1 when a prompt was queued and 0 when it was skipped, so a
+// caller with a "if you do" rider can tell the two apart.
+//
+// Caller must hold g.mu (it is an effect-time helper).
+func (g *Game) PlayerSacrificesForEffect(source, playerID uuid.UUID, spec *TargetSpec, reason string) int {
+	p := g.playerByIDLocked(playerID)
+	if p == nil || p.Eliminated {
+		return 0
+	}
+	options := g.sacrificeCandidatesLocked(playerID, spec)
+	if len(options) == 0 {
+		return 0
+	}
+	g.QueueChoiceForEffect(PendingChoice{
+		Kind:             PendingChoiceSacrifice,
+		Chooser:          playerID,
+		FromPlayer:       playerID,
+		Count:            1,
+		Source:           source,
+		Reason:           reason,
+		SacrificeOptions: options,
+	})
+	return 1
 }
 
 // sacrificeCandidatesLocked lists the permanents a player controls

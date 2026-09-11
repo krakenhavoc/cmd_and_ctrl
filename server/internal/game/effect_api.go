@@ -1227,9 +1227,57 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 // references the first token ID — callers loop for the others via
 // the event stream.
 func (g *Game) CreateTokenForEffect(controller uuid.UUID, template Card, n int) error {
+	_, err := g.CreateTokensForEffect(controller, template, n, TokenEntryOptions{})
+	return err
+}
+
+// TokenEntryOptions are the creation-time modifiers a card can apply
+// to the token it makes, on top of the token's printed template.
+// Every field is the zero value for an ordinary "create a 1/1 Goblin"
+// — CreateTokenForEffect passes an empty struct.
+//
+// These are properties of the CREATION, not of the token: two cards
+// can make the same printed Powerstone and only one of them says
+// "tapped". Keeping them here rather than baking them into the
+// template in tokens.go is what stops the catalog growing a second
+// near-identical constructor per variant.
+type TokenEntryOptions struct {
+	// Tapped enters the tokens tapped — "create a TAPPED Powerstone
+	// token" (Stern Lesson), "create a 1/1 Goblin tapped and
+	// attacking" minus the attacking half, which needs combat state
+	// this struct deliberately does not touch.
+	Tapped bool
+
+	// Counters are the counters each token enters with, keyed by
+	// counter name. Applied before EventETB fires, so an ETB watcher
+	// and the P/T recompute both see the finished object.
+	//
+	// Declared gap: these do NOT run the CR 614 counter replacement
+	// pipeline, so a Doubling Season does not double them. Token
+	// creation does not go through the zone-move pipeline at all
+	// (the token has no previous zone to move from), which is the
+	// same reason Tapped is a field here rather than the
+	// RepEventMove.EntersTapped an ordinary permanent uses.
+	Counters map[string]int
+
+	// Keywords are granted on top of the template's printed ones —
+	// the "…with haste" half of a card that pumps the token it
+	// makes. Additive: the template's own keywords are kept.
+	Keywords []string
+}
+
+// CreateTokensForEffect is CreateTokenForEffect with entry options,
+// returning the instance IDs of the tokens it made in creation
+// order. The IDs are what a card needs when the token is not the end
+// of the sentence — "create a token, then sacrifice it", "…then put
+// a counter on it".
+//
+// Caller must hold g.mu.
+func (g *Game) CreateTokensForEffect(controller uuid.UUID, template Card, n int, opts TokenEntryOptions) ([]uuid.UUID, error) {
 	if n <= 0 {
-		return nil
+		return nil, nil
 	}
+	ids := make([]uuid.UUID, 0, n)
 	for i := 0; i < n; i++ {
 		tok := template
 		tok.InstanceID = uuid.New()
@@ -1237,10 +1285,34 @@ func (g *Game) CreateTokenForEffect(controller uuid.UUID, template Card, n int) 
 		tok.Controller = controller
 		tok.Counters = nil
 		tok.KnownBy = nil
+		if opts.Tapped {
+			// Additive, not an assignment: a caller that pre-stamped
+			// Tapped on the template (the older idiom — Mary Read's
+			// Treasure, Hashaton's Zombie) must keep entering tapped.
+			tok.Tapped = true
+		}
+		if len(opts.Counters) > 0 {
+			tok.Counters = make(map[string]int, len(opts.Counters))
+			for name, count := range opts.Counters {
+				if count > 0 {
+					tok.Counters[name] = count
+				}
+			}
+		}
+		if len(opts.Keywords) > 0 {
+			// Fresh slice: the template's Keywords slice is shared by
+			// every token minted from it, so appending in place would
+			// leak the grant onto the next one.
+			kw := make([]string, 0, len(template.Keywords)+len(opts.Keywords))
+			kw = append(kw, template.Keywords...)
+			kw = append(kw, opts.Keywords...)
+			tok.Keywords = kw
+		}
 		for _, seat := range g.Seats {
 			tok.AddKnower(seat.ID)
 		}
 		g.Battlefield.PushTop(tok)
+		ids = append(ids, tok.InstanceID)
 		g.EmitEvent(Event{
 			Kind:   EventTokenCreated,
 			Actor:  controller,
@@ -1252,7 +1324,7 @@ func (g *Game) CreateTokenForEffect(controller uuid.UUID, template Card, n int) 
 			CardID: tok.InstanceID,
 		})
 	}
-	return nil
+	return ids, nil
 }
 
 // CreateTokensAttackingForEffect is CreateTokenForEffect for
