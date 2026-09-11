@@ -80,7 +80,7 @@ func kazanduMammoth(owner uuid.UUID) game.Card {
 		game.Face{
 			Name:      "Kazandu Mammoth",
 			TypeLine:  "Creature — Elephant",
-			ManaCost:  "{2}{G}",
+			ManaCost:  "{1}{G}{G}",
 			Colors:    []string{"G"},
 			Power:     3,
 			Toughness: 3,
@@ -186,7 +186,7 @@ func TestMDFCCreatureFrontIsNotAFreeLandDrop(t *testing.T) {
 	var insufficient *game.InsufficientManaError
 	if !errors.As(err, &insufficient) {
 		t.Fatalf("CastSpell error = %v, want an InsufficientManaError "+
-			"for {2}{G}", err)
+			"for {1}{G}{G}", err)
 	}
 	if g.Battlefield.Contains(id) {
 		t.Fatal("Kazandu Mammoth reached the battlefield as a FREE LAND")
