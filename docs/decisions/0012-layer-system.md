@@ -106,6 +106,13 @@ needs to declare its dependency inputs; cycles need detection).
 Pure timestamp ordering produces correct results for ~95% of real
 cards. S16.5 follow-up if a real card surfaces in playtesting.
 
+**Re-affirmed in S16.5** — see [ADR 0043](0043-copy-effects.md) §5.
+The trigger has not fired: no pair of statics in the catalog can
+produce an observable dependency, because every one of them is an
+anthem, a keyword grant, a type-add or a CDA, all commutative under
+timestamp order. The cost is a required dependency declaration on
+every `StaticAbility` in the catalog, present and future.
+
 ### 5. Layer 7 ships full sub-layer support; layers 1, 3, 5 ship
        as stubs
 
@@ -115,7 +122,14 @@ anthems at 7c. 7b and 7e ship the bucket in `layerOrder` but no
 catalog card exercises them yet.
 
 Layer 1 (copy effects — Clone, Phyrexian Metamorph) — deferred to
-S16.5.
+S16.5. **Landed in S16.5, differently:** see
+[ADR 0043](0043-copy-effects.md). A copy effect rewrites the
+copiable-value baseline the recompute starts from rather than
+applying as a `ContinuousEffect` in the `Layer1Copy` bucket, because
+a copy has to carry the oracle ID, mana cost and printed P/T, none of
+which a `Characteristic` has a field for. The bucket survives for the
+duration-scoped copy effects (Mirage Mirror, Cytoshape) that still
+need it.
 
 Layer 3 (text-changing effects — Mind Bend, Glamerdye) — engine
 ships the layer-3 bucket but no in-scope card needs it.

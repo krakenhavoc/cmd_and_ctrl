@@ -641,6 +641,70 @@ func init() {
 > order. `TestFetchedShocklandEntersTappedWithNoPaymentOffered` pins the
 > gap and flips when it closes.
 
+### Adding a copy effect (S16.5+)
+
+"You may have this creature enter as a copy of X" (Clone, Phyrexian
+Metamorph, Spark Double, Sakashima the Impostor) is a replacement
+effect with a picker inside it. Cards declare it through the shared
+`EntersAsCopyOf` constructor in
+[copy_effects.go](server/internal/cards/effects/copy_effects.go)
+rather than building a `game.ReplacementEffect` by hand:
+
+```go
+Replacements: []game.ReplacementEffect{
+    EntersAsCopyOf(
+        "Phyrexian Metamorph",
+        // what may be copied — evaluated when the prompt is built
+        // AND again when the answer arrives.
+        func(g *game.Game, controller uuid.UUID, self uuid.UUID) []uuid.UUID {
+            return copyCandidates(g, self, func(c game.Card) bool {
+                return c.IsCreature() || c.IsArtifact()
+            })
+        },
+        // the "except" clause — nil for a plain Clone.
+        func(ev *game.ReplacementEvent, v *game.PrintedValues, g *game.Game, src *game.Card) {
+            v.AddCardType("Artifact")
+        },
+    ),
+},
+```
+
+**Where each kind of "except" clause goes:**
+
+| Printed clause | Where it lands |
+|---|---|
+| "except its name is N" | `v.SetName("N")` |
+| "except it's an artifact in addition to its other types" | `v.AddCardType("Artifact")` |
+| "except it's legendary in addition to…" | `v.AddSupertype("Legendary")` |
+| "except it isn't legendary" | `v.RemoveSupertype("Legendary")` |
+| "except it enters with an additional +1/+1 counter" | `ev.AddCounterAtETB("+1/+1", 1)` |
+| "except it enters with an additional loyalty counter" | `v.StartingLoyalty++` — NOT `AddCounterAtETB`; the CR 306.5b stamp refuses to run on a walker that already has loyalty counters |
+| branch on what was copied | `v.HasCardType("Creature")` / `"Planeswalker"` |
+
+**What a copy brings, and what it does not.** `PrintedValues` is the
+CR 707.2 copiable-value set: printed name, type line, mana cost,
+colours, P/T, keywords, starting loyalty, layout / faces, and the
+oracle ID — which is the load-bearing one, because every catalog hook
+resolves through `CatalogKey`, so the copy inherits the copied card's
+triggers, statics, replacements and abilities for free. It does NOT
+bring counters, damage, status, or any other layer's effect. See
+[ADR 0043](docs/decisions/0043-copy-effects.md).
+
+**Don't reach for this for a token copy.** "Create a token that's a
+copy of target creature" (Follow the Spirit, Kiki-Jiki) is
+`CreateTokenCopy` in
+[token_copy.go](server/internal/cards/effects/token_copy.go) — a
+resolution-time effect that mints a new object, not a replacement of
+something's own entry.
+
+**Tests** — see
+[copy_effects_test.go](server/internal/cards/effects/copy_effects_test.go).
+The pattern is `castCatalogSpell` → `resolveWithCopyChoice(t, g,
+pick)` (pass `uuid.Nil` to decline) → assert on the battlefield card.
+Assert the OBSERVABLE result — name, P/T, types, counters, and for
+anything with a catalog entry, its behaviour — because a copy that
+rewrote only the display fields looks identical on the wire.
+
 ### Adding a combat-keyword card (S18+)
 
 Creatures with printed combat keywords (flying, reach, deathtouch,

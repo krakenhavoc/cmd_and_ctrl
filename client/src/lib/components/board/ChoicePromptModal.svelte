@@ -84,10 +84,21 @@
   // and zero is a legal answer.
   const isSearch = $derived(active?.kind === "search_library");
 
+  // S16.5 copy_target — "you may have this creature enter as a copy
+  // of ...". Shares the card grid and the {choice_id, card_ids}
+  // payload; like search, its floor is zero, because every printed
+  // card in the class says "you may" and declining is a real answer
+  // (the permanent enters as its own printed self instead).
+  //
+  // Nothing on the board changes while this is open: the permanent
+  // is still on the stack, and the answer decides what it enters AS.
+  const isCopyTarget = $derived(active?.kind === "copy_target");
+
   // How many cards this prompt accepts, and how few it will settle
-  // for. Only search moves the floor off the ceiling.
+  // for. Search and copy are the two that move the floor off the
+  // ceiling.
   const pickMax = $derived(isSearch ? (active?.search_max ?? 1) : (active?.count ?? 0));
-  const pickMin = $derived(isSearch ? 0 : (active?.count ?? 0));
+  const pickMin = $derived(isSearch || isCopyTarget ? 0 : (active?.count ?? 0));
   const canSubmit = $derived(selected.size >= pickMin && selected.size <= pickMax);
 
   function toggle(id: string): void {
@@ -739,6 +750,9 @@
           {:else if isSearch}
             {active.reason || "Search your library"}
             <span class="prompt-src" aria-hidden="true">search · CR 701.19</span>
+          {:else if isCopyTarget}
+            {active.reason || "Enter as a copy of…"}
+            <span class="prompt-src" aria-hidden="true">copy · CR 706</span>
           {:else}
             {active.reason || "Choose"} — pick {active.count} card{active.count === 1 ? "" : "s"}
             <span class="prompt-src" aria-hidden="true">{isSelfSource ? "discard" : "reveal"}</span>
@@ -755,6 +769,9 @@
               Take up to {pickMax} of these, or none.
             {/if}
             Only you can see them, and your library is shuffled either way.
+          {:else if isCopyTarget}
+            Pick what it enters as a copy of — it copies the printed card, so counters, damage and
+            other effects don't come across. Or copy nothing and let it enter as itself.
           {:else if isSelfSource}
             Pick {active.count} card{active.count === 1 ? "" : "s"} from your hand to discard.
           {:else}
@@ -780,7 +797,7 @@
         </div>
         <div class="prompt-foot">
           <span class="prompt-count">{selected.size} / {pickMax} selected</span>
-          {#if isSearch}
+          {#if isSearch || isCopyTarget}
             <button
               type="button"
               onclick={() => (selected = new Set())}
@@ -794,6 +811,8 @@
               Sacrifice
             {:else if isSearch}
               {selected.size === 0 ? "Fail to find" : "Take"}
+            {:else if isCopyTarget}
+              {selected.size === 0 ? "Enter as itself" : "Enter as a copy"}
             {:else}
               Confirm
             {/if}

@@ -369,6 +369,25 @@ type Card struct {
 	// Added in S24, per ADR 0036 decision 2.
 	AttachedAt int64
 
+	// PrintedSelf is this card's OWN printed values, stashed when a
+	// CR 706 copy effect overwrote the flat printed fields above.
+	// nil — which is every card that is not a Clone-class permanent
+	// — means the printed fields are the card's own and nothing has
+	// to be undone.
+	//
+	// It exists because CR 400.7 makes a permanent that changes
+	// zones a new object: the copy effect applied to the PERMANENT,
+	// so a Clone that dies is a card named Clone in its owner's
+	// graveyard, not a second Llanowar Elves. The battlefield-leave
+	// branch of the layer listener restores from here, in the same
+	// place it clears the effective cache.
+	//
+	// Carried by the snapshot and deep-copied by clone.go: which
+	// card a permanent is a copy of is not derivable from anything
+	// else, and a restore that lost it would resurrect every clone
+	// on the board as a 0/0. Added in S16.5 (#159 / #335).
+	PrintedSelf *PrintedValues
+
 	// effective is the cached post-layer-resolution characteristic
 	// for this card on the battlefield. Populated by the layer
 	// engine's recompute pass; nil ⇒ "no recompute has run since

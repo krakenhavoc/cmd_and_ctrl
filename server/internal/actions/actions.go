@@ -1187,6 +1187,18 @@ func Dispatch(g *game.Game, a Action) error {
 				return g.ResolveSacrificeChoice(choiceID, a.Player, ids[0])
 			case game.PendingChoiceSearchLibrary:
 				return g.ResolveSearchLibrary(choiceID, a.Player, ids)
+			case game.PendingChoiceCopyTarget:
+				// "You may have this enter as a copy of ..." — an
+				// EMPTY list is the decline, exactly as it is for
+				// search's fail-to-find, because every printed copy
+				// effect of this class says "you may" (CR 614.1c).
+				if len(ids) == 0 {
+					return g.ResolveCopyTarget(choiceID, a.Player, uuid.Nil)
+				}
+				if len(ids) != 1 {
+					return game.ErrInvalidParam
+				}
+				return g.ResolveCopyTarget(choiceID, a.Player, ids[0])
 			}
 		}
 		return g.ResolvePendingChoice(choiceID, a.Player, ids)

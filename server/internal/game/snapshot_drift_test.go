@@ -152,6 +152,12 @@ var cardFields = plan(
 	// a restore that dropped it would silently un-equip the board.
 	"AttachedTo", carried, "",
 	"AttachedAt", carried, "",
+	// S16.5 copy effects (#159 / #335). Which card a permanent is a
+	// copy of is not derivable from anything else on the board, and
+	// a restore that lost it would resurrect every clone as the 0/0
+	// it is printed as. Pure data by construction — see copy.go on
+	// why PrintedValues carries no closures.
+	"PrintedSelf", carried, "",
 
 	"ManaAbilities", rebuilt, "closures; re-looked-up from the catalog by oracle ID, or censused when the card has none (a true token)",
 	"ActivatedAbilities", rebuilt, "same as ManaAbilities",
@@ -249,6 +255,7 @@ var pendingChoiceFields = plan(
 	"PickTargetMin", carried, "",
 	"PickTargetMax", carried, "",
 	"SacrificeOptions", carried, "",
+	"CopyOptions", carried, "",
 	"ScryCards", carried, "",
 	"TriggerOrderIDs", carried, "",
 	"PayCost", carried, "",

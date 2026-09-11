@@ -131,6 +131,34 @@ type ReplacementEvent struct {
 	// before emitting EventETB.
 	EntersTapped bool
 
+	// EntersAsCopyOf is the CR 706 copy a permanent enters wearing —
+	// the copiable values settled by a CopySelector replacement,
+	// with the card's "except" clause already applied. nil for the
+	// ~everything that enters as itself. Only meaningful when
+	// NewZone == ZoneBattlefield; the entry path materialises it
+	// onto the card BEFORE EventETB fires, so no trigger ever sees
+	// the permanent as its own printed self. Added in S16.5 (#159).
+	EntersAsCopyOf *PrintedValues
+
+	// copySourceID names the permanent EntersAsCopyOf was taken
+	// from. Unexported because the catalog has no business reading
+	// it: it exists so the entry path can pick up the source's
+	// card-carried ability slices (the token case, which
+	// PrintedValues cannot carry — see copy.go) and so the copy
+	// event names what was copied.
+	copySourceID uuid.UUID
+
+	// stackItem is the resolving spell's StackItem, carried across a
+	// paused entry so the resume can finish the two jobs only stack
+	// resolution does: attaching a resolved Aura to what it targeted
+	// (CR 303.4a) and queueing evoke's sacrifice trigger (CR
+	// 702.74b). Unexported engine plumbing.
+	//
+	// Set by resolveTopOfStackLocked, which is what makes that entry
+	// site entryResumable. Before it existed, a permanent spell
+	// whose entry queued any prompt was never pushed at all.
+	stackItem *StackItem
+
 	// EntersWithCounters is the map of counter name → count applied
 	// BEFORE EventETB fires (Hangarback Walker "enters with X +1/+1
 	// counters", etc.). Applied by the battlefield-entry path under
@@ -140,17 +168,18 @@ type ReplacementEvent struct {
 	// entryResumable is an unexported breadcrumb meaning "if this
 	// entry pauses for a prompt, the generic resume path may finish
 	// it" (executeEntryToBattlefieldLocked). Set by the land-play
-	// branch of CastSpell, the one entry site whose push the generic
-	// resume reproduces exactly.
+	// branch of CastSpell and — since S16.5, so Clone can ask what
+	// to copy — by stack resolution, which hands the resume its
+	// StackItem so the Aura attach and evoke's sacrifice trigger
+	// survive the pause.
 	//
-	// Off by default on purpose. The other battlefield-entry sites
-	// do things the generic push can't: a resolving permanent spell
-	// queues evoke's sacrifice trigger from its StackItem, and an
-	// exile→battlefield return mints a new InstanceID (CR 400.7).
-	// Finishing those generically would silently drop the sacrifice
-	// or the new object identity, which is worse than leaving them
-	// exactly as they were before this flag existed — they still
-	// never pause today.
+	// Off by default on purpose. The remaining battlefield-entry
+	// sites do things the generic push can't: an exile→battlefield
+	// return mints a new InstanceID (CR 400.7), and the library-
+	// search path owes its caller a shuffle. Finishing those
+	// generically would silently drop the new object identity or
+	// leak library order, which is worse than leaving them exactly
+	// as they are — they still never pause today.
 	//
 	// An effect that WOULD pause consults this before prompting: a
 	// pay-life entry choice on an unflagged event takes the un-paid
@@ -297,6 +326,21 @@ type ReplacementEffect struct {
 	// See entry_choice.go. Added with the shockland cycle.
 	EntryLifeCost int
 
+	// CopySelector, when non-nil, makes this an "as this permanent
+	// enters, you may have it enter as a copy of X" effect (CR
+	// 706.2) — Clone, Phyrexian Metamorph, Spark Double, Sakashima
+	// the Impostor. The apply-loop queues a
+	// PendingChoiceCopyTarget picker and bails; the answer stamps
+	// ev.EntersAsCopyOf and the entry path materialises it before
+	// EventETB.
+	//
+	// Replace is never called for an effect with a selector: there
+	// is nothing about the event left for it to rewrite, and the
+	// selector's Except hook is where the card's "except" clause
+	// goes. Takes precedence over Optional and EntryLifeCost, which
+	// no printed copy effect combines with. See copy_choice.go.
+	CopySelector *CopySelector
+
 	// PromptQuestion is the text rendered in the yes/no Optional
 	// prompt. Short — fits in a modal header. Defaults to Label
 	// when empty.
@@ -418,6 +462,17 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		}
 		// Exactly one applicable.
 		chosen := applicable[0]
+		if chosen.effect.CopySelector != nil {
+			// "You may have this enter as a copy of ..." — the
+			// picker and its decline-inline cases live in
+			// copy_choice.go. A queued prompt bails; anything else
+			// has already marked the effect applied and falls
+			// through to the next iteration.
+			if g.offerCopyChoiceLocked(ev, chosen) {
+				return ev, errReplacementPending
+			}
+			continue
+		}
 		if chosen.effect.EntryLifeCost > 0 {
 			// "As this enters, you may pay N life." The prompt (and
 			// the unaffordable-so-apply-it-inline case) lives in

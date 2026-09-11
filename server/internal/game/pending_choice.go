@@ -316,6 +316,16 @@ type PendingChoice struct {
 	// sacrifice can trigger something that removes a creature).
 	SacrificeOptions []uuid.UUID
 
+	// CopyOptions is the set of permanents a PendingChoiceCopyTarget
+	// may be copied from — "any creature on the battlefield" for
+	// Clone, "a creature or planeswalker you control" for Spark
+	// Double. Wire-serialised so the picker renders card faces;
+	// battlefield cards are public, so there is nothing to redact.
+	// Re-checked on submit against the live board, because a
+	// creature can leave between the prompt and the answer.
+	// Added in S16.5 (#159).
+	CopyOptions []uuid.UUID
+
 	// ScryCards is the set of cards a PendingChoiceScry's chooser is
 	// looking at, in top-to-bottom library order (so the first entry
 	// is the card that would be drawn next if nothing moves).
@@ -931,6 +941,19 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 		if ev.Canceled {
 			// A prior Cancel short-circuits the remaining chain.
 			break
+		}
+		if chosen.effect.CopySelector != nil {
+			// Same reason as the pay-life branch below: an effect
+			// with a CHOICE inside it can't be fired blind. Clone's
+			// controller still picks what it copies when a Kismet is
+			// also replacing the entry. Firing Replace here instead
+			// would mark the selector applied and silently drop the
+			// copy — the permanent would enter as a 0/0 and nobody
+			// would be asked anything.
+			if g.offerCopyChoiceLocked(ev, chosen) {
+				return nil
+			}
+			continue
 		}
 		if chosen.effect.EntryLifeCost > 0 {
 			// An effect with a payment inside it can't be fired

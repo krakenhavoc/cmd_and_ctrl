@@ -232,6 +232,16 @@ export interface PendingChoiceView {
     // is a legal "fail to find" (CR 701.19c), so search_max is the
     // ceiling and the floor is zero.
     | "search_library"
+    // S16.5: "you may have this creature enter as a copy of ..."
+    // (Clone, Phyrexian Metamorph, Spark Double, Sakashima the
+    // Impostor). Options carries the permanents that may be copied —
+    // all public battlefield cards, so nothing is redacted. Answered
+    // with the generic {choice_id, card_ids} payload; an EMPTY list
+    // declines, because every printed card in this class says "you
+    // may". The permanent has NOT entered while the prompt is open:
+    // the answer decides what it enters AS, which is why its own ETB
+    // trigger has not fired yet either.
+    | "copy_target"
     | string;
   chooser: string;
   from_player: string;
