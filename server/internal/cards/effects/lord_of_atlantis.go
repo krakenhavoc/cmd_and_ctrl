@@ -75,10 +75,5 @@ func lordOfAtlantisOtherMerfolk(target *game.Card, g *game.Game, source *game.Ca
 	if target.InstanceID == source.InstanceID {
 		return false
 	}
-	for _, st := range target.Effective().Subtypes {
-		if st == "Merfolk" {
-			return true
-		}
-	}
-	return false
+	return target.HasSubtype("Merfolk")
 }

@@ -10,10 +10,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The mana ability is in reminder-text parentheses on the printed
 // card because it comes from the land types themselves — these really
 // are "Land — Island Swamp", which is why a Polluted Delta can fetch
-// a Sunken Hollow. The engine's synthetic mana ability only fires for
-// BASIC lands (ManaAbilitiesForCard → basicLandColor requires the
-// "basic" supertype), so the pipe ability is declared here explicitly
-// rather than left to fall out of the type line.
+// a Sunken Hollow. The engine's synthetic mana ability used to fire
+// only for BASIC lands, so the pipe ability was declared here
+// explicitly rather than left to fall out of the type line. That
+// shortcut is gone: ManaAbilitiesForCard now derives the CR 305.6
+// intrinsic abilities from a land's effective subtypes, supertype
+// or not. The declarations below are kept because a single pipe
+// ("Add {U} or {B}") is one click in the client where two separate
+// abilities are two, and because ManaAbilitiesForCard adds only the
+// colours a declaration cannot already make — so these cards get
+// exactly the abilities they had, and an Urborg still adds {B} to
+// the ones that can't produce it.
 //
 // The condition counts BASICS, unlike the checklands' land-type
 // check. That is the whole difference between the two cycles and it

@@ -16,15 +16,15 @@ import (
 // hasSubtype reports whether a card's post-layer subtypes carry the
 // given word — "Human" for Return of the Wildspeaker's non-Human
 // clause, "Treasure" for Professional Face-Breaker's sacrifice cost.
-// Post-layer so a type-adding effect composes; exact match so
+// Post-layer so a type-adding effect composes; whole-token match so
 // "Human" does not catch a hypothetical "Humanoid".
+//
+// Thin wrapper over game.Card.HasSubtype, which is where the engine
+// keeps the same question — an Urborg-granted Swamp and a
+// Conspiracy-granted Goblin have to answer identically whether the
+// asker is the mana pipeline or a card file.
 func hasSubtype(c game.Card, subtype string) bool {
-	for _, s := range c.Effective().Subtypes {
-		if s == subtype {
-			return true
-		}
-	}
-	return false
+	return c.HasSubtype(subtype)
 }
 
 // isTreasure is the sacrifice-cost predicate for "Sacrifice a
