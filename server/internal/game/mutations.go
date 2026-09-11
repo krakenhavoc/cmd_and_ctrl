@@ -5146,6 +5146,51 @@ func (g *Game) SetDiscordIdentity(playerID uuid.UUID, discordID, avatarHash, dis
 	return nil
 }
 
+// SetBot marks a seat as bot-driven with the named policy tier. Lobby
+// state only — a seat cannot change hands mid-game. Added in S31
+// sub-PR 4.
+func (g *Game) SetBot(playerID uuid.UUID, tier string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateLobby {
+		return ErrGameNotInLobby
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	p.IsBot = true
+	p.BotTier = tier
+	return nil
+}
+
+// RemovePlayer unseats a player and closes the gap in seat numbers.
+// Lobby state only: once a game has started a seat is permanent (a
+// player leaves by conceding). Added in S31 sub-PR 4 so a bot can be
+// removed from an unstarted table.
+func (g *Game) RemovePlayer(playerID uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateLobby {
+		return ErrGameNotInLobby
+	}
+	idx := -1
+	for i, p := range g.Seats {
+		if p != nil && p.ID == playerID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ErrPlayerNotFound
+	}
+	g.Seats = append(g.Seats[:idx], g.Seats[idx+1:]...)
+	for i, p := range g.Seats {
+		p.Seat = i
+	}
+	return nil
+}
+
 func (g *Game) SetPoison(playerID uuid.UUID, amount int) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()

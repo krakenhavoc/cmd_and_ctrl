@@ -439,6 +439,12 @@ type PlayerView struct {
 	// builds /avatars/{discord_id}/{discord_avatar_hash}.png to
 	// pull the cached portrait, and prefers display_name over name
 	// for the seat label.
+	// IsBot / BotTier mark an aiseat-driven seat and its policy tier
+	// so the client renders the BOT chip instead of an avatar. Added
+	// in S31 sub-PR 4.
+	IsBot   bool   `json:"is_bot,omitempty"`
+	BotTier string `json:"bot_tier,omitempty"`
+
 	DiscordID         string `json:"discord_id,omitempty"`
 	DiscordAvatarHash string `json:"discord_avatar_hash,omitempty"`
 	DisplayName       string `json:"display_name,omitempty"`
@@ -1535,6 +1541,8 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		DiscordID:         p.DiscordID,
 		DiscordAvatarHash: p.DiscordAvatarHash,
 		DisplayName:       p.DisplayName,
+		IsBot:             p.IsBot,
+		BotTier:           p.BotTier,
 		CommanderCasts:    cmdrCasts,
 		Counters:          cloneStringIntMap(p.Counters),
 		MaxHandSize:       g.EffectiveMaxHandSizeLocked(p),

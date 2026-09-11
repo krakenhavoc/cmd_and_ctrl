@@ -270,6 +270,71 @@ Violation codes (stable strings, keyable by the client):
   under `warnings` on both success and 422 responses (the server
   ignores the sideboard either way)
 
+### `POST /games/{id}/seats/bot` (S31)
+
+Seat a bot at an unstarted table. Allowed for admins and for any
+player already seated at this table — the request was "add to any
+unstarted table", not an admin chore. The seat counts toward the
+four-player limit exactly like a human, arrives with its deck
+installed, and is driven by a server-side runner from the moment the
+game starts (ADR 0033).
+
+The deck travels exactly as it does for `POST /games/{id}/decks` —
+`format` + `source`, same auto-detection, same parse / resolve /
+validate pipeline, same 422 violation shape — so a bot cannot be
+seated with a deck a human couldn't upload.
+
+**Request**
+
+```json
+{
+  "tier": "random",          // policy tier; only "random" is offered until sub-PRs 6/7
+  "name": "Bot 1",           // optional; defaults to "Bot N"
+  "format": "text",          // as for /decks
+  "source": "Commander:\n1 Krenko, Mob Boss\n\nMainboard:\n..."
+}
+```
+
+**Response** `201 Created`
+
+```json
+{
+  "game": { ...GameMeta, "players": [ ..., { "player_id": "<uuid>", "name": "Bot 1", "seat": 1, "deck_name": "...", "deck_uploaded": true, "is_bot": true, "bot_tier": "random" } ] },
+  "player_id": "<uuid>",
+  "deck_name": "...",
+  "warnings": [ ... ]        // as for /decks, omitted when empty
+}
+```
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | missing `source`, bad JSON, unknown `format` |
+| 403 | caller is neither admin nor seated at this game |
+| 404 | game not found |
+| 409 | game already started, or the table is full |
+| 422 | unknown `tier`, or the deck failed validation (violation list, as for `/decks`) |
+| 503 | card index not loaded, or bot seats are not enabled on this server |
+
+Seat arithmetic worth knowing: bots take real seats and the table
+holds four, so a seated human can add at most three. A four-bot table
+is reachable only by an admin creating the game and adding four — it
+is the engine's fuzz harness, not a player flow.
+
+### `DELETE /games/{id}/seats/bot/{player_id}` (S31)
+
+Unseat a bot from an unstarted table and close the gap in seat
+numbers. Same authorisation as adding one. Returns the updated
+`GameMeta`.
+
+| Status | Reason |
+|---|---|
+| 403 | caller is neither admin nor seated at this game; or `player_id` is not seated here |
+| 404 | game not found |
+| 409 | game already started |
+| 422 | the seat is a human, not a bot |
+
 ### `GET /me`
 
 Echo the principal attached to the request. Used by the client for

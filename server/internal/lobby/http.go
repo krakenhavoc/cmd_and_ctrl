@@ -121,6 +121,11 @@ type Config struct {
 	// that couldn't be pinned. Nil disables those warnings; nothing
 	// in the request path depends on it.
 	Log *slog.Logger
+
+	// Bots is the bot runner host (S31). Nil disables the
+	// /games/{id}/seats/bot routes with a 503 — the lobby can seat a
+	// bot but nothing would ever play it.
+	Bots BotHost
 }
 
 // GameEvictor is the subset of *ws.Hub that the lobby needs to close
@@ -224,6 +229,11 @@ func Handler(c Config) http.Handler {
 	// confirm. Read-only — no game state mutates.
 	mux.Handle("GET /games/{id}/auto-tap-preview", auth.Middleware(c.Auth)(handlerFunc(c, autoTapPreview)))
 	mux.Handle("POST /games/{id}/decks", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, uploadDeck))))
+	// S31: bot seats. Same deck pipeline (and the same rate bucket —
+	// the body is a decklist) as /decks; authorised for admin or any
+	// player already seated at the table.
+	mux.Handle("POST /games/{id}/seats/bot", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, addBot))))
+	mux.Handle("DELETE /games/{id}/seats/bot/{player}", auth.Middleware(c.Auth)(handlerFunc(c, removeBot)))
 	mux.Handle("GET /me", auth.Middleware(c.Auth)(handlerFunc(c, me)))
 
 	// Develop-environment card spawner (ADR 0023). Both routes are
@@ -886,6 +896,128 @@ type uploadDeckResponse struct {
 	Unimplemented []string `json:"unimplemented,omitempty"`
 }
 
+// resolveDeckSource is the shared parse → resolve → validate pipeline
+// behind POST /games/{id}/decks and POST /games/{id}/seats/bot. It
+// returns the installed-ready list and any non-fatal warnings. When
+// `written` is true the handler has already answered the request (a
+// 422 with the violation list) and the caller must return nil.
+func resolveDeckSource(c Config, w http.ResponseWriter, ctx context.Context, format, source string) (*deck.List, []deck.Violation, bool, error) {
+	// Parse: auto-detect if Format is empty. URLs are detected first
+	// since they're unambiguous ("http://" or "https://" prefix);
+	// JSON next (leading `{`); everything else is plain text.
+	trimmed := strings.TrimLeft(source, " \t\r\n")
+	if format == "" {
+		switch {
+		case strings.HasPrefix(trimmed, "http://"), strings.HasPrefix(trimmed, "https://"):
+			format = "url"
+		case strings.HasPrefix(trimmed, "{"):
+			format = "moxfield"
+		default:
+			format = "text"
+		}
+	}
+
+	var (
+		deckName string
+		entries  []deck.Entry
+		perr     error
+	)
+	switch format {
+	case "text":
+		entries, perr = deck.ParseText(source)
+	case "moxfield":
+		deckName, entries, perr = deck.ParseMoxfield([]byte(source))
+	case "url":
+		client := c.DeckHTTPClient
+		if client == nil {
+			client = deck.DefaultClient()
+		}
+		deckName, entries, perr = deck.FetchFromURL(ctx, client, strings.TrimSpace(source))
+		if perr != nil {
+			// Fetcher failures (unknown host, private deck, upstream
+			// down, etc.) surface via FetchViolation as typed 422
+			// entries so the client renders them the same way it
+			// renders validation violations.
+			if v, ok := deck.FetchViolation(strings.TrimSpace(source), perr); ok {
+				return nil, nil, true, writeDeckViolations(w, perr.Error(), []deck.Violation{v}, nil)
+			}
+			// Unknown-mechanic inside the fetched payload (e.g. a
+			// Moxfield deck with a companion slot) bubbles through
+			// here; fall into the existing Resolve-failure path
+			// below by leaving perr set.
+		}
+	default:
+		return nil, nil, false, httpError(http.StatusBadRequest, fmt.Sprintf("unknown deck format %q", format))
+	}
+	if perr != nil {
+		return nil, nil, false, httpError(http.StatusBadRequest, perr.Error())
+	}
+
+	list, err := deck.Resolve(c.Cards, deckName, entries)
+	if err != nil {
+		// Resolve failures that carry a per-card Violation list are
+		// surfaced with the same 422 `{"error", "violations"}` shape
+		// the validator uses, so the client has one schema to handle.
+		var uce *deck.UnknownCardError
+		if errors.As(err, &uce) {
+			return nil, nil, true, writeDeckViolations(w, err.Error(), uce.Violations(), nil)
+		}
+		var ume *deck.UnsupportedMechanicError
+		if errors.As(err, &ume) {
+			return nil, nil, true, writeDeckViolations(w, err.Error(), ume.Violations(), nil)
+		}
+		return nil, nil, false, httpError(http.StatusBadRequest, err.Error())
+	}
+
+	// Validate. Sideboard-only warnings are treated as non-fatal —
+	// we strip them from the violation list and pass the rest
+	// through. Everything else means the deck cannot be installed.
+	//
+	// Dev bypass (S14): when CMDCTRL_DEV_SKIP_DECK_VALIDATION is set
+	// to a non-empty value, skip validation entirely. Intended for
+	// manual-testing the card-effect catalog with a small throwaway
+	// deck (~5 cards + commander) — a full 100-card deck is
+	// tedious when all you want to do is cast Lightning Bolt. The
+	// env var is read per-request so flipping it on/off on a live
+	// server doesn't require a restart. Any non-empty value counts
+	// as "on" — defer to shell truthiness. NEVER set this in
+	// production.
+	var warnings []deck.Violation
+	var fatal []deck.Violation
+	if os.Getenv("CMDCTRL_DEV_SKIP_DECK_VALIDATION") != "" {
+		warnings = append(warnings, deck.Violation{
+			Code:    "dev_skip_validation",
+			Message: "CMDCTRL_DEV_SKIP_DECK_VALIDATION is set; deck validation was bypassed",
+		})
+	} else if verr := deck.Validate(list); verr != nil {
+		var ve *deck.ValidationError
+		if errors.As(verr, &ve) {
+			for _, v := range ve.Violations {
+				// The non-fatal classes: the deck imports and plays,
+				// with something declared. ADR 0034 added the second
+				// — a transform or split card is imported as its
+				// front half rather than refused, and the banner
+				// says so. Rejecting a whole deck over a card that
+				// is merely cosmetically simplified is the wrong
+				// trade; saying nothing is what produced #265.
+				if v.Code == deck.CodeSideboardUnsupported ||
+					v.Code == deck.CodeUnsupportedLayout {
+					warnings = append(warnings, v)
+					continue
+				}
+				fatal = append(fatal, v)
+			}
+			if len(fatal) > 0 {
+				return nil, nil, true, writeDeckViolations(w, "deck has validation errors", fatal, warnings)
+			}
+		} else {
+			return nil, nil, false, verr
+		}
+	}
+
+	return list, warnings, false, nil
+}
+
 // uploadDeck handles POST /games/{id}/decks. Accepts either plain-
 // text or Moxfield JSON, resolves each card against the Scryfall
 // index, validates the result against Commander rules, and — on
@@ -948,118 +1080,9 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	// Parse: auto-detect if Format is empty. URLs are detected first
-	// since they're unambiguous ("http://" or "https://" prefix);
-	// JSON next (leading `{`); everything else is plain text.
-	format := body.Format
-	source := strings.TrimLeft(body.Source, " \t\r\n")
-	if format == "" {
-		switch {
-		case strings.HasPrefix(source, "http://"), strings.HasPrefix(source, "https://"):
-			format = "url"
-		case strings.HasPrefix(source, "{"):
-			format = "moxfield"
-		default:
-			format = "text"
-		}
-	}
-
-	var (
-		deckName string
-		entries  []deck.Entry
-		perr     error
-	)
-	switch format {
-	case "text":
-		entries, perr = deck.ParseText(body.Source)
-	case "moxfield":
-		deckName, entries, perr = deck.ParseMoxfield([]byte(body.Source))
-	case "url":
-		client := c.DeckHTTPClient
-		if client == nil {
-			client = deck.DefaultClient()
-		}
-		deckName, entries, perr = deck.FetchFromURL(r.Context(), client, strings.TrimSpace(body.Source))
-		if perr != nil {
-			// Fetcher failures (unknown host, private deck, upstream
-			// down, etc.) surface via FetchViolation as typed 422
-			// entries so the client renders them the same way it
-			// renders validation violations.
-			if v, ok := deck.FetchViolation(strings.TrimSpace(body.Source), perr); ok {
-				return writeDeckViolations(w, perr.Error(), []deck.Violation{v}, nil)
-			}
-			// Unknown-mechanic inside the fetched payload (e.g. a
-			// Moxfield deck with a companion slot) bubbles through
-			// here; fall into the existing Resolve-failure path
-			// below by leaving perr set.
-		}
-	default:
-		return httpError(http.StatusBadRequest, fmt.Sprintf("unknown deck format %q", format))
-	}
-	if perr != nil {
-		return httpError(http.StatusBadRequest, perr.Error())
-	}
-
-	list, err := deck.Resolve(c.Cards, deckName, entries)
-	if err != nil {
-		// Resolve failures that carry a per-card Violation list are
-		// surfaced with the same 422 `{"error", "violations"}` shape
-		// the validator uses, so the client has one schema to handle.
-		var uce *deck.UnknownCardError
-		if errors.As(err, &uce) {
-			return writeDeckViolations(w, err.Error(), uce.Violations(), nil)
-		}
-		var ume *deck.UnsupportedMechanicError
-		if errors.As(err, &ume) {
-			return writeDeckViolations(w, err.Error(), ume.Violations(), nil)
-		}
-		return httpError(http.StatusBadRequest, err.Error())
-	}
-
-	// Validate. Sideboard-only warnings are treated as non-fatal —
-	// we strip them from the violation list and pass the rest
-	// through. Everything else means the deck cannot be installed.
-	//
-	// Dev bypass (S14): when CMDCTRL_DEV_SKIP_DECK_VALIDATION is set
-	// to a non-empty value, skip validation entirely. Intended for
-	// manual-testing the card-effect catalog with a small throwaway
-	// deck (~5 cards + commander) — a full 100-card deck is
-	// tedious when all you want to do is cast Lightning Bolt. The
-	// env var is read per-request so flipping it on/off on a live
-	// server doesn't require a restart. Any non-empty value counts
-	// as "on" — defer to shell truthiness. NEVER set this in
-	// production.
-	var warnings []deck.Violation
-	var fatal []deck.Violation
-	if os.Getenv("CMDCTRL_DEV_SKIP_DECK_VALIDATION") != "" {
-		warnings = append(warnings, deck.Violation{
-			Code:    "dev_skip_validation",
-			Message: "CMDCTRL_DEV_SKIP_DECK_VALIDATION is set; deck validation was bypassed",
-		})
-	} else if verr := deck.Validate(list); verr != nil {
-		var ve *deck.ValidationError
-		if errors.As(verr, &ve) {
-			for _, v := range ve.Violations {
-				// The non-fatal classes: the deck imports and plays,
-				// with something declared. ADR 0034 added the second
-				// — a transform or split card is imported as its
-				// front half rather than refused, and the banner
-				// says so. Rejecting a whole deck over a card that
-				// is merely cosmetically simplified is the wrong
-				// trade; saying nothing is what produced #265.
-				if v.Code == deck.CodeSideboardUnsupported ||
-					v.Code == deck.CodeUnsupportedLayout {
-					warnings = append(warnings, v)
-					continue
-				}
-				fatal = append(fatal, v)
-			}
-			if len(fatal) > 0 {
-				return writeDeckViolations(w, "deck has validation errors", fatal, warnings)
-			}
-		} else {
-			return verr
-		}
+	list, warnings, written, err := resolveDeckSource(c, w, r.Context(), body.Format, body.Source)
+	if written || err != nil {
+		return err
 	}
 
 	gameCards := list.ToGameCards()
@@ -1080,6 +1103,140 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		Warnings:      warnings,
 		Unimplemented: game.UnimplementedNames(gameCards),
 	})
+}
+
+// addBotRequest is the request shape for POST /games/{id}/seats/bot.
+// The deck travels exactly as it does for /decks — a decklist
+// (text, Moxfield JSON or a URL) — and goes through the same parse,
+// resolve and validate pipeline, so a bot cannot be seated with a
+// deck a human couldn't upload.
+type addBotRequest struct {
+	// Tier is the policy tier; must be one the bot host offers
+	// (GET /games/{id} does not list them yet — "random" is the only
+	// tier until sub-PRs 6 and 7 land).
+	Tier string `json:"tier"`
+	// Name is the seat's display name. Defaults to "Bot N".
+	Name string `json:"name,omitempty"`
+	// Format / Source are the decklist, as for uploadDeckRequest.
+	Format string `json:"format,omitempty"`
+	Source string `json:"source"`
+}
+
+// addBotResponse is the accepted seat.
+type addBotResponse struct {
+	Game     GameMeta         `json:"game"`
+	PlayerID uuid.UUID        `json:"player_id"`
+	DeckName string           `json:"deck_name"`
+	Warnings []deck.Violation `json:"warnings,omitempty"`
+}
+
+// botSeatAuthorised is the shared gate for the bot-seat routes: admin,
+// or a player whose session is bound to this game. Anyone at the
+// table may add or remove a bot while it is unstarted.
+func botSeatAuthorised(r *http.Request, id uuid.UUID) error {
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return httpError(http.StatusInternalServerError, "missing principal")
+	}
+	if p.Role != auth.RoleAdmin && p.GameID != id {
+		return httpError(http.StatusForbidden, "not a seat in this game")
+	}
+	return nil
+}
+
+// addBot handles POST /games/{id}/seats/bot. Added in S31 sub-PR 4.
+func addBot(c Config, w http.ResponseWriter, r *http.Request) error {
+	if c.Bots == nil {
+		return httpError(http.StatusServiceUnavailable, "bot seats are not enabled on this server")
+	}
+	if c.Cards == nil || c.Cards.Count() == 0 {
+		return httpError(http.StatusServiceUnavailable, "card index not loaded; run scripts/scryfall-refresh.sh")
+	}
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	if err := botSeatAuthorised(r, id); err != nil {
+		return err
+	}
+	if r.Body == nil {
+		return httpError(http.StatusBadRequest, "missing body")
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxDeckBodyBytes)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	var body addBotRequest
+	if err := dec.Decode(&body); err != nil {
+		var mbe *http.MaxBytesError
+		if errors.As(err, &mbe) {
+			return httpError(http.StatusRequestEntityTooLarge, fmt.Sprintf("deck source exceeds %d-byte limit", maxDeckBodyBytes))
+		}
+		return httpError(http.StatusBadRequest, fmt.Sprintf("invalid body: %s", err.Error()))
+	}
+	if strings.TrimSpace(body.Source) == "" {
+		return httpError(http.StatusBadRequest, "source is required")
+	}
+	tier := strings.ToLower(strings.TrimSpace(body.Tier))
+	known := false
+	for _, t := range c.Bots.Tiers() {
+		if t == tier {
+			known = true
+			break
+		}
+	}
+	if !known {
+		return fmt.Errorf("%w: %q (offered: %s)", ErrUnknownBotTier, body.Tier, strings.Join(c.Bots.Tiers(), ", "))
+	}
+
+	list, warnings, written, err := resolveDeckSource(c, w, r.Context(), body.Format, body.Source)
+	if written || err != nil {
+		return err
+	}
+	name := strings.TrimSpace(body.Name)
+	if name == "" {
+		meta, gerr := c.Lobby.Get(id)
+		if gerr != nil {
+			return gerr
+		}
+		bots := 0
+		for _, s := range meta.Players {
+			if s.IsBot {
+				bots++
+			}
+		}
+		name = fmt.Sprintf("Bot %d", bots+1)
+	}
+	meta, playerID, err := c.Lobby.AddBot(id, name, tier, list.Name, list.ToGameCards())
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusCreated, addBotResponse{
+		Game:     meta,
+		PlayerID: playerID,
+		DeckName: list.Name,
+		Warnings: warnings,
+	})
+}
+
+// removeBot handles DELETE /games/{id}/seats/bot/{player}. Added in
+// S31 sub-PR 4.
+func removeBot(c Config, w http.ResponseWriter, r *http.Request) error {
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	if err := botSeatAuthorised(r, id); err != nil {
+		return err
+	}
+	playerID, err := uuid.Parse(r.PathValue("player"))
+	if err != nil {
+		return httpError(http.StatusBadRequest, "invalid player id")
+	}
+	meta, err := c.Lobby.RemoveBot(id, playerID)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, meta)
 }
 
 // logout revokes the caller's credential server-side and clears the
@@ -1275,6 +1432,8 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusForbidden
 	case errors.Is(err, ErrGameNotActiveForSpawn):
 		status = http.StatusConflict
+	case errors.Is(err, ErrNotABot), errors.Is(err, ErrUnknownBotTier):
+		status = http.StatusUnprocessableEntity
 	case errors.Is(err, ErrEmptyName):
 		status = http.StatusBadRequest
 	case errors.Is(err, auth.ErrInvalidCredential),

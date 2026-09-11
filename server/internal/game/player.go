@@ -133,6 +133,14 @@ type Player struct {
 	DiscordAvatarHash string
 	DisplayName       string
 
+	// IsBot marks a seat driven by an aiseat runner rather than a
+	// WebSocket client; BotTier names its policy tier ("random",
+	// "heuristic", …). Set by Game.SetBot at seat time, exposed
+	// through PlayerView so the client can render the BOT chip.
+	// Added in S31 sub-PR 4.
+	IsBot   bool
+	BotTier string
+
 	// LosesAtNextSBA marks a player who has tried to draw from an
 	// empty library since the last SBA check (CR 704.5b) and will
 	// be eliminated on the next state-based-action loop. Set by the

@@ -40,6 +40,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
@@ -115,6 +116,11 @@ func main() {
 	// Lobby HTTP mutations (join/deck/start) broadcast through the
 	// hub so clients already on the game page see them immediately.
 	l.SetStateBroadcaster(hub)
+	// S31: bot seats. The manager starts a runner per bot seat when
+	// a game starts and stops them when it is deleted; runners
+	// broadcast their moves through the hub like any other commit.
+	bots := aiseat.NewManager(hub, aiseat.DefaultConfig(), log)
+	l.SetBotHost(bots)
 	if len(cfg.AllowedOrigins) > 0 {
 		hub.SetAllowedOrigins(cfg.AllowedOrigins)
 		log.Info("ws allowed-origins configured", "hosts", cfg.AllowedOrigins)
@@ -250,6 +256,7 @@ func main() {
 		BugReporter:       bugReporter,
 		BugStore:          bugStore,
 		Log:               log,
+		Bots:              bots,
 	}))
 
 	srv := &http.Server{
@@ -288,6 +295,7 @@ func main() {
 		log.Error("http shutdown", "err", err)
 	}
 	hub.Shutdown(shutdownCtx)
+	bots.Shutdown()
 	log.Info("server stopped")
 }
 
