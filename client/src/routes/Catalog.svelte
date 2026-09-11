@@ -454,10 +454,42 @@
     border-color: var(--gold);
     color: var(--gold-strong);
   }
+  /* Colour pips. Same geometry and typography as every other chip —
+     only the tint differs, so this stays inside the existing visual
+     language rather than starting a new one. The tints are the
+     universal WUBRG palette rather than something invented here;
+     colour identity is the one facet where colour IS the information,
+     and a card browser whose colour filter is monochrome is harder to
+     use than one that is not.
+
+     Unselected pips keep the plain chip surface and only pick up
+     their colour on the text, so a row of six does not shout. */
   .fchip.pip {
     width: 30px;
     padding: 0;
     justify-content: center;
+  }
+  .fchip.pW {
+    color: #e8dcc0;
+  }
+  .fchip.pU {
+    color: #7fb4e8;
+  }
+  .fchip.pB {
+    color: #b09ac4;
+  }
+  .fchip.pR {
+    color: #e88b7f;
+  }
+  .fchip.pG {
+    color: #7fc79a;
+  }
+  .fchip.pC {
+    color: var(--fg-muted);
+  }
+  .fchip.pip.on {
+    border-color: currentColor;
+    background: color-mix(in srgb, currentColor 16%, transparent);
   }
   .countbar {
     display: flex;
