@@ -134,7 +134,9 @@ describe("activated-ability targeting", () => {
     beginForAbility(bombardment, ability, ["c-fodder"]);
     const t = get(targeting)!;
     expect(t.mode).toBe("any");
-    expect(t.ability).toEqual({ index: 0, sacrificeIDs: ["c-fodder"] });
+    // crewIDs defaults to empty: this ability has no crew component,
+    // and the server treats absent and empty the same.
+    expect(t.ability).toEqual({ index: 0, sacrificeIDs: ["c-fodder"], crewIDs: [] });
     // The legal set comes from the ability, not the source card.
     expect(isLegalPlayerTarget(t, "p1")).toBe(true);
     expect(isLegalCardTarget(t, "c-bear")).toBe(true);

@@ -543,6 +543,11 @@ export interface ExilePlayView {
   // impulse exile, which charges the printed cost. Note that
   // `mana_cost` on the card still carries the printed value.
   cost_override?: string;
+  // S29 warp: the earliest turn number the grant is live on — "you
+  // may cast it from exile ON A LATER TURN". Absent for every grant
+  // that is live as soon as it is made, which is all of impulse
+  // exile and airbend.
+  not_before_turn?: number;
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a
@@ -568,6 +573,18 @@ export interface ActivatedAbilityView {
   // permanents the controller can pay it with right now.
   sacrifice_label?: string;
   sacrifice_options?: { players?: string[]; cards?: string[] };
+  // S27: a Vehicle's crew cost (CR 702.122a). crew_cost is the
+  // number that the tapped creatures' TOTAL POWER must reach;
+  // crew_options lists the creatures that could pay it right now —
+  // untapped creatures the controller controls, summoning-sick ones
+  // INCLUDED, because tapping to crew is not paying a {T} cost.
+  //
+  // Unlike a sacrifice cost this is a many-pick prompt with a floor
+  // rather than a count: any number of creatures is legal as long as
+  // the running total reaches crew_cost, and overshooting is fine.
+  // The picks ride activate_ability as `crew_ids`.
+  crew_cost?: number;
+  crew_options?: LegalTargetsView;
   // Present when the ability targets. A full LegalTargetsView since
   // #334: the server now stamps the clause's min / max (it always
   // had them; abilityLegalTargets just never copied them across),
