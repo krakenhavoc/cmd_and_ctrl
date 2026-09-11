@@ -12,9 +12,122 @@ ranked the first 100 cards of the gap and shipped 32 of them, this one
 ranks the next **2000** and splits them into 20 tracked batches of 100.
 Tracking issue: **#293**.
 
-## The audited catalog count — 288
+## Progress
 
-Not 289, and not the number `grep -c 'OracleID:'` reports.
+The map is being walked. This section is the running tally; the
+per-card detail lives on each batch's issue, and every simplification
+is a comment on its card file.
+
+| Batch | Issue | Registered | Skipped (declared) | Still blocked | Notes |
+|---|---|---:|---:|---:|---|
+| 01 | #294 | **29** | 2 | 69 | first pass — the "no new machinery" group, plus 3 cards two engine changes unblocked |
+| 02–20 | #295–#313 | 0 | 0 | — | not started |
+
+**Catalog: 288 → 319.** The 288 the audit below counted, plus Giant
+Growth and Overrun from the until-end-of-turn work (#314), plus the 29
+here. (The test binary reports 320 — the flicker probe, as explained
+below.) Batch 01 alone moves the play-rate coverage by **+2 in the top
+100** (Dark Ritual, Arcane Denial), **+17 in the top 200**, **+29 in
+the top 300**.
+
+### Batch 01 — what shipped
+
+26 of the 28 "no new machinery" cards, in rank order: Arcane Denial,
+Mana Drain, Victimize, Spectator Seating, Vault of Champions, Farewell,
+Undergrowth Stadium, Dreamroot Cascade, Tireless Provisioner,
+Stormcarved Coast, Spire Garden, Buried Ruin, Impact Tremors,
+Phyrexian Tower, Storm-Kiln Artist, Stroke of Midnight, Rapid
+Hybridization, Professional Face-Breaker, Bountiful Promenade,
+Fyndhorn Elves, Ornithopter of Paradise, Karplusan Forest, Terminate,
+Rockfall Vale, Mirkwood Bats, Brushland. That completes three land
+cycles — all ten bond lands, all ten painlands, six of the ten
+slowlands.
+
+Three more from the blocked groups, because the blockers moved:
+
+- **Dark Ritual** (rank 33, mana pipeline). A spell that adds mana had
+  no way to reach a pool — every mana in the engine came from
+  `ActivateManaAbility`. `AddManaForEffect` on `*Game` and the
+  `AddMana` primitive (`add_mana.go`) are the whole change; Mana Drain's
+  refund rides the same helper.
+- **Return of the Wildspeaker** and **Boros Charm** (until EOT). #314
+  landed `BoostUntilEOT` / `GrantKeywordUntilEOT` after the triage was
+  written, and both cards are those two primitives on modes.
+
+Two engine seams grew to make the ready cards honest:
+
+- **`DelayedTrigger.ControllerTurnOnly`** — "at the beginning of
+  **your** next main phase" (Mana Drain) as opposed to "the next
+  turn's upkeep" (Arcane Denial). Without it the refund fired on the
+  next opponent's main phase and emptied unused.
+- **`triggerAlreadyPendingFrom`** — the "whenever **one or more**
+  creatures you control deal combat damage" dedup (Professional
+  Face-Breaker). The engine emits one damage event per creature; the
+  helper declines the second while the first trigger is still queued.
+  Without it the card ships stronger than printed, which is the #259
+  direction.
+
+### Batch 01 — simplifications, all weaker than printed
+
+- **Arcane Denial** — "may draw up to two" is "draws two", and both
+  draws ride one delayed trigger (two simultaneous triggers under one
+  controller would pop a meaningless ordering prompt every upkeep).
+- **Mana Drain** — fires at your next **precombat** main phase; a
+  Drain cast in your own precombat main waits a turn instead of paying
+  out in that turn's postcombat main.
+- **Victimize** — the sacrifice is an additional cost to cast, not a
+  resolution-time action (no sacrifice-then-continue prompt exists).
+  The engine validates targets before it pays the cost, so the
+  sacrificed creature can never be one of the two targets — same as
+  printed. The returned creatures enter untapped and are tapped a beat
+  later.
+- **Tireless Provisioner** — always a Treasure, never a Food (no
+  resolution-time option prompt for a trigger).
+- **Storm-Kiln Artist** — "cast or **copy**": no spell-copy event
+  exists, so copies make no Treasure.
+- **Boros Charm** — the indestructible mode is inert (nothing in the
+  destroy path reads the keyword); the label says so.
+
+### Batch 01 — skipped from the "ready" group, with the missing seam
+
+The mechanical triage was optimistic about two:
+
+- **Black Market Connections** — needs a beginning-of-main-phase
+  trigger event (only upkeep and end step exist) **and** a
+  resolution-time "choose one or more" prompt for a trigger (the modal
+  machinery is cast-time only).
+- **Growth Spiral** — "you may put a land card from your hand onto the
+  battlefield" needs a pick-from-hand prompt with a continuation and a
+  hand-to-battlefield move; neither exists. Shipping the draw alone
+  would be a misleading cantrip, the Chromatic Lantern reasoning.
+
+And from the until-EOT group, still blocked despite #314: Heroic
+Intervention (hexproof and indestructible are both inert, so the whole
+card would be a no-op), Rogue's Passage ("can't be blocked" is a combat
+restriction), Toxic Deluge ("pay X life" as an additional cost has no
+shape), Akroma's Will (the "choose both if you control a commander"
+clause plus two inert keywords), Teferi's Protection and The One Ring
+(the protection family, #95).
+
+### Two engine bugs batch 01 found, both fixed with a regression test
+
+- **Impulse exile took the bottom card.** `ExileTopWithPermissionForEffect`
+  read `Library.Cards[0]`; the library's top is the **last** element
+  (`PopTop`, and so every draw and mill). Every earlier test seeded a
+  one-card library, where the two coincide — Ragavan and Breeches had
+  been exiling the wrong end of the library since S21.
+- **A token entering never invalidated the layer cache.**
+  `CreateTokenForEffect` emits no `EventZoneMove`, which was the only
+  entry event the layer listener watched, so a Goblin made under
+  Glorious Anthem stayed 1/1 until something unrelated forced a
+  recompute, and tokens never got a CR 613 timestamp. The listener now
+  treats `EventTokenCreated` as an entry.
+
+## The audited catalog count — 288 (at the time of the audit)
+
+Not 289, and not the number `grep -c 'OracleID:'` reports. This is the
+number the 2000-card gap below was computed against; the running
+count is in the Progress section above.
 
 Cards register from **tables inside `for` loops** — `temples.go`,
 `check_lands.go`, `battle_lands.go`, `bond_lands.go`, `shocklands.go`,
