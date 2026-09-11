@@ -194,6 +194,26 @@ const (
 	// Answered with {card_ids: []string}; an empty or absent list is
 	// "fail to find".
 	PendingChoiceSearchLibrary PendingChoiceKind = "search_library"
+
+	// PendingChoiceMayCast — "you may cast it without paying its
+	// mana cost", asked while an ability is RESOLVING and about one
+	// specific card it has just put somewhere the chooser can reach
+	// (CR 702.85's cascade is the card that forced it).
+	//
+	// Deliberately not PendingChoicePayUnless with a "{0}" cost,
+	// which would work mechanically: that prompt's whole client-side
+	// vocabulary is "Pay {2}" / "Don't pay", and a dialog that reads
+	// "Pay {0}?" about a free spell is the kind of copy that makes a
+	// player answer the wrong question. The offered card rides the
+	// choice (MayCastCard) so the prompt can show the card rather
+	// than name it.
+	//
+	// Answered with the same {apply: bool} payload the other four
+	// yes/no kinds use; `true` takes the offer. The engine grants a
+	// free-cast permission rather than casting inline — see
+	// cascade.go for why, and for the delayed cleanup that keeps the
+	// grant from outliving the offer.
+	PendingChoiceMayCast PendingChoiceKind = "may_cast"
 )
 
 // PendingChoice is one outstanding "someone needs to pick" entry
@@ -307,6 +327,19 @@ type PendingChoice struct {
 	// Added in S20 sub-PR 2.
 	pickTargetResume *pickTargetFrame
 
+	// copySpellResume is the other continuation a
+	// PendingChoicePickTarget can carry (S30, #95): the CR 706.10
+	// "you may choose new targets for the copy" prompt. It reuses
+	// the pick_target prompt rather than getting a kind of its own
+	// because the QUESTION is identical — here is a target clause,
+	// here is its legal set, pick within Min..Max — and every
+	// consumer (the wire projection, the client picker, the bot's
+	// choice enumerator) then needs no change at all to answer it.
+	// What differs is only what gets built on submit, which is what
+	// the frame decides. Exactly one of pickTargetResume and
+	// copySpellResume is set.
+	copySpellResume *copySpellFrame
+
 	// SacrificeOptions is the set of permanents a
 	// PendingChoiceSacrifice's chooser may pick from — their own
 	// permanents matching the effect's spec, computed when the
@@ -373,6 +406,17 @@ type PendingChoice struct {
 	// land", Gamble's random discard). Not serialised to the wire.
 	searchResume *searchResumeFrame
 
+	// MayCastCard is the one card a PendingChoiceMayCast is offering
+	// — the cascade hit. Wire-serialised as the choice's single
+	// Options entry so the client's prompt can show the card face
+	// instead of quoting a name into a sentence.
+	MayCastCard uuid.UUID
+
+	// mayCastResume is the server-only continuation for a
+	// PendingChoiceMayCast: what to do on each answer. Not
+	// serialised. Added in S28.
+	mayCastResume *mayCastFrame
+
 	// scryResume is the continuation for a PendingChoiceScry: the
 	// rest of the effect, which must not run until the player has
 	// finished the scry. Preordain's "Scry 2, THEN draw a card" is the
@@ -402,6 +446,20 @@ type payUnlessFrame struct {
 	cost      ParsedCost
 	onDecline func(g *Game) error
 	onPay     func(g *Game) error
+}
+
+// mayCastFrame carries the two branches of a PendingChoiceMayCast.
+// Both receive the live *Game rather than a captured one, on the same
+// undo-safety contract payUnlessFrame and StackItem.Effect follow.
+//
+// onDecline is not optional in practice: cascade's "no" branch still
+// has to bottom the pile, and an offer whose refusal does nothing at
+// all would not need a prompt. It is nil-checked anyway, because a
+// future caller with a genuinely inert "no" shouldn't have to write
+// an empty closure.
+type mayCastFrame struct {
+	onAccept  func(g *Game) error
+	onDecline func(g *Game) error
 }
 
 // pickTargetFrame is the continuation for a targeted trigger's
@@ -474,13 +532,17 @@ type DamageAssignmentFrame struct {
 	// battlefield).
 	SourceController uuid.UUID
 
-	// SourceIsCommander + SourceOwner are the attacker's commander
-	// flag and owner at prompt-queue time, cached for the same
-	// died-before-resume reason as SourceLifelink. The trample-to-
-	// player resume path uses them to accrue CR 903.10a commander
-	// damage on the defending player.
+	// SourceIsCommander is the attacker's commander flag at
+	// prompt-queue time, cached for the same died-before-resume
+	// reason as SourceLifelink. The trample-to-player resume path
+	// uses it to accrue CR 903.10a commander damage on the defending
+	// player, keyed by AttackerID above.
+	//
+	// (S25 (#77) dropped the companion SourceOwner field: since
+	// CommanderDamage is keyed by commander instance ID rather than
+	// by owning player, AttackerID is already the key and a cached
+	// owner had no remaining reader.)
 	SourceIsCommander bool
-	SourceOwner       uuid.UUID
 }
 
 // replacementResumeFrame is the unexported per-prompt continuation
@@ -674,13 +736,7 @@ func (g *Game) dequeueChoiceLocked(idx int) {
 //
 // Caller must hold g.mu.
 func (g *Game) queueOptionalReplacementPromptLocked(ev *ReplacementEvent, chosen activeReplacement) {
-	var chooser uuid.UUID
-	if chosen.effect.Controller != nil {
-		chooser = chosen.effect.Controller(ev, g, chosen.source)
-	}
-	if chooser == uuid.Nil {
-		chooser = affectedPlayerForEvent(ev, []activeReplacement{chosen}, g)
-	}
+	chooser := g.optionalReplacementChooserLocked(ev, chosen)
 	reason := chosen.effect.PromptQuestion
 	if reason == "" {
 		reason = chosen.effect.Label
@@ -697,6 +753,21 @@ func (g *Game) queueOptionalReplacementPromptLocked(ev *ReplacementEvent, chosen
 		},
 	}
 	g.QueueChoiceForEffect(choice)
+}
+
+// optionalReplacementChooserLocked is who answers a CR 614.10 "may"
+// prompt: the effect's Controller when it names one (the commander's
+// owner for CR 903.9), else the event's affected player. Caller must
+// hold g.mu.
+func (g *Game) optionalReplacementChooserLocked(ev *ReplacementEvent, chosen activeReplacement) uuid.UUID {
+	var chooser uuid.UUID
+	if chosen.effect.Controller != nil {
+		chooser = chosen.effect.Controller(ev, g, chosen.source)
+	}
+	if chooser == uuid.Nil {
+		chooser = affectedPlayerForEvent(ev, []activeReplacement{chosen}, g)
+	}
+	return chooser
 }
 
 // ResolveOptionalReplacement processes a resolve_choice action
@@ -1198,22 +1269,29 @@ func (g *Game) ResolveDamageAssignment(
 		}
 		// Earlier blockers must be at-least-lethal before this one
 		// receives any damage (CR 510.1c "assigns damage in order").
-		for j := 0; j < i; j++ {
-			prior := ordered[j]
-			priorLethal := 1
-			if !frame.HasDeathtouch {
-				pblk := findBattlefieldCard(g, prior.BlockerID)
-				if pblk != nil {
-					priorRemaining := pblk.CurrentToughness() - pblk.DamageMarked
-					if priorRemaining > 1 {
-						priorLethal = priorRemaining
-					} else if priorRemaining <= 0 {
-						priorLethal = 0
+		// Only a blocker that actually receives damage constrains its
+		// predecessors: with three blockers and two power, [2, 0, 0]
+		// is the only legal split, and checking the zero entries'
+		// priors rejected it — no assignment could ever be accepted
+		// and the table wedged. Found by the S31 bot fuzzer.
+		if e.Amount > 0 {
+			for j := 0; j < i; j++ {
+				prior := ordered[j]
+				priorLethal := 1
+				if !frame.HasDeathtouch {
+					pblk := findBattlefieldCard(g, prior.BlockerID)
+					if pblk != nil {
+						priorRemaining := pblk.CurrentToughness() - pblk.DamageMarked
+						if priorRemaining > 1 {
+							priorLethal = priorRemaining
+						} else if priorRemaining <= 0 {
+							priorLethal = 0
+						}
 					}
 				}
-			}
-			if prior.Amount < priorLethal {
-				return ErrInvalidParam
+				if prior.Amount < priorLethal {
+					return ErrInvalidParam
+				}
 			}
 		}
 		// If this blocker got less than lethal AND anything downstream
@@ -1400,6 +1478,13 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 	if choice.Chooser != chooserID {
 		return ErrNotTheChooser
 	}
+	// S30: the same prompt kind serves the CR 706.10 spell-copy
+	// re-target. Handled before the trigger frame because the two
+	// are mutually exclusive and the copy path builds something
+	// that is not a triggered ability.
+	if cf := choice.copySpellResume; cf != nil {
+		return g.resolveCopySpellTargetsLocked(idx, cf, targets)
+	}
 	frame := choice.pickTargetResume
 	if frame == nil || frame.build == nil || frame.spec == nil {
 		g.dequeueChoiceLocked(idx)
@@ -1426,7 +1511,7 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 	// it is put on the stack, which is right here. Emitted after the
 	// queue so a "becomes the target" trigger stacks above the
 	// ability that targeted. Added in S22 for Monk Gyatso.
-	g.emitBecameTargetLocked(item.Controller, item.SourceCardID, targets)
+	g.emitBecameTargetLocked(item.Controller, item.SourceCardID, item.ID, targets)
 	g.runStateChecksLocked()
 	return nil
 }
@@ -1584,6 +1669,98 @@ func (g *Game) QueueMayPayForEffect(
 			onPay: onPay,
 		},
 	})
+	return nil
+}
+
+// QueueMayCastForEffect queues a "you may cast <card> without paying
+// its mana cost" prompt for `chooser`, asked from inside a resolving
+// ability (cascade). `source` attributes the prompt to the card whose
+// text is asking; `question` is the dialog header.
+//
+// A chooser who is no longer seated / is eliminated is not asked and
+// `onDecline` runs instead — the same default pay-unless takes, and
+// right for the same reason: the consequence attached to the answer
+// that can no longer be given is the one that happens.
+//
+// Caller must hold g.mu. Added in S28.
+func (g *Game) QueueMayCastForEffect(
+	chooser, source, cardID uuid.UUID,
+	question string,
+	onAccept, onDecline func(g *Game) error,
+) error {
+	if p := g.playerByIDLocked(chooser); p == nil || p.Eliminated {
+		if onDecline != nil {
+			return onDecline(g)
+		}
+		return nil
+	}
+	g.QueueChoiceForEffect(PendingChoice{
+		Kind:        PendingChoiceMayCast,
+		Chooser:     chooser,
+		Count:       1,
+		Source:      source,
+		Reason:      question,
+		MayCastCard: cardID,
+		mayCastResume: &mayCastFrame{
+			onAccept:  onAccept,
+			onDecline: onDecline,
+		},
+	})
+	return nil
+}
+
+// ResolveMayCast processes the chooser's answer to a
+// PendingChoiceMayCast entry. `apply: true` takes the offer.
+//
+// Exactly one branch runs, the prompt is dequeued either way, and the
+// SBA / trigger drain runs afterwards because either branch can move
+// cards between zones.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+// Added in S28.
+func (g *Game) ResolveMayCast(choiceID, chooserID uuid.UUID, apply bool) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	idx := -1
+	for i, c := range g.PendingChoices {
+		if c != nil && c.ID == choiceID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ErrPendingChoiceNotFound
+	}
+	choice := g.PendingChoices[idx]
+	if choice.Kind != PendingChoiceMayCast {
+		return ErrInvalidParam
+	}
+	if choice.Chooser != chooserID {
+		return ErrNotTheChooser
+	}
+	frame := choice.mayCastResume
+	g.dequeueChoiceLocked(idx)
+	if frame == nil {
+		return nil
+	}
+	branch := frame.onDecline
+	if apply {
+		branch = frame.onAccept
+	}
+	if branch != nil {
+		if err := branch(g); err != nil {
+			g.EmitEvent(Event{
+				Kind:     EventEffectError,
+				Actor:    chooserID,
+				Source:   choice.Source,
+				ErrorMsg: err.Error(),
+			})
+		}
+	}
+	g.runStateChecksLocked()
 	return nil
 }
 

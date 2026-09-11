@@ -62,6 +62,7 @@ const (
 	TypeResolveChoice       = "resolve_choice"
 	TypeKeepHand            = "keep_hand"
 	TypeMulligan            = "mulligan"
+	TypeDiscardSelection    = "discard_selection"
 )
 
 // Move is one fully-specified thing a seat may do right now. Type
@@ -127,6 +128,23 @@ func EnumerateForWithOptions(g *game.Game, seat uuid.UUID, opts Options) []Move 
 	return out
 }
 
+// EnumerateLocked is EnumerateFor for a caller that ALREADY holds
+// g's read lock — protocol.ViewOfGame builds its whole snapshot
+// inside one ReadSnapshot, and stamping the move list from in there
+// is what keeps the moves and the frame describing the same instant.
+//
+// Calling EnumerateFor from that position instead would take the
+// read lock a second time, which sync.RWMutex only tolerates while
+// no writer is queued: one Apply arriving mid-projection turns it
+// into a deadlock. Callers that do NOT hold the lock must use
+// EnumerateFor.
+func EnumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
+	if g == nil || seat == uuid.Nil {
+		return nil
+	}
+	return enumerateLocked(g, seat, opts.withDefaults())
+}
+
 // enumerateLocked is the lock-held core. Every helper it calls reads
 // through the game's *ForEffect surfaces and never takes g.mu.
 func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
@@ -156,6 +174,12 @@ func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 		return e.out
 	}
 	if anyChoiceOpen(g) {
+		return e.out
+	}
+	// Cleanup-step discard (CR 514.1): the cursor parks at Cleanup with
+	// no priority holder until the active player discards down to
+	// their maximum hand size. Nothing else is legal meanwhile.
+	if e.cleanupDiscardMoves() {
 		return e.out
 	}
 

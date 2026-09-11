@@ -22,6 +22,22 @@ on:
   # dispatch also publishes nothing -- it compiles, tests and typechecks,
   # and stops there.
   workflow_dispatch:
+  # The merge queue. GitHub builds a temporary
+  # refs/heads/gh-readonly-queue/... ref containing this PR stacked on
+  # main plus everything ahead of it in the queue, and waits for the
+  # required checks to pass on THAT ref before merging.
+  #
+  # This is the trigger that makes the queue work at all: without it no
+  # run is ever dispatched for a queued entry, the required check never
+  # reports, and every merge sits until it times out.
+  #
+  # It is also the fix for the class of breakage that took main down on
+  # 2026-09-11: two PRs each added a GoldToken to different regions of
+  # tokens.go, so neither conflicted textually and both were green
+  # against the main that existed before the other landed. Nothing
+  # built the combination until after both had merged. The queue builds
+  # exactly that combination, before.
+  merge_group:
 
 concurrency:
   group: cmdctrl-cd-${{ github.ref }}
@@ -30,7 +46,10 @@ concurrency:
   # branches serialized (never cancel) so an in-flight deploy can't be
   # aborted mid-rsync -- that would leave a host with a new binary and
   # a half-written client bundle.
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
+  # Never cancel a merge-queue run: the queue is waiting on that exact
+  # check to report, and a cancelled run reads as a failure that ejects
+  # the PR from the queue.
+  cancel-in-progress: ${{ github.event_name != 'merge_group' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
 jobs:
   cmdctrl-ci:
@@ -553,13 +572,22 @@ jobs:
       # a log that doesn't say which box, so this one names the host.
       - name: Verify reported environment
         run: |
-          body=$(ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
-            "curl -fsS --retry 5 --retry-delay 2 --retry-connrefused http://127.0.0.1:${LOCAL_PORT}/config")
+          # systemd reports active the moment the process forks, but the
+          # server does not bind until it has loaded the Scryfall dump and
+          # built the card index -- comfortably longer than the 10s the
+          # original --retry 5 allowed, so every deploy failed here while
+          # the deployment itself was fine. 30 retries at 2s covers a cold
+          # start with headroom and still gives up well inside the job.
+          if ! body=$(ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "curl -fsS --retry 30 --retry-delay 2 --retry-connrefused --max-time 120 http://127.0.0.1:${LOCAL_PORT}/config"); then
+            echo "::error::${SERVICE} on ${CMDCTRL_HOST} never answered GET /config on port ${LOCAL_PORT}. The unit is active but not listening -- check 'journalctl -u ${SERVICE}' on that host."
+            exit 1
+          fi
           echo "GET /config on ${CMDCTRL_HOST} -> ${body}"
           case "${body}" in
             *'"env":"'"${APP_ENV}"'"'*) ;;
             *)
-              echo "::error::${SERVICE} on ${CMDCTRL_HOST} did not report env=${APP_ENV}. Check CMDCTRL_ENV in ${ENV_FILE} on that host."
+              echo "::error::${SERVICE} on ${CMDCTRL_HOST} answered, but did not report env=${APP_ENV}. Check CMDCTRL_ENV in ${ENV_FILE} on that host."
               exit 1
               ;;
           esac

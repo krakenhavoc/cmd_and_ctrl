@@ -73,3 +73,66 @@ func Cleave(cost string, targets *game.TargetSpec) game.AlternativeCost {
 		Targets:  targets,
 	}
 }
+
+// Flashback is "Flashback {cost} (You may cast this card from your
+// graveyard for its flashback cost. Then exile it.)" — CR 702.34.
+//
+// The first alternative cost that is also a cast PATH. It carries
+// two things a card file must not be trusted to remember separately:
+//
+//   - FromZone. The offer is claimable only out of the graveyard,
+//     and a card that declares it must also list ZoneGraveyard in
+//     Spec.CastableZones (Register panics otherwise). Without the
+//     binding the cost would be claimable from hand, which on Deep
+//     Analysis or a Past-in-Flames-fuelled Past in Flames is a real
+//     discount rather than a cosmetic one.
+//   - ExileOnLeavingStack. This is what keeps flashback from being
+//     infinite, and it is a REPLACEMENT (CR 702.34a says "any time
+//     it would leave the stack"), not an exile appended to the
+//     resolution — so a flashed-back spell that fizzles is exiled,
+//     and one answered by Hinder is exiled rather than shuffled
+//     away. A card file that wrote the cost by hand would get a
+//     spell that flashes back, lands in the graveyard, and flashes
+//     back again every turn forever.
+//
+// The card file still has to open the zone; the constructor cannot
+// do it, because CastableZones and AlternativeCosts are separate
+// fields on the Spec:
+//
+//	CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
+//	AlternativeCosts: []game.AlternativeCost{Flashback("{2}{R}")},
+func Flashback(cost string) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:                 "flashback",
+		Label:               "Flashback " + cost,
+		ManaCost:            cost,
+		FromZone:            game.ZoneGraveyard,
+		ExileOnLeavingStack: true,
+	}
+}
+
+// Warp is "Warp {cost} (You may cast this card from your hand for
+// its warp cost. Exile this creature at the beginning of the next
+// end step, then you may cast it from exile on a later turn.)" —
+// CR 702.183, and the fix for #324.
+//
+// Unlike flashback, warp is paid from HAND: it is a discount now in
+// exchange for the real card later, which is why it needs no
+// CastableZones declaration. The later cast is an ordinary cast from
+// exile for the printed mana cost, riding the same
+// ExilePlayPermission impulse exile and airbend already use — so
+// the client's existing exile button renders it with no new code.
+//
+// The constructor bundles the exile clause for the same reason
+// Evoke bundles its sacrifice: a card file that wrote
+// `game.AlternativeCost{ManaCost: "{R}"}` by hand would ship a
+// creature that costs one mana and stays on the battlefield forever,
+// which is not a discount but a strictly better card.
+func Warp(cost string) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:       "warp",
+		Label:     "Warp " + cost,
+		ManaCost:  cost,
+		WarpExile: true,
+	}
+}

@@ -624,9 +624,7 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	if g.State != StateActive {
 		return Turn{}, ErrGameNotActive
 	}
-	prev := g.Turn
-	g.Turn = g.Turn.advance(len(g.Seats))
-	g.onTurnAdvanceLocked(prev, g.Turn)
+	g.advanceCursorLocked()
 	g.runStepEntryHooksLocked()
 	// CR 117.5 / 704.3: SBAs fire whenever a player would get
 	// priority. AdvanceStep lands on a priority-granting step (Untap
@@ -636,6 +634,33 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	// that accumulated during the prior step without a priority pass.
 	g.runStateChecksLocked()
 	return g.Turn, nil
+}
+
+// advanceCursorLocked moves the step cursor forward by one — the
+// single seam every step transition goes through. On a turn wrap it
+// skips seats that have left the game (CR 800.4a: an eliminated
+// player's turns are skipped) and fires onTurnAdvanceLocked so the
+// per-turn caches clear.
+//
+// Both halves fix bugs the S31 bot fuzzer found on its first run:
+// Turn.advance rotated into eliminated seats, handing priority to a
+// player who could not act (humans had been escaping with
+// advance_step), and the cleanup hook's wrap never called
+// onTurnAdvanceLocked, so SpellsCastThisTurn / LoyaltyActivatedThisTurn
+// survived every ordinary turn change. Caller must hold g.mu.
+func (g *Game) advanceCursorLocked() {
+	prev := g.Turn
+	n := len(g.Seats)
+	g.Turn = g.Turn.advance(n)
+	if prev.IsNewTurn(g.Turn) {
+		for i := 0; i < n && g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < n && g.Seats[g.Turn.ActiveSeat].Eliminated; i++ {
+			// Wrap again from this seat's (never-taken) cleanup.
+			skipped := g.Turn
+			skipped.Step = StepCleanup
+			g.Turn = skipped.advance(n)
+		}
+	}
+	g.onTurnAdvanceLocked(prev, g.Turn)
 }
 
 // onTurnAdvanceLocked clears any per-turn caches whenever the
@@ -648,6 +673,24 @@ func (g *Game) onTurnAdvanceLocked(prev, next Turn) {
 	if !prev.IsNewTurn(next) {
 		return
 	}
+	// S25 (#77): invalidate the layer cache. A continuous effect
+	// whose AppliesTo reads the TURN rather than the battlefield —
+	// Zurgo Helmsmasher's "during your turn, ~ has indestructible" is
+	// the first in the catalog — changes its answer here and nowhere
+	// else, so nothing would otherwise mark the cached
+	// characteristics stale and the keyword would stick around on the
+	// wrong player's turn.
+	//
+	// This is the bump layer_listener.go's header predicted and
+	// deliberately deferred ("Step / phase advance … when they
+	// arrive in a later sprint, advance the version inside the
+	// step-advance helper directly — no event for it today"). It
+	// lands here rather than in the listener for the reason that note
+	// gives: there is no event for a turn change to listen to.
+	//
+	// Cost is one recompute per turn, against a cache that is already
+	// invalidated by every zone move and every counter placed.
+	g.layerVersion.Add(1)
 	if g.LoyaltyActivatedThisTurn != nil {
 		g.LoyaltyActivatedThisTurn = nil
 	}
@@ -749,7 +792,7 @@ func (g *Game) runStepEntryHooksLocked() {
 		if canceled {
 			// Step canceled — advance past and recurse so the
 			// cursor hits the next step's entry hook.
-			g.Turn = g.Turn.advance(len(g.Seats))
+			g.advanceCursorLocked()
 			g.runStepEntryHooksLocked()
 			return
 		}
@@ -769,6 +812,29 @@ func (g *Game) runStepEntryHooksLocked() {
 	// step, so it waits for the following one. See delayed.go.
 	g.fireDelayedTriggersLocked(g.Turn.Step)
 	switch g.Turn.Step {
+	case StepPrecombatMain:
+		// S27 / CR 714.2b: "after your draw step, put a lore counter
+		// on each Saga you control" is a turn-based action performed
+		// as the precombat main phase begins. Precombat main grants
+		// priority, so there is no auto-advance — the chapter
+		// triggers this queues are drained onto the stack by the
+		// caller's drainPendingTriggersAPNAPLocked / runStateChecks,
+		// which is the same boundary every other turn-based action
+		// uses.
+		g.advanceSagasForActiveSeatLocked()
+		// S30: announce the precombat main phase so "at the beginning
+		// of your precombat main phase" triggers auto-fire through
+		// the harvester. Same shape as the upkeep and end-step
+		// announcements, and it follows the Saga advance for the same
+		// reason CR 714.2b puts that first: the turn-based action
+		// happens as the phase begins, and the triggers that watch
+		// the phase go on the stack above whatever it queued.
+		if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
+			g.EmitEvent(Event{
+				Kind:  EventBeginPrecombatMain,
+				Actor: g.Seats[g.Turn.ActiveSeat].ID,
+			})
+		}
 	case StepEnd:
 		// S22: announce the end step so "at the beginning of your
 		// end step" triggers auto-fire through the harvester. The
@@ -806,7 +872,7 @@ func (g *Game) runStepEntryHooksLocked() {
 			g.untapAllForLocked(g.Turn.ActiveSeat)
 		}
 		// Untap grants no priority; recurse into the next step.
-		g.Turn = g.Turn.advance(len(g.Seats))
+		g.advanceCursorLocked()
 		g.runStepEntryHooksLocked()
 	case StepDraw:
 		if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
@@ -871,7 +937,7 @@ func (g *Game) runStepEntryHooksLocked() {
 		// until DiscardSelection drains the pending map and re-fires
 		// this hook.
 		if len(g.DiscardPending) == 0 {
-			g.Turn = g.Turn.advance(len(g.Seats))
+			g.advanceCursorLocked()
 			g.runStepEntryHooksLocked()
 		}
 	}

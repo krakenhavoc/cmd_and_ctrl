@@ -20,18 +20,20 @@ import (
 //     (CurrentPower / CurrentToughness delegation) and Tarmogoyf-
 //     style CDA inputs (graveyard-counter changes etc.).
 //
-// Things this listener INTENTIONALLY does NOT bump on yet:
-//   - Step / phase advance. "Until end of turn" continuous effects
-//     are out of scope for S16; when they arrive in a later sprint,
-//     advance the version inside the step-advance helper directly
-//     (no event for it today; cleanest is a direct call rather than
-//     a new event kind for one consumer).
-//   - Nothing, as of S24. Both entries this list used to carry —
-//     aura attachment and Mind Control's layer-2 control change —
-//     landed in S24. Attachment got its own EventAttach /
-//     EventUnattach kinds below; the control change needed no event
-//     of its own, because it is a continuous effect whose only input
-//     is the attachment that already bumps.
+// Things this listener INTENTIONALLY does NOT bump on:
+//   - Turn advance. Handled, but not here: S25 (#77) put the bump in
+//     `onTurnAdvanceLocked` (game.go) exactly as this note used to
+//     prescribe, because there is no event for a turn change to
+//     listen to. Zurgo Helmsmasher's "during your turn, ~ has
+//     indestructible" is the forcing function — a static whose
+//     predicate reads the turn rather than the battlefield.
+//     (Turn-scoped "until end of turn" effects do NOT depend on that
+//     bump: `ClearExpiredTurnScopedStaticsLocked` bumps the version
+//     itself when it sweeps.)
+//   - Control changes. Nothing needed as of S24: Mind Control's
+//     layer-2 control change is a continuous effect whose only input
+//     is the attachment, and attachment bumps already via the
+//     EventAttach / EventUnattach kinds below.
 //
 // EventETB and EventLTB are also covered by EventZoneMove for every
 // CARD (every zone change emits both), so the listener doesn't

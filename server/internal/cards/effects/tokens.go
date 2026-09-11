@@ -162,6 +162,10 @@ func TreasureToken() game.Card {
 // Same five-colour pipe as Treasure, so it runs through the same
 // commander-identity filter rather than offering a five-way prompt in
 // a mono-coloured deck.
+//
+// Cheaper than a Treasure by a tap: the printed cost is the sacrifice
+// alone, so a Gold made this turn is spendable this turn and a tapped
+// Gold is still spendable. Both fall out of leaving TapCost false.
 func GoldToken() game.Card {
 	return game.Card{
 		Name:     "Gold",
@@ -306,5 +310,104 @@ func WhiteAllyToken() game.Card {
 		TypeLine:  "Token Creature — Ally",
 		Power:     1,
 		Toughness: 1,
+	}
+}
+
+// BlackZombieToken is the 2/2 black Zombie Grave Titan makes, two at
+// a time, on both halves of its trigger. Vanilla — the Titan's power
+// is the volume, not the bodies.
+func BlackZombieToken() game.Card {
+	return game.Card{
+		Name:      "Zombie",
+		TypeLine:  "Token Creature — Zombie",
+		Power:     2,
+		Toughness: 2,
+		Colors:    []string{"B"},
+	}
+}
+
+// ThopterToken is the 1/1 colorless Thopter ARTIFACT creature with
+// flying that Hangarback Walker leaves behind. Both halves of the
+// type line are load-bearing — an artifact creature answers the
+// catalog's artifact-matters cards as well as its creature-matters
+// ones — and the flying is real, carried on Keywords the way every
+// token's printed keywords have been since S21 sub-PR 1.
+func ThopterToken() game.Card {
+	return game.Card{
+		Name:      "Thopter",
+		TypeLine:  "Token Artifact Creature — Thopter",
+		Power:     1,
+		Toughness: 1,
+		Keywords:  []string{"flying"},
+	}
+}
+
+// --- S27 templates ---------------------------------------------
+
+// KnightVigilanceToken is History of Benalia's 2/2 white Knight with
+// vigilance. The subtype matters as much as the stats: the Saga's
+// third chapter pumps "Knights you control", which reads the
+// effective subtype off exactly this type line.
+func KnightVigilanceToken() game.Card {
+	return game.Card{
+		Name:      "Knight",
+		TypeLine:  "Token Creature — Knight",
+		Power:     2,
+		Toughness: 2,
+		Keywords:  []string{"vigilance"},
+	}
+}
+
+// HumanSoldierToken is The First Iroan Games' 1/1 white Human
+// Soldier. Vanilla.
+func HumanSoldierToken() game.Card {
+	return game.Card{
+		Name:      "Human Soldier",
+		TypeLine:  "Token Creature — Human Soldier",
+		Power:     1,
+		Toughness: 1,
+	}
+}
+
+// WallDefenderToken is The Birth of Meletis' 0/4 colorless Wall
+// artifact creature with defender.
+//
+// Its 0 power is the reason the toughness has to be written down:
+// the CR 704.5f state-based action skips a creature printed 0/0 with
+// no counters (the demo-seed placeholder convention documented on
+// Card.Power), and a 0/4 must not be mistaken for that case.
+func WallDefenderToken() game.Card {
+	return game.Card{
+		Name:      "Wall",
+		TypeLine:  "Token Artifact Creature — Wall",
+		Power:     0,
+		Toughness: 4,
+		Keywords:  []string{"defender"},
+	}
+}
+
+// --- S27 Vehicle templates -------------------------------------
+
+// CatToken is Esika's Chariot's 2/2 green Cat. Vanilla — and the
+// pair of them is exactly the Chariot's crew 4.
+func CatToken() game.Card {
+	return game.Card{
+		Name:      "Cat",
+		TypeLine:  "Token Creature — Cat",
+		Power:     2,
+		Toughness: 2,
+	}
+}
+
+// AngelVigilanceToken is Parhelion II's 4/4 white Angel with flying
+// and vigilance. Both keywords are real: they ride Card.Keywords,
+// which printedCharacteristic folds into the layer engine.
+func AngelVigilanceToken() game.Card {
+	return game.Card{
+		Name:      "Angel",
+		TypeLine:  "Token Creature — Angel",
+		Power:     4,
+		Toughness: 4,
+		Keywords:  []string{"flying", "vigilance"},
 	}
 }

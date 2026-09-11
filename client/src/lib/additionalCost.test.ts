@@ -53,7 +53,10 @@ describe("canCastFromHand — additional costs", () => {
     return { kind, owner: "p0", count: cards.length, cards };
   }
 
-  function snapshot(hand: CardView[]): GameView {
+  // S31: the cast verdict is the server's enumerated move list, so
+  // the fixture has to state what the server offered. `moves` is the
+  // instance IDs the enumerator listed a cast for.
+  function snapshot(hand: CardView[], moves: string[] = []): GameView {
     const seat: PlayerView = {
       id: "p0",
       name: "Me",
@@ -83,6 +86,16 @@ describe("canCastFromHand — additional costs", () => {
       mulligans_open: false,
       stack_items: [],
       split_second_active: false,
+      legal_moves: [
+        { type: "pass_priority", player: "p0", kind: "pass", label: "Pass priority" },
+        ...moves.map((id) => ({
+          type: "cast_spell",
+          player: "p0",
+          kind: "cast" as const,
+          label: `Cast ${id}`,
+          source: id,
+        })),
+      ],
     };
   }
 
@@ -93,6 +106,8 @@ describe("canCastFromHand — additional costs", () => {
   });
 
   it("denies the cast when the hand holds only the spell", () => {
+    // The server withheld it (CR 601.2h — the cost is unpayable) and
+    // the client supplies the sentence.
     const verdict = canCastFromHand(thrill, snapshot([thrill]), "p0");
     expect(verdict.legal).toBe(false);
     expect(verdict.reason).toBe("No card to discard");
@@ -100,6 +115,6 @@ describe("canCastFromHand — additional costs", () => {
 
   it("allows it once there is something else to pitch", () => {
     const fodder = card({ instance_id: "fodder", type_line: "Sorcery" });
-    expect(canCastFromHand(thrill, snapshot([thrill, fodder]), "p0").legal).toBe(true);
+    expect(canCastFromHand(thrill, snapshot([thrill, fodder], ["thrill"]), "p0").legal).toBe(true);
   });
 });
