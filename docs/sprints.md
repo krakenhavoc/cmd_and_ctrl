@@ -62,8 +62,8 @@ planned just-in-time from the S12 pain-point triage.
 | S18.5    | Zone browser + library search (mini)                                 | 7     | [#179](https://github.com/krakenhavoc/cmd_and_ctrl/issues/179) | 2026-11-05 | **done**    |
 | S19      | Auto-fire triggered abilities                                        | 7     | [#69](https://github.com/krakenhavoc/cmd_and_ctrl/issues/69)   | 2026-11-29 | **done**    |
 | S20      | Auto-target legality + smart cast UI                                 | 7     | [#70](https://github.com/krakenhavoc/cmd_and_ctrl/issues/70)   | 2026-12-27 | **done**    |
-| S21      | Tokens, sacrifice, aristocrats                                       | 7     | [#73](https://github.com/krakenhavoc/cmd_and_ctrl/issues/73)   | 2027-01-24 | planned     |
-| S22      | Card draw + library manipulation                                     | 7     | [#74](https://github.com/krakenhavoc/cmd_and_ctrl/issues/74)   | 2027-02-21 | planned     |
+| S21      | Tokens, sacrifice, aristocrats                                       | 7     | [#73](https://github.com/krakenhavoc/cmd_and_ctrl/issues/73)   | 2027-01-24 | **done**    |
+| S22      | Card draw + library manipulation                                     | 7     | [#74](https://github.com/krakenhavoc/cmd_and_ctrl/issues/74)   | 2027-02-21 | partial     |
 | S23      | Mass removal + boardwipes                                            | 7     | [#75](https://github.com/krakenhavoc/cmd_and_ctrl/issues/75)   | 2027-03-21 | planned     |
 | S24      | Equipment, auras, attachments                                        | 7     | [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76)   | 2027-04-18 | planned     |
 | S25      | Voltron / commander damage focus                                     | 7     | [#77](https://github.com/krakenhavoc/cmd_and_ctrl/issues/77)   | 2027-05-16 | planned     |
@@ -74,6 +74,24 @@ planned just-in-time from the S12 pain-point triage.
 | S30      | Damage prevention, cloning, face-down, deferred protection keywords  | 7     | [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95)   | 2027-09-05 | planned     |
 | Post-S30 | Rolling deck-driven catalog growth                                   | 7     | TBD at S30 retro                                               | rolling    | not started |
 | S31      | AI bot seat (legal-move enumeration + tiered policy)                 | 8     | [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89)   | 2027-09-26 | planned     |
+
+### How to read the status column
+
+`**done**` means the sprint's own **exit criteria** are met, not that every checklist box is ticked
+— most sprints leave a primitive or a card-count line behind, and a sprint is not held open by one.
+`partial` means load-bearing work has shipped under that sprint's name but the exit criteria are
+demonstrably unmet. `planned` means nothing has shipped, and it is the row that does real damage
+when it is wrong: a `planned` row is read by agents as "this mechanic is unbuilt", which is how
+several of them concluded that shipped features were blocked.
+
+**The `feat(sNN)` commit scope has drifted away from this table, and S22 is where it shows.** Nine
+commits carry `feat(s22)` — attack triggers (#254), flicker and delayed triggers (#255),
+alternative cast costs (#257), the Hashaton deck (#258), staples batches (#261, #267), shocklands
+(#268), airbend (#269) and convoke (#271) — and **none of them is card draw or library
+manipulation**, which is what S22 actually is. They belong to S19, S22, S28 and rolling catalog
+growth respectively. When the two disagree, the sprint *section* below is the scope and the commit
+tag is just a label someone typed. Retitling S22–S30 as themed epics, so PRs can reference the
+sprint they are really in, is tracked on [#281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/281).
 
 ---
 
@@ -1739,7 +1757,9 @@ Mini sprint slotted after S18 started, to ship two pieces of long-promised clien
 - [ ] ~40 cards: more token producers, sacrifice outlets, proliferate cards (26 of ~40 so far across sub-PRs 1–6 plus the Pirates batch)
 - [ ] Theme-deck smoke test (Korvold-style aristocrats deck plays 3 turns)
 
-**Exit criteria:** Cast Goblin Bombardment + Blood Artist + Krenko, Mob Boss; sacrifice tokens to Bombardment one at a time → opponent's life ticks down (Blood Artist + Bombardment damage); your life ticks up (Blood Artist gain). — **met** in `TestS21ExitCriteriaAristocratsCombo` (effects/aristocrats_test.go).
+**Exit criteria:** Cast Goblin Bombardment + Blood Artist + Krenko, Mob Boss; sacrifice tokens to Bombardment one at a time → opponent's life ticks down (Blood Artist + Bombardment damage); your life ticks up (Blood Artist gain). — **met** in `TestS21ExitCriteriaAristocratsCombo` (`server/internal/cards/effects/aristocrats_test.go:211`).
+
+**Status: done.** All six sub-PRs merged (#216, #217, #219, #225, #230, #232) plus the Pirates batch. Three items are left behind deliberately and do not hold the sprint open: `Proliferate` and `CreateTokenAdvanced` (zero hits anywhere in `server/`), the ~40-card tally (bookkeeping — the catalog is well past it, nobody has re-tallied which cards belong to this theme), and the theme-deck smoke test (**no theme-deck harness exists for any sprint**; either build one once and apply it to every sprint, or drop the line from all of them). [#73](https://github.com/krakenhavoc/cmd_and_ctrl/issues/73) stays open only for that remainder.
 
 ---
 
@@ -1754,6 +1774,8 @@ Mini sprint slotted after S18 started, to ship two pieces of long-promised clien
 - [ ] Theme-deck smoke test (blue draw deck plays 3 turns)
 
 **Exit criteria:** Activate Sensei's Divining Top → personal-only modal shows top 3 cards → reorder → confirm. Necropotence: activate to exile a card → advance to end step → card moves to hand automatically.
+
+**Status: partial — and less of it is done than the commit log suggests.** Exactly one checklist item has shipped: the delayed-trigger mechanism, as `Game.DelayedTriggers` in `server/internal/game/delayed.go` ([ADR 0026](decisions/0026-delayed-triggers.md), #255), which is the half of the Necropotence exit criterion that does not involve drawing cards. **Every draw and library primitive is still absent** — `ScryN`, `SurveilN`, `Explore`, `RevealAndChoose`, `MillToZone`, `DrawAndScry`, `KindLookAtCards` and `KindRevealCards` each return zero hits across `server/internal/`. Neither exit criterion can be met today: there is no personal-only look-at-cards frame and no scry/reorder UI. The nine `feat(s22)` commits on `main` shipped attack triggers, flicker, alternative cast costs (which is S28 scope — see that section) and roughly fifty cards; they are good work under a misleading tag. See the note under the sprint index.
 
 ---
 
