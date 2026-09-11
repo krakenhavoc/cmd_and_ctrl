@@ -273,3 +273,17 @@ func WhiteElephantToken() game.Card {
 		Toughness: 3,
 	}
 }
+
+// WhiteAllyToken is Appa, Steadfast Guardian's 1/1 white Ally.
+// Vanilla — no keywords — so the template carries only the printed
+// fields. Like every other template in this file it leaves Colors
+// unset; nothing in the engine reads a token's color yet, and
+// stamping one here alone would be an untested special case.
+func WhiteAllyToken() game.Card {
+	return game.Card{
+		Name:      "Ally",
+		TypeLine:  "Token Creature — Ally",
+		Power:     1,
+		Toughness: 1,
+	}
+}
