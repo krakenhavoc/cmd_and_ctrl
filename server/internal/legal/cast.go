@@ -136,7 +136,8 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 			}
 		}
 		if addCost.Sacrifice != nil {
-			lt := g.LegalTargetsForEffect(e.seat, addCost.Sacrifice)
+			// Cost, not target — see SpecCandidatesForEffect.
+			lt := g.SpecCandidatesForEffect(e.seat, addCost.Sacrifice)
 			var pool []uuid.UUID
 			for _, id := range lt.Cards {
 				if c := findBattlefield(g, id); c != nil && c.Controller == e.seat {

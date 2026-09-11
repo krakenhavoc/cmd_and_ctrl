@@ -29,6 +29,14 @@ const haste = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill=
 
 const flash = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 L 12 8"/><path d="M12 16 L 12 22"/><path d="M2 12 L 8 12"/><path d="M16 12 L 22 12"/><path d="M6 6 L 8.5 8.5"/><path d="M18 18 L 15.5 15.5"/><path d="M18 6 L 15.5 8.5"/><path d="M6 18 L 8.5 15.5"/><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none"/></svg>`;
 
+// S23 targeting pair. Hexproof is a shield with a crossed-out
+// targeting reticle — "your opponents can't point at this"; shroud
+// is the same reticle behind a full curtain, because shroud stops
+// everyone including you.
+const hexproof = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L 5 5.5 L 5 11 C 5 15.5 8 19.5 12 21 C 16 19.5 19 15.5 19 11 L 19 5.5 Z"/><circle cx="12" cy="11.5" r="3"/><path d="M9.2 8.7 L 14.8 14.3"/></svg>`;
+
+const shroud = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4 C 8 7 16 7 20 4 L 20 15 C 20 19 16.5 21 12 21 C 7.5 21 4 19 4 15 Z"/><path d="M8 11 L 16 11"/><path d="M8.5 15 L 15.5 15"/></svg>`;
+
 export const KEYWORD_ICONS: Record<string, string> = {
   flying,
   reach,
@@ -42,4 +50,6 @@ export const KEYWORD_ICONS: Record<string, string> = {
   defender,
   haste,
   flash,
+  hexproof,
+  shroud,
 };

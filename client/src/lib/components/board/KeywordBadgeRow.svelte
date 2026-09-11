@@ -6,7 +6,8 @@
   // keywords via Layer 6 static abilities (Lord of Atlantis →
   // islandwalk on other Merfolk).
   //
-  // Known keywords (the S18 set of 12) render as flat currentColor
+  // Known keywords (the S18 set of 12 plus the S23 targeting pair,
+  // hexproof and shroud) render as flat currentColor
   // SVG icons from keywordIcons.ts. Unknown tokens fall back to a
   // 3-letter text badge so a Lord of Atlantis "islandwalk" grant
   // stays readable as "ISL" until S26 tribal landswalk handling
@@ -33,6 +34,8 @@
     defender: "Defender",
     haste: "Haste",
     flash: "Flash",
+    hexproof: "Hexproof",
+    shroud: "Shroud",
   };
 
   function labelFor(kw: string): string {
