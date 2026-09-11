@@ -21,19 +21,23 @@ is a comment on its card file.
 | Batch | Issue | Registered | Skipped (declared) | Still blocked | Notes |
 |---|---|---:|---:|---:|---|
 | 01 | #294 | **29** | 2 | 69 | first pass — the "no new machinery" group, plus 3 cards two engine changes unblocked |
-| 02 | #295 | **36** | 19 | 45 | four land cycles extended; 10 cards the triage called blocked turned out writable |
+| 02 | #295 | **38** | 19 | 43 | landed in three streams — #351 (25), this branch (11), #356's mana pipeline (Boros Signet, Mox Opal) |
 | 03–20 | #296–#313 | 0 | 0 | — | not started |
 
-**Catalog: 320 → 356**, measured with `len(effects.All())` on
-`origin/main` and again after batch 02, both minus the flicker probe.
-(The test binary reports 321 and 357; the probe is explained below.)
-Note the batch-01 entry of this section derived "319" by adding up what
-it believed had landed — the registry actually held 320, so the derived
-figure was one low. This line is measured, not derived. Batch 01 moved
-play-rate coverage by
-**+2 in the top 100** (Dark Ritual, Arcane Denial), **+17 in the top
-200**, **+29 in the top 300**; batch 02 adds **+16 more in the top 300**
-and **+20 between rank 301 and 360**.
+**Catalog: 366 → 377**, measured with `len(effects.All())` minus the
+flicker probe — 366 on `origin/main` at `badd530`, 377 with this
+branch's eleven. (The test binary reports 367 and 378; the probe is
+explained below.)
+
+Always MEASURE this line, never derive it. The batch-01 entry derived
+"319" by adding up what it believed had landed when the registry
+actually held 320, and the count has since been moved by three
+concurrent work streams that no single batch author could see.
+
+Batch 01 moved play-rate coverage by **+2 in the top 100** (Dark
+Ritual, Arcane Denial), **+17 in the top 200**, **+29 in the top 300**;
+batch 02 adds **+18 more in the top 300** and **+20 between rank 301
+and 360**.
 
 ### Batch 01 — what shipped
 
@@ -128,11 +132,12 @@ clause plus two inert keywords), Teferi's Protection and The One Ring
   recompute, and tokens never got a CR 613 timestamp. The listener now
   treats `EventTokenCreated` as an entry.
 
-### Batch 02 — what shipped, in two passes
+### Batch 02 — what shipped, in three streams
 
-36 cards of the 100 at `edhrec_rank` 238–360, landed by **two sessions
-that worked #295 in parallel without knowing it**. Recording that here
-because the near-miss is the reusable lesson, not the trivia:
+38 cards of the 100 at `edhrec_rank` 238–360, landed by **three work
+streams, two of which were the same issue worked in parallel without
+either session knowing**. Recording that here because the near-miss is
+the reusable lesson, not the trivia:
 
 - **First pass — PR #351, 25 cards.** The "no new machinery" group.
 - **Second pass — this branch, 11 cards.** What the first pass did not
@@ -142,6 +147,9 @@ because the near-miss is the reusable lesson, not the trivia:
   them because the triage had filed them under a blocker that had
   already moved; two (Entomb, Buried Alive) because they needed a
   one-case engine fix that ships with them.
+- **Third stream — #356, 2 cards.** The mana-pipeline work picked up
+  Boros Signet and Mox Opal on its way past. Nobody planned that as
+  part of #295.
 
 **Six oracle IDs were written twice into differently-named files** —
 `original_duals.go` / `original_dual_lands.go` and `bounce_lands.go` /
@@ -212,10 +220,21 @@ re-check first, and this is how much it was worth here:
   replacement pipeline is synchronous with no per-card prompt.
   `ReplacementEffect.Optional` is a bare yes/no and carries a hazard
   besides — see below.
-- **`ManaAbilityCost` has no mana component** (5): the filter lands —
+- **`ManaAbilityCost` had no mana component** (5): the filter lands —
   Cascade Bluffs, Flooded Grove, Fetid Heath, Twilight Mire, Rugged
-  Prairie. The triage called these ready; they are blocked on exactly
-  what Boros Signet and Skycloud Expanse are blocked on.
+  Prairie. The triage called these ready; they were blocked on exactly
+  what Boros Signet and Skycloud Expanse were blocked on.
+
+  **This skip was already stale when it was written.** #356 (the mana
+  pipeline) landed `ManaAbilityCost.Mana` while this branch was in
+  flight — `signets.go` uses it for Boros Signet's "{1}, {T}: Add
+  {R}{W}" — so the stated blocker is gone. What remains unverified for
+  the filter lands is only the three-way OUTPUT choice ("Add {U}{U},
+  {U}{R}, or {R}{R}"), which is a different question from the cost.
+  **These five are the obvious next pickup**, and they are deliberately
+  not taken here: the mana pipeline is another session's lane and this
+  batch has already collided once. Recording the staleness rather than
+  leaving it to rot is the #350 lesson.
 - **No replacement on *triggering*** (1): Panharmonicon. There is no
   `RepEvent` for an ability triggering.
 - **No replacement on *token creation*** (1): Academy Manufactor. Same
