@@ -267,6 +267,24 @@ needs more of S21/S23 than exists; Combo is a bad idea regardless.
 Aggro, ramp-stompy, and a thin spell-based control deck are what
 today's catalog actually supports. Ship three good decks, not six thin ones.
 
+> **Update, 2026-09-11 (sub-PR 5 as built).** The count was four, not
+> three. The principle above held; the catalog moved underneath it.
+> **Aristocrats became buildable** — S21's sacrifice outlets and death
+> payoffs and S23's board wipes both landed, so mono-black aristocrats
+> shipped alongside aggro, ramp-stompy and control. **Voltron and
+> Equipment/Aura are still out, but no longer for the reason given
+> here**: the attachment layer shipped (#374), and so did the first
+> seven attachments (#379, #380). Seven is not a Voltron deck. That
+> archetype is now waiting on card count, not on engine machinery, and
+> needs no decision to unblock it — just more cards.
+>
+> One thing this section did not anticipate is worth recording, because
+> it cost real cards: **registered is not implemented.** A spec can be
+> in the registry with its load-bearing clause declared unmodelled, and
+> the coverage test cannot see the difference. Gemcutter Buccaneer and
+> Teferi, Time Raveler both pass the test and were both cut by hand.
+> The test is a floor; reading the card file is still the job.
+
 Any-deck support — where the bot improvises from oracle text — is a
 later tier, gated behind decision 8 being proven in practice.
 

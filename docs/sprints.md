@@ -1945,9 +1945,9 @@ Triaged just-in-time from real-play feedback.
 
 1. **The legal-move enumerator** — `server/internal/legal/` (sub-PR 1, #286). **Shipped.** This is the closed move list the whole design rests on; nothing bot-shaped is safe to build before it.
 2. **`protocol.LogEvent` and a bounded public log on `GameView`** (sub-PR 0). **Not shipped** — zero hits for `LogEvent` across `server/internal/protocol/`. ADR 0033 §4 argues this is a prerequisite rather than a refinement: a policy handed only a snapshot cannot see that the seat to its left wiped the board last turn, and that is most of what a Commander player reasons about. Players want it independently.
-3. **Attachments — equipment and auras** ([#280](https://github.com/krakenhavoc/cmd_and_ctrl/issues/280), spike in S32, implementation S33). **Not shipped**; `Card.AttachedTo` and the `Attach` / `Detach` / `EquipPay` family have zero hits. This is the constraint on *decks*, not on plumbing: without it, Voltron and every Equipment or Aura strategy is unbuildable, and the archetypes today's catalog actually supports are aggro, ramp-stompy and thin spell-based control. **Ship three bot decks, not six** — sub-PR 5 already says three, and #280 is the reason.
+3. ~~**Attachments — equipment and auras**~~ ([#280](https://github.com/krakenhavoc/cmd_and_ctrl/issues/280)). **Shipped** on 2026-09-11, after this paragraph was written: the relation in [#374](https://github.com/krakenhavoc/cmd_and_ctrl/pull/374) (`game/attach.go`, `Card.AttachedTo`, the CR 704.5m/n SBA), then the first attachments in [#379](https://github.com/krakenhavoc/cmd_and_ctrl/pull/379) and [#380](https://github.com/krakenhavoc/cmd_and_ctrl/pull/380). This no longer blocks sub-PR 5 — see the note there for what the deck list ended up being and why Voltron still isn't one of them.
 
-Sub-PRs 0 through 4 can proceed without #280; only sub-PR 5's deck list depends on it.
+Nothing is now blocked on #280. Sub-PR 5's deck list was the only thing that ever was, and it shipped four decks without needing it.
 
 ### Sub-PR 0 — public game log
 
@@ -1995,9 +1995,12 @@ The engine has no event history: `GameView` carries none, the client has none, a
 
 ### Sub-PR 5 — curated decks + coverage test
 
-- [ ] `internal/aiseat/decks/` — **three** decks that today's catalog actually supports: aggro, ramp-stompy, spell-based control
-- [ ] Build-failing test: every card in every bot deck resolves to a registered `effects.Spec`
-- [ ] Explicitly deferred: Voltron and any Equipment/Aura deck (needs S24 attachment layer), Aristocrats (needs more of S21/S23), Combo
+- [x] `internal/aiseat/decks/` — **four** decks, one more than this section originally scoped. Aggro (Izzet, Mary Read and Anne Bonny), ramp-stompy (Simic, Tatyova), spell-based control (Esper, Hashaton) — plus **aristocrats** (mono-black, Syr Konrad), which this section deferred on the grounds that S21/S23 were missing. They landed: the sacrifice outlets and death payoffs are in the catalog, and so are the board wipes.
+- [x] Build-failing test: every card in every bot deck resolves to a registered `effects.Spec`, with the MDFC back-face keys (`<oracle_id>#1`) explicitly rejected — a card is not covered because its back face registered
+- [x] `decks.Lookup(id)` / `decks.All()` / `decks.Load(idx, id)` — sub-PR 4's interface. `Load` runs the same `ParseText` → `Resolve` → `Validate` pipeline a player upload runs, so a bot deck is held to exactly the rules a human deck is
+- [x] Offline tests for count, singleton and colour identity; a `CMDCTRL_SCRYFALL_DUMP`-gated test runs the full `deck.Validate` against the real dump (all four decks pass against 117,738 printings)
+- [ ] **Voltron / Equipment / Aura: still deferred, but the reason has changed.** The attachment layer is no longer the blocker — the relation shipped in #374 and the first attachments in #379 and #380. There are seven of them (Bonesplitter, Lightning Greaves, Skullclamp, Swiftfoot Boots, Sword of Feast and Famine, Sword of Fire and Ice, Rancor). A Voltron deck wants fifteen to twenty-five. This is now a card-count problem that clears as the catalog grows, with no engine work in front of it
+- [ ] Combo: still out, per ADR 0033 §7 — bad idea for a bot regardless of coverage
 
 ### Sub-PR 6 — heuristic policy (Layer B)
 
