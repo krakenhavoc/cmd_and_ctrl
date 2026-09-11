@@ -734,11 +734,7 @@ func TestDeclareAttackerAcceptsHasteCreatureSameTurn(t *testing.T) {
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == attacker {
 			g.Battlefield.Cards[i].SummonedThisTurn = true
-			g.Battlefield.Cards[i].effective = &Characteristic{
-				Power:     g.Battlefield.Cards[i].Power,
-				Toughness: g.Battlefield.Cards[i].Toughness,
-				Abilities: []string{"haste"},
-			}
+			g.Battlefield.Cards[i].effective = printedEffectiveWith(g.Battlefield.Cards[i], "haste")
 		}
 	}
 	advanceTo(t, g, StepDeclareAttackers)
@@ -752,11 +748,7 @@ func TestDeclareAttackerRejectsDefender(t *testing.T) {
 	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == attacker {
-			g.Battlefield.Cards[i].effective = &Characteristic{
-				Power:     g.Battlefield.Cards[i].Power,
-				Toughness: g.Battlefield.Cards[i].Toughness,
-				Abilities: []string{"defender"},
-			}
+			g.Battlefield.Cards[i].effective = printedEffectiveWith(g.Battlefield.Cards[i], "defender")
 		}
 	}
 	advanceTo(t, g, StepDeclareAttackers)
