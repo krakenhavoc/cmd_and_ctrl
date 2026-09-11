@@ -137,6 +137,28 @@ type ReplacementEvent struct {
 	// the same lock before the ETB event.
 	EntersWithCounters map[string]int
 
+	// entryResumable is an unexported breadcrumb meaning "if this
+	// entry pauses for a prompt, the generic resume path may finish
+	// it" (executeEntryToBattlefieldLocked). Set by the land-play
+	// branch of CastSpell, the one entry site whose push the generic
+	// resume reproduces exactly.
+	//
+	// Off by default on purpose. The other battlefield-entry sites
+	// do things the generic push can't: a resolving permanent spell
+	// queues evoke's sacrifice trigger from its StackItem, and an
+	// exile→battlefield return mints a new InstanceID (CR 400.7).
+	// Finishing those generically would silently drop the sacrifice
+	// or the new object identity, which is worse than leaving them
+	// exactly as they were before this flag existed — they still
+	// never pause today.
+	//
+	// An effect that WOULD pause consults this before prompting: a
+	// pay-life entry choice on an unflagged event takes the un-paid
+	// branch rather than stranding the card in its old zone (see
+	// offerEntryLifePaymentLocked). Any entry site that grows a
+	// faithful resume should set this and inherit the prompt.
+	entryResumable bool
+
 	// asCommanderMove is an unexported breadcrumb set by
 	// MoveCardByIDAsCommander when the caller flagged the move as
 	// a commander-initiated one. The commander-zone built-in's
@@ -261,6 +283,20 @@ type ReplacementEffect struct {
 	// graveyard" cards would use it too. Added in S17 sub-PR 6.
 	Optional bool
 
+	// EntryLifeCost, when > 0, makes this a "you may pay N life; if
+	// you don't, <replacement>" effect — the Ravnica shockland
+	// cycle. The apply-loop queues a PendingChoiceEntryPayLife
+	// prompt and bails; paying means Replace NEVER runs, declining
+	// means it does. That inversion is why it isn't Optional: an
+	// Optional "yes" applies the replacement, and here "yes" is what
+	// avoids it, at a price.
+	//
+	// A player who can't legally pay (CR 118.4 — life total below
+	// the cost) is not prompted; the replacement applies. Takes
+	// precedence over Optional, which is meaningless alongside it.
+	// See entry_choice.go. Added with the shockland cycle.
+	EntryLifeCost int
+
 	// PromptQuestion is the text rendered in the yes/no Optional
 	// prompt. Short — fits in a modal header. Defaults to Label
 	// when empty.
@@ -365,6 +401,16 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		}
 		// Exactly one applicable.
 		chosen := applicable[0]
+		if chosen.effect.EntryLifeCost > 0 {
+			// "As this enters, you may pay N life." The prompt (and
+			// the unaffordable-so-apply-it-inline case) lives in
+			// entry_choice.go; a queued prompt bails, an inline
+			// apply falls through to the next iteration.
+			if g.offerEntryLifePaymentLocked(ev, chosen) {
+				return ev, errReplacementPending
+			}
+			continue
+		}
 		if chosen.effect.Optional {
 			// CR 614.10 "may" — owner decides each time. Queue a
 			// yes/no prompt; the resume path either fires Replace

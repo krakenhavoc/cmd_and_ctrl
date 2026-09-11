@@ -106,6 +106,13 @@
       {#if a.sacrifice_cost || a.sacrifice_options}
         <span class="cost" aria-label="sacrifice cost">†</span>
       {/if}
+      {#if a.life_cost}
+        <!-- S22: a "Pay N life" cost component (Mana Confluence).
+             Advisory — the server does the CR 118.8 check. The
+             painlands' "deals 1 damage to you" is a RIDER, not a
+             cost, so it shows up in the label instead of here. -->
+        <span class="cost" aria-label={`pay ${a.life_cost} life`}>♥{a.life_cost}</span>
+      {/if}
     </button>
   {/each}
   {#if activated.length > 0}

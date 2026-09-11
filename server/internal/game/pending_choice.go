@@ -325,7 +325,10 @@ type PendingChoice struct {
 	// PayCost is the printed cost string ("{2}", "{1}", "{X}"
 	// already substituted) for a PendingChoicePayUnless entry.
 	// Wire-serialised so the client can label the "Pay" button.
-	// Added in S19 sub-PR 6.
+	// Added in S19 sub-PR 6. Also carries the life payment ("2
+	// life") for a PendingChoiceEntryPayLife entry — the label is
+	// the only thing the client needs, and the authoritative number
+	// stays on the effect's EntryLifeCost.
 	PayCost string
 
 	// payUnlessResume is the server-only continuation for a
@@ -896,6 +899,18 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 			// A prior Cancel short-circuits the remaining chain.
 			break
 		}
+		if chosen.effect.EntryLifeCost > 0 {
+			// An effect with a payment inside it can't be fired
+			// blind — the shockland's controller still has to answer
+			// "pay 2 life?" even when a Kismet is also replacing this
+			// entry. Queue that prompt and bail; the effects later in
+			// the chosen order are still unapplied, so the apply-loop
+			// re-entry after the answer picks them up.
+			if g.offerEntryLifePaymentLocked(ev, chosen) {
+				return nil
+			}
+			continue
+		}
 		g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
 		if chosen.effect.Replace != nil {
 			if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
@@ -980,10 +995,17 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// destination if owner said "no", or ZoneCommand if they
 		// said "yes"). Run the physical move through the shared
 		// executeBattlefieldLeaveLocked helper.
+		if ev.entryResumable && ev.NewZone == ZoneBattlefield && ev.OldZone != ZoneBattlefield {
+			// A paused ENTRY — the shockland's pay-2-life prompt,
+			// or a CR 616 ordering prompt between two enters-tapped
+			// effects. The pipeline function bailed before moving
+			// anything, so the push happens here. See
+			// executeEntryToBattlefieldLocked.
+			return g.executeEntryToBattlefieldLocked(ev)
+		}
 		if ev.OldZone != ZoneBattlefield {
-			// Non-LTB moves (e.g. graveyard → battlefield for
-			// reanimate) don't have a resume path yet. Sub-PR 6
-			// only closes the battlefield-leave case.
+			// Other non-LTB moves (graveyard → hand for a regrow,
+			// say) don't have a resume path yet.
 			return nil
 		}
 		var owner *Player

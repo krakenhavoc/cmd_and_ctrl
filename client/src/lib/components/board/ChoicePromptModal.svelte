@@ -203,6 +203,14 @@
   // player can't cover degrades to a decline server-side.
   const isPayUnless = $derived(active?.kind === "pay_unless");
 
+  // Shockland entry branch — "as this land enters, you may pay 2
+  // life. If you don't, it enters tapped." Same {choice_id, apply}
+  // payload; the server routes by kind. The permanent is still in
+  // hand while this is open, which is the point: the answer decides
+  // how it ENTERS, so there is no tapped land on the board to look
+  // at yet and the prompt has to say the card's name itself.
+  const isEntryPayLife = $derived(active?.kind === "entry_pay_life");
+
   // S21 sacrifice_choice branch — "each player sacrifices a creature
   // of their choice" (Grave Pact, Fleshbag Marauder). Reuses the
   // generic card grid and its {choice_id, card_ids} payload; only the
@@ -289,7 +297,9 @@
   // Y / N answer the yes-no prompts (optional replacement, may-
   // trigger, pay-unless) from the keyboard; the footer shows the
   // hint. Ignored while typing in a field.
-  const isYesNo = $derived(isOptionalReplacement || isTriggerPrompt || isPayUnless);
+  const isYesNo = $derived(
+    isOptionalReplacement || isTriggerPrompt || isPayUnless || isEntryPayLife,
+  );
   function handleKey(e: KeyboardEvent): void {
     if (!open || !isYesNo) return;
     const t = e.target as HTMLElement | null;
@@ -557,6 +567,22 @@
           <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
           <button type="button" onclick={() => answerOptional(false)}>No</button>
           <button type="button" class="primary" onclick={() => answerOptional(true)}>Yes</button>
+        </div>
+      {:else if isEntryPayLife}
+        <h2 id="choice-title">
+          {active.reason || `Pay ${active.pay_cost ?? ""} as it enters?`}
+          <span class="prompt-src" aria-hidden="true">as this enters · CR 614</span>
+        </h2>
+        <p class="prompt-hint">
+          Pay {active.pay_cost ?? "the life"} and it enters untapped; don't, and it enters tapped. Nothing
+          has entered yet — this choice is part of the entry, not a trigger.
+        </p>
+        <div class="prompt-foot">
+          <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
+          <button type="button" onclick={() => answerOptional(false)}>Enter tapped</button>
+          <button type="button" class="primary" onclick={() => answerOptional(true)}>
+            Pay {active.pay_cost ?? ""}
+          </button>
         </div>
       {:else if isPayUnless}
         <h2 id="choice-title">
