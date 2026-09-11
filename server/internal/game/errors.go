@@ -176,4 +176,12 @@ var (
 	// single source of truth. Post-S18 fix for the missing gate at
 	// the DeclareBlocker call site.
 	ErrIllegalBlock = errors.New("game: blocker cannot legally block this attacker")
+
+	// ErrNoLegalAttackers is returned by DeclareAttackers when every
+	// entry in a bulk declaration was skipped — all tapped, sick,
+	// defenders, already declared, or aimed at a seat that can't be
+	// attacked. Surfaced rather than swallowed so the room layer
+	// leaves the undo stack and the snapshot sequence untouched for
+	// what is, in the end, a no-op. Added in S31 for #318.
+	ErrNoLegalAttackers = errors.New("game: no creature in the declaration is able to attack")
 )

@@ -3425,6 +3425,122 @@ func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
 	return ErrCardNotFound
 }
 
+// AttackDeclaration is one (attacker, defending player) pair inside a
+// bulk DeclareAttackers submission. The set as a whole is the
+// attacking player's declaration for the turn (CR 508.1).
+type AttackDeclaration struct {
+	Attacker uuid.UUID
+	Target   uuid.UUID
+}
+
+// DeclareAttackers declares an entire attacking set in ONE mutation.
+// It exists because the per-creature DeclareAttacker is the wrong
+// granularity for a wide board: the client's "attack with all" only
+// has the per-creature verb, so a 12-creature alpha strike becomes 12
+// room.Apply calls — 12 full-game clones on the undo stack, 12
+// snapshot broadcasts, and an "undo" that needs 12 presses against a
+// per-turn budget of one. One action means one undo entry, so undo is
+// the exact inverse of "attack with everything" (#318).
+//
+// It is also closer to the rules than the loop is. CR 508.1 declares
+// attackers simultaneously and CR 508.2 gives the active player
+// priority afterwards, at which point every "whenever ~ attacks"
+// trigger goes on the stack together in APNAP order. Declaring one at
+// a time instead fires each trigger through its own state-check drain,
+// interleaving resolutions between declarations. Here every card is
+// mutated first, then every EventAttack is emitted, then a single
+// runStateChecksLocked drains the batch.
+//
+// Eligibility is STRICT and silent, unlike DeclareAttacker, which is
+// deliberately lax so the sandbox can force odd board states by hand.
+// A bulk "attack with everything" must never turn one ineligible
+// creature into a failed alpha strike, so entries that are unknown,
+// not creatures, tapped, summoning-sick (CR 302.1), defenders
+// (CR 702.3), already declared this combat, or pointed at a
+// nonexistent / eliminated / self seat are skipped without error.
+// Callers that need the lax behaviour keep using DeclareAttacker.
+//
+// Returns the instance IDs actually declared, in submission order.
+// Returns ErrNoLegalAttackers when the whole batch was skipped, so
+// the room layer neither records an undo entry nor broadcasts a
+// snapshot for a no-op. Caller authorization (does this seat control
+// these creatures) is enforced one layer up, in actions.Dispatch.
+func (g *Game) DeclareAttackers(decls []AttackDeclaration) ([]uuid.UUID, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return nil, ErrGameNotActive
+	}
+	if g.Turn.Step != StepDeclareAttackers {
+		return nil, ErrWrongStep
+	}
+	// Layers must be fresh so HasKeyword reads current effective
+	// characteristics — a creature handed haste or vigilance this turn
+	// has to be judged on the granted keyword, not the printed one.
+	g.RecomputeLayersIfStaleLocked()
+
+	// attackEvent captures what EmitEvent needs by value. Card
+	// pointers must not survive the mutation loop: emitting events
+	// and running state checks can reallocate the battlefield slice.
+	type attackEvent struct {
+		attacker   uuid.UUID
+		controller uuid.UUID
+		target     uuid.UUID
+	}
+	declared := make([]uuid.UUID, 0, len(decls))
+	events := make([]attackEvent, 0, len(decls))
+
+	for _, d := range decls {
+		defender := g.playerByIDLocked(d.Target)
+		if defender == nil || defender.Eliminated {
+			continue
+		}
+		card := findBattlefieldCard(g, d.Attacker)
+		if card == nil || !card.IsCreature() {
+			continue
+		}
+		// A creature may not attack its own controller, and a card
+		// already declared this combat keeps the target its controller
+		// picked — re-pointing is a correction, which stays on the
+		// single-card verb.
+		if card.Controller == d.Target || card.AttackingTarget != uuid.Nil {
+			continue
+		}
+		if card.Tapped || HasKeyword(card, "defender") || HasSummoningSickness(card) {
+			continue
+		}
+		card.AttackingTarget = d.Target
+		// CR 508.1f: declaring an attacker taps it unless it has
+		// vigilance (CR 702.20).
+		if !HasKeyword(card, "vigilance") {
+			card.Tapped = true
+		}
+		// Attacking and blocking are mutually exclusive per card.
+		card.BlockingTarget = uuid.Nil
+		declared = append(declared, d.Attacker)
+		events = append(events, attackEvent{
+			attacker:   d.Attacker,
+			controller: card.Controller,
+			target:     d.Target,
+		})
+	}
+	if len(declared) == 0 {
+		return nil, ErrNoLegalAttackers
+	}
+	for _, ev := range events {
+		g.EmitEvent(Event{
+			Kind:   EventAttack,
+			Actor:  ev.controller,
+			CardID: ev.attacker,
+			Target: ev.target,
+		})
+	}
+	// One drain for the whole declaration — see the CR 508.2 note in
+	// the doc comment.
+	g.runStateChecksLocked()
+	return declared, nil
+}
+
 // DeclareBlocker marks a battlefield card as blocking a specific
 // declared attacker. Gated by the declare_blockers step. Both IDs
 // must exist on the battlefield, and the blocker must be a
