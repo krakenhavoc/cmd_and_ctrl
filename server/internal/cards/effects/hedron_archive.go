@@ -15,8 +15,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "32263baa-d3f0-463f-92b3-4e9938476add",
-		Name:     "Hedron Archive",
+		OracleID:     "32263baa-d3f0-463f-92b3-4e9938476add",
+		Name:         "Hedron Archive",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}{C}",

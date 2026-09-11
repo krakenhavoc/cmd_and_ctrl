@@ -38,6 +38,8 @@ func init() {
 	Register(Spec{
 		OracleID:        "eb77f7dc-e9e4-44ef-8616-9f4e737e8ca5",
 		Name:            "Breeches, Brazen Plunderer",
+		Completeness:    CompletenessCaveats,
+		Caveats:         []string{"Two Pirates hitting the same opponent exile two cards instead of one; Partner isn't supported, so Breeches can't be your commander."},
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},

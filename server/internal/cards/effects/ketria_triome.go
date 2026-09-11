@@ -37,6 +37,8 @@ func init() {
 	Register(Spec{
 		OracleID:     "6bae00e8-06cf-4ac4-a1cc-757e454109fe",
 		Name:         "Ketria Triome",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Cycling {3} is not implemented — the land can only be played, not cycled from hand."},
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

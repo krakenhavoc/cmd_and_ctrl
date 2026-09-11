@@ -32,8 +32,9 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "2b76f9e9-cd28-4eaf-8674-215c34263f96",
-		Name:     "Return of the Wildspeaker",
+		OracleID:     "2b76f9e9-cd28-4eaf-8674-215c34263f96",
+		Name:         "Return of the Wildspeaker",
+		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			Mode("Draw cards equal to the greatest power among non-Human creatures you control."),
 			Mode("Non-Human creatures you control get +3/+3 until end of turn."),

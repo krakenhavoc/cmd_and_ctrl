@@ -32,8 +32,9 @@ package effects
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "8ea46945-d5ab-4209-b473-4769e7b8b962",
-		Name:     "Shrine of the Forsaken Gods",
+		OracleID:     "8ea46945-d5ab-4209-b473-4769e7b8b962",
+		Name:         "Shrine of the Forsaken Gods",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},

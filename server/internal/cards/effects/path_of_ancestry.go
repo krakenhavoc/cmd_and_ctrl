@@ -32,6 +32,8 @@ func init() {
 	Register(Spec{
 		OracleID:     "b473e293-59e3-4e04-acf2-622604aeb25f",
 		Name:         "Path of Ancestry",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The scry 1 never happens when you spend its mana on a creature that shares a type with your commander."},
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

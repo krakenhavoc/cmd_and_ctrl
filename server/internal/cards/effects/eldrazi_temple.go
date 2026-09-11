@@ -41,8 +41,9 @@ package effects
 // No other simplification.
 func init() {
 	Register(Spec{
-		OracleID: "7fab8d65-af51-47d3-8f10-2676bf6e8ba3",
-		Name:     "Eldrazi Temple",
+		OracleID:     "7fab8d65-af51-47d3-8f10-2676bf6e8ba3",
+		Name:         "Eldrazi Temple",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},

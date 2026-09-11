@@ -368,6 +368,30 @@ type Spec struct {
 	//
 	// Issue #338.
 	NoMaxHandSize bool
+
+	// Completeness declares how faithfully this spec implements the
+	// card as printed — the machine-readable form of the prose
+	// "declared simplification" convention in AGENTS.md §7. See
+	// completeness.go for the full contract and for why the zero
+	// value is CompletenessUnreviewed rather than
+	// CompletenessFull.
+	//
+	// Set it when you add or change a card. Leaving it unset is
+	// permitted and is not a failure — it publishes the card as
+	// unaudited, which is true.
+	Completeness Completeness
+
+	// Caveats names the printed clauses this spec does NOT model,
+	// one short player-facing sentence each — "Cycling is not
+	// implemented; the land can only be played." Required when
+	// Completeness is CompletenessCaveats and rejected otherwise,
+	// because a caveat nobody can read is the same as no caveat at
+	// all.
+	//
+	// Write for a player deciding whether to sleeve the card, not
+	// for the next engineer: the engineering reason belongs in the
+	// file's doc comment, where there is room for it.
+	Caveats []string
 }
 
 // ActivatedAbility is one activated ability on a permanent. Mirrors

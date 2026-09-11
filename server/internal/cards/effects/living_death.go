@@ -32,8 +32,9 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "9e6a3df4-67a3-452e-a6ef-f04dbadb21ef",
-		Name:     "Living Death",
+		OracleID:     "9e6a3df4-67a3-452e-a6ef-f04dbadb21ef",
+		Name:         "Living Death",
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			var exiled []uuid.UUID
 			for _, p := range ctx.Game.Seats {

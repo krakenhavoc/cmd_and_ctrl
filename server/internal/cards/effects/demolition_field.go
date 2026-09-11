@@ -28,8 +28,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "93953926-a644-49bb-9b5a-4c8f19114c7e",
-		Name:     "Demolition Field",
+		OracleID:     "93953926-a644-49bb-9b5a-4c8f19114c7e",
+		Name:         "Demolition Field",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}",

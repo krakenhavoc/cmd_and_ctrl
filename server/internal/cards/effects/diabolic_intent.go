@@ -35,6 +35,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "038519b9-bca8-4b27-b5ac-2409595469d0",
 		Name:           "Diabolic Intent",
+		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeCost("a creature", Creature()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return SearchLibrary{

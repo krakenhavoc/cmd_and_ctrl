@@ -17,8 +17,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // outlived the fix; corrected in the #338 sweep.
 func init() {
 	Register(Spec{
-		OracleID: "f955bc96-d602-4142-a9a2-87009cc7028c",
-		Name:     "Awakening Zone",
+		OracleID:     "f955bc96-d602-4142-a9a2-87009cc7028c",
+		Name:         "Awakening Zone",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventBeginUpkeep},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
