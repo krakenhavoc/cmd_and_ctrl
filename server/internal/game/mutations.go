@@ -3153,13 +3153,16 @@ func intrinsicLandManaAbilities(c Card) []ManaAbilityShape {
 		return nil
 	}
 	var out []ManaAbilityShape
-	seen := map[string]bool{}
+	// One bit per entry in landTypeMana rather than a map: this runs
+	// once per land per card view, and five lands is already a
+	// thousand map allocations a minute at snapshot rates.
+	var seen uint8
 	for _, sub := range subtypes {
-		for _, lt := range landTypeMana {
-			if !equalFoldASCII(sub, lt.Subtype) || seen[lt.Color] {
+		for i, lt := range landTypeMana {
+			if !equalFoldASCII(sub, lt.Subtype) || seen&(1<<i) != 0 {
 				continue
 			}
-			seen[lt.Color] = true
+			seen |= 1 << i
 			out = append(out, ManaAbilityShape{
 				TapCost:  true,
 				Produced: "{" + lt.Color + "}",
