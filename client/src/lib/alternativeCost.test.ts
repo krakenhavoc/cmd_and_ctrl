@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { get } from "svelte/store";
 
 import {
+  altCostPayOptions,
   alternativeCostByKey,
   alternativeCostsOf,
   applyCastChoices,
@@ -166,5 +167,65 @@ describe("canCastFromHand — alternative costs", () => {
       legal_targets: { cards: [], min: 1, max: 1 },
     });
     expect(canCastFromHand(bolt, snapshot([bolt]), "p0").reason).toBe("No legal target");
+  });
+});
+
+// S28: an alternative cost can charge a CARD as well as (or instead
+// of) mana. The client has to tell three cases apart, and the
+// difference between the last two is the whole point of the helper:
+// "charges no cards" must not look like "charges a card you cannot
+// pay", because one skips the picker and the other opens it on an
+// empty list.
+describe("altCostPayOptions", () => {
+  const forceOfWill = card({
+    instance_id: "fow",
+    name: "Force of Will",
+    type_line: "Instant",
+    mana_cost: "{3}{U}{U}",
+    target_mode: "stack_spell",
+    alternative_costs: [
+      {
+        key: "pitch",
+        label: "Pay 1 life and exile a blue card from your hand",
+        life: 1,
+        pay_label: "a blue card from your hand",
+        pay_options: { cards: ["brainstorm", "ponder"], min: 1, max: 1 },
+        target_mode: "stack_spell",
+      },
+    ],
+  });
+
+  it("returns the payable cards for a cost that charges one", () => {
+    expect(altCostPayOptions(alternativeCostByKey(forceOfWill, "pitch"))).toEqual([
+      "brainstorm",
+      "ponder",
+    ]);
+  });
+
+  it("returns undefined for a cost that charges no cards", () => {
+    // Overload charges mana only — the picker must be skipped, not
+    // opened empty.
+    expect(altCostPayOptions(alternativeCostByKey(rift, "overload"))).toBeUndefined();
+    expect(altCostPayOptions(undefined)).toBeUndefined();
+  });
+
+  it("returns an empty array for a cost with nothing to pay it", () => {
+    const stranded = card({
+      instance_id: "fow2",
+      alternative_costs: [{ key: "pitch", pay_options: { cards: [], min: 1, max: 1 } }],
+    });
+    expect(altCostPayOptions(alternativeCostByKey(stranded, "pitch"))).toEqual([]);
+  });
+
+  it("rides the cast payload as alt_cost_ids", () => {
+    const params: Record<string, unknown> = {};
+    applyCastChoices(params, { altCost: "pitch", altCostIDs: ["brainstorm"] });
+    expect(params).toEqual({ alternative_cost: "pitch", alt_cost_ids: ["brainstorm"] });
+    // An empty list is omitted rather than sent: the server rejects a
+    // non-empty one on a cost that charges nothing, and "I paid no
+    // cards" is spelled by absence everywhere else in this payload.
+    const empty: Record<string, unknown> = {};
+    applyCastChoices(empty, { altCost: "overload", altCostIDs: [] });
+    expect(empty).toEqual({ alternative_cost: "overload" });
   });
 });

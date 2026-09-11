@@ -382,6 +382,12 @@ func Dispatch(g *game.Game, a Action) error {
 			// alternative costs ("overload", "evoke", "cleave").
 			// Empty is the ordinary "pay the printed cost" case.
 			AlternativeCost string `json:"alternative_cost,omitempty"`
+			// S28 — the card paid to the non-mana half of that
+			// alternative cost: Force of Will's pitched blue card,
+			// Daze's returned Island, Solitude's evoke pitch. Exactly
+			// one entry when the claimed cost charges one, absent
+			// otherwise.
+			AltCostIDs []string `json:"alt_cost_ids,omitempty"`
 			// ADR 0034 — which printed face of a multi-face card is
 			// being cast or played. Absent (0) is the front face,
 			// which is the right answer for every single-faced card
@@ -425,6 +431,16 @@ func Dispatch(g *game.Game, a Action) error {
 					return fmt.Errorf("cast_spell sacrifice_ids[%d]: %w", i, err)
 				}
 				params.SacrificeIDs = append(params.SacrificeIDs, id)
+			}
+		}
+		if len(p.AltCostIDs) > 0 {
+			params.AltCostIDs = make([]uuid.UUID, 0, len(p.AltCostIDs))
+			for i, raw := range p.AltCostIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("cast_spell alt_cost_ids[%d]: %w", i, err)
+				}
+				params.AltCostIDs = append(params.AltCostIDs, id)
 			}
 		}
 		if len(p.TapIDs) > 0 {

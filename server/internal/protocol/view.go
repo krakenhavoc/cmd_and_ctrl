@@ -301,6 +301,32 @@ type AlternativeCostView struct {
 	// rather than reasoning about the rewrite itself.
 	TargetMode   string            `json:"target_mode,omitempty"`
 	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+
+	// Life is the "pay N life" half of the cost (Force of Will's 1,
+	// Snuff Out's 4). Zero — absent — for the costs that charge none.
+	// The server enforces the life total; this is for the label.
+	Life int `json:"life,omitempty"`
+
+	// PayOptions is the set of cards that can pay the cost's
+	// card-shaped half: the blue cards in the caster's hand for Force
+	// of Will, the Islands they control for Daze. The chosen instance
+	// ID rides back on cast_spell as `alt_cost_ids`.
+	//
+	// Absent when the cost charges no cards, which is every S22
+	// keyword. Present-and-empty means the caster has nothing that
+	// can pay — the offer is visible but unusable, which is the
+	// honest thing to show for a Force of Will held with no other
+	// blue card.
+	//
+	// Like the additional cost's sacrifice_options this is NOT a
+	// target list: a cost does not target (CR 601.2h), so hexproof
+	// and shroud never narrow it.
+	PayOptions *LegalTargetsView `json:"pay_options,omitempty"`
+
+	// PayLabel is the picker's prompt copy for PayOptions ("a blue
+	// card", "an Island you control"). Absent when there is nothing
+	// to pick.
+	PayLabel string `json:"pay_label,omitempty"`
 }
 
 // TapCostView is the wire shape of game.TapPermanentsCost — the
@@ -1297,10 +1323,36 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, base *game.TargetSpe
 	out := make([]AlternativeCostView, 0, len(alts))
 	for i := range alts {
 		ac := alts[i]
-		v := AlternativeCostView{Key: ac.Key, Label: ac.Label, ManaCost: ac.ManaCost}
+		// S28: an offer whose condition is false is not shown at all.
+		// "If you control a commander, you may cast this without
+		// paying its mana cost" is not an offer when you control no
+		// commander, and a greyed-out button the server would reject
+		// is worse than no button.
+		if !ac.Available(g, caster) {
+			continue
+		}
+		v := AlternativeCostView{
+			Key: ac.Key, Label: ac.Label, ManaCost: ac.ManaCost,
+			Life: ac.Life, PayLabel: ac.PayLabel,
+		}
 		if spec := game.TargetSpecUnderAlternativeCost(base, &ac); spec != nil {
 			v.TargetMode = spec.Mode
 			v.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(caster, spec), spec)
+		}
+		// The card-shaped half. SpecCandidatesForEffect, not
+		// LegalTargetsForEffect, for the same reason the additional
+		// cost's sacrifice picker uses it: a cost does not target, so
+		// the hexproof / shroud gate must not narrow what the client
+		// offers.
+		if paySpec := ac.ExileFromHand; paySpec != nil {
+			opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, paySpec), paySpec)
+			opts.Players = nil
+			v.PayOptions = opts
+		} else if paySpec := ac.ReturnToHand; paySpec != nil {
+			opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, paySpec), paySpec)
+			opts.Cards = filterToController(g, opts.Cards, caster)
+			opts.Players = nil
+			v.PayOptions = opts
 		}
 		out = append(out, v)
 	}
