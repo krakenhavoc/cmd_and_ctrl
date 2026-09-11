@@ -553,13 +553,22 @@ jobs:
       # a log that doesn't say which box, so this one names the host.
       - name: Verify reported environment
         run: |
-          body=$(ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
-            "curl -fsS --retry 5 --retry-delay 2 --retry-connrefused http://127.0.0.1:${LOCAL_PORT}/config")
+          # systemd reports active the moment the process forks, but the
+          # server does not bind until it has loaded the Scryfall dump and
+          # built the card index -- comfortably longer than the 10s the
+          # original --retry 5 allowed, so every deploy failed here while
+          # the deployment itself was fine. 30 retries at 2s covers a cold
+          # start with headroom and still gives up well inside the job.
+          if ! body=$(ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "curl -fsS --retry 30 --retry-delay 2 --retry-connrefused --max-time 120 http://127.0.0.1:${LOCAL_PORT}/config"); then
+            echo "::error::${SERVICE} on ${CMDCTRL_HOST} never answered GET /config on port ${LOCAL_PORT}. The unit is active but not listening -- check 'journalctl -u ${SERVICE}' on that host."
+            exit 1
+          fi
           echo "GET /config on ${CMDCTRL_HOST} -> ${body}"
           case "${body}" in
             *'"env":"'"${APP_ENV}"'"'*) ;;
             *)
-              echo "::error::${SERVICE} on ${CMDCTRL_HOST} did not report env=${APP_ENV}. Check CMDCTRL_ENV in ${ENV_FILE} on that host."
+              echo "::error::${SERVICE} on ${CMDCTRL_HOST} answered, but did not report env=${APP_ENV}. Check CMDCTRL_ENV in ${ENV_FILE} on that host."
               exit 1
               ;;
           esac

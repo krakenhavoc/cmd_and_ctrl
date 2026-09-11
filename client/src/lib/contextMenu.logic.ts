@@ -22,7 +22,12 @@
 import { attackAllLabel, attackAllParams, planAttackAll, seatLabel } from "./attackAll";
 import { isPlaneswalker } from "./cardTypes";
 import type { ActionType, CardView, GameView } from "./protocol";
-import { canActivateLoyalty, canPayLoyaltyCost, loyaltyOf } from "./timing";
+import {
+  canActivateLoyalty,
+  canActivateSorcerySpeedAbility,
+  canPayLoyaltyCost,
+  loyaltyOf,
+} from "./timing";
 import {
   COUNTER_CHARGE,
   COUNTER_DEFENSE,
@@ -338,6 +343,10 @@ interface AbilityCost {
   // Present, at any value including 0, on a planeswalker's loyalty
   // ability. Mana abilities never carry it.
   loyalty_cost?: number;
+  // S24: "Activate only as a sorcery" (CR 602.5d). Equip is the
+  // catalog's first; a loyalty ability gets the same window from its
+  // own arm below rather than from this flag.
+  sorcery_speed?: boolean;
   // S27: a Vehicle's crew number and the creatures that could pay
   // it. Mana abilities never carry either.
   crew_cost?: number;
@@ -375,6 +384,13 @@ export function abilityBlocked(
     if (!timing.legal) return timing.reason ?? "can't activate right now";
     const unpayable = canPayLoyaltyCost(loyalty.card, a.loyalty_cost);
     if (unpayable) return unpayable;
+  }
+  // CR 602.5d — "activate only as a sorcery". Equip is the first
+  // catalog ability to declare it. Checked after the loyalty arm so
+  // a loyalty row keeps its more specific reason.
+  if (a.sorcery_speed && a.loyalty_cost === undefined && loyalty) {
+    const timing = canActivateSorcerySpeedAbility(loyalty.view, loyalty.viewerID);
+    if (!timing.legal) return timing.reason ?? "sorcery-speed only";
   }
   if (a.legal_targets) {
     const n = (a.legal_targets.players?.length ?? 0) + (a.legal_targets.cards?.length ?? 0);

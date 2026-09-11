@@ -112,3 +112,37 @@ export function impulseActionLabel(
   }
   return "cast";
 }
+
+// --- S29: alternative cast paths from non-hand zones -------------
+//
+// The impulse button above is keyed on a grant stamped on one exiled
+// INSTANCE. Flashback and escape are the other shape: the permission
+// is printed on the CARD, so the server answers it per card per zone
+// and sends the answer down as `castable_here`.
+//
+// The client deliberately does not know what "flashback" means. It
+// asks whether the card is castable from the zone it is looking at,
+// and hands the cast to the Board's ordinary prompt chain, which
+// reads the cost out of `alternative_costs` — already filtered
+// server-side to the offers claimable from this zone.
+
+// castableFromZone reports whether the viewer may cast `card` out of
+// the zone the browser is showing.
+//
+// Two gates, and the ownership one is not redundant with the
+// server's. `castable_here` is PUBLIC — the graveyard is a public
+// zone and a flashback cost is printed on the card, so an opponent's
+// snapshot carries the bit too. Without the ownership check the
+// browser would offer a button on someone else's graveyard card that
+// the server then refuses with ErrCardNotFound, which reads to the
+// player as a bug rather than as a rule.
+export function castableFromZone(
+  card: CardView,
+  zoneKind: BrowsableZone,
+  viewerID: string | null,
+  ownerID: string,
+): boolean {
+  if (zoneKind !== "graveyard") return false;
+  if (!viewerID || viewerID !== ownerID) return false;
+  return card.castable_here === true;
+}
