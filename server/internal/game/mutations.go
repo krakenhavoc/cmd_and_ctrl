@@ -2259,6 +2259,16 @@ func (g *Game) stateBasedActionsLocked() bool {
 		}
 	}
 
+	// 704.5j (S27) — the legend rule. Last, because it is the one
+	// state-based action whose outcome is a CHOICE rather than a
+	// consequence: running it after the destruction and sacrifice
+	// passes means a player is never asked to pick between two
+	// legends when one of them was about to leave anyway. See
+	// legend_rule.go.
+	if g.queueLegendRuleChoicesLocked() {
+		fired = true
+	}
+
 	return fired
 }
 

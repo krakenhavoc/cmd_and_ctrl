@@ -1495,7 +1495,13 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			}
 		}
 		// PendingChoicePickTarget — S20 sub-PR 2: the frozen legal set.
-		if c.Kind == game.PendingChoicePickTarget {
+		// S27: the legend rule asks the same question shape — pick one
+		// from a server-computed set — and rides the same projection
+		// so the client's existing highlight flow answers it. It is
+		// NOT targeting (a state-based action chooses nothing on the
+		// stack); the kind is what keeps the two distinguishable on
+		// the way back.
+		if c.Kind == game.PendingChoicePickTarget || c.Kind == game.PendingChoiceLegendRule {
 			pt := &LegalTargetsView{Min: c.PickTargetMin, Max: c.PickTargetMax}
 			for _, id := range c.PickTargetPlayers {
 				pt.Players = append(pt.Players, id.String())

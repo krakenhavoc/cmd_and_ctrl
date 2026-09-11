@@ -411,3 +411,18 @@ func AngelVigilanceToken() game.Card {
 		Keywords:  []string{"flying", "vigilance"},
 	}
 }
+
+// SoldierToken is Elspeth, Sun's Champion's 1/1 white Soldier.
+// Vanilla, and deliberately NOT the same template as
+// HumanSoldierToken above: Elspeth's token is a Soldier and The First
+// Iroan Games' is a Human Soldier, and the difference is live the
+// moment anything reads a creature type ("Soldiers you control get
+// +1/+1", "sacrifice a Human").
+func SoldierToken() game.Card {
+	return game.Card{
+		Name:      "Soldier",
+		TypeLine:  "Token Creature — Soldier",
+		Power:     1,
+		Toughness: 1,
+	}
+}

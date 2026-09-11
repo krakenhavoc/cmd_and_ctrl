@@ -1095,6 +1095,15 @@ func Dispatch(g *game.Game, a Action) error {
 			if err != nil {
 				return fmt.Errorf("resolve_choice target: %w", err)
 			}
+			// S27: the legend rule answers with the same {kind, id}
+			// ref — the permanent the controller KEEPS — because it is
+			// the same question shape (pick one from a server-computed
+			// set) and reusing the payload means the client's existing
+			// highlight flow answers it with no second picker. It is
+			// not targeting; the kind is what keeps them apart.
+			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceLegendRule {
+				return g.ResolveLegendRule(choiceID, a.Player, ref.ID)
+			}
 			return g.ResolvePickTarget(choiceID, a.Player, ref)
 		}
 		if p.Targets != nil {
@@ -1105,6 +1114,16 @@ func Dispatch(g *game.Game, a Action) error {
 					return fmt.Errorf("resolve_choice targets: %w", err)
 				}
 				refs = append(refs, ref)
+			}
+			// The client's targeting banner always submits the PLURAL
+			// form, so a legend-rule answer arrives here rather than
+			// in the singular branch above. Both are routed: the
+			// singular one is what gamecli and the tests send.
+			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceLegendRule {
+				if len(refs) != 1 {
+					return game.ErrInvalidParam
+				}
+				return g.ResolveLegendRule(choiceID, a.Player, refs[0].ID)
 			}
 			return g.ResolvePickTargets(choiceID, a.Player, refs)
 		}
