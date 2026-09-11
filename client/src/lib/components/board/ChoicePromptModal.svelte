@@ -244,11 +244,19 @@
   // wrong move.
   const isSurveil = $derived(active?.kind === "surveil");
 
-  // The shared branch. Everything below keys off this; isScry /
-  // isSurveil only pick the wording and the payload.
-  const isLookAtTop = $derived(isScry || isSurveil);
+  // S22 "look at the top N cards of your library, then put them back
+  // in any order" — Ponder, Sensei's Divining Top. The family's third
+  // member and the one with NO away lane: every card goes back on
+  // top, so the away column and its buttons are hidden entirely and
+  // the answer is a pure reorder.
+  const isReorderOnly = $derived(active?.kind === "look_at_top");
+
+  // The shared branch. Everything below keys off this; the three
+  // flags above only pick the wording and the payload.
+  const isLookAtTop = $derived(isScry || isSurveil || isReorderOnly);
 
   // The lane the cards leaving the top go to, as the card prints it.
+  // Unused when there is no away lane.
   const awayLabel = $derived(isSurveil ? "graveyard" : "bottom");
 
   let scryTop = $state<string[]>([]);
@@ -295,15 +303,19 @@
     return c?.name || "card";
   }
 
-  // The two keywords answer on different payload keys, and the server
-  // routes on exactly that: `graveyard` present means surveil,
-  // `bottom` means scry. Sending both, or the wrong one, would bin
-  // cards that should have gone under the library or vice versa.
+  // Each member of the family answers on its own destination key.
+  // The server routes on the prompt's kind rather than on the keys,
+  // so a wrong key is a rejection rather than a silent miscarriage —
+  // but send the right one anyway: it is what the resolver reads.
   function submitScry(): void {
     if (!active || !viewerID) return;
     const total = (active.options ?? []).length;
     if (scryTop.length + scryBottom.length !== total) return;
-    const away = isSurveil ? { graveyard: scryBottom } : { bottom: scryBottom };
+    const away = isReorderOnly
+      ? {}
+      : isSurveil
+        ? { graveyard: scryBottom }
+        : { bottom: scryBottom };
     sendAction("resolve_choice", { choice_id: active.id, ...away, top_order: scryTop }, viewerID);
   }
 
@@ -462,11 +474,17 @@
     <div class="prompt-modal">
       {#if isLookAtTop}
         <h2 id="choice-title">
-          {active.reason || (isSurveil ? "Surveil" : "Scry")}
-          <span class="prompt-src" aria-hidden="true">{isSurveil ? "CR 701.42" : "CR 701.18"}</span>
+          {active.reason || (isSurveil ? "Surveil" : isReorderOnly ? "Look at the top" : "Scry")}
+          {#if !isReorderOnly}
+            <span class="prompt-src" aria-hidden="true"
+              >{isSurveil ? "CR 701.42" : "CR 701.18"}</span
+            >
+          {/if}
         </h2>
         <p class="prompt-hint">
-          {#if scryTop.length + scryBottom.length === 1}
+          {#if isReorderOnly}
+            Put them back in any order — the topmost is your next draw.
+          {:else if scryTop.length + scryBottom.length === 1}
             Keep it on top, or put it {isSurveil
               ? "into your graveyard"
               : "on the bottom of your library"}.
@@ -495,41 +513,45 @@
                     aria-label={`move ${scryCardName(id)} up`}
                     onclick={() => scryMoveUp(id)}>↑</button
                   >
-                  <button
-                    type="button"
-                    class="lane-btn"
-                    onclick={() => scryToBottom(id)}
-                    aria-label={`put ${scryCardName(id)} ${
-                      isSurveil ? "into your graveyard" : "on the bottom"
-                    }`}>To {awayLabel}</button
-                  >
+                  {#if !isReorderOnly}
+                    <button
+                      type="button"
+                      class="lane-btn"
+                      onclick={() => scryToBottom(id)}
+                      aria-label={`put ${scryCardName(id)} ${
+                        isSurveil ? "into your graveyard" : "on the bottom"
+                      }`}>To {awayLabel}</button
+                    >
+                  {/if}
                 </li>
               {/each}
             </ol>
           {/if}
         </div>
-        <div class="scry-lane">
-          <h3 class="lane-label">
-            {isSurveil ? "Into your graveyard" : "On the bottom"} ({scryBottom.length})
-          </h3>
-          {#if scryBottom.length === 0}
-            <p class="lane-empty">None.</p>
-          {:else}
-            <ul class="scry-list">
-              {#each scryBottom as id (id)}
-                <li>
-                  <span class="scry-name">{scryCardName(id)}</span>
-                  <button
-                    type="button"
-                    class="lane-btn"
-                    onclick={() => scryToTop(id)}
-                    aria-label={`keep ${scryCardName(id)} on top`}>Keep on top</button
-                  >
-                </li>
-              {/each}
-            </ul>
-          {/if}
-        </div>
+        {#if !isReorderOnly}
+          <div class="scry-lane">
+            <h3 class="lane-label">
+              {isSurveil ? "Into your graveyard" : "On the bottom"} ({scryBottom.length})
+            </h3>
+            {#if scryBottom.length === 0}
+              <p class="lane-empty">None.</p>
+            {:else}
+              <ul class="scry-list">
+                {#each scryBottom as id (id)}
+                  <li>
+                    <span class="scry-name">{scryCardName(id)}</span>
+                    <button
+                      type="button"
+                      class="lane-btn"
+                      onclick={() => scryToTop(id)}
+                      aria-label={`keep ${scryCardName(id)} on top`}>Keep on top</button
+                    >
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+          </div>
+        {/if}
         <div class="card-grid">
           {#each optionCards as c (c.instance_id)}
             <div class="card-pick" class:bottomed={scryBottom.includes(c.instance_id)}>
@@ -538,10 +560,14 @@
           {/each}
         </div>
         <div class="prompt-foot">
-          <span class="prompt-count"
-            >{scryTop.length} on top · {scryBottom.length}
-            {isSurveil ? "in the graveyard" : "on the bottom"}</span
-          >
+          <span class="prompt-count">
+            {#if isReorderOnly}
+              {scryTop.length} back on top
+            {:else}
+              {scryTop.length} on top · {scryBottom.length}
+              {isSurveil ? "in the graveyard" : "on the bottom"}
+            {/if}
+          </span>
           <button type="button" class="primary" onclick={submitScry}>Done</button>
         </div>
       {:else if isManaPick}

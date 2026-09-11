@@ -226,6 +226,11 @@ export interface PendingChoiceView {
     // payload for a surveil would bury the cards instead of binning
     // them.
     | "surveil"
+    // S22: "look at the top N cards of your library, then put them
+    // back in any order" (Ponder, Sensei's Divining Top). The family's
+    // third member and the one with no away lane — answered with
+    // {top_order} alone, naming every looked-at card exactly once.
+    | "look_at_top"
     // Shocklands: "as this land enters, you may pay 2 life. If you
     // don't, it enters tapped." Answered with the shared yes/no
     // {choice_id, apply} payload — apply=true pays and the land

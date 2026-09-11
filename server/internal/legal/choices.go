@@ -254,6 +254,29 @@ func (e *enumerator) choiceMoves() bool {
 					e.addChoice(c, reason+": "+cardName(g, id)+" to graveyard", p)
 				}
 			}
+
+		case game.PendingChoiceLookAtTop:
+			// No away lane, so the answer space is permutations of
+			// the looked-at cards. Offer the two that matter — leave
+			// it alone, and pull each card to the front — rather
+			// than N! entries.
+			cards := c.ScryCards
+			p := base()
+			p.TopOrder = idStrings(cards)
+			e.addChoice(c, reason+": leave the order alone", p)
+			for i, id := range cards {
+				if i == 0 {
+					continue
+				}
+				p = base()
+				p.TopOrder = []string{id.String()}
+				for j, other := range cards {
+					if j != i {
+						p.TopOrder = append(p.TopOrder, other.String())
+					}
+				}
+				e.addChoice(c, reason+": put "+cardName(g, id)+" on top", p)
+			}
 		}
 	}
 	return owed

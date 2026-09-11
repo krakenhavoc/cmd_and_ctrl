@@ -1208,12 +1208,14 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				}
 			}
 		}
-		// PendingChoiceScry / PendingChoiceSurveil — the looked-at
-		// cards, top-first, as Options. Both keywords are "look at",
-		// not "reveal": only the chooser was marked a knower, so
+		// The scry family — scry, surveil, and plain "look at the top
+		// N, put them back in any order" — projects the looked-at
+		// cards, top-first, as Options. All three are "look at", not
+		// "reveal": only the chooser was marked a knower, so
 		// FilterViewFor redacts these to backs for every other seat
-		// and the top of the library stays private.
-		if (c.Kind == game.PendingChoiceScry || c.Kind == game.PendingChoiceSurveil) && len(c.ScryCards) > 0 {
+		// and the top of the library stays private. The COUNT is
+		// public, which is correct — "scry 2" is a printed number.
+		if game.IsLookAtTopKind(c.Kind) && len(c.ScryCards) > 0 {
 			v.Options = make([]CardView, 0, len(c.ScryCards))
 			for _, id := range c.ScryCards {
 				if card, ok := g.LookupCardForEffect(id); ok {
