@@ -795,10 +795,29 @@ type ManaAbilityView struct {
 	// appear here — it's part of the ability's Label.
 	// Added in the S22 mana-ability-rider pass.
 	LifeCost int `json:"life_cost,omitempty"`
+	// ManaCost is a mana component of the activation cost — the
+	// Signet cycle's "{1}, {T}", Cabal Coffers' "{2}, {T}".
+	// Advisory, like LifeCost: the client renders the cost chip so
+	// the player knows to float the mana first, and the server does
+	// the real check. The engine deliberately does NOT auto-tap
+	// into a mana ability, so an ability with this set can only be
+	// fired against mana the player has already produced.
+	// Added in the S32 mana-pipeline pass (#352).
+	ManaCost string `json:"mana_cost,omitempty"`
+	// Restrictions are the "spend this mana only on …" tags the
+	// produced tokens will carry — Ancient Ziggurat, Eldrazi
+	// Temple, the coloured half of Delighted Halfling. Present so
+	// the client can warn before a player floats mana they cannot
+	// spend on what they were about to cast. Purely informational;
+	// enforcement is server-side, in the pool solver.
+	// Added in the S32 mana-pipeline pass (#352).
+	Restrictions []string `json:"restrictions,omitempty"`
 	// Produced is the raw production string ("{C}{C}",
 	// "{W|U|B|R|G}"). Lets the client render the produced-mana
 	// pills alongside the activation button even when Label is
-	// empty.
+	// empty. EMPTY for a derived or scaled ability (Exotic Orchard,
+	// Cabal Coffers), whose output only exists once computed at
+	// activation — those carry the description in Label instead.
 	Produced string `json:"produced,omitempty"`
 }
 
@@ -923,7 +942,12 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 						Label:        ac.Label,
 					}
 					if ac.Sacrifice != nil {
-						opts := viewOfLegalTargets(g.LegalTargetsForEffect(caster, ac.Sacrifice), ac.Sacrifice)
+						// SpecCandidatesForEffect, not
+						// LegalTargetsForEffect: an additional
+						// sacrifice cost doesn't target, so the
+						// hexproof / shroud gate must not narrow the
+						// list the client offers.
+						opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, ac.Sacrifice), ac.Sacrifice)
 						opts.Cards = filterToController(g, opts.Cards, caster)
 						opts.Players = nil
 						c.AdditionalCost.SacrificeOptions = opts
@@ -2012,6 +2036,8 @@ func viewOfManaAbilities(c game.Card) []ManaAbilityView {
 			TapCost:       a.TapCost,
 			SacrificeCost: a.SacrificeCost,
 			LifeCost:      a.LifeCost,
+			ManaCost:      a.ManaCost,
+			Restrictions:  a.Restrictions,
 			Produced:      a.Produced,
 		}
 	}

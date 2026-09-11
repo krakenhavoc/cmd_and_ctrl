@@ -73,6 +73,16 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		stampBattlefieldEntryLocked(g, ev.CardID)
 	case EventCounterPlaced:
 		g.layerVersion.Add(1)
+	case EventTapCard, EventUntapCard:
+		// Tap state is an AppliesTo input, not just a display flag:
+		// The Wandering Rescuer grants hexproof to "other TAPPED
+		// creatures you control", so a creature that taps or untaps
+		// changes which permanents its static covers. Without this
+		// bump the cached resolution survives the tap and the grant
+		// appears or disappears only when some unrelated event
+		// happens to invalidate — which is how the S22 card looked
+		// half-working even once the keyword table honoured it.
+		g.layerVersion.Add(1)
 	}
 }
 

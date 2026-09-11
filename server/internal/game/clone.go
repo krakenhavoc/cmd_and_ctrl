@@ -125,6 +125,16 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.ColorOptions) > 0 {
 				cloned.ColorOptions = append([]string(nil), c.ColorOptions...)
 			}
+			// S32 mana pipeline (#352): the spend restrictions a
+			// PendingChoiceMana will stamp onto the token it mints.
+			// New game state, so it needs its own backing array for
+			// exactly the reason ColorOptions does — an undo that
+			// shared it would let the restored game mutate the live
+			// one, and the thing being shared here decides what the
+			// mana may legally pay for.
+			if len(c.ManaRestrictions) > 0 {
+				cloned.ManaRestrictions = append([]string(nil), c.ManaRestrictions...)
+			}
 			if len(c.TriggerOrderIDs) > 0 {
 				cloned.TriggerOrderIDs = append([]uuid.UUID(nil), c.TriggerOrderIDs...)
 			}

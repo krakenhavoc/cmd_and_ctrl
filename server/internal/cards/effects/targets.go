@@ -145,6 +145,34 @@ func ManaValueLE(n int) CardPredicate {
 	}
 }
 
+// --- keyword predicates ------------------------------------------
+
+// HasKeyword passes when the candidate has the named keyword,
+// reading through game.HasKeyword so a keyword GRANTED by a Layer 6
+// static (The Wandering Rescuer's hexproof, an Equipment's flying)
+// counts exactly as a printed one does. kw must be one of the
+// engine's canonical lowercase tokens — "flying", "reach",
+// "first strike", "double strike", "deathtouch", "lifelink",
+// "trample", "vigilance", "menace", "defender", "haste", "flash",
+// "hexproof", "shroud". A token outside that set can never be true,
+// because the deck importer filters Scryfall's array against the
+// same table.
+//
+// This is for clauses that NAME a keyword — "target creature with
+// flying", "destroy target creature without flying". It is NOT how
+// hexproof and shroud are enforced: those are a rule, applied to
+// every targeted clause by game.CanBeTargetedBy at the choke point,
+// and a card does not opt in.
+func HasKeyword(kw string) CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		return game.HasKeyword(&c, kw)
+	}
+}
+
+// WithoutKeyword is HasKeyword's negation, spelled out because
+// "creature without flying" is how the clause reads on the card.
+func WithoutKeyword(kw string) CardPredicate { return Not(HasKeyword(kw)) }
+
 // --- controller / owner predicates ------------------------------
 
 // YouControl passes for cards the caster controls.

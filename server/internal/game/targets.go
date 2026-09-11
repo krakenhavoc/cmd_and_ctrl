@@ -130,8 +130,33 @@ type LegalTargets struct {
 // the caster's point of view. Walks players, then the requested
 // zones in a stable order (battlefield, stack, then each seat's
 // graveyard in seat order) so the wire list is deterministic.
-// Caller must hold g.mu.
+//
+// This is the TARGETING enumeration: the protection-style keyword
+// gate (CanBeTargetedBy) is applied, so a hexproof creature an
+// opponent controls never reaches the picker. Cost payments and
+// other "choose" effects that are not targeting want
+// specCandidatesLocked instead. Caller must hold g.mu.
 func (g *Game) legalTargetsLocked(caster uuid.UUID, spec *TargetSpec) LegalTargets {
+	return g.specMatchesLocked(caster, spec, true)
+}
+
+// specCandidatesLocked is legalTargetsLocked without the
+// protection-style keyword gate: the set of cards that merely MATCH
+// the spec's predicate and zones. Cost payments use it, because
+// paying a cost is not targeting (CR 601.2f/h) — convoking a
+// shrouded creature, or sacrificing one to an additional cost, is
+// legal and always has been. sacrifice.go's
+// sacrificeCandidatesLocked makes the same distinction for the
+// effect-driven sacrifice prompt.
+//
+// Caller must hold g.mu.
+func (g *Game) specCandidatesLocked(chooser uuid.UUID, spec *TargetSpec) LegalTargets {
+	return g.specMatchesLocked(chooser, spec, false)
+}
+
+// specMatchesLocked is the shared walk behind both enumerations.
+// `targeting` switches the CR 702 keyword gate on.
+func (g *Game) specMatchesLocked(caster uuid.UUID, spec *TargetSpec, targeting bool) LegalTargets {
 	var out LegalTargets
 	if spec == nil {
 		return out
@@ -149,7 +174,11 @@ func (g *Game) legalTargetsLocked(caster uuid.UUID, spec *TargetSpec) LegalTarge
 	}
 	for _, zk := range spec.Zones {
 		for _, z := range g.zonesOfKindLocked(zk) {
-			for _, c := range z.Cards {
+			for i := range z.Cards {
+				c := z.Cards[i]
+				if targeting && !CanBeTargetedBy(&c, zk, caster) {
+					continue
+				}
 				if spec.CardOK != nil && !spec.CardOK(g, caster, c, zk) {
 					continue
 				}
@@ -185,6 +214,24 @@ func (g *Game) TargetStillLegalForEffect(item *StackItem, ref TargetRef) bool {
 // HasLegalTarget predicates, trigger target pickers).
 func (g *Game) LegalTargetsForEffect(caster uuid.UUID, spec *TargetSpec) LegalTargets {
 	return g.legalTargetsLocked(caster, spec)
+}
+
+// SpecCandidatesForEffect is the NON-targeting sibling of
+// LegalTargetsForEffect: which permanents match this spec for the
+// purpose of PAYING A COST. Convoke's tap list, an additional
+// sacrifice cost's option list, and an activated ability's
+// "sacrifice another creature" clause all reuse TargetSpec as a
+// predicate, and none of them targets — so a shrouded creature is
+// still convokable and a hexproof one is still sacrificeable.
+// Callers already under g.mu (the protocol projection, the bot's
+// move enumerator).
+//
+// Choosing between the two is the one judgement call this file
+// asks of a caller: if the printed text says "target", use
+// LegalTargetsForEffect; if it says "sacrifice", "tap", "choose"
+// or "exile", use this.
+func (g *Game) SpecCandidatesForEffect(chooser uuid.UUID, spec *TargetSpec) LegalTargets {
+	return g.specCandidatesLocked(chooser, spec)
 }
 
 // LegalTargetsFor is the locking entry point used by the protocol
@@ -233,10 +280,23 @@ func (g *Game) zonesOfKindLocked(kind ZoneKind) []*Zone {
 
 // targetLegalLocked reports whether one announce-time target ref is
 // currently legal under spec for caster: the referenced player /
-// card exists in an allowed zone AND passes the predicate. Used at
-// announce (CR 601.2c) and again at resolution (CR 608.2b). Self /
-// none refs are always legal. Caller must hold g.mu.
+// card exists in an allowed zone, is not shielded from this caster
+// by a protection-style keyword, AND passes the predicate. Used at
+// announce (CR 601.2c) and again at resolution (CR 608.2b) — the
+// same function, which is why a creature that GAINS hexproof in
+// response to a spell already on the stack makes that spell fizzle
+// without anything else being taught the rule. Self / none refs are
+// always legal. Caller must hold g.mu.
 func (g *Game) targetLegalLocked(caster uuid.UUID, spec *TargetSpec, ref TargetRef) bool {
+	return g.specMatchLocked(caster, spec, ref, true)
+}
+
+// specMatchLocked is targetLegalLocked's body with the CR 702
+// keyword gate switchable. Cost-payment call sites (convoke's tap
+// list, an activated ability's "sacrifice another" clause) pass
+// targeting=false: they reuse TargetSpec purely as a predicate over
+// permanents, and paying a cost never targets.
+func (g *Game) specMatchLocked(caster uuid.UUID, spec *TargetSpec, ref TargetRef, targeting bool) bool {
 	switch ref.Kind {
 	case TargetSelf, TargetNone:
 		return true
@@ -264,10 +324,15 @@ func (g *Game) targetLegalLocked(caster uuid.UUID, spec *TargetSpec, ref TargetR
 		if !allowed {
 			return false
 		}
-		for _, c := range z.Cards {
-			if c.InstanceID == ref.ID {
-				return spec.CardOK == nil || spec.CardOK(g, caster, c, z.Kind)
+		for i := range z.Cards {
+			c := z.Cards[i]
+			if c.InstanceID != ref.ID {
+				continue
 			}
+			if targeting && !CanBeTargetedBy(&c, z.Kind, caster) {
+				return false
+			}
+			return spec.CardOK == nil || spec.CardOK(g, caster, c, z.Kind)
 		}
 	}
 	return false
