@@ -37,15 +37,31 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     declines to airbend the source, so the printed restriction
 //     holds at resolution.
 //
-// SIMPLIFICATION — the Lesson clause is not implemented. "Aang
-// gains lifelink until end of turn" needs a continuous effect with
-// a turn-scoped duration, and the layer engine has no such thing:
-// StaticAbility is recomputed from the battlefield every pass, so
-// there is nowhere for a floating until-end-of-turn grant to live.
-// Granting lifelink permanently would be stronger than printed,
-// which is the one direction that isn't allowed, so the clause is
-// omitted entirely. Aang is weaker than the real card by one
-// conditional lifelink.
+//   - The Lesson clause is LIVE as of S32. It shipped omitted in
+//     S23 because "Aang gains lifelink until end of turn" needed a
+//     continuous effect with a turn-scoped duration and the layer
+//     engine had nowhere to put one — every static was recomputed
+//     from the battlefield, so a floating grant could not exist.
+//     `GrantKeywordUntilEOT` (until_end_of_turn.go) is that place
+//     now: the grant lands in `Game.TurnScopedStatics`, the
+//     recompute picks it up, and the cleanup step sweeps it
+//     (CR 514.2). Lifelink is one of the twelve keywords the
+//     combat code honours, so the life gain is real, not cosmetic.
+//     See ADR 0035.
+//
+//   - "Lesson spell" is matched on the cast card's type line, so it
+//     fires for any Lesson — a catalog one or a non-catalog card
+//     put into a hand by the dev spawner. The trigger reads the
+//     spell off the stack the way Beast Whisperer's does; Aang's
+//     own cast can't trigger it (he isn't on the battlefield yet,
+//     and he isn't a Lesson).
+//
+//   - The grant is pinned to Aang's battlefield instance at the
+//     moment the trigger resolves. An Aang who has left by then
+//     gains nothing, and an Aang flickered out and back after the
+//     grant loses it (CR 400.7 — he returns a new object).
+//
+// No remaining simplifications on this clause.
 func init() {
 	Register(Spec{
 		OracleID:        "70564c3a-858f-498e-8b92-acb3ca54ae7e",
@@ -73,6 +89,27 @@ func init() {
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Aang, the Last Airbender — airbend a nonland permanent? (Exile it; its owner may cast it for {2}.)",
+			},
+		}, {
+			// "Whenever you cast a Lesson spell, Aang gains
+			// lifelink until end of turn." Mandatory, untargeted.
+			Watches: []game.EventKind{game.EventCast},
+			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				if ev.Actor != source.Controller {
+					return false
+				}
+				spell, ok := g.LookupCardForEffect(ev.CardID)
+				return ok && containsFoldASCII(spell.TypeLine, "lesson")
+			},
+			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+				return game.NewTriggeredItem(source, "Aang, the Last Airbender — lifelink until end of turn",
+					func(g *game.Game, item *game.StackItem) error {
+						return GrantKeywordUntilEOT{
+							Target:   item.SourceCardID,
+							Keywords: []string{"lifelink"},
+							Label:    "Aang, the Last Airbender — lifelink",
+						}.Apply(NewContext(g, item))
+					})
 			},
 		}},
 	})
