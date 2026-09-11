@@ -84,7 +84,7 @@ cmd_and_ctrl/
     ├── protocol.md      # v0 wire format spec
     ├── lobby.md         # lobby HTTP API reference
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0018 triggers on the stack)
+    └── decisions/       # ADRs (0001 WS library … 0033 AI bot seat) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -105,6 +105,26 @@ checklist of sub-tasks. Commits reference the sprint issue number.
 **Every commit and pull request must reference the sprint and issue it relates
 to.** This is non-negotiable — it's how we keep a part-time, multi-month project
 coherent.
+
+### Picking an ADR number
+
+**Check every branch, not just the one you are on.** ADR files live in `docs/decisions/` and the
+number is in the filename *and* the H1, so two branches that both grab "the next number" collide
+silently and only conflict at merge time — by which point the number is in commit messages, issue
+bodies and cross-links in other ADRs.
+
+```bash
+git fetch --all --prune
+for b in $(git branch -r --format='%(refname:short)' | grep -v HEAD); do
+  git ls-tree --name-only "$b" docs/decisions/
+done | sed 's|.*/||' | cut -d- -f1 | sort -u
+```
+
+Take the first number that does not appear, and say in the PR body which branches you checked.
+Numbers are **not** reused when an ADR is renumbered or abandoned — `0005`, `0024`, `0029` and
+`0030` are permanently unused for exactly that reason. If a number you already used turns out to be
+taken, renumber **your** file (title, filename and every inbound link) rather than asking the other
+branch to move; the one that merges first keeps the number.
 
 ### Commit message format
 
