@@ -822,6 +822,19 @@ func (g *Game) runStepEntryHooksLocked() {
 		// which is the same boundary every other turn-based action
 		// uses.
 		g.advanceSagasForActiveSeatLocked()
+		// S30: announce the precombat main phase so "at the beginning
+		// of your precombat main phase" triggers auto-fire through
+		// the harvester. Same shape as the upkeep and end-step
+		// announcements, and it follows the Saga advance for the same
+		// reason CR 714.2b puts that first: the turn-based action
+		// happens as the phase begins, and the triggers that watch
+		// the phase go on the stack above whatever it queued.
+		if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
+			g.EmitEvent(Event{
+				Kind:  EventBeginPrecombatMain,
+				Actor: g.Seats[g.Turn.ActiveSeat].ID,
+			})
+		}
 	case StepEnd:
 		// S22: announce the end step so "at the beginning of your
 		// end step" triggers auto-fire through the harvester. The

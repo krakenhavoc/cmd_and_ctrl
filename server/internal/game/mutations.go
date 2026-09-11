@@ -919,7 +919,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// Emitted after EventCast so a "becomes the target" trigger and
 	// a "whenever a player casts a spell" trigger queue in printed
 	// order.
-	g.emitBecameTargetLocked(playerID, cardID, params.Targets)
+	g.emitBecameTargetLocked(playerID, cardID, cardID, params.Targets)
 	// The caster receives priority right after casting (CR 117.3c),
 	// and CR 603.3 puts any cast-triggered abilities (Rhystic Study,
 	// Beast Whisperer) on the stack at that moment — above the
@@ -1994,7 +1994,7 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 	})
 	// CR 603.3d: a manually-announced trigger chooses its targets as
 	// it goes on the stack, same as the harvested kind.
-	g.emitBecameTargetLocked(playerID, sourceCardID, params.Targets)
+	g.emitBecameTargetLocked(playerID, sourceCardID, id, params.Targets)
 	return nil
 }
 

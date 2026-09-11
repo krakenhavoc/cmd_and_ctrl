@@ -270,6 +270,13 @@ export interface PendingChoiceView {
     // is a legal "fail to find" (CR 701.19c), so search_max is the
     // ceiling and the floor is zero.
     | "search_library"
+    // S28 cascade (CR 702.85): "you may cast it without paying its
+    // mana cost". Answered with the shared yes/no {choice_id, apply}
+    // payload — apply=true takes the offer, and the server stamps a
+    // free-cast permission on the card so it can be cast out of exile
+    // this turn. `options` carries the one card being offered, so the
+    // prompt shows the card rather than naming it in a sentence.
+    | "may_cast"
     | string;
   chooser: string;
   from_player: string;

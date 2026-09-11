@@ -366,7 +366,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// put on the stack. S22, for "whenever ~ becomes the target of a
 	// spell or ability" (Monk Gyatso) — the clause names abilities as
 	// well as spells, so the activated path has to emit too.
-	g.emitBecameTargetLocked(playerID, cardID, params.Targets)
+	g.emitBecameTargetLocked(playerID, cardID, itemID, params.Targets)
 	// The cost may have queued dies-triggers (a sacrifice outlet
 	// feeding Blood Artist). Drain them so they sit ABOVE the
 	// ability on the stack, which is where paying a cost puts them.

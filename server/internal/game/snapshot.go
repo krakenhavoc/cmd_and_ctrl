@@ -323,7 +323,7 @@ type delayedTriggerSnapshot struct {
 	HasEffect          bool        `json:"hasEffect,omitempty"`
 }
 
-// pendingChoiceSnapshot mirrors PendingChoice's DATA. Its six
+// pendingChoiceSnapshot mirrors PendingChoice's DATA. Its seven
 // continuation frames are the sharpest edge of this whole file: a
 // game sitting on a prompt is a game whose next step is a Go closure.
 // The data comes back; the continuation does not, which is precisely
@@ -351,6 +351,7 @@ type pendingChoiceSnapshot struct {
 	PayCost              string                 `json:"payCost,omitempty"`
 	SearchCards          []uuid.UUID            `json:"searchCards,omitempty"`
 	SearchMax            int                    `json:"searchMax"`
+	MayCastCard          uuid.UUID              `json:"mayCastCard,omitempty"`
 
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
@@ -858,6 +859,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		PayCost:              c.PayCost,
 		SearchCards:          copyUUIDs(c.SearchCards),
 		SearchMax:            c.SearchMax,
+		MayCastCard:          c.MayCastCard,
 	}
 	if c.DamageAssignment != nil {
 		// Pure data (see the type), so a value copy with its own
@@ -873,6 +875,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		"copySpellResume":   c.copySpellResume != nil,
 		"triggerResume":     c.triggerResume != nil,
 		"payUnlessResume":   c.payUnlessResume != nil,
+		"mayCastResume":     c.mayCastResume != nil,
 		"searchResume":      c.searchResume != nil,
 		"scryResume":        c.scryResume != nil,
 	} {
@@ -1281,9 +1284,10 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PayCost:              c.PayCost,
 		SearchCards:          copyUUIDs(c.SearchCards),
 		SearchMax:            c.SearchMax,
-		// The six resume frames stay nil. This is the phase-1 line in
-		// the sand, and the census is how it is enforced rather than
-		// hoped for.
+		MayCastCard:          c.MayCastCard,
+		// The seven resume frames stay nil. This is the phase-1 line
+		// in the sand, and the census is how it is enforced rather
+		// than hoped for.
 	}
 	if c.DamageAssignment != nil {
 		da := *c.DamageAssignment
