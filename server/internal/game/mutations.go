@@ -1194,6 +1194,28 @@ func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams)
 	if err != nil {
 		return ParsedCost{}, err
 	}
+	// S28: cost modifiers (CR 601.2f) — increases, then reductions,
+	// then Trinisphere-style cost-setting effects. Layered AFTER the
+	// alternative-cost swap and the commander tax because both of
+	// those settle what the spell "would cost", which is the number
+	// every modifier is written against: Thalia taxes an overloaded
+	// spell's overload cost, and Trinisphere looks at the taxed
+	// commander's total rather than the corner of the card.
+	//
+	// Applied BEFORE the convoke subtraction below for the same
+	// reason the tax is: tapping creatures is a way of PAYING the
+	// total cost, and CR 601.2f settles the total before anything
+	// is paid against it.
+	cost, err = g.applyCostModifiersLocked(cost, CostQuery{
+		Game:       g,
+		Card:       card,
+		Controller: p.ID,
+		FromZone:   castFromZoneKind(params.FromZone),
+		XValue:     params.XValue,
+	})
+	if err != nil {
+		return ParsedCost{}, err
+	}
 	// S22: convoke / waterbend. Applied LAST, because it is the only
 	// component that spends against the cost rather than adding to
 	// it — the tax, the any-colour fold and the alternative-cost swap
@@ -1248,6 +1270,23 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 		cost = asAnyColorCost(cost)
 	}
 	return cost, nil
+}
+
+// castFromZoneKind maps CastSpellParams.FromZone onto the ZoneKind a
+// cost modifier's predicate reads. Mirrors castSourceZoneLocked's
+// switch — including its "unknown falls back to hand" posture, which
+// keeps an older client's omitted field meaning what it always meant.
+// Split out because the cost-modifier query wants the kind without
+// wanting the zone pointer (and without wanting a *Player).
+func castFromZoneKind(fromZone string) ZoneKind {
+	switch fromZone {
+	case "command":
+		return ZoneCommand
+	case "exile":
+		return ZoneExile
+	default:
+		return ZoneHand
+	}
 }
 
 // castSourceZoneLocked resolves the FromZone string to the zone

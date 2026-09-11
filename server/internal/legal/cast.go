@@ -122,6 +122,32 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 	if from == "command" {
 		cost.Generic += p.CommanderCasts[card.InstanceID] * 2
 	}
+	// S28: the board's cost modifiers (CR 601.2f). Same reasoning as
+	// the parse gate above — a move enumerated at the printed price
+	// while a Sphere of Resistance sits on the table is a move the
+	// engine will reject for insufficient mana, and a bot that keeps
+	// picking rejected moves stalls. A modifier the engine refuses to
+	// price (ErrCostModifier) makes the cast unenumerable for the
+	// same reason an unparseable cost does.
+	//
+	// Priced at X=0 even though affordableX is about to search for a
+	// bigger X. The only modifier kind X can change the answer for is
+	// a CostFloor (Trinisphere), and X=0 is the branch where the
+	// floor applies — so the search starts from the most expensive
+	// reading and can only narrow the X it offers. Conservative in
+	// the direction that never advertises an unaffordable move.
+	fromZone := game.ZoneHand
+	if from == "command" {
+		fromZone = game.ZoneCommand
+	}
+	cost, err = e.g.ApplyCostModifiersForEffect(cost, game.CostQuery{
+		Card:       card,
+		Controller: e.seat,
+		FromZone:   fromZone,
+	})
+	if err != nil {
+		return
+	}
 	x, ok := e.affordableX(cost, game.ManaSpendForCast(card))
 	if !ok {
 		return
