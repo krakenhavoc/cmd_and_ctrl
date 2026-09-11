@@ -409,6 +409,75 @@ func TestZurgoIsIndestructibleOnlyOnHisControllersTurn(t *testing.T) {
 	}
 }
 
+// TestUrilCountsAurasAttachedToHim is the half of the card that was
+// deferred when this file was first written and became writable an
+// hour later, when S24's attachment relation (#374) landed on main.
+// Layer 7c, recomputed every pass, so removing an Aura shrinks him
+// again with nothing to un-latch.
+func TestUrilCountsAurasAttachedToHim(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+
+	uril := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(),
+		Name:       "Uril, the Miststalker",
+		TypeLine:   "Legendary Creature — Beast",
+		OracleID:   urilOracle,
+		Power:      5,
+		Toughness:  5,
+		Owner:      me.ID,
+		Controller: me.ID,
+	})
+	aura1 := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(),
+		Name:       "Test Aura",
+		TypeLine:   "Enchantment — Aura",
+		Owner:      me.ID,
+		Controller: me.ID,
+	})
+	aura2 := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(),
+		Name:       "Other Aura",
+		TypeLine:   "Enchantment — Aura",
+		Owner:      me.ID,
+		Controller: me.ID,
+	})
+	// Equipment rides the same AttachedTo field and must NOT count.
+	equip := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(),
+		Name:       "Test Blade",
+		TypeLine:   "Artifact — Equipment",
+		Owner:      me.ID,
+		Controller: me.ID,
+	})
+
+	if p := effectivePower(t, g, uril); p != 5 {
+		t.Fatalf("unattached Uril power = %d, want 5", p)
+	}
+
+	g.WithWriteLock(func() {
+		for _, id := range []uuid.UUID{aura1, aura2, equip} {
+			if err := g.AttachForEffect(id, game.TargetRef{Kind: game.TargetCard, ID: uril}); err != nil {
+				t.Fatalf("AttachForEffect: %v", err)
+			}
+		}
+	})
+
+	if p, tough := effectivePower(t, g, uril), effectiveToughness(t, g, uril); p != 9 || tough != 9 {
+		t.Errorf("Uril with two Auras and one Equipment = %d/%d, want 9/9", p, tough)
+	}
+
+	// Remove one Aura: the count is recomputed, not latched.
+	g.WithWriteLock(func() {
+		if err := g.DestroyPermanentForEffect(aura1); err != nil {
+			t.Fatalf("DestroyPermanentForEffect: %v", err)
+		}
+	})
+	if p := effectivePower(t, g, uril); p != 7 {
+		t.Errorf("Uril after losing one Aura = %d, want 7", p)
+	}
+}
+
 // TestUrilAndSigardaCarryEnforcedHexproof — the two named voltron
 // commanders ship with their targeting protection genuinely live,
 // which is the half of each card that is not waiting on attachments.
