@@ -81,6 +81,18 @@ type Card struct {
 	// game.Card. Added in S08.
 	Power     string `json:"power"`
 	Toughness string `json:"toughness"`
+	// Loyalty is Scryfall's printed starting loyalty for a
+	// planeswalker, as a string for the same reason Power is —
+	// some walkers print "X" (Nicol Bolas, the Ravager's back face
+	// prints a number; a handful of designs do not). Empty for
+	// every non-planeswalker. The deck importer parses it to an int
+	// when stamping game.Card.StartingLoyalty, which the engine
+	// turns into loyalty counters on battlefield entry (CR 306.5b).
+	//
+	// Carried here — rather than only in the effect catalog — so
+	// that planeswalkers outside the opt-in catalog are playable.
+	// See issue #274. Added in the #274 fix.
+	Loyalty string `json:"loyalty"`
 	// ManaCost is the printed casting cost as Scryfall returns it —
 	// e.g. "{1}{R}", "{W/U}", "{X}{B}{B}", "{2}{W}{W}". Empty for
 	// lands and for cards without a mana cost (e.g. Pact of Negation
@@ -114,6 +126,13 @@ type CardFace struct {
 	TypeLine   string            `json:"type_line"`
 	OracleText string            `json:"oracle_text"`
 	ImageURIs  map[string]string `json:"image_uris"`
+	// Loyalty is the face's printed starting loyalty. Scryfall puts
+	// power / toughness / loyalty on the FACE for double-faced
+	// cards, leaving the top-level field empty — so without this a
+	// transforming planeswalker (Nissa, Vastwood Seer // Sage
+	// Animist) would resolve with no loyalty at all. The importer
+	// falls back to the first face that prints one.
+	Loyalty string `json:"loyalty"`
 }
 
 // Index is a read-only map from card UUID → Card, built at server

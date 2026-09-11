@@ -22,6 +22,15 @@ func init() {
 	game.EffectResolver = resolveSpell
 	game.ETBEffectHook = fireOnETB
 	game.IsCatalogCard = Has
+	// #274: starting loyalty is printed card data, so the stamp
+	// itself lives in the game package. The catalog only answers
+	// when the card carries no printed value of its own.
+	game.CatalogStartingLoyalty = func(oracleID string) int {
+		if spec, ok := Lookup(oracleID); ok {
+			return spec.StartingLoyalty
+		}
+		return 0
+	}
 	game.CatalogTargetMode = func(oracleID string) string {
 		if spec, ok := Lookup(oracleID); ok {
 			// S20: a structured TargetSpec is the source of truth
@@ -257,14 +266,12 @@ func fireOnETB(g *game.Game, cardID uuid.UUID, oracleID string) error {
 	if !ok {
 		return nil
 	}
-	// Stamp starting loyalty first — the SBA check that kills
-	// 0-loyalty planeswalkers runs on the next priority-grant
-	// boundary, so the counters have to be in place before then.
-	if spec.StartingLoyalty > 0 {
-		if err := g.AddCounterForEffect(cardID, "loyalty", spec.StartingLoyalty); err != nil {
-			return err
-		}
-	}
+	// Starting loyalty is NOT stamped here any more. It moved to
+	// game.stampStartingLoyaltyLocked, which the game package runs
+	// on every battlefield entry whether or not a catalog entry
+	// exists — see issue #274. The catalog's Spec.StartingLoyalty
+	// is still consulted, as a fallback, via the
+	// game.CatalogStartingLoyalty hook registered in init().
 	if spec.OnETB == nil {
 		return nil
 	}

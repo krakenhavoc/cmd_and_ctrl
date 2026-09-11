@@ -38,6 +38,20 @@ var EffectResolver func(g *Game, item *StackItem, oracleID string) error
 // callback + stamp StartingLoyalty for planeswalkers.
 var ETBEffectHook func(g *Game, cardID uuid.UUID, oracleID string) error
 
+// CatalogStartingLoyalty returns the catalog's declared starting
+// loyalty for an oracle ID, or 0 when the card has no catalog entry
+// (or is not a planeswalker). It is a FALLBACK only: the printed
+// value on Card.StartingLoyalty, stamped by the deck importer from
+// Scryfall, always wins. The catalog answer exists for cards that
+// never went through deck import — tokens, test fixtures, and the
+// demo seed.
+//
+// Nil hook means "no catalog wired", which is the normal state in
+// the game package's own tests and in a server built without the
+// effects blank import. Loyalty still works in that configuration;
+// that is the point of moving the stamp here (issue #274).
+var CatalogStartingLoyalty func(oracleID string) int
+
 // IsCatalogCard reports whether an oracle ID is present in the
 // card-effect catalog. Used by the view layer (protocol.CardView)
 // to stamp the `auto` bit so the client can render the auto badge.
@@ -226,15 +240,85 @@ func (g *Game) fireEffectResolverLocked(item *StackItem, oracleID string, cardID
 	}
 }
 
-// fireETBHookLocked invokes the registered ETBEffectHook if
-// non-nil. Used by every code path that places a card on the
-// battlefield — land cast, spell resolution, manual admin move
-// into battlefield. Caller must hold g.mu.
+// fireETBHookLocked runs the two things that must happen whenever a
+// card crosses onto the battlefield: the printed starting-loyalty
+// stamp (CR 306.5b) and the registered ETBEffectHook. Used by every
+// code path that places a card on the battlefield — land cast,
+// spell resolution, reanimation, token creation, manual admin move.
+// Caller must hold g.mu.
+//
+// The loyalty stamp runs FIRST and runs unconditionally — before
+// the oracle-ID / nil-hook guards below. Issue #274: it used to
+// live inside the catalog's hook (effects.fireOnETB), so it was
+// skipped for any card the catalog didn't know, and the CR 704.5i
+// SBA then swept the 0-loyalty planeswalker into the graveyard on
+// the next priority-grant boundary.
 func (g *Game) fireETBHookLocked(cardID uuid.UUID, oracleID string) {
+	g.stampStartingLoyaltyLocked(cardID, oracleID)
 	if ETBEffectHook == nil || oracleID == "" {
 		return
 	}
 	if err := ETBEffectHook(g, cardID, oracleID); err != nil {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Source:   cardID,
+			ErrorMsg: err.Error(),
+		})
+	}
+}
+
+// stampStartingLoyaltyLocked puts a planeswalker's starting loyalty
+// counters on it as it enters the battlefield (CR 306.5b). Caller
+// must hold g.mu.
+//
+// Source precedence:
+//
+//  1. Card.StartingLoyalty — printed data, stamped by the deck
+//     importer from Scryfall's `loyalty` field. This is the normal
+//     path for every card a player actually brought to the game.
+//  2. CatalogStartingLoyalty(oracleID) — the effects catalog's
+//     Spec.StartingLoyalty, for cards that never went through deck
+//     import (tokens, fixtures, the demo seed).
+//
+// The already-has-loyalty guard is what keeps the two from adding
+// up: a deck-imported catalog planeswalker would otherwise enter
+// with double its printed loyalty. It also makes the call idempotent
+// for the entry paths that fire the hook more than once.
+//
+// Counters go through AddCounterForEffect rather than being written
+// directly so the CR 614 counter-replacement pipeline still sees
+// them — a planeswalker entering under Doubling Season gets its
+// loyalty doubled (CR 121.3), which a direct map write would skip.
+//
+// Timing matters: this runs as part of the battlefield-entry path,
+// which is strictly before the next priority-grant boundary, so the
+// 0-loyalty SBA at mutations.go:1836 never observes the walker in
+// its unstamped state.
+func (g *Game) stampStartingLoyaltyLocked(cardID uuid.UUID, oracleID string) {
+	var card *Card
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == cardID {
+			card = &g.Battlefield.Cards[i]
+			break
+		}
+	}
+	if card == nil || !card.IsPlaneswalker() {
+		return
+	}
+	if card.Counters[CounterLoyalty] > 0 {
+		return
+	}
+	loyalty := card.StartingLoyalty
+	if loyalty <= 0 && CatalogStartingLoyalty != nil && oracleID != "" {
+		loyalty = CatalogStartingLoyalty(oracleID)
+	}
+	if loyalty <= 0 {
+		// Nothing printed and nothing in the catalog. Leave it at
+		// zero and let CR 704.5i do its job — inventing a loyalty
+		// value here would make planeswalkers unkillable.
+		return
+	}
+	if err := g.AddCounterForEffect(cardID, CounterLoyalty, loyalty); err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Source:   cardID,
