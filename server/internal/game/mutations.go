@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -700,7 +701,8 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// pool; strict + not payable + not forced rejects with a
 	// structured InsufficientManaError; permissive or forced emits
 	// an EventCostWarning and proceeds without touching the pool
-	// (sandbox posture — paper tracking remains valid).
+	// (sandbox posture — paper tracking remains valid). A cost the
+	// parser can't read rejects in every mode (#289).
 	if err := g.applyCastCostLocked(p, card, params, cardID); err != nil {
 		return err
 	}
@@ -833,22 +835,32 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 //
 // The "effective cost" parses the printed ManaCost and adds
 // {2}-per-prior-cast for casts from the command zone (CR 903.8).
-// Empty / unparseable ManaCost short-circuits the gate (treats
-// the card as costless — matches the sandbox posture for cards
-// the importer couldn't parse). Caller must hold g.mu.
+// An EMPTY ManaCost still short-circuits to costless — ParseCost
+// treats "" as the zero cost, matching land behaviour — but an
+// UNPARSEABLE one now rejects the cast outright, before any of
+// the three outcomes above. Caller must hold g.mu.
 func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams, cardID uuid.UUID) error {
 	cost, err := g.effectiveCostLocked(p, card, params)
 	if err != nil {
-		// Unparseable ManaCost — treat as costless so a Scryfall
-		// gap doesn't wedge sandbox casts. Emit a warning for
-		// debug visibility.
+		// #289: this used to return nil, silently making the card
+		// FREE. Split and adventure cards import a joined cost
+		// ("{1}{R} // {1}{U}") that ParseCost rightly rejects, so
+		// ~1,047 cards cast for nothing with no error on the wire.
+		//
+		// Refusing is the honest answer, and it is deliberately
+		// mode-independent. Permissive mode's bargain is "the
+		// engine knows the cost, you pay it on paper" — void when
+		// the engine cannot read the cost at all. ForceCast
+		// overrides the strict-mana GATE, not the parser: there is
+		// no cost for the player to have paid. The card stays in
+		// hand and the player sees why.
 		g.EmitEvent(Event{
 			Kind:     EventCostWarning,
 			Actor:    p.ID,
 			Source:   cardID,
 			ErrorMsg: err.Error(),
 		})
-		return nil
+		return fmt.Errorf("%w for %s: %w", ErrUnparseableCost, card.Name, err)
 	}
 	if !params.Strict || params.ForceCast {
 		// Permissive default OR strict-mode override. Don't touch
@@ -881,8 +893,10 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 //
 // Flow:
 //  1. Parse the effective cost (printed cost + commander tax).
-//     Unparseable cost short-circuits to nil — applyCastCostLocked
-//     will emit the warning and proceed permissively.
+//     Unparseable cost short-circuits to nil WITHOUT tapping
+//     anything — applyCastCostLocked runs next and rejects the
+//     cast with ErrUnparseableCost, so tapping here would strand
+//     the caster's lands for a cast that never happens.
 //  2. If the pool already covers the cost, skip — auto-tap is
 //     idempotent on a funded pool.
 //  3. Build the excluded set from LockedSources.
@@ -3050,9 +3064,11 @@ func basicLandColor(typeLine string) string {
 // raw options unchanged — Birds of Paradise falls through this path
 // with the full 5-color set intact.
 func filterPipeByCommanderIdentity(options []string, p *Player) []string {
-	// Find the player's commander on the battlefield or in the
-	// command zone. The color identity is on game.Card directly
-	// (copied at deck-import time via cards.Card.ColorIdentity).
+	// Find the player's commander in the command zone. Since #276
+	// the colour identity really is on game.Card directly, copied
+	// at deck-import time from cards.Card.ColorIdentity — this
+	// comment described that code for several sprints before it
+	// existed, which is why the gap went unnoticed.
 	// For S15 we scan the command zone only — post-move commanders
 	// on the battlefield still carry identity, but CR 903.4 keys
 	// identity off the printed card, so either source would work.
@@ -3083,19 +3099,30 @@ func filterPipeByCommanderIdentity(options []string, p *Player) []string {
 // present. Sandbox: picks the first card in the command zone — the
 // partner-pair union is S20 polish territory.
 //
-// S16: reads the commander's post-layer Effective().Colors rather
-// than scanning the printed cost directly. Today the printed-color
-// derivation flows through printedCharacteristic.Colors (populated
-// from ManaCost in characteristic.go), so the result matches the
-// pre-S16 proxy for every commander whose identity is fully
-// captured by their mana cost. Future Layer-5 color-change effects
-// (Painter's Servant on a commander, etc.) would mutate
-// Effective().Colors and the identity computation here picks the
-// change up automatically.
+// Three sources, in order:
 //
-// Falls back to distinctColorsInManaCost when Effective().Colors is
-// empty — covers placeholder commanders whose ManaCost is empty
-// (the demo seed) and the lobby-time pre-effects-init path.
+//  1. **Card.ColorIdentity** — Scryfall's own `color_identity`,
+//     copied at deck import. This is the only one of the three that
+//     is actually CR 903.4: it folds in mana symbols in rules text
+//     and BOTH faces of a double-faced card. Issue #276: a
+//     transform / modal-DFC commander has a null top-level
+//     mana_cost and colors (the real ones live on card_faces[0]),
+//     so sources 2 and 3 both returned empty and every "any colour
+//     in your commander's identity" pipe skipped narrowing —
+//     Command Tower offered all five colours to an Azorius deck.
+//  2. **Effective().Colors** (S16) — the commander's post-layer
+//     colours. Not identity, but a good proxy for any commander
+//     whose identity is fully captured by their mana cost, and it
+//     picks up Layer-5 colour-change effects (Painter's Servant on
+//     a commander) automatically.
+//  3. **distinctColorsInManaCost** — the original S15 proxy.
+//     Covers placeholder commanders with no stamped colours (the
+//     demo seed) and the lobby-time pre-effects-init path.
+//
+// Note the fallbacks can only ever be narrower than the truth, and
+// every call site uses the result to NARROW a mana pipe, so the
+// pre-#276 behaviour was permissive (offering colours that don't
+// exist) rather than restrictive.
 func commanderIdentityFor(p *Player) []string {
 	if p == nil || p.Command == nil {
 		return nil
@@ -3103,6 +3130,9 @@ func commanderIdentityFor(p *Player) []string {
 	for _, c := range p.Command.Cards {
 		if !c.IsCommander {
 			continue
+		}
+		if len(c.ColorIdentity) > 0 {
+			return c.ColorIdentity
 		}
 		eff := c.Effective()
 		if len(eff.Colors) > 0 {

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -21,6 +22,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/envflag"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/ratelimit"
 )
@@ -648,12 +650,27 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 // downstream consumer can deserialize line-by-line to reconstruct
 // the full game timeline.
 //
-// Authorization: the replay holds the UNFILTERED view — opponents'
-// hands and full library order — so it is live hidden information
-// for as long as the game runs. Admins may download at any time;
-// players and spectators bound to this game only once the game has
-// ended (by then every snapshot is post-game history, not an
-// in-progress scouting feed).
+// The replay log on disk holds the UNFILTERED view — every seat's
+// hand and full library order, for every snapshot. Access is
+// therefore governed on two independent axes, WHEN and WHAT:
+//
+// WHEN. The log is live hidden information for as long as the game
+// runs. Admins may download at any time; players and spectators
+// bound to this game only once the game has ended (by then every
+// snapshot is post-game history, not an in-progress scouting feed).
+//
+// WHAT. "The game is over" is not the same as "everyone may now read
+// everyone's hidden information." Admins get the log verbatim — bug
+// triage and the pinned bug-report replay need full fidelity. Every
+// other caller gets it streamed through protocol.FilterViewFor for
+// their own seat, which makes the endpoint consistent with the live
+// WS path: ws.Hub already filters every snapshot it broadcasts with
+// exactly this function, so an unfiltered replay was the one way to
+// obtain state the socket had deliberately withheld. After this, a
+// replay can never show a viewer more than they legitimately saw at
+// the table — and the WHEN gate above becomes defence in depth
+// rather than the only thing standing between a seated player and
+// the whole pod's hidden information.
 func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 	id, err := gameIDFromPath(r)
 	if err != nil {
@@ -701,8 +718,67 @@ func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 		"Content-Disposition",
 		`attachment; filename="`+id.String()+`.jsonl"`,
 	)
-	http.ServeContent(w, r, id.String()+".jsonl", info.ModTime(), f)
-	return nil
+	if p.Role == auth.RoleAdmin {
+		// Verbatim. ServeContent is a zero-copy sendfile path and
+		// brings Range support plus a Content-Length along with it —
+		// worth keeping on the one path that doesn't transform.
+		http.ServeContent(w, r, id.String()+".jsonl", info.ModTime(), f)
+		return nil
+	}
+	return streamFilteredReplay(c, w, f, replayViewerID(p))
+}
+
+// replayViewerID converts a principal into the viewerID string
+// protocol.FilterViewFor expects. A seated player is their own UUID;
+// anyone else is "", the spectator view. The uuid.Nil coercion
+// matters — Nil stringifies to the all-zero UUID, which matches no
+// seat and is NOT what FilterViewFor documents as "no seat". Mirrors
+// ws.viewerIDForFilter, which is unexported in that package.
+func replayViewerID(p auth.Principal) string {
+	if p.Role != auth.RolePlayer || p.PlayerID == uuid.Nil {
+		return ""
+	}
+	return p.PlayerID.String()
+}
+
+// streamFilteredReplay copies the JSONL replay from src to w, passing
+// each snapshot's GameView through FilterViewFor for the given viewer
+// and preserving line order and Seq numbers.
+//
+// Decoding with json.Decoder rather than bufio.Scanner is deliberate:
+// one record is an entire GameView and routinely exceeds Scanner's
+// 64 KiB default token size, which would truncate the replay
+// mid-stream and report no error at all. Encoder.Encode appends the
+// newline, so the output is JSONL by construction.
+//
+// Errors after the first byte cannot become an HTTP status — the
+// header is already committed — so a torn tail (a partial append from
+// a crash) ends the stream cleanly, leaving the client a shorter but
+// well-formed JSONL document rather than a corrupt one.
+func streamFilteredReplay(c Config, w http.ResponseWriter, src io.Reader, viewerID string) error {
+	dec := json.NewDecoder(src)
+	enc := json.NewEncoder(w)
+	for n := 0; ; n++ {
+		var payload protocol.SnapshotPayload
+		if err := dec.Decode(&payload); err != nil {
+			if !errors.Is(err, io.EOF) {
+				logReplayWarning(c, "replay stream ended early", err, n)
+			}
+			return nil
+		}
+		payload.Game = protocol.FilterViewFor(payload.Game, viewerID)
+		if err := enc.Encode(payload); err != nil {
+			// Client hung up mid-download. Nothing to report.
+			return nil
+		}
+	}
+}
+
+func logReplayWarning(c Config, what string, err error, line int) {
+	if c.Log == nil {
+		return
+	}
+	c.Log.Warn("replay: "+what, "err", err, "line", line)
 }
 
 func startGame(c Config, w http.ResponseWriter, r *http.Request) error {

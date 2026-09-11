@@ -78,6 +78,26 @@ type Card struct {
 	// targeting predicates read this. Added in S20 sub-PR 1.
 	Colors []string
 
+	// ColorIdentity is the card's Commander colour identity (CR
+	// 903.4) — uppercase letters from {"W","U","B","R","G"}, copied
+	// verbatim from Scryfall's top-level `color_identity` at deck
+	// import. Distinct from Colors: identity folds in mana symbols
+	// in rules text, colour indicators, and — crucially — BOTH
+	// faces of a double-faced card, which is why it is the only
+	// colour data that survives Scryfall's null top-level
+	// mana_cost / colors on a `transform` or `modal_dfc` record.
+	//
+	// Issue #276: commanderIdentityFor used to derive identity from
+	// Effective().Colors, falling back to the printed mana cost.
+	// Both are empty for a DFC commander, so the identity came back
+	// empty and every "any colour in your commander's identity"
+	// pipe (Command Tower, Arcane Signet, Fellwar Stone) skipped
+	// narrowing and offered all five colours. deck/validate.go has
+	// always read this field off cards.Card correctly — it simply
+	// had no path onto game.Card. Empty for tokens and fixtures,
+	// where the pre-#276 derivation still applies.
+	ColorIdentity []string
+
 	// StartingLoyalty is the printed loyalty a planeswalker enters
 	// the battlefield with (CR 306.5b), parsed from Scryfall's
 	// `loyalty` string at deck-import time. Zero for every other

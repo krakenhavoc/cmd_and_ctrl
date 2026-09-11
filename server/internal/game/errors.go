@@ -160,6 +160,18 @@ var (
 	// Added in S15 sub-PR 3.
 	ErrInsufficientMana = errors.New("game: insufficient mana")
 
+	// ErrUnparseableCost is returned by CastSpell when the card's
+	// printed ManaCost can't be parsed. Split and adventure cards
+	// import a joined cost ("{1}{R} // {1}{U}") that ParseCost
+	// rightly rejects; before this sentinel existed the cost gate
+	// swallowed the parse error and let the spell through for FREE
+	// — see #289. Refusing the cast is the honest answer: the
+	// engine does not know what the card costs, so neither the
+	// strict gate nor permissive paper-tracking can be trusted.
+	// Callers wrap it with the offending cost string for the
+	// client-facing message.
+	ErrUnparseableCost = errors.New("game: unparseable mana cost")
+
 	// ErrSummoningSick is returned when a creature that entered
 	// the battlefield this turn is asked to attack or activate a
 	// tap-cost ability without haste (CR 302.1, 702.10). Added in

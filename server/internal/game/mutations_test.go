@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand/v2"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -3055,6 +3056,102 @@ func TestS15CastSpellStrictRejectsWhenShort(t *testing.T) {
 	}
 	if g.Stack != nil && g.Stack.Contains(id) {
 		t.Errorf("rejected cast reached the stack")
+	}
+}
+
+// TestUnparseableCostRejectsCast proves an unparseable printed
+// ManaCost fails the cast loudly instead of silently downgrading it
+// to free (#289). Split and adventure cards import a joined cost
+// like "{1}{R} // {1}{U}"; ParseCost rightly rejects the bare "/",
+// and applyCastCostLocked used to swallow that error and return nil
+// — so ~1,047 cards cast for nothing, in every mode, with nothing
+// on the wire to say so.
+//
+// The rejection is mode-independent. Permissive mode's contract is
+// "the engine knows the cost, you pay it on paper", and that
+// contract is void when the engine cannot read the cost at all;
+// ForceCast overrides the strict-mana gate, not the parser.
+func TestUnparseableCostRejectsCast(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		cardName string
+		cost     string
+		params   CastSpellParams
+	}{
+		{"permissive split", "Fire // Ice", "{1}{R} // {1}{U}", CastSpellParams{}},
+		{"strict split", "Fire // Ice", "{1}{R} // {1}{U}", CastSpellParams{Strict: true}},
+		{"forced split", "Fire // Ice", "{1}{R} // {1}{U}", CastSpellParams{Strict: true, ForceCast: true}},
+		{"adventure", "Brazen Borrower", "{1}{U}{U} // {1}{U}", CastSpellParams{}},
+		{"unknown symbol", "Mystery Card", "{Q}", CastSpellParams{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newActiveGame(t)
+			advanceTo(t, g, StepPrecombatMain)
+			p := g.Seats[0]
+			id := pushTypedCardToHandWithCost(p, tc.cardName, "Instant", tc.cost)
+
+			err := g.CastSpell(p.ID, id, tc.params)
+			if err == nil {
+				t.Fatalf("cast with unparseable cost %q succeeded; want rejection", tc.cost)
+			}
+			if !errors.Is(err, ErrUnparseableCost) {
+				t.Fatalf("got %v (%T), want errors.Is(..., ErrUnparseableCost)", err, err)
+			}
+			// The message must name the offending cost so the player
+			// can tell which card is unplayable and why.
+			if !strings.Contains(err.Error(), tc.cost) {
+				t.Errorf("error %q does not mention the cost %q", err.Error(), tc.cost)
+			}
+			// Nothing moved and nothing was spent.
+			if !p.Hand.Contains(id) {
+				t.Errorf("rejected cast left hand")
+			}
+			if g.Stack != nil && g.Stack.Contains(id) {
+				t.Errorf("rejected cast reached the stack")
+			}
+			if len(p.ManaPool) != 0 {
+				t.Errorf("rejected cast touched the pool: %+v", p.ManaPool)
+			}
+		})
+	}
+}
+
+// TestUnparseableCostRejectsCastWithAutoTap proves the auto-tapper
+// doesn't tap anything on behalf of a cost it can't parse. The
+// planner short-circuits on the parse error and the cost gate then
+// rejects, so the caster's lands must still be untapped.
+func TestUnparseableCostRejectsCastWithAutoTap(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	island := pushBattlefieldForTest(g, p.ID, "Island", "Basic Land — Island", "")
+	id := pushTypedCardToHandWithCost(p, "Fire // Ice", "Instant", "{1}{R} // {1}{U}")
+
+	err := g.CastSpell(p.ID, id, CastSpellParams{Strict: true, AutoTap: true})
+	if !errors.Is(err, ErrUnparseableCost) {
+		t.Fatalf("auto-tap cast with unparseable cost: got %v, want ErrUnparseableCost", err)
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == island && g.Battlefield.Cards[i].Tapped {
+			t.Errorf("auto-tap tapped a land for a cost it could not parse")
+		}
+	}
+}
+
+// TestParseableCostStillCastsPermissively guards the fix's blast
+// radius: a normal printed cost keeps the permissive warn-and-
+// proceed posture. Only the unparseable case changed.
+func TestParseableCostStillCastsPermissively(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	id := pushTypedCardToHandWithCost(p, "Lightning Bolt", "Instant", "{R}")
+
+	if err := g.CastSpell(p.ID, id, CastSpellParams{}); err != nil {
+		t.Fatalf("permissive cast of a parseable cost: %v", err)
+	}
+	if !g.Stack.Contains(id) {
+		t.Errorf("permissive cast did not reach the stack")
 	}
 }
 
