@@ -698,6 +698,15 @@ change that teaches the engine to honour it.** Declaring a token the
 engine does not read puts a badge on the card that promises a rule
 nothing enforces.
 
+**Two protection-family keywords are deliberately outside the
+table**, for reasons [ADR 0038](docs/decisions/0038-protection-style-keywords.md)
+§7 sets out. *Ward* is a triggered ability, not a targeting
+restriction, and it ships per-card via the `effects.Ward(WardMana(…))`
+helper (S30) — it stays out of the table because the COST is a
+parameter a bare token has nowhere to put. *Protection* tests its
+quality against the SOURCE of a spell or ability, which the targeting
+choke point never receives; it is not implemented.
+
 **Layer-granted keywords still use `Spec.Static`.** Lord of Atlantis
 grants `"flying"` to *other* Merfolk via a conditional Layer 6
 `StaticAbility` — that pattern stays. `PrintedKeywords` is only for

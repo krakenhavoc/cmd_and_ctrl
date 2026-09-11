@@ -188,3 +188,62 @@ which was the point of declaring the grant rather than omitting it.
 
 **ADR 0036's forward flag is cleared.** Lightning Greaves and
 Swiftfoot Boots can now ship with a real hexproof grant.
+
+## S30 follow-up (#95)
+
+Decision 7 said ward and protection were each blocked on a
+structural fact rather than on time. One of the two turned out to
+be true only of the *placement*, and the S30 work is recorded here
+so this section stops reading as an open question.
+
+**Ward shipped, and not here.** It is a `game.TriggeredAbility`
+built by `effects.Ward(WardMana("{2}"), label)` in
+`server/internal/cards/effects/ward.go`, watching
+`EventBecomesTarget`, gated on `ev.Actor != source.Controller`, and
+resolving into the existing `QueuePayUnlessForEffect` prompt
+addressed to the *caster*. Countering on a decline is
+`CounterTargetForEffect`. Nothing in `CanBeTargetedBy` changed, and
+nothing should: the four observable facts that separate ward from
+hexproof — the announce succeeds, the payer is not the ward
+permanent's controller, paying resolves the spell, and the trigger
+is itself a respondable object on the stack — are exactly the four
+a targeting-gate implementation cannot produce.
+
+One engine change was needed and it is worth naming because it is
+reusable. `EventBecomesTarget` carried `Source` (the source CARD)
+but not the stack item. For a spell those coincide; for an
+activated or triggered ability they do not, so an effect that has
+to act on "the spell or ability that targeted me" could not reach
+it. `Event.StackItemID` now carries the item, threaded through all
+five `emitBecameTargetLocked` call sites. Any future "counter it",
+"copy it" or "change its target" effect keyed on becoming a target
+needs the same field.
+
+**Ward is still not in `canonicalKeywords`,** and the reason is the
+second half of decision 7 rather than the first: the cost is a
+parameter and `Characteristic.Abilities` is a slice of bare tokens.
+A bare `"ward"` in the enforced table would tell the ADR 0037
+coverage signal that every ward card works while the engine had no
+idea what to charge. The cost lives on the catalog Spec instead, so
+an uncatalogued ward card still flags as unimplemented — the honest
+answer, and the same one this ADR gave for protection. Only MANA
+wards are supported; "ward—pay 3 life" and "ward—sacrifice a
+creature" need a pay-unless prompt whose cost is an `AbilityCost`
+rather than a string, and `effects.WardCost` is the type that will
+carry it.
+
+**Protection is unchanged and still absent.** Its blocker is the
+one decision 7 identified as a real refactor — the quality is
+tested against the SOURCE object (CR 702.16e) and neither
+`targetLegalLocked` nor the damage, block or attachment paths
+receive one — and S30 did not attempt it. Protection-printing cards
+continue to flag as unimplemented, which keeps the DEBT problem
+(shipping only the T while the signal goes quiet) from arising.
+
+**Indestructible joined the table separately, in S25**
+([#380](https://github.com/krakenhavoc/cmd_and_ctrl/pull/380),
+`server/internal/game/indestructible.go`). It is in this family by
+reputation but not by structure, which is why it landed without
+needing anything this ADR argued about: it is unparameterised, it is
+read off `Effective().Abilities` like every other keyword, and its
+consumers — the destruction path — are already holding the card.

@@ -1466,7 +1466,7 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 	// it is put on the stack, which is right here. Emitted after the
 	// queue so a "becomes the target" trigger stacks above the
 	// ability that targeted. Added in S22 for Monk Gyatso.
-	g.emitBecameTargetLocked(item.Controller, item.SourceCardID, targets)
+	g.emitBecameTargetLocked(item.Controller, item.SourceCardID, item.ID, targets)
 	g.runStateChecksLocked()
 	return nil
 }
