@@ -62,6 +62,7 @@ const (
 	TypeResolveChoice       = "resolve_choice"
 	TypeKeepHand            = "keep_hand"
 	TypeMulligan            = "mulligan"
+	TypeDiscardSelection    = "discard_selection"
 )
 
 // Move is one fully-specified thing a seat may do right now. Type
@@ -156,6 +157,12 @@ func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 		return e.out
 	}
 	if anyChoiceOpen(g) {
+		return e.out
+	}
+	// Cleanup-step discard (CR 514.1): the cursor parks at Cleanup with
+	// no priority holder until the active player discards down to
+	// their maximum hand size. Nothing else is legal meanwhile.
+	if e.cleanupDiscardMoves() {
 		return e.out
 	}
 

@@ -68,7 +68,7 @@ func (g *Game) offerEntryLifePaymentLocked(ev *ReplacementEvent, chosen activeRe
 	cost := chosen.effect.EntryLifeCost
 	payer := g.entryLifePayerLocked(ev, chosen)
 	p := g.playerByIDLocked(payer)
-	if cost > 0 && ev.entryResumable && p != nil && p.Life >= cost {
+	if cost > 0 && ev.entryResumable && p != nil && !p.Eliminated && p.Life >= cost {
 		g.queueEntryPayLifePromptLocked(ev, chosen, payer, cost)
 		return true
 	}

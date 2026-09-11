@@ -2189,6 +2189,32 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 		}
 		g.PendingTriggers = kept
 	}
+	// A choice owed by a player who has left the game can never be
+	// answered, and while it sits in the queue every other seat is
+	// blocked behind it (pass_priority is refused client-side and the
+	// bot enumerator offers nothing while a choice is open). Drop the
+	// eliminated player's prompts — their objects are gone with them
+	// (CR 800.4a), so a damage assignment, target pick or scry they
+	// owed has nothing left to act on. Same for a cleanup-discard
+	// pause in their name. Found by the S31 bot fuzzer.
+	if len(g.PendingChoices) > 0 {
+		kept := g.PendingChoices[:0]
+		for _, c := range g.PendingChoices {
+			if c == nil || c.Chooser != playerID {
+				kept = append(kept, c)
+			}
+		}
+		g.PendingChoices = kept
+		if len(g.PendingChoices) == 0 {
+			g.PendingChoices = nil
+		}
+	}
+	if g.DiscardPending != nil {
+		delete(g.DiscardPending, playerID)
+		if len(g.DiscardPending) == 0 {
+			g.DiscardPending = nil
+		}
+	}
 	g.recomputeSplitSecondLocked()
 }
 
@@ -3697,9 +3723,7 @@ func (g *Game) PassPriority() error {
 		g.Turn.PriorityHolder = g.Turn.ActiveSeat
 		return nil
 	}
-	prev := g.Turn
-	g.Turn = g.Turn.advance(numSeats)
-	g.onTurnAdvanceLocked(prev, g.Turn)
+	g.advanceCursorLocked()
 	g.runStepEntryHooksLocked()
 	g.drainPendingTriggersAPNAPLocked()
 	return nil
@@ -4736,20 +4760,10 @@ func (g *Game) PassTurn() error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
-	nextSeat := (g.Turn.ActiveSeat + 1) % len(g.Seats)
-	nextNumber := g.Turn.Number
-	if nextSeat == 0 {
-		nextNumber++
-	}
-	prev := g.Turn
-	g.Turn = Turn{
-		Number:         nextNumber,
-		ActiveSeat:     nextSeat,
-		PriorityHolder: initialPriorityHolder(StepUntap, nextSeat),
-		Phase:          PhaseOf(StepUntap),
-		Step:           StepUntap,
-	}
-	g.onTurnAdvanceLocked(prev, g.Turn)
+	// Jump to this turn's cleanup and wrap through the shared seam so
+	// eliminated seats are skipped and per-turn caches clear.
+	g.Turn.Step = StepCleanup
+	g.advanceCursorLocked()
 	// Refresh per-turn budgets (undo, future per-turn counters) on
 	// the new active seat — same hook AdvanceStep / PassPriority's
 	// wrap branch run when stepping into untap. The hook also auto-
