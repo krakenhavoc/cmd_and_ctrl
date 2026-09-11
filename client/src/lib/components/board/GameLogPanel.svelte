@@ -74,11 +74,14 @@
     {#each groups as group (group.key)}
       <section class="log-group">
         {#if group.header}
-          <h4 class="log-header" style="--seat:{group.seat >= 0 ? seatColor(group.seat) : '#888'}">
+          <h4
+            class="log-header"
+            style="--seat:{group.seat >= 0 ? seatColor(group.seat) : 'var(--fg-dim)'}"
+          >
             {group.header}
           </h4>
         {:else}
-          <h4 class="log-header earlier" style="--seat:#888">earlier</h4>
+          <h4 class="log-header earlier" style="--seat:var(--fg-dim)">earlier</h4>
         {/if}
         <ol class="log-entries">
           {#each group.entries as entry (entry.seq)}
