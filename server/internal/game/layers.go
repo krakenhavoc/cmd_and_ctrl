@@ -18,7 +18,11 @@ import (
 //
 // Layer ordering follows CR 613:
 //   1. Copy effects (Clone) — deferred to S16.5.
-//   2. Control-changing effects (Mind Control) — deferred to S17.
+//   2. Control-changing effects (Mind Control) — S24. The output
+//      lands in Characteristic.Controller and is materialised back
+//      onto Card.Controller at the end of the pass; see
+//      materialiseControlLocked for why that, and not an
+//      EffectiveController() accessor plus a 385-site sweep.
 //   3. Text-changing effects — out of scope for the layer foundation.
 //   4. Type-changing effects (Mycosynth Lattice) — sub-PR 4.
 //   5. Color-changing effects — engine stub, no in-scope card.
@@ -367,15 +371,75 @@ func (g *Game) recomputeLayersLocked() {
 	g.recomputeCount.Add(1)
 	if g.Battlefield != nil {
 		for i := range g.Battlefield.Cards {
-			printed := g.Battlefield.Cards[i].printedCharacteristic()
-			g.Battlefield.Cards[i].effective = &printed
+			c := &g.Battlefield.Cards[i]
+			// S24 layer 2: capture the control baseline on the first
+			// recompute after this permanent entered. Lazy rather
+			// than stamped at every write site because all ~15 sites
+			// that assign Card.Controller do so as a permanent
+			// ENTERS, and every entry bumps the layer version — so
+			// this runs before anything can observe a layer-2 value,
+			// and MoveCard clearing the field on exit is what makes
+			// a re-entry re-capture.
+			if c.BaseController == uuid.Nil {
+				c.BaseController = c.Controller
+			}
+			printed := c.printedCharacteristic()
+			c.effective = &printed
 		}
 	}
 	effects := g.activeStaticAbilitiesLocked()
 	for _, b := range layerOrder {
 		g.applyLayerLocked(effects, b.Layer, b.SubLayer, b.has7Sub)
 	}
+	g.materialiseControlLocked()
 	g.lastResolvedVersion.Store(g.layerVersion.Load())
+}
+
+// materialiseControlLocked copies layer 2's output back onto
+// Card.Controller — the step that makes a control-changing effect
+// visible to the rest of the engine.
+//
+// The alternative was a Card.EffectiveController() accessor and a
+// sweep of every read site. There are ~385 of them, roughly 150 of
+// which are `target.Controller == source.Controller` inside
+// individual catalog card files; a partial sweep would have produced
+// an engine where a Mind Controlled creature attacks for its new
+// controller but is still pumped by its old one's Glorious Anthem.
+// Materialising means every read site is right without being
+// touched, and the same pattern ADR 0034 already uses for the flat
+// printed face fields ("the MATERIALISATION of Faces[ActiveFace]").
+//
+// A control change is more than a field assignment, so the two
+// CR consequences ride with it:
+//
+//   - CR 302.6 — the permanent has summoning sickness under its new
+//     controller until their next untap step. It is set rather than
+//     cleared, so a hasty creature is still hasty (HasSummoningSickness
+//     reads the keyword at read time).
+//   - CR 506.4 — a permanent that changes control is removed from
+//     combat.
+//
+// Both fire only on an actual delta, so a recompute that changes
+// nothing touches nothing.
+//
+// Caller holds the recompute mutex.
+func (g *Game) materialiseControlLocked() {
+	if g.Battlefield == nil {
+		return
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.effective == nil || c.effective.Controller == uuid.Nil {
+			continue
+		}
+		if c.effective.Controller == c.Controller {
+			continue
+		}
+		c.Controller = c.effective.Controller
+		c.SummonedThisTurn = true
+		c.AttackingTarget = uuid.Nil
+		c.BlockingTarget = uuid.Nil
+	}
 }
 
 // BumpLayerVersionForTest bumps the layer-engine invalidation

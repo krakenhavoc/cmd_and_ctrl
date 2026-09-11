@@ -648,10 +648,12 @@ at attach time, per #76 — not part of this ADR).
 
 ## What this deliberately does not do
 
-- **Control-changing Auras (Mind Control).** Layer 2 is a stub
+- **Control-changing Auras (Mind Control).** ~~Layer 2 is a stub
   (`layers.go:184`), `Card.Controller` is written directly in ~a dozen
   places, and a Layer 2 effect would have to win against all of them.
-  Deferred with #76's original framing intact.
+  Deferred with #76's original framing intact.~~
+
+  **Superseded during S24 implementation — see the amendment below.**
 - **Protection (CR 702.16).** #176 routes protection to S24 alongside
   Mind Control. Decision 10 takes only the narrow shroud / hexproof
   *target gate*, which is a legality check, not the full
@@ -690,3 +692,65 @@ reads the printed type line, not `Effective().Types`
 (`card.go:348-350`) — recorded as engine finding 1 in #255 and the
 reason decision 9 exists. An unattach SBA written the obvious way would
 be wrong.
+
+## Amendment (S24 implementation): decision 17 — layer 2 is materialised, not accessed
+
+The out-of-scope list above ruled Mind Control out on the grounds that
+`Card.Controller` is written directly in ~a dozen places and a layer-2
+effect would have to win against all of them. Two facts found during
+implementation changed the answer.
+
+**First: every one of those writes happens as a permanent ENTERS the
+battlefield.** All fifteen sites were read
+(`entry_choice.go:298`, `mutations.go:238`/`:723`/`:1422`,
+`game.go:404`/`:451`, `effect_api.go:648`/`:692`/`:1115`/`:1196`/`:1410`
+and siblings); none of them changes the controller of a permanent
+already in play. So a baseline captured once per battlefield stay is
+never stale, and no write site had to learn anything.
+
+**Second: the alternative was much worse than it looked.** The obvious
+shape — `Characteristic.Controller` plus a `Card.EffectiveController()`
+accessor — needs a sweep of the read sites, and there are ~385 of them,
+roughly 150 being `target.Controller == source.Controller` inside
+individual catalog card files. A partial sweep produces an engine where
+a Mind Controlled creature attacks for its new controller and is still
+pumped by its old controller's Glorious Anthem, which is worse than not
+shipping the card.
+
+### The decision
+
+Layer 2 writes `Characteristic.Controller`, and the recompute
+**materialises** that value back onto `Card.Controller` in a final pass
+(`materialiseControlLocked`). Every existing read site is then correct
+without being touched. This is the pattern ADR 0034 already established
+for the flat printed face fields — "the MATERIALISATION of
+`Faces[ActiveFace]`, not an independent copy".
+
+Three supporting pieces:
+
+- **`Card.BaseController`** is the layer-0 control baseline, captured
+  lazily by the recompute (guaranteed to run before any read, because
+  every battlefield entry bumps the layer version) and cleared by
+  `MoveCard` on battlefield exit, so a re-entry re-captures. It is
+  `uuid.Nil` exactly when "the current controller IS the base" holds.
+- **Reversion needs no bookkeeping.** When the Aura leaves, its effect
+  drops out of the active set, the next recompute re-seeds from the
+  baseline, and control goes home. Two control-changers on one creature
+  sort by timestamp and the later one wins (CR 613.7) through the same
+  sort every other layer uses — and when the later one leaves, the
+  earlier one takes over rather than the original controller.
+- **The two CR consequences ride with the materialisation**, fired only
+  on an actual delta: CR 302.6 (summoning sickness under the new
+  controller) and CR 506.4 (removed from combat).
+
+### Known limitation
+
+`recomputeLayersLocked` may run under the game's READ lock (the
+snapshot path) while serialised only by the recompute mutex, so
+materialising writes `Card.Controller` where a concurrent reader could
+observe a torn value. This is not new — the existing `c.effective =
+&printed` write has exactly the same exposure — but it is now a
+16-byte field rather than a pointer. At this project's scale (≤8 users,
+one game per room, all mutations behind one write lock) it is
+theoretical; the real fix is to move the recompute wholly behind the
+write lock, which is a separate change.

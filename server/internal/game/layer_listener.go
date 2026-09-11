@@ -26,12 +26,12 @@ import (
 //     advance the version inside the step-advance helper directly
 //     (no event for it today; cleanest is a direct call rather than
 //     a new event kind for one consumer).
-//   - Control changes. Mind Control's layer-2 control change is
-//     still deferred; when the first "creatures you control"
-//     predicate that can flip mid-game lands, add an
-//     EventControlChanged kind + bump here. Aura and Equipment
-//     ATTACHMENT is no longer on this list — S24 added
-//     EventAttach / EventUnattach below.
+//   - Nothing, as of S24. Both entries this list used to carry —
+//     aura attachment and Mind Control's layer-2 control change —
+//     landed in S24. Attachment got its own EventAttach /
+//     EventUnattach kinds below; the control change needed no event
+//     of its own, because it is a continuous effect whose only input
+//     is the attachment that already bumps.
 //
 // EventETB and EventLTB are also covered by EventZoneMove for every
 // CARD (every zone change emits both), so the listener doesn't

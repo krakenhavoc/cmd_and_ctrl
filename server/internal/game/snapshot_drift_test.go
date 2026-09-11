@@ -152,6 +152,10 @@ var cardFields = plan(
 	// a restore that dropped it would silently un-equip the board.
 	"AttachedTo", carried, "",
 	"AttachedAt", carried, "",
+	// The layer-2 control baseline. Carried rather than rebuilt: a
+	// restore that dropped it would re-capture the CURRENT (stolen)
+	// controller as the base, and the creature would never go home.
+	"BaseController", carried, "",
 
 	"ManaAbilities", rebuilt, "closures; re-looked-up from the catalog by oracle ID, or censused when the card has none (a true token)",
 	"ActivatedAbilities", rebuilt, "same as ManaAbilities",
