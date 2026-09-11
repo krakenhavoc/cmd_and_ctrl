@@ -20,23 +20,29 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // best spell, which is why it costs the same and sees far less
 // Commander play.
 //
-// DECLARED SIMPLIFICATION — the flashback half is unreachable.
-// Flashback (CR 702.34) is not implemented: there is no alternative
-// cast-from-graveyard path, so `CastFromZone` can never be
-// ZoneGraveyard for this card and the doubled branch never runs. The
-// branch is written out anyway, reading the field the cast path
-// already stamps, so the card starts doubling the day flashback
-// lands with no change here — the same posture Darksteel Citadel's
-// indestructible took for five sprints. Shipping without the branch
-// would err weaker in a way that hides what the card does; shipping
-// with it and pretending flashback works would err stronger, which
-// is why the deferral is named rather than left implicit.
+// Both halves are live. The doubled branch reads `CastFromZone`
+// rather than the alternative cost that was paid, because that is
+// what the card says: "if this spell was cast from a GRAVEYARD", not
+// "if you paid its flashback cost". The two coincide for every
+// printing that exists, but a future effect that lets you cast this
+// from a graveyard for its normal cost (Yawgmoth's Will, Underworld
+// Breach) doubles it correctly for free, and a hypothetical flashback
+// paid from somewhere else would not.
+//
+// Flashback rides the S29 machinery, which binds the two fields that
+// must agree: the cost is claimable only out of the graveyard, and
+// `CastableZones` has to open that zone or `Register` panics. The
+// exile-on-leaving-stack half is what keeps the card from flashing
+// back every turn forever, and it is a replacement rather than an
+// appended exile — so a fizzled or countered Vengeance is exiled too.
 func init() {
 	Register(Spec{
 		OracleID: "a5ca7bd9-0964-405f-adb9-7c27153595e6",
 		Name:     "Increasing Vengeance",
 		Targets: instantOrSorcerySpell(
 			"target instant or sorcery spell you control", YouControl()),
+		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
+		AlternativeCosts: []game.AlternativeCost{Flashback("{3}{R}{R}")},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {
 				return nil

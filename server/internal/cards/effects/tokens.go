@@ -357,7 +357,28 @@ func WallDefenderToken() game.Card {
 	}
 }
 
-// GoldToken's sibling templates for the other S27 card types
-// (Esika's Chariot's Cats, Parhelion II's Angels, Elspeth's Soldiers)
-// live with the sub-PRs that use them, so each lands with the card
-// that reads it.
+// --- S27 Vehicle templates -------------------------------------
+
+// CatToken is Esika's Chariot's 2/2 green Cat. Vanilla — and the
+// pair of them is exactly the Chariot's crew 4.
+func CatToken() game.Card {
+	return game.Card{
+		Name:      "Cat",
+		TypeLine:  "Token Creature — Cat",
+		Power:     2,
+		Toughness: 2,
+	}
+}
+
+// AngelVigilanceToken is Parhelion II's 4/4 white Angel with flying
+// and vigilance. Both keywords are real: they ride Card.Keywords,
+// which printedCharacteristic folds into the layer engine.
+func AngelVigilanceToken() game.Card {
+	return game.Card{
+		Name:      "Angel",
+		TypeLine:  "Token Creature — Angel",
+		Power:     4,
+		Toughness: 4,
+		Keywords:  []string{"flying", "vigilance"},
+	}
+}

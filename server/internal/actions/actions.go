@@ -899,8 +899,12 @@ func Dispatch(g *game.Game, a Action) error {
 			// the permanents paid to a "Sacrifice a creature" cost.
 			AbilityIndex *int     `json:"ability_index,omitempty"`
 			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
-			Strict       bool     `json:"strict,omitempty"`
-			AutoTap      bool     `json:"auto_tap,omitempty"`
+			// S27 — crew_ids names the creatures tapped to pay a
+			// Vehicle's crew cost (CR 702.122a). Any number of them;
+			// what the server checks is the total power.
+			CrewIDs []string `json:"crew_ids,omitempty"`
+			Strict  bool     `json:"strict,omitempty"`
+			AutoTap bool     `json:"auto_tap,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -924,6 +928,14 @@ func Dispatch(g *game.Game, a Action) error {
 				}
 				sacIDs = append(sacIDs, id)
 			}
+			crewIDs := make([]uuid.UUID, 0, len(p.CrewIDs))
+			for _, raw := range p.CrewIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability crew_ids: %w", err)
+				}
+				crewIDs = append(crewIDs, id)
+			}
 			refs := make([]game.TargetRef, 0, len(p.Targets))
 			for _, t := range p.Targets {
 				ref, err := t.toRef()
@@ -934,6 +946,7 @@ func Dispatch(g *game.Game, a Action) error {
 			}
 			return g.ActivateCatalogAbility(a.Player, srcID, *p.AbilityIndex, game.ActivateAbilityParams{
 				SacrificeIDs: sacIDs,
+				CrewIDs:      crewIDs,
 				Targets:      refs,
 				Strict:       p.Strict,
 				AutoTap:      p.AutoTap,
