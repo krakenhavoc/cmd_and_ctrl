@@ -1,7 +1,10 @@
 # ADR 0032 — Starting loyalty is printed card data, not catalog data
 
 **Status:** Implemented · 2026-09-11 · Branch `fix/planeswalkers-274`
-**Issue:** [#274](https://github.com/krakenhavoc/cmd_and_ctrl/issues/274)
+**Amended:** 2026-09-11 · Branch `feat/loyalty-abilities` — §8 below
+**Issue:** [#274](https://github.com/krakenhavoc/cmd_and_ctrl/issues/274),
+[#329](https://github.com/krakenhavoc/cmd_and_ctrl/issues/329),
+[#334](https://github.com/krakenhavoc/cmd_and_ctrl/issues/334)
 **Extends:** [ADR 0007](0007-stack-foundation.md) §6 (loyalty resolves
 immediately), [ADR 0008](0008-counter-mechanics.md) (the 704.5i SBA),
 [ADR 0010](0010-card-effect-catalog.md) §8 (`Spec.StartingLoyalty`),
@@ -168,7 +171,9 @@ this branch.
 
 **Half-works.**
 
-- **Loyalty abilities.** Two separate half-paths, neither complete,
+- **Loyalty abilities.** *Fixed — see §8. The audit below stands as
+  written and its prediction held; read it for why §8 looks the way
+  it does.* Two separate half-paths, neither complete,
   and the confusion between them is why the decklist triage and the
   docs pass appeared to contradict each other. Both were right.
 
@@ -262,6 +267,163 @@ this branch.
   no `"planeswalker"` mode (`targeting.ts:29-38`). There is no
   planeswalker icon and no e2e coverage.
 
+### 8. Loyalty abilities are ordinary CR 602 activated abilities
+
+*Amendment, 2026-09-11, branch `feat/loyalty-abilities`. Closes
+[#329](https://github.com/krakenhavoc/cmd_and_ctrl/issues/329) and
+[#334](https://github.com/krakenhavoc/cmd_and_ctrl/issues/334).*
+
+§7 predicted the shortest path and it held up exactly. Nothing in
+the audit needed revising: `ActivateLoyalty` really did discard its
+label and run no effect, `ActivatedAbilityShape` really did have the
+whole stack-item pipeline waiting, and the missing piece really was
+one cost component.
+
+**What the replays show.** Two reports, two different Teferis, one
+symptom.
+
+- #329 (report `c3ecbf98-8bf7-4f57-9e90-16bf388e19c1`, 337
+  snapshots) is **Teferi, Who Slows the Sunset** — not Time Raveler,
+  which is worth recording because it means the bug was never
+  card-specific. He is on the battlefield from seq 327 with
+  `counters: {loyalty: 4}`, so §1–§5 of this ADR are working. His
+  `activated_abilities` array is empty in every snapshot, and his
+  `tapped` bit alternates `null` / `true` across seq 327–335 as the
+  reporter clicks him and untaps him again. That is the whole bug
+  report, in the data: "when I click on him to choose one of his
+  abilities it just tapped him."
+- #334 (report `2b4ce9cc-7be7-49bd-a44f-19abdcb2fb52`, 152
+  snapshots) is **Teferi, Time Raveler**, loyalty 4, again with
+  `activated_abilities: []` and the same tapped / untapped flip at
+  seq 150–152. Neither client log contains a single
+  `activate_loyalty` frame, because the client could not send one.
+
+**`AbilityCost.Loyalty *int`** (`activated.go`) is the component.
+A pointer, not an int, because `[0]` is a real printed cost (Jace's
+`[0]: Brainstorm`) and has to stay distinguishable from "not a
+loyalty ability" — the difference decides whether the activation
+spends the turn's once-per-turn window. Catalog files write it as
+`Cost: LoyaltyCost(-3)`.
+
+**Its presence carries the rules, so no card has to remember them.**
+`ActivateCatalogAbility` derives four gates from a non-nil
+`Loyalty`:
+
+| Rule | Enforcement |
+| --- | --- |
+| CR 606.1 | source must be a planeswalker → `ErrNotAPlaneswalker` |
+| CR 606.2 | activator must control it → the pre-existing `ErrCardCallerMismatch` |
+| CR 606.3 | a `−N` needs N counters → `ErrInsufficientLoyalty` |
+| CR 606.5 | sorcery speed, and once per turn per planeswalker → `ErrSorcerySpeedRequired`, `ErrLoyaltyAlreadyActivated` |
+
+CR 606.3 is checked in the validate-everything-first block, before
+any cost is paid, so a refused activation leaves the loyalty
+untouched and does **not** burn the turn's window. Paying down to
+exactly zero is legal and is not an overpayment — the 704.5i SBA of
+§6 takes it from there, which
+`TestLoyaltyAbilityMayPayDownToZero` pins.
+
+**Payment goes through `applyCounterLocked`, not
+`AddCounterForEffect`** — the opposite of §5, and deliberately so.
+§5 is about a planeswalker *entering*, which is an effect, so
+Doubling Season applies. Paying a loyalty cost is a cost payment (CR
+121.1 / 606.2), not an effect, so counter-doubling replacements must
+**not** apply: Doubling Season really does nothing to a `+1`. Routing
+the payment through the CR 614 pipeline would have silently made it
+double.
+
+**The once-per-turn gate moved.** `LoyaltyActivatedThisTurn`
+(`game.go:141`) and its turn-boundary flush (`game.go:554`) were
+already right; they were just consulted only by the sandbox action.
+Both paths now set and read it, so a manual `+1` and a catalog `−3`
+on the same planeswalker on the same turn correctly conflict.
+
+**ADR 0020's exclusion is reversed**, and this is the note it
+deserves. 0020 kept loyalty out of `AbilityCost` on the grounds that
+the S13.1 `ActivateLoyalty` action already carried it. That was true
+and it was not enough: the action moves a counter and runs no
+effect, so the exclusion quietly meant "no planeswalker in this
+engine can ever do anything". The reversal costs one nullable field
+and buys the entire card type. The field comment on
+`AbilityCost.Loyalty` carries the same note for anyone reading the
+code instead of the ADRs.
+
+**`ActivateLoyalty` was hardened, not retired.** §7 suggested
+retiring it. It stays, because it is the manual path for the
+thousand-odd planeswalkers with no catalog entry — the same bargain
+manual `tap` strikes for every card the catalog cannot express, and
+#329's own Teferi is one of them. What changed is that it is no
+longer a counter faucet pointed at the whole table: it now rejects
+non-planeswalkers, rejects cards the activator doesn't control, and
+enforces CR 606.3 instead of driving loyalty negative. The old
+comment arguing for negative loyalty ("so the SBA can see the
+intent") is gone: the SBA reads `loyalty <= 0`, so clamping and
+refusing are indistinguishable to it, and refusing is what the rules
+say.
+
+**Two planeswalkers ship.**
+
+- **Teferi, Time Raveler** (`teferi_time_raveler.go`), the card #334
+  is named after. His `−3` is complete — loyalty payment, "up to
+  one target artifact, creature, or enchantment" bounce, and the
+  draw. His `+1` is registered with its loyalty gain and **no
+  effect**, because "until your next turn, you may cast sorcery
+  spells as though they had flash" needs an "as though" cast
+  permission the gate at `mutations.go:597` has no hook for, and an
+  "until your next turn" duration that `turn_scoped_statics.go:97`
+  already records as inexpressible. Registering it anyway is a
+  judgement call: a planeswalker that can only ever tick *down* is
+  a worse lie than one whose plus ability at least protects him, the
+  label the player reads is the printed text, and the gates around
+  it are real. His static ("each opponent can cast spells only any
+  time they could cast a sorcery") needs the same missing machinery
+  and is absent.
+- **The Wandering Emperor** (`wandering_emperor.go`), complete in
+  all three abilities, because S21 had already built every primitive
+  she needs — `WhiteSamuraiToken` was added for her `+1` and had sat
+  unused ever since, and PR #314's until-end-of-turn statics make
+  the `−2` expressible as `BoostUntilEOT` + `GrantKeywordUntilEOT`.
+  Her "activate loyalty abilities at instant speed the turn she
+  enters" clause is a per-permanent override of CR 606.5 that the
+  gate has no hook for, so she is slower than printed on the turn
+  she lands.
+
+**Client.** Three fixes, one per symptom.
+
+- `activate_loyalty` joined the `ActionType` union, so the client
+  can send the action the server has exposed since S13.1. It is not
+  decorative: the card menu offers a manual loyalty section on a
+  planeswalker the catalog does not know, with the costs that walker
+  can legally pay right now (+2 / +1 / [0], and −1 down to its
+  current loyalty), and those rows fire `activate_loyalty`. The
+  ungated add / remove-counter rows stay where they were — those are
+  the escape hatch for fixing a mistake, and gating them would
+  defeat their purpose.
+- `canActivateLoyalty` (`timing.ts:209`) had no callers at all. It
+  now gates the loyalty rows in the card menu, and its
+  once-per-turn check reads the real thing: `CardView` carries
+  `loyalty_activated`, stamped from `LoyaltyActivatedThisTurn`. The
+  `alreadyActivated` argument survives as an override for an
+  optimistic local update and ORs with the server's flag, so a stale
+  `false` can never re-open a row the server has closed.
+- **Clicking a planeswalker no longer taps it.** `PlayerPanel`'s
+  click router fell through every branch to `onTapToggle`;
+  `battlefieldClickIntent` (`contextMenu.logic.ts`) now sends a
+  planeswalker to the ADR 0028 card menu instead, whether or not it
+  has catalog abilities, because even a bare walker's menu carries
+  the loyalty rows. Tap and untap remain available there for the
+  rare effect that wants them.
+
+**Two surgical fixes fell out.** `abilityLegalTargets`
+(`view.go:1921`) never copied a clause's `Min` / `Max` onto the wire,
+so every activated ability shipped as `0..0` — "unbounded, confirm
+with nothing picked" — and `targeting.ts`'s `beginForAbility`
+compensated by hard-coding `1 / 1`, with a comment naming this exact
+fix. Teferi's `−3` is the first clause whose `Min` is genuinely 0, so
+the compensation had to go: the count is stamped server-side and read
+client-side, and `isMultiPick` now treats `min < 1` as "needs a Done
+button" so "up to one target" can be answered with none.
+
 ## Consequences
 
 - Every planeswalker in the Scryfall index is now castable and sticks
@@ -286,17 +448,20 @@ this branch.
   face fallback, non-numeric loyalty, and a creature staying at zero.
 - No client change. Loyalty counters already render; there was nothing
   to display that was not already displayed once the counters exist.
+  *(§8 is where the client work landed: the click router, the menu's
+  loyalty rows, and the `Min` / `Max` the ability picker had been
+  faking.)*
 
 ## What this deliberately does not do
 
 Each of these is S27 ([#92](https://github.com/krakenhavoc/cmd_and_ctrl/issues/92))
 scope and none is made harder by this change.
 
-- **Loyalty abilities that do anything.** See §7. The shortest path is
-  a `Loyalty` component on `AbilityCost` plus the once-per-turn gate
-  moved into `ActivateAbility`, after which loyalty abilities are
-  ordinary S21 activated abilities and the existing `ActivateLoyalty`
-  action can be retired rather than extended.
+- ~~**Loyalty abilities that do anything.**~~ **Shipped** on
+  `feat/loyalty-abilities` — §8. The predicted shortest path was the
+  path taken, with one correction: `ActivateLoyalty` was hardened
+  rather than retired, because it is still the only way to drive the
+  planeswalkers the catalog has never heard of.
 - **Attacking planeswalkers.** Needs `DeclareAttacker` to take a
   polymorphic defender and `AttackingTarget` to stop meaning "player
   ID", plus client work on arrows and block detection.
@@ -321,4 +486,6 @@ started, and two of them cost real time:
   `characteristic.go:28-30`.
 - **`docs/sprints.md:733`** ticks `canActivateLoyalty` as delivered.
   The function exists (`timing.ts:209`); nothing calls it, and the
-  action it gates is not in the client's action union at all.
+  action it gates is not in the client's action union at all. *As of
+  §8 the tick is finally earned: the predicate gates the card menu's
+  loyalty rows and `activate_loyalty` is in the union.*

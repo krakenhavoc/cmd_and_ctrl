@@ -108,6 +108,20 @@ var (
 	// wraps to the next ActiveSeat. Added in S13.1.
 	ErrLoyaltyAlreadyActivated = errors.New("game: planeswalker loyalty already activated this turn")
 
+	// ErrInsufficientLoyalty is returned when a loyalty ability's
+	// cost would remove more loyalty counters than the planeswalker
+	// has (CR 606.3). Paying down to exactly zero is legal — the
+	// 704.5i SBA takes it from there — so this fires only on a
+	// genuine overpayment. Added in S27 (#329, #334).
+	ErrInsufficientLoyalty = errors.New("game: not enough loyalty to pay that cost")
+
+	// ErrNotAPlaneswalker is returned when a loyalty cost is
+	// activated on something that isn't a planeswalker (CR 606.1).
+	// Guards both the catalog path (a miswritten Spec) and the
+	// S13.1 sandbox action, which used to take any battlefield card
+	// and hand it loyalty counters. Added in S27 (#329, #334).
+	ErrNotAPlaneswalker = errors.New("game: source is not a planeswalker")
+
 	// ErrInvalidStackDestination is returned by counter_spell when the
 	// requested destination zone is invalid (battlefield, stack — a
 	// counter must move the spell off the stack). Added in S13.1.

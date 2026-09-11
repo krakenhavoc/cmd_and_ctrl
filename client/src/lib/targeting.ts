@@ -183,9 +183,16 @@ function countOf(
 }
 
 // isMultiPick reports whether the prompt accumulates picks rather
-// than completing on the first click.
+// than completing on the first click — which is also what decides
+// whether the banner grows a Done button.
+//
+// `min < 1` is the "up to one target" case (Teferi, Time Raveler's
+// −3, The Wandering Emperor's −2). Exactly one pick is allowed, but
+// zero is a legal answer, so the prompt cannot complete on the first
+// click: the player needs a way to say "none". Done is that way, and
+// canConfirm lets it fire at zero.
 export function isMultiPick(t: TargetingState): boolean {
-  return t.max !== 1;
+  return t.max !== 1 || t.min < 1;
 }
 
 // isPicked reports whether a target is already in the pick list.
@@ -337,21 +344,14 @@ export function beginForAbility(
     mode: (ability.target_mode || "any") as TargetingMode,
     legal: lt ? { players: new Set(lt.players ?? []), cards: new Set(lt.cards ?? []) } : undefined,
     ability: { index: ability.index, sacrificeIDs },
-    // Single-target by contract, not by omission. Unlike CardView,
-    // ModeOptionView and pick_target — which all carry a
-    // LegalTargetsView and read their count via countOf — S21 sub-PR
-    // 2 gave ActivatedAbilityView its own inline
-    // `{players?, cards?}`, with no min/max on the wire. So there is
-    // no count to read here, and an ability clause behaves as
-    // exactly one pick (isMultiPick is false, the first click
-    // completes the prompt), which is what the ability menu expects.
-    //
-    // If a multi-target activated ability is ever wanted, the fix is
-    // to make ActivatedAbilityView use LegalTargetsView and emit the
-    // count server-side, then switch these two lines to
-    // `...countOf(lt)` like the three siblings.
-    min: 1,
-    max: 1,
+    // The count comes off the wire like every other clause's. This
+    // used to be a hard-coded 1 / 1 with a note explaining that
+    // ActivatedAbilityView carried an inline `{players?, cards?}`
+    // with no min / max, and naming the fix: give it a
+    // LegalTargetsView and emit the count server-side. #334 needed
+    // exactly that — Teferi's "up to one target" is Min 0 — so the
+    // note is now the code.
+    ...countOf(lt),
     picked: [],
   });
 }
