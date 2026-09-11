@@ -27,6 +27,10 @@
     onActivateManaAbility?: (card: CardView, abilityIndex: number) => void;
     // S21 sub-PR 2: CR 602 activated abilities, same menu.
     onActivateAbility?: (card: CardView, abilityIndex: number) => void;
+    // S31: why the CR 307.1 sorcery-speed window is shut, or "" when
+    // it is open. Pass-through to Card → ManaAbilityMenu, which greys
+    // `sorcery_speed` abilities with it.
+    sorcerySpeedBlocked?: string;
     // compact — one card size down (PlayerPanel's --card-w-sm). Used
     // for the middle band: non-creature permanents and lands.
     compact?: boolean;
@@ -43,6 +47,7 @@
     onCardClick,
     onActivateManaAbility,
     onActivateAbility,
+    sorcerySpeedBlocked = "",
     compact = false,
     strip = false,
   }: Props = $props();
@@ -73,6 +78,7 @@
             ? (idx) => onActivateManaAbility(c, idx)
             : undefined}
           onActivateAbility={onActivateAbility ? (idx) => onActivateAbility(c, idx) : undefined}
+          {sorcerySpeedBlocked}
         />
       </div>
     {/each}

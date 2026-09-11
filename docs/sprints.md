@@ -73,7 +73,7 @@ planned just-in-time from the S12 pain-point triage.
 | S29      | Alt-cast paths from non-hand zones (flashback, suspend, foretell, …) | 7     | [#94](https://github.com/krakenhavoc/cmd_and_ctrl/issues/94)   | 2027-08-15 | planned     |
 | S30      | Damage prevention, cloning, face-down, deferred protection keywords  | 7     | [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95)   | 2027-09-05 | planned     |
 | Post-S30 | Rolling deck-driven catalog growth                                   | 7     | TBD at S30 retro                                               | rolling    | not started |
-| S31      | AI bot seat (legal-move enumeration + tiered policy)                 | 8     | [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89)   | 2027-09-26 | planned     |
+| S31      | AI bot seat (legal-move enumeration + tiered policy)                 | 8     | [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89)   | 2027-09-26 | partial     |
 
 ### How to read the status column
 
@@ -1966,11 +1966,14 @@ The engine has no event history: `GameView` carries none, the client has none, a
 
 ### Sub-PR 2 — serve the move list to the client, delete the TS duplication
 
-- [ ] `GameView` grows `legal_moves` for the viewer's own seat only, populated when the seat holds priority or owes a choice
-- [ ] `client/src/lib/timing.ts` becomes a lookup over `legal_moves`. Scope honestly: `canActivateLoyalty` and `canPassPriority` have no callers and can just be deleted; `canActivateAbility` serves only the auto-pass heuristic; `canCastFromHand` is the one real port, and its target/mode/cost branches already read server-stamped fields — the **timing** logic is what moves
-- [ ] Delete the now-dead client-side rules reimplementation; keep `targeting.ts`'s presentation logic
-- [ ] Fixes a live bug in passing: `sorcery_speed` ships on the wire and the client never reads it, so sorcery-speed abilities are currently offered at instant speed and then refused by the server
-- [ ] View-size check: measure the frame growth on a full four-player board and gate on it staying under budget
+**Shipped** (PR TBD). Notes on where the checklist and the code parted company are inline below.
+
+- [x] `GameView` grows `legal_moves` for the viewer's own seat only, populated when the seat holds priority or owes a choice. Enumerated per seat into an unexported map by `ViewOfGame`; `FilterViewFor` hands back the viewer's own entry and nothing else, so the unfiltered frame that reaches the crash dump and the replay log carries no seat's moves at all
+- [x] `client/src/lib/timing.ts` becomes a lookup over `legal_moves`. **One correction to the scope line:** `canActivateLoyalty` gained a caller in #334 / #371 (`contextMenu.logic.ts`) and — more to the point — `activate_loyalty` is a sandbox verb `internal/legal` deliberately does not enumerate, so there is no move list to look it up in. It stays, as the file's only surviving rules derivation. `canPassPriority` and `canActivateAbility` were deleted as written
+- [x] Delete the now-dead client-side rules reimplementation; keep `targeting.ts`'s presentation logic. Gone: `castTimingForTypeLine`, `castableFaceTypeLines`, `canActivateAbility`, `canPassPriority`, and `priority.ts`'s whole hand/command/battlefield walk. Kept: the snapshot readers and `canCastFromHand`'s target / mode / additional-cost branches, which read server-stamped fields and supply the tooltip sentence behind the server's verdict
+- [x] Fixes a live bug in passing: `sorcery_speed` ships on the wire and the client never reads it. Fixed in **both** surfaces that render an ability row — `contextMenu.logic.ts`'s `abilityBlocked` and `ManaAbilityMenu.svelte`'s local copy, which is the default right-click popover
+- [x] View-size check: measure the frame growth on a full four-player board and gate on it staying under budget. **14.0 KB / +38–55%** on the worst realistic frame (39 moves); 0 B on any frame where the seat owes no decision. The enumerator's cap is per SOURCE, which does not bound a board, so the wire projection adds a 48-move global cap that degrades to one move per `(source, kind)` rather than truncating. Gated by `TestLegalMovesFrameBudget` at 24 KiB — **coordinate with sub-PR 0 before spending the rest**
+- [x] Both-directions agreement: `server/internal/legal/testdata/timing_agreement.json` carries eight hand-declared scenarios plus the real filtered wire frames. `agreement_test.go` asserts the enumerator matches the declarations; `client/src/lib/timingAgreement.test.ts` asserts `canCastFromHand` matches the same declarations against the same frames. Neither side is the other's oracle
 
 ### Sub-PR 3 — `Room` observers + `internal/aiseat` runner
 
@@ -2023,7 +2026,7 @@ The engine has no event history: `GameView` carries none, the client has none, a
 
 ### Tests
 
-- [ ] Enumerator agrees with `timing.ts` across a table-driven state matrix, both directions
+- [x] Enumerator agrees with `timing.ts` across a table-driven state matrix, both directions (sub-PR 2: `internal/legal/testdata/timing_agreement.json`, asserted from Go and from vitest against one hand-written expectation table)
 - [ ] Visibility: policy `Input.View` byte-identical to a human view at that seat; import test enforces the type gate
 - [ ] Four `random` bots play to a winner across 20 consecutive unattended runs — no deadlocks, no illegal actions, replays captured
 - [ ] Four `heuristic` bots play to a winner within 50 turns

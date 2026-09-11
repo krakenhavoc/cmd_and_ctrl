@@ -22,7 +22,7 @@
 import { attackAllLabel, attackAllParams, planAttackAll, seatLabel } from "./attackAll";
 import { isPlaneswalker } from "./cardTypes";
 import type { ActionType, CardView, GameView } from "./protocol";
-import { canActivateLoyalty, canPayLoyaltyCost, loyaltyOf } from "./timing";
+import { canActivateLoyalty, canPayLoyaltyCost, loyaltyOf, sorcerySpeedWindowOpen } from "./timing";
 import {
   COUNTER_CHARGE,
   COUNTER_DEFENSE,
@@ -338,6 +338,13 @@ interface AbilityCost {
   // Present, at any value including 0, on a planeswalker's loyalty
   // ability. Mana abilities never carry it.
   loyalty_cost?: number;
+  // CR 307.1 — "activate only as a sorcery". Shipped on the wire
+  // since S21 (ActivatedAbilityView.SorcerySpeed) and, until S31,
+  // never read by anything: the row stayed live all through combat
+  // and an opponent's turn, and the click came back rejected. See
+  // ADR 0033 §1, which called this out as the live example of the
+  // bug class the legal-move enumerator exists to end.
+  sorcery_speed?: boolean;
 }
 
 // abilityBlocked returns the reason an ability can't be activated
@@ -362,6 +369,15 @@ export function abilityBlocked(
     if (!timing.legal) return timing.reason ?? "can't activate right now";
     const unpayable = canPayLoyaltyCost(loyalty.card, a.loyalty_cost);
     if (unpayable) return unpayable;
+  } else if (a.sorcery_speed && loyalty) {
+    // CR 307.1 for a non-loyalty "activate only as a sorcery"
+    // ability. Same window, read off the same four snapshot fields —
+    // the loyalty arm above already went through it, this arm is the
+    // one that was missing. `loyalty` is really just "the snapshot
+    // context", and a caller without one leaves the gating to the
+    // server exactly as before.
+    const timing = sorcerySpeedWindowOpen(loyalty.view, loyalty.viewerID);
+    if (!timing.legal) return timing.reason ?? "sorcery speed only";
   }
   if (a.legal_targets) {
     const n = (a.legal_targets.players?.length ?? 0) + (a.legal_targets.cards?.length ?? 0);
@@ -370,11 +386,16 @@ export function abilityBlocked(
   return "";
 }
 
-// LoyaltyContext is what abilityBlocked needs to judge a loyalty
-// row: the planeswalker itself (for its counters and the server's
-// once-per-turn flag) and the snapshot the timing window is read
-// from. Absent for callers with no snapshot to hand, in which case
-// the loyalty arm is skipped and the server does the gating alone.
+// LoyaltyContext is what abilityBlocked needs to judge a row against
+// the clock: the source card (for a planeswalker's counters and the
+// server's once-per-turn flag) and the snapshot the timing window is
+// read from. Absent for callers with no snapshot to hand, in which
+// case both timing arms — loyalty and CR 307.1 sorcery speed — are
+// skipped and the server does the gating alone.
+//
+// Named for loyalty because that was its only job until S31 taught
+// abilityBlocked to honour `sorcery_speed`; it is really the
+// snapshot context, and renaming it is churn for a dozen call sites.
 export interface LoyaltyContext {
   card: CardView;
   view: GameView | null | undefined;
