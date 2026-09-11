@@ -18,8 +18,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // spell copying exists; Storm-Kiln Artist declares the same gap.
 func init() {
 	Register(Spec{
-		OracleID: "8305d576-21d8-4ce7-8eda-a7cd9793aca5",
-		Name:     "Archmage Emeritus",
+		OracleID:     "8305d576-21d8-4ce7-8eda-a7cd9793aca5",
+		Name:         "Archmage Emeritus",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The draw trigger only fires on instants and sorceries you cast, not on copies of them."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCast},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

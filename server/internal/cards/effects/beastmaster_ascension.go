@@ -21,8 +21,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "11b5308d-5bc0-4782-875f-a28be36e665d",
-		Name:     "Beastmaster Ascension",
+		OracleID:     "11b5308d-5bc0-4782-875f-a28be36e665d",
+		Name:         "Beastmaster Ascension",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventAttack},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

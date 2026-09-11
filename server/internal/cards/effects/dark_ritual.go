@@ -20,8 +20,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "53f7c868-b03e-4fc2-8dcf-a75bbfa3272b",
-		Name:     "Dark Ritual",
+		OracleID:     "53f7c868-b03e-4fc2-8dcf-a75bbfa3272b",
+		Name:         "Dark Ritual",
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return AddMana{Produced: "{B}{B}{B}"}.Apply(ctx)
 		},

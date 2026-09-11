@@ -30,12 +30,10 @@ import (
 //     (Turn-scoped "until end of turn" effects do NOT depend on that
 //     bump: `ClearExpiredTurnScopedStaticsLocked` bumps the version
 //     itself when it sweeps.)
-//   - Control changes. Mind Control's layer-2 control change is
-//     still deferred; when the first "creatures you control"
-//     predicate that can flip mid-game lands, add an
-//     EventControlChanged kind + bump here. Aura and Equipment
-//     ATTACHMENT is no longer on this list — S24 added
-//     EventAttach / EventUnattach below.
+//   - Control changes. Nothing needed as of S24: Mind Control's
+//     layer-2 control change is a continuous effect whose only input
+//     is the attachment, and attachment bumps already via the
+//     EventAttach / EventUnattach kinds below.
 //
 // EventETB and EventLTB are also covered by EventZoneMove for every
 // CARD (every zone change emits both), so the listener doesn't

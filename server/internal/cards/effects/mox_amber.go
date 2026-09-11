@@ -25,8 +25,9 @@ package effects
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "7a43bd27-fdd8-41f0-9bc4-92568f3408f1",
-		Name:     "Mox Amber",
+		OracleID:     "7a43bd27-fdd8-41f0-9bc4-92568f3408f1",
+		Name:         "Mox Amber",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:         ManaAbilityCost{Tap: true},
 			ProducedFunc: ProducedFromLegendaryPermanents(),

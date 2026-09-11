@@ -97,6 +97,8 @@ func registerMDFCLandBacks(rows []mdfcLandBack, reps func(back string) []game.Re
 			// face's.
 			OracleID:      game.CatalogKeyForFace(row.oracleID, 1),
 			Name:          row.back,
+			Completeness:  CompletenessCaveats,
+			Caveats:       []string{"A back face put onto the battlefield by another spell always enters tapped — the chance to pay 3 life is only offered when you play it as a land."},
 			Replacements:  reps(row.back),
 			ManaAbilities: []ManaAbility{backManaAbility(row.colors)},
 		})

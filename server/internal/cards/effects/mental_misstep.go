@@ -22,9 +22,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // engine this card needs no change.
 func init() {
 	Register(Spec{
-		OracleID: "1a0770e6-b093-4439-baff-6889a50ba12e",
-		Name:     "Mental Misstep",
-		Targets:  TargetSpell("target spell with mana value 1", b03ManaValueIs(1)),
+		OracleID:     "1a0770e6-b093-4439-baff-6889a50ba12e",
+		Name:         "Mental Misstep",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Phyrexian mana isn't supported — you must pay {U}, you can't pay 2 life instead."},
+		Targets:      TargetSpell("target spell with mana value 1", b03ManaValueIs(1)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {
 				return nil

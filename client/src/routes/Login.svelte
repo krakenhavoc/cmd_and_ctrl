@@ -120,6 +120,15 @@
         Players never need a token — they arrive through an invite link.
       {/if}
     </p>
+
+    <!-- The one entry point to the public catalogue. Login is the
+         page a signed-out visitor lands on, so a link that needs no
+         session belongs here rather than in the lobby. -->
+    <p class="foot">
+      <a class="ghost-link" href="#/catalog">
+        <Icon name="library" size={12} /> See which cards the engine plays
+      </a>
+    </p>
   </div>
 </section>
 

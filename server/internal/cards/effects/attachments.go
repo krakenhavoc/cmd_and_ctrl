@@ -125,6 +125,38 @@ func GrantToAttached(keywords ...string) game.StaticAbility {
 	}
 }
 
+// ControlAttachedBySource is "You control enchanted creature" — the
+// CR 613.1b layer-2 continuous effect that Mind Control is.
+//
+// It is a continuous effect registered by the Aura's own static
+// ability, NOT a one-shot mutation performed when the Aura resolves,
+// and that distinction is the whole card:
+//
+//   - Destroy the Aura and control reverts by itself, because the
+//     effect stops being in the active set on the next recompute.
+//     No "remember who had it" bookkeeping, and nothing to get wrong
+//     if the Aura leaves in an unusual way (bounced, exiled, its host
+//     stops being a creature).
+//   - Two control-changers on one creature sort by timestamp and the
+//     later one wins (CR 613.7), for free, through the same sort
+//     every other layer uses.
+//   - The control change is visible to combat, targeting, activated
+//     abilities and the wire, because the recompute materialises
+//     layer 2's output back onto Card.Controller.
+//
+// The Aura's OWN controller is the new controller, not its owner: a
+// Mind Control that has itself been stolen steals for whoever holds
+// it now.
+func ControlAttachedBySource() game.StaticAbility {
+	return game.StaticAbility{
+		Layer:     game.Layer2Control,
+		AppliesTo: AttachedToSource,
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+			c.Controller = source.Controller
+		},
+	}
+}
+
 // EnchantCreature is an Aura's "Enchant creature" clause. It is an
 // ordinary target spec, because at cast time that is exactly what it
 // is (CR 303.4a) — and because the state-based action that keeps the

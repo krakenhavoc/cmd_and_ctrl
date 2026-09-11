@@ -21,20 +21,24 @@ import (
 // resolution, not a trigger waiting on an event, so it needs no new
 // plumbing. Untargeted and symmetric: it takes the caster's own
 // attackers too.
+//
+// S23: this is ReturnAllToHand's reason to exist. "All attacking
+// creatures" is not a battlefield predicate — attacking-ness lives in
+// the combat state, not on the card's characteristics — so the set is
+// computed here and handed to the primitive, which bounces it as one
+// simultaneous event like any other mass effect.
 func init() {
 	Register(Spec{
 		OracleID: "7c779721-cd1b-4696-9ae9-68ccc284ed2a",
 		Name:     "Aetherize",
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+			var attackers []uuid.UUID
 			for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-				if !c.IsCreature() || c.AttackingTarget == uuid.Nil {
-					continue
-				}
-				if err := (BounceToHand{Target: c.InstanceID}).Apply(ctx); err != nil {
-					return err
+				if c.IsCreature() && c.AttackingTarget != uuid.Nil {
+					attackers = append(attackers, c.InstanceID)
 				}
 			}
-			return nil
+			return ReturnAllToHand{Cards: attackers}.Apply(ctx)
 		},
 	})
 }

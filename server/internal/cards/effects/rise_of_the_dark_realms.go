@@ -23,8 +23,9 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "e5223a09-f732-4747-8914-e6546ab0ef4c",
-		Name:     "Rise of the Dark Realms",
+		OracleID:     "e5223a09-f732-4747-8914-e6546ab0ef4c",
+		Name:         "Rise of the Dark Realms",
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			var dead []uuid.UUID
 			for _, p := range ctx.Game.Seats {

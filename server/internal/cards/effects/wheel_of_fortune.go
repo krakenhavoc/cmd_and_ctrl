@@ -15,8 +15,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "a8abd966-de7b-46a3-8ac7-8747ab35653a",
-		Name:     "Wheel of Fortune",
+		OracleID:     "a8abd966-de7b-46a3-8ac7-8747ab35653a",
+		Name:         "Wheel of Fortune",
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			players := tablePlayers(ctx)
 			for _, id := range players {

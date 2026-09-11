@@ -250,6 +250,13 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 	if ev.Kind == EventLTB && ev.CardID != uuid.Nil {
 		g.harvestLTB(ev)
 	}
+	// S23: watchers that left the battlefield EARLIER IN THIS SAME
+	// event — the Blood Artist that was wiped alongside the creatures
+	// it is supposed to see die. harvestFromZone cannot find them
+	// (they are off the battlefield) and harvestLTB is about the one
+	// card whose death is being reported, so a wipe needs its own
+	// pass. No-op unless a simultaneous batch is open.
+	g.harvestSimultaneousExitLocked(ev)
 }
 
 // harvestFromZone is the per-zone scan used for "live" triggers (ETB,

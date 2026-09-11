@@ -21,8 +21,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Farseek, and noted rather than special-cased.
 func init() {
 	Register(Spec{
-		OracleID: "495e52e6-4c2b-4574-9474-eadbdcc8b4ac",
-		Name:     "Farseek",
+		OracleID:     "495e52e6-4c2b-4574-9474-eadbdcc8b4ac",
+		Name:         "Farseek",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Only basic lands are found — it cannot fetch dual lands such as Hallowed Fountain or Bayou, and it can find a Wastes."},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return SearchLibrary{
 				Player:        ctx.Controller(),

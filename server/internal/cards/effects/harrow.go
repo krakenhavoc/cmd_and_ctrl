@@ -42,6 +42,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "705509e9-a034-4a5a-9c65-66f58748b8a2",
 		Name:           "Harrow",
+		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeCost("a land", Land()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return SearchLibrary{

@@ -25,8 +25,10 @@ import (
 // Dash {1}{R} is an alternative cast path (S29) and isn't modelled.
 func init() {
 	Register(Spec{
-		OracleID: "37108cd4-bbab-4ce3-9ed6-f60e8422e703",
-		Name:     "Ragavan, Nimble Pilferer",
+		OracleID:     "37108cd4-bbab-4ce3-9ed6-f60e8422e703",
+		Name:         "Ragavan, Nimble Pilferer",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Dash isn't available — Ragavan can only be cast normally for {R}."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

@@ -25,8 +25,10 @@ package effects
 // is an unbounded mutual recursion between two permanents.
 func init() {
 	Register(Spec{
-		OracleID: "67f43ac6-2a58-4b53-b5d7-0330e2a252e2",
-		Name:     "Reflecting Pool",
+		OracleID:     "67f43ac6-2a58-4b53-b5d7-0330e2a252e2",
+		Name:         "Reflecting Pool",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Two Reflecting Pools (or a Pool alongside Exotic Orchard) do not see each other, so they may offer fewer colors than they should."},
 		ManaAbilities: []ManaAbility{{
 			Cost:         ManaAbilityCost{Tap: true},
 			ProducedFunc: ProducedFromOwnLands(),

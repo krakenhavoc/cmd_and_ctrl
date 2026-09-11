@@ -15,8 +15,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "8fcf50cd-e6d0-4516-850f-d42ee75dcc3a",
-		Name:     "Expedition Map",
+		OracleID:     "8fcf50cd-e6d0-4516-850f-d42ee75dcc3a",
+		Name:         "Expedition Map",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label: "{2}, {T}, Sacrifice this artifact: Search your library for a land card, reveal it, put it into your hand, then shuffle.",
 			Cost:  Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),

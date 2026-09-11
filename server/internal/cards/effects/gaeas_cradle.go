@@ -26,8 +26,9 @@ package effects
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "7c427c3d-ecd8-45ef-bebd-8f10f4a311db",
-		Name:     "Gaea's Cradle",
+		OracleID:     "7c427c3d-ecd8-45ef-bebd-8f10f4a311db",
+		Name:         "Gaea's Cradle",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:         ManaAbilityCost{Tap: true},
 			ProducedFunc: ProducedPerPermanent("G", MatchCreature),
