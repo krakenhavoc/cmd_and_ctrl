@@ -359,6 +359,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		SplitSecond:  s.SplitSecond,
 		AltCost:      s.AltCost,
 		CastFromZone: s.CastFromZone,
+		IsCopy:       s.IsCopy,
 		Seq:          s.Seq,
 		// Effect takes the live *Game at resolve time rather than
 		// capturing one, so sharing the func between original and

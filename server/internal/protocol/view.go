@@ -353,6 +353,15 @@ type StackItemView struct {
 	// one-sided board wipe and a hard-cast one bounces a single
 	// permanent, so a responder needs to see which is on the stack.
 	AltCost string `json:"alt_cost,omitempty"`
+
+	// IsCopy marks a CR 706.10 spell copy — Reverberate's output,
+	// not a cast card (S30). Public and worth showing: the copy and
+	// the spell it came from are two identical-looking entries on
+	// the stack, and which one is the copy decides what a responder
+	// gets by countering it (countering the copy leaves the
+	// original; countering the original leaves the copy, because a
+	// copy is independent of its source once created).
+	IsCopy bool `json:"is_copy,omitempty"`
 }
 
 // DelayedTriggerView is the wire shape of one queued CR 603.7
@@ -1534,6 +1543,7 @@ func viewOfStackItem(it *game.StackItem) StackItemView {
 		HoldPriority: it.HoldPriority,
 		SplitSecond:  it.SplitSecond,
 		AltCost:      it.AltCost,
+		IsCopy:       it.IsCopy,
 	}
 	if len(it.Targets) > 0 {
 		view.Targets = make([]TargetRefView, len(it.Targets))
