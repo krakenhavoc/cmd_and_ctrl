@@ -651,6 +651,12 @@ export interface ManaAbilityView {
   // (CR 701.17b). Absent means the cost needs no extra choice.
   sacrifice_label?: string;
   sacrifice_options?: LegalTargetsView;
+  // S22: a "Pay N life" component of the activation cost — Mana
+  // Confluence's "{T}, Pay 1 life:". Advisory only; the server does
+  // the real CR 118.8 check. A damage RIDER ("This land deals 1
+  // damage to you", the painlands / Ancient Tomb) is NOT a cost and
+  // never appears here — it is spelled out in `label` instead.
+  life_cost?: number;
 }
 
 export interface TurnView {

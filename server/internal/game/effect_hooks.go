@@ -76,8 +76,65 @@ type ManaAbilityShape struct {
 	//
 	// Added in the S21 mana-cost pass.
 	SacrificeOther *TargetSpec
-	Produced       string
-	Label          string
+
+	// LifeCost is a life component in the activation cost (CR
+	// 118.8) — Mana Confluence's "{T}, Pay 1 life: Add one mana of
+	// any color". Mirrors AbilityCost.Life, which CR 602 activated
+	// abilities have carried since S21. Validated before anything
+	// is paid and paid after the tap, so an attempt at too low a
+	// life total fails without tapping the source.
+	//
+	// A life COST is not the same thing as a Rider that loses life:
+	// a cost is checked and paid up front and makes the ability
+	// unactivatable when it can't be met, while a rider is part of
+	// the ability's effect and happens no matter what. Ancient Tomb
+	// ("Add {C}{C}. This land deals 2 damage to you") is a rider and
+	// can be activated at 1 life; Mana Confluence is a cost and
+	// cannot be activated at 0.
+	//
+	// Added in the S22 mana-ability-rider pass.
+	LifeCost int
+
+	Produced string
+	Label    string
+
+	// Rider is the post-production half of a mana ability whose
+	// oracle text continues past the "Add …" clause — the painland
+	// cycle's "This land deals 1 damage to you", Ancient Tomb's 2.
+	// It runs immediately after the produced mana lands in the
+	// controller's pool, in printed order, as part of the same
+	// atomic mana-ability resolution (CR 605.3a — no stack, no
+	// priority window in between).
+	//
+	// `source` is the activating permanent's instance ID and may
+	// already have left the battlefield when the ability also had a
+	// sacrifice cost, so the rider gets the ID rather than a *Card
+	// and must not assume the permanent is still there.
+	//
+	// Runs under g.mu held in write mode (ActivateManaAbility holds
+	// it): use *ForEffect helpers only, never a public locking
+	// mutator. A rider that changes life totals does NOT need to run
+	// its own state-based-action pass — ActivateManaAbility runs one
+	// on the way out whenever a rider fired.
+	//
+	// Nil for the overwhelming majority of mana abilities.
+	//
+	// Added in the S22 mana-ability-rider pass.
+	Rider func(g *Game, controller, source uuid.UUID) error
+
+	// IgnoreCommanderIdentity opts a multi-option ("pipe") produced
+	// string out of the commander-identity narrowing that
+	// ActivateManaAbility otherwise applies to every such slot.
+	//
+	// That narrowing exists for Arcane Signet and Command Tower,
+	// whose printed text really does say "in your commander's color
+	// identity". City of Brass and Mana Confluence say "any color"
+	// flatly, and the painland / Talisman duals name two specific
+	// colors — none of them should be narrowed. Setting this keeps
+	// the printed option set intact.
+	//
+	// Added in the S22 mana-ability-rider pass.
+	IgnoreCommanderIdentity bool
 }
 
 // CatalogManaAbilities returns the registered mana abilities for
