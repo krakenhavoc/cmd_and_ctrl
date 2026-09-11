@@ -215,7 +215,7 @@ func (g *Game) harvestFromZone(ev Event, z *Zone) {
 	}
 	for i := range z.Cards {
 		card := &z.Cards[i]
-		oracle := card.OracleID
+		oracle := CatalogKey(*card)
 		if oracle == "" {
 			continue
 		}
@@ -292,7 +292,7 @@ func (g *Game) harvestLTB(ev Event) {
 	if card == nil {
 		return
 	}
-	oracle := card.OracleID
+	oracle := CatalogKey(*card)
 	if oracle == "" {
 		return
 	}

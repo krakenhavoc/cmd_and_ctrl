@@ -186,6 +186,21 @@ var (
 	// client-facing message.
 	ErrUnparseableCost = errors.New("game: unparseable mana cost")
 
+	// ErrInvalidFace is returned by CastSpell when the requested
+	// printed face is not one this card offers (ADR 0034): a
+	// negative or out-of-range index, or the back face of anything
+	// that is not a modal DFC — a transform card's back is reached
+	// by transforming the permanent, never by casting it (CR 712.4),
+	// and an adventure's second half needs the exile-and-recast
+	// permission that is not built yet.
+	//
+	// Rejecting rather than clamping to the front face is
+	// deliberate. A player who meant to play Sea Gate, Reborn as a
+	// land and silently got a seven-mana sorcery on the stack has
+	// been handed the worst available failure; an error toast is
+	// strictly better.
+	ErrInvalidFace = errors.New("game: invalid card face")
+
 	// ErrSummoningSick is returned when a creature that entered
 	// the battlefield this turn is asked to attack or activate a
 	// tap-cost ability without haste (CR 302.1, 702.10). Added in

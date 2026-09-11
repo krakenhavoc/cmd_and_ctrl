@@ -17,6 +17,7 @@
   // hoveredCard store.
 
   import { hoveredCard } from "../../cardTypes";
+  import { cardImageURL } from "../../cardImage";
   import { metaFor, type CardMeta } from "../../cardMetaCache";
   import type { GameView, PlayerView } from "../../protocol";
   import { playerColor } from "../../avatarColor";
@@ -28,9 +29,18 @@
   const { view }: Props = $props();
 
   const card = $derived($hoveredCard);
-  const imgSrc = $derived(
-    card?.scryfall_id ? `/cards/${card.scryfall_id}/image?size=normal` : null,
-  );
+  const imgSrc = $derived(cardImageURL(card, "normal"));
+  // The OTHER face of a multi-face card, if there is one — the back
+  // of a modal DFC being previewed from hand, or the front of one
+  // already flipped onto the battlefield. Null for the ~33,000
+  // single-faced oracle IDs, which is what hides the panel.
+  const otherFace = $derived.by(() => {
+    const faces = card?.faces;
+    if (!faces || faces.length < 2) return null;
+    const active = card?.active_face ?? 0;
+    const idx = active === 0 ? 1 : 0;
+    return { index: idx, face: faces[idx], src: cardImageURL(card, "normal", idx) };
+  });
 
   // Subscribe to the card's metadata store. Re-derived per hover so a
   // new card swaps in a fresh subscription. The inner $-prefixed deref
@@ -115,6 +125,17 @@
         {/key}
       {:else}
         <div class="name-fallback">{card.name}</div>
+      {/if}
+      <!-- ADR 0034: the other printed face. A modal DFC in hand is
+           two playable objects, and the half you are NOT looking at
+           is exactly the information the hover panel exists to
+           supply. Absent for every single-faced card. -->
+      {#if otherFace?.src}
+        <div class="other-face" title={otherFace.face.name}>
+          {#key otherFace.src}
+            <img src={otherFace.src} alt={otherFace.face.name} />
+          {/key}
+        </div>
       {/if}
     </div>
     <div class="info">
@@ -237,6 +258,29 @@
     background: var(--surface-sunken);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
     flex: 0 0 auto;
+    position: relative;
+  }
+
+  /* The other printed face, tucked into the bottom-right corner of
+     the scan as a small inset — present enough to read, small
+     enough not to compete with the face that is actually up. */
+  .other-face {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    width: 38%;
+    aspect-ratio: 63 / 88;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
+  }
+
+  .other-face img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
   img {
     width: 100%;

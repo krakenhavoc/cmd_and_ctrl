@@ -1,6 +1,6 @@
 # ADR 0034 — Multi-face cards: MDFC, transform, adventure
 
-**Status:** proposed — spike only, nothing here is implemented.
+**Status:** accepted — the spine and the MDFC picker shipped together. See "What shipped" below.
 **Motivated by:** [#278](https://github.com/krakenhavoc/cmd_and_ctrl/issues/278) (this spike), [#265](https://github.com/krakenhavoc/cmd_and_ctrl/issues/265) (Sea Gate Restoration entered as a land with no prompt), [#276](https://github.com/krakenhavoc/cmd_and_ctrl/issues/276) (transform commander has no colour identity).
 **Depends on:** [ADR 0010](0010-card-effect-catalog.md) (oracle-ID-keyed specs), [ADR 0012](0012-layer-system.md) (`Effective()`), [ADR 0013](0013-replacement-effects.md) (the entry-choice pause), [ADR 0022](0022-impulse-exile.md) (`ExilePlay`).
 
@@ -678,3 +678,84 @@ creature half only. Flip and meld import face 0 only. Transform requires
 a manual flip. A fetched or effect-placed MDFC land takes the unpaid
 branch and enters tapped, inheriting the existing shockland limitation
 ([shocklands.go:42-58](../../server/internal/cards/effects/shocklands.go)).
+
+---
+
+## What shipped
+
+Steps 2 and 3 of the execution order, in one PR, as the sizing
+demanded — the spine alone would have left Sea Gate Restoration a
+seven-mana sorcery you cannot play as a land.
+
+### The design held
+
+Every load-bearing call survived implementation unchanged:
+
+- **The flat fields stay fields.** Zero of the 293 `TypeLine:` literal
+  sites and zero of the 389 `Card{` literals needed rewriting. Three
+  *assertions* changed, all because `Card.Name` is now the active
+  face's name rather than Scryfall's composite — which is the
+  behaviour the design asked for.
+- **`Effective()` needed no change**, exactly as predicted. The
+  `"//"` and `"—"` junk types disappeared without the layer engine
+  learning anything.
+- **`CastSpell`'s value copy was the whole game.** One
+  `card.SetFace(params.Face)` after the copy made all ten downstream
+  reads face-correct.
+- **`CatalogKey` with a bare face-0 key** left all ~241 existing specs
+  and every single-faced card untouched. 25 production call sites
+  swapped mechanically.
+- **The MDFC land backs really did cost nothing in rules code.** All
+  sixty are a table in `mdfc_lands.go`: fifteen
+  `EntersTappedUnlessYouPayLife(name, 3)`, thirty-five
+  `SelfEntersTapped()`, ten with no entry clause at all.
+
+### Three things the design did not anticipate
+
+1. **The face must be written into the SOURCE ZONE, not just onto the
+   copy.** The CR 614 pipeline resolves the entering card by ID
+   through `LookupCardForEffect`, so a land back whose `ActiveFace` is
+   still 0 on the card in hand never finds its own spec. `CastSpell`'s
+   land branch now stamps the face on the zone card before running
+   the pipeline — and restores it on the refusal paths, because a cast
+   that does not happen must not leave a card in hand wearing its back
+   face. Same reasoning for the stack push.
+2. **`printedLoyalty`'s face fallback was not merely redundant, it was
+   wrong.** "The first face that prints a loyalty" gave Nissa,
+   Vastwood Seer — a 4/4 Elf Scout — her back face's 3. Per-face
+   loyalty fixes it; the whole-card fallback is gone.
+3. **The entry-prompt resume path never counted the land drop.** A
+   pre-existing bug, live since #268, affecting every shockland: the
+   `LandsPlayedThisTurn` tally is bumped in `CastSpell`'s land branch
+   but not in `executeEntryToBattlefieldLocked`, so a land that paused
+   on a prompt was invisible to the legal-move enumerator. Found by
+   the MDFC back-face test and fixed alongside.
+
+### One decision the spike left open, settled here
+
+`CastSpellParams.Face` **rejects** a face the card does not offer
+(`ErrInvalidFace`) rather than clamping to the front. Silently casting
+the wrong half — a seven-mana sorcery when the player meant a land —
+is the worst available failure. `SetFace` itself still clamps, because
+a setter's job is to never leave a card incoherent; refusing is the
+action layer's.
+
+### Resolved
+
+- **#265 / #289** — both halves. `IsLand()` reads the active face, so
+  the land branch stops firing on a sorcery front, and the cost gate
+  finally sees a real cost.
+- **#325** — Aang, Swift Savior's ETB airbend, now that the card
+  imports as a {1}{W}{U} 2/3 instead of a free colourless 0/0.
+- **#343** — partially: the 0/0 is fixed and the back face is imported
+  and on the wire. "Waterbend {8}: Transform Aang" still needs the
+  `transform` verb, which is step 5.
+- The 1,503 free-casting DFCs, the 1,047 unparseable-cost casts, the
+  `"//"` junk types on 501 oracle IDs, and 71 `byName` keys resolving
+  to a `reversible_card` placeholder.
+
+### Still outstanding
+
+Steps 4–6: transform's flip verb, adventure's exile-and-recast, split
+fusing. All are declared in the import banner
+(`CodeUnsupportedLayout`) rather than left silent.

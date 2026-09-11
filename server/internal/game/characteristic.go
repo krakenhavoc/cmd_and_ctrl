@@ -53,10 +53,12 @@ type Characteristic struct {
 // Characteristic with empty type slices — safe for downstream
 // layers to iterate.
 //
-// Colors are NOT derived here — there's no per-card color field on
-// the Card struct yet (S15 added ManaCost only). When S16's catalog
-// adds color-changing effects, this will need a parsed-from-cost
-// initial color set.
+// Colors come from printedColors: Card.Colors when the importer
+// stamped it, the mana cost otherwise. (This comment used to say
+// colours were not derived here at all — true at S16 sub-PR 1, wrong
+// since S20 stamped Card.Colors, and wrong in a way that mattered:
+// the cost-only derivation was what made every colour-indicator face
+// read as colourless.)
 func (c Card) printedCharacteristic() Characteristic {
 	supertypes, types, subtypes := ParseTypeLine(c.TypeLine)
 	// Printed keywords come from two places. The catalog's
@@ -83,7 +85,7 @@ func (c Card) printedCharacteristic() Characteristic {
 	// on the client's keyword row.
 	var abilities []string
 	if CatalogPrintedKeywords != nil && c.OracleID != "" {
-		if kws := CatalogPrintedKeywords(c.OracleID); len(kws) > 0 {
+		if kws := CatalogPrintedKeywords(CatalogKey(c)); len(kws) > 0 {
 			abilities = append(abilities, kws...)
 		}
 	}
@@ -98,7 +100,7 @@ func (c Card) printedCharacteristic() Characteristic {
 		Types:      types,
 		Subtypes:   subtypes,
 		Supertypes: supertypes,
-		Colors:     printedColorsFromCost(c.ManaCost),
+		Colors:     printedColors(c),
 		Name:       c.Name,
 		Abilities:  abilities,
 	}
@@ -115,6 +117,34 @@ func containsKeyword(xs []string, kw string) bool {
 		}
 	}
 	return false
+}
+
+// printedColors is the printed-colour rule for a whole card: the
+// STAMPED Colors list when the importer gave us one, falling back to
+// the colours in the mana cost.
+//
+// It used to be the cost alone, which is wrong for three classes of
+// card and was a latent bug independent of faces:
+//
+//   - Devoid (CR 702.114) prints a cost with coloured pips and is
+//     colourless anyway. Scryfall's `colors` says so; the cost does
+//     not.
+//   - CR 105.2c colour indicators — the coloured dot on a card with
+//     no mana cost. Every transform back face is in this class:
+//     Jace, Telepath Unbound has cost "" and reads as colourless
+//     from the cost, blue from the indicator.
+//   - Land faces of a modal DFC, which are correctly colourless but
+//     used to be indistinguishable from "not stamped".
+//
+// Empty Colors still means "not stamped" rather than "colourless" —
+// tokens and test fixtures never set it — so the cost fallback is
+// kept rather than replaced. That matches the posture
+// Card.EffectiveColors has taken since S20.
+func printedColors(c Card) []string {
+	if len(c.Colors) > 0 {
+		return append([]string(nil), c.Colors...)
+	}
+	return printedColorsFromCost(c.ManaCost)
 }
 
 // printedColorsFromCost extracts the unique WUBRG letters from a

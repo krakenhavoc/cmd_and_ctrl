@@ -249,25 +249,28 @@ func (l *List) ToGameCards() []game.Card {
 	return out
 }
 
-// printedLoyalty parses Scryfall's printed starting loyalty to an
-// int. Scryfall puts loyalty at the top level for ordinary cards and
-// on the FACE for double-faced ones, so the face list is the
-// fallback — otherwise every transforming planeswalker would import
-// with zero loyalty and die to CR 704.5i the instant it resolved.
+// printedLoyalty parses Scryfall's top-level printed starting
+// loyalty to an int (CR 306.5b).
+//
+// It used to fall back to "the first face that prints a loyalty",
+// because Scryfall puts loyalty on the FACE for double-faced cards
+// and leaves the top-level field empty — without which every
+// transforming planeswalker imported with zero loyalty and died to
+// the CR 704.5i SBA the instant it resolved (#274).
+//
+// ADR 0034 makes that fallback both unnecessary and wrong. Per-face
+// loyalty now lives on game.Face and SetFace(0) materialises the
+// FRONT face's, which for Nissa, Vastwood Seer // Nissa, Sage
+// Animist is correctly zero: the front face is a 4/4 Elf Scout, and
+// handing it the back face's 3 was the whole-card fallback papering
+// over the missing face model.
 //
 // Non-numeric values ("X" on the handful of X-loyalty designs) parse
 // to zero, matching how power / toughness handle "*". Those cards
 // stay a manual-sandbox case: the player adds counters by hand.
 func printedLoyalty(c cards.Card) int {
-	if n, err := strconv.Atoi(strings.TrimSpace(c.Loyalty)); err == nil {
-		return n
-	}
-	for _, f := range c.CardFaces {
-		if n, err := strconv.Atoi(strings.TrimSpace(f.Loyalty)); err == nil {
-			return n
-		}
-	}
-	return 0
+	n, _ := strconv.Atoi(strings.TrimSpace(c.Loyalty))
+	return n
 }
 
 // printedKeywords translates Scryfall's `keywords` array into the
@@ -412,7 +415,7 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 	// sandbox lets players manually adjust life for the exotic cases.
 	power, _ := strconv.Atoi(strings.TrimSpace(c.Power))
 	toughness, _ := strconv.Atoi(strings.TrimSpace(c.Toughness))
-	return game.Card{
+	out := game.Card{
 		InstanceID: uuid.New(),
 		Name:       c.Name,
 		ScryfallID: c.ID.String(),
@@ -448,5 +451,83 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		// whose cost Scryfall puts on card_faces[0].
 		ColorIdentity: append([]string(nil), c.ColorIdentity...),
 		IsCommander:   isCommander,
+		// ADR 0034 — the printing's layout and its printed faces.
+		// Layout decides what "choose a face" MEANS at announce time
+		// (modal DFC: either half; transform: front only), and Faces
+		// carries the per-face cost / type / colours that Scryfall
+		// leaves null at the TOP level for exactly those layouts.
+		Layout: c.Layout,
+		Faces:  printedFaces(c),
 	}
+	// Materialise face 0. For the ~33,000 single-faced oracle IDs
+	// this is a no-op and every field above stands as written; for a
+	// multi-face card it OVERWRITES Name / TypeLine / ManaCost /
+	// Colors / Power / Toughness / StartingLoyalty with the front
+	// face's — which is the point, because the top-level values it
+	// replaces are the ones that were null ("" cost ⇒ a free spell)
+	// or joined ("Sorcery // Land" ⇒ a sorcery that passed IsLand()
+	// and skipped the cost gate entirely, #289).
+	out.SetFace(0)
+	return out
+}
+
+// printedFaces builds the engine's face list from Scryfall's
+// card_faces array. Returns nil for a single-faced printing, which
+// leaves Card.Faces nil and SetFace a no-op — the entire
+// single-faced world is untouched by this change.
+//
+// A one-element card_faces array is treated as single-faced too.
+// Scryfall does not ship those today, but a face list that cannot
+// offer a choice is indistinguishable from no face list, and nil is
+// the cheaper representation of the same fact.
+func printedFaces(c cards.Card) []game.Face {
+	if len(c.CardFaces) < 2 {
+		return nil
+	}
+	out := make([]game.Face, 0, len(c.CardFaces))
+	for _, f := range c.CardFaces {
+		// Same posture as the top-level parse: non-numeric printed
+		// values ("*", "1+*", "X") land as zero and stay a manual
+		// sandbox case.
+		power, _ := strconv.Atoi(strings.TrimSpace(f.Power))
+		toughness, _ := strconv.Atoi(strings.TrimSpace(f.Toughness))
+		loyalty, _ := strconv.Atoi(strings.TrimSpace(f.Loyalty))
+		out = append(out, game.Face{
+			Name:            f.Name,
+			TypeLine:        f.TypeLine,
+			ManaCost:        f.ManaCost,
+			Colors:          faceColors(f),
+			Power:           power,
+			Toughness:       toughness,
+			StartingLoyalty: loyalty,
+			OracleText:      f.OracleText,
+		})
+	}
+	return out
+}
+
+// faceColors resolves one face's colours. The order matters, because
+// the two Scryfall multi-face shapes populate different fields:
+//
+//	transform / modal_dfc  `colors` is populated per face.
+//	adventure / split      `colors` is null per face; the face's
+//	                       mana cost is the only signal.
+//	transform BACK faces   have no mana cost at all, and Scryfall
+//	                       expresses their colour as CR 105.2c's
+//	                       colour indicator — Jace, Telepath Unbound
+//	                       is blue by indicator and by nothing else.
+//
+// So: colors, then color_indicator, then derive from the cost.
+// Returns nil rather than an empty slice for a genuinely colourless
+// face, because game.Card reads a nil Colors as "not stamped" and
+// falls back to the cost — which for a colourless face yields nil
+// again, so the two agree.
+func faceColors(f cards.CardFace) []string {
+	if len(f.Colors) > 0 {
+		return append([]string(nil), f.Colors...)
+	}
+	if len(f.ColorIndicator) > 0 {
+		return append([]string(nil), f.ColorIndicator...)
+	}
+	return game.ColorsInManaCost(f.ManaCost)
 }

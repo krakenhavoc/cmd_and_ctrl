@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"fmt"
 	"sort"
 	"time"
 
@@ -696,6 +697,53 @@ type CardView struct {
 	// (engine ships, no card declares a static ability yet).
 	// Added in S16 sub-PR 1.
 	Abilities []string `json:"abilities,omitempty"`
+
+	// Layout is Scryfall's printing layout ("modal_dfc",
+	// "transform", "adventure", …), omitted for the ordinary
+	// single-faced card. The client reads it to decide whether
+	// playing this card needs a face prompt at all. Added by
+	// ADR 0034.
+	Layout string `json:"layout,omitempty"`
+
+	// Faces is every printed face of a multi-face card, front
+	// first, and it is PURELY ADDITIVE: Name, TypeLine, ManaCost,
+	// Power and Toughness above continue to mean "the ACTIVE
+	// face's", which is what keeps the client change small. All
+	// twenty-odd client-side type checks — cardTypes.ts,
+	// Card.svelte's regexes, timing.ts's cast gate, the mana-source
+	// estimator — keep working with zero edits, because they now
+	// receive one clean type line instead of a concatenation.
+	//
+	// What this feeds is the face picker and the hover overlay's
+	// back-face panel. Absent for single-faced cards.
+	Faces []CardFaceView `json:"faces,omitempty"`
+
+	// ActiveFace indexes Faces. Omitted when zero, which is the
+	// front face and every single-faced card.
+	ActiveFace int `json:"active_face,omitempty"`
+}
+
+// CardFaceView is one printed face on the wire (ADR 0034). Enough
+// to render a picker row and a hover panel: what it is called, what
+// it costs, what it is, and where its art lives.
+type CardFaceView struct {
+	Name     string `json:"name"`
+	TypeLine string `json:"type_line,omitempty"`
+	ManaCost string `json:"mana_cost,omitempty"`
+	// OracleText is the face's rules text, so the picker can show
+	// what each half actually does without a round-trip to
+	// GET /cards/{id}.
+	OracleText string `json:"oracle_text,omitempty"`
+	// Power and Toughness for a creature face. Both omitted when
+	// zero, as on CardView.
+	Power     int `json:"power,omitempty"`
+	Toughness int `json:"toughness,omitempty"`
+	// Image is the path to this face's art:
+	// "/cards/{scryfall_id}/image?face=N". Built server-side so the
+	// client never has to know that the face index is a query
+	// parameter, and empty for a card with no Scryfall ID
+	// (fixtures, the demo seed).
+	Image string `json:"image,omitempty"`
 }
 
 // ManaAbilityView is the wire shape of one activated mana ability
@@ -1729,6 +1777,13 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// same reason as the cost fields above rather than because
 	// anyone could read much from it.
 	out.Unimplemented = false
+	// ADR 0034: the face list names the card twice over — both
+	// halves, their costs and their type lines. A face-down Sea Gate
+	// Restoration that still shipped "Sea Gate, Reborn // Land" in
+	// its faces array would be the loudest leak on the wire.
+	out.Faces = nil
+	out.Layout = ""
+	out.ActiveFace = 0
 	return out
 }
 
@@ -1824,15 +1879,18 @@ func viewOfCard(c game.Card) CardView {
 		BattleY:       c.BattleY,
 		DamageMarked:  c.DamageMarked,
 		FaceDown:      c.FaceDown,
-		Auto:          game.IsAutoCard(c.OracleID),
+		Auto:          game.IsAutoCard(game.CatalogKey(c)),
 		Unimplemented: game.Unimplemented(c),
-		TargetMode:    game.TargetModeFor(c.OracleID),
+		TargetMode:    game.TargetModeFor(game.CatalogKey(c)),
 		oracleID:      c.OracleID,
 		ManaCost:      c.ManaCost,
 		ManaAbilities: viewOfManaAbilities(c),
 		SummoningSick: game.HasSummoningSickness(&c),
 		Abilities:     eff.Abilities,
 		knowers:       knowers,
+		Layout:        c.Layout,
+		Faces:         viewOfFaces(c),
+		ActiveFace:    c.ActiveFace,
 	}
 	if c.AttackingTarget != uuid.Nil {
 		view.AttackingTarget = c.AttackingTarget.String()
@@ -2019,6 +2077,32 @@ func filterToController(g *game.Game, ids []string, controller uuid.UUID) []stri
 		if c, ok := g.LookupCardForEffect(parsed); ok && c.Controller == controller {
 			out = append(out, id)
 		}
+	}
+	return out
+}
+
+// viewOfFaces projects a multi-face card's printed faces onto the
+// wire. Returns nil for single-faced cards, which is every one of
+// the ~33,000 ordinary oracle IDs — the field is omitempty, so their
+// CardView is byte-identical to what it was before ADR 0034.
+func viewOfFaces(c game.Card) []CardFaceView {
+	if len(c.Faces) < 2 {
+		return nil
+	}
+	out := make([]CardFaceView, 0, len(c.Faces))
+	for i, f := range c.Faces {
+		v := CardFaceView{
+			Name:       f.Name,
+			TypeLine:   f.TypeLine,
+			ManaCost:   f.ManaCost,
+			OracleText: f.OracleText,
+			Power:      f.Power,
+			Toughness:  f.Toughness,
+		}
+		if c.ScryfallID != "" {
+			v.Image = fmt.Sprintf("/cards/%s/image?face=%d", c.ScryfallID, i)
+		}
+		out = append(out, v)
 	}
 	return out
 }

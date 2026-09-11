@@ -64,6 +64,14 @@ export interface CastChoices {
   // waterbend. Undefined and empty are the same thing to the server;
   // tapping nothing is always legal.
   tapIDs?: string[];
+  // ADR 0034: which printed face of a modal DFC is being cast or
+  // played. Undefined and 0 are both "the front face", which is
+  // every single-faced card. The face is chosen FIRST — before the
+  // alternative cost, the modes, X and the targets — because it
+  // decides what the card even is: Sea Gate Restoration and Sea
+  // Gate, Reborn have different types, different costs and, via
+  // the composite catalog key, different rules.
+  face?: number;
 }
 
 // applyCastChoices writes a CastChoices onto a cast_spell payload.
@@ -79,6 +87,10 @@ export function applyCastChoices(
   if (choices.sacrificeIDs !== undefined) params.sacrifice_ids = choices.sacrificeIDs;
   if (choices.altCost !== undefined) params.alternative_cost = choices.altCost;
   if (choices.tapIDs !== undefined && choices.tapIDs.length > 0) params.tap_ids = choices.tapIDs;
+  // Face 0 is omitted rather than sent explicitly: it is the server
+  // default, and `omitempty` on the Go side means an explicit zero
+  // and an absent field are the same byte on the wire anyway.
+  if (choices.face !== undefined && choices.face > 0) params.face = choices.face;
 }
 
 // TargetingState is the active prompt. `card` is the spell being

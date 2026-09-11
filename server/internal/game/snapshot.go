@@ -242,6 +242,9 @@ type cardSnapshot struct {
 	ColorIdentity            []string            `json:"colorIdentity,omitempty"`
 	StartingLoyalty          int                 `json:"startingLoyalty"`
 	Keywords                 []string            `json:"keywords,omitempty"`
+	Layout                   string              `json:"layout,omitempty"`
+	Faces                    []Face              `json:"faces,omitempty"`
+	ActiveFace               int                 `json:"activeFace,omitempty"`
 	NeedsEffect              bool                `json:"needsEffect"`
 	Owner                    uuid.UUID           `json:"owner"`
 	Controller               uuid.UUID           `json:"controller"`
@@ -664,6 +667,9 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ColorIdentity:            copyStrings(c.ColorIdentity),
 		StartingLoyalty:          c.StartingLoyalty,
 		Keywords:                 copyStrings(c.Keywords),
+		Layout:                   c.Layout,
+		Faces:                    copyFaces(c.Faces),
+		ActiveFace:               c.ActiveFace,
 		NeedsEffect:              c.NeedsEffect,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
@@ -1097,6 +1103,9 @@ func restoreCard(c *cardSnapshot) Card {
 		ColorIdentity:            copyStrings(c.ColorIdentity),
 		StartingLoyalty:          c.StartingLoyalty,
 		Keywords:                 copyStrings(c.Keywords),
+		Layout:                   c.Layout,
+		Faces:                    copyFaces(c.Faces),
+		ActiveFace:               c.ActiveFace,
 		NeedsEffect:              c.NeedsEffect,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
@@ -1357,4 +1366,13 @@ func copyTallyMap(in map[uuid.UUID]CastTally) map[uuid.UUID]CastTally {
 		out[k] = v
 	}
 	return out
+}
+
+// copyFaces deep-copies a face list. Face is pure printed data
+// (strings and ints), so a value copy of each element is enough.
+func copyFaces(in []Face) []Face {
+	if len(in) == 0 {
+		return nil
+	}
+	return append([]Face(nil), in...)
 }

@@ -30,6 +30,7 @@
 
   import type { CardView, PlayerView, StackItemView, ZoneView } from "../../protocol";
   import { seatColor } from "../../colors";
+  import { cardImageURL } from "../../cardImage";
   import Icon from "../Icon.svelte";
   import { targeting, isLegalCardTarget } from "../../targeting";
   import { hoveredCard } from "../../cardTypes";
@@ -140,9 +141,7 @@
   }
 
   function imgSrcFor(item: StackItemView): string | null {
-    const c = artCardFor(item);
-    if (!c || !c.scryfall_id) return null;
-    return `/cards/${c.scryfall_id}/image?size=small`;
+    return cardImageURL(artCardFor(item), "small");
   }
 
   function titleFor(item: StackItemView): string {

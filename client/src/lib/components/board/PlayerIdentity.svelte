@@ -14,6 +14,7 @@
   import { floatUp, fadeOut } from "../../animations";
   import { play } from "../../sounds";
   import { avatarURL } from "../../api";
+  import { scryfallImageURL } from "../../cardImage";
   import { targeting, isLegalPlayerTarget, isPicked } from "../../targeting";
   import ManaPoolPips from "./ManaPoolPips.svelte";
   import Icon from "../Icon.svelte";
@@ -73,8 +74,11 @@
   }
 
   const discordAvatar = $derived(avatarURL(seat.discord_id, seat.discord_avatar_hash));
+  // The commander's art crop is always the FRONT face's — a
+  // double-faced commander is identified by the side it is cast as,
+  // and the seat header is an identity badge, not a board state.
   const commanderArt = $derived(
-    commanderScryfallID ? `/cards/${commanderScryfallID}/image?size=art_crop` : null,
+    commanderScryfallID ? scryfallImageURL(commanderScryfallID, "art_crop") : null,
   );
   // Discord avatar first, the commander's art crop when there is
   // none, the seat-colour disc when neither loads.

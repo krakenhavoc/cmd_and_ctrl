@@ -300,12 +300,14 @@ func TestPrintedKeywordsStampedOnGameCard(t *testing.T) {
 		"Enduring Curiosity": {"flash"},
 		// Multi-faced: "prepared" is not a keyword the engine knows,
 		// and all three canonical ones are printed on the front face.
-		"Skycoach Conductor // All Aboard": {"flying", "vigilance", "flash"},
+		// Keyed on the FRONT FACE's name since ADR 0034 — game.Card
+		// carries the active face's name, not Scryfall's composite.
+		"Skycoach Conductor": {"flying", "vigilance", "flash"},
 		// Multi-faced: Scryfall's top-level array is the union over
 		// both faces. Reach and trample belong to the back face and
 		// must NOT ride along on the front; airbend, transform and
 		// waterbend are not canonical keywords at all.
-		"Aang, Swift Savior // Aang and La, Ocean's Fury": {"flying", "flash"},
+		"Aang, Swift Savior": {"flying", "flash"},
 	}
 	for name, exp := range want {
 		got, ok := byName[name]

@@ -7,6 +7,7 @@
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import BugReportModal from "../lib/components/BugReportModal.svelte";
   import { fetchBugReportConfig } from "../lib/api";
+  import { cardImageURL } from "../lib/cardImage";
   import Board from "../lib/components/board/Board.svelte";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
@@ -1170,11 +1171,7 @@
               {#each viewerSeat?.hand.cards ?? [] as card (card.instance_id)}
                 <div class="mulligan-card" role="listitem" title={card.name}>
                   {#if card.scryfall_id}
-                    <img
-                      src={`/cards/${card.scryfall_id}/image?size=normal`}
-                      alt={card.name}
-                      loading="lazy"
-                    />
+                    <img src={cardImageURL(card, "normal")} alt={card.name} loading="lazy" />
                   {:else}
                     <span class="mulligan-card-fallback">{card.name}</span>
                   {/if}

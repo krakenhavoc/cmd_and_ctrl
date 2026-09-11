@@ -159,6 +159,30 @@ type CardFace struct {
 	// Animist) would resolve with no loyalty at all. The importer
 	// falls back to the first face that prints one.
 	Loyalty string `json:"loyalty"`
+	// ManaCost is the FACE's printed casting cost. This is the field
+	// that was missing, and its absence is why every transform and
+	// modal DFC imported for free: Scryfall sets the TOP-LEVEL
+	// mana_cost to null on those layouts and puts the real cost here
+	// (1,203 transform + 300 modal_dfc byName keys), while ParseCost
+	// of the empty string succeeds and yields the zero cost. See
+	// ADR 0034.
+	ManaCost string `json:"mana_cost"`
+	// Colors is the face's own colour list. Populated on
+	// transform / modal_dfc faces and null on adventure / split
+	// ones, which is why the importer resolves colours as
+	// colors → color_indicator → derived-from-cost rather than
+	// trusting any single field.
+	Colors []string `json:"colors"`
+	// ColorIndicator is CR 105.2c's coloured dot — the only colour
+	// signal on a face that has no mana cost at all, which is every
+	// transform back face (Jace, Telepath Unbound prints a blue dot
+	// and no cost). Without it those faces read as colourless.
+	ColorIndicator []string `json:"color_indicator"`
+	// Power and Toughness are the face's printed stats, strings for
+	// the same reason the top-level ones are ("*" on Mortivore-class
+	// designs). Empty for non-creature faces.
+	Power     string `json:"power"`
+	Toughness string `json:"toughness"`
 }
 
 // Index is a read-only map from card UUID → Card, built at server
@@ -343,8 +367,17 @@ func preferIncoming(existing, incoming Card) bool {
 // legitimately put in a deck. Tokens, art series, and minigame /
 // vanguard cards are not playable; they should not be the canonical
 // byName entry for a given card name.
+//
+// reversible_card joined the list with ADR 0034. All 81 such
+// printings — the Secret Lair double-sided novelty run — carry
+// mana_cost: null and type_line: null, and 71 byName keys currently
+// resolve to one. The face-insert guard keeps the real single-faced
+// entries safe today because those records are all "X // X" doubled
+// keys, but a record with no cost and no type belongs with the other
+// placeholders rather than one guard away from being a free spell.
 func isPlayablePrint(c Card) bool {
-	if c.Layout == "token" || c.Layout == "double_faced_token" || c.Layout == "art_series" {
+	switch c.Layout {
+	case "token", "double_faced_token", "art_series", "reversible_card":
 		return false
 	}
 	switch c.SetType {
@@ -453,22 +486,45 @@ func (i *Index) Put(c Card) {
 // Falls back to the front face's image if c is a double-faced card,
 // and to "normal" if the requested size is missing.
 func ImageURI(c Card, size string) string {
-	// Prefer the top-level map (single-faced cards).
-	if uri, ok := c.ImageURIs[size]; ok && uri != "" {
-		return uri
-	}
-	if uri, ok := c.ImageURIs["normal"]; ok && uri != "" {
-		return uri
-	}
-	// Fall back to the front face (double-faced, split, etc).
-	if len(c.CardFaces) > 0 {
-		face := c.CardFaces[0]
-		if uri, ok := face.ImageURIs[size]; ok && uri != "" {
+	return ImageURIForFace(c, size, 0)
+}
+
+// ImageURIForFace is ImageURI for a specific printed face (ADR
+// 0034). Face 0 is the front and behaves exactly as ImageURI always
+// has, so every existing caller is unaffected.
+//
+// The order is deliberate and differs per face. For the FRONT face
+// the top-level map wins, because that is where Scryfall puts the
+// art for single-faced and split-style layouts; the face map is the
+// fallback for the transform / modal_dfc shape, whose top-level
+// image_uris is absent entirely.
+//
+// For a BACK face there is no top-level candidate that could
+// possibly be right — the top-level image of a transform card is the
+// front — so a missing face image returns EMPTY rather than falling
+// back and serving the wrong side. A 404 is the honest answer; a
+// picker showing the same art twice is not.
+func ImageURIForFace(c Card, size string, face int) string {
+	pick := func(m map[string]string) string {
+		if uri, ok := m[size]; ok && uri != "" {
 			return uri
 		}
-		if uri, ok := face.ImageURIs["normal"]; ok && uri != "" {
+		if uri, ok := m["normal"]; ok && uri != "" {
 			return uri
 		}
+		return ""
+	}
+	if face <= 0 {
+		if uri := pick(c.ImageURIs); uri != "" {
+			return uri
+		}
+		if len(c.CardFaces) > 0 {
+			return pick(c.CardFaces[0].ImageURIs)
+		}
+		return ""
+	}
+	if face < len(c.CardFaces) {
+		return pick(c.CardFaces[face].ImageURIs)
 	}
 	return ""
 }
