@@ -663,6 +663,23 @@ type CardView struct {
 	// the overwhelming majority of cards. Optional like the
 	// alternative costs — tapping nothing is always a legal cast.
 	TapCost *TapCostView `json:"tap_cost,omitempty"`
+	// CastableHere is the S29 "this card can be cast from the zone
+	// you are looking at it in" bit, for the zones where that is not
+	// already implied by the surface: the graveyard, today. Hand and
+	// command-zone cards never carry it — every card in a hand is a
+	// cast candidate, and the command zone has its own button.
+	//
+	// It is the flag the zone browser keys its cast button off, the
+	// way exile keys its impulse button off `exile_play`. The cost
+	// to pay rides `alternative_costs`, already filtered to the
+	// offers claimable from this zone — so a Faithless Looting in
+	// the graveyard carries flashback and nothing else, while the
+	// same card in hand carries neither.
+	//
+	// Public, like `activated_abilities`: the graveyard is a public
+	// zone and a flashback cost is printed on the card, so the bit
+	// is stamped on every viewer's copy rather than only the owner's.
+	CastableHere bool `json:"castable_here,omitempty"`
 	// ExilePlay is the S21 sub-PR 6 impulse-exile grant. Present
 	// only while the card is in exile with a live permission;
 	// absent — which is nearly always — the card is inert exile.
@@ -981,10 +998,21 @@ func ViewOfGame(g *game.Game) GameView {
 	return view
 }
 
-// stampLegalTargets fills CardView.LegalTargets for every hand and
-// command-zone card that has a TargetSpec, from its owner's point
-// of view. Runs under the read lock ViewOfGame already holds; the
-// per-viewer filter strips the field from opponents' hands.
+// stampLegalTargets fills CardView.LegalTargets for every card in a
+// zone its owner could cast it from, from that owner's point of
+// view, along with the rest of the announce-time clauses the cast
+// dialog needs: modes, additional cost, tap cost, alternative costs.
+// Runs under the read lock ViewOfGame already holds; the per-viewer
+// filter strips the fields from opponents' hands.
+//
+// S29 added the third zone. Hand and the command zone are cast
+// surfaces for every card that sits in them, so they are walked
+// unconditionally; the graveyard is a cast surface only for the
+// cards whose own text says so (flashback, escape, Gravecrawler), so
+// it is walked with that gate and stamps CastableHere on the ones
+// that pass. Everything downstream — including the alternative-cost
+// offers, which are filtered to the ones claimable from the zone the
+// card is actually in — then reads the same for all three.
 func stampLegalTargets(g *game.Game, seats []PlayerView) {
 	for si := range seats {
 		seat := &seats[si]
@@ -992,9 +1020,23 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 		if err != nil {
 			continue
 		}
-		for _, zone := range []*ZoneView{&seat.Hand, &seat.Command} {
-			for ci := range zone.Cards {
-				c := &zone.Cards[ci]
+		zones := []struct {
+			view *ZoneView
+			kind game.ZoneKind
+		}{
+			{&seat.Hand, game.ZoneHand},
+			{&seat.Command, game.ZoneCommand},
+			{&seat.Graveyard, game.ZoneGraveyard},
+		}
+		for _, zone := range zones {
+			for ci := range zone.view.Cards {
+				c := &zone.view.Cards[ci]
+				if zone.kind == game.ZoneGraveyard {
+					if !game.CardCastableFromZone(c.oracleID, game.ZoneGraveyard) {
+						continue
+					}
+					c.CastableHere = true
+				}
 				if ms := game.ModeSpecFor(c.oracleID); ms != nil {
 					c.Modes = viewOfModeSpec(g, caster, ms)
 				}
@@ -1025,8 +1067,13 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 				spec := game.TargetSpecFor(c.oracleID)
 				// S22: the alternative costs are stamped before the
 				// early-out below, because a card can offer one
-				// without having any target clause of its own.
-				if alts := game.AlternativeCostsFor(c.oracleID); len(alts) > 0 {
+				// without having any target clause of its own. S29
+				// filters them by zone — the offers a card makes from
+				// the graveyard (flashback, escape) and the offers it
+				// makes from hand (overload, evoke, cleave) are
+				// disjoint sets, and showing the wrong one produces a
+				// button the server will reject.
+				if alts := game.AlternativeCostsOfferedFromZone(c.oracleID, zone.kind); len(alts) > 0 {
 					c.AlternativeCosts = viewOfAlternativeCosts(g, caster, spec, alts)
 				}
 				if spec == nil {
@@ -1786,6 +1833,11 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// away the Cyclonic Rift.
 	out.AlternativeCosts = nil
 	out.TapCost = nil
+	// S29: "castable from where it sits" is only ever set on cards
+	// whose text grants an extra cast zone, so it partitions the
+	// card the same weak way `unimplemented` does. Cleared with the
+	// rest of the cost surface.
+	out.CastableHere = false
 	// Weak evidence of identity, but evidence: it partitions the
 	// card into "prints rules we don't run" or not. Cleared for the
 	// same reason as the cost fields above rather than because

@@ -486,15 +486,24 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// grant naming this player. Checked before every other gate
 	// because it's the one that decides whether the card is yours to
 	// touch at all.
+	//
+	// S29 softened the "no grant, no cast" half by exactly one case:
+	// a card whose own text declares ZoneExile castable (suspend's
+	// "cast it without paying its mana cost" is the shape) does not
+	// need an instance grant. Everything else is unchanged, and
+	// hasExileGrant rides down to validateCastPathLocked so the
+	// zone-cost rule can tell the two apart.
+	hasExileGrant := false
 	if src.Kind == ZoneExile {
 		perm := card.ExilePlay
-		if !perm.Active(playerID, g.Turn.Number) {
+		hasExileGrant = perm.Active(playerID, g.Turn.Number)
+		if !hasExileGrant && !CardCastableFromZone(CatalogKey(card), ZoneExile) {
 			return ErrNoPlayPermission
 		}
 		// "You may CAST that card" (Ragavan) does not let you play a
 		// land: playing a land is a special action, not a cast
 		// (CR 305.1, 115.2a).
-		if perm.CastOnly && card.IsLand() {
+		if hasExileGrant && perm.CastOnly && card.IsLand() {
 			return ErrNoPlayPermission
 		}
 	}
@@ -510,6 +519,21 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			"oracle_id", card.OracleID,
 			"alternative_cost", params.AlternativeCost,
 			"targets_received", len(params.Targets),
+		)
+		return err
+	}
+	// S29: the cast PATH — zone and price together. Runs here, right
+	// after the claim is known to be an offer the card makes and
+	// before any targeting work, because the rewrite an alternative
+	// cost applies to the target clause is only legitimate if the
+	// cost could be claimed from this zone at all.
+	if err := g.validateCastPathLocked(card, src.Kind, alt, hasExileGrant); err != nil {
+		slog.Warn("cast_spell rejected: illegal cast path",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"from_zone", src.Kind,
+			"alternative_cost", params.AlternativeCost,
+			"err", err,
 		)
 		return err
 	}
@@ -1227,20 +1251,37 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 }
 
 // castSourceZoneLocked resolves the FromZone string to the zone
-// the card should leave from. Unknown values fall back to hand —
-// keeps the action forward-compatible with sub-PR 8's "command"
-// addition without breaking older clients that omit the field.
+// object the card should leave from. A string that names no zone is
+// ErrZoneNotFound.
+//
+// This lookup grants NOTHING on its own — it answers "which pile",
+// not "may you". S29's validateCastPathLocked is the permission
+// half, and for exile the per-instance ExilePlay grant is checked in
+// CastSpell before anything moves.
+//
+// Graveyard and hand resolve to the CALLER's own zone, which is
+// most of what flashback's "from your graveyard" needs: a player
+// naming a card in someone else's graveyard simply won't find it.
 func (g *Game) castSourceZoneLocked(p *Player, fromZone string) (*Zone, error) {
-	switch fromZone {
-	case "", "hand":
+	kind, ok := castZoneFromWire(fromZone)
+	if !ok {
+		return nil, ErrZoneNotFound
+	}
+	switch kind {
+	case ZoneHand:
 		return p.Hand, nil
-	case "command":
+	case ZoneCommand:
 		return p.Command, nil
-	case "exile":
+	case ZoneGraveyard:
+		// S29: the graveyard became castable at all with flashback
+		// and escape. Per-player, so the zone lookup already scopes
+		// the cast to "your graveyard".
+		return p.Graveyard, nil
+	case ZoneExile:
 		// S21 sub-PR 6: impulse exile. Exile is a SHARED zone, so
-		// unlike hand and command the zone lookup grants nothing on
-		// its own — CastSpell checks the per-card permission before
-		// it will move anything.
+		// unlike hand, command and graveyard the zone lookup does not
+		// even scope the cast to this player — CastSpell checks the
+		// per-card permission before it will move anything.
 		return g.Exile, nil
 	default:
 		return nil, ErrZoneNotFound
