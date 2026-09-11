@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
 
 // view.go holds the wire-format projection of the server's
@@ -102,7 +103,37 @@ type GameView struct {
 	// every client sees what its viewer is legally allowed to).
 	// Drained by resolve_choice actions. Added in S14 sub-PR 5.
 	PendingChoices []PendingChoiceView `json:"pending_choices,omitempty"`
+	// LegalMoves is the closed list of things the VIEWER'S OWN seat
+	// may do right now, straight out of internal/legal. Empty
+	// whenever that seat owes no decision — which is most frames,
+	// because the enumerator returns nothing for a seat that holds
+	// neither priority nor a pending choice nor a combat
+	// declaration.
+	//
+	// OWN SEAT ONLY, and that is a hard rule rather than a
+	// nicety: an opponent's move list names the cards in their hand
+	// they could cast, which is the whole of hidden information.
+	// The field is therefore never populated by ViewOfGame — it is
+	// projected out of the unexported legalBySeat map by
+	// FilterViewFor, the same shape the knowers map uses, so the
+	// unfiltered view that goes to the crash dump and the replay log
+	// carries no seat's moves at all. Added in S31 sub-PR 2.
+	LegalMoves []LegalMoveView `json:"legal_moves,omitempty"`
+	// legalBySeat is the per-seat enumeration, keyed by player UUID
+	// string. Unexported, so encoding/json never writes it: the only
+	// way a move list reaches a client is through FilterViewFor
+	// picking out that client's own key. Cleared by construction on
+	// every filtered copy, which keeps repeated FilterViewFor calls
+	// idempotent.
+	legalBySeat map[string][]LegalMoveView
 }
+
+// LegalMoveView is one entry of the viewer's legal-move list. It is
+// legal.Move verbatim rather than a parallel struct: the
+// enumerator's JSON tags ARE the wire contract (ADR 0033 §1 — "the
+// same list is what the client consumes"), and a copy here would be
+// one more thing to keep in sync for no gain.
+type LegalMoveView = legal.Move
 
 // PendingChoiceView is the wire shape of a PendingChoice.
 // Serialised per-viewer with Options pre-filtered to the cards
@@ -359,6 +390,15 @@ type StackItemView struct {
 	// one-sided board wipe and a hard-cast one bounces a single
 	// permanent, so a responder needs to see which is on the stack.
 	AltCost string `json:"alt_cost,omitempty"`
+
+	// IsCopy marks a CR 706.10 spell copy — Reverberate's output,
+	// not a cast card (S30). Public and worth showing: the copy and
+	// the spell it came from are two identical-looking entries on
+	// the stack, and which one is the copy decides what a responder
+	// gets by countering it (countering the copy leaves the
+	// original; countering the original leaves the copy, because a
+	// copy is independent of its source once created).
+	IsCopy bool `json:"is_copy,omitempty"`
 }
 
 // DelayedTriggerView is the wire shape of one queued CR 603.7
@@ -401,16 +441,21 @@ type VoteView struct {
 // cards, opponent library cards) while preserving the `count` so the
 // UI can still render a placeholder stack.
 type PlayerView struct {
-	ID              string           `json:"id"`
-	Name            string           `json:"name"`
-	Seat            int              `json:"seat"`
-	Life            int              `json:"life"`
-	Poison          int              `json:"poison,omitempty"`
-	Energy          int              `json:"energy,omitempty"`
-	Library         ZoneView         `json:"library"`
-	Hand            ZoneView         `json:"hand"`
-	Graveyard       ZoneView         `json:"graveyard"`
-	Command         ZoneView         `json:"command"`
+	ID        string   `json:"id"`
+	Name      string   `json:"name"`
+	Seat      int      `json:"seat"`
+	Life      int      `json:"life"`
+	Poison    int      `json:"poison,omitempty"`
+	Energy    int      `json:"energy,omitempty"`
+	Library   ZoneView `json:"library"`
+	Hand      ZoneView `json:"hand"`
+	Graveyard ZoneView `json:"graveyard"`
+	Command   ZoneView `json:"command"`
+	// CommanderDamage maps commander card instance ID → total damage
+	// that commander has dealt to this player (CR 903.14a). Keyed by
+	// COMMANDER, not by opposing player, since S25 (#77) — which is
+	// the shape the client's per-commander hover rows were already
+	// written against.
 	CommanderDamage map[string]int   `json:"commander_damage"`
 	LifeHistory     []LifeChangeView `json:"life_history"`
 	// Eliminated reflects Player.Eliminated. Set when the player
@@ -669,6 +714,23 @@ type CardView struct {
 	// the overwhelming majority of cards. Optional like the
 	// alternative costs — tapping nothing is always a legal cast.
 	TapCost *TapCostView `json:"tap_cost,omitempty"`
+	// CastableHere is the S29 "this card can be cast from the zone
+	// you are looking at it in" bit, for the zones where that is not
+	// already implied by the surface: the graveyard, today. Hand and
+	// command-zone cards never carry it — every card in a hand is a
+	// cast candidate, and the command zone has its own button.
+	//
+	// It is the flag the zone browser keys its cast button off, the
+	// way exile keys its impulse button off `exile_play`. The cost
+	// to pay rides `alternative_costs`, already filtered to the
+	// offers claimable from this zone — so a Faithless Looting in
+	// the graveyard carries flashback and nothing else, while the
+	// same card in hand carries neither.
+	//
+	// Public, like `activated_abilities`: the graveyard is a public
+	// zone and a flashback cost is printed on the card, so the bit
+	// is stamped on every viewer's copy rather than only the owner's.
+	CastableHere bool `json:"castable_here,omitempty"`
 	// ExilePlay is the S21 sub-PR 6 impulse-exile grant. Present
 	// only while the card is in exile with a live permission;
 	// absent — which is nearly always — the card is inert exile.
@@ -792,6 +854,13 @@ type ExilePlayView struct {
 	// cost. The card's `mana_cost` field still carries the printed
 	// value, so a client that ignores this shows the wrong price.
 	CostOverride string `json:"cost_override,omitempty"`
+	// NotBeforeTurn is the earliest turn number the grant is live on
+	// — warp's "you may cast it from exile ON A LATER TURN" (S29).
+	// Absent for every grant that is live as soon as it is made,
+	// which is all of impulse exile and airbend. The client compares
+	// it against `turn.number` and withholds the button until then;
+	// the server rejects an early cast regardless.
+	NotBeforeTurn int `json:"not_before_turn,omitempty"`
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a
@@ -825,6 +894,21 @@ type ActivatedAbilityView struct {
 	// no sacrifice component.
 	SacrificeLabel   string            `json:"sacrifice_label,omitempty"`
 	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
+	// CrewCost is the crew number of a Vehicle's crew ability
+	// (CR 702.122a) — "Crew 3" ships 3. Zero and absent for every
+	// ability that is not a crew ability.
+	//
+	// CrewOptions is the set of creatures that could pay it right
+	// now: untapped creatures the controller controls, summoning
+	// sickness deliberately NOT filtered out, because tapping to
+	// crew is not paying a {T} cost and a creature cast this turn
+	// may crew. The client collects a subset whose total power
+	// reaches CrewCost and sends them as `crew_ids`; the server
+	// re-checks. Each option's power is already on the CardView the
+	// client holds, so the running total is computable client-side
+	// without a second round trip. Added in S27.
+	CrewCost    int               `json:"crew_cost,omitempty"`
+	CrewOptions *LegalTargetsView `json:"crew_options,omitempty"`
 	// TargetMode / LegalTargets mirror the cast-time targeting
 	// fields for an ability that targets.
 	TargetMode   string            `json:"target_mode,omitempty"`
@@ -983,14 +1067,112 @@ func ViewOfGame(g *game.Game) GameView {
 		}
 		stampLegalTargets(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
+		view.legalBySeat = enumerateLegalMoves(g)
 	})
 	return view
 }
 
-// stampLegalTargets fills CardView.LegalTargets for every hand and
-// command-zone card that has a TargetSpec, from its owner's point
-// of view. Runs under the read lock ViewOfGame already holds; the
-// per-viewer filter strips the field from opponents' hands.
+// enumerateLegalMoves runs the legal-move enumerator once per seat
+// and returns the result keyed by player UUID string. Runs under the
+// read lock ViewOfGame already holds, hence EnumerateLocked.
+//
+// Every seat, not just the one holding priority, and deliberately so:
+// "who owes a decision right now" is a question the enumerator
+// already answers — a seat with neither priority nor a pending choice
+// nor a combat declaration gets an empty list and costs two map
+// lookups to find that out. Re-deriving the predicate here would be
+// a second copy of the rule, and the one case it would get wrong is
+// the expensive one: a defender declaring blockers holds no priority
+// (the active player still does), and blocking is the window a
+// client must never be left guessing about (#328).
+//
+// A nil map is fine — FilterViewFor reads it with a comma-less index
+// and gets nil back for every seat.
+func enumerateLegalMoves(g *game.Game) map[string][]LegalMoveView {
+	var out map[string][]LegalMoveView
+	for _, p := range g.Seats {
+		if p == nil {
+			continue
+		}
+		moves := capLegalMoves(legal.EnumerateLocked(g, p.ID, legal.Options{}))
+		if len(moves) == 0 {
+			continue
+		}
+		if out == nil {
+			out = make(map[string][]LegalMoveView, len(g.Seats))
+		}
+		out[p.ID.String()] = moves
+	}
+	return out
+}
+
+// legalMovesWireCap bounds how many moves one seat's list may put on
+// the wire before it degrades.
+//
+// The enumerator's own cap is PER SOURCE (legal.Options
+// MaxExpansionPerSource, 12), which bounds one card and not the
+// board. A seat with a Lightning Bolt, two sacrifice outlets and a
+// modal spell out is four crossed products, and the measured cost of
+// a single expanded source on a four-player table is ~5 KB — so
+// "capped" without a global bound is not actually capped. This is
+// that bound.
+//
+// 48 lands the worst realistic frame just under the 24 KiB the
+// protocol tests budget for the field. The bot is unaffected either
+// way: internal/aiseat enumerates in-process at full fidelity and
+// never reads this projection.
+const legalMovesWireCap = 48
+
+// capLegalMoves degrades an over-long move list instead of truncating
+// it, because truncation would be a correctness bug rather than a
+// size one: the client's question is "does this card have a move?",
+// and dropping the tail would grey out a card that is perfectly
+// playable — the exact class of "greyed in the UI, accepted by the
+// server" bug this whole sub-PR exists to kill.
+//
+// So the degraded list keeps the FIRST move of every (source, kind)
+// pair and drops only the alternatives. Every card that had a move
+// still has one; what is lost is the choice between its twelve
+// targets, which no client consumes today (targeting is driven by
+// CardView.legal_targets, and targeting.ts stays the presentation
+// layer for it). docs/protocol.md states this as part of the field's
+// contract.
+func capLegalMoves(moves []LegalMoveView) []LegalMoveView {
+	if len(moves) <= legalMovesWireCap {
+		return moves
+	}
+	type key struct {
+		source uuid.UUID
+		kind   legal.Kind
+	}
+	seen := make(map[key]bool, len(moves))
+	out := make([]LegalMoveView, 0, legalMovesWireCap)
+	for _, m := range moves {
+		k := key{m.Source, m.Kind}
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, m)
+	}
+	return out
+}
+
+// stampLegalTargets fills CardView.LegalTargets for every card in a
+// zone its owner could cast it from, from that owner's point of
+// view, along with the rest of the announce-time clauses the cast
+// dialog needs: modes, additional cost, tap cost, alternative costs.
+// Runs under the read lock ViewOfGame already holds; the per-viewer
+// filter strips the fields from opponents' hands.
+//
+// S29 added the third zone. Hand and the command zone are cast
+// surfaces for every card that sits in them, so they are walked
+// unconditionally; the graveyard is a cast surface only for the
+// cards whose own text says so (flashback, escape, Gravecrawler), so
+// it is walked with that gate and stamps CastableHere on the ones
+// that pass. Everything downstream — including the alternative-cost
+// offers, which are filtered to the ones claimable from the zone the
+// card is actually in — then reads the same for all three.
 func stampLegalTargets(g *game.Game, seats []PlayerView) {
 	for si := range seats {
 		seat := &seats[si]
@@ -998,9 +1180,23 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 		if err != nil {
 			continue
 		}
-		for _, zone := range []*ZoneView{&seat.Hand, &seat.Command} {
-			for ci := range zone.Cards {
-				c := &zone.Cards[ci]
+		zones := []struct {
+			view *ZoneView
+			kind game.ZoneKind
+		}{
+			{&seat.Hand, game.ZoneHand},
+			{&seat.Command, game.ZoneCommand},
+			{&seat.Graveyard, game.ZoneGraveyard},
+		}
+		for _, zone := range zones {
+			for ci := range zone.view.Cards {
+				c := &zone.view.Cards[ci]
+				if zone.kind == game.ZoneGraveyard {
+					if !game.CardCastableFromZone(c.oracleID, game.ZoneGraveyard) {
+						continue
+					}
+					c.CastableHere = true
+				}
 				if ms := game.ModeSpecFor(c.oracleID); ms != nil {
 					c.Modes = viewOfModeSpec(g, caster, ms)
 				}
@@ -1032,8 +1228,13 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 				spec := game.TargetSpecFor(c.oracleID)
 				// S22: the alternative costs are stamped before the
 				// early-out below, because a card can offer one
-				// without having any target clause of its own.
-				if alts := game.AlternativeCostsFor(c.oracleID); len(alts) > 0 {
+				// without having any target clause of its own. S29
+				// filters them by zone — the offers a card makes from
+				// the graveyard (flashback, escape) and the offers it
+				// makes from hand (overload, evoke, cleave) are
+				// disjoint sets, and showing the wrong one produces a
+				// button the server will reject.
+				if alts := game.AlternativeCostsOfferedFromZone(c.oracleID, zone.kind); len(alts) > 0 {
 					c.AlternativeCosts = viewOfAlternativeCosts(g, caster, spec, alts)
 				}
 				if spec == nil {
@@ -1227,6 +1428,16 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				if card, ok := g.LookupCardForEffect(id); ok {
 					v.Options = append(v.Options, viewOfCard(card))
 				}
+			}
+		}
+		// PendingChoiceMayCast — the single card being offered
+		// ("you may cast it without paying its mana cost"). Inlined
+		// as the one Options entry so the prompt shows the card
+		// rather than quoting its name into a sentence. The card is
+		// face up in exile and public, so no redaction concern.
+		if c.Kind == game.PendingChoiceMayCast && c.MayCastCard != uuid.Nil {
+			if card, ok := g.LookupCardForEffect(c.MayCastCard); ok {
+				v.Options = []CardView{viewOfCard(card)}
 			}
 		}
 		// PendingChoiceScry — the looked-at cards, top-first, as
@@ -1467,6 +1678,7 @@ func viewOfStackItem(it *game.StackItem) StackItemView {
 		HoldPriority: it.HoldPriority,
 		SplitSecond:  it.SplitSecond,
 		AltCost:      it.AltCost,
+		IsCopy:       it.IsCopy,
 	}
 	if len(it.Targets) > 0 {
 		view.Targets = make([]TargetRefView, len(it.Targets))
@@ -1710,7 +1922,25 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		SplitSecondActive: v.SplitSecondActive,
 		DiscardPending:    v.DiscardPending,
 		PendingChoices:    filterPendingChoices(v.PendingChoices, isKnower, viewerID),
+		LegalMoves:        legalMovesFor(v.legalBySeat, viewerID),
 	}
+}
+
+// legalMovesFor picks the viewer's own move list out of the per-seat
+// enumeration and drops every other seat's.
+//
+// The empty viewerID — spectator, admin, replay reader — gets
+// nothing, which is the one place this parts company with the rest of
+// FilterViewFor's "empty means see everything" convention. A move
+// list is not a view of the board, it is a view of what a specific
+// player is holding: "cast Lightning Bolt targeting Kess" names a
+// card in a hand. There is no seat whose moves an unseated viewer is
+// entitled to, so there is nothing to hand back.
+func legalMovesFor(bySeat map[string][]LegalMoveView, viewerID string) []LegalMoveView {
+	if viewerID == "" || len(bySeat) == 0 {
+		return nil
+	}
+	return bySeat[viewerID]
 }
 
 // filterPendingChoices projects each choice's Options through the
@@ -1793,6 +2023,11 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// away the Cyclonic Rift.
 	out.AlternativeCosts = nil
 	out.TapCost = nil
+	// S29: "castable from where it sits" is only ever set on cards
+	// whose text grants an extra cast zone, so it partitions the
+	// card the same weak way `unimplemented` does. Cleared with the
+	// rest of the cost surface.
+	out.CastableHere = false
 	// Weak evidence of identity, but evidence: it partitions the
 	// card into "prints rules we don't run" or not. Cleared for the
 	// same reason as the cost fields above rather than because
@@ -1937,10 +2172,11 @@ func viewOfCard(c game.Card) CardView {
 	// the card leaves exile, so this can't linger on a permanent.
 	if c.ExilePlay.Granted() {
 		view.ExilePlay = &ExilePlayView{
-			Player:       c.ExilePlay.Player.String(),
-			CastOnly:     c.ExilePlay.CastOnly,
-			AnyColor:     c.ExilePlay.AnyColor,
-			CostOverride: c.ExilePlay.CostOverride,
+			Player:        c.ExilePlay.Player.String(),
+			CastOnly:      c.ExilePlay.CastOnly,
+			AnyColor:      c.ExilePlay.AnyColor,
+			CostOverride:  c.ExilePlay.CostOverride,
+			NotBeforeTurn: c.ExilePlay.NotBeforeTurn,
 		}
 	}
 	return view
@@ -2065,11 +2301,38 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 			v.SacrificeOptions.Cards = filterToController(g, v.SacrificeOptions.Cards, caster)
 			v.SacrificeOptions.Players = nil
 		}
+		if a.Cost.Crew > 0 {
+			v.CrewCost = a.Cost.Crew
+			v.CrewOptions = crewOptions(g, caster)
+		}
 		if a.Targets != nil {
 			v.TargetMode = a.Targets.Mode
 			v.LegalTargets = abilityLegalTargets(g, caster, a.Targets)
 		}
 		out[i] = v
+	}
+	return out
+}
+
+// crewOptions is the set of creatures that can pay a crew cost right
+// now: untapped creatures the activator controls (CR 702.122a).
+//
+// Not built through abilityLegalTargets, and that is the point: crew
+// does not TARGET. Routing it through the targeting machinery would
+// apply the CR 702 keyword gate, and a hexproof creature you control
+// can crew your Vehicle exactly as a hexproof creature you control
+// can be sacrificed to a cost. The same reasoning keeps sacrifice
+// costs off targetLegalLocked in the engine.
+//
+// Summoning-sick creatures are included deliberately — tapping to
+// crew is not paying a {T} cost (CR 702.122b). Caller must hold g.mu.
+func crewOptions(g *game.Game, caster uuid.UUID) *LegalTargetsView {
+	out := &LegalTargetsView{Min: 1, Max: 0}
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller != caster || !c.IsCreature() || c.Tapped {
+			continue
+		}
+		out.Cards = append(out.Cards, c.InstanceID.String())
 	}
 	return out
 }

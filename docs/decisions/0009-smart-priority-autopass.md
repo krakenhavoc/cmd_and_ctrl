@@ -1,6 +1,30 @@
 # ADR 0009 — Smart priority auto-pass (S13.6)
 
 **Status:** Accepted · 2026-04-23 · Sprint S13.6
+**Amended by:** S31 sub-PR 2 ([ADR 0033](0033-ai-bot-seat.md) §1, PR #429) — the
+mechanism under decisions 2–4 is gone, the policy above it is not.
+
+`hasAnyLegalResponse` no longer walks the viewer's cards running per-action
+predicates. The server enumerates the seat's legal moves and ships them as
+`GameView.legal_moves`, so the aggregate question is
+`legal_moves.some(m => m.kind !== "pass")` — one scan of a field the engine
+already computed. Three consequences for a reader of the sections below:
+
+- **Decision 3's conservatism is now structural rather than deliberate.** The
+  client no longer has to assume every permanent is "potentially activatable"
+  because it cannot see ability lists; the engine tells it exactly which
+  activations are live. The false-positive-over-false-negative preference
+  survives, and is what makes an ABSENT `legal_moves` (a pre-S31 server, or a
+  frame where the seat owes nothing) resolve to "stop" rather than "skip".
+- **Decision 4 is obsolete: mana affordability is now in scope**, for free. The
+  enumerator pays for what it offers, so a hand of uncastable 7-drops correctly
+  reports no response and the window is skippable.
+- **Decision 2's memo cache is gone.** It existed because the card walk was
+  O(hand + battlefield + command) per call; an array scan does not need it.
+  `_resetCacheForTests` survives as a no-op so test teardowns don't break.
+
+The module split decision 2 argues for (`timing.ts` per-action, `priority.ts`
+aggregate) still holds and is unchanged.
 
 ## Context
 

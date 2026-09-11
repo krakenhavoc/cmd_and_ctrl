@@ -203,6 +203,15 @@
   // player can't cover degrades to a decline server-side.
   const isPayUnless = $derived(active?.kind === "pay_unless");
 
+  // S28 cascade branch — "you may cast it without paying its mana
+  // cost". Same {choice_id, apply} payload; the server routes to
+  // ResolveMayCast by kind. "Yes" stamps a free-cast permission on
+  // the exiled card, which then casts out of exile like any other
+  // impulse grant; "No" puts it on the bottom of the library with
+  // the rest of the cards cascade turned over.
+  const isMayCast = $derived(active?.kind === "may_cast");
+  const mayCastCard = $derived(active?.options?.[0]);
+
   // Shockland entry branch — "as this land enters, you may pay 2
   // life. If you don't, it enters tapped." Same {choice_id, apply}
   // payload; the server routes by kind. The permanent is still in
@@ -298,7 +307,7 @@
   // trigger, pay-unless) from the keyboard; the footer shows the
   // hint. Ignored while typing in a field.
   const isYesNo = $derived(
-    isOptionalReplacement || isTriggerPrompt || isPayUnless || isEntryPayLife,
+    isOptionalReplacement || isTriggerPrompt || isPayUnless || isEntryPayLife || isMayCast,
   );
   function handleKey(e: KeyboardEvent): void {
     if (!open || !isYesNo) return;
@@ -567,6 +576,25 @@
           <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
           <button type="button" onclick={() => answerOptional(false)}>No</button>
           <button type="button" class="primary" onclick={() => answerOptional(true)}>Yes</button>
+        </div>
+      {:else if isMayCast}
+        <h2 id="choice-title">
+          {active.reason || "Cast it without paying its mana cost?"}
+          <span class="prompt-src" aria-hidden="true">cascade · CR 702.85</span>
+        </h2>
+        <p class="prompt-hint">
+          {#if mayCastCard}
+            <strong>{mayCastCard.name}</strong> is exiled face up.
+          {/if}
+          Say yes and it stays in exile, castable for nothing until end of turn. Say no and it goes to
+          the bottom of your library with everything else cascade turned over.
+        </p>
+        <div class="prompt-foot">
+          <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
+          <button type="button" onclick={() => answerOptional(false)}>To the bottom</button>
+          <button type="button" class="primary" onclick={() => answerOptional(true)}>
+            Cast it free
+          </button>
         </div>
       {:else if isEntryPayLife}
         <h2 id="choice-title">

@@ -98,6 +98,27 @@ func init() {
 		}
 		return spec.AlternativeCosts
 	}
+	// S28: cost modifiers (CR 601.2f) — "spells cost {1} more",
+	// "creature spells you cast cost {2} less", Trinisphere's floor.
+	// Consulted on every cast against every battlefield permanent,
+	// so the nil-return fast path matters: nil for cards that modify
+	// nothing, which is nearly all of them.
+	game.CatalogCostModifiers = func(oracleID string) []game.CostModifier {
+		spec, ok := Lookup(oracleID)
+		if !ok || len(spec.CostModifiers) == 0 {
+			return nil
+		}
+		return spec.CostModifiers
+	}
+	// S29: the zones a card may be cast from beyond hand. Nil for
+	// nearly every card, which CastableZonesFor reads as "hand only".
+	game.CatalogCastableZones = func(oracleID string) []game.ZoneKind {
+		spec, ok := Lookup(oracleID)
+		if !ok || len(spec.CastableZones) == 0 {
+			return nil
+		}
+		return spec.CastableZones
+	}
 	// S22: convoke / waterbend — tapping permanents to help pay.
 	// Nil for cards that offer none, which is nearly all of them.
 	game.CatalogTapPermanentsCost = func(oracleID string) *game.TapPermanentsCost {
