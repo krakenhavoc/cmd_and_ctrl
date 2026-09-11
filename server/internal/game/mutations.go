@@ -218,6 +218,12 @@ func (g *Game) PlayCard(playerID, cardID uuid.UUID) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// The card being played is in a hand, so its own types are
+	// printed either way — but a land's enters-tapped replacement
+	// asks about the BATTLEFIELD ("unless you control a Swamp"),
+	// and under Urborg the answer is a layer answer. Fast-path
+	// no-op when nothing changed.
+	g.RecomputeLayersIfStaleLocked()
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound
@@ -417,6 +423,12 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// CR 601.2c's announce-time target check runs against the
+	// battlefield through predicates that read effective types, so
+	// the engine has to be caught up before a Doom Blade is told
+	// whether that land is a creature. Fast-path no-op when nothing
+	// changed.
+	g.RecomputeLayersIfStaleLocked()
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound
@@ -948,11 +960,16 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 		})
 		return nil
 	}
-	if !p.ManaPool.CanPay(cost, params.XValue) {
-		return &InsufficientManaError{Missing: p.ManaPool.Missing(cost, params.XValue)}
+	// S32 (#352): the spend context is what lets restricted mana pay
+	// — and what stops it paying for the wrong thing. Ancient
+	// Ziggurat's {G} funds a creature spell here and is invisible to
+	// a Lightning Bolt.
+	spendCtx := ManaSpendForCast(card)
+	if !p.ManaPool.CanPayFor(cost, params.XValue, spendCtx) {
+		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, spendCtx)}
 	}
 	// Payable under strict mode — commit the spend.
-	p.ManaPool.SpendMana(cost, params.XValue)
+	p.ManaPool.SpendManaFor(cost, params.XValue, spendCtx)
 	g.EmitEvent(Event{
 		Kind:   EventManaSpent,
 		Actor:  p.ID,
@@ -989,7 +1006,10 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	if err != nil {
 		return nil
 	}
-	if p.ManaPool.CanPay(cost, params.XValue) {
+	// Same context applyCastCostLocked will pay under, so the
+	// "already funded, skip planning" shortcut can't be fooled by
+	// restricted mana this cast cannot legally spend.
+	if p.ManaPool.CanPayFor(cost, params.XValue, ManaSpendForCast(card)) {
 		return nil
 	}
 	excluded := make(map[uuid.UUID]bool, len(params.LockedSources)+len(params.TapIDs))
@@ -1005,7 +1025,7 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	}
 	plan, ok := g.autoTapLocked(p.ID, cost, params.XValue, excluded)
 	if !ok {
-		return &InsufficientManaError{Missing: p.ManaPool.Missing(cost, params.XValue)}
+		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, ManaSpendForCast(card))}
 	}
 	g.materializePlanLocked(p, plan, cost)
 	return nil
@@ -1039,7 +1059,20 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 		if ab == nil {
 			continue
 		}
-		slots, err := ParseProducedMana(ab.Produced)
+		// S32 (#352): the gate and the derived/scaled output are
+		// re-evaluated here rather than carried over from planning,
+		// so the executor and the planner can never disagree about
+		// what a source produces. A gate that has stopped holding
+		// since the plan was made drops the source silently, exactly
+		// as a source that got tapped in between does.
+		if ab.Condition != nil && !ab.Condition(g, p.ID, cardID) {
+			continue
+		}
+		producedStr := ab.Produced
+		if ab.ProducedFunc != nil {
+			producedStr = ab.ProducedFunc(g, p.ID, cardID)
+		}
+		slots, err := ParseProducedMana(producedStr)
 		if err != nil {
 			continue
 		}
@@ -1063,7 +1096,17 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 			if color == "" {
 				continue
 			}
-			p.ManaPool.AddMana(ManaToken{Color: color, Source: cardID})
+			// Restrictions ride here too. autoTapAbilityFor already
+			// refuses restricted abilities, so this is belt-and-
+			// braces — but "the auto-tapper is the one path that
+			// mints unrestricted copies of restricted mana" is
+			// precisely the bug #259 warns about, and one line is
+			// cheaper than trusting a filter two files away.
+			p.ManaPool.AddMana(ManaToken{
+				Color:        color,
+				Source:       cardID,
+				Restrictions: copyRestrictions(ab.Restrictions),
+			})
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: cardID})
 		}
 	}
@@ -1608,6 +1651,12 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// Activation legality reads the source's effective types (the
+	// CR 302.1 summoning-sickness gate only applies to a creature)
+	// and the target predicates read every candidate's. Both are
+	// layer-dependent since the type predicates were rerouted
+	// through Effective(); fast-path no-op when nothing changed.
+	g.RecomputeLayersIfStaleLocked()
 	if g.SplitSecondActive {
 		return ErrSplitSecondActive
 	}
@@ -1677,6 +1726,11 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// Gated on IsPlaneswalker, which is now a layer read — a
+	// creature-land that a Layer-4 effect has turned into a
+	// planeswalker has loyalty abilities and one that hasn't
+	// doesn't. Fast-path no-op when nothing changed.
+	g.RecomputeLayersIfStaleLocked()
 	if g.SplitSecondActive {
 		return ErrSplitSecondActive
 	}
@@ -2838,6 +2892,10 @@ func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// The summoning-sickness gate below only binds creatures, and
+	// whether this permanent is one is a layer answer. Fast-path
+	// no-op when nothing changed.
+	g.RecomputeLayersIfStaleLocked()
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cardID {
 			g.Battlefield.Cards[i].Tapped = tapped
@@ -2918,6 +2976,13 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// The ability list this resolves an index against is partly
+	// type-derived (CR 305.6), so it moves when a Layer-4 static
+	// does: under Urborg every land gains "{T}: Add {B}" and loses
+	// it again when Urborg does. Catch the engine up before
+	// indexing or a player's {B} click lands on a stale list.
+	// Fast-path no-op when nothing has changed.
+	g.RecomputeLayersIfStaleLocked()
 	// Locate the card on the battlefield.
 	var card *Card
 	for i := range g.Battlefield.Cards {
@@ -2945,6 +3010,15 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		return ErrInvalidParam
 	}
 	ab := abilities[abilityIdx]
+	// --- gate ----------------------------------------------------
+	//
+	// "Activate only if you control five or more lands" (Temple of
+	// the False God), "…three or more artifacts" (Mox Opal). CR
+	// 602.5a: an activation restriction is checked before anything
+	// is paid, so a failed gate costs the player nothing.
+	if ab.Condition != nil && !ab.Condition(g, playerID, cardID) {
+		return ErrConditionNotMet
+	}
 	// --- validate every cost before paying any ------------------
 	//
 	// Same discipline as ActivateCatalogAbility: a half-paid cost
@@ -2979,6 +3053,32 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		// AbilityCost.Life.
 		return ErrInvalidParam
 	}
+	// A mana component in the cost — the Signet cycle's "{1}, {T}",
+	// Cabal Coffers' "{2}, {T}". Parsed and checked here, spent
+	// below with everything else, so an unaffordable Signet fails
+	// with the source still untapped.
+	//
+	// Deliberately no auto-tap. A mana ability resolves with no
+	// priority window (CR 605.3a), and tapping three lands to feed a
+	// Signet is a decision with consequences the planner cannot
+	// weigh — the player floats the {1} first, which is how the card
+	// is played on paper anyway.
+	var manaCost ParsedCost
+	if ab.ManaCost != "" {
+		parsed, perr := ParseCost(ab.ManaCost)
+		if perr != nil {
+			return ErrInvalidParam
+		}
+		manaCost = parsed
+		// The mana pays an ACTIVATION (CR 602.2b), and the source
+		// permanent's own characteristics are what a restricted
+		// token is tested against — Eldrazi Temple mana can fund a
+		// colorless Eldrazi's ability, not a Signet's.
+		spendCtx := ManaSpendForAbility(*card)
+		if !p.ManaPool.CanPayFor(manaCost, 0, spendCtx) {
+			return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
+		}
+	}
 
 	// needStateChecks is set by any component of this activation
 	// that can kill a player or a permanent — a sacrifice, a life
@@ -2989,9 +3089,20 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 
 	// --- pay ----------------------------------------------------
 	//
+	// Mana first, then tap, then life, then sacrifice — the
+	// component order ActivateCatalogAbility pays an AbilityCost in.
 	// Tap before sacrifice: the tap has to happen while the
 	// permanent is still on the battlefield, and sacrifices move
 	// cards, which invalidates `card`.
+	if ab.ManaCost != "" {
+		// Same context the validation above used. Spending under a
+		// different context than the check would let a restricted
+		// token pay for something it was never cleared for.
+		if !p.ManaPool.SpendManaFor(manaCost, 0, ManaSpendForAbility(*card)) {
+			return &InsufficientManaError{Missing: []string{ab.ManaCost}}
+		}
+		g.EmitEvent(Event{Kind: EventManaSpent, Actor: playerID, Source: cardID})
+	}
 	if ab.TapCost {
 		card.Tapped = true
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
@@ -3037,8 +3148,16 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		Actor:  playerID,
 		Source: cardID,
 	})
-	// Materialise the produced mana.
-	slots, err := ParseProducedMana(ab.Produced)
+	// Materialise the produced mana. An ability with a ProducedFunc
+	// computes its output now, from the board as it stands AFTER the
+	// cost was paid — which is what CR 605.3a's "resolves
+	// immediately" means, and what makes Cabal Coffers count the
+	// Swamps that are still there.
+	produced := ab.Produced
+	if ab.ProducedFunc != nil {
+		produced = ab.ProducedFunc(g, playerID, cardID)
+	}
+	slots, err := ParseProducedMana(produced)
 	_ = card // card is deliberately nil after a sacrifice; keep the intent explicit
 	if err != nil {
 		// Mal-formed produced string: emit an effect-error event and
@@ -3059,8 +3178,17 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			continue
 		}
 		if len(options) == 1 {
-			// Single-color slot — straight into the pool.
-			p.ManaPool.AddMana(ManaToken{Color: options[0], Source: cardID})
+			// Single-color slot — straight into the pool, carrying
+			// the ability's spend restrictions (Eldrazi Temple's
+			// "colorless Eldrazi only"). Copy the slice: the token
+			// outlives this call and clone.go deep-copies it, so
+			// aliasing the catalog's backing array would let an undo
+			// reach a shared one.
+			p.ManaPool.AddMana(ManaToken{
+				Color:        options[0],
+				Source:       cardID,
+				Restrictions: copyRestrictions(ab.Restrictions),
+			})
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: cardID})
 			continue
 		}
@@ -3078,15 +3206,21 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		if !ab.IgnoreCommanderIdentity {
 			filtered = filterPipeByCommanderIdentity(options, p)
 		}
-		// Queue the pick.
+		// Queue the pick. The restrictions ride ON THE CHOICE, not
+		// just on the ability: the token is minted later, in
+		// ResolveManaChoice, and without this a Delighted Halfling
+		// pick would land in the pool unrestricted — the #259
+		// direction, and the easiest place in this whole seam to
+		// leak it.
 		g.QueueChoiceForEffect(PendingChoice{
-			Kind:         PendingChoiceMana,
-			Chooser:      playerID,
-			FromPlayer:   playerID,
-			Count:        1,
-			Source:       cardID,
-			Reason:       ab.Label,
-			ColorOptions: filtered,
+			Kind:             PendingChoiceMana,
+			Chooser:          playerID,
+			FromPlayer:       playerID,
+			Count:            1,
+			Source:           cardID,
+			Reason:           ab.Label,
+			ColorOptions:     filtered,
+			ManaRestrictions: copyRestrictions(ab.Restrictions),
 		})
 	}
 	// --- rider --------------------------------------------------
@@ -3116,57 +3250,155 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	return nil
 }
 
-// ManaAbilitiesForCard returns the abilities available on a card,
-// preferring the catalog declaration and falling back to the
-// synthetic basic-land shape (Forest → "{G}", etc.) when the catalog
-// has nothing registered. The protocol layer calls this to stamp
+// ManaAbilitiesForCard returns the abilities available on a card:
+// the ones carried on the instance, else the catalog's, PLUS the
+// CR 305.6 intrinsic abilities the card's effective land types give
+// it for free. The protocol layer calls this to stamp
 // CardView.ManaAbilities; the dispatcher calls it to resolve an
-// incoming ability index. Caller must hold g.mu (the fallback path
-// reads the card's TypeLine, which is stable under lock).
+// incoming ability index.
+//
+// Caller must hold g.mu, and — for the intrinsic half to be
+// current — must have let the layer engine catch up first
+// (ReadSnapshot does; write paths call RecomputeLayersIfStaleLocked).
+//
+// The intrinsic half is where Urborg, Tomb of Yawgmoth becomes a
+// real card. #258 declined to catalogue it because its Layer-4
+// static "would apply cleanly and do nothing" — the synthetic mana
+// ability read the printed TypeLine, so a Mountain that the layer
+// engine had made a Swamp still only tapped for {R}.
 func ManaAbilitiesForCard(c Card) []ManaAbilityShape {
-	// S21 sub-PR 1: intrinsic abilities win — a token has no oracle
+	var declared []ManaAbilityShape
+	switch {
+	// S21 sub-PR 1: instance abilities win — a token has no oracle
 	// ID for the catalog to key on.
-	if len(c.ManaAbilities) > 0 {
-		return c.ManaAbilities
+	case len(c.ManaAbilities) > 0:
+		declared = c.ManaAbilities
+	// CatalogKey, not c.OracleID: an MDFC back face keys on
+	// "<oracle_id>#N" (#357). A bare OracleID here would silently
+	// resolve a back face to face 0's spec.
+	case CatalogManaAbilities != nil:
+		declared = CatalogManaAbilities(CatalogKey(c))
 	}
-	if CatalogManaAbilities != nil {
-		if list := CatalogManaAbilities(CatalogKey(c)); len(list) > 0 {
-			return list
+	intrinsic := intrinsicLandManaAbilities(c)
+	if len(intrinsic) == 0 {
+		return declared
+	}
+	if len(declared) == 0 {
+		return intrinsic
+	}
+	// A declared ability and an intrinsic one can name the same
+	// colour — every catalog dual land ("{T}: Add {B} or {G}") is
+	// printed with the land types that would have produced the
+	// same mana, and doubling it up would put two ways to make {B}
+	// in the client's ability row. Keep the declared shape (it may
+	// carry a rider or a pipe) and add only colours it cannot make.
+	covered := producibleColors(declared)
+	out := make([]ManaAbilityShape, 0, len(declared)+len(intrinsic))
+	out = append(out, declared...)
+	for _, ab := range intrinsic {
+		if covered[landTypeColorOf(ab)] {
+			continue
 		}
+		out = append(out, ab)
 	}
-	if color := basicLandColor(c.TypeLine); color != "" {
-		return []ManaAbilityShape{{
-			TapCost:  true,
-			Produced: "{" + color + "}",
-			Label:    "Add {" + color + "}",
-		}}
-	}
-	return nil
+	return out
 }
 
-// basicLandColor returns the single-letter mana color produced by a
-// basic land subtype on a card's TypeLine. Lowercase substring check
-// so "Basic Land — Forest" and "Land — Forest" both match.
-// Multi-type basic lands (Snow-Covered basics, Wastes) fall out of
-// this path and would need catalog entries; for S15 we ship only
-// the five plain basics.
-func basicLandColor(typeLine string) string {
-	if !typeLineHas(typeLine, "basic") || !typeLineHas(typeLine, "land") {
+// landTypeMana lists the five basic land types (CR 305.6) with the
+// mana their intrinsic ability produces. Order is only a tie-break
+// for cards whose effective subtypes are unordered; the real
+// ordering comes from the subtype list itself.
+var landTypeMana = [...]struct{ Subtype, Color string }{
+	{"Plains", "W"},
+	{"Island", "U"},
+	{"Swamp", "B"},
+	{"Mountain", "R"},
+	{"Forest", "G"},
+}
+
+// intrinsicLandManaAbilities builds the CR 305.6 abilities a land's
+// EFFECTIVE subtypes grant it: "{T}: Add {W}" for Plains, "{T}: Add
+// {U}" for Island, and so on, one per distinct basic land type.
+//
+// Two things changed here versus the S15 basicLandColor it
+// replaces, and they are the same change seen twice:
+//
+//   - It reads effective subtypes, so a Layer-4 type-granting
+//     static (Urborg) is load-bearing rather than cosmetic.
+//   - It keys off the basic land TYPE, not the Basic SUPERTYPE.
+//     CR 305.6 has never mentioned the supertype; requiring it was
+//     an S15 shortcut that left every printed dual — Bayou,
+//     Overgrown Tomb, a Triome — producing nothing at all unless
+//     someone hand-wrote a catalog entry for it. battle_lands.go
+//     documents that shortcut as the reason its cycle declares a
+//     pipe ability the printed card puts in reminder text.
+//
+// Emitted in the order the subtypes appear, so a land with no
+// static on it keeps the exact ability list (and therefore the
+// exact ability indices, and the exact auto-tapper first choice)
+// it had before.
+func intrinsicLandManaAbilities(c Card) []ManaAbilityShape {
+	if !c.IsLand() {
+		return nil
+	}
+	var subtypes []string
+	if c.effective != nil {
+		subtypes = c.effective.Subtypes
+	} else {
+		_, _, subtypes = ParseTypeLine(c.TypeLine)
+	}
+	if len(subtypes) == 0 {
+		return nil
+	}
+	var out []ManaAbilityShape
+	// One bit per entry in landTypeMana rather than a map: this runs
+	// once per land per card view, and five lands is already a
+	// thousand map allocations a minute at snapshot rates.
+	var seen uint8
+	for _, sub := range subtypes {
+		for i, lt := range landTypeMana {
+			if !equalFoldASCII(sub, lt.Subtype) || seen&(1<<i) != 0 {
+				continue
+			}
+			seen |= 1 << i
+			out = append(out, ManaAbilityShape{
+				TapCost:  true,
+				Produced: "{" + lt.Color + "}",
+				Label:    "Add {" + lt.Color + "}",
+			})
+		}
+	}
+	return out
+}
+
+// landTypeColorOf returns the single colour letter an intrinsic
+// land ability produces. Only ever called on shapes this file
+// built, so the "{X}" form is guaranteed.
+func landTypeColorOf(ab ManaAbilityShape) string {
+	if len(ab.Produced) != 3 {
 		return ""
 	}
-	switch {
-	case typeLineHas(typeLine, "plains"):
-		return "W"
-	case typeLineHas(typeLine, "island"):
-		return "U"
-	case typeLineHas(typeLine, "swamp"):
-		return "B"
-	case typeLineHas(typeLine, "mountain"):
-		return "R"
-	case typeLineHas(typeLine, "forest"):
-		return "G"
+	return ab.Produced[1:2]
+}
+
+// producibleColors is the set of colour letters a declared ability
+// list can make, pipes included — City of Brass's "{W|U|B|R|G}"
+// covers all five. Unparseable declarations contribute nothing
+// rather than failing the merge.
+func producibleColors(abilities []ManaAbilityShape) map[string]bool {
+	out := map[string]bool{}
+	for _, ab := range abilities {
+		slots, err := ParseProducedMana(ab.Produced)
+		if err != nil {
+			continue
+		}
+		for _, slot := range slots {
+			for _, opt := range slot.Options {
+				out[opt] = true
+			}
+		}
 	}
-	return ""
+	return out
 }
 
 // filterPipeByCommanderIdentity narrows `options` to just the colors

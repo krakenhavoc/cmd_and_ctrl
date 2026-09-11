@@ -39,7 +39,15 @@ func (g *Game) cloneLocked() *Game {
 		UndoLimit:         g.UndoLimit,
 		StartingSeat:      g.StartingSeat,
 		SplitSecondActive: g.SplitSecondActive,
-		rng:               g.rng,
+		// Both halves of the randomness are shared, not copied, on
+		// exactly the contract the file header describes: a clone
+		// re-applying actions must draw from the source the original
+		// would have. Undo therefore does NOT rewind the random
+		// stream, which is deliberate and long-standing. Snapshot
+		// restore is the opposite — it captures the stream position
+		// and resumes from it. See snapshot.go.
+		rng:      g.rng,
+		rngState: g.rngState,
 	}
 	if len(g.StackMeta) > 0 {
 		out.StackMeta = make(map[uuid.UUID]*StackItem, len(g.StackMeta))
@@ -116,6 +124,16 @@ func (g *Game) cloneLocked() *Game {
 			// so post-clone mutations on one don't leak to the other.
 			if len(c.ColorOptions) > 0 {
 				cloned.ColorOptions = append([]string(nil), c.ColorOptions...)
+			}
+			// S32 mana pipeline (#352): the spend restrictions a
+			// PendingChoiceMana will stamp onto the token it mints.
+			// New game state, so it needs its own backing array for
+			// exactly the reason ColorOptions does — an undo that
+			// shared it would let the restored game mutate the live
+			// one, and the thing being shared here decides what the
+			// mana may legally pay for.
+			if len(c.ManaRestrictions) > 0 {
+				cloned.ManaRestrictions = append([]string(nil), c.ManaRestrictions...)
 			}
 			if len(c.TriggerOrderIDs) > 0 {
 				cloned.TriggerOrderIDs = append([]uuid.UUID(nil), c.TriggerOrderIDs...)
@@ -432,6 +450,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.TurnScopedStatics = src.TurnScopedStatics
 	g.lastKnownBattlefield = src.lastKnownBattlefield
 	g.rng = src.rng
+	g.rngState = src.rngState
 	// S16 layer-engine counters: adopt the snapshot's values via
 	// Store/Load (atomics can't be field-copied), then bump
 	// layerVersion past lastResolvedVersion so the next snapshot

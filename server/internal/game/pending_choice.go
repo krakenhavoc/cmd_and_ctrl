@@ -242,6 +242,22 @@ type PendingChoice struct {
 	// for Birds of Paradise). Added in S15 sub-PR 2.
 	ColorOptions []string
 
+	// ManaRestrictions are the spend restrictions the token minted
+	// by this PendingChoiceMana will carry — Delighted Halfling's
+	// "spend this mana only to cast a legendary spell". Empty for
+	// ordinary colour picks, which is nearly all of them.
+	//
+	// It lives on the choice rather than being re-derived at resolve
+	// time because by then the ability is gone: ResolveManaChoice
+	// sees a colour string and a source ID, and the source may have
+	// been sacrificed as part of the activation cost. Losing the
+	// restrictions here would put unrestricted mana in the pool,
+	// which is the whole #259 failure this seam exists to avoid.
+	//
+	// Deep-copied by clone.go alongside ColorOptions. Added in the
+	// S32 mana-pipeline pass (#352).
+	ManaRestrictions []string
+
 	// ReplacementEffectIDs is the ordered set of applicable
 	// replacement-effect IDs the chooser must reorder for a
 	// PendingChoiceReplacementOrder entry. The resolve_choice
@@ -619,7 +635,15 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	p.ManaPool.AddMana(ManaToken{Color: color, Source: choice.Source})
+	p.ManaPool.AddMana(ManaToken{
+		Color:  color,
+		Source: choice.Source,
+		// The choice carried the ability's restrictions here so the
+		// minted token gets them (#352). copyRestrictions because
+		// the choice is about to be dequeued and the token outlives
+		// it.
+		Restrictions: copyRestrictions(choice.ManaRestrictions),
+	})
 	g.EmitEvent(Event{
 		Kind:   EventManaAdded,
 		Actor:  chooserID,
@@ -1634,6 +1658,13 @@ func (g *Game) ResolvePayUnless(choiceID, chooserID uuid.UUID, apply bool) error
 	return nil
 }
 
+// S32 (#352): this one keeps the zero spend context deliberately. A
+// pay-unless / may-pay cost is not a cast and not an activation — it
+// is a cost demanded by a resolving effect — so no "spend only to
+// cast X" token may fund it. Conservative in the weaker-than-printed
+// direction, and correct for every restriction the catalog writes
+// today, all of which name casting or activating.
+//
 // payCostLocked deducts `cost` (no X) from p's pool, auto-tapping
 // untapped mana sources into the pool first when it's short.
 // Returns false — with nothing tapped or spent — when the cost

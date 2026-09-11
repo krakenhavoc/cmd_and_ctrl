@@ -25,11 +25,7 @@ func pushKeywordCreature(t *testing.T, g *Game, owner *Player, power, toughness 
 	// engine since the catalog-integration path lands with sub-PR 4.
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == c.InstanceID {
-			g.Battlefield.Cards[i].effective = &Characteristic{
-				Power:     power,
-				Toughness: toughness,
-				Abilities: append([]string(nil), keywords...),
-			}
+			g.Battlefield.Cards[i].effective = printedEffectiveWith(c, keywords...)
 		}
 	}
 	return c.InstanceID
@@ -591,11 +587,7 @@ func TestCombatCommanderTrampleOverflowRecordsCommanderDamage(t *testing.T) {
 	g.Battlefield.PushTop(cmdr)
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cmdr.InstanceID {
-			g.Battlefield.Cards[i].effective = &Characteristic{
-				Power:     6,
-				Toughness: 6,
-				Abilities: []string{"trample"},
-			}
+			g.Battlefield.Cards[i].effective = printedEffectiveWith(cmdr, "trample")
 		}
 	}
 	bear1 := pushKeywordCreature(t, g, def, 2, 2)

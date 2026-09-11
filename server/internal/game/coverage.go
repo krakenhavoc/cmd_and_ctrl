@@ -58,13 +58,13 @@ func NeedsCatalogEffect(typeLine string, texts ...string) bool {
 	// A basic land's mana ability comes from its type line (CR
 	// 305.6) and is printed only as reminder text, so the text scan
 	// below can never see it. ManaAbilitiesForCard synthesises that
-	// ability for the five colours and for nothing else, which
-	// leaves Wastes: all reminder text, no colour, and no mana at
-	// all without a Spec. Two cards in the format hit this, and
-	// getting them right is the difference between a predicate that
-	// is honest about lands and one that merely looks like it.
+	// ability for the five basic land types and for nothing else,
+	// which leaves Wastes: all reminder text, no colour, and no
+	// mana at all without a Spec. Two cards in the format hit this,
+	// and getting them right is the difference between a predicate
+	// that is honest about lands and one that merely looks like it.
 	if typeLineHas(typeLine, "basic") && typeLineHas(typeLine, "land") &&
-		basicLandColor(typeLine) == "" {
+		len(intrinsicLandManaAbilities(Card{TypeLine: typeLine})) == 0 {
 		return true
 	}
 	for _, text := range texts {

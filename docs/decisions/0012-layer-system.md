@@ -265,3 +265,11 @@ fine — both are valid Characteristic snapshots.
   registry are the integration point.
 - **Dependency detection (CR 613.8)** deferred to S16.5 if a real
   card surfaces in playtesting.
+- **Decision 2's "wire ships `Effective`" was only half the
+  hand-off**, and the other half sat unbuilt for four sprints:
+  `Card.IsCreature` / `IsLand` / `IsArtifact` kept reading the
+  printed `TypeLine`, so a Layer-4 type change reached the client
+  and nothing else. **ADR 0039** routes the type predicates through
+  `Effective()` and splits off an explicit `PrintedIs*` surface for
+  callers that want the printed values decision 2 reserves for
+  them.
