@@ -265,3 +265,58 @@ func TestIncreasingVengeanceCopiesYourOwnSpellTwice(t *testing.T) {
 		t.Errorf("graveyard = %d, want 2", got)
 	}
 }
+
+// "If this spell was cast from a graveyard, copy that spell TWICE
+// instead." Two copies is not one copy resolving twice: each is
+// created separately and each is offered its own CR 706.10c target
+// choice, so the assertion is two prompts and three Bolts' worth of
+// damage.
+//
+// The branch reads CastFromZone, not the alternative cost that was
+// paid, because that is what the card says — so this test drives the
+// S29 flashback path end to end rather than stubbing the field.
+func TestIncreasingVengeanceFlashedBackCopiesTwice(t *testing.T) {
+	g := newCatalogGame(t)
+	me, victim := g.Seats[0].ID, g.Seats[1].ID
+
+	iv := seedGraveyardCard(t, g, "Increasing Vengeance", "Instant", increasingVengeanceOracl)
+	bolt := castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: victim}})
+	if err := g.CastSpell(me, iv, game.CastSpellParams{
+		FromZone:        "graveyard",
+		AlternativeCost: "flashback",
+		Targets:         []game.TargetRef{{Kind: game.TargetCard, ID: bolt}},
+	}); err != nil {
+		t.Fatalf("flashback cast: %v", err)
+	}
+
+	// Two independent re-target prompts, answered one at a time.
+	for answered := 0; answered < 2; answered++ {
+		for i := 0; i < 8 && latestPickTarget(g, me) == nil; i++ {
+			if err := g.PassPriority(); err != nil {
+				t.Fatalf("PassPriority: %v", err)
+			}
+		}
+		prompt := latestPickTarget(g, me)
+		if prompt == nil {
+			t.Fatalf("copy %d of 2 was never offered a target choice", answered+1)
+		}
+		if err := g.ResolvePickTarget(prompt.ID, me,
+			game.TargetRef{Kind: game.TargetPlayer, ID: victim}); err != nil {
+			t.Fatalf("ResolvePickTarget: %v", err)
+		}
+	}
+	passPriorityAroundTable(t, g)
+
+	if got := lifeOf(g, victim); got != 31 {
+		t.Errorf("life = %d, want 31 (two copies + the original)", got)
+	}
+	// CR 702.34a: the flashed-back card is exiled, not returned. And
+	// neither copy is anywhere at all.
+	if !g.Exile.Contains(iv) {
+		t.Error("a flashed-back Increasing Vengeance must be exiled")
+	}
+	if got := graveyardSize(g, me); got != 1 {
+		t.Errorf("graveyard = %d, want 1 (the Bolt alone)", got)
+	}
+}
