@@ -1,6 +1,10 @@
 package game
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 // mana_restriction.go is the spend half of restricted mana — "spend
 // this mana only to cast a creature spell" (Ancient Ziggurat), "only
@@ -115,17 +119,32 @@ type ManaSpendContext struct {
 	// Empty means colorless, which is what ManaRestrictColorless
 	// tests for.
 	Colors []string
+
+	// AllCreatureTypes marks an object that is every creature type
+	// (CR 702.73a) — a changeling spell, or a permanent under a
+	// Maskwood Nexus. A "subtype:" restriction is satisfied by ANY
+	// creature type when it is set.
+	//
+	// It rides the context rather than being folded into Subtypes for
+	// the reason HasAllCreatureTypes gives: the alternative is ~345
+	// strings copied per payment, to answer a question one bool
+	// answers. It matters because a changeling really is a creature
+	// spell of the chosen type — casting Universal Automaton with
+	// Cavern of Souls mana named for Elf is legal, and refusing it
+	// would be a rules error a tribal player hits immediately.
+	AllCreatureTypes bool
 }
 
 // ManaSpendForCast builds the spend context for casting `c`.
 func ManaSpendForCast(c Card) ManaSpendContext {
 	ch := c.Effective()
 	return ManaSpendContext{
-		Purpose:    SpendPurposeCast,
-		Types:      ch.Types,
-		Subtypes:   ch.Subtypes,
-		Supertypes: ch.Supertypes,
-		Colors:     c.EffectiveColors(),
+		Purpose:          SpendPurposeCast,
+		Types:            ch.Types,
+		Subtypes:         ch.Subtypes,
+		Supertypes:       ch.Supertypes,
+		Colors:           c.EffectiveColors(),
+		AllCreatureTypes: HasAllCreatureTypes(&c),
 	}
 }
 
@@ -136,11 +155,12 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 func ManaSpendForAbility(c Card) ManaSpendContext {
 	ch := c.Effective()
 	return ManaSpendContext{
-		Purpose:    SpendPurposeActivate,
-		Types:      ch.Types,
-		Subtypes:   ch.Subtypes,
-		Supertypes: ch.Supertypes,
-		Colors:     c.EffectiveColors(),
+		Purpose:          SpendPurposeActivate,
+		Types:            ch.Types,
+		Subtypes:         ch.Subtypes,
+		Supertypes:       ch.Supertypes,
+		Colors:           c.EffectiveColors(),
+		AllCreatureTypes: HasAllCreatureTypes(&c),
 	}
 }
 
@@ -187,11 +207,35 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 	case "type":
 		return containsFold(ctx.Types, value)
 	case "subtype":
-		return containsFold(ctx.Subtypes, value)
+		if containsFold(ctx.Subtypes, value) {
+			return true
+		}
+		// CR 702.73a: a changeling object has the named subtype too,
+		// as long as the name is a CREATURE type. It is not every
+		// Equipment and every Aura.
+		return ctx.AllCreatureTypes && IsCreatureType(value)
 	case "supertype":
 		return containsFold(ctx.Supertypes, value)
 	}
 	return false
+}
+
+// restrictionsFor resolves a mana ability's spend restrictions for
+// one activation: the computed list when the ability has a
+// RestrictionsFunc (Cavern of Souls' chosen type), the declared one
+// otherwise.
+//
+// Both paths go through copyRestrictions, so the token that ends up
+// in the pool never aliases either the catalog's process-lifetime
+// slice or a slice the card file built and might reuse.
+//
+// Caller must hold g.mu (every call site is inside a mana-ability
+// activation, which does).
+func restrictionsFor(g *Game, ab *ManaAbilityShape, controller, source uuid.UUID) []string {
+	if ab.RestrictionsFunc != nil {
+		return copyRestrictions(ab.RestrictionsFunc(g, controller, source))
+	}
+	return copyRestrictions(ab.Restrictions)
 }
 
 // copyRestrictions returns a fresh backing array for a restriction

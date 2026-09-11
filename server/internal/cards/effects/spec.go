@@ -433,6 +433,18 @@ type ManaAbility struct {
 	// every card in the group stronger than printed, which is the
 	// #259 rule; the two halves landed together in #352.
 	Restrictions []string
+
+	// RestrictionsFunc computes Restrictions at activation time, for
+	// an ability whose restriction names a CHOSEN thing rather than a
+	// printed one — Cavern of Souls' "spend this mana only to cast a
+	// creature spell of the chosen type". Wins over Restrictions when
+	// non-nil.
+	//
+	// Returning nil produces unrestricted mana. A card that cannot
+	// compute its restriction yet must return an impossible tag
+	// instead, so the mana is unspendable rather than free: weaker
+	// than printed is acceptable, stronger is not. Added in S26.
+	RestrictionsFunc func(g *game.Game, controller, source uuid.UUID) []string
 }
 
 // ManaAbilityCost names the activation cost of one mana ability.
