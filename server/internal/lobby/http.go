@@ -833,6 +833,22 @@ type uploadDeckResponse struct {
 	// The accepted deck is already installed when warnings is
 	// non-empty; treat it as advisory.
 	Warnings []deck.Violation `json:"warnings,omitempty"`
+	// Unimplemented names the accepted deck's cards that print rules
+	// the engine will not carry out — see game.Unimplemented. Not a
+	// violation and not a warning: the deck is legal and the game
+	// will run, those cards just behave as manual sandbox cards and
+	// the player moves the pieces themselves.
+	//
+	// Deck upload is the best moment there is to say so. It is a
+	// single honest sentence about a hundred cards, read once,
+	// before anyone has formed an expectation — as against the
+	// alternative, which is what actually happened on 2026-09-10:
+	// five separate bug reports (#321, #324, #325, #332, #333) from
+	// five separate mid-game surprises.
+	//
+	// Distinct names in decklist order, deduped — a deck with four
+	// Lightning Bolts wants to hear about Lightning Bolt once.
+	Unimplemented []string `json:"unimplemented,omitempty"`
 }
 
 // uploadDeck handles POST /games/{id}/decks. Accepts either plain-
@@ -1003,7 +1019,8 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	meta, err := c.Lobby.SetDeck(id, body.PlayerID, list.Name, list.ToGameCards())
+	gameCards := list.ToGameCards()
+	meta, err := c.Lobby.SetDeck(id, body.PlayerID, list.Name, gameCards)
 	if err != nil {
 		return err
 	}
@@ -1013,11 +1030,12 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		commanders = append(commanders, cc.Name)
 	}
 	return writeJSON(w, http.StatusOK, uploadDeckResponse{
-		Game:       meta,
-		DeckName:   list.Name,
-		CardCount:  len(list.Commanders) + len(list.Mainboard),
-		Commanders: commanders,
-		Warnings:   warnings,
+		Game:          meta,
+		DeckName:      list.Name,
+		CardCount:     len(list.Commanders) + len(list.Mainboard),
+		Commanders:    commanders,
+		Warnings:      warnings,
+		Unimplemented: game.UnimplementedNames(gameCards),
 	})
 }
 
