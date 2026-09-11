@@ -738,6 +738,14 @@ type ManaAbilityView struct {
 	// the pass that has the game handle to compute a legal set.
 	SacrificeLabel   string            `json:"sacrifice_label,omitempty"`
 	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
+	// LifeCost is a "Pay N life" component of the activation cost —
+	// Mana Confluence's "{T}, Pay 1 life:". Advisory, exactly like
+	// ActivatedAbilityView.LifeCost: the client renders the cost
+	// chip, the server does the real CR 118.8 check. A damage RIDER
+	// ("This land deals 1 damage to you") is not a cost and does not
+	// appear here — it's part of the ability's Label.
+	// Added in the S22 mana-ability-rider pass.
+	LifeCost int `json:"life_cost,omitempty"`
 	// Produced is the raw production string ("{C}{C}",
 	// "{W|U|B|R|G}"). Lets the client render the produced-mana
 	// pills alongside the activation button even when Label is
@@ -1887,6 +1895,7 @@ func viewOfManaAbilities(c game.Card) []ManaAbilityView {
 			Label:         a.Label,
 			TapCost:       a.TapCost,
 			SacrificeCost: a.SacrificeCost,
+			LifeCost:      a.LifeCost,
 			Produced:      a.Produced,
 		}
 	}

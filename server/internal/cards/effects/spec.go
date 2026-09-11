@@ -321,6 +321,41 @@ type ManaAbility struct {
 	Cost     ManaAbilityCost
 	Produced string
 	Label    string
+
+	// Rider is everything the oracle text says AFTER the "Add …"
+	// clause, as one callback: the painland cycle's "This land deals
+	// 1 damage to you", Ancient Tomb's "deals 2 damage to you". It
+	// runs immediately after the produced mana lands in the pool,
+	// inside the same atomic mana-ability resolution (CR 605.3a).
+	//
+	// Build one with PainRider(n) rather than by hand — that helper
+	// is the whole reason this slot exists so far.
+	//
+	// A rider is NOT a cost: it happens whether or not the player
+	// could "afford" it, and a source with a damage rider stays
+	// activatable at 1 life. Use ManaAbilityCost.Life for a real
+	// cost ("{T}, Pay 1 life:").
+	//
+	// Runs under the resolution write lock — *ForEffect helpers
+	// only, never a public locking mutator.
+	//
+	// Added in the S22 mana-ability-rider pass.
+	Rider func(g *game.Game, controller, source uuid.UUID) error
+
+	// IgnoreCommanderIdentity keeps a pipe-syntax Produced string
+	// ("{U|R}", "{W|U|B|R|G}") at its printed width instead of
+	// letting the engine intersect it with the controller's
+	// commander colour identity.
+	//
+	// Set it whenever the printed text does not actually say "in
+	// your commander's color identity" — City of Brass and Mana
+	// Confluence ("any color"), the painland and Talisman duals
+	// (two named colours). Leave it false for Command Tower,
+	// Arcane Signet, Commander's Sphere and Path of Ancestry, whose
+	// text is the reason the narrowing exists.
+	//
+	// Added in the S22 mana-ability-rider pass.
+	IgnoreCommanderIdentity bool
 }
 
 // ManaAbilityCost names the activation cost of one mana ability.
@@ -344,6 +379,23 @@ type ManaAbilityCost struct {
 	// the S15 note that sacrifice costs were "reserved for future
 	// mana rocks" — they are all live now.
 	SacrificeOther *game.TargetSpec
+
+	// Life is a "Pay N life" component of the activation cost (CR
+	// 118.8) — Mana Confluence's "{T}, Pay 1 life: Add one mana of
+	// any color". Mirrors game.AbilityCost.Life, which CR 602
+	// activated abilities have carried since S21 and the fetchlands
+	// already use.
+	//
+	// This is the S15 note above finally coming true: life was the
+	// one "later sprints when a catalog card demands them" sub-cost
+	// left, and the S22 mana-rider pass is the batch that demanded
+	// it.
+	//
+	// A COST, not a rider: validated before anything is paid, so an
+	// activation at a life total below N is rejected outright and
+	// the source does not tap. "Add {R}. This land deals 1 damage to
+	// you" is the other thing — see ManaAbility.Rider.
+	Life int
 }
 
 // ZeroUUID is an alias for uuid.Nil. Mostly used in tests to
