@@ -224,3 +224,44 @@ func TestIncreasingVengeanceOnlyCopiesYourOwnSpells(t *testing.T) {
 		t.Fatalf(`"you control" must reject an opponent's spell: got %v`, err)
 	}
 }
+
+// The positive half of the same clause, and the reason it is a
+// separate test: a rejection assertion alone would pass for the
+// wrong reason if `Controller` were never populated on a card sitting
+// on the stack — the card would be uncastable at anything, and
+// nothing above would notice.
+func TestIncreasingVengeanceCopiesYourOwnSpellTwice(t *testing.T) {
+	g := newCatalogGame(t)
+	me, victim := g.Seats[0].ID, g.Seats[1].ID
+
+	bolt := castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: victim}})
+	castCatalogSpell(t, g, "Increasing Vengeance", "Instant", increasingVengeanceOracl,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: bolt}})
+
+	for i := 0; i < 8 && latestPickTarget(g, me) == nil; i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	prompt := latestPickTarget(g, me)
+	if prompt == nil {
+		t.Fatal("no re-target prompt — the copy was never offered one")
+	}
+	if err := g.ResolvePickTarget(prompt.ID, me,
+		game.TargetRef{Kind: game.TargetPlayer, ID: victim}); err != nil {
+		t.Fatalf("ResolvePickTarget: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+
+	// Hard-cast (not from a graveyard), so exactly one copy: 3 from
+	// the copy plus 3 from the original.
+	if got := lifeOf(g, victim); got != 34 {
+		t.Errorf("life = %d, want 34 (one copy + the original)", got)
+	}
+	// Two cards in the graveyard — the Bolt and the Vengeance. The
+	// copy is not a card.
+	if got := graveyardSize(g, me); got != 2 {
+		t.Errorf("graveyard = %d, want 2", got)
+	}
+}
