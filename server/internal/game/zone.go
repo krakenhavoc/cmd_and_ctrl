@@ -154,6 +154,14 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.AttackingTarget = uuid.Nil
 		c.BlockingTarget = uuid.Nil
 		c.GoadedBy = uuid.Nil
+		// S24 / ADR 0036 decision 12: an Equipment or Aura that
+		// leaves the battlefield stops being attached. This is the
+		// FORWARD direction only — permanents attached to a host
+		// that just left are left dangling on purpose and swept by
+		// the CR 704.5m/n state-based action, which is the one
+		// place that can see the whole battlefield.
+		c.AttachedTo = TargetRef{}
+		c.AttachedAt = 0
 	}
 	dst.PushTop(c)
 	return c, nil
