@@ -74,6 +74,13 @@ func (g *Game) AutoTapForCostExcluding(
 	return g.autoTapLocked(controller, cost, xValue, excluded)
 }
 
+// AutoTapForCostForEffect is the *ForEffect-surface twin of
+// AutoTapForCost for callers already under g.mu (the S31 legal-move
+// enumerator runs inside ReadSnapshot). Read-only, same contract.
+func (g *Game) AutoTapForCostForEffect(controller uuid.UUID, cost ParsedCost, xValue int) ([]uuid.UUID, bool) {
+	return g.autoTapLocked(controller, cost, xValue, nil)
+}
+
 // autoTapLocked is the lock-aware core. Public callers use the
 // RLock-wrapped exported methods above; internal callers that
 // already hold either lock can route here directly. Read-only —

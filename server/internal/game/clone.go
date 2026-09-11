@@ -76,6 +76,12 @@ func (g *Game) cloneLocked() *Game {
 			out.SpellsCastThisTurn[k] = v
 		}
 	}
+	if len(g.LandsPlayedThisTurn) > 0 {
+		out.LandsPlayedThisTurn = make(map[uuid.UUID]int, len(g.LandsPlayedThisTurn))
+		for k, v := range g.LandsPlayedThisTurn {
+			out.LandsPlayedThisTurn[k] = v
+		}
+	}
 	if len(g.DiscardPending) > 0 {
 		out.DiscardPending = make(map[uuid.UUID]int, len(g.DiscardPending))
 		for k, v := range g.DiscardPending {
@@ -385,6 +391,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.DelayedTriggers = src.DelayedTriggers
 	g.LoyaltyActivatedThisTurn = src.LoyaltyActivatedThisTurn
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
+	g.LandsPlayedThisTurn = src.LandsPlayedThisTurn
 	g.DiscardPending = src.DiscardPending
 	g.Promises = src.Promises
 	g.Vote = src.Vote
