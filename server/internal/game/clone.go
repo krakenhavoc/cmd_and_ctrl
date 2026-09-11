@@ -162,6 +162,18 @@ func (g *Game) cloneLocked() *Game {
 		out.TurnScopedReplacements = make([]ReplacementEffect, len(g.TurnScopedReplacements))
 		copy(out.TurnScopedReplacements, g.TurnScopedReplacements)
 	}
+	// S32 turn-scoped statics — the layer-engine twin of the slice
+	// above, and the same reasoning: a ScopedStatic is written once
+	// at registration and never mutated (see the immutability
+	// contract on the type), so a fresh backing array is enough.
+	// What must not be shared is the array itself — the cleanup-step
+	// sweep replaces the slice rather than compacting in place
+	// precisely so an undo snapshot taken mid-turn still holds the
+	// grants that were live when it was taken.
+	if len(g.TurnScopedStatics) > 0 {
+		out.TurnScopedStatics = make([]ScopedStatic, len(g.TurnScopedStatics))
+		copy(out.TurnScopedStatics, g.TurnScopedStatics)
+	}
 	// CR 603.10 LKI snapshots (S19). Values are Characteristic copies
 	// that are never mutated after being stored, so a per-entry value
 	// copy is sufficient. Usually empty — entries live only for the
@@ -401,6 +413,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.PendingChoices = src.PendingChoices
 	g.BuiltinReplacements = src.BuiltinReplacements
 	g.TurnScopedReplacements = src.TurnScopedReplacements
+	g.TurnScopedStatics = src.TurnScopedStatics
 	g.lastKnownBattlefield = src.lastKnownBattlefield
 	g.rng = src.rng
 	// S16 layer-engine counters: adopt the snapshot's values via
