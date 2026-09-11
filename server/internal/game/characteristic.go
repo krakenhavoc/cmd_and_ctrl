@@ -59,22 +59,39 @@ type Characteristic struct {
 // initial color set.
 func (c Card) printedCharacteristic() Characteristic {
 	supertypes, types, subtypes := ParseTypeLine(c.TypeLine)
-	// Printed keywords live in the catalog's Spec.PrintedKeywords slot
-	// (S18 sub-PR 2). Including them here means off-battlefield
+	// Printed keywords come from two places. The catalog's
+	// Spec.PrintedKeywords slot (S18 sub-PR 2) is the older one;
+	// including it here means off-battlefield
 	// CardView.Abilities surfaces the keyword on hand cards — the
 	// client's cast-timing gate needs flash to grey-enable Ambush
 	// Viper at instant speed. The on-battlefield synth adds these
 	// via a Layer 6 StaticAbility with a dedupe, so double-counting
 	// is impossible.
+	//
+	// Card.Keywords is the printed-data road: the deck importer
+	// stamps Scryfall's `keywords` array onto every imported card
+	// (#317 / #319 / #320), and token templates declare theirs
+	// inline because a token has no oracle ID for the catalog hook
+	// to key on (S21 sub-PR 1). The catalog remains a fallback and
+	// an override for cards that never go through deck import —
+	// fixtures, tokens, and any spec that deliberately states a
+	// keyword Scryfall doesn't.
+	//
+	// The two sources overlap for every catalog card that is also
+	// imported from a decklist, so the merge dedupes: a doubled
+	// "flash" is harmless to HasKeyword but renders as two badges
+	// on the client's keyword row.
 	var abilities []string
 	if CatalogPrintedKeywords != nil && c.OracleID != "" {
 		if kws := CatalogPrintedKeywords(c.OracleID); len(kws) > 0 {
 			abilities = append(abilities, kws...)
 		}
 	}
-	// S21 sub-PR 1: tokens carry their keywords on the card object —
-	// there's no oracle ID for the catalog hook to key on.
-	abilities = append(abilities, c.Keywords...)
+	for _, kw := range c.Keywords {
+		if !containsKeyword(abilities, kw) {
+			abilities = append(abilities, kw)
+		}
+	}
 	return Characteristic{
 		Power:      c.Power,
 		Toughness:  c.Toughness,
@@ -85,6 +102,19 @@ func (c Card) printedCharacteristic() Characteristic {
 		Name:       c.Name,
 		Abilities:  abilities,
 	}
+}
+
+// containsKeyword reports whether xs already holds kw. Used by the
+// printed-characteristic merge; the battlefield's Layer 6 keyword
+// synth keeps its own copy over in cards/effects, where the name
+// would otherwise collide with that package's test helpers.
+func containsKeyword(xs []string, kw string) bool {
+	for _, x := range xs {
+		if x == kw {
+			return true
+		}
+	}
+	return false
 }
 
 // printedColorsFromCost extracts the unique WUBRG letters from a

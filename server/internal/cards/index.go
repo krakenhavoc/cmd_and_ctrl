@@ -109,6 +109,32 @@ type Card struct {
 	// solving a cost; basic lands get a synthetic ability derived
 	// from their TypeLine instead. Added in S15 sub-PR 1.
 	ProducedMana []string `json:"produced_mana"`
+	// Keywords is Scryfall's list of the keyword abilities printed
+	// on this card — "Flying", "First strike", "Flash", and the
+	// hundreds of set-specific mechanics ("Prepared", "Waterbend")
+	// alongside them. Capitalisation is Scryfall's; the deck
+	// importer lowercases and filters to the keywords the engine
+	// actually enforces before stamping game.Card.Keywords.
+	//
+	// Only keywords the card ITSELF has, never ones it grants:
+	// Serra's Blessing ("Creatures you control have vigilance")
+	// ships an empty array, and Lightning Greaves lists "Equip"
+	// but not the haste and shroud it hands out. That is what
+	// makes the field safe to read as printed characteristics.
+	//
+	// For a multi-faced card the array is the UNION over every
+	// face — Aang, Swift Savior // Aang and La, Ocean's Fury lists
+	// the front face's flash and flying next to the back face's
+	// reach and trample, and the faces carry no keyword arrays of
+	// their own to disambiguate. deck.printedKeywords narrows the
+	// union against the front face's oracle text.
+	//
+	// Carried here — rather than only in the effect catalog — so
+	// that the ~7,500 cards with a combat keyword and no catalog
+	// entry stop having inert keywords. See issues #317 / #319 /
+	// #320, and #274 / PR #285 for the same fix applied to printed
+	// loyalty.
+	Keywords []string `json:"keywords"`
 	// Colors is Scryfall's computed color list for the card —
 	// uppercase single letters from {"W","U","B","R","G"} — which
 	// already accounts for color indicators, Devoid, and hybrid
