@@ -224,7 +224,7 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	// still fans out — the copy is a spell and the things it points
 	// at have become the target of one (CR 115.7), which is what a
 	// ward trigger or Monk Gyatso is watching for.
-	g.emitBecameTargetLocked(controller, copyCard.InstanceID, meta.Targets)
+	g.emitBecameTargetLocked(controller, copyCard.InstanceID, copyCard.InstanceID, meta.Targets)
 	return copyCard.InstanceID
 }
 

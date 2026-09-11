@@ -1109,11 +1109,12 @@ func Dispatch(g *game.Game, a Action) error {
 			return g.ResolvePickTargets(choiceID, a.Player, refs)
 		}
 		if p.OptionalApply != nil {
-			// Four yes/no kinds share the {apply: bool} payload
+			// Five yes/no kinds share the {apply: bool} payload
 			// shape: PendingChoiceOptionalReplacement (S17),
 			// PendingChoiceTriggerPrompt (S19),
-			// PendingChoicePayUnless (S19 sub-PR 6) and
-			// PendingChoiceEntryPayLife (shocklands). Disambiguate
+			// PendingChoicePayUnless (S19 sub-PR 6),
+			// PendingChoiceEntryPayLife (shocklands) and
+			// PendingChoiceMayCast (S28 cascade). Disambiguate
 			// by looking up the choice's kind on the engine.
 			kind, ok := g.PendingChoiceKindFor(choiceID)
 			if !ok {
@@ -1126,6 +1127,11 @@ func Dispatch(g *game.Game, a Action) error {
 				// S19 sub-PR 6: "unless that player pays {N}" — apply
 				// means "I pay".
 				return g.ResolvePayUnless(choiceID, a.Player, *p.OptionalApply)
+			case game.PendingChoiceMayCast:
+				// S28 cascade: "you may cast it without paying its
+				// mana cost" — apply means "I'll take it", and the
+				// engine stamps a free-cast permission on the card.
+				return g.ResolveMayCast(choiceID, a.Player, *p.OptionalApply)
 			case game.PendingChoiceEntryPayLife:
 				// Shocklands: "as this enters, you may pay 2 life" —
 				// apply means "I pay", and paying is what keeps the
