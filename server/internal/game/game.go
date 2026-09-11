@@ -281,6 +281,16 @@ type Game struct {
 	// gated via source card's AppliesTo). Added in S17 sub-PR 5.
 	TurnScopedReplacements []ReplacementEffect
 
+	// TurnScopedStatics is the per-turn CONTINUOUS-EFFECT slot —
+	// the layer-engine twin of TurnScopedReplacements. Entries are
+	// floating static abilities with a duration rather than a
+	// battlefield source: Giant Growth's +3/+3, Overrun's mass pump
+	// and trample grant, a loyalty ability's "+2/+2 and first strike
+	// until end of turn". Consulted by activeStaticAbilitiesLocked
+	// alongside the battlefield walk and swept at StepCleanup
+	// (CR 514.2). See turn_scoped_statics.go. Added in S32.
+	TurnScopedStatics []ScopedStatic
+
 	// testReplacements is the test-only replacement injection slot
 	// populated by RegisterReplacementForTest. Unexported so
 	// production code has no path to it. Walked after built-ins +
@@ -763,6 +773,15 @@ func (g *Game) runStepEntryHooksLocked() {
 		// shields with a per-turn duration) clear at cleanup so
 		// next turn starts with a clean slate.
 		g.ClearTurnScopedReplacementsLocked()
+		// S32: "until end of turn" CONTINUOUS effects (Giant
+		// Growth's +3/+3, Overrun's trample grant) expire here for
+		// the same reason and by the same rule — CR 514.2 ends them
+		// during the cleanup step, before the turn-based discard.
+		// This is also what makes a grant created during the END
+		// step end this turn rather than next: the sweep keys on the
+		// turn number stamped at registration, not on "the next
+		// cleanup after the one I saw".
+		g.ClearExpiredTurnScopedStaticsLocked()
 		// S21 sub-PR 6: impulse-exile permissions ("you may play it
 		// this turn") lapse here for the same reason — the turn they
 		// were granted for is over. The exiled card stays exiled; it
