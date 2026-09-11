@@ -873,11 +873,16 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 		})
 		return nil
 	}
-	if !p.ManaPool.CanPay(cost, params.XValue) {
-		return &InsufficientManaError{Missing: p.ManaPool.Missing(cost, params.XValue)}
+	// S32 (#352): the spend context is what lets restricted mana pay
+	// — and what stops it paying for the wrong thing. Ancient
+	// Ziggurat's {G} funds a creature spell here and is invisible to
+	// a Lightning Bolt.
+	spendCtx := ManaSpendForCast(card)
+	if !p.ManaPool.CanPayFor(cost, params.XValue, spendCtx) {
+		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, spendCtx)}
 	}
 	// Payable under strict mode — commit the spend.
-	p.ManaPool.SpendMana(cost, params.XValue)
+	p.ManaPool.SpendManaFor(cost, params.XValue, spendCtx)
 	g.EmitEvent(Event{
 		Kind:   EventManaSpent,
 		Actor:  p.ID,
@@ -914,7 +919,10 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	if err != nil {
 		return nil
 	}
-	if p.ManaPool.CanPay(cost, params.XValue) {
+	// Same context applyCastCostLocked will pay under, so the
+	// "already funded, skip planning" shortcut can't be fooled by
+	// restricted mana this cast cannot legally spend.
+	if p.ManaPool.CanPayFor(cost, params.XValue, ManaSpendForCast(card)) {
 		return nil
 	}
 	excluded := make(map[uuid.UUID]bool, len(params.LockedSources)+len(params.TapIDs))
@@ -930,7 +938,7 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	}
 	plan, ok := g.autoTapLocked(p.ID, cost, params.XValue, excluded)
 	if !ok {
-		return &InsufficientManaError{Missing: p.ManaPool.Missing(cost, params.XValue)}
+		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, ManaSpendForCast(card))}
 	}
 	g.materializePlanLocked(p, plan, cost)
 	return nil
@@ -964,7 +972,20 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 		if ab == nil {
 			continue
 		}
-		slots, err := ParseProducedMana(ab.Produced)
+		// S32 (#352): the gate and the derived/scaled output are
+		// re-evaluated here rather than carried over from planning,
+		// so the executor and the planner can never disagree about
+		// what a source produces. A gate that has stopped holding
+		// since the plan was made drops the source silently, exactly
+		// as a source that got tapped in between does.
+		if ab.Condition != nil && !ab.Condition(g, p.ID, cardID) {
+			continue
+		}
+		producedStr := ab.Produced
+		if ab.ProducedFunc != nil {
+			producedStr = ab.ProducedFunc(g, p.ID, cardID)
+		}
+		slots, err := ParseProducedMana(producedStr)
 		if err != nil {
 			continue
 		}
@@ -988,7 +1009,17 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 			if color == "" {
 				continue
 			}
-			p.ManaPool.AddMana(ManaToken{Color: color, Source: cardID})
+			// Restrictions ride here too. autoTapAbilityFor already
+			// refuses restricted abilities, so this is belt-and-
+			// braces — but "the auto-tapper is the one path that
+			// mints unrestricted copies of restricted mana" is
+			// precisely the bug #259 warns about, and one line is
+			// cheaper than trusting a filter two files away.
+			p.ManaPool.AddMana(ManaToken{
+				Color:        color,
+				Source:       cardID,
+				Restrictions: copyRestrictions(ab.Restrictions),
+			})
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: cardID})
 		}
 	}
@@ -2856,6 +2887,15 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		return ErrInvalidParam
 	}
 	ab := abilities[abilityIdx]
+	// --- gate ----------------------------------------------------
+	//
+	// "Activate only if you control five or more lands" (Temple of
+	// the False God), "…three or more artifacts" (Mox Opal). CR
+	// 602.5a: an activation restriction is checked before anything
+	// is paid, so a failed gate costs the player nothing.
+	if ab.Condition != nil && !ab.Condition(g, playerID, cardID) {
+		return ErrConditionNotMet
+	}
 	// --- validate every cost before paying any ------------------
 	//
 	// Same discipline as ActivateCatalogAbility: a half-paid cost
@@ -2890,6 +2930,32 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		// AbilityCost.Life.
 		return ErrInvalidParam
 	}
+	// A mana component in the cost — the Signet cycle's "{1}, {T}",
+	// Cabal Coffers' "{2}, {T}". Parsed and checked here, spent
+	// below with everything else, so an unaffordable Signet fails
+	// with the source still untapped.
+	//
+	// Deliberately no auto-tap. A mana ability resolves with no
+	// priority window (CR 605.3a), and tapping three lands to feed a
+	// Signet is a decision with consequences the planner cannot
+	// weigh — the player floats the {1} first, which is how the card
+	// is played on paper anyway.
+	var manaCost ParsedCost
+	if ab.ManaCost != "" {
+		parsed, perr := ParseCost(ab.ManaCost)
+		if perr != nil {
+			return ErrInvalidParam
+		}
+		manaCost = parsed
+		// The mana pays an ACTIVATION (CR 602.2b), and the source
+		// permanent's own characteristics are what a restricted
+		// token is tested against — Eldrazi Temple mana can fund a
+		// colorless Eldrazi's ability, not a Signet's.
+		spendCtx := ManaSpendForAbility(*card)
+		if !p.ManaPool.CanPayFor(manaCost, 0, spendCtx) {
+			return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
+		}
+	}
 
 	// needStateChecks is set by any component of this activation
 	// that can kill a player or a permanent — a sacrifice, a life
@@ -2900,9 +2966,20 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 
 	// --- pay ----------------------------------------------------
 	//
+	// Mana first, then tap, then life, then sacrifice — the
+	// component order ActivateCatalogAbility pays an AbilityCost in.
 	// Tap before sacrifice: the tap has to happen while the
 	// permanent is still on the battlefield, and sacrifices move
 	// cards, which invalidates `card`.
+	if ab.ManaCost != "" {
+		// Same context the validation above used. Spending under a
+		// different context than the check would let a restricted
+		// token pay for something it was never cleared for.
+		if !p.ManaPool.SpendManaFor(manaCost, 0, ManaSpendForAbility(*card)) {
+			return &InsufficientManaError{Missing: []string{ab.ManaCost}}
+		}
+		g.EmitEvent(Event{Kind: EventManaSpent, Actor: playerID, Source: cardID})
+	}
 	if ab.TapCost {
 		card.Tapped = true
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
@@ -2948,8 +3025,16 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		Actor:  playerID,
 		Source: cardID,
 	})
-	// Materialise the produced mana.
-	slots, err := ParseProducedMana(ab.Produced)
+	// Materialise the produced mana. An ability with a ProducedFunc
+	// computes its output now, from the board as it stands AFTER the
+	// cost was paid — which is what CR 605.3a's "resolves
+	// immediately" means, and what makes Cabal Coffers count the
+	// Swamps that are still there.
+	produced := ab.Produced
+	if ab.ProducedFunc != nil {
+		produced = ab.ProducedFunc(g, playerID, cardID)
+	}
+	slots, err := ParseProducedMana(produced)
 	_ = card // card is deliberately nil after a sacrifice; keep the intent explicit
 	if err != nil {
 		// Mal-formed produced string: emit an effect-error event and
@@ -2970,8 +3055,17 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			continue
 		}
 		if len(options) == 1 {
-			// Single-color slot — straight into the pool.
-			p.ManaPool.AddMana(ManaToken{Color: options[0], Source: cardID})
+			// Single-color slot — straight into the pool, carrying
+			// the ability's spend restrictions (Eldrazi Temple's
+			// "colorless Eldrazi only"). Copy the slice: the token
+			// outlives this call and clone.go deep-copies it, so
+			// aliasing the catalog's backing array would let an undo
+			// reach a shared one.
+			p.ManaPool.AddMana(ManaToken{
+				Color:        options[0],
+				Source:       cardID,
+				Restrictions: copyRestrictions(ab.Restrictions),
+			})
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: cardID})
 			continue
 		}
@@ -2989,15 +3083,21 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		if !ab.IgnoreCommanderIdentity {
 			filtered = filterPipeByCommanderIdentity(options, p)
 		}
-		// Queue the pick.
+		// Queue the pick. The restrictions ride ON THE CHOICE, not
+		// just on the ability: the token is minted later, in
+		// ResolveManaChoice, and without this a Delighted Halfling
+		// pick would land in the pool unrestricted — the #259
+		// direction, and the easiest place in this whole seam to
+		// leak it.
 		g.QueueChoiceForEffect(PendingChoice{
-			Kind:         PendingChoiceMana,
-			Chooser:      playerID,
-			FromPlayer:   playerID,
-			Count:        1,
-			Source:       cardID,
-			Reason:       ab.Label,
-			ColorOptions: filtered,
+			Kind:             PendingChoiceMana,
+			Chooser:          playerID,
+			FromPlayer:       playerID,
+			Count:            1,
+			Source:           cardID,
+			Reason:           ab.Label,
+			ColorOptions:     filtered,
+			ManaRestrictions: copyRestrictions(ab.Restrictions),
 		})
 	}
 	// --- rider --------------------------------------------------

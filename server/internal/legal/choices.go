@@ -125,7 +125,11 @@ func (e *enumerator) choiceMoves() bool {
 			// would silently treat an unpayable "yes" as a decline.
 			canPay := false
 			if cost, err := game.ParseCost(c.PayCost); err == nil {
-				canPay = e.canPay(cost, 0)
+				// Zero spend context, matching payCostLocked: a
+				// pay-unless cost is neither a cast nor an
+				// activation, so restricted mana cannot fund it
+				// (#352).
+				canPay = e.canPay(cost, 0, game.ManaSpendContext{})
 			}
 			for _, apply := range []bool{true, false} {
 				if apply && !canPay {

@@ -252,7 +252,10 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 
 	// --- pay ----------------------------------------------------
 	if ab.Cost.Mana != "" {
-		if err := g.payAbilityManaCostLocked(p, cardID, ab.Cost.Mana, params); err != nil {
+		// S32 (#352): "activate abilities of colorless Eldrazi" is a
+		// restriction on the SOURCE permanent, so the spend context
+		// is built from it.
+		if err := g.payAbilityManaCostLocked(p, cardID, ab.Cost.Mana, params, ManaSpendForAbility(*source)); err != nil {
 			return err
 		}
 	}
@@ -367,13 +370,16 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 // Permissive mode (the default) leaves the pool alone and emits a
 // cost warning, matching how S15 treats an unaffordable cast.
 // Caller must hold g.mu.
-func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, costStr string, params ActivateAbilityParams) error {
+// `spendCtx` describes the ability's SOURCE permanent, which is what
+// a restricted token is matched against when the restriction says
+// "activate abilities of …" (#352).
+func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, costStr string, params ActivateAbilityParams, spendCtx ManaSpendContext) error {
 	cost, err := ParseCost(costStr)
 	if err != nil {
 		return ErrInvalidParam
 	}
 	if !params.Strict && !params.AutoTap {
-		if !p.ManaPool.CanPay(cost, 0) {
+		if !p.ManaPool.CanPayFor(cost, 0, spendCtx) {
 			g.EmitEvent(Event{
 				Kind:   EventCostWarning,
 				Actor:  p.ID,
@@ -381,19 +387,19 @@ func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, costStr s
 			})
 			return nil
 		}
-		p.ManaPool.SpendMana(cost, 0)
+		p.ManaPool.SpendManaFor(cost, 0, spendCtx)
 		return nil
 	}
-	if params.AutoTap && !p.ManaPool.CanPay(cost, 0) {
+	if params.AutoTap && !p.ManaPool.CanPayFor(cost, 0, spendCtx) {
 		plan, ok := g.autoTapLocked(p.ID, cost, 0, nil)
 		if !ok {
-			return &InsufficientManaError{Missing: p.ManaPool.Missing(cost, 0)}
+			return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, 0, spendCtx)}
 		}
 		g.materializePlanLocked(p, plan, cost)
 	}
-	if !p.ManaPool.CanPay(cost, 0) {
-		return &InsufficientManaError{Missing: p.ManaPool.Missing(cost, 0)}
+	if !p.ManaPool.CanPayFor(cost, 0, spendCtx) {
+		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, 0, spendCtx)}
 	}
-	p.ManaPool.SpendMana(cost, 0)
+	p.ManaPool.SpendManaFor(cost, 0, spendCtx)
 	return nil
 }
