@@ -552,6 +552,12 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			OldZone: src.Kind,
 			NewZone: ZoneBattlefield,
 			Actor:   playerID,
+			// A land's entry can now pause on a prompt (the
+			// shockland's "pay 2 life"), and this branch returns to
+			// the client when it does. Flag the event so the resume
+			// path knows it may finish the push on this branch's
+			// behalf — see executeEntryToBattlefieldLocked.
+			entryResumable: true,
 		}
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
@@ -858,15 +864,7 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 		if card == nil || card.Tapped {
 			continue
 		}
-		abilities := ManaAbilitiesForCard(*card)
-		var ab *ManaAbilityShape
-		for i := range abilities {
-			a := abilities[i]
-			if a.TapCost && !a.SacrificeCost {
-				ab = &a
-				break
-			}
-		}
+		ab := autoTapAbilityFor(ManaAbilitiesForCard(*card))
 		if ab == nil {
 			continue
 		}
@@ -879,8 +877,16 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 		g.EmitEvent(Event{Kind: EventManaAbilityActivated, Actor: p.ID, Source: cardID})
 		for _, slot := range slots {
 			options := slot.Options
-			if len(options) > 1 && len(identity) > 0 {
-				options = intersectColors(options, identity)
+			if len(options) > 1 && len(identity) > 0 && !ab.IgnoreCommanderIdentity {
+				// Mirror ActivateManaAbility's narrowing, including
+				// its no-overlap fallback: an intersection that came
+				// back empty means the identity says nothing useful
+				// about this slot, and dropping the mana on the floor
+				// would silently short the plan the solver just
+				// validated against the raw option set.
+				if narrowed := intersectColors(options, identity); len(narrowed) > 0 {
+					options = narrowed
+				}
 			}
 			color := pickColorForSlot(options, &pending)
 			if color == "" {
@@ -2616,7 +2622,25 @@ func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 // (ErrAlreadyTapped), or the ability index is out of bounds
 // (ErrInvalidParam). Commander-identity filtering for Arcane Signet
 // happens inline: the engine intersects the pipe set with the
-// controller's commander's color identity before queuing the pick.
+// controller's commander's color identity before queuing the pick —
+// unless the ability set IgnoreCommanderIdentity, which City of Brass
+// and the painland duals do because their printed text names their
+// colours outright.
+//
+// S22 adds the last two pieces the painland / Talisman / Ancient Tomb
+// / Mana Confluence batch needed:
+//
+//   - ManaAbilityShape.LifeCost, a "Pay N life" cost component,
+//     validated alongside the tap and sacrifice components before any
+//     of them is paid (so a rejected activation never leaves the
+//     source tapped) and paid between the tap and the sacrifice;
+//   - ManaAbilityShape.Rider, everything the oracle text says after
+//     the "Add …" clause, run once the produced mana is in the pool.
+//
+// Any activation that pays life, sacrifices, or fires a rider runs a
+// state-based-action pass on the way out, so a player who taps
+// Ancient Tomb at 2 life loses here rather than at the next priority
+// boundary.
 //
 // Added in S15 sub-PR 2.
 // ManaAbilityParams carries the choices a mana ability's cost needs
@@ -2693,6 +2717,20 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	if err != nil {
 		return err
 	}
+	if ab.LifeCost > 0 && p.Life < ab.LifeCost {
+		// CR 118.8: you can't pay more life than you have. Paying
+		// down to exactly 0 is legal and the SBA loop ends the game
+		// after. Same gate ActivateCatalogAbility applies to
+		// AbilityCost.Life.
+		return ErrInvalidParam
+	}
+
+	// needStateChecks is set by any component of this activation
+	// that can kill a player or a permanent — a sacrifice, a life
+	// payment, a damage rider. A single deferred pass covers all of
+	// them, so a painland activated at 1 life loses the game on the
+	// way out of this call rather than at some later boundary.
+	needStateChecks := false
 
 	// --- pay ----------------------------------------------------
 	//
@@ -2702,6 +2740,16 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	if ab.TapCost {
 		card.Tapped = true
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
+	}
+	// Life after tap, before sacrifice — the same component order
+	// ActivateCatalogAbility pays an AbilityCost in (mana → tap →
+	// life → sacrifice). It matters only for the event log, since
+	// every component was validated above.
+	if ab.LifeCost > 0 {
+		if err := g.ChangePlayerLifeForEffect(cardID, playerID, -ab.LifeCost); err != nil {
+			return err
+		}
+		needStateChecks = true
 	}
 	// S21 sub-PR 1 made sacrifice-self costs real (Treasure, Eldrazi
 	// Spawn, Lotus Petal); the mana-cost pass adds sacrifice-another
@@ -2722,8 +2770,13 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		// Artist feeding off an Altar). Drain them on the way out, so
 		// the mana is already in the pool when they resolve — which
 		// is what makes an Altar plus a payoff a real engine.
-		defer g.runStateChecksLocked()
+		needStateChecks = true
 	}
+	defer func() {
+		if needStateChecks {
+			g.runStateChecksLocked()
+		}
+	}()
 	g.EmitEvent(Event{
 		Kind:   EventManaAbilityActivated,
 		Actor:  playerID,
@@ -2761,7 +2814,15 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		// identity is empty (placeholder commanders from the demo seed),
 		// fall through to the raw option set so Birds of Paradise still
 		// offers the full five colors.
-		filtered := filterPipeByCommanderIdentity(options, p)
+		//
+		// S22: an ability whose printed text does NOT mention the
+		// commander's identity opts out — City of Brass says "any
+		// color", a painland names two specific colors, and neither
+		// should shrink because of who's in the command zone.
+		filtered := options
+		if !ab.IgnoreCommanderIdentity {
+			filtered = filterPipeByCommanderIdentity(options, p)
+		}
 		// Queue the pick.
 		g.QueueChoiceForEffect(PendingChoice{
 			Kind:         PendingChoiceMana,
@@ -2772,6 +2833,30 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			Reason:       ab.Label,
 			ColorOptions: filtered,
 		})
+	}
+	// --- rider --------------------------------------------------
+	//
+	// CR 605.3a: a mana ability resolves the instant it's activated,
+	// so everything after the "Add …" clause — the painland cycle's
+	// "This land deals 1 damage to you", Ancient Tomb's 2 — happens
+	// here, with the mana already in the pool and no priority window
+	// in between. A pipe slot that queued a PendingChoiceMana above
+	// is no exception: the colour is still unpicked, but the damage
+	// is not waiting on it.
+	//
+	// The rider runs even when the produced mana went nowhere, which
+	// is what the printed cards say: "This land deals 1 damage to
+	// you" is not conditional on the mana being useful.
+	if ab.Rider != nil {
+		needStateChecks = true
+		if err := ab.Rider(g, playerID, cardID); err != nil {
+			g.EmitEvent(Event{
+				Kind:     EventEffectError,
+				Actor:    playerID,
+				Source:   cardID,
+				ErrorMsg: err.Error(),
+			})
+		}
 	}
 	return nil
 }

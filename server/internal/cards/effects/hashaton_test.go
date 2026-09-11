@@ -23,15 +23,14 @@ import (
 //     temples_test.go.
 
 const (
-	hashatonOracle         = "db266661-f783-4907-9e52-6963eec05431"
-	reanimateOracle        = "a044474a-cd72-4e9d-bd8d-a08f2de9cdc0"
-	zombifyOracle          = "bb95db4d-5017-4121-bf79-d68476602d8c"
-	lateToDinnerOracle     = "31bf199b-dfb1-428e-96a5-eb25104e2b43"
-	darkslickShoresOracle  = "a2b48695-f7d7-42ce-a8a0-2a723428542a"
-	glacialFortressOracle  = "027dd013-baa7-4111-b3c9-f4d1414e9c45"
-	desertedBeachOracle    = "f0ec8681-da50-466b-8cdd-1dc710deccd9"
-	hallowedFountainOracle = "f1750962-a87c-49f6-b731-02ae971ac6ea"
-	testOgreOracle         = "00000000-0000-4000-8000-00000000ffff"
+	hashatonOracle        = "db266661-f783-4907-9e52-6963eec05431"
+	reanimateOracle       = "a044474a-cd72-4e9d-bd8d-a08f2de9cdc0"
+	zombifyOracle         = "bb95db4d-5017-4121-bf79-d68476602d8c"
+	lateToDinnerOracle    = "31bf199b-dfb1-428e-96a5-eb25104e2b43"
+	darkslickShoresOracle = "a2b48695-f7d7-42ce-a8a0-2a723428542a"
+	glacialFortressOracle = "027dd013-baa7-4111-b3c9-f4d1414e9c45"
+	desertedBeachOracle   = "f0ec8681-da50-466b-8cdd-1dc710deccd9"
+	testOgreOracle        = "00000000-0000-4000-8000-00000000ffff"
 )
 
 // seedGraveyardCreature puts a creature card with a real mana cost
@@ -484,56 +483,5 @@ func TestSlowlandEntersUntappedLate(t *testing.T) {
 	card, _ := battlefieldCard(g, id)
 	if card.Tapped {
 		t.Error("entered tapped with two other lands")
-	}
-}
-
-// TestShocklandPaysTwoLifeToUntap pins the declared simplification
-// as well as the behaviour: the land ENTERS tapped (no tap event),
-// and the choice arrives as an optional trigger rather than as part
-// of the entry.
-func TestShocklandPaysTwoLifeToUntap(t *testing.T) {
-	g := newCatalogGame(t)
-	me := g.Seats[g.Turn.ActiveSeat]
-	lifeBefore := me.Life
-
-	id := playLandFromHand(t, g, "Hallowed Fountain", hallowedFountainOracle)
-	card, ok := battlefieldCard(g, id)
-	if !ok {
-		t.Fatal("Hallowed Fountain is not on the battlefield")
-	}
-	if !card.Tapped {
-		t.Fatal("the shockland did not enter tapped")
-	}
-	if n := tapEventsFor(g, id); n != 0 {
-		t.Errorf("%d tap events; the land should have ENTERED tapped", n)
-	}
-
-	answerLatestTriggerPrompt(t, g, me.ID, true)
-	passPriorityAroundTable(t, g)
-
-	card, _ = battlefieldCard(g, id)
-	if card.Tapped {
-		t.Error("paid 2 life and the land is still tapped")
-	}
-	if got := lifeBefore - me.Life; got != 2 {
-		t.Errorf("life paid: got %d, want 2", got)
-	}
-}
-
-func TestShocklandDeclineStaysTapped(t *testing.T) {
-	g := newCatalogGame(t)
-	me := g.Seats[g.Turn.ActiveSeat]
-	lifeBefore := me.Life
-
-	id := playLandFromHand(t, g, "Hallowed Fountain", hallowedFountainOracle)
-	answerLatestTriggerPrompt(t, g, me.ID, false)
-	passPriorityAroundTable(t, g)
-
-	card, _ := battlefieldCard(g, id)
-	if !card.Tapped {
-		t.Error("declined the 2 life and the land untapped anyway")
-	}
-	if me.Life != lifeBefore {
-		t.Errorf("life changed on a decline: got %d, want %d", me.Life, lifeBefore)
 	}
 }
