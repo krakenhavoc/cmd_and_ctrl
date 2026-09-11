@@ -49,13 +49,16 @@ jobs:
           go-version: "1.22"
           cache: false
 
-      # cache: false for the same reason as Go above -- ~/.npm persists
-      # on a self-hosted runner, and restoring over it fails the same way.
+      # No `cache:` input, for the same reason as Go above -- ~/.npm
+      # persists on a self-hosted runner and restoring over it fails the
+      # same way. Note setup-node's `cache` is an enum of package
+      # managers (npm/yarn/pnpm), NOT a boolean: `cache: false` is a
+      # hard error ("Caching for 'false' is not supported"). Omitting
+      # the input is how you turn it off.
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "22"
-          cache: false
 
       # The Scryfall default-cards dump is ~400-500 MB; cache it keyed
       # by day so push-triggered runs after the nightly refresh skip
