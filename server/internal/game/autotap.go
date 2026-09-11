@@ -144,16 +144,7 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if excluded[c.InstanceID] {
 			continue
 		}
-		abilities := ManaAbilitiesForCard(c)
-		var picked *ManaAbilityShape
-		for i := range abilities {
-			a := abilities[i]
-			if !a.TapCost || a.SacrificeCost {
-				continue
-			}
-			picked = &a
-			break
-		}
+		picked := autoTapAbilityFor(ManaAbilitiesForCard(c))
 		if picked == nil {
 			continue
 		}
@@ -167,17 +158,71 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		// activation will actually produce. Birds of Paradise
 		// (no commander filter when identity is empty) keeps the
 		// raw 5-color set.
-		if len(identity) > 0 {
+		//
+		// S22: an ability that opted out of the narrowing
+		// (IgnoreCommanderIdentity) keeps its printed option set
+		// here too, and an intersection that comes back empty falls
+		// back to the raw set exactly as the activation path does.
+		if len(identity) > 0 && !picked.IgnoreCommanderIdentity {
 			for i, slot := range slots {
 				if len(slot.Options) <= 1 {
 					continue
 				}
-				slots[i].Options = intersectColors(slot.Options, identity)
+				if narrowed := intersectColors(slot.Options, identity); len(narrowed) > 0 {
+					slots[i].Options = narrowed
+				}
 			}
 		}
 		out = append(out, tapSource{CardID: c.InstanceID, Slots: slots})
 	}
 	return out
+}
+
+// autoTapAbilityFor picks the one mana ability the auto-tapper is
+// willing to fire on a permanent, or nil when none qualifies. Shared
+// by the planner (gatherTapSources) and the executor
+// (materializePlanLocked) so the two can never disagree about which
+// ability index a planned card is going to be tapped for.
+//
+// Three exclusions, all for the same reason — the auto-tapper's
+// contract is "no further player decisions and no hidden costs":
+//
+//   - a sacrifice cost needs a permanent named (S15's original note);
+//   - a life cost spends a resource the player never agreed to spend
+//     (Mana Confluence);
+//   - a rider spends one too, one the player can't decline (Ancient
+//     Tomb's 2 damage).
+//
+// The painland and Talisman cycles come through this filter intact,
+// because on those cards the painless "{T}: Add {C}" is ability 0 and
+// the rider lives on ability 1 — the auto-tapper plans them as
+// colorless sources and leaves the painful colored half to a
+// deliberate click. Ancient Tomb and Mana Confluence have no painless
+// ability and drop out of auto-tap planning entirely; they are still
+// fully activatable by hand from the permanent's ability menu.
+//
+// City of Brass deliberately does NOT drop out: its pain is a
+// separate "whenever this land becomes tapped" TRIGGER, not part of
+// the mana ability, and it fires on the EventTapCard that
+// materializePlanLocked emits just as it does on a hand-clicked
+// activation. Auto-tapping it costs the printed point of damage,
+// which is the right answer.
+//
+// S15's other standing limitation is unchanged: one ability per card,
+// because a tapSource that offered two would let the solver tap the
+// same permanent twice.
+func autoTapAbilityFor(abilities []ManaAbilityShape) *ManaAbilityShape {
+	for i := range abilities {
+		a := abilities[i]
+		if !a.TapCost || a.SacrificeCost {
+			continue
+		}
+		if a.LifeCost > 0 || a.Rider != nil {
+			continue
+		}
+		return &a
+	}
+	return nil
 }
 
 // restrictivenessScore lower = more restrictive (better picked
