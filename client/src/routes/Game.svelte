@@ -18,7 +18,7 @@
   import type { StepID } from "../lib/turn";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
-  import { hasAnyLegalResponse } from "../lib/priority";
+  import { hasAnyLegalResponse, owesBlockDecision } from "../lib/priority";
   import { stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
 
@@ -138,6 +138,21 @@
     // race the modal and let priority slip away before the player
     // answers. The chooser must resolve their pending choice first.
     if (view?.pending_choices?.some((c) => c.chooser === viewerID)) return;
+    // #328: never auto-pass a declare-blockers window the viewer can
+    // actually block in. This sits with the mulligan and pending-
+    // choice guards, ABOVE the autopass toggle, because it is the
+    // same kind of thing: a turn-based action the player owes, not a
+    // priority response they may decline to make. Declining to block
+    // is still legal — an explicit pass is how you decline — but a
+    // human has to be the one who does it. The reporter had the
+    // toggle on and lost 8 life to three unblocked attackers with an
+    // untapped creature out; a skipped block cannot be undone and
+    // there is no workaround.
+    //
+    // Holds while ANY eligible blocker remains, not just until the
+    // first declaration — otherwise auto-pass would slam the window
+    // shut the moment you assigned one blocker of an intended two.
+    if (owesBlockDecision(view, viewerID)) return;
     const step = view?.turn?.step;
     if (!step) return;
 

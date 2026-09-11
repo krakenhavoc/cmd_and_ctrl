@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand/v2"
+	"reflect"
 	"testing"
 
 	"github.com/google/uuid"
@@ -292,7 +293,10 @@ func TestViewOfGameJSONRoundTrip(t *testing.T) {
 	if back.ID != v.ID {
 		t.Errorf("id: got %q, want %q", back.ID, v.ID)
 	}
-	if back.Turn != v.Turn {
+	// reflect.DeepEqual rather than ==: TurnView carries the #328
+	// block_decision_seats slice, so the struct is no longer
+	// comparable with ==.
+	if !reflect.DeepEqual(back.Turn, v.Turn) {
 		t.Errorf("turn: got %+v, want %+v", back.Turn, v.Turn)
 	}
 	if len(back.Seats) != len(v.Seats) {

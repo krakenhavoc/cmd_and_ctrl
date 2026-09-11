@@ -775,6 +775,20 @@ type TurnView struct {
 	PriorityHolder int    `json:"priority_holder"`
 	Phase          string `json:"phase"`
 	Step           string `json:"step"`
+	// BlockDecisionSeats lists the seat indices that owe a
+	// declare-blockers decision right now — under attack, with at
+	// least one creature that could legally block one of the
+	// attackers (CR 509.1a / 509.1b). Empty and omitted outside the
+	// declare_blockers step.
+	//
+	// #328: blocking is a turn-based action, not a response, so the
+	// client's "does this player have a legal response?" auto-pass
+	// predicate could never see it and happily passed the defending
+	// player's one chance to block. This field is what the client
+	// consults to refuse to auto-pass the window. Public
+	// information — attackers and untapped creatures are both on the
+	// board — so it survives per-viewer filtering unredacted.
+	BlockDecisionSeats []int `json:"block_decision_seats,omitempty"`
 }
 
 // ViewOfGameFor builds a per-viewer wire snapshot. Same shape as
@@ -824,6 +838,10 @@ func ViewOfGame(g *game.Game) GameView {
 				PriorityHolder: g.Turn.PriorityHolder,
 				Phase:          string(g.Turn.Phase),
 				Step:           string(g.Turn.Step),
+				// #328: who still owes a block declaration. Read
+				// surface takes the lock we already hold and the
+				// layers ReadSnapshot just refreshed.
+				BlockDecisionSeats: g.SeatsOwingBlockDecisionLocked(),
 			},
 			MulligansOpen:     g.MulligansOpen,
 			Monarch:           uuidStringOrEmpty(g.Monarch),
