@@ -201,6 +201,12 @@ export interface GameView {
   // omits it entirely. Client predicates stay permissive when it is
   // missing and let the server do the rejecting.
   legal_moves?: LegalMoveView[];
+  // The public game log (S31 sub-PR 0, ADR 0033 §4): the last ~200
+  // table-visible events, oldest first. Every card reference in it has
+  // been through the same visibility filter as the zones above, so an
+  // entry naming a card is an entry this viewer is entitled to see
+  // named. Absent on a game that has produced no events yet.
+  log?: LogEvent[];
 }
 
 // LegalMoveView mirrors `legal.Move` server-side (ADR 0033 §1): one
@@ -229,12 +235,6 @@ export interface LegalMoveView {
   // apply to a UUID array — so join on equality with a real instance
   // ID and never on presence.
   source?: string;
-  // The public game log (S31 sub-PR 0, ADR 0033 §4): the last ~200
-  // table-visible events, oldest first. Every card reference in it has
-  // been through the same visibility filter as the zones above, so an
-  // entry naming a card is an entry this viewer is entitled to see
-  // named. Absent on a game that has produced no events yet.
-  log?: LogEvent[];
 }
 
 // LogKind mirrors `protocol.LogKind` server-side. Coarser than the
