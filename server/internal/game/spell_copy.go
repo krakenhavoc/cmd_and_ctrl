@@ -35,8 +35,19 @@ import "github.com/google/uuid"
 //     the copy is created, not afterwards, so the prompt is queued
 //     BEFORE anything reaches the stack and the copy is built in the
 //     resume. That ordering also gives the copy the top of the stack
-//     for free: a pending choice stops priority, so nothing else can
-//     be added while the prompt is open.
+//     for free: an open pending choice suppresses every other move, so
+//     nothing can be added or resolved while the prompt is waiting.
+//
+//     That suppression lives where it does for every other prompt kind
+//     — legal.anyChoiceOpen for the bot, and the client's own gate —
+//     rather than inside PassPriority, which has never carried the
+//     check. A test that drives PassPriority directly can therefore
+//     resolve the copied spell out from under an unanswered prompt and
+//     build the copy onto an empty stack. It is a property of the raw
+//     method shared with the scry, search and sacrifice prompts, not
+//     something this file introduces; it is written down because for a
+//     copy the symptom is a wrong ORDER rather than a stuck prompt,
+//     which is the harder one to notice.
 //
 // What this deliberately does not do:
 //
@@ -253,17 +264,16 @@ func (g *Game) ceaseToExistLocked(cardID uuid.UUID) error {
 	if g.Stack == nil {
 		return nil
 	}
-	for i := range g.Stack.Cards {
-		if g.Stack.Cards[i].InstanceID != cardID {
-			continue
-		}
-		g.Stack.Cards = append(g.Stack.Cards[:i], g.Stack.Cards[i+1:]...)
-		g.EmitEvent(Event{
-			Kind:    EventZoneMove,
-			CardID:  cardID,
-			OldZone: ZoneStack,
-		})
+	if _, err := g.Stack.Remove(cardID); err != nil {
+		// Already gone — a copy that was countered and cleaned up by
+		// some other path. Nothing to do, and not an error: "it no
+		// longer exists" is the postcondition either way.
 		return nil
 	}
+	g.EmitEvent(Event{
+		Kind:    EventZoneMove,
+		CardID:  cardID,
+		OldZone: ZoneStack,
+	})
 	return nil
 }
