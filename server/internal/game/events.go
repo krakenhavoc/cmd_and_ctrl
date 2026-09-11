@@ -34,7 +34,14 @@ type EventKind string
 
 const (
 	// EventCast — a spell was cast onto the stack. CardID is the
-	// spell; Actor is the caster.
+	// spell; Actor is the caster. OldZone is the zone the card was
+	// cast FROM (hand, exile, command, graveyard) and NewZone is
+	// always ZoneStack — "whenever you cast a spell from exile"
+	// (Appa, Steadfast Guardian) reads OldZone, and CR 601.2a is the
+	// reason it has to: the card is on the stack by the time the
+	// event fires and carries no memory of where it came from.
+	// Added in S22 alongside StackItem.CastFromZone, which is the
+	// same fact recorded on the stack item.
 	EventCast EventKind = "cast"
 
 	// EventResolve — a stack item successfully resolved. CardID is
@@ -186,6 +193,37 @@ const (
 	// state. Added in S22.
 	EventAttack EventKind = "attack"
 
+	// EventBecomesTarget — an object or player became the target of
+	// a spell or ability (CR 115.7). Actor is the controller of the
+	// spell / ability, Source is its source card, Target is the
+	// thing that was targeted, and CardID repeats Target when the
+	// target is a card (uuid.Nil when it is a player) so a consumer
+	// can tell the two apart without a zone scan.
+	//
+	// Fires once per target SLOT at the moment the targets are
+	// chosen (CR 601.2c for a spell, 602.2b for an activated
+	// ability, 603.3d for a triggered one) — which is the moment the
+	// printed clause names, and is deliberately NOT resolution:
+	// "becomes the target" still fires for a spell that is later
+	// countered, and the triggers it produces go on the stack ABOVE
+	// that spell. That ordering is the whole point of Monk Gyatso:
+	// his trigger resolves first and removes the creature, so the
+	// spell that targeted it fizzles.
+	//
+	// A two-target spell emits two events; a spell that targets the
+	// same object twice (AllowSame) likewise emits two, matching CR
+	// 115.7's per-instance-of-the-word-"target" reading.
+	//
+	// Known gap: an effect that CHANGES a spell's targets after
+	// announce (Deflecting Swat, Redirect) does not re-emit, because
+	// the engine has no change-targets path at all. When one lands,
+	// it emits here too.
+	//
+	// Added in S22 for Monk Gyatso; "becomes the target of a spell
+	// or ability" is a common Commander clause and this is the only
+	// event that can serve any of it.
+	EventBecomesTarget EventKind = "becomes_target"
+
 	// EventTrigger — a triggered ability was announced onto
 	// PendingTriggers. Legacy (manual) announce goes through
 	// AnnounceTrigger in S13.1; S19's auto-announce will flow
@@ -320,6 +358,41 @@ type Event struct {
 	// a downstream prompt is answered). "Whenever ~ deals combat
 	// damage to a player" triggers read both. Added in S19 sub-PR 7.
 	Combat bool `json:"combat,omitempty"`
+}
+
+// emitBecameTargetLocked fans one EventBecomesTarget out per target
+// slot in `targets`. Called from every site that finishes choosing
+// targets for a spell or ability: the cast path, the activated-
+// ability announce, the triggered-ability target pick, and the
+// manual sandbox announce.
+//
+// `actor` is the controller of the spell or ability and `source` is
+// its source card. TargetSelf / TargetNone slots are skipped —
+// neither names an object anyone else chose.
+//
+// Emitted AFTER the item exists, so a trigger harvested off this
+// event lands on PendingTriggers above the thing that targeted.
+// Caller must hold g.mu.
+func (g *Game) emitBecameTargetLocked(actor, source uuid.UUID, targets []TargetRef) {
+	for _, t := range targets {
+		switch t.Kind {
+		case TargetCard:
+			g.EmitEvent(Event{
+				Kind:   EventBecomesTarget,
+				Actor:  actor,
+				Source: source,
+				Target: t.ID,
+				CardID: t.ID,
+			})
+		case TargetPlayer:
+			g.EmitEvent(Event{
+				Kind:   EventBecomesTarget,
+				Actor:  actor,
+				Source: source,
+				Target: t.ID,
+			})
+		}
+	}
 }
 
 // EmitEvent appends ev to the game's event log under the existing
