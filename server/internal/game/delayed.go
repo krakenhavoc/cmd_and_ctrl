@@ -79,6 +79,14 @@ type DelayedTrigger struct {
 	// step"; StepUpkeep for rebound-shaped effects.
 	At Step
 
+	// ControllerTurnOnly restricts the trigger to a step of the
+	// CONTROLLER's own turn: "at the beginning of YOUR next main
+	// phase" (Mana Drain) rather than "the next turn's upkeep"
+	// (Arcane Denial, which any player's upkeep satisfies). When set,
+	// a matching step on another player's turn leaves the trigger
+	// queued instead of firing it.
+	ControllerTurnOnly bool
+
 	// CreatedTurn is the turn number the trigger was scheduled on.
 	// Not used for firing (see the "next is free" note above) —
 	// it's there for the wire view and for debugging a queue that
@@ -159,7 +167,7 @@ func (g *Game) fireDelayedTriggersLocked(step Step) {
 		if dt == nil {
 			continue
 		}
-		if dt.At == step {
+		if dt.At == step && (!dt.ControllerTurnOnly || g.activePlayerIDLocked() == dt.Controller) {
 			fire = append(fire, dt)
 			continue
 		}
@@ -205,16 +213,26 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		return nil
 	}
 	out := &DelayedTrigger{
-		ID:           dt.ID,
-		Controller:   dt.Controller,
-		SourceCardID: dt.SourceCardID,
-		Label:        dt.Label,
-		At:           dt.At,
-		CreatedTurn:  dt.CreatedTurn,
-		Effect:       dt.Effect,
+		ID:                 dt.ID,
+		Controller:         dt.Controller,
+		SourceCardID:       dt.SourceCardID,
+		Label:              dt.Label,
+		At:                 dt.At,
+		ControllerTurnOnly: dt.ControllerTurnOnly,
+		CreatedTurn:        dt.CreatedTurn,
+		Effect:             dt.Effect,
 	}
 	if len(dt.Cards) > 0 {
 		out.Cards = append([]uuid.UUID(nil), dt.Cards...)
 	}
 	return out
+}
+
+// activePlayerIDLocked is the ID of the seat whose turn it is, or
+// uuid.Nil before the game has an active seat. Caller must hold g.mu.
+func (g *Game) activePlayerIDLocked() uuid.UUID {
+	if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) || g.Seats[g.Turn.ActiveSeat] == nil {
+		return uuid.Nil
+	}
+	return g.Seats[g.Turn.ActiveSeat].ID
 }
