@@ -427,7 +427,7 @@ worth more than three cards.
 | Layer-4 type-add feeding mana derivation | 2 | Urborg, Yavimaya (Cradle of Growth) |
 | Channel (activate by discarding from hand) | 2 | Boseiju, Otawara |
 | "As this enters, choose a creature type" + payoff | 2 | Roaming Throne, Herald's Horn |
-| Player-scoped continuous effect | 1 | Reliquary Tower (rank 10) |
+| ~~Player-scoped continuous effect~~ (unblocked, #338) | 1 | Reliquary Tower (rank 10) |
 | Mana component in a **mana** ability's cost | 1 | Dimir Signet |
 | "Doesn't untap during your untap step" | 1 | Mana Vault |
 | Sagas / lore counters | 1 | Urza's Saga |
@@ -449,11 +449,17 @@ Two notes on that table:
   card would silently do nothing. `mycosynth_lattice.go` already
   documents this exact deferral. Pointing the mana derivation at the
   post-layer type line unlocks both cards and finishes the Lattice.
-- **Reliquary Tower** (rank 10) is the highest-ranked one-card gap.
-  `Player.MaxHandSize` and `SetMaxHandSize` already exist; what is
-  missing is a way for a static ability to apply to a *player* so the
-  effect ends when the Tower leaves. Setting the field in `OnETB` would
-  make the card permanently stronger than printed, so it was skipped.
+- **Reliquary Tower** (rank 10) was the highest-ranked one-card gap.
+  **No longer blocked as of #338.** The reasoning above was right that
+  setting `Player.MaxHandSize` in `OnETB` would leave the card
+  permanently stronger than printed — so the fix does not set it at
+  all. `Spec.NoMaxHandSize` declares the clause, and the cleanup step
+  *derives* the answer by asking the battlefield
+  (`game.Game.EffectiveMaxHandSizeLocked` via the
+  `game.CatalogNoMaxHandSize` hook). With no stored value there is
+  nothing to restore, so the effect ends exactly when the Tower
+  leaves, and two such permanents compose correctly. Thought Vessel
+  already uses it; Reliquary Tower now needs only its card file.
 
 ## Two engine findings
 

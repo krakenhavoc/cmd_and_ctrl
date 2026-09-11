@@ -813,10 +813,15 @@ func (g *Game) populateDiscardPendingLocked() {
 	if p == nil || p.Eliminated {
 		return
 	}
-	if p.MaxHandSize == NoMaxHandSize {
+	// #338: the cap is DERIVED, not read straight off the player.
+	// A Thought Vessel on the battlefield lifts it without ever
+	// writing to Player.MaxHandSize, so nothing has to be restored
+	// when the permanent leaves.
+	max := g.EffectiveMaxHandSizeLocked(p)
+	if max == NoMaxHandSize {
 		return
 	}
-	over := p.Hand.Size() - p.MaxHandSize
+	over := p.Hand.Size() - max
 	if over <= 0 {
 		return
 	}

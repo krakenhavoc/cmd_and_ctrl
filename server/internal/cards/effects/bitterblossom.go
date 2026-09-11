@@ -10,7 +10,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // S19 sub-PR 5: a "your upkeep" trigger combining a life cost with
 // a token. Mandatory; the trigger goes on the stack at upkeep and
 // resolves to the life loss + token. The Faerie token's flying is
-// cosmetic (token keywords aren't enforced yet).
+// real: FaerieRogueToken carries it on Card.Keywords, which
+// printedCharacteristic folds into the layer engine (S21 sub-PR 1).
+// The "cosmetic" note here outlived the fix; corrected in the #338
+// sweep.
 func init() {
 	Register(Spec{
 		OracleID: "fb868840-09fa-49b1-85cb-b08ad065e972",

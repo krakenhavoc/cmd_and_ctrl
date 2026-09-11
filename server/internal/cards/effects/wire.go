@@ -201,6 +201,13 @@ func init() {
 	// walks the battlefield on every emit and reads this hook per
 	// card. Lookup-miss / no-triggers returns nil so the harvester's
 	// inner loop continues without allocating.
+	// #338: the one player-scoped continuous effect in the catalog.
+	// Derived on demand at cleanup rather than written into
+	// Player.MaxHandSize — see Spec.NoMaxHandSize.
+	game.CatalogNoMaxHandSize = func(oracleID string) bool {
+		spec, ok := Lookup(oracleID)
+		return ok && spec.NoMaxHandSize
+	}
 	game.CatalogTriggers = func(oracleID string) []game.TriggeredAbility {
 		spec, ok := Lookup(oracleID)
 		if !ok || len(spec.Triggered) == 0 {

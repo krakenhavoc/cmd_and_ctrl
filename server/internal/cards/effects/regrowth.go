@@ -4,29 +4,33 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Regrowth — "Return target card from your graveyard to your hand."
 //
-// S14 sandbox simplification: no graveyard-picker UI yet. The
-// primitive auto-picks the MOST RECENTLY added card in the
-// controller's graveyard (top of the pile). Players who want a
-// specific card can rearrange their graveyard through the existing
-// drag-and-drop affordance before casting. A proper "target a card
-// in graveyard" picker is S20 smart-cast territory. TargetMode
-// stays empty so the client skips the cast-time prompt.
+// The controller picks the card. Targets is "target card in your
+// graveyard", validated at announce (CR 601.2c) and re-checked on
+// resolution (CR 608.2b) like any other target.
 //
-// Regrowth itself does not sit in the caster's graveyard at
-// resolution time — OnResolve runs before zone routing, so the
-// spell is still on the stack when we read the graveyard pile.
-// This matters: otherwise Regrowth would tend to return itself.
+// #338 stale-simplification sweep: this shipped in S14 auto-picking
+// the MOST RECENTLY added card in the controller's graveyard,
+// because there was no graveyard picker. S20 sub-PR 2 built one and
+// converted Eternal Witness — the identical clause — to
+// TargetCardInGraveyard, but Regrowth was left on the auto-pick. A
+// player casting it got the top of the pile rather than the card
+// they wanted, which is the whole point of the spell.
+//
+// Regrowth cannot return itself: at announce it is still on the
+// stack, not in the graveyard, so it is never a legal candidate.
 func init() {
 	Register(Spec{
 		OracleID: "e6e4a8bd-5c40-4654-8de1-0da9afed90fd",
 		Name:     "Regrowth",
+		Targets:  TargetCardInGraveyard("target card in your graveyard", YouOwn()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			controller := ctx.PlayerByID(ctx.Controller())
-			if controller == nil || controller.Graveyard.Size() == 0 {
+			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil
 			}
-			top := controller.Graveyard.Cards[controller.Graveyard.Size()-1].InstanceID
-			return ReturnFromGraveyard{Target: top, Dest: game.ZoneHand}.Apply(ctx)
+			return ReturnFromGraveyard{
+				Target: item.Targets[0].ID,
+				Dest:   game.ZoneHand,
+			}.Apply(ctx)
 		},
 	})
 }

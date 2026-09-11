@@ -461,6 +461,12 @@ type PlayerView struct {
 	// seated player; -1 sentinel disables the cap (Reliquary Tower
 	// / Thought Vessel). Surfaced on the wire so clients can
 	// render "8 / ∞" or "3 / 2" next to the hand-count badge.
+	//
+	// This is the EFFECTIVE cap, not the raw Player.MaxHandSize:
+	// a controlled permanent with Spec.NoMaxHandSize reports -1
+	// here without the underlying field being written. Otherwise the
+	// badge would keep saying "10 / 7" for a player the cleanup step
+	// is (correctly) never going to prompt (#338).
 	MaxHandSize int `json:"max_hand_size"`
 
 	// ManaPool is the player's current mana pool projection — one
@@ -859,7 +865,7 @@ func ViewOfGame(g *game.Game) GameView {
 		view = GameView{
 			ID:          g.ID.String(),
 			State:       string(g.State),
-			Seats:       viewOfSeats(g.Seats),
+			Seats:       viewOfSeats(g, g.Seats),
 			Battlefield: viewOfZone(g.Battlefield),
 			Stack:       viewOfZone(g.Stack),
 			Exile:       viewOfZone(g.Exile),
@@ -1387,15 +1393,15 @@ func viewOfStackItem(it *game.StackItem) StackItemView {
 	return view
 }
 
-func viewOfSeats(seats []*game.Player) []PlayerView {
+func viewOfSeats(g *game.Game, seats []*game.Player) []PlayerView {
 	out := make([]PlayerView, len(seats))
 	for i, p := range seats {
-		out[i] = viewOfPlayer(p)
+		out[i] = viewOfPlayer(g, p)
 	}
 	return out
 }
 
-func viewOfPlayer(p *game.Player) PlayerView {
+func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 	cmdrDamage := make(map[string]int, len(p.CommanderDamage))
 	for k, v := range p.CommanderDamage {
 		cmdrDamage[k.String()] = v
@@ -1445,7 +1451,7 @@ func viewOfPlayer(p *game.Player) PlayerView {
 		DisplayName:       p.DisplayName,
 		CommanderCasts:    cmdrCasts,
 		Counters:          cloneStringIntMap(p.Counters),
-		MaxHandSize:       p.MaxHandSize,
+		MaxHandSize:       g.EffectiveMaxHandSizeLocked(p),
 		ManaPool:          manaPool,
 	}
 }

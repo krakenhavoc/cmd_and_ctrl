@@ -7,13 +7,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // with flying."
 //
 // Composition: CounterTarget → CreateToken (under the countered
-// spell's controller). Flying is cosmetic in S14 (keyword pipeline
-// is S18); the token enters as a vanilla 2/2.
+// spell's controller).
 //
-// Sandbox predicate note: like Counterspell / Negate, Swan Song
-// does not enforce the "enchantment, instant, or sorcery" gate —
-// announce-time UI lets the caster pick any stack spell. Target
-// predicate enforcement lands in S20.
+// No simplification remains, and both notes that used to sit here
+// outlived their fixes (corrected in the #338 sweep):
+//
+//   - The Bird's flying is real. WhiteBirdToken carries it on
+//     Card.Keywords (S21 sub-PR 1).
+//   - The "enchantment, instant, or sorcery" gate IS enforced. The
+//     Targets clause below declares the predicate, which S20's
+//     structured targeting checks at announce (CR 601.2c) and
+//     re-checks on resolution (CR 608.2b).
 func init() {
 	Register(Spec{
 		OracleID: "8ddfc283-c9b4-41a5-af88-cf0068e986cc",

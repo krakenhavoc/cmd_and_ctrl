@@ -294,6 +294,32 @@ type Spec struct {
 	//		Effect: ...,
 	//	}},
 	Activated []ActivatedAbility
+
+	// NoMaxHandSize declares the printed static "You have no maximum
+	// hand size" (Thought Vessel, Reliquary Tower, Spellbook,
+	// Venser's Journal). True while the permanent is on the
+	// battlefield; the controller skips the CR 402.2 cleanup-step
+	// discard entirely.
+	//
+	// This is deliberately NOT a `Static` entry. Every other
+	// continuous effect in the catalog modifies a characteristic of
+	// an OBJECT, which is what the CR 613 layer engine models —
+	// game.StaticAbility's Apply takes a *Characteristic and a
+	// target *Card, and there is no seat in that signature. "You
+	// have no maximum hand size" modifies a PLAYER, so it has no
+	// characteristic to sit in and no layer to sit at.
+	//
+	// Rather than grow a parallel player-layer pipeline for one
+	// clause, the engine DERIVES the answer: at cleanup it asks the
+	// battlefield whether the active player controls any permanent
+	// with this bit set (game.Game.EffectiveMaxHandSizeLocked, fed
+	// by the game.CatalogNoMaxHandSize hook). Nothing is written to
+	// Player.MaxHandSize, so nothing has to be restored when the
+	// permanent leaves — which is what makes two copies, and one of
+	// two leaving, come out right without any bookkeeping.
+	//
+	// Issue #338.
+	NoMaxHandSize bool
 }
 
 // ActivatedAbility is one activated ability on a permanent. Mirrors

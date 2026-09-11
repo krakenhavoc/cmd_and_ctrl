@@ -8,9 +8,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	token with flying."
 //
 // S19 sub-PR 4: a mandatory LTB trigger that creates one token via
-// the CreateToken primitive when it resolves. Flying on the Spirit
-// token is cosmetic (token keywords aren't mechanically enforced
-// yet). cardDied gates the trigger to graveyard-only.
+// the CreateToken primitive when it resolves. cardDied gates the
+// trigger to graveyard-only.
+//
+// Flying on the Spirit token is real: SpiritToken carries it on
+// Card.Keywords, which printedCharacteristic folds into the layer
+// engine (S21 sub-PR 1). The "cosmetic" note here outlived the fix;
+// corrected in the #338 sweep.
 func init() {
 	Register(Spec{
 		OracleID: "a30907c0-fbde-4fd3-a8c7-f304305fcea7",

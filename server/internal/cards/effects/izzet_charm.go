@@ -11,9 +11,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // S20 sub-PR 4. Mode 0 composes the S19 PayUnless prompt with
 // CounterTarget: the targeted spell's controller gets the pay
-// prompt, and declining counters the spell. Mode 2's discard is the
-// S14 random-discard primitive — the "you choose" picker is still
-// deferred.
+// prompt, and declining counters the spell.
+//
+// #338 stale-simplification sweep: mode 2 used to note that "the
+// 'you choose' picker is still deferred" and discard at random. The
+// picker exists — DiscardChoiceForEffect, wrapped by lootOne, is
+// what Faithless Looting and Frantic Search already use — so the
+// controller now picks their two discards, in the printed order
+// (draw first, so a drawn card is a legal discard).
 func init() {
 	Register(Spec{
 		OracleID: "a07698f6-5ad5-49a3-9da2-f82d407f5cd7",
@@ -53,11 +58,7 @@ func init() {
 				}
 				return DealDamage{Source: ctx.Source(), Target: item.Targets[0].ID, Amount: 2}.Apply(ctx)
 			case ctx.HasMode(2):
-				me := ctx.Controller()
-				if err := (DrawCards{Player: me, N: 2}).Apply(ctx); err != nil {
-					return err
-				}
-				return DiscardCards{Player: me, N: 2}.Apply(ctx)
+				return lootOne(ctx.Game, item, 2)
 			}
 			return nil
 		},

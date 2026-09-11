@@ -18,9 +18,12 @@ import (
 // PayUnless prompt for the drawer; declining hands the Tithe's
 // controller a Treasure.
 //
-// Sandbox: the Treasure's sac-for-mana ability is inert until S21
-// (see TreasureToken). Players who want to spend one today do it
-// the S13 way — tap-and-track.
+// No simplification remains. The Treasure's "{T}, Sacrifice this
+// artifact: Add one mana of any color" went live in S21 sub-PR 1 —
+// TreasureToken carries it on Card.ManaAbilities, which
+// ManaAbilitiesForCard prefers over the catalog (a token has no
+// oracle ID to look up). The note here claiming it was inert
+// outlived the fix; corrected in the #338 sweep.
 func init() {
 	Register(Spec{
 		OracleID: "153376c9-dffd-458c-8ce3-a4c8269bc4e9",
