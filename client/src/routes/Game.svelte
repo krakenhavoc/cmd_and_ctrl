@@ -19,6 +19,13 @@
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
   import { hasAnyLegalResponse } from "../lib/priority";
+  import {
+    attackAllLabel,
+    attackAllParams,
+    blockedSummary,
+    planAttackAll,
+    seatLabel,
+  } from "../lib/attackAll";
   import { stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
   import { holdPriority, ownsEveryStackItem } from "../lib/holdPriority";
@@ -556,6 +563,54 @@
     combatSelection = null;
     play("attack");
   }
+  // ---- Attack with all (#318) ----
+  // Declaring a wide board one creature at a time is the loudest
+  // ergonomics complaint from live play. The cluster below sits in
+  // the attention strip for the whole declare-attackers step and
+  // offers one button per attackable opponent.
+  //
+  // "Attack all" is ambiguous at a Commander table, so this never
+  // guesses: it does NOT spread creatures across opponents. Every
+  // eligible creature goes at ONE named seat, and the seat's name is
+  // on the button the player presses. Splitting an attack is a
+  // strategic choice with no defensible default, so it stays on the
+  // two-click flow and the per-card context menu.
+  //
+  // The whole set goes out as a single `declare_attackers` action.
+  // Looping the per-creature verb would push one undo entry and one
+  // broadcast per creature — a twelve-creature alpha strike would
+  // need twelve undo presses against a per-turn budget of one. One
+  // action means one snapshot and one exact inverse.
+  const attackPlan = $derived(planAttackAll(view, viewerID));
+  const attackAllReady = $derived(
+    canDeclareAttackers && attackPlan.eligible.length > 0 && attackPlan.defenders.length > 0,
+  );
+  const attackBlockedHint = $derived(blockedSummary(attackPlan.blocked));
+
+  function attackAllAt(defenderSeatID: string): void {
+    const params = attackAllParams(attackPlan, defenderSeatID);
+    if (!params) return;
+    combatSelection = null;
+    client.sendAction("declare_attackers", undefined, params);
+    play("attack");
+  }
+
+  // The inverse of a wide declaration is undo, not a bulk "unattack":
+  // nothing in the engine records which creatures the declaration
+  // tapped, so clearing declarations afterwards would strand them
+  // tapped and not attacking — strictly worse than never having
+  // clicked. Because the bulk declare is one room.Apply, a single
+  // undo restores tap state and declarations together. That is why
+  // this button is here rather than only in the ⋯ menu.
+  const canUndoDeclaration = $derived(
+    canDeclareAttackers &&
+      attackPlan.declared.length > 0 &&
+      (isAdmin || (viewerSeat?.undos_remaining ?? 0) > 0),
+  );
+  function undoDeclaration(): void {
+    client.sendAction("undo");
+  }
+
   function declareBlockTarget(attackerCardID: string): void {
     if (!viewerID || combatSelection?.kind !== "blocker") return;
     client.sendAction("declare_blocker", undefined, {
@@ -902,6 +957,75 @@
              Nothing here pushes the table around. -->
         {#snippet attention()}
           <TargetingBanner />
+
+          <!-- #318: the attack-with-all cluster. Present for the whole
+               declare-attackers step so the count stays live as
+               creatures are declared one by one; it disappears the
+               moment nothing is left that could attack. -->
+          {#if canDeclareAttackers && !mulligansOpen && !gameEnded && (attackAllReady || canUndoDeclaration)}
+            <div class="att attack-all" aria-label="declare attackers">
+              <span class="att-label danger">
+                <Icon name="sword" size={12} />
+                attack
+              </span>
+              <span class="att-text">
+                {#if attackAllReady}
+                  <strong>{attackPlan.eligible.length}</strong>
+                  ready to attack
+                  {#if attackPlan.declared.length > 0}
+                    <span class="muted">· {attackPlan.declared.length} already declared</span>
+                  {/if}
+                  {#if attackBlockedHint}
+                    <span class="muted">· can't: {attackBlockedHint}</span>
+                  {/if}
+                {:else}
+                  <strong>{attackPlan.declared.length}</strong>
+                  declared
+                  {#if attackBlockedHint}
+                    <span class="muted">· {attackBlockedHint} can't attack</span>
+                  {/if}
+                {/if}
+              </span>
+              {#if attackAllReady}
+                {#if attackPlan.defenders.length === 1}
+                  <button
+                    type="button"
+                    class="primary att-btn"
+                    title={attackAllLabel(attackPlan, attackPlan.defenders[0])}
+                    onclick={() => attackAllAt(attackPlan.defenders[0].id)}
+                  >
+                    {attackAllLabel(attackPlan, attackPlan.defenders[0])}
+                  </button>
+                {:else}
+                  <!-- Multi-opponent: one button per seat rather than a
+                       bare "attack all", so the control always says who
+                       gets hit. Nothing here spreads an attack. -->
+                  <span class="att-text all-at">Attack all →</span>
+                  {#each attackPlan.defenders as opp (opp.id)}
+                    <button
+                      type="button"
+                      class="att-btn opp-btn"
+                      title={attackAllLabel(attackPlan, opp)}
+                      onclick={() => attackAllAt(opp.id)}
+                    >
+                      <span class="seat-dot" style="background:{seatColor(opp.seat)}"></span>
+                      {seatLabel(opp)}
+                    </button>
+                  {/each}
+                {/if}
+              {/if}
+              {#if canUndoDeclaration}
+                <button
+                  type="button"
+                  class="ghost att-btn"
+                  title="take back your last declaration — restores tap state too"
+                  onclick={undoDeclaration}
+                >
+                  <Icon name="undo" size={12} /> Undo
+                </button>
+              {/if}
+            </div>
+          {/if}
 
           {#if combatSelection && !mulligansOpen}
             <div class="att combat-hint" role="status" aria-live="polite">
@@ -1504,6 +1628,25 @@
   .mana-override,
   .game-end {
     border-color: rgba(217, 180, 92, 0.45);
+  }
+
+  /* #318 attack-with-all cluster. Wraps rather than overflowing —
+     a four-player table puts three opponent buttons in the strip and
+     the strip is only ~512px wide. */
+  .attack-all {
+    flex-wrap: wrap;
+    border-color: rgba(255, 122, 122, 0.4);
+  }
+  .attack-all .all-at {
+    flex: 0 0 auto;
+    color: var(--fg-dim);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .attack-all .opp-btn {
+    border-color: rgba(255, 122, 122, 0.35);
   }
   .toast.error,
   .eliminated {

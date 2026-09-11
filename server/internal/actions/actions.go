@@ -41,9 +41,18 @@ const (
 	TypeConcede                Type = "concede"
 	TypeKeepHand               Type = "keep_hand"
 	TypeDeclareAttacker        Type = "declare_attacker"
-	TypeDeclareBlocker         Type = "declare_blocker"
-	TypeClearCombat            Type = "clear_combat"
-	TypeAdvanceStep            Type = "advance_step"
+	// TypeDeclareAttackers (plural) declares a whole attacking set in
+	// one mutation — the wire verb behind the client's "attack with
+	// all" cluster (#318). Params carry
+	// `{attackers: [{attacker, target}, ...]}`; ineligible entries are
+	// skipped silently by game.DeclareAttackers. Deliberately NOT a
+	// loop over TypeDeclareAttacker: each room.Apply pushes an undo
+	// clone and broadcasts a snapshot, so N creatures would cost N of
+	// both and N undo presses to take back.
+	TypeDeclareAttackers Type = "declare_attackers"
+	TypeDeclareBlocker   Type = "declare_blocker"
+	TypeClearCombat      Type = "clear_combat"
+	TypeAdvanceStep      Type = "advance_step"
 	// S10 Commander UX additions.
 	TypeSetMonarch    Type = "set_monarch"
 	TypeSetInitiative Type = "set_initiative"
@@ -109,6 +118,21 @@ var ErrInvalidPlayer = errors.New("actions: invalid or missing player ID")
 // object is dispatched with no payload. Kept separate from JSON parse
 // errors so the client-facing message is clean.
 var ErrMissingParams = errors.New("actions: missing required params")
+
+// MaxBulkAttackers caps a single declare_attackers batch. No legal
+// board comes close; the cap just bounds the parse cost of a hostile
+// payload before it reaches the game lock.
+const MaxBulkAttackers = 256
+
+// ErrEmptyAttackerSet is returned when declare_attackers arrives with
+// an empty `attackers` list. "Attack with nobody" is the default
+// state of the step, not an action — a player who wants it passes
+// priority instead.
+var ErrEmptyAttackerSet = errors.New("actions: declare_attackers needs at least one attacker")
+
+// ErrTooManyAttackers is returned when a declare_attackers batch
+// exceeds MaxBulkAttackers entries.
+var ErrTooManyAttackers = errors.New("actions: declare_attackers batch is too large")
 
 // ErrNotPriorityHolder is returned when pass_priority is dispatched by
 // a seated player who does not currently hold priority. Admin /
@@ -608,6 +632,45 @@ func Dispatch(g *game.Game, a Action) error {
 			return err
 		}
 		return g.DeclareAttacker(attackerID, targetID)
+
+	case TypeDeclareAttackers:
+		var p struct {
+			Attackers []struct {
+				Attacker string `json:"attacker"`
+				Target   string `json:"target"`
+			} `json:"attackers"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		if len(p.Attackers) == 0 {
+			return ErrEmptyAttackerSet
+		}
+		if len(p.Attackers) > MaxBulkAttackers {
+			return ErrTooManyAttackers
+		}
+		decls := make([]game.AttackDeclaration, 0, len(p.Attackers))
+		for _, e := range p.Attackers {
+			attackerID, err := uuid.Parse(e.Attacker)
+			if err != nil {
+				return fmt.Errorf("declare_attackers attacker: %w", err)
+			}
+			targetID, err := uuid.Parse(e.Target)
+			if err != nil {
+				return fmt.Errorf("declare_attackers target: %w", err)
+			}
+			// Authorization is NOT part of the silent-skip contract. An
+			// unattackable creature is an eligibility question and gets
+			// dropped inside the mutation; a creature the caller does not
+			// control is a permission question and rejects the whole
+			// batch, exactly as the single-card verb does.
+			if err := requireCardController(g, a.Caller, attackerID); err != nil {
+				return err
+			}
+			decls = append(decls, game.AttackDeclaration{Attacker: attackerID, Target: targetID})
+		}
+		_, err := g.DeclareAttackers(decls)
+		return err
 
 	case TypeDeclareBlocker:
 		var p struct {

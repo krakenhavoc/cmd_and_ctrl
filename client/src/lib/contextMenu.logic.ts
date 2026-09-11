@@ -19,6 +19,7 @@
 // caller that wants a two-option "yes / no" menu builds one section
 // with two action items and reuses the component verbatim.
 
+import { attackAllLabel, attackAllParams, planAttackAll, seatLabel } from "./attackAll";
 import type { ActionType, CardView, GameView } from "./protocol";
 import {
   COUNTER_CHARGE,
@@ -505,6 +506,41 @@ function combatItems(view: GameView, card: CardView): MenuItem[] {
         },
       })),
     });
+    // #318: the board-wide sibling of the row above. Same "pick a
+    // defender" submenu shape, so the bulk affordance reads as a
+    // wider version of the per-card one rather than a new idea — and
+    // it lives next to "Clear ALL combat", which is already a
+    // board-wide verb parked in this section. Rendered from the
+    // card's controller so an admin driving another seat gets that
+    // seat's board, not their own.
+    const plan = planAttackAll(view, card.controller);
+    const n = plan.eligible.length;
+    if (n === 0) {
+      items.push({
+        id: "combat-attack-all",
+        label: "Attack with all",
+        hint: "none of this seat's creatures can attack right now",
+        disabled: true,
+      });
+    } else {
+      items.push({
+        id: "combat-attack-all",
+        label: `Attack with all ${n}`,
+        hint: `declares ${n} creature${n === 1 ? "" : "s"} in one action — one undo takes it all back`,
+        items: plan.defenders.flatMap((s) => {
+          const params = attackAllParams(plan, s.id);
+          if (!params) return [];
+          return [
+            {
+              id: `combat-attack-all-${s.id}`,
+              label: seatLabel(s),
+              hint: attackAllLabel(plan, s),
+              action: { type: "declare_attackers" as ActionType, params },
+            },
+          ];
+        }),
+      });
+    }
   }
   const attackers = (view.battlefield?.cards ?? []).filter(
     (c) => !!c.attacking_target && c.controller !== card.controller,

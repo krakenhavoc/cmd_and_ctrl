@@ -344,6 +344,21 @@ func keywordLines(text string) map[string]bool {
 	return out
 }
 
+// oracleTexts returns every oracle text a printing carries: the
+// top-level one, then one per face. Scryfall fills exactly one of
+// those in — a single-faced card has top-level text and no faces, a
+// transform / modal card has null at the top level and text on each
+// face — so the union is the whole of the card's printed rules
+// without the caller having to know which shape it got.
+func oracleTexts(c cards.Card) []string {
+	out := make([]string, 0, 1+len(c.CardFaces))
+	out = append(out, c.OracleText)
+	for _, f := range c.CardFaces {
+		out = append(out, f.OracleText)
+	}
+	return out
+}
+
 func toGameCard(c cards.Card, isCommander bool) game.Card {
 	// Parse Scryfall's printed power/toughness strings to ints.
 	// Non-numeric values ("*", "1+*", "?", empty) parse to zero —
@@ -368,7 +383,14 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		// and cast-timing gates read these through
 		// game.HasKeyword; before they were carried here they
 		// existed only for catalog cards (#317 / #319 / #320).
-		Keywords:     printedKeywords(c),
+		Keywords: printedKeywords(c),
+		// Does the engine have a generic path for what this card
+		// prints, or does it need a hand-written Spec? Answered here
+		// because this is the last place the Scryfall record is in
+		// scope — game.Card carries no oracle text. See
+		// game.NeedsCatalogEffect; the catalog half of the join
+		// happens in game.Unimplemented.
+		NeedsEffect:  game.NeedsCatalogEffect(c.TypeLine, oracleTexts(c)...),
 		ManaCost:     c.ManaCost,
 		ProducedMana: append([]string(nil), c.ProducedMana...),
 		Colors:       append([]string(nil), c.Colors...),

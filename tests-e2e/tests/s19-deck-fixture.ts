@@ -5,7 +5,9 @@
 //     (Mulldrifter, Reclamation Sage, Acidic Slime, Eternal Witness,
 //     Solemn Simulacrum) plus support cards that seed the graveyard
 //     (Lightning Bolt) and a few generic permanents. Filler is
-//     Forest — Kenrith's WUBRG identity legalises any basic.
+//     Forest — Kenrith's WUBRG identity legalises any basic — with
+//     exactly one Island so that a "search your library for a basic
+//     land" effect has a choice that can be named from outside.
 //
 //   - The opponent deck holds the destroy-target permanents
 //     (Sol Ring artifact, Glorious Anthem enchantment) plus filler
@@ -32,6 +34,17 @@ const CASTER_NON_BASICS = [
   "Lightning Bolt",
   "Sol Ring",
   "Glorious Anthem",
+  // S22 — one lone Island among ninety Forests. It is a basic, not
+  // a non-basic, but it belongs in this list because it is a SINGLE
+  // copy rather than filler.
+  //
+  // It exists so the search chooser has an answer that is visible
+  // from the outside. The engine used to take the first match in
+  // library order; it now asks the searcher which basic they want.
+  // A fetched Forest cannot tell those two behaviours apart — there
+  // are ninety of them and library order would produce one anyway.
+  // A fetched Island can: it is proof the PICK decided it.
+  "Island",
 ];
 
 // Opponent deck — these permanents are the destroy targets for
@@ -55,13 +68,13 @@ function buildDeck(nonBasics: string[], filler: string, fillerCount: number): st
 }
 
 // makeS19CasterDeck builds the 100-card caster deck. 1 commander +
-// 8 non-basics + 91 Forest = 100 mainboard. Forest is the filler
+// 8 non-basics + 1 Island + 90 Forest = 100 mainboard. Forest is the filler
 // because every S19 caster card has a green color identity (Kenrith
 // is WUBRG so any basic is legal, but Forest is the most thematic
 // for the green-heavy S19 pool — Reclamation Sage / Acidic Slime /
 // Eternal Witness / Solemn Simulacrum).
 export function makeS19CasterDeck(): string {
-  return buildDeck(CASTER_NON_BASICS, "Forest", 91);
+  return buildDeck(CASTER_NON_BASICS, "Forest", 90);
 }
 
 // makeS19OpponentDeck builds the 100-card opponent deck. 1
@@ -89,4 +102,5 @@ export const CARDS = {
   Treasure: "Treasure",
   Plains: "Plains",
   Forest: "Forest",
+  Island: "Island",
 } as const;

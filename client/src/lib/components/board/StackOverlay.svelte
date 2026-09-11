@@ -340,6 +340,22 @@
                     auto
                   </span>
                 {/if}
+                <!-- The moment the expectation forms. The spell is on
+                     the stack, everyone is looking at it, and in a
+                     second it will resolve and appear to do nothing.
+                     Saying so here is what reports #321 / #324 /
+                     #325 / #332 / #333 each needed and none of them
+                     got. Transient by construction — the chip leaves
+                     with the stack item, so it never becomes board
+                     furniture. -->
+                {#if cardByID.get(item.id)?.unimplemented}
+                  <span
+                    class="chip manual"
+                    title="this card's rules aren't implemented yet — it resolves with no effect, so resolve it by hand"
+                  >
+                    manual
+                  </span>
+                {/if}
                 {#if item.x_value}
                   <span class="chip">X = {item.x_value}</span>
                 {/if}
@@ -628,6 +644,14 @@
   .chip.flag {
     color: var(--gold-strong);
     border-color: rgba(217, 180, 92, 0.45);
+  }
+  /* Dashed rather than coloured. The gold `flag` chips mark things
+     the engine is doing; this one marks the absence of one, and an
+     outline with a gap in it says that without competing with them
+     for attention. */
+  .chip.manual {
+    border-style: dashed;
+    border-color: var(--border-strong);
   }
   .act {
     flex: 0 0 auto;

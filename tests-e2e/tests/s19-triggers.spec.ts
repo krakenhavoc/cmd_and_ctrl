@@ -400,7 +400,7 @@ test.describe("S19 ETB triggers", () => {
     expect(findCardInPlayerHand(after, caster.playerID, CARDS.LightningBolt)).toBeNull();
   });
 
-  test("Solemn Simulacrum optional ETB → Yes fetches Forest tapped", async ({
+  test("Solemn Simulacrum optional ETB → Yes, the caster picks the Island, it enters tapped", async ({
     browser,
     request,
   }) => {
@@ -419,8 +419,19 @@ test.describe("S19 ETB triggers", () => {
     // engine behaviour — which is exactly how it failed the first
     // time the suite got far enough to run it.
     const solemn = await seedHandWithCard(admin, caster.playerID, CARDS.SolemnSimulacrum);
+
+    // The deck's single Island gets the same treatment for the same
+    // reason, and one more: the search below has to be able to OFFER
+    // it. Drawing until it surfaces and then putting it back is the
+    // only way to pin a named card into a library the wire redacts
+    // (CR 400.2), so this is "guarantee exactly one Island is in the
+    // library", not "hope the shuffle cooperated".
+    await seedHandWithCard(admin, caster.playerID, CARDS.Island);
     await returnToLibrary(admin, caster.playerID, CARDS.Forest, 3);
-    expect(playerByID(admin.snapshot(), caster.playerID).library.count).toBeGreaterThanOrEqual(3);
+    await returnToLibrary(admin, caster.playerID, CARDS.Island, 1);
+    const stocked = playerByID(admin.snapshot(), caster.playerID);
+    expect(stocked.library.count).toBeGreaterThanOrEqual(4);
+    expect(findCardInPlayerHand(admin.snapshot(), caster.playerID, CARDS.Island)).toBeNull();
 
     await admin.sendActionAsPlayer(caster.playerID, "move_card", {
       src: { kind: "hand", owner: caster.playerID },
@@ -435,7 +446,13 @@ test.describe("S19 ETB triggers", () => {
         ),
       "Solemn prompt queued",
     );
-    await expect(caster.page.getByRole("dialog", { name: /Solemn Simulacrum —/i })).toBeVisible();
+    // Name the "you may" dialog exactly. Once the search opens there
+    // are TWO dialogs whose accessible name starts "Solemn
+    // Simulacrum —", and getByRole's name match is a substring by
+    // default, so a loose pattern here would match either one.
+    await expect(
+      caster.page.getByRole("dialog", { name: "Solemn Simulacrum — search for a basic land?" }),
+    ).toBeVisible();
 
     await caster.page.getByRole("button", { name: /^Yes$/ }).click();
 
@@ -446,20 +463,55 @@ test.describe("S19 ETB triggers", () => {
       "Solemn trigger on the stack after Yes",
     );
     expect(findCardOnBattlefield(staged, CARDS.Forest)).toBeNull();
+    expect(findCardOnBattlefield(staged, CARDS.Island)).toBeNull();
 
     await resolveStack(setup);
 
-    // A Forest now lives on the battlefield, tapped, controlled by
-    // the caster.
+    // S22 (#272): answering "Yes" no longer finishes the job. The
+    // trigger resolves into a SECOND prompt — the search chooser —
+    // because the searcher, not the engine, decides which basic the
+    // library gives up. Before #272 the engine took the first match
+    // in library order; the test that predated it answered only the
+    // "you may" half and then waited out the clock here.
+    await admin.waitFor(
+      (v) =>
+        (v.pending_choices ?? []).some(
+          (c) => c.kind === "search_library" && c.chooser === caster.playerID,
+        ),
+      "search_library prompt queued for the caster",
+    );
+    // 20s for the same reason waitForPickTarget uses it: the admin
+    // socket runs ahead of the player's page under runner load.
+    const searchDialog = caster.page.getByRole("dialog", {
+      name: "Solemn Simulacrum — a basic land",
+    });
+    await expect(searchDialog).toBeVisible({ timeout: 20_000 });
+
+    // Take the Island, not a Forest. Ninety Forests and one Island
+    // are on offer; picking the Island is what makes the assertion
+    // below a statement about the CHOOSER rather than about deck
+    // order. exact:true because "select Island" would otherwise
+    // substring-match nothing useful today but is one card name away
+    // from ambiguity.
+    await searchDialog.getByRole("button", { name: "select Island", exact: true }).click();
+    await searchDialog.getByRole("button", { name: /^Take$/ }).click();
+
+    // The Island the caster picked — not the Forest the old
+    // first-match-in-library-order engine would have taken — is on
+    // the battlefield, tapped, under the caster's control.
     const after = await admin.waitFor(
       (v) => {
-        const forest = findCardOnBattlefield(v, CARDS.Forest);
-        return forest !== null && forest.controller === caster.playerID;
+        const island = findCardOnBattlefield(v, CARDS.Island);
+        return island !== null && island.controller === caster.playerID;
       },
-      "fetched Forest on battlefield under caster's control",
+      "the chosen Island on the battlefield under caster's control",
     );
-    const forest = findCardOnBattlefield(after, CARDS.Forest);
-    expect(forest?.tapped).toBe(true);
+    const island = findCardOnBattlefield(after, CARDS.Island);
+    expect(island?.tapped).toBe(true);
+    // The counter-assertion that carries the weight: no Forest came
+    // along. A search that ignored the pick would have fetched one,
+    // since Forests outnumber the Island ninety to one.
+    expect(findCardOnBattlefield(after, CARDS.Forest)).toBeNull();
     expect(after.pending_choices ?? []).toHaveLength(0);
   });
 
@@ -502,7 +554,12 @@ test.describe("S19 ETB triggers", () => {
     // Decline doesn't fetch — the library count at decline time
     // should equal the library count when the prompt queued.
     expect(libraryAfter).toBe(libraryAtPrompt);
+    // Neither basic reaches the battlefield, and no search chooser
+    // ever opens — declining the "you may" ends the ability before
+    // the search that would have asked.
     expect(findCardOnBattlefield(after, CARDS.Forest)).toBeNull();
+    expect(findCardOnBattlefield(after, CARDS.Island)).toBeNull();
+    expect((after.pending_choices ?? []).some((c) => c.kind === "search_library")).toBe(false);
   });
 
   test("Optional trigger prompt is visible only to the chooser", async ({
