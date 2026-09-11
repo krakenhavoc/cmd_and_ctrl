@@ -72,7 +72,7 @@ planned just-in-time from the S12 pain-point triage.
 | S29      | Alt-cast paths from non-hand zones (flashback, suspend, foretell, …) | 7     | [#94](https://github.com/krakenhavoc/cmd_and_ctrl/issues/94)   | 2027-08-15 | planned     |
 | S30      | Damage prevention, cloning, face-down, deferred protection keywords  | 7     | [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95)   | 2027-09-05 | planned     |
 | Post-S30 | Rolling deck-driven catalog growth                                   | 7     | TBD at S30 retro                                               | rolling    | not started |
-| S31      | AI bot seat (heuristic policy)                                       | 8     | [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89)   | 2027-09-26 | planned     |
+| S31      | AI bot seat (legal-move enumeration + tiered policy)                 | 8     | [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89)   | 2027-09-26 | planned     |
 
 ---
 
@@ -1895,140 +1895,120 @@ Triaged just-in-time from real-play feedback.
 
 ---
 
-## S31 — AI bot seat (heuristic policy)
+## S31 — AI bot seat (legal-move enumeration + tiered policy)
 
-**Phase:** 8 · **Goal:** fill an empty Commander seat with a bot good enough for solo practice and 1–3-friend games. After S27–S30 close the engine gaps (card-type completeness, cost modification, alt-cast paths, damage/cloning/face-down/protection), the engine is Arena-parity with a ~600-card catalog and structured `Effect` descriptors on every card — for the first time in the project, a competent AI is actually buildable. S31 ships that competence as a tiered, swappable policy framework.
+**Phase:** 8 · **Goal:** any player at an unstarted table can add up to four bot seats that play the game. Pulled forward from its post-S30 slot; architecture per [ADR 0024](decisions/0024-ai-bot-seat.md), which supersedes the heuristic-only design this section previously carried.
 
-**Not in scope: tournament-strength AI.** Forge has spent 15+ years on rule-based heuristics and still plays "dumb but playable." XMage's MCTS variant takes minutes per turn. Academic MCTS + RL work (Cowling-Ward-Powley 2012; MageZero AlphaZero-style) is multi-year research. This sprint's bar is Forge's bar: makes legal moves, makes locally-sensible decisions, doesn't deadlock, uses removal on threats. A learning bot is a separate multi-sprint arc (S40+ or never).
+**The bar is Forge's bar,** not tournament strength: makes legal moves, makes locally-sensible decisions, doesn't deadlock, uses removal on threats. Play quality is capped by catalog coverage (201 cards), not by the policy — see ADR 0024 §7 on which archetypes are actually buildable today.
 
-### Design decisions
+**Four deliverables, in dependency order:** a public game log (the engine has none today), the legal-move enumerator (which the client also consumes, deleting its duplicated timing predicates), the virtual-seat runner with a heuristic policy, and the model-backed tiers on top.
 
-1. **Heuristic-first.** Rule-based evaluation + greedy action selection, informed by the structured `Effect` descriptors the S14+ catalog already provides. No per-card scripts (the big Forge tax) — the bot reasons over effect types.
-2. **Bot = virtual seat.** A bot is a `Player` with no WS connection; a goroutine subscribes to the same game stream, runs through the same visibility filter as a human client, and emits actions via the existing action protocol. Zero protocol forking.
-3. **Swappable `Policy` interface.** `Policy interface { DecideAction(view *ViewOfGame, legal []Action) Action }`. S31 ships `HeuristicPolicy`. Future sprints can plug in MCTS or LLM-backed policies — contract stays the same.
-4. **4-player-first targeting.** Multi-opponent Commander shapes every targeting decision: threat ranking across 3 opponents, aggression rotation so the bot doesn't tunnel on one seat, concede heuristic so hopeless bots don't drag games out.
-5. **Safety rails over cleverness.** Loop detection, illegal-action filter, unknown-card graceful pass. A bot that occasionally passes on a suboptimal play is fine; a bot that crashes the game is not.
+### Sub-PR 0 — public game log
 
-### Tasks
+The engine has no event history: `GameView` carries none, the client has none, and `PlayerView.LifeHistory` is the only past tense anywhere. A policy reasoning from a bare snapshot cannot see a boardwipe that already happened. Players have wanted this since S07 shipped chat without it, and bug reports get materially better when the log ships alongside the replay.
 
-**Bot infrastructure (server/`bot/`):**
+- [ ] `protocol.LogEvent` + bounded public log on `GameView` (few hundred entries), through the same visibility filter as everything else
+- [ ] Emit on: zone changes, casts, resolutions, combat declarations, life changes, step boundaries
+- [ ] Client game-log panel
+- [ ] Attach the log to bug-report artifacts in `bugstore`
 
-- [ ] New package `server/internal/bot/` with `Policy interface`, `RandomPolicy` (baseline for tests), `HeuristicPolicy` (S31's deliverable)
-- [ ] `bot.Seat{PlayerID, Policy, Difficulty, MinThinkMs}` — the "virtual seat" abstraction
-- [ ] Goroutine-per-bot: subscribes to `ws.Room` state deltas using the same `FilterViewFor(playerID)` a client would; emits `Action`s via `actions.Dispatch`
-- [ ] Visibility guarantee test: bot only receives the same `ViewOfGame` a human seat at the same seat would, never raw game state
-- [ ] `Game.AddBotPlayer(name, deck, policy, difficulty)` seating API
-- [ ] Illegal-action filter: every emitted action runs through the same pre-dispatch validation the WS handler uses; on failure the bot silently falls back to `pass_priority`
-- [ ] Loop detector: if the bot emits the same non-`pass_priority` action twice in one priority window, force-pass
-- [ ] Unknown-card handler: action choices involving cards without `Effect` specs are scored as "unknown, low priority"; never hard-fail
+### Sub-PR 1 — `internal/legal`: enumerate a seat's legal moves
 
-**Heuristic policy (`server/internal/bot/heuristic/`):**
+- [ ] `legal.Move{Type, Params, Label, Group, Source}` — `Params` is the exact `protocol.ActionPayload` params that perform the move
+- [ ] `legal.EnumerateFor(g *game.Game, seat uuid.UUID) []Move`, run under the room lock
+- [ ] Coverage: land drop, `cast_spell` from hand and command, `activate_ability`, `activate_mana_ability`, `activate_loyalty`, `sacrifice_permanent`, `pass_priority`, `advance_step`, mulligan/keep, `resolve_choice` for every live `PendingChoice` kind
+- [ ] Target and mode expansion: one `Move` per legal target/mode combination, capped at `MaxTargetExpansion` (default 12) per source, ordered by threat weight
+- [ ] Combat enumerates **per creature**, not per assignment — attack sets are combinatorial across four opponents
+- [ ] Table-driven tests against the existing `timing.ts` predicates: same game state, same verdict, both directions
 
-- [ ] Board-state evaluation `score(view, perspective) float64`:
-  - Life total × w_life (default 1.0); clamps to [-∞, 0] on death
-  - Cards in hand × w_hand (default 3.0 — hand is resources)
-  - Creatures on battlefield: `Σ (power + toughness + keyword_bonus)` × w_creatures; keyword_bonus from a static table (flying +2, deathtouch +3, lifelink +2, vigilance +1, etc.)
-  - Non-creature permanents × w_utility (default 1.5 per permanent, +2 per planeswalker, +3 per battle controlled)
-  - Untapped mana sources × w_mana (default 1.0)
-  - Commander in command zone: 0 penalty if castable, −(current_tax) otherwise
-- [ ] Threat ranking across opponents: each opponent gets a `threat_score = weighted(life_rev, board, hand, combo_signals)`. Bots prefer attacking the highest-threat opponent; targeting removal hits the highest-threat opponent's best permanent
-- [ ] **Aggression rotation**: if bot has attacked the same opponent 3 turns in a row and hasn't reduced their life, swap to the next-highest threat — stops tunnel-vision into a dead lane
-- [ ] Action-selection branches:
-  - Untap / upkeep / draw: defer to engine (S13 auto-turn-based actions handle these)
-  - **Main phase**: (1) play a land if one in hand, preferring colors that unlock most spells; (2) iterate castable spells, pick the one that maximizes `Δscore = score(view_after_cast) − score(view_before)`; skip any with negative Δscore unless life is critical
-  - **Declare attackers**: simulate each possible attack set, pick the one that maximizes damage-to-threat after expected blocks; bias toward commander damage on the threat leader
-  - **Declare blockers**: minimize incoming damage subject to "never trade a 5+ power creature for a 2/2"; prefer chump-block at low life
-  - **Priority windows with empty stack**: pass unless an instant-speed castable improves score by > threshold
-  - **Priority windows with a spell on the stack**: cast counter/removal if `score(view_if_counter) − score(view_if_resolve)` > threshold; otherwise pass
-- [ ] Modes / X / targets: greedy per-dimension; for X, cap at `min(available_mana, threat_hp_for_lethal)`
-- [ ] Concede heuristic: if `score(self) < concede_threshold` for N consecutive turns AND no upswing potential in hand, bot emits a `concede` action (the sandbox concede path)
+### Sub-PR 2 — serve the move list to the client, delete the TS duplication
 
-**Difficulty tiers:**
+- [ ] `GameView` grows `legal_moves` for the viewer's own seat only, populated when the seat holds priority or owes a choice
+- [ ] `client/src/lib/timing.ts` becomes a lookup over `legal_moves`. Scope honestly: `canActivateLoyalty` and `canPassPriority` have no callers and can just be deleted; `canActivateAbility` serves only the auto-pass heuristic; `canCastFromHand` is the one real port, and its target/mode/cost branches already read server-stamped fields — the **timing** logic is what moves
+- [ ] Delete the now-dead client-side rules reimplementation; keep `targeting.ts`'s presentation logic
+- [ ] Fixes a live bug in passing: `sorcery_speed` ships on the wire and the client never reads it, so sorcery-speed abilities are currently offered at instant speed and then refused by the server
+- [ ] View-size check: measure the frame growth on a full four-player board and gate on it staying under budget
 
-- [ ] `Easy`: `RandomPolicy` wrapped in legality filter — picks a random legal action per priority window. Baseline for testing and for new human players.
-- [ ] `Medium`: `HeuristicPolicy` with default weights. Default choice.
-- [ ] `Hard`: `HeuristicPolicy` with 1-ply lookahead (simulate each top-K candidate action, re-score). Latency allowance 1500ms; bounded by action set size.
+### Sub-PR 3 — `Room` observers + `internal/aiseat` runner
 
-**Latency discipline:**
+- [ ] `Room.Subscribe() <-chan struct{}` — edge-trigger, capacity 1, non-blocking send, fired **after** `r.mu` is released
+- [ ] Runner goroutine per bot seat: wake → is this my decision (priority / pending choice / mulligan / blockers)? → decide → `Room.Apply(seat, fn)`
+- [ ] `RandomPolicy` — uniform over `Moves`. First playable bot; ships in this PR
+- [ ] Improvisation bundles apply as `uuid.Nil` so any seated human can undo them (the caller gate already allows this — no change needed); decide whether cleaning up after a bot should spend the human's own `UndosRemaining`
+- [ ] `MinThinkMs` / `MaxThinkMs` pacing and hard context deadline
+- [ ] Loop guard: same non-pass move twice in one priority window → force pass
 
-- [ ] `MinThinkMs` per bot — default 600ms; a fast decision is artificially held so the game doesn't feel like the bot is precognitive
-- [ ] `MaxThinkMs` hard cap — default 2000ms (Easy), 2000ms (Medium), 4000ms (Hard); scoring budget above that forces a fallback to "best so far"
-- [ ] Per-decision instrumentation: log p50/p99/p999 decision latencies; surface in admin tools
-- [ ] Test: 4-bot game completes 20 turns in under 20 minutes wall-clock on dev hardware
+### Sub-PR 4 — lobby + client integration
 
-**Lobby integration:**
+- [ ] `POST /games/{id}/seats/bot` `{tier, deck}` — any seated player at an unstarted table, plus admin; `DELETE .../seats/bot/{seat}` while unstarted
+- [ ] Bot seats carry real decks, so `Lobby.Start`'s `DeckUploaded` gate needs no special case
+- [ ] Seat arithmetic: bots take real seats, so a seated human can add at most **three**; the all-bot table is reachable via the admin path only, and is the test harness rather than a player flow
+- [ ] `PlayerView.is_bot` / `bot_tier` / `bot_deck`; protocol.ts and `docs/protocol.md` updated
+- [ ] Lobby UI: "Add bot" → tier + deck picker → seat appears with a BOT chip
+- [ ] Bot-seat treatment in `PlayerHeader.svelte`: chip, distinct avatar mark, thinking pulse (respects the S11.5 animations-off setting)
 
-- [ ] `POST /games/{id}/seats/bot` (admin-only) — adds a bot seat with `{deck_source, difficulty, personality_hint?}`. Counts toward `MaxPlayers`.
-- [ ] Curated bot decks in `server/internal/bot/decks/` — 6 starter decks covering the major Commander archetypes:
-  - **Aggro** — Isshin, Two Heavens as One-style wide beatdown
-  - **Control** — Kess, Dissident Mage-style spell-based control
-  - **Combo** — Zur-light combo with reliable pieces (no infinite-combo-of-the-week)
-  - **Ramp-stompy** — Omnath, Locus of Mana-style big creatures
-  - **Aristocrats** — Meren of Clan Nel Toth-style sac/recurse
-  - **Voltron** — Sram / Rafiq-style commander damage
-  - Each deck is catalog-only: every card has an `Effect` spec from S14/S27-S30 so the bot can reason about it
-- [ ] Lobby UI (`Lobby.svelte`): "Add bot" button → deck-archetype picker + difficulty dropdown → seat appears. Start gate counts bot seats as satisfied.
-- [ ] Admin kick-bot action (`DELETE /games/{id}/seats/bot/{seat}`) for mid-lobby changes.
+### Sub-PR 5 — curated decks + coverage test
 
-**Client UI:**
+- [ ] `internal/aiseat/decks/` — **three** decks that 201 cards actually support: aggro, ramp-stompy, spell-based control
+- [ ] Build-failing test: every card in every bot deck resolves to a registered `effects.Spec`
+- [ ] Explicitly deferred: Voltron and any Equipment/Aura deck (needs S24 attachment layer), Aristocrats (needs more of S21/S23), Combo
 
-- [ ] Bot-seat visual treatment: `PlayerHeader.svelte` grows a small "BOT" chip with tooltip showing difficulty + deck archetype
-- [ ] Avatar slot shows a distinctive bot avatar (simple abstract mark; deliberate visual separation from Discord human avatars shipped in S12.5)
-- [ ] "Bot thinking…" indicator: during the bot's decision window, its `PlayerHeader` pulses with a subtle `animate-thinking` class (auto-disabled when S11.5 animations are off)
-- [ ] Optional [S11.5 setting] "show bot reasoning" — when on, the bot announces its scored-action summary in chat (debug mode for tuning)
-- [ ] Chat messages from bots are prefixed `[BOT]` and colored slightly differently from human messages
-- [ ] `client/src/lib/protocol.ts` — `PlayerView` grows `is_bot bool`, `bot_difficulty string?`, `bot_archetype string?`
+### Sub-PR 6 — heuristic policy (Layer B)
 
-**Docs:**
+- [ ] `score(view, perspective) float64` — life, hand, board (power + toughness + keyword table), non-creature permanents, untapped mana, commander tax
+- [ ] Threat ranking across three opponents; aggression rotation after three ineffective turns on one target
+- [ ] Move selection by `Δscore` on a cloned game; blocks minimise incoming damage subject to not trading up
+- [ ] Concede heuristic, deliberately conservative
+- [ ] This is also the fallback under every model failure — it must stand alone
 
-- [ ] New ADR `docs/decisions/00NN-bot-architecture.md` covering: why rule-based not MCTS/LLM (Forge-level bar justification), tiered `Policy` interface shape, bot-as-virtual-seat rationale, safety rails (loop detection / legality filter / unknown-card handling), 4-player targeting design (threat ranking, aggression rotation, concede)
-- [ ] `docs/bot.md` — user-facing: how to add a bot, difficulty tiers, curated deck list, known limitations (will make "dumb" plays sometimes, no politics / bluffing / deal-making, no inter-turn memory)
-- [ ] `AGENTS.md` §5 — env vars (if any) and bot package location
-- [ ] `docs/protocol.md` — document the `is_bot` / `bot_difficulty` fields on `PlayerView`
+### Sub-PR 7 — Layer A rules filter + Layer C model policy
 
-**Tests:**
+- [ ] Layer A: resolve forced/trivial windows with no model call — note S13.6's auto-pass is **client-side only**, so Layer A inherits nothing and must do the whole job; instrument the absorption rate — **if it is under 80%, stop and fix the funnel before tuning anything else**
+- [ ] Prompt assembly from `Input` only; import test forbids `aiseat/policy` from importing `internal/game`
+- [ ] Prompt-cache the static block (rules primer, decklist + oracle text, archetype plan); per-decision delta is board state + move list
+- [ ] Cheap model for routine, frontier model on escalation: stack items targeting the bot, attacks, blocks, removal/counter availability against a high-threat board, top-two candidates within ε, modal/X/multi-target choices
+- [ ] Model returns a `Moves` **index**, never an action; out-of-range or malformed → Layer B
+- [ ] Tiers: `random`, `heuristic`, `assisted`, `strong`
+- [ ] Per-decision instrumentation: layer used, latency, tokens, escalation reason
 
-- [ ] Bot-vs-bot smoke: 4 `HeuristicPolicy` bots play to a winner within 50 turns across 20 consecutive runs — no deadlocks, no infinite loops, no illegal actions
-- [ ] Visibility enforcement: bot receives filtered view only; golden test asserts the bot's `view` is byte-identical to what a human at the same seat would see
-- [ ] Illegal-action regression: 100-game randomized run emits zero engine-rejected actions (the loop fallback to `pass_priority` catches everything)
-- [ ] Latency: p99 decision latency under 2000ms at Medium difficulty, under 4000ms at Hard
-- [ ] Concede path: bot at 1 life with empty hand + empty board for 3 turns concedes
-- [ ] Aggression rotation: bot that attacks player A three ineffective turns in a row switches to player B on turn four
-- [ ] Catalog-coverage gap: deck containing a card without `Effect` spec doesn't break the bot — unknown-card path exercised in test
+### Sub-PR 8 — improvisation, announced
 
-### Out of scope (explicit handoffs)
+- [ ] When the chosen line needs an effect the catalog cannot execute, the bot may use `move_card` / `change_life` / `add_counter` / `mark_damage`, emitted as one bundle
+- [ ] Chat line naming the card, the intended effect, and that it was improvised
+- [ ] Replay-log tag so bot improvisations are greppable
+- [ ] Setting: "show bot reasoning" surfaces `Decision.Reason` in chat
 
-- **MCTS / deep-lookahead policies** — the `Policy` interface accepts them; a future sprint (not on this roadmap yet) can ship `MCTSPolicy`. Dependencies are non-trivial (game-state deep copy, parallel simulation, ensemble determinization for hidden info).
-- **LLM-backed policy** — same `Policy` slot. Big open questions not resolved by this sprint: API cost at 4× bots × N priority windows, latency, steering against hallucinated actions, running local vs. remote models, moderation.
-- **Bot politics / deal-making** — "I'll attack X if you attack Y" is a whole design surface. Bots in S31 don't make deals and don't respond to human chat. A "political layer" (message parsing + deal tracking + deal honouring) is a legit later sprint.
-- **Learning / memory across games** — bots are stateless between games; no ELO, no opening-move memory, no opponent-modelling. Makes deterministic testing possible and avoids the "bot learned to beat me specifically" dynamic.
-- **Bot deckbuilding** — curated decks only. The Forge `CardRanker` approach is non-trivial and solves a different problem (draft / deck construction) than in-game decisionmaking.
-- **Bots in Commander pod-selection / turn-order UX** — normal seat flow; no "spectator bots" or "bot-only games" UI beyond what the admin endpoint enables.
+### Tests
 
-### Risks / gotchas
-
-- **Catalog gaps fall through to the bot.** Every card with `Effect` = nil forces the bot into unknown-card pass. If the catalog is <85% coverage when S31 lands, the bot will feel worse than Forge (which has per-card hand-written logic). Mitigation: curated bot decks are 100% catalog-covered at all times.
-- **Hidden-info leak is the biggest correctness trap.** If the bot goroutine accidentally reads raw `Game` state instead of the filtered view, it's cheating undetectably. Hard-gate via type: `HeuristicPolicy.DecideAction` takes `*protocol.ViewOfGame`, never `*game.Game`.
-- **Priority loops with mixed human+bot tables** can stall if a bot keeps passing and humans keep passing — nobody advances. Current auto-resolve (S13.1 full-priority-pass) handles this, but a bot that refuses to act on its turn will freeze the table. Force-progress rule: bot must emit a non-`pass_priority` action at least once per main phase when castable spells exist.
-- **Concede heuristic is loss-aversion-tuned.** A bot that concedes at the first sign of trouble denies human players the catharsis of finishing them off. Default concede threshold is intentionally conservative — only triggers in truly hopeless positions.
-- **Difficulty expectations are emotional, not technical.** "Hard" should feel hard; if 1-ply lookahead is indistinguishable from greedy, rename the tier or widen the weight gap. Tune after the first real playtest.
-- **Bot-vs-bot games are a silent debugging gold mine** but also a way to discover engine bugs nobody sees in human play. Capture replays of every test bot game; surface regressions loudly.
+- [ ] Enumerator agrees with `timing.ts` across a table-driven state matrix, both directions
+- [ ] Visibility: policy `Input.View` byte-identical to a human view at that seat; import test enforces the type gate
+- [ ] Four `random` bots play to a winner across 20 consecutive unattended runs — no deadlocks, no illegal actions, replays captured
+- [ ] Four `heuristic` bots play to a winner within 50 turns
+- [ ] Zero engine-rejected actions across a 100-game randomized run
+- [ ] Model-outage drill: Layer C hard-fails, game completes on Layer B, no frozen table
+- [ ] Human undo of a bot improvisation succeeds without the admin token, and the bundle reverts as one entry
 
 ### Exit criteria
 
-1. Admin clicks "Add bot", picks a deck archetype and difficulty, a bot seat appears with a "BOT" chip; the Start button enables once all seats are filled (bot seats count as deck-satisfied).
-2. A 4-bot game plays to a winner in under 30 minutes of wall-clock time, with no illegal actions, no deadlocks, and no unknown-card hard-fails across a 20-run automated sample.
-3. A 1v1 human-vs-bot game at Medium difficulty produces recognisable "playing the game" behaviour: bot plays lands, casts spells when profitable, attacks when profitable, uses removal on high-threat permanents, concedes only in genuinely hopeless positions.
-4. Over a 100-game randomized regression the bot produces zero engine-rejected actions.
-5. p99 per-decision latency under 2000ms at Medium difficulty on dev hardware; 4-bot game feels paced, not frozen.
-6. Swapping `HeuristicPolicy` for `RandomPolicy` in a unit test requires touching exactly one line; confirms the `Policy` interface shape is clean enough for a future MCTS/LLM swap.
-7. Documentation covers: how to add a bot, difficulty tiers, curated deck list, what the bot explicitly does not do (politics, learning, deckbuilding).
+1. A player at an unstarted table adds a bot, picks tier and deck, and the seat appears with a BOT chip; Start enables with bot seats counting as deck-satisfied.
+2. Four bots play an unattended game to completion with replays captured — the rules-engine fuzz harness exists and runs.
+3. A 1v1 human-vs-bot game at `assisted` shows recognisable play: lands, profitable casts, profitable attacks, removal on the biggest threat.
+4. Layer A absorbs >80% of priority windows; per-game model spend is measured and recorded, not estimated.
+5. Killing the model endpoint mid-game degrades to `heuristic` without a stall.
+6. `client/src/lib/timing.ts` no longer reimplements server rules.
+
+### Out of scope
+
+- **MCTS / deep lookahead** — the `Policy` slot accepts it later.
+- **Any-deck bots** — improvisation from oracle text on uncatalogued cards is a later tier, gated on sub-PR 8 proving itself on curated decks first.
+- **Politics, deal-making, table talk** — bots speak only to disclose improvisations and, behind a setting, their reasoning.
+- **Learning across games** — stateless between games; no opponent modelling.
+- **Bot deckbuilding** — curated only.
 
 ### Prior art references
 
-- [Forge AI wiki](https://github.com/Card-Forge/forge/wiki/AI) — rule-based heuristics + per-card hints via `CardRanker`; ~95% of cards scripted, not hardcoded. Bar to match on "playable but dumb."
-- [XMage (magefree/mage)](https://github.com/magefree/mage) — `ComputerPlayer` + `ComputerPlayerMCTS` variants, target-score evaluation, reworked targeting logic. Inspiration for threat-weighted targeting.
-- [MageZero](https://github.com/WillWroble/MageZero) — AlphaZero-style RL over XMage as a gym. Long-horizon work; informs the `Policy` interface shape so this path stays open.
-- Cowling / Ward / Powley, ["Ensemble Determinization in Monte Carlo Tree Search for the Imperfect Information Card Game Magic: The Gathering"](https://eprints.whiterose.ac.uk/id/eprint/75050/1/EnsDetMagic.pdf), IEEE Transactions on Computational Intelligence and AI in Games, 2012 — the canonical MCTS-for-MTG paper; argues for ensemble determinization over hidden info. Out of scope for S31 but shapes the future `MCTSPolicy`.
+- [Forge AI wiki](https://github.com/Card-Forge/forge/wiki/AI) — rule-based heuristics, ~95% of cards scripted. The "playable but dumb" bar.
+- [XMage](https://github.com/magefree/mage) — `ComputerPlayer` target-score evaluation; inspiration for threat-weighted targeting.
+- Cowling / Ward / Powley, ["Ensemble Determinization in MCTS for Magic: The Gathering"](https://eprints.whiterose.ac.uk/id/eprint/75050/1/EnsDetMagic.pdf), 2012 — canonical MCTS-for-MTG; shapes the future `MCTSPolicy` slot.
 
 ---

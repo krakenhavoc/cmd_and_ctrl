@@ -550,6 +550,13 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		for name, n := range out.EntersWithCounters {
 			_ = g.AddCounterForEffect(moved.InstanceID, name, n)
 		}
+		// S31 sub-PR 1: per-turn land-drop tally for the legal-move
+		// enumerator. Bookkeeping only — the engine still doesn't
+		// refuse a second land (sandbox posture).
+		if g.LandsPlayedThisTurn == nil {
+			g.LandsPlayedThisTurn = make(map[uuid.UUID]int)
+		}
+		g.LandsPlayedThisTurn[playerID]++
 		g.EmitEvent(Event{
 			Kind:    EventZoneMove,
 			Actor:   playerID,

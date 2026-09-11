@@ -143,6 +143,15 @@ type Game struct {
 	// ID. Added in S19 sub-PR 6.
 	SpellsCastThisTurn map[uuid.UUID]CastTally
 
+	// LandsPlayedThisTurn counts, per player, the lands that player
+	// has played this turn via CastSpell's land branch. The engine
+	// does NOT enforce the one-land-per-turn rule (CR 305.2) — that
+	// stays a sandbox affordance — but the S31 legal-move enumerator
+	// needs the count to offer a land drop only when one is still
+	// owed. Cleared on Turn.advance to a new turn. Keyed by player
+	// ID. Added in S31 sub-PR 1.
+	LandsPlayedThisTurn map[uuid.UUID]int
+
 	// DiscardPending is the cleanup-step pause map (S13.4): keys
 	// are player IDs that need to discard, values are the count
 	// each player must discard. Set at cleanup-step entry by
@@ -544,6 +553,19 @@ func (g *Game) onTurnAdvanceLocked(prev, next Turn) {
 	if g.SpellsCastThisTurn != nil {
 		g.SpellsCastThisTurn = nil
 	}
+	if g.LandsPlayedThisTurn != nil {
+		g.LandsPlayedThisTurn = nil
+	}
+}
+
+// LandsPlayedThisTurnFor returns how many lands p has played this
+// turn (zero when none). Read-only helper for the legal-move
+// enumerator. Caller must hold g.mu.
+func (g *Game) LandsPlayedThisTurnFor(playerID uuid.UUID) int {
+	if g.LandsPlayedThisTurn == nil {
+		return 0
+	}
+	return g.LandsPlayedThisTurn[playerID]
 }
 
 // CastTally is one player's per-turn spell count. Total counts every
