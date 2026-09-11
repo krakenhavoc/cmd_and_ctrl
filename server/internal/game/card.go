@@ -396,54 +396,76 @@ func (c Card) CurrentToughness() int {
 	return t
 }
 
-// IsCreature reports whether the card's TypeLine identifies it as a
-// creature. Case-insensitive substring check against "creature";
-// covers "Creature — Human Wizard" and "Legendary Artifact Creature
-// — Golem" alike. Empty TypeLine returns false (placeholder cards
-// from the demo seed are conservatively treated as non-creatures).
-func (c Card) IsCreature() bool {
-	return typeLineHas(c.TypeLine, "creature")
-}
+// --- card-type predicates ------------------------------------
+//
+// These read the card's EFFECTIVE types — the post-CR-613 view the
+// layer engine computes — not the printed type line. That is the
+// whole of #255 / #258 / #344 / #348: before this, layer 4 was
+// computed, projected onto the wire, and then invisible to combat,
+// state-based actions, targeting and the catalog's own Creature()
+// predicate, because every one of them landed here and here read
+// Card.TypeLine.
+//
+// Three properties make the reroute safe:
+//
+//  1. Card.Effective() is a pure read of the cached resolution. It
+//     never triggers a recompute, so a static ability's AppliesTo
+//     predicate can call IsLand() from inside the layer pass
+//     without re-entering it. A type predicate that DID kick off a
+//     recompute would recurse through applyLayerLocked forever;
+//     keeping Effective() passive is the invariant that forbids it.
+//  2. Off the battlefield the cache is nil and these fall through
+//     to the printed type line verbatim — byte-identical to the
+//     pre-change behaviour for every card in a hand, library,
+//     graveyard, exile or on the stack. CR 113.6: a static ability
+//     only does anything while its source is on the battlefield,
+//     so there is nothing for the effective view to say there.
+//  3. Freshness is the caller's job, exactly as it already was for
+//     CurrentPower / CurrentToughness: a write path that reads
+//     types after a state change calls
+//     g.RecomputeLayersIfStaleLocked first. Every read path goes
+//     through ReadSnapshot, which does it for them.
+//
+// Callers that genuinely want the PRINTED type — CR 707.2 copiable
+// values, a deck-construction check, anything that must not move
+// when a Blood Moon lands — use the PrintedIs* accessors below.
 
-// IsLand reports whether the card's TypeLine identifies it as a land.
-func (c Card) IsLand() bool {
-	return typeLineHas(c.TypeLine, "land")
-}
+// IsCreature reports whether the card is a creature right now,
+// after continuous effects. Covers "Creature — Human Wizard" and
+// "Legendary Artifact Creature — Golem" alike, plus a land a
+// Layer-4 static has animated and a Theros god whose devotion gate
+// is unmet. An empty type line with no layer effect on it returns
+// false (placeholder cards from the demo seed are conservatively
+// treated as non-creatures).
+func (c Card) IsCreature() bool { return c.HasCardType("creature") }
+
+// IsLand reports whether the card is a land after continuous
+// effects.
+func (c Card) IsLand() bool { return c.HasCardType("land") }
 
 // IsInstant reports whether the card is an instant. Instants share
 // the priority window with activated abilities — they're castable
 // any time the caller holds priority.
-func (c Card) IsInstant() bool {
-	return typeLineHas(c.TypeLine, "instant")
-}
+func (c Card) IsInstant() bool { return c.HasCardType("instant") }
 
 // IsSorcery reports whether the card is a sorcery. Sorceries are
 // sorcery-speed only — main phase, stack empty, caller is the
 // active player.
-func (c Card) IsSorcery() bool {
-	return typeLineHas(c.TypeLine, "sorcery")
-}
+func (c Card) IsSorcery() bool { return c.HasCardType("sorcery") }
 
-// IsArtifact reports whether the card is an artifact. Artifacts are
-// permanents (resolution route: battlefield).
-func (c Card) IsArtifact() bool {
-	return typeLineHas(c.TypeLine, "artifact")
-}
+// IsArtifact reports whether the card is an artifact after
+// continuous effects — Mycosynth Lattice's "all permanents are
+// artifacts in addition to their other types" lands here.
+func (c Card) IsArtifact() bool { return c.HasCardType("artifact") }
 
 // IsEnchantment reports whether the card is an enchantment.
-func (c Card) IsEnchantment() bool {
-	return typeLineHas(c.TypeLine, "enchantment")
-}
+func (c Card) IsEnchantment() bool { return c.HasCardType("enchantment") }
 
 // IsPlaneswalker reports whether the card is a planeswalker.
-func (c Card) IsPlaneswalker() bool {
-	return typeLineHas(c.TypeLine, "planeswalker")
-}
+func (c Card) IsPlaneswalker() bool { return c.HasCardType("planeswalker") }
 
 // IsBattle reports whether the card is a battle (post-MoM card type).
-func (c Card) IsBattle() bool {
-	return typeLineHas(c.TypeLine, "battle")
-}
+func (c Card) IsBattle() bool { return c.HasCardType("battle") }
 
 // IsPermanent reports whether the card resolves to the battlefield.
 // Per CR 110.4, the permanent types are artifact, creature,
@@ -456,6 +478,89 @@ func (c Card) IsPermanent() bool {
 		c.IsLand() ||
 		c.IsPlaneswalker() ||
 		c.IsBattle()
+}
+
+// HasCardType reports whether the card's effective card types
+// include `lowerType`, which MUST be lowercase (every caller in
+// this package passes a literal).
+//
+// The nil-cache branch is not only an optimisation that keeps a
+// hot predicate allocation-free: it makes the off-battlefield
+// answer bit-for-bit the pre-layer answer, so a card that never
+// reaches the layer engine cannot change behaviour because of this
+// file. The cached branch compares whole type tokens instead of
+// searching for a substring, which is strictly more accurate —
+// "Island" no longer contains a "land" type by accident of
+// spelling.
+func (c Card) HasCardType(lowerType string) bool {
+	if c.effective == nil {
+		return typeLineHas(c.TypeLine, lowerType)
+	}
+	return typeListHas(c.effective.Types, lowerType)
+}
+
+// HasSubtype reports whether the card's effective subtypes include
+// `subtype`, case-insensitively. This is the accessor a Layer-4
+// land-type grant (Urborg, Tomb of Yawgmoth) becomes visible
+// through: CR 305.6's intrinsic mana abilities key off the basic
+// land TYPE, never off the Basic supertype.
+func (c Card) HasSubtype(subtype string) bool {
+	if c.effective == nil {
+		_, _, printed := ParseTypeLine(c.TypeLine)
+		return typeListHas(printed, subtype)
+	}
+	return typeListHas(c.effective.Subtypes, subtype)
+}
+
+// --- printed card-type predicates -----------------------------
+//
+// The deliberate other half of the split. These read the printed
+// type line and are immune to every continuous effect, which is
+// what CR 707.2's copiable values and any "what does this card
+// actually say" question need. A separate, explicitly named
+// surface rather than a bool argument, so a call site's choice
+// between the two is visible in the diff that makes it.
+
+// PrintedIsCreature reports whether the PRINTED type line says
+// creature, ignoring every continuous effect.
+func (c Card) PrintedIsCreature() bool { return typeLineHas(c.TypeLine, "creature") }
+
+// PrintedIsLand reports whether the PRINTED type line says land,
+// ignoring every continuous effect.
+func (c Card) PrintedIsLand() bool { return typeLineHas(c.TypeLine, "land") }
+
+// typeListHas reports whether `types` holds `needle` as a whole
+// token, case-insensitively.
+func typeListHas(types []string, needle string) bool {
+	for _, t := range types {
+		if equalFoldASCII(t, needle) {
+			return true
+		}
+	}
+	return false
+}
+
+// equalFoldASCII is strings.EqualFold restricted to ASCII. Type and
+// subtype names are ASCII in every Scryfall type line, and this
+// runs once per candidate per predicate per snapshot, so the
+// allocation-free byte loop earns its place.
+func equalFoldASCII(a, b string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := 0; i < len(a); i++ {
+		x, y := a[i], b[i]
+		if x >= 'A' && x <= 'Z' {
+			x += 'a' - 'A'
+		}
+		if y >= 'A' && y <= 'Z' {
+			y += 'a' - 'A'
+		}
+		if x != y {
+			return false
+		}
+	}
+	return true
 }
 
 // typeLineHas does a case-insensitive substring check against the

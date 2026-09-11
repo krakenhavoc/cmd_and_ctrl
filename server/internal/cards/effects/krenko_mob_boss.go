@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"strings"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Krenko, Mob Boss — 3/3 Legendary Creature — Goblin Warrior for
 // {2}{R}{R}:
@@ -48,13 +44,5 @@ func init() {
 // post-layer subtypes so a creature that was turned into a Goblin
 // counts (CR 205.3 — type-changing effects apply).
 func isGoblin(c game.Card) bool {
-	if !c.IsCreature() {
-		return false
-	}
-	for _, st := range c.Effective().Subtypes {
-		if strings.EqualFold(st, "goblin") {
-			return true
-		}
-	}
-	return false
+	return c.IsCreature() && c.HasSubtype("Goblin")
 }

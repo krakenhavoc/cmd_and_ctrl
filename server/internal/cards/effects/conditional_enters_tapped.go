@@ -93,17 +93,16 @@ func otherLandsAtLeast(n int) func(*game.Game, *game.Card) bool {
 }
 
 // controlsLandSubtype is a checkland's condition: "unless you
-// control a Plains or an Island". Needles MUST be lowercase —
-// containsFoldASCII folds the haystack and not the needle, the trap
-// documented on discardedCardHasType.
+// control a Plains or an Island".
 //
-// Sandbox simplification: it reads PRINTED type lines, so a land
-// that has a basic land type only by way of a continuous effect
-// (Urborg, Tomb of Yawgmoth making everything a Swamp; Blood Moon
-// the other way) does not switch a checkland on or off. Reading
-// Effective() would fix it, but the checkland is the entering card
-// and the layer cache is maintained only for battlefield
-// permanents.
+// It reads EFFECTIVE subtypes, so Urborg, Tomb of Yawgmoth really
+// does switch every checkland on. The note that used to sit here
+// said Effective() was unreachable "because the checkland is the
+// entering card and the layer cache is maintained only for
+// battlefield permanents" — but the entering card is `src`, which
+// this loop skips. Every card it actually asks about is a
+// battlefield permanent with a live cache. The simplification was
+// reasoning about the wrong object.
 func controlsLandSubtype(subtypes ...string) func(*game.Game, *game.Card) bool {
 	return func(g *game.Game, src *game.Card) bool {
 		for _, c := range g.Battlefield.Cards {
@@ -114,7 +113,7 @@ func controlsLandSubtype(subtypes ...string) func(*game.Game, *game.Card) bool {
 				continue
 			}
 			for _, s := range subtypes {
-				if containsFoldASCII(c.TypeLine, s) {
+				if c.HasSubtype(s) {
 					return true
 				}
 			}
