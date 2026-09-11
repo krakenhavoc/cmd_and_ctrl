@@ -910,6 +910,16 @@ func classifyActionError(err error) (code, message string) {
 		return protocol.CodeBadRequest, "action is not legal in the current step"
 	case errors.Is(err, game.ErrNotACreature):
 		return protocol.CodeBadRequest, "card is not a creature"
+	case errors.Is(err, game.ErrUnparseableCost):
+		// #289: the importer handed us a cost the parser can't read
+		// (split / adventure cards arrive as "{1}{R} // {1}{U}").
+		// The card is genuinely unplayable until the multi-face
+		// model lands (#278) — say so rather than let the engine
+		// guess, and keep the parser detail in the message so the
+		// report names the card.
+		return protocol.CodeBadRequest,
+			"this card's mana cost can't be read, so it can't be cast yet — " +
+				strings.TrimPrefix(err.Error(), "game: ")
 	}
 	// Everything else is traceable to a client-supplied input — bad
 	// player ID, bad card ID, bad zone, unknown action type, etc.
