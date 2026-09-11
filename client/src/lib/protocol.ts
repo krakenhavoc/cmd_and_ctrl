@@ -214,6 +214,13 @@ export interface PendingChoiceView {
     // top-first, redacted to the chooser alone — scry is "look at",
     // not "reveal". Answered with {bottom, top_order}.
     | "scry"
+    // Shocklands: "as this land enters, you may pay 2 life. If you
+    // don't, it enters tapped." Answered with the shared yes/no
+    // {choice_id, apply} payload — apply=true pays and the land
+    // enters untapped. The permanent has NOT entered while this
+    // prompt is open; the answer is what decides how it enters.
+    // pay_cost carries the payment ("2 life").
+    | "entry_pay_life"
     | string;
   chooser: string;
   from_player: string;
@@ -261,7 +268,8 @@ export interface PendingChoiceView {
   // chooser is being asked to pay ("{2}"). Same {choice_id, apply}
   // payload as the other yes/no kinds: apply=true pays (from pool,
   // auto-tapping if short), apply=false declines and the card's
-  // "unless" consequence fires.
+  // "unless" consequence fires. Also carries the life payment ("2
+  // life") for kind "entry_pay_life".
   pay_cost?: string;
 }
 

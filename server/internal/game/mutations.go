@@ -552,6 +552,12 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			OldZone: src.Kind,
 			NewZone: ZoneBattlefield,
 			Actor:   playerID,
+			// A land's entry can now pause on a prompt (the
+			// shockland's "pay 2 life"), and this branch returns to
+			// the client when it does. Flag the event so the resume
+			// path knows it may finish the push on this branch's
+			// behalf — see executeEntryToBattlefieldLocked.
+			entryResumable: true,
 		}
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
