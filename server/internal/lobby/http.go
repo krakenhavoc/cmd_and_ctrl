@@ -638,7 +638,11 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 		// override toast renders.
 		seat := g.PlayerByIDForEffect(p.PlayerID)
 		if seat != nil {
-			body.Missing = seat.ManaPool.Missing(cost, xValue)
+			// #352: the breakdown is computed under the same spend
+			// context the cast will pay under, so a pool of Ancient
+			// Ziggurat mana does not report "missing nothing" for a
+			// spell it cannot legally fund.
+			body.Missing = seat.ManaPool.MissingFor(cost, xValue, game.ManaSpendForCast(card))
 		}
 	}
 	return writeJSON(w, http.StatusOK, body)

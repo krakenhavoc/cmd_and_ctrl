@@ -101,7 +101,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 	if from == "command" {
 		cost.Generic += p.CommanderCasts[card.InstanceID] * 2
 	}
-	x, ok := e.affordableX(cost)
+	x, ok := e.affordableX(cost, game.ManaSpendForCast(card))
 	if !ok {
 		return
 	}
@@ -206,13 +206,13 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 // auto_tap + strict path: the pool is consulted first, then a plan
 // is sought for the WHOLE cost (the engine does not net floating
 // mana against the plan).
-func (e *enumerator) affordableX(cost game.ParsedCost) (int, bool) {
+func (e *enumerator) affordableX(cost game.ParsedCost, spend game.ManaSpendContext) (int, bool) {
 	if cost.XSlots == 0 {
-		return 0, e.canPay(cost, 0)
+		return 0, e.canPay(cost, 0, spend)
 	}
 	best, ok := -1, false
 	for x := 0; x <= e.opts.MaxX; x++ {
-		if e.canPay(cost, x) {
+		if e.canPay(cost, x, spend) {
 			best, ok = x, true
 			continue
 		}
@@ -221,8 +221,11 @@ func (e *enumerator) affordableX(cost game.ParsedCost) (int, bool) {
 	return best, ok
 }
 
-func (e *enumerator) canPay(cost game.ParsedCost, x int) bool {
-	if e.p.ManaPool.CanPay(cost, x) {
+// `spend` is the #352 spend context — what the mana would be paid
+// for — so restricted mana in the pool counts toward a cast it may
+// legally fund and toward no other.
+func (e *enumerator) canPay(cost game.ParsedCost, x int, spend game.ManaSpendContext) bool {
+	if e.p.ManaPool.CanPayFor(cost, x, spend) {
 		return true
 	}
 	_, ok := e.g.AutoTapForCostForEffect(e.seat, cost, x)

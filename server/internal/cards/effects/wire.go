@@ -120,6 +120,14 @@ func init() {
 				// cost fields get.
 				Rider:                   a.Rider,
 				IgnoreCommanderIdentity: a.IgnoreCommanderIdentity,
+				// S32 mana pipeline (#352): the mana cost
+				// component, the activation gate, the computed
+				// produced string and the spend restrictions ride
+				// the same thin projection everything else does.
+				ManaCost:     a.Cost.Mana,
+				Condition:    a.Condition,
+				ProducedFunc: a.ProducedFunc,
+				Restrictions: a.Restrictions,
 			}
 		}
 		return out

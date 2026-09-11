@@ -65,7 +65,10 @@ func (e *enumerator) activatedMoves() {
 			}
 			if ab.Cost.Mana != "" {
 				cost, err := game.ParseCost(ab.Cost.Mana)
-				if err != nil || !e.canPay(cost, 0) {
+				// #352: an activated ability's mana is paid under an
+				// activation context keyed on the SOURCE permanent,
+				// mirroring payAbilityManaCostLocked.
+				if err != nil || !e.canPay(cost, 0, game.ManaSpendForAbility(*source)) {
 					continue
 				}
 			}
@@ -155,11 +158,30 @@ func (e *enumerator) manaMoves() {
 		}
 		abilities := game.ManaAbilitiesForCard(*source)
 		for idx, ab := range abilities {
+			// #352: the activation gate first, exactly as
+			// ActivateManaAbility checks it — Temple of the False
+			// God is not a move with four lands out.
+			if ab.Condition != nil && !ab.Condition(g, e.seat, source.InstanceID) {
+				continue
+			}
 			if ab.TapCost {
 				if source.Tapped {
 					continue
 				}
 				if source.IsCreature() && game.HasSummoningSickness(source) {
+					continue
+				}
+			}
+			if ab.LifeCost > 0 && e.p.Life < ab.LifeCost {
+				continue
+			}
+			// A mana component in the cost has to be already floating
+			// — the activation path deliberately does not auto-tap
+			// into a mana ability, so a Signet with an empty pool is
+			// not a legal move.
+			if ab.ManaCost != "" {
+				cost, err := game.ParseCost(ab.ManaCost)
+				if err != nil || !e.p.ManaPool.CanPayFor(cost, 0, game.ManaSpendForAbility(*source)) {
 					continue
 				}
 			}

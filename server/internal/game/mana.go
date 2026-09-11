@@ -60,31 +60,61 @@ func (p *ManaPool) EmptyPool() int {
 }
 
 // CanPay reports whether the pool currently holds enough mana to
-// cover `cost`. Dry-run; does not mutate the pool.
+// cover `cost`, spending only UNRESTRICTED tokens. Dry-run; does not
+// mutate the pool.
 //
-// Algorithm: greedy, restriction-first. For each ColorRequirement
-// in cost.Required, find the most-restricted matching token (i.e.
-// the token whose set of "still-spendable-on" possibilities is
-// smallest) — by S15 every token is unrestricted, so this collapses
-// to "find any token of an allowed color." Then satisfy generic
-// from whatever's left, taking colorless first to preserve colored
-// for later costs.
+// Prefer CanPayFor: this shorthand passes the zero spend context,
+// which no restriction matches, so a pool of Ancient Ziggurat mana
+// reads as empty here. That is the safe default for a caller with no
+// object in hand — see mana_restriction.go — but every real payment
+// path knows what it is paying for and should say so.
 //
 // `xValue` is the announce-time X value the caller picked; the
 // pool needs cost.Generic + cost.XSlots*xValue generic-tradeable
 // mana. Pass 0 for spells without X.
 func (p ManaPool) CanPay(cost ParsedCost, xValue int) bool {
-	_, ok := p.attemptSpend(cost, xValue)
+	return p.CanPayFor(cost, xValue, ManaSpendContext{})
+}
+
+// CanPayFor is CanPay with a spend context — the object the mana is
+// being paid for. Tokens whose Restrictions the context does not
+// satisfy are invisible to the solver.
+//
+// Algorithm: greedy, restriction-first. For each ColorRequirement in
+// cost.Required, find the most-restricted SPENDABLE matching token
+// (the token with the fewest remaining ways to be useful), so a
+// creature spell paid out of a pool holding both a Ziggurat {G} and a
+// Forest {G} burns the Ziggurat mana — which is the play a human
+// makes, and the only one that doesn't waste it. Then satisfy generic
+// from whatever's left, taking colorless first to preserve colored
+// for later costs.
+//
+// S32 / #352: before this, the restriction-first wording in the
+// comment described an intent the code never had — every token
+// compared equal because nothing ever set Restrictions.
+func (p ManaPool) CanPayFor(cost ParsedCost, xValue int, ctx ManaSpendContext) bool {
+	_, ok := p.attemptSpend(cost, xValue, ctx)
 	return ok
 }
 
-// SpendMana attempts to deduct `cost` from the pool. On success,
-// the pool is mutated and the method returns true. On failure, the
-// pool is left unchanged. Caller usually calls CanPay first for a
-// dry-run, then SpendMana to commit; this two-step shape keeps the
-// "warn-and-proceed" sandbox path (S15 sub-PR 3) cheap.
+// SpendMana attempts to deduct `cost` from the pool using only
+// unrestricted tokens. On success, the pool is mutated and the method
+// returns true. On failure, the pool is left unchanged. Caller
+// usually calls CanPay first for a dry-run, then SpendMana to commit;
+// this two-step shape keeps the "warn-and-proceed" sandbox path (S15
+// sub-PR 3) cheap.
+//
+// Prefer SpendManaFor — same reasoning as CanPay vs CanPayFor.
 func (p *ManaPool) SpendMana(cost ParsedCost, xValue int) bool {
-	remaining, ok := p.attemptSpend(cost, xValue)
+	return p.SpendManaFor(cost, xValue, ManaSpendContext{})
+}
+
+// SpendManaFor is SpendMana with a spend context. Pair it with the
+// CanPayFor that gated the payment: calling CanPayFor with one
+// context and SpendManaFor with another would let a restricted token
+// pay for something it was checked against differently.
+func (p *ManaPool) SpendManaFor(cost ParsedCost, xValue int, ctx ManaSpendContext) bool {
+	remaining, ok := p.attemptSpend(cost, xValue, ctx)
 	if !ok {
 		return false
 	}
@@ -92,14 +122,21 @@ func (p *ManaPool) SpendMana(cost ParsedCost, xValue int) bool {
 	return true
 }
 
-// attemptSpend is the shared core of CanPay + SpendMana. Returns
-// (remaining-pool, true) on success, (nil, false) on failure.
+// attemptSpend is the shared core of CanPayFor + SpendManaFor.
+// Returns (remaining-pool, true) on success, (nil, false) on failure.
 // Operates on a copy so the caller's slice is never aliased.
-func (p ManaPool) attemptSpend(cost ParsedCost, xValue int) (ManaPool, bool) {
+func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext) (ManaPool, bool) {
 	// Copy so we can mark spends without disturbing the caller.
 	work := make(ManaPool, len(p))
 	copy(work, p)
 	used := make([]bool, len(work))
+	// One pass decides which tokens are legal here and in what
+	// order the solver should prefer them. Both loops below walk
+	// `order` rather than `work`, so the restriction-first
+	// preference applies to colored requirements and to generic
+	// alike, and pool insertion order still breaks ties — the
+	// auto-tapper preview rendered alongside stays stable.
+	order := spendOrder(work, ctx)
 
 	// Step 1 — colored requirements first. Each requirement names
 	// a set of allowed colors (monocolored = one entry, hybrid =
@@ -108,11 +145,11 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int) (ManaPool, bool) {
 	// S15 (life self-pay is S17).
 	for _, req := range cost.Required {
 		idx := -1
-		for i, tok := range work {
+		for _, i := range order {
 			if used[i] {
 				continue
 			}
-			if matchColor(tok.Color, req.Options) {
+			if matchColor(work[i].Color, req.Options) {
 				idx = i
 				break
 			}
@@ -126,22 +163,21 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int) (ManaPool, bool) {
 	// Step 2 — generic requirement. Total = explicit Generic +
 	// XSlots * xValue. Take colorless first (Sol Ring output, snow
 	// generics) to preserve colored for the next cast; then drop
-	// colored mana onto the rest. Both loops walk in pool insertion
-	// order so the auto-tapper preview rendered alongside is stable.
+	// colored mana onto the rest.
 	need := cost.Generic + cost.XSlots*xValue
 	if need > 0 {
 		for _, color := range []string{"C", "W", "U", "B", "R", "G"} {
 			if need == 0 {
 				break
 			}
-			for i, tok := range work {
+			for _, i := range order {
 				if need == 0 {
 					break
 				}
 				if used[i] {
 					continue
 				}
-				if tok.Color != color {
+				if work[i].Color != color {
 					continue
 				}
 				used[i] = true
@@ -154,6 +190,9 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int) (ManaPool, bool) {
 	}
 
 	// Build remaining slice from un-used tokens, preserving order.
+	// Tokens `order` excluded as unspendable were never marked used
+	// and survive here, which is what has to happen: refusing to
+	// spend restricted mana on this cast must not delete it.
 	out := make(ManaPool, 0, len(work))
 	for i, tok := range work {
 		if used[i] {
@@ -165,6 +204,34 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int) (ManaPool, bool) {
 		return nil, true
 	}
 	return out, true
+}
+
+// spendOrder returns the indices of the tokens in `pool` that `ctx`
+// permits, most-restricted first and pool order within a tier.
+// Tokens the context does not permit are omitted entirely — the
+// solver never sees them, so they can neither pay nor be consumed.
+func spendOrder(pool ManaPool, ctx ManaSpendContext) []int {
+	order := make([]int, 0, len(pool))
+	for i, tok := range pool {
+		if !ctx.allows(tok.Restrictions) {
+			continue
+		}
+		order = append(order, i)
+	}
+	// Stable insertion sort by descending restriction count. The
+	// pool is a handful of entries in every real game, and an
+	// insertion sort keeps the equal-count ordering identical to
+	// pool insertion order without pulling in sort.SliceStable's
+	// reflection.
+	for i := 1; i < len(order); i++ {
+		for j := i; j > 0; j-- {
+			if len(pool[order[j]].Restrictions) <= len(pool[order[j-1]].Restrictions) {
+				break
+			}
+			order[j], order[j-1] = order[j-1], order[j]
+		}
+	}
+	return order
 }
 
 // matchColor reports whether `color` is in `options`. Empty options
@@ -188,21 +255,30 @@ func matchColor(color string, options []string) bool {
 // gate (S15 sub-PR 3) to populate the structured error frame the
 // client renders into the override-toast affordance.
 func (p ManaPool) Missing(cost ParsedCost, xValue int) []string {
-	if p.CanPay(cost, xValue) {
+	return p.MissingFor(cost, xValue, ManaSpendContext{})
+}
+
+// MissingFor is Missing with a spend context, so the breakdown a
+// player sees matches the payment the engine would actually attempt.
+// Without it a pool holding two Ancient Ziggurat {G} would report
+// "missing nothing" for a Lightning Bolt the engine then refuses.
+func (p ManaPool) MissingFor(cost ParsedCost, xValue int, ctx ManaSpendContext) []string {
+	if p.CanPayFor(cost, xValue, ctx) {
 		return nil
 	}
 	work := make(ManaPool, len(p))
 	copy(work, p)
 	used := make([]bool, len(work))
+	order := spendOrder(work, ctx)
 	var missing []string
 
 	for _, req := range cost.Required {
 		idx := -1
-		for i, tok := range work {
+		for _, i := range order {
 			if used[i] {
 				continue
 			}
-			if matchColor(tok.Color, req.Options) {
+			if matchColor(work[i].Color, req.Options) {
 				idx = i
 				break
 			}
@@ -219,11 +295,11 @@ func (p ManaPool) Missing(cost ParsedCost, xValue int) []string {
 		if need == 0 {
 			break
 		}
-		for i, tok := range work {
+		for _, i := range order {
 			if need == 0 {
 				break
 			}
-			if used[i] || tok.Color != color {
+			if used[i] || work[i].Color != color {
 				continue
 			}
 			used[i] = true

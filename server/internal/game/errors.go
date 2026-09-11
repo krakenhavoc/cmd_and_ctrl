@@ -192,6 +192,13 @@ var (
 	// S18 sub-PR 2.
 	ErrSummoningSick = errors.New("game: creature has summoning sickness")
 
+	// ErrConditionNotMet is returned when an ability carries an
+	// activation restriction (CR 602.5a — "Activate only if you
+	// control five or more lands") that the board does not satisfy.
+	// Checked before any cost is validated or paid, so the source is
+	// untouched. Added in the S32 mana-pipeline pass (#352).
+	ErrConditionNotMet = errors.New("game: ability's activation condition is not met")
+
 	// ErrDefender is returned by DeclareAttacker when the creature
 	// has the defender keyword (CR 702.3). Added in S18 sub-PR 2.
 	ErrDefender = errors.New("game: creature has defender and cannot attack")
