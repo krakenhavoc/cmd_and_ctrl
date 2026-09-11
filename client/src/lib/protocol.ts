@@ -521,6 +521,11 @@ export interface AdditionalCostView {
   // Present-and-empty means the cost is unpayable, so the spell is
   // uncastable.
   sacrifice_options?: LegalTargetsView;
+  // S23: a "pay X life" clause (Toxic Deluge). The X prompt has to
+  // open for this card even though its printed mana cost has no {X},
+  // and the announced X is both the life paid and the number the
+  // spell's own text uses.
+  demands_x?: boolean;
   label?: string;
 }
 

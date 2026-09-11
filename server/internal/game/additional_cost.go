@@ -47,6 +47,23 @@ type AdditionalCost struct {
 	// a different reason: it is on the stack, not the battlefield.
 	Sacrifice *TargetSpec
 
+	// PayLifeX is "As an additional cost to cast this spell, pay X
+	// life" (Toxic Deluge), where X is the value announced on
+	// CastSpellParams.XValue. Added in S23.
+	//
+	// The X here is NOT a mana-cost X — Toxic Deluge prints {2}{B}
+	// with no {X} anywhere in it. It is a free variable the caster
+	// names at announce whose only consumer is this clause and the
+	// spell's own text ("all creatures get -X/-X"), which is why it
+	// rides the existing XValue slot rather than growing a second
+	// one: the two are the same number by definition, and a card
+	// that announced them separately could set them differently.
+	//
+	// CR 119.4 — paying life is legal only when the life total is at
+	// least the amount, so the cast is rejected at announce when it
+	// isn't. Paying 0 is always legal and always a no-op.
+	PayLifeX bool
+
 	// Label is the cost clause as printed ("Discard a card"), shown
 	// in the client's cost picker so the prompt reads like the card
 	// rather than like a schema.
@@ -55,7 +72,7 @@ type AdditionalCost struct {
 
 // Empty reports whether the cost demands nothing. Nil-safe.
 func (c *AdditionalCost) Empty() bool {
-	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil)
+	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX)
 }
 
 // CatalogAdditionalCost is the catalog hook the effects package
@@ -81,7 +98,7 @@ func AdditionalCostFor(oracleID string) *AdditionalCost {
 // client bug, not a no-op: rejecting it keeps the wire honest.
 //
 // Caller must hold g.mu.
-func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, cost *AdditionalCost, discardIDs, sacrificeIDs []uuid.UUID) error {
+func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, cost *AdditionalCost, discardIDs, sacrificeIDs []uuid.UUID, xValue int) error {
 	if cost.Empty() {
 		if len(discardIDs) > 0 || len(sacrificeIDs) > 0 {
 			return ErrInvalidParam
@@ -91,6 +108,12 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, cost *Ad
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound
+	}
+	// CR 119.4: a player may pay N life only with a life total of at
+	// least N. Checked at announce with the rest of the choices, so
+	// an unpayable X is a rejected cast rather than a player at -3.
+	if cost.PayLifeX && xValue > p.Life {
+		return ErrInvalidParam
 	}
 	if len(discardIDs) != cost.DiscardCards {
 		return ErrInvalidParam
@@ -131,7 +154,15 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, cost *Ad
 // before 601.2h), so a discard trigger sees the spell above it.
 //
 // Caller must hold g.mu.
-func (g *Game) payAdditionalCostLocked(playerID uuid.UUID, discardIDs, sacrificeIDs []uuid.UUID) error {
+func (g *Game) payAdditionalCostLocked(playerID uuid.UUID, discardIDs, sacrificeIDs []uuid.UUID, payLife int) error {
+	// Life first: it is the component with no choice attached, and
+	// paying it before the sacrifices keeps the event order matching
+	// the way the clauses are read aloud.
+	if payLife > 0 {
+		if err := g.ChangePlayerLifeForEffect(uuid.Nil, playerID, -payLife); err != nil {
+			return err
+		}
+	}
 	for _, id := range sacrificeIDs {
 		if err := g.sacrificePermanentLocked(id); err != nil {
 			return err
