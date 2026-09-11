@@ -435,6 +435,13 @@ func (g *Game) fireEffectResolverLocked(item *StackItem, oracleID string, cardID
 // the next priority-grant boundary.
 func (g *Game) fireETBHookLocked(cardID uuid.UUID, oracleID string) {
 	g.stampStartingLoyaltyLocked(cardID, oracleID)
+	// S27: a Saga enters with a lore counter (CR 714.2b). Same
+	// reasoning as the loyalty stamp above, and the same placement:
+	// it is printed-rules behaviour keyed on the card's subtype, so
+	// it runs before the oracle-ID / nil-hook guards and applies to
+	// Sagas the catalog has never heard of.
+	g.sagaEntersWithLoreCounterLocked(cardID)
+
 	// S27: a battle enters with its printed defense counters and
 	// chooses a protector (CR 310.4, 310.5). Same placement and same
 	// reasoning as the loyalty stamp above: printed rules keyed on

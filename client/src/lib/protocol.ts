@@ -734,6 +734,14 @@ export interface CardView {
   // flow opens a picker after X and before targeting. Absent for
   // nearly every card.
   tap_cost?: TapCostView;
+  // S29: set on a card sitting in a zone its own text opens as a
+  // cast source — a flashback card in the graveyard. The zone
+  // browser keys its cast button off this, the way exile keys its
+  // impulse button off `exile_play`. Never set on hand or
+  // command-zone cards: those surfaces are cast surfaces for
+  // everything in them. The cost to pay rides `alternative_costs`,
+  // already filtered to the offers claimable from this zone.
+  castable_here?: boolean;
   // S21 sub-PR 6: present on a card in exile that someone may play
   // this turn. Absent for ordinary exile, which is nearly all of it.
   exile_play?: ExilePlayView;

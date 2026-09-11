@@ -39,25 +39,31 @@ func TestChangeLife(t *testing.T) {
 
 func TestRecordCommanderDamage(t *testing.T) {
 	p := newPlayer("Carol", 2)
-	opponent := uuid.New()
+	commander := uuid.New()
 
-	if got := p.RecordCommanderDamage(opponent, 7); got != 7 {
+	if got := p.RecordCommanderDamage(commander, 7); got != 7 {
 		t.Errorf("first damage: got %d, want 7", got)
 	}
-	if got := p.RecordCommanderDamage(opponent, 8); got != 15 {
+	if got := p.RecordCommanderDamage(commander, 8); got != 15 {
 		t.Errorf("cumulative: got %d, want 15", got)
 	}
 	if p.IsDeadByCommanderDamage() {
 		t.Error("15 damage should not be lethal")
 	}
 
-	p.RecordCommanderDamage(opponent, 6)
+	p.RecordCommanderDamage(commander, 6)
 	if !p.IsDeadByCommanderDamage() {
 		t.Error("21 damage from one commander should be lethal")
 	}
 }
 
-func TestCommanderDamageFromMultipleOpponentsNotCombined(t *testing.T) {
+// TestCommanderDamageFromMultipleCommandersNotCombined is CR 903.14a
+// and, since the S25 (#77) rekey from player IDs to commander
+// instance IDs, it finally covers the case it was named for: two
+// PARTNER commanders sharing one seat are two independent clocks.
+// Under the old player-keyed map they were one, and a partner pair
+// at 15 apiece killed its victim ten damage early.
+func TestCommanderDamageFromMultipleCommandersNotCombined(t *testing.T) {
 	p := newPlayer("Dave", 3)
 	a, b := uuid.New(), uuid.New()
 
@@ -65,6 +71,11 @@ func TestCommanderDamageFromMultipleOpponentsNotCombined(t *testing.T) {
 	p.RecordCommanderDamage(b, 15)
 	if p.IsDeadByCommanderDamage() {
 		t.Error("15+15 from different commanders should not be lethal (21 is per-commander)")
+	}
+
+	p.RecordCommanderDamage(a, 6)
+	if !p.IsDeadByCommanderDamage() {
+		t.Error("21 from a single commander should be lethal even split across hits")
 	}
 }
 

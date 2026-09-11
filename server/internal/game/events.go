@@ -315,6 +315,22 @@ const (
 	// S15 sub-PR 3.
 	EventCostWarning EventKind = "cost_warning"
 
+	// EventSagaChapter — a lore counter advanced a Saga ONTO a
+	// chapter (CR 714.2c). Target / CardID = the Saga, Actor = its
+	// controller, Amount = the chapter number just reached. One
+	// event per chapter crossed, in ascending order, so a Saga that
+	// gains two lore counters at once triggers both chapters in the
+	// printed order.
+	//
+	// A dedicated kind rather than a predicate over
+	// EventCounterPlaced: that event is emitted for REMOVALS too and
+	// carries only the post-change total, so "went from 1 to 2"
+	// and "went from 3 to 2" are indistinguishable on it. A chapter
+	// ability that fired when a lore counter was removed would be a
+	// silent rules bug with no way for a card file to defend itself.
+	// Added in S27.
+	EventSagaChapter EventKind = "saga_chapter"
+
 	// EventBattleDefeated — a battle's last defense counter came off
 	// (CR 310.9). Source / Target / CardID = the battle, Actor = its
 	// controller.

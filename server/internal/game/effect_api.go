@@ -330,12 +330,19 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 	return nil
 }
 
-// DestroyPermanentForEffect routes a battlefield permanent to its
-// owner's graveyard (or exile if the owner is no longer seated).
-// Wrapper around the existing internal helper — exposed so effect
-// primitives can call it from an already-locked context.
+// DestroyPermanentForEffect destroys a battlefield permanent
+// (CR 701.7), routing it to its owner's graveyard — or exile if the
+// owner is no longer seated. Exposed so effect primitives can call
+// it from an already-locked context.
+//
+// S25 (#77): this is the catalog's destruction verb, so it is where
+// indestructible is honoured. A permanent with indestructible is
+// left exactly where it is and nil is returned — see
+// indestructible.go for why the check cannot live one level down in
+// routeBattlefieldCardToOwnerGraveyardLocked, which sacrifice and
+// the zero-counter SBAs share.
 func (g *Game) DestroyPermanentForEffect(cardID uuid.UUID) error {
-	return g.routeBattlefieldCardToOwnerGraveyardLocked(cardID)
+	return g.destroyBattlefieldPermanentLocked(cardID)
 }
 
 // SacrificePermanentForEffect sacrifices a battlefield permanent on

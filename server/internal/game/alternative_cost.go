@@ -87,6 +87,25 @@ type AlternativeCost struct {
 	// a window, and the creature's own leaves-the-battlefield
 	// trigger goes on the stack above nothing and draws the cards.
 	SacrificeOnEntry bool
+
+	// FromZone binds this offer to one cast source zone (S29). The
+	// zero value — the overwhelming majority — means "from hand",
+	// which is where overload, evoke and cleave are paid.
+	//
+	// Flashback and escape set ZoneGraveyard, and that single field
+	// is what makes them alternative costs rather than a new kind of
+	// thing: "cast this from your graveyard for {2}{R}" is a price
+	// plus a place. The binding cuts BOTH ways and both halves
+	// matter. A cast out of the graveyard may not claim overload,
+	// and a cast out of hand may not claim flashback — the second
+	// being the one that would hand the player a cheaper Faithless
+	// Looting for free.
+	//
+	// A card that declares a bound offer must also list the zone in
+	// Spec.CastableZones; Register panics otherwise, because an
+	// offer bound to a zone the card cannot be cast from is
+	// unclaimable and the card file meant one or the other.
+	FromZone ZoneKind
 }
 
 // Clears reports whether paying this cost deletes the spell's target

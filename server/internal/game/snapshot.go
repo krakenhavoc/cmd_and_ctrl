@@ -183,16 +183,21 @@ type GameSnapshot struct {
 // where a future unexported field gets handled instead of silently
 // dropped.
 type playerSnapshot struct {
-	ID                uuid.UUID         `json:"id"`
-	Name              string            `json:"name"`
-	Seat              int               `json:"seat"`
-	Life              int               `json:"life"`
-	Poison            int               `json:"poison"`
-	Energy            int               `json:"energy"`
-	Library           *zoneSnapshot     `json:"library"`
-	Hand              *zoneSnapshot     `json:"hand"`
-	Graveyard         *zoneSnapshot     `json:"graveyard"`
-	Command           *zoneSnapshot     `json:"command"`
+	ID        uuid.UUID     `json:"id"`
+	Name      string        `json:"name"`
+	Seat      int           `json:"seat"`
+	Life      int           `json:"life"`
+	Poison    int           `json:"poison"`
+	Energy    int           `json:"energy"`
+	Library   *zoneSnapshot `json:"library"`
+	Hand      *zoneSnapshot `json:"hand"`
+	Graveyard *zoneSnapshot `json:"graveyard"`
+	Command   *zoneSnapshot `json:"command"`
+	// CommanderDamage is keyed by commander card instance ID since
+	// S25 (#77). A snapshot written before that rekey restores with
+	// player-ID keys, which read as damage from commanders that do
+	// not exist: harmless (they render nowhere and can never reach
+	// 21 again) but not migrated.
 	CommanderDamage   map[uuid.UUID]int `json:"commanderDamage,omitempty"`
 	LifeHistory       []LifeChange      `json:"lifeHistory,omitempty"`
 	Eliminated        bool              `json:"eliminated"`
