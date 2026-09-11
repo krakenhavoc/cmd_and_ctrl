@@ -321,11 +321,38 @@ client distinguishes spectator messages by the missing `author_id`.
 | `payload.author_id` | string (UUID) | no | Server-stamped from the connection's player principal. Empty for spectator connections. Ignored on inbound frames. |
 | `payload.author_name` | string | yes (server) | Server-stamped from the seated player's name (or `"spectator"`). Ignored on inbound frames. |
 | `payload.timestamp` | string (RFC3339) | yes (server) | Server wall clock at broadcast time. Ignored on inbound frames. |
+| `payload.kind` | string | no | `"say"` (or absent) for a human message; `"bot_improvisation"` / `"bot_reasoning"` for the server-originated bot lines below. Ignored on inbound frames — a player who sends one gets `"say"`. Added in S31 sub-PR 8. |
+| `payload.reason` | string | no | A bot policy's `Decision.Reason`. Present only on bot lines. Added in S31 sub-PR 8. |
 
 The originating client receives the server-stamped frame with the
 same `id` it sent. Other recipients see the same `id` — clients can
 use this for deduplication if they ever render a local optimistic
 copy before the broadcast lands.
+
+**Server-originated bot lines — added in S31 sub-PR 8.** A bot seat
+has no socket, so its lines come from `Hub.BroadcastChat` rather than
+from `handleChat`, and each carries a freshly minted frame `id`.
+There are two kinds and they are not interchangeable:
+
+- `"bot_improvisation"` — the bot applied an effect by hand with the
+  sandbox verbs because the catalog cannot execute that card
+  ([ADR 0033 §8](decisions/0033-ai-bot-seat.md)). **Mandatory
+  disclosure: a client must render these.** An unannounced
+  improvisation is a bot cheating, and a client that hides the
+  announcement is what makes it one. The same commit writes a tagged
+  line to the replay log (see `snapshot` below).
+- `"bot_reasoning"` — the bot narrating why it took an ordinary move.
+  Debug output; the reference client hides it unless the viewer turns
+  on **Settings → Gameplay → Show bot reasoning**, and the server
+  only emits it when the runner's `Narrate` config is on. It can name
+  cards in the bot's *own* hand, which is a disadvantage the bot
+  accepts rather than a leak — a policy is handed the same filtered
+  view a human at that seat gets and never sees another seat's hidden
+  state.
+
+`payload.reason` rides along on both, split out of `text` so a client
+can show the announcement while keeping the reasoning behind the
+setting.
 
 ### `snapshot` (server → client) — added in S03
 
@@ -458,6 +485,43 @@ Returns 204 when no Apply has fired yet (empty replay). The
 crash-recovery dump (single `<game-id>.json` file holding the
 latest snapshot) is orthogonal — it exists for server restarts;
 the replay log is the additive history.
+
+**Annotations (S31 sub-PR 8).** A replay line may carry an optional
+`annotation` object alongside `seq` and `game`. It exists because the
+log is a stream of full snapshots: "what happened here" normally has
+to be diffed back out of two consecutive lines, and some events are
+worth saying outright. The field is written only on the replay /
+crash-dump path — no WebSocket `snapshot` frame ever carries one.
+
+```json
+{
+  "seq": 42,
+  "game": { "...": "..." },
+  "annotation": {
+    "tag": "bot_improvisation",
+    "seat": "8a2c0d8e-...",
+    "seat_name": "Kess",
+    "card": "Grim Tutor",
+    "effect": "search my library, then lose 3 life",
+    "text": "Grim Tutor: search my library, then lose 3 life (improvised — …)",
+    "reason": "no catalog spec for this card",
+    "steps": ["move_card", "change_life"]
+  }
+}
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `annotation.tag` | string | Grep handle. `"bot_improvisation"` is the only tag today — `grep bot_improvisation replays/*.jsonl` finds every bot improvisation in a game that went wrong. |
+| `annotation.seat` / `seat_name` | string | The acting seat. |
+| `annotation.card` / `effect` | string | The card played by hand and the intended effect, in the words the table was given. |
+| `annotation.text` | string | The exact chat line broadcast, verbatim — the record is what the table was *told*, not a reconstruction. |
+| `annotation.reason` | string | The policy's `Decision.Reason`. Always recorded here even when no client is showing reasoning. |
+| `annotation.steps` | string[] | The wire action types the bundle applied, in order. |
+
+Everything in an annotation is public information (it repeats the
+chat line), so it is safe inside a replay artifact a player can
+download.
 
 ---
 
