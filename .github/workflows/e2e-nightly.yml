@@ -33,20 +33,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      # cache: false on purpose. These are self-hosted runners, so
+      # $HOME survives between jobs and ~/go/pkg/mod is already warm --
+      # there is nothing for a cache to restore that is not already
+      # there. Worse, Go marks the module cache read-only (files 0444,
+      # dirs 0555), so actions/cache untarring over it fails with
+      #   /usr/bin/tar: .../openpgp/errors: Cannot mkdir: No such file
+      #   ##[warning]Failed to restore: "/usr/bin/tar" ... exit code 2
+      # on every run, then silently re-downloads the whole module set.
+      # Note the Scryfall cache below is NOT affected and stays on: its
+      # path is inside the workspace, not $HOME.
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.22"
-          cache-dependency-path: server/go.sum
+          cache: false
 
+      # No `cache:` input, for the same reason as Go above -- ~/.npm
+      # persists on a self-hosted runner and restoring over it fails the
+      # same way. Note setup-node's `cache` is an enum of package
+      # managers (npm/yarn/pnpm), NOT a boolean: `cache: false` is a
+      # hard error ("Caching for 'false' is not supported"). Omitting
+      # the input is how you turn it off.
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: |
-            client/package-lock.json
-            tests-e2e/package-lock.json
 
       # The Scryfall default-cards dump is ~400-500 MB; cache it keyed
       # by day so push-triggered runs after the nightly refresh skip
