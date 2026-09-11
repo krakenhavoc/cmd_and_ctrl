@@ -1828,7 +1828,7 @@ Detailed plan TBD; lands just-in-time after S24.
 - [x] `ChooseCreatureTypeOnETB` primitive + per-permanent `Card.NamedTribe` (carried by clone and snapshot)
 - [x] `GrantAllCreatureTypesUntilEOT` (layer 4, turn-scoped) and the `TypeFilter` family of predicates
 - [x] Dynamic mana-spend restrictions (`ManaAbility.RestrictionsFunc`) for Cavern of Souls
-- [x] 14 cards — see the plan below
+- [x] 14 cards: Cavern of Souls, Door of Destinies, Vanquisher's Banner, Adaptive Automaton, Coat of Arms, Maskwood Nexus, Elvish Archdruid, Elvish Champion, Goblin King, Goblin Chieftain, Death Baron, Irregular Cohort, Shields of Velis Vel, + a Lord of Atlantis oracle fix
 - [ ] Theme-deck smoke test (tribal deck plays 3 turns with type-locked Cavern + lord buffs)
 
 ### Plan (written for #78)

@@ -287,3 +287,35 @@ func WhiteAllyToken() game.Card {
 		Toughness: 1,
 	}
 }
+
+// BlueShapeshifterToken is Maskwood Nexus' 2/2 blue Shapeshifter with
+// changeling, and ColorlessShapeshifterToken is Irregular Cohort's
+// colourless one. Two constructors for what is otherwise the same
+// 2/2, because the printed colour is the only difference and a shared
+// helper named for neither would make the next reader check.
+//
+// The changeling keyword on a TOKEN is why Card.Keywords exists: a
+// token has no oracle ID, so the catalog hook can never find it, and
+// without the keyword on the template these would be Shapeshifters
+// and nothing else â which is the whole of what they are for.
+func BlueShapeshifterToken() game.Card {
+	return game.Card{
+		Name:      "Shapeshifter",
+		TypeLine:  "Token Creature — Shapeshifter",
+		Power:     2,
+		Toughness: 2,
+		Keywords:  []string{game.KeywordChangeling},
+	}
+}
+
+// ColorlessShapeshifterToken is Irregular Cohort's 2/2 colourless
+// Shapeshifter with changeling.
+func ColorlessShapeshifterToken() game.Card {
+	return game.Card{
+		Name:      "Shapeshifter",
+		TypeLine:  "Token Creature — Shapeshifter",
+		Power:     2,
+		Toughness: 2,
+		Keywords:  []string{game.KeywordChangeling},
+	}
+}
