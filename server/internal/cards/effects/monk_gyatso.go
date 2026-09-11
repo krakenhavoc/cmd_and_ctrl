@@ -45,8 +45,9 @@ import (
 //     (CR 115.7 counts instances of the word "target").
 func init() {
 	Register(Spec{
-		OracleID: "ff92fa60-f0fe-496e-8155-d9d6f5af651b",
-		Name:     "Monk Gyatso",
+		OracleID:     "ff92fa60-f0fe-496e-8155-d9d6f5af651b",
+		Name:         "Monk Gyatso",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventBecomesTarget},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

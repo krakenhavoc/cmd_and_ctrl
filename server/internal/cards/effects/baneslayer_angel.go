@@ -16,6 +16,8 @@ func init() {
 	Register(Spec{
 		OracleID:        "0e11792b-7fe5-4208-aa0b-e5d09b2b65fe",
 		Name:            "Baneslayer Angel",
+		Completeness:    CompletenessCaveats,
+		Caveats:         []string{"Protection from Demons and from Dragons is missing; only flying, first strike and lifelink work."},
 		PrintedKeywords: []string{"flying", "first strike", "lifelink"},
 	})
 }

@@ -19,8 +19,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "86fb3749-37d6-48a6-8524-71e996850307",
-		Name:     "High Market",
+		OracleID:     "86fb3749-37d6-48a6-8524-71e996850307",
+		Name:         "High Market",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}",

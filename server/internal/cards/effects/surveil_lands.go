@@ -47,6 +47,8 @@ func init() {
 		Register(Spec{
 			OracleID:      t.oracleID,
 			Name:          t.name,
+			Completeness:  CompletenessCaveats,
+			Caveats:       []string{"The land enters tapped and taps for both colors, but the \"surveil 1\" on entry never happens."},
 			Replacements:  []game.ReplacementEffect{SelfEntersTapped()},
 			ManaAbilities: []ManaAbility{dualManaAbility(t.a, t.b)},
 		})

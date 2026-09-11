@@ -27,8 +27,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // answer.
 func init() {
 	Register(Spec{
-		OracleID: "ab8d5f5c-1976-4f77-8ed2-8d28ee666741",
-		Name:     "Tireless Provisioner",
+		OracleID:     "ab8d5f5c-1976-4f77-8ed2-8d28ee666741",
+		Name:         "Tireless Provisioner",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Landfall always makes a Treasure — the Food token option is never offered."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

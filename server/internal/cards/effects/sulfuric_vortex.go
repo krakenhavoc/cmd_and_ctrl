@@ -16,8 +16,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // any future prevention) is consistent with combat-style damage.
 func init() {
 	Register(Spec{
-		OracleID: "7652f328-e142-494b-a869-772ced10c26a",
-		Name:     "Sulfuric Vortex",
+		OracleID:     "7652f328-e142-494b-a869-772ced10c26a",
+		Name:         "Sulfuric Vortex",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The \"players gain no life\" half isn't implemented; only the 2 damage to you each upkeep happens."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventBeginUpkeep},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
