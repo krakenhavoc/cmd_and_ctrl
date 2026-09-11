@@ -24,10 +24,13 @@ is a comment on its card file.
 | 02 | #295 | **36** | 19 | 45 | four land cycles extended; 10 cards the triage called blocked turned out writable |
 | 03–20 | #296–#313 | 0 | 0 | — | not started |
 
-**Catalog: 288 → 356.** The 288 the audit below counted, plus Giant
-Growth and Overrun from the until-end-of-turn work (#314), plus 29 from
-batch 01 and 36 from batch 02. (The test binary reports 357 — the
-flicker probe, as explained below.) Batch 01 moved play-rate coverage by
+**Catalog: 320 → 356**, measured with `len(effects.All())` on
+`origin/main` and again after batch 02, both minus the flicker probe.
+(The test binary reports 321 and 357; the probe is explained below.)
+Note the batch-01 entry of this section derived "319" by adding up what
+it believed had landed — the registry actually held 320, so the derived
+figure was one low. This line is measured, not derived. Batch 01 moved
+play-rate coverage by
 **+2 in the top 100** (Dark Ritual, Arcane Denial), **+17 in the top
 200**, **+29 in the top 300**; batch 02 adds **+16 more in the top 300**
 and **+20 between rank 301 and 360**.
