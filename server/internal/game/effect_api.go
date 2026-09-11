@@ -213,18 +213,52 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 // on the surrounding priority boundary (resolution path already
 // bookends with runStateChecks), so lethal damage routes the card
 // via the normal SBA loop rather than a bespoke kill-now path.
+//
+// S30: routed through the CR 614 replacement pipeline. This was the
+// last unrouted damage entry point — the sibling comment on
+// DealDamageToPlayerForEffect claims the other three were already
+// covered, and it was right about three of them. A Lightning Bolt
+// aimed at a CREATURE reached DamageMarked directly, so neither a
+// prevention shield nor a damage doubler could see it, while the
+// same Bolt aimed at a player went through the pipeline. That
+// asymmetry is invisible until a card exists that cares, and S30's
+// prevention shields are that card.
 func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount int) error {
 	if amount <= 0 {
 		return nil
 	}
+	ev := &ReplacementEvent{
+		Kind:         RepEventDamage,
+		Source:       source,
+		DamageSource: source,
+		DamageTarget: cardID,
+		DamageAmount: amount,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		// A replacement queued a CR 616 ordering choice; the
+		// pipeline resumes when it is answered.
+		return nil
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return err
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled || out.DamageAmount <= 0 {
+		// Fully prevented. The card is untouched and no
+		// EventDealDamage fires, which is what "prevented" means —
+		// a "whenever ~ is dealt damage" trigger must not see it.
+		return nil
+	}
 	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID == cardID {
-			g.Battlefield.Cards[i].DamageMarked += amount
+		if g.Battlefield.Cards[i].InstanceID == out.DamageTarget {
+			g.Battlefield.Cards[i].DamageMarked += out.DamageAmount
 			g.EmitEvent(Event{
 				Kind:   EventDealDamage,
-				Source: source,
-				Target: cardID,
-				Amount: amount,
+				Source: out.DamageSource,
+				Target: out.DamageTarget,
+				Amount: out.DamageAmount,
 			})
 			return nil
 		}
