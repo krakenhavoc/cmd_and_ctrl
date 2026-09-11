@@ -106,6 +106,7 @@ var gameFields = plan(
 	"replacementsAppliedThisEvent", dropped, "per-pipeline-call scope, defer-cleared; always empty between Applies",
 	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty",
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
+	"simultaneousExit", dropped, "per-sweep scope, defer-cleared; a snapshot is never taken mid-wipe, so it is always empty between mutations",
 )
 
 var cardFields = plan(
