@@ -743,14 +743,43 @@ Three supporting pieces:
   on an actual delta: CR 302.6 (summoning sickness under the new
   controller) and CR 506.4 (removed from combat).
 
-### Known limitation
+### The lock contract this forced (resolved in the same PR)
 
-`recomputeLayersLocked` may run under the game's READ lock (the
-snapshot path) while serialised only by the recompute mutex, so
-materialising writes `Card.Controller` where a concurrent reader could
-observe a torn value. This is not new — the existing `c.effective =
-&printed` write has exactly the same exposure — but it is now a
-16-byte field rather than a pointer. At this project's scale (≤8 users,
-one game per room, all mutations behind one write lock) it is
-theoretical; the real fix is to move the recompute wholly behind the
-write lock, which is a separate change.
+Materialisation is what made the layer engine's lock contract
+load-bearing, and the contract turned out to be wrong.
+
+`RecomputeLayersIfStaleLocked` documented itself as safe under the
+game's READ lock, on the strength of a dedicated recompute mutex. That
+mutex serialised recomputes against **each other** and said nothing
+about a goroutine holding only the shared read lock — and
+`sync.RWMutex` admits any number of those at once. So the pass raced
+every concurrent reader.
+
+It is a write, not a read: it reassigns `Card.effective` on every
+battlefield card, and materialisation adds `Card.Controller`,
+`SummonedThisTurn`, `AttackingTarget` and `BlockingTarget` on any
+permanent layer 2 just moved. Two production callers read exactly
+those fields under the read lock from their own goroutines —
+`Game.AutoTapForCostExcluding` (the lobby's `/games/{id}/autotap`
+preview, on a net/http goroutine) and `Game.ControllerOfCard` (the
+actions package's per-card authorization gate) — against
+`protocol.ViewOfGame`, which is the caller that runs the recompute.
+A torn 16-byte `uuid.UUID` there silently attributes a permanent to
+the wrong seat.
+
+The exposure was not new in kind: `c.effective = &printed` has had it
+since S16. Only the blast radius differs — a torn pointer crashes, a
+torn controller does not.
+
+**Resolved by requiring the write lock.** Every mutator that calls
+`RecomputeLayersIfStaleLocked` already held it; `ReadSnapshot`, the
+one caller that did not, now upgrades — check the version counters
+under the read lock, and when stale drop to the write lock for the
+recompute alone before re-entering read mode, re-checking because a
+mutation can land in the gap. The recompute mutex is deleted rather
+than left in place. Measured cost on a 40-permanent board: the fast
+path (what almost every broadcast hits) is unchanged at ~4ns, a stale
+recompute goes 6.5µs → 7.3µs — under a percent of `ViewOfGame`'s
+hundreds of microseconds — and the contended case is flat.
+`server/internal/game/layers_concurrency_test.go` pins all three
+pairings under `go test -race`.

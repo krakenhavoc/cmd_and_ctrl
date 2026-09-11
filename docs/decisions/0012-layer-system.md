@@ -47,10 +47,10 @@ layer count; sub-millisecond on modern CPUs and trivially correct.
 The version counter ensures we only pay the recompute cost when
 something actually changed.
 
-**Where the recompute fires:** `ReadSnapshot` calls
-`RecomputeLayersIfStaleLocked` inside its read closure before
-invoking the projection. Read-lock-safe via the atomic counters +
-the dedicated recompute mutex (no game-write-lock promotion).
+**Where the recompute fires:** `ReadSnapshot` resolves a stale
+recompute before invoking the projection. (S24 amendment, see
+decision 11: it does that by upgrading to the game's write lock,
+not by recomputing under the read lock as originally specified.)
 
 **Where it does NOT fire:** inside the SBA loop. SBA mutations
 emit zone-change events that bump `layerVersion`; if the recompute
@@ -216,6 +216,10 @@ time pre-effects-init path).
 
 ### 11. Lock semantics: atomic version + dedicated recompute mutex
 
+> **Superseded in S24.** This decision was wrong and shipped a data
+> race. See the amendment below; the current contract is that the
+> recompute requires the game's WRITE lock.
+
 Reading `layerVersion` and `lastResolvedVersion` is atomic. Bumps
 happen under the game write lock (the EmitEvent path) — no race
 with snapshot readers. The recompute body runs under
@@ -228,6 +232,52 @@ atomic version counters. The recompute writes `Card.effective`
 under the recompute mutex; concurrent readers may see either the
 old or new pointer (atomic pointer assignment in Go), which is
 fine — both are valid Characteristic snapshots.
+
+#### Amendment (S24): the recompute takes the write lock
+
+Two things above are false.
+
+**"Multiple readers can contend without promoting the read lock"**
+confuses two questions. The recompute mutex serialises recomputes
+against **each other**; it does nothing about a goroutine holding
+only `g.mu` in read mode, and `sync.RWMutex` admits any number of
+those simultaneously. Every concurrent read-lock holder raced the
+pass. `Game.AutoTapForCostExcluding` (the lobby `/autotap` preview,
+on a net/http goroutine) and `Game.ControllerOfCard` (the actions
+package's authorization gate) both walk the battlefield under the
+read lock while `protocol.ViewOfGame` recomputes on another.
+
+**"Atomic pointer assignment in Go, which is fine"** is not a
+guarantee the language makes. An unsynchronised pointer write
+concurrent with a read is a data race under the Go memory model,
+with no promise the reader sees either the old or the new value;
+`go test -race` reports it as one. The only reason CI stayed green
+is that no test exercised a concurrent reader against a recompute —
+absence of a race report from a suite with no concurrency in it is
+not evidence of absence.
+
+S24's layer 2 raised the stakes rather than creating them: the
+materialisation pass writes `Card.Controller`, a 16-byte
+`uuid.UUID`, so a torn read silently attributes a permanent to the
+wrong seat instead of crashing on a bad pointer.
+
+**Current contract.** `RecomputeLayersIfStaleLocked` requires
+`g.mu` in **write** mode. Every mutator that calls it already held
+it. `ReadSnapshot` — the one caller that did not — upgrades: it
+checks the version counters under the read lock, and when stale
+releases it, retakes `g.mu` in write mode for the recompute alone,
+and re-enters read mode, looping because a mutation can land in the
+gap and `fn()` must see fresh layers. `g.recompute.mu` is deleted;
+the write lock is the serialiser.
+
+Cost, measured on a 40-permanent board: the fast path — two atomic
+loads, which is what almost every broadcast hits, because every
+version bump happens under the write lock and thirteen mutators
+recompute before releasing — is unchanged at ~4ns. A stale
+recompute goes 6.5µs → 7.3µs, under a percent of `ViewOfGame`'s
+hundreds of microseconds. The contended case is flat and less
+variable. `server/internal/game/layers_concurrency_test.go` pins
+the three pairings under `-race`.
 
 ## Consequences
 
