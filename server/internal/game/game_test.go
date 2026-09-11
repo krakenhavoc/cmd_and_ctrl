@@ -462,3 +462,61 @@ func TestEndTransitionsToEnded(t *testing.T) {
 		t.Errorf("state after End: got %q, want %q", g.State, StateEnded)
 	}
 }
+
+// TestTurnAdvanceClearsPerTurnCaches is the S25 (#77) regression for
+// a bypassed hook. `onTurnAdvanceLocked` clears the "once per turn"
+// bookkeeping — loyalty activations (CR 606.5), the spell tally, the
+// land-drop count — but it was only reached from AdvanceStep, which
+// compares the step BEFORE the advance to the step after. In normal
+// play the cursor never rests on Cleanup: End → Cleanup → the next
+// seat's Untap all happens inside one runStepEntryHooksLocked
+// recursion, and that recursion advanced the cursor directly. So
+// AdvanceStep saw End → Cleanup, same seat, no new turn, and the
+// caches survived the turn boundary forever.
+//
+// Routing every advance through advanceTurnCursorLocked is the fix;
+// this test walks a real turn boundary and checks all three.
+func TestTurnAdvanceClearsPerTurnCaches(t *testing.T) {
+	g := NewGame()
+	for i := 0; i < 2; i++ {
+		if _, err := g.AddPlayer(fmt.Sprintf("P%d", i+1), buildTestDeck("C")); err != nil {
+			t.Fatalf("AddPlayer: %v", err)
+		}
+	}
+	if err := g.Start(rand.New(rand.NewPCG(3, 4))); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	for _, p := range g.Seats {
+		if err := g.KeepHand(p.ID); err != nil {
+			t.Fatalf("KeepHand: %v", err)
+		}
+	}
+
+	me := g.Seats[g.Turn.ActiveSeat]
+	walker := uuid.New()
+	g.WithWriteLock(func() {
+		g.LoyaltyActivatedThisTurn = map[uuid.UUID]bool{walker: true}
+		g.SpellsCastThisTurn = map[uuid.UUID]CastTally{me.ID: {Total: 2, Noncreature: 1}}
+		g.LandsPlayedThisTurn = map[uuid.UUID]int{me.ID: 1}
+	})
+
+	start := g.Turn.ActiveSeat
+	for i := 0; i < 30 && g.Turn.ActiveSeat == start; i++ {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	if g.Turn.ActiveSeat == start {
+		t.Fatalf("cursor never left seat %d", start)
+	}
+
+	if g.LoyaltyActivatedThisTurn[walker] {
+		t.Error("LoyaltyActivatedThisTurn survived the turn boundary — a spent loyalty ability never refreshes")
+	}
+	if tally := g.CastTallyFor(me.ID); tally.Total != 0 {
+		t.Errorf("SpellsCastThisTurn survived the turn boundary: %+v", tally)
+	}
+	if n := g.LandsPlayedThisTurnFor(me.ID); n != 0 {
+		t.Errorf("LandsPlayedThisTurn survived the turn boundary: %d", n)
+	}
+}

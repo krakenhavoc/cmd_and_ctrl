@@ -624,9 +624,7 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	if g.State != StateActive {
 		return Turn{}, ErrGameNotActive
 	}
-	prev := g.Turn
-	g.Turn = g.Turn.advance(len(g.Seats))
-	g.onTurnAdvanceLocked(prev, g.Turn)
+	g.advanceTurnCursorLocked()
 	g.runStepEntryHooksLocked()
 	// CR 117.5 / 704.3: SBAs fire whenever a player would get
 	// priority. AdvanceStep lands on a priority-granting step (Untap
@@ -636,6 +634,34 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	// that accumulated during the prior step without a priority pass.
 	g.runStateChecksLocked()
 	return g.Turn, nil
+}
+
+// advanceTurnCursorLocked moves the turn cursor one step and runs
+// the new-turn hook. Every cursor advance goes through here.
+//
+// S25 (#77) introduced it because the direct `g.Turn =
+// g.Turn.advance(...)` it replaces appeared in FOUR places and only
+// one of them — AdvanceStep — called `onTurnAdvanceLocked`. The other
+// three are inside `runStepEntryHooksLocked`, which is where the
+// active seat actually changes in normal play: the cursor never
+// rests on Cleanup, so End → Cleanup → next seat's Untap happens as
+// one recursion inside the hook, and the AdvanceStep call that
+// started it compared End against Cleanup, saw the same seat, and
+// concluded no new turn had begun.
+//
+// The per-turn caches `onTurnAdvanceLocked` clears
+// (LoyaltyActivatedThisTurn, SpellsCastThisTurn, LandsPlayedThisTurn)
+// were therefore surviving across turns on the ordinary path. Each
+// of those is a "once per turn" or "first spell this turn" gate, so
+// the effect was a permission that never came back — a planeswalker
+// whose loyalty ability stayed spent, a land drop that never
+// refreshed in the legal-move enumerator.
+//
+// Caller must hold g.mu.
+func (g *Game) advanceTurnCursorLocked() {
+	prev := g.Turn
+	g.Turn = g.Turn.advance(len(g.Seats))
+	g.onTurnAdvanceLocked(prev, g.Turn)
 }
 
 // onTurnAdvanceLocked clears any per-turn caches whenever the
@@ -648,6 +674,24 @@ func (g *Game) onTurnAdvanceLocked(prev, next Turn) {
 	if !prev.IsNewTurn(next) {
 		return
 	}
+	// S25 (#77): invalidate the layer cache. A continuous effect
+	// whose AppliesTo reads the TURN rather than the battlefield —
+	// Zurgo Helmsmasher's "during your turn, ~ has indestructible" is
+	// the first in the catalog — changes its answer here and nowhere
+	// else, so nothing would otherwise mark the cached
+	// characteristics stale and the keyword would stick around on the
+	// wrong player's turn.
+	//
+	// This is the bump layer_listener.go's header predicted and
+	// deliberately deferred ("Step / phase advance … when they
+	// arrive in a later sprint, advance the version inside the
+	// step-advance helper directly — no event for it today"). It
+	// lands here rather than in the listener for the reason that note
+	// gives: there is no event for a turn change to listen to.
+	//
+	// Cost is one recompute per turn, against a cache that is already
+	// invalidated by every zone move and every counter placed.
+	g.layerVersion.Add(1)
 	if g.LoyaltyActivatedThisTurn != nil {
 		g.LoyaltyActivatedThisTurn = nil
 	}
@@ -749,7 +793,7 @@ func (g *Game) runStepEntryHooksLocked() {
 		if canceled {
 			// Step canceled — advance past and recurse so the
 			// cursor hits the next step's entry hook.
-			g.Turn = g.Turn.advance(len(g.Seats))
+			g.advanceTurnCursorLocked()
 			g.runStepEntryHooksLocked()
 			return
 		}
@@ -806,7 +850,7 @@ func (g *Game) runStepEntryHooksLocked() {
 			g.untapAllForLocked(g.Turn.ActiveSeat)
 		}
 		// Untap grants no priority; recurse into the next step.
-		g.Turn = g.Turn.advance(len(g.Seats))
+		g.advanceTurnCursorLocked()
 		g.runStepEntryHooksLocked()
 	case StepDraw:
 		if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
@@ -871,7 +915,7 @@ func (g *Game) runStepEntryHooksLocked() {
 		// until DiscardSelection drains the pending map and re-fires
 		// this hook.
 		if len(g.DiscardPending) == 0 {
-			g.Turn = g.Turn.advance(len(g.Seats))
+			g.advanceTurnCursorLocked()
 			g.runStepEntryHooksLocked()
 		}
 	}
