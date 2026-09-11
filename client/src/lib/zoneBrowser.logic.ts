@@ -85,15 +85,27 @@ export function buildMovePayload(
 // exile slice, and the thief is the one who gets a button.
 
 // impulseGrantFor returns the grant on `card` if the viewer is the
-// one it names, or null.
+// one it names AND its window is open, or null.
+//
+// `turn` is the current turn number, for S29 warp's "you may cast it
+// from exile on a LATER turn": the grant is stamped on the permanent
+// the moment it is exiled, at the end step of the turn it was warped
+// in, and stays dark until the next turn begins. Callers that have
+// no turn number to hand pass undefined and get the pre-S29
+// behaviour, which is correct for every grant that carries no floor.
 export function impulseGrantFor(
   card: CardView,
   zoneKind: BrowsableZone,
   viewerID: string | null,
+  turn?: number,
 ): ExilePlayView | null {
   if (zoneKind !== "exile" || !viewerID) return null;
   const grant = card.exile_play;
-  return grant && grant.player === viewerID ? grant : null;
+  if (!grant || grant.player !== viewerID) return null;
+  if (grant.not_before_turn !== undefined && turn !== undefined && turn < grant.not_before_turn) {
+    return null;
+  }
+  return grant;
 }
 
 // impulseActionLabel is the verb for the button, or null when there
@@ -104,8 +116,9 @@ export function impulseActionLabel(
   card: CardView,
   zoneKind: BrowsableZone,
   viewerID: string | null,
+  turn?: number,
 ): "cast" | "play" | null {
-  const grant = impulseGrantFor(card, zoneKind, viewerID);
+  const grant = impulseGrantFor(card, zoneKind, viewerID, turn);
   if (!grant) return null;
   if ((card.type_line ?? "").toLowerCase().includes("land")) {
     return grant.cast_only ? null : "play";

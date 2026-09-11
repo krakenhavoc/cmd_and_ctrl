@@ -158,6 +158,13 @@ omits a clause, the card comment says so (as `weftstalker_ardent.go`
 does for warp) — but that is a card that should not have shipped
 under this ADR, and the exceptions should not grow.
 
+**S29 update.** The one exception this paragraph named is gone.
+Weftstalker Ardent's warp clause is modelled: `Warp()` in
+[alternative_cost.go](../../server/internal/cards/effects/alternative_cost.go)
+composes the S22 `AlternativeCost` with a CR 603.7 delayed trigger
+and an `ExilePlayPermission` carrying S29's `NotBeforeTurn` floor for
+"on a later turn". The exception list is empty again.
+
 ## The nine cards, and why none of them shipped here
 
 Recorded because §5 makes "we chose not to register this" a decision
@@ -168,7 +175,7 @@ against the dump and the code, not against the triage docs.
 | Card | Blocked on |
 |---|---|
 | Enduring Curiosity (#321) | The combat-damage trigger is writable today. "Returns as a non-creature enchantment" is layer 4, and layer 4 is **wire-only**: every rules gate reads printed `Card.TypeLine`, so the returned permanent would still attack, block and be targeted as a creature. |
-| Anticausal Vestige (#324) | Warp is ~90% composable from #257's `AlternativeCost` + #269's `WhileExiled`/`CostOverride`, missing a "not before turn N" bound. The card's own LTB clause needs a hand-selection primitive with a dynamic mana-value bound. |
+| Anticausal Vestige (#324) | ~~Warp is ~90% composable from #257's `AlternativeCost` + #269's `WhileExiled`/`CostOverride`, missing a "not before turn N" bound.~~ **Half resolved in S29:** warp is modelled (`Warp()`, and `ExilePlayPermission.NotBeforeTurn` is the missing bound). Still blocked on the card's own LTB clause, which needs a hand-selection primitive with a dynamic mana-value bound — there is no `PendingChoice` kind for "put a permanent card from your hand onto the battlefield". |
 | Aang, Swift Savior (#325) | Transform DFC; all five printings carry `card_faces`. Cannot be registered at all (ADR 0034 / #278). |
 | Lotus Field (#332) | Hexproof is not honoured by targeting, and "three mana of any one color" is inexpressible — each `{W\|U\|B\|R\|G}` slot resolves to its own independent pick. |
 | Fortune Teller's Talent (#333) | A Class, not a Saga. Single-faced, so ADR 0034 is not the issue; levels are, and no level machinery exists. |
