@@ -31,8 +31,57 @@ type ExilePlayPermission struct {
 	// live. "Until end of turn" grants the turn it was created in.
 	// A turn-number bound rather than a cleanup sweep because extra
 	// turns, and because a card re-exiled by something else later
-	// must not inherit a stale grant.
+	// must not inherit a stale grant. Ignored when WhileExiled is
+	// set.
 	UntilTurn int
+
+	// WhileExiled makes the grant unbounded — airbend's "WHILE IT'S
+	// EXILED, its owner may cast it for {2}". There is no turn to
+	// count to, so UntilTurn is not consulted and the cleanup sweep
+	// skips the card entirely.
+	//
+	// A named boolean rather than a sentinel UntilTurn (-1, MaxInt):
+	// the failure mode of a sentinel is that a caller who simply
+	// forgets to set UntilTurn gets an unbounded grant by accident,
+	// since 0 is both the zero value and a plausible turn number.
+	// The boolean can only be switched on deliberately.
+	//
+	// "While it's exiled" is self-limiting rather than eternal: the
+	// cast path zeroes ExilePlay as the card leaves exile (see the
+	// two clear sites in mutations.go), so a card airbent, cast, and
+	// later exiled again by something else does not inherit the
+	// permission it was granted the first time. That is the same
+	// staleness guard the turn-bounded grants rely on, and it is the
+	// only thing standing between an unbounded grant and a
+	// permanently-castable card.
+	WhileExiled bool
+
+	// CostOverride is a mana cost in Scryfall brace notation that
+	// the holder pays INSTEAD of the card's printed mana cost —
+	// airbend's "{2} rather than its mana cost" (CR 118.9). Empty
+	// means the ordinary printed cost, which is what impulse exile
+	// grants.
+	//
+	// This is the grant-carried sibling of AlternativeCost. It is
+	// NOT an AlternativeCost, because the two are keyed differently
+	// and deliberately so: an AlternativeCost is a property of the
+	// CARD, looked up by oracle ID and offered to anyone casting it,
+	// while this one is a property of a single exiled INSTANCE, and
+	// two copies of the same card in exile can easily carry
+	// different grants (one airbent, one impulse-exiled).
+	//
+	// SIMPLIFICATION: the override is charged rather than offered.
+	// Printed airbend says the owner "MAY cast it for {2} RATHER
+	// THAN its mana cost" — both prices are legal, and a {W}
+	// creature is cheaper at its printed cost. The engine charges
+	// {2} unconditionally, so the cheaper option is unavailable on a
+	// card whose printed cost is below {2}. Strictly weaker than
+	// printed (an offer of two prices, narrowed to one of them),
+	// never stronger — and the alternative, threading a second
+	// claimable key through the announce path, would have to
+	// restructure validateAlternativeCost, which is shared cost
+	// machinery.
+	CostOverride string
 
 	// CastOnly restricts the grant to casting. Ragavan says "you may
 	// CAST that card"; a land exiled by Ragavan is stranded, since
@@ -46,9 +95,16 @@ type ExilePlayPermission struct {
 	AnyColor bool
 }
 
-// Active reports whether playerID may play the card on `turn`.
+// Active reports whether playerID may play the card on `turn`. An
+// unbounded grant (WhileExiled) ignores `turn` — its duration is the
+// card's continued presence in exile, which this type cannot see and
+// does not need to: the cast path clears the permission as the card
+// leaves.
 func (p ExilePlayPermission) Active(playerID uuid.UUID, turn int) bool {
-	return p.Player != uuid.Nil && p.Player == playerID && turn <= p.UntilTurn
+	if p.Player == uuid.Nil || p.Player != playerID {
+		return false
+	}
+	return p.WhileExiled || turn <= p.UntilTurn
 }
 
 // Granted reports whether the permission names anyone at all.
@@ -60,12 +116,23 @@ func (p ExilePlayPermission) Granted() bool {
 // has closed. Called from the cleanup-step hook, alongside the
 // damage wipe and the turn-scoped replacement clear — the same
 // "this turn is over" sweep. Caller must hold g.mu.
+//
+// Unbounded grants (WhileExiled) are skipped: airbend's window
+// closes when the card leaves exile, not when a turn ends, and the
+// sweep has no business reaping one. Reaping it here would be the
+// silent kind of wrong — the card stays visible in exile, the
+// client keeps offering the cast button from a stale snapshot, and
+// the cast comes back ErrNoPlayPermission with nothing on screen
+// explaining why.
 func (g *Game) clearExpiredExilePlayLocked() {
 	if g.Exile == nil {
 		return
 	}
 	for i := range g.Exile.Cards {
 		p := g.Exile.Cards[i].ExilePlay
+		if p.WhileExiled {
+			continue
+		}
 		if p.Granted() && p.UntilTurn <= g.Turn.Number {
 			g.Exile.Cards[i].ExilePlay = ExilePlayPermission{}
 		}
@@ -117,6 +184,61 @@ func (g *Game) ExileTopWithPermissionForEffect(fromPlayer, grantTo uuid.UUID, n 
 		out = append(out, top)
 	}
 	return out, nil
+}
+
+// ExileCardWithPermissionForEffect exiles one specific card —
+// typically a targeted battlefield permanent — and stamps `perm`
+// onto it in its new home. The airbend half of the exile-play
+// primitives, as against ExileTopWithPermissionForEffect's
+// impulse-exile half: that one picks its cards off the top of a
+// library and grants to someone who is usually NOT the owner; this
+// one is handed a card someone chose and grants to the owner.
+//
+// A zero perm.Player means "the card's owner", which is what every
+// airbend card says and what makes this primitive different from
+// the impulse one in the way that matters. The owner is read off
+// the card AFTER the move, not before: Card.Owner is fixed at deck
+// build and rides the card through every zone, so the two are the
+// same value, and reading it after means one scan rather than two.
+//
+// The move goes through ExileCardForEffect so the LKI snapshot,
+// the ZoneMove event and the LTB event are exactly the ones every
+// other exile produces — an airbent creature's leaves-the-
+// battlefield triggers fire normally, and dies-triggers correctly
+// do not (CR 700.4: exile is not dying).
+//
+// A card that is no longer in exile once the move completes is not
+// an error. The LTB event dispatches triggers synchronously, and
+// one of them may move the card on (a commander heading for the
+// command zone is the live example); the grant simply does not land
+// on a card that isn't there to receive it.
+//
+// Caller must hold g.mu.
+func (g *Game) ExileCardWithPermissionForEffect(cardID uuid.UUID, perm ExilePlayPermission) error {
+	if err := g.ExileCardForEffect(cardID); err != nil {
+		return err
+	}
+	if g.Exile == nil {
+		return nil
+	}
+	for i := range g.Exile.Cards {
+		if g.Exile.Cards[i].InstanceID != cardID {
+			continue
+		}
+		if perm.Player == uuid.Nil {
+			perm.Player = g.Exile.Cards[i].Owner
+		}
+		if !perm.WhileExiled && perm.UntilTurn == 0 {
+			perm.UntilTurn = g.Turn.Number
+		}
+		// The card is already publicly known — ExileCardForEffect
+		// marks every seat as a knower on the way in, which is what
+		// the grant needs: a permission nobody can see is unplayable
+		// in practice.
+		g.Exile.Cards[i].ExilePlay = perm
+		return nil
+	}
+	return nil
 }
 
 // asAnyColorCost rewrites a cost so every colored requirement is

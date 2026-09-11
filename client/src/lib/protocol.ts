@@ -499,6 +499,11 @@ export interface ExilePlayView {
   cast_only?: boolean;
   // "Spend mana as though it were mana of any color" (Breeches).
   any_color?: boolean;
+  // S22 airbend: the mana cost the holder pays INSTEAD of the card's
+  // printed one ("{2} rather than its mana cost"). Absent for
+  // impulse exile, which charges the printed cost. Note that
+  // `mana_cost` on the card still carries the printed value.
+  cost_override?: string;
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a
