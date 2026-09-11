@@ -254,11 +254,18 @@ var pendingChoiceFields = plan(
 	"PayCost", carried, "",
 	"SearchCards", carried, "",
 	"SearchMax", carried, "",
+	// S28 cascade: which card the "you may cast it without paying
+	// its mana cost" prompt is offering. Carried for the same reason
+	// SacrificeOptions is — the prompt is meaningless without it, and
+	// a restored game that forgot it would render an offer about
+	// nothing.
+	"MayCastCard", carried, "",
 
 	"replacementResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"pickTargetResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"triggerResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"payUnlessResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"mayCastResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"searchResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"scryResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
 )

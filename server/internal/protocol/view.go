@@ -1222,6 +1222,16 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				}
 			}
 		}
+		// PendingChoiceMayCast — the single card being offered
+		// ("you may cast it without paying its mana cost"). Inlined
+		// as the one Options entry so the prompt shows the card
+		// rather than quoting its name into a sentence. The card is
+		// face up in exile and public, so no redaction concern.
+		if c.Kind == game.PendingChoiceMayCast && c.MayCastCard != uuid.Nil {
+			if card, ok := g.LookupCardForEffect(c.MayCastCard); ok {
+				v.Options = []CardView{viewOfCard(card)}
+			}
+		}
 		// PendingChoiceScry — the looked-at cards, top-first, as
 		// Options. Scry is "look at", not "reveal": only the chooser
 		// was marked a knower, so FilterViewFor redacts these to backs
