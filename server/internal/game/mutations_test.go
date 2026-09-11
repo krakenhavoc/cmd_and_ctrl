@@ -1326,50 +1326,84 @@ func TestAddCounterEmptyNameRejected(t *testing.T) {
 	}
 }
 
+// commanderInstanceOf returns the instance ID of the seat's
+// commander, which sits in its command zone from Start. S25 (#77)
+// made that ID the CommanderDamage key.
+func commanderInstanceOf(t *testing.T, p *Player) uuid.UUID {
+	t.Helper()
+	for _, c := range p.Command.Cards {
+		if c.IsCommander {
+			return c.InstanceID
+		}
+	}
+	t.Fatalf("seat %s has no commander in its command zone", p.Name)
+	return uuid.Nil
+}
+
 func TestSetCommanderDamage(t *testing.T) {
 	g := newActiveGame(t)
 	p0, p1 := g.Seats[0], g.Seats[1]
+	cmdr := commanderInstanceOf(t, p0)
 
-	if err := g.SetCommanderDamage(p0.ID, p1.ID, 7); err != nil {
+	if err := g.SetCommanderDamage(cmdr, p1.ID, 7); err != nil {
 		t.Fatalf("SetCommanderDamage: %v", err)
 	}
-	if p1.CommanderDamage[p0.ID] != 7 {
-		t.Errorf("damage: got %d, want 7", p1.CommanderDamage[p0.ID])
+	if p1.CommanderDamage[cmdr] != 7 {
+		t.Errorf("damage: got %d, want 7", p1.CommanderDamage[cmdr])
 	}
 	// Set semantics (not add): resetting to 5 should overwrite.
-	_ = g.SetCommanderDamage(p0.ID, p1.ID, 5)
-	if p1.CommanderDamage[p0.ID] != 5 {
-		t.Errorf("damage after set: got %d, want 5", p1.CommanderDamage[p0.ID])
+	_ = g.SetCommanderDamage(cmdr, p1.ID, 5)
+	if p1.CommanderDamage[cmdr] != 5 {
+		t.Errorf("damage after set: got %d, want 5", p1.CommanderDamage[cmdr])
 	}
 }
 
 func TestSetCommanderDamageClampsNegative(t *testing.T) {
 	g := newActiveGame(t)
 	p0, p1 := g.Seats[0], g.Seats[1]
-	_ = g.SetCommanderDamage(p0.ID, p1.ID, -3)
-	if p1.CommanderDamage[p0.ID] != 0 {
-		t.Errorf("negative clamped: got %d, want 0", p1.CommanderDamage[p0.ID])
+	cmdr := commanderInstanceOf(t, p0)
+	_ = g.SetCommanderDamage(cmdr, p1.ID, -3)
+	if p1.CommanderDamage[cmdr] != 0 {
+		t.Errorf("negative clamped: got %d, want 0", p1.CommanderDamage[cmdr])
 	}
 }
 
+// TestSetCommanderDamageValidatesFrom — `from` names a commander
+// CARD since S25 (#77). An ID that names no card at all is refused.
 func TestSetCommanderDamageValidatesFrom(t *testing.T) {
 	g := newActiveGame(t)
 	p1 := g.Seats[1]
 	ghost := uuid.New()
-	if err := g.SetCommanderDamage(ghost, p1.ID, 5); err != ErrPlayerNotFound {
-		t.Errorf("unseated from: got %v, want ErrPlayerNotFound", err)
+	if err := g.SetCommanderDamage(ghost, p1.ID, 5); err != ErrCardNotFound {
+		t.Errorf("unknown from: got %v, want ErrCardNotFound", err)
 	}
 	// Map must not have been touched.
 	if _, ok := p1.CommanderDamage[ghost]; ok {
-		t.Error("target's CommanderDamage map was polluted by unseated from")
+		t.Error("target's CommanderDamage map was polluted by unknown from")
+	}
+}
+
+// TestSetCommanderDamageRejectsNonCommander is the other half of the
+// `from` gate: a real card that simply isn't a commander cannot
+// accrue commander damage (CR 903.14a).
+func TestSetCommanderDamageRejectsNonCommander(t *testing.T) {
+	g := newActiveGame(t)
+	p0, p1 := g.Seats[0], g.Seats[1]
+	plain := p0.Library.Cards[0].InstanceID
+	if err := g.SetCommanderDamage(plain, p1.ID, 5); err != ErrCardNotFound {
+		t.Errorf("non-commander from: got %v, want ErrCardNotFound", err)
+	}
+	if len(p1.CommanderDamage) != 0 {
+		t.Errorf("map polluted by a non-commander source: %v", p1.CommanderDamage)
 	}
 }
 
 func TestSetCommanderDamageValidatesTo(t *testing.T) {
 	g := newActiveGame(t)
 	p0 := g.Seats[0]
+	cmdr := commanderInstanceOf(t, p0)
 	ghost := uuid.New()
-	if err := g.SetCommanderDamage(p0.ID, ghost, 5); err != ErrPlayerNotFound {
+	if err := g.SetCommanderDamage(cmdr, ghost, 5); err != ErrPlayerNotFound {
 		t.Errorf("unseated to: got %v, want ErrPlayerNotFound", err)
 	}
 }
@@ -2278,13 +2312,13 @@ func TestS131SBAEmptyLibraryDrawEliminates(t *testing.T) {
 
 // TestS131SBA21CommanderDamageEliminates covers CR 704.5v / 903.14a
 // — a player who has been dealt 21+ damage by a single commander
-// loses. (Per-commander tracking lands in sub-PR 8; today's per-
-// opponent map is used.)
+// loses. Per-commander tracking, promised in S13.1 sub-PR 8 and
+// actually landed in S25 (#77), is what the instance-ID key here is.
 func TestS131SBA21CommanderDamageEliminates(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	target := g.Seats[1]
 	attacker := g.Seats[0]
-	target.RecordCommanderDamage(attacker.ID, CommanderDamageLethal)
+	target.RecordCommanderDamage(commanderInstanceOf(t, attacker), CommanderDamageLethal)
 	g.WithWriteLock(func() { g.runStateChecksLocked() })
 	if !target.Eliminated {
 		t.Errorf("target not eliminated after 21 commander damage")
