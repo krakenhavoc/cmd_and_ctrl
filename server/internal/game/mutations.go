@@ -2113,11 +2113,20 @@ func (g *Game) stateBasedActionsLocked() bool {
 				continue
 			}
 			curT := c.CurrentToughness()
+			// CR 704.5f — toughness 0 or less PUTS the creature into
+			// its owner's graveyard; it does not destroy it, so
+			// indestructible deliberately does not save it here. A
+			// 2/2 with indestructible under two -1/-1 counters dies.
 			if curT <= 0 {
 				doomed = append(doomed, c.InstanceID)
 				continue
 			}
-			if c.DamageMarked >= curT {
+			// S25 (#77): the two damage-driven creature SBAs below
+			// are both DESTRUCTION (CR 704.5g, CR 704.5h), so
+			// indestructible switches both off (CR 702.12b). The
+			// damage stays marked either way — see indestructible.go.
+			indestructible := IsIndestructible(&c)
+			if c.DamageMarked >= curT && !indestructible {
 				doomed = append(doomed, c.InstanceID)
 				continue
 			}
@@ -2127,7 +2136,7 @@ func (g *Game) stateBasedActionsLocked() bool {
 			// until cleanup (or the card's destruction, via the
 			// zone-move listener) so a subsequent SBA pass on the
 			// same event cycle doesn't "un-doom" the creature.
-			if c.MarkedLethalByDeathtouch {
+			if c.MarkedLethalByDeathtouch && !indestructible {
 				doomed = append(doomed, c.InstanceID)
 			}
 			continue
@@ -2149,6 +2158,21 @@ func (g *Game) stateBasedActionsLocked() bool {
 	}
 	for _, id := range doomed {
 		if err := g.routeBattlefieldCardToOwnerGraveyardLocked(id); err == nil {
+			fired = true
+		}
+	}
+
+	// 704.5s (S27) — a Saga at or past its final chapter, with no
+	// chapter ability of its own still on the stack, is SACRIFICED by
+	// its controller. Separate from the `doomed` loop above because
+	// sacrifice is not destruction: it emits EventSacrifice (which
+	// aristocrats payoffs watch) and it ignores indestructible.
+	//
+	// Runs after the destruction pass so a Saga that was also going
+	// to die for another reason has already gone, and the "chapter
+	// still on the stack" check sees the settled queue.
+	for _, id := range g.sagasReadyToSacrificeLocked() {
+		if err := g.sacrificePermanentLocked(id); err == nil {
 			fired = true
 		}
 	}
@@ -4399,7 +4423,6 @@ func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UU
 		SourceLifelink:    HasKeyword(atk, "lifelink"),
 		SourceController:  atk.Controller,
 		SourceIsCommander: atk.IsCommander,
-		SourceOwner:       atk.Owner,
 	}
 	g.QueueChoiceForEffect(PendingChoice{
 		Kind:             PendingChoiceDamageAssignment,
@@ -4577,11 +4600,12 @@ func (g *Game) markCombatDamageToPlayerFromFrameLocked(playerID uuid.UUID, amoun
 	}
 	p.ChangeLife(-out.DamageAmount)
 	// CR 903.10a: trample overflow from a commander counts toward the
-	// 21-damage SBA. Read the cached frame flags — the attacker may
-	// have died to blocker damage before the prompt resolved, so a
-	// battlefield lookup would miss it.
+	// 21-damage SBA. Read the cached frame — the attacker may have
+	// died to blocker damage before the prompt resolved, so a
+	// battlefield lookup would miss it. AttackerID is the commander's
+	// instance ID, which is the CommanderDamage key since S25 (#77).
 	if frame.SourceIsCommander {
-		p.RecordCommanderDamage(frame.SourceOwner, out.DamageAmount)
+		p.RecordCommanderDamage(frame.AttackerID, out.DamageAmount)
 	}
 	g.EmitEvent(Event{
 		Kind:   EventDealDamage,
@@ -4711,10 +4735,10 @@ func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount
 // recordCommanderCombatDamageLocked notes combat damage on the
 // defending player's CommanderDamage map when the source is a
 // commander, feeding the 21-damage SBA (CR 903.10a /
-// IsDeadByCommanderDamage). Keyed by the commander's owner to match
-// the per-opponent map shape (see the note on Player.CommanderDamage).
-// No-op when the source isn't on the battlefield or isn't a
-// commander. Caller must hold g.mu.
+// IsDeadByCommanderDamage). Keyed by the commander's own INSTANCE ID
+// since S25 (#77), so a partner pair tracks two independent clocks
+// (CR 903.14a). No-op when the source isn't on the battlefield or
+// isn't a commander. Caller must hold g.mu.
 func (g *Game) recordCommanderCombatDamageLocked(target *Player, sourceID uuid.UUID, amount int) {
 	if amount <= 0 || target == nil {
 		return
@@ -4723,7 +4747,7 @@ func (g *Game) recordCommanderCombatDamageLocked(target *Player, sourceID uuid.U
 	if src == nil || !src.IsCommander {
 		return
 	}
-	target.RecordCommanderDamage(src.Owner, amount)
+	target.RecordCommanderDamage(src.InstanceID, amount)
 }
 
 // ClearCombat resets every card on the battlefield to "not attacking
@@ -5106,27 +5130,32 @@ func (g *Game) applyCounterLocked(cardID uuid.UUID, name string, delta int) erro
 	return ErrCardNotFound
 }
 
-// SetCommanderDamage sets the total commander damage dealt to the
-// target player by the given opponent's commander(s). This is a set
-// operation, not an increment — the client computes and sends the new
-// total. Intended to back a 4×4 commander-damage grid UI.
+// SetCommanderDamage sets the total damage one commander has dealt
+// to the target player. This is a set operation, not an increment —
+// the caller computes and sends the new total. It is the sandbox
+// override behind the commander-damage UX, for the cases the engine
+// cannot see (a manually resolved effect, a misclick to undo).
 //
-// Both `from` and `to` must be IDs of seated players; passing an ID
-// that doesn't correspond to a seated player returns ErrPlayerNotFound
-// rather than silently polluting the target's damage map.
+// `from` is a commander's card INSTANCE ID as of S25 (#77); it was a
+// player ID before the rekey. It is looked up across every tracked
+// zone rather than on the battlefield alone, because a commander
+// sitting in the command zone after a lethal swing is exactly when a
+// player reaches for this control. `to` is a seated player.
 //
-// NOTE: CommanderDamage is keyed by opponent player ID, not by
-// commander instance ID, so partner commanders are not correctly
-// distinguished. See the package-level note on Player.CommanderDamage
-// in player.go — S10 fix.
+// ErrCardNotFound for an ID that names no card or names a card that
+// is not a commander; ErrPlayerNotFound for an unseated `to`. Both
+// beat silently polluting the target's damage map with a key nothing
+// will ever render — the client keys its per-commander rows off
+// instance IDs, so a bogus key is invisible rather than merely wrong.
 func (g *Game) SetCommanderDamage(from, to uuid.UUID, amount int) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
-	if g.playerByIDLocked(from) == nil {
-		return ErrPlayerNotFound
+	src, ok := g.LookupCardForEffect(from)
+	if !ok || !src.IsCommander {
+		return ErrCardNotFound
 	}
 	target := g.playerByIDLocked(to)
 	if target == nil {
