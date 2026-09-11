@@ -112,15 +112,17 @@ already refreshes: `ReadSnapshot` calls
 `ReadSnapshot`. The SBA loop refreshes at the head of
 `stateBasedActionsLocked`, which runs after 28 mutation sites.
 
-Five write entry points read effective types *before* any SBA pass
+Six write entry points read effective types *before* any SBA pass
 would have refreshed them, so they now refresh at their head:
-`CastSpell` (CR 601.2c announce-time target legality), `ActivateAbility`,
-`ActivateLoyalty`, `TapCard` (the CR 302.1 gate only binds creatures)
-and `ActivateManaAbility` (the ability list is partly type-derived —
-see decision 4).
+`CastSpell` (CR 601.2c announce-time target legality),
+`ActivateAbility`, `ActivateLoyalty`, `TapCard` (the CR 302.1 gate
+only binds creatures), `ActivateManaAbility` (the ability list is
+partly type-derived — see decision 4) and `PlayCard` (the card
+played is a hand card, but its enters-tapped replacement asks about
+the *board*: "unless you control a Swamp").
 
-`PlayCard` and `AnnounceTrigger` were audited and deliberately left
-alone: the first reads a hand card's type, the second reads no types.
+`AnnounceTrigger` was audited and deliberately left alone: it reads
+no types.
 
 **Why not a blanket refresh on every exported mutation:** forty
 identical lines would be forty places for the next person to wonder
@@ -161,7 +163,43 @@ gains the {B} its pipe cannot make.
 ability as something *other* than its land types would shadow the type
 half. No catalog card is in that position today.
 
-### 5. Hand-built `Card.effective` fixtures must start from printed
+### 5. `Card.HasSubtype` is the one subtype question
+
+Card types were not the only thing being asked of the printed line.
+Five card files had grown their own subtype matchers — two exact-match
+loops over `Effective().Subtypes`, one `EqualFold` loop, and two
+substring scans of `Card.TypeLine` — and the substring ones were
+wrong in the same way `IsCreature` was.
+
+All five now go through `game.Card.HasSubtype`, which reads effective
+subtypes with the same nil-cache fallback as `HasCardType`. That
+makes three real fixes, and each one had a comment explaining why it
+couldn't be done:
+
+- **`youControlLandTyped`** (via `IsLandWithSubtype`) — a checkland's
+  "unless you control an Island or a Swamp". Under Urborg every land
+  is a Swamp, so Drowned Catacomb enters untapped off a Forest. Its
+  library-search callers (Nature's Lore, the fetchlands) are
+  unaffected: a card in a library has no layer cache, so `HasSubtype`
+  hands them the printed line verbatim.
+- **`controlsLandSubtype`** — the same condition for the other
+  cycle. Its note said `Effective()` was unreachable "because the
+  checkland is the entering card and the layer cache is maintained
+  only for battlefield permanents." The entering card is `src`,
+  which the loop skips; every card it actually asks about is a
+  battlefield permanent with a live cache. The note was reasoning
+  about the wrong object.
+- **`isPirate`** — its note said reading `Effective()` from inside a
+  Layer 6/7 `AppliesTo` "recurses into the computation being
+  performed." It does not; see decision 2. What it sees is a
+  *partially applied* view, which is CR 613 working as intended —
+  and `lordOfAtlantisOtherMerfolk` had been reading
+  `Effective().Subtypes` from exactly that position since S16.
+
+Two comments asserting an impossibility that the file next door was
+already doing is what a shared helper prevents.
+
+### 6. Hand-built `Card.effective` fixtures must start from printed
 
 Four test fixtures stamped `&Characteristic{Power, Toughness,
 Abilities}` directly, leaving `Types` empty. That was harmless while
@@ -181,8 +219,9 @@ its types is a fixture that will pass while the card is dead.
 - **Urborg, Tomb of Yawgmoth ships** — its entire printed text is one
   Layer-4 static. `urborg_test.go` proves it end-to-end: real `{B}` in
   a real mana pool through `ActivateManaAbility`, on every player's
-  lands, revoked when Urborg leaves, and visible on the wire so the
-  client can render the click.
+  lands, revoked when Urborg leaves, visible on the wire so the
+  client can render the click, and — the part nobody wrote for
+  Urborg — turning a checkland on.
 - **Every printed dual land produces mana without a Spec.** Bayou,
   the shocklands, the Triomes: CR 305.6 now applies to them.
 - The Theros gods' "isn't a creature", The Seriema (#348), Enduring
