@@ -116,10 +116,13 @@ func main() {
 	// Lobby HTTP mutations (join/deck/start) broadcast through the
 	// hub so clients already on the game page see them immediately.
 	l.SetStateBroadcaster(hub)
-	// S31: bot seats. The manager starts a runner per bot seat when
-	// a game starts and stops them when it is deleted; runners
+	// S31: bot seats. The manager starts a runner per bot seat when a
+	// game starts (and when one is restored below) and stops them
+	// when the game is deleted or the process exits; runners
 	// broadcast their moves through the hub like any other commit.
-	bots := aiseat.NewManager(hub, aiseat.DefaultConfig(), log)
+	// Wired BEFORE RestoreFromDisk so a resumed game with a bot seat
+	// gets its runner back rather than hanging on an empty chair.
+	bots := aiseat.NewManager(hub, log)
 	l.SetBotHost(bots)
 	if len(cfg.AllowedOrigins) > 0 {
 		hub.SetAllowedOrigins(cfg.AllowedOrigins)
@@ -257,6 +260,10 @@ func main() {
 		BugStore:          bugStore,
 		Log:               log,
 		Bots:              bots,
+		// The curated archetype decks land in S31 sub-PR 5; until
+		// then the picker offers one honest placeholder. Swapping
+		// this for decks.Registry() is the whole of that wiring.
+		BotDecks: aiseat.PlaceholderDecks(),
 	}))
 
 	srv := &http.Server{

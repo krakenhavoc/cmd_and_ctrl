@@ -45,6 +45,10 @@ export default defineConfig({
       // Vite's index.html, fails to parse, and searchDevCards's
       // swallow-everything error path renders "No matches" forever.
       "/dev": { target: "http://localhost:8080", changeOrigin: true },
+      // S31: the Add-bot picker's options probe (tiers + curated
+      // decks). Same failure mode again — without this the picker
+      // parses index.html, finds no tiers, and offers nothing.
+      "/bot": { target: "http://localhost:8080", changeOrigin: true },
       "/healthz": { target: "http://localhost:8080", changeOrigin: true },
       // S12.5: Discord OAuth round-trip. The redirect from Discord
       // lands on /auth/discord/callback; without this proxy the

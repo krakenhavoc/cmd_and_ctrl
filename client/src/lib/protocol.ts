@@ -416,6 +416,15 @@ export interface PlayerView {
   discord_id?: string;
   discord_avatar_hash?: string;
   display_name?: string;
+  // Bot seat (S31, ADR 0033). is_bot marks a seat driven by a
+  // server-side policy runner rather than a WebSocket client;
+  // bot_tier is its difficulty tier ("random", "heuristic", …) and
+  // bot_deck the curated deck it was seated with. The board renders
+  // a BOT chip and a distinct avatar mark off these, and shows the
+  // thinking pulse while such a seat holds priority.
+  is_bot?: boolean;
+  bot_tier?: string;
+  bot_deck?: string;
   // Per-commander cast count for the Commander tax (S13.1, CR
   // 903.8). Keyed by commander instance UUID. Drives the "+N tax"
   // indicator next to the commander tile.

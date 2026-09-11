@@ -5146,10 +5146,11 @@ func (g *Game) SetDiscordIdentity(playerID uuid.UUID, discordID, avatarHash, dis
 	return nil
 }
 
-// SetBot marks a seat as bot-driven with the named policy tier. Lobby
-// state only — a seat cannot change hands mid-game. Added in S31
-// sub-PR 4.
-func (g *Game) SetBot(playerID uuid.UUID, tier string) error {
+// SetBot marks a seat as bot-driven with the named policy tier and
+// the curated deck it was seated with (deckID may be empty when the
+// caller supplied a raw decklist). Lobby state only — a seat cannot
+// change hands mid-game. Added in S31 sub-PR 4.
+func (g *Game) SetBot(playerID uuid.UUID, tier, deckID string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateLobby {
@@ -5161,6 +5162,7 @@ func (g *Game) SetBot(playerID uuid.UUID, tier string) error {
 	}
 	p.IsBot = true
 	p.BotTier = tier
+	p.BotDeck = deckID
 	return nil
 }
 

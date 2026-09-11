@@ -203,6 +203,9 @@ type playerSnapshot struct {
 	DiscordID         string            `json:"discordId,omitempty"`
 	DiscordAvatarHash string            `json:"discordAvatarHash,omitempty"`
 	DisplayName       string            `json:"displayName,omitempty"`
+	IsBot             bool              `json:"isBot,omitempty"`
+	BotTier           string            `json:"botTier,omitempty"`
+	BotDeck           string            `json:"botDeck,omitempty"`
 	LosesAtNextSBA    bool              `json:"losesAtNextSba"`
 	CommanderCasts    map[uuid.UUID]int `json:"commanderCasts,omitempty"`
 	Counters          map[string]int    `json:"counters,omitempty"`
@@ -727,6 +730,9 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		DiscordID:         p.DiscordID,
 		DiscordAvatarHash: p.DiscordAvatarHash,
 		DisplayName:       p.DisplayName,
+		IsBot:             p.IsBot,
+		BotTier:           p.BotTier,
+		BotDeck:           p.BotDeck,
 		LosesAtNextSBA:    p.LosesAtNextSBA,
 		CommanderCasts:    copyIntMap(p.CommanderCasts),
 		Counters:          copyStringIntMap(p.Counters),
@@ -1173,6 +1179,9 @@ func restorePlayer(p *playerSnapshot) *Player {
 		DiscordID:         p.DiscordID,
 		DiscordAvatarHash: p.DiscordAvatarHash,
 		DisplayName:       p.DisplayName,
+		IsBot:             p.IsBot,
+		BotTier:           p.BotTier,
+		BotDeck:           p.BotDeck,
 		LosesAtNextSBA:    p.LosesAtNextSBA,
 		Counters:          copyStringIntMap(p.Counters),
 		MaxHandSize:       p.MaxHandSize,

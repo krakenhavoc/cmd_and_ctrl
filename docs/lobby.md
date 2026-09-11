@@ -270,6 +270,39 @@ Violation codes (stable strings, keyable by the client):
   under `warnings` on both success and 422 responses (the server
   ignores the sideboard either way)
 
+### `GET /bot/options` (S31)
+
+What the lobby's Add-bot picker renders from: the declared policy
+tiers and the curated deck catalog. Game-independent — the same
+answer for every table — so the client fetches it once.
+
+**Response 200**
+
+```json
+{
+  "enabled": true,
+  "tiers": [
+    { "tier": "random", "label": "Random", "description": "…", "available": true },
+    { "tier": "heuristic", "label": "Heuristic", "description": "…", "available": false },
+    { "tier": "assisted", "label": "Assisted", "description": "…", "available": false },
+    { "tier": "strong", "label": "Strong", "description": "…", "available": false }
+  ],
+  "decks": [
+    { "id": "placeholder-mono-red", "name": "Mono-red placeholder", "description": "…", "colors": ["R"], "commander": "Krenko, Mob Boss" }
+  ]
+}
+```
+
+Every declared tier is listed, including the ones no policy has been
+built for yet. `available: false` is what the picker greys out —
+asking for one is a 422, never a silent downgrade to `random`, because
+a bot labelled "strong" that plays at random is worse than no bot.
+
+`enabled` is `false` on a server with no bot host configured; the
+client hides the Add-bot control rather than offering a button that
+503s. `decks` is empty when no deck catalog is wired, in which case
+only the raw-decklist form of the add request works.
+
 ### `POST /games/{id}/seats/bot` (S31)
 
 Seat a bot at an unstarted table. Allowed for admins and for any
@@ -284,22 +317,41 @@ The deck travels exactly as it does for `POST /games/{id}/decks` —
 validate pipeline, same 422 violation shape — so a bot cannot be
 seated with a deck a human couldn't upload.
 
-**Request**
+**Request** — exactly one of `deck` and `source`.
+
+The player-facing form names a curated deck from `GET /bot/options`:
 
 ```json
 {
-  "tier": "random",          // policy tier; only "random" is offered until sub-PRs 6/7
-  "name": "Bot 1",           // optional; defaults to "Bot N"
-  "format": "text",          // as for /decks
+  "tier": "random",
+  "deck": "placeholder-mono-red",
+  "name": "Bot 1"            // optional; defaults to "Bot N"
+}
+```
+
+The escape hatch — the test harness, and trying a list that is not in
+the catalog — pastes a decklist instead, in exactly the shape
+`POST /games/{id}/decks` takes:
+
+```json
+{
+  "tier": "random",
+  "name": "Bot 1",
+  "format": "text",          // as for /decks; empty → auto-detect
   "source": "Commander:\n1 Krenko, Mob Boss\n\nMainboard:\n..."
 }
 ```
+
+A named deck resolves to its decklist text server-side and then runs
+the identical parse / resolve / validate pipeline, so there is one
+code path and a curated deck that rots (a renamed card, a new ban)
+fails exactly where a human's upload would.
 
 **Response** `201 Created`
 
 ```json
 {
-  "game": { ...GameMeta, "players": [ ..., { "player_id": "<uuid>", "name": "Bot 1", "seat": 1, "deck_name": "...", "deck_uploaded": true, "is_bot": true, "bot_tier": "random" } ] },
+  "game": { ...GameMeta, "players": [ ..., { "player_id": "<uuid>", "name": "Bot 1", "seat": 1, "deck_name": "...", "deck_uploaded": true, "is_bot": true, "bot_tier": "random", "bot_deck": "placeholder-mono-red" } ] },
   "player_id": "<uuid>",
   "deck_name": "...",
   "warnings": [ ... ]        // as for /decks, omitted when empty
@@ -310,17 +362,28 @@ seated with a deck a human couldn't upload.
 
 | Status | Reason |
 |---|---|
-| 400 | missing `source`, bad JSON, unknown `format` |
-| 403 | caller is neither admin nor seated at this game |
+| 400 | neither `deck` nor `source`, both of them, bad JSON, unknown `format` |
+| 403 | caller is neither admin nor a **seated player** at this game (a spectator's session carries the game ID and is refused here) |
 | 404 | game not found |
 | 409 | game already started, or the table is full |
-| 422 | unknown `tier`, or the deck failed validation (violation list, as for `/decks`) |
-| 503 | card index not loaded, or bot seats are not enabled on this server |
+| 422 | unknown or unavailable `tier`, unknown `deck` ID, or the deck failed validation (violation list, as for `/decks`) |
+| 503 | card index not loaded, no deck catalog configured (for a `deck` request), or bot seats are not enabled on this server |
 
 Seat arithmetic worth knowing: bots take real seats and the table
 holds four, so a seated human can add at most three. A four-bot table
 is reachable only by an admin creating the game and adding four — it
-is the engine's fuzz harness, not a player flow.
+is the engine's fuzz harness, not a player flow. One human plus one
+bot is a legal game (`MinPlayers` is 2) and is the solo-practice case.
+
+**Lifecycle.** Bot seats carry real decks, so `Start`'s
+"every seat has uploaded a deck" gate needs no special case. `Start`
+launches one runner goroutine per bot seat; a runner exits on its own
+the moment the game leaves the active state, so the end of a game
+needs no explicit stop. Deleting a game and shutting the server down
+both cancel the runners and wait for them. A restart restores them:
+`is_bot` / `bot_tier` / `bot_deck` ride both the engine snapshot and
+the persisted lobby metadata, and the lobby's restore path relaunches
+a runner for every bot seat in a game that came back active.
 
 ### `DELETE /games/{id}/seats/bot/{player_id}` (S31)
 

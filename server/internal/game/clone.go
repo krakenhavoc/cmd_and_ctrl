@@ -294,6 +294,7 @@ func clonePlayer(p *Player) *Player {
 		DisplayName:       p.DisplayName,
 		IsBot:             p.IsBot,
 		BotTier:           p.BotTier,
+		BotDeck:           p.BotDeck,
 	}
 	out.Library = cloneZone(p.Library)
 	out.Hand = cloneZone(p.Hand)

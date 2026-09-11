@@ -3,28 +3,40 @@ package aiseat
 import (
 	"context"
 	"log/slog"
-	"math/rand/v2"
 	"sync"
 
 	"github.com/google/uuid"
 
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
-// Tier names. Only TierRandom has a policy today; the others arrive
-// with sub-PRs 6 and 7 and are not offered until they do.
-const (
-	TierRandom = "random"
-)
+// SeatSpec is one bot seat to run: which seat, and at what tier. The
+// lobby builds these from its own seat list and hands them to
+// StartBots; keeping the type here rather than in lobby is what lets
+// aiseat stay the lower layer, imported by the lobby and importing
+// nothing of it.
+type SeatSpec struct {
+	PlayerID uuid.UUID
+	Tier     string
+}
 
 // Manager owns the runners for every bot seat on the server: one
-// Start per game (from Lobby.Start) and one Stop per game (from
-// Lobby.Delete). Satisfies lobby.BotHost. Added in S31 sub-PR 4.
+// StartBots per game (from Lobby.Start, and from the lobby's restore
+// path after a deploy) and one StopBots per game (from Lobby.Delete
+// and from shutdown). Satisfies lobby.BotHost. Added in S31 sub-PR 4.
+//
+// A runner does not need stopping when the game ENDS — it watches the
+// room and exits on its own the moment the state leaves StateActive,
+// which the final commit wakes it for. StopBots exists for the two
+// cases the game never reaches an ending: the game is deleted, and
+// the process is going away.
 type Manager struct {
 	bc  Broadcaster
-	cfg Config
 	log *slog.Logger
+	// cfg overrides the per-tier pacing when non-zero. Production
+	// leaves it zero and takes ConfigFor(tier); tests set MinThink 0
+	// so a whole game runs in milliseconds.
+	cfg *Config
 
 	mu    sync.Mutex
 	games map[uuid.UUID]*botGame
@@ -35,36 +47,50 @@ type botGame struct {
 	runners []*Runner
 }
 
-// NewManager builds a Manager. bc is the hub (may be nil in tests);
-// cfg is the pacing every runner gets — DefaultConfig in production.
-func NewManager(bc Broadcaster, cfg Config, log *slog.Logger) *Manager {
+// NewManager builds a Manager that paces each runner by its tier
+// (ConfigFor). bc is the hub and may be nil in tests.
+func NewManager(bc Broadcaster, log *slog.Logger) *Manager {
 	if log == nil {
 		log = slog.Default()
 	}
-	return &Manager{bc: bc, cfg: cfg, log: log, games: make(map[uuid.UUID]*botGame)}
+	return &Manager{bc: bc, log: log, games: make(map[uuid.UUID]*botGame)}
 }
 
-// Tiers lists the policy tiers a bot may be added with.
-func (m *Manager) Tiers() []string { return []string{TierRandom} }
+// NewManagerWithConfig is NewManager with one pacing for every tier.
+// Tests use it to strip MinThink; production should not.
+func NewManagerWithConfig(bc Broadcaster, cfg Config, log *slog.Logger) *Manager {
+	m := NewManager(bc, log)
+	m.cfg = &cfg
+	return m
+}
 
-// PolicyFor builds a fresh policy for a tier. Unknown tiers get the
-// random policy with a warning rather than an error: by the time a
-// seat starts, the tier was validated at add time, so this is a
-// belt-and-braces path, not a request path.
-func (m *Manager) PolicyFor(tier string) Policy {
-	switch tier {
-	case TierRandom:
-		return NewRandomPolicy(rand.NewPCG(rand.Uint64(), rand.Uint64()))
-	default:
-		m.log.Warn("unknown bot tier; using random", "tier", tier)
-		return NewRandomPolicy(rand.NewPCG(rand.Uint64(), rand.Uint64()))
+// Tiers lists the policy tiers a bot may be added with. Only the
+// available ones — the lobby validates an add request against this,
+// and an unavailable tier must be refused rather than downgraded.
+func (m *Manager) Tiers() []string {
+	avail := AvailableTiers()
+	out := make([]string, 0, len(avail))
+	for _, t := range avail {
+		out = append(out, string(t))
 	}
+	return out
+}
+
+func (m *Manager) configFor(t Tier) Config {
+	if m.cfg != nil {
+		return *m.cfg
+	}
+	return ConfigFor(t)
 }
 
 // StartBots launches a runner per seat on the room. Calling it twice
 // for the same game replaces the first set (the old runners are
-// cancelled), so a restart cannot double-drive a seat.
-func (m *Manager) StartBots(room *ws.Room, seats []lobby.BotSeat) {
+// cancelled first), so a restore racing a start cannot double-drive a
+// seat. A seat whose tier has no policy is logged and skipped rather
+// than quietly played at random — the tier was validated when the bot
+// was seated, so reaching here means the build changed under a
+// persisted game.
+func (m *Manager) StartBots(room *ws.Room, seats []SeatSpec) {
 	if room == nil || len(seats) == 0 {
 		return
 	}
@@ -73,18 +99,38 @@ func (m *Manager) StartBots(room *ws.Room, seats []lobby.BotSeat) {
 	defer m.mu.Unlock()
 	if old, ok := m.games[gameID]; ok {
 		old.cancel()
+		for _, r := range old.runners {
+			<-r.Done()
+		}
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	bg := &botGame{cancel: cancel}
 	for _, seat := range seats {
-		r := Start(ctx, room, seat.PlayerID, m.PolicyFor(seat.Tier), m.cfg, m.bc, m.log.With("game", gameID.String()))
+		tier, ok := LookupTier(seat.Tier)
+		if !ok {
+			m.log.Error("bot seat has an unknown tier; seat will not act",
+				"game", gameID.String(), "seat", seat.PlayerID.String(), "tier", seat.Tier)
+			continue
+		}
+		policy, err := NewPolicy(tier)
+		if err != nil {
+			m.log.Error("bot seat has no policy; seat will not act",
+				"game", gameID.String(), "seat", seat.PlayerID.String(), "tier", seat.Tier, "err", err)
+			continue
+		}
+		r := Start(ctx, room, seat.PlayerID, policy, m.configFor(tier), m.bc, m.log.With("game", gameID.String()))
 		bg.runners = append(bg.runners, r)
 	}
+	if len(bg.runners) == 0 {
+		cancel()
+		return
+	}
 	m.games[gameID] = bg
-	m.log.Info("bot runners started", "game", gameID.String(), "seats", len(seats))
+	m.log.Info("bot runners started", "game", gameID.String(), "seats", len(bg.runners))
 }
 
-// StopBots cancels every runner on the game. Idempotent.
+// StopBots cancels every runner on the game and waits for them to
+// exit. Idempotent.
 func (m *Manager) StopBots(gameID uuid.UUID) {
 	m.mu.Lock()
 	bg, ok := m.games[gameID]

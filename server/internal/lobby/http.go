@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
@@ -126,6 +127,13 @@ type Config struct {
 	// /games/{id}/seats/bot routes with a 503 — the lobby can seat a
 	// bot but nothing would ever play it.
 	Bots BotHost
+
+	// BotDecks is the named-deck catalog the bot picker offers.
+	// aiseat.PlaceholderDecks() until S31 sub-PR 5 lands the curated
+	// archetype decks, at which point main.go swaps this one line.
+	// Nil means the picker lists no decks and `deck` is refused; the
+	// raw-decklist path still works.
+	BotDecks aiseat.DeckSource
 }
 
 // GameEvictor is the subset of *ws.Hub that the lobby needs to close
@@ -234,6 +242,15 @@ func Handler(c Config) http.Handler {
 	// player already seated at the table.
 	mux.Handle("POST /games/{id}/seats/bot", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, addBot))))
 	mux.Handle("DELETE /games/{id}/seats/bot/{player}", auth.Middleware(c.Auth)(handlerFunc(c, removeBot)))
+	// What the picker needs before it can offer anything: the tier
+	// list (including the ones that are declared but not built, so
+	// the UI can grey them out) and the curated deck catalog.
+	// Session-gated but game-independent — it is the same answer for
+	// every table. NOTE: /bot is a new top-level prefix; it is in
+	// deploy/Caddyfile's @api matcher, client/vite.config.ts and the
+	// service worker's API_PATH, all of which have to agree or this
+	// 404s only in production.
+	mux.Handle("GET /bot/options", auth.Middleware(c.Auth)(handlerFunc(c, botOptions)))
 	mux.Handle("GET /me", auth.Middleware(c.Auth)(handlerFunc(c, me)))
 
 	// Develop-environment card spawner (ADR 0023). Both routes are
@@ -901,7 +918,7 @@ type uploadDeckResponse struct {
 // returns the installed-ready list and any non-fatal warnings. When
 // `written` is true the handler has already answered the request (a
 // 422 with the violation list) and the caller must return nil.
-func resolveDeckSource(c Config, w http.ResponseWriter, ctx context.Context, format, source string) (*deck.List, []deck.Violation, bool, error) {
+func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, format, source string) (*deck.List, []deck.Violation, bool, error) {
 	// Parse: auto-detect if Format is empty. URLs are detected first
 	// since they're unambiguous ("http://" or "https://" prefix);
 	// JSON next (leading `{`); everything else is plain text.
@@ -1080,7 +1097,7 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	list, warnings, written, err := resolveDeckSource(c, w, r.Context(), body.Format, body.Source)
+	list, warnings, written, err := resolveDeckSource(r.Context(), c, w, body.Format, body.Source)
 	if written || err != nil {
 		return err
 	}
@@ -1111,15 +1128,22 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 // resolve and validate pipeline, so a bot cannot be seated with a
 // deck a human couldn't upload.
 type addBotRequest struct {
-	// Tier is the policy tier; must be one the bot host offers
-	// (GET /games/{id} does not list them yet — "random" is the only
-	// tier until sub-PRs 6 and 7 land).
+	// Tier is the policy tier; must be one GET /bot/options reports
+	// as available. "random" is the only one until sub-PRs 6 and 7
+	// land, and an unavailable tier is a 422 rather than a silent
+	// downgrade.
 	Tier string `json:"tier"`
+	// Deck is a curated-deck ID from GET /bot/options. This is the
+	// player-facing path: pick a tier and a deck and press add.
+	Deck string `json:"deck,omitempty"`
 	// Name is the seat's display name. Defaults to "Bot N".
 	Name string `json:"name,omitempty"`
-	// Format / Source are the decklist, as for uploadDeckRequest.
+	// Format / Source are a raw decklist, exactly as for
+	// uploadDeckRequest — the escape hatch for the test harness and
+	// for trying a list that is not in the catalog. Exactly one of
+	// Deck or Source must be set.
 	Format string `json:"format,omitempty"`
-	Source string `json:"source"`
+	Source string `json:"source,omitempty"`
 }
 
 // addBotResponse is the accepted seat.
@@ -1130,18 +1154,99 @@ type addBotResponse struct {
 	Warnings []deck.Violation `json:"warnings,omitempty"`
 }
 
-// botSeatAuthorised is the shared gate for the bot-seat routes: admin,
-// or a player whose session is bound to this game. Anyone at the
-// table may add or remove a bot while it is unstarted.
+// botDeckSource turns the request's deck choice into a (format,
+// source, deckID) triple for resolveDeckSource. Exactly one of
+// `deck` and `source` may be set.
+func botDeckSource(c Config, body addBotRequest) (format, source, deckID string, err error) {
+	named := strings.TrimSpace(body.Deck)
+	raw := strings.TrimSpace(body.Source)
+	switch {
+	case named != "" && raw != "":
+		return "", "", "", httpError(http.StatusBadRequest, "send either deck or source, not both")
+	case named != "":
+		if c.BotDecks == nil {
+			return "", "", "", httpError(http.StatusServiceUnavailable, "no bot deck catalog is configured on this server")
+		}
+		info, list, ok := c.BotDecks.Decklist(named)
+		if !ok {
+			return "", "", "", httpError(http.StatusUnprocessableEntity, fmt.Sprintf("unknown bot deck %q", named))
+		}
+		return "text", list, info.ID, nil
+	case raw != "":
+		return body.Format, body.Source, "", nil
+	default:
+		return "", "", "", httpError(http.StatusBadRequest, "deck or source is required")
+	}
+}
+
+// botSeatAuthorised is the shared gate for the bot-seat routes:
+// admin, or a player SEATED at this table. Anyone at the table may
+// add or remove a bot while it is unstarted — ADR 0033 §9 is explicit
+// that this is not admin-only, because the request was "add a bot to
+// any unstarted table".
+//
+// A spectator's session also carries this GameID, so the seated check
+// is `RolePlayer` with a real PlayerID and not merely a matching
+// GameID. Adding a bot mutates the table; watching does not earn it.
+// Mirrors the gate on autoTapPreview.
 func botSeatAuthorised(r *http.Request, id uuid.UUID) error {
 	p, ok := auth.PrincipalFromContext(r.Context())
 	if !ok {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
-	if p.Role != auth.RoleAdmin && p.GameID != id {
+	if p.Role == auth.RoleAdmin {
+		return nil
+	}
+	if p.GameID != id {
 		return httpError(http.StatusForbidden, "not a seat in this game")
 	}
+	if p.Role != auth.RolePlayer || p.PlayerID == uuid.Nil {
+		return httpError(http.StatusForbidden, "only a seated player may change bot seats")
+	}
 	return nil
+}
+
+// botOptionsResponse is what the Add-bot picker renders from.
+type botOptionsResponse struct {
+	// Tiers is every declared tier, available or not, in picker
+	// order. An unavailable tier is listed with available:false so
+	// the UI can say what is coming instead of pretending the
+	// difficulty slider has one notch.
+	Tiers []aiseat.TierInfo `json:"tiers"`
+	// Decks is the curated catalog. Empty when no deck source is
+	// configured — the picker then falls back to pasting a decklist.
+	Decks []aiseat.DeckInfo `json:"decks"`
+	// Enabled is false when this server has no bot host at all, in
+	// which case the client hides the Add-bot control rather than
+	// offering a button that 503s.
+	Enabled bool `json:"enabled"`
+}
+
+// botOptions handles GET /bot/options. Added in S31 sub-PR 4.
+func botOptions(c Config, w http.ResponseWriter, _ *http.Request) error {
+	out := botOptionsResponse{Tiers: aiseat.Tiers(), Decks: []aiseat.DeckInfo{}, Enabled: c.Bots != nil}
+	if c.Bots != nil {
+		// The host is the authority on what can actually play, so
+		// reconcile the declared catalog against it rather than
+		// trusting the table twice.
+		offered := make(map[string]bool, len(c.Bots.Tiers()))
+		for _, t := range c.Bots.Tiers() {
+			offered[t] = true
+		}
+		for i := range out.Tiers {
+			out.Tiers[i].Available = offered[string(out.Tiers[i].Tier)]
+		}
+	} else {
+		for i := range out.Tiers {
+			out.Tiers[i].Available = false
+		}
+	}
+	if c.BotDecks != nil {
+		if decks := c.BotDecks.List(); len(decks) > 0 {
+			out.Decks = decks
+		}
+	}
+	return writeJSON(w, http.StatusOK, out)
 }
 
 // addBot handles POST /games/{id}/seats/bot. Added in S31 sub-PR 4.
@@ -1173,8 +1278,9 @@ func addBot(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 		return httpError(http.StatusBadRequest, fmt.Sprintf("invalid body: %s", err.Error()))
 	}
-	if strings.TrimSpace(body.Source) == "" {
-		return httpError(http.StatusBadRequest, "source is required")
+	format, source, deckID, err := botDeckSource(c, body)
+	if err != nil {
+		return err
 	}
 	tier := strings.ToLower(strings.TrimSpace(body.Tier))
 	known := false
@@ -1185,10 +1291,10 @@ func addBot(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	if !known {
-		return fmt.Errorf("%w: %q (offered: %s)", ErrUnknownBotTier, body.Tier, strings.Join(c.Bots.Tiers(), ", "))
+		return fmt.Errorf("%w: %q (available: %s)", ErrUnknownBotTier, body.Tier, strings.Join(c.Bots.Tiers(), ", "))
 	}
 
-	list, warnings, written, err := resolveDeckSource(c, w, r.Context(), body.Format, body.Source)
+	list, warnings, written, err := resolveDeckSource(r.Context(), c, w, format, source)
 	if written || err != nil {
 		return err
 	}
@@ -1206,7 +1312,7 @@ func addBot(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 		name = fmt.Sprintf("Bot %d", bots+1)
 	}
-	meta, playerID, err := c.Lobby.AddBot(id, name, tier, list.Name, list.ToGameCards())
+	meta, playerID, err := c.Lobby.AddBot(id, name, tier, deckID, list.Name, list.ToGameCards())
 	if err != nil {
 		return err
 	}

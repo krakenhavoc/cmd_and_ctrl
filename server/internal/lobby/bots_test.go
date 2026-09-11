@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
@@ -20,21 +21,21 @@ import (
 // fakeBotHost records what the lobby asks of it.
 type fakeBotHost struct {
 	mu      sync.Mutex
-	started map[uuid.UUID][]BotSeat
+	started map[uuid.UUID][]aiseat.SeatSpec
 	stopped []uuid.UUID
 	tiers   []string
 }
 
 func newFakeBotHost() *fakeBotHost {
-	return &fakeBotHost{started: map[uuid.UUID][]BotSeat{}, tiers: []string{"random"}}
+	return &fakeBotHost{started: map[uuid.UUID][]aiseat.SeatSpec{}, tiers: []string{"random"}}
 }
 
 func (f *fakeBotHost) Tiers() []string { return f.tiers }
 
-func (f *fakeBotHost) StartBots(room *ws.Room, seats []BotSeat) {
+func (f *fakeBotHost) StartBots(room *ws.Room, seats []aiseat.SeatSpec) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.started[room.Game.ID] = append([]BotSeat(nil), seats...)
+	f.started[room.Game.ID] = append([]aiseat.SeatSpec(nil), seats...)
 }
 
 func (f *fakeBotHost) StopBots(gameID uuid.UUID) {
@@ -65,7 +66,7 @@ func TestAddBotSeatsADeckReadyBot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	meta, botID, err := l.AddBot(meta.ID, "Bot 1", "random", "Mono Red", botDeck(20))
+	meta, botID, err := l.AddBot(meta.ID, "Bot 1", "random", "", "Mono Red", botDeck(20))
 	if err != nil {
 		t.Fatalf("AddBot: %v", err)
 	}
@@ -114,24 +115,24 @@ func TestAddBotRespectsTableLimitsAndState(t *testing.T) {
 	l := newTestLobby(t)
 	meta, _ := l.Create("FNM")
 	for i := 0; i < game.MaxPlayers; i++ {
-		if _, _, err := l.AddBot(meta.ID, fmt.Sprintf("Bot %d", i), "random", "d", botDeck(5)); err != nil {
+		if _, _, err := l.AddBot(meta.ID, fmt.Sprintf("Bot %d", i), "random", "", "d", botDeck(5)); err != nil {
 			t.Fatalf("AddBot %d: %v", i, err)
 		}
 	}
-	if _, _, err := l.AddBot(meta.ID, "Bot 5", "random", "d", botDeck(5)); err != ErrGameFull {
+	if _, _, err := l.AddBot(meta.ID, "Bot 5", "random", "", "d", botDeck(5)); err != ErrGameFull {
 		t.Errorf("fifth seat: %v, want ErrGameFull", err)
 	}
-	if _, _, err := l.AddBot(meta.ID, "", "random", "d", botDeck(5)); err != ErrEmptyName {
+	if _, _, err := l.AddBot(meta.ID, "", "random", "", "d", botDeck(5)); err != ErrEmptyName {
 		t.Errorf("empty name: %v, want ErrEmptyName", err)
 	}
-	if _, _, err := l.AddBot(meta.ID, "Bot", "random", "d", nil); err != ErrDeckNotUploaded {
+	if _, _, err := l.AddBot(meta.ID, "Bot", "random", "", "d", nil); err != ErrDeckNotUploaded {
 		t.Errorf("no deck: %v, want ErrDeckNotUploaded", err)
 	}
 	// An all-bot table starts (the fuzz harness case).
 	if _, err := l.Start(meta.ID); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
-	if _, _, err := l.AddBot(meta.ID, "Late", "random", "d", botDeck(5)); err != ErrGameStarted {
+	if _, _, err := l.AddBot(meta.ID, "Late", "random", "", "d", botDeck(5)); err != ErrGameStarted {
 		t.Errorf("add after start: %v, want ErrGameStarted", err)
 	}
 }
@@ -140,8 +141,8 @@ func TestRemoveBotClosesTheSeatGap(t *testing.T) {
 	l := newTestLobby(t)
 	meta, _ := l.Create("FNM")
 	_, humanID, _ := l.Join(meta.ID, meta.InviteToken, "Alice")
-	_, bot1, _ := l.AddBot(meta.ID, "Bot 1", "random", "d", botDeck(5))
-	_, bot2, _ := l.AddBot(meta.ID, "Bot 2", "random", "d", botDeck(5))
+	_, bot1, _ := l.AddBot(meta.ID, "Bot 1", "random", "", "d", botDeck(5))
+	_, bot2, _ := l.AddBot(meta.ID, "Bot 2", "random", "", "d", botDeck(5))
 
 	if _, err := l.RemoveBot(meta.ID, humanID); err != ErrNotABot {
 		t.Errorf("removing a human: %v, want ErrNotABot", err)
@@ -164,7 +165,7 @@ func TestRemoveBotClosesTheSeatGap(t *testing.T) {
 		t.Errorf("seat gap not closed in game: %+v", g.Seats)
 	}
 	// A third bot takes seat 2, not 3.
-	meta, _, err = l.AddBot(meta.ID, "Bot 3", "random", "d", botDeck(5))
+	meta, _, err = l.AddBot(meta.ID, "Bot 3", "random", "", "d", botDeck(5))
 	if err != nil {
 		t.Fatal(err)
 	}

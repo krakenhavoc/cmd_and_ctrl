@@ -439,15 +439,18 @@ type PlayerView struct {
 	// builds /avatars/{discord_id}/{discord_avatar_hash}.png to
 	// pull the cached portrait, and prefers display_name over name
 	// for the seat label.
-	// IsBot / BotTier mark an aiseat-driven seat and its policy tier
-	// so the client renders the BOT chip instead of an avatar. Added
-	// in S31 sub-PR 4.
-	IsBot   bool   `json:"is_bot,omitempty"`
-	BotTier string `json:"bot_tier,omitempty"`
-
 	DiscordID         string `json:"discord_id,omitempty"`
 	DiscordAvatarHash string `json:"discord_avatar_hash,omitempty"`
 	DisplayName       string `json:"display_name,omitempty"`
+
+	// Bot seat (S31 sub-PR 4). IsBot marks a seat driven by an
+	// aiseat runner; BotTier is its policy tier and BotDeck the
+	// curated deck it was seated with. The client renders a BOT chip
+	// and a distinct avatar mark off these, and shows the thinking
+	// pulse while such a seat holds priority.
+	IsBot   bool   `json:"is_bot,omitempty"`
+	BotTier string `json:"bot_tier,omitempty"`
+	BotDeck string `json:"bot_deck,omitempty"`
 
 	// CommanderCasts is the per-commander cast count from the
 	// command zone (S13.1, CR 903.8). Keyed by commander instance
@@ -1543,6 +1546,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		DisplayName:       p.DisplayName,
 		IsBot:             p.IsBot,
 		BotTier:           p.BotTier,
+		BotDeck:           p.BotDeck,
 		CommanderCasts:    cmdrCasts,
 		Counters:          cloneStringIntMap(p.Counters),
 		MaxHandSize:       g.EffectiveMaxHandSizeLocked(p),
