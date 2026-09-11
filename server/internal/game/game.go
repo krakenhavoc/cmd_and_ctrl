@@ -823,6 +823,15 @@ func (g *Game) runStepEntryHooksLocked() {
 		// ErrZoneEmpty, which we swallow so the cursor keeps moving —
 		// the losing player will be caught by the SBA once it exists.
 		_ = g.drawCardLocked(g.Seats[g.Turn.ActiveSeat].ID)
+		// S22: announce the draw step so "at the beginning of each
+		// player's draw step" triggers auto-fire (Howling Mine).
+		// AFTER the draw, per CR 504.1/504.2 — the turn-based draw
+		// does not use the stack and goes first; the trigger goes on
+		// the stack when priority arrives, which is next.
+		g.EmitEvent(Event{
+			Kind:  EventBeginDrawStep,
+			Actor: g.Seats[g.Turn.ActiveSeat].ID,
+		})
 	case StepCombatDamage:
 		g.resolveCombatDamageLocked()
 	case StepEndCombat:

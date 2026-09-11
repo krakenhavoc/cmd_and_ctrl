@@ -277,6 +277,25 @@ const (
 	// PendingTriggers together. Added in S22.
 	EventBeginEndStep EventKind = "begin_end_step"
 
+	// EventBeginDrawStep — the active player's draw step began.
+	// Actor is that player. Emitted AFTER the CR 504.1 turn-based
+	// draw, which is the rules-correct order: the turn-based draw
+	// does not use the stack and happens first, and "at the
+	// beginning of the draw step" triggers go on the stack when a
+	// player next receives priority (CR 504.2) — by which time the
+	// card is already in hand.
+	//
+	// Not emitted on the turn-1 skipped draw step of the starting
+	// player (CR 103.7c): that step still happens and still grants
+	// priority, but this project's cursor returns before reaching
+	// here. Howling Mine on turn 1 of the first player's turn is the
+	// only case that notices, and it is not worth restructuring the
+	// step hook for.
+	//
+	// Added in S22 for Howling Mine and the "each player's draw
+	// step" family.
+	EventBeginDrawStep EventKind = "begin_draw_step"
+
 	// EventManaAbilityActivated — a mana-producing ability fired.
 	// Actor = controller, Source = the permanent that produced the
 	// mana. S15 sub-PR 2.
