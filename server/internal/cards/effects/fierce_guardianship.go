@@ -28,9 +28,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // for the list.
 func init() {
 	Register(Spec{
-		OracleID: "d09c9cba-fdd2-479b-ad5d-d05181c3e3f9",
-		Name:     "Fierce Guardianship",
-		Targets:  TargetSpell("target noncreature spell", Noncreature()),
+		OracleID:     "d09c9cba-fdd2-479b-ad5d-d05181c3e3f9",
+		Name:         "Fierce Guardianship",
+		Completeness: CompletenessFull,
+		Targets:      TargetSpell("target noncreature spell", Noncreature()),
 		AlternativeCosts: []game.AlternativeCost{
 			FreeIfYouControlCommander("Cast without paying its mana cost (you control a commander)"),
 		},

@@ -13,8 +13,9 @@ package effects
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "df317532-7d36-40fd-938f-e972749c8792",
-		Name:     "Fyndhorn Elves",
+		OracleID:     "df317532-7d36-40fd-938f-e972749c8792",
+		Name:         "Fyndhorn Elves",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{G}",

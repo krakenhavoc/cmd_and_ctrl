@@ -15,8 +15,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // two. Same board state.
 func init() {
 	Register(Spec{
-		OracleID: "e349be42-5f14-44a9-9608-281985c10e2d",
-		Name:     "Marauding Mako",
+		OracleID:     "e349be42-5f14-44a9-9608-281985c10e2d",
+		Name:         "Marauding Mako",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Cycling isn't implemented — the card can only be cast, not cycled."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDiscardCard},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

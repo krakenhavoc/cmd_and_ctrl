@@ -23,8 +23,9 @@ package effects
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "1861e642-21d5-4232-89f3-b5557f2946c1",
-		Name:     "Phyrexian Tower",
+		OracleID:     "1861e642-21d5-4232-89f3-b5557f2946c1",
+		Name:         "Phyrexian Tower",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},

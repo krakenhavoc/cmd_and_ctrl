@@ -31,8 +31,9 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "4eb813fd-2d5a-4b02-8193-662681ef4e7d",
-		Name:     "Farewell",
+		OracleID:     "4eb813fd-2d5a-4b02-8193-662681ef4e7d",
+		Name:         "Farewell",
+		Completeness: CompletenessFull,
 		Modes: ChooseN("Choose one or more", 1, 4,
 			Mode("Exile all artifacts."),
 			Mode("Exile all creatures."),

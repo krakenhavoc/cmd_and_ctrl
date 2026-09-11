@@ -263,4 +263,11 @@ var (
 	// leaves the undo stack and the snapshot sequence untouched for
 	// what is, in the end, a no-op. Added in S31 for #318.
 	ErrNoLegalAttackers = errors.New("game: no creature in the declaration is able to attack")
+
+	// ErrInsufficientCrew is returned when the creatures named to pay
+	// a Vehicle's crew cost do not add up to the crew number
+	// (CR 702.122a) — including the case where none were named at
+	// all. Distinct from ErrInvalidParam so the client can say "tap
+	// more power" rather than "bad request". Added in S27.
+	ErrInsufficientCrew = errors.New("game: crewing creatures' total power is below the crew number")
 )

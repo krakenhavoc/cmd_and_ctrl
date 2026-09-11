@@ -37,7 +37,7 @@
 	# A missing entry fails silently: the path falls through to file_server,
 	# the client receives index.html, JSON parsing fails, and the feature
 	# quietly disappears instead of erroring.
-	@api path /ws /healthz /me /logout /config /games /games/* /cards/ /cards/* /admin/* /auth/* /avatars/* /bugreport /bugreport/* /dev /dev/*
+	@api path /ws /healthz /me /logout /config /games /games/* /cards/ /cards/* /catalog /catalog/* /admin/* /auth/* /avatars/* /bugreport /bugreport/* /dev /dev/*
 	reverse_proxy @api 127.0.0.1:8080
 
 	# Do NOT add `header_up Host`. Caddy forwards the original Host by default,

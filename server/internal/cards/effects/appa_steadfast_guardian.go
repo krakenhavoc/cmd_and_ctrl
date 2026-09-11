@@ -49,6 +49,8 @@ func init() {
 	Register(Spec{
 		OracleID:        "03c141ca-11e4-4927-a6bd-980ee1203c73",
 		Name:            "Appa, Steadfast Guardian",
+		Completeness:    CompletenessCaveats,
+		Caveats:         []string{"The picker lets you choose Appa itself as a target, but it is skipped — only your other permanents get airbent."},
 		PrintedKeywords: []string{"flash", "flying"},
 		Triggered: []game.TriggeredAbility{
 			{

@@ -75,6 +75,8 @@ func init() {
 		// the engine can reach.
 		OracleID:        "cbf09050-39d0-463b-96db-9e22011ae0d8",
 		Name:            "Aang, Swift Savior",
+		Completeness:    CompletenessCaveats,
+		Caveats:         []string{"Aang can't transform — the \"Waterbend {8}\" ability and the back face's attack trigger don't work."},
 		PrintedKeywords: []string{"flash", "flying"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},

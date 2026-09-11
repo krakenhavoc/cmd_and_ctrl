@@ -36,8 +36,9 @@ func init() {
 		{"42b8aa14-10bc-4bd6-88d9-4bb287eadd19", "Talisman of Resilience", "B", "G"},
 	} {
 		Register(Spec{
-			OracleID: t.oracleID,
-			Name:     t.name,
+			OracleID:     t.oracleID,
+			Name:         t.name,
+			Completeness: CompletenessFull,
 			ManaAbilities: []ManaAbility{
 				painlessColorless(),
 				painDual(t.a, t.b, "This artifact"),

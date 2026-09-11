@@ -964,7 +964,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// Emitted after EventCast so a "becomes the target" trigger and
 	// a "whenever a player casts a spell" trigger queue in printed
 	// order.
-	g.emitBecameTargetLocked(playerID, cardID, params.Targets)
+	g.emitBecameTargetLocked(playerID, cardID, cardID, params.Targets)
 	// The caster receives priority right after casting (CR 117.3c),
 	// and CR 603.3 puts any cast-triggered abilities (Rhystic Study,
 	// Beast Whisperer) on the stack at that moment — above the
@@ -1484,6 +1484,14 @@ func (g *Game) resolveTopOfStackLocked() error {
 			Source: top.InstanceID,
 			CardID: top.InstanceID,
 		})
+		// A COPY has no way out of the stack at all: CR 706.10 says
+		// it is not a card, so "countered by game rules" leaves it
+		// nowhere to go. Checked BEFORE the flashback branch below
+		// because a copy of a flashed-back spell is still not a card
+		// — the exile replacement has no object to act on.
+		if item.IsCopy {
+			return g.ceaseToExistLocked(top.InstanceID)
+		}
 		// S29: a flashed-back spell that fizzles is still exiled —
 		// CR 702.34a replaces every way out of the stack, not just
 		// the resolution.
@@ -1500,6 +1508,24 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// spells fire their effect here. Errors emit EventEffectError
 	// via fireEffectResolverLocked and do not wedge resolution.
 	g.fireEffectResolverLocked(item, CatalogKey(top), top.InstanceID)
+	// CR 707.10: a resolving copy of a PERMANENT spell becomes a
+	// token. This engine has no token-from-stack-item path, and
+	// letting the copy fall through to the battlefield branch below
+	// would be worse than doing nothing — it would put a second
+	// card-shaped object carrying the original's oracle ID into
+	// play, which a bounce spell then duplicates into a hand. Every
+	// S30 copy card targets an instant or sorcery, so this is
+	// unreachable today; it is written out because it is where the
+	// token rule lands.
+	if item.IsCopy && top.IsPermanent() {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Actor:    item.Controller,
+			CardID:   top.InstanceID,
+			ErrorMsg: "copying a permanent spell is not implemented (CR 707.10 token)",
+		})
+		return g.ceaseToExistLocked(top.InstanceID)
+	}
 	if top.IsPermanent() {
 		// ADR 0034: settle which face the PERMANENT keeps before the
 		// replacement pipeline runs, so the entering card's
@@ -1584,6 +1610,13 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// and so the cost that was actually paid — is still reachable.
 		g.queueAltCostEntryTriggerLocked(moved, item)
 		return nil
+	}
+	// CR 706.10 — a COPY is not a card, so it has no graveyard to go
+	// to and no flashback exile to be caught by either. It ceases to
+	// exist, having already run its effect above. See spell_copy.go
+	// for why this branch is load-bearing rather than cosmetic.
+	if item.IsCopy {
+		return g.ceaseToExistLocked(top.InstanceID)
 	}
 	// Instants / sorceries: resolve to the owner's graveyard — or to
 	// exile, when the flashback cost was paid (CR 702.34a).
@@ -2006,7 +2039,7 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 	})
 	// CR 603.3d: a manually-announced trigger chooses its targets as
 	// it goes on the stack, same as the harvested kind.
-	g.emitBecameTargetLocked(playerID, sourceCardID, params.Targets)
+	g.emitBecameTargetLocked(playerID, sourceCardID, id, params.Targets)
 	return nil
 }
 

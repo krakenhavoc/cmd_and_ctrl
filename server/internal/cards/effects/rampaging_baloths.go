@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "2d3e6549-6cc6-434f-a189-ba3b55e64c34",
 		Name:            "Rampaging Baloths",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},

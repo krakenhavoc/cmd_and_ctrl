@@ -29,8 +29,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Weaker than printed until spell copying exists.
 func init() {
 	Register(Spec{
-		OracleID: "a145ff8c-5812-4bcb-bd16-9839dc25121d",
-		Name:     "Storm-Kiln Artist",
+		OracleID:     "a145ff8c-5812-4bcb-bd16-9839dc25121d",
+		Name:         "Storm-Kiln Artist",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Copied instants and sorceries make no Treasure; only spells you actually cast trigger it."},
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,

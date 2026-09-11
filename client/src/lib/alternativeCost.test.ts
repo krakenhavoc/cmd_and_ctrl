@@ -93,7 +93,10 @@ describe("canCastFromHand — alternative costs", () => {
     return { kind, owner: "p0", count: cards.length, cards };
   }
 
-  function snapshot(hand: CardView[]): GameView {
+  // S31: the cast verdict is the server's enumerated move list, so
+  // the fixture states what the server offered. `moves` is the
+  // instance IDs the enumerator listed a cast for.
+  function snapshot(hand: CardView[], moves: string[] = []): GameView {
     const seat: PlayerView = {
       id: "p0",
       name: "Me",
@@ -123,17 +126,28 @@ describe("canCastFromHand — alternative costs", () => {
       mulligans_open: false,
       stack_items: [],
       split_second_active: false,
+      legal_moves: [
+        { type: "pass_priority", player: "p0", kind: "pass", label: "Pass priority" },
+        ...moves.map((id) => ({
+          type: "cast_spell",
+          player: "p0",
+          kind: "cast" as const,
+          label: `Cast ${id}`,
+          source: id,
+        })),
+      ],
     };
   }
 
   it("stays castable with an empty printed legal set when a cost clears the clause", () => {
-    expect(canCastFromHand(rift, snapshot([rift]), "p0").legal).toBe(true);
+    expect(canCastFromHand(rift, snapshot([rift], ["rift"]), "p0").legal).toBe(true);
   });
 
   it("still denies a card whose every cost option has nothing to point at", () => {
-    const verdict = canCastFromHand(washAway, snapshot([washAway]), "p0");
-    // The cleave clause has a legal spell, so this one is castable —
-    // flip the cleave set empty and the denial comes back.
+    const verdict = canCastFromHand(washAway, snapshot([washAway], ["wash"]), "p0");
+    // The cleave clause has a legal spell, so the server offered it —
+    // flip the cleave set empty, withhold the move, and the denial
+    // comes back with the reason the alternative-cost branch supplies.
     expect(verdict.legal).toBe(true);
     const stranded = {
       ...washAway,
@@ -146,7 +160,7 @@ describe("canCastFromHand — alternative costs", () => {
     expect(denied.reason).toBe("No legal target");
   });
 
-  it("leaves a card with no alternative costs on the old gate", () => {
+  it("leaves a card with no alternative costs on the plain target branch", () => {
     const bolt = card({
       instance_id: "bolt",
       type_line: "Instant",

@@ -1,7 +1,15 @@
 import { describe, it, expect, beforeEach } from "vitest";
 
 import { hasAnyLegalResponse, owesBlockDecision, _resetCacheForTests } from "./priority";
-import type { CardView, GameView, PlayerView, StackItemView, TurnView, ZoneView } from "./protocol";
+import type {
+  CardView,
+  GameView,
+  LegalMoveView,
+  PlayerView,
+  StackItemView,
+  TurnView,
+  ZoneView,
+} from "./protocol";
 
 // Fixture helpers mirror the shape used in timing.test.ts. Kept
 // local rather than exported because they'd otherwise ship in the
@@ -56,6 +64,24 @@ interface SnapOpts {
   battlefield?: CardView[];
   hand?: CardView[];
   command?: CardView[];
+  // S31: the seat's enumerated move list, which is now the whole
+  // input to hasAnyLegalResponse. Absent means the server said
+  // nothing — a distinct state from "enumerated, nothing to do".
+  moves?: LegalMoveView[];
+}
+
+// pass / play are the two move shapes these tests care about: a list
+// holding only `pass` means "yield is all you can do", and anything
+// else means the window is live.
+const pass: LegalMoveView = {
+  type: "pass_priority",
+  player: "p0",
+  kind: "pass",
+  label: "Pass priority",
+};
+
+function play(kind: LegalMoveView["kind"], source = "c-something"): LegalMoveView {
+  return { type: "cast_spell", player: "p0", kind, label: `${kind} ${source}`, source };
 }
 
 function snap(o: SnapOpts = {}): GameView {
@@ -82,6 +108,7 @@ function snap(o: SnapOpts = {}): GameView {
     mulligans_open: false,
     stack_items: o.stackItems ?? [],
     split_second_active: o.splitSecond ?? false,
+    legal_moves: o.moves,
   };
 }
 
@@ -94,92 +121,61 @@ describe("hasAnyLegalResponse", () => {
   });
 
   it("returns false when viewer does not hold priority", () => {
-    const s = snap({ priorityHolder: 1, hand: [card("bolt", "Instant")] });
+    const s = snap({ priorityHolder: 1, moves: [pass, play("cast", "c-bolt")] });
     expect(hasAnyLegalResponse(s, "p0")).toBe(false);
   });
 
   it("returns false during no-priority steps (Untap / Cleanup sentinel)", () => {
-    const s = snap({ step: "untap", priorityHolder: -1, hand: [card("bolt", "Instant")] });
+    const s = snap({ step: "untap", priorityHolder: -1, moves: [pass, play("cast", "c-bolt")] });
     expect(hasAnyLegalResponse(s, "p0")).toBe(false);
   });
 
-  it("returns true when the viewer holds priority with a castable instant in hand", () => {
-    const s = snap({ hand: [card("bolt", "Instant")] });
-    expect(hasAnyLegalResponse(s, "p0")).toBe(true);
+  it("is true for any non-pass move the server enumerated", () => {
+    for (const kind of ["land", "cast", "activate", "mana", "attack", "block", "choice"] as const) {
+      const s = snap({ moves: [pass, play(kind)] });
+      expect(hasAnyLegalResponse(s, "p0"), `kind=${kind}`).toBe(true);
+    }
   });
 
-  it("returns true when the viewer holds priority on their main phase with a sorcery", () => {
-    const s = snap({ hand: [card("wrath", "Sorcery")] });
-    expect(hasAnyLegalResponse(s, "p0")).toBe(true);
+  it("is false when yielding is the only move", () => {
+    expect(hasAnyLegalResponse(snap({ moves: [pass] }), "p0")).toBe(false);
   });
 
-  it("returns false for a sorcery on an opponent's turn (viewer holds priority)", () => {
+  it("is false when the server enumerated nothing at all", () => {
+    expect(hasAnyLegalResponse(snap({ moves: [] }), "p0")).toBe(false);
+  });
+
+  // The affordability case the old card-walk could not see. It read
+  // type lines and said "you hold an instant, therefore you have a
+  // response", with no idea whether the mana was there. The
+  // enumerator pays for what it offers, so an unaffordable hand is
+  // now correctly a skippable window.
+  it("is false for a hand it cannot pay for, which the old card walk called a response", () => {
     const s = snap({
-      activeSeat: 1,
-      priorityHolder: 0,
-      step: "upkeep",
-      hand: [card("wrath", "Sorcery")],
+      hand: [card("bolt", "Instant"), card("wrath", "Sorcery")],
+      moves: [pass],
     });
     expect(hasAnyLegalResponse(s, "p0")).toBe(false);
   });
 
-  it("returns true for an instant on an opponent's turn (any priority window)", () => {
-    const s = snap({
-      activeSeat: 1,
-      priorityHolder: 0,
-      step: "upkeep",
-      hand: [card("bolt", "Instant")],
-    });
-    expect(hasAnyLegalResponse(s, "p0")).toBe(true);
+  // Compatibility: no move list on a frame where the viewer holds
+  // priority means a pre-S31 server, or a field we dropped. Stopping
+  // costs one click; skipping costs the player a window.
+  it("errs toward stopping when the server shipped no move list", () => {
+    expect(hasAnyLegalResponse(snap(), "p0")).toBe(true);
+    expect(hasAnyLegalResponse(snap({ priorityHolder: 1 }), "p0")).toBe(false);
   });
 
-  it("returns false while split-second is active, even with instants in hand", () => {
-    const s = snap({ hand: [card("bolt", "Instant")], splitSecond: true });
-    expect(hasAnyLegalResponse(s, "p0")).toBe(false);
-  });
-
-  it("returns true when the viewer controls a battlefield card (potential activation)", () => {
-    const s = snap({ battlefield: [card("bird", "Creature", { controller: "p0" })] });
-    expect(hasAnyLegalResponse(s, "p0")).toBe(true);
-  });
-
-  it("ignores battlefield cards the viewer does not control", () => {
-    const s = snap({ battlefield: [card("enemy", "Creature", { controller: "p1" })] });
-    expect(hasAnyLegalResponse(s, "p0")).toBe(false);
-  });
-
-  it("checks the command zone for castable commanders", () => {
-    const s = snap({ command: [card("cmdr", "Legendary Creature")] });
-    expect(hasAnyLegalResponse(s, "p0")).toBe(true);
-  });
-
-  it("returns false when hand + command are empty and battlefield has no viewer-controlled cards", () => {
-    expect(hasAnyLegalResponse(snap(), "p0")).toBe(false);
-  });
-
-  it("memoises within a snapshot seq so repeat calls don't re-scan", () => {
-    // A large battlefield would normally scale linearly; the cache
-    // short-circuits that on the second call. We can't directly
-    // observe the cache from the outside, but we can at least prove
-    // the behaviour is stable across repeated calls.
-    const s = snap({
-      battlefield: Array.from({ length: 50 }, (_, i) =>
-        card(`c${i}`, "Creature", { controller: "p0", instance_id: `c-${i}` }),
-      ),
-    });
-    const first = hasAnyLegalResponse(s, "p0", 100);
-    const second = hasAnyLegalResponse(s, "p0", 100);
-    expect(first).toBe(true);
-    expect(second).toBe(true);
-  });
-
-  it("resets the memo cache when snap seq advances", () => {
-    const s1 = snap({ hand: [card("bolt", "Instant")] });
-    expect(hasAnyLegalResponse(s1, "p0", 1)).toBe(true);
-    // Different snap, same viewer, new seq — cache clears and the
-    // answer re-computes against the new state.
-    const s2 = snap({ hand: [] });
-    expect(hasAnyLegalResponse(s2, "p0", 2)).toBe(false);
+  it("is stable across repeat calls and across seq changes", () => {
+    // The per-seq memo is gone — the answer is one array scan of a
+    // field the server computed — so the parameter is inert and the
+    // answer tracks the snapshot, never a stale cache entry.
+    const live = snap({ moves: [pass, play("cast", "c-bolt")] });
+    expect(hasAnyLegalResponse(live, "p0", 1)).toBe(true);
+    expect(hasAnyLegalResponse(live, "p0", 1)).toBe(true);
+    const quiet = snap({ moves: [pass] });
+    expect(hasAnyLegalResponse(quiet, "p0", 1)).toBe(false);
+    expect(hasAnyLegalResponse(quiet, "p0", 2)).toBe(false);
   });
 });
 
@@ -237,14 +233,15 @@ describe("hasAnyLegalResponse — #328 blocking window", () => {
   beforeEach(() => _resetCacheForTests());
 
   it("is true when the viewer owes a block decision and has nothing else to do", () => {
-    // Empty hand, empty command, and not one battlefield card the
-    // viewer controls — every pre-existing branch says "nothing to
-    // do", which is precisely how smart-skip would eat the window.
+    // The server enumerated and found nothing but pass — every
+    // priority-shaped branch says "nothing to do", which is precisely
+    // how smart-skip would eat the window.
     const s = snap({
       step: "declare_blockers",
       activeSeat: 1,
       priorityHolder: 0,
       battlefield: [card("enemy", "Creature", { controller: "p1" })],
+      moves: [pass],
     });
     expect(hasAnyLegalResponse(s, "p0", 500)).toBe(false);
     s.turn.block_decision_seats = [0];
@@ -257,8 +254,25 @@ describe("hasAnyLegalResponse — #328 blocking window", () => {
       activeSeat: 1,
       priorityHolder: 0,
       battlefield: [card("enemy", "Creature", { controller: "p1" })],
+      moves: [pass],
     });
     s.turn.block_decision_seats = [1];
     expect(hasAnyLegalResponse(s, "p0", 502)).toBe(false);
+  });
+
+  // The two signals must not be able to disagree: a `block` move in
+  // the list and `block_decision_seats` come off the same server-side
+  // eligibility test (#328), and either one alone is enough to hold
+  // the window open. The defender may be reading a frame where the
+  // active player still holds priority, which is why the seat list
+  // exists at all.
+  it("holds the window on a block move even before the seat list arrives", () => {
+    const s = snap({
+      step: "declare_blockers",
+      activeSeat: 1,
+      priorityHolder: 0,
+      moves: [pass, play("block", "c-my-bear")],
+    });
+    expect(hasAnyLegalResponse(s, "p0", 503)).toBe(true);
   });
 });

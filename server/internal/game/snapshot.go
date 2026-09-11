@@ -30,7 +30,7 @@ package game
 //   - StackItem.Effect — what an ability does when it resolves
 //   - StackItem.targetSpec — the clause its targets were legal under
 //   - DelayedTrigger.Effect — "at the beginning of the next end step"
-//   - PendingChoice's five resume frames + scryResume — a paused
+//   - PendingChoice's six resume frames + scryResume — a paused
 //     game literally holds the rest of the effect as a continuation
 //   - ScopedStatic.Ability's AppliesTo / Apply — Giant Growth's +3/+3
 //   - TurnScopedReplacements' AppliesTo / Replace — Fog
@@ -270,6 +270,7 @@ type cardSnapshot struct {
 	ExilePlay                ExilePlayPermission `json:"exilePlay"`
 	AttachedTo               TargetRef           `json:"attachedTo,omitempty"`
 	AttachedAt               int64               `json:"attachedAt,omitempty"`
+	BaseController           uuid.UUID           `json:"baseController,omitempty"`
 
 	// ManaAbilityCount / ActivatedAbilityCount record that the card
 	// HAD intrinsic ability closures, so restore can tell the
@@ -296,6 +297,7 @@ type stackItemSnapshot struct {
 	CastFromZone ZoneKind          `json:"castFromZone,omitempty"`
 	AltCost      string            `json:"altCost,omitempty"`
 	SplitSecond  bool              `json:"splitSecond"`
+	IsCopy       bool              `json:"isCopy,omitempty"`
 	Seq          uint64            `json:"seq"`
 	Ordered      bool              `json:"ordered"`
 
@@ -698,6 +700,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ExilePlay:                c.ExilePlay,
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
+		BaseController:           c.BaseController,
 		ManaAbilityCount:         len(c.ManaAbilities),
 		ActivatedAbilityCount:    len(c.ActivatedAbilities),
 	}
@@ -772,6 +775,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		CastFromZone:  s.CastFromZone,
 		AltCost:       s.AltCost,
 		SplitSecond:   s.SplitSecond,
+		IsCopy:        s.IsCopy,
 		Seq:           s.Seq,
 		Ordered:       s.Ordered,
 		HasEffect:     s.Effect != nil,
@@ -870,6 +874,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 	for name, present := range map[string]bool{
 		"replacementResume": c.replacementResume != nil,
 		"pickTargetResume":  c.pickTargetResume != nil,
+		"copySpellResume":   c.copySpellResume != nil,
 		"triggerResume":     c.triggerResume != nil,
 		"payUnlessResume":   c.payUnlessResume != nil,
 		"mayCastResume":     c.mayCastResume != nil,
@@ -1138,6 +1143,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ExilePlay:                c.ExilePlay,
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
+		BaseController:           c.BaseController,
 	}
 	// Re-derive intrinsic abilities from the catalog. This is the
 	// half of the closure problem that DOES have an answer: the
@@ -1226,6 +1232,7 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		CastFromZone: s.CastFromZone,
 		AltCost:      s.AltCost,
 		SplitSecond:  s.SplitSecond,
+		IsCopy:       s.IsCopy,
 		Seq:          s.Seq,
 		Ordered:      s.Ordered,
 		// Effect stays nil. A SPELL does not need one — resolution

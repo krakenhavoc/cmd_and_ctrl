@@ -43,8 +43,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // resolution.
 func init() {
 	Register(Spec{
-		OracleID: "240e85d3-e495-4877-8609-4b4056c402f7",
-		Name:     "Victimize",
+		OracleID:     "240e85d3-e495-4877-8609-4b4056c402f7",
+		Name:         "Victimize",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"You must sacrifice a creature as you cast it, so its death triggers resolve first and you can't cast it with no creature to sacrifice."},
 		Targets: TargetCardInGraveyard("two target creature cards in your graveyard",
 			Creature(), YouOwn()).WithCount(2, 2),
 		AdditionalCost: SacrificeCost("a creature", Creature()),

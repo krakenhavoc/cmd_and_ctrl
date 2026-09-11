@@ -16,8 +16,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "0715e860-3b3b-4331-9718-207973e94fee",
-		Name:     "Tatyova, Benthic Druid",
+		OracleID:     "0715e860-3b3b-4331-9718-207973e94fee",
+		Name:         "Tatyova, Benthic Druid",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

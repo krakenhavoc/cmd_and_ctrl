@@ -327,6 +327,19 @@ type PendingChoice struct {
 	// Added in S20 sub-PR 2.
 	pickTargetResume *pickTargetFrame
 
+	// copySpellResume is the other continuation a
+	// PendingChoicePickTarget can carry (S30, #95): the CR 706.10
+	// "you may choose new targets for the copy" prompt. It reuses
+	// the pick_target prompt rather than getting a kind of its own
+	// because the QUESTION is identical — here is a target clause,
+	// here is its legal set, pick within Min..Max — and every
+	// consumer (the wire projection, the client picker, the bot's
+	// choice enumerator) then needs no change at all to answer it.
+	// What differs is only what gets built on submit, which is what
+	// the frame decides. Exactly one of pickTargetResume and
+	// copySpellResume is set.
+	copySpellResume *copySpellFrame
+
 	// SacrificeOptions is the set of permanents a
 	// PendingChoiceSacrifice's chooser may pick from — their own
 	// permanents matching the effect's spec, computed when the
@@ -1465,6 +1478,13 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 	if choice.Chooser != chooserID {
 		return ErrNotTheChooser
 	}
+	// S30: the same prompt kind serves the CR 706.10 spell-copy
+	// re-target. Handled before the trigger frame because the two
+	// are mutually exclusive and the copy path builds something
+	// that is not a triggered ability.
+	if cf := choice.copySpellResume; cf != nil {
+		return g.resolveCopySpellTargetsLocked(idx, cf, targets)
+	}
 	frame := choice.pickTargetResume
 	if frame == nil || frame.build == nil || frame.spec == nil {
 		g.dequeueChoiceLocked(idx)
@@ -1491,7 +1511,7 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 	// it is put on the stack, which is right here. Emitted after the
 	// queue so a "becomes the target" trigger stacks above the
 	// ability that targeted. Added in S22 for Monk Gyatso.
-	g.emitBecameTargetLocked(item.Controller, item.SourceCardID, targets)
+	g.emitBecameTargetLocked(item.Controller, item.SourceCardID, item.ID, targets)
 	g.runStateChecksLocked()
 	return nil
 }

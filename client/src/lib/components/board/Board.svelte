@@ -74,6 +74,7 @@
   } from "../../targeting";
   import XCostModal from "./XCostModal.svelte";
   import SacrificeCostModal from "./SacrificeCostModal.svelte";
+  import CrewCostModal from "./CrewCostModal.svelte";
   import AltCostPaymentModal from "./AltCostPaymentModal.svelte";
   import ModePickerModal from "./ModePickerModal.svelte";
   import DiscardCostModal from "./DiscardCostModal.svelte";
@@ -561,6 +562,7 @@
           source_card_id: state.card.instance_id,
           ability_index: state.ability.index,
           sacrifice_ids: state.ability.sacrificeIDs,
+          crew_ids: state.ability.crewIDs,
           targets,
         },
         viewerID ?? undefined,
@@ -600,6 +602,18 @@
     return view.battlefield.cards.filter((c) => ids.has(c.instance_id));
   });
 
+  // S27: a Vehicle's crew cost. Its own prompt rather than a reuse of
+  // the sacrifice picker because crew is a many-pick with a POWER
+  // floor, not a single pick — see CrewCostModal.
+  let crewPrompt = $state<{ card: CardView; ability: ActivatedAbilityView } | null>(null);
+
+  const crewOptions = $derived.by(() => {
+    const p = crewPrompt;
+    if (!p) return [];
+    const ids = new Set(p.ability.crew_options?.cards ?? []);
+    return view.battlefield.cards.filter((c) => ids.has(c.instance_id));
+  });
+
   function handleActivateAbility(card: CardView, index: number): void {
     const ability = (card.activated_abilities ?? []).find((a) => a.index === index);
     if (!ability) return;
@@ -607,7 +621,18 @@
       sacrificePrompt = { kind: "ability", card, ability };
       return;
     }
+    if (ability.crew_cost) {
+      crewPrompt = { card, ability };
+      return;
+    }
     continueActivation(card, ability, []);
+  }
+
+  function confirmCrew(instanceIDs: string[]): void {
+    const p = crewPrompt;
+    crewPrompt = null;
+    if (!p) return;
+    continueActivation(p.card, p.ability, [], instanceIDs);
   }
 
   // S21: a mana ability with a sacrifice-another cost, handed up by
@@ -658,9 +683,10 @@
     card: CardView,
     ability: ActivatedAbilityView,
     sacrificeIDs: string[],
+    crewIDs: string[] = [],
   ): void {
     if (ability.legal_targets) {
-      beginTargetingForAbility(card, ability, sacrificeIDs);
+      beginTargetingForAbility(card, ability, sacrificeIDs, crewIDs);
       return;
     }
     sendAction(
@@ -669,6 +695,7 @@
         source_card_id: card.instance_id,
         ability_index: ability.index,
         sacrifice_ids: sacrificeIDs,
+        crew_ids: crewIDs,
       },
       viewerID ?? undefined,
     );
@@ -863,6 +890,13 @@
     options={sacrificeOptions}
     onConfirm={confirmSacrifice}
     onCancel={() => (sacrificePrompt = null)}
+  />
+  <CrewCostModal
+    card={crewPrompt?.card ?? null}
+    ability={crewPrompt?.ability ?? null}
+    options={crewOptions}
+    onConfirm={confirmCrew}
+    onCancel={() => (crewPrompt = null)}
   />
   <FacePickerModal
     card={facePromptCard}
