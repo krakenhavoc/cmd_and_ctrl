@@ -263,6 +263,8 @@ type cardSnapshot struct {
 	SummonedThisTurn         bool                `json:"summonedThisTurn"`
 	MarkedLethalByDeathtouch bool                `json:"markedLethalByDeathtouch"`
 	ExilePlay                ExilePlayPermission `json:"exilePlay"`
+	AttachedTo               TargetRef           `json:"attachedTo,omitempty"`
+	AttachedAt               int64               `json:"attachedAt,omitempty"`
 
 	// ManaAbilityCount / ActivatedAbilityCount record that the card
 	// HAD intrinsic ability closures, so restore can tell the
@@ -688,6 +690,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		ExilePlay:                c.ExilePlay,
+		AttachedTo:               c.AttachedTo,
+		AttachedAt:               c.AttachedAt,
 		ManaAbilityCount:         len(c.ManaAbilities),
 		ActivatedAbilityCount:    len(c.ActivatedAbilities),
 	}
@@ -1124,6 +1128,8 @@ func restoreCard(c *cardSnapshot) Card {
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		ExilePlay:                c.ExilePlay,
+		AttachedTo:               c.AttachedTo,
+		AttachedAt:               c.AttachedAt,
 	}
 	// Re-derive intrinsic abilities from the catalog. This is the
 	// half of the closure problem that DOES have an answer: the

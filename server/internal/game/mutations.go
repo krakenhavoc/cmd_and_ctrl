@@ -1437,6 +1437,13 @@ func (g *Game) resolveTopOfStackLocked() error {
 			OldZone: ZoneStack,
 			NewZone: ZoneBattlefield,
 		})
+		// S24 / ADR 0036 decision 5: an Aura was cast targeting
+		// (CR 303.4a) and enters ATTACHED to what it targeted. This
+		// is the only place in the resolution path holding both the
+		// landed permanent and the StackItem whose target it was.
+		// Between the ZoneMove and the ETB so an ETB trigger already
+		// sees the attachment.
+		g.attachResolvedAuraLocked(moved.InstanceID, item)
 		g.EmitEvent(Event{
 			Kind:   EventETB,
 			Actor:  item.Controller,
@@ -1951,6 +1958,19 @@ func (g *Game) stateBasedActionsLocked() bool {
 	// because CurrentToughness reads Effective().Toughness == 3).
 	g.RecomputeLayersIfStaleLocked()
 	fired := false
+
+	// S24 / CR 704.5m + 704.5n: an Equipment attached to something
+	// that is no longer a creature becomes unattached; an Aura
+	// attached to something it can no longer legally enchant is put
+	// into its owner's graveyard.
+	//
+	// Runs AFTER the recompute (the legality test reads effective
+	// types) and BEFORE the destruction pre-pass, so a creature that
+	// becomes lethally damaged because its +2/+2 Aura fell off dies
+	// in the same settling rather than surviving a round.
+	if g.attachmentSBALocked() {
+		fired = true
+	}
 
 	// Counter cancel (704.5q). Must run before destruction so the
 	// post-cancel state is what the lethal-damage SBA sees.
