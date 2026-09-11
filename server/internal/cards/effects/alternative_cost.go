@@ -73,3 +73,40 @@ func Cleave(cost string, targets *game.TargetSpec) game.AlternativeCost {
 		Targets:  targets,
 	}
 }
+
+// Flashback is "Flashback {cost} (You may cast this card from your
+// graveyard for its flashback cost. Then exile it.)" — CR 702.34.
+//
+// The first alternative cost that is also a cast PATH. It carries
+// two things a card file must not be trusted to remember separately:
+//
+//   - FromZone. The offer is claimable only out of the graveyard,
+//     and a card that declares it must also list ZoneGraveyard in
+//     Spec.CastableZones (Register panics otherwise). Without the
+//     binding the cost would be claimable from hand, which on Deep
+//     Analysis or a Past-in-Flames-fuelled Past in Flames is a real
+//     discount rather than a cosmetic one.
+//   - ExileOnLeavingStack. This is what keeps flashback from being
+//     infinite, and it is a REPLACEMENT (CR 702.34a says "any time
+//     it would leave the stack"), not an exile appended to the
+//     resolution — so a flashed-back spell that fizzles is exiled,
+//     and one answered by Hinder is exiled rather than shuffled
+//     away. A card file that wrote the cost by hand would get a
+//     spell that flashes back, lands in the graveyard, and flashes
+//     back again every turn forever.
+//
+// The card file still has to open the zone; the constructor cannot
+// do it, because CastableZones and AlternativeCosts are separate
+// fields on the Spec:
+//
+//	CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
+//	AlternativeCosts: []game.AlternativeCost{Flashback("{2}{R}")},
+func Flashback(cost string) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:                 "flashback",
+		Label:               "Flashback " + cost,
+		ManaCost:            cost,
+		FromZone:            game.ZoneGraveyard,
+		ExileOnLeavingStack: true,
+	}
+}

@@ -106,6 +106,23 @@ type AlternativeCost struct {
 	// offer bound to a zone the card cannot be cast from is
 	// unclaimable and the card file meant one or the other.
 	FromZone ZoneKind
+
+	// ExileOnLeavingStack is flashback's "if the flashback cost was
+	// paid, exile this card instead of putting it anywhere else any
+	// time it would leave the stack" (CR 702.34a).
+	//
+	// It is the half of flashback that keeps it from being infinite,
+	// and it is a REPLACEMENT rather than an exile bolted onto the
+	// resolution — the difference is observable on every path out of
+	// the stack that isn't a resolution. A flashed-back spell that
+	// fizzles is exiled. A flashed-back spell answered by Hinder is
+	// exiled rather than shuffled into its owner's library, because
+	// CR 614 replaces the counter's destination too.
+	//
+	// Escape does NOT set this: an escaped Uro exiles itself through
+	// its own printed text, and an escaped Kroxa does not exile at
+	// all. Flashback is the keyword that carries the clause.
+	ExileOnLeavingStack bool
 }
 
 // Clears reports whether paying this cost deletes the spell's target
@@ -181,6 +198,16 @@ func alternativeCostString(card Card, key string) string {
 		return alt.ManaCost
 	}
 	return card.ManaCost
+}
+
+// altCostExilesFromStack reports whether the cost this spell was
+// cast for replaces every stack-exit destination with exile — CR
+// 702.34a's flashback clause. Reads the key off the StackItem, so a
+// spell cast for its printed cost always answers false even on a
+// card that offers flashback.
+func altCostExilesFromStack(card Card, altCostKey string) bool {
+	alt := AlternativeCostByKey(CatalogKey(card), altCostKey)
+	return alt != nil && alt.ExileOnLeavingStack
 }
 
 // TargetSpecUnderAlternativeCost applies an alternative cost's

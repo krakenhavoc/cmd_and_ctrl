@@ -962,12 +962,19 @@ opens another cast zone declares it in `Spec.CastableZones`, and the
 price of that path rides `AlternativeCost.FromZone`:
 
 ```go
-CastableZones: []game.ZoneKind{game.ZoneGraveyard},   // flashback, escape, Gravecrawler
-AlternativeCosts: []game.AlternativeCost{{            // use the keyword constructor once
-    Key: "flashback", Label: "Flashback {2}{R}",      // its mechanic lands — see above
-    ManaCost: "{2}{R}", FromZone: game.ZoneGraveyard,
-}},
+CastableZones:    []game.ZoneKind{game.ZoneGraveyard},          // Faithless Looting
+AlternativeCosts: []game.AlternativeCost{Flashback("{2}{R}")},
 ```
+
+Use the keyword constructor, never a hand-rolled `game.AlternativeCost`,
+for the same reason overload and evoke have one: `Flashback` bundles
+**three** things — the price, `FromZone: ZoneGraveyard`, and
+`ExileOnLeavingStack`. The last is CR 702.34a's "exile this card
+instead of putting it anywhere else any time it would leave the
+stack", and it is a *replacement*, so it also catches a flashed-back
+spell that fizzles and one answered by Hinder. A card that wrote the
+cost by hand would flash back, land in the graveyard, and flash back
+again every turn forever.
 
 The zone is the **place** and the alternative cost is the **price**,
 and they are checked independently. Hand is implicit and never has to
