@@ -105,6 +105,82 @@ func fortuneTellersTalent() cards.Card {
 	}
 }
 
+// clone — #335. Printed 0/0, which is the whole of the reported
+// symptom: with no Spec there is no copy effect, so the printed P/T
+// stands, and the 704.5f SBA's printed-0 exemption spares it rather
+// than sweeping it. The other half of the report, "does not allow
+// the selection of any usable target", is the same absence seen from
+// the client: a card with no catalog entry carries no target_mode,
+// and Board.continueCast fires cast_spell immediately. Clone's copy
+// choice was never targeting in the first place (CR 614.1c, an
+// as-enters replacement), so no amount of targeting work would have
+// produced the prompt the reporter expected.
+func clone() cards.Card {
+	return cards.Card{
+		ID:         uuid.New(),
+		OracleID:   uuid.MustParse("42226b87-0746-4ebf-9fd0-108d508462af"),
+		Name:       "Clone",
+		Layout:     "normal",
+		TypeLine:   "Creature — Shapeshifter",
+		ManaCost:   "{3}{U}",
+		Power:      "0",
+		Toughness:  "0",
+		OracleText: "You may have this creature enter as a copy of any creature on the battlefield.",
+	}
+}
+
+// theSeriema — #337. Four printed lines and only the first is cheap:
+// SearchLibrary takes an arbitrary predicate, so "a legendary
+// creature card" is three lines of Go. Station, the 7+ threshold,
+// the type change it implies and the indestructible grant are all
+// absent from the engine.
+func theSeriema() cards.Card {
+	return cards.Card{
+		ID:        uuid.New(),
+		OracleID:  uuid.MustParse("a6bcec1f-f515-4e63-9e84-8eb04cc582ff"),
+		Name:      "The Seriema",
+		Layout:    "normal",
+		TypeLine:  "Legendary Artifact — Spacecraft",
+		ManaCost:  "{1}{W}{W}",
+		Power:     "5",
+		Toughness: "5",
+		Keywords:  []string{"Station"},
+		OracleText: "When The Seriema enters, search your library for a legendary " +
+			"creature card, reveal it, put it into your hand, then shuffle.\n" +
+			"Station (Tap another creature you control: Put charge counters equal " +
+			"to its power on this Spacecraft. Station only as a sorcery. It's an " +
+			"artifact creature at 7+.)\n" +
+			"7+ | Flying\n" +
+			"Other tapped legendary creatures you control have indestructible.",
+	}
+}
+
+// tyLeeChiBlocker — #339 and #340, the same card and the same ETB
+// reported twice. Flash works (printed keyword, #319's fix). Prowess
+// does not, and neither does the lockdown: untapAllForLocked untaps
+// every card its controller controls with no hook to consult, and
+// #314's TurnScopedStatics is swept at cleanup, so it is both the
+// wrong mechanism and the wrong duration for "for as long as you
+// control Ty Lee".
+func tyLeeChiBlocker() cards.Card {
+	return cards.Card{
+		ID:        uuid.New(),
+		OracleID:  uuid.MustParse("081ad4e3-cda3-41cc-890f-412611dc9ea0"),
+		Name:      "Ty Lee, Chi Blocker",
+		Layout:    "normal",
+		TypeLine:  "Legendary Creature — Human Performer Ally",
+		ManaCost:  "{2}{U}",
+		Power:     "2",
+		Toughness: "1",
+		Keywords:  []string{"Prowess", "Flash"},
+		OracleText: "Flash\n" +
+			"Prowess (Whenever you cast a noncreature spell, this creature gets " +
+			"+1/+1 until end of turn.)\n" +
+			"When Ty Lee enters, tap up to one target creature. It doesn't untap " +
+			"during its controller's untap step for as long as you control Ty Lee.",
+	}
+}
+
 // grizzlyBears is the control: a complete, correct card with no
 // catalog entry and nothing to say about it.
 func grizzlyBears() cards.Card {
@@ -169,6 +245,9 @@ func TestImporterStampsNeedsEffect(t *testing.T) {
 		{"#325 Aang, Swift Savior", aangSwiftSavior(), true},
 		{"#332 Lotus Field", lotusField(), true},
 		{"#333 Fortune Teller's Talent", fortuneTellersTalent(), true},
+		{"#335 Clone", clone(), true},
+		{"#337 The Seriema", theSeriema(), true},
+		{"#339/#340 Ty Lee, Chi Blocker", tyLeeChiBlocker(), true},
 		{"vanilla creature", grizzlyBears(), false},
 		{"keywords only", serraAngel(), false},
 		{"basic land", island(), false},

@@ -4,8 +4,11 @@
 
 ## Context
 
-The effect catalog is opt-in per oracle ID (ADR 0010 §3). 288 cards
-have a hand-written Spec; the ~31,500 other Commander-legal cards
+The effect catalog is opt-in per oracle ID (ADR 0010 §3). A few
+hundred cards have a hand-written Spec — 288 when this was written,
+and deliberately not restated as a number anywhere in the code,
+because the roadmap ships another batch most sprints and a pinned
+count rots within days. The ~31,500 other Commander-legal cards
 resolve with no effect at all and the players move the pieces by
 hand, Cockatrice-style. That is a deliberate decision and it is not
 changing soon — the catalog grows one card file at a time, and the
@@ -25,11 +28,27 @@ happen, and reasonably concluding each was broken:
 | #332 | Lotus Field | to enter tapped and prompt for the sacrifice |
 | #333 | Fortune Teller's Talent | chapter 1 to do something |
 
+Four more landed from the 2026-09-11 playtest (game `2d9f0eda`)
+while this was being built, all the same class:
+
+| Report | Card | What the player expected |
+|---|---|---|
+| #335 | Clone | a target to copy, and not a 0/0 |
+| #337 | The Seriema | the ETB library search |
+| #339 | Ty Lee, Chi Blocker | the ETB to fire |
+| #340 | Ty Lee, Chi Blocker | to tap a creature and keep it tapped |
+
+#339 and #340 are the same card and the same ETB, reported twice
+within the same session — which is itself a symptom. A player with no
+way to tell "unimplemented" from "broken" has no way to tell two
+sightings of one gap from two gaps.
+
 Every one of those is accurate as a description of what happened and
 wrong as a diagnosis. Triaging them costs a maintainer a dump lookup
 and a registry probe each, and the player learns nothing, so they
-file the next five next week. Five missing cards is not the bug. The
-bug is that the game has the answer and does not say it.
+file the next batch the next day — which is not a prediction, it is
+the second table above. Nine missing cards is not the bug. The bug is
+that the game has the answer and does not say it.
 
 ## Decisions
 
@@ -96,8 +115,8 @@ and an uncatalogued one really does tap for nothing.
 A board badge was the obvious design and is rejected. Most permanents
 on a real battlefield would carry one; a badge on everything is a
 badge nobody reads, and it would sit next to the existing gold `AUTO`
-pip implying the two are a matched pair of equals when one marks 288
-cards and the other marks 31,500.
+pip implying the two are a matched pair of equals when one marks a
+few hundred cards and the other marks thirty-odd thousand.
 
 Instead the signal appears at the three moments a player forms an
 expectation, and nowhere else:
@@ -138,6 +157,48 @@ already states for keywords, applied to cards. Where a Spec knowingly
 omits a clause, the card comment says so (as `weftstalker_ardent.go`
 does for warp) — but that is a card that should not have shipped
 under this ADR, and the exceptions should not grow.
+
+## The nine cards, and why none of them shipped here
+
+Recorded because §5 makes "we chose not to register this" a decision
+worth writing down, and because the next person to reach for one of
+these cards should not have to re-derive the blocker. Verified
+against the dump and the code, not against the triage docs.
+
+| Card | Blocked on |
+|---|---|
+| Enduring Curiosity (#321) | The combat-damage trigger is writable today. "Returns as a non-creature enchantment" is layer 4, and layer 4 is **wire-only**: every rules gate reads printed `Card.TypeLine`, so the returned permanent would still attack, block and be targeted as a creature. |
+| Anticausal Vestige (#324) | Warp is ~90% composable from #257's `AlternativeCost` + #269's `WhileExiled`/`CostOverride`, missing a "not before turn N" bound. The card's own LTB clause needs a hand-selection primitive with a dynamic mana-value bound. |
+| Aang, Swift Savior (#325) | Transform DFC; all five printings carry `card_faces`. Cannot be registered at all (ADR 0034 / #278). |
+| Lotus Field (#332) | Hexproof is not honoured by targeting, and "three mana of any one color" is inexpressible — each `{W\|U\|B\|R\|G}` slot resolves to its own independent pick. |
+| Fortune Teller's Talent (#333) | A Class, not a Saga. Single-faced, so ADR 0034 is not the issue; levels are, and no level machinery exists. |
+| Clone (#335) | `Layer1Copy` has **zero producers**, and the entry replacement event has no copiable-values slot (`EntersTapped`, `EntersWithCounters`, zone redirect and `Cancel` are the whole list). |
+| The Seriema (#337) | Station appears **nowhere in the repo** outside one triage-doc line. `AbilityCost` cannot tap another permanent, and "artifact creature at 7+" is the same wire-only layer-4 gap as #321. Its ETB tutor alone is cheap (`SearchLibrary` takes an arbitrary predicate; only a `Legendary()` helper is missing). |
+| Ty Lee, Chi Blocker (#339 = #340) | `untapAllForLocked` untaps unconditionally with no hook of any kind. #314's `TurnScopedStatics` is the wrong mechanism (layers never touch `Card.Tapped`) and the wrong duration (`ExpiresAfterTurn` counts rounds; ADR 0035 says so itself). Prowess is also unimplemented. Its ETB-tap half alone is cheap. |
+
+Two of these are one cheap half attached to one blocked half — The
+Seriema's tutor, Ty Lee's tap. Under §5 that is precisely the shape
+that must **not** ship: registering either would clear the card's
+`unimplemented` flag and make this signal assert something false
+about the rest of the card.
+
+Three things worth carrying forward:
+
+- **Clone's two reported symptoms are one cause.** "Enters as a 0/0"
+  is its printed P/T standing unmodified, and the 704.5f SBA's
+  printed-0 exemption is why it sits there rather than dying. "Does
+  not allow the selection of any usable target" is the same absence
+  seen from the client: no catalog entry means no `target_mode`, and
+  `Board.continueCast` fires `cast_spell` immediately. Clone's copy
+  choice was never targeting (CR 614.1c), so no targeting work would
+  have produced that prompt.
+- **#339 and #340 are one bug.** One card, one ETB, one session.
+- **Prowess may now be cheap** and is worth its own look: `EventCast`
+  triggers are in use by several catalog cards and #314's
+  `TurnScopedStatics` carries exactly a +1/+1-until-end-of-turn
+  grant. Adding it to `canonicalKeywords` would cover far more than
+  Ty Lee — but it is an engine keyword change, not a card, and it
+  does not unblock Ty Lee on its own.
 
 ## Consequences
 

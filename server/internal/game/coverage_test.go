@@ -130,6 +130,40 @@ func TestNeedsCatalogEffectCatchesRealRules(t *testing.T) {
 			"3\nSpells you cast from anywhere other than your hand cost {2} " +
 			"less to cast."},
 	}, {
+		// #335. One line, and the whole card. The reported "enters as
+		// a 0/0" is Clone's PRINTED 0/0 standing unmodified, and the
+		// printed-0 exemption in the 704.5f SBA is why it sits there
+		// instead of dying — the failure is silent twice over.
+		name:     "#335 Clone",
+		typeLine: "Creature — Shapeshifter",
+		texts: []string{"You may have this creature enter as a copy of any " +
+			"creature on the battlefield."},
+	}, {
+		// #337. Line 3 is the one worth having in this table: "7+ |
+		// Flying" must not be read as the keyword flying. Splitting a
+		// line only on commas and demanding an exact keyword match on
+		// every part is what stops a station threshold impersonating
+		// a keyword-ability line.
+		name:     "#337 The Seriema",
+		typeLine: "Legendary Artifact — Spacecraft",
+		texts: []string{"When The Seriema enters, search your library for a " +
+			"legendary creature card, reveal it, put it into your hand, then " +
+			"shuffle.\nStation (Tap another creature you control: Put charge " +
+			"counters equal to its power on this Spacecraft. Station only as a " +
+			"sorcery. It's an artifact creature at 7+.)\n7+ | Flying\nOther " +
+			"tapped legendary creatures you control have indestructible."},
+	}, {
+		// #339 / #340 — one card and one ETB, reported twice. Flash is
+		// canonical and genuinely works; prowess is a keyword outside
+		// the enforced twelve, so it reads as a rule, which is what it
+		// is here.
+		name:     "#339/#340 Ty Lee, Chi Blocker",
+		typeLine: "Legendary Creature — Human Performer Ally",
+		texts: []string{"Flash\nProwess (Whenever you cast a noncreature " +
+			"spell, this creature gets +1/+1 until end of turn.)\nWhen Ty Lee " +
+			"enters, tap up to one target creature. It doesn't untap during " +
+			"its controller's untap step for as long as you control Ty Lee."},
+	}, {
 		name:     "plain spell",
 		typeLine: "Instant",
 		texts:    []string{"Lightning Bolt deals 3 damage to any target."},
