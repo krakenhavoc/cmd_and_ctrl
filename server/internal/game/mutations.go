@@ -1399,6 +1399,9 @@ func (g *Game) resolveTopOfStackLocked() error {
 			Source: top.InstanceID,
 			CardID: top.InstanceID,
 		})
+		if item.IsCopy {
+			return g.ceaseToExistLocked(top.InstanceID)
+		}
 		return g.routeStackCardToGraveyardLocked(top)
 	}
 	g.EmitEvent(Event{
@@ -1412,6 +1415,24 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// spells fire their effect here. Errors emit EventEffectError
 	// via fireEffectResolverLocked and do not wedge resolution.
 	g.fireEffectResolverLocked(item, CatalogKey(top), top.InstanceID)
+	// CR 707.10: a resolving copy of a PERMANENT spell becomes a
+	// token. This engine has no token-from-stack-item path, and
+	// letting the copy fall through to the battlefield branch below
+	// would be worse than doing nothing — it would put a second
+	// card-shaped object carrying the original's oracle ID into
+	// play, which a bounce spell then duplicates into a hand. Every
+	// S30 copy card targets an instant or sorcery, so this is
+	// unreachable today; it is written out because it is where the
+	// token rule lands.
+	if item.IsCopy && top.IsPermanent() {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Actor:    item.Controller,
+			CardID:   top.InstanceID,
+			ErrorMsg: "copying a permanent spell is not implemented (CR 707.10 token)",
+		})
+		return g.ceaseToExistLocked(top.InstanceID)
+	}
 	if top.IsPermanent() {
 		// ADR 0034: settle which face the PERMANENT keeps before the
 		// replacement pipeline runs, so the entering card's
@@ -1496,6 +1517,13 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// and so the cost that was actually paid — is still reachable.
 		g.queueAltCostEntryTriggerLocked(moved, item)
 		return nil
+	}
+	// CR 706.10 — a COPY is not a card, so it has no graveyard to go
+	// to. It ceases to exist, having already run its effect above.
+	// See spell_copy.go for why this branch is load-bearing rather
+	// than cosmetic.
+	if item.IsCopy {
+		return g.ceaseToExistLocked(top.InstanceID)
 	}
 	// Instants / sorceries: resolve to the owner's graveyard.
 	return g.routeStackCardToGraveyardLocked(top)

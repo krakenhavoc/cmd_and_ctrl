@@ -207,6 +207,11 @@ var stackItemFields = plan(
 	"CastFromZone", carried, "",
 	"AltCost", carried, "",
 	"SplitSecond", carried, "",
+	// S30 spell copies (#95). Carried, and it has to be: a restore
+	// that lost the flag would route a resolving copy to a graveyard
+	// as though it were a card, putting a phantom Twincast in
+	// somebody's yard where Tarmogoyf can count it.
+	"IsCopy", carried, "",
 	"Seq", carried, "",
 	"Ordered", carried, "",
 
@@ -257,6 +262,7 @@ var pendingChoiceFields = plan(
 
 	"replacementResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"pickTargetResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"copySpellResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"triggerResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"payUnlessResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"searchResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
