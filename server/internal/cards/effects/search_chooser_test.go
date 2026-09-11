@@ -487,3 +487,68 @@ func TestResolveSearchLibraryRejectsBadAnswers(t *testing.T) {
 	}
 	answerSearchNamed(t, g, me.ID, "Forest")
 }
+
+// --- the Then continuation, taken through the prompt ---------------
+
+// Fabled Passage's "then ... untap THAT LAND" names the card the
+// SEARCHER chose, several client round-trips after the ability
+// resolved. The card used to peek at the library and re-derive the
+// first-match pick; with a chooser there is nothing to re-derive, so
+// the untap rides the search's Then continuation.
+func TestFabledPassageUntapsTheLandTheSearcherChose(t *testing.T) {
+	g := newCatalogGame(t)
+	me := top100ActiveSeat(g)
+	// Three lands plus the fetched one makes four.
+	seedPermanentFor(g, me.ID, "Forest A", "Basic Land — Forest")
+	seedPermanentFor(g, me.ID, "Forest B", "Basic Land — Forest")
+	seedPermanentFor(g, me.ID, "Forest C", "Basic Land — Forest")
+	passage := pushCatalogPermanent(g, me.ID, "Fabled Passage", "Land", fabledPassageOracle, false)
+	decoy := stapleLibraryCard(me, "Swamp", "Basic Land — Swamp")
+	want := stapleLibraryCard(me, "Island", "Basic Land — Island")
+
+	if err := g.ActivateCatalogAbility(me.ID, passage, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	answerSearchByID(t, g, me.ID, want)
+
+	if _, wrong := battlefieldCard(g, decoy); wrong {
+		t.Error("the land the searcher did not pick was fetched")
+	}
+	got, ok := battlefieldCard(g, want)
+	if !ok {
+		t.Fatal("the chosen land did not reach the battlefield")
+	}
+	if got.Tapped {
+		t.Error("with four lands the CHOSEN land must be untapped by the Then continuation")
+	}
+}
+
+// Gamble is "search, put that card into your hand, THEN discard a
+// card at random". The discard has to wait for the search — with an
+// otherwise empty hand the discarded card is the tutored one, which
+// is the entire joke, and a discard that ran before the prompt was
+// answered would take from an empty hand instead.
+func TestGambleDiscardsAfterTheSearchPromptIsAnswered(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	me.Hand.Cards = nil
+	prize := pushLibraryCardForTest(me, game.Card{Name: "Prize", TypeLine: "Sorcery"})
+
+	castCatalogSpell(t, g, "Gamble", "Sorcery", gambleOracle, nil)
+	passPriorityAroundTable(t, g)
+
+	// The spell has resolved but the discard has not happened yet —
+	// the hand is still empty and the prize is still in the library.
+	if me.Graveyard.Contains(prize) {
+		t.Error("Gamble discarded before the searcher had picked anything")
+	}
+	answerSearchByID(t, g, me.ID, prize)
+
+	if me.Hand.Size() != 0 {
+		t.Errorf("hand = %d, want 0 (fetched then pitched)", me.Hand.Size())
+	}
+	if !me.Graveyard.Contains(prize) {
+		t.Error("the fetched card should have been the random discard")
+	}
+}
