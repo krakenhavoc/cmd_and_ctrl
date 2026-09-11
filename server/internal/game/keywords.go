@@ -65,7 +65,25 @@ var canonicalKeywords = map[string]bool{
 	"flash":         true,
 	"hexproof":      true,
 	"shroud":        true,
+	// changeling (CR 702.73) joins the table in S26, in the same
+	// change that teaches Card.HasSubtype to honour it — which is
+	// the rule the table's closedness encodes. Its consumer is not
+	// in this file: it is HasAllCreatureTypes in creature_types.go,
+	// and through it every "of the chosen type" / "shares a creature
+	// type" read in the engine.
+	KeywordChangeling: true,
 }
+
+// KeywordChangeling is the canonical token for changeling (CR
+// 702.73a — "this card is every creature type"). Named because it is
+// read from three packages and a typo in any of them would silently
+// turn a changeling back into a Shapeshifter.
+//
+// It is the one keyword in the table whose meaning is not a combat or
+// timing rule but a CHARACTERISTIC: it answers a question about the
+// card's types, in every zone, and so it is consulted by HasSubtype
+// rather than by the combat engine.
+const KeywordChangeling = "changeling"
 
 // CanBeTargetedBy reports whether `caster` may choose this card as
 // the target of a spell or ability they control, under the CR 702

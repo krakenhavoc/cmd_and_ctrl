@@ -162,6 +162,11 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// place that can see the whole battlefield.
 		c.AttachedTo = TargetRef{}
 		c.AttachedAt = 0
+		// S26: the creature type chosen as the permanent entered
+		// (CR 614.12) belongs to that entry and not to the card. A
+		// bounced Cavern of Souls names a tribe again when it is
+		// replayed, and a Cavern in a graveyard names none.
+		c.NamedTribe = ""
 	}
 	dst.PushTop(c)
 	return c, nil
