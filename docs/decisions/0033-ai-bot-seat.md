@@ -308,7 +308,11 @@ Two real constraints remain:
 - `POST /games/{id}/seats/bot` with `{tier, deck}` — allowed for any
   seated player at an unstarted table, and for admin. Not admin-only:
   the request was "add to any unstarted table."
-- `DELETE /games/{id}/seats/bot/{seat}` while unstarted.
+- `DELETE /games/{id}/seats/bot/{seat}` while unstarted. Shipped in
+  sub-PR 4 keyed by the seat's **player UUID** rather than its index:
+  removing a bot renumbers every seat behind it, so an index is a
+  value the client would have to re-read between reading it and using
+  it. The path is `/seats/bot/{player_id}`.
 - Bot seats get real decks, so `Lobby.Start`'s `DeckUploaded` gate
   passes without special-casing.
 - **Seat arithmetic, stated plainly:** bots occupy real seats and
