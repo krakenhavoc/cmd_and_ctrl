@@ -156,31 +156,98 @@ jobs:
       github.event_name == 'push' &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     env:
-      # main deploys production, develop deploys the preview box. Distinct
-      # variable names rather than deployment environments on purpose: an
-      # environment variable that someone forgets to define silently falls
-      # back to the repo-level value, which here would mean deploying the
-      # develop branch onto production. An unset CMDCTRL_DEV_HOST instead
-      # fails the guard step below.
-      DEPLOY_ENV: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
-      CMDCTRL_HOST: >-
-        ${{ github.ref == 'refs/heads/main' && vars.CMDCTRL_HOST || vars.CMDCTRL_DEV_HOST }}
+      # Production and the develop preview are two VMs on the same
+      # Proxmox node, identical below the fqdn (ADR 0023). So this job
+      # branches on exactly two things -- which host it talks to, and
+      # which environment it tells the service it is -- and on nothing
+      # else. Every path, the unit name and the listen port are the
+      # same constants for both targets. That is what makes a preview
+      # deploy a rehearsal of the production deploy rather than a
+      # lookalike of it.
+      #
+      # Anything that is not `main` deploys as dev. Written in that
+      # direction on purpose: the job's `if` already admits only main
+      # and develop, and if that ever loosens, an unrecognised ref comes
+      # up as a dev preview rather than as production.
+      APP_ENV: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+      # Gates the two Discord bot steps. Nothing else branches on it;
+      # see "Deploy bot binary" for why those two are the exception.
+      IS_DEV: ${{ github.ref != 'refs/heads/main' }}
+
       SSH_OPTS: -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10
+
+      # Identical on both VMs -- written by the HomeLab cloud-init
+      # template, which is the single source of truth for both hosts.
+      # Named here rather than inlined so the steps below read the same
+      # whichever target they are pointed at, and so the resolve step
+      # can print the whole target in one place.
+      DEPLOY_ROOT: /opt/cmd_and_ctrl
+      WEB_ROOT: /var/www/cmdctrl-client
+      ENV_FILE: /etc/cmd_and_ctrl/env
+      SERVICE: cmd-and-ctrl
+      # Loopback port the service binds (CMDCTRL_ADDR in its env file).
+      # Used only by the post-deploy environment check below.
+      LOCAL_PORT: "8080"
+
+      # CMDCTRL_HOST is deliberately NOT declared here. It is resolved
+      # in the first step and exported through $GITHUB_ENV; see there.
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Verify the deploy target is set
+      # The deploy target is resolved in shell rather than with a
+      # `${{ cond && vars.A || vars.B }}` ternary, on purpose. That
+      # ternary is unsafe for exactly this pair: GitHub's `&&`/`||`
+      # falls through on an empty value, so if CMDCTRL_HOST were ever
+      # unset, `github.ref == 'refs/heads/main' && vars.CMDCTRL_HOST`
+      # evaluates to the empty string, which is falsy, and the whole
+      # expression falls through to the `||` branch -- a push to *main*
+      # would then deploy production onto the preview box. A "is the
+      # host set" guard cannot catch that: by the time it runs, the
+      # expression has already collapsed to a non-empty dev hostname.
+      # The same hazard exists in the other direction for an unset
+      # CMDCTRL_DEV_HOST, which would put develop, dev features and
+      # all, onto production.
+      #
+      # Resolving in shell turns both of those into a failed run that
+      # names the variable it wants.
+      - name: Resolve deploy target
+        env:
+          PROD_HOST: ${{ vars.CMDCTRL_HOST }}
+          DEV_HOST: ${{ vars.CMDCTRL_DEV_HOST }}
         run: |
-          if [ -z "${CMDCTRL_HOST}" ]; then
-            if [ "${DEPLOY_ENV}" = "prod" ]; then
-              echo "::error::Repo variable CMDCTRL_HOST is not set. Configure under Settings → Secrets and variables → Actions → Variables."
-            else
-              echo "::error::Repo variable CMDCTRL_DEV_HOST is not set, so the develop branch has nowhere to deploy. Configure under Settings → Secrets and variables → Actions → Variables."
-            fi
+          if [ "${IS_DEV}" = "true" ]; then
+            host="${DEV_HOST}"
+            host_var="CMDCTRL_DEV_HOST"
+          else
+            host="${PROD_HOST}"
+            host_var="CMDCTRL_HOST"
+          fi
+
+          if [ -z "${host}" ]; then
+            echo "::error::Repo variable ${host_var} is not set, so ${GITHUB_REF_NAME} has nowhere to deploy. Configure under Settings → Secrets and variables → Actions → Variables."
             exit 1
           fi
-          echo "Deploy target: krkn@${CMDCTRL_HOST} (${DEPLOY_ENV})"
+
+          # Both variables pointing at the same box is the single
+          # mistake that turns a preview deploy into a production
+          # outage: the paths are identical on the two VMs, so a
+          # develop deploy aimed at production's host would overwrite
+          # production in place and stamp CMDCTRL_ENV=dev on it. Cheap
+          # to check, so check it.
+          if [ "${IS_DEV}" = "true" ] && [ "${host}" = "${PROD_HOST}" ]; then
+            echo "::error::CMDCTRL_DEV_HOST and CMDCTRL_HOST both point at ${host}. These are meant to be separate VMs; deploying develop here would overwrite production."
+            exit 1
+          fi
+
+          echo "CMDCTRL_HOST=${host}" >> "${GITHUB_ENV}"
+
+          echo "Deploy target: krkn@${host}  (from ${host_var})"
+          echo "Environment:   ${APP_ENV}"
+          echo "Service:       ${SERVICE}, 127.0.0.1:${LOCAL_PORT}"
+          echo "Deploy root:   ${DEPLOY_ROOT}"
+          echo "Web root:      ${WEB_ROOT}"
+          echo "Env file:      ${ENV_FILE}"
 
       - name: Download server binary
         uses: actions/download-artifact@v6
@@ -207,34 +274,47 @@ jobs:
         run: |
           rsync -a -e "ssh ${SSH_OPTS}" \
             server/bin/cmd_and_ctrl-server \
-            krkn@${CMDCTRL_HOST}:/opt/cmd_and_ctrl/server/bin/
+            krkn@${CMDCTRL_HOST}:${DEPLOY_ROOT}/server/bin/
 
+      # Production only, on purpose -- this and the bot restart below
+      # are the only genuinely prod-only steps in this job. A second bot
+      # process logged into the same Discord application answers every
+      # slash command twice, so the develop deployment never ships or
+      # restarts the bot. Slash commands are tested against production
+      # or a private test guild. See ADR 0023 sec. 6.
       - name: Deploy bot binary
+        if: env.IS_DEV != 'true'
         run: |
           rsync -a -e "ssh ${SSH_OPTS}" \
             server/bin/cmd_and_ctrl-bot \
-            krkn@${CMDCTRL_HOST}:/opt/cmd_and_ctrl/bot/bin/ || {
-              echo "::warning::Bot deploy skipped — /opt/cmd_and_ctrl/bot/bin/ may not exist yet. Create it on the host before the bot rolls out."
+            krkn@${CMDCTRL_HOST}:${DEPLOY_ROOT}/bot/bin/ || {
+              echo "::warning::Bot deploy skipped — ${DEPLOY_ROOT}/bot/bin/ may not exist yet. Create it on the host before the bot rolls out."
             }
 
       - name: Deploy client dist
         run: |
           rsync -a --delete -e "ssh ${SSH_OPTS}" \
             client/dist/ \
-            krkn@${CMDCTRL_HOST}:/var/www/cmdctrl-client/
+            krkn@${CMDCTRL_HOST}:${WEB_ROOT}/
 
       - name: Deploy scripts
         run: |
           rsync -a -e "ssh ${SSH_OPTS}" \
             scripts/ \
-            krkn@${CMDCTRL_HOST}:/opt/cmd_and_ctrl/scripts/
-          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} 'chmod +x /opt/cmd_and_ctrl/scripts/*.sh'
+            krkn@${CMDCTRL_HOST}:${DEPLOY_ROOT}/scripts/
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} "chmod +x ${DEPLOY_ROOT}/scripts/"'*.sh'
 
       # Caddy's config ships from this repo because its @api matcher mirrors
       # the server's route table (see deploy/Caddyfile). The HomeLab cloud-init
       # template only writes a first-boot placeholder and cannot update a
       # running host -- that VM carries lifecycle ignore_changes on its
       # cloud-init -- so this step is the only thing that maintains it.
+      #
+      # Runs on both hosts, ungated. The file names no fqdn -- it is a `:80`
+      # site behind the tunnel -- so it is the same config on the preview as
+      # on production. Skipping it on dev would leave the preview serving
+      # index.html for the dev routes, which looks exactly like a preview
+      # whose features are switched off.
       #
       # RESTART, not reload. The unit's ExecReload is
       # `caddy reload --config ... --force`, which pushes the config through the
@@ -277,6 +357,22 @@ jobs:
             rm -f /tmp/Caddyfile.new
           '
 
+      # Stamp the deployment identity into the env file on every deploy
+      # of both branches. This is what makes the two environments unable
+      # to drift: production is rewritten to CMDCTRL_ENV=prod even if
+      # someone hand-edited it to dev, and the preview to dev even if it
+      # was hand-edited to prod. The server refuses to boot on an
+      # unrecognised value, and every dev-only route and action is gated
+      # on it server-side (ADR 0023).
+      #
+      # Deliberately not gated on IS_DEV: writing it on only one branch
+      # would leave the other free to drift, which is the failure this
+      # step exists to remove.
+      - name: Sync server env (deployment identity)
+        run: |
+          printf '%s' "${APP_ENV}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh CMDCTRL_ENV ${ENV_FILE}"
+
       # Provision the bug-report token (ADR 0017) into the server's
       # env file (/etc/cmd_and_ctrl/env — written by the HomeLab
       # cloud-init template, read by the systemd units) so nobody has
@@ -290,6 +386,15 @@ jobs:
       # reporting simply stays disabled, same as an unset var. sudo
       # because the env file is root:cmdctrl; krkn's cloud-init
       # sudoers grant covers it (same as the restart steps).
+      #
+      # Set on both hosts so the preview can rehearse bug reporting,
+      # which is a feature that has to be exercised somewhere before it
+      # reaches production. The cost is that a preview report files its
+      # issue under the same identity as a production one; the report
+      # body carries the environment it came from, and the alternative
+      # -- a preview where the button silently does nothing -- is
+      # worse. Add `if: env.IS_DEV != 'true'` here if that trade ever
+      # stops being worth it.
       - name: Sync server env (bug-report token)
         env:
           BUGREPORT_TOKEN: ${{ secrets.CMDCTRL_GITHUB_TOKEN }}
@@ -299,27 +404,36 @@ jobs:
             exit 0
           fi
           printf '%s' "${BUGREPORT_TOKEN}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
-            'sudo /opt/cmd_and_ctrl/scripts/set-server-env.sh CMDCTRL_GITHUB_TOKEN'
+            "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh CMDCTRL_GITHUB_TOKEN ${ENV_FILE}"
 
       # Bug-report screenshots need a PUBLIC origin: a GitHub issue can
       # only render an image its proxy can fetch, so the server has to
       # know the URL it is reachable at from the outside. Not a secret —
-      # a repo variable, defaulting to the production hostname — but
-      # provisioned the same way so the env file stays the single source
-      # of truth on the host. Unset leaves attachments off and text
-      # reports working (see ADR 0017 §6).
+      # a repo variable per environment, defaulting to that
+      # environment's fqdn — but provisioned the same way so the env
+      # file stays the single source of truth on the host. Unset leaves
+      # attachments off and text reports working (see ADR 0017 §6).
+      #
+      # Selected in shell rather than with a `${{ }}` ternary, for the
+      # reason given on "Resolve deploy target".
       - name: Sync server env (public base URL)
         env:
-          PUBLIC_BASE_URL: >-
-            ${{ github.ref == 'refs/heads/main'
-                && (vars.CMDCTRL_PUBLIC_BASE_URL || 'https://cmd.labxp.io')
-                || (vars.CMDCTRL_DEV_PUBLIC_BASE_URL || 'https://cmd-dev.labxp.io') }}
+          PROD_BASE_URL: ${{ vars.CMDCTRL_PUBLIC_BASE_URL }}
+          DEV_BASE_URL: ${{ vars.CMDCTRL_DEV_PUBLIC_BASE_URL }}
         run: |
-          printf '%s' "${PUBLIC_BASE_URL}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
-            'sudo /opt/cmd_and_ctrl/scripts/set-server-env.sh CMDCTRL_PUBLIC_BASE_URL'
+          if [ "${IS_DEV}" = "true" ]; then
+            base_url="${DEV_BASE_URL:-https://cmd-dev.labxp.io}"
+          else
+            base_url="${PROD_BASE_URL:-https://cmd.labxp.io}"
+          fi
+          echo "public base URL: ${base_url}"
+          printf '%s' "${base_url}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh CMDCTRL_PUBLIC_BASE_URL ${ENV_FILE}"
 
       # Facts about how these hosts are reached, not preferences, so they are
-      # set unconditionally rather than exposed as variables.
+      # set unconditionally rather than exposed as variables. True of both VMs
+      # -- they sit behind the same cloudflared/Caddy arrangement -- so this
+      # step does not branch on the ref either.
       #
       # TRUST_FORWARDED: cloudflared forwards to Caddy from 127.0.0.1, so every
       # request reaches the server from the loopback address. Without this the
@@ -333,21 +447,30 @@ jobs:
         run: |
           for KEY in CMDCTRL_TRUST_FORWARDED CMDCTRL_SECURE_COOKIES; do
             printf '%s' "1" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
-              "sudo /opt/cmd_and_ctrl/scripts/set-server-env.sh ${KEY}"
+              "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh ${KEY} ${ENV_FILE}"
             echo "set ${KEY}=1"
           done
 
       # Discord OAuth sign-in. All three are required -- discord.Config.Enabled()
       # is false if any is blank, /auth/discord/start returns 503 and the client
       # hides the sign-in button via /auth/discord/config -- so they are set
-      # together or not at all. None of them was provisioned by any pipeline
-      # before this, which is why Discord sign-in could not have worked even
-      # once Caddy started proxying /auth/*.
+      # together or not at all.
+      #
+      # Set on both hosts, ungated: signing in is most of what a preview is
+      # for. The client id and secret are shared; only the redirect differs.
       #
       # REDIRECT_URI must EXACTLY match a redirect registered on the Discord
       # application, and prod and dev necessarily differ, so both values must be
-      # registered there. Mismatch is the most common failure here; the callback
-      # handler deliberately surfaces Discord's error code verbatim.
+      # registered there -- https://cmd.labxp.io/auth/discord/callback and
+      # https://cmd-dev.labxp.io/auth/discord/callback. Mismatch is the most
+      # common failure here; the callback handler deliberately surfaces
+      # Discord's error code verbatim.
+      #
+      # Picked in shell, not with a `${{ cond && vars.A || vars.B }}` ternary,
+      # for the reason on "Resolve deploy target": that form falls through on
+      # an empty value, so an unset CMDCTRL_DISCORD_REDIRECT_URI would quietly
+      # configure PRODUCTION with the preview's callback and send every
+      # production sign-in to the dev box. Unset now warns and skips instead.
       #
       # The bot's three variables (CMDCTRL_DISCORD_BOT_TOKEN, _APP_ID,
       # _GUILD_IDS) are deliberately NOT set here. The bot is a separate unit
@@ -361,33 +484,45 @@ jobs:
         env:
           CMDCTRL_DISCORD_CLIENT_ID: ${{ secrets.CMDCTRL_DISCORD_CLIENT_ID }}
           CMDCTRL_DISCORD_CLIENT_SECRET: ${{ secrets.CMDCTRL_DISCORD_CLIENT_SECRET }}
-          CMDCTRL_DISCORD_REDIRECT_URI: >-
-            ${{ github.ref == 'refs/heads/main'
-                && vars.CMDCTRL_DISCORD_REDIRECT_URI
-                || vars.CMDCTRL_DEV_DISCORD_REDIRECT_URI }}
+          PROD_REDIRECT_URI: ${{ vars.CMDCTRL_DISCORD_REDIRECT_URI }}
+          DEV_REDIRECT_URI: ${{ vars.CMDCTRL_DEV_DISCORD_REDIRECT_URI }}
         run: |
+          if [ "${IS_DEV}" = "true" ]; then
+            CMDCTRL_DISCORD_REDIRECT_URI="${DEV_REDIRECT_URI}"
+            redirect_var="CMDCTRL_DEV_DISCORD_REDIRECT_URI"
+          else
+            CMDCTRL_DISCORD_REDIRECT_URI="${PROD_REDIRECT_URI}"
+            redirect_var="CMDCTRL_DISCORD_REDIRECT_URI"
+          fi
+
           missing=0
           for KEY in CMDCTRL_DISCORD_CLIENT_ID CMDCTRL_DISCORD_CLIENT_SECRET \
                      CMDCTRL_DISCORD_REDIRECT_URI; do
             VALUE="${!KEY}"
             if [ -z "${VALUE}" ]; then
-              echo "::warning::${KEY} is not configured; skipping."
+              if [ "${KEY}" = "CMDCTRL_DISCORD_REDIRECT_URI" ]; then
+                echo "::warning::Repo variable ${redirect_var} is not set; skipping ${KEY}."
+              else
+                echo "::warning::${KEY} is not configured; skipping."
+              fi
               missing=$((missing + 1))
               continue
             fi
             printf '%s' "${VALUE}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
-              "sudo /opt/cmd_and_ctrl/scripts/set-server-env.sh ${KEY}"
+              "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh ${KEY} ${ENV_FILE}"
             echo "set ${KEY}"
           done
           if [ "${missing}" -gt 0 ]; then
             echo "::notice::${missing} of 3 Discord sign-in values unset -- /auth/discord/start will return 503 and the client will hide the sign-in button."
           fi
 
-      - name: Restart cmd-and-ctrl service
+      - name: Restart game server service
         run: |
-          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} 'sudo systemctl restart cmd-and-ctrl'
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} "sudo systemctl restart ${SERVICE}"
 
       - name: Restart cmd-and-ctrl-bot service (if enabled)
+        # Production only — see "Deploy bot binary" above.
+        if: env.IS_DEV != 'true'
         # Conditional so CI keeps passing before the operator
         # installs the bot systemd unit for the first time.
         # Once the unit is enabled, this branch is the steady state.
@@ -404,4 +539,28 @@ jobs:
       - name: Verify service is active
         run: |
           ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
-            'systemctl is-active cmd-and-ctrl && systemctl status cmd-and-ctrl --no-pager --lines=10'
+            "systemctl is-active ${SERVICE} && systemctl status ${SERVICE} --no-pager --lines=10"
+
+      # Prove the deployment is answering as the environment we just
+      # told it to be. Catches the failure this whole scheme exists to
+      # prevent: a develop deploy that comes up believing it is prod,
+      # or — far worse — a main deploy that comes up as dev with card
+      # spawning enabled on the live table.
+      #
+      # Queried over loopback on the host so it tests the service
+      # itself, not the reverse proxy or DNS. With two boxes identical
+      # below the fqdn, "the service is active" is not a useful line in
+      # a log that doesn't say which box, so this one names the host.
+      - name: Verify reported environment
+        run: |
+          body=$(ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "curl -fsS --retry 5 --retry-delay 2 --retry-connrefused http://127.0.0.1:${LOCAL_PORT}/config")
+          echo "GET /config on ${CMDCTRL_HOST} -> ${body}"
+          case "${body}" in
+            *'"env":"'"${APP_ENV}"'"'*) ;;
+            *)
+              echo "::error::${SERVICE} on ${CMDCTRL_HOST} did not report env=${APP_ENV}. Check CMDCTRL_ENV in ${ENV_FILE} on that host."
+              exit 1
+              ;;
+          esac
+          echo "Confirmed: ${CMDCTRL_HOST} is running ${SERVICE} as ${APP_ENV}."

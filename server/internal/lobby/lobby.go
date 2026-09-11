@@ -35,6 +35,10 @@ var (
 	ErrEmptyName       = errors.New("lobby: name is required")
 	ErrSeatTaken       = errors.New("lobby: seat already claimed")
 	ErrPlayerNotInGame = errors.New("lobby: player is not in this game")
+
+	// ErrGameNotActiveForSpawn is returned by SpawnCards when the
+	// game has not started (or has ended). Dev-only path.
+	ErrGameNotActiveForSpawn = errors.New("lobby: game must be active to spawn cards")
 )
 
 // GameMeta is the lobby-facing projection of a game. It holds the
@@ -486,6 +490,51 @@ func (l *Lobby) SetDeck(gameID, playerID uuid.UUID, deckName string, cards []gam
 	seat.DeckUploaded = true
 	l.persistMetaLocked(entry)
 	return copyMeta(entry.meta), nil
+}
+
+// SpawnCards inserts n copies of template into a zone for the
+// develop environment's card spawner (ADR 0023). Mirrors SetDeck:
+// mutate under the room so seq bumps and the replay stream records
+// it, then broadcast after releasing l.mu.
+//
+// Routing this through applyLocked rather than poking Game directly
+// is what makes a spawn behave like every other mutation — it lands
+// in the replay, so a bug found with a spawned board is still
+// reproducible from the recording.
+//
+// Requires an active game: spawning into a lobby-state game would be
+// undone by Start dealing opening hands, which reads as the feature
+// being broken rather than misused.
+func (l *Lobby) SpawnCards(gameID, playerID uuid.UUID, zone game.ZoneKind, template game.Card, n int) ([]uuid.UUID, error) {
+	// Registered before the lock defer so it runs after l.mu is
+	// released — see applyLocked.
+	var broadcast func()
+	defer func() {
+		if broadcast != nil {
+			broadcast()
+		}
+	}()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	entry, ok := l.games[gameID]
+	if !ok {
+		return nil, ErrGameNotFound
+	}
+	if entry.room.Game.CurrentState() != game.StateActive {
+		return nil, ErrGameNotActiveForSpawn
+	}
+
+	var ids []uuid.UUID
+	var err error
+	if broadcast, err = l.applyLocked(gameID, entry, func() error {
+		var innerErr error
+		ids, innerErr = entry.room.Game.SpawnCardsForDev(playerID, zone, template, n)
+		return innerErr
+	}); err != nil {
+		return nil, err
+	}
+	return ids, nil
 }
 
 // Start transitions the game from lobby to active. Fails if fewer

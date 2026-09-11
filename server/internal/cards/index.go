@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -343,6 +344,58 @@ func (i *Index) FindByName(name string) (Card, bool) {
 		}
 	}
 	return Card{}, false
+}
+
+// Search returns up to limit cards whose name contains q, ranked
+// exact match first, then prefix match, then substring — each group
+// alphabetical so the ordering is stable between calls. Matching is
+// case- and whitespace-insensitive, reusing the same normalisation
+// as FindByName.
+//
+// This is a linear scan of ~30k names. That is fine for its one
+// caller (the dev card spawner, one request per keystroke-debounce
+// on a single-user preview box) and deliberately not built into an
+// index: a prefix trie would be dead weight in production, where
+// this code path does not exist.
+//
+// An empty or whitespace-only q returns nil rather than the whole
+// index.
+func (i *Index) Search(q string, limit int) []Card {
+	key := normalizeName(q)
+	if key == "" || limit <= 0 {
+		return nil
+	}
+	i.mu.RLock()
+	defer i.mu.RUnlock()
+
+	var exact, prefix, contains []Card
+	for name, c := range i.byName {
+		switch {
+		case name == key:
+			exact = append(exact, c)
+		case strings.HasPrefix(name, key):
+			prefix = append(prefix, c)
+		case strings.Contains(name, key):
+			contains = append(contains, c)
+		}
+	}
+	byName := func(s []Card) {
+		sort.Slice(s, func(a, b int) bool { return s[a].Name < s[b].Name })
+	}
+	byName(exact)
+	byName(prefix)
+	byName(contains)
+
+	out := make([]Card, 0, limit)
+	for _, group := range [][]Card{exact, prefix, contains} {
+		for _, c := range group {
+			if len(out) == limit {
+				return out
+			}
+			out = append(out, c)
+		}
+	}
+	return out
 }
 
 // preferIncoming reports whether `incoming` should replace `existing`
