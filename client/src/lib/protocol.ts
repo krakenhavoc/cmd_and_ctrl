@@ -744,6 +744,16 @@ export interface TurnView {
   priority_holder: number;
   phase: string;
   step: string;
+  // #328: seat indices that owe a declare-blockers decision — under
+  // attack, holding at least one creature that could legally block
+  // one of the attackers. Absent outside the declare_blockers step.
+  //
+  // The server computes this because block legality is a rules
+  // question (CR 509.1a untapped, CR 509.1b evasion) that the client
+  // must not re-derive in TypeScript. It exists because blocking is a
+  // turn-based action rather than a response, so the auto-pass
+  // "legal response?" predicate structurally could not see it.
+  block_decision_seats?: number[];
 }
 
 // uuid generates a v4 UUID. Uses crypto.randomUUID when available (all
