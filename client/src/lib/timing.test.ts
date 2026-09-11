@@ -2,13 +2,13 @@ import { describe, it, expect } from "vitest";
 
 import {
   canActivateLoyalty,
+  canActivateSorcerySpeedAbility,
   canCastFromHand,
   hasNonPassMove,
   hasPriority,
   isActivePlayer,
   isMainPhase,
   movesFor,
-  sorcerySpeedWindowOpen,
   stackEmpty,
 } from "./timing";
 import type {
@@ -368,13 +368,13 @@ describe("canCastFromHand — permissive when the server said nothing", () => {
 // The last rules derivation in the file, and the reason it survives:
 // `activate_loyalty` is a sandbox verb the enumerator does not
 // enumerate, so there is no move list to look it up in.
-describe("sorcerySpeedWindowOpen", () => {
+describe("canActivateSorcerySpeedAbility", () => {
   it("open on your own main phase with an empty stack", () => {
-    expect(sorcerySpeedWindowOpen(snap(), "p0").legal).toBe(true);
+    expect(canActivateSorcerySpeedAbility(snap(), "p0").legal).toBe(true);
   });
 
   it("shut outside a main phase", () => {
-    expect(sorcerySpeedWindowOpen(snap({ step: "upkeep" }), "p0").reason).toBe(
+    expect(canActivateSorcerySpeedAbility(snap({ step: "upkeep" }), "p0").reason).toBe(
       "Sorcery-speed only",
     );
   });
@@ -383,26 +383,50 @@ describe("sorcerySpeedWindowOpen", () => {
     const s = snap({
       stackItems: [{ id: "x", kind: "spell", controller: "p1", owner: "p1", source_card_id: "x" }],
     });
-    expect(sorcerySpeedWindowOpen(s, "p0").reason).toBe("Stack isn't empty");
+    expect(canActivateSorcerySpeedAbility(s, "p0").reason).toBe("Stack isn't empty");
   });
 
   it("shut on someone else's turn", () => {
-    expect(sorcerySpeedWindowOpen(snap({ activeSeat: 1, priorityHolder: 0 }), "p0").reason).toBe(
-      "Not your turn",
-    );
+    expect(
+      canActivateSorcerySpeedAbility(snap({ activeSeat: 1, priorityHolder: 0 }), "p0").reason,
+    ).toBe("Not your turn");
   });
 
   it("shut without priority, and for spectators", () => {
-    expect(sorcerySpeedWindowOpen(snap({ priorityHolder: 1 }), "p0").reason).toBe(
+    expect(canActivateSorcerySpeedAbility(snap({ priorityHolder: 1 }), "p0").reason).toBe(
       "Not your priority",
     );
-    expect(sorcerySpeedWindowOpen(snap(), null).reason).toBe("Spectator can't activate");
+    expect(canActivateSorcerySpeedAbility(snap(), null).reason).toBe("Spectator can't activate");
   });
 
   it("shut under split second", () => {
-    expect(sorcerySpeedWindowOpen(snap({ splitSecond: true }), "p0").reason).toBe(
+    expect(canActivateSorcerySpeedAbility(snap({ splitSecond: true }), "p0").reason).toBe(
       "Split second on the stack",
     );
+  });
+});
+
+// S24: equip is the catalog's first "activate only as a sorcery"
+// ability, and this is the window it answers to.
+describe("canActivateSorcerySpeedAbility", () => {
+  it("legal on your own main phase with an empty stack", () => {
+    expect(canActivateSorcerySpeedAbility(snap(), "p0").legal).toBe(true);
+  });
+
+  it("rejects outside a main phase", () => {
+    expect(canActivateSorcerySpeedAbility(snap({ step: "upkeep" }), "p0").reason).toBe(
+      "Sorcery-speed only",
+    );
+  });
+
+  it("rejects on an opponent's turn", () => {
+    expect(
+      canActivateSorcerySpeedAbility(snap({ activeSeat: 1, priorityHolder: 0 }), "p0").reason,
+    ).toBe("Not your turn");
+  });
+
+  it("rejects a spectator", () => {
+    expect(canActivateSorcerySpeedAbility(snap(), null).reason).toBe("Spectator can't activate");
   });
 });
 

@@ -22,11 +22,13 @@
 //     server stamps (legal_targets, modes, additional_cost) — and
 //     they are what produces a USEFUL tooltip. The server's move
 //     list is the verdict; these supply the sentence.
-//   - canActivateLoyalty. `activate_loyalty` is a sandbox verb the
-//     enumerator deliberately does not enumerate (the players
-//     resolve the ability's text between themselves), so there is no
-//     server list to look it up in and the CR 606.5 window has to
-//     stay here. It is the ONLY rules derivation left in this file.
+//   - canActivateSorcerySpeedAbility and canActivateLoyalty. Both
+//     gate verbs the enumerator deliberately does NOT enumerate —
+//     `activate_loyalty` is a sandbox affordance where the players
+//     resolve the ability's text between themselves — so there is no
+//     server list to look them up in and the CR 602.5d / 606.5
+//     window has to stay here. Between them they are the only rules
+//     derivation left in this file.
 //
 // What went: canCastFromHand's timing gate (castTimingForTypeLine /
 // castableFaceTypeLines), canActivateAbility (its only caller was the
@@ -240,24 +242,30 @@ export function canCastFromHand(
   // verdict is right either way, which is the part that was broken
   // before; sharpening the sentence needs the server to ship a
   // denial reason alongside the move list, which it does not yet.
-  if (!sorcerySpeedWindowOpen(snap, viewerID).legal) return deny("Only at sorcery speed");
+  if (!canActivateSorcerySpeedAbility(snap, viewerID).legal) return deny("Only at sorcery speed");
   return deny("Can't play this right now");
 }
 
-// --- loyalty abilities ---------------------------------------------
+// --- activated and loyalty abilities --------------------------------
 
-// sorcerySpeedWindowOpen is CR 307.1: your main phase, empty stack,
-// and you hold priority. It is the last rules derivation in this
-// file and it survives for one reason — the two callers below gate
-// actions the server does NOT enumerate, so there is no move list to
-// look them up in.
+// canActivateSorcerySpeedAbility is CR 602.5d's "activate only as a
+// sorcery" window, shared by every activated ability that declares
+// it — equip (CR 702.6b) is the first in the catalog, and a
+// planeswalker's loyalty ability answers to the same three gates
+// plus two of its own (see canActivateLoyalty).
 //
-// `activate_loyalty` is a sandbox affordance: the engine charges the
-// counters and enforces CR 606.5, and the players resolve the
-// ability's text between themselves. `internal/legal` deliberately
-// skips it (see its package doc on sandbox verbs), which is why this
-// window cannot become a lookup along with everything else.
-export function sorcerySpeedWindowOpen(
+// S31 note: this is the LAST rules derivation left in this file, and
+// it survives because its callers gate actions the server does not
+// enumerate. `activate_loyalty` is a sandbox affordance — the engine
+// charges the counters and enforces CR 606.5, and the players resolve
+// the ability text between themselves — so `internal/legal` skips it
+// by design (see its package doc on sandbox verbs) and there is no
+// move list to look it up in.
+//
+// Advisory, like every predicate in this file: the server rejects
+// with ErrSorcerySpeedRequired regardless. This exists so the menu
+// row greys with a reason instead of looking available and failing.
+export function canActivateSorcerySpeedAbility(
   snap: GameView | null | undefined,
   viewerID: string | null,
 ): Legality {
@@ -290,7 +298,7 @@ export function canActivateLoyalty(
   viewerID: string | null,
   alreadyActivated = false,
 ): Legality {
-  const window = sorcerySpeedWindowOpen(snap, viewerID);
+  const window = canActivateSorcerySpeedAbility(snap, viewerID);
   if (!window.legal) return window;
   if (alreadyActivated || card.loyalty_activated) return deny("Already activated this turn");
   // Source must be on the battlefield.

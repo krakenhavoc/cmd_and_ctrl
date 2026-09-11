@@ -85,15 +85,27 @@ export function buildMovePayload(
 // exile slice, and the thief is the one who gets a button.
 
 // impulseGrantFor returns the grant on `card` if the viewer is the
-// one it names, or null.
+// one it names AND its window is open, or null.
+//
+// `turn` is the current turn number, for S29 warp's "you may cast it
+// from exile on a LATER turn": the grant is stamped on the permanent
+// the moment it is exiled, at the end step of the turn it was warped
+// in, and stays dark until the next turn begins. Callers that have
+// no turn number to hand pass undefined and get the pre-S29
+// behaviour, which is correct for every grant that carries no floor.
 export function impulseGrantFor(
   card: CardView,
   zoneKind: BrowsableZone,
   viewerID: string | null,
+  turn?: number,
 ): ExilePlayView | null {
   if (zoneKind !== "exile" || !viewerID) return null;
   const grant = card.exile_play;
-  return grant && grant.player === viewerID ? grant : null;
+  if (!grant || grant.player !== viewerID) return null;
+  if (grant.not_before_turn !== undefined && turn !== undefined && turn < grant.not_before_turn) {
+    return null;
+  }
+  return grant;
 }
 
 // impulseActionLabel is the verb for the button, or null when there
@@ -104,11 +116,46 @@ export function impulseActionLabel(
   card: CardView,
   zoneKind: BrowsableZone,
   viewerID: string | null,
+  turn?: number,
 ): "cast" | "play" | null {
-  const grant = impulseGrantFor(card, zoneKind, viewerID);
+  const grant = impulseGrantFor(card, zoneKind, viewerID, turn);
   if (!grant) return null;
   if ((card.type_line ?? "").toLowerCase().includes("land")) {
     return grant.cast_only ? null : "play";
   }
   return "cast";
+}
+
+// --- S29: alternative cast paths from non-hand zones -------------
+//
+// The impulse button above is keyed on a grant stamped on one exiled
+// INSTANCE. Flashback and escape are the other shape: the permission
+// is printed on the CARD, so the server answers it per card per zone
+// and sends the answer down as `castable_here`.
+//
+// The client deliberately does not know what "flashback" means. It
+// asks whether the card is castable from the zone it is looking at,
+// and hands the cast to the Board's ordinary prompt chain, which
+// reads the cost out of `alternative_costs` — already filtered
+// server-side to the offers claimable from this zone.
+
+// castableFromZone reports whether the viewer may cast `card` out of
+// the zone the browser is showing.
+//
+// Two gates, and the ownership one is not redundant with the
+// server's. `castable_here` is PUBLIC — the graveyard is a public
+// zone and a flashback cost is printed on the card, so an opponent's
+// snapshot carries the bit too. Without the ownership check the
+// browser would offer a button on someone else's graveyard card that
+// the server then refuses with ErrCardNotFound, which reads to the
+// player as a bug rather than as a rule.
+export function castableFromZone(
+  card: CardView,
+  zoneKind: BrowsableZone,
+  viewerID: string | null,
+  ownerID: string,
+): boolean {
+  if (zoneKind !== "graveyard") return false;
+  if (!viewerID || viewerID !== ownerID) return false;
+  return card.castable_here === true;
 }

@@ -72,7 +72,26 @@ export interface CastChoices {
   // Gate, Reborn have different types, different costs and, via
   // the composite catalog key, different rules.
   face?: number;
+  // S29: the zone the cast comes out of. Undefined is the hand,
+  // which is every cast the Board's own surfaces fire.
+  //
+  // It rides CastChoices rather than being a parameter of its own
+  // because a graveyard cast has to walk the SAME prompt chain as a
+  // hand cast — flashback picks a cost, escape pays an additional
+  // cost, Cackling Counterpart picks a target — and threading a
+  // second positional argument through eight `after*` seams is
+  // exactly the debt this object was created to pay off. The two
+  // pre-S29 senders of `from_zone` (the command zone and the exile
+  // impulse button) fire bare payloads with no prompts at all, which
+  // is why they never needed it.
+  fromZone?: CastSourceZone;
 }
+
+// CastSourceZone is the `from_zone` vocabulary the server's
+// castZoneFromWire accepts. "hand" is never sent — it is the server
+// default and omitting it keeps every pre-S29 client's payload
+// byte-identical.
+export type CastSourceZone = "command" | "exile" | "graveyard";
 
 // applyCastChoices writes a CastChoices onto a cast_spell payload.
 // Undefined fields are omitted rather than sent as null — the server
@@ -91,6 +110,8 @@ export function applyCastChoices(
   // default, and `omitempty` on the Go side means an explicit zero
   // and an absent field are the same byte on the wire anyway.
   if (choices.face !== undefined && choices.face > 0) params.face = choices.face;
+  // S29: omitted for a hand cast, for the same reason face 0 is.
+  if (choices.fromZone !== undefined) params.from_zone = choices.fromZone;
 }
 
 // TargetingState is the active prompt. `card` is the spell being
@@ -119,7 +140,7 @@ export interface TargetingState {
   // S21 sub-PR 2: set when the prompt collects targets for an
   // ACTIVATED ability rather than a cast. The confirm fires
   // activate_ability with these announce-time choices.
-  ability?: { index: number; sacrificeIDs: string[] };
+  ability?: { index: number; sacrificeIDs: string[]; crewIDs: string[] };
   // Human-readable clause for the banner ("target artifact or
   // enchantment"); the server's TargetSpec label.
   label?: string;
@@ -349,13 +370,14 @@ export function beginForAbility(
   card: CardView,
   ability: ActivatedAbilityView,
   sacrificeIDs: string[],
+  crewIDs: string[] = [],
 ): void {
   const lt = ability.legal_targets;
   targeting.set({
     card,
     mode: (ability.target_mode || "any") as TargetingMode,
     legal: lt ? { players: new Set(lt.players ?? []), cards: new Set(lt.cards ?? []) } : undefined,
-    ability: { index: ability.index, sacrificeIDs },
+    ability: { index: ability.index, sacrificeIDs, crewIDs },
     // The count comes off the wire like every other clause's. This
     // used to be a hard-coded 1 / 1 with a note explaining that
     // ActivatedAbilityView carried an inline `{players?, cards?}`

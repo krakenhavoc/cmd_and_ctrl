@@ -275,6 +275,29 @@ type Spec struct {
 	// as `tap_ids`; tapping nothing is always legal.
 	TapCost *game.TapPermanentsCost
 
+	// CastableZones is the S29 "you may cast this card from
+	// somewhere other than your hand" declaration (CR 601.2, and
+	// every keyword in CR 702 that grants an alternative cast
+	// path). Nil — nearly every card — means hand only.
+	//
+	// The zone is only the PLACE. The PRICE rides
+	// AlternativeCost.FromZone, and the two are declared together:
+	//
+	//	CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
+	//	AlternativeCosts: []game.AlternativeCost{Flashback("{2}{R}")},
+	//
+	// Register panics on a zone-bound cost whose zone is not listed
+	// here, because such an offer can never be claimed.
+	//
+	// Hand is implicit and need not be listed — declaring the
+	// graveyard ADDS a path, it never removes the ordinary cast.
+	// Listing ZoneCommand is pointless (CR 903.4 grants that one to
+	// the format, not the card) and listing ZoneExile is for cards
+	// whose own text grants the permission; the impulse-exile /
+	// airbend / madness family grants it to a single exiled
+	// instance instead, through game.ExilePlayPermission.
+	CastableZones []game.ZoneKind
+
 	// Activated is the list of CR 602 activated abilities the card
 	// offers from the battlefield — the fourth ability type, added
 	// in S21 sub-PR 2. Each entry declares its cost (tap, sacrifice

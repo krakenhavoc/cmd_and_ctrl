@@ -73,6 +73,12 @@
   // their own instance-scoped totals. The controller is excluded per
   // CR (a player can't deal commander damage to themselves) and to
   // avoid a muddy self-row.
+  //
+  // This lookup was written against a server that did not exist yet:
+  // until S25 (#77) the server keyed `commander_damage` by the
+  // OPPOSING PLAYER's ID, so every row here read 0 no matter how hard
+  // a commander had connected. S25 rekeyed the map to commander
+  // instance IDs (CR 903.14a), which is what this code always wanted.
   const playerColors = $state<Record<string, string>>({});
   $effect(() => {
     if (!card?.is_commander) return;
