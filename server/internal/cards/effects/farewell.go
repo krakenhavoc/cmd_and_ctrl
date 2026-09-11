@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Farewell — Sorcery {4}{W}{W} (EDHREC rank 172):
 //
@@ -23,10 +19,9 @@ import (
 //
 // "Choose one or more" is ChooseN with Min 1 and Max 4 — every
 // subset of the four is a legal cast. The three battlefield modes
-// are Merciless Eviction's, resolved in printed order (CR 700.2c)
-// with the IDs snapshotted before each sweep; the fourth walks
-// every seat's graveyard, the caster's included, through the same
-// helper Bojuka Bog uses.
+// are Merciless Eviction's, resolved in printed order (CR 700.2c);
+// the fourth walks every seat's graveyard, the caster's included,
+// through the same helper Bojuka Bog uses.
 //
 // No simplification.
 func init() {
@@ -41,27 +36,13 @@ func init() {
 			Mode("Exile all graveyards."),
 		),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			sweeps := []func(game.Card) bool{
-				func(c game.Card) bool { return c.IsArtifact() },
-				func(c game.Card) bool { return c.IsCreature() },
-				func(c game.Card) bool { return c.IsEnchantment() },
-			}
-			for i, matches := range sweeps {
+			sweeps := []CardPredicate{Artifact(), Creature(), Enchantment()}
+			for i, match := range sweeps {
 				if !ctx.HasMode(i) {
 					continue
 				}
-				// Snapshot before exiling: ExileTarget removes cards
-				// from the zone we would otherwise be ranging over.
-				var doomed []uuid.UUID
-				for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-					if matches(c) {
-						doomed = append(doomed, c.InstanceID)
-					}
-				}
-				for _, id := range doomed {
-					if err := (ExileTarget{Target: id}).Apply(ctx); err != nil {
-						return err
-					}
+				if err := (ExileAllMatching{Match: match}).Apply(ctx); err != nil {
+					return err
 				}
 			}
 			if ctx.HasMode(3) {

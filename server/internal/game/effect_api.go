@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"log/slog"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -520,6 +521,18 @@ func (g *Game) CounterTargetForEffect(stackID uuid.UUID) error {
 	}
 	switch item.Kind {
 	case StackItemSpell:
+		// CR 701.5a + the "this spell can't be countered" rider
+		// (Supreme Verdict). The spell is still a LEGAL TARGET — a
+		// Counterspell aimed at it resolves, and then does nothing.
+		// Modelling it as an illegal target would be the easy
+		// mistake and the wrong one: the counterspell would fizzle
+		// instead of resolving, which is observable to anything
+		// watching it resolve. Added in S23.
+		if g.spellCantBeCounteredLocked(stackID) {
+			slog.Info("counter had no effect: spell can't be countered",
+				"spell_id", stackID)
+			return nil
+		}
 		return g.counterSpellLocked(stackID, nil)
 	case StackItemActivated, StackItemTriggered:
 		return g.counterAbilityLocked(stackID)

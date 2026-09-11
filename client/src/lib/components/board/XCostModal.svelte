@@ -98,10 +98,21 @@
         Choose X for {card.name}
         <span class="prompt-src" aria-hidden="true">{card.mana_cost ?? "{X}"}</span>
       </h2>
-      <p class="prompt-hint">
-        Pick a value for X. The check below reads your untapped sources and says whether auto-tap
-        can pay for it.
-      </p>
+      {#if card.additional_cost?.demands_x}
+        <!-- S23: Toxic Deluge's X is paid in LIFE, not mana, so the
+             auto-tap line below is about the flat printed cost and
+             says nothing about whether the X itself is affordable.
+             Name the real price instead of letting a green
+             "affordable" imply it covers both. -->
+        <p class="prompt-hint">
+          {card.additional_cost.label ?? "Pay X life"} as an additional cost. You'll pay {x} life.
+        </p>
+      {:else}
+        <p class="prompt-hint">
+          Pick a value for X. The check below reads your untapped sources and says whether auto-tap
+          can pay for it.
+        </p>
+      {/if}
       <label class="x-row">
         <span class="x-label">X =</span>
         <input

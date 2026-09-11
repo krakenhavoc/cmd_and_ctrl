@@ -309,6 +309,19 @@ func TestRunnerPacesDecisions(t *testing.T) {
 	}
 }
 
+// envDuration reads a duration from the environment, falling back to
+// def when unset or unparseable. Used for the bot-table budgets so a
+// loaded CI runner and a local bisect can disagree about how patient
+// to be without either one editing the test.
+func envDuration(key string, def time.Duration) time.Duration {
+	if v := os.Getenv(key); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			return d
+		}
+	}
+	return def
+}
+
 // --- the fuzzer: four random bots ------------------------------------
 
 // TestFourRandomBotsPlay is the S31 exit-criterion smoke test in
@@ -316,11 +329,25 @@ func TestRunnerPacesDecisions(t *testing.T) {
 // moving — no deadlock, no rejected moves — until it ends or a turn
 // budget is spent. Run with AISEAT_DEBUG=1 for the move log.
 func TestFourRandomBotsPlay(t *testing.T) {
-	const (
-		turnBudget = 40
-		stall      = 3 * time.Second
-		wallClock  = 60 * time.Second
-	)
+	const turnBudget = 40
+	// The stall detector is the real guard here: a deadlocked table
+	// never bumps the sequence again, so any threshold catches it and
+	// the only question is how long we wait to be sure. The wall clock
+	// is a backstop for "moving, but absurdly slowly".
+	//
+	// Both budgets were tuned on an idle machine, where this test
+	// finishes in about 6 seconds. On the shared self-hosted runner
+	// under load they are not survivable: with a dozen jobs in flight
+	// the same three seeds blew the 60s wall clock at turns 18-25 and
+	// failed three unrelated PRs (#418, #431, #434) that had touched
+	// nothing near the bot runner. A test that fails on how busy the
+	// machine is tells you about the machine.
+	//
+	// So: generous defaults, overridable for a local bisect. 15s of
+	// no sequence movement is still a deadlock by any reasonable
+	// reading, and 300s of wall clock is 50x the idle runtime.
+	stall := envDuration("AISEAT_STALL", 15*time.Second)
+	wallClock := envDuration("AISEAT_WALLCLOCK", 300*time.Second)
 	for _, seed := range []uint64{11, 22, 33} {
 		t.Run(fmt.Sprintf("seed=%d", seed), func(t *testing.T) {
 			room := newRoom(t, 4, seed)

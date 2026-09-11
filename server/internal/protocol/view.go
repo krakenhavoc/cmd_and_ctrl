@@ -263,6 +263,12 @@ type AdditionalCostView struct {
 	// no sacrifice component; present-and-empty means the cost is
 	// unpayable, which makes the spell uncastable.
 	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
+	// DemandsX marks a "pay X life" clause (Toxic Deluge). The
+	// client must open its X prompt for this card even though the
+	// printed mana cost has no {X} in it, and the announced X is
+	// both the life paid and the number the spell's own text uses.
+	// Added in S23.
+	DemandsX bool `json:"demands_x,omitempty"`
 	// Label is the clause as printed ("Discard a card"), shown
 	// above the picker.
 	Label string `json:"label,omitempty"`
@@ -1223,6 +1229,7 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 				if ac := game.AdditionalCostFor(c.oracleID); !ac.Empty() {
 					c.AdditionalCost = &AdditionalCostView{
 						DiscardCards: ac.DiscardCards,
+						DemandsX:     ac.PayLifeX,
 						Label:        ac.Label,
 					}
 					if ac.Sacrifice != nil {
