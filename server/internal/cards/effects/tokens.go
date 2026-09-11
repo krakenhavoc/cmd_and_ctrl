@@ -162,6 +162,10 @@ func TreasureToken() game.Card {
 // Same five-colour pipe as Treasure, so it runs through the same
 // commander-identity filter rather than offering a five-way prompt in
 // a mono-coloured deck.
+//
+// Cheaper than a Treasure by a tap: the printed cost is the sacrifice
+// alone, so a Gold made this turn is spendable this turn and a tapped
+// Gold is still spendable. Both fall out of leaving TapCost false.
 func GoldToken() game.Card {
 	return game.Card{
 		Name:     "Gold",
@@ -350,26 +354,6 @@ func WallDefenderToken() game.Card {
 		Power:     0,
 		Toughness: 4,
 		Keywords:  []string{"defender"},
-	}
-}
-
-// GoldToken is The First Iroan Games' Gold artifact token —
-// "Sacrifice this token: Add one mana of any color".
-//
-// Cheaper than a Treasure by a tap: the printed cost is the
-// sacrifice alone, so a Gold made this turn is spendable this turn
-// and a tapped Gold is still spendable. Both fall out of leaving
-// TapCost false, which is the whole difference between the two
-// templates.
-func GoldToken() game.Card {
-	return game.Card{
-		Name:     "Gold",
-		TypeLine: "Token Artifact — Gold",
-		ManaAbilities: []game.ManaAbilityShape{{
-			SacrificeCost: true,
-			Produced:      "{W|U|B|R|G}",
-			Label:         "Sacrifice: Add one mana of any color",
-		}},
 	}
 }
 
