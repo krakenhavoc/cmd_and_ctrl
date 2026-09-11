@@ -1,4 +1,5 @@
 import { writable, type Writable } from "svelte/store";
+import { recordClientError } from "./clientErrors";
 import {
   PROTOCOL_VERSION,
   uuid,
@@ -70,26 +71,81 @@ export function reconnectDelayMs(attempt: number, rand: () => number = Math.rand
   return Math.floor(nominal / 2 + rand() * (nominal / 2));
 }
 
+// describeThrown renders whatever a subscriber threw. Subscribers can
+// throw anything at all, and this runs inside the failure path, so it
+// must not be able to throw itself.
+function describeThrown(err: unknown): string {
+  if (err instanceof Error) return `${err.name}: ${err.message}`;
+  if (typeof err === "string") return err;
+  try {
+    return JSON.stringify(err) ?? String(err);
+  } catch {
+    return "unknown error";
+  }
+}
+
+// guardedWritable is a `writable` whose subscribers cannot escape.
+//
+// #266: svelte/store keeps ONE module-global `subscriber_queue` shared
+// by every store in the app. `set()` drains it with a bare loop and
+// clears it only after the loop finishes:
+//
+//     for (let i = 0; i < subscriber_queue.length; i += 2) {
+//       subscriber_queue[i][0](subscriber_queue[i + 1]);
+//     }
+//     subscriber_queue.length = 0;
+//
+// A subscriber that throws skips both the remaining subscribers AND
+// the reset, so the queue stays permanently non-empty. From then on
+// every `set()` on every store — snapshot, status, log, settings,
+// targeting — sees a non-empty queue, enqueues its value, and returns
+// without flushing. The socket stays green, handleMessage keeps
+// running, seq keeps advancing, and nothing ever reaches the DOM
+// again. That is the reported "state freeze", and it lasts for the
+// life of the page.
+//
+// Containing the throw at the subscriber boundary means one component
+// blowing up costs that component's update and a recorded error,
+// instead of the whole application. It does NOT make the component
+// correct — the recorded entry is the point, so the next bug report
+// names the thing that threw instead of arriving empty.
+function guardedWritable<T>(initial: T, label: string): Writable<T> {
+  const inner = writable(initial);
+  return {
+    set: inner.set,
+    update: inner.update,
+    subscribe(run, invalidate) {
+      return inner.subscribe((value) => {
+        try {
+          run(value);
+        } catch (err) {
+          recordClientError(`subscriber threw on ${label}: ${describeThrown(err)}`);
+        }
+      }, invalidate);
+    },
+  };
+}
+
 // GameClient wraps a WebSocket with the v0 protocol and exposes reactive
 // Svelte stores for UI binding. As of S03 it understands `ping`/`pong`,
 // `error`, and `snapshot` frames. `action` frames (client → server) are
 // sent by the caller via sendAction; they are not yet exposed via a
 // typed helper surface because the S05+ play UI hasn't landed.
 export class GameClient {
-  readonly status: Writable<ConnectionStatus> = writable("disconnected");
-  readonly log: Writable<LogEntry[]> = writable([]);
+  readonly status: Writable<ConnectionStatus> = guardedWritable("disconnected", "status");
+  readonly log: Writable<LogEntry[]> = guardedWritable([], "log");
   // snapshot is the latest GameView received from the server, or null
   // before the initial snapshot arrives. Updated on every snapshot
   // frame; UI components subscribe to it for the authoritative game
   // state. The snapshot sequence number is tracked separately so
   // consumers that care about ordering don't have to derive it.
-  readonly snapshot: Writable<GameView | null> = writable(null);
-  readonly lastSeq: Writable<number> = writable(0);
+  readonly snapshot: Writable<GameView | null> = guardedWritable(null, "snapshot");
+  readonly lastSeq: Writable<number> = guardedWritable(0, "lastSeq");
   // chat is the rolling list of server-stamped chat messages received
   // on this connection. Capped to CHAT_LOG_LIMIT entries; older
   // messages drop off the front. Chat is ephemeral — a fresh connect
   // always starts with an empty log.
-  readonly chat: Writable<ChatMessage[]> = writable([]);
+  readonly chat: Writable<ChatMessage[]> = guardedWritable([], "chat");
   // lastError holds the most recent error frame received from the
   // server. Routes subscribe to render a toast / banner so users
   // can see why an action was rejected (the v0 protocol replies
@@ -102,7 +158,7 @@ export class GameClient {
     at: Date;
     missing?: string[];
     cardID?: string;
-  } | null> = writable(null);
+  } | null> = guardedWritable(null, "lastError");
   private errorClearTimer: ReturnType<typeof setTimeout> | null = null;
 
   private socket: WebSocket | null = null;
@@ -343,6 +399,22 @@ export class GameClient {
       this.append("error", `server spoke v${frame.v}, expected v${PROTOCOL_VERSION}`);
       return;
     }
+    // #266: belt to guardedWritable's braces. Nothing below is allowed
+    // to escape into the socket's message listener — an uncaught throw
+    // there is invisible (no console in this app) and leaves the
+    // connection alive but the client mid-update. Record it instead so
+    // it reaches the next bug report, and keep serving later frames:
+    // snapshots are full states, so the frame after a bad one heals
+    // the board on its own.
+    try {
+      this.dispatchFrame(frame);
+    } catch (err) {
+      this.append("error", `frame handling failed: ${describeThrown(err)}`);
+      recordClientError(`ws frame handling failed: ${describeThrown(err)}`);
+    }
+  }
+
+  private dispatchFrame(frame: Frame): void {
     switch (frame.kind) {
       case "pong": {
         const p = frame.payload as PongPayload | undefined;
@@ -369,13 +441,20 @@ export class GameClient {
           );
           break;
         }
+        // Log the frame BEFORE applying it. #266: with the log line
+        // last, a frame whose application throws is never logged, so
+        // the attached log ends at the last frame that worked and the
+        // culprit is invisible. Logging on receipt means the final
+        // line in a freeze report names the frame that broke it.
+        // Optional-chained because a malformed `turn` must not take
+        // out the log line that would have named the malformed frame.
+        this.append(
+          "received",
+          `snapshot seq=${p.seq} turn=${p.game?.turn?.number} seat=${p.game?.turn?.active_seat} step=${p.game?.turn?.step}`,
+        );
         this.highestSeq = p.seq;
         this.snapshot.set(p.game);
         this.lastSeq.set(p.seq);
-        this.append(
-          "received",
-          `snapshot seq=${p.seq} turn=${p.game.turn.number} seat=${p.game.turn.active_seat} step=${p.game.turn.step}`,
-        );
         break;
       }
       case "chat": {
