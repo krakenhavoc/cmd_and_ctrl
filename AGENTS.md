@@ -661,6 +661,21 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"defender"` | Defender (CR 702.3) |
 | `"haste"` | Haste (CR 702.10) |
 | `"flash"` | Flash (CR 702.8) |
+| `"hexproof"` | Hexproof (CR 702.11) — S23, targeting gate |
+| `"shroud"` | Shroud (CR 702.18) — S23, targeting gate |
+| `"indestructible"` | Indestructible (CR 702.12) — S25, destruction path |
+
+The last three are not combat keywords, but they ride the same
+`PrintedKeywords` slot and the same `HasKeyword` reader. Their
+consumers are `CanBeTargetedBy` (hexproof, shroud) and
+`DestroyPermanentForEffect` + the damage-driven creature SBAs
+(indestructible — see `server/internal/game/indestructible.go` for
+what it deliberately does *not* stop).
+
+The table is closed on purpose: **a keyword joins it in the same
+change that teaches the engine to honour it.** Declaring a token the
+engine does not read puts a badge on the card that promises a rule
+nothing enforces.
 
 **Layer-granted keywords still use `Spec.Static`.** Lord of Atlantis
 grants `"flying"` to *other* Merfolk via a conditional Layer 6

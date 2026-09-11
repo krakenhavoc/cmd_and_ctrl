@@ -2021,11 +2021,20 @@ func (g *Game) stateBasedActionsLocked() bool {
 				continue
 			}
 			curT := c.CurrentToughness()
+			// CR 704.5f — toughness 0 or less PUTS the creature into
+			// its owner's graveyard; it does not destroy it, so
+			// indestructible deliberately does not save it here. A
+			// 2/2 with indestructible under two -1/-1 counters dies.
 			if curT <= 0 {
 				doomed = append(doomed, c.InstanceID)
 				continue
 			}
-			if c.DamageMarked >= curT {
+			// S25 (#77): the two damage-driven creature SBAs below
+			// are both DESTRUCTION (CR 704.5g, CR 704.5h), so
+			// indestructible switches both off (CR 702.12b). The
+			// damage stays marked either way — see indestructible.go.
+			indestructible := IsIndestructible(&c)
+			if c.DamageMarked >= curT && !indestructible {
 				doomed = append(doomed, c.InstanceID)
 				continue
 			}
@@ -2035,7 +2044,7 @@ func (g *Game) stateBasedActionsLocked() bool {
 			// until cleanup (or the card's destruction, via the
 			// zone-move listener) so a subsequent SBA pass on the
 			// same event cycle doesn't "un-doom" the creature.
-			if c.MarkedLethalByDeathtouch {
+			if c.MarkedLethalByDeathtouch && !indestructible {
 				doomed = append(doomed, c.InstanceID)
 			}
 			continue
