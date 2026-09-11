@@ -240,6 +240,36 @@ the design should be checked against — if Layer A is not absorbing
 >80% of windows, the funnel is broken and should be fixed before
 reaching for a cheaper model.
 
+> **Update, 2026-09-11 (sub-PR 7 as built).** Both numbers are now
+> measured rather than estimated, from four-bot games against the real
+> engine (`aiseat/funnel_game_test.go`, `aiseat/model_game_test.go`).
+>
+> **Layer A absorbs 90.1%** of priority windows — 7,036 of 7,810 over
+> three games — comfortably past the 80% floor. The distribution is
+> the interesting part: `mana-only` alone is 51.4% (the enumerator
+> offers a mana ability for every untapped land in every window where
+> the seat holds priority, and floating mana is never the play because
+> casts auto-tap) and `forced` is 38.2% (the pass-only window, which
+> is most of what a four-player table consists of). The land rule is
+> 0.5%. Three rules, and two of them do all the work.
+>
+> **Escalation is ~60–70% of surviving windows, not ~20%.** The
+> estimate above was wrong by a factor of three, and it is worth
+> recording why rather than quietly retuning: the combat trigger fires
+> on every attack and every block declaration, and bots declare a lot
+> of combat. The trigger list in this section is the specified one and
+> the implementation follows it; whether a frontier call is worth it
+> on the third chump-block of a turn is a tuning question that wants
+> real play data, and every threshold lives in `model.Config`.
+>
+> **What is not measured is per-game spend.** That needs a live
+> endpoint, and there is no API key in CI. The plumbing is proven
+> offline against a fake — prompt assembly, cheap/frontier selection,
+> the deadline arithmetic, index validation, and the fallback under
+> every failure — and the funnel's shape is what the numbers above
+> describe. Exit criterion 4's "per-game model spend is measured and
+> recorded, not estimated" remains open until a key exists.
+
 ### 6. Tiers are the difficulty slider
 
 | Tier | Layers | Cost | For |
@@ -252,6 +282,22 @@ reaching for a cheaper model.
 Set per bot at add time. `random` is not a joke tier — a four-`random`
 table playing unattended is the cheapest rules-engine fuzzer this
 project will ever get, and it exists from the first PR.
+
+> **Update, 2026-09-11 (sub-PR 7 as built).** The table shipped as
+> written with one exception: **`strong`'s "1-ply sim on top-K" is not
+> implemented, and cannot be under decision 3.** Simulating a move
+> means cloning a game; cloning a game means holding a `*game.Game`;
+> a policy may not hold one, and the import test fails the build over
+> it. This is the identical collision sub-PR 6 hit with "Δscore on a
+> cloned game" and it resolves the same way — the hidden-information
+> guarantee is worth more than the lookahead. `strong` is therefore
+> "A + C, wider candidates, frontier model on every surviving window,
+> 5s MaxThink", and the row should be read that way.
+>
+> One thing the table does not say and should: **every tier works
+> without a model endpoint.** `assisted` and `strong` with a nil
+> Client keep their names and play on Layer A + B, because a VPS with
+> no API key has to be a working deployment rather than a broken one.
 
 ### 7. Bot decks are curated and catalog-only, enforced by a test
 
