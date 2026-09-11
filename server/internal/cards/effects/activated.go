@@ -38,6 +38,19 @@ func ManaCost(cost string) game.AbilityCost { return game.AbilityCost{Mana: cost
 // PayLife is a life component (CR 118.8).
 func PayLife(n int) game.AbilityCost { return game.AbilityCost{Life: n} }
 
+// LoyaltyCost is a planeswalker's loyalty cost — the "+1", "[0]" or
+// "−3" printed to the left of the ability. Positive adds counters,
+// negative removes them, zero does neither and still spends the
+// turn's activation (CR 606.5).
+//
+// Setting it is the whole declaration: the engine derives sorcery
+// speed, once-per-turn, "must be a planeswalker you control" and
+// CR 606.3 from the presence of the component, so a card file
+// writes the cost and nothing else. ADR 0020 kept loyalty out of
+// AbilityCost; ADR 0032 §7 reversed that — see the field comment on
+// game.AbilityCost.Loyalty.
+func LoyaltyCost(n int) game.AbilityCost { return game.AbilityCost{Loyalty: &n} }
+
 // Plus merges cost components: Plus(ManaCost("{2}"), TapCost()) is
 // "{2}, {T}". Later components win for scalar fields, which only
 // matters if a caller passes two mana strings (they shouldn't).
@@ -58,6 +71,9 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		}
 		if c.Life != 0 {
 			out.Life = c.Life
+		}
+		if c.Loyalty != nil {
+			out.Loyalty = c.Loyalty
 		}
 	}
 	return out

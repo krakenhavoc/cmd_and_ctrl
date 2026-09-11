@@ -195,17 +195,26 @@ export function canActivateAbility(
   return LEGAL;
 }
 
-// canActivateLoyalty mirrors the server's ActivateLoyalty guards:
-// sorcery-speed window + once-per-turn. The once-per-turn bit
-// requires server state we don't currently surface on the wire
-// (Game.LoyaltyActivatedThisTurn is server-only); the predicate is
-// best-effort and falls back to the server rejection if a player
-// races a second activation through the dialog.
+// canActivateLoyalty mirrors the engine's CR 606.5 gates: the
+// sorcery-speed window plus once per turn per planeswalker. It is
+// what greys a loyalty row in the card menu — see
+// contextMenu.logic.ts `abilityItems`, its only production caller.
 //
-// `alreadyActivated` is the optional caller-tracked "has this
-// planeswalker activated this turn" hint — the ability dialog can
-// memoise it from the last successful activation. When unset the
-// predicate optimistically returns legal (server still gates).
+// Until #334 this function had NO callers at all. It was written in
+// S13.1, ticked off as delivered in docs/sprints.md:733, and reached
+// only by its own unit tests, while the action it gates
+// (`activate_loyalty`) was not even a member of the ActionType
+// union. Both halves of that are fixed here.
+//
+// The once-per-turn bit now comes off the wire: CardView carries
+// `loyalty_activated`, stamped by the server from
+// Game.LoyaltyActivatedThisTurn. `alreadyActivated` survives as an
+// override for a caller that knows better (an optimistic local
+// update between snapshots); it ORs with the server's flag rather
+// than replacing it, so a stale `false` can never re-enable a row
+// the server has already closed.
+//
+// Advisory, like every predicate in this file: the server re-checks.
 export function canActivateLoyalty(
   card: CardView,
   snap: GameView | null | undefined,
@@ -218,11 +227,28 @@ export function canActivateLoyalty(
   if (!isMainPhase(snap)) return deny("Sorcery-speed only");
   if (!stackEmpty(snap)) return deny("Stack isn't empty");
   if (!isActivePlayer(snap, viewerID)) return deny("Not your turn");
-  if (alreadyActivated) return deny("Already activated this turn");
+  if (alreadyActivated || card.loyalty_activated) return deny("Already activated this turn");
   // Source must be on the battlefield.
   const onBattlefield = snap.battlefield?.cards?.some((c) => c.instance_id === card.instance_id);
   if (!onBattlefield) return deny("Planeswalker not on the battlefield");
   return LEGAL;
+}
+
+// loyaltyOf reads a planeswalker's current loyalty counters, which
+// is the number CR 606.3 measures a −N cost against.
+export function loyaltyOf(card: CardView): number {
+  return card.counters?.loyalty ?? 0;
+}
+
+// canPayLoyaltyCost is CR 606.3: a cost that REMOVES N loyalty
+// counters can only be activated with at least N there. A + or [0]
+// cost is always payable. Returns "" when payable, otherwise the
+// reason to show in the greyed row's hint.
+export function canPayLoyaltyCost(card: CardView, cost: number | undefined): string {
+  if (cost === undefined || cost >= 0) return "";
+  const have = loyaltyOf(card);
+  if (have >= -cost) return "";
+  return `not enough loyalty (${have} of ${-cost})`;
 }
 
 // canPassPriority returns the legality of clicking "pass priority"

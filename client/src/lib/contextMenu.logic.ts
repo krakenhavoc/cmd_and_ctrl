@@ -20,7 +20,9 @@
 // with two action items and reuses the component verbatim.
 
 import { attackAllLabel, attackAllParams, planAttackAll, seatLabel } from "./attackAll";
+import { isPlaneswalker } from "./cardTypes";
 import type { ActionType, CardView, GameView } from "./protocol";
+import { canActivateLoyalty, canPayLoyaltyCost, loyaltyOf } from "./timing";
 import {
   COUNTER_CHARGE,
   COUNTER_DEFENSE,
@@ -218,6 +220,43 @@ export function canOverride(card: CardView, viewerID: string | null, isAdmin: bo
   return card.controller === viewerID;
 }
 
+// BattlefieldClickIntent is what a plain left-click on a
+// battlefield permanent should do.
+//
+//	"abilities" — open this card's menu so the player can pick one
+//	"tap"       — the historic default: toggle tapped / untapped
+//	"none"      — the viewer may not drive this card at all
+export type BattlefieldClickIntent = "abilities" | "tap" | "none";
+
+// battlefieldClickIntent routes a left-click. Issue #329: "I cast
+// teferi and when I click on him to choose one of his abilities it
+// just tapped him."
+//
+// He was right that it was wrong, and the replay shows it happening
+// — the `tapped` bit on his Teferi flips true / false across six
+// consecutive snapshots while he clicks. PlayerPanel's click handler
+// fell through every branch (targeting, combat select, block) to
+// `onTapToggle`, because tap/untap is the only thing a permanent
+// "does" in a sandbox.
+//
+// Tapping a planeswalker is close to meaningless: no loyalty ability
+// has a {T} component, nothing in the rules taps one in normal play,
+// and the loyalty abilities are the entire reason to click him. So
+// the planeswalker branch goes to the menu instead — and it does so
+// whether or not the card has catalog abilities, because a
+// planeswalker with none still has the manual loyalty +/− rows
+// there, which beats a meaningless tap. Tap and untap remain in that
+// same menu for the rare effect that wants them.
+export function battlefieldClickIntent(
+  card: CardView,
+  viewerID: string | null,
+  isAdmin: boolean,
+): BattlefieldClickIntent {
+  if (!canOverride(card, viewerID, isAdmin)) return "none";
+  if (isPlaneswalker(card)) return "abilities";
+  return "tap";
+}
+
 export function zoneRefFor(zone: MenuZone, ownerID: string): MenuZoneRef {
   if (zone === "battlefield" || zone === "exile" || zone === "stack") return { kind: zone };
   return { kind: zone, owner: ownerID };
@@ -296,16 +335,33 @@ interface AbilityCost {
   sacrifice_label?: string;
   sacrifice_options?: { players?: string[]; cards?: string[] };
   legal_targets?: { players?: string[]; cards?: string[] };
+  // Present, at any value including 0, on a planeswalker's loyalty
+  // ability. Mana abilities never carry it.
+  loyalty_cost?: number;
 }
 
 // abilityBlocked returns the reason an ability can't be activated
 // right now, or "" when it can. Advisory only — the server re-checks
 // every cost; this just greys the row and explains why.
-export function abilityBlocked(a: AbilityCost, tapped: boolean, sick: boolean): string {
+export function abilityBlocked(
+  a: AbilityCost,
+  tapped: boolean,
+  sick: boolean,
+  loyalty?: LoyaltyContext,
+): string {
   if (a.tap_cost && tapped) return "already tapped";
   if (a.tap_cost && sick) return "summoning sickness";
   if (a.sacrifice_options && (a.sacrifice_options.cards?.length ?? 0) === 0) {
     return `nothing to sacrifice (${a.sacrifice_label ?? "a permanent"})`;
+  }
+  // CR 606: a loyalty ability answers to the sorcery-speed window,
+  // the once-per-turn flag, and "you have enough counters to pay".
+  // The value 0 is a real cost, so this tests for presence.
+  if (a.loyalty_cost !== undefined && loyalty) {
+    const timing = canActivateLoyalty(loyalty.card, loyalty.view, loyalty.viewerID);
+    if (!timing.legal) return timing.reason ?? "can't activate right now";
+    const unpayable = canPayLoyaltyCost(loyalty.card, a.loyalty_cost);
+    if (unpayable) return unpayable;
   }
   if (a.legal_targets) {
     const n = (a.legal_targets.players?.length ?? 0) + (a.legal_targets.cards?.length ?? 0);
@@ -314,17 +370,31 @@ export function abilityBlocked(a: AbilityCost, tapped: boolean, sick: boolean): 
   return "";
 }
 
+// LoyaltyContext is what abilityBlocked needs to judge a loyalty
+// row: the planeswalker itself (for its counters and the server's
+// once-per-turn flag) and the snapshot the timing window is read
+// from. Absent for callers with no snapshot to hand, in which case
+// the loyalty arm is skipped and the server does the gating alone.
+export interface LoyaltyContext {
+  card: CardView;
+  view: GameView | null | undefined;
+  viewerID: string | null;
+}
+
 // abilityItems folds the permanent's mana abilities and CR 602
 // activated abilities into the menu. Right-click used to open the
 // dedicated ManaAbilityMenu popover; with the admin menu bound to
 // the same gesture, these rows keep that surface reachable instead
 // of the override menu shadowing it.
-function abilityItems(card: CardView): MenuItem[] {
+function abilityItems(card: CardView, view: GameView, viewerID: string | null): MenuItem[] {
   const tapped = !!card.tapped;
   const sick = !!card.summoning_sick;
+  const loyalty: LoyaltyContext = { card, view, viewerID };
   const items: MenuItem[] = [];
   for (const a of card.mana_abilities ?? []) {
-    const blocked = abilityBlocked(a, tapped, sick);
+    // Mana abilities never carry a loyalty cost, so the context is
+    // inert for them — passed anyway to keep one call shape.
+    const blocked = abilityBlocked(a, tapped, sick, loyalty);
     items.push({
       id: `mana-${a.index}`,
       label: a.label || a.produced || "add mana",
@@ -334,7 +404,7 @@ function abilityItems(card: CardView): MenuItem[] {
     });
   }
   for (const a of card.activated_abilities ?? []) {
-    const blocked = abilityBlocked(a, tapped, sick);
+    const blocked = abilityBlocked(a, tapped, sick, loyalty);
     items.push({
       id: `ability-${a.index}`,
       label: a.label || "activate",
@@ -344,6 +414,72 @@ function abilityItems(card: CardView): MenuItem[] {
     });
   }
   return items;
+}
+
+// MAX_MANUAL_MINUS caps the manual minus rows. Karn Liberated's −14
+// is the deepest printed cost in Magic; anything past that is a row
+// nobody will ever click, and the list is already bounded above by
+// the walker's own loyalty (CR 606.3).
+const MAX_MANUAL_MINUS = 14;
+
+// MANUAL_PLUS_OFFERS is the non-negative side, which every
+// planeswalker can always pay. +2 is the largest printed plus cost
+// in the format.
+const MANUAL_PLUS_OFFERS: readonly number[] = [2, 1, 0];
+
+// signedLoyalty formats a cost the way the card prints it: "+1",
+// "[0]", "−3" (a real minus sign, matching Magic's typography).
+function signedLoyalty(n: number): string {
+  if (n > 0) return `+${n}`;
+  if (n === 0) return "[0]";
+  return `−${-n}`;
+}
+
+// loyaltyAbilityItems is the manual loyalty-activation section for a
+// planeswalker the catalog does not know about — which is still most
+// of them, and is exactly what issue #329 was holding: Teferi, Who
+// Slows the Sunset, four loyalty counters, `activated_abilities: []`.
+//
+// It offers the costs the walker can legally pay right now (+2, +1,
+// [0], and −1 down to its current loyalty, CR 606.3) as
+// `activate_loyalty` actions. The engine charges the counters and
+// enforces CR 606.5 — sorcery speed and once per turn — and the
+// players resolve the ability's text between themselves, the same
+// bargain manual `tap` strikes for every other card the catalog
+// can't express.
+//
+// It is deliberately ABSENT once the catalog knows the card: a
+// Teferi, Time Raveler shows his real "+1:" and "−3:" rows, which
+// pay the same cost AND run the effect. Offering both would let a
+// player spend the turn's activation on the manual row by mistake.
+//
+// The ungated add / remove loyalty rows under "counters" are
+// untouched — those are the admin escape hatch for fixing a mistake,
+// and gating them would defeat the point.
+function loyaltyAbilityItems(card: CardView, view: GameView, viewerID: string | null): MenuItem[] {
+  if (!isPlaneswalker(card)) return [];
+  if ((card.activated_abilities ?? []).length > 0) return [];
+  const timing = canActivateLoyalty(card, view, viewerID);
+  const hint = timing.legal ? undefined : (timing.reason ?? "can't activate right now");
+  const deltas = [...MANUAL_PLUS_OFFERS];
+  for (let n = 1; n <= Math.min(loyaltyOf(card), MAX_MANUAL_MINUS); n++) {
+    deltas.push(-n);
+  }
+  return deltas.map((delta) => ({
+    id: `loyalty-${delta}`,
+    label: `${signedLoyalty(delta)}: activate a loyalty ability`,
+    hint: hint ?? "pays the loyalty; resolve the ability's text yourselves",
+    disabled: !timing.legal,
+    action: {
+      type: "activate_loyalty" as ActionType,
+      params: {
+        planeswalker_id: card.instance_id,
+        delta,
+        label: signedLoyalty(delta),
+      },
+      player: card.controller,
+    },
+  }));
 }
 
 function tapItems(card: CardView): MenuItem[] {
@@ -606,9 +742,13 @@ export function buildMenuSections(
 
   const sections: MenuSection[] = [];
   if (location.zone === "battlefield") {
-    const abilities = abilityItems(card);
+    const abilities = abilityItems(card, view, viewerID);
     if (abilities.length > 0) {
       sections.push({ id: "abilities", label: "abilities", items: abilities });
+    }
+    const loyalty = loyaltyAbilityItems(card, view, viewerID);
+    if (loyalty.length > 0) {
+      sections.push({ id: "loyalty", label: "loyalty abilities", items: loyalty });
     }
     sections.push({
       id: "state",
