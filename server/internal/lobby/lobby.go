@@ -186,8 +186,12 @@ func (l *Lobby) Create(name string) (GameMeta, error) {
 		State:           string(g.State),
 	}
 
+	entry := &gameEntry{meta: meta, room: room}
 	l.mu.Lock()
-	l.games[g.ID] = &gameEntry{meta: meta, room: room}
+	l.games[g.ID] = entry
+	// The invite tokens are minted here and nowhere else, so this
+	// write is what makes the game reachable after a restart.
+	l.persistMetaLocked(entry)
 	l.mu.Unlock()
 
 	return meta, nil
@@ -336,6 +340,7 @@ func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identi
 	// Start only when an explicit POST /games/:id/start lands. Until
 	// then meta.State stays "lobby".
 	entry.meta.State = string(entry.room.Game.CurrentState())
+	l.persistMetaLocked(entry)
 
 	// Return a copy so callers can't mutate internal state via the
 	// returned meta. (json.Marshal would copy anyway, but defense in
@@ -479,6 +484,7 @@ func (l *Lobby) SetDeck(gameID, playerID uuid.UUID, deckName string, cards []gam
 
 	seat.DeckName = deckName
 	seat.DeckUploaded = true
+	l.persistMetaLocked(entry)
 	return copyMeta(entry.meta), nil
 }
 
@@ -529,6 +535,7 @@ func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
 		return GameMeta{}, err
 	}
 	entry.meta.State = string(entry.room.Game.CurrentState())
+	l.persistMetaLocked(entry)
 	return copyMeta(entry.meta), nil
 }
 
@@ -602,6 +609,9 @@ func (l *Lobby) Delete(id uuid.UUID) error {
 	}
 	delete(l.games, id)
 	l.mgr.Delete(id)
+	// Drop the metadata too, or the next boot would try to restore a
+	// game the operator deleted.
+	l.removeMeta(id)
 	return nil
 }
 
