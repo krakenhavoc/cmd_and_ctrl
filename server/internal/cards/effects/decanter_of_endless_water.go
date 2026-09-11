@@ -45,6 +45,7 @@ func init() {
 	Register(Spec{
 		OracleID:      "8ae98ef8-8f52-4877-a08c-1fae5514184e",
 		Name:          "Decanter of Endless Water",
+		Completeness:  CompletenessFull,
 		NoMaxHandSize: true,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

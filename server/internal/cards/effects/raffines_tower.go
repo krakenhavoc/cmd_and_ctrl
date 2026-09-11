@@ -24,6 +24,8 @@ func init() {
 	Register(Spec{
 		OracleID:     "6e9ef5ef-6aed-4d3e-a59b-9e3dc8740b1b",
 		Name:         "Raffine's Tower",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Cycling isn't implemented — the land can only be played, not cycled."},
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

@@ -13,8 +13,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (S29) and isn't modelled.
 func init() {
 	Register(Spec{
-		OracleID: "7d9fc9e7-d80b-49c3-871c-ed25b3059ae8",
-		Name:     "Impulsive Pilferer",
+		OracleID:     "7d9fc9e7-d80b-49c3-871c-ed25b3059ae8",
+		Name:         "Impulsive Pilferer",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Encore isn't implemented — you can't pay {3}{R} to bring it back from your graveyard for token copies."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

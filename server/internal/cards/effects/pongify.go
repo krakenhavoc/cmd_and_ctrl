@@ -22,9 +22,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the note stays.
 func init() {
 	Register(Spec{
-		OracleID: "05849bd6-8f38-4031-be2b-e2aa03beb8cc",
-		Name:     "Pongify",
-		Targets:  TargetCreature("target creature"),
+		OracleID:     "05849bd6-8f38-4031-be2b-e2aa03beb8cc",
+		Name:         "Pongify",
+		Completeness: CompletenessFull,
+		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

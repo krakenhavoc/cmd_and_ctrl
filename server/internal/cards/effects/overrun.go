@@ -37,8 +37,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID: "204f9afe-c20b-4933-b5cd-aa572784762a",
-		Name:     "Overrun",
+		OracleID:     "204f9afe-c20b-4933-b5cd-aa572784762a",
+		Name:         "Overrun",
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			yours := And(Creature(), YouControl())
 			if err := (BoostUntilEOT{

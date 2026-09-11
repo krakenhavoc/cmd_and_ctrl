@@ -24,6 +24,16 @@
     activated?: ActivatedAbilityView[];
     onActivateAbility?: (abilityIndex: number) => void;
     summoningSick?: boolean;
+    // S31: why the CR 307.1 sorcery-speed window is shut right now,
+    // or "" when it is open. Computed once per panel by PlayerPanel
+    // (which has the snapshot) rather than per card, and consulted
+    // only for abilities that carry `sorcery_speed`.
+    //
+    // Until S31 this popover greyed on tap / sacrifice / target and
+    // nothing else, so an "activate only as a sorcery" ability stayed
+    // clickable all through combat and an opponent's turn and came
+    // back rejected. The flag had been on the wire since S21.
+    sorcerySpeedBlocked?: string;
     onClose?: () => void;
   }
 
@@ -34,6 +44,7 @@
     activated = [],
     onActivateAbility,
     summoningSick = false,
+    sorcerySpeedBlocked = "",
     onClose,
   }: Props = $props();
 
@@ -54,11 +65,16 @@
     sacrifice_label?: string;
     sacrifice_options?: { players?: string[]; cards?: string[] };
     legal_targets?: { players?: string[]; cards?: string[] };
+    // Never set on a ManaAbilityView — mana abilities don't use the
+    // stack and have no timing restriction (CR 605.1a) — so the arm
+    // below is inert for the first list and live for the second.
+    sorcery_speed?: boolean;
   };
 
   function abilityBlocked(a: CostShaped): string {
     if (a.tap_cost && tapped) return "already tapped";
     if (a.tap_cost && summoningSick) return "summoning sickness";
+    if (a.sorcery_speed && sorcerySpeedBlocked) return sorcerySpeedBlocked;
     if (a.sacrifice_options) {
       const n = a.sacrifice_options.cards?.length ?? 0;
       if (n === 0) return `nothing to sacrifice (${a.sacrifice_label ?? "a permanent"})`;

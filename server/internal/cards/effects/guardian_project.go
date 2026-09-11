@@ -26,8 +26,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification beyond that shared intervening-if posture.
 func init() {
 	Register(Spec{
-		OracleID: "4f9e07ae-6341-4b46-9f77-f17ab659d266",
-		Name:     "Guardian Project",
+		OracleID:     "4f9e07ae-6341-4b46-9f77-f17ab659d266",
+		Name:         "Guardian Project",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

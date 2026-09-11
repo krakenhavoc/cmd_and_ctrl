@@ -35,10 +35,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // creatures costs {U}{U} plus three. No simplifications remain.
 func init() {
 	Register(Spec{
-		OracleID: "285046f6-b3c4-4eb7-8712-9dffebabc762",
-		Name:     "Waterbender's Restoration",
-		TapCost:  Waterbend("{X}"),
-		Targets:  targetsCountedByX(TargetCreature("X target creatures you control", YouControl())),
+		OracleID:     "285046f6-b3c4-4eb7-8712-9dffebabc762",
+		Name:         "Waterbender's Restoration",
+		Completeness: CompletenessFull,
+		TapCost:      Waterbend("{X}"),
+		Targets:      targetsCountedByX(TargetCreature("X target creatures you control", YouControl())),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			exiled, err := exileTargetsForDelayedReturn(ctx)
 			if err != nil {

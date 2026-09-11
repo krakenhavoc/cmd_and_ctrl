@@ -634,7 +634,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// down once the spell is on the stack — validate-all-then-pay,
 	// so a rejected cast never leaves a card in the graveyard.
 	addCost := AdditionalCostFor(CatalogKey(card))
-	if err := g.validateAdditionalCostLocked(playerID, cardID, addCost, params.DiscardIDs, params.SacrificeIDs); err != nil {
+	if err := g.validateAdditionalCostLocked(playerID, cardID, addCost, params.DiscardIDs, params.SacrificeIDs, params.XValue); err != nil {
 		slog.Warn("cast_spell rejected: bad additional cost payment",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -859,7 +859,11 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// sacrifice — that triggers off it must resolve before the
 	// spell does. Validation happened at announce, so a failure
 	// past this point is an engine bug rather than a bad request.
-	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs, params.SacrificeIDs); err != nil {
+	payLife := 0
+	if addCost != nil && addCost.PayLifeX {
+		payLife = params.XValue
+	}
+	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs, params.SacrificeIDs, payLife); err != nil {
 		slog.Error("cast_spell: additional cost failed after validation",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -919,7 +923,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// Emitted after EventCast so a "becomes the target" trigger and
 	// a "whenever a player casts a spell" trigger queue in printed
 	// order.
-	g.emitBecameTargetLocked(playerID, cardID, params.Targets)
+	g.emitBecameTargetLocked(playerID, cardID, cardID, params.Targets)
 	// The caster receives priority right after casting (CR 117.3c),
 	// and CR 603.3 puts any cast-triggered abilities (Rhystic Study,
 	// Beast Whisperer) on the stack at that moment — above the
@@ -1194,6 +1198,28 @@ func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams)
 	if err != nil {
 		return ParsedCost{}, err
 	}
+	// S28: cost modifiers (CR 601.2f) — increases, then reductions,
+	// then Trinisphere-style cost-setting effects. Layered AFTER the
+	// alternative-cost swap and the commander tax because both of
+	// those settle what the spell "would cost", which is the number
+	// every modifier is written against: Thalia taxes an overloaded
+	// spell's overload cost, and Trinisphere looks at the taxed
+	// commander's total rather than the corner of the card.
+	//
+	// Applied BEFORE the convoke subtraction below for the same
+	// reason the tax is: tapping creatures is a way of PAYING the
+	// total cost, and CR 601.2f settles the total before anything
+	// is paid against it.
+	cost, err = g.applyCostModifiersLocked(cost, CostQuery{
+		Game:       g,
+		Card:       card,
+		Controller: p.ID,
+		FromZone:   castFromZoneKind(params.FromZone),
+		XValue:     params.XValue,
+	})
+	if err != nil {
+		return ParsedCost{}, err
+	}
 	// S22: convoke / waterbend. Applied LAST, because it is the only
 	// component that spends against the cost rather than adding to
 	// it — the tax, the any-colour fold and the alternative-cost swap
@@ -1248,6 +1274,23 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 		cost = asAnyColorCost(cost)
 	}
 	return cost, nil
+}
+
+// castFromZoneKind maps CastSpellParams.FromZone onto the ZoneKind a
+// cost modifier's predicate reads. Mirrors castSourceZoneLocked's
+// switch — including its "unknown falls back to hand" posture, which
+// keeps an older client's omitted field meaning what it always meant.
+// Split out because the cost-modifier query wants the kind without
+// wanting the zone pointer (and without wanting a *Player).
+func castFromZoneKind(fromZone string) ZoneKind {
+	switch fromZone {
+	case "command":
+		return ZoneCommand
+	case "exile":
+		return ZoneExile
+	default:
+		return ZoneHand
+	}
 }
 
 // castSourceZoneLocked resolves the FromZone string to the zone
@@ -1400,6 +1443,14 @@ func (g *Game) resolveTopOfStackLocked() error {
 			Source: top.InstanceID,
 			CardID: top.InstanceID,
 		})
+		// A COPY has no way out of the stack at all: CR 706.10 says
+		// it is not a card, so "countered by game rules" leaves it
+		// nowhere to go. Checked BEFORE the flashback branch below
+		// because a copy of a flashed-back spell is still not a card
+		// — the exile replacement has no object to act on.
+		if item.IsCopy {
+			return g.ceaseToExistLocked(top.InstanceID)
+		}
 		// S29: a flashed-back spell that fizzles is still exiled —
 		// CR 702.34a replaces every way out of the stack, not just
 		// the resolution.
@@ -1416,6 +1467,24 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// spells fire their effect here. Errors emit EventEffectError
 	// via fireEffectResolverLocked and do not wedge resolution.
 	g.fireEffectResolverLocked(item, CatalogKey(top), top.InstanceID)
+	// CR 707.10: a resolving copy of a PERMANENT spell becomes a
+	// token. This engine has no token-from-stack-item path, and
+	// letting the copy fall through to the battlefield branch below
+	// would be worse than doing nothing — it would put a second
+	// card-shaped object carrying the original's oracle ID into
+	// play, which a bounce spell then duplicates into a hand. Every
+	// S30 copy card targets an instant or sorcery, so this is
+	// unreachable today; it is written out because it is where the
+	// token rule lands.
+	if item.IsCopy && top.IsPermanent() {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Actor:    item.Controller,
+			CardID:   top.InstanceID,
+			ErrorMsg: "copying a permanent spell is not implemented (CR 707.10 token)",
+		})
+		return g.ceaseToExistLocked(top.InstanceID)
+	}
 	if top.IsPermanent() {
 		// ADR 0034: settle which face the PERMANENT keeps before the
 		// replacement pipeline runs, so the entering card's
@@ -1500,6 +1569,13 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// and so the cost that was actually paid — is still reachable.
 		g.queueAltCostEntryTriggerLocked(moved, item)
 		return nil
+	}
+	// CR 706.10 — a COPY is not a card, so it has no graveyard to go
+	// to and no flashback exile to be caught by either. It ceases to
+	// exist, having already run its effect above. See spell_copy.go
+	// for why this branch is load-bearing rather than cosmetic.
+	if item.IsCopy {
+		return g.ceaseToExistLocked(top.InstanceID)
 	}
 	// Instants / sorceries: resolve to the owner's graveyard — or to
 	// exile, when the flashback cost was paid (CR 702.34a).
@@ -1922,7 +1998,7 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 	})
 	// CR 603.3d: a manually-announced trigger chooses its targets as
 	// it goes on the stack, same as the harvested kind.
-	g.emitBecameTargetLocked(playerID, sourceCardID, params.Targets)
+	g.emitBecameTargetLocked(playerID, sourceCardID, id, params.Targets)
 	return nil
 }
 
@@ -2156,10 +2232,16 @@ func (g *Game) stateBasedActionsLocked() bool {
 			continue
 		}
 	}
-	for _, id := range doomed {
-		if err := g.routeBattlefieldCardToOwnerGraveyardLocked(id); err == nil {
-			fired = true
-		}
+	// S23: one SBA pass is ONE event (CR 704.3 — all applicable
+	// state-based actions are performed simultaneously as a single
+	// event). The collection above already worked off a single
+	// consistent board; routing the executions through the
+	// simultaneous-exit batch makes the TRIGGERS agree, so a Blood
+	// Artist that Pyroclasm or Toxic Deluge killed alongside the rest
+	// of the board still sees every one of those deaths. See
+	// simultaneous.go.
+	if g.destroyPermanentsLocked(doomed) > 0 {
+		fired = true
 	}
 
 	// 704.5s (S27) — a Saga at or past its final chapter, with no

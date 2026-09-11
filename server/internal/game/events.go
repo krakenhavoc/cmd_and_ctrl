@@ -282,6 +282,21 @@ const (
 	// PendingTriggers together. Added in S22.
 	EventBeginEndStep EventKind = "begin_end_step"
 
+	// EventBeginPrecombatMain — the active player's PRECOMBAT main
+	// phase began. Actor is the active player, so "at the beginning
+	// of your precombat main phase" (Hulking Raptor, Braids, Kiora)
+	// gates AppliesTo on ev.Actor == controller.
+	//
+	// Precombat only, because that is the phase every card in the
+	// family names: the printed wording is either "your precombat
+	// main phase" or "your FIRST main phase", and on an ordinary turn
+	// those are the same phase. Emitting on the postcombat main too
+	// would fire a Raptor's ritual twice a turn. Added in S30
+	// alongside ward, because a mana ritual gated on the phase was
+	// the last line of Hulking Raptor standing between it and being
+	// implemented as printed.
+	EventBeginPrecombatMain EventKind = "begin_precombat_main"
+
 	// EventManaAbilityActivated — a mana-producing ability fired.
 	// Actor = controller, Source = the permanent that produced the
 	// mana. S15 sub-PR 2.
@@ -395,6 +410,20 @@ type Event struct {
 	// Resolve it's the spell. For TokenCreated it's the new token.
 	CardID uuid.UUID `json:"card_id,omitempty"`
 
+	// StackItemID names the stack item the event is about, when the
+	// event is about one. Set on EventBecomesTarget (S30, for ward).
+	//
+	// It is NOT the same as Source, and the difference is the whole
+	// reason the field exists. For a SPELL the two coincide: the
+	// StackItem's ID equals the spell card's InstanceID. For an
+	// ACTIVATED or TRIGGERED ability they do not — the item carries
+	// a freshly minted UUID and Source names the permanent the
+	// ability came from, which stays on the battlefield. So an
+	// effect that has to act on "the spell or ability that targeted
+	// me" — counter it, copy it, redirect it — cannot get there from
+	// Source alone, and ward is the first effect that has to.
+	StackItemID uuid.UUID `json:"stack_item_id,omitempty"`
+
 	// Amount is the signed / count payload: damage dealt, life
 	// delta, number of cards, counter count after the change.
 	Amount int `json:"amount,omitempty"`
@@ -431,30 +460,38 @@ type Event struct {
 // ability announce, the triggered-ability target pick, and the
 // manual sandbox announce.
 //
-// `actor` is the controller of the spell or ability and `source` is
-// its source card. TargetSelf / TargetNone slots are skipped —
-// neither names an object anyone else chose.
+// `actor` is the controller of the spell or ability, `source` is its
+// source card and `itemID` is its stack item. TargetSelf /
+// TargetNone slots are skipped — neither names an object anyone else
+// chose.
+//
+// `source` and `itemID` are equal for a cast spell and differ for an
+// ability; see Event.StackItemID for why both are carried. A caller
+// with no item to name (the manual sandbox announce, before the item
+// exists) may pass uuid.Nil.
 //
 // Emitted AFTER the item exists, so a trigger harvested off this
 // event lands on PendingTriggers above the thing that targeted.
 // Caller must hold g.mu.
-func (g *Game) emitBecameTargetLocked(actor, source uuid.UUID, targets []TargetRef) {
+func (g *Game) emitBecameTargetLocked(actor, source, itemID uuid.UUID, targets []TargetRef) {
 	for _, t := range targets {
 		switch t.Kind {
 		case TargetCard:
 			g.EmitEvent(Event{
-				Kind:   EventBecomesTarget,
-				Actor:  actor,
-				Source: source,
-				Target: t.ID,
-				CardID: t.ID,
+				Kind:        EventBecomesTarget,
+				Actor:       actor,
+				Source:      source,
+				StackItemID: itemID,
+				Target:      t.ID,
+				CardID:      t.ID,
 			})
 		case TargetPlayer:
 			g.EmitEvent(Event{
-				Kind:   EventBecomesTarget,
-				Actor:  actor,
-				Source: source,
-				Target: t.ID,
+				Kind:        EventBecomesTarget,
+				Actor:       actor,
+				Source:      source,
+				StackItemID: itemID,
+				Target:      t.ID,
 			})
 		}
 	}

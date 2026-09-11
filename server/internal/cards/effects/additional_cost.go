@@ -50,3 +50,16 @@ func SacrificeCost(label string, preds ...CardPredicate) *game.AdditionalCost {
 		Label:     "Sacrifice " + label,
 	}
 }
+
+// PayXLifeCost is "As an additional cost to cast this spell, pay X
+// life" — Toxic Deluge, and the third shape the clause takes.
+//
+// The X is announced with the cast and is the SAME number the spell's
+// text reads back with ctx.X(): Toxic Deluge pays X life and gives
+// every creature -X/-X, and a card that could announce those
+// separately would be a different card. Paid with the spell already
+// on the stack, like the other two components, so anything watching
+// the life loss triggers above it.
+func PayXLifeCost() *game.AdditionalCost {
+	return &game.AdditionalCost{PayLifeX: true, Label: "Pay X life"}
+}

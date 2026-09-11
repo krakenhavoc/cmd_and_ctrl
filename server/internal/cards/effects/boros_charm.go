@@ -37,8 +37,10 @@ import (
 // double-strike grant the combat engine honours.
 func init() {
 	Register(Spec{
-		OracleID: "2679d0dd-ba30-4a1c-b6a0-b3ac6c790496",
-		Name:     "Boros Charm",
+		OracleID:     "2679d0dd-ba30-4a1c-b6a0-b3ac6c790496",
+		Name:         "Boros Charm",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The indestructible mode does nothing — your permanents can still be destroyed that turn."},
 		Modes: ChooseOne(
 			Mode("Boros Charm deals 4 damage to target player or planeswalker.",
 				targetPlayerOrPlaneswalker("target player or planeswalker")),

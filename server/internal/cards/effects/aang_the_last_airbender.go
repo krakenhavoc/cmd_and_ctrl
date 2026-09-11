@@ -66,6 +66,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "70564c3a-858f-498e-8b92-acb3ca54ae7e",
 		Name:            "Aang, the Last Airbender",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},

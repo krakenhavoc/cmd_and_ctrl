@@ -23,8 +23,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "bb329a5c-b9f9-4973-a53f-090024146325",
-		Name:     "Red Elemental Blast",
+		OracleID:     "bb329a5c-b9f9-4973-a53f-090024146325",
+		Name:         "Red Elemental Blast",
+		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			Mode("Counter target blue spell.", TargetSpell("target blue spell", OfColor("U"))),
 			Mode("Destroy target blue permanent.", TargetPermanent("target blue permanent", OfColor("U"))),

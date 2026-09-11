@@ -313,6 +313,35 @@ func WhiteAllyToken() game.Card {
 	}
 }
 
+// BlackZombieToken is the 2/2 black Zombie Grave Titan makes, two at
+// a time, on both halves of its trigger. Vanilla — the Titan's power
+// is the volume, not the bodies.
+func BlackZombieToken() game.Card {
+	return game.Card{
+		Name:      "Zombie",
+		TypeLine:  "Token Creature — Zombie",
+		Power:     2,
+		Toughness: 2,
+		Colors:    []string{"B"},
+	}
+}
+
+// ThopterToken is the 1/1 colorless Thopter ARTIFACT creature with
+// flying that Hangarback Walker leaves behind. Both halves of the
+// type line are load-bearing — an artifact creature answers the
+// catalog's artifact-matters cards as well as its creature-matters
+// ones — and the flying is real, carried on Keywords the way every
+// token's printed keywords have been since S21 sub-PR 1.
+func ThopterToken() game.Card {
+	return game.Card{
+		Name:      "Thopter",
+		TypeLine:  "Token Artifact Creature — Thopter",
+		Power:     1,
+		Toughness: 1,
+		Keywords:  []string{"flying"},
+	}
+}
+
 // --- S27 templates ---------------------------------------------
 
 // KnightVigilanceToken is History of Benalia's 2/2 white Knight with
@@ -357,7 +386,28 @@ func WallDefenderToken() game.Card {
 	}
 }
 
-// GoldToken's sibling templates for the other S27 card types
-// (Esika's Chariot's Cats, Parhelion II's Angels, Elspeth's Soldiers)
-// live with the sub-PRs that use them, so each lands with the card
-// that reads it.
+// --- S27 Vehicle templates -------------------------------------
+
+// CatToken is Esika's Chariot's 2/2 green Cat. Vanilla — and the
+// pair of them is exactly the Chariot's crew 4.
+func CatToken() game.Card {
+	return game.Card{
+		Name:      "Cat",
+		TypeLine:  "Token Creature — Cat",
+		Power:     2,
+		Toughness: 2,
+	}
+}
+
+// AngelVigilanceToken is Parhelion II's 4/4 white Angel with flying
+// and vigilance. Both keywords are real: they ride Card.Keywords,
+// which printedCharacteristic folds into the layer engine.
+func AngelVigilanceToken() game.Card {
+	return game.Card{
+		Name:      "Angel",
+		TypeLine:  "Token Creature — Angel",
+		Power:     4,
+		Toughness: 4,
+		Keywords:  []string{"flying", "vigilance"},
+	}
+}
