@@ -94,8 +94,15 @@ func init() {
 				TapCost:        a.Cost.Tap,
 				SacrificeCost:  a.Cost.Sacrifice,
 				SacrificeOther: a.Cost.SacrificeOther,
+				LifeCost:       a.Cost.Life,
 				Produced:       a.Produced,
 				Label:          a.Label,
+				// S22 mana-ability riders: the post-production
+				// callback and the commander-identity opt-out both
+				// flow straight through, same thin projection the
+				// cost fields get.
+				Rider:                   a.Rider,
+				IgnoreCommanderIdentity: a.IgnoreCommanderIdentity,
 			}
 		}
 		return out

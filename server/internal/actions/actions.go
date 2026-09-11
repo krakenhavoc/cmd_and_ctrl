@@ -1010,11 +1010,12 @@ func Dispatch(g *game.Game, a Action) error {
 			return g.ResolvePickTargets(choiceID, a.Player, refs)
 		}
 		if p.OptionalApply != nil {
-			// Three yes/no kinds share the {apply: bool} payload
+			// Four yes/no kinds share the {apply: bool} payload
 			// shape: PendingChoiceOptionalReplacement (S17),
-			// PendingChoiceTriggerPrompt (S19) and
-			// PendingChoicePayUnless (S19 sub-PR 6). Disambiguate by
-			// looking up the choice's kind on the engine.
+			// PendingChoiceTriggerPrompt (S19),
+			// PendingChoicePayUnless (S19 sub-PR 6) and
+			// PendingChoiceEntryPayLife (shocklands). Disambiguate
+			// by looking up the choice's kind on the engine.
 			kind, ok := g.PendingChoiceKindFor(choiceID)
 			if !ok {
 				return game.ErrPendingChoiceNotFound
@@ -1026,6 +1027,11 @@ func Dispatch(g *game.Game, a Action) error {
 				// S19 sub-PR 6: "unless that player pays {N}" — apply
 				// means "I pay".
 				return g.ResolvePayUnless(choiceID, a.Player, *p.OptionalApply)
+			case game.PendingChoiceEntryPayLife:
+				// Shocklands: "as this enters, you may pay 2 life" —
+				// apply means "I pay", and paying is what keeps the
+				// permanent from entering tapped.
+				return g.ResolveEntryPayLife(choiceID, a.Player, *p.OptionalApply)
 			default:
 				return g.ResolveOptionalReplacement(choiceID, a.Player, *p.OptionalApply)
 			}
