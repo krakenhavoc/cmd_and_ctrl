@@ -208,28 +208,39 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 	return nil
 }
 
-// DealDamageToCreatureForEffect marks amount damage on a
-// battlefield creature. Emits EventDealDamage. The SBA pass fires
-// on the surrounding priority boundary (resolution path already
-// bookends with runStateChecks), so lethal damage routes the card
-// via the normal SBA loop rather than a bespoke kill-now path.
+// DealDamageToCreatureForEffect deals amount damage to a battlefield
+// PERMANENT. Emits EventDealDamage. The SBA pass fires on the
+// surrounding priority boundary (the resolution path already bookends
+// with runStateChecks), so lethal damage routes the card via the
+// normal SBA loop rather than a bespoke kill-now path.
+//
+// The name says "creature" for history's sake and is now a
+// misnomer — every damage-dealing card in the catalog calls it, and
+// since S27 (#406) the target may equally be a planeswalker or a
+// battle. What the damage does is decided by CR 120.3 in
+// applyDamageToPermanentLocked: marked on a creature, loyalty off a
+// planeswalker, defense off a battle, and all of those at once for a
+// permanent that is more than one of them. Before that split, a
+// Lightning Bolt aimed at a planeswalker incremented a number nothing
+// read — a two-mana no-op that looked like it had worked.
+//
+// Deathtouch is not applied here. This is the non-combat path, it has
+// never applied the CR 702.2c flag, and whether a deathtouch source's
+// direct damage should is a separate question from this one.
 func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount int) error {
 	if amount <= 0 {
 		return nil
 	}
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID == cardID {
-			g.Battlefield.Cards[i].DamageMarked += amount
-			g.EmitEvent(Event{
-				Kind:   EventDealDamage,
-				Source: source,
-				Target: cardID,
-				Amount: amount,
-			})
-			return nil
-		}
+	if !g.applyDamageToPermanentLocked(cardID, amount, false) {
+		return ErrCardNotFound
 	}
-	return ErrCardNotFound
+	g.EmitEvent(Event{
+		Kind:   EventDealDamage,
+		Source: source,
+		Target: cardID,
+		Amount: amount,
+	})
+	return nil
 }
 
 // DrawNForEffect draws n cards for the given player, emitting one

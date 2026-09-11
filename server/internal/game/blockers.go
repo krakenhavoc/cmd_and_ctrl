@@ -101,9 +101,21 @@ func (g *Game) seatOwesBlockDecisionLocked(seat uuid.UUID) bool {
 	}
 	// Attackers pointed at this seat. Collected first so the blocker
 	// scan below can stop at the first legal pairing.
+	//
+	// S27: "pointed at this seat" is no longer a bare id comparison.
+	// An attack on a planeswalker names the PLANESWALKER, and its
+	// controller is the one who may block (CR 509.1a); an attack on a
+	// battle names the battle, and its PROTECTOR blocks. Comparing
+	// AttackingTarget to the seat directly would have told a player
+	// under a full planeswalker assault that they owed no block
+	// decision — and #328's auto-pass guard reads exactly this
+	// function, so it would have passed the window for them.
 	var attackers []*Card
 	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].AttackingTarget == seat {
+		if g.Battlefield.Cards[i].AttackingTarget == uuid.Nil {
+			continue
+		}
+		if g.defendingPlayerForAttackLocked(g.Battlefield.Cards[i].AttackingTarget) == seat {
 			attackers = append(attackers, &g.Battlefield.Cards[i])
 		}
 	}

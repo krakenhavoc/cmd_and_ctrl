@@ -369,6 +369,43 @@ type Card struct {
 	// Added in S24, per ADR 0036 decision 2.
 	AttachedAt int64
 
+	// StartingDefense is the printed defense a battle enters the
+	// battlefield with (CR 310.4), parsed from Scryfall's `defense`
+	// string at deck-import time. Zero for every other card type.
+	//
+	// The exact sibling of StartingLoyalty, for the exact same
+	// reason and after the exact same bug: defense is printed data
+	// like Power / Toughness / ManaCost, not card-effect data, and
+	// while the only source was the catalog every battle outside the
+	// opt-in catalog entered with zero defense counters and was
+	// swept into the graveyard by the CR 704.5p SBA before anyone
+	// could attack it. That was live on `main` for every battle a
+	// player could import. The catalog's BattleSpec.Defense survives
+	// as a fallback for cards with no printed data — tokens,
+	// fixtures — see CatalogBattleDefense.
+	//
+	// Added in S27.
+	StartingDefense int
+
+	// ProtectorPlayerID is the opponent chosen to protect a battle
+	// as it enters (CR 310.5). uuid.Nil for every other card type,
+	// and for a battle whose protector prompt has not been answered
+	// yet.
+	//
+	// The protector, NOT the controller, is the player who defends
+	// the battle: they are the one whose creatures may block an
+	// attack on it, and they are the one player who may not attack
+	// it. That inversion is the whole mechanic — a battle is cast by
+	// one player and guarded by another — and it is why this cannot
+	// be derived from Controller.
+	//
+	// Cleared when the battle leaves the battlefield, alongside
+	// Tapped and the combat declarations: a battle that returns is a
+	// new object and chooses a new protector (CR 400.7).
+	//
+	// Added in S27.
+	ProtectorPlayerID uuid.UUID
+
 	// effective is the cached post-layer-resolution characteristic
 	// for this card on the battlefield. Populated by the layer
 	// engine's recompute pass; nil ⇒ "no recompute has run since

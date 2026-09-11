@@ -654,6 +654,19 @@ export interface CardView {
   // when not declared as attacker. Cleared on zone exit and by
   // clear_combat. Added in S08.
   attacking_target?: string;
+  // S27: what attacking_target NAMES. An attacker may be declared
+  // against a player, a planeswalker or a battle (CR 508.1d), so the
+  // id is a seat id or an instance id and this says which. Absent
+  // when nothing is declared.
+  attacking_target_kind?: "player" | "planeswalker" | "battle";
+  // S27: the seat protecting this battle (CR 310.5). Absent for every
+  // other card type and for a battle whose protector prompt has not
+  // been answered. Public — it decides who may attack it.
+  protector_player?: string;
+  // S27: a battle's current defense counter total, lifted out of the
+  // counters map the way loyalty is, because it is the card's life
+  // total rather than one pip among several.
+  defense?: number;
   // Attacker instance ID this card is currently declared to block.
   // Omitted when not declared as blocker. Cleared on zone exit and
   // by clear_combat. Added in S08.
@@ -805,6 +818,14 @@ export interface ManaAbilityView {
   restrictions?: string[];
 }
 
+// AttackTargetView is one legal attack target: the id to send as
+// declare_attacker's `target`, and what it is. `id` is a seat id for
+// a player and an instance id for a permanent. Added in S27.
+export interface AttackTargetView {
+  kind: "player" | "planeswalker" | "battle";
+  id: string;
+}
+
 export interface TurnView {
   number: number;
   active_seat: number;
@@ -824,6 +845,12 @@ export interface TurnView {
   // turn-based action rather than a response, so the auto-pass
   // "legal response?" predicate structurally could not see it.
   block_decision_seats?: number[];
+  // S27: what the ACTIVE player's creatures may attack right now —
+  // the other seats, the planeswalkers they don't control, and the
+  // battles they don't protect (CR 506.2, 508.1d). Present only
+  // during declare_attackers. Server-computed: the client must not
+  // re-derive "who protects which battle".
+  attack_targets?: AttackTargetView[];
 }
 
 // uuid generates a v4 UUID. Uses crypto.randomUUID when available (all

@@ -615,15 +615,20 @@
   // elsewhere). A cast prompt already in flight is replaced — the
   // trigger's target is owed first.
   $effect(() => {
+    // S27: choose_protector is answered through the same flow — it
+    // is the same question shape (pick one from a server-computed
+    // set) and the banner's confirm sends the same payload. The
+    // server routes by the choice's kind, so the client needs no
+    // second component and no second code path.
     const mine = (view.pending_choices ?? []).find(
-      (c) => c.kind === "pick_target" && c.chooser === viewerID,
+      (c) => (c.kind === "pick_target" || c.kind === "choose_protector") && c.chooser === viewerID,
     );
     const cur = $targeting;
     if (mine) {
       if (cur?.choiceID === mine.id) return;
       const source = findCardAnywhere(mine.source) ?? {
         instance_id: mine.source ?? "",
-        name: "Triggered ability",
+        name: mine.kind === "choose_protector" ? "Battle" : "Triggered ability",
         owner: viewerID ?? "",
         controller: viewerID ?? "",
       };

@@ -50,26 +50,35 @@ func (e *enumerator) combatMoves() {
 			if game.HasKeyword(c, "defender") || game.HasSummoningSickness(c) {
 				continue
 			}
-			for _, opp := range g.Seats {
-				if opp == nil || opp.ID == e.seat || opp.Eliminated {
-					continue
-				}
+			// S27: an attacker may be declared against a player, a
+			// planeswalker or a battle (CR 508.1d), so the target set
+			// comes from the engine rather than from a walk over the
+			// seats. Enumerating only players would have left the bot
+			// unable to see a lethal swing at a planeswalker.
+			for _, t := range g.AttackTargetsForEffect(e.seat) {
 				e.add(Move{
 					Type:   TypeDeclareAttacker,
 					Player: e.seat,
 					Kind:   KindAttack,
-					Label:  "Attack " + opp.Name + " with " + c.Name,
+					Label:  "Attack " + attackTargetLabel(g, t) + " with " + c.Name,
 					Source: c.InstanceID,
-					Params: mustJSON(attackParams{Attacker: c.InstanceID.String(), Target: opp.ID.String()}),
+					Params: mustJSON(attackParams{Attacker: c.InstanceID.String(), Target: t.ID.String()}),
 				})
 			}
 		}
 	case game.StepDeclareBlockers:
 		// Attackers pointed at this seat.
+		// S27: "attacking this seat" is the DEFENDING player of the
+		// declaration, not a bare id match — an attack on a
+		// planeswalker names the walker and is defended by its
+		// controller.
 		var attackers []*game.Card
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
-			if c.AttackingTarget == e.seat {
+			if c.AttackingTarget == uuid.Nil {
+				continue
+			}
+			if g.DefendingPlayerForAttackForEffect(c.AttackingTarget) == e.seat {
 				attackers = append(attackers, c)
 			}
 		}
@@ -100,4 +109,21 @@ func (e *enumerator) combatMoves() {
 			}
 		}
 	}
+}
+
+// attackTargetLabel renders an attack target for the move's human
+// label: a seat's name, or a permanent's card name.
+func attackTargetLabel(g *game.Game, t game.AttackTargetRef) string {
+	if t.Kind == game.AttackTargetPlayer {
+		for _, p := range g.Seats {
+			if p != nil && p.ID == t.ID {
+				return p.Name
+			}
+		}
+		return "a player"
+	}
+	if c, ok := g.LookupCardForEffect(t.ID); ok {
+		return c.Name
+	}
+	return "a permanent"
 }

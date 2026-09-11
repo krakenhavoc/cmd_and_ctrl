@@ -94,6 +94,21 @@ type Card struct {
 	// that planeswalkers outside the opt-in catalog are playable.
 	// See issue #274. Added in the #274 fix.
 	Loyalty string `json:"loyalty"`
+	// Defense is Scryfall's printed defense for a battle (CR 310.4),
+	// a string for the same reason Loyalty is. Empty for every
+	// non-battle — and, in practice, empty at the TOP LEVEL for
+	// every battle too, because every printed battle is a
+	// `transform` card and Scryfall puts the number on the front
+	// FACE. See CardFace.Defense; this field exists for the day a
+	// single-faced battle is printed.
+	//
+	// Carried here — rather than only in the effect catalog — for
+	// the same reason Loyalty is: without it, a battle outside the
+	// opt-in catalog enters with zero defense counters and the
+	// CR 704.5p state-based action sweeps it into the graveyard
+	// before anyone can attack it. That is #274 one card type over.
+	// Added in S27.
+	Defense string `json:"defense"`
 	// ManaCost is the printed casting cost as Scryfall returns it —
 	// e.g. "{1}{R}", "{W/U}", "{X}{B}{B}", "{2}{W}{W}". Empty for
 	// lands and for cards without a mana cost (e.g. Pact of Negation
@@ -160,6 +175,12 @@ type CardFace struct {
 	// Animist) would resolve with no loyalty at all. The importer
 	// falls back to the first face that prints one.
 	Loyalty string `json:"loyalty"`
+	// Defense is the FACE's printed defense (CR 310.4). This is
+	// where every printed battle's number actually lives: the
+	// layout is `transform`, the top-level `defense` is null, and
+	// the front face carries "6" / "5" / "4". Empty for every other
+	// face. Added in S27.
+	Defense string `json:"defense"`
 	// ManaCost is the FACE's printed casting cost. This is the field
 	// that was missing, and its absence is why every transform and
 	// modal DFC imported for free: Scryfall sets the TOP-LEVEL
