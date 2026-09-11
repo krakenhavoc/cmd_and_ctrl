@@ -682,6 +682,21 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"defender"` | Defender (CR 702.3) |
 | `"haste"` | Haste (CR 702.10) |
 | `"flash"` | Flash (CR 702.8) |
+| `"hexproof"` | Hexproof (CR 702.11) — S23, targeting gate |
+| `"shroud"` | Shroud (CR 702.18) — S23, targeting gate |
+| `"indestructible"` | Indestructible (CR 702.12) — S25, destruction path |
+
+The last three are not combat keywords, but they ride the same
+`PrintedKeywords` slot and the same `HasKeyword` reader. Their
+consumers are `CanBeTargetedBy` (hexproof, shroud) and
+`DestroyPermanentForEffect` + the damage-driven creature SBAs
+(indestructible — see `server/internal/game/indestructible.go` for
+what it deliberately does *not* stop).
+
+The table is closed on purpose: **a keyword joins it in the same
+change that teaches the engine to honour it.** Declaring a token the
+engine does not read puts a badge on the card that promises a rule
+nothing enforces.
 
 **Layer-granted keywords still use `Spec.Static`.** Lord of Atlantis
 grants `"flying"` to *other* Merfolk via a conditional Layer 6
@@ -953,8 +968,8 @@ The `Key` is the wire contract: it rides `cast_spell` as
 `alternative_cost`, lands on `StackItem.AltCost`, and the card's
 `OnResolve` branches on `ctx.PaidAltCost("overload")`. Keys must be
 non-empty and unique per card; `Register` panics otherwise. Only
-overload / evoke / cleave exist — foretell, plot, spree and "prepare"
-have no shape yet, and a card carrying one of those ships without it
+overload / evoke / cleave / flashback exist — foretell, plot, spree,
+warp and "prepare" have no shape yet, and a card carrying one of those ships without it
 (say so in the card comment, as Cosmic Intervention does).
 
 **Casting from somewhere other than hand (S29):** a card whose text
@@ -966,16 +981,6 @@ CastableZones:    []game.ZoneKind{game.ZoneGraveyard},          // Faithless Loo
 AlternativeCosts: []game.AlternativeCost{Flashback("{2}{R}")},
 ```
 
-Use the keyword constructor, never a hand-rolled `game.AlternativeCost`,
-for the same reason overload and evoke have one: `Flashback` bundles
-**three** things — the price, `FromZone: ZoneGraveyard`, and
-`ExileOnLeavingStack`. The last is CR 702.34a's "exile this card
-instead of putting it anywhere else any time it would leave the
-stack", and it is a *replacement*, so it also catches a flashed-back
-spell that fizzles and one answered by Hinder. A card that wrote the
-cost by hand would flash back, land in the graveyard, and flash back
-again every turn forever.
-
 The zone is the **place** and the alternative cost is the **price**,
 and they are checked independently. Hand is implicit and never has to
 be listed — declaring the graveyard *adds* a path. An offer bound to a
@@ -985,6 +990,16 @@ be flashed back for its printed `{R}`); a zone with no bound offer
 charges the printed cost, which is Gravecrawler. `Register` panics on
 an offer whose `FromZone` is not in `CastableZones`, because such an
 offer is unclaimable.
+
+Use the keyword constructor, never a hand-rolled `game.AlternativeCost`,
+for the same reason overload and evoke have one: `Flashback` bundles
+**three** things — the price, `FromZone: ZoneGraveyard`, and
+`ExileOnLeavingStack`. The last is CR 702.34a's "exile this card
+instead of putting it anywhere else any time it would leave the
+stack", and it is a *replacement*, so it also catches a flashed-back
+spell that fizzles and one answered by Hinder. A card that wrote the
+cost by hand would flash back, land in the graveyard, and flash back
+again every turn forever.
 
 Two zones are **not** card properties and must not be declared:
 `ZoneCommand` (CR 903.4 grants that to the format) and — for the

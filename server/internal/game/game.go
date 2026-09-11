@@ -673,6 +673,24 @@ func (g *Game) onTurnAdvanceLocked(prev, next Turn) {
 	if !prev.IsNewTurn(next) {
 		return
 	}
+	// S25 (#77): invalidate the layer cache. A continuous effect
+	// whose AppliesTo reads the TURN rather than the battlefield —
+	// Zurgo Helmsmasher's "during your turn, ~ has indestructible" is
+	// the first in the catalog — changes its answer here and nowhere
+	// else, so nothing would otherwise mark the cached
+	// characteristics stale and the keyword would stick around on the
+	// wrong player's turn.
+	//
+	// This is the bump layer_listener.go's header predicted and
+	// deliberately deferred ("Step / phase advance … when they
+	// arrive in a later sprint, advance the version inside the
+	// step-advance helper directly — no event for it today"). It
+	// lands here rather than in the listener for the reason that note
+	// gives: there is no event for a turn change to listen to.
+	//
+	// Cost is one recompute per turn, against a cache that is already
+	// invalidated by every zone move and every counter placed.
+	g.layerVersion.Add(1)
 	if g.LoyaltyActivatedThisTurn != nil {
 		g.LoyaltyActivatedThisTurn = nil
 	}
@@ -794,6 +812,16 @@ func (g *Game) runStepEntryHooksLocked() {
 	// step, so it waits for the following one. See delayed.go.
 	g.fireDelayedTriggersLocked(g.Turn.Step)
 	switch g.Turn.Step {
+	case StepPrecombatMain:
+		// S27 / CR 714.2b: "after your draw step, put a lore counter
+		// on each Saga you control" is a turn-based action performed
+		// as the precombat main phase begins. Precombat main grants
+		// priority, so there is no auto-advance — the chapter
+		// triggers this queues are drained onto the stack by the
+		// caller's drainPendingTriggersAPNAPLocked / runStateChecks,
+		// which is the same boundary every other turn-based action
+		// uses.
+		g.advanceSagasForActiveSeatLocked()
 	case StepEnd:
 		// S22: announce the end step so "at the beginning of your
 		// end step" triggers auto-fire through the harvester. The

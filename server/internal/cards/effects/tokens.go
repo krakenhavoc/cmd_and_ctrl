@@ -153,6 +153,27 @@ func TreasureToken() game.Card {
 	}
 }
 
+// GoldToken returns a template for the Gold artifact token
+// ("Sacrifice this token: Add one mana of any color"). Treasure
+// without the tap — a Gold can be cracked the turn it is made, which
+// is the whole point of Curse of Opulence handing them out in the
+// middle of somebody else's attack.
+//
+// Same five-colour pipe as Treasure, so it runs through the same
+// commander-identity filter rather than offering a five-way prompt in
+// a mono-coloured deck.
+func GoldToken() game.Card {
+	return game.Card{
+		Name:     "Gold",
+		TypeLine: "Token Artifact — Gold",
+		ManaAbilities: []game.ManaAbilityShape{{
+			SacrificeCost: true,
+			Produced:      "{W|U|B|R|G}",
+			Label:         "Sacrifice: Add one mana of any color",
+		}},
+	}
+}
+
 // FoodToken — "{2}, {T}, Sacrifice this artifact: You gain 3 life."
 func FoodToken() game.Card {
 	return game.Card{
@@ -287,3 +308,72 @@ func WhiteAllyToken() game.Card {
 		Toughness: 1,
 	}
 }
+
+// --- S27 templates ---------------------------------------------
+
+// KnightVigilanceToken is History of Benalia's 2/2 white Knight with
+// vigilance. The subtype matters as much as the stats: the Saga's
+// third chapter pumps "Knights you control", which reads the
+// effective subtype off exactly this type line.
+func KnightVigilanceToken() game.Card {
+	return game.Card{
+		Name:      "Knight",
+		TypeLine:  "Token Creature — Knight",
+		Power:     2,
+		Toughness: 2,
+		Keywords:  []string{"vigilance"},
+	}
+}
+
+// HumanSoldierToken is The First Iroan Games' 1/1 white Human
+// Soldier. Vanilla.
+func HumanSoldierToken() game.Card {
+	return game.Card{
+		Name:      "Human Soldier",
+		TypeLine:  "Token Creature — Human Soldier",
+		Power:     1,
+		Toughness: 1,
+	}
+}
+
+// WallDefenderToken is The Birth of Meletis' 0/4 colorless Wall
+// artifact creature with defender.
+//
+// Its 0 power is the reason the toughness has to be written down:
+// the CR 704.5f state-based action skips a creature printed 0/0 with
+// no counters (the demo-seed placeholder convention documented on
+// Card.Power), and a 0/4 must not be mistaken for that case.
+func WallDefenderToken() game.Card {
+	return game.Card{
+		Name:      "Wall",
+		TypeLine:  "Token Artifact Creature — Wall",
+		Power:     0,
+		Toughness: 4,
+		Keywords:  []string{"defender"},
+	}
+}
+
+// GoldToken is The First Iroan Games' Gold artifact token —
+// "Sacrifice this token: Add one mana of any color".
+//
+// Cheaper than a Treasure by a tap: the printed cost is the
+// sacrifice alone, so a Gold made this turn is spendable this turn
+// and a tapped Gold is still spendable. Both fall out of leaving
+// TapCost false, which is the whole difference between the two
+// templates.
+func GoldToken() game.Card {
+	return game.Card{
+		Name:     "Gold",
+		TypeLine: "Token Artifact — Gold",
+		ManaAbilities: []game.ManaAbilityShape{{
+			SacrificeCost: true,
+			Produced:      "{W|U|B|R|G}",
+			Label:         "Sacrifice: Add one mana of any color",
+		}},
+	}
+}
+
+// GoldToken's sibling templates for the other S27 card types
+// (Esika's Chariot's Cats, Parhelion II's Angels, Elspeth's Soldiers)
+// live with the sub-PRs that use them, so each lands with the card
+// that reads it.

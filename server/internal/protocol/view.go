@@ -395,16 +395,21 @@ type VoteView struct {
 // cards, opponent library cards) while preserving the `count` so the
 // UI can still render a placeholder stack.
 type PlayerView struct {
-	ID              string           `json:"id"`
-	Name            string           `json:"name"`
-	Seat            int              `json:"seat"`
-	Life            int              `json:"life"`
-	Poison          int              `json:"poison,omitempty"`
-	Energy          int              `json:"energy,omitempty"`
-	Library         ZoneView         `json:"library"`
-	Hand            ZoneView         `json:"hand"`
-	Graveyard       ZoneView         `json:"graveyard"`
-	Command         ZoneView         `json:"command"`
+	ID        string   `json:"id"`
+	Name      string   `json:"name"`
+	Seat      int      `json:"seat"`
+	Life      int      `json:"life"`
+	Poison    int      `json:"poison,omitempty"`
+	Energy    int      `json:"energy,omitempty"`
+	Library   ZoneView `json:"library"`
+	Hand      ZoneView `json:"hand"`
+	Graveyard ZoneView `json:"graveyard"`
+	Command   ZoneView `json:"command"`
+	// CommanderDamage maps commander card instance ID → total damage
+	// that commander has dealt to this player (CR 903.14a). Keyed by
+	// COMMANDER, not by opposing player, since S25 (#77) — which is
+	// the shape the client's per-commander hover rows were already
+	// written against.
 	CommanderDamage map[string]int   `json:"commander_damage"`
 	LifeHistory     []LifeChangeView `json:"life_history"`
 	// Eliminated reflects Player.Eliminated. Set when the player
