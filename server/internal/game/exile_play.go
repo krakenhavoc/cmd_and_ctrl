@@ -93,6 +93,21 @@ type ExilePlayPermission struct {
 	// any color for this card (Breeches, Brazen Plunderer). Only
 	// observable under the strict mana gate.
 	AnyColor bool
+
+	// NotBeforeTurn is the earliest turn number on which the grant
+	// is live. Zero — every grant before S29 — means "from now".
+	//
+	// It is the opposite end of the window from UntilTurn, and warp
+	// is why it exists: "exile this creature at the beginning of the
+	// next end step, then you may cast it from exile ON A LATER
+	// TURN" (CR 702.183a). Without the floor, a warped creature with
+	// flash could be recast during the very end step that exiled it.
+	//
+	// The floor and the ceiling compose rather than exclude each
+	// other, so a hypothetical "you may cast it next turn only"
+	// grant would set both. WhileExiled removes the ceiling; it does
+	// not remove this floor.
+	NotBeforeTurn int
 }
 
 // Active reports whether playerID may play the card on `turn`. An
@@ -102,6 +117,12 @@ type ExilePlayPermission struct {
 // leaves.
 func (p ExilePlayPermission) Active(playerID uuid.UUID, turn int) bool {
 	if p.Player == uuid.Nil || p.Player != playerID {
+		return false
+	}
+	// S29 warp: the window has a floor as well as a ceiling. Checked
+	// first because it applies to unbounded grants too — "on a later
+	// turn" is not weakened by "for as long as it remains exiled".
+	if p.NotBeforeTurn > 0 && turn < p.NotBeforeTurn {
 		return false
 	}
 	return p.WhileExiled || turn <= p.UntilTurn
