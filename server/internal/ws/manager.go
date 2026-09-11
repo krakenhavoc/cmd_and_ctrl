@@ -114,11 +114,23 @@ func (m *RoomManager) Delete(id uuid.UUID) {
 	for _, path := range []string{
 		snapshotPath(dumpDir, id),
 		replayPath(dumpDir, id),
+		// A deleted game must not be rebuilt by the next boot.
+		restorePointPath(dumpDir, id),
 	} {
 		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 			m.log.Warn("delete game artifact failed", "path", path, "err", err)
 		}
 	}
+}
+
+// DumpDir returns the data root this manager writes artifacts under,
+// or "" when disk persistence is disabled. Exposed so the lobby can
+// store its own metadata beside the engine snapshots without a second
+// configuration knob that could disagree with this one.
+func (m *RoomManager) DumpDir() string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.dumpDir
 }
 
 // Count returns the number of registered rooms.
