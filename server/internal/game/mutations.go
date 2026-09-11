@@ -218,6 +218,12 @@ func (g *Game) PlayCard(playerID, cardID uuid.UUID) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// The card being played is in a hand, so its own types are
+	// printed either way — but a land's enters-tapped replacement
+	// asks about the BATTLEFIELD ("unless you control a Swamp"),
+	// and under Urborg the answer is a layer answer. Fast-path
+	// no-op when nothing changed.
+	g.RecomputeLayersIfStaleLocked()
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound

@@ -177,6 +177,22 @@ func TestUrborgReachesTheWire(t *testing.T) {
 	}
 }
 
+// TestUrborgTurnsOnACheckland — the second thing Urborg does at a
+// real table, and the one that proves a Layer-4 type reaches code
+// nobody wrote for Urborg. Drowned Catacomb checks for an Island or
+// a Swamp; a Forest is neither
+// (TestChecklandRejectsTheWrongLandType pins that), but under
+// Urborg a Forest is a Swamp, so the checkland enters untapped.
+func TestUrborgTurnsOnACheckland(t *testing.T) {
+	g := newCatalogGame(t)
+	me := top100ActiveSeat(g)
+	seedPermanentFor(g, me.ID, "Forest", "Basic Land — Forest")
+	seedLand(g, me.ID, "Urborg, Tomb of Yawgmoth", "Legendary Land", urborgOracle)
+
+	id := playLandFromHand(t, g, "Drowned Catacomb", drownedCatacombOracle)
+	top100AssertEnteredUntapped(t, g, id, "Drowned Catacomb")
+}
+
 // manaAbilityProduced returns the Produced string of each mana
 // ability the engine currently offers on a battlefield card,
 // through a snapshot so the layer engine has resolved.

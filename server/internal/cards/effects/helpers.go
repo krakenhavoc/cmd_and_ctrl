@@ -217,13 +217,21 @@ func attackDeclaredByYou(ev game.Event, controller uuid.UUID) bool {
 // Forest subtype — a Snow-Covered Forest or a Bayou both qualify,
 // while IsBasicLand would admit an Island.
 //
-// Case-insensitive substring on the printed line, same posture as
-// IsBasicLand. It does not verify the card is a land when the
-// subtype is unambiguous, so callers wanting "basic" semantics
-// should compose with IsBasicLand instead.
+// Reads EFFECTIVE types and subtypes, which for the library-search
+// callers (Nature's Lore, the fetchlands) is the printed type line
+// verbatim — a card in a library has no layer cache. The difference
+// shows up for the battlefield caller, the checkland condition
+// youControlLandTyped: under Urborg, Tomb of Yawgmoth every land
+// really is a Swamp, and Drowned Catacomb really does enter
+// untapped off a Forest.
+//
+// Whole-token subtype match rather than a substring of the type
+// line, so "Forest" no longer matches a card that merely has the
+// word somewhere. Callers wanting "basic" semantics should compose
+// with IsBasicLand instead.
 func IsLandWithSubtype(subtype string) func(game.Card) bool {
 	return func(c game.Card) bool {
-		return containsFoldASCII(c.TypeLine, "land") && containsFoldASCII(c.TypeLine, subtype)
+		return c.IsLand() && c.HasSubtype(subtype)
 	}
 }
 
