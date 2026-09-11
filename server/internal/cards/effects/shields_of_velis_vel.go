@@ -25,9 +25,9 @@ import (
 // the targeted player casts afterwards gets neither half.
 //
 // Two primitives rather than one because the P/T change is layer 7c
-// and the type grant is (as a keyword) layer 6 — a single entry could
-// not sort into both. See GrantAllCreatureTypesUntilEOT for why the
-// type grant is a keyword at all.
+// and the type grant is layer 4 — a single entry could not sort into
+// both. See AllCreatureTypesGrant for why a TYPE change is carried as
+// a keyword marker, and why it still declares layer 4.
 func init() {
 	Register(Spec{
 		OracleID:        "7ad6be4e-5c3c-4633-a641-beb06e4129b9",
@@ -47,10 +47,10 @@ func init() {
 			}).Apply(ctx); err != nil {
 				return err
 			}
-			return GrantAllCreatureTypesUntilEOT(
-				theirCreatures,
-				"Shields of Velis Vel — all creature types",
-			).Apply(ctx)
+			return GrantAllCreatureTypesUntilEOT{
+				Match: theirCreatures,
+				Label: "Shields of Velis Vel — all creature types",
+			}.Apply(ctx)
 		},
 	})
 }

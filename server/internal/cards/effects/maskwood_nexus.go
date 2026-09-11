@@ -17,10 +17,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // restriction and the wire badge all see it without learning a second
 // question.
 //
-// LAYER, stated. CR 613 puts "is every creature type" in layer 4 and
-// this grants a keyword in layer 6 — see the note on
-// GrantAllCreatureTypesUntilEOT in tribal.go. Unobservable today, one
-// line to move if a "creatures lose all abilities" effect ever ships.
+// LAYER 4, even though the marker it writes is a keyword string.
+// See AllCreatureTypesGrant in tribal.go: declaring it in layer 6
+// would order it against every lord's keyword half by timestamp, and
+// a Goblin Chieftain that entered first would grant haste before the
+// Bear became a Goblin. There is a test that enters the Nexus LAST
+// for exactly that reason.
 //
 // SANDBOX SIMPLIFICATION — the second sentence is NOT implemented.
 // "Creature spells you control and creature cards you own that aren't
@@ -44,10 +46,7 @@ func init() {
 		OracleID: "9b2cdbed-c733-409b-b0e4-2c8960c25111",
 		Name:     "Maskwood Nexus",
 		Static: []game.StaticAbility{
-			TribalKeywordGrant(
-				TribeFilter{YoursOnly: true},
-				game.KeywordChangeling,
-			),
+			AllCreatureTypesGrant(TribeFilter{YoursOnly: true}),
 		},
 		Activated: []ActivatedAbility{{
 			Label: "{3}, {T}: Create a 2/2 blue Shapeshifter with changeling",

@@ -1165,8 +1165,15 @@ zone. Only write a file when the card does something else too
 
 "Is every creature type" is ALWAYS the `game.KeywordChangeling`
 token in the ability list — for a printed changeling, for a grant
-(Maskwood Nexus, via `TribalKeywordGrant`), and for an
-until-end-of-turn grant (`GrantAllCreatureTypesUntilEOT`). Do not
+(Maskwood Nexus, via `AllCreatureTypesGrant`), and for an
+until-end-of-turn grant (`GrantAllCreatureTypesUntilEOT`). Both of
+those declare **layer 4**, not the layer 6 an ability grant would
+normally take: the layer is the semantic claim and the keyword is
+storage. Declared in layer 6 the grant gets timestamp-ordered against
+every lord's keyword half, and a Goblin Chieftain that entered first
+grants haste before the Bear became a Goblin — while its +1/+1 lands
+correctly, because layer 7c runs after all of layer 6. Half a working
+card. Do not
 append the ~345 entries of `game.AllCreatureTypes` to
 `Characteristic.Subtypes`: it makes the wire type line unreadable
 and every subtype loop quadratic, for a property one map lookup

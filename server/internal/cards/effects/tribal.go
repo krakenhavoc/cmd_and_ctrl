@@ -191,27 +191,76 @@ func TribalKeywordGrant(f TribeFilter, keyword string) game.StaticAbility {
 	}
 }
 
-// GrantAllCreatureTypesUntilEOT is "gains all creature types until
-// end of turn" (Shields of Velis Vel), expressed as a turn-scoped
-// grant of the changeling keyword.
+// AllCreatureTypesGrant is "these creatures are every creature type"
+// as a battlefield static — Maskwood Nexus' first sentence.
 //
-// That is the same mechanism HasAllCreatureTypes reads everywhere
-// else, so the grant is visible to lords, to Coat of Arms, to Cavern
-// of Souls' spend restriction and to the wire badge without any of
-// them learning a second way to ask.
+// LAYER 4, not layer 6, even though what it writes is an ability
+// string. The layer is the semantic claim and the storage is an
+// implementation detail: this is a TYPE-changing effect (CR 613.1d),
+// and "is every creature type" is carried as the changeling keyword
+// only so that one map lookup answers what ~345 subtypes otherwise
+// would (see HasAllCreatureTypes).
 //
-// The one deviation, stated: CR 613 puts a type change in layer 4 and
-// an ability grant in layer 6, and this is layer 6. Nothing in the
-// catalog sequences between the two — there is no "creatures lose all
-// abilities" and no layer-4 effect that would read the grant — so the
-// ordering is unobservable today. If Humility ever ships, this is the
-// line that has to move.
-func GrantAllCreatureTypesUntilEOT(match CardPredicate, label string) GrantKeywordUntilEOT {
-	return GrantKeywordUntilEOT{
-		Match:    match,
-		Keywords: []string{game.KeywordChangeling},
-		Label:    label,
+// Getting this wrong is observable and was, before there was a test
+// for it. Declared in layer 6, the grant would be ordered against
+// every LORD's keyword half by CR 613.7 timestamp, so a Goblin
+// Chieftain that entered before the Nexus would grant haste to
+// creatures that were not yet Goblins — while its +1/+1 (layer 7c,
+// after all of layer 6) landed correctly. Half a working card, which
+// is the hardest kind of bug to see.
+func AllCreatureTypesGrant(f TribeFilter) game.StaticAbility {
+	return game.StaticAbility{
+		Layer:     game.Layer4Type,
+		AppliesTo: f.Matches,
+		Apply:     applyAllCreatureTypes,
 	}
+}
+
+// applyAllCreatureTypes appends the changeling marker, idempotently.
+// Shared by the static and the until-end-of-turn forms so the two can
+// never disagree about what the marker is.
+func applyAllCreatureTypes(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+	for _, k := range c.Abilities {
+		if k == game.KeywordChangeling {
+			return
+		}
+	}
+	c.Abilities = append(c.Abilities, game.KeywordChangeling)
+}
+
+// GrantAllCreatureTypesUntilEOT is "gains all creature types until
+// end of turn" (Shields of Velis Vel) — AllCreatureTypesGrant with a
+// CR 514.2 duration instead of a source permanent.
+//
+// It is NOT GrantKeywordUntilEOT with a changeling argument, for the
+// layer reason above: that primitive is hard-wired to layer 6, which
+// is right for "gains trample" and wrong for a type change.
+//
+// The affected set is snapshotted at resolution (CR 611.2c), like
+// every other until-end-of-turn primitive: a creature the targeted
+// player casts afterwards is not affected.
+type GrantAllCreatureTypesUntilEOT struct {
+	// Match selects the affected permanents, evaluated ONCE.
+	Match CardPredicate
+
+	// Target pins the effect to one permanent. Ignored when Match is
+	// set.
+	Target uuid.UUID
+
+	Label string
+}
+
+func (a GrantAllCreatureTypesUntilEOT) Apply(ctx *Context) error {
+	set := eotSnapshot(ctx, a.Target, a.Match)
+	if set == nil {
+		return nil
+	}
+	ctx.Game.RegisterTurnScopedStaticForEffect(game.StaticAbility{
+		Layer:     game.Layer4Type,
+		AppliesTo: set.appliesTo(),
+		Apply:     applyAllCreatureTypes,
+	}, ctx.Source(), eotLabel(a.Label, "all creature types until end of turn"))
+	return nil
 }
 
 // ChosenTypeManaRestrictions builds the `RestrictionsFunc` for

@@ -560,3 +560,41 @@ func TestShieldsOfVelisVelIsAKindredCardInEveryZone(t *testing.T) {
 		t.Error("a Kindred card with changeling is not an Elf outside the battlefield")
 	}
 }
+
+// TestMaskwoodNexusAppliesBeforeAnyLordRegardlessOfEntryOrder is the
+// regression test for the one place the "every creature type is a
+// keyword" shortcut could have leaked.
+//
+// The grant is a TYPE change, so it belongs in CR 613's layer 4 and
+// it is declared there — even though what it writes is an ability
+// string. Declaring it in layer 6 (where an ability grant would
+// normally live) compiles and passes the obvious test, because a
+// lord's +1/+1 is layer 7c and runs after ALL of layer 6 either way.
+// What breaks is the lord's KEYWORD half, which is layer 6 too and
+// would then be ordered against the Nexus by timestamp: a Goblin
+// Chieftain that entered first would grant haste before the Bear
+// became a Goblin, and the card would look half-working.
+//
+// So the Nexus enters LAST here on purpose. Both halves must land.
+func TestMaskwoodNexusAppliesBeforeAnyLordRegardlessOfEntryOrder(t *testing.T) {
+	g := newCatalogGame(t)
+	mine := g.Seats[0].ID
+	bear := pushTribalCreature(g, mine, "Grizzly Bears", "Creature — Bear", 2, 2)
+	pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Goblin Chieftain",
+		TypeLine: "Creature — Goblin", Power: 2, Toughness: 2,
+		OracleID: goblinChieftainOracle, Owner: mine, Controller: mine,
+	})
+	pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Maskwood Nexus", TypeLine: "Artifact",
+		OracleID: maskwoodNexusOracle, Owner: mine, Controller: mine,
+	})
+
+	if got := effectivePower(t, g, bear); got != 3 {
+		t.Errorf("Bear power = %d, want 3 (the Chieftain's layer-7c half)", got)
+	}
+	if !hasAbility(effectiveAbilities(t, g, bear), "haste") {
+		t.Error("Bear did not gain haste — the Nexus' type grant must apply in layer 4, " +
+			"before any lord's layer-6 keyword grant reads the types")
+	}
+}
