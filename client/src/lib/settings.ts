@@ -109,6 +109,16 @@ export interface Settings {
     // "stop every time regardless." Flip off to restore strict
     // pre-S13.6 behaviour where every stop demands a click.
     smartAutoPass: boolean;
+    // #323: when every item on the stack is one the viewer put
+    // there, auto-pass instead of asking "Counter or Pass?" about
+    // your own spell. Defaults on — casting is already the
+    // decision, so the follow-up click is pure friction. A stack
+    // that holds ANY opponent item still stops, and the session
+    // "hold" toggle (holdPriority.ts, surfaced in the phase widget
+    // and the stack card) suspends this per-window when you do want
+    // to respond to your own spell or trigger. Flip off to restore
+    // the pre-#323 "every stack stops" behaviour permanently.
+    autoPassOwnStack: boolean;
     // S13.6 autopass-mode safety. When OFF (default), the autopass
     // toggle auto-clears the first time the cursor reaches the
     // viewer's own precombat_main — a safety belt so you don't
@@ -144,7 +154,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 7;
+export const SETTINGS_VERSION = 8;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -230,6 +240,11 @@ export function defaultSettings(): Settings {
       // affordance; smartAutoPass lets it mean "stop if I
       // might want to respond" instead of "stop every time."
       smartAutoPass: true,
+      // #323 default: ON. "I cast it" is already the decision; the
+      // client shouldn't ask you to confirm it. Opponent items on
+      // the stack still stop, and the in-game "hold" toggle is the
+      // per-window opt-out.
+      autoPassOwnStack: true,
       // S13.6 default: OFF — the autopass toggle clears on the
       // viewer's next precombat_main so a forgotten autopass
       // doesn't skip their turn. Opt-in is a DANGER setting.
@@ -327,6 +342,12 @@ function migrate(raw: unknown): Settings {
   // shallow merge fills it from defaults (false) for any v6 blob
   // that omits the field. Nothing to rescue: the affordance it
   // replaces (Shift+click for a +1/+1 counter) had no stored state.
+  //
+  // v7 → v8 (#323): gameplay.autoPassOwnStack. Shallow merge fills
+  // it from defaults (true) for any v7 blob that omits the field,
+  // so existing users pick up the one-fewer-click behaviour without
+  // touching their stops grid. Nothing to rescue — the behaviour it
+  // replaces was hard-coded, not stored.
   return absorbLegacy(merged);
 }
 
