@@ -21,13 +21,16 @@ is a comment on its card file.
 | Batch | Issue | Registered | Skipped (declared) | Still blocked | Notes |
 |---|---|---:|---:|---:|---|
 | 01 | #294 | **29** | 2 | 69 | first pass — the "no new machinery" group, plus 3 cards two engine changes unblocked |
-| 02 | #295 | **38** | 19 | 43 | landed in three streams — #351 (25), this branch (11), #356's mana pipeline (Boros Signet, Mox Opal) |
-| 03–20 | #296–#313 | 0 | 0 | — | not started |
+| 02 | #295 | **38** | 19 | 43 | landed in three streams — #351 (25), #358 (11), #356's mana pipeline (Boros Signet, Mox Opal) |
+| 03 | #296 | **37** | 11 | 52 | PR #361 — the "no new machinery" group, one pass |
+| 04 | #297 | **29** | 9 | 62 | PR #362 — the "no new machinery" group plus Graven Cairns, unblocked by #356 |
+| 05–20 | #298–#313 | 0 | 0 | — | not started |
 
-**Catalog: 366 → 377**, measured with `len(effects.All())` minus the
-flicker probe — 366 on `origin/main` at `badd530`, 377 with this
-branch's eleven. (The test binary reports 367 and 378; the probe is
-explained below.)
+**Catalog: 438 → 504**, measured with `len(effects.All())` minus the
+flicker probe — 438 on `origin/main` at `e5fc440`, 504 with #361 and
+#362 merged together on a scratch branch, where the full server suite
+passes. (The test binary reports 439 and 505; the probe is explained
+below.)
 
 Always MEASURE this line, never derive it. The batch-01 entry derived
 "319" by adding up what it believed had landed when the registry
@@ -255,6 +258,102 @@ re-check first, and this is how much it was worth here:
   shape.
 - **A static that applies from the graveyard** (1): Anger. `Spec.Static`
   applies only while the card is on the battlefield (CR 113.6 default).
+
+### Batches 03 and 04 — one pass each, in parallel
+
+Both were written by forked agents in isolated worktrees at the same
+time as each other, with the batch 02 collision fresh: no engine edits,
+every batch-specific package-level name prefixed `b03` / `b04`, cycle
+tables edited by adding rows only, and cross-batch oracle IDs checked
+against `main` before pushing. The two branches merge cleanly and pass
+the suite together; the cost of the discipline is a few oddly named
+files (`b03_tri_lands.go`, `b03_bounce_lands.go`, `b03_original_duals.go`,
+and batch 04's four one-card land files) that want folding into the
+cycle tables once both are on `main`.
+
+**Batch 03 — 37 of 48 (PR #361).** Three cycle tables: six tri-lands
+(Crumbling Necropolis, Nomad Outpost, Mystic Monastery, Opulent Palace,
+Frontier Bivouac, Seaside Citadel), the six Alpha duals #351 did not
+take (Badlands, Scrubland, Bayou, Taiga, Plateau, Savannah), four
+bounce lands (Dimir Aqueduct, Orzhov Basilica, Izzet Boilerworks,
+Gruul Turf). Twenty-one singles: Land Tax, Shamanic Revelation, Go for
+the Throat, Rampaging Baloths, Great Furnace, Demolition Field,
+Guttersnipe, Warren Soultrader, High Market, Red Elemental Blast,
+Geier Reach Sanitarium, Sram, Entish Restoration, Urza's Cave,
+Dispatch, Expedition Map, Sheoldred the Apocalypse, Living Death,
+Mental Misstep, Pyroblast, Fabricate.
+
+Declared weaker: Entish Restoration's sacrifice as an additional cost
+(Victimize's posture); Mental Misstep's Phyrexian pip paid with {U}
+only; Warren Soultrader's "another" enforced by name; Geier Reach's
+loot seat by seat; the bounce lands inherit the Chancery's
+choice-as-target. One stronger corner, declared: Land Tax's
+intervening-if is checked at trigger time only — the same posture
+every intervening-if card in the catalog takes.
+
+Skipped (11), one seam each: Anointed Procession and Parallel Lives (no
+token replacement-event kind — the Academy Manufactor gap); Game Trail
+and Shineshadow Snarl (reveal-from-hand entry choice); Welcoming
+Vampire (once-per-turn tally — the Morbid Opportunist gap); Walking
+Ballista (no counter-removal cost, no enters-with-X for a permanent
+spell); Treasure Vault (no X on an activated ability); Simian Spirit
+Guide (no ability activatable from hand); Forgotten Ancient (the
+upkeep counter-move is a promptless choice and the cast half alone is
+a fraction); Psychosis Crawler (a hand-size CDA needs layer
+invalidation on draw and discard, or its toughness goes stale in the
+stronger direction); Ohran Frostfang (an "attacking creatures" static
+needs a layer bump on `EventAttack` and `ClearCombat`).
+
+**Batch 04 — 29 of 38 (PR #362).** Talisman of Curiosity and Talisman
+of Resilience as rows; Sandsteppe Citadel; three bounce lands (Boros
+Garrison, Rakdos Carnarium, Selesnya Sanctuary); Ancient Den; Graven
+Cairns, the first filter land, writable since #356 gave
+`ManaAbilityCost` a mana component; and twenty-one singles: Tatyova,
+Accursed Marauder, Chandra's Ignition, Diabolic Tutor, Bedevil, Field
+of the Dead, Soul Warden, Adeline, Rise of the Dark Realms, Sanguine
+Bond, Avacyn's Pilgrim, Exquisite Blood, Terror of the Peaks, Chord of
+Calling, Gitaxian Probe, Strip Mine, Hedron Archive, Cathars' Crusade,
+Elemental Bond, Beastmaster Ascension, Wheel of Fortune.
+
+Declared weaker: Terror of the Peaks' targeting tax is absent (#93);
+Gitaxian Probe's {U/P} is charged as {U} (no payment path reads the
+Phyrexian flag); Adeline's tokens always attack the player (no
+planeswalker-attack path); the bounce lands inherit the Chancery's
+choice-as-target.
+
+Skipped (9): Necroblossom Snarl and Vineglimmer Snarl (reveal-from-hand
+entry choice — eight cards across three batches now wait on this one
+seam); Relic of Legends and Springleaf Drum ("tap an untapped creature
+you control" as a mana-ability cost component); Emergence Zone
+(per-player "cast as though it had flash" permission — the Teferi
+gap); Unwinding Clock (untap-step trigger event — the Seedborn Muse
+gap); Ripples of Undeath (beginning-of-main-phase trigger event plus a
+pay-then-pick continuation — the Black Market Connections gap);
+Nesting Grounds (per-slot target clauses on one ability plus a
+counter-kind pick); Maskwood Nexus (changeling on the characteristic).
+
+**The seams, ranked by cards they would unlock across batches 01–04:**
+reveal-from-hand entry choice (8), token replacement-event kind (3),
+once-per-turn trigger tally (2), untap-step trigger event (2),
+main-phase trigger event (2), tap-another-permanent cost component
+(2), per-player cast permission (1), X on an activated ability (1),
+counter-removal cost (1), ability from hand (1), layer invalidation on
+hand size or combat state (2).
+
+### What batch 04 found in the engine
+
+- **OPEN — `triggerAlreadyPendingFrom` is not enough for attack
+  triggers.** The batch 01 helper checks only `PendingTriggers`, which
+  is exactly right for combat damage (every creature's damage event
+  fires inside one mutation). `DeclareAttacker` is different: it runs
+  the state checks after each single declaration, which drains the
+  queue onto the stack, so a "whenever you attack" card written
+  against the helper fires once per attacker — Adeline with two
+  attackers made six Humans instead of three. Batch 04 uses a wider
+  `b04TriggerPendingOrOnStack` that also scans `StackMeta`; it should
+  become the shared helper when the batches are folded. Residual gap,
+  weaker direction: an attacker declared after the trigger has already
+  resolved fires it again.
 
 ### What batch 02 found in the engine
 
