@@ -953,9 +953,18 @@ The `Key` is the wire contract: it rides `cast_spell` as
 `alternative_cost`, lands on `StackItem.AltCost`, and the card's
 `OnResolve` branches on `ctx.PaidAltCost("overload")`. Keys must be
 non-empty and unique per card; `Register` panics otherwise. Only
-overload / evoke / cleave exist — foretell, plot, spree and "prepare"
-have no shape yet, and a card carrying one of those ships without it
-(say so in the card comment, as Cosmic Intervention does).
+overload / evoke / cleave / flashback / warp exist — foretell, plot,
+spree and "prepare" have no shape yet, and a card carrying one of
+those ships without it (say so in the card comment, as Cosmic
+Intervention does).
+
+**Warp (S29):** `Warp("{R}")` is paid from **hand**, so it needs no
+`CastableZones` — the discount is now, the real card is later.
+The constructor bundles `WarpExile`, which schedules a CR 603.7
+delayed trigger to exile the permanent at the next end step and
+leaves an `ExilePlayPermission` behind with a `NotBeforeTurn` floor
+carrying "on a later turn". The later cast is an ordinary cast from
+exile through the impulse-exile button, for the printed cost.
 
 **Casting from somewhere other than hand (S29):** a card whose text
 opens another cast zone declares it in `Spec.CastableZones`, and the

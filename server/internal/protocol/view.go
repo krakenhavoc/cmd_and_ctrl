@@ -803,6 +803,13 @@ type ExilePlayView struct {
 	// cost. The card's `mana_cost` field still carries the printed
 	// value, so a client that ignores this shows the wrong price.
 	CostOverride string `json:"cost_override,omitempty"`
+	// NotBeforeTurn is the earliest turn number the grant is live on
+	// — warp's "you may cast it from exile ON A LATER TURN" (S29).
+	// Absent for every grant that is live as soon as it is made,
+	// which is all of impulse exile and airbend. The client compares
+	// it against `turn.number` and withholds the button until then;
+	// the server rejects an early cast regardless.
+	NotBeforeTurn int `json:"not_before_turn,omitempty"`
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a
@@ -1982,10 +1989,11 @@ func viewOfCard(c game.Card) CardView {
 	// the card leaves exile, so this can't linger on a permanent.
 	if c.ExilePlay.Granted() {
 		view.ExilePlay = &ExilePlayView{
-			Player:       c.ExilePlay.Player.String(),
-			CastOnly:     c.ExilePlay.CastOnly,
-			AnyColor:     c.ExilePlay.AnyColor,
-			CostOverride: c.ExilePlay.CostOverride,
+			Player:        c.ExilePlay.Player.String(),
+			CastOnly:      c.ExilePlay.CastOnly,
+			AnyColor:      c.ExilePlay.AnyColor,
+			CostOverride:  c.ExilePlay.CostOverride,
+			NotBeforeTurn: c.ExilePlay.NotBeforeTurn,
 		}
 	}
 	return view

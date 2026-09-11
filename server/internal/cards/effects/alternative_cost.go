@@ -110,3 +110,29 @@ func Flashback(cost string) game.AlternativeCost {
 		ExileOnLeavingStack: true,
 	}
 }
+
+// Warp is "Warp {cost} (You may cast this card from your hand for
+// its warp cost. Exile this creature at the beginning of the next
+// end step, then you may cast it from exile on a later turn.)" —
+// CR 702.183, and the fix for #324.
+//
+// Unlike flashback, warp is paid from HAND: it is a discount now in
+// exchange for the real card later, which is why it needs no
+// CastableZones declaration. The later cast is an ordinary cast from
+// exile for the printed mana cost, riding the same
+// ExilePlayPermission impulse exile and airbend already use — so
+// the client's existing exile button renders it with no new code.
+//
+// The constructor bundles the exile clause for the same reason
+// Evoke bundles its sacrifice: a card file that wrote
+// `game.AlternativeCost{ManaCost: "{R}"}` by hand would ship a
+// creature that costs one mana and stays on the battlefield forever,
+// which is not a discount but a strictly better card.
+func Warp(cost string) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:       "warp",
+		Label:     "Warp " + cost,
+		ManaCost:  cost,
+		WarpExile: true,
+	}
+}
