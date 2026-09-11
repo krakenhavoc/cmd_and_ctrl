@@ -9,13 +9,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 lands."
 //	"{T}: Add {X} or {Y}."
 //
-// Six of the ten: the three the Hashaton deck plays, plus the three
-// the roadmap's batch 01 (#294) ranks in the top 230 — Dreamroot
-// Cascade, Stormcarved Coast and Rockfall Vale. The exact inverse of
+// All ten: the three the Hashaton deck plays, the three the
+// roadmap's batch 01 (#294) ranks in the top 230 — Dreamroot
+// Cascade, Stormcarved Coast and Rockfall Vale — and the last four,
+// which batch 02 (#295) ranks at 263–350. The exact inverse of
 // a fastland, and deliberately implemented as the same helper with
 // the comparison flipped rather than as its own scan — the two
 // cycles are one mechanic printed with opposite signs, and a reader
 // comparing the files should be able to see that.
+//
+// The cycle is registered from ONE table rather than one file per
+// card precisely because Register panics on a duplicate oracle ID:
+// two batches each adding "their" four slowlands from differently-
+// named files would not conflict in git and would crash at boot.
 func init() {
 	for _, t := range []struct {
 		oracleID string
@@ -30,6 +36,11 @@ func init() {
 		{"dd8538e6-cd5f-4a88-aff5-eb5e76ce8ddb", "Dreamroot Cascade", "G", "U"},
 		{"4722105b-0085-4bb8-bca1-9de0d3eb5600", "Stormcarved Coast", "U", "R"},
 		{"185c70c1-8403-4ae5-b45d-3679d4ee092a", "Rockfall Vale", "R", "G"},
+		// Roadmap batch 02 (#295) — the last four of the ten.
+		{"5ad0b405-cca4-475e-985c-4d7e3599d87e", "Sundown Pass", "R", "W"},
+		{"e2a37967-4212-4553-9f77-bcb613405807", "Haunted Ridge", "B", "R"},
+		{"709d2f10-1585-48c3-9058-ddd5f62f0452", "Overgrown Farmland", "G", "W"},
+		{"f6d24565-5b32-4eff-b2e0-6e2c25516ff0", "Deathcap Glade", "B", "G"},
 	} {
 		Register(Spec{
 			OracleID:      t.oracleID,

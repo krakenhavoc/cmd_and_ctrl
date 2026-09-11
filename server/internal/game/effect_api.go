@@ -924,6 +924,14 @@ func (g *Game) searchDestZoneLocked(p *Player, dest ZoneKind) (*Zone, error) {
 		return g.Battlefield, nil
 	case ZoneLibrary:
 		return p.Library, nil
+	case ZoneGraveyard:
+		// Entomb, Buried Alive, Gamble's discard half — "search your
+		// library for a card, put that card into your GRAVEYARD".
+		// The generic MoveCard branch below handles it unchanged;
+		// only this lookup was missing, which made those cards fail
+		// with ErrZoneNotFound and silently find nothing. Added with
+		// the roadmap's batch 02 (#295).
+		return p.Graveyard, nil
 	}
 	return nil, ErrZoneNotFound
 }

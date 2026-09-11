@@ -21,14 +21,16 @@ is a comment on its card file.
 | Batch | Issue | Registered | Skipped (declared) | Still blocked | Notes |
 |---|---|---:|---:|---:|---|
 | 01 | #294 | **29** | 2 | 69 | first pass — the "no new machinery" group, plus 3 cards two engine changes unblocked |
-| 02–20 | #295–#313 | 0 | 0 | — | not started |
+| 02 | #295 | **36** | 19 | 45 | four land cycles extended; 10 cards the triage called blocked turned out writable |
+| 03–20 | #296–#313 | 0 | 0 | — | not started |
 
-**Catalog: 288 → 319.** The 288 the audit below counted, plus Giant
-Growth and Overrun from the until-end-of-turn work (#314), plus the 29
-here. (The test binary reports 320 — the flicker probe, as explained
-below.) Batch 01 alone moves the play-rate coverage by **+2 in the top
-100** (Dark Ritual, Arcane Denial), **+17 in the top 200**, **+29 in
-the top 300**.
+**Catalog: 288 → 356.** The 288 the audit below counted, plus Giant
+Growth and Overrun from the until-end-of-turn work (#314), plus 29 from
+batch 01 and 36 from batch 02. (The test binary reports 357 — the
+flicker probe, as explained below.) Batch 01 moved play-rate coverage by
+**+2 in the top 100** (Dark Ritual, Arcane Denial), **+17 in the top
+200**, **+29 in the top 300**; batch 02 adds **+16 more in the top 300**
+and **+20 between rank 301 and 360**.
 
 ### Batch 01 — what shipped
 
@@ -122,6 +124,113 @@ clause plus two inert keywords), Teferi's Protection and The One Ring
   Glorious Anthem stayed 1/1 until something unrelated forced a
   recompute, and tokens never got a CR 613 timestamp. The listener now
   treats `EventTokenCreated` as an entry.
+
+### Batch 02 — what shipped
+
+36 cards of the 100 at `edhrec_rank` 238–360.
+
+**Four land cycles closed or extended.** The last four slowlands
+(Sundown Pass, Haunted Ridge, Overgrown Farmland, Deathcap Glade)
+finish that cycle at ten; four original duals (Underground Sea,
+Volcanic Island, Tropical Island, Tundra), two tri-lands (Arcane
+Sanctum, Jungle Shrine), two karoos (Simic Growth Chamber, Golgari Rot
+Farm), plus Ketria Triome, Seat of the Synod, Darksteel Citadel and
+Scavenger Grounds.
+
+**Spells and permanents.** Infernal Grasp, Withering Torment, Baleful
+Strix, Entomb, Buried Alive, Damn, Snap, Seething Song, Mana Geyser,
+Harrow, Diabolic Intent, Gray Merchant of Asphodel, Archmage Emeritus,
+Syr Konrad the Grim, Lotus Cobra, Guardian Project, Loran of the Third
+Path, Avenger of Zendikar, Craterhoof Behemoth, Decanter of Endless
+Water.
+
+**Ten the #295 triage filed as blocked (or as would-ship-stronger) were
+writable after all** — five because the blocker moved in the days
+before the batch, five because they were mis-filed:
+
+- **Decanter of Endless Water** — filed "player / game-rule statics".
+  `Spec.NoMaxHandSize` landed with Thought Vessel (#338).
+- **Craterhoof Behemoth** — filed "cost modification, until EOT". The
+  until-EOT half is S32's `BoostUntilEOT` / `GrantKeywordUntilEOT`;
+  the cost half was never real.
+- **Damn** — filed "would ship stronger than printed". Overload is a
+  real alternative cost now, and the "can't be regenerated" clause is
+  vacuous in an engine with no regeneration, so nothing is missing.
+- **Seething Song** and **Mana Geyser** — filed "mana pipeline".
+  `AddMana` from batch 01 is the whole requirement; Mana Geyser's
+  derived count was always ordinary Go.
+- **Harrow** and **Diabolic Intent** — filed "cost modification". Both
+  are CR 601.2f *additional* costs, and `SacrificeCost` has existed
+  since S21.
+- **Gray Merchant of Asphodel** — filed "cost modification". Devotion
+  only reads mana costs; it modifies nothing.
+- **Ketria Triome** — filed "other-zone casting" for its cycling.
+  Raffine's Tower already ships without cycling as a declared
+  simplification; the same call applies.
+- **Darksteel Citadel** — filed "protection / prevention". Two of its
+  three lines are live; indestructible is declared in
+  `PrintedKeywords` and inert until #176, which is the weaker
+  direction and allowed.
+
+### Batch 02 — the 19 declared skips, each with its missing seam
+
+- **A card choice inside a replacement effect** (7): Mox Diamond, and
+  the six reveal-lands — Choked Estuary, Foreboding Ruins, Port Town,
+  Fortified Village, Frostboil Snarl, Furycalm Snarl. All are "as this
+  enters, you may reveal / discard <a card you pick>", and the
+  replacement pipeline is synchronous with no per-card prompt.
+  `ReplacementEffect.Optional` is a bare yes/no and carries a hazard
+  besides — see below.
+- **`ManaAbilityCost` has no mana component** (5): the filter lands —
+  Cascade Bluffs, Flooded Grove, Fetid Heath, Twilight Mire, Rugged
+  Prairie. The triage called these ready; they are blocked on exactly
+  what Boros Signet and Skycloud Expanse are blocked on.
+- **No replacement on *triggering*** (1): Panharmonicon. There is no
+  `RepEvent` for an ability triggering.
+- **No replacement on *token creation*** (1): Academy Manufactor. Same
+  shape, different event that does not exist.
+- **A per-turn tally** (1): Morbid Opportunist's "this ability triggers
+  only once each turn". Shipping without the limiter would be stronger
+  than printed, so it is skipped rather than shipped.
+- **Leave-the-battlefield counter LKI** (1): The Ozolith needs the
+  counters a permanent *had* as it left, and CR 400.7 has already
+  cleared them by the time a watcher sees the event.
+- **No untap-step trigger** (1): Seedborn Muse. `EventStepTransition`
+  is deliberately not in the public event log, so only a replacement
+  can see it — and a replacement that does not cancel re-fires until
+  the 32-iteration cap.
+- **An opponent-paid *choice* that is not a mana cost** (1): Braids,
+  Arisen Nightmare. `PayUnless` prices a decision in mana; "each
+  opponent may sacrifice a permanent sharing a card type" has no
+  shape.
+- **A static that applies from the graveyard** (1): Anger. `Spec.Static`
+  applies only while the card is on the battlefield (CR 113.6 default).
+
+### What batch 02 found in the engine
+
+- **FIXED — a library search could not put a card into a graveyard.**
+  `searchDestZoneLocked` handled hand, battlefield and library and
+  returned `ErrZoneNotFound` for everything else, so Entomb and Buried
+  Alive emitted an effect error and found nothing. The generic
+  `MoveCard` branch already handled the destination correctly; only the
+  zone lookup was missing. One case added, with tests on both cards.
+- **OPEN — `ReplacementEffect.Optional` has no `entryResumable`
+  guard.** `EntryLifeCost` checks `ev.entryResumable` before queuing
+  its prompt (`entry_choice.go`), because only the land-play path can
+  resume a paused battlefield entry. The `Optional` branch of the same
+  apply-loop queues unconditionally and returns
+  `errReplacementPending`. An `Optional` self-replacement on a
+  permanent entering by any other route would therefore pause with no
+  resume path. No catalog card can reach it today, which is why it is
+  reported rather than patched — but it is the reason the six
+  reveal-lands were skipped rather than written against `Optional`.
+- **STALE COMMENT — `azorius_chancery.go`** still says a catalog
+  replacement "cannot fire on its own source's entry at all". That was
+  true when written and stopped being true with the Temple cycle, which
+  added the entering card's own replacements as a third gathering
+  block. Three land cycles depend on the behaviour it says is
+  impossible. `karoo_lands.go` records the correction; the Chancery
+  itself still taps via `OnETB` and could now use `SelfEntersTapped()`.
 
 ## The audited catalog count — 288 (at the time of the audit)
 
