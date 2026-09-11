@@ -107,27 +107,32 @@
 </aside>
 
 <style>
+  /* Sits UNDER the top bar (z-index 40, 44px + 1px border tall) rather
+     than over it: the button that opens the drawer lives up there, and
+     covering it would hide the control you just used. */
   .log-panel {
     position: fixed;
-    top: 0;
+    top: 45px;
     right: 0;
     bottom: 0;
-    width: min(380px, 92vw);
+    z-index: 30;
     display: flex;
     flex-direction: column;
-    background: #14161c;
-    border-left: 1px solid #2a2f3a;
-    box-shadow: -12px 0 32px rgb(0 0 0 / 45%);
-    z-index: 60;
+    width: min(380px, 92vw);
+    background: var(--bg-1);
+    border-left: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
   }
 
   .log-head {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.6rem 0.7rem;
-    border-bottom: 1px solid #2a2f3a;
-    font-size: 0.85rem;
+    padding: 0.55rem 0.7rem;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    color: var(--fg);
   }
 
   .log-title {
@@ -140,15 +145,15 @@
 
   .log-count {
     margin-left: auto;
-    font-size: 0.75rem;
+    font-size: 11px;
   }
 
   .log-filter {
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    font-size: 0.75rem;
-    color: #9aa3b2;
+    font-size: 11px;
+    color: var(--fg-muted);
     cursor: pointer;
   }
 
@@ -159,40 +164,43 @@
     padding: 0.2rem;
     background: none;
     border: none;
-    color: #9aa3b2;
+    color: var(--fg-muted);
     cursor: pointer;
   }
 
   .log-close:hover {
-    color: #e6e9ef;
+    color: var(--fg);
   }
 
   .log-body {
     flex: 1;
     overflow-y: auto;
-    padding: 0.4rem 0.6rem 1.2rem;
+    padding: 0.2rem 0.6rem 1.2rem;
+    font-family: var(--font-ui);
   }
 
   .log-empty {
     padding: 1rem 0.2rem;
-    font-size: 0.8rem;
+    font-size: 12px;
   }
 
   .log-header {
     position: sticky;
     top: 0;
-    margin: 0.7rem 0 0.25rem;
-    padding: 0.2rem 0.35rem;
-    background: #14161c;
+    margin: 0.6rem 0 0.2rem;
+    padding: 0.25rem 0.4rem;
+    background: var(--bg-1);
     border-left: 3px solid var(--seat);
-    font-size: 0.75rem;
+    font-family: var(--font-ui);
+    font-size: 11px;
     font-weight: 600;
+    letter-spacing: 0.02em;
     text-transform: lowercase;
-    color: #c7cedb;
+    color: var(--fg);
   }
 
   .log-header.earlier {
-    color: #7b8494;
+    color: var(--fg-dim);
     font-style: italic;
   }
 
@@ -206,15 +214,14 @@
     display: flex;
     align-items: baseline;
     gap: 0.4rem;
-    padding: 0.12rem 0.35rem;
-    font-size: 0.78rem;
-    line-height: 1.35;
-    color: #c3cad6;
-    border-left: 2px solid transparent;
+    padding: 0.1rem 0.4rem;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--fg-muted);
   }
 
   .log-entry:hover {
-    background: #1b1e26;
+    background: var(--surface-hover);
   }
 
   .log-dot {
@@ -231,47 +238,41 @@
 
   .log-target {
     flex: none;
-    font-size: 0.6rem;
-  }
-
-  /* Tone accents — one per LOG_TONE value in gameLog.ts. */
-  .tone-step {
-    color: #c7cedb;
-  }
-
-  .tone-cast {
-    color: #93c5fd;
-  }
-
-  .tone-resolve {
-    color: #a5b4fc;
-  }
-
-  .tone-zone {
-    color: #c3cad6;
-  }
-
-  .tone-quiet {
-    color: #8b94a3;
-  }
-
-  .tone-life {
-    color: #86efac;
-  }
-
-  .tone-damage {
-    color: #fca5a5;
-  }
-
-  .tone-combat {
-    color: #fcd34d;
-  }
-
-  .tone-bad {
-    color: #f0abfc;
+    font-size: 8px;
   }
 
   .muted {
-    color: #7b8494;
+    color: var(--fg-dim);
+  }
+
+  /* Tone accents — one per LOG_TONE value in gameLog.ts. */
+  .tone-step,
+  .tone-zone {
+    color: var(--fg-muted);
+  }
+
+  .tone-cast,
+  .tone-resolve {
+    color: var(--fg);
+  }
+
+  .tone-quiet {
+    color: var(--fg-dim);
+  }
+
+  .tone-life {
+    color: var(--mint);
+  }
+
+  .tone-damage {
+    color: var(--rose);
+  }
+
+  .tone-combat {
+    color: var(--gold);
+  }
+
+  .tone-bad {
+    color: var(--magenta);
   }
 </style>
