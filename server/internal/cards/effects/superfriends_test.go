@@ -323,12 +323,3 @@ func TestPirAddsOneToAnyPermanentYouControl(t *testing.T) {
 		t.Errorf("an opponent's counters = %d, want 1 (Pir is yours only)", got)
 	}
 }
-
-func counterCount(g *game.Game, id uuid.UUID, name string) int {
-	for _, c := range g.Battlefield.Cards {
-		if c.InstanceID == id {
-			return c.Counters[name]
-		}
-	}
-	return -1
-}
