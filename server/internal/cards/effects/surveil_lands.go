@@ -35,6 +35,7 @@ func init() {
 		Register(Spec{
 			OracleID:      t.oracleID,
 			Name:          name,
+			Completeness:  CompletenessFull,
 			Replacements:  []game.ReplacementEffect{SelfEntersTapped()},
 			ManaAbilities: []ManaAbility{dualManaAbility(t.a, t.b)},
 			Triggered: []game.TriggeredAbility{{

@@ -41,6 +41,7 @@
   } from "../../protocol";
   import { bucketForBattlefield, isCreature } from "../../cardTypes";
   import { battlefieldClickIntent } from "../../contextMenu.logic";
+  import { canActivateSorcerySpeedAbility } from "../../timing";
   import { openCardMenu } from "../../contextMenu";
   import BattlefieldRow from "./BattlefieldRow.svelte";
   import PileBar from "./PileBar.svelte";
@@ -150,9 +151,56 @@
     return null;
   });
 
+  // S24 (ADR 0036 decisions 13 + 14): the wire carries attachment in
+  // one direction — each Equipment / Aura names its host — and the
+  // reverse list is derived here rather than shipped, so the two can
+  // never disagree. Keyed by host instance ID over the WHOLE
+  // battlefield, not just this seat's cards: an Aura you control on
+  // a creature an opponent controls is drawn on the creature, which
+  // is where the rules put it.
+  const attachmentsByHost = $derived.by(() => {
+    const out: Record<string, CardView[]> = {};
+    for (const c of view.battlefield?.cards ?? []) {
+      if (c.attached_to?.kind !== "card" || !c.attached_to.id) continue;
+      (out[c.attached_to.id] ??= []).push(c);
+    }
+    return out;
+  });
+
+  // Every battlefield card that is drawn behind a host rather than in
+  // its own type row. A dangling attachment — the host has left but
+  // the state-based action has not swept the relation yet — keeps its
+  // own row, so an Equipment never vanishes mid-frame.
+  const hostedCardIDs = $derived.by(() => {
+    const onBattlefield = new Set((view.battlefield?.cards ?? []).map((c) => c.instance_id));
+    const out = new Set<string>();
+    for (const c of view.battlefield?.cards ?? []) {
+      const host = c.attached_to;
+      if (host?.kind === "card" && host.id && onBattlefield.has(host.id)) {
+        out.add(c.instance_id);
+      }
+    }
+    return out;
+  });
+
+  // S31: the CR 307.1 sorcery-speed window, derived once per panel
+  // and handed down to every Card so the ability popover can grey an
+  // "activate only as a sorcery" row. The flag has ridden the wire as
+  // ActivatedAbilityView.sorcery_speed since S21 and nothing read it,
+  // so those abilities stayed clickable through combat and an
+  // opponent's turn and came back rejected — the live example
+  // ADR 0033 §1 cites for why the client stopped re-deriving timing.
+  //
+  // Empty string means "open, no opinion"; opponents' panels are
+  // never gated on the VIEWER's window, so they get "" too.
+  const sorcerySpeedBlocked = $derived(
+    isSelf ? (canActivateSorcerySpeedAbility(view, viewerID).reason ?? "") : "",
+  );
+
   const buckets = $derived.by(() => {
     const out = { creature: [] as CardView[], land: [] as CardView[], right: [] as CardView[] };
     for (const c of controlledCards) {
+      if (hostedCardIDs.has(c.instance_id)) continue;
       out[bucketForBattlefield(c)].push(c);
     }
     return out;
@@ -254,17 +302,20 @@
   <div class="grid-creatures">
     <BattlefieldRow
       label="creatures"
+      {attachmentsByHost}
       cards={buckets.creature}
       {viewerID}
       {selectedCombatCardID}
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
       {onActivateAbility}
+      {sorcerySpeedBlocked}
     />
   </div>
   <div class="grid-middle">
     <BattlefieldRow
       label="enchant / artifact"
+      {attachmentsByHost}
       cards={buckets.right}
       compact
       {viewerID}
@@ -272,9 +323,11 @@
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
       {onActivateAbility}
+      {sorcerySpeedBlocked}
     />
     <BattlefieldRow
       label="lands"
+      {attachmentsByHost}
       cards={buckets.land}
       compact
       strip
@@ -283,6 +336,7 @@
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
       {onActivateAbility}
+      {sorcerySpeedBlocked}
     />
   </div>
   <div class="grid-bottom">

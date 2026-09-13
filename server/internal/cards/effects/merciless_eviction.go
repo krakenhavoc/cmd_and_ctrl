@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Merciless Eviction — Sorcery {4}{W}{B}:
 //
@@ -22,7 +18,9 @@ import (
 //
 // Four untargeted modes, so ChooseOne carries no target clauses: the
 // engine validates the pick at announce and OnResolve reads it back
-// with ctx.HasMode in printed order (CR 700.2c).
+// with ctx.HasMode in printed order (CR 700.2c). Only one can be
+// chosen here, but the loop is written for the general case because
+// Farewell is these same sweeps under ChooseN.
 func init() {
 	Register(Spec{
 		OracleID: "3c8d4999-e18b-48d8-8ed9-f2feaa38300d",
@@ -33,32 +31,14 @@ func init() {
 			Mode("Exile all enchantments."),
 			Mode("Exile all planeswalkers."),
 		),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			// Mode index → that sweep's type test, in printed order.
-			sweeps := []func(game.Card) bool{
-				func(c game.Card) bool { return c.IsArtifact() },
-				func(c game.Card) bool { return c.IsCreature() },
-				func(c game.Card) bool { return c.IsEnchantment() },
-				func(c game.Card) bool { return c.IsPlaneswalker() },
-			}
-			for i, matches := range sweeps {
+		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+			sweeps := []CardPredicate{Artifact(), Creature(), Enchantment(), Planeswalker()}
+			for i, match := range sweeps {
 				if !ctx.HasMode(i) {
 					continue
 				}
-				// Snapshot the IDs before exiling anything: ExileTarget
-				// removes cards from the battlefield zone we would
-				// otherwise be ranging over, and an exile-triggered
-				// ability could add one mid-sweep.
-				var doomed []uuid.UUID
-				for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-					if matches(c) {
-						doomed = append(doomed, c.InstanceID)
-					}
-				}
-				for _, id := range doomed {
-					if err := (ExileTarget{Target: id}).Apply(ctx); err != nil {
-						return err
-					}
+				if err := (ExileAllMatching{Match: match}).Apply(ctx); err != nil {
+					return err
 				}
 			}
 			return nil

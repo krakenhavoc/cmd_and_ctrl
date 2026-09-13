@@ -31,11 +31,23 @@ import (
 //
 // S22 sandbox simplifications:
 //
-//   - **No foretell.** There is no alternative-cast-cost machinery
-//     ("pay X *instead of* the mana cost"); `AdditionalCost` is an
-//     extra cost paid alongside. The card is castable only for its
-//     printed {3}{W}, exactly as Vandalblast and Cyclonic Rift ship
-//     without overload. Strictly weaker than printed.
+//   - **No foretell.** The reason is no longer the one this comment
+//     gave until S29: alternative-cast-cost machinery exists
+//     (`game.AlternativeCost`, #257, which landed hours after this
+//     file), and S29 added the zone half — `Spec.CastableZones` plus
+//     `AlternativeCost.FromZone` are exactly "pay {1}{W} instead of
+//     the mana cost, from exile". What foretell still lacks is the
+//     HIDDEN half. `foretell_card` exiles the card FACE DOWN, and
+//     both primitives that mint an exile-play grant
+//     (ExileTopWithPermissionForEffect,
+//     ExileCardWithPermissionForEffect) call
+//     markCardKnownInZoneLocked on the way in, deliberately: an
+//     impulse grant nobody can see is unplayable in practice.
+//     Foretell needs the opposite — a grant its holder can see and
+//     the table cannot — and that is a real extension to the
+//     permission model rather than a card-file detail. The card is
+//     castable only for its printed {3}{W} until it lands. Strictly
+//     weaker than printed.
 //   - The replacement does not fire on a permanent that would go to
 //     the **command zone** instead (a commander dying with the CR
 //     903.9 built-in taken): that built-in rewrites the destination
@@ -45,8 +57,10 @@ import (
 //     one wins.
 func init() {
 	Register(Spec{
-		OracleID: "cddccc2a-a76e-48b3-b4dd-dfeab89e1619",
-		Name:     "Cosmic Intervention",
+		OracleID:     "cddccc2a-a76e-48b3-b4dd-dfeab89e1619",
+		Name:         "Cosmic Intervention",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Foretell isn't implemented, so it can only be cast for its normal cost; a dying commander still goes to the command zone instead of being saved."},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			// Capture plain IDs, never pointers: the replacement is
 			// value-copied onto the undo stack and has to keep

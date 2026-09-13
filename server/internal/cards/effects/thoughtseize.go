@@ -22,9 +22,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // smart-cast UI can validate at submit time.
 func init() {
 	Register(Spec{
-		OracleID: "edd8d1e8-be43-4c38-bb3a-83081fbaf0b5",
-		Name:     "Thoughtseize",
-		Targets:  TargetPlayer("target player"),
+		OracleID:     "edd8d1e8-be43-4c38-bb3a-83081fbaf0b5",
+		Name:         "Thoughtseize",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The pick isn't restricted to nonland cards — you can take a land out of the revealed hand."},
+		Targets:      TargetPlayer("target player"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 				return nil

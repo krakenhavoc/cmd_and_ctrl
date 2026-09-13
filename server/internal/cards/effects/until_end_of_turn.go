@@ -144,17 +144,40 @@ func (b BoostUntilEOT) Apply(ctx *Context) error {
 // of turn" (The Wandering Emperor's -2 lifelink half) or the mass
 // form (Overrun's trample). Layer 6 — ability-adding.
 //
-// WHICH KEYWORDS ACTUALLY DO ANYTHING. The engine honours twelve
-// tokens: flying, reach, first strike, double strike, deathtouch,
-// lifelink, trample, vigilance, menace, defender, haste, flash (see
-// game/keywords.go and AGENTS.md §7). Granting one of those is real.
-// Granting anything else — hexproof, indestructible, protection,
-// ward — appends a string that nothing in the engine reads, so the
+// WHICH KEYWORDS ACTUALLY DO ANYTHING. The engine honours fifteen
+// tokens — the twelve combat keywords (flying, reach, first strike,
+// double strike, deathtouch, lifelink, trample, vigilance, menace,
+// defender, haste, flash), the S23 targeting pair (hexproof,
+// shroud), and S25's indestructible. See `canonicalKeywords` in
+// game/keywords.go, which is the authoritative list. Granting any of
+// those is real.
+//
+// This is also the answer to the S25 (#77) checklist items that
+// named `HexproofUntilEOT` and `IndestructibleUntilEOT` as separate
+// primitives. They are not separate primitives and deliberately were
+// not written as such: a duration is orthogonal to which keyword is
+// granted, so both are
+//
+//	GrantKeywordUntilEOT{Keywords: []string{"hexproof"}}
+//	GrantKeywordUntilEOT{Keywords: []string{"indestructible"}}
+//
+// and a card that grants both at once (Heroic Intervention,
+// Tamiyo's Safekeeping) passes both tokens to ONE registry entry
+// rather than stacking two named wrappers. What S25 actually had to
+// build was the other half — the consumer that reads the token,
+// which for indestructible is the destruction path
+// (game/indestructible.go). Hexproof's consumer, the targeting gate
+// in game/targets.go, shipped in S23.
+//
+// Granting a token OUTSIDE the canonical set — protection, ward,
+// landwalk — still appends a string that nothing reads, so such a
 // card ships weaker than printed and MUST say so in its comment.
 // This primitive deliberately does not reject unknown tokens: a
-// declared-but-inert grant is how The Wandering Rescuer is written,
-// so that the day the keyword lands in the targeting gate the card
-// starts working untouched.
+// declared-but-inert grant is how The Wandering Rescuer was written,
+// so that the day the keyword lands in its consumer the card starts
+// working untouched. Boros Charm's indestructible mode and Darksteel
+// Citadel both took that bet and both collected in S25 without a
+// line of card code changing.
 type GrantKeywordUntilEOT struct {
 	// Target pins the effect to one permanent. Ignored when Match
 	// is set.

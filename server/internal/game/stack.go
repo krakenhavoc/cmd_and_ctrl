@@ -160,6 +160,29 @@ type StackItem struct {
 	// CR 608.2b re-check's choice of target clause. Added in S22.
 	AltCost string
 
+	// IsCopy marks a spell item that is a COPY of another spell
+	// (CR 706.10) rather than a cast card — Reverberate's output,
+	// Twincast's, the second half of a storm count. Set only on
+	// StackItemSpell items created by CopySpellForEffect.
+	//
+	// One rule hangs off it and it is the one that matters: a copy
+	// is not a card, so when it finishes resolving (or is countered
+	// by game rules for illegal targets) it CEASES TO EXIST rather
+	// than going to a graveyard. Route a copy to the graveyard
+	// instead and a phantom Lightning Bolt accumulates in somebody's
+	// yard, where it is countable by Tarmogoyf, castable by
+	// flashback, and returnable by Regrowth. See
+	// ceaseToExistLocked in spell_copy.go.
+	//
+	// It is NOT a "don't fire triggers" flag. A resolving copy deals
+	// its damage, draws its cards and fires everything a cast spell
+	// would; what a copy never does is trigger "whenever you CAST",
+	// and that falls out of CopySpellForEffect emitting no
+	// EventCast rather than out of a check on this field.
+	//
+	// Added in S30 (#95).
+	IsCopy bool
+
 	// SplitSecond marks an item as having split second (CR 702.79).
 	// While any stack item has SplitSecond set, no further casts /
 	// activations are legal except mana abilities and special

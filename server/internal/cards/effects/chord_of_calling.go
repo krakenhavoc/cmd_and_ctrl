@@ -18,9 +18,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "6789a170-f2c5-4fc0-8a45-2b2361e67410",
-		Name:     "Chord of Calling",
-		TapCost:  Convoke(),
+		OracleID:     "6789a170-f2c5-4fc0-8a45-2b2361e67410",
+		Name:         "Chord of Calling",
+		Completeness: CompletenessFull,
+		TapCost:      Convoke(),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			x := ctx.X()
 			return SearchLibrary{

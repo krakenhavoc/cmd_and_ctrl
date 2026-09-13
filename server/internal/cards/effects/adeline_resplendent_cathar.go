@@ -46,6 +46,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "38515f89-348b-4cf3-b7bd-1f6fe4ce2fba",
 		Name:            "Adeline, Resplendent Cathar",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,

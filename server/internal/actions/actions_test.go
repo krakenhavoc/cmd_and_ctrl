@@ -514,7 +514,35 @@ func TestDispatchAddCounter(t *testing.T) {
 	}
 }
 
+// TestDispatchSetCommanderDamage — `from` is a commander CARD
+// instance ID since S25 (#77), not the opposing player's ID. The
+// commander is looked up wherever it lives, which for a freshly
+// started game is the command zone.
 func TestDispatchSetCommanderDamage(t *testing.T) {
+	g := newGame(t)
+	p0, p1 := g.Seats[0], g.Seats[1]
+	cmdr := p0.Command.Cards[0].InstanceID
+	a, _ := Decode(
+		string(TypeSetCommanderDamage),
+		"",
+		params(t, map[string]any{
+			"from":   cmdr.String(),
+			"to":     p1.ID.String(),
+			"amount": 12,
+		}),
+	)
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	if p1.CommanderDamage[cmdr] != 12 {
+		t.Errorf("cmdr damage: got %d, want 12", p1.CommanderDamage[cmdr])
+	}
+}
+
+// TestDispatchSetCommanderDamageRejectsAPlayerID pins the rekey: the
+// old call shape (a player ID in `from`) must now fail loudly rather
+// than write a key the client can never render.
+func TestDispatchSetCommanderDamageRejectsAPlayerID(t *testing.T) {
 	g := newGame(t)
 	p0, p1 := g.Seats[0], g.Seats[1]
 	a, _ := Decode(
@@ -526,11 +554,11 @@ func TestDispatchSetCommanderDamage(t *testing.T) {
 			"amount": 12,
 		}),
 	)
-	if err := Dispatch(g, a); err != nil {
-		t.Fatalf("Dispatch: %v", err)
+	if err := Dispatch(g, a); err == nil {
+		t.Fatal("Dispatch with a player ID in `from`: got nil, want an error")
 	}
-	if p1.CommanderDamage[p0.ID] != 12 {
-		t.Errorf("cmdr damage: got %d, want 12", p1.CommanderDamage[p0.ID])
+	if len(p1.CommanderDamage) != 0 {
+		t.Errorf("CommanderDamage was written despite the rejection: %v", p1.CommanderDamage)
 	}
 }
 

@@ -116,6 +116,13 @@ const (
 	// CardID is the new instance.
 	EventTokenCreated EventKind = "token_created"
 
+	// EventCopyApplied — a CR 706 copy effect landed on CardID,
+	// copying Source. Emitted as the permanent enters, between the
+	// push and the zone-move / ETB events, so the log reads
+	// "Clone entered as a copy of Llanowar Elves" in the order it
+	// happened. Added in S16.5 (#159).
+	EventCopyApplied EventKind = "copy_applied"
+
 	// EventSearchLibrary — Actor searched their library. Reserved
 	// for S14 catalog effects that fire SearchLibrary; the log
 	// entry is the "you searched your library" trigger source
@@ -296,6 +303,20 @@ const (
 	// PendingTriggers together. Added in S22.
 	EventBeginEndStep EventKind = "begin_end_step"
 
+	// EventBeginPrecombatMain — the active player's PRECOMBAT main
+	// phase began. Actor is the active player, so "at the beginning
+	// of your precombat main phase" (Hulking Raptor, Braids, Kiora)
+	// gates AppliesTo on ev.Actor == controller.
+	//
+	// Precombat only, because that is the phase every card in the
+	// family names: the printed wording is either "your precombat
+	// main phase" or "your FIRST main phase", and on an ordinary turn
+	// those are the same phase. Emitting on the postcombat main too
+	// would fire a Raptor's ritual twice a turn. Added in S30
+	// alongside ward, because a mana ritual gated on the phase was
+	// the last line of Hulking Raptor standing between it and being
+	// implemented as printed.
+	EventBeginPrecombatMain EventKind = "begin_precombat_main"
 	// EventBeginDrawStep — the active player's draw step began.
 	// Actor is that player. Emitted AFTER the CR 504.1 turn-based
 	// draw, which is the rules-correct order: the turn-based draw
@@ -347,6 +368,52 @@ const (
 	// for this?" Actor = caster, Source = card being cast.
 	// S15 sub-PR 3.
 	EventCostWarning EventKind = "cost_warning"
+
+	// EventSagaChapter — a lore counter advanced a Saga ONTO a
+	// chapter (CR 714.2c). Target / CardID = the Saga, Actor = its
+	// controller, Amount = the chapter number just reached. One
+	// event per chapter crossed, in ascending order, so a Saga that
+	// gains two lore counters at once triggers both chapters in the
+	// printed order.
+	//
+	// A dedicated kind rather than a predicate over
+	// EventCounterPlaced: that event is emitted for REMOVALS too and
+	// carries only the post-change total, so "went from 1 to 2"
+	// and "went from 3 to 2" are indistinguishable on it. A chapter
+	// ability that fired when a lore counter was removed would be a
+	// silent rules bug with no way for a card file to defend itself.
+	// Added in S27.
+	EventSagaChapter EventKind = "saga_chapter"
+
+	// EventStepBegan — the turn cursor entered a step. Actor is the
+	// active player, Amount the turn number, Label the step name
+	// (game.Step). Emitted from runStepEntryHooksLocked AFTER the
+	// S17 skip-step replacement window has had its say, so a step
+	// that Stasis cancelled never announces.
+	//
+	// Distinct from the older EventBeginUpkeep / EventBeginEndStep,
+	// which exist for the trigger harvester and only cover the two
+	// steps cards actually name. This one is the public game log's
+	// spine: it is what lets "Bolt resolved" be read as "on turn 7,
+	// in Aang's second main phase". Nothing in the rules engine
+	// listens for it — adding a listener that does would be a
+	// mistake, because the two upkeep/end-step kinds are the ones
+	// with the careful mulligan and recursion guards.
+	//
+	// The mulligan window re-runs the untap hook once per keep, so
+	// consecutive duplicates for the same (turn, step, seat) are
+	// expected and de-duplicated by the log projection rather than
+	// here. Added in S31 sub-PR 0.
+	EventStepBegan EventKind = "step_began"
+
+	// EventBlock — CardID was declared as a blocker. Actor is the
+	// blocking creature's controller, Target the attacker it is
+	// blocking. The other half of EventAttack, and emitted under the
+	// same rule: only on a creature's FIRST declaration against a
+	// given attacker, so re-pointing a blocker in the sandbox does
+	// not announce twice. Added in S31 sub-PR 0 for the public game
+	// log — no card in the catalog reads "becomes blocked by" yet.
+	EventBlock EventKind = "block"
 )
 
 // Event is a single entry in the per-game event log. Tagged union
@@ -381,6 +448,20 @@ type Event struct {
 	// DrawCard / Mill / Discard it's the moved card. For Cast /
 	// Resolve it's the spell. For TokenCreated it's the new token.
 	CardID uuid.UUID `json:"card_id,omitempty"`
+
+	// StackItemID names the stack item the event is about, when the
+	// event is about one. Set on EventBecomesTarget (S30, for ward).
+	//
+	// It is NOT the same as Source, and the difference is the whole
+	// reason the field exists. For a SPELL the two coincide: the
+	// StackItem's ID equals the spell card's InstanceID. For an
+	// ACTIVATED or TRIGGERED ability they do not — the item carries
+	// a freshly minted UUID and Source names the permanent the
+	// ability came from, which stays on the battlefield. So an
+	// effect that has to act on "the spell or ability that targeted
+	// me" — counter it, copy it, redirect it — cannot get there from
+	// Source alone, and ward is the first effect that has to.
+	StackItemID uuid.UUID `json:"stack_item_id,omitempty"`
 
 	// Amount is the signed / count payload: damage dealt, life
 	// delta, number of cards, counter count after the change.
@@ -418,30 +499,38 @@ type Event struct {
 // ability announce, the triggered-ability target pick, and the
 // manual sandbox announce.
 //
-// `actor` is the controller of the spell or ability and `source` is
-// its source card. TargetSelf / TargetNone slots are skipped —
-// neither names an object anyone else chose.
+// `actor` is the controller of the spell or ability, `source` is its
+// source card and `itemID` is its stack item. TargetSelf /
+// TargetNone slots are skipped — neither names an object anyone else
+// chose.
+//
+// `source` and `itemID` are equal for a cast spell and differ for an
+// ability; see Event.StackItemID for why both are carried. A caller
+// with no item to name (the manual sandbox announce, before the item
+// exists) may pass uuid.Nil.
 //
 // Emitted AFTER the item exists, so a trigger harvested off this
 // event lands on PendingTriggers above the thing that targeted.
 // Caller must hold g.mu.
-func (g *Game) emitBecameTargetLocked(actor, source uuid.UUID, targets []TargetRef) {
+func (g *Game) emitBecameTargetLocked(actor, source, itemID uuid.UUID, targets []TargetRef) {
 	for _, t := range targets {
 		switch t.Kind {
 		case TargetCard:
 			g.EmitEvent(Event{
-				Kind:   EventBecomesTarget,
-				Actor:  actor,
-				Source: source,
-				Target: t.ID,
-				CardID: t.ID,
+				Kind:        EventBecomesTarget,
+				Actor:       actor,
+				Source:      source,
+				StackItemID: itemID,
+				Target:      t.ID,
+				CardID:      t.ID,
 			})
 		case TargetPlayer:
 			g.EmitEvent(Event{
-				Kind:   EventBecomesTarget,
-				Actor:  actor,
-				Source: source,
-				Target: t.ID,
+				Kind:        EventBecomesTarget,
+				Actor:       actor,
+				Source:      source,
+				StackItemID: itemID,
+				Target:      t.ID,
 			})
 		}
 	}

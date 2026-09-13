@@ -16,6 +16,8 @@ func init() {
 	Register(Spec{
 		OracleID:        "3cbb5045-8566-4279-b7d3-3e599b11ccc5",
 		Name:            "Deputy of Acquittals",
+		Completeness:    CompletenessCaveats,
+		Caveats:         []string{"The picker offers Deputy itself as a choice, but picking it does nothing and the bounce is wasted."},
 		PrintedKeywords: []string{"flash"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},

@@ -228,6 +228,16 @@ type Game struct {
 	// sub-PR 1.
 	lastKnownBattlefield map[uuid.UUID]Characteristic
 
+	// simultaneousExit holds copies of the permanents currently
+	// leaving the battlefield as ONE event — a board wipe, or one
+	// state-based-action sweep. Non-empty only for the duration of
+	// that sweep; the trigger harvester reads it so a watcher that
+	// died earlier in the same wipe still sees its neighbours die
+	// (CR 700.4 / 603.10). See simultaneous.go. Transient by
+	// construction, so Clone / RestoreFrom do not carry it: no
+	// snapshot is ever taken mid-sweep. Added in S23.
+	simultaneousExit []Card
+
 	// rng is captured from Start so that subsequent mutations that
 	// shuffle (Mulligan, ShuffleLibrary) use the same source of
 	// randomness as the initial library shuffle. nil means "use the
@@ -266,10 +276,11 @@ type Game struct {
 	// listener bumps; sub-PR 3 wires actual recompute work.
 	// lastResolvedVersion mirrors the most recent version the
 	// recompute pass has caught up to; the snapshot path no-ops when
-	// they're equal. Both atomic so the snapshot path can call
-	// RecomputeLayersIfStaleLocked under the read lock without a
-	// data race against listener bumps. Read via .Load(), bumped via
-	// .Add(1) / .Store(). Added in S16 sub-PR 1.
+	// they're equal. Both atomic so the staleness CHECK can run
+	// under the read lock without racing a listener bump — the
+	// recompute itself takes the write lock (see ReadSnapshot).
+	// Read via .Load(), bumped via .Add(1) / .Store(). Added in
+	// S16 sub-PR 1.
 	layerVersion        atomic.Uint64
 	lastResolvedVersion atomic.Uint64
 
@@ -279,10 +290,6 @@ type Game struct {
 	// exactly once. Test-only; production callers ignore. Atomic
 	// for the same reason as the version counters.
 	recomputeCount atomic.Uint64
-
-	// recompute serialises layer recomputes against each other
-	// without promoting the game's read lock. See layers.go.
-	recompute recomputeState
 
 	// BuiltinReplacements is the S17 replacement-effect registry
 	// populated at NewGame. Today: just the commander-zone
@@ -673,6 +680,24 @@ func (g *Game) onTurnAdvanceLocked(prev, next Turn) {
 	if !prev.IsNewTurn(next) {
 		return
 	}
+	// S25 (#77): invalidate the layer cache. A continuous effect
+	// whose AppliesTo reads the TURN rather than the battlefield —
+	// Zurgo Helmsmasher's "during your turn, ~ has indestructible" is
+	// the first in the catalog — changes its answer here and nowhere
+	// else, so nothing would otherwise mark the cached
+	// characteristics stale and the keyword would stick around on the
+	// wrong player's turn.
+	//
+	// This is the bump layer_listener.go's header predicted and
+	// deliberately deferred ("Step / phase advance … when they
+	// arrive in a later sprint, advance the version inside the
+	// step-advance helper directly — no event for it today"). It
+	// lands here rather than in the listener for the reason that note
+	// gives: there is no event for a turn change to listen to.
+	//
+	// Cost is one recompute per turn, against a cache that is already
+	// invalidated by every zone move and every counter placed.
+	g.layerVersion.Add(1)
 	if g.LoyaltyActivatedThisTurn != nil {
 		g.LoyaltyActivatedThisTurn = nil
 	}
@@ -786,6 +811,19 @@ func (g *Game) runStepEntryHooksLocked() {
 	// recursion through Untap → Upkeep and Cleanup → next-Untap)
 	// triggers the clear. Cheap to call on already-empty pools.
 	g.emptyAllManaPoolsLocked()
+	// S31 sub-PR 0: announce the step for the public game log. Placed
+	// after the skip-step replacement window so a cancelled step never
+	// announces, and before the per-step turn-based actions so the
+	// entries they produce read as happening INSIDE this step. No
+	// rules machinery listens for this kind.
+	if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) && g.Seats[g.Turn.ActiveSeat] != nil {
+		g.EmitEvent(Event{
+			Kind:   EventStepBegan,
+			Actor:  g.Seats[g.Turn.ActiveSeat].ID,
+			Amount: g.Turn.Number,
+			Label:  string(g.Turn.Step),
+		})
+	}
 	// S22: CR 603.7 delayed triggered abilities fire on ENTRY to the
 	// step they name. Draining here — before the per-step turn-based
 	// actions below — is what makes "the NEXT end step" work without
@@ -794,6 +832,29 @@ func (g *Game) runStepEntryHooksLocked() {
 	// step, so it waits for the following one. See delayed.go.
 	g.fireDelayedTriggersLocked(g.Turn.Step)
 	switch g.Turn.Step {
+	case StepPrecombatMain:
+		// S27 / CR 714.2b: "after your draw step, put a lore counter
+		// on each Saga you control" is a turn-based action performed
+		// as the precombat main phase begins. Precombat main grants
+		// priority, so there is no auto-advance — the chapter
+		// triggers this queues are drained onto the stack by the
+		// caller's drainPendingTriggersAPNAPLocked / runStateChecks,
+		// which is the same boundary every other turn-based action
+		// uses.
+		g.advanceSagasForActiveSeatLocked()
+		// S30: announce the precombat main phase so "at the beginning
+		// of your precombat main phase" triggers auto-fire through
+		// the harvester. Same shape as the upkeep and end-step
+		// announcements, and it follows the Saga advance for the same
+		// reason CR 714.2b puts that first: the turn-based action
+		// happens as the phase begins, and the triggers that watch
+		// the phase go on the stack above whatever it queued.
+		if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
+			g.EmitEvent(Event{
+				Kind:  EventBeginPrecombatMain,
+				Actor: g.Seats[g.Turn.ActiveSeat].ID,
+			})
+		}
 	case StepEnd:
 		// S22: announce the end step so "at the beginning of your
 		// end step" triggers auto-fire through the harvester. The
@@ -1025,10 +1086,28 @@ func (g *Game) WithWriteLock(fn func()) {
 //
 // S16: ReadSnapshot opportunistically resolves any stale layer-
 // system recompute before invoking fn so the projection sees the
-// current effective characteristics. The fast-path no-ops when the
-// version counters match; the body uses atomic version reads + a
-// dedicated recompute mutex, so calling under the read lock stays
-// race-free without promoting to the write lock.
+// current effective characteristics. The fast path — two atomic
+// loads under the read lock — is what almost every broadcast hits,
+// because every layer-version bump happens under the WRITE lock and
+// most mutators recompute before they release it.
+//
+// When the cache IS stale the recompute cannot run here, because a
+// recompute is a write: it reassigns Card.effective on every
+// battlefield card, and since the S24 layer-2 control change it also
+// writes Card.Controller (plus the CR 302.6 / 506.4 consequences) on
+// any permanent whose controller just moved. A sync.RWMutex read
+// lock is shared, so doing that under it races every other read-lock
+// holder — `Game.AutoTapForCostExcluding` from the lobby's /autotap
+// handler and `Game.ControllerOfCard` from the actions package both
+// read Card.Controller off the battlefield on their own goroutines.
+// So we drop the read lock, retake it in write mode for the
+// recompute alone, and then re-enter read mode.
+//
+// The loop re-checks rather than assuming: a mutation can land in
+// the gap between releasing the write lock and retaking the read
+// lock, and fn() must see fresh layers. Each extra iteration costs
+// one intervening mutation, so it terminates for the same reason the
+// engine makes progress at all.
 //
 // This exists so that the protocol package can build a wire-format
 // view of the game without the game package depending on the protocol
@@ -1036,8 +1115,14 @@ func (g *Game) WithWriteLock(fn func()) {
 // built from game types).
 func (g *Game) ReadSnapshot(fn func()) {
 	g.mu.RLock()
+	for g.layerVersion.Load() != g.lastResolvedVersion.Load() {
+		g.mu.RUnlock()
+		g.mu.Lock()
+		g.RecomputeLayersIfStaleLocked()
+		g.mu.Unlock()
+		g.mu.RLock()
+	}
 	defer g.mu.RUnlock()
-	g.RecomputeLayersIfStaleLocked()
 	fn()
 }
 

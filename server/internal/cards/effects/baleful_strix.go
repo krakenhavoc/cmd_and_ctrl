@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "37688720-03de-4eca-a82d-a0afe8d58adc",
 		Name:            "Baleful Strix",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "deathtouch"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},

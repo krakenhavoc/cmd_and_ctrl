@@ -84,10 +84,21 @@
   // and zero is a legal answer.
   const isSearch = $derived(active?.kind === "search_library");
 
+  // S16.5 copy_target — "you may have this creature enter as a copy
+  // of ...". Shares the card grid and the {choice_id, card_ids}
+  // payload; like search, its floor is zero, because every printed
+  // card in the class says "you may" and declining is a real answer
+  // (the permanent enters as its own printed self instead).
+  //
+  // Nothing on the board changes while this is open: the permanent
+  // is still on the stack, and the answer decides what it enters AS.
+  const isCopyTarget = $derived(active?.kind === "copy_target");
+
   // How many cards this prompt accepts, and how few it will settle
-  // for. Only search moves the floor off the ceiling.
+  // for. Search and copy are the two that move the floor off the
+  // ceiling.
   const pickMax = $derived(isSearch ? (active?.search_max ?? 1) : (active?.count ?? 0));
-  const pickMin = $derived(isSearch ? 0 : (active?.count ?? 0));
+  const pickMin = $derived(isSearch || isCopyTarget ? 0 : (active?.count ?? 0));
   const canSubmit = $derived(selected.size >= pickMin && selected.size <= pickMax);
 
   function toggle(id: string): void {
@@ -202,6 +213,15 @@
   // auto-taps untapped sources if the pool is short; a "Pay" the
   // player can't cover degrades to a decline server-side.
   const isPayUnless = $derived(active?.kind === "pay_unless");
+
+  // S28 cascade branch — "you may cast it without paying its mana
+  // cost". Same {choice_id, apply} payload; the server routes to
+  // ResolveMayCast by kind. "Yes" stamps a free-cast permission on
+  // the exiled card, which then casts out of exile like any other
+  // impulse grant; "No" puts it on the bottom of the library with
+  // the rest of the cards cascade turned over.
+  const isMayCast = $derived(active?.kind === "may_cast");
+  const mayCastCard = $derived(active?.options?.[0]);
 
   // Shockland entry branch — "as this land enters, you may pay 2
   // life. If you don't, it enters tapped." Same {choice_id, apply}
@@ -330,7 +350,7 @@
   // trigger, pay-unless) from the keyboard; the footer shows the
   // hint. Ignored while typing in a field.
   const isYesNo = $derived(
-    isOptionalReplacement || isTriggerPrompt || isPayUnless || isEntryPayLife,
+    isOptionalReplacement || isTriggerPrompt || isPayUnless || isEntryPayLife || isMayCast,
   );
   function handleKey(e: KeyboardEvent): void {
     if (!open || !isYesNo) return;
@@ -622,6 +642,25 @@
           <button type="button" onclick={() => answerOptional(false)}>No</button>
           <button type="button" class="primary" onclick={() => answerOptional(true)}>Yes</button>
         </div>
+      {:else if isMayCast}
+        <h2 id="choice-title">
+          {active.reason || "Cast it without paying its mana cost?"}
+          <span class="prompt-src" aria-hidden="true">cascade · CR 702.85</span>
+        </h2>
+        <p class="prompt-hint">
+          {#if mayCastCard}
+            <strong>{mayCastCard.name}</strong> is exiled face up.
+          {/if}
+          Say yes and it stays in exile, castable for nothing until end of turn. Say no and it goes to
+          the bottom of your library with everything else cascade turned over.
+        </p>
+        <div class="prompt-foot">
+          <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
+          <button type="button" onclick={() => answerOptional(false)}>To the bottom</button>
+          <button type="button" class="primary" onclick={() => answerOptional(true)}>
+            Cast it free
+          </button>
+        </div>
       {:else if isEntryPayLife}
         <h2 id="choice-title">
           {active.reason || `Pay ${active.pay_cost ?? ""} as it enters?`}
@@ -793,6 +832,9 @@
           {:else if isSearch}
             {active.reason || "Search your library"}
             <span class="prompt-src" aria-hidden="true">search · CR 701.19</span>
+          {:else if isCopyTarget}
+            {active.reason || "Enter as a copy of…"}
+            <span class="prompt-src" aria-hidden="true">copy · CR 706</span>
           {:else}
             {active.reason || "Choose"} — pick {active.count} card{active.count === 1 ? "" : "s"}
             <span class="prompt-src" aria-hidden="true">{isSelfSource ? "discard" : "reveal"}</span>
@@ -809,6 +851,9 @@
               Take up to {pickMax} of these, or none.
             {/if}
             Only you can see them, and your library is shuffled either way.
+          {:else if isCopyTarget}
+            Pick what it enters as a copy of — it copies the printed card, so counters, damage and
+            other effects don't come across. Or copy nothing and let it enter as itself.
           {:else if isSelfSource}
             Pick {active.count} card{active.count === 1 ? "" : "s"} from your hand to discard.
           {:else}
@@ -834,7 +879,7 @@
         </div>
         <div class="prompt-foot">
           <span class="prompt-count">{selected.size} / {pickMax} selected</span>
-          {#if isSearch}
+          {#if isSearch || isCopyTarget}
             <button
               type="button"
               onclick={() => (selected = new Set())}
@@ -848,6 +893,8 @@
               Sacrifice
             {:else if isSearch}
               {selected.size === 0 ? "Fail to find" : "Take"}
+            {:else if isCopyTarget}
+              {selected.size === 0 ? "Enter as itself" : "Enter as a copy"}
             {:else}
               Confirm
             {/if}

@@ -292,6 +292,16 @@ func battlefieldSpec(mode, label string, pred CardPredicate) *game.TargetSpec {
 	}
 }
 
+// IsTokenPredicate matches a token — "target token you control"
+// (Esika's Chariot). Named with the suffix because IsToken is
+// already the plain card helper in helpers.go and the two are used
+// side by side. Added in S27.
+func IsTokenPredicate() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		return IsToken(c)
+	}
+}
+
 // TargetSpell — "target spell" on the stack, narrowed by predicates
 // (Noncreature() for Negate, Creature() for Essence Scatter).
 func TargetSpell(label string, preds ...CardPredicate) *game.TargetSpec {
@@ -321,4 +331,173 @@ func TargetCardInGraveyard(label string, preds ...CardPredicate) *game.TargetSpe
 		},
 		Min: 1, Max: 1,
 	}
+}
+
+// --- S23 mass-effect predicates ----------------------------------
+//
+// Board wipes are written as exclusions far more often than target
+// clauses are — "all creatures except for Krakens", "all creatures
+// that aren't Dragons", "all nonland permanents you don't control".
+// These are the pieces those clauses are built from. They live here
+// rather than in mass.go because a predicate is a predicate: Crux of
+// Fate's "non-Dragon" and a hypothetical "target non-Dragon creature"
+// must be the same function or they will drift.
+
+// Except is the "all X except for Y" / "all X other than Y" /
+// "all X that aren't Y" shape, spelled so the Go reads like the card:
+//
+//	Except(Creature(), Subtype("Kraken"), Subtype("Leviathan"))
+//	  → "all creatures except for Krakens and Leviathans"
+//
+// Equivalent to And(base, Not(Or(exceptions...))), which is what it
+// builds. With no exceptions it is just `base`, so a card that
+// computes its exclusion list can pass an empty one without a
+// special case.
+func Except(base CardPredicate, exceptions ...CardPredicate) CardPredicate {
+	if len(exceptions) == 0 {
+		return base
+	}
+	return And(base, Not(Or(exceptions...)))
+}
+
+// Subtype passes when the card's effective subtypes include `name`
+// ("Dragon", "Kraken", "Equipment", "Aura"). Reads through
+// game.Card.HasSubtype, so a Layer-4 subtype grant counts exactly as
+// a printed one does — the same reason the type predicates above go
+// through HasCardType rather than through the printed type line.
+//
+// Case-insensitive, matching HasSubtype.
+func Subtype(name string) CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.HasSubtype(name) }
+}
+
+// AnySubtype passes when the card has ANY of the named subtypes —
+// Whelming Wave's four-creature-type exclusion list, written once
+// instead of Or'd four times at the call site.
+func AnySubtype(names ...string) CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		for _, n := range names {
+			if c.HasSubtype(n) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// ControlledBy passes for cards a SPECIFIC player controls. Distinct
+// from YouControl / OpponentControls, which are relative to the
+// caster: River's Rebuke sweeps "all nonland permanents TARGET PLAYER
+// controls", and the player in question is whoever the spell targeted,
+// not the caster and not "an opponent".
+func ControlledBy(player uuid.UUID) CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.Controller == player }
+}
+
+// Multicolored passes when the card has two or more colours — the
+// "each player who controls a multicolored creature draws a card"
+// half of Depopulate, and the predicate half of any gold-hoser.
+func Multicolored() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return len(c.EffectiveColors()) >= 2 }
+}
+
+// --- S27 predicates --------------------------------------------
+
+// OfSubtype matches a permanent whose EFFECTIVE subtypes include
+// `subtype`, case-insensitively — "Knights you control" (History of
+// Benalia), "Vehicle you control" (Heart of Kiran's crew clause).
+//
+// Effective, not printed: a Layer-4 type grant is exactly the sort of
+// thing a tribal card is supposed to see, and Card.HasSubtype already
+// reads the post-layer view on the battlefield and falls back to the
+// printed type line everywhere else.
+func OfSubtype(subtype string) CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		return c.HasSubtype(subtype)
+	}
+}
+
+// GreatestPowerYouControl matches a creature the caster controls
+// whose power is not exceeded by any other creature they control
+// (Triumph of Gerrard's "target creature you control with the
+// greatest power").
+//
+// Ties all match, which is the rule (CR 700.3 — "the greatest" picks
+// out a SET, and the player chooses among it); that is why this is a
+// target predicate rather than a lookup that returns one card.
+//
+// Reads CurrentPower so counters and anthems count, and re-runs at
+// resolution like every other target predicate, so a pump in response
+// can legally take the target out of the set (CR 608.2b).
+func GreatestPowerYouControl() CardPredicate {
+	return func(g *game.Game, caster uuid.UUID, c game.Card) bool {
+		if !c.IsCreature() || c.Controller != caster {
+			return false
+		}
+		best := c.CurrentPower()
+		for _, other := range g.BattlefieldCardsForEffect() {
+			if other.Controller != caster || !other.IsCreature() {
+				continue
+			}
+			if other.CurrentPower() > best {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+// --- cost clauses (S28) ------------------------------------------
+//
+// The three constructors below build specs for COSTS, not targets.
+// The difference is load-bearing: a cost does not target (CR 601.2h),
+// so hexproof, shroud and "can't be the target of spells" never
+// narrow the set, and the engine matches these through
+// SpecCandidatesForEffect rather than through the targeting gate.
+
+// CardInYourHand — "a blue card from your hand" (Force of Will), "a
+// white card from your hand" (Solitude's evoke cost).
+//
+// Nothing in the game TARGETS a card in a hand and nothing should: a
+// hand is hidden information, and a legal-target list over one would
+// leak an opponent's hand size and contents into a picker. The single
+// consumer is the alternative-cost payment scan, computed per viewer
+// over their own cards.
+//
+// Ownership is baked in rather than left to the caller. Every printed
+// clause of this shape says "your hand", and the failure mode of
+// forgetting YouOwn() is a picker offering an opponent's cards —
+// both a rules bug and an information leak.
+func CardInYourHand(label string, preds ...CardPredicate) *game.TargetSpec {
+	pred := And(append([]CardPredicate{YouOwn()}, preds...)...)
+	return &game.TargetSpec{
+		Label: label,
+		Zones: []game.ZoneKind{game.ZoneHand},
+		CardOK: func(g *game.Game, caster uuid.UUID, c game.Card, _ game.ZoneKind) bool {
+			return pred(g, caster, c)
+		},
+		Min: 1, Max: 1,
+	}
+}
+
+// PermanentYouControl — "an Island you control" (Daze's alternative
+// cost). Same cost-not-target contract as CardInYourHand.
+func PermanentYouControl(label string, preds ...CardPredicate) *game.TargetSpec {
+	pred := And(append([]CardPredicate{YouControl()}, preds...)...)
+	return &game.TargetSpec{
+		Label: label,
+		Zones: []game.ZoneKind{game.ZoneBattlefield},
+		CardOK: func(g *game.Game, caster uuid.UUID, c game.Card, _ game.ZoneKind) bool {
+			return pred(g, caster, c)
+		},
+		Min: 1, Max: 1,
+	}
+}
+
+// HasSubtype passes when the card has the named subtype — "an Island
+// you control" (Daze), "a Swamp" (Snuff Out). Reads EFFECTIVE
+// subtypes, so a land something else turned into an Island counts,
+// which is what the printed clause means.
+func HasSubtype(sub string) CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hasSubtype(c, sub) }
 }

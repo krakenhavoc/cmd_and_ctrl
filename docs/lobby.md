@@ -467,6 +467,30 @@ reporter who is also a repo collaborator.
 
 ---
 
+### `GET /bugreport/{report_id}/gamelog`
+
+Streams the public game log pinned when the report was filed, as
+`text/plain`. One line per entry: sequence number, turn, kind, and the
+rendered sentence.
+
+**Admin only**, the same gate as the pinned replay. The contents are
+public information by construction — the log is built from what a
+player at the table could observe — but the pinned copy is the
+UNFILTERED projection, and this route has no seat to filter it for.
+
+Where the replay says what the state *was* at every frame, the log says
+what *happened*, which is usually the question a bug report is asking.
+Added in S31 ([ADR 0033](decisions/0033-ai-bot-seat.md) §4).
+
+| Status | Reason |
+|---|---|
+| 401 | no valid session |
+| 403 | not an admin |
+| 404 | unknown report, or the report pinned no game log |
+| 503 | artifact storage not configured |
+
+---
+
 ## Card routes (authenticated)
 
 Served by the `cards` package. Both routes require authentication.

@@ -196,6 +196,23 @@ func (e *enumerator) choiceMoves() bool {
 				e.addChoice(c, reason+": sacrifice "+cardName(g, id), p)
 			}
 
+		case game.PendingChoiceCopyTarget:
+			// CR 614.1c: every printed "enters as a copy" says "you
+			// may", so declining is always a legal answer — and for
+			// a bot it is the one that always terminates, which is
+			// why it is enumerated first.
+			p := base()
+			p.CardIDs = []string{}
+			e.addChoice(c, reason+": don't copy anything", p)
+			for _, id := range c.CopyOptions {
+				if card := findBattlefield(g, id); card == nil {
+					continue
+				}
+				p := base()
+				p.CardIDs = []string{id.String()}
+				e.addChoice(c, reason+": copy "+cardName(g, id), p)
+			}
+
 		case game.PendingChoiceSearchLibrary:
 			// CR 701.19: take up to SearchMax of the matching cards;
 			// failing to find (an empty list) is always legal.

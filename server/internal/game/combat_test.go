@@ -532,7 +532,7 @@ func TestCombatUnblockedCommanderDamageEliminatesAt21(t *testing.T) {
 			t.Fatalf("hit %d: DeclareAttacker: %v", hit, err)
 		}
 		advanceIntoStep(t, g, StepCombatDamage)
-		if got, want := def.CommanderDamage[atk.ID], 7*hit; got != want {
+		if got, want := def.CommanderDamage[cmdr.InstanceID], 7*hit; got != want {
 			t.Fatalf("hit %d: commander damage = %d, want %d", hit, got, want)
 		}
 	}
@@ -566,7 +566,7 @@ func TestCombatNonCommanderDamageNotRecorded(t *testing.T) {
 	if def.Life != StartingLife-2 {
 		t.Errorf("defender life = %d, want %d", def.Life, StartingLife-2)
 	}
-	if got := def.CommanderDamage[atk.ID]; got != 0 {
+	if got := def.CommanderDamage[bear]; got != 0 {
 		t.Errorf("non-commander attack recorded %d commander damage, want 0", got)
 	}
 }
@@ -628,7 +628,7 @@ func TestCombatCommanderTrampleOverflowRecordsCommanderDamage(t *testing.T) {
 	if def.Life != StartingLife-1 {
 		t.Errorf("defender life = %d, want %d", def.Life, StartingLife-1)
 	}
-	if got := def.CommanderDamage[atk.ID]; got != 1 {
+	if got := def.CommanderDamage[cmdr.InstanceID]; got != 1 {
 		t.Errorf("trample overflow commander damage = %d, want 1", got)
 	}
 }
