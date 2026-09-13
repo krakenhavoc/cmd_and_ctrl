@@ -33,6 +33,15 @@ func init() {
 		{"390f1b56-264e-4336-83be-dc1fe79bfdcf", "Smoldering Marsh", "B", "R"},
 		{"dcb7e046-f01b-497c-88e5-57794eb30ce5", "Canopy Vista", "G", "W"},
 		{"5330e24a-8568-446e-840a-594cd08bd1bc", "Prairie Stream", "W", "U"},
+		// Roadmap batch 06 (#299): the enemy-pair printing of the same
+		// two-basics clause.
+		{"40544d12-0391-4a61-af95-9b8ec01ed8fc", "Vernal Fen", "B", "G"},
+		// Roadmap batch 10 (#303): Land — Mountain Plains, the same
+		// two-basics clause.
+		{"5dd0cc44-4647-4857-ad3b-22494099d08a", "Radiant Summit", "R", "W"},
+		// Roadmap batch 12 (#305): Land — Forest Island, the same
+		// two-basics clause.
+		{"0070db93-142b-4d04-afd3-836792dc134b", "Sodden Verdure", "G", "U"},
 	} {
 		Register(Spec{
 			OracleID:      land.oracleID,

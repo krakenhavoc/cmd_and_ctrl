@@ -58,6 +58,7 @@
     tapCostLimit,
     alternativeCostsOf,
     alternativeCostByKey,
+    altCostPayOptions,
     applyCastChoices,
     isLegalCardTarget,
     isLegalPlayerTarget,
@@ -74,6 +75,7 @@
   import XCostModal from "./XCostModal.svelte";
   import SacrificeCostModal from "./SacrificeCostModal.svelte";
   import CrewCostModal from "./CrewCostModal.svelte";
+  import AltCostPaymentModal from "./AltCostPaymentModal.svelte";
   import ModePickerModal from "./ModePickerModal.svelte";
   import DiscardCostModal from "./DiscardCostModal.svelte";
   import AlternativeCostModal from "./AlternativeCostModal.svelte";
@@ -301,6 +303,42 @@
     continueCast(card, { ...choices, tapIDs: ids });
   }
 
+  // S28: the non-mana half of a chosen alternative cost — Force of
+  // Will's "exile a blue card from your hand", Daze's "return an
+  // Island you control", Solitude's evoke pitch. Opens immediately
+  // after the alternative-cost picker, because it pays the cost that
+  // picker just chose; every other cost prompt comes after it.
+  //
+  // The options can live in either zone (hand for a pitch,
+  // battlefield for a bounce), so the lookup searches both rather
+  // than assuming one.
+  let altPayPromptCard = $state<CardView | null>(null);
+  let altPayPromptChoices: CastChoices = {};
+
+  const altPayOffer = $derived(
+    altPayPromptCard
+      ? alternativeCostByKey(altPayPromptCard, altPayPromptChoices.altCost)
+      : undefined,
+  );
+
+  const altPayOptions = $derived.by(() => {
+    if (!altPayPromptCard || !viewerID) return [];
+    const ids = new Set(altCostPayOptions(altPayOffer) ?? []);
+    if (ids.size === 0) return [];
+    const me = view.seats.find((s) => s.id === viewerID);
+    const pool = [...(me?.hand.cards ?? []), ...view.battlefield.cards];
+    return pool.filter((c) => ids.has(c.instance_id));
+  });
+
+  function confirmAltPay(instanceID: string): void {
+    const card = altPayPromptCard;
+    const choices = altPayPromptChoices;
+    altPayPromptCard = null;
+    altPayPromptChoices = {};
+    if (!card) return;
+    afterAltCostPayment(card, { ...choices, altCostIDs: [instanceID] });
+  }
+
   // afterAltCost / afterDiscardCost / afterCastCosts are the seams
   // between the cost prompts and the rest of the cast flow, so adding
   // a cost kind doesn't mean editing every earlier prompt's confirm.
@@ -310,6 +348,18 @@
   // continues through the discard / sacrifice prompts rather than
   // short-circuiting past them.
   function afterAltCost(card: CardView, choices: CastChoices): void {
+    // The chosen offer may charge a card as well as — or instead of —
+    // mana. Ask for it before anything else, matching the order the
+    // server validates the cast in.
+    if (altCostPayOptions(alternativeCostByKey(card, choices.altCost)) !== undefined) {
+      altPayPromptChoices = choices;
+      altPayPromptCard = card;
+      return;
+    }
+    afterAltCostPayment(card, choices);
+  }
+
+  function afterAltCostPayment(card: CardView, choices: CastChoices): void {
     if (discardCostOf(card) > 0) {
       discardPromptChoices = choices;
       discardPromptCard = card;
@@ -657,15 +707,20 @@
   // elsewhere). A cast prompt already in flight is replaced — the
   // trigger's target is owed first.
   $effect(() => {
+    // S27: the legend rule is answered through the same flow — it is
+    // the same question shape (pick one from a server-computed set)
+    // and the banner's confirm sends the same payload. The server
+    // routes by the choice's kind, so the client needs no second
+    // component and no second code path.
     const mine = (view.pending_choices ?? []).find(
-      (c) => c.kind === "pick_target" && c.chooser === viewerID,
+      (c) => (c.kind === "pick_target" || c.kind === "legend_rule") && c.chooser === viewerID,
     );
     const cur = $targeting;
     if (mine) {
       if (cur?.choiceID === mine.id) return;
       const source = findCardAnywhere(mine.source) ?? {
         instance_id: mine.source ?? "",
-        name: "Triggered ability",
+        name: mine.kind === "legend_rule" ? "Legend rule" : "Triggered ability",
         owner: viewerID ?? "",
         controller: viewerID ?? "",
       };
@@ -859,6 +914,16 @@
     onCancel={() => {
       altCostPromptCard = null;
       altCostPromptChoices = {};
+    }}
+  />
+  <AltCostPaymentModal
+    card={altPayPromptCard}
+    offer={altPayOffer ?? null}
+    options={altPayOptions}
+    onConfirm={confirmAltPay}
+    onCancel={() => {
+      altPayPromptCard = null;
+      altPayPromptChoices = {};
     }}
   />
   <DiscardCostModal

@@ -101,6 +101,13 @@ export const ICONS = {
     p("M10 12V6a2 2 0 0 1 4 0v8"),
     p("M14 13V8a2 2 0 0 1 4 0v9a6 6 0 0 1-6 6H9l-5-6a2 2 0 0 1 3-2.5l1 1.2"),
   ],
+  // S31: the public game log — a ruled sheet
+  scroll: [
+    { t: "rect", x: 4, y: 3, w: 16, h: 18, rx: 2 } as IconPrimitive,
+    p("M8 8h8"),
+    p("M8 12h8"),
+    p("M8 16h5"),
+  ],
 } satisfies Record<string, IconPrimitive[]>;
 
 export type IconName = keyof typeof ICONS;

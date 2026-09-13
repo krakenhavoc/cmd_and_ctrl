@@ -382,6 +382,12 @@ func Dispatch(g *game.Game, a Action) error {
 			// alternative costs ("overload", "evoke", "cleave").
 			// Empty is the ordinary "pay the printed cost" case.
 			AlternativeCost string `json:"alternative_cost,omitempty"`
+			// S28 — the card paid to the non-mana half of that
+			// alternative cost: Force of Will's pitched blue card,
+			// Daze's returned Island, Solitude's evoke pitch. Exactly
+			// one entry when the claimed cost charges one, absent
+			// otherwise.
+			AltCostIDs []string `json:"alt_cost_ids,omitempty"`
 			// ADR 0034 — which printed face of a multi-face card is
 			// being cast or played. Absent (0) is the front face,
 			// which is the right answer for every single-faced card
@@ -425,6 +431,16 @@ func Dispatch(g *game.Game, a Action) error {
 					return fmt.Errorf("cast_spell sacrifice_ids[%d]: %w", i, err)
 				}
 				params.SacrificeIDs = append(params.SacrificeIDs, id)
+			}
+		}
+		if len(p.AltCostIDs) > 0 {
+			params.AltCostIDs = make([]uuid.UUID, 0, len(p.AltCostIDs))
+			for i, raw := range p.AltCostIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("cast_spell alt_cost_ids[%d]: %w", i, err)
+				}
+				params.AltCostIDs = append(params.AltCostIDs, id)
 			}
 		}
 		if len(p.TapIDs) > 0 {
@@ -1095,6 +1111,15 @@ func Dispatch(g *game.Game, a Action) error {
 			if err != nil {
 				return fmt.Errorf("resolve_choice target: %w", err)
 			}
+			// S27: the legend rule answers with the same {kind, id}
+			// ref — the permanent the controller KEEPS — because it is
+			// the same question shape (pick one from a server-computed
+			// set) and reusing the payload means the client's existing
+			// highlight flow answers it with no second picker. It is
+			// not targeting; the kind is what keeps them apart.
+			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceLegendRule {
+				return g.ResolveLegendRule(choiceID, a.Player, ref.ID)
+			}
 			return g.ResolvePickTarget(choiceID, a.Player, ref)
 		}
 		if p.Targets != nil {
@@ -1105,6 +1130,16 @@ func Dispatch(g *game.Game, a Action) error {
 					return fmt.Errorf("resolve_choice targets: %w", err)
 				}
 				refs = append(refs, ref)
+			}
+			// The client's targeting banner always submits the PLURAL
+			// form, so a legend-rule answer arrives here rather than
+			// in the singular branch above. Both are routed: the
+			// singular one is what gamecli and the tests send.
+			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceLegendRule {
+				if len(refs) != 1 {
+					return game.ErrInvalidParam
+				}
+				return g.ResolveLegendRule(choiceID, a.Player, refs[0].ID)
 			}
 			return g.ResolvePickTargets(choiceID, a.Player, refs)
 		}
@@ -1208,6 +1243,18 @@ func Dispatch(g *game.Game, a Action) error {
 				return g.ResolveSacrificeChoice(choiceID, a.Player, ids[0])
 			case game.PendingChoiceSearchLibrary:
 				return g.ResolveSearchLibrary(choiceID, a.Player, ids)
+			case game.PendingChoiceCopyTarget:
+				// "You may have this enter as a copy of ..." — an
+				// EMPTY list is the decline, exactly as it is for
+				// search's fail-to-find, because every printed copy
+				// effect of this class says "you may" (CR 614.1c).
+				if len(ids) == 0 {
+					return g.ResolveCopyTarget(choiceID, a.Player, uuid.Nil)
+				}
+				if len(ids) != 1 {
+					return game.ErrInvalidParam
+				}
+				return g.ResolveCopyTarget(choiceID, a.Player, ids[0])
 			}
 		}
 		return g.ResolvePendingChoice(choiceID, a.Player, ids)

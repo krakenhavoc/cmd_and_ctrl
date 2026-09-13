@@ -13,6 +13,7 @@
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
   import TargetingBanner from "../lib/components/board/TargetingBanner.svelte";
+  import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
   import BotFeed from "../lib/components/BotFeed.svelte";
   import Icon from "../lib/components/Icon.svelte";
   import { cancel as cancelTargeting, confirm as confirmTargeting } from "../lib/targeting";
@@ -536,6 +537,9 @@
   }
   let mulliganTo = $state(7);
   let showLifeHistory = $state(false);
+  // S31 sub-PR 0: the public game log drawer. Local to the tab —
+  // whether you have the log open is not table state.
+  let showGameLog = $state(false);
   function mulligan(): void {
     if (!viewerID) return;
     const n = Math.max(0, Math.min(20, Math.floor(mulliganTo)));
@@ -773,6 +777,15 @@
         {#if muted}<Icon name="volumeOff" size={17} />{:else}<Icon name="volume" size={17} />{/if}
       </button>
       <button
+        type="button"
+        class="ibtn"
+        class:on={showGameLog}
+        aria-pressed={showGameLog}
+        aria-label={showGameLog ? "close game log" : "open game log"}
+        title="game log — what has happened at the table"
+        onclick={() => (showGameLog = !showGameLog)}><Icon name="scroll" size={17} /></button
+      >
+      <button
         class="ibtn"
         title="settings (press , from anywhere)"
         aria-label="open settings"
@@ -992,6 +1005,10 @@
     future sprint can re-mount a panel here without touching the
     transport layer.
   -->
+  {#if showGameLog && view}
+    <GameLogPanel {view} {viewerID} onClose={() => (showGameLog = false)} />
+  {/if}
+
   <div class="play-area">
     {#if view}
       <Board

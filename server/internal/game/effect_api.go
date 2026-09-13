@@ -322,6 +322,29 @@ func (g *Game) DiscardRandomForEffect(playerID uuid.UUID, n int) error {
 	return nil
 }
 
+// LoseTheGameForEffect marks a player as losing the game — the
+// consequence half of "pay {3}{U}{U}. If you don't, you lose the
+// game" (Pact of Negation and the rest of the Pact cycle), and of
+// every other card that says those words outright.
+//
+// Routed through LosesAtNextSBA rather than eliminating the player on
+// the spot, because CR 104.3 says a player who "loses the game" does
+// so as a state-based action (CR 704.5a-adjacent): the ability
+// finishes resolving first, and the loss lands at the next SBA check
+// alongside the empty-library and zero-life losses. That ordering is
+// observable — a replacement or a second effect in the same
+// resolution still happens.
+//
+// Caller must hold g.mu. Added in S28.
+func (g *Game) LoseTheGameForEffect(playerID uuid.UUID) error {
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	p.LosesAtNextSBA = true
+	return nil
+}
+
 // MillNForEffect moves n cards from the top of playerID's library
 // to their graveyard. Emits EventMill per card. An empty library
 // during the mill sets LosesAtNextSBA (CR 704.5b-equivalent read

@@ -446,3 +446,58 @@ func GreatestPowerYouControl() CardPredicate {
 		return true
 	}
 }
+
+// --- cost clauses (S28) ------------------------------------------
+//
+// The three constructors below build specs for COSTS, not targets.
+// The difference is load-bearing: a cost does not target (CR 601.2h),
+// so hexproof, shroud and "can't be the target of spells" never
+// narrow the set, and the engine matches these through
+// SpecCandidatesForEffect rather than through the targeting gate.
+
+// CardInYourHand — "a blue card from your hand" (Force of Will), "a
+// white card from your hand" (Solitude's evoke cost).
+//
+// Nothing in the game TARGETS a card in a hand and nothing should: a
+// hand is hidden information, and a legal-target list over one would
+// leak an opponent's hand size and contents into a picker. The single
+// consumer is the alternative-cost payment scan, computed per viewer
+// over their own cards.
+//
+// Ownership is baked in rather than left to the caller. Every printed
+// clause of this shape says "your hand", and the failure mode of
+// forgetting YouOwn() is a picker offering an opponent's cards —
+// both a rules bug and an information leak.
+func CardInYourHand(label string, preds ...CardPredicate) *game.TargetSpec {
+	pred := And(append([]CardPredicate{YouOwn()}, preds...)...)
+	return &game.TargetSpec{
+		Label: label,
+		Zones: []game.ZoneKind{game.ZoneHand},
+		CardOK: func(g *game.Game, caster uuid.UUID, c game.Card, _ game.ZoneKind) bool {
+			return pred(g, caster, c)
+		},
+		Min: 1, Max: 1,
+	}
+}
+
+// PermanentYouControl — "an Island you control" (Daze's alternative
+// cost). Same cost-not-target contract as CardInYourHand.
+func PermanentYouControl(label string, preds ...CardPredicate) *game.TargetSpec {
+	pred := And(append([]CardPredicate{YouControl()}, preds...)...)
+	return &game.TargetSpec{
+		Label: label,
+		Zones: []game.ZoneKind{game.ZoneBattlefield},
+		CardOK: func(g *game.Game, caster uuid.UUID, c game.Card, _ game.ZoneKind) bool {
+			return pred(g, caster, c)
+		},
+		Min: 1, Max: 1,
+	}
+}
+
+// HasSubtype passes when the card has the named subtype — "an Island
+// you control" (Daze), "a Swamp" (Snuff Out). Reads EFFECTIVE
+// subtypes, so a land something else turned into an Island counts,
+// which is what the printed clause means.
+func HasSubtype(sub string) CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hasSubtype(c, sub) }
+}

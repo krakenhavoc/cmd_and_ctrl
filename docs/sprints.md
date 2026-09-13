@@ -1387,8 +1387,8 @@ The hard sprint of the rules-engine arc — continuous effects are the second-mo
 
 ### Out of scope (explicit handoffs)
 
-- **Dependency detection (CR 613.8)** — Opalescence + Humility pathological case. S16.5 follow-up if a real card surfaces.
-- **Layer 1 copy effects** — Clone, Phyrexian Metamorph, Spark Double. Defer to S16.5.
+- **Dependency detection (CR 613.8)** — Opalescence + Humility pathological case. S16.5 follow-up if a real card surfaces. **Still deferred after S16.5** — the trigger has not fired and no pair of statics in the catalog can produce an observable dependency; see [ADR 0043](decisions/0043-copy-effects.md) §5 for the reasoning and the cost.
+- **Layer 1 copy effects** — Clone, Phyrexian Metamorph, Spark Double. Defer to S16.5. **Landed in S16.5** ([#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159), closes [#335](https://github.com/krakenhavoc/cmd_and_ctrl/issues/335)) — as a copiable-value baseline rewrite rather than a `Layer1Copy` `ContinuousEffect`; see [ADR 0043](decisions/0043-copy-effects.md).
 - **Layer 3 text-changing effects** — Mind Bend, Glamerdye. Engine ships layer 3 stub; no execution path.
 - **Layer 5 color-changing effects** — Painter's Servant. Engine ships the layer 5 stub with no card.
 - **Continuous effects from non-battlefield zones** — Yixlid Jailer, command-zone commander effects. Battlefield-only is the S16 simplification (CR 113.6 default).
@@ -1449,6 +1449,28 @@ Stop-and-show for manual testing at each boundary, mirroring S15.
   Sprint: S16 — Continuous effects + layer system (CR 613)
   Issue: #66
   ```
+
+---
+
+## S16.5 — Layer system follow-ups (rolling)
+
+**Phase:** 7 · **Goal:** land the two things [ADR 0012](decisions/0012-layer-system.md) deferred, when and only when a real card asks for them. Tracked at [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159); no deadline, rolling on demand.
+
+### Layer 1 copy effects ✅
+
+Triggered by a Clone-class card reaching the catalog — and by [#335](https://github.com/krakenhavoc/cmd_and_ctrl/issues/335), where Clone "does not allow the selection of any usable target and enters the battlefield as a 0/0". Both halves of that report are one missing feature: the CR 614 pipeline could not ask a question as a permanent entered, and the layer engine could not say "this permanent's printed values are somebody else's".
+
+- [x] `game.PrintedValues` + `Card.PrintedSelf` — the CR 707.2 copiable-value set, and the revert the battlefield-leave path restores (CR 400.7). Carried by the snapshot, deep-copied by `clone.go`.
+- [x] `ReplacementEffect.CopySelector` + `PendingChoiceCopyTarget` — an as-it-enters picker, answered with the shared `{choice_id, card_ids}` payload; an empty list declines. The copy lands **before** `EventETB`, so every ETB trigger sees the copied characteristics.
+- [x] Stack resolution is now an `entryResumable` entry site, carrying its `StackItem` so the Aura attach (CR 303.4a) and evoke's sacrifice trigger (CR 702.74b) survive the pause. This also fixed a latent bug nothing had hit: **any** permanent spell whose entry queued a CR 616 ordering prompt was dropped instead of pushed.
+- [x] Catalog: Clone, Phyrexian Metamorph, Spark Double, Sakashima the Impostor — between them the three kinds of "except" clause (add a type, override a name, remove a supertype + change how it enters).
+- [x] [ADR 0043](decisions/0043-copy-effects.md), AGENTS.md §7 "Adding a copy effect", client `copy_target` prompt branch.
+
+**Declared gaps:** duration-scoped copy effects (Mirage Mirror, Cytoshape) — the `Layer1Copy` bucket survives for them; an "except" clause that GRANTS an ability (Sakashima's own return-to-hand ability); a declined Clone surviving as a 0/0, which is the engine's pre-existing printed-0-toughness SBA convention, not a copy bug.
+
+### Dependency detection (CR 613.8) — still deferred
+
+The trigger #159 named for this half — a playtester hitting an Opalescence + Humility-class pathology — has not fired, and no pair of statics in the catalog can produce one: dependency is only observable when one static changes whether another static APPLIES, and every static in the catalog is an anthem, a keyword grant, a type-add or a CDA, all commutative under timestamp order. The cost is a required dependency declaration on every `StaticAbility` present and future, plus a topological sort with cycle detection on the hottest path in the engine. Reasoning in full at [ADR 0043](decisions/0043-copy-effects.md) §5. The trigger stays armed.
 
 ---
 
@@ -2026,10 +2048,10 @@ Nothing is now blocked on #280. Sub-PR 5's deck list was the only thing that eve
 
 The engine has no event history: `GameView` carries none, the client has none, and `PlayerView.LifeHistory` is the only past tense anywhere. A policy reasoning from a bare snapshot cannot see a boardwipe that already happened. Players have wanted this since S07 shipped chat without it, and bug reports get materially better when the log ships alongside the replay.
 
-- [ ] `protocol.LogEvent` + bounded public log on `GameView` (few hundred entries), through the same visibility filter as everything else
-- [ ] Emit on: zone changes, casts, resolutions, combat declarations, life changes, step boundaries
-- [ ] Client game-log panel
-- [ ] Attach the log to bug-report artifacts in `bugstore`
+- [x] `protocol.LogEvent` + bounded public log on `GameView` (few hundred entries), through the same visibility filter as everything else
+- [x] Emit on: zone changes, casts, resolutions, combat declarations, life changes, step boundaries
+- [x] Client game-log panel
+- [x] Attach the log to bug-report artifacts in `bugstore`
 
 ### Sub-PR 1 — `internal/legal`: enumerate a seat's legal moves
 
@@ -2117,13 +2139,13 @@ contract alone cannot express them:
 
 ### Sub-PR 7 — Layer A rules filter + Layer C model policy
 
-- [ ] Layer A: resolve forced/trivial windows with no model call — note S13.6's auto-pass is **client-side only**, so Layer A inherits nothing and must do the whole job; instrument the absorption rate — **if it is under 80%, stop and fix the funnel before tuning anything else**
-- [ ] Prompt assembly from `Input` only; import test forbids `aiseat/policy` from importing `internal/game`
-- [ ] Prompt-cache the static block (rules primer, decklist + oracle text, archetype plan); per-decision delta is board state + move list
-- [ ] Cheap model for routine, frontier model on escalation: stack items targeting the bot, attacks, blocks, removal/counter availability against a high-threat board, top-two candidates within ε, modal/X/multi-target choices
-- [ ] Model returns a `Moves` **index**, never an action; out-of-range or malformed → Layer B
-- [ ] Tiers: `random`, `heuristic`, `assisted`, `strong`
-- [ ] Per-decision instrumentation: layer used, latency, tokens, escalation reason
+- [x] Layer A: `internal/aiseat/rules/` resolves forced/trivial windows with no model call — three rules, each defensible as a fact about the game rather than an opinion about the board: one legal move, only floating mana on offer (casts auto-tap, CR 106.4 empties the pool), and interchangeable copies of one land. **Measured absorption: 91.3%** over 5,207 windows across two four-bot games (90.1% over 7,810 across three), against ADR 0033 §5's 80% floor — `mana-only` carries ~51% of it and `forced` ~38%. The rate is asserted, not just logged, and the same games cross-check every absorbed window against the heuristic: 4,753 windows, 0 disagreements
+- [x] Prompt assembly from `Input` only — the board half of the prompt reads `aiseat.Input` and nothing else; the static half is a `DeckProfile` handed to the seat at construction. The existing import test in `aiseat/heuristic` walks the whole subtree, so `rules/`, `model/` and `tiers/` are covered without a second one
+- [x] Prompt-cache the static block; per-decision delta is board state + move list. Three tests hold it: the cache breakpoint sits on the last system block and nowhere else, the static half is byte-identical across a whole game's calls, and a reordered decklist does not change a byte
+- [x] Cheap model for routine, frontier model on escalation, with all five triggers from ADR 0033 §5. **Measured escalation rate: ~60–70% of surviving windows**, an order above the ADR's "~20%" estimate and driven almost entirely by the combat trigger — every attack and block declaration escalates by design. Recorded rather than tuned away; the thresholds are all in `model.Config`
+- [x] Model returns a `Moves` **index**, never an action; out-of-range, malformed, timed out, errored or absent → Layer B. Exercised as a unit table covering all six shapes, and in a whole game by the outage drill
+- [x] Tiers: `random`, `heuristic`, `assisted`, `strong` in `internal/aiseat/tiers/`, each with its ADR 0033 §10 `MaxThink`. **`strong`'s "1-ply sim on top-K" is not implemented** and will not be: simulating a move needs a `*game.Game`, which a policy may not hold — the same collision sub-PR 6 hit with "Δscore on a cloned game", resolved the same way. What `strong` buys is the frontier model on every surviving window and a wider candidate list
+- [x] Per-decision instrumentation: layer, rule, escalation reasons, model id, latency, model latency, tokens (including cache read/write) and the fallback cause, as a bounded ring plus aggregate counters
 
 ### Sub-PR 8 — improvisation, announced
 
@@ -2149,7 +2171,7 @@ contract alone cannot express them:
 - [x] Zero engine-rejected actions across a 100-game randomized run — and across 60 four-`heuristic` and 60 mixed games through the same soak harness (`AISEAT_SOAK_POLICY=heuristic|mixed`)
 - [x] `heuristic` beats `random` head-to-head: 40/40 decided games, alternating seats
 - [x] Heuristic decision latency: p50 8.5µs, p99 52µs, max 276µs over 2,715 decisions — four orders of magnitude inside the 2s `MaxThink`
-- [ ] Model-outage drill: Layer C hard-fails, game completes on Layer B, no frozen table
+- [x] Model-outage drill: Layer C hard-fails, game completes on Layer B, no frozen table. `TestModelOutageDrill` — the endpoint answers 25 calls and then fails forever, the four-bot game plays to a single survivor, the runner's own fallback counter stays at zero, and 2,382 of 2,407 windows were answered without a usable model. A sibling proves the other half of §10: a model that never answers costs its budget and hands over, and the runner still never force-passes
 - [x] Human undo of a bot improvisation succeeds without the admin token, and the bundle reverts as one entry — `TestHumanUndoOfBotImprovisationRevertsTheWholeBundle`: a seated caller (their own seat ID, never `uuid.Nil`) pops a three-verb bundle, all three revert, the second `Undo` returns `ErrNothingToUndo` proving it was one entry, and the caller's `UndosRemaining` is unchanged. `TestImprovisationBundleIsAtomic` holds the other direction: a bundle whose last step fails leaves no state change, no seq bump, no chat line and no replay tag
 
 ### Exit criteria
