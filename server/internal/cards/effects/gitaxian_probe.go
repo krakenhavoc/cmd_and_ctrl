@@ -22,9 +22,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // file's.
 func init() {
 	Register(Spec{
-		OracleID: "1d67f5ff-1fce-45e5-b6a1-416c569351e2",
-		Name:     "Gitaxian Probe",
-		Targets:  TargetPlayer("target player"),
+		OracleID:     "1d67f5ff-1fce-45e5-b6a1-416c569351e2",
+		Name:         "Gitaxian Probe",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Phyrexian mana isn't supported — you must pay {U}, you can't pay 2 life instead."},
+		Targets:      TargetPlayer("target player"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) > 0 && item.Targets[0].Kind == game.TargetPlayer {
 				if p := ctx.PlayerByID(item.Targets[0].ID); p != nil && p.Hand != nil {

@@ -171,7 +171,7 @@ describe("loyalty abilities in the card menu", () => {
     expect(itemIn(sections, "ability-0")?.disabled).toBe(true);
   });
 
-  it("leaves a non-loyalty ability alone outside the main phase", () => {
+  it("leaves an instant-speed ability alone outside the main phase", () => {
     const rock: CardView = {
       instance_id: "r1",
       name: "Rock",
@@ -183,6 +183,77 @@ describe("loyalty abilities in the card menu", () => {
     const v = view({ battlefield: [rock], step: "upkeep" });
     const sections = buildMenuSections(v, rock, "a", false);
     expect(itemIn(sections, "ability-0")?.disabled).toBeFalsy();
+  });
+});
+
+// --- S31: the sorcery_speed flag nothing read ---------------------
+//
+// `ActivatedAbilityView.sorcery_speed` has ridden the wire since S21
+// and no client surface consulted it, so an "activate only as a
+// sorcery" ability stayed live through combat and an opponent's turn
+// and came back rejected by the server. ADR 0033 §1 cites it as the
+// live specimen of the bug class the legal-move enumerator exists to
+// end; S31 sub-PR 2 fixes it in both surfaces that render an ability
+// row — the context menu here, and ManaAbilityMenu's popover.
+describe("sorcery-speed activated abilities (not loyalty)", () => {
+  function sorcerySpeedRock(extra: Partial<CardView> = {}): CardView {
+    return {
+      instance_id: "r1",
+      name: "Thousand-Year Elixir",
+      owner: "a",
+      controller: "a",
+      type_line: "Artifact",
+      activated_abilities: [{ index: 0, label: "{2}: do a thing", sorcery_speed: true }],
+      ...extra,
+    };
+  }
+
+  it("is offered inside the sorcery-speed window", () => {
+    const rock = sorcerySpeedRock();
+    const sections = buildMenuSections(view({ battlefield: [rock] }), rock, "a", false);
+    expect(itemIn(sections, "ability-0")?.disabled).toBeFalsy();
+  });
+
+  it("is greyed outside a main phase — CR 307.1", () => {
+    const rock = sorcerySpeedRock();
+    const v = view({ battlefield: [rock], step: "upkeep" });
+    const item = itemIn(buildMenuSections(v, rock, "a", false), "ability-0");
+    expect(item?.disabled).toBe(true);
+    expect(item?.hint).toBe("Sorcery-speed only");
+  });
+
+  it("is greyed on an opponent's turn", () => {
+    const rock = sorcerySpeedRock();
+    const v = view({ battlefield: [rock], active: 1, priority: 0 });
+    const item = itemIn(buildMenuSections(v, rock, "a", false), "ability-0");
+    expect(item?.disabled).toBe(true);
+    expect(item?.hint).toBe("Not your turn");
+  });
+
+  it("is greyed while something is on the stack", () => {
+    const rock = sorcerySpeedRock();
+    const spell: CardView = { instance_id: "s1", name: "Spell", owner: "b", controller: "b" };
+    const v = view({ battlefield: [rock], stack: [spell] });
+    const item = itemIn(buildMenuSections(v, rock, "a", false), "ability-0");
+    expect(item?.disabled).toBe(true);
+    expect(item?.hint).toBe("Stack isn't empty");
+  });
+
+  it("does not gate an ability without the flag", () => {
+    const rock = sorcerySpeedRock({
+      activated_abilities: [{ index: 0, label: "{2}: do a thing" }],
+    });
+    const v = view({ battlefield: [rock], step: "upkeep" });
+    expect(itemIn(buildMenuSections(v, rock, "a", false), "ability-0")?.disabled).toBeFalsy();
+  });
+
+  it("does not gate mana abilities, which have no timing restriction (CR 605.1a)", () => {
+    const rock = sorcerySpeedRock({
+      activated_abilities: undefined,
+      mana_abilities: [{ index: 0, label: "Add {C}", produced: "{C}", tap_cost: true }],
+    });
+    const v = view({ battlefield: [rock], step: "upkeep" });
+    expect(itemIn(buildMenuSections(v, rock, "a", false), "mana-0")?.disabled).toBeFalsy();
   });
 });
 

@@ -1,0 +1,2686 @@
+[
+  {
+    "name": "sorcery_window_open",
+    "note": "active seat, precombat main, empty stack, land drop unused",
+    "viewer": "00000001-0000-4000-8000-000000000000",
+    "view": {
+      "id": "00000002-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "00000001-0000-4000-8000-000000000000",
+          "name": "Seat 1",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000001-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "00000003-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000001-0000-4000-8000-000000000000",
+                "controller": "00000001-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000004-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000001-0000-4000-8000-000000000000",
+                "controller": "00000001-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000005-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000001-0000-4000-8000-000000000000",
+                "controller": "00000001-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000001-0000-4000-8000-000000000000",
+            "count": 4,
+            "cards": [
+              {
+                "instance_id": "00000006-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000001-0000-4000-8000-000000000000",
+                "controller": "00000001-0000-4000-8000-000000000000",
+                "mana_abilities": [
+                  {
+                    "index": 0,
+                    "label": "Add {G}",
+                    "tap_cost": true,
+                    "produced": "{G}"
+                  }
+                ]
+              },
+              {
+                "instance_id": "00000007-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000001-0000-4000-8000-000000000000",
+                "controller": "00000001-0000-4000-8000-000000000000",
+                "auto": true,
+                "target_mode": "any",
+                "legal_targets": {
+                  "players": [
+                    "00000001-0000-4000-8000-000000000000",
+                    "00000008-0000-4000-8000-000000000000"
+                  ],
+                  "cards": [
+                    "00000009-0000-4000-8000-000000000000"
+                  ],
+                  "min": 1,
+                  "max": 1
+                }
+              },
+              {
+                "instance_id": "0000000a-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000001-0000-4000-8000-000000000000",
+                "controller": "00000001-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "0000000b-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000001-0000-4000-8000-000000000000",
+                "controller": "00000001-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000001-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000001-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "0000000c-0000-4000-8000-000000000000",
+                "name": "Commander 1",
+                "owner": "00000001-0000-4000-8000-000000000000",
+                "controller": "00000001-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7
+        },
+        {
+          "id": "00000008-0000-4000-8000-000000000000",
+          "name": "Seat 2",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000008-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000008-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000008-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000008-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "0000000d-0000-4000-8000-000000000000",
+                "name": "Commander 2",
+                "owner": "00000008-0000-4000-8000-000000000000",
+                "controller": "00000008-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 4,
+        "cards": [
+          {
+            "instance_id": "0000000e-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "00000001-0000-4000-8000-000000000000",
+            "controller": "00000001-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {R}",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "0000000f-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "00000001-0000-4000-8000-000000000000",
+            "controller": "00000001-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {R}",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "00000010-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "00000001-0000-4000-8000-000000000000",
+            "controller": "00000001-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {B}",
+                "tap_cost": true,
+                "produced": "{B}"
+              }
+            ]
+          },
+          {
+            "instance_id": "00000009-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "00000001-0000-4000-8000-000000000000",
+            "controller": "00000001-0000-4000-8000-000000000000"
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 0,
+        "cards": []
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 0,
+        "phase": "precombat_main",
+        "step": "precombat_main"
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "starting_seat": 0,
+      "legal_moves": [
+        {
+          "type": "pass_priority",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "kind": "pass",
+          "label": "Pass priority",
+          "source": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "00000006-0000-4000-8000-000000000000",
+            "from_zone": "hand"
+          },
+          "kind": "land",
+          "label": "Play Forest",
+          "source": "00000006-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "00000007-0000-4000-8000-000000000000",
+            "from_zone": "hand",
+            "targets": [
+              {
+                "kind": "player",
+                "id": "00000001-0000-4000-8000-000000000000"
+              }
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Lightning Bolt targeting Seat 1",
+          "source": "00000007-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "00000007-0000-4000-8000-000000000000",
+            "from_zone": "hand",
+            "targets": [
+              {
+                "kind": "player",
+                "id": "00000008-0000-4000-8000-000000000000"
+              }
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Lightning Bolt targeting Seat 2",
+          "source": "00000007-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "00000007-0000-4000-8000-000000000000",
+            "from_zone": "hand",
+            "targets": [
+              {
+                "kind": "card",
+                "id": "00000009-0000-4000-8000-000000000000"
+              }
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Lightning Bolt targeting Sacrificial Bear",
+          "source": "00000007-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "0000000c-0000-4000-8000-000000000000",
+            "from_zone": "command",
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Commander 1 from the command zone",
+          "source": "0000000c-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "0000000e-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Mountain: Add {R}",
+          "source": "0000000e-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "0000000f-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Mountain: Add {R}",
+          "source": "0000000f-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "00000010-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Swamp: Add {B}",
+          "source": "00000010-0000-4000-8000-000000000000"
+        }
+      ],
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
+        }
+      ]
+    },
+    "expect": [
+      {
+        "instance_id": "00000006-0000-4000-8000-000000000000",
+        "name": "Forest",
+        "castable": true,
+        "why": "CR 305: main phase, empty stack, your turn, land drop unused"
+      },
+      {
+        "instance_id": "00000007-0000-4000-8000-000000000000",
+        "name": "Lightning Bolt",
+        "castable": true,
+        "why": "instant, and {R} is affordable off two Mountains"
+      },
+      {
+        "instance_id": "0000000a-0000-4000-8000-000000000000",
+        "name": "Divination",
+        "castable": false,
+        "why": "sorcery timing is fine; {2}{U} is not payable with no blue source"
+      },
+      {
+        "instance_id": "0000000b-0000-4000-8000-000000000000",
+        "name": "Grizzly Bears",
+        "castable": false,
+        "why": "{1}{G} is not payable with no green source"
+      }
+    ]
+  },
+  {
+    "name": "sorcery_window_open_and_affordable",
+    "note": "four Forests: the sorcery and the creature are both payable",
+    "viewer": "00000012-0000-4000-8000-000000000000",
+    "view": {
+      "id": "00000013-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "00000012-0000-4000-8000-000000000000",
+          "name": "Seat 1",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000012-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "00000014-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000012-0000-4000-8000-000000000000",
+                "controller": "00000012-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000015-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000012-0000-4000-8000-000000000000",
+                "controller": "00000012-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000016-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000012-0000-4000-8000-000000000000",
+                "controller": "00000012-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000012-0000-4000-8000-000000000000",
+            "count": 2,
+            "cards": [
+              {
+                "instance_id": "00000017-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000012-0000-4000-8000-000000000000",
+                "controller": "00000012-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000018-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000012-0000-4000-8000-000000000000",
+                "controller": "00000012-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000012-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000012-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000019-0000-4000-8000-000000000000",
+                "name": "Commander 1",
+                "owner": "00000012-0000-4000-8000-000000000000",
+                "controller": "00000012-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7
+        },
+        {
+          "id": "0000001a-0000-4000-8000-000000000000",
+          "name": "Seat 2",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "0000001a-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "0000001a-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "0000001a-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "0000001a-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "0000001b-0000-4000-8000-000000000000",
+                "name": "Commander 2",
+                "owner": "0000001a-0000-4000-8000-000000000000",
+                "controller": "0000001a-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 4,
+        "cards": [
+          {
+            "instance_id": "0000001c-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "00000012-0000-4000-8000-000000000000",
+            "controller": "00000012-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {G}",
+                "tap_cost": true,
+                "produced": "{G}"
+              }
+            ]
+          },
+          {
+            "instance_id": "0000001d-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "00000012-0000-4000-8000-000000000000",
+            "controller": "00000012-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {G}",
+                "tap_cost": true,
+                "produced": "{G}"
+              }
+            ]
+          },
+          {
+            "instance_id": "0000001e-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "00000012-0000-4000-8000-000000000000",
+            "controller": "00000012-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {G}",
+                "tap_cost": true,
+                "produced": "{G}"
+              }
+            ]
+          },
+          {
+            "instance_id": "0000001f-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "00000012-0000-4000-8000-000000000000",
+            "controller": "00000012-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {G}",
+                "tap_cost": true,
+                "produced": "{G}"
+              }
+            ]
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 0,
+        "cards": []
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 0,
+        "phase": "precombat_main",
+        "step": "precombat_main"
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "starting_seat": 0,
+      "legal_moves": [
+        {
+          "type": "pass_priority",
+          "player": "00000012-0000-4000-8000-000000000000",
+          "kind": "pass",
+          "label": "Pass priority",
+          "source": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "00000012-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "00000017-0000-4000-8000-000000000000",
+            "from_zone": "hand",
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Overrun",
+          "source": "00000017-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "00000012-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "00000018-0000-4000-8000-000000000000",
+            "from_zone": "hand",
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Grizzly Bears",
+          "source": "00000018-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "00000012-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "00000019-0000-4000-8000-000000000000",
+            "from_zone": "command",
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Commander 1 from the command zone",
+          "source": "00000019-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "00000012-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "0000001c-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Forest: Add {G}",
+          "source": "0000001c-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "00000012-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "0000001d-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Forest: Add {G}",
+          "source": "0000001d-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "00000012-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "0000001e-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Forest: Add {G}",
+          "source": "0000001e-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "00000012-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "0000001f-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Forest: Add {G}",
+          "source": "0000001f-0000-4000-8000-000000000000"
+        }
+      ],
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
+        }
+      ]
+    },
+    "expect": [
+      {
+        "instance_id": "00000017-0000-4000-8000-000000000000",
+        "name": "Overrun",
+        "castable": true,
+        "why": "CR 307.1 window open and {2}{G} payable"
+      },
+      {
+        "instance_id": "00000018-0000-4000-8000-000000000000",
+        "name": "Grizzly Bears",
+        "castable": true,
+        "why": "same window, {1}{G} payable"
+      }
+    ]
+  },
+  {
+    "name": "combat_step_instant_only",
+    "note": "declare attackers: CR 307.1 shuts, CR 305 shuts, instants stay open",
+    "viewer": "00000020-0000-4000-8000-000000000000",
+    "view": {
+      "id": "00000021-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "00000020-0000-4000-8000-000000000000",
+          "name": "Seat 1",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000020-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "00000022-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000020-0000-4000-8000-000000000000",
+                "controller": "00000020-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000023-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000020-0000-4000-8000-000000000000",
+                "controller": "00000020-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000024-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000020-0000-4000-8000-000000000000",
+                "controller": "00000020-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000020-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "00000025-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000020-0000-4000-8000-000000000000",
+                "controller": "00000020-0000-4000-8000-000000000000",
+                "mana_abilities": [
+                  {
+                    "index": 0,
+                    "label": "Add {G}",
+                    "tap_cost": true,
+                    "produced": "{G}"
+                  }
+                ]
+              },
+              {
+                "instance_id": "00000026-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000020-0000-4000-8000-000000000000",
+                "controller": "00000020-0000-4000-8000-000000000000",
+                "auto": true,
+                "target_mode": "any",
+                "legal_targets": {
+                  "players": [
+                    "00000020-0000-4000-8000-000000000000",
+                    "00000027-0000-4000-8000-000000000000"
+                  ],
+                  "min": 1,
+                  "max": 1
+                }
+              },
+              {
+                "instance_id": "00000028-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000020-0000-4000-8000-000000000000",
+                "controller": "00000020-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000020-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000020-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000029-0000-4000-8000-000000000000",
+                "name": "Commander 1",
+                "owner": "00000020-0000-4000-8000-000000000000",
+                "controller": "00000020-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7
+        },
+        {
+          "id": "00000027-0000-4000-8000-000000000000",
+          "name": "Seat 2",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000027-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000027-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000027-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000027-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "0000002a-0000-4000-8000-000000000000",
+                "name": "Commander 2",
+                "owner": "00000027-0000-4000-8000-000000000000",
+                "controller": "00000027-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 4,
+        "cards": [
+          {
+            "instance_id": "0000002b-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "00000020-0000-4000-8000-000000000000",
+            "controller": "00000020-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {R}",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "0000002c-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "00000020-0000-4000-8000-000000000000",
+            "controller": "00000020-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {R}",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "0000002d-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "00000020-0000-4000-8000-000000000000",
+            "controller": "00000020-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {R}",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "0000002e-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "00000020-0000-4000-8000-000000000000",
+            "controller": "00000020-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {R}",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 0,
+        "cards": []
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 0,
+        "phase": "combat",
+        "step": "declare_attackers"
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "starting_seat": 0,
+      "legal_moves": [
+        {
+          "type": "pass_priority",
+          "player": "00000020-0000-4000-8000-000000000000",
+          "kind": "pass",
+          "label": "Pass priority",
+          "source": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "00000020-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "00000026-0000-4000-8000-000000000000",
+            "from_zone": "hand",
+            "targets": [
+              {
+                "kind": "player",
+                "id": "00000020-0000-4000-8000-000000000000"
+              }
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Lightning Bolt targeting Seat 1",
+          "source": "00000026-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "00000020-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "00000026-0000-4000-8000-000000000000",
+            "from_zone": "hand",
+            "targets": [
+              {
+                "kind": "player",
+                "id": "00000027-0000-4000-8000-000000000000"
+              }
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Lightning Bolt targeting Seat 2",
+          "source": "00000026-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "00000020-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "0000002b-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Mountain: Add {R}",
+          "source": "0000002b-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "00000020-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "0000002c-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Mountain: Add {R}",
+          "source": "0000002c-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "00000020-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "0000002d-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Mountain: Add {R}",
+          "source": "0000002d-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "00000020-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "0000002e-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Mountain: Add {R}",
+          "source": "0000002e-0000-4000-8000-000000000000"
+        }
+      ],
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
+        },
+        {
+          "seq": 7,
+          "kind": "step",
+          "turn": 1,
+          "step": "begin_combat",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · begin combat"
+        },
+        {
+          "seq": 8,
+          "kind": "step",
+          "turn": 1,
+          "step": "declare_attackers",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · declare attackers"
+        }
+      ]
+    },
+    "expect": [
+      {
+        "instance_id": "00000025-0000-4000-8000-000000000000",
+        "name": "Forest",
+        "castable": false,
+        "why": "CR 305: lands are a main-phase-only turn-based action"
+      },
+      {
+        "instance_id": "00000026-0000-4000-8000-000000000000",
+        "name": "Lightning Bolt",
+        "castable": true,
+        "why": "CR 304.1: an instant may be cast whenever you hold priority"
+      },
+      {
+        "instance_id": "00000028-0000-4000-8000-000000000000",
+        "name": "Act of Treason",
+        "castable": false,
+        "why": "CR 307.1: sorcery timing needs a main phase"
+      }
+    ]
+  },
+  {
+    "name": "stack_not_empty",
+    "note": "own main phase, but something is on the stack",
+    "viewer": "0000002f-0000-4000-8000-000000000000",
+    "view": {
+      "id": "00000030-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "0000002f-0000-4000-8000-000000000000",
+          "name": "Seat 1",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "0000002f-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "00000031-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "0000002f-0000-4000-8000-000000000000",
+                "controller": "0000002f-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000032-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "0000002f-0000-4000-8000-000000000000",
+                "controller": "0000002f-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000033-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "0000002f-0000-4000-8000-000000000000",
+                "controller": "0000002f-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "0000002f-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "00000034-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "0000002f-0000-4000-8000-000000000000",
+                "controller": "0000002f-0000-4000-8000-000000000000",
+                "mana_abilities": [
+                  {
+                    "index": 0,
+                    "label": "Add {G}",
+                    "tap_cost": true,
+                    "produced": "{G}"
+                  }
+                ]
+              },
+              {
+                "instance_id": "00000035-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "0000002f-0000-4000-8000-000000000000",
+                "controller": "0000002f-0000-4000-8000-000000000000",
+                "auto": true,
+                "target_mode": "any",
+                "legal_targets": {
+                  "players": [
+                    "0000002f-0000-4000-8000-000000000000",
+                    "00000036-0000-4000-8000-000000000000"
+                  ],
+                  "min": 1,
+                  "max": 1
+                }
+              },
+              {
+                "instance_id": "00000037-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "0000002f-0000-4000-8000-000000000000",
+                "controller": "0000002f-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "0000002f-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "0000002f-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000038-0000-4000-8000-000000000000",
+                "name": "Commander 1",
+                "owner": "0000002f-0000-4000-8000-000000000000",
+                "controller": "0000002f-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7
+        },
+        {
+          "id": "00000036-0000-4000-8000-000000000000",
+          "name": "Seat 2",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000036-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000036-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000036-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000036-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000039-0000-4000-8000-000000000000",
+                "name": "Commander 2",
+                "owner": "00000036-0000-4000-8000-000000000000",
+                "controller": "00000036-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 4,
+        "cards": [
+          {
+            "instance_id": "0000003a-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "0000002f-0000-4000-8000-000000000000",
+            "controller": "0000002f-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {R}",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "0000003b-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "0000002f-0000-4000-8000-000000000000",
+            "controller": "0000002f-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {R}",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "0000003c-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "0000002f-0000-4000-8000-000000000000",
+            "controller": "0000002f-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {R}",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "0000003d-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "0000002f-0000-4000-8000-000000000000",
+            "controller": "0000002f-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {R}",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 1,
+        "cards": [
+          {
+            "instance_id": "0000003e-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "00000036-0000-4000-8000-000000000000",
+            "controller": "00000036-0000-4000-8000-000000000000"
+          }
+        ]
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 0,
+        "phase": "precombat_main",
+        "step": "precombat_main"
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "starting_seat": 0,
+      "legal_moves": [
+        {
+          "type": "pass_priority",
+          "player": "0000002f-0000-4000-8000-000000000000",
+          "kind": "pass",
+          "label": "Pass priority",
+          "source": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "0000002f-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "00000035-0000-4000-8000-000000000000",
+            "from_zone": "hand",
+            "targets": [
+              {
+                "kind": "player",
+                "id": "0000002f-0000-4000-8000-000000000000"
+              }
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Lightning Bolt targeting Seat 1",
+          "source": "00000035-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "0000002f-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "00000035-0000-4000-8000-000000000000",
+            "from_zone": "hand",
+            "targets": [
+              {
+                "kind": "player",
+                "id": "00000036-0000-4000-8000-000000000000"
+              }
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Lightning Bolt targeting Seat 2",
+          "source": "00000035-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "0000002f-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "0000003a-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Mountain: Add {R}",
+          "source": "0000003a-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "0000002f-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "0000003b-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Mountain: Add {R}",
+          "source": "0000003b-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "0000002f-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "0000003c-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Mountain: Add {R}",
+          "source": "0000003c-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "0000002f-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "0000003d-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Mountain: Add {R}",
+          "source": "0000003d-0000-4000-8000-000000000000"
+        }
+      ],
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
+        }
+      ]
+    },
+    "expect": [
+      {
+        "instance_id": "00000034-0000-4000-8000-000000000000",
+        "name": "Forest",
+        "castable": false,
+        "why": "CR 305: land drops need an empty stack"
+      },
+      {
+        "instance_id": "00000035-0000-4000-8000-000000000000",
+        "name": "Lightning Bolt",
+        "castable": true,
+        "why": "instants are exactly the response the window exists for"
+      },
+      {
+        "instance_id": "00000037-0000-4000-8000-000000000000",
+        "name": "Act of Treason",
+        "castable": false,
+        "why": "CR 307.1: sorcery timing needs an empty stack"
+      }
+    ]
+  },
+  {
+    "name": "no_priority",
+    "note": "the non-active seat during the active seat's main phase",
+    "viewer": "0000003f-0000-4000-8000-000000000000",
+    "view": {
+      "id": "00000040-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "00000041-0000-4000-8000-000000000000",
+          "name": "Seat 1",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000041-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000041-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000041-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000041-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000042-0000-4000-8000-000000000000",
+                "name": "Commander 1",
+                "owner": "00000041-0000-4000-8000-000000000000",
+                "controller": "00000041-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7
+        },
+        {
+          "id": "0000003f-0000-4000-8000-000000000000",
+          "name": "Seat 2",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "0000003f-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "00000043-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "0000003f-0000-4000-8000-000000000000",
+                "controller": "0000003f-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000044-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "0000003f-0000-4000-8000-000000000000",
+                "controller": "0000003f-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000045-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "0000003f-0000-4000-8000-000000000000",
+                "controller": "0000003f-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "0000003f-0000-4000-8000-000000000000",
+            "count": 2,
+            "cards": [
+              {
+                "instance_id": "00000046-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "0000003f-0000-4000-8000-000000000000",
+                "controller": "0000003f-0000-4000-8000-000000000000",
+                "mana_abilities": [
+                  {
+                    "index": 0,
+                    "label": "Add {G}",
+                    "tap_cost": true,
+                    "produced": "{G}"
+                  }
+                ]
+              },
+              {
+                "instance_id": "00000047-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "0000003f-0000-4000-8000-000000000000",
+                "controller": "0000003f-0000-4000-8000-000000000000",
+                "auto": true,
+                "target_mode": "any",
+                "legal_targets": {
+                  "players": [
+                    "00000041-0000-4000-8000-000000000000",
+                    "0000003f-0000-4000-8000-000000000000"
+                  ],
+                  "min": 1,
+                  "max": 1
+                }
+              }
+            ]
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "0000003f-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "0000003f-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000048-0000-4000-8000-000000000000",
+                "name": "Commander 2",
+                "owner": "0000003f-0000-4000-8000-000000000000",
+                "controller": "0000003f-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 4,
+        "cards": [
+          {
+            "instance_id": "00000049-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "0000003f-0000-4000-8000-000000000000",
+            "controller": "0000003f-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {R}",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "0000004a-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "0000003f-0000-4000-8000-000000000000",
+            "controller": "0000003f-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {R}",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "0000004b-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "0000003f-0000-4000-8000-000000000000",
+            "controller": "0000003f-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {R}",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "0000004c-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "0000003f-0000-4000-8000-000000000000",
+            "controller": "0000003f-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {R}",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 0,
+        "cards": []
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 0,
+        "phase": "precombat_main",
+        "step": "precombat_main"
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "starting_seat": 0,
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
+        }
+      ]
+    },
+    "expect": [
+      {
+        "instance_id": "00000046-0000-4000-8000-000000000000",
+        "name": "Forest",
+        "castable": false,
+        "why": "not your turn and not your priority"
+      },
+      {
+        "instance_id": "00000047-0000-4000-8000-000000000000",
+        "name": "Lightning Bolt",
+        "castable": false,
+        "why": "CR 117.1: you cannot cast without priority"
+      }
+    ]
+  },
+  {
+    "name": "land_drop_spent",
+    "note": "CR 305.2: one land per turn, and this seat has had theirs",
+    "viewer": "0000004d-0000-4000-8000-000000000000",
+    "view": {
+      "id": "0000004e-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "0000004d-0000-4000-8000-000000000000",
+          "name": "Seat 1",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "0000004d-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "0000004f-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "0000004d-0000-4000-8000-000000000000",
+                "controller": "0000004d-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000050-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "0000004d-0000-4000-8000-000000000000",
+                "controller": "0000004d-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000051-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "0000004d-0000-4000-8000-000000000000",
+                "controller": "0000004d-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "0000004d-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000052-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "0000004d-0000-4000-8000-000000000000",
+                "controller": "0000004d-0000-4000-8000-000000000000",
+                "mana_abilities": [
+                  {
+                    "index": 0,
+                    "label": "Add {G}",
+                    "tap_cost": true,
+                    "produced": "{G}"
+                  }
+                ]
+              }
+            ]
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "0000004d-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "0000004d-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000053-0000-4000-8000-000000000000",
+                "name": "Commander 1",
+                "owner": "0000004d-0000-4000-8000-000000000000",
+                "controller": "0000004d-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7
+        },
+        {
+          "id": "00000054-0000-4000-8000-000000000000",
+          "name": "Seat 2",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000054-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000054-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000054-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000054-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000055-0000-4000-8000-000000000000",
+                "name": "Commander 2",
+                "owner": "00000054-0000-4000-8000-000000000000",
+                "controller": "00000054-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 2,
+        "cards": [
+          {
+            "instance_id": "00000056-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "0000004d-0000-4000-8000-000000000000",
+            "controller": "0000004d-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {R}",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "00000057-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "0000004d-0000-4000-8000-000000000000",
+            "controller": "0000004d-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {R}",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 0,
+        "cards": []
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 0,
+        "phase": "precombat_main",
+        "step": "precombat_main"
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "starting_seat": 0,
+      "legal_moves": [
+        {
+          "type": "pass_priority",
+          "player": "0000004d-0000-4000-8000-000000000000",
+          "kind": "pass",
+          "label": "Pass priority",
+          "source": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "0000004d-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "00000053-0000-4000-8000-000000000000",
+            "from_zone": "command",
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Commander 1 from the command zone",
+          "source": "00000053-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "0000004d-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "00000056-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Mountain: Add {R}",
+          "source": "00000056-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "0000004d-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "00000057-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Mountain: Add {R}",
+          "source": "00000057-0000-4000-8000-000000000000"
+        }
+      ],
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
+        }
+      ]
+    },
+    "expect": [
+      {
+        "instance_id": "00000052-0000-4000-8000-000000000000",
+        "name": "Forest",
+        "castable": false,
+        "why": "CR 305.2: the land drop is spent"
+      }
+    ]
+  },
+  {
+    "name": "additional_cost_unpayable",
+    "note": "Village Rites with no creature to sacrifice (CR 601.2h)",
+    "viewer": "00000058-0000-4000-8000-000000000000",
+    "view": {
+      "id": "00000059-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "00000058-0000-4000-8000-000000000000",
+          "name": "Seat 1",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000058-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "0000005a-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000058-0000-4000-8000-000000000000",
+                "controller": "00000058-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "0000005b-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000058-0000-4000-8000-000000000000",
+                "controller": "00000058-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "0000005c-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000058-0000-4000-8000-000000000000",
+                "controller": "00000058-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000058-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "0000005d-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000058-0000-4000-8000-000000000000",
+                "controller": "00000058-0000-4000-8000-000000000000",
+                "auto": true,
+                "additional_cost": {
+                  "sacrifice_options": {
+                    "min": 1,
+                    "max": 1
+                  },
+                  "label": "Sacrifice a creature"
+                }
+              }
+            ]
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000058-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000058-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "0000005e-0000-4000-8000-000000000000",
+                "name": "Commander 1",
+                "owner": "00000058-0000-4000-8000-000000000000",
+                "controller": "00000058-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7
+        },
+        {
+          "id": "0000005f-0000-4000-8000-000000000000",
+          "name": "Seat 2",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "0000005f-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "0000005f-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "0000005f-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "0000005f-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000060-0000-4000-8000-000000000000",
+                "name": "Commander 2",
+                "owner": "0000005f-0000-4000-8000-000000000000",
+                "controller": "0000005f-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 2,
+        "cards": [
+          {
+            "instance_id": "00000061-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "00000058-0000-4000-8000-000000000000",
+            "controller": "00000058-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {B}",
+                "tap_cost": true,
+                "produced": "{B}"
+              }
+            ]
+          },
+          {
+            "instance_id": "00000062-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "00000058-0000-4000-8000-000000000000",
+            "controller": "00000058-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {B}",
+                "tap_cost": true,
+                "produced": "{B}"
+              }
+            ]
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 0,
+        "cards": []
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 0,
+        "phase": "precombat_main",
+        "step": "precombat_main"
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "starting_seat": 0,
+      "legal_moves": [
+        {
+          "type": "pass_priority",
+          "player": "00000058-0000-4000-8000-000000000000",
+          "kind": "pass",
+          "label": "Pass priority",
+          "source": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "00000058-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "0000005e-0000-4000-8000-000000000000",
+            "from_zone": "command",
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Commander 1 from the command zone",
+          "source": "0000005e-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "00000058-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "00000061-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Swamp: Add {B}",
+          "source": "00000061-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "00000058-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "00000062-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Swamp: Add {B}",
+          "source": "00000062-0000-4000-8000-000000000000"
+        }
+      ],
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
+        }
+      ]
+    },
+    "expect": [
+      {
+        "instance_id": "0000005d-0000-4000-8000-000000000000",
+        "name": "Village Rites",
+        "castable": false,
+        "why": "nothing on the board to sacrifice"
+      }
+    ]
+  },
+  {
+    "name": "additional_cost_payable",
+    "note": "Village Rites with a creature on the board",
+    "viewer": "00000063-0000-4000-8000-000000000000",
+    "view": {
+      "id": "00000064-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "00000063-0000-4000-8000-000000000000",
+          "name": "Seat 1",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000063-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "00000065-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000063-0000-4000-8000-000000000000",
+                "controller": "00000063-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000066-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000063-0000-4000-8000-000000000000",
+                "controller": "00000063-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000067-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000063-0000-4000-8000-000000000000",
+                "controller": "00000063-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000063-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000068-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000063-0000-4000-8000-000000000000",
+                "controller": "00000063-0000-4000-8000-000000000000",
+                "auto": true,
+                "additional_cost": {
+                  "sacrifice_options": {
+                    "cards": [
+                      "00000069-0000-4000-8000-000000000000"
+                    ],
+                    "min": 1,
+                    "max": 1
+                  },
+                  "label": "Sacrifice a creature"
+                }
+              }
+            ]
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000063-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000063-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "0000006a-0000-4000-8000-000000000000",
+                "name": "Commander 1",
+                "owner": "00000063-0000-4000-8000-000000000000",
+                "controller": "00000063-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7
+        },
+        {
+          "id": "0000006b-0000-4000-8000-000000000000",
+          "name": "Seat 2",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "0000006b-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "0000006b-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "0000006b-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "0000006b-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "0000006c-0000-4000-8000-000000000000",
+                "name": "Commander 2",
+                "owner": "0000006b-0000-4000-8000-000000000000",
+                "controller": "0000006b-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 3,
+        "cards": [
+          {
+            "instance_id": "0000006d-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "00000063-0000-4000-8000-000000000000",
+            "controller": "00000063-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {B}",
+                "tap_cost": true,
+                "produced": "{B}"
+              }
+            ]
+          },
+          {
+            "instance_id": "0000006e-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "00000063-0000-4000-8000-000000000000",
+            "controller": "00000063-0000-4000-8000-000000000000",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "label": "Add {B}",
+                "tap_cost": true,
+                "produced": "{B}"
+              }
+            ]
+          },
+          {
+            "instance_id": "00000069-0000-4000-8000-000000000000",
+            "name": "",
+            "owner": "00000063-0000-4000-8000-000000000000",
+            "controller": "00000063-0000-4000-8000-000000000000"
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 0,
+        "cards": []
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 0,
+        "phase": "precombat_main",
+        "step": "precombat_main"
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "starting_seat": 0,
+      "legal_moves": [
+        {
+          "type": "pass_priority",
+          "player": "00000063-0000-4000-8000-000000000000",
+          "kind": "pass",
+          "label": "Pass priority",
+          "source": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "00000063-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "00000068-0000-4000-8000-000000000000",
+            "from_zone": "hand",
+            "sacrifice_ids": [
+              "00000069-0000-4000-8000-000000000000"
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Village Rites",
+          "source": "00000068-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "00000063-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "0000006a-0000-4000-8000-000000000000",
+            "from_zone": "command",
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Commander 1 from the command zone",
+          "source": "0000006a-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "00000063-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "0000006d-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Swamp: Add {B}",
+          "source": "0000006d-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "00000063-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "0000006e-0000-4000-8000-000000000000",
+            "ability_index": 0
+          },
+          "kind": "mana",
+          "label": "Swamp: Add {B}",
+          "source": "0000006e-0000-4000-8000-000000000000"
+        }
+      ],
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
+        }
+      ]
+    },
+    "expect": [
+      {
+        "instance_id": "00000068-0000-4000-8000-000000000000",
+        "name": "Village Rites",
+        "castable": true,
+        "why": "a creature is available to sacrifice"
+      }
+    ]
+  }
+]

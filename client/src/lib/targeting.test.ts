@@ -64,6 +64,21 @@ describe("hasXCost + xValue on the prompt — S20 sub-PR 3", () => {
     expect(get(targeting)?.choices?.xValue).toBe(4);
     cancel();
   });
+
+  // S23: Toxic Deluge prints a flat {2}{B} and still has an X to
+  // announce, because its "pay X life" additional cost carries one.
+  // A card whose mana cost alone decided this would never open the
+  // prompt and would always cast for X = 0.
+  it("detects an X on a pay-X-life additional cost", () => {
+    expect(
+      hasXCost(
+        card({ mana_cost: "{2}{B}", additional_cost: { demands_x: true, label: "Pay X life" } }),
+      ),
+    ).toBe(true);
+    expect(hasXCost(card({ mana_cost: "{2}{B}", additional_cost: { discard_cards: 1 } }))).toBe(
+      false,
+    );
+  });
 });
 
 // --- S20 sub-PR 4: modal spells ----------------------------------
@@ -134,7 +149,9 @@ describe("activated-ability targeting", () => {
     beginForAbility(bombardment, ability, ["c-fodder"]);
     const t = get(targeting)!;
     expect(t.mode).toBe("any");
-    expect(t.ability).toEqual({ index: 0, sacrificeIDs: ["c-fodder"] });
+    // crewIDs defaults to empty: this ability has no crew component,
+    // and the server treats absent and empty the same.
+    expect(t.ability).toEqual({ index: 0, sacrificeIDs: ["c-fodder"], crewIDs: [] });
     // The legal set comes from the ability, not the source card.
     expect(isLegalPlayerTarget(t, "p1")).toBe(true);
     expect(isLegalCardTarget(t, "c-bear")).toBe(true);

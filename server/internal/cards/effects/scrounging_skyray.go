@@ -18,6 +18,8 @@ func init() {
 	Register(Spec{
 		OracleID:        "3a46d85b-ce1a-4842-a342-92a5bddb1053",
 		Name:            "Scrounging Skyray",
+		Completeness:    CompletenessCaveats,
+		Caveats:         []string{"Cycling {2} is not implemented — the creature can only be cast."},
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDiscardCard},

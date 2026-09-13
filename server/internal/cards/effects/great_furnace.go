@@ -14,8 +14,9 @@ package effects
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "f4819061-b0b5-48ab-af7b-6525c3d2eab7",
-		Name:     "Great Furnace",
+		OracleID:     "f4819061-b0b5-48ab-af7b-6525c3d2eab7",
+		Name:         "Great Furnace",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{R}",

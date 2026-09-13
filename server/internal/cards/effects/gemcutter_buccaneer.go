@@ -22,8 +22,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // than silently dropped.
 func init() {
 	Register(Spec{
-		OracleID: "68e45c07-96c5-4f87-a816-d9fa4f119740",
-		Name:     "Gemcutter Buccaneer",
+		OracleID:     "68e45c07-96c5-4f87-a816-d9fa4f119740",
+		Name:         "Gemcutter Buccaneer",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The second ability is missing — your Treasures don't become Equipment granting +2/+0, so there's nothing to equip."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

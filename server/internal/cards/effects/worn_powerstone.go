@@ -20,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "b166b670-febc-4821-855e-f8d465644c03",
 		Name:         "Worn Powerstone",
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

@@ -193,7 +193,7 @@ func (g *Game) ClearExpiredTurnScopedStaticsLocked() {
 // `activeStaticAbilitiesLocked` hands out: valid for the duration
 // of one recompute pass, never retained across a mutation.
 //
-// Caller must hold g.mu or g.recompute.mu.
+// Caller must hold g.mu in write mode (the recompute pass does).
 func (g *Game) turnScopedContinuousEffectsLocked() []ContinuousEffect {
 	if len(g.TurnScopedStatics) == 0 {
 		return nil

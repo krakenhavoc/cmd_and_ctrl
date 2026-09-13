@@ -18,8 +18,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "d8ad23a1-0b43-48ea-9fbe-d89b29194509",
-		Name:     "Accursed Marauder",
+		OracleID:     "d8ad23a1-0b43-48ea-9fbe-d89b29194509",
+		Name:         "Accursed Marauder",
+		Completeness: CompletenessFull,
 		OnETB: func(_ *game.Card, ctx *Context) error {
 			return EachPlayerSacrifices{
 				Match: b04NontokenCreature,

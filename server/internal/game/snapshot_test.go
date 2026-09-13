@@ -189,7 +189,6 @@ func enrich(t *testing.T, g *Game) {
 				AllowTrample:     true,
 				HasDeathtouch:    true,
 				SourceController: p0.ID,
-				SourceOwner:      p0.ID,
 			},
 		}}
 

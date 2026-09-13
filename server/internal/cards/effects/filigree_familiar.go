@@ -27,8 +27,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // path instead would be wrong: mana abilities don't use the stack.
 func init() {
 	Register(Spec{
-		OracleID: "b544f690-e4bf-4a5b-984d-9256518fd574",
-		Name:     "Filigree Familiar",
+		OracleID:     "b544f690-e4bf-4a5b-984d-9256518fd574",
+		Name:         "Filigree Familiar",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The \"{2}, Sacrifice: Add one mana of any color\" ability is missing — the Fox can't be cracked for mana."},
 		Triggered: []game.TriggeredAbility{{
 			// "When this enters the battlefield, you gain 2 life."
 			Watches: []game.EventKind{game.EventETB},

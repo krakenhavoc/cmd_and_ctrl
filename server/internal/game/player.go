@@ -52,12 +52,19 @@ type LifeChange struct {
 // zones (library, hand, graveyard, command zone) and tracks their own
 // life, poison, energy, and commander-damage bookkeeping.
 //
-// NOTE on commander damage: S02 keys CommanderDamage by the opponent
-// *player ID*, not by commander *instance ID*. This is incorrect for
-// partner commanders (two commanders per player), where damage should
-// be tracked per commander to evaluate the 21-damage lethal condition.
-// Good enough for S02; S10's Commander UX sprint is the natural place
-// to broaden this to a per-commander map.
+// NOTE on commander damage: S25 (#77) rekeyed CommanderDamage from
+// the opponent *player ID* to the commander *instance ID*. S02 chose
+// the player key and every sprint since carried a note saying it was
+// wrong; CR 903.14a is explicitly per-commander ("damage dealt to a
+// player by ONE commander"), so a partner pair sharing a seat was
+// pooling two commanders' damage into one 21-point clock and killing
+// its controller early.
+//
+// The client had already been written against the correct shape:
+// HoverZoomOverlay reads `commander_damage[instance_id]` off each
+// seat to draw the per-commander bars, which meant every row read 0
+// against the player-keyed map the server was actually sending. The
+// rekey is what makes that UX display real numbers.
 type Player struct {
 	ID   uuid.UUID
 	Name string
@@ -78,8 +85,16 @@ type Player struct {
 	Graveyard *Zone
 	Command   *Zone
 
-	// CommanderDamage maps opposing player ID → damage dealt by that
-	// opponent's commander(s). See the package-level note above.
+	// CommanderDamage maps commander INSTANCE ID → total damage that
+	// one commander has dealt to this player across the game
+	// (CR 903.14a). See the note above the struct.
+	//
+	// The key is an instance ID and survives zone changes, which is
+	// the behaviour the rule wants: a commander that dies, returns to
+	// the command zone and is recast keeps accruing toward the same
+	// 21. A commander that is exiled and returned as a NEW object
+	// starts a fresh clock, which is also correct (CR 400.7) and
+	// falls out of the new instance ID for free.
 	CommanderDamage map[uuid.UUID]int
 
 	// LifeHistory is the rolling log of every change to Life. Bounded
@@ -223,18 +238,21 @@ func (p *Player) ChangeLife(delta int) int {
 	return p.Life
 }
 
-// RecordCommanderDamage adds damage dealt to this player by a given
-// opponent's commander. Idempotent and cumulative across a game.
-func (p *Player) RecordCommanderDamage(fromOpponent uuid.UUID, amount int) int {
+// RecordCommanderDamage adds damage dealt to this player by one
+// commander, identified by its card INSTANCE ID. Cumulative across
+// the game; returns the new running total for that commander.
+func (p *Player) RecordCommanderDamage(fromCommander uuid.UUID, amount int) int {
 	if amount < 0 {
 		amount = 0
 	}
-	p.CommanderDamage[fromOpponent] += amount
-	return p.CommanderDamage[fromOpponent]
+	p.CommanderDamage[fromCommander] += amount
+	return p.CommanderDamage[fromCommander]
 }
 
-// IsDeadByCommanderDamage reports whether any single opponent's
-// commander has dealt 21 or more damage to this player.
+// IsDeadByCommanderDamage reports whether any SINGLE commander has
+// dealt 21 or more damage to this player (CR 903.14a). Totals are
+// never summed across commanders — two partners at 15 apiece is 30
+// damage and not a loss.
 func (p *Player) IsDeadByCommanderDamage() bool {
 	for _, d := range p.CommanderDamage {
 		if d >= CommanderDamageLethal {

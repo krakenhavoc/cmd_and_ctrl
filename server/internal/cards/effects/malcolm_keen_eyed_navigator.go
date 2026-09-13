@@ -30,6 +30,8 @@ func init() {
 	Register(Spec{
 		OracleID:        "a66f8b44-0163-4456-b152-4acefab896a4",
 		Name:            "Malcolm, Keen-Eyed Navigator",
+		Completeness:    CompletenessCaveats,
+		Caveats:         []string{"Two Pirates hitting the same opponent make two Treasures instead of one; Partner isn't supported, so Malcolm can't be your commander."},
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},

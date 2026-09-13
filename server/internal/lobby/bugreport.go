@@ -16,6 +16,11 @@ package lobby
 //     GitHub's image proxy renders them inline.
 //   - a pinned copy of the game's replay JSONL, kept behind admin auth
 //     and referenced only by report ID.
+//   - a pinned copy of the PUBLIC game log (S31 sub-PR 0), same admin
+//     posture as the replay. It is the artifact that makes a report
+//     readable: the replay says what the state WAS at every frame, the
+//     log says what HAPPENED, and "what happened" is what a bug report
+//     is about.
 //
 // The split matters: ADR 0017 §4 kept ALL game state out of issues to
 // stop hidden information leaking around the wire visibility filter.
@@ -36,6 +41,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
 // BugReporter files a bug report as an issue in the project tracker.
@@ -215,6 +221,7 @@ func bugReport(c Config, w http.ResponseWriter, r *http.Request) error {
 		in.ReportID = report.ID
 		in.Images = report.Images()
 		in.Replay = report.Replay()
+		in.GameLog = report.GameLog()
 	}
 
 	url, number, err := c.BugReporter.CreateIssue(r.Context(), bugTitlePrefix+title, renderBugIssueBody(in), []string{"bug"})
@@ -271,7 +278,8 @@ func buildBugArtifacts(c Config, p auth.Principal, bctx *bugReportContext, image
 		return nil, nil
 	}
 	replaySrc := bugReplaySource(c, p, bctx)
-	if len(images) == 0 && replaySrc == "" {
+	gameLog := bugGameLog(c, p, bctx)
+	if len(images) == 0 && replaySrc == "" && len(gameLog) == 0 {
 		return nil, nil
 	}
 
@@ -302,7 +310,52 @@ func buildBugArtifacts(c Config, p auth.Principal, bctx *bugReportContext, image
 			logBugStoreWarning(c, "pin replay", err)
 		}
 	}
+	if len(gameLog) > 0 {
+		if _, err := rep.PinGameLog(gameLog); err != nil && !errors.Is(err, bugstore.ErrNotFound) {
+			logBugStoreWarning(c, "pin game log", err)
+		}
+	}
 	return out, nil
+}
+
+// bugGameLog renders the game's public log (ADR 0033 §4) as text to
+// pin alongside the replay, or nil when there is no game to render.
+//
+// Entitlement mirrors bugReplaySource exactly: admins anywhere,
+// everyone else only for the game their session is bound to. As with
+// the replay, that check is not what protects the contents — the
+// pinned copy is admin-only to read — it stops a session in game A
+// from making the server render game B's history.
+//
+// The UNFILTERED projection is what gets pinned. That is the whole
+// point of an admin-only artifact: a report saying "the game let them
+// cast that twice" is triaged against what the server believed, not
+// against one seat's redacted view.
+func bugGameLog(c Config, p auth.Principal, bctx *bugReportContext) []byte {
+	if bctx == nil || bctx.GameID == "" || c.Lobby == nil {
+		return nil
+	}
+	id, err := uuid.Parse(bctx.GameID)
+	if err != nil {
+		return nil
+	}
+	if p.Role != auth.RoleAdmin && p.GameID != id {
+		return nil
+	}
+	room := c.Lobby.RoomOf(id)
+	if room == nil || room.Game == nil {
+		return nil
+	}
+	entries := protocol.ViewOfGame(room.Game).Log
+	if len(entries) == 0 {
+		return nil
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "# public game log — game %s, last %d entries\n", id, len(entries))
+	for _, e := range entries {
+		fmt.Fprintf(&b, "%6d  t%-3d %-10s %s\n", e.Seq, e.Turn, e.Kind, e.Text)
+	}
+	return []byte(b.String())
 }
 
 // bugReplaySource resolves the on-disk replay path to pin, or "" when
@@ -437,6 +490,32 @@ func bugPinnedReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// bugPinnedGameLog handles GET /bugreport/{id}/gamelog — admin only.
+//
+// The contents are public information by construction, but the pin is
+// the UNFILTERED projection and it is served under the same admin gate
+// as the replay rather than inviting a per-viewer question this route
+// has no seat to answer.
+func bugPinnedGameLog(c Config, w http.ResponseWriter, r *http.Request) error {
+	if !c.BugStore.Enabled() {
+		return httpError(http.StatusServiceUnavailable, "bug report storage is not configured on this server")
+	}
+	f, info, err := c.BugStore.OpenGameLog(r.PathValue("id"))
+	if err != nil {
+		if errors.Is(err, bugstore.ErrNotFound) {
+			return httpError(http.StatusNotFound, "no pinned game log for that report")
+		}
+		return httpError(http.StatusInternalServerError, "opening the pinned game log failed")
+	}
+	defer func() { _ = f.Close() }()
+	name := r.PathValue("id") + ".gamelog.txt"
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
+	http.ServeContent(w, r, name, info.ModTime(), f)
+	return nil
+}
+
 // bugIssue is the input to renderBugIssueBody — a struct rather than
 // a positional argument list because the body now assembles from six
 // independent sources and a seventh would have been unreadable.
@@ -450,6 +529,7 @@ type bugIssue struct {
 	ReportID  string
 	Images    []bugstore.Image
 	Replay    *bugstore.ReplayPin
+	GameLog   *bugstore.GameLogPin
 }
 
 // renderBugIssueBody assembles the markdown issue body: the
@@ -520,6 +600,14 @@ func renderBugIssueBody(in bugIssue) string {
 		// replay yet. The live route is the fallback, with the caveat
 		// that it disappears when the game is evicted.
 		fmt.Fprintf(&b, "- Replay: `GET /games/%s/replay` (admin; not pinned — gone once the game is evicted)\n", clip(in.Ctx.GameID, bugFieldMax))
+	}
+	if in.GameLog != nil {
+		// Referenced, never inlined — same rule as the replay. The log
+		// is public information, but ADR 0017 §4 keeps GAME STATE out
+		// of issue bodies as a category, and an admin-gated artifact
+		// costs the operator one request.
+		fmt.Fprintf(&b, "- Pinned game log: `GET /bugreport/%s/gamelog` (admin) — %d entries, %d KiB, what happened at the table\n",
+			in.ReportID, in.GameLog.Lines-1, in.GameLog.Bytes>>10)
 	}
 	fmt.Fprintf(&b, "- Server time: %s\n", in.Now.Format(time.RFC3339))
 	if in.UserAgent != "" {

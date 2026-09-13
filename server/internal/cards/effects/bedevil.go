@@ -13,8 +13,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "bceecc64-96f1-4e7b-8904-0aef90377764",
-		Name:     "Bedevil",
+		OracleID:     "bceecc64-96f1-4e7b-8904-0aef90377764",
+		Name:         "Bedevil",
+		Completeness: CompletenessFull,
 		Targets: TargetPermanent("target artifact, creature, or planeswalker",
 			Or(Artifact(), Creature(), Planeswalker())),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

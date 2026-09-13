@@ -25,8 +25,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // documented so future implementers don't think they were missed.
 func init() {
 	Register(Spec{
-		OracleID: "ae1f2ab5-c6a5-4d49-a746-3cb4668bf805",
-		Name:     "Mycosynth Lattice",
+		OracleID:     "ae1f2ab5-c6a5-4d49-a746-3cb4668bf805",
+		Name:         "Mycosynth Lattice",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Only the \"all permanents are artifacts\" clause works — nothing is made colorless and you cannot spend mana as any color."},
 		Static: []game.StaticAbility{
 			{
 				Layer: game.Layer4Type,

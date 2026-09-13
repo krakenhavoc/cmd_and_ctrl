@@ -25,8 +25,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // a built StackItem exists.
 func init() {
 	Register(Spec{
-		OracleID: "d2d9ecea-7925-420e-98b9-2f87f41f387c",
-		Name:     "Land Tax",
+		OracleID:     "d2d9ecea-7925-420e-98b9-2f87f41f387c",
+		Name:         "Land Tax",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The land-count check happens only when the trigger goes on the stack, so playing a land in response won't stop the search."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventBeginUpkeep},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

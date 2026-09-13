@@ -1,5 +1,7 @@
 package game
 
+import "github.com/google/uuid"
+
 // characteristic.go is the S16 layer-system foundation: a mutable
 // snapshot of a card's effective characteristics post-layer
 // resolution. The wire ships effective values; the engine's rules
@@ -37,6 +39,22 @@ type Characteristic struct {
 	Colors     []string
 	Abilities  []string
 	Name       string
+
+	// Controller is the post-layer-2 controller (CR 613.1b). It is
+	// the one field here that is NOT a characteristic in the CR 109.3
+	// sense — control is a property of the object, not of its
+	// printed face — and it lives here anyway because layer 2 is a
+	// layer, it has to sort by timestamp against every other layer,
+	// and there was nowhere else for its output to land.
+	//
+	// Seeded from Card.baseController(), overwritten by any layer-2
+	// effect that applies, and then MATERIALISED back onto
+	// Card.Controller at the end of the recompute. That last step is
+	// what makes this field worth having: ~385 sites in the engine
+	// and the catalog read Card.Controller, and materialising means
+	// all of them are right without being touched. See
+	// recomputeLayersLocked.
+	Controller uuid.UUID
 }
 
 // printedCharacteristic builds a Characteristic from the card's
@@ -103,7 +121,26 @@ func (c Card) printedCharacteristic() Characteristic {
 		Colors:     printedColors(c),
 		Name:       c.Name,
 		Abilities:  abilities,
+		// The layer-0 baseline for control (CR 613.1b): who controls
+		// this object absent any control-changing continuous effect.
+		Controller: c.baseController(),
 	}
+}
+
+// baseController is the controller a permanent reverts to when every
+// control-changing effect on it ends — the player who controlled it
+// when it entered the battlefield, or its current controller for a
+// card the layer engine has not seen enter (anything off the
+// battlefield, every test fixture, the demo seed).
+//
+// Card.BaseController is captured lazily by the recompute and cleared
+// on battlefield exit, so it is zero exactly when "the current
+// controller IS the base" is true.
+func (c Card) baseController() uuid.UUID {
+	if c.BaseController != uuid.Nil {
+		return c.BaseController
+	}
+	return c.Controller
 }
 
 // containsKeyword reports whether xs already holds kw. Used by the

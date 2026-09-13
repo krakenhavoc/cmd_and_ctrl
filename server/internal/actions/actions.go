@@ -382,6 +382,12 @@ func Dispatch(g *game.Game, a Action) error {
 			// alternative costs ("overload", "evoke", "cleave").
 			// Empty is the ordinary "pay the printed cost" case.
 			AlternativeCost string `json:"alternative_cost,omitempty"`
+			// S28 — the card paid to the non-mana half of that
+			// alternative cost: Force of Will's pitched blue card,
+			// Daze's returned Island, Solitude's evoke pitch. Exactly
+			// one entry when the claimed cost charges one, absent
+			// otherwise.
+			AltCostIDs []string `json:"alt_cost_ids,omitempty"`
 			// ADR 0034 — which printed face of a multi-face card is
 			// being cast or played. Absent (0) is the front face,
 			// which is the right answer for every single-faced card
@@ -425,6 +431,16 @@ func Dispatch(g *game.Game, a Action) error {
 					return fmt.Errorf("cast_spell sacrifice_ids[%d]: %w", i, err)
 				}
 				params.SacrificeIDs = append(params.SacrificeIDs, id)
+			}
+		}
+		if len(p.AltCostIDs) > 0 {
+			params.AltCostIDs = make([]uuid.UUID, 0, len(p.AltCostIDs))
+			for i, raw := range p.AltCostIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("cast_spell alt_cost_ids[%d]: %w", i, err)
+				}
+				params.AltCostIDs = append(params.AltCostIDs, id)
 			}
 		}
 		if len(p.TapIDs) > 0 {
@@ -588,6 +604,8 @@ func Dispatch(g *game.Game, a Action) error {
 		return g.AddCounter(instanceID, p.Name, p.Delta)
 
 	case TypeSetCommanderDamage:
+		// `from` is a COMMANDER CARD instance ID since S25 (#77); it
+		// was an opposing player ID before the CR 903.14a rekey.
 		var p struct {
 			From   string `json:"from"`
 			To     string `json:"to"`
@@ -897,8 +915,12 @@ func Dispatch(g *game.Game, a Action) error {
 			// the permanents paid to a "Sacrifice a creature" cost.
 			AbilityIndex *int     `json:"ability_index,omitempty"`
 			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
-			Strict       bool     `json:"strict,omitempty"`
-			AutoTap      bool     `json:"auto_tap,omitempty"`
+			// S27 — crew_ids names the creatures tapped to pay a
+			// Vehicle's crew cost (CR 702.122a). Any number of them;
+			// what the server checks is the total power.
+			CrewIDs []string `json:"crew_ids,omitempty"`
+			Strict  bool     `json:"strict,omitempty"`
+			AutoTap bool     `json:"auto_tap,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -922,6 +944,14 @@ func Dispatch(g *game.Game, a Action) error {
 				}
 				sacIDs = append(sacIDs, id)
 			}
+			crewIDs := make([]uuid.UUID, 0, len(p.CrewIDs))
+			for _, raw := range p.CrewIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability crew_ids: %w", err)
+				}
+				crewIDs = append(crewIDs, id)
+			}
 			refs := make([]game.TargetRef, 0, len(p.Targets))
 			for _, t := range p.Targets {
 				ref, err := t.toRef()
@@ -932,6 +962,7 @@ func Dispatch(g *game.Game, a Action) error {
 			}
 			return g.ActivateCatalogAbility(a.Player, srcID, *p.AbilityIndex, game.ActivateAbilityParams{
 				SacrificeIDs: sacIDs,
+				CrewIDs:      crewIDs,
 				Targets:      refs,
 				Strict:       p.Strict,
 				AutoTap:      p.AutoTap,
@@ -1089,6 +1120,15 @@ func Dispatch(g *game.Game, a Action) error {
 			if err != nil {
 				return fmt.Errorf("resolve_choice target: %w", err)
 			}
+			// S27: the legend rule answers with the same {kind, id}
+			// ref — the permanent the controller KEEPS — because it is
+			// the same question shape (pick one from a server-computed
+			// set) and reusing the payload means the client's existing
+			// highlight flow answers it with no second picker. It is
+			// not targeting; the kind is what keeps them apart.
+			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceLegendRule {
+				return g.ResolveLegendRule(choiceID, a.Player, ref.ID)
+			}
 			return g.ResolvePickTarget(choiceID, a.Player, ref)
 		}
 		if p.Targets != nil {
@@ -1100,14 +1140,25 @@ func Dispatch(g *game.Game, a Action) error {
 				}
 				refs = append(refs, ref)
 			}
+			// The client's targeting banner always submits the PLURAL
+			// form, so a legend-rule answer arrives here rather than
+			// in the singular branch above. Both are routed: the
+			// singular one is what gamecli and the tests send.
+			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceLegendRule {
+				if len(refs) != 1 {
+					return game.ErrInvalidParam
+				}
+				return g.ResolveLegendRule(choiceID, a.Player, refs[0].ID)
+			}
 			return g.ResolvePickTargets(choiceID, a.Player, refs)
 		}
 		if p.OptionalApply != nil {
-			// Four yes/no kinds share the {apply: bool} payload
+			// Five yes/no kinds share the {apply: bool} payload
 			// shape: PendingChoiceOptionalReplacement (S17),
 			// PendingChoiceTriggerPrompt (S19),
-			// PendingChoicePayUnless (S19 sub-PR 6) and
-			// PendingChoiceEntryPayLife (shocklands). Disambiguate
+			// PendingChoicePayUnless (S19 sub-PR 6),
+			// PendingChoiceEntryPayLife (shocklands) and
+			// PendingChoiceMayCast (S28 cascade). Disambiguate
 			// by looking up the choice's kind on the engine.
 			kind, ok := g.PendingChoiceKindFor(choiceID)
 			if !ok {
@@ -1120,6 +1171,11 @@ func Dispatch(g *game.Game, a Action) error {
 				// S19 sub-PR 6: "unless that player pays {N}" — apply
 				// means "I pay".
 				return g.ResolvePayUnless(choiceID, a.Player, *p.OptionalApply)
+			case game.PendingChoiceMayCast:
+				// S28 cascade: "you may cast it without paying its
+				// mana cost" — apply means "I'll take it", and the
+				// engine stamps a free-cast permission on the card.
+				return g.ResolveMayCast(choiceID, a.Player, *p.OptionalApply)
 			case game.PendingChoiceEntryPayLife:
 				// Shocklands: "as this enters, you may pay 2 life" —
 				// apply means "I pay", and paying is what keeps the
@@ -1196,6 +1252,18 @@ func Dispatch(g *game.Game, a Action) error {
 				return g.ResolveSacrificeChoice(choiceID, a.Player, ids[0])
 			case game.PendingChoiceSearchLibrary:
 				return g.ResolveSearchLibrary(choiceID, a.Player, ids)
+			case game.PendingChoiceCopyTarget:
+				// "You may have this enter as a copy of ..." — an
+				// EMPTY list is the decline, exactly as it is for
+				// search's fail-to-find, because every printed copy
+				// effect of this class says "you may" (CR 614.1c).
+				if len(ids) == 0 {
+					return g.ResolveCopyTarget(choiceID, a.Player, uuid.Nil)
+				}
+				if len(ids) != 1 {
+					return game.ErrInvalidParam
+				}
+				return g.ResolveCopyTarget(choiceID, a.Player, ids[0])
 			}
 		}
 		return g.ResolvePendingChoice(choiceID, a.Player, ids)

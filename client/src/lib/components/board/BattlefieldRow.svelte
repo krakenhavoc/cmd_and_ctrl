@@ -27,6 +27,10 @@
     onActivateManaAbility?: (card: CardView, abilityIndex: number) => void;
     // S21 sub-PR 2: CR 602 activated abilities, same menu.
     onActivateAbility?: (card: CardView, abilityIndex: number) => void;
+    // S31: why the CR 307.1 sorcery-speed window is shut, or "" when
+    // it is open. Pass-through to Card → ManaAbilityMenu, which greys
+    // `sorcery_speed` abilities with it.
+    sorcerySpeedBlocked?: string;
     // compact — one card size down (PlayerPanel's --card-w-sm). Used
     // for the middle band: non-creature permanents and lands.
     compact?: boolean;
@@ -34,6 +38,13 @@
     // Lands: seven of them fit in half a panel, and tapped ones sort
     // to the right so the untapped count reads at a glance.
     strip?: boolean;
+    // S24: the Equipment and Auras attached to each host, keyed by
+    // the host's instance ID. Derived by PlayerPanel from the
+    // one-directional `attached_to` on the wire. They are drawn
+    // inside the host's own listitem, offset behind it — the same
+    // negative-margin overlap the land strip uses — so a sword reads
+    // as being ON the creature rather than as a separate permanent.
+    attachmentsByHost?: Record<string, CardView[]>;
   }
 
   const {
@@ -43,8 +54,10 @@
     onCardClick,
     onActivateManaAbility,
     onActivateAbility,
+    sorcerySpeedBlocked = "",
     compact = false,
     strip = false,
+    attachmentsByHost = {},
   }: Props = $props();
 
   const sorted = $derived.by(() => {
@@ -63,17 +76,38 @@
   <div class="row-cards" role="list" aria-label={label}>
     {#each sorted as c (c.instance_id)}
       <div role="listitem" class:tapped={!!c.tapped} use:etbPulse>
-        <Card
-          card={c}
-          selected={selectedCombatCardID === c.instance_id}
-          attacking={!!c.attacking_target}
-          blocking={!!c.blocking_target}
-          onClick={onCardClick}
-          onActivateManaAbility={onActivateManaAbility
-            ? (idx) => onActivateManaAbility(c, idx)
-            : undefined}
-          onActivateAbility={onActivateAbility ? (idx) => onActivateAbility(c, idx) : undefined}
-        />
+        <div
+          class="host-stack"
+          class:has-attachments={(attachmentsByHost[c.instance_id] ?? []).length > 0}
+        >
+          {#each attachmentsByHost[c.instance_id] ?? [] as a (a.instance_id)}
+            <div class="attachment">
+              <Card
+                card={a}
+                onClick={onCardClick}
+                onActivateManaAbility={onActivateManaAbility
+                  ? (idx) => onActivateManaAbility(a, idx)
+                  : undefined}
+                onActivateAbility={onActivateAbility
+                  ? (idx) => onActivateAbility(a, idx)
+                  : undefined}
+                {sorcerySpeedBlocked}
+              />
+            </div>
+          {/each}
+          <Card
+            card={c}
+            selected={selectedCombatCardID === c.instance_id}
+            attacking={!!c.attacking_target}
+            blocking={!!c.blocking_target}
+            onClick={onCardClick}
+            onActivateManaAbility={onActivateManaAbility
+              ? (idx) => onActivateManaAbility(c, idx)
+              : undefined}
+            onActivateAbility={onActivateAbility ? (idx) => onActivateAbility(c, idx) : undefined}
+            {sorcerySpeedBlocked}
+          />
+        </div>
       </div>
     {/each}
   </div>
@@ -110,6 +144,29 @@
   .row-count {
     letter-spacing: 0;
     font-weight: 500;
+  }
+  /* A host and everything attached to it. The attachments are laid
+     out first and overlapped leftwards behind the host, which is
+     drawn last so it sits on top; the wrapper claims only the host's
+     width, so a creature carrying two swords does not reflow the row
+     out from under its neighbours. */
+  .host-stack {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .host-stack.has-attachments {
+    margin-left: calc(var(--card-w, 88px) * 0.34);
+  }
+  .host-stack .attachment {
+    flex: 0 0 auto;
+    margin-right: calc(var(--card-w, 88px) * -0.72);
+    transform: translateY(8px);
+    filter: brightness(0.88);
+  }
+  .host-stack .attachment:hover {
+    z-index: 7;
+    filter: none;
   }
   .row-cards {
     display: flex;

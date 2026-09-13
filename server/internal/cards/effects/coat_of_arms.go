@@ -31,8 +31,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // must get the same answer.
 func init() {
 	Register(Spec{
-		OracleID: "5f7f133e-58ea-41ab-b1be-be4b400fac4c",
-		Name:     "Coat of Arms",
+		OracleID:     "5f7f133e-58ea-41ab-b1be-be4b400fac4c",
+		Name:         "Coat of Arms",
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,

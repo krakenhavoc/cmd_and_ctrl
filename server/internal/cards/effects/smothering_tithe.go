@@ -26,8 +26,9 @@ import (
 // outlived the fix; corrected in the #338 sweep.
 func init() {
 	Register(Spec{
-		OracleID: "153376c9-dffd-458c-8ce3-a4c8269bc4e9",
-		Name:     "Smothering Tithe",
+		OracleID:     "153376c9-dffd-458c-8ce3-a4c8269bc4e9",
+		Name:         "Smothering Tithe",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDrawCard},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

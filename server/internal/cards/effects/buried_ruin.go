@@ -24,8 +24,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "3644f316-f9a3-46c9-9b1e-747f86cf4ead",
-		Name:     "Buried Ruin",
+		OracleID:     "3644f316-f9a3-46c9-9b1e-747f86cf4ead",
+		Name:         "Buried Ruin",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}",

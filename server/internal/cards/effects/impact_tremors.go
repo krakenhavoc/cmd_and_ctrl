@@ -20,8 +20,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "9242cd3e-1a71-4700-8182-9c1005616033",
-		Name:     "Impact Tremors",
+		OracleID:     "9242cd3e-1a71-4700-8182-9c1005616033",
+		Name:         "Impact Tremors",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

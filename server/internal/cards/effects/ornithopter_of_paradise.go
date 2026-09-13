@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "3a940dfa-a026-4969-8981-ef90cdfbe9ef",
 		Name:            "Ornithopter of Paradise",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

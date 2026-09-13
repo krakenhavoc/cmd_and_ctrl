@@ -38,8 +38,10 @@ import (
 // actually enforces — the S18 table, one entry per consumer in the
 // combat / cast paths above, plus the S23 targeting pair (hexproof,
 // shroud), whose consumer is the targeting choke point in
-// targets.go. The tokens are the canonical lowercase wire form; the
-// client's KEYWORD_ICONS map is keyed by exactly these strings.
+// targets.go, plus S25's indestructible, whose consumer is the
+// destruction path (indestructible.go). The tokens are the canonical
+// lowercase wire form; the client's KEYWORD_ICONS map is keyed by
+// exactly these strings.
 //
 // The set is deliberately CLOSED. Scryfall publishes a `keywords`
 // array carrying every mechanic printed on a card — "Prepared",
@@ -65,6 +67,10 @@ var canonicalKeywords = map[string]bool{
 	"flash":         true,
 	"hexproof":      true,
 	"shroud":        true,
+	// S25 (#77): indestructible's consumer is the destruction path,
+	// not combat or targeting — see indestructible.go for the rule
+	// and for the list of things it deliberately does not stop.
+	"indestructible": true,
 	// changeling (CR 702.73) joins the table in S26, in the same
 	// change that teaches Card.HasSubtype to honour it — which is
 	// the rule the table's closedness encodes. Its consumer is not
@@ -166,7 +172,7 @@ func CanonicalKeyword(s string) (string, bool) {
 // combat-keyword card" for the table): "flying", "reach",
 // "first strike", "double strike", "deathtouch", "lifelink",
 // "trample", "vigilance", "menace", "defender", "haste", "flash",
-// "hexproof", "shroud".
+// "hexproof", "shroud", "indestructible".
 //
 // On-battlefield: reads c.Effective().Abilities, so keywords granted
 // by static abilities (Lord of Atlantis's islandwalk on other

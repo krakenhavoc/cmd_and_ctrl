@@ -28,8 +28,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID: "64bf8929-f5f2-4d50-8667-13b1d007bcfc",
-		Name:     "Seething Song",
+		OracleID:     "64bf8929-f5f2-4d50-8667-13b1d007bcfc",
+		Name:         "Seething Song",
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return AddMana{Player: item.Controller, Produced: "{R}{R}{R}{R}{R}"}.Apply(ctx)
 		},

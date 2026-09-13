@@ -266,11 +266,16 @@ func (g *Game) markReplacementAppliedLocked(ev *ReplacementEvent, id Replacement
 // permanent (Kismet plus the land's own) would have been the first,
 // via the CR 616 ordering prompt.
 //
-// Reached only for an event flagged entryResumable — the land-play
-// branch, whose push this reproduces exactly. Deliberately NOT the
-// stack and exile entry sites: those queue evoke's sacrifice trigger
-// and mint a new object identity respectively, and a generic push
-// would quietly skip both.
+// Reached only for an event flagged entryResumable. Two sites carry
+// that flag: the land-play branch, whose push this reproduces
+// exactly, and (since S16.5) the stack-resolution branch, which
+// reproduces it PLUS the two jobs only stack resolution does — the
+// resolved Aura's attach and evoke's sacrifice trigger — off the
+// StackItem the event carries.
+//
+// Still deliberately NOT the exile→battlefield return: that mints a
+// new object identity (CR 400.7) and a generic push would quietly
+// skip it.
 //
 // The card is located live rather than trusted from ev.OldZone: the
 // prompt is asynchronous, and the answer arrives in a later action.
@@ -308,6 +313,12 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) error {
 		break
 	}
 	g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
+	// CR 706.2 — see the twin call in resolveTopOfStackLocked. The
+	// copy lands before the counters and before any event, so an ETB
+	// trigger never sees the permanent as its own printed self.
+	if copied, ok := g.applyEntersAsCopyLocked(ev, moved.InstanceID); ok {
+		moved = copied
+	}
 	for name, n := range ev.EntersWithCounters {
 		_ = g.AddCounterForEffect(moved.InstanceID, name, n)
 	}
@@ -319,10 +330,11 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) error {
 	// never saw. Found by the MDFC back-face test; the bug is older
 	// and applies to the whole pay-life cycle.
 	//
-	// entryResumable is set on exactly one entry site (the land
-	// branch), so reaching here at all means a land was played; the
-	// IsLand guard is belt-and-braces against a future third site.
-	if moved.IsLand() && ev.Actor != uuid.Nil {
+	// A land PLAY is a land drop; a land that resolved off the stack
+	// is not one, and neither is anything else that arrives here. The
+	// stack site (S16.5) carries its StackItem, which is exactly the
+	// signal that separates the two.
+	if moved.IsLand() && ev.Actor != uuid.Nil && ev.stackItem == nil {
 		if g.LandsPlayedThisTurn == nil {
 			g.LandsPlayedThisTurn = make(map[uuid.UUID]int)
 		}
@@ -335,12 +347,24 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) error {
 		OldZone: srcKind,
 		NewZone: ZoneBattlefield,
 	})
+	// S16.5: the two jobs stack resolution does that no other entry
+	// site does. Both need the StackItem, which is why carrying it
+	// across the pause is what made the stack site resumable at all.
+	// The Aura attach goes between the zone-move and the ETB so an
+	// ETB trigger already sees the attachment, exactly as the
+	// un-paused path orders it.
+	if ev.stackItem != nil {
+		g.attachResolvedAuraLocked(moved.InstanceID, ev.stackItem)
+	}
 	g.EmitEvent(Event{
 		Kind:   EventETB,
 		Actor:  ev.Actor,
 		CardID: moved.InstanceID,
 	})
 	g.fireETBHookLocked(moved.InstanceID, CatalogKey(moved))
+	if ev.stackItem != nil {
+		g.queueAltCostEntryTriggerLocked(moved, ev.stackItem)
+	}
 	g.runStateChecksLocked()
 	return nil
 }
