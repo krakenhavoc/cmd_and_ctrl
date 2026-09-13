@@ -232,6 +232,7 @@ func heuristicSeats(n int) []aiseat.Policy {
 // Four heuristic bots play to a winner within 50 turns — the S31
 // sprint's exit criterion for this sub-PR, verbatim.
 func TestFourHeuristicBotsPlayToAWinner(t *testing.T) {
+	requireGameTests(t)
 	const (
 		turnBudget = 50
 		wall       = 120 * time.Second
@@ -271,6 +272,7 @@ func TestFourHeuristicBotsPlayToAWinner(t *testing.T) {
 // AISEAT_H2H_GAMES raises the sample; the default is small enough to
 // live in the ordinary test run.
 func TestHeuristicBeatsRandomHeadToHead(t *testing.T) {
+	requireGameTests(t)
 	games := 8
 	if n, err := strconv.Atoi(os.Getenv("AISEAT_H2H_GAMES")); err == nil && n > 0 {
 		games = n
@@ -316,6 +318,7 @@ func TestHeuristicBeatsRandomHeadToHead(t *testing.T) {
 // on a bot. The heuristic is supposed to be free — sub-millisecond —
 // and this is the number that says whether it still is.
 func TestHeuristicDecisionLatency(t *testing.T) {
+	requireGameTests(t)
 	timed := make([]*timingPolicy, 4)
 	policies := make([]aiseat.Policy, 4)
 	for i := range timed {
@@ -426,6 +429,7 @@ func TestHeuristicConcedesAHopelessSeat(t *testing.T) {
 // concede heuristic tuned one notch too eager takes a human's win
 // away from them.
 func TestHeuristicDoesNotConcedeAWinnableGame(t *testing.T) {
+	requireGameTests(t)
 	room := newRoom(t, 2, 99)
 	g := room.Game
 	bot, opp := g.Seats[0], g.Seats[1]
