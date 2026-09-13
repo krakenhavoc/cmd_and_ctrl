@@ -164,6 +164,13 @@ type PendingChoiceView struct {
 	// Added in S15 sub-PR 2.
 	ColorOptions []string `json:"color_options,omitempty"`
 
+	// TypeOptions populates the S26 "choose_creature_type" kind: every
+	// creature type the engine knows (CR 205.3m), for the picker to
+	// filter. Materialised here from game.AllCreatureTypes rather than
+	// stored on the PendingChoice, because the legal set is the same
+	// for every such prompt and the server can always rebuild it.
+	TypeOptions []string `json:"type_options,omitempty"`
+
 	// ReplacementOptions populates the S17 "replacement_order" kind:
 	// one entry per applicable CR 614 replacement effect the
 	// chooser is ordering. The client renders a drag-reorder list
@@ -1550,6 +1557,13 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// mutations on the engine's copy don't leak onto the view.
 		if c.Kind == game.PendingChoiceMana && len(c.ColorOptions) > 0 {
 			v.ColorOptions = append([]string(nil), c.ColorOptions...)
+		}
+		// PendingChoiceCreatureType — S26. The option set is the
+		// whole CR 205.3m vocabulary; the clone keeps the engine's
+		// package-level slice off the wire path, where a marshaller
+		// has no business holding a reference to it.
+		if c.Kind == game.PendingChoiceCreatureType {
+			v.TypeOptions = append([]string(nil), game.AllCreatureTypes...)
 		}
 		// PendingChoiceReplacementOrder — S17 sub-PR 2. Emit the
 		// ordered list of replacement-effect IDs with a human-

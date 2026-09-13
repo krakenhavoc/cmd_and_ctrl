@@ -2,80 +2,38 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-// Lord of Atlantis — "Other Merfolk creatures get +1/+1. Other
-// Merfolk creatures have islandwalk."
+// Lord of Atlantis — Creature — Merfolk, {U}{U}, 2/2:
 //
-// First S16 Layer-6 catalog card. Two static abilities on one
-// permanent:
+//	"Other Merfolk get +1/+1 and have islandwalk."
 //
-//   - Layer 7c: Merfolk creatures controlled by Lord's controller
-//     (excluding Lord itself) get +1/+1.
-//   - Layer 6: Same predicate; effective abilities gain "flying"
-//     ... wait, the actual oracle is "islandwalk" only — flying is
-//     a different lord. Sticking with the printed Lord of Atlantis
-//     text: islandwalk only. (The plan listed "flying + islandwalk"
-//     as a quick example; the actual card is islandwalk only.)
+// The first S16 Layer-6 catalog card, and since S26 the canonical
+// example of the shared lord builders in tribal.go.
 //
-// Self-exclusion test: AppliesTo checks `target.InstanceID !=
-// source.InstanceID` — the "other" predicate. Single Lord on the
-// board with no other Merfolk shows printed 2/2, not 3/3.
+// FIXED IN S26 — the anthem used to be restricted to the Lord's own
+// controller. The printed card has no "you control" clause: Lord of
+// Atlantis buffs every Merfolk on the battlefield, an opponent's
+// included, which is exactly the sort of symmetrical drawback a 1993
+// lord has and a modern one does not. Goblin King and Elvish Champion
+// are in the same family and are written the same way; Goblin
+// Chieftain and Elvish Archdruid really do say "you control" and set
+// YoursOnly.
 //
-// Behaviour of islandwalk lands with S18's combat keyword pipeline
-// — S16 just exposes the keyword grant on the wire so the renderer
-// + S18 SBA can consume it without a wire bump.
+// The islandwalk grant is left in place. It is inert — CanBlock never
+// sees the defending player's lands, so landwalk has nowhere to be
+// enforced — and S26's new lords deliberately do NOT grant their own
+// landwalk for that reason (see tribal.go). Removing this one would
+// be a behaviour change to a shipped card in a sprint about something
+// else; it goes when landwalk lands, alongside the others.
 func init() {
+	otherMerfolk := TribeFilter{Tribes: []string{"Merfolk"}, Others: true}
 	Register(Spec{
 		OracleID:     "cc7f290f-ca00-4285-9bdb-4b4402444f30",
 		Name:         "Lord of Atlantis",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"Only Merfolk YOU control get +1/+1 — the printed card pumps every other Merfolk on the battlefield, opponents' included.", "Islandwalk is granted but does nothing: the engine's blocking rules never consult it."},
 		Static: []game.StaticAbility{
-			{
-				Layer:     game.Layer7PT,
-				SubLayer:  game.SubLayer7C_Modify,
-				AppliesTo: lordOfAtlantisOtherMerfolk,
-				Apply: func(c *game.Characteristic, target *game.Card, g *game.Game, source *game.Card) {
-					c.Power++
-					c.Toughness++
-				},
-			},
-			{
-				Layer:     game.Layer6Ability,
-				AppliesTo: lordOfAtlantisOtherMerfolk,
-				Apply: func(c *game.Characteristic, target *game.Card, g *game.Game, source *game.Card) {
-					for _, k := range c.Abilities {
-						if k == "islandwalk" {
-							return
-						}
-					}
-					c.Abilities = append(c.Abilities, "islandwalk")
-				},
-			},
+			TribalAnthem(otherMerfolk, 1, 1),
+			TribalKeywordGrant(otherMerfolk, "islandwalk"),
 		},
 	})
-}
-
-// lordOfAtlantisOtherMerfolk is the shared predicate for Lord's
-// two static abilities: target is a creature, has the Merfolk
-// subtype, controlled by Lord's controller, and is NOT the Lord
-// itself ("other"). Reads from the post-Layer-2 controller and
-// post-Layer-4 type set so type-add effects (Mycosynth Lattice +
-// "all creatures are Merfolk" if such a card existed) compose
-// naturally.
-//
-// Layered ordering note: Layer 6 (this predicate) runs after Layer
-// 4 (type-add) so a hypothetical Conspiracy that turned a Bear
-// into a Merfolk would correctly see the Lord's grant. Real
-// Conspiracy isn't in S16 scope; documented for completeness.
-func lordOfAtlantisOtherMerfolk(target *game.Card, g *game.Game, source *game.Card) bool {
-	if !target.IsCreature() {
-		return false
-	}
-	if target.Controller != source.Controller {
-		return false
-	}
-	if target.InstanceID == source.InstanceID {
-		return false
-	}
-	return target.HasSubtype("Merfolk")
 }

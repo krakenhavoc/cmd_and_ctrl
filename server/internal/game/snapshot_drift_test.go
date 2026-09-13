@@ -162,6 +162,9 @@ var cardFields = plan(
 	// it is printed as. Pure data by construction — see copy.go on
 	// why PrintedValues carries no closures.
 	"PrintedSelf", carried, "",
+	// S26: the creature type named as the permanent entered. A
+	// player's choice, so nothing can rebuild it.
+	"NamedTribe", carried, "",
 
 	"ManaAbilities", rebuilt, "closures; re-looked-up from the catalog by oracle ID, or censused when the card has none (a true token)",
 	"ActivatedAbilities", rebuilt, "same as ManaAbilities",

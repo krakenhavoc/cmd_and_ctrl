@@ -99,6 +99,21 @@ func Permanent() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.IsPermanent() }
 }
 
+// OfCreatureType passes when the candidate is a creature of the
+// named type — "target Goblin creature", "each Elf you control".
+// S26's type filter.
+//
+// Reads through Card.HasSubtype, so a changeling passes for every
+// creature type (CR 702.73a) and a Layer-4 type grant counts. The
+// IsCreature guard is not redundant: a Kindred (Tribal) card in a
+// graveyard prints a creature type on a non-creature line, and
+// "target Goblin creature" does not mean it.
+func OfCreatureType(subtype string) CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		return c.IsCreature() && c.HasSubtype(subtype)
+	}
+}
+
 // Nonland passes for anything that isn't a land.
 func Nonland() CardPredicate { return Not(Land()) }
 

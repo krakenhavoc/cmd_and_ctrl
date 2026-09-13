@@ -1921,12 +1921,57 @@ Detailed plan TBD; lands just-in-time after S23.
 
 **Phase:** 7 · **Goal:** tribal Commander decks (Goblins, Merfolk, Slivers, etc.) work end-to-end.
 
-- [ ] `ChooseCreatureTypeOnETB` primitive (per-permanent persistent state for Cavern of Souls' named tribe)
-- [ ] `GrantTypeUntilEOT`, `TypeFilter` predicate
-- [ ] ~30 cards: Cavern of Souls, Door of Destinies, Vanquisher's Banner, Coat of Arms, Adaptive Automaton, tribal lords, changeling creatures, …
+- [x] Creature-type vocabulary — `game.AllCreatureTypes` / `IsCreatureType` / `SharesCreatureType` (CR 205.3m)
+- [x] Changeling as an enforced keyword (CR 702.73a) — works in **all zones**, reaches non-catalog cards
+- [x] `ChooseCreatureTypeOnETB` primitive + per-permanent `Card.NamedTribe` (carried by clone and snapshot)
+- [x] `GrantAllCreatureTypesUntilEOT` (layer 4, turn-scoped) and the `TypeFilter` family of predicates
+- [x] Dynamic mana-spend restrictions (`ManaAbility.RestrictionsFunc`) for Cavern of Souls
+- [x] 14 cards: Cavern of Souls, Door of Destinies, Vanquisher's Banner, Adaptive Automaton, Coat of Arms, Maskwood Nexus, Elvish Archdruid, Elvish Champion, Goblin King, Goblin Chieftain, Death Baron, Irregular Cohort, Shields of Velis Vel, + a Lord of Atlantis oracle fix
 - [ ] Theme-deck smoke test (tribal deck plays 3 turns with type-locked Cavern + lord buffs)
 
-Detailed plan TBD; lands just-in-time after S25.
+### Plan (written for #78)
+
+**Design decision — one mechanism for "is every creature type".** CR 702.73a
+makes changeling a characteristic-defining ability that works in every zone.
+Rather than stamping ~330 subtypes onto `Characteristic.Subtypes` (which would
+blow up the wire `type_line` and every subtype loop), "every creature type" is
+carried as the `"changeling"` token in the ability list, and `Card.HasSubtype`
+answers `true` for any CR 205.3m creature type when it is present. That one
+change gets the all-zones rule for free, because `HasKeyword` already falls
+back to the card's printed `Keywords` off the battlefield — which is also why
+a vanilla changeling (Woodland Changeling, Universal Automaton) needs **no
+catalog entry at all** since #330 put Scryfall's keyword array on every
+imported card.
+
+**Order of work (one commit each):**
+
+1. **Engine — creature types + changeling.** `game/creature_types.go`
+   (vocabulary + `SharesCreatureType`), `"changeling"` joins the closed
+   `canonicalKeywords` table, `Card.HasSubtype` consults it.
+2. **Engine — named-tribe state + prompt.** `Card.NamedTribe`, the
+   `choose_creature_type` pending choice with its resolve path and wire view,
+   and the client picker.
+3. **Engine — dynamic mana restrictions.** `ManaAbilityShape.RestrictionsFunc`,
+   plus a changeling-aware `ManaSpendContext`.
+4. **Catalog — primitives and cards.** `effects/tribal.go` holds the shared
+   builders (`ChooseCreatureTypeOnETB`, `NamedTribeAnthem`, `TypeFilter`,
+   `GrantAllCreatureTypesUntilEOT`); one file per card.
+
+**Cards (14):** Cavern of Souls, Door of Destinies, Vanquisher's Banner,
+Adaptive Automaton (named tribe); Coat of Arms, Maskwood Nexus (type payoffs);
+Elvish Archdruid, Elvish Champion, Goblin King, Goblin Chieftain, Death Baron
+(lords); Irregular Cohort, Shields of Velis Vel (changeling); plus an oracle
+fix to the existing Lord of Atlantis, which was restricted to its controller's
+Merfolk and should not be.
+
+**Deferred, declared:** Cavern of Souls' "and that spell can't be countered"
+stays inert for the reason Path of Ancestry and Delighted Halfling already
+record — the counter path has no per-spell uncounterable flag. Maskwood Nexus'
+"creature cards you own that aren't on the battlefield" half is not modelled:
+the layer engine maintains `effective` for battlefield cards only, and
+`HasSubtype` off the battlefield has no `*Game` to ask. Metallic Mimic, Icon of
+Ancestry and Obelisk of Urd wait on enters-with-counters-on-others, look-at-top-N
+and convoke respectively.
 
 ---
 

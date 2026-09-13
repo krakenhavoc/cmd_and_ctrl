@@ -1178,7 +1178,7 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 			p.ManaPool.AddMana(ManaToken{
 				Color:        color,
 				Source:       cardID,
-				Restrictions: copyRestrictions(ab.Restrictions),
+				Restrictions: restrictionsFor(g, ab, p.ID, cardID),
 			})
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: cardID})
 		}
@@ -3504,7 +3504,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			p.ManaPool.AddMana(ManaToken{
 				Color:        options[0],
 				Source:       cardID,
-				Restrictions: copyRestrictions(ab.Restrictions),
+				Restrictions: restrictionsFor(g, &ab, playerID, cardID),
 			})
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: cardID})
 			continue
@@ -3537,7 +3537,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			Source:           cardID,
 			Reason:           ab.Label,
 			ColorOptions:     filtered,
-			ManaRestrictions: copyRestrictions(ab.Restrictions),
+			ManaRestrictions: restrictionsFor(g, &ab, playerID, cardID),
 		})
 	}
 	// --- rider --------------------------------------------------

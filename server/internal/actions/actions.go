@@ -1076,6 +1076,12 @@ func Dispatch(g *game.Game, a Action) error {
 			// looked-at card must appear in exactly one list.
 			Bottom   []string `json:"bottom"`
 			TopOrder []string `json:"top_order"`
+			// CreatureType answers an S26 PendingChoiceCreatureType
+			// ("as this enters, choose a creature type", CR 614.12).
+			// A single type name from the CR 205.3m vocabulary; the
+			// engine validates and normalises it. Routed by presence,
+			// like Color above.
+			CreatureType string `json:"creature_type"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1086,6 +1092,9 @@ func Dispatch(g *game.Game, a Action) error {
 		}
 		if p.Color != "" {
 			return g.ResolveManaChoice(choiceID, a.Player, p.Color)
+		}
+		if p.CreatureType != "" {
+			return g.ResolveCreatureTypeChoice(choiceID, a.Player, p.CreatureType)
 		}
 		if p.Bottom != nil || p.TopOrder != nil {
 			bottom := make([]uuid.UUID, 0, len(p.Bottom))
