@@ -21,6 +21,7 @@
 //
 //	<report-id>/att-1.png      reporter screenshot, publicly readable
 //	<report-id>/replay.jsonl   pinned replay tail, admin-only
+//	<report-id>/gamelog.txt    pinned public game log, admin-only
 //	<report-id>/manifest.json  what this report holds, for pruning + forensics
 //
 // The directory name is a v4 uuid, so it doubles as the capability
@@ -59,6 +60,13 @@ const (
 	// MaxTotalImageBytes caps one report's images in aggregate, so
 	// four maximum-size files can't add up to 16 MiB.
 	MaxTotalImageBytes = 10 << 20
+
+	// MaxGameLogPinBytes caps the pinned public game log. The log is
+	// a bounded ring of a couple of hundred rendered lines, so this is
+	// a "something is very wrong" ceiling rather than a policy — it
+	// exists because the renderer's input is game state, and a runaway
+	// there must not fill the disk.
+	MaxGameLogPinBytes = 1 << 20
 
 	// MaxReplayPinBytes caps the pinned replay copy. Replay lines are
 	// whole unfiltered snapshots, so a long game's log runs to tens of
@@ -138,6 +146,11 @@ var imageNamePattern = regexp.MustCompile(`^att-[1-9][0-9]?\.(png|jpg|gif|webp)$
 // needs no name parameter at all.
 const replayFileName = "replay.jsonl"
 
+// gameLogFileName is the fixed name of the pinned public game log
+// (S31 sub-PR 0). Same posture as the replay: written by the server,
+// read only by an admin, never linked from the issue body.
+const gameLogFileName = "gamelog.txt"
+
 const manifestFileName = "manifest.json"
 
 // Store owns the bug-report artifact directory.
@@ -187,27 +200,35 @@ type ReplayPin struct {
 	Truncated bool `json:"truncated"`
 }
 
+// GameLogPin describes the pinned public game log.
+type GameLogPin struct {
+	Bytes int64 `json:"bytes"`
+	Lines int   `json:"lines"`
+}
+
 // Manifest is the on-disk record of a report's artifacts. Written
 // last, so a directory without one is an abandoned report that Prune
 // can reclaim early.
 type Manifest struct {
-	ID        string     `json:"id"`
-	CreatedAt time.Time  `json:"created_at"`
-	GameID    string     `json:"game_id,omitempty"`
-	IssueURL  string     `json:"issue_url,omitempty"`
-	Images    []Image    `json:"images,omitempty"`
-	Replay    *ReplayPin `json:"replay,omitempty"`
+	ID        string      `json:"id"`
+	CreatedAt time.Time   `json:"created_at"`
+	GameID    string      `json:"game_id,omitempty"`
+	IssueURL  string      `json:"issue_url,omitempty"`
+	Images    []Image     `json:"images,omitempty"`
+	Replay    *ReplayPin  `json:"replay,omitempty"`
+	GameLog   *GameLogPin `json:"game_log,omitempty"`
 }
 
 // Report accumulates one report's artifacts. Not safe for concurrent
 // use by multiple goroutines; a Report belongs to one request.
 type Report struct {
-	ID     string
-	dir    string
-	store  *Store
-	images []Image
-	total  int64
-	replay *ReplayPin
+	ID      string
+	dir     string
+	store   *Store
+	images  []Image
+	total   int64
+	replay  *ReplayPin
+	gameLog *GameLogPin
 }
 
 // NewReport mints a report id and creates its directory.
@@ -228,6 +249,78 @@ func (r *Report) Images() []Image { return r.images }
 
 // Replay returns the pinned-replay record, or nil if none was pinned.
 func (r *Report) Replay() *ReplayPin { return r.replay }
+
+// GameLog returns the pinned game-log record, or nil if none was
+// pinned.
+func (r *Report) GameLog() *GameLogPin { return r.gameLog }
+
+// PinGameLog stores the rendered public game log for this report.
+//
+// Unlike the replay, the caller hands over bytes rather than a path:
+// the log is not a file on disk anywhere, it is a projection of live
+// game state that the lobby handler renders at report time.
+//
+// Admin-only to read, for consistency with the replay rather than
+// because the contents are dangerous — the log is public information
+// by construction (see protocol/log.go). What is NOT guaranteed is
+// that it was filtered for the reporter: the handler pins the
+// unfiltered projection, because an operator triaging "the game
+// thought my creature was still there" needs to see what the server
+// believed, not what one seat was shown.
+func (r *Report) PinGameLog(text []byte) (*GameLogPin, error) {
+	if r == nil || r.store == nil || !r.store.Enabled() {
+		return nil, ErrDisabled
+	}
+	if len(text) == 0 {
+		return nil, ErrNotFound
+	}
+	if len(text) > MaxGameLogPinBytes {
+		return nil, ErrTooLarge
+	}
+	tmp, err := os.CreateTemp(r.dir, ".gamelog-*.tmp")
+	if err != nil {
+		return nil, fmt.Errorf("bugstore: create game log pin: %w", err)
+	}
+	name := tmp.Name()
+	_, err = tmp.Write(text)
+	if cerr := tmp.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		_ = os.Remove(name)
+		return nil, fmt.Errorf("bugstore: write game log pin: %w", err)
+	}
+	final := filepath.Join(r.dir, gameLogFileName)
+	if err := os.Rename(name, final); err != nil {
+		_ = os.Remove(name)
+		return nil, fmt.Errorf("bugstore: commit game log pin: %w", err)
+	}
+	pin := &GameLogPin{Bytes: int64(len(text)), Lines: countLines(final)}
+	r.gameLog = pin
+	return pin, nil
+}
+
+// OpenGameLog opens a report's pinned game log for reading. Mirrors
+// OpenReplay, including its deliberately identical ErrNotFound for
+// "no such report" and "no such artifact".
+func (s *Store) OpenGameLog(id string) (*os.File, os.FileInfo, error) {
+	if !s.Enabled() {
+		return nil, nil, ErrDisabled
+	}
+	if !reportIDPattern.MatchString(id) {
+		return nil, nil, ErrNotFound
+	}
+	path := filepath.Join(s.dir, id, gameLogFileName)
+	info, err := os.Stat(path)
+	if err != nil || info.IsDir() {
+		return nil, nil, ErrNotFound
+	}
+	f, err := os.Open(path) //nolint:gosec // path is uuid + fixed name
+	if err != nil {
+		return nil, nil, ErrNotFound
+	}
+	return f, info, nil
+}
 
 // AddImage validates and stores one screenshot.
 //
@@ -343,6 +436,7 @@ func (r *Report) Commit(gameID, issueURL string) error {
 		IssueURL:  issueURL,
 		Images:    r.images,
 		Replay:    r.replay,
+		GameLog:   r.gameLog,
 	}
 	buf, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {

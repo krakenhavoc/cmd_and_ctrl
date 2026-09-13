@@ -64,7 +64,7 @@ planned just-in-time from the S12 pain-point triage.
 | S20      | Auto-target legality + smart cast UI                                 | 7     | [#70](https://github.com/krakenhavoc/cmd_and_ctrl/issues/70)   | 2026-12-27 | **done**    |
 | S21      | Tokens, sacrifice, aristocrats                                       | 7     | [#73](https://github.com/krakenhavoc/cmd_and_ctrl/issues/73)   | 2027-01-24 | **done**    |
 | S22      | Card draw + library manipulation                                     | 7     | [#74](https://github.com/krakenhavoc/cmd_and_ctrl/issues/74)   | 2027-02-21 | partial     |
-| S23      | Mass removal + boardwipes                                            | 7     | [#75](https://github.com/krakenhavoc/cmd_and_ctrl/issues/75)   | 2027-03-21 | planned     |
+| S23      | Mass removal + boardwipes                                            | 7     | [#75](https://github.com/krakenhavoc/cmd_and_ctrl/issues/75)   | 2027-03-21 | partial     |
 | S24      | Equipment, auras, attachments                                        | 7     | [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76)   | 2027-04-18 | planned     |
 | S25      | Voltron / commander damage focus                                     | 7     | [#77](https://github.com/krakenhavoc/cmd_and_ctrl/issues/77)   | 2027-05-16 | partial     |
 | S26      | Tribal / creature type matters                                       | 7     | [#78](https://github.com/krakenhavoc/cmd_and_ctrl/issues/78)   | 2027-06-13 | planned     |
@@ -1343,7 +1343,7 @@ The hard sprint of the rules-engine arc — continuous effects are the second-mo
 
 - [x] **Audit + emit `EventLTB`** on every battlefield-leave path. Mirrors existing `EventETB` emission at [mutations.go:336-341](../server/internal/game/mutations.go#L336-L341). Today only ETB fires; layer system needs LTB to invalidate.
 - [x] Built-in listener: `EventETB`, `EventLTB`, `EventCounterPlaced` (battlefield card), `EventControlChanged` (S16-new), step advance — all bump `g.LayerVersion`. Registered at game-start.
-- [x] Snapshot path: `ReadSnapshot` calls `g.RecomputeLayersIfStaleLocked()` inside the read closure before building views. Recompute uses a separate `sync.Mutex` so the read lock isn't promoted; double-check version after acquiring the recompute mutex to avoid duplicate work.
+- [x] Snapshot path: `ReadSnapshot` calls `g.RecomputeLayersIfStaleLocked()` inside the read closure before building views. Recompute uses a separate `sync.Mutex` so the read lock isn't promoted; double-check version after acquiring the recompute mutex to avoid duplicate work. *(Superseded in S24 — that mutex did not exclude read-lock holders and the recompute raced them. `ReadSnapshot` now upgrades to the write lock; see the amendment to [ADR 0012](decisions/0012-layer-system.md) decision 11.)*
 
 **Server — wire projection:**
 
@@ -1387,8 +1387,8 @@ The hard sprint of the rules-engine arc — continuous effects are the second-mo
 
 ### Out of scope (explicit handoffs)
 
-- **Dependency detection (CR 613.8)** — Opalescence + Humility pathological case. S16.5 follow-up if a real card surfaces.
-- **Layer 1 copy effects** — Clone, Phyrexian Metamorph, Spark Double. Defer to S16.5.
+- **Dependency detection (CR 613.8)** — Opalescence + Humility pathological case. S16.5 follow-up if a real card surfaces. **Still deferred after S16.5** — the trigger has not fired and no pair of statics in the catalog can produce an observable dependency; see [ADR 0043](decisions/0043-copy-effects.md) §5 for the reasoning and the cost.
+- **Layer 1 copy effects** — Clone, Phyrexian Metamorph, Spark Double. Defer to S16.5. **Landed in S16.5** ([#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159), closes [#335](https://github.com/krakenhavoc/cmd_and_ctrl/issues/335)) — as a copiable-value baseline rewrite rather than a `Layer1Copy` `ContinuousEffect`; see [ADR 0043](decisions/0043-copy-effects.md).
 - **Layer 3 text-changing effects** — Mind Bend, Glamerdye. Engine ships layer 3 stub; no execution path.
 - **Layer 5 color-changing effects** — Painter's Servant. Engine ships the layer 5 stub with no card.
 - **Continuous effects from non-battlefield zones** — Yixlid Jailer, command-zone commander effects. Battlefield-only is the S16 simplification (CR 113.6 default).
@@ -1449,6 +1449,28 @@ Stop-and-show for manual testing at each boundary, mirroring S15.
   Sprint: S16 — Continuous effects + layer system (CR 613)
   Issue: #66
   ```
+
+---
+
+## S16.5 — Layer system follow-ups (rolling)
+
+**Phase:** 7 · **Goal:** land the two things [ADR 0012](decisions/0012-layer-system.md) deferred, when and only when a real card asks for them. Tracked at [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159); no deadline, rolling on demand.
+
+### Layer 1 copy effects ✅
+
+Triggered by a Clone-class card reaching the catalog — and by [#335](https://github.com/krakenhavoc/cmd_and_ctrl/issues/335), where Clone "does not allow the selection of any usable target and enters the battlefield as a 0/0". Both halves of that report are one missing feature: the CR 614 pipeline could not ask a question as a permanent entered, and the layer engine could not say "this permanent's printed values are somebody else's".
+
+- [x] `game.PrintedValues` + `Card.PrintedSelf` — the CR 707.2 copiable-value set, and the revert the battlefield-leave path restores (CR 400.7). Carried by the snapshot, deep-copied by `clone.go`.
+- [x] `ReplacementEffect.CopySelector` + `PendingChoiceCopyTarget` — an as-it-enters picker, answered with the shared `{choice_id, card_ids}` payload; an empty list declines. The copy lands **before** `EventETB`, so every ETB trigger sees the copied characteristics.
+- [x] Stack resolution is now an `entryResumable` entry site, carrying its `StackItem` so the Aura attach (CR 303.4a) and evoke's sacrifice trigger (CR 702.74b) survive the pause. This also fixed a latent bug nothing had hit: **any** permanent spell whose entry queued a CR 616 ordering prompt was dropped instead of pushed.
+- [x] Catalog: Clone, Phyrexian Metamorph, Spark Double, Sakashima the Impostor — between them the three kinds of "except" clause (add a type, override a name, remove a supertype + change how it enters).
+- [x] [ADR 0043](decisions/0043-copy-effects.md), AGENTS.md §7 "Adding a copy effect", client `copy_target` prompt branch.
+
+**Declared gaps:** duration-scoped copy effects (Mirage Mirror, Cytoshape) — the `Layer1Copy` bucket survives for them; an "except" clause that GRANTS an ability (Sakashima's own return-to-hand ability); a declined Clone surviving as a 0/0, which is the engine's pre-existing printed-0-toughness SBA convention, not a copy bug.
+
+### Dependency detection (CR 613.8) — still deferred
+
+The trigger #159 named for this half — a playtester hitting an Opalescence + Humility-class pathology — has not fired, and no pair of statics in the catalog can produce one: dependency is only observable when one static changes whether another static APPLIES, and every static in the catalog is an anthem, a keyword grant, a type-add or a CDA, all commutative under timestamp order. The cost is a required dependency declaration on every `StaticAbility` present and future, plus a topological sort with cycle detection on the hottest path in the engine. Reasoning in full at [ADR 0043](decisions/0043-copy-effects.md) §5. The trigger stays armed.
 
 ---
 
@@ -1747,19 +1769,21 @@ Mini sprint slotted after S18 started, to ship two pieces of long-promised clien
 
 - [x] **Sub-PR 1 — `s21-sacrifice`**: sacrifice as an engine operation (CR 701.17). `EventSacrifice` fires while the permanent is still on the battlefield, then it takes the ordinary route to the graveyard, so dies-triggers and the CR 903.9 commander replacement keep working; not destruction, so indestructible / regeneration never apply. `SacrificePermanentForEffect` + the `SacrificePermanent` primitive + a `sacrifice_permanent` action. Sacrifice-cost mana abilities are live, closing the S19 Treasure deferral. Tokens carry their own rules: `Card.Keywords` / `Card.ManaAbilities` (a token has no oracle ID for the catalog hooks), so flying tokens fly, Wurmcoil makes one deathtouch and one lifelink Wurm as printed, and Treasure / Eldrazi Spawn crack for mana through the existing right-click menu with no client change.
 - [x] Token catalog (Food, Clue, Blood, Powerstone, generic creatures) — shipped in sub-PR 4; Map is not modelled
-- [ ] `Proliferate`, `CreateTokenAdvanced` primitives
+- [x] `Proliferate`, `CreateTokenAdvanced` primitives — **sub-PR 7 — `s21-remaining`**. `Proliferate` (CR 701.27) splits the rule in two: `Game.ProliferateForEffect` takes the chosen permanents and players and gives each another counter of every kind already there (through `AddCounterForEffect`, so Doubling Season doubles a proliferated counter); the catalog primitive makes the choice, today via a deterministic beneficial auto-pick — everything of yours a counter helps, everything of theirs a counter hurts — because "any number of permanents and/or players" is a free-form multi-select the client has no picker for. `CreateTokenAdvanced` takes a structured `TokenSpec` (printed template + `EntersTapped` / `WithCounters` / `WithKeywords`) and creates through `Game.CreateTokensForEffect`, which returns the new instance IDs; the older idiom of mutating a template before handing it to `CreateToken` still works and is what Mary Read's tapped Treasure uses. Declared gap: a token's entry counters do not run the CR 614 counter-replacement pipeline (token creation has no zone move to replace).
 - [x] **Sub-PR 2 — `s21-activated`**: activated abilities in the catalog (CR 602) — the fifth way a card does something, after spells, triggers, statics and replacements. `Spec.Activated` with a struct cost (`Tap` / `SacrificeSelf` / `SacrificeOther` / `Mana` / `Life`), an optional target clause validated like a spell's, and the same `Effect` closure S19 gave triggers, so resolution needed no new code. Costs are validated in full before any is paid, and paid at announce — so a creature sacrificed to Goblin Bombardment puts its dies-trigger on the stack ABOVE the ability, which is what makes aristocrats work. Tap costs enforce summoning sickness (`CardView.summoning_sick` on the wire for the affordance). Cards: Goblin Bombardment, Carrion Feeder, Krenko Mob Boss. Client: activated abilities join the right-click menu; a sacrifice cost opens a picker before targeting. [ADR 0020](decisions/0020-activated-abilities.md).
 - [x] **Sub-PR 3 — `s21-aristocrats`**: the payoffs. Blood Artist (any creature's death, including its own, targeted drain), Zulaport Cutthroat (your creatures only, every opponent, gain exactly 1), Mayhem Devil (the first `EventSacrifice` consumer — any player, any permanent, and pointedly NOT destruction), Midnight Reaper (nontoken only, the first card to care about the token split). `diedCreature` / `IsToken` helpers. **Exit criteria met and pinned by a test.**
 - [x] **Sub-PR 4 — `s21-token-abilities`**: the last catalog hook a token can't reach. `Card.ActivatedAbilities` carries them on the card object (a token has no oracle ID), `ActivatedAbilitiesForCard` prefers it over the lookup, and clone deep-copies it. Food, Clue, Blood and Powerstone then work through sub-PR 2's machinery with no special-casing — Food, Clue and Blood ARE their activated ability. Producers: Thraben Inspector (its Clue is crackable) and Ichor Wellspring, the catalog's first non-creature dies-trigger. Declared gaps: Blood's discard cost (no discard component on `AbilityCost` — see sub-PR 5) and the Powerstone's spend restriction.
 - [x] **Pirates decklist batch 1** (out of the sub-PR sequence, on a real Izzet Pirates list): Reckless Fireweaver, Ingenious Artillerist, Marauding Mako, Glint-Horn Buccaneer, Corsair Captain (first card to pair a trigger with a static), Impulsive Pilferer, Angrath's Marauders, Faithless Looting, Mary Read and Anne Bonny. Found a real engine bug: `DealDamageToPlayerForEffect` skipped the CR 614 replacement pipeline entirely, so no damage doubler or prevention shield could ever see a spell's damage to a player. [Triage of all 65 nonland cards](decklists/pirates-mary-read-anne-bonny.md).
 - [x] **Sub-PR 5 — `s21-additional-costs`**: "As an additional cost to cast this spell, discard a card" (CR 601.2f) — the third kind of cost, after a spell's mana cost and an activated ability's. `Spec.AdditionalCost` / `CastSpellParams.DiscardIDs`, validated with the announce-time choices (so a rejection costs nothing) and paid once the spell is on the stack, which is the point: the discard payoff triggers ABOVE the spell and resolves first, and a countered spell still costs the card. Cards: Thrill of Possibility, Big Score, Unexpected Windfall. Client: a discard picker opens before the X / mode / target prompts, mirroring the sacrifice-cost picker. [ADR 0021](decisions/0021-additional-costs.md).
 - [x] **Sub-PR 6 — `s21-impulse-exile`**: "exile the top card of that player's library — until end of turn, you may cast that card". The first time a card can be played from a zone that isn't the player's own, and exile is shared and public, so the permission had to live on the card: `Card.ExilePlay` names a holder (usually not the owner), a turn it expires on, whether it permits playing a land, and whether mana may be spent as any colour. `CastSpell` grows an `exile` source zone gated on that grant. Cards: Ragavan, Nimble Pilferer (Treasure + cast-only steal) and Breeches, Brazen Plunderer (play, plus the colour relaxation). Client: the exile browser's first *play* affordance. [ADR 0022](decisions/0022-impulse-exile.md).
-- [ ] ~40 cards: more token producers, sacrifice outlets, proliferate cards (26 of ~40 so far across sub-PRs 1–6 plus the Pirates batch)
-- [ ] Theme-deck smoke test (Korvold-style aristocrats deck plays 3 turns)
+- [x] ~40 cards: more token producers, sacrifice outlets, proliferate cards — the last 14 landed with sub-PR 7. Proliferate: Steady Progress, Karn's Bastion, Contagion Clasp, Flux Channeler, Evolution Sage, Inexorable Tide. Token producers: Dragon Fodder, Hordeling Outburst, Grave Titan (enters-or-attacks, on S22's `EventAttack`), Pawn of Ulamog, Stern Lesson (the first tapped token through `CreateTokenAdvanced`). Sacrifice outlets and payoffs: Bloodflow Connoisseur, Korvold Fae-Cursed King, Mazirek Kraul Death Priest (High Market was in this batch until a sibling branch landed it first). New token templates: 2/2 black Zombie, 1/1 Thopter.
+- [x] Theme-deck smoke test (Korvold-style aristocrats deck plays 3 turns) — `TestS21ThemeDeckAristocratsPlaysThreeTurns` (`server/internal/cards/effects/theme_deck_aristocrats_test.go`). A real 40-card library with a stacked opening hand plays three of its own turns through the turn engine: land → Dragon Fodder's Goblins → Blood Artist + Bloodflow Connoisseur, feed a Goblin to the outlet → Korvold, whose entry eats the second Goblin and draws → Karn's Bastion proliferates both creatures. Written as a Go test rather than a gamecli script because every assertion is game state, which belongs where CI runs it; gamecli would additionally need a live server, a deck upload and a Scryfall dump.
 
 **Exit criteria:** Cast Goblin Bombardment + Blood Artist + Krenko, Mob Boss; sacrifice tokens to Bombardment one at a time → opponent's life ticks down (Blood Artist + Bombardment damage); your life ticks up (Blood Artist gain). — **met** in `TestS21ExitCriteriaAristocratsCombo` (`server/internal/cards/effects/aristocrats_test.go:211`).
 
-**Status: done.** All six sub-PRs merged (#216, #217, #219, #225, #230, #232) plus the Pirates batch. Three items are left behind deliberately and do not hold the sprint open: `Proliferate` and `CreateTokenAdvanced` (zero hits anywhere in `server/`), the ~40-card tally (bookkeeping — the catalog is well past it, nobody has re-tallied which cards belong to this theme), and the theme-deck smoke test (**no theme-deck harness exists for any sprint**; either build one once and apply it to every sprint, or drop the line from all of them). [#73](https://github.com/krakenhavoc/cmd_and_ctrl/issues/73) stays open only for that remainder.
+**Status: done, and now complete.** All six sub-PRs merged (#216, #217, #219, #225, #230, #232) plus the Pirates batch; sub-PR 7 (`s21-remaining`) closes the three items that were left behind — both primitives, the last 15 cards, and the theme-deck smoke test, which is the first such harness in the repo and is reusable by any later sprint that wants one.
+
+Two engine findings recorded on [#73](https://github.com/krakenhavoc/cmd_and_ctrl/issues/73) were re-verified while doing that work and are **both stale**: `EventAttack` exists (`server/internal/game/events.go:194`, S22) and Grave Titan's attack half rides on it; and a catalog replacement CAN fire on its own source's entry — `gatherActiveReplacementsLocked` grew a third gathering block for exactly that (`server/internal/game/replacements.go:517`), which is what the Temple cycle's enters-tapped uses.
 
 ---
 
@@ -1783,12 +1807,83 @@ Mini sprint slotted after S18 started, to ship two pieces of long-promised clien
 
 **Phase:** 7 · **Goal:** mass-effect cards work; boardwipes wipe correctly across decks.
 
-- [ ] `DestroyAllMatching`, `ExileAllMatching`, `BounceAllMatching`, `ReturnAllToHand` primitives
-- [ ] Predicate-driven mass effects with non-X exclusions
-- [ ] ~30 cards: Wrath of God (extended), Damnation, Toxic Deluge, Vandalblast, Austere Command, Farewell, Merciless Eviction, Cyclonic Rift overload (extended), …
+- [x] `DestroyAllMatching`, `ExileAllMatching`, `BounceAllMatching`, `ReturnAllToHand` primitives
+- [x] Predicate-driven mass effects with non-X exclusions
+- [x] ~30 cards: Wrath of God (extended), Damnation, Toxic Deluge, Vandalblast, Austere Command, Farewell, Merciless Eviction, Cyclonic Rift overload (extended), …
 - [ ] Theme-deck smoke test (control deck plays 3 turns including a boardwipe)
 
-Detailed plan TBD; lands just-in-time after S22 ships.
+**The plan, written just-in-time and then executed.** Four sub-parts, in dependency
+order, because each one is what makes the next honest.
+
+**1. Simultaneity first, because every card depends on it.** A board wipe is ONE
+event (CR 700.4), and this engine destroyed permanents one at a time. The trigger
+harvester answers each `EventLTB` by walking the live battlefield, so a Blood
+Artist wiped alongside three other creatures was found only for the deaths that
+happened to be processed after it — a Zulaport Cutthroat at the front of the
+battlefield slice drained for **one** death instead of four, and the number
+depended on insertion order. The fix is `server/internal/game/simultaneous.go`:
+publish the batch's pre-move copies before the first move, and let the harvester
+scan those alongside the live zone, skipping anything still on the battlefield
+(`harvestFromZone` has it) and the card whose own death is being reported
+(`harvestLTB` has it). The moves stay sequential; the *observation* becomes
+simultaneous, which is the half with rules consequences. The same batch wraps the
+state-based-action sweep (`mutations.go` §704.3), so damage wipes and `-X/-X`
+wipes get it too. `TestWrathDeathsAreSimultaneousForAristocratsPayoffs` and
+`TestShrinkWipeDeathsAreSimultaneousToo` both fail by exactly this margin with the
+hook removed.
+
+**2. The four primitives** (`server/internal/cards/effects/mass.go`), each a
+predicate plus a batched mover plus a `Then` that receives the count — because
+"for each creature destroyed this way" (Fumigate, Deadly Tempest, Bane of
+Progress) is unanswerable from a fire-and-forget loop. `ReturnAllToHand` is the
+explicit-set sibling of `BounceAllMatching` for sets that are not battlefield
+predicates (Aetherize's attackers live in combat state).
+
+**3. The exclusion vocabulary**, built on S20's predicate library rather than
+beside it — `Except`, `Subtype`, `AnySubtype`, `ControlledBy`, `Multicolored` in
+`targets.go`. "All creatures except for Krakens, Leviathans, Octopuses, and
+Serpents" is `Except(Creature(), AnySubtype(…))` in the printed order; "you don't
+control" is the existing `OpponentControls()`; "non-Dragon" is
+`Except(Creature(), Subtype("Dragon"))`, built from the same predicate object as
+Crux of Fate's other mode so the two provably partition the board.
+
+**4. The cards.** Twelve existing wipes rewritten onto the primitives (Wrath,
+Damnation, Day of Judgment, Blasphemous Act, Damn, Pyroclasm, Austere Command,
+Farewell, Merciless Eviction, Cyclonic Rift, Vandalblast, Aetherize) and eighteen
+new ones. (Chandra's Ignition was a nineteenth until the roadmap batch landed it
+on `main` mid-flight; S23's copy was dropped at rebase and only its test kept.)
+Two pieces of cost machinery came with them: `AdditionalCost.PayLifeX`
+for Toxic Deluge's "pay X life" (CR 601.2f, with CR 119.4 enforced at announce,
+and a third source for the client's X prompt), and `Spec.CantBeCountered` for
+Supreme Verdict, honoured at the counter choke point so a Counterspell aimed at it
+*resolves* and does nothing rather than fizzling (CR 701.5a).
+
+**One real bug fixed in passing.** Blasphemous Act was registered as "destroy all
+creatures" since S14; the card deals 13 damage. Damage is survivable by
+indestructible, stoppable by prevention, profitable for lifelink, and kills on the
+SBA rather than immediately. It now deals damage.
+
+**Deliberately not registered**, per [ADR 0037 §5](decisions/0037-unimplemented-card-signal.md)
+("a card joins the catalog when its whole printed text is carried out, or it does
+not join") — recorded so the next person does not re-derive the blocker:
+
+| Card | Blocked on |
+|---|---|
+| Star of Extinction, Brotherhood's End | "damage to each planeswalker". `DealDamageToCreatureForEffect` only increments `DamageMarked`, and the planeswalker SBA reads loyalty counters (`mutations.go` 704.5i) — damage to a planeswalker removes no loyalty anywhere in the engine. |
+| Akroma's Vengeance, Rout | Cycling and "cast as though it had flash for {2} more" — both alternative cast paths that `AlternativeCost` does not carry (it pairs a price with a text rewrite, not a timing change). |
+| Vanquish the Horde, Hour of Revelation | Cost reduction, which has no `Spec` hook (S28). Blasphemous Act's pre-existing exception is not a licence to add more. |
+| Devastation Tide | Miracle. |
+| The Meathook Massacre | Its ETB reads the X paid when it was cast; `Card` does not carry the announced X past resolution. |
+| Bontu's Last Reckoning | "Lands you control don't untap during your next untap step" — `untapAllForLocked` has no hook, the same gap ADR 0037 records for Ty Lee. |
+| Hallowed Burial | "On the bottom of their owners' libraries" needs a battlefield→library mass move, a fifth primitive outside this sprint's four. |
+| Wildfire | "Each player sacrifices FOUR lands"; `EachPlayerSacrifices` has no count. |
+| Sunfall, Anger of the Gods, Kindred Dominance, Slaughter the Strong, Living Death, Culling Ritual, Urza's Ruinous Blast | Incubate, a die-replacement, a creature-type prompt, a multi-select prompt, a three-phase mass reanimation, a mana-colour prompt, and the legendary-sorcery cast restriction, respectively. |
+
+**Known gaps this sprint did NOT close**, and did not pretend to: indestructible,
+regeneration and totem armor are still absent from the engine, so "destroy all
+creatures" really does destroy all creatures and "they can't be regenerated" is
+still cosmetic. `DestroyAllMatching` is where all three will be honoured when they
+land. The theme-deck smoke test is the one checklist item still open.
 
 ---
 
@@ -1953,10 +2048,10 @@ Nothing is now blocked on #280. Sub-PR 5's deck list was the only thing that eve
 
 The engine has no event history: `GameView` carries none, the client has none, and `PlayerView.LifeHistory` is the only past tense anywhere. A policy reasoning from a bare snapshot cannot see a boardwipe that already happened. Players have wanted this since S07 shipped chat without it, and bug reports get materially better when the log ships alongside the replay.
 
-- [ ] `protocol.LogEvent` + bounded public log on `GameView` (few hundred entries), through the same visibility filter as everything else
-- [ ] Emit on: zone changes, casts, resolutions, combat declarations, life changes, step boundaries
-- [ ] Client game-log panel
-- [ ] Attach the log to bug-report artifacts in `bugstore`
+- [x] `protocol.LogEvent` + bounded public log on `GameView` (few hundred entries), through the same visibility filter as everything else
+- [x] Emit on: zone changes, casts, resolutions, combat declarations, life changes, step boundaries
+- [x] Client game-log panel
+- [x] Attach the log to bug-report artifacts in `bugstore`
 
 ### Sub-PR 1 — `internal/legal`: enumerate a seat's legal moves
 
@@ -2044,13 +2139,13 @@ contract alone cannot express them:
 
 ### Sub-PR 7 — Layer A rules filter + Layer C model policy
 
-- [ ] Layer A: resolve forced/trivial windows with no model call — note S13.6's auto-pass is **client-side only**, so Layer A inherits nothing and must do the whole job; instrument the absorption rate — **if it is under 80%, stop and fix the funnel before tuning anything else**
-- [ ] Prompt assembly from `Input` only; import test forbids `aiseat/policy` from importing `internal/game`
-- [ ] Prompt-cache the static block (rules primer, decklist + oracle text, archetype plan); per-decision delta is board state + move list
-- [ ] Cheap model for routine, frontier model on escalation: stack items targeting the bot, attacks, blocks, removal/counter availability against a high-threat board, top-two candidates within ε, modal/X/multi-target choices
-- [ ] Model returns a `Moves` **index**, never an action; out-of-range or malformed → Layer B
-- [ ] Tiers: `random`, `heuristic`, `assisted`, `strong`
-- [ ] Per-decision instrumentation: layer used, latency, tokens, escalation reason
+- [x] Layer A: `internal/aiseat/rules/` resolves forced/trivial windows with no model call — three rules, each defensible as a fact about the game rather than an opinion about the board: one legal move, only floating mana on offer (casts auto-tap, CR 106.4 empties the pool), and interchangeable copies of one land. **Measured absorption: 91.3%** over 5,207 windows across two four-bot games (90.1% over 7,810 across three), against ADR 0033 §5's 80% floor — `mana-only` carries ~51% of it and `forced` ~38%. The rate is asserted, not just logged, and the same games cross-check every absorbed window against the heuristic: 4,753 windows, 0 disagreements
+- [x] Prompt assembly from `Input` only — the board half of the prompt reads `aiseat.Input` and nothing else; the static half is a `DeckProfile` handed to the seat at construction. The existing import test in `aiseat/heuristic` walks the whole subtree, so `rules/`, `model/` and `tiers/` are covered without a second one
+- [x] Prompt-cache the static block; per-decision delta is board state + move list. Three tests hold it: the cache breakpoint sits on the last system block and nowhere else, the static half is byte-identical across a whole game's calls, and a reordered decklist does not change a byte
+- [x] Cheap model for routine, frontier model on escalation, with all five triggers from ADR 0033 §5. **Measured escalation rate: ~60–70% of surviving windows**, an order above the ADR's "~20%" estimate and driven almost entirely by the combat trigger — every attack and block declaration escalates by design. Recorded rather than tuned away; the thresholds are all in `model.Config`
+- [x] Model returns a `Moves` **index**, never an action; out-of-range, malformed, timed out, errored or absent → Layer B. Exercised as a unit table covering all six shapes, and in a whole game by the outage drill
+- [x] Tiers: `random`, `heuristic`, `assisted`, `strong` in `internal/aiseat/tiers/`, each with its ADR 0033 §10 `MaxThink`. **`strong`'s "1-ply sim on top-K" is not implemented** and will not be: simulating a move needs a `*game.Game`, which a policy may not hold — the same collision sub-PR 6 hit with "Δscore on a cloned game", resolved the same way. What `strong` buys is the frontier model on every surviving window and a wider candidate list
+- [x] Per-decision instrumentation: layer, rule, escalation reasons, model id, latency, model latency, tokens (including cache read/write) and the fallback cause, as a bounded ring plus aggregate counters
 
 ### Sub-PR 8 — improvisation, announced
 
@@ -2068,7 +2163,7 @@ contract alone cannot express them:
 - [x] Zero engine-rejected actions across a 100-game randomized run — and across 60 four-`heuristic` and 60 mixed games through the same soak harness (`AISEAT_SOAK_POLICY=heuristic|mixed`)
 - [x] `heuristic` beats `random` head-to-head: 40/40 decided games, alternating seats
 - [x] Heuristic decision latency: p50 8.5µs, p99 52µs, max 276µs over 2,715 decisions — four orders of magnitude inside the 2s `MaxThink`
-- [ ] Model-outage drill: Layer C hard-fails, game completes on Layer B, no frozen table
+- [x] Model-outage drill: Layer C hard-fails, game completes on Layer B, no frozen table. `TestModelOutageDrill` — the endpoint answers 25 calls and then fails forever, the four-bot game plays to a single survivor, the runner's own fallback counter stays at zero, and 2,382 of 2,407 windows were answered without a usable model. A sibling proves the other half of §10: a model that never answers costs its budget and hands over, and the runner still never force-passes
 - [ ] Human undo of a bot improvisation succeeds without the admin token, and the bundle reverts as one entry
 
 ### Exit criteria

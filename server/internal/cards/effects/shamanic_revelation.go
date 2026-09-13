@@ -19,8 +19,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "d1d171de-1c6d-4fb9-817a-9c689c709f3d",
-		Name:     "Shamanic Revelation",
+		OracleID:     "d1d171de-1c6d-4fb9-817a-9c689c709f3d",
+		Name:         "Shamanic Revelation",
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			creatures, big := 0, 0
 			for _, c := range ctx.Game.BattlefieldCardsForEffect() {

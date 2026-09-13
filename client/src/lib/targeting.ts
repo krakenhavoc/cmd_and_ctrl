@@ -60,6 +60,12 @@ export interface CastChoices {
   // mana cost ("overload", "evoke", "cleave"). Undefined is the
   // ordinary "pay the printed cost" case.
   altCost?: string;
+  // S28: the card paid to the non-mana half of that alternative cost
+  // — Force of Will's pitched blue card, Daze's returned Island,
+  // Solitude's evoke pitch. Exactly one entry when the chosen offer
+  // charges one; undefined otherwise, and the server rejects a
+  // non-empty list on an offer that charges nothing.
+  altCostIDs?: string[];
   // S22: the untapped permanents tapped to help pay — convoke and
   // waterbend. Undefined and empty are the same thing to the server;
   // tapping nothing is always legal.
@@ -105,6 +111,8 @@ export function applyCastChoices(
   if (choices.discardIDs !== undefined) params.discard_ids = choices.discardIDs;
   if (choices.sacrificeIDs !== undefined) params.sacrifice_ids = choices.sacrificeIDs;
   if (choices.altCost !== undefined) params.alternative_cost = choices.altCost;
+  if (choices.altCostIDs !== undefined && choices.altCostIDs.length > 0)
+    params.alt_cost_ids = choices.altCostIDs;
   if (choices.tapIDs !== undefined && choices.tapIDs.length > 0) params.tap_ids = choices.tapIDs;
   // Face 0 is omitted rather than sent explicitly: it is the server
   // default, and `omitempty` on the Go side means an explicit zero
@@ -342,6 +350,16 @@ export function alternativeCostByKey(
   return alternativeCostsOf(card).find((a) => a.key === key);
 }
 
+// altCostPayOptions returns the cards that can pay an offer's
+// card-shaped half, or undefined when the offer charges none — which
+// is every S22 keyword and most S28 ones. An empty array means the
+// offer is unpayable right now: a Force of Will with no other blue
+// card in hand.
+export function altCostPayOptions(offer: AlternativeCostView | undefined): string[] | undefined {
+  if (!offer?.pay_options) return undefined;
+  return offer.pay_options.cards ?? [];
+}
+
 // modeOptionCastable reports whether an option can be chosen right
 // now: untargeted options always can; targeted ones need at least
 // one legal target.
@@ -358,8 +376,14 @@ export function modeOptionCastable(option: ModeOptionView): boolean {
 // of the card's, so Waterbender's Restoration prints {U}{U} and
 // still has an X to announce — and that X is also the number of
 // creatures its clause targets.
+//
+// S23 adds the third, and it is the same shape once more: Toxic
+// Deluge's "pay X life" is an additional cost with its own X, the
+// printed mana cost is a flat {2}{B}, and the announced X is also
+// the -X/-X the spell hands out.
 export function hasXCost(card: CardView): boolean {
   if (card.tap_cost?.demands_x) return true;
+  if (card.additional_cost?.demands_x) return true;
   return (card.mana_cost ?? "").includes("{X}");
 }
 

@@ -126,6 +126,12 @@ type GameView struct {
 	// every filtered copy, which keeps repeated FilterViewFor calls
 	// idempotent.
 	legalBySeat map[string][]LegalMoveView
+	// Log is the public game log: the last PublicLogMax table-visible
+	// events, oldest first. A projection of game.Game.Events, not a
+	// stored buffer — see log.go. Every card reference in it goes
+	// through the same S13.5 knower redaction as every CardView, in
+	// FilterViewFor. Added in S31 sub-PR 0 (ADR 0033 §4).
+	Log []LogEvent `json:"log,omitempty"`
 }
 
 // LegalMoveView is one entry of the viewer's legal-move list. It is
@@ -263,6 +269,12 @@ type AdditionalCostView struct {
 	// no sacrifice component; present-and-empty means the cost is
 	// unpayable, which makes the spell uncastable.
 	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
+	// DemandsX marks a "pay X life" clause (Toxic Deluge). The
+	// client must open its X prompt for this card even though the
+	// printed mana cost has no {X} in it, and the announced X is
+	// both the life paid and the number the spell's own text uses.
+	// Added in S23.
+	DemandsX bool `json:"demands_x,omitempty"`
 	// Label is the clause as printed ("Discard a card"), shown
 	// above the picker.
 	Label string `json:"label,omitempty"`
@@ -295,6 +307,32 @@ type AlternativeCostView struct {
 	// rather than reasoning about the rewrite itself.
 	TargetMode   string            `json:"target_mode,omitempty"`
 	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+
+	// Life is the "pay N life" half of the cost (Force of Will's 1,
+	// Snuff Out's 4). Zero — absent — for the costs that charge none.
+	// The server enforces the life total; this is for the label.
+	Life int `json:"life,omitempty"`
+
+	// PayOptions is the set of cards that can pay the cost's
+	// card-shaped half: the blue cards in the caster's hand for Force
+	// of Will, the Islands they control for Daze. The chosen instance
+	// ID rides back on cast_spell as `alt_cost_ids`.
+	//
+	// Absent when the cost charges no cards, which is every S22
+	// keyword. Present-and-empty means the caster has nothing that
+	// can pay — the offer is visible but unusable, which is the
+	// honest thing to show for a Force of Will held with no other
+	// blue card.
+	//
+	// Like the additional cost's sacrifice_options this is NOT a
+	// target list: a cost does not target (CR 601.2h), so hexproof
+	// and shroud never narrow it.
+	PayOptions *LegalTargetsView `json:"pay_options,omitempty"`
+
+	// PayLabel is the picker's prompt copy for PayOptions ("a blue
+	// card", "an Island you control"). Absent when there is nothing
+	// to pick.
+	PayLabel string `json:"pay_label,omitempty"`
 }
 
 // TapCostView is the wire shape of game.TapPermanentsCost — the
@@ -1111,6 +1149,11 @@ func ViewOfGame(g *game.Game) GameView {
 		stampActivatedAbilities(g, &view.Battlefield)
 		stampCombatTargets(g, &view)
 		view.legalBySeat = enumerateLegalMoves(g)
+		// S31 sub-PR 0: the public log resolves card names and knower
+		// sets out of the view that was just assembled, so it must run
+		// last — and inside the same read lock, so the log and the
+		// board it describes come from one consistent read.
+		view.Log = publicLogOf(g, &view)
 	})
 	return view
 }
@@ -1246,6 +1289,7 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 				if ac := game.AdditionalCostFor(c.oracleID); !ac.Empty() {
 					c.AdditionalCost = &AdditionalCostView{
 						DiscardCards: ac.DiscardCards,
+						DemandsX:     ac.PayLifeX,
 						Label:        ac.Label,
 					}
 					if ac.Sacrifice != nil {
@@ -1339,10 +1383,36 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, base *game.TargetSpe
 	out := make([]AlternativeCostView, 0, len(alts))
 	for i := range alts {
 		ac := alts[i]
-		v := AlternativeCostView{Key: ac.Key, Label: ac.Label, ManaCost: ac.ManaCost}
+		// S28: an offer whose condition is false is not shown at all.
+		// "If you control a commander, you may cast this without
+		// paying its mana cost" is not an offer when you control no
+		// commander, and a greyed-out button the server would reject
+		// is worse than no button.
+		if !ac.Available(g, caster) {
+			continue
+		}
+		v := AlternativeCostView{
+			Key: ac.Key, Label: ac.Label, ManaCost: ac.ManaCost,
+			Life: ac.Life, PayLabel: ac.PayLabel,
+		}
 		if spec := game.TargetSpecUnderAlternativeCost(base, &ac); spec != nil {
 			v.TargetMode = spec.Mode
 			v.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(caster, spec), spec)
+		}
+		// The card-shaped half. SpecCandidatesForEffect, not
+		// LegalTargetsForEffect, for the same reason the additional
+		// cost's sacrifice picker uses it: a cost does not target, so
+		// the hexproof / shroud gate must not narrow what the client
+		// offers.
+		if paySpec := ac.ExileFromHand; paySpec != nil {
+			opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, paySpec), paySpec)
+			opts.Players = nil
+			v.PayOptions = opts
+		} else if paySpec := ac.ReturnToHand; paySpec != nil {
+			opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, paySpec), paySpec)
+			opts.Cards = filterToController(g, opts.Cards, caster)
+			opts.Players = nil
+			v.PayOptions = opts
 		}
 		out = append(out, v)
 	}
@@ -1523,6 +1593,19 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.Options = []CardView{viewOfCard(card)}
 			}
 		}
+		// PendingChoiceCopyTarget — "you may have this enter as a
+		// copy of ..." (S16.5). Same shape as the sacrifice picker:
+		// the candidate permanents inlined as Options so the grid
+		// renders faces. Battlefield cards are public, so no
+		// redaction concern.
+		if c.Kind == game.PendingChoiceCopyTarget && len(c.CopyOptions) > 0 {
+			v.Options = make([]CardView, 0, len(c.CopyOptions))
+			for _, id := range c.CopyOptions {
+				if card, ok := g.LookupCardForEffect(id); ok {
+					v.Options = append(v.Options, viewOfCard(card))
+				}
+			}
+		}
 		// PendingChoiceScry — the looked-at cards, top-first, as
 		// Options. Scry is "look at", not "reveal": only the chooser
 		// was marked a knower, so FilterViewFor redacts these to backs
@@ -1578,13 +1661,13 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			}
 		}
 		// PendingChoicePickTarget — S20 sub-PR 2: the frozen legal set.
-		// S27: choose_protector asks the same question shape — pick
-		// one from a server-computed set — and rides the same
-		// projection so the client's existing highlight flow answers
-		// it. It is NOT targeting (a battle entering chooses nothing
-		// on the stack, CR 115.1); the kind is what keeps the two
-		// distinguishable on the way back.
-		if c.Kind == game.PendingChoicePickTarget || c.Kind == game.PendingChoiceChooseProtector {
+		// S27: the legend rule asks the same question shape — pick one
+		// from a server-computed set — and rides the same projection
+		// so the client's existing highlight flow answers it. It is
+		// NOT targeting (a state-based action chooses nothing on the
+		// stack); the kind is what keeps the two distinguishable on
+		// the way back.
+		if c.Kind == game.PendingChoicePickTarget || c.Kind == game.PendingChoiceLegendRule || c.Kind == game.PendingChoiceChooseProtector {
 			pt := &LegalTargetsView{Min: c.PickTargetMin, Max: c.PickTargetMax}
 			for _, id := range c.PickTargetPlayers {
 				pt.Players = append(pt.Players, id.String())
@@ -2012,6 +2095,11 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		DiscardPending:    v.DiscardPending,
 		PendingChoices:    filterPendingChoices(v.PendingChoices, isKnower, viewerID),
 		LegalMoves:        legalMovesFor(v.legalBySeat, viewerID),
+		// S31 sub-PR 0: the public log rides the same isKnower closure
+		// as every zone above it. Not a parallel visibility model —
+		// literally the same predicate, applied to the card each entry
+		// names.
+		Log: redactLogForViewer(v.Log, isKnower),
 	}
 }
 

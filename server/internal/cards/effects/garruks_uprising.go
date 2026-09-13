@@ -33,8 +33,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // real divergence.
 func init() {
 	Register(Spec{
-		OracleID: "3127ae9b-a7a7-43ec-89d7-688f8445b33d",
-		Name:     "Garruk's Uprising",
+		OracleID:     "3127ae9b-a7a7-43ec-89d7-688f8445b33d",
+		Name:         "Garruk's Uprising",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The enter-the-battlefield draw still happens even if your power-4 creature is removed in response; the condition isn't rechecked on resolution."},
 		Static: []game.StaticAbility{{
 			Layer: game.Layer6Ability,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

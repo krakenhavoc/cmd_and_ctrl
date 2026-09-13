@@ -30,9 +30,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // docs/decklists/top-100-commander-staples.md.
 func init() {
 	Register(Spec{
-		OracleID: "0456ec64-2c81-4763-a352-8ff64a4c3d6b",
-		Name:     "Deadly Rollick",
-		Targets:  TargetCreature("target creature"),
+		OracleID:     "0456ec64-2c81-4763-a352-8ff64a4c3d6b",
+		Name:         "Deadly Rollick",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"You always pay {3}{B} — the free cast while you control a commander is not offered."},
+		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

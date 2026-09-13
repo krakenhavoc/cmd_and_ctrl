@@ -29,6 +29,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "0636b6c3-0662-420a-b30d-f0a14e7c512d",
 		Name:            "Mirkwood Bats",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventTokenCreated, game.EventSacrifice},

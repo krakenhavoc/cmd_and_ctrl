@@ -30,8 +30,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // cast-turn stamp.
 func init() {
 	Register(Spec{
-		OracleID: "a4630da0-fe9b-4ead-9621-eac4b7825c35",
-		Name:     "Wash Away",
+		OracleID:     "a4630da0-fe9b-4ead-9621-eac4b7825c35",
+		Name:         "Wash Away",
+		Completeness: CompletenessFull,
 		Targets: TargetSpell("target spell that wasn't cast from its owner's hand",
 			Not(CastFromOwnersHand())),
 		AlternativeCosts: []game.AlternativeCost{

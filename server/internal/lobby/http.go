@@ -264,6 +264,9 @@ func Handler(c Config) http.Handler {
 	// The pinned replay is the raw unfiltered view — admin only, with
 	// no game-has-ended relaxation (see bugPinnedReplay).
 	mux.Handle("GET /bugreport/{id}/replay", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, bugPinnedReplay)))
+	// The pinned public game log rides the same admin gate as the
+	// replay — the contents are public, the artifact is unfiltered.
+	mux.Handle("GET /bugreport/{id}/gamelog", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, bugPinnedGameLog)))
 	// Logout does not require an authenticated principal — a client
 	// with a stale or revoked token should still be able to clear
 	// browser state without a 401 dead-end. We just revoke whatever

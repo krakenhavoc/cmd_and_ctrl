@@ -313,6 +313,23 @@ type CastSpellParams struct {
 	// overload is the worst available failure. Added in S22.
 	AlternativeCost string
 
+	// AltCostIDs names the cards paid to the NON-MANA half of the
+	// claimed alternative cost — Force of Will's "exile a blue card
+	// from your hand", Daze's "return an Island you control to its
+	// owner's hand", Solitude's evoke pitch. Exactly one entry when
+	// the claimed cost has such a component, none otherwise, and a
+	// non-empty list on a cost that charges no cards is rejected
+	// rather than ignored.
+	//
+	// A separate slice from DiscardIDs and SacrificeIDs because it
+	// pays a different cost: those are ADDITIONAL costs, charged
+	// alongside the mana cost and charged whichever cost the caster
+	// chose. This one is part of the alternative cost itself and
+	// vanishes when the caster declines the offer. Folding them into
+	// one list would make "I pitched a blue card" and "I discarded a
+	// card" indistinguishable on the wire. Added in S28.
+	AltCostIDs []uuid.UUID
+
 	// Face names which printed face of a multi-face card is being
 	// cast or played (ADR 0034). Zero — the front face — is the
 	// answer for every single-faced card in the game and for every
@@ -537,6 +554,21 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		)
 		return err
 	}
+	// S28: the non-mana half of the claimed offer — the Condition
+	// ("if you control a Swamp"), the life payment, and the card
+	// pitched or bounced to pay it. Validated here, next to the claim
+	// it belongs to; paid further down with the spell already on the
+	// stack, so a Blood Artist watching the pitch triggers above it.
+	if err := g.validateAlternativeCostPaymentLocked(playerID, cardID, alt, params.AltCostIDs); err != nil {
+		slog.Warn("cast_spell rejected: bad alternative cost payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"alternative_cost", params.AlternativeCost,
+			"payment_received", len(params.AltCostIDs),
+			"err", err,
+		)
+		return err
+	}
 	// S17 sub-PR 6 follow-up: if the catalog declares a target_mode
 	// for this card, a cast without any target is a client bug (the
 	// targeting UI should have opened before firing cast_spell).
@@ -634,7 +666,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// down once the spell is on the stack — validate-all-then-pay,
 	// so a rejected cast never leaves a card in the graveyard.
 	addCost := AdditionalCostFor(CatalogKey(card))
-	if err := g.validateAdditionalCostLocked(playerID, cardID, addCost, params.DiscardIDs, params.SacrificeIDs); err != nil {
+	if err := g.validateAdditionalCostLocked(playerID, cardID, addCost, params.DiscardIDs, params.SacrificeIDs, params.XValue); err != nil {
 		slog.Warn("cast_spell rejected: bad additional cost payment",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -859,8 +891,25 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// sacrifice — that triggers off it must resolve before the
 	// spell does. Validation happened at announce, so a failure
 	// past this point is an engine bug rather than a bad request.
-	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs, params.SacrificeIDs); err != nil {
+	payLife := 0
+	if addCost != nil && addCost.PayLifeX {
+		payLife = params.XValue
+	}
+	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs, params.SacrificeIDs, payLife); err != nil {
 		slog.Error("cast_spell: additional cost failed after validation",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"err", err,
+		)
+		return err
+	}
+	// S28: the alternative cost's own non-mana components, in the
+	// same window and for the same reason — pitching a Force of Will
+	// is a card leaving hand while the counterspell is on the stack,
+	// and a Daze returns its Island before the spell it is answering
+	// has resolved.
+	if err := g.payAlternativeCostLocked(playerID, alt, params.AltCostIDs); err != nil {
+		slog.Error("cast_spell: alternative cost failed after validation",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
 			"err", err,
@@ -1509,6 +1558,22 @@ func (g *Game) resolveTopOfStackLocked() error {
 			OldZone: ZoneStack,
 			NewZone: ZoneBattlefield,
 			Actor:   item.Controller,
+			// S16.5: a resolving permanent's entry can now pause on
+			// a prompt — Clone's "choose what to copy" is the first
+			// one — and this branch returns to the client when it
+			// does. The resume finishes the push on this branch's
+			// behalf (executeEntryToBattlefieldLocked).
+			//
+			// It is flagged resumable only because `stackItem`
+			// carries the two things the generic push could not
+			// reproduce: the Aura's attach target and the alternative
+			// cost the item was paid with. Before that, the pause
+			// with no resume was the reason this site was left
+			// unflagged — and the reason a CR 616 ordering prompt on
+			// a permanent spell's entry dropped the permanent
+			// entirely.
+			entryResumable: true,
+			stackItem:      item,
 		}
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
@@ -1537,6 +1602,15 @@ func (g *Game) resolveTopOfStackLocked() error {
 			}
 		}
 		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
+		// CR 706.2: a permanent entering as a copy is that copy from
+		// the moment it enters, so the values land before the counters
+		// (Spark Double's extra +1/+1 goes on the copy) and before any
+		// event fires. `moved` is re-taken because it is a pre-copy
+		// snapshot and CatalogKey(moved) below would otherwise fire
+		// the Clone's own ETB hook rather than the copied card's.
+		if copied, ok := g.applyEntersAsCopyLocked(out, moved.InstanceID); ok {
+			moved = copied
+		}
 		for name, n := range out.EntersWithCounters {
 			_ = g.AddCounterForEffect(moved.InstanceID, name, n)
 		}
@@ -2240,10 +2314,16 @@ func (g *Game) stateBasedActionsLocked() bool {
 			g.emitBattleDefeatedLocked(c.InstanceID)
 		}
 	}
-	for _, id := range doomed {
-		if err := g.routeBattlefieldCardToOwnerGraveyardLocked(id); err == nil {
-			fired = true
-		}
+	// S23: one SBA pass is ONE event (CR 704.3 — all applicable
+	// state-based actions are performed simultaneously as a single
+	// event). The collection above already worked off a single
+	// consistent board; routing the executions through the
+	// simultaneous-exit batch makes the TRIGGERS agree, so a Blood
+	// Artist that Pyroclasm or Toxic Deluge killed alongside the rest
+	// of the board still sees every one of those deaths. See
+	// simultaneous.go.
+	if g.destroyPermanentsLocked(doomed) > 0 {
+		fired = true
 	}
 
 	// 704.5s (S27) — a Saga at or past its final chapter, with no
@@ -2259,6 +2339,16 @@ func (g *Game) stateBasedActionsLocked() bool {
 		if err := g.sacrificePermanentLocked(id); err == nil {
 			fired = true
 		}
+	}
+
+	// 704.5j (S27) — the legend rule. Last, because it is the one
+	// state-based action whose outcome is a CHOICE rather than a
+	// consequence: running it after the destruction and sacrifice
+	// passes means a player is never asked to pick between two
+	// legends when one of them was about to leave anyway. See
+	// legend_rule.go.
+	if g.queueLegendRuleChoicesLocked() {
+		fired = true
 	}
 
 	return fired
@@ -4219,8 +4309,23 @@ func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 			if !CanBlock(attacker, blocker) {
 				return ErrIllegalBlock
 			}
+			// S31 sub-PR 0: announce the declaration for the public
+			// game log, but only when the pairing is NEW. The sandbox
+			// lets a defender re-point a blocker at a different
+			// attacker; that is one decision being revised, not two
+			// blocks, and EventAttack draws the same line.
+			announce := blocker.BlockingTarget != attackerID
 			blocker.BlockingTarget = attackerID
 			blocker.AttackingTarget = uuid.Nil
+			if announce {
+				g.EmitEvent(Event{
+					Kind:   EventBlock,
+					Actor:  blocker.Controller,
+					Source: blocker.InstanceID,
+					CardID: blocker.InstanceID,
+					Target: attackerID,
+				})
+			}
 			return nil
 		}
 	}

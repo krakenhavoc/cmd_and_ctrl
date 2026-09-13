@@ -241,6 +241,19 @@ type Spec struct {
 	// cards with no additional cost.
 	AdditionalCost *game.AdditionalCost
 
+	// CantBeCountered is the S23 "This spell can't be countered"
+	// rider (Supreme Verdict). A spell that declares it is still a
+	// legal target for Counterspell — the counter resolves and does
+	// nothing (CR 701.5a), which is a different and observable thing
+	// from the counterspell fizzling.
+	//
+	// Only a card's OWN printed rider belongs here. A GRANT
+	// ("creature spells you control can't be countered", Cavern of
+	// Souls) is a continuous effect over the stack and the layer
+	// system does not reach the stack; see
+	// server/internal/game/cant_be_countered.go.
+	CantBeCountered bool
+
 	// AlternativeCosts is the S22 "you may cast this spell for its
 	// overload / evoke / cleave cost" clause (CR 118.9) — a cost paid
 	// INSTEAD of the mana cost, not alongside it like AdditionalCost.
@@ -369,6 +382,29 @@ type Spec struct {
 	// Issue #338.
 	NoMaxHandSize bool
 
+	// Completeness declares how faithfully this spec implements the
+	// card as printed — the machine-readable form of the prose
+	// "declared simplification" convention in AGENTS.md §7. See
+	// completeness.go for the full contract and for why the zero
+	// value is CompletenessUnreviewed rather than
+	// CompletenessFull.
+	//
+	// Set it when you add or change a card. Leaving it unset is
+	// permitted and is not a failure — it publishes the card as
+	// unaudited, which is true.
+	Completeness Completeness
+
+	// Caveats names the printed clauses this spec does NOT model,
+	// one short player-facing sentence each — "Cycling is not
+	// implemented; the land can only be played." Required when
+	// Completeness is CompletenessCaveats and rejected otherwise,
+	// because a caveat nobody can read is the same as no caveat at
+	// all.
+	//
+	// Write for a player deciding whether to sleeve the card, not
+	// for the next engineer: the engineering reason belongs in the
+	// file's doc comment, where there is room for it.
+	Caveats []string
 	// Battle is a battle's printed battle data — its defense and its
 	// subtype (CR 310). Nil for every card that is not a battle,
 	// which is nearly all of them.

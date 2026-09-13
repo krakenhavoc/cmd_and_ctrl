@@ -326,6 +326,24 @@ type Card struct {
 	// game and checks exactly this.
 	ActiveFace int
 
+	// BaseController is the controller this permanent reverts to when
+	// every control-changing continuous effect on it ends (CR 613.1b)
+	// — the player who controlled it when it entered the
+	// battlefield.
+	//
+	// Captured LAZILY by the layer recompute (which runs before
+	// anything can read a control-changed value, because every
+	// battlefield entry bumps the layer version) and cleared by
+	// MoveCard on battlefield exit, so it is zero exactly when "the
+	// current controller IS the base" holds. That is why no write
+	// site had to learn about it: all ~15 places that assign
+	// Card.Controller do so as a permanent ENTERS, before the
+	// capture.
+	//
+	// Meaningless off the battlefield. Added in S24 with the layer-2
+	// control change (Mind Control).
+	BaseController uuid.UUID
+
 	// AttachedTo is the CR 301.5c / CR 303.4 attachment relation,
 	// stored on the ATTACHED object (the Equipment or the Aura) and
 	// pointing at its host. Zero value (Kind == "") means
@@ -369,6 +387,24 @@ type Card struct {
 	// Added in S24, per ADR 0036 decision 2.
 	AttachedAt int64
 
+	// PrintedSelf is this card's OWN printed values, stashed when a
+	// CR 706 copy effect overwrote the flat printed fields above.
+	// nil — which is every card that is not a Clone-class permanent
+	// — means the printed fields are the card's own and nothing has
+	// to be undone.
+	//
+	// It exists because CR 400.7 makes a permanent that changes
+	// zones a new object: the copy effect applied to the PERMANENT,
+	// so a Clone that dies is a card named Clone in its owner's
+	// graveyard, not a second Llanowar Elves. The battlefield-leave
+	// branch of the layer listener restores from here, in the same
+	// place it clears the effective cache.
+	//
+	// Carried by the snapshot and deep-copied by clone.go: which
+	// card a permanent is a copy of is not derivable from anything
+	// else, and a restore that lost it would resurrect every clone
+	// on the board as a 0/0. Added in S16.5 (#159 / #335).
+	PrintedSelf *PrintedValues
 	// StartingDefense is the printed defense a battle enters the
 	// battlefield with (CR 310.4), parsed from Scryfall's `defense`
 	// string at deck-import time. Zero for every other card type.

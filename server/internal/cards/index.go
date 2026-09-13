@@ -226,16 +226,29 @@ type Index struct {
 	// front-face name ("Fire") so common deck-list shorthand still
 	// resolves.
 	byName map[string]Card
-	loaded time.Time
-	path   string
+	// byOracle resolves an oracle_id — the printing-independent card
+	// identity Scryfall issues once per card — to one representative
+	// printing. The card-effect catalog is keyed by oracle_id
+	// (AGENTS.md §7), so this is the map that joins "what the engine
+	// implements" to "what the card looks like".
+	//
+	// Which printing wins matters here in a way it does not for
+	// byID: the entry is what gets rendered, so it must not be an
+	// art-series or token placeholder. preferIncoming picks a
+	// playable print over a junk one and then takes the last seen,
+	// which in the bulk dump's ordering is the most recent printing.
+	byOracle map[uuid.UUID]Card
+	loaded   time.Time
+	path     string
 }
 
 // NewIndex returns an empty Index. Call Load to populate it from a
 // Scryfall bulk dump file.
 func NewIndex() *Index {
 	return &Index{
-		byID:   make(map[uuid.UUID]Card),
-		byName: make(map[string]Card),
+		byID:     make(map[uuid.UUID]Card),
+		byName:   make(map[string]Card),
+		byOracle: make(map[uuid.UUID]Card),
 	}
 }
 
@@ -267,6 +280,7 @@ func (i *Index) Load(path string) (int, error) {
 
 	loaded := make(map[uuid.UUID]Card, 40_000) // ballpark for default_cards
 	byName := make(map[string]Card, 40_000)
+	byOracle := make(map[uuid.UUID]Card, 40_000)
 	for dec.More() {
 		var c Card
 		if err := dec.Decode(&c); err != nil {
@@ -293,6 +307,11 @@ func (i *Index) Load(path string) (int, error) {
 		// overwrite. This blocks art-series / double-faced-token
 		// printings (whose name is "X // X" with two identical faces)
 		// from hijacking the legitimate "X" entry via the face loop.
+		if c.OracleID != uuid.Nil {
+			if existing, ok := byOracle[c.OracleID]; !ok || preferIncoming(existing, c) {
+				byOracle[c.OracleID] = c
+			}
+		}
 		key := normalizeName(c.Name)
 		if existing, ok := byName[key]; !ok || preferIncoming(existing, c) {
 			byName[key] = c
@@ -321,6 +340,7 @@ func (i *Index) Load(path string) (int, error) {
 	i.mu.Lock()
 	i.byID = loaded
 	i.byName = byName
+	i.byOracle = byOracle
 	i.loaded = time.Now().UTC()
 	i.path = path
 	i.mu.Unlock()
@@ -333,6 +353,25 @@ func (i *Index) Get(id uuid.UUID) (Card, bool) {
 	i.mu.RLock()
 	defer i.mu.RUnlock()
 	c, ok := i.byID[id]
+	return c, ok
+}
+
+// FindByOracleID returns one representative printing for the given
+// oracle_id, or (zero, false) on miss.
+//
+// This is the join the card-effect catalog needs: specs are keyed by
+// oracle_id because it is stable across printings, while everything
+// renderable — name, mana cost, type line, art — lives on a printing.
+// Which printing you get is unspecified beyond "a playable one, and
+// the most recent such the dump offered"; callers wanting a specific
+// printing should use Get.
+func (i *Index) FindByOracleID(oracleID uuid.UUID) (Card, bool) {
+	if oracleID == uuid.Nil {
+		return Card{}, false
+	}
+	i.mu.RLock()
+	defer i.mu.RUnlock()
+	c, ok := i.byOracle[oracleID]
 	return c, ok
 }
 
@@ -458,6 +497,19 @@ func isPlayablePrint(c Card) bool {
 	case "token", "art_series", "memorabilia", "minigame", "vanguard":
 		return false
 	}
+	// Placeholder printings. The dump carries thousands of records
+	// whose type line is literally "Card" (front_card / token
+	// placeholders) or "Card // Card" (art series). The layout and
+	// set_type switches above catch most of them, but not all —
+	// AGENTS.md §7 step 1 warns about exactly these because a
+	// "Card // Card" record makes an ordinary single-faced creature
+	// look like a double-faced one, and it has caused a wrong triage
+	// twice. A record with no real type line cannot be the best
+	// printing of anything.
+	switch c.TypeLine {
+	case "Card", "Card // Card":
+		return false
+	}
 	return true
 }
 
@@ -530,6 +582,11 @@ func (i *Index) Put(c Card) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	i.byID[c.ID] = c
+	if c.OracleID != uuid.Nil {
+		if existing, ok := i.byOracle[c.OracleID]; !ok || preferIncoming(existing, c) {
+			i.byOracle[c.OracleID] = c
+		}
+	}
 	if key := normalizeName(c.Name); key != "" {
 		if existing, ok := i.byName[key]; !ok || preferIncoming(existing, c) {
 			i.byName[key] = c

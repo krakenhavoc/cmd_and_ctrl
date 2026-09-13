@@ -22,9 +22,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // tapped lands it untaps what there is.
 func init() {
 	Register(Spec{
-		OracleID: "ac914d98-221e-426c-8a50-342896b15f9e",
-		Name:     "Snap",
-		Targets:  TargetCreature("target creature"),
+		OracleID:     "ac914d98-221e-426c-8a50-342896b15f9e",
+		Name:         "Snap",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"You can't choose which lands untap — it automatically untaps the first two tapped lands you control and can never untap an opponent's lands."},
+		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

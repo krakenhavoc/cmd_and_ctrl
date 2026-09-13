@@ -32,8 +32,10 @@ import (
 // one piece of work; this card is now the third asking for it.
 func init() {
 	Register(Spec{
-		OracleID: "895f23a2-55b7-4cc0-8939-2efaaf097e6f",
-		Name:     "Solphim, Mayhem Dominus",
+		OracleID:     "895f23a2-55b7-4cc0-8939-2efaaf097e6f",
+		Name:         "Solphim, Mayhem Dominus",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The \"{1}{R/P}{R/P}, Discard two cards\" ability that puts an indestructible counter on Solphim can't be activated."},
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {

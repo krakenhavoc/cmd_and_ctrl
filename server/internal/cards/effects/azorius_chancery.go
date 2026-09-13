@@ -32,8 +32,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // returning itself is a normal, sometimes correct, line.
 func init() {
 	Register(Spec{
-		OracleID: "189fc8f4-17ac-4f1d-82c8-8401445bdaf4",
-		Name:     "Azorius Chancery",
+		OracleID:     "189fc8f4-17ac-4f1d-82c8-8401445bdaf4",
+		Name:         "Azorius Chancery",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The land to bounce is picked as a target when the trigger goes on the stack, not on resolution; the land enters untapped and taps a moment later."},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W}{U}",

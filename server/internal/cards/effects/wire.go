@@ -92,6 +92,12 @@ func init() {
 		}
 		return nil
 	}
+	// S23: "This spell can't be countered" (Supreme Verdict). False
+	// for every card that does not print the rider.
+	game.CatalogCantBeCountered = func(oracleID string) bool {
+		spec, ok := Lookup(oracleID)
+		return ok && spec.CantBeCountered
+	}
 	// S22: alternative costs to cast — overload, evoke, cleave. Nil
 	// for cards that offer none, which is nearly all of them.
 	game.CatalogAlternativeCosts = func(oracleID string) []game.AlternativeCost {

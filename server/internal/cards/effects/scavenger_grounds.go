@@ -22,8 +22,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "5ece7d03-9ee7-4953-a06e-9d8e41874903",
-		Name:     "Scavenger Grounds",
+		OracleID:     "5ece7d03-9ee7-4953-a06e-9d8e41874903",
+		Name:         "Scavenger Grounds",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}",

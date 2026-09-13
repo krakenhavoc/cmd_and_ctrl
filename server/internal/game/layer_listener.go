@@ -30,12 +30,10 @@ import (
 //     (Turn-scoped "until end of turn" effects do NOT depend on that
 //     bump: `ClearExpiredTurnScopedStaticsLocked` bumps the version
 //     itself when it sweeps.)
-//   - Control changes. Mind Control's layer-2 control change is
-//     still deferred; when the first "creatures you control"
-//     predicate that can flip mid-game lands, add an
-//     EventControlChanged kind + bump here. Aura and Equipment
-//     ATTACHMENT is no longer on this list — S24 added
-//     EventAttach / EventUnattach below.
+//   - Control changes. Nothing needed as of S24: Mind Control's
+//     layer-2 control change is a continuous effect whose only input
+//     is the attachment, and attachment bumps already via the
+//     EventAttach / EventUnattach kinds below.
 //
 // EventETB and EventLTB are also covered by EventZoneMove for every
 // CARD (every zone change emits both), so the listener doesn't
@@ -136,41 +134,49 @@ func stampBattlefieldEntryLocked(g *Game, cardID uuid.UUID) {
 // zone once defensively to clear any straggling effective on the
 // in-flight moved card. Cheap — most Card values aren't on the
 // battlefield and the zones are small.
+//
+// S16.5: the same walk also ENDS a copy effect (CR 400.7 — the
+// permanent that left became a new object, and the copy applied to
+// the permanent). A Clone that dies is a card named Clone in its
+// owner's graveyard; without this it would be a second Llanowar
+// Elves there, castable for {G}, and a second clone of it later
+// would copy the wrong card.
 func clearEffectiveCacheLocked(g *Game, cardID uuid.UUID) {
+	if c := findCardInNonBattlefieldZoneLocked(g, cardID); c != nil {
+		c.effective = nil
+		c.restorePrintedSelf()
+	}
+}
+
+// findCardInNonBattlefieldZoneLocked returns a pointer to the named
+// card in whichever non-battlefield zone currently holds it, or nil.
+// Split out of the leave path so the two things that happen there —
+// dropping the layer cache and undoing a copy effect — read as two
+// statements rather than ten copies of a zone walk.
+func findCardInNonBattlefieldZoneLocked(g *Game, cardID uuid.UUID) *Card {
 	for _, p := range g.Seats {
-		for i := range p.Hand.Cards {
-			if p.Hand.Cards[i].InstanceID == cardID {
-				p.Hand.Cards[i].effective = nil
-				return
+		for _, z := range []*Zone{p.Hand, p.Graveyard, p.Library, p.Command} {
+			if z == nil {
+				continue
 			}
-		}
-		for i := range p.Graveyard.Cards {
-			if p.Graveyard.Cards[i].InstanceID == cardID {
-				p.Graveyard.Cards[i].effective = nil
-				return
-			}
-		}
-		for i := range p.Library.Cards {
-			if p.Library.Cards[i].InstanceID == cardID {
-				p.Library.Cards[i].effective = nil
-				return
-			}
-		}
-		for i := range p.Command.Cards {
-			if p.Command.Cards[i].InstanceID == cardID {
-				p.Command.Cards[i].effective = nil
-				return
+			for i := range z.Cards {
+				if z.Cards[i].InstanceID == cardID {
+					return &z.Cards[i]
+				}
 			}
 		}
 	}
-	if g.Exile != nil {
-		for i := range g.Exile.Cards {
-			if g.Exile.Cards[i].InstanceID == cardID {
-				g.Exile.Cards[i].effective = nil
-				return
+	for _, z := range []*Zone{g.Exile, g.Stack} {
+		if z == nil {
+			continue
+		}
+		for i := range z.Cards {
+			if z.Cards[i].InstanceID == cardID {
+				return &z.Cards[i]
 			}
 		}
 	}
+	return nil
 }
 
 // timeNowUnixNano is a thin indirection so tests can stub

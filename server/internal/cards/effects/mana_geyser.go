@@ -40,8 +40,9 @@ import (
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID: "a8dba58b-2956-492e-ae30-49db2ae68e53",
-		Name:     "Mana Geyser",
+		OracleID:     "a8dba58b-2956-492e-ae30-49db2ae68e53",
+		Name:         "Mana Geyser",
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			n := 0
 			for _, c := range ctx.Game.BattlefieldCardsForEffect() {

@@ -36,8 +36,9 @@ every event that could change which static abilities are active or
 what they apply to. `Game.lastResolvedVersion` mirrors the most
 recent version the recompute pass has caught up to. The snapshot
 path's `RecomputeLayersIfStaleLocked` no-ops when they match;
-otherwise it serialises through a dedicated `recompute.mu` mutex
-(double-checks the version after acquire) and runs the body.
+otherwise it runs the body. (As specified it serialised through a
+dedicated `recompute.mu` mutex; the S24 amendment to decision 11
+replaced that with the game's write lock.)
 
 **Why:** XMage / Forge approach. Maintaining incremental diffs is a
 correctness nightmare — every possible mutation has to know which
@@ -47,10 +48,10 @@ layer count; sub-millisecond on modern CPUs and trivially correct.
 The version counter ensures we only pay the recompute cost when
 something actually changed.
 
-**Where the recompute fires:** `ReadSnapshot` calls
-`RecomputeLayersIfStaleLocked` inside its read closure before
-invoking the projection. Read-lock-safe via the atomic counters +
-the dedicated recompute mutex (no game-write-lock promotion).
+**Where the recompute fires:** `ReadSnapshot` resolves a stale
+recompute before invoking the projection. (S24 amendment, see
+decision 11: it does that by upgrading to the game's write lock,
+not by recomputing under the read lock as originally specified.)
 
 **Where it does NOT fire:** inside the SBA loop. SBA mutations
 emit zone-change events that bump `layerVersion`; if the recompute
@@ -106,6 +107,13 @@ needs to declare its dependency inputs; cycles need detection).
 Pure timestamp ordering produces correct results for ~95% of real
 cards. S16.5 follow-up if a real card surfaces in playtesting.
 
+**Re-affirmed in S16.5** — see [ADR 0043](0043-copy-effects.md) §5.
+The trigger has not fired: no pair of statics in the catalog can
+produce an observable dependency, because every one of them is an
+anthem, a keyword grant, a type-add or a CDA, all commutative under
+timestamp order. The cost is a required dependency declaration on
+every `StaticAbility` in the catalog, present and future.
+
 ### 5. Layer 7 ships full sub-layer support; layers 1, 3, 5 ship
        as stubs
 
@@ -115,7 +123,14 @@ anthems at 7c. 7b and 7e ship the bucket in `layerOrder` but no
 catalog card exercises them yet.
 
 Layer 1 (copy effects — Clone, Phyrexian Metamorph) — deferred to
-S16.5.
+S16.5. **Landed in S16.5, differently:** see
+[ADR 0043](0043-copy-effects.md). A copy effect rewrites the
+copiable-value baseline the recompute starts from rather than
+applying as a `ContinuousEffect` in the `Layer1Copy` bucket, because
+a copy has to carry the oracle ID, mana cost and printed P/T, none of
+which a `Characteristic` has a field for. The bucket survives for the
+duration-scoped copy effects (Mirage Mirror, Cytoshape) that still
+need it.
 
 Layer 3 (text-changing effects — Mind Bend, Glamerdye) — engine
 ships the layer-3 bucket but no in-scope card needs it.
@@ -216,6 +231,10 @@ time pre-effects-init path).
 
 ### 11. Lock semantics: atomic version + dedicated recompute mutex
 
+> **Superseded in S24.** This decision was wrong and shipped a data
+> race. See the amendment below; the current contract is that the
+> recompute requires the game's WRITE lock.
+
 Reading `layerVersion` and `lastResolvedVersion` is atomic. Bumps
 happen under the game write lock (the EmitEvent path) — no race
 with snapshot readers. The recompute body runs under
@@ -228,6 +247,52 @@ atomic version counters. The recompute writes `Card.effective`
 under the recompute mutex; concurrent readers may see either the
 old or new pointer (atomic pointer assignment in Go), which is
 fine — both are valid Characteristic snapshots.
+
+#### Amendment (S24): the recompute takes the write lock
+
+Two things above are false.
+
+**"Multiple readers can contend without promoting the read lock"**
+confuses two questions. The recompute mutex serialises recomputes
+against **each other**; it does nothing about a goroutine holding
+only `g.mu` in read mode, and `sync.RWMutex` admits any number of
+those simultaneously. Every concurrent read-lock holder raced the
+pass. `Game.AutoTapForCostExcluding` (the lobby `/autotap` preview,
+on a net/http goroutine) and `Game.ControllerOfCard` (the actions
+package's authorization gate) both walk the battlefield under the
+read lock while `protocol.ViewOfGame` recomputes on another.
+
+**"Atomic pointer assignment in Go, which is fine"** is not a
+guarantee the language makes. An unsynchronised pointer write
+concurrent with a read is a data race under the Go memory model,
+with no promise the reader sees either the old or the new value;
+`go test -race` reports it as one. The only reason CI stayed green
+is that no test exercised a concurrent reader against a recompute —
+absence of a race report from a suite with no concurrency in it is
+not evidence of absence.
+
+S24's layer 2 raised the stakes rather than creating them: the
+materialisation pass writes `Card.Controller`, a 16-byte
+`uuid.UUID`, so a torn read silently attributes a permanent to the
+wrong seat instead of crashing on a bad pointer.
+
+**Current contract.** `RecomputeLayersIfStaleLocked` requires
+`g.mu` in **write** mode. Every mutator that calls it already held
+it. `ReadSnapshot` — the one caller that did not — upgrades: it
+checks the version counters under the read lock, and when stale
+releases it, retakes `g.mu` in write mode for the recompute alone,
+and re-enters read mode, looping because a mutation can land in the
+gap and `fn()` must see fresh layers. `g.recompute.mu` is deleted;
+the write lock is the serialiser.
+
+Cost, measured on a 40-permanent board: the fast path — two atomic
+loads, which is what almost every broadcast hits, because every
+version bump happens under the write lock and thirteen mutators
+recompute before releasing — is unchanged at ~4ns. A stale
+recompute goes 6.5µs → 7.3µs, under a percent of `ViewOfGame`'s
+hundreds of microseconds. The contended case is flat and less
+variable. `server/internal/game/layers_concurrency_test.go` pins
+the three pairings under `-race`.
 
 ## Consequences
 

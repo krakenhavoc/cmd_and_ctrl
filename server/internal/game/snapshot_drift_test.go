@@ -98,7 +98,6 @@ var gameFields = plan(
 	"Listeners", rebuilt, "process-lifetime singletons installed by NewGame; a new binary's listener set wins",
 	"BuiltinReplacements", rebuilt, "registered by NewGame, not per-game state",
 	"rng", rebuilt, "rebuilt by wrapping the restored rngState",
-	"recompute", rebuilt, "a mutex guarding recompute work; zero value is correct",
 	"mu", rebuilt, "a fresh receiver owns its own lock, exactly as Clone does",
 
 	"TurnScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.TurnScopedStatics",
@@ -107,6 +106,7 @@ var gameFields = plan(
 	"replacementsAppliedThisEvent", dropped, "per-pipeline-call scope, defer-cleared; always empty between Applies",
 	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty",
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
+	"simultaneousExit", dropped, "per-sweep scope, defer-cleared; a snapshot is never taken mid-wipe, so it is always empty between mutations",
 )
 
 var cardFields = plan(
@@ -152,6 +152,16 @@ var cardFields = plan(
 	// a restore that dropped it would silently un-equip the board.
 	"AttachedTo", carried, "",
 	"AttachedAt", carried, "",
+	// The layer-2 control baseline. Carried rather than rebuilt: a
+	// restore that dropped it would re-capture the CURRENT (stolen)
+	// controller as the base, and the creature would never go home.
+	"BaseController", carried, "",
+	// S16.5 copy effects (#159 / #335). Which card a permanent is a
+	// copy of is not derivable from anything else on the board, and
+	// a restore that lost it would resurrect every clone as the 0/0
+	// it is printed as. Pure data by construction — see copy.go on
+	// why PrintedValues carries no closures.
+	"PrintedSelf", carried, "",
 	// S27 battles. Both are printed / chosen state with no other
 	// source: a restore that lost StartingDefense would re-stamp
 	// nothing (the stamp is idempotent and only fires on entry), and
@@ -261,6 +271,7 @@ var pendingChoiceFields = plan(
 	"PickTargetMin", carried, "",
 	"PickTargetMax", carried, "",
 	"SacrificeOptions", carried, "",
+	"CopyOptions", carried, "",
 	"ScryCards", carried, "",
 	"TriggerOrderIDs", carried, "",
 	"PayCost", carried, "",

@@ -79,13 +79,17 @@ func BlockerEligible(b *Card, seat uuid.UUID) bool {
 // stopping, which is the safe direction for this signal: a spurious
 // stop costs a click, a spurious skip costs the game.
 //
-// Takes the game's read lock; callers must not hold g.mu. Use
-// seatOwesBlockDecisionLocked from inside an existing lock.
+// Goes through ReadSnapshot rather than taking the read lock
+// directly, because the layer refresh it needs is a WRITE (see
+// RecomputeLayersIfStaleLocked) and ReadSnapshot owns the upgrade.
+// Callers must not hold g.mu. Use seatOwesBlockDecisionLocked from
+// inside an existing lock.
 func (g *Game) SeatOwesBlockDecision(seat uuid.UUID) bool {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
-	g.RecomputeLayersIfStaleLocked()
-	return g.seatOwesBlockDecisionLocked(seat)
+	var out bool
+	g.ReadSnapshot(func() {
+		out = g.seatOwesBlockDecisionLocked(seat)
+	})
+	return out
 }
 
 // seatOwesBlockDecisionLocked is SeatOwesBlockDecision without the
@@ -146,7 +150,7 @@ func (g *Game) seatOwesBlockDecisionLocked(seat uuid.UUID) bool {
 //
 // Caller must hold g.mu (read or write) with fresh layers — this is
 // the read surface protocol.ViewOfGame calls from inside its existing
-// ReadSnapshot, same contract as RecomputeLayersIfStaleLocked.
+// ReadSnapshot, which guarantees the freshness.
 func (g *Game) SeatsOwingBlockDecisionLocked() []int {
 	if g.Turn.Step != StepDeclareBlockers {
 		return nil

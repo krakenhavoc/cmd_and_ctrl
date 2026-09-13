@@ -29,8 +29,9 @@ package effects
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "5004b84a-33b7-4f6f-b2c2-7086b9087535",
-		Name:     "Graven Cairns",
+		OracleID:     "5004b84a-33b7-4f6f-b2c2-7086b9087535",
+		Name:         "Graven Cairns",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{
 			painlessColorless(),
 			{

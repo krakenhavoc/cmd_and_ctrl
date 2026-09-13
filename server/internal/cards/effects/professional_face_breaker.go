@@ -36,6 +36,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "04152e7a-969c-4858-841b-0a569a9fc1bf",
 		Name:            "Professional Face-Breaker",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},

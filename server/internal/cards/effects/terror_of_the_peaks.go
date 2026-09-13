@@ -29,6 +29,8 @@ func init() {
 	Register(Spec{
 		OracleID:        "f8e17f4f-080d-4bba-bd05-ca27e94ccecc",
 		Name:            "Terror of the Peaks",
+		Completeness:    CompletenessCaveats,
+		Caveats:         []string{"Opponents' spells that target it do not cost an additional 3 life."},
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},

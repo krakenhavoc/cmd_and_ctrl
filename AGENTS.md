@@ -61,6 +61,7 @@ cmd_and_ctrl/
 │   │   ├── auth/        # pluggable Authenticator interface + MemoryAuthenticator + HTTP middleware
 │   │   ├── lobby/       # GameMeta registry, invite flow, lobby HTTP handler, WSAuthorizer, deck upload
 │   │   ├── cards/       # Scryfall index (streaming load) + disk-backed image cache + /cards routes
+│   │   ├── catalog/     # public /catalog routes — what the engine automates + how completely (ADR 0042)
 │   │   ├── bugstore/    # bug-report artifacts: reporter screenshots (public, Camo-reachable) + pinned replays (admin-only)
 │   │   └── deck/        # decklist parsers (Moxfield, plain text) + Commander validation
 │   ├── Makefile
@@ -219,7 +220,7 @@ unused — they can be removed in a later cleanup PR.)
 - `make -C server fmt` — `gofmt -s -w .`
 - `make -C server build` — produces `server/bin/cmd_and_ctrl-server`
 - `cd server && go run ./cmd/gamecli -addr ws://localhost:8080/ws` — drive the demo game from a terminal; reads action JSON on stdin or via `-script path.json`
-- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](docs/lobby.md)), `/cards/*` image + metadata routes
+- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](docs/lobby.md)), `/cards/*` image + metadata routes, `GET /catalog` + `GET /catalog/image/{id}` (public, no session — the card catalogue, [ADR 0042](docs/decisions/0042-card-catalog-page.md))
 - Env vars:
   - `CMDCTRL_ADDR` — listen addr (default `:8080`)
   - `CMDCTRL_DATA_DIR` — data root (default `./data`; empty string disables disk writes + card cache)
@@ -377,9 +378,10 @@ surface tiny.
    // deferred and to which future sprint.
    func init() {
        Register(Spec{
-           OracleID:   "<uuid from step 1>",
-           Name:       "Card Name",
-           TargetMode: "<player / creature / ...>",
+           OracleID:     "<uuid from step 1>",
+           Name:         "Card Name",
+           Completeness: CompletenessFull,
+           TargetMode:   "<player / creature / ...>",
            OnResolve: func(item *game.StackItem, ctx *Context) error {
                // primitive composition here
                return nil
@@ -389,6 +391,37 @@ surface tiny.
    ```
    For permanents with an ETB trigger, populate `OnETB` instead of
    (or alongside) `OnResolve`.
+
+   **Declare `Completeness`.** Since
+   [ADR 0042](docs/decisions/0042-card-catalog-page.md) the prose
+   simplification note above has a machine-readable twin, because the
+   public catalogue page at `#/catalog` publishes it:
+
+   ```go
+   Completeness: CompletenessFull,        // everything printed happens
+   // …or:
+   Completeness: CompletenessCaveats,
+   Caveats:      []string{"Cycling is not implemented — the land can only be played."},
+   ```
+
+   Three rules, and they are the whole contract:
+
+   - **The zero value is `CompletenessUnreviewed`, and that is a legal
+     thing to ship.** It publishes the card as unaudited, which is
+     true, and nothing fails. Do not stamp `CompletenessFull` to tidy
+     it up — a card falsely marked complete is the one outcome the
+     field exists to prevent.
+   - **`Caveats` is required with `CompletenessCaveats` and rejected
+     without it.** `Register` panics either way, at boot.
+   - **Write `Caveats` for a player, not for the next engineer.** One
+     sentence, no engine vocabulary: "Flashback isn't implemented — the
+     spell can only be cast from hand." The reason it is deferred, the
+     sprint it lands in and the machinery it waits on all belong in
+     the doc comment, where there is room. A test enforces the tone.
+
+   Keep the prose note too. The field says *what*; the comment says
+   *why*, and the comment is what stops the next person reopening a
+   decision you already made.
 
    **Planeswalkers: leave `StartingLoyalty` alone.** Starting loyalty
    is printed card data, not card-effect data. The deck importer
@@ -640,6 +673,70 @@ func init() {
 > skip the library shuffle, and a missing shuffle silently leaks library
 > order. `TestFetchedShocklandEntersTappedWithNoPaymentOffered` pins the
 > gap and flips when it closes.
+
+### Adding a copy effect (S16.5+)
+
+"You may have this creature enter as a copy of X" (Clone, Phyrexian
+Metamorph, Spark Double, Sakashima the Impostor) is a replacement
+effect with a picker inside it. Cards declare it through the shared
+`EntersAsCopyOf` constructor in
+[copy_effects.go](server/internal/cards/effects/copy_effects.go)
+rather than building a `game.ReplacementEffect` by hand:
+
+```go
+Replacements: []game.ReplacementEffect{
+    EntersAsCopyOf(
+        "Phyrexian Metamorph",
+        // what may be copied — evaluated when the prompt is built
+        // AND again when the answer arrives.
+        func(g *game.Game, controller uuid.UUID, self uuid.UUID) []uuid.UUID {
+            return copyCandidates(g, self, func(c game.Card) bool {
+                return c.IsCreature() || c.IsArtifact()
+            })
+        },
+        // the "except" clause — nil for a plain Clone.
+        func(ev *game.ReplacementEvent, v *game.PrintedValues, g *game.Game, src *game.Card) {
+            v.AddCardType("Artifact")
+        },
+    ),
+},
+```
+
+**Where each kind of "except" clause goes:**
+
+| Printed clause | Where it lands |
+|---|---|
+| "except its name is N" | `v.SetName("N")` |
+| "except it's an artifact in addition to its other types" | `v.AddCardType("Artifact")` |
+| "except it's legendary in addition to…" | `v.AddSupertype("Legendary")` |
+| "except it isn't legendary" | `v.RemoveSupertype("Legendary")` |
+| "except it enters with an additional +1/+1 counter" | `ev.AddCounterAtETB("+1/+1", 1)` |
+| "except it enters with an additional loyalty counter" | `v.StartingLoyalty++` — NOT `AddCounterAtETB`; the CR 306.5b stamp refuses to run on a walker that already has loyalty counters |
+| branch on what was copied | `v.HasCardType("Creature")` / `"Planeswalker"` |
+
+**What a copy brings, and what it does not.** `PrintedValues` is the
+CR 707.2 copiable-value set: printed name, type line, mana cost,
+colours, P/T, keywords, starting loyalty, layout / faces, and the
+oracle ID — which is the load-bearing one, because every catalog hook
+resolves through `CatalogKey`, so the copy inherits the copied card's
+triggers, statics, replacements and abilities for free. It does NOT
+bring counters, damage, status, or any other layer's effect. See
+[ADR 0043](docs/decisions/0043-copy-effects.md).
+
+**Don't reach for this for a token copy.** "Create a token that's a
+copy of target creature" (Follow the Spirit, Kiki-Jiki) is
+`CreateTokenCopy` in
+[token_copy.go](server/internal/cards/effects/token_copy.go) — a
+resolution-time effect that mints a new object, not a replacement of
+something's own entry.
+
+**Tests** — see
+[copy_effects_test.go](server/internal/cards/effects/copy_effects_test.go).
+The pattern is `castCatalogSpell` → `resolveWithCopyChoice(t, g,
+pick)` (pass `uuid.Nil` to decline) → assert on the battlefield card.
+Assert the OBSERVABLE result — name, P/T, types, counters, and for
+anything with a catalog entry, its behaviour — because a copy that
+rewrote only the display fields looks identical on the wire.
 
 ### Adding a combat-keyword card (S18+)
 

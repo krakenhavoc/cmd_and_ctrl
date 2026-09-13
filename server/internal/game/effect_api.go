@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"log/slog"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -208,6 +209,21 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 	return nil
 }
 
+// DealDamageToCreatureForEffect marks amount damage on a
+// battlefield creature. Emits EventDealDamage. The SBA pass fires
+// on the surrounding priority boundary (resolution path already
+// bookends with runStateChecks), so lethal damage routes the card
+// via the normal SBA loop rather than a bespoke kill-now path.
+//
+// S30: routed through the CR 614 replacement pipeline. This was the
+// last unrouted damage entry point — the sibling comment on
+// DealDamageToPlayerForEffect claims the other three were already
+// covered, and it was right about three of them. A Lightning Bolt
+// aimed at a CREATURE reached DamageMarked directly, so neither a
+// prevention shield nor a damage doubler could see it, while the
+// same Bolt aimed at a player went through the pipeline. That
+// asymmetry is invisible until a card exists that cares, and S30's
+// prevention shields are that card.
 // DealDamageToCreatureForEffect deals amount damage to a battlefield
 // PERMANENT. Emits EventDealDamage. The SBA pass fires on the
 // surrounding priority boundary (the resolution path already bookends
@@ -231,14 +247,43 @@ func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount in
 	if amount <= 0 {
 		return nil
 	}
-	if !g.applyDamageToPermanentLocked(cardID, amount, false) {
+	ev := &ReplacementEvent{
+		Kind:         RepEventDamage,
+		Source:       source,
+		DamageSource: source,
+		DamageTarget: cardID,
+		DamageAmount: amount,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		// A replacement queued a CR 616 ordering choice; the
+		// pipeline resumes when it is answered.
+		return nil
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return err
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled || out.DamageAmount <= 0 {
+		// Fully prevented. The permanent is untouched and no
+		// EventDealDamage fires, which is what "prevented" means —
+		// a "whenever ~ is dealt damage" trigger must not see it.
+		return nil
+	}
+	// Post-replacement values, and through the permanent-aware path:
+	// a creature marks damage, a planeswalker loses loyalty (CR 120.3d,
+	// the #406 fix) and a battle loses defence. The old inline loop
+	// here only ever incremented DamageMarked, which is why damage
+	// could not kill a planeswalker.
+	if !g.applyDamageToPermanentLocked(out.DamageTarget, out.DamageAmount, false) {
 		return ErrCardNotFound
 	}
 	g.EmitEvent(Event{
 		Kind:   EventDealDamage,
-		Source: source,
-		Target: cardID,
-		Amount: amount,
+		Source: out.DamageSource,
+		Target: out.DamageTarget,
+		Amount: out.DamageAmount,
 	})
 	return nil
 }
@@ -295,6 +340,29 @@ func (g *Game) DiscardRandomForEffect(playerID uuid.UUID, n int) error {
 			NewZone: ZoneGraveyard,
 		})
 	}
+	return nil
+}
+
+// LoseTheGameForEffect marks a player as losing the game — the
+// consequence half of "pay {3}{U}{U}. If you don't, you lose the
+// game" (Pact of Negation and the rest of the Pact cycle), and of
+// every other card that says those words outright.
+//
+// Routed through LosesAtNextSBA rather than eliminating the player on
+// the spot, because CR 104.3 says a player who "loses the game" does
+// so as a state-based action (CR 704.5a-adjacent): the ability
+// finishes resolving first, and the loss lands at the next SBA check
+// alongside the empty-library and zero-life losses. That ordering is
+// observable — a replacement or a second effect in the same
+// resolution still happens.
+//
+// Caller must hold g.mu. Added in S28.
+func (g *Game) LoseTheGameForEffect(playerID uuid.UUID) error {
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	p.LosesAtNextSBA = true
 	return nil
 }
 
@@ -474,6 +542,18 @@ func (g *Game) CounterTargetForEffect(stackID uuid.UUID) error {
 	}
 	switch item.Kind {
 	case StackItemSpell:
+		// CR 701.5a + the "this spell can't be countered" rider
+		// (Supreme Verdict). The spell is still a LEGAL TARGET — a
+		// Counterspell aimed at it resolves, and then does nothing.
+		// Modelling it as an illegal target would be the easy
+		// mistake and the wrong one: the counterspell would fizzle
+		// instead of resolving, which is observable to anything
+		// watching it resolve. Added in S23.
+		if g.spellCantBeCounteredLocked(stackID) {
+			slog.Info("counter had no effect: spell can't be countered",
+				"spell_id", stackID)
+			return nil
+		}
 		return g.counterSpellLocked(stackID, nil)
 	case StackItemActivated, StackItemTriggered:
 		return g.counterAbilityLocked(stackID)
@@ -1204,9 +1284,57 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 // references the first token ID — callers loop for the others via
 // the event stream.
 func (g *Game) CreateTokenForEffect(controller uuid.UUID, template Card, n int) error {
+	_, err := g.CreateTokensForEffect(controller, template, n, TokenEntryOptions{})
+	return err
+}
+
+// TokenEntryOptions are the creation-time modifiers a card can apply
+// to the token it makes, on top of the token's printed template.
+// Every field is the zero value for an ordinary "create a 1/1 Goblin"
+// — CreateTokenForEffect passes an empty struct.
+//
+// These are properties of the CREATION, not of the token: two cards
+// can make the same printed Powerstone and only one of them says
+// "tapped". Keeping them here rather than baking them into the
+// template in tokens.go is what stops the catalog growing a second
+// near-identical constructor per variant.
+type TokenEntryOptions struct {
+	// Tapped enters the tokens tapped — "create a TAPPED Powerstone
+	// token" (Stern Lesson), "create a 1/1 Goblin tapped and
+	// attacking" minus the attacking half, which needs combat state
+	// this struct deliberately does not touch.
+	Tapped bool
+
+	// Counters are the counters each token enters with, keyed by
+	// counter name. Applied before EventETB fires, so an ETB watcher
+	// and the P/T recompute both see the finished object.
+	//
+	// Declared gap: these do NOT run the CR 614 counter replacement
+	// pipeline, so a Doubling Season does not double them. Token
+	// creation does not go through the zone-move pipeline at all
+	// (the token has no previous zone to move from), which is the
+	// same reason Tapped is a field here rather than the
+	// RepEventMove.EntersTapped an ordinary permanent uses.
+	Counters map[string]int
+
+	// Keywords are granted on top of the template's printed ones —
+	// the "…with haste" half of a card that pumps the token it
+	// makes. Additive: the template's own keywords are kept.
+	Keywords []string
+}
+
+// CreateTokensForEffect is CreateTokenForEffect with entry options,
+// returning the instance IDs of the tokens it made in creation
+// order. The IDs are what a card needs when the token is not the end
+// of the sentence — "create a token, then sacrifice it", "…then put
+// a counter on it".
+//
+// Caller must hold g.mu.
+func (g *Game) CreateTokensForEffect(controller uuid.UUID, template Card, n int, opts TokenEntryOptions) ([]uuid.UUID, error) {
 	if n <= 0 {
-		return nil
+		return nil, nil
 	}
+	ids := make([]uuid.UUID, 0, n)
 	for i := 0; i < n; i++ {
 		tok := template
 		tok.InstanceID = uuid.New()
@@ -1214,10 +1342,34 @@ func (g *Game) CreateTokenForEffect(controller uuid.UUID, template Card, n int) 
 		tok.Controller = controller
 		tok.Counters = nil
 		tok.KnownBy = nil
+		if opts.Tapped {
+			// Additive, not an assignment: a caller that pre-stamped
+			// Tapped on the template (the older idiom — Mary Read's
+			// Treasure, Hashaton's Zombie) must keep entering tapped.
+			tok.Tapped = true
+		}
+		if len(opts.Counters) > 0 {
+			tok.Counters = make(map[string]int, len(opts.Counters))
+			for name, count := range opts.Counters {
+				if count > 0 {
+					tok.Counters[name] = count
+				}
+			}
+		}
+		if len(opts.Keywords) > 0 {
+			// Fresh slice: the template's Keywords slice is shared by
+			// every token minted from it, so appending in place would
+			// leak the grant onto the next one.
+			kw := make([]string, 0, len(template.Keywords)+len(opts.Keywords))
+			kw = append(kw, template.Keywords...)
+			kw = append(kw, opts.Keywords...)
+			tok.Keywords = kw
+		}
 		for _, seat := range g.Seats {
 			tok.AddKnower(seat.ID)
 		}
 		g.Battlefield.PushTop(tok)
+		ids = append(ids, tok.InstanceID)
 		g.EmitEvent(Event{
 			Kind:   EventTokenCreated,
 			Actor:  controller,
@@ -1229,7 +1381,7 @@ func (g *Game) CreateTokenForEffect(controller uuid.UUID, template Card, n int) 
 			CardID: tok.InstanceID,
 		})
 	}
-	return nil
+	return ids, nil
 }
 
 // CreateTokensAttackingForEffect is CreateTokenForEffect for

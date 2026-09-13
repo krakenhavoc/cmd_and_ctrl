@@ -31,6 +31,7 @@ func init() {
 	Register(Spec{
 		OracleID:         "926d52a5-4db1-46ce-9567-17c28bf56ae7",
 		Name:             "Weftstalker Ardent",
+		Completeness:     CompletenessFull,
 		AlternativeCosts: []game.AlternativeCost{Warp("{R}")},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},

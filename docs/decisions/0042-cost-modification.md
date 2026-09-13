@@ -1,6 +1,6 @@
-# ADR 0042 — Cost modification (CR 601.2f)
+# ADR 0042 — Cost modification and the free-spell family
 
-**Status:** accepted (S28 sub-PR 1)
+**Status:** accepted (S28)
 **Extends:** [ADR 0011](0011-mana-pool-and-auto-tapper.md) (the cost
 computation engine), [ADR 0021](0021-additional-costs.md) and
 [ADR 0025](0025-alternative-costs.md) (the two cost slots that came
@@ -194,3 +194,135 @@ next turn, that player's spells cost {2} less", which needs a
 floating registry keyed by player rather than a battlefield source.
 [ADR 0035](0035-until-end-of-turn-effects.md)'s turn-scoped registry
 is the shape that would host it; its clock is one turn too short.
+
+---
+
+## Addendum: the rest of S28
+
+Three more decisions landed in the same sprint. They are recorded here
+rather than in ADRs of their own because each is an EXTENSION of
+machinery that already had one — and saying so is the point: two of
+the four cost mechanisms the sprint's issue asked for already existed.
+
+### 7. The free-spell family extends `AlternativeCost`, it does not
+### replace it
+
+Force of Will, Solitude, Snuff Out, Daze and Fierce Guardianship all
+say "rather than pay this spell's mana cost", which is
+[ADR 0025](0025-alternative-costs.md)'s CR 118.9 clause verbatim — the
+same one overload, evoke and cleave have ridden since S22. What they
+needed was not a parallel mechanism but two new components on the
+existing struct:
+
+- **`Condition`** — "if you control a commander" (the Commander
+  Legends cycle), "if you control a Swamp" (Snuff Out). Checked at
+  announce AND in the view, so an offer the caster cannot take is
+  never shown rather than shown and rejected.
+- **Non-mana payments** — `Life`, `ExileFromHand`, `ReturnToHand`,
+  named on the wire by a new `alt_cost_ids`. Validated together
+  before any of them is paid, so a player at 1 life with no blue card
+  gets a rejected cast rather than a dead player and a spell still in
+  hand.
+
+The payments are charged in the CR 601.2h window, with the spell
+**already on the stack** — the same window the additional cost uses
+and for the same reason. Countering a Force of Will does not refund
+the pitched card; a Daze returns its Island before the spell it is
+answering resolves. A resolution-time implementation would get both
+backwards and would make Force of Will a strictly better card than
+the printed one.
+
+`alt_cost_ids` is deliberately a separate wire field from
+`discard_ids` / `sacrifice_ids` rather than a shared "cards paid"
+list: those pay ADDITIONAL costs, which are charged whichever cost
+the caster chose, while this one is part of the alternative cost and
+vanishes when the offer is declined. One list would make the two
+indistinguishable.
+
+Pact of Negation is in the sprint's "free-cast" group and needs none
+of this — its printed cost really is {0}. What it has is a debt, and
+the debt is an ordinary CR 603.7 delayed trigger
+([ADR 0026](0026-delayed-triggers.md)).
+
+### 8. Cascade needed a triggered ability of a SPELL
+
+CR 702.85a fires "when you cast this spell" — while the source is on
+the stack, which is not where the S19 trigger harvester looks
+([ADR 0018](0018-triggers-on-the-stack.md) scans the battlefield,
+because that is where abilities exist under CR 113.6).
+
+`TriggeredAbility.FromStack` is an **opt-in flag** plus a scan
+narrowed to `EventCast` and to the one card the event names. A
+blanket stack scan was the obvious alternative and is wrong: a
+creature spell on the stack carries its permanent's declared triggers
+with it, so "whenever another creature enters" would start firing
+from the stack — a turn early, from a zone where the ability does not
+exist.
+
+### 9. Cascade's free cast is a GRANT, not an inline cast
+
+Printed cascade casts the exiled card then and there, inside the
+trigger's resolution, ignoring timing. The engine instead stamps the
+impulse-exile permission ([ADR 0022](0022-impulse-exile.md)) with a
+`{0}` cost override and lets the player cast it with an ordinary
+`cast_spell`.
+
+The reason is the announce path, not laziness: a cast needs targets,
+modes and X collected from the player, and there is no frame for a
+half-validated cast inside a resolution.
+`CastSpellParams.Face` documents why `PendingChoice` is deliberately
+not that frame and should not grow into it.
+
+The trade is weaker than printed in the case that matters — a
+cascaded sorcery on an opponent's turn cannot be cast at all — and
+the one way it could have been STRONGER is closed: an accepted but
+uncast hit goes to the bottom of its owner's library at the next end
+step, via a delayed trigger. Without that, "yes" would park the card
+in exile permanently available, which is a real upgrade on a keyword
+that gives you exactly one window.
+
+The random bottoming draws from `g.rng`, the game's own persisted
+`*rand.PCG`, so a replayed game bottoms the pile the way the live one
+did. `math/rand` here would desynchronise every snapshot after a
+cascade.
+
+### 10. `PendingChoiceMayCast` rather than a `{0}` pay-unless
+
+"You may cast it without paying its mana cost" is a yes/no asked
+during a resolution, which `PendingChoicePayUnless` can already
+express — pass a cost of `{0}` and the payment always succeeds.
+
+It is still the wrong prompt, because the prompt is copy as much as
+it is control flow: pay-unless's entire client vocabulary is
+"Pay {2}" / "Don't pay", and a dialog reading "Pay {0}?" about a free
+spell is how a player answers the wrong question. The new kind shares
+the `{apply: bool}` payload with the other four yes/no kinds and
+carries the offered card (`MayCastCard`) so the prompt can show it
+rather than name it in a sentence.
+
+## What S28 did not ship
+
+Named in the sprint issue, deliberately left out, each for a
+structural reason rather than for time:
+
+- **Urza's Incubator** — "as this enters, choose a creature type"
+  needs a creature-type choice, which is a new `PendingChoice` kind
+  and a new client picker for one card.
+- **Will Kenrith** — its −2 is a cost reduction scoped to a PLAYER
+  and to a duration ("until your next turn") rather than to a
+  battlefield source. See the "not covered" note above.
+- **Etali, Primal Conqueror** — a transform DFC whose ETB casts an
+  unbounded number of exiled spells for free; the free-cast half is
+  the grant this sprint built, but the "any number of spells" loop
+  and the transform side are a different sprint.
+- **Cabal Therapy** — its flashback is an alternative cost paid from
+  the GRAVEYARD, and `CastSpellParams.FromZone` still has no
+  graveyard case (S29's alt-cast-paths work). The front half also
+  needs "choose a nonland card name", which has no prompt.
+- **Phyrexian mana** — `ParsedCost` has carried `Phyrexian` and
+  `HasPhyrexian` since S15 (mana_cost.go parses `{W/P}`), but the
+  solver always pays the coloured half. Paying 2 life instead is a
+  per-symbol choice at announce, which means a new announce-time
+  payload and a per-symbol picker; it is the one item here that is
+  purely additive to this ADR's machinery rather than blocked by
+  something else.

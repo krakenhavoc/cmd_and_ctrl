@@ -22,8 +22,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the cycling trigger can't fire either.
 func init() {
 	Register(Spec{
-		OracleID: "900b9409-9c16-414d-8674-2ea42c2415a1",
-		Name:     "Magmakin Artillerist",
+		OracleID:     "900b9409-9c16-414d-8674-2ea42c2415a1",
+		Name:         "Magmakin Artillerist",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"It can't be cycled, so the cycling damage trigger never happens; discarding several cards at once deals the damage as separate 1s."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDiscardCard},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

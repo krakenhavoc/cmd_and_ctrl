@@ -22,6 +22,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "544dbabd-cbfc-40da-a5ba-2fea9cddb453",
 		Name:         "Sandsteppe Citadel",
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:                    ManaAbilityCost{Tap: true},

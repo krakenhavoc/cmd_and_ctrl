@@ -20,8 +20,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // way), so it is recorded rather than modelled.
 func init() {
 	Register(Spec{
-		OracleID: "7b9fafe7-d26a-4ed5-b4c4-ce13763770b5",
-		Name:     "Geier Reach Sanitarium",
+		OracleID:     "7b9fafe7-d26a-4ed5-b4c4-ce13763770b5",
+		Name:         "Geier Reach Sanitarium",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}",

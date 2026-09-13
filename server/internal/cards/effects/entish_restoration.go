@@ -27,6 +27,8 @@ func init() {
 	Register(Spec{
 		OracleID:       "736017e2-bc33-49e8-812d-1639443fdb51",
 		Name:           "Entish Restoration",
+		Completeness:   CompletenessCaveats,
+		Caveats:        []string{"The land sacrifice is paid when you cast it, so you lose the land even if the spell is countered, and you can't cast it with no land to sacrifice."},
 		AdditionalCost: SacrificeCost("a land", Land()),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			limit := 2

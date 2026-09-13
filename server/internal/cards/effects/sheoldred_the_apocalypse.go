@@ -27,6 +27,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "34f34409-326d-4994-a0ea-1a69aa278f03",
 		Name:            "Sheoldred, the Apocalypse",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch"},
 		Triggered: []game.TriggeredAbility{
 			{
