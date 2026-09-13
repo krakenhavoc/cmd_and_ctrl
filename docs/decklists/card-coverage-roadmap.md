@@ -46,6 +46,36 @@ is a comment on its card file.
 | 21–40 | #383–#391, #393–#403 | 0 | 0 | — | not started — ranked against `459dea6`, 2026-09-11 |
 | 41–60 | #448–#467 | 0 | 0 | — | not started — ranked against `b5a3055`, 2026-09-13 |
 
+<!-- BEGIN GENERATED CATALOG CENSUS — regenerate with: go test ./internal/cards/coverage/ -update -->
+
+**The catalog, as measured on this commit.** Not typed by hand and not
+derived from what a batch believes it landed — `TakeCensus` in
+`server/internal/cards/coverage` reads `effects.All()`, and
+`TestRoadmapCensusIsCurrent` fails the build when this block and the
+registry disagree.
+
+| Measured | Count |
+|---|---:|
+| Registry keys (`len(effects.All())`) | **995** |
+| — whole cards (bare `oracle_id`) | **935** |
+| — MDFC back faces (`<oracle_id>#1`) | 60 |
+| Declared `full` | 635 |
+| Declared `caveats` | 275 |
+| Declared `unreviewed` | 85 |
+
+A back face is half a card: the modal-DFC land cycle registers only its
+land back, so all 60 of those cards are still gap cards on their
+batch issues. Whole cards is the number to quote when someone asks how
+many cards the engine automates.
+
+<!-- END GENERATED CATALOG CENSUS -->
+
+Everything from here to the end of this section is **history**: each
+figure was true of the commit it names and is deliberately left alone.
+`-update` rewrites the generated block above and nothing else, so a
+regeneration can never quietly retcon a past measurement into
+today's.
+
 **Catalog: 438 → 504**, measured with `len(effects.All())` minus the
 flicker probe — 438 on `origin/main` at `e5fc440`, 504 with #361 and
 #362 merged together on a scratch branch, where the full server suite
@@ -115,7 +145,13 @@ Two things that audit turned up are worth carrying forward:
 Always MEASURE this line, never derive it. The batch-01 entry derived
 "319" by adding up what it believed had landed when the registry
 actually held 320, and the count has since been moved by three
-concurrent work streams that no single batch author could see.
+concurrent work streams that no single batch author could see. That
+warning is now enforced rather than merely written down: the generated
+block above is produced by `TakeCensus` in
+`server/internal/cards/coverage`, and `go test ./internal/cards/coverage/`
+fails the build whenever this document and `effects.All()` disagree.
+It also reports whole cards and back faces as separate numbers,
+because conflating them is the second way this section went wrong.
 
 Batch 01 moved play-rate coverage by **+2 in the top 100** (Dark
 Ritual, Arcane Denial), **+17 in the top 200**, **+29 in the top 300**;
