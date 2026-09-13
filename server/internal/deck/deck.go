@@ -281,6 +281,15 @@ func printedLoyalty(c cards.Card) int {
 	return n
 }
 
+// printedDefense is printedLoyalty for battles (CR 310.4). Same
+// posture on a non-numeric value: zero, and a manual sandbox case.
+// Nothing printed puts a non-numeric defense on a card, but the
+// parse is the same shape so the failure mode is too.
+func printedDefense(c cards.Card) int {
+	n, _ := strconv.Atoi(strings.TrimSpace(c.Defense))
+	return n
+}
+
 // printedKeywords translates Scryfall's `keywords` array into the
 // engine's canonical keyword tokens. Scryfall capitalises as the
 // card prints ("Flying", "First strike") and lists every mechanic
@@ -436,6 +445,14 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		// it the 704.5i SBA eats the walker on the next priority
 		// boundary (issue #274).
 		StartingLoyalty: printedLoyalty(c),
+		// CR 310.4 — printed defense. Same road as starting loyalty
+		// and for the same reason: without it a battle enters with
+		// zero defense counters and the 704.5p SBA sweeps it before
+		// anybody can attack it. Top-level only for the day a
+		// single-faced battle is printed; every battle in the game
+		// today carries its number on the front FACE, which
+		// SetFace(0) materialises a few lines below.
+		StartingDefense: printedDefense(c),
 		// CR 702 — printed keyword abilities. The engine's combat
 		// and cast-timing gates read these through
 		// game.HasKeyword; before they were carried here they
@@ -470,8 +487,8 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 	// Materialise face 0. For the ~33,000 single-faced oracle IDs
 	// this is a no-op and every field above stands as written; for a
 	// multi-face card it OVERWRITES Name / TypeLine / ManaCost /
-	// Colors / Power / Toughness / StartingLoyalty with the front
-	// face's — which is the point, because the top-level values it
+	// Colors / Power / Toughness / StartingLoyalty / StartingDefense
+	// with the front face's — which is the point, because the top-level values it
 	// replaces are the ones that were null ("" cost ⇒ a free spell)
 	// or joined ("Sorcery // Land" ⇒ a sorcery that passed IsLand()
 	// and skipped the cost gate entirely, #289).
@@ -500,6 +517,7 @@ func printedFaces(c cards.Card) []game.Face {
 		power, _ := strconv.Atoi(strings.TrimSpace(f.Power))
 		toughness, _ := strconv.Atoi(strings.TrimSpace(f.Toughness))
 		loyalty, _ := strconv.Atoi(strings.TrimSpace(f.Loyalty))
+		defense, _ := strconv.Atoi(strings.TrimSpace(f.Defense))
 		out = append(out, game.Face{
 			Name:            f.Name,
 			TypeLine:        f.TypeLine,
@@ -508,6 +526,7 @@ func printedFaces(c cards.Card) []game.Face {
 			Power:           power,
 			Toughness:       toughness,
 			StartingLoyalty: loyalty,
+			StartingDefense: defense,
 			OracleText:      f.OracleText,
 		})
 	}

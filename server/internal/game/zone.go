@@ -171,6 +171,12 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// bounced Cavern of Souls names a tribe again when it is
 		// replayed, and a Cavern in a graveyard names none.
 		c.NamedTribe = ""
+		// S27 / CR 400.7: a battle that leaves and returns is a new
+		// object and chooses a new protector. Keeping the old one
+		// would make the returning battle defended by whoever
+		// happened to be picked last time — including, after a seat
+		// is eliminated, nobody.
+		c.ProtectorPlayerID = uuid.Nil
 	}
 	dst.PushTop(c)
 	return c, nil

@@ -405,6 +405,17 @@ type Spec struct {
 	// for the next engineer: the engineering reason belongs in the
 	// file's doc comment, where there is room for it.
 	Caveats []string
+	// Battle is a battle's printed battle data — its defense and its
+	// subtype (CR 310). Nil for every card that is not a battle,
+	// which is nearly all of them.
+	//
+	// A FALLBACK, like StartingLoyalty: the printed value on
+	// game.Card.StartingDefense, stamped by the deck importer from
+	// Scryfall's per-face `defense`, always wins. See BattleSpec in
+	// battles.go for why it is declared anyway.
+	//
+	// Added in S27.
+	Battle *BattleSpec
 }
 
 // ActivatedAbility is one activated ability on a permanent. Mirrors

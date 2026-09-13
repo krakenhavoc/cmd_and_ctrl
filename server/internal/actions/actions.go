@@ -1150,6 +1150,16 @@ func Dispatch(g *game.Game, a Action) error {
 			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceLegendRule {
 				return g.ResolveLegendRule(choiceID, a.Player, ref.ID)
 			}
+			// S27: two kinds answer with a single {kind, id} ref.
+			// pick_target is a real targeting choice; choose_protector
+			// is a battle's controller naming an opponent as it enters
+			// (CR 310.5), which is not targeting at all — it just asks
+			// the same question shape, so it reuses the payload and
+			// the client's player-highlight flow rather than growing a
+			// second one.
+			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceChooseProtector {
+				return g.ResolveChooseProtector(choiceID, a.Player, ref.ID)
+			}
 			return g.ResolvePickTarget(choiceID, a.Player, ref)
 		}
 		if p.Targets != nil {
@@ -1170,6 +1180,16 @@ func Dispatch(g *game.Game, a Action) error {
 					return game.ErrInvalidParam
 				}
 				return g.ResolveLegendRule(choiceID, a.Player, refs[0].ID)
+			}
+			// S27: the client's targeting banner always submits the
+			// PLURAL form, so choose_protector arrives here rather
+			// than in the singular branch above. Both are routed:
+			// the singular one is what gamecli and the tests send.
+			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceChooseProtector {
+				if len(refs) != 1 {
+					return game.ErrInvalidParam
+				}
+				return g.ResolveChooseProtector(choiceID, a.Player, refs[0].ID)
 			}
 			return g.ResolvePickTargets(choiceID, a.Player, refs)
 		}

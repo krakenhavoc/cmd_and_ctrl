@@ -1410,11 +1410,23 @@ func (g *Game) ResolveDamageAssignment(
 		// original intent — trample-to-player was only allowed
 		// for a live attacker that had declared a target. Fall
 		// back to any seat that isn't the controller (best-effort).
+		//
+		// S27: the attacker may have been attacking a planeswalker or
+		// a battle, in which case trample overflow goes to THAT, not
+		// to its defending player (CR 702.19c — excess damage is
+		// assigned to the player or permanent the creature is
+		// attacking). So the target id is used as-is and the routing
+		// happens in dealCombatDamageToAttackTargetLocked.
 		var defenderID uuid.UUID
 		if atkCard := findBattlefieldCard(g, frame.AttackerID); atkCard != nil {
 			defenderID = atkCard.AttackingTarget
 		}
-		if defenderID == uuid.Nil {
+		if defenderID != uuid.Nil && g.classifyAttackTargetLocked(defenderID) != AttackTargetPlayer {
+			g.markCombatDamageFromFrameLocked(defenderID, trampleToPlayer, frame)
+			defenderID = uuid.Nil
+			trampleToPlayer = 0
+		}
+		if trampleToPlayer > 0 && defenderID == uuid.Nil {
 			for _, s := range g.Seats {
 				if s.ID != frame.SourceController {
 					defenderID = s.ID

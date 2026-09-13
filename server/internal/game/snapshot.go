@@ -280,7 +280,9 @@ type cardSnapshot struct {
 	// made by a player and nothing in the catalog can re-derive it, so
 	// a restore that lost it would leave a Cavern of Souls producing
 	// mana for a tribe nobody named.
-	NamedTribe string `json:"namedTribe,omitempty"`
+	NamedTribe        string    `json:"namedTribe,omitempty"`
+	StartingDefense   int       `json:"startingDefense,omitempty"`
+	ProtectorPlayerID uuid.UUID `json:"protectorPlayerId,omitempty"`
 
 	// ManaAbilityCount / ActivatedAbilityCount record that the card
 	// HAD intrinsic ability closures, so restore can tell the
@@ -714,6 +716,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		AttachedAt:               c.AttachedAt,
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
+		StartingDefense:          c.StartingDefense,
+		ProtectorPlayerID:        c.ProtectorPlayerID,
 		ManaAbilityCount:         len(c.ManaAbilities),
 		ActivatedAbilityCount:    len(c.ActivatedAbilities),
 	}
@@ -1163,6 +1167,8 @@ func restoreCard(c *cardSnapshot) Card {
 		AttachedAt:               c.AttachedAt,
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
+		StartingDefense:          c.StartingDefense,
+		ProtectorPlayerID:        c.ProtectorPlayerID,
 	}
 	// Re-derive intrinsic abilities from the catalog. This is the
 	// half of the closure problem that DOES have an answer: the

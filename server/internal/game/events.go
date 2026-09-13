@@ -414,6 +414,19 @@ const (
 	// not announce twice. Added in S31 sub-PR 0 for the public game
 	// log — no card in the catalog reads "becomes blocked by" yet.
 	EventBlock EventKind = "block"
+	// EventBattleDefeated — a battle's last defense counter came off
+	// (CR 310.9). Source / Target / CardID = the battle, Actor = its
+	// controller.
+	//
+	// Emitted from the state-based-action pass IMMEDIATELY BEFORE the
+	// CR 704.5p move that puts the battle in the graveyard, so a
+	// defeated trigger's source is still findable on the battlefield
+	// when the harvester walks it. A dies-trigger shape (EventLTB
+	// plus the LKI snapshot) would also work and would be lossier:
+	// the point of a Siege's defeated trigger is to reach a card that
+	// has just left, and the fewer hops between "defeated" and the
+	// exile-and-cast that follows, the better. Added in S27.
+	EventBattleDefeated EventKind = "battle_defeated"
 )
 
 // Event is a single entry in the per-game event log. Tagged union

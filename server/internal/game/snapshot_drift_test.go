@@ -165,6 +165,13 @@ var cardFields = plan(
 	// S26: the creature type named as the permanent entered. A
 	// player's choice, so nothing can rebuild it.
 	"NamedTribe", carried, "",
+	// S27 battles. Both are printed / chosen state with no other
+	// source: a restore that lost StartingDefense would re-stamp
+	// nothing (the stamp is idempotent and only fires on entry), and
+	// one that lost ProtectorPlayerID would leave a battle nobody
+	// defends and everybody may attack.
+	"StartingDefense", carried, "",
+	"ProtectorPlayerID", carried, "",
 
 	"ManaAbilities", rebuilt, "closures; re-looked-up from the catalog by oracle ID, or censused when the card has none (a true token)",
 	"ActivatedAbilities", rebuilt, "same as ManaAbilities",

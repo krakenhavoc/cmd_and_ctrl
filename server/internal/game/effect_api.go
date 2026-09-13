@@ -224,6 +224,25 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 // same Bolt aimed at a player went through the pipeline. That
 // asymmetry is invisible until a card exists that cares, and S30's
 // prevention shields are that card.
+// DealDamageToCreatureForEffect deals amount damage to a battlefield
+// PERMANENT. Emits EventDealDamage. The SBA pass fires on the
+// surrounding priority boundary (the resolution path already bookends
+// with runStateChecks), so lethal damage routes the card via the
+// normal SBA loop rather than a bespoke kill-now path.
+//
+// The name says "creature" for history's sake and is now a
+// misnomer — every damage-dealing card in the catalog calls it, and
+// since S27 (#406) the target may equally be a planeswalker or a
+// battle. What the damage does is decided by CR 120.3 in
+// applyDamageToPermanentLocked: marked on a creature, loyalty off a
+// planeswalker, defense off a battle, and all of those at once for a
+// permanent that is more than one of them. Before that split, a
+// Lightning Bolt aimed at a planeswalker incremented a number nothing
+// read — a two-mana no-op that looked like it had worked.
+//
+// Deathtouch is not applied here. This is the non-combat path, it has
+// never applied the CR 702.2c flag, and whether a deathtouch source's
+// direct damage should is a separate question from this one.
 func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount int) error {
 	if amount <= 0 {
 		return nil
@@ -247,24 +266,26 @@ func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount in
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
 	if out == nil || out.Canceled || out.DamageAmount <= 0 {
-		// Fully prevented. The card is untouched and no
+		// Fully prevented. The permanent is untouched and no
 		// EventDealDamage fires, which is what "prevented" means —
 		// a "whenever ~ is dealt damage" trigger must not see it.
 		return nil
 	}
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID == out.DamageTarget {
-			g.Battlefield.Cards[i].DamageMarked += out.DamageAmount
-			g.EmitEvent(Event{
-				Kind:   EventDealDamage,
-				Source: out.DamageSource,
-				Target: out.DamageTarget,
-				Amount: out.DamageAmount,
-			})
-			return nil
-		}
+	// Post-replacement values, and through the permanent-aware path:
+	// a creature marks damage, a planeswalker loses loyalty (CR 120.3d,
+	// the #406 fix) and a battle loses defence. The old inline loop
+	// here only ever incremented DamageMarked, which is why damage
+	// could not kill a planeswalker.
+	if !g.applyDamageToPermanentLocked(out.DamageTarget, out.DamageAmount, false) {
+		return ErrCardNotFound
 	}
-	return ErrCardNotFound
+	g.EmitEvent(Event{
+		Kind:   EventDealDamage,
+		Source: out.DamageSource,
+		Target: out.DamageTarget,
+		Amount: out.DamageAmount,
+	})
+	return nil
 }
 
 // DrawNForEffect draws n cards for the given player, emitting one

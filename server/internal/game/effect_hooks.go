@@ -458,6 +458,13 @@ func (g *Game) fireETBHookLocked(cardID uuid.UUID, oracleID string) {
 	// it runs before the oracle-ID / nil-hook guards and applies to
 	// Sagas the catalog has never heard of.
 	g.sagaEntersWithLoreCounterLocked(cardID)
+
+	// S27: a battle enters with its printed defense counters and
+	// chooses a protector (CR 310.4, 310.5). Same placement and same
+	// reasoning as the loyalty stamp above: printed rules keyed on
+	// the card's type, so it runs before the oracle-ID / nil-hook
+	// guards and applies to battles the catalog has never heard of.
+	g.stampBattleEntryLocked(cardID, oracleID)
 	if ETBEffectHook == nil || oracleID == "" {
 		return
 	}

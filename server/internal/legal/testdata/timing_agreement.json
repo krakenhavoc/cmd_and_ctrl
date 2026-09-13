@@ -1003,7 +1003,13 @@
         "active_seat": 0,
         "priority_holder": 0,
         "phase": "combat",
-        "step": "declare_attackers"
+        "step": "declare_attackers",
+        "attack_targets": [
+          {
+            "kind": "player",
+            "id": "00000027-0000-4000-8000-000000000000"
+          }
+        ]
       },
       "mulligans_open": false,
       "undo_limit": 1,
