@@ -1,4 +1,4 @@
-# The card-coverage roadmap — the next 4000 Commander cards
+# The card-coverage roadmap — the next 6000 Commander cards
 
 Source: **`edhrec_rank`** on every card in the local Scryfall bulk dump
 (`data/scryfall/default-cards.json`, refreshed 2026-09-09). Lower rank
@@ -9,16 +9,18 @@ number below.
 This is the whole-format sequel to
 [the top-100 staples triage](top-100-commander-staples.md): that file
 ranked the first 100 cards of the gap and shipped 32 of them, this one
-ranks the next **4000** and splits them into 40 tracked batches of 100.
+ranks the next **6000** and splits them into 60 tracked batches of 100.
 Tracking issue: **#293**.
 
-The 4000 were ranked in two passes, months apart in catalog terms and
+The 6000 were ranked in three passes, apart in catalog terms and
 identical in method. **Batches 01–20** (ranks 9–2234) came from the
 first pass, against a 288-card catalog. **Batches 21–40** (ranks
 2235–4253) came from the second, against a 504-spec catalog on
-`origin/main` at `459dea6` — the same dump, the same filters, the same
-detectors, continuing the same ranked list from where batch 20 stopped.
-No card appears in both halves.
+`origin/main` at `459dea6`. **Batches 41–60** (ranks 4254–6289) came
+from the third, against an 845-spec catalog on `origin/main` at
+`b5a3055` — the same dump, the same filters, the same detectors, each
+pass continuing the same ranked list from where the previous one
+stopped. No card appears in more than one batch.
 
 ## Progress
 
@@ -37,6 +39,7 @@ is a comment on its card file.
 | 07 | #300 | **28** | 12 | 60 | PR #438 — the "no new machinery" group plus Kodama of the West Tree, unblocked by #379's attachments |
 | 08–20 | #301–#313 | 0 | 0 | — | not started |
 | 21–40 | #383–#391, #393–#403 | 0 | 0 | — | not started — ranked against `459dea6`, 2026-09-11 |
+| 41–60 | #448–#467 | 0 | 0 | — | not started — ranked against `b5a3055`, 2026-09-13 |
 
 **Catalog: 438 → 504**, measured with `len(effects.All())` minus the
 flicker probe — 438 on `origin/main` at `e5fc440`, 504 with #361 and
@@ -50,6 +53,10 @@ ranking: **504** again, both PRs now merged.
 (#412) landed, 690 with #437, #438 and #439 merged together on a
 scratch branch where the full suite passes and no oracle ID registers
 twice. (Test binary: 611 and 691.)
+
+**Then 845** on `origin/main` at **`b5a3055`**, the probe taken for the
+batch 41–60 ranking — `effects.All()` dumped to a file and counted, not
+derived. Same split as always: **785 whole cards plus 60 land backs**.
 
 **504 specs is not 504 cards.** Sixty of them are MDFC *back faces*,
 registered under the composite key `<oracle_id>#1` that
@@ -598,9 +605,29 @@ stay on their original batch issues rather than being re-ranked. That
 is deliberate — re-ranking would silently move cards between issues
 that people are already working.
 
+**The third pass, for batches 41–60**, is again the same pass with the
+same filters, run against the registry at `b5a3055`. That probe
+returned **845 entries**, which is *not* 845 cards: **785 are whole
+cards** and **60 are MDFC back faces** keyed `<oracle_id>#1` whose front
+faces are deliberately unregistered (`TestBackFaceSpecsAreKeyedByFace`
+pins the key shape). The counts: 117,738 printings → 34,936 distinct
+oracle IDs → 31,830 Commander-legal → 31,824 after basics → **31,040
+unregistered**, of which **30,978 carry an `edhrec_rank`**. Then the
+4000 oracle IDs already assigned to batches 01–40 are removed — again
+by ID, not by rank cutoff — leaving **27,432**. The first 2000 of those
+are batches 41–60 and span **rank 4,254 to rank 6,289**: 2,036 rank
+positions for 2,000 cards.
+
+3,546 of the 4000 cards in batches 01–40 are still unregistered at
+`b5a3055`, and they stay on their original batch issues for the same
+reason. 27,432 ranked, Commander-legal, unregistered cards remain after
+batch 60, so the dump is nowhere near exhausted — the roadmap stops at
+6000 because that is what has been split into batches, not because the
+list runs out.
+
 ### 3. The mechanic triage
 
-Each of the 4000 is checked against the primitive set that actually exists
+Each of the 6000 is checked against the primitive set that actually exists
 on `main` — the `effects.Spec` slots (`Targets`, `Modes`, `Static`,
 `Replacements`, `Triggered`, `Activated`, `ManaAbilities`,
 `AdditionalCost`, `AlternativeCosts`, `TapCost`, `PrintedKeywords`) and the
@@ -614,23 +641,24 @@ and the card-file author is the final arbiter. Where it errs it errs
 toward optimism, because the detectors key off printed text and the engine
 gaps that bite are usually the unprinted ones.
 
-**Batches 21–40 ran the batch 01–20 detector set unchanged**, on
-purpose: the two halves are one ranked list, and a "ready today" count
-computed against a different detector set would not be comparable
-across the boundary. The cost is that the detectors are already known
+**Batches 21–40 and 41–60 ran the batch 01–20 detector set unchanged**,
+on purpose: the three passes are one ranked list, and a "ready today"
+count computed against a different detector set would not be comparable
+across the boundaries. The cost is that the detectors are already known
 stale in three places — `ManaAbilityCost.Mana` and friends landed with
 #352, `BoostUntilEOT` / `GrantKeywordUntilEOT` with #314, and both
 loyalty abilities (`game/activated.go`, `game/loyalty_test.go`) and the
 attachment relation (`game/attach.go`) are on `main` now — so
 **`mana pipeline`, `until EOT`, `card types` and `attachments` are
-over-counted as blockers in every batch issue, 01–40 alike**. The batch-02 lesson applies with full force out here: re-check
+over-counted as blockers in every batch issue, 01–60 alike**. The batch-02 lesson applies with full force out here: re-check
 the triage before working a batch, because the blockers move faster
 than the issues do.
 
 ## What the catalog covered at the audit
 
 288 cards, by shape. This is the audit snapshot batches 01–20 were
-computed against (batches 21–40 were computed against 504), kept for
+computed against (batches 21–40 against 504, batches 41–60 against
+845), kept for
 the shape it shows; the live count is in the Progress section.
 
 | Slice | Cards |
@@ -659,8 +687,8 @@ structured targeting, additional and alternative costs.
 
 ## The ranked missing mechanics — the key result
 
-Across the first 2000 cards (batches 01–20); the second 2000 gets its
-own table below. **"Unlocks alone"** counts cards where the named
+Across the first 2000 cards (batches 01–20); the second and third 2000
+get their own tables below. **"Unlocks alone"** counts cards where the named
 mechanic is the *only* missing piece — build it and those cards become
 writable that day. **"Appears in"** counts every card that needs it at
 all, whether or not something else also blocks. **"Dominant blocker for"**
@@ -783,10 +811,63 @@ format you go, the weirder the card. Two rows move enough to matter:
 The mana pipeline drops from 2nd to 6th, and library-top from 7th to
 9th — both because the first 2000 front-loaded the tutors and the rocks.
 
-## Known traps across the 4000
+### The same ranking over the third 2000 (batches 41–60)
+
+Same detectors, ranks 4,254–6,289.
+
+| Rank | Missing mechanic | Unlocks alone | Appears in | Dominant blocker for | Tracking |
+|---:|---|---:|---:|---:|---|
+| 1 | Cost modification, alternative casts and costs computed at activation | **114** | 296 | 228 | #93 |
+| 2 | Until-end-of-turn continuous effects (turn-scoped statics) | **77** | 300 | 189 | #279 |
+| 3 | Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling…) | **73** | 224 | 73 | #176 |
+| 4 | Protection / hexproof / ward / indestructible / shroud, damage prevention, copying | **57** | 216 | 106 | #95 / #176 |
+| 5 | Attachments — Equipment and Auras | **49** | 114 | 111 | #280 |
+| 6 | Mana pipeline — restricted / derived mana, mana from a spell, gated or scaled mana abilities | **40** | 98 | 60 | #352 |
+| 7 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **37** | 108 | 53 | — |
+| 8 | Attack / block restrictions and taxes (can't be blocked, attack taxes, must attack) | **35** | 114 | 44 | — |
+| 9 | Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse) | **31** | 111 | 85 | — |
+| 10 | Keyword actions with no primitive (proliferate, surveil, explore, connive, amass…) | **26** | 67 | 30 | — |
+| 11 | Player-scoped and game-rule effects (hand size, extra turns / combats / land drops, command zone) | **26** | 64 | 31 | — |
+| 12 | Exile-and-return (blink) and exile-until-leaves | **22** | 65 | 28 | — |
+| 13 | Card-type completeness — planeswalkers, sagas, vehicles, battles, classes | **19** | 106 | 87 | #92 |
+| 14 | Per-player / per-turn tallies (storm, second-spell, cast counts, lifegain counts) | **16** | 40 | 16 | — |
+| 15 | Layer-4 type-changing statics feeding mana derivation (Urborg / Yavimaya / Blood Moon) | **14** | 39 | 17 | — |
+| 16 | Change of control (gain control, exchange control) | **13** | 26 | 14 | #76 |
+| 17 | Table-state mechanics (monarch, initiative, day/night, The Ring, dungeons, speed) | **13** | 25 | 14 | — |
+| 18 | "As this enters, choose …" — creature type / colour / name a card | **11** | 23 | 12 | — |
+| 19 | Multi-face cards (MDFC / transform / adventure / split / class / case) | **10** | 71 | 71 | #278 |
+| 20 | Counters on players (energy, experience, poison, rad, ticket) | **9** | 34 | 13 | — |
+| 21 | Face-down permanents (morph, manifest, disguise, cloak, mutate) | **6** | 37 | 32 | #95 |
+| 22 | Shuffle a card or permanent into a library | **5** | 14 | 5 | — |
+| 23 | Recurring self-drawbacks (cumulative upkeep, echo, fading, vanishing, doesn't untap) | **4** | 9 | 4 | — |
+| 24 | Regeneration, phasing, totem armor | **0** | 7 | 4 | #176 |
+
+**673 of the third 2000 (34%) need no new machinery** — flat against
+the second 2000's 33%, so the "it gets harder the deeper you go" curve
+has levelled off by rank 4,000. The order at the top is stable; one row
+moves enough to matter:
+
+- **Until-end-of-turn (#279) climbs from 4th to 2nd**, and it now has
+  the widest reach of any mechanic in the table — **300 of 2000 cards
+  touch it**, more than cost modification does. The combat tricks and
+  the temporary pumps that fill ranks 4,000–6,000 are exactly its
+  shape. It stays the single best ratio of engine work to cards.
+
+Protection slides 2nd to 4th and card types 11th to 13th; library-top
+and combat restrictions each gain two places. Regeneration / phasing is
+the only mechanic in the table that unlocks *nothing* on its own out
+here — 0 sole blockers against 1 in the second 2000 — though it is
+still a co-blocker on 7 cards.
+
+## Known traps across the 6000
 
 Orthogonal to the blockers: a card can be implementable today and still be
 one of these. The table is the first 2000; the second 2000 follows it.
+The third 2000 (batches 41–60) carries the same five traps in the same
+order of size — 391 of its 2000 cards trip at least one: deterministic
+search pick 106, per-player tally 101, opponent-paid cost 97,
+intervening-if 82, stronger-than-printed 31 — and the per-batch lists
+are on each batch issue.
 
 | Trap | Cards | What it means |
 |---|---:|---|
@@ -807,7 +888,7 @@ effort. The rule from #259: a simplification that makes a card **weaker**
 than printed is acceptable and must be declared; one that makes it
 **stronger** is not, and the card gets skipped instead.
 
-## The 40 batches
+## The 60 batches
 
 | Batch | Rank range | Ready today | Dominant blocking mechanic | Runner-up | Issue |
 |---|---|---:|---|---|---|
@@ -851,10 +932,30 @@ than printed is acceptable and must be declared; one that makes it
 | 38 | 3953–4052 | 36 | cost modification (10) | protection / prevention (9) | #401 |
 | 39 | 4053–4153 | 35 | cost modification (11) | protection / prevention (10) | #402 |
 | 40 | 4154–4253 | 28 | cost modification (13) | card types (9) | #403 |
+| 41 | 4254–4353 | 37 | cost modification (9) | attachments (8) | #448 |
+| 42 | 4354–4455 | 38 | until EOT (13) | cost modification (12) | #449 |
+| 43 | 4456–4555 | 37 | cost modification (12) | until EOT (11) | #450 |
+| 44 | 4556–4657 | 39 | until EOT (15) | protection / prevention (9) | #451 |
+| 45 | 4658–4758 | 28 | cost modification (14) | until EOT (6) | #452 |
+| 46 | 4759–4861 | 30 | until EOT (14) | cost modification (13) | #453 |
+| 47 | 4862–4962 | 31 | until EOT (13) | card types (7) | #454 |
+| 48 | 4963–5066 | 30 | cost modification (11) | protection / prevention (7) | #455 |
+| 49 | 5067–5167 | 37 | until EOT (11) | cost modification (11) | #456 |
+| 50 | 5168–5271 | 30 | cost modification (14) | until EOT (11) | #457 |
+| 51 | 5272–5372 | 37 | until EOT (10) | deferred keywords (8) | #458 |
+| 52 | 5373–5472 | 34 | cost modification (13) | attachments (8) | #459 |
+| 53 | 5473–5573 | 30 | cost modification (11) | until EOT (10) | #460 |
+| 54 | 5574–5676 | 31 | cost modification (15) | until EOT (8) | #461 |
+| 55 | 5677–5777 | 39 | cost modification (9) | until EOT (8) | #462 |
+| 56 | 5778–5879 | 37 | cost modification (8) | until EOT (7) | #463 |
+| 57 | 5880–5981 | 36 | cost modification (14) | card types (7) | #464 |
+| 58 | 5982–6083 | 27 | cost modification (15) | until EOT (9) | #465 |
+| 59 | 6084–6184 | 25 | cost modification (14) | other-zone casting (10) | #466 |
+| 60 | 6185–6289 | 40 | cost modification (15) | until EOT (11) | #467 |
 
-Batches 21–40 are **not** sub-issues of #293. The tracking issue's
-sub-issue list is a field on #293 itself, and the session that created
-these twenty was scoped to creating issues only — the links are a
+Batches 21–60 are **not** sub-issues of #293. The tracking issue's
+sub-issue list is a field on #293 itself, and the sessions that created
+these forty were scoped to creating issues only — the links are a
 one-line `gh` call for whoever owns the umbrella.
 
 ## What "done" means for a batch
