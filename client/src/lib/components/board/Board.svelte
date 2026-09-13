@@ -714,9 +714,7 @@
     // the client needs no second component and no second code path.
     const mine = (view.pending_choices ?? []).find(
       (c) =>
-        (c.kind === "pick_target" ||
-          c.kind === "legend_rule" ||
-          c.kind === "choose_protector") &&
+        (c.kind === "pick_target" || c.kind === "legend_rule" || c.kind === "choose_protector") &&
         c.chooser === viewerID,
     );
     const cur = $targeting;
