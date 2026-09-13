@@ -61,6 +61,7 @@ cmd_and_ctrl/
 │   │   ├── auth/        # pluggable Authenticator interface + MemoryAuthenticator + HTTP middleware
 │   │   ├── lobby/       # GameMeta registry, invite flow, lobby HTTP handler, WSAuthorizer, deck upload
 │   │   ├── cards/       # Scryfall index (streaming load) + disk-backed image cache + /cards routes
+│   │   │   └── coverage/ # measures the live catalog; fails CI when the coverage docs or a card's Caveats stop being true
 │   │   ├── catalog/     # public /catalog routes — what the engine automates + how completely (ADR 0042)
 │   │   ├── bugstore/    # bug-report artifacts: reporter screenshots (public, Camo-reachable) + pinned replays (admin-only)
 │   │   └── deck/        # decklist parsers (Moxfield, plain text) + Commander validation
@@ -404,7 +405,7 @@ surface tiny.
    Caveats:      []string{"Cycling is not implemented — the land can only be played."},
    ```
 
-   Three rules, and they are the whole contract:
+   Four rules, and they are the whole contract:
 
    - **The zero value is `CompletenessUnreviewed`, and that is a legal
      thing to ship.** It publishes the card as unaudited, which is
@@ -418,6 +419,20 @@ surface tiny.
      spell can only be cast from hand." The reason it is deferred, the
      sprint it lands in and the machinery it waits on all belong in
      the doc comment, where there is room. A test enforces the tone.
+   - **A caveat goes stale the day someone else implements the
+     mechanic**, in another PR, in a file you will never open. #412
+     measured 24 of 87 declared simplifications already describing
+     closed gaps; four more turned up in one September session
+     (flashback, warp, the free cast, the surveil lands). So when you
+     land a mechanic, `grep -ril "<mechanic>" server/internal/cards/effects/`
+     and clear the caveats it just invalidated.
+     `server/internal/cards/coverage` catches the part of that class a
+     program can see: a caveat naming a mechanic the same card now
+     declares fails the build outright, and one naming a mechanic some
+     OTHER card already uses has to be pinned with a reason. It is a
+     curated table of mechanic probes, not an analysis — a caveat
+     about something not in the table is invisible to it, which is why
+     the grep is still your job.
 
    Keep the prose note too. The field says *what*; the comment says
    *why*, and the comment is what stops the next person reopening a
