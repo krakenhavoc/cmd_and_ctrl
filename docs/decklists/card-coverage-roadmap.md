@@ -12,7 +12,7 @@ ranked the first 100 cards of the gap and shipped 32 of them, this one
 ranks the next **6000** and splits them into 60 tracked batches of 100.
 Tracking issue: **#293**.
 
-The 6000 were ranked in three passes, apart in catalog terms and
+The 6000 were ranked in three passes, far apart in catalog terms and
 identical in method. **Batches 01–20** (ranks 9–2234) came from the
 first pass, against a 288-card catalog. **Batches 21–40** (ranks
 2235–4253) came from the second, against a 504-spec catalog on
@@ -56,7 +56,8 @@ twice. (Test binary: 611 and 691.)
 
 **Then 845** on `origin/main` at **`b5a3055`**, the probe taken for the
 batch 41–60 ranking — `effects.All()` dumped to a file and counted, not
-derived. Same split as always: **785 whole cards plus 60 land backs**.
+derived. The back-face half has not moved: **785 whole cards plus the
+same 60 land backs**.
 
 **504 specs is not 504 cards.** Sixty of them are MDFC *back faces*,
 registered under the composite key `<oracle_id>#1` that
@@ -658,8 +659,8 @@ than the issues do.
 
 288 cards, by shape. This is the audit snapshot batches 01–20 were
 computed against (batches 21–40 against 504, batches 41–60 against
-845), kept for
-the shape it shows; the live count is in the Progress section.
+845), kept for the shape it shows; the live count is in the Progress
+section.
 
 | Slice | Cards |
 |---|---:|
@@ -688,8 +689,8 @@ structured targeting, additional and alternative costs.
 ## The ranked missing mechanics — the key result
 
 Across the first 2000 cards (batches 01–20); the second and third 2000
-get their own tables below. **"Unlocks alone"** counts cards where the named
-mechanic is the *only* missing piece — build it and those cards become
+get their own tables below. **"Unlocks alone"** counts cards where the
+named mechanic is the *only* missing piece — build it and those cards become
 writable that day. **"Appears in"** counts every card that needs it at
 all, whether or not something else also blocks. **"Dominant blocker for"**
 is the grouping the batch issues use.
