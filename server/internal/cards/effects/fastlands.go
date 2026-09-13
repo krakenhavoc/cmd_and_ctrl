@@ -9,8 +9,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"{T}: Add {X} or {Y}."
 //
 // Three of the ten, the three this deck plays, plus Blackcleave Cliffs
-// from the roadmap's batch 09 (#302) and Razorverge Thicket from
-// batch 12 (#305).
+// from the roadmap's batch 09 (#302), Razorverge Thicket from batch
+// 12 (#305), Inspiring Vantage and Copperline Gorge from batch 13
+// (#306), Blooming Marsh and Spirebluff Canal from batch 14 (#307),
+// and Botanical Sanctum from batch 15 (#308) — all ten.
 //
 // "Two or fewer OTHER lands" is the clause that makes the condition
 // free to evaluate: the replacement pipeline runs before the land is
@@ -33,6 +35,14 @@ func init() {
 		{"5ad94412-6f79-4c5d-bbd4-4ef5779a7b6d", "Blackcleave Cliffs", "B", "R"},
 		// Roadmap batch 12 (#305).
 		{"94f6c407-e665-4032-be13-a01e40c1f306", "Razorverge Thicket", "G", "W"},
+		// Roadmap batch 13 (#306).
+		{"3f17c60e-923a-4392-9da8-87d9ded009b7", "Inspiring Vantage", "R", "W"},
+		{"a05f641c-15c9-43dc-ae0d-1ea372fd33d5", "Copperline Gorge", "R", "G"},
+		// Roadmap batch 14 (#307).
+		{"66fa2326-1b5d-41fb-b919-83bf9f383577", "Blooming Marsh", "B", "G"},
+		{"eb0d8093-5f93-4b25-9384-08f9731bfb28", "Spirebluff Canal", "U", "R"},
+		// Roadmap batch 15 (#308).
+		{"88f8f683-738e-48f3-afff-c8f73f1033a2", "Botanical Sanctum", "G", "U"},
 	} {
 		Register(Spec{
 			OracleID:      t.oracleID,
