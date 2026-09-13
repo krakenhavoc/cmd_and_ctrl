@@ -17,7 +17,7 @@ identical in method. **Batches 01–20** (ranks 9–2234) came from the
 first pass, against a 288-card catalog. **Batches 21–40** (ranks
 2235–4253) came from the second, against a 504-spec catalog on
 `origin/main` at `459dea6`. **Batches 41–60** (ranks 4254–6289) came
-from the third, against an 845-spec catalog on `origin/main` at
+from the third, against an 844-spec catalog on `origin/main` at
 `b5a3055` — the same dump, the same filters, the same detectors, each
 pass continuing the same ranked list from where the previous one
 stopped. No card appears in more than one batch.
@@ -54,9 +54,12 @@ ranking: **504** again, both PRs now merged.
 scratch branch where the full suite passes and no oracle ID registers
 twice. (Test binary: 611 and 691.)
 
-**Then 845** on `origin/main` at **`b5a3055`**, the probe taken for the
+**Then 844** on `origin/main` at **`b5a3055`**, the probe taken for the
 batch 41–60 ranking — `effects.All()` dumped to a file and counted, not
-derived. The back-face half has not moved: **785 whole cards plus the
+derived. (Test binary: 845. The extra one is the flicker probe again,
+registered from an `init()` in `flicker_test.go` and therefore absent
+from the production catalog; the same correction the 438/504 line makes
+above.) The back-face half has not moved: **784 whole cards plus the
 same 60 land backs**.
 
 **504 specs is not 504 cards.** Sixty of them are MDFC *back faces*,
@@ -608,10 +611,14 @@ that people are already working.
 
 **The third pass, for batches 41–60**, is again the same pass with the
 same filters, run against the registry at `b5a3055`. That probe
-returned **845 entries**, which is *not* 845 cards: **785 are whole
-cards** and **60 are MDFC back faces** keyed `<oracle_id>#1` whose front
-faces are deliberately unregistered (`TestBackFaceSpecsAreKeyedByFace`
-pins the key shape). The counts: 117,738 printings → 34,936 distinct
+returned **845 entries**, which is *not* 845 cards. One is the flicker
+probe, a synthetic spec registered from `flicker_test.go` and present
+only in the test binary. Of the 844 that remain, **60 are MDFC back
+faces** keyed `<oracle_id>#1` whose front faces are deliberately
+unregistered (`TestBackFaceSpecsAreKeyedByFace` pins the key shape),
+leaving **784 whole cards**. The flicker probe's key is not an oracle
+ID, so it never matched a dump card and the gap arithmetic below is
+unaffected either way. The counts: 117,738 printings → 34,936 distinct
 oracle IDs → 31,830 Commander-legal → 31,824 after basics → **31,040
 unregistered**, of which **30,978 carry an `edhrec_rank`**. Then the
 4000 oracle IDs already assigned to batches 01–40 are removed — again
@@ -659,7 +666,7 @@ than the issues do.
 
 288 cards, by shape. This is the audit snapshot batches 01–20 were
 computed against (batches 21–40 against 504, batches 41–60 against
-845), kept for the shape it shows; the live count is in the Progress
+844), kept for the shape it shows; the live count is in the Progress
 section.
 
 | Slice | Cards |
