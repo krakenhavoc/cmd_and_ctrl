@@ -17,9 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // item.Controller.
 func init() {
 	Register(Spec{
-		OracleID: "234a734b-ba28-4f1b-9d01-3c3e7d516590",
-		Name:     "An Offer You Can't Refuse",
-		Targets:  TargetSpell("target noncreature spell", Noncreature()),
+		OracleID:     "234a734b-ba28-4f1b-9d01-3c3e7d516590",
+		Name:         "An Offer You Can't Refuse",
+		Completeness: CompletenessFull,
+		Targets:      TargetSpell("target noncreature spell", Noncreature()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

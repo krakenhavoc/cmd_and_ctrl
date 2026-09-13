@@ -27,6 +27,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "f3abd4d1-a975-4e85-8684-aa0fce029670",
 		Name:            "Grave Titan",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB, game.EventAttack},

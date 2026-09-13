@@ -43,8 +43,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // lifelink, and the Wurm is not dealing it.
 func init() {
 	Register(Spec{
-		OracleID: "93cf50cf-0ecc-4d3e-abea-778c1ebacec4",
-		Name:     "Massacre Wurm",
+		OracleID:     "93cf50cf-0ecc-4d3e-abea-778c1ebacec4",
+		Name:         "Massacre Wurm",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			{
 				Watches: []game.EventKind{game.EventETB},

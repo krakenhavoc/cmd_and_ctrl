@@ -13,8 +13,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // under your control from anywhere — played, fetched or reanimated.
 func init() {
 	Register(Spec{
-		OracleID: "b45fdeab-00cc-4422-af9f-66f30a880a7c",
-		Name:     "Evolution Sage",
+		OracleID:     "b45fdeab-00cc-4422-af9f-66f30a880a7c",
+		Name:         "Evolution Sage",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"You don't choose what to proliferate — the game picks for you, adding every counter that helps you and every counter that hurts an opponent."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

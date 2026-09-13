@@ -30,8 +30,10 @@ import (
 // the answer to an opposing Blightsteel Colossus).
 func init() {
 	Register(Spec{
-		OracleID: "42226b87-0746-4ebf-9fd0-108d508462af",
-		Name:     "Clone",
+		OracleID:     "42226b87-0746-4ebf-9fd0-108d508462af",
+		Name:         "Clone",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"If you decline the copy, the 0/0 Clone stays on the battlefield instead of dying."},
 		Replacements: []game.ReplacementEffect{
 			EntersAsCopyOf(
 				"Clone",

@@ -19,9 +19,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // modelled — see terminate.go / pongify.go for the note to revisit.
 func init() {
 	Register(Spec{
-		OracleID: "06692cd9-ac2f-4a32-8fd1-043ba3c0fe71",
-		Name:     "Rapid Hybridization",
-		Targets:  TargetCreature("target creature"),
+		OracleID:     "06692cd9-ac2f-4a32-8fd1-043ba3c0fe71",
+		Name:         "Rapid Hybridization",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The Frog Lizard token is created colorless instead of green, so anything that cares about a creature's color doesn't see it."},
+		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

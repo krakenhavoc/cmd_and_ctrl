@@ -13,8 +13,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // gain matches paper even at low life totals.
 func init() {
 	Register(Spec{
-		OracleID: "8164b1e8-3350-465e-8a17-75f57d326344",
-		Name:     "Exsanguinate",
+		OracleID:     "8164b1e8-3350-465e-8a17-75f57d326344",
+		Name:         "Exsanguinate",
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			x := ctx.X()
 			if x <= 0 {

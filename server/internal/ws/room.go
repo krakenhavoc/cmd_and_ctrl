@@ -67,6 +67,13 @@ type Room struct {
 	// wake without deadlocking. Added in S31 sub-PR 3.
 	subMu sync.Mutex
 	subs  map[chan struct{}]struct{}
+
+	// pendingAnnotation is consumed by the next captureLocked and
+	// written onto the replay line / crash dump it produces. Set
+	// under mu by ApplyBundle and cleared by the capture, so it can
+	// never bleed onto an unrelated commit. Nil for every ordinary
+	// action, which is all of them but bot improvisation.
+	pendingAnnotation *protocol.ReplayAnnotation
 }
 
 // undoEntry is one slot on Room.undoStack — the pre-action game
@@ -76,6 +83,20 @@ type Room struct {
 type undoEntry struct {
 	pre    *game.Game
 	caller uuid.UUID
+	// freeUndo exempts this entry from the undoing player's
+	// UndosRemaining budget. Set only for entries a player is
+	// cleaning up after somebody else — today, a bot improvisation
+	// (ADR 0033 §8).
+	//
+	// The budget exists to police the social cost of taking back
+	// YOUR OWN move, and it refreshes once per turn. An improvisation
+	// is the bot asserting a rules interpretation the engine could
+	// not execute; a human correcting it is doing maintenance on a
+	// catalog gap, not rewinding their own play. Charging for that
+	// would make the careful response (check it, fix it) cost more
+	// than the lazy one (let it stand) — backwards for a feature
+	// whose entire safety argument is that it is reversible.
+	freeUndo bool
 }
 
 // undoStackCap bounds the per-room undo ring. 32 is a casual-game-
@@ -156,6 +177,97 @@ func (r *Room) apply(caller uuid.UUID, fn func() error) (protocol.GameView, uint
 	return r.captureLocked(true)
 }
 
+// Bundle is a group of mutations that commit or fail together, and
+// that the undo stack treats as ONE entry. S31 sub-PR 8 (ADR 0033 §8)
+// is the first caller: a bot improvising an effect the catalog cannot
+// execute emits a handful of sandbox verbs, and four verbs that
+// half-apply leave a board nobody can reason about.
+type Bundle struct {
+	// Caller stamps the resulting undo entry. uuid.Nil means any
+	// seated player (or admin) may pop it — which is what an
+	// improvisation wants: the bot is not a person who can be asked
+	// to take its move back, so everyone at the table can.
+	Caller uuid.UUID
+
+	// Steps run in order under the room lock. The first error rolls
+	// the whole bundle back and leaves no undo entry behind.
+	Steps []func() error
+
+	// FreeUndo exempts the resulting entry from the undoing player's
+	// UndosRemaining budget — see undoEntry.freeUndo.
+	FreeUndo bool
+
+	// Annotation tags the replay line this commit produces. Nil
+	// leaves the line untagged.
+	Annotation *protocol.ReplayAnnotation
+}
+
+// ErrEmptyBundle is returned by ApplyBundle with no steps. A bundle
+// that does nothing should not mint an undo entry.
+var ErrEmptyBundle = errSentinel("ws: bundle has no steps")
+
+// ApplyBundle runs every step of b under a single hold of the room
+// lock, as one atomic commit: one sequence number, one snapshot, one
+// replay line, one undo entry.
+//
+// Atomicity is the point. Apply's contract is that a failing fn leaves
+// no undo entry — true for a single dispatch, which either mutates or
+// does not, but false the moment fn makes several mutations and the
+// third one fails. ApplyBundle closes that by restoring the
+// pre-bundle clone (the same mechanism Undo uses) on any step's
+// error, so the caller sees the bundle as all-or-nothing and the
+// table never sees a half-applied effect.
+//
+// On success the whole bundle reverts as a single Undo.
+func (r *Room) ApplyBundle(b Bundle) (protocol.GameView, uint64, error) {
+	view, seq, err := r.applyBundle(b)
+	if err == nil {
+		r.notify()
+	}
+	return view, seq, err
+}
+
+func (r *Room) applyBundle(b Bundle) (protocol.GameView, uint64, error) {
+	if len(b.Steps) == 0 {
+		return protocol.GameView{}, 0, ErrEmptyBundle
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	pre := r.Game.Clone()
+	for i, step := range b.Steps {
+		if step == nil {
+			r.rollbackLocked(pre)
+			return protocol.GameView{}, 0, fmt.Errorf("ws: bundle step %d is nil", i)
+		}
+		if err := step(); err != nil {
+			// Roll the earlier steps back before returning. Without
+			// this the caller gets an error AND a partly-mutated
+			// game with no undo entry pointing at it.
+			r.rollbackLocked(pre)
+			return protocol.GameView{}, 0, fmt.Errorf("ws: bundle step %d: %w", i, err)
+		}
+	}
+
+	r.undoStack = append(r.undoStack, undoEntry{pre: pre, caller: b.Caller, freeUndo: b.FreeUndo})
+	if len(r.undoStack) > undoStackCap {
+		r.undoStack = append(r.undoStack[:0], r.undoStack[1:]...)
+	}
+	r.pendingAnnotation = b.Annotation
+	return r.captureLocked(true)
+}
+
+// rollbackLocked restores the game to a pre-mutation clone. Caller
+// MUST hold r.mu. Same restore path as Undo, minus the stack and
+// budget bookkeeping — a rolled-back bundle never happened, so
+// nothing about it is recorded.
+func (r *Room) rollbackLocked(pre *game.Game) {
+	r.Game.WithWriteLock(func() {
+		r.Game.RestoreFrom(pre)
+	})
+}
+
 // ApplyExternal is Apply for lobby-side (HTTP) mutations — join, deck
 // upload, start. It runs fn under the room lock and captures seq +
 // view exactly like Apply, but records no undo entry: these are game
@@ -231,7 +343,9 @@ func (r *Room) notify() {
 //
 // Budget: a successful seated-caller undo also debits the caller's
 // per-turn UndosRemaining via game.SpendUndo. Refreshed when the
-// cursor enters that player's untap step. Admin bypasses the budget.
+// cursor enters that player's untap step. Admin bypasses the budget,
+// and so does any entry flagged freeUndo — a bot improvisation, which
+// a human undoes as maintenance rather than as a take-back.
 //
 // Returns ErrNothingToUndo (empty stack), ErrNotYourUndo (top entry
 // belongs to another seat), or game.ErrNoUndosRemaining (budget at 0).
@@ -265,7 +379,12 @@ func (r *Room) undo(caller uuid.UUID) (protocol.GameView, uint64, error) {
 	// if SpendUndo would fail, we bail BEFORE touching state.
 	// Decrement happens after RestoreFrom so it isn't clobbered by
 	// the snapshot's pre-spend budget value.
-	if caller != uuid.Nil {
+	//
+	// A free entry (today: a bot improvisation) skips the budget
+	// entirely — see undoEntry.freeUndo for why cleaning up after a
+	// bot should not cost a player their own take-back.
+	spendBudget := caller != uuid.Nil && !top.freeUndo
+	if spendBudget {
 		if peekUndoBudget(r.Game, caller) <= 0 {
 			return protocol.GameView{}, 0, game.ErrNoUndosRemaining
 		}
@@ -279,7 +398,7 @@ func (r *Room) undo(caller uuid.UUID) (protocol.GameView, uint64, error) {
 	// Spend the budget AFTER restore — the restore reset the budget
 	// to its pre-action value (which had not yet been spent), so the
 	// debit needs to land on top of that.
-	if caller != uuid.Nil {
+	if spendBudget {
 		if err := r.Game.SpendUndo(caller); err != nil {
 			// Should not happen: peek above confirmed budget > 0
 			// and we hold r.mu so no concurrent spend could race.
@@ -355,14 +474,22 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 	}
 	view := protocol.ViewOfGame(r.Game)
 
+	// Consume any annotation the committing caller left for this
+	// capture. Cleared unconditionally — including on the Snapshot
+	// path, which does not advance seq — so a stale tag can never
+	// attach itself to a later, unrelated line.
+	annotation := r.pendingAnnotation
+	r.pendingAnnotation = nil
+
 	// If crash recovery is enabled, marshal the full (unfiltered)
 	// payload now, BEFORE committing the seq advance. A marshal
 	// failure must not leave r.seq advanced.
 	var dumpPayload []byte
 	if r.dumpDir != "" {
 		payload, err := json.Marshal(protocol.SnapshotPayload{
-			Seq:  nextSeq,
-			Game: view,
+			Seq:        nextSeq,
+			Game:       view,
+			Annotation: annotation,
 		})
 		if err != nil {
 			return protocol.GameView{}, 0, fmt.Errorf("marshal snapshot: %w", err)

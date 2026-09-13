@@ -16,6 +16,7 @@
   import { avatarURL } from "../../api";
   import { scryfallImageURL } from "../../cardImage";
   import { targeting, isLegalPlayerTarget, isPicked } from "../../targeting";
+  import { settings } from "../../settings";
   import ManaPoolPips from "./ManaPoolPips.svelte";
   import Icon from "../Icon.svelte";
 
@@ -90,6 +91,35 @@
   });
   const displayLabel = $derived(seat.display_name ?? seat.name);
 
+  // --- bot seats (S31, ADR 0033) ---------------------------------
+  //
+  // A bot seat gets three marks: a BOT chip under the name, a robot
+  // glyph in place of the avatar (a bot has no Discord portrait and
+  // showing its commander's art would read as a human who picked
+  // that commander), and a pulse while it is the seat we are waiting
+  // on.
+  const isBot = $derived(seat.is_bot === true);
+  const botLabel = $derived(seat.bot_tier ? `bot · ${seat.bot_tier}` : "bot");
+  const botTitle = $derived(
+    [
+      seat.bot_tier ? `${seat.bot_tier} tier` : null,
+      seat.bot_deck ? `deck: ${seat.bot_deck}` : null,
+    ]
+      .filter(Boolean)
+      .join(" — ") || "a bot plays this seat",
+  );
+  // "Thinking" is the honest signal we have without a new frame: the
+  // bot holds priority, so the table is waiting on its runner. It
+  // clears the moment priority moves.
+  const botThinking = $derived(isBot && hasPriority && !seat.eliminated);
+  // S11.5: the pulse is an animation, so it obeys the animations
+  // toggle and the reduce-motion preference. With either off the chip
+  // still says "thinking" — the information survives, the motion does
+  // not.
+  const animateThinking = $derived(
+    $settings.animations.enabled && !$settings.accessibility.reduceMotion,
+  );
+
   function changeLife(delta: number): void {
     sendAction("change_life", { delta }, seat.id);
   }
@@ -147,9 +177,14 @@
   class:cast-targetable={targetableByCast}
   class:cast-picked={pickedByCast}
   class:eliminated={seat.eliminated}
+  class:bot={isBot}
+  class:thinking={botThinking && animateThinking}
   style:--seat-color={seatColor(seat.seat)}
 >
   <span class="name" title={displayLabel}>{displayLabel}</span>
+  {#if isBot}
+    <span class="tag bot" title={botTitle}>{botThinking ? "thinking…" : botLabel}</span>
+  {/if}
 
   <div class="core-row">
     <!-- Left: mana pool floats alongside the avatar instead of stacking
@@ -176,7 +211,11 @@
         ? `attack ${displayLabel}`
         : `${displayLabel}, ${seat.life} life`}
     >
-      {#if avatar}
+      {#if isBot}
+        <span class="avatar bot-mark" aria-hidden="true">
+          <Icon name="robot" size={30} />
+        </span>
+      {:else if avatar}
         {#key avatar}
           <img
             class="avatar"
@@ -408,6 +447,44 @@
   }
   .seat-dot-fallback {
     background: var(--seat-color, #888);
+  }
+  /* Bot seats get a glyph rather than a portrait: a bot has no
+     Discord avatar, and falling through to its commander's art crop
+     would read as a human who happens to play that commander. */
+  .bot-mark {
+    display: grid;
+    place-items: center;
+    background: color-mix(in srgb, var(--seat-color, #888) 22%, var(--surface-raised));
+    color: color-mix(in srgb, var(--seat-color, #888) 70%, var(--fg));
+  }
+  .identity.bot .avatar-wrap {
+    border-style: dashed;
+  }
+  /* The thinking pulse. Only ever applied when the animations setting
+     and the reduce-motion preference both allow it (see
+     animateThinking) — the chip's "thinking…" text carries the
+     information on its own. The @media guard is the belt to that's
+     braces for a browser-level preference set after load. */
+  .identity.thinking .avatar-wrap {
+    animation: bot-think 1.4s ease-in-out infinite;
+  }
+  @keyframes bot-think {
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 2px var(--gold),
+        0 0 12px rgba(255, 208, 122, 0.35);
+    }
+    50% {
+      box-shadow:
+        0 0 0 3px var(--gold),
+        0 0 30px rgba(255, 208, 122, 0.8);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .identity.thinking .avatar-wrap {
+      animation: none;
+    }
   }
 
   /* State rings translate the old pill shadows into circle-shaped ones.
@@ -698,5 +775,12 @@
   .tag.elim {
     color: var(--danger);
     border-color: rgba(255, 122, 122, 0.4);
+  }
+  .tag.bot {
+    margin-top: 0;
+    margin-bottom: 2px;
+    color: color-mix(in srgb, var(--seat-color, #888) 60%, var(--fg));
+    border-color: color-mix(in srgb, var(--seat-color, #888) 45%, transparent);
+    background: rgba(0, 0, 0, 0.28);
   }
 </style>

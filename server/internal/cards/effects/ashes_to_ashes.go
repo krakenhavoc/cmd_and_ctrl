@@ -13,9 +13,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (only the all-illegal case fizzles the whole spell).
 func init() {
 	Register(Spec{
-		OracleID: "944a52d9-bb14-43c5-8d05-2afaf023dc9f",
-		Name:     "Ashes to Ashes",
-		Targets:  TargetCreature("two target nonartifact creatures", Not(Artifact())).WithCount(2, 2),
+		OracleID:     "944a52d9-bb14-43c5-8d05-2afaf023dc9f",
+		Name:         "Ashes to Ashes",
+		Completeness: CompletenessFull,
+		Targets:      TargetCreature("two target nonartifact creatures", Not(Artifact())).WithCount(2, 2),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			for _, t := range ctx.LegalTargets() {
 				if err := (ExileTarget{Target: t.ID}).Apply(ctx); err != nil {

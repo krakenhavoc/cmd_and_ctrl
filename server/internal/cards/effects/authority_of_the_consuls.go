@@ -21,8 +21,9 @@ import (
 // creature whose controller is not this card's controller.
 func init() {
 	Register(Spec{
-		OracleID: "55f3c721-e13a-406e-bc8e-d6cdc91ac477",
-		Name:     "Authority of the Consuls",
+		OracleID:     "55f3c721-e13a-406e-bc8e-d6cdc91ac477",
+		Name:         "Authority of the Consuls",
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventZoneMove},
 			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {

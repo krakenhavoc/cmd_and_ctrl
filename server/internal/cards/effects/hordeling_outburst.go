@@ -11,8 +11,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // token, same lack of rider.
 func init() {
 	Register(Spec{
-		OracleID: "a6450b8e-eb18-431c-9eb7-7daf107978b2",
-		Name:     "Hordeling Outburst",
+		OracleID:     "a6450b8e-eb18-431c-9eb7-7daf107978b2",
+		Name:         "Hordeling Outburst",
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return CreateToken{
 				Controller: ctx.Controller(),

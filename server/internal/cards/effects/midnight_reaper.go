@@ -19,8 +19,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // itself — the damage and draw happen after it's gone.
 func init() {
 	Register(Spec{
-		OracleID: "e8c7566d-7cc0-48af-a986-83223ec7e06c",
-		Name:     "Midnight Reaper",
+		OracleID:     "e8c7566d-7cc0-48af-a986-83223ec7e06c",
+		Name:         "Midnight Reaper",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

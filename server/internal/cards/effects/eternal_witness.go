@@ -14,8 +14,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // graveyard the trigger is removed without a prompt (CR 603.3d).
 func init() {
 	Register(Spec{
-		OracleID: "30b24e8e-3b0e-4d8e-90f3-f66eb7c1858c",
-		Name:     "Eternal Witness",
+		OracleID:     "30b24e8e-3b0e-4d8e-90f3-f66eb7c1858c",
+		Name:         "Eternal Witness",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

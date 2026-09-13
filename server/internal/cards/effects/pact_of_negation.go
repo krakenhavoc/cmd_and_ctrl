@@ -35,9 +35,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the zero-life and empty-library losses (CR 104.3).
 func init() {
 	Register(Spec{
-		OracleID: "f3e213a4-ba5a-468a-93b3-c0a34e1bd725",
-		Name:     "Pact of Negation",
-		Targets:  TargetSpell("target spell"),
+		OracleID:     "f3e213a4-ba5a-468a-93b3-c0a34e1bd725",
+		Name:         "Pact of Negation",
+		Completeness: CompletenessFull,
+		Targets:      TargetSpell("target spell"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) > 0 {
 				if err := (CounterTarget{StackID: item.Targets[0].ID}).Apply(ctx); err != nil {

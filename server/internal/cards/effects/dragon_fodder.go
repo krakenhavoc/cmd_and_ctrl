@@ -15,8 +15,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Goblins.
 func init() {
 	Register(Spec{
-		OracleID: "d0d2c45b-b6e3-4999-bdab-976e8f0d6617",
-		Name:     "Dragon Fodder",
+		OracleID:     "d0d2c45b-b6e3-4999-bdab-976e8f0d6617",
+		Name:         "Dragon Fodder",
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return CreateToken{
 				Controller: ctx.Controller(),

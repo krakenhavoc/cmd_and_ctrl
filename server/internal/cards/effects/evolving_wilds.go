@@ -14,8 +14,9 @@ package effects
 // catalog is keyed on oracle ID.
 func init() {
 	Register(Spec{
-		OracleID: "a75445d3-1303-4bb5-89ad-26ea93fecd48",
-		Name:     "Evolving Wilds",
+		OracleID:     "a75445d3-1303-4bb5-89ad-26ea93fecd48",
+		Name:         "Evolving Wilds",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:  "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
 			Cost:   Plus(TapCost(), SacrificeThis()),

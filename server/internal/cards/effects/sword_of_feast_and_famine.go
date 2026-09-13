@@ -36,9 +36,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // opponent-chooses discard prompt.
 func init() {
 	Register(Spec{
-		OracleID: "d0901053-6de0-46d0-9ee3-8d40510236c1",
-		Name:     "Sword of Feast and Famine",
-		Static:   []game.StaticAbility{PumpAttached(2, 2)},
+		OracleID:     "d0901053-6de0-46d0-9ee3-8d40510236c1",
+		Name:         "Sword of Feast and Famine",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Protection from black and from green isn't granted.", "The damaged player discards at random instead of choosing a card."},
+		Static:       []game.StaticAbility{PumpAttached(2, 2)},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

@@ -23,6 +23,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "50b14338-9318-4327-a1dd-c0ef38903cc4",
 		Name:            "Skysovereign, Consul Flagship",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
 			Label:  "Crew 3",

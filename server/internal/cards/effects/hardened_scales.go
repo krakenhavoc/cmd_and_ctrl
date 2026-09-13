@@ -26,8 +26,9 @@ import (
 //   - target.Controller == source.Controller
 func init() {
 	Register(Spec{
-		OracleID: "a1f3da21-af6d-450e-bf0b-985d158418e6",
-		Name:     "Hardened Scales",
+		OracleID:     "a1f3da21-af6d-450e-bf0b-985d158418e6",
+		Name:         "Hardened Scales",
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			{
 				Watches: []game.EventKind{game.EventCounterPlaced},

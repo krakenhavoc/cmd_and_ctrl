@@ -37,6 +37,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "9ae669dd-7e60-4649-b96e-35da28be641a",
 		Name:            "Korvold, Fae-Cursed King",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			{

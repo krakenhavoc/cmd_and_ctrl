@@ -30,8 +30,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // leaves the big-mana lands alone.
 func init() {
 	Register(Spec{
-		OracleID: "fd50d76c-7654-47b9-a5b6-d075874e4357",
-		Name:     "Damping Sphere",
+		OracleID:     "fd50d76c-7654-47b9-a5b6-d075874e4357",
+		Name:         "Damping Sphere",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Only the storm tax works — a land tapped for two or more mana still produces what it normally would, not {C}."},
 		CostModifiers: []game.CostModifier{
 			CostsMoreEach(OtherSpellsCastThisTurn(),
 				"Each spell a player casts costs {1} more to cast for each other spell that player has cast this turn."),

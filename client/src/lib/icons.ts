@@ -108,6 +108,19 @@ export const ICONS = {
     p("M8 12h8"),
     p("M8 16h5"),
   ],
+  // S31 bot seats. A bot has no Discord portrait, so this stands in
+  // as the seat's avatar mark — deliberately mechanical rather than a
+  // face, so a bot never reads as a player at a glance.
+  robot: [
+    { t: "rect", x: 4, y: 8, w: 16, h: 12, rx: 3 } as IconPrimitive,
+    c(9, 13, 1.4, true),
+    c(15, 13, 1.4, true),
+    p("M9.5 16.5h5"),
+    p("M12 8V4"),
+    c(12, 3, 1.4),
+    p("M4 12H2"),
+    p("M22 12h-2"),
+  ],
 } satisfies Record<string, IconPrimitive[]>;
 
 export type IconName = keyof typeof ICONS;

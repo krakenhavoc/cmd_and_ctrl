@@ -16,8 +16,9 @@ package effects
 // families.
 func init() {
 	Register(Spec{
-		OracleID: "ef86989d-ce80-4e55-aece-7d11710eeffa",
-		Name:     "Polluted Delta",
+		OracleID:     "ef86989d-ce80-4e55-aece-7d11710eeffa",
+		Name:         "Polluted Delta",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:  "{T}, Pay 1 life, Sacrifice this land: Search your library for an Island or Swamp card, put it onto the battlefield, then shuffle.",
 			Cost:   fetchlandCost(),

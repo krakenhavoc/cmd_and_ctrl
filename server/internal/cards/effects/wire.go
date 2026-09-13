@@ -164,6 +164,9 @@ func init() {
 				Condition:    a.Condition,
 				ProducedFunc: a.ProducedFunc,
 				Restrictions: a.Restrictions,
+				// S26: the computed-restriction slot, for Cavern of
+				// Souls' chosen type.
+				RestrictionsFunc: a.RestrictionsFunc,
 			}
 		}
 		return out

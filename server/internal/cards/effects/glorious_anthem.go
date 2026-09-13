@@ -27,8 +27,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     effects ship.
 func init() {
 	Register(Spec{
-		OracleID: "e3886fe8-9b76-4613-8891-4ec74657c087",
-		Name:     "Glorious Anthem",
+		OracleID:     "e3886fe8-9b76-4613-8891-4ec74657c087",
+		Name:         "Glorious Anthem",
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			{
 				Layer:    game.Layer7PT,

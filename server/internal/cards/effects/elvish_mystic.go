@@ -12,8 +12,9 @@ package effects
 // enforced by ActivateManaAbility since #233).
 func init() {
 	Register(Spec{
-		OracleID: "3f3b2c10-21f8-4e13-be83-4ef3fa36e123",
-		Name:     "Elvish Mystic",
+		OracleID:     "3f3b2c10-21f8-4e13-be83-4ef3fa36e123",
+		Name:         "Elvish Mystic",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{G}",

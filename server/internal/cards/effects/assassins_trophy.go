@@ -26,9 +26,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the decision away from the player whose card it is.
 func init() {
 	Register(Spec{
-		OracleID: "ac10d218-f9a6-4058-9cda-a15ca1b0b7b5",
-		Name:     "Assassin's Trophy",
-		Targets:  TargetPermanent("target permanent an opponent controls", OpponentControls()),
+		OracleID:     "ac10d218-f9a6-4058-9cda-a15ca1b0b7b5",
+		Name:         "Assassin's Trophy",
+		Completeness: CompletenessFull,
+		Targets:      TargetPermanent("target permanent an opponent controls", OpponentControls()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

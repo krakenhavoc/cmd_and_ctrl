@@ -142,28 +142,6 @@ func b08SharesACreatureType(a, b game.Card) bool {
 	return false
 }
 
-// b08OtherCreaturesSharingAType counts the creatures on the
-// battlefield, other than `target`, that share a creature type with
-// it — Coat of Arms's bonus. Walks the live slice because it runs
-// inside a layer recompute, where the effective characteristics are
-// being built in place.
-func b08OtherCreaturesSharingAType(g *game.Game, target *game.Card) int {
-	if g.Battlefield == nil {
-		return 0
-	}
-	n := 0
-	for i := range g.Battlefield.Cards {
-		other := &g.Battlefield.Cards[i]
-		if other.InstanceID == target.InstanceID || !other.IsCreature() {
-			continue
-		}
-		if b08SharesACreatureType(*target, *other) {
-			n++
-		}
-	}
-	return n
-}
-
 // --- effect bodies -----------------------------------------------
 
 // b08EachOpponentDraws is Cut a Deal's first half: each opponent

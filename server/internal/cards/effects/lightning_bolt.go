@@ -8,9 +8,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // in DealDamage.Apply (player vs. battlefield creature).
 func init() {
 	Register(Spec{
-		OracleID: "4457ed35-7c10-48c8-9776-456485fdf070",
-		Name:     "Lightning Bolt",
-		Targets:  TargetAny(),
+		OracleID:     "4457ed35-7c10-48c8-9776-456485fdf070",
+		Name:         "Lightning Bolt",
+		Completeness: CompletenessFull,
+		Targets:      TargetAny(),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {
 				return nil

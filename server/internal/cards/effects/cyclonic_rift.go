@@ -22,8 +22,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 func init() {
 	nonlandYouDontControl := And(Nonland(), OpponentControls())
 	Register(Spec{
-		OracleID: "d75b9c82-1b49-4c3e-a1b5-aeef57d6644b",
-		Name:     "Cyclonic Rift",
+		OracleID:     "d75b9c82-1b49-4c3e-a1b5-aeef57d6644b",
+		Name:         "Cyclonic Rift",
+		Completeness: CompletenessFull,
 		Targets: TargetPermanent("target nonland permanent you don't control",
 			nonlandYouDontControl),
 		AlternativeCosts: []game.AlternativeCost{

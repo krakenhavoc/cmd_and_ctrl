@@ -32,8 +32,9 @@ import (
 // so the untap runs inside the continuation instead.
 func init() {
 	Register(Spec{
-		OracleID: "0c85b8f7-0bd0-4680-9ec5-d4b110460a54",
-		Name:     "Fabled Passage",
+		OracleID:     "0c85b8f7-0bd0-4680-9ec5-d4b110460a54",
+		Name:         "Fabled Passage",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:  "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. Then if you control four or more lands, untap that land.",
 			Cost:   Plus(TapCost(), SacrificeThis()),

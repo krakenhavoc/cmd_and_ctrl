@@ -18,8 +18,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // token generators such a punishing pair.
 func init() {
 	Register(Spec{
-		OracleID: "8d03d050-391c-4311-8c42-4ee632d40fdc",
-		Name:     "Aura Shards",
+		OracleID:     "8d03d050-391c-4311-8c42-4ee632d40fdc",
+		Name:         "Aura Shards",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

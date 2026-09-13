@@ -18,8 +18,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // each turn" predicates; this is the same clock.
 func init() {
 	Register(Spec{
-		OracleID: "b1c346a4-fc9b-474a-9d51-cac168e363fa",
-		Name:     "Maelstrom Nexus",
+		OracleID:     "b1c346a4-fc9b-474a-9d51-cac168e363fa",
+		Name:         "Maelstrom Nexus",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			GrantsCascade("Maelstrom Nexus", func(_ game.Card, source *game.Card, g *game.Game) bool {
 				return g.SpellsCastThisTurn[source.Controller].Total == 1

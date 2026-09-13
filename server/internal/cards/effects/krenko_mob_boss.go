@@ -14,8 +14,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the ability produce one fewer token, and Krenko counts himself.
 func init() {
 	Register(Spec{
-		OracleID: "68418069-f615-40ef-ae0d-764192acae00",
-		Name:     "Krenko, Mob Boss",
+		OracleID:     "68418069-f615-40ef-ae0d-764192acae00",
+		Name:         "Krenko, Mob Boss",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label: "{T}: Create X 1/1 Goblins, where X is the number of Goblins you control",
 			Cost:  TapCost(),

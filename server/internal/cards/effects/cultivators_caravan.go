@@ -19,8 +19,9 @@ package effects
 // be spent in this format anyway.
 func init() {
 	Register(Spec{
-		OracleID: "c1eb530c-dd36-40ae-8617-6bb6969565e1",
-		Name:     "Cultivator's Caravan",
+		OracleID:     "c1eb530c-dd36-40ae-8617-6bb6969565e1",
+		Name:         "Cultivator's Caravan",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",

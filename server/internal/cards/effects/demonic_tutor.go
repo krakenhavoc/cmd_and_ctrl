@@ -12,8 +12,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // of deck-list order.
 func init() {
 	Register(Spec{
-		OracleID: "82004860-e589-4e38-8d61-8c0210e4ea39",
-		Name:     "Demonic Tutor",
+		OracleID:     "82004860-e589-4e38-8d61-8c0210e4ea39",
+		Name:         "Demonic Tutor",
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return SearchLibrary{
 				Player:  ctx.Controller(),

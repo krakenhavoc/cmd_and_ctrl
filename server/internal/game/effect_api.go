@@ -1645,6 +1645,7 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 	card.BattleY = 0
 	card.EnteredBattlefieldAt = 0
 	card.SummonedThisTurn = false
+	card.NamedTribe = ""
 	card.effective = nil
 	g.Battlefield.PushTop(card)
 	g.markCardKnownInZoneLocked(g.Battlefield, newID)

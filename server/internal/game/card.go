@@ -386,6 +386,26 @@ type Card struct {
 	// 7b "set" that meets a 7c "modify" is right by construction.
 	// Added in S24, per ADR 0036 decision 2.
 	AttachedAt int64
+	// NamedTribe is the creature type chosen for this permanent by an
+	// "as this enters, choose a creature type" instruction (CR
+	// 614.12) — Cavern of Souls, Door of Destinies, Vanquisher's
+	// Banner, Adaptive Automaton. Empty means no type has been
+	// chosen, which is both "this card has no such instruction" and
+	// the transient state between the permanent entering and its
+	// controller answering the prompt.
+	//
+	// Per-INSTANCE, not per-card: two Caverns name two different
+	// tribes, and the static abilities that read it take the source
+	// card, never the catalog Spec. It is the first piece of chosen
+	// state the engine keeps on a permanent, which is why it is a
+	// plain string rather than a map — a second one (a named colour,
+	// for Iona or Painter's Servant) can be a second field, and a
+	// map would only pay for itself at four or five.
+	//
+	// Cleared when the permanent leaves the battlefield, alongside
+	// Tapped and Counters: a Cavern that is bounced and replayed
+	// chooses again (CR 614.12 fires on each entry). Added in S26.
+	NamedTribe string
 
 	// PrintedSelf is this card's OWN printed values, stashed when a
 	// CR 706 copy effect overwrote the flat printed fields above.
@@ -652,12 +672,24 @@ func (c Card) HasCardType(lowerType string) bool {
 // land-type grant (Urborg, Tomb of Yawgmoth) becomes visible
 // through: CR 305.6's intrinsic mana abilities key off the basic
 // land TYPE, never off the Basic supertype.
+//
+// Changeling (CR 702.73a) is answered here rather than by writing
+// ~345 subtypes into the Characteristic, for the reasons on
+// HasAllCreatureTypes. It is checked AFTER the printed / effective
+// list so an ordinary card pays only a slice scan, and it is checked
+// on both branches because 702.73a works in every zone — a Woodland
+// Changeling in a graveyard really is an Elf, which is what a tribal
+// reanimator or a lord counting from exile has to see.
 func (c Card) HasSubtype(subtype string) bool {
 	if c.effective == nil {
 		_, _, printed := ParseTypeLine(c.TypeLine)
-		return typeListHas(printed, subtype)
+		if typeListHas(printed, subtype) {
+			return true
+		}
+	} else if typeListHas(c.effective.Subtypes, subtype) {
+		return true
 	}
-	return typeListHas(c.effective.Subtypes, subtype)
+	return IsCreatureType(subtype) && HasAllCreatureTypes(&c)
 }
 
 // --- printed card-type predicates -----------------------------

@@ -18,8 +18,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // resolution (CR 608.2b).
 func init() {
 	Register(Spec{
-		OracleID: "032ec6e2-6cc3-4a97-9cc7-3233f5e11904",
-		Name:     "Reclamation Sage",
+		OracleID:     "032ec6e2-6cc3-4a97-9cc7-3233f5e11904",
+		Name:         "Reclamation Sage",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
