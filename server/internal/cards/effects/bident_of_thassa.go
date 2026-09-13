@@ -18,8 +18,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // forced-attack ability waits for the activated-ability pipeline.
 func init() {
 	Register(Spec{
-		OracleID: "e1afaef7-9fa3-4662-a95f-adfb0da9fd11",
-		Name:     "Bident of Thassa",
+		OracleID:     "e1afaef7-9fa3-4662-a95f-adfb0da9fd11",
+		Name:         "Bident of Thassa",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The \"{1}{U}, {T}: Creatures your opponents control attack this turn if able\" ability isn't implemented — only the combat-damage draw trigger works."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

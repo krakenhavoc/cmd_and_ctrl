@@ -17,8 +17,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // printed in exactly the decks that play it.
 func init() {
 	Register(Spec{
-		OracleID: "4050e5b3-07c2-461c-9852-a2c081c0198d",
-		Name:     "Binding the Old Gods",
+		OracleID:     "4050e5b3-07c2-461c-9852-a2c081c0198d",
+		Name:         "Binding the Old Gods",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			ChapterTriggerTargeting(1, "Binding the Old Gods — I: destroy target nonland permanent",
 				TargetPermanent("target nonland permanent an opponent controls",

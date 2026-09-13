@@ -16,8 +16,9 @@ package effects
 // on its own.
 func init() {
 	Register(Spec{
-		OracleID: "32e5339e-9e4f-46f8-b305-f9d6d3ba8bb5",
-		Name:     "Lotus Petal",
+		OracleID:     "32e5339e-9e4f-46f8-b305-f9d6d3ba8bb5",
+		Name:         "Lotus Petal",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true, Sacrifice: true},
 			Produced: "{W|U|B|R|G}",

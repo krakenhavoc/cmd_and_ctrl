@@ -29,8 +29,10 @@ import (
 // its own controller, so it never fizzles for want of a target.
 func init() {
 	Register(Spec{
-		OracleID: "04b7362d-0490-4cb0-b5d7-2a7732f659ce",
-		Name:     "Bojuka Bog",
+		OracleID:     "04b7362d-0490-4cb0-b5d7-2a7732f659ce",
+		Name:         "Bojuka Bog",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The land enters untapped and is tapped a moment later, rather than entering tapped."},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{B}",

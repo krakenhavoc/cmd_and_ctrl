@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "3f0c9466-5ab9-4205-a84f-b4b27b5a678e",
 		Name:            "Bloodbraid Elf",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"haste"},
 		Triggered:       []game.TriggeredAbility{Cascade()},
 	})

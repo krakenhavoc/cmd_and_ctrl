@@ -15,8 +15,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // creature spell that caused it (LIFO), as in paper.
 func init() {
 	Register(Spec{
-		OracleID: "5da7eea8-bb9e-47ce-a554-8a1ee058bd7a",
-		Name:     "Beast Whisperer",
+		OracleID:     "5da7eea8-bb9e-47ce-a554-8a1ee058bd7a",
+		Name:         "Beast Whisperer",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCast},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

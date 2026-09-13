@@ -37,9 +37,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID: "5a851367-1c4a-4cc9-a9c3-3d2775986b4c",
-		Name:     "Blossoming Defense",
-		Targets:  TargetCreature("target creature you control", YouControl()),
+		OracleID:     "5a851367-1c4a-4cc9-a9c3-3d2775986b4c",
+		Name:         "Blossoming Defense",
+		Completeness: CompletenessFull,
+		Targets:      TargetCreature("target creature you control", YouControl()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

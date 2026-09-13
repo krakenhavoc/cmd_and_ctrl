@@ -12,6 +12,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "916cb70f-3b06-48ed-972d-75f805aa0892",
 		Name:            "Brineborn Cutthroat",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCast},

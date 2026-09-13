@@ -18,8 +18,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the one that would have killed it.
 func init() {
 	Register(Spec{
-		OracleID: "83874e60-291b-47a7-ba9f-69437fa7e3c7",
-		Name:     "Flux Channeler",
+		OracleID:     "83874e60-291b-47a7-ba9f-69437fa7e3c7",
+		Name:         "Flux Channeler",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"You don't choose what to proliferate — the game picks for you, adding every counter that helps you and every counter that hurts an opponent."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCast},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

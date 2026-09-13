@@ -15,8 +15,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // untapUpToLands for when that stops being true.
 func init() {
 	Register(Spec{
-		OracleID: "16e015b2-f8a3-4b1a-80be-58a8f5fb5e8c",
-		Name:     "Frantic Search",
+		OracleID:     "16e015b2-f8a3-4b1a-80be-58a8f5fb5e8c",
+		Name:         "Frantic Search",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"You can't choose which lands untap — it automatically untaps up to three of your own tapped lands and can never untap another player's land."},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := lootOne(ctx.Game, item, 2); err != nil {
 				return err

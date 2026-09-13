@@ -16,8 +16,9 @@ package effects
 // families.
 func init() {
 	Register(Spec{
-		OracleID: "cb027150-848c-4a66-88ad-e20222304dd8",
-		Name:     "Scalding Tarn",
+		OracleID:     "cb027150-848c-4a66-88ad-e20222304dd8",
+		Name:         "Scalding Tarn",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:  "{T}, Pay 1 life, Sacrifice this land: Search your library for an Island or Mountain card, put it onto the battlefield, then shuffle.",
 			Cost:   fetchlandCost(),

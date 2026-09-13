@@ -45,6 +45,8 @@ func init() {
 	Register(Spec{
 		OracleID:        "5a3fdf5a-bff8-4896-b288-3f43f9a72d9b",
 		Name:            "Vorinclex, Monstrous Raider",
+		Completeness:    CompletenessCaveats,
+		Caveats:         []string{"The halving half keys off who controls the permanent rather than who is placing the counters, so counters one player puts on another player's permanent are halved or spared wrongly."},
 		PrintedKeywords: []string{"trample", "haste"},
 		Replacements: []game.ReplacementEffect{
 			{

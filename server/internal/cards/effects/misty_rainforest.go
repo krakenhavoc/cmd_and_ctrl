@@ -16,8 +16,9 @@ package effects
 // families.
 func init() {
 	Register(Spec{
-		OracleID: "09dd85aa-47bc-4713-a9b9-8b52ff2285ed",
-		Name:     "Misty Rainforest",
+		OracleID:     "09dd85aa-47bc-4713-a9b9-8b52ff2285ed",
+		Name:         "Misty Rainforest",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:  "{T}, Pay 1 life, Sacrifice this land: Search your library for a Forest or Island card, put it onto the battlefield, then shuffle.",
 			Cost:   fetchlandCost(),

@@ -23,8 +23,9 @@ import (
 //     to Goblin Bombardment triggers both this and Blood Artist.
 func init() {
 	Register(Spec{
-		OracleID: "4709f11c-aef8-45ac-b2bf-e640c568dfac",
-		Name:     "Mayhem Devil",
+		OracleID:     "4709f11c-aef8-45ac-b2bf-e640c568dfac",
+		Name:         "Mayhem Devil",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventSacrifice},
 			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {

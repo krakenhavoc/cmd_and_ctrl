@@ -25,15 +25,23 @@ package effects
 // declared, so enforcement picked it up for free, and deleting the
 // note was the entire diff.
 //
-// All three of the Citadel's lines are now live: the artifact land
-// type, the mana ability, and indestructible. It really does survive
-// the sweepers its decks fear.
+// That prediction was half right, and the half it got wrong is why
+// this file carries a Caveat again rather than nothing. S25 gated
+// the SINGLE-TARGET destroy verb and the damage state-based actions.
+// It did not gate the MASS destroy path, which every board wipe in
+// the catalog goes through (DestroyAllMatching → mass.go →
+// game.DestroyPermanentsForEffect → destroyPermanentsLocked, which
+// routes to the graveyard without consulting IsIndestructible). So
+// the Citadel survives a Vindicate and dies to a Vandalblast, and
+// "it really does survive the sweepers its decks fear" is exactly
+// the sentence that is still false. See the note on
+// DestroyAllMatching in mass.go.
 func init() {
 	Register(Spec{
 		OracleID:        "8dc067bf-f78f-4ac4-b6e7-b305c42cf0bc",
 		Name:            "Darksteel Citadel",
 		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"Indestructible is not enforced yet, so the Citadel is destroyed by board wipes and removal like a normal land."},
+		Caveats:         []string{"Indestructible saves the Citadel from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
 		PrintedKeywords: []string{"indestructible"},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

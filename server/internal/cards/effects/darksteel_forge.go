@@ -30,8 +30,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // path (server/internal/game/indestructible.go) as of S25.
 func init() {
 	Register(Spec{
-		OracleID: "9b3bec05-441f-4fdf-8b51-69fa8613fcd4",
-		Name:     "Darksteel Forge",
+		OracleID:     "9b3bec05-441f-4fdf-8b51-69fa8613fcd4",
+		Name:         "Darksteel Forge",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
 		Static: []game.StaticAbility{{
 			Layer: game.Layer6Ability,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

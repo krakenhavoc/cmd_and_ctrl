@@ -52,8 +52,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // half. No card in the catalog is in that position today.
 func init() {
 	Register(Spec{
-		OracleID: "db6174d7-211d-4817-b8e4-8384594c83f9",
-		Name:     "Urborg, Tomb of Yawgmoth",
+		OracleID:     "db6174d7-211d-4817-b8e4-8384594c83f9",
+		Name:         "Urborg, Tomb of Yawgmoth",
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			{
 				Layer: game.Layer4Type,

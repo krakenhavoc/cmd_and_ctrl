@@ -26,9 +26,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // engine rejects a cast that names it.
 func init() {
 	Register(Spec{
-		OracleID: "956381ba-6d37-4a8a-846c-bad79222dbee",
-		Name:     "Force of Will",
-		Targets:  TargetSpell("target spell"),
+		OracleID:     "956381ba-6d37-4a8a-846c-bad79222dbee",
+		Name:         "Force of Will",
+		Completeness: CompletenessFull,
+		Targets:      TargetSpell("target spell"),
 		AlternativeCosts: []game.AlternativeCost{
 			Pitch(
 				"Pay 1 life and exile a blue card from your hand",

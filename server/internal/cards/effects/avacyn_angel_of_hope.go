@@ -51,6 +51,8 @@ func init() {
 	Register(Spec{
 		OracleID:        "216cb26e-8da9-478b-bfbc-8030f7adee72",
 		Name:            "Avacyn, Angel of Hope",
+		Completeness:    CompletenessCaveats,
+		Caveats:         []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
 		PrintedKeywords: []string{"flying", "vigilance", "indestructible"},
 		Static: []game.StaticAbility{{
 			Layer: game.Layer6Ability,

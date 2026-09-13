@@ -21,8 +21,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // ability compete for the same tap, exactly as in paper.
 func init() {
 	Register(Spec{
-		OracleID: "c97361b5-af16-4a7b-af85-a429dbaf4ad2",
-		Name:     "Mind Stone",
+		OracleID:     "c97361b5-af16-4a7b-af85-a429dbaf4ad2",
+		Name:         "Mind Stone",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}",

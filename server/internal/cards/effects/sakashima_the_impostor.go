@@ -32,8 +32,10 @@ import (
 // ever a bonus escape hatch for its controller.
 func init() {
 	Register(Spec{
-		OracleID: "a7243d25-22a2-4df5-adaf-1f40f5330ec1",
-		Name:     "Sakashima the Impostor",
+		OracleID:     "a7243d25-22a2-4df5-adaf-1f40f5330ec1",
+		Name:         "Sakashima the Impostor",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The copy doesn't gain Sakashima's \"{2}{U}{U}: Return this creature to its owner's hand at the beginning of the next end step\" ability."},
 		Replacements: []game.ReplacementEffect{
 			EntersAsCopyOf(
 				"Sakashima the Impostor",

@@ -38,6 +38,8 @@ func init() {
 	Register(Spec{
 		OracleID:     "96230edf-568a-47dd-b877-9d92aa58fac8",
 		Name:         "Nevinyrral's Disk",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		Activated: []ActivatedAbility{{
 			Label: "{1}, {T}: Destroy all artifacts, creatures, and enchantments",

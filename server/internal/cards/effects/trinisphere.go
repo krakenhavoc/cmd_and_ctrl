@@ -33,8 +33,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // finds a cost that already clears three and does nothing.
 func init() {
 	Register(Spec{
-		OracleID: "69d994f2-b8f6-425f-9655-977c2144d40c",
-		Name:     "Trinisphere",
+		OracleID:     "69d994f2-b8f6-425f-9655-977c2144d40c",
+		Name:         "Trinisphere",
+		Completeness: CompletenessFull,
 		CostModifiers: []game.CostModifier{
 			CostsAtLeast(3,
 				"As long as this artifact is untapped, each spell that would cost less than three mana to cast costs three mana to cast.",

@@ -33,6 +33,7 @@ func init() {
 		Register(Spec{
 			OracleID:      d.oracleID,
 			Name:          d.name,
+			Completeness:  CompletenessFull,
 			ManaAbilities: []ManaAbility{dualManaAbility(d.a, d.b)},
 		})
 	}

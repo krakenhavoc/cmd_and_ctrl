@@ -21,8 +21,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // so no life is lost.
 func init() {
 	Register(Spec{
-		OracleID: "5825997b-10d7-4a36-972c-a80ddd90b8ed",
-		Name:     "Feed the Swarm",
+		OracleID:     "5825997b-10d7-4a36-972c-a80ddd90b8ed",
+		Name:         "Feed the Swarm",
+		Completeness: CompletenessFull,
 		Targets: TargetPermanent("target creature or enchantment an opponent controls",
 			Or(Creature(), Enchantment()), OpponentControls()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

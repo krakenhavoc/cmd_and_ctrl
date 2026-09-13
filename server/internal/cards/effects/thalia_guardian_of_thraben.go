@@ -21,6 +21,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "9b7f1d05-707c-4ed3-9f0e-8ced1232c2ee",
 		Name:            "Thalia, Guardian of Thraben",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"first strike"},
 		CostModifiers: []game.CostModifier{
 			CostsMore(1, "Noncreature spells cost {1} more to cast.", NoncreatureSpell()),

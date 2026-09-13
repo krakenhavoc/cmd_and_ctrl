@@ -14,9 +14,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // computed colours (falls back to mana-cost symbols for fixtures).
 func init() {
 	Register(Spec{
-		OracleID: "59e7f2ae-4535-4191-98be-3e65b6b2befa",
-		Name:     "Doom Blade",
-		Targets:  TargetCreature("target nonblack creature", NonBlack()),
+		OracleID:     "59e7f2ae-4535-4191-98be-3e65b6b2befa",
+		Name:         "Doom Blade",
+		Completeness: CompletenessFull,
+		Targets:      TargetCreature("target nonblack creature", NonBlack()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

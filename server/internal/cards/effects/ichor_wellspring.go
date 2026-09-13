@@ -38,8 +38,9 @@ func init() {
 		return cardDied(ev, source)
 	}
 	Register(Spec{
-		OracleID:  "5b5ef43b-13fd-4461-8d2d-18be65e9a790",
-		Name:      "Ichor Wellspring",
-		Triggered: []game.TriggeredAbility{etb, dies},
+		OracleID:     "5b5ef43b-13fd-4461-8d2d-18be65e9a790",
+		Name:         "Ichor Wellspring",
+		Completeness: CompletenessFull,
+		Triggered:    []game.TriggeredAbility{etb, dies},
 	})
 }

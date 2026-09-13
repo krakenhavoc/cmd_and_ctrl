@@ -34,9 +34,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "65986c1b-8e51-4604-b685-d82fa7d1263a",
-		Name:     "Skullclamp",
-		Static:   []game.StaticAbility{PumpAttached(1, -1)},
+		OracleID:     "65986c1b-8e51-4604-b685-d82fa7d1263a",
+		Name:         "Skullclamp",
+		Completeness: CompletenessFull,
+		Static:       []game.StaticAbility{PumpAttached(1, -1)},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

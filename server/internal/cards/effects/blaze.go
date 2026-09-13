@@ -11,9 +11,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // at resolution. X = 0 is a legal (if pointless) cast: zero damage.
 func init() {
 	Register(Spec{
-		OracleID: "0596920f-9946-42f4-a03b-24aab67f9f1b",
-		Name:     "Blaze",
-		Targets:  TargetAny(),
+		OracleID:     "0596920f-9946-42f4-a03b-24aab67f9f1b",
+		Name:         "Blaze",
+		Completeness: CompletenessFull,
+		Targets:      TargetAny(),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {
 				return nil

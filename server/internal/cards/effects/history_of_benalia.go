@@ -21,8 +21,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Knight cast after the chapter resolves is not pumped.
 func init() {
 	Register(Spec{
-		OracleID: "c15bb7eb-aaaa-4468-9641-8f706d6137e8",
-		Name:     "History of Benalia",
+		OracleID:     "c15bb7eb-aaaa-4468-9641-8f706d6137e8",
+		Name:         "History of Benalia",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The Knight token is created colorless instead of white, so anything that cares about a creature's color doesn't see it."},
 		Triggered: []game.TriggeredAbility{
 			ChapterTrigger(1, "History of Benalia — I: create a 2/2 Knight", benaliaKnight),
 			ChapterTrigger(2, "History of Benalia — II: create a 2/2 Knight", benaliaKnight),
