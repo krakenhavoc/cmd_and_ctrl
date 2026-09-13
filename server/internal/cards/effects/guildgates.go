@@ -11,10 +11,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // deck plays one over a gain land: Gates count for Maze's End and
 // Gatecreeper Vine, and the printed type line is what carries that.
 // Two of the ten are in the roadmap's batch 14 (#307), two more in
-// batch 16 (#309), one in batch 17 (#310), two in batch 18 (#311)
-// and two in batch 19 (#312); the last (Gruul) belongs in this table
-// when its batch reaches it — a card that belongs to an existing
-// cycle goes in the cycle's table, never in a new file.
+// batch 16 (#309), one in batch 17 (#310), two in batch 18 (#311),
+// two in batch 19 (#312) and the last (Gruul) in batch 20 (#313) —
+// all ten are here now. A card that belongs to an existing cycle
+// goes in the cycle's table, never in a new file.
 //
 // Enters-tapped is the self-replacement; the dual is the pipe every
 // two-colour land in the catalog uses.
@@ -35,6 +35,8 @@ func init() {
 		// Roadmap batch 19 (#312).
 		{"75b235d3-595a-4859-be45-9559d8445db5", "Selesnya Guildgate", "G", "W"},
 		{"ad1712d8-809f-410c-8b91-ffe6fb8a69a1", "Azorius Guildgate", "W", "U"},
+		// Roadmap batch 20 (#313).
+		{"d38476e9-2e47-4c0c-8129-483c0bd09ec0", "Gruul Guildgate", "R", "G"},
 	} {
 		Register(Spec{
 			OracleID:      land.oracleID,

@@ -13,11 +13,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // cycle needs a table at all. The tapped entry is the real CR 614
 // self-replacement. Roadmap batch 11 (#304) ranks Haunted Mire and
 // batch 12 (#305) Tangled Islet, batch 16 (#309) Sacred Peaks, Sunlit
-// Marsh and Wooded Ridgeline; the other five belong here when their
-// batches reach them. Foundations reprinted the shape as a new
-// cycle with new names — Radiant Grove (batch 13, #306) is that
-// cycle's Forest Plains, identical text, so it is a row here rather
-// than a second table.
+// Marsh and Wooded Ridgeline, batch 20 (#313) Contaminated Aquifer;
+// the other four belong here when their batches reach them.
+// Foundations reprinted the shape as a new cycle with new names —
+// Radiant Grove (batch 13, #306) is that cycle's Forest Plains,
+// identical text, so it is a row here rather than a second table.
 //
 // No simplification.
 func init() {
@@ -32,6 +32,8 @@ func init() {
 		{"fb69bc57-f05a-41c2-9b7b-9a9761ef0cd3", "Sacred Peaks", "R", "W"},
 		{"a5e5a259-5fa7-4b01-93cb-a2b4aaf80927", "Sunlit Marsh", "W", "B"},
 		{"c2ca3e20-23ca-4d2a-88a1-5e98ff884abb", "Wooded Ridgeline", "R", "G"},
+		// Roadmap batch 20 (#313): Land — Island Swamp.
+		{"c27b771d-b5ec-459a-a101-f078cb8d0184", "Contaminated Aquifer", "U", "B"},
 	} {
 		Register(Spec{
 			OracleID:      land.oracleID,
