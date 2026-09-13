@@ -12,7 +12,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Azorius Chancery's shape, as a table: the tempo cost (tapped, and a
 // land drop set back) buys one land that taps for two coloured mana.
 // Roadmap batch 02 (#295) ranks Simic Growth Chamber and Golgari Rot
-// Farm; the rest of the cycle belongs here when it arrives.
+// Farm; batch 11 (#304) adds Guildless Commons, the colourless one;
+// the rest of the cycle belongs here when it arrives.
 //
 // Two differences from the Chancery file, both deliberate:
 //
@@ -31,6 +32,9 @@ func init() {
 	for _, land := range []struct{ oracleID, name, produced string }{
 		{"046f5783-cc7b-416a-8cf6-2bcef9c2cc1a", "Simic Growth Chamber", "{G}{U}"},
 		{"1b301478-b14f-4ef8-94e6-9647d582eabe", "Golgari Rot Farm", "{B}{G}"},
+		// Roadmap batch 11 (#304): the colourless karoo — same three
+		// clauses, "{T}: Add {C}{C}".
+		{"ee723c7c-ec9f-4ffb-8f36-cd7637eb1fae", "Guildless Commons", "{C}{C}"},
 	} {
 		name := land.name
 		Register(Spec{
