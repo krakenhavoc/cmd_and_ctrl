@@ -55,6 +55,16 @@ type Config struct {
 	// before a human (or a slower bot) had blocked. Zero disables;
 	// DefaultConfig sets 4s.
 	BlockGrace time.Duration
+	// Narrate posts the policy's Decision.Reason for every non-pass
+	// move as a bot_reasoning chat line. Every client receives it and
+	// only clients with "show bot reasoning" on render it, because
+	// S11.5 settings live in the browser and the server has no
+	// per-player store to gate on. Off in the zero value (tests and
+	// the soak harness want silence); DefaultConfig turns it on.
+	//
+	// Improvisation announcements are NOT gated by this. They are
+	// mandatory disclosure, not narration — see improvise.go.
+	Narrate bool
 }
 
 const (
@@ -68,9 +78,10 @@ const (
 
 // DefaultConfig is the production pacing: 700ms minimum think, 2s
 // hard deadline, 64 actions per wake, 3 rejections before a forced
-// pass, 4s block grace.
+// pass, 4s block grace, reasoning narrated to clients that asked for
+// it.
 func DefaultConfig() Config {
-	return Config{MinThink: defaultMinThink, BlockGrace: defaultBlockGrace}.withDefaults()
+	return Config{MinThink: defaultMinThink, BlockGrace: defaultBlockGrace, Narrate: true}.withDefaults()
 }
 
 func (c Config) withDefaults() Config {
@@ -93,6 +104,14 @@ type Stats struct {
 	Rejected  int64 // moves the dispatcher refused
 	Fallbacks int64 // decisions replaced by the fallback move
 	Passes    int64 // pass_priority moves applied
+	// Improvisations are announced sandbox bundles the room accepted;
+	// ImprovRefused are the ones this runner would not apply (failed
+	// validation, or the bundle rolled back). Both are worth watching:
+	// a bot improvising constantly means a deck outrunning the
+	// catalog, and refusals mean a policy asking for things it may
+	// not have. S31 sub-PR 8.
+	Improvisations int64
+	ImprovRefused  int64
 	// Rejections are the most recent rejected moves (up to 32), so a
 	// test or an operator can tell a step race from an enumerator bug.
 	Rejections []Rejection
@@ -116,6 +135,7 @@ type Runner struct {
 	log    *slog.Logger
 
 	decisions, applied, rejected, fallbacks, passes atomic.Int64
+	improvisations, improvRefused                   atomic.Int64
 	rejMu                                           sync.Mutex
 	rejections                                      []Rejection
 	done                                            chan struct{}
@@ -153,12 +173,14 @@ func (r *Runner) Stats() Stats {
 	rej := append([]Rejection(nil), r.rejections...)
 	r.rejMu.Unlock()
 	return Stats{
-		Decisions:  r.decisions.Load(),
-		Applied:    r.applied.Load(),
-		Rejected:   r.rejected.Load(),
-		Fallbacks:  r.fallbacks.Load(),
-		Passes:     r.passes.Load(),
-		Rejections: rej,
+		Decisions:      r.decisions.Load(),
+		Applied:        r.applied.Load(),
+		Rejected:       r.rejected.Load(),
+		Fallbacks:      r.fallbacks.Load(),
+		Passes:         r.passes.Load(),
+		Improvisations: r.improvisations.Load(),
+		ImprovRefused:  r.improvRefused.Load(),
+		Rejections:     rej,
 	}
 }
 
@@ -218,6 +240,15 @@ func (r *Runner) step(ctx context.Context) bool {
 		if r.concede(ctx, in) {
 			return false
 		}
+		// Improvisation comes before the decision, because it is what
+		// a policy does INSTEAD of taking an offered move: the line it
+		// wants needs an effect the catalog cannot execute. The bundle
+		// moved the board, so re-enumerate rather than deciding
+		// against a stale move list. Bounded by MaxActionsPerWake like
+		// everything else in this loop.
+		if r.improvise(ctx, in, started) {
+			continue
+		}
 		idx, reason := r.decide(ctx, in)
 		if idx == Decline {
 			// The policy wants nothing from this window and does not
@@ -263,6 +294,8 @@ func (r *Runner) step(ctx context.Context) bool {
 		r.applied.Add(1)
 		if mv.Kind == legal.KindPass {
 			r.passes.Add(1)
+		} else {
+			r.narrate(mv.Label, reason)
 		}
 		r.log.Debug("bot move", "move", mv.Label, "reason", reason, "seq", seq)
 		if r.bc != nil {

@@ -124,7 +124,28 @@ export interface ChatPayload {
   author_name: string;
   text: string;
   timestamp: string;
+  // kind classifies the line. Absent or "say" for anything a human
+  // typed. The bot kinds are server-originated (S31 sub-PR 8) and
+  // cannot be forged from a client — handleChat re-stamps every
+  // authoritative field, so a player who types one gets "say".
+  kind?: ChatKind;
+  // reason carries the bot policy's rationale, split out of `text`
+  // so the announcement can be shown while the reasoning stays
+  // behind settings.gameplay.showBotReasoning.
+  reason?: string;
 }
+
+// ChatKind mirrors protocol.ChatKind* in
+// server/internal/protocol/protocol.go.
+export type ChatKind = "say" | "bot_improvisation" | "bot_reasoning";
+
+// A bot disclosing that it applied an effect by hand because the
+// rules engine can't run the card. Never hidden: an unannounced
+// improvisation is a bot cheating (ADR 0033 §8).
+export const CHAT_BOT_IMPROVISATION = "bot_improvisation";
+// A bot narrating why it chose a move. Debug output, hidden unless
+// the viewer turns on "show bot reasoning".
+export const CHAT_BOT_REASONING = "bot_reasoning";
 
 // View types mirror server/internal/protocol/view.go.
 

@@ -2204,10 +2204,18 @@ contract alone cannot express them:
 
 ### Sub-PR 8 — improvisation, announced
 
-- [ ] When the chosen line needs an effect the catalog cannot execute, the bot may use `move_card` / `change_life` / `add_counter` / `mark_damage`, emitted as one bundle
-- [ ] Chat line naming the card, the intended effect, and that it was improvised
-- [ ] Replay-log tag so bot improvisations are greppable
-- [ ] Setting: "show bot reasoning" surfaces `Decision.Reason` in chat
+- [x] When the chosen line needs an effect the catalog cannot execute, the bot may use `move_card` / `change_life` / `add_counter` / `mark_damage`, emitted as one bundle. `aiseat.Improviser` is the opt-in policy hook (out of band for the same reason `Conceder` is: a `Decision` names an INDEX into the closed move list, and improvising is by definition doing something that list does not contain). The four verbs are an allow-list — a bundle carrying `concede` or `discard_selection` is refused
+- [x] Chat line naming the card, the intended effect, and that it was improvised. Enforced in code, not left to the policy: `Improvisation.Validate` refuses a bundle that will not name its card and its effect, **before** anything is dispatched
+- [x] Replay-log tag so bot improvisations are greppable — `SnapshotPayload.annotation` with `tag: "bot_improvisation"`, written inside the same commit as the bundle. Replay-only; no WS frame carries one
+- [x] Setting: "show bot reasoning" surfaces `Decision.Reason` in chat. `settings.gameplay.showBotReasoning` (schema v9), server side gated by `aiseat.Config.Narrate`
+
+**`ApplyBundle`, because `Apply` cannot promise atomicity.** `Room.Apply` stashes a pre-mutation clone and drops it when `fn` errors — correct for one dispatch, wrong for four: the third verb failing leaves the first two applied, with no undo entry pointing at them. `Room.ApplyBundle` runs every step under a single hold of the room lock and restores the pre-bundle clone on any failure, so the bundle commits as one seq, one replay line, one undo entry, or not at all.
+
+**The `UndosRemaining` question ADR 0033 §8 left open: cleaning up after a bot is free.** `undoEntry.freeUndo` exempts improvisation bundles from the undoing player's budget. The budget polices the social cost of taking back *your own* move; an improvisation is the bot asserting a rules interpretation the engine could not execute, and a human correcting it is doing maintenance on a catalog gap. Charging for it would make the careful response cost more than the lazy one, in a feature whose whole safety argument is reversibility — and it would leave a player who had spent their turn's undos stuck with someone else's mistake.
+
+**The caller-nil stamp is a power grant.** `uuid.Nil` bypasses `requireCardController` and `ErrPlayerCallerMismatch` — it must, since improvised removal reaches an opponent's board. That is why the announcement is validated ahead of the commit and the verb list is closed: this is the one path where a bot acts with admin authority.
+
+**Left to [#427](https://github.com/krakenhavoc/cmd_and_ctrl/pull/427):** the bot-seat identity surface. `PlayerView.is_bot` / `bot_tier` / `bot_deck`, the BOT chip, and the seat treatment are all still that PR's. This one deliberately does **not** prefix bot chat with `[BOT]`: the `kind` field marks the line as a bot's, cannot be spoofed by a player who names themselves `[BOT] Kess`, and is the thing the seat treatment should key off. Chat also has no UI since S08.5 wave 1, so an announcement had nowhere to land — sub-PR 8 ships a minimal read-only `BotFeed` in the board's attention strip, which a real chat panel subsumes whenever one returns.
 
 ### Tests
 
@@ -2219,7 +2227,7 @@ contract alone cannot express them:
 - [x] `heuristic` beats `random` head-to-head: 40/40 decided games, alternating seats
 - [x] Heuristic decision latency: p50 8.5µs, p99 52µs, max 276µs over 2,715 decisions — four orders of magnitude inside the 2s `MaxThink`
 - [x] Model-outage drill: Layer C hard-fails, game completes on Layer B, no frozen table. `TestModelOutageDrill` — the endpoint answers 25 calls and then fails forever, the four-bot game plays to a single survivor, the runner's own fallback counter stays at zero, and 2,382 of 2,407 windows were answered without a usable model. A sibling proves the other half of §10: a model that never answers costs its budget and hands over, and the runner still never force-passes
-- [ ] Human undo of a bot improvisation succeeds without the admin token, and the bundle reverts as one entry
+- [x] Human undo of a bot improvisation succeeds without the admin token, and the bundle reverts as one entry — `TestHumanUndoOfBotImprovisationRevertsTheWholeBundle`: a seated caller (their own seat ID, never `uuid.Nil`) pops a three-verb bundle, all three revert, the second `Undo` returns `ErrNothingToUndo` proving it was one entry, and the caller's `UndosRemaining` is unchanged. `TestImprovisationBundleIsAtomic` holds the other direction: a bundle whose last step fails leaves no state change, no seq bump, no chat line and no replay tag
 
 ### Exit criteria
 

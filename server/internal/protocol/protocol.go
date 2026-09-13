@@ -108,7 +108,40 @@ type ChatPayload struct {
 	AuthorName string `json:"author_name"`
 	Text       string `json:"text"`
 	Timestamp  string `json:"timestamp"`
+	// Kind classifies the line so a client can render or suppress it
+	// without parsing the text. Empty means ChatKindSay — every
+	// human-typed message, and the only value handleChat ever
+	// stamps. The bot kinds are server-originated (S31 sub-PR 8); a
+	// client that tries to send one has it overwritten, because
+	// handleChat re-stamps every authoritative field.
+	Kind string `json:"kind,omitempty"`
+	// Reason carries the deciding policy's Decision.Reason on a bot
+	// line. Split out of Text rather than appended to it, because
+	// the two halves have different rules: the announcement is
+	// mandatory disclosure and every client must show it, while the
+	// reasoning is a debug surface behind the "show bot reasoning"
+	// setting.
+	Reason string `json:"reason,omitempty"`
 }
+
+// Chat kinds. ChatKindSay is the zero value and covers everything a
+// human types. The two bot kinds exist so a client can treat
+// disclosure and debug narration differently — ADR 0033 §8.
+const (
+	// ChatKindSay is an ordinary message from a seat or a spectator.
+	ChatKindSay = "say"
+	// ChatKindBotImprovisation is a bot disclosing that it applied an
+	// effect by hand because the catalog could not execute it.
+	// Clients MUST show these: an unannounced improvisation is a bot
+	// cheating.
+	ChatKindBotImprovisation = "bot_improvisation"
+	// ChatKindBotReasoning is a bot narrating why it chose a move.
+	// Hidden unless the viewer turns on "show bot reasoning". It can
+	// disclose cards in the bot's OWN hand — which is a disadvantage
+	// the bot accepts, not an information leak: a policy never sees
+	// another seat's hidden state, so it has none to spill.
+	ChatKindBotReasoning = "bot_reasoning"
+)
 
 // MaxChatTextLen caps the text size of a single chat message. Messages
 // exceeding this length are rejected with a bad_request error.
@@ -128,4 +161,53 @@ type SnapshotPayload struct {
 	// dropped or out-of-order frames.
 	Seq  uint64   `json:"seq"`
 	Game GameView `json:"game"`
+	// Annotation tags the replay line this payload produced with an
+	// out-of-band note about what caused it. Set only on the replay /
+	// crash-dump path (ws.Room.captureLocked); the WebSocket snapshot
+	// frame is built separately and never carries one, so no client
+	// ever sees this field.
+	//
+	// Its whole job is greppability. The replay log is a stream of
+	// full snapshots, so "what happened here" normally has to be
+	// diffed back out of two consecutive lines; an annotation says it
+	// outright, and `grep bot_improvisation replays/*.jsonl` finds
+	// every bot improvisation in a game that went wrong. Added in S31
+	// sub-PR 8 (ADR 0033 §8).
+	Annotation *ReplayAnnotation `json:"annotation,omitempty"`
+}
+
+// Replay annotation tags. These are grep handles — keep them stable.
+const (
+	// ReplayTagBotImprovisation marks the single commit in which a
+	// bot applied a bundle of sandbox verbs by hand because the
+	// catalog could not execute the effect its line needed.
+	ReplayTagBotImprovisation = "bot_improvisation"
+)
+
+// ReplayAnnotation is the note attached to one replay line.
+//
+// Everything in it is public information — it repeats what the table
+// was told in chat — so it is safe inside an artifact a player can
+// download. Nothing here may carry hidden state.
+type ReplayAnnotation struct {
+	// Tag is the grep handle, one of the ReplayTag* constants.
+	Tag string `json:"tag"`
+	// Seat is the acting seat's player ID, when there is one.
+	Seat string `json:"seat,omitempty"`
+	// SeatName is that seat's display name, so a replay reads
+	// without cross-referencing IDs.
+	SeatName string `json:"seat_name,omitempty"`
+	// Card names the card the improvisation was played for.
+	Card string `json:"card,omitempty"`
+	// Effect is the intended effect, in the words the table was given.
+	Effect string `json:"effect,omitempty"`
+	// Text is the exact chat line that was broadcast, verbatim, so
+	// the replay records what the table was actually told rather
+	// than a reconstruction of it.
+	Text string `json:"text,omitempty"`
+	// Reason is the policy's Decision.Reason. Always recorded here;
+	// shown in chat only to players who asked for it.
+	Reason string `json:"reason,omitempty"`
+	// Steps are the wire action types the bundle applied, in order.
+	Steps []string `json:"steps,omitempty"`
 }

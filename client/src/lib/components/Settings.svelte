@@ -515,6 +515,23 @@
               admins get every card. Default is off, which leaves right-click showing a permanent's
               abilities — with it on, those abilities are the menu's first section.
             </p>
+
+            <label>
+              <input
+                type="checkbox"
+                checked={$settings.gameplay.showBotReasoning}
+                onchange={(e) => change("gameplay", "showBotReasoning", e.currentTarget.checked)}
+              />
+              Show bot reasoning
+              {#if isFresh("gameplay.showBotReasoning")}<span class="saved">✓ saved</span>{/if}
+            </label>
+            <p class="help">
+              Bot seats explain each move they make in the table feed. Off by default — it's a lot
+              of lines, and it's debug output rather than table talk. Note it can mention cards in
+              the bot's own hand, which makes the game easier. This does <strong>not</strong> control
+              improvisation announcements: when a bot plays a card the rules engine can't run, it says
+              so every time, and no setting hides that.
+            </p>
           {:else if activeTab === "accessibility"}
             <h3>Accessibility</h3>
             <label>
