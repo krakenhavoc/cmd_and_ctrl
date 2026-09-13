@@ -12,9 +12,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // destroy rather than after.
 func init() {
 	Register(Spec{
-		OracleID: "fae37e28-e137-4177-b973-fa8b4dd8f409",
-		Name:     "Generous Gift",
-		Targets:  TargetPermanent("target permanent"),
+		OracleID:     "fae37e28-e137-4177-b973-fa8b4dd8f409",
+		Name:         "Generous Gift",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The Elephant token is created colorless instead of white, so anything that cares about a creature's color doesn't see it."},
+		Targets:      TargetPermanent("target permanent"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

@@ -27,6 +27,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "b2e950fb-cb7e-40a0-a311-5bbdd0477b29",
 		Name:            "Sun Titan",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB, game.EventAttack},

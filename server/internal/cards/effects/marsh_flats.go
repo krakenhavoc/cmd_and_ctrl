@@ -16,8 +16,9 @@ package effects
 // families.
 func init() {
 	Register(Spec{
-		OracleID: "dab520d0-20b4-4273-ba6b-eb07f85ea433",
-		Name:     "Marsh Flats",
+		OracleID:     "dab520d0-20b4-4273-ba6b-eb07f85ea433",
+		Name:         "Marsh Flats",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:  "{T}, Pay 1 life, Sacrifice this land: Search your library for a Plains or Swamp card, put it onto the battlefield, then shuffle.",
 			Cost:   fetchlandCost(),

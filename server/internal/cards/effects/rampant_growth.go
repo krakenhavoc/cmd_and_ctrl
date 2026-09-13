@@ -13,8 +13,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // than no modal.
 func init() {
 	Register(Spec{
-		OracleID: "8539f295-5d58-4436-a73a-b9277c4c7795",
-		Name:     "Rampant Growth",
+		OracleID:     "8539f295-5d58-4436-a73a-b9277c4c7795",
+		Name:         "Rampant Growth",
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return SearchLibrary{
 				Player:        ctx.Controller(),

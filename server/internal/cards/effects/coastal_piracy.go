@@ -12,8 +12,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // its own controller (a redirected or goaded oddity) doesn't count.
 func init() {
 	Register(Spec{
-		OracleID: "8a05ec32-7b0c-4f23-a4f7-413301c2a70a",
-		Name:     "Coastal Piracy",
+		OracleID:     "8a05ec32-7b0c-4f23-a4f7-413301c2a70a",
+		Name:         "Coastal Piracy",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

@@ -16,8 +16,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // and what the card says.
 func init() {
 	Register(Spec{
-		OracleID: "a0abd957-01a0-4aa9-8fc8-0e6840d21606",
-		Name:     "Explosive Vegetation",
+		OracleID:     "a0abd957-01a0-4aa9-8fc8-0e6840d21606",
+		Name:         "Explosive Vegetation",
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return SearchLibrary{
 				Player:        ctx.Controller(),

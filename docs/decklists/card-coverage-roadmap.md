@@ -37,7 +37,12 @@ is a comment on its card file.
 | 05 | #298 | **23** | 12 | 65 | PR #437 — the "no new machinery" group plus Dualcaster Mage, unblocked by #419's spell copies |
 | 06 | #299 | **29** | 6 | 65 | PR #439 — the "no new machinery" group, one pass |
 | 07 | #300 | **28** | 12 | 60 | PR #438 — the "no new machinery" group plus Kodama of the West Tree, unblocked by #379's attachments |
-| 08–20 | #301–#313 | 0 | 0 | — | not started |
+| 08 | #301 | **34** | 9 | 57 | PR #441 — the "no new machinery" group (43 of the 100) |
+| 09 | #302 | **27** | 16 | 56 | PR #442 — the group was 44; Fumigate was already on `main` from #382 |
+| 10 | #303 | **35** | 3 | 62 | PR #443 — the "no new machinery" group (38 of the 100) |
+| 11 | #304 | **26** | 8 | 62 | PR #444 — the group was 38; 4 of it (Bane of Progress, Cleansing Nova, Vorinclex, Kambal) were already on `main` |
+| 12 | #305 | **28** | 6 | 64 | PR #445 — the group was 36; 2 of it (Grave Titan, Reverberate) were already on `main` |
+| 13–20 | #306–#313 | 0 | 0 | — | not started |
 | 21–40 | #383–#391, #393–#403 | 0 | 0 | — | not started — ranked against `459dea6`, 2026-09-11 |
 | 41–60 | #448–#467 | 0 | 0 | — | not started — ranked against `b5a3055`, 2026-09-13 |
 
@@ -54,23 +59,58 @@ ranking: **504** again, both PRs now merged.
 scratch branch where the full suite passes and no oracle ID registers
 twice. (Test binary: 611 and 691.)
 
-**Then 844** on `origin/main` at **`b5a3055`**, the probe taken for the
-batch 41–60 ranking — `effects.All()` dumped to a file and counted, not
-derived. (Test binary: 845. The extra one is the flicker probe again,
-registered from an `init()` in `flicker_test.go` and therefore absent
-from the production catalog; the same correction the 438/504 line makes
-above.) The back-face half has not moved: **784 whole cards plus the
-same 60 land backs**.
+**Then 690 → 844** with batches 08–12, each measured on `origin/main`
+after the one before it merged: 724 (#441), 751 (#442), 786 (#443),
+812 (#444), 840 (#445). Re-probed on `origin/main` at **`b5a3055`**:
+**844** shipped specs, the test binary reporting 845 with the flicker
+probe.
 
-**504 specs is not 504 cards.** Sixty of them are MDFC *back faces*,
+**844 specs is not 844 cards.** Sixty of them are MDFC *back faces*,
 registered under the composite key `<oracle_id>#1` that
 `game.CatalogKey` produces for face 1 — the modal-DFC land cycle, whose
 front faces are deliberately **not** registered
 (`TestBackFaceSpecsAreKeyedByFace` pins exactly that). So the catalog
-holds **444 whole cards plus 60 land backs**, and the 60 half-covered
+holds **784 whole cards plus 60 land backs**, and the 60 half-covered
 MDFCs are still gap cards: Ondu Inversion // Ondu Skyruins sits in
 batch 20 at rank 2203 even though Ondu Skyruins is registered. The gap
 pass keys on the bare `oracle_id`, so it counts them the same way.
+
+Quoting the spec count as a card count overstates coverage by the full
+sixty — about 7% at this size, and ~13% back when the catalog held 504.
+The two numbers have to be carried together or the smaller one gets
+dropped.
+
+**How complete those 844 are, measured the same way** (`Spec.Completeness`,
+flicker probe excluded). On `origin/main` at `b5a3055`: **323 full, 187
+with declared caveats, 334 unreviewed**. After the audit in this branch:
+**535 full, 248 with declared caveats, 61 unreviewed**.
+
+`CompletenessUnreviewed` is the zero value and means nobody has audited
+the card against its printed text — it is a third state, not a synonym
+for "works", and anything publishing the catalog has to show it as one
+(see `server/internal/cards/effects/completeness.go`). The 61 that
+remain are honestly unreviewed, not assumed good; they are the residue
+of a pass that ran out of time, and the next pass should start there.
+
+Two things that audit turned up are worth carrying forward:
+
+- **Every one of the 187 existing caveats was re-checked, and only one
+  described a gap that had closed** — Darksteel Citadel's, and only
+  partly. That is the #412 sweep working: the 24-of-87 stale rate it
+  found has not come back.
+- **Indestructible is half enforced, and that is a live bug rather than
+  a declared simplification.** S25 (#77) gated `DestroyPermanentForEffect`
+  and the damage state-based actions, but not the MASS destroy path
+  (`game.DestroyPermanentsForEffect`), so every board wipe in the
+  catalog kills indestructible permanents. Twenty-four specs now declare
+  it; grep the catalog for `board wipe ("destroy all")` and delete them
+  with the fix. The note lives on `DestroyAllMatching` in
+  `cards/effects/mass.go`.
+- **Caveats can be wrong without being stale.** Krenko, Tin Street
+  Kingpin's said "you get no Goblins"; a probe test showed the engine
+  makes two, one MORE than last-known information would. A caveat that
+  understates a gap in the stronger-than-printed direction is the worst
+  kind, and no count-based check can find it.
 
 Always MEASURE this line, never derive it. The batch-01 entry derived
 "319" by adding up what it believed had landed when the registry

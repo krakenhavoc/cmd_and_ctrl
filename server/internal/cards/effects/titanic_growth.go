@@ -22,9 +22,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID: "61e09dd9-7870-48c2-9177-d6abc3162692",
-		Name:     "Titanic Growth",
-		Targets:  TargetCreature("target creature"),
+		OracleID:     "61e09dd9-7870-48c2-9177-d6abc3162692",
+		Name:         "Titanic Growth",
+		Completeness: CompletenessFull,
+		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

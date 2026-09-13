@@ -13,9 +13,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // regeneration knows this card already promises to beat it.
 func init() {
 	Register(Spec{
-		OracleID: "faa01ed1-ccfa-4e58-951f-cd81f9068027",
-		Name:     "Mortify",
-		Targets:  TargetPermanent("target creature or enchantment", Or(Creature(), Enchantment())),
+		OracleID:     "faa01ed1-ccfa-4e58-951f-cd81f9068027",
+		Name:         "Mortify",
+		Completeness: CompletenessFull,
+		Targets:      TargetPermanent("target creature or enchantment", Or(Creature(), Enchantment())),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

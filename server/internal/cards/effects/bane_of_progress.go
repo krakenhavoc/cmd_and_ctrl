@@ -34,8 +34,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // an artifact enchantment is destroyed once and counted once.
 func init() {
 	Register(Spec{
-		OracleID: "51f9a6cc-8eb2-44ed-a2d9-913ac514ad67",
-		Name:     "Bane of Progress",
+		OracleID:     "51f9a6cc-8eb2-44ed-a2d9-913ac514ad67",
+		Name:         "Bane of Progress",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

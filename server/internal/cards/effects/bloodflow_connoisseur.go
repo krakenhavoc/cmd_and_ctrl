@@ -17,8 +17,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // in the graveyard and AddCounter no-ops there.
 func init() {
 	Register(Spec{
-		OracleID: "ddb2fb87-235a-4365-aa25-40c197425e43",
-		Name:     "Bloodflow Connoisseur",
+		OracleID:     "ddb2fb87-235a-4365-aa25-40c197425e43",
+		Name:         "Bloodflow Connoisseur",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label: "Sacrifice a creature: put a +1/+1 counter on this creature",
 			Cost:  SacrificeACreature(),

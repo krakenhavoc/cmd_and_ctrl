@@ -124,7 +124,28 @@ export interface ChatPayload {
   author_name: string;
   text: string;
   timestamp: string;
+  // kind classifies the line. Absent or "say" for anything a human
+  // typed. The bot kinds are server-originated (S31 sub-PR 8) and
+  // cannot be forged from a client — handleChat re-stamps every
+  // authoritative field, so a player who types one gets "say".
+  kind?: ChatKind;
+  // reason carries the bot policy's rationale, split out of `text`
+  // so the announcement can be shown while the reasoning stays
+  // behind settings.gameplay.showBotReasoning.
+  reason?: string;
 }
+
+// ChatKind mirrors protocol.ChatKind* in
+// server/internal/protocol/protocol.go.
+export type ChatKind = "say" | "bot_improvisation" | "bot_reasoning";
+
+// A bot disclosing that it applied an effect by hand because the
+// rules engine can't run the card. Never hidden: an unannounced
+// improvisation is a bot cheating (ADR 0033 §8).
+export const CHAT_BOT_IMPROVISATION = "bot_improvisation";
+// A bot narrating why it chose a move. Debug output, hidden unless
+// the viewer turns on "show bot reasoning".
+export const CHAT_BOT_REASONING = "bot_reasoning";
 
 // View types mirror server/internal/protocol/view.go.
 
@@ -351,6 +372,12 @@ export interface PendingChoiceView {
     // the answer decides what it enters AS, which is why its own ETB
     // trigger has not fired yet either.
     | "copy_target"
+    // S26: "as this permanent enters, choose a creature type" (CR
+    // 614.12) — Cavern of Souls, Door of Destinies, Vanquisher's
+    // Banner, Adaptive Automaton. type_options carries the whole CR
+    // 205.3m vocabulary for the picker to filter; answered with
+    // resolve_choice { creature_type: "Elf" }.
+    | "choose_creature_type"
     | string;
   chooser: string;
   from_player: string;
@@ -364,6 +391,11 @@ export interface PendingChoiceView {
   // against commander identity for Arcane Signet; full 5-color for
   // Birds of Paradise.
   color_options?: string[];
+  // S26: populated for kind "choose_creature_type" — every creature
+  // type the engine knows, sorted. The list is long by design (the CR
+  // 205.3m vocabulary is ~345 entries), so the picker filters it
+  // rather than rendering it whole.
+  type_options?: string[];
   // S17: populated for kind "replacement_order" — the CR 616
   // affected-player-chooses-order prompt. Client renders a drag-
   // reorder list of these entries and submits the IDs in the
@@ -539,6 +571,15 @@ export interface PlayerView {
   discord_id?: string;
   discord_avatar_hash?: string;
   display_name?: string;
+  // Bot seat (S31, ADR 0033). is_bot marks a seat driven by a
+  // server-side policy runner rather than a WebSocket client;
+  // bot_tier is its difficulty tier ("random", "heuristic", …) and
+  // bot_deck the curated deck it was seated with. The board renders
+  // a BOT chip and a distinct avatar mark off these, and shows the
+  // thinking pulse while such a seat holds priority.
+  is_bot?: boolean;
+  bot_tier?: string;
+  bot_deck?: string;
   // Per-commander cast count for the Commander tax (S13.1, CR
   // 903.8). Keyed by commander instance UUID. Drives the "+N tax"
   // indicator next to the commander tile.

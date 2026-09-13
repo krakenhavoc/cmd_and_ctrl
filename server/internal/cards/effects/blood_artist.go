@@ -17,8 +17,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // card really plays — tedious across a long combo turn, and correct.
 func init() {
 	Register(Spec{
-		OracleID: "310f141c-7f37-4729-aed6-dd9c09db448d",
-		Name:     "Blood Artist",
+		OracleID:     "310f141c-7f37-4729-aed6-dd9c09db448d",
+		Name:         "Blood Artist",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},
 			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {

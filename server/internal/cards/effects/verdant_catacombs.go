@@ -16,8 +16,9 @@ package effects
 // families.
 func init() {
 	Register(Spec{
-		OracleID: "67d60b24-d429-4ded-90d9-06e49f28c396",
-		Name:     "Verdant Catacombs",
+		OracleID:     "67d60b24-d429-4ded-90d9-06e49f28c396",
+		Name:         "Verdant Catacombs",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:  "{T}, Pay 1 life, Sacrifice this land: Search your library for a Swamp or Forest card, put it onto the battlefield, then shuffle.",
 			Cost:   fetchlandCost(),

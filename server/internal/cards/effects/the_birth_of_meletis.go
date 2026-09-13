@@ -15,8 +15,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // nothing in it can fail for a reason other than the Saga machinery.
 func init() {
 	Register(Spec{
-		OracleID: "1ae54fe7-b1d3-4c13-a8ef-f502cf3eb1a0",
-		Name:     "The Birth of Meletis",
+		OracleID:     "1ae54fe7-b1d3-4c13-a8ef-f502cf3eb1a0",
+		Name:         "The Birth of Meletis",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			ChapterTrigger(1, "The Birth of Meletis — I: search for a basic Plains", meletisFetchPlains),
 			ChapterTrigger(2, "The Birth of Meletis — II: create a 0/4 Wall", meletisWall),

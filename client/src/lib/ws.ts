@@ -10,6 +10,7 @@ import {
   type ErrorPayload,
   type SnapshotPayload,
   type ChatPayload,
+  type ChatKind,
   type GameView,
 } from "./protocol";
 
@@ -37,6 +38,10 @@ export interface ChatMessage {
   authorName: string;
   text: string;
   at: Date;
+  // kind / reason carry the S31 bot lines. "say" for everything a
+  // human typed. See botChat.ts for what the UI does with them.
+  kind: ChatKind;
+  reason: string;
 }
 
 // CHAT_LOG_LIMIT caps the number of messages retained client-side. Old
@@ -549,6 +554,8 @@ export class GameClient {
           authorName: p.author_name,
           text: p.text,
           at: new Date(p.timestamp),
+          kind: p.kind ?? "say",
+          reason: p.reason ?? "",
         };
         this.chat.update((entries) => {
           const next = [...entries, msg];

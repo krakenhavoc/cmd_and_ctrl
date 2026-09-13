@@ -37,8 +37,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // target for a white removal spell here.
 func init() {
 	Register(Spec{
-		OracleID: "725880b2-1675-414f-b61b-cf6533797dbf",
-		Name:     "Animar, Soul of Elements",
+		OracleID:     "725880b2-1675-414f-b61b-cf6533797dbf",
+		Name:         "Animar, Soul of Elements",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Protection from white and from black isn't granted, so Animar can be targeted and damaged by white and black sources."},
 		CostModifiers: []game.CostModifier{
 			CostsLessEach(CountersOnSource(game.CounterPlusOne),
 				"Creature spells you cast cost {1} less to cast for each +1/+1 counter on Animar, Soul of Elements.",

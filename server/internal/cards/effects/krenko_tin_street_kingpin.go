@@ -31,7 +31,7 @@ func init() {
 		OracleID:     "e8065e1d-e937-4b56-8011-78f0d07328a0",
 		Name:         "Krenko, Tin Street Kingpin",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"If Krenko is removed in response to its attack trigger you get no Goblins; the real card still makes them from its last power."},
+		Caveats:      []string{"If Krenko is removed in response to its attack trigger, the +1/+1 counter still lands on the card in the graveyard and you get two Goblins — one more than the real card's last known power would make."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventAttack},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

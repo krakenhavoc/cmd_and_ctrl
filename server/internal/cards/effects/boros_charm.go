@@ -40,7 +40,7 @@ func init() {
 		OracleID:     "2679d0dd-ba30-4a1c-b6a0-b3ac6c790496",
 		Name:         "Boros Charm",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The indestructible mode does nothing — your permanents can still be destroyed that turn."},
+		Caveats:      []string{"The indestructible mode stops single-target removal and lethal damage, but a board wipe (\"destroy all\") still destroys your permanents."},
 		Modes: ChooseOne(
 			Mode("Boros Charm deals 4 damage to target player or planeswalker.",
 				targetPlayerOrPlaneswalker("target player or planeswalker")),

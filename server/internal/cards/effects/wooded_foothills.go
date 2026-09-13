@@ -16,8 +16,9 @@ package effects
 // families.
 func init() {
 	Register(Spec{
-		OracleID: "6587a463-a108-4854-b6d1-944e89b8c8a4",
-		Name:     "Wooded Foothills",
+		OracleID:     "6587a463-a108-4854-b6d1-944e89b8c8a4",
+		Name:         "Wooded Foothills",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:  "{T}, Pay 1 life, Sacrifice this land: Search your library for a Mountain or Forest card, put it onto the battlefield, then shuffle.",
 			Cost:   fetchlandCost(),

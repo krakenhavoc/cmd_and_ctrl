@@ -12,8 +12,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // every other creature it killed (see game/simultaneous.go).
 func init() {
 	Register(Spec{
-		OracleID: "e4bcd4ea-e7cd-4471-8f3b-18bb51d3d70c",
-		Name:     "Pyroclasm",
+		OracleID:     "e4bcd4ea-e7cd-4471-8f3b-18bb51d3d70c",
+		Name:         "Pyroclasm",
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return damageEachMatching(ctx, Creature(), 2)
 		},

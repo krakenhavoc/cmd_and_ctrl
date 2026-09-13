@@ -260,7 +260,7 @@ func autoTapAbilityFor(abilities []ManaAbilityShape) *ManaAbilityShape {
 		if a.LifeCost > 0 || a.Rider != nil {
 			continue
 		}
-		if a.ManaCost != "" || len(a.Restrictions) > 0 {
+		if a.ManaCost != "" || len(a.Restrictions) > 0 || a.RestrictionsFunc != nil {
 			continue
 		}
 		return &a

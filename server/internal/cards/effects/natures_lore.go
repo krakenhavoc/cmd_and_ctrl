@@ -16,8 +16,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // or a Bayou both qualify in paper and both qualify here.
 func init() {
 	Register(Spec{
-		OracleID: "78826359-fe63-44ad-adc4-a17ffcd710e4",
-		Name:     "Nature's Lore",
+		OracleID:     "78826359-fe63-44ad-adc4-a17ffcd710e4",
+		Name:         "Nature's Lore",
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return SearchLibrary{
 				Player:    ctx.Controller(),

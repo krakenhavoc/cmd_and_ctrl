@@ -147,6 +147,43 @@
     sendAction("resolve_choice", { choice_id: active.id, color }, viewerID);
   }
 
+  // S26 choose_creature_type branch — "as this permanent enters,
+  // choose a creature type" (CR 614.12). The legal set is the whole
+  // CR 205.3m vocabulary, so this is a filter box over a scrolling
+  // list rather than a button row like the colours: nobody scans 345
+  // buttons, and everybody already knows the word they want.
+  const isCreatureTypePick = $derived(active?.kind === "choose_creature_type");
+  const typeOptions = $derived<string[]>(active?.type_options ?? []);
+  let typeFilter = $state("");
+  const filteredTypes = $derived.by(() => {
+    const q = typeFilter.trim().toLowerCase();
+    if (!q) return typeOptions;
+    // Prefix matches first — typing "el" should offer Elf before
+    // Shapeshifter, even though both contain the letters.
+    const starts = typeOptions.filter((t) => t.toLowerCase().startsWith(q));
+    const contains = typeOptions.filter(
+      (t) => !t.toLowerCase().startsWith(q) && t.toLowerCase().includes(q),
+    );
+    return [...starts, ...contains];
+  });
+
+  function pickCreatureType(creatureType: string): void {
+    if (!active || !viewerID) return;
+    typeFilter = "";
+    sendAction("resolve_choice", { choice_id: active.id, creature_type: creatureType }, viewerID);
+  }
+
+  // Enter submits the single best match, so a player who knows their
+  // deck can type "sliv" and hit return without reaching for the
+  // mouse. Deliberately requires an unambiguous top hit rather than
+  // guessing among several: naming the wrong tribe is unrecoverable,
+  // since the choice is made once as the permanent enters.
+  function onTypeFilterKey(e: KeyboardEvent): void {
+    if (e.key !== "Enter" || filteredTypes.length === 0) return;
+    e.preventDefault();
+    pickCreatureType(filteredTypes[0]);
+  }
+
   // S17 replacement_order branch — CR 616 affected-player-chooses-
   // order prompt. Click a row to append it to the `ordered` array;
   // click a row already in the array to remove it (later rows
@@ -556,6 +593,31 @@
               <span class="color-letter">{color}</span>
               <span class="color-name">{meta.label}</span>
             </button>
+          {/each}
+        </div>
+      {:else if isCreatureTypePick}
+        <h2 id="choice-title">
+          {active.reason || "Choose a creature type"}
+          <span class="prompt-src" aria-hidden="true">as this enters · CR 614.12</span>
+        </h2>
+        <p class="prompt-hint">
+          The choice is locked in for as long as this permanent stays on the battlefield.
+        </p>
+        <!-- svelte-ignore a11y_autofocus -->
+        <input
+          class="type-filter"
+          type="text"
+          autofocus
+          placeholder="Filter creature types…"
+          aria-label="Filter creature types"
+          bind:value={typeFilter}
+          onkeydown={onTypeFilterKey}
+        />
+        <div class="type-list">
+          {#each filteredTypes as t (t)}
+            <button type="button" class="type-pick" onclick={() => pickCreatureType(t)}>{t}</button>
+          {:else}
+            <p class="prompt-hint warn">No creature type matches “{typeFilter}”.</p>
           {/each}
         </div>
       {:else if isOptionalReplacement}
@@ -975,6 +1037,40 @@
     letter-spacing: 0.12em;
     text-transform: uppercase;
     opacity: 0.8;
+  }
+  /* S26 creature-type picker. The list is the whole CR 205.3m
+     vocabulary, so it scrolls inside a fixed box rather than growing
+     the modal past the viewport, and the filter box takes focus on
+     open because typing is how anyone finds a word in 345. */
+  .type-filter {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--line, rgba(255, 255, 255, 0.18));
+    background: rgba(0, 0, 0, 0.22);
+    color: inherit;
+    font-size: 14px;
+  }
+  .type-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-height: 46vh;
+    overflow-y: auto;
+    padding: 4px 2px;
+  }
+  .type-pick {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--line, rgba(255, 255, 255, 0.18));
+    background: rgba(255, 255, 255, 0.06);
+    color: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .type-pick:hover,
+  .type-pick:focus-visible {
+    background: rgba(255, 255, 255, 0.16);
   }
   .order-label {
     display: flex;

@@ -16,8 +16,9 @@ package effects
 // families.
 func init() {
 	Register(Spec{
-		OracleID: "fc0707c7-d504-4ccf-a0d2-3eb6e26e7a57",
-		Name:     "Bloodstained Mire",
+		OracleID:     "fc0707c7-d504-4ccf-a0d2-3eb6e26e7a57",
+		Name:         "Bloodstained Mire",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:  "{T}, Pay 1 life, Sacrifice this land: Search your library for a Swamp or Mountain card, put it onto the battlefield, then shuffle.",
 			Cost:   fetchlandCost(),

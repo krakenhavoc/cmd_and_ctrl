@@ -65,8 +65,10 @@ import (
 //     the +1 does. Opponents keep instant speed until it lands.
 func init() {
 	Register(Spec{
-		OracleID: "ae7604bb-4818-45a3-960c-cf3d83f15964",
-		Name:     "Teferi, Time Raveler",
+		OracleID:     "ae7604bb-4818-45a3-960c-cf3d83f15964",
+		Name:         "Teferi, Time Raveler",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Opponents can still cast spells at instant speed.", "The +1 only adds loyalty — it doesn't let you cast sorceries at instant speed."},
 		// Printed loyalty reaches the card through deck import
 		// (ADR 0032 §1); this is the fallback for tokens, fixtures
 		// and the dev spawner, which never see Scryfall data.

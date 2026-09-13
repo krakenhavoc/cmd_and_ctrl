@@ -226,6 +226,23 @@ type ManaAbilityShape struct {
 	// Added in the S32 mana-pipeline pass (#352 sub-gap 2).
 	Restrictions []string
 
+	// RestrictionsFunc computes the spend restrictions at activation
+	// time, for an ability whose restriction names something chosen
+	// rather than printed: Cavern of Souls' "spend this mana only to
+	// cast a creature spell of THE CHOSEN TYPE".
+	//
+	// Wins over Restrictions when non-nil. Returning nil produces
+	// UNRESTRICTED mana, so a card whose restriction cannot be
+	// computed yet must return an impossible tag rather than nothing
+	// — that is the #259 direction, and the one asymmetry in this
+	// slot worth stating out loud. Cavern of Souls with no type named
+	// yet returns a tag naming the empty tribe, which the matcher
+	// refuses, so the mana is unspendable rather than free.
+	//
+	// Same locking contract as Condition and ProducedFunc: read-only,
+	// under g.mu. Added in S26.
+	RestrictionsFunc func(g *Game, controller, source uuid.UUID) []string
+
 	Produced string
 	Label    string
 

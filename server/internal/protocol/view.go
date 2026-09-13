@@ -164,6 +164,13 @@ type PendingChoiceView struct {
 	// Added in S15 sub-PR 2.
 	ColorOptions []string `json:"color_options,omitempty"`
 
+	// TypeOptions populates the S26 "choose_creature_type" kind: every
+	// creature type the engine knows (CR 205.3m), for the picker to
+	// filter. Materialised here from game.AllCreatureTypes rather than
+	// stored on the PendingChoice, because the legal set is the same
+	// for every such prompt and the server can always rebuild it.
+	TypeOptions []string `json:"type_options,omitempty"`
+
 	// ReplacementOptions populates the S17 "replacement_order" kind:
 	// one entry per applicable CR 614 replacement effect the
 	// chooser is ordering. The client renders a drag-reorder list
@@ -525,6 +532,15 @@ type PlayerView struct {
 	DiscordID         string `json:"discord_id,omitempty"`
 	DiscordAvatarHash string `json:"discord_avatar_hash,omitempty"`
 	DisplayName       string `json:"display_name,omitempty"`
+
+	// Bot seat (S31 sub-PR 4). IsBot marks a seat driven by an
+	// aiseat runner; BotTier is its policy tier and BotDeck the
+	// curated deck it was seated with. The client renders a BOT chip
+	// and a distinct avatar mark off these, and shows the thinking
+	// pulse while such a seat holds priority.
+	IsBot   bool   `json:"is_bot,omitempty"`
+	BotTier string `json:"bot_tier,omitempty"`
+	BotDeck string `json:"bot_deck,omitempty"`
 
 	// CommanderCasts is the per-commander cast count from the
 	// command zone (S13.1, CR 903.8). Keyed by commander instance
@@ -1551,6 +1567,13 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c.Kind == game.PendingChoiceMana && len(c.ColorOptions) > 0 {
 			v.ColorOptions = append([]string(nil), c.ColorOptions...)
 		}
+		// PendingChoiceCreatureType — S26. The option set is the
+		// whole CR 205.3m vocabulary; the clone keeps the engine's
+		// package-level slice off the wire path, where a marshaller
+		// has no business holding a reference to it.
+		if c.Kind == game.PendingChoiceCreatureType {
+			v.TypeOptions = append([]string(nil), game.AllCreatureTypes...)
+		}
 		// PendingChoiceReplacementOrder — S17 sub-PR 2. Emit the
 		// ordered list of replacement-effect IDs with a human-
 		// readable label + source-card ID (empty for engine
@@ -1836,6 +1859,9 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		DiscordID:         p.DiscordID,
 		DiscordAvatarHash: p.DiscordAvatarHash,
 		DisplayName:       p.DisplayName,
+		IsBot:             p.IsBot,
+		BotTier:           p.BotTier,
+		BotDeck:           p.BotDeck,
 		CommanderCasts:    cmdrCasts,
 		Counters:          cloneStringIntMap(p.Counters),
 		MaxHandSize:       g.EffectiveMaxHandSizeLocked(p),

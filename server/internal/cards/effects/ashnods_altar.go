@@ -21,8 +21,9 @@ package effects
 // number of times per turn.
 func init() {
 	Register(Spec{
-		OracleID: "4d18bcba-a346-445e-a182-6cc30b7e066d",
-		Name:     "Ashnod's Altar",
+		OracleID:     "4d18bcba-a346-445e-a182-6cc30b7e066d",
+		Name:         "Ashnod's Altar",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost: ManaAbilityCost{
 				SacrificeOther: SacrificeACreature().SacrificeOther,

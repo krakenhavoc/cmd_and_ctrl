@@ -44,6 +44,12 @@ const indestructible = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 
 
 const shroud = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4 C 8 7 16 7 20 4 L 20 15 C 20 19 16.5 21 12 21 C 7.5 21 4 19 4 15 Z"/><path d="M8 11 L 16 11"/><path d="M8.5 15 L 15.5 15"/></svg>`;
 
+// S26 changeling (CR 702.73a — "this card is every creature type").
+// Not a combat keyword like the rest of this file: it is a
+// characteristic, so the icon is a shapeshifter's silhouette caught
+// mid-change rather than a weapon or a shield.
+const changeling = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 C 8 3 6 6 6 9 C 6 12 8 13 8 16 L 8 21"/><path d="M12 3 C 16 3 18 6 18 9 C 18 12 16 13 16 16 L 16 21"/><path d="M8 18 L 16 18"/><circle cx="12" cy="9" r="2.2"/></svg>`;
+
 export const KEYWORD_ICONS: Record<string, string> = {
   flying,
   reach,
@@ -60,4 +66,5 @@ export const KEYWORD_ICONS: Record<string, string> = {
   hexproof,
   shroud,
   indestructible,
+  changeling,
 };

@@ -137,6 +137,16 @@ export interface Settings {
     // caller's own cards (requireCardController), so a seated
     // player who turns it on gains a surface, not authority.
     adminOverrides: boolean;
+    // S31 sub-PR 8: surface a bot's stated reasoning in the table
+    // feed. Bots always announce an improvisation — that disclosure
+    // is mandatory and this toggle does not touch it — but the
+    // per-move "why" is debug output and off by default.
+    //
+    // Worth knowing before turning it on: a bot's reasoning can
+    // mention cards in its OWN hand. That is a disadvantage to the
+    // bot, not a leak of yours (a policy never sees another seat's
+    // hidden state), but it does make the game easier.
+    showBotReasoning: boolean;
   };
 
   accessibility: {
@@ -154,7 +164,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 8;
+export const SETTINGS_VERSION = 9;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -253,6 +263,10 @@ export function defaultSettings(): Settings {
       // permanent's abilities" until the player opts in to the
       // override menu.
       adminOverrides: false,
+      // S31 default: OFF. The improvisation announcement is shown
+      // regardless; this only adds the per-move narration, which is
+      // a debug surface and a lot of lines.
+      showBotReasoning: false,
     },
     accessibility: {
       reduceMotion: reduced,
@@ -348,6 +362,13 @@ function migrate(raw: unknown): Settings {
   // so existing users pick up the one-fewer-click behaviour without
   // touching their stops grid. Nothing to rescue — the behaviour it
   // replaces was hard-coded, not stored.
+  //
+  // v8 → v9 (S31 sub-PR 8): gameplay.showBotReasoning. Same shape
+  // again — the shallow merge fills it from defaults (false) for any
+  // v8 blob that omits the field. Nothing to rescue: bot seats did
+  // not exist at v8, so no stored state can be about them. Note this
+  // setting does NOT gate improvisation announcements, which are
+  // mandatory disclosure and shown at every version.
   return absorbLegacy(merged);
 }
 

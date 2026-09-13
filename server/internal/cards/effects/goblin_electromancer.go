@@ -20,8 +20,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // notice that rule.
 func init() {
 	Register(Spec{
-		OracleID: "81f06f84-1580-43c0-89d5-08d34541a519",
-		Name:     "Goblin Electromancer",
+		OracleID:     "81f06f84-1580-43c0-89d5-08d34541a519",
+		Name:         "Goblin Electromancer",
+		Completeness: CompletenessFull,
 		CostModifiers: []game.CostModifier{
 			CostsLess(1, "Instant and sorcery spells you cast cost {1} less to cast.",
 				YourSpell(), InstantOrSorcerySpell()),

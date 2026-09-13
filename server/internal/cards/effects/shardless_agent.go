@@ -11,8 +11,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // entirely out of one- and two-drops.
 func init() {
 	Register(Spec{
-		OracleID:  "2afbaa9a-c171-4a8b-90f3-5250d8498356",
-		Name:      "Shardless Agent",
-		Triggered: []game.TriggeredAbility{Cascade()},
+		OracleID:     "2afbaa9a-c171-4a8b-90f3-5250d8498356",
+		Name:         "Shardless Agent",
+		Completeness: CompletenessFull,
+		Triggered:    []game.TriggeredAbility{Cascade()},
 	})
 }

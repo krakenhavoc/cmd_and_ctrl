@@ -41,6 +41,50 @@ export interface SeatInfo {
   discord_id?: string;
   discord_avatar_hash?: string;
   display_name?: string;
+  // Bot seats (S31). is_bot marks a seat driven by a server-side
+  // policy runner; bot_tier is its difficulty tier and bot_deck the
+  // curated deck ID it was seated with.
+  is_bot?: boolean;
+  bot_tier?: string;
+  bot_deck?: string;
+}
+
+// BotTierInfo mirrors aiseat.TierInfo. Every declared tier is listed,
+// including the ones no policy has been built for yet — `available`
+// is false for those and the picker greys them out rather than
+// pretending the difficulty slider has a single notch.
+export interface BotTierInfo {
+  tier: string;
+  label: string;
+  description: string;
+  available: boolean;
+}
+
+// BotDeckInfo mirrors aiseat.DeckInfo — one curated bot deck.
+export interface BotDeckInfo {
+  id: string;
+  name: string;
+  description?: string;
+  colors?: string[];
+  commander?: string;
+}
+
+// BotOptions is GET /bot/options: what the Add-bot picker renders.
+// `enabled` is false on a server with no bot host at all, in which
+// case the lobby hides the control instead of offering a button that
+// 503s.
+export interface BotOptions {
+  tiers: BotTierInfo[];
+  decks: BotDeckInfo[];
+  enabled: boolean;
+}
+
+// AddBotResponse mirrors lobby.addBotResponse.
+export interface AddBotResponse {
+  game: GameMeta;
+  player_id: string;
+  deck_name: string;
+  warnings?: ApiViolation[];
 }
 
 // UploadDeckResponse mirrors lobby.uploadDeckResponse.
@@ -192,6 +236,35 @@ export async function spectateGame(
 
 export async function startGame(id: string): Promise<GameMeta> {
   const res = await authFetch(`/games/${id}/start`, { method: "POST" });
+  return (await res.json()) as GameMeta;
+}
+
+// fetchBotOptions reads the tier + curated-deck catalog for the
+// Add-bot picker. Game-independent: the same answer for every table,
+// so the lobby fetches it once on mount. Added in S31.
+export async function fetchBotOptions(): Promise<BotOptions> {
+  const res = await authFetch("/bot/options");
+  return (await res.json()) as BotOptions;
+}
+
+// addBotSeat seats a bot at an unstarted table. Allowed for any
+// player already seated there, and for admin — bots take real seats,
+// so a seated human can add at most three. Added in S31.
+export async function addBotSeat(
+  gameID: string,
+  body: { tier: string; deck?: string; name?: string; format?: string; source?: string },
+): Promise<AddBotResponse> {
+  const res = await authFetch(`/games/${gameID}/seats/bot`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  return (await res.json()) as AddBotResponse;
+}
+
+// removeBotSeat unseats a bot while the table is still in the lobby.
+// Only bot seats can be removed this way. Added in S31.
+export async function removeBotSeat(gameID: string, playerID: string): Promise<GameMeta> {
+  const res = await authFetch(`/games/${gameID}/seats/bot/${playerID}`, { method: "DELETE" });
   return (await res.json()) as GameMeta;
 }
 

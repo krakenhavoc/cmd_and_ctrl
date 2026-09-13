@@ -13,9 +13,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (CR 608.2b): if the 2-damage target left, the 1 still lands.
 func init() {
 	Register(Spec{
-		OracleID: "f1c26b25-371e-4fbf-a43d-7fd59a364d3a",
-		Name:     "Arc Trail",
-		Targets:  TargetAny().WithCount(2, 2),
+		OracleID:     "f1c26b25-371e-4fbf-a43d-7fd59a364d3a",
+		Name:         "Arc Trail",
+		Completeness: CompletenessFull,
+		Targets:      TargetAny().WithCount(2, 2),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			amounts := []int{2, 1}
 			for i, t := range item.Targets {

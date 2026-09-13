@@ -37,8 +37,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // appended exile — so a fizzled or countered Vengeance is exiled too.
 func init() {
 	Register(Spec{
-		OracleID: "a5ca7bd9-0964-405f-adb9-7c27153595e6",
-		Name:     "Increasing Vengeance",
+		OracleID:     "a5ca7bd9-0964-405f-adb9-7c27153595e6",
+		Name:         "Increasing Vengeance",
+		Completeness: CompletenessFull,
 		Targets: instantOrSorcerySpell(
 			"target instant or sorcery spell you control", YouControl()),
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},

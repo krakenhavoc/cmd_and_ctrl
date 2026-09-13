@@ -16,9 +16,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "452e3f5f-ce17-4682-966b-5cc100210aee",
-		Name:     "Bonesplitter",
-		Static:   []game.StaticAbility{PumpAttached(2, 0)},
+		OracleID:     "452e3f5f-ce17-4682-966b-5cc100210aee",
+		Name:         "Bonesplitter",
+		Completeness: CompletenessFull,
+		Static:       []game.StaticAbility{PumpAttached(2, 0)},
 		Activated: []ActivatedAbility{
 			EquipAbility("{1}"),
 		},

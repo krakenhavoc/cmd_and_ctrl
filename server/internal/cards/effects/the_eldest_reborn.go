@@ -22,8 +22,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // would hand an opponent's creature straight back to them.
 func init() {
 	Register(Spec{
-		OracleID: "44ed4c0c-a012-4895-a547-b04150553bba",
-		Name:     "The Eldest Reborn",
+		OracleID:     "44ed4c0c-a012-4895-a547-b04150553bba",
+		Name:         "The Eldest Reborn",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			ChapterTrigger(1, "The Eldest Reborn — I: each opponent sacrifices a creature or planeswalker",
 				eldestRebornSacrifice),

@@ -17,9 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // in paper.
 func init() {
 	Register(Spec{
-		OracleID: "bd16434d-55ea-4c5a-a9ef-752971a4af16",
-		Name:     "Despark",
-		Targets:  TargetPermanent("target permanent with mana value 4 or greater", ManaValueGE(4)),
+		OracleID:     "bd16434d-55ea-4c5a-a9ef-752971a4af16",
+		Name:         "Despark",
+		Completeness: CompletenessFull,
+		Targets:      TargetPermanent("target permanent with mana value 4 or greater", ManaValueGE(4)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

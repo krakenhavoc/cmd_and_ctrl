@@ -13,9 +13,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // CounterTarget primitive doesn't enforce card-type restrictions.
 func init() {
 	Register(Spec{
-		OracleID: "cc187110-1148-4090-bbb8-e205694a39f5",
-		Name:     "Counterspell",
-		Targets:  TargetSpell("target spell"),
+		OracleID:     "cc187110-1148-4090-bbb8-e205694a39f5",
+		Name:         "Counterspell",
+		Completeness: CompletenessFull,
+		Targets:      TargetSpell("target spell"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {
 				return nil

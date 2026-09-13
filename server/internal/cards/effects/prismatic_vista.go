@@ -26,8 +26,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // picker turned into whatever sat lowest in the library.
 func init() {
 	Register(Spec{
-		OracleID: "032b8a0d-491a-4a12-ab9f-689010054d5b",
-		Name:     "Prismatic Vista",
+		OracleID:     "032b8a0d-491a-4a12-ab9f-689010054d5b",
+		Name:         "Prismatic Vista",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label: "{T}, Pay 1 life, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield, then shuffle.",
 			Cost:  fetchlandCost(),
