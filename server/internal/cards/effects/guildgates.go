@@ -10,8 +10,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The budget dual with a Gate subtype, which is the whole reason a
 // deck plays one over a gain land: Gates count for Maze's End and
 // Gatecreeper Vine, and the printed type line is what carries that.
-// Two of the ten are in the roadmap's batch 14 (#307); the other
-// eight belong in this table when their batches reach them — a card
+// Two of the ten are in the roadmap's batch 14 (#307) and two more in
+// batch 16 (#309); the other six belong in this table when their
+// batches reach them — a card
 // that belongs to an existing cycle goes in the cycle's table, never
 // in a new file.
 //
@@ -23,6 +24,9 @@ func init() {
 	for _, land := range []struct{ oracleID, name, a, b string }{
 		{"e8705df9-6439-4930-91b6-229f818559af", "Simic Guildgate", "G", "U"},
 		{"fa2da325-6859-45bb-b185-35526b01bcc1", "Golgari Guildgate", "B", "G"},
+		// Roadmap batch 16 (#309).
+		{"bf75a3d1-f184-4b48-a913-21caee1db084", "Izzet Guildgate", "U", "R"},
+		{"52d14717-0cbc-4d7e-b546-54ea91580338", "Dimir Guildgate", "U", "B"},
 	} {
 		Register(Spec{
 			OracleID:      land.oracleID,
