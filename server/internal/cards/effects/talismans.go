@@ -36,6 +36,8 @@ func init() {
 		{"42b8aa14-10bc-4bd6-88d9-4bb287eadd19", "Talisman of Resilience", "B", "G"},
 		// Roadmap batch 05 (#298).
 		{"f2ccc9e8-8e92-4f8c-8728-8c748630e0dd", "Talisman of Impulse", "R", "G"},
+		// Roadmap batch 09 (#302).
+		{"e5fcc5d7-6a60-4a5b-9d02-6c30041a95b9", "Talisman of Unity", "G", "W"},
 	} {
 		Register(Spec{
 			OracleID:     t.oracleID,
