@@ -22,6 +22,7 @@ func init() {
 	for _, land := range []struct{ oracleID, name, a, b string }{
 		{"d37f858e-03c8-4594-9b92-cd03699a1591", "Scoured Barrens", "W", "B"},
 		{"6de714e1-446d-4fb9-9e3d-bcd3ec6af9ca", "Jungle Hollow", "B", "G"},
+		{"64e29bfc-9313-4e8c-808c-bc27f6b018a6", "Bloodfell Caves", "B", "R"}, // batch 08 (#301)
 	} {
 		Register(Spec{
 			OracleID:      land.oracleID,
