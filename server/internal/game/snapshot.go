@@ -250,6 +250,7 @@ type cardSnapshot struct {
 	Layout                   string              `json:"layout,omitempty"`
 	Faces                    []Face              `json:"faces,omitempty"`
 	ActiveFace               int                 `json:"activeFace,omitempty"`
+	PrintedSelf              *PrintedValues      `json:"printedSelf,omitempty"`
 	NeedsEffect              bool                `json:"needsEffect"`
 	Owner                    uuid.UUID           `json:"owner"`
 	Controller               uuid.UUID           `json:"controller"`
@@ -347,6 +348,7 @@ type pendingChoiceSnapshot struct {
 	PickTargetMin        int                    `json:"pickTargetMin"`
 	PickTargetMax        int                    `json:"pickTargetMax"`
 	SacrificeOptions     []uuid.UUID            `json:"sacrificeOptions,omitempty"`
+	CopyOptions          []uuid.UUID            `json:"copyOptions,omitempty"`
 	ScryCards            []uuid.UUID            `json:"scryCards,omitempty"`
 	TriggerOrderIDs      []uuid.UUID            `json:"triggerOrderIds,omitempty"`
 	PayCost              string                 `json:"payCost,omitempty"`
@@ -680,6 +682,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Layout:                   c.Layout,
 		Faces:                    copyFaces(c.Faces),
 		ActiveFace:               c.ActiveFace,
+		PrintedSelf:              copyPrintedValues(c.PrintedSelf),
 		NeedsEffect:              c.NeedsEffect,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
@@ -856,6 +859,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		PickTargetMin:        c.PickTargetMin,
 		PickTargetMax:        c.PickTargetMax,
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
+		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
 		TriggerOrderIDs:      copyUUIDs(c.TriggerOrderIDs),
 		PayCost:              c.PayCost,
@@ -1123,6 +1127,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Layout:                   c.Layout,
 		Faces:                    copyFaces(c.Faces),
 		ActiveFace:               c.ActiveFace,
+		PrintedSelf:              copyPrintedValues(c.PrintedSelf),
 		NeedsEffect:              c.NeedsEffect,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
@@ -1282,6 +1287,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickTargetMin:        c.PickTargetMin,
 		PickTargetMax:        c.PickTargetMax,
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
+		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
 		TriggerOrderIDs:      copyUUIDs(c.TriggerOrderIDs),
 		PayCost:              c.PayCost,
@@ -1397,4 +1403,20 @@ func copyFaces(in []Face) []Face {
 		return nil
 	}
 	return append([]Face(nil), in...)
+}
+
+// copyPrintedValues deep-copies a card's stashed pre-copy printed
+// values (CR 706 — see copy.go). nil in, nil out: the overwhelming
+// majority of cards are not copies of anything.
+//
+// The value itself is pure data, which is why PrintedValues
+// deliberately excludes the closure-bearing ability slices: a mirror
+// that could not marshal would fail on the write path, in
+// production, for one unlucky game.
+func copyPrintedValues(in *PrintedValues) *PrintedValues {
+	if in == nil {
+		return nil
+	}
+	out := in.Clone()
+	return &out
 }

@@ -151,6 +151,11 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.SearchCards) > 0 {
 				cloned.SearchCards = append([]uuid.UUID(nil), c.SearchCards...)
 			}
+			// S16.5 copy chooser: same reason again — the candidate
+			// list a Clone is choosing from is a slice.
+			if len(c.CopyOptions) > 0 {
+				cloned.CopyOptions = append([]uuid.UUID(nil), c.CopyOptions...)
+			}
 			out.PendingChoices[i] = &cloned
 		}
 	}
@@ -254,6 +259,12 @@ func cloneCard(c Card) Card {
 			}
 		}
 	}
+	// S16.5 copy effects: PrintedSelf is a POINTER, so the value copy
+	// aliases it between the live game and every undo snapshot. A
+	// Clone that dies after the snapshot would restore its printed
+	// values through the shared pointer and the undo would find it
+	// already un-cloned.
+	out.PrintedSelf = copyPrintedValues(c.PrintedSelf)
 	if len(c.Counters) > 0 {
 		out.Counters = make(map[string]int, len(c.Counters))
 		for k, v := range c.Counters {

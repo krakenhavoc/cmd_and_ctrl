@@ -116,6 +116,13 @@ const (
 	// CardID is the new instance.
 	EventTokenCreated EventKind = "token_created"
 
+	// EventCopyApplied — a CR 706 copy effect landed on CardID,
+	// copying Source. Emitted as the permanent enters, between the
+	// push and the zone-move / ETB events, so the log reads
+	// "Clone entered as a copy of Llanowar Elves" in the order it
+	// happened. Added in S16.5 (#159).
+	EventCopyApplied EventKind = "copy_applied"
+
 	// EventSearchLibrary — Actor searched their library. Reserved
 	// for S14 catalog effects that fire SearchLibrary; the log
 	// entry is the "you searched your library" trigger source

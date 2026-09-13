@@ -1558,6 +1558,22 @@ func (g *Game) resolveTopOfStackLocked() error {
 			OldZone: ZoneStack,
 			NewZone: ZoneBattlefield,
 			Actor:   item.Controller,
+			// S16.5: a resolving permanent's entry can now pause on
+			// a prompt — Clone's "choose what to copy" is the first
+			// one — and this branch returns to the client when it
+			// does. The resume finishes the push on this branch's
+			// behalf (executeEntryToBattlefieldLocked).
+			//
+			// It is flagged resumable only because `stackItem`
+			// carries the two things the generic push could not
+			// reproduce: the Aura's attach target and the alternative
+			// cost the item was paid with. Before that, the pause
+			// with no resume was the reason this site was left
+			// unflagged — and the reason a CR 616 ordering prompt on
+			// a permanent spell's entry dropped the permanent
+			// entirely.
+			entryResumable: true,
+			stackItem:      item,
 		}
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
@@ -1586,6 +1602,15 @@ func (g *Game) resolveTopOfStackLocked() error {
 			}
 		}
 		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
+		// CR 706.2: a permanent entering as a copy is that copy from
+		// the moment it enters, so the values land before the counters
+		// (Spark Double's extra +1/+1 goes on the copy) and before any
+		// event fires. `moved` is re-taken because it is a pre-copy
+		// snapshot and CatalogKey(moved) below would otherwise fire
+		// the Clone's own ETB hook rather than the copied card's.
+		if copied, ok := g.applyEntersAsCopyLocked(out, moved.InstanceID); ok {
+			moved = copied
+		}
 		for name, n := range out.EntersWithCounters {
 			_ = g.AddCounterForEffect(moved.InstanceID, name, n)
 		}

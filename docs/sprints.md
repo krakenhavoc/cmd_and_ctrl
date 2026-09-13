@@ -1387,8 +1387,8 @@ The hard sprint of the rules-engine arc — continuous effects are the second-mo
 
 ### Out of scope (explicit handoffs)
 
-- **Dependency detection (CR 613.8)** — Opalescence + Humility pathological case. S16.5 follow-up if a real card surfaces.
-- **Layer 1 copy effects** — Clone, Phyrexian Metamorph, Spark Double. Defer to S16.5.
+- **Dependency detection (CR 613.8)** — Opalescence + Humility pathological case. S16.5 follow-up if a real card surfaces. **Still deferred after S16.5** — the trigger has not fired and no pair of statics in the catalog can produce an observable dependency; see [ADR 0043](decisions/0043-copy-effects.md) §5 for the reasoning and the cost.
+- **Layer 1 copy effects** — Clone, Phyrexian Metamorph, Spark Double. Defer to S16.5. **Landed in S16.5** ([#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159), closes [#335](https://github.com/krakenhavoc/cmd_and_ctrl/issues/335)) — as a copiable-value baseline rewrite rather than a `Layer1Copy` `ContinuousEffect`; see [ADR 0043](decisions/0043-copy-effects.md).
 - **Layer 3 text-changing effects** — Mind Bend, Glamerdye. Engine ships layer 3 stub; no execution path.
 - **Layer 5 color-changing effects** — Painter's Servant. Engine ships the layer 5 stub with no card.
 - **Continuous effects from non-battlefield zones** — Yixlid Jailer, command-zone commander effects. Battlefield-only is the S16 simplification (CR 113.6 default).
@@ -1449,6 +1449,28 @@ Stop-and-show for manual testing at each boundary, mirroring S15.
   Sprint: S16 — Continuous effects + layer system (CR 613)
   Issue: #66
   ```
+
+---
+
+## S16.5 — Layer system follow-ups (rolling)
+
+**Phase:** 7 · **Goal:** land the two things [ADR 0012](decisions/0012-layer-system.md) deferred, when and only when a real card asks for them. Tracked at [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159); no deadline, rolling on demand.
+
+### Layer 1 copy effects ✅
+
+Triggered by a Clone-class card reaching the catalog — and by [#335](https://github.com/krakenhavoc/cmd_and_ctrl/issues/335), where Clone "does not allow the selection of any usable target and enters the battlefield as a 0/0". Both halves of that report are one missing feature: the CR 614 pipeline could not ask a question as a permanent entered, and the layer engine could not say "this permanent's printed values are somebody else's".
+
+- [x] `game.PrintedValues` + `Card.PrintedSelf` — the CR 707.2 copiable-value set, and the revert the battlefield-leave path restores (CR 400.7). Carried by the snapshot, deep-copied by `clone.go`.
+- [x] `ReplacementEffect.CopySelector` + `PendingChoiceCopyTarget` — an as-it-enters picker, answered with the shared `{choice_id, card_ids}` payload; an empty list declines. The copy lands **before** `EventETB`, so every ETB trigger sees the copied characteristics.
+- [x] Stack resolution is now an `entryResumable` entry site, carrying its `StackItem` so the Aura attach (CR 303.4a) and evoke's sacrifice trigger (CR 702.74b) survive the pause. This also fixed a latent bug nothing had hit: **any** permanent spell whose entry queued a CR 616 ordering prompt was dropped instead of pushed.
+- [x] Catalog: Clone, Phyrexian Metamorph, Spark Double, Sakashima the Impostor — between them the three kinds of "except" clause (add a type, override a name, remove a supertype + change how it enters).
+- [x] [ADR 0043](decisions/0043-copy-effects.md), AGENTS.md §7 "Adding a copy effect", client `copy_target` prompt branch.
+
+**Declared gaps:** duration-scoped copy effects (Mirage Mirror, Cytoshape) — the `Layer1Copy` bucket survives for them; an "except" clause that GRANTS an ability (Sakashima's own return-to-hand ability); a declined Clone surviving as a 0/0, which is the engine's pre-existing printed-0-toughness SBA convention, not a copy bug.
+
+### Dependency detection (CR 613.8) — still deferred
+
+The trigger #159 named for this half — a playtester hitting an Opalescence + Humility-class pathology — has not fired, and no pair of statics in the catalog can produce one: dependency is only observable when one static changes whether another static APPLIES, and every static in the catalog is an anthem, a keyword grant, a type-add or a CDA, all commutative under timestamp order. The cost is a required dependency declaration on every `StaticAbility` present and future, plus a topological sort with cycle detection on the hottest path in the engine. Reasoning in full at [ADR 0043](decisions/0043-copy-effects.md) §5. The trigger stays armed.
 
 ---
 
