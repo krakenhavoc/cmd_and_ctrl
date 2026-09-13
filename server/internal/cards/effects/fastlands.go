@@ -9,7 +9,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"{T}: Add {X} or {Y}."
 //
 // Three of the ten, the three this deck plays, plus Blackcleave Cliffs
-// from the roadmap's batch 09 (#302).
+// from the roadmap's batch 09 (#302) and Razorverge Thicket from
+// batch 12 (#305).
 //
 // "Two or fewer OTHER lands" is the clause that makes the condition
 // free to evaluate: the replacement pipeline runs before the land is
@@ -30,6 +31,8 @@ func init() {
 		{"9e7a240d-dc33-47ac-9f17-77fab4c1c340", "Seachrome Coast", "W", "U"},
 		// Roadmap batch 09 (#302).
 		{"5ad94412-6f79-4c5d-bbd4-4ef5779a7b6d", "Blackcleave Cliffs", "B", "R"},
+		// Roadmap batch 12 (#305).
+		{"94f6c407-e665-4032-be13-a01e40c1f306", "Razorverge Thicket", "G", "W"},
 	} {
 		Register(Spec{
 			OracleID:      t.oracleID,
