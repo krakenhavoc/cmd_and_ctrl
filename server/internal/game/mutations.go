@@ -1178,7 +1178,7 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 			p.ManaPool.AddMana(ManaToken{
 				Color:        color,
 				Source:       cardID,
-				Restrictions: copyRestrictions(ab.Restrictions),
+				Restrictions: restrictionsFor(g, ab, p.ID, cardID),
 			})
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: cardID})
 		}
@@ -3504,7 +3504,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			p.ManaPool.AddMana(ManaToken{
 				Color:        options[0],
 				Source:       cardID,
-				Restrictions: copyRestrictions(ab.Restrictions),
+				Restrictions: restrictionsFor(g, &ab, playerID, cardID),
 			})
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: cardID})
 			continue
@@ -3537,7 +3537,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			Source:           cardID,
 			Reason:           ab.Label,
 			ColorOptions:     filtered,
-			ManaRestrictions: copyRestrictions(ab.Restrictions),
+			ManaRestrictions: restrictionsFor(g, &ab, playerID, cardID),
 		})
 	}
 	// --- rider --------------------------------------------------
@@ -5434,6 +5434,53 @@ func (g *Game) SetDiscordIdentity(playerID uuid.UUID, discordID, avatarHash, dis
 	p.DiscordID = discordID
 	p.DiscordAvatarHash = avatarHash
 	p.DisplayName = displayName
+	return nil
+}
+
+// SetBot marks a seat as bot-driven with the named policy tier and
+// the curated deck it was seated with (deckID may be empty when the
+// caller supplied a raw decklist). Lobby state only — a seat cannot
+// change hands mid-game. Added in S31 sub-PR 4.
+func (g *Game) SetBot(playerID uuid.UUID, tier, deckID string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateLobby {
+		return ErrGameNotInLobby
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	p.IsBot = true
+	p.BotTier = tier
+	p.BotDeck = deckID
+	return nil
+}
+
+// RemovePlayer unseats a player and closes the gap in seat numbers.
+// Lobby state only: once a game has started a seat is permanent (a
+// player leaves by conceding). Added in S31 sub-PR 4 so a bot can be
+// removed from an unstarted table.
+func (g *Game) RemovePlayer(playerID uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateLobby {
+		return ErrGameNotInLobby
+	}
+	idx := -1
+	for i, p := range g.Seats {
+		if p != nil && p.ID == playerID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ErrPlayerNotFound
+	}
+	g.Seats = append(g.Seats[:idx], g.Seats[idx+1:]...)
+	for i, p := range g.Seats {
+		p.Seat = i
+	}
 	return nil
 }
 

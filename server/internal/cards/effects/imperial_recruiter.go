@@ -15,8 +15,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // there's nothing else it could mean.
 func init() {
 	Register(Spec{
-		OracleID: "4d6a1391-817a-4ddc-840d-886b138eeb3f",
-		Name:     "Imperial Recruiter",
+		OracleID:     "4d6a1391-817a-4ddc-840d-886b138eeb3f",
+		Name:         "Imperial Recruiter",
+		Completeness: CompletenessFull,
 		OnETB: func(card *game.Card, ctx *Context) error {
 			return SearchLibrary{
 				Player: card.Controller,

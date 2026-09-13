@@ -44,9 +44,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // attack as one batch.
 func init() {
 	Register(Spec{
-		OracleID: "ba0d3df2-3acf-46d7-8d64-8d67d1579adc",
-		Name:     "Curse of Opulence",
-		Targets:  EnchantPlayer(),
+		OracleID:     "ba0d3df2-3acf-46d7-8d64-8d67d1579adc",
+		Name:         "Curse of Opulence",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Only the Curse's controller gets a Gold token; \"each opponent attacking that player does the same\" does nothing."},
+		Targets:      EnchantPlayer(),
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventAttack},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

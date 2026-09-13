@@ -208,6 +208,9 @@ type playerSnapshot struct {
 	DiscordID         string            `json:"discordId,omitempty"`
 	DiscordAvatarHash string            `json:"discordAvatarHash,omitempty"`
 	DisplayName       string            `json:"displayName,omitempty"`
+	IsBot             bool              `json:"isBot,omitempty"`
+	BotTier           string            `json:"botTier,omitempty"`
+	BotDeck           string            `json:"botDeck,omitempty"`
 	LosesAtNextSBA    bool              `json:"losesAtNextSba"`
 	CommanderCasts    map[uuid.UUID]int `json:"commanderCasts,omitempty"`
 	Counters          map[string]int    `json:"counters,omitempty"`
@@ -272,6 +275,12 @@ type cardSnapshot struct {
 	AttachedTo               TargetRef           `json:"attachedTo,omitempty"`
 	AttachedAt               int64               `json:"attachedAt,omitempty"`
 	BaseController           uuid.UUID           `json:"baseController,omitempty"`
+	// NamedTribe is the CR 614.12 "as this enters, choose a creature
+	// type" answer (S26). Carried rather than rebuilt: the choice was
+	// made by a player and nothing in the catalog can re-derive it, so
+	// a restore that lost it would leave a Cavern of Souls producing
+	// mana for a tribe nobody named.
+	NamedTribe string `json:"namedTribe,omitempty"`
 
 	// ManaAbilityCount / ActivatedAbilityCount record that the card
 	// HAD intrinsic ability closures, so restore can tell the
@@ -704,6 +713,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
 		BaseController:           c.BaseController,
+		NamedTribe:               c.NamedTribe,
 		ManaAbilityCount:         len(c.ManaAbilities),
 		ActivatedAbilityCount:    len(c.ActivatedAbilities),
 	}
@@ -739,6 +749,9 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		DiscordID:         p.DiscordID,
 		DiscordAvatarHash: p.DiscordAvatarHash,
 		DisplayName:       p.DisplayName,
+		IsBot:             p.IsBot,
+		BotTier:           p.BotTier,
+		BotDeck:           p.BotDeck,
 		LosesAtNextSBA:    p.LosesAtNextSBA,
 		CommanderCasts:    copyIntMap(p.CommanderCasts),
 		Counters:          copyStringIntMap(p.Counters),
@@ -1149,6 +1162,7 @@ func restoreCard(c *cardSnapshot) Card {
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
 		BaseController:           c.BaseController,
+		NamedTribe:               c.NamedTribe,
 	}
 	// Re-derive intrinsic abilities from the catalog. This is the
 	// half of the closure problem that DOES have an answer: the
@@ -1192,6 +1206,9 @@ func restorePlayer(p *playerSnapshot) *Player {
 		DiscordID:         p.DiscordID,
 		DiscordAvatarHash: p.DiscordAvatarHash,
 		DisplayName:       p.DisplayName,
+		IsBot:             p.IsBot,
+		BotTier:           p.BotTier,
+		BotDeck:           p.BotDeck,
 		LosesAtNextSBA:    p.LosesAtNextSBA,
 		Counters:          copyStringIntMap(p.Counters),
 		MaxHandSize:       p.MaxHandSize,

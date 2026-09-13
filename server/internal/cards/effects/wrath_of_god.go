@@ -17,9 +17,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // DestroyAllMatching is where it will be honoured.
 func init() {
 	Register(Spec{
-		OracleID:  "34515b16-c9a4-4f98-8c77-416a7a523407",
-		Name:      "Wrath of God",
-		OnResolve: wrathDestroyAllCreatures,
+		OracleID:     "34515b16-c9a4-4f98-8c77-416a7a523407",
+		Name:         "Wrath of God",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
+		OnResolve:    wrathDestroyAllCreatures,
 	})
 }
 

@@ -20,8 +20,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // counting a card that failed to move would gain life for nothing.
 func init() {
 	Register(Spec{
-		OracleID: "f0435065-a8ca-4b4d-a7da-0ef41749118f",
-		Name:     "The Binding of the Titans",
+		OracleID:     "f0435065-a8ca-4b4d-a7da-0ef41749118f",
+		Name:         "The Binding of the Titans",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			ChapterTrigger(1, "The Binding of the Titans — I: each player mills three", titansMillAll),
 			ChapterTriggerTargeting(2, "The Binding of the Titans — II: exile up to two cards from graveyards",

@@ -26,6 +26,8 @@ func init() {
 	Register(Spec{
 		OracleID:        "49136bdc-bc50-49a2-999a-1ef9c16ea130",
 		Name:            "Smuggler's Copter",
+		Completeness:    CompletenessCaveats,
+		Caveats:         []string{"The loot trigger fires only when the Copter attacks, never when it blocks."},
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
 			Label:  "Crew 1",

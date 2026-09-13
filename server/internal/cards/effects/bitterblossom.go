@@ -16,8 +16,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // sweep.
 func init() {
 	Register(Spec{
-		OracleID: "fb868840-09fa-49b1-85cb-b08ad065e972",
-		Name:     "Bitterblossom",
+		OracleID:     "fb868840-09fa-49b1-85cb-b08ad065e972",
+		Name:         "Bitterblossom",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The Faerie Rogue token is created colorless instead of black, so anything that cares about a creature's color doesn't see it."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventBeginUpkeep},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

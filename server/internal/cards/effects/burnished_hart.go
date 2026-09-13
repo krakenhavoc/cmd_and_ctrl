@@ -21,8 +21,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // chooser makes "up to two basic land cards" literal.
 func init() {
 	Register(Spec{
-		OracleID: "893fed41-c144-433f-af88-bc7d419b7fb3",
-		Name:     "Burnished Hart",
+		OracleID:     "893fed41-c144-433f-af88-bc7d419b7fb3",
+		Name:         "Burnished Hart",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label: "{3}, Sacrifice Burnished Hart: Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.",
 			Cost: game.AbilityCost{

@@ -17,8 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // corrected in the #338 sweep.
 func init() {
 	Register(Spec{
-		OracleID: "a30907c0-fbde-4fd3-a8c7-f304305fcea7",
-		Name:     "Doomed Traveler",
+		OracleID:     "a30907c0-fbde-4fd3-a8c7-f304305fcea7",
+		Name:         "Doomed Traveler",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The Spirit token is created colorless instead of white, so anything that cares about a creature's color doesn't see it."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

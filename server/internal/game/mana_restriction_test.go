@@ -217,3 +217,62 @@ func TestManaSpendForCastReadsTheCard(t *testing.T) {
 		t.Error("Eldrazi Temple mana refused a colorless Eldrazi built from a real Card")
 	}
 }
+
+// TestChangelingSatisfiesASubtypeRestriction â CR 702.73a. Cavern of
+// Souls named for Elf pays for Universal Automaton, which prints
+// Shapeshifter and no Elf anywhere.
+//
+// The spell is built through ManaSpendForCast rather than by setting
+// the context field by hand, because the thing under test is the
+// projection: a changeling's Subtypes list really does say only
+// "Shapeshifter", and the context has to notice the keyword.
+func TestChangelingSatisfiesASubtypeRestriction(t *testing.T) {
+	changeling := Card{
+		Name: "Universal Automaton", TypeLine: "Artifact Creature — Shapeshifter",
+		Keywords: []string{KeywordChangeling},
+	}
+	ctx := ManaSpendForCast(changeling)
+	cavernElf := []string{ManaRestrictCast, ManaRestrictType("Creature"), ManaRestrictSubtype("Elf")}
+	if !ctx.allows(cavernElf) {
+		t.Error("Cavern of Souls named Elf refused a changeling creature spell")
+	}
+	// Still not every NON-creature subtype: changeling grants creature
+	// types, not Equipment or Aura.
+	if ctx.allows([]string{ManaRestrictSubtype("Equipment")}) {
+		t.Error("changeling satisfied a non-creature subtype restriction")
+	}
+	// And an ordinary Shapeshifter with no changeling does not.
+	plain := ManaSpendForCast(Card{Name: "Plain", TypeLine: "Creature — Shapeshifter"})
+	if plain.allows(cavernElf) {
+		t.Error("a non-changeling Shapeshifter was paid for by Elf-named Cavern mana")
+	}
+}
+
+// TestRestrictionsFuncWinsOverDeclaredRestrictions pins the precedence
+// Cavern of Souls depends on, and the empty-tribe case: before the
+// type is named the ability must produce UNSPENDABLE mana, not
+// unrestricted mana.
+func TestRestrictionsFuncWinsOverDeclaredRestrictions(t *testing.T) {
+	g := NewGame()
+	ab := ManaAbilityShape{
+		Restrictions: []string{ManaRestrictSupertype("Legendary")},
+		RestrictionsFunc: func(*Game, uuid.UUID, uuid.UUID) []string {
+			return []string{ManaRestrictSubtype("Elf")}
+		},
+	}
+	got := restrictionsFor(g, &ab, uuid.Nil, uuid.Nil)
+	if len(got) != 1 || got[0] != ManaRestrictSubtype("Elf") {
+		t.Fatalf("restrictionsFor = %v, want the computed list", got)
+	}
+	// The declared list is used when there is no func.
+	plain := ManaAbilityShape{Restrictions: []string{ManaRestrictCast}}
+	if got := restrictionsFor(g, &plain, uuid.Nil, uuid.Nil); len(got) != 1 || got[0] != ManaRestrictCast {
+		t.Errorf("restrictionsFor with no func = %v, want the declared list", got)
+	}
+	// An unnamed tribe yields "subtype:" with an empty value, which the
+	// matcher refuses — unspendable, not free.
+	unnamed := ManaSpendForCast(Card{Name: "Llanowar Elves", TypeLine: "Creature — Elf Druid"})
+	if unnamed.allows([]string{ManaRestrictSubtype("")}) {
+		t.Error("an empty subtype tag was treated as no restriction")
+	}
+}

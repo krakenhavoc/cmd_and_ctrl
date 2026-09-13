@@ -30,9 +30,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID: "1e6a24be-8281-41c1-a5ba-b68f0ef1d7b8",
-		Name:     "Snakeskin Veil",
-		Targets:  TargetCreature("target creature you control", YouControl()),
+		OracleID:     "1e6a24be-8281-41c1-a5ba-b68f0ef1d7b8",
+		Name:         "Snakeskin Veil",
+		Completeness: CompletenessFull,
+		Targets:      TargetCreature("target creature you control", YouControl()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

@@ -15,6 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "21f45043-5419-4019-8b6c-e5294bd5f549",
 		Name:            "Acidic Slime",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},

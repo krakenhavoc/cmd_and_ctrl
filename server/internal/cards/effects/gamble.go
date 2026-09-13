@@ -22,8 +22,9 @@ import (
 // fairness.
 func init() {
 	Register(Spec{
-		OracleID: "a54f0869-94c8-42af-9080-166efb9486a4",
-		Name:     "Gamble",
+		OracleID:     "a54f0869-94c8-42af-9080-166efb9486a4",
+		Name:         "Gamble",
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller := item.Controller
 			return SearchLibrary{

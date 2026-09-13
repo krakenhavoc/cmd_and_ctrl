@@ -23,8 +23,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Farewell is these same sweeps under ChooseN.
 func init() {
 	Register(Spec{
-		OracleID: "3c8d4999-e18b-48d8-8ed9-f2feaa38300d",
-		Name:     "Merciless Eviction",
+		OracleID:     "3c8d4999-e18b-48d8-8ed9-f2feaa38300d",
+		Name:         "Merciless Eviction",
+		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			Mode("Exile all artifacts."),
 			Mode("Exile all creatures."),

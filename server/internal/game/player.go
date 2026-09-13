@@ -148,6 +148,18 @@ type Player struct {
 	DiscordAvatarHash string
 	DisplayName       string
 
+	// IsBot marks a seat driven by an aiseat runner rather than a
+	// WebSocket client; BotTier names its policy tier ("random",
+	// "heuristic", …) and BotDeck the curated deck it was seated
+	// with (empty for a raw decklist). Set by Game.SetBot at seat
+	// time and exposed through PlayerView so the client can render
+	// the BOT chip. Carried in the snapshot, which is what makes a
+	// bot seat survive a deploy: the lobby's restore path reads
+	// these back and relaunches the runner. Added in S31 sub-PR 4.
+	IsBot   bool
+	BotTier string
+	BotDeck string
+
 	// LosesAtNextSBA marks a player who has tried to draw from an
 	// empty library since the last SBA check (CR 704.5b) and will
 	// be eliminated on the next state-based-action loop. Set by the

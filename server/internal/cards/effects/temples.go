@@ -54,6 +54,7 @@ func init() {
 		Register(Spec{
 			OracleID:     t.oracleID,
 			Name:         t.name,
+			Completeness: CompletenessFull,
 			Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 			OnETB: func(card *game.Card, ctx *Context) error {
 				return Scry{Player: card.Controller, N: 1}.Apply(ctx)

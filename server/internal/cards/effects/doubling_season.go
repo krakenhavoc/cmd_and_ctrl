@@ -31,8 +31,10 @@ import (
 // results in effects/doubling_season_test.go.
 func init() {
 	Register(Spec{
-		OracleID: "01546b7d-a233-4176-8843-d732074dc5b6",
-		Name:     "Doubling Season",
+		OracleID:     "01546b7d-a233-4176-8843-d732074dc5b6",
+		Name:         "Doubling Season",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Only counters are doubled — tokens created under your control are not."},
 		Replacements: []game.ReplacementEffect{
 			{
 				Watches: []game.EventKind{game.EventCounterPlaced},

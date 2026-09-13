@@ -20,8 +20,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "c8b143ad-43ec-4e0d-a440-e348daa31391",
-		Name:     "Swiftfoot Boots",
+		OracleID:     "c8b143ad-43ec-4e0d-a440-e348daa31391",
+		Name:         "Swiftfoot Boots",
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			GrantToAttached("hexproof", "haste"),
 		},

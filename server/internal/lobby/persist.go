@@ -28,6 +28,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
@@ -161,9 +162,26 @@ func (l *Lobby) RestoreFromDisk(log *slog.Logger) int {
 		// process died between the two writes.
 		meta.State = string(o.Room.Game.CurrentState())
 
+		entry := &gameEntry{meta: meta, room: o.Room}
 		l.mu.Lock()
-		l.games[o.GameID] = &gameEntry{meta: meta, room: o.Room}
+		l.games[o.GameID] = entry
+		// Bot seats do not come back on their own. The seat itself is
+		// carried — Player.IsBot / BotTier ride the engine snapshot
+		// and SeatInfo.IsBot rides the metadata written above — but
+		// the runner was a goroutine in the process that died, so an
+		// active game with a bot seat would otherwise resume with the
+		// bot's chair occupied and nobody in it, and the table would
+		// hang the first time priority reached it. Relaunch here,
+		// under the same guard Start uses.
+		var startBots func()
+		if o.Room.Game.CurrentState() == game.StateActive {
+			startBots = l.botStartLocked(entry)
+		}
 		l.mu.Unlock()
+		if startBots != nil {
+			startBots()
+			log.Info("relaunched bot runners for a restored game", "game_id", o.GameID)
+		}
 		restored++
 	}
 

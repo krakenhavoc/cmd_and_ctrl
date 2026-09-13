@@ -1076,6 +1076,12 @@ func Dispatch(g *game.Game, a Action) error {
 			// looked-at card must appear in exactly one list.
 			Bottom   []string `json:"bottom"`
 			TopOrder []string `json:"top_order"`
+			// CreatureType answers an S26 PendingChoiceCreatureType
+			// ("as this enters, choose a creature type", CR 614.12).
+			// A single type name from the CR 205.3m vocabulary; the
+			// engine validates and normalises it. Routed by presence,
+			// like Color above.
+			CreatureType string `json:"creature_type"`
 			// Graveyard answers a PendingChoiceSurveil (CR 701.42)
 			// alongside TopOrder: the looked-at cards going to the
 			// chooser's graveyard. Its PRESENCE is what distinguishes
@@ -1094,6 +1100,9 @@ func Dispatch(g *game.Game, a Action) error {
 		}
 		if p.Color != "" {
 			return g.ResolveManaChoice(choiceID, a.Player, p.Color)
+		}
+		if p.CreatureType != "" {
+			return g.ResolveCreatureTypeChoice(choiceID, a.Player, p.CreatureType)
 		}
 		// The scry family — scry, surveil, "look at the top N and put
 		// them back in any order" — routes on the CHOICE'S KIND, not

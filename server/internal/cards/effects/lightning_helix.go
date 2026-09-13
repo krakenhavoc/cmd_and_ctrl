@@ -15,9 +15,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // caster still gain life even when the damage misses.
 func init() {
 	Register(Spec{
-		OracleID: "800c258a-cfc4-4a54-a667-065ea8dea69e",
-		Name:     "Lightning Helix",
-		Targets:  TargetAny(),
+		OracleID:     "800c258a-cfc4-4a54-a667-065ea8dea69e",
+		Name:         "Lightning Helix",
+		Completeness: CompletenessFull,
+		Targets:      TargetAny(),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			var target game.TargetRef
 			if len(item.Targets) > 0 {

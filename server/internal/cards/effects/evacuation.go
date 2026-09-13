@@ -26,8 +26,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Symmetric — your own creatures come back to your hand too.
 func init() {
 	Register(Spec{
-		OracleID: "fdd94383-b573-439a-8e1c-925af887c5a6",
-		Name:     "Evacuation",
+		OracleID:     "fdd94383-b573-439a-8e1c-925af887c5a6",
+		Name:         "Evacuation",
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return BounceAllMatching{Match: Creature()}.Apply(ctx)
 		},

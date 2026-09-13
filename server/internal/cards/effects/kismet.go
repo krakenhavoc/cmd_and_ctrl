@@ -29,8 +29,9 @@ import (
 // EventETB fires.
 func init() {
 	Register(Spec{
-		OracleID: "81fdd1c4-d43b-4f8b-8712-7c2bf45a3e0b",
-		Name:     "Kismet",
+		OracleID:     "81fdd1c4-d43b-4f8b-8712-7c2bf45a3e0b",
+		Name:         "Kismet",
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			{
 				Watches: []game.EventKind{game.EventZoneMove},

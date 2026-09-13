@@ -23,6 +23,8 @@ func init() {
 	Register(Spec{
 		OracleID:        "e2ee410f-2467-4f1f-84a0-8a79faedc0b3",
 		Name:            "Heart of Kiran",
+		Completeness:    CompletenessCaveats,
+		Caveats:         []string{"You can't remove a loyalty counter from a planeswalker to crew it; only Crew 3 is offered."},
 		PrintedKeywords: []string{"flying", "vigilance"},
 		Activated: []ActivatedAbility{{
 			Label:  "Crew 3",

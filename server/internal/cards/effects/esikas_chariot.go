@@ -19,8 +19,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Cats and, notably, includes the copy it made last turn.
 func init() {
 	Register(Spec{
-		OracleID: "8e7b079d-9ede-421c-bd2b-f9a5126a8e6f",
-		Name:     "Esika's Chariot",
+		OracleID:     "8e7b079d-9ede-421c-bd2b-f9a5126a8e6f",
+		Name:         "Esika's Chariot",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The Cat token is created colorless instead of green, so anything that cares about a creature's color doesn't see it."},
 		Activated: []ActivatedAbility{{
 			Label:  "Crew 4",
 			Cost:   CrewCost(4),

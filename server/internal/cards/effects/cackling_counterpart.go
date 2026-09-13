@@ -26,6 +26,8 @@ func init() {
 	Register(Spec{
 		OracleID:         "9e2adca5-f39c-4a09-bcce-8238ebac2c4a",
 		Name:             "Cackling Counterpart",
+		Completeness:     CompletenessCaveats,
+		Caveats:          []string{"The token copy skips the enters-the-battlefield effect of a card whose entry is an on-enter hook rather than a trigger."},
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Flashback("{5}{U}{U}")},
 		Targets:          TargetCreature("target creature you control", YouControl()),

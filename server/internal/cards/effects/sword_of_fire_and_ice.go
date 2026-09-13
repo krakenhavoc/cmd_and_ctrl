@@ -31,9 +31,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // against two colours.
 func init() {
 	Register(Spec{
-		OracleID: "2ccdc60a-49a9-44b9-a7af-0ebf18b26785",
-		Name:     "Sword of Fire and Ice",
-		Static:   []game.StaticAbility{PumpAttached(2, 2)},
+		OracleID:     "2ccdc60a-49a9-44b9-a7af-0ebf18b26785",
+		Name:         "Sword of Fire and Ice",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Protection from red and from blue isn't granted."},
+		Static:       []game.StaticAbility{PumpAttached(2, 2)},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

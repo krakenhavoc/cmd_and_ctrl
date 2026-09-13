@@ -22,8 +22,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // creature to give up.
 func init() {
 	Register(Spec{
-		OracleID: "6f4ac4a4-53ec-4bc9-8f5c-d4b801d867b2",
-		Name:     "Grave Pact",
+		OracleID:     "6f4ac4a4-53ec-4bc9-8f5c-d4b801d867b2",
+		Name:         "Grave Pact",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

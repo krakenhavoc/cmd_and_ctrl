@@ -15,6 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "6a125750-2b8c-4f9d-8173-ac8d14c91ddb",
 		Name:           "Altar's Reap",
+		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeCost("a creature", Creature()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return DrawCards{Player: ctx.Controller(), N: 2}.Apply(ctx)

@@ -26,8 +26,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // dead on the state-based-action check.
 func init() {
 	Register(Spec{
-		OracleID: "b5516bc9-ec8d-4323-8748-96c49d7d0622",
-		Name:     "Deadly Tempest",
+		OracleID:     "b5516bc9-ec8d-4323-8748-96c49d7d0622",
+		Name:         "Deadly Tempest",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{
 				Match: Creature(),

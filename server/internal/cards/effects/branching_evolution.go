@@ -22,8 +22,9 @@ import (
 // handle N replacements uniformly.
 func init() {
 	Register(Spec{
-		OracleID: "28fe909b-06e0-424c-9f75-c824a25f5865",
-		Name:     "Branching Evolution",
+		OracleID:     "28fe909b-06e0-424c-9f75-c824a25f5865",
+		Name:         "Branching Evolution",
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			{
 				Watches: []game.EventKind{game.EventCounterPlaced},
