@@ -329,6 +329,7 @@ func envDuration(key string, def time.Duration) time.Duration {
 // moving — no deadlock, no rejected moves — until it ends or a turn
 // budget is spent. Run with AISEAT_DEBUG=1 for the move log.
 func TestFourRandomBotsPlay(t *testing.T) {
+	requireGameTests(t)
 	const turnBudget = 40
 	// The stall detector is the real guard here: a deadlocked table
 	// never bumps the sequence again, so any threshold catches it and

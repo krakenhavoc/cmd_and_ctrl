@@ -13,7 +13,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // cycle needs a table at all. The tapped entry is the real CR 614
 // self-replacement. Roadmap batch 11 (#304) ranks Haunted Mire and
 // batch 12 (#305) Tangled Islet; the other eight belong here when
-// their batches reach them.
+// their batches reach them. Foundations reprinted the shape as a new
+// cycle with new names — Radiant Grove (batch 13, #306) is that
+// cycle's Forest Plains, identical text, so it is a row here rather
+// than a second table.
 //
 // No simplification.
 func init() {
@@ -21,6 +24,8 @@ func init() {
 		{"b0b58a03-462c-4964-97c7-42bc777ec23e", "Haunted Mire", "B", "G"},
 		// Roadmap batch 12 (#305): Land — Forest Island.
 		{"4b1f68a2-b606-4c64-bd44-a9714808316d", "Tangled Islet", "G", "U"},
+		// Roadmap batch 13 (#306): Foundations' Land — Forest Plains.
+		{"32c91719-f3dd-4cc7-9e32-7d5ccf18f07c", "Radiant Grove", "G", "W"},
 	} {
 		Register(Spec{
 			OracleID:      land.oracleID,
