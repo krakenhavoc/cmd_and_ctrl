@@ -42,7 +42,14 @@ is a comment on its card file.
 | 10 | #303 | **35** | 3 | 62 | PR #443 — the "no new machinery" group (38 of the 100) |
 | 11 | #304 | **26** | 8 | 62 | PR #444 — the group was 38; 4 of it (Bane of Progress, Cleansing Nova, Vorinclex, Kambal) were already on `main` |
 | 12 | #305 | **28** | 6 | 64 | PR #445 — the group was 36; 2 of it (Grave Titan, Reverberate) were already on `main` |
-| 13–20 | #306–#313 | 0 | 0 | — | not started |
+| 13 | #306 | **33** | 9 | 57 | PR #472 — the group was 43; In Garruk's Wake was already on `main` from #382 |
+| 14 | #307 | **33** | 9 | 55 | PR #475 — the group was 45; Pawn of Ulamog, Crux of Fate and Mazirek were already on `main` |
+| 15 | #308 | **27** | 8 | 65 | PR #476 — the "no new machinery" group (35 of the 100) |
+| 16 | #309 | **34** | 4 | 62 | PR #477 — the "no new machinery" group (38 of the 100) |
+| 17 | #310 | **29** | 7 | 62 | PR #479 — the group was 38; Korvold and Evacuation were already on `main` |
+| 18 | #311 | **36** | 6 | 55 | PR #480 — the group was 45; Dragon Fodder, Solitude and Nevinyrral's Disk were already on `main` |
+| 19 | #312 | **22** | 5 | 73 | PR #481 — the "no new machinery" group (27 of the 100) |
+| 20 | #313 | **27** | 2 | 71 | PR #483 — the "no new machinery" group (29 of the 100) |
 | 21–40 | #383–#391, #393–#403 | 0 | 0 | — | not started — ranked against `459dea6`, 2026-09-11 |
 | 41–60 | #448–#467 | 0 | 0 | — | not started — ranked against `b5a3055`, 2026-09-13 |
 
@@ -528,6 +535,75 @@ granted through a static (2), main-phase trigger event (2),
 tap-another-creature cost (2), sacrificed-cost LKI on the item (2),
 counter-to-zone surface (2), draw-step event (1). Everything else is a
 single card.
+
+### Batches 08–20 — the first pass over the first 2000 is complete
+
+Thirteen batches, one fresh agent each, one PR each (#441–#445, #472,
+#475–#477, #479–#481, #483), run back to back over 2026-09-12/13 from
+the written brief in `data/roadmap/BRIEF.md` (local only). Every
+batch's "no new machinery" group was worked once; what each shipped,
+caveated and skipped is on its issue and in its PR body. The
+first-2000 tally: **every batch's ready group has been walked**, and
+what remains of each batch is the cards the original triage filed
+under a named mechanic.
+
+The skips from those thirteen batches cluster, and the clusters are
+the build order for the mechanics that would unlock the most
+already-triaged cards (counts are approximate, from the issue
+comments; a card can sit in two):
+
+- **Modal triggers and richer mode clauses** (~12): a triggered
+  ability with "choose one" (Junji, Atsushi, Glissa Sunslayer, Rankle,
+  Aether Channeler), per-mode target slots on "choose two or more"
+  (Cryptic Command, Casualties of War, Prismari Command), per-slot
+  predicates on one mode (Bushwhack, Ram Through, Archdruid's Charm),
+  repeatable modes (Fiery Confluence).
+- **Activated-ability cost components that don't exist** (~11):
+  remove a counter (Devoted Druid, Walking Ballista), discard a card
+  (Fauna Shaman, Tortured Existence, Trading Post's fourth ability),
+  tap another creature (Springleaf Drum, Relic of Legends, Susur
+  Secundi, Uthros Research Craft, Clock of Omens), return a land
+  (Quirion Ranger).
+- **Trigger and token replacement** (~9): "triggers an additional
+  time" (Panharmonicon, Teysa Karlov, Isshin, Echoes of Eternity,
+  Annie Joins Up, Elesh Norn) and "create twice that many" (Xorn,
+  Divine Visitation, Stridehangar Automaton, Peregrin Took).
+- **Put or pick a card from hand at resolution** (~8): Kodama of the
+  East Tree, Ghalta, Cultivator Colossus, Sneak Attack, Terrain
+  Generator, Arboreal Grazer, Stoneforge Mystic's second ability,
+  Eureka Moment's and Broken Bond's riders.
+- **Step-entry trigger events that don't exist** (~7): untap step
+  (Seedborn Muse, Unwinding Clock, Bender's Waterskin, Drumbellower),
+  draw step (Howling Mine, Kami of the Crescent Moon), main phase
+  (Ripples of Undeath, Black Market Connections).
+- **Per-player "cast as though it had flash"** (~7): Emergence Zone,
+  Alchemist's Refuge, Vedalken Orrery, Shimmer Myr, Borne Upon a Wind,
+  High Fae Trickster, Liberator.
+- **Once-per-turn trigger tally** (5): Morbid Opportunist, Welcoming
+  Vampire, Terrasymbiosis, Tocasia's Welcome, Monument to Endurance.
+- **An opponent's non-mana choice at resolution** (5): Torment of
+  Hailfire, Combustible Gearhulk, Charismatic Conqueror, Painful
+  Quandary, Chain of Vapor.
+- **A mana ability granted through a static** (5): Cryptolith Rite,
+  Jaheira, Insidious Roots, Rishkar, Marvin.
+- **Life-change replacement through the effect path** (#482, 4) and
+  **mana-production replacement** (2: Nyxbloom Ancient, Mana
+  Reflection).
+- Singles worth naming: X on an activated ability (Treasure Vault,
+  Blast Zone), attack- and block-count restrictions (Silent Arbiter,
+  Crawlspace), a die roll over the seeded RNG (Ancient Copper Dragon,
+  Ancient Gold Dragon), a mill replacement (Bruvac), a search
+  replacement (Aven Mindcensor).
+
+Three engine bugs the sweep found are filed, not fixed: **#446** (mass
+destroy bypasses indestructible), **#478** (a fetched permanent whose
+entry queues a replacement prompt is stranded in the library), **#482**
+(effect-side life changes skip the life-replacement pipeline; Rhox
+Faithmender is wrong today). The agents also recorded, on their issues,
+the smaller gaps they worked around: attacking taps without a tap
+event, dies-trigger LKI without counter math, entry replacements that
+cannot read X, a printed 0/0 the toughness SBA never sweeps, tokens
+skipping the entry pipeline, and `EventBlock` firing per blocker.
 
 ### What batches 06 and 07 found in the engine
 
