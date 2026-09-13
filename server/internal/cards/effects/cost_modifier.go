@@ -1,0 +1,208 @@
+package effects
+
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+// cost_modifier.go — S28: constructors for Spec.CostModifiers, the
+// "spells cost {N} more / {N} less to cast" static (CR 601.2f). The
+// engine half lives in game/cost_modifier.go; this file is the
+// vocabulary a card file writes in.
+//
+// The shape to copy:
+//
+//	CostModifiers: []game.CostModifier{
+//	    CostsMore(1, "Noncreature spells cost {1} more to cast.", NoncreatureSpell()),
+//	    CostsLess(1, "Instant and sorcery spells you cast cost {1} less to cast.",
+//	        YourSpell(), InstantOrSorcerySpell()),
+//	},
+//
+// Predicates are ANDed, so a clause reads left to right in the order
+// the oracle text says it: "instant and sorcery spells YOU cast" is
+// YourSpell() plus InstantOrSorcerySpell(). An empty predicate list
+// is "spells", full stop — Sphere of Resistance.
+//
+// Every constructor takes the printed clause as its label rather
+// than generating one. A generated "costs {1} more" is right until
+// two modifiers on the board disagree about which spells they touch,
+// and then the event log says the same thing twice about different
+// cards. Quoting the oracle text costs one string and makes the log
+// readable.
+
+// CostPredicate narrows a cost modifier to the spells its card
+// actually names. Mirrors CardPredicate in targets.go, one type
+// over: the subject is a cast rather than a permanent, so it reads a
+// game.CostQuery instead of a game.Card.
+//
+// READ-ONLY and under the cast path's write lock — the same contract
+// every predicate in the catalog has.
+type CostPredicate func(q game.CostQuery) bool
+
+// allOf ANDs a predicate list into the single hook the engine wants.
+// Nil for an empty list, which the engine reads as "applies to every
+// spell" — one fewer closure on the hot path for the commonest case.
+func allOf(preds []CostPredicate) func(game.CostQuery) bool {
+	if len(preds) == 0 {
+		return nil
+	}
+	return func(q game.CostQuery) bool {
+		for _, p := range preds {
+			if p == nil || !p(q) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+// CostsMore is "<matching> spells cost {n} more to cast" — Sphere of
+// Resistance, Thalia, Thorn of Amethyst, Aura of Silence.
+func CostsMore(n int, label string, when ...CostPredicate) game.CostModifier {
+	return CostsMoreEach(func(game.CostQuery) int { return n }, label, when...)
+}
+
+// CostsMoreEach is CostsMore with an amount computed per cast —
+// Damping Sphere's "{1} more for each other spell that player has
+// cast this turn".
+func CostsMoreEach(amount func(q game.CostQuery) int, label string, when ...CostPredicate) game.CostModifier {
+	return game.CostModifier{
+		Kind:      game.CostIncrease,
+		Label:     label,
+		AppliesTo: allOf(when),
+		Amount:    amount,
+	}
+}
+
+// CostsLess is "<matching> spells cost {n} less to cast" — Goblin
+// Electromancer, Heartless Summoning.
+//
+// The reduction spends against GENERIC mana only and stops at zero;
+// that rule lives in the engine (game.reduceGeneric) so no card file
+// can get it wrong. A card that wants to reduce a coloured
+// requirement is not this — no card does, and CR 601.2f is why.
+func CostsLess(n int, label string, when ...CostPredicate) game.CostModifier {
+	return CostsLessEach(func(game.CostQuery) int { return n }, label, when...)
+}
+
+// CostsLessEach is CostsLess with an amount computed per cast —
+// Animar's "{1} less for each +1/+1 counter on Animar".
+func CostsLessEach(amount func(q game.CostQuery) int, label string, when ...CostPredicate) game.CostModifier {
+	return game.CostModifier{
+		Kind:      game.CostReduction,
+		Label:     label,
+		AppliesTo: allOf(when),
+		Amount:    amount,
+	}
+}
+
+// CostsAtLeast is a cost-SETTING effect: "each spell that would cost
+// less than `n` mana to cast costs `n` mana to cast" (Trinisphere).
+// The shortfall is made up in generic mana, so a {1}{B} spell under
+// a three-floor costs {2}{B} rather than {3}.
+//
+// Applied after every increase and every reduction on the board,
+// which is the only reading under which "would cost less than three"
+// means anything.
+func CostsAtLeast(n int, label string, when ...CostPredicate) game.CostModifier {
+	return game.CostModifier{
+		Kind:      game.CostFloor,
+		Label:     label,
+		AppliesTo: allOf(when),
+		Amount:    func(game.CostQuery) int { return n },
+	}
+}
+
+// --- who cast it -------------------------------------------------
+
+// YourSpell passes on a spell cast by the modifier source's own
+// controller — the "you" in "spells YOU cast cost {1} less".
+func YourSpell() CostPredicate {
+	return func(q game.CostQuery) bool { return q.Controller == q.Source.Controller }
+}
+
+// OpponentsSpell passes on a spell cast by anyone else — "artifact
+// and enchantment spells your OPPONENTS cast cost {2} more"
+// (Aura of Silence).
+//
+// Anyone-else rather than a seat-by-seat opponent check because the
+// game has no teams: every other player at a Commander table is an
+// opponent, and a modifier source with no controller (a fixture, a
+// token mid-construction) matches nobody rather than everybody.
+func OpponentsSpell() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.Source.Controller != ZeroUUID && q.Controller != q.Source.Controller
+	}
+}
+
+// --- what kind of spell ------------------------------------------
+
+// CreatureSpell passes on a creature spell.
+func CreatureSpell() CostPredicate {
+	return func(q game.CostQuery) bool { return q.Card.IsCreature() }
+}
+
+// NoncreatureSpell passes on anything that is not a creature spell —
+// Thalia, Thorn of Amethyst. A land is never a spell and never
+// reaches this predicate: playing one is a special action (CR
+// 116.2a) and the cast path returns before pricing.
+func NoncreatureSpell() CostPredicate {
+	return func(q game.CostQuery) bool { return !q.Card.IsCreature() }
+}
+
+// InstantOrSorcerySpell passes on an instant or sorcery — Goblin
+// Electromancer.
+func InstantOrSorcerySpell() CostPredicate {
+	return func(q game.CostQuery) bool { return q.Card.IsInstant() || q.Card.IsSorcery() }
+}
+
+// ArtifactOrEnchantmentSpell passes on an artifact or enchantment
+// spell — Aura of Silence.
+func ArtifactOrEnchantmentSpell() CostPredicate {
+	return func(q game.CostQuery) bool { return q.Card.IsArtifact() || q.Card.IsEnchantment() }
+}
+
+// SpellManaValueAtLeast passes when the spell's PRINTED mana value
+// is at least n — Imoti's "spells you cast with mana value 6 or
+// greater". Printed, not effective: CR 202.3c is explicit that a
+// cost modifier changes what a spell costs and never what its mana
+// value is, so a Goblin Electromancer cannot drop a spell out of
+// Imoti's range.
+func SpellManaValueAtLeast(n int) CostPredicate {
+	return func(q game.CostQuery) bool { return q.Card.ManaValue() >= n }
+}
+
+// --- the source's own state --------------------------------------
+
+// SourceUntapped passes while the permanent contributing the
+// modifier is untapped — Trinisphere's "as long as this artifact is
+// untapped".
+//
+// An ordinary predicate rather than engine machinery because the
+// modifier pass reads the source's live battlefield state on every
+// cast; there is nothing to invalidate and nothing to recompute.
+func SourceUntapped() CostPredicate {
+	return func(q game.CostQuery) bool { return !q.Source.Tapped }
+}
+
+// --- counting ----------------------------------------------------
+
+// CountersOnSource counts the named counters on the modifier's own
+// source — Animar's "+1/+1 counter on Animar". Use it as the amount
+// hook of CostsLessEach.
+func CountersOnSource(kind string) func(q game.CostQuery) int {
+	return func(q game.CostQuery) int { return q.Source.Counters[kind] }
+}
+
+// OtherSpellsCastThisTurn counts the spells the CASTER has already
+// cast this turn — Damping Sphere's "for each OTHER spell that
+// player has cast this turn".
+//
+// "Other" comes free: the per-turn tally is bumped after the spell
+// reaches the stack, and cost modifiers are priced before that, so
+// the count this reads already excludes the spell being priced.
+func OtherSpellsCastThisTurn() func(q game.CostQuery) int {
+	return func(q game.CostQuery) int {
+		if q.Game == nil {
+			return 0
+		}
+		return q.Game.SpellsCastThisTurn[q.Controller].Total
+	}
+}

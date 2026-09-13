@@ -14,8 +14,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "14589b6b-1814-46f9-a364-83cc15dacac2",
-		Name:     "Diabolic Tutor",
+		OracleID:     "14589b6b-1814-46f9-a364-83cc15dacac2",
+		Name:         "Diabolic Tutor",
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return SearchLibrary{
 				Player:  ctx.Controller(),

@@ -14,6 +14,13 @@ export type Route =
   | { name: "lobby" }
   | { name: "join"; gameID: string; inviteToken: string; spectator: boolean }
   | { name: "game"; gameID: string }
+  // The card catalogue: every card the engine automates, and how
+  // completely. Session-gated, like the server's /catalog route —
+  // it was built as an anonymous showcase and deliberately closed,
+  // because AGENTS.md §1/§8 describe this project as private and
+  // personal-use and serving card art to signed-out visitors is a
+  // different posture from the one the repo states.
+  | { name: "catalog" }
   // S12.5: /auth/discord/callback (server-side) redirects here with
   // the session details in the URL fragment. App.svelte's effect
   // reads them, installs the session, and navigates onward.
@@ -36,6 +43,8 @@ function parseHash(hash: string): Route {
       return { name: "adminLogin" };
     case "lobby":
       return { name: "lobby" };
+    case "catalog":
+      return { name: "catalog" };
     case "games":
       // /games/:id/join?t=<token> → Join
       // /games/:id                → Game

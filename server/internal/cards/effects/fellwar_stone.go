@@ -30,8 +30,10 @@ package effects
 // is derived contributes nothing. Weaker than printed.
 func init() {
 	Register(Spec{
-		OracleID: "95560508-7ac9-4be9-8a3f-3c7d5b52807b",
-		Name:     "Fellwar Stone",
+		OracleID:     "95560508-7ac9-4be9-8a3f-3c7d5b52807b",
+		Name:         "Fellwar Stone",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"It can't see colors from opponents' lands that themselves copy other lands' mana (Exotic Orchard, Reflecting Pool) — those contribute nothing."},
 		ManaAbilities: []ManaAbility{{
 			Cost:         ManaAbilityCost{Tap: true},
 			ProducedFunc: ProducedFromOpponentLands(),

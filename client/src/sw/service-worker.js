@@ -59,7 +59,12 @@ const SELF_ORIGIN = self.location.origin;
 // because it lives under /cards/, which the deny list otherwise covers whole.
 // The query string (?size=small|normal|art_crop) is part of the cache key --
 // the sizes are different images.
-const CARD_IMAGE_PATH = /^\/cards\/[^/]+\/image$/;
+// /catalog/image/<id> is the public catalogue's own image route. Same
+// bytes, same immutability, same cache -- it exists only because
+// /cards/<id>/image is session-gated and the catalogue page is public
+// (see server/internal/catalog/http.go). Tested before API_PATH below,
+// which is what keeps "catalog" in that deny list from swallowing it.
+const CARD_IMAGE_PATH = /^\/(?:cards\/[^/]+\/image|catalog\/image\/[^/]+)$/;
 
 // The API deny list. Mirrors the @api path matcher in deploy/Caddyfile, which
 // in turn mirrors the server's route table. Deliberately broader than that
@@ -75,7 +80,7 @@ const CARD_IMAGE_PATH = /^\/cards\/[^/]+\/image$/;
 // alternative is a client that starts serving a stale /config from cache the
 // day the route lands.
 const API_PATH =
-  /^\/(ws|healthz|me|logout|config|games|cards|admin|auth|avatars|bugreport|dev|bot)(\/|$)/;
+  /^\/(ws|healthz|me|logout|config|games|cards|admin|auth|avatars|bugreport|dev|bot|catalog)(\/|$)/;
 
 // Hashed build output. Vite content-hashes these filenames, so a given URL's
 // bytes never change and cache-first is always correct.

@@ -39,8 +39,10 @@ package effects
 // weaker than printed rather than stronger — the acceptable direction.
 func init() {
 	Register(Spec{
-		OracleID: "f9d3b046-0b95-4103-a630-4b3fb88bb60b",
-		Name:     "Delighted Halfling",
+		OracleID:     "f9d3b046-0b95-4103-a630-4b3fb88bb60b",
+		Name:         "Delighted Halfling",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Spells cast with the Halfling's colored mana can still be countered."},
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},

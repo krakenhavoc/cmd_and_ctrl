@@ -291,6 +291,9 @@ func Handler(c Config) http.Handler {
 	// The pinned replay is the raw unfiltered view — admin only, with
 	// no game-has-ended relaxation (see bugPinnedReplay).
 	mux.Handle("GET /bugreport/{id}/replay", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, bugPinnedReplay)))
+	// The pinned public game log rides the same admin gate as the
+	// replay — the contents are public, the artifact is unfiltered.
+	mux.Handle("GET /bugreport/{id}/gamelog", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, bugPinnedGameLog)))
 	// Logout does not require an authenticated principal — a client
 	// with a stale or revoked token should still be able to clear
 	// browser state without a 401 dead-end. We just revoke whatever
@@ -669,13 +672,30 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	// Commander tax: if the card is in the command zone of the
 	// caller's seat, add {2} per prior cast. Mirrors
 	// effectiveCostLocked's logic so preview + actual cast align.
+	fromZone := game.ZoneHand
 	if seat := g.PlayerByIDForEffect(p.PlayerID); seat != nil && seat.Command != nil {
 		for _, c := range seat.Command.Cards {
 			if c.InstanceID == cardID {
 				cost.Generic += seat.CommanderCasts[cardID] * 2
+				fromZone = game.ZoneCommand
 				break
 			}
 		}
+	}
+	// S28: the board's cost modifiers (CR 601.2f). Without this the
+	// preview plans a tap for the printed price and the cast that
+	// follows it is short by however much Sphere of Resistance
+	// charges — the two would disagree exactly when the player most
+	// needs them to agree. Same "mirrors effectiveCostLocked" rule
+	// the commander tax above follows.
+	cost, err = g.ApplyCostModifiers(cost, game.CostQuery{
+		Card:       card,
+		Controller: p.PlayerID,
+		FromZone:   fromZone,
+		XValue:     xValue,
+	})
+	if err != nil {
+		return httpError(http.StatusBadRequest, err.Error())
 	}
 	plan, ok := g.AutoTapForCostExcluding(p.PlayerID, cost, xValue, excluded)
 	type response struct {

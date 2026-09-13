@@ -12,8 +12,9 @@ package effects
 // was corrected in the #338 stale-simplification sweep.
 func init() {
 	Register(Spec{
-		OracleID: "6ad8011d-3471-4369-9d68-b264cc027487",
-		Name:     "Sol Ring",
+		OracleID:     "6ad8011d-3471-4369-9d68-b264cc027487",
+		Name:         "Sol Ring",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}{C}",

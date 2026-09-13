@@ -22,8 +22,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // exactly what "drawing from an empty library" does in paper.
 func init() {
 	Register(Spec{
-		OracleID: "53236dd7-845a-444c-96d5-f41ed7325d8f",
-		Name:     "Rhystic Study",
+		OracleID:     "53236dd7-845a-444c-96d5-f41ed7325d8f",
+		Name:         "Rhystic Study",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The draw is mandatory when the opponent declines to pay — you can't choose to skip it, which matters on an empty library."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCast},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

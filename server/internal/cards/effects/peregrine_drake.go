@@ -19,6 +19,8 @@ func init() {
 	Register(Spec{
 		OracleID:        "0bd67481-6bd9-48d6-92bd-8933b5ea1eae",
 		Name:            "Peregrine Drake",
+		Completeness:    CompletenessCaveats,
+		Caveats:         []string{"You don't choose the lands — it auto-untaps up to five of your own tapped lands and can never untap another player's land."},
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},

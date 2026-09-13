@@ -162,6 +162,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// place that can see the whole battlefield.
 		c.AttachedTo = TargetRef{}
 		c.AttachedAt = 0
+		// The layer-2 control baseline is battlefield-only, and
+		// clearing it here is what makes the lazy capture correct:
+		// the next entry re-captures whoever the card enters under.
+		c.BaseController = uuid.Nil
 	}
 	dst.PushTop(c)
 	return c, nil

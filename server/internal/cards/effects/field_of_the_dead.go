@@ -31,6 +31,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "aa959340-c869-4caa-92c7-572bd8d23eef",
 		Name:         "Field of the Dead",
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

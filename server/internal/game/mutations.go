@@ -313,6 +313,23 @@ type CastSpellParams struct {
 	// overload is the worst available failure. Added in S22.
 	AlternativeCost string
 
+	// AltCostIDs names the cards paid to the NON-MANA half of the
+	// claimed alternative cost — Force of Will's "exile a blue card
+	// from your hand", Daze's "return an Island you control to its
+	// owner's hand", Solitude's evoke pitch. Exactly one entry when
+	// the claimed cost has such a component, none otherwise, and a
+	// non-empty list on a cost that charges no cards is rejected
+	// rather than ignored.
+	//
+	// A separate slice from DiscardIDs and SacrificeIDs because it
+	// pays a different cost: those are ADDITIONAL costs, charged
+	// alongside the mana cost and charged whichever cost the caster
+	// chose. This one is part of the alternative cost itself and
+	// vanishes when the caster declines the offer. Folding them into
+	// one list would make "I pitched a blue card" and "I discarded a
+	// card" indistinguishable on the wire. Added in S28.
+	AltCostIDs []uuid.UUID
+
 	// Face names which printed face of a multi-face card is being
 	// cast or played (ADR 0034). Zero — the front face — is the
 	// answer for every single-faced card in the game and for every
@@ -486,15 +503,24 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// grant naming this player. Checked before every other gate
 	// because it's the one that decides whether the card is yours to
 	// touch at all.
+	//
+	// S29 softened the "no grant, no cast" half by exactly one case:
+	// a card whose own text declares ZoneExile castable (suspend's
+	// "cast it without paying its mana cost" is the shape) does not
+	// need an instance grant. Everything else is unchanged, and
+	// hasExileGrant rides down to validateCastPathLocked so the
+	// zone-cost rule can tell the two apart.
+	hasExileGrant := false
 	if src.Kind == ZoneExile {
 		perm := card.ExilePlay
-		if !perm.Active(playerID, g.Turn.Number) {
+		hasExileGrant = perm.Active(playerID, g.Turn.Number)
+		if !hasExileGrant && !CardCastableFromZone(CatalogKey(card), ZoneExile) {
 			return ErrNoPlayPermission
 		}
 		// "You may CAST that card" (Ragavan) does not let you play a
 		// land: playing a land is a special action, not a cast
 		// (CR 305.1, 115.2a).
-		if perm.CastOnly && card.IsLand() {
+		if hasExileGrant && perm.CastOnly && card.IsLand() {
 			return ErrNoPlayPermission
 		}
 	}
@@ -510,6 +536,36 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			"oracle_id", card.OracleID,
 			"alternative_cost", params.AlternativeCost,
 			"targets_received", len(params.Targets),
+		)
+		return err
+	}
+	// S29: the cast PATH — zone and price together. Runs here, right
+	// after the claim is known to be an offer the card makes and
+	// before any targeting work, because the rewrite an alternative
+	// cost applies to the target clause is only legitimate if the
+	// cost could be claimed from this zone at all.
+	if err := g.validateCastPathLocked(card, src.Kind, alt, hasExileGrant); err != nil {
+		slog.Warn("cast_spell rejected: illegal cast path",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"from_zone", src.Kind,
+			"alternative_cost", params.AlternativeCost,
+			"err", err,
+		)
+		return err
+	}
+	// S28: the non-mana half of the claimed offer — the Condition
+	// ("if you control a Swamp"), the life payment, and the card
+	// pitched or bounced to pay it. Validated here, next to the claim
+	// it belongs to; paid further down with the spell already on the
+	// stack, so a Blood Artist watching the pitch triggers above it.
+	if err := g.validateAlternativeCostPaymentLocked(playerID, cardID, alt, params.AltCostIDs); err != nil {
+		slog.Warn("cast_spell rejected: bad alternative cost payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"alternative_cost", params.AlternativeCost,
+			"payment_received", len(params.AltCostIDs),
+			"err", err,
 		)
 		return err
 	}
@@ -610,7 +666,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// down once the spell is on the stack — validate-all-then-pay,
 	// so a rejected cast never leaves a card in the graveyard.
 	addCost := AdditionalCostFor(CatalogKey(card))
-	if err := g.validateAdditionalCostLocked(playerID, cardID, addCost, params.DiscardIDs, params.SacrificeIDs); err != nil {
+	if err := g.validateAdditionalCostLocked(playerID, cardID, addCost, params.DiscardIDs, params.SacrificeIDs, params.XValue); err != nil {
 		slog.Warn("cast_spell rejected: bad additional cost payment",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -835,8 +891,25 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// sacrifice — that triggers off it must resolve before the
 	// spell does. Validation happened at announce, so a failure
 	// past this point is an engine bug rather than a bad request.
-	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs, params.SacrificeIDs); err != nil {
+	payLife := 0
+	if addCost != nil && addCost.PayLifeX {
+		payLife = params.XValue
+	}
+	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs, params.SacrificeIDs, payLife); err != nil {
 		slog.Error("cast_spell: additional cost failed after validation",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"err", err,
+		)
+		return err
+	}
+	// S28: the alternative cost's own non-mana components, in the
+	// same window and for the same reason — pitching a Force of Will
+	// is a card leaving hand while the counterspell is on the stack,
+	// and a Daze returns its Island before the spell it is answering
+	// has resolved.
+	if err := g.payAlternativeCostLocked(playerID, alt, params.AltCostIDs); err != nil {
+		slog.Error("cast_spell: alternative cost failed after validation",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
 			"err", err,
@@ -895,7 +968,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// Emitted after EventCast so a "becomes the target" trigger and
 	// a "whenever a player casts a spell" trigger queue in printed
 	// order.
-	g.emitBecameTargetLocked(playerID, cardID, params.Targets)
+	g.emitBecameTargetLocked(playerID, cardID, cardID, params.Targets)
 	// The caster receives priority right after casting (CR 117.3c),
 	// and CR 603.3 puts any cast-triggered abilities (Rhystic Study,
 	// Beast Whisperer) on the stack at that moment — above the
@@ -1170,6 +1243,28 @@ func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams)
 	if err != nil {
 		return ParsedCost{}, err
 	}
+	// S28: cost modifiers (CR 601.2f) — increases, then reductions,
+	// then Trinisphere-style cost-setting effects. Layered AFTER the
+	// alternative-cost swap and the commander tax because both of
+	// those settle what the spell "would cost", which is the number
+	// every modifier is written against: Thalia taxes an overloaded
+	// spell's overload cost, and Trinisphere looks at the taxed
+	// commander's total rather than the corner of the card.
+	//
+	// Applied BEFORE the convoke subtraction below for the same
+	// reason the tax is: tapping creatures is a way of PAYING the
+	// total cost, and CR 601.2f settles the total before anything
+	// is paid against it.
+	cost, err = g.applyCostModifiersLocked(cost, CostQuery{
+		Game:       g,
+		Card:       card,
+		Controller: p.ID,
+		FromZone:   castFromZoneKind(params.FromZone),
+		XValue:     params.XValue,
+	})
+	if err != nil {
+		return ParsedCost{}, err
+	}
 	// S22: convoke / waterbend. Applied LAST, because it is the only
 	// component that spends against the cost rather than adding to
 	// it — the tax, the any-colour fold and the alternative-cost swap
@@ -1226,21 +1321,55 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	return cost, nil
 }
 
-// castSourceZoneLocked resolves the FromZone string to the zone
-// the card should leave from. Unknown values fall back to hand —
-// keeps the action forward-compatible with sub-PR 8's "command"
-// addition without breaking older clients that omit the field.
-func (g *Game) castSourceZoneLocked(p *Player, fromZone string) (*Zone, error) {
+// castFromZoneKind maps CastSpellParams.FromZone onto the ZoneKind a
+// cost modifier's predicate reads. Mirrors castSourceZoneLocked's
+// switch — including its "unknown falls back to hand" posture, which
+// keeps an older client's omitted field meaning what it always meant.
+// Split out because the cost-modifier query wants the kind without
+// wanting the zone pointer (and without wanting a *Player).
+func castFromZoneKind(fromZone string) ZoneKind {
 	switch fromZone {
-	case "", "hand":
-		return p.Hand, nil
 	case "command":
-		return p.Command, nil
+		return ZoneCommand
 	case "exile":
+		return ZoneExile
+	default:
+		return ZoneHand
+	}
+}
+
+// castSourceZoneLocked resolves the FromZone string to the zone
+// object the card should leave from. A string that names no zone is
+// ErrZoneNotFound.
+//
+// This lookup grants NOTHING on its own — it answers "which pile",
+// not "may you". S29's validateCastPathLocked is the permission
+// half, and for exile the per-instance ExilePlay grant is checked in
+// CastSpell before anything moves.
+//
+// Graveyard and hand resolve to the CALLER's own zone, which is
+// most of what flashback's "from your graveyard" needs: a player
+// naming a card in someone else's graveyard simply won't find it.
+func (g *Game) castSourceZoneLocked(p *Player, fromZone string) (*Zone, error) {
+	kind, ok := castZoneFromWire(fromZone)
+	if !ok {
+		return nil, ErrZoneNotFound
+	}
+	switch kind {
+	case ZoneHand:
+		return p.Hand, nil
+	case ZoneCommand:
+		return p.Command, nil
+	case ZoneGraveyard:
+		// S29: the graveyard became castable at all with flashback
+		// and escape. Per-player, so the zone lookup already scopes
+		// the cast to "your graveyard".
+		return p.Graveyard, nil
+	case ZoneExile:
 		// S21 sub-PR 6: impulse exile. Exile is a SHARED zone, so
-		// unlike hand and command the zone lookup grants nothing on
-		// its own — CastSpell checks the per-card permission before
-		// it will move anything.
+		// unlike hand, command and graveyard the zone lookup does not
+		// even scope the cast to this player — CastSpell checks the
+		// per-card permission before it will move anything.
 		return g.Exile, nil
 	default:
 		return nil, ErrZoneNotFound
@@ -1320,8 +1449,9 @@ func (g *Game) resolveTopOfStackLocked() error {
 	if !ok || item == nil {
 		// Defensive: a card on the stack without a meta entry should
 		// not happen — but if it does, route to graveyard so the
-		// stack doesn't wedge.
-		return g.routeStackCardToGraveyardLocked(top)
+		// stack doesn't wedge. No meta means no record of the cost
+		// that was paid, so no flashback replacement either.
+		return g.routeStackCardToGraveyardLocked(top, "")
 	}
 	// CR 608.1: spells and abilities share one LIFO stack. An ability
 	// item stamped with a higher Seq than the top spell was added
@@ -1358,7 +1488,18 @@ func (g *Game) resolveTopOfStackLocked() error {
 			Source: top.InstanceID,
 			CardID: top.InstanceID,
 		})
-		return g.routeStackCardToGraveyardLocked(top)
+		// A COPY has no way out of the stack at all: CR 706.10 says
+		// it is not a card, so "countered by game rules" leaves it
+		// nowhere to go. Checked BEFORE the flashback branch below
+		// because a copy of a flashed-back spell is still not a card
+		// — the exile replacement has no object to act on.
+		if item.IsCopy {
+			return g.ceaseToExistLocked(top.InstanceID)
+		}
+		// S29: a flashed-back spell that fizzles is still exiled —
+		// CR 702.34a replaces every way out of the stack, not just
+		// the resolution.
+		return g.routeStackCardToGraveyardLocked(top, item.AltCost)
 	}
 	g.EmitEvent(Event{
 		Kind:   EventResolve,
@@ -1371,6 +1512,24 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// spells fire their effect here. Errors emit EventEffectError
 	// via fireEffectResolverLocked and do not wedge resolution.
 	g.fireEffectResolverLocked(item, CatalogKey(top), top.InstanceID)
+	// CR 707.10: a resolving copy of a PERMANENT spell becomes a
+	// token. This engine has no token-from-stack-item path, and
+	// letting the copy fall through to the battlefield branch below
+	// would be worse than doing nothing — it would put a second
+	// card-shaped object carrying the original's oracle ID into
+	// play, which a bounce spell then duplicates into a hand. Every
+	// S30 copy card targets an instant or sorcery, so this is
+	// unreachable today; it is written out because it is where the
+	// token rule lands.
+	if item.IsCopy && top.IsPermanent() {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Actor:    item.Controller,
+			CardID:   top.InstanceID,
+			ErrorMsg: "copying a permanent spell is not implemented (CR 707.10 token)",
+		})
+		return g.ceaseToExistLocked(top.InstanceID)
+	}
 	if top.IsPermanent() {
 		// ADR 0034: settle which face the PERMANENT keeps before the
 		// replacement pipeline runs, so the entering card's
@@ -1399,6 +1558,22 @@ func (g *Game) resolveTopOfStackLocked() error {
 			OldZone: ZoneStack,
 			NewZone: ZoneBattlefield,
 			Actor:   item.Controller,
+			// S16.5: a resolving permanent's entry can now pause on
+			// a prompt — Clone's "choose what to copy" is the first
+			// one — and this branch returns to the client when it
+			// does. The resume finishes the push on this branch's
+			// behalf (executeEntryToBattlefieldLocked).
+			//
+			// It is flagged resumable only because `stackItem`
+			// carries the two things the generic push could not
+			// reproduce: the Aura's attach target and the alternative
+			// cost the item was paid with. Before that, the pause
+			// with no resume was the reason this site was left
+			// unflagged — and the reason a CR 616 ordering prompt on
+			// a permanent spell's entry dropped the permanent
+			// entirely.
+			entryResumable: true,
+			stackItem:      item,
 		}
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
@@ -1427,6 +1602,15 @@ func (g *Game) resolveTopOfStackLocked() error {
 			}
 		}
 		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
+		// CR 706.2: a permanent entering as a copy is that copy from
+		// the moment it enters, so the values land before the counters
+		// (Spark Double's extra +1/+1 goes on the copy) and before any
+		// event fires. `moved` is re-taken because it is a pre-copy
+		// snapshot and CatalogKey(moved) below would otherwise fire
+		// the Clone's own ETB hook rather than the copied card's.
+		if copied, ok := g.applyEntersAsCopyLocked(out, moved.InstanceID); ok {
+			moved = copied
+		}
 		for name, n := range out.EntersWithCounters {
 			_ = g.AddCounterForEffect(moved.InstanceID, name, n)
 		}
@@ -1456,8 +1640,16 @@ func (g *Game) resolveTopOfStackLocked() error {
 		g.queueAltCostEntryTriggerLocked(moved, item)
 		return nil
 	}
-	// Instants / sorceries: resolve to the owner's graveyard.
-	return g.routeStackCardToGraveyardLocked(top)
+	// CR 706.10 — a COPY is not a card, so it has no graveyard to go
+	// to and no flashback exile to be caught by either. It ceases to
+	// exist, having already run its effect above. See spell_copy.go
+	// for why this branch is load-bearing rather than cosmetic.
+	if item.IsCopy {
+		return g.ceaseToExistLocked(top.InstanceID)
+	}
+	// Instants / sorceries: resolve to the owner's graveyard — or to
+	// exile, when the flashback cost was paid (CR 702.34a).
+	return g.routeStackCardToGraveyardLocked(top, item.AltCost)
 }
 
 // spellAllTargetsIllegalLocked reports whether a resolved stack item
@@ -1587,9 +1779,35 @@ func (g *Game) resolveTopAbilityLocked() error {
 // routeStackCardToGraveyardLocked moves a card off Game.Stack and
 // into its owner's graveyard. Used by resolveTopOfStackLocked for
 // instants / sorceries and by the "countered by game rules" path
-// (sub-PR 3) when every target is illegal on resolve. Caller must
-// hold g.mu.
-func (g *Game) routeStackCardToGraveyardLocked(c Card) error {
+// (sub-PR 3) when every target is illegal on resolve.
+//
+// `altCost` is the key of the cost the spell was cast for, because
+// S29's flashback replaces this destination: "exile this card
+// instead of putting it anywhere else any time it would leave the
+// stack" (CR 702.34a). Pass "" for a spell cast for its printed
+// cost, and for the defensive no-StackMeta path where there is no
+// cost to read.
+//
+// Caller must hold g.mu.
+func (g *Game) routeStackCardToGraveyardLocked(c Card, altCost string) error {
+	// S29 flashback. Checked before the owner lookup because it does
+	// not depend on one: the destination is the shared exile zone
+	// either way, which is also where a card whose owner has left
+	// the game already goes.
+	if altCostExilesFromStack(c, altCost) {
+		if _, err := MoveCard(g.Stack, g.Exile, c.InstanceID); err != nil {
+			return err
+		}
+		g.markCardKnownInZoneLocked(g.Exile, c.InstanceID)
+		g.EmitEvent(Event{
+			Kind:    EventZoneMove,
+			Actor:   c.Owner,
+			CardID:  c.InstanceID,
+			OldZone: ZoneStack,
+			NewZone: ZoneExile,
+		})
+		return nil
+	}
 	owner := g.playerByIDLocked(c.Owner)
 	if owner == nil {
 		// Owner is no longer seated — drop the card to exile so the
@@ -1850,7 +2068,7 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 	})
 	// CR 603.3d: a manually-announced trigger chooses its targets as
 	// it goes on the stack, same as the harvested kind.
-	g.emitBecameTargetLocked(playerID, sourceCardID, params.Targets)
+	g.emitBecameTargetLocked(playerID, sourceCardID, id, params.Targets)
 	return nil
 }
 
@@ -2041,11 +2259,20 @@ func (g *Game) stateBasedActionsLocked() bool {
 				continue
 			}
 			curT := c.CurrentToughness()
+			// CR 704.5f — toughness 0 or less PUTS the creature into
+			// its owner's graveyard; it does not destroy it, so
+			// indestructible deliberately does not save it here. A
+			// 2/2 with indestructible under two -1/-1 counters dies.
 			if curT <= 0 {
 				doomed = append(doomed, c.InstanceID)
 				continue
 			}
-			if c.DamageMarked >= curT {
+			// S25 (#77): the two damage-driven creature SBAs below
+			// are both DESTRUCTION (CR 704.5g, CR 704.5h), so
+			// indestructible switches both off (CR 702.12b). The
+			// damage stays marked either way — see indestructible.go.
+			indestructible := IsIndestructible(&c)
+			if c.DamageMarked >= curT && !indestructible {
 				doomed = append(doomed, c.InstanceID)
 				continue
 			}
@@ -2055,7 +2282,7 @@ func (g *Game) stateBasedActionsLocked() bool {
 			// until cleanup (or the card's destruction, via the
 			// zone-move listener) so a subsequent SBA pass on the
 			// same event cycle doesn't "un-doom" the creature.
-			if c.MarkedLethalByDeathtouch {
+			if c.MarkedLethalByDeathtouch && !indestructible {
 				doomed = append(doomed, c.InstanceID)
 			}
 			continue
@@ -2075,10 +2302,41 @@ func (g *Game) stateBasedActionsLocked() bool {
 			continue
 		}
 	}
-	for _, id := range doomed {
-		if err := g.routeBattlefieldCardToOwnerGraveyardLocked(id); err == nil {
+	// S23: one SBA pass is ONE event (CR 704.3 — all applicable
+	// state-based actions are performed simultaneously as a single
+	// event). The collection above already worked off a single
+	// consistent board; routing the executions through the
+	// simultaneous-exit batch makes the TRIGGERS agree, so a Blood
+	// Artist that Pyroclasm or Toxic Deluge killed alongside the rest
+	// of the board still sees every one of those deaths. See
+	// simultaneous.go.
+	if g.destroyPermanentsLocked(doomed) > 0 {
+		fired = true
+	}
+
+	// 704.5s (S27) — a Saga at or past its final chapter, with no
+	// chapter ability of its own still on the stack, is SACRIFICED by
+	// its controller. Separate from the `doomed` loop above because
+	// sacrifice is not destruction: it emits EventSacrifice (which
+	// aristocrats payoffs watch) and it ignores indestructible.
+	//
+	// Runs after the destruction pass so a Saga that was also going
+	// to die for another reason has already gone, and the "chapter
+	// still on the stack" check sees the settled queue.
+	for _, id := range g.sagasReadyToSacrificeLocked() {
+		if err := g.sacrificePermanentLocked(id); err == nil {
 			fired = true
 		}
+	}
+
+	// 704.5j (S27) — the legend rule. Last, because it is the one
+	// state-based action whose outcome is a CHOICE rather than a
+	// consequence: running it after the destruction and sacrifice
+	// passes means a player is never asked to pick between two
+	// legends when one of them was about to leave anyway. See
+	// legend_rule.go.
+	if g.queueLegendRuleChoicesLocked() {
+		fired = true
 	}
 
 	return fired
@@ -2724,6 +2982,19 @@ func (g *Game) CounterSpell(spellID uuid.UUID, dst *ZoneRef) error {
 		destZone = g.zoneFromRefLocked(*dst)
 		if destZone == nil {
 			return ErrZoneNotFound
+		}
+	}
+	// S29 flashback: "exile this card instead of putting it anywhere
+	// else ANY TIME it would leave the stack" (CR 702.34a). It beats
+	// the counter's chosen destination, so a flashed-back spell
+	// answered by Hinder is exiled rather than shuffled away — which
+	// is the whole difference between a replacement effect and an
+	// exile bolted onto the resolution, and the only place in the
+	// engine where it is observable.
+	for _, c := range g.Stack.Cards {
+		if c.InstanceID == spellID && altCostExilesFromStack(c, item.AltCost) {
+			destZone = g.Exile
+			break
 		}
 	}
 	if _, err := MoveCard(g.Stack, destZone, spellID); err != nil {
@@ -4010,8 +4281,23 @@ func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 			if !CanBlock(attacker, blocker) {
 				return ErrIllegalBlock
 			}
+			// S31 sub-PR 0: announce the declaration for the public
+			// game log, but only when the pairing is NEW. The sandbox
+			// lets a defender re-point a blocker at a different
+			// attacker; that is one decision being revised, not two
+			// blocks, and EventAttack draws the same line.
+			announce := blocker.BlockingTarget != attackerID
 			blocker.BlockingTarget = attackerID
 			blocker.AttackingTarget = uuid.Nil
+			if announce {
+				g.EmitEvent(Event{
+					Kind:   EventBlock,
+					Actor:  blocker.Controller,
+					Source: blocker.InstanceID,
+					CardID: blocker.InstanceID,
+					Target: attackerID,
+				})
+			}
 			return nil
 		}
 	}
@@ -4314,7 +4600,6 @@ func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UU
 		SourceLifelink:    HasKeyword(atk, "lifelink"),
 		SourceController:  atk.Controller,
 		SourceIsCommander: atk.IsCommander,
-		SourceOwner:       atk.Owner,
 	}
 	g.QueueChoiceForEffect(PendingChoice{
 		Kind:             PendingChoiceDamageAssignment,
@@ -4492,11 +4777,12 @@ func (g *Game) markCombatDamageToPlayerFromFrameLocked(playerID uuid.UUID, amoun
 	}
 	p.ChangeLife(-out.DamageAmount)
 	// CR 903.10a: trample overflow from a commander counts toward the
-	// 21-damage SBA. Read the cached frame flags — the attacker may
-	// have died to blocker damage before the prompt resolved, so a
-	// battlefield lookup would miss it.
+	// 21-damage SBA. Read the cached frame — the attacker may have
+	// died to blocker damage before the prompt resolved, so a
+	// battlefield lookup would miss it. AttackerID is the commander's
+	// instance ID, which is the CommanderDamage key since S25 (#77).
 	if frame.SourceIsCommander {
-		p.RecordCommanderDamage(frame.SourceOwner, out.DamageAmount)
+		p.RecordCommanderDamage(frame.AttackerID, out.DamageAmount)
 	}
 	g.EmitEvent(Event{
 		Kind:   EventDealDamage,
@@ -4626,10 +4912,10 @@ func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount
 // recordCommanderCombatDamageLocked notes combat damage on the
 // defending player's CommanderDamage map when the source is a
 // commander, feeding the 21-damage SBA (CR 903.10a /
-// IsDeadByCommanderDamage). Keyed by the commander's owner to match
-// the per-opponent map shape (see the note on Player.CommanderDamage).
-// No-op when the source isn't on the battlefield or isn't a
-// commander. Caller must hold g.mu.
+// IsDeadByCommanderDamage). Keyed by the commander's own INSTANCE ID
+// since S25 (#77), so a partner pair tracks two independent clocks
+// (CR 903.14a). No-op when the source isn't on the battlefield or
+// isn't a commander. Caller must hold g.mu.
 func (g *Game) recordCommanderCombatDamageLocked(target *Player, sourceID uuid.UUID, amount int) {
 	if amount <= 0 || target == nil {
 		return
@@ -4638,7 +4924,7 @@ func (g *Game) recordCommanderCombatDamageLocked(target *Player, sourceID uuid.U
 	if src == nil || !src.IsCommander {
 		return
 	}
-	target.RecordCommanderDamage(src.Owner, amount)
+	target.RecordCommanderDamage(src.InstanceID, amount)
 }
 
 // ClearCombat resets every card on the battlefield to "not attacking
@@ -5021,27 +5307,32 @@ func (g *Game) applyCounterLocked(cardID uuid.UUID, name string, delta int) erro
 	return ErrCardNotFound
 }
 
-// SetCommanderDamage sets the total commander damage dealt to the
-// target player by the given opponent's commander(s). This is a set
-// operation, not an increment — the client computes and sends the new
-// total. Intended to back a 4×4 commander-damage grid UI.
+// SetCommanderDamage sets the total damage one commander has dealt
+// to the target player. This is a set operation, not an increment —
+// the caller computes and sends the new total. It is the sandbox
+// override behind the commander-damage UX, for the cases the engine
+// cannot see (a manually resolved effect, a misclick to undo).
 //
-// Both `from` and `to` must be IDs of seated players; passing an ID
-// that doesn't correspond to a seated player returns ErrPlayerNotFound
-// rather than silently polluting the target's damage map.
+// `from` is a commander's card INSTANCE ID as of S25 (#77); it was a
+// player ID before the rekey. It is looked up across every tracked
+// zone rather than on the battlefield alone, because a commander
+// sitting in the command zone after a lethal swing is exactly when a
+// player reaches for this control. `to` is a seated player.
 //
-// NOTE: CommanderDamage is keyed by opponent player ID, not by
-// commander instance ID, so partner commanders are not correctly
-// distinguished. See the package-level note on Player.CommanderDamage
-// in player.go — S10 fix.
+// ErrCardNotFound for an ID that names no card or names a card that
+// is not a commander; ErrPlayerNotFound for an unseated `to`. Both
+// beat silently polluting the target's damage map with a key nothing
+// will ever render — the client keys its per-commander rows off
+// instance IDs, so a bogus key is invisible rather than merely wrong.
 func (g *Game) SetCommanderDamage(from, to uuid.UUID, amount int) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
-	if g.playerByIDLocked(from) == nil {
-		return ErrPlayerNotFound
+	src, ok := g.LookupCardForEffect(from)
+	if !ok || !src.IsCommander {
+		return ErrCardNotFound
 	}
 	target := g.playerByIDLocked(to)
 	if target == nil {

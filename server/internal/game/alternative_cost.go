@@ -79,6 +79,48 @@ type AlternativeCost struct {
 	// otherwise is confused about which cost it is paying.
 	ClearsTargets bool
 
+	// Condition gates the OFFER — "IF YOU CONTROL A COMMANDER, you
+	// may cast this spell without paying its mana cost" (Fierce
+	// Guardianship), "IF YOU CONTROL A SWAMP, you may pay 4 life
+	// rather than pay this spell's mana cost" (Snuff Out).
+	//
+	// Checked at announce and again in the view, so an offer the
+	// caster cannot take is neither shown nor accepted. Nil means
+	// unconditional, which is what overload, evoke and cleave are.
+	//
+	// Read-only, under g.mu. Added in S28.
+	Condition func(g *Game, controller uuid.UUID) bool
+
+	// Life is a "pay N life" component of the alternative cost (CR
+	// 118.4) — Force of Will's 1 life, Snuff Out's 4.
+	//
+	// A COST, not a drawback: it is validated before anything is
+	// paid, so a player below N life cannot claim the offer at all.
+	// (CR 118.4 lets a player pay life down to exactly zero, and the
+	// state-based action kills them afterwards — that is a legal, if
+	// unwise, Force of Will.)
+	Life int
+
+	// ExileFromHand is "exile a blue card from your hand" (Force of
+	// Will) or "exile a white card from your hand" (Solitude's evoke
+	// cost), as a spec matched against the caster's hand. The caster
+	// names the card in CastSpellParams.AltCostIDs.
+	//
+	// The spell being cast is never a legal choice: CR 601.2a moves
+	// it to the stack before costs are paid, so it is no longer in
+	// hand. Force of Will cannot pitch itself.
+	ExileFromHand *TargetSpec
+
+	// ReturnToHand is "return an Island you control to its owner's
+	// hand" (Daze), matched against the caster's permanents. Also
+	// named in CastSpellParams.AltCostIDs.
+	ReturnToHand *TargetSpec
+
+	// PayLabel is the picker's prompt copy for the ExileFromHand /
+	// ReturnToHand component ("a blue card", "an Island you
+	// control"). Empty falls back to Label.
+	PayLabel string
+
 	// SacrificeOnEntry is evoke's "it's sacrificed when it enters".
 	// Modelled as what CR 702.74b says it is — a triggered ability —
 	// rather than as an immediate sacrifice inside the resolution.
@@ -87,6 +129,62 @@ type AlternativeCost struct {
 	// a window, and the creature's own leaves-the-battlefield
 	// trigger goes on the stack above nothing and draws the cards.
 	SacrificeOnEntry bool
+
+	// FromZone binds this offer to one cast source zone (S29). The
+	// zero value — the overwhelming majority — means "from hand",
+	// which is where overload, evoke and cleave are paid.
+	//
+	// Flashback and escape set ZoneGraveyard, and that single field
+	// is what makes them alternative costs rather than a new kind of
+	// thing: "cast this from your graveyard for {2}{R}" is a price
+	// plus a place. The binding cuts BOTH ways and both halves
+	// matter. A cast out of the graveyard may not claim overload,
+	// and a cast out of hand may not claim flashback — the second
+	// being the one that would hand the player a cheaper Faithless
+	// Looting for free.
+	//
+	// A card that declares a bound offer must also list the zone in
+	// Spec.CastableZones; Register panics otherwise, because an
+	// offer bound to a zone the card cannot be cast from is
+	// unclaimable and the card file meant one or the other.
+	FromZone ZoneKind
+
+	// ExileOnLeavingStack is flashback's "if the flashback cost was
+	// paid, exile this card instead of putting it anywhere else any
+	// time it would leave the stack" (CR 702.34a).
+	//
+	// It is the half of flashback that keeps it from being infinite,
+	// and it is a REPLACEMENT rather than an exile bolted onto the
+	// resolution — the difference is observable on every path out of
+	// the stack that isn't a resolution. A flashed-back spell that
+	// fizzles is exiled. A flashed-back spell answered by Hinder is
+	// exiled rather than shuffled into its owner's library, because
+	// CR 614 replaces the counter's destination too.
+	//
+	// Escape does NOT set this: an escaped Uro exiles itself through
+	// its own printed text, and an escaped Kroxa does not exile at
+	// all. Flashback is the keyword that carries the clause.
+	ExileOnLeavingStack bool
+
+	// WarpExile is warp's "exile this permanent at the beginning of
+	// the next end step, then you may cast it from exile on a later
+	// turn" (CR 702.183a).
+	//
+	// The sibling of SacrificeOnEntry, and modelled the same way:
+	// the cost attaches a clause to the permanent's ENTRY, and the
+	// clause uses the ordinary machinery rather than a bespoke one.
+	// Evoke queues a triggered ability; warp schedules a CR 603.7
+	// delayed trigger, and the grant it leaves behind is the same
+	// ExilePlayPermission airbend uses — unbounded (the window is
+	// "for as long as it remains exiled") with a NotBeforeTurn floor
+	// for the "on a later turn" clause.
+	//
+	// A warped creature is therefore a two-for-one paid in tempo:
+	// the cheap body now, the real body later. Nothing about the
+	// second cast is special — it is an ordinary cast from exile,
+	// for the printed mana cost, through the same grant the impulse
+	// button already renders.
+	WarpExile bool
 }
 
 // Clears reports whether paying this cost deletes the spell's target
@@ -153,6 +251,139 @@ func validateAlternativeCost(oracleID, key string, targets []TargetRef) (*Altern
 	return alt, nil
 }
 
+// PaysCards reports whether this cost has a component the caster
+// must name a card for. Nil-safe.
+func (a *AlternativeCost) PaysCards() bool {
+	return a != nil && (a.ExileFromHand != nil || a.ReturnToHand != nil)
+}
+
+// Available reports whether a player may claim this offer right now
+// — its Condition, and nothing else. The payment components are
+// checked separately, at announce, because "you control no Swamp" is
+// a reason to hide the offer while "you named the wrong card" is a
+// reason to reject a cast.
+//
+// Nil-safe and nil-Condition-safe: an offer with no condition is
+// always available. Caller must hold g.mu.
+func (a *AlternativeCost) Available(g *Game, controller uuid.UUID) bool {
+	if a == nil {
+		return false
+	}
+	return a.Condition == nil || a.Condition(g, controller)
+}
+
+// validateAlternativeCostPaymentLocked checks the non-mana half of a
+// claimed alternative cost without paying any of it — the same
+// validate-all-then-pay discipline the additional cost follows, so a
+// rejected cast never leaves a half-paid cost behind.
+//
+// `castID` is the spell being cast, which is never a legal pitch: CR
+// 601.2a has already moved it to the stack.
+//
+// An offer whose Condition is false is rejected here rather than
+// silently downgraded to the printed cost, for the reason
+// validateAlternativeCost gives about unknown keys: charging full
+// price for a cast the player thought was free is the worst available
+// failure.
+//
+// Caller must hold g.mu.
+func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID) error {
+	if alt == nil {
+		if len(ids) > 0 {
+			return ErrInvalidParam
+		}
+		return nil
+	}
+	if !alt.Available(g, playerID) {
+		return ErrInvalidParam
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	if alt.Life > 0 && p.Life < alt.Life {
+		return ErrInvalidParam
+	}
+	spec := alt.ExileFromHand
+	zone := ZoneHand
+	if spec == nil {
+		spec, zone = alt.ReturnToHand, ZoneBattlefield
+	}
+	if spec == nil {
+		if len(ids) > 0 {
+			return ErrInvalidParam
+		}
+		return nil
+	}
+	if len(ids) != 1 {
+		return ErrInvalidParam
+	}
+	id := ids[0]
+	if id == castID {
+		return ErrInvalidParam
+	}
+	// Not a target — a cost is not targeted (CR 601.2h), so hexproof
+	// and shroud do not apply and the spec is matched directly
+	// against the card rather than through the targeting gate.
+	c, ok := g.cardInZoneLocked(g.zoneForAltCostLocked(p, zone), id)
+	if !ok {
+		return ErrCardNotFound
+	}
+	if zone == ZoneBattlefield && c.Controller != playerID {
+		return ErrInvalidParam
+	}
+	if spec.CardOK != nil && !spec.CardOK(g, playerID, c, zone) {
+		return ErrInvalidParam
+	}
+	return nil
+}
+
+// zoneForAltCostLocked picks the zone an alternative cost's card
+// component is paid from: the caster's own hand, or the shared
+// battlefield.
+func (g *Game) zoneForAltCostLocked(p *Player, kind ZoneKind) *Zone {
+	if kind == ZoneHand {
+		return p.Hand
+	}
+	return g.Battlefield
+}
+
+// payAlternativeCostLocked pays the non-mana components of a claimed
+// alternative cost. Call only after
+// validateAlternativeCostPaymentLocked has passed and after the spell
+// itself has reached the stack (CR 601.2a before 601.2h), so anything
+// watching the exile, the life payment or the bounce triggers ABOVE
+// the spell and resolves first.
+//
+// That window is the whole reason this is not folded into the
+// resolution: a Daze that returned its Island on resolution would
+// hand the opponent a turn of information, and an exiled Force of
+// Will pitch that never happened because the spell was countered
+// would make Force of Will free.
+//
+// Caller must hold g.mu.
+func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID) error {
+	if alt == nil {
+		return nil
+	}
+	if alt.Life > 0 {
+		if err := g.ChangePlayerLifeForEffect(uuid.Nil, playerID, -alt.Life); err != nil {
+			return err
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	id := ids[0]
+	if alt.ExileFromHand != nil {
+		return g.ExileCardForEffect(id)
+	}
+	if alt.ReturnToHand != nil {
+		return g.BounceToHandForEffect(id)
+	}
+	return nil
+}
+
 // alternativeCostString is the "pay" half: the mana cost a cast
 // actually owes. The swap is total — nothing adds the printed cost
 // back, which is the difference between this file and
@@ -162,6 +393,16 @@ func alternativeCostString(card Card, key string) string {
 		return alt.ManaCost
 	}
 	return card.ManaCost
+}
+
+// altCostExilesFromStack reports whether the cost this spell was
+// cast for replaces every stack-exit destination with exile — CR
+// 702.34a's flashback clause. Reads the key off the StackItem, so a
+// spell cast for its printed cost always answers false even on a
+// card that offers flashback.
+func altCostExilesFromStack(card Card, altCostKey string) bool {
+	alt := AlternativeCostByKey(CatalogKey(card), altCostKey)
+	return alt != nil && alt.ExileOnLeavingStack
 }
 
 // TargetSpecUnderAlternativeCost applies an alternative cost's
@@ -184,21 +425,35 @@ func TargetSpecUnderAlternativeCost(base *TargetSpec, alt *AlternativeCost) *Tar
 	return base
 }
 
-// queueAltCostEntryTriggerLocked puts evoke's "it's sacrificed when
-// it enters" onto the pending-trigger queue as an ordinary triggered
-// ability (CR 702.74b). Called from the resolution path right after
-// the permanent lands and its ETB hook fires, which is the last
-// moment the StackItem — and so the cost that was paid — is still in
-// hand.
+// queueAltCostEntryTriggerLocked applies the clauses an alternative
+// cost attaches to the permanent's ENTRY: evoke's "it's sacrificed
+// when it enters" (CR 702.74b) and warp's "exile this at the
+// beginning of the next end step, then you may cast it from exile on
+// a later turn" (CR 702.183a).
+//
+// Called from the resolution path right after the permanent lands
+// and its ETB hook fires, which is the last moment the StackItem —
+// and so the cost that was paid — is still in hand.
+//
+// The two clauses use different machinery, and deliberately: evoke's
+// sacrifice happens NOW and uses the stack, so it is an ordinary
+// triggered ability; warp's exile happens at a later step, so it is
+// a CR 603.7 delayed trigger. Neither gets a bespoke loop.
 //
 // No-op for a spell cast for its mana cost, and for an alternative
-// cost that doesn't carry the clause. Caller must hold g.mu.
+// cost that carries neither clause. Caller must hold g.mu.
 func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 	if item == nil || item.AltCost == "" {
 		return
 	}
 	alt := AlternativeCostByKey(CatalogKey(card), item.AltCost)
-	if alt == nil || !alt.SacrificeOnEntry {
+	if alt == nil {
+		return
+	}
+	if alt.WarpExile {
+		g.scheduleWarpExileLocked(card, item, alt)
+	}
+	if !alt.SacrificeOnEntry {
 		return
 	}
 	g.queueHarvestedTriggerLocked(&StackItem{
@@ -216,6 +471,54 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 				return nil
 			}
 			return g.sacrificePermanentLocked(it.SourceCardID)
+		},
+	})
+}
+
+// scheduleWarpExileLocked schedules warp's "exile this permanent at
+// the beginning of the next end step, then you may cast it from
+// exile on a later turn" (CR 702.183a).
+//
+// The "later turn" floor is computed HERE, at schedule time, rather
+// than inside the effect. Both readings give the same answer for a
+// creature warped at sorcery speed on its controller's own turn —
+// which is every printed warp card — but computing it at schedule
+// time is the reading that survives a warped creature with flash:
+// the floor is one past the turn the spell was cast, not one past
+// whichever turn the end step happened to arrive in.
+//
+// Caller must hold g.mu.
+func (g *Game) scheduleWarpExileLocked(card Card, item *StackItem, alt *AlternativeCost) {
+	notBefore := g.Turn.Number + 1
+	g.ScheduleDelayedTriggerForEffect(DelayedTrigger{
+		Controller:   item.Controller,
+		SourceCardID: card.InstanceID,
+		Label:        card.Name + " — " + alt.Label + ", exile it",
+		At:           StepEnd,
+		Cards:        []uuid.UUID{card.InstanceID},
+		Effect: func(g *Game, it *StackItem) error {
+			for _, t := range it.Targets {
+				if t.Kind != TargetCard {
+					continue
+				}
+				// The permanent may have died, been exiled by
+				// something else, or bounced since the warp. Nothing
+				// to exile is not an error — CR 608.2c — and the
+				// grant simply never lands.
+				if g.controllerOfBattlefieldCardLocked(t.ID) == uuid.Nil {
+					continue
+				}
+				if err := g.ExileCardWithPermissionForEffect(t.ID, ExilePlayPermission{
+					// Zero Player means "the card's owner", which is
+					// what warp says: YOU cast it later, and the
+					// warping player owns the card.
+					WhileExiled:   true,
+					NotBeforeTurn: notBefore,
+				}); err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 	})
 }

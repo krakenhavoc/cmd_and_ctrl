@@ -34,6 +34,11 @@ export default defineConfig({
       "/admin": { target: "http://localhost:8080", changeOrigin: true },
       "/games": { target: "http://localhost:8080", changeOrigin: true },
       "/cards": { target: "http://localhost:8080", changeOrigin: true },
+      // The public card catalogue (JSON + its scoped image route).
+      // Same silent failure as /config if it is missing here: Vite
+      // answers /catalog with index.html, the JSON parse throws, and
+      // the page renders "couldn't load" in dev only.
+      "/catalog": { target: "http://localhost:8080", changeOrigin: true },
       "/me": { target: "http://localhost:8080", changeOrigin: true },
       // Deployment identity + dev feature flags (ADR 0023). The client
       // fetches this at shell mount; without the proxy Vite answers

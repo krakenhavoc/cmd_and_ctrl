@@ -60,6 +60,12 @@ export interface CastChoices {
   // mana cost ("overload", "evoke", "cleave"). Undefined is the
   // ordinary "pay the printed cost" case.
   altCost?: string;
+  // S28: the card paid to the non-mana half of that alternative cost
+  // — Force of Will's pitched blue card, Daze's returned Island,
+  // Solitude's evoke pitch. Exactly one entry when the chosen offer
+  // charges one; undefined otherwise, and the server rejects a
+  // non-empty list on an offer that charges nothing.
+  altCostIDs?: string[];
   // S22: the untapped permanents tapped to help pay — convoke and
   // waterbend. Undefined and empty are the same thing to the server;
   // tapping nothing is always legal.
@@ -72,7 +78,26 @@ export interface CastChoices {
   // Gate, Reborn have different types, different costs and, via
   // the composite catalog key, different rules.
   face?: number;
+  // S29: the zone the cast comes out of. Undefined is the hand,
+  // which is every cast the Board's own surfaces fire.
+  //
+  // It rides CastChoices rather than being a parameter of its own
+  // because a graveyard cast has to walk the SAME prompt chain as a
+  // hand cast — flashback picks a cost, escape pays an additional
+  // cost, Cackling Counterpart picks a target — and threading a
+  // second positional argument through eight `after*` seams is
+  // exactly the debt this object was created to pay off. The two
+  // pre-S29 senders of `from_zone` (the command zone and the exile
+  // impulse button) fire bare payloads with no prompts at all, which
+  // is why they never needed it.
+  fromZone?: CastSourceZone;
 }
+
+// CastSourceZone is the `from_zone` vocabulary the server's
+// castZoneFromWire accepts. "hand" is never sent — it is the server
+// default and omitting it keeps every pre-S29 client's payload
+// byte-identical.
+export type CastSourceZone = "command" | "exile" | "graveyard";
 
 // applyCastChoices writes a CastChoices onto a cast_spell payload.
 // Undefined fields are omitted rather than sent as null — the server
@@ -86,11 +111,15 @@ export function applyCastChoices(
   if (choices.discardIDs !== undefined) params.discard_ids = choices.discardIDs;
   if (choices.sacrificeIDs !== undefined) params.sacrifice_ids = choices.sacrificeIDs;
   if (choices.altCost !== undefined) params.alternative_cost = choices.altCost;
+  if (choices.altCostIDs !== undefined && choices.altCostIDs.length > 0)
+    params.alt_cost_ids = choices.altCostIDs;
   if (choices.tapIDs !== undefined && choices.tapIDs.length > 0) params.tap_ids = choices.tapIDs;
   // Face 0 is omitted rather than sent explicitly: it is the server
   // default, and `omitempty` on the Go side means an explicit zero
   // and an absent field are the same byte on the wire anyway.
   if (choices.face !== undefined && choices.face > 0) params.face = choices.face;
+  // S29: omitted for a hand cast, for the same reason face 0 is.
+  if (choices.fromZone !== undefined) params.from_zone = choices.fromZone;
 }
 
 // TargetingState is the active prompt. `card` is the spell being
@@ -119,7 +148,7 @@ export interface TargetingState {
   // S21 sub-PR 2: set when the prompt collects targets for an
   // ACTIVATED ability rather than a cast. The confirm fires
   // activate_ability with these announce-time choices.
-  ability?: { index: number; sacrificeIDs: string[] };
+  ability?: { index: number; sacrificeIDs: string[]; crewIDs: string[] };
   // Human-readable clause for the banner ("target artifact or
   // enchantment"); the server's TargetSpec label.
   label?: string;
@@ -321,6 +350,16 @@ export function alternativeCostByKey(
   return alternativeCostsOf(card).find((a) => a.key === key);
 }
 
+// altCostPayOptions returns the cards that can pay an offer's
+// card-shaped half, or undefined when the offer charges none — which
+// is every S22 keyword and most S28 ones. An empty array means the
+// offer is unpayable right now: a Force of Will with no other blue
+// card in hand.
+export function altCostPayOptions(offer: AlternativeCostView | undefined): string[] | undefined {
+  if (!offer?.pay_options) return undefined;
+  return offer.pay_options.cards ?? [];
+}
+
 // modeOptionCastable reports whether an option can be chosen right
 // now: untargeted options always can; targeted ones need at least
 // one legal target.
@@ -337,8 +376,14 @@ export function modeOptionCastable(option: ModeOptionView): boolean {
 // of the card's, so Waterbender's Restoration prints {U}{U} and
 // still has an X to announce — and that X is also the number of
 // creatures its clause targets.
+//
+// S23 adds the third, and it is the same shape once more: Toxic
+// Deluge's "pay X life" is an additional cost with its own X, the
+// printed mana cost is a flat {2}{B}, and the announced X is also
+// the -X/-X the spell hands out.
 export function hasXCost(card: CardView): boolean {
   if (card.tap_cost?.demands_x) return true;
+  if (card.additional_cost?.demands_x) return true;
   return (card.mana_cost ?? "").includes("{X}");
 }
 
@@ -349,13 +394,14 @@ export function beginForAbility(
   card: CardView,
   ability: ActivatedAbilityView,
   sacrificeIDs: string[],
+  crewIDs: string[] = [],
 ): void {
   const lt = ability.legal_targets;
   targeting.set({
     card,
     mode: (ability.target_mode || "any") as TargetingMode,
     legal: lt ? { players: new Set(lt.players ?? []), cards: new Set(lt.cards ?? []) } : undefined,
-    ability: { index: ability.index, sacrificeIDs },
+    ability: { index: ability.index, sacrificeIDs, crewIDs },
     // The count comes off the wire like every other clause's. This
     // used to be a hard-coded 1 / 1 with a note explaining that
     // ActivatedAbilityView carried an inline `{players?, cards?}`

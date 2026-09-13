@@ -35,8 +35,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "14c3ff84-1e82-4606-a433-869fc52cc382",
-		Name:     "Syr Konrad, the Grim",
+		OracleID:     "14c3ff84-1e82-4606-a433-869fc52cc382",
+		Name:         "Syr Konrad, the Grim",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB, game.EventDiscardCard, game.EventMill, game.EventZoneMove},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

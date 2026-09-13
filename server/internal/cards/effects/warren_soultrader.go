@@ -21,8 +21,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // which is weaker than printed, never stronger.
 func init() {
 	Register(Spec{
-		OracleID: "ace86e56-efde-4eb7-8815-71456a4c3abe",
-		Name:     "Warren Soultrader",
+		OracleID:     "ace86e56-efde-4eb7-8815-71456a4c3abe",
+		Name:         "Warren Soultrader",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"A second copy or token copy of Warren Soultrader can't be sacrificed to its own ability."},
 		Activated: []ActivatedAbility{{
 			Label: "Pay 1 life, Sacrifice another creature: Create a Treasure token.",
 			Cost: Plus(PayLife(1), game.AbilityCost{

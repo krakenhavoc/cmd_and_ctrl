@@ -13,9 +13,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "ffce81c5-1b58-4882-a4e7-6f8d7cb170de",
-		Name:     "Withering Torment",
-		Targets:  TargetPermanent("target creature or enchantment", Or(Creature(), Enchantment())),
+		OracleID:     "ffce81c5-1b58-4882-a4e7-6f8d7cb170de",
+		Name:         "Withering Torment",
+		Completeness: CompletenessFull,
+		Targets:      TargetPermanent("target creature or enchantment", Or(Creature(), Enchantment())),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

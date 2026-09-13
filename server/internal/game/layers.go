@@ -2,7 +2,6 @@ package game
 
 import (
 	"sort"
-	"sync"
 
 	"github.com/google/uuid"
 )
@@ -18,7 +17,11 @@ import (
 //
 // Layer ordering follows CR 613:
 //   1. Copy effects (Clone) — deferred to S16.5.
-//   2. Control-changing effects (Mind Control) — deferred to S17.
+//   2. Control-changing effects (Mind Control) — S24. The output
+//      lands in Characteristic.Controller and is materialised back
+//      onto Card.Controller at the end of the pass; see
+//      materialiseControlLocked for why that, and not an
+//      EffectiveController() accessor plus a 385-site sweep.
 //   3. Text-changing effects — out of scope for the layer foundation.
 //   4. Type-changing effects (Mycosynth Lattice) — sub-PR 4.
 //   5. Color-changing effects — engine stub, no in-scope card.
@@ -149,12 +152,11 @@ func (e staticContinuousEffect) Apply(c *Characteristic, target *Card, g *Game) 
 //     registry (turn_scoped_statics.go), which has no battlefield
 //     source and expires on a clock instead (CR 514.2).
 //
-// Caller must hold either g.mu (write) or g.recompute.mu (the
-// recompute serialisation mutex used during snapshot).
+// Caller must hold g.mu in write mode.
 //
 // The returned source pointers reference into g.Battlefield.Cards
 // — safe for the duration of the recompute pass that holds the
-// recompute mutex; not safe to retain across mutations.
+// write lock; not safe to retain across mutations.
 func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 	// S32: floating "until end of turn" effects first. They are
 	// gathered unconditionally — they outlive their source card, so
@@ -312,37 +314,33 @@ func DistinctCardTypesInAllGraveyards(g *Game) int {
 	return len(seen)
 }
 
-// recomputeMu serializes layer-engine recomputes against each other.
-// The Game's read lock is held by snapshot callers, so the recompute
-// can't promote to a write lock — instead it serialises through this
-// dedicated mutex and double-checks the version after acquire to
-// avoid duplicate work. Sub-PR 1 ships the mutex but the recompute
-// is a no-op; sub-PR 3 starts populating Card.effective behind it.
+// RecomputeLayersIfStaleLocked is the entry point every mutator
+// calls before it reads an effective characteristic, and the one
+// ReadSnapshot calls on behalf of the snapshot path. Fast-path no-op
+// when the version counters match.
 //
-// Held only for the duration of a single recompute pass; never held
-// across a snapshot or mutation.
-type recomputeState struct {
-	mu sync.Mutex
-}
-
-// RecomputeLayersIfStaleLocked is the public entry point the
-// snapshot path calls before serialising views. Fast-path no-op when
-// the version counters match. Safe to call under the game's read
-// lock — version reads + writes are atomic; the recompute mutex
-// serialises the body against duplicate work.
+// **Caller must hold the game's WRITE lock.** A recompute is a
+// write, not a read: it reassigns Card.effective on every
+// battlefield card and — since the S24 layer-2 control change —
+// Card.Controller, Card.SummonedThisTurn, Card.AttackingTarget and
+// Card.BlockingTarget on any permanent whose controller just moved.
 //
-// Sub-PR 1 ships the no-op pass: increments the recompute counter
-// (so the fast-path test can assert it), then advances
-// lastResolvedVersion to the current layerVersion. Sub-PR 3 fills in
-// the actual layer-application body.
+// This used to advertise itself as read-lock-safe on the strength of
+// a dedicated recompute mutex. That mutex serialised recomputes
+// against EACH OTHER and did nothing about a reader holding only the
+// shared read lock, so every concurrent read-lock holder raced the
+// pass — `Game.AutoTapForCostExcluding` (lobby /autotap) and
+// `Game.ControllerOfCard` (actions authorization) both read
+// Card.Controller off the battlefield from their own goroutines. A
+// torn 16-byte uuid.UUID there silently attributes a permanent to
+// the wrong seat. The write lock is now the serialiser, so the
+// separate mutex is gone; `ReadSnapshot` upgrades rather than
+// recomputing in place. Pinned by layers_concurrency_test.go.
+//
+// Advances lastResolvedVersion to the current layerVersion on
+// completion, and bumps the recompute counter so the fast-path test
+// can assert it ran exactly once.
 func (g *Game) RecomputeLayersIfStaleLocked() {
-	if g.layerVersion.Load() == g.lastResolvedVersion.Load() {
-		return
-	}
-	g.recompute.mu.Lock()
-	defer g.recompute.mu.Unlock()
-	// Double-check after acquiring the recompute mutex — another
-	// caller may have just resolved while we waited.
 	if g.layerVersion.Load() == g.lastResolvedVersion.Load() {
 		return
 	}
@@ -360,22 +358,87 @@ func (g *Game) RecomputeLayersIfStaleLocked() {
 //     effects to that bucket, sort by source timestamp ascending,
 //     apply each effect across every battlefield card it AppliesTo.
 //
-// Caller must hold the recompute mutex (RecomputeLayersIfStaleLocked
-// acquires it). The recompute counter bumps on every call so the
-// fast-path test can assert it ran exactly once.
+// Caller must hold g.mu in write mode — the pass writes
+// Card.effective on every battlefield card and, via
+// materialiseControlLocked, Card.Controller on any permanent layer 2
+// moved. The recompute counter bumps on every call so the fast-path
+// test can assert it ran exactly once.
 func (g *Game) recomputeLayersLocked() {
 	g.recomputeCount.Add(1)
 	if g.Battlefield != nil {
 		for i := range g.Battlefield.Cards {
-			printed := g.Battlefield.Cards[i].printedCharacteristic()
-			g.Battlefield.Cards[i].effective = &printed
+			c := &g.Battlefield.Cards[i]
+			// S24 layer 2: capture the control baseline on the first
+			// recompute after this permanent entered. Lazy rather
+			// than stamped at every write site because all ~15 sites
+			// that assign Card.Controller do so as a permanent
+			// ENTERS, and every entry bumps the layer version — so
+			// this runs before anything can observe a layer-2 value,
+			// and MoveCard clearing the field on exit is what makes
+			// a re-entry re-capture.
+			if c.BaseController == uuid.Nil {
+				c.BaseController = c.Controller
+			}
+			printed := c.printedCharacteristic()
+			c.effective = &printed
 		}
 	}
 	effects := g.activeStaticAbilitiesLocked()
 	for _, b := range layerOrder {
 		g.applyLayerLocked(effects, b.Layer, b.SubLayer, b.has7Sub)
 	}
+	g.materialiseControlLocked()
 	g.lastResolvedVersion.Store(g.layerVersion.Load())
+}
+
+// materialiseControlLocked copies layer 2's output back onto
+// Card.Controller — the step that makes a control-changing effect
+// visible to the rest of the engine.
+//
+// The alternative was a Card.EffectiveController() accessor and a
+// sweep of every read site. There are ~385 of them, roughly 150 of
+// which are `target.Controller == source.Controller` inside
+// individual catalog card files; a partial sweep would have produced
+// an engine where a Mind Controlled creature attacks for its new
+// controller but is still pumped by its old one's Glorious Anthem.
+// Materialising means every read site is right without being
+// touched, and the same pattern ADR 0034 already uses for the flat
+// printed face fields ("the MATERIALISATION of Faces[ActiveFace]").
+//
+// A control change is more than a field assignment, so the two
+// CR consequences ride with it:
+//
+//   - CR 302.6 — the permanent has summoning sickness under its new
+//     controller until their next untap step. It is set rather than
+//     cleared, so a hasty creature is still hasty (HasSummoningSickness
+//     reads the keyword at read time).
+//   - CR 506.4 — a permanent that changes control is removed from
+//     combat.
+//
+// Both fire only on an actual delta, so a recompute that changes
+// nothing touches nothing.
+//
+// Caller holds g.mu in write mode. This is the step that made the
+// layer engine's lock contract load-bearing: Card.Controller is read
+// all over the engine under the READ lock, so writing it needs
+// exclusivity, not the shared lock the recompute used to run under.
+func (g *Game) materialiseControlLocked() {
+	if g.Battlefield == nil {
+		return
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.effective == nil || c.effective.Controller == uuid.Nil {
+			continue
+		}
+		if c.effective.Controller == c.Controller {
+			continue
+		}
+		c.Controller = c.effective.Controller
+		c.SummonedThisTurn = true
+		c.AttackingTarget = uuid.Nil
+		c.BlockingTarget = uuid.Nil
+	}
 }
 
 // BumpLayerVersionForTest bumps the layer-engine invalidation
