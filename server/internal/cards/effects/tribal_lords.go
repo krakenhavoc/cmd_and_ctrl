@@ -76,20 +76,6 @@ func init() {
 			keyword:  "haste",
 			spec:     func(s *Spec) { s.PrintedKeywords = []string{"haste"} },
 		},
-		{
-			// "Skeletons you control and other Zombies you control
-			//  get +1/+1 and have deathtouch."
-			// "Other" qualifies only the Zombies on the printed card;
-			// applying it to both halves gives the same answer because
-			// Death Baron is a Zombie Wizard and not a Skeleton. See
-			// TribeFilter's comment.
-			oracleID: "99024aa8-5687-4d38-8a4b-feef42d6c1ff",
-			name:     "Death Baron",
-			filter: TribeFilter{
-				Tribes: []string{"Skeleton", "Zombie"}, Others: true, YoursOnly: true,
-			},
-			keyword: "deathtouch",
-		},
 	} {
 		spec := Spec{
 			OracleID: lord.oracleID,
