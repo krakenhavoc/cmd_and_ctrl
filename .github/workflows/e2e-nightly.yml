@@ -30,6 +30,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The whole-game bot tests, which ci-cd.yml skips.
+  #
+  # They play complete four-seat games to a winner — the random
+  # fuzzer, the heuristic head-to-head, the Layer A absorption census,
+  # the model funnel's outage drill — and between them they caught
+  # four engine bugs on 2026-09-11 that no unit test was looking for.
+  # They are also most of internal/aiseat's runtime, and under -race on
+  # a contended runner that package crossed Go's 600s per-package
+  # default and failed main plus every open PR.
+  #
+  # So they are gated behind AISEAT_GAME_TESTS and run here instead.
+  # This job is the whole justification for that gate: skipping them in
+  # PR CI is a deliberate trade (a bug they would catch surfaces the
+  # next morning, not in the PR that caused it) and it is only an
+  # acceptable trade while this job actually runs them. If this job is
+  # ever removed or left red, the gate has quietly deleted the tests.
+  #
+  # -race on purpose: these are the only tests that exercise the runner
+  # goroutine against a live room, so they are where a concurrency bug
+  # in the bot seat would actually show up.
+  bot-games:
+    runs-on: self-hosted
+    env:
+      AISEAT_GAME_TESTS: "1"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # cache: false for the same reason as the job below — $HOME
+      # persists on a self-hosted runner and actions/cache untarring
+      # over Go's read-only module cache fails on every run.
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: false
+
+      - name: Bot whole-game tests
+        working-directory: server
+        run: go test ./internal/aiseat/... -race -timeout 30m
+
   playwright:
     runs-on: self-hosted
     env:

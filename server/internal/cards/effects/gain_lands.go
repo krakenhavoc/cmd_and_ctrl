@@ -16,7 +16,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Enters-tapped is the self-replacement; the life is a real ETB
 // trigger with a response window, as printed; the dual is the pipe
-// every two-colour land in the catalog uses.
+// every two-colour land in the catalog uses. Batch 13 (#306) brings
+// Rugged Highlands, the tenth — the cycle is complete.
 //
 // No simplification.
 func init() {
@@ -31,6 +32,8 @@ func init() {
 		{"45429b2c-be3b-4b2e-9bab-a059ccbda8cd", "Blossoming Sands", "G", "W"},
 		{"ec96cde2-f1e6-495c-94e2-3e8ae79e556c", "Thornwood Falls", "G", "U"},
 		{"5d641bf6-0f93-4189-8dc1-ec7ea446dade", "Tranquil Cove", "W", "U"},
+		// Roadmap batch 13 (#306) — the tenth.
+		{"6c922206-6e68-4dcd-9559-88da1074f2c4", "Rugged Highlands", "R", "G"},
 	} {
 		Register(Spec{
 			OracleID:      land.oracleID,

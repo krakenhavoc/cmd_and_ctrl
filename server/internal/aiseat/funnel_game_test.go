@@ -45,6 +45,7 @@ const absorptionTarget = 0.80
 // Every seat shares one Meter, so the rate is a property of the table
 // rather than of a seat that happened to get a quiet game.
 func TestLayerAAbsorbsMostWindowsAndAgreesWithTheHeuristic(t *testing.T) {
+	requireGameTests(t)
 	games := 2
 	if n, err := strconv.Atoi(os.Getenv("AISEAT_FUNNEL_GAMES")); err == nil && n > 0 {
 		games = n
