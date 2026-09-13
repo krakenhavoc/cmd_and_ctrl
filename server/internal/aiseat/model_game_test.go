@@ -119,6 +119,7 @@ func logModelStats(t *testing.T, label string, st model.Stats) {
 // the call, the parse, the index bounds check and the dispatch, for a
 // full four-player game.
 func TestAssistedTierPlaysAWholeGameThroughTheModelPath(t *testing.T) {
+	requireGameTests(t)
 	const (
 		turnBudget = 35
 		wall       = 120 * time.Second
@@ -170,6 +171,7 @@ func TestAssistedTierPlaysAWholeGameThroughTheModelPath(t *testing.T) {
 // is the outage that actually happens: the game started fine and the
 // provider fell over in the middle of it.
 func TestModelOutageDrill(t *testing.T) {
+	requireGameTests(t)
 	const (
 		turnBudget = 35
 		wall       = 120 * time.Second
@@ -238,6 +240,7 @@ func TestModelOutageDrill(t *testing.T) {
 // to force-pass, which is a bot that stops playing rather than a bot
 // that plays worse.
 func TestASlowModelDegradesRatherThanForcingPasses(t *testing.T) {
+	requireGameTests(t)
 	const (
 		turnBudget = 20
 		wall       = 120 * time.Second
