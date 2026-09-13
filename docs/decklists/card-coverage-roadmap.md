@@ -32,7 +32,10 @@ is a comment on its card file.
 | 02 | #295 | **38** | 19 | 43 | landed in three streams — #351 (25), #358 (11), #356's mana pipeline (Boros Signet, Mox Opal) |
 | 03 | #296 | **37** | 11 | 52 | PR #361 — the "no new machinery" group, one pass |
 | 04 | #297 | **29** | 9 | 62 | PR #362 — the "no new machinery" group plus Graven Cairns, unblocked by #356 |
-| 05–20 | #298–#313 | 0 | 0 | — | not started |
+| 05 | #298 | **23** | 12 | 65 | PR #437 — the "no new machinery" group plus Dualcaster Mage, unblocked by #419's spell copies |
+| 06 | #299 | **29** | 6 | 65 | PR #439 — the "no new machinery" group, one pass |
+| 07 | #300 | **28** | 12 | 60 | PR #438 — the "no new machinery" group plus Kodama of the West Tree, unblocked by #379's attachments |
+| 08–20 | #301–#313 | 0 | 0 | — | not started |
 | 21–40 | #383–#391, #393–#403 | 0 | 0 | — | not started — ranked against `459dea6`, 2026-09-11 |
 
 **Catalog: 438 → 504**, measured with `len(effects.All())` minus the
@@ -41,6 +44,12 @@ flicker probe — 438 on `origin/main` at `e5fc440`, 504 with #361 and
 passes. (The test binary reports 439 and 505; the probe is explained
 below.) Re-probed on `origin/main` at **`459dea6`** for the batch 21–40
 ranking: **504** again, both PRs now merged.
+
+**Then 610 → 690** with batches 05–07: 610 on `origin/main` at
+`31aba35` after the S23–S28 sprint work and the catalog publishing
+(#412) landed, 690 with #437, #438 and #439 merged together on a
+scratch branch where the full suite passes and no oracle ID registers
+twice. (Test binary: 611 and 691.)
 
 **504 specs is not 504 cards.** Sixty of them are MDFC *back faces*,
 registered under the composite key `<oracle_id>#1` that
@@ -359,6 +368,96 @@ main-phase trigger event (2), tap-another-permanent cost component
 (2), per-player cast permission (1), X on an activated ability (1),
 counter-removal cost (1), ability from hand (1), layer invalidation on
 hand size or combat state (2).
+
+### Batches 05, 06 and 07 — stopped, rebased, finished
+
+Started as three parallel forks on the same day as 03 and 04, stopped
+mid-way for usage, and finished by three fresh agents working from a
+written brief (`data/roadmap/BRIEF.md`, local only) against a `main`
+that had moved seventy commits in between — equipment and auras
+(#379), indestructible (#380), the boardwipe primitives (#382),
+proliferate (#381), flashback (#411), spell copies (#419), the legend
+rule (#418). The re-triage against those seams is why each batch has a
+card the original triage called blocked. The fresh-agent pass cost
+roughly half a fork per batch, which is the cheaper shape to keep.
+
+**Batch 05 — 23 of 35 (PR #437).** Talisman of Impulse and Savage
+Lands as rows; twenty-one singles including Ruinous Ultimatum (on
+#382's `DestroyAllMatching`, one simultaneous event), Scrawling
+Crawler, and **Dualcaster Mage** — a targeted ETB trigger over #419's
+`CopySpell`, the only re-triage unlock. Skipped (12), one seam each:
+Greater Good and Altar of Dementia (the sacrificed creature's LKI is
+not on the activated item); Reprieve (no counter-to-hand surface, and
+counter-then-return would fire Syr Konrad — stronger); Strionic
+Resonator (ability copies are outside `CopySpellForEffect`); Imp's
+Mischief (no stack-item retarget); Teferi's Ageless Insight (draw
+replacement has no count); Archdruid's Charm (per-slot mode targets);
+Ancient Copper Dragon (no RNG surface for effects); Torment of
+Hailfire (opponent's non-mana choice); Cryptolith Rite (mana ability
+granted through a static); Borne Upon a Wind (flash permission);
+Bender's Waterskin (untap-step event).
+
+**Batch 06 — 29 of 35 (PR #439).** Twenty-seven from the first pass —
+which had left them without tests or completeness declarations, and
+with Riveteers Overlook searching even when bounced in response
+(stronger than printed; fixed) — plus Springbloom Druid and Bloodchief
+Ascension. Declared weaker: Into the Flood Maw has no gift; Riveteers
+Overlook is one trigger rather than a reflexive one; Spelunking lacks
+its land-from-hand rider; Starting Town rounds; Warstorm Surge has no
+cross-card LKI; Springbloom Druid's land is chosen at trigger time;
+Whip of Erebos's exile clause misses a bounce (see the engine note).
+Skipped (6): Howling Mine (no draw-step trigger event); Archaeomancer's
+Map (no put-land-from-hand prompt — the ETB alone is half the card);
+Narset's Reversal (no counter-to-zone surface); Elvish Spirit Guide and
+Reassembling Skeleton (no ability from a non-battlefield zone);
+Peregrin Took (token-creation replacement event).
+
+**Batch 07 — 28 of 40 (PR #438).** Twenty-five from the first pass,
+plus Ghost Quarter, Field of Ruin, Tempt with Discovery (the first
+tempting offer — a sequential search continuation chain) and **Kodama
+of the West Tree**, whole now that "modified" can read Equipment and
+Auras through #379's `AttachedTo`. Declared weaker: Sai's two-artifact
+draw omitted; Myr Retriever's "another" checked at resolution;
+Splendid Reclamation taps a beat after entry; Ayara reads stamped token
+colours; Tempt counts only the opponents who took a land. Skipped (12):
+Terrasymbiosis and Tocasia's Welcome (once-per-turn tally); Wonder
+(statics gathered from the battlefield only); Tainted Pact (iterated
+yes/no at resolution); Bloodletter of Aclazotz (life-loss replacement —
+see the engine note); High Fae Trickster (per-player flash); Rishkar
+(mana ability granted through a static); Scrap Trawler (trigger target
+parameterised by the event); Thousand-Year Elixir (ability-only
+haste); Burgeoning (no land-play event); Reconnaissance (no
+remove-from-combat primitive); Forsaken Monument (triggered mana
+ability; `EventManaAdded` carries no colour).
+
+**The seams, re-ranked across batches 01–07:** reveal-from-hand or
+put-from-hand entry / resolution choice (11 — the eight reveal-lands
+plus Archaeomancer's Map, Burgeoning, Spelunking's rider), once-per-turn
+trigger tally (4), token-creation replacement event (4), abilities
+activated from a non-battlefield zone (4 — Simian and Elvish Spirit
+Guide, Reassembling Skeleton, Anger-style statics aside), untap-step
+trigger event (3), per-player flash permission (3), mana ability
+granted through a static (2), main-phase trigger event (2),
+tap-another-creature cost (2), sacrificed-cost LKI on the item (2),
+counter-to-zone surface (2), draw-step event (1). Everything else is a
+single card.
+
+### What batches 06 and 07 found in the engine
+
+- **OPEN — the effect-side life change skips replacement effects.**
+  `ChangePlayerLifeForEffect`, which every catalog drain and lifegain
+  goes through, does not run the `RepEventLife` pipeline that the
+  public `ChangePlayerLife` does, and `DealDamageToPlayerForEffect`
+  emits no life-loss event. No card on `main` is wrong today, but no
+  life-loss replacement (Bloodletter of Aclazotz) can be written until
+  the effect path is routed like the damage path.
+- **OPEN — a bounce skips the leaves-the-battlefield replacements.**
+  `BounceToHandForEffect` bypasses the CR 614 pipeline that destroy,
+  sacrifice and the SBA exits go through, so a "if it would leave the
+  battlefield, exile it instead" replacement never sees a bounce.
+  Scenario: reanimate a creature with Whip of Erebos, bounce it in
+  response to the end-step trigger — it goes to hand, not exile.
+  Declared as a Whip caveat.
 
 ### What batch 04 found in the engine
 
