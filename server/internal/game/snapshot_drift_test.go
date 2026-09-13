@@ -192,6 +192,13 @@ var playerFields = plan(
 	"DiscordID", carried, "",
 	"DiscordAvatarHash", carried, "",
 	"DisplayName", carried, "",
+	// S31 bot seats. Carried, not rebuilt: which seat is a bot and
+	// at what tier is not derivable from the board, and a restore
+	// that dropped it would silently turn a bot into an empty chair
+	// nobody is coming back to.
+	"IsBot", carried, "",
+	"BotTier", carried, "",
+	"BotDeck", carried, "",
 	"LosesAtNextSBA", carried, "",
 	"CommanderCasts", carried, "",
 	"Counters", carried, "",

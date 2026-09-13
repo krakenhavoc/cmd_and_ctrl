@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/token"
@@ -39,6 +40,12 @@ var (
 	// ErrGameNotActiveForSpawn is returned by SpawnCards when the
 	// game has not started (or has ended). Dev-only path.
 	ErrGameNotActiveForSpawn = errors.New("lobby: game must be active to spawn cards")
+
+	// ErrNotABot is returned by RemoveBot for a human seat.
+	ErrNotABot = errors.New("lobby: seat is not a bot")
+	// ErrUnknownBotTier is returned when a bot is added with a tier
+	// the host doesn't offer.
+	ErrUnknownBotTier = errors.New("lobby: unknown bot tier")
 )
 
 // GameMeta is the lobby-facing projection of a game. It holds the
@@ -87,6 +94,29 @@ type SeatInfo struct {
 	DiscordID         string `json:"discord_id,omitempty"`
 	DiscordAvatarHash string `json:"discord_avatar_hash,omitempty"`
 	DisplayName       string `json:"display_name,omitempty"`
+
+	// IsBot / BotTier / BotDeck mark a seat added via POST
+	// /games/{id}/seats/bot and driven by an aiseat runner once the
+	// game starts. BotDeck is the curated-deck ID it was seated with,
+	// empty when the caller supplied a raw decklist instead.
+	// Added in S31 sub-PR 4.
+	IsBot   bool   `json:"is_bot,omitempty"`
+	BotTier string `json:"bot_tier,omitempty"`
+	BotDeck string `json:"bot_deck,omitempty"`
+}
+
+// BotHost runs bot seats. Satisfied by *aiseat.Manager; an interface
+// rather than the concrete type so lobby tests can record the calls
+// without standing up runners. Added in S31 sub-PR 4.
+type BotHost interface {
+	// Tiers lists the policy tiers a bot may be added with. Only the
+	// ones that can actually play: a tier that is declared but not
+	// built is refused at add time, never silently downgraded.
+	Tiers() []string
+	// StartBots launches a runner for each seat on the given room.
+	StartBots(room *ws.Room, seats []aiseat.SeatSpec)
+	// StopBots cancels every runner on the game, if any.
+	StopBots(gameID uuid.UUID)
 }
 
 // Lobby holds the set of games currently known to the server, keyed
@@ -107,6 +137,18 @@ type Lobby struct {
 	// clients already on the game page see it without waiting for
 	// the next WS action. Set once at boot via SetStateBroadcaster.
 	broadcast StateBroadcaster
+	// bots, when non-nil, is told to start runners for bot seats on
+	// Start and to stop them on Delete. Set once at boot via
+	// SetBotHost; nil means bot seats can be added but never play
+	// (tests, or a server built without the bot host).
+	bots BotHost
+}
+
+// SetBotHost wires the bot runner host in after construction.
+func (l *Lobby) SetBotHost(b BotHost) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.bots = b
 }
 
 // SetStateBroadcaster wires the hub in after construction (mirrors
@@ -585,6 +627,164 @@ func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
 	}
 	entry.meta.State = string(entry.room.Game.CurrentState())
 	l.persistMetaLocked(entry)
+	// Chained onto the broadcast thunk so it runs after l.mu is
+	// released: StartBots spawns goroutines that begin committing to
+	// the room immediately, and holding the lobby-wide mutex across
+	// that would serialize every other game's lobby traffic behind
+	// this table's first bot decision.
+	if start := l.botStartLocked(entry); start != nil {
+		prev := broadcast
+		broadcast = func() {
+			if prev != nil {
+				prev()
+			}
+			start()
+		}
+	}
+	return copyMeta(entry.meta), nil
+}
+
+// botStartLocked returns a thunk that launches this game's bot
+// runners, or nil when there are none to launch. Callers hold l.mu
+// and must run the thunk after releasing it.
+func (l *Lobby) botStartLocked(entry *gameEntry) func() {
+	if l.bots == nil || entry == nil {
+		return nil
+	}
+	var seats []aiseat.SeatSpec
+	for _, seat := range entry.meta.Players {
+		if seat.IsBot {
+			seats = append(seats, aiseat.SeatSpec{PlayerID: seat.PlayerID, Tier: seat.BotTier})
+		}
+	}
+	if len(seats) == 0 {
+		return nil
+	}
+	bots, room := l.bots, entry.room
+	return func() { bots.StartBots(room, seats) }
+}
+
+// AddBot seats a bot at an unstarted table with a ready deck. The
+// seat counts toward MaxPlayers exactly like a human, and arrives
+// DeckUploaded so Start's gate is satisfied without special-casing.
+// Bots have no invite: the caller is authorised at the HTTP layer
+// (admin, or a player already seated at this table). The runner
+// itself is started by Start, through the BotHost. Added in S31
+// sub-PR 4.
+func (l *Lobby) AddBot(id uuid.UUID, name, tier, deckID, deckName string, cards []game.Card) (GameMeta, uuid.UUID, error) {
+	name = trimToLimit(name, 40)
+	if name == "" {
+		return GameMeta{}, uuid.Nil, ErrEmptyName
+	}
+	if len(cards) == 0 {
+		return GameMeta{}, uuid.Nil, ErrDeckNotUploaded
+	}
+	var broadcast func()
+	defer func() {
+		if broadcast != nil {
+			broadcast()
+		}
+	}()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	entry, ok := l.games[id]
+	if !ok {
+		return GameMeta{}, uuid.Nil, ErrGameNotFound
+	}
+	if entry.room.Game.CurrentState() != game.StateLobby {
+		return GameMeta{}, uuid.Nil, ErrGameStarted
+	}
+	if len(entry.meta.Players) >= game.MaxPlayers {
+		return GameMeta{}, uuid.Nil, ErrGameFull
+	}
+	var p *game.Player
+	var err error
+	broadcast, err = l.applyLocked(id, entry, func() error {
+		added, addErr := entry.room.Game.AddPlayer(name, cards)
+		if addErr != nil {
+			return addErr
+		}
+		p = added
+		if err := entry.room.Game.SetBot(p.ID, tier, deckID); err != nil {
+			return err
+		}
+		// AddPlayer installs the deck but not the "real deck" flag;
+		// ReplaceDeck sets DeckImported so the client's deck-ready
+		// indicators agree with SeatInfo.DeckUploaded below.
+		return entry.room.Game.ReplaceDeck(p.ID, cards)
+	})
+	if err != nil {
+		switch err {
+		case game.ErrGameFull:
+			return GameMeta{}, uuid.Nil, ErrGameFull
+		case game.ErrGameNotInLobby:
+			return GameMeta{}, uuid.Nil, ErrGameStarted
+		}
+		return GameMeta{}, uuid.Nil, err
+	}
+	entry.meta.Players = append(entry.meta.Players, SeatInfo{
+		PlayerID:     p.ID,
+		Name:         p.Name,
+		Seat:         p.Seat,
+		DeckName:     deckName,
+		DeckUploaded: true,
+		IsBot:        true,
+		BotTier:      tier,
+		BotDeck:      deckID,
+	})
+	entry.meta.State = string(entry.room.Game.CurrentState())
+	l.persistMetaLocked(entry)
+	return copyMeta(entry.meta), p.ID, nil
+}
+
+// RemoveBot unseats a bot from an unstarted table. Only bot seats can
+// be removed this way — a human leaves by not showing up. Added in
+// S31 sub-PR 4.
+func (l *Lobby) RemoveBot(id, playerID uuid.UUID) (GameMeta, error) {
+	var broadcast func()
+	defer func() {
+		if broadcast != nil {
+			broadcast()
+		}
+	}()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	entry, ok := l.games[id]
+	if !ok {
+		return GameMeta{}, ErrGameNotFound
+	}
+	if entry.room.Game.CurrentState() != game.StateLobby {
+		return GameMeta{}, ErrGameStarted
+	}
+	idx := -1
+	for i, seat := range entry.meta.Players {
+		if seat.PlayerID == playerID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return GameMeta{}, ErrPlayerNotInGame
+	}
+	if !entry.meta.Players[idx].IsBot {
+		return GameMeta{}, ErrNotABot
+	}
+	var err error
+	if broadcast, err = l.applyLocked(id, entry, func() error {
+		return entry.room.Game.RemovePlayer(playerID)
+	}); err != nil {
+		if err == game.ErrGameNotInLobby {
+			return GameMeta{}, ErrGameStarted
+		}
+		return GameMeta{}, err
+	}
+	entry.meta.Players = append(entry.meta.Players[:idx], entry.meta.Players[idx+1:]...)
+	for i := range entry.meta.Players {
+		entry.meta.Players[i].Seat = i
+	}
+	l.persistMetaLocked(entry)
 	return copyMeta(entry.meta), nil
 }
 
@@ -651,6 +851,16 @@ func (l *Lobby) List() []GameMeta {
 // clients; callers that need that should call hub-level eviction
 // after this returns.
 func (l *Lobby) Delete(id uuid.UUID) error {
+	// StopBots waits for each runner to finish the move it is in the
+	// middle of — up to one think plus the block grace. Doing that
+	// under l.mu would stall every other game's lobby traffic, so it
+	// runs on the way out, like the broadcast thunks do.
+	var stopBots BotHost
+	defer func() {
+		if stopBots != nil {
+			stopBots.StopBots(id)
+		}
+	}()
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if _, ok := l.games[id]; !ok {
@@ -661,6 +871,7 @@ func (l *Lobby) Delete(id uuid.UUID) error {
 	// Drop the metadata too, or the next boot would try to restore a
 	// game the operator deleted.
 	l.removeMeta(id)
+	stopBots = l.bots
 	return nil
 }
 

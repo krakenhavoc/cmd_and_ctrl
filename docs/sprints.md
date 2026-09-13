@@ -2129,12 +2129,22 @@ The engine has no event history: `GameView` carries none, the client has none, a
 
 ### Sub-PR 4 — lobby + client integration
 
-- [ ] `POST /games/{id}/seats/bot` `{tier, deck}` — any seated player at an unstarted table, plus admin; `DELETE .../seats/bot/{seat}` while unstarted
-- [ ] Bot seats carry real decks, so `Lobby.Start`'s `DeckUploaded` gate needs no special case
-- [ ] Seat arithmetic: bots take real seats, so a seated human can add at most **three**; the all-bot table is reachable via the admin path only, and is the test harness rather than a player flow
-- [ ] `PlayerView.is_bot` / `bot_tier` / `bot_deck`; protocol.ts and `docs/protocol.md` updated
-- [ ] Lobby UI: "Add bot" → tier + deck picker → seat appears with a BOT chip
-- [ ] Bot-seat treatment in `PlayerHeader.svelte`: chip, distinct avatar mark, thinking pulse (respects the S11.5 animations-off setting)
+- [x] `POST /games/{id}/seats/bot` `{tier, deck}` — any seated player at an unstarted table, plus admin; `DELETE .../seats/bot/{player_id}` while unstarted. A spectator's session carries the game ID and is refused: watching is not seating. `GET /bot/options` backs the picker.
+- [x] Bot seats carry real decks, so `Lobby.Start`'s `DeckUploaded` gate needs no special case — verified by a test that starts a human + bot table with no gate change
+- [x] Seat arithmetic: bots take real seats, so a seated human can add at most **three**; the all-bot table is reachable via the admin path only, and is the test harness rather than a player flow
+- [x] `PlayerView.is_bot` / `bot_tier` / `bot_deck`; protocol.ts and `docs/protocol.md` updated. The three fields also ride the engine snapshot and the persisted lobby metadata, so a bot seat survives a deploy and the lobby's restore path relaunches its runner.
+- [x] Lobby UI: "Add bot" on an open seat → tier + deck picker → seat appears with a BOT chip and a remove control
+- [x] Bot-seat treatment in `PlayerIdentity.svelte` (the identity-first rebuild that replaced `PlayerHeader.svelte`, which no longer exists in the tree): chip, robot avatar mark, thinking pulse while the bot holds priority (respects the S11.5 animations-off setting and `prefers-reduced-motion`; the chip text carries the information when motion is off)
+- [x] Tier registry: all four ADR 0033 §6 names declared from the first PR so the API never reshapes, `available:false` on the three with no policy, and an unavailable tier is a 422 rather than a silent downgrade to `random`
+- [x] `deploy/Caddyfile` `@api`, `client/vite.config.ts` and the service worker's `API_PATH` all carry the new `/bot` prefix
+
+**Deck source is an interface, not a list.** `aiseat.DeckSource` —
+`List() []DeckInfo` plus `Decklist(id) (DeckInfo, string, bool)`
+returning decklist TEXT — is what sub-PR 5 implements; this sub-PR
+ships one honest placeholder behind it and `main.go` swaps the one
+wiring line. Text rather than resolved cards is deliberate: the bot
+seat then runs the identical parse → resolve → validate pipeline a
+human's upload runs.
 
 ### Sub-PR 5 — curated decks + coverage test
 

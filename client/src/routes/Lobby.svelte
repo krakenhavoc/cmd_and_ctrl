@@ -1,11 +1,15 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import {
+    addBotSeat,
     createGame,
+    fetchBotOptions,
     listGames,
     logout as apiLogout,
+    removeBotSeat,
     replayURL,
     startGame,
+    type BotOptions,
     type GameMeta,
     type SeatInfo,
   } from "../lib/api";
@@ -35,6 +39,82 @@
   // let them claim a seat.
   const recentInvites = new Map<string, string>();
   const recentSpectatorInvites = new Map<string, string>();
+
+  // --- bot seats (S31, ADR 0033 §9) -------------------------------
+  //
+  // Bots take REAL seats out of the same four, so a seated human can
+  // add at most three. The control therefore lives on the open-seat
+  // placeholders: when there is no open seat there is nothing to add
+  // a bot to, and the affordance disappears on its own rather than
+  // needing a count.
+  //
+  // The option catalog is game-independent — the same tiers and decks
+  // for every table — so it is fetched once on mount. `enabled` false
+  // means this server has no bot host at all; we hide the control
+  // rather than offer a button that 503s.
+  let botOptions = $state<BotOptions | null>(null);
+  // The game whose Add-bot picker is open, or null.
+  let botPickerFor = $state<string | null>(null);
+  let botTier = $state("");
+  let botDeck = $state("");
+  let botBusy = $state(false);
+  let botError = $state("");
+
+  const botTiersAvailable = $derived((botOptions?.tiers ?? []).filter((t) => t.available));
+  const botsOfferable = $derived(
+    botOptions?.enabled === true &&
+      botTiersAvailable.length > 0 &&
+      (botOptions?.decks.length ?? 0) > 0,
+  );
+
+  // canManageBots: admin, or a player seated at this table. Mirrors
+  // the server gate — the endpoint is authoritative, this only keeps
+  // us from rendering a button that always 403s.
+  function canManageBots(g: GameMeta): boolean {
+    if (g.state !== "lobby" || !botsOfferable) return false;
+    if ($session?.principal.role === "admin") return true;
+    return mySeat(g) !== null;
+  }
+
+  function openBotPicker(gameID: string): void {
+    botError = "";
+    botPickerFor = gameID;
+    botTier = botTiersAvailable[0]?.tier ?? "";
+    botDeck = botOptions?.decks[0]?.id ?? "";
+  }
+
+  async function onAddBot(gameID: string): Promise<void> {
+    if (!botTier || !botDeck) return;
+    botBusy = true;
+    botError = "";
+    try {
+      await addBotSeat(gameID, { tier: botTier, deck: botDeck });
+      botPickerFor = null;
+      await refresh();
+    } catch (err) {
+      botError = err instanceof LobbyApiError ? err.message : "could not add the bot";
+    } finally {
+      botBusy = false;
+    }
+  }
+
+  async function onRemoveBot(gameID: string, playerID: string): Promise<void> {
+    botBusy = true;
+    botError = "";
+    try {
+      await removeBotSeat(gameID, playerID);
+      await refresh();
+    } catch (err) {
+      botError = err instanceof LobbyApiError ? err.message : "could not remove the bot";
+    } finally {
+      botBusy = false;
+    }
+  }
+
+  function botDeckName(id: string | undefined): string {
+    if (!id) return "";
+    return botOptions?.decks.find((d) => d.id === id)?.name ?? id;
+  }
 
   async function refresh(): Promise<void> {
     try {
@@ -205,6 +285,11 @@
   const POLL_MS = 5000;
   onMount(() => {
     void refresh();
+    // Best-effort: a server without the bot routes leaves botOptions
+    // null and the Add-bot control simply never appears.
+    void fetchBotOptions()
+      .then((o) => (botOptions = o))
+      .catch(() => undefined);
     const t = setInterval(() => {
       if (visibleGames.some((g) => g.state === "lobby")) void refresh();
     }, POLL_MS);
@@ -352,9 +437,17 @@
             {#each seatSlots(g) as p, i (p?.player_id ?? `open-${i}`)}
               {#if p}
                 {@const avatar = avatarURL(p.discord_id, p.discord_avatar_hash)}
-                <li class="seat" class:you={p.player_id === $session?.playerID}>
-                  <span class="sav" style:border-color={seatColor(p.seat)}>
-                    {#if avatar}
+                <li
+                  class="seat"
+                  class:you={p.player_id === $session?.playerID}
+                  class:bot={p.is_bot}
+                >
+                  <span class="sav" class:bot={p.is_bot} style:border-color={seatColor(p.seat)}>
+                    {#if p.is_bot}
+                      <i class="botmark" style:color={seatColor(p.seat)}>
+                        <Icon name="robot" size={18} />
+                      </i>
+                    {:else if avatar}
                       <img src={avatar} alt="" />
                     {:else}
                       <i style:background={seatColor(p.seat)}>{initials(p)}</i>
@@ -363,14 +456,32 @@
                   <div class="sinfo">
                     <div class="sname">
                       seat {p.seat + 1}: {seatName(p)}
+                      {#if p.is_bot}<b class="botchip">bot</b>{/if}
                       {#if p.player_id === $session?.playerID}<b>you</b>{/if}
                     </div>
-                    {#if p.deck_uploaded}
+                    {#if p.is_bot}
+                      <div class="sstat">
+                        <i class="dot ok"></i>{p.bot_tier || "bot"} · {botDeckName(p.bot_deck) ||
+                          p.deck_name ||
+                          "deck ready"}
+                      </div>
+                    {:else if p.deck_uploaded}
                       <div class="sstat"><i class="dot ok"></i>{p.deck_name || "deck ready"}</div>
                     {:else}
                       <div class="sstat pend">deck pending</div>
                     {/if}
                   </div>
+                  {#if p.is_bot && canManageBots(g)}
+                    <button
+                      class="seat-x"
+                      title="remove this bot"
+                      aria-label={`remove ${seatName(p)}`}
+                      disabled={botBusy}
+                      onclick={() => onRemoveBot(g.id, p.player_id)}
+                    >
+                      <Icon name="x" size={12} />
+                    </button>
+                  {/if}
                 </li>
               {:else}
                 <li class="seat open">
@@ -381,10 +492,57 @@
                       {g.state === "lobby" ? "send the invite link" : "—"}
                     </div>
                   </div>
+                  {#if canManageBots(g) && botPickerFor !== g.id}
+                    <button class="seat-add" disabled={botBusy} onclick={() => openBotPicker(g.id)}>
+                      add bot
+                    </button>
+                  {/if}
                 </li>
               {/if}
             {/each}
           </ul>
+
+          {#if botPickerFor === g.id}
+            <div class="bot-picker">
+              <label>
+                <span>tier</span>
+                <select bind:value={botTier} disabled={botBusy}>
+                  {#each botOptions?.tiers ?? [] as t (t.tier)}
+                    <option value={t.tier} disabled={!t.available} title={t.description}>
+                      {t.label}{t.available ? "" : " — not built yet"}
+                    </option>
+                  {/each}
+                </select>
+              </label>
+              <label>
+                <span>deck</span>
+                <select bind:value={botDeck} disabled={botBusy}>
+                  {#each botOptions?.decks ?? [] as d (d.id)}
+                    <option value={d.id} title={d.description}>{d.name}</option>
+                  {/each}
+                </select>
+              </label>
+              <div class="bot-actions">
+                <button
+                  class="primary"
+                  disabled={botBusy || !botTier || !botDeck}
+                  onclick={() => onAddBot(g.id)}
+                >
+                  {botBusy ? "adding…" : "add bot"}
+                </button>
+                <button class="ghost" disabled={botBusy} onclick={() => (botPickerFor = null)}>
+                  cancel
+                </button>
+              </div>
+              {#if botError}<div class="bot-error">{botError}</div>{/if}
+              <p class="hint">
+                A bot takes a real seat, arrives with its deck already loaded, and starts playing
+                when you press start.
+              </p>
+            </div>
+          {:else if botError}
+            <div class="bot-error">{botError}</div>
+          {/if}
 
           {#if seat && g.state === "lobby" && $session?.playerID}
             <details class="deck-upload" open={!seat.deck_uploaded}>
@@ -801,6 +959,96 @@
   }
   .sstat.pend {
     color: var(--gold-strong);
+  }
+
+  /* --- bot seats (S31) ------------------------------------------- */
+  .seat.bot {
+    border-style: dashed;
+    border-color: var(--border-strong);
+  }
+  .sav.bot {
+    border-style: dashed;
+  }
+  .sav .botmark {
+    background: transparent;
+    color: inherit;
+  }
+  .sname b.botchip {
+    color: var(--fg-muted);
+  }
+  /* The seat row is a flex row; these push to its trailing edge. */
+  .seat-x,
+  .seat-add {
+    margin-left: auto;
+    flex: 0 0 auto;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    background: transparent;
+    color: var(--fg-muted);
+    cursor: pointer;
+    font: inherit;
+  }
+  .seat-x {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+  }
+  .seat-add {
+    font-size: 11px;
+    padding: 4px 9px;
+    white-space: nowrap;
+  }
+  .seat-x:hover:not(:disabled),
+  .seat-add:hover:not(:disabled) {
+    color: var(--fg);
+    border-color: var(--gold);
+  }
+  .seat-x:disabled,
+  .seat-add:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .bot-picker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px;
+    padding: 12px;
+    border: 1px dashed var(--border-strong);
+    border-radius: 10px;
+    background: var(--surface-sunken);
+  }
+  .bot-picker label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--fg-muted);
+    min-width: 150px;
+  }
+  .bot-picker select {
+    font: inherit;
+    font-size: 12.5px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-raised);
+    color: var(--fg);
+  }
+  .bot-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .bot-picker .hint {
+    flex: 1 0 100%;
+    margin: 0;
+  }
+  .bot-error {
+    color: var(--danger);
+    font-size: 12px;
+    flex: 1 0 100%;
   }
 
   .deck-upload {

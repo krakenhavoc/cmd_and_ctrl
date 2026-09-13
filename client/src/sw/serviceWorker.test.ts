@@ -87,6 +87,9 @@ describe("service worker routing", () => {
     "/avatars/123.png",
     "/bugreport",
     "/bugreport/upload",
+    // S31 bot seats: the Add-bot picker's options probe.
+    "/bot/options",
+    "/games/7f3c/seats/bot",
   ];
 
   it.each(apiPaths)("never caches the API route %s", (path) => {
