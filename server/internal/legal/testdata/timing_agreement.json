@@ -357,6 +357,40 @@
           "label": "Swamp: Add {B}",
           "source": "00000010-0000-4000-8000-000000000000"
         }
+      ],
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
+        }
       ]
     },
     "expect": [
@@ -687,6 +721,40 @@
           "kind": "mana",
           "label": "Forest: Add {G}",
           "source": "0000001f-0000-4000-8000-000000000000"
+        }
+      ],
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
         }
       ]
     },
@@ -1029,6 +1097,56 @@
           "kind": "mana",
           "label": "Mountain: Add {R}",
           "source": "0000002e-0000-4000-8000-000000000000"
+        }
+      ],
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
+        },
+        {
+          "seq": 7,
+          "kind": "step",
+          "turn": 1,
+          "step": "begin_combat",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · begin combat"
+        },
+        {
+          "seq": 8,
+          "kind": "step",
+          "turn": 1,
+          "step": "declare_attackers",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · declare attackers"
         }
       ]
     },
@@ -1385,6 +1503,40 @@
           "label": "Mountain: Add {R}",
           "source": "0000003d-0000-4000-8000-000000000000"
         }
+      ],
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
+        }
       ]
     },
     "expect": [
@@ -1636,7 +1788,41 @@
       },
       "mulligans_open": false,
       "undo_limit": 1,
-      "starting_seat": 0
+      "starting_seat": 0,
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
+        }
+      ]
     },
     "expect": [
       {
@@ -1881,6 +2067,40 @@
           "label": "Mountain: Add {R}",
           "source": "00000057-0000-4000-8000-000000000000"
         }
+      ],
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
+        }
       ]
     },
     "expect": [
@@ -2119,6 +2339,40 @@
           "kind": "mana",
           "label": "Swamp: Add {B}",
           "source": "00000062-0000-4000-8000-000000000000"
+        }
+      ],
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
         }
       ]
     },
@@ -2383,6 +2637,40 @@
           "kind": "mana",
           "label": "Swamp: Add {B}",
           "source": "0000006e-0000-4000-8000-000000000000"
+        }
+      ],
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
         }
       ]
     },

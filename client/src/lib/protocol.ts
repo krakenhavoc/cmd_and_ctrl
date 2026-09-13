@@ -201,6 +201,12 @@ export interface GameView {
   // omits it entirely. Client predicates stay permissive when it is
   // missing and let the server do the rejecting.
   legal_moves?: LegalMoveView[];
+  // The public game log (S31 sub-PR 0, ADR 0033 §4): the last ~200
+  // table-visible events, oldest first. Every card reference in it has
+  // been through the same visibility filter as the zones above, so an
+  // entry naming a card is an entry this viewer is entitled to see
+  // named. Absent on a game that has produced no events yet.
+  log?: LogEvent[];
 }
 
 // LegalMoveView mirrors `legal.Move` server-side (ADR 0033 §1): one
@@ -229,6 +235,64 @@ export interface LegalMoveView {
   // apply to a UUID array — so join on equality with a real instance
   // ID and never on presence.
   source?: string;
+}
+
+// LogKind mirrors `protocol.LogKind` server-side. Coarser than the
+// engine's own event kinds — several engine events collapse into one
+// line a player would read.
+export type LogKind =
+  | "step"
+  | "cast"
+  | "resolve"
+  | "fizzle"
+  | "counter"
+  | "zone"
+  | "draw"
+  | "life"
+  | "damage"
+  | "attack"
+  | "block"
+  | "token"
+  | "sacrifice"
+  | "eliminated";
+
+// LogEvent mirrors `protocol.LogEvent` — one line of the public game
+// log. `text` is the rendered, already-redacted sentence; the
+// structured fields are the same facts for code that wants them
+// (highlighting the card an entry names, filtering by seat).
+export interface LogEvent {
+  // Engine event sequence number. Monotonic, stable across frames —
+  // use it as the keyed-each key.
+  seq: number;
+  kind: LogKind;
+  // Turn number the entry happened on. Absent (0) for entries that
+  // precede the first step announcement of a game.
+  turn?: number;
+  // Step name — present ONLY on `step` entries. Everything after a
+  // step entry belongs to that step until the next one.
+  step?: string;
+  // Seat index of the responsible player, or -1 when the event has no
+  // single actor.
+  seat: number;
+  // Seat index of the player the entry acts on (who was attacked, who
+  // took the damage). Absent when the entry targets a card or nothing.
+  target_seat?: number;
+  // Instance ID of the card the entry is about. Absent when the entry
+  // deliberately carries no card reference — a draw, or a zone change
+  // with hidden zones at both ends.
+  card_id?: string;
+  // Instance ID of the CARD the entry acts on (a counterspell's
+  // victim, a blocker's attacker). Player targets use target_seat.
+  target?: string;
+  // Signed / counting payload: life delta, damage dealt, cards drawn.
+  amount?: number;
+  old_zone?: string;
+  new_zone?: string;
+  // True when a `damage` entry is combat damage (CR 510).
+  combat?: boolean;
+  // The rendered line. Already redacted for this viewer: a card the
+  // viewer may not identify reads as "a card".
+  text: string;
 }
 
 // PendingChoiceView mirrors `protocol.PendingChoiceView` server-side.

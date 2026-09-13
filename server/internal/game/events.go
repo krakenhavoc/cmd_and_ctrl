@@ -352,6 +352,36 @@ const (
 	// silent rules bug with no way for a card file to defend itself.
 	// Added in S27.
 	EventSagaChapter EventKind = "saga_chapter"
+
+	// EventStepBegan — the turn cursor entered a step. Actor is the
+	// active player, Amount the turn number, Label the step name
+	// (game.Step). Emitted from runStepEntryHooksLocked AFTER the
+	// S17 skip-step replacement window has had its say, so a step
+	// that Stasis cancelled never announces.
+	//
+	// Distinct from the older EventBeginUpkeep / EventBeginEndStep,
+	// which exist for the trigger harvester and only cover the two
+	// steps cards actually name. This one is the public game log's
+	// spine: it is what lets "Bolt resolved" be read as "on turn 7,
+	// in Aang's second main phase". Nothing in the rules engine
+	// listens for it — adding a listener that does would be a
+	// mistake, because the two upkeep/end-step kinds are the ones
+	// with the careful mulligan and recursion guards.
+	//
+	// The mulligan window re-runs the untap hook once per keep, so
+	// consecutive duplicates for the same (turn, step, seat) are
+	// expected and de-duplicated by the log projection rather than
+	// here. Added in S31 sub-PR 0.
+	EventStepBegan EventKind = "step_began"
+
+	// EventBlock — CardID was declared as a blocker. Actor is the
+	// blocking creature's controller, Target the attacker it is
+	// blocking. The other half of EventAttack, and emitted under the
+	// same rule: only on a creature's FIRST declaration against a
+	// given attacker, so re-pointing a blocker in the sandbox does
+	// not announce twice. Added in S31 sub-PR 0 for the public game
+	// log — no card in the catalog reads "becomes blocked by" yet.
+	EventBlock EventKind = "block"
 )
 
 // Event is a single entry in the per-game event log. Tagged union

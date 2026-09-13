@@ -2048,10 +2048,10 @@ Nothing is now blocked on #280. Sub-PR 5's deck list was the only thing that eve
 
 The engine has no event history: `GameView` carries none, the client has none, and `PlayerView.LifeHistory` is the only past tense anywhere. A policy reasoning from a bare snapshot cannot see a boardwipe that already happened. Players have wanted this since S07 shipped chat without it, and bug reports get materially better when the log ships alongside the replay.
 
-- [ ] `protocol.LogEvent` + bounded public log on `GameView` (few hundred entries), through the same visibility filter as everything else
-- [ ] Emit on: zone changes, casts, resolutions, combat declarations, life changes, step boundaries
-- [ ] Client game-log panel
-- [ ] Attach the log to bug-report artifacts in `bugstore`
+- [x] `protocol.LogEvent` + bounded public log on `GameView` (few hundred entries), through the same visibility filter as everything else
+- [x] Emit on: zone changes, casts, resolutions, combat declarations, life changes, step boundaries
+- [x] Client game-log panel
+- [x] Attach the log to bug-report artifacts in `bugstore`
 
 ### Sub-PR 1 — `internal/legal`: enumerate a seat's legal moves
 
