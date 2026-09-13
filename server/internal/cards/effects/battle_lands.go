@@ -36,6 +36,9 @@ func init() {
 		// Roadmap batch 06 (#299): the enemy-pair printing of the same
 		// two-basics clause.
 		{"40544d12-0391-4a61-af95-9b8ec01ed8fc", "Vernal Fen", "B", "G"},
+		// Roadmap batch 10 (#303): Land — Mountain Plains, the same
+		// two-basics clause.
+		{"5dd0cc44-4647-4857-ad3b-22494099d08a", "Radiant Summit", "R", "W"},
 	} {
 		Register(Spec{
 			OracleID:      land.oracleID,
