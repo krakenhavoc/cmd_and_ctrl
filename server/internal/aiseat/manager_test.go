@@ -18,6 +18,7 @@ import (
 // miniature: bots added through the lobby, a Start, and the manager
 // drives them to a finished game with no client involved.
 func TestManagerPlaysALobbySeatedTable(t *testing.T) {
+	requireGameTests(t)
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mgr := ws.NewRoomManager(log, "")
 	l := lobby.NewLobby(mgr)
