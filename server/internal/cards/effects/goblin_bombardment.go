@@ -17,8 +17,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // ability and resolve first.
 func init() {
 	Register(Spec{
-		OracleID: "edad60c6-80de-4033-af1b-a703ac332983",
-		Name:     "Goblin Bombardment",
+		OracleID:     "edad60c6-80de-4033-af1b-a703ac332983",
+		Name:         "Goblin Bombardment",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "Sacrifice a creature: deal 1 damage to any target",
 			Cost:    SacrificeACreature(),

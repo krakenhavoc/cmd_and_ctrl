@@ -17,8 +17,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the chosen creature out of the set and fizzle the chapter.
 func init() {
 	Register(Spec{
-		OracleID: "426a5f3f-f161-49b3-97d0-02cda554752b",
-		Name:     "Triumph of Gerrard",
+		OracleID:     "426a5f3f-f161-49b3-97d0-02cda554752b",
+		Name:         "Triumph of Gerrard",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			ChapterTriggerTargeting(1, "Triumph of Gerrard — I: +1/+1 counter on your biggest creature",
 				targetGreatestPowerYouControl(), gerrardCounter),

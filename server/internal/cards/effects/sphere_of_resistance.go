@@ -16,8 +16,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // returns before any cost is priced.
 func init() {
 	Register(Spec{
-		OracleID: "09c96077-3804-4f12-a613-5bebc5e0413f",
-		Name:     "Sphere of Resistance",
+		OracleID:     "09c96077-3804-4f12-a613-5bebc5e0413f",
+		Name:         "Sphere of Resistance",
+		Completeness: CompletenessFull,
 		CostModifiers: []game.CostModifier{
 			CostsMore(1, "Spells cost {1} more to cast."),
 		},

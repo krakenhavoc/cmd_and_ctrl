@@ -24,8 +24,9 @@ import (
 //     prompt, no draw.
 func init() {
 	Register(Spec{
-		OracleID: "5def9f38-0a0b-4e8d-9f9d-29dcb46520b4",
-		Name:     "Esper Sentinel",
+		OracleID:     "5def9f38-0a0b-4e8d-9f9d-29dcb46520b4",
+		Name:         "Esper Sentinel",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCast},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

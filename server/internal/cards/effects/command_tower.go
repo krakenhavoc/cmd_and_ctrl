@@ -15,8 +15,9 @@ package effects
 // produce nothing.
 func init() {
 	Register(Spec{
-		OracleID: "0895c9b7-ae7d-4bb3-af17-3b75deb50a25",
-		Name:     "Command Tower",
+		OracleID:     "0895c9b7-ae7d-4bb3-af17-3b75deb50a25",
+		Name:         "Command Tower",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",

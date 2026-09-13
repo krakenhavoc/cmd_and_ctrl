@@ -11,8 +11,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // ChangePlayerLife composition, aimed at the controller.
 func init() {
 	Register(Spec{
-		OracleID: "7ffae8f8-3006-4969-a339-6d30678f87ea",
-		Name:     "Night's Whisper",
+		OracleID:     "7ffae8f8-3006-4969-a339-6d30678f87ea",
+		Name:         "Night's Whisper",
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller := ctx.Controller()
 			if err := (DrawCards{Player: controller, N: 2}).Apply(ctx); err != nil {

@@ -42,9 +42,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "5912546a-acc2-448c-b042-64bdac5ec129",
-		Name:     "Mind Control",
-		Targets:  EnchantCreature(),
+		OracleID:     "5912546a-acc2-448c-b042-64bdac5ec129",
+		Name:         "Mind Control",
+		Completeness: CompletenessFull,
+		Targets:      EnchantCreature(),
 		Static: []game.StaticAbility{
 			ControlAttachedBySource(),
 		},

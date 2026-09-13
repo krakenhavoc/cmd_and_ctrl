@@ -16,8 +16,9 @@ package effects
 // families.
 func init() {
 	Register(Spec{
-		OracleID: "c5acf2a5-40f4-433d-a74d-1cb56c521464",
-		Name:     "Arid Mesa",
+		OracleID:     "c5acf2a5-40f4-433d-a74d-1cb56c521464",
+		Name:         "Arid Mesa",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:  "{T}, Pay 1 life, Sacrifice this land: Search your library for a Mountain or Plains card, put it onto the battlefield, then shuffle.",
 			Cost:   fetchlandCost(),

@@ -32,8 +32,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "ca204b66-8d0c-431a-8d34-282f7c2d17da",
-		Name:     "Lightning Greaves",
+		OracleID:     "ca204b66-8d0c-431a-8d34-282f7c2d17da",
+		Name:         "Lightning Greaves",
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			GrantToAttached("haste", "shroud"),
 		},

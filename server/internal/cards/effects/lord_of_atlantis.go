@@ -25,8 +25,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // + S18 SBA can consume it without a wire bump.
 func init() {
 	Register(Spec{
-		OracleID: "cc7f290f-ca00-4285-9bdb-4b4402444f30",
-		Name:     "Lord of Atlantis",
+		OracleID:     "cc7f290f-ca00-4285-9bdb-4b4402444f30",
+		Name:         "Lord of Atlantis",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Only Merfolk YOU control get +1/+1 — the printed card pumps every other Merfolk on the battlefield, opponents' included.", "Islandwalk is granted but does nothing: the engine's blocking rules never consult it."},
 		Static: []game.StaticAbility{
 			{
 				Layer:     game.Layer7PT,

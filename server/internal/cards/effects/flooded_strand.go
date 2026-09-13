@@ -16,8 +16,9 @@ package effects
 // families.
 func init() {
 	Register(Spec{
-		OracleID: "f3c7af78-a77d-4134-82a2-a5ce84285a84",
-		Name:     "Flooded Strand",
+		OracleID:     "f3c7af78-a77d-4134-82a2-a5ce84285a84",
+		Name:         "Flooded Strand",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:  "{T}, Pay 1 life, Sacrifice this land: Search your library for a Plains or Island card, put it onto the battlefield, then shuffle.",
 			Cost:   fetchlandCost(),

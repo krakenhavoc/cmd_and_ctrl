@@ -32,8 +32,9 @@ import (
 //     which is the ruling.
 func init() {
 	Register(Spec{
-		OracleID: "8dcb35e5-ae44-455f-86e3-4a77d496ff34",
-		Name:     "Spark Double",
+		OracleID:     "8dcb35e5-ae44-455f-86e3-4a77d496ff34",
+		Name:         "Spark Double",
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			EntersAsCopyOf(
 				"Spark Double",

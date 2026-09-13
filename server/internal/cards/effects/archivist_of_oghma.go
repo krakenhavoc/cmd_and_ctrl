@@ -13,6 +13,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "08b13e1f-27ca-40a8-b5ed-88ac933d24bf",
 		Name:            "Archivist of Oghma",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventSearchLibrary},

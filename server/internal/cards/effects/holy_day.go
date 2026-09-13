@@ -11,8 +11,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // effect is the shared primitive.
 func init() {
 	Register(Spec{
-		OracleID: "98423a34-f044-4811-b288-56981d604b6e",
-		Name:     "Holy Day",
+		OracleID:     "98423a34-f044-4811-b288-56981d604b6e",
+		Name:         "Holy Day",
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return PreventAllCombatDamageThisTurn{
 				Label: "Holy Day: prevent combat damage",

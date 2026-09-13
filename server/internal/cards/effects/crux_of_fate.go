@@ -29,8 +29,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 func init() {
 	dragon := Subtype("Dragon")
 	Register(Spec{
-		OracleID: "52a0dae4-2a95-487e-acd4-eabdb2d031e2",
-		Name:     "Crux of Fate",
+		OracleID:     "52a0dae4-2a95-487e-acd4-eabdb2d031e2",
+		Name:         "Crux of Fate",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
 		Modes: ChooseOne(
 			Mode("Destroy all Dragon creatures."),
 			Mode("Destroy all non-Dragon creatures."),

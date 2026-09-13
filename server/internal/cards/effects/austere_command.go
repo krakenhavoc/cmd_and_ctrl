@@ -23,8 +23,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // filter is the same object a targeting clause would use.
 func init() {
 	Register(Spec{
-		OracleID: "09cc8709-fe10-472a-b05c-e89f3523018d",
-		Name:     "Austere Command",
+		OracleID:     "09cc8709-fe10-472a-b05c-e89f3523018d",
+		Name:         "Austere Command",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
 		Modes: ChooseN("Choose two", 2, 2,
 			Mode("Destroy all artifacts."),
 			Mode("Destroy all enchantments."),

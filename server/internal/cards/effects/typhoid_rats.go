@@ -10,6 +10,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "d6ee6cc1-902d-4f56-afa5-6fa4813bfbbc",
 		Name:            "Typhoid Rats",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch"},
 	})
 }

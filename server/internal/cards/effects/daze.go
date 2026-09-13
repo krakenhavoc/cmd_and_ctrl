@@ -24,9 +24,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // a decline server-side.
 func init() {
 	Register(Spec{
-		OracleID: "70486bee-6ee7-41ea-b834-8caf4699302b",
-		Name:     "Daze",
-		Targets:  TargetSpell("target spell"),
+		OracleID:     "70486bee-6ee7-41ea-b834-8caf4699302b",
+		Name:         "Daze",
+		Completeness: CompletenessFull,
+		Targets:      TargetSpell("target spell"),
 		AlternativeCosts: []game.AlternativeCost{
 			ReturnInstead(
 				"Return an Island you control to its owner's hand",

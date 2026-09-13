@@ -23,8 +23,9 @@ import (
 // Hardened Scales pair, where order changes the result.
 func init() {
 	Register(Spec{
-		OracleID: "2d4976d4-649c-4d42-ac5a-ada4b46a480c",
-		Name:     "Angrath's Marauders",
+		OracleID:     "2d4976d4-649c-4d42-ac5a-ada4b46a480c",
+		Name:         "Angrath's Marauders",
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {

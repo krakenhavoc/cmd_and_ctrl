@@ -33,8 +33,10 @@ import (
 // reason anybody plays Pir is the +1.
 func init() {
 	Register(Spec{
-		OracleID: "7683c2b2-a06f-4691-9cc5-1968dc032885",
-		Name:     "Pir, Imaginative Rascal",
+		OracleID:     "7683c2b2-a06f-4691-9cc5-1968dc032885",
+		Name:         "Pir, Imaginative Rascal",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"\"Partner with Toothy\" is missing — no search trigger, and Pir can't be paired as a commander."},
 		Replacements: []game.ReplacementEffect{
 			{
 				Watches: []game.EventKind{game.EventCounterPlaced},

@@ -21,6 +21,8 @@ func init() {
 	Register(Spec{
 		OracleID:         "0b8c3337-04dd-4798-8203-6d8b8cfb936b",
 		Name:             "Lingering Souls",
+		Completeness:     CompletenessCaveats,
+		Caveats:          []string{"The Spirit tokens are created colorless instead of white, so anything that cares about a creature's color doesn't see them."},
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Flashback("{1}{B}")},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

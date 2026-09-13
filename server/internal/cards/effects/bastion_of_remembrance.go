@@ -37,8 +37,9 @@ func bastionSoldierToken() game.Card {
 
 func init() {
 	Register(Spec{
-		OracleID: "c7f33cea-2ec8-4081-9208-a5b1d86721b3",
-		Name:     "Bastion of Remembrance",
+		OracleID:     "c7f33cea-2ec8-4081-9208-a5b1d86721b3",
+		Name:         "Bastion of Remembrance",
+		Completeness: CompletenessFull,
 		OnETB: func(card *game.Card, ctx *Context) error {
 			return CreateToken{
 				Controller: card.Controller,

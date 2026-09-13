@@ -29,8 +29,9 @@ import (
 // simultaneous event like any other mass effect.
 func init() {
 	Register(Spec{
-		OracleID: "7c779721-cd1b-4696-9ae9-68ccc284ed2a",
-		Name:     "Aetherize",
+		OracleID:     "7c779721-cd1b-4696-9ae9-68ccc284ed2a",
+		Name:         "Aetherize",
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			var attackers []uuid.UUID
 			for _, c := range ctx.Game.BattlefieldCardsForEffect() {

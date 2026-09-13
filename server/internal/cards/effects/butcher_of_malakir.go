@@ -21,6 +21,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "a85197ab-dc94-4b72-9716-8dbdbbe90ff8",
 		Name:            "Butcher of Malakir",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},

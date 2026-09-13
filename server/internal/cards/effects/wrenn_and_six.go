@@ -30,8 +30,10 @@ import (
 // loyalty payment would be a worse lie than one that isn't offered.
 func init() {
 	Register(Spec{
-		OracleID: "108ae90a-50fa-4cfd-b751-d630e41425fe",
-		Name:     "Wrenn and Six",
+		OracleID:     "108ae90a-50fa-4cfd-b751-d630e41425fe",
+		Name:         "Wrenn and Six",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The -7 ultimate isn't offered — there is no emblem and no retrace."},
 		// Printed loyalty reaches the card through deck import
 		// (ADR 0032 §1); this is the fallback for tokens, fixtures
 		// and the dev spawner.

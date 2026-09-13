@@ -27,6 +27,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "385c1208-bfea-44e2-b236-4f38bc90db9f",
 		Name:            "Gladecover Scout",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"hexproof"},
 	})
 
@@ -36,6 +37,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "f64878c1-1fba-44f7-a24f-d24bef2e03ae",
 		Name:            "Slippery Bogle",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"hexproof"},
 	})
 }

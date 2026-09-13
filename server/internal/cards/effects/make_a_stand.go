@@ -31,8 +31,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID: "531f78d5-5004-4b02-99c7-b390cb342fd9",
-		Name:     "Make a Stand",
+		OracleID:     "531f78d5-5004-4b02-99c7-b390cb342fd9",
+		Name:         "Make a Stand",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			yours := And(Creature(), YouControl())
 			if err := (BoostUntilEOT{
