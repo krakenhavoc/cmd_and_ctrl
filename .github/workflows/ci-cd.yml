@@ -101,7 +101,19 @@ jobs:
 
       - name: Server — test
         working-directory: server
-        run: go test -race -cover ./...
+        # -timeout 30m, not Go's 10m default. internal/aiseat runs whole
+        # four-bot games as unit tests -- the fuzzer, the heuristic
+        # head-to-head, and the model funnel's outage drill -- and under
+        # -race on a shared self-hosted runner that package alone pushed
+        # past 600s the moment S31 sub-PR 7 landed, failing every open PR
+        # with "FAIL internal/aiseat 600.0xx" and nothing else to go on.
+        #
+        # The 10m default is per test BINARY, so it is really a
+        # per-package budget and aiseat is the only package near it. 30m
+        # is headroom, not a target: if aiseat approaches it again the
+        # answer is to ration whole games (sub-PR 7 already trimmed once),
+        # not to raise this further.
+        run: go test -race -cover -timeout 30m ./...
 
       - name: Server — build
         working-directory: server
