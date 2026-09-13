@@ -18,6 +18,8 @@ func init() {
 	for _, land := range []struct{ oracleID, name, pipe, label string }{
 		{"7d7cf15c-06b9-4062-a1eb-32614c458a3b", "Arcane Sanctum", "{W|U|B}", "Add {W}, {U}, or {B}"},
 		{"2e69537c-c898-4e13-a72d-ce3957a90304", "Jungle Shrine", "{R|G|W}", "Add {R}, {G}, or {W}"},
+		// Roadmap batch 05 (#298).
+		{"a3292406-3f49-42d6-a547-e43dd5797f84", "Savage Lands", "{B|R|G}", "Add {B}, {R}, or {G}"},
 	} {
 		Register(Spec{
 			OracleID:     land.oracleID,
