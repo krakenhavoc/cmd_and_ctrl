@@ -1,0 +1,46 @@
+package effects
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Rhox Faithmender — Creature — Rhino Monk {3}{W}, 1/5 (EDHREC rank
+// 1620):
+//
+//	"Lifelink (Damage dealt by this creature also causes you to gain
+//	 that much life.)
+//	 If you would gain life, you gain twice that much life instead."
+//
+// The lifegain doubler. A CR 614 replacement on the life-change
+// event, applied only to a GAIN (a positive delta) for the
+// Faithmender's own controller — a life loss or a payment is not a
+// gain and goes through untouched. Every lifegain path in the engine
+// routes through ChangePlayerLife, lifelink included, so the
+// Faithmender's own lifelink is doubled too, as printed. Two
+// Faithmenders quadruple.
+//
+// No simplification.
+func init() {
+	Register(Spec{
+		OracleID:        "2abe9303-d498-4aad-b6b2-8b5064bd2ffd",
+		Name:            "Rhox Faithmender",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{"lifelink"},
+		Replacements: []game.ReplacementEffect{{
+			Watches: []game.EventKind{game.EventChangeLife},
+			AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
+				return ev.Kind == game.RepEventLife && ev.LifeDelta > 0 && ev.LifePlayer == src.Controller
+			},
+			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+				ev.LifeDelta *= 2
+				return nil
+			},
+			Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+				return src.Controller
+			},
+			Label: "Rhox Faithmender: gain twice that much life",
+		}},
+	})
+}
