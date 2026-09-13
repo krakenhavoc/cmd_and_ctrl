@@ -403,6 +403,13 @@ type SearchLibrary struct {
 	Then func(g *game.Game, found []uuid.UUID) error
 	// Source is the card that caused the search — prompt context.
 	Source uuid.UUID
+	// ToTop is the "... then shuffle and put that card ON TOP"
+	// clause the one-mana tutors print (Enlightened, Worldly,
+	// Mystical, Vampiric, Imperial Seal). Set it with
+	// Dest: game.ZoneLibrary. The card never leaves the library; it
+	// is placed after the shuffle, which is what makes the clause
+	// mean anything.
+	ToTop bool
 }
 
 func (s SearchLibrary) Apply(ctx *Context) error {
@@ -423,6 +430,7 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		Reason:        s.Reason,
 		Validate:      s.Validate,
 		Then:          s.Then,
+		ToTop:         s.ToTop,
 	})
 }
 
@@ -533,4 +541,136 @@ func (s Scry) Apply(ctx *Context) error {
 	}
 	ctx.Game.ScryThenForEffect(player, ctx.Source(), s.N, s.Then)
 	return nil
+}
+
+// Surveil is "surveil N" (CR 701.42) — look at the top N cards of
+// your library, then put any number of them into your graveyard and
+// the rest back on top in any order.
+//
+// Scry with the bottom-of-library leg replaced by the graveyard, and
+// that replacement is the entire reason the keyword exists: a card
+// binned by a surveil is somewhere you can reanimate, delve or escape
+// it from, not buried under the rest of your deck.
+//
+// Like Scry, the whole effect is a choice, so Apply queues a prompt
+// and nothing moves until the player answers. A surveil with an empty
+// library is not an error and queues nothing.
+//
+// Surveil is "look at", not "reveal" — only the surveilling player
+// sees the cards. The engine handles that; a card's effect never
+// needs to.
+type Surveil struct {
+	Player uuid.UUID
+	N      int
+
+	// Then is the rest of the effect, for a card whose text says
+	// "Surveil N, THEN ...". It runs once the player has put the
+	// cards back, so it sees the library and graveyard the player
+	// chose.
+	//
+	// The same warning as Scry.Then applies, for the same reason:
+	// anything after "then" MUST go here rather than after this
+	// primitive returns. Apply only queues the prompt, so a draw
+	// written as the next statement happens BEFORE the player has
+	// chosen — and also leaves the prompt unanswerable, because the
+	// drawn card is no longer in the library to put back.
+	Then func(g *game.Game) error
+}
+
+func (s Surveil) Apply(ctx *Context) error {
+	player := s.Player
+	if player == uuid.Nil {
+		player = ctx.Controller()
+	}
+	ctx.Game.SurveilThenForEffect(player, ctx.Source(), s.N, s.Then)
+	return nil
+}
+
+// LookAtTop is "look at the top N cards of your library, then put
+// them back in any order" — Ponder, Sensei's Divining Top,
+// Soothsaying.
+//
+// The scry family's third member and the one with no away lane: every
+// card goes back on top, and the only decision is the order. That
+// still has to be a real prompt, because a card whose text is "put
+// them back in any order" and whose implementation puts them back in
+// the order they were is a blank.
+//
+// Like Scry and Surveil, Apply only queues the prompt — nothing moves
+// until the player answers, and an empty library queues nothing.
+type LookAtTop struct {
+	Player uuid.UUID
+	N      int
+
+	// Then is the rest of the effect, for "... then draw a card"
+	// (Ponder). Same warning as Scry.Then: it MUST go here, not on
+	// the line after Apply, or the draw happens before the player has
+	// decided which card is on top — which is the entire point of
+	// the card.
+	Then func(g *game.Game) error
+}
+
+func (l LookAtTop) Apply(ctx *Context) error {
+	player := l.Player
+	if player == uuid.Nil {
+		player = ctx.Controller()
+	}
+	ctx.Game.LookAtTopThenForEffect(player, ctx.Source(), l.N, l.Then)
+	return nil
+}
+
+// MillToZone is MillCards generalised: it moves cards off the top of
+// a library into a destination zone and hands the caller back what
+// moved.
+//
+// Three things it can express that MillCards cannot:
+//
+//   - "Exile the top N cards of your library" — To: game.ZoneExile.
+//     That is not a mill, and the engine emits an ordinary zone move
+//     rather than EventMill for it, so mill payoffs stay out of it.
+//   - "... until a creature card is put into their graveyard" — Until
+//     ends the run after the first card it accepts, and the card that
+//     ends it still moves.
+//   - "... then do something with the cards milled this way" — Milled
+//     receives them in the order they came off the library. Diffing
+//     the graveyard afterwards would be wrong the moment anything
+//     else put a card there during the same resolution.
+//
+// The zero value of To is ZoneGraveyard, so MillToZone{Player: p, N:
+// 3} is exactly MillCards.
+type MillToZone struct {
+	Player uuid.UUID
+	N      int
+
+	// To is ZoneGraveyard (the default, an ordinary mill) or
+	// ZoneExile. Anything else is rejected rather than guessed at.
+	To game.ZoneKind
+
+	// Until, when set, ends the run after the first card it returns
+	// true for. With Until set, N <= 0 means "no limit but the
+	// library", which is how an unbounded mill is written.
+	Until func(c game.Card) bool
+
+	// Milled, when non-nil, is filled with the instance IDs that
+	// moved, in library order (top first).
+	Milled *[]uuid.UUID
+}
+
+func (m MillToZone) Apply(ctx *Context) error {
+	if m.N <= 0 && m.Until == nil {
+		return nil
+	}
+	dest := m.To
+	if dest == "" {
+		dest = game.ZoneGraveyard
+	}
+	player := m.Player
+	if player == uuid.Nil {
+		player = ctx.Controller()
+	}
+	moved, err := ctx.Game.MillToZoneForEffect(player, m.N, dest, m.Until)
+	if m.Milled != nil {
+		*m.Milled = moved
+	}
+	return err
 }

@@ -1509,35 +1509,14 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				}
 			}
 		}
-		// PendingChoiceMayCast — the single card being offered
-		// ("you may cast it without paying its mana cost"). Inlined
-		// as the one Options entry so the prompt shows the card
-		// rather than quoting its name into a sentence. The card is
-		// face up in exile and public, so no redaction concern.
-		if c.Kind == game.PendingChoiceMayCast && c.MayCastCard != uuid.Nil {
-			if card, ok := g.LookupCardForEffect(c.MayCastCard); ok {
-				v.Options = []CardView{viewOfCard(card)}
-			}
-		}
-		// PendingChoiceCopyTarget — "you may have this enter as a
-		// copy of ..." (S16.5). Same shape as the sacrifice picker:
-		// the candidate permanents inlined as Options so the grid
-		// renders faces. Battlefield cards are public, so no
-		// redaction concern.
-		if c.Kind == game.PendingChoiceCopyTarget && len(c.CopyOptions) > 0 {
-			v.Options = make([]CardView, 0, len(c.CopyOptions))
-			for _, id := range c.CopyOptions {
-				if card, ok := g.LookupCardForEffect(id); ok {
-					v.Options = append(v.Options, viewOfCard(card))
-				}
-			}
-		}
-		// PendingChoiceScry — the looked-at cards, top-first, as
-		// Options. Scry is "look at", not "reveal": only the chooser
-		// was marked a knower, so FilterViewFor redacts these to backs
-		// for every other seat and the top of the library stays
-		// private.
-		if c.Kind == game.PendingChoiceScry && len(c.ScryCards) > 0 {
+		// The scry family — scry, surveil, and plain "look at the top
+		// N, put them back in any order" — projects the looked-at
+		// cards, top-first, as Options. All three are "look at", not
+		// "reveal": only the chooser was marked a knower, so
+		// FilterViewFor redacts these to backs for every other seat
+		// and the top of the library stays private. The COUNT is
+		// public, which is correct — "scry 2" is a printed number.
+		if game.IsLookAtTopKind(c.Kind) && len(c.ScryCards) > 0 {
 			v.Options = make([]CardView, 0, len(c.ScryCards))
 			for _, id := range c.ScryCards {
 				if card, ok := g.LookupCardForEffect(id); ok {

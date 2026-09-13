@@ -1082,6 +1082,14 @@ func Dispatch(g *game.Game, a Action) error {
 			// engine validates and normalises it. Routed by presence,
 			// like Color above.
 			CreatureType string `json:"creature_type"`
+			// Graveyard answers a PendingChoiceSurveil (CR 701.42)
+			// alongside TopOrder: the looked-at cards going to the
+			// chooser's graveyard. Its PRESENCE is what distinguishes
+			// a surveil answer from a scry one, since both carry
+			// top_order — so a client must send `graveyard` (even as
+			// []) on a surveil and must not send it on a scry.
+			// Added in S22.
+			Graveyard []string `json:"graveyard"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1096,24 +1104,37 @@ func Dispatch(g *game.Game, a Action) error {
 		if p.CreatureType != "" {
 			return g.ResolveCreatureTypeChoice(choiceID, a.Player, p.CreatureType)
 		}
-		if p.Bottom != nil || p.TopOrder != nil {
-			bottom := make([]uuid.UUID, 0, len(p.Bottom))
-			for i, raw := range p.Bottom {
-				id, err := uuid.Parse(raw)
-				if err != nil {
-					return fmt.Errorf("resolve_choice bottom[%d]: %w", i, err)
-				}
-				bottom = append(bottom, id)
+		// The scry family — scry, surveil, "look at the top N and put
+		// them back in any order" — routes on the CHOICE'S KIND, not
+		// on the payload shape every other branch here keys off.
+		//
+		// It has to: all three answers carry top_order, and the plain
+		// look-at carries nothing else at all, so there is no key
+		// whose presence identifies it. Guessing from the payload
+		// would send a surveil to ResolveScry and bury cards that
+		// should have been binned. One read-lock acquisition is a
+		// cheap price for not being able to get that wrong.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && game.IsLookAtTopKind(kind) {
+			top, err := parseUUIDs(p.TopOrder, "top_order")
+			if err != nil {
+				return err
 			}
-			top := make([]uuid.UUID, 0, len(p.TopOrder))
-			for i, raw := range p.TopOrder {
-				id, err := uuid.Parse(raw)
+			switch kind {
+			case game.PendingChoiceSurveil:
+				gy, err := parseUUIDs(p.Graveyard, "graveyard")
 				if err != nil {
-					return fmt.Errorf("resolve_choice top_order[%d]: %w", i, err)
+					return err
 				}
-				top = append(top, id)
+				return g.ResolveSurveil(choiceID, a.Player, gy, top)
+			case game.PendingChoiceLookAtTop:
+				return g.ResolveLookAtTop(choiceID, a.Player, top)
+			default:
+				bottom, err := parseUUIDs(p.Bottom, "bottom")
+				if err != nil {
+					return err
+				}
+				return g.ResolveScry(choiceID, a.Player, bottom, top)
 			}
-			return g.ResolveScry(choiceID, a.Player, bottom, top)
 		}
 		if p.Target != nil {
 			ref, err := p.Target.toRef()
@@ -1474,6 +1495,25 @@ func (t castTargetWire) toRef() (game.TargetRef, error) {
 	default:
 		return game.TargetRef{}, fmt.Errorf("unknown target kind %q", t.Kind)
 	}
+}
+
+// parseUUIDs converts a wire list of IDs, naming the field in any
+// error so a malformed entry is traceable to the key it arrived on.
+// A nil or empty input yields a nil slice, which the scry-family
+// resolvers treat identically.
+func parseUUIDs(raw []string, field string) ([]uuid.UUID, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	out := make([]uuid.UUID, 0, len(raw))
+	for i, s := range raw {
+		id, err := uuid.Parse(s)
+		if err != nil {
+			return nil, fmt.Errorf("resolve_choice %s[%d]: %w", field, i, err)
+		}
+		out = append(out, id)
+	}
+	return out, nil
 }
 
 func (z zoneRefWire) toRef() (game.ZoneRef, error) {

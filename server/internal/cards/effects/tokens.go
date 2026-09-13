@@ -458,3 +458,21 @@ func ColorlessShapeshifterToken() game.Card {
 		Keywords:  []string{game.KeywordChangeling},
 	}
 }
+
+// InsectToken is The Locust God's 1/1 blue and red Insect with
+// flying AND HASTE. The haste is the card: a draw spell that makes
+// five hasty fliers is a lethal attack this turn, and the same
+// template without it is a board that dies to the wrath on the way
+// back round. Added in S22.
+//
+// Colors is left unset, matching every other template in this file —
+// nothing in the engine reads a token's colour yet.
+func InsectToken() game.Card {
+	return game.Card{
+		Name:      "Insect",
+		TypeLine:  "Token Creature — Insect",
+		Power:     1,
+		Toughness: 1,
+		Keywords:  []string{"flying", "haste"},
+	}
+}

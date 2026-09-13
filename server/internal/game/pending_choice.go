@@ -172,6 +172,52 @@ const (
 	// drawn.
 	PendingChoiceScry PendingChoiceKind = "scry"
 
+	// PendingChoiceSurveil — "look at the top N cards of your
+	// library. Put any number of them into your graveyard and the
+	// rest on top of your library in any order." (CR 701.42)
+	//
+	// Structurally scry with the bottom-of-library leg replaced by
+	// the graveyard, and it shares scry's plumbing: the looked-at
+	// cards ride in ScryCards, the continuation in scryResume, and
+	// the wire projects them through PendingChoiceView.Options with
+	// the same chooser-only redaction. Surveil is "look at", not
+	// "reveal".
+	//
+	// It is a SEPARATE KIND rather than a flag on the scry prompt
+	// because the destination is the whole difference. A card put on
+	// the bottom of a library is not a card in a graveyard: a
+	// reanimator deck surveils to fill its graveyard, and a client
+	// that rendered "to bottom" would be offering the wrong move.
+	// The distinction is also observable downstream — EventSurveil
+	// is not EventScry, and the cards that land in the graveyard
+	// fire ordinary zone-change triggers.
+	//
+	// Answered with {graveyard: []string, top_order: []string}.
+	// Every looked-at card must appear in exactly one of the two
+	// lists, and top_order is top-first. Added in S22.
+	PendingChoiceSurveil PendingChoiceKind = "surveil"
+
+	// PendingChoiceLookAtTop — "look at the top N cards of your
+	// library, then put them back in any order." (Ponder, Sensei's
+	// Divining Top, Soothsaying.)
+	//
+	// The third member of the scry / surveil family and the
+	// degenerate one: same look-at, same privacy, but the cards have
+	// nowhere to go except back on top. There is no second
+	// destination, so the answer is a permutation rather than a
+	// partition.
+	//
+	// It is still a real choice and still a real prompt. "Put them
+	// back in any order" with no way to express the order is the
+	// same card as "do nothing", which is what makes Sensei's Top a
+	// card rather than a blank.
+	//
+	// Answered with {top_order: []string} alone, top-first, naming
+	// every looked-at card exactly once. Sending a `bottom` or
+	// `graveyard` key with it is a client bug — those are the other
+	// two keywords, and this one has no away lane. Added in S22.
+	PendingChoiceLookAtTop PendingChoiceKind = "look_at_top"
+
 	// PendingChoiceSearchLibrary — "search your library for ..."
 	// (CR 701.19). The searcher picks which of the matching cards
 	// they take; picking none is always legal ("you may fail to
@@ -364,6 +410,12 @@ type PendingChoice struct {
 	// is the card that would be drawn next if nothing moves).
 	// Wire-serialised via PendingChoiceView.Options, redacted to the
 	// chooser alone.
+	// ScryCards is the set of cards a PendingChoiceScry — or a
+	// PendingChoiceSurveil, which shares this plumbing — is asking
+	// its chooser to look at, in top-to-bottom library order (so the
+	// first entry is the card that would be drawn next if nothing
+	// moves). Wire-serialised via PendingChoiceView.Options,
+	// redacted to the chooser alone.
 	ScryCards []uuid.UUID
 
 	// TriggerOrderIDs is the set of pending-trigger item IDs a
@@ -433,6 +485,13 @@ type PendingChoice struct {
 	// case that forces it — the card you leave on top is the card you
 	// draw, so a draw that happens before the reorder is a different
 	// card. Not serialised to the wire.
+	// scryResume is the continuation for a PendingChoiceScry or a
+	// PendingChoiceSurveil: the rest of the effect, which must not
+	// run until the player has finished the look-at. Preordain's
+	// "Scry 2, THEN draw a card" is the case that forces it — the
+	// card you leave on top is the card you draw, so a draw that
+	// happens before the reorder is a different card. Not
+	// serialised to the wire.
 	scryResume func(g *Game) error
 }
 
@@ -2152,32 +2211,9 @@ func (g *Game) ResolveScry(choiceID, chooserID uuid.UUID, bottom, topOrder []uui
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	// The two lists must partition the looked-at set exactly: same
-	// cards, no duplicates, nothing invented.
-	want := make(map[uuid.UUID]bool, len(choice.ScryCards))
-	for _, id := range choice.ScryCards {
-		want[id] = true
-	}
-	seen := make(map[uuid.UUID]bool, len(want))
-	for _, list := range [][]uuid.UUID{bottom, topOrder} {
-		for _, id := range list {
-			if !want[id] || seen[id] {
-				return ErrInvalidParam
-			}
-			seen[id] = true
-		}
-	}
-	if len(seen) != len(want) {
-		return ErrInvalidParam
-	}
-	// Everything still has to be in the library. A scry resolves
-	// atomically, so nothing should have moved — but the check is
-	// cheap and turns a desync into a rejection rather than a
-	// half-applied reorder.
-	for id := range want {
-		if !p.Library.Contains(id) {
-			return ErrCardNotFound
-		}
+	want, err := partitionLookedAtCards(p, choice.ScryCards, bottom, topOrder)
+	if err != nil {
+		return err
 	}
 	g.dequeueChoiceLocked(idx)
 
@@ -2209,6 +2245,245 @@ func (g *Game) ResolveScry(choiceID, chooserID uuid.UUID, bottom, topOrder []uui
 	// The rest of the effect, now that the library is in the order the
 	// player chose. Preordain's draw happens here, which is what makes
 	// "then" mean what it says.
+	if choice.scryResume != nil {
+		if err := choice.scryResume(g); err != nil {
+			g.EmitEvent(Event{
+				Kind:     EventEffectError,
+				Actor:    chooserID,
+				Source:   choice.Source,
+				ErrorMsg: err.Error(),
+			})
+		}
+	}
+	g.runStateChecksLocked()
+	return nil
+}
+
+// IsLookAtTopKind reports whether a choice kind belongs to the scry
+// family: the prompts that show their chooser the top N cards of
+// their own library and ask where they go.
+//
+// The three share PendingChoice.ScryCards, scryResume, the
+// chooser-only wire redaction and the client dialog — so the places
+// that care about the family rather than the individual keyword (the
+// view projection, the legal-move enumerator, the dispatcher) ask
+// here instead of listing the kinds and going stale when a fourth
+// arrives. Added in S22.
+func IsLookAtTopKind(k PendingChoiceKind) bool {
+	switch k {
+	case PendingChoiceScry, PendingChoiceSurveil, PendingChoiceLookAtTop:
+		return true
+	}
+	return false
+}
+
+// ResolveLookAtTop answers a PendingChoiceLookAtTop: `topOrder` is
+// every looked-at card, listed top-first, put back on the library in
+// that order.
+//
+// The degenerate member of the scry / surveil family — there is no
+// away lane, so the answer is a permutation rather than a partition.
+// It still runs through the same validation, with an empty away list,
+// because "every looked-at card exactly once" is the part that has to
+// hold either way.
+//
+// No event is emitted. Nothing observable happened: the same cards are
+// in the same zone, and "the order of your library changed" is not a
+// thing another player is entitled to know about.
+//
+// Caller must NOT hold g.mu.
+func (g *Game) ResolveLookAtTop(choiceID, chooserID uuid.UUID, topOrder []uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	idx := -1
+	for i, c := range g.PendingChoices {
+		if c != nil && c.ID == choiceID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ErrPendingChoiceNotFound
+	}
+	choice := g.PendingChoices[idx]
+	if choice.Kind != PendingChoiceLookAtTop {
+		return ErrInvalidParam
+	}
+	if choice.Chooser != chooserID {
+		return ErrNotTheChooser
+	}
+	p := g.playerByIDLocked(chooserID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	want, err := partitionLookedAtCards(p, choice.ScryCards, nil, topOrder)
+	if err != nil {
+		return err
+	}
+	g.dequeueChoiceLocked(idx)
+
+	pulled := make(map[uuid.UUID]Card, len(want))
+	for id := range want {
+		c, err := p.Library.Remove(id)
+		if err != nil {
+			return err
+		}
+		pulled[id] = c
+	}
+	// topOrder is top-first and PushTop appends to the top, so walk it
+	// backwards: the last push lands on top.
+	for i := len(topOrder) - 1; i >= 0; i-- {
+		p.Library.PushTop(pulled[topOrder[i]])
+	}
+	if choice.scryResume != nil {
+		if err := choice.scryResume(g); err != nil {
+			g.EmitEvent(Event{
+				Kind:     EventEffectError,
+				Actor:    chooserID,
+				Source:   choice.Source,
+				ErrorMsg: err.Error(),
+			})
+		}
+	}
+	g.runStateChecksLocked()
+	return nil
+}
+
+// partitionLookedAtCards validates the answer to a scry or a surveil:
+// `away` (bottom of library / graveyard) and `topOrder` must together
+// name every card in `lookedAt` exactly once, and every one of them
+// must still be in the library.
+//
+// Both keywords move ALL of the cards they looked at — a card the
+// chooser "leaves alone" is still being put back on top, which is a
+// choice about order — so an answer that omits one is a client bug
+// rather than a shorthand for "leave it".
+//
+// The library re-check is belt-and-braces: both resolve atomically, so
+// nothing should have moved, but it turns a desync into a rejection
+// rather than a half-applied reorder. Returns the looked-at set as a
+// lookup so the caller can pull the cards out without rebuilding it.
+//
+// Caller must hold g.mu.
+func partitionLookedAtCards(p *Player, lookedAt, away, topOrder []uuid.UUID) (map[uuid.UUID]bool, error) {
+	want := make(map[uuid.UUID]bool, len(lookedAt))
+	for _, id := range lookedAt {
+		want[id] = true
+	}
+	seen := make(map[uuid.UUID]bool, len(want))
+	for _, list := range [][]uuid.UUID{away, topOrder} {
+		for _, id := range list {
+			if !want[id] || seen[id] {
+				return nil, ErrInvalidParam
+			}
+			seen[id] = true
+		}
+	}
+	if len(seen) != len(want) {
+		return nil, ErrInvalidParam
+	}
+	for id := range want {
+		if !p.Library.Contains(id) {
+			return nil, ErrCardNotFound
+		}
+	}
+	return want, nil
+}
+
+// ResolveSurveil answers a PendingChoiceSurveil (CR 701.42):
+// `graveyard` are the looked-at cards going to the chooser's
+// graveyard, `topOrder` are the ones staying on top of the library,
+// listed top-first.
+//
+// Scry's shape with the bottom-of-library leg replaced by the
+// graveyard, and the difference is the whole point of the keyword —
+// the cards that go down are in a zone the chooser can reanimate,
+// delve and escape from, not buried under sixty other cards.
+//
+// The graveyard leg emits EventMill per card, the same event an
+// ordinary mill emits, because it is the same zone change from the
+// same zone: a "whenever a card is put into your graveyard from your
+// library" payoff must not care how it got there. The completed
+// surveil then emits EventSurveil once, for the payoffs that watch
+// the keyword itself.
+//
+// Caller must NOT hold g.mu.
+func (g *Game) ResolveSurveil(choiceID, chooserID uuid.UUID, graveyard, topOrder []uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	idx := -1
+	for i, c := range g.PendingChoices {
+		if c != nil && c.ID == choiceID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ErrPendingChoiceNotFound
+	}
+	choice := g.PendingChoices[idx]
+	if choice.Kind != PendingChoiceSurveil {
+		return ErrInvalidParam
+	}
+	if choice.Chooser != chooserID {
+		return ErrNotTheChooser
+	}
+	p := g.playerByIDLocked(chooserID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	want, err := partitionLookedAtCards(p, choice.ScryCards, graveyard, topOrder)
+	if err != nil {
+		return err
+	}
+	g.dequeueChoiceLocked(idx)
+
+	// Pull all of them out first, then place them, so the
+	// intermediate state can't depend on removal order.
+	pulled := make(map[uuid.UUID]Card, len(want))
+	for id := range want {
+		c, err := p.Library.Remove(id)
+		if err != nil {
+			return err
+		}
+		pulled[id] = c
+	}
+	// Graveyard first: the cards that stay on top end up above a
+	// library that no longer contains the ones that left, which is
+	// the order the printed instruction reads in.
+	for _, id := range graveyard {
+		c := pulled[id]
+		p.Graveyard.PushTop(c)
+		g.markCardKnownInZoneLocked(p.Graveyard, c.InstanceID)
+		g.EmitEvent(Event{
+			Kind:    EventMill,
+			Actor:   chooserID,
+			Source:  choice.Source,
+			CardID:  c.InstanceID,
+			OldZone: ZoneLibrary,
+			NewZone: ZoneGraveyard,
+		})
+	}
+	// topOrder is top-first and PushTop appends to the top, so walk it
+	// backwards: the last push lands on top and must be the caller's
+	// first entry.
+	for i := len(topOrder) - 1; i >= 0; i-- {
+		p.Library.PushTop(pulled[topOrder[i]])
+	}
+	g.EmitEvent(Event{
+		Kind:   EventSurveil,
+		Actor:  chooserID,
+		Source: choice.Source,
+		Amount: len(graveyard),
+	})
+	// The rest of the effect, now that the library is in the order the
+	// player chose.
 	if choice.scryResume != nil {
 		if err := choice.scryResume(g); err != nil {
 			g.EmitEvent(Event{

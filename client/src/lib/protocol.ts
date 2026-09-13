@@ -341,6 +341,19 @@ export interface PendingChoiceView {
     // top-first, redacted to the chooser alone — scry is "look at",
     // not "reveal". Answered with {bottom, top_order}.
     | "scry"
+    // S22: surveil N (CR 701.42). Scry's frame with the
+    // bottom-of-library leg replaced by the graveyard — same
+    // chooser-only redaction on options, same top-first ordering.
+    // Answered with {graveyard, top_order}, NOT {bottom, top_order}:
+    // the server routes on which key is present, so sending scry's
+    // payload for a surveil would bury the cards instead of binning
+    // them.
+    | "surveil"
+    // S22: "look at the top N cards of your library, then put them
+    // back in any order" (Ponder, Sensei's Divining Top). The family's
+    // third member and the one with no away lane — answered with
+    // {top_order} alone, naming every looked-at card exactly once.
+    | "look_at_top"
     // Shocklands: "as this land enters, you may pay 2 life. If you
     // don't, it enters tapped." Answered with the shared yes/no
     // {choice_id, apply} payload — apply=true pays and the land
