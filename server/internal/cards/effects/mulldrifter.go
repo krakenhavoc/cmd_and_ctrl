@@ -26,6 +26,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "24d0f5e7-0d9e-4b76-900e-a7274e80312d",
 		Name:            "Mulldrifter",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		AlternativeCosts: []game.AlternativeCost{
 			Evoke("{2}{U}"),

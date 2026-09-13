@@ -10,8 +10,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // composition aimed at the controller.
 func init() {
 	Register(Spec{
-		OracleID: "84de4fec-2f38-4293-93d3-b3882c5aac14",
-		Name:     "Ambition's Cost",
+		OracleID:     "84de4fec-2f38-4293-93d3-b3882c5aac14",
+		Name:         "Ambition's Cost",
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller := ctx.Controller()
 			if err := (DrawCards{Player: controller, N: 3}).Apply(ctx); err != nil {

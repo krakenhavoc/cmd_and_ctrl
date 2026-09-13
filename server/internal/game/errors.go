@@ -264,6 +264,20 @@ var (
 	// what is, in the end, a no-op. Added in S31 for #318.
 	ErrNoLegalAttackers = errors.New("game: no creature in the declaration is able to attack")
 
+	// ErrIllegalAttackTarget is returned by DeclareAttacker when the
+	// named target is not something this player's creature may attack
+	// (CR 506.2, 508.1d): a seat that is not seated or is eliminated,
+	// a permanent that is neither a planeswalker nor a battle, the
+	// attacker's own controller, a planeswalker they control, or a
+	// battle they protect. Distinct from ErrPlayerNotFound, which is
+	// what the pre-S27 player-only path returned for all of these and
+	// which is now a lie for every permanent target. Added in S27.
+	ErrIllegalAttackTarget = errors.New("game: that is not a legal attack target")
+
+	// ErrNotABattle is returned when an operation that only makes
+	// sense for a battle — choosing its protector — names a permanent
+	// that is not one. Added in S27.
+	ErrNotABattle = errors.New("game: card is not a battle")
 	// ErrInsufficientCrew is returned when the creatures named to pay
 	// a Vehicle's crew cost do not add up to the crew number
 	// (CR 702.122a) — including the case where none were named at

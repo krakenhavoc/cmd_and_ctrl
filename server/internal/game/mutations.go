@@ -1178,7 +1178,7 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 			p.ManaPool.AddMana(ManaToken{
 				Color:        color,
 				Source:       cardID,
-				Restrictions: copyRestrictions(ab.Restrictions),
+				Restrictions: restrictionsFor(g, ab, p.ID, cardID),
 			})
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: cardID})
 		}
@@ -2300,6 +2300,18 @@ func (g *Game) stateBasedActionsLocked() bool {
 				doomed = append(doomed, c.InstanceID)
 			}
 			continue
+		}
+	}
+	// S27 / CR 310.9: a battle at zero defense is DEFEATED, and the
+	// defeated trigger has to see it on the battlefield. Announced
+	// here — after the doomed set is collected and before any of it
+	// moves — so the harvester finds a live source, and so a Siege's
+	// "exile it, then cast it transformed" reads a card that still
+	// exists. The battle is in `doomed` already via the 704.5p arm
+	// above; this only adds the announcement.
+	for _, c := range g.Battlefield.Cards {
+		if c.IsBattle() && c.Counters[CounterDefense] <= 0 {
+			g.emitBattleDefeatedLocked(c.InstanceID)
 		}
 	}
 	// S23: one SBA pass is ONE event (CR 704.3 — all applicable
@@ -3504,7 +3516,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			p.ManaPool.AddMana(ManaToken{
 				Color:        options[0],
 				Source:       cardID,
-				Restrictions: copyRestrictions(ab.Restrictions),
+				Restrictions: restrictionsFor(g, &ab, playerID, cardID),
 			})
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: cardID})
 			continue
@@ -3537,7 +3549,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			Source:           cardID,
 			Reason:           ab.Label,
 			ColorOptions:     filtered,
-			ManaRestrictions: copyRestrictions(ab.Restrictions),
+			ManaRestrictions: restrictionsFor(g, &ab, playerID, cardID),
 		})
 	}
 	// --- rider --------------------------------------------------
@@ -4048,18 +4060,31 @@ func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
 	if g.Turn.Step != StepDeclareAttackers {
 		return ErrWrongStep
 	}
-	if g.playerByIDLocked(targetPlayerID) == nil {
-		return ErrPlayerNotFound
-	}
 	// Layers must be fresh so HasKeyword reads the current effective
 	// characteristic (e.g. a creature granted haste via a Lightning
-	// Greaves equip this turn should be attackable).
+	// Greaves equip this turn should be attackable) — and, since S27,
+	// so the attack-target classifier reads effective TYPES: whether
+	// a permanent is a planeswalker right now is a layer question.
 	g.RecomputeLayersIfStaleLocked()
+	// S27: the target may be a player, a planeswalker or a battle
+	// (CR 506.2, 508.1d). The parameter keeps its historical name;
+	// its DOMAIN is what widened. Classification happens before the
+	// attacker lookup so an unknown target is rejected the same way
+	// whichever creature was named.
+	if g.classifyAttackTargetLocked(targetPlayerID) == AttackTargetNone {
+		// A seat id that resolves to nothing is still
+		// ErrPlayerNotFound, which is what every existing caller and
+		// test expects; anything else is the new error.
+		return ErrPlayerNotFound
+	}
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == attackerID {
 			card := &g.Battlefield.Cards[i]
 			if !card.IsCreature() {
 				return ErrNotACreature
+			}
+			if err := g.canAttackTargetLocked(card.Controller, targetPlayerID); err != nil {
+				return err
 			}
 			if HasKeyword(card, "defender") {
 				return ErrDefender
@@ -4180,19 +4205,22 @@ func (g *Game) DeclareAttackers(decls []AttackDeclaration) ([]uuid.UUID, error) 
 	events := make([]attackEvent, 0, len(decls))
 
 	for _, d := range decls {
-		defender := g.playerByIDLocked(d.Target)
-		if defender == nil || defender.Eliminated {
-			continue
-		}
 		card := findBattlefieldCard(g, d.Attacker)
 		if card == nil || !card.IsCreature() {
 			continue
 		}
-		// A creature may not attack its own controller, and a card
-		// already declared this combat keeps the target its controller
-		// picked — re-pointing is a correction, which stays on the
-		// single-card verb.
-		if card.Controller == d.Target || card.AttackingTarget != uuid.Nil {
+		// S27: the target may be a player, a planeswalker or a
+		// battle. canAttackTargetLocked folds in "not yourself", "not
+		// a planeswalker you control" and "not a battle you protect",
+		// which is what the bare controller comparison used to cover
+		// for the player-only case.
+		if g.canAttackTargetLocked(card.Controller, d.Target) != nil {
+			continue
+		}
+		// A card already declared this combat keeps the target its
+		// controller picked — re-pointing is a correction, which stays
+		// on the single-card verb.
+		if card.AttackingTarget != uuid.Nil {
 			continue
 		}
 		if card.Tapped || HasKeyword(card, "defender") || HasSummoningSickness(card) {
@@ -4519,7 +4547,7 @@ func (g *Game) assignAndDealCombatDamageLocked(firstStrike bool) {
 		if atkParticipates {
 			if len(liveBlockers) == 0 {
 				if atkPower > 0 {
-					g.markCombatDamageToPlayerLocked(atk.AttackingTarget, atkID, atkPower)
+					g.dealCombatDamageToAttackTargetLocked(atk.AttackingTarget, atkID, atkPower)
 				}
 			} else if len(liveBlockers) == 1 {
 				// Single blocker: attacker assigns all power. Trample
@@ -4545,7 +4573,7 @@ func (g *Game) assignAndDealCombatDamageLocked(firstStrike bool) {
 						g.markCombatDamageOnCardLocked(blkID, toBlocker, atkID)
 					}
 					if toPlayer > 0 {
-						g.markCombatDamageToPlayerLocked(atk.AttackingTarget, atkID, toPlayer)
+						g.dealCombatDamageToAttackTargetLocked(atk.AttackingTarget, atkID, toPlayer)
 					}
 				}
 			} else {
@@ -4652,31 +4680,31 @@ func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source
 	if out.DamageAmount <= 0 {
 		return
 	}
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID != out.DamageTarget {
-			continue
-		}
-		g.Battlefield.Cards[i].DamageMarked += out.DamageAmount
-		// S18 sub-PR 3: CR 702.2c — damage from a deathtouch source
-		// flags the creature for SBA destruction regardless of
-		// toughness.
-		if srcCard := findBattlefieldCard(g, out.DamageSource); srcCard != nil && HasKeyword(srcCard, "deathtouch") {
-			g.Battlefield.Cards[i].MarkedLethalByDeathtouch = true
-		}
-		g.EmitEvent(Event{
-			Kind:   EventDealDamage,
-			Actor:  g.controllerOfBattlefieldCardLocked(out.DamageSource),
-			Source: out.DamageSource,
-			Target: out.DamageTarget,
-			Amount: out.DamageAmount,
-			Combat: true,
-		})
-		// S18 sub-PR 3: CR 702.15 — lifelink credits the source's
-		// controller for the (post-replacement) damage amount. Fires
-		// uniformly for combat and non-combat damage.
-		g.applyLifelinkLocked(out.DamageSource, out.DamageAmount)
+	// S18 sub-PR 3: CR 702.2c — damage from a deathtouch source flags
+	// the creature for SBA destruction regardless of toughness.
+	srcDeathtouch := false
+	if srcCard := findBattlefieldCard(g, out.DamageSource); srcCard != nil {
+		srcDeathtouch = HasKeyword(srcCard, "deathtouch")
+	}
+	actor := g.controllerOfBattlefieldCardLocked(out.DamageSource)
+	// S27 (#406): what the damage DOES depends on what the permanent
+	// is — marked on a creature, loyalty off a planeswalker, defense
+	// off a battle (CR 120.3). See permanent_damage.go.
+	if !g.applyDamageToPermanentLocked(out.DamageTarget, out.DamageAmount, srcDeathtouch) {
 		return
 	}
+	g.EmitEvent(Event{
+		Kind:   EventDealDamage,
+		Actor:  actor,
+		Source: out.DamageSource,
+		Target: out.DamageTarget,
+		Amount: out.DamageAmount,
+		Combat: true,
+	})
+	// S18 sub-PR 3: CR 702.15 — lifelink credits the source's
+	// controller for the (post-replacement) damage amount. Fires
+	// uniformly for combat and non-combat damage.
+	g.applyLifelinkLocked(out.DamageSource, out.DamageAmount)
 }
 
 // markCombatDamageFromFrameLocked is the damage-to-creature router
@@ -4715,26 +4743,20 @@ func (g *Game) markCombatDamageFromFrameLocked(cardID uuid.UUID, amount int, fra
 	if out.DamageAmount <= 0 {
 		return
 	}
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID != out.DamageTarget {
-			continue
-		}
-		g.Battlefield.Cards[i].DamageMarked += out.DamageAmount
-		if frame.HasDeathtouch {
-			g.Battlefield.Cards[i].MarkedLethalByDeathtouch = true
-		}
-		g.EmitEvent(Event{
-			Kind:   EventDealDamage,
-			Actor:  frame.SourceController,
-			Source: out.DamageSource,
-			Target: out.DamageTarget,
-			Amount: out.DamageAmount,
-			Combat: true,
-		})
-		if frame.SourceLifelink {
-			g.applyLifelinkFromFrameLocked(out.DamageAmount, frame)
-		}
+	// S27 (#406): same CR 120.3 split the direct path uses.
+	if !g.applyDamageToPermanentLocked(out.DamageTarget, out.DamageAmount, frame.HasDeathtouch) {
 		return
+	}
+	g.EmitEvent(Event{
+		Kind:   EventDealDamage,
+		Actor:  frame.SourceController,
+		Source: out.DamageSource,
+		Target: out.DamageTarget,
+		Amount: out.DamageAmount,
+		Combat: true,
+	})
+	if frame.SourceLifelink {
+		g.applyLifelinkFromFrameLocked(out.DamageAmount, frame)
 	}
 }
 
@@ -5434,6 +5456,53 @@ func (g *Game) SetDiscordIdentity(playerID uuid.UUID, discordID, avatarHash, dis
 	p.DiscordID = discordID
 	p.DiscordAvatarHash = avatarHash
 	p.DisplayName = displayName
+	return nil
+}
+
+// SetBot marks a seat as bot-driven with the named policy tier and
+// the curated deck it was seated with (deckID may be empty when the
+// caller supplied a raw decklist). Lobby state only — a seat cannot
+// change hands mid-game. Added in S31 sub-PR 4.
+func (g *Game) SetBot(playerID uuid.UUID, tier, deckID string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateLobby {
+		return ErrGameNotInLobby
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	p.IsBot = true
+	p.BotTier = tier
+	p.BotDeck = deckID
+	return nil
+}
+
+// RemovePlayer unseats a player and closes the gap in seat numbers.
+// Lobby state only: once a game has started a seat is permanent (a
+// player leaves by conceding). Added in S31 sub-PR 4 so a bot can be
+// removed from an unstarted table.
+func (g *Game) RemovePlayer(playerID uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateLobby {
+		return ErrGameNotInLobby
+	}
+	idx := -1
+	for i, p := range g.Seats {
+		if p != nil && p.ID == playerID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ErrPlayerNotFound
+	}
+	g.Seats = append(g.Seats[:idx], g.Seats[idx+1:]...)
+	for i, p := range g.Seats {
+		p.Seat = i
+	}
 	return nil
 }
 

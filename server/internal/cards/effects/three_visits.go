@@ -11,8 +11,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // for exactly that reason. Untapped, so TappedOnEntry stays false.
 func init() {
 	Register(Spec{
-		OracleID: "1b882a0e-0ede-4d1a-bd1a-9b7cffbcde8e",
-		Name:     "Three Visits",
+		OracleID:     "1b882a0e-0ede-4d1a-bd1a-9b7cffbcde8e",
+		Name:         "Three Visits",
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return SearchLibrary{
 				Player:    ctx.Controller(),

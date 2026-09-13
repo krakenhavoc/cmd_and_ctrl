@@ -19,8 +19,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     so the gap is visible rather than silently wrong.
 func init() {
 	Register(Spec{
-		OracleID: "a1cc5e37-b09a-4b7f-afd5-77c1c35aa425",
-		Name:     "Carrion Feeder",
+		OracleID:     "a1cc5e37-b09a-4b7f-afd5-77c1c35aa425",
+		Name:         "Carrion Feeder",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"\"This creature can't block\" isn't enforced — the Feeder can block."},
 		Activated: []ActivatedAbility{{
 			Label: "Sacrifice a creature: put a +1/+1 counter on this creature",
 			Cost:  SacrificeACreature(),

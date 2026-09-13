@@ -538,6 +538,47 @@ func (h *Hub) BroadcastState(gameID uuid.UUID, seq uint64, view protocol.GameVie
 	h.broadcastToRoom(gameID, seq, view)
 }
 
+// BroadcastChat posts a server-originated chat line to every client on
+// gameID. The counterpart to handleChat, which serves lines that came
+// from a socket; this one serves lines that came from the server
+// itself — today the S31 bot seats, which announce their
+// improvisations and (behind a client setting) narrate their
+// reasoning. Timestamp is stamped here when the caller left it empty
+// so no call site has to remember the format.
+//
+// Best-effort by design: a marshal failure is logged and dropped
+// rather than propagated. A bot's improvisation is already recorded in
+// the replay log and the server log by the time this runs, so a lost
+// frame costs the table its live notification, not the record.
+func (h *Hub) BroadcastChat(gameID uuid.UUID, msg protocol.ChatPayload) {
+	if gameID == uuid.Nil {
+		return
+	}
+	if msg.Timestamp == "" {
+		msg.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	}
+	payload, err := json.Marshal(msg)
+	if err != nil {
+		h.log.Error("ws marshal server chat payload", "err", err)
+		return
+	}
+	frame, err := json.Marshal(protocol.Frame{
+		V:    protocol.Version,
+		Kind: protocol.KindChat,
+		// A fresh ID per line. handleChat echoes the sender's frame
+		// ID, which a server-originated line has none of, and the
+		// client keys its chat log by it — without this every bot
+		// line would share the empty-string key.
+		ID:      uuid.NewString(),
+		Payload: payload,
+	})
+	if err != nil {
+		h.log.Error("ws marshal server chat frame", "err", err)
+		return
+	}
+	h.broadcastChat(gameID, frame)
+}
+
 // broadcastToRoom sends a per-client filtered snapshot frame to every
 // currently connected client whose bound gameID matches. The hub's
 // read lock prevents unregister from closing any client's send

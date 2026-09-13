@@ -31,6 +31,15 @@ func init() {
 		}
 		return 0
 	}
+	// S27: a battle's printed defense. Same fallback-only contract
+	// the starting-loyalty hook has — the catalog answers only when
+	// the card carries no printed value of its own.
+	game.CatalogBattleDefense = func(oracleID string) int {
+		if spec, ok := Lookup(oracleID); ok && spec.Battle != nil {
+			return spec.Battle.Defense
+		}
+		return 0
+	}
 	game.CatalogTargetMode = func(oracleID string) string {
 		if spec, ok := Lookup(oracleID); ok {
 			// S20: a structured TargetSpec is the source of truth
@@ -155,6 +164,9 @@ func init() {
 				Condition:    a.Condition,
 				ProducedFunc: a.ProducedFunc,
 				Restrictions: a.Restrictions,
+				// S26: the computed-restriction slot, for Cavern of
+				// Souls' chosen type.
+				RestrictionsFunc: a.RestrictionsFunc,
 			}
 		}
 		return out

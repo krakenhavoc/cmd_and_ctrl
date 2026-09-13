@@ -97,13 +97,30 @@ func MatchingBattlefield(ctx *Context, match CardPredicate) []game.Card {
 // Damnation, Ritual of Soot, Planar Cleansing, an overloaded
 // Vandalblast.
 //
-// Indestructible, regeneration and totem armor are not modelled
-// anywhere in the engine (game/keywords.go's canonical set is closed
-// and contains none of them), so every match really is destroyed.
-// That makes "they can't be regenerated" cosmetic on the cards that
-// print it, which is the same note Wrath of God has carried since
-// S14 — the clause becomes load-bearing when regeneration lands, and
-// this primitive is where it will be enforced.
+// Regeneration and totem armor are not modelled anywhere in the
+// engine, so "they can't be regenerated" is cosmetic on the cards
+// that print it — the same note Wrath of God has carried since S14.
+// The clause becomes load-bearing when regeneration lands, and this
+// primitive is where it will be enforced.
+//
+// INDESTRUCTIBLE IS A DIFFERENT STORY, and this comment used to get
+// it wrong. S25 (#77) shipped CR 702.12 in
+// game/indestructible.go, but it gated only the two paths that file
+// enumerates: DestroyPermanentForEffect (the single-target verb) and
+// the two damage branches of the SBA doomed pre-pass. The MASS path
+// this primitive uses — g.DestroyPermanentsForEffect →
+// destroyPermanentsLocked (game/simultaneous.go) — calls
+// routeBattlefieldCardToOwnerGraveyardLocked directly and never
+// consults IsIndestructible. So every board wipe in the catalog
+// still destroys an indestructible permanent, which is STRONGER than
+// printed in the one direction this repo never wants to be wrong in.
+// Until that is fixed, two families declare the hole in their
+// Caveats: every card whose printed text grants or carries
+// indestructible, and every card that sweeps through this
+// primitive. Grep for `board wipe ("destroy all")` to find them all
+// and delete them together with the fix. Cards reviewed before the
+// hole was found may still be silent about it — the sweep of the
+// remaining CompletenessUnreviewed specs is not finished.
 type DestroyAllMatching struct {
 	// Match selects the permanents to destroy. Required; a nil
 	// predicate sweeps nothing rather than everything, because

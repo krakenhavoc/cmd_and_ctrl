@@ -1082,7 +1082,7 @@ S14 lays the rules-engine infrastructure the rest of Phase 7 hangs off: a per-ga
 - **Replacement effects (ETB-tapped, "if-would-die-exile-instead")** — S17. Cultivate's "enters tapped" half, Path to Exile's tapped land, Solemn Simulacrum's tapped land all defer.
 - **Combat keywords (trample, lifelink, flying)** — S18.
 - **Auto-fire triggered abilities from catalog cards** — S19. ETB hooks use the direct-call path in S14 and migrate for free.
-- **Scry / surveil / look-at-top-N + Brainstorm's "put 2 back" half** — S22 library-manipulation polish. Brainstorm is NOT in the S14 catalog.
+- **Scry / surveil / look-at-top-N + Brainstorm's "put 2 back" half** — S22 library-manipulation polish. Scry, surveil and look-at-top-N shipped in S22; Brainstorm's "put two cards from your HAND back" is a different shape (it picks from a hand, not from a looked-at library slice) and is still NOT in the catalog.
 - **Target-picker UX for Thoughtseize (pick-from-revealed-hand)** — S22. S14 ships random-pick sandbox.
 - **Target legality validation at announce time** — S20 smart-cast UI. Effects re-check at resolve via CR 608.2b.
 
@@ -1791,15 +1791,39 @@ Two engine findings recorded on [#73](https://github.com/krakenhavoc/cmd_and_ctr
 
 **Phase:** 7 · **Goal:** a draw-heavy Commander deck plays end-to-end.
 
-- [ ] `ScryN`, `SurveilN`, `Explore`, `RevealAndChoose`, `MillToZone`, `DrawAndScry` primitives
-- [ ] Delayed-trigger mechanism (`Game.DelayedTriggers`) for "at the next end step" patterns
-- [ ] `KindLookAtCards` / `KindRevealCards` wire frames (controller-only with redacted view)
+- [x] `ScryN` (as the `Scry` primitive), `SurveilN` (`Surveil`), `MillToZone`, `DrawAndScry` (as `Scry.Then`) primitives — `Explore` and `RevealAndChoose` still open
+- [x] Delayed-trigger mechanism (`Game.DelayedTriggers`) for "at the next end step" patterns
+- [x] `KindLookAtCards` wire frame (controller-only with redacted view) — shipped as the `scry` / `surveil` / `look_at_top` PendingChoice kinds; `KindRevealCards` (broadcast) still open
 - [ ] ~40 cards: passive draw engines, top-of-library manipulation, tutoring, mill, big draw payoffs
 - [ ] Theme-deck smoke test (blue draw deck plays 3 turns)
 
 **Exit criteria:** Activate Sensei's Divining Top → personal-only modal shows top 3 cards → reorder → confirm. Necropotence: activate to exile a card → advance to end step → card moves to hand automatically.
 
-**Status: partial — and less of it is done than the commit log suggests.** Exactly one checklist item has shipped: the delayed-trigger mechanism, as `Game.DelayedTriggers` in `server/internal/game/delayed.go` ([ADR 0026](decisions/0026-delayed-triggers.md), #255), which is the half of the Necropotence exit criterion that does not involve drawing cards. **Every draw and library primitive is still absent** — `ScryN`, `SurveilN`, `Explore`, `RevealAndChoose`, `MillToZone`, `DrawAndScry`, `KindLookAtCards` and `KindRevealCards` each return zero hits across `server/internal/`. Neither exit criterion can be met today: there is no personal-only look-at-cards frame and no scry/reorder UI. The nine `feat(s22)` commits on `main` shipped attack triggers, flicker, alternative cast costs (which is S28 scope — see that section) and roughly fifty cards; they are good work under a misleading tag. See the note under the sprint index.
+**Status: the library-manipulation half is done; the passive-draw-engine half is not.**
+
+The **first exit criterion is met.** Sensei's Divining Top is in the catalog and both its abilities work: `{1}` opens the controller-only reorder modal on the top three, and `{T}` draws then tucks the Top itself, in that order. The **second is still blocked** — Necropotence needs face-down exile plus an exile→hand move, and `exile_play.go` offers neither (its permission grants "you may cast", and its doc comment says the exiled cards are deliberately public).
+
+Shipped:
+
+- **The scry family.** One mechanism, three `PendingChoice` kinds that differ only in where the cards that leave the top go: `scry` (bottom of library, CR 701.18, S21), `surveil` (graveyard, CR 701.42) and `look_at_top` ("put them back in any order"). All three are "look at", not "reveal" — only the chooser is marked a knower, and `FilterViewFor` projects them as backs for every other seat. The count stays public, which is right: "scry 2" is a printed number. The `resolve_choice` dispatcher routes them **by the choice's kind**, not by payload shape, because all three carry `top_order`.
+- **`MillToZone`**, generalising `MillCards` along the three axes printed cards need: a destination zone (exile, which is not a mill and does not emit `EventMill`), a stopping predicate, and the list of what moved.
+- **`SearchLibrarySpec.ToTop`** — "shuffle, then put that card on top", which retires Vampiric Tutor's S14 to-hand simplification. The delay is the discount on a one-mana tutor; modelling it as to-hand was printing a strictly better card.
+- **`TuckToLibraryForEffect`** and **`EventBeginDrawStep`**.
+- **~20 cards**: the three surveil lands now surveil; Sensei's Divining Top, Ponder, Crystal Ball, Otherworldly Gaze, Thought Scour, Reliquary Tower; Enlightened / Worldly / Mystical Tutor, Imperial Seal, Fabricate, Beseech the Queen; Psychosis Crawler, The Locust God, Howling Mine, Hedron Crab.
+
+Still open, each blocked on something specific rather than on time:
+
+- **`Explore`** and **`RevealAndChoose`** — no card in the catalog needs them yet.
+- **`KindRevealCards`** (broadcast reveal) — Fact or Fiction is the card that would force it.
+- **Necropotence** — face-down exile + exile→hand, neither of which exists.
+- **Sylvan Library** — needs a repeated per-card "pay 4 life or put it back" prompt; the choice queue has no prompt-after-a-prompt composition.
+- **Mystic Remora** — cumulative upkeep.
+- **Soothsaying** and **Helm of Obedience** — `AbilityCost` has no `{X}` component.
+- **Mesmeric Orb** — `untapAllForLocked` does not emit `EventUntapCard`, so the untap step is silent to the trigger system.
+- **Bruvac the Grandiloquent** — needs a `RepEventMill` replacement kind; `MillToZoneForEffect` moves cards directly and never enters the replacement pipeline the way `drawCardLocked` does.
+- **Psychosis Crawler's P/T goes stale between layer recomputes** — the invalidation list does not include hand-size changes, and two tests in `internal/game` deliberately guard against widening it. Declared on the card.
+
+The nine older `feat(s22)` commits on `main` shipped attack triggers, flicker, alternative cast costs (which is S28 scope — see that section) and roughly fifty cards; they are good work under a misleading tag. See the note under the sprint index.
 
 ---
 
@@ -1921,12 +1945,57 @@ Detailed plan TBD; lands just-in-time after S23.
 
 **Phase:** 7 · **Goal:** tribal Commander decks (Goblins, Merfolk, Slivers, etc.) work end-to-end.
 
-- [ ] `ChooseCreatureTypeOnETB` primitive (per-permanent persistent state for Cavern of Souls' named tribe)
-- [ ] `GrantTypeUntilEOT`, `TypeFilter` predicate
-- [ ] ~30 cards: Cavern of Souls, Door of Destinies, Vanquisher's Banner, Coat of Arms, Adaptive Automaton, tribal lords, changeling creatures, …
+- [x] Creature-type vocabulary — `game.AllCreatureTypes` / `IsCreatureType` / `SharesCreatureType` (CR 205.3m)
+- [x] Changeling as an enforced keyword (CR 702.73a) — works in **all zones**, reaches non-catalog cards
+- [x] `ChooseCreatureTypeOnETB` primitive + per-permanent `Card.NamedTribe` (carried by clone and snapshot)
+- [x] `GrantAllCreatureTypesUntilEOT` (layer 4, turn-scoped) and the `TypeFilter` family of predicates
+- [x] Dynamic mana-spend restrictions (`ManaAbility.RestrictionsFunc`) for Cavern of Souls
+- [x] 14 cards: Cavern of Souls, Door of Destinies, Vanquisher's Banner, Adaptive Automaton, Coat of Arms, Maskwood Nexus, Elvish Archdruid, Elvish Champion, Goblin King, Goblin Chieftain, Death Baron, Irregular Cohort, Shields of Velis Vel, + a Lord of Atlantis oracle fix
 - [ ] Theme-deck smoke test (tribal deck plays 3 turns with type-locked Cavern + lord buffs)
 
-Detailed plan TBD; lands just-in-time after S25.
+### Plan (written for #78)
+
+**Design decision — one mechanism for "is every creature type".** CR 702.73a
+makes changeling a characteristic-defining ability that works in every zone.
+Rather than stamping ~330 subtypes onto `Characteristic.Subtypes` (which would
+blow up the wire `type_line` and every subtype loop), "every creature type" is
+carried as the `"changeling"` token in the ability list, and `Card.HasSubtype`
+answers `true` for any CR 205.3m creature type when it is present. That one
+change gets the all-zones rule for free, because `HasKeyword` already falls
+back to the card's printed `Keywords` off the battlefield — which is also why
+a vanilla changeling (Woodland Changeling, Universal Automaton) needs **no
+catalog entry at all** since #330 put Scryfall's keyword array on every
+imported card.
+
+**Order of work (one commit each):**
+
+1. **Engine — creature types + changeling.** `game/creature_types.go`
+   (vocabulary + `SharesCreatureType`), `"changeling"` joins the closed
+   `canonicalKeywords` table, `Card.HasSubtype` consults it.
+2. **Engine — named-tribe state + prompt.** `Card.NamedTribe`, the
+   `choose_creature_type` pending choice with its resolve path and wire view,
+   and the client picker.
+3. **Engine — dynamic mana restrictions.** `ManaAbilityShape.RestrictionsFunc`,
+   plus a changeling-aware `ManaSpendContext`.
+4. **Catalog — primitives and cards.** `effects/tribal.go` holds the shared
+   builders (`ChooseCreatureTypeOnETB`, `NamedTribeAnthem`, `TypeFilter`,
+   `GrantAllCreatureTypesUntilEOT`); one file per card.
+
+**Cards (14):** Cavern of Souls, Door of Destinies, Vanquisher's Banner,
+Adaptive Automaton (named tribe); Coat of Arms, Maskwood Nexus (type payoffs);
+Elvish Archdruid, Elvish Champion, Goblin King, Goblin Chieftain, Death Baron
+(lords); Irregular Cohort, Shields of Velis Vel (changeling); plus an oracle
+fix to the existing Lord of Atlantis, which was restricted to its controller's
+Merfolk and should not be.
+
+**Deferred, declared:** Cavern of Souls' "and that spell can't be countered"
+stays inert for the reason Path of Ancestry and Delighted Halfling already
+record — the counter path has no per-spell uncounterable flag. Maskwood Nexus'
+"creature cards you own that aren't on the battlefield" half is not modelled:
+the layer engine maintains `effective` for battlefield cards only, and
+`HasSubtype` off the battlefield has no `*Game` to ask. Metallic Mimic, Icon of
+Ancestry and Obelisk of Urd wait on enters-with-counters-on-others, look-at-top-N
+and convoke respectively.
 
 ---
 
@@ -2084,12 +2153,22 @@ The engine has no event history: `GameView` carries none, the client has none, a
 
 ### Sub-PR 4 — lobby + client integration
 
-- [ ] `POST /games/{id}/seats/bot` `{tier, deck}` — any seated player at an unstarted table, plus admin; `DELETE .../seats/bot/{seat}` while unstarted
-- [ ] Bot seats carry real decks, so `Lobby.Start`'s `DeckUploaded` gate needs no special case
-- [ ] Seat arithmetic: bots take real seats, so a seated human can add at most **three**; the all-bot table is reachable via the admin path only, and is the test harness rather than a player flow
-- [ ] `PlayerView.is_bot` / `bot_tier` / `bot_deck`; protocol.ts and `docs/protocol.md` updated
-- [ ] Lobby UI: "Add bot" → tier + deck picker → seat appears with a BOT chip
-- [ ] Bot-seat treatment in `PlayerHeader.svelte`: chip, distinct avatar mark, thinking pulse (respects the S11.5 animations-off setting)
+- [x] `POST /games/{id}/seats/bot` `{tier, deck}` — any seated player at an unstarted table, plus admin; `DELETE .../seats/bot/{player_id}` while unstarted. A spectator's session carries the game ID and is refused: watching is not seating. `GET /bot/options` backs the picker.
+- [x] Bot seats carry real decks, so `Lobby.Start`'s `DeckUploaded` gate needs no special case — verified by a test that starts a human + bot table with no gate change
+- [x] Seat arithmetic: bots take real seats, so a seated human can add at most **three**; the all-bot table is reachable via the admin path only, and is the test harness rather than a player flow
+- [x] `PlayerView.is_bot` / `bot_tier` / `bot_deck`; protocol.ts and `docs/protocol.md` updated. The three fields also ride the engine snapshot and the persisted lobby metadata, so a bot seat survives a deploy and the lobby's restore path relaunches its runner.
+- [x] Lobby UI: "Add bot" on an open seat → tier + deck picker → seat appears with a BOT chip and a remove control
+- [x] Bot-seat treatment in `PlayerIdentity.svelte` (the identity-first rebuild that replaced `PlayerHeader.svelte`, which no longer exists in the tree): chip, robot avatar mark, thinking pulse while the bot holds priority (respects the S11.5 animations-off setting and `prefers-reduced-motion`; the chip text carries the information when motion is off)
+- [x] Tier registry: all four ADR 0033 §6 names declared from the first PR so the API never reshapes, `available:false` on the three with no policy, and an unavailable tier is a 422 rather than a silent downgrade to `random`
+- [x] `deploy/Caddyfile` `@api`, `client/vite.config.ts` and the service worker's `API_PATH` all carry the new `/bot` prefix
+
+**Deck source is an interface, not a list.** `aiseat.DeckSource` —
+`List() []DeckInfo` plus `Decklist(id) (DeckInfo, string, bool)`
+returning decklist TEXT — is what sub-PR 5 implements; this sub-PR
+ships one honest placeholder behind it and `main.go` swaps the one
+wiring line. Text rather than resolved cards is deliberate: the bot
+seat then runs the identical parse → resolve → validate pipeline a
+human's upload runs.
 
 ### Sub-PR 5 — curated decks + coverage test
 
@@ -2149,10 +2228,18 @@ contract alone cannot express them:
 
 ### Sub-PR 8 — improvisation, announced
 
-- [ ] When the chosen line needs an effect the catalog cannot execute, the bot may use `move_card` / `change_life` / `add_counter` / `mark_damage`, emitted as one bundle
-- [ ] Chat line naming the card, the intended effect, and that it was improvised
-- [ ] Replay-log tag so bot improvisations are greppable
-- [ ] Setting: "show bot reasoning" surfaces `Decision.Reason` in chat
+- [x] When the chosen line needs an effect the catalog cannot execute, the bot may use `move_card` / `change_life` / `add_counter` / `mark_damage`, emitted as one bundle. `aiseat.Improviser` is the opt-in policy hook (out of band for the same reason `Conceder` is: a `Decision` names an INDEX into the closed move list, and improvising is by definition doing something that list does not contain). The four verbs are an allow-list — a bundle carrying `concede` or `discard_selection` is refused
+- [x] Chat line naming the card, the intended effect, and that it was improvised. Enforced in code, not left to the policy: `Improvisation.Validate` refuses a bundle that will not name its card and its effect, **before** anything is dispatched
+- [x] Replay-log tag so bot improvisations are greppable — `SnapshotPayload.annotation` with `tag: "bot_improvisation"`, written inside the same commit as the bundle. Replay-only; no WS frame carries one
+- [x] Setting: "show bot reasoning" surfaces `Decision.Reason` in chat. `settings.gameplay.showBotReasoning` (schema v9), server side gated by `aiseat.Config.Narrate`
+
+**`ApplyBundle`, because `Apply` cannot promise atomicity.** `Room.Apply` stashes a pre-mutation clone and drops it when `fn` errors — correct for one dispatch, wrong for four: the third verb failing leaves the first two applied, with no undo entry pointing at them. `Room.ApplyBundle` runs every step under a single hold of the room lock and restores the pre-bundle clone on any failure, so the bundle commits as one seq, one replay line, one undo entry, or not at all.
+
+**The `UndosRemaining` question ADR 0033 §8 left open: cleaning up after a bot is free.** `undoEntry.freeUndo` exempts improvisation bundles from the undoing player's budget. The budget polices the social cost of taking back *your own* move; an improvisation is the bot asserting a rules interpretation the engine could not execute, and a human correcting it is doing maintenance on a catalog gap. Charging for it would make the careful response cost more than the lazy one, in a feature whose whole safety argument is reversibility — and it would leave a player who had spent their turn's undos stuck with someone else's mistake.
+
+**The caller-nil stamp is a power grant.** `uuid.Nil` bypasses `requireCardController` and `ErrPlayerCallerMismatch` — it must, since improvised removal reaches an opponent's board. That is why the announcement is validated ahead of the commit and the verb list is closed: this is the one path where a bot acts with admin authority.
+
+**Left to [#427](https://github.com/krakenhavoc/cmd_and_ctrl/pull/427):** the bot-seat identity surface. `PlayerView.is_bot` / `bot_tier` / `bot_deck`, the BOT chip, and the seat treatment are all still that PR's. This one deliberately does **not** prefix bot chat with `[BOT]`: the `kind` field marks the line as a bot's, cannot be spoofed by a player who names themselves `[BOT] Kess`, and is the thing the seat treatment should key off. Chat also has no UI since S08.5 wave 1, so an announcement had nowhere to land — sub-PR 8 ships a minimal read-only `BotFeed` in the board's attention strip, which a real chat panel subsumes whenever one returns.
 
 ### Tests
 
@@ -2164,7 +2251,7 @@ contract alone cannot express them:
 - [x] `heuristic` beats `random` head-to-head: 40/40 decided games, alternating seats
 - [x] Heuristic decision latency: p50 8.5µs, p99 52µs, max 276µs over 2,715 decisions — four orders of magnitude inside the 2s `MaxThink`
 - [x] Model-outage drill: Layer C hard-fails, game completes on Layer B, no frozen table. `TestModelOutageDrill` — the endpoint answers 25 calls and then fails forever, the four-bot game plays to a single survivor, the runner's own fallback counter stays at zero, and 2,382 of 2,407 windows were answered without a usable model. A sibling proves the other half of §10: a model that never answers costs its budget and hands over, and the runner still never force-passes
-- [ ] Human undo of a bot improvisation succeeds without the admin token, and the bundle reverts as one entry
+- [x] Human undo of a bot improvisation succeeds without the admin token, and the bundle reverts as one entry — `TestHumanUndoOfBotImprovisationRevertsTheWholeBundle`: a seated caller (their own seat ID, never `uuid.Nil`) pops a three-verb bundle, all three revert, the second `Undo` returns `ErrNothingToUndo` proving it was one entry, and the caller's `UndosRemaining` is unchanged. `TestImprovisationBundleIsAtomic` holds the other direction: a bundle whose last step fails leaves no state change, no seq bump, no chat line and no replay tag
 
 ### Exit criteria
 

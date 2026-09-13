@@ -164,6 +164,13 @@ type PendingChoiceView struct {
 	// Added in S15 sub-PR 2.
 	ColorOptions []string `json:"color_options,omitempty"`
 
+	// TypeOptions populates the S26 "choose_creature_type" kind: every
+	// creature type the engine knows (CR 205.3m), for the picker to
+	// filter. Materialised here from game.AllCreatureTypes rather than
+	// stored on the PendingChoice, because the legal set is the same
+	// for every such prompt and the server can always rebuild it.
+	TypeOptions []string `json:"type_options,omitempty"`
+
 	// ReplacementOptions populates the S17 "replacement_order" kind:
 	// one entry per applicable CR 614 replacement effect the
 	// chooser is ordering. The client renders a drag-reorder list
@@ -526,6 +533,15 @@ type PlayerView struct {
 	DiscordAvatarHash string `json:"discord_avatar_hash,omitempty"`
 	DisplayName       string `json:"display_name,omitempty"`
 
+	// Bot seat (S31 sub-PR 4). IsBot marks a seat driven by an
+	// aiseat runner; BotTier is its policy tier and BotDeck the
+	// curated deck it was seated with. The client renders a BOT chip
+	// and a distinct avatar mark off these, and shows the thinking
+	// pulse while such a seat holds priority.
+	IsBot   bool   `json:"is_bot,omitempty"`
+	BotTier string `json:"bot_tier,omitempty"`
+	BotDeck string `json:"bot_deck,omitempty"`
+
 	// CommanderCasts is the per-commander cast count from the
 	// command zone (S13.1, CR 903.8). Keyed by commander instance
 	// UUID string. Drives the "+N tax" indicator next to the
@@ -655,10 +671,32 @@ type CardView struct {
 	// drag-release).
 	BattleX float64 `json:"battle_x,omitempty"`
 	BattleY float64 `json:"battle_y,omitempty"`
-	// AttackingTarget is the player ID this card is currently
-	// declared to attack, or omitted if not declared. Cleared on
-	// zone exit and by clear_combat. Added in S08.
+	// AttackingTarget is the ID this card is currently declared to
+	// attack, or omitted if not declared. Cleared on zone exit and by
+	// clear_combat. Added in S08.
+	//
+	// S27: this is no longer always a player ID. An attacker may be
+	// declared against a player, a planeswalker or a battle
+	// (CR 508.1d), and the id is a seat id or an instance id
+	// accordingly. AttackingTargetKind says which, so the client
+	// never has to guess by trying one lookup and falling back to the
+	// other.
 	AttackingTarget string `json:"attacking_target,omitempty"`
+	// AttackingTargetKind is "player", "planeswalker" or "battle" —
+	// what AttackingTarget names. Omitted when nothing is declared.
+	// Added in S27.
+	AttackingTargetKind string `json:"attacking_target_kind,omitempty"`
+	// ProtectorPlayer is the seat protecting this battle (CR 310.5),
+	// or omitted for every other card type and for a battle whose
+	// protector prompt has not been answered yet. Public information:
+	// the whole table needs to know who is defending, because it
+	// decides who may attack it. Added in S27.
+	ProtectorPlayer string `json:"protector_player,omitempty"`
+	// Defense is the battle's current defense counter total, lifted
+	// out of the counters map for the same reason loyalty is rendered
+	// specially: it is the card's life total, not one pip among
+	// several. Omitted for non-battles. Added in S27.
+	Defense int `json:"defense,omitempty"`
 	// BlockingTarget is the attacker instance ID this card is
 	// currently declared to block, or omitted if not declared.
 	// Cleared on zone exit and by clear_combat. Added in S08.
@@ -1029,6 +1067,32 @@ type TurnView struct {
 	// information — attackers and untapped creatures are both on the
 	// board — so it survives per-viewer filtering unredacted.
 	BlockDecisionSeats []int `json:"block_decision_seats,omitempty"`
+	// AttackTargets is the set of things the ACTIVE player's
+	// creatures may be declared against right now (CR 506.2,
+	// 508.1d) — the other seated players, the planeswalkers they do
+	// not control, and the battles they do not protect. Present only
+	// during the declare_attackers step, and only then because that
+	// is the only step where it means anything.
+	//
+	// On the turn cursor rather than on each attacking creature: the
+	// set is a property of the ATTACKING PLAYER, not of the creature
+	// (summoning sickness, defender and tapped state gate the
+	// creature separately), so hanging it off every card would be the
+	// same list repeated once per attacker.
+	//
+	// Public information — every seat and every planeswalker on the
+	// board is already visible — so it survives the per-viewer filter
+	// unredacted. Added in S27.
+	AttackTargets []AttackTargetView `json:"attack_targets,omitempty"`
+}
+
+// AttackTargetView is one legal attack target: what it is, and the id
+// to send in declare_attacker's `target`. Kind is "player",
+// "planeswalker" or "battle"; ID is a seat id for a player and an
+// instance id for a permanent. Added in S27.
+type AttackTargetView struct {
+	Kind string `json:"kind"`
+	ID   string `json:"id"`
 }
 
 // ViewOfGameFor builds a per-viewer wire snapshot. Same shape as
@@ -1099,6 +1163,7 @@ func ViewOfGame(g *game.Game) GameView {
 		}
 		stampLegalTargets(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
+		stampCombatTargets(g, &view)
 		view.legalBySeat = enumerateLegalMoves(g)
 		// S31 sub-PR 0: the public log resolves card names and knower
 		// sets out of the view that was just assembled, so it must run
@@ -1417,6 +1482,47 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 	}
 }
 
+// stampCombatTargets fills the two S27 combat-target projections that
+// need a game handle: the KIND of each attacker's declared target,
+// and the active player's legal attack-target set.
+//
+// Split out of viewOfCard for the reason stampActivatedAbilities is:
+// classifying an id as a seat, a planeswalker or a battle means
+// looking at the rest of the game, and viewOfCard has one card.
+//
+// Caller must hold g's read lock (ReadSnapshot already does).
+func stampCombatTargets(g *game.Game, view *GameView) {
+	for i := range view.Battlefield.Cards {
+		c := &view.Battlefield.Cards[i]
+		if c.AttackingTarget == "" {
+			continue
+		}
+		id, err := uuid.Parse(c.AttackingTarget)
+		if err != nil {
+			continue
+		}
+		if kind := g.ClassifyAttackTargetForEffect(id); kind != "" {
+			c.AttackingTargetKind = string(kind)
+		}
+	}
+	if g.Turn.Step != game.StepDeclareAttackers {
+		return
+	}
+	if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
+		return
+	}
+	active := g.Seats[g.Turn.ActiveSeat]
+	if active == nil {
+		return
+	}
+	for _, t := range g.AttackTargetsForEffect(active.ID) {
+		view.Turn.AttackTargets = append(view.Turn.AttackTargets, AttackTargetView{
+			Kind: string(t.Kind),
+			ID:   t.ID.String(),
+		})
+	}
+}
+
 // stampManaSacrificeOptions fills the sacrifice clause on a
 // permanent's MANA abilities (Ashnod's Altar, Phyrexian Altar).
 //
@@ -1493,35 +1599,14 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				}
 			}
 		}
-		// PendingChoiceMayCast — the single card being offered
-		// ("you may cast it without paying its mana cost"). Inlined
-		// as the one Options entry so the prompt shows the card
-		// rather than quoting its name into a sentence. The card is
-		// face up in exile and public, so no redaction concern.
-		if c.Kind == game.PendingChoiceMayCast && c.MayCastCard != uuid.Nil {
-			if card, ok := g.LookupCardForEffect(c.MayCastCard); ok {
-				v.Options = []CardView{viewOfCard(card)}
-			}
-		}
-		// PendingChoiceCopyTarget — "you may have this enter as a
-		// copy of ..." (S16.5). Same shape as the sacrifice picker:
-		// the candidate permanents inlined as Options so the grid
-		// renders faces. Battlefield cards are public, so no
-		// redaction concern.
-		if c.Kind == game.PendingChoiceCopyTarget && len(c.CopyOptions) > 0 {
-			v.Options = make([]CardView, 0, len(c.CopyOptions))
-			for _, id := range c.CopyOptions {
-				if card, ok := g.LookupCardForEffect(id); ok {
-					v.Options = append(v.Options, viewOfCard(card))
-				}
-			}
-		}
-		// PendingChoiceScry — the looked-at cards, top-first, as
-		// Options. Scry is "look at", not "reveal": only the chooser
-		// was marked a knower, so FilterViewFor redacts these to backs
-		// for every other seat and the top of the library stays
-		// private.
-		if c.Kind == game.PendingChoiceScry && len(c.ScryCards) > 0 {
+		// The scry family — scry, surveil, and plain "look at the top
+		// N, put them back in any order" — projects the looked-at
+		// cards, top-first, as Options. All three are "look at", not
+		// "reveal": only the chooser was marked a knower, so
+		// FilterViewFor redacts these to backs for every other seat
+		// and the top of the library stays private. The COUNT is
+		// public, which is correct — "scry 2" is a printed number.
+		if game.IsLookAtTopKind(c.Kind) && len(c.ScryCards) > 0 {
 			v.Options = make([]CardView, 0, len(c.ScryCards))
 			for _, id := range c.ScryCards {
 				if card, ok := g.LookupCardForEffect(id); ok {
@@ -1551,6 +1636,13 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c.Kind == game.PendingChoiceMana && len(c.ColorOptions) > 0 {
 			v.ColorOptions = append([]string(nil), c.ColorOptions...)
 		}
+		// PendingChoiceCreatureType — S26. The option set is the
+		// whole CR 205.3m vocabulary; the clone keeps the engine's
+		// package-level slice off the wire path, where a marshaller
+		// has no business holding a reference to it.
+		if c.Kind == game.PendingChoiceCreatureType {
+			v.TypeOptions = append([]string(nil), game.AllCreatureTypes...)
+		}
 		// PendingChoiceReplacementOrder — S17 sub-PR 2. Emit the
 		// ordered list of replacement-effect IDs with a human-
 		// readable label + source-card ID (empty for engine
@@ -1577,7 +1669,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// NOT targeting (a state-based action chooses nothing on the
 		// stack); the kind is what keeps the two distinguishable on
 		// the way back.
-		if c.Kind == game.PendingChoicePickTarget || c.Kind == game.PendingChoiceLegendRule {
+		if c.Kind == game.PendingChoicePickTarget || c.Kind == game.PendingChoiceLegendRule || c.Kind == game.PendingChoiceChooseProtector {
 			pt := &LegalTargetsView{Min: c.PickTargetMin, Max: c.PickTargetMax}
 			for _, id := range c.PickTargetPlayers {
 				pt.Players = append(pt.Players, id.String())
@@ -1836,6 +1928,9 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		DiscordID:         p.DiscordID,
 		DiscordAvatarHash: p.DiscordAvatarHash,
 		DisplayName:       p.DisplayName,
+		IsBot:             p.IsBot,
+		BotTier:           p.BotTier,
+		BotDeck:           p.BotDeck,
 		CommanderCasts:    cmdrCasts,
 		Counters:          cloneStringIntMap(p.Counters),
 		MaxHandSize:       g.EffectiveMaxHandSizeLocked(p),
@@ -2237,6 +2332,16 @@ func viewOfCard(c game.Card) CardView {
 	}
 	if c.AttackingTarget != uuid.Nil {
 		view.AttackingTarget = c.AttackingTarget.String()
+	}
+	// S27 battles. Both read straight off the card, so they need no
+	// game handle and land here rather than in a stamping pass; the
+	// attack-target KIND does need one and is stamped in
+	// stampCombatTargets.
+	if c.ProtectorPlayerID != uuid.Nil {
+		view.ProtectorPlayer = c.ProtectorPlayerID.String()
+	}
+	if c.IsBattle() {
+		view.Defense = c.Counters[game.CounterDefense]
 	}
 	if c.BlockingTarget != uuid.Nil {
 		view.BlockingTarget = c.BlockingTarget.String()

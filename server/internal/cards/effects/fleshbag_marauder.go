@@ -18,8 +18,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // makes it eat itself.
 func init() {
 	Register(Spec{
-		OracleID: "4b1bf05e-753e-4350-a913-894cf3cecc0c",
-		Name:     "Fleshbag Marauder",
+		OracleID:     "4b1bf05e-753e-4350-a913-894cf3cecc0c",
+		Name:         "Fleshbag Marauder",
+		Completeness: CompletenessFull,
 		OnETB: func(card *game.Card, ctx *Context) error {
 			return EachPlayerSacrifices{
 				Match: Creature(),

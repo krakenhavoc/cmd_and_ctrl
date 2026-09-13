@@ -23,8 +23,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // rather than prompting for an impossible target.
 func init() {
 	Register(Spec{
-		OracleID: "43f2d81e-aa01-4fa9-9046-6a27a05dbd2d",
-		Name:     "Contagion Clasp",
+		OracleID:     "43f2d81e-aa01-4fa9-9046-6a27a05dbd2d",
+		Name:         "Contagion Clasp",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"You don't choose what to proliferate — the game picks for you, adding every counter that helps you and every counter that hurts an opponent."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

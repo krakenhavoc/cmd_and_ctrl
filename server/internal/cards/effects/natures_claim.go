@@ -14,9 +14,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Within.
 func init() {
 	Register(Spec{
-		OracleID: "6d4e558e-9109-4918-a082-fdcbaffd516b",
-		Name:     "Nature's Claim",
-		Targets:  TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
+		OracleID:     "6d4e558e-9109-4918-a082-fdcbaffd516b",
+		Name:         "Nature's Claim",
+		Completeness: CompletenessFull,
+		Targets:      TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

@@ -226,6 +226,23 @@ type ManaAbilityShape struct {
 	// Added in the S32 mana-pipeline pass (#352 sub-gap 2).
 	Restrictions []string
 
+	// RestrictionsFunc computes the spend restrictions at activation
+	// time, for an ability whose restriction names something chosen
+	// rather than printed: Cavern of Souls' "spend this mana only to
+	// cast a creature spell of THE CHOSEN TYPE".
+	//
+	// Wins over Restrictions when non-nil. Returning nil produces
+	// UNRESTRICTED mana, so a card whose restriction cannot be
+	// computed yet must return an impossible tag rather than nothing
+	// — that is the #259 direction, and the one asymmetry in this
+	// slot worth stating out loud. Cavern of Souls with no type named
+	// yet returns a tag naming the empty tribe, which the matcher
+	// refuses, so the mana is unspendable rather than free.
+	//
+	// Same locking contract as Condition and ProducedFunc: read-only,
+	// under g.mu. Added in S26.
+	RestrictionsFunc func(g *Game, controller, source uuid.UUID) []string
+
 	Produced string
 	Label    string
 
@@ -441,6 +458,13 @@ func (g *Game) fireETBHookLocked(cardID uuid.UUID, oracleID string) {
 	// it runs before the oracle-ID / nil-hook guards and applies to
 	// Sagas the catalog has never heard of.
 	g.sagaEntersWithLoreCounterLocked(cardID)
+
+	// S27: a battle enters with its printed defense counters and
+	// chooses a protector (CR 310.4, 310.5). Same placement and same
+	// reasoning as the loyalty stamp above: printed rules keyed on
+	// the card's type, so it runs before the oracle-ID / nil-hook
+	// guards and applies to battles the catalog has never heard of.
+	g.stampBattleEntryLocked(cardID, oracleID)
 	if ETBEffectHook == nil || oracleID == "" {
 		return
 	}

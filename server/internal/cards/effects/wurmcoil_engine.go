@@ -20,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "d1a60f44-7696-49ee-91fb-cab5b3102962",
 		Name:            "Wurmcoil Engine",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch", "lifelink"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},

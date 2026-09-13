@@ -124,7 +124,28 @@ export interface ChatPayload {
   author_name: string;
   text: string;
   timestamp: string;
+  // kind classifies the line. Absent or "say" for anything a human
+  // typed. The bot kinds are server-originated (S31 sub-PR 8) and
+  // cannot be forged from a client — handleChat re-stamps every
+  // authoritative field, so a player who types one gets "say".
+  kind?: ChatKind;
+  // reason carries the bot policy's rationale, split out of `text`
+  // so the announcement can be shown while the reasoning stays
+  // behind settings.gameplay.showBotReasoning.
+  reason?: string;
 }
+
+// ChatKind mirrors protocol.ChatKind* in
+// server/internal/protocol/protocol.go.
+export type ChatKind = "say" | "bot_improvisation" | "bot_reasoning";
+
+// A bot disclosing that it applied an effect by hand because the
+// rules engine can't run the card. Never hidden: an unannounced
+// improvisation is a bot cheating (ADR 0033 §8).
+export const CHAT_BOT_IMPROVISATION = "bot_improvisation";
+// A bot narrating why it chose a move. Debug output, hidden unless
+// the viewer turns on "show bot reasoning".
+export const CHAT_BOT_REASONING = "bot_reasoning";
 
 // View types mirror server/internal/protocol/view.go.
 
@@ -320,6 +341,19 @@ export interface PendingChoiceView {
     // top-first, redacted to the chooser alone — scry is "look at",
     // not "reveal". Answered with {bottom, top_order}.
     | "scry"
+    // S22: surveil N (CR 701.42). Scry's frame with the
+    // bottom-of-library leg replaced by the graveyard — same
+    // chooser-only redaction on options, same top-first ordering.
+    // Answered with {graveyard, top_order}, NOT {bottom, top_order}:
+    // the server routes on which key is present, so sending scry's
+    // payload for a surveil would bury the cards instead of binning
+    // them.
+    | "surveil"
+    // S22: "look at the top N cards of your library, then put them
+    // back in any order" (Ponder, Sensei's Divining Top). The family's
+    // third member and the one with no away lane — answered with
+    // {top_order} alone, naming every looked-at card exactly once.
+    | "look_at_top"
     // Shocklands: "as this land enters, you may pay 2 life. If you
     // don't, it enters tapped." Answered with the shared yes/no
     // {choice_id, apply} payload — apply=true pays and the land
@@ -351,6 +385,12 @@ export interface PendingChoiceView {
     // the answer decides what it enters AS, which is why its own ETB
     // trigger has not fired yet either.
     | "copy_target"
+    // S26: "as this permanent enters, choose a creature type" (CR
+    // 614.12) — Cavern of Souls, Door of Destinies, Vanquisher's
+    // Banner, Adaptive Automaton. type_options carries the whole CR
+    // 205.3m vocabulary for the picker to filter; answered with
+    // resolve_choice { creature_type: "Elf" }.
+    | "choose_creature_type"
     | string;
   chooser: string;
   from_player: string;
@@ -364,6 +404,11 @@ export interface PendingChoiceView {
   // against commander identity for Arcane Signet; full 5-color for
   // Birds of Paradise.
   color_options?: string[];
+  // S26: populated for kind "choose_creature_type" — every creature
+  // type the engine knows, sorted. The list is long by design (the CR
+  // 205.3m vocabulary is ~345 entries), so the picker filters it
+  // rather than rendering it whole.
+  type_options?: string[];
   // S17: populated for kind "replacement_order" — the CR 616
   // affected-player-chooses-order prompt. Client renders a drag-
   // reorder list of these entries and submits the IDs in the
@@ -539,6 +584,15 @@ export interface PlayerView {
   discord_id?: string;
   discord_avatar_hash?: string;
   display_name?: string;
+  // Bot seat (S31, ADR 0033). is_bot marks a seat driven by a
+  // server-side policy runner rather than a WebSocket client;
+  // bot_tier is its difficulty tier ("random", "heuristic", …) and
+  // bot_deck the curated deck it was seated with. The board renders
+  // a BOT chip and a distinct avatar mark off these, and shows the
+  // thinking pulse while such a seat holds priority.
+  is_bot?: boolean;
+  bot_tier?: string;
+  bot_deck?: string;
   // Per-commander cast count for the Commander tax (S13.1, CR
   // 903.8). Keyed by commander instance UUID. Drives the "+N tax"
   // indicator next to the commander tile.
@@ -812,6 +866,19 @@ export interface CardView {
   // when not declared as attacker. Cleared on zone exit and by
   // clear_combat. Added in S08.
   attacking_target?: string;
+  // S27: what attacking_target NAMES. An attacker may be declared
+  // against a player, a planeswalker or a battle (CR 508.1d), so the
+  // id is a seat id or an instance id and this says which. Absent
+  // when nothing is declared.
+  attacking_target_kind?: "player" | "planeswalker" | "battle";
+  // S27: the seat protecting this battle (CR 310.5). Absent for every
+  // other card type and for a battle whose protector prompt has not
+  // been answered. Public — it decides who may attack it.
+  protector_player?: string;
+  // S27: a battle's current defense counter total, lifted out of the
+  // counters map the way loyalty is, because it is the card's life
+  // total rather than one pip among several.
+  defense?: number;
   // Attacker instance ID this card is currently declared to block.
   // Omitted when not declared as blocker. Cleared on zone exit and
   // by clear_combat. Added in S08.
@@ -971,6 +1038,14 @@ export interface ManaAbilityView {
   restrictions?: string[];
 }
 
+// AttackTargetView is one legal attack target: the id to send as
+// declare_attacker's `target`, and what it is. `id` is a seat id for
+// a player and an instance id for a permanent. Added in S27.
+export interface AttackTargetView {
+  kind: "player" | "planeswalker" | "battle";
+  id: string;
+}
+
 export interface TurnView {
   number: number;
   active_seat: number;
@@ -990,6 +1065,12 @@ export interface TurnView {
   // turn-based action rather than a response, so the auto-pass
   // "legal response?" predicate structurally could not see it.
   block_decision_seats?: number[];
+  // S27: what the ACTIVE player's creatures may attack right now —
+  // the other seats, the planeswalkers they don't control, and the
+  // battles they don't protect (CR 506.2, 508.1d). Present only
+  // during declare_attackers. Server-computed: the client must not
+  // re-derive "who protects which battle".
+  attack_targets?: AttackTargetView[];
 }
 
 // uuid generates a v4 UUID. Uses crypto.randomUUID when available (all

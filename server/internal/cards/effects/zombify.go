@@ -18,9 +18,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // correct for half this family.
 func init() {
 	Register(Spec{
-		OracleID: "bb95db4d-5017-4121-bf79-d68476602d8c",
-		Name:     "Zombify",
-		Targets:  targetCreatureInYourGraveyard(),
+		OracleID:     "bb95db4d-5017-4121-bf79-d68476602d8c",
+		Name:         "Zombify",
+		Completeness: CompletenessFull,
+		Targets:      targetCreatureInYourGraveyard(),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			_, _ = reanimateSingleTarget(ctx, ctx.Controller())
 			return nil

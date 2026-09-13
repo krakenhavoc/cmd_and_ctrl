@@ -169,6 +169,20 @@ const (
 	// library), because no scry happened.
 	EventScry EventKind = "scry"
 
+	// EventSurveil — Actor finished a surveil (CR 701.42). Same
+	// shape as EventScry: emitted after the cards have been put
+	// back, with Amount = how many went to the GRAVEYARD (not the
+	// bottom — surveil has no bottom leg), so a "whenever you
+	// surveil" payoff sees a completed surveil. Source is the card
+	// that surveilled. Not emitted when the surveil looked at
+	// nothing (an empty library).
+	//
+	// Deliberately a distinct kind from EventScry rather than a
+	// flag on it: the two are different keywords with different
+	// payoffs, and a card that cares about surveil must not fire on
+	// an ordinary scry. Added in S22.
+	EventSurveil EventKind = "surveil"
+
 	// EventSacrifice — a permanent was sacrificed (CR 701.17):
 	// its controller moved it to the graveyard as a cost or as
 	// part of an effect's instruction. Emitted immediately BEFORE
@@ -303,6 +317,24 @@ const (
 	// the last line of Hulking Raptor standing between it and being
 	// implemented as printed.
 	EventBeginPrecombatMain EventKind = "begin_precombat_main"
+	// EventBeginDrawStep — the active player's draw step began.
+	// Actor is that player. Emitted AFTER the CR 504.1 turn-based
+	// draw, which is the rules-correct order: the turn-based draw
+	// does not use the stack and happens first, and "at the
+	// beginning of the draw step" triggers go on the stack when a
+	// player next receives priority (CR 504.2) — by which time the
+	// card is already in hand.
+	//
+	// Not emitted on the turn-1 skipped draw step of the starting
+	// player (CR 103.7c): that step still happens and still grants
+	// priority, but this project's cursor returns before reaching
+	// here. Howling Mine on turn 1 of the first player's turn is the
+	// only case that notices, and it is not worth restructuring the
+	// step hook for.
+	//
+	// Added in S22 for Howling Mine and the "each player's draw
+	// step" family.
+	EventBeginDrawStep EventKind = "begin_draw_step"
 
 	// EventManaAbilityActivated — a mana-producing ability fired.
 	// Actor = controller, Source = the permanent that produced the
@@ -382,6 +414,19 @@ const (
 	// not announce twice. Added in S31 sub-PR 0 for the public game
 	// log — no card in the catalog reads "becomes blocked by" yet.
 	EventBlock EventKind = "block"
+	// EventBattleDefeated — a battle's last defense counter came off
+	// (CR 310.9). Source / Target / CardID = the battle, Actor = its
+	// controller.
+	//
+	// Emitted from the state-based-action pass IMMEDIATELY BEFORE the
+	// CR 704.5p move that puts the battle in the graveyard, so a
+	// defeated trigger's source is still findable on the battlefield
+	// when the harvester walks it. A dies-trigger shape (EventLTB
+	// plus the LKI snapshot) would also work and would be lossier:
+	// the point of a Siege's defeated trigger is to reach a card that
+	// has just left, and the fewer hops between "defeated" and the
+	// exile-and-cast that follows, the better. Added in S27.
+	EventBattleDefeated EventKind = "battle_defeated"
 )
 
 // Event is a single entry in the per-game event log. Tagged union

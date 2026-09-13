@@ -27,8 +27,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // S30 as PreventNextDamage. Mending Hands is its first caller.
 func init() {
 	Register(Spec{
-		OracleID: "27e9db49-7af7-4bef-ad4c-bf5dfb92030d",
-		Name:     "Fog",
+		OracleID:     "27e9db49-7af7-4bef-ad4c-bf5dfb92030d",
+		Name:         "Fog",
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return PreventAllCombatDamageThisTurn{
 				Label: "Fog: prevent combat damage",

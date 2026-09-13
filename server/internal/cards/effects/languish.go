@@ -19,8 +19,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // creature that arrives later this turn is a full-size creature.
 func init() {
 	Register(Spec{
-		OracleID: "ef1a83f2-6707-41a2-b5ed-861c8e45ae07",
-		Name:     "Languish",
+		OracleID:     "ef1a83f2-6707-41a2-b5ed-861c8e45ae07",
+		Name:         "Languish",
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return BoostUntilEOT{
 				Match:     Creature(),

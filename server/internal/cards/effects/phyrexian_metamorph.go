@@ -27,8 +27,10 @@ import (
 // not this card's. Paying {U} works today.
 func init() {
 	Register(Spec{
-		OracleID: "340bbe8b-e987-4c3e-ab4e-9dee63e57d4f",
-		Name:     "Phyrexian Metamorph",
+		OracleID:     "340bbe8b-e987-4c3e-ab4e-9dee63e57d4f",
+		Name:         "Phyrexian Metamorph",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Phyrexian mana isn't supported — you must pay the {U}, you can't pay 2 life instead."},
 		Replacements: []game.ReplacementEffect{
 			EntersAsCopyOf(
 				"Phyrexian Metamorph",

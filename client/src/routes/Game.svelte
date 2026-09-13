@@ -14,6 +14,7 @@
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
   import TargetingBanner from "../lib/components/board/TargetingBanner.svelte";
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
+  import BotFeed from "../lib/components/BotFeed.svelte";
   import Icon from "../lib/components/Icon.svelte";
   import { cancel as cancelTargeting, confirm as confirmTargeting } from "../lib/targeting";
   import type { ActionType, PlayerView } from "../lib/protocol";
@@ -61,11 +62,13 @@
   // subscribers across reactive reruns (vs. replacing the client
   // instance, which would strand subscriptions on the old object).
   const client = new GameClient("");
-  // chat store stays populated server-side but isn't rendered: the
-  // chat UI was removed in S08.5 wave 1 in favour of out-of-band
-  // (Discord) coordination. Re-add `chat` to this destructure when
-  // a chat panel returns.
-  const { status, snapshot, lastSeq, lastError, log } = client;
+  // The player-to-player chat UI is still gone (removed in S08.5
+  // wave 1 in favour of out-of-band Discord coordination), but the
+  // chat store is read again as of S31 sub-PR 8: bot seats announce
+  // their improvisations over it, and an announcement nobody can see
+  // is not an announcement. BotFeed renders those lines and nothing
+  // else. A full chat panel, when it returns, subsumes it.
+  const { status, snapshot, lastSeq, lastError, log, chat } = client;
 
   $effect(() => {
     client.disconnect();
@@ -1028,6 +1031,11 @@
              Nothing here pushes the table around. -->
         {#snippet attention()}
           <TargetingBanner />
+
+          <!-- Bot disclosures. Improvisation announcements always
+               show; per-move reasoning only with the S11.5 "show bot
+               reasoning" setting on. S31 sub-PR 8 / ADR 0033 §8. -->
+          <BotFeed chat={$chat} />
 
           <!-- #318: the attack-with-all cluster. Present for the whole
                declare-attackers step so the count stays live as

@@ -368,12 +368,71 @@ Two real constraints remain:
   improvisation must be one bundle, and why the chat announcement
   matters more than the undo does.
 
+> **Update, 2026-09-11 (sub-PR 8 as built).** Both open points above
+> are now settled, and one thing this section did not anticipate
+> turned out to matter more than either of them.
+>
+> **The undo budget: it is free.** `ws.undoEntry` grows a `freeUndo`
+> flag, set on improvisation bundles and nothing else, and `Room.Undo`
+> skips both the budget peek and the `SpendUndo` debit for a flagged
+> entry. The reasoning: the budget exists to police the social cost of
+> taking back **your own** move, and it refreshes once per turn. An
+> improvisation is a bot asserting a rules interpretation the engine
+> could not execute; a human correcting it is doing maintenance on a
+> catalog gap, not rewinding their own play. Charging for it would
+> make the careful response (read the announcement, check the card,
+> put it back) cost more than the lazy one (let it stand) — exactly
+> backwards for a feature whose entire safety argument is that it is
+> reversible. It also means a player who has already spent their
+> take-backs this turn is not stuck with a bot's mistake, which is the
+> case where the recourse matters most. The nil stamp already made the
+> undo *permitted*; this makes it *affordable*.
+>
+> **The shallow stack: unchanged, and load-bearing.** `Undo` still
+> pops only the top entry, so an improvisation followed by anything
+> else is out of reach. Nothing here fixes that, and the section is
+> right that the announcement matters more than the undo does. What
+> the implementation adds is that the bundle is now genuinely **one**
+> entry — `Room.ApplyBundle` runs every verb under a single hold of
+> the room lock and rolls the whole thing back from the pre-bundle
+> clone if any step fails, so there is no reachable state where half
+> an improvisation is applied. `Apply` could not promise that: it
+> stashes a pre-mutation clone and drops it on error, which is correct
+> for one dispatch and wrong for four.
+>
+> **What this section understated: the caller-nil stamp is a power
+> grant, not just an undo convenience.** `uuid.Nil` bypasses
+> `requireCardController` and `ErrPlayerCallerMismatch`, and it has to
+> — an improvised removal spell reaches an opponent's board and an
+> improvised drain reaches their life total, both of which the seated
+> gates exist to refuse. So improvisation is the one path on which a
+> bot acts with admin authority. The counterweights are enforced in
+> code rather than left to the policy: the verb list is an allow-list
+> of the four named here (a bundle containing `concede` or
+> `discard_selection` is refused), a bundle that cannot name its card
+> and its effect is refused before anything is dispatched, and the
+> announcement is built and validated ahead of the commit rather than
+> after it.
+>
+> **The chat line has nowhere to land yet.** S08.5 removed the chat
+> UI; the transport stayed live, so the server side of the
+> announcement works and the client stores the frame, but nothing
+> rendered it. An announcement nobody can see is not an announcement,
+> so sub-PR 8 ships a small read-only `BotFeed` in the board's
+> attention strip that renders improvisation disclosures always and
+> reasoning behind the setting. It is deliberately minimal and is
+> subsumed by a real chat panel whenever one returns.
+
 ### 9. Lobby integration
 
 - `POST /games/{id}/seats/bot` with `{tier, deck}` — allowed for any
   seated player at an unstarted table, and for admin. Not admin-only:
   the request was "add to any unstarted table."
-- `DELETE /games/{id}/seats/bot/{seat}` while unstarted.
+- `DELETE /games/{id}/seats/bot/{seat}` while unstarted. Shipped in
+  sub-PR 4 keyed by the seat's **player UUID** rather than its index:
+  removing a bot renumbers every seat behind it, so an index is a
+  value the client would have to re-read between reading it and using
+  it. The path is `/seats/bot/{player_id}`.
 - Bot seats get real decks, so `Lobby.Start`'s `DeckUploaded` gate
   passes without special-casing.
 - **Seat arithmetic, stated plainly:** bots occupy real seats and

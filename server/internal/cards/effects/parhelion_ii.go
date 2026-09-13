@@ -24,6 +24,8 @@ func init() {
 	Register(Spec{
 		OracleID:        "24d22bcb-8a77-4c47-a508-6f4bc093c1d0",
 		Name:            "Parhelion II",
+		Completeness:    CompletenessCaveats,
+		Caveats:         []string{"The Angel token is created colorless instead of white, so anything that cares about a creature's color doesn't see it."},
 		PrintedKeywords: []string{"flying", "first strike", "vigilance"},
 		Activated: []ActivatedAbility{{
 			Label:  "Crew 4",

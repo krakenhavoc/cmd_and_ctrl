@@ -17,8 +17,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // not the union of both.
 func init() {
 	Register(Spec{
-		OracleID: "f9db72dc-9a5b-48a4-a86e-7464d9a2166a",
-		Name:     "Abrade",
+		OracleID:     "f9db72dc-9a5b-48a4-a86e-7464d9a2166a",
+		Name:         "Abrade",
+		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			Mode("Abrade deals 3 damage to target creature.",
 				TargetCreature("target creature")),

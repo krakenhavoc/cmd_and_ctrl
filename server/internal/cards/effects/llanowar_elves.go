@@ -16,8 +16,9 @@ package effects
 // and TestLlanowarElvesCannotTapWhileSummoningSick pins the rule.
 func init() {
 	Register(Spec{
-		OracleID: "68954295-54e3-4303-a6bc-fc4547a4e3a3",
-		Name:     "Llanowar Elves",
+		OracleID:     "68954295-54e3-4303-a6bc-fc4547a4e3a3",
+		Name:         "Llanowar Elves",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{G}",

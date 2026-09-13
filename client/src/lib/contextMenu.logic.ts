@@ -20,6 +20,7 @@
 // with two action items and reuses the component verbatim.
 
 import { attackAllLabel, attackAllParams, planAttackAll, seatLabel } from "./attackAll";
+import { attackTargetHint, permanentAttackTargets } from "./attackTargets";
 import { isPlaneswalker } from "./cardTypes";
 import type { ActionType, CardView, GameView } from "./protocol";
 import {
@@ -662,14 +663,29 @@ function combatItems(view: GameView, card: CardView): MenuItem[] {
     items.push({
       id: "combat-attack",
       label: card.attacking_target ? "Re-declare attacker" : "Declare attacker",
-      items: defenders.map((s) => ({
-        id: `combat-attack-${s.id}`,
-        label: s.display_name || s.name,
-        action: {
-          type: "declare_attacker" as ActionType,
-          params: { attacker: card.instance_id, target: s.id },
-        },
-      })),
+      items: [
+        ...defenders.map((s) => ({
+          id: `combat-attack-${s.id}`,
+          label: s.display_name || s.name,
+          action: {
+            type: "declare_attacker" as ActionType,
+            params: { attacker: card.instance_id, target: s.id },
+          },
+        })),
+        // S27: planeswalkers and battles are attackable too
+        // (CR 508.1d). Same verb, same payload — only the id differs,
+        // which is what makes the polymorphic target cheap on this
+        // side. The set is the server's; see attackTargets.ts.
+        ...permanentAttackTargets(view, card.controller).map((t) => ({
+          id: `combat-attack-${t.id}`,
+          label: t.label,
+          hint: attackTargetHint(view, t),
+          action: {
+            type: "declare_attacker" as ActionType,
+            params: { attacker: card.instance_id, target: t.id },
+          },
+        })),
+      ],
     });
     // #318: the board-wide sibling of the row above. Same "pick a
     // defender" submenu shape, so the bulk affordance reads as a

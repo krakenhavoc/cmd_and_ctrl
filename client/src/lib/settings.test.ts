@@ -93,6 +93,28 @@ describe("settings", () => {
     expect(s.display.cardSize).toBe("medium");
   });
 
+  it("v8 → v9 seeds showBotReasoning off without touching the rest", async () => {
+    // A blob from just before S31 sub-PR 8: everything the v8 schema
+    // had, and no bot settings, because bot seats did not exist.
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({
+        __version: 8,
+        gameplay: { adminOverrides: true, strictMana: true, autoPassPriority: false },
+        display: { cardSize: "large" },
+      }),
+    );
+    const { settings, SETTINGS_VERSION } = await freshModule();
+    const s = get(settings);
+    expect(s.__version).toBe(SETTINGS_VERSION);
+    // The new field arrives at its default...
+    expect(s.gameplay.showBotReasoning).toBe(false);
+    // ...and the migration rescues nothing and breaks nothing.
+    expect(s.gameplay.adminOverrides).toBe(true);
+    expect(s.gameplay.strictMana).toBe(true);
+    expect(s.display.cardSize).toBe("large");
+  });
+
   it("falls back to defaults when stored blob is corrupt", async () => {
     localStorage.setItem("cmdctrl.settings.v1", "{not valid json");
     const { settings, SETTINGS_VERSION } = await freshModule();

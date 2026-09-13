@@ -31,9 +31,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // neither card needs a permanent to hang off.
 func init() {
 	Register(Spec{
-		OracleID: "a612f30d-cd55-438b-a7de-8c80509183aa",
-		Name:     "Mending Hands",
-		Targets:  TargetAny(),
+		OracleID:     "a612f30d-cd55-438b-a7de-8c80509183aa",
+		Name:         "Mending Hands",
+		Completeness: CompletenessFull,
+		Targets:      TargetAny(),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {
 				return nil

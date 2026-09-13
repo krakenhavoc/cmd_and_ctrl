@@ -48,8 +48,10 @@ func init() {
 			target.Controller == source.Controller
 	}
 	Register(Spec{
-		OracleID: "858f53ef-3fec-4aa0-867d-b7f040614b3c",
-		Name:     "Bastion Protector",
+		OracleID:     "858f53ef-3fec-4aa0-867d-b7f040614b3c",
+		Name:         "Bastion Protector",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
 		Static: []game.StaticAbility{
 			{
 				Layer:     game.Layer7PT,

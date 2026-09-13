@@ -21,8 +21,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the thing you paid for".
 func init() {
 	Register(Spec{
-		OracleID: "e7faf8eb-e829-4109-8dfe-42865a23ba86",
-		Name:     "Aura of Silence",
+		OracleID:     "e7faf8eb-e829-4109-8dfe-42865a23ba86",
+		Name:         "Aura of Silence",
+		Completeness: CompletenessFull,
 		CostModifiers: []game.CostModifier{
 			CostsMore(2, "Artifact and enchantment spells your opponents cast cost {2} more to cast.",
 				OpponentsSpell(), ArtifactOrEnchantmentSpell()),

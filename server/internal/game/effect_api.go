@@ -224,6 +224,25 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 // same Bolt aimed at a player went through the pipeline. That
 // asymmetry is invisible until a card exists that cares, and S30's
 // prevention shields are that card.
+// DealDamageToCreatureForEffect deals amount damage to a battlefield
+// PERMANENT. Emits EventDealDamage. The SBA pass fires on the
+// surrounding priority boundary (the resolution path already bookends
+// with runStateChecks), so lethal damage routes the card via the
+// normal SBA loop rather than a bespoke kill-now path.
+//
+// The name says "creature" for history's sake and is now a
+// misnomer — every damage-dealing card in the catalog calls it, and
+// since S27 (#406) the target may equally be a planeswalker or a
+// battle. What the damage does is decided by CR 120.3 in
+// applyDamageToPermanentLocked: marked on a creature, loyalty off a
+// planeswalker, defense off a battle, and all of those at once for a
+// permanent that is more than one of them. Before that split, a
+// Lightning Bolt aimed at a planeswalker incremented a number nothing
+// read — a two-mana no-op that looked like it had worked.
+//
+// Deathtouch is not applied here. This is the non-combat path, it has
+// never applied the CR 702.2c flag, and whether a deathtouch source's
+// direct damage should is a separate question from this one.
 func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount int) error {
 	if amount <= 0 {
 		return nil
@@ -247,24 +266,26 @@ func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount in
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
 	if out == nil || out.Canceled || out.DamageAmount <= 0 {
-		// Fully prevented. The card is untouched and no
+		// Fully prevented. The permanent is untouched and no
 		// EventDealDamage fires, which is what "prevented" means —
 		// a "whenever ~ is dealt damage" trigger must not see it.
 		return nil
 	}
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID == out.DamageTarget {
-			g.Battlefield.Cards[i].DamageMarked += out.DamageAmount
-			g.EmitEvent(Event{
-				Kind:   EventDealDamage,
-				Source: out.DamageSource,
-				Target: out.DamageTarget,
-				Amount: out.DamageAmount,
-			})
-			return nil
-		}
+	// Post-replacement values, and through the permanent-aware path:
+	// a creature marks damage, a planeswalker loses loyalty (CR 120.3d,
+	// the #406 fix) and a battle loses defence. The old inline loop
+	// here only ever incremented DamageMarked, which is why damage
+	// could not kill a planeswalker.
+	if !g.applyDamageToPermanentLocked(out.DamageTarget, out.DamageAmount, false) {
+		return ErrCardNotFound
 	}
-	return ErrCardNotFound
+	g.EmitEvent(Event{
+		Kind:   EventDealDamage,
+		Source: out.DamageSource,
+		Target: out.DamageTarget,
+		Amount: out.DamageAmount,
+	})
+	return nil
 }
 
 // DrawNForEffect draws n cards for the given player, emitting one
@@ -351,30 +372,82 @@ func (g *Game) LoseTheGameForEffect(playerID uuid.UUID) error {
 // from the top of an empty library) via the same path drawCardLocked
 // uses.
 func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
+	_, err := g.MillToZoneForEffect(playerID, n, ZoneGraveyard, nil)
+	return err
+}
+
+// MillToZoneForEffect is the general form: move cards off the top of
+// playerID's library into `dest`, which is ZoneGraveyard (an ordinary
+// mill) or ZoneExile ("exile the top N cards of your library").
+//
+// Returns the cards that moved, in the order they came off the top.
+// Callers that need to act on them — "exile all cards milled this
+// way", "you may cast one of them this turn", a payoff that counts
+// them — read the slice rather than diffing zones, which is the
+// difference between this and MillNForEffect.
+//
+// `until`, when non-nil, is consulted for each card as it comes off
+// the library and stops the mill AFTER the first card it accepts;
+// that is Helm of Obedience's "mills cards until a creature card is
+// put into their graveyard" — the card that ends it still moves. With
+// `until` set, n <= 0 means "no limit but the library", so an
+// unbounded mill is expressible without inventing a sentinel.
+//
+// Running the library out mid-mill sets LosesAtNextSBA, the same
+// CR 704.5b-equivalent read-from-an-empty-library the draw path uses,
+// and stops rather than erroring: the player loses at the next SBA
+// check, not here.
+//
+// Caller must hold g.mu.
+func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, until func(Card) bool) ([]uuid.UUID, error) {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
-		return ErrPlayerNotFound
+		return nil, ErrPlayerNotFound
 	}
-	for i := 0; i < n; i++ {
+	var target *Zone
+	switch dest {
+	case ZoneGraveyard:
+		target = p.Graveyard
+	case ZoneExile:
+		target = g.Exile
+	default:
+		return nil, ErrInvalidParam
+	}
+	unbounded := until != nil && n <= 0
+	moved := make([]uuid.UUID, 0, max(n, 0))
+	for i := 0; unbounded || i < n; i++ {
 		if p.Library.Size() == 0 {
 			p.LosesAtNextSBA = true
-			return nil
+			return moved, nil
 		}
 		c, err := p.Library.PopTop()
 		if err != nil {
-			return err
+			return moved, err
 		}
-		p.Graveyard.PushTop(c)
-		g.markCardKnownInZoneLocked(p.Graveyard, c.InstanceID)
+		target.PushTop(c)
+		g.markCardKnownInZoneLocked(target, c.InstanceID)
+		moved = append(moved, c.InstanceID)
+		// Only a move to the GRAVEYARD is a mill (CR 701.13). "Exile
+		// the top N cards of your library" is not, and firing
+		// EventMill for it would trigger every mill payoff at the
+		// table — Bruvac would double an impulse-draw exile, which it
+		// does not do.
+		kind := EventMill
+		if dest != ZoneGraveyard {
+			kind = EventZoneMove
+		}
 		g.EmitEvent(Event{
-			Kind:    EventMill,
+			Kind:    kind,
 			Actor:   playerID,
 			CardID:  c.InstanceID,
 			OldZone: ZoneLibrary,
-			NewZone: ZoneGraveyard,
+			NewZone: dest,
 		})
+		if until != nil && until(c) {
+			return moved, nil
+		}
 	}
-	return nil
+	return moved, nil
 }
 
 // DestroyPermanentForEffect destroys a battlefield permanent
@@ -478,6 +551,77 @@ func (g *Game) BounceToHandForEffect(cardID uuid.UUID) error {
 	})
 	if src.Kind == ZoneBattlefield {
 		g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, Actor: owner.ID, NewZone: ZoneHand})
+	}
+	return nil
+}
+
+// TuckToLibraryForEffect moves a card from wherever it is onto its
+// owner's library — the top (`toBottom` false) or the bottom.
+//
+// BounceToHandForEffect with a different destination, and it exists
+// for the same reason: "put it on top of its owner's library" is a
+// printed instruction (Sensei's Divining Top putting itself back,
+// Condemn, Hinder) that no other helper can express. MoveCard always
+// pushes to the top of its destination, so the bottom case reorders
+// afterwards rather than having its own path.
+//
+// A card leaving the battlefield emits LKI + EventLTB, so dies- and
+// leaves-triggers see it; a card coming from anywhere else emits the
+// zone move alone. Library cards have no knowers, so this CLEARS the
+// card's knowledge set on the way in — a permanent everyone could
+// read becomes a face-down card in a hidden zone, and leaving the
+// owner marked would let them see their own top card forever.
+//
+// Caller must hold g.mu. Added in S22.
+func (g *Game) TuckToLibraryForEffect(cardID uuid.UUID, toBottom bool) error {
+	src := g.findCardZoneLocked(cardID)
+	if src == nil {
+		return ErrCardNotFound
+	}
+	var ownerID uuid.UUID
+	for _, c := range src.Cards {
+		if c.InstanceID == cardID {
+			ownerID = c.Owner
+			break
+		}
+	}
+	owner := g.playerByIDLocked(ownerID)
+	if owner == nil {
+		return ErrPlayerNotFound
+	}
+	if src == owner.Library {
+		return nil
+	}
+	if src.Kind == ZoneBattlefield {
+		g.snapshotLKILocked(cardID)
+	}
+	if _, err := MoveCard(src, owner.Library, cardID); err != nil {
+		return err
+	}
+	if toBottom {
+		c, err := owner.Library.Remove(cardID)
+		if err != nil {
+			return err
+		}
+		owner.Library.PushBottom(c)
+	}
+	// A library is a hidden zone (CR 401.2). Whoever could read this
+	// card a moment ago cannot now.
+	for i := range owner.Library.Cards {
+		if owner.Library.Cards[i].InstanceID == cardID {
+			owner.Library.Cards[i].ClearKnown()
+			break
+		}
+	}
+	g.EmitEvent(Event{
+		Kind:    EventZoneMove,
+		Actor:   owner.ID,
+		CardID:  cardID,
+		OldZone: src.Kind,
+		NewZone: ZoneLibrary,
+	})
+	if src.Kind == ZoneBattlefield {
+		g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, Actor: owner.ID, NewZone: ZoneLibrary})
 	}
 	return nil
 }
@@ -873,6 +1017,22 @@ type SearchLibrarySpec struct {
 	// like Fabled Passage's "then ... untap THAT LAND" can name what
 	// it found instead of re-deriving it.
 	Then func(g *Game, found []uuid.UUID) error
+
+	// ToTop puts the found cards on TOP of the library, after the
+	// shuffle, when Dest is ZoneLibrary. It is what the "search your
+	// library for a card, then shuffle and PUT THAT CARD ON TOP"
+	// tutors print — Vampiric Tutor, Enlightened Tutor, Worldly
+	// Tutor, Mystical Tutor, Imperial Seal.
+	//
+	// The ordering is the whole clause. Shuffling first and placing
+	// second is what makes the card a known quantity on an unknown
+	// library; doing it the other way round would shuffle the card
+	// you just tutored back into the deck.
+	//
+	// With ToTop false, Dest: ZoneLibrary keeps its older meaning —
+	// "leave it where it is", which is a search that only reveals.
+	// Ignored for any other destination. Added in S22.
+	ToTop bool
 }
 
 // SearchLibraryForEffect scans playerID's library for cards matching
@@ -1058,10 +1218,19 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []uuid.UUID) []uuid.UUID {
 	destZone, err := g.searchDestZoneLocked(p, spec.Dest)
 	if err != nil || destZone == p.Library {
-		// ZoneLibrary is "leave it where it is" (Vampiric Tutor's
-		// put-on-top is not modelled yet); only the reveal applies.
-		if err == nil && spec.Reveal {
+		// ZoneLibrary means the card does not leave the library.
+		// With ToTop set it will be moved to the top AFTER the
+		// shuffle, in finishSearchLocked — so the IDs are returned
+		// as found, and nothing is moved here. Without it the clause
+		// is "leave it where it is" and only the reveal applies.
+		if err != nil {
+			return nil
+		}
+		if spec.Reveal {
 			g.revealLibraryCardsLocked(p, ids)
+		}
+		if spec.ToTop {
+			return ids
 		}
 		return nil
 	}
@@ -1248,6 +1417,32 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 		// the searcher saw while looking, they no longer know where
 		// any of it is.
 		clearKnownInZoneLocked(p.Library)
+	}
+	// "... then shuffle and put that card on top." AFTER the shuffle,
+	// which is the whole clause — the tutored card is a known
+	// quantity sitting on an unknown library. Doing it before would
+	// shuffle the card straight back into the deck.
+	//
+	// Knowledge has to be re-granted here because the shuffle just
+	// wiped the whole zone, and the tutored card is the one card in
+	// it nobody has forgotten: the searcher chose it and watched it
+	// go on top. If the card also said "reveal", the whole table
+	// watched — Enlightened Tutor tells everyone what your next draw
+	// is, and that is a real cost of the card.
+	if spec.ToTop && spec.Dest == ZoneLibrary {
+		for i := len(found) - 1; i >= 0; i-- {
+			c, err := p.Library.Remove(found[i])
+			if err != nil {
+				continue
+			}
+			c.AddKnower(spec.Player)
+			if spec.Reveal {
+				for _, seat := range g.Seats {
+					c.AddKnower(seat.ID)
+				}
+			}
+			p.Library.PushTop(c)
+		}
 	}
 	if spec.Then != nil {
 		return spec.Then(g, found)
@@ -1458,6 +1653,55 @@ func (g *Game) ScryForEffect(playerID, source uuid.UUID, n int) int {
 //
 // Caller must hold g.mu.
 func (g *Game) ScryThenForEffect(playerID, source uuid.UUID, n int, after func(g *Game) error) int {
+	return g.lookAtTopForEffect(PendingChoiceScry, playerID, source, n, scryReason, after)
+}
+
+// SurveilThenForEffect is surveil N with a continuation (CR 701.42):
+// the player looks at the top N cards of their library and puts any
+// number of them into their graveyard, the rest back on top in any
+// order.
+//
+// Scry's mechanism with the bottom-of-library leg replaced by the
+// graveyard — see lookAtTopForEffect for the shared queueing and
+// ResolveSurveil for what happens on submit. `after` carries anything
+// the card prints after "then", for the same reason Preordain's draw
+// does: it must not run until the library is in the order the player
+// chose.
+//
+// Caller must hold g.mu.
+func (g *Game) SurveilThenForEffect(playerID, source uuid.UUID, n int, after func(g *Game) error) int {
+	return g.lookAtTopForEffect(PendingChoiceSurveil, playerID, source, n, surveilReason, after)
+}
+
+// LookAtTopThenForEffect is "look at the top N cards of your library,
+// then put them back in any order" — Ponder, Sensei's Divining Top,
+// Soothsaying.
+//
+// The scry family's third member, with no away lane: every card goes
+// back on top, and the only decision is the order. `after` carries
+// anything the card prints next — Ponder's "draw a card", which must
+// not run until the player has decided which card is on top, for the
+// same reason Preordain's must not.
+//
+// Caller must hold g.mu.
+func (g *Game) LookAtTopThenForEffect(playerID, source uuid.UUID, n int, after func(g *Game) error) int {
+	return g.lookAtTopForEffect(PendingChoiceLookAtTop, playerID, source, n, lookAtTopReason, after)
+}
+
+// lookAtTopForEffect queues the "look at the top N cards of your
+// library, then put them somewhere" prompt that scry and surveil
+// share. It marks the chooser — and ONLY the chooser — a knower of
+// each card, which is what makes both keywords "look at" rather than
+// "reveal"; the wire redaction in protocol.FilterViewFor keys off
+// exactly that.
+//
+// Returns how many cards the player is actually looking at, which is
+// min(n, library size) and can be zero. `after` runs immediately when
+// there is nothing to look at: the instruction after "then" is not
+// conditional on the library having had cards in it.
+//
+// Caller must hold g.mu.
+func (g *Game) lookAtTopForEffect(kind PendingChoiceKind, playerID, source uuid.UUID, n int, reason func(int) string, after func(g *Game) error) int {
 	runAfter := func() {
 		if after != nil {
 			if err := after(g); err != nil {
@@ -1496,12 +1740,12 @@ func (g *Game) ScryThenForEffect(playerID, source uuid.UUID, n int, after func(g
 		ids = append(ids, p.Library.Cards[idx].InstanceID)
 	}
 	g.QueueChoiceForEffect(PendingChoice{
-		Kind:       PendingChoiceScry,
+		Kind:       kind,
 		Chooser:    playerID,
 		FromPlayer: playerID,
 		Count:      len(ids),
 		Source:     source,
-		Reason:     scryReason(len(ids)),
+		Reason:     reason(len(ids)),
 		ScryCards:  ids,
 		scryResume: after,
 	})
@@ -1520,6 +1764,27 @@ func scryReason(n int) string {
 		return "Scry 3"
 	}
 	return "Scry " + strconv.Itoa(n)
+}
+
+// surveilReason is the picker's banner copy, phrased as the card
+// prints it.
+func surveilReason(n int) string {
+	switch n {
+	case 1:
+		return "Surveil 1"
+	case 2:
+		return "Surveil 2"
+	case 3:
+		return "Surveil 3"
+	}
+	return "Surveil " + strconv.Itoa(n)
+}
+
+// lookAtTopReason is the picker's banner copy. Unlike scry and
+// surveil this is not a keyword, so it is phrased as the cards print
+// the instruction.
+func lookAtTopReason(n int) string {
+	return "Look at the top " + strconv.Itoa(n) + " cards of your library"
 }
 
 // ReturnFromExileToBattlefieldForEffect is the other half of a
@@ -1624,6 +1889,7 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 	card.BattleY = 0
 	card.EnteredBattlefieldAt = 0
 	card.SummonedThisTurn = false
+	card.NamedTribe = ""
 	card.effective = nil
 	g.Battlefield.PushTop(card)
 	g.markCardKnownInZoneLocked(g.Battlefield, newID)

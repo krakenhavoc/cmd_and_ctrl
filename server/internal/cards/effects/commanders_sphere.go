@@ -20,8 +20,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // instant speed, which is exactly the printed card.
 func init() {
 	Register(Spec{
-		OracleID: "0b67c4e2-f88b-4e01-85a1-9d5f5b8db13b",
-		Name:     "Commander's Sphere",
+		OracleID:     "0b67c4e2-f88b-4e01-85a1-9d5f5b8db13b",
+		Name:         "Commander's Sphere",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",

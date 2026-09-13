@@ -21,9 +21,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // 608.2b — the spell has one target, so it fizzles entirely).
 func init() {
 	Register(Spec{
-		OracleID: "7735eeba-693b-47e2-bd51-414379cf1016",
-		Name:     "Beast Within",
-		Targets:  TargetPermanent("target permanent"),
+		OracleID:     "7735eeba-693b-47e2-bd51-414379cf1016",
+		Name:         "Beast Within",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The Beast token is created colorless instead of green, so anything that cares about a creature's color doesn't see it."},
+		Targets:      TargetPermanent("target permanent"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

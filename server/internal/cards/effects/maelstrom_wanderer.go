@@ -20,8 +20,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // lands and on the two free spells that come with it.
 func init() {
 	Register(Spec{
-		OracleID: "ad9b7fbc-61c8-43ee-a65c-99206fd1e4df",
-		Name:     "Maelstrom Wanderer",
+		OracleID:     "ad9b7fbc-61c8-43ee-a65c-99206fd1e4df",
+		Name:         "Maelstrom Wanderer",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Cascade(),
 			Cascade(),

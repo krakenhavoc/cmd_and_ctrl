@@ -23,6 +23,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "311a449d-dc74-46e6-9a47-6a597931f736",
 		Name:            "Consecrated Sphinx",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDrawCard},

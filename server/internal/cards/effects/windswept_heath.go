@@ -16,8 +16,9 @@ package effects
 // families.
 func init() {
 	Register(Spec{
-		OracleID: "29737a60-3ebd-40d9-b935-c4f54b90d45d",
-		Name:     "Windswept Heath",
+		OracleID:     "29737a60-3ebd-40d9-b935-c4f54b90d45d",
+		Name:         "Windswept Heath",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:  "{T}, Pay 1 life, Sacrifice this land: Search your library for a Forest or Plains card, put it onto the battlefield, then shuffle.",
 			Cost:   fetchlandCost(),

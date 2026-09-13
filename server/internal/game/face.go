@@ -78,6 +78,15 @@ type Face struct {
 	// fallback made it do.
 	StartingLoyalty int
 
+	// StartingDefense is the face's printed defense (CR 310.4).
+	// Zero for every non-battle face — and for a battle it lives on
+	// the face rather than at the top level, because that is where
+	// Scryfall puts it: every printed battle is a `transform` card
+	// whose top-level `defense` is null and whose FRONT face carries
+	// the number. A top-level-only read would have given every
+	// battle in the game zero defense. Added in S27.
+	StartingDefense int
+
 	// OracleText is the face's rules text. Not read by the engine
 	// (game.Card has never carried oracle text) but carried for the
 	// wire so the client's hover overlay can show the back face
@@ -117,8 +126,8 @@ const (
 // SetFace switches the card to face i and re-materialises the flat
 // printed fields from it. It is the ONLY writer of ActiveFace: the
 // invariant that Name / TypeLine / ManaCost / Colors / Power /
-// Toughness / StartingLoyalty equal Faces[ActiveFace] is maintained
-// here and nowhere else.
+// Toughness / StartingLoyalty / StartingDefense equal
+// Faces[ActiveFace] is maintained here and nowhere else.
 //
 // A no-op for single-faced cards (Faces == nil), which is every one
 // of the ~33,000 ordinary oracle IDs — they keep today's behaviour to
@@ -146,6 +155,7 @@ func (c *Card) SetFace(i int) {
 	c.Power = f.Power
 	c.Toughness = f.Toughness
 	c.StartingLoyalty = f.StartingLoyalty
+	c.StartingDefense = f.StartingDefense
 }
 
 // ColorsInManaCost returns the unique WUBRG letters in a printed

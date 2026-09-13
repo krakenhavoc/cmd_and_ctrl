@@ -15,6 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "880793a2-84b0-4ae1-9bb8-6e942e3dc723",
 		Name:            "Boggart Brute",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 	})
 }

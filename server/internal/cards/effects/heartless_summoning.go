@@ -22,8 +22,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // costs {B}. Heartless Summoning does not make one-drops free.
 func init() {
 	Register(Spec{
-		OracleID: "fa1be67e-a07e-42ce-88be-446acd643dc6",
-		Name:     "Heartless Summoning",
+		OracleID:     "fa1be67e-a07e-42ce-88be-446acd643dc6",
+		Name:         "Heartless Summoning",
+		Completeness: CompletenessFull,
 		CostModifiers: []game.CostModifier{
 			CostsLess(2, "Creature spells you cast cost {2} less to cast.",
 				YourSpell(), CreatureSpell()),

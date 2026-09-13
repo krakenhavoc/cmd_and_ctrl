@@ -34,8 +34,10 @@ import (
 // graveyard-value decks.
 func init() {
 	Register(Spec{
-		OracleID: "11173ad3-c007-478f-bce0-d756eac07ccb",
-		Name:     "Phyrexian Scriptures",
+		OracleID:     "11173ad3-c007-478f-bce0-d756eac07ccb",
+		Name:         "Phyrexian Scriptures",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Chapter I doesn't make the chosen creature an artifact, so chapter II doesn't spare it."},
 		Triggered: []game.TriggeredAbility{
 			ChapterTriggerTargeting(1, "Phyrexian Scriptures — I: +1/+1 counter on up to one creature",
 				TargetCreature("up to one target creature").WithCount(0, 1),

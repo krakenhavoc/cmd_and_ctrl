@@ -386,6 +386,26 @@ type Card struct {
 	// 7b "set" that meets a 7c "modify" is right by construction.
 	// Added in S24, per ADR 0036 decision 2.
 	AttachedAt int64
+	// NamedTribe is the creature type chosen for this permanent by an
+	// "as this enters, choose a creature type" instruction (CR
+	// 614.12) — Cavern of Souls, Door of Destinies, Vanquisher's
+	// Banner, Adaptive Automaton. Empty means no type has been
+	// chosen, which is both "this card has no such instruction" and
+	// the transient state between the permanent entering and its
+	// controller answering the prompt.
+	//
+	// Per-INSTANCE, not per-card: two Caverns name two different
+	// tribes, and the static abilities that read it take the source
+	// card, never the catalog Spec. It is the first piece of chosen
+	// state the engine keeps on a permanent, which is why it is a
+	// plain string rather than a map — a second one (a named colour,
+	// for Iona or Painter's Servant) can be a second field, and a
+	// map would only pay for itself at four or five.
+	//
+	// Cleared when the permanent leaves the battlefield, alongside
+	// Tapped and Counters: a Cavern that is bounced and replayed
+	// chooses again (CR 614.12 fires on each entry). Added in S26.
+	NamedTribe string
 
 	// PrintedSelf is this card's OWN printed values, stashed when a
 	// CR 706 copy effect overwrote the flat printed fields above.
@@ -405,6 +425,42 @@ type Card struct {
 	// else, and a restore that lost it would resurrect every clone
 	// on the board as a 0/0. Added in S16.5 (#159 / #335).
 	PrintedSelf *PrintedValues
+	// StartingDefense is the printed defense a battle enters the
+	// battlefield with (CR 310.4), parsed from Scryfall's `defense`
+	// string at deck-import time. Zero for every other card type.
+	//
+	// The exact sibling of StartingLoyalty, for the exact same
+	// reason and after the exact same bug: defense is printed data
+	// like Power / Toughness / ManaCost, not card-effect data, and
+	// while the only source was the catalog every battle outside the
+	// opt-in catalog entered with zero defense counters and was
+	// swept into the graveyard by the CR 704.5p SBA before anyone
+	// could attack it. That was live on `main` for every battle a
+	// player could import. The catalog's BattleSpec.Defense survives
+	// as a fallback for cards with no printed data — tokens,
+	// fixtures — see CatalogBattleDefense.
+	//
+	// Added in S27.
+	StartingDefense int
+
+	// ProtectorPlayerID is the opponent chosen to protect a battle
+	// as it enters (CR 310.5). uuid.Nil for every other card type,
+	// and for a battle whose protector prompt has not been answered
+	// yet.
+	//
+	// The protector, NOT the controller, is the player who defends
+	// the battle: they are the one whose creatures may block an
+	// attack on it, and they are the one player who may not attack
+	// it. That inversion is the whole mechanic — a battle is cast by
+	// one player and guarded by another — and it is why this cannot
+	// be derived from Controller.
+	//
+	// Cleared when the battle leaves the battlefield, alongside
+	// Tapped and the combat declarations: a battle that returns is a
+	// new object and chooses a new protector (CR 400.7).
+	//
+	// Added in S27.
+	ProtectorPlayerID uuid.UUID
 
 	// effective is the cached post-layer-resolution characteristic
 	// for this card on the battlefield. Populated by the layer
@@ -616,12 +672,24 @@ func (c Card) HasCardType(lowerType string) bool {
 // land-type grant (Urborg, Tomb of Yawgmoth) becomes visible
 // through: CR 305.6's intrinsic mana abilities key off the basic
 // land TYPE, never off the Basic supertype.
+//
+// Changeling (CR 702.73a) is answered here rather than by writing
+// ~345 subtypes into the Characteristic, for the reasons on
+// HasAllCreatureTypes. It is checked AFTER the printed / effective
+// list so an ordinary card pays only a slice scan, and it is checked
+// on both branches because 702.73a works in every zone — a Woodland
+// Changeling in a graveyard really is an Elf, which is what a tribal
+// reanimator or a lord counting from exile has to see.
 func (c Card) HasSubtype(subtype string) bool {
 	if c.effective == nil {
 		_, _, printed := ParseTypeLine(c.TypeLine)
-		return typeListHas(printed, subtype)
+		if typeListHas(printed, subtype) {
+			return true
+		}
+	} else if typeListHas(c.effective.Subtypes, subtype) {
+		return true
 	}
-	return typeListHas(c.effective.Subtypes, subtype)
+	return IsCreatureType(subtype) && HasAllCreatureTypes(&c)
 }
 
 // --- printed card-type predicates -----------------------------
