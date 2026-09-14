@@ -188,12 +188,26 @@ type ReplacementEvent struct {
 	// faithful resume should set this and inherit the prompt.
 	entryResumable bool
 
+	// zoneRoute is the exit half's answer to entryResumable: the
+	// per-destination bookkeeping (to the bottom of the library, face
+	// down in exile, this was a mill, this was a counterspell) that a
+	// paused move has to carry across the pause so the resume can
+	// finish it exactly as the mover asked. Set by
+	// routeCardToZoneLocked and read by executeZoneRouteLocked; a
+	// non-nil value is what makes a RepEventMove resumable on the
+	// EXIT side, the way entryResumable does on the entry side.
+	//
+	// Unexported engine plumbing — the catalog never sets or reads
+	// it. Added in #529 so CR 903.9 could move down to the primitive.
+	zoneRoute *zoneRoute
+
 	// asCommanderMove is an unexported breadcrumb set by
 	// MoveCardByIDAsCommander when the caller flagged the move as
-	// a commander-initiated one. The commander-zone built-in's
-	// AppliesTo gates on this bit. Unexported because the catalog
-	// should never read or set it — it's pure engine plumbing for
-	// the S13.1 refactor.
+	// a commander-initiated one. It is NOT a gate on the CR 903.9
+	// built-in — that gate was dropped in #171 and the replacement
+	// has been destination-only ever since. It survives as a routing
+	// flavor flag on the manual move_card action. Unexported because
+	// the catalog should never read or set it.
 	asCommanderMove bool
 
 	// --- RepEventCounter fields ---
@@ -490,6 +504,23 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			// has left the game gets the "no" inline: the commander
 			// of an eliminated player going to the graveyard rather
 			// than the command zone changes nothing for anyone.
+			//
+			// #359: so does an event with nothing to resume it. This
+			// branch used to queue unconditionally while the
+			// EntryLifeCost branch below has checked entryResumable
+			// since #268, so an Optional self-replacement on a
+			// permanent entering by an unresumable route would pause
+			// with no way to finish — the card stranded in its old
+			// zone and the prompt answerable to no effect. Taking the
+			// un-applied branch is weaker than printed and never
+			// stranded, which is the posture #268 chose and #272
+			// reaffirmed. It is also what blocked the six reveal-
+			// lands ("as this enters, you may reveal a land from your
+			// hand") from shipping.
+			if !g.optionalReplacementResumableLocked(ev) {
+				g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
+				continue
+			}
 			if g.chooserGoneLocked(g.optionalReplacementChooserLocked(ev, chosen)) {
 				g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
 				continue
@@ -515,6 +546,38 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		ErrorMsg: ErrReplacementIterationExceeded.Error(),
 	})
 	return ev, ErrReplacementIterationExceeded
+}
+
+// optionalReplacementResumableLocked reports whether pausing on ev
+// for a CR 614.10 yes/no prompt has something that can finish the
+// underlying mutation afterwards.
+//
+// Only a battlefield ENTRY can lack one. Every other event kind is
+// completed inline by applyResolvedReplacementEventLocked from the
+// event's own payload — a counter delta, a life change, a damage
+// mark — and an EXIT move carries its route with it (zoneRoute, or
+// the battlefield-leave path's own resume). An entry is different
+// because finishing it generically can silently skip work the
+// starting effect owed: an exile-return mints a new object identity
+// (CR 400.7) and a library search owes its caller a shuffle, so those
+// sites deliberately do not set entryResumable and must not pause.
+//
+// #359. Mirrors the guard offerEntryLifePaymentLocked has carried
+// since #268.
+//
+// Caller must hold g.mu.
+func (g *Game) optionalReplacementResumableLocked(ev *ReplacementEvent) bool {
+	if ev == nil {
+		return false
+	}
+	if ev.Kind != RepEventMove || ev.NewZone != ZoneBattlefield {
+		return true
+	}
+	if ev.OldZone == ZoneBattlefield {
+		// Not an entry — a permanent staying put.
+		return true
+	}
+	return ev.entryResumable
 }
 
 // clearReplacementEventLocked drops the per-event tracking map

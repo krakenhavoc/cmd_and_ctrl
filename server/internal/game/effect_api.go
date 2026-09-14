@@ -404,48 +404,67 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, unt
 	if p == nil {
 		return nil, ErrPlayerNotFound
 	}
-	var target *Zone
 	switch dest {
-	case ZoneGraveyard:
-		target = p.Graveyard
-	case ZoneExile:
-		target = g.Exile
+	case ZoneGraveyard, ZoneExile:
 	default:
 		return nil, ErrInvalidParam
 	}
 	unbounded := until != nil && n <= 0
-	moved := make([]uuid.UUID, 0, max(n, 0))
-	for i := 0; unbounded || i < n; i++ {
-		if p.Library.Size() == 0 {
-			p.LosesAtNextSBA = true
-			return moved, nil
-		}
-		c, err := p.Library.PopTop()
-		if err != nil {
-			return moved, err
-		}
-		target.PushTop(c)
-		g.markCardKnownInZoneLocked(target, c.InstanceID)
-		moved = append(moved, c.InstanceID)
+
+	// #529: the cards that will move are chosen UP FRONT, top-down,
+	// and addressed by ID from there — rather than by repeatedly
+	// popping whatever is on top.
+	//
+	// A milled commander now gets the CR 903.9 prompt, and a queued
+	// prompt leaves that card exactly where it was: still on top of
+	// the library. Re-reading the top each iteration would hand back
+	// the same commander every time and mill nothing else. Choosing
+	// the set first lets the rest of the mill proceed AROUND the
+	// paused card, which is both what CR 701.13b's simultaneous mill
+	// wants and the only version that does not silently shorten the
+	// mill when a commander is in the way.
+	avail := len(p.Library.Cards)
+	want := n
+	if unbounded || want > avail {
+		want = avail
+	}
+	batch := make([]Card, 0, want)
+	for i := 0; i < want; i++ {
+		batch = append(batch, p.Library.Cards[avail-1-i])
+	}
+
+	moved := make([]uuid.UUID, 0, want)
+	for _, c := range batch {
 		// Only a move to the GRAVEYARD is a mill (CR 701.13). "Exile
 		// the top N cards of your library" is not, and firing
 		// EventMill for it would trigger every mill payoff at the
 		// table — Bruvac would double an impulse-draw exile, which it
 		// does not do.
-		kind := EventMill
-		if dest != ZoneGraveyard {
-			kind = EventZoneMove
-		}
-		g.EmitEvent(Event{
-			Kind:    kind,
-			Actor:   playerID,
-			CardID:  c.InstanceID,
-			OldZone: ZoneLibrary,
-			NewZone: dest,
+		paused, err := g.routeCardToZoneLocked(zoneRoute{
+			CardID: c.InstanceID,
+			Dst:    dest,
+			Actor:  playerID,
+			Mill:   dest == ZoneGraveyard,
 		})
+		if err != nil {
+			return moved, err
+		}
+		if !paused {
+			// A paused card has not been milled yet. It is left out
+			// of the returned slice so "exile all cards milled this
+			// way" cannot act on a card still sitting in the library.
+			moved = append(moved, c.InstanceID)
+		}
 		if until != nil && until(c) {
 			return moved, nil
 		}
+	}
+	// Reading from the top of an empty library is the CR
+	// 704.5b-equivalent loss — recorded for the next SBA check rather
+	// than raised here. An unbounded `until` mill that never found
+	// its card has read the library dry by definition.
+	if want < n || (unbounded && until != nil) {
+		p.LosesAtNextSBA = true
 	}
 	return moved, nil
 }
@@ -485,31 +504,15 @@ func (g *Game) SacrificePermanentForEffect(cardID uuid.UUID) error {
 // ExileCardForEffect moves a card from whatever zone it's in to
 // the shared exile zone. The source zone is found by scanning; if
 // the card is already in exile, the call is a no-op.
+//
+// #529: routed through the shared exit primitive, so exile — a CR
+// 903.9 destination — offers a commander's owner the command zone.
+// That is #372 (Airbend exiles a commander with no prompt). When the
+// prompt is queued nothing has moved yet and this returns nil; the
+// move completes when the owner answers.
 func (g *Game) ExileCardForEffect(cardID uuid.UUID) error {
-	src := g.findCardZoneLocked(cardID)
-	if src == nil {
-		return ErrCardNotFound
-	}
-	if src == g.Exile {
-		return nil
-	}
-	if src.Kind == ZoneBattlefield {
-		g.snapshotLKILocked(cardID)
-	}
-	if _, err := MoveCard(src, g.Exile, cardID); err != nil {
-		return err
-	}
-	g.markCardKnownInZoneLocked(g.Exile, cardID)
-	g.EmitEvent(Event{
-		Kind:    EventZoneMove,
-		CardID:  cardID,
-		OldZone: src.Kind,
-		NewZone: ZoneExile,
-	})
-	if src.Kind == ZoneBattlefield {
-		g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, NewZone: ZoneExile})
-	}
-	return nil
+	_, err := g.routeCardToZoneLocked(zoneRoute{CardID: cardID, Dst: ZoneExile})
+	return err
 }
 
 // ExileTopFaceDownForEffect exiles the top n cards of playerID's
@@ -554,23 +557,26 @@ func (g *Game) ExileTopFaceDownForEffect(playerID uuid.UUID, n int) ([]uuid.UUID
 		// The library's top is the LAST element — the same read
 		// PopTop and ExileTopWithPermissionForEffect use.
 		top := p.Library.Cards[len(p.Library.Cards)-1].InstanceID
-		if _, err := MoveCard(p.Library, g.Exile, top); err != nil {
+		// #529: through the shared exit primitive so a commander
+		// exiled off the top of its owner's library still gets the CR
+		// 903.9 choice. A queued prompt leaves the card ON the
+		// library, so the loop has to stop rather than read the same
+		// top card again — see MillToZoneForEffect for the same
+		// hazard handled without losing the rest of the batch. Here
+		// the batch is Necropotence-shaped (n is 1 in every printed
+		// case), so stopping costs nothing worth the machinery.
+		paused, err := g.routeCardToZoneLocked(zoneRoute{
+			CardID:   top,
+			Dst:      ZoneExile,
+			Actor:    playerID,
+			FaceDown: true,
+		})
+		if err != nil {
 			return out, err
 		}
-		for j := range g.Exile.Cards {
-			if g.Exile.Cards[j].InstanceID == top {
-				g.Exile.Cards[j].FaceDown = true
-				g.Exile.Cards[j].ClearKnown()
-				break
-			}
+		if paused {
+			return out, nil
 		}
-		g.EmitEvent(Event{
-			Kind:    EventZoneMove,
-			Actor:   playerID,
-			CardID:  top,
-			OldZone: ZoneLibrary,
-			NewZone: ZoneExile,
-		})
 		out = append(out, top)
 	}
 	return out, nil
@@ -580,56 +586,14 @@ func (g *Game) ExileTopFaceDownForEffect(playerID uuid.UUID, n int) ([]uuid.UUID
 // owner's hand. Used by Unsummon and similar. If the owner is no
 // longer seated, the call returns ErrPlayerNotFound without moving
 // the card.
+//
+// #529: routed through the shared exit primitive, so the hand — a CR
+// 903.9 destination — offers a commander's owner the command zone.
+// The CR 400.7 face-down clear the hand owes happens down there, for
+// every destination rather than just this one.
 func (g *Game) BounceToHandForEffect(cardID uuid.UUID) error {
-	src := g.findCardZoneLocked(cardID)
-	if src == nil {
-		return ErrCardNotFound
-	}
-	var ownerID uuid.UUID
-	for _, c := range src.Cards {
-		if c.InstanceID == cardID {
-			ownerID = c.Owner
-			break
-		}
-	}
-	owner := g.playerByIDLocked(ownerID)
-	if owner == nil {
-		return ErrPlayerNotFound
-	}
-	if src == owner.Hand {
-		return nil
-	}
-	if src.Kind == ZoneBattlefield {
-		g.snapshotLKILocked(cardID)
-	}
-	if _, err := MoveCard(src, owner.Hand, cardID); err != nil {
-		return err
-	}
-	// CR 400.7 / 708.2: "face down" is a property of an object in a
-	// zone, and a card that changes zones is a new object with no
-	// memory of it. Necropotence's exiled card is face down in exile
-	// and an ordinary card the moment it reaches hand; a morph
-	// bounced off the battlefield is likewise just a card again.
-	// Leaving the flag set would ship `face_down: true` on a card in
-	// its owner's hand, which the client renders as a back.
-	for i := range owner.Hand.Cards {
-		if owner.Hand.Cards[i].InstanceID == cardID {
-			owner.Hand.Cards[i].FaceDown = false
-			break
-		}
-	}
-	g.markCardKnownInZoneLocked(owner.Hand, cardID)
-	g.EmitEvent(Event{
-		Kind:    EventZoneMove,
-		Actor:   owner.ID,
-		CardID:  cardID,
-		OldZone: src.Kind,
-		NewZone: ZoneHand,
-	})
-	if src.Kind == ZoneBattlefield {
-		g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, Actor: owner.ID, NewZone: ZoneHand})
-	}
-	return nil
+	_, err := g.routeCardToZoneLocked(zoneRoute{CardID: cardID, Dst: ZoneHand})
+	return err
 }
 
 // TuckToLibraryForEffect moves a card from wherever it is onto its
@@ -650,57 +614,19 @@ func (g *Game) BounceToHandForEffect(cardID uuid.UUID) error {
 // owner marked would let them see their own top card forever.
 //
 // Caller must hold g.mu. Added in S22.
+//
+// #529: routed through the shared exit primitive, so the library — a
+// CR 903.9 destination — offers a commander's owner the command zone.
+// `toBottom` rides along on the route rather than being applied here,
+// which is what lets it survive a queued prompt: a commander tucked
+// to the bottom whose owner declines still lands on the bottom.
 func (g *Game) TuckToLibraryForEffect(cardID uuid.UUID, toBottom bool) error {
-	src := g.findCardZoneLocked(cardID)
-	if src == nil {
-		return ErrCardNotFound
-	}
-	var ownerID uuid.UUID
-	for _, c := range src.Cards {
-		if c.InstanceID == cardID {
-			ownerID = c.Owner
-			break
-		}
-	}
-	owner := g.playerByIDLocked(ownerID)
-	if owner == nil {
-		return ErrPlayerNotFound
-	}
-	if src == owner.Library {
-		return nil
-	}
-	if src.Kind == ZoneBattlefield {
-		g.snapshotLKILocked(cardID)
-	}
-	if _, err := MoveCard(src, owner.Library, cardID); err != nil {
-		return err
-	}
-	if toBottom {
-		c, err := owner.Library.Remove(cardID)
-		if err != nil {
-			return err
-		}
-		owner.Library.PushBottom(c)
-	}
-	// A library is a hidden zone (CR 401.2). Whoever could read this
-	// card a moment ago cannot now.
-	for i := range owner.Library.Cards {
-		if owner.Library.Cards[i].InstanceID == cardID {
-			owner.Library.Cards[i].ClearKnown()
-			break
-		}
-	}
-	g.EmitEvent(Event{
-		Kind:    EventZoneMove,
-		Actor:   owner.ID,
-		CardID:  cardID,
-		OldZone: src.Kind,
-		NewZone: ZoneLibrary,
+	_, err := g.routeCardToZoneLocked(zoneRoute{
+		CardID:   cardID,
+		Dst:      ZoneLibrary,
+		ToBottom: toBottom,
 	})
-	if src.Kind == ZoneBattlefield {
-		g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, Actor: owner.ID, NewZone: ZoneLibrary})
-	}
-	return nil
+	return err
 }
 
 // TapTargetForEffect taps a battlefield card. Wrapper around the
@@ -764,6 +690,18 @@ func (g *Game) CounterTargetForEffect(stackID uuid.UUID) error {
 
 // counterSpellLocked is the lock-free body of CounterSpell. Caller
 // must hold g.mu.
+//
+// #529 folded the two into one body. They had drifted: the public
+// CounterSpell honoured flashback's CR 702.34a "exile this card
+// instead of putting it anywhere else any time it would leave the
+// stack" and this one did not, so a flashed-back spell answered by a
+// CATALOG counterspell went to the graveyard while the same spell
+// answered from the admin action was exiled. One body, one answer.
+//
+// The move goes through the shared exit primitive, so a countered
+// commander gets the CR 903.9 command-zone choice — #364. When the
+// prompt is queued nothing has moved, the stack item is still
+// registered, and both complete when the owner answers.
 func (g *Game) counterSpellLocked(spellID uuid.UUID, dst *ZoneRef) error {
 	item, ok := g.StackMeta[spellID]
 	if !ok || item == nil || item.Kind != StackItemSpell {
@@ -772,35 +710,42 @@ func (g *Game) counterSpellLocked(spellID uuid.UUID, dst *ZoneRef) error {
 	if g.Stack == nil || !g.Stack.Contains(spellID) {
 		return ErrCardNotOnStack
 	}
-	var destZone *Zone
-	if dst == nil {
-		owner := g.playerByIDLocked(item.Owner)
-		if owner == nil {
-			destZone = g.Exile
-		} else {
-			destZone = owner.Graveyard
-		}
-	} else {
+	// Resolve the destination. nil → the spell's owner's graveyard,
+	// or exile when that player has left the game (the primitive's
+	// own fallback). Battlefield / stack are illegal — a counter that
+	// "puts the spell onto the battlefield" would be a different
+	// effect, and a counter MUST move the spell off the stack.
+	destKind, destOwner := ZoneGraveyard, item.Owner
+	if dst != nil {
 		if dst.Kind == ZoneBattlefield || dst.Kind == ZoneStack {
 			return ErrInvalidStackDestination
 		}
-		destZone = g.zoneFromRefLocked(*dst)
-		if destZone == nil {
+		if g.zoneFromRefLocked(*dst) == nil {
 			return ErrZoneNotFound
 		}
+		destKind, destOwner = dst.Kind, dst.Owner
 	}
-	if _, err := MoveCard(g.Stack, destZone, spellID); err != nil {
-		return err
+	// S29 flashback: "exile this card instead of putting it anywhere
+	// else ANY TIME it would leave the stack" (CR 702.34a). It beats
+	// the counter's chosen destination, so a flashed-back spell
+	// answered by Hinder is exiled rather than shuffled away — which
+	// is the whole difference between a replacement effect and an
+	// exile bolted onto the resolution, and the only place in the
+	// engine where it is observable.
+	for _, c := range g.Stack.Cards {
+		if c.InstanceID == spellID && altCostExilesFromStack(c, item.AltCost) {
+			destKind, destOwner = ZoneExile, uuid.Nil
+			break
+		}
 	}
-	g.markCardKnownInZoneLocked(destZone, spellID)
-	delete(g.StackMeta, spellID)
-	g.recomputeSplitSecondLocked()
-	g.EmitEvent(Event{
-		Kind:   EventCounterSpell,
-		Target: spellID,
-		CardID: spellID,
+	_, err := g.routeCardToZoneLocked(zoneRoute{
+		CardID:        spellID,
+		Dst:           destKind,
+		DstOwner:      destOwner,
+		Countered:     true,
+		DropStackMeta: true,
 	})
-	return nil
+	return err
 }
 
 // counterAbilityLocked is the lock-free body of CounterAbility.

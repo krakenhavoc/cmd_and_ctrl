@@ -317,6 +317,11 @@ func TestOfferCountersAndPaysTheVictim(t *testing.T) {
 	if g.Stack.Contains(spell) {
 		t.Errorf("the target spell should have been countered")
 	}
+	// Leaving the stack is what RESOLVING does too — the graveyard
+	// is the only assertion that tells a counter from a resolution.
+	if !caster.Graveyard.Contains(spell) {
+		t.Errorf("the countered spell did not reach its owner's graveyard")
+	}
 	if n := countBattlefieldNamed(g, caster.ID, "Treasure"); n != 2 {
 		t.Errorf("the countered spell's controller gets 2 Treasures, got %d", n)
 	}

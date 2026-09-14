@@ -1166,6 +1166,15 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		}
 		return ErrCardNotFound
 	case RepEventMove:
+		// #529: a move that came through the shared exit primitive
+		// carries everything its resume needs on the event itself, so
+		// it is finished by the same code the unpaused path runs.
+		// Checked first because it is the general case — the two
+		// branches below are the older, hand-rolled resumes for the
+		// battlefield entry and battlefield-leave paths.
+		if ev.zoneRoute != nil {
+			return g.executeZoneRouteLocked(ev)
+		}
 		// S17 sub-PR 6: resume path for battlefield-leave moves
 		// after the CR 903.9 commander-zone Optional prompt. The
 		// pipeline settled on ev.NewZone (either the original

@@ -459,7 +459,7 @@ func TestB33StoneOfErechExilesOpposingDeathsAndEatsAGraveyard(t *testing.T) {
 	if !opp.Graveyard.Contains(rock) {
 		t.Error("an opponent's noncreature dies as normal")
 	}
-	pushGraveyardCardForTest(opp, "Old Card")
+	old := pushGraveyardCardForTest(opp, "Old Card")
 	yard := opp.Graveyard.Size()
 	advanceToMain(t, g)
 	b06AddMana(me, "C", "C")
@@ -467,6 +467,13 @@ func TestB33StoneOfErechExilesOpposingDeathsAndEatsAGraveyard(t *testing.T) {
 	b16Activate(t, g, me.ID, stone, 0, game.ActivateAbilityParams{Targets: b16TargetPlayer(opp.ID)})
 	if opp.Graveyard.Size() != 0 {
 		t.Errorf("the target player's graveyard (%d cards) is exiled: %d left", yard, opp.Graveyard.Size())
+	}
+	// "Exile" names a destination — an emptied graveyard alone is
+	// equally consistent with the cards having been deleted.
+	for _, id := range []uuid.UUID{rock, old} {
+		if !g.Exile.Contains(id) {
+			t.Errorf("graveyard card %s left the graveyard but was not exiled", id)
+		}
 	}
 	if me.Hand.Size() != hand+1 {
 		t.Error("then draw a card")

@@ -20,13 +20,19 @@ import "github.com/google/uuid"
 //
 // CR 614.10 "may" replacement — Optional=true triggers the apply-
 // loop's yes/no prompt path (PendingChoiceOptionalReplacement) so
-// the owner decides each time. Sub-PR 6 change: widened AppliesTo
-// (dropped the asCommanderMove gate) so the replacement fires for
-// every move that puts a commander into graveyard/exile/hand/
-// library — spell-driven (Wrath, Path, Swords), SBA-driven (dies
-// to damage), bounce (Unsummon), mill. S13.1's flag-gated single-
-// path implementation missed every case except the admin "move as
-// commander" UI action.
+// the owner decides each time. Sub-PR 6 widened AppliesTo (dropped
+// the asCommanderMove gate) so this fires for every move that puts a
+// commander into graveyard/exile/hand/library, whatever sent it.
+//
+// A destination-only AppliesTo is necessary but not sufficient: a
+// replacement effect only ever runs for a mover that pushes a
+// RepEventMove through applyReplacementsLocked. Until #529 only two
+// callers did, both battlefield → graveyard, so this widening was
+// unreachable from counter, fizzle, exile, bounce, tuck and mill —
+// which is most of how a commander leaves in a real game. The
+// window now lives in the shared exit primitive
+// (routeCardToZoneLocked, zone_route.go) rather than in the movers,
+// so "from anywhere" holds for every route that goes through it.
 //
 // Controlled by the commander's owner (drives both the CR 614.10
 // yes/no prompt and the CR 616 multi-replacement order prompt if

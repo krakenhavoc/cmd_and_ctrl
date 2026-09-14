@@ -231,6 +231,10 @@ func TestWanderingEmperorMinusOneExilesOnlyTappedCreatures(t *testing.T) {
 	if g.Battlefield.Contains(tapped) {
 		t.Error("the tapped creature was not exiled")
 	}
+	// Exile, not destroy — the whole point of the ability.
+	if !g.Exile.Contains(tapped) {
+		t.Error("the tapped creature left the battlefield but was not exiled")
+	}
 }
 
 // The Emperor's −2 is two turn-scoped statics: +2/+1 in layer 7c

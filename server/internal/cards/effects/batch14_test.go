@@ -922,6 +922,9 @@ func TestB14HydroidKrasisPaysOutEvenWhenCountered(t *testing.T) {
 	if g.Battlefield.Contains(id) {
 		t.Fatal("the Krasis was countered")
 	}
+	if !me.Graveyard.Contains(id) {
+		t.Fatal("the countered Krasis did not reach its owner's graveyard")
+	}
 	if me.Life != life+2 {
 		t.Errorf("the cast trigger still pays out: %d → %d, want +2", life, me.Life)
 	}

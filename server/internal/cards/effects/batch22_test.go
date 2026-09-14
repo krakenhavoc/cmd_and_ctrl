@@ -586,7 +586,7 @@ func TestB22DisdainfulStrokeCountersOnlyBigSpells(t *testing.T) {
 	hydra := castXSpell(t, g, "Hydra", "Creature — Hydra", "", "{X}{G}{G}", 3, nil)
 	castCatalogSpell(t, g, "Disdainful Stroke", "Instant", b22DisdainfulStrokeOracle, b16TargetCard(hydra))
 	passPriorityAroundTable(t, g)
-	if g.Battlefield.Contains(hydra) {
+	if g.Battlefield.Contains(hydra) || !me.Graveyard.Contains(hydra) {
 		t.Error("X is counted on the stack — the Hydra cast for X=3 has mana value 5")
 	}
 }

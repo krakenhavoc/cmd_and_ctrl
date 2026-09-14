@@ -147,4 +147,9 @@ func TestExileWipeStillGetsThroughIndestructible(t *testing.T) {
 	if g.Battlefield.Contains(golem) {
 		t.Error("an indestructible permanent survived being exiled — exile is not destruction")
 	}
+	// The destination IS the thesis of this test: a route that sent
+	// the Golem to a graveyard instead would pass the check above.
+	if !g.Exile.Contains(golem) {
+		t.Error("the indestructible permanent left the battlefield but was not exiled")
+	}
 }
