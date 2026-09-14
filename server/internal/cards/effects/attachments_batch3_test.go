@@ -48,6 +48,7 @@ const (
 	curiosityOracle         = "223fa044-d387-4884-bf4e-75f1b61c6a46"
 	spiritLinkOracle        = "c77ff526-c0a8-45c7-9730-2e306a0d01b8"
 	shadowspearOracle       = "8b27326f-e7b8-4a4d-b589-df459246d19a"
+	angelicGiftOracle       = "e5e04968-d9b7-4bd5-b826-be9502360cd3"
 )
 
 // seedLegendaryCreature is a 2/2 with the Legendary supertype, which
@@ -591,5 +592,38 @@ func TestShadowspearStripsHexproofAndIndestructibleFromOpponentsOnly(t *testing.
 	advanceToNextSeatsTurn(t, g)
 	if ab := effectiveAbilities(t, g, theirs); !containsString(ab, "hexproof") {
 		t.Errorf("the removal outlived the turn: %v", ab)
+	}
+}
+
+// --- Angelic Gift: an Aura with an enters trigger -----------------
+
+// The Aura attaches at resolution (ADR 0036 decision 5) AND fires an
+// enters trigger, and the two do not interfere: the Gift ends up on
+// the creature, the creature ends up with flying, and the card
+// replaces itself.
+func TestAngelicGiftAttachesGrantsFlyingAndCantrips(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	bear := seedBear(g, me.ID)
+
+	before := me.Hand.Size()
+	gift := castCatalogSpell(t, g, "Angelic Gift", auraTypeLine, angelicGiftOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: bear}})
+	passPriorityAroundTable(t, g)
+
+	if !g.Battlefield.Contains(gift) {
+		t.Fatal("Angelic Gift should resolve to the battlefield")
+	}
+	if host := attachmentHostOf(t, g, gift); host.Kind != game.TargetCard || host.ID != bear {
+		t.Fatalf("Angelic Gift AttachedTo = %+v, want card %s", host, bear)
+	}
+	if ab := effectiveAbilities(t, g, bear); !containsString(ab, "flying") {
+		t.Errorf("abilities %v missing flying", ab)
+	}
+	// `before` is measured before castCatalogSpell seeds the Gift, so
+	// the seed (+1) and the cast (-1) cancel and what is left is the
+	// trigger's draw: the Aura replaces itself.
+	if got := me.Hand.Size(); got != before+1 {
+		t.Errorf("hand %d, want %d — the enters trigger did not draw", got, before+1)
 	}
 }
