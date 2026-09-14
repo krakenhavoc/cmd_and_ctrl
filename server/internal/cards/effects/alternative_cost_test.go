@@ -119,6 +119,9 @@ func TestCyclonicRiftHardCastStillBouncesOne(t *testing.T) {
 	if g.Battlefield.Contains(one) {
 		t.Error("targeted permanent was not bounced")
 	}
+	if !victim.Hand.Contains(one) {
+		t.Error("the bounced permanent did not reach its owner's hand")
+	}
 	if !g.Battlefield.Contains(two) {
 		t.Error("a hard-cast Rift swept the board — the overload branch leaked")
 	}
@@ -345,10 +348,26 @@ func TestWashAwayClauseWidensUnderCleave(t *testing.T) {
 	if g.Battlefield.Contains(victim) {
 		t.Error("countered spell resolved onto the battlefield anyway")
 	}
+	if !active.Graveyard.Contains(victim) {
+		t.Error("the countered spell did not reach its owner's graveyard")
+	}
 }
 
 // A commander cast is exactly what the printed clause is aimed at:
 // it wasn't cast from its owner's hand, so {U} answers it.
+//
+// #529 / #364: this test used to assert ONLY `!Battlefield.Contains`,
+// which is true whether the countered commander goes to the graveyard
+// with no prompt (the bug) or to the command zone after one (the
+// rule). It passed for the entire life of the defect and read as
+// coverage for it. A zone-change assertion has to name where the card
+// ARRIVED, not just where it is absent from; "it left" is satisfied
+// by every wrong destination as well as the right one.
+//
+// Note the prompt is answered here rather than passed through:
+// PassPriority deliberately does not gate on open choices (see
+// spell_copy.go), so a test that drives it raw would resolve the
+// commander out from under its own unanswered prompt.
 func TestWashAwayHardCastAnswersACommanderCast(t *testing.T) {
 	g := newCatalogGame(t)
 	active := g.Seats[g.Turn.ActiveSeat]
@@ -376,9 +395,54 @@ func TestWashAwayHardCastAnswersACommanderCast(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("hard-cast Wash Away on a commander cast: %v", err)
 	}
-	passPriorityAroundTable(t, g)
+	// Pass until Wash Away resolves. The counter puts the commander
+	// into its owner's graveyard, and CR 903.9 makes that a choice,
+	// so the table stops on a prompt rather than draining the stack.
+	passPriorityUntilChoice(t, g)
 
 	if g.Battlefield.Contains(cmdID) {
-		t.Error("the commander resolved despite being countered")
+		t.Fatal("the commander resolved despite being countered")
 	}
+	if len(g.PendingChoices) != 1 {
+		t.Fatalf("countering a commander offered %d choices, want the CR 903.9 prompt", len(g.PendingChoices))
+	}
+	prompt := g.PendingChoices[0]
+	if prompt.Kind != game.PendingChoiceOptionalReplacement {
+		t.Fatalf("prompt kind = %q, want %q", prompt.Kind, game.PendingChoiceOptionalReplacement)
+	}
+	if prompt.Chooser != active.ID {
+		t.Errorf("chooser = %s, want the commander's owner %s", prompt.Chooser, active.ID)
+	}
+	// Nothing has moved while the prompt is open.
+	if active.Graveyard.Contains(cmdID) {
+		t.Error("the commander hit the graveyard before its owner answered")
+	}
+	if err := g.ResolveOptionalReplacement(prompt.ID, active.ID, true); err != nil {
+		t.Fatalf("ResolveOptionalReplacement: %v", err)
+	}
+	if !active.Command.Contains(cmdID) {
+		t.Error("the countered commander did not return to the command zone")
+	}
+	if active.Graveyard.Contains(cmdID) || g.Stack.Contains(cmdID) || g.Battlefield.Contains(cmdID) {
+		t.Error("the countered commander leaked out of the command zone")
+	}
+}
+
+// passPriorityUntilChoice passes priority until some seat is owed a
+// pending choice, the stack is empty, or the table has gone around
+// too many times. Tests that expect a prompt mid-resolution need it:
+// passPriorityAroundTable drains the stack unconditionally, which
+// walks straight past an unanswered prompt (PassPriority does not
+// gate on open choices — see spell_copy.go).
+func passPriorityUntilChoice(t *testing.T, g *game.Game) {
+	t.Helper()
+	for i := 0; i < 32; i++ {
+		if len(g.PendingChoices) > 0 || stackFullyEmpty(g) {
+			return
+		}
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority iter %d: %v", i, err)
+		}
+	}
+	t.Fatal("no choice was queued and the stack did not empty after 32 priority passes")
 }

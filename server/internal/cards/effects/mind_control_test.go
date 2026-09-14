@@ -200,4 +200,7 @@ func TestMindControlFallsOffAndRevertsWhenTheHostLeaves(t *testing.T) {
 	if g.Battlefield.Contains(aura) {
 		t.Error("CR 704.5n: the Aura should have gone to the graveyard")
 	}
+	if !me.Graveyard.Contains(aura) {
+		t.Error("CR 704.5n: the Aura left the battlefield but did not reach its owner's graveyard")
+	}
 }

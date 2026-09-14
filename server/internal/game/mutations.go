@@ -1801,49 +1801,19 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, altCost string) error {
 	// not depend on one: the destination is the shared exile zone
 	// either way, which is also where a card whose owner has left
 	// the game already goes.
+	//
+	// #529: both destinations go through the shared exit primitive,
+	// so a commander that fizzles ("countered by game rules", CR
+	// 608.2b) or resolves to a graveyard gets the CR 903.9 choice.
+	// A queued prompt leaves the card on the stack until the owner
+	// answers — priority cannot pass while a choice is outstanding,
+	// so nothing resolves on top of it in the meantime.
+	r := zoneRoute{CardID: c.InstanceID, Dst: ZoneGraveyard, DstOwner: c.Owner}
 	if altCostExilesFromStack(c, altCost) {
-		if _, err := MoveCard(g.Stack, g.Exile, c.InstanceID); err != nil {
-			return err
-		}
-		g.markCardKnownInZoneLocked(g.Exile, c.InstanceID)
-		g.EmitEvent(Event{
-			Kind:    EventZoneMove,
-			Actor:   c.Owner,
-			CardID:  c.InstanceID,
-			OldZone: ZoneStack,
-			NewZone: ZoneExile,
-		})
-		return nil
+		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
 	}
-	owner := g.playerByIDLocked(c.Owner)
-	if owner == nil {
-		// Owner is no longer seated — drop the card to exile so the
-		// stack doesn't carry a reference to a dead player. (S13.1
-		// sub-PR 10 will fold this into the leaving-game cleanup.)
-		if _, err := MoveCard(g.Stack, g.Exile, c.InstanceID); err != nil {
-			return err
-		}
-		g.markCardKnownInZoneLocked(g.Exile, c.InstanceID)
-		g.EmitEvent(Event{
-			Kind:    EventZoneMove,
-			CardID:  c.InstanceID,
-			OldZone: ZoneStack,
-			NewZone: ZoneExile,
-		})
-		return nil
-	}
-	if _, err := MoveCard(g.Stack, owner.Graveyard, c.InstanceID); err != nil {
-		return err
-	}
-	g.markCardKnownInZoneLocked(owner.Graveyard, c.InstanceID)
-	g.EmitEvent(Event{
-		Kind:    EventZoneMove,
-		Actor:   owner.ID,
-		CardID:  c.InstanceID,
-		OldZone: ZoneStack,
-		NewZone: ZoneGraveyard,
-	})
-	return nil
+	_, err := g.routeCardToZoneLocked(r)
+	return err
 }
 
 // AbilityParams carries the announce-time choices that flow into an
@@ -2976,58 +2946,10 @@ func (g *Game) CounterSpell(spellID uuid.UUID, dst *ZoneRef) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
-	item, ok := g.StackMeta[spellID]
-	if !ok || item == nil || item.Kind != StackItemSpell {
-		return ErrCardNotOnStack
-	}
-	if g.Stack == nil || !g.Stack.Contains(spellID) {
-		return ErrCardNotOnStack
-	}
-	// Resolve the destination. nil → owner's graveyard. Battlefield /
-	// stack are illegal — see method docstring.
-	var destZone *Zone
-	if dst == nil {
-		owner := g.playerByIDLocked(item.Owner)
-		if owner == nil {
-			// Owner has left the game — exile rather than wedging.
-			destZone = g.Exile
-		} else {
-			destZone = owner.Graveyard
-		}
-	} else {
-		if dst.Kind == ZoneBattlefield || dst.Kind == ZoneStack {
-			return ErrInvalidStackDestination
-		}
-		destZone = g.zoneFromRefLocked(*dst)
-		if destZone == nil {
-			return ErrZoneNotFound
-		}
-	}
-	// S29 flashback: "exile this card instead of putting it anywhere
-	// else ANY TIME it would leave the stack" (CR 702.34a). It beats
-	// the counter's chosen destination, so a flashed-back spell
-	// answered by Hinder is exiled rather than shuffled away — which
-	// is the whole difference between a replacement effect and an
-	// exile bolted onto the resolution, and the only place in the
-	// engine where it is observable.
-	for _, c := range g.Stack.Cards {
-		if c.InstanceID == spellID && altCostExilesFromStack(c, item.AltCost) {
-			destZone = g.Exile
-			break
-		}
-	}
-	if _, err := MoveCard(g.Stack, destZone, spellID); err != nil {
-		return err
-	}
-	g.markCardKnownInZoneLocked(destZone, spellID)
-	delete(g.StackMeta, spellID)
-	g.recomputeSplitSecondLocked()
-	g.EmitEvent(Event{
-		Kind:   EventCounterSpell,
-		Target: spellID,
-		CardID: spellID,
-	})
-	return nil
+	// #529: one body, shared with CounterTargetForEffect. This used
+	// to be a near-copy of counterSpellLocked that had drifted on
+	// flashback handling; see the note there.
+	return g.counterSpellLocked(spellID, dst)
 }
 
 // CounterAbility removes an activated / triggered ability from the
@@ -3118,12 +3040,18 @@ func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCom
 	}
 
 	// S17 sub-PR 2: route through the replacement pipeline. The
-	// commander-zone built-in (replacements: commanderZoneReplacement)
-	// gates on ev.asCommanderMove && card.IsCommander && eligible
-	// destination; when it fires, ev.NewZone / ev.NewZoneOwner are
-	// rewritten to the owner's command zone. This replaces S13.1's
-	// inline applyCommanderZoneReplacementLocked — byte-for-byte
-	// identical behaviour, but now a generalised CR 614 pipeline hook.
+	// commander-zone built-in (commanderZoneReplacement) gates on
+	// card.IsCommander && an eligible destination — NOT on
+	// ev.asCommanderMove, which stopped being a gate in #171; the
+	// flag survives here only as a routing flavor on the manual
+	// move_card action. When the built-in fires, ev.NewZone /
+	// ev.NewZoneOwner are rewritten to the owner's command zone.
+	//
+	// This is one of two callers that predate the shared exit
+	// primitive in zone_route.go. It keeps its own pipeline call
+	// because it is the admin/sandbox move: it accepts an arbitrary
+	// source AND destination including the battlefield, which the
+	// exit primitive deliberately does not.
 	ev := &ReplacementEvent{
 		Kind:            RepEventMove,
 		CardID:          cardID,

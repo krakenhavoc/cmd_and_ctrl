@@ -427,6 +427,11 @@ func TestRiversRebukeOnlySweepsTheTargetedPlayer(t *testing.T) {
 		if g.Battlefield.Contains(id) {
 			t.Errorf("targeted player kept nonland permanent %s", id)
 		}
+		// River's Rebuke RETURNS TO HAND. Absence from the
+		// battlefield is equally satisfied by a destroy or an exile.
+		if !opp.Hand.Contains(id) {
+			t.Errorf("nonland permanent %s did not reach its owner's hand", id)
+		}
 	}
 	if !g.Battlefield.Contains(theirLand) {
 		t.Errorf("River's Rebuke bounced a land")

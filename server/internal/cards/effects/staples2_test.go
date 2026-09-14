@@ -321,6 +321,11 @@ func TestCyclonicRiftBouncesOpponentPermanent(t *testing.T) {
 	if g.Battlefield.Contains(id) {
 		t.Error("permanent was not bounced")
 	}
+	// The hand COUNT is a proxy: any other card arriving satisfies
+	// it while this one went to a graveyard. Name the card.
+	if !victim.Hand.Contains(id) {
+		t.Error("the bounced permanent did not reach its owner's hand")
+	}
 	if victim.Hand.Size() != handBefore+1 {
 		t.Errorf("owner's hand %d, want %d", victim.Hand.Size(), handBefore+1)
 	}

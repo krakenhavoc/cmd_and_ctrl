@@ -700,6 +700,10 @@ func TestB18WindsOfAbandonOverloadedExilesEachCreatureYouDontControl(t *testing.
 		if g.Battlefield.Contains(x) {
 			t.Errorf("%s survived the overload", x)
 		}
+		// Overload EXILES. A destroy would leave the battlefield too.
+		if !g.Exile.Contains(x) {
+			t.Errorf("%s left the battlefield but was not exiled", x)
+		}
 	}
 	if !g.Battlefield.Contains(mine) {
 		t.Error("your own creatures are untouched")
