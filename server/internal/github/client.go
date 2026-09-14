@@ -38,6 +38,28 @@ const (
 	userAgent = "cmd_and_ctrl-server (+https://github.com/krakenhavoc/cmd_and_ctrl)"
 )
 
+// APIError is a non-2xx response from the GitHub API. It exists so a
+// caller can tell "GitHub rejected this request" (a 4xx — the issue
+// was definitively NOT created) from "the call didn't complete" (a
+// timeout, a 5xx), without parsing the error string.
+//
+// The lobby uses it for exactly one decision: an issue whose labels
+// GitHub refuses is re-filed unlabelled rather than lost (ADR 0017
+// §8). It satisfies the unexported statusCoder interface lobby
+// declares, so the BugReporter seam stays one method wide and this
+// package stays un-imported there.
+type APIError struct {
+	Status int
+	Body   string // already truncated
+}
+
+func (e *APIError) Error() string {
+	return fmt.Sprintf("github: create issue: status %d: %s", e.Status, e.Body)
+}
+
+// StatusCode reports the HTTP status GitHub answered with.
+func (e *APIError) StatusCode() int { return e.Status }
+
 // Client files issues against a single owner/name repository.
 type Client struct {
 	baseURL string
@@ -77,7 +99,10 @@ func (c *Client) WithBaseURL(u string) *Client {
 //
 // Unknown labels are not pre-validated: GitHub attaches existing
 // ones and (for tokens with push access) creates missing ones; a
-// label quirk must never block the report itself.
+// label quirk must never block the report itself. When GitHub does
+// reject the labels it answers 4xx, and the error is an *APIError
+// carrying that status so the caller can re-file unlabelled rather
+// than drop the report (ADR 0017 §8).
 func (c *Client) CreateIssue(ctx context.Context, title, body string, labels []string) (string, int, error) {
 	payload := struct {
 		Title  string   `json:"title"`
@@ -112,7 +137,7 @@ func (c *Client) CreateIssue(ctx context.Context, title, body string, labels []s
 	lim := io.LimitReader(resp.Body, maxResponseBytes)
 	if resp.StatusCode != http.StatusCreated {
 		slurp, _ := io.ReadAll(lim)
-		return "", 0, fmt.Errorf("github: create issue: status %d: %s", resp.StatusCode, truncate(string(slurp), 300))
+		return "", 0, &APIError{Status: resp.StatusCode, Body: truncate(string(slurp), 300)}
 	}
 
 	var out struct {

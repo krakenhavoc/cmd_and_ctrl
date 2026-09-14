@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -38,15 +39,45 @@ func (r *recordingReporter) CreateIssue(_ context.Context, title, body string, l
 	return "https://github.com/o/r/issues/7", 7, nil
 }
 
+// syncBuffer is an io.Writer a slog handler can write from the
+// handler goroutine while the test reads it from its own. A plain
+// bytes.Buffer would be a data race under -race.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
 // newBugReportStack builds a minimal HTTP stack with the reporter
 // wired (nil = disabled) and returns the server plus a player
 // session token for gameID-less reports.
 func newBugReportStack(t *testing.T, rep BugReporter) (*httptest.Server, string) {
 	t.Helper()
+	srv, tok, _ := newBugReportStackLogged(t, rep)
+	return srv, tok
+}
+
+// newBugReportStackLogged is newBugReportStack with the server log
+// captured, for the cases whose whole contract is "this failure must
+// be visible in the log".
+func newBugReportStackLogged(t *testing.T, rep BugReporter) (*httptest.Server, string, *syncBuffer) {
+	t.Helper()
 	// The bug limiter's burst (3) is smaller than some tests' call
 	// counts; relax limits the same way the e2e suite does. Read at
 	// Handler-construction time, so set before building the stack.
 	t.Setenv("CMDCTRL_DEV_RELAX_RATE_LIMITS", "1")
+	var logged syncBuffer
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mgr := ws.NewRoomManager(log, "")
 	l := NewLobby(mgr)
@@ -57,6 +88,7 @@ func newBugReportStack(t *testing.T, rep BugReporter) (*httptest.Server, string)
 		Auth:        a,
 		AdminToken:  "shared-admin-token",
 		BugReporter: rep,
+		Log:         slog.New(slog.NewTextHandler(&logged, nil)),
 	}))
 	t.Cleanup(srv.Close)
 
@@ -69,7 +101,7 @@ func newBugReportStack(t *testing.T, rep BugReporter) (*httptest.Server, string)
 	if err != nil {
 		t.Fatalf("issue session: %v", err)
 	}
-	return srv, tok
+	return srv, tok, &logged
 }
 
 func postBugReport(t *testing.T, srv *httptest.Server, token string, payload any) *http.Response {

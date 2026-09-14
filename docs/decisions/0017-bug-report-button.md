@@ -3,6 +3,8 @@
 **Status:** Implemented · 2026-07-08 · Branch `feat/bug-report-button`
 **Revised:** 2026-09-08 · §4 amended, §6–§7 added · Branch
 `feat/bugreport-logs-attachments`
+**Revised:** 2026-09-14 · §8 added (report kinds → labels) · Branch
+`feat/inapp-report-kinds`
 
 ## Context
 
@@ -105,7 +107,8 @@ lobby bucket.
   runner already holds SSH access to the host, so the secret adds no
   new trust boundary beyond the PAT itself.
 - In-app issues arrive titled `[in-app] …` with the `bug` label —
-  distinguishable from hand-written ones at a glance.
+  distinguishable from hand-written ones at a glance. (§8 keeps the
+  prefix and makes the label depend on the report's kind.)
 - The operator's loop is: read issue → `GET /games/{id}/replay` with
   the ID in the metadata block → reproduce.
 - Reports require a session (any role — spectators hit bugs too);
@@ -230,3 +233,106 @@ Two smaller consequences:
 shown in full in the modal before sending — the log behind a "show"
 toggle. A report that quietly ships a log is a report people stop
 filing the day they notice.
+
+---
+
+## 8. Report kinds (added 2026-09-14)
+
+The button files bugs. It is also the only place a player can say
+anything to the tracker, so it collects feature requests and questions
+as bug reports, which then have to be retagged by hand. The fix is a
+**kind** on the report, applied as a GitHub label at filing time.
+
+### 8.1 An explicit picker, not inferred classification
+
+The kind is a radio group at the top of the modal, not something
+derived from the prose. Classification would mean a model call — or a
+keyword heuristic — in front of somebody who is mid-game and annoyed,
+and it would sometimes be wrong in a way the reporter can't see or
+correct. A three-way pick is one tap, is never wrong, and adds nothing
+to the latency of the thing it gates. The picker is *first* in the
+form because it changes the wording below it and what the report
+attaches.
+
+### 8.2 Three kinds, mapped to labels that already exist
+
+| kind | label | the player's framing |
+|---|---|---|
+| `bug` | `bug` | something's broken |
+| `idea` | `enhancement` | something's missing |
+| `question` | `question` | I don't understand something |
+
+`bug` and `enhancement` are the two the feature obviously needs.
+`question` earns the third slot because the alternative is worse:
+without it, "why did my commander go to the graveyard?" is filed as a
+bug, and a rules question that turns out to be correct behaviour
+closes as `invalid` — which is a discouraging thing to do to the one
+person who bothered to report anything. It maps to the existing
+`question` label; nothing new is invented, and the mapping is
+**server-side**. The client names a kind, never a label: a
+client-supplied label string would let any session with a report
+button attach `good first issue` — or make GitHub create labels — on
+the tracker.
+
+An omitted kind means `bug`. Every client built before the field
+existed sends nothing, and those are bug reports; a 400 there would
+break the button for an open tab mid-game, which is exactly when it
+gets used. A non-empty *unknown* kind is a 400, matching this
+endpoint's existing refusal of unknown JSON fields — a kind quietly
+rewritten to `bug` is a mislabelled issue nobody learns about.
+
+### 8.3 Artifacts follow the kind
+
+§6 and §7 attach screenshots, the client log, a pinned replay and a
+pinned game log. Collecting all four for "the stack panel should be
+wider" is waste — tens of MiB of replay, retained 90 days, that
+nobody will ever open.
+
+| kind | screenshots | client log | pinned replay | pinned game log |
+|---|---|---|---|---|
+| `bug` | yes | yes | yes | yes |
+| `idea` | yes | no | no | no |
+| `question` | yes | yes | no | yes |
+
+A question sits between the two on purpose: "why did that die?" is
+answered from what **happened** — the public game log, a few KiB —
+and from what the reporter's client did. It is not answered
+frame-by-frame from hidden state, which is what the replay is for.
+
+The split §7 established is untouched by any of this. Whatever a kind
+does attach keeps its posture: screenshots public because Camo has to
+reach them, pins admin-only with no game-has-ended relaxation, and no
+`GameView` content in an issue body ever. The gating happens *before*
+the artifact is read, so an idea never causes the server to copy a
+replay at all. The modal states what the chosen kind will send, and
+the log stays behind its own opt-out and "show" toggle for the kinds
+that carry it — §7's consent rule does not get weaker because there
+are now three doors into the same form.
+
+### 8.4 The title prefix stays `[in-app] `
+
+Rejected: `[in-app bug] ` / `[in-app idea] `. Every issue this feature
+has filed carries the current string, and it is what people filter on;
+widening it orphans that convention on ~20 open issues, and it makes
+the kind a second source of truth in a field triage cannot fix with a
+click — retag an issue and the title still says `idea`. The label is
+the kind. The issue body also carries a `Kind:` row, which costs one
+line and means a stripped (or never-applied) label doesn't erase what
+the reporter said they were filing.
+
+### 8.5 A label may never cost the report
+
+A label that doesn't exist, or a token that may not apply it, must not
+turn a report into a 502. When GitHub **rejects** the create (403 or
+422 — the issue was definitively not created), the server re-files it
+unlabelled and logs at error level; the 201 then carries no `label`,
+so the modal doesn't claim one. An unlabelled issue costs one click in
+triage. A report that evaporated because someone renamed a label costs
+the report, and nobody ever finds out.
+
+Delivery failures are deliberately *not* retried. A timeout or a 5xx
+may mean GitHub created the issue and lost the response; a duplicate
+issue is worse than the 502 the reporter can act on. That distinction
+is why `github.CreateIssue` now returns a typed `*APIError` carrying
+the status — the decision is made from the status, not by grepping an
+error string.

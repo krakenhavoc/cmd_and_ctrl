@@ -1,11 +1,18 @@
 <script lang="ts">
-  // BugReportModal — the in-app "report a bug" form (ADR 0017).
+  // BugReportModal — the in-app report form (ADR 0017).
   //
-  // Collects a title, a description, screenshots, and two kinds of
-  // automatic context: the game coordinates (game ID, turn, phase/step,
-  // seq, connection) and the client log — the last 200 protocol frames
-  // and JS errors this browser saw. POSTs the lot to /bugreport, where
-  // the server renders the issue body and files it in the project repo.
+  // Collects a KIND, a title, a description, screenshots, and two
+  // kinds of automatic context: the game coordinates (game ID, turn,
+  // phase/step, seq, connection) and the client log — the last 200
+  // protocol frames and JS errors this browser saw. POSTs the lot to
+  // /bugreport, where the server renders the issue body and files it
+  // in the project repo.
+  //
+  // The kind picker is first because it changes everything below it:
+  // the wording, and what the report attaches. It is an explicit
+  // choice rather than something inferred from the prose (ADR 0017
+  // §8) — one tap, never wrong, and no round trip in front of someone
+  // trying to report a broken game.
   //
   // Both automatic attachments are opt-out and both are shown before
   // sending, in full, in a disclosure. That is deliberate: a report
@@ -22,17 +29,23 @@
   import { submitBugReport } from "../api";
   import {
     BUG_DESC_MAX,
+    BUG_KINDS,
     BUG_MAX_IMAGES,
     BUG_MAX_TOTAL_IMAGE_BYTES,
     BUG_TITLE_MAX,
     BUG_IMAGE_TYPES,
+    DEFAULT_BUG_KIND,
     acceptableImages,
     buildBugContext,
+    bugKindSpec,
     collectBugLog,
+    describeBugAttachments,
     formatBytes,
+    joinPhrases,
     validateAttachments,
     validateBugReport,
     type BugLogEntry,
+    type BugReportKind,
   } from "../bugReport";
   import { recentClientErrors } from "../clientErrors";
   import type { LogEntry } from "../ws";
@@ -56,6 +69,7 @@
 
   const { gameID, view, seq, connection, wsLog, attachments, onclose }: Props = $props();
 
+  let kind = $state<BugReportKind>(DEFAULT_BUG_KIND);
   let title = $state("");
   let description = $state("");
   let includeContext = $state(true);
@@ -66,7 +80,15 @@
   let error = $state<string | null>(null);
   let filedURL = $state<string | null>(null);
   let filedNumber = $state<number | null>(null);
+  let filedLabel = $state<string | null>(null);
   let fileInput = $state<HTMLInputElement | null>(null);
+
+  // The kind drives the copy and the attachments. The server keeps
+  // its own copy of this table and re-derives everything from the
+  // kind name — this one exists so the form can tell the reporter
+  // what it is about to send.
+  const spec = $derived(bugKindSpec(kind));
+  const autoAttached = $derived(describeBugAttachments(spec, gameID.length > 0));
 
   // Snapshotted once when the modal opens, not recomputed as frames
   // keep arriving: the log the reporter reviews in the disclosure has
@@ -169,13 +191,18 @@
     try {
       const res = await submitBugReport({
         title: title.trim(),
+        kind,
         description,
         context: includeContext ? buildBugContext(gameID, view, seq, connection) : undefined,
-        log: includeLog ? capturedLog : undefined,
+        // The server drops a log the kind doesn't take; not sending
+        // one in the first place keeps "what the form showed" and
+        // "what left the browser" the same thing.
+        log: spec.log && includeLog ? capturedLog : undefined,
         images,
       });
       filedURL = res.url;
       filedNumber = res.number;
+      filedLabel = res.label ?? null;
     } catch (e) {
       error = e instanceof Error ? e.message : "filing the issue failed";
     } finally {
@@ -202,27 +229,56 @@
 <div class="backdrop" role="dialog" aria-modal="true" aria-labelledby="bug-report-title">
   <div class="modal">
     {#if filedURL}
-      <h2 id="bug-report-title">Bug filed — thank you</h2>
+      <h2 id="bug-report-title">Sent — thank you</h2>
       <p class="hint">
-        Your report is now
-        <a href={filedURL} target="_blank" rel="noreferrer">issue #{filedNumber}</a> in the project tracker.
+        Your {spec.kind === "bug" ? "report" : spec.kind} is now
+        <a href={filedURL} target="_blank" rel="noreferrer">issue #{filedNumber}</a>
+        in the project tracker{#if filedLabel}, labelled <code>{filedLabel}</code>{/if}.
       </p>
       <div class="footer">
         <span></span>
         <button type="button" class="submit" onclick={onclose}>Done</button>
       </div>
     {:else}
-      <h2 id="bug-report-title">Report a bug</h2>
-      <p class="hint">
-        What happened, and what did you expect instead? This files an issue in the project's GitHub
-        repo — no account needed on your side.
+      <h2 id="bug-report-title">{spec.heading}</h2>
+
+      <!-- The kind comes first: it decides the wording of everything
+           below and what the report attaches. Real radios rather than
+           styled buttons, so arrow keys and screen readers work. -->
+      <fieldset class="kinds" disabled={submitting}>
+        <legend class="field-label">What kind of report is this?</legend>
+        <!-- The chips live in their own flex row rather than making
+             the fieldset itself flex: a <legend> inside a flex
+             container is laid out differently across browsers. -->
+        <div class="kind-row">
+          {#each BUG_KINDS as k (k.kind)}
+            <label class="kind" class:picked={kind === k.kind}>
+              <input type="radio" name="bug-kind" value={k.kind} bind:group={kind} />
+              <span>{k.chip}</span>
+            </label>
+          {/each}
+        </div>
+      </fieldset>
+
+      <!-- What the choice costs, in one line. Switching from broken
+           to missing quietly stops sending a replay, and the reporter
+           should watch that happen rather than find out in an issue. -->
+      <p class="attaches">
+        Filed as <code>{spec.label}</code>.
+        {#if autoAttached.length > 0}
+          Sends {joinPhrases(autoAttached)} along with your screenshots.
+        {:else}
+          Sends nothing but your words and any screenshots you attach.
+        {/if}
       </p>
+
+      <p class="hint">{spec.hint}</p>
       <label class="field">
         <span class="field-label">Title</span>
         <input
           type="text"
           maxlength={BUG_TITLE_MAX}
-          placeholder="e.g. cast dialog ignored my X value"
+          placeholder={spec.titlePlaceholder}
           bind:value={title}
           disabled={submitting}
         />
@@ -234,7 +290,7 @@
         <textarea
           rows="6"
           maxlength={BUG_DESC_MAX}
-          placeholder="Steps to reproduce, what you saw, what you expected…"
+          placeholder={spec.detailsPlaceholder}
           bind:value={description}
           disabled={submitting}
         ></textarea>
@@ -296,7 +352,7 @@
         <span>attach game context <span class="muted">({contextSummary})</span></span>
       </label>
 
-      {#if capturedLog.length > 0}
+      {#if spec.log && capturedLog.length > 0}
         <label class="context">
           <input type="checkbox" bind:checked={includeLog} disabled={submitting} />
           <span>
@@ -334,7 +390,7 @@
           onclick={submit}
           disabled={submitting || title.trim().length === 0}
         >
-          {submitting ? "Filing…" : "File issue"}
+          {submitting ? "Filing…" : spec.cta}
         </button>
       </div>
     {/if}
@@ -399,6 +455,79 @@
     font-size: 13px;
     line-height: 1.4;
     margin: 0 0 14px;
+  }
+  .kinds {
+    border: none;
+    margin: 10px 0 8px;
+    padding: 0;
+    min-inline-size: 0;
+  }
+  .kinds legend {
+    padding: 0;
+    margin-bottom: 6px;
+  }
+  .kind-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .kind {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(122, 167, 255, 0.28);
+    background: rgba(122, 167, 255, 0.08);
+    color: var(--fg-muted);
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      border-color 120ms var(--ease),
+      color 120ms var(--ease);
+  }
+  /* The radio itself is the a11y surface and the keyboard target; the
+     chip is the paint. Hidden with a clip rather than display:none so
+     it keeps taking focus and arrow keys still move between kinds. */
+  .kind input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .kind:hover {
+    border-color: var(--accent);
+    color: var(--fg);
+  }
+  .kind.picked {
+    border-color: var(--gold);
+    color: var(--fg);
+    background: rgba(255, 213, 128, 0.14);
+    font-weight: 700;
+  }
+  .kind:focus-within {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .kinds:disabled .kind {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .attaches {
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: var(--fg-muted);
+    margin: 0 0 12px;
+  }
+  .attaches code,
+  .hint code {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(122, 167, 255, 0.14);
+    color: var(--fg);
   }
   .hint a {
     color: var(--accent);

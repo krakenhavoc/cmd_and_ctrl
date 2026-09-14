@@ -620,6 +620,7 @@ burst of 3, then ~1 report / 30 s per client IP.
 ```json
 {
   "title": "cast dialog eats X value",
+  "kind": "bug",
   "description": "set X=4, dialog sent X=0",
   "context": {
     "game_id": "<uuid>",
@@ -632,10 +633,41 @@ burst of 3, then ~1 report / 30 s per client IP.
 }
 ```
 
-`description`, `context`, and `log` (and every field inside them) are
-optional. `title` is capped at 200 characters, `description` at 5000.
-Context strings are clipped server-side and never trusted; the server
-adds the reporter identity, server time, and `User-Agent` itself.
+`kind`, `description`, `context`, and `log` (and every field inside
+them) are optional. `title` is capped at 200 characters,
+`description` at 5000. Context strings are clipped server-side and
+never trusted; the server adds the reporter identity, server time,
+and `User-Agent` itself.
+
+**Report kinds.** `kind` is what the reporter is telling us. It picks
+the GitHub label and which artifacts the report collects:
+
+| `kind` | label | client log | pinned replay | pinned game log |
+|---|---|---|---|---|
+| `bug` (default) | `bug` | yes | yes | yes |
+| `idea` | `enhancement` | no | no | no |
+| `question` | `question` | yes | no | yes |
+
+Screenshots are attached for every kind. The client names a **kind**,
+never a label: the mapping lives in the server so a session with a
+report button can't attach (or create) arbitrary labels on the
+tracker. An omitted or empty `kind` means `bug` — that is what every
+client built before the field existed sends, and refusing those would
+break the button mid-game. Any other value is a 400 listing the
+accepted kinds. A `log` sent with a kind that doesn't take one is
+dropped, not refused.
+
+The title prefix is `[in-app] ` for every kind. The kind lives in the
+label (and in a `Kind:` row in the issue body), not in the title, so
+the convention every existing in-app issue follows keeps working and
+retagging in triage doesn't leave a title that disagrees.
+
+**A label never costs the report.** If GitHub refuses the create
+because of the label — the repo doesn't have it, or the token may not
+apply it (403/422) — the server re-files the issue **unlabelled** and
+logs the failure at error level. Delivery failures (a timeout, a 5xx)
+are *not* retried: GitHub may have created the issue already, and a
+duplicate is worse than the 502 the reporter can act on.
 
 `log` is the reporter's client-side activity ring buffer — up to 200
 entries, kept from the tail:
@@ -703,6 +735,7 @@ after the report is filed and disappears when the game is evicted.
 {
   "url": "https://github.com/krakenhavoc/cmd_and_ctrl/issues/123",
   "number": 123,
+  "label": "bug",
   "report_id": "6f1c0b7e-9a2d-4c31-8f55-1b2d3e4f5a60"
 }
 ```
@@ -710,11 +743,15 @@ after the report is filed and disappears when the game is evicted.
 `report_id` is present only when the report stored artifacts (images,
 a pinned replay, or both). It is the key for both routes below.
 
+`label` is the label the issue actually landed with, and is absent
+when none did — so a client can say "filed as enhancement" only when
+that is true.
+
 **Errors**
 
 | Status | Reason |
 |---|---|
-| 400 | missing/oversized title or description, unknown field, non-image attachment, missing `report` part |
+| 400 | missing/oversized title or description, unknown `kind`, unknown field, non-image attachment, missing `report` part |
 | 401 | no valid session |
 | 413 | an image over 4 MiB, attachments over 10 MiB, or a request over 12 MiB |
 | 429 | rate-limited |

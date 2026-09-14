@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -74,6 +75,30 @@ func TestCreateIssueNon201IsError(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), "tok") {
 		t.Errorf("error must not leak the token: %v", err)
+	}
+}
+
+// TestCreateIssueErrorCarriesStatus: the lobby re-files an issue
+// unlabelled when GitHub rejects the labels, and it decides that from
+// the status rather than by grepping the error string.
+func TestCreateIssueErrorCarriesStatus(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, _ = w.Write([]byte(`{"message":"Validation Failed","errors":[{"field":"labels"}]}`))
+	}))
+	defer srv.Close()
+
+	c := NewClient("tok", "o/r").WithBaseURL(srv.URL).WithHTTPClient(srv.Client())
+	_, _, err := c.CreateIssue(context.Background(), "t", "b", []string{"enhancement"})
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("error should be an *APIError, got %T: %v", err, err)
+	}
+	if apiErr.StatusCode() != http.StatusUnprocessableEntity {
+		t.Errorf("status = %d, want 422", apiErr.StatusCode())
+	}
+	if !strings.Contains(apiErr.Error(), "Validation Failed") {
+		t.Errorf("error should carry the upstream body: %v", apiErr)
 	}
 }
 
