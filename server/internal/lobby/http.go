@@ -152,6 +152,10 @@ type GameEvictor interface {
 //	POST /games/{id}/join   — invite + name → session + player_id
 //	GET  /games/{id}/preview?t=<invite> — table name / state / seats for an invite holder
 //	POST /games/{id}/start  — authenticated: transition lobby → active
+//	POST /games/{id}/archive — admin: retire the table from the listing
+//	DELETE /games/{id}/archive — admin: put it back
+//	POST /games/{id}/seats/{player}/reclaim — admin: mint a seat-reclaim link
+//	POST /games/{id}/reclaim — redeem one: a session for that seat
 //	GET  /me                — authenticated: principal echo (for client bootstrap)
 //	POST /logout            — revoke the caller's session server-side
 //
@@ -226,6 +230,21 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /avatars/{id}/{hash}", avatarLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, discordAvatar))))
 	mux.Handle("POST /games", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, createGame)))
 	mux.Handle("DELETE /games/{id}", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, deleteGame)))
+	// Archive / unarchive: the reversible half of DELETE. Admin-only
+	// on the same gate, because hiding somebody else's table from the
+	// listing is an operator action even though it destroys nothing.
+	mux.Handle("POST /games/{id}/archive", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, archiveGame)))
+	mux.Handle("DELETE /games/{id}/archive", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, unarchiveGame)))
+	// Seat reclaim (see reclaim.go). Two halves with deliberately
+	// different gates: minting is ADMIN-ONLY — the ticket is a bearer
+	// credential for one player's seat, hidden information and all —
+	// while redemption is unauthenticated by necessity (the person
+	// redeeming has lost their session; the ticket IS the credential)
+	// and therefore rides the same brute-force bucket as join and
+	// spectate.
+	mux.Handle("POST /games/{id}/seats/{player}/reclaim",
+		auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, mintSeatReclaim)))
+	mux.Handle("POST /games/{id}/reclaim", limit.Middleware(handlerFunc(c, redeemSeatReclaim)))
 	mux.Handle("GET /games", auth.Middleware(c.Auth)(handlerFunc(c, listGames)))
 	mux.Handle("GET /games/{id}", auth.Middleware(c.Auth)(handlerFunc(c, getGame)))
 	mux.Handle("POST /games/{id}/start", auth.Middleware(c.Auth)(handlerFunc(c, startGame)))
@@ -332,6 +351,12 @@ type sessionResponse struct {
 
 type createGameRequest struct {
 	Name string `json:"name"`
+}
+
+// reclaimRequest is the body of POST /games/{id}/reclaim. Ticket is
+// the whole credential; there is deliberately no name field.
+type reclaimRequest struct {
+	Ticket string `json:"ticket"`
 }
 
 type joinRequest struct {
@@ -516,7 +541,14 @@ func spectateGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	})
 }
 
-func listGames(c Config, w http.ResponseWriter, _ *http.Request) error {
+// listGames returns the active tables. `?archived=1` returns the
+// retired ones instead — a separate view rather than a mixed list,
+// so the default answer to "what tables are there" never grows
+// without bound as old games pile up.
+func listGames(c Config, w http.ResponseWriter, r *http.Request) error {
+	if envflag.Truthy(r.URL.Query().Get("archived")) {
+		return writeJSON(w, http.StatusOK, listResponse{Games: c.Lobby.ListArchived()})
+	}
 	return writeJSON(w, http.StatusOK, listResponse{Games: c.Lobby.List()})
 }
 
@@ -568,6 +600,148 @@ func deleteGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
+}
+
+// archiveGame (admin-only) retires a table: it leaves the default
+// listing, its bot runners stop, and anyone still connected is
+// evicted — but nothing on disk is removed and unarchiveGame puts it
+// back exactly as it was. This is the action to reach for when
+// clearing out old games; DELETE is the one that cannot be undone.
+//
+// Evicting is the honest consequence of hiding a live table. It is
+// the same close the deleted-game path sends, so a connected client
+// renders an ended state rather than redialling a game that is no
+// longer listed.
+func archiveGame(c Config, w http.ResponseWriter, r *http.Request) error {
+	return setGameArchived(c, w, r, true)
+}
+
+// unarchiveGame (admin-only) returns a retired table to the active
+// listing, relaunching its bot runners if it was mid-game.
+func unarchiveGame(c Config, w http.ResponseWriter, r *http.Request) error {
+	return setGameArchived(c, w, r, false)
+}
+
+func setGameArchived(c Config, w http.ResponseWriter, r *http.Request, archived bool) error {
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	meta, err := c.Lobby.SetArchived(id, archived)
+	if err != nil {
+		return err
+	}
+	if archived && c.Evictor != nil {
+		c.Evictor.EvictGame(id)
+	}
+	// The listing already strips these; an archive response is a
+	// listing row, not an ownership grant.
+	meta.InviteToken = ""
+	meta.SpectatorInvite = ""
+	return writeJSON(w, http.StatusOK, meta)
+}
+
+// reclaimTicketResponse is the body of POST
+// /games/{id}/seats/{player}/reclaim. `ticket` is the secret; every
+// other field exists so the host can see what they just minted —
+// which seat, for how long, and that it only works once — without
+// having to read the docs.
+type reclaimTicketResponse struct {
+	Ticket     string    `json:"ticket"`
+	GameID     uuid.UUID `json:"game_id"`
+	PlayerID   uuid.UUID `json:"player_id"`
+	Seat       int       `json:"seat"`
+	PlayerName string    `json:"player_name"`
+	ExpiresAt  time.Time `json:"expires_at"`
+	TTLSeconds int       `json:"ttl_seconds"`
+	SingleUse  bool      `json:"single_use"`
+}
+
+// mintSeatReclaim (admin-only) issues a one-shot, short-lived link
+// that puts a disconnected player back in their own seat at a table
+// that has already started. See reclaim.go for the security shape;
+// the only thing this layer adds is the admin gate.
+//
+// The ticket is returned in the response body and NOWHERE else: it
+// is not logged, not persisted, and not written to the game
+// metadata.
+func mintSeatReclaim(c Config, w http.ResponseWriter, r *http.Request) error {
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	playerID, err := uuid.Parse(r.PathValue("player"))
+	if err != nil {
+		return httpError(http.StatusBadRequest, "invalid player id")
+	}
+	ticket, err := c.Lobby.MintReclaim(id, playerID)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusCreated, reclaimTicketResponse{
+		Ticket:     ticket.Token,
+		GameID:     ticket.GameID,
+		PlayerID:   ticket.PlayerID,
+		Seat:       ticket.Seat,
+		PlayerName: ticket.PlayerName,
+		ExpiresAt:  ticket.ExpiresAt,
+		TTLSeconds: int(ReclaimTTL / time.Second),
+		SingleUse:  true,
+	})
+}
+
+// redeemSeatReclaim is the public half: the disconnected player
+// follows the link, the client posts the ticket here, and a session
+// bound to (gameID, playerID) comes back. Unauthenticated because
+// the caller by definition has no session — the ticket is the
+// credential — and rate-limited alongside join / spectate for the
+// same reason.
+//
+// No name is accepted: the seat already has one, and letting the
+// redeemer supply a label would make reclaim a way to rename another
+// player. The seat's Discord identity is copied onto the principal so
+// the avatar renders exactly as it did before the disconnect.
+func redeemSeatReclaim(c Config, w http.ResponseWriter, r *http.Request) error {
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	var body reclaimRequest
+	if err := decodeJSON(w, r, &body); err != nil {
+		return err
+	}
+
+	meta, seat, err := c.Lobby.RedeemReclaim(id, body.Ticket)
+	if err != nil {
+		return err
+	}
+
+	p := auth.Principal{
+		Role:              auth.RolePlayer,
+		GameID:            meta.ID,
+		PlayerID:          seat.PlayerID,
+		Name:              seat.Name,
+		DiscordID:         seat.DiscordID,
+		DiscordGlobalName: seat.DisplayName,
+		DiscordAvatarHash: seat.DiscordAvatarHash,
+	}
+	tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
+	if err != nil {
+		return err
+	}
+	setSessionCookie(c, w, tok, issued.ExpiresAt)
+
+	// A reclaimed seat gets a session, not the table's secrets: the
+	// holder proved they own one seat, not that they are the host.
+	meta.InviteToken = ""
+	meta.SpectatorInvite = ""
+	return writeJSON(w, http.StatusOK, sessionResponse{
+		Token:     tok,
+		ExpiresAt: issued.ExpiresAt,
+		Principal: issued,
+		Game:      &meta,
+		PlayerID:  seat.PlayerID,
+	})
 }
 
 // autoTapPreview is the S15 sub-PR 4 read-only auto-tap endpoint.
@@ -1569,7 +1743,7 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = se.code
 	case errors.Is(err, ErrGameNotFound):
 		status = http.StatusNotFound
-	case errors.Is(err, ErrInvalidInvite):
+	case errors.Is(err, ErrInvalidInvite), errors.Is(err, ErrInvalidReclaim):
 		status = http.StatusUnauthorized
 	case errors.Is(err, ErrGameFull),
 		errors.Is(err, ErrGameStarted),
@@ -1583,8 +1757,12 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusForbidden
 	case errors.Is(err, ErrGameNotActiveForSpawn):
 		status = http.StatusConflict
-	case errors.Is(err, ErrNotABot), errors.Is(err, ErrUnknownBotTier):
+	case errors.Is(err, ErrNotABot), errors.Is(err, ErrUnknownBotTier), errors.Is(err, ErrSeatIsBot):
 		status = http.StatusUnprocessableEntity
+	case errors.Is(err, ErrGameArchived):
+		status = http.StatusConflict
+	case errors.Is(err, ErrTooManyReclaims):
+		status = http.StatusTooManyRequests
 	case errors.Is(err, ErrEmptyName):
 		status = http.StatusBadRequest
 	case errors.Is(err, auth.ErrInvalidCredential),

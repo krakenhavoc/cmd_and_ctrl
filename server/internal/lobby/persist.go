@@ -173,8 +173,12 @@ func (l *Lobby) RestoreFromDisk(log *slog.Logger) int {
 		// bot's chair occupied and nobody in it, and the table would
 		// hang the first time priority reached it. Relaunch here,
 		// under the same guard Start uses.
+		// An archived table is retired: it is hidden from the listing
+		// and SetArchived stopped its runners on the way out. Booting
+		// them again here would resurrect exactly the goroutines
+		// archiving exists to stop.
 		var startBots func()
-		if o.Room.Game.CurrentState() == game.StateActive {
+		if o.Room.Game.CurrentState() == game.StateActive && !meta.Archived() {
 			startBots = l.botStartLocked(entry)
 		}
 		l.mu.Unlock()

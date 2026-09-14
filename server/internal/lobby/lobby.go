@@ -11,6 +11,7 @@
 package lobby
 
 import (
+	"crypto/sha256"
 	"crypto/subtle"
 	"errors"
 	"strings"
@@ -36,6 +37,11 @@ var (
 	ErrEmptyName       = errors.New("lobby: name is required")
 	ErrSeatTaken       = errors.New("lobby: seat already claimed")
 	ErrPlayerNotInGame = errors.New("lobby: player is not in this game")
+
+	// ErrGameArchived is returned by the operations that refuse to
+	// act on a retired table — minting or redeeming a seat-reclaim
+	// ticket. Unarchive first; the state is all still there.
+	ErrGameArchived = errors.New("lobby: game is archived")
 
 	// ErrGameNotActiveForSpawn is returned by SpawnCards when the
 	// game has not started (or has ended). Dev-only path.
@@ -64,7 +70,22 @@ type GameMeta struct {
 	SpectatorInvite string     `json:"spectator_invite,omitempty"`
 	Players         []SeatInfo `json:"players"`
 	State           string     `json:"state"` // "lobby" | "active" | "ended"
+
+	// ArchivedAt is set when an operator retires the table: it drops
+	// out of the default listing but nothing on disk is removed, so
+	// the engine snapshot, the replay JSONL and this metadata all
+	// survive and Unarchive puts it back. Nil for a live table.
+	//
+	// Archiving is deliberately the reversible half of a pair —
+	// Delete is the irreversible one, and it takes the replay with
+	// it (RoomManager.Delete reaps the snapshot, the replay log and
+	// the restore point). See docs/lobby.md.
+	ArchivedAt *time.Time `json:"archived_at,omitempty"`
 }
+
+// Archived reports whether the table has been retired from the
+// active listing.
+func (m GameMeta) Archived() bool { return m.ArchivedAt != nil }
 
 // SeatInfo is the lobby-level view of one seat. As of S05 it
 // carries the player-facing deck summary so the lobby UI can render
@@ -157,6 +178,10 @@ type Lobby struct {
 	// SetBotHost; nil means bot seats can be added but never play
 	// (tests, or a server built without the bot host).
 	bots BotHost
+	// reclaims holds the outstanding seat-reclaim tickets, keyed by
+	// the SHA-256 of the token (never the token). In memory only and
+	// deliberately so — see reclaim.go.
+	reclaims map[[sha256.Size]byte]reclaimEntry
 }
 
 // SetBotHost wires the bot runner host in after construction.
@@ -209,8 +234,9 @@ type gameEntry struct {
 // game.Game, and Lobby owns the metadata + invite layer over it.
 func NewLobby(mgr *ws.RoomManager) *Lobby {
 	return &Lobby{
-		games: make(map[uuid.UUID]*gameEntry),
-		mgr:   mgr,
+		games:    make(map[uuid.UUID]*gameEntry),
+		mgr:      mgr,
+		reclaims: make(map[[sha256.Size]byte]reclaimEntry),
 	}
 }
 
@@ -844,15 +870,29 @@ func (l *Lobby) LookupGame(id uuid.UUID) (*game.Game, error) {
 	return entry.room.Game, nil
 }
 
-// List returns metadata for every known game, sorted oldest-first.
+// List returns metadata for every ACTIVE game, sorted oldest-first.
+// Archived tables are excluded — that is what archiving is for; see
+// ListArchived for the other half.
+//
 // Invite tokens are STRIPPED from the list responses — listing
 // doesn't imply ownership, and we don't want a rando-with-the-admin-
 // password to be able to read the invite tokens of every game.
-func (l *Lobby) List() []GameMeta {
+func (l *Lobby) List() []GameMeta { return l.list(false) }
+
+// ListArchived is List's mirror: only the retired tables. Separate
+// method rather than a bool parameter so the default call site —
+// every existing caller, including the Discord bot's /cc-games —
+// keeps meaning "the tables you can actually play at".
+func (l *Lobby) ListArchived() []GameMeta { return l.list(true) }
+
+func (l *Lobby) list(archived bool) []GameMeta {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	out := make([]GameMeta, 0, len(l.games))
 	for _, e := range l.games {
+		if e.meta.Archived() != archived {
+			continue
+		}
 		m := copyMeta(e.meta)
 		// meta.State is only rewritten on join/start; a game that
 		// ended via WS (concede → StateEnded) would otherwise report
@@ -867,6 +907,62 @@ func (l *Lobby) List() []GameMeta {
 	// render without flicker.
 	sortMetaByCreatedAt(out)
 	return out
+}
+
+// SetArchived retires a table from the active listing, or puts it
+// back. Nothing on disk is touched: the engine snapshot, the replay
+// log and the lobby metadata all stay exactly where they were, and
+// the room stays registered with the RoomManager, so unarchiving is
+// a pure metadata flip and a restart brings the table back archived.
+//
+// Archiving a game that is still running stops its bot runners. It
+// has to: a runner is a goroutine committing moves to a room nobody
+// can see any more, and leaving it going is the orphan-goroutine
+// version of leaving the lights on. Unarchiving an active table
+// relaunches them through the same path Start and RestoreFromDisk
+// use, so the seat is not permanently empty.
+//
+// Connected WebSocket clients are NOT evicted here — the lobby has
+// no hub reference. The HTTP layer calls the evictor after this
+// returns, exactly as it does for Delete.
+func (l *Lobby) SetArchived(id uuid.UUID, archived bool) (GameMeta, error) {
+	// StopBots waits for each runner to finish the move it is in the
+	// middle of; StartBots spawns goroutines that immediately begin
+	// committing to the room. Both run after l.mu is released, for
+	// the reasons Delete and Start already document.
+	var after func()
+	defer func() {
+		if after != nil {
+			after()
+		}
+	}()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	entry, ok := l.games[id]
+	if !ok {
+		return GameMeta{}, ErrGameNotFound
+	}
+	switch {
+	case archived && !entry.meta.Archived():
+		now := time.Now().UTC()
+		entry.meta.ArchivedAt = &now
+		// A link minted moments before the archive must not outlive
+		// it — RedeemReclaim would refuse anyway, but not holding the
+		// ticket at all is the cheaper guarantee.
+		l.dropReclaimsLocked(id)
+		if bots := l.bots; bots != nil {
+			after = func() { bots.StopBots(id) }
+		}
+	case !archived && entry.meta.Archived():
+		entry.meta.ArchivedAt = nil
+		if entry.room.Game.CurrentState() == game.StateActive {
+			after = l.botStartLocked(entry)
+		}
+	}
+	entry.meta.State = string(entry.room.Game.CurrentState())
+	l.persistMetaLocked(entry)
+	return copyMeta(entry.meta), nil
 }
 
 // Delete removes the game from both the lobby registry and the
@@ -892,6 +988,8 @@ func (l *Lobby) Delete(id uuid.UUID) error {
 	}
 	delete(l.games, id)
 	l.mgr.Delete(id)
+	// Any reclaim link minted for this table dies with it.
+	l.dropReclaimsLocked(id)
 	// Drop the metadata too, or the next boot would try to restore a
 	// game the operator deleted.
 	l.removeMeta(id)
@@ -923,6 +1021,13 @@ func copyMeta(m GameMeta) GameMeta {
 	// catches silently and bails on the enclosing subtree. Use an
 	// explicit non-nil empty slice to hold the invariant.
 	out.Players = append(make([]SeatInfo, 0, len(m.Players)), m.Players...)
+	// ArchivedAt is a pointer, so the struct copy above aliases the
+	// lobby's own value. Copy the pointee for the same reason the
+	// slice is copied.
+	if m.ArchivedAt != nil {
+		at := *m.ArchivedAt
+		out.ArchivedAt = &at
+	}
 	return out
 }
 

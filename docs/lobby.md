@@ -94,6 +94,43 @@ automatically bind to this seat.
 
 ---
 
+### `POST /games/{id}/reclaim`
+
+Redeem a **seat-reclaim ticket**: a one-shot, short-lived credential
+minted by an admin (see
+[`POST /games/{id}/seats/{player_id}/reclaim`](#post-gamesidseatsplayer_idreclaim))
+that returns one specific player to their own seat in a game that has
+already started.
+
+Public by necessity — the caller has lost their session, which is the
+whole problem — so the ticket **is** the credential. Rate-limited in
+the same bucket as `/join` and `/spectate`.
+
+**Request**
+
+```json
+{ "ticket": "<the ?t= value from the reclaim link>" }
+```
+
+There is deliberately no `name` field: the seat already has one, and
+accepting a label here would make reclaim a way to rename another
+player.
+
+**Response 200** — the same `sessionResponse` shape as `/join`: a
+RolePlayer session bound to the seat's `(game_id, player_id)`, with
+the seat's Discord identity copied onto the principal so the avatar
+renders exactly as it did before the disconnect. Both invite tokens
+are stripped from the embedded `game`.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 401 | unknown, expired, already-redeemed, or wrong-table ticket — all four answer identically, on purpose |
+| 403 | the seat left the table between minting and redemption |
+| 404 | game not found |
+| 409 | the table has been archived |
+
 ## Authenticated routes
 
 ### `POST /games` *(admin only)*
@@ -129,8 +166,13 @@ Create a new game.
 
 ### `GET /games`
 
-List games known to the lobby. Invite tokens are STRIPPED — listing is
-not proof of ownership.
+List the **active** games known to the lobby. Invite tokens are
+STRIPPED — listing is not proof of ownership.
+
+Archived tables are excluded. `GET /games?archived=1` returns those
+instead (same shape, each carrying `archived_at`), so the default
+answer to "what tables are there" does not grow without bound as old
+games pile up.
 
 **Response 200**
 
@@ -431,6 +473,106 @@ numbers. Same authorisation as adding one. Returns the updated
 | 404 | game not found |
 | 409 | game already started |
 | 422 | the seat is a human, not a bot |
+
+### `DELETE /games/{id}` *(admin only)*
+
+**Destroys** a table: the lobby entry, the engine snapshot, the
+restore point and the replay JSONL, plus any WebSocket clients bound
+to it. There is no undo.
+
+Prefer `POST /games/{id}/archive` unless you actually want the
+artifacts gone. A bug report filed against this game keeps working —
+`bugstore.PinReplay` copies the replay into the report directory
+precisely so a later delete cannot orphan the issue — but the live
+replay of a game nobody reported is gone for good.
+
+**Response 204** — no body.
+
+### `POST /games/{id}/archive` *(admin only)*
+
+Retire a table. It leaves `GET /games` (appearing under
+`?archived=1`), its bot runners are stopped, and connected clients
+are evicted — but **nothing on disk is removed**. The engine
+snapshot, the replay log, the restore point and both invite tokens
+all survive, the room stays registered, and the archived state
+persists across a restart (a restored archived game is not
+re-listed and its bots are not relaunched).
+
+This is the action for clearing old games off the lobby screen.
+`DELETE /games/{id}` is the irreversible one.
+
+**Response 200** — the updated `GameMeta`, carrying `archived_at`.
+Invite tokens are stripped.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 404 | game not found |
+
+### `DELETE /games/{id}/archive` *(admin only)*
+
+The undo: returns an archived table to the active listing, and
+relaunches its bot runners if it was mid-game.
+
+**Response 200** — the updated `GameMeta`, with `archived_at` absent.
+
+### `POST /games/{id}/seats/{player_id}/reclaim` *(admin only)*
+
+Mint a **seat-reclaim ticket** for one seat: a link that puts a
+disconnected player back in their own seat at a table that has
+already started. `Lobby.JoinWithIdentity` refuses any game past the
+lobby state, and `/spectate` is the only state-agnostic path, so
+without this a player who lost their session can watch their own game
+but not play it ([ADR 0044](decisions/0044-surviving-a-deploy.md)
+decision 4).
+
+**This is a bearer credential for one player's seat**, hidden
+information included. The shape reflects that:
+
+| Property | What it means |
+|---|---|
+| Admin-only to mint | same `auth.RoleAdmin` gate as `POST /games`. A player seated at the table cannot mint one, not even for their own seat. |
+| Minted, never derived | 32 bytes from `crypto/rand`. Not a function of the game ID, seat index, player ID or invite token. |
+| Short TTL | 15 minutes (`lobby.ReclaimTTL`), reported in the response as `expires_at` + `ttl_seconds` so the host can see what they handed out. |
+| Single use | redemption consumes it under the lobby mutex; a second presentation is indistinguishable from a forgery. |
+| Returns a seat, never creates one | the seat must already exist in `GameMeta.Players` at mint time **and** again at redemption. `JoinWithIdentity` is not widened. |
+| Not stored, not logged | held in memory keyed by the SHA-256 of the token, never written to `GameMeta` or to disk, never logged. |
+
+Because the store is in memory, outstanding tickets die with the
+process — a link does not survive a deploy. That needs the durable
+HMAC sessions of #517; a 15-minute credential expiring early is the
+right failure for now.
+
+Archiving or deleting a table drops its outstanding tickets.
+
+**Response 201**
+
+```json
+{
+  "ticket": "<32 random bytes, base64url>",
+  "game_id": "<uuid>",
+  "player_id": "<uuid>",
+  "seat": 0,
+  "player_name": "Alice",
+  "expires_at": "2026-09-14T12:15:00Z",
+  "ttl_seconds": 900,
+  "single_use": true
+}
+```
+
+The client turns `ticket` into `#/games/{id}/reclaim?t=<ticket>`.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | malformed player id |
+| 403 | caller is not an admin |
+| 404 | game not found |
+| 409 | the table has been archived |
+| 422 | that seat is a bot, not a disconnected player |
+| 429 | too many outstanding tickets |
 
 ### `GET /me`
 

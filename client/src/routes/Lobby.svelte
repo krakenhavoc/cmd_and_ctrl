@@ -2,18 +2,23 @@
   import { onMount } from "svelte";
   import {
     addBotSeat,
+    archiveGame,
     createGame,
+    deleteGame,
     fetchBotOptions,
     listGames,
     logout as apiLogout,
+    mintSeatReclaim,
     removeBotSeat,
     replayURL,
     startGame,
+    unarchiveGame,
     type BotOptions,
     type GameMeta,
+    type ReclaimTicket,
     type SeatInfo,
   } from "../lib/api";
-  import { inviteURL, spectatorInviteURL, navigate } from "../lib/router";
+  import { inviteURL, reclaimURL, spectatorInviteURL, navigate } from "../lib/router";
   import { session, LobbyApiError } from "../lib/session";
   import { openSettings } from "../lib/settings";
   import { seatColor } from "../lib/colors";
@@ -126,12 +131,99 @@
     botOptions?.decks.find((d) => d.id === botDeck)?.description ?? "",
   );
 
+  // --- admin: retiring old tables ---------------------------------
+  //
+  // Two actions, deliberately not the same button. ARCHIVE hides the
+  // table and keeps everything (snapshot, replay, invite tokens), so
+  // it is the one to reach for when clearing the lobby down. DELETE
+  // reaps the replay JSONL and the restore point along with the
+  // table and cannot be undone, so it lives behind the archived view
+  // and its own confirmation.
+  const isAdmin = $derived($session?.principal.role === "admin");
+  let showArchived = $state(false);
+  let archived = $state<GameMeta[]>([]);
+  let manageBusy = $state(false);
+  // The pending confirmation, if any: which table and which action.
+  let confirming = $state<{ id: string; kind: "archive" | "delete" } | null>(null);
+
   async function refresh(): Promise<void> {
     try {
       games = await listGames();
+      if (isAdmin && showArchived) archived = await listGames({ archived: true });
     } catch (err) {
       error = err instanceof LobbyApiError ? err.message : "list failed";
     }
+  }
+
+  async function toggleArchived(): Promise<void> {
+    showArchived = !showArchived;
+    if (showArchived) {
+      try {
+        archived = await listGames({ archived: true });
+      } catch (err) {
+        error = err instanceof LobbyApiError ? err.message : "could not list archived tables";
+      }
+    }
+  }
+
+  // manage runs one admin table action with shared busy / error /
+  // confirmation handling, so the three of them cannot drift.
+  async function manage(fn: () => Promise<unknown>, failure: string): Promise<void> {
+    manageBusy = true;
+    error = "";
+    try {
+      await fn();
+      confirming = null;
+      await refresh();
+      if (showArchived) archived = await listGames({ archived: true });
+    } catch (err) {
+      error = err instanceof LobbyApiError ? err.message : failure;
+    } finally {
+      manageBusy = false;
+    }
+  }
+
+  // --- admin: seat reclaim links ----------------------------------
+  //
+  // A reclaim link is a bearer credential for ONE player's seat:
+  // whoever opens it plays as that player, hand and all. So it is
+  // minted on demand (never derivable from the game or seat), shown
+  // once, single use, and short-lived — and the panel says all three
+  // out loud, because the person clicking "copy" is about to paste it
+  // into a chat window.
+  let reclaim = $state<{ gameID: string; ticket: ReclaimTicket; url: string } | null>(null);
+  let reclaimBusy = $state<string | null>(null);
+  // Scoped to the table it happened on — the seat rows live inside
+  // the per-game {#each}, so an unscoped message would print under
+  // every table on the page.
+  let reclaimError = $state<{ gameID: string; message: string } | null>(null);
+
+  async function onSeatLink(gameID: string, p: SeatInfo): Promise<void> {
+    reclaimBusy = p.player_id;
+    reclaimError = null;
+    reclaim = null;
+    try {
+      const ticket = await mintSeatReclaim(gameID, p.player_id);
+      reclaim = { gameID, ticket, url: reclaimURL(gameID, ticket.ticket) };
+    } catch (err) {
+      reclaimError = {
+        gameID,
+        message: err instanceof LobbyApiError ? err.message : "could not generate a seat link",
+      };
+    } finally {
+      reclaimBusy = null;
+    }
+  }
+
+  // Minutes rather than seconds: the TTL is a promise to the host
+  // ("this stops working soon"), not a countdown to watch.
+  function ttlLabel(t: ReclaimTicket): string {
+    const mins = Math.max(1, Math.round(t.ttl_seconds / 60));
+    const at = new Date(t.expires_at);
+    const clock = Number.isNaN(at.getTime())
+      ? ""
+      : ` (until ${at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})`;
+    return `${mins} min${clock}`;
   }
 
   async function onCreate(e: SubmitEvent): Promise<void> {
@@ -410,6 +502,16 @@
                     </a>
                   {/if}
                 {/if}
+                {#if isAdmin}
+                  <button
+                    class="ghost"
+                    title="hide this table from the lobby — nothing is deleted"
+                    disabled={manageBusy}
+                    onclick={() => (confirming = { id: g.id, kind: "archive" })}
+                  >
+                    archive
+                  </button>
+                {/if}
                 {#if g.state === "lobby" && seat}
                   <!-- Seated players wait for the admin; the button goes
                        live once the poll sees the table start. -->
@@ -481,6 +583,21 @@
                       <div class="sstat pend">deck pending</div>
                     {/if}
                   </div>
+                  {#if !p.is_bot && isAdmin}
+                    <!-- Admin-only, per seat: the disconnected player's
+                         way back in. Sits where the bot's remove
+                         button sits, because it is the same kind of
+                         thing — a per-seat operator action. -->
+                    <button
+                      class="seat-link"
+                      title={`generate a one-time link that returns ${seatName(p)} to this seat`}
+                      aria-label={`seat link for ${seatName(p)}`}
+                      disabled={reclaimBusy !== null}
+                      onclick={() => onSeatLink(g.id, p)}
+                    >
+                      {reclaimBusy === p.player_id ? "…" : "seat link"}
+                    </button>
+                  {/if}
                   {#if p.is_bot && canManageBots(g)}
                     <button
                       class="seat-x"
@@ -511,6 +628,84 @@
               {/if}
             {/each}
           </ul>
+
+          {#if confirming?.id === g.id}
+            <div class="confirm" class:danger={confirming.kind === "delete"} role="alert">
+              {#if confirming.kind === "archive"}
+                <p>
+                  <strong>Archive “{g.name}”?</strong>
+                  It leaves this list and stops taking part — bots stop, and anyone still connected is
+                  dropped. Nothing is deleted: the board, the replay and the invite links are all kept,
+                  and you can restore it from <em>archived tables</em> below.
+                </p>
+              {:else}
+                <p>
+                  <strong>Delete “{g.name}” permanently?</strong>
+                  This destroys the board, the restore point and the replay file. It cannot be undone.
+                  Archive instead if you only want it off the list.
+                </p>
+              {/if}
+              <div class="confirm-actions">
+                <button
+                  class="primary"
+                  disabled={manageBusy}
+                  onclick={() =>
+                    manage(
+                      () => (confirming?.kind === "delete" ? deleteGame(g.id) : archiveGame(g.id)),
+                      confirming?.kind === "delete" ? "delete failed" : "archive failed",
+                    )}
+                >
+                  {confirming.kind === "delete" ? "delete permanently" : "archive table"}
+                </button>
+                <button class="ghost" disabled={manageBusy} onclick={() => (confirming = null)}>
+                  cancel
+                </button>
+              </div>
+            </div>
+          {/if}
+
+          {#if reclaim?.gameID === g.id}
+            <div class="reclaim">
+              <div class="rhead">
+                <span class="panel-h">seat link — {reclaim.ticket.player_name}</span>
+                <button
+                  class="ghost"
+                  aria-label="dismiss the seat link"
+                  onclick={() => (reclaim = null)}><Icon name="x" size={12} /></button
+                >
+              </div>
+              <input
+                class="rurl"
+                type="text"
+                readonly
+                value={reclaim.url}
+                aria-label="seat reclaim link"
+                onfocus={(e) => e.currentTarget.select()}
+              />
+              <div class="ractions">
+                <button
+                  class:on={copied === `${g.id}:reclaim`}
+                  onclick={() => copyToClipboard(reclaim!.url, `${g.id}:reclaim`)}
+                >
+                  {#if copied === `${g.id}:reclaim`}
+                    <Icon name="check" size={13} /> Link copied
+                  {:else}
+                    <Icon name="link" size={13} /> copy seat link
+                  {/if}
+                </button>
+                <span class="rttl">
+                  works once · expires in {ttlLabel(reclaim.ticket)}
+                </span>
+              </div>
+              <p class="hint warn">
+                Send this to {reclaim.ticket.player_name} and nobody else. Anyone who opens it plays as
+                them — their hand included. It stops working the moment it is used.
+              </p>
+            </div>
+          {/if}
+          {#if reclaimError?.gameID === g.id}
+            <div class="bot-error">{reclaimError.message}</div>
+          {/if}
 
           {#if botPickerFor === g.id}
             <div class="bot-picker">
@@ -583,6 +778,74 @@
         </li>
       {/each}
     </ul>
+  {/if}
+
+  {#if isAdmin}
+    <section class="archive">
+      <button class="ghost arch-toggle" onclick={toggleArchived}>
+        {showArchived ? "hide" : "show"} archived tables
+        {#if showArchived && archived.length > 0}({archived.length}){/if}
+      </button>
+      {#if showArchived}
+        {#if archived.length === 0}
+          <p class="muted empty">Nothing archived.</p>
+        {:else}
+          <ul class="arch-list">
+            {#each archived as g (g.id)}
+              <li class="arch-row">
+                <div class="arch-id">
+                  <span class="arch-name">{g.name}</span>
+                  <span class="meta">
+                    {g.players.length} seats · {g.state} · archived {g.archived_at
+                      ? timeAgo(g.archived_at)
+                      : ""}
+                  </span>
+                </div>
+                <div class="arow">
+                  <button
+                    disabled={manageBusy}
+                    onclick={() => manage(() => unarchiveGame(g.id), "restore failed")}
+                  >
+                    restore
+                  </button>
+                  <button
+                    class="ghost danger"
+                    disabled={manageBusy}
+                    onclick={() => (confirming = { id: g.id, kind: "delete" })}
+                  >
+                    delete…
+                  </button>
+                </div>
+                {#if confirming?.id === g.id && confirming.kind === "delete"}
+                  <div class="confirm danger" role="alert">
+                    <p>
+                      <strong>Delete “{g.name}” permanently?</strong>
+                      This destroys the board, the restore point and the replay file. It cannot be undone.
+                    </p>
+                    <div class="confirm-actions">
+                      <button
+                        class="primary"
+                        disabled={manageBusy}
+                        onclick={() => manage(() => deleteGame(g.id), "delete failed")}
+                      >
+                        delete permanently
+                      </button>
+                      <button
+                        class="ghost"
+                        disabled={manageBusy}
+                        onclick={() => (confirming = null)}
+                      >
+                        cancel
+                      </button>
+                    </div>
+                  </div>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      {/if}
+    </section>
   {/if}
 
   <p class="foot">
@@ -991,7 +1254,8 @@
   }
   /* The seat row is a flex row; these push to its trailing edge. */
   .seat-x,
-  .seat-add {
+  .seat-add,
+  .seat-link {
     margin-left: auto;
     flex: 0 0 auto;
     border-radius: 8px;
@@ -1008,20 +1272,155 @@
     height: 22px;
     padding: 0;
   }
-  .seat-add {
+  .seat-add,
+  .seat-link {
     font-size: 11px;
     padding: 4px 9px;
     white-space: nowrap;
   }
   .seat-x:hover:not(:disabled),
-  .seat-add:hover:not(:disabled) {
+  .seat-add:hover:not(:disabled),
+  .seat-link:hover:not(:disabled) {
     color: var(--fg);
     border-color: var(--gold);
   }
   .seat-x:disabled,
-  .seat-add:disabled {
+  .seat-add:disabled,
+  .seat-link:disabled {
     opacity: 0.5;
     cursor: default;
+  }
+
+  /* --- admin table management ------------------------------------ */
+  .confirm {
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    padding: 12px 14px;
+    background: var(--surface-sunken);
+  }
+  .confirm.danger {
+    border-color: rgba(226, 96, 96, 0.45);
+  }
+  .confirm p {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--fg-muted);
+  }
+  .confirm strong {
+    color: var(--fg);
+  }
+  .confirm-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .arch-toggle {
+    font-size: 12px;
+  }
+  .archive {
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .arch-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .arch-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-sunken);
+  }
+  .arch-id {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+  .arch-name {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--fg-muted);
+  }
+  .arch-row .confirm {
+    flex: 1 0 100%;
+  }
+  button.danger {
+    color: var(--danger);
+  }
+
+  /* --- seat reclaim link ----------------------------------------- */
+  .reclaim {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    border: 1px solid rgba(217, 180, 92, 0.35);
+    border-radius: 10px;
+    background: var(--gold-soft);
+  }
+  .rhead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .rhead button {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+  }
+  .rurl {
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    height: 32px;
+    padding: 0 10px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+  }
+  .ractions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .ractions button {
+    height: 30px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+  .ractions button.on {
+    color: var(--mint);
+    border-color: rgba(95, 212, 164, 0.4);
+  }
+  .rttl {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    color: var(--fg-muted);
+  }
+  .hint.warn {
+    margin: 0;
+    color: var(--fg);
   }
   .bot-picker {
     display: flex;
