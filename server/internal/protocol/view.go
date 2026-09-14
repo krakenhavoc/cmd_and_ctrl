@@ -227,6 +227,30 @@ type PendingChoiceView struct {
 	// Added in S19 sub-PR 6.
 	PayCost string `json:"pay_cost,omitempty"`
 
+	// AcceptLabel / DeclineLabel populate the "confirm" kind: the
+	// card's own words for the two branches ("Pay 4 life" / "Put it on
+	// top"). Absent means the client renders Yes / No, which is what a
+	// prompt that really is a yes/no wants. Added with the chained
+	// choice queue (#74).
+	AcceptLabel  string `json:"accept_label,omitempty"`
+	DeclineLabel string `json:"decline_label,omitempty"`
+
+	// LifeCost is the life a "confirm" prompt's ACCEPT branch charges
+	// (Sylvan Library's 4). Zero for a branch that costs no life.
+	// Carried for the same reason legal.MoveCost.Life is (#547): a
+	// client — human or bot — holding only this payload would
+	// otherwise price "pay 4 life to keep it" like "shuffle your
+	// library".
+	LifeCost int `json:"life_cost,omitempty"`
+
+	// ChooseMin / ChooseMax populate the "choose_cards" kind: how few
+	// and how many of Options the chooser must pick. Both are sent —
+	// including a zero Min, which is why the client reads Max to tell
+	// this kind's grid from a fixed-count discard. Added with the
+	// chained choice queue (#74).
+	ChooseMin int `json:"choose_min,omitempty"`
+	ChooseMax int `json:"choose_max,omitempty"`
+
 	// SearchMax populates the S22 "search_library" kind: how many of
 	// Options the searcher may take. The minimum is always zero —
 	// CR 701.19c permits failing to find — so the client's submit
@@ -1688,6 +1712,31 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				}
 			}
 		}
+		// PendingChoiceConfirm — the chained-choice two-way prompt.
+		// Only the branch labels travel; everything else about the
+		// question is already in Reason.
+		if c.Kind == game.PendingChoiceConfirm {
+			v.AcceptLabel = c.AcceptLabel
+			v.DeclineLabel = c.DeclineLabel
+			v.LifeCost = c.LifeCost
+		}
+		// PendingChoiceChooseCards — the chained-choice card-set pick.
+		// The candidates are frequently cards in a hand, so they go
+		// through the ordinary per-viewer knower redaction in
+		// FilterViewFor like every other Options list: the chooser was
+		// made a knower by whatever effect queued the prompt, and a
+		// seat that is not a knower sees nothing at all rather than a
+		// count.
+		if c.Kind == game.PendingChoiceChooseCards {
+			v.ChooseMin = c.ChooseMin
+			v.ChooseMax = c.ChooseMax
+			v.Options = make([]CardView, 0, len(c.ChooseCards))
+			for _, id := range c.ChooseCards {
+				if card, ok := g.LookupCardForEffect(id); ok {
+					v.Options = append(v.Options, viewOfCard(card))
+				}
+			}
+		}
 		// PendingChoiceMana carries a color-option list server-
 		// filtered against the chooser's commander identity (see
 		// ActivateManaAbility). Clone the slice so post-wire
@@ -2238,6 +2287,17 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 		if c.Kind == string(game.PendingChoiceSearchLibrary) && c.Chooser != viewerID {
 			out[i].Options = nil
 			out[i].SearchMax = 0
+			continue
+		}
+		// choose_cards candidates are usually cards in a hand. The
+		// knower filter below already strips the cards themselves, but
+		// the BOUNDS would still say "2 of 3" about a hidden zone, so
+		// they go too — a non-chooser learns that a choice is open and
+		// who owes it, and nothing about its contents.
+		if c.Kind == string(game.PendingChoiceChooseCards) && c.Chooser != viewerID {
+			out[i].Options = nil
+			out[i].ChooseMin = 0
+			out[i].ChooseMax = 0
 			continue
 		}
 		if len(c.Options) > 0 {

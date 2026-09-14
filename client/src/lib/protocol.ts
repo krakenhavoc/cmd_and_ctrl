@@ -473,6 +473,24 @@ export interface PendingChoiceView {
     // 205.3m vocabulary for the picker to filter; answered with
     // resolve_choice { creature_type: "Elf" }.
     | "choose_creature_type"
+    // #74 chained choices: the general two-way prompt, "do A, or do
+    // B." Answered with the shared yes/no {choice_id, apply} payload —
+    // apply=true takes the accept branch. accept_label / decline_label
+    // are the card's own words for the two consequences ("Pay 4 life"
+    // / "Put it on top"); absent means it really is a yes/no.
+    //
+    // It is what lets one prompt follow another: a card queues it from
+    // inside the answer to an earlier prompt, so Ponder can ask "you
+    // may shuffle" only AFTER the reorder, and Sylvan Library can ask
+    // about the second card only after the first has been paid for.
+    | "confirm"
+    // #74 chained choices: the general card-set pick, "choose N of
+    // these cards", with the card deciding what being chosen means.
+    // Answered with the generic {choice_id, card_ids} payload, bounded
+    // by choose_min / choose_max. Options and bounds reach the CHOOSER
+    // ONLY — the candidates are usually cards in a hand, and their
+    // number is as private as their faces.
+    | "choose_cards"
     | string;
   chooser: string;
   from_player: string;
@@ -534,6 +552,22 @@ export interface PendingChoiceView {
   // kind, and absent for non-chooser viewers, who are not told what
   // the search is for.
   search_max?: number;
+  // #74: populated for kind "confirm" — the card's own words for the
+  // accept and decline branches. Absent means the client renders Yes /
+  // No, which is right for a prompt that really is a yes/no.
+  accept_label?: string;
+  decline_label?: string;
+  // #74: populated for kind "confirm" — the life the ACCEPT branch
+  // charges (Sylvan Library's 4). Absent when the branch costs no
+  // life. The label already says it; this is the number, for anything
+  // that needs to reason about the price rather than print it.
+  life_cost?: number;
+  // #74: populated for kind "choose_cards" — how few and how many of
+  // `options` the chooser must pick. Absent for every other kind, and
+  // absent for non-chooser viewers, who are not told the size of a
+  // choice over someone else's hidden cards.
+  choose_min?: number;
+  choose_max?: number;
 }
 
 // ReplacementOptionView mirrors protocol.ReplacementOptionView —

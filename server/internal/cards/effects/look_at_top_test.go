@@ -240,10 +240,24 @@ func TestPonderDrawsAfterTheReorder(t *testing.T) {
 		t.Fatal("Ponder drew before the player had arranged the cards")
 	}
 
-	// Put "Best" on top, then draw it.
+	// Put "Best" on top. The draw does NOT happen yet: "you may
+	// shuffle" comes between the reorder and the draw, so the reorder
+	// answer queues a second prompt and the draw rides on its
+	// branches.
 	if err := g.ResolveLookAtTop(c.ID, me.ID,
 		[]uuid.UUID{c.ScryCards[2], c.ScryCards[0], c.ScryCards[1]}); err != nil {
 		t.Fatalf("ResolveLookAtTop: %v", err)
+	}
+	if me.Hand.Size() != handBefore {
+		t.Fatal("Ponder drew before the shuffle question was answered")
+	}
+	shuffle := confirmChoiceFor(g, me.ID)
+	if shuffle == nil {
+		t.Fatal("the reorder answer queued no shuffle prompt")
+	}
+	// Decline: keep the order, then draw.
+	if err := g.ResolveConfirm(shuffle.ID, me.ID, false); err != nil {
+		t.Fatalf("ResolveConfirm: %v", err)
 	}
 	if me.Hand.Size() != handBefore+1 {
 		t.Fatalf("hand is %d, want %d — the draw never ran", me.Hand.Size(), handBefore+1)
@@ -252,6 +266,73 @@ func TestPonderDrawsAfterTheReorder(t *testing.T) {
 	if drawn.Name != "Best" {
 		t.Errorf("drew %q, want Best — the card left on top is the card drawn", drawn.Name)
 	}
+}
+
+// TestPonderShuffleIsASecondPromptOffTheFirst is the composition this
+// card exists in the suite to pin: "you may shuffle" is not asked until
+// the reorder has been answered, and answering it yes throws the
+// arrangement away before the draw.
+func TestPonderShuffleIsASecondPromptOffTheFirst(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	// Enough cards that a shuffle can actually move the top one; the
+	// assertion below is on the DRAW, not on a particular permutation.
+	seedLibrary(me, "L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "Keep")
+	handBefore := me.Hand.Size()
+	libBefore := me.Library.Size()
+
+	castCatalogSpell(t, g, "Ponder", "Sorcery", ponderOracle, nil)
+	passPriorityAroundTable(t, g)
+
+	c := lookAtTopChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("Ponder queued no look-at prompt")
+	}
+	// Exactly one prompt is open: the shuffle question does not exist
+	// yet, because the player has not answered the first one.
+	if n := len(g.PendingChoices); n != 1 {
+		t.Fatalf("%d prompts open at once, want 1 — the chain must not front-load", n)
+	}
+	if err := g.ResolveLookAtTop(c.ID, me.ID, c.ScryCards); err != nil {
+		t.Fatalf("ResolveLookAtTop: %v", err)
+	}
+
+	shuffle := confirmChoiceFor(g, me.ID)
+	if shuffle == nil {
+		t.Fatal("no shuffle prompt after the reorder")
+	}
+	if shuffle.AcceptLabel == "" || shuffle.DeclineLabel == "" {
+		t.Errorf("the shuffle prompt has no branch labels: %+v", shuffle)
+	}
+	if err := g.ResolveConfirm(shuffle.ID, me.ID, true); err != nil {
+		t.Fatalf("ResolveConfirm: %v", err)
+	}
+	if me.Hand.Size() != handBefore+1 {
+		t.Errorf("hand is %d, want %d — the draw must happen on BOTH branches",
+			me.Hand.Size(), handBefore+1)
+	}
+	if me.Library.Size() != libBefore-1 {
+		t.Errorf("library is %d, want %d", me.Library.Size(), libBefore-1)
+	}
+	if len(g.PendingChoices) != 0 {
+		t.Errorf("%d prompts left open after the chain finished", len(g.PendingChoices))
+	}
+	// A shuffle un-knows the library (CR 701.20): the three cards the
+	// player just looked at are no longer theirs to read.
+	for _, card := range me.Library.Cards {
+		if len(card.KnownBy) != 0 {
+			t.Fatalf("%q is still known after the shuffle", card.Name)
+		}
+	}
+}
+
+func confirmChoiceFor(g *game.Game, chooser uuid.UUID) *game.PendingChoice {
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceConfirm && c.Chooser == chooser {
+			return c
+		}
+	}
+	return nil
 }
 
 // --- Crystal Ball ----------------------------------------------------

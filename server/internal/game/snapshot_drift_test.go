@@ -84,6 +84,11 @@ var gameFields = plan(
 	"LoyaltyActivatedThisTurn", carried, "",
 	"SpellsCastThisTurn", carried, "",
 	"LandsPlayedThisTurn", carried, "",
+	// Per-turn draw log (Sylvan Library's "cards in your hand drawn
+	// this turn"). Carried for the same reason the other per-turn
+	// tallies are: a restore mid-turn that forgot it would offer the
+	// wrong candidate set, and the cards it names are still in hand.
+	"DrawnThisTurn", carried, "",
 	"DiscardPending", carried, "",
 	"Promises", carried, "",
 	"Vote", carried, "",
@@ -293,6 +298,17 @@ var pendingChoiceFields = plan(
 	// a restored game that forgot it would render an offer about
 	// nothing.
 	"MayCastCard", carried, "",
+	// The chained-choice prompts (chained_choice.go). The labels are
+	// the card's own words for the two branches and the candidate set
+	// / bounds are what the enumerator reads to offer legal answers —
+	// all of it is the prompt, and a restored game that forgot any of
+	// it would render a question nobody can answer.
+	"AcceptLabel", carried, "",
+	"LifeCost", carried, "",
+	"DeclineLabel", carried, "",
+	"ChooseCards", carried, "",
+	"ChooseMin", carried, "",
+	"ChooseMax", carried, "",
 
 	"replacementResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"pickTargetResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
@@ -302,6 +318,8 @@ var pendingChoiceFields = plan(
 	"mayCastResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"searchResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"scryResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
+	"confirmResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"chooseCardsResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 )
 
 // TestSnapshotCoversEveryDomainField is the drift guard.

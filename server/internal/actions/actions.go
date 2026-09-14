@@ -1223,6 +1223,13 @@ func Dispatch(g *game.Game, a Action) error {
 				// mana cost" — apply means "I'll take it", and the
 				// engine stamps a free-cast permission on the card.
 				return g.ResolveMayCast(choiceID, a.Player, *p.OptionalApply)
+			case game.PendingChoiceConfirm:
+				// The chained-choice two-way prompt: "do A, or do B."
+				// apply takes the accept branch. Both branches are
+				// plain continuations supplied by the card, which is
+				// what lets either one queue the next link of a
+				// chain. See game/chained_choice.go.
+				return g.ResolveConfirm(choiceID, a.Player, *p.OptionalApply)
 			case game.PendingChoiceEntryPayLife:
 				// Shocklands: "as this enters, you may pay 2 life" —
 				// apply means "I pay", and paying is what keeps the
@@ -1299,6 +1306,12 @@ func Dispatch(g *game.Game, a Action) error {
 				return g.ResolveSacrificeChoice(choiceID, a.Player, ids[0])
 			case game.PendingChoiceSearchLibrary:
 				return g.ResolveSearchLibrary(choiceID, a.Player, ids)
+			case game.PendingChoiceChooseCards:
+				// The chained-choice card-set pick. Like search, its
+				// floor can be zero, so an EMPTY list is a real answer
+				// rather than a missing field — which is why it is
+				// routed here by kind, ahead of the count guards.
+				return g.ResolveChooseCards(choiceID, a.Player, ids)
 			case game.PendingChoiceCopyTarget:
 				// "You may have this enter as a copy of ..." — an
 				// EMPTY list is the decline, exactly as it is for

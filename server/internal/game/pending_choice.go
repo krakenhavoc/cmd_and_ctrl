@@ -479,6 +479,53 @@ type PendingChoice struct {
 	// serialised. Added in S28.
 	mayCastResume *mayCastFrame
 
+	// AcceptLabel / DeclineLabel are the two branch names a
+	// PendingChoiceConfirm renders on its buttons — the card's own
+	// words ("Pay 4 life" / "Put it on top"), because a chained
+	// question is usually a choice between two things rather than a
+	// yes/no. Empty renders as Yes / No. Wire-serialised. See
+	// chained_choice.go.
+	AcceptLabel, DeclineLabel string
+
+	// LifeCost is the life a PendingChoiceConfirm's ACCEPT branch
+	// charges — Sylvan Library's 4. Zero means the accept branch
+	// costs no life, which is most of them.
+	//
+	// It is on the choice, and on the wire, for the reason #547 put
+	// legal.MoveCost.Life there: a policy holding only the wire
+	// payload otherwise prices "pay 4 life to keep this card" exactly
+	// like "shuffle your library", and a bot at 4 life answers yes and
+	// dies. The engine does NOT deduct it — the frame's accept branch
+	// does, and re-checks affordability when it runs, because life can
+	// move between the question and the answer.
+	LifeCost int
+
+	// confirmResume is the server-only continuation pair for a
+	// PendingChoiceConfirm: one closure per branch. Not serialised.
+	// See chained_choice.go.
+	confirmResume *confirmFrame
+
+	// ChooseCards is the candidate set of a PendingChoiceChooseCards,
+	// in the order the client should render them. Wire-serialised via
+	// PendingChoiceView.Options and redacted per viewer like every
+	// other Options-bearing kind — the candidates are frequently cards
+	// in a hand.
+	ChooseCards []uuid.UUID
+
+	// ChooseMin / ChooseMax bound a PendingChoiceChooseCards pick.
+	// Both are on the choice rather than derived at resolve time so
+	// the legal-move enumerator can offer exactly the sets the
+	// resolver will accept — the #544 lesson: an enumerator that
+	// cannot see a constraint offers answers the engine refuses, and a
+	// bot that keeps picking one holds the table forever.
+	ChooseMin, ChooseMax int
+
+	// chooseCardsResume is the server-only continuation for a
+	// PendingChoiceChooseCards: what the picks mean, plus the zone
+	// they are re-checked against. Not serialised. See
+	// chained_choice.go.
+	chooseCardsResume *chooseCardsFrame
+
 	// scryResume is the continuation for a PendingChoiceScry: the
 	// rest of the effect, which must not run until the player has
 	// finished the scry. Preordain's "Scry 2, THEN draw a card" is the

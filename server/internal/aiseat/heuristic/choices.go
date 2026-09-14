@@ -35,6 +35,8 @@ const (
 	choiceScry                = "scry"
 	choiceSearchLibrary       = "search_library"
 	choiceEntryPayLife        = "entry_pay_life"
+	choiceConfirm             = "confirm"
+	choiceChooseCards         = "choose_cards"
 )
 
 // decideChoice takes the highest-valued answer. Ties go to the lowest
@@ -141,6 +143,45 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 			v += p.cfg.ScryKeep - st.cardValue(p.cfg, lookup(id))
 		}
 		return v, "scry"
+
+	case choiceChooseCards:
+		// The chained-choice card-set pick. Which cards a bot WANTS to
+		// name depends entirely on what the card then does with them —
+		// Sylvan Library's picks are the cards it pays life for, so
+		// neither "take the best" nor "give up the worst" is right as
+		// a general rule, and the wire carries nothing that would say
+		// which. Score every offered set the same and let the
+		// enumerator's order decide. What matters here is that an
+		// answer is always chosen: a seat owing a choice is offered
+		// nothing else, and a policy with no opinion must still pick
+		// (#544).
+		return 0.5, "choose cards"
+
+	case choiceConfirm:
+		// The chained-choice two-way prompt. Both branches are always
+		// legal — a confirm is a choice between two consequences, not
+		// a payment the engine can refuse — so this is a preference
+		// rather than a filter: take the accept branch, which is the
+		// one the card's offer is for. A confirm whose accept branch
+		// costs life is priced no better than any other life cost the
+		// heuristic sees today (#507's flat-ActivateBase note), but
+		// either answer clears the prompt, so the seat cannot stall.
+		if cp.Apply != nil && *cp.Apply {
+			if m.Cost != nil {
+				// Same pricing the priority window uses (#547), reached
+				// through a prompt instead of an activated ability:
+				// Sylvan Library's "pay 4 life to keep it" is the same
+				// question Griselbrand asks, and a bot at 4 life must
+				// answer it the same way.
+				c, refuse := p.costValue(st, nil, *m.Cost)
+				if refuse {
+					return suicideValue, "confirm: would pay its last life"
+				}
+				return 1 + c, "confirm: take the offer"
+			}
+			return 1, "confirm: take the offer"
+		}
+		return 0.5, "confirm: decline"
 
 	case choiceTriggerPrompt, choiceOptionalReplacement, choiceEntryPayLife, choicePayUnless:
 		// The enumerator only offers "pay" when the cost is payable,
