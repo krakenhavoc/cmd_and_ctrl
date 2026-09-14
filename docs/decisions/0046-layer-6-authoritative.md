@@ -1,4 +1,4 @@
-# ADR 0045 — Layer 6 is authoritative: the catalog ability lookups read the layered result
+# ADR 0046 — Layer 6 is authoritative: the catalog ability lookups read the layered result
 
 **Status:** Accepted · 2026-09-14 · follows [ADR 0012](0012-layer-system.md) and [ADR 0039](0039-layer-4-authoritative.md)
 
