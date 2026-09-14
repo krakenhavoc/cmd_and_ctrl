@@ -215,8 +215,31 @@ func (g *Game) AttachmentsOf(hostID uuid.UUID) []uuid.UUID {
 // Caller must hold g.mu. Must run AFTER the layer recompute — every
 // type test here reads effective characteristics.
 func (g *Game) attachmentLegalLocked(c *Card) bool {
-	if c == nil || !c.IsAttached() {
+	if c == nil {
 		return true
+	}
+	if !c.IsAttached() {
+		// CR 704.5n's OTHER half: "or is not attached to an object or
+		// player". An Aura on the battlefield attached to NOTHING is
+		// as illegal as one attached to something it may not enchant,
+		// and the rule says so in the same sentence. Missing it left
+		// a permanently-illegal board state reachable — an Aura put
+		// onto the battlefield by an effect that does not say
+		// "attached to" (Brilliant Restoration, Carmen) sat there
+		// forever doing nothing, which no sequence of legal plays can
+		// produce in paper.
+		//
+		// Scoped to Auras the catalog knows an enchant clause for,
+		// for the same reason the attached branch below is: an
+		// UNCATALOGUED Aura is a manual object in this sandbox. It is
+		// cast with no target through the free-form picker
+		// (attachResolvedAuraLocked documents that path), it attaches
+		// to nothing, and a player is tracking it by hand. Sweeping
+		// it into a graveyard would delete a card the table is using.
+		// A catalogued Aura always acquires its host at resolution,
+		// so reaching here means an effect put it onto the
+		// battlefield without one.
+		return !c.IsAura() || TargetSpecFor(CatalogKey(*c)) == nil
 	}
 	if c.IsAura() {
 		if spec := TargetSpecFor(CatalogKey(*c)); spec != nil {
@@ -244,6 +267,12 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 // Returns true if it changed anything, which keeps the SBA loop
 // spinning for another pass.
 //
+// Three outcomes, from two rules:
+//
+//	704.5m  Equipment attached to an illegal permanent  → unattach
+//	704.5n  Aura attached to an illegal object/player   → graveyard
+//	704.5n  Aura attached to NOTHING                    → graveyard
+//
 // Runs from stateBasedActionsLocked immediately after the layer
 // recompute and before the destruction pre-pass, so that a creature
 // which becomes lethally damaged BECAUSE its +2/+2 Aura fell off
@@ -266,7 +295,11 @@ func (g *Game) attachmentSBALocked() bool {
 	var doomed []doomedAttachment
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if !c.IsAttached() || g.attachmentLegalLocked(c) {
+		// NOT gated on IsAttached: CR 704.5n's condition is "attached
+		// to an illegal object or player, OR not attached to an
+		// object or player", and the second disjunct is the one an
+		// unattached Aura fails. attachmentLegalLocked owns both.
+		if g.attachmentLegalLocked(c) {
 			continue
 		}
 		doomed = append(doomed, doomedAttachment{id: c.InstanceID, aura: c.IsAura()})
@@ -282,17 +315,23 @@ func (g *Game) attachmentSBALocked() bool {
 			continue
 		}
 		c := &g.Battlefield.Cards[idx]
-		host := c.AttachedTo
-		controller := c.Controller
-		c.AttachedTo = TargetRef{}
-		c.AttachedAt = 0
-		g.EmitEvent(Event{
-			Kind:   EventUnattach,
-			Actor:  controller,
-			Source: d.id,
-			CardID: d.id,
-			Target: host.ID,
-		})
+		// An Aura that was never attached has no link to break and no
+		// unattach to announce — emitting one would put a "became
+		// unattached from nobody" line in the game log and bump the
+		// layer version for a change that did not happen.
+		if c.IsAttached() {
+			host := c.AttachedTo
+			controller := c.Controller
+			c.AttachedTo = TargetRef{}
+			c.AttachedAt = 0
+			g.EmitEvent(Event{
+				Kind:   EventUnattach,
+				Actor:  controller,
+				Source: d.id,
+				CardID: d.id,
+				Target: host.ID,
+			})
+		}
 		if d.aura {
 			// CR 704.5n. Routed through the normal battlefield-leave
 			// path, so the CR 614 replacement pipeline and the

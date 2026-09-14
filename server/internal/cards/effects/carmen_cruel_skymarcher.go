@@ -33,9 +33,10 @@ import (
 //     graveyard"), through the ordinary reanimation path.
 //
 // Sandbox simplification, declared: an Aura returned this way comes
-// back unattached and stays that way — the reanimation path has no
-// "choose what it enchants" prompt (the Brilliant Restoration
-// posture). Weaker than printed, never stronger.
+// back unattached, and CR 704.5n puts it straight into the graveyard
+// — the reanimation path has no "choose what it enchants" prompt
+// (CR 303.4f, the Brilliant Restoration posture). Weaker than
+// printed, never stronger.
 const b26CarmenOracle = "84c24e62-26bd-4ca4-b6b9-d31e2065f13b"
 
 func init() {
@@ -43,7 +44,7 @@ func init() {
 		OracleID:        b26CarmenOracle,
 		Name:            "Carmen, Cruel Skymarcher",
 		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"An Aura returned this way comes back unattached and stays that way — you don't get to choose what it enchants."},
+		Caveats:         []string{"An Aura returned this way comes back unattached and is put into the graveyard — you don't get to choose what it enchants."},
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			{

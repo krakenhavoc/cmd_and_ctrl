@@ -15,17 +15,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // castable with an empty graveyard to no effect.
 //
 // Sandbox simplification, declared: an Aura returned this way comes
-// back UNATTACHED and stays that way. CR 303.4f lets its controller
-// choose what it enchants as it enters; the reanimation path has no
-// such prompt, and the attachment state-based action sweeps only an
-// Aura attached to something illegal, not one attached to nothing.
-// Weaker than printed (the Aura does nothing), never stronger.
+// back UNATTACHED, and CR 704.5n then puts it straight into the
+// graveyard. CR 303.4f is the clause that is missing — it lets the
+// Aura's controller choose what it enchants as it enters, and the
+// reanimation path has no such prompt. So the Aura goes back to the
+// graveyard it came from instead of enchanting something. Weaker than
+// printed (the Aura does nothing), never stronger.
+//
+// It used to SIT on the battlefield forever instead, which was worse
+// than weak: an Aura attached to nothing is a board state CR 704.5n
+// forbids and no sequence of legal plays can reach. That branch of
+// the state-based action landed in the S24 tail.
 func init() {
 	Register(Spec{
 		OracleID:     "9584a8ae-2aba-42b8-8983-0467d6bd5698",
 		Name:         "Brilliant Restoration",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"An Aura returned this way comes back unattached and stays that way — you don't get to choose what it enchants."},
+		Caveats:      []string{"An Aura returned this way comes back unattached and is put into the graveyard — you don't get to choose what it enchants."},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return b21ReturnAllArtifactAndEnchantmentCards(ctx, ctx.Controller())
 		},

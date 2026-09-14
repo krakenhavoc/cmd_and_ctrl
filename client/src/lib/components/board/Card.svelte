@@ -67,6 +67,13 @@
     // the window is a property of the turn, so PlayerPanel derives it
     // once and hands it down.
     sorcerySpeedBlocked?: string;
+    // S24 (ADR 0036 decision 14 item 3): the name of the player this
+    // permanent enchants, for a Curse. A card attached to a PLAYER has
+    // no host card to be drawn behind, so without this the board shows
+    // a Curse of Opulence sitting in its controller's row with nothing
+    // to say who it is cursing — which is the entire card. Supplied by
+    // BattlefieldRow; undefined for everything else.
+    enchantedPlayer?: string;
     onClick?: (card: CardView, ev: MouseEvent) => void;
   }
 
@@ -93,6 +100,7 @@
     onActivateManaAbility,
     onActivateAbility,
     sorcerySpeedBlocked = "",
+    enchantedPlayer,
     onClick,
   }: Props = $props();
 
@@ -288,6 +296,15 @@
     {#if card.goaded_by}
       <span class="badge goad" title="goaded" aria-label="goaded">GOAD</span>
     {/if}
+    {#if enchantedPlayer}
+      <span
+        class="badge curse"
+        title={`enchanting ${enchantedPlayer}`}
+        aria-label={`enchanting ${enchantedPlayer}`}
+      >
+        ⛓ {enchantedPlayer}
+      </span>
+    {/if}
     {#if card.auto}
       <span
         class="badge auto"
@@ -328,6 +345,15 @@
     <span class="name-fallback">{card.name}</span>
     {#if card.goaded_by}
       <span class="badge goad" title="goaded" aria-label="goaded">GOAD</span>
+    {/if}
+    {#if enchantedPlayer}
+      <span
+        class="badge curse"
+        title={`enchanting ${enchantedPlayer}`}
+        aria-label={`enchanting ${enchantedPlayer}`}
+      >
+        ⛓ {enchantedPlayer}
+      </span>
     {/if}
     {#if card.auto}
       <span
@@ -468,6 +494,26 @@
     color: var(--danger);
     background: rgba(60, 0, 0, 0.85);
     border-color: rgba(255, 122, 122, 0.5);
+  }
+  .badge.curse {
+    /* A Curse is drawn in its controller's row with no host behind it,
+       so the badge is the only thing on the card that names its
+       victim. Full width across the bottom rather than a corner pip:
+       it carries a player NAME, not a three-letter flag, and it must
+       truncate rather than overflow the card. */
+    top: auto;
+    bottom: 3px;
+    left: 3px;
+    right: 3px;
+    max-width: calc(100% - 6px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+    color: var(--danger);
+    background: rgba(60, 0, 0, 0.85);
+    border-color: rgba(255, 122, 122, 0.5);
+    letter-spacing: 0.02em;
   }
   .badge.auto {
     /* Bottom-left so the AUTO pip sits opposite the damage badge
