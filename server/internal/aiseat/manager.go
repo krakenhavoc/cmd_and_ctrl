@@ -10,14 +10,22 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
-// SeatSpec is one bot seat to run: which seat, and at what tier. The
-// lobby builds these from its own seat list and hands them to
-// StartBots; keeping the type here rather than in lobby is what lets
-// aiseat stay the lower layer, imported by the lobby and importing
-// nothing of it.
+// SeatSpec is one bot seat to run: which seat, at what tier, with
+// which deck. The lobby builds these from its own seat list and hands
+// them to StartBots; keeping the type here rather than in lobby is
+// what lets aiseat stay the lower layer, imported by the lobby and
+// importing nothing of it.
 type SeatSpec struct {
 	PlayerID uuid.UUID
 	Tier     string
+	// Deck is the curated-deck ID the seat was added with, empty when
+	// the caller pasted a raw decklist instead. It is carried for the
+	// model tiers: the static, prompt-cached half of their prompt is
+	// this deck's list and plan, and a PolicyFactory resolves the ID
+	// to that profile. A seat with no deck ID still plays — the model
+	// simply sees the board and the move list without its own
+	// decklist in front of it.
+	Deck string
 }
 
 // Manager owns the runners for every bot seat on the server: one
@@ -37,6 +45,12 @@ type Manager struct {
 	// leaves it zero and takes ConfigFor(tier); tests set MinThink 0
 	// so a whole game runs in milliseconds.
 	cfg *Config
+	// factory builds the seat policies and is the authority on which
+	// tiers this server can play. Nil means builtinFactory: `random`
+	// and nothing else. main.go injects aiseat/tiers' factory, which
+	// aiseat cannot construct itself without an import cycle — see
+	// PolicyFactory.
+	factory PolicyFactory
 
 	mu    sync.Mutex
 	games map[uuid.UUID]*botGame
@@ -64,23 +78,76 @@ func NewManagerWithConfig(bc Broadcaster, cfg Config, log *slog.Logger) *Manager
 	return m
 }
 
+// SetPolicyFactory injects the factory that builds seat policies, and
+// with it the answer to "which tiers does this server offer". Call it
+// once at boot, BEFORE any game starts or is restored: a runner that
+// is already running keeps the policy it was built with.
+//
+// This is a setter rather than a constructor argument because the
+// Manager has to exist before the factory does — main.go wires the
+// Manager into the lobby before the card index (which the model
+// tiers' deck profiles are built from) has finished loading.
+func (m *Manager) SetPolicyFactory(f PolicyFactory) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.factory = f
+}
+
+// policyFactory is the injected factory, or the builtin one.
+func (m *Manager) policyFactory() PolicyFactory {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.factory == nil {
+		return builtinFactory{}
+	}
+	return m.factory
+}
+
+// TierInfo is the picker's view of this server: every declared tier,
+// each one marked available or not by the factory that would have to
+// build it, with a reason when it cannot.
+func (m *Manager) TierInfo() []TierInfo {
+	return tiersFor(m.policyFactory())
+}
+
 // Tiers lists the policy tiers a bot may be added with. Only the
 // available ones — the lobby validates an add request against this,
 // and an unavailable tier must be refused rather than downgraded.
 func (m *Manager) Tiers() []string {
-	avail := AvailableTiers()
-	out := make([]string, 0, len(avail))
-	for _, t := range avail {
-		out = append(out, string(t))
+	var out []string
+	for _, t := range m.TierInfo() {
+		if t.Available {
+			out = append(out, string(t.Tier))
+		}
 	}
 	return out
 }
 
-func (m *Manager) configFor(t Tier) Config {
+// TierReason explains why a declared tier is not on offer here, for
+// the picker to show next to the greyed-out row. Empty for a tier
+// that IS available, and for a string that is not a tier at all.
+func (m *Manager) TierReason(tier string) string {
+	for _, t := range m.TierInfo() {
+		if string(t.Tier) == tier {
+			return t.Reason
+		}
+	}
+	return ""
+}
+
+// configFor is the runner pacing for a tier. The explicit override
+// (NewManagerWithConfig, which tests use to strip MinThink) wins;
+// otherwise the factory decides, because it is the half that knows
+// whether this deployment raised the think deadline for a slow
+// self-hosted model. f may be nil.
+func (m *Manager) configFor(f PolicyFactory, t Tier) Config {
 	if m.cfg != nil {
 		return *m.cfg
 	}
-	return ConfigFor(t)
+	if f == nil {
+		return ConfigFor(t)
+	}
+	return f.RunnerConfig(t)
 }
 
 // StartBots launches a runner per seat on the room. Calling it twice
@@ -103,6 +170,10 @@ func (m *Manager) StartBots(room *ws.Room, seats []SeatSpec) {
 			<-r.Done()
 		}
 	}
+	factory := m.factory // holding m.mu; see policyFactory
+	if factory == nil {
+		factory = builtinFactory{}
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	bg := &botGame{cancel: cancel}
 	for _, seat := range seats {
@@ -112,14 +183,22 @@ func (m *Manager) StartBots(room *ws.Room, seats []SeatSpec) {
 				"game", gameID.String(), "seat", seat.PlayerID.String(), "tier", seat.Tier)
 			continue
 		}
-		policy, err := NewPolicy(tier)
+		policy, err := factory.NewPolicy(seat)
 		if err != nil {
 			m.log.Error("bot seat has no policy; seat will not act",
 				"game", gameID.String(), "seat", seat.PlayerID.String(), "tier", seat.Tier, "err", err)
 			continue
 		}
-		r := Start(ctx, room, seat.PlayerID, policy, m.configFor(tier), m.bc, m.log.With("game", gameID.String()))
+		r := Start(ctx, room, seat.PlayerID, policy, m.configFor(factory, tier), m.bc, m.log.With("game", gameID.String()))
 		bg.runners = append(bg.runners, r)
+		// The policy NAME is logged next to the tier on purpose. A
+		// seat labelled "assisted" that is actually running the
+		// random policy is invisible from the outside — the seat
+		// plays, it just plays badly — so the one place it can be
+		// caught is the line that says which policy the tier built.
+		m.log.Info("bot seat runner started",
+			"game", gameID.String(), "seat", seat.PlayerID.String(),
+			"tier", seat.Tier, "deck", seat.Deck, "policy", policy.Name())
 	}
 	if len(bg.runners) == 0 {
 		cancel()

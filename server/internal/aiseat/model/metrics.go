@@ -64,6 +64,11 @@ type DecisionRecord struct {
 	Attempted bool
 	// Fallback names why Layer C's answer was not used.
 	Fallback string
+	// TimedOut refines Fallback == FallbackError: the call did not
+	// fail, it did not finish. On a self-hosted model this is the
+	// failure mode to watch — every window timing out is a seat
+	// playing Layer B under a model tier's name.
+	TimedOut bool
 	// Latency is the whole Decide call.
 	Latency time.Duration
 	// ModelLatency is the model call alone, zero when none was made.
@@ -92,6 +97,11 @@ type Stats struct {
 	Escalated int64
 	// ModelCalls is how many calls were actually attempted.
 	ModelCalls int64
+	// ModelTimeouts is how many of them ran out of budget rather than
+	// failing. Read it next to MaxModelLatency: a deployment whose
+	// model cannot answer inside MaxThink shows up here as a number
+	// climbing toward ModelCalls, and nowhere else.
+	ModelTimeouts int64
 	// Usage totals every call.
 	Usage Usage
 	// ModelLatency totals the time spent inside model calls, and
@@ -178,6 +188,9 @@ func (r *recorder) record(rec DecisionRecord) {
 	}
 	if rec.Fallback != "" {
 		r.stats.ByFallback[rec.Fallback]++
+	}
+	if rec.TimedOut {
+		r.stats.ModelTimeouts++
 	}
 	if rec.Attempted {
 		r.stats.ModelCalls++

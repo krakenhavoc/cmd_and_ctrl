@@ -128,9 +128,9 @@ type Config struct {
 	// bot but nothing would ever play it.
 	Bots BotHost
 
-	// BotDecks is the named-deck catalog the bot picker offers.
-	// aiseat.PlaceholderDecks() until S31 sub-PR 5 lands the curated
-	// archetype decks, at which point main.go swaps this one line.
+	// BotDecks is the named-deck catalog the bot picker offers — the
+	// four curated archetypes (cmd/server's botDeckCatalog) in
+	// production.
 	// Nil means the picker lists no decks and `deck` is refused; the
 	// raw-decklist path still works.
 	BotDecks aiseat.DeckSource
@@ -1149,9 +1149,9 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 // deck a human couldn't upload.
 type addBotRequest struct {
 	// Tier is the policy tier; must be one GET /bot/options reports
-	// as available. "random" is the only one until sub-PRs 6 and 7
-	// land, and an unavailable tier is a 422 rather than a silent
-	// downgrade.
+	// as available on THIS server — which depends on how it is
+	// configured, since the model tiers need a model endpoint. An
+	// unavailable tier is a 422 rather than a silent downgrade.
 	Tier string `json:"tier"`
 	// Deck is a curated-deck ID from GET /bot/options. This is the
 	// player-facing path: pick a tier and a deck and press add.
@@ -1267,12 +1267,21 @@ func botOptions(c Config, w http.ResponseWriter, _ *http.Request) error {
 		for _, t := range c.Bots.Tiers() {
 			offered[t] = true
 		}
+		// …and on why, when it can say. Availability alone tells a
+		// player the tier is off; the reason tells whoever runs the
+		// server how to turn it on.
+		reasons, _ := c.Bots.(BotTierReasons)
 		for i := range out.Tiers {
 			out.Tiers[i].Available = offered[string(out.Tiers[i].Tier)]
+			out.Tiers[i].Reason = ""
+			if !out.Tiers[i].Available && reasons != nil {
+				out.Tiers[i].Reason = reasons.TierReason(string(out.Tiers[i].Tier))
+			}
 		}
 	} else {
 		for i := range out.Tiers {
 			out.Tiers[i].Available = false
+			out.Tiers[i].Reason = "this server has no bot host configured"
 		}
 	}
 	if c.BotDecks != nil {

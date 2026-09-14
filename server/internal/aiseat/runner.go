@@ -167,6 +167,17 @@ func (r *Runner) Done() <-chan struct{} { return r.done }
 // Seat is the seat this runner plays.
 func (r *Runner) Seat() uuid.UUID { return r.seat }
 
+// PolicyName is the name of the policy actually driving this seat —
+// "random", "heuristic", "assisted", "strong".
+//
+// It exists because the one bug this layer cannot otherwise show you
+// is a seat whose tier and whose policy disagree: a seat labelled
+// `heuristic` that is quietly running the random policy plays every
+// window, commits every move, and looks from the table exactly like a
+// bad bot. Nothing in the protocol carries the difference, so the
+// only way to assert it is to ask the runner.
+func (r *Runner) PolicyName() string { return r.policy.Name() }
+
 // Stats snapshots the counters.
 func (r *Runner) Stats() Stats {
 	r.rejMu.Lock()

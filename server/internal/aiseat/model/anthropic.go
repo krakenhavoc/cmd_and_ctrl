@@ -141,17 +141,25 @@ type wireResponse struct {
 	} `json:"error"`
 }
 
-// APIError is a non-2xx reply, kept typed so a log can tell a 401
-// (misconfigured key — a deploy problem) from a 529 (overloaded — a
-// weather problem).
+// APIError is a non-2xx reply from any transport, kept typed so a log
+// can tell a 401 (misconfigured key — a deploy problem) from a 529
+// (overloaded — a weather problem) and, on a local endpoint, a 404
+// (the model id is not one this server serves) from either.
 type APIError struct {
-	Status  int
-	Kind    string
-	Message string
+	// Provider names the transport. Empty means "anthropic", which
+	// keeps the message this type has always printed.
+	Provider string
+	Status   int
+	Kind     string
+	Message  string
 }
 
 func (e *APIError) Error() string {
-	return fmt.Sprintf("anthropic: %d %s: %s", e.Status, e.Kind, e.Message)
+	provider := e.Provider
+	if provider == "" {
+		provider = "anthropic"
+	}
+	return fmt.Sprintf("%s: %d %s: %s", provider, e.Status, e.Kind, e.Message)
 }
 
 // Complete makes one Messages API call.

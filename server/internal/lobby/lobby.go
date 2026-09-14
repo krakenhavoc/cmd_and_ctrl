@@ -119,6 +119,21 @@ type BotHost interface {
 	StopBots(gameID uuid.UUID)
 }
 
+// BotTierReasons is the optional half of BotHost: a host that can say
+// WHY a declared tier is not on offer implements it, and the picker
+// shows the reason instead of an unexplained grey row ("needs a model
+// endpoint" is a thing an operator can act on; a disabled radio
+// button is not). Satisfied by *aiseat.Manager.
+//
+// Optional rather than part of BotHost because the reason is picker
+// copy, not a contract: a host that cannot explain itself still
+// refuses the tier correctly.
+type BotTierReasons interface {
+	// TierReason is the one-line explanation for an unavailable tier,
+	// and empty for an available one.
+	TierReason(tier string) string
+}
+
 // Lobby holds the set of games currently known to the server, keyed
 // by game ID. Safe for concurrent use.
 // StateBroadcaster pushes a captured game view to every WS client
@@ -654,7 +669,16 @@ func (l *Lobby) botStartLocked(entry *gameEntry) func() {
 	var seats []aiseat.SeatSpec
 	for _, seat := range entry.meta.Players {
 		if seat.IsBot {
-			seats = append(seats, aiseat.SeatSpec{PlayerID: seat.PlayerID, Tier: seat.BotTier})
+			// BotDeck travels with the seat: the model tiers build the
+			// static half of their prompt from the curated deck's
+			// list, and the seat is the only place that records which
+			// deck was picked. Empty for a bot seated with a pasted
+			// decklist, which is a thinner prompt and not an error.
+			seats = append(seats, aiseat.SeatSpec{
+				PlayerID: seat.PlayerID,
+				Tier:     seat.BotTier,
+				Deck:     seat.BotDeck,
+			})
 		}
 	}
 	if len(seats) == 0 {

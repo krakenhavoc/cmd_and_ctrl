@@ -23,6 +23,33 @@
 //	CMDCTRL_SEED_DEMO     — if "1", seed a 4-player demo game at startup.
 //	                        Useful for the gamecli dev loop when you want a
 //	                        ready-to-go room without going through the lobby.
+//
+// Bot seats (S31). The `random` and `heuristic` tiers need nothing;
+// `assisted` and `strong` need a model endpoint, and report themselves
+// UNAVAILABLE in the picker until one is configured — a bot labelled
+// `assisted` that is quietly playing the heuristic is the failure the
+// tier system exists to prevent.
+//
+//	CMDCTRL_OPENAI_ENDPOINT    — an OpenAI-compatible /v1/chat/completions
+//	                             server: Ollama, LM Studio, llama.cpp's
+//	                             server, vLLM. e.g. http://localhost:11434
+//	                             Setting this enables the model tiers and
+//	                             takes precedence over the Anthropic key.
+//	CMDCTRL_OPENAI_API_KEY     — optional; most local servers need none.
+//	CMDCTRL_ANTHROPIC_API_KEY  — hosted alternative (falls back to
+//	                             ANTHROPIC_API_KEY). CMDCTRL_ANTHROPIC_ENDPOINT
+//	                             overrides the API URL.
+//	CMDCTRL_BOT_MODEL          — model id for routine windows. REQUIRED for a
+//	                             local endpoint (the served model's name);
+//	                             optional for Anthropic, which has defaults.
+//	CMDCTRL_BOT_FRONTIER_MODEL — model id for escalated windows. Defaults to
+//	                             CMDCTRL_BOT_MODEL: one local model for both
+//	                             slots is a supported configuration.
+//	CMDCTRL_BOT_MAX_THINK      — Go duration; the model tiers' hard think
+//	                             deadline. Default 2s (5s for `strong`) on a
+//	                             hosted model, 20s when a local endpoint is
+//	                             configured, because a model that overruns
+//	                             the deadline plays the heuristic's move.
 package main
 
 import (
@@ -41,6 +68,9 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/decks"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/model"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/tiers"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
@@ -123,6 +153,11 @@ func main() {
 	// broadcast their moves through the hub like any other commit.
 	// Wired BEFORE RestoreFromDisk so a resumed game with a bot seat
 	// gets its runner back rather than hanging on an empty chair.
+	//
+	// The POLICY factory is injected further down, after the card
+	// index has loaded — the model tiers build their prompts from it.
+	// That injection also happens before RestoreFromDisk, so a
+	// resumed `heuristic` seat comes back as a heuristic seat.
 	bots := aiseat.NewManager(hub, log)
 	l.SetBotHost(bots)
 	if len(cfg.AllowedOrigins) > 0 {
@@ -136,6 +171,19 @@ func main() {
 	// This keeps the server bootable on a fresh deployment before
 	// the cron has landed its first dump.
 	cardIdx, imgCache := loadCardAssets(log, cfg.DataDir)
+
+	// The bot policy factory. This is the line that decides which
+	// tiers this deployment can seat: aiseat itself can only build
+	// `random` (every policy package imports it, so it cannot import
+	// them back — see aiseat.PolicyFactory), and aiseat/tiers, which
+	// sits above all of them, can build all four. main is the only
+	// place above both, which is why the wiring is here.
+	//
+	// It runs after the card index because a model tier's prompt
+	// carries its own decklist with oracle text, and before
+	// RestoreFromDisk because a restored bot seat relaunches its
+	// runner and must get the policy its tier names.
+	bots.SetPolicyFactory(botFactory(log, cfg, cardIdx))
 
 	// Restore games that were live when the previous process exited.
 	// This is the read half of persistence — see internal/game/
@@ -341,6 +389,17 @@ type config struct {
 	// separated list for LAN clients reaching the server from a
 	// different host/port than the one it binds on.
 	AllowedOrigins []string
+	// BotMaxThink overrides the hard think deadline the model bot
+	// tiers get (CMDCTRL_BOT_MAX_THINK). Zero takes ADR 0033 §10's
+	// defaults for a hosted model, or a larger one for a self-hosted
+	// endpoint — see botFactory.
+	BotMaxThink time.Duration
+	// BotModel and BotFrontierModel are the model ids the funnel
+	// asks for (CMDCTRL_BOT_MODEL / CMDCTRL_BOT_FRONTIER_MODEL).
+	// Empty keeps the shipped Anthropic defaults; a local endpoint
+	// needs at least BotModel, and the two may name the same model.
+	BotModel         string
+	BotFrontierModel string
 	// Env is the deployment identity from CMDCTRL_ENV. Unset means
 	// production — a forgotten variable fails closed.
 	Env appenv.Env
@@ -364,12 +423,32 @@ func loadConfig(log *slog.Logger) config {
 	}
 
 	c := config{
-		Addr:       envOr("CMDCTRL_ADDR", ":8080"),
-		AdminToken: os.Getenv("CMDCTRL_ADMIN_TOKEN"),
-		SeedDemo:   os.Getenv("CMDCTRL_SEED_DEMO") == "1",
-		SessionTTL: 12 * time.Hour,
-		Env:        env,
-		Features:   appenv.LoadFeatures(env),
+		Addr:             envOr("CMDCTRL_ADDR", ":8080"),
+		AdminToken:       os.Getenv("CMDCTRL_ADMIN_TOKEN"),
+		SeedDemo:         os.Getenv("CMDCTRL_SEED_DEMO") == "1",
+		SessionTTL:       12 * time.Hour,
+		BotModel:         strings.TrimSpace(os.Getenv("CMDCTRL_BOT_MODEL")),
+		BotFrontierModel: strings.TrimSpace(os.Getenv("CMDCTRL_BOT_FRONTIER_MODEL")),
+		Env:              env,
+		Features:         appenv.LoadFeatures(env),
+	}
+
+	// CMDCTRL_BOT_MAX_THINK is a misconfiguration worth failing the
+	// boot over rather than ignoring: a deployment that asked for a
+	// longer bot deadline and silently did not get one produces
+	// heuristic play labelled `assisted`, which is the one outcome
+	// the bot tiers are built to prevent.
+	if raw := os.Getenv("CMDCTRL_BOT_MAX_THINK"); raw != "" {
+		d, err := time.ParseDuration(raw)
+		if err != nil {
+			log.Error("CMDCTRL_BOT_MAX_THINK invalid", "value", raw, "err", err)
+			os.Exit(1)
+		}
+		if d <= 0 {
+			log.Error("CMDCTRL_BOT_MAX_THINK must be positive", "value", raw)
+			os.Exit(1)
+		}
+		c.BotMaxThink = d
 	}
 
 	if raw := os.Getenv("CMDCTRL_SESSION_TTL"); raw != "" {
@@ -417,6 +496,96 @@ func envOr(key, dflt string) string {
 		return v
 	}
 	return dflt
+}
+
+// botModelDefaults are the pacing decisions that depend on WHICH
+// model transport a deployment configured.
+const (
+	// localDefaultMaxThink is the think deadline a self-hosted model
+	// gets when the deployment did not name one. ADR 0033 §10's 2s
+	// was sized for a hosted cheap model; a 7B model on a desktop GPU
+	// misses it on most windows, and a model tier that misses its
+	// deadline every window is Layer B wearing a stronger name. 20s
+	// is slow for a four-player table and honest about what it is.
+	localDefaultMaxThink = 20 * time.Second
+	// localMinSaneMaxThink is the line under which a self-hosted
+	// deployment gets a warning: below this, expect the heuristic.
+	localMinSaneMaxThink = 5 * time.Second
+)
+
+// botFactory builds the policy factory for the bot seats, and logs
+// what this deployment can therefore offer.
+//
+// Transport selection, in order:
+//
+//   - CMDCTRL_OPENAI_ENDPOINT — an OpenAI-compatible /v1/chat/
+//     completions server. This is the local-LLM path (Ollama, LM
+//     Studio, llama.cpp's server, vLLM) and it wins when set,
+//     because naming a specific endpoint is a more deliberate act
+//     than leaving an API key in the environment.
+//   - CMDCTRL_ANTHROPIC_API_KEY (or ANTHROPIC_API_KEY) — the hosted
+//     path.
+//   - neither — `random` and `heuristic` only. Not a broken server:
+//     a smaller one, which says so in the picker.
+func botFactory(log *slog.Logger, cfg config, idx *cards.Index) *tiers.Factory {
+	var client model.Client
+	local := false
+	switch oc, ac := model.NewOpenAIClient(), model.NewAnthropicClient(); {
+	case oc != nil:
+		client, local = oc, true
+		log.Info("bot model transport: OpenAI-compatible (local LLM)", "endpoint", oc.URL(), "authenticated", oc.APIKey != "")
+	case ac != nil:
+		client = ac
+		log.Info("bot model transport: Anthropic")
+	default:
+		log.Info("bot model tiers disabled — set CMDCTRL_OPENAI_ENDPOINT (a local LLM) or CMDCTRL_ANTHROPIC_API_KEY to enable `assisted` and `strong`")
+	}
+
+	maxThink := cfg.BotMaxThink
+	if local && maxThink == 0 {
+		maxThink = localDefaultMaxThink
+		log.Info("bot think deadline raised for the local model transport; set CMDCTRL_BOT_MAX_THINK to choose your own",
+			"max_think", maxThink)
+	}
+	// The silent-downgrade warning. A local model that cannot answer
+	// inside the deadline falls back to the heuristic on EVERY
+	// window, which looks from the table exactly like an `assisted`
+	// bot playing badly. Say it once at boot rather than leave it to
+	// be inferred from a per-window WARN.
+	if local && maxThink > 0 && maxThink < localMinSaneMaxThink {
+		log.Warn("CMDCTRL_BOT_MAX_THINK is short for a self-hosted model; windows that overrun it play the HEURISTIC's move under the model tier's name. Watch for 'bot model call TIMED OUT' lines.",
+			"max_think", maxThink)
+	}
+
+	models := tiers.Models{Routine: cfg.BotModel, Frontier: cfg.BotFrontierModel}
+	if local && models.Routine == "" {
+		log.Warn("no bot model id configured; set CMDCTRL_BOT_MODEL to the id your endpoint serves (e.g. the name you `ollama pull`ed). Until then the Anthropic defaults are sent and the endpoint will answer 404.")
+	}
+	if models.SingleModel() {
+		// Not a misconfiguration — see tiers.Models. Logged so that
+		// an operator reading the metrics knows why the escalation
+		// rate no longer changes which model answered.
+		log.Info("bot funnel is single-model: routine and frontier windows go to the same model; escalation still buys the wider candidate list",
+			"model", models.Routine)
+	}
+
+	f := tiers.NewFactory(tiers.FactoryOptions{
+		Client:   client,
+		Models:   models,
+		MaxThink: maxThink,
+		DeckProfile: func(deckID string) (model.DeckProfile, bool) {
+			return decks.Profile(idx, deckID)
+		},
+	})
+
+	var available []string
+	for _, t := range aiseat.Tiers() {
+		if st := f.TierStatus(t.Tier); st.Available {
+			available = append(available, string(t.Tier))
+		}
+	}
+	log.Info("bot tiers available", "tiers", available, "decks", len(decks.IDs()))
+	return f
 }
 
 // loadCardAssets boots the card index and image cache from the data

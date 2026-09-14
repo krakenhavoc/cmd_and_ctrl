@@ -363,6 +363,20 @@ func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 	rec.Usage = resp.Usage
 	if cerr != nil {
 		rec.Fallback = FallbackError
+		// A deadline miss is a different operational problem from an
+		// outage or a 500, and on a self-hosted model it is the
+		// LIKELY one: the machine is simply slower than this tier's
+		// MaxThink. It stays under FallbackError — it is still a call
+		// that failed — but it is counted and named separately,
+		// because "your model is too slow, raise the deadline" and
+		// "your endpoint is down" have different fixes and the seat
+		// looks identical from the table either way.
+		if errors.Is(cerr, context.DeadlineExceeded) {
+			rec.TimedOut = true
+			p.cfg.Log.Warn("bot model call TIMED OUT; playing the heuristic's move — the model is slower than this tier's deadline (raise CMDCTRL_BOT_MAX_THINK)",
+				"tier", p.cfg.Tier, "model", profile.ID, "took", rec.ModelLatency, "budget", budget)
+			return finish(base)
+		}
 		p.cfg.Log.Warn("bot model call failed; playing the heuristic's move",
 			"tier", p.cfg.Tier, "model", profile.ID, "took", rec.ModelLatency, "err", cerr)
 		return finish(base)

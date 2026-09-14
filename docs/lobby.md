@@ -283,9 +283,9 @@ answer for every table — so the client fetches it once.
   "enabled": true,
   "tiers": [
     { "tier": "random", "label": "Random", "description": "…", "available": true },
-    { "tier": "heuristic", "label": "Heuristic", "description": "…", "available": false },
-    { "tier": "assisted", "label": "Assisted", "description": "…", "available": false },
-    { "tier": "strong", "label": "Strong", "description": "…", "available": false }
+    { "tier": "heuristic", "label": "Heuristic", "description": "…", "available": true },
+    { "tier": "assisted", "label": "Assisted", "description": "…", "available": false, "reason": "needs a model: set CMDCTRL_OPENAI_ENDPOINT … or CMDCTRL_ANTHROPIC_API_KEY …" },
+    { "tier": "strong", "label": "Strong", "description": "…", "available": false, "reason": "needs a model: …" }
   ],
   "decks": [
     { "id": "izzet-aggro", "name": "Raid and Ransack", "description": "aggro — …", "colors": ["U", "R"], "commander": "Mary Read and Anne Bonny" },
@@ -296,10 +296,24 @@ answer for every table — so the client fetches it once.
 }
 ```
 
-Every declared tier is listed, including the ones no policy has been
-built for yet. `available: false` is what the picker greys out —
-asking for one is a 422, never a silent downgrade to `random`, because
-a bot labelled "strong" that plays at random is worse than no bot.
+Every declared tier is listed, including the ones THIS server cannot
+play. `available: false` is what the picker greys out — asking for one
+is a 422, never a silent downgrade to a weaker tier, because a bot
+labelled "strong" that plays at random is worse than no bot.
+
+Availability is a property of the deployment rather than of the build.
+`random` and `heuristic` need nothing; `assisted` and `strong` call a
+model, and a server with no model endpoint configured reports them
+unavailable with a `reason` naming what to set (`CMDCTRL_OPENAI_ENDPOINT`
+for a local LLM, `CMDCTRL_ANTHROPIC_API_KEY` for the hosted one — see
+the env list in `server/cmd/server/main.go`). `reason` is present only
+on an unavailable tier and is safe to render verbatim.
+
+Reporting them unavailable rather than offering them is deliberate: the
+model tiers are complete policies without a model — they fall back to
+the heuristic on every window — and a seat playing the heuristic under
+the "assisted" label tells the player something false about the game
+they are in.
 
 `enabled` is `false` on a server with no bot host configured; the
 client hides the Add-bot control rather than offering a button that

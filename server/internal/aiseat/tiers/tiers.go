@@ -79,6 +79,13 @@ func (t Tier) NeedsModel() bool { return t == Assisted || t == Strong }
 // MaxThink is the hard deadline ADR 0033 §10 gives this tier: 2s for
 // everything up to `assisted`, 5s for `strong`, which is buying a
 // deeper frontier answer and has to pay for it in wall clock.
+//
+// Those numbers were sized for a HOSTED cheap model. A model running
+// on the deployment's own hardware is routinely slower than either,
+// and a model tier that misses its deadline on every window is Layer
+// B wearing a stronger name — the downgrade aiseat/tier.go forbids.
+// So the deadline is overridable per deployment (Options.MaxThink,
+// from CMDCTRL_BOT_MAX_THINK); this is the default, not a ceiling.
 func (t Tier) MaxThink() time.Duration {
 	if t == Strong {
 		return 5 * time.Second
@@ -89,8 +96,19 @@ func (t Tier) MaxThink() time.Duration {
 // RunnerConfig is the production runner pacing for this tier:
 // DefaultConfig with the tier's own MaxThink.
 func (t Tier) RunnerConfig() aiseat.Config {
+	return t.RunnerConfigWith(0)
+}
+
+// RunnerConfigWith is RunnerConfig with the deployment's own think
+// deadline. Zero, or a value below the tier's default, takes the
+// default: the override exists to give a slow local model MORE room,
+// never to make the table wait less than the tier promises.
+func (t Tier) RunnerConfigWith(maxThink time.Duration) aiseat.Config {
 	cfg := aiseat.DefaultConfig()
 	cfg.MaxThink = t.MaxThink()
+	if t.NeedsModel() && maxThink > cfg.MaxThink {
+		cfg.MaxThink = maxThink
+	}
 	return cfg
 }
 
@@ -109,9 +127,52 @@ type Options struct {
 	Client model.Client
 	// Deck is the static, prompt-cached half of the model prompt.
 	Deck model.DeckProfile
+	// Models overrides the two model ids the funnel asks for. Empty
+	// fields keep the shipped defaults.
+	Models Models
+	// MaxThink overrides the model tiers' hard deadline — see
+	// Tier.MaxThink. Zero takes the tier's default. It also widens
+	// the funnel's per-call budget, because a deadline the call is
+	// not allowed to use is not a deadline that was raised.
+	MaxThink time.Duration
 	// Config overrides the model funnel's tuning. Nil takes the
 	// tier's default.
 	Config *model.Config
+}
+
+// Models names the model ids for the two funnel slots.
+//
+// Pointing BOTH at the same id is a legitimate configuration, not a
+// mistake, and the code treats it as one. The cheap/frontier split is
+// an economy: it exists so that routine windows do not pay frontier
+// prices. A deployment running one local model has no prices to pay
+// and nothing to split, and the escalation still earns its keep —
+// what an escalated window buys there is the wider candidate list and
+// `strong`'s longer think, not a different model.
+type Models struct {
+	// Routine answers the ordinary windows. Empty keeps the default.
+	Routine string
+	// Frontier answers the escalated ones. Empty falls back to
+	// Routine when Routine is set, and to the default otherwise.
+	Frontier string
+}
+
+// resolve fills Frontier from Routine, so that setting one id is all
+// a single-model deployment has to do.
+func (m Models) resolve() Models {
+	if m.Frontier == "" {
+		m.Frontier = m.Routine
+	}
+	return m
+}
+
+// SingleModel reports whether both slots name the same model — true
+// for the one-local-model deployment. Callers use it to log the
+// collapsed funnel once at boot instead of leaving an operator to
+// wonder why "frontier" and "routine" are the same line.
+func (m Models) SingleModel() bool {
+	r := m.resolve()
+	return r.Routine != "" && r.Routine == r.Frontier
 }
 
 // New builds a policy for the tier.
@@ -141,6 +202,22 @@ func New(t Tier, opt Options) (aiseat.Policy, error) {
 		cfg.Client = opt.Client
 		cfg.Deck = opt.Deck
 		cfg.Meter = opt.Meter
+		if ids := opt.Models.resolve(); ids.Routine != "" {
+			cfg.Routine.ID = ids.Routine
+			cfg.Frontier.ID = ids.Frontier
+		}
+		if think := opt.MaxThink; think > t.MaxThink() {
+			// The runner's deadline moved, so the call budget inside
+			// it has to move too — everything less the reserve the
+			// funnel keeps to come back with Layer B's answer.
+			reserve := cfg.Reserve
+			if reserve <= 0 {
+				reserve = 250 * time.Millisecond
+			}
+			if call := think - reserve; call > cfg.MaxCall {
+				cfg.MaxCall = call
+			}
+		}
 		if cfg.Fallback == nil {
 			cfg.Fallback = heuristic.New()
 		}
