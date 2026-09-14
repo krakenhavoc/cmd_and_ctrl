@@ -270,11 +270,27 @@ func (r *Runner) step(ctx context.Context) bool {
 			return true
 		}
 		if rejects >= r.cfg.MaxConsecutiveRejects {
-			// The board keeps changing under us; stop guessing and
-			// yield priority if we can.
-			if pi := PassIndex(moves); pi >= 0 {
+			// The board keeps changing under us, or the engine will
+			// not take the answer the policy keeps choosing. Stop
+			// guessing: yield priority if we can, and otherwise take
+			// an answer the engine cannot refuse.
+			//
+			// The second branch is the one that matters. A seat that
+			// owes a pending choice is offered that choice's answers
+			// and nothing else, so there is no pass here — and
+			// returning meant sleeping with the prompt still open,
+			// which holds the whole table until someone takes the
+			// seat by hand (#544). A suboptimal legal answer, a
+			// search's "fail to find", is not a good move. It is a
+			// move, and the game continues.
+			switch pi, si := PassIndex(moves), SafeIndex(moves); {
+			case pi >= 0:
 				idx, reason = pi, "forced pass after repeated rejections"
-			} else {
+			case si >= 0:
+				idx, reason = si, "forced always-legal answer after repeated rejections"
+				r.log.Warn("bot forced onto the always-legal answer",
+					"move", moves[si].Label, "rejects", rejects)
+			default:
 				return true
 			}
 		}
