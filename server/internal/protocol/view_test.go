@@ -256,8 +256,11 @@ func TestViewOfCardBattlefieldPosition(t *testing.T) {
 	for _, c := range v.Battlefield.Cards {
 		if c.InstanceID == card.InstanceID.String() {
 			found = true
-			if c.BattleX != 0.3 || c.BattleY != 0.7 {
-				t.Errorf("BattleX/Y: got (%v, %v), want (0.3, 0.7)", c.BattleX, c.BattleY)
+			if c.BattleX == nil || c.BattleY == nil {
+				t.Fatalf("BattleX/Y nil for a positioned battlefield card")
+			}
+			if *c.BattleX != 0.3 || *c.BattleY != 0.7 {
+				t.Errorf("BattleX/Y: got (%v, %v), want (0.3, 0.7)", *c.BattleX, *c.BattleY)
 			}
 		}
 	}
@@ -275,6 +278,94 @@ func TestViewOfCardBattlefieldPosition(t *testing.T) {
 	}
 	if !bytes.Contains(raw, []byte(`"battle_y":0.7`)) {
 		t.Errorf("battle_y not in JSON: %s", raw)
+	}
+}
+
+// TestViewOfCardOriginPositionSurvivesTheWire is #29's regression: a
+// card deliberately stamped at (0, 0) must arrive as (0, 0) rather
+// than as an absent field, which a client is free to read as
+// "unpositioned" and substitute a default for. Before the fix both
+// axes carried omitempty, so the origin vanished from the frame — and
+// the origin is not an exotic input, because SetBattlefieldPosition
+// CLAMPS: every negative and NaN coordinate a client sends lands on
+// exactly 0.
+func TestViewOfCardOriginPositionSurvivesTheWire(t *testing.T) {
+	g := buildActiveGame(t)
+	p := g.Seats[0]
+	_ = g.DrawCard(p.ID)
+	card, _ := p.Hand.Top()
+	_ = g.PlayCard(p.ID, card.InstanceID)
+	if err := g.SetBattlefieldPosition(card.InstanceID, 0, 0); err != nil {
+		t.Fatalf("SetBattlefieldPosition: %v", err)
+	}
+
+	raw, err := json.Marshal(ViewOfGame(g))
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if !bytes.Contains(raw, []byte(`"battle_x":0`)) {
+		t.Errorf("battle_x absent for an origin stamp: %s", raw)
+	}
+	if !bytes.Contains(raw, []byte(`"battle_y":0`)) {
+		t.Errorf("battle_y absent for an origin stamp: %s", raw)
+	}
+
+	// And it must decode back to a PRESENT origin, not to the nil the
+	// client is entitled to read as "no battlefield position".
+	var back GameView
+	if err := json.Unmarshal(raw, &back); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	var found bool
+	for _, c := range back.Battlefield.Cards {
+		if c.InstanceID == card.InstanceID.String() {
+			found = true
+			if c.BattleX == nil || c.BattleY == nil {
+				t.Fatalf("round-trip dropped an origin stamp to nil")
+			}
+			if *c.BattleX != 0 || *c.BattleY != 0 {
+				t.Errorf("round-trip: got (%v, %v), want (0, 0)", *c.BattleX, *c.BattleY)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("card not on battlefield after round-trip")
+	}
+}
+
+// TestViewOfCardPositionIsBattlefieldOnly pins the other half of #29's
+// contract: absent means "not on the battlefield", so the pair must
+// never appear on a card in hand, library, graveyard or exile. This is
+// what keeps the emission honest AND the frame small — those zones are
+// the bulk of every broadcast and the position is meaningless in them
+// (zone exit clears it).
+func TestViewOfCardPositionIsBattlefieldOnly(t *testing.T) {
+	g := buildActiveGame(t)
+	p := g.Seats[0]
+	_ = g.DrawCard(p.ID)
+
+	v := ViewOfGame(g)
+	for _, seat := range v.Seats {
+		for _, z := range []ZoneView{seat.Library, seat.Hand, seat.Graveyard, seat.Command} {
+			for _, c := range z.Cards {
+				if c.BattleX != nil || c.BattleY != nil {
+					t.Errorf("%s card %s carries a position", z.Kind, c.InstanceID)
+				}
+			}
+		}
+	}
+
+	// Every battlefield card carries the pair, positioned or not.
+	card, _ := p.Hand.Top()
+	_ = g.PlayCard(p.ID, card.InstanceID)
+	v = ViewOfGame(g)
+	if len(v.Battlefield.Cards) == 0 {
+		t.Fatalf("battlefield empty")
+	}
+	for _, c := range v.Battlefield.Cards {
+		if c.BattleX == nil || c.BattleY == nil {
+			t.Errorf("battlefield card %s missing its position pair", c.InstanceID)
+		}
 	}
 }
 

@@ -701,13 +701,37 @@ type CardView struct {
 	// legal-target stamp can look the TargetSpec up. Added in S20.
 	oracleID string
 	// BattleX, BattleY are the normalised battlefield position in
-	// [0, 1]. Emitted only for cards on the battlefield (other zones
-	// clear them to zero on exit); clients should ignore these fields
-	// outside the battlefield zone. omitempty drops them for cards that
-	// have never been positioned (e.g. just-played cards waiting for a
-	// drag-release).
-	BattleX float64 `json:"battle_x,omitempty"`
-	BattleY float64 `json:"battle_y,omitempty"`
+	// [0, 1] stamped by the `set_battlefield_position` action.
+	//
+	// Pointers, and set by viewOfZone for the BATTLEFIELD ZONE ONLY
+	// (#29). Absent therefore means exactly one thing — "this card is
+	// not on the battlefield" — and never "this card is at the
+	// origin". Previously both were plain float64 with omitempty,
+	// which dropped the pair whenever it was (0, 0) and so conflated
+	// a card stamped at the origin with one that had never been
+	// positioned. That origin is not an exotic input:
+	// SetBattlefieldPosition CLAMPS rather than rejects, so every
+	// negative and NaN coordinate a client sends lands on exactly 0,
+	// and x=0 is "first in the row" for the client's within-row sort —
+	// the single most useful slot to be able to name.
+	//
+	// Scoping the emission to the battlefield rather than simply
+	// dropping omitempty is what keeps the frame small. Off the
+	// battlefield the pair is meaningless by construction (zone exit
+	// clears it, see game/zone.go), and those zones are most of the
+	// frame: a redacted library card is four keys, so always emitting
+	// would have grown the bulk of every broadcast by ~20% to say
+	// "(0, 0)" about cards that have no position at all.
+	//
+	// Note this makes the wire honest, not more expressive. game.Card
+	// has no "positioned" flag, so "on the battlefield but never
+	// positioned" is not a state the server can distinguish from
+	// (0, 0) in the first place — every battlefield card carries the
+	// pair and unpositioned ones read (0, 0). Giving that its own
+	// representation means adding real state to game.Card, which
+	// waits on the within-row reorder UX being designed (#30, #35).
+	BattleX *float64 `json:"battle_x,omitempty"`
+	BattleY *float64 `json:"battle_y,omitempty"`
 	// AttackingTarget is the ID this card is currently declared to
 	// attack, or omitted if not declared. Cleared on zone exit and by
 	// clear_combat. Added in S08.
@@ -2131,8 +2155,20 @@ func viewOfZone(z *game.Zone) ZoneView {
 		return ZoneView{}
 	}
 	cards := make([]CardView, len(z.Cards))
+	onBattlefield := z.Kind == game.ZoneBattlefield
 	for i, c := range z.Cards {
 		cards[i] = viewOfCard(c)
+		// #29: the position pair is battlefield-only, and on the
+		// battlefield it is ALWAYS sent — including (0, 0), which is
+		// both a legitimate stamp (the clamp lands every negative and
+		// NaN input there) and the default for a permanent nobody has
+		// positioned. Taking the address of the loop-local copy is
+		// safe under Go 1.22+ per-iteration scoping, and each CardView
+		// gets its own pair rather than aliasing its neighbours'.
+		if onBattlefield {
+			x, y := c.BattleX, c.BattleY
+			cards[i].BattleX, cards[i].BattleY = &x, &y
+		}
 	}
 	owner := ""
 	if !z.IsShared() {
@@ -2482,13 +2518,15 @@ func viewOfCard(c game.Card) CardView {
 		// renders. Prior code sent eff.Power / eff.Toughness only,
 		// which missed counter deltas — the on-card P/T pip would
 		// stay at printed even after +1/+1 counters landed.
-		Power:         c.CurrentPower(),
-		Toughness:     c.CurrentToughness(),
-		Tapped:        c.Tapped,
-		Counters:      counters,
-		IsCommander:   c.IsCommander,
-		BattleX:       c.BattleX,
-		BattleY:       c.BattleY,
+		Power:       c.CurrentPower(),
+		Toughness:   c.CurrentToughness(),
+		Tapped:      c.Tapped,
+		Counters:    counters,
+		IsCommander: c.IsCommander,
+		// BattleX / BattleY are deliberately NOT stamped here: they
+		// are battlefield-only, and viewOfCard has no idea which zone
+		// it is projecting. viewOfZone fills them in for the
+		// battlefield and leaves them nil everywhere else (#29).
 		DamageMarked:  c.DamageMarked,
 		FaceDown:      c.FaceDown,
 		Auto:          game.IsAutoCard(game.CatalogKey(c)),

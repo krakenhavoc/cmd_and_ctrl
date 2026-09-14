@@ -29,6 +29,7 @@
     impulseGrantFor,
   } from "../../zoneBrowser.logic";
   import type { CastSourceZone } from "../../targeting";
+  import ModalLayer from "../ModalLayer.svelte";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -179,6 +180,8 @@
 </script>
 
 <svelte:window on:keydown={onKey} />
+
+<ModalLayer />
 
 <div
   class="prompt-backdrop"

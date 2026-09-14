@@ -204,8 +204,13 @@ without the restriction would be a strictly stronger card.
 controller-change effect with end-of-turn cleanup.
 
 **Type/ability overwrite** — 1 card: Kitesail Larcenist (permanents
-*become* Treasures and lose all abilities). Layer 4 + 6 plus a new
-ability-removal shape.
+*become* Treasures and lose all abilities). The ability-removal shape
+this called for now exists — S24 shipped `LoseAllAbilities` and made
+layer 6 authoritative over the `Catalog*` hooks, for Darksteel
+Mutation and friends. What is still missing here is the rest of the
+card: a per-opponent "choose up to one" prompt, and a static whose
+duration is "for as long as you control this creature" rather than
+the lifetime of a permanent or the end of a turn.
 
 **Graveyard provenance** — 1 card: Ghost of Ramirez DePietro, which
 cares whether a card "was discarded or put there from a library this

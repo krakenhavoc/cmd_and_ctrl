@@ -414,7 +414,7 @@
       class="ibtn"
       title="settings (press , from anywhere)"
       aria-label="open settings"
-      onclick={openSettings}><Icon name="gear" size={17} /></button
+      onclick={() => openSettings()}><Icon name="gear" size={17} /></button
     >
     <button class="ghost" onclick={logout}>log out</button>
   </header>

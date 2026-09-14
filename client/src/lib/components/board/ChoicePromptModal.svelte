@@ -20,6 +20,7 @@
     ReplacementOptionView,
   } from "../../protocol";
   import Card from "./Card.svelte";
+  import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
     snap: GameView;
@@ -563,6 +564,7 @@
 </script>
 
 {#if open && active}
+  <ModalLayer />
   <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="choice-title">
     <div class="prompt-modal">
       {#if isLookAtTop}

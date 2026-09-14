@@ -40,6 +40,27 @@ type Characteristic struct {
 	Abilities  []string
 	Name       string
 
+	// AbilitiesRemoved records that a CR 613.1f ability-removing
+	// continuous effect ("loses all abilities", "is a colorless
+	// Forest land") applied to this object in layer 6.
+	//
+	// It is NOT derivable from `Abilities` being empty. That slice
+	// holds keywords, and a vanilla bear has none of those while
+	// still having every activated, triggered, mana and static
+	// ability its card prints. The engine reads printed abilities
+	// out of the catalog at USE time through the Catalog* hooks, so
+	// the layer engine needs somewhere to say "stop asking" — this
+	// is that place, and game.CatalogAbilityKey is the accessor that
+	// reads it.
+	//
+	// Timestamps (CR 613.6) do not need a second field. Printed
+	// abilities are part of the object and are removed by any
+	// removal effect that applies to it, whenever either arrived;
+	// granted KEYWORDS ride in `Abilities` and are governed by the
+	// layer-6 bucket's timestamp sort, which clears the slice in the
+	// removal's slot and lets a later grant append after it.
+	AbilitiesRemoved bool
+
 	// Controller is the post-layer-2 controller (CR 613.1b). It is
 	// the one field here that is NOT a characteristic in the CR 109.3
 	// sense — control is a property of the object, not of its

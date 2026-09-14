@@ -12,6 +12,7 @@
   // figure out overflow / flip-to-top-if-near-edge itself.
 
   import type { ActivatedAbilityView, ManaAbilityView } from "../../protocol";
+  import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
     abilities: ManaAbilityView[];
@@ -100,6 +101,8 @@
 </script>
 
 <svelte:window onkeydown={onKey} />
+
+<ModalLayer />
 
 <div class="mana-menu" role="menu" aria-label="abilities">
   {#each abilities as a (a.index)}

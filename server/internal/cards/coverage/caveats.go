@@ -234,6 +234,30 @@ var mechanics = []Mechanic{
 		Adopt:      `CastableZones: []game.ZoneKind{game.ZoneGraveyard}`,
 	},
 	{
+		// S24: "loses all abilities" was a declared machinery gap on
+		// #76 until the layer-6 removal reached the Catalog* hooks.
+		// The probe is exact because the removal is a DECLARATION on
+		// the static (game.StaticAbility.RemovesAbilities) rather
+		// than something an opaque Apply closure does — which is
+		// itself half of why the field exists.
+		Name: "loses all abilities",
+		Phrases: []string{
+			"loses all abilities", "lose all abilities",
+			"loses its abilities", "loses all its abilities",
+		},
+		Implements: func(s effects.Spec) bool {
+			for _, ab := range game.CatalogStaticAbilities(s.OracleID) {
+				if ab.RemovesAbilities {
+					return true
+				}
+			}
+			return false
+		},
+		Evidence:   "the spec declares a layer-6 static with RemovesAbilities",
+		Confidence: Exact,
+		Adopt:      `Static: []game.StaticAbility{LoseAllAbilities()} — see effects/attachments.go`,
+	},
+	{
 		// The heuristic one, and the reason Confidence exists.
 		//
 		// Surveil is not in the engine at the time of writing: there
