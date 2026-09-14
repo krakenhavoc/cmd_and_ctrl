@@ -48,6 +48,9 @@ func init() {
 		// supertype is printed type-line data the engine carries
 		// unchanged, so nothing here needs to know about it.
 		{"983739cd-0b36-40d9-9a03-7b6aa7ffd0df", "Rimewood Falls", "G", "U"},
+		// Roadmap batch 30 (#393): Kaldheim's Snow Land — Swamp Forest,
+		// the same cycle as Rimewood Falls.
+		{"bf5482b6-dd3e-4fb7-bc62-29e23b417a5f", "Woodland Chasm", "B", "G"},
 	} {
 		Register(Spec{
 			OracleID:      land.oracleID,
