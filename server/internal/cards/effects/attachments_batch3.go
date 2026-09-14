@@ -221,10 +221,12 @@ func otherEnchantmentsOnTheBattlefield(g *game.Game, source *game.Card) int {
 //     afterwards if control of the creature changes, and then the
 //     rule that matters is the creature's.
 //
-// The trigger's own controller is still the Equipment's controller —
-// NewTriggeredItem keys on the source permanent — so in the divergent
-// case the wrong player is offered the "counter it unless they pay"
-// stack object. That is a corner behind two control changes and it is
+// The PAYER is always the spell's controller (ev.Actor), so the
+// payment half is right in every case. What is approximated is the
+// trigger's own CONTROLLER: NewTriggeredItem keys on the source
+// permanent, so the stack object belongs to the Equipment's
+// controller rather than the host's. That only shows up in trigger
+// ordering, behind a control change that separated the two, and it is
 // noted rather than modelled.
 func WardAttached(cost WardCost, label string) game.TriggeredAbility {
 	return game.TriggeredAbility{
