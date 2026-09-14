@@ -1972,6 +1972,14 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	if !pw.IsPlaneswalker() {
 		return ErrNotAPlaneswalker
 	}
+	// CR 606.1 again, from the other side: a loyalty ability IS an
+	// activated ability, so "its activated abilities can't be
+	// activated" stops one. Faith's Fetters enchants a permanent,
+	// not a creature, and a Fettered planeswalker is the case that
+	// makes that clause worth having. S24; see restrictions.go.
+	if !CanActivateAbilities(pw) {
+		return ErrCantActivate
+	}
 	if pw.Controller != playerID {
 		return ErrCardCallerMismatch
 	}
@@ -3271,6 +3279,14 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// fallback second. A catalog spec with ManaAbilities overrides
 	// the synthetic path wholesale (Dryad Arbor, if it ever lands,
 	// would declare its own; basic Forest just uses the synthetic).
+	// CR 602.5a: an effect that stops this permanent's activated
+	// abilities being activated stops its mana abilities too, when
+	// it says so. Arrest does; Faith's Fetters explicitly does not
+	// ("unless they're mana abilities"), which is why the two are
+	// separate bits — see restrictions.go.
+	if !CanActivateManaAbilities(card) {
+		return ErrCantActivate
+	}
 	abilities := ManaAbilitiesForCard(*card)
 	if abilityIdx < 0 || abilityIdx >= len(abilities) {
 		return ErrInvalidParam
@@ -4010,6 +4026,16 @@ func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
 			if HasSummoningSickness(card) {
 				return ErrSummoningSick
 			}
+			// CR 508.1c: a creature under a "can't attack"
+			// restriction may not be declared, and unlike the
+			// tapped / already-declared checks this one is NOT
+			// relaxed for the sandbox's hand-forcing. An effect that
+			// says a creature can't attack is the card doing its
+			// whole job; a verb that shrugged it off would make
+			// Pacifism a blank. See restrictions.go.
+			if !CanAttack(card) {
+				return ErrCantAttack
+			}
 			// S22: a creature is declared as an attacker once (CR
 			// 508.1). The sandbox additionally lets a player re-point
 			// an already-attacking creature at a different defender;
@@ -4088,8 +4114,9 @@ type AttackDeclaration struct {
 // A bulk "attack with everything" must never turn one ineligible
 // creature into a failed alpha strike, so entries that are unknown,
 // not creatures, tapped, summoning-sick (CR 302.1), defenders
-// (CR 702.3), already declared this combat, or pointed at a
-// nonexistent / eliminated / self seat are skipped without error.
+// (CR 702.3), under a "can't attack" restriction (CR 508.1c),
+// already declared this combat, or pointed at a nonexistent /
+// eliminated / self seat are skipped without error.
 // Callers that need the lax behaviour keep using DeclareAttacker.
 //
 // Returns the instance IDs actually declared, in submission order.
@@ -4124,7 +4151,18 @@ func (g *Game) DeclareAttackers(decls []AttackDeclaration) ([]uuid.UUID, error) 
 
 	for _, d := range decls {
 		card := findBattlefieldCard(g, d.Attacker)
-		if card == nil || !card.IsCreature() {
+		if card == nil {
+			continue
+		}
+		// S24: the whole attacker-side eligibility list — creature,
+		// untapped, not already declared, no defender, not summoning
+		// sick, no "can't attack" restriction — is AttackerEligible,
+		// and internal/legal's enumerator calls the same function.
+		// It used to be spelled out here and spelled out again over
+		// there, which is the shape #544 wedged a table with. `seat`
+		// is the card's own controller because authorization is
+		// enforced one layer up in actions.Dispatch.
+		if !AttackerEligible(card, card.Controller) {
 			continue
 		}
 		// S27: the target may be a player, a planeswalker or a
@@ -4133,15 +4171,6 @@ func (g *Game) DeclareAttackers(decls []AttackDeclaration) ([]uuid.UUID, error) 
 		// which is what the bare controller comparison used to cover
 		// for the player-only case.
 		if g.canAttackTargetLocked(card.Controller, d.Target) != nil {
-			continue
-		}
-		// A card already declared this combat keeps the target its
-		// controller picked — re-pointing is a correction, which stays
-		// on the single-card verb.
-		if card.AttackingTarget != uuid.Nil {
-			continue
-		}
-		if card.Tapped || HasKeyword(card, "defender") || HasSummoningSickness(card) {
 			continue
 		}
 		card.AttackingTarget = d.Target

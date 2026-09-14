@@ -439,11 +439,22 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
   const tapped = !!card.tapped;
   const sick = !!card.summoning_sick;
   const loyalty: LoyaltyContext = { card, view, viewerID };
+  // S24: "its activated abilities can't be activated" (Arrest,
+  // Faith's Fetters). Read off the wire, not derived — the server
+  // refuses these activations outright, and a row that opens a
+  // rejection toast is worse than a row that says why. Faith's
+  // Fetters spares mana abilities, which is why the two bits are
+  // checked separately rather than as one "restricted" flag.
+  const restrictions = card.restrictions ?? [];
+  const restricted = restrictions.includes("cant_activate") ? "an effect stops its abilities" : "";
+  const manaRestricted = restrictions.includes("cant_activate_mana")
+    ? "an effect stops its abilities"
+    : "";
   const items: MenuItem[] = [];
   for (const a of card.mana_abilities ?? []) {
     // Mana abilities never carry a loyalty cost, so the context is
     // inert for them — passed anyway to keep one call shape.
-    const blocked = abilityBlocked(a, tapped, sick, loyalty);
+    const blocked = manaRestricted || abilityBlocked(a, tapped, sick, loyalty);
     items.push({
       id: `mana-${a.index}`,
       label: a.label || a.produced || "add mana",
@@ -453,7 +464,7 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
     });
   }
   for (const a of card.activated_abilities ?? []) {
-    const blocked = abilityBlocked(a, tapped, sick, loyalty);
+    const blocked = restricted || abilityBlocked(a, tapped, sick, loyalty);
     items.push({
       id: `ability-${a.index}`,
       label: a.label || "activate",

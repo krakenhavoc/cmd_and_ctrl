@@ -856,6 +856,47 @@ write flying/trample/deathtouch logic in the card file. The combat
 engine reads `HasKeyword(card, "flying")` and routes accordingly.
 Card files declare the strings; the engine does the rest.
 
+### Adding a "can't" card (S24+)
+
+"Can't attack or block" (Pacifism), "can't be blocked" (Whispersilk
+Cloak), "this creature can't block" (Carrion Feeder) and "its
+activated abilities can't be activated" (Arrest, Faith's Fetters) are
+**not keyword grants** — do not append a string to
+`Characteristic.Abilities` for them. They are bits in
+`game.Restriction`, written into `Characteristic.Restrictions` by one
+of three primitives:
+
+```go
+Static: []game.StaticAbility{
+    RestrictAttached(game.CantAttackOrBlock),    // an Aura / Equipment, on its host
+    RestrictSelf(game.CantBlock),                // printed on the permanent itself
+},
+// …or, from a spell or an activated ability's Effect:
+RestrictUntilEOT{Target: id, Restrictions: game.CantBeBlocked}.Apply(ctx)
+```
+
+Five bits: `CantAttack`, `CantBlock`, `CantBeBlocked`, `CantActivate`,
+`CantActivateMana` (plus `CantAttackOrBlock` for the common pair).
+The activation pair is split because Faith's Fetters says "unless
+they're mana abilities" and Arrest does not.
+
+**The engine reads them; you do not.** Declarations go through
+`game.AttackerEligible` and `game.CanBlock`, activations through
+`game.CanActivateAbilities` / `CanActivateManaAbilities`, and
+`internal/legal` calls the same functions — that shared predicate is
+the whole reason a bot is never offered a move the engine refuses
+(#544). If you add a bit, add its gate AND its enumerator site in the
+same PR, and assert `dispatchAll` over the enumerated moves.
+
+Restrictions are checked **at declaration only** (CR 508.1c, 509.1b).
+A creature pacified after attackers were declared keeps attacking.
+
+[ADR 0045](docs/decisions/0045-combat-restrictions.md) has the
+taxonomy, including what the vocabulary deliberately cannot say
+(Propaganda's attack cost; Silent Arbiter's and Crawlspace's count
+limits, which belong beside `BlockerCountValid` as set-shaped
+predicates rather than as bits).
+
 ### Adding a triggered ability (S19+)
 
 Triggered abilities ("when ~ enters", "when ~ dies", "at the

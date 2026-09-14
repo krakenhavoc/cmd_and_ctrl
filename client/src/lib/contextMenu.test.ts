@@ -309,6 +309,43 @@ describe("buildMenuSections — battlefield", () => {
     expect(itemById(sections, "mana-0")?.disabled).toBe(true);
     expect(itemById(sections, "mana-0")?.hint).toBe("summoning sickness");
   });
+
+  // --- S24 restrictions --------------------------------------------
+  //
+  // "Its activated abilities can't be activated" (Arrest, Faith's
+  // Fetters). The server refuses these activations outright, so the
+  // row has to say so rather than open a rejection toast. As with
+  // summoning sickness, the client READS the server's answer and
+  // derives nothing.
+  it("greys every ability of an Arrested permanent", () => {
+    const arrested = card("c9", "a", {
+      type_line: "Creature — Bird",
+      restrictions: ["cant_attack", "cant_block", "cant_activate", "cant_activate_mana"],
+      mana_abilities: [{ index: 0, label: "{T}: Add {G}", tap_cost: true }],
+      activated_abilities: [{ index: 0, label: "{2}: Draw a card" }],
+    });
+    const v2 = view([seat("a", "Alice")], { battlefield: [arrested] });
+    const sections = buildMenuSections(v2, arrested, "a", false);
+    expect(itemById(sections, "mana-0")?.disabled).toBe(true);
+    expect(itemById(sections, "ability-0")?.disabled).toBe(true);
+    expect(itemById(sections, "ability-0")?.hint).toBe("an effect stops its abilities");
+  });
+
+  // Faith's Fetters prints "unless they're mana abilities", and the
+  // difference is visible on the menu: one row greys, the other does
+  // not. A single "restricted" flag would have lost this.
+  it("leaves the mana ability of a Fettered permanent alone", () => {
+    const fettered = card("c10", "a", {
+      type_line: "Land",
+      restrictions: ["cant_attack", "cant_block", "cant_activate"],
+      mana_abilities: [{ index: 0, label: "{T}: Add {C}", tap_cost: true }],
+      activated_abilities: [{ index: 0, label: "{4}, {T}: Target creature can't be blocked" }],
+    });
+    const v2 = view([seat("a", "Alice")], { battlefield: [fettered] });
+    const sections = buildMenuSections(v2, fettered, "a", false);
+    expect(itemById(sections, "mana-0")?.disabled).toBe(false);
+    expect(itemById(sections, "ability-0")?.disabled).toBe(true);
+  });
 });
 
 describe("buildMenuSections — combat", () => {
