@@ -1341,6 +1341,53 @@ optional triggers, `answerLatestTriggerPrompt` then
 then `passPriorityAroundTable`. See the S19 sections of
 [cards_test.go](server/internal/cards/effects/cards_test.go).
 
+### Untapping in another player's untap step (#74)
+
+"Untap all permanents you control during each other player's untap
+step" (Seedborn Muse, Unwinding Clock, Drumbellower, Bender's
+Waterskin, Quest for Renewal's second clause) is **not a trigger**,
+and writing it as one is the mistake this field exists to prevent.
+The untap step grants no priority (CR 502.4): nothing is announced,
+nothing goes on the stack and there is nothing to respond to. The
+clause widens the untap step's TURN-BASED ACTION — CR 502.1's "the
+active player determines which permanents they control untap".
+
+So it goes on `Spec.UntapStep []game.UntapStepPermission`, with the
+constructors in
+[untap_step.go](server/internal/cards/effects/untap_step.go):
+
+```go
+UntapStep: []game.UntapStepPermission{
+    untapDuringEachOtherPlayersUntapStep(
+        "Unwinding Clock — untap all artifacts you control",
+        func(c game.Card) bool { return c.IsArtifact() }),
+},
+```
+
+`AppliesTo` picks the STEP (every printed card in the family is
+"each other player's", i.e. `activePlayer != source.Controller`, and
+an intervening condition like Quest for Renewal's four quest counters
+goes here too — it is continuous, so it is read at the instant the
+step asks). `Untaps` picks the PERMANENTS, and is consulted only for
+ones that are actually tapped.
+
+Two things to know when you touch the untap path at all:
+
+- **Every untap goes through one primitive**
+  (`Game.untapPermanentLocked`, `server/internal/game/untap.go`) and
+  emits `EventUntapCard` — that is what makes Mesmeric Orb's
+  "whenever a permanent becomes untapped" writable, and it must stay
+  the only way `Tapped` goes false for a permanent on the
+  battlefield. `MoveCard`'s battlefield-exit cleanup is not an untap
+  (the card is no longer a permanent) and deliberately keeps its own
+  write.
+- **Untapping and summoning sickness are different questions.** The
+  untap step clears `SummonedThisTurn` for the ACTIVE seat's
+  permanents (CR 302.6 is about whose turn it is); a Seedborn Muse
+  untap on somebody else's turn unquestionably untaps and just as
+  unquestionably leaves your creatures sick. They were one loop
+  before #74 only because the two sets were the same set.
+
 ### Adding a creature-type card (S26+)
 
 Tribal cards come in three shapes, and the shared builders live in

@@ -1825,7 +1825,7 @@ Still open, each blocked on something specific rather than on time:
 - **Sylvan Library** — needs a repeated per-card "pay 4 life or put it back" prompt; the choice queue has no prompt-after-a-prompt composition. The same gap blocks Ponder's "you may shuffle".
 - **Mystic Remora** — cumulative upkeep.
 - **Soothsaying** and **Helm of Obedience** — `AbilityCost` has no `{X}` component.
-- **Mesmeric Orb** — `untapAllForLocked` does not emit `EventUntapCard`, so the untap step is silent to the trigger system.
+- ~~**Mesmeric Orb**~~ — shipped. `untapAllForLocked` cleared `Tapped` in a bare loop and announced nothing; every untap in the engine now routes through one primitive (`game/untap.go`) that emits `EventUntapCard` for a permanent that was actually tapped. The step-scoped half of the same seam — "untap all permanents you control during each other player's untap step" — landed alongside it as `Spec.UntapStep`, a contribution to the CR 502.1 turn-based action rather than a trigger: Seedborn Muse, Unwinding Clock, Drumbellower and Bender's Waterskin, and Quest for Renewal's untap caveat dropped.
 - **Bruvac the Grandiloquent** — needs a `RepEventMill` replacement kind; `MillToZoneForEffect` moves cards directly and never enters the replacement pipeline the way `drawCardLocked` does.
 - **Psychosis Crawler's P/T goes stale between layer recomputes** — the invalidation list does not include hand-size changes, and two tests in `internal/game` deliberately guard against widening it. Declared on the card.
 

@@ -382,6 +382,38 @@ type Spec struct {
 	// Issue #338.
 	NoMaxHandSize bool
 
+	// UntapStep declares the printed clause "untap <these> during
+	// each other player's untap step" — Seedborn Muse, Unwinding
+	// Clock, Drumbellower, Bender's Waterskin, and the second half
+	// of Quest for Renewal.
+	//
+	// This is deliberately NOT a `Triggered` entry, and the
+	// distinction is the whole point of the field. Nothing about
+	// this clause uses the stack: the untap step grants no priority
+	// (CR 502.4), so there is no announce, no response window and
+	// nothing to counter. It is a modification of the untap step's
+	// TURN-BASED ACTION — CR 502.1's "the active player determines
+	// which permanents they control untap" — and the permission
+	// widens that set.
+	//
+	// Written as a trigger instead, the card fires at the following
+	// upkeep, a step late, on the stack, where a tap effect in
+	// response leaves the permanents tapped. Quest for Renewal
+	// shipped exactly that with a caveat saying so; this field is
+	// what let the caveat go.
+	//
+	// It is also NOT a `Static` entry, for the reason NoMaxHandSize
+	// isn't: game.StaticAbility modifies a CHARACTERISTIC of an
+	// object, and "these permanents untap during that step" is not
+	// one — it changes what a turn-based action does, which has no
+	// layer to sit in. Like NoMaxHandSize, the answer is DERIVED at
+	// the moment the step asks for it, so two Seedborn Muses and one
+	// of them dying need no bookkeeping at all.
+	//
+	// Nil for every card that does not print the clause, which is
+	// nearly all of them. Issue #74.
+	UntapStep []game.UntapStepPermission
+
 	// Completeness declares how faithfully this spec implements the
 	// card as printed — the machine-readable form of the prose
 	// "declared simplification" convention in AGENTS.md §7. See

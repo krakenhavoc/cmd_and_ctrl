@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Quest for Renewal — Enchantment {1}{G} (EDHREC rank 3383):
 //
@@ -18,22 +22,27 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // attacker is not. Tapping for mana, convoking and attacking all
 // count, as printed, and each is its own yes/no prompt.
 //
-// Sandbox simplification, declared (weaker than printed): the untap
-// happens at the beginning of each other player's UPKEEP, as a
-// triggered ability on the stack, rather than during their untap
-// step. The engine's untap step is a turn-based action with no hook a
-// card can add to (Tangle's gap from the other side), and the upkeep
-// is the first moment after it that anything can happen. The four-
-// counter condition is checked when the trigger fires and again as
-// it resolves. The difference is that the untap can be responded to
-// — a tap effect in response leaves the creatures tapped — where the
-// printed untap cannot; never stronger.
+// The untap half was a declared simplification until #74: the engine
+// had no hook a card could add to the untap step's turn-based action,
+// so it shipped as a triggered ability at the following upkeep —
+// a step late, on the stack, where a tap effect in response left the
+// creatures tapped. Spec.UntapStep is that hook, and the clause is
+// now exact: nothing is announced, nothing can respond, and the
+// creatures untap during the other player's untap step.
+//
+// "As long as there are four or more quest counters" is an ordinary
+// continuous condition and belongs inside the permission's AppliesTo
+// rather than beside it. Read at the instant the step asks, it has
+// no announce-to-resolve gap for the count to change across — which
+// is the second thing the trigger version got wrong and had to
+// re-check by hand at both ends.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "cba4ab80-09e8-4868-a082-a9a3bade9571",
 		Name:         "Quest for Renewal",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"With four or more quest counters, your creatures untap at the beginning of each other player's upkeep (as a trigger that can be responded to) rather than during their untap step."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			{
 				Watches: []game.EventKind{game.EventTapCard, game.EventAttack},
@@ -53,15 +62,15 @@ func init() {
 						})
 				},
 			},
-			{
-				Watches: []game.EventKind{game.EventBeginUpkeep},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return b32AnotherPlayersUpkeepBeganWithQuestCounters(ev, source, 4)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b32QuestForRenewalUntapLabel, b32UntapAllCreaturesIfQuestCounters(4))
-				},
-			},
 		},
+		UntapStep: []game.UntapStepPermission{{
+			Label: "Quest for Renewal — untap all creatures you control",
+			AppliesTo: func(g *game.Game, source *game.Card, activePlayer uuid.UUID) bool {
+				return source.Counters["quest"] >= 4 && eachOtherPlayersUntapStep(g, source, activePlayer)
+			},
+			Untaps: func(_ *game.Game, source, target *game.Card) bool {
+				return target.Controller == source.Controller && target.IsCreature()
+			},
+		}},
 	})
 }

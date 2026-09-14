@@ -208,15 +208,6 @@ func b32CreatureYouControlBecameTapped(ev game.Event, source *game.Card, g *game
 	return true
 }
 
-// b32AnotherPlayersUpkeepBeganWithQuestCounters is Quest for
-// Renewal's second ability read as a trigger: another player's
-// upkeep began and the enchantment carries `n` or more quest
-// counters. Re-run at resolution by the body.
-func b32AnotherPlayersUpkeepBeganWithQuestCounters(ev game.Event, source *game.Card, n int) bool {
-	return ev.Kind == game.EventBeginUpkeep && ev.Actor != uuid.Nil && ev.Actor != source.Controller &&
-		source.Counters["quest"] >= n
-}
-
 // b32EndStepAndYouGainedLifeThisTurnAtLeast is Angelic Accord's
 // intervening-if at announce: any player's end step began and the
 // source's controller gained `n` or more life this turn. Re-run at
@@ -246,27 +237,6 @@ func b32TokenYouControlAttacked(ev game.Event, source *game.Card, g *game.Game) 
 }
 
 // --- effect bodies -----------------------------------------------
-
-// b32QuestForRenewalUntapLabel is the stack label of Quest for
-// Renewal's untap trigger.
-const b32QuestForRenewalUntapLabel = "Quest for Renewal — untap all creatures you control"
-
-// b32UntapAllCreaturesIfQuestCounters is Quest for Renewal's untap
-// body: with the enchantment still on the battlefield and still
-// carrying `n` or more quest counters, every tapped creature its
-// controller controls untaps.
-func b32UntapAllCreaturesIfQuestCounters(n int) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		if !b09SourceStillOnBattlefield(g, item) {
-			return nil
-		}
-		src, ok := g.LookupCardForEffect(item.SourceCardID)
-		if !ok || src.Counters["quest"] < n {
-			return nil
-		}
-		return b16UntapAllYouControlMatching(NewContext(g, item), item.Controller, func(c game.Card) bool { return c.IsCreature() })
-	}
-}
 
 // b32AngelIfYouGainedLifeThisTurnAtLeast is Angelic Accord's
 // end-step body: the intervening-if re-checked at resolution, then

@@ -753,7 +753,9 @@ func (g *Game) CastTallyFor(playerID uuid.UUID) CastTally {
 // lock.
 //
 // Side effects by step:
-//   - StepUntap (S13): untap all permanents the active seat controls;
+//   - StepUntap (S13): the CR 502 turn-based action — untap the
+//     permanents the active seat controls (plus any an
+//     UntapStepPermission adds) and clear their summoning sickness;
 //     refresh their per-turn undo budget; auto-advance because Untap
 //     grants no priority.
 //   - StepDraw (S13): draw 1 for the active seat, except when the
@@ -889,7 +891,16 @@ func (g *Game) runStepEntryHooksLocked() {
 		}
 		if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
 			g.Seats[g.Turn.ActiveSeat].UndosRemaining = g.UndoLimit
-			g.untapAllForLocked(g.Turn.ActiveSeat)
+			// CR 502.1-502.3, in untap.go: the active seat's
+			// permanents untap and stop being summoning-sick, plus
+			// whatever an UntapStepPermission (Seedborn Muse)
+			// adds. Each untap emits EventUntapCard, so the
+			// harvester sees "whenever a permanent becomes
+			// untapped" here — the triggers it queues wait on
+			// PendingTriggers and go on the stack at the next
+			// priority boundary, which is the upkeep, exactly as
+			// CR 502.4 requires of a step that grants none.
+			g.performUntapStepLocked(g.Turn.ActiveSeat)
 		}
 		// Untap grants no priority; recurse into the next step.
 		g.advanceCursorLocked()

@@ -157,11 +157,14 @@ func theSeriema() cards.Card {
 
 // tyLeeChiBlocker — #339 and #340, the same card and the same ETB
 // reported twice. Flash works (printed keyword, #319's fix). Prowess
-// does not, and neither does the lockdown: untapAllForLocked untaps
-// every card its controller controls with no hook to consult, and
-// #314's TurnScopedStatics is swept at cleanup, so it is both the
-// wrong mechanism and the wrong duration for "for as long as you
-// control Ty Lee".
+// does not, and neither does the lockdown. #74 gave the untap step a
+// hook, but it is the wrong DIRECTION: UntapStepPermission ADDS
+// permanents to CR 502.1's set (Seedborn Muse), and "it doesn't
+// untap during its controller's next untap step" has to remove one.
+// The place for that is untapStepSetLocked, alongside the permission
+// leg. The duration is the other half of the problem: #314's
+// TurnScopedStatics is swept at cleanup, which is the wrong clock for
+// "for as long as you control Ty Lee".
 func tyLeeChiBlocker() cards.Card {
 	return cards.Card{
 		ID:        uuid.New(),
