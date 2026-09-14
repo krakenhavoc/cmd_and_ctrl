@@ -167,7 +167,7 @@ func scenarios() []scenario {
 			// Declare blockers, with the bot defending. Combat
 			// stamps attack targets and block legality onto the view
 			// through their own projection.
-			name: "declare-blockers",
+			name:  "declare-blockers",
 			build: buildBlockersScenario,
 		},
 		{
