@@ -302,7 +302,7 @@
         title={`enchanting ${enchantedPlayer}`}
         aria-label={`enchanting ${enchantedPlayer}`}
       >
-        ⛓ {enchantedPlayer}
+        ENCHANTING {enchantedPlayer}
       </span>
     {/if}
     {#if card.auto}
@@ -352,7 +352,7 @@
         title={`enchanting ${enchantedPlayer}`}
         aria-label={`enchanting ${enchantedPlayer}`}
       >
-        ⛓ {enchantedPlayer}
+        ENCHANTING {enchantedPlayer}
       </span>
     {/if}
     {#if card.auto}
