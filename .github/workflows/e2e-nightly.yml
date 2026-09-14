@@ -69,7 +69,43 @@ jobs:
 
       - name: Bot whole-game tests
         working-directory: server
-        run: go test ./internal/aiseat/... -race -timeout 30m
+        # -skip the twenty-game random run; the step below owns it.
+        # Splitting it out costs a second `go test` invocation and buys
+        # the difference between 24 minutes and 4: one four-bot random
+        # game is ~8s, and ~70s under -race. Twenty of them do not fit
+        # in this step's budget, and buying the race detector for them
+        # is the wrong thing to spend it on — the runner-goroutine
+        # concurrency it would be watching is exercised under -race by
+        # every other whole-game test in this step, including the
+        # default three games of the same random test.
+        run: go test ./internal/aiseat/... -race -timeout 30m -skip TestFourRandomBotsPlayToAWinner
+
+      # S31's four-`random`-bots exit criterion: twenty consecutive
+      # unattended games to a winner, no deadlocks, no illegal actions,
+      # replays captured. Twenty is the sprint's number and it lives
+      # here rather than in a default so the line stays continuously
+      # true instead of being true on the afternoon somebody typed it.
+      #
+      # AISEAT_REPLAY_DIR puts the ws.Room replay JSONL somewhere the
+      # upload step can reach. The test deletes a passing game's replay
+      # immediately — one game is ~390 MiB — so this directory is empty
+      # unless something went wrong, which is why the upload is
+      # if: failure() with if-no-files-found: ignore.
+      - name: Bot random-table soak (20 games, replays captured)
+        working-directory: server
+        env:
+          AISEAT_RANDOM_GAMES: "20"
+          AISEAT_REPLAY_DIR: ${{ github.workspace }}/bot-replays
+        run: go test ./internal/aiseat/ -run TestFourRandomBotsPlayToAWinner -v -timeout 30m
+
+      - name: Upload bot replays
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: bot-replays
+          path: bot-replays/
+          if-no-files-found: ignore
+          retention-days: 14
 
   playwright:
     runs-on: self-hosted
