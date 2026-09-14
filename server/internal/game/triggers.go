@@ -269,7 +269,10 @@ func (g *Game) harvestFromZone(ev Event, z *Zone) {
 	}
 	for i := range z.Cards {
 		card := &z.Cards[i]
-		oracle := CatalogKey(*card)
+		// CatalogAbilityKey: a permanent under a CR 613.1f
+		// ability-removing effect has no triggered abilities to
+		// harvest. Off the battlefield this is CatalogKey exactly.
+		oracle := CatalogAbilityKey(*card)
 		if oracle == "" {
 			continue
 		}
@@ -308,7 +311,7 @@ func (g *Game) harvestCastFromStack(ev Event) {
 		if card.InstanceID != ev.CardID {
 			continue
 		}
-		oracle := CatalogKey(*card)
+		oracle := CatalogAbilityKey(*card)
 		if oracle == "" {
 			return
 		}
@@ -391,6 +394,17 @@ func (g *Game) harvestLTB(ev Event) {
 		return
 	}
 	lki, ok := g.lastKnownBattlefield[ev.CardID]
+	// S24 layer 6: read the removal off the LKI SNAPSHOT, not off the
+	// card. CatalogAbilityKey cannot answer here — the permanent has
+	// already left the battlefield and clearEffectiveCacheLocked has
+	// dropped its layer cache — and CR 603.10 says an LTB trigger is
+	// judged on what the permanent looked like while it was still
+	// there. A creature that died under a Kenrith's Transformation
+	// has no dies-trigger, and that stays true for the beat between
+	// the death and the Aura falling off.
+	if ok && lki.AbilitiesRemoved {
+		return
+	}
 	if !ok {
 		// Missing LKI is a programming error — every battlefield exit
 		// is supposed to stamp the snapshot first. Fall back to the

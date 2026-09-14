@@ -27,10 +27,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // knowers are cleared — the controller does not get to keep seeing it
 // sitting on top of their library, which matches paper: you know
 // it is there, you just cannot read the cards under it.
+//
+// Shipped unreviewed and audited in #74's theme-deck pass, which runs
+// the whole loop — look at three, arrange, tap, draw the arranged
+// card, tuck — and then has Dark Confidant flip the tucked Top
+// straight back for 1 life (blue_draw_deck_smoke_test.go).
 func init() {
 	Register(Spec{
-		OracleID: "13575cf9-65c1-4861-b21e-eb2155e07766",
-		Name:     "Sensei's Divining Top",
+		OracleID:     "13575cf9-65c1-4861-b21e-eb2155e07766",
+		Name:         "Sensei's Divining Top",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
 				Label: "{1}: Look at the top three cards of your library, then put them back in any order.",

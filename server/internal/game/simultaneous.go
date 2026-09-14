@@ -123,7 +123,12 @@ func (g *Game) harvestSimultaneousExitLocked(ev Event) {
 		if findCardOnBattlefield(g, card.InstanceID) >= 0 {
 			continue
 		}
-		oracle := CatalogKey(card)
+		// CatalogAbilityKey, and it answers off the copy the batch
+		// captured while the card was still on the battlefield — so
+		// a creature wiped while under a Kenrith's Transformation
+		// has no dies-trigger here either, for the same CR 603.10
+		// reason harvestLTB reads its snapshot.
+		oracle := CatalogAbilityKey(card)
 		if oracle == "" {
 			continue
 		}

@@ -159,6 +159,116 @@ func RemoveFromAttached(keywords ...string) game.StaticAbility {
 	}
 }
 
+// --- the Auras that change what a permanent IS -------------------
+//
+// Darksteel Mutation, Kenrith's Transformation and Song of the
+// Dryads all say the same sentence in three dialects: the enchanted
+// permanent stops being what it was and becomes something small.
+// Each clause of that sentence is a different CR 613 layer, and the
+// four helpers below are one layer each — declared separately in the
+// card file, in printed order, because a reader of the card file
+// should be able to see which layer each phrase landed in.
+
+// LoseAllAbilities is "loses all abilities" (CR 613.1f) — a layer 6
+// ability REMOVAL, the mirror of GrantToAttached at the whole-card
+// scale rather than the keyword scale.
+//
+// `keep` names keywords the SAME effect grants back in the same
+// breath: Darksteel Mutation's "has indestructible, and it loses all
+// OTHER abilities". They are not a timestamp exception. One
+// continuous effect removes and grants at once, and CR 613.6's
+// later-grant-survives rule is about a DIFFERENT effect with a later
+// timestamp — which works here too, through the layer-6 sort, with
+// no help from this helper: a Rancor attached after the Mutation
+// gives the Insect trample, and one attached before it does not.
+//
+// The engine does the removing. This helper only declares
+// RemovesAbilities and appends the keeps, because the removal has to
+// be visible to the recompute (it drops the silenced permanent's
+// contributions from every other layer) and to
+// game.CatalogAbilityKey (it is what stops the catalogued activated,
+// triggered, mana, static and replacement abilities from answering).
+// Clearing c.Abilities by hand would remove the keyword badges and
+// leave the card fully functional underneath them, which was the
+// exact shape of the gap this closes.
+func LoseAllAbilities(keep ...string) game.StaticAbility {
+	return game.StaticAbility{
+		Layer:            game.Layer6Ability,
+		RemovesAbilities: true,
+		AppliesTo:        AttachedToSource,
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+			for _, kw := range keep {
+				if !keywordSliceContains(c.Abilities, kw) {
+					c.Abilities = append(c.Abilities, kw)
+				}
+			}
+		},
+	}
+}
+
+// SetAttachedTypes is "is an Insect artifact creature" / "is a green
+// Elk creature" / "is a colorless Forest land" — a layer 4 type
+// change that REPLACES rather than adds, which is what "is a"
+// means and what every one of these Auras' reminder text spells out
+// ("It loses all other card types and creature types").
+//
+// Supertypes are deliberately untouched. CR 205.4 supertypes are not
+// card types and not creature types, so a legendary commander under
+// a Darksteel Mutation is still legendary — which is the whole
+// reason the card is a Commander staple and not a worse Pacifism.
+// Nothing here is Mycosynth Lattice's additive shape; use
+// game.Layer4Type directly for that.
+func SetAttachedTypes(types []string, subtypes []string) game.StaticAbility {
+	return game.StaticAbility{
+		Layer:     game.Layer4Type,
+		AppliesTo: AttachedToSource,
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+			c.Types = append([]string(nil), types...)
+			c.Subtypes = append([]string(nil), subtypes...)
+		},
+	}
+}
+
+// SetAttachedColors is "is a GREEN Elk" / "is a COLORLESS Forest
+// land" — a layer 5 colour change, and the first one in the catalog.
+// Layer 5 has been in the engine's bucket order since S16 with
+// nothing to put in it.
+//
+// No arguments means colourless, which is a real answer and not an
+// empty one: Song of the Dryads turning an opposing commander
+// colourless is how it dodges a colour-restricted removal spell.
+func SetAttachedColors(colors ...string) game.StaticAbility {
+	return game.StaticAbility{
+		Layer:     game.Layer5Color,
+		AppliesTo: AttachedToSource,
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+			c.Colors = append([]string(nil), colors...)
+		},
+	}
+}
+
+// SetAttachedBasePT is "with base power and toughness 0/1" — layer
+// 7b, which is where a SET belongs, as opposed to PumpAttached's 7c
+// modify.
+//
+// The sub-layer is the whole difference and it is observable: 7b
+// runs before 7c and before 7d, so a Darksteel Mutation'd creature
+// really is 0/1 plus whatever anthems and +1/+1 counters are on it,
+// rather than 0/1 flat. That is the printed behaviour, and it is
+// what makes putting the Mutation on your own creature with counters
+// on it a real (bad) decision rather than a no-op.
+func SetAttachedBasePT(power, toughness int) game.StaticAbility {
+	return game.StaticAbility{
+		Layer:     game.Layer7PT,
+		SubLayer:  game.SubLayer7B_Set,
+		AppliesTo: AttachedToSource,
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+			c.Power = power
+			c.Toughness = toughness
+		},
+	}
+}
+
 // ControlAttachedBySource is "You control enchanted creature" — the
 // CR 613.1b layer-2 continuous effect that Mind Control is.
 //
@@ -201,10 +311,17 @@ func EnchantCreature(preds ...CardPredicate) *game.TargetSpec {
 }
 
 // EnchantPermanent is the widest enchant clause: "Enchant permanent"
-// (Faith's Fetters). Distinct from EnchantCreature because the CR
-// 704.5n legality re-check runs this very spec every turn — an Aura
-// declared as "enchant creature" falls off a host that stops being
-// one, and an Aura declared this way does not.
+// (Faith's Fetters, Song of the Dryads). Distinct from
+// EnchantCreature because the CR 704.5n legality re-check runs this
+// very spec every turn — an Aura declared as "enchant creature" falls
+// off a host that stops being one, and an Aura declared this way does
+// not.
+//
+// That asymmetry is the whole of Song of the Dryads. Its layer-4
+// change stops the host being a creature, so every Equipment on it
+// unattaches (CR 704.5m) and every "enchant creature" Aura on it goes
+// to the graveyard (CR 704.5n) — and the Song stays, because a land
+// is still a permanent.
 func EnchantPermanent(preds ...CardPredicate) *game.TargetSpec {
 	return TargetPermanent("enchant permanent", preds...)
 }
