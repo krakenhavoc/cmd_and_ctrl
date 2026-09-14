@@ -82,6 +82,29 @@ func (z *Zone) PushBottom(c Card) {
 	z.Cards = append([]Card{c}, z.Cards...)
 }
 
+// InsertFromTop puts a card `depth` cards down from the top: depth 1
+// is the top itself, depth 3 is "third from the top" (Teferi, Hero of
+// Dominaria), and anything deeper than the zone is currently tall
+// lands on the bottom, which is as close to the printed position as
+// the zone can get.
+//
+// depth <= 1 is PushTop, so a caller that has not decided is not a
+// special case.
+func (z *Zone) InsertFromTop(c Card, depth int) {
+	if depth <= 1 {
+		z.PushTop(c)
+		return
+	}
+	idx := len(z.Cards) - (depth - 1)
+	if idx <= 0 {
+		z.PushBottom(c)
+		return
+	}
+	z.Cards = append(z.Cards, Card{})
+	copy(z.Cards[idx+1:], z.Cards[idx:])
+	z.Cards[idx] = c
+}
+
 // PopTop removes and returns the top card.
 func (z *Zone) PopTop() (Card, error) {
 	if len(z.Cards) == 0 {

@@ -30,9 +30,12 @@
     planAttackAll,
     seatLabel,
   } from "../lib/attackAll";
-  import { stackEmpty } from "../lib/timing";
+  import { hasPassMove, stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
-  import { holdPriority, ownsEveryStackItem } from "../lib/holdPriority";
+  import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
+  import { registerShortcutHandlers, setShortcutContext } from "../lib/shortcutRuntime";
+  import { effectiveBindings, formatChord, isMacLike } from "../lib/shortcuts";
+  import ModalLayer from "../lib/components/ModalLayer.svelte";
   import { devFeature } from "../lib/env";
   import { gameWSURL } from "../lib/gameURL";
   import DevDock from "../lib/components/dev/DevDock.svelte";
@@ -725,6 +728,75 @@
     fn();
   }
 
+  // ---- Keyboard shortcuts (ADR 0047) ----
+  //
+  // The single global listener lives at the app shell; this route
+  // publishes what its keys DO and what the seat's situation IS, and
+  // takes both back down on destroy. Nothing about key matching,
+  // typing detection or modal precedence is decided here — see
+  // lib/shortcuts.ts, which is where all of it is unit-tested.
+  //
+  // Every handler is an existing function, not a parallel
+  // implementation: the key and the button fire the same code, so a
+  // fix to one is a fix to both.
+  onMount(() =>
+    registerShortcutHandlers({
+      passPriority,
+      passTurn,
+      undo: () => client.sendAction("undo"),
+      // Availability guarantees exactly one defender here — the
+      // enablement rule refuses to guess between opponents.
+      attackAll: () => {
+        const only = attackPlan.defenders[0];
+        if (only) attackAllAt(only.id);
+      },
+      holdPriority: () => {
+        toggleHoldPriority();
+      },
+      toggleAutopass,
+      toggleGameLog: () => (showGameLog = !showGameLog),
+      drawCard: draw,
+      // Registered so the command bar's speaker icon re-renders; the
+      // shell's fallback toggles the same underlying mute.
+      toggleMute: onToggleMute,
+    }),
+  );
+
+  // Publish the seat's situation on every frame. Each field is a read
+  // of something the server stamped or of local UI state; the
+  // enable / disable decision itself is shortcuts.shortcutAvailability.
+  $effect(() => {
+    setShortcutContext({
+      atTable: !!view && !!viewerID,
+      spectator: isSpectator,
+      replaying,
+      gameOver: gameEnded,
+      eliminated: viewerEliminated,
+      activePlayer: viewerIsActive,
+      // The server's own answer (GameView.legal_moves, ADR 0033 §1).
+      // undefined on a frame that carried no list, which the
+      // availability rule treats as "no information" and stays
+      // permissive about.
+      passLegal: hasPassMove(view),
+      // Admin undo bypasses the caller / budget gates, same as the
+      // ⋯ menu's Undo row.
+      undosRemaining: isAdmin ? null : (viewerSeat?.undos_remaining ?? 0),
+      attackAllEligible: canDeclareAttackers ? attackPlan.eligible.length : 0,
+      attackAllDefenders: canDeclareAttackers ? attackPlan.defenders.length : 0,
+    });
+  });
+
+  // Key hints for the on-screen controls. Rendered from the SAME
+  // binding map the dispatcher uses, so a rebound key updates the
+  // tooltip too and a hint can never advertise a key that does
+  // nothing.
+  const mac = isMacLike();
+  const keys = $derived(effectiveBindings($settings.shortcuts.bindings));
+  function keyHint(chord: string): string {
+    if (!$settings.shortcuts.enabled || !chord) return "";
+    return ` (${formatChord(chord, mac)})`;
+  }
+
   function fmtTime(d: Date): string {
     if (Number.isNaN(d.getTime())) return "";
     const hh = String(d.getHours()).padStart(2, "0");
@@ -760,7 +832,7 @@
         onclick={passTurn}
         disabled={!viewerIsActive}
         title={viewerIsActive
-          ? "skip the rest of your turn"
+          ? `skip the rest of your turn${keyHint(keys.passTurn)}`
           : `${activePlayer?.name ?? "another seat"} is the active player`}
       >
         Pass turn
@@ -773,7 +845,8 @@
         onclick={onToggleMute}
         aria-pressed={muted}
         aria-label={muted ? "unmute sound effects" : "mute sound effects"}
-        title={muted ? "sounds muted — click to unmute" : "sounds on — click to mute"}
+        title={(muted ? "sounds muted — click to unmute" : "sounds on — click to mute") +
+          keyHint(keys.toggleMute)}
       >
         {#if muted}<Icon name="volumeOff" size={17} />{:else}<Icon name="volume" size={17} />{/if}
       </button>
@@ -783,14 +856,14 @@
         class:on={showGameLog}
         aria-pressed={showGameLog}
         aria-label={showGameLog ? "close game log" : "open game log"}
-        title="game log — what has happened at the table"
+        title={`game log — what has happened at the table${keyHint(keys.toggleGameLog)}`}
         onclick={() => (showGameLog = !showGameLog)}><Icon name="scroll" size={17} /></button
       >
       <button
         class="ibtn"
-        title="settings (press , from anywhere)"
+        title={`settings${keyHint(keys.openSettings)}`}
         aria-label="open settings"
-        onclick={openSettings}><Icon name="gear" size={17} /></button
+        onclick={() => openSettings()}><Icon name="gear" size={17} /></button
       >
       <!-- Same reasoning as "Pass turn" above: the Sandbox entries, undo
            and concede all mutate the live game, so the menu is withheld
@@ -807,13 +880,22 @@
             onclick={() => (menuOpen = !menuOpen)}><Icon name="more" size={17} /></button
           >
           {#if menuOpen}
+            <ModalLayer />
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div class="menu-backdrop" onclick={closeMenu}></div>
             <div class="menu" role="menu" aria-label="game actions">
               <div class="menu-h">Sandbox</div>
-              <button class="mi" role="menuitem" onclick={() => viaMenu(draw)}>
+              <button
+                class="mi"
+                role="menuitem"
+                onclick={() => viaMenu(draw)}
+                title={`draw a card${keyHint(keys.drawCard)}`}
+              >
                 <Icon name="draw" size={15} /> Draw a card
+                {#if keyHint(keys.drawCard)}<span class="mi-r"
+                    >{formatChord(keys.drawCard, mac)}</span
+                  >{/if}
               </button>
               <button class="mi" role="menuitem" onclick={() => viaMenu(untapAll)}>
                 <Icon name="untap" size={15} /> Untap all
@@ -838,11 +920,12 @@
                 role="menuitem"
                 onclick={() => viaMenu(() => client.sendAction("undo"))}
                 disabled={!isAdmin && (viewerSeat?.undos_remaining ?? 0) <= 0}
-                title={isAdmin
+                title={(isAdmin
                   ? "rewind the most recent action (admin — bypasses caller / budget gates)"
                   : (viewerSeat?.undos_remaining ?? 0) <= 0
                     ? "no undos remaining this turn (refreshes on your next untap)"
-                    : `undo your most recent action — ${viewerSeat?.undos_remaining ?? 0} left this turn`}
+                    : `undo your most recent action — ${viewerSeat?.undos_remaining ?? 0} left this turn`) +
+                  keyHint(keys.undo)}
               >
                 <Icon name="undo" size={15} /> Undo
                 {#if !isAdmin && viewerSeat}
@@ -912,6 +995,7 @@
       {/if}
     </div>
     {#if concedeConfirm}
+      <ModalLayer />
       <div class="confirm" role="dialog" aria-modal="true" aria-label="concede the game?">
         <div class="confirm-title">Concede the game?</div>
         <p class="confirm-body">
@@ -926,6 +1010,7 @@
       </div>
     {/if}
     {#if showLifeHistory}
+      <ModalLayer />
       <div class="life-history-popover" id="life-history-popover" role="dialog">
         <header class="life-history-header">
           <span>life history — all seats</span>
@@ -973,6 +1058,7 @@
   </header>
 
   {#if viewerNeedsDeck && !deckImportDismissed && viewerID}
+    <ModalLayer />
     <div
       class="prompt-backdrop deck-import-modal-backdrop"
       role="dialog"
@@ -1082,7 +1168,8 @@
                   <button
                     type="button"
                     class="primary att-btn"
-                    title={attackAllLabel(attackPlan, attackPlan.defenders[0])}
+                    title={attackAllLabel(attackPlan, attackPlan.defenders[0]) +
+                      keyHint(keys.attackAll)}
                     onclick={() => attackAllAt(attackPlan.defenders[0].id)}
                   >
                     {attackAllLabel(attackPlan, attackPlan.defenders[0])}
@@ -1228,6 +1315,7 @@
         {/snippet}
       </Board>
       {#if viewerNeedsToDecide}
+        <ModalLayer />
         <div class="mulligan-scrim"></div>
         <div class="mulligan-dialog" role="dialog" aria-label="keep or mulligan your hand">
           <header>

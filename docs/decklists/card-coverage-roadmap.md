@@ -63,19 +63,17 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **1575** |
-| — whole cards (bare `oracle_id`) | **1512** |
-| — back faces (`<oracle_id>#1`) | 63 |
-| Declared `full` | 1103 |
-| Declared `caveats` | 394 |
-| Declared `unreviewed` | 78 |
+| Registry keys (`len(effects.All())`) | **1579** |
+| — whole cards (bare `oracle_id`) | **1519** |
+| — MDFC back faces (`<oracle_id>#1`) | 60 |
+| Declared `full` | 1105 |
+| Declared `caveats` | 395 |
+| Declared `unreviewed` | 79 |
 
-A back face is usually half a card: the modal-DFC land cycle registers
-only its sixty land backs, and those cards are still gap cards on their
-batch issues. The exception is the Sieges, whose fronts are registered
-too — a Siege is one whole card spread over two keys. Whole cards is
-still the number to quote when someone asks how many cards the engine
-automates; it undercounts by the number of Sieges.
+A back face is half a card: the modal-DFC land cycle registers only its
+land back, so all 60 of those cards are still gap cards on their
+batch issues. Whole cards is the number to quote when someone asks how
+many cards the engine automates.
 
 <!-- END GENERATED CATALOG CENSUS -->
 

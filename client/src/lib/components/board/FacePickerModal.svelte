@@ -19,6 +19,7 @@
   import { onDestroy } from "svelte";
   import type { CardView } from "../../protocol";
   import { cardImageURL } from "../../cardImage";
+  import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
     // The card being played; null closes the modal. Only ever
@@ -89,6 +90,7 @@
 </script>
 
 {#if card && faces.length > 1}
+  <ModalLayer />
   <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="face-title">
     <div class="prompt-modal face-modal">
       <h2 id="face-title">

@@ -57,7 +57,13 @@ func SagaFinalChapter(c Card) int {
 	if CatalogTriggers == nil {
 		return 0
 	}
-	key := CatalogKey(c)
+	// CatalogAbilityKey: a Saga under a CR 613.1f ability-removing
+	// effect has no chapter abilities, so it has no final chapter
+	// number — and sagasReadyToSacrificeLocked already declines to
+	// sacrifice a Saga whose final chapter is 0, which is what
+	// CR 714.4 wants for a Saga that has nothing left to count
+	// towards.
+	key := CatalogAbilityKey(c)
 	if key == "" {
 		return 0
 	}

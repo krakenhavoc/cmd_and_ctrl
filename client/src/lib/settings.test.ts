@@ -115,6 +115,73 @@ describe("settings", () => {
     expect(s.display.cardSize).toBe("large");
   });
 
+  it("v9 → v10 seeds the shortcuts section with the keymap enabled and no overrides", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({
+        __version: 9,
+        gameplay: { showBotReasoning: true, adminOverrides: true },
+        display: { cardSize: "small" },
+      }),
+    );
+    const { settings, SETTINGS_VERSION } = await freshModule();
+    const s = get(settings);
+    expect(s.__version).toBe(SETTINGS_VERSION);
+    expect(s.shortcuts.enabled).toBe(true);
+    // No overrides: a v9 user has never expressed an opinion about a
+    // key, so every row resolves against today's default and a future
+    // retune reaches them.
+    expect(s.shortcuts.bindings).toEqual({});
+    // Nothing else moved.
+    expect(s.gameplay.showBotReasoning).toBe(true);
+    expect(s.gameplay.adminOverrides).toBe(true);
+    expect(s.display.cardSize).toBe("small");
+  });
+
+  it("v10 keeps an explicit rebind and an explicit unbind across a load", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({
+        __version: 10,
+        shortcuts: { enabled: false, bindings: { undo: "z", drawCard: "" } },
+      }),
+    );
+    const { settings } = await freshModule();
+    const s = get(settings);
+    expect(s.shortcuts.enabled).toBe(false);
+    expect(s.shortcuts.bindings).toEqual({ undo: "z", drawCard: "" });
+  });
+
+  it("v10 scrubs a hostile or stale bindings blob without dropping the good rows", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({
+        __version: 10,
+        shortcuts: {
+          enabled: true,
+          bindings: {
+            undo: "CTRL+Z", // normalised
+            passPriority: "Escape", // reserved — refused
+            retiredAction: "q", // no such action any more
+            passTurn: "Hyper+k", // unparseable
+            openSettings: ",", // equal to the default — not a choice
+          },
+        },
+      }),
+    );
+    const { settings } = await freshModule();
+    expect(get(settings).shortcuts.bindings).toEqual({ undo: "Ctrl+z" });
+  });
+
+  it("v10 treats a non-object bindings value as no overrides rather than throwing", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 10, shortcuts: { enabled: true, bindings: "nope" } }),
+    );
+    const { settings } = await freshModule();
+    expect(get(settings).shortcuts.bindings).toEqual({});
+  });
+
   it("falls back to defaults when stored blob is corrupt", async () => {
     localStorage.setItem("cmdctrl.settings.v1", "{not valid json");
     const { settings, SETTINGS_VERSION } = await freshModule();

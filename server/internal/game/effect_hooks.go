@@ -414,7 +414,10 @@ func (g *Game) EffectiveMaxHandSizeLocked(p *Player) int {
 		if c.Controller != p.ID || c.OracleID == "" {
 			continue
 		}
-		if CatalogNoMaxHandSize(CatalogKey(*c)) {
+		// CatalogAbilityKey: "you have no maximum hand size" is a
+		// static ability, and a Thought Vessel that has lost all its
+		// abilities gives the cap back.
+		if CatalogNoMaxHandSize(CatalogAbilityKey(*c)) {
 			return NoMaxHandSize
 		}
 	}

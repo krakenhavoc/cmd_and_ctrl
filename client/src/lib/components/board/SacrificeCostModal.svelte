@@ -10,6 +10,7 @@
 
   import { onDestroy } from "svelte";
   import type { CardView } from "../../protocol";
+  import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
     // The ability's source, for the heading.
@@ -59,6 +60,7 @@
 </script>
 
 {#if source}
+  <ModalLayer />
   <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="sac-title">
     <div class="prompt-modal sac-modal">
       <h2 id="sac-title">

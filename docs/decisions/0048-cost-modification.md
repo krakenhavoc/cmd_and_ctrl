@@ -1,4 +1,4 @@
-# ADR 0042 — Cost modification and the free-spell family
+# ADR 0048 — Cost modification and the free-spell family
 
 **Status:** accepted (S28)
 **Extends:** [ADR 0011](0011-mana-pool-and-auto-tapper.md) (the cost

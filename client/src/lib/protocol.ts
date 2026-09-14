@@ -997,9 +997,21 @@ export interface CardView {
   // characteristics (name, type_line, scryfall_id, power, toughness,
   // counters, is_commander) are zero/empty.
   known_by_you?: boolean;
-  // Normalised battlefield position in [0, 1]. Only meaningful for
-  // cards on the battlefield zone; server clears to 0 on exit and
-  // omits the fields for cards that have never been positioned.
+  // Normalised battlefield position in [0, 1], stamped by
+  // `set_battlefield_position`.
+  //
+  // Sent for BATTLEFIELD CARDS ONLY, and for all of them (#29). So
+  // absent means "not on the battlefield", never "at the origin" —
+  // the pair used to be dropped whenever it was (0, 0), which hid a
+  // deliberate origin stamp behind the same absence as a card that
+  // had never been positioned. That matters for the sort in
+  // BattlefieldRow: x=0 is "first in the row", and the server clamps
+  // every out-of-range and NaN coordinate onto exactly 0.
+  //
+  // Still optional on a battlefield card in practice, so keep the
+  // `?? 0` fallbacks: replays and bug-report frames captured before
+  // this change omit the pair, and an unpositioned permanent reads
+  // (0, 0) anyway — the server has no separate "unpositioned" state.
   battle_x?: number;
   battle_y?: number;
   // Player ID this card is currently declared to attack. Omitted
