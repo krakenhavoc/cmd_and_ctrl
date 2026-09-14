@@ -11,13 +11,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // it killed, so the turn after the wipe is the biggest of the game.
 //
 // Not the batched sweep. The Treasure count has to match what
-// ACTUALLY died, and the mass-destroy path does not check
-// indestructible (#446) — through it an Avacyn board would die and
-// pay out, stronger than printed on both counts. Each creature is
-// instead destroyed through the single-permanent verb, which honours
-// indestructible, and counted only if it left the battlefield (a
-// commander tucked away by CR 903.9 was destroyed and counts, as
+// ACTUALLY died, so each creature is destroyed through the
+// single-permanent verb and counted only if it left the battlefield
+// (a commander tucked away by CR 903.9 was destroyed and counts, as
 // Fumigate notes; a token was destroyed and does not, as printed).
+//
+// Half the original reason for that has lapsed: the mass-destroy
+// path did not check indestructible (#446), so through it an Avacyn
+// board would die and pay out, stronger than printed on both counts.
+// S30 (#470) closed that, and DestroyAllMatching now reports only
+// the creatures it really destroyed. What still keeps this loop is
+// the NONTOKEN filter on the count, which the primitive's Then
+// clause would have to re-derive; converting the card is a small
+// follow-up that also retires the simultaneity caveat below.
 //
 // Sandbox simplification: the creatures leave one at a time rather
 // than as one simultaneous event, so a "whenever another creature

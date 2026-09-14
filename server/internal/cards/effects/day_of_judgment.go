@@ -8,8 +8,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "d057289d-5e28-43d5-8ff3-4a1bc723477d",
 		Name:         "Day of Judgment",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
+		Completeness: CompletenessFull,
 		OnResolve:    wrathDestroyAllCreatures,
 	})
 }

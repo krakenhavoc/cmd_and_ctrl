@@ -24,9 +24,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the second clause is a draw for the promisee plus a pick among the
 // controller's creature cards the wipe put into the graveyard.
 //
-// And the catalog-wide one every board wipe carries (#446): the mass
-// destroy path does not consult indestructible, so an indestructible
-// creature dies to this too. Declared until the engine fix lands.
+// The catalog-wide one this used to carry alongside it (#446 — the
+// mass destroy path not consulting indestructible) was the engine
+// gap it said it was, and S30 (#470) landed the fix.
 func init() {
 	Register(Spec{
 		OracleID:     "7024532b-f99b-43a7-b0ed-5b3e7ec7592b",
@@ -34,7 +34,6 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"The gift can't be promised, so the spell only destroys all creatures — it never returns one of yours to the battlefield.",
-			"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it.",
 		},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{Match: Creature()}.Apply(ctx)

@@ -246,6 +246,170 @@ func TestTurnScopedIndestructibleGrantProtectsUntilItExpires(t *testing.T) {
 	}
 }
 
+// --- the mass path (S30, #470 / #446) ----------------------------
+//
+// Everything below covers DestroyPermanentsForEffect, the entry point
+// every board wipe in the catalog reaches. It shipped in S23 and went
+// four sprints destroying indestructible permanents, because the S25
+// gate was installed on the single-target verb only. The cases are
+// split the same way the ones above are: what the guard stops, and —
+// more importantly — what it must still let through.
+
+// TestIndestructibleSurvivesMassDestroyEffect is the bug in #470 and
+// #446, reduced. A Wrath destroys the cardboard and leaves the
+// Darksteel Golem standing, and the returned count — what "for each
+// creature destroyed this way" reads — counts only the one that died.
+func TestIndestructibleSurvivesMassDestroyEffect(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	safe := pushIndestructibleCreature(g, owner, "Darksteel Golem")
+	doomed := pushVanillaGolem(g, owner, "Cardboard Golem")
+
+	var destroyed int
+	g.WithWriteLock(func() {
+		destroyed = g.DestroyPermanentsForEffect([]uuid.UUID{safe, doomed})
+	})
+
+	if !g.Battlefield.Contains(safe) {
+		t.Error("indestructible creature was destroyed by a board wipe (#470 / #446)")
+	}
+	if g.Battlefield.Contains(doomed) {
+		t.Error("plain creature survived a board wipe — control case broken")
+	}
+	if destroyed != 1 {
+		t.Errorf("DestroyPermanentsForEffect returned %d, want 1 — a survivor must not be counted by \"destroyed this way\"", destroyed)
+	}
+}
+
+// TestMassDestroyDoesNotAnnounceAnIndestructibleDeath is the half of
+// the fix that a "skip it inside the loop" patch would have missed.
+//
+// The simultaneity batch is published BEFORE the first move and is
+// what every dies-trigger in the wipe observes (CR 700.4 / 603.10).
+// If the survivor were in it, a Blood Artist would drain for an
+// Avacyn that never left the battlefield — an invisible bug, because
+// the board would still look right afterwards.
+func TestMassDestroyDoesNotAnnounceAnIndestructibleDeath(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	safe := pushIndestructibleCreature(g, owner, "Darksteel Golem")
+	doomed := pushVanillaGolem(g, owner, "Cardboard Golem")
+
+	g.WithWriteLock(func() { g.DestroyPermanentsForEffect([]uuid.UUID{safe, doomed}) })
+
+	for _, ev := range g.Events {
+		if ev.Kind == EventLTB && ev.CardID == safe {
+			t.Fatal("a board wipe emitted a leaves-the-battlefield event for an indestructible permanent that never left")
+		}
+	}
+	var died bool
+	for _, ev := range g.Events {
+		if ev.Kind == EventLTB && ev.CardID == doomed && ev.NewZone == ZoneGraveyard {
+			died = true
+		}
+	}
+	if !died {
+		t.Error("the creature that actually died emitted no dies event — the batch is broken, not just filtered")
+	}
+}
+
+// TestMassDestroySeesAGrantFromTheSameResolutionFrame is Heroic
+// Intervention held up against a Wrath, which is the whole reason
+// anyone plays the card.
+//
+// The grant bumps layerVersion without refreshing `effective`, so
+// without the recompute inside DestructibleForEffect the filter reads
+// a stale characteristic and the board dies anyway. No explicit
+// recompute here on purpose: the destroy path owes us one, exactly as
+// the single-target case above pins.
+func TestMassDestroySeesAGrantFromTheSameResolutionFrame(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	first := pushVanillaGolem(g, owner, "Cardboard Golem")
+	second := pushVanillaGolem(g, owner, "Corrugated Golem")
+
+	var destroyed int
+	g.WithWriteLock(func() {
+		g.RegisterTurnScopedStaticForEffect(StaticAbility{
+			Layer: Layer6Ability,
+			AppliesTo: func(target *Card, _ *Game, _ *Card) bool {
+				return target.Controller == owner.ID
+			},
+			Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
+				c.Abilities = append(c.Abilities, "indestructible")
+			},
+		}, uuid.New(), "test — Heroic Intervention")
+
+		destroyed = g.DestroyPermanentsForEffect([]uuid.UUID{first, second})
+	})
+
+	if !g.Battlefield.Contains(first) || !g.Battlefield.Contains(second) {
+		t.Error("a turn-scoped indestructible grant did not survive a board wipe resolving in the same frame")
+	}
+	if destroyed != 0 {
+		t.Errorf("DestroyPermanentsForEffect returned %d, want 0", destroyed)
+	}
+}
+
+// TestMassDestroyStillKillsWhatIndestructibleDoesNotSave is the
+// negative space, restated at the mass entry point: the filter drops
+// indestructible permanents and NOTHING else. A permanent that is not
+// on the battlefield at all is dropped by the mover, not the filter,
+// and must not be counted either.
+func TestMassDestroyStillKillsWhatIndestructibleDoesNotSave(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	doomed := pushVanillaGolem(g, owner, "Cardboard Golem")
+	absent := uuid.New()
+
+	var destroyed int
+	g.WithWriteLock(func() {
+		destroyed = g.DestroyPermanentsForEffect([]uuid.UUID{doomed, absent})
+	})
+
+	if g.Battlefield.Contains(doomed) {
+		t.Error("plain creature survived a board wipe")
+	}
+	if destroyed != 1 {
+		t.Errorf("DestroyPermanentsForEffect returned %d, want 1 — an id that is not on the battlefield is not a destruction", destroyed)
+	}
+}
+
+// TestSBASweepStillIgnoresIndestructibleForZeroCounterDeaths pins the
+// decision that the filter went on DestroyPermanentsForEffect rather
+// than one level down in destroyPermanentsLocked, which the SBA sweep
+// shares. CR 704.5f and CR 704.5i put a permanent into a graveyard;
+// they do not destroy it, so indestructible is no help, and a filter
+// inside the shared implementation would have protected both.
+//
+// The single-permanent versions of these live above; this one runs
+// them TOGETHER so they go through the batched sweep, which is the
+// code path that was at risk.
+func TestSBASweepStillIgnoresIndestructibleForZeroCounterDeaths(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	shrunk := pushIndestructibleCreature(g, owner, "Darksteel Golem")
+
+	walker := NewCard("Indestructible Walker", owner.ID)
+	walker.TypeLine = "Legendary Planeswalker — Test"
+	walker.Keywords = []string{"indestructible"}
+	walker.Counters = map[string]int{CounterLoyalty: 0}
+	g.Battlefield.PushTop(walker)
+
+	g.WithWriteLock(func() {
+		findBattlefieldCard(g, shrunk).Counters = map[string]int{"-1/-1": 2}
+		g.layerVersion.Add(1)
+		g.runStateChecksLocked()
+	})
+
+	if g.Battlefield.Contains(shrunk) {
+		t.Error("indestructible creature at 0 toughness survived the batched SBA sweep — CR 704.5f is not destruction")
+	}
+	if g.Battlefield.Contains(walker.InstanceID) {
+		t.Error("indestructible planeswalker at 0 loyalty survived the batched SBA sweep — CR 704.5i is not destruction")
+	}
+}
+
 // TestIndestructibleIsACanonicalKeyword guards the invariant stated
 // on `canonicalKeywords`: a token is in that table exactly when the
 // engine honours it. The deck importer filters Scryfall's keyword

@@ -18,7 +18,7 @@ import (
 // resolves, so the whole set leaves as one event and a Blood Artist
 // caught in it sees every death.
 //
-// DECLARED SIMPLIFICATIONS, both weaker than printed:
+// DECLARED SIMPLIFICATION, weaker than printed:
 //
 //   - The number is chosen as the spell is CAST, not as it resolves.
 //     The engine's only "choose a number" prompt is the mode picker,
@@ -27,9 +27,11 @@ import (
 //     over the line, and a shrink can drop one under it — which is
 //     strictly worse for the caster than choosing with the board
 //     in front of them. Never stronger.
-//   - Indestructible is not honoured by the mass-destroy path (#446),
-//     the same declared hole every "destroy all" in the catalog
-//     carries.
+//
+// The second one this file used to declare — indestructible not
+// honoured by the mass-destroy path (#446) — was an engine gap, and
+// S30 (#470) closed it for every "destroy all" in the catalog at
+// once.
 func init() {
 	options := make([]game.ModeOption, 0, 11)
 	for n := 0; n <= 10; n++ {
@@ -41,7 +43,6 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"The number is chosen when the spell is cast, not when it resolves, so opponents know it before they respond.",
-			"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it.",
 		},
 		Modes: ChooseN("Choose a number between 0 and 10", 1, 1, options...),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

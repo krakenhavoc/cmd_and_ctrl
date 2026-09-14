@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Path to Exile that destroys instead, and hands over a tapped basic
 // as the consolation. The destruction is the single-target verb (so
-// indestructible holds, #446), and the search is the S22 chooser
+// indestructible holds), and the search is the S22 chooser
 // aimed at the TARGET'S controller — Path to Exile's shape with the
 // same "may": they can decline the land, and a controller whose
 // library holds no basic searches nothing. The search is offered

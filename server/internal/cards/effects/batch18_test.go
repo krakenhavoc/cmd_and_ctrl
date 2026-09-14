@@ -632,8 +632,10 @@ func TestB18SplitUpDestroysTheTappedOrTheUntappedHalf(t *testing.T) {
 	if g.Battlefield.Contains(untappedMine) || g.Battlefield.Contains(untappedTheirs) {
 		t.Error("mode 1 destroys every untapped creature")
 	}
-	if spec, _ := Lookup(b18SplitUpOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the boardwipe indestructible gap must be declared")
+	// S30 (#470 / #446): the boardwipe indestructible gap this used
+	// to require a declaration for is closed, so the card is Full.
+	if spec, _ := Lookup(b18SplitUpOracle); spec.Completeness != CompletenessFull {
+		t.Error("Split Up implements every clause it prints")
 	}
 }
 

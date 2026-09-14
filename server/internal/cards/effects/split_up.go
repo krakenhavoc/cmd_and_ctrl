@@ -15,14 +15,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // predicate) and Untapped (the tap-cost one), so the two halves are
 // exact complements.
 //
-// Declared, the boardwipe posture (#446): the mass-destroy path does
-// not honour indestructible.
+// No simplifications. The boardwipe posture this used to declare
+// (#446 — the mass-destroy path not honouring indestructible) was an
+// engine gap, closed in S30 (#470).
 func init() {
 	Register(Spec{
 		OracleID:     "2e82520a-9da3-49ae-b5c8-37e7ac8853fe",
 		Name:         "Split Up",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
+		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			Mode("Destroy all tapped creatures."),
 			Mode("Destroy all untapped creatures."),

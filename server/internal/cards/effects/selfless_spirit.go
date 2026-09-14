@@ -38,8 +38,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "71d785a9-ddc8-472e-a778-a551b444a4bd",
 		Name:            "Selfless Spirit",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
 			Label: "Sacrifice this creature: Creatures you control gain indestructible until end of turn.",

@@ -14,16 +14,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // is destroyed as one simultaneous event (b29ReturnZombieCardsTappedThenDestroyHumans).
 // A Zombie Human returns and then dies, as printed.
 //
-// Two sandbox simplifications, declared, both weaker than printed:
+// One sandbox simplification, declared, weaker than printed: the
+// Zombies enter untapped and are tapped a beat later (Splendid
+// Reclamation's posture — ReturnFromGraveyard has no tapped flag), so
+// anything watching for a tap event sees one. Both steps happen
+// inside one resolution, so nothing gets a window in between.
 //
-//   - The Zombies enter untapped and are tapped a beat later
-//     (Splendid Reclamation's posture — ReturnFromGraveyard has no
-//     tapped flag), so anything watching for a tap event sees one.
-//     Both steps happen inside one resolution, so nothing gets a
-//     window in between.
-//   - The mass-destroy path bypasses indestructible (#446), so an
-//     indestructible Human is destroyed where printed it would
-//     survive — the same caveat every "destroy all" card carries.
+// The second one this file used to declare — the mass-destroy path
+// bypassing indestructible (#446), so an indestructible Human died
+// where printed it would survive — was an engine gap, closed for
+// every "destroy all" card at once in S30 (#470).
 func init() {
 	Register(Spec{
 		OracleID:     "8241277d-654f-4985-9d49-a22c1e59eec2",
@@ -31,7 +31,6 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"The Zombies enter untapped and are tapped immediately afterwards, so anything watching for a creature being tapped sees one.",
-			"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it.",
 		},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return b29ReturnZombieCardsTappedThenDestroyHumans(ctx)
