@@ -10,37 +10,61 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Preordain's twin, one card deeper and one card less selective: you
 // see three but cannot bin any of them, so the arrangement is the
-// whole decision.
+// whole decision — unless all three are bad, which is what the shuffle
+// is for.
 //
-// The draw goes in LookAtTop.Then for exactly the reason Preordain's
-// goes in Scry.Then — the card left on top is the card drawn, so a
-// draw written on the next line would resolve before the player had
-// chosen and would also leave the prompt unanswerable, its card no
-// longer in the library to put back.
+// # Two prompts, in order
 //
-// # Declared sandbox simplification: NO SHUFFLE OPTION
+// The card is a chain, and it has to be one. "Put them back in any
+// order" is answered first, "you may shuffle" second, and the second
+// question only makes sense once the player has seen the answer to the
+// first — a player who has just arranged three keepers says no, and a
+// player looking at three lands says yes and throws the arrangement
+// away. Asking both at once would be asking the player to shuffle
+// before they had looked.
 //
-// "You may shuffle" is not implemented. It is a second, optional
-// choice that would have to be offered after the reorder is
-// submitted, and it only matters when the player hates all three
-// cards — at which point the arrangement they just made is discarded
-// anyway. The card is still doing its job (see three, pick your
-// draw); what is missing is the escape hatch from a bad three.
+// So the shuffle prompt is queued by the look-at-top prompt's
+// continuation, which is the composition the choice queue gained for
+// exactly this (see game/chained_choice.go). LookAtTop.Then no longer
+// draws; it asks. The draw moves down one link, onto both branches of
+// the confirm, because "then draw a card" is what happens after the
+// whole reorder-and-maybe-shuffle clause finishes — a draw on only one
+// branch would be a card that Ponder sometimes forgets to draw.
 //
-// Landing it wants a yes/no prompt chained off the reorder answer,
-// which is the "prompt after a prompt" shape the choice queue does
-// not have a composition for yet.
+// The ordering is the entire card: the draw must come after the
+// shuffle, or it is a card off the arrangement the player just
+// discarded, and it must come after the reorder, or it is a card the
+// player is still deciding about.
 func init() {
 	Register(Spec{
-		OracleID: "02090581-61aa-4348-ad57-451be8ee91c2",
-		Name:     "Ponder",
+		OracleID:     "02090581-61aa-4348-ad57-451be8ee91c2",
+		Name:         "Ponder",
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller := ctx.Controller()
+			source := ctx.Source()
+			draw := func(g *game.Game) error {
+				return g.DrawNForEffect(controller, 1)
+			}
 			return LookAtTop{
 				Player: controller,
 				N:      3,
 				Then: func(g *game.Game) error {
-					return g.DrawNForEffect(controller, 1)
+					g.QueueConfirmForEffect(game.ConfirmPrompt{
+						Chooser:      controller,
+						Source:       source,
+						Question:     "Ponder — shuffle your library?",
+						AcceptLabel:  "Shuffle",
+						DeclineLabel: "Keep that order",
+						OnAccept: func(g *game.Game) error {
+							if err := g.ShuffleLibraryForEffect(controller); err != nil {
+								return err
+							}
+							return draw(g)
+						},
+						OnDecline: draw,
+					})
+					return nil
 				},
 			}.Apply(ctx)
 		},

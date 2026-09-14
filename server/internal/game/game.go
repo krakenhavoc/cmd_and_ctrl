@@ -164,6 +164,24 @@ type Game struct {
 	// ID. Added in S31 sub-PR 1.
 	LandsPlayedThisTurn map[uuid.UUID]int
 
+	// DrawnThisTurn records, per player, the card instance IDs that
+	// player has DRAWN this turn, in draw order. Appended by
+	// actuallyDrawCardLocked — the one place a card crosses from
+	// library to hand as a draw — and cleared on Turn.advance to a
+	// new turn, alongside the other per-turn tallies above.
+	//
+	// It is a list of IDs rather than a count because the cards
+	// themselves are the thing that gets read: Sylvan Library's "choose
+	// two cards in your hand drawn this turn" is a prompt whose
+	// candidate set IS this slice, intersected with the hand. A tally
+	// could not name a card.
+	//
+	// Entries are NOT removed when a card leaves hand. A card drawn and
+	// then discarded was still drawn this turn, and every reader
+	// intersects with the zone it cares about anyway, so pruning here
+	// would cost a hook on every zone move to buy nothing.
+	DrawnThisTurn map[uuid.UUID][]uuid.UUID
+
 	// DiscardPending is the cleanup-step pause map (S13.4): keys
 	// are player IDs that need to discard, values are the count
 	// each player must discard. Set at cleanup-step entry by
@@ -707,6 +725,36 @@ func (g *Game) onTurnAdvanceLocked(prev, next Turn) {
 	if g.LandsPlayedThisTurn != nil {
 		g.LandsPlayedThisTurn = nil
 	}
+	if g.DrawnThisTurn != nil {
+		g.DrawnThisTurn = nil
+	}
+}
+
+// CardsDrawnThisTurnFor returns the instance IDs playerID has drawn
+// this turn, in draw order, filtered to the cards still in that
+// player's hand.
+//
+// The filter is the part that matters: "cards in your hand drawn this
+// turn" (Sylvan Library) is the printed wording, and a card drawn and
+// then discarded is no longer eligible. Returns a fresh slice, so a
+// caller can hold it across a prompt without aliasing engine state.
+//
+// Caller must hold g.mu.
+func (g *Game) CardsDrawnThisTurnFor(playerID uuid.UUID) []uuid.UUID {
+	if len(g.DrawnThisTurn) == 0 {
+		return nil
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil || p.Hand == nil {
+		return nil
+	}
+	var out []uuid.UUID
+	for _, id := range g.DrawnThisTurn[playerID] {
+		if p.Hand.Contains(id) {
+			out = append(out, id)
+		}
+	}
+	return out
 }
 
 // LandsPlayedThisTurnFor returns how many lands p has played this

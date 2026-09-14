@@ -244,6 +244,90 @@ func (e *enumerator) choiceMoves() bool {
 				e.addChoice(c, label, p)
 			}
 
+		case game.PendingChoiceConfirm:
+			// The chained-choice two-way prompt. Both branches are
+			// offered and ResolveConfirm validates nothing about the
+			// board — a confirm is a choice between two consequences
+			// the card already committed to, not a payment the engine
+			// can refuse. So the decline is this kind's AlwaysLegal
+			// answer: a seat whose every other answer keeps bouncing
+			// has somewhere to go instead of going to sleep (#544).
+			//
+			// Marked on the DECLINE rather than the accept because the
+			// accept branch is the one a card hangs a cost on.
+			for _, apply := range []bool{true, false} {
+				a := apply
+				p := base()
+				p.Apply = &a
+				verb := c.DeclineLabel
+				if apply {
+					verb = c.AcceptLabel
+				}
+				if verb == "" {
+					verb = "no"
+					if apply {
+						verb = "yes"
+					}
+				}
+				if apply {
+					// The accept branch carries whatever the card
+					// charges for it (#547's MoveCost), so a policy
+					// holding only the wire payload does not price
+					// "pay 4 life to keep this" like "shuffle".
+					e.add(Move{
+						Type:   TypeResolveChoice,
+						Player: e.seat,
+						Kind:   KindChoice,
+						Label:  reason + ": " + verb,
+						Source: c.Source,
+						Params: mustJSON(p),
+						Cost:   moveCost(c.LifeCost, 0),
+					})
+					continue
+				}
+				e.addAlwaysLegalChoice(c, reason+": "+verb, p)
+			}
+
+		case game.PendingChoiceChooseCards:
+			// "Choose N of these cards." The bounds ride on the
+			// choice, so the enumerated sets are exactly the sets
+			// ResolveChooseCards accepts — no Validate hook the
+			// enumerator cannot see, which is the hole #544 fell
+			// into.
+			//
+			// The empty answer is offered first when the floor is
+			// zero, for the same reason search offers "fail to find"
+			// first: it is the answer that always terminates, and it
+			// is the only one here that validates against nothing, so
+			// it is this kind's AlwaysLegal answer.
+			//
+			// A prompt with a floor above zero has NO unconditional
+			// answer — every set it accepts is a set of cards that
+			// must still be where the prompt found them — and is
+			// deliberately left unmarked rather than guessed at.
+			if c.ChooseMin == 0 {
+				p := base()
+				p.CardIDs = []string{}
+				e.addAlwaysLegalChoice(c, reason+": choose nothing", p)
+			}
+			lo := c.ChooseMin
+			if lo < 1 {
+				lo = 1
+			}
+			for _, set := range combinations(c.ChooseCards, lo, c.ChooseMax, e.opts.MaxExpansionPerSource) {
+				p := base()
+				p.CardIDs = idStrings(set)
+				label := reason + ": choose"
+				for _, id := range set {
+					// cardNameFor, not cardName: the candidates are
+					// as often cards in a hand as cards on the
+					// battlefield, and only a seat the effect made a
+					// knower may read them (ADR 0033 §3).
+					label += " " + cardNameFor(g, id, e.seat)
+				}
+				e.addChoice(c, label, p)
+			}
+
 		case game.PendingChoiceEntryPayLife:
 			// "As this enters, you may pay N life." The engine only
 			// asks when the payer can afford it, and a pay it can no

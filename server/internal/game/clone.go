@@ -90,6 +90,15 @@ func (g *Game) cloneLocked() *Game {
 			out.LandsPlayedThisTurn[k] = v
 		}
 	}
+	if len(g.DrawnThisTurn) > 0 {
+		out.DrawnThisTurn = make(map[uuid.UUID][]uuid.UUID, len(g.DrawnThisTurn))
+		for k, v := range g.DrawnThisTurn {
+			// Fresh backing array per player: the live map is appended
+			// to on every draw, and an undo snapshot sharing it would
+			// grow as the game it was taken from moved on.
+			out.DrawnThisTurn[k] = append([]uuid.UUID(nil), v...)
+		}
+	}
 	if len(g.DiscardPending) > 0 {
 		out.DiscardPending = make(map[uuid.UUID]int, len(g.DiscardPending))
 		for k, v := range g.DiscardPending {
@@ -155,6 +164,11 @@ func (g *Game) cloneLocked() *Game {
 			// list a Clone is choosing from is a slice.
 			if len(c.CopyOptions) > 0 {
 				cloned.CopyOptions = append([]uuid.UUID(nil), c.CopyOptions...)
+			}
+			// The chained-choice candidate list, for the same reason
+			// as every slice above it.
+			if len(c.ChooseCards) > 0 {
+				cloned.ChooseCards = append([]uuid.UUID(nil), c.ChooseCards...)
 			}
 			out.PendingChoices[i] = &cloned
 		}
@@ -453,6 +467,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.LoyaltyActivatedThisTurn = src.LoyaltyActivatedThisTurn
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.LandsPlayedThisTurn = src.LandsPlayedThisTurn
+	g.DrawnThisTurn = src.DrawnThisTurn
 	g.DiscardPending = src.DiscardPending
 	g.Promises = src.Promises
 	g.Vote = src.Vote

@@ -94,11 +94,27 @@
   // is still on the stack, and the answer decides what it enters AS.
   const isCopyTarget = $derived(active?.kind === "copy_target");
 
+  // #74 choose_cards — the chained-choice card-set pick: "choose N of
+  // these cards", with the card deciding what being chosen means
+  // (Sylvan Library: the two you then pay 4 life each to keep).
+  // Shares the card grid and the {choice_id, card_ids} payload; what
+  // it does NOT share is a fixed count, because its floor and ceiling
+  // are sent separately and can differ.
+  const isChooseCards = $derived(active?.kind === "choose_cards");
+
   // How many cards this prompt accepts, and how few it will settle
   // for. Search and copy are the two that move the floor off the
   // ceiling.
-  const pickMax = $derived(isSearch ? (active?.search_max ?? 1) : (active?.count ?? 0));
-  const pickMin = $derived(isSearch || isCopyTarget ? 0 : (active?.count ?? 0));
+  const pickMax = $derived(
+    isSearch
+      ? (active?.search_max ?? 1)
+      : isChooseCards
+        ? (active?.choose_max ?? active?.count ?? 0)
+        : (active?.count ?? 0),
+  );
+  const pickMin = $derived(
+    isSearch || isCopyTarget ? 0 : isChooseCards ? (active?.choose_min ?? 0) : (active?.count ?? 0),
+  );
   const canSubmit = $derived(selected.size >= pickMin && selected.size <= pickMax);
 
   function toggle(id: string): void {
@@ -268,6 +284,21 @@
   // at yet and the prompt has to say the card's name itself.
   const isEntryPayLife = $derived(active?.kind === "entry_pay_life");
 
+  // #74 confirm — the chained-choice two-way prompt, "do A, or do B."
+  // Same {choice_id, apply} payload as the other yes/no kinds; the
+  // server routes to ResolveConfirm by kind, and the card supplies
+  // the two button labels because "Pay 4 life" / "Put it on top" is
+  // the actual question and "Yes" / "No" is not.
+  //
+  // This is also the prompt that arrives AFTER another prompt —
+  // Ponder's "you may shuffle", Sylvan Library's per-card payment —
+  // so it is routinely the second modal a player sees without having
+  // done anything in between. Nothing extra is needed for that: the
+  // queue drains in order and the modal reopens on the next frame.
+  const isConfirm = $derived(active?.kind === "confirm");
+  const confirmAccept = $derived(active?.accept_label || "Yes");
+  const confirmDecline = $derived(active?.decline_label || "No");
+
   // S21 sacrifice_choice branch — "each player sacrifices a creature
   // of their choice" (Grave Pact, Fleshbag Marauder). Reuses the
   // generic card grid and its {choice_id, card_ids} payload; only the
@@ -387,7 +418,12 @@
   // trigger, pay-unless) from the keyboard; the footer shows the
   // hint. Ignored while typing in a field.
   const isYesNo = $derived(
-    isOptionalReplacement || isTriggerPrompt || isPayUnless || isEntryPayLife || isMayCast,
+    isOptionalReplacement ||
+      isTriggerPrompt ||
+      isPayUnless ||
+      isEntryPayLife ||
+      isMayCast ||
+      isConfirm,
   );
   function handleKey(e: KeyboardEvent): void {
     if (!open || !isYesNo) return;
@@ -739,6 +775,22 @@
             Pay {active.pay_cost ?? ""}
           </button>
         </div>
+      {:else if isConfirm}
+        <h2 id="choice-title">
+          {active.reason || "Choose one"}
+          <span class="prompt-src" aria-hidden="true">choose one</span>
+        </h2>
+        <p class="prompt-hint">
+          Both answers are legal — this is a choice between two things the card does, not a
+          yes-or-no. There may be another question after it.
+        </p>
+        <div class="prompt-foot">
+          <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
+          <button type="button" onclick={() => answerOptional(false)}>{confirmDecline}</button>
+          <button type="button" class="primary" onclick={() => answerOptional(true)}>
+            {confirmAccept}
+          </button>
+        </div>
       {:else if isPayUnless}
         <h2 id="choice-title">
           {active.reason || `${triggerSourceName(active.source)} — pay ${active.pay_cost ?? ""}?`}
@@ -897,6 +949,9 @@
           {:else if isCopyTarget}
             {active.reason || "Enter as a copy of…"}
             <span class="prompt-src" aria-hidden="true">copy · CR 706</span>
+          {:else if isChooseCards}
+            {active.reason || "Choose cards"}
+            <span class="prompt-src" aria-hidden="true">choose</span>
           {:else}
             {active.reason || "Choose"} — pick {active.count} card{active.count === 1 ? "" : "s"}
             <span class="prompt-src" aria-hidden="true">{isSelfSource ? "discard" : "reveal"}</span>
@@ -916,6 +971,16 @@
           {:else if isCopyTarget}
             Pick what it enters as a copy of — it copies the printed card, so counters, damage and
             other effects don't come across. Or copy nothing and let it enter as itself.
+          {:else if isChooseCards}
+            {#if pickMin === pickMax}
+              Pick {pickMax} of these.
+            {:else if pickMin === 0}
+              Pick up to {pickMax} of these, or none.
+            {:else}
+              Pick between {pickMin} and {pickMax} of these.
+            {/if}
+            What happens to them is the card's business, and it will tell you next — choosing them costs
+            nothing on its own.
           {:else if isSelfSource}
             Pick {active.count} card{active.count === 1 ? "" : "s"} from your hand to discard.
           {:else}
@@ -941,7 +1006,7 @@
         </div>
         <div class="prompt-foot">
           <span class="prompt-count">{selected.size} / {pickMax} selected</span>
-          {#if isSearch || isCopyTarget}
+          {#if isSearch || isCopyTarget || (isChooseCards && pickMin === 0)}
             <button
               type="button"
               onclick={() => (selected = new Set())}
@@ -957,6 +1022,8 @@
               {selected.size === 0 ? "Fail to find" : "Take"}
             {:else if isCopyTarget}
               {selected.size === 0 ? "Enter as itself" : "Enter as a copy"}
+            {:else if isChooseCards}
+              Choose
             {:else}
               Confirm
             {/if}

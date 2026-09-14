@@ -1821,8 +1821,9 @@ func (g *Game) lookAtTopForEffect(kind PendingChoiceKind, playerID, source uuid.
 }
 
 // ShuffleLibraryForEffect is "shuffle your library" as a card's own
-// instruction (Soothsaying's {3}{U}{U}) rather than as the tail of a
-// search. The lock-holding twin of ShuffleLibrary.
+// instruction (Soothsaying's {3}{U}{U}, Ponder's "you may shuffle")
+// rather than as the tail of a search. The lock-holding twin of
+// ShuffleLibrary.
 //
 // It clears KnownBy across the whole zone for the same reason
 // finishSearchLocked does: a shuffle is exactly the thing that

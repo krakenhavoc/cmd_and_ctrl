@@ -180,6 +180,15 @@ func (g *Game) actuallyDrawCardLocked(playerID uuid.UUID) error {
 	// scry-positioned tops keep any pre-existing scry knowledge via
 	// the sticky map; the AddKnower call is idempotent.
 	g.markCardKnownInZoneLocked(p.Hand, c.InstanceID)
+	// "Cards drawn this turn" bookkeeping (Sylvan Library). Recorded
+	// here rather than in DrawNForEffect because this is the one place
+	// a card actually crosses from library to hand as a draw — the
+	// replacement pipeline above can redirect or cancel the draw, and
+	// only the draws that happened should be listed.
+	if g.DrawnThisTurn == nil {
+		g.DrawnThisTurn = make(map[uuid.UUID][]uuid.UUID)
+	}
+	g.DrawnThisTurn[playerID] = append(g.DrawnThisTurn[playerID], c.InstanceID)
 	g.EmitEvent(Event{
 		Kind:    EventDrawCard,
 		Actor:   playerID,

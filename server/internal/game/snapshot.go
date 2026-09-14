@@ -147,10 +147,11 @@ type GameSnapshot struct {
 	PendingTriggers []stackItemSnapshot      `json:"pendingTriggers,omitempty"`
 	DelayedTriggers []delayedTriggerSnapshot `json:"delayedTriggers,omitempty"`
 
-	LoyaltyActivatedThisTurn map[uuid.UUID]bool      `json:"loyaltyActivatedThisTurn,omitempty"`
-	SpellsCastThisTurn       map[uuid.UUID]CastTally `json:"spellsCastThisTurn,omitempty"`
-	LandsPlayedThisTurn      map[uuid.UUID]int       `json:"landsPlayedThisTurn,omitempty"`
-	DiscardPending           map[uuid.UUID]int       `json:"discardPending,omitempty"`
+	LoyaltyActivatedThisTurn map[uuid.UUID]bool        `json:"loyaltyActivatedThisTurn,omitempty"`
+	SpellsCastThisTurn       map[uuid.UUID]CastTally   `json:"spellsCastThisTurn,omitempty"`
+	LandsPlayedThisTurn      map[uuid.UUID]int         `json:"landsPlayedThisTurn,omitempty"`
+	DrawnThisTurn            map[uuid.UUID][]uuid.UUID `json:"drawnThisTurn,omitempty"`
+	DiscardPending           map[uuid.UUID]int         `json:"discardPending,omitempty"`
 
 	// Promises is a slice because its live form is keyed by a
 	// STRUCT (PromiseKey), and a JSON object key must be a string.
@@ -366,6 +367,12 @@ type pendingChoiceSnapshot struct {
 	SearchCards          []uuid.UUID            `json:"searchCards,omitempty"`
 	SearchMax            int                    `json:"searchMax"`
 	MayCastCard          uuid.UUID              `json:"mayCastCard,omitempty"`
+	AcceptLabel          string                 `json:"acceptLabel,omitempty"`
+	LifeCost             int                    `json:"lifeCost,omitempty"`
+	DeclineLabel         string                 `json:"declineLabel,omitempty"`
+	ChooseCards          []uuid.UUID            `json:"chooseCards,omitempty"`
+	ChooseMin            int                    `json:"chooseMin,omitempty"`
+	ChooseMax            int                    `json:"chooseMax,omitempty"`
 
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
@@ -577,6 +584,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.LoyaltyActivatedThisTurn = copyBoolMap(g.LoyaltyActivatedThisTurn)
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
 	s.LandsPlayedThisTurn = copyIntMap(g.LandsPlayedThisTurn)
+	s.DrawnThisTurn = copyUUIDListMap(g.DrawnThisTurn)
 	s.DiscardPending = copyIntMap(g.DiscardPending)
 
 	if len(g.Promises) > 0 {
@@ -883,6 +891,12 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		SearchCards:          copyUUIDs(c.SearchCards),
 		SearchMax:            c.SearchMax,
 		MayCastCard:          c.MayCastCard,
+		AcceptLabel:          c.AcceptLabel,
+		DeclineLabel:         c.DeclineLabel,
+		LifeCost:             c.LifeCost,
+		ChooseCards:          copyUUIDs(c.ChooseCards),
+		ChooseMin:            c.ChooseMin,
+		ChooseMax:            c.ChooseMax,
 	}
 	if c.DamageAssignment != nil {
 		// Pure data (see the type), so a value copy with its own
@@ -901,6 +915,12 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		"mayCastResume":     c.mayCastResume != nil,
 		"searchResume":      c.searchResume != nil,
 		"scryResume":        c.scryResume != nil,
+		// The two chained-choice frames. A chain link is a
+		// continuation like any other, and an entry missing here
+		// would let the server write a restore point that silently
+		// drops the rest of the card. See chained_choice.go.
+		"confirmResume":     c.confirmResume != nil,
+		"chooseCardsResume": c.chooseCardsResume != nil,
 	} {
 		if present {
 			out.ResumeFrames = append(out.ResumeFrames, name)
@@ -1018,6 +1038,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LoyaltyActivatedThisTurn = copyBoolMap(s.LoyaltyActivatedThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.LandsPlayedThisTurn = copyIntMap(s.LandsPlayedThisTurn)
+	g.DrawnThisTurn = copyUUIDListMap(s.DrawnThisTurn)
 	g.DiscardPending = copyIntMap(s.DiscardPending)
 
 	if len(s.Promises) > 0 {
@@ -1317,9 +1338,15 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		SearchCards:          copyUUIDs(c.SearchCards),
 		SearchMax:            c.SearchMax,
 		MayCastCard:          c.MayCastCard,
-		// The seven resume frames stay nil. This is the phase-1 line
-		// in the sand, and the census is how it is enforced rather
-		// than hoped for.
+		AcceptLabel:          c.AcceptLabel,
+		DeclineLabel:         c.DeclineLabel,
+		LifeCost:             c.LifeCost,
+		ChooseCards:          copyUUIDs(c.ChooseCards),
+		ChooseMin:            c.ChooseMin,
+		ChooseMax:            c.ChooseMax,
+		// Every resume frame stays nil. This is the phase-1 line in
+		// the sand, and the census is how it is enforced rather than
+		// hoped for.
 	}
 	if c.DamageAssignment != nil {
 		da := *c.DamageAssignment
@@ -1382,6 +1409,20 @@ func copyIntMap(in map[uuid.UUID]int) map[uuid.UUID]int {
 	out := make(map[uuid.UUID]int, len(in))
 	for k, v := range in {
 		out[k] = v
+	}
+	return out
+}
+
+// copyUUIDListMap deep-copies a per-player list map (DrawnThisTurn),
+// giving each player's slice its own backing array so a capture cannot
+// be grown by the game it was taken from.
+func copyUUIDListMap(in map[uuid.UUID][]uuid.UUID) map[uuid.UUID][]uuid.UUID {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[uuid.UUID][]uuid.UUID, len(in))
+	for k, v := range in {
+		out[k] = append([]uuid.UUID(nil), v...)
 	}
 	return out
 }
