@@ -17,7 +17,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Enters-tapped is the self-replacement; the life is a real ETB
 // trigger with a response window, as printed; the dual is the pipe
 // every two-colour land in the catalog uses. Batch 13 (#306) brings
-// Rugged Highlands, the tenth — the cycle is complete.
+// Rugged Highlands, the tenth — the cycle is complete. The Zendikar
+// "refuge" cycle (Graypelt Refuge, Kazandu Refuge, …) prints the
+// identical three lines, so its members join this table as their
+// batches reach them rather than opening a second file for the same
+// card.
 //
 // No simplification.
 func init() {
@@ -34,6 +38,9 @@ func init() {
 		{"5d641bf6-0f93-4189-8dc1-ec7ea446dade", "Tranquil Cove", "W", "U"},
 		// Roadmap batch 13 (#306) — the tenth.
 		{"6c922206-6e68-4dcd-9559-88da1074f2c4", "Rugged Highlands", "R", "G"},
+		// Roadmap batch 26 (#388): the Zendikar "refuges" are the same
+		// three lines under an older name, so they share the table.
+		{"60b36821-0fad-423c-98c4-f64d991719f3", "Graypelt Refuge", "G", "W"},
 	} {
 		Register(Spec{
 			OracleID:      land.oracleID,
