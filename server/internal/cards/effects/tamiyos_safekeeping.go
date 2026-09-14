@@ -23,8 +23,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "bb2b324c-970a-4920-884e-c92ba49669f0",
 		Name:         "Tamiyo's Safekeeping",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
+		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("target permanent you control", YouControl()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) > 0 && item.Targets[0].Kind == game.TargetCard {

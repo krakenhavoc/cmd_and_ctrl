@@ -22,9 +22,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // onto the tokens so their triggers fire again.
 //
 // "If that creature dies this way" is read literally: an
-// indestructible creature (once #176 lands), a regenerated one, or a
-// creature whose death was replaced by exile makes no tokens. Today
-// only the graveyard check exists, which is the same test.
+// indestructible creature, a regenerated one, or a creature whose
+// death was replaced by exile makes no tokens. Today only the
+// graveyard check exists, which is the same test.
 //
 // Sandbox simplification, inherited from CreateTokenCopy (Hashaton's
 // posture): a copied card's Spec.OnETB hook does not fire on the

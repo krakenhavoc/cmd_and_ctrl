@@ -15,11 +15,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Soldiers survive and every other creature, the caster's included,
 // does not — as printed.
 //
-// No simplification on the card. Engine gap it shares with every
-// wipe in the catalog, reported on #305 rather than fixed here: the
-// simultaneous destroy path does not consult indestructible the way
-// the single-target path has since #380, so an indestructible
-// creature dies to this the same way it dies to Wrath of God.
+// No simplification on the card. The engine gap it shared with every
+// wipe in the catalog — the simultaneous destroy path not consulting
+// indestructible the way the single-target path had since #380 — was
+// reported on #305 and fixed in S30 (#470 / #446).
 func init() {
 	Register(Spec{
 		OracleID:     "2b7c4dab-e432-4b34-b058-3cec5c0d72df",

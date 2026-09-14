@@ -288,7 +288,10 @@ answer for every table — so the client fetches it once.
     { "tier": "strong", "label": "Strong", "description": "…", "available": false }
   ],
   "decks": [
-    { "id": "placeholder-mono-red", "name": "Mono-red placeholder", "description": "…", "colors": ["R"], "commander": "Krenko, Mob Boss" }
+    { "id": "izzet-aggro", "name": "Raid and Ransack", "description": "aggro — …", "colors": ["U", "R"], "commander": "Mary Read and Anne Bonny" },
+    { "id": "simic-ramp", "name": "Deep Roots", "description": "ramp-stompy — …", "colors": ["U", "G"], "commander": "Tatyova, Benthic Druid" },
+    { "id": "esper-control", "name": "The Long Answer", "description": "control — …", "colors": ["W", "U", "B"], "commander": "Hashaton, Scarab's Fist" },
+    { "id": "mono-black-aristocrats", "name": "Body Count", "description": "aristocrats — …", "colors": ["B"], "commander": "Syr Konrad, the Grim" }
   ]
 }
 ```
@@ -302,6 +305,13 @@ a bot labelled "strong" that plays at random is worse than no bot.
 client hides the Add-bot control rather than offering a button that
 503s. `decks` is empty when no deck catalog is wired, in which case
 only the raw-decklist form of the add request works.
+
+A deck's `description` leads with its archetype — `aggro`,
+`ramp-stompy`, `control`, `aristocrats` — because the names are
+flavour and the archetype is what the player is actually choosing
+between. The catalog is the four curated decks in
+`server/internal/aiseat/decks`, every non-basic card of which is
+build-tested to resolve to a registered effect spec.
 
 ### `POST /games/{id}/seats/bot` (S31)
 
@@ -324,7 +334,7 @@ The player-facing form names a curated deck from `GET /bot/options`:
 ```json
 {
   "tier": "random",
-  "deck": "placeholder-mono-red",
+  "deck": "izzet-aggro",
   "name": "Bot 1"            // optional; defaults to "Bot N"
 }
 ```
@@ -351,12 +361,22 @@ fails exactly where a human's upload would.
 
 ```json
 {
-  "game": { ...GameMeta, "players": [ ..., { "player_id": "<uuid>", "name": "Bot 1", "seat": 1, "deck_name": "...", "deck_uploaded": true, "is_bot": true, "bot_tier": "random", "bot_deck": "placeholder-mono-red" } ] },
+  "game": { ...GameMeta, "players": [ ..., { "player_id": "<uuid>", "name": "Bot 1", "seat": 1, "deck_name": "...", "deck_uploaded": true, "is_bot": true, "bot_tier": "random", "bot_deck": "izzet-aggro" } ] },
   "player_id": "<uuid>",
   "deck_name": "...",
-  "warnings": [ ... ]        // as for /decks, omitted when empty
+  "warnings": [ ... ],       // as for /decks, omitted when empty
+  "unimplemented": [ ... ]   // as for /decks, omitted when empty
 }
 ```
+
+`unimplemented` is the same disclosure `POST /games/{id}/decks`
+carries: the distinct names of the installed deck's cards whose
+printed rules the engine will not carry out. Always empty for a
+curated deck — every non-basic card in one is build-tested to resolve
+to a registered effect spec — so it only ever appears on the `source`
+escape hatch. It is not an error and does not block the seat: a bot is
+held to the same catalog the table is, and the honest answer to a gap
+is to name it, not to refuse the deck.
 
 **Errors**
 

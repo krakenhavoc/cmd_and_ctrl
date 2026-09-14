@@ -1172,6 +1172,20 @@ type addBotResponse struct {
 	PlayerID uuid.UUID        `json:"player_id"`
 	DeckName string           `json:"deck_name"`
 	Warnings []deck.Violation `json:"warnings,omitempty"`
+	// Unimplemented is the same disclosure uploadDeckResponse carries,
+	// for the same reason — see its doc comment. It was missing here,
+	// which made the bot path the one place a deck could be installed
+	// without anyone being told which of its cards the engine will not
+	// carry out.
+	//
+	// Always empty for a curated deck: decks_test.go fails the build
+	// if a card in one stops resolving to a registered Spec. It is the
+	// `source` escape hatch that needs it, and that is exactly the
+	// path issue #89 filed under "catalog-gap tolerance" — a deck with
+	// an unrecognised card must not crash the bot, and the seat that
+	// took it should say so rather than let the bot spend mana on
+	// blanks in silence.
+	Unimplemented []string `json:"unimplemented,omitempty"`
 }
 
 // botDeckSource turns the request's deck choice into a (format,
@@ -1332,15 +1346,17 @@ func addBot(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 		name = fmt.Sprintf("Bot %d", bots+1)
 	}
-	meta, playerID, err := c.Lobby.AddBot(id, name, tier, deckID, list.Name, list.ToGameCards())
+	gameCards := list.ToGameCards()
+	meta, playerID, err := c.Lobby.AddBot(id, name, tier, deckID, list.Name, gameCards)
 	if err != nil {
 		return err
 	}
 	return writeJSON(w, http.StatusCreated, addBotResponse{
-		Game:     meta,
-		PlayerID: playerID,
-		DeckName: list.Name,
-		Warnings: warnings,
+		Game:          meta,
+		PlayerID:      playerID,
+		DeckName:      list.Name,
+		Warnings:      warnings,
+		Unimplemented: game.UnimplementedNames(gameCards),
 	})
 }
 

@@ -62,7 +62,7 @@ func init() {
 		OracleID:        "6c48d888-9f5d-43f4-adbd-61dbdba09260",
 		Name:            "Zurgo Helmsmasher",
 		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"Zurgo does not have to attack — \"attacks each combat if able\" is not enforced.", "The +1/+1 counter trigger never happens: the engine does not record which creature dealt a creature its damage.", "Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
+		Caveats:         []string{"Zurgo does not have to attack — \"attacks each combat if able\" is not enforced.", "The +1/+1 counter trigger never happens: the engine does not record which creature dealt a creature its damage."},
 		PrintedKeywords: []string{"haste"},
 		Static: []game.StaticAbility{{
 			Layer: game.Layer6Ability,
