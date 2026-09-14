@@ -193,7 +193,7 @@ describe("movesFor / hasNonPassMove", () => {
   });
 
   it("hasPassMove answers from the list, and says nothing when there is none", () => {
-    // The keyboard layer's gate for the pass-priority key (ADR 0046).
+    // The keyboard layer's gate for the pass-priority key (ADR 0047).
     expect(hasPassMove(snap({ moves: [passMove] }))).toBe(true);
     expect(hasPassMove(snap({ moves: [castMove("c-Bolt")] }))).toBe(false);
     expect(hasPassMove(snap({ moves: [] }))).toBe(false);

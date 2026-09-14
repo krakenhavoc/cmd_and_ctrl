@@ -53,7 +53,7 @@
   const activePlayer = $derived(seats[activeSeat]);
   const stepLabel = $derived(STEP_LABELS[turn.step as keyof typeof STEP_LABELS] ?? turn.step);
 
-  // Key hints for the three priority buttons (ADR 0046). Read from
+  // Key hints for the three priority buttons (ADR 0047). Read from
   // the same binding map the dispatcher uses — imported directly
   // rather than prop-drilled through Board → PlayerPanel, the way
   // this component already imports holdPriority — so a rebound key

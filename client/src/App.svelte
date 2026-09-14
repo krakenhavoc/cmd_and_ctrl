@@ -142,7 +142,7 @@
      deployment for the live table. -->
 <EnvBadge />
 
-<!-- The global keymap (ADR 0046). Mounted at the shell because there
+<!-- The global keymap (ADR 0047). Mounted at the shell because there
      must be exactly ONE global keydown listener for shortcuts — a
      second one is how two features end up both claiming a key. It
      dispatches nothing on its own while a modal is up or a text field

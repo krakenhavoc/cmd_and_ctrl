@@ -728,7 +728,7 @@
     fn();
   }
 
-  // ---- Keyboard shortcuts (ADR 0046) ----
+  // ---- Keyboard shortcuts (ADR 0047) ----
   //
   // The single global listener lives at the app shell; this route
   // publishes what its keys DO and what the seat's situation IS, and

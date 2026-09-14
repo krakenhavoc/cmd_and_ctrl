@@ -1,4 +1,4 @@
-# 0046 — Keyboard shortcuts: one dispatcher, a server-gated keymap, overrides-only persistence
+# 0047 — Keyboard shortcuts: one dispatcher, a server-gated keymap, overrides-only persistence
 
 **Status:** Accepted
 **Date:** 2026-09-14

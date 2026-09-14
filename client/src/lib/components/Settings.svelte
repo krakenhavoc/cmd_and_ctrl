@@ -242,7 +242,7 @@
   // is forbidden from binding it (shortcuts.RESERVED_CHORDS).
   //
   // The settings key TOGGLES, which is what it has done since S11.5.
-  // Opening is the global layer's job now (ADR 0046); closing has to
+  // Opening is the global layer's job now (ADR 0047); closing has to
   // be handled here, because by the time the panel is up the global
   // layer no longer fires. Read from the effective binding map rather
   // than hard-coding "," so a rebound key still closes the panel.

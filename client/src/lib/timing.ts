@@ -89,7 +89,7 @@ export function hasNonPassMove(snap: GameView | null | undefined): boolean | und
 
 // hasPassMove reports whether the seat's enumerated moves include a
 // pass — i.e. whether yielding priority is a thing this seat can do
-// on this frame. The keyboard layer (ADR 0046) reads it to decide
+// on this frame. The keyboard layer (ADR 0047) reads it to decide
 // whether the pass-priority key is live, for the same reason
 // everything else in this file reads the move list: the alternative
 // is deriving the priority rules a second time in TypeScript, and
