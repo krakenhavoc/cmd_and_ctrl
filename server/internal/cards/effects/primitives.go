@@ -674,3 +674,49 @@ func (m MillToZone) Apply(ctx *Context) error {
 	}
 	return err
 }
+
+// ExileTopFaceDown is "exile the top N cards of your library face
+// down" (CR 406.3) — Necropotence.
+//
+// A sibling of MillToZone{To: game.ZoneExile} and deliberately not a
+// flag on it, because the two differ in the thing that matters about
+// an exile: who can read the card. An ordinary exile is public, so
+// the engine marks every seat a knower and the wire ships the name.
+// A face-down exile is readable by nobody, so the card's knowledge
+// set is cleared and game.Card.FaceDown is set — the client draws a
+// card back, and the controller finds out what they bought when the
+// card reaches their hand, exactly as in paper.
+//
+// Exiling from an empty library moves nothing. It is NOT a draw, so
+// it does not set up the CR 704.5b loss the way running the library
+// out to a draw does.
+type ExileTopFaceDown struct {
+	// Player is whose library is exiled from. Zero means the
+	// controller of the effect.
+	Player uuid.UUID
+
+	// N is how many cards come off the top.
+	N int
+
+	// Exiled, when non-nil, is filled with the instance IDs that
+	// moved, top card first. Necropotence needs them to hand to the
+	// delayed trigger that puts them into hand later; diffing the
+	// exile zone afterwards would be wrong the moment anything else
+	// exiled a card during the same resolution.
+	Exiled *[]uuid.UUID
+}
+
+func (e ExileTopFaceDown) Apply(ctx *Context) error {
+	if e.N <= 0 {
+		return nil
+	}
+	player := e.Player
+	if player == uuid.Nil {
+		player = ctx.Controller()
+	}
+	moved, err := ctx.Game.ExileTopFaceDownForEffect(player, e.N)
+	if e.Exiled != nil {
+		*e.Exiled = moved
+	}
+	return err
+}
