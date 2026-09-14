@@ -1,0 +1,55 @@
+package effects
+
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+// Lifeblood Hydra — Creature — Hydra {X}{G}{G}{G}, 0/0 (EDHREC rank
+// 3036):
+//
+//	"Trample
+//	 This creature enters with X +1/+1 counters on it.
+//	 When this creature dies, you gain life and draw cards equal to
+//	 its power."
+//
+// The Hydra that pays out on death. Trample rides PrintedKeywords;
+// the X counters go on as the spell resolves (Goldvein Hydra's
+// posture, declared below); the death trigger reads the Hydra's
+// last-known power — the harvester's LKI characteristic carries the
+// layer-computed P/T and the +1/+1 counters are read back off the
+// log (b13LastKnownPower, Conclave Mentor's shape), so a pumped or
+// grown Hydra pays out for what it was when it died — and gains that
+// much life, then draws that many, in printed order.
+//
+// One declared simplification, weaker than printed: the X +1/+1
+// counters are placed as the spell resolves, a beat before the card
+// enters (an entry replacement cannot read the spell's X), so a
+// "whenever you put counters on a permanent" payoff does not see
+// them. One engine-side gap, not the card's: cast for X=0 the Hydra
+// is a printed 0/0 with no counters, which the toughness state check
+// deliberately skips (Hangarback Walker's note), so it stays on the
+// battlefield instead of dying at once — and pays out nothing when it
+// eventually dies with no power.
+func init() {
+	Register(Spec{
+		OracleID:        "b14d05c0-fe10-4079-a90e-0aea1a8fd375",
+		Name:            "Lifeblood Hydra",
+		Completeness:    CompletenessCaveats,
+		Caveats:         []string{"The X +1/+1 counters are put on the Hydra as the spell resolves, a beat before it enters, so effects that watch you put counters on a permanent don't see them."},
+		PrintedKeywords: []string{"trample"},
+		OnResolve: func(item *game.StackItem, ctx *Context) error {
+			return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: ctx.X()}.Apply(ctx)
+		},
+		Triggered: []game.TriggeredAbility{{
+			Watches: []game.EventKind{game.EventLTB},
+			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return cardDied(ev, source)
+			},
+			Build: func(_ game.Event, source *game.Card, lki game.Characteristic, g *game.Game) *game.StackItem {
+				power := b13LastKnownPower(g, source.InstanceID, lki)
+				return game.NewTriggeredItem(source, "Lifeblood Hydra — gain life and draw cards equal to its power",
+					func(g *game.Game, item *game.StackItem) error {
+						return b28GainLifeAndDraw(g, item, power)
+					})
+			},
+		}},
+	})
+}
