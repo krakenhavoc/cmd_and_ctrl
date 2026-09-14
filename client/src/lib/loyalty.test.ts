@@ -135,6 +135,46 @@ describe("battlefieldClickIntent", () => {
   it("lets an admin drive someone else's planeswalker", () => {
     expect(battlefieldClickIntent(walker({ controller: "b" }), "a", true)).toBe("abilities");
   });
+
+  // --- #368: the same shape on a utility land ----------------------
+
+  it("offers a fetchland's abilities instead of tapping it", () => {
+    const passage: CardView = {
+      instance_id: "l1",
+      name: "Fabled Passage",
+      owner: "a",
+      controller: "a",
+      type_line: "Land",
+      activated_abilities: [
+        { index: 0, label: "{T}, Sacrifice this land: Search for a basic land" },
+      ],
+    };
+    expect(battlefieldClickIntent(passage, "a", false)).toBe("abilities");
+  });
+
+  it("still taps a plain land, which has mana abilities and nothing else", () => {
+    const forest: CardView = {
+      instance_id: "l2",
+      name: "Forest",
+      owner: "a",
+      controller: "a",
+      type_line: "Basic Land — Forest",
+      mana_abilities: [{ index: 0, label: "{T}: Add {G}", tap_cost: true }],
+    };
+    expect(battlefieldClickIntent(forest, "a", false)).toBe("tap");
+  });
+
+  it("still taps an animated manland so it stays combat-selectable", () => {
+    const manland: CardView = {
+      instance_id: "l3",
+      name: "Celestial Colonnade",
+      owner: "a",
+      controller: "a",
+      type_line: "Creature Land — Elemental",
+      activated_abilities: [{ index: 0, label: "{3}{W}{U}: becomes a 4/4" }],
+    };
+    expect(battlefieldClickIntent(manland, "a", false)).toBe("tap");
+  });
 });
 
 // --- #334: the menu ----------------------------------------------

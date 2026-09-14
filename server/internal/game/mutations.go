@@ -3364,13 +3364,16 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		if card.Tapped {
 			return ErrAlreadyTapped
 		}
-		// CR 302.1: a creature's {T} ability needs it to have been
+		// CR 302.6: a creature's {T} ability needs it to have been
 		// under your control since your most recent turn began.
 		// Birds of Paradise, Llanowar Merfolk and Palladium Myr all
 		// live here; before this check they tapped for mana the turn
 		// they landed, which is simply wrong. Non-creature sources
-		// (Sol Ring, a land) are never sick, and haste exempts a
-		// creature — HasSummoningSickness handles both.
+		// (Sol Ring, a Treasure, a land) are never sick, and haste
+		// exempts a creature — since #530 HasSummoningSickness
+		// really does handle both, and the IsCreature prefix here is
+		// redundant. It stays as documentation: this is the rule
+		// about creatures.
 		if card.IsCreature() && HasSummoningSickness(card) {
 			return ErrSummoningSick
 		}
@@ -3921,12 +3924,14 @@ func (g *Game) untapAllForLocked(seat int) {
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].Controller == playerID {
 			g.Battlefield.Cards[i].Tapped = false
-			// S18 sub-PR 2: clear summoning sickness for this
-			// controller's creatures at the start of their untap
-			// step. CR 302.1 — a creature loses sickness at the
-			// beginning of its controller's untap step. Haste
-			// bypass is read-time (HasSummoningSickness), so
-			// clearing unconditionally here is correct.
+			// S18 sub-PR 2: clear the "entered this turn" marker
+			// for this controller's permanents at the start of
+			// their untap step. CR 302.6 — a creature stops being
+			// sick once its controller has controlled it since
+			// their turn began. The creature test and the haste
+			// bypass are both read-time
+			// (HasSummoningSickness), so clearing the marker
+			// unconditionally here is correct.
 			g.Battlefield.Cards[i].SummonedThisTurn = false
 		}
 	}

@@ -268,6 +268,47 @@ describe("buildMenuSections — battlefield", () => {
     expect(itemById(sections, "mana-0")?.disabled).toBe(true);
     expect(itemById(sections, "mana-0")?.hint).toBe("already tapped");
   });
+
+  // --- #530 / #365 / #368 ------------------------------------------
+  //
+  // The menu reads `summoning_sick` straight off the wire and derives
+  // nothing of its own — CR 302.6 is the server's call, and the
+  // server now answers it correctly (it used to ship the flag for
+  // every permanent that entered this turn, which greyed every
+  // Treasure, mana rock and fetchland played that turn). These pin
+  // that contract from the client side so nobody reintroduces a
+  // client-side "it came down this turn" rule.
+  it("does not grey a noncreature's tap ability the server calls healthy", () => {
+    const treasure = card("c7", "a", {
+      type_line: "Token Artifact — Treasure",
+      // The server's answer for an artifact that entered this turn.
+      summoning_sick: false,
+      mana_abilities: [
+        {
+          index: 0,
+          label: "{T}, Sacrifice: Add one mana of any color",
+          tap_cost: true,
+          sacrifice_cost: true,
+        },
+      ],
+    });
+    const v2 = view([seat("a", "Alice")], { battlefield: [treasure] });
+    const sections = buildMenuSections(v2, treasure, "a", false);
+    expect(itemById(sections, "mana-0")?.disabled).toBe(false);
+    expect(itemById(sections, "mana-0")?.hint).toBeUndefined();
+  });
+
+  it("still greys a tap ability the server calls summoning sick", () => {
+    const bird = card("c8", "a", {
+      type_line: "Creature — Bird",
+      summoning_sick: true,
+      mana_abilities: [{ index: 0, label: "{T}: Add {G}", tap_cost: true }],
+    });
+    const v2 = view([seat("a", "Alice")], { battlefield: [bird] });
+    const sections = buildMenuSections(v2, bird, "a", false);
+    expect(itemById(sections, "mana-0")?.disabled).toBe(true);
+    expect(itemById(sections, "mana-0")?.hint).toBe("summoning sickness");
+  });
 });
 
 describe("buildMenuSections — combat", () => {

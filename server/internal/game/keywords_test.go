@@ -121,7 +121,7 @@ func TestHasSummoningSickness(t *testing.T) {
 	sick := &Card{
 		InstanceID:       uuid.New(),
 		SummonedThisTurn: true,
-		effective:        &Characteristic{},
+		effective:        &Characteristic{Types: []string{"creature"}},
 	}
 	if !HasSummoningSickness(sick) {
 		t.Error("fresh creature without haste should be sick")
@@ -131,7 +131,10 @@ func TestHasSummoningSickness(t *testing.T) {
 	hasty := &Card{
 		InstanceID:       uuid.New(),
 		SummonedThisTurn: true,
-		effective:        &Characteristic{Abilities: []string{"haste"}},
+		effective: &Characteristic{
+			Types:     []string{"creature"},
+			Abilities: []string{"haste"},
+		},
 	}
 	if HasSummoningSickness(hasty) {
 		t.Error("haste creature must bypass sickness")
@@ -140,7 +143,7 @@ func TestHasSummoningSickness(t *testing.T) {
 	// Been around, no haste → not sick.
 	settled := &Card{
 		InstanceID: uuid.New(),
-		effective:  &Characteristic{},
+		effective:  &Characteristic{Types: []string{"creature"}},
 	}
 	if HasSummoningSickness(settled) {
 		t.Error("creature with SummonedThisTurn=false must not be sick")
@@ -149,6 +152,53 @@ func TestHasSummoningSickness(t *testing.T) {
 	// nil → not sick (avoids defensive nil checks in callers).
 	if HasSummoningSickness(nil) {
 		t.Error("nil card must not be sick")
+	}
+}
+
+// TestHasSummoningSicknessIsCreaturesOnly is #530. CR 302.6 gates a
+// CREATURE: it can't attack, and can't pay {T} or {Q}, unless its
+// controller has controlled it continuously since their most recent
+// turn began. A Treasure token, a Sol Ring and a fetchland are not
+// creatures and have never been subject to that rule, but this
+// helper reported all three as sick because it read
+// SummonedThisTurn alone. The engine's write paths papered over
+// that with their own `card.IsCreature() &&` prefix; the wire
+// (protocol/view.go) did not, so the client greyed abilities the
+// server would have allowed. The guard belongs here, where the rule
+// is named.
+func TestHasSummoningSicknessIsCreaturesOnly(t *testing.T) {
+	fresh := func(types ...string) *Card {
+		return &Card{
+			InstanceID:       uuid.New(),
+			SummonedThisTurn: true,
+			effective:        &Characteristic{Types: types},
+		}
+	}
+
+	tests := []struct {
+		name string
+		card *Card
+		want bool
+	}{
+		{"Treasure token made this turn", fresh("artifact"), false},
+		{"fetchland played this turn", fresh("land"), false},
+		{"uncrewed Vehicle that entered this turn", fresh("artifact"), false},
+		{"enchantment that entered this turn", fresh("enchantment"), false},
+		{"planeswalker that entered this turn", fresh("planeswalker"), false},
+		{"creature that entered this turn", fresh("creature"), true},
+		// An animated land or a crewed Vehicle that ENTERED this
+		// turn is a creature whose controller has not controlled it
+		// since the turn began, so CR 302.6 still catches it. A
+		// Vehicle that has been out since last turn has
+		// SummonedThisTurn=false and is judged by the arm above.
+		{"artifact creature that entered this turn", fresh("artifact", "creature"), true},
+		{"manland animated the turn it entered", fresh("land", "creature"), true},
+	}
+
+	for _, tc := range tests {
+		if got := HasSummoningSickness(tc.card); got != tc.want {
+			t.Errorf("%s: HasSummoningSickness = %v, want %v", tc.name, got, tc.want)
+		}
 	}
 }
 

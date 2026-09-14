@@ -227,9 +227,33 @@ func HasKeyword(c *Card, kw string) bool {
 }
 
 // HasSummoningSickness reports whether the card is currently unable
-// to attack or activate tap-cost abilities due to CR 302.1
-// summoning sickness — entered the battlefield this turn AND does
-// not have haste.
+// to attack or to activate an ability with {T} or {Q} in its cost,
+// per CR 302.6 — it is a CREATURE, it entered the battlefield this
+// turn, and it does not have haste.
+//
+// The creature test is part of the rule, not a caller's garnish.
+// CR 302.6 is written about creatures and nothing else: a Treasure
+// token, a Sol Ring and a Fabled Passage are not creatures, and
+// their controller may tap them the turn they arrive. #530: this
+// helper used to answer on SummonedThisTurn alone, which made every
+// mana rock, fetchland and Treasure played this turn read as
+// unusable. The engine's write paths each carried their own
+// `card.IsCreature() &&` prefix and so stayed correct, but the wire
+// (protocol/view.go) called the helper bare and shipped
+// `summoning_sick: true` for every permanent that entered this
+// turn, so the client greyed abilities the server would have
+// allowed — the two player reports #365 and #368. Those `IsCreature`
+// prefixes are now redundant rather than load-bearing; they are
+// left in place as documentation at the point of use.
+//
+// Creature-hood is read at call time, which is what CR 302.6 asks
+// for: the clock runs on continuous CONTROL since the turn began,
+// not on when the permanent became a creature. So a Vehicle crewed
+// this turn but on the battlefield since last turn is not sick and
+// can attack, while one that landed this turn is sick however early
+// it was crewed. Same for a manland animated the turn it entered.
+// Callers reading types after a state change must have called
+// RecomputeLayersIfStaleLocked, exactly as for CurrentPower.
 //
 // Haste is a read-time bypass, NOT a clear-on-ETB: a creature that
 // gains haste mid-turn (e.g. via Anger in graveyard, or a Concerted
@@ -237,7 +261,7 @@ func HasKeyword(c *Card, kw string) bool {
 // turn without waiting for next untap. Conversely, a creature that
 // loses haste mid-turn (rare but possible via type-change effects)
 // correctly becomes sick until next untap. Keeping
-// `SummonedThisTurn` a pure "when did this creature enter" flag
+// `SummonedThisTurn` a pure "when did this permanent enter" flag
 // decouples the two independent state changes.
 //
 // nil card returns false.
@@ -246,6 +270,11 @@ func HasSummoningSickness(c *Card) bool {
 		return false
 	}
 	if !c.SummonedThisTurn {
+		return false
+	}
+	// CR 302.6 gates creatures. Everything else is free the turn it
+	// arrives.
+	if !c.IsCreature() {
 		return false
 	}
 	return !HasKeyword(c, "haste")
