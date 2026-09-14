@@ -14,23 +14,27 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // since it locks YOU out of targeting your own creature too. That
 // asymmetry is why the Cloak and the Boots are different cards.
 //
-// ONE SIMPLIFICATION, strictly weaker: "can't be blocked" is not
-// granted. Evasion that is not a keyword ability lives in the
-// declare-blockers legality check, and the engine has no restriction
-// vocabulary there — CanBlock reads the CR 702 evasion keywords
-// (flying, and reach against it) and nothing else, and the same gap
-// is what keeps Pacifism's "can't attack or block" out of the
-// catalog. So the Cloak ships as a shroud-granter that costs three,
-// which is a worse card than the printed one and never a better one.
-// It becomes whole the day a blocking-restriction hook lands.
+// "Can't be blocked" shipped one sprint late. It was held back
+// because evasion that is not a keyword ability had nowhere to live
+// — CanBlock read the CR 702 evasion keywords and nothing else — and
+// the S24 restriction vocabulary is the hook that comment was
+// waiting for. It is a restriction on the DEFENDER's options
+// (CR 509.1b) carried on the attacker, which is why it is read
+// inside CanBlock rather than anywhere on the attacking side.
+//
+// The Cloak is now complete, and the two halves are the same card
+// again: unblockable carries the commander damage, shroud keeps the
+// carrier off the end of a removal spell — including your own, which
+// is the drawback that makes the Cloak and the Boots different
+// cards.
 func init() {
 	Register(Spec{
 		OracleID:     "9ad4f730-a18e-4a7c-a468-a926c718c741",
 		Name:         "Whispersilk Cloak",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"\"Can't be blocked\" isn't granted — the equipped creature blocks and is blocked normally."},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			GrantToAttached("shroud"),
+			RestrictAttached(game.CantBeBlocked),
 		},
 		Activated: []ActivatedAbility{
 			EquipAbility("{2}"),

@@ -55,6 +55,23 @@ type Characteristic struct {
 	// all of them are right without being touched. See
 	// recomputeLayersLocked.
 	Controller uuid.UUID
+
+	// Restrictions is the S24 declaration-time restriction set:
+	// "can't attack", "can't block", "can't be blocked", "its
+	// activated abilities can't be activated". Like Controller it is
+	// not a characteristic in the CR 109.3 sense — CR 613 gives
+	// restrictions no layer at all, because a restriction is an
+	// effect the SOURCE has rather than an ability the restricted
+	// permanent has.
+	//
+	// It lives here anyway because the layer pass is the only thing
+	// that knows which permanents a continuous effect applies to.
+	// The field is only ever OR'd into and no layer clears it, so
+	// the layer a restriction is written in and its timestamp are
+	// both irrelevant — and "enchanted creature loses all abilities"
+	// cannot strip a Pacifism, which is the rules-correct outcome.
+	// restrictions.go has the taxonomy.
+	Restrictions Restriction
 }
 
 // printedCharacteristic builds a Characteristic from the card's

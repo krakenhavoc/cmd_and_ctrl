@@ -168,6 +168,15 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if excluded[c.InstanceID] {
 			continue
 		}
+		// S24: a permanent whose mana abilities can't be activated
+		// (Arrest) is not a mana source, for the same reason a
+		// gated ability isn't one below — planning it produces a
+		// plan ActivateManaAbility then refuses with
+		// ErrCantActivate, after the executor has already tapped
+		// whatever came before it in the plan.
+		if !CanActivateManaAbilities(&c) {
+			continue
+		}
 		picked := autoTapAbilityFor(ManaAbilitiesForCard(c))
 		if picked == nil {
 			continue

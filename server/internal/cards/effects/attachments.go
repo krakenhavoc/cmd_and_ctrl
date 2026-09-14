@@ -200,6 +200,15 @@ func EnchantCreature(preds ...CardPredicate) *game.TargetSpec {
 	return TargetCreature("enchant creature", preds...)
 }
 
+// EnchantPermanent is the widest enchant clause: "Enchant permanent"
+// (Faith's Fetters). Distinct from EnchantCreature because the CR
+// 704.5n legality re-check runs this very spec every turn — an Aura
+// declared as "enchant creature" falls off a host that stops being
+// one, and an Aura declared this way does not.
+func EnchantPermanent(preds ...CardPredicate) *game.TargetSpec {
+	return TargetPermanent("enchant permanent", preds...)
+}
+
 // EnchantPlayer is a Curse's "Enchant player" clause. The reason
 // Card.AttachedTo is a TargetRef and not a card ID.
 func EnchantPlayer(preds ...PlayerPredicate) *game.TargetSpec {

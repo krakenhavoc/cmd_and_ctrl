@@ -890,6 +890,23 @@ type CardView struct {
 	// Added in S16 sub-PR 1.
 	Abilities []string `json:"abilities,omitempty"`
 
+	// Restrictions is the S24 restriction set as stable snake_case
+	// tokens — "cant_attack", "cant_block", "cant_be_blocked",
+	// "cant_activate", "cant_activate_mana". Empty for the permanent
+	// nothing is restricting, which is almost all of them.
+	//
+	// It is deliberately NOT folded into Abilities. A restriction is
+	// not a keyword the permanent has, it is an effect something else
+	// has (game/restrictions.go argues that at length), and the
+	// client renders the two differently: a keyword gets a badge, a
+	// restriction gets a control disabled with a reason.
+	//
+	// The client reads this INSTEAD of deriving the rule. The server
+	// decides who can attack; the wire says so; attackAll and the
+	// ability menu render it. A second derivation in TypeScript is
+	// the thing #429 spent a PR deleting.
+	Restrictions []string `json:"restrictions,omitempty"`
+
 	// Layout is Scryfall's printing layout ("modal_dfc",
 	// "transform", "adventure", …), omitted for the ordinary
 	// single-faced card. The client reads it to decide whether
@@ -2482,6 +2499,7 @@ func viewOfCard(c game.Card) CardView {
 		ManaAbilities: viewOfManaAbilities(c),
 		SummoningSick: game.HasSummoningSickness(&c),
 		Abilities:     eff.Abilities,
+		Restrictions:  eff.Restrictions.Names(),
 		knowers:       knowers,
 		Layout:        c.Layout,
 		Faces:         viewOfFaces(c),

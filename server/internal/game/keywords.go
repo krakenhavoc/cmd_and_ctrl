@@ -294,10 +294,30 @@ func HasSummoningSickness(c *Card) bool {
 //   - Menace is not checked here — it's a block-count rule, see
 //     BlockerCountValid. This function runs per-pair.
 //
+// S24 adds the restriction vocabulary (restrictions.go), and this is
+// the ONE place both halves of it are read — "~ can't block" on the
+// blocker (Pacifism, Carrion Feeder) and "~ can't be blocked" on the
+// attacker (Whispersilk Cloak, Rogue's Passage). Putting both here
+// rather than splitting the blocker's half into BlockerEligible is
+// deliberate: DeclareBlocker calls only this function, while the
+// legal-move enumerator and the #328 auto-pass signal call
+// BlockerEligible AND this function. One predicate all three reach is
+// the only arrangement in which the engine cannot refuse a block the
+// enumerator offered.
+//
 // nil arguments return false (defensive — no card can block a
 // missing attacker, and a nil blocker can't block).
 func CanBlock(attacker, blocker *Card) bool {
 	if attacker == nil || blocker == nil {
+		return false
+	}
+	// CR 509.1b restrictions. Read before the evasion keywords
+	// because they are absolute: no defensive keyword answers
+	// "can't be blocked" the way reach answers flying.
+	if Restricted(attacker, CantBeBlocked) {
+		return false
+	}
+	if Restricted(blocker, CantBlock) {
 		return false
 	}
 	// Flying: blocker must have flying or reach.

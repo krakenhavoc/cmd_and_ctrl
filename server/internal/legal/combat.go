@@ -41,13 +41,19 @@ func (e *enumerator) combatMoves() {
 		}
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
-			if c.Controller != e.seat || !c.IsCreature() || c.Tapped {
-				continue
-			}
-			if c.AttackingTarget != uuid.Nil {
-				continue
-			}
-			if game.HasKeyword(c, "defender") || game.HasSummoningSickness(c) {
+			// S24: the attacker-side eligibility rule is
+			// game.AttackerEligible and the ENGINE's bulk
+			// DeclareAttackers runs the same function. This list used
+			// to be spelled out here — controller, creature,
+			// untapped, not already declared, no defender, not
+			// summoning sick — and spelled out again in the engine,
+			// which is the arrangement #544 hung a table with: the
+			// enumerator offered a move the engine refused, and a
+			// seat that owes a decision is enumerated that decision's
+			// answers and nothing else, so there was nothing else to
+			// do. "Can't attack" (Pacifism) joins the list inside
+			// that one function and both sides get it at once.
+			if !game.AttackerEligible(c, e.seat) {
 				continue
 			}
 			// S27: an attacker may be declared against a player, a
