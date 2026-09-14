@@ -42,6 +42,9 @@ func init() {
 		// Roadmap batch 12 (#305): Land — Forest Island, the same
 		// two-basics clause.
 		{"0070db93-142b-4d04-afd3-836792dc134b", "Sodden Verdure", "G", "U"},
+		// Roadmap batch 25 (#387): Land — Island Mountain, the same
+		// two-basics clause.
+		{"f808b510-907a-4c3c-aea1-efb825c8e13e", "Scorched Geyser", "U", "R"},
 	} {
 		Register(Spec{
 			OracleID:      land.oracleID,

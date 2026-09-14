@@ -42,6 +42,12 @@ func init() {
 		{"e3b67368-1dd6-419b-a95d-7131b1dba23f", "Geothermal Bog", "B", "R"},
 		// Roadmap batch 24 (#386): Land — Island Mountain.
 		{"58c592ed-20fc-481b-909b-2315567e5f20", "Molten Tributary", "U", "R"},
+		// Roadmap batch 25 (#387): Kaldheim's Snow Land — Forest
+		// Island. Same text as the rest of the table (Radiant Grove's
+		// precedent for a second cycle with identical text); the snow
+		// supertype is printed type-line data the engine carries
+		// unchanged, so nothing here needs to know about it.
+		{"983739cd-0b36-40d9-9a03-7b6aa7ffd0df", "Rimewood Falls", "G", "U"},
 	} {
 		Register(Spec{
 			OracleID:      land.oracleID,
