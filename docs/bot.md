@@ -160,6 +160,12 @@ time a spec was refactored.
 Each is exactly 100 cards: one commander and ninety-nine mainboard.
 Deck IDs are wire values and will not be renamed.
 
+**None of the four is selectable today** — the picker still offers the
+single placeholder deck (`placeholder-mono-red`, a commander and
+ninety-nine Mountains) that sub-PR 4 shipped as a stand-in, because
+the curated registry was never wired into the server
+([#501](https://github.com/krakenhavoc/cmd_and_ctrl/issues/501)).
+
 **A bot deck runs the identical pipeline your upload runs.** The
 server holds the decklist as plain text — the same bytes you could
 paste into the upload box — and then parses, resolves and validates it
