@@ -218,11 +218,21 @@ func (e *enumerator) choiceMoves() bool {
 
 		case game.PendingChoiceSearchLibrary:
 			// CR 701.19: take up to SearchMax of the matching cards;
-			// failing to find (an empty list) is always legal.
+			// failing to find (an empty list) is always legal, which
+			// is what makes it this choice's AlwaysLegal answer.
 			p := base()
 			p.CardIDs = []string{}
-			e.addChoice(c, reason+": fail to find", p)
-			for _, set := range combinations(c.SearchCards, 1, c.SearchMax, e.opts.MaxExpansionPerSource) {
+			e.addAlwaysLegalChoice(c, reason+": fail to find", p)
+			// Every offered pick is run past the engine's own
+			// acceptance check first. A search may carry a Validate
+			// hook for a clause no per-card predicate can express —
+			// Myriad Landscape's "two basic lands that SHARE a land
+			// type" — and enumerating a pick the resolver will reject
+			// breaks this package's one promise (#544). The rule is
+			// not re-derived here; the engine is asked.
+			picks := searchCombinations(c.SearchCards, c.SearchMax, e.opts.MaxExpansionPerSource,
+				func(set []uuid.UUID) bool { return g.SearchPickLegalLocked(c, set) })
+			for _, set := range picks {
 				p := base()
 				p.CardIDs = idStrings(set)
 				label := reason + ": take"
@@ -345,6 +355,106 @@ func (e *enumerator) addChoice(c *game.PendingChoice, label string, p choicePara
 		Source: c.Source,
 		Params: mustJSON(p),
 	})
+}
+
+// addAlwaysLegalChoice is addChoice for the one answer a choice kind
+// can promise the engine will never refuse — see Move.AlwaysLegal. A
+// kind that has such an answer should mark exactly one of them, and
+// a kind that has none should mark nothing rather than guess.
+func (e *enumerator) addAlwaysLegalChoice(c *game.PendingChoice, label string, p choiceParams) {
+	e.add(Move{
+		Type:        TypeResolveChoice,
+		Player:      e.seat,
+		Kind:        KindChoice,
+		Label:       label,
+		Source:      c.Source,
+		Params:      mustJSON(p),
+		AlwaysLegal: true,
+	})
+}
+
+// searchCombinations picks the answers a search prompt is offered
+// for, out of `pool`, and is combinations() with two differences
+// that matter (#544).
+//
+// It FILTERS through `allow`, which is the engine's own acceptance
+// check, so a pick the resolver would reject is never offered.
+//
+// And it SPREADS `limit` across pick sizes instead of spending it on
+// the small ones first. That second half is not a refinement of the
+// first; without it the filter is not enough. combinations() walks
+// k=1 to exhaustion before it reaches k=2, so for a "search for up
+// to two" prompt:
+//
+//   - with `limit` or more candidates the budget was gone before the
+//     first pair, no pair was offered at all, and Myriad Landscape
+//     quietly fetched one land off a card that prints two — for
+//     every seat reading this list, bot or client;
+//   - with fewer, exactly one or two pairs squeezed in, always the
+//     first in pool order. Filtering an invalid one out of THAT list
+//     leaves a legal list that still never offers a valid pair.
+//
+// The budget has to reach the valid picks, not merely skip the
+// invalid ones. Round-robin by size does that; ties in pool order
+// are preserved within each size.
+func searchCombinations(pool []uuid.UUID, hi, limit int, allow func([]uuid.UUID) bool) [][]uuid.UUID {
+	if hi > len(pool) {
+		hi = len(pool)
+	}
+	if hi < 1 || limit <= 0 {
+		return nil
+	}
+	bySize := make([][][]uuid.UUID, hi+1)
+	for k := 1; k <= hi; k++ {
+		bySize[k] = allowedSubsets(pool, k, limit, allow)
+	}
+	out := make([][]uuid.UUID, 0, limit)
+	for i := 0; len(out) < limit; i++ {
+		before := len(out)
+		for k := 1; k <= hi && len(out) < limit; k++ {
+			if i < len(bySize[k]) {
+				out = append(out, bySize[k][i])
+			}
+		}
+		if len(out) == before {
+			break
+		}
+	}
+	return out
+}
+
+// searchScanBudget bounds how many candidate subsets of one size
+// allowedSubsets will test before giving up. A search whose Validate
+// rejects most pairs (Myriad Landscape on a five-colour mana base)
+// must not turn enumeration into a walk of every C(n,k).
+const searchScanBudget = 64
+
+// allowedSubsets returns up to `limit` k-subsets of pool, in pool
+// order, keeping only those `allow` accepts.
+func allowedSubsets(pool []uuid.UUID, k, limit int, allow func([]uuid.UUID) bool) [][]uuid.UUID {
+	if k > len(pool) || limit <= 0 {
+		return nil
+	}
+	var out [][]uuid.UUID
+	scanned, budget := 0, limit*searchScanBudget
+	var rec func(start int, cur []uuid.UUID)
+	rec = func(start int, cur []uuid.UUID) {
+		if len(out) >= limit || scanned >= budget {
+			return
+		}
+		if len(cur) == k {
+			scanned++
+			if allow == nil || allow(cur) {
+				out = append(out, append([]uuid.UUID(nil), cur...))
+			}
+			return
+		}
+		for i := start; i < len(pool) && len(out) < limit && scanned < budget; i++ {
+			rec(i+1, append(cur, pool[i]))
+		}
+	}
+	rec(0, nil)
+	return out
 }
 
 // canonicalOrders returns the identity permutation and, when there

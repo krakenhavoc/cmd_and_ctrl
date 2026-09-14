@@ -69,6 +69,42 @@ func (g *Game) ResolveSearchLibrary(choiceID, chooserID uuid.UUID, picks []uuid.
 	if p == nil {
 		return ErrPlayerNotFound
 	}
+	if err := g.checkSearchPicksLocked(choice, p, picks); err != nil {
+		return err
+	}
+	g.dequeueChoiceLocked(idx)
+
+	found := g.executeSearchTakeLocked(spec, p, picks)
+	err := g.finishSearchLocked(spec, p, found)
+	if err != nil {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Actor:    chooserID,
+			Source:   choice.Source,
+			ErrorMsg: err.Error(),
+		})
+	}
+	g.runStateChecksLocked()
+	return nil
+}
+
+// checkSearchPicksLocked is the ONE copy of "would this answer be
+// accepted for this search prompt". ResolveSearchLibrary runs it
+// before it dequeues; internal/legal runs it — through
+// SearchPickLegalLocked — before it OFFERS a combination, so the
+// enumerator cannot advertise a pick the resolver will refuse.
+//
+// It is one function rather than two deliberately. The predicate a
+// search enforces is card text (Myriad Landscape's "share a land
+// type"), and a second copy of card text drifts: Game.CounterSpell
+// and counterSpellLocked drifted on flashback exactly that way. The
+// enumerator therefore does not re-derive the rule, it asks.
+//
+// Caller must hold g.mu.
+func (g *Game) checkSearchPicksLocked(choice *PendingChoice, p *Player, picks []uuid.UUID) error {
+	if choice == nil || choice.searchResume == nil {
+		return ErrInvalidParam
+	}
 	if len(picks) > choice.SearchMax {
 		return ErrInvalidParam
 	}
@@ -93,21 +129,35 @@ func (g *Game) ResolveSearchLibrary(choiceID, chooserID uuid.UUID, picks []uuid.
 		}
 		chosen = append(chosen, card)
 	}
+	spec := choice.searchResume.spec
 	if spec.Validate != nil && len(chosen) > 0 && !spec.Validate(chosen) {
 		return ErrInvalidParam
 	}
-	g.dequeueChoiceLocked(idx)
-
-	found := g.executeSearchTakeLocked(spec, p, picks)
-	err := g.finishSearchLocked(spec, p, found)
-	if err != nil {
-		g.EmitEvent(Event{
-			Kind:     EventEffectError,
-			Actor:    chooserID,
-			Source:   choice.Source,
-			ErrorMsg: err.Error(),
-		})
-	}
-	g.runStateChecksLocked()
 	return nil
+}
+
+// SearchPickLegalLocked reports whether `picks` is an answer
+// ResolveSearchLibrary would accept for `choice` right now. It is
+// the enumerator's read-only window onto the search's Validate hook,
+// which rides on the unexported continuation frame and must stay
+// there: the hook is a closure over the effect, not wire state, and
+// handing internal/legal the frame itself would make every future
+// continuation field part of the enumerator's contract.
+//
+// An empty `picks` is always legal — CR 701.19c lets a player fail
+// to find — which is what gives a stuck seat an answer to fall back
+// on (see legal.Move.AlwaysLegal).
+//
+// Caller must hold g's read lock; internal/legal calls it from
+// inside ReadSnapshot, like every other *ForEffect / *Locked surface
+// the enumerator uses.
+func (g *Game) SearchPickLegalLocked(choice *PendingChoice, picks []uuid.UUID) bool {
+	if choice == nil || choice.Kind != PendingChoiceSearchLibrary {
+		return false
+	}
+	p := g.playerByIDLocked(choice.Chooser)
+	if p == nil {
+		return false
+	}
+	return g.checkSearchPicksLocked(choice, p, picks) == nil
 }

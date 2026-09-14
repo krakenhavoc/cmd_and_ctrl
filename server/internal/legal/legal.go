@@ -78,6 +78,26 @@ type Move struct {
 	Kind   Kind            `json:"kind"`
 	Label  string          `json:"label"`
 	Source uuid.UUID       `json:"source,omitempty"`
+
+	// AlwaysLegal marks a move the engine cannot refuse whatever
+	// else happens between enumeration and dispatch: passing
+	// priority, and a choice kind's one unconditional answer (a
+	// search's "fail to find", CR 701.19c).
+	//
+	// Every enumerated move is legal when it is enumerated — that is
+	// this package's contract. AlwaysLegal is the stronger claim
+	// that it is STILL legal after the board has moved or after some
+	// other answer to the same prompt was rejected, and it exists so
+	// an automated seat has somewhere to go when its preferred move
+	// keeps bouncing. A seat owing a choice is offered nothing but
+	// that choice's answers, so without it a bot whose every
+	// considered answer is rejected has no pass to fall back on and
+	// stops playing, holding the table (#544, #499).
+	//
+	// Only mark an answer whose acceptance depends on nothing. When
+	// in doubt leave a kind unmarked: the cost is a bot that sleeps,
+	// which is what it did before.
+	AlwaysLegal bool `json:"always_legal,omitempty"`
 }
 
 // Options tunes the expansion caps. The zero value is usable.
@@ -186,10 +206,11 @@ func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 	holds := holdsPriority(g, seat)
 	if holds {
 		e.out = append(e.out, Move{
-			Type:   TypePassPriority,
-			Player: seat,
-			Kind:   KindPass,
-			Label:  "Pass priority",
+			Type:        TypePassPriority,
+			Player:      seat,
+			Kind:        KindPass,
+			Label:       "Pass priority",
+			AlwaysLegal: true,
 		})
 		e.castMoves()
 		e.activatedMoves()

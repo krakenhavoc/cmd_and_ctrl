@@ -120,3 +120,27 @@ func PassIndex(moves []legal.Move) int {
 	}
 	return -1
 }
+
+// SafeIndex returns the index of the first move the enumerator
+// marked legal.Move.AlwaysLegal, or -1.
+//
+// It is PassIndex generalised, and it exists because passing is not
+// always on offer: a seat that owes a pending choice is enumerated
+// that choice's answers and NOTHING else, so PassIndex is -1 for the
+// whole time the prompt is open. A runner that has run out of
+// rejections there has no way to put the game down, and the table
+// stops (#544). The always-legal answer is the way out: it is a
+// worse move than the one the policy wanted, and enormously better
+// than a seat that stops playing.
+//
+// Pass is itself marked AlwaysLegal, so where both exist this finds
+// whichever the enumerator listed first; callers that specifically
+// want to yield priority should still ask PassIndex.
+func SafeIndex(moves []legal.Move) int {
+	for i, m := range moves {
+		if m.AlwaysLegal {
+			return i
+		}
+	}
+	return -1
+}

@@ -256,6 +256,13 @@ export interface LegalMoveView {
   // apply to a UUID array — so join on equality with a real instance
   // ID and never on presence.
   source?: string;
+  // True on a move the server cannot refuse whatever else happens
+  // between this frame and the click: passing priority, and a pending
+  // choice's one unconditional answer (a search's "fail to find").
+  // Absent means "legal right now", which is what every move in this
+  // list already promises. Automated seats use it as the way out of a
+  // prompt whose other answers keep being rejected.
+  always_legal?: boolean;
 }
 
 // LogKind mirrors `protocol.LogKind` server-side. Coarser than the
