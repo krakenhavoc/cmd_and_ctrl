@@ -63,10 +63,10 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **1405** |
-| — whole cards (bare `oracle_id`) | **1345** |
+| Registry keys (`len(effects.All())`) | **1410** |
+| — whole cards (bare `oracle_id`) | **1350** |
 | — MDFC back faces (`<oracle_id>#1`) | 60 |
-| Declared `full` | 954 |
+| Declared `full` | 959 |
 | Declared `caveats` | 366 |
 | Declared `unreviewed` | 85 |
 
