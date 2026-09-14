@@ -147,8 +147,19 @@ func (r gameResult) totals() aiseat.Stats {
 // table frozen and nobody to tell about it.
 func playGame(t *testing.T, seed uint64, policies []aiseat.Policy, turnBudget int, wall time.Duration) gameResult {
 	t.Helper()
-	room := newBattleRoom(t, len(policies), seed)
+	return playGameIn(t, newBattleRoom(t, len(policies), seed), seed, policies, turnBudget, wall)
+}
+
+// playGameIn is playGame against a caller-supplied room, so a caller
+// that needs a room built differently — random_game_test.go wants one
+// with an on-disk replay log — reuses this loop rather than forking
+// it. playGame is the ordinary entry point.
+func playGameIn(t *testing.T, room *ws.Room, seed uint64, policies []aiseat.Policy, turnBudget int, wall time.Duration) gameResult {
+	t.Helper()
 	g := room.Game
+	if len(g.Seats) != len(policies) {
+		t.Fatalf("room has %d seats, got %d policies", len(g.Seats), len(policies))
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), wall)
 	defer cancel()
 

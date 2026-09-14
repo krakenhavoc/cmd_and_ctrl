@@ -2154,6 +2154,30 @@ func legalMovesFor(bySeat map[string][]LegalMoveView, viewerID string) []LegalMo
 // a library mid-fetch — a number CR 400.2 does not entitle them to.
 // Spectators and admins (empty viewerID) are held to the same rule
 // here rather than being handed the whole match set.
+//
+// Every OTHER kind takes the same medicine one card at a time: an
+// option the viewer does not know is dropped from a non-chooser's
+// copy rather than redacted into an anonymous back. Redaction zeroes
+// the printed characteristics and keeps the instance ID, which is the
+// right trade for a card sitting in a public zone — the ID is already
+// on that viewer's wire, so withholding it would be theatre — and the
+// wrong one here, because these options come out of HIDDEN zones that
+// FilterViewFor strips for exactly this viewer a few lines above.
+//
+// The concrete leak this closes: scry, surveil and "look at the top
+// N" inline the chooser's top library cards as Options, and the zone
+// projection had already removed every trace of that library from an
+// opponent's frame. Shipping the same cards back as N stable UUIDs
+// hands the table a handle on specific cards in a hidden zone that it
+// can correlate the moment one of them is cast — the same "the
+// instance ID alone is the leak" argument S31 sub-PR 0 settled for
+// the public log, pointed the other way. Thoughtseize is the same
+// shape: the caster is entitled to the hand it revealed, the two
+// seats watching are not.
+//
+// The chooser always keeps their whole list, known or not. They are
+// the one being asked to pick, and a coercive discard that revealed
+// nothing is still answered by choosing one of the backs.
 func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool, viewerID string) []PendingChoiceView {
 	if len(src) == 0 {
 		return nil
@@ -2167,9 +2191,14 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			continue
 		}
 		if len(c.Options) > 0 {
-			opts := make([]CardView, len(c.Options))
-			for j, card := range c.Options {
-				opts[j] = redactCardForViewer(card, isKnower(card))
+			chooser := c.Chooser == viewerID
+			opts := make([]CardView, 0, len(c.Options))
+			for _, card := range c.Options {
+				known := isKnower(card)
+				if !known && !chooser {
+					continue
+				}
+				opts = append(opts, redactCardForViewer(card, known))
 			}
 			out[i].Options = opts
 		}
