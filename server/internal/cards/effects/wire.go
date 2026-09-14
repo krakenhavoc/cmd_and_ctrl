@@ -262,6 +262,18 @@ func init() {
 		}
 		return spec.Triggered
 	}
+	// #74: "untap <these> during each other player's untap step"
+	// (Seedborn Muse). Read once per untap step, not once per event
+	// — the untap step's turn-based action asks the battlefield who
+	// widens CR 502.1's set. See Spec.UntapStep for why this is
+	// neither a trigger nor a static.
+	game.CatalogUntapStepPermissions = func(oracleID string) []game.UntapStepPermission {
+		spec, ok := Lookup(oracleID)
+		if !ok || len(spec.UntapStep) == 0 {
+			return nil
+		}
+		return spec.UntapStep
+	}
 }
 
 // selfOnly is the AppliesTo predicate for the synthesized

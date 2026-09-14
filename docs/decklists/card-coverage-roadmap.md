@@ -63,11 +63,11 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **1533** |
-| — whole cards (bare `oracle_id`) | **1473** |
+| Registry keys (`len(effects.All())`) | **1538** |
+| — whole cards (bare `oracle_id`) | **1478** |
 | — MDFC back faces (`<oracle_id>#1`) | 60 |
-| Declared `full` | 1060 |
-| Declared `caveats` | 389 |
+| Declared `full` | 1066 |
+| Declared `caveats` | 388 |
 | Declared `unreviewed` | 84 |
 
 A back face is half a card: the modal-DFC land cycle registers only its
@@ -374,7 +374,8 @@ re-check first, and this is how much it was worth here:
 - **No untap-step trigger** (1): Seedborn Muse. `EventStepTransition`
   is deliberately not in the public event log, so only a replacement
   can see it — and a replacement that does not cancel re-fires until
-  the 32-iteration cap.
+  the 32-iteration cap. *(Closed by #74: the answer was that it is
+  not a trigger at all — see `game/untap.go`.)*
 - **An opponent-paid *choice* that is not a mana cost** (1): Braids,
   Arisen Nightmare. `PayUnless` prices a decision in mana; "each
   opponent may sacrifice a permanent sharing a card type" has no
@@ -572,10 +573,16 @@ comments; a card can sit in two):
   East Tree, Ghalta, Cultivator Colossus, Sneak Attack, Terrain
   Generator, Arboreal Grazer, Stoneforge Mystic's second ability,
   Eureka Moment's and Broken Bond's riders.
-- **Step-entry trigger events that don't exist** (~7): untap step
-  (Seedborn Muse, Unwinding Clock, Bender's Waterskin, Drumbellower),
-  draw step (Howling Mine, Kami of the Crescent Moon), main phase
-  (Ripples of Undeath, Black Market Connections).
+- **Step-entry trigger events that don't exist** (~7): ~~untap step
+  (Seedborn Muse, Unwinding Clock, Bender's Waterskin,
+  Drumbellower)~~ — **closed by #74**, and not as a trigger event:
+  the untap step's turn-based action now takes contributions
+  (`Spec.UntapStep`), and the per-permanent `EventUntapCard` is
+  emitted from the step so Mesmeric Orb's "whenever a permanent
+  becomes untapped" is writable. Quest for Renewal dropped its
+  untap caveat with it. Remaining: draw step (Howling Mine, Kami of
+  the Crescent Moon), main phase (Ripples of Undeath, Black Market
+  Connections).
 - **Per-player "cast as though it had flash"** (~7): Emergence Zone,
   Alchemist's Refuge, Vedalken Orrery, Shimmer Myr, Borne Upon a Wind,
   High Fae Trickster, Liberator.

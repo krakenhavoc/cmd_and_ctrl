@@ -642,17 +642,35 @@ func (g *Game) UntapTargetForEffect(cardID uuid.UUID) error {
 
 // setTapStateLocked is the internal helper behind TapCard and the
 // TapTarget / UntapTarget effect primitives. Caller must hold g.mu.
+//
+// Both directions are a CHANGE of state (CR 701.19a / 701.20a): a
+// permanent that is already tapped does not become tapped, and one
+// that is already untapped does not become untapped. Neither emits,
+// and neither is an error — "untap target permanent" pointed at an
+// upright permanent is a legal instruction that does nothing. The
+// guard is what keeps Mesmeric Orb from milling on a Voltaic Key
+// pointed at an untapped rock, and Quest for Renewal from banking a
+// counter for a tap that never happened.
+//
+// The untap leg routes through untap.go's primitive so that every
+// untap in the engine — this one, the untap step's, a sandbox click
+// — announces through the same line of code.
 func (g *Game) setTapStateLocked(cardID uuid.UUID, tapped bool) error {
 	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID == cardID {
-			g.Battlefield.Cards[i].Tapped = tapped
-			if tapped {
-				g.EmitEvent(Event{Kind: EventTapCard, CardID: cardID})
-			} else {
-				g.EmitEvent(Event{Kind: EventUntapCard, CardID: cardID})
-			}
+		c := &g.Battlefield.Cards[i]
+		if c.InstanceID != cardID {
+			continue
+		}
+		if !tapped {
+			g.untapPermanentLocked(c)
 			return nil
 		}
+		if c.Tapped {
+			return nil
+		}
+		c.Tapped = true
+		g.EmitEvent(Event{Kind: EventTapCard, CardID: cardID})
+		return nil
 	}
 	return ErrCardNotFound
 }

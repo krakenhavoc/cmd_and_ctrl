@@ -561,7 +561,7 @@ func TestB32AngelicAccordMakesAnAngelAtAnyEndStepAfterFourLife(t *testing.T) {
 	}
 }
 
-func TestB32QuestForRenewalCountsTapsAndUntapsOnOtherPlayersUpkeeps(t *testing.T) {
+func TestB32QuestForRenewalCountsTapsAndUntapsDuringOtherPlayersUntapSteps(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp, far := g.Seats[0], g.Seats[1], g.Seats[3]
 	quest := b12Push(g, me.ID, "Quest for Renewal", "Enchantment", b32QuestForRenewalOracle, 0, 0)
@@ -612,23 +612,26 @@ func TestB32QuestForRenewalCountsTapsAndUntapsOnOtherPlayersUpkeeps(t *testing.T
 		t.Fatalf("three quest counters, got %d", got)
 	}
 
-	// Three counters: nothing untaps on the next player's upkeep.
+	// Three counters: nothing untaps during the next player's untap
+	// step.
 	advanceToUpkeepOf(t, g, 1)
 	passPriorityAroundTable(t, g)
 	if !b16Tapped(t, g, a) || !b16Tapped(t, g, b) {
 		t.Fatal("below four counters the creatures stay tapped")
 	}
 
-	// The fourth counter switches the untap on: at the following
-	// player's upkeep, as a trigger, the creatures untap.
+	// The fourth counter switches the untap on. #74: it is the untap
+	// STEP, not the upkeep, and it is a turn-based action rather than
+	// a trigger — so by the time the next player's upkeep is reached
+	// the creatures are already upright, with nothing announced and
+	// nothing to have responded to.
 	g.WithWriteLock(func() { _ = g.AddCounterForEffect(quest, "quest", 1) })
 	advanceToUpkeepOf(t, g, 2)
-	if triggerOnStack(g, quest) == nil && len(g.PendingTriggers) == 0 {
-		t.Fatal("the untap goes on the stack at another player's upkeep")
-	}
-	passPriorityAroundTable(t, g)
 	if b16Tapped(t, g, a) || b16Tapped(t, g, b) {
-		t.Error("with four counters every creature you control untaps")
+		t.Error("with four counters every creature you control untaps during each other player's untap step")
+	}
+	if triggerOnStack(g, quest) != nil || len(g.PendingTriggers) != 0 {
+		t.Error("the untap is a turn-based action — nothing goes on the stack")
 	}
 	if !b16Tapped(t, g, theirs) {
 		t.Error("an opponent's creature is not yours to untap")

@@ -3150,6 +3150,10 @@ func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCom
 // TapCard sets the tapped state of a card on the battlefield. Returns
 // ErrCardNotFound if the card is not currently on the battlefield —
 // tapping a card in any other zone is meaningless.
+//
+// Shares setTapStateLocked with the TapTarget / UntapTarget effect
+// primitives, which is what makes a sandbox untap fire "whenever a
+// permanent becomes untapped" the same way an effect's does.
 func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -3160,18 +3164,7 @@ func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 	// whether this permanent is one is a layer answer. Fast-path
 	// no-op when nothing changed.
 	g.RecomputeLayersIfStaleLocked()
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID == cardID {
-			g.Battlefield.Cards[i].Tapped = tapped
-			if tapped {
-				g.EmitEvent(Event{Kind: EventTapCard, CardID: cardID})
-			} else {
-				g.EmitEvent(Event{Kind: EventUntapCard, CardID: cardID})
-			}
-			return nil
-		}
-	}
-	return ErrCardNotFound
+	return g.setTapStateLocked(cardID, tapped)
 }
 
 // ActivateManaAbility fires the `abilityIdx`-th mana ability on a
@@ -3822,6 +3815,9 @@ func clampUnit(v float64) float64 {
 // dispatchable (sandbox / replay support) but is gated as a no-op
 // during the active player's StepUntap to avoid double-firing on top
 // of the auto-action.
+//
+// The untap itself lives in untap.go — see untapAllForLocked, and
+// performUntapStepLocked for the turn-based action this is NOT.
 func (g *Game) UntapAll(playerID uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -3836,33 +3832,6 @@ func (g *Game) UntapAll(playerID uuid.UUID) error {
 	}
 	g.untapAllForLocked(seatOfPlayerLocked(g, playerID))
 	return nil
-}
-
-// untapAllForLocked untaps every battlefield card controlled by the
-// given seat. Used both by the public UntapAll mutation and by the
-// StepUntap auto-action in runStepEntryHooksLocked. A negative or
-// out-of-range seat is a no-op (the caller has already validated the
-// seat or is the auto-fire path which only calls with the active
-// seat). Caller must hold g.mu.
-func (g *Game) untapAllForLocked(seat int) {
-	if seat < 0 || seat >= len(g.Seats) {
-		return
-	}
-	playerID := g.Seats[seat].ID
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].Controller == playerID {
-			g.Battlefield.Cards[i].Tapped = false
-			// S18 sub-PR 2: clear the "entered this turn" marker
-			// for this controller's permanents at the start of
-			// their untap step. CR 302.6 — a creature stops being
-			// sick once its controller has controlled it since
-			// their turn began. The creature test and the haste
-			// bypass are both read-time
-			// (HasSummoningSickness), so clearing the marker
-			// unconditionally here is correct.
-			g.Battlefield.Cards[i].SummonedThisTurn = false
-		}
-	}
 }
 
 // seatOfPlayerLocked returns the seat index of the player with the
