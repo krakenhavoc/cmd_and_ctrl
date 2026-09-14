@@ -88,6 +88,16 @@ func (e *enumerator) activatedMoves() {
 					continue
 				}
 			}
+			// #74: the life and loyalty components ride the Move
+			// rather than the params, because the params are the
+			// action payload and the dispatcher reads neither — it
+			// reads them off the ability. Without this a policy
+			// cannot tell "Pay 7 life: Draw seven cards" from a
+			// free ability and activates itself to death.
+			loyalty := 0
+			if ab.Cost.Loyalty != nil {
+				loyalty = *ab.Cost.Loyalty
+			}
 			for _, targets := range targetSets {
 				for _, sacs := range sacrificeSets {
 					if budget <= 0 {
@@ -101,6 +111,7 @@ func (e *enumerator) activatedMoves() {
 						Kind:   KindActivate,
 						Label:  label,
 						Source: source.InstanceID,
+						Cost:   moveCost(ab.Cost.Life, loyalty),
 						Params: mustJSON(activateParams{
 							SourceCardID: source.InstanceID.String(),
 							AbilityIndex: idx,
@@ -207,6 +218,9 @@ func (e *enumerator) manaMoves() {
 					Kind:   KindMana,
 					Label:  label,
 					Source: source.InstanceID,
+					// Mana Confluence's "Pay 1 life" is the same
+					// invisible cost an activated ability's is (#74).
+					Cost: moveCost(ab.LifeCost, 0),
 					Params: mustJSON(manaParams{
 						CardID:       source.InstanceID.String(),
 						AbilityIndex: idx,

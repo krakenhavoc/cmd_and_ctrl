@@ -75,6 +75,26 @@ type Config struct {
 	CommanderBonus float64
 	// ActivateBase is the flat value of using an activated ability.
 	ActivateBase float64
+	// LifePayoff is the value proxy for one point of life a move's
+	// cost charges — the life-cost twin of SpellPerMana, and there
+	// for the same reason. No oracle text reaches a policy, so what
+	// an ability DOES is unreadable and the only evidence of how
+	// much it does is what it asks for. An ability that charges
+	// seven life is presumed to buy about seven life's worth.
+	//
+	// Above Weights.Life on purpose, and that gap is the whole
+	// behaviour: while the bot is comfortable, paying life is a
+	// small profit, and as the total falls the quadratic danger
+	// term in LifeCostValue overwhelms a linear payoff and the same
+	// ability stops being worth it. Griselbrand at 40 draws seven;
+	// Griselbrand at 12 does not.
+	LifePayoff float64
+	// LifeFloor is the life total a move's cost may never take the
+	// bot below. One: the seat may spend itself to 1 if the
+	// arithmetic really says so, and may never spend itself to 0,
+	// because 0 is not a bad position — it is the end of the game
+	// (CR 704.5a) and no payoff on the wire can be worth it.
+	LifeFloor int
 	// ManaFloat prices a bare mana-ability activation. Negative:
 	// casts auto-tap, so floating mana is waste.
 	ManaFloat float64
@@ -163,6 +183,8 @@ func DefaultConfig() Config {
 		SpellPerMana:   0.60,
 		CommanderBonus: 1.50,
 		ActivateBase:   0.50,
+		LifePayoff:     0.35,
+		LifeFloor:      1,
 		ManaFloat:      -0.50,
 
 		RemovalConfidence:  0.80,

@@ -261,6 +261,30 @@ func (w Weights) MarginalLife(life int) float64 {
 	return v
 }
 
+// LifeCostValue is what paying `pay` life costs a seat that is on
+// `life` right now, in the units Strength is measured in: the linear
+// term plus however much deeper into the danger zone the payment
+// takes it. It is exactly the Strength delta Evaluate would compute
+// after the payment, which is the point — a life cost has to be
+// priced on the same scale as everything it is competing against, or
+// the comparison is a fiction.
+//
+// It is NOT MarginalLife × pay. MarginalLife is the slope at one
+// point and the penalty is quadratic, so multiplying it out
+// under-prices a big payment from a comfortable total (Griselbrand's
+// 7 from 12 life is not seven times the first point) and over-prices
+// a small one. Integrating the real curve is the same two
+// subtractions, so there is no reason to approximate.
+//
+// Paying to zero or below is not priced here: that is a loss of the
+// game rather than a bad trade, and moves.go refuses it outright.
+func (w Weights) LifeCostValue(life, pay int) float64 {
+	if pay <= 0 {
+		return 0
+	}
+	return w.Life*float64(pay) + w.lifeDanger(life-pay) - w.lifeDanger(life)
+}
+
 // permanentValue prices one permanent on the battlefield.
 func (w Weights) permanentValue(c *protocol.CardView) float64 {
 	if !c.KnownByYou && (c.FaceDown || c.Name == "") {
