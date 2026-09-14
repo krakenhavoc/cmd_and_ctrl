@@ -75,13 +75,18 @@ func TestDeclaredNamesMatchTheCatalog(t *testing.T) {
 	}
 }
 
-// TestNoBackFaceOracleKeys pins the MDFC trap. Roughly sixty registry
-// entries are back faces keyed "<oracle_id>#1" whose front faces are
+// TestNoBackFaceOracleKeys pins the MDFC trap. Sixty registry entries
+// are MDFC land backs keyed "<oracle_id>#1" whose front faces are
 // deliberately unregistered — TestBackFaceSpecsAreKeyedByFace in the
 // effects package pins that arrangement. len(effects.All()) is
 // therefore not a card count, and a card is NOT covered just because
-// grepping the registry for its name hit something. A bot deck must
-// never reach a card through a back-face key.
+// grepping the registry for its name hit something.
+//
+// A bot deck must never reach a card through a back-face key
+// regardless of whether the front is registered. The Sieges (S32) do
+// register both halves, and even there the deck names the FRONT: a
+// back face is not a card you can put in a decklist, it is a face the
+// engine reaches by casting or transforming.
 func TestNoBackFaceOracleKeys(t *testing.T) {
 	for _, d := range All() {
 		for _, c := range d.Cards() {

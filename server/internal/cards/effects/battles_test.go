@@ -15,7 +15,7 @@ import (
 // matters most. What is tested here is the catalog half: the fallback
 // defense, and a real Siege's ETB and defeated triggers.
 
-const invasionOfInnistradOracle = "a3c1af66-63c8-41ec-a401-a3da1131dc67"
+const invasionOfInnistradOracle = invasionOfInnistradOracleID
 
 // TestBattleSpecFallbackStampsDefense covers the path a card that
 // never went through deck import takes — a fixture, a token, the demo

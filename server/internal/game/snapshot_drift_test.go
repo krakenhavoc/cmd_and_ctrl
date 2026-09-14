@@ -151,6 +151,11 @@ var cardFields = plan(
 	"EnteredBattlefieldAt", carried, "",
 	"SummonedThisTurn", carried, "",
 	"MarkedLethalByDeathtouch", carried, "",
+	// Embedded BY VALUE in CardSnapshot rather than mirrored, so
+	// every field it grows — S29's NotBeforeTurn, S32's Face — is
+	// carried automatically and none of them appear in this plan.
+	// That shortcut is only safe while the type stays pure data,
+	// which TestEmbeddedDomainTypesStayPureData now proves.
 	"ExilePlay", carried, "",
 	// S24 attachments (ADR 0036). Carried, not rebuilt: which sword
 	// is on which creature is not derivable from anything else, and
@@ -443,6 +448,13 @@ func TestEmbeddedDomainTypesStayPureData(t *testing.T) {
 		Event{}, Turn{}, Vote{}, TargetRef{}, ManaToken{},
 		LifeChange{}, Characteristic{}, CastTally{},
 		DamageAssignmentFrame{}, ManaPool{},
+		// Card.ExilePlay is one of these: CardSnapshot holds an
+		// ExilePlayPermission by value, so the type's fields never
+		// reach cardFields and a func or an unexported field added to
+		// it would vanish across a restart with nothing complaining.
+		// Listed from S32, when the permission started carrying a
+		// face and stopped being a type nobody ever extends.
+		ExilePlayPermission{},
 	}
 	for _, s := range samples {
 		rt := reflect.TypeOf(s)

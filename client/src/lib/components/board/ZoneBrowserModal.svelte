@@ -25,6 +25,7 @@
     canManageZone,
     cardsForZone,
     castableFromZone,
+    grantedFace,
     impulseActionLabel,
     impulseGrantFor,
   } from "../../zoneBrowser.logic";
@@ -105,6 +106,9 @@
   const grantFor = (card: CardView) => impulseGrantFor(card, zoneKind, viewerID, view.turn.number);
   const labelFor = (card: CardView) =>
     impulseActionLabel(card, zoneKind, viewerID, view.turn.number);
+  // S32: the name of the half the grant actually casts. Same as the
+  // card's own name for every grant that names no face.
+  const grantedName = (card: CardView) => grantedFace(card, grantFor(card)).name ?? "card";
 
   // S29: "cast from here" for the zones whose permission is printed
   // on the card rather than granted to an instance. Only the
@@ -250,10 +254,18 @@
                   title={grantFor(card)?.any_color
                     ? "spend mana as though it were any colour"
                     : "playable until end of turn"}
-                  aria-label={`${labelFor(card)} ${card.name || "card"} from exile`}
+                  aria-label={`${labelFor(card)} ${grantedName(card)} from exile`}
                   onclick={() => playFromExile(card)}
                 >
                   {labelFor(card)}
+                  {#if grantedName(card) !== card.name}
+                    <!-- S32: a defeated Siege sits in exile showing
+                         the battle, and the grant casts its back
+                         face. Naming it on the button is the only
+                         place a player learns which card the click
+                         actually produces. -->
+                    <span class="granted-face">{grantedName(card)}</span>
+                  {/if}
                 </button>
               </div>
             {/if}
@@ -423,6 +435,23 @@
   .act.impulse {
     border-color: rgba(217, 180, 92, 0.6);
     color: var(--gold-strong);
+  }
+  /* The back-face name on a "cast it transformed" grant. Rendered
+     inside the pill rather than under it so the button stays one
+     hit target, and truncated rather than wrapped so a long name
+     cannot reflow the grid. */
+  .granted-face {
+    margin-left: 4px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 500;
+    opacity: 0.85;
+    max-width: 10ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+    vertical-align: bottom;
   }
   /* Moves ride under the hovered / focused card; other cells keep a
      spacer so the grid doesn't reflow. */

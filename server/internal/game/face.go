@@ -226,17 +226,84 @@ func faceCastable(c Card, i int) bool {
 	return false
 }
 
+// faceForCastLocked settles which face a cast announces, given the
+// face the caller asked for and any per-instance exile grant on the
+// card (S32). Returns the face and whether the cast is allowed at
+// all.
+//
+// Two rules, and the split between them is the whole seam:
+//
+//  1. NO grant names a face — every cast before S32, and every cast
+//     from hand, the graveyard or the command zone today. The card's
+//     own CastableFaces decides, exactly as it always has, and a face
+//     it does not offer is ErrInvalidFace.
+//
+//  2. A grant NAMES a face. Then that face is the only one this
+//     permission opens, and it is also the ANSWER rather than a thing
+//     to check the request against: the caller's `want` is ignored.
+//
+// The second half of (2) is the deliberate part, and it is the one
+// place this departs from ADR 0034's "reject, never clamp" rule.
+// That rule exists because a modal DFC OFFERS a choice and silently
+// casting the wrong half of a choice is the worst available failure.
+// A face-naming grant offers no choice: there is exactly one legal
+// cast of that card by that player, so there is nothing to mis-pick
+// and nothing a stricter reading would protect. Rejecting instead
+// would mean every caller — the client's exile pile, the zone
+// browser, a future enumerator entry — had to re-derive the one
+// possible answer and spell it back, and each of them forgetting is a
+// cast that fails for no reason a player can see.
+func faceForCastLocked(c Card, want int, grant ExilePlayPermission, playerID uuid.UUID, turn int) (int, bool) {
+	if face, ok := grant.GrantsFace(playerID, turn); ok {
+		// A grant for a face the card does not have is REFUSED, not
+		// clamped. SetFace clamps, by design, so a card is never left
+		// incoherent — but here the clamp would land on face 0, and
+		// face 0 of a card whose back face was granted is the half
+		// the grant exists to exclude. A defeated Siege whose back
+		// face never imported would become a free cast of the battle
+		// itself. Refusing costs the player a card they were owed;
+		// clamping hands them one they were not.
+		if face < 0 || face >= c.FaceCount() {
+			return 0, false
+		}
+		return face, true
+	}
+	if !faceCastable(c, want) {
+		return 0, false
+	}
+	return want, true
+}
+
 // faceOnResolve returns the face the PERMANENT keeps, given the face
 // that was cast.
 //
 // An MDFC keeps what you chose: cast Sea Gate Restoration's back and
 // a land called Sea Gate, Reborn is what reaches the battlefield, and
-// the front face never returns. Everything else resolves as its front
-// face — an adventure's creature half is what becomes a permanent no
-// matter which half was cast, and a transform card always enters
-// front-up (CR 712.4) regardless of anything an effect does later.
+// the front face never returns.
+//
+// A `transform` card keeps it too, and that is the S32 half of the
+// battle seam. The rule it was written to enforce — "a transform card
+// always enters front-up (CR 712.4)" — is really a rule about CASTING
+// and it is already enforced where it belongs, by CastableFaces
+// refusing to offer the back. So face 1 can only ever arrive here
+// through an effect that said "cast it TRANSFORMED", and for such a
+// cast CR 712.4 does not apply: the object that was put on the stack
+// was the back face and the permanent it resolves into is the back
+// face. Returning 0 here was what made the Siege seam unfixable from
+// the grant side alone — the cast would have announced Refraction
+// Elemental and resolved into Invasion of Karsus, a battle
+// re-entering the battlefield, which is worse than not casting it.
+//
+// For every ordinary transform cast castFace is 0, so this is a no-op
+// for all 401 transform oracle IDs until a grant opens a back face.
+//
+// Everything else resolves as its front face — an adventure's
+// creature half is what becomes a permanent no matter which half was
+// cast (and its spell half never reaches this branch at all, being an
+// instant or sorcery).
 func faceOnResolve(layout string, castFace int) int {
-	if layout == LayoutModalDFC {
+	switch layout {
+	case LayoutModalDFC, LayoutTransform:
 		return castFace
 	}
 	return 0

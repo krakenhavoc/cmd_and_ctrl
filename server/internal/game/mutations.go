@@ -497,7 +497,22 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// "Sorcery // Land"), so the land branch no longer fires and the
 	// cost gate finally sees {4}{U}{U}{U} instead of "" — which is
 	// both halves of #289 and all of #265.
-	if !faceCastable(card, params.Face) {
+	//
+	// S32: the per-instance exile grant is read BEFORE the face gate,
+	// because a grant can name a face the card's own layout does not
+	// offer — "exile it, then cast it transformed" is a cast of a
+	// `transform` card's back face, which CastableFaces refuses on
+	// principle. ExilePlay is a property of the card instance and not
+	// of any face, so reading it before SetFace is safe and is the
+	// only order in which the gate can consult it. See
+	// faceForCastLocked for why a face-naming grant SETS the face
+	// rather than merely permitting it.
+	exileGrant := ExilePlayPermission{}
+	if src.Kind == ZoneExile {
+		exileGrant = card.ExilePlay
+	}
+	face, ok := faceForCastLocked(card, params.Face, exileGrant, playerID, g.Turn.Number)
+	if !ok {
 		slog.Warn("cast_spell rejected: face not offered by this card",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -507,6 +522,11 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		)
 		return ErrInvalidFace
 	}
+	// params.Face is the settled face from here down — the stack push
+	// and the land branch both re-read it to stamp the card in its
+	// source zone, and they must agree with the copy the announce
+	// gates were judged against.
+	params.Face = face
 	card.SetFace(params.Face)
 	// S21 sub-PR 6: casting out of exile needs a live impulse-exile
 	// grant naming this player. Checked before every other gate
@@ -521,15 +541,14 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// zone-cost rule can tell the two apart.
 	hasExileGrant := false
 	if src.Kind == ZoneExile {
-		perm := card.ExilePlay
-		hasExileGrant = perm.Active(playerID, g.Turn.Number)
+		hasExileGrant = exileGrant.Active(playerID, g.Turn.Number)
 		if !hasExileGrant && !CardCastableFromZone(CatalogKey(card), ZoneExile) {
 			return ErrNoPlayPermission
 		}
 		// "You may CAST that card" (Ragavan) does not let you play a
 		// land: playing a land is a special action, not a cast
 		// (CR 305.1, 115.2a).
-		if hasExileGrant && perm.CastOnly && card.IsLand() {
+		if hasExileGrant && exileGrant.CastOnly && card.IsLand() {
 			return ErrNoPlayPermission
 		}
 	}
@@ -1545,13 +1564,15 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// self-replacement is looked up under the right catalog key.
 		//
 		// An MDFC keeps the face that was cast — the other one never
-		// returns. Everything else resolves front-up: an adventure's
-		// creature half is the permanent no matter which half was
-		// cast, and a transform card always enters face 0 (CR 712.4)
-		// whatever an effect does to it afterwards. Today that makes
-		// this a no-op for every layout but modal_dfc, since
-		// CastableFaces refuses a non-zero face on the others; it is
-		// written out because it is where the adventure reroute lands.
+		// returns — and since S32 so does a `transform` card, which is
+		// how a defeated Siege's back face becomes the permanent
+		// instead of the battle re-entering the battlefield. CR 712.4's
+		// "always cast as its front face" is enforced by CastableFaces
+		// refusing to offer the back, so a non-zero transform face here
+		// can only have come from an effect that said "cast it
+		// TRANSFORMED". An adventure still resolves front-up: its
+		// creature half is the permanent no matter which half was cast.
+		// See faceOnResolve.
 		setFaceInZoneLocked(g.Stack, top.InstanceID, faceOnResolve(top.Layout, top.ActiveFace))
 		top.SetFace(faceOnResolve(top.Layout, top.ActiveFace))
 		// Permanents resolve to the battlefield with the announce-time

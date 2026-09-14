@@ -212,13 +212,24 @@ func TestCastableFacesPerLayout(t *testing.T) {
 }
 
 func TestFaceOnResolve(t *testing.T) {
-	// Only a modal DFC keeps the face it was cast as. An adventure's
-	// permanent is always the creature half; a transform card always
-	// enters front-up (CR 712.4).
-	if got := faceOnResolve(LayoutModalDFC, 1); got != 1 {
-		t.Errorf("modal DFC cast as face 1 resolves as face %d, want 1", got)
+	// A modal DFC keeps the face it was cast as, and since S32 so
+	// does a transform card: CR 712.4's "always cast as its front
+	// face" is enforced by CastableFaces refusing to offer the back,
+	// so a non-zero transform cast face can only have come from an
+	// effect that said "cast it TRANSFORMED" — a defeated Siege — and
+	// that permanent is the back face.
+	for _, layout := range []string{LayoutModalDFC, LayoutTransform} {
+		if got := faceOnResolve(layout, 1); got != 1 {
+			t.Errorf("%q cast as face 1 resolves as face %d, want 1", layout, got)
+		}
+		if got := faceOnResolve(layout, 0); got != 0 {
+			t.Errorf("%q cast as face 0 resolves as face %d, want 0", layout, got)
+		}
 	}
-	for _, layout := range []string{LayoutTransform, LayoutAdventure, LayoutSplit, ""} {
+	// An adventure's permanent is always the creature half, whichever
+	// half was cast; split and the unknown layouts are single-faced as
+	// far as the engine is concerned.
+	for _, layout := range []string{LayoutAdventure, LayoutSplit, LayoutPrepare, ""} {
 		if got := faceOnResolve(layout, 1); got != 0 {
 			t.Errorf("%q cast as face 1 resolves as face %d, want 0", layout, got)
 		}

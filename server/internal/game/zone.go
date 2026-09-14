@@ -201,6 +201,34 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// is eliminated, nobody.
 		c.ProtectorPlayerID = uuid.Nil
 	}
+	// CR 712.8: a double-faced card is FRONT face up in every zone
+	// except the battlefield and the stack. Keyed on the DESTINATION
+	// rather than the source, because that is how the rule is written
+	// — it is a property of where the card is, not of where it came
+	// from — and because the same reset is owed by a spell that was
+	// countered off the stack as by a permanent that died.
+	//
+	// Live from S32, when a `transform` card could first be on the
+	// battlefield showing its back: a defeated Siege's back face is
+	// cast out of exile and resolves as the back face
+	// (ExilePlayPermission.Face, faceOnResolve). Without this, a
+	// Refraction Elemental that died would sit in the graveyard as a
+	// CREATURE card rather than as the battle card Invasion of
+	// Karsus, and "return target creature card from your graveyard"
+	// would fetch a 4/4 off a card that is not a creature card at
+	// all. That is stronger than printed, which is the one direction
+	// the sandbox must never err in (#259).
+	//
+	// It also closes the same hole the MDFC land backs have carried
+	// since ADR 0034 shipped: Sea Gate, Reborn dying left a LAND card
+	// in the graveyard.
+	//
+	// SetFace is a no-op for the ~33,000 single-faced oracle IDs and
+	// for every token, so the guard costs one integer comparison on
+	// every move in the game.
+	if c.ActiveFace != 0 && dst.Kind != ZoneBattlefield && dst.Kind != ZoneStack {
+		c.SetFace(0)
+	}
 	dst.PushTop(c)
 	return c, nil
 }
