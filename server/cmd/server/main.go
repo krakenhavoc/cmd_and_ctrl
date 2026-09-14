@@ -32,10 +32,18 @@
 //
 //	CMDCTRL_OPENAI_ENDPOINT    — an OpenAI-compatible /v1/chat/completions
 //	                             server: Ollama, LM Studio, llama.cpp's
-//	                             server, vLLM. e.g. http://localhost:11434
-//	                             Setting this enables the model tiers and
-//	                             takes precedence over the Anthropic key.
+//	                             server, vLLM. A URL (e.g.
+//	                             http://192.168.1.18:11434), or "1" for a
+//	                             stock Ollama on this machine. Setting it
+//	                             enables the model tiers and takes
+//	                             precedence over the Anthropic key.
 //	CMDCTRL_OPENAI_API_KEY     — optional; most local servers need none.
+//	CMDCTRL_OPENAI_SEND_THINK  — "0" stops the client sending Ollama's
+//	                             `think: false`. Only for a server that
+//	                             rejects the field: leaving a hybrid-
+//	                             thinking model (qwen3, …) on its default
+//	                             spends the whole deadline thinking and
+//	                             answers nothing.
 //	CMDCTRL_ANTHROPIC_API_KEY  — hosted alternative (falls back to
 //	                             ANTHROPIC_API_KEY). CMDCTRL_ANTHROPIC_ENDPOINT
 //	                             overrides the API URL.
@@ -533,7 +541,8 @@ func botFactory(log *slog.Logger, cfg config, idx *cards.Index) *tiers.Factory {
 	switch oc, ac := model.NewOpenAIClient(), model.NewAnthropicClient(); {
 	case oc != nil:
 		client, local = oc, true
-		log.Info("bot model transport: OpenAI-compatible (local LLM)", "endpoint", oc.URL(), "authenticated", oc.APIKey != "")
+		log.Info("bot model transport: OpenAI-compatible (local LLM)",
+			"endpoint", oc.URL(), "authenticated", oc.APIKey != "", "thinking_suppressed", !oc.OmitThink)
 	case ac != nil:
 		client = ac
 		log.Info("bot model transport: Anthropic")

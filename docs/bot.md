@@ -146,12 +146,22 @@ server picks the local one when both are set.
 
 | Variable | What it is |
 |---|---|
-| `CMDCTRL_OPENAI_ENDPOINT` | An OpenAI-compatible `/v1/chat/completions` server — Ollama, LM Studio, llama.cpp's server, vLLM. e.g. `http://localhost:11434`. |
+| `CMDCTRL_OPENAI_ENDPOINT` | An OpenAI-compatible `/v1/chat/completions` server — Ollama, LM Studio, llama.cpp's server, vLLM. A URL (`http://192.168.1.18:11434` for a box on the LAN), or `1` for a stock Ollama on this machine. |
 | `CMDCTRL_OPENAI_API_KEY` | Optional; most local servers want no key at all. |
+| `CMDCTRL_OPENAI_SEND_THINK` | `0` stops the client sending Ollama's `think: false`. Only for a server that rejects the field — see below. |
 | `CMDCTRL_BOT_MODEL` | The model id to ask for. **Required for a local endpoint** — it is the name your server serves, e.g. what you `ollama pull`ed. |
 | `CMDCTRL_BOT_FRONTIER_MODEL` | The model for escalated windows. Defaults to `CMDCTRL_BOT_MODEL`; one model in both slots is a supported configuration, and the escalation then buys the wider candidate list rather than a better model. |
 | `CMDCTRL_BOT_MAX_THINK` | The model tiers' hard deadline, as a Go duration. Defaults to 20s with a local endpoint. |
 | `CMDCTRL_ANTHROPIC_API_KEY` | The hosted alternative. `CMDCTRL_ANTHROPIC_ENDPOINT` overrides the URL. |
+
+**Thinking is turned off on the local transport, and that is a
+deadline decision.** Several strong local models — qwen3 among them —
+ship hybrid thinking on by default, and a thinking model inside a
+2-to-20 second budget spends the budget on thinking tokens and answers
+nothing. The server sends `think: false` to an OpenAI-compatible
+endpoint for exactly that reason. If your server rejects the field,
+`CMDCTRL_OPENAI_SEND_THINK=0` stops it being sent — at the cost of
+getting the behaviour above back.
 
 **Running without one is still a supported deployment.** The model
 tiers are complete policies with no endpoint — they play the rules

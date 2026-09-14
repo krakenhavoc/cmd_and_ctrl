@@ -39,9 +39,25 @@ import (
 // does not apply to it (there is no per-token cost to account for).
 //
 // Nothing else Anthropic-shaped travels either: no cache_control, no
-// thinking, no output_config.effort. Several of these servers are
-// strict about unknown fields and answer 400, and a model that has
-// never heard of "effort" loses nothing by not being asked for it.
+// `thinking` block, no output_config.effort. Several of these servers
+// are strict about unknown fields and answer 400, and a model that
+// has never heard of "effort" loses nothing by not being asked for
+// it.
+//
+// # Thinking is off by default, and that is a deadline decision
+//
+// The one extra field this client DOES send is Ollama's `think`, and
+// it sends `false` unless asked otherwise. Several strong local
+// models — qwen3 among them — ship hybrid thinking ON by default, and
+// a thinking model inside a 2-to-20 second budget spends the whole
+// budget on thinking tokens and then answers nothing. The funnel
+// scores that as a timeout and plays the heuristic's move: a seat
+// labelled `assisted` playing Layer B on every window, which is the
+// failure this whole tier system exists to prevent. So the default is
+// off, and Request.Thinking == "adaptive" is what turns it back on.
+//
+// A server that rejects the unknown field can be told to stop sending
+// it with CMDCTRL_OPENAI_SEND_THINK=0.
 //
 // # The deadline is the real hazard
 //
@@ -61,6 +77,10 @@ const (
 	// host or an API root.
 	openAIChatPath = "/chat/completions"
 	openAIAPIRoot  = "/v1"
+	// defaultOpenAIEndpoint is a stock Ollama on the same machine.
+	// It is what CMDCTRL_OPENAI_ENDPOINT=1 means, and the value to
+	// override when the model runs on another box on the LAN.
+	defaultOpenAIEndpoint = "http://localhost:11434" + openAIAPIRoot + openAIChatPath
 	// openAIDefaultBudget is this transport's own HTTP timeout when
 	// the caller supplies no deadline. Generous next to the
 	// Anthropic client's because the machine answering is usually
@@ -84,6 +104,12 @@ type OpenAIClient struct {
 	// Label names the transport in logs and in the startup banner.
 	// Empty reports "openai-compatible".
 	Label string
+	// OmitThink stops this client from sending the `think` field at
+	// all, for a server strict enough to reject it. The cost of
+	// setting it is that a hybrid-thinking model goes back to
+	// thinking, which on a tight deadline means no answer — see the
+	// file comment.
+	OmitThink bool
 	// HTTP is the client used for the call. Nil builds one with a
 	// conservative timeout; the per-call deadline that actually
 	// matters comes from ctx.
@@ -99,6 +125,9 @@ const (
 	EnvOpenAIEndpoint = "CMDCTRL_OPENAI_ENDPOINT"
 	// EnvOpenAIKey is optional — see OpenAIClient.APIKey.
 	EnvOpenAIKey = "CMDCTRL_OPENAI_API_KEY"
+	// EnvOpenAISendThink set to a falsey value stops the client
+	// sending `think` — see OpenAIClient.OmitThink.
+	EnvOpenAISendThink = "CMDCTRL_OPENAI_SEND_THINK"
 )
 
 // NewOpenAIClient builds the transport from the environment, and
@@ -106,15 +135,35 @@ const (
 // not an error anywhere in this package: it is how a deployment
 // without a local model falls through to the Anthropic client, or to
 // no model at all.
+//
+// The variable being SET is what enables the transport, and that is
+// deliberate: defaulting it on would make the model tiers report
+// themselves available on every server, pointed at a port with
+// nothing behind it. Set it to a URL, or to "1" for a stock Ollama on
+// this machine (defaultOpenAIEndpoint).
 func NewOpenAIClient() *OpenAIClient {
 	endpoint := strings.TrimSpace(os.Getenv(EnvOpenAIEndpoint))
 	if endpoint == "" {
 		return nil
 	}
-	return &OpenAIClient{
+	switch strings.ToLower(endpoint) {
+	case "1", "true", "yes", "on", "default", "localhost", "ollama":
+		endpoint = defaultOpenAIEndpoint
+	}
+	c := &OpenAIClient{
 		Endpoint: endpoint,
 		APIKey:   strings.TrimSpace(os.Getenv(EnvOpenAIKey)),
 	}
+	// Sending `think: false` is the default because a hybrid-thinking
+	// model on a deadline is a model that does not answer. The escape
+	// hatch is for a server that rejects the field.
+	if raw := strings.TrimSpace(strings.ToLower(os.Getenv(EnvOpenAISendThink))); raw != "" {
+		switch raw {
+		case "0", "false", "no", "off":
+			c.OmitThink = true
+		}
+	}
+	return c
 }
 
 // Name identifies the transport.
@@ -162,6 +211,10 @@ type openAIRequest struct {
 	Model     string          `json:"model"`
 	Messages  []openAIMessage `json:"messages"`
 	MaxTokens int             `json:"max_tokens"`
+	// Think is Ollama's hybrid-thinking switch. A POINTER because
+	// the difference between "false" and "absent" is the whole
+	// point: false turns a thinking model off, absent leaves it on.
+	Think *bool `json:"think,omitempty"`
 }
 
 type openAIChoice struct {
@@ -196,6 +249,14 @@ func (c *OpenAIClient) Complete(ctx context.Context, req Request) (Response, err
 	}
 	if body.MaxTokens <= 0 {
 		body.MaxTokens = 256
+	}
+	if !c.OmitThink {
+		// "" and "disabled" both mean off, which is the default for
+		// this transport: the alternative is a model that spends the
+		// whole deadline thinking and answers nothing. "adaptive" is
+		// the caller explicitly asking for it back.
+		think := req.Thinking == "adaptive"
+		body.Think = &think
 	}
 	// The static blocks become ONE system message. The cache
 	// breakpoint is dropped, not translated: see the file comment.

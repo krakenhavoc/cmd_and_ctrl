@@ -48,10 +48,9 @@ func TestOpenAIRequestShape(t *testing.T) {
 		System:    []Block{{Text: "primer"}, {Text: "decklist", Cache: true}},
 		User:      "the board",
 		MaxTokens: 128,
-		// Anthropic-only knobs. They must not reach this endpoint:
+		// An Anthropic-only knob. It must not reach this endpoint:
 		// several of these servers 400 on an unknown field.
-		Effort:   "low",
-		Thinking: "adaptive",
+		Effort: "low",
 	})
 	if err != nil {
 		t.Fatalf("Complete: %v", err)
@@ -73,6 +72,14 @@ func TestOpenAIRequestShape(t *testing.T) {
 		if strings.Contains(raw, forbidden) {
 			t.Errorf("request carries %q, which this endpoint does not take:\n%s", forbidden, raw)
 		}
+	}
+
+	// The one extra field this transport DOES send, and it sends
+	// false: a hybrid-thinking model left on its default spends the
+	// whole deadline thinking and answers nothing, which the funnel
+	// scores as a timeout and covers with the heuristic's move.
+	if got["think"] != false {
+		t.Errorf("think = %v, want false — thinking must default OFF on this transport:\n%s", got["think"], raw)
 	}
 
 	// The system blocks are flattened into ONE system message, in
@@ -263,5 +270,71 @@ func TestFunnelCountsTimeoutsSeparately(t *testing.T) {
 	recs := p.Records()
 	if len(recs) != 1 || !recs[0].TimedOut {
 		t.Errorf("record = %+v, want TimedOut", recs)
+	}
+}
+
+// Thinking is off by default and back on when the caller asks for it
+// by name, so Request.Thinking means something on this transport
+// rather than being quietly dropped.
+func TestOpenAIThinkingSwitch(t *testing.T) {
+	for _, tc := range []struct {
+		thinking string
+		omit     bool
+		want     any // nil means "the field must be absent"
+	}{
+		{thinking: "", want: false},
+		{thinking: "disabled", want: false},
+		{thinking: "adaptive", want: true},
+		{thinking: "adaptive", omit: true, want: nil},
+	} {
+		var got map[string]any
+		c := serveOpenAI(t, func(w http.ResponseWriter, r *http.Request) {
+			body, _ := io.ReadAll(r.Body)
+			got = nil
+			_ = json.Unmarshal(body, &got)
+			_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"0"}}]}`))
+		})
+		c.OmitThink = tc.omit
+		if _, err := c.Complete(context.Background(), Request{Model: "m", User: "u", Thinking: tc.thinking}); err != nil {
+			t.Fatalf("thinking=%q omit=%v: %v", tc.thinking, tc.omit, err)
+		}
+		v, present := got["think"]
+		switch {
+		case tc.want == nil && present:
+			t.Errorf("thinking=%q omit=%v: think was sent (%v) although the field is suppressed", tc.thinking, tc.omit, v)
+		case tc.want != nil && !present:
+			t.Errorf("thinking=%q: think was not sent at all, so a thinking model stays on", tc.thinking)
+		case tc.want != nil && v != tc.want:
+			t.Errorf("thinking=%q: think = %v, want %v", tc.thinking, v, tc.want)
+		}
+	}
+}
+
+// "1" means "the Ollama on this machine". Anything else is a URL, so
+// a model on another box on the LAN is one variable away and no IP is
+// compiled in.
+func TestNewOpenAIClientShorthandEndpoint(t *testing.T) {
+	t.Setenv(EnvOpenAIKey, "")
+	t.Setenv(EnvOpenAISendThink, "")
+	for _, in := range []string{"1", "true", "default", "ollama"} {
+		t.Setenv(EnvOpenAIEndpoint, in)
+		c := NewOpenAIClient()
+		if c == nil || c.URL() != "http://localhost:11434/v1/chat/completions" {
+			t.Errorf("%q built %+v", in, c)
+		}
+	}
+	t.Setenv(EnvOpenAIEndpoint, "http://192.0.2.10:11434")
+	if got := NewOpenAIClient().URL(); got != "http://192.0.2.10:11434/v1/chat/completions" {
+		t.Errorf("URL = %q", got)
+	}
+	// The escape hatch, for a server strict enough to reject the
+	// unknown field.
+	t.Setenv(EnvOpenAISendThink, "0")
+	if c := NewOpenAIClient(); !c.OmitThink {
+		t.Error("CMDCTRL_OPENAI_SEND_THINK=0 did not stop the think field")
+	}
+	t.Setenv(EnvOpenAISendThink, "1")
+	if c := NewOpenAIClient(); c.OmitThink {
+		t.Error("CMDCTRL_OPENAI_SEND_THINK=1 suppressed the think field")
 	}
 }
