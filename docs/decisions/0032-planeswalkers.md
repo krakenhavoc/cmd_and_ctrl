@@ -462,6 +462,21 @@ scope and none is made harder by this change.
   path taken, with one correction: `ActivateLoyalty` was hardened
   rather than retired, because it is still the only way to drive the
   planeswalkers the catalog has never heard of.
+- **A VARIABLE loyalty cost** — Ugin, the Spirit Dragon's "−X: Exile
+  each permanent with mana value X or less that's one or more
+  colors". `AbilityCost.Loyalty` is a single `*int`, paid down at
+  announce and checked against the card's counters by CR 606.3, and
+  #550's `{X}` is deliberately confined to the MANA component:
+  `DemandsX` reads the cost string and nothing else, which is what
+  lets the view, the enumerator and the client all derive "does this
+  prompt for X" from one place rather than from a flag a card file
+  could forget. There is no shape for "the loyalty cost IS the
+  announced X", and adding a second X mechanism to carry one ability
+  would put two answers to "what is X" in the engine. Ugin's −X is
+  therefore **omitted rather than pinned to a fixed value** — an Ugin
+  whose wrath was hard-coded would be a different card, and at some
+  board states a stronger one. `TestUginHasNoVariableLoyaltyAbility`
+  fails the day this stops being true.
 - **Attacking planeswalkers.** Needs `DeclareAttacker` to take a
   polymorphic defender and `AttackingTarget` to stop meaning "player
   ID", plus client work on arrows and block detection.
