@@ -87,7 +87,7 @@ type Config struct {
 	// small profit, and as the total falls the quadratic danger
 	// term in LifeCostValue overwhelms a linear payoff and the same
 	// ability stops being worth it. Griselbrand at 40 draws seven;
-	// Griselbrand at 9 does not.
+	// Griselbrand at 12 does not.
 	LifePayoff float64
 	// LifeFloor is the life total a move's cost may never take the
 	// bot below. One: the seat may spend itself to 1 if the
