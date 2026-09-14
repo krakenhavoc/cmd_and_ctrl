@@ -635,7 +635,10 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 	if CatalogReplacements != nil {
 		for cardIdx := range g.Battlefield.Cards {
 			card := &g.Battlefield.Cards[cardIdx]
-			reps := CatalogReplacements(CatalogKey(*card))
+			// CatalogAbilityKey: a replacement effect is a static
+			// ability (CR 614.1), so a permanent under a CR 613.1f
+			// ability-removing effect contributes none.
+			reps := CatalogReplacements(CatalogAbilityKey(*card))
 			if len(reps) == 0 {
 				continue
 			}
@@ -801,7 +804,7 @@ func (g *Game) ReplacementOptionMetaForEffect(id ReplacementEffectID) (string, u
 		return "", uuid.UUID{}
 	}
 	card := &g.Battlefield.Cards[cardIdx]
-	reps := CatalogReplacements(CatalogKey(*card))
+	reps := CatalogReplacements(CatalogAbilityKey(*card))
 	if repIdx < 0 || repIdx >= len(reps) {
 		return "", card.InstanceID
 	}

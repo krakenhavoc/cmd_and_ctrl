@@ -3554,15 +3554,27 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 func ManaAbilitiesForCard(c Card) []ManaAbilityShape {
 	var declared []ManaAbilityShape
 	switch {
+	// S24 layer 6: an ability-removing effect takes the DECLARED
+	// half and leaves the INTRINSIC half, and the split is the whole
+	// of CR 305.7. "Enchanted permanent is a colorless Forest land"
+	// removes the abilities the permanent's rules text generated —
+	// Sol Ring's "{T}: Add {C}{C}", a Signet's filter — and grants
+	// the mana ability that comes with the new land type. That
+	// second half is not printed on the card and is not in the
+	// catalog: it is derived from the effective subtypes, below, by
+	// the same effect that did the removing, so it survives on the
+	// other side of this switch rather than being re-granted.
+	case c.HasLostAllAbilities():
+		declared = nil
 	// S21 sub-PR 1: instance abilities win — a token has no oracle
 	// ID for the catalog to key on.
 	case len(c.ManaAbilities) > 0:
 		declared = c.ManaAbilities
-	// CatalogKey, not c.OracleID: an MDFC back face keys on
+	// CatalogAbilityKey, not c.OracleID: an MDFC back face keys on
 	// "<oracle_id>#N" (#357). A bare OracleID here would silently
 	// resolve a back face to face 0's spec.
 	case CatalogManaAbilities != nil:
-		declared = CatalogManaAbilities(CatalogKey(c))
+		declared = CatalogManaAbilities(CatalogAbilityKey(c))
 	}
 	intrinsic := intrinsicLandManaAbilities(c)
 	if len(intrinsic) == 0 {
