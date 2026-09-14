@@ -85,6 +85,11 @@ export interface AddBotResponse {
   player_id: string;
   deck_name: string;
   warnings?: ApiViolation[];
+  // Same meaning as on UploadDeckResponse: cards in the seated deck
+  // whose printed rules the engine will not carry out. Always empty
+  // for a curated deck (their coverage is build-tested), so this only
+  // ever fills on the raw-decklist path.
+  unimplemented?: string[];
 }
 
 // UploadDeckResponse mirrors lobby.uploadDeckResponse.

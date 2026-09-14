@@ -14,6 +14,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
@@ -219,6 +220,12 @@ func TestBotRoutesRoundTrip(t *testing.T) {
 	if !bot.IsBot || bot.BotTier != "random" || bot.Name != "Bot 1" || !bot.DeckUploaded {
 		t.Errorf("bot seat: %+v", bot)
 	}
+	// A vanilla commander and basic lands need no catalog entry, so
+	// there is nothing to disclose here. See
+	// TestAddBotDisclosesUnimplementedCards for the other half.
+	if len(added.Unimplemented) != 0 {
+		t.Errorf("a vanilla deck reported unimplemented cards: %v", added.Unimplemented)
+	}
 
 	// A bad deck is a 422 with violations, and seats nothing.
 	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/seats/bot", joined.Token,
@@ -264,6 +271,62 @@ func TestBotRoutesRoundTrip(t *testing.T) {
 		t.Errorf("remove human: got %d, want 422", resp.StatusCode)
 	}
 	resp.Body.Close()
+}
+
+// TestAddBotDisclosesUnimplementedCards covers issue #89's
+// "catalog-gap tolerance" from the seating end. The curated decks are
+// build-tested to be fully covered, so this can only happen through
+// the raw-decklist escape hatch — which is exactly where it matters,
+// because that is the path by which a card the engine cannot execute
+// reaches a bot seat. POST /games/{id}/decks has disclosed this since
+// the five mid-game-surprise bug reports of 2026-09-10; the bot route
+// was installing decks without it.
+func TestAddBotDisclosesUnimplementedCards(t *testing.T) {
+	idx := buildMinimalDeckIndex(t)
+	// A card whose printed text needs a catalog Spec. These tests wire
+	// no effect catalog, so it resolves to nothing and the engine will
+	// not carry it out.
+	idx.Put(cards.Card{
+		ID:            uuid.New(),
+		Name:          "Test Wrath",
+		TypeLine:      "Sorcery",
+		OracleText:    "Destroy all creatures.",
+		ColorIdentity: []string{"W"},
+		Legalities:    map[string]string{"commander": "legal"},
+	})
+	log := discardLogger()
+	l := NewLobby(ws.NewRoomManager(log, ""))
+	host := newFakeBotHost()
+	l.SetBotHost(host)
+	srv := newTestServerWithConfig(t, Config{Lobby: l, Auth: newTestAuth(), AdminToken: "shared-admin-token", Cards: idx, Bots: host})
+
+	meta, _ := l.Create("FNM")
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Alice"})
+	var joined sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&joined)
+	resp.Body.Close()
+
+	source := "Commander:\n1 Test Commander\nMainboard:\n1 Test Wrath\n98 Plains\n"
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/seats/bot", joined.Token,
+		addBotRequest{Tier: "random", Format: "text", Source: source})
+	if resp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("add bot: got %d, want 201 (body=%s)", resp.StatusCode, body)
+	}
+	var added addBotResponse
+	_ = json.NewDecoder(resp.Body).Decode(&added)
+	resp.Body.Close()
+
+	if len(added.Unimplemented) != 1 || added.Unimplemented[0] != "Test Wrath" {
+		t.Errorf("unimplemented = %v, want [Test Wrath] — a bot seated with a card the engine cannot execute must say so", added.Unimplemented)
+	}
+	// The seat is still taken: a catalog gap is a disclosure, not a
+	// refusal. Refusing would hold a bot's deck to a stricter standard
+	// than a human's.
+	if got, _ := l.Get(meta.ID); len(got.Players) != 2 {
+		t.Errorf("the disclosure blocked the seat: %d players", len(got.Players))
+	}
 }
 
 func TestBotRoutesDisabledWithoutHost(t *testing.T) {

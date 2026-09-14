@@ -364,9 +364,19 @@ fails exactly where a human's upload would.
   "game": { ...GameMeta, "players": [ ..., { "player_id": "<uuid>", "name": "Bot 1", "seat": 1, "deck_name": "...", "deck_uploaded": true, "is_bot": true, "bot_tier": "random", "bot_deck": "izzet-aggro" } ] },
   "player_id": "<uuid>",
   "deck_name": "...",
-  "warnings": [ ... ]        // as for /decks, omitted when empty
+  "warnings": [ ... ],       // as for /decks, omitted when empty
+  "unimplemented": [ ... ]   // as for /decks, omitted when empty
 }
 ```
+
+`unimplemented` is the same disclosure `POST /games/{id}/decks`
+carries: the distinct names of the installed deck's cards whose
+printed rules the engine will not carry out. Always empty for a
+curated deck — every non-basic card in one is build-tested to resolve
+to a registered effect spec — so it only ever appears on the `source`
+escape hatch. It is not an error and does not block the seat: a bot is
+held to the same catalog the table is, and the honest answer to a gap
+is to name it, not to refuse the deck.
 
 **Errors**
 
