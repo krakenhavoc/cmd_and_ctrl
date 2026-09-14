@@ -23,6 +23,7 @@
 
   import { onDestroy } from "svelte";
   import type { CardView, TapCostView } from "../../protocol";
+  import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
     // The spell being cast; null closes the modal.
@@ -93,6 +94,7 @@
 </script>
 
 {#if card && cost}
+  <ModalLayer />
   <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="tap-cost-title">
     <div class="prompt-modal tc-modal">
       <h2 id="tap-cost-title">

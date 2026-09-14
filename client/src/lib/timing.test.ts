@@ -5,6 +5,7 @@ import {
   canActivateSorcerySpeedAbility,
   canCastFromHand,
   hasNonPassMove,
+  hasPassMove,
   hasPriority,
   isActivePlayer,
   isMainPhase,
@@ -189,6 +190,16 @@ describe("movesFor / hasNonPassMove", () => {
 
   it("a pass-only list is not a response", () => {
     expect(hasNonPassMove(snap({ moves: [passMove] }))).toBe(false);
+  });
+
+  it("hasPassMove answers from the list, and says nothing when there is none", () => {
+    // The keyboard layer's gate for the pass-priority key (ADR 0047).
+    expect(hasPassMove(snap({ moves: [passMove] }))).toBe(true);
+    expect(hasPassMove(snap({ moves: [castMove("c-Bolt")] }))).toBe(false);
+    expect(hasPassMove(snap({ moves: [] }))).toBe(false);
+    // No list at all is "no information", not "you can't pass".
+    expect(hasPassMove(snap())).toBeUndefined();
+    expect(hasPassMove(null)).toBeUndefined();
   });
 });
 

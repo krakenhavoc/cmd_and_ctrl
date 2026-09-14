@@ -25,6 +25,7 @@
   import { onDestroy } from "svelte";
   import type { AlternativeCostView, CardView } from "../../protocol";
   import { altCostPayCount } from "../../targeting";
+  import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
     // The spell being cast; null closes the modal.
@@ -94,6 +95,7 @@
 </script>
 
 {#if card && offer}
+  <ModalLayer />
   <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="alt-pay-title">
     <div class="prompt-modal ap-modal">
       <h2 id="alt-pay-title">

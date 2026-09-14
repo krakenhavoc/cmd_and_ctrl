@@ -13,6 +13,7 @@
 
   import type { ActionType, GameView } from "../../protocol";
   import Card from "./Card.svelte";
+  import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
     snap: GameView;
@@ -74,6 +75,7 @@
 </script>
 
 {#if open}
+  <ModalLayer />
   <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="discard-title">
     <div class="prompt-modal">
       <h2 id="discard-title">
