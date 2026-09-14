@@ -1089,10 +1089,10 @@ The `Key` is the wire contract: it rides `cast_spell` as
 `alternative_cost`, lands on `StackItem.AltCost`, and the card's
 `OnResolve` branches on `ctx.PaidAltCost("overload")`. Keys must be
 non-empty and unique per card; `Register` panics otherwise. Only
-overload / evoke / cleave / flashback / warp exist — foretell, plot,
-spree and "prepare" have no shape yet, and a card carrying one of
-those ships without it (say so in the card comment, as Cosmic
-Intervention does).
+overload / evoke / cleave / flashback / warp / escape exist —
+foretell, plot, spree and "prepare" have no shape yet, and a card
+carrying one of those ships without it (say so in the card comment, as
+Cosmic Intervention does).
 
 **Casting from somewhere other than hand (S29):** a card whose text
 opens another cast zone declares it in `Spec.CastableZones`, and the
@@ -1122,6 +1122,31 @@ stack", and it is a *replacement*, so it also catches a flashed-back
 spell that fizzles and one answered by Hinder. A card that wrote the
 cost by hand would flash back, land in the graveyard, and flash back
 again every turn forever.
+
+**Escape (S29)** is flashback's sibling and the place to look when a
+cost needs a component the struct doesn't have yet. `Escape("{3}{B}",
+5)` is "Escape—{3}{B}, Exile five other cards from your graveyard",
+and `EscapeWithCounters("{5}{G}{G}", 4, 3)` adds CR 702.144c's "this
+creature escapes with three +1/+1 counters on it".
+
+Three things it added to `AlternativeCost`, all of them because escape
+is a *price* rather than a permission:
+
+- **`ExileFromGraveyard`** is the first cost component that names more
+  than one card. The count is the spec's `Min` (== `Max`), the caster
+  sends all of them in `alt_cost_ids`, and the engine demands exactly
+  that many, all distinct, all in the caster's own graveyard. "Other"
+  needs no clause of its own — CR 601.2a has already moved the spell to
+  the stack by the time the cost is paid.
+- **`EntersWithCounterName` / `EntersWithCounterCount`** hang the
+  counters off the **cost**, not the card, so a reanimated or
+  hard-cast Voracious Typhon enters as the 4/4 it prints. They ride the
+  CR 614 entry pipeline, so Doubling Season doubles them.
+- **No `ExileOnLeavingStack`.** This is the one to get right: an
+  escaped card goes to the battlefield or the graveyard like any
+  other, and escapes again next time. Copying flashback's constructor
+  and swapping the key would ship a card that exiles itself, which is
+  not what any escape card does.
 
 **Warp (S29)** is the other half of the same idea and the reason the
 zone and the price are separate fields. `Warp("{R}")` is paid from

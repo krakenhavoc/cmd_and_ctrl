@@ -1575,6 +1575,13 @@ func (g *Game) resolveTopOfStackLocked() error {
 			entryResumable: true,
 			stackItem:      item,
 		}
+		// S29: "this creature escapes with a +1/+1 counter on it"
+		// (CR 702.144c). Seeded onto the event BEFORE the pipeline
+		// runs, so the counters are part of the entry every other
+		// replacement gets to see and modify — Doubling Season
+		// doubles them — rather than an afterthought stapled on once
+		// the permanent has landed.
+		g.applyAltCostEntryCountersLocked(ev, top, item)
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
 			return nil

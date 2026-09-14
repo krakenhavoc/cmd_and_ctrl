@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strconv"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -113,6 +115,76 @@ func Flashback(cost string) game.AlternativeCost {
 		FromZone:            game.ZoneGraveyard,
 		ExileOnLeavingStack: true,
 	}
+}
+
+// Escape is "Escape—{cost}, Exile N other cards from your graveyard.
+// (You may cast this card from your graveyard for its escape cost.)"
+// — CR 702.144.
+//
+// Flashback's sibling and its opposite in the one place that
+// matters. Both are alternative costs bound to the graveyard, but
+// flashback carries ExileOnLeavingStack and escape does NOT: an
+// escaped permanent goes to the battlefield and its card goes to the
+// graveyard the next time it dies, ready to escape again. That is
+// not an oversight in the card, it is the card — escape is a
+// recursion engine whose brake is the yard it eats, which is why the
+// exile clause is a COST rather than a rider.
+//
+// The count lives on the spec (Min == Max == n), so the engine's
+// count check, the client's picker and the payment all read one
+// number. "Other" is enforced by the cast path rather than by the
+// spec: CR 601.2a moves the spell to the stack before costs are
+// paid, so the card exiling its own graveyard cannot reach itself.
+//
+// The card file still opens the zone — the constructor cannot,
+// because CastableZones and AlternativeCosts are separate fields:
+//
+//	CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
+//	AlternativeCosts: []game.AlternativeCost{Escape("{2}{B}", 4)},
+func Escape(cost string, n int) game.AlternativeCost {
+	clause := "Exile " + numberWord(n) + " other cards from your graveyard"
+	return game.AlternativeCost{
+		Key:                "escape",
+		Label:              "Escape—" + cost + ", " + clause,
+		ManaCost:           cost,
+		FromZone:           game.ZoneGraveyard,
+		ExileFromGraveyard: CardsInYourGraveyard(n, clause),
+		PayLabel:           numberWord(n) + " other cards from your graveyard",
+	}
+}
+
+// EscapeWithCounters is Escape plus "this creature escapes with N
+// +1/+1 counters on it" (CR 702.144c) — the rider most escape
+// creatures print, and the reason an escaped Voracious Typhon is a
+// 7/7 rather than the 4/4 in the corner.
+//
+// A separate constructor rather than a variadic on Escape, because
+// the counters are the half a card file forgets: a Typhon written
+// with plain Escape compiles, casts, and enters as a vanilla 4/4 for
+// seven mana and four cards — strictly worse than printed, which is
+// the one direction the catalog is allowed to err in but a silent
+// wrong answer all the same.
+//
+// The counters land only when the escape cost was paid. The same
+// creature reanimated, blinked or hard-cast enters with none,
+// because the clause hangs off the cost rather than off the card.
+func EscapeWithCounters(cost string, n, counters int) game.AlternativeCost {
+	ac := Escape(cost, n)
+	ac.EntersWithCounterName = "+1/+1"
+	ac.EntersWithCounterCount = counters
+	return ac
+}
+
+// numberWord spells a small count the way an oracle line does —
+// "five other cards", not "5 other cards". Falls back to digits past
+// the range any printed escape cost uses.
+func numberWord(n int) string {
+	words := []string{"zero", "one", "two", "three", "four", "five",
+		"six", "seven", "eight", "nine", "ten"}
+	if n >= 0 && n < len(words) {
+		return words[n]
+	}
+	return strconv.Itoa(n)
 }
 
 // Warp is "Warp {cost} (You may cast this card from your hand for

@@ -2052,7 +2052,7 @@ Detailed plan: `/home/node/.claude/plans/s28-cost-modification.md`. Builds on S1
 - [ ] Flashback (CR 702.34) — cast from graveyard for flashback cost; exile after
 - [ ] Madness (CR 702.35) — replacement on discard: exile face-down with marker; may cast for madness cost
 - [ ] Foretell (CR 702.143) — sorcery-speed `foretell_card` action; cast on a later turn for foretell cost
-- [ ] Escape (CR 702.144) — cast from graveyard, exile N cards from graveyard as additional cost
+- [x] Escape (CR 702.144) — cast from graveyard, exile N **other** cards from your graveyard. The exile is part of the **escape cost itself** (`AlternativeCost.ExileFromGraveyard`), not an `AdditionalCost`: CR 702.144a makes "[cost]" one cost paid *rather than* the mana cost, and modelling it as an additional cost would have charged the printed mana cost too. Also ships CR 702.144c's "escapes with N +1/+1 counters". 7 cards.
 - [ ] Suspend (CR 702.62) — exile with N time counters; auto-fire removes one each upkeep; cast for free with haste-until-EOT when last removed
 - [ ] Cycling (CR 702.32) — activated ability of cards in hand; cycling triggers fire from hand
 - [ ] Splice (CR 702.47) — addon to instants/sorceries
