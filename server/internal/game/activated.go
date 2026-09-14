@@ -210,6 +210,22 @@ var CatalogActivatedAbilities func(oracleID string) []ActivatedAbilityShape
 // synthetic fallback, because there's no ability every card of some
 // type implicitly has.
 func ActivatedAbilitiesForCard(c Card) []ActivatedAbilityShape {
+	// S24 layer 6: a permanent an ability-removing effect applies to
+	// offers nothing, and that has to be checked BEFORE the
+	// instance-carried list as well as before the catalog. A Clue
+	// token's "{2}, Sacrifice this: Draw a card" is an activated
+	// ability like any other, and Darksteel Mutation takes it away
+	// exactly as it takes away Sol Ring's.
+	//
+	// This one accessor is why internal/legal needs no change:
+	// legal.Move enumeration, the client's context menu
+	// (protocol.CardView), the lobby's ability lookup and
+	// ActivateCatalogAbility itself all read through here, so the
+	// enumerator can never offer a bot a move the engine will refuse
+	// — the #544 hung-table failure mode.
+	if c.HasLostAllAbilities() {
+		return nil
+	}
 	// S21 sub-PR 4: intrinsic abilities win — a token has no oracle
 	// ID for the catalog to key on, and Food / Clue / Blood ARE
 	// their activated ability.
@@ -219,7 +235,7 @@ func ActivatedAbilitiesForCard(c Card) []ActivatedAbilityShape {
 	if CatalogActivatedAbilities == nil || c.OracleID == "" {
 		return nil
 	}
-	return CatalogActivatedAbilities(CatalogKey(c))
+	return CatalogActivatedAbilities(CatalogAbilityKey(c))
 }
 
 // ActivateAbilityParams carries the announce-time choices for a

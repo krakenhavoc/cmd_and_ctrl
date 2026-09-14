@@ -230,7 +230,11 @@ func (g *Game) activeUntapStepPermissionsLocked(activePlayer uuid.UUID) []boundU
 	var out []boundUntapPermission
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
-		oracle := CatalogKey(*src)
+		// CatalogAbilityKey: "untap all permanents you control
+		// during each other player's untap step" is a static
+		// ability, and a Seedborn Muse that has lost all its
+		// abilities grants nothing.
+		oracle := CatalogAbilityKey(*src)
 		if oracle == "" {
 			continue
 		}

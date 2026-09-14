@@ -234,7 +234,10 @@ func (g *Game) activeCostModifiersLocked() []boundCostModifier {
 	var out []boundCostModifier
 	for i := range g.Battlefield.Cards {
 		src := g.Battlefield.Cards[i]
-		mods := CatalogCostModifiers(CatalogKey(src))
+		// CatalogAbilityKey: a cost modifier is a static ability, so
+		// a permanent under a CR 613.1f ability-removing effect
+		// stops taxing and stops discounting.
+		mods := CatalogCostModifiers(CatalogAbilityKey(src))
 		for _, m := range mods {
 			out = append(out, boundCostModifier{modifier: m, source: src})
 		}
