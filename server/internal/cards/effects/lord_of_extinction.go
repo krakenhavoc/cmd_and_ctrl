@@ -1,0 +1,48 @@
+package effects
+
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+// Lord of Extinction — Creature — Elemental {3}{B}{G}, */* (EDHREC
+// rank 3694):
+//
+//	"Lord of Extinction's power and toughness are each equal to the
+//	 number of cards in all graveyards."
+//
+// Tarmogoyf's bigger cousin: a Layer 7a characteristic-defining
+// ability that SETS power and toughness to the card count across
+// every seat's graveyard — eliminated players' included, since
+// their cards are still in a graveyard — so an anthem (7c) and its
+// own counters (7d) stack on top. The printed */* ships as 0/0 and
+// the CDA overrides it at every recompute; with every graveyard
+// empty it really is a 0/0 and dies to the toughness check, as
+// printed.
+//
+// DECLARED SIMPLIFICATION, Wight of the Reliquary's: the layer
+// cache is invalidated by battlefield motion, counters, attachments,
+// taps and turn changes, not by a card reaching a graveyard from a
+// hand, a library or the stack — so a mill, a discard, or an instant
+// resolving shows on the Lord's size at the next recompute rather
+// than at once. A creature dying is a battlefield exit and counts
+// immediately. The late read runs both ways (a graveyard that
+// shrank to an exile shows late too), and never invents a card that
+// is not there.
+func init() {
+	Register(Spec{
+		OracleID:     "ea5e3401-bd6c-47bb-a52a-8eec5f09455d",
+		Name:         "Lord of Extinction",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Its size catches up with a milled, discarded or resolved card reaching a graveyard at the next change on the battlefield, not immediately."},
+		Static: []game.StaticAbility{{
+			Layer:    game.Layer7PT,
+			SubLayer: game.SubLayer7A_CDA,
+			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
+				return target.InstanceID == source.InstanceID
+			},
+			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, _ *game.Card) {
+				n := b35CardsInAllGraveyards(g)
+				c.Power = n
+				c.Toughness = n
+			},
+		}},
+	})
+}
