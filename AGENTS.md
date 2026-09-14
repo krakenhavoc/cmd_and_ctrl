@@ -89,7 +89,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0047 keyboard shortcuts) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0048 cost modification) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -136,8 +136,15 @@ coherent.
 
 **Check every branch, not just the one you are on.** ADR files live in `docs/decisions/` and the
 number is in the filename *and* the H1, so two branches that both grab "the next number" collide
-silently and only conflict at merge time — by which point the number is in commit messages, issue
-bodies and cross-links in other ADRs.
+silently. They do **not** conflict at merge time: the filenames differ, so git merges both cleanly
+and neither author learns. The collision is invisible in the diff and invisible in the merge, and
+only shows up when somebody lists the directory — by which point the number is in commit messages,
+issue bodies and cross-links in other ADRs.
+
+`TestADRNumbersAreUniqueAndMatchTheirHeading` (`server/internal/docsguard`) fails CI on a duplicate
+number and on an H1 that disagrees with its filename. It exists because asking authors to check was
+tried first and three collisions reached `main` anyway. If it fires, renumber the ADR with fewer
+inbound links (`git grep` its filename), fix its H1, and update the ADR range line in §3.
 
 ```bash
 git fetch --all --prune
