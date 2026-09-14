@@ -464,13 +464,14 @@ func TestBotInputViewIsSeatSpecific(t *testing.T) {
 // FilterViewFor. The move list does NOT: runner.go builds it with
 // legal.EnumerateFor(r.room.Game, seat), straight off the
 // authoritative state, and legal.Move.Label is free-form text built
-// by calling cardName(g, id) on whatever the move touches. Nothing
-// structural stops a future choice kind from naming a card the seat
-// has not seen — legal/choices.go's discard_from_hand branch already
-// labels every card in FromPlayer's hand, and is safe today only
-// because the sole path that creates a chooser != discarder choice
-// (QueueDiscardFromRevealedHand) reveals that hand to the chooser
-// first. This test is what notices when that stops being true.
+// by reading Card.Name off whatever zone the move touches. The two
+// branches that read a pool the seat does not own — the discard
+// clause over FromPlayer's hand, the search clause over a library —
+// now go through legal.cardNameFor and give an unknown card no name,
+// with legal/visibility_test.go holding both directions. This test
+// is the end-to-end backstop over the whole move list rather than
+// those two branches, and it is what notices the day a new choice
+// kind enumerates over somebody else's hidden zone.
 //
 // Own library: the bot's library cards are not stripped from its view
 // the way an opponent's are — the seat keeps a per-card entry so the

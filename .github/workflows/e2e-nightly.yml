@@ -75,9 +75,14 @@ jobs:
         # game is ~8s, and ~70s under -race. Twenty of them do not fit
         # in this step's budget, and buying the race detector for them
         # is the wrong thing to spend it on — the runner-goroutine
-        # concurrency it would be watching is exercised under -race by
-        # every other whole-game test in this step, including the
-        # default three games of the same random test.
+        # concurrency it would be watching is the same code path every
+        # other whole-game test in this step drives under -race, on
+        # the same rooms, with the same observers. The fuzzing value of
+        # twenty random tables is in the ENGINE states they reach, and
+        # the detector adds nothing to that.
+        #
+        # Measured 2026-09-14, this step with the -skip in place:
+        # internal/aiseat 336s under -race on a contended machine.
         run: go test ./internal/aiseat/... -race -timeout 30m -skip TestFourRandomBotsPlayToAWinner
 
       # S31's four-`random`-bots exit criterion: twenty consecutive
