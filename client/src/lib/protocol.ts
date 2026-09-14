@@ -263,6 +263,27 @@ export interface LegalMoveView {
   // list already promises. Automated seats use it as the way out of a
   // prompt whose other answers keep being rejected.
   always_legal?: boolean;
+  // What the move charges beyond its mana, in the components `params`
+  // cannot name — the ones the engine reads off the ability rather
+  // than off the payload. Absent for the overwhelming majority of
+  // moves, which charge nothing but mana and the choices `params`
+  // already lists.
+  //
+  // Advice about the move, NOT part of it: `params` stays exactly the
+  // ActionPayload that performs the move, and this key is never sent
+  // back.
+  cost?: MoveCost;
+}
+
+export interface MoveCost {
+  // Life paid at announce (CR 118.4 / 118.8) — Necropotence's 1,
+  // Griselbrand's 7. Always positive when present, and payable: the
+  // server only offers a cost the seat can meet. Note that "payable"
+  // includes paying your last point, which is legal and lethal.
+  life?: number;
+  // A loyalty ability's counter delta (CR 606.1), signed as printed:
+  // +1 adds one, -3 removes three.
+  loyalty?: number;
 }
 
 // LogKind mirrors `protocol.LogKind` server-side. Coarser than the
