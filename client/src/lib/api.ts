@@ -50,14 +50,21 @@ export interface SeatInfo {
 }
 
 // BotTierInfo mirrors aiseat.TierInfo. Every declared tier is listed,
-// including the ones no policy has been built for yet — `available`
-// is false for those and the picker greys them out rather than
-// pretending the difficulty slider has a single notch.
+// including the ones this server cannot play — `available` is false
+// for those and the picker greys them out rather than pretending the
+// difficulty slider has a single notch.
+//
+// Availability is a property of the SERVER, not of the build: the
+// model-backed tiers need a model endpoint configured, and `reason`
+// is the one-line explanation of what is missing when they are off.
 export interface BotTierInfo {
   tier: string;
   label: string;
   description: string;
   available: boolean;
+  // reason is present only on an unavailable tier. Safe to render
+  // verbatim next to the greyed-out option.
+  reason?: string;
 }
 
 // BotDeckInfo mirrors aiseat.DeckInfo — one curated bot deck.

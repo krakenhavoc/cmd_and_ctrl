@@ -13,15 +13,14 @@ and the reasoning behind every decision below, is in
 surface is specified in [docs/lobby.md](lobby.md); the chat and view
 fields are in [docs/protocol.md](protocol.md).
 
-> **What is actually wired today.** The packages behind the
-> `heuristic`, `assisted` and `strong` tiers and behind the four
-> curated decks are all built, tested and measured — and none of them
-> is reachable from the lobby yet, because the tier factory and the
-> deck registry were never swapped into `cmd/server`. A bot you add
-> from the lobby right now plays at `random` with a placeholder deck.
-> Tracked as [#501](https://github.com/krakenhavoc/cmd_and_ctrl/issues/501).
-> Everything below describes the shipped design; the tier and deck
-> tables mark what you can select today.
+> **What is actually wired today.** All four tiers and all four
+> curated decks are reachable from the lobby. `random` and `heuristic`
+> need nothing but the binary; `assisted` and `strong` call a model,
+> and a server with no model endpoint configured reports them
+> unavailable — with a reason the picker shows — rather than offering
+> a seat that would play the heuristic under a model tier's name. See
+> [the model endpoint](#the-model-endpoint) for the one environment
+> variable that turns them on.
 
 ---
 
@@ -97,17 +96,26 @@ The tier is the difficulty slider, set per bot at add time and shown
 on the seat's chip. All four names are declared by the API from the
 first release so the wire shape never changes as policies land.
 
-| Tier | Plays | `MaxThink` | Selectable today |
+| Tier | Plays | `MaxThink` | Needs |
 |---|---|---|---|
-| `random` | Picks uniformly among its legal moves. | 2s | **yes** |
-| `heuristic` | Scores the board and plays the best move it can see. Free and deterministic. | 2s | no — [#501](https://github.com/krakenhavoc/cmd_and_ctrl/issues/501) |
-| `assisted` | The heuristic, with a model consulted on the close calls. The intended default. | 2s | no — [#501](https://github.com/krakenhavoc/cmd_and_ctrl/issues/501) |
-| `strong` | A model on every window that survives the rules filter, over a wider candidate list. | **5s** | no — [#501](https://github.com/krakenhavoc/cmd_and_ctrl/issues/501) |
+| `random` | Picks uniformly among its legal moves. | 2s | nothing |
+| `heuristic` | Scores the board and plays the best move it can see. Free and deterministic. | 2s | nothing |
+| `assisted` | The heuristic, with a model consulted on the close calls. The intended default. | 2s | a model endpoint |
+| `strong` | A model on every window that survives the rules filter, over a wider candidate list. | **5s** | a model endpoint |
 
 `MinThink` is 700ms for every tier: a fast decision is held so the
 table does not feel precognitive. `MaxThink` is a hard deadline, not a
 target — on expiry the runner takes the fallback answer and logs the
 miss. **The table never waits on a model.**
+
+Those `MaxThink` figures are sized for a hosted model. A model running
+on your own hardware is usually slower than either, so the deadline is
+a deployment setting (`CMDCTRL_BOT_MAX_THINK`) and defaults to **20s**
+when a local endpoint is configured. Getting this wrong is quiet
+rather than loud: a model that never answers in time means the
+heuristic plays every window while the chip still says `assisted`. The
+server logs `bot model call TIMED OUT` per window when that is
+happening, and the funnel counts it separately from an outage.
 
 **`random` is not a joke tier.** A four-`random` table playing
 unattended is the cheapest rules-engine fuzzer this project will ever
@@ -131,13 +139,40 @@ A bot whose chip says "strong" and which plays at random is worse than
 no bot at all, because you would tune your play against a label that
 is lying to you.
 
-### No model endpoint is a supported configuration
+### The model endpoint
 
-`assisted` and `strong` with no API key keep their names and play on
-the rules filter plus the heuristic. A server with no key has to be a
-working deployment rather than a broken one, and the model-outage
-drill proves the same path: kill the endpoint mid-game and the table
-plays on to a winner without stalling.
+`assisted` and `strong` need one, and either of two kinds will do. The
+server picks the local one when both are set.
+
+| Variable | What it is |
+|---|---|
+| `CMDCTRL_OPENAI_ENDPOINT` | An OpenAI-compatible `/v1/chat/completions` server — Ollama, LM Studio, llama.cpp's server, vLLM. A URL (`http://192.168.1.18:11434` for a box on the LAN), or `1` for a stock Ollama on this machine. |
+| `CMDCTRL_OPENAI_API_KEY` | Optional; most local servers want no key at all. |
+| `CMDCTRL_OPENAI_SEND_THINK` | `0` stops the client sending Ollama's `think: false`. Only for a server that rejects the field — see below. |
+| `CMDCTRL_BOT_MODEL` | The model id to ask for. **Required for a local endpoint** — it is the name your server serves, e.g. what you `ollama pull`ed. |
+| `CMDCTRL_BOT_FRONTIER_MODEL` | The model for escalated windows. Defaults to `CMDCTRL_BOT_MODEL`; one model in both slots is a supported configuration, and the escalation then buys the wider candidate list rather than a better model. |
+| `CMDCTRL_BOT_MAX_THINK` | The model tiers' hard deadline, as a Go duration. Defaults to 20s with a local endpoint. |
+| `CMDCTRL_ANTHROPIC_API_KEY` | The hosted alternative. `CMDCTRL_ANTHROPIC_ENDPOINT` overrides the URL. |
+
+**Thinking is turned off on the local transport, and that is a
+deadline decision.** Several strong local models — qwen3 among them —
+ship hybrid thinking on by default, and a thinking model inside a
+2-to-20 second budget spends the budget on thinking tokens and answers
+nothing. The server sends `think: false` to an OpenAI-compatible
+endpoint for exactly that reason. If your server rejects the field,
+`CMDCTRL_OPENAI_SEND_THINK=0` stops it being sent — at the cost of
+getting the behaviour above back.
+
+**Running without one is still a supported deployment.** The model
+tiers are complete policies with no endpoint — they play the rules
+filter plus the heuristic — which is what makes every model failure
+cheap, and what the model-outage drill proves: kill the endpoint
+mid-game and the table plays on to a winner without stalling. What a
+server with no endpoint does NOT do is offer those tiers in the
+picker, because a seat playing the heuristic under the `assisted`
+label tells you something false about the game you are in. A seat
+already at the table when an endpoint goes away keeps playing; a new
+one cannot be seated at a tier this server cannot honour.
 
 ---
 
@@ -160,11 +195,9 @@ time a spec was refactored.
 Each is exactly 100 cards: one commander and ninety-nine mainboard.
 Deck IDs are wire values and will not be renamed.
 
-**None of the four is selectable today** — the picker still offers the
-single placeholder deck (`placeholder-mono-red`, a commander and
-ninety-nine Mountains) that sub-PR 4 shipped as a stand-in, because
-the curated registry was never wired into the server
-([#501](https://github.com/krakenhavoc/cmd_and_ctrl/issues/501)).
+All four are in the picker. The `placeholder-mono-red` stand-in that
+sub-PR 4 shipped — a commander and ninety-nine Mountains — is gone
+from it.
 
 **A bot deck runs the identical pipeline your upload runs.** The
 server holds the decklist as plain text — the same bytes you could
