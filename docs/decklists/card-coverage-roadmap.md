@@ -63,11 +63,11 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **1368** |
-| — whole cards (bare `oracle_id`) | **1308** |
+| Registry keys (`len(effects.All())`) | **1385** |
+| — whole cards (bare `oracle_id`) | **1325** |
 | — MDFC back faces (`<oracle_id>#1`) | 60 |
-| Declared `full` | 903 |
-| Declared `caveats` | 380 |
+| Declared `full` | 913 |
+| Declared `caveats` | 387 |
 | Declared `unreviewed` | 85 |
 
 A back face is half a card: the modal-DFC land cycle registers only its
