@@ -38,9 +38,87 @@ import (
 // oracle-text channel — ADR 0033's Input.Oracle — is what would
 // close the gap, and it lands with the model tiers, not here.
 
+// suicideValue is what a move that would pay the bot's last life is
+// worth. It is eliminatedStrength — what score.go already prices a
+// seat that is out of the game at — because that is precisely what
+// such a move makes the bot, and the two numbers being the same one
+// is the point rather than a coincidence.
+const suicideValue = eliminatedStrength
+
 // valueOf prices a single move. Positive is better than passing;
 // exactly zero is "same as passing".
+//
+// Two halves: what the move BUYS, and what it CHARGES. The second is
+// split out because it is the half the move list carries explicitly
+// (legal.MoveCost, #74) and it applies to every kind — pricing it
+// inside each branch of the switch would be four copies of the same
+// arithmetic and a fifth one forgotten.
 func (p *Policy) valueOf(st *state, m legal.Move) (float64, string) {
+	v, reason := p.payoffOf(st, m)
+	if m.Cost == nil {
+		return v, reason
+	}
+	c, refuse := p.costValue(st, st.bf[m.Source.String()], *m.Cost)
+	if refuse {
+		return suicideValue, "would pay its last life"
+	}
+	return v + c, reason
+}
+
+// costValue prices the cost components legal.Move declares, and
+// reports whether the move has to be refused outright.
+//
+// THE REFUSAL BELONGS HERE, in the evaluation, rather than in a guard
+// wrapped around the decision. score.go already prices a seat that is
+// out of the game at eliminatedStrength, far below anything a live
+// seat can reach; a move that pays the bot's last life makes the bot
+// that seat, so answering with that number is the evaluation staying
+// consistent with itself instead of a special case bolted on beside
+// it. Everything downstream then needs no help: decideGeneral's
+// threshold rejects it, the "no pass on offer" fallback rejects it
+// (that one only takes a positive), and Rank sorts it last WITH its
+// reason attached — which a guard that filtered the move out of the
+// list would have hidden.
+//
+// It also does not fight concede.go. Declining to kill yourself this
+// instant is not a judgement that the position is lost; that is the
+// concede heuristic's business, it is measured over three turns, and
+// nothing here touches it.
+func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) (float64, bool) {
+	var v float64
+	if c.Life > 0 {
+		life := 0
+		if st.myEval != nil {
+			life = st.myEval.Life
+		}
+		if life-c.Life < p.cfg.LifeFloor {
+			return 0, true
+		}
+		// The payoff proxy less the real price. The proxy is linear
+		// in the life paid and the price is quadratic near death, so
+		// one ability is a profit at 40 and a refusal at 9 without a
+		// second rule saying so.
+		v += p.cfg.LifePayoff*float64(c.Life) - st.w.LifeCostValue(life, c.Life)
+	}
+	if c.Loyalty != 0 {
+		// Loyalty counters are board value the evaluation already
+		// counts, so a +1 is a small gain and a −3 a real price.
+		v += st.w.Loyalty * float64(c.Loyalty)
+		if c.Loyalty < 0 && src != nil && src.Counters["loyalty"]+c.Loyalty <= 0 {
+			// The last counter: the planeswalker dies to CR 704.5i
+			// and the ability costs the whole permanent. The bot
+			// cannot read what an ultimate does, so this is the only
+			// half of that trade it can see — which is the right way
+			// round, because an ultimate it cannot evaluate is not an
+			// ultimate it should be firing.
+			v -= st.w.permanentValue(src)
+		}
+	}
+	return v, false
+}
+
+// payoffOf prices what a move buys, before its declared cost.
+func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 	switch m.Kind {
 	case legal.KindPass:
 		return 0, "pass"

@@ -98,6 +98,58 @@ type Move struct {
 	// in doubt leave a kind unmarked: the cost is a bot that sleeps,
 	// which is what it did before.
 	AlwaysLegal bool `json:"always_legal,omitempty"`
+	// Cost is what the move charges its own controller beyond the
+	// mana, in the components Params cannot name. Nil — the
+	// overwhelming majority — means "nothing but mana and the
+	// choices Params already lists".
+	Cost *MoveCost `json:"cost,omitempty"`
+}
+
+// MoveCost is the half of a move's price that Params does not carry.
+//
+// Params names every cost component the ACTOR chooses — which
+// permanent is sacrificed, which cards are discarded — because the
+// engine needs those choices to perform the move at all. It says
+// nothing about the components the card simply CHARGES: Necropotence's
+// 1 life, Griselbrand's 7, a planeswalker's −3. Those live on the
+// ability shape in internal/game, which a policy may not import
+// (ADR 0033 §3), so a policy holding only the wire payload prices
+// "Pay 7 life: Draw seven cards" exactly like "{T}: Add {G}" — and a
+// bot handed Griselbrand activates itself to 0 (#74).
+//
+// It rides beside Params rather than inside it on purpose. The Move
+// doc promises Params is EXACTLY the ActionPayload that performs the
+// move, so that {type, player, params} can be sent back unaltered;
+// a field the dispatcher never reads has no business in there. This
+// one is advice about the move, not part of it.
+//
+// A POINTER so that the frame budget is untouched by moves that cost
+// nothing: no `cost` key is serialised for them at all.
+type MoveCost struct {
+	// Life is what the controller pays at announce (CR 118.4 /
+	// 118.8). Always positive — the enumerator has already checked
+	// the seat can pay it, and a seat that can pay exactly its whole
+	// life total legally may, which is the trap.
+	Life int `json:"life,omitempty"`
+
+	// Loyalty is a loyalty ability's counter delta (CR 606.1),
+	// SIGNED as printed: +1 adds a counter, −3 removes three. Zero
+	// covers both "[0]" and "not a loyalty ability"; the two are the
+	// same price even though they are not the same thing, and a
+	// policy that needs to tell them apart has the label.
+	Loyalty int `json:"loyalty,omitempty"`
+}
+
+// moveCost returns the MoveCost for a set of components, or nil when
+// they are all free. Nil rather than a zero struct so the pointer's
+// omitempty does the work and a cost-free move stays byte-identical
+// on the wire to what it was before MoveCost existed.
+func moveCost(life, loyalty int) *MoveCost {
+	if life == 0 && loyalty == 0 {
+		return nil
+	}
+	return &MoveCost{Life: life, Loyalty: loyalty}
+
 }
 
 // Options tunes the expansion caps. The zero value is usable.

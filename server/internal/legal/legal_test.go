@@ -25,6 +25,8 @@ const (
 	oracleLlanowarElves     = "68954295-54e3-4303-a6bc-fc4547a4e3a3"
 	oraclePreordain         = "ac641490-ca14-48d7-8cc4-b69ce984befa"
 	oracleCounterspell      = "cc187110-1148-4090-bbb8-e205694a39f5"
+	oracleNecropotence      = "94a844d2-0574-45a7-b347-e0e329767c42"
+	oracleGriselbrand       = "f759d112-76db-4091-a22b-b9f19ab6fa5f"
 )
 
 // --- wire compatibility ------------------------------------------
@@ -474,6 +476,88 @@ func TestGoblinBombardmentSacrificeOutlet(t *testing.T) {
 	// One fodder × (4 players + 2 creatures) targets.
 	if n != 6 {
 		t.Errorf("want 6 Bombardment activations, got %d: %v", n, labels(moves))
+	}
+}
+
+// #74: a life cost is a component of the price that the action
+// payload does not name — the dispatcher reads it off the ability,
+// not off the params — so a consumer holding only {type, params}
+// cannot see it. Move.Cost is where it travels instead.
+func TestActivatedAbilityCarriesItsLifeCost(t *testing.T) {
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	clearHand(active)
+	nec := battlefieldCard(g, active, game.Card{
+		Name: "Necropotence", TypeLine: "Enchantment", OracleID: oracleNecropotence,
+	})
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	moves := legal.EnumerateFor(g, active.ID)
+	dispatchAll(t, g, active.ID, moves)
+	found := false
+	for _, m := range moves {
+		if m.Source != nec {
+			// Everything else on this table is free, and has to stay
+			// free on the wire: a nil Cost serialises no key at all,
+			// which is what keeps the frame budget where it was.
+			if m.Cost != nil {
+				t.Errorf("move %q declares a cost it does not have: %+v", m.Label, m.Cost)
+			}
+			continue
+		}
+		found = true
+		if m.Cost == nil || m.Cost.Life != 1 {
+			t.Errorf("Necropotence activation carries cost %+v, want life 1", m.Cost)
+		}
+	}
+	if !found {
+		t.Fatalf("Necropotence offered no activation: %v", labels(moves))
+	}
+
+	b, err := json.Marshal(moves[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "cost") {
+		t.Errorf("a cost-free move put a cost key on the wire: %s", b)
+	}
+}
+
+// The trap in full: at exactly seven life Griselbrand's ability is
+// still a LEGAL move — CR 118.4 lets a player pay life down to zero —
+// so the enumerator offers it and the engine would accept it. Nothing
+// below this package can save a policy that cannot see the price.
+func TestLethalLifeCostIsStillEnumeratedAndSaysSo(t *testing.T) {
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	clearHand(active)
+	active.Life = 7
+	gris := battlefieldCard(g, active, game.Card{
+		Name: "Griselbrand", TypeLine: "Legendary Creature — Demon",
+		Power: 7, Toughness: 7, OracleID: oracleGriselbrand,
+	})
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	var cost *legal.MoveCost
+	n := 0
+	for _, m := range legal.EnumerateFor(g, active.ID) {
+		if m.Source == gris && m.Kind == legal.KindActivate {
+			n, cost = n+1, m.Cost
+		}
+	}
+	if n != 1 {
+		t.Fatalf("want Griselbrand's ability offered once at 7 life, got %d", n)
+	}
+	if cost == nil || cost.Life != 7 {
+		t.Fatalf("Griselbrand activation carries cost %+v, want life 7", cost)
+	}
+	// One life short and it is not payable at all, which the
+	// enumerator has always known (it just kept it to itself).
+	active.Life = 6
+	for _, m := range legal.EnumerateFor(g, active.ID) {
+		if m.Source == gris && m.Kind == legal.KindActivate {
+			t.Errorf("offered an unpayable life cost at 6 life: %q", m.Label)
+		}
 	}
 }
 
