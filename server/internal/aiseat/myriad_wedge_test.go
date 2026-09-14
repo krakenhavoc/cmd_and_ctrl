@@ -23,21 +23,36 @@
 //     prompt". A human retries differently. A deterministic bot does
 //     not.
 //
-// Why it needs a thinned library: MaxExpansionPerSource is 12, and
-// combinations() fills that budget with 1-card picks before it ever
-// reaches 2-card picks. With a full Commander mana base the bot is
-// only ever offered single basics, every one of which is legal. Once
-// the library is down to roughly a dozen basics — a ramp deck on turn
-// 8+ — pairs start being offered, the heuristic prefers a pair
-// (cardValue is summed, so two lands beat one), and the first pair in
-// lexicographic order is a mismatch about half the time in a
-// two-colour deck.
+// The trigger is the deck's BASIC COUNT, not the game state.
+// MaxExpansionPerSource is 12 and combinations() fills that budget
+// with 1-card picks before it reaches 2-card picks, so:
+//
+//   - 12 or more matching basics in the library: the budget is spent
+//     on singles and NO pair is ever offered. No wedge — but Myriad
+//     Landscape silently fetches one land instead of two, which is a
+//     play bug of its own.
+//   - 11 or fewer: one or two pairs squeeze in, and they are the
+//     FIRST pairs in library order. The heuristic sums cardValue, so
+//     two lands always beat one and it takes a pair. If those two
+//     cards are different basic types the seat is dead, and there is
+//     no third pair to fall back on.
+//
+// Real Commander manabases run few basics. The curated simic-ramp
+// deck ships 7 Forest and 5 Island in 99 cards, so the pool is under
+// the cap from the opening hand and the wedge lands on the FIRST
+// Myriad Landscape activation of the game — turn 2, full library.
+// That is exactly what the field replay
+// (aca910f0-63c3-4a0f-bef4-5a03aef44704, 11 candidates: 6 Forest +
+// 5 Island) shows. An earlier draft of this file blamed a thinned
+// late-game library; that was wrong, and the field evidence says the
+// triggering condition is much broader.
 package aiseat_test
 
 import (
 	"context"
 	"fmt"
 	"math/rand/v2"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -53,9 +68,10 @@ import (
 const oracleMyriadLandscape = "2549bc57-9ffb-4053-9f10-f2a5f792b845"
 
 // myriadDeck is a two-colour deck with Myriad Landscape in it.
-// basics is how many of EACH basic type it runs; the rest is padding
-// that the fetch's predicate does not match.
-func myriadDeck(owner uuid.UUID, basics int) []game.Card {
+// forests/islands are how many of each basic it runs; the rest is
+// padding the fetch's predicate does not match. 99 cards, like the
+// curated bot decks.
+func myriadDeck(owner uuid.UUID, forests, islands int) []game.Card {
 	deck := []game.Card{}
 	cmdr := game.NewCommander("Commander Bear", owner)
 	cmdr.TypeLine = "Legendary Creature — Bear"
@@ -68,17 +84,17 @@ func myriadDeck(owner uuid.UUID, basics int) []game.Card {
 		c.OracleID = oracleMyriadLandscape
 		deck = append(deck, c)
 	}
-	for i := 0; i < basics; i++ {
+	for i := 0; i < forests; i++ {
 		c := game.NewCard("Forest", owner)
 		c.TypeLine = "Basic Land — Forest"
 		deck = append(deck, c)
 	}
-	for i := 0; i < basics; i++ {
+	for i := 0; i < islands; i++ {
 		c := game.NewCard("Island", owner)
 		c.TypeLine = "Basic Land — Island"
 		deck = append(deck, c)
 	}
-	for i := 0; i < 40-2*basics; i++ {
+	for i := 0; i < 94-forests-islands; i++ {
 		c := game.NewCard("Bear", owner)
 		c.TypeLine = "Creature — Bear"
 		c.ManaCost = "{1}{G}"
@@ -99,17 +115,27 @@ func findInLibrary(g *game.Game, p *game.Player, name string) uuid.UUID {
 }
 
 func TestMyriadLandscapeSearchWedgesABotSeat(t *testing.T) {
-	for _, basics := range []int{3, 4, 5, 6, 15} {
-		t.Run(fmt.Sprintf("basics=%d", basics), func(t *testing.T) {
-			myriadWedgeRun(t, basics)
+	// simic-ramp, the deck the field wedge was on, ships 7 Forest and
+	// 5 Island in 99 cards. That is the case that matters; the others
+	// bracket the expansion cap.
+	for _, d := range []struct {
+		name             string
+		forests, islands int
+	}{
+		{"simic-ramp_7F_5I", 7, 5},
+		{"6F_6I", 6, 6},
+		{"20F_20I", 20, 20},
+	} {
+		t.Run(d.name, func(t *testing.T) {
+			myriadWedgeRun(t, d.forests, d.islands)
 		})
 	}
 }
 
-func myriadWedgeRun(t *testing.T, basics int) {
+func myriadWedgeRun(t *testing.T, forests, islands int) {
 	g := game.NewGame()
 	for i := 0; i < 2; i++ {
-		if _, err := g.AddPlayer(fmt.Sprintf("Bot%d", i), myriadDeck(uuid.Nil, basics)); err != nil {
+		if _, err := g.AddPlayer(fmt.Sprintf("Bot%d", i), myriadDeck(uuid.Nil, forests, islands)); err != nil {
 			t.Fatalf("AddPlayer: %v", err)
 		}
 	}
@@ -190,7 +216,17 @@ func myriadWedgeRun(t *testing.T, basics int) {
 	// one rejects the same deterministic answer forever, and because a
 	// seat owing a choice is offered ONLY that choice's answers, there
 	// is no pass to fall back on.
-	t.Logf("search prompt open: max=%d candidates=%d", ch.SearchMax, len(ch.SearchCards))
+	answers := legal.EnumerateFor(g, seat)
+	pairs := 0
+	for _, m := range answers {
+		if i := strings.Index(m.Label, ": take "); i >= 0 {
+			if len(strings.Fields(m.Label[i+len(": take "):])) == 2 {
+				pairs++
+			}
+		}
+	}
+	t.Logf("search prompt open: max=%d candidates=%d answers=%d two-card-picks=%d",
+		ch.SearchMax, len(ch.SearchCards), len(answers), pairs)
 	p := heuristic.New()
 	rejects := map[uuid.UUID]int{}
 	startTurn := g.Turn.Number
