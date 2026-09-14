@@ -988,6 +988,20 @@ type ExilePlayView struct {
 	// it against `turn.number` and withholds the button until then;
 	// the server rejects an early cast regardless.
 	NotBeforeTurn int `json:"not_before_turn,omitempty"`
+	// Face is the printed face this grant opens, when it opens one
+	// (S32). Absent — every impulse, airbend, warp and cascade grant
+	// — means the grant does not speak about faces and the card's own
+	// layout decides, which is what `faces` and `layout` already tell
+	// the client.
+	//
+	// Present means the grant opens THAT FACE AND NO OTHER, which is
+	// a defeated Siege's "cast it transformed": the card in the
+	// exile pile is still showing the battle, and the thing the
+	// button will actually cast is `faces[face]`. A client that
+	// ignores this labels the button with the wrong card name; it
+	// does not cast the wrong thing, because the server settles the
+	// face from the grant rather than from the request.
+	Face int `json:"face,omitempty"`
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a
@@ -2544,6 +2558,7 @@ func viewOfCard(c game.Card) CardView {
 			AnyColor:      c.ExilePlay.AnyColor,
 			CostOverride:  c.ExilePlay.CostOverride,
 			NotBeforeTurn: c.ExilePlay.NotBeforeTurn,
+			Face:          c.ExilePlay.Face,
 		}
 	}
 	return view

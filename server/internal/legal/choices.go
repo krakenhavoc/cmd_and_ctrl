@@ -2,6 +2,7 @@ package legal
 
 import (
 	"fmt"
+	"log/slog"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -158,7 +159,18 @@ func (e *enumerator) choiceMoves() bool {
 				e.addChoice(c, reason+": assign combat damage", m)
 			}
 
-		case game.PendingChoicePickTarget:
+		// S27's two non-targeting prompts answer with exactly the
+		// pick_target payload — a single {kind, id} ref out of a
+		// server-computed set, min 1 max 1 — and actions.go routes
+		// them apart on the choice KIND rather than on the shape.
+		// They belong on this case for the same reason they reused
+		// that payload, and leaving them off it was a bot hang of the
+		// #544 class in the other direction: not an enumerated move
+		// the engine refuses, but a prompt with NO enumerated answer,
+		// which stops the seat dead because the engine also refuses
+		// pass_priority while a choice is open. Any seat that cast a
+		// battle, or that controlled two legends, was stuck.
+		case game.PendingChoicePickTarget, game.PendingChoiceChooseProtector, game.PendingChoiceLegendRule:
 			cands := make([]game.TargetRef, 0, len(c.PickTargetPlayers)+len(c.PickTargetCards))
 			for _, id := range c.PickTargetPlayers {
 				cands = append(cands, game.TargetRef{Kind: game.TargetPlayer, ID: id})
@@ -425,6 +437,28 @@ func (e *enumerator) choiceMoves() bool {
 				}
 				e.addChoice(c, reason+": put "+cardName(g, id)+" on top", p)
 			}
+
+		default:
+			// #499: a kind with no case above is enumerated NOTHING,
+			// and `owed` is already true, so the seat gets an empty
+			// move list — no answer and no pass either, because the
+			// engine refuses pass_priority while a choice is open. A
+			// bot runner reads that as "nothing to do" and sleeps
+			// forever; a human client's legal_moves goes empty.
+			//
+			// The silence is the bug. A kind added to game/ ends up
+			// here by default, and nothing anywhere says so until a
+			// table wedges. Logging it does not un-wedge the seat, but
+			// it turns "the game stopped" into a line naming the kind,
+			// which is the difference between an hour and a minute.
+			//
+			// Two kinds still land here on purpose, tracked on #499:
+			// may_cast and choose_creature_type.
+			slog.Warn("legal: no moves enumerated for a pending choice kind — the seat owing it has no legal move",
+				"kind", c.Kind,
+				"chooser", c.Chooser,
+				"reason", reason,
+			)
 		}
 	}
 	return owed

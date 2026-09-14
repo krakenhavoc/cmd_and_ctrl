@@ -759,3 +759,58 @@ action layer's.
 Steps 4–6: transform's flip verb, adventure's exile-and-recast, split
 fusing. All are declared in the import banner
 (`CodeUnsupportedLayout`) rather than left silent.
+
+---
+
+## Addendum (S32): a per-instance face on the exile-play grant
+
+This ADR's §4 table says a `transform` card is "always face 0
+(CR 712.4)" at announce and always face 0 as a permanent. The first
+half is right and stays. **The second half was wrong**, and it is what
+blocked S27's battles: a Siege prints *"When it's defeated, exile it,
+then **cast it transformed**"*, which is an effect casting a
+`transform` card's BACK face. `CastableFaces` correctly refuses to
+offer that face — nobody may choose it — but `faceOnResolve` returned
+0 unconditionally, so even a back-face cast would have resolved into
+a front-face permanent. For a Siege that means the defeated battle
+re-entering the battlefield, which is worse than not casting it.
+
+Three changes, all small, all in the direction §4 already pointed:
+
+1. **`ExilePlayPermission` grows `Face int`** (`game/exile_play.go`).
+   Zero means the grant does not speak about faces, which is every
+   grant before S32 and leaves impulse exile, airbend, warp and
+   cascade untouched. Non-zero names the ONE face the grant opens.
+   §4's adventure row wanted the same slot — *"an adventure exile has
+   no end-of-turn expiry, so `ExilePlayPermission` needs a 'does not
+   expire' flag"* — and this is the other half of that same
+   permission growing up.
+
+2. **A face-naming grant SETS the face rather than permitting it**
+   (`faceForCastLocked`, `game/face.go`). This is the one deliberate
+   departure from the "reject, never clamp" rule settled above. That
+   rule protects a CHOICE: silently casting the wrong half of a modal
+   DFC is the worst failure available. A face-naming grant offers no
+   choice — there is exactly one legal cast of that card by that
+   player — so `params.Face` is ignored rather than being a second
+   place the only possible answer has to be spelled. An out-of-range
+   granted face is still refused, because clamping it would land on
+   face 0 and hand the player a free cast of the battle.
+
+3. **`faceOnResolve` keeps a cast `transform` face.** CR 712.4 is a
+   rule about casting and is enforced where it belongs, by
+   `CastableFaces`. A non-zero cast face can now only have arrived
+   through an effect that said "cast it transformed", and that
+   permanent is the back face.
+
+The catalog side needed nothing new: a Siege back face registers under
+`"<oracle_id>#1"`, which is §5's keyspace, and the sixty MDFC land
+backs were already living in it.
+
+**The declared simplification is timing, not faces.** The free cast is
+a GRANT bounded to the turn the Siege was defeated, not an inline cast
+during the trigger's resolution — cascade's trade, for cascade's
+reason (the announce path has no frame for a half-validated cast). A
+Siege defeated on somebody else's turn is therefore lost, which is
+weaker than printed and never stronger. `effects.SiegeTransformedCastCaveat`
+is the one sentence every Siege in the catalog publishes about it.

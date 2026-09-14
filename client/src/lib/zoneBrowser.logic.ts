@@ -4,6 +4,7 @@
 // renderer (the client is node-only at test time). The component
 // delegates all derivations here so there's no behavioural drift.
 
+import { cardAsFace } from "./faces";
 import type { CardView, ExilePlayView, GameView } from "./protocol";
 import type { BrowsableZone } from "./zoneBrowser";
 
@@ -120,10 +121,30 @@ export function impulseActionLabel(
 ): "cast" | "play" | null {
   const grant = impulseGrantFor(card, zoneKind, viewerID, turn);
   if (!grant) return null;
-  if ((card.type_line ?? "").toLowerCase().includes("land")) {
+  // The land test reads the GRANTED face, not the face the card is
+  // sitting in exile wearing (S32). A defeated Siege is exiled
+  // battle-side-up under a grant for its back face, so asking the
+  // front face whether it is a land answers a question about the
+  // wrong card. Every grant that names no face resolves to the card
+  // itself, which is the pre-S32 behaviour to the byte.
+  const played = grantedFace(card, grant);
+  if ((played.type_line ?? "").toLowerCase().includes("land")) {
     return grant.cast_only ? null : "play";
   }
   return "cast";
+}
+
+// grantedFace returns the view of `card` that the grant actually
+// plays: `faces[grant.face]` materialised over the card when the
+// grant names a face, and the card unchanged when it does not.
+//
+// Exported because the button label and its aria-label both have to
+// name the half being cast — "cast Refraction Elemental from exile",
+// not "cast Invasion of Karsus from exile", which would name a card
+// the click cannot produce.
+export function grantedFace(card: CardView, grant: ExilePlayView | null): CardView {
+  if (!grant?.face) return card;
+  return cardAsFace(card, grant.face);
 }
 
 // --- S29: alternative cast paths from non-hand zones -------------

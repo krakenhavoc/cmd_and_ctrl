@@ -855,6 +855,17 @@ export interface ExilePlayView {
   // that is live as soon as it is made, which is all of impulse
   // exile and airbend.
   not_before_turn?: number;
+  // S32: the printed face this grant opens, when it opens one —
+  // a defeated Siege's "exile it, then cast it transformed", where
+  // the card sitting in the exile pile still shows the battle and
+  // the thing the button casts is `faces[face]`. Absent for every
+  // grant that does not speak about faces (impulse exile, airbend,
+  // warp, cascade), which is all of them before S32.
+  //
+  // Advisory only: the server settles the face from the grant rather
+  // than from the request, so a client that ignores this labels the
+  // button with the wrong name but cannot cast the wrong half.
+  face?: number;
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a

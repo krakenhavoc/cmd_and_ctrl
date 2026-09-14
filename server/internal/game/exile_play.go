@@ -108,6 +108,50 @@ type ExilePlayPermission struct {
 	// grant would set both. WhileExiled removes the ceiling; it does
 	// not remove this floor.
 	NotBeforeTurn int
+
+	// Face is the printed face this grant opens (ADR 0034), and the
+	// S32 half of the battle seam.
+	//
+	// Every permission before this one granted "the card". A Siege's
+	// defeated ability grants something narrower: "exile it, then
+	// CAST IT TRANSFORMED" (CR 310.9c) is permission to cast one
+	// specific FACE of a card whose own layout offers only the other
+	// one — Card.CastableFaces returns front-only for `transform`,
+	// deliberately and correctly, because the back of an ordinary DFC
+	// is reached by transforming a permanent and not by casting it
+	// (CR 712.4). The permission has to carry the face because the
+	// card cannot: two copies of the same Siege in exile can easily
+	// be at different stages, and only one of them has been defeated.
+	//
+	// It NARROWS rather than widens. A grant that names a face opens
+	// that face AND NO OTHER — a defeated Invasion of Karsus may be
+	// cast as Refraction Elemental and must not be re-cast as the
+	// battle. See faceCastableUnderGrant.
+	//
+	// ZERO MEANS "THIS GRANT DOES NOT SPEAK ABOUT FACES", not "face
+	// 0". Every pre-S32 grant leaves it zero and keeps exactly its
+	// old behaviour: the card's own CastableFaces decides, so an
+	// impulse-exiled modal DFC is still castable as either half. The
+	// sentinel is safe here in a way it was not for UntilTurn (see
+	// WhileExiled above) because there is no grant that would want to
+	// restrict a card to its front face alone — front-only is already
+	// what every non-MDFC layout answers, so the sentinel and the
+	// meaning it would shadow are the same thing.
+	Face int
+}
+
+// GrantsFace returns the single face this grant opens, when it names
+// one and its window is open for playerID on `turn`.
+//
+// The turn check is folded in on purpose: an expired grant must not
+// keep narrowing the card's own face set after it has stopped
+// granting anything, or a Siege back face left uncast would make the
+// exiled battle uncastable-as-anything rather than merely uncast.
+func (p ExilePlayPermission) GrantsFace(playerID uuid.UUID, turn int) (int, bool) {
+	if p.Face == 0 || !p.Active(playerID, turn) {
+		return 0, false
+	}
+	return p.Face, true
 }
 
 // Active reports whether playerID may play the card on `turn`. An

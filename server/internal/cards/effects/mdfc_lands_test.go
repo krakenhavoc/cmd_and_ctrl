@@ -455,24 +455,34 @@ func TestBackFaceSpecsAreKeyedByFace(t *testing.T) {
 
 // TestMDFCLandBackCycleIsComplete guards the generated table against
 // a partial edit. Sixty of the hundred modal_dfc oracle IDs in Magic
-// have a land back; all sixty are registered, and every one of them
-// under a "#1" key.
+// have a land back; all sixty are registered, every one of them under
+// a "#1" key, and every one taps for mana.
+//
+// It walks mdfcLandBackKeys rather than every "#1" spec in the
+// catalog. Since S32 the back-face keyspace has a second tenant — the
+// Sieges, whose back faces are creatures and enchantments and tap for
+// nothing — so a suffix scan would fail on cards this cycle has never
+// heard of. See mdfcLandBackKeys.
 func TestMDFCLandBackCycleIsComplete(t *testing.T) {
-	n := 0
-	for _, s := range All() {
-		if strings.HasSuffix(s.OracleID, "#1") {
-			n++
-			if s.Name == "" {
-				t.Errorf("back-face spec %q has no name", s.OracleID)
-			}
-			if len(s.ManaAbilities) != 1 {
-				t.Errorf("%s (%s): %d mana abilities, want 1 — every MDFC "+
-					"land back taps for mana", s.Name, s.OracleID,
-					len(s.ManaAbilities))
-			}
+	for _, key := range mdfcLandBackKeys {
+		if !strings.HasSuffix(key, "#1") {
+			t.Errorf("MDFC land back %q is not keyed on face 1", key)
+		}
+		s, ok := Lookup(key)
+		if !ok {
+			t.Errorf("MDFC land back %q is listed but not registered", key)
+			continue
+		}
+		if s.Name == "" {
+			t.Errorf("back-face spec %q has no name", s.OracleID)
+		}
+		if len(s.ManaAbilities) != 1 {
+			t.Errorf("%s (%s): %d mana abilities, want 1 — every MDFC "+
+				"land back taps for mana", s.Name, s.OracleID,
+				len(s.ManaAbilities))
 		}
 	}
-	if n != 60 {
+	if n := len(mdfcLandBackKeys); n != 60 {
 		t.Errorf("registered MDFC land backs = %d, want 60", n)
 	}
 }

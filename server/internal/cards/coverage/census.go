@@ -12,14 +12,21 @@
 //     had landed ("319") when the registry actually held 320. That is
 //     why the doc now carries the line "Always MEASURE this line,
 //     never derive it" — it is a scar, not a style note.
+//
 //   - The measured number was then reported as a card count when it is
-//     a KEY count. Sixty of the registry's keys are MDFC back faces
-//     registered as "<oracle_id>#1" (game.CatalogKey for face 1),
-//     whose front faces are deliberately unregistered — see
-//     TestBackFaceSpecsAreKeyedByFace. Conflating the two overstated
-//     "how many cards do we have" by roughly 13%, and it mattered:
-//     those sixty cards are still GAP cards, sitting in unstarted
-//     batches, because only half of each is automated.
+//     a KEY count. Some of the registry's keys are BACK FACES,
+//     registered as "<oracle_id>#1" (game.CatalogKey for face 1) —
+//     see TestBackFaceSpecsAreKeyedByFace. Conflating the two
+//     overstated "how many cards do we have" by roughly 13%.
+//
+//     Since S32 the back-face keyspace has two tenants and they mean
+//     different things for coverage. The sixty MDFC LAND backs have
+//     deliberately unregistered fronts, so each is half a card and
+//     each is still a gap card in an unstarted batch. The Siege back
+//     faces are the other half of a front that IS registered, so
+//     those cards are whole. The census cannot tell them apart from
+//     the key alone and does not try: it reports the key count and
+//     says what the split is in prose.
 //
 // So the census is computed here, from effects.All(), and a test
 // compares it against a delimited generated block in the roadmap. The
@@ -76,9 +83,11 @@ type Census struct {
 	WholeCards int
 
 	// BackFaces is the number of keys carrying a "#N" face suffix.
-	// Each of these automates ONE FACE of a card whose other face is
-	// not registered, so it is half a card's worth of coverage and
-	// the card is still a gap card.
+	// Usually that is ONE FACE of a card whose other face is not
+	// registered — half a card's worth of coverage, and the card is
+	// still a gap card. Since S32 the Sieges are the exception: their
+	// fronts are registered too, so those cards are whole and are
+	// counted once in WholeCards and once here.
 	BackFaces int
 
 	// Full, Caveats and Unreviewed count the Completeness declaration
@@ -159,15 +168,17 @@ func (c Census) Block() string {
 	b.WriteString("|---|---:|\n")
 	fmt.Fprintf(&b, "| Registry keys (`len(effects.All())`) | **%d** |\n", c.Keys)
 	fmt.Fprintf(&b, "| — whole cards (bare `oracle_id`) | **%d** |\n", c.WholeCards)
-	fmt.Fprintf(&b, "| — MDFC back faces (`<oracle_id>#1`) | %d |\n", c.BackFaces)
+	fmt.Fprintf(&b, "| — back faces (`<oracle_id>#1`) | %d |\n", c.BackFaces)
 	fmt.Fprintf(&b, "| Declared `full` | %d |\n", c.Full)
 	fmt.Fprintf(&b, "| Declared `caveats` | %d |\n", c.Caveats)
 	fmt.Fprintf(&b, "| Declared `unreviewed` | %d |\n", c.Unreviewed)
 	b.WriteString("\n")
-	b.WriteString("A back face is half a card: the modal-DFC land cycle registers only its\n")
-	b.WriteString("land back, so all " + fmt.Sprint(c.BackFaces) + " of those cards are still gap cards on their\n")
-	b.WriteString("batch issues. Whole cards is the number to quote when someone asks how\n")
-	b.WriteString("many cards the engine automates.\n")
+	b.WriteString("A back face is usually half a card: the modal-DFC land cycle registers\n")
+	b.WriteString("only its sixty land backs, and those cards are still gap cards on their\n")
+	b.WriteString("batch issues. The exception is the Sieges, whose fronts are registered\n")
+	b.WriteString("too — a Siege is one whole card spread over two keys. Whole cards is\n")
+	b.WriteString("still the number to quote when someone asks how many cards the engine\n")
+	b.WriteString("automates; it undercounts by the number of Sieges.\n")
 	b.WriteString("\n")
 	b.WriteString(EndMarker)
 	return b.String()

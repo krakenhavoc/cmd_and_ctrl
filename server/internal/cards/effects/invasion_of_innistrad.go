@@ -17,20 +17,29 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // would happen to this card even with no Spec at all. What the Spec
 // carries is the flash, the ETB removal, and the defeated trigger.
 //
-// SANDBOX SIMPLIFICATION, weaker than printed: the defeated trigger
-// exiles the Siege but does not go on to cast Deluge of the Dead. See
-// SiegeDefeated in battles.go for the two pieces of the multi-face
-// model that are missing and what they would take.
+// The defeated trigger exiles the Siege and grants its controller a
+// free cast of Deluge of the Dead, which lives in its own file under
+// the "#1" catalog key. S27 shipped this card with the exile alone
+// and the transformed cast declared missing; S32's per-instance face
+// on ExilePlayPermission closed that. What remains is the timing —
+// see SiegeTransformedCastCaveat and SiegeDefeated in battles.go.
 //
 // -13/-13 rather than "destroy": the difference is observable and it
 // is the reason the card is played. A creature with indestructible
 // dies to this, and one that regenerates does not come back — it is
 // not destruction, it is a toughness reduction the CR 704.5f
 // state-based action answers.
+// invasionOfInnistradOracleID is shared with the back face's spec,
+// which registers under this ID plus "#1" — the one place the two
+// halves of a double-faced card have to agree on a string.
+const invasionOfInnistradOracleID = "a3c1af66-63c8-41ec-a401-a3da1131dc67"
+
 func init() {
 	Register(Spec{
-		OracleID:        "a3c1af66-63c8-41ec-a401-a3da1131dc67",
+		OracleID:        invasionOfInnistradOracleID,
 		Name:            "Invasion of Innistrad",
+		Completeness:    CompletenessCaveats,
+		Caveats:         []string{SiegeTransformedCastCaveat},
 		PrintedKeywords: []string{"flash"},
 		Battle: &BattleSpec{
 			Defense: 5,

@@ -84,8 +84,21 @@ func backManaAbility(colors []string) ManaAbility {
 	}
 }
 
+// mdfcLandBackKeys is every catalog key this file registers, in
+// registration order.
+//
+// It exists because "#1" stopped meaning "an MDFC land back" in S32,
+// when the Siege back faces became castable and took keys in the same
+// keyspace. TestMDFCLandBackCycleIsComplete used to count suffixes,
+// which quietly turned into "count every back face in the catalog"
+// the moment a second kind existed — a guard that grows a false
+// failure every time an unrelated card ships is worse than no guard.
+// The list is the cycle's own record of itself.
+var mdfcLandBackKeys []string
+
 func registerMDFCLandBacks(rows []mdfcLandBack, reps func(back string) []game.ReplacementEffect) {
 	for _, r := range rows {
+		mdfcLandBackKeys = append(mdfcLandBackKeys, game.CatalogKeyForFace(r.oracleID, 1))
 		// Capture per iteration — the closures inside the
 		// replacement outlive the loop body.
 		row := r

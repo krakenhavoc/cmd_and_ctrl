@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { impulseActionLabel, impulseGrantFor } from "./zoneBrowser.logic";
+import { grantedFace, impulseActionLabel, impulseGrantFor } from "./zoneBrowser.logic";
 import type { CardView } from "./protocol";
 
 // impulseExile.test.ts — S21 sub-PR 6. The grant names a player who
@@ -89,5 +89,61 @@ describe("impulse exile — warp's not-before-turn floor", () => {
 
   it("leaves floorless grants — impulse exile, airbend — alone", () => {
     expect(impulseGrantFor(exiled({ exile_play: mine }), "exile", "thief", 1)).toEqual(mine);
+  });
+});
+
+// --- S32: a grant that names a FACE -------------------------------
+//
+// A defeated Siege is exiled showing the battle and granted a free
+// cast of its BACK face. Everything the client says about the card —
+// the button's verb, its label, the aria-label — has to be about the
+// half the click will actually produce, not the half in the pile.
+
+describe("impulse exile — a grant that names a face", () => {
+  const siege = (): CardView => ({
+    instance_id: "siege",
+    name: "Invasion of Karsus",
+    owner: "me",
+    controller: "me",
+    type_line: "Battle — Siege",
+    layout: "transform",
+    active_face: 0,
+    faces: [
+      { name: "Invasion of Karsus", type_line: "Battle — Siege", mana_cost: "{2}{R}{R}" },
+      { name: "Refraction Elemental", type_line: "Creature — Elemental", mana_cost: "" },
+    ],
+    exile_play: { player: "me", cast_only: true, cost_override: "{0}", face: 1 },
+  });
+
+  it("names the back face on the button, not the card in the pile", () => {
+    expect(grantedFace(siege(), siege().exile_play ?? null).name).toBe("Refraction Elemental");
+  });
+
+  it("leaves a faceless grant pointing at the card itself", () => {
+    const card = exiled({ exile_play: mine });
+    expect(grantedFace(card, mine).name).toBe("Stolen Bolt");
+    expect(grantedFace(card, null).name).toBe("Stolen Bolt");
+  });
+
+  it("asks the GRANTED face whether it is a land", () => {
+    // A hypothetical land back under a play-anything grant is
+    // playable even though the front face is not a land, and the
+    // front face being a land does not make a nonland back playable.
+    const landBack = siege();
+    landBack.faces = [
+      { name: "Front Sorcery", type_line: "Sorcery" },
+      { name: "Back Land", type_line: "Land" },
+    ];
+    landBack.exile_play = { player: "me", face: 1 };
+    expect(impulseActionLabel(landBack, "exile", "me")).toBe("play");
+
+    const castOnlyLandBack = {
+      ...landBack,
+      exile_play: { player: "me", cast_only: true, face: 1 },
+    };
+    expect(impulseActionLabel(castOnlyLandBack, "exile", "me")).toBeNull();
+
+    // And the Siege itself: a battle front, a creature back — "cast".
+    expect(impulseActionLabel(siege(), "exile", "me")).toBe("cast");
   });
 });
