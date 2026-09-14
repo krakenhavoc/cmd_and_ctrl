@@ -116,6 +116,26 @@ type AlternativeCost struct {
 	// named in CastSpellParams.AltCostIDs.
 	ReturnToHand *TargetSpec
 
+	// ExileFromGraveyard is escape's "Exile N other cards from your
+	// graveyard" (CR 702.144a) — the half of the escape cost that is
+	// not mana, and the reason escape is priced rather than merely
+	// permitted. Added in S29.
+	//
+	// The COUNT is the spec's Min (which equals its Max): "exile five
+	// other cards" is one five-slot payment, not five one-slot ones,
+	// and the caster names all five in CastSpellParams.AltCostIDs.
+	// The spell being cast is never among them — CR 601.2a has
+	// already moved it to the stack, which is precisely what the
+	// printed word "other" means, so nothing has to special-case it
+	// beyond the castID guard every card component already carries.
+	//
+	// Matched against the CASTER's graveyard only ("your graveyard"),
+	// the same way ExileFromHand is matched against their hand. That
+	// it happens to be the zone the cast also comes out of is a
+	// coincidence of escape rather than a rule: FromZone is the
+	// place, this is the price, and the two are still independent.
+	ExileFromGraveyard *TargetSpec
+
 	// PayLabel is the picker's prompt copy for the ExileFromHand /
 	// ReturnToHand component ("a blue card", "an Island you
 	// control"). Empty falls back to Label.
@@ -185,6 +205,60 @@ type AlternativeCost struct {
 	// for the printed mana cost, through the same grant the impulse
 	// button already renders.
 	WarpExile bool
+
+	// EntersWithCounterName / EntersWithCounterCount is "this
+	// creature escapes with a +1/+1 counter on it" (CR 702.144c) —
+	// the clause most escape creatures print directly under the
+	// cost, and the reason an escaped Voracious Typhon is a 7/7
+	// rather than the 4/4 in the corner. Added in S29.
+	//
+	// It hangs off the COST for the same reason SacrificeOnEntry and
+	// WarpExile do: it happens only when that cost was paid, and the
+	// resolving StackItem is the last place that fact is reachable.
+	// A card-level declaration would have to be re-checked against
+	// the cost anyway, and would fire on a Typhon reanimated out of
+	// the graveyard, which never escaped anything.
+	//
+	// The counter is a NAME rather than a bare number because
+	// "escapes with a flying counter" is printed too (Tizerus
+	// Charger), even though "+1/+1" is the case that matters.
+	//
+	// Applied through the CR 614 entry pipeline — the same
+	// ReplacementEvent.EntersWithCounters map Hangarback Walker's own
+	// self-replacement writes — rather than stapled on after the
+	// permanent lands. So a creature escaping under Doubling Season
+	// gets twice the counters (CR 616), and an ETB trigger already
+	// sees them.
+	EntersWithCounterName  string
+	EntersWithCounterCount int
+}
+
+// cardComponent returns the card-shaped half of this cost: the spec
+// candidates are matched against, the zone they are named out of,
+// and how many the caster must name. (nil, "", 0) for a cost whose
+// only components are mana and life.
+//
+// One accessor rather than three call sites' worth of if-ladders,
+// because escape made the count vary: every pre-S29 component named
+// exactly one card, and "exile five other cards from your graveyard"
+// is the first that does not. Nil-safe.
+func (a *AlternativeCost) cardComponent() (*TargetSpec, ZoneKind, int) {
+	if a == nil {
+		return nil, "", 0
+	}
+	switch {
+	case a.ExileFromHand != nil:
+		return a.ExileFromHand, ZoneHand, 1
+	case a.ReturnToHand != nil:
+		return a.ReturnToHand, ZoneBattlefield, 1
+	case a.ExileFromGraveyard != nil:
+		n := a.ExileFromGraveyard.Min
+		if n < 1 {
+			n = 1
+		}
+		return a.ExileFromGraveyard, ZoneGraveyard, n
+	}
+	return nil, "", 0
 }
 
 // Clears reports whether paying this cost deletes the spell's target
@@ -254,7 +328,8 @@ func validateAlternativeCost(oracleID, key string, targets []TargetRef) (*Altern
 // PaysCards reports whether this cost has a component the caster
 // must name a card for. Nil-safe.
 func (a *AlternativeCost) PaysCards() bool {
-	return a != nil && (a.ExileFromHand != nil || a.ReturnToHand != nil)
+	spec, _, _ := a.cardComponent()
+	return spec != nil
 }
 
 // Available reports whether a player may claim this offer right now
@@ -304,46 +379,61 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 	if alt.Life > 0 && p.Life < alt.Life {
 		return ErrInvalidParam
 	}
-	spec := alt.ExileFromHand
-	zone := ZoneHand
-	if spec == nil {
-		spec, zone = alt.ReturnToHand, ZoneBattlefield
-	}
+	spec, zone, want := alt.cardComponent()
 	if spec == nil {
 		if len(ids) > 0 {
 			return ErrInvalidParam
 		}
 		return nil
 	}
-	if len(ids) != 1 {
+	// Exactly `want`, not "at least": escape's five is a price, and
+	// a caster who named four has not paid it while one who named
+	// six has overpaid by a card the cost never asked for.
+	if len(ids) != want {
 		return ErrInvalidParam
 	}
-	id := ids[0]
-	if id == castID {
-		return ErrInvalidParam
-	}
-	// Not a target — a cost is not targeted (CR 601.2h), so hexproof
-	// and shroud do not apply and the spec is matched directly
-	// against the card rather than through the targeting gate.
-	c, ok := g.cardInZoneLocked(g.zoneForAltCostLocked(p, zone), id)
-	if !ok {
-		return ErrCardNotFound
-	}
-	if zone == ZoneBattlefield && c.Controller != playerID {
-		return ErrInvalidParam
-	}
-	if spec.CardOK != nil && !spec.CardOK(g, playerID, c, zone) {
-		return ErrInvalidParam
+	// Distinctness is the other half of the count. Without it a
+	// five-card escape cost could be paid by naming the same card
+	// five times, which is the cheapest possible Uro and not a cost
+	// at all.
+	seen := make(map[uuid.UUID]bool, len(ids))
+	for _, id := range ids {
+		if id == castID || seen[id] {
+			return ErrInvalidParam
+		}
+		seen[id] = true
+		// Not a target — a cost is not targeted (CR 601.2h), so
+		// hexproof and shroud do not apply and the spec is matched
+		// directly against the card rather than through the
+		// targeting gate.
+		c, ok := g.cardInZoneLocked(g.zoneForAltCostLocked(p, zone), id)
+		if !ok {
+			return ErrCardNotFound
+		}
+		if zone == ZoneBattlefield && c.Controller != playerID {
+			return ErrInvalidParam
+		}
+		if spec.CardOK != nil && !spec.CardOK(g, playerID, c, zone) {
+			return ErrInvalidParam
+		}
 	}
 	return nil
 }
 
 // zoneForAltCostLocked picks the zone an alternative cost's card
-// component is paid from: the caster's own hand, or the shared
-// battlefield.
+// component is paid from: the caster's own hand or graveyard, or the
+// shared battlefield.
+//
+// Hand and graveyard are per-player zones, so resolving them through
+// the caster's Player is what enforces "your hand" / "your
+// graveyard" — an escape cost can no more exile an opponent's
+// graveyard than a Force of Will can pitch from one.
 func (g *Game) zoneForAltCostLocked(p *Player, kind ZoneKind) *Zone {
-	if kind == ZoneHand {
+	switch kind {
+	case ZoneHand:
 		return p.Hand
+	case ZoneGraveyard:
+		return p.Graveyard
 	}
 	return g.Battlefield
 }
@@ -374,12 +464,22 @@ func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost
 	if len(ids) == 0 {
 		return nil
 	}
-	id := ids[0]
-	if alt.ExileFromHand != nil {
-		return g.ExileCardForEffect(id)
-	}
-	if alt.ReturnToHand != nil {
-		return g.BounceToHandForEffect(id)
+	switch {
+	case alt.ExileFromHand != nil:
+		return g.ExileCardForEffect(ids[0])
+	case alt.ReturnToHand != nil:
+		return g.BounceToHandForEffect(ids[0])
+	case alt.ExileFromGraveyard != nil:
+		// Escape's exiles are a cost, so they happen with the spell
+		// already on the stack — which is what makes an escaped Uro
+		// visible to anything watching the graveyard shrink, and
+		// what makes the cards stay exiled when the spell is
+		// countered.
+		for _, id := range ids {
+			if err := g.ExileCardForEffect(id); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -473,6 +573,37 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 			return g.sacrificePermanentLocked(it.SourceCardID)
 		},
 	})
+}
+
+// applyAltCostEntryCountersLocked folds "this creature escapes with
+// a +1/+1 counter on it" (CR 702.144c) into the permanent's ENTRY
+// event, before the CR 614 pipeline runs.
+//
+// The sibling of queueAltCostEntryTriggerLocked and the reason both
+// exist: an alternative cost can attach a clause to the permanent's
+// entry, and the clause should use whichever existing machinery
+// matches its timing. Evoke's sacrifice is a triggered ability, warp's
+// exile is a delayed trigger, and "escapes with counters" is a
+// replacement — so it rides the same EntersWithCounters map Hangarback
+// Walker writes, rather than an AddCounter after the permanent lands.
+//
+// The difference is observable in both directions. Under Doubling
+// Season a Typhon escaping with three counters gets six, because the
+// counters go on through the counter-replacement pipeline; and the
+// permanent's own ETB trigger already sees them, because the map is
+// drained before EventETB fires.
+//
+// No-op for a spell cast for its mana cost, and for an alternative
+// cost that declares no counters. Caller must hold g.mu.
+func (g *Game) applyAltCostEntryCountersLocked(ev *ReplacementEvent, card Card, item *StackItem) {
+	if ev == nil || item == nil || item.AltCost == "" {
+		return
+	}
+	alt := AlternativeCostByKey(CatalogKey(card), item.AltCost)
+	if alt == nil {
+		return
+	}
+	ev.AddCounterAtETB(alt.EntersWithCounterName, alt.EntersWithCounterCount)
 }
 
 // scheduleWarpExileLocked schedules warp's "exile this permanent at

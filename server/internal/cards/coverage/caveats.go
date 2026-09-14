@@ -142,6 +142,14 @@ var mechanics = []Mechanic{
 		Adopt:      `CastableZones: []game.ZoneKind{game.ZoneGraveyard} plus Flashback("{cost}") — see alternative_cost.go`,
 	},
 	{
+		Name:       "escape",
+		Phrases:    []string{"escape"},
+		Implements: altCost("escape"),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "escape") resolves`,
+		Confidence: Exact,
+		Adopt:      `CastableZones: []game.ZoneKind{game.ZoneGraveyard} plus Escape("{cost}", n) — EscapeWithCounters when the creature escapes with counters`,
+	},
+	{
 		Name:       "warp",
 		Phrases:    []string{"warp"},
 		Implements: altCost("warp"),

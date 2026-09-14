@@ -1337,7 +1337,7 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 				// disjoint sets, and showing the wrong one produces a
 				// button the server will reject.
 				if alts := game.AlternativeCostsOfferedFromZone(c.oracleID, zone.kind); len(alts) > 0 {
-					c.AlternativeCosts = viewOfAlternativeCosts(g, caster, spec, alts)
+					c.AlternativeCosts = viewOfAlternativeCosts(g, caster, c.InstanceID, spec, alts)
 				}
 				if spec == nil {
 					continue
@@ -1395,7 +1395,15 @@ func viewOfTapCost(g *game.Game, caster uuid.UUID, c *CardView, tc *game.TapPerm
 // away, an entry with one enters targeting on the legal set it
 // carries, and neither case needs the client to know what the word
 // "overload" means. Caller must hold g.mu.
-func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, base *game.TargetSpec, alts []game.AlternativeCost) []AlternativeCostView {
+// `self` is the instance ID of the card the offers belong to, which
+// escape needs and nothing else does: "exile five OTHER cards from
+// your graveyard" is paid out of the same zone the spell is being
+// cast from, so the spell itself is sitting in the candidate list
+// until it is filtered out here. The server rejects it anyway (CR
+// 601.2a moved it to the stack before the cost is paid), but a
+// picker that offers a card the cast will be rejected for choosing
+// is a trap rather than an affordance.
+func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, self string, base *game.TargetSpec, alts []game.AlternativeCost) []AlternativeCostView {
 	out := make([]AlternativeCostView, 0, len(alts))
 	for i := range alts {
 		ac := alts[i]
@@ -1427,6 +1435,16 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, base *game.TargetSpe
 		} else if paySpec := ac.ReturnToHand; paySpec != nil {
 			opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, paySpec), paySpec)
 			opts.Cards = filterToController(g, opts.Cards, caster)
+			opts.Players = nil
+			v.PayOptions = opts
+		} else if paySpec := ac.ExileFromGraveyard; paySpec != nil {
+			// The spec's own predicate already narrows this to the
+			// caster's graveyard; what it cannot know is which card
+			// is being cast, hence the `self` filter. Min / Max ride
+			// through from the spec, so the client's picker sizes
+			// itself to "exile five" without knowing the keyword.
+			opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, paySpec), paySpec)
+			opts.Cards = withoutID(opts.Cards, self)
 			opts.Players = nil
 			v.PayOptions = opts
 		}
@@ -2561,6 +2579,23 @@ func filterToController(g *game.Game, ids []string, controller uuid.UUID) []stri
 			continue
 		}
 		if c, ok := g.LookupCardForEffect(parsed); ok && c.Controller == controller {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+// withoutID drops one instance ID from a candidate list. Escape's
+// "N OTHER cards from your graveyard" is the only caller: every
+// other cost component is paid out of a zone the spell being cast
+// has already left.
+func withoutID(ids []string, drop string) []string {
+	if drop == "" {
+		return ids
+	}
+	out := ids[:0]
+	for _, id := range ids {
+		if id != drop {
 			out = append(out, id)
 		}
 	}

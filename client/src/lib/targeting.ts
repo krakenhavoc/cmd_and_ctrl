@@ -360,6 +360,21 @@ export function altCostPayOptions(offer: AlternativeCostView | undefined): strin
   return offer.pay_options.cards ?? [];
 }
 
+// altCostPayCount is how many cards the offer's card-shaped half
+// demands. One for every S28 shape — Force of Will pitches a card,
+// Daze bounces an Island — and N for S29's escape, whose cost is
+// "exile five other cards from your graveyard".
+//
+// The server sends the number as min == max on `pay_options`, so the
+// picker sizes itself without knowing which keyword it is paying:
+// one is a radio list, more than one is a checklist with a counter.
+// The fallback of 1 is for an offer that predates the field rather
+// than a guess — a cost with a card component always has a count.
+export function altCostPayCount(offer: AlternativeCostView | undefined): number {
+  const n = offer?.pay_options?.min ?? offer?.pay_options?.max ?? 1;
+  return n > 0 ? n : 1;
+}
+
 // modeOptionCastable reports whether an option can be chosen right
 // now: untargeted options always can; targeted ones need at least
 // one legal target.

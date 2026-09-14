@@ -495,6 +495,35 @@ func CardInYourHand(label string, preds ...CardPredicate) *game.TargetSpec {
 	}
 }
 
+// CardsInYourGraveyard — "N other cards from your graveyard"
+// (escape's exile cost, CR 702.144a). The multi-slot sibling of
+// CardInYourHand, and the first cost component in the catalog that
+// names more than one card.
+//
+// "Other" is NOT expressed here and deliberately so. The excluded
+// card is the spell being cast, which the spec has no way to name —
+// the engine excludes it because CR 601.2a has already moved it to
+// the stack by the time the cost is paid, and the view drops it from
+// the picker for the same reason. A predicate here would have to be
+// handed the cast's instance ID, which a TargetSpec's CardOK does
+// not receive.
+//
+// Ownership is baked in for the reason CardInYourHand gives: every
+// printed clause of this shape says "your graveyard", and the cost
+// of forgetting it is an escape that eats an opponent's yard.
+func CardsInYourGraveyard(n int, label string, preds ...CardPredicate) *game.TargetSpec {
+	pred := And(append([]CardPredicate{YouOwn()}, preds...)...)
+	return &game.TargetSpec{
+		Mode:  "card_in_graveyard",
+		Label: label,
+		Zones: []game.ZoneKind{game.ZoneGraveyard},
+		CardOK: func(g *game.Game, caster uuid.UUID, c game.Card, _ game.ZoneKind) bool {
+			return pred(g, caster, c)
+		},
+		Min: n, Max: n,
+	}
+}
+
 // PermanentYouControl — "an Island you control" (Daze's alternative
 // cost). Same cost-not-target contract as CardInYourHand.
 func PermanentYouControl(label string, preds ...CardPredicate) *game.TargetSpec {

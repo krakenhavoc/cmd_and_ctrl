@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { get } from "svelte/store";
 
 import {
+  altCostPayCount,
   altCostPayOptions,
   alternativeCostByKey,
   alternativeCostsOf,
@@ -227,5 +228,57 @@ describe("altCostPayOptions", () => {
     const empty: Record<string, unknown> = {};
     applyCastChoices(empty, { altCost: "overload", altCostIDs: [] });
     expect(empty).toEqual({ alternative_cost: "overload" });
+  });
+});
+
+// S29 — escape is the first cost whose card-shaped half names more
+// than one card, so the picker's count stopped being the constant 1
+// it had been since S28. Everything about that lives in
+// `pay_options.min`, and these are the three readings of it.
+describe("escape's multi-card payment", () => {
+  const cling = card({
+    instance_id: "cling",
+    name: "Cling to Dust",
+    type_line: "Instant",
+    mana_cost: "{B}",
+    castable_here: true,
+    alternative_costs: [
+      {
+        key: "escape",
+        label: "Escape\u2014{3}{B}, Exile five other cards from your graveyard",
+        mana_cost: "{3}{B}",
+        pay_label: "five other cards from your graveyard",
+        pay_options: { cards: ["a", "b", "c", "d", "e", "f"], min: 5, max: 5 },
+      },
+    ],
+  });
+
+  it("reads the count off pay_options", () => {
+    expect(altCostPayCount(alternativeCostByKey(cling, "escape"))).toBe(5);
+  });
+
+  it("still reads one for the S28 single-card costs", () => {
+    const pitcher = card({
+      instance_id: "fow3",
+      alternative_costs: [{ key: "pitch", pay_options: { cards: ["brainstorm"], min: 1, max: 1 } }],
+    });
+    expect(altCostPayCount(alternativeCostByKey(pitcher, "pitch"))).toBe(1);
+  });
+
+  // A cost with no card component never opens the picker, so the
+  // count is never consulted — but it must not be zero, or a picker
+  // opened by mistake would confirm with nothing chosen.
+  it("falls back to one for an offer with no pay_options", () => {
+    expect(altCostPayCount(alternativeCostByKey(rift, "overload"))).toBe(1);
+    expect(altCostPayCount(undefined)).toBe(1);
+  });
+
+  it("sends every chosen card on the payload", () => {
+    const params: Record<string, unknown> = {};
+    applyCastChoices(params, { altCost: "escape", altCostIDs: ["a", "b", "c", "d", "e"] });
+    expect(params).toEqual({
+      alternative_cost: "escape",
+      alt_cost_ids: ["a", "b", "c", "d", "e"],
+    });
   });
 });
