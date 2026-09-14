@@ -629,6 +629,29 @@ func (g *Game) TuckToLibraryForEffect(cardID uuid.UUID, toBottom bool) error {
 	return err
 }
 
+// TuckToLibraryAtDepthForEffect is TuckToLibraryForEffect with the
+// printed position spelled out: depth 1 is the top, depth 3 is
+// "into its owner's library third from the top" (Teferi, Hero of
+// Dominaria's −3), and a library shorter than the depth takes the
+// card on the bottom.
+//
+// Everything TuckToLibraryForEffect's comment says applies here —
+// the LKI + EventLTB on the way off the battlefield, the cleared
+// knowledge set on the way into a hidden zone, and the CR 903.9
+// prompt that lets a commander's owner choose the command zone
+// instead. The depth rides the route, so a commander whose owner
+// declines still lands third from the top.
+//
+// Caller must hold g.mu.
+func (g *Game) TuckToLibraryAtDepthForEffect(cardID uuid.UUID, depth int) error {
+	_, err := g.routeCardToZoneLocked(zoneRoute{
+		CardID: cardID,
+		Dst:    ZoneLibrary,
+		Depth:  depth,
+	})
+	return err
+}
+
 // TapTargetForEffect taps a battlefield card. Wrapper around the
 // internal path; emits EventTapCard.
 func (g *Game) TapTargetForEffect(cardID uuid.UUID) error {
