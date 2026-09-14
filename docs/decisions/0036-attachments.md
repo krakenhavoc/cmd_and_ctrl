@@ -783,3 +783,62 @@ recompute goes 6.5µs → 7.3µs — under a percent of `ViewOfGame`'s
 hundreds of microseconds — and the contended case is flat.
 `server/internal/game/layers_concurrency_test.go` pins all three
 pairings under `go test -race`.
+
+## Amendment (S24 tail): decision 18 — CR 704.5n's second disjunct
+
+Decision 8 spelled the unattach state-based action as a single
+condition — "is this attachment attached to something illegal?" — and
+implemented exactly that. CR 704.5n asks a wider question:
+
+> If an Aura is attached to an illegal object or player, **or is not
+> attached to an object or player**, that Aura is put into its owner's
+> graveyard.
+
+The second disjunct was missing, and it is reachable. An Aura put onto
+the battlefield by an effect that does not say "attached to" enters
+with no host — Brilliant Restoration's "return all artifact and
+enchantment cards from your graveyard to the battlefield", Carmen,
+Cruel Skymarcher's reanimation — and both card files already carried
+the gap as a declared simplification: "comes back UNATTACHED and stays
+that way ... the attachment state-based action sweeps only an Aura
+attached to something illegal, not one attached to nothing."
+
+That is worse than weak. An Aura attached to nothing is a board state
+the rules forbid, no sequence of legal plays can produce it, and it
+persists — the permanent sits there for the rest of the game with an
+"enchanted creature gets +2/+0" static that can never apply to
+anything.
+
+### The decision
+
+`attachmentLegalLocked` answers for unattached cards too, and
+`attachmentSBALocked` no longer skips them. The action loop gained one
+guard: a card that was never attached emits no `EventUnattach`, because
+no link was broken.
+
+**Scoped to Auras the catalog knows an enchant clause for** —
+`TargetSpecFor(CatalogKey(c)) != nil` — for the same reason decision 9
+scopes the attached branch that way. An uncatalogued Aura is a *manual*
+object in this sandbox: it is cast through the free-form picker with no
+target, `attachResolvedAuraLocked` deliberately leaves it unattached,
+and its controller is tracking what it enchants by hand. Sweeping it
+into a graveyard would delete a card the table is using. A catalogued
+Aura, by contrast, always acquires its host at resolution, so reaching
+the SBA unattached means an effect put it onto the battlefield without
+one.
+
+**CR 704.5m has no equivalent clause**, and Equipment is untouched: an
+unattached Equipment is an ordinary artifact, which is where every
+Equipment starts its life.
+
+### What this does NOT fix
+
+**CR 303.4f** — "if an Aura is entering the battlefield under a
+player's control by any means other than by resolving as an Aura spell,
+and the effect putting it onto the battlefield doesn't specify what it
+will enchant, that player chooses as it enters." That is a prompt
+mid-resolution and there is no such prompt in the reanimation path. So
+Brilliant Restoration and Carmen still do not let you choose a host;
+their Aura now goes back to the graveyard it came from instead of
+sitting on the battlefield forever. Still weaker than printed, never
+stronger, and their caveats say so.

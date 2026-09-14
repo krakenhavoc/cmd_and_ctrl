@@ -36,9 +36,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "9d2d6479-531c-4ce1-b52b-00e36fa63b64",
-		Name:     "Rancor",
-		Targets:  EnchantCreature(),
+		OracleID:     "9d2d6479-531c-4ce1-b52b-00e36fa63b64",
+		Name:         "Rancor",
+		Completeness: CompletenessFull,
+		Targets:      EnchantCreature(),
 		Static: []game.StaticAbility{
 			PumpAttached(2, 0),
 			GrantToAttached("trample"),
