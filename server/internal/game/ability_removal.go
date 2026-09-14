@@ -56,6 +56,16 @@ package game
 // still has whatever is attached to IT. Ability removal is not a
 // zone change and not an unattach.
 //
+// Kept too: every RESTRICTION on it. "Can't attack or block" is not
+// an ability of the restricted creature — it is an effect the
+// Pacifism has — so removing the creature's abilities does not lift
+// it, and restrictions.go's separate `Characteristic.Restrictions`
+// field is what makes that fall out rather than needing a rule here.
+// The mirror case does go the other way, and through this file: an
+// Aura whose OWN abilities are removed stops restricting anything,
+// because a permanent with no abilities generates no continuous
+// effect at all.
+//
 // Also kept: abilities an object has because of what it IS rather
 // than because of what it says. CR 305.6's intrinsic mana ability of
 // a land with a basic land type is granted by the land type, not
