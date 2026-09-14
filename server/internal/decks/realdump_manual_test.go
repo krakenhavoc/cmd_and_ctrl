@@ -16,7 +16,7 @@ import (
 // in the repo.
 //
 //	CMDCTRL_SCRYFALL_DUMP=data/scryfall/default-cards.json \
-//	  go test ./internal/aiseat/decks/ -run RealDump -v
+//	  go test ./internal/decks/ -run RealDump -v
 //
 // decks_test.go pins everything that can be checked from the effects
 // registry alone: coverage, count, singleton, and colour identity as
@@ -79,6 +79,44 @@ func TestRealDumpDecksAreLegalCommanderDecks(t *testing.T) {
 				sort.Strings(drift)
 				t.Errorf("%d colour-identity declaration(s) wrong:\n\t%s", len(drift), strings.Join(drift, "\n\t"))
 			}
+		})
+	}
+}
+
+// The coverage profile the picker shows must not depend on whether a
+// Scryfall dump is loaded. GET /decks is served either way and says so
+// in docs/lobby.md; this is the check behind that sentence.
+//
+// It is real rather than obvious: CoverageOf joins against
+// catalog.Build(idx), and catalog.Build DOES change with an index — it
+// fills in printings, parses type lines, and reads printed faces,
+// which is what decides an MDFC's "only part of this card is
+// automated" caveat. So a dump could in principle move a card between
+// buckets, and if it ever does, a player would see one number in
+// staging and another in production.
+func TestRealDumpCoverageMatchesTheOfflineProfile(t *testing.T) {
+	path := os.Getenv("CMDCTRL_SCRYFALL_DUMP")
+	if path == "" {
+		t.Skip("set CMDCTRL_SCRYFALL_DUMP to run against the real dump")
+	}
+	idx := cards.NewIndex()
+	if _, err := idx.Load(path); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	for _, d := range All() {
+		t.Run(d.ID, func(t *testing.T) {
+			offline := CoverageOf(nil, d)
+			loaded := CoverageOf(idx, d)
+			if offline.Cards != loaded.Cards || offline.Full != loaded.Full ||
+				offline.Caveats != loaded.Caveats || offline.Unreviewed != loaded.Unreviewed ||
+				offline.Unregistered != loaded.Unregistered {
+				t.Errorf("coverage differs with a dump loaded:\n\toffline %+v\n\tloaded  %+v", offline, loaded)
+			}
+			if len(offline.Imperfect) != len(loaded.Imperfect) {
+				t.Errorf("%d imperfect cards offline, %d with a dump", len(offline.Imperfect), len(loaded.Imperfect))
+			}
+			t.Logf("%s: %d cards — %d full, %d caveats, %d unreviewed, %d basic land rows",
+				d.ID, loaded.Cards, loaded.Full, loaded.Caveats, loaded.Unreviewed, loaded.Basics)
 		})
 	}
 }

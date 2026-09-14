@@ -2,12 +2,12 @@ package main
 
 import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/decks"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
 )
 
 // botDeckCatalog is the wiring S31 sub-PR 4 promised and sub-PR 5
 // never came back to connect: it adapts the curated archetype decks
-// in internal/aiseat/decks to the aiseat.DeckSource the lobby's
+// in internal/decks to the aiseat.DeckSource the lobby's
 // Add-bot picker reads.
 //
 // Until this existed, `main.go` passed aiseat.PlaceholderDecks() — a
@@ -17,7 +17,7 @@ import (
 // deployment played mono-red basics while four tested, catalog-covered
 // archetypes sat unreachable in the tree.
 //
-// It lives here rather than in internal/aiseat/decks for one reason:
+// It lives here rather than in internal/decks for one reason:
 // `decks` is the deck DATA and its coverage test, and it deliberately
 // knows nothing about the lobby's wire shapes. The adapter is boot
 // wiring, so it sits with the rest of the boot wiring.

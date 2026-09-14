@@ -40,10 +40,10 @@ type Factory struct {
 // prompt.
 //
 // It is a func rather than an interface, and lives here rather than
-// in aiseat/decks, so that this package does not depend on the deck
+// in internal/decks, so that this package does not depend on the deck
 // catalog (which depends on the card index, which depends on a
-// Scryfall dump). main.go closes over decks.Profile and the loaded
-// index and passes the result down.
+// Scryfall dump). main.go closes over deckprofile.Build and the
+// loaded index and passes the result down.
 type DeckProfileFunc func(deckID string) (model.DeckProfile, bool)
 
 // FactoryOptions configure every seat this factory builds.

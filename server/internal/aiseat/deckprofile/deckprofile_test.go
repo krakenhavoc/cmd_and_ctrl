@@ -1,4 +1,4 @@
-package decks
+package deckprofile
 
 import (
 	"strings"
@@ -7,15 +7,16 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
 )
 
-// A deck's profile is the static half of the model prompt. It has to
+// Build is the static half of the model prompt. It has to
 // survive having no Scryfall dump — CI has none — because a server
 // that cannot load the index has a louder problem to report than a
 // thin prompt.
-func TestProfileWithoutACardIndex(t *testing.T) {
-	for _, d := range All() {
-		p, ok := Profile(nil, d.ID)
+func TestBuildWithoutACardIndex(t *testing.T) {
+	for _, d := range decks.All() {
+		p, ok := Build(nil, d.ID)
 		if !ok {
 			t.Fatalf("%s: no profile", d.ID)
 		}
@@ -45,15 +46,15 @@ func TestProfileWithoutACardIndex(t *testing.T) {
 		}
 	}
 
-	if _, ok := Profile(nil, "no-such-deck"); ok {
-		t.Error("Profile accepted an unknown deck ID")
+	if _, ok := Build(nil, "no-such-deck"); ok {
+		t.Error("Build accepted an unknown deck ID")
 	}
 }
 
 // With an index, the oracle text travels — that is the whole reason
 // the prompt carries a decklist rather than a list of names.
-func TestProfileTakesOracleTextFromTheIndex(t *testing.T) {
-	d := All()[0]
+func TestBuildTakesOracleTextFromTheIndex(t *testing.T) {
+	d := decks.All()[0]
 	idx := cards.NewIndex()
 	idx.Put(cards.Card{
 		ID:         uuid.New(),
@@ -63,7 +64,7 @@ func TestProfileTakesOracleTextFromTheIndex(t *testing.T) {
 		OracleText: "Whenever this creature deals combat damage, do a thing.",
 	})
 
-	p, ok := Profile(idx, d.ID)
+	p, ok := Build(idx, d.ID)
 	if !ok {
 		t.Fatal("no profile")
 	}

@@ -981,13 +981,12 @@
     >
       <div class="prompt-modal deck-import-modal">
         <h2 id="deck-import-title">
-          Import your deck
+          Choose your deck
           <span class="prompt-src" aria-hidden="true">before the game starts</span>
         </h2>
         <p class="prompt-hint">
-          Paste a Moxfield or Archidekt deck URL, a Moxfield JSON export, or a plain-text decklist.
-          The server validates against Commander rules (100-card singleton, color identity, format
-          legality).
+          Every deck is validated against Commander rules — 100-card singleton, color identity,
+          format legality — whichever way it arrives.
         </p>
         <DeckUploadForm
           {gameID}

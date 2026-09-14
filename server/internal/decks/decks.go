@@ -1,6 +1,18 @@
-// Package decks is the curated bot-deck catalog: the decks a bot seat
-// may be seated with, and the one lookup the lobby uses to turn a deck
-// ID into a validated deck.List.
+// Package decks is the pre-built deck catalog: the decks any seat —
+// bot or human — may be seated with, and the one lookup the lobby uses
+// to turn a deck ID into a validated deck.List.
+//
+// # Why it is not under internal/aiseat any more
+//
+// It was, until the lobby grew a human-facing deck picker. The decks
+// were never bot-specific; what was bot-specific was that only bots
+// could reach them. A player who just wants to play a working game now
+// picks from the same four, through the same Load, so a package path
+// saying `aiseat` would have been a lie about what depends on what.
+// The bot picker still reads this catalog, via cmd/server's
+// botDeckCatalog adapter, and the model tiers' prompt projection lives
+// in internal/aiseat/deckprofile — both import this package; it
+// imports neither.
 //
 // # Why curated, and why a test enforces it
 //
@@ -12,6 +24,14 @@
 // non-basic card in every deck here resolves to a registered
 // effects.Spec, and decks_test.go fails the build the moment one stops
 // doing so. ADR 0033 §7 is the decision; this package is its enforcement.
+//
+// A human gets the weaker version of the same problem — a blank they
+// CAN play by hand, because the manual sandbox fallback is a thing a
+// player has hands for — plus something a bot never needed: an honest
+// statement of what they are picking. Coverage (coverage.go) computes
+// that from the same effects registry the catalog page reads, and the
+// picker shows it before the deck is installed rather than after a
+// card fails to do what it prints.
 //
 // Basic lands are the one exemption, and they are exempt for a real
 // reason rather than convenience: they carry no catalog entry by design.
@@ -144,10 +164,11 @@ func (c Card) Copies() int {
 	return c.Count
 }
 
-// Deck is one curated bot deck: a legal Commander deck whose every
+// Deck is one pre-built deck: a legal Commander deck whose every
 // non-basic card the engine actually plays.
 type Deck struct {
-	// ID is the stable wire identifier the lobby sends to seat a bot.
+	// ID is the stable wire identifier the lobby sends to seat a
+	// player or a bot with this deck.
 	// Kebab-case, never renamed once shipped — a saved lobby config
 	// referring to a deck by ID must keep working.
 	ID string
@@ -196,7 +217,7 @@ func All() []Deck {
 }
 
 // IDs returns every deck ID in picker order. The lobby's deck picker
-// and the bot-seat endpoint's validation both want this and neither
+// and the seat endpoints' validation both want this and neither
 // wants the card lists.
 func IDs() []string {
 	out := make([]string, 0, len(all))
@@ -240,9 +261,10 @@ func (d Deck) Size() int {
 
 // Decklist renders the deck in the plain-text dialect deck.ParseText
 // accepts — the same format a player pastes into the deck uploader.
-// That is deliberate: the bot-seat path runs the identical
-// ParseText → Resolve → Validate pipeline a human upload runs, so a bot
-// deck cannot be legal by a rule a human deck is not held to.
+// That is deliberate: the pre-built path runs the identical
+// ParseText → Resolve → Validate pipeline a pasted list runs, so a
+// pre-built deck cannot be legal by a rule an uploaded deck is not
+// held to, and there is exactly one legality path in the server.
 func (d Deck) Decklist() string {
 	var b strings.Builder
 	b.WriteString("Commander:\n")
@@ -257,7 +279,7 @@ func (d Deck) Decklist() string {
 // Load turns a deck ID into a resolved, validated deck.List, ready to
 // seat. This is the whole interface the lobby needs:
 //
-//	list, err := decks.Load(catalog.Cards, "izzet-aggro")
+//	list, err := decks.Load(cfg.Cards, "izzet-aggro")
 //
 // It runs the same pipeline as an uploaded decklist — ParseText,
 // Resolve against the Scryfall index, Validate — and then adds one
@@ -272,7 +294,7 @@ func (d Deck) Decklist() string {
 func Load(idx *cards.Index, id string) (*deck.List, error) {
 	d, ok := Lookup(id)
 	if !ok {
-		return nil, fmt.Errorf("decks: unknown bot deck %q (have %s)", id, strings.Join(IDs(), ", "))
+		return nil, fmt.Errorf("decks: unknown deck %q (have %s)", id, strings.Join(IDs(), ", "))
 	}
 	entries, err := deck.ParseText(d.Decklist())
 	if err != nil {

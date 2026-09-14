@@ -156,6 +156,7 @@ type GameEvictor interface {
 //	DELETE /games/{id}/archive — admin: put it back
 //	POST /games/{id}/seats/{player}/reclaim — admin: mint a seat-reclaim link
 //	POST /games/{id}/reclaim — redeem one: a session for that seat
+//	GET  /decks             — authenticated: pre-built decks + their engine coverage
 //	GET  /me                — authenticated: principal echo (for client bootstrap)
 //	POST /logout            — revoke the caller's session server-side
 //
@@ -270,6 +271,15 @@ func Handler(c Config) http.Handler {
 	// service worker's API_PATH, all of which have to agree or this
 	// 404s only in production.
 	mux.Handle("GET /bot/options", auth.Middleware(c.Auth)(handlerFunc(c, botOptions)))
+	// The human deck picker's catalog: the same pre-built decks the
+	// bot picker offers, plus each one's engine-coverage profile.
+	// Session-gated and game-independent, like /bot/options, and
+	// deliberately NOT folded into it — a deployment with no bot host
+	// still wants a deck picker. Same top-level-prefix warning as
+	// /bot: /decks has to be in deploy/Caddyfile's @api matcher,
+	// client/vite.config.ts's proxy and the service worker's
+	// API_PATH, or it 404s in production only.
+	mux.Handle("GET /decks", auth.Middleware(c.Auth)(handlerFunc(c, prebuiltDecks)))
 	mux.Handle("GET /me", auth.Middleware(c.Auth)(handlerFunc(c, me)))
 
 	// Develop-environment card spawner (ADR 0023). Both routes are
@@ -1113,10 +1123,11 @@ func startGame(c Config, w http.ResponseWriter, r *http.Request) error {
 }
 
 // uploadDeckRequest is the request shape for POST /games/{id}/decks.
-// Exactly one of Text / Moxfield must be set; Format is optional but
-// helps the handler pick a parser when the caller can't match the
-// file extension to a format string. The server echoes back a
-// parsed + validated summary on success.
+// Exactly one of Deck (a pre-built deck ID) and Source (a decklist)
+// must be set; Format is optional and only narrows how Source is
+// parsed when the caller can't match the file extension to a format
+// string. The server echoes back a parsed + validated summary on
+// success.
 type uploadDeckRequest struct {
 	// Format is one of "text", "moxfield", or empty (auto-detect
 	// from the first non-whitespace byte: '{' → moxfield, else text).
@@ -1124,6 +1135,19 @@ type uploadDeckRequest struct {
 	// Source is the raw decklist payload. For "text" format, the
 	// plain-text decklist. For "moxfield", the JSON export bytes.
 	Source string `json:"source"`
+	// Deck is a pre-built deck ID from GET /decks — the path for a
+	// player who wants to play rather than to bring a list. Exactly
+	// one of Deck and Source may be set.
+	//
+	// It is a field on THIS request and not a route of its own
+	// because the deck it names is installed by the same
+	// ParseText → Resolve → Validate → SetDeck pipeline a pasted
+	// list is: internal/decks hands over decklist TEXT, not resolved
+	// cards, precisely so there is one legality path in the server
+	// and a pre-built deck cannot be legal by a rule an uploaded one
+	// is not held to. POST /games/{id}/seats/bot has taken the same
+	// shape since S31 for the same reason.
+	Deck string `json:"deck,omitempty"`
 	// PlayerID is the seat this deck is for. A RolePlayer caller can
 	// only set their own deck — we cross-check against the principal
 	// below.
@@ -1134,9 +1158,14 @@ type uploadDeckRequest struct {
 // seat update the caller will see via GET /games/{id}, but returned
 // inline so the client doesn't have to refetch.
 type uploadDeckResponse struct {
-	Game       GameMeta `json:"game"`
-	DeckName   string   `json:"deck_name"`
-	CardCount  int      `json:"card_count"`
+	Game      GameMeta `json:"game"`
+	DeckName  string   `json:"deck_name"`
+	CardCount int      `json:"card_count"`
+	// DeckID echoes the pre-built deck that was installed, and is
+	// empty for an uploaded list. The client uses it to confirm the
+	// seat is holding the deck the player picked rather than guessing
+	// from the name.
+	DeckID     string   `json:"deck_id,omitempty"`
 	Commanders []string `json:"commanders"`
 	// Warnings is a non-fatal violation list (e.g. sideboard ignored).
 	// The accepted deck is already installed when warnings is
@@ -1327,8 +1356,9 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 		return httpError(http.StatusBadRequest, fmt.Sprintf("invalid body: %s", err.Error()))
 	}
-	if strings.TrimSpace(body.Source) == "" {
-		return httpError(http.StatusBadRequest, "source is required")
+	format, source, deckID, err := uploadDeckChoice(body)
+	if err != nil {
+		return err
 	}
 	if body.PlayerID == uuid.Nil {
 		return httpError(http.StatusBadRequest, "player_id is required")
@@ -1344,9 +1374,17 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	list, warnings, written, err := resolveDeckSource(r.Context(), c, w, body.Format, body.Source)
+	list, warnings, written, err := resolveDeckSource(r.Context(), c, w, format, source)
 	if written || err != nil {
 		return err
+	}
+	// A pre-built deck's decklist TEXT carries no name — plain-text
+	// format has nowhere to put one, which is why an uploaded .txt is
+	// nameless too. The deck has a name, though, and the seat is about
+	// to be labelled with whatever goes in here: without this the
+	// lobby shows "deck ready" where it could say "Deep Roots".
+	if deckID != "" && list.Name == "" {
+		list.Name = prebuiltDeckName(deckID)
 	}
 
 	gameCards := list.ToGameCards()
@@ -1363,6 +1401,7 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		Game:          meta,
 		DeckName:      list.Name,
 		CardCount:     len(list.Commanders) + len(list.Mainboard),
+		DeckID:        deckID,
 		Commanders:    commanders,
 		Warnings:      warnings,
 		Unimplemented: game.UnimplementedNames(gameCards),

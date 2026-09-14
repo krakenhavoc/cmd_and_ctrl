@@ -80,7 +80,7 @@ const CARD_IMAGE_PATH = /^\/(?:cards\/[^/]+\/image|catalog\/image\/[^/]+)$/;
 // alternative is a client that starts serving a stale /config from cache the
 // day the route lands.
 const API_PATH =
-  /^\/(ws|healthz|me|logout|config|games|cards|admin|auth|avatars|bugreport|dev|bot|catalog)(\/|$)/;
+  /^\/(ws|healthz|me|logout|config|games|cards|admin|auth|avatars|bugreport|dev|bot|catalog|decks)(\/|$)/;
 
 // Hashed build output. Vite content-hashes these filenames, so a given URL's
 // bytes never change and cache-first is always correct.

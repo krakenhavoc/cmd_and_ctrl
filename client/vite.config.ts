@@ -54,6 +54,11 @@ export default defineConfig({
       // decks). Same failure mode again — without this the picker
       // parses index.html, finds no tiers, and offers nothing.
       "/bot": { target: "http://localhost:8080", changeOrigin: true },
+      // The pre-built deck picker's catalog (GET /decks). Same
+      // failure mode as /bot: without this the picker parses
+      // Vite's index.html, finds no decks and renders nothing, in
+      // dev only.
+      "/decks": { target: "http://localhost:8080", changeOrigin: true },
       "/healthz": { target: "http://localhost:8080", changeOrigin: true },
       // S12.5: Discord OAuth round-trip. The redirect from Discord
       // lands on /auth/discord/callback; without this proxy the

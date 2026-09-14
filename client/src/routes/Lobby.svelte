@@ -756,7 +756,7 @@
             <details class="deck-upload" open={!seat.deck_uploaded}>
               <summary>
                 <span class="panel-h">
-                  {seat.deck_uploaded ? "replace your deck" : "upload your deck"}
+                  {seat.deck_uploaded ? "replace your deck" : "choose your deck"}
                 </span>
                 {#if seat.deck_uploaded}
                   <span class="deck-ok"><i class="dot ok"></i>{seat.deck_name || "deck ready"}</span
@@ -764,9 +764,8 @@
                 {/if}
               </summary>
               <p class="hint">
-                Paste a Moxfield or Archidekt deck URL, a Moxfield JSON export, or a plain-text
-                decklist. The server validates against Commander rules (100-card singleton, color
-                identity, format legality).
+                Every deck is validated against Commander rules — 100-card singleton, color
+                identity, format legality — whichever way it arrives.
               </p>
               <DeckUploadForm
                 gameID={g.id}

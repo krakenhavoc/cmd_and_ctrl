@@ -168,23 +168,25 @@ jobs:
       - name: Refresh Scryfall bulk data
         run: scripts/scryfall-refresh.sh
 
-      # The curated bot decks are only HALF checked without real
-      # Scryfall data: decks_test.go pins coverage, count, singleton
-      # and the DECLARED colour identities offline, but it cannot tell
-      # a plausible card name from a real one, and it never runs
+      # The pre-built decks are only HALF checked without real Scryfall
+      # data: decks_test.go pins coverage, count, singleton and the
+      # DECLARED colour identities offline, but it cannot tell a
+      # plausible card name from a real one, and it never runs
       # deck.Validate. realdump_manual_test.go does both, and until now
       # nothing ran it — CMDCTRL_SCRYFALL_DUMP is set in no workflow,
       # so the check existed and had never executed.
       #
-      # It belongs here because this is the only job that has the dump,
-      # and it matters now because main.go serves these decks to the
-      # Add-bot picker: a renamed card is a 422 in a player's face at
-      # the moment they try to seat a bot, not a test failure.
-      - name: Bot decks — validate against the real Scryfall dump
+      # It belongs here because this is the only job that has the dump.
+      # It matters more now than when it was added: these decks are
+      # served to the Add-bot picker AND to the human deck picker, so a
+      # renamed card is a 422 in a player's face at the moment they try
+      # to start a game, not a test failure. The package moved to
+      # internal/decks when the second picker landed.
+      - name: Pre-built decks — validate against the real Scryfall dump
         working-directory: server
         env:
           CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
-        run: go test ./internal/aiseat/decks/ -run RealDump -v
+        run: go test ./internal/decks/ -run RealDump -v
 
       - name: Client — npm ci
         working-directory: client

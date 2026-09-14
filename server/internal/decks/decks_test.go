@@ -9,7 +9,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 )
 
-// basicLandNames are the only cards allowed into a bot deck without a
+// basicLandNames are the only cards allowed into a pre-built deck without a
 // catalog entry. They have none by design: game.ActivateManaAbility
 // synthesises a basic's mana ability from its type line when no Spec
 // declares one, so the engine plays a Forest completely while
@@ -22,7 +22,7 @@ var basicLandNames = map[string]bool{
 // TestEveryCardResolvesToARegisteredSpec is the test ADR 0033 §7 asks
 // for, and the reason this package exists.
 //
-// A bot deck is only as good as the engine's coverage of it. A card
+// A pre-built deck is only as good as the engine's coverage of it. A card
 // with no effects.Spec is not a slightly worse card — it is a blank
 // that costs mana and a card and tells nobody, because the manual
 // sandbox fallback is a thing a HUMAN uses to play the card by hand and
@@ -252,7 +252,7 @@ func TestDecklistParsesAsPlayersUploadsDo(t *testing.T) {
 func TestLoadRejectsUnknownID(t *testing.T) {
 	if _, err := Load(nil, "no-such-deck"); err == nil {
 		t.Fatal("Load accepted an unknown deck ID")
-	} else if !strings.Contains(err.Error(), "unknown bot deck") {
+	} else if !strings.Contains(err.Error(), "unknown deck") {
 		t.Errorf("unhelpful error: %v", err)
 	}
 }

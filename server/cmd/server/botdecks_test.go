@@ -5,15 +5,15 @@ import (
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/decks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
 )
 
 // The adapter is only useful if it is the interface the lobby holds.
 var _ aiseat.DeckSource = botDeckCatalog{}
 
 // TestBotDeckCatalogListsEveryCuratedDeck is the regression that
-// matters: a deck added to internal/aiseat/decks and NOT reachable
+// matters: a deck added to internal/decks and NOT reachable
 // from the picker is the exact failure this file was written to fix,
 // and it is invisible without an assertion.
 func TestBotDeckCatalogListsEveryCuratedDeck(t *testing.T) {
