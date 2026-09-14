@@ -14,13 +14,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // AFTER the destruction, so a creature of yours that survived — or
 // was too small to be swept — is what pays.
 //
-// Not the batched sweep. The Food count has to match what actually
-// survived, and the mass-destroy path does not check indestructible
-// (#446) — through it an indestructible 4/4 of yours would die and
-// pay nothing, stronger than printed one way and weaker the other.
-// Each creature is instead destroyed through the single-permanent
-// verb, which honours indestructible (Blood Money's posture), and
-// the survivors are counted afterwards.
+// Not the batched sweep. Each creature is destroyed through the
+// single-permanent verb (Blood Money's posture) and the survivors
+// are counted afterwards.
+//
+// The reason for that has lapsed: the mass-destroy path did not
+// check indestructible (#446), so through it an indestructible 4/4
+// of yours would die and pay nothing, stronger than printed one way
+// and weaker the other. S30 (#470) closed it. Converting this card
+// to DestroyAllMatching is now a safe follow-up and would retire the
+// simultaneity caveat below with it.
 //
 // Sandbox simplification, declared: the creatures leave one at a
 // time rather than as one simultaneous event, so a "whenever another

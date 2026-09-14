@@ -26,11 +26,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // resolution the spell is countered by game rules (CR 608.2b) and
 // the sweep does not happen — also weaker.
 //
-// Engine gap it shares with every wipe in the catalog, reported on
-// #305 rather than fixed here: the simultaneous destroy path does
-// not consult indestructible the way the single-target path has
-// since #380, so an indestructible creature dies to this the same
-// way it dies to Wrath of God.
+// The engine gap it shared with every wipe in the catalog — the
+// simultaneous destroy path not consulting indestructible the way
+// the single-target path had since #380 — was reported on #305 and
+// fixed in S30 (#470 / #446). An indestructible creature now
+// survives this the way it survives a Wrath of God.
 func init() {
 	Register(Spec{
 		OracleID:     "36c78a5f-0148-4596-a346-f8e35037b694",

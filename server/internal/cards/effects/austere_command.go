@@ -25,8 +25,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "09cc8709-fe10-472a-b05c-e89f3523018d",
 		Name:         "Austere Command",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
+		Completeness: CompletenessFull,
 		Modes: ChooseN("Choose two", 2, 2,
 			Mode("Destroy all artifacts."),
 			Mode("Destroy all enchantments."),

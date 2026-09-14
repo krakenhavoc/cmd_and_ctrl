@@ -27,13 +27,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     card is the wrong place to change the convention.
 //
 // No simplification: indestructible is enforced in the destruction
-// path (server/internal/game/indestructible.go) as of S25.
+// path (server/internal/game/indestructible.go) — the single-target
+// verb and the damage SBAs as of S25, and the mass-destroy path that
+// every board wipe reaches as of S30 (#470 / #446). The second half
+// is the one this card is bought for: a nine-mana lock piece that
+// the sweeper could still turn off was not a lock.
 func init() {
 	Register(Spec{
 		OracleID:     "9b3bec05-441f-4fdf-8b51-69fa8613fcd4",
 		Name:         "Darksteel Forge",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
 			Layer: game.Layer6Ability,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

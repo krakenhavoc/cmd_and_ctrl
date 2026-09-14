@@ -29,8 +29,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "4a83c2fa-f2d2-4b86-8407-4269f127936d",
 		Name:         "Depopulate",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			drawers := map[uuid.UUID]bool{}
 			for _, c := range MatchingBattlefield(ctx, And(Creature(), Multicolored())) {

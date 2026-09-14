@@ -23,8 +23,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "b01d61cc-9844-4191-86a0-f2db6d42d6e5",
 		Name:         "Damn",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
+		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		AlternativeCosts: []game.AlternativeCost{
 			Overload("{2}{W}{W}"),

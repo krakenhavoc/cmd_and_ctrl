@@ -25,8 +25,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "b17ea905-0696-4e58-b564-557e87236e27",
 		Name:         "Fumigate",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{
 				Match: Creature(),
