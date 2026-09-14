@@ -1,6 +1,14 @@
 # ADR 0041 — Persisting games across a deploy
 
 **Status:** Accepted · 2026-09-11 · Phases 1–2 of 3
+**Superseded in part by:** [ADR 0044](0044-surviving-a-deploy.md) — the
+claim below that *"the client already auto-reconnects and resyncs by
+`seq`, so nothing on the client needs to change"* is false on both
+halves. The client treats the shutdown close code as terminal and
+never redials, and there is no seq-based resync; the session dies with
+the process, and the "re-authenticate through your invite link"
+recovery does not exist for a started game. Every decision in this ADR
+stands; 0044 builds the return path they assumed was already there.
 
 ## Context
 
