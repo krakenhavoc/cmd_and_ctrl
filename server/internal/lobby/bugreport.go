@@ -6,6 +6,13 @@ package lobby
 // The GitHub token never reaches the client (ADR 0017): the browser
 // talks only to this endpoint, the server talks to GitHub.
 //
+// A report also carries a KIND — bug, idea, or question (ADR 0017
+// §8). The kind picks the tracker label and, just as importantly,
+// picks which artifacts the report collects: a bug is worth a pinned
+// replay, "the stack panel should be wider" is not. The mapping lives
+// in bugKinds below and is server-authoritative — the client names a
+// kind, never a label.
+//
 // A report can carry three things beyond the reporter's prose:
 //
 //   - the client-side log ring buffer (what the reporter's own browser
@@ -34,6 +41,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -70,6 +78,13 @@ const (
 	// bugTitlePrefix marks issues that arrived via the in-app
 	// button, so the tracker can tell them from hand-written ones
 	// at a glance.
+	//
+	// Deliberately NOT varied by kind. Every issue this feature has
+	// ever filed carries this exact string and people filter on it;
+	// widening it to "[in-app bug] " / "[in-app idea] " would orphan
+	// that convention on every open issue and give the kind two
+	// sources of truth — one of which (the title) triage can't fix
+	// with a click. The label is the kind (ADR 0017 §8).
 	bugTitlePrefix = "[in-app] "
 
 	// bugLogMaxEntries caps how many client log lines a report may
@@ -96,6 +111,105 @@ const (
 	// in RAM before parts spill to temp files.
 	bugMultipartMemory = 1 << 20
 )
+
+// bugKind is a report kind: what the player is telling us, which
+// decides the tracker label and the artifacts worth collecting.
+//
+// Label is looked up here rather than sent by the client. That is the
+// whole reason this table exists: a client-supplied label string
+// would let any session with a report button attach `good first
+// issue` — or create labels — on the project tracker.
+type bugKind struct {
+	// Label is an EXISTING repo label. Adding a kind means picking
+	// one of bug / enhancement / documentation / question / … — not
+	// inventing a taxonomy GitHub then auto-creates on first use.
+	Label string
+
+	// Noun is how the issue body names the kind, so a report stays
+	// self-describing if the label is ever stripped (or never landed
+	// — see fileBugIssue).
+	Noun string
+
+	// Log inlines the reporter's client log in a <details> block.
+	// Log keeps its ADR 0017 §7 posture wherever it is attached: it
+	// holds only what that browser already saw.
+	Log bool
+
+	// Replay pins the game's replay JSONL. The expensive one — tens
+	// of MiB per report, retained 90 days — so it is reserved for
+	// the kind that is actually triaged frame by frame.
+	Replay bool
+
+	// GameLog pins the public game log: a few KiB of "what
+	// happened", which is what answers a question as often as it
+	// diagnoses a bug.
+	GameLog bool
+}
+
+// bugKinds maps wire kind → policy. The wire word is the player's
+// word ("idea"); the label is the tracker's word ("enhancement").
+//
+// Screenshots are attached for every kind — a picture is the cheapest
+// thing in the feature and the most useful for a UI idea. Whatever is
+// attached keeps ADR 0017's split: images are public (Camo has to
+// reach them), pins are admin-only.
+var bugKinds = map[string]bugKind{
+	// A bug gets everything: the log says what the client did, the
+	// pinned replay says what the state was, the game log says what
+	// happened. That triple is the whole value of the feature.
+	"bug": {Label: "bug", Noun: "bug", Log: true, Replay: true, GameLog: true},
+
+	// An idea is about what the game SHOULD do, so none of the
+	// forensic artifacts apply — a screenshot of the thing being
+	// complained about is the evidence, and pinning a 30 MiB replay
+	// to "the stack panel should be wider" is pure waste.
+	"idea": {Label: "enhancement", Noun: "idea"},
+
+	// A question sits between the two. "Why did my creature die?" is
+	// answered from what HAPPENED — the public game log, a few KiB —
+	// and from what the client did. It is not answered by
+	// frame-by-frame hidden state, which is the replay's job, so the
+	// expensive pin stays off.
+	"question": {Label: "question", Noun: "question", Log: true, GameLog: true},
+}
+
+// defaultBugKind is what an omitted kind means. It has to be "bug":
+// every client shipped before this field existed sends no kind, and
+// those are bug reports. A 400 there would break the button for an
+// in-flight tab mid-game, which is exactly when it gets used.
+const defaultBugKind = "bug"
+
+// resolveBugKind maps the request's kind to its policy. Empty →
+// bug; anything else must be in the table.
+//
+// An unknown non-empty kind is a 400 rather than a silent fallback:
+// this endpoint already rejects unknown JSON fields outright, and a
+// kind we quietly rewrite to "bug" is a mislabelled issue nobody ever
+// finds out about. Only our own client sets the field, and it can
+// only emit these three.
+func resolveBugKind(raw string) (bugKind, error) {
+	name := strings.ToLower(strings.TrimSpace(raw))
+	if name == "" {
+		name = defaultBugKind
+	}
+	k, ok := bugKinds[name]
+	if !ok {
+		return bugKind{}, httpError(http.StatusBadRequest,
+			fmt.Sprintf("kind must be one of %s", strings.Join(bugKindNames(), ", ")))
+	}
+	return k, nil
+}
+
+// bugKindNames lists the accepted kinds in a stable order for error
+// messages (map iteration order would make the 400 body flap).
+func bugKindNames() []string {
+	names := make([]string, 0, len(bugKinds))
+	for name := range bugKinds {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
 
 // bugLogKinds is the allowlist of client log-entry kinds. Anything
 // else is rendered as "info" rather than rejected: a log line is
@@ -134,7 +248,11 @@ type bugLogEntry struct {
 }
 
 type bugReportRequest struct {
-	Title       string            `json:"title"`
+	Title string `json:"title"`
+	// Kind is "bug", "idea", or "question". Optional on the wire:
+	// omitted means "bug", which is what every client that predates
+	// the field is filing.
+	Kind        string            `json:"kind,omitempty"`
 	Description string            `json:"description,omitempty"`
 	Context     *bugReportContext `json:"context,omitempty"`
 	Log         []bugLogEntry     `json:"log,omitempty"`
@@ -188,6 +306,11 @@ func bugReport(c Config, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	kind, err := resolveBugKind(req.Kind)
+	if err != nil {
+		return err
+	}
+
 	title := strings.TrimSpace(req.Title)
 	switch {
 	case title == "":
@@ -204,18 +327,25 @@ func bugReport(c Config, w http.ResponseWriter, r *http.Request) error {
 	// image URLs and report ID have to appear in the body. If filing
 	// then fails, the report is discarded — otherwise every GitHub
 	// outage would leave orphaned images on disk at live URLs.
-	report, err := buildBugArtifacts(c, p, req.Context, images)
+	report, err := buildBugArtifacts(c, p, kind, req.Context, images)
 	if err != nil {
 		return err
 	}
 
 	in := bugIssue{
 		Principal: p,
+		Kind:      kind,
 		Desc:      strings.TrimSpace(req.Description),
 		Ctx:       req.Context,
-		Log:       req.Log,
 		UserAgent: r.UserAgent(),
 		Now:       time.Now().UTC(),
+	}
+	// The log rides along only for the kinds that can use it. A
+	// client that sends one anyway (an older build, a curl) has it
+	// dropped rather than the report refused — the server decides
+	// what an issue carries.
+	if kind.Log {
+		in.Log = req.Log
 	}
 	if report != nil {
 		in.ReportID = report.ID
@@ -224,7 +354,7 @@ func bugReport(c Config, w http.ResponseWriter, r *http.Request) error {
 		in.GameLog = report.GameLog()
 	}
 
-	url, number, err := c.BugReporter.CreateIssue(r.Context(), bugTitlePrefix+title, renderBugIssueBody(in), []string{"bug"})
+	url, number, label, err := fileBugIssue(r.Context(), c, bugTitlePrefix+title, renderBugIssueBody(in), kind.Label)
 	if err != nil {
 		report.discard()
 		// 502: the report was well-formed, the upstream filing
@@ -251,10 +381,76 @@ func bugReport(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 
 	body := map[string]any{"url": url, "number": number}
+	if label != "" {
+		// Echoed so the modal can say "filed as enhancement" — and so
+		// it says nothing when the label didn't land, rather than
+		// claiming a label the issue doesn't have.
+		body["label"] = label
+	}
 	if report != nil {
 		body["report_id"] = report.ID
 	}
 	return writeJSON(w, http.StatusCreated, body)
+}
+
+// statusCoder is implemented by upstream errors carrying an HTTP
+// status — github.APIError does. Declared here rather than imported
+// so the BugReporter seam stays one method wide and a test fake can
+// satisfy it without pulling in the real client.
+type statusCoder interface{ StatusCode() int }
+
+// fileBugIssue files the issue and returns the label it actually
+// landed with ("" if none did).
+//
+// A label must never cost us the report. If GitHub REJECTS the
+// request because of the label — the repo doesn't have it, or the
+// token may not apply it — the issue is re-filed unlabelled and the
+// failure is logged at error level. An unlabelled issue costs one
+// click in triage; a report that evaporated because someone renamed
+// a label costs the whole report, and nobody ever learns it happened.
+//
+// The retry is confined to statuses that mean GitHub refused the
+// request outright (403 permission, 422 validation), because those
+// are the ones where the issue was definitively NOT created. A
+// timeout or a 5xx is never retried: GitHub may well have created
+// the issue already, and a duplicate is worse than a 502 the
+// reporter can act on.
+func fileBugIssue(ctx context.Context, c Config, title, body, label string) (string, int, string, error) {
+	var labels []string
+	if label != "" {
+		labels = []string{label}
+	}
+	url, number, err := c.BugReporter.CreateIssue(ctx, title, body, labels)
+	if err == nil {
+		return url, number, label, nil
+	}
+	if len(labels) == 0 || !bugRequestRejected(err) {
+		return "", 0, "", err
+	}
+	url, number, retryErr := c.BugReporter.CreateIssue(ctx, title, body, nil)
+	if retryErr != nil {
+		// Report the FIRST error: it describes the actual rejection,
+		// and the unlabelled retry failing the same way adds nothing.
+		return "", 0, "", err
+	}
+	logBugError(c, "labels rejected by GitHub — issue filed unlabelled",
+		"label", label, "issue", url, "err", err)
+	return url, number, "", nil
+}
+
+// bugRequestRejected reports whether err is GitHub refusing the
+// request itself, as opposed to failing to deliver it.
+func bugRequestRejected(err error) bool {
+	var sc statusCoder
+	if !errors.As(err, &sc) {
+		return false
+	}
+	switch sc.StatusCode() {
+	case http.StatusForbidden, http.StatusUnprocessableEntity:
+		return true
+	default:
+		return false
+	}
 }
 
 // bugArtifacts wraps *bugstore.Report so the handler can treat "no
@@ -268,17 +464,28 @@ func (b *bugArtifacts) discard() {
 	}
 }
 
-// buildBugArtifacts stores the images and pins the replay, returning
-// nil when there is nothing to store or no store to store it in.
-func buildBugArtifacts(c Config, p auth.Principal, bctx *bugReportContext, images [][]byte) (*bugArtifacts, error) {
+// buildBugArtifacts stores the images and pins whatever the kind
+// asks for, returning nil when there is nothing to store or no store
+// to store it in.
+//
+// The kind gates the pins BEFORE they are read, not after: an idea
+// never causes the server to copy a replay at all, so the cost isn't
+// paid and then thrown away.
+func buildBugArtifacts(c Config, p auth.Principal, kind bugKind, bctx *bugReportContext, images [][]byte) (*bugArtifacts, error) {
 	if !c.BugStore.Enabled() {
 		if len(images) > 0 {
 			return nil, httpError(http.StatusServiceUnavailable, "attachments are not configured on this server")
 		}
 		return nil, nil
 	}
-	replaySrc := bugReplaySource(c, p, bctx)
-	gameLog := bugGameLog(c, p, bctx)
+	var replaySrc string
+	if kind.Replay {
+		replaySrc = bugReplaySource(c, p, bctx)
+	}
+	var gameLog []byte
+	if kind.GameLog {
+		gameLog = bugGameLog(c, p, bctx)
+	}
 	if len(images) == 0 && replaySrc == "" && len(gameLog) == 0 {
 		return nil, nil
 	}
@@ -521,6 +728,7 @@ func bugPinnedGameLog(c Config, w http.ResponseWriter, r *http.Request) error {
 // independent sources and a seventh would have been unreadable.
 type bugIssue struct {
 	Principal auth.Principal
+	Kind      bugKind
 	Desc      string
 	Ctx       *bugReportContext
 	Log       []bugLogEntry
@@ -568,6 +776,13 @@ func renderBugIssueBody(in bugIssue) string {
 	}
 
 	b.WriteString("\n\n---\n\n**Reported from the app**\n\n")
+	if in.Kind.Noun != "" {
+		// Also in the label — but written here too, because a label
+		// can be stripped in triage or fail to apply at all
+		// (fileBugIssue), and then this row is the only record of
+		// what the reporter said they were filing.
+		fmt.Fprintf(&b, "- Kind: %s (label `%s`)\n", in.Kind.Noun, in.Kind.Label)
+	}
 	fmt.Fprintf(&b, "- Reporter: %s (%s)\n", reporterName(in.Principal), in.Principal.Role)
 	if in.Ctx != nil && in.Ctx.GameID != "" {
 		fmt.Fprintf(&b, "- Game: `%s`", clip(in.Ctx.GameID, bugFieldMax))
@@ -595,10 +810,12 @@ func renderBugIssueBody(in bugIssue) string {
 			b.WriteString(" — **tail only** (source exceeded the pin cap)")
 		}
 		b.WriteString("\n")
-	case in.Ctx != nil && in.Ctx.GameID != "":
+	case in.Kind.Replay && in.Ctx != nil && in.Ctx.GameID != "":
 		// No pin: either storage is off or the game had produced no
 		// replay yet. The live route is the fallback, with the caveat
-		// that it disappears when the game is evicted.
+		// that it disappears when the game is evicted. Kinds that
+		// don't want a replay don't get the consolation prize either
+		// — it would read as "we tried and failed".
 		fmt.Fprintf(&b, "- Replay: `GET /games/%s/replay` (admin; not pinned — gone once the game is evicted)\n", clip(in.Ctx.GameID, bugFieldMax))
 	}
 	if in.GameLog != nil {
@@ -693,6 +910,18 @@ func logBugStoreWarning(c Config, what string, err error) {
 		return
 	}
 	c.Log.Warn("bugreport: "+what+" failed", "err", err)
+}
+
+// logBugError reports a filing problem the report survived but an
+// operator has to know about — today, only the unlabelled fallback.
+// Error rather than Warn on purpose: this is the one failure mode in
+// the feature that is otherwise invisible, because the reporter sees
+// a perfectly successful "issue #123 filed".
+func logBugError(c Config, msg string, args ...any) {
+	if c.Log == nil {
+		return
+	}
+	c.Log.Error("bugreport: "+msg, args...)
 }
 
 // reporterName picks the friendliest available identity: seat name,

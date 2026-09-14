@@ -12,6 +12,129 @@ import type { GameView } from "./protocol";
 export const BUG_TITLE_MAX = 200;
 export const BUG_DESC_MAX = 5000;
 
+// --- report kinds ---
+//
+// What the player is telling us: something is broken, something
+// should exist, or they don't understand something. The kind picks
+// the GitHub label and — just as importantly — what the report
+// attaches (ADR 0017 §8).
+//
+// This table MIRRORS `bugKinds` in server/internal/lobby/bugreport.go,
+// which is authoritative: the client sends a kind name, never a
+// label, and the server re-derives everything from its own copy. What
+// lives here is only what the modal needs in order to tell the
+// reporter the truth about what they are about to send.
+
+export type BugReportKind = "bug" | "idea" | "question";
+
+export interface BugKindSpec {
+  kind: BugReportKind;
+  /** the picker's chip */
+  chip: string;
+  /** modal heading and submit button once picked */
+  heading: string;
+  cta: string;
+  hint: string;
+  titlePlaceholder: string;
+  detailsPlaceholder: string;
+  /** the existing repo label the server applies */
+  label: string;
+  /** the client activity log rides along */
+  log: boolean;
+  /** the server pins the game's replay (admin-only, and the expensive one) */
+  replay: boolean;
+  /** the server pins the public game log (admin-only, a few KiB) */
+  gameLog: boolean;
+}
+
+export const BUG_KINDS: readonly BugKindSpec[] = [
+  {
+    kind: "bug",
+    chip: "Something's broken",
+    heading: "Report a bug",
+    cta: "File bug",
+    hint: "What happened, and what did you expect instead? This files an issue in the project's GitHub repo — no account needed on your side.",
+    titlePlaceholder: "e.g. cast dialog ignored my X value",
+    detailsPlaceholder: "Steps to reproduce, what you saw, what you expected…",
+    label: "bug",
+    log: true,
+    replay: true,
+    gameLog: true,
+  },
+  {
+    kind: "idea",
+    chip: "Something's missing",
+    heading: "Suggest an improvement",
+    cta: "Send idea",
+    hint: "What would you like to be able to do, and what would it let you do better? This files an issue in the project's GitHub repo.",
+    titlePlaceholder: "e.g. let me widen the stack panel",
+    detailsPlaceholder: "What you're trying to do, and what would make it easier…",
+    label: "enhancement",
+    log: false,
+    replay: false,
+    gameLog: false,
+  },
+  {
+    kind: "question",
+    chip: "I don't understand something",
+    heading: "Ask a question",
+    cta: "Ask question",
+    hint: "What are you trying to work out? This files an issue in the project's GitHub repo and you'll get an answer there.",
+    titlePlaceholder: "e.g. why did my commander go to the graveyard?",
+    detailsPlaceholder: "What you did, and what you expected to understand…",
+    label: "question",
+    log: true,
+    replay: false,
+    gameLog: true,
+  },
+];
+
+// DEFAULT_BUG_KIND is what the modal opens on and what the server
+// assumes when the field is absent. It is "bug" on both sides
+// because that is what every client built before the picker existed
+// is filing.
+export const DEFAULT_BUG_KIND: BugReportKind = "bug";
+
+// bugKindSpec looks up a kind, falling back to the default rather
+// than throwing — a modal that can't render is worse than one that
+// opens on the wrong tab.
+export function bugKindSpec(kind: BugReportKind | string): BugKindSpec {
+  return BUG_KINDS.find((k) => k.kind === kind) ?? BUG_KINDS[0];
+}
+
+// describeBugAttachments lists, in the reporter's words, what this
+// kind sends beyond their prose and screenshots. Empty when the kind
+// attaches nothing automatic.
+//
+// The modal shows this next to the picker because the kind is the
+// thing that changes it: switching from "broken" to "missing" quietly
+// stops sending a replay, and the reporter should see that happen
+// rather than discover it in an issue.
+export function describeBugAttachments(spec: BugKindSpec, inGame: boolean): string[] {
+  const bits: string[] = [];
+  if (spec.log) bits.push("your recent activity log");
+  const replay = inGame && spec.replay;
+  const gameLog = inGame && spec.gameLog;
+  // The two pins are described as one phrase when both ride along:
+  // they are the same artifact to a reporter ("what the server saw"),
+  // and a three-item list in a 12px line is noise.
+  if (replay && gameLog) {
+    bits.push("an admin-only snapshot of this game's replay and log");
+  } else if (replay) {
+    bits.push("an admin-only snapshot of this game's replay");
+  } else if (gameLog) {
+    bits.push("an admin-only snapshot of this game's log");
+  }
+  return bits;
+}
+
+// joinPhrases renders a short list as English. Kept here with the
+// phrases it joins so the modal has no string assembly of its own.
+export function joinPhrases(parts: readonly string[]): string {
+  if (parts.length <= 1) return parts[0] ?? "";
+  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
 // BugReportContext mirrors lobby.bugReportContext. Every field is
 // optional; the server clips and never trusts the values.
 export interface BugReportContext {

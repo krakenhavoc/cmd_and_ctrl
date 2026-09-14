@@ -3,13 +3,18 @@ import { describe, expect, it } from "vitest";
 import {
   BUG_DESC_MAX,
   BUG_IMAGE_TYPES,
+  BUG_KINDS,
   BUG_MAX_IMAGES,
   BUG_MAX_IMAGE_BYTES,
   BUG_TITLE_MAX,
+  DEFAULT_BUG_KIND,
   acceptableImages,
   buildBugContext,
+  bugKindSpec,
   collectBugLog,
+  describeBugAttachments,
   formatBytes,
+  joinPhrases,
   validateAttachments,
   validateBugReport,
 } from "./bugReport";
@@ -177,5 +182,68 @@ describe("formatBytes", () => {
     expect(formatBytes(512)).toBe("512 B");
     expect(formatBytes(2048)).toBe("2 KB");
     expect(formatBytes(3 * 1024 * 1024)).toBe("3.0 MB");
+  });
+});
+
+describe("report kinds", () => {
+  it("opens on bug — the kind a client without a picker files", () => {
+    expect(DEFAULT_BUG_KIND).toBe("bug");
+    expect(bugKindSpec(DEFAULT_BUG_KIND).label).toBe("bug");
+  });
+
+  it("maps each kind to an EXISTING repo label", () => {
+    // Not a taxonomy we invent: these three already exist on the
+    // tracker, so a report never causes GitHub to create a label.
+    const existing = ["bug", "enhancement", "documentation", "question"];
+    expect(BUG_KINDS.map((k) => k.label)).toEqual(["bug", "enhancement", "question"]);
+    for (const k of BUG_KINDS) {
+      expect(existing).toContain(k.label);
+    }
+  });
+
+  it("falls back to bug rather than throwing on an unknown kind", () => {
+    expect(bugKindSpec("nonsense").kind).toBe("bug");
+  });
+
+  it("mirrors the server's per-kind artifact policy", () => {
+    expect(bugKindSpec("bug")).toMatchObject({ log: true, replay: true, gameLog: true });
+    // A question is answered from what happened, not from
+    // frame-by-frame state — the expensive pin stays off.
+    expect(bugKindSpec("question")).toMatchObject({ log: true, replay: false, gameLog: true });
+    // An idea is about what the game SHOULD do: a screenshot is the
+    // evidence, and a 30 MiB replay would be pure waste.
+    expect(bugKindSpec("idea")).toMatchObject({ log: false, replay: false, gameLog: false });
+  });
+
+  it("describes what a bug attaches, in the reporter's words", () => {
+    const got = describeBugAttachments(bugKindSpec("bug"), true);
+    expect(got).toEqual([
+      "your recent activity log",
+      "an admin-only snapshot of this game's replay and log",
+    ]);
+  });
+
+  it("names only the log when that is all a kind pins", () => {
+    expect(describeBugAttachments(bugKindSpec("question"), true)).toEqual([
+      "your recent activity log",
+      "an admin-only snapshot of this game's log",
+    ]);
+  });
+
+  it("joins phrases the way a person would read them", () => {
+    expect(joinPhrases([])).toBe("");
+    expect(joinPhrases(["one"])).toBe("one");
+    expect(joinPhrases(["one", "two"])).toBe("one and two");
+    expect(joinPhrases(["one", "two", "three"])).toBe("one, two and three");
+  });
+
+  it("says nothing extra rides along with an idea", () => {
+    expect(describeBugAttachments(bugKindSpec("idea"), true)).toEqual([]);
+  });
+
+  it("drops the game-bound artifacts when there is no game", () => {
+    expect(describeBugAttachments(bugKindSpec("question"), false)).toEqual([
+      "your recent activity log",
+    ]);
   });
 });

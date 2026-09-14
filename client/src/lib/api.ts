@@ -6,7 +6,7 @@ import {
   type ApiViolation,
   type Session,
 } from "./session";
-import type { BugLogEntry, BugReportContext } from "./bugReport";
+import type { BugLogEntry, BugReportContext, BugReportKind } from "./bugReport";
 
 // Re-export the violation shape so consumers of api.ts don't also
 // have to import from session.ts. ApiViolation is the canonical
@@ -497,11 +497,19 @@ export interface BugReportResult {
   url: string;
   number: number;
   reportID?: string;
+  // The label the issue actually landed with. Absent when the label
+  // was rejected upstream and the server re-filed unlabelled — so the
+  // modal says "filed as enhancement" only when that is true.
+  label?: string;
 }
 
 // BugReportDraft is everything a report can carry.
 export interface BugReportDraft {
   title: string;
+  // kind picks the GitHub label and what the report attaches. Omitted
+  // → the server files a bug, which is what clients predating the
+  // picker send.
+  kind?: BugReportKind;
   description: string;
   context?: BugReportContext;
   log?: BugLogEntry[];
@@ -522,6 +530,7 @@ export interface BugReportDraft {
 export async function submitBugReport(draft: BugReportDraft): Promise<BugReportResult> {
   const report = {
     title: draft.title,
+    kind: draft.kind,
     description: draft.description,
     context: draft.context,
     log: draft.log && draft.log.length > 0 ? draft.log : undefined,
@@ -538,8 +547,18 @@ export async function submitBugReport(draft: BugReportDraft): Promise<BugReportR
     body = JSON.stringify(report);
   }
   const res = await authFetch("/bugreport", { method: "POST", body });
-  const parsed = (await res.json()) as { url: string; number: number; report_id?: string };
-  return { url: parsed.url, number: parsed.number, reportID: parsed.report_id };
+  const parsed = (await res.json()) as {
+    url: string;
+    number: number;
+    report_id?: string;
+    label?: string;
+  };
+  return {
+    url: parsed.url,
+    number: parsed.number,
+    reportID: parsed.report_id,
+    label: parsed.label,
+  };
 }
 
 // AutoTapPreview mirrors the JSON returned by
