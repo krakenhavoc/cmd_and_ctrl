@@ -187,17 +187,17 @@ const defaultBugKind = "bug"
 // kind we quietly rewrite to "bug" is a mislabelled issue nobody ever
 // finds out about. Only our own client sets the field, and it can
 // only emit these three.
-func resolveBugKind(raw string) (string, bugKind, error) {
+func resolveBugKind(raw string) (bugKind, error) {
 	name := strings.ToLower(strings.TrimSpace(raw))
 	if name == "" {
 		name = defaultBugKind
 	}
 	k, ok := bugKinds[name]
 	if !ok {
-		return "", bugKind{}, httpError(http.StatusBadRequest,
+		return bugKind{}, httpError(http.StatusBadRequest,
 			fmt.Sprintf("kind must be one of %s", strings.Join(bugKindNames(), ", ")))
 	}
-	return name, k, nil
+	return k, nil
 }
 
 // bugKindNames lists the accepted kinds in a stable order for error
@@ -306,7 +306,7 @@ func bugReport(c Config, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	kindName, kind, err := resolveBugKind(req.Kind)
+	kind, err := resolveBugKind(req.Kind)
 	if err != nil {
 		return err
 	}
@@ -335,7 +335,6 @@ func bugReport(c Config, w http.ResponseWriter, r *http.Request) error {
 	in := bugIssue{
 		Principal: p,
 		Kind:      kind,
-		KindName:  kindName,
 		Desc:      strings.TrimSpace(req.Description),
 		Ctx:       req.Context,
 		UserAgent: r.UserAgent(),
@@ -730,7 +729,6 @@ func bugPinnedGameLog(c Config, w http.ResponseWriter, r *http.Request) error {
 type bugIssue struct {
 	Principal auth.Principal
 	Kind      bugKind
-	KindName  string
 	Desc      string
 	Ctx       *bugReportContext
 	Log       []bugLogEntry
