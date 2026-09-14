@@ -41,6 +41,8 @@ func init() {
 		// Roadmap batch 26 (#388): the Zendikar "refuges" are the same
 		// three lines under an older name, so they share the table.
 		{"60b36821-0fad-423c-98c4-f64d991719f3", "Graypelt Refuge", "G", "W"},
+		// Roadmap batch 36 (#399): the Rakdos refuge.
+		{"354fecd1-2371-49e3-81c6-7e47728dbb1f", "Akoum Refuge", "B", "R"},
 	} {
 		Register(Spec{
 			OracleID:      land.oracleID,
