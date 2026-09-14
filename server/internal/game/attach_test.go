@@ -445,3 +445,105 @@ func TestResolvedAuraIgnoresAmbiguousTargets(t *testing.T) {
 		t.Errorf("attached from an ambiguous item: %+v", got.AttachedTo)
 	}
 }
+
+// pushCataloguedAura seeds an Aura the catalog knows an enchant
+// clause for — the distinction CR 704.5n's "attached to nothing"
+// branch turns on, since an UNCATALOGUED Aura is a manual sandbox
+// object and must not be swept.
+func pushCataloguedAura(g *Game, controller uuid.UUID, name string) uuid.UUID {
+	id := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: id,
+		Name:       name,
+		TypeLine:   "Enchantment — Aura",
+		OracleID:   name,
+		Owner:      controller,
+		Controller: controller,
+	})
+	g.WithWriteLock(func() {
+		g.EmitEvent(Event{
+			Kind:    EventZoneMove,
+			CardID:  id,
+			OldZone: ZoneGraveyard,
+			NewZone: ZoneBattlefield,
+		})
+	})
+	return id
+}
+
+// enchantCreatureSpec is the "enchant creature" clause every Aura in
+// this file declares.
+func enchantCreatureSpec() *TargetSpec {
+	return &TargetSpec{
+		Mode:  "creature",
+		Zones: []ZoneKind{ZoneBattlefield},
+		CardOK: func(_ *Game, _ uuid.UUID, c Card, _ ZoneKind) bool {
+			return c.IsCreature()
+		},
+		Min: 1, Max: 1,
+	}
+}
+
+// CR 704.5n, second disjunct: "...or is not attached to an object or
+// player". An Aura put onto the battlefield by an effect that does
+// not say "attached to" — Brilliant Restoration, Carmen — used to sit
+// there permanently, which is a board state no sequence of legal
+// plays can reach.
+func TestSBAPutsAnUnattachedAuraInTheGraveyard(t *testing.T) {
+	withCatalogTargetSpec(t, func(string) *TargetSpec { return enchantCreatureSpec() })
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	_ = pushAttachTestCard(g, me.ID, "Grizzly Bears", "Creature — Bear")
+	aura := pushCataloguedAura(g, me.ID, "Rancor")
+
+	g.WithWriteLock(func() { g.runStateChecksLocked() })
+
+	if _, ok := battlefieldCardByID(g, aura); ok {
+		t.Fatal("CR 704.5n: an Aura attached to nothing must leave the battlefield")
+	}
+	if !graveyardHas(me, aura) {
+		t.Error("the Aura should be in its owner's graveyard")
+	}
+	// There was no link to break, so there is nothing to announce.
+	g.ReadSnapshot(func() {
+		for _, ev := range g.Events {
+			if ev.Kind == EventUnattach && ev.CardID == aura {
+				t.Error("EventUnattach emitted for an Aura that was never attached")
+			}
+		}
+	})
+}
+
+// The sandbox posture, and the reason the branch above is scoped
+// rather than universal: an Aura the catalog does not know is a
+// manual object. It is cast through the free-form picker with no
+// target, its controller is tracking it by hand, and sweeping it into
+// a graveyard would delete a card the table is using.
+func TestSBALeavesAnUncataloguedUnattachedAuraAlone(t *testing.T) {
+	withCatalogTargetSpec(t, func(string) *TargetSpec { return nil })
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	aura := pushCataloguedAura(g, me.ID, "Homebrew Aura")
+
+	g.WithWriteLock(func() { g.runStateChecksLocked() })
+
+	if _, ok := battlefieldCardByID(g, aura); !ok {
+		t.Error("an uncatalogued Aura with no host must stay on the battlefield")
+	}
+}
+
+// CR 704.5m has no "attached to nothing" clause — an Equipment that
+// is attached to nothing is an ordinary artifact sitting on the
+// battlefield, which is where every Equipment starts its life.
+func TestSBALeavesAnUnattachedEquipmentAlone(t *testing.T) {
+	withCatalogTargetSpec(t, func(string) *TargetSpec { return enchantCreatureSpec() })
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	sword := pushAttachTestCard(g, me.ID, "Bonesplitter", "Artifact — Equipment")
+
+	g.WithWriteLock(func() { g.runStateChecksLocked() })
+
+	if _, ok := battlefieldCardByID(g, sword); !ok {
+		t.Error("an unequipped Equipment must stay on the battlefield")
+	}
+}

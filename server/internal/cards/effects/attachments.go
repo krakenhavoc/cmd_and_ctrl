@@ -125,6 +125,40 @@ func GrantToAttached(keywords ...string) game.StaticAbility {
 	}
 }
 
+// RemoveFromAttached is "Equipped creature ... loses X" — Colossus
+// Hammer's "and loses flying", the mirror of GrantToAttached and the
+// same layer 6.
+//
+// It strips whatever the layers have granted SO FAR, in timestamp
+// order, which is the same shape (and the same declared limit) as
+// b27LoseKeyword: a grant from a source with a later timestamp than
+// this Equipment lands after this removal and survives it. That is
+// CR 613.7 working correctly, not a bug — a Lightning Greaves
+// equipped after the Hammer really does give the creature back its
+// haste — but it does mean "loses flying" is not an absolute.
+func RemoveFromAttached(keywords ...string) game.StaticAbility {
+	return game.StaticAbility{
+		Layer:     game.Layer6Ability,
+		AppliesTo: AttachedToSource,
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+			kept := c.Abilities[:0]
+			for _, a := range c.Abilities {
+				drop := false
+				for _, kw := range keywords {
+					if equalFoldASCIIEffects(a, kw) {
+						drop = true
+						break
+					}
+				}
+				if !drop {
+					kept = append(kept, a)
+				}
+			}
+			c.Abilities = kept
+		},
+	}
+}
+
 // ControlAttachedBySource is "You control enchanted creature" — the
 // CR 613.1b layer-2 continuous effect that Mind Control is.
 //

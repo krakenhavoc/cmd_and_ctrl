@@ -57,7 +57,9 @@ cmd_and_ctrl/
 │   │   ├── game/        # authoritative domain: Game, Player, Zone, Card, Turn, mutations
 │   │   ├── protocol/    # v0 wire format types + ViewOfGame + FilterViewFor
 │   │   ├── actions/     # action type enum + Dispatch(Game, Action) router
+│   │   ├── legal/       # legal-move enumerator — the closed move list a bot picks from and the client's timing lookup (ADR 0033 §1)
 │   │   ├── ws/          # gorilla/websocket hub, Room, RoomManager, per-viewer broadcast
+│   │   ├── aiseat/      # AI bot seats (S31): runner goroutine per bot, tiered policies, curated decks, announced improvisation — see docs/bot.md
 │   │   ├── auth/        # pluggable Authenticator interface + MemoryAuthenticator + HTTP middleware
 │   │   ├── lobby/       # GameMeta registry, invite flow, lobby HTTP handler, WSAuthorizer, deck upload
 │   │   ├── cards/       # Scryfall index (streaming load) + disk-backed image cache + /cards routes
@@ -85,8 +87,9 @@ cmd_and_ctrl/
 └── docs/
     ├── protocol.md      # v0 wire format spec
     ├── lobby.md         # lobby HTTP API reference
+    ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0033 AI bot seat) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0042 card catalog page) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -236,7 +239,23 @@ unused — they can be removed in a later cleanup PR.)
   - `CMDCTRL_GITHUB_TOKEN` — enables the in-app "report a bug" button (`POST /bugreport` files a GitHub issue). Use a fine-grained PAT with **Issues: write** on the one repo, nothing broader. Unset disables the feature and the client hides the button. See [ADR 0017](docs/decisions/0017-bug-report-button.md). **Provisioned by CI/CD**: the deploy job upserts it into `/etc/cmd_and_ctrl/env` (the env file the HomeLab cloud-init template writes and the systemd units read) from the `CMDCTRL_GITHUB_TOKEN` Actions secret, via `sudo scripts/set-server-env.sh`; to rotate, update the secret and rerun the deploy — no host access needed.
   - `CMDCTRL_GITHUB_REPO` — `owner/name` slug issues are filed against (default `krakenhavoc/cmd_and_ctrl`).
   - `CMDCTRL_PUBLIC_BASE_URL` — the origin this server is reachable at from the public internet (e.g. `https://cmd.labxp.io`). Needed for bug-report **screenshots**: GitHub renders an issue image by fetching it through its Camo proxy, so the URL in the issue body has to be absolute and publicly resolvable. Falls back to `CMDCTRL_CLIENT_BASE_URL`; with neither set (or no `CMDCTRL_DATA_DIR`) attachments are disabled, `/bugreport/config` reports `attachments:false`, the modal hides its file picker, and text reports keep working. **No default on purpose** — a wrong origin produces issues full of broken images, which is worse than a deploy that doesn't offer upload. Provisioned by CI/CD from the `CMDCTRL_PUBLIC_BASE_URL` repo variable. See [ADR 0017 §6](docs/decisions/0017-bug-report-button.md).
+  - `CMDCTRL_ANTHROPIC_API_KEY` — API key for the model-backed bot tiers (`assisted`, `strong`). Falls back to `ANTHROPIC_API_KEY` when unset. **Both unset is a supported configuration, not a broken one**: the model client is nil, and those tiers keep their names and play on the rules filter plus the heuristic. See the bot-seat section below and [ADR 0033 §6](docs/decisions/0033-ai-bot-seat.md).
+  - `CMDCTRL_ANTHROPIC_ENDPOINT` — overrides the Messages API URL (default `https://api.anthropic.com/v1/messages`). For pointing a dev stack at a stub; there is no reason to set it in production.
 - Cron: `scripts/scryfall-refresh.sh` — weekly refresh of the Scryfall default-cards dump (suggested cron: `0 5 * * 0`)
+
+### AI bot seat (Go, `server/internal/aiseat/`)
+
+- Runs **in process** with the game server — no separate binary, no socket. One goroutine per bot seat, started by `Lobby.Start` and by the lobby's restore path. User-facing guide: [docs/bot.md](docs/bot.md); architecture: [ADR 0033](docs/decisions/0033-ai-bot-seat.md).
+- Endpoints: `GET /bot/options`, `POST /games/{id}/seats/bot`, `DELETE /games/{id}/seats/bot/{player_id}` — see [docs/lobby.md](docs/lobby.md).
+- Env vars: the two `CMDCTRL_ANTHROPIC_*` entries above are the only ones the package reads at runtime. Everything else — tier, deck, pacing — is per-seat request data or a compile-time default (`aiseat.Config`: `MinThink` 700ms, `MaxThink` 2s / 5s for `strong`).
+- **The whole-game tests are gated off by default** and the package owns the longest tests in the tree (CI runs `go test` with a 30m timeout because of them):
+  - `AISEAT_GAME_TESTS=1` — the master gate. Without it every whole-game test in `internal/aiseat` skips. The nightly runs `AISEAT_GAME_TESTS=1 go test ./internal/aiseat/... -race -timeout 30m`.
+  - `AISEAT_HEURISTIC_GAMES=N` / `AISEAT_H2H_GAMES=N` — widen the four-heuristic and heuristic-vs-random samples (defaults 3 and small, for CI).
+  - `AISEAT_FUNNEL_GAMES=N` — widen the Layer A absorption / model-funnel whole-game run.
+  - `AISEAT_SOAK_GAMES=N` — independent of the master gate; runs `TestRandomBotSoak` for N games. `AISEAT_SOAK_POLICY=random|heuristic|mixed` picks what fills the seats (default `random`), and `AISEAT_SOAK_SEED=<uint64>` pins the base seed (default: the clock). A stall prints its seed for reproduction.
+  - `AISEAT_DEBUG=1` — per-move log in the runner tests.
+  - `AISEAT_STALL` / `AISEAT_WALLCLOCK` — Go durations, defaults `15s` and `300s`, for the bot-table stall detector and wall-clock budget. Raise them on a loaded runner rather than editing the test.
+  - `CMDCTRL_SCRYFALL_DUMP=<path>` — gates the manual bot-deck test that validates the four curated decks against the real Scryfall dump. Also used by other packages.
 
 ### Discord bot (Go, `server/cmd/bot/`)
 - Separate binary from the game server; runs as `cmd-and-ctrl-bot.service` on the prod VPS. See [docs/decisions/0004-discord-identity.md](docs/decisions/0004-discord-identity.md).
@@ -1089,10 +1108,10 @@ The `Key` is the wire contract: it rides `cast_spell` as
 `alternative_cost`, lands on `StackItem.AltCost`, and the card's
 `OnResolve` branches on `ctx.PaidAltCost("overload")`. Keys must be
 non-empty and unique per card; `Register` panics otherwise. Only
-overload / evoke / cleave / flashback / warp exist — foretell, plot,
-spree and "prepare" have no shape yet, and a card carrying one of
-those ships without it (say so in the card comment, as Cosmic
-Intervention does).
+overload / evoke / cleave / flashback / warp / escape exist —
+foretell, plot, spree and "prepare" have no shape yet, and a card
+carrying one of those ships without it (say so in the card comment, as
+Cosmic Intervention does).
 
 **Casting from somewhere other than hand (S29):** a card whose text
 opens another cast zone declares it in `Spec.CastableZones`, and the
@@ -1122,6 +1141,31 @@ stack", and it is a *replacement*, so it also catches a flashed-back
 spell that fizzles and one answered by Hinder. A card that wrote the
 cost by hand would flash back, land in the graveyard, and flash back
 again every turn forever.
+
+**Escape (S29)** is flashback's sibling and the place to look when a
+cost needs a component the struct doesn't have yet. `Escape("{3}{B}",
+5)` is "Escape—{3}{B}, Exile five other cards from your graveyard",
+and `EscapeWithCounters("{5}{G}{G}", 4, 3)` adds CR 702.144c's "this
+creature escapes with three +1/+1 counters on it".
+
+Three things it added to `AlternativeCost`, all of them because escape
+is a *price* rather than a permission:
+
+- **`ExileFromGraveyard`** is the first cost component that names more
+  than one card. The count is the spec's `Min` (== `Max`), the caster
+  sends all of them in `alt_cost_ids`, and the engine demands exactly
+  that many, all distinct, all in the caster's own graveyard. "Other"
+  needs no clause of its own — CR 601.2a has already moved the spell to
+  the stack by the time the cost is paid.
+- **`EntersWithCounterName` / `EntersWithCounterCount`** hang the
+  counters off the **cost**, not the card, so a reanimated or
+  hard-cast Voracious Typhon enters as the 4/4 it prints. They ride the
+  CR 614 entry pipeline, so Doubling Season doubles them.
+- **No `ExileOnLeavingStack`.** This is the one to get right: an
+  escaped card goes to the battlefield or the graveyard like any
+  other, and escapes again next time. Copying flashback's constructor
+  and swapping the key would ship a card that exiles itself, which is
+  not what any escape card does.
 
 **Warp (S29)** is the other half of the same idea and the reason the
 zone and the price are separate fields. `Warp("{R}")` is paid from
