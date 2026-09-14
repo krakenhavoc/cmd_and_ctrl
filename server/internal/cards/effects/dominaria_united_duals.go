@@ -51,6 +51,9 @@ func init() {
 		// Roadmap batch 30 (#393): Kaldheim's Snow Land — Swamp Forest,
 		// the same cycle as Rimewood Falls.
 		{"bf5482b6-dd3e-4fb7-bc62-29e23b417a5f", "Woodland Chasm", "B", "G"},
+		// Roadmap batch 32 (#395): Kaldheim's Snow Land — Mountain
+		// Forest, the same cycle as Rimewood Falls.
+		{"35137378-6754-4bb1-a38e-5940890ccab1", "Highland Forest", "R", "G"},
 	} {
 		Register(Spec{
 			OracleID:      land.oracleID,
