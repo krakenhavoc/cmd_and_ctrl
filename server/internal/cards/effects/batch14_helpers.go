@@ -285,9 +285,42 @@ func b14EachOpponentMillsUntilLand(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
-// b14MillUntilLand mills one player's library from the top until a
-// land card has been milled or the library is empty.
+// b14MillUntilLand reveals cards off the top of one player's library
+// until a land has been revealed, then puts all of them into the
+// graveyard.
+//
+// S22: the reveal is now a real reveal. This helper used to mill
+// straight to the graveyard and declare the reveal unmodelled on the
+// grounds that the graveyard is public, so the table sees the same
+// cards a moment later — true, and not the same thing. What the table
+// could not see was WHICH cards this trigger turned over as opposed
+// to which arrived from something else resolving in the same window,
+// and on an opponent's board a twenty-card run reads as a wall of
+// graveyard motion with no cause attached to it.
+//
+// The run is measured first, read-only, so the whole thing is one
+// announcement rather than one per card. The mill loop underneath is
+// unchanged and still reads the top of the library on every pass, so
+// anything that changes the library mid-mill is handled the way it
+// always was; the reveal names what was on top when the trigger
+// resolved, which is what the card reveals.
 func b14MillUntilLand(ctx *Context, player uuid.UUID) error {
+	if p := ctx.PlayerByID(player); p != nil && p.Library != nil {
+		run := make([]uuid.UUID, 0, 8)
+		for i := len(p.Library.Cards) - 1; i >= 0; i-- {
+			run = append(run, p.Library.Cards[i].InstanceID)
+			if p.Library.Cards[i].IsLand() {
+				break
+			}
+		}
+		if err := (RevealCards{
+			Player: player,
+			Cards:  run,
+			Reason: "reveal from the top until a land card",
+		}).Apply(ctx); err != nil {
+			return err
+		}
+	}
 	for i := 0; i < 1000; i++ {
 		p := ctx.PlayerByID(player)
 		if p == nil || p.Library == nil || p.Library.Size() == 0 {

@@ -20,10 +20,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // an opponent whose library holds no land mills the whole thing, as
 // printed.
 //
-// "Reveals" is not modelled as a reveal — the cards go straight to
-// the graveyard, which is public, so every seat sees exactly the
-// cards that were revealed a moment later than paper would show
-// them. Nothing can respond in between on paper either.
+// "Reveals" IS a reveal as of S22: the run is measured before
+// anything moves and announced to the table as one broadcast, then
+// milled. It was previously left unmodelled on the grounds that the
+// graveyard is public and shows the same cards a moment later —
+// which is true and is not the same thing, because it never said
+// which trigger turned them over.
 //
 // No simplification.
 func init() {

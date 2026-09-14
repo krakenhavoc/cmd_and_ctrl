@@ -132,6 +132,19 @@ type GameView struct {
 	// through the same S13.5 knower redaction as every CardView, in
 	// FilterViewFor. Added in S31 sub-PR 0 (ADR 0033 §4).
 	Log []LogEvent `json:"log,omitempty"`
+	// Reveals is the broadcast reveal window: the cards players have
+	// shown the whole table this turn (CR 701.16), oldest first, at
+	// most PublicRevealMax of them. The counterpart to the
+	// controller-only look-at-cards prompt the scry family rides, and
+	// the one field on this view that is identical for every seat —
+	// FilterViewFor passes it through untouched, because a reveal one
+	// seat could not see would not be a reveal.
+	//
+	// It carries printed identity and no instance IDs whatsoever, for
+	// either the revealed cards or the card that revealed them. See
+	// reveal_frame.go for why that is the design rather than an
+	// omission. Added in S22.
+	Reveals []RevealView `json:"reveals,omitempty"`
 }
 
 // LegalMoveView is one entry of the viewer's legal-move list. It is
@@ -1173,6 +1186,11 @@ func ViewOfGame(g *game.Game) GameView {
 		// last — and inside the same read lock, so the log and the
 		// board it describes come from one consistent read.
 		view.Log = publicLogOf(g, &view)
+		// S22: the reveal window resolves printed identity out of the
+		// same assembled view, for the same reason and under the same
+		// lock. Unlike the log it needs no knower sets — see
+		// reveal_frame.go.
+		view.Reveals = publicRevealsOf(g, &view)
 	})
 	return view
 }
@@ -2126,6 +2144,15 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// literally the same predicate, applied to the card each entry
 		// names.
 		Log: redactLogForViewer(v.Log, isKnower),
+		// S22: the reveal window is the one field here that is NOT
+		// projected through isKnower, and the omission is the feature.
+		// A reveal is public by construction — every seat saw the same
+		// cards at the same moment — so there is no per-viewer answer
+		// to give. There is also nothing left to redact: the entries
+		// carry printed identity and no instance ID, so the handle
+		// that filterPendingChoices has to drop and redactLogForViewer
+		// has to reason about does not exist on this type.
+		Reveals: v.Reveals,
 	}
 }
 

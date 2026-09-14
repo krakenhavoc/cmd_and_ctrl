@@ -14,6 +14,7 @@
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
   import TargetingBanner from "../lib/components/board/TargetingBanner.svelte";
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
+  import RevealBanner from "../lib/components/board/RevealBanner.svelte";
   import BotFeed from "../lib/components/BotFeed.svelte";
   import Icon from "../lib/components/Icon.svelte";
   import { cancel as cancelTargeting, confirm as confirmTargeting } from "../lib/targeting";
@@ -1040,6 +1041,14 @@
                show; per-move reasoning only with the S11.5 "show bot
                reasoning" setting on. S31 sub-PR 8 / ADR 0033 §8. -->
           <BotFeed chat={$chat} />
+
+          <!-- S22 broadcast reveals (CR 701.16). The strip rather than
+               a modal on purpose: a reveal asks nobody a question, and
+               three of the four seats receiving it did not act. It
+               must not take the board away from a player who is
+               mid-decision the way the scry prompt legitimately
+               does. -->
+          <RevealBanner snap={view} />
 
           <!-- #318: the attack-with-all cluster. Present for the whole
                declare-attackers step so the count stays live as
