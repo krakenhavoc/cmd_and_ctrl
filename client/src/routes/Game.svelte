@@ -881,7 +881,11 @@
                   role="menuitem"
                   onclick={() => viaMenu(() => (bugReportOpen = true))}
                 >
-                  <Icon name="bug" size={15} /> Report a bug
+                  <!-- Widened with the kind picker: the same form now
+                       files ideas and questions, and an entry that
+                       only says "bug" is an entry nobody uses to ask
+                       for a feature. -->
+                  <Icon name="bug" size={15} /> Report a bug or idea
                 </button>
               {/if}
               <button class="mi" role="menuitem" onclick={() => viaMenu(back)}>
