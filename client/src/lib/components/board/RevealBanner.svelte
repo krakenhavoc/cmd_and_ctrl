@@ -88,12 +88,12 @@
 {#each cueState.cues as cue (cue.reveal.seq)}
   {@const r = cue.reveal}
   {@const more = hiddenRevealCount(r)}
-  <div class="att reveal" role="status" aria-live="polite">
-    <span class="att-label gold">
+  <div class="reveal-line" role="status" aria-live="polite">
+    <span class="label gold">
       <Icon name="spark" size={12} />
       revealed
     </span>
-    <span class="att-text">
+    <span class="text">
       {#if r.seat >= 0}
         <span class="seat-dot" style="background:{seatColor(r.seat)}"></span>
       {/if}
@@ -119,15 +119,80 @@
       {/if}
     </span>
 
-    <button type="button" class="ghost att-close" onclick={() => dismiss(r)} aria-label="dismiss">
+    <button type="button" class="ghost close" onclick={() => dismiss(r)} aria-label="dismiss">
       <Icon name="x" size={12} />
     </button>
   </div>
 {/each}
 
 <style>
-  /* The strip's .att shell comes from Game.svelte; only the card row
-     is this component's business. */
+  /* Styled to match Game.svelte's attention strip (.att) without
+     borrowing its class — Svelte scopes styles per component, so a
+     shared class name renders unstyled here. Same tokens, same shape,
+     the same trade BotFeed makes for the same reason; if the strip is
+     ever extracted into a component of its own, both collapse into
+     it. */
+  .reveal-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px 9px 14px;
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(217, 180, 92, 0.45);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    color: var(--fg-muted);
+    font-size: 13px;
+    line-height: 1.35;
+    box-sizing: border-box;
+  }
+  .label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--fg-dim);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .label.gold {
+    color: var(--gold-strong);
+  }
+  .text {
+    flex: 1;
+    min-width: 0;
+  }
+  .text strong {
+    color: var(--fg);
+    font-weight: 700;
+  }
+  .muted {
+    color: var(--fg-dim);
+  }
+  .seat-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    vertical-align: middle;
+    margin-right: 4px;
+  }
+  .close {
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+  }
   .reveal-cards {
     display: flex;
     align-items: center;
