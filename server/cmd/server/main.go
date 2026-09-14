@@ -76,7 +76,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/decks"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/deckprofile"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/model"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/tiers"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
@@ -88,6 +88,7 @@ import (
 	// and every card falls through to manual sandbox resolution.
 	_ "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
@@ -583,7 +584,7 @@ func botFactory(log *slog.Logger, cfg config, idx *cards.Index) *tiers.Factory {
 		Models:   models,
 		MaxThink: maxThink,
 		DeckProfile: func(deckID string) (model.DeckProfile, bool) {
-			return decks.Profile(idx, deckID)
+			return deckprofile.Build(idx, deckID)
 		},
 	})
 

@@ -2,12 +2,23 @@
   import { uploadDeck, type UploadDeckResponse } from "../api";
   import { LobbyApiError, type ApiViolation } from "../session";
   import Icon from "./Icon.svelte";
+  import PrebuiltDeckPicker from "./PrebuiltDeckPicker.svelte";
 
-  // DeckUploadForm is the shared deck-import textarea + URL field +
-  // submit button + violation/warning rendering used by both
-  // Lobby.svelte and the in-game DeckImportModal in Game.svelte
-  // (S08.5 wave 1). Owns its own input + feedback state so callers
-  // don't have to thread a Record<gameID, ...> shape through.
+  // DeckUploadForm is the shared deck panel used by both Lobby.svelte
+  // and the in-game DeckImportModal in Game.svelte (S08.5 wave 1):
+  // the pre-built deck picker, then the deck-import textarea + URL
+  // field + submit button + violation/warning rendering. Owns its own
+  // input + feedback state so callers don't have to thread a
+  // Record<gameID, ...> shape through.
+  //
+  // The picker is mounted HERE rather than beside each call site so
+  // that both places get it and neither can drift. It is first
+  // because it is the answer for a player who has no decklist and
+  // wants a working game — until it existed, that player's only path
+  // was to go and build one, and take their chances on catalog
+  // coverage when they came back. It hides itself when the server
+  // offers no pre-built decks, and the paste box below is unchanged
+  // either way.
   //
   // The submit path posts to POST /games/{id}/decks via api.uploadDeck;
   // the server's StateLobby gate rejects post-Start uploads, so the
@@ -95,6 +106,11 @@
 </script>
 
 <div class="deck-upload-form">
+  <PrebuiltDeckPicker {gameID} {playerID} {onSuccess} />
+  <p class="own-list">
+    Or bring your own list — a Moxfield or Archidekt deck URL, a Moxfield JSON export, or a
+    plain-text decklist.
+  </p>
   <textarea
     rows="7"
     placeholder={"https://moxfield.com/decks/abc123\n\n— or —\n\nCommander:\n1 Atraxa, Praetors' Voice\n\nMainboard:\n1 Sol Ring\n..."}
@@ -155,6 +171,12 @@
 </div>
 
 <style>
+  .own-list {
+    margin: 14px 0 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--fg-muted);
+  }
   textarea {
     width: 100%;
     min-height: 128px;

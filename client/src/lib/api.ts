@@ -7,6 +7,7 @@ import {
   type Session,
 } from "./session";
 import type { BugLogEntry, BugReportContext, BugReportKind } from "./bugReport";
+import type { PrebuiltDecksResponse } from "./prebuiltDecks";
 
 // Re-export the violation shape so consumers of api.ts don't also
 // have to import from session.ts. ApiViolation is the canonical
@@ -109,6 +110,10 @@ export interface UploadDeckResponse {
   game: GameMeta;
   deck_name: string;
   card_count: number;
+  // The pre-built deck that was installed; absent for an uploaded
+  // list. Lets the picker confirm the seat is holding the deck the
+  // player pressed, rather than inferring it from the name.
+  deck_id?: string;
   commanders: string[];
   warnings?: ApiViolation[];
   // Distinct names of the accepted deck's cards that print rules the
@@ -398,6 +403,37 @@ export async function uploadDeck(
   const res = await authFetch(`/games/${gameID}/decks`, {
     method: "POST",
     body: JSON.stringify({ player_id: playerID, source, format }),
+  });
+  return (await res.json()) as UploadDeckResponse;
+}
+
+// fetchPrebuiltDecks reads the pre-built deck catalog and each deck's
+// engine-coverage profile (GET /decks). Game-independent — the same
+// answer for every table — so callers fetch it once on mount.
+//
+// authFetch, not plain fetch: the route is session-gated, unlike the
+// public /catalog. A logged-out caller gets a 401 and the picker
+// simply does not render, which is correct — there is no seat to
+// install a deck into.
+export async function fetchPrebuiltDecks(): Promise<PrebuiltDecksResponse> {
+  const res = await authFetch("/decks");
+  return (await res.json()) as PrebuiltDecksResponse;
+}
+
+// installPrebuiltDeck seats the caller with one of the pre-built
+// decks. Same route, same response and the same 422-with-violations
+// failure shape as uploadDeck, because it IS uploadDeck — the server
+// expands the deck ID to that deck's decklist text and runs the one
+// parse -> resolve -> validate -> install pipeline. There is
+// deliberately no second install path.
+export async function installPrebuiltDeck(
+  gameID: string,
+  playerID: string,
+  deckID: string,
+): Promise<UploadDeckResponse> {
+  const res = await authFetch(`/games/${gameID}/decks`, {
+    method: "POST",
+    body: JSON.stringify({ player_id: playerID, deck: deckID }),
   });
   return (await res.json()) as UploadDeckResponse;
 }

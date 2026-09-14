@@ -211,11 +211,12 @@ seated in the game may call this.
 
 ### `POST /games/{id}/decks`
 
-Upload a deck for a seat. RolePlayer may only set their own seat's
-deck (`player_id` in the body must match the session's bound player);
-RoleAdmin may set any seat.
+Install a deck for a seat — either an uploaded decklist or one of the
+pre-built decks from `GET /decks`. RolePlayer may only set their own
+seat's deck (`player_id` in the body must match the session's bound
+player); RoleAdmin may set any seat.
 
-**Request**
+**Request** — exactly one of `deck` and `source`:
 
 ```json
 {
@@ -224,6 +225,24 @@ RoleAdmin may set any seat.
   "player_id": "<uuid>"
 }
 ```
+
+```json
+{
+  "deck": "izzet-aggro",   // a deck id from GET /decks
+  "player_id": "<uuid>"
+}
+```
+
+`deck` is a field on this route rather than a route of its own so that
+there is exactly **one** legality path in the server: the deck id is
+expanded to that deck's plain-text decklist and run through the same
+parse → resolve → validate → install pipeline a pasted list takes. A
+pre-built deck cannot be legal by a rule an uploaded one is not held
+to. `POST /games/{id}/seats/bot` has taken the same shape since S31,
+for the same reason.
+
+Sending both `deck` and `source` is a 400 rather than a precedence
+rule; an unknown deck id is a 422 that names the ids this build has.
 
 When `format` is empty, the server auto-detects from the first
 non-whitespace bytes of `source`:
@@ -254,6 +273,7 @@ Private decks (upstream 401/403) and unsupported hosts surface as
   "game": { "...GameMeta with updated seat..." },
   "deck_name": "Atraxa Superfriends",
   "card_count": 100,
+  "deck_id": "izzet-aggro",
   "commanders": ["Atraxa, Praetors' Voice"],
   "warnings": [
     { "code": "sideboard_not_supported_in_commander", "message": "..." }
@@ -261,14 +281,18 @@ Private decks (upstream 401/403) and unsupported hosts surface as
 }
 ```
 
+`deck_id` echoes the pre-built deck that was installed and is absent
+for an uploaded list.
+
 **Errors**
 
 | Status | Reason |
 |---|---|
-| 400 | malformed request (missing source / player_id, unknown format) |
+| 400 | malformed request (neither `deck` nor `source`, both of them, missing player_id, unknown format) |
 | 403 | not your seat (RolePlayer with mismatched player_id) |
 | 413 | body exceeds the 2 MiB deck-source cap |
 | 422 | validation failed — body carries `{"error", "violations": [...]}`; may also carry `warnings` |
+| 422 | unknown pre-built `deck` id — body names the ids this build offers |
 | 429 | too many requests — 2/s refill with 10-burst per IP |
 | 503 | server card index not loaded — run `scripts/scryfall-refresh.sh` |
 
@@ -311,6 +335,75 @@ Violation codes (stable strings, keyable by the client):
 - `sideboard_not_supported_in_commander` — **warning only**, delivered
   under `warnings` on both success and 422 responses (the server
   ignores the sideboard either way)
+
+### `GET /decks`
+
+The pre-built deck catalog the lobby's deck picker renders from, with
+each deck's engine-coverage profile. Game-independent — the same
+answer for every table — so the client fetches it once on mount.
+Session-gated; there is no seat to install a deck into without one.
+
+Served whether or not a Scryfall dump is loaded: the coverage grades
+come out of the effect registry and are true regardless. The honest
+failure for a deployment with no dump is the 503 on installing a
+deck, not an empty picker implying there are none.
+
+**Response 200**
+
+```json
+{
+  "decks": [
+    {
+      "id": "izzet-aggro",
+      "name": "Raid and Ransack",
+      "archetype": "aggro",
+      "summary": "...",
+      "commander": "Mary Read and Anne Bonny",
+      "colors": ["U", "R"],
+      "card_count": 100,
+      "coverage": {
+        "cards": 88,
+        "full": 55,
+        "caveats": 22,
+        "unreviewed": 11,
+        "basics": 2,
+        "unregistered": 0,
+        "imperfect": [
+          { "name": "Farseek", "caveats": ["Only basic lands are found — ..."] },
+          { "name": "Thought Vessel", "unreviewed": true }
+        ]
+      }
+    }
+  ]
+}
+```
+
+**Reading the coverage block.** Counts are per distinct card, not per
+copy, which is why they do not add up to `card_count`: a deck's ten
+basic lands are one or two rows in `basics`, and basics are exempt
+because the engine synthesises their mana ability from the type line.
+
+- `full` — plays exactly as printed.
+- `caveats` — implemented with a declared simplification; the clauses
+  the engine skips are in `imperfect[].caveats`, in player-facing
+  language. Same strings `GET /catalog` serves, from the same
+  computation (`internal/catalog`), so the two surfaces cannot drift.
+- `unreviewed` — registered but never graded. Not a known gap and not
+  a clean bill of health; listed in `imperfect` with
+  `"unreviewed": true` and no caveat text.
+- `unregistered` — no implementation at all. Always `0`: a build test
+  in `internal/decks` fails the moment a card in a pre-built deck
+  stops resolving to a registered effect spec. It is published anyway
+  so that a deck which somehow shipped with one is visible in the
+  picker rather than silently counted as fine.
+
+"Every card in this deck is registered" and "every card in this deck
+works fully" are different claims, and the client is expected to make
+only the one that is true — see `client/src/lib/prebuiltDecks.ts`.
+
+The same four decks back this route and `GET /bot/options`; they come
+from one registry (`server/internal/decks`), which is the part that
+must not fork.
 
 ### `GET /bot/options` (S31)
 
@@ -365,9 +458,12 @@ only the raw-decklist form of the add request works.
 A deck's `description` leads with its archetype — `aggro`,
 `ramp-stompy`, `control`, `aristocrats` — because the names are
 flavour and the archetype is what the player is actually choosing
-between. The catalog is the four curated decks in
-`server/internal/aiseat/decks`, every non-basic card of which is
-build-tested to resolve to a registered effect spec.
+between. The catalog is the four pre-built decks in
+`server/internal/decks` — the same four `GET /decks` offers a human,
+from one registry — every non-basic card of which is build-tested to
+resolve to a registered effect spec. `GET /decks` adds the coverage
+profile on top; `aiseat.DeckInfo` has no room for one and a bot does
+not read disclosures.
 
 ### `POST /games/{id}/seats/bot` (S31)
 

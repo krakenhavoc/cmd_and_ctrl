@@ -90,6 +90,10 @@ describe("service worker routing", () => {
     // S31 bot seats: the Add-bot picker's options probe.
     "/bot/options",
     "/games/7f3c/seats/bot",
+    // The pre-built deck picker's catalog. A cached answer here would
+    // show yesterday's coverage numbers after a deploy taught the
+    // server better, which is the one thing that route must not do.
+    "/decks",
   ];
 
   it.each(apiPaths)("never caches the API route %s", (path) => {

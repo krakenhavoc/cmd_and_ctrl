@@ -4,7 +4,7 @@ package aiseat
 // lobby" and "a decklist the existing upload path can install".
 //
 // THE CONTRACT FOR S31 SUB-PR 5. That sub-PR builds the curated
-// archetype decks in server/internal/aiseat/decks/ and the test that
+// archetype decks (now server/internal/decks/) and the test that
 // walks them against effects.All(). All it has to do to be reachable
 // from the lobby is satisfy DeckSource and get wired into main.go in
 // place of PlaceholderDecks(). Specifically:
@@ -38,8 +38,8 @@ type DeckInfo struct {
 }
 
 // DeckSource is the named-deck lookup the lobby needs. Implemented by
-// PlaceholderDecks today and by server/internal/aiseat/decks in
-// sub-PR 5. Implementations must be safe for concurrent use and are
+// PlaceholderDecks today and, since sub-PR 5, by cmd/server's
+// botDeckCatalog over server/internal/decks. Implementations must be safe for concurrent use and are
 // expected to be immutable after construction.
 type DeckSource interface {
 	// List returns the catalog in picker order.
