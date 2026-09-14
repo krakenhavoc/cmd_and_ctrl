@@ -80,8 +80,15 @@ func TestHeroicInterventionGrantsBothKeywordsToYourSideOnly(t *testing.T) {
 }
 
 // TestHeroicInterventionStopsAWrath is the interaction the card is
-// played for, end to end: the grant reaches the destruction path
-// that a catalog wrath goes through.
+// played for, end to end.
+//
+// S30 (#470 / #446): this used to drive a hand-rolled loop over
+// DestroyPermanentForEffect and describe it as "the same entry point
+// every catalog wrath uses". It was not — a catalog wrath goes
+// through DestroyAllMatching → DestroyPermanentsForEffect, which had
+// no indestructible guard at all, so the card's headline interaction
+// passed its own test while failing in a real game. The spell is now
+// cast for real.
 func TestHeroicInterventionStopsAWrath(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -93,17 +100,8 @@ func TestHeroicInterventionStopsAWrath(t *testing.T) {
 	castCatalogSpell(t, g, "Heroic Intervention", "Instant", heroicInterventionOracle, nil)
 	passPriorityAroundTable(t, g)
 
-	// A destroy-all driven through the same entry point every
-	// catalog wrath uses.
-	g.WithWriteLock(func() {
-		for _, c := range g.BattlefieldCardsForEffect() {
-			if c.IsCreature() {
-				if err := g.DestroyPermanentForEffect(c.InstanceID); err != nil {
-					t.Errorf("DestroyPermanentForEffect: %v", err)
-				}
-			}
-		}
-	})
+	castCatalogSpell(t, g, "Wrath of God", "Sorcery", wrathOfGodOracle, nil)
+	passPriorityAroundTable(t, g)
 
 	if !g.Battlefield.Contains(mine) {
 		t.Error("protected creature died to a wrath")

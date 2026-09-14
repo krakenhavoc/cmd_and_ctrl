@@ -14,15 +14,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // target players" is a zero-to-unbounded player clause, so the
 // caster may name nobody, everyone, or just the graveyard deck.
 //
-// Declared simplification: the mass-destroy path does not yet honour
-// indestructible (#446) — the same caveat every "destroy all" card
-// carries.
+// No simplifications. The caveat this used to carry — the
+// mass-destroy path not honouring indestructible (#446) — was an
+// engine gap, closed in S30 (#470).
 func init() {
 	Register(Spec{
 		OracleID:     "e1976b6c-7e43-4f4a-b082-f95495a1b260",
 		Name:         "Singularity Rupture",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
+		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("any number of target players").WithCount(0, 0),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if err := (DestroyAllMatching{Match: Creature()}).Apply(ctx); err != nil {

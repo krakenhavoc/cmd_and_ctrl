@@ -20,8 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "c0516c2c-d7c9-4763-9180-980f60205a28",
 		Name:         "Dauntless Escort",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label: "Sacrifice this creature: Creatures you control gain indestructible until end of turn.",
 			Cost:  game.AbilityCost{SacrificeSelf: true},

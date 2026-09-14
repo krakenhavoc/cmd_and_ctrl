@@ -23,8 +23,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "aff34f28-f707-4458-8af3-1bd5b13a6b10",
 		Name:         "Cleansing Nova",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
+		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			Mode("Destroy all creatures."),
 			Mode("Destroy all artifacts and enchantments."),

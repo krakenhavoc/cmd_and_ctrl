@@ -47,12 +47,20 @@ import (
 // it exists so the four differ only in the verb.
 type massEffect struct {
 	match CardPredicate
+	// narrow optionally removes permanents the VERB cannot move even
+	// though the PREDICATE matched them — currently only
+	// indestructible, which stops a destroy (CR 702.12b) and stops
+	// nothing else. Applied before the move, so `swept` and the count
+	// describe the same set of cards and a "…destroyed this way"
+	// clause cannot pay out for a survivor. Optional; nil means the
+	// verb moves everything it matched.
+	narrow func(g *game.Game, ids []uuid.UUID) []uuid.UUID
 	// move performs the batched zone change and returns how many
 	// cards actually moved.
 	move func(g *game.Game, ids []uuid.UUID) int
 	// then is the card's "…for each permanent destroyed this way"
-	// clause. Receives the pre-move copies of everything that
-	// matched and the count that actually moved.
+	// clause. Receives the pre-move copies of everything that was
+	// swept and the count that actually moved.
 	then func(ctx *Context, swept []game.Card, moved int) error
 }
 
@@ -61,6 +69,20 @@ func (m massEffect) apply(ctx *Context) error {
 	ids := make([]uuid.UUID, 0, len(swept))
 	for _, c := range swept {
 		ids = append(ids, c.InstanceID)
+	}
+	if m.narrow != nil {
+		ids = m.narrow(ctx.Game, ids)
+		keep := make(map[uuid.UUID]bool, len(ids))
+		for _, id := range ids {
+			keep[id] = true
+		}
+		kept := swept[:0:0]
+		for _, c := range swept {
+			if keep[c.InstanceID] {
+				kept = append(kept, c)
+			}
+		}
+		swept = kept
 	}
 	moved := m.move(ctx.Game, ids)
 	if m.then == nil {
@@ -103,24 +125,26 @@ func MatchingBattlefield(ctx *Context, match CardPredicate) []game.Card {
 // The clause becomes load-bearing when regeneration lands, and this
 // primitive is where it will be enforced.
 //
-// INDESTRUCTIBLE IS A DIFFERENT STORY, and this comment used to get
-// it wrong. S25 (#77) shipped CR 702.12 in
-// game/indestructible.go, but it gated only the two paths that file
-// enumerates: DestroyPermanentForEffect (the single-target verb) and
-// the two damage branches of the SBA doomed pre-pass. The MASS path
-// this primitive uses — g.DestroyPermanentsForEffect →
-// destroyPermanentsLocked (game/simultaneous.go) — calls
-// routeBattlefieldCardToOwnerGraveyardLocked directly and never
-// consults IsIndestructible. So every board wipe in the catalog
-// still destroys an indestructible permanent, which is STRONGER than
-// printed in the one direction this repo never wants to be wrong in.
-// Until that is fixed, two families declare the hole in their
-// Caveats: every card whose printed text grants or carries
-// indestructible, and every card that sweeps through this
-// primitive. Grep for `board wipe ("destroy all")` to find them all
-// and delete them together with the fix. Cards reviewed before the
-// hole was found may still be silent about it — the sweep of the
-// remaining CompletenessUnreviewed specs is not finished.
+// INDESTRUCTIBLE IS HONOURED, as of S30 (#470 / #446), and this
+// comment has twice been the place the truth went stale — first
+// claiming the engine had no such concept, then documenting the hole
+// it left. The history is worth keeping because the failure mode is
+// the recurring one: S25 (#77) shipped CR 702.12 in
+// game/indestructible.go hours after S23 shipped this primitive, and
+// gated only the single-target verb and the two damage branches of
+// the SBA doomed pre-pass. The MASS path — g.DestroyPermanentsForEffect
+// → destroyPermanentsLocked (game/simultaneous.go) — went straight to
+// routeBattlefieldCardToOwnerGraveyardLocked and never asked, so
+// every board wipe in the catalog killed an Avacyn for four sprints.
+//
+// The guard now lives at g.DestroyPermanentsForEffect, which filters
+// through g.DestructibleForEffect before opening the simultaneity
+// batch. This primitive applies the SAME filter to its own `swept`
+// slice (massEffect.narrow), for the second half of the rule: a
+// survivor must not be counted by "for each creature destroyed this
+// way", and must not be reported to a Then clause that reads the
+// cards rather than the count — Deadly Tempest's per-controller life
+// loss is exactly that shape.
 type DestroyAllMatching struct {
 	// Match selects the permanents to destroy. Required; a nil
 	// predicate sweeps nothing rather than everything, because
@@ -136,9 +160,10 @@ type DestroyAllMatching struct {
 
 func (d DestroyAllMatching) Apply(ctx *Context) error {
 	return massEffect{
-		match: d.Match,
-		move:  func(g *game.Game, ids []uuid.UUID) int { return g.DestroyPermanentsForEffect(ids) },
-		then:  d.Then,
+		match:  d.Match,
+		narrow: (*game.Game).DestructibleForEffect,
+		move:   func(g *game.Game, ids []uuid.UUID) int { return g.DestroyPermanentsForEffect(ids) },
+		then:   d.Then,
 	}.apply(ctx)
 }
 
@@ -147,8 +172,10 @@ func (d DestroyAllMatching) Apply(ctx *Context) error {
 //
 // The reason a deck plays this over DestroyAllMatching is entirely
 // about what does NOT happen: no dies-triggers, no graveyard
-// recursion, and (once they exist) indestructible and regeneration
-// do not save anything. Against the catalog's aristocrats package
+// recursion, and no indestructible — exile is not destruction, so
+// CR 702.12b never gets a say and there is deliberately no `narrow`
+// hook here (regeneration, once it exists, is the same story).
+// Against the catalog's aristocrats package
 // that is the difference between a wipe that drains the table and
 // one that doesn't.
 type ExileAllMatching struct {
@@ -222,9 +249,9 @@ func (r ReturnAllToHand) Apply(ctx *Context) error {
 // when the state-based-action sweep runs at the next boundary. That
 // sweep is itself batched (see game/simultaneous.go), so the deaths
 // end up simultaneous anyway — but they are the SBA's deaths, not
-// this effect's, which is why an indestructible creature or a damage
-// prevention shield will change the outcome once either exists and a
-// DestroyAllMatching here would not have let it.
+// this effect's, which is why an indestructible creature (S25) or a
+// damage prevention shield (S30) changes the outcome here and a
+// DestroyAllMatching would not have let it.
 func damageEachMatching(ctx *Context, match CardPredicate, amount int) error {
 	if amount <= 0 {
 		return nil

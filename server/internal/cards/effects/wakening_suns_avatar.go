@@ -19,17 +19,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Dinosaur subtype — the Avatar is a Dinosaur and survives its own
 // trigger.
 //
-// One declared simplification, weaker than printed in the one
-// direction that matters here: the mass-destroy path bypasses
-// indestructible (#446), so an indestructible non-Dinosaur is
-// destroyed where printed it would survive — the same caveat every
-// "destroy all" card carries.
+// No simplifications. The one this used to declare — the mass-destroy
+// path bypassing indestructible (#446), so an indestructible
+// non-Dinosaur died where printed it would survive — was an engine
+// gap, closed for every "destroy all" card at once in S30 (#470).
 func init() {
 	Register(Spec{
 		OracleID:     "3c2aec69-ffd9-4a34-888c-58adbbb99bb5",
 		Name:         "Wakening Sun's Avatar",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
