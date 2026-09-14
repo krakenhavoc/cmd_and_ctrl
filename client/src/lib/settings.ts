@@ -3,6 +3,7 @@ import { setMuted, setVolumeMultiplier } from "./sounds";
 import { setMusicMuted, setMusicVolumeMultiplier } from "./music";
 import { setAnimationConfig } from "./animations";
 import { STEP_IDS, NO_PRIORITY_STEPS, type StepID } from "./turn";
+import { sanitizeOverrides } from "./shortcuts";
 
 // Settings is the client-wide preferences schema. Every toggle the
 // Settings panel surfaces maps to a field here. Persisted to
@@ -149,6 +150,24 @@ export interface Settings {
     showBotReasoning: boolean;
   };
 
+  shortcuts: {
+    // Master switch for the global keymap. Off leaves every local
+    // handler alone — modals still close on Escape, prompts still
+    // confirm on Enter, cards are still operable from the keyboard.
+    // Only the global layer stands down.
+    enabled: boolean;
+    // OVERRIDES ONLY. A row the user has never touched is absent
+    // here and resolves against shortcuts.ts's current default, so
+    // retuning a default reaches everyone who did not deliberately
+    // choose otherwise. An explicit unbind is stored as "" — which
+    // is exactly why this can't be a full map with holes.
+    //
+    // Keys are ShortcutID; typed as a loose record so settings.ts
+    // does not have to move whenever an action is added, and
+    // sanitized on the way in by shortcuts.sanitizeOverrides.
+    bindings: Record<string, string>;
+  };
+
   accessibility: {
     // Honours the OS prefers-reduced-motion signal at first load;
     // subsequent flips persist as explicit overrides.
@@ -164,7 +183,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 9;
+export const SETTINGS_VERSION = 10;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -268,6 +287,18 @@ export function defaultSettings(): Settings {
       // a debug surface and a lot of lines.
       showBotReasoning: false,
     },
+    shortcuts: {
+      // v10 default: ON. The defaults are chosen not to collide with
+      // a browser or OS reservation and the dispatcher refuses to
+      // fire while a text field has focus or a modal is up, so
+      // shipping the keymap live is what makes the game feel faster
+      // for someone who never opens this panel. The switch exists
+      // for the player who wants none of it.
+      enabled: true,
+      // No overrides until the player makes one. See the field
+      // comment on Settings["shortcuts"]["bindings"].
+      bindings: {},
+    },
     accessibility: {
       reduceMotion: reduced,
       textScale: 1.0,
@@ -294,6 +325,7 @@ function migrate(raw: unknown): Settings {
     animations: { ...d.animations, ...(s.animations ?? {}) },
     display: { ...d.display, ...(s.display ?? {}) },
     gameplay: { ...d.gameplay, ...(s.gameplay ?? {}) },
+    shortcuts: { ...d.shortcuts, ...(s.shortcuts ?? {}) },
     accessibility: { ...d.accessibility, ...(s.accessibility ?? {}) },
   };
   // v1 → v2 (S13): the gameplay.stepStops map was scaffolded as `{}`
@@ -369,6 +401,36 @@ function migrate(raw: unknown): Settings {
   // not exist at v8, so no stored state can be about them. Note this
   // setting does NOT gate improvisation announcements, which are
   // mandatory disclosure and shown at every version.
+  //
+  // v9 → v10 (#565): the `shortcuts` section. Two things worth
+  // spelling out, because neither is the usual "shallow merge fills
+  // it from defaults" story this chain has told eight times.
+  //
+  // First, there IS pre-existing user state to respect, and it is not
+  // in this blob. Settings.svelte has bound "," to the settings panel
+  // since S11.5 and the command bar's gear button advertises it, so
+  // "," is the shipped default for `openSettings` rather than a new
+  // key we picked — nobody's muscle memory moves on upgrade.
+  //
+  // Second, and this is the discipline the rest of this chain is
+  // careful about: we store OVERRIDES, never a materialised map. A
+  // v9 user has no bindings at all, so they get today's defaults; a
+  // v10 user who rebinds one row stores one key. When a default is
+  // retuned later, everyone who never touched that row moves with it
+  // and everyone who did keeps their choice — which is the same
+  // "don't clobber an explicit decision" rule the v2→v3 stepStops
+  // migration had to reconstruct from a structural comparison,
+  // except here the storage shape makes it free.
+  //
+  // sanitizeOverrides drops unknown action ids, unparseable chords
+  // and the reserved chords (Escape / Enter / Tab), and canonicalises
+  // what survives. It also drops an override that has become equal to
+  // the current default, so a row the user "changed" back to the
+  // shipped value stops being pinned.
+  merged.shortcuts = {
+    enabled: merged.shortcuts?.enabled !== false,
+    bindings: sanitizeOverrides(merged.shortcuts?.bindings),
+  };
   return absorbLegacy(merged);
 }
 
@@ -543,7 +605,27 @@ export function resetSettings(): void {
 // subscribes and renders itself when this is true.
 export const settingsOpen: Writable<boolean> = writable(false);
 
-export function openSettings(): void {
+// SettingsTab names the panel's sidebar entries. Lives here rather
+// than in Settings.svelte so a caller can ask for a specific tab
+// without importing the component.
+export type SettingsTab =
+  | "audio"
+  | "animations"
+  | "display"
+  | "gameplay"
+  | "shortcuts"
+  | "accessibility"
+  | "advanced";
+
+// settingsTab is which tab the panel shows on its next open. The
+// panel resets this to "audio" when it closes, so "open settings"
+// with no argument keeps landing on the first tab the way it always
+// has; the shortcuts overlay's "Customise" link is what needs the
+// deep link.
+export const settingsTab: Writable<SettingsTab> = writable("audio");
+
+export function openSettings(tab: SettingsTab = "audio"): void {
+  settingsTab.set(tab);
   settingsOpen.set(true);
 }
 

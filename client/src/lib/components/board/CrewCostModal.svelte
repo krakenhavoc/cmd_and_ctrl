@@ -25,6 +25,7 @@
   import { onDestroy } from "svelte";
   import type { ActivatedAbilityView, CardView } from "../../protocol";
   import { crewAvailablePower, crewPower, crewSatisfied } from "../../crew";
+  import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
     // The Vehicle being crewed; null closes the modal.
@@ -94,6 +95,7 @@
 </script>
 
 {#if card && ability}
+  <ModalLayer />
   <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="crew-cost-title">
     <div class="prompt-modal crew-modal">
       <h2 id="crew-cost-title">

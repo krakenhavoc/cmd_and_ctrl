@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { get } from "svelte/store";
   import {
     settings,
     settingsOpen,
+    settingsTab,
     closeSettings,
     resetSettings,
     updateSettings,
@@ -11,6 +13,25 @@
     fingerprintSettings,
   } from "../settings";
   import { STEP_IDS, STEP_LABELS, NO_PRIORITY_STEPS, type StepID } from "../turn";
+  import {
+    SHORTCUTS,
+    GROUP_ORDER,
+    GROUP_LABELS,
+    bindingConflicts,
+    chordFrom,
+    defaultBindings,
+    effectiveBindings,
+    evaluateBinding,
+    formatChord,
+    isMacLike,
+    elementOf,
+    isTypingTarget,
+    shortcutDef,
+    type ShortcutGroup,
+    type ShortcutID,
+  } from "../shortcuts";
+  import { openShortcutsHelp } from "../shortcutRuntime";
+  import ModalLayer from "./ModalLayer.svelte";
 
   // Steps that grant priority — the only ones the per-step stops UI
   // surfaces. Untap and Cleanup are filtered out since the server
@@ -31,7 +52,14 @@
   // Active sidebar tab. Reset to "audio" every time the modal
   // re-opens so the user doesn't land on a deep tab they forgot
   // about.
-  type Tab = "audio" | "animations" | "display" | "gameplay" | "accessibility" | "advanced";
+  type Tab =
+    | "audio"
+    | "animations"
+    | "display"
+    | "gameplay"
+    | "shortcuts"
+    | "accessibility"
+    | "advanced";
   let activeTab = $state<Tab>("audio");
 
   // Transient "saved ✓" indicator keyed by field path. Surfaces
@@ -68,26 +96,171 @@
     flashSaved(`${String(group)}.${String(key)}`);
   }
 
-  // Reset tab state when the modal reopens.
+  // Land on the tab the opener asked for — "audio" unless someone
+  // deep-linked (the shortcuts overlay's "Customise…" does). Read
+  // non-reactively so the pin-back-to-audio effect below can write
+  // the same store without looping.
   $effect(() => {
-    if ($settingsOpen) activeTab = "audio";
+    if ($settingsOpen) activeTab = get(settingsTab);
+  });
+  // …and forget the deep link on close, so the next plain open is
+  // back on the first tab the way it always was.
+  $effect(() => {
+    if (!$settingsOpen) settingsTab.set("audio");
   });
 
-  // Global keyboard shortcuts: Esc to close (when open), `,` to
-  // toggle (when idle — not typing in an input). Installed once.
+  // ---- Shortcuts tab ------------------------------------------------
+  //
+  // The rebinding UI. All of the thinking is in lib/shortcuts.ts —
+  // this is capture, show, write.
+  const mac = isMacLike();
+  const liveBindings = $derived(effectiveBindings($settings.shortcuts.bindings));
+  const liveConflicts = $derived(bindingConflicts(liveBindings));
+  const shortcutGroups = $derived(
+    GROUP_ORDER.map((group: ShortcutGroup) => ({
+      group,
+      label: GROUP_LABELS[group],
+      rows: SHORTCUTS.filter((s) => s.group === group),
+    })).filter((g) => g.rows.length > 0),
+  );
+
+  // Which row is listening for a keypress, and the last refusal to
+  // show under it.
+  let capturing = $state<ShortcutID | null>(null);
+  let captureNote = $state<string | null>(null);
+
+  // writeBindings persists the override map. Only rows that differ
+  // from today's default are stored — see the schema comment on
+  // Settings["shortcuts"]["bindings"].
+  function writeBindings(next: Record<string, string>): void {
+    updateSettings("shortcuts", "bindings", next);
+    flashSaved("shortcuts.bindings");
+  }
+
+  function assignBinding(id: ShortcutID, chord: string): void {
+    const def = shortcutDef(id);
+    const next = { ...$settings.shortcuts.bindings };
+    if (def && chord === def.defaultBinding) delete next[id];
+    else next[id] = chord;
+    writeBindings(next);
+  }
+
+  // Unbind is an explicit act and has to survive a default change, so
+  // it is stored as "" rather than by deleting the row.
+  function unbindShortcut(id: ShortcutID): void {
+    assignBinding(id, "");
+    capturing = null;
+    captureNote = null;
+  }
+
+  function resetBinding(id: ShortcutID): void {
+    const next = { ...$settings.shortcuts.bindings };
+    delete next[id];
+    writeBindings(next);
+    capturing = null;
+    captureNote = null;
+  }
+
+  function resetAllBindings(): void {
+    writeBindings({});
+    capturing = null;
+    captureNote = null;
+  }
+
+  function startCapture(id: ShortcutID): void {
+    capturing = capturing === id ? null : id;
+    captureNote = null;
+  }
+
+  // onCapture turns the next keypress into a binding. Tab is let
+  // through so a keyboard user can always leave the control; Escape
+  // cancels; a bare modifier keeps the row listening rather than
+  // assigning a chord that can never be typed.
+  function onCapture(id: ShortcutID, ev: KeyboardEvent): void {
+    if (ev.key === "Tab") {
+      capturing = null;
+      return;
+    }
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (ev.key === "Escape") {
+      capturing = null;
+      captureNote = null;
+      return;
+    }
+    const candidate = evaluateBinding(liveBindings, id, ev);
+    if (candidate.problem === "invalid") return; // still holding a modifier
+    if (candidate.problem === "reserved") {
+      captureNote = `${formatChord(candidate.chord, mac)} belongs to the dialog on screen — Esc closes, Enter confirms, Tab navigates. Pick another key.`;
+      return;
+    }
+    assignBinding(id, candidate.chord);
+    capturing = null;
+    // Conflicts are allowed through on purpose: the user is usually
+    // mid-swap and about to fix the other row. Both rows light up in
+    // the list until they do.
+    captureNote =
+      candidate.conflicts.length > 0
+        ? `${formatChord(candidate.chord, mac)} is now on two actions — the one higher in this list wins until you change the other.`
+        : null;
+  }
+
+  function isConflicted(id: ShortcutID): boolean {
+    const chord = liveBindings[id];
+    if (!chord) return false;
+    return (liveConflicts.get(chord)?.length ?? 0) > 1;
+  }
+
+  function conflictPartners(id: ShortcutID): string {
+    const chord = liveBindings[id];
+    const ids = liveConflicts.get(chord) ?? [];
+    return ids
+      .filter((other) => other !== id)
+      .map((other) => shortcutDef(other)?.label ?? other)
+      .join(", ");
+  }
+
+  function isCustomised(id: ShortcutID): boolean {
+    return Object.prototype.hasOwnProperty.call($settings.shortcuts.bindings, id);
+  }
+
+  const anyCustomised = $derived(Object.keys($settings.shortcuts.bindings).length > 0);
+  const DEFAULTS = defaultBindings();
+
+  $effect(() => {
+    if (!$settingsOpen) {
+      capturing = null;
+      captureNote = null;
+    }
+  });
+
+  // This panel's own keys. Local on purpose: the global layer stands
+  // down entirely while a modal is up (this one registers a
+  // ModalLayer), so a modal that wants a key has to handle it itself.
+  //
+  // Escape closes — every modal in the game does, and the global layer
+  // is forbidden from binding it (shortcuts.RESERVED_CHORDS).
+  //
+  // The settings key TOGGLES, which is what it has done since S11.5.
+  // Opening is the global layer's job now (ADR 0046); closing has to
+  // be handled here, because by the time the panel is up the global
+  // layer no longer fires. Read from the effective binding map rather
+  // than hard-coding "," so a rebound key still closes the panel.
   onMount(() => {
     const handler = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      const isEditable =
-        target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable;
-      if (e.key === "Escape" && $settingsOpen) {
+      if (!$settingsOpen) return;
+      if (e.key === "Escape") {
         e.preventDefault();
         closeSettings();
         return;
       }
-      if (e.key === "," && !isEditable && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if (e.defaultPrevented) return;
+      if (!$settings.shortcuts.enabled) return;
+      if (isTypingTarget(elementOf(e.target))) return;
+      const chord = chordFrom(e);
+      if (chord && chord === effectiveBindings($settings.shortcuts.bindings).openSettings) {
         e.preventDefault();
-        settingsOpen.update((v) => !v);
+        closeSettings();
       }
     };
     window.addEventListener("keydown", handler);
@@ -147,6 +320,10 @@
 </script>
 
 {#if $settingsOpen}
+  <!-- Registers a modal layer for as long as the panel is up, so the
+       global keymap stands down and `d` does not draw a card while
+       you are reading the shortcuts list. See lib/modalLayers.ts. -->
+  <ModalLayer />
   <!-- Backdrop is role-less; click-outside delegates to
        onBackdropClick (which ignores clicks on the inner panel).
        role="dialog" lives on the panel itself so screen readers
@@ -182,6 +359,9 @@
           >
           <button class:active={activeTab === "gameplay"} onclick={() => (activeTab = "gameplay")}
             >Gameplay</button
+          >
+          <button class:active={activeTab === "shortcuts"} onclick={() => (activeTab = "shortcuts")}
+            >Shortcuts</button
           >
           <button
             class:active={activeTab === "accessibility"}
@@ -531,6 +711,97 @@
               the bot's own hand, which makes the game easier. This does <strong>not</strong> control
               improvisation announcements: when a bot plays a card the rules engine can't run, it says
               so every time, and no setting hides that.
+            </p>
+          {:else if activeTab === "shortcuts"}
+            <h3>Keyboard shortcuts</h3>
+            <label>
+              <input
+                type="checkbox"
+                checked={$settings.shortcuts.enabled}
+                onchange={(e) => change("shortcuts", "enabled", e.currentTarget.checked)}
+              />
+              Enable keyboard shortcuts
+              {#if isFresh("shortcuts.enabled")}<span class="saved">✓ saved</span>{/if}
+            </label>
+            <p class="help">
+              Shortcuts never fire while you're typing in a text field, and they stand down entirely
+              while a dialog is open — the dialog owns the keyboard. <kbd>Esc</kbd>,
+              <kbd>Enter</kbd> and <kbd>Tab</kbd> are reserved and can't be rebound: they close,
+              confirm and navigate whatever is on screen. Press
+              <kbd>{formatChord(liveBindings.toggleHelp, mac)}</kbd> anywhere for the cheat sheet,
+              or
+              <button class="linkish" onclick={openShortcutsHelp}>open it now</button>.
+            </p>
+
+            <div class="sc-actions">
+              <button onclick={resetAllBindings} disabled={!anyCustomised}>
+                Reset every binding
+              </button>
+              {#if isFresh("shortcuts.bindings")}<span class="saved">✓ saved</span>{/if}
+            </div>
+
+            {#if captureNote}
+              <p class="sc-note" role="status">{captureNote}</p>
+            {/if}
+
+            {#each shortcutGroups as g (g.group)}
+              <fieldset class="sc-group">
+                <legend>{g.label}</legend>
+                {#each g.rows as def (def.id)}
+                  <div class="sc-row" class:conflict={isConflicted(def.id)}>
+                    <span class="sc-label">
+                      <span class="sc-name">{def.label}</span>
+                      <span class="sc-desc">{def.hint}</span>
+                      {#if isConflicted(def.id)}
+                        <span class="sc-conflict"
+                          >also bound to {conflictPartners(def.id)} — the one higher in this list wins</span
+                        >
+                      {/if}
+                    </span>
+                    <span class="sc-controls">
+                      <button
+                        class="sc-capture"
+                        class:listening={capturing === def.id}
+                        aria-label={capturing === def.id
+                          ? `press a key for ${def.label}`
+                          : `change the key for ${def.label}`}
+                        onclick={() => startCapture(def.id)}
+                        onkeydown={(e) => {
+                          if (capturing === def.id) onCapture(def.id, e);
+                        }}
+                      >
+                        {#if capturing === def.id}
+                          press a key…
+                        {:else if liveBindings[def.id] === ""}
+                          unbound
+                        {:else}
+                          {formatChord(liveBindings[def.id], mac)}
+                        {/if}
+                      </button>
+                      <button
+                        class="sc-mini"
+                        onclick={() => unbindShortcut(def.id)}
+                        disabled={liveBindings[def.id] === ""}
+                        title="turn this shortcut off">off</button
+                      >
+                      <button
+                        class="sc-mini"
+                        onclick={() => resetBinding(def.id)}
+                        disabled={!isCustomised(def.id)}
+                        title={`restore the default (${DEFAULTS[def.id] === "" ? "unbound" : formatChord(DEFAULTS[def.id], mac)})`}
+                        >reset</button
+                      >
+                    </span>
+                  </div>
+                {/each}
+              </fieldset>
+            {/each}
+
+            <p class="help">
+              Bindings are matched on the character your layout produces, not on the physical key
+              position, so <kbd>L</kbd> is the key printed L on your keyboard whatever layout you use.
+              Only the rows you actually change are saved — everything else follows the shipped default,
+              so if we retune one later you'll get the better key.
             </p>
           {:else if activeTab === "accessibility"}
             <h3>Accessibility</h3>
@@ -1020,5 +1291,127 @@
   }
   .step-stop-row .saved {
     margin-left: auto;
+  }
+
+  /* ---- Shortcuts tab ------------------------------------------- */
+  /* Every selector below is new and scoped to this component; nothing
+     borrows a class from another component, which is how a previous
+     PR shipped styles that silently did not apply. */
+  .linkish {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--accent);
+    font: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  .sc-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 6px 0 10px;
+  }
+  .sc-note {
+    margin: 0 0 10px;
+    padding: 7px 10px;
+    border-left: 2px solid var(--gold);
+    background: var(--gold-soft);
+    border-radius: 0 8px 8px 0;
+    color: var(--fg-muted);
+    font-size: 11.5px;
+    line-height: 1.45;
+  }
+  fieldset.sc-group {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px 12px 8px;
+    margin: 0 0 12px;
+  }
+  fieldset.sc-group legend {
+    padding: 0 6px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--fg-dim);
+  }
+  .sc-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .sc-row:last-child {
+    border-bottom: none;
+  }
+  .sc-label {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .sc-name {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--fg);
+  }
+  .sc-desc {
+    font-size: 11px;
+    color: var(--fg-dim);
+    line-height: 1.35;
+  }
+  .sc-conflict {
+    font-size: 11px;
+    color: var(--danger);
+  }
+  .sc-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+  }
+  .sc-capture {
+    min-width: 92px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-raised);
+    color: var(--fg);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .sc-capture:hover {
+    background: var(--surface-hover);
+  }
+  .sc-capture.listening {
+    border-color: var(--gold);
+    background: var(--gold-soft);
+    color: var(--gold-strong);
+  }
+  .sc-row.conflict .sc-capture {
+    border-color: var(--danger);
+  }
+  .sc-mini {
+    padding: 4px 7px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--fg-muted);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .sc-mini:hover:not(:disabled) {
+    color: var(--fg);
+    border-color: var(--border-strong);
+  }
+  .sc-mini:disabled {
+    opacity: 0.35;
+    cursor: default;
   }
 </style>

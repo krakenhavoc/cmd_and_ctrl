@@ -50,6 +50,7 @@
   import { recentClientErrors } from "../clientErrors";
   import type { LogEntry } from "../ws";
   import type { GameView } from "../protocol";
+  import ModalLayer from "./ModalLayer.svelte";
 
   interface Props {
     gameID: string;
@@ -225,6 +226,8 @@
      unless the event actually carries files, so pasting text into the
      textarea behaves normally. -->
 <svelte:window onpaste={onPaste} ondrop={onDrop} ondragover={onDragOver} />
+
+<ModalLayer />
 
 <div class="backdrop" role="dialog" aria-modal="true" aria-labelledby="bug-report-title">
   <div class="modal">

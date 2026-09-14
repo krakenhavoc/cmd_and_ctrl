@@ -15,6 +15,7 @@
   // the same shape as SacrificeCostModal.
   import { onDestroy } from "svelte";
   import type { CardView } from "../../protocol";
+  import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
     // The spell being cast; null closes the modal.
@@ -79,6 +80,7 @@
 </script>
 
 {#if card}
+  <ModalLayer />
   <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="discard-cost-title">
     <div class="prompt-modal dc-modal">
       <h2 id="discard-cost-title">

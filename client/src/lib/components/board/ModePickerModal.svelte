@@ -14,6 +14,7 @@
   import { onDestroy } from "svelte";
   import type { CardView, ModeOptionView } from "../../protocol";
   import { modeOptionCastable } from "../../targeting";
+  import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
     card: CardView | null;
@@ -88,6 +89,7 @@
 </script>
 
 {#if card && spec}
+  <ModalLayer />
   <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="mode-picker-title">
     <div class="prompt-modal">
       <h2 id="mode-picker-title">

@@ -24,6 +24,7 @@
   import { tick, untrack } from "svelte";
   import type { ActionPayload, ActionType, CardView, GameView } from "../../protocol";
   import type { CardMenuOpen } from "../../contextMenu";
+  import ModalLayer from "../ModalLayer.svelte";
   import {
     ZONE_LABELS,
     buildMenuSections,
@@ -193,6 +194,8 @@
 </script>
 
 <svelte:window onkeydown={onKey} onpointerdown={onPointerDown} oncontextmenu={onContext} />
+
+<ModalLayer />
 
 {#snippet row(item: MenuItem)}
   <button

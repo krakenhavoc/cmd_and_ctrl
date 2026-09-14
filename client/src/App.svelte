@@ -14,6 +14,7 @@
   import Game from "./routes/Game.svelte";
   import Catalog from "./routes/Catalog.svelte";
   import Settings from "./lib/components/Settings.svelte";
+  import ShortcutLayer from "./lib/components/ShortcutLayer.svelte";
   import UpdatePrompt from "./lib/components/UpdatePrompt.svelte";
   import EnvBadge from "./lib/components/EnvBadge.svelte";
   import { route, navigate } from "./lib/router";
@@ -140,6 +141,14 @@
      fixed, non-dismissible corner badge so no one mistakes this
      deployment for the live table. -->
 <EnvBadge />
+
+<!-- The global keymap (ADR 0046). Mounted at the shell because there
+     must be exactly ONE global keydown listener for shortcuts — a
+     second one is how two features end up both claiming a key. It
+     dispatches nothing on its own while a modal is up or a text field
+     has focus, and the game route publishes its handlers through
+     lib/shortcutRuntime.ts. Also carries the `?` overlay. -->
+<ShortcutLayer />
 
 <!-- Settings modal lives at the app shell so it overlays every
      route and the keyboard shortcut / reactive store works from

@@ -18,6 +18,7 @@
   import { onDestroy } from "svelte";
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
   import type { CardView, GameView } from "../../protocol";
+  import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
     gameID: string;
@@ -153,6 +154,7 @@
 </script>
 
 {#if cardID}
+  <ModalLayer />
   <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="auto-tap-title">
     <div class="prompt-modal tap-modal">
       <h2 id="auto-tap-title">

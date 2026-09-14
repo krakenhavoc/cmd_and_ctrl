@@ -21,6 +21,8 @@
   import { STEP_IDS, STEP_LABELS, type StepID } from "../../turn";
   import { canManuallyStop, manualStops, toggleManualStop } from "../../priorityStops";
   import { holdPriority, toggleHoldPriority } from "../../holdPriority";
+  import { settings } from "../../settings";
+  import { effectiveBindings, formatChord, isMacLike } from "../../shortcuts";
   import PhaseIcon from "./PhaseIcon.svelte";
 
   interface Props {
@@ -50,6 +52,18 @@
   const priorityHeld = $derived((turn.priority_holder ?? -1) >= 0);
   const activePlayer = $derived(seats[activeSeat]);
   const stepLabel = $derived(STEP_LABELS[turn.step as keyof typeof STEP_LABELS] ?? turn.step);
+
+  // Key hints for the three priority buttons (ADR 0046). Read from
+  // the same binding map the dispatcher uses — imported directly
+  // rather than prop-drilled through Board → PlayerPanel, the way
+  // this component already imports holdPriority — so a rebound key
+  // updates the tooltip and a hint can never advertise a dead key.
+  const mac = isMacLike();
+  const keys = $derived(effectiveBindings($settings.shortcuts.bindings));
+  function keyHint(chord: string): string {
+    if (!$settings.shortcuts.enabled || !chord) return "";
+    return ` (${formatChord(chord, mac)})`;
+  }
 
   // Phase-group boundaries: a faint separator between groups of steps
   // makes the five MTG phases (beginning / precombat main / combat /
@@ -149,7 +163,9 @@
       class:viewer-priority={viewerHasPriority}
       disabled={!viewerHasPriority}
       onclick={onPassPriority}
-      title={viewerHasPriority ? "pass priority — rotates to next seat" : "you don't hold priority"}
+      title={viewerHasPriority
+        ? `pass priority — rotates to next seat${keyHint(keys.passPriority)}`
+        : "you don't hold priority"}
     >
       next
     </button>
@@ -165,9 +181,10 @@
       class:on={$holdPriority}
       aria-pressed={$holdPriority}
       onclick={toggleHoldPriority}
-      title={$holdPriority
+      title={($holdPriority
         ? "hold ON — your own spells and triggers keep the cursor so you can respond to them; click to release"
-        : "hold OFF — your own spells and triggers resolve without asking. Click before you cast to keep priority and respond to them"}
+        : "hold OFF — your own spells and triggers resolve without asking. Click before you cast to keep priority and respond to them") +
+        keyHint(keys.holdPriority)}
     >
       {$holdPriority ? "hold ✓" : "hold"}
     </button>
@@ -177,9 +194,10 @@
       class:on={autopassEnabled}
       aria-pressed={autopassEnabled}
       onclick={onToggleAutopass}
-      title={autopassEnabled
+      title={(autopassEnabled
         ? "autopass ON — every time priority lands on you, it passes; click to turn off"
-        : "autopass OFF — click to pass every priority window (bypasses stops, smart-skip, and manual pins)"}
+        : "autopass OFF — click to pass every priority window (bypasses stops, smart-skip, and manual pins)") +
+        keyHint(keys.toggleAutopass)}
     >
       {autopassEnabled ? "autopass ✓" : "autopass"}
     </button>

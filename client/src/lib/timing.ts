@@ -87,6 +87,23 @@ export function hasNonPassMove(snap: GameView | null | undefined): boolean | und
   return all.some((m) => m.kind !== "pass");
 }
 
+// hasPassMove reports whether the seat's enumerated moves include a
+// pass — i.e. whether yielding priority is a thing this seat can do
+// on this frame. The keyboard layer (ADR 0046) reads it to decide
+// whether the pass-priority key is live, for the same reason
+// everything else in this file reads the move list: the alternative
+// is deriving the priority rules a second time in TypeScript, and
+// S31 sub-PR 2 deleted the last client that did.
+//
+// Undefined move list → undefined answer, same contract as movesFor
+// and hasNonPassMove. `pass` is flagged `always_legal` server-side,
+// so when the list exists at all this is an exact answer.
+export function hasPassMove(snap: GameView | null | undefined): boolean | undefined {
+  const all = snap?.legal_moves;
+  if (!all) return undefined;
+  return all.some((m) => m.kind === "pass");
+}
+
 // --- snapshot readers ----------------------------------------------
 
 // hasPriority reports whether the given viewer ID currently holds
