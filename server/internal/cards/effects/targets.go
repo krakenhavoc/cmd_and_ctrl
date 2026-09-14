@@ -545,3 +545,15 @@ func PermanentYouControl(label string, preds ...CardPredicate) *game.TargetSpec 
 func HasSubtype(sub string) CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hasSubtype(c, sub) }
 }
+
+// Legendary passes for a permanent with the Legendary supertype —
+// Blackblade Reforged's cheaper "equip legendary creature {3}", and
+// the predicate half of every commander-flavoured attachment.
+//
+// Reads game.Card.IsLegendary, which parses the EFFECTIVE type line,
+// so a permanent made legendary by a continuous effect counts and a
+// token copy printed "except it isn't legendary" does not — the same
+// answer the legend rule itself gets.
+func Legendary() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.IsLegendary() }
+}
