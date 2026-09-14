@@ -116,6 +116,16 @@
     return botOptions?.decks.find((d) => d.id === id)?.name ?? id;
   }
 
+  // The curated deck names are flavour ("Raid and Ransack", "Body
+  // Count"), so the <option> text alone does not say which one
+  // attacks. The description leads with the archetype, and it belongs
+  // on the page rather than in a title= tooltip — a tooltip is not an
+  // answer on a touch device, and picking an archetype is the whole
+  // decision this control exists for.
+  const botDeckDescription = $derived(
+    botOptions?.decks.find((d) => d.id === botDeck)?.description ?? "",
+  );
+
   async function refresh(): Promise<void> {
     try {
       games = await listGames();
@@ -522,6 +532,9 @@
                   {/each}
                 </select>
               </label>
+              {#if botDeckDescription}
+                <p class="deck-desc">{botDeckDescription}</p>
+              {/if}
               <div class="bot-actions">
                 <button
                   class="primary"
@@ -1044,6 +1057,14 @@
   .bot-picker .hint {
     flex: 1 0 100%;
     margin: 0;
+  }
+  /* Breaks the picker row so the description reads as a caption under
+     the two selects rather than a third column squeezed beside them. */
+  .deck-desc {
+    flex: 1 0 100%;
+    margin: 0;
+    font-size: 12px;
+    color: var(--fg-muted);
   }
   .bot-error {
     color: var(--danger);
