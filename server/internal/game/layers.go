@@ -140,6 +140,24 @@ type StaticAbility struct {
 	// the Catalog* hooks at use time. Build one with
 	// effects.LoseAllAbilities.
 	RemovesAbilities bool
+	// DependsOnHandSize declares that this ability's OUTPUT changes
+	// when somebody's hand does — Psychosis Crawler's "power and
+	// toughness are each equal to the number of cards in your hand".
+	//
+	// It is an INVALIDATION hint and nothing else: the layer engine
+	// reads it to decide whether a hand-only zone move (a draw, a
+	// discard, a card put into hand) has to drop the cached
+	// resolution. See layerVersionBump.OnEvent.
+	//
+	// Declaring it is how a card whose value is not on the
+	// battlefield stays correct between recomputes. The default —
+	// false — is right for every ability whose inputs are permanents,
+	// counters, tap state or the turn, which is all of them but one,
+	// and that is why the hand is not on the unconditional bump list:
+	// a hand change is the most frequent event in the game and
+	// invalidating on it universally makes the recompute much hotter
+	// for every table that has no such card in play.
+	DependsOnHandSize bool
 }
 
 // staticContinuousEffect is the internal `ContinuousEffect` adapter

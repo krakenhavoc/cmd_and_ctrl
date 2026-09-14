@@ -26,10 +26,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The trigger arrives after the turn-based draw has already happened
 // — CR 504.1 does not use the stack — which is what "an ADDITIONAL
 // card" means.
+//
+// No simplifications. Shipped unreviewed and audited in #74's
+// theme-deck pass, where the Mine's extra card is counted on its
+// controller's draw step and again on an opponent's
+// (blue_draw_deck_smoke_test.go).
 func init() {
 	Register(Spec{
-		OracleID: "d26b27db-a567-4631-b4b6-7294222fbdd1",
-		Name:     "Howling Mine",
+		OracleID:     "d26b27db-a567-4631-b4b6-7294222fbdd1",
+		Name:         "Howling Mine",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventBeginDrawStep},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
