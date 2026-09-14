@@ -21,6 +21,8 @@ func init() {
 		{"66e8f7f8-3a6d-46ba-837c-b9713ddf7f40", "Silver Myr", "U"},
 		// Roadmap batch 12 (#305).
 		{"bd6af7b3-b30f-4a65-a18f-8655f778e76a", "Gold Myr", "W"},
+		// Roadmap batch 33 (#396).
+		{"8b52f30c-5e38-4333-88ab-901b37105b36", "Copper Myr", "G"},
 	} {
 		Register(Spec{
 			OracleID:     myr.oracleID,
