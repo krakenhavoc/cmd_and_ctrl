@@ -279,10 +279,11 @@ func main() {
 		BugStore:          bugStore,
 		Log:               log,
 		Bots:              bots,
-		// The curated archetype decks land in S31 sub-PR 5; until
-		// then the picker offers one honest placeholder. Swapping
-		// this for decks.Registry() is the whole of that wiring.
-		BotDecks: aiseat.PlaceholderDecks(),
+		// The four curated archetype decks from S31 sub-PR 5. This
+		// replaced aiseat.PlaceholderDecks() — the ninety-nine
+		// Mountains stand-in sub-PR 4 shipped while the real decks
+		// were still being built. See botdecks.go.
+		BotDecks: botDeckCatalog{},
 	}))
 
 	srv := &http.Server{

@@ -49,10 +49,21 @@ import "github.com/google/uuid"
 //	           there would wrongly protect all five.
 //	           Exile, bounce, and "put into a graveyard" likewise.
 //
-// So the gate goes at the two places that mean "destroy" and nowhere
+// So the gate goes at the places that mean "destroy" and nowhere
 // else: `DestroyPermanentForEffect` (effect_api.go — the entry point
-// every catalog `DestroyTarget` reaches) and the two damage branches
-// of the SBA `doomed` pre-pass (mutations.go).
+// every catalog `DestroyTarget` reaches), `DestroyPermanentsForEffect`
+// (simultaneous.go — the mass entry point every board wipe reaches,
+// via `DestructibleForEffect` below) and the two damage branches of
+// the SBA `doomed` pre-pass (mutations.go).
+//
+// S30 (#470 / #446): the mass entry point was the one that got
+// missed. S25 shipped the single-target gate hours after S23 shipped
+// the batched sweep, and the sweep's own comment still described
+// indestructible as "not modelled anywhere in the engine" — a note
+// that was true when written and became a lie the same week. Every
+// Wrath of God in the catalog destroyed an Avacyn until this was
+// fixed, which is the direction this engine least wants to be wrong
+// in: a player losing permanents they were entitled to keep.
 //
 // # Damage is still marked
 //
@@ -124,4 +135,60 @@ func (g *Game) destroyBattlefieldPermanentLocked(cardID uuid.UUID) error {
 		return nil
 	}
 	return g.routeBattlefieldCardToOwnerGraveyardLocked(cardID)
+}
+
+// DestructibleForEffect narrows a mass-destruction set down to the
+// permanents a "destroy" can actually destroy, preserving order and
+// dropping nothing else (CR 702.12b).
+//
+// # Why the filter lives here rather than inside the destroy loop
+//
+// The obvious fix for #470 / #446 was to make destroyPermanentsLocked
+// skip indestructible permanents as it walks `ids`. That is wrong
+// twice over.
+//
+//   - destroyPermanentsLocked is SHARED with the state-based-action
+//     sweep in mutations.go, and that sweep's `doomed` set contains
+//     three kinds of permanent indestructible does NOT save: a
+//     creature at 0 toughness (CR 704.5f), a planeswalker at 0
+//     loyalty (CR 704.5i), a battle at 0 defense (CR 704.5p). All
+//     three are "put into a graveyard", not "destroy". A filter one
+//     level down would wrongly protect every one of them. The SBA
+//     already filters the two branches that ARE destruction while it
+//     collects `doomed`, which is why that path was correct before
+//     this function existed and stays untouched by it.
+//   - The batch is published BEFORE the first move
+//     (beginSimultaneousExitLocked) and is what every dies-trigger in
+//     the wipe observes (CR 700.4 / 603.10). Skipping inside the loop
+//     would announce a death that never happens: a Blood Artist would
+//     drain for an Avacyn that is still standing.
+//
+// So the effect-facing entry point filters first and hands
+// destroyPermanentsLocked a set that is already true.
+//
+// Layers are recomputed before the check for the same reason
+// destroyBattlefieldPermanentLocked recomputes: Heroic Intervention
+// resolving in response to a Wrath registers its grant in a frame
+// that has not refreshed `effective` yet, and that is precisely the
+// case a player expects to work.
+//
+// Exported because the catalog's sweep primitive needs the same
+// answer for a second purpose — see effects/mass.go, where "for each
+// creature destroyed this way" must not count the survivors. One
+// rule, one implementation.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) DestructibleForEffect(ids []uuid.UUID) []uuid.UUID {
+	if len(ids) == 0 {
+		return ids
+	}
+	g.RecomputeLayersIfStaleLocked()
+	out := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if c := findBattlefieldCard(g, id); c != nil && IsIndestructible(c) {
+			continue
+		}
+		out = append(out, id)
+	}
+	return out
 }

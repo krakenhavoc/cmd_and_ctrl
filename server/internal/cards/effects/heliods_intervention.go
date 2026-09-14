@@ -15,9 +15,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // X announced and re-checks each slot at resolution; a target that
 // left in response is skipped and the rest are still destroyed (CR
 // 608.2b). Each target is destroyed through the single-permanent
-// verb rather than the batched sweep, so an indestructible target
-// survives as printed (#446: the batched path does not check). The
-// second mode reads X back at resolution and doubles it.
+// verb rather than the batched sweep, because the targets are chosen
+// one by one and there is no predicate to sweep on; an indestructible
+// target survives either way now that S30 (#470 / #446) taught the
+// batched path the same rule. The second mode reads X back at
+// resolution and doubles it.
 //
 // No simplification.
 func init() {

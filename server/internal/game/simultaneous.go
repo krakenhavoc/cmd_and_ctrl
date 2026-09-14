@@ -46,11 +46,18 @@ import "github.com/google/uuid"
 // rules consequences.
 //
 // Deliberately NOT addressed here:
-//   - Indestructible and regeneration are not modelled anywhere in
-//     the engine (keywords.go's canonical set is closed and contains
-//     neither), so "destroy all creatures" really does destroy all
-//     creatures. A batch changes nothing about that.
+//   - Regeneration is not modelled anywhere in the engine
+//     (keywords.go's canonical set is closed and does not contain
+//     it), so "they can't be regenerated" is still cosmetic. A batch
+//     changes nothing about that.
 //   - Totem armor, likewise absent.
+//
+// Indestructible USED to be on that list, and the entry outlived its
+// truth: S25 (#380) shipped CR 702.12 hours after this file landed,
+// and this note kept telling readers the engine had no such concept
+// for four sprints while every board wipe killed an Avacyn
+// (#470 / #446). DestroyPermanentsForEffect now filters the set
+// through DestructibleForEffect before the batch opens.
 //   - The CR 903.9 commander replacement still fires per card, and
 //     still fires ASYNCHRONOUSLY: a commander in the batch queues its
 //     owner's yes/no prompt and does not move until they answer. That
@@ -148,9 +155,17 @@ func (g *Game) harvestSimultaneousExitLocked(ev Event) {
 // stays on DestroyPermanentForEffect; routing one card through here
 // would be correct but would pay for a batch nothing observes.
 //
+// S30 (#470 / #446): indestructible permanents are dropped from the
+// set BEFORE the batch opens, so a wipe neither destroys them nor
+// announces their death to the dies-triggers watching. See
+// DestructibleForEffect in indestructible.go for why the filter is
+// here rather than in destroyPermanentsLocked, which the SBA sweep
+// shares and whose zero-counter branches indestructible must not
+// save.
+//
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) DestroyPermanentsForEffect(ids []uuid.UUID) int {
-	return g.destroyPermanentsLocked(ids)
+	return g.destroyPermanentsLocked(g.DestructibleForEffect(ids))
 }
 
 // destroyPermanentsLocked is the shared implementation behind the
@@ -158,6 +173,14 @@ func (g *Game) DestroyPermanentsForEffect(ids []uuid.UUID) int {
 // mutations.go, which has exactly the same simultaneity requirement:
 // every creature that dies to one Pyroclasm or one Toxic Deluge dies
 // at the same time as the others.
+//
+// It does NOT filter indestructible: both callers hand it a set that
+// has already been narrowed by the rule that applies to them, and
+// they are different rules. The effect path drops every
+// indestructible permanent (CR 702.12b); the SBA path drops them only
+// from the two damage-driven branches, because CR 704.5f / 704.5i /
+// 704.5p put a permanent into a graveyard rather than destroying it
+// and indestructible is no help there.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) destroyPermanentsLocked(ids []uuid.UUID) int {

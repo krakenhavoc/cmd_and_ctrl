@@ -50,8 +50,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "24882fa2-3fe9-4c1b-aa3d-0e6488b9db27",
 		Name:         "Heroic Intervention",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Indestructible saves a permanent from single-target removal and from lethal damage, but a board wipe (\"destroy all\") still destroys it."},
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return GrantKeywordUntilEOT{
 				Match:    YouControl(),
