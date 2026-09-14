@@ -228,6 +228,60 @@ export interface GameView {
   // entry naming a card is an entry this viewer is entitled to see
   // named. Absent on a game that has produced no events yet.
   log?: LogEvent[];
+  // S22 broadcast reveals (CR 701.16): the cards players have shown
+  // the WHOLE TABLE this turn, oldest first, at most 4 of them.
+  //
+  // The one field on this view that is byte-identical for every seat.
+  // Everything else here has been through a per-viewer filter; a
+  // reveal has not, because a reveal one seat could not see would not
+  // be a reveal. Absent when nothing has been revealed this turn.
+  //
+  // Note what is NOT here: instance IDs. Neither the revealed cards'
+  // nor the revealing card's. A reveal makes a card public for that
+  // moment and to that extent — it does not hand out a handle that
+  // outlives the moment, because the cards usually go straight back
+  // into a hidden zone. Render from the printed identity.
+  reveals?: RevealView[];
+}
+
+// RevealView is one reveal: the cards a player showed the whole table
+// at one moment, and why. Mirrors `protocol.RevealView`.
+export interface RevealView {
+  // Engine sequence number of the reveal's first event. Monotonic and
+  // stable across frames — the key to dedupe and order on. It names an
+  // event, not a card.
+  seq: number;
+  // Turn the reveal happened on. Present so a client that has just
+  // reconnected can tell a live announcement from backlog.
+  turn?: number;
+  // Seat index of the player who revealed, or -1.
+  seat: number;
+  // NAME of the card whose effect revealed — never its instance ID.
+  source?: string;
+  // One-line label written by the effect, for the banner.
+  reason?: string;
+  // Zone the cards were revealed out of ("library", "hand"). The cards
+  // did not move; a reveal is not a zone change.
+  from?: string;
+  // The revealed cards, in the order the table saw them. Truncated to
+  // 8 — compare against `count`.
+  cards: RevealedCardView[];
+  // How many cards the reveal actually showed. Larger than
+  // cards.length when the cap bit (Hermit Druid reveals a whole
+  // library); render the difference as "+N more".
+  count?: number;
+}
+
+// RevealedCardView is one card a reveal showed. Deliberately not a
+// CardView: there is nowhere here to put an instance ID, which is the
+// point. `scryfall_id` identifies a PRINTING, the same way the name
+// does, so cardImageURL works from it without any handle on this
+// instance of the card.
+export interface RevealedCardView {
+  name: string;
+  mana_cost?: string;
+  type_line?: string;
+  scryfall_id?: string;
 }
 
 // LegalMoveView mirrors `legal.Move` server-side (ADR 0033 §1): one

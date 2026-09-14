@@ -1794,7 +1794,8 @@ Two engine findings recorded on [#73](https://github.com/krakenhavoc/cmd_and_ctr
 
 - [x] `ScryN` (as the `Scry` primitive), `SurveilN` (`Surveil`), `MillToZone`, `DrawAndScry` (as `Scry.Then`) primitives — `Explore` and `RevealAndChoose` still open
 - [x] Delayed-trigger mechanism (`Game.DelayedTriggers`) for "at the next end step" patterns
-- [x] `KindLookAtCards` wire frame (controller-only with redacted view) — shipped as the `scry` / `surveil` / `look_at_top` PendingChoice kinds; `KindRevealCards` (broadcast) still open
+- [x] `KindLookAtCards` wire frame (controller-only with redacted view) — shipped as the `scry` / `surveil` / `look_at_top` PendingChoice kinds
+- [x] `KindRevealCards` wire frame (broadcast to all) — shipped as `GameView.reveals`, the one field on the view that is byte-identical for every seat
 - [ ] ~40 cards: passive draw engines, top-of-library manipulation, tutoring, mill, big draw payoffs
 - [ ] Theme-deck smoke test (blue draw deck plays 3 turns)
 
@@ -1814,12 +1815,13 @@ Shipped:
 - **`TuckToLibraryForEffect`** and **`EventBeginDrawStep`**.
 - **~20 cards**: the three surveil lands now surveil; Sensei's Divining Top, Ponder, Crystal Ball, Otherworldly Gaze, Thought Scour, Reliquary Tower; Enlightened / Worldly / Mystical Tutor, Imperial Seal, Fabricate, Beseech the Queen; Psychosis Crawler, The Locust God, Howling Mine, Hedron Crab.
 - **Face-down exile** (`ExileTopFaceDownForEffect` / the `ExileTopFaceDown` primitive) and **`SkipYourDrawStep`**, the CR 500.8 step-skip replacement, seat-scoped to its controller in a way Stasis's table-wide untap skip is not.
+- **The broadcast reveal** (`RevealForEffect`, the `RevealCards` / `RevealTopOfLibrary` primitives, `GameView.reveals`, and the board's reveal banner). The mirror image of face-down exile, and the other end of the scry family: a look-at marks one knower and the wire hides the cards from everyone else; a reveal marks every seat AND announces itself, because knowledge alone is silent — it changes what a client may see without telling anyone that anything happened, and a shuffle takes it away again before the next frame. The frame carries printed identity and **no instance IDs at all**, for the revealed cards or for the card that revealed them: that is the "a UUID is a correlation handle" argument the public log settled at build time and #513 had to settle again for pending-choice options, arriving a third time and pointed at a card that is about to go back into a hidden zone. It retrofits every card that already printed the word — 59 tutors with `SearchLibrarySpec.Reveal`, Hermit Druid (whose reveal only marked the land it kept), and Consuming Aberration (which declared the reveal unmodelled).
 - **The life-for-cards draw engines**: Necropotence, Yawgmoth's Bargain, Griselbrand, Vilis, Broker of Blood, Bloodgift Demon. All five declared `full`.
 
 Still open, each blocked on something specific rather than on time:
 
 - **`Explore`** and **`RevealAndChoose`** — no card in the catalog needs them yet.
-- **`KindRevealCards`** (broadcast reveal) — Fact or Fiction is the card that would force it. Dark Confidant's "reveal the top card and put it into your hand" wants the same thing.
+- **Fact or Fiction** and **Dark Confidant** — the reveal frame they were waiting on is built, but neither card is registered. Fact or Fiction additionally needs "an opponent separates those cards into two piles", which is the same opponent-choice-at-resolution seam `RevealAndChoose` names. Both are blocked on a mechanical detail rather than on engine work: the catalog keys on Scryfall `oracle_id`, which comes out of the local bulk dump at `$CMDCTRL_DATA_DIR/scryfall/default-cards.json`, and a wrong id silently fails to bind (or, worse, collides with another card).
 - **Sylvan Library** — needs a repeated per-card "pay 4 life or put it back" prompt; the choice queue has no prompt-after-a-prompt composition. The same gap blocks Ponder's "you may shuffle".
 - **Mystic Remora** — cumulative upkeep.
 - **Soothsaying** and **Helm of Obedience** — `AbilityCost` has no `{X}` component.

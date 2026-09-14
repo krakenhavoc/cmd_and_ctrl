@@ -427,6 +427,22 @@ const (
 	// has just left, and the fewer hops between "defeated" and the
 	// exile-and-cast that follows, the better. Added in S27.
 	EventBattleDefeated EventKind = "battle_defeated"
+
+	// EventRevealCards — Actor showed CardID to the whole table (CR
+	// 701.16). Fires once per card, so "reveal the top five cards of
+	// your library" produces five events sharing one RevealSeq; the
+	// wire projection groups them back into a single announcement.
+	// Source is the card whose effect revealed; OldZone is the zone
+	// the card was revealed FROM (it has not moved — a reveal is not
+	// a zone change); Label is the one-line reason the client shows.
+	//
+	// The knowledge half of a reveal is not carried by this event: it
+	// is the KnownBy set, which RevealForEffect writes before
+	// emitting. The event exists because knowledge alone is silent —
+	// nothing tells the other seats that a reveal just happened, or
+	// what it was once a shuffle has taken the knowledge away again.
+	// Added in S22.
+	EventRevealCards EventKind = "reveal_cards"
 )
 
 // Event is a single entry in the per-game event log. Tagged union
@@ -493,6 +509,22 @@ type Event struct {
 
 	// ErrorMsg carries the failure reason on EventEffectError.
 	ErrorMsg string `json:"error_msg,omitempty"`
+
+	// RevealSeq groups the per-card EventRevealCards events of ONE
+	// reveal, and is the Seq the first of them was stamped with.
+	// "Reveal the top five cards of your library" is five events —
+	// one per card, because CardID names exactly one — and the table
+	// saw one thing, not five. protocol.publicRevealsOf keys on this
+	// to put them back together.
+	//
+	// Deliberately an explicit key rather than inferred from
+	// adjacency: two reveals in one resolution (each opponent reveals
+	// their top card) are adjacent and are not the same
+	// announcement. Deliberately a Seq rather than a fresh UUID so a
+	// replayed game produces a byte-identical event stream.
+	//
+	// Zero on every other kind. Added in S22.
+	RevealSeq uint64 `json:"reveal_seq,omitempty"`
 
 	// Combat marks an EventDealDamage as combat damage (CR 510) —
 	// dealt by an attacking or blocking creature in the combat

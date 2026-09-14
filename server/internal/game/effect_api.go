@@ -1267,20 +1267,25 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 			return nil
 		}
 		if spec.Reveal {
-			g.revealLibraryCardsLocked(p, ids)
+			g.revealLibraryCardsLocked(spec, p, ids)
 		}
 		if spec.ToTop {
 			return ids
 		}
 		return nil
 	}
+	// S22: the reveal happens ONCE, before anything moves, and names
+	// every card the search took. Cultivate's "reveal those cards" is
+	// one announcement about two lands rather than two announcements
+	// about one each, and revealing before the move is what the card
+	// prints — the table sees the cards where they were found.
+	if spec.Reveal {
+		g.revealLibraryCardsLocked(spec, p, ids)
+	}
 	found := make([]uuid.UUID, 0, len(ids))
 	for _, id := range ids {
 		if !p.Library.Contains(id) {
 			continue
-		}
-		if spec.Reveal {
-			g.revealLibraryCardsLocked(p, []uuid.UUID{id})
 		}
 		if destZone.Kind == ZoneBattlefield {
 			moved, ok := g.searchEnterBattlefieldLocked(spec, p, id)
@@ -1425,22 +1430,45 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 	return moved.InstanceID, true
 }
 
-// revealLibraryCardsLocked marks the named library cards known to
-// every seated player — the CR sense of "reveal". Caller must hold
-// g.mu.
-func (g *Game) revealLibraryCardsLocked(p *Player, ids []uuid.UUID) {
-	want := make(map[uuid.UUID]bool, len(ids))
+// revealLibraryCardsLocked reveals the named library cards to the
+// whole table — the CR 701.16 sense of "reveal" that a tutor prints
+// between "search your library for a card" and "put it into your
+// hand".
+//
+// S22: this used to be a KnownBy loop and nothing else, which made
+// every tutor's reveal silent. An opponent could read the fetched
+// card once it reached a hand but had no way to tell WHEN, or to
+// tell a tutored card apart from a drawn one; and for a to-top tutor
+// (Enlightened Tutor) the card never reached a visible zone at all,
+// so the loudest downside those cards print never happened. It now
+// goes through the shared reveal primitive, which does the same
+// KnownBy marking and additionally announces it on the wire.
+//
+// Only the cards actually TAKEN are named. The matches the searcher
+// merely flipped past stay private — see queueSearchChoiceLocked for
+// why that distinction is load-bearing.
+//
+// Caller must hold g.mu.
+func (g *Game) revealLibraryCardsLocked(spec SearchLibrarySpec, p *Player, ids []uuid.UUID) {
+	if len(ids) == 0 {
+		return
+	}
+	inLibrary := make([]uuid.UUID, 0, len(ids))
 	for _, id := range ids {
-		want[id] = true
-	}
-	for i := range p.Library.Cards {
-		if !want[p.Library.Cards[i].InstanceID] {
-			continue
-		}
-		for _, seat := range g.Seats {
-			p.Library.Cards[i].AddKnower(seat.ID)
+		if p.Library.Contains(id) {
+			inLibrary = append(inLibrary, id)
 		}
 	}
+	reason := spec.Reason
+	if reason == "" {
+		reason = "revealed from library"
+	}
+	g.RevealForEffect(RevealSpec{
+		Player: spec.Player,
+		Source: spec.Source,
+		Reason: reason,
+		Cards:  inLibrary,
+	})
 }
 
 // finishSearchLocked emits EventSearchLibrary, shuffles if the card

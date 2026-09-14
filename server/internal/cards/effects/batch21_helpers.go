@@ -214,14 +214,21 @@ func b21DamageEachOpponentAndTheirCreaturesAndWalkers(ctx *Context, n int) error
 // finds a card in any zone and emits one ordinary zone move. The land
 // never touches the graveyard and is never searched for or drawn —
 // no mill, search or draw trigger sees it, which is what "reveal …
-// put that card into your hand" means. "Reveal" is honoured by
-// marking every seat as a knower of the land before it moves; the
-// milled cards are public once in the graveyard.
+// put that card into your hand" means.
+//
+// S22: "reveal" is now the shared primitive and covers the WHOLE run,
+// not just the land. It used to mark every seat a knower of the basic
+// land and nothing else, on the reasoning that the cards above it
+// become public in the graveyard a moment later. They do, and that
+// still left the table unable to tell a Hermit Druid activation from
+// any other pile of cards arriving in a graveyard — which, for the
+// card whose entire purpose is emptying a library in one activation,
+// is the one thing worth announcing.
 //
 // With no basic land in the library every card is milled and the
 // empty library flags the loss at the next state check, exactly as a
 // mill of the whole library does — which is the combo the card is
-// famous for.
+// famous for. That case reveals the whole library, as printed.
 func b21RevealUntilBasicLandToHand(ctx *Context, player uuid.UUID) error {
 	p := ctx.PlayerByID(player)
 	if p == nil || p.Library == nil {
@@ -229,17 +236,21 @@ func b21RevealUntilBasicLandToHand(ctx *Context, player uuid.UUID) error {
 	}
 	above := 0
 	land := uuid.Nil
+	run := make([]uuid.UUID, 0, 8)
 	for i := len(p.Library.Cards) - 1; i >= 0; i-- {
+		run = append(run, p.Library.Cards[i].InstanceID)
 		if IsBasicLand(p.Library.Cards[i]) {
 			land = p.Library.Cards[i].InstanceID
-			for _, seat := range ctx.Game.Seats {
-				if seat != nil {
-					p.Library.Cards[i].AddKnower(seat.ID)
-				}
-			}
 			break
 		}
 		above++
+	}
+	if err := (RevealCards{
+		Player: player,
+		Cards:  run,
+		Reason: "reveal from the top until a basic land card",
+	}).Apply(ctx); err != nil {
+		return err
 	}
 	if above > 0 {
 		if err := (MillCards{Player: player, N: above}).Apply(ctx); err != nil {

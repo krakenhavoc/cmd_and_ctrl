@@ -720,3 +720,98 @@ func (e ExileTopFaceDown) Apply(ctx *Context) error {
 	}
 	return err
 }
+
+// RevealCards is "reveal" (CR 701.16): show the named cards to every
+// player at the table, and let them all remember it.
+//
+// The counterpart to Scry / Surveil / LookAtTop, and the difference
+// is the whole reason it is a separate primitive rather than a flag.
+// Those three are LOOK AT — the engine marks the chooser alone a
+// knower and the wire redacts the cards for every other seat. This
+// one marks every seat, and additionally announces the reveal on
+// GameView.Reveals, so the other players are TOLD it happened rather
+// than left to notice a card had quietly become readable.
+//
+// Nothing moves. A reveal is not a zone change, so "reveal the top
+// card of your library and put it into your hand" is this primitive
+// followed by BounceToHand, in that order — which is also what makes
+// the table see the card in the zone it was revealed from.
+//
+// Cards that are no longer findable are skipped rather than erroring:
+// a reveal is a look, and a look at something that has left is
+// nothing.
+type RevealCards struct {
+	// Player is whose cards are shown. Zero means the controller of
+	// the effect.
+	Player uuid.UUID
+
+	// Cards are the instance IDs to reveal, in the order the table
+	// should see them.
+	Cards []uuid.UUID
+
+	// Reason is the one-line label the client banner shows, written
+	// the way the card is written — "Fact or Fiction — reveal the top
+	// five cards of your library".
+	Reason string
+}
+
+func (r RevealCards) Apply(ctx *Context) error {
+	if len(r.Cards) == 0 {
+		return nil
+	}
+	player := r.Player
+	if player == uuid.Nil {
+		player = ctx.Controller()
+	}
+	ctx.Game.RevealForEffect(game.RevealSpec{
+		Player: player,
+		Source: ctx.Source(),
+		Reason: r.Reason,
+		Cards:  r.Cards,
+	})
+	return nil
+}
+
+// RevealTopOfLibrary is "reveal the top N cards of your library" —
+// Dark Confidant's upkeep flip, and the half of Fact or Fiction that
+// happens before anybody has to make a decision.
+//
+// The cards stay on the library; Revealed hands back what they were
+// so the rest of the card's text can act on them. Re-reading the
+// library afterwards to find out would be wrong the moment anything
+// else touched it during the same resolution, and once the card has
+// moved there is no other way to name it.
+//
+// A short library reveals what it has, an empty one reveals nothing,
+// and neither is an error. Revealing is not drawing: running the
+// library out this way does not set up the CR 704.5b loss.
+type RevealTopOfLibrary struct {
+	// Player is whose library is revealed from. Zero means the
+	// controller of the effect.
+	Player uuid.UUID
+
+	// N is how many cards come off the top. Non-positive is a no-op.
+	N int
+
+	// Reason is the banner label — see RevealCards.Reason.
+	Reason string
+
+	// Revealed, when non-nil, is filled with the instance IDs that
+	// were revealed, top card first.
+	Revealed *[]uuid.UUID
+}
+
+func (r RevealTopOfLibrary) Apply(ctx *Context) error {
+	if r.N <= 0 {
+		return nil
+	}
+	player := r.Player
+	if player == uuid.Nil {
+		player = ctx.Controller()
+	}
+	ids := ctx.Game.RevealTopOfLibraryForEffect(player, ctx.Source(), r.N, r.Reason)
+	if r.Revealed != nil {
+		*r.Revealed = ids
+	}
+	return nil
+}
