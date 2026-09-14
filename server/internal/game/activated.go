@@ -286,12 +286,31 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	if p == nil {
 		return ErrPlayerNotFound
 	}
+	// S24: the CR 602.5a restriction rides on the effective
+	// characteristic, so the layers have to be fresh before the
+	// source is judged. Hoisted above the controller check rather
+	// than tucked in beside the restriction test, because
+	// Card.Controller is itself layer 2's materialised output — a
+	// Mind Control that resolved a moment ago has to be visible to
+	// "do you control this permanent" too. Fast-path no-op when
+	// nothing has changed.
+	g.RecomputeLayersIfStaleLocked()
 	source := findBattlefieldCard(g, cardID)
 	if source == nil {
 		return ErrCardNotFound
 	}
 	if source.Controller != playerID {
 		return ErrCardCallerMismatch
+	}
+	// CR 602.5a: "its activated abilities can't be activated"
+	// (Arrest, Faith's Fetters). Checked before the index lookup so
+	// the answer does not depend on which ability was named, and
+	// before any cost validation so nothing is paid. Loyalty
+	// abilities are activated abilities (CR 606.1) and are covered
+	// here too. Mana abilities take the other entry point and the
+	// other bit — see restrictions.go on why that split exists.
+	if !CanActivateAbilities(source) {
+		return ErrCantActivate
 	}
 	abilities := ActivatedAbilitiesForCard(*source)
 	if index < 0 || index >= len(abilities) {

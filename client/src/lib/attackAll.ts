@@ -34,9 +34,10 @@ import type { CardView, GameView, PlayerView } from "./protocol";
 // AttackBlocker is why a creature the viewer controls can't be added
 // to an attack-with-all. "declared" is tracked separately in the plan
 // because it isn't a problem — that creature is already attacking.
-export type AttackBlocker = "tapped" | "summoning-sick" | "defender";
+export type AttackBlocker = "restricted" | "tapped" | "summoning-sick" | "defender";
 
 export const BLOCKER_LABELS: Record<AttackBlocker, string> = {
+  restricted: "can't attack",
   tapped: "tapped",
   "summoning-sick": "summoning sick",
   defender: "defender",
@@ -71,6 +72,12 @@ export interface AttackAllPlan {
 // laxer on purpose (sandbox hand-forcing), but a bulk button must not
 // quietly tap a creature that had no business attacking.
 export function attackBlocker(card: CardView): AttackBlocker | null {
+  // S24: a "can't attack" restriction (Pacifism, Arrest, Faith's
+  // Fetters) is the most permanent reason of the four and goes
+  // first. The flag is READ off the wire, not derived — the server
+  // computes the restriction set and this renders it, so a card the
+  // bulk verb would silently skip is never counted in the button.
+  if ((card.restrictions ?? []).includes("cant_attack")) return "restricted";
   if ((card.abilities ?? []).includes("defender")) return "defender";
   if (card.summoning_sick) return "summoning-sick";
   if (card.tapped) return "tapped";

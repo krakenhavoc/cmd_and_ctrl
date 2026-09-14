@@ -249,11 +249,30 @@ var (
 	// has the defender keyword (CR 702.3). Added in S18 sub-PR 2.
 	ErrDefender = errors.New("game: creature has defender and cannot attack")
 
+	// ErrCantAttack is returned by DeclareAttacker when a continuous
+	// effect says the creature can't attack (CR 508.1c) — Pacifism,
+	// Arrest, Faith's Fetters. Distinct from ErrDefender because
+	// defender is a printed keyword on the creature and this is an
+	// effect from somewhere else, and the player who gets the toast
+	// needs to know which one they are looking at. Added in S24 with
+	// the restriction vocabulary (restrictions.go).
+	ErrCantAttack = errors.New("game: an effect prevents this creature from attacking")
+
+	// ErrCantActivate is returned by the activation paths when a
+	// continuous effect says this permanent's activated abilities
+	// can't be activated (CR 602.5a) — Arrest, Faith's Fetters. The
+	// mana-ability half is the same error: a player who cannot tap
+	// an Arrested Birds of Paradise is being told the same thing.
+	// Added in S24.
+	ErrCantActivate = errors.New("game: an effect prevents activating this permanent's abilities")
+
 	// ErrIllegalBlock is returned by DeclareBlocker when evasion
 	// keywords on the attacker (flying, menace, fear, shadow, etc.)
-	// rule out the proposed blocker. The CanBlock helper is the
-	// single source of truth. Post-S18 fix for the missing gate at
-	// the DeclareBlocker call site.
+	// or a CR 509.1b restriction on either card ("~ can't block", "~
+	// can't be blocked") rule out the proposed blocker. The CanBlock
+	// helper is the single source of truth. Post-S18 fix for the
+	// missing gate at the DeclareBlocker call site; restrictions
+	// joined it in S24.
 	ErrIllegalBlock = errors.New("game: blocker cannot legally block this attacker")
 
 	// ErrNoLegalAttackers is returned by DeclareAttackers when every

@@ -1116,6 +1116,21 @@ export interface CardView {
   // printed keywords (S18 Spec.PrintedKeywords). S18 renders
   // keyword badges from this list via the KeywordBadgeRow component.
   abilities?: string[];
+  // S24 — the restriction set the server computed for this
+  // permanent: "cant_attack", "cant_block", "cant_be_blocked",
+  // "cant_activate", "cant_activate_mana". Absent for the permanent
+  // nothing is restricting, which is nearly all of them.
+  //
+  // Deliberately separate from `abilities`. A restriction is not a
+  // keyword the permanent has — it is an effect something else has
+  // (Pacifism, Arrest, a Whispersilk Cloak) — so it gets no badge;
+  // it disables a control and supplies the reason.
+  //
+  // READ IT, DON'T DERIVE IT. Which creatures can attack is the
+  // server's decision; this field is how it says so. #429 deleted a
+  // pile of client-side rules re-derivation and this must not start
+  // a new one.
+  restrictions?: string[];
   // ADR 0034 — Scryfall's printing layout, absent for the ordinary
   // single-faced card. "modal_dfc" is the one the client acts on:
   // it means playing this card needs a face choice first.

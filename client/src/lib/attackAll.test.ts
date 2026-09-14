@@ -91,6 +91,35 @@ describe("attackBlocker", () => {
   it("ignores vigilance", () => {
     expect(attackBlocker(creature("c1", "a", { abilities: ["vigilance"] }))).toBeNull();
   });
+
+  // S24: a pacified creature is one the server's bulk verb silently
+  // skips, so counting it would make the button lie about how many
+  // creatures are swinging.
+  it("blocks a creature under a can't-attack restriction", () => {
+    expect(attackBlocker(creature("c1", "a", { restrictions: ["cant_attack"] }))).toBe(
+      "restricted",
+    );
+  });
+
+  // The restriction outranks every other reason — it is the one the
+  // player has to answer with a removal spell rather than with time.
+  it("reports the restriction ahead of defender and tapped", () => {
+    const pacified = creature("c1", "a", {
+      tapped: true,
+      summoning_sick: true,
+      abilities: ["defender"],
+      restrictions: ["cant_attack"],
+    });
+    expect(attackBlocker(pacified)).toBe("restricted");
+  });
+
+  // "Can't block" and "can't be blocked" say nothing about whether
+  // this creature may ATTACK. A Whispersilk Cloak carrier is the whole
+  // point of the attack-with-all button, not an exclusion from it.
+  it("ignores the block-side restrictions", () => {
+    expect(attackBlocker(creature("c1", "a", { restrictions: ["cant_block"] }))).toBeNull();
+    expect(attackBlocker(creature("c2", "a", { restrictions: ["cant_be_blocked"] }))).toBeNull();
+  });
 });
 
 describe("planAttackAll", () => {
