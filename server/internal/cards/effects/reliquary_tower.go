@@ -16,11 +16,15 @@ package effects
 // leaving, come out right with no bookkeeping. The mana is a plain
 // colourless tap ability.
 //
-// No simplifications.
+// No simplifications. Shipped unreviewed and audited in #74's
+// theme-deck pass, where an eighteen-card hand walks through cleanup
+// with the Tower out and parks the cursor there the moment it leaves
+// (blue_draw_deck_smoke_test.go) — which is the whole card.
 func init() {
 	Register(Spec{
 		OracleID:      "c23e5b80-08d2-4e24-9908-fe2aa4f30f6f",
 		Name:          "Reliquary Tower",
+		Completeness:  CompletenessFull,
 		NoMaxHandSize: true,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

@@ -20,6 +20,14 @@ import (
 //     (CurrentPower / CurrentToughness delegation) and Tarmogoyf-
 //     style CDA inputs (graveyard-counter changes etc.).
 //
+// And one CONDITIONAL bump, added for #74:
+//   - ANY event whose OldZone / NewZone crosses a HAND boundary — a
+//     draw, a discard, a cast, "put it into your hand" — but only
+//     while a permanent declaring StaticAbility.DependsOnHandSize is
+//     on the battlefield. Psychosis Crawler is the card; see
+//     handSizeStaticIsLiveLocked for why the condition is the whole
+//     design and not an optimisation.
+//
 // Things this listener INTENTIONALLY does NOT bump on:
 //   - Turn advance. Handled, but not here: S25 (#77) put the bump in
 //     `onTurnAdvanceLocked` (game.go) exactly as this note used to
@@ -61,6 +69,23 @@ type layerVersionBump struct{}
 // printed without leaking stale state from a prior battlefield
 // stay).
 func (layerVersionBump) OnEvent(g *Game, ev Event) {
+	// The one CONDITIONAL bump, and the one keyed on the ZONES an
+	// event names rather than on its kind. A draw is EventDrawCard, a
+	// discard is EventDiscardCard and "put it into your hand" is
+	// EventZoneMove; all three carry OldZone / NewZone, and the only
+	// question being asked is whether a hand just changed size. A
+	// kind-based switch here would have to list every current spelling
+	// of "a card crossed a hand boundary" and would silently miss the
+	// next one — which is exactly how the Crawler was wrong for a
+	// sprint.
+	//
+	// Battlefield moves are excluded because the switch below bumps
+	// for them already, unconditionally.
+	if (ev.OldZone == ZoneHand) != (ev.NewZone == ZoneHand) &&
+		ev.OldZone != ZoneBattlefield && ev.NewZone != ZoneBattlefield &&
+		handSizeStaticIsLiveLocked(g) {
+		g.layerVersion.Add(1)
+	}
 	switch ev.Kind {
 	case EventZoneMove:
 		if ev.OldZone == ZoneBattlefield || ev.NewZone == ZoneBattlefield {
@@ -96,6 +121,53 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// half-working even once the keyword table honoured it.
 		g.layerVersion.Add(1)
 	}
+}
+
+// handSizeStaticIsLiveLocked reports whether any permanent on the
+// battlefield declares a static ability marked DependsOnHandSize.
+//
+// # Why the bump this gates is conditional
+//
+// A hand-size CDA — "power and toughness are each equal to the number
+// of cards in your hand" (Psychosis Crawler) — is the one static in
+// the catalog whose input is not on the battlefield, not a counter,
+// not tap state and not the turn. Every other invalidation input is
+// rare; a hand change is the single most frequent thing that happens
+// in a game of Magic. Putting hand moves on the unconditional bump
+// list makes the recompute run after every draw, discard, cast and
+// land drop at every table in the world, whether or not a card that
+// cares is anywhere in play — which is why the two guards
+// (TestLayerVersionDoesNotBumpOnZoneMoveOutsideBattlefield,
+// TestLayerVersionDoesNotBumpOnIrrelevantEvent) exist and why they
+// still pass: with no such permanent on the battlefield this is
+// exactly the no-op they assert.
+//
+// So the question the listener asks is not "did a hand change?" but
+// "did a hand change while something was reading it?", and the answer
+// is a battlefield walk with a catalog lookup per permanent. That is
+// the cost this pays on hand moves at a table that does have one, and
+// it is bounded by the board rather than by the hand.
+//
+// The walk is deliberately not replaced by an incrementally
+// maintained counter. A permanent's catalog key can change without
+// any zone move at all — a Clone that copies Psychosis Crawler starts
+// depending on hand size while sitting still — so a counter
+// maintained on entry and exit would be wrong in exactly the case
+// that is hardest to notice.
+//
+// Caller must hold g.mu (the EmitEvent path always does).
+func handSizeStaticIsLiveLocked(g *Game) bool {
+	if g.Battlefield == nil || CatalogStaticAbilities == nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		for _, ab := range CatalogStaticAbilities(CatalogKey(g.Battlefield.Cards[i])) {
+			if ab.DependsOnHandSize {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // stampBattlefieldEntryLocked sets EnteredBattlefieldAt on the

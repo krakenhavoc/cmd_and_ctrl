@@ -27,15 +27,16 @@ const (
 // TestPsychosisCrawlerIsAsBigAsYourHand — the layer-7a CDA. Power and
 // toughness are SET from the controller's hand size.
 //
-// The second half of this test is the one that documents a real
-// limitation: the layer engine's cached resolution is invalidated by
-// battlefield events, counters and tap state, and NOT by hand-size
-// changes (see layer_listener.go's OnEvent, and the two tests in
-// internal/game that deliberately guard against bumping on a
-// library→hand move). So the Crawler reads correctly at every
-// recompute and goes stale between them. Asserted here as it
-// actually behaves rather than as it should, with the gap written
-// down on the card.
+// The second half used to document a limitation: the layer engine's
+// cached resolution was invalidated by battlefield events, counters
+// and tap state and NOT by hand-size changes, so the Crawler read
+// correctly at every recompute and went stale between them — and the
+// test called BumpLayerVersionForTest to paper over it.
+//
+// #74 closed that with StaticAbility.DependsOnHandSize: a hand-only
+// zone move now drops the cache, but only while a permanent that
+// declares the dependency is on the battlefield. So the forced bump
+// is gone from this test, and its absence is the assertion.
 func TestPsychosisCrawlerIsAsBigAsYourHand(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
@@ -61,16 +62,34 @@ func TestPsychosisCrawlerIsAsBigAsYourHand(t *testing.T) {
 		t.Errorf("toughness is %d with %d cards in hand, want %d", got, handSize, handSize)
 	}
 
-	// Draw one, then force the recompute the engine does not do for
-	// a hand-size change on its own. With the recompute, the count
-	// is right — which is what proves the CDA itself is correct and
-	// the gap is purely the invalidation list.
+	// Draw one and read again with NOTHING else touching the board:
+	// no forced bump, no token, no counter, no tap. The draw is a
+	// library→hand move and nothing more, which is precisely the
+	// event the listener used to ignore.
 	if err := g.DrawCard(me.ID); err != nil {
 		t.Fatalf("DrawCard: %v", err)
 	}
-	g.BumpLayerVersionForTest()
 	if got := effectivePower(t, g, id); got != handSize+1 {
-		t.Errorf("power is %d after drawing + recompute, want %d", got, handSize+1)
+		t.Errorf("power is %d after drawing a card, want %d — the CDA is reading a stale hand",
+			got, handSize+1)
+	}
+	if got := effectiveToughness(t, g, id); got != handSize+1 {
+		t.Errorf("toughness is %d after drawing a card, want %d", got, handSize+1)
+	}
+
+	// And the other direction: a card LEAVING the hand shrinks it.
+	// Discarding is a hand→graveyard move, the mirror image of the
+	// draw and the other half of the conditional bump.
+	discarded := me.Hand.Cards[0].InstanceID
+	if err := g.MoveCardByID(
+		game.ZoneRef{Kind: game.ZoneHand, Owner: me.ID},
+		game.ZoneRef{Kind: game.ZoneGraveyard, Owner: me.ID},
+		discarded,
+	); err != nil {
+		t.Fatalf("hand → graveyard: %v", err)
+	}
+	if got := effectivePower(t, g, id); got != handSize {
+		t.Errorf("power is %d after discarding, want %d", got, handSize)
 	}
 }
 
