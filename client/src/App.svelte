@@ -10,6 +10,7 @@
   import Login from "./routes/Login.svelte";
   import Lobby from "./routes/Lobby.svelte";
   import Join from "./routes/Join.svelte";
+  import Reclaim from "./routes/Reclaim.svelte";
   import Game from "./routes/Game.svelte";
   import Catalog from "./routes/Catalog.svelte";
   import Settings from "./lib/components/Settings.svelte";
@@ -43,6 +44,10 @@
       r.name === "login" ||
       r.name === "adminLogin" ||
       r.name === "join" ||
+      // The whole point of a reclaim link is that the holder has no
+      // session yet — gating it behind one would bounce them to the
+      // login page they cannot get past.
+      r.name === "reclaim" ||
       r.name === "oauthComplete";
     if (!s && !isPublic) {
       navigate("#/login");
@@ -120,6 +125,8 @@
   <Catalog />
 {:else if $route.name === "join"}
   <Join gameID={$route.gameID} inviteToken={$route.inviteToken} spectator={$route.spectator} />
+{:else if $route.name === "reclaim"}
+  <Reclaim gameID={$route.gameID} ticket={$route.ticket} />
 {:else if $route.name === "game"}
   <!-- Keyed so navigating game A → game B tears down and remounts
        the route (fresh GameClient, fresh per-game local state)

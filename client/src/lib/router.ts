@@ -13,6 +13,11 @@ export type Route =
   | { name: "adminLogin" }
   | { name: "lobby" }
   | { name: "join"; gameID: string; inviteToken: string; spectator: boolean }
+  // Seat reclaim: an admin-minted, single-use, short-lived link that
+  // puts a disconnected player back in their OWN seat at a table that
+  // has already started. Public like /join — the ticket is the
+  // credential, because the holder by definition has no session.
+  | { name: "reclaim"; gameID: string; ticket: string }
   | { name: "game"; gameID: string }
   // The card catalogue: every card the engine automates, and how
   // completely. Session-gated, like the server's /catalog route —
@@ -59,6 +64,9 @@ function parseHash(hash: string): Route {
           inviteToken: params.get("t") ?? "",
           spectator: params.get("spectator") === "1",
         };
+      }
+      if (parts.length >= 3 && parts[2] === "reclaim") {
+        return { name: "reclaim", gameID: parts[1], ticket: params.get("t") ?? "" };
       }
       if (parts.length >= 2) {
         return { name: "game", gameID: parts[1] };
@@ -124,4 +132,15 @@ export function inviteURL(gameID: string, token: string): string {
 // instead of /games/{id}/join).
 export function spectatorInviteURL(gameID: string, token: string): string {
   return `${location.origin}${location.pathname}#/games/${gameID}/join?t=${encodeURIComponent(token)}&spectator=1`;
+}
+
+// reclaimURL builds the seat-reclaim link an admin hands to a player
+// who lost their session. Same hash-route shape as the invite links,
+// with the ticket in ?t= — but note the difference in kind: an
+// invite admits anyone who holds it to an OPEN seat, while this one
+// hands over a SPECIFIC player's seat, hidden information included.
+// Treat it like a password, give it to one person, and let it
+// expire.
+export function reclaimURL(gameID: string, ticket: string): string {
+  return `${location.origin}${location.pathname}#/games/${gameID}/reclaim?t=${encodeURIComponent(ticket)}`;
 }

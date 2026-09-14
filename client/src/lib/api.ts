@@ -27,6 +27,11 @@ export interface GameMeta {
   spectator_invite?: string;
   players: SeatInfo[];
   state: "lobby" | "active" | "ended";
+  // Set when an admin has archived the table: it drops out of the
+  // default listing (GET /games) and appears under GET
+  // /games?archived=1 instead. Nothing is deleted — unarchiving puts
+  // it back, replay and all.
+  archived_at?: string;
 }
 
 export interface SeatInfo {
@@ -140,8 +145,11 @@ export async function adminLogin(token: string): Promise<Session> {
   return s;
 }
 
-export async function listGames(): Promise<GameMeta[]> {
-  const res = await authFetch("/games", { method: "GET" });
+// listGames returns the active tables. Pass { archived: true } for
+// the retired ones — a separate view, not a mixed list, so the
+// default lobby never grows without bound as old games pile up.
+export async function listGames(opts: { archived?: boolean } = {}): Promise<GameMeta[]> {
+  const res = await authFetch(opts.archived ? "/games?archived=1" : "/games", { method: "GET" });
   const body = (await res.json()) as { games: GameMeta[] };
   // Defensive normalisation: a buggy server may emit `players: null`
   // for seat-less games (see lobby.copyMeta regression). Iterating
@@ -234,6 +242,86 @@ export async function spectateGame(
     method: "POST",
     body: JSON.stringify({ invite_token: inviteToken, name }),
   });
+  const body = (await res.json()) as SessionResponse;
+  const s: Session = {
+    token: body.token,
+    expiresAt: body.expires_at,
+    principal: body.principal,
+    playerID: body.player_id,
+    gameID: body.game?.id,
+  };
+  setSession(s);
+  return s;
+}
+
+// archiveGame retires a table (admin only): it leaves the lobby
+// listing, its bots stop, and anyone still connected is dropped —
+// but nothing on disk is removed and unarchiveGame is the undo.
+export async function archiveGame(id: string): Promise<GameMeta> {
+  const res = await authFetch(`/games/${id}/archive`, { method: "POST" });
+  return (await res.json()) as GameMeta;
+}
+
+// unarchiveGame returns a retired table to the listing, restarting
+// its bot runners if it was mid-game.
+export async function unarchiveGame(id: string): Promise<GameMeta> {
+  const res = await authFetch(`/games/${id}/archive`, { method: "DELETE" });
+  return (await res.json()) as GameMeta;
+}
+
+// deleteGame destroys a table (admin only) — the lobby entry, the
+// engine snapshot, the restore point AND the replay JSONL. There is
+// no undo; archiveGame is the reversible one. 204, no body.
+export async function deleteGame(id: string): Promise<void> {
+  await authFetch(`/games/${id}`, { method: "DELETE" });
+}
+
+// ReclaimTicket mirrors lobby.reclaimTicketResponse. `ticket` is a
+// bearer credential for one player's seat: anyone holding it can
+// play as that player until it is redeemed or expires. Show the
+// expiry next to the link so whoever hands it out knows exactly what
+// they just gave away.
+export interface ReclaimTicket {
+  ticket: string;
+  game_id: string;
+  player_id: string;
+  seat: number;
+  player_name: string;
+  expires_at: string;
+  ttl_seconds: number;
+  single_use: boolean;
+}
+
+// mintSeatReclaim asks the server for a one-shot link that puts a
+// disconnected player back in their own seat. Admin only — the
+// server enforces it; this just fails loudly if called otherwise.
+export async function mintSeatReclaim(gameID: string, playerID: string): Promise<ReclaimTicket> {
+  const res = await authFetch(`/games/${gameID}/seats/${playerID}/reclaim`, { method: "POST" });
+  return (await res.json()) as ReclaimTicket;
+}
+
+// redeemSeatReclaim is the public half, called by the Reclaim route
+// when a player follows the link. Plain fetch rather than authFetch
+// for the same reason previewGame uses one: the caller has no
+// session (that is the whole problem), and a 401 here means "bad
+// ticket", not "your session expired".
+export async function redeemSeatReclaim(gameID: string, ticket: string): Promise<Session> {
+  const res = await fetch(`/games/${gameID}/reclaim`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ ticket }),
+  });
+  if (!res.ok) {
+    let message = `${res.status} ${res.statusText}`;
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (body.error) message = body.error;
+    } catch {
+      // not JSON — keep the status line
+    }
+    throw new LobbyApiError(res.status, message);
+  }
   const body = (await res.json()) as SessionResponse;
   const s: Session = {
     token: body.token,
