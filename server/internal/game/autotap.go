@@ -81,6 +81,23 @@ func (g *Game) AutoTapForCostForEffect(controller uuid.UUID, cost ParsedCost, xV
 	return g.autoTapLocked(controller, cost, xValue, nil)
 }
 
+// AutoTapForCostForEffectExcluding is AutoTapForCostForEffect with
+// the lock-tap exclusion set, for the one internal caller that needs
+// it: an activated ability whose cost includes {T} must not fund
+// itself by tapping its own source for mana first (CR 602.2b — the
+// {T} and the mana are both components of the same cost). The
+// legal-move enumerator has to exclude exactly what
+// payAbilityManaCostLocked excludes, or it offers activations the
+// engine refuses.
+func (g *Game) AutoTapForCostForEffectExcluding(
+	controller uuid.UUID,
+	cost ParsedCost,
+	xValue int,
+	excluded map[uuid.UUID]bool,
+) ([]uuid.UUID, bool) {
+	return g.autoTapLocked(controller, cost, xValue, excluded)
+}
+
 // autoTapLocked is the lock-aware core. Public callers use the
 // RLock-wrapped exported methods above; internal callers that
 // already hold either lock can route here directly. Read-only —

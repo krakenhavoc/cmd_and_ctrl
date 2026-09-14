@@ -63,11 +63,11 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **1538** |
-| — whole cards (bare `oracle_id`) | **1478** |
+| Registry keys (`len(effects.All())`) | **1541** |
+| — whole cards (bare `oracle_id`) | **1481** |
 | — MDFC back faces (`<oracle_id>#1`) | 60 |
-| Declared `full` | 1066 |
-| Declared `caveats` | 388 |
+| Declared `full` | 1068 |
+| Declared `caveats` | 389 |
 | Declared `unreviewed` | 84 |
 
 A back face is half a card: the modal-DFC land cycle registers only its
@@ -596,11 +596,33 @@ comments; a card can sit in two):
 - **Life-change replacement through the effect path** (#482, 4) and
   **mana-production replacement** (2: Nyxbloom Ancient, Mana
   Reflection).
-- Singles worth naming: X on an activated ability (Treasure Vault,
-  Blast Zone), attack- and block-count restrictions (Silent Arbiter,
-  Crawlspace), a die roll over the seeded RNG (Ancient Copper Dragon,
-  Ancient Gold Dragon), a mill replacement (Bruvac), a search
-  replacement (Aven Mindcensor).
+- Singles worth naming: attack- and block-count restrictions (Silent
+  Arbiter, Crawlspace), a die roll over the seeded RNG (Ancient
+  Copper Dragon, Ancient Gold Dragon), a mill replacement (Bruvac), a
+  search replacement (Aven Mindcensor).
+
+**X on an activated ability is closed.** `game.AbilityCost` reads an
+`{X}` out of its mana component and carries a `MinX` floor for "X
+can't be 0"; the value is announced at CR 602.2b, locked onto the
+stack item, and read back through `ctx.X()` exactly as a spell's is.
+Treasure Vault, Helm of Obedience and Soothsaying ship with it. Blast
+Zone is now a counter question rather than an X one — its "{X}{X},
+{T}: Put X charge counters" is writable today, and what is left is
+the third ability's "destroy each nonland permanent with mana value
+equal to the number of charge counters".
+
+Two neighbouring seams stayed open, and it is worth saying which:
+
+- **A variable-count sacrifice cost.** Ruthless Technomancer's
+  "Sacrifice X artifacts" is an X that is not in the mana component;
+  `AbilityCost.SacrificeOther` still names exactly one permanent.
+- **A mill replacement.** Bruvac still cannot be written, but the
+  reason moved: `MillToZoneForEffect` routes every card through the
+  CR 614 pipeline (so Leyline of the Void and the CR 903.9 commander
+  redirect both apply to a mill today). What is missing is a
+  replacement event kind for the mill AMOUNT — "if a player would
+  mill one or more cards, they mill twice that many instead" is not a
+  per-card zone move.
 
 Three engine bugs the sweep found are filed, not fixed: **#446** (mass
 destroy bypasses indestructible), **#478** (a fetched permanent whose

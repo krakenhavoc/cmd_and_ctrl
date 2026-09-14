@@ -804,6 +804,19 @@ export interface ActivatedAbilityView {
   // The picks ride activate_ability as `crew_ids`.
   crew_cost?: number;
   crew_options?: LegalTargetsView;
+  // {X} in the ability's mana cost (CR 602.2b) — Helm of Obedience,
+  // Treasure Vault, Soothsaying. demands_x opens the X picker before
+  // the targeting step, and the answer rides activate_ability as
+  // `x_value`.
+  //
+  // min_x is the floor the printed text puts on the announcement:
+  // Helm of Obedience's "X can't be 0" ships 1, and absent means the
+  // ordinary floor of zero. x_slots is how many {X} tokens the cost
+  // carries — 2 for Treasure Vault's "{X}{X}" — so the picker can
+  // say what a given X actually costs without re-parsing the string.
+  demands_x?: boolean;
+  min_x?: number;
+  x_slots?: number;
   // Present when the ability targets. A full LegalTargetsView since
   // #334: the server now stamps the clause's min / max (it always
   // had them; abilityLegalTargets just never copied them across),

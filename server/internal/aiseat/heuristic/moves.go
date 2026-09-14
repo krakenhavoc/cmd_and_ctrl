@@ -142,9 +142,27 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 				v -= st.w.permanentValue(c)
 			}
 		}
+		// An {X} ability does more the bigger X is, and the
+		// enumerator has already picked the largest X the seat can
+		// actually pay (legal/abilities.go) — so the policy never
+		// chooses X, it only prices the one on offer. Same
+		// mana-value proxy the instant / sorcery branch of
+		// valueOfCast uses, for the same reason: with no oracle text
+		// on the wire, what the ability cost is the best available
+		// signal for what it does.
+		if cp.XValue > 0 {
+			v += p.cfg.SpellPerMana * float64(cp.XValue)
+		}
 		if src := st.bf[cp.SourceCardID]; src != nil && isCreature(src) && !src.Tapped {
 			// Tapping a creature for an ability costs us a blocker.
 			v -= 0.3
+		}
+		// Crewing taps creatures that would otherwise block, and the
+		// enumerator names them, so the cost is visible here.
+		for _, id := range cp.CrewIDs {
+			if c := st.bf[id]; c != nil && !c.Tapped {
+				v -= 0.3
+			}
 		}
 		return v, "activate"
 

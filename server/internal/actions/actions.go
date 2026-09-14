@@ -964,8 +964,14 @@ func Dispatch(g *game.Game, a Action) error {
 				SacrificeIDs: sacIDs,
 				CrewIDs:      crewIDs,
 				Targets:      refs,
-				Strict:       p.Strict,
-				AutoTap:      p.AutoTap,
+				// The same `x_value` the free-form branch below
+				// hands to buildAbilityParams, now reaching the real
+				// CR 602 path: an ability whose cost carries {X}
+				// announces a value here and the engine charges
+				// XSlots·X generic for it.
+				XValue:  p.XValue,
+				Strict:  p.Strict,
+				AutoTap: p.AutoTap,
 			})
 		}
 		params, err := buildAbilityParams(p.Label, p.Targets, p.Modes, p.XValue, p.Distribution)

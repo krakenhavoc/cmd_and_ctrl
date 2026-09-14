@@ -258,12 +258,43 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 // is sought for the WHOLE cost (the engine does not net floating
 // mana against the plan).
 func (e *enumerator) affordableX(cost game.ParsedCost, spend game.ManaSpendContext) (int, bool) {
+	return e.affordableXFrom(cost, spend, 0)
+}
+
+// affordableXFrom is affordableX with a floor on the announcement —
+// an activated ability whose printed text says "X can't be 0" (Helm
+// of Obedience) has a floor of 1, and a seat that cannot pay for
+// X=1 has no legal activation at all rather than a free one at X=0.
+//
+// The scan still starts at the floor and still breaks on the first
+// unaffordable value, because the cost is monotonic in X: every
+// extra point of X buys the same XSlots generic symbols. Nothing
+// here enumerates a RANGE — exactly one X comes back, so X never
+// enters an expansion cross product (see activatedMoves for why
+// that matters).
+func (e *enumerator) affordableXFrom(cost game.ParsedCost, spend game.ManaSpendContext, floor int) (int, bool) {
+	return e.affordableXExcluding(cost, spend, floor, nil)
+}
+
+// affordableXExcluding is affordableXFrom with sources the payment
+// may not use — the one caller is an activated ability whose cost
+// includes {T}, which cannot tap its own source for mana.
+func (e *enumerator) affordableXExcluding(
+	cost game.ParsedCost,
+	spend game.ManaSpendContext,
+	floor int,
+	excluded map[uuid.UUID]bool,
+) (int, bool) {
 	if cost.XSlots == 0 {
-		return 0, e.canPay(cost, 0, spend)
+		// No {X}: the floor is meaningless and X is always zero.
+		return 0, e.canPayExcluding(cost, 0, spend, excluded)
+	}
+	if floor < 0 {
+		floor = 0
 	}
 	best, ok := -1, false
-	for x := 0; x <= e.opts.MaxX; x++ {
-		if e.canPay(cost, x, spend) {
+	for x := floor; x <= e.opts.MaxX; x++ {
+		if e.canPayExcluding(cost, x, spend, excluded) {
 			best, ok = x, true
 			continue
 		}
@@ -276,10 +307,23 @@ func (e *enumerator) affordableX(cost game.ParsedCost, spend game.ManaSpendConte
 // for — so restricted mana in the pool counts toward a cast it may
 // legally fund and toward no other.
 func (e *enumerator) canPay(cost game.ParsedCost, x int, spend game.ManaSpendContext) bool {
+	return e.canPayExcluding(cost, x, spend, nil)
+}
+
+// canPayExcluding is canPay with sources the auto-tapper may not
+// reach for. It has to mirror exactly what the engine excludes, or
+// the enumerator's answer and the engine's answer disagree — which
+// is the #544 failure mode, one cost component over.
+func (e *enumerator) canPayExcluding(
+	cost game.ParsedCost,
+	x int,
+	spend game.ManaSpendContext,
+	excluded map[uuid.UUID]bool,
+) bool {
 	if e.p.ManaPool.CanPayFor(cost, x, spend) {
 		return true
 	}
-	_, ok := e.g.AutoTapForCostForEffect(e.seat, cost, x)
+	_, ok := e.g.AutoTapForCostForEffectExcluding(e.seat, cost, x, excluded)
 	return ok
 }
 
