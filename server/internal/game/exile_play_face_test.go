@@ -219,6 +219,86 @@ func TestCastFromExileUnderAFaceGrant(t *testing.T) {
 	AssertFaceInvariant(t, g)
 }
 
+// TestBackFacePermanentGoesToTheGraveyardFrontUp is CR 712.8, and it
+// is the "stronger than printed" hole the back-face cast opened.
+//
+// A back-face permanent that dies must be the FRONT face's card in
+// the graveyard. Otherwise a defeated-then-cast Invasion of Karsus,
+// killed, leaves a creature card where a battle card belongs, and
+// "return target creature card from your graveyard" reanimates a 4/4
+// off a card that is not a creature card at all.
+//
+// The rule is keyed on the destination rather than the source, so
+// the stack exit — a back-face spell countered — is the same case,
+// and the sixty MDFC land backs get it for free.
+func TestBackFacePermanentGoesToTheGraveyardFrontUp(t *testing.T) {
+	for _, dst := range []ZoneKind{ZoneGraveyard, ZoneExile, ZoneHand, ZoneLibrary} {
+		g := newActiveGame(t)
+		me := g.Seats[0]
+		card := transformFixture(me.ID)
+		card.SetFace(1)
+		id := card.InstanceID
+		g.Battlefield.PushTop(card)
+
+		to := g.Exile
+		switch dst {
+		case ZoneGraveyard:
+			to = me.Graveyard
+		case ZoneHand:
+			to = me.Hand
+		case ZoneLibrary:
+			to = me.Library
+		}
+		if _, err := MoveCard(g.Battlefield, to, id); err != nil {
+			t.Fatalf("%s: MoveCard: %v", dst, err)
+		}
+		var landed *Card
+		for i := range to.Cards {
+			if to.Cards[i].InstanceID == id {
+				landed = &to.Cards[i]
+			}
+		}
+		if landed == nil {
+			t.Fatalf("%s: the card never arrived", dst)
+		}
+		if landed.ActiveFace != 0 || landed.Name != "Fixture Siege" {
+			t.Errorf("%s: card is face %d (%q), want the front face",
+				dst, landed.ActiveFace, landed.Name)
+		}
+		if !landed.IsBattle() {
+			t.Errorf("%s: type line is %q — the back face followed the card out of play",
+				dst, landed.TypeLine)
+		}
+	}
+}
+
+// TestBackFaceSurvivesTheMoveOntoTheBattlefield is the other half of
+// CR 712.8: the battlefield and the stack are exactly the two zones
+// that keep a back face, and a reset written on the source side
+// instead of the destination would have broken the cast itself.
+func TestBackFaceSurvivesTheMoveOntoTheBattlefield(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	card := transformFixture(me.ID)
+	card.SetFace(1)
+	id := card.InstanceID
+	g.Stack.PushTop(card)
+
+	if _, err := MoveCard(g.Stack, g.Battlefield, id); err != nil {
+		t.Fatalf("MoveCard: %v", err)
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID != id {
+			continue
+		}
+		if g.Battlefield.Cards[i].ActiveFace != 1 {
+			t.Fatalf("the back face was reset on the way onto the battlefield")
+		}
+		return
+	}
+	t.Fatal("the card never arrived on the battlefield")
+}
+
 // TestCastFromExileRefusesTheUngrantedFace is the narrowing half at
 // the action layer: the front face of a card under a back-face grant
 // is not castable, at any price.

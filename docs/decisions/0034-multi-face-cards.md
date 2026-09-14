@@ -807,6 +807,28 @@ The catalog side needed nothing new: a Siege back face registers under
 `"<oracle_id>#1"`, which is §5's keyspace, and the sixty MDFC land
 backs were already living in it.
 
+**A fourth change the first three made necessary: CR 712.8.** A
+double-faced card is front face up in every zone except the
+battlefield and the stack, and the engine did not enforce it anywhere.
+That was latent while the only back faces on the battlefield were MDFC
+lands — Sea Gate, Reborn dying left a *land card* in the graveyard,
+which nothing in the catalog reads. A Siege back face makes it
+reachable and makes it matter in the wrong direction: a Refraction
+Elemental that died would leave a **creature card** where a battle
+card belongs, and "return target creature card from your graveyard"
+would reanimate a 4/4 off a card that is not a creature card at all.
+Stronger than printed.
+
+The reset lives in `MoveCard`, keyed on the DESTINATION, next to the
+CR 400.7 "new object" resets that were already there (tapped state,
+counters, attachments, the S27 protector). Destination rather than
+source because that is how the rule reads — it is a property of where
+the card *is* — and because a spell countered off the stack owes the
+same reset as a permanent that died. This is the family
+[#372](https://github.com/krakenhavoc/cmd_and_ctrl/issues/372) and
+#539 are in: a zone-change rule that was honoured on some routes and
+not others is honoured on the one primitive they all share.
+
 **The declared simplification is timing, not faces.** The free cast is
 a GRANT bounded to the turn the Siege was defeated, not an inline cast
 during the trigger's resolution — cascade's trade, for cascade's

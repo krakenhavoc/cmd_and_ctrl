@@ -1564,13 +1564,15 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// self-replacement is looked up under the right catalog key.
 		//
 		// An MDFC keeps the face that was cast — the other one never
-		// returns. Everything else resolves front-up: an adventure's
-		// creature half is the permanent no matter which half was
-		// cast, and a transform card always enters face 0 (CR 712.4)
-		// whatever an effect does to it afterwards. Today that makes
-		// this a no-op for every layout but modal_dfc, since
-		// CastableFaces refuses a non-zero face on the others; it is
-		// written out because it is where the adventure reroute lands.
+		// returns — and since S32 so does a `transform` card, which is
+		// how a defeated Siege's back face becomes the permanent
+		// instead of the battle re-entering the battlefield. CR 712.4's
+		// "always cast as its front face" is enforced by CastableFaces
+		// refusing to offer the back, so a non-zero transform face here
+		// can only have come from an effect that said "cast it
+		// TRANSFORMED". An adventure still resolves front-up: its
+		// creature half is the permanent no matter which half was cast.
+		// See faceOnResolve.
 		setFaceInZoneLocked(g.Stack, top.InstanceID, faceOnResolve(top.Layout, top.ActiveFace))
 		top.SetFace(faceOnResolve(top.Layout, top.ActiveFace))
 		// Permanents resolve to the battlefield with the announce-time
