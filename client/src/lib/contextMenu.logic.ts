@@ -21,7 +21,7 @@
 
 import { attackAllLabel, attackAllParams, planAttackAll, seatLabel } from "./attackAll";
 import { attackTargetHint, permanentAttackTargets } from "./attackTargets";
-import { isPlaneswalker } from "./cardTypes";
+import { isCreature, isLand, isPlaneswalker } from "./cardTypes";
 import type { ActionType, CardView, GameView } from "./protocol";
 import {
   canActivateLoyalty,
@@ -260,6 +260,25 @@ export function battlefieldClickIntent(
 ): BattlefieldClickIntent {
   if (!canOverride(card, viewerID, isAdmin)) return "none";
   if (isPlaneswalker(card)) return "abilities";
+  // #368, the same shape one rung down. Fabled Passage's only act is
+  // "{T}, Sacrifice this land: search for a basic" — a CR 602
+  // activated ability, not a mana ability — and left-clicking it
+  // just tapped it, leaving the fetch reachable only by right-click.
+  // A land that carries a non-mana activated ability is clicked FOR
+  // that ability, the way a planeswalker is clicked for its loyalty.
+  // Deliberately narrow:
+  //   - only lands, so a creature keeps its left-click tap (that is
+  //     how the sandbox marks one tapped) and its abilities stay on
+  //     right-click;
+  //   - only NON-creature lands, so an animated manland is still
+  //     tappable and selectable in combat;
+  //   - only `activated_abilities`, so a Forest — mana abilities
+  //     only — still taps on click. Utility lands are the whole
+  //     affected set.
+  // Tap and untap remain in the menu this opens, so nothing is lost.
+  if (isLand(card) && !isCreature(card) && (card.activated_abilities?.length ?? 0) > 0) {
+    return "abilities";
+  }
   return "tap";
 }
 

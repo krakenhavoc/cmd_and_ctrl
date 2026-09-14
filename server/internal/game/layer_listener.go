@@ -113,11 +113,17 @@ func stampBattlefieldEntryLocked(g *Game, cardID uuid.UUID) {
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cardID {
 			g.Battlefield.Cards[i].EnteredBattlefieldAt = now
-			// S18 sub-PR 2: every battlefield entry earns
-			// summoning sickness unconditionally. Haste bypass
-			// is evaluated at read time by HasSummoningSickness
-			// so a haste creature is attackable immediately this
-			// same turn without extra clear logic here.
+			// S18 sub-PR 2: every battlefield entry is stamped
+			// unconditionally. This flag is a bare "entered this
+			// turn" marker, NOT the verdict — both the creature
+			// test (CR 302.6) and the haste bypass are evaluated
+			// at read time by HasSummoningSickness, so a haste
+			// creature attacks immediately, an artifact or land
+			// is never sick at all, and a permanent that becomes
+			// a creature later this turn is judged on the types
+			// it has when the question is asked. Stamping here
+			// unconditionally is what makes all three fall out
+			// with no clear logic on this path.
 			g.Battlefield.Cards[i].SummonedThisTurn = true
 			// New entry => stale effective; let the next recompute
 			// rebuild from the fresh printed baseline.

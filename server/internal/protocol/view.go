@@ -810,11 +810,14 @@ type CardView struct {
 	// information, so present on every viewer's copy). Absent off
 	// the battlefield and for cards with none. Added in S21 sub-PR 2.
 	ActivatedAbilities []ActivatedAbilityView `json:"activated_abilities,omitempty"`
-	// SummoningSick reports CR 302.1 sickness: the creature entered
-	// this turn and has no haste, so it can't attack or pay a {T}
-	// cost. Battlefield creatures only. Added in S21 sub-PR 2 for
-	// the activated-ability menu's affordance; the server does the
-	// real check.
+	// SummoningSick reports CR 302.6 sickness: the permanent is a
+	// creature, it entered this turn and it has no haste, so it
+	// can't attack or pay a {T} cost. Battlefield creatures only —
+	// a Treasure, a mana rock or a fetchland that arrived this turn
+	// is NOT sick and must not be greyed (#530, and the reports it
+	// caused: #365, #368). Added in S21 sub-PR 2 for the
+	// activated-ability menu's affordance; the server does the real
+	// check.
 	SummoningSick bool `json:"summoning_sick,omitempty"`
 	// LoyaltyActivated reports CR 606.5: this planeswalker has
 	// already had a loyalty ability activated this turn, so every
