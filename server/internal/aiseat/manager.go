@@ -61,8 +61,11 @@ type botGame struct {
 	runners []*Runner
 }
 
-// NewManager builds a Manager that paces each runner by its tier
-// (ConfigFor). bc is the hub and may be nil in tests.
+// NewManager builds a Manager that paces each runner by its tier —
+// ConfigFor until a policy factory is injected, and the factory's
+// RunnerConfig after (a deployment may have raised the think deadline
+// for a slow self-hosted model). bc is the hub and may be nil in
+// tests.
 func NewManager(bc Broadcaster, log *slog.Logger) *Manager {
 	if log == nil {
 		log = slog.Default()
