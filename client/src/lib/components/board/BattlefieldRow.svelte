@@ -45,6 +45,12 @@
     // negative-margin overlap the land strip uses — so a sword reads
     // as being ON the creature rather than as a separate permanent.
     attachmentsByHost?: Record<string, CardView[]>;
+    // S24: the name of the player each Curse-style permanent enchants,
+    // keyed by the permanent's instance ID. A card attached to a
+    // PLAYER has no host to be drawn behind, so the relation would be
+    // invisible without this. Derived by PlayerPanel, which is the
+    // component that can see the seat list.
+    curseTargets?: Record<string, string>;
   }
 
   const {
@@ -58,6 +64,7 @@
     compact = false,
     strip = false,
     attachmentsByHost = {},
+    curseTargets = {},
   }: Props = $props();
 
   const sorted = $derived.by(() => {
@@ -84,6 +91,7 @@
             <div class="attachment">
               <Card
                 card={a}
+                enchantedPlayer={curseTargets[a.instance_id]}
                 onClick={onCardClick}
                 onActivateManaAbility={onActivateManaAbility
                   ? (idx) => onActivateManaAbility(a, idx)
@@ -97,6 +105,7 @@
           {/each}
           <Card
             card={c}
+            enchantedPlayer={curseTargets[c.instance_id]}
             selected={selectedCombatCardID === c.instance_id}
             attacking={!!c.attacking_target}
             blocking={!!c.blocking_target}

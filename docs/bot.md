@@ -1,0 +1,306 @@
+# AI bot seats (S31)
+
+A bot is a seat at the table with no browser attached. A goroutine on
+the server watches the room, asks a policy which of its legal moves to
+make, and dispatches it down exactly the path a WebSocket client's
+action takes — so a bot's move is one `seq`, one snapshot, one replay
+line and one undo entry, the same as yours.
+
+This page is the player-facing guide: how to add one, what the tiers
+and decks are, and what a bot will and will not do. The architecture,
+and the reasoning behind every decision below, is in
+[ADR 0033 — AI bot seat](decisions/0033-ai-bot-seat.md). The HTTP
+surface is specified in [docs/lobby.md](lobby.md); the chat and view
+fields are in [docs/protocol.md](protocol.md).
+
+> **What is actually wired today.** The packages behind the
+> `heuristic`, `assisted` and `strong` tiers and behind the four
+> curated decks are all built, tested and measured — and none of them
+> is reachable from the lobby yet, because the tier factory and the
+> deck registry were never swapped into `cmd/server`. A bot you add
+> from the lobby right now plays at `random` with a placeholder deck.
+> Tracked as [#501](https://github.com/krakenhavoc/cmd_and_ctrl/issues/501).
+> Everything below describes the shipped design; the tier and deck
+> tables mark what you can select today.
+
+---
+
+## Adding a bot
+
+**Any player already seated at an unstarted table can add one** — this
+is not an admin chore. Admins can too, and a spectator cannot: a
+spectator's session carries the game ID but not a seat, and the
+request is refused with a 403.
+
+In the lobby, an open seat grows an **add bot** control. It opens a
+small picker with two dropdowns — tier and deck — and the seat appears
+immediately, filled, with a **BOT** chip. A bot seat carries a real
+deck, so it satisfies the "every seat has uploaded a deck" gate and
+**Start** lights up exactly as if a human had joined and uploaded.
+
+Removing one is the same control in reverse, on the bot's seat, and
+works only while the game is unstarted. Removing a bot closes the gap
+in seat numbering, which is why the API keys the delete on the seat's
+**player UUID** rather than its index — an index is a value the client
+would have to re-read between reading it and using it.
+
+### Seat arithmetic
+
+**Bots take real seats.** The table holds four, so a seated human can
+add **at most three**. There is no way for a player to make a
+four-bot table: making one would require a fourth bot in the seat the
+requesting human is sitting in.
+
+A four-bot table is reachable only through the admin path (`POST
+/games` is already admin-only, so an admin can create a table and fill
+all four seats). That is deliberate — the all-bot table is the
+engine's fuzz harness, not a player flow.
+
+One human plus one bot is a legal game (`MinPlayers` is 2) and is the
+solo-practice case.
+
+### Under the hood
+
+| | |
+|---|---|
+| `GET /bot/options` | What the picker renders from: the tier list and the deck catalog. Game-independent, so the client fetches it once. |
+| `POST /games/{id}/seats/bot` | `{tier, deck}` — or `{tier, format, source}` to paste a decklist instead of naming a curated one. 201 with the updated game. |
+| `DELETE /games/{id}/seats/bot/{player_id}` | While unstarted. 200 with the updated game. |
+
+The deck travels exactly as it does for a human's upload: the same
+`ParseText` → `Resolve` → `Validate` pipeline, the same 422 violation
+shape. A bot cannot be seated with a deck you could not have uploaded
+yourself, and a curated deck that rots — a renamed card, a new ban —
+fails loudly at the same place a human's would rather than silently
+seating a broken library.
+
+Full request and response shapes, and every error code, are in
+[docs/lobby.md](lobby.md#get-botoptions-s31).
+
+### Lifecycle
+
+`Start` launches one runner goroutine per bot seat. A runner exits on
+its own the moment the game leaves the active state, so the end of a
+game needs no explicit stop. Deleting a game and shutting the server
+down both cancel the runners and wait for them.
+
+**A bot survives a deploy.** `is_bot`, `bot_tier` and `bot_deck` ride
+both the engine snapshot and the persisted lobby metadata, and the
+lobby's restore path relaunches a runner for every bot seat in a game
+that came back active.
+
+---
+
+## The four tiers
+
+The tier is the difficulty slider, set per bot at add time and shown
+on the seat's chip. All four names are declared by the API from the
+first release so the wire shape never changes as policies land.
+
+| Tier | Plays | `MaxThink` | Selectable today |
+|---|---|---|---|
+| `random` | Picks uniformly among its legal moves. | 2s | **yes** |
+| `heuristic` | Scores the board and plays the best move it can see. Free and deterministic. | 2s | no — [#501](https://github.com/krakenhavoc/cmd_and_ctrl/issues/501) |
+| `assisted` | The heuristic, with a model consulted on the close calls. The intended default. | 2s | no — [#501](https://github.com/krakenhavoc/cmd_and_ctrl/issues/501) |
+| `strong` | A model on every window that survives the rules filter, over a wider candidate list. | **5s** | no — [#501](https://github.com/krakenhavoc/cmd_and_ctrl/issues/501) |
+
+`MinThink` is 700ms for every tier: a fast decision is held so the
+table does not feel precognitive. `MaxThink` is a hard deadline, not a
+target — on expiry the runner takes the fallback answer and logs the
+miss. **The table never waits on a model.**
+
+**`random` is not a joke tier.** A four-`random` table playing
+unattended is the cheapest rules-engine fuzzer this project will ever
+get. Its first hour of unattended play found four engine bugs, two of
+which had been wrong in every human game for months. It is not an
+opponent; it is a warm body.
+
+**`heuristic` is the safety net under everything above it.** It is the
+fallback whenever a model call times out, errors, or returns an
+unusable answer, which is why it had to be built before the model
+tiers and why it must stand alone.
+
+### An unavailable tier is refused, not downgraded
+
+Every declared tier is listed by `GET /bot/options`, including the
+ones no policy is wired for, each carrying an `available` flag. The
+picker greys out the unavailable ones; asking for one anyway is a
+**422**, deliberately, and never a silent downgrade to `random`.
+
+A bot whose chip says "strong" and which plays at random is worse than
+no bot at all, because you would tune your play against a label that
+is lying to you.
+
+### No model endpoint is a supported configuration
+
+`assisted` and `strong` with no API key keep their names and play on
+the rules filter plus the heuristic. A server with no key has to be a
+working deployment rather than a broken one, and the model-outage
+drill proves the same path: kill the endpoint mid-game and the table
+plays on to a winner without stalling.
+
+---
+
+## The four curated decks
+
+Curated, not generated, and **every card in them is covered by a
+build-failing test**: a card whose oracle ID has no registered effect
+spec fails the build, with the back-face keys of double-faced cards
+explicitly rejected so a card does not count as covered because its
+back face registered. Without that test "curated" would rot the first
+time a spec was refactored.
+
+| ID | Name | Commander | Archetype |
+|---|---|---|---|
+| `izzet-aggro` | Raid and Ransack | Mary Read and Anne Bonny | Aggro (UR) — cheap creatures that turn artifacts and discards into damage, backed by burn and a thin counterspell suite |
+| `simic-ramp` | Deep Roots | Tatyova, Benthic Druid | Ramp-stompy (UG) — mana creatures and land ramp into large green threats, drawing a card on every land drop |
+| `esper-control` | The Long Answer | Hashaton, Scarab's Fist | Control (WUB) — counterspells, one-for-one removal and six board wipes, with just enough creatures to close |
+| `mono-black-aristocrats` | Body Count | Syr Konrad, the Grim | Aristocrats (B) — free sacrifice outlets, drain-on-death payoffs, and a graveyard full of things to sacrifice again |
+
+Each is exactly 100 cards: one commander and ninety-nine mainboard.
+Deck IDs are wire values and will not be renamed.
+
+**None of the four is selectable today** — the picker still offers the
+single placeholder deck (`placeholder-mono-red`, a commander and
+ninety-nine Mountains) that sub-PR 4 shipped as a stand-in, because
+the curated registry was never wired into the server
+([#501](https://github.com/krakenhavoc/cmd_and_ctrl/issues/501)).
+
+**A bot deck runs the identical pipeline your upload runs.** The
+server holds the decklist as plain text — the same bytes you could
+paste into the upload box — and then parses, resolves and validates it
+against the same Scryfall index, so there is no second legality path
+to keep in sync.
+
+Not built, and for two different reasons. **Voltron / Equipment /
+Aura** is waiting on card count rather than on engine machinery: the
+attachment layer shipped, and so did the first seven attachments,
+which is seven short of a deck. **Combo** is out on principle — a bot
+executing a combo line is a bad experience for the table regardless of
+how well the catalog supports it.
+
+---
+
+## Improvisation, and why an undo is free
+
+The catalog is a few hundred cards, and a bot's deck is drawn entirely
+from it — but a card can be registered without every clause of it
+being implemented. When the line a bot wants needs an effect the
+engine cannot execute, **the bot is allowed to do it by hand**, with
+the same four sandbox verbs you have: `move_card`, `change_life`,
+`add_counter`, `mark_damage`.
+
+Three things make that safe, and all three are enforced in code rather
+than left to the policy:
+
+**It is one bundle, all or nothing.** Every verb in an improvisation
+runs under a single hold of the room lock and commits as one `seq`,
+one replay line and one undo entry — or, if any step fails, none of
+them do. There is no reachable state where half an improvisation is
+applied. The verb list is a closed allow-list: a bundle carrying
+`concede` or `discard_selection` is refused outright.
+
+**It must announce itself, before it happens.** The bot posts a chat
+line naming the card, the intended effect, and the fact that it was
+improvised, and the announcement is built and validated **ahead of**
+the commit — a bundle that cannot name its card and its effect is
+refused before anything is dispatched. The line is always the same
+shape — the card, the effect, and a fixed suffix:
+
+> *&lt;card&gt;*: *&lt;what it was meant to do&gt;* (improvised — the rules
+> engine can't run this card, so I applied it by hand; any player can
+> undo it)
+
+This is **mandatory disclosure**. An unannounced improvisation is a
+bot cheating, and a client that hid the announcement is what would
+make it one. The same commit writes a `bot_improvisation` tag into the
+replay log, so improvisations are greppable when a game goes wrong.
+
+**Any player can undo it, and it costs them nothing.** This is the
+part that will otherwise look like a bug, so it is worth stating
+plainly:
+
+- An improvisation is stamped with a nil caller rather than the bot's
+  seat, so **any seated player can undo it** — not just an admin, and
+  not just the bot.
+- The undo is **free**. It does not spend your `UndosRemaining`, and
+  it works even when you have already spent your take-backs this turn.
+
+The budget exists to police the social cost of taking back *your own*
+move. An improvisation is a bot asserting a rules interpretation the
+engine could not execute; a human correcting it is doing maintenance
+on a catalog gap. Charging for that would make the careful response —
+read the announcement, check the card, put it back — cost more than
+the lazy one, in a feature whose entire safety argument is that it is
+reversible.
+
+**The recourse is shallow, and the announcement matters more than the
+undo.** Undo pops only the top entry of one room-wide stack, so an
+improvisation followed by anything else is out of reach. That is a
+known limit, and it is why the bundle is one entry and why the
+disclosure is not optional.
+
+One consequence worth knowing: the nil caller is a genuine power
+grant. It bypasses the "you may only touch your own cards" gate — it
+has to, since improvised removal reaches an opponent's board and an
+improvised drain reaches their life total. Improvisation is the one
+path on which a bot acts with admin authority, which is exactly why
+the verb list is closed and the announcement is validated first.
+
+---
+
+## Show bot reasoning
+
+**Settings → Gameplay → Show bot reasoning** (`settings.gameplay.showBotReasoning`,
+off by default) surfaces the policy's own one-line justification for
+each move it makes, in the bot feed on the board.
+
+It is debug output, and it is honest debug output: a bot's reasoning
+can name cards in **its own hand**. That is a disadvantage the bot
+accepts, not a leak of yours — a policy is handed the same filtered
+view a human at that seat receives and has no handle that could reach
+another seat's hidden state.
+
+The setting does **not** gate improvisation announcements. Those are
+mandatory disclosure and are shown at every setting, to everyone.
+
+---
+
+## Known limitations
+
+Stated plainly, because most of them are design decisions rather than
+bugs.
+
+**Play quality is capped by catalog coverage, not by the policy.** At
+a few hundred implemented cards, a bot is a competent player of a
+deliberately small format. A better model does not move this ceiling;
+more cards do. This is the honest expectation to set.
+
+**No politics, no deal-making, no bluffing, no table talk.** Bots
+speak only to disclose an improvisation and, behind the setting
+above, to explain a move. Commander is a political format and a bot
+does not play that half of it. A four-bot table is four players who
+never negotiate.
+
+**No learning across games, and no opponent modelling.** Bots are
+stateless between games. The one played you last night remembers
+nothing about it.
+
+**No deckbuilding.** Curated decks only. Picking a deck from the list
+is the whole of the customisation.
+
+**`strong` has no lookahead, and will not get one here.** The tier was
+specified as a one-ply simulation over the top candidates. Simulating
+a move means cloning a game; cloning a game means holding a
+`*game.Game`; and a policy may not hold one — that is the
+hidden-information guarantee in [ADR 0033 §3](decisions/0033-ai-bot-seat.md),
+enforced by an import test that fails the build over it. The two
+requirements are incompatible and the guarantee is the more important
+of the pair. What `strong` actually buys is the frontier model on
+every surviving window and a wider candidate list.
+
+**No Voltron and no combo deck.** See the deck section above.
+
+**Bots do not concede lightly.** The concede heuristic is deliberately
+conservative, on the grounds that a human playing a bot generally
+wants the finish.

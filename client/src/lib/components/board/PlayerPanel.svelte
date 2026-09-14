@@ -167,6 +167,25 @@
     return out;
   });
 
+  // S24 (ADR 0036 decision 14 item 3): a Curse enchants a PLAYER, so
+  // it has no host card to hide behind and stays in its controller's
+  // "enchant / artifact" row. Without a badge naming its victim the
+  // board says nothing about who is being cursed, which is the whole
+  // card — so each such permanent gets the enchanted seat's name.
+  //
+  // Drawing it in the ENCHANTED player's panel would read better
+  // still, but it makes "where a card is drawn" diverge from
+  // card.controller, and that is a new concept for this UI.
+  const curseTargets = $derived.by(() => {
+    const names = new Map((view.seats ?? []).map((s) => [s.id, s.name]));
+    const out: Record<string, string> = {};
+    for (const c of view.battlefield?.cards ?? []) {
+      if (c.attached_to?.kind !== "player" || !c.attached_to.id) continue;
+      out[c.instance_id] = names.get(c.attached_to.id) ?? "a player";
+    }
+    return out;
+  });
+
   // Every battlefield card that is drawn behind a host rather than in
   // its own type row. A dangling attachment — the host has left but
   // the state-based action has not swept the relation yet — keeps its
@@ -303,6 +322,7 @@
     <BattlefieldRow
       label="creatures"
       {attachmentsByHost}
+      {curseTargets}
       cards={buckets.creature}
       {viewerID}
       {selectedCombatCardID}
@@ -316,6 +336,7 @@
     <BattlefieldRow
       label="enchant / artifact"
       {attachmentsByHost}
+      {curseTargets}
       cards={buckets.right}
       compact
       {viewerID}
@@ -328,6 +349,7 @@
     <BattlefieldRow
       label="lands"
       {attachmentsByHost}
+      {curseTargets}
       cards={buckets.land}
       compact
       strip
