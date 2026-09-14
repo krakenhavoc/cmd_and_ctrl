@@ -1,6 +1,8 @@
 package game
 
 import (
+	"fmt"
+	"math/rand/v2"
 	"testing"
 
 	"github.com/google/uuid"
@@ -154,6 +156,186 @@ func TestLayerVersionBumpDrivesRecompute(t *testing.T) {
 	if got != baselineRecomputes+1 {
 		t.Errorf("recompute count = %d, want %d (one bump + N reads = one recompute)", got, baselineRecomputes+1)
 	}
+}
+
+// --- the conditional hand bump (#74) -------------------------------
+//
+// A hand change is the most frequent event in the game, so the
+// listener does not invalidate on it unconditionally. It asks the
+// narrower question: is anything on the battlefield READING a hand
+// right now? Psychosis Crawler is the card; StaticAbility.
+// DependsOnHandSize is how it says so.
+//
+// The pair of tests below is the contract, and the two guards above
+// (TestLayerVersionDoesNotBumpOnZoneMoveOutsideBattlefield,
+// TestLayerVersionDoesNotBumpOnIrrelevantEvent) are the other half:
+// they still pass unchanged, because with no such permanent in play
+// this is exactly the no-op they assert.
+
+const handSizeCDAOracle = "hand-size-cda"
+
+// handSizeCDAForTest is a stub static in the Psychosis Crawler shape:
+// a layer-7a CDA that declares the hand dependency.
+func handSizeCDAForTest() StaticAbility {
+	return StaticAbility{
+		Layer:             Layer7PT,
+		SubLayer:          SubLayer7A_CDA,
+		DependsOnHandSize: true,
+		AppliesTo: func(target *Card, _ *Game, source *Card) bool {
+			return target.InstanceID == source.InstanceID
+		},
+		Apply: func(c *Characteristic, _ *Card, g *Game, source *Card) {
+			n := 0
+			if p := g.PlayerByIDForEffect(source.Controller); p != nil && p.Hand != nil {
+				n = p.Hand.Size()
+			}
+			c.Power, c.Toughness = n, n
+		},
+	}
+}
+
+// TestLayerVersionBumpsOnHandMoveWhenAHandSizeCDAIsLive is the fix.
+func TestLayerVersionBumpsOnHandMoveWhenAHandSizeCDAIsLive(t *testing.T) {
+	withStaticAbilities(t, func(oracleID string) []StaticAbility {
+		if oracleID == handSizeCDAOracle {
+			return []StaticAbility{handSizeCDAForTest()}
+		}
+		return nil
+	})
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	pushTypedTestCard(g, Card{
+		Name:       "Hand Size Horror",
+		TypeLine:   "Artifact Creature — Horror",
+		OracleID:   handSizeCDAOracle,
+		Owner:      owner.ID,
+		Controller: owner.ID,
+	})
+
+	// A real draw is EventDrawCard, NOT EventZoneMove — which is the
+	// detail that made the first draft of this fix silently do
+	// nothing. The gate reads the zones, not the kind.
+	before := readLayerVersion(g)
+	g.WithWriteLock(func() {
+		g.EmitEvent(Event{
+			Kind:    EventDrawCard,
+			Actor:   owner.ID,
+			CardID:  uuid.New(),
+			OldZone: ZoneLibrary,
+			NewZone: ZoneHand,
+		})
+	})
+	if got := readLayerVersion(g); got <= before {
+		t.Errorf("layerVersion did not bump on a draw while a hand-size CDA was on the battlefield: was %d, now %d", before, got)
+	}
+
+	// And the mirror image: a card leaving a hand.
+	before = readLayerVersion(g)
+	g.WithWriteLock(func() {
+		g.EmitEvent(Event{
+			Kind:    EventDiscardCard,
+			Actor:   owner.ID,
+			CardID:  uuid.New(),
+			OldZone: ZoneHand,
+			NewZone: ZoneGraveyard,
+		})
+	})
+	if got := readLayerVersion(g); got <= before {
+		t.Errorf("layerVersion did not bump on a discard while a hand-size CDA was on the battlefield: was %d, now %d", before, got)
+	}
+
+	// A plain zone move into hand ("put it into your hand") counts
+	// too — Dark Confidant's upkeep flip is not a draw.
+	before = readLayerVersion(g)
+	g.WithWriteLock(func() {
+		g.EmitEvent(Event{
+			Kind:    EventZoneMove,
+			CardID:  uuid.New(),
+			OldZone: ZoneLibrary,
+			NewZone: ZoneHand,
+		})
+	})
+	if got := readLayerVersion(g); got <= before {
+		t.Errorf("layerVersion did not bump on a library→hand move: was %d, now %d", before, got)
+	}
+}
+
+// TestLayerVersionIgnoresAHandMoveForAStaticThatDoesNotDeclareIt is
+// the other side of the gate. A permanent whose statics do NOT
+// declare the dependency must not turn every draw at the table into a
+// recompute — otherwise the flag is decorative and the cost is back.
+func TestLayerVersionIgnoresAHandMoveForAStaticThatDoesNotDeclareIt(t *testing.T) {
+	withStaticAbilities(t, func(oracleID string) []StaticAbility {
+		if oracleID != handSizeCDAOracle {
+			return nil
+		}
+		ab := handSizeCDAForTest()
+		ab.DependsOnHandSize = false
+		return []StaticAbility{ab}
+	})
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	pushTypedTestCard(g, Card{
+		Name:       "Ordinary Anthem",
+		TypeLine:   "Enchantment",
+		OracleID:   handSizeCDAOracle,
+		Owner:      owner.ID,
+		Controller: owner.ID,
+	})
+
+	before := readLayerVersion(g)
+	g.WithWriteLock(func() {
+		g.EmitEvent(Event{
+			Kind:    EventDrawCard,
+			Actor:   owner.ID,
+			CardID:  uuid.New(),
+			OldZone: ZoneLibrary,
+			NewZone: ZoneHand,
+		})
+	})
+	if got := readLayerVersion(g); got != before {
+		t.Errorf("layerVersion bumped on a draw with no hand-size CDA in play: was %d, now %d", before, got)
+	}
+}
+
+// BenchmarkHandMoveWithNoHandSizeCDA measures what a draw costs the
+// listener at a full four-player board holding nothing that reads a
+// hand — the case every table is in almost all of the time, and the
+// one the conditional exists to keep cheap.
+func BenchmarkHandMoveWithNoHandSizeCDA(b *testing.B) {
+	g := benchGameWithBoard(b, 40)
+	ev := Event{Kind: EventDrawCard, CardID: uuid.New(), OldZone: ZoneLibrary, NewZone: ZoneHand}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		g.WithWriteLock(func() { g.EmitEvent(ev) })
+	}
+}
+
+// benchGameWithBoard builds a started game with n plain permanents on
+// the battlefield, none of them carrying a catalog entry.
+func benchGameWithBoard(b *testing.B, n int) *Game {
+	b.Helper()
+	g := NewGame()
+	for i := 0; i < 4; i++ {
+		if _, err := g.AddPlayer(fmt.Sprintf("P%d", i+1), buildTestDeck(fmt.Sprintf("Commander %d", i+1))); err != nil {
+			b.Fatalf("AddPlayer: %v", err)
+		}
+	}
+	if err := g.Start(rand.New(rand.NewPCG(1, 2))); err != nil {
+		b.Fatalf("Start: %v", err)
+	}
+	owner := g.Seats[0].ID
+	for i := 0; i < n; i++ {
+		g.Battlefield.PushTop(Card{
+			InstanceID: uuid.New(),
+			Name:       "Filler",
+			TypeLine:   "Creature — Bear",
+			Owner:      owner,
+			Controller: owner,
+		})
+	}
+	return g
 }
 
 // TestNewGameRegistersLayerListener proves the auto-registration:

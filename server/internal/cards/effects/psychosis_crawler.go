@@ -24,36 +24,42 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // that draws three fires it three times, which is exactly what makes
 // the Crawler a win condition rather than a lightning bolt.
 //
-// # Declared limitation: THE P/T GOES STALE BETWEEN RECOMPUTES
+// # The P/T used to go stale between recomputes. It no longer does.
 //
-// The CDA is correct; its INVALIDATION is not. The layer engine
-// caches its resolution and bumps the version on battlefield zone
-// moves, token creation, counters and tap state — see
-// layerVersionBump.OnEvent in internal/game/layer_listener.go. A
-// hand-size change is not on that list, and two tests in
-// internal/game (TestLayerVersionDoesNotBumpOnZoneMoveOutsideBattlefield,
-// TestLayerVersionDoesNotBumpOnIrrelevantEvent) deliberately guard
-// against adding it, because a bump on every hand move makes the
-// recompute much hotter.
+// The CDA was always correct; its INVALIDATION was not. The layer
+// engine caches its resolution and bumped the version on battlefield
+// zone moves, token creation, counters and tap state — and a hand
+// change was on none of those lists, so the Crawler was the right
+// size at every recompute and read one draw behind between them.
+// Drawing a card is the one thing this deck does constantly, which
+// made it the worst possible card to get wrong that way: its own
+// drain trigger resolving did not refresh it.
 //
-// So the Crawler is the right size at every recompute and can read
-// one draw behind between them. In practice almost anything that
-// happens on a board — a token, a counter, a permanent entering or
-// leaving, a tap — refreshes it, and the Crawler's OWN drain trigger
-// resolving does not.
+// Widening the event list was the wrong fix and two tests in
+// internal/game guard against it
+// (TestLayerVersionDoesNotBumpOnZoneMoveOutsideBattlefield,
+// TestLayerVersionDoesNotBumpOnIrrelevantEvent), because a hand
+// change is the most frequent event in the game and bumping on it
+// universally makes the recompute much hotter at every table,
+// including the ones with no card that cares.
 //
-// Fixing it properly means making the invalidation care about WHICH
-// statics are live (bump on a hand change only while a hand-size CDA
-// is on the battlefield) rather than widening the event list. That is
-// a layer-engine change, not a card change, and it is filed on the
-// sprint issue rather than smuggled in here.
+// So the invalidation asks a narrower question — "did a hand change
+// WHILE SOMETHING WAS READING IT?" — and DependsOnHandSize below is
+// how this card answers the second half. Both guard tests still pass
+// unchanged: with no hand-size CDA on the battlefield the listener is
+// the no-op they assert.
 func init() {
 	Register(Spec{
-		OracleID: "2876e74f-a242-4995-9702-0b737a1ab67a",
-		Name:     "Psychosis Crawler",
+		OracleID:     "2876e74f-a242-4995-9702-0b737a1ab67a",
+		Name:         "Psychosis Crawler",
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7A_CDA,
+			// The invalidation hint: a hand move drops the layer
+			// cache while this permanent is on the battlefield, and
+			// costs nothing when it is not.
+			DependsOnHandSize: true,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.InstanceID == source.InstanceID
 			},
