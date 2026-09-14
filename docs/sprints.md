@@ -1799,9 +1799,11 @@ Two engine findings recorded on [#73](https://github.com/krakenhavoc/cmd_and_ctr
 
 **Exit criteria:** Activate Sensei's Divining Top → personal-only modal shows top 3 cards → reorder → confirm. Necropotence: activate to exile a card → advance to end step → card moves to hand automatically.
 
-**Status: the library-manipulation half is done; the passive-draw-engine half is not.**
+**Status: the library-manipulation half is done, and both exit criteria are now met. The passive-draw-engine half is partly shipped.**
 
-The **first exit criterion is met.** Sensei's Divining Top is in the catalog and both its abilities work: `{1}` opens the controller-only reorder modal on the top three, and `{T}` draws then tucks the Top itself, in that order. The **second is still blocked** — Necropotence needs face-down exile plus an exile→hand move, and `exile_play.go` offers neither (its permission grants "you may cast", and its doc comment says the exiled cards are deliberately public).
+The **first exit criterion is met.** Sensei's Divining Top is in the catalog and both its abilities work: `{1}` opens the controller-only reorder modal on the top three, and `{T}` draws then tucks the Top itself, in that order.
+
+The **second exit criterion is now met too.** Necropotence is in the catalog with all three of its clauses — the skip-draw-step replacement, the discard→exile trigger, and "Pay 1 life: exile the top card face down, put it into your hand at the beginning of your next end step". The two missing pieces were built for it: `Game.ExileTopFaceDownForEffect` is the only exile in the engine that does NOT mark the table as knowers (it clears the card's knowledge set and sets `Card.FaceDown`), and `BounceToHandForEffect` clears the face-down flag on the way into hand, per CR 400.7. The delivery rides the existing CR 603.7 delayed-trigger queue with `ControllerTurnOnly` set, because the current Oracle text says "YOUR next end step" — an opponent's end step in between does not hand the card over.
 
 Shipped:
 
@@ -1810,13 +1812,14 @@ Shipped:
 - **`SearchLibrarySpec.ToTop`** — "shuffle, then put that card on top", which retires Vampiric Tutor's S14 to-hand simplification. The delay is the discount on a one-mana tutor; modelling it as to-hand was printing a strictly better card.
 - **`TuckToLibraryForEffect`** and **`EventBeginDrawStep`**.
 - **~20 cards**: the three surveil lands now surveil; Sensei's Divining Top, Ponder, Crystal Ball, Otherworldly Gaze, Thought Scour, Reliquary Tower; Enlightened / Worldly / Mystical Tutor, Imperial Seal, Fabricate, Beseech the Queen; Psychosis Crawler, The Locust God, Howling Mine, Hedron Crab.
+- **Face-down exile** (`ExileTopFaceDownForEffect` / the `ExileTopFaceDown` primitive) and **`SkipYourDrawStep`**, the CR 500.8 step-skip replacement, seat-scoped to its controller in a way Stasis's table-wide untap skip is not.
+- **The life-for-cards draw engines**: Necropotence, Yawgmoth's Bargain, Griselbrand, Vilis, Broker of Blood, Bloodgift Demon. All five declared `full`.
 
 Still open, each blocked on something specific rather than on time:
 
 - **`Explore`** and **`RevealAndChoose`** — no card in the catalog needs them yet.
-- **`KindRevealCards`** (broadcast reveal) — Fact or Fiction is the card that would force it.
-- **Necropotence** — face-down exile + exile→hand, neither of which exists.
-- **Sylvan Library** — needs a repeated per-card "pay 4 life or put it back" prompt; the choice queue has no prompt-after-a-prompt composition.
+- **`KindRevealCards`** (broadcast reveal) — Fact or Fiction is the card that would force it. Dark Confidant's "reveal the top card and put it into your hand" wants the same thing.
+- **Sylvan Library** — needs a repeated per-card "pay 4 life or put it back" prompt; the choice queue has no prompt-after-a-prompt composition. The same gap blocks Ponder's "you may shuffle".
 - **Mystic Remora** — cumulative upkeep.
 - **Soothsaying** and **Helm of Obedience** — `AbilityCost` has no `{X}` component.
 - **Mesmeric Orb** — `untapAllForLocked` does not emit `EventUntapCard`, so the untap step is silent to the trigger system.
@@ -2052,7 +2055,7 @@ Detailed plan: `/home/node/.claude/plans/s28-cost-modification.md`. Builds on S1
 - [ ] Flashback (CR 702.34) — cast from graveyard for flashback cost; exile after
 - [ ] Madness (CR 702.35) — replacement on discard: exile face-down with marker; may cast for madness cost
 - [ ] Foretell (CR 702.143) — sorcery-speed `foretell_card` action; cast on a later turn for foretell cost
-- [ ] Escape (CR 702.144) — cast from graveyard, exile N cards from graveyard as additional cost
+- [x] Escape (CR 702.144) — cast from graveyard, exile N **other** cards from your graveyard. The exile is part of the **escape cost itself** (`AlternativeCost.ExileFromGraveyard`), not an `AdditionalCost`: CR 702.144a makes "[cost]" one cost paid *rather than* the mana cost, and modelling it as an additional cost would have charged the printed mana cost too. Also ships CR 702.144c's "escapes with N +1/+1 counters". 7 cards.
 - [ ] Suspend (CR 702.62) — exile with N time counters; auto-fire removes one each upkeep; cast for free with haste-until-EOT when last removed
 - [ ] Cycling (CR 702.32) — activated ability of cards in hand; cycling triggers fire from hand
 - [ ] Splice (CR 702.47) — addon to instants/sorceries

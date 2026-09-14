@@ -309,9 +309,11 @@
   // after the alternative-cost picker, because it pays the cost that
   // picker just chose; every other cost prompt comes after it.
   //
-  // The options can live in either zone (hand for a pitch,
-  // battlefield for a bounce), so the lookup searches both rather
-  // than assuming one.
+  // The options can live in any of three zones — hand for a pitch,
+  // battlefield for a bounce, graveyard for S29's escape exiles — so
+  // the lookup searches all of them rather than assuming one. The
+  // server has already narrowed the ID set; this only has to find
+  // the CardView behind each ID.
   let altPayPromptCard = $state<CardView | null>(null);
   let altPayPromptChoices: CastChoices = {};
 
@@ -326,17 +328,21 @@
     const ids = new Set(altCostPayOptions(altPayOffer) ?? []);
     if (ids.size === 0) return [];
     const me = view.seats.find((s) => s.id === viewerID);
-    const pool = [...(me?.hand.cards ?? []), ...view.battlefield.cards];
+    const pool = [
+      ...(me?.hand.cards ?? []),
+      ...(me?.graveyard.cards ?? []),
+      ...view.battlefield.cards,
+    ];
     return pool.filter((c) => ids.has(c.instance_id));
   });
 
-  function confirmAltPay(instanceID: string): void {
+  function confirmAltPay(instanceIDs: string[]): void {
     const card = altPayPromptCard;
     const choices = altPayPromptChoices;
     altPayPromptCard = null;
     altPayPromptChoices = {};
     if (!card) return;
-    afterAltCostPayment(card, { ...choices, altCostIDs: [instanceID] });
+    afterAltCostPayment(card, { ...choices, altCostIDs: instanceIDs });
   }
 
   // afterAltCost / afterDiscardCost / afterCastCosts are the seams

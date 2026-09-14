@@ -512,6 +512,70 @@ func (g *Game) ExileCardForEffect(cardID uuid.UUID) error {
 	return nil
 }
 
+// ExileTopFaceDownForEffect exiles the top n cards of playerID's
+// library FACE DOWN (CR 406.3) and returns them in the order they
+// left the library. Necropotence's "exile the top card of your
+// library face down" is the card this exists for.
+//
+// The difference from every other exile in the engine is the one
+// line that is missing: there is no markCardKnownInZoneLocked call.
+// Exile is a public zone, so the ordinary path marks every seat a
+// knower and the wire ships the card's name to the whole table. A
+// card exiled face down is one no player may look at — including
+// the player who exiled it — so its knowledge set is CLEARED on the
+// way in and Card.FaceDown is set, which is what makes the client
+// draw a card back rather than a blank.
+//
+// Clearing rather than leaving the set alone matters: a library card
+// is not always unknown. A player who has just scryed or used
+// Sensei's Divining Top is a knower of their own top card, and
+// carrying that marking into exile would let exactly one seat read a
+// card the rules say nobody can.
+//
+// Exiling off an empty library is not an error and is not a draw —
+// it moves nothing and does NOT set LosesAtNextSBA. Necropotence
+// with an empty library charges the life and exiles nothing, which
+// is why its controller does not lose on the spot.
+//
+// Caller must hold g.mu. Added in S22.
+func (g *Game) ExileTopFaceDownForEffect(playerID uuid.UUID, n int) ([]uuid.UUID, error) {
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return nil, ErrPlayerNotFound
+	}
+	if g.Exile == nil || n <= 0 {
+		return nil, nil
+	}
+	out := make([]uuid.UUID, 0, n)
+	for i := 0; i < n; i++ {
+		if p.Library.Size() == 0 {
+			return out, nil
+		}
+		// The library's top is the LAST element — the same read
+		// PopTop and ExileTopWithPermissionForEffect use.
+		top := p.Library.Cards[len(p.Library.Cards)-1].InstanceID
+		if _, err := MoveCard(p.Library, g.Exile, top); err != nil {
+			return out, err
+		}
+		for j := range g.Exile.Cards {
+			if g.Exile.Cards[j].InstanceID == top {
+				g.Exile.Cards[j].FaceDown = true
+				g.Exile.Cards[j].ClearKnown()
+				break
+			}
+		}
+		g.EmitEvent(Event{
+			Kind:    EventZoneMove,
+			Actor:   playerID,
+			CardID:  top,
+			OldZone: ZoneLibrary,
+			NewZone: ZoneExile,
+		})
+		out = append(out, top)
+	}
+	return out, nil
+}
+
 // BounceToHandForEffect moves a card from wherever it is to its
 // owner's hand. Used by Unsummon and similar. If the owner is no
 // longer seated, the call returns ErrPlayerNotFound without moving
@@ -540,6 +604,19 @@ func (g *Game) BounceToHandForEffect(cardID uuid.UUID) error {
 	}
 	if _, err := MoveCard(src, owner.Hand, cardID); err != nil {
 		return err
+	}
+	// CR 400.7 / 708.2: "face down" is a property of an object in a
+	// zone, and a card that changes zones is a new object with no
+	// memory of it. Necropotence's exiled card is face down in exile
+	// and an ordinary card the moment it reaches hand; a morph
+	// bounced off the battlefield is likewise just a card again.
+	// Leaving the flag set would ship `face_down: true` on a card in
+	// its owner's hand, which the client renders as a back.
+	for i := range owner.Hand.Cards {
+		if owner.Hand.Cards[i].InstanceID == cardID {
+			owner.Hand.Cards[i].FaceDown = false
+			break
+		}
 	}
 	g.markCardKnownInZoneLocked(owner.Hand, cardID)
 	g.EmitEvent(Event{

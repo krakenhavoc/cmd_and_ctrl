@@ -1337,7 +1337,7 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 				// disjoint sets, and showing the wrong one produces a
 				// button the server will reject.
 				if alts := game.AlternativeCostsOfferedFromZone(c.oracleID, zone.kind); len(alts) > 0 {
-					c.AlternativeCosts = viewOfAlternativeCosts(g, caster, spec, alts)
+					c.AlternativeCosts = viewOfAlternativeCosts(g, caster, c.InstanceID, spec, alts)
 				}
 				if spec == nil {
 					continue
@@ -1395,7 +1395,15 @@ func viewOfTapCost(g *game.Game, caster uuid.UUID, c *CardView, tc *game.TapPerm
 // away, an entry with one enters targeting on the legal set it
 // carries, and neither case needs the client to know what the word
 // "overload" means. Caller must hold g.mu.
-func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, base *game.TargetSpec, alts []game.AlternativeCost) []AlternativeCostView {
+// `self` is the instance ID of the card the offers belong to, which
+// escape needs and nothing else does: "exile five OTHER cards from
+// your graveyard" is paid out of the same zone the spell is being
+// cast from, so the spell itself is sitting in the candidate list
+// until it is filtered out here. The server rejects it anyway (CR
+// 601.2a moved it to the stack before the cost is paid), but a
+// picker that offers a card the cast will be rejected for choosing
+// is a trap rather than an affordance.
+func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, self string, base *game.TargetSpec, alts []game.AlternativeCost) []AlternativeCostView {
 	out := make([]AlternativeCostView, 0, len(alts))
 	for i := range alts {
 		ac := alts[i]
@@ -1427,6 +1435,16 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, base *game.TargetSpe
 		} else if paySpec := ac.ReturnToHand; paySpec != nil {
 			opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, paySpec), paySpec)
 			opts.Cards = filterToController(g, opts.Cards, caster)
+			opts.Players = nil
+			v.PayOptions = opts
+		} else if paySpec := ac.ExileFromGraveyard; paySpec != nil {
+			// The spec's own predicate already narrows this to the
+			// caster's graveyard; what it cannot know is which card
+			// is being cast, hence the `self` filter. Min / Max ride
+			// through from the spec, so the client's picker sizes
+			// itself to "exile five" without knowing the keyword.
+			opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, paySpec), paySpec)
+			opts.Cards = withoutID(opts.Cards, self)
 			opts.Players = nil
 			v.PayOptions = opts
 		}
@@ -2136,6 +2154,30 @@ func legalMovesFor(bySeat map[string][]LegalMoveView, viewerID string) []LegalMo
 // a library mid-fetch — a number CR 400.2 does not entitle them to.
 // Spectators and admins (empty viewerID) are held to the same rule
 // here rather than being handed the whole match set.
+//
+// Every OTHER kind takes the same medicine one card at a time: an
+// option the viewer does not know is dropped from a non-chooser's
+// copy rather than redacted into an anonymous back. Redaction zeroes
+// the printed characteristics and keeps the instance ID, which is the
+// right trade for a card sitting in a public zone — the ID is already
+// on that viewer's wire, so withholding it would be theatre — and the
+// wrong one here, because these options come out of HIDDEN zones that
+// FilterViewFor strips for exactly this viewer a few lines above.
+//
+// The concrete leak this closes: scry, surveil and "look at the top
+// N" inline the chooser's top library cards as Options, and the zone
+// projection had already removed every trace of that library from an
+// opponent's frame. Shipping the same cards back as N stable UUIDs
+// hands the table a handle on specific cards in a hidden zone that it
+// can correlate the moment one of them is cast — the same "the
+// instance ID alone is the leak" argument S31 sub-PR 0 settled for
+// the public log, pointed the other way. Thoughtseize is the same
+// shape: the caster is entitled to the hand it revealed, the two
+// seats watching are not.
+//
+// The chooser always keeps their whole list, known or not. They are
+// the one being asked to pick, and a coercive discard that revealed
+// nothing is still answered by choosing one of the backs.
 func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool, viewerID string) []PendingChoiceView {
 	if len(src) == 0 {
 		return nil
@@ -2149,9 +2191,14 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			continue
 		}
 		if len(c.Options) > 0 {
-			opts := make([]CardView, len(c.Options))
-			for j, card := range c.Options {
-				opts[j] = redactCardForViewer(card, isKnower(card))
+			chooser := c.Chooser == viewerID
+			opts := make([]CardView, 0, len(c.Options))
+			for _, card := range c.Options {
+				known := isKnower(card)
+				if !known && !chooser {
+					continue
+				}
+				opts = append(opts, redactCardForViewer(card, known))
 			}
 			out[i].Options = opts
 		}
@@ -2561,6 +2608,23 @@ func filterToController(g *game.Game, ids []string, controller uuid.UUID) []stri
 			continue
 		}
 		if c, ok := g.LookupCardForEffect(parsed); ok && c.Controller == controller {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+// withoutID drops one instance ID from a candidate list. Escape's
+// "N OTHER cards from your graveyard" is the only caller: every
+// other cost component is paid out of a zone the spell being cast
+// has already left.
+func withoutID(ids []string, drop string) []string {
+	if drop == "" {
+		return ids
+	}
+	out := ids[:0]
+	for _, id := range ids {
+		if id != drop {
 			out = append(out, id)
 		}
 	}

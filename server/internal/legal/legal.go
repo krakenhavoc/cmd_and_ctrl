@@ -320,6 +320,72 @@ func cardName(g *game.Game, id uuid.UUID) string {
 	return id.String()[:8]
 }
 
+// unknownCardLabel is what a move label calls a card the seat is not
+// entitled to recognise. Deliberately not the instance ID prefix
+// cardName falls back to: a stable eight-hex handle for a card in
+// somebody else's hand is exactly the correlation key ADR 0033 §3
+// exists to withhold.
+const unknownCardLabel = "a card"
+
+// cardNameFor is cardName with the seat's own knowledge applied: a
+// card the seat is not a knower of has no name this seat may be told.
+//
+// It exists for the branches that enumerate over a pool the seat does
+// not own — the discard clause reads FromPlayer's hand, the search
+// clause reads a library — where cardName would happily read the
+// authoritative Card.Name and paste it into a Label that then travels
+// to a Policy (ADR 0033 §3) and, since sub-PR 2, onto the wire as the
+// viewer's own legal_moves.
+//
+// Today this changes nothing, and that is the point of having it
+// rather than a comment saying "careful here". Both callers are safe
+// by accident of their creators: QueueDiscardFromRevealedHand is the
+// only path that makes a chooser != discarder choice and it reveals
+// the hand to the chooser first, and queueSearchChoiceLocked marks
+// the searcher a knower of every match. Neither guarantee is stated
+// anywhere the author of the NEXT coercive-discard card would read.
+// This makes the enumerator hold the line itself.
+func cardNameFor(g *game.Game, id, seat uuid.UUID) string {
+	if c := findCardAnywhere(g, id); c != nil && !c.IsKnownTo(seat) {
+		return unknownCardLabel
+	}
+	return cardName(g, id)
+}
+
+// findCardAnywhere returns the card with this instance ID from any
+// zone, or nil. Same search order as cardName.
+func findCardAnywhere(g *game.Game, id uuid.UUID) *game.Card {
+	if c := findBattlefield(g, id); c != nil {
+		return c
+	}
+	for _, p := range g.Seats {
+		if p == nil {
+			continue
+		}
+		for _, z := range []*game.Zone{p.Hand, p.Graveyard, p.Command, p.Library} {
+			if z == nil {
+				continue
+			}
+			for i := range z.Cards {
+				if z.Cards[i].InstanceID == id {
+					return &z.Cards[i]
+				}
+			}
+		}
+	}
+	for _, z := range []*game.Zone{g.Stack, g.Exile} {
+		if z == nil {
+			continue
+		}
+		for i := range z.Cards {
+			if z.Cards[i].InstanceID == id {
+				return &z.Cards[i]
+			}
+		}
+	}
+	return nil
+}
+
 func playerName(g *game.Game, id uuid.UUID) string {
 	if p := playerByID(g, id); p != nil {
 		return p.Name

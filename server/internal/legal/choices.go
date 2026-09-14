@@ -76,7 +76,10 @@ func (e *enumerator) choiceMoves() bool {
 				p.CardIDs = idStrings(set)
 				label := reason + ": discard"
 				for _, id := range set {
-					label += " " + cardName(g, id)
+					// cardNameFor, not cardName: the pool is
+					// FromPlayer's hand, which is only this seat's to
+					// read when an effect revealed it (ADR 0033 §3).
+					label += " " + cardNameFor(g, id, e.seat)
 				}
 				e.addChoice(c, label, p)
 			}
@@ -224,7 +227,9 @@ func (e *enumerator) choiceMoves() bool {
 				p.CardIDs = idStrings(set)
 				label := reason + ": take"
 				for _, id := range set {
-					label += " " + cardName(g, id)
+					// Library cards: named only because the search
+					// marked this seat a knower of every match.
+					label += " " + cardNameFor(g, id, e.seat)
 				}
 				e.addChoice(c, label, p)
 			}
