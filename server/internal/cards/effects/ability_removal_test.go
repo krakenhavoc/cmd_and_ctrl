@@ -345,6 +345,42 @@ func TestSongOfTheDryadsStaysAttachedToWhatItMade(t *testing.T) {
 	}
 }
 
+// The claim the card file makes about counters, checked rather than
+// asserted in prose: a planeswalker turned into a Forest keeps its
+// loyalty counters, is NOT swept by CR 704.5i (it is not a
+// planeswalker while the Song is on it), and gets everything back
+// when the Song leaves.
+func TestSongOfTheDryadsOnAPlaneswalkerKeepsItsLoyalty(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	walker := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Test Walker",
+		TypeLine: "Legendary Planeswalker — Test", Owner: me.ID, Controller: me.ID,
+		Counters: map[string]int{game.CounterLoyalty: 4},
+	})
+
+	song := enchant(t, g, "Song of the Dryads", songOfTheDryadsOracle, walker)
+	settle(t, g)
+
+	if !g.Battlefield.Contains(walker) {
+		t.Fatal("CR 704.5i sweeps planeswalkers, and this is not one right now")
+	}
+	card := layeredCard(t, g, walker)
+	if card.IsPlaneswalker() {
+		t.Error("it should be a land")
+	}
+	if card.Counters[game.CounterLoyalty] != 4 {
+		t.Errorf("loyalty counters %v — counters are not abilities", card.Counters)
+	}
+
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(song) })
+	back := layeredCard(t, g, walker)
+	if !back.IsPlaneswalker() || back.Counters[game.CounterLoyalty] != 4 {
+		t.Errorf("the walker should come back whole: planeswalker=%v counters=%v",
+			back.IsPlaneswalker(), back.Counters)
+	}
+}
+
 // An Aura silencing another Aura. Control Magic's steal is a layer-2
 // continuous effect contributed by its static ability, so removing
 // its abilities hands the creature back — and layer 2 runs long
