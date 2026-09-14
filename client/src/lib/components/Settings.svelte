@@ -769,6 +769,9 @@
                         onkeydown={(e) => {
                           if (capturing === def.id) onCapture(def.id, e);
                         }}
+                        onblur={() => {
+                          if (capturing === def.id) capturing = null;
+                        }}
                       >
                         {#if capturing === def.id}
                           press a key…
