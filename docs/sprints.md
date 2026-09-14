@@ -1814,7 +1814,7 @@ Two engine findings recorded on [#73](https://github.com/krakenhavoc/cmd_and_ctr
 
 **Status: both exit criteria are met, every primitive and wire frame on the plan is built or struck, and the row above reads `**done**` on the strength of that.** What is left is a card-count tail and the smoke test, and [the status legend](#how-to-read-the-status-column) is explicit that neither holds a sprint open. The tracking issue stays open for the tail; the row is not the issue.
 
-**Where the plan and the code parted company — the short version.** Of the nine primitives and frames the tracker scoped, **four shipped under a different name**, **two were struck as phantom work**, and **three shipped as written**. Not one of the nine names on the tracker returns a grep hit for the thing it describes, which is exactly how two earlier passes over this issue concluded that shipped machinery was unbuilt. The mapping, once, in one place:
+**Where the plan and the code parted company — the short version.** Of the nine primitives and frames the tracker scoped, **five shipped under a different name**, **two shipped as written**, and **two were struck as phantom work**. Across the whole 14-line checklist that is **11 shipped, 2 struck, 1 open** (the smoke test), with five named cards still out inside the shipped card-bucket lines. Not one of the nine engine names on the tracker returns a grep hit for the thing it describes, which is exactly how two earlier passes over this issue concluded that shipped machinery was unbuilt. The mapping, once, in one place:
 
 | Tracker name | What is actually in the tree |
 | --- | --- |
