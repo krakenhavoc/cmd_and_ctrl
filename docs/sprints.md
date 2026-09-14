@@ -74,6 +74,7 @@ planned just-in-time from the S12 pain-point triage.
 | S30      | Damage prevention, cloning, face-down, deferred protection keywords  | 7     | [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95)   | 2027-09-05 | planned     |
 | Post-S30 | Rolling deck-driven catalog growth                                   | 7     | TBD at S30 retro                                               | rolling    | not started |
 | S31      | AI bot seat (legal-move enumeration + tiered policy)                 | 8     | [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89)   | 2027-09-26 | partial     |
+| S33      | Surviving a deploy: reconnect, resume, and schema safety             | 6     | [#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515) | 2027-10-10 | planned     |
 
 ### How to read the status column
 
@@ -2286,5 +2287,123 @@ contract alone cannot express them:
 - [Forge AI wiki](https://github.com/Card-Forge/forge/wiki/AI) — rule-based heuristics, ~95% of cards scripted. The "playable but dumb" bar.
 - [XMage](https://github.com/magefree/mage) — `ComputerPlayer` target-score evaluation; inspiration for threat-weighted targeting.
 - Cowling / Ward / Powley, ["Ensemble Determinization in MCTS for Magic: The Gathering"](https://eprints.whiterose.ac.uk/id/eprint/75050/1/EnsDetMagic.pdf), 2012 — canonical MCTS-for-MTG; shapes the future `MCTSPolicy` slot.
+
+---
+
+## S33 — Surviving a deploy: reconnect, resume, and schema safety
+
+**Phase:** 6 · **Goal:** finish what [ADR 0041](decisions/0041-game-persistence.md) started — a routine deploy costs a live table a page refresh, not the game. Design per [ADR 0044](decisions/0044-surviving-a-deploy.md).
+
+**S32 built the state persistence and it works.** The engine snapshot is schema-versioned and round-trip-exact, `snapshot_drift_test.go` fails CI on an unclassified field, the RNG's stream position rides the file, the invite tokens are persisted, `RestoreFromDisk` runs before the first route is registered and relaunches bot runners, and the data directory is a host path on a dedicated disk that the deploy never touches. A `systemctl restart` really does leave the board on disk.
+
+**Nobody can get back to it.** ADR 0041 rested its client story on one sentence — *"the client already auto-reconnects and resyncs by `seq`, so nothing on the client needs to change"* — and the S33 audit found every clause of it false:
+
+- **The client does not reconnect on a deploy.** `ws.ts` treats close **1000 and 1001 alike as terminal**. That was right when `hub.EvictGame`'s 1000 ("game deleted") was the only deliberate server close; `hub.Shutdown` now sends **1001 on every restart**, and the game is not gone. The backoff ladder immediately below that branch is dead code on the one path it exists for. Worse, `hub.Shutdown` writes the close frame and closes the socket with no flush, so whether the browser sees 1001 or 1006 is a race — **the same binary behaves differently on different deploys**, which is why this read as a flaky network and not as a bug.
+- **There is no resync by `seq`.** No resume frame, no `since` field; the client never tells the server what it has seen. `seq` is an ordering value, not a cursor.
+- **The session dies with the process anyway.** `auth.MemoryAuthenticator` is an in-process map, so every stored token 401s on the upgrade — which a browser reports as 1006, indistinguishable from a blip.
+- **And the documented escape does not exist.** ADR 0041 says players "re-authenticate through their invite link". `Lobby.JoinWithIdentity` refuses any game that has left the lobby, and the route table has no seat-reclaim endpoint. A player whose credentials died can spectate their own game; they cannot play it.
+
+Meanwhile the restore point is staler than the ADR implies. The census fires on **any card with intrinsic abilities and no oracle ID to look them up by**, which is every true token — and `TreasureToken()` sets four pure-data fields and no closures at all. One Treasure on any battlefield suppresses every restore-point write for as long as it sits there. Treasure, Food, Clue and Blood are ordinary catalog output, so in practice many real games have no usable restore point at all.
+
+**Net:** the state survives and the return path was never built. This sprint builds it, and takes the one slice of ADR 0041's phase 3 that decides whether the restore point is minutes stale or turns stale.
+
+**Not a drain.** Production is one systemd unit on one VM binding one port; `systemctl restart` is stop-then-start, so there is no rolling replacement to coordinate with and nowhere to drain to. Durability is already per-`Apply` and a shutdown-time write would be skipped for exactly the games whose restore point is stale. The decision is recorded in ADR 0044 §1 so it is not re-opened as an oversight. What shutdown *does* gain is a log line.
+
+### Sub-PR 0 — ADR 0044 and the sprint docs ([#516](https://github.com/krakenhavoc/cmd_and_ctrl/issues/516))
+
+- [ ] `docs/decisions/0044-surviving-a-deploy.md` — the eight decisions, with rejected alternatives
+- [ ] This section and its index row
+- [ ] Forward pointer on ADR 0041 recording that its client/`seq` claim is superseded in part
+
+### Sub-PR 1 — durable sessions ([#517](https://github.com/krakenhavoc/cmd_and_ctrl/issues/517))
+
+`auth.MemoryAuthenticator`'s own doc comment has said since S04 that "session is lost on server restart", and ADR 0041 named the swap as a one-line change because `Authenticator` is the only seam the rest of the server sees. It is still one line.
+
+- [ ] `auth.HMACAuthenticator` — Principal signed into the credential, constant-time verify, expiry honoured, no server-side store
+- [ ] Key from env; **absent key falls back to `MemoryAuthenticator` with a loud warning** rather than booting with a default
+- [ ] `Revoke` semantics under a stateless backend, documented on the type rather than left as a silent `return nil`
+- [ ] Wired in `main.go` — rebase against S31's bot wiring ([#514](https://github.com/krakenhavoc/cmd_and_ctrl/pull/514))
+
+### Sub-PR 2 — reconnect when the server restarts ([#518](https://github.com/krakenhavoc/cmd_and_ctrl/issues/518))
+
+**Must not ship ahead of sub-PR 1.** Reconnecting without durable sessions converts a silent `disconnected` into a silent infinite 401 loop, which is strictly worse than today.
+
+- [ ] Split the terminal branch: 1000 stays terminal, 1001 reconnects. Replace the comment with what is now true
+- [ ] `hub.Shutdown` flushes the close frame deterministically, so a deploy stops being a coin-flip between 1001 and 1006
+- [ ] Re-read the session on each dial instead of replaying the URL captured at mount
+- [ ] Expose the attempt count so sub-PR 3 can show it
+- [ ] `ws.test.ts` covers 1000 / 1001 / 1006 — it currently tests only `reconnectDelayMs` arithmetic, which is why this regressed unseen
+
+### Sub-PR 3 — the board must admit it is stale ([#519](https://github.com/krakenhavoc/cmd_and_ctrl/issues/519))
+
+While the socket is down the board stays fully rendered and fully clickable, and every click lands in a log store only the bug-report modal reads. No toast, no banner — the one-word status pill is the whole UI.
+
+- [ ] Connection banner for `reconnecting` / `disconnected`, with attempt/retry information and a manual retry
+- [ ] Input gated on connection state instead of silently swallowing clicks
+- [ ] `sendAction` failures reach `lastError` like every other error
+- [ ] `aria-live` on connection-state transitions
+- [ ] Wording deliberately distinct from the #266 freeze case, so a real freeze stays reportable as one
+
+### Sub-PR 4 — seat reclaim through the invite link ([#520](https://github.com/krakenhavoc/cmd_and_ctrl/issues/520))
+
+The backstop, not the mechanism — sub-PR 1 handles the common case. This covers cleared storage, a new device, an expired token, a closed tab.
+
+- [ ] A reclaim path for a **started** game: invite token plus proof of seat identity → re-seated in your own seat with a fresh session
+- [ ] Seat identity from `Player.DiscordID` / `SeatInfo`, or a per-seat secret in `GameMeta` (already written `0600` because it holds secrets)
+- [ ] `Join.svelte` offers "return to your seat" instead of the spectator message, to callers who can prove one
+- [ ] Rate-limited and constant-time, like the other invite-token routes. **`JoinWithIdentity` is not widened** — a brand-new seat in a started game is still wrong
+
+### Sub-PR 5 — tokens get catalog keys ([#521](https://github.com/krakenhavoc/cmd_and_ctrl/issues/521))
+
+The parallel track: no dependency on the reconnect chain, and the item that decides how far a deploy rewinds a real table. ADR 0041 called this phase 3's top priority; it is smaller than that framing suggests.
+
+- [ ] A synthetic key namespace (`token:treasure` …) that cannot collide with a real oracle ID — a token *copy* carries the copied card's real ID under CR 707.2 and must keep resolving to the printed card
+- [ ] Token templates registered so `CatalogManaAbilities` / `CatalogActivatedAbilities` re-derive their abilities, exactly as they already do for a printed card
+- [ ] Census narrowed to abilities the registry genuinely cannot return — **narrowed, not deleted**
+- [ ] A board holding a Treasure, a Food, a Clue and a Blood captures a restorable snapshot, and all four come back working
+
+### Sub-PR 6 — nothing tests that yesterday's snapshot decodes in today's binary ([#522](https://github.com/krakenhavoc/cmd_and_ctrl/issues/522))
+
+`snapshot_drift_test.go` forces **classification**, never **compatibility** — both sides of its round-trip property are the same binary. Rename a mirror field and the drift test passes, the round trip passes, and yesterday's file decodes wrong. There is no snapshot fixture anywhere in the tree: `ws/testdata` holds one `protocol.GameView` golden and nothing else.
+
+- [ ] A committed corpus of real restore-point files, restored on every CI run, **appended to and never rewritten**
+- [ ] A test that fails when the mirror changes shape without a `SnapshotSchemaVersion` decision
+- [ ] Compare `ManaAbilityCount` / `ActivatedAbilityCount` against what the catalog actually returned — capture already records them and restore never reads them, so a card whose entry moved between binaries comes back silently stripped
+- [ ] The compatibility rule written down next to the constant
+
+### Sub-PR 7 — rewind is a protocol event ([#523](https://github.com/krakenhavoc/cmd_and_ctrl/issues/523))
+
+`docs/protocol.md` promises `seq` is "monotonically non-decreasing". A restored room resumes from the last clean boundary, so it hands clients a `seq` **lower than the one they already rendered**. It works today only because the client zeroes its watermark on every socket open — an accident, and the "fix" of making that watermark durable would wedge every rewound game permanently.
+
+- [ ] A restore generation on the room, carried in the restore-point file and exposed on the snapshot frame
+- [ ] Client discards and re-renders on a generation change; the `seq` guard applies within a generation and becomes safe to trust
+- [ ] `docs/protocol.md` corrected — non-decreasing **within a generation**
+- [ ] `restorePointFile` sits outside `GameSnapshot` and the drift test does not guard it: extend the guard or say plainly why not
+
+### Sub-PR 8 — deploy observability ([#524](https://github.com/krakenhavoc/cmd_and_ctrl/issues/524))
+
+- [ ] On SIGTERM, one line per live game: clean boundary or not, the census labels if not, and how far back its restore point is. **No new writes** — the shutdown path deliberately stays write-free
+- [ ] Boot: restore duration and restore-point age alongside the existing summary
+- [ ] Measure the restart window from `journalctl` — both `"shutdown signal received"` and `"server listening"` already exist and are timestamped. The hypothesis is that startup dominates and is mostly the Scryfall index load before bind; confirm with a number and record it on [#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515)
+
+**Exit criteria:**
+
+1. A `systemctl restart` with a 4-player game in progress: every client reconnects on its own, re-authenticates with the session it already had, and re-renders the table. No refresh, no invite link, no lost seat.
+2. During the restart window every client shows an unambiguous reconnecting state and refuses input.
+3. A player who clears `localStorage` mid-game follows their invite link and lands in **their own seat**.
+4. A board with a Treasure, a Food, a Clue and a Blood is restorable — the restore point is written on the action after the token is made, not withheld until it is spent.
+5. A snapshot committed to `testdata/` before a change still restores after it, in CI.
+6. A card whose catalog entry disappears between binaries causes a reported failure, not a silently stripped permanent.
+7. `journalctl -u cmd-and-ctrl` answers what a deploy cost without consulting any other source.
+
+### Out of scope
+
+- **ADR 0041 phase 3 in full** — `StackItem.Effect`, `DelayedTrigger.Effect`, the resume frames, the turn-scoped statics and replacements. S33 takes only the token slice, because a token blocks *every* capture after it while the others block only the window they are open in. The rest wants sub-PR 8's census numbers to sequence it.
+- **A drain, blue/green, or a second node** — ADR 0044 §1. Revisit only if the topology changes.
+- **Persisting the undo stack** — ADR 0044 §6. 32 game clones per room, to preserve the one thing a player can trivially redo.
+- **Cutting the cold-start window** — measured in sub-PR 8, attacked later; the fix interacts with `RestoreFromDisk`'s deliberate ordering after the card assets.
+- **Reaping abandoned restore points** — they accumulate and re-`ERROR` on every boot forever. Adjacent, separate.
+
+Also found during the audit and filed separately, not sprint scope: [#525](https://github.com/krakenhavoc/cmd_and_ctrl/issues/525) — `pruneOrphanMeta` deletes the lobby metadata of an abandoned game, so ADR 0041's documented roll-back recovery destroys the game (and its replay log) rather than returning it.
 
 ---
