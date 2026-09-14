@@ -381,6 +381,57 @@ func TestSongOfTheDryadsOnAPlaneswalkerKeepsItsLoyalty(t *testing.T) {
 	}
 }
 
+// --- against the S24 restriction vocabulary -----------------------
+
+// A restriction is not an ability of the restricted permanent, so
+// removing that permanent's abilities does not lift it. `game/
+// restrictions.go` states this as the reason restrictions ride in
+// their own field rather than as a string in Abilities; here it is
+// through two real cards, on a host that stays a creature so the
+// Pacifism stays legally attached.
+func TestDarksteelMutationDoesNotLiftAPacifism(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	bear := seedBear(g, me.ID)
+
+	enchant(t, g, "Pacifism", pacifismOracle, bear)
+	enchant(t, g, "Darksteel Mutation", darksteelMutationOracle, bear)
+	settle(t, g)
+
+	card := layeredCard(t, g, bear)
+	if !card.HasLostAllAbilities() {
+		t.Fatal("fixture is wrong: the Insect should have lost its abilities")
+	}
+	if !game.Restricted(&card, game.CantAttack) {
+		t.Error("the \"can't attack\" belongs to the Pacifism, not to the creature")
+	}
+}
+
+// The other direction, and it is the one the recompute's second pass
+// buys: silence the AURA and its restriction goes with it, because a
+// permanent with no abilities generates no continuous effect at all.
+func TestSongOfTheDryadsOnAPacifismLetsTheCreatureAttackAgain(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	bear := seedBear(g, me.ID)
+
+	pacifism := enchant(t, g, "Pacifism", pacifismOracle, bear)
+	if card := layeredCard(t, g, bear); !game.Restricted(&card, game.CantAttack) {
+		t.Fatal("fixture is wrong: the bear should be pacified")
+	}
+
+	enchant(t, g, "Song of the Dryads", songOfTheDryadsOracle, pacifism)
+	settle(t, g)
+
+	card := layeredCard(t, g, bear)
+	if game.Restricted(&card, game.CantAttack) {
+		t.Error("a Pacifism that is now a Forest land restricts nothing")
+	}
+	if card.HasLostAllAbilities() {
+		t.Error("the Song is on the Aura, not on the creature")
+	}
+}
+
 // An Aura silencing another Aura. Control Magic's steal is a layer-2
 // continuous effect contributed by its static ability, so removing
 // its abilities hands the creature back — and layer 2 runs long
