@@ -84,6 +84,18 @@ type zoneRoute struct {
 	// library").
 	ToBottom bool
 
+	// Depth places a ZoneLibrary destination N cards down from the
+	// top — Teferi, Hero of Dominaria's "third from the top" is 3.
+	// Zero and 1 both mean the top, which is the default every other
+	// library route wants. ToBottom wins if both are set.
+	//
+	// It rides the route rather than being applied by the caller for
+	// the same reason ToBottom does: a commander tucked to depth
+	// whose owner is asked about the command zone and declines still
+	// lands at the right depth, because nothing has moved until the
+	// prompt is answered.
+	Depth int
+
 	// FaceDown exiles the card face down (CR 406.3, Necropotence).
 	// Face-down exile is the one destination that must NOT mark the
 	// table as knowers — see ExileTopFaceDownForEffect.
@@ -233,12 +245,16 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) error {
 	if !faceDown {
 		g.markCardKnownInZoneLocked(dstZone, ev.CardID)
 	}
-	if r.ToBottom && !redirected && dstZone.Kind == ZoneLibrary {
+	if (r.ToBottom || r.Depth > 1) && !redirected && dstZone.Kind == ZoneLibrary {
 		c, err := dstZone.Remove(ev.CardID)
 		if err != nil {
 			return err
 		}
-		dstZone.PushBottom(c)
+		if r.ToBottom {
+			dstZone.PushBottom(c)
+		} else {
+			dstZone.InsertFromTop(c, r.Depth)
+		}
 	}
 	if r.DropStackMeta {
 		delete(g.StackMeta, ev.CardID)
