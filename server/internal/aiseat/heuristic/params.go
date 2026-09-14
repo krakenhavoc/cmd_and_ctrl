@@ -37,6 +37,8 @@ type activateParams struct {
 	AbilityIndex int         `json:"ability_index"`
 	Targets      []targetRef `json:"targets"`
 	SacrificeIDs []string    `json:"sacrifice_ids"`
+	CrewIDs      []string    `json:"crew_ids"`
+	XValue       int         `json:"x_value"`
 }
 
 type attackParams struct {

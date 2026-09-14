@@ -762,6 +762,13 @@ func redeemSeatReclaim(c Config, w http.ResponseWriter, r *http.Request) error {
 //	?x=<int>                  — optional. Caller-supplied X value
 //	                            for spells with {X} in their cost.
 //	                            Defaults to 0.
+//	?ability=<int>            — optional. Price the card's CR 602
+//	                            activated ability at this index
+//	                            instead of its printed cast cost,
+//	                            so the X picker an {X} ability opens
+//	                            reads the ability's own price
+//	                            (Helm of Obedience's "{X}", not the
+//	                            "{4}" in the card's corner).
 //	?exclude=<uuid>,<uuid>... — optional. Comma-separated lock-tap
 //	                            permanent IDs the auto-tapper must
 //	                            NOT consider; lets the client
@@ -839,6 +846,34 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	if !ok {
 		return httpError(http.StatusNotFound, "card not found in game")
 	}
+	// ?ability=<index> asks about a CR 602 activated ability's mana
+	// component instead of the card's printed cost. The X picker
+	// opens for an ability exactly as it does for a spell, and
+	// without this it would price Helm of Obedience's "{X}" against
+	// the {4} printed in the corner — a live readout that is wrong
+	// in both directions is worse than none.
+	//
+	// Abilities take no commander tax and no cost modifiers: the
+	// engine's payAbilityManaCostLocked applies neither, so neither
+	// does the preview. The two agreeing is the whole point of the
+	// endpoint.
+	if as := r.URL.Query().Get("ability"); as != "" {
+		idx, err := strconv.Atoi(as)
+		if err != nil || idx < 0 {
+			return httpError(http.StatusBadRequest, "ability must be a non-negative integer")
+		}
+		abilities := game.ActivatedAbilitiesForCard(card)
+		if idx >= len(abilities) {
+			return httpError(http.StatusNotFound, "ability index out of range")
+		}
+		ab := abilities[idx]
+		cost, err := game.ParseCost(ab.Cost.Mana)
+		if err != nil {
+			return httpError(http.StatusBadRequest, "ability's cost cannot be parsed: "+err.Error())
+		}
+		return writeAutoTapPreview(g, p.PlayerID, cost, xValue, excluded,
+			ab.Cost.Mana, game.ManaSpendForAbility(card), w)
+	}
 	cost, err := game.ParseCost(card.ManaCost)
 	if err != nil {
 		return httpError(http.StatusBadRequest, "card's printed cost cannot be parsed: "+err.Error())
@@ -871,14 +906,32 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return httpError(http.StatusBadRequest, err.Error())
 	}
-	plan, ok := g.AutoTapForCostExcluding(p.PlayerID, cost, xValue, excluded)
+	return writeAutoTapPreview(g, p.PlayerID, cost, xValue, excluded,
+		card.ManaCost, game.ManaSpendForCast(card), w)
+}
+
+// writeAutoTapPreview renders the auto-tap preview body for an
+// already-resolved cost. Shared by the cast branch and the
+// activated-ability branch so the two can never disagree about the
+// response shape.
+func writeAutoTapPreview(
+	g *game.Game,
+	playerID uuid.UUID,
+	cost game.ParsedCost,
+	xValue int,
+	excluded map[uuid.UUID]bool,
+	costStr string,
+	spend game.ManaSpendContext,
+	w http.ResponseWriter,
+) error {
+	plan, ok := g.AutoTapForCostExcluding(playerID, cost, xValue, excluded)
 	type response struct {
 		OK      bool     `json:"ok"`
 		Plan    []string `json:"plan,omitempty"`
 		Missing []string `json:"missing,omitempty"`
 		Cost    string   `json:"cost"`
 	}
-	body := response{OK: ok, Cost: card.ManaCost}
+	body := response{OK: ok, Cost: costStr}
 	if ok {
 		body.Plan = make([]string, len(plan))
 		for i, id := range plan {
@@ -888,13 +941,13 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 		// On miss, surface the unpaid symbols so the client UI can
 		// reuse the same "missing {R}{R}" copy the strict-mode
 		// override toast renders.
-		seat := g.PlayerByIDForEffect(p.PlayerID)
+		seat := g.PlayerByIDForEffect(playerID)
 		if seat != nil {
 			// #352: the breakdown is computed under the same spend
 			// context the cast will pay under, so a pool of Ancient
 			// Ziggurat mana does not report "missing nothing" for a
 			// spell it cannot legally fund.
-			body.Missing = seat.ManaPool.MissingFor(cost, xValue, game.ManaSpendForCast(card))
+			body.Missing = seat.ManaPool.MissingFor(cost, xValue, spend)
 		}
 	}
 	return writeJSON(w, http.StatusOK, body)

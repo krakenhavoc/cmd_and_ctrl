@@ -27,11 +27,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     it in response fizzles the trigger, where printed you would
 //     pick another. A second Technomancer cannot be chosen — the
 //     "another" is by name, the same read Noxious Gearhulk uses.
-//   - The activated ability is not implemented. "Sacrifice X
-//     artifacts" is a cost with a variable count, and AbilityCost has
-//     no X (the roadmap's "X on an activated ability" seam); the
-//     target's "power X or less" depends on it too. Nothing is
-//     charged for nothing: the ability is simply absent.
+//   - The activated ability is not implemented, and the reason
+//     narrowed when the "X on an activated ability" seam landed.
+//     AbilityCost DOES carry an {X} now, and the target's "power X
+//     or less" could read it off the stack item — but this card's X
+//     is not in the mana component. "Sacrifice X artifacts" is a
+//     sacrifice cost with a VARIABLE COUNT, and
+//     AbilityCost.SacrificeOther still names exactly one permanent.
+//     That is the remaining gap; nothing is charged for nothing, so
+//     the ability is simply absent.
 func init() {
 	Register(Spec{
 		OracleID:     "4e58ad76-37c7-4531-b207-6890b39a2679",

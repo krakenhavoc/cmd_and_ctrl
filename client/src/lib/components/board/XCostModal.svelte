@@ -11,6 +11,13 @@
   // preview is advisory — the gameplay.strictMana setting decides
   // whether an unaffordable X is blocked or merely warned about at
   // cast time — so Confirm is allowed on a red preview too.
+  //
+  // It also serves a CR 602 activated ability whose cost carries {X}
+  // (Helm of Obedience, Treasure Vault, Soothsaying). Same question,
+  // same moment in the announcement, same answer shape — so it is
+  // the same picker, told which ability to price via `abilityIndex`
+  // and which floor to respect via `minX`. A second modal would be a
+  // second place for the two to drift apart.
 
   import { onDestroy } from "svelte";
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
@@ -22,23 +29,45 @@
     // Highest X worth suggesting — the caller passes the size of the
     // viewer's mana pool + untapped sources as a hint. Not a limit.
     suggestedMax?: number;
+    // Set when the X belongs to an activated ability rather than a
+    // cast: `abilityIndex` prices that ability's own cost in the
+    // preview, `costLabel` is what the heading shows, and `minX` is
+    // the printed floor ("X can't be 0" passes 1). The server
+    // rejects an announcement below the floor, so the input does too.
+    abilityIndex?: number;
+    costLabel?: string;
+    minX?: number;
+    confirmVerb?: string;
     onConfirm: (x: number) => void;
     onCancel: () => void;
   }
 
-  const { gameID, card, suggestedMax = 0, onConfirm, onCancel }: Props = $props();
+  const {
+    gameID,
+    card,
+    suggestedMax = 0,
+    abilityIndex = undefined,
+    costLabel = undefined,
+    minX = 0,
+    confirmVerb = "Cast",
+    onConfirm,
+    onCancel,
+  }: Props = $props();
+
+  const floor = $derived(Math.max(0, minX));
 
   let x = $state(0);
   let preview = $state<AutoTapPreview | null>(null);
   let loading = $state(false);
 
-  // Reset when a different card opens the prompt.
-  let lastCardID: string | null = null;
+  // Reset when a different card — or a different ability on the same
+  // card — opens the prompt.
+  let lastKey: string | null = null;
   $effect(() => {
-    const id = card?.instance_id ?? null;
-    if (id !== lastCardID) {
-      lastCardID = id;
-      x = Math.max(0, suggestedMax);
+    const key = card ? `${card.instance_id}:${abilityIndex ?? "cast"}` : null;
+    if (key !== lastKey) {
+      lastKey = key;
+      x = Math.max(floor, suggestedMax);
       preview = null;
     }
   });
@@ -49,9 +78,10 @@
     const reqID = ++fetchSeq;
     const id = card?.instance_id;
     const value = x;
+    const ability = abilityIndex;
     if (!id) return;
     loading = true;
-    fetchAutoTapPreview(gameID, id, { xValue: value })
+    fetchAutoTapPreview(gameID, id, { xValue: value, abilityIndex: ability })
       .then((p) => {
         if (reqID === fetchSeq) preview = p;
       })
@@ -65,7 +95,7 @@
 
   function clampX(raw: string): void {
     const n = Math.floor(Number(raw));
-    x = Number.isFinite(n) && n >= 0 ? n : 0;
+    x = Number.isFinite(n) && n >= floor ? n : floor;
   }
 
   function confirm(): void {
@@ -96,9 +126,16 @@
     <div class="prompt-modal x-modal">
       <h2 id="x-cost-title">
         Choose X for {card.name}
-        <span class="prompt-src" aria-hidden="true">{card.mana_cost ?? "{X}"}</span>
+        <span class="prompt-src" aria-hidden="true">{costLabel ?? card.mana_cost ?? "{X}"}</span>
       </h2>
-      {#if card.additional_cost?.demands_x}
+      {#if floor > 0}
+        <!-- "X can't be 0" is a printed floor, not advice: the
+             server refuses an announcement under it outright. -->
+        <p class="prompt-hint">
+          Pick a value for X — this ability's X can't be less than {floor}. The check below reads
+          your untapped sources and says whether auto-tap can pay for it.
+        </p>
+      {:else if card.additional_cost?.demands_x}
         <!-- S23: Toxic Deluge's X is paid in LIFE, not mana, so the
              auto-tap line below is about the flat printed cost and
              says nothing about whether the X itself is affordable.
@@ -117,7 +154,7 @@
         <span class="x-label">X =</span>
         <input
           type="number"
-          min="0"
+          min={floor}
           step="1"
           value={x}
           oninput={(e) => clampX((e.currentTarget as HTMLInputElement).value)}
@@ -146,7 +183,7 @@
           >Cancel <span class="kbd">Esc</span></button
         >
         <button type="button" class="primary" onclick={confirm}>
-          Cast with X = {x} <span class="kbd">↵</span>
+          {confirmVerb} with X = {x} <span class="kbd">↵</span>
         </button>
       </div>
     </div>

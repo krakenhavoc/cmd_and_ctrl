@@ -114,6 +114,64 @@ type AbilityCost struct {
 	// Vehicle that says crew 3 — the printed text is a floor, not an
 	// exact amount.
 	Crew int
+
+	// MinX is the floor the printed text puts on the announced X —
+	// Helm of Obedience's "X can't be 0" is MinX: 1. Zero means the
+	// ordinary floor of zero, which is what every other {X} cost
+	// charges.
+	//
+	// There is deliberately no MaxX here. A cost has no printed
+	// ceiling on X; what the activator can actually pay is the
+	// ceiling, and that is the mana check's job, not the card's.
+	// The legal-move enumerator's Options.MaxX is a search bound on
+	// the BOT, not a rule, and lives there for that reason.
+	//
+	// MinX is meaningless without an {X} in Mana, and Register
+	// panics at boot on a spec that sets one without the other: a
+	// floor on a variable that cannot vary is a card-file mistake,
+	// and it would silently make the ability unactivatable.
+	MinX int
+}
+
+// DemandsX reports whether the ability's mana component contains
+// {X}, and is therefore an ability the activator announces a value
+// for at CR 602.2b.
+//
+// X lives in the MANA component and nowhere else. A spell can grow
+// an X outside its printed cost (Toxic Deluge's "pay X life" rides
+// AdditionalCost.PayLifeX, waterbend's rides TapPermanentsCost), so
+// the cast path has three places to ask. An ability has one, and
+// keeping it that way is what lets every consumer — the view, the
+// enumerator, the client — derive "does this prompt for X" from the
+// cost string rather than from a flag a card file could forget to
+// set.
+func (c AbilityCost) DemandsX() bool {
+	return c.XSlots() > 0
+}
+
+// XSlots is how many {X} tokens the mana component carries. Usually
+// 1; Treasure Vault's "{X}{X}" is 2, and the total generic demand is
+// XSlots * the announced X. An unparseable cost reports 0 — the
+// activation path rejects it separately rather than guessing.
+func (c AbilityCost) XSlots() int {
+	if c.Mana == "" {
+		return 0
+	}
+	cost, err := ParseCost(c.Mana)
+	if err != nil {
+		return 0
+	}
+	return cost.XSlots
+}
+
+// FloorX is the smallest legal announcement for this cost: MinX when
+// the card prints a floor, zero otherwise. Zero for a cost with no
+// {X} at all, which is the only value the engine accepts there.
+func (c AbilityCost) FloorX() int {
+	if !c.DemandsX() || c.MinX < 0 {
+		return 0
+	}
+	return c.MinX
 }
 
 // ActivatedAbilityShape is one activated ability on a permanent, as
@@ -184,6 +242,21 @@ type ActivateAbilityParams struct {
 	// ability's spec.
 	Targets []TargetRef
 
+	// XValue is the value announced for an {X} in the ability's mana
+	// component (CR 602.2b). Chosen as part of ACTIVATING the
+	// ability — after the source and the mode, before any cost is
+	// paid — and locked from that moment: it rides onto the stack
+	// item and nothing later can change it, which is what makes an
+	// X ability's effect (Helm of Obedience's mill, Treasure Vault's
+	// token count) a fact about the announcement rather than about
+	// the board at resolution.
+	//
+	// The same slot on the cast path is CastSpellParams.XValue, and
+	// the two are validated the same way: non-negative, zero unless
+	// the cost actually has an {X}, and at least the cost's printed
+	// floor.
+	XValue int
+
 	// Strict / AutoTap mirror CastSpellParams: they gate the mana
 	// component of the cost the same way a cast is gated.
 	Strict  bool
@@ -235,6 +308,28 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	}
 
 	// --- validate every cost before paying any ------------------
+	// CR 602.2b: X is announced as part of activating, with the
+	// targets and before anything is paid. Same three checks the
+	// cast path makes at CR 601.2b, in the same order.
+	//
+	// The "no {X}, so X must be zero" branch is rejected rather than
+	// ignored on purpose, exactly as an unexpected sacrifice_ids is:
+	// a client that sends an X for Krenko is confused about which
+	// ability it is firing, and silently dropping the field would
+	// hide that from whoever has to debug it.
+	if params.XValue < 0 {
+		return ErrInvalidParam
+	}
+	if !ab.Cost.DemandsX() {
+		if params.XValue != 0 {
+			return ErrInvalidParam
+		}
+	} else if params.XValue < ab.Cost.FloorX() {
+		// "X can't be 0" (Helm of Obedience). A floor is part of the
+		// cost, so announcing under it is an illegal announcement,
+		// not a cheap one.
+		return ErrInvalidParam
+	}
 	if ab.Cost.Loyalty != nil {
 		// CR 606.1: loyalty abilities live on planeswalkers. The
 		// controller check above already covers "a planeswalker you
@@ -294,7 +389,18 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		// S32 (#352): "activate abilities of colorless Eldrazi" is a
 		// restriction on the SOURCE permanent, so the spend context
 		// is built from it.
-		if err := g.payAbilityManaCostLocked(p, cardID, ab.Cost.Mana, params, ManaSpendForAbility(*source)); err != nil {
+		// An ability whose cost includes {T} cannot tap its own
+		// source for mana to help pay itself — the {T} and the mana
+		// are components of the same cost, and the source can only
+		// be tapped once. Without the exclusion the auto-tapper is
+		// free to spend Treasure Vault's own "{T}: Add {C}" on its
+		// "{X}{X}, {T}" ability, which is a free mana on every
+		// activation of every tap ability with a mana component.
+		var excluded map[uuid.UUID]bool
+		if ab.Cost.Tap {
+			excluded = map[uuid.UUID]bool{cardID: true}
+		}
+		if err := g.payAbilityManaCostLocked(p, cardID, ab.Cost.Mana, params, ManaSpendForAbility(*source), excluded); err != nil {
 			return err
 		}
 	}
@@ -351,9 +457,14 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		SourceCardID: cardID,
 		Label:        ab.Label,
 		Targets:      append([]TargetRef(nil), params.Targets...),
-		Effect:       ab.Effect,
-		targetSpec:   ab.Targets,
-		Seq:          g.nextStackSeqLocked(),
+		// CR 602.2b: X was announced above and is locked here. The
+		// effect reads it back through Context.X(), the same
+		// accessor an X spell's OnResolve uses, and the wire ships
+		// it on the stack item so the table can see what was paid.
+		XValue:     params.XValue,
+		Effect:     ab.Effect,
+		targetSpec: ab.Targets,
+		Seq:        g.nextStackSeqLocked(),
 	}
 	g.StackMeta[itemID] = item
 	g.EmitEvent(Event{
@@ -495,13 +606,17 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 // `spendCtx` describes the ability's SOURCE permanent, which is what
 // a restricted token is matched against when the restriction says
 // "activate abilities of …" (#352).
-func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, costStr string, params ActivateAbilityParams, spendCtx ManaSpendContext) error {
+func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, costStr string, params ActivateAbilityParams, spendCtx ManaSpendContext, excluded map[uuid.UUID]bool) error {
 	cost, err := ParseCost(costStr)
 	if err != nil {
 		return ErrInvalidParam
 	}
+	// The announced X multiplies into the generic demand exactly as
+	// it does for a cast: cost.Generic + cost.XSlots*x. Treasure
+	// Vault's "{X}{X}" has two slots, so X=3 costs six.
+	x := params.XValue
 	if !params.Strict && !params.AutoTap {
-		if !p.ManaPool.CanPayFor(cost, 0, spendCtx) {
+		if !p.ManaPool.CanPayFor(cost, x, spendCtx) {
 			g.EmitEvent(Event{
 				Kind:   EventCostWarning,
 				Actor:  p.ID,
@@ -509,19 +624,19 @@ func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, costStr s
 			})
 			return nil
 		}
-		p.ManaPool.SpendManaFor(cost, 0, spendCtx)
+		p.ManaPool.SpendManaFor(cost, x, spendCtx)
 		return nil
 	}
-	if params.AutoTap && !p.ManaPool.CanPayFor(cost, 0, spendCtx) {
-		plan, ok := g.autoTapLocked(p.ID, cost, 0, nil)
+	if params.AutoTap && !p.ManaPool.CanPayFor(cost, x, spendCtx) {
+		plan, ok := g.autoTapLocked(p.ID, cost, x, excluded)
 		if !ok {
-			return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, 0, spendCtx)}
+			return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
 		}
 		g.materializePlanLocked(p, plan, cost)
 	}
-	if !p.ManaPool.CanPayFor(cost, 0, spendCtx) {
-		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, 0, spendCtx)}
+	if !p.ManaPool.CanPayFor(cost, x, spendCtx) {
+		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
 	}
-	p.ManaPool.SpendManaFor(cost, 0, spendCtx)
+	p.ManaPool.SpendManaFor(cost, x, spendCtx)
 	return nil
 }

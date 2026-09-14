@@ -104,6 +104,26 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q declares an empty caveat", spec.Name))
 		}
 	}
+	// An activated ability's mana component is the only place an X
+	// can live (game.AbilityCost.DemandsX says why), so both ways of
+	// getting a variable cost wrong are visible from here, and both
+	// fail at boot rather than as a mysteriously-refused activation
+	// mid-game.
+	for i, ab := range spec.Activated {
+		if ab.Cost.Mana != "" {
+			if _, err := game.ParseCost(ab.Cost.Mana); err != nil {
+				panic(fmt.Sprintf("effects.Register: %q ability %d declares an unparseable mana cost %q: %v",
+					spec.Name, i, ab.Cost.Mana, err))
+			}
+		}
+		if ab.Cost.MinX < 0 {
+			panic(fmt.Sprintf("effects.Register: %q ability %d sets a negative MinX %d", spec.Name, i, ab.Cost.MinX))
+		}
+		if ab.Cost.MinX > 0 && !ab.Cost.DemandsX() {
+			panic(fmt.Sprintf("effects.Register: %q ability %d sets MinX %d but its cost %q has no {X} — a floor on a variable that cannot vary makes the ability unactivatable",
+				spec.Name, i, ab.Cost.MinX, ab.Cost.Mana))
+		}
+	}
 	registry[spec.OracleID] = spec
 }
 

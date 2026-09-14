@@ -103,6 +103,16 @@ composes, not as whole assignments. Cast moves cap target expansion at
 threat heuristics, with the remainder reachable through an explicit
 "choose target" move.
 
+A corollary learned the hard way in #544, and applied since to every
+new cost component: **a variable in a cost must not become an arity of
+that cross product.** `{X}` — on a spell, or since the S22 work on an
+activated ability — collapses to a single value (the largest
+affordable, at or above the cost's printed floor) and consumes none of
+the expansion budget. Enumerating a range instead would spend the
+whole per-source budget on near-identical moves pointed at the first
+target and never offer the second, which is precisely the shape #544
+found in the library-search walk.
+
 ### 2. Bot = in-process virtual seat
 
 New package `server/internal/aiseat`. One goroutine per bot seat,

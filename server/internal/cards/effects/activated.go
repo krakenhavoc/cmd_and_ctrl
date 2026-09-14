@@ -32,8 +32,24 @@ func SacrificeAPermanent() game.AbilityCost {
 	return game.AbilityCost{SacrificeOther: sacrificeSpec("a permanent")}
 }
 
-// ManaCost is a printed mana component, "{1}{B}".
+// ManaCost is a printed mana component, "{1}{B}". An {X} in the
+// string is a real variable cost — the activator announces a value
+// for it at CR 602.2b and the effect reads it back with ctx.X() —
+// so "{X}" and "{X}{X}" (Treasure Vault) both go here and nothing
+// else needs declaring.
 func ManaCost(cost string) game.AbilityCost { return game.AbilityCost{Mana: cost} }
+
+// MinX is the floor the printed text puts on X: "X can't be 0"
+// (Helm of Obedience) is MinX(1). Compose it onto the mana
+// component — Plus(ManaCost("{X}"), TapCost(), MinX(1)).
+//
+// A floor is not the same as an unaffordable X. The engine refuses
+// an announcement below it outright, and the enumerator never offers
+// the ability at all when the activator cannot reach the floor —
+// which is the difference between "Helm does nothing for {0}" and
+// "Helm is not activatable right now", and only the second is the
+// card.
+func MinX(n int) game.AbilityCost { return game.AbilityCost{MinX: n} }
 
 // PayLife is a life component (CR 118.8).
 func PayLife(n int) game.AbilityCost { return game.AbilityCost{Life: n} }
@@ -74,6 +90,12 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		}
 		if c.Loyalty != nil {
 			out.Loyalty = c.Loyalty
+		}
+		if c.Crew != 0 {
+			out.Crew = c.Crew
+		}
+		if c.MinX != 0 {
+			out.MinX = c.MinX
 		}
 	}
 	return out

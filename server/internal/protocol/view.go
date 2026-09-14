@@ -995,6 +995,26 @@ type ActivatedAbilityView struct {
 	// without a second round trip. Added in S27.
 	CrewCost    int               `json:"crew_cost,omitempty"`
 	CrewOptions *LegalTargetsView `json:"crew_options,omitempty"`
+	// DemandsX marks an ability whose mana component contains {X}
+	// (Helm of Obedience, Treasure Vault, Soothsaying). The client
+	// opens its X picker before the targeting step and sends the
+	// answer as `x_value` on the activate_ability payload; the
+	// server validates it at announce and locks it onto the stack
+	// item (CR 602.2b).
+	//
+	// Derived from ManaCost rather than declared, so the two can
+	// never disagree — but shipped explicitly all the same, because
+	// a client that had to re-parse the cost string to find out
+	// would be a second parser of the same syntax.
+	//
+	// MinX is the floor the printed text puts on the announcement
+	// ("X can't be 0" ships 1). Absent means the ordinary floor of
+	// zero. XSlots is how many {X} tokens the cost carries — 2 for
+	// Treasure Vault's "{X}{X}" — so the picker can show what a
+	// given X actually costs without parsing.
+	DemandsX bool `json:"demands_x,omitempty"`
+	MinX     int  `json:"min_x,omitempty"`
+	XSlots   int  `json:"x_slots,omitempty"`
 	// TargetMode / LegalTargets mirror the cast-time targeting
 	// fields for an ability that targets.
 	TargetMode   string            `json:"target_mode,omitempty"`
@@ -2573,6 +2593,11 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 		if a.Cost.Crew > 0 {
 			v.CrewCost = a.Cost.Crew
 			v.CrewOptions = crewOptions(g, caster)
+		}
+		if a.Cost.DemandsX() {
+			v.DemandsX = true
+			v.MinX = a.Cost.FloorX()
+			v.XSlots = a.Cost.XSlots()
 		}
 		if a.Targets != nil {
 			v.TargetMode = a.Targets.Mode

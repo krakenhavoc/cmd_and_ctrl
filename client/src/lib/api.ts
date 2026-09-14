@@ -584,11 +584,18 @@ export interface AutoTapPreview {
 export async function fetchAutoTapPreview(
   gameID: string,
   cardID: string,
-  opts: { xValue?: number; excluded?: string[] } = {},
+  opts: { xValue?: number; excluded?: string[]; abilityIndex?: number } = {},
 ): Promise<AutoTapPreview> {
   const params = new URLSearchParams({ card: cardID });
   if (opts.xValue && opts.xValue > 0) {
     params.set("x", String(opts.xValue));
+  }
+  // `abilityIndex` prices a CR 602 activated ability's own mana
+  // component instead of the card's printed cast cost. Without it
+  // the X picker an ability opens would report on the {4} in Helm of
+  // Obedience's corner rather than on the {X} being announced.
+  if (opts.abilityIndex !== undefined) {
+    params.set("ability", String(opts.abilityIndex));
   }
   if (opts.excluded && opts.excluded.length > 0) {
     params.set("exclude", opts.excluded.join(","));

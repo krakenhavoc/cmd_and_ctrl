@@ -72,6 +72,7 @@
     type TargetingState,
     type TargetRef,
   } from "../../targeting";
+  import { suggestedAbilityX as suggestedAbilityXFor } from "../../abilityX";
   import XCostModal from "./XCostModal.svelte";
   import SacrificeCostModal from "./SacrificeCostModal.svelte";
   import CrewCostModal from "./CrewCostModal.svelte";
@@ -169,6 +170,14 @@
     }
     return Math.max(0, floating + sources - 1);
   });
+
+  // The ability picker's opening guess. Same mana estimate, divided
+  // by the number of {X} slots — Treasure Vault's "{X}{X}" buys half
+  // the X the same mana buys a one-slot cost — and never below the
+  // printed floor, which the modal also enforces.
+  const suggestedAbilityX = $derived.by(() =>
+    xAbilityPrompt ? suggestedAbilityXFor(xAbilityPrompt.ability, suggestedX) : 0,
+  );
 
   const activeSeatID = $derived(view.seats[view.turn.active_seat]?.id ?? null);
   const prioritySeatID = $derived(view.seats[view.turn.priority_holder]?.id ?? null);
@@ -562,17 +571,15 @@
     // S21 sub-PR 2: the prompt belongs to an activated ability, not
     // a cast — its cost was already paid at announce.
     if (state.ability) {
-      sendAction(
-        "activate_ability",
-        {
-          source_card_id: state.card.instance_id,
-          ability_index: state.ability.index,
-          sacrifice_ids: state.ability.sacrificeIDs,
-          crew_ids: state.ability.crewIDs,
-          targets,
-        },
-        viewerID ?? undefined,
-      );
+      const params: Record<string, unknown> = {
+        source_card_id: state.card.instance_id,
+        ability_index: state.ability.index,
+        sacrifice_ids: state.ability.sacrificeIDs,
+        crew_ids: state.ability.crewIDs,
+        targets,
+      };
+      if (state.ability.xValue !== undefined) params.x_value = state.ability.xValue;
+      sendAction("activate_ability", params, viewerID ?? undefined);
       targeting.set(null);
       return;
     }
@@ -620,6 +627,17 @@
     return view.battlefield.cards.filter((c) => ids.has(c.instance_id));
   });
 
+  // The X picker for an ability whose cost carries {X} (CR 602.2b).
+  // It sits in the same place in the ability's announcement that it
+  // sits in a cast's: after the cost picks that name cards, before
+  // targeting, and locked once sent.
+  let xAbilityPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+    sacrificeIDs: string[];
+    crewIDs: string[];
+  } | null>(null);
+
   function handleActivateAbility(card: CardView, index: number): void {
     const ability = (card.activated_abilities ?? []).find((a) => a.index === index);
     if (!ability) return;
@@ -639,6 +657,13 @@
     crewPrompt = null;
     if (!p) return;
     continueActivation(p.card, p.ability, [], instanceIDs);
+  }
+
+  function confirmAbilityX(x: number): void {
+    const p = xAbilityPrompt;
+    xAbilityPrompt = null;
+    if (!p) return;
+    continueActivation(p.card, p.ability, p.sacrificeIDs, p.crewIDs, x);
   }
 
   // S21: a mana ability with a sacrifice-another cost, handed up by
@@ -690,21 +715,28 @@
     ability: ActivatedAbilityView,
     sacrificeIDs: string[],
     crewIDs: string[] = [],
+    xValue?: number,
   ): void {
-    if (ability.legal_targets) {
-      beginTargetingForAbility(card, ability, sacrificeIDs, crewIDs);
+    // CR 602.2b: X is announced with the other choices and before
+    // any cost is paid, so the picker opens after the cost picks
+    // that name cards and before the targeting step — the same
+    // position it holds in a cast's prompt chain.
+    if (ability.demands_x && xValue === undefined) {
+      xAbilityPrompt = { card, ability, sacrificeIDs, crewIDs };
       return;
     }
-    sendAction(
-      "activate_ability",
-      {
-        source_card_id: card.instance_id,
-        ability_index: ability.index,
-        sacrifice_ids: sacrificeIDs,
-        crew_ids: crewIDs,
-      },
-      viewerID ?? undefined,
-    );
+    if (ability.legal_targets) {
+      beginTargetingForAbility(card, ability, sacrificeIDs, crewIDs, xValue);
+      return;
+    }
+    const params: Record<string, unknown> = {
+      source_card_id: card.instance_id,
+      ability_index: ability.index,
+      sacrifice_ids: sacrificeIDs,
+      crew_ids: crewIDs,
+    };
+    if (xValue !== undefined) params.x_value = xValue;
+    sendAction("activate_ability", params, viewerID ?? undefined);
   }
 
   // S20 sub-PR 2: a pick_target pending choice addressed to the
@@ -967,6 +999,19 @@
       xPromptCard = null;
       xPromptChoices = {};
     }}
+  />
+  <!-- The same picker for an activated ability's {X} (CR 602.2b),
+       priced against the ABILITY's cost rather than the card's. -->
+  <XCostModal
+    gameID={view.id}
+    card={xAbilityPrompt?.card ?? null}
+    suggestedMax={suggestedAbilityX}
+    abilityIndex={xAbilityPrompt?.ability.index}
+    costLabel={xAbilityPrompt?.ability.mana_cost}
+    minX={xAbilityPrompt?.ability.min_x ?? 0}
+    confirmVerb="Activate"
+    onConfirm={confirmAbilityX}
+    onCancel={() => (xAbilityPrompt = null)}
   />
   <TapCostModal
     card={tapPromptCard}

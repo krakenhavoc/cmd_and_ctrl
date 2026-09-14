@@ -914,6 +914,36 @@ stack above the ability and resolve first. Mana abilities do NOT go
 here (they skip the stack, CR 605.3a); they stay in `ManaAbilities`.
 See [ADR 0020](docs/decisions/0020-activated-abilities.md).
 
+**An `{X}` in the cost:** put it in the mana component and read it
+back with `ctx.X()`. Nothing else needs declaring — the engine
+derives "this ability prompts for X" from the cost string, so the
+view, the enumerator and the client can never disagree with the card
+about whether there is an X:
+
+```go
+Cost: Plus(ManaCost("{X}{X}"), TapCost(), SacrificeThis()),   // Treasure Vault
+Cost: Plus(ManaCost("{X}"), TapCost(), MinX(1)),              // Helm of Obedience
+```
+
+`{X}{X}` is two slots, so X=3 costs six — the slot count comes off
+`ParseCost` rather than a flag, which is what keeps a double-X cost
+from silently charging half. `MinX(n)` is the printed floor: "X
+can't be 0" is `MinX(1)`, and it is a real rule, not a hint — the
+engine refuses an announcement below it and the enumerator declines
+to offer the ability at all when the activator cannot reach the
+floor. `Register` panics on a `MinX` with no `{X}` beside it.
+
+X is announced as part of activating (CR 602.2b), **before any cost
+is paid**, and locked onto the stack item: `item.XValue`, the same
+slot a cast writes, so `ctx.X()` is the same accessor an X spell's
+`OnResolve` uses. It cannot change afterwards, which is why "create
+X Treasures" is a fact about the announcement rather than about how
+much mana is around at resolution.
+
+X lives in the MANA component and nowhere else. A cost with a
+variable COUNT — Ruthless Technomancer's "Sacrifice X artifacts" —
+is a different seam and is still open.
+
 **Adding an additional cost to cast (S21 sub-PR 5):** "As an
 additional cost to cast this spell, discard a card" goes in
 `Spec.AdditionalCost`, not in `OnResolve`:

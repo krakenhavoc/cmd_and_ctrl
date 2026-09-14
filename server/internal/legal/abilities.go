@@ -1,6 +1,9 @@
 package legal
 
 import (
+	"fmt"
+	"sort"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -14,6 +17,8 @@ type activateParams struct {
 	AbilityIndex int          `json:"ability_index"`
 	Targets      []targetWire `json:"targets,omitempty"`
 	SacrificeIDs []string     `json:"sacrifice_ids,omitempty"`
+	CrewIDs      []string     `json:"crew_ids,omitempty"`
+	XValue       int          `json:"x_value,omitempty"`
 	Strict       bool         `json:"strict,omitempty"`
 	AutoTap      bool         `json:"auto_tap,omitempty"`
 }
@@ -63,12 +68,66 @@ func (e *enumerator) activatedMoves() {
 			if ab.Cost.Life > 0 && p.Life < ab.Cost.Life {
 				continue
 			}
+			// CR 602.2b: X is announced with the activation, so the
+			// enumerator has to pick one. It picks the LARGEST
+			// affordable value at or above the cost's printed floor,
+			// exactly as castMovesForCard does for an {X} spell, and
+			// emits ONE move for it.
+			//
+			// One move, not one per value in 0..MaxX, and that is the
+			// #544 lesson applied rather than re-learned: the
+			// expansion budget below is shared with the target and
+			// sacrifice sets, so an X that added an arity to the
+			// cross product would spend the budget on near-duplicate
+			// activations of the first target and never reach the
+			// second. X consumes no budget at all here.
+			//
+			// The floor is the other half. Helm of Obedience's "X
+			// can't be 0" means an activator who cannot afford X=1
+			// has no legal activation, and offering one at X=0 would
+			// be exactly the bug #544 describes — an enumeration the
+			// engine refuses.
+			xValue := 0
 			if ab.Cost.Mana != "" {
 				cost, err := game.ParseCost(ab.Cost.Mana)
+				if err != nil {
+					continue
+				}
 				// #352: an activated ability's mana is paid under an
 				// activation context keyed on the SOURCE permanent,
-				// mirroring payAbilityManaCostLocked.
-				if err != nil || !e.canPay(cost, 0, game.ManaSpendForAbility(*source)) {
+				// mirroring payAbilityManaCostLocked. So is the
+				// exclusion: a {T} ability cannot tap its own source
+				// for mana, and an enumerator that thought it could
+				// would offer activations the engine refuses.
+				var excluded map[uuid.UUID]bool
+				if ab.Cost.Tap {
+					excluded = map[uuid.UUID]bool{source.InstanceID: true}
+				}
+				x, ok := e.affordableXExcluding(cost, game.ManaSpendForAbility(*source), ab.Cost.FloorX(), excluded)
+				if !ok {
+					continue
+				}
+				xValue = x
+			} else if ab.Cost.DemandsX() {
+				// Unreachable — DemandsX reads the same string — but
+				// a cost that demanded X with no mana component
+				// would be an unannouncable ability, so refuse it
+				// rather than emit an activation at X=0.
+				continue
+			}
+			// Crew (CR 702.122a). The engine rejects a crew
+			// activation that names no creatures, so an enumerator
+			// that skipped this offered a move that could only ever
+			// bounce — the same class of defect as #544, one cost
+			// component over. The pick is the cheapest set that
+			// clears the number; any set the engine accepts is a
+			// legal answer, and offering all of them would be a
+			// combinatorial expansion for a choice the policy has no
+			// information to make.
+			var crewIDs []uuid.UUID
+			if ab.Cost.Crew > 0 {
+				crewIDs = e.crewPayment(ab.Cost.Crew)
+				if crewIDs == nil {
 					continue
 				}
 			}
@@ -104,7 +163,11 @@ func (e *enumerator) activatedMoves() {
 						break
 					}
 					budget--
-					label := source.Name + ": " + ab.Label + targetLabel(g, targets)
+					label := source.Name + ": " + ab.Label
+					if xValue > 0 {
+						label += fmt.Sprintf(" for X=%d", xValue)
+					}
+					label += targetLabel(g, targets)
 					e.add(Move{
 						Type:   TypeActivateAbility,
 						Player: e.seat,
@@ -117,6 +180,8 @@ func (e *enumerator) activatedMoves() {
 							AbilityIndex: idx,
 							Targets:      wireTargets(targets),
 							SacrificeIDs: idStrings(sacs),
+							CrewIDs:      idStrings(crewIDs),
+							XValue:       xValue,
 							Strict:       true,
 							AutoTap:      true,
 						}),
@@ -146,6 +211,54 @@ func (e *enumerator) sacrificePool(sourceID uuid.UUID, selfToo bool, spec *game.
 		}
 	}
 	return pool
+}
+
+// crewPayment picks a set of untapped creatures the seat controls
+// whose total effective power reaches `crew` (CR 702.122a), or nil
+// when no such set exists.
+//
+// Greedy from the biggest power down, so the set is as small as the
+// board allows and the fewest blockers are spent. Summoning sickness
+// is deliberately NOT filtered — tapping to crew is not paying a
+// {T} cost, so a creature cast this turn may crew (CR 702.122b), and
+// game.validateCrewCostLocked agrees.
+//
+// One answer, not every answer: the printed number is a floor, so a
+// five-power creature crews a Vehicle that says 3 and so does a pair
+// of two-power ones. Enumerating the subsets would be an exponential
+// expansion for a choice the policy has nothing to decide it with.
+func (e *enumerator) crewPayment(crew int) []uuid.UUID {
+	type candidate struct {
+		id    uuid.UUID
+		power int
+	}
+	var pool []candidate
+	for i := range e.g.Battlefield.Cards {
+		c := &e.g.Battlefield.Cards[i]
+		if c.Controller != e.seat || !c.IsCreature() || c.Tapped {
+			continue
+		}
+		pool = append(pool, candidate{id: c.InstanceID, power: c.CurrentPower()})
+	}
+	sort.SliceStable(pool, func(i, j int) bool { return pool[i].power > pool[j].power })
+	total := 0
+	var out []uuid.UUID
+	for _, c := range pool {
+		if total >= crew {
+			break
+		}
+		// A 0-power creature can never move the total, and naming it
+		// would only tap a blocker for nothing.
+		if c.power <= 0 {
+			continue
+		}
+		out = append(out, c.id)
+		total += c.power
+	}
+	if total < crew {
+		return nil
+	}
+	return out
 }
 
 type manaParams struct {

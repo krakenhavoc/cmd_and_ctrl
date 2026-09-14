@@ -619,6 +619,29 @@ func (l LookAtTop) Apply(ctx *Context) error {
 	return nil
 }
 
+// ShuffleLibrary is "shuffle your library" as an instruction in its
+// own right — Soothsaying's {3}{U}{U}, Blood Moon-era library
+// resets — rather than the "then shuffle" tail of a search, which
+// rides SearchLibrary.Shuffle.
+//
+// Not a no-op even when nothing was searched for: shuffling is how a
+// player answers an opponent's Sensei's Divining Top or their own
+// bad scry, and the engine clears every KnownBy in the zone, so the
+// knowledge really does dissolve.
+type ShuffleLibrary struct {
+	// Player is whose library is shuffled. Zero means the
+	// controller of the effect.
+	Player uuid.UUID
+}
+
+func (s ShuffleLibrary) Apply(ctx *Context) error {
+	player := s.Player
+	if player == uuid.Nil {
+		player = ctx.Controller()
+	}
+	return ctx.Game.ShuffleLibraryForEffect(player)
+}
+
 // MillToZone is MillCards generalised: it moves cards off the top of
 // a library into a destination zone and hands the caller back what
 // moved.

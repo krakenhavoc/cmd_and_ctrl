@@ -1820,6 +1820,33 @@ func (g *Game) lookAtTopForEffect(kind PendingChoiceKind, playerID, source uuid.
 	return len(ids)
 }
 
+// ShuffleLibraryForEffect is "shuffle your library" as a card's own
+// instruction (Soothsaying's {3}{U}{U}) rather than as the tail of a
+// search. The lock-holding twin of ShuffleLibrary.
+//
+// It clears KnownBy across the whole zone for the same reason
+// finishSearchLocked does: a shuffle is exactly the thing that
+// un-knows a library. Anyone who had scryed, tutored or Soothsaid
+// their way to knowing where a card was no longer does, and skipping
+// that would leave stale knowledge on the wire — which is a real
+// information leak, not a cosmetic one.
+//
+// A missing player is a no-op rather than an error: the instruction
+// is "shuffle your library", and a seat that has left the game has
+// none to shuffle.
+//
+// Caller must hold g.mu.
+func (g *Game) ShuffleLibraryForEffect(playerID uuid.UUID) error {
+	p := g.playerByIDLocked(playerID)
+	if p == nil || p.Library == nil {
+		return nil
+	}
+	p.Library.Shuffle(g.rng)
+	clearKnownInZoneLocked(p.Library)
+	g.EmitEvent(Event{Kind: EventSearchLibrary, Actor: playerID, Label: "shuffle"})
+	return nil
+}
+
 // scryReason is the picker's banner copy, phrased as the card prints
 // it.
 func scryReason(n int) string {
