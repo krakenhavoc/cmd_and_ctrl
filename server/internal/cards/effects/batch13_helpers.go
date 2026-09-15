@@ -20,7 +20,7 @@ import (
 // return-all-lands body is b10ReturnAllLandCardsFromGraveyardTapped,
 // the wheel's discard is discardWholeHand, the spell-side mana value
 // is manaValueOnStack, "nonbasic land" is b10NonbasicLand, and the
-// per-ability "one or more" dedup is b12TriggerPendingOrOnStack.
+// per-ability "one or more" dedup is OncePerBatch.
 
 // --- token templates ---------------------------------------------
 

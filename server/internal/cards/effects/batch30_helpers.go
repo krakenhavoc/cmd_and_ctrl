@@ -22,7 +22,7 @@ import (
 // control" is b16UntapAllYouControlMatching, "another permanent you
 // control enters" is enteredUnderYourControl, the discard trigger
 // reads are discardedByYou, the one-or-more dedup is
-// b04TriggerPendingOrOnStack, the Desert read is b02IsDesert, the
+// OncePerBatch, the Desert read is b02IsDesert, the
 // Plant is b02PlantToken, the Zombie is BlackZombieToken, the
 // fetch-a-basic-tapped body is the shape of fetchBasicTapped, the
 // lord builders are TribalAnthem / TribalKeywordGrant, and the

@@ -1424,7 +1424,7 @@ and still unimplemented: that is CR 613 layer 1, deferred to S16.5.
 | "Whenever an opponent draws a card" | `EventDrawCard` | `ev.Actor != uuid.Nil && ev.Actor != source.Controller` — fires once per card |
 | "Whenever ~ deals combat damage to a player" | `EventDealDamage` | `ev.Source == source.InstanceID && combatDamageToPlayerBy(ev, source.Controller, g)` |
 | "Whenever a creature you control deals combat damage to a player" | `EventDealDamage` | `combatDamageToPlayerBy(ev, source.Controller, g)` — checks `ev.Combat`, player target, creature source |
-| "Whenever **one or more** creatures you control deal combat damage to a player" | `EventDealDamage` | `combatDamageToPlayerBy(…) && !triggerAlreadyPendingFrom(g, source)` (Professional Face-Breaker) — the engine emits one event per creature, so the second is declined while the first trigger is still on `PendingTriggers`. Without the dedup the card ships **stronger** than printed |
+| "Whenever **one or more** creatures you control deal combat damage to a player" / attack / enter | the same kind as the per-creature wording | wrap the ability in `OncePerBatch(...)` (#587) — the engine emits one event per creature and declines the rest of the batch while the first trigger is pending, on the stack or waiting on its prompt. Without it the card ships **stronger** than printed. A label computed per event (Breena) calls `g.TriggerInFlightForEffect(source, label)` directly |
 | "Whenever a creature / land you control enters" (landfall) | `EventETB` | `enteredUnderYourControl(ev, source, g, false)` then `c.IsCreature()` / `c.IsLand()` (Impact Tremors, Tireless Provisioner) |
 | "Whenever you create or sacrifice a token" | `EventTokenCreated` + `EventSacrifice` on one ability | `ev.Actor == source.Controller`, and for the sacrifice half `IsToken(LookupCardForEffect(ev.CardID))` — the sacrifice event fires **before** the zone move, so the token is still findable (Mirkwood Bats) |
 | "…its controller may draw" (Edric) | `EventDealDamage` | `ev.Actor` is the dealing creature's controller; use it for both `OptionalPrompt.Chooser` and the draw |
@@ -1639,10 +1639,7 @@ batch's skips to it in the batch PR (Discussion #559 item 6).
   two-mana mass blink) and is now **closed**, but it stood for a sprint
   and was caught by writing a decklist doc rather than by a test. If the
   cost has no shape, leave the CARD out.
-- **Triggers on events the engine doesn't emit yet** ("whenever a
-  creature enters under an opponent's control", landfall-with-a-target,
-  "whenever you attack with one or more creatures" as a
-  single batched trigger) — check
+- **Triggers on events the engine doesn't emit yet** ("whenever a creature enters under an opponent's control", landfall-with-a-target) — check
   [events.go](server/internal/game/events.go) for an `EventKind`
   first. If there isn't one, the event plumbing is the PR, not the
   card. Two things that used to be on this list are not any more:

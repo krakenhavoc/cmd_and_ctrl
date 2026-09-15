@@ -19,7 +19,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     attack declaration. The engine emits EventAttack per creature,
 //     so the AppliesTo declines any further Goblin's event while a
 //     Kreat attack trigger is already queued or on the stack
-//     (b12TriggerPendingOrOnStack, by label — the ping trigger is a
+//     (OncePerBatch, by label — the ping trigger is a
 //     different ability and must not swallow it). Kreat is a Goblin
 //     and counts for his own trigger; effective subtypes, so a
 //     changeling counts.
@@ -46,10 +46,10 @@ func init() {
 		Caveats:      []string{"The Goblin token attacks the player your first Goblin attacked rather than a player of your choice."},
 		Triggered: []game.TriggeredAbility{
 			{
-				Watches: []game.EventKind{game.EventAttack},
+				OncePerBatch: true,
+				Watches:      []game.EventKind{game.EventAttack},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b21CreatureOfSubtypeYouControlAttacked(ev, source, g, "Goblin") &&
-						!b12TriggerPendingOrOnStack(g, source, b21KreatAttackLabel)
+					return b21CreatureOfSubtypeYouControlAttacked(ev, source, g, "Goblin")
 				},
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 					defender := ev.Target

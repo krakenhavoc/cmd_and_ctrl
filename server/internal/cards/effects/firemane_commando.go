@@ -37,11 +37,12 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Actor == source.Controller && b16PlayerAttackedWithAtLeast(ev, source, g, 2, b17FiremaneYouLabel)
-			}, b17FiremaneYouLabel, Do(DrawCards{N: 1})),
+			}, b17FiremaneYouLabel, Do(DrawCards{N: 1}))),
 			{
-				Watches: []game.EventKind{game.EventAttack},
+				OncePerBatch: true,
+				Watches:      []game.EventKind{game.EventAttack},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					return ev.Actor != source.Controller && b16PlayerAttackedWithAtLeast(ev, source, g, 2, b17FiremaneOtherLabel)
 				},

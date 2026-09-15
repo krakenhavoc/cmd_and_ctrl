@@ -14,7 +14,7 @@ import (
 // What is NOT here, because main already had it: "this permanent
 // enters" is b06SelfETB, "enters with N counters" is
 // b10EntersWithCounters, the per-label "one or more" dedup is
-// b12TriggerPendingOrOnStack, the once-per-turn tally is
+// OncePerBatch, the once-per-turn tally is
 // b11TriggeredThisTurn, "each player draws" is b05EachPlayerDraws,
 // "another creature dies" is b15AnotherCreatureDied, an opponent's
 // life loss is b04OpponentLostLife, the Shadowmoor filter land is

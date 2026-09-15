@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - "One or more … attack" is one trigger per combat: EventAttack
 //     fires once per attacker, so the first attacker with power 4 or
 //     more queues the ability and later ones are declined while it
-//     is pending or on the stack (b12TriggerPendingOrOnStack, the
+//     is pending or on the stack (OncePerBatch, the
 //     Adeline dedup). "That many" is read as the ability RESOLVES —
 //     the count of attacking creatures the controller controls with
 //     power 4 or more at that moment, so a pump in response widens
@@ -35,13 +35,12 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("The Earth King — create a 4/4 Bear", Do(CreateToken{Template: b26GreenBearToken(), N: 1})),
-			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b26CreatureYouControlWithPowerAtLeastAttacked(ev, source, g, 4) &&
-					!b12TriggerPendingOrOnStack(g, source, b26EarthKingSearchLabel)
+			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b26CreatureYouControlWithPowerAtLeastAttacked(ev, source, g, 4)
 			}, b26EarthKingSearchLabel, func(g *game.Game, item *game.StackItem) error {
 				n := b26AttackingCreaturesYouControlWithPowerAtLeast(g, item.Controller, 4)
 				return b26SearchBasicsOntoBattlefieldTapped(g, item, n, "The Earth King — up to that many basic lands, tapped")
-			}),
+			})),
 		},
 	})
 }

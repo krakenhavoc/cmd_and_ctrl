@@ -38,17 +38,17 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "vigilance", "haste"},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b16PlayerAttackedWithAtLeast(ev, source, g, 3, b16AureliaDrawLabel)
-			}, b16AureliaDrawLabel, Do(DrawCards{N: 1})),
-			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			}, b16AureliaDrawLabel, Do(DrawCards{N: 1}))),
+			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b16PlayerAttackedWithAtLeast(ev, source, g, 5, b16AureliaDamageLabel)
 			}, b16AureliaDamageLabel, func(g *game.Game, item *game.StackItem) error {
 				if err := damageToEachOpponent(g, item, 3); err != nil {
 					return err
 				}
 				return GainLife{Player: item.Controller, Amount: 3}.Apply(NewContext(g, item))
-			}),
+			})),
 		},
 	})
 }

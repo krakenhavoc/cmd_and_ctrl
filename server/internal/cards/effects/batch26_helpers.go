@@ -14,7 +14,7 @@ import (
 // What is NOT here, because main already had it: "mills half their
 // library" is b22MillHalf, the once-per-turn trigger tally is
 // b11TriggeredThisTurn with b11CountersWerePlaced for the placement
-// read, the attack-trigger dedup is b12TriggerPendingOrOnStack, the
+// read, the attack-trigger dedup is OncePerBatch, the
 // "becomes blocked" once-per-attacker dedup is
 // b18AttackerAlreadyBlocked, "another <type> you control enters" is
 // b10AnotherPermanentWithSubtypeEnteredUnderYourControl, "a green

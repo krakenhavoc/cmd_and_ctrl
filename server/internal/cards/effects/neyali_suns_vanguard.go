@@ -55,10 +55,9 @@ func init() {
 			"A card exiled with Neyali can be played on a later turn only when her trigger resolves that turn — tokens must attack a player while she is on the battlefield.",
 		},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b32TokenYouControlAttacked(ev, source, g) &&
-					!b12TriggerPendingOrOnStack(g, source, b32NeyaliLabel)
-			}, b32NeyaliLabel, b32NeyaliAttack),
+			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b32TokenYouControlAttacked(ev, source, g)
+			}, b32NeyaliLabel, b32NeyaliAttack)),
 		},
 	})
 }

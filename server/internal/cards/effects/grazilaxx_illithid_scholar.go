@@ -59,10 +59,9 @@ func init() {
 						})
 				},
 			},
-			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return combatDamageToPlayerBy(ev, source.Controller, g) &&
-					!b12TriggerPendingOrOnStack(g, source, b18GrazilaxxDrawLabel)
-			}, b18GrazilaxxDrawLabel, Do(DrawCards{N: 1})),
+			OncePerBatch(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return combatDamageToPlayerBy(ev, source.Controller, g)
+			}, b18GrazilaxxDrawLabel, Do(DrawCards{N: 1}))),
 		},
 	})
 }

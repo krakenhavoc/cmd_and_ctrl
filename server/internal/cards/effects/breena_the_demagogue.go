@@ -67,7 +67,9 @@ func init() {
 					return false
 				}
 				label := b17BreenaLabel(g, opp)
-				return !b17PickTargetPendingFrom(g, source) && !b12TriggerPendingOrOnStack(g, source, label) &&
+				// The label is per opponent, so the once-per-batch check is the
+				// engine's directly rather than OncePerBatch's static Key.
+				return !g.TriggerInFlightForEffect(source.InstanceID, label) &&
 					!b11TriggeredThisTurn(g, source.InstanceID, label)
 			},
 			Targets: TargetCreature("a creature you control", YouControl()),

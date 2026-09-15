@@ -21,7 +21,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     player" is ONE trigger per damage step. The engine emits one
 //     damage event per creature, so the AppliesTo declines any
 //     further event while a Food trigger from this Guest is already
-//     queued or on the stack (b12TriggerPendingOrOnStack, by label —
+//     queued or on the stack (OncePerBatch, by label —
 //     the other two abilities must not swallow it). Without the
 //     dedup a three-creature alpha strike would make three Foods,
 //     the #259 direction.
@@ -44,10 +44,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return combatDamageToPlayerBy(ev, source.Controller, g) &&
-					!b12TriggerPendingOrOnStack(g, source, b31RapaciousGuestFoodLabel)
-			}, b31RapaciousGuestFoodLabel, Do(CreateToken{Template: FoodToken(), N: 1})),
+			OncePerBatch(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return combatDamageToPlayerBy(ev, source.Controller, g)
+			}, b31RapaciousGuestFoodLabel, Do(CreateToken{Template: FoodToken(), N: 1}))),
 			On(game.EventSacrifice, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b31YouSacrificedAFood(ev, source, g)
 			}, "Rapacious Guest — put a +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {

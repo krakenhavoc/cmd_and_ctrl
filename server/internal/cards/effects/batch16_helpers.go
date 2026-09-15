@@ -19,7 +19,7 @@ import (
 // nothing at all (the event log knows — b16EnteredFromStack), a
 // tutor to hand is b06TutorToHand, the basic-land fetch body is
 // b07SearchBasicOntoBattlefield, the per-label "one or more" dedup is
-// b12TriggerPendingOrOnStack, the once-per-turn tally is
+// OncePerBatch, the once-per-turn tally is
 // b11TriggeredThisTurn, the resolution tally is b15ResolvedThisTurn,
 // a dead creature's power is b13LastKnownPower, the attackers a
 // player controls are b13AttackingCreaturesYouControl, and "any
@@ -216,7 +216,7 @@ func b16AnotherCreatureYouControlEnteredOrDied(ev game.Event, source *game.Card,
 // ONE trigger per declaration, and the engine emits EventAttack per
 // creature, so the ability fires on the declaration that reaches n
 // and declines every later one — both while its item is queued or on
-// the stack (b12TriggerPendingOrOnStack) and, because the sandbox
+// the stack (OncePerBatch) and, because the sandbox
 // lets attackers be declared after the trigger has resolved, for the
 // rest of the turn (b11TriggeredThisTurn). Only the active player
 // attacks in a turn and the engine has no extra combats, so
@@ -229,7 +229,7 @@ func b16PlayerAttackedWithAtLeast(ev game.Event, source *game.Card, g *game.Game
 	if len(b13AttackingCreaturesYouControl(g, ev.Actor)) < n {
 		return false
 	}
-	return !b12TriggerPendingOrOnStack(g, source, label) && !b11TriggeredThisTurn(g, source.InstanceID, label)
+	return !b11TriggeredThisTurn(g, source.InstanceID, label)
 }
 
 // b16YouAttackedAPlayer is Horizon Explorer's condition: a creature
@@ -242,10 +242,7 @@ func b16YouAttackedAPlayer(ev game.Event, source *game.Card, g *game.Game) bool 
 	if !attackDeclaredByYou(ev, source.Controller) {
 		return false
 	}
-	if g.PlayerByIDForEffect(ev.Target) == nil {
-		return false
-	}
-	return !b04TriggerPendingOrOnStack(g, source)
+	return g.PlayerByIDForEffect(ev.Target) != nil
 }
 
 // b16CreatedATokenThisTurn reports whether `player` created a token

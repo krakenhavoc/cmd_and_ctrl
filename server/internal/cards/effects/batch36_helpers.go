@@ -18,7 +18,7 @@ import (
 // b13AnotherCreatureYouControlEntered, "an Angel you control
 // entered" is b21AngelYouControlEntered, "a creature you control
 // attacks" is attackDeclaredByYou with the "one or more" dedup
-// b04TriggerPendingOrOnStack, "a creature you control dealt combat
+// OncePerBatch, "a creature you control dealt combat
 // damage to a player" is combatDamageToPlayerBy, "a creature died"
 // is diedCreature, "an opponent lost N or more life this turn" is
 // b06AnOpponentLostAtLeastThisTurn, "each end step" is
@@ -190,7 +190,7 @@ func b36SelfOrAnotherHumanYouControlEntered(ev game.Event, source *game.Card, g 
 // Apostle's "whenever one or more nontoken Vampires you control
 // attack": a nontoken Vampire the source's controller controls was
 // declared as an attacker — Mavren himself included — deduplicated
-// per combat through b04TriggerPendingOrOnStack, because the engine
+// per combat through OncePerBatch, because the engine
 // emits one attack event per creature and the printed ability fires
 // once for the batch.
 func b36NontokenVampiresYouControlAttacked(ev game.Event, source *game.Card, g *game.Game) bool {
@@ -198,10 +198,7 @@ func b36NontokenVampiresYouControlAttacked(ev game.Event, source *game.Card, g *
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || !c.IsCreature() || IsToken(c) || !c.HasSubtype("Vampire") {
-		return false
-	}
-	return !b04TriggerPendingOrOnStack(g, source)
+	return ok && c.IsCreature() && !IsToken(c) && c.HasSubtype("Vampire")
 }
 
 // b36ArtifactCreatureYouControlDealtCombatDamageToPlayer is Sharding

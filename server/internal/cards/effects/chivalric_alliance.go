@@ -32,9 +32,9 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The Knight-making ability isn't available — discarding a card isn't a cost the engine can pay."},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Actor == source.Controller && b16PlayerAttackedWithAtLeast(ev, source, g, 2, b28ChivalricAllianceLabel)
-			}, b28ChivalricAllianceLabel, Do(DrawCards{N: 1})),
+			}, b28ChivalricAllianceLabel, Do(DrawCards{N: 1}))),
 		},
 	})
 }
