@@ -9,7 +9,7 @@ import (
 // tribal.go — the shared builders for S26's creature-type cards
 // (#78). Four shapes cover the whole sprint:
 //
-//	ChooseCreatureTypeOnETB   "as this enters, choose a creature type"
+//	ChooseCreatureTypeAsEnters   "as this enters, choose a creature type"
 //	TribeFilter               "other Goblin creatures you control"
 //	TribalAnthem / TribalKeywordGrant   the lord statics
 //	GrantAllCreatureTypesUntilEOT       "gains all creature types"
@@ -32,7 +32,7 @@ import (
 // "islandwalk" since S16; it is left alone here rather than quietly
 // changed in a sprint about something else.)
 
-// ChooseCreatureTypeOnETB builds the `Spec.OnETB` for a permanent
+// ChooseCreatureTypeAsEnters builds the `Spec.AsEnters` for a permanent
 // whose text opens "As this permanent enters, choose a creature
 // type" (CR 614.12) — Cavern of Souls, Door of Destinies,
 // Vanquisher's Banner, Adaptive Automaton.
@@ -44,7 +44,7 @@ import (
 // is empty and every static that reads it applies to nothing. See
 // game/creature_type_choice.go for why this is an ETB hook and not a
 // CR 614 replacement, and for what that costs.
-func ChooseCreatureTypeOnETB(label string) func(*game.Card, *Context) error {
+func ChooseCreatureTypeAsEnters(label string) func(*game.Card, *Context) error {
 	return func(card *game.Card, ctx *Context) error {
 		ctx.Game.QueueCreatureTypeChoiceForEffect(card.Controller, card.InstanceID, label)
 		return nil

@@ -20,7 +20,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Sandbox simplification, inherited from CreateTokenCopy and stated
 // here because it is invisible otherwise: the token's ETB *triggered*
-// abilities fire, but a copied card whose ETB lives in Spec.OnETB
+// abilities fire, but a copied card whose ETB lives in Spec.AsEnters
 // rather than Spec.Triggered does not get that clause.
 func init() {
 	Register(Spec{

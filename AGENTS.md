@@ -418,8 +418,12 @@ surface tiny.
        })
    }
    ```
-   For permanents with an ETB trigger, populate `OnETB` instead of
-   (or alongside) `OnResolve`.
+   A permanent's printed "When ~ enters" trigger goes in
+   `Spec.Triggered` watching `EventETB` (see "Adding a triggered
+   ability" below) so it uses the stack and can be answered.
+   `Spec.AsEnters` is only for CR 614.12 "As ~ enters, choose …"
+   effects, which are not triggers and correctly happen off the
+   stack; it was called `OnETB` and misused for both until #578.
 
    **Declare `Completeness`.** Since
    [ADR 0042](docs/decisions/0042-card-catalog-page.md) the prose
@@ -482,8 +486,10 @@ surface tiny.
    [cards_test.go](server/internal/cards/effects/cards_test.go). Use
    `newCatalogGame(t)` + `castCatalogSpell(t, g, name, typeLine, oracleID, targets)`
    + `passPriorityAroundTable(t, g)` and assert the resulting state. For
-   OnETB tests, the ETB fires inline during resolution — no extra setup
-   needed. For library tutors, seed needles via `pushLibraryCardForTest`
+   an ETB trigger that call settles the spell and the trigger it queues;
+   assert `triggerOnStack` between two calls when the response window is
+   the point. An `AsEnters` choice fires inline during entry — no extra
+   setup needed. For library tutors, seed needles via `pushLibraryCardForTest`
    (which uses `PushBottom` so the "first match" sandbox pick is
    deterministic).
 
@@ -686,7 +692,7 @@ func init() {
 **`AppliesTo` patterns:**
 - "Counters go on a creature you control" — `target.Controller == src.Controller && target.IsCreature()`
 - "When a permanent enters the battlefield" — `ev.Kind == RepEventMove && ev.NewZone == ZoneBattlefield`
-- Self-replacement (Hangarback's X counters on own ETB; every "this land enters tapped") — `ev.CardID == src.InstanceID`. This works even though the entering card is not on the battlefield yet: `gatherActiveReplacementsLocked` has a dedicated block for a card that is NOT on the battlefield, which passes the entering card itself as `src` ([replacements.go](server/internal/game/replacements.go), the `!g.Battlefield.Contains(ev.CardID)` branch). Prefer `SelfEntersTapped()` over an `OnETB` tap — see the "enters tapped" note below.
+- Self-replacement (Hangarback's X counters on own ETB; every "this land enters tapped") — `ev.CardID == src.InstanceID`. This works even though the entering card is not on the battlefield yet: `gatherActiveReplacementsLocked` has a dedicated block for a card that is NOT on the battlefield, which passes the entering card itself as `src` ([replacements.go](server/internal/game/replacements.go), the `!g.Battlefield.Contains(ev.CardID)` branch). Prefer `SelfEntersTapped()` over an `AsEnters` tap — see the "enters tapped" note below.
 - Opponents only (Kismet) — `controllerOf(ev.CardID) != src.Controller`
 
 **`Replace` patterns:**
@@ -1133,14 +1139,14 @@ them, so an answer that omits one is a client bug, not shorthand for
 "leave it".
 
 **"This permanent enters tapped" (S21):** declare a self-replacement,
-not an `OnETB` tap:
+not an entry-hook tap:
 
 ```go
 Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 ```
 
-The two are observably different, which is why the machinery exists: an
-`OnETB` tap means the permanent enters UNTAPPED and is tapped a beat
+The two are observably different, which is why the machinery exists: a
+hook tap means the permanent enters UNTAPPED and is tapped a beat
 later, emitting `EventTapCard`, so anything watching for a tap or for an
 untapped permanent entering sees the wrong thing. A replacement emits
 none. (Worn Powerstone used the workaround and said so in a comment; it
@@ -1159,9 +1165,9 @@ permanent". It is skipped for a card already on the battlefield, so a
 permanent in play can never match both blocks and apply the same effect
 twice.
 
-Lands may carry `OnETB` and mana abilities like any other permanent —
+Lands may carry triggers and mana abilities like any other permanent —
 the ten-Temple cycle in `temples.go` combines all three (enters tapped,
-ETB scry, pipe-syntax dual) and is written as a loop over a table, since
+an ETB scry trigger on the stack, pipe-syntax dual) and is written as a loop over a table, since
 ten near-identical files is ten places to fix one mistake.
 
 **An alternative cast cost (S22):** "you may cast this spell for its
@@ -1333,7 +1339,7 @@ eternalize, battlefield for a Clone-style copy). The copied card's
 oracle ID rides onto the token, so its triggered / static / mana /
 activated abilities all come along for free — every one of those hooks
 does a catalog lookup rather than reading a field. Two gaps worth
-knowing: the copied card's `Spec.OnETB` does **not** fire (its
+knowing: the copied card's `Spec.AsEnters` does **not** fire (its
 `Triggered` `EventETB` abilities do), and per-instance state (counters,
 `ExilePlay`, the cached characteristic) is deliberately not copied — CR
 707.2. "Enters as a copy" for a real card (Clone) is a different thing
@@ -1496,11 +1502,11 @@ get a lord wrong, and the reason it is a named field rather than a
 hand-written predicate.
 
 **A named-tribe permanent** ("As this enters, choose a creature
-type") carries the CR 614.12 prompt on `OnETB` and reads the answer
+type") carries the CR 614.12 prompt on `AsEnters` and reads the answer
 back through `TribeFilter{Chosen: true}`:
 
 ```go
-OnETB:  ChooseCreatureTypeOnETB("Vanquisher's Banner"),
+AsEnters: ChooseCreatureTypeAsEnters("Vanquisher's Banner"),
 Static: []game.StaticAbility{TribalAnthem(TribeFilter{Chosen: true, YoursOnly: true}, 1, 1)},
 ```
 

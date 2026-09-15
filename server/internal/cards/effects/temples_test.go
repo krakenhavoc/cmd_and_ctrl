@@ -76,9 +76,17 @@ func TestTempleEntersTappedAndScries(t *testing.T) {
 	if n := tapEventsFor(g, id); n != 0 {
 		t.Errorf("%d tap events for the Temple; it should have ENTERED tapped, not been tapped", n)
 	}
-	// And the land's own ETB trigger asked for a scry.
+	// And the land's own ETB trigger is on the stack — not resolved
+	// yet, so nothing has been looked at (#578).
+	if triggerOnStack(g, id) == nil {
+		t.Fatal("playing the Temple did not put its scry trigger on the stack")
+	}
+	if scryChoiceFor(g, me.ID) != nil {
+		t.Error("the scry prompt arrived before the trigger resolved")
+	}
+	passPriorityAroundTable(t, g)
 	if scryChoiceFor(g, me.ID) == nil {
-		t.Error("playing the Temple did not queue a scry")
+		t.Error("resolving the Temple's trigger did not queue a scry")
 	}
 }
 
@@ -88,6 +96,7 @@ func TestTempleScryFeedsTheNextDraw(t *testing.T) {
 	seedLibrary(me, "Bad", "Good")
 
 	playLandFromHand(t, g, "Temple of Silence", templeOfSilenceOracle)
+	passPriorityAroundTable(t, g)
 
 	c := scryChoiceFor(g, me.ID)
 	if c == nil {
@@ -112,6 +121,7 @@ func TestTempleTapsForEitherColor(t *testing.T) {
 	me := g.Seats[g.Turn.ActiveSeat]
 	seedLibrary(me, "Filler")
 	id := playLandFromHand(t, g, "Temple of Silence", templeOfSilenceOracle)
+	passPriorityAroundTable(t, g)
 
 	// Answer the scry so the prompt isn't in the way.
 	if c := scryChoiceFor(g, me.ID); c != nil {

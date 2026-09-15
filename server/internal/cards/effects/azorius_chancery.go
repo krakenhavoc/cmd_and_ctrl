@@ -11,16 +11,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // sets you back a land drop), and the payoff is that one land taps
 // for two coloured mana.
 //
-// Enters-tapped follows the Worn Powerstone pattern — OnETB taps
-// the permanent as it lands, a beat later than a true CR 614
-// replacement. That is not a stylistic choice here: a catalog
-// replacement cannot fire on its own source's entry at all, because
-// gatherActiveReplacementsLocked collects catalog replacements by
-// walking g.Battlefield.Cards, and the entering card is not on the
-// battlefield yet when the pipeline runs. Verified by probe, not
-// assumed. (Note this makes the "self-replacement — ev.CardID ==
-// src.InstanceID" pattern in AGENTS.md §7 unreachable for catalog
-// cards as the engine currently stands.)
+// Enters-tapped is a real CR 614 self-replacement (SelfEntersTapped),
+// the same one the karoo table in bounce_lands.go uses: the land is
+// never untapped on the battlefield and no tap event is emitted. This
+// file used to say a catalog replacement could not fire on its own
+// source's entry and tapped the land from a hook a beat later; that
+// stopped being true with the Temple cycle's entering-card block in
+// gatherActiveReplacementsLocked (#360, #578).
 //
 // Sandbox simplification: the printed bounce is a CHOICE, not a
 // target — "return a land you control", with no "target" in the
@@ -35,15 +32,13 @@ func init() {
 		OracleID:     "189fc8f4-17ac-4f1d-82c8-8401445bdaf4",
 		Name:         "Azorius Chancery",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The land to bounce is picked as a target when the trigger goes on the stack, not on resolution; the land enters untapped and taps a moment later."},
+		Caveats:      []string{"The land to bounce is picked as a target when the trigger goes on the stack, not on resolution."},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W}{U}",
 			Label:    "Add {W}{U}",
 		}},
-		OnETB: func(card *game.Card, ctx *Context) error {
-			return TapTarget{Target: card.InstanceID}.Apply(ctx)
-		},
+		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

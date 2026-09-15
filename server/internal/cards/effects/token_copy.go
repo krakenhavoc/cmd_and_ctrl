@@ -39,7 +39,7 @@ import (
 //     values (CR 707.2), and the cached characteristic in particular
 //     is a pointer — a wholesale struct copy would have the token and
 //     its original sharing one layer cache.
-//   - It does not fire the copied card's Spec.OnETB. See the note on
+//   - It does not fire the copied card's Spec.AsEnters. See the note on
 //     CreateTokenCopy.Apply.
 
 // CreateTokenCopy creates N tokens that are copies of the card
@@ -58,7 +58,7 @@ import (
 // Known gap, worth stating because it is invisible otherwise: the
 // token's ETB *triggered abilities* fire (CreateTokenForEffect emits
 // EventETB and the harvester reads the log), but the copied card's
-// Spec.OnETB does NOT, because CreateTokenForEffect does not call
+// Spec.AsEnters does NOT, because CreateTokenForEffect does not call
 // fireETBHookLocked. Most catalog ETB effects are written as
 // Triggered on EventETB and so are unaffected; a card whose ETB
 // lives in OnETB would produce a token missing that clause.

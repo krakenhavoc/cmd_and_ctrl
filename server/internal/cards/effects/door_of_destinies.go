@@ -25,7 +25,7 @@ func init() {
 	Register(Spec{
 		OracleID: "9b6d3dcf-aa5a-4516-bd48-a0723e86bfd1",
 		Name:     "Door of Destinies",
-		OnETB:    ChooseCreatureTypeOnETB("Door of Destinies"),
+		AsEnters: ChooseCreatureTypeAsEnters("Door of Destinies"),
 		Static: []game.StaticAbility{
 			TribalScalingAnthem(
 				TribeFilter{Chosen: true, YoursOnly: true},

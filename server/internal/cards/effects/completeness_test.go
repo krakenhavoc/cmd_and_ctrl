@@ -115,7 +115,7 @@ func TestRegisterAcceptsAnUndeclaredSpec(t *testing.T) {
 // doc comment is for.
 func TestDeclaredCaveatsReadAsPlayerFacingSentences(t *testing.T) {
 	jargon := []string{
-		"OnResolve", "OnETB", "TargetSpec", "InstanceID", "StackItem",
+		"OnResolve", "OnETB", "AsEnters", "TargetSpec", "InstanceID", "StackItem",
 		"ctx.", "*Game", "Locked", "sub-PR",
 	}
 	for _, s := range All() {

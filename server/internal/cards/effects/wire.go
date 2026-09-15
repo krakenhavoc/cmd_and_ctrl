@@ -20,7 +20,7 @@ import (
 
 func init() {
 	game.EffectResolver = resolveSpell
-	game.ETBEffectHook = fireOnETB
+	game.ETBEffectHook = fireAsEnters
 	game.IsCatalogCard = Has
 	// #274: starting loyalty is printed card data, so the stamp
 	// itself lives in the game package. The catalog only answers
@@ -319,15 +319,15 @@ func resolveSpell(g *game.Game, item *game.StackItem, oracleID string) error {
 	return spec.OnResolve(item, ctx)
 }
 
-// fireOnETB is the ETBEffectHook implementation. Looks up the
+// fireAsEnters is the ETBEffectHook implementation. Looks up the
 // card's Scryfall ID, stamps StartingLoyalty (planeswalkers), and
-// runs OnETB if the spec has one. Invoked from every battlefield-
+// runs AsEnters if the spec has one. Invoked from every battlefield-
 // entry site in the game package.
 //
 // Looks up the live Card via FindCardZoneForEffect so the hook
 // reads the current card state (post-ETB zone move) rather than a
 // stale copy captured before the move.
-func fireOnETB(g *game.Game, cardID uuid.UUID, oracleID string) error {
+func fireAsEnters(g *game.Game, cardID uuid.UUID, oracleID string) error {
 	spec, ok := Lookup(oracleID)
 	if !ok {
 		return nil
@@ -338,7 +338,7 @@ func fireOnETB(g *game.Game, cardID uuid.UUID, oracleID string) error {
 	// exists — see issue #274. The catalog's Spec.StartingLoyalty
 	// is still consulted, as a fallback, via the
 	// game.CatalogStartingLoyalty hook registered in init().
-	if spec.OnETB == nil {
+	if spec.AsEnters == nil {
 		return nil
 	}
 	// Find the live card in the battlefield so the hook receives
@@ -358,5 +358,5 @@ func fireOnETB(g *game.Game, cardID uuid.UUID, oracleID string) error {
 		return nil
 	}
 	ctx := NewContext(g, nil)
-	return spec.OnETB(card, ctx)
+	return spec.AsEnters(card, ctx)
 }

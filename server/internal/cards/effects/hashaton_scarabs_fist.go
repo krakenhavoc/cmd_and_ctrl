@@ -41,7 +41,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     of failing over to LKI. There is no LKI store reachable from
 //     an ability's Effect.
 //   - The token's ETB *triggers* fire, but a copied card whose ETB
-//     lives in Spec.OnETB rather than Spec.Triggered does not get
+//     lives in Spec.AsEnters rather than Spec.Triggered does not get
 //     that clause, because CreateTokenForEffect does not call
 //     fireETBHookLocked. See the note on CreateTokenCopy.
 func init() {

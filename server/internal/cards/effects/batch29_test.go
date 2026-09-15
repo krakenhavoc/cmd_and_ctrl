@@ -972,7 +972,7 @@ func TestB29YargleAndMultaniIsVanilla(t *testing.T) {
 	if !ok {
 		t.Fatal("not registered")
 	}
-	if spec.Completeness != CompletenessFull || spec.OnResolve != nil || spec.OnETB != nil ||
+	if spec.Completeness != CompletenessFull || spec.OnResolve != nil || spec.AsEnters != nil ||
 		len(spec.Triggered) != 0 || len(spec.Static) != 0 || len(spec.Activated) != 0 || len(spec.PrintedKeywords) != 0 {
 		t.Error("Yargle and Multani has no rules text: a bare, complete spec")
 	}

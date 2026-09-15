@@ -995,7 +995,7 @@ func (g *Game) ReturnFromGraveyardUnderControlForEffect(cardID uuid.UUID, dest Z
 	if destZone.Kind == ZoneBattlefield {
 		g.EmitEvent(Event{Kind: EventETB, Actor: actor, CardID: cardID})
 		// A reanimated permanent enters the battlefield like any
-		// other, so the catalog's OnETB / StartingLoyalty hook has to
+		// other, so the catalog's AsEnters / StartingLoyalty hook has to
 		// run — otherwise reanimating Solemn Simulacrum fetches
 		// nothing and reanimating a planeswalker gives it no loyalty.
 		// Every other path onto the battlefield already fires this;
@@ -1448,7 +1448,7 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 	})
 	g.EmitEvent(Event{Kind: EventETB, Actor: spec.Player, CardID: moved.InstanceID})
 	// Same omission as the reanimation path had: a fetched permanent
-	// enters like any other, so its catalog OnETB hook runs.
+	// enters like any other, so its catalog AsEnters hook runs.
 	g.fireETBHookLocked(moved.InstanceID, CatalogKey(moved))
 	return moved.InstanceID, true
 }
@@ -1938,7 +1938,7 @@ func lookAtTopReason(n int) string {
 // replacements on one entry; no card in the catalog produces it
 // today.)
 //
-// Both EventETB and the catalog's OnETB hook fire, so the permanent
+// Both EventETB and the catalog's AsEnters hook fire, so the permanent
 // re-triggers everything a fresh entry would.
 //
 // Caller must hold g.mu. Added in S22.

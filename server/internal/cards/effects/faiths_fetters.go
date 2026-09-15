@@ -35,6 +35,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     get it wrong in the other and it shuts off half the mana base
 //     it was pointed at.
 //
+// The ETB is a triggered ability and uses the stack (#578). It used to
+// run from the direct AsEnters hook, which gave nobody a response
+// window; now the trigger waits for every player to pass, like every
+// other "When ~ enters".
+//
 // No simplification.
 func init() {
 	Register(Spec{
@@ -42,9 +47,18 @@ func init() {
 		Name:         "Faith's Fetters",
 		Completeness: CompletenessFull,
 		Targets:      EnchantPermanent(),
-		OnETB: func(card *game.Card, ctx *Context) error {
-			return GainLife{Player: card.Controller, Amount: 4}.Apply(ctx)
-		},
+		Triggered: []game.TriggeredAbility{{
+			Watches: []game.EventKind{game.EventETB},
+			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return ev.CardID == source.InstanceID
+			},
+			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+				return game.NewTriggeredItem(source, "Faith's Fetters — you gain 4 life",
+					func(g *game.Game, item *game.StackItem) error {
+						return GainLife{Player: item.Controller, Amount: 4}.Apply(NewContext(g, item))
+					})
+			},
+		}},
 		Static: []game.StaticAbility{
 			RestrictAttached(game.CantAttackOrBlock | game.CantActivate),
 		},

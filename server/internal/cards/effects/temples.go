@@ -16,12 +16,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // All three clauses are worth noting:
 //
 //   - "Enters tapped" is a real CR 614 self-replacement
-//     (SelfEntersTapped), not an OnETB tap. The permanent is never
+//     (SelfEntersTapped), not a hook that taps after entry. The permanent is never
 //     untapped on the battlefield, which is what the printed card says
 //     and what a tap-watcher would otherwise misread.
-//   - The scry is the land's own ETB trigger, and it queues a prompt —
-//     so playing a Temple hands its controller a choice before they
-//     pass priority.
+//   - The scry is the land's own ETB trigger. It goes on the stack like
+//     any other "When ~ enters" (#578 moved it off the direct AsEnters
+//     hook), and queues its prompt when it resolves.
 //   - The dual mana ability uses pipe syntax, so the controller picks
 //     the colour at activation. Two separate one-colour abilities would
 //     also work but would clutter the menu with a fixed pair.
@@ -51,14 +51,24 @@ func init() {
 		// last entry's colours.
 		produced := "{" + t.a + "|" + t.b + "}"
 		label := "Add {" + t.a + "} or {" + t.b + "}"
+		name := t.name
 		Register(Spec{
 			OracleID:     t.oracleID,
 			Name:         t.name,
 			Completeness: CompletenessFull,
 			Replacements: []game.ReplacementEffect{SelfEntersTapped()},
-			OnETB: func(card *game.Card, ctx *Context) error {
-				return Scry{Player: card.Controller, N: 1}.Apply(ctx)
-			},
+			Triggered: []game.TriggeredAbility{{
+				Watches: []game.EventKind{game.EventETB},
+				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+					return ev.CardID == source.InstanceID
+				},
+				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+					return game.NewTriggeredItem(source, name+" — scry 1",
+						func(g *game.Game, item *game.StackItem) error {
+							return Scry{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
+						})
+				},
+			}},
 			ManaAbilities: []ManaAbility{{
 				Cost:     ManaAbilityCost{Tap: true},
 				Produced: produced,
