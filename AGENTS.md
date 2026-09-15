@@ -1599,6 +1599,11 @@ any other layer card.
 
 ### When NOT to add a catalog entry
 
+The registry of known seams — what is missing, which cards wait on
+it, which are already tracked — is [docs/engine-seams.md](docs/engine-seams.md).
+Check it before triaging a skip as "needs machinery", and append a
+batch's skips to it in the batch PR (Discussion #559 item 6).
+
 - **Activated abilities whose cost has no component** — `AbilityCost`
   carries tap-this, sacrifice-this, sacrifice-another, mana and life
   ([activated.go](server/internal/game/activated.go)) and nothing else.
