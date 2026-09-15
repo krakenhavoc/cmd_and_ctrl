@@ -89,6 +89,7 @@ var gameFields = plan(
 	// tallies are: a restore mid-turn that forgot it would offer the
 	// wrong candidate set, and the cards it names are still in hand.
 	"DrawnThisTurn", carried, "",
+	"TurnTally", carried, "",
 	"DiscardPending", carried, "",
 	"Promises", carried, "",
 	"Vote", carried, "",

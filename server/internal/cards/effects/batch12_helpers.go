@@ -248,11 +248,7 @@ func b12YouSacrificedAnArtifact(ev game.Event, source *game.Card, g *game.Game) 
 // zone is not counted.
 func b12InstantsAndSorceriesCastBeforeThisTurn(g *game.Game, controller, spell uuid.UUID) int {
 	n := 0
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			break
-		}
+	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventCast || ev.Actor != controller || ev.CardID == spell {
 			continue
 		}

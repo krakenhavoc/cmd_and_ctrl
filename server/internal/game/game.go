@@ -182,6 +182,14 @@ type Game struct {
 	// would cost a hook on every zone move to buy nothing.
 	DrawnThisTurn map[uuid.UUID][]uuid.UUID
 
+	// TurnTally counts what has happened this turn — life gained and
+	// lost, cards drawn, creatures died, tokens, sacrifices, landfall,
+	// attacks, combat damage to players, and per-ability resolution /
+	// trigger counts — bumped by turnTallyListener as the events fire
+	// and reset on Turn.advance to a new turn. See turn_tally.go
+	// (#586).
+	TurnTally TurnTally
+
 	// DiscardPending is the cleanup-step pause map (S13.4): keys
 	// are player IDs that need to discard, values are the count
 	// each player must discard. Set at cleanup-step entry by
@@ -380,6 +388,12 @@ func NewGame() *Game {
 	// Bumps g.layerVersion on the events that change which static
 	// abilities are active (battlefield zone moves) or what they
 	// apply to (counter changes). See layer_listener.go.
+	// #586: the per-turn tally. Registered FIRST so it reads a dying
+	// creature's last-known characteristics before the harvester
+	// drops them, and so a trigger's AppliesTo asking "already this
+	// turn?" during the same event sees the count as it stood before
+	// that event. See turn_tally.go.
+	g.Listeners = append(g.Listeners, turnTallyListener{})
 	g.Listeners = append(g.Listeners, layerVersionBump{})
 	// S19 sub-PR 1: install the auto-fire trigger dispatcher. Walks
 	// the battlefield (and the LKI map for LTB events) on every
@@ -728,6 +742,7 @@ func (g *Game) onTurnAdvanceLocked(prev, next Turn) {
 	if g.DrawnThisTurn != nil {
 		g.DrawnThisTurn = nil
 	}
+	g.resetTurnTallyLocked()
 }
 
 // CardsDrawnThisTurnFor returns the instance IDs playerID has drawn

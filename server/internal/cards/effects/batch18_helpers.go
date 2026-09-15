@@ -134,27 +134,7 @@ func b18AttackedThisTurn(g *game.Game, player uuid.UUID) bool {
 // directly and emits no EventChangeLife of its own. Summed back to
 // the current turn's upkeep.
 func b18LifeLostThisTurn(g *game.Game, player uuid.UUID) int {
-	lost := 0
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			break
-		}
-		if ev.Target != player {
-			continue
-		}
-		switch ev.Kind {
-		case game.EventChangeLife:
-			if ev.Amount < 0 {
-				lost -= ev.Amount
-			}
-		case game.EventDealDamage:
-			if ev.Amount > 0 {
-				lost += ev.Amount
-			}
-		}
-	}
-	return lost
+	return g.TurnTallyFor(player).LifeLost
 }
 
 // b18AttackerAlreadyBlocked reports whether the attacker named by an

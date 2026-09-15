@@ -148,17 +148,7 @@ func b15EndStepBegan(ev game.Event) bool {
 // lifelink hit, a GainLife primitive and a drain's gain half all
 // emit one, and a loss (negative Amount) is not a gain.
 func b15LifeGainedThisTurn(g *game.Game, player uuid.UUID) int {
-	total := 0
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			break
-		}
-		if ev.Kind == game.EventChangeLife && ev.Target == player && ev.Amount > 0 {
-			total += ev.Amount
-		}
-	}
-	return total
+	return g.TurnTallyFor(player).LifeGained
 }
 
 // b15CardsDrawnThisTurn is how many cards each player drew this turn
@@ -166,13 +156,9 @@ func b15LifeGainedThisTurn(g *game.Game, player uuid.UUID) int {
 // card with the drawer in Actor.
 func b15CardsDrawnThisTurn(g *game.Game) map[uuid.UUID]int {
 	drawn := map[uuid.UUID]int{}
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			break
-		}
-		if ev.Kind == game.EventDrawCard && ev.Actor != uuid.Nil {
-			drawn[ev.Actor]++
+	for id, t := range g.TurnTally.Players {
+		if t.CardsDrawn > 0 {
+			drawn[id] = t.CardsDrawn
 		}
 	}
 	return drawn
@@ -188,16 +174,9 @@ func b15CardsDrawnThisTurn(g *game.Game) map[uuid.UUID]int {
 // its old one, never stronger.
 func b15LandsEnteredThisTurn(g *game.Game) map[uuid.UUID]int {
 	lands := map[uuid.UUID]int{}
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			break
-		}
-		if ev.Kind != game.EventETB || ev.CardID == uuid.Nil {
-			continue
-		}
-		if c, ok := g.LookupCardForEffect(ev.CardID); ok && c.IsLand() && c.Controller != uuid.Nil {
-			lands[c.Controller]++
+	for id, t := range g.TurnTally.Players {
+		if t.LandsEntered > 0 {
+			lands[id] = t.LandsEntered
 		}
 	}
 	return lands
@@ -212,17 +191,7 @@ func b15LandsEnteredThisTurn(g *game.Game) map[uuid.UUID]int {
 // b11TriggeredThisTurn does) is what keeps two triggers queued
 // together from both reading the same tally.
 func b15ResolvedThisTurn(g *game.Game, source uuid.UUID, label string) int {
-	n := 0
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			break
-		}
-		if ev.Kind == game.EventResolve && ev.Source == source && ev.Label == label {
-			n++
-		}
-	}
-	return n
+	return g.ResolvedThisTurn(source, label)
 }
 
 // --- predicates --------------------------------------------------

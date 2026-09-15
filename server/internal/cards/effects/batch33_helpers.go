@@ -125,17 +125,7 @@ func b33IslandsControlled(g *game.Game, controller uuid.UUID) int {
 // attack THIS TURN" is created once per activation, so the count is
 // how many copies of the delayed trigger exist.
 func b33ResolutionsThisTurn(g *game.Game, source uuid.UUID, label string) int {
-	n := 0
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			break
-		}
-		if ev.Kind == game.EventResolve && ev.Source == source && ev.Label == label {
-			n++
-		}
-	}
-	return n
+	return g.ResolvedThisTurn(source, label)
 }
 
 // b33CountersPlacedDelta is how many `kind` counters the
@@ -180,11 +170,7 @@ func b33CountersPlacedDelta(ev game.Event, kind string, g *game.Game) int {
 // persists as a card, so its printed subtype is still there.
 func b33PlayersDealtCombatDamageThisTurnByYourFaeries(g *game.Game, controller uuid.UUID) map[uuid.UUID]bool {
 	out := map[uuid.UUID]bool{}
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			break
-		}
+	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || ev.Actor != controller {
 			continue
 		}
