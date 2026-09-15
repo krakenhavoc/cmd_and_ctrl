@@ -18,15 +18,8 @@ func init() {
 		OracleID:     "aa321138-b1a7-4b8e-a2ca-b9ce65704e92",
 		Name:         "Satyr Enchanter",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventCast},
-			AppliesTo: b08EnchantmentSpellCastByYou,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Satyr Enchanter — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, b08EnchantmentSpellCastByYou, "Satyr Enchanter — draw a card", Do(DrawCards{N: 1})),
+		},
 	})
 }

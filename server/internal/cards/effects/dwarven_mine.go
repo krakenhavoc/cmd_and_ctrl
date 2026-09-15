@@ -34,17 +34,10 @@ func init() {
 		Replacements: []game.ReplacementEffect{SelfEntersTappedUnless(func(g *game.Game, controller uuid.UUID) bool {
 			return b12OtherMountainsControlled(g, controller, uuid.Nil) >= 3
 		})},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b26SelfEnteredUntapped(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Dwarven Mine — create a 1/1 red Dwarf",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: b26RedDwarfToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Dwarven Mine — create a 1/1 red Dwarf", Do(CreateToken{Template: b26RedDwarfToken(), N: 1})),
+		},
 	})
 }

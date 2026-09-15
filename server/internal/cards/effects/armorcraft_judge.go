@@ -19,13 +19,8 @@ func init() {
 		OracleID:     "d7f49243-a96e-499f-b2d7-8e9842432420",
 		Name:         "Armorcraft Judge",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Armorcraft Judge — draw a card for each creature you control with a +1/+1 counter",
-					b34DrawPerCreatureYouControlMatching(b34HasPlusCounter))
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Armorcraft Judge — draw a card for each creature you control with a +1/+1 counter", b34DrawPerCreatureYouControlMatching(b34HasPlusCounter)),
+		},
 	})
 }

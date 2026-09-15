@@ -22,15 +22,8 @@ func init() {
 		Name:            "Hornet Queen",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "deathtouch"},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Hornet Queen — create four 1/1 Insects with flying and deathtouch",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: b15GreenInsectToken(), N: 4}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Hornet Queen — create four 1/1 Insects with flying and deathtouch", Do(CreateToken{Template: b15GreenInsectToken(), N: 4})),
+		},
 	})
 }

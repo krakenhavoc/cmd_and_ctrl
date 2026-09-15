@@ -30,30 +30,25 @@ func init() {
 		OracleID:        "e0420f2c-d578-421e-ae75-e7dc5f70661a",
 		Name:            "Mazirek, Kraul Death Priest",
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventSacrifice},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventSacrifice, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.CardID != source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Mazirek — +1/+1 counter on each creature you control",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, c := range g.BattlefieldCardsForEffect() {
-							if c.Controller != item.Controller || !c.IsCreature() {
-								continue
-							}
-							if err := (AddCounter{
-								Target: c.InstanceID,
-								Kind:   game.CounterPlusOne,
-								N:      1,
-							}).Apply(ctx); err != nil {
-								return err
-							}
-						}
-						return nil
-					})
-			},
-		}},
+			}, "Mazirek — +1/+1 counter on each creature you control", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, c := range g.BattlefieldCardsForEffect() {
+					if c.Controller != item.Controller || !c.IsCreature() {
+						continue
+					}
+					if err := (AddCounter{
+						Target: c.InstanceID,
+						Kind:   game.CounterPlusOne,
+						N:      1,
+					}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
+			}),
+		},
 	})
 }

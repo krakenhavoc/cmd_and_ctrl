@@ -68,15 +68,7 @@ const BattleSubtypeSiege = "Siege"
 // the effect must read the battle by id off the item rather than
 // assuming where it is.
 func DefeatedTrigger(label string, effect func(g *game.Game, item *game.StackItem) error) game.TriggeredAbility {
-	return game.TriggeredAbility{
-		Watches: []game.EventKind{game.EventBattleDefeated},
-		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-			return ev.CardID == source.InstanceID
-		},
-		Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			return game.NewTriggeredItem(source, label, effect)
-		},
-	}
+	return On(game.EventBattleDefeated, Self, label, effect)
 }
 
 // SiegeBackFace is the face index every printed Siege's back half

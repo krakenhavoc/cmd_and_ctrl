@@ -27,16 +27,7 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"A token copy of Rosie Cotton can't be chosen for the +1/+1 counter either."},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches:   []game.EventKind{game.EventETB},
-				AppliesTo: b06SelfETB,
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Rosie Cotton of South Lane — create a Food",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: FoodToken(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			WhenThisEnters("Rosie Cotton of South Lane — create a Food", Do(CreateToken{Template: FoodToken(), N: 1})),
 			{
 				Watches: []game.EventKind{game.EventTokenCreated},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

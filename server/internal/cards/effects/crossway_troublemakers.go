@@ -46,16 +46,9 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			b34AttackingVampiresHaveDeathtouchAndLifelink("Crossway Troublemakers"),
-			{
-				Watches: []game.EventKind{game.EventLTB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b34VampireYouControlDied(ev, source, g)
-				},
-				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Crossway Troublemakers — a Vampire died. Pay 2 life to draw a card?"},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Crossway Troublemakers — pay 2 life, draw a card", b34PayLifeToDraw(2))
-				},
-			},
+			Optional(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b34VampireYouControlDied(ev, source, g)
+			}, "Crossway Troublemakers — pay 2 life, draw a card", b34PayLifeToDraw(2)), "Crossway Troublemakers — a Vampire died. Pay 2 life to draw a card?"),
 		},
 	})
 }

@@ -38,20 +38,13 @@ func init() {
 		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{EscapeWithCounters("{R}{R}", 8, 1)},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Ox of Agonas — discard your hand, then draw three",
-					func(g *game.Game, item *game.StackItem) error {
-						if _, err := discardWholeHand(g, item.Controller); err != nil {
-							return err
-						}
-						return DrawCards{Player: item.Controller, N: 3}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Ox of Agonas — discard your hand, then draw three", func(g *game.Game, item *game.StackItem) error {
+				if _, err := discardWholeHand(g, item.Controller); err != nil {
+					return err
+				}
+				return DrawCards{Player: item.Controller, N: 3}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

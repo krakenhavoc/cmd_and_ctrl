@@ -39,18 +39,11 @@ func init() {
 				c.Abilities = append(c.Abilities, "lifelink")
 			},
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && c.IsEnchantment()
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Archon of Sun's Grace — create a 2/2 Pegasus with flying (constellation)",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: b10WhitePegasusToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Archon of Sun's Grace — create a 2/2 Pegasus with flying (constellation)", Do(CreateToken{Template: b10WhitePegasusToken(), N: 1})),
+		},
 	})
 }

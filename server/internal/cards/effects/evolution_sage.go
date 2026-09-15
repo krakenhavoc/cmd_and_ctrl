@@ -17,18 +17,8 @@ func init() {
 		Name:         "Evolution Sage",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"You don't choose what to proliferate — the game picks for you, adding every counter that helps you and every counter that hurts an opponent."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				c, ok := enteredUnderYourControl(ev, source, g, false)
-				return ok && c.IsLand()
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Evolution Sage — proliferate (landfall)",
-					func(g *game.Game, item *game.StackItem) error {
-						return Proliferate{}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			Landfall("Evolution Sage — proliferate (landfall)", Do(Proliferate{})),
+		},
 	})
 }

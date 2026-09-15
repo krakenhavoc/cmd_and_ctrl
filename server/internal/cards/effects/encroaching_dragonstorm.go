@@ -28,40 +28,26 @@ func init() {
 		Name:         "Encroaching Dragonstorm",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches:   []game.EventKind{game.EventETB},
-				AppliesTo: b06SelfETB,
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Encroaching Dragonstorm — up to two basic lands, tapped",
-						func(g *game.Game, item *game.StackItem) error {
-							return SearchLibrary{
-								Player:        item.Controller,
-								Predicate:     IsBasicLand,
-								Dest:          game.ZoneBattlefield,
-								Limit:         2,
-								Reveal:        true,
-								Shuffle:       true,
-								TappedOnEntry: true,
-								Reason:        "Encroaching Dragonstorm — up to two basic lands",
-							}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b23DragonYouControlEntered(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Encroaching Dragonstorm — return it to its owner's hand",
-						func(g *game.Game, item *game.StackItem) error {
-							if !onBattlefield(g, item.SourceCardID) {
-								return nil
-							}
-							return BounceToHand{Target: item.SourceCardID}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			WhenThisEnters("Encroaching Dragonstorm — up to two basic lands, tapped", func(g *game.Game, item *game.StackItem) error {
+				return SearchLibrary{
+					Player:        item.Controller,
+					Predicate:     IsBasicLand,
+					Dest:          game.ZoneBattlefield,
+					Limit:         2,
+					Reveal:        true,
+					Shuffle:       true,
+					TappedOnEntry: true,
+					Reason:        "Encroaching Dragonstorm — up to two basic lands",
+				}.Apply(NewContext(g, item))
+			}),
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b23DragonYouControlEntered(ev, source, g)
+			}, "Encroaching Dragonstorm — return it to its owner's hand", func(g *game.Game, item *game.StackItem) error {
+				if !onBattlefield(g, item.SourceCardID) {
+					return nil
+				}
+				return BounceToHand{Target: item.SourceCardID}.Apply(NewContext(g, item))
+			}),
 		},
 	})
 }

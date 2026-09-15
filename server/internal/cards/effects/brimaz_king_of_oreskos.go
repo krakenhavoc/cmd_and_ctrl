@@ -60,18 +60,9 @@ func init() {
 						})
 				},
 			},
-			{
-				Watches: []game.EventKind{game.EventBlock},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return b28SelfBlocked(ev, source)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Brimaz, King of Oreskos — a 1/1 Cat Soldier with vigilance",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: b28WhiteCatSoldierVigilanceToken(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			On(game.EventBlock, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return b28SelfBlocked(ev, source)
+			}, "Brimaz, King of Oreskos — a 1/1 Cat Soldier with vigilance", Do(CreateToken{Template: b28WhiteCatSoldierVigilanceToken(), N: 1})),
 		},
 	})
 }

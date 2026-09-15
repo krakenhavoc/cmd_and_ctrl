@@ -26,22 +26,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches:   []game.EventKind{game.EventETB},
-				AppliesTo: b06SelfETB,
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Honored Dreyleader — a +1/+1 counter per other Squirrel or Food you control", b30CountersForOtherSquirrelsAndFood)
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b30AnotherSquirrelOrFoodYouControlEntered(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Honored Dreyleader — put a +1/+1 counter on it", b30PutCounterOnSelf)
-				},
-			},
+			WhenThisEnters("Honored Dreyleader — a +1/+1 counter per other Squirrel or Food you control", b30CountersForOtherSquirrelsAndFood),
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b30AnotherSquirrelOrFoodYouControlEntered(ev, source, g)
+			}, "Honored Dreyleader — put a +1/+1 counter on it", b30PutCounterOnSelf),
 		},
 	})
 }

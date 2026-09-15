@@ -31,25 +31,14 @@ func init() {
 	Register(Spec{
 		OracleID: "9bcaf141-1f1f-491f-aced-13dc093b9e2c",
 		Name:     "Pawn of Ulamog",
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				dead, ok := diedCreature(ev, g)
 				return ok && dead.Controller == source.Controller && !IsToken(dead)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Pawn of Ulamog — create a 0/1 Eldrazi Spawn",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   EldraziSpawnToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{
-				Question: "Pawn of Ulamog — create a 0/1 Eldrazi Spawn?",
-			},
-		}},
+			}, "Pawn of Ulamog — create a 0/1 Eldrazi Spawn", Do(CreateToken{
+				Template: EldraziSpawnToken(),
+				N:        1,
+			})), "Pawn of Ulamog — create a 0/1 Eldrazi Spawn?"),
+		},
 	})
 }

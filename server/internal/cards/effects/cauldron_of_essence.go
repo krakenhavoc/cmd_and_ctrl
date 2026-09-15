@@ -29,18 +29,13 @@ func init() {
 		OracleID:     "a2f8cde8-bf7b-4234-89f0-a95f9dc937e3",
 		Name:         "Cauldron of Essence",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b22CreatureYouControlDied(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Cauldron of Essence — each opponent loses 1 life and you gain 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return b07DrainEachOpponent(g, item)
-					})
-			},
-		}},
+			}, "Cauldron of Essence — each opponent loses 1 life and you gain 1 life", func(g *game.Game, item *game.StackItem) error {
+				return b07DrainEachOpponent(g, item)
+			}),
+		},
 		Activated: []ActivatedAbility{{
 			Label:        "{1}{B}{G}, {T}, Sacrifice a creature: Return target creature card from your graveyard to the battlefield.",
 			Cost:         Plus(ManaCost("{1}{B}{G}"), TapCost(), SacrificeACreature()),

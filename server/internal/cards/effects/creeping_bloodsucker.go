@@ -20,17 +20,10 @@ func init() {
 		OracleID:     "0bdddaf9-579a-4588-b5b3-faa189d4bdcc",
 		Name:         "Creeping Bloodsucker",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginUpkeep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Creeping Bloodsucker — 1 damage to each opponent, gain that much life",
-					func(g *game.Game, item *game.StackItem) error {
-						return b14DamageEachOpponentGainThatMuch(g, item, 1)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			AtYourUpkeep("Creeping Bloodsucker — 1 damage to each opponent, gain that much life", func(g *game.Game, item *game.StackItem) error {
+				return b14DamageEachOpponentGainThatMuch(g, item, 1)
+			}),
+		},
 	})
 }

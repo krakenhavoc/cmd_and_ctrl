@@ -40,18 +40,9 @@ func init() {
 			"A Munitions token only deals its 2 damage while Weapons Manufacturing is still on the battlefield and the token is still yours — the enchantment carries the token's ability for it.",
 		},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b31NontokenArtifactYouControlEntered(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Weapons Manufacturing — create a Munitions token",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: b31MunitionsToken(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b31NontokenArtifactYouControlEntered(ev, source, g)
+			}, "Weapons Manufacturing — create a Munitions token", Do(CreateToken{Template: b31MunitionsToken(), N: 1})),
 			{
 				Watches: []game.EventKind{game.EventLTB},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

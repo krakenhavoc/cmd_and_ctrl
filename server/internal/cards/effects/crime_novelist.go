@@ -26,23 +26,18 @@ func init() {
 		OracleID:     "5996b1d0-7fe3-4fec-8730-9db901d887b1",
 		Name:         "Crime Novelist",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventSacrifice},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventSacrifice, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b12YouSacrificedAnArtifact(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Crime Novelist — a +1/+1 counter, add {R}",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if z := g.FindCardZoneForEffect(item.SourceCardID); z != nil && z.Kind == game.ZoneBattlefield {
-							if err := (AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-								return err
-							}
-						}
-						return AddMana{Produced: "{R}"}.Apply(ctx)
-					})
-			},
-		}},
+			}, "Crime Novelist — a +1/+1 counter, add {R}", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				if z := g.FindCardZoneForEffect(item.SourceCardID); z != nil && z.Kind == game.ZoneBattlefield {
+					if err := (AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return AddMana{Produced: "{R}"}.Apply(ctx)
+			}),
+		},
 	})
 }

@@ -18,18 +18,11 @@ func init() {
 		OracleID:     "d9a7e5a6-3e41-4fc6-987a-18fe1b9d67dd",
 		Name:         "Elemental Bond",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && c.IsCreature() && c.CurrentPower() >= 3
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Elemental Bond — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Elemental Bond — draw a card", Do(DrawCards{N: 1})),
+		},
 	})
 }

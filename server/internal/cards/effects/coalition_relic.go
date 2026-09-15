@@ -38,14 +38,8 @@ func init() {
 			Cost:   TapCost(),
 			Effect: b33PutChargeCounterOnSelf,
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginPrecombatMain},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, b33CoalitionRelicLabel, b33RemoveChargeCountersForMana)
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			AtYourPrecombatMain(b33CoalitionRelicLabel, b33RemoveChargeCountersForMana),
+		},
 	})
 }

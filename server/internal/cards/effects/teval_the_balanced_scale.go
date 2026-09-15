@@ -64,27 +64,12 @@ func init() {
 					return game.NewTriggeredItem(source, b25TevalAttackLabel, b25MillThreeThenReturnChosenLandTapped)
 				},
 			},
-			{
-				Watches: []game.EventKind{game.EventAttack},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return attackDeclared(ev, source) && !b25GraveyardHasLandCard(g, source.Controller)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b25TevalAttackLabel, b25MillThreeThenReturnChosenLandTapped)
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventZoneMove, game.EventCast},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b16CardLeftYourGraveyard(ev, source, g) && !b12TriggerPendingOrOnStack(g, source, b25TevalLeftGraveyardLabel)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b25TevalLeftGraveyardLabel,
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: b16BlackZombieDruidToken(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return attackDeclared(ev, source) && !b25GraveyardHasLandCard(g, source.Controller)
+			}, b25TevalAttackLabel, b25MillThreeThenReturnChosenLandTapped),
+			OnAny([]game.EventKind{game.EventZoneMove, game.EventCast}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b16CardLeftYourGraveyard(ev, source, g) && !b12TriggerPendingOrOnStack(g, source, b25TevalLeftGraveyardLabel)
+			}, b25TevalLeftGraveyardLabel, Do(CreateToken{Template: b16BlackZombieDruidToken(), N: 1})),
 		},
 	})
 }

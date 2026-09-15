@@ -37,24 +37,19 @@ func init() {
 				c.Toughness = n
 			},
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Ulvenwald Hydra — you may search for a land, tapped",
-					func(g *game.Game, item *game.StackItem) error {
-						return SearchLibrary{
-							Player:        item.Controller,
-							Predicate:     func(c game.Card) bool { return c.IsLand() },
-							Dest:          game.ZoneBattlefield,
-							Limit:         1,
-							Shuffle:       true,
-							TappedOnEntry: true,
-							Optional:      true,
-							Reason:        "Ulvenwald Hydra — a land card, onto the battlefield tapped",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Ulvenwald Hydra — you may search for a land, tapped", func(g *game.Game, item *game.StackItem) error {
+				return SearchLibrary{
+					Player:        item.Controller,
+					Predicate:     func(c game.Card) bool { return c.IsLand() },
+					Dest:          game.ZoneBattlefield,
+					Limit:         1,
+					Shuffle:       true,
+					TappedOnEntry: true,
+					Optional:      true,
+					Reason:        "Ulvenwald Hydra — a land card, onto the battlefield tapped",
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

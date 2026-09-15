@@ -20,21 +20,16 @@ func init() {
 		Name:            "Rune-Scarred Demon",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Rune-Scarred Demon — search your library for a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return SearchLibrary{
-							Player:  item.Controller,
-							Dest:    game.ZoneHand,
-							Limit:   1,
-							Shuffle: true,
-							Reason:  "Rune-Scarred Demon — search your library for a card",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Rune-Scarred Demon — search your library for a card", func(g *game.Game, item *game.StackItem) error {
+				return SearchLibrary{
+					Player:  item.Controller,
+					Dest:    game.ZoneHand,
+					Limit:   1,
+					Shuffle: true,
+					Reason:  "Rune-Scarred Demon — search your library for a card",
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

@@ -48,28 +48,21 @@ func init() {
 				Label: "Stasis: skip untap step",
 			},
 		},
-		Triggered: []game.TriggeredAbility{{
+		Triggered: []game.TriggeredAbility{
 			// "At the beginning of the upkeep of Stasis's
 			// controller" — the controller's upkeep only, unlike the
 			// skip-untap half, which hits every seat.
-			Watches: []game.EventKind{game.EventBeginUpkeep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Stasis — sacrifice unless you pay {U}",
-					func(g *game.Game, item *game.StackItem) error {
-						sourceID := item.SourceCardID
-						return PayUnless{
-							Chooser:  item.Controller,
-							Cost:     "{U}",
-							Question: "Stasis — pay {U} or sacrifice Stasis?",
-							OnDecline: func(ctx *Context) error {
-								return SacrificePermanent{Target: sourceID}.Apply(ctx)
-							},
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			AtYourUpkeep("Stasis — sacrifice unless you pay {U}", func(g *game.Game, item *game.StackItem) error {
+				sourceID := item.SourceCardID
+				return PayUnless{
+					Chooser:  item.Controller,
+					Cost:     "{U}",
+					Question: "Stasis — pay {U} or sacrifice Stasis?",
+					OnDecline: func(ctx *Context) error {
+						return SacrificePermanent{Target: sourceID}.Apply(ctx)
+					},
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

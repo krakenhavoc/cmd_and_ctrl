@@ -37,17 +37,10 @@ func init() {
 		Name:         "Refraction Elemental",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"Ward—Pay 2 life isn't implemented, so opponents can target this creature without paying anything."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Refraction Elemental — 2 damage to each opponent",
-					func(g *game.Game, item *game.StackItem) error {
-						return damageToEachOpponent(g, item, 2)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, ByYou, "Refraction Elemental — 2 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
+				return damageToEachOpponent(g, item, 2)
+			}),
+		},
 	})
 }

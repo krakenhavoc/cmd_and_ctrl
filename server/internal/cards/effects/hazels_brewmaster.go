@@ -55,15 +55,9 @@ func init() {
 					return game.NewTriggeredItem(source, b21BrewmasterLabel, b21BrewmasterExileAndFood)
 				},
 			},
-			{
-				Watches: []game.EventKind{game.EventETB, game.EventAttack},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b21SelfEnteredOrAttacked(ev, source) && !b21AnyGraveyardHasACard(g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b21BrewmasterLabel, b21BrewmasterExileAndFood)
-				},
-			},
+			OnAny([]game.EventKind{game.EventETB, game.EventAttack}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b21SelfEnteredOrAttacked(ev, source) && !b21AnyGraveyardHasACard(g)
+			}, b21BrewmasterLabel, b21BrewmasterExileAndFood),
 		},
 	})
 }

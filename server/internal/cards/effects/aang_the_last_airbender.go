@@ -68,50 +68,46 @@ func init() {
 		Name:            "Aang, the Last Airbender",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
+		Triggered: []game.TriggeredAbility{
+			{
+				Watches: []game.EventKind{game.EventETB},
+				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+					return ev.CardID == source.InstanceID
+				},
+				Targets: TargetPermanent("another target nonland permanent", Nonland()),
+				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+					return game.NewTriggeredItem(source, "Aang, the Last Airbender — airbend a nonland permanent",
+						func(g *game.Game, item *game.StackItem) error {
+							if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+								return nil
+							}
+							target := item.Targets[0]
+							// "Another": Aang does not airbend himself.
+							if target.ID == item.SourceCardID {
+								return nil
+							}
+							return Airbend{Target: target.ID}.Apply(NewContext(g, item))
+						})
+				},
+				OptionalPrompt: &game.TriggerOptionalPrompt{
+					Question: "Aang, the Last Airbender — airbend a nonland permanent? (Exile it; its owner may cast it for {2}.)",
+				},
 			},
-			Targets: TargetPermanent("another target nonland permanent", Nonland()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Aang, the Last Airbender — airbend a nonland permanent",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-							return nil
-						}
-						target := item.Targets[0]
-						// "Another": Aang does not airbend himself.
-						if target.ID == item.SourceCardID {
-							return nil
-						}
-						return Airbend{Target: target.ID}.Apply(NewContext(g, item))
-					})
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{
-				Question: "Aang, the Last Airbender — airbend a nonland permanent? (Exile it; its owner may cast it for {2}.)",
-			},
-		}, {
 			// "Whenever you cast a Lesson spell, Aang gains
 			// lifelink until end of turn." Mandatory, untargeted.
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Actor != source.Controller {
 					return false
 				}
 				spell, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && containsFoldASCII(spell.TypeLine, "lesson")
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Aang, the Last Airbender — lifelink until end of turn",
-					func(g *game.Game, item *game.StackItem) error {
-						return GrantKeywordUntilEOT{
-							Target:   item.SourceCardID,
-							Keywords: []string{"lifelink"},
-							Label:    "Aang, the Last Airbender — lifelink",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Aang, the Last Airbender — lifelink until end of turn", func(g *game.Game, item *game.StackItem) error {
+				return GrantKeywordUntilEOT{
+					Target:   item.SourceCardID,
+					Keywords: []string{"lifelink"},
+					Label:    "Aang, the Last Airbender — lifelink",
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

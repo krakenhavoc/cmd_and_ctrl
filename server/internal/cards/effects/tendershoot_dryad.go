@@ -31,18 +31,9 @@ func init() {
 		Name:         "Tendershoot Dryad",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The city's blessing isn't kept once earned — Saprolings get +2/+2 only while you control ten or more permanents."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginUpkeep},
-			AppliesTo: func(_ game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return true
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Tendershoot Dryad — create a Saproling",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: b11GreenSaprolingToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			AtEachUpkeep("Tendershoot Dryad — create a Saproling", Do(CreateToken{Template: b11GreenSaprolingToken(), N: 1})),
+		},
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,

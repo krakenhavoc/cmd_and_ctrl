@@ -29,21 +29,16 @@ func init() {
 				return b19ZombieCardsInGraveyard(g, src.Controller)
 			}, "Diregraf Colossus: enters with a +1/+1 counter per Zombie card in your graveyard"),
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b19ZombieSpellCastByYou(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Diregraf Colossus — create a tapped 2/2 Zombie",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateTokenAdvanced{
-							Controller: item.Controller,
-							Spec:       Token(BlackZombieToken()).EntersTapped(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Diregraf Colossus — create a tapped 2/2 Zombie", func(g *game.Game, item *game.StackItem) error {
+				return CreateTokenAdvanced{
+					Controller: item.Controller,
+					Spec:       Token(BlackZombieToken()).EntersTapped(),
+					N:          1,
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

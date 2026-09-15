@@ -57,18 +57,9 @@ func init() {
 			Name:         t.name,
 			Completeness: CompletenessFull,
 			Replacements: []game.ReplacementEffect{SelfEntersTapped()},
-			Triggered: []game.TriggeredAbility{{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.CardID == source.InstanceID
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, name+" — scry 1",
-						func(g *game.Game, item *game.StackItem) error {
-							return Scry{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			}},
+			Triggered: []game.TriggeredAbility{
+				WhenThisEnters(name+" — scry 1", Do(Scry{N: 1})),
+			},
 			ManaAbilities: []ManaAbility{{
 				Cost:     ManaAbilityCost{Tap: true},
 				Produced: produced,

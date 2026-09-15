@@ -31,18 +31,13 @@ func init() {
 		OracleID:     "ee35de1c-aef1-4bd4-85fd-fe77bc927790",
 		Name:         "Marwyn, the Nurturer",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, "Elf")
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Marwyn — put a +1/+1 counter on Marwyn",
-					func(g *game.Game, item *game.StackItem) error {
-						return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Marwyn — put a +1/+1 counter on Marwyn", func(g *game.Game, item *game.StackItem) error {
+				return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
+			}),
+		},
 		ManaAbilities: []ManaAbility{{
 			Cost:  ManaAbilityCost{Tap: true},
 			Label: "Add an amount of {G} equal to Marwyn's power",

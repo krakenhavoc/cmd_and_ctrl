@@ -44,24 +44,14 @@ func init() {
 		Name:         "Quest for Renewal",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventTapCard, game.EventAttack},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b32CreatureYouControlBecameTapped(ev, source, g)
-				},
-				OptionalPrompt: &game.TriggerOptionalPrompt{
-					Question: "Quest for Renewal — put a quest counter on it?",
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Quest for Renewal — put a quest counter",
-						func(g *game.Game, item *game.StackItem) error {
-							if !b09SourceStillOnBattlefield(g, item) {
-								return nil
-							}
-							return AddCounter{Target: item.SourceCardID, Kind: "quest", N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			Optional(OnAny([]game.EventKind{game.EventTapCard, game.EventAttack}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b32CreatureYouControlBecameTapped(ev, source, g)
+			}, "Quest for Renewal — put a quest counter", func(g *game.Game, item *game.StackItem) error {
+				if !b09SourceStillOnBattlefield(g, item) {
+					return nil
+				}
+				return AddCounter{Target: item.SourceCardID, Kind: "quest", N: 1}.Apply(NewContext(g, item))
+			}), "Quest for Renewal — put a quest counter on it?"),
 		},
 		UntapStep: []game.UntapStepPermission{{
 			Label: "Quest for Renewal — untap all creatures you control",

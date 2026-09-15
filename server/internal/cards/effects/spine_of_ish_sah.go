@@ -32,21 +32,12 @@ func init() {
 					return destroyChosenTargetTrigger(source, "Spine of Ish Sah — destroy target permanent")
 				},
 			},
-			{
-				Watches: []game.EventKind{game.EventLTB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return cardDied(ev, source)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Spine of Ish Sah — return it to its owner's hand",
-						func(g *game.Game, item *game.StackItem) error {
-							if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
-								return nil
-							}
-							return ReturnFromGraveyard{Target: item.SourceCardID, Dest: game.ZoneHand}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			WhenThisDies("Spine of Ish Sah — return it to its owner's hand", func(g *game.Game, item *game.StackItem) error {
+				if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
+					return nil
+				}
+				return ReturnFromGraveyard{Target: item.SourceCardID, Dest: game.ZoneHand}.Apply(NewContext(g, item))
+			}),
 		},
 	})
 }

@@ -22,21 +22,14 @@ func init() {
 		OracleID:     "c803b788-4213-4fab-b841-7e5bbf66088e",
 		Name:         "Jhoira, Weatherlight Captain",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Actor != source.Controller {
 					return false
 				}
 				spell, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && b09IsHistoric(spell)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Jhoira, Weatherlight Captain — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Jhoira, Weatherlight Captain — draw a card", Do(DrawCards{N: 1})),
+		},
 	})
 }

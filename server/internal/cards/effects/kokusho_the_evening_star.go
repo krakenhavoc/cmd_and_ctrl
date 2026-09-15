@@ -24,17 +24,10 @@ func init() {
 		Name:            "Kokusho, the Evening Star",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return cardDied(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Kokusho, the Evening Star — each opponent loses 5 life, you gain that much",
-					func(g *game.Game, item *game.StackItem) error {
-						return b21DrainEachOpponentAndGainTheTotal(g, item, 5)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisDies("Kokusho, the Evening Star — each opponent loses 5 life, you gain that much", func(g *game.Game, item *game.StackItem) error {
+				return b21DrainEachOpponentAndGainTheTotal(g, item, 5)
+			}),
+		},
 	})
 }

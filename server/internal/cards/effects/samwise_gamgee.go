@@ -28,17 +28,10 @@ func init() {
 		Name:         "Samwise Gamgee",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The second ability isn't available — a cost can't sacrifice three Foods, so historic cards can't be returned from your graveyard."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b15AnotherNontokenCreatureYouControlEntered(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Samwise Gamgee — create a Food token",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: FoodToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Samwise Gamgee — create a Food token", Do(CreateToken{Template: FoodToken(), N: 1})),
+		},
 	})
 }

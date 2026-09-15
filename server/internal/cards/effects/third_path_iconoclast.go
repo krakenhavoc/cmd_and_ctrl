@@ -21,15 +21,8 @@ func init() {
 		OracleID:     "f7156897-2b02-4ecd-868d-d4d59244e9ed",
 		Name:         "Third Path Iconoclast",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventCast},
-			AppliesTo: b10NoncreatureSpellCastByYou,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Third Path Iconoclast — a 1/1 Soldier artifact creature",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: b12ColorlessSoldierArtifactToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverYouCast(Noncreature(), "Third Path Iconoclast — a 1/1 Soldier artifact creature", Do(CreateToken{Template: b12ColorlessSoldierArtifactToken(), N: 1})),
+		},
 	})
 }

@@ -41,26 +41,18 @@ func init() {
 			},
 			Label: "Mossborn Hydra: enters with a +1/+1 counter",
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				c, ok := enteredUnderYourControl(ev, source, g, false)
-				return ok && c.IsLand()
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Mossborn Hydra — double its +1/+1 counters (landfall)",
-					func(g *game.Game, item *game.StackItem) error {
-						c, ok := g.LookupCardForEffect(item.SourceCardID)
-						if !ok || c.Counters == nil {
-							return nil
-						}
-						n := c.Counters["+1/+1"]
-						if n <= 0 {
-							return nil
-						}
-						return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: n}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			Landfall("Mossborn Hydra — double its +1/+1 counters (landfall)", func(g *game.Game, item *game.StackItem) error {
+				c, ok := g.LookupCardForEffect(item.SourceCardID)
+				if !ok || c.Counters == nil {
+					return nil
+				}
+				n := c.Counters["+1/+1"]
+				if n <= 0 {
+					return nil
+				}
+				return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: n}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

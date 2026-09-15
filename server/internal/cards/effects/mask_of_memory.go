@@ -38,22 +38,17 @@ func init() {
 			"The optional draw is always taken — you aren't asked, and the linked discard follows.",
 			"The discarded card is chosen at random instead of by you.",
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return attachedCreatureDealtCombatDamageToPlayer(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Mask of Memory — draw two, discard one",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if err := (DrawCards{Player: item.Controller, N: 2}.Apply(ctx)); err != nil {
-							return err
-						}
-						return DiscardCards{Player: item.Controller, N: 1}.Apply(ctx)
-					})
-			},
-		}},
+			}, "Mask of Memory — draw two, discard one", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				if err := (DrawCards{Player: item.Controller, N: 2}.Apply(ctx)); err != nil {
+					return err
+				}
+				return DiscardCards{Player: item.Controller, N: 1}.Apply(ctx)
+			}),
+		},
 		Activated: []ActivatedAbility{
 			EquipAbility("{1}"),
 		},

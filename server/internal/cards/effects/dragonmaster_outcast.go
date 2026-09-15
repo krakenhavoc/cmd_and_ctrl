@@ -22,20 +22,15 @@ func init() {
 		OracleID:     "b6fb79c3-cd32-4045-8177-e52841eea65b",
 		Name:         "Dragonmaster Outcast",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginUpkeep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventBeginUpkeep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Actor == source.Controller && b10LandsControlled(g, source.Controller) >= 6
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Dragonmaster Outcast — create a 5/5 red Dragon with flying",
-					func(g *game.Game, item *game.StackItem) error {
-						if b10LandsControlled(g, item.Controller) < 6 {
-							return nil
-						}
-						return CreateToken{Controller: item.Controller, Template: b14RedDragonToken(5), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Dragonmaster Outcast — create a 5/5 red Dragon with flying", func(g *game.Game, item *game.StackItem) error {
+				if b10LandsControlled(g, item.Controller) < 6 {
+					return nil
+				}
+				return CreateToken{Controller: item.Controller, Template: b14RedDragonToken(5), N: 1}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

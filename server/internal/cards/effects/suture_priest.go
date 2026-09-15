@@ -25,20 +25,7 @@ func init() {
 		Name:         "Suture Priest",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					c, ok := enteredUnderYourControl(ev, source, g, true)
-					return ok && c.IsCreature()
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Suture Priest — you gain 1 life",
-						func(g *game.Game, item *game.StackItem) error {
-							return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
-						})
-				},
-				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Suture Priest — gain 1 life?"},
-			},
+			Optional(WheneverAnotherCreatureEntersUnderYourControl("Suture Priest — you gain 1 life", Do(GainLife{Amount: 1})), "Suture Priest — gain 1 life?"),
 			{
 				Watches: []game.EventKind{game.EventETB},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

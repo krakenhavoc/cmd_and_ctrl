@@ -24,26 +24,12 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventLTB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b18OpponentsCreatureDied(ev, source, g)
-				},
-				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Sangromancer — an opponent's creature died. Gain 3 life?"},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Sangromancer — gain 3 life (a creature died)", b18GainThree)
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventDiscardCard},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return b18OpponentDiscarded(ev, source)
-				},
-				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Sangromancer — an opponent discarded. Gain 3 life?"},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Sangromancer — gain 3 life (a card was discarded)", b18GainThree)
-				},
-			},
+			Optional(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b18OpponentsCreatureDied(ev, source, g)
+			}, "Sangromancer — gain 3 life (a creature died)", b18GainThree), "Sangromancer — an opponent's creature died. Gain 3 life?"),
+			Optional(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return b18OpponentDiscarded(ev, source)
+			}, "Sangromancer — gain 3 life (a card was discarded)", b18GainThree), "Sangromancer — an opponent discarded. Gain 3 life?"),
 		},
 	})
 }

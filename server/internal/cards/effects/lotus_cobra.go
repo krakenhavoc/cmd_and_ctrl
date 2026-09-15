@@ -28,18 +28,8 @@ func init() {
 		Name:         "Lotus Cobra",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The landfall mana is limited to your commander's color identity instead of any color."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				c, ok := enteredUnderYourControl(ev, source, g, false)
-				return ok && c.IsLand()
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Lotus Cobra — add one mana of any color (landfall)",
-					func(g *game.Game, item *game.StackItem) error {
-						return AddMana{Produced: "{W|U|B|R|G}"}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			Landfall("Lotus Cobra — add one mana of any color (landfall)", Do(AddMana{Produced: "{W|U|B|R|G}"})),
+		},
 	})
 }

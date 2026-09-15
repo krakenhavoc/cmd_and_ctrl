@@ -47,16 +47,9 @@ func init() {
 		Caveats:         []string{"An Aura returned this way comes back unattached and is put into the graveyard — you don't get to choose what it enchants."},
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventSacrifice},
-				AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.Kind == game.EventSacrifice && ev.CardID != uuid.Nil
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Carmen, Cruel Skymarcher — +1/+1 counter and 1 life",
-						b26PutCounterOnSelfAndGainLife)
-				},
-			},
+			On(game.EventSacrifice, func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return ev.Kind == game.EventSacrifice && ev.CardID != uuid.Nil
+			}, "Carmen, Cruel Skymarcher — +1/+1 counter and 1 life", b26PutCounterOnSelfAndGainLife),
 			{
 				Watches: []game.EventKind{game.EventAttack},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

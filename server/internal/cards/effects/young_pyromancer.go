@@ -18,25 +18,17 @@ func init() {
 		OracleID:     "5fac139a-07d3-4e6c-98e3-d98b199f7a6f",
 		Name:         "Young Pyromancer",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Actor != source.Controller {
 					return false
 				}
 				spell, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && (spell.IsInstant() || spell.IsSorcery())
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Young Pyromancer — create an Elemental",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   b07RedElementalToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Young Pyromancer — create an Elemental", Do(CreateToken{
+				Template: b07RedElementalToken(),
+				N:        1,
+			})),
+		},
 	})
 }

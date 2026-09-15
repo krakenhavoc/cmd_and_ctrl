@@ -33,30 +33,12 @@ func init() {
 		Name:         "The Endstone",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventZoneMove, game.EventCast},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b31YouPlayedALandOrCastASpell(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "The Endstone — draw a card",
-						func(g *game.Game, item *game.StackItem) error {
-							return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventBeginEndStep},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.Actor == source.Controller
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "The Endstone — your life total becomes half your starting life total",
-						func(g *game.Game, item *game.StackItem) error {
-							return b31LifeBecomes(NewContext(g, item), item.Controller, (game.StartingLife+1)/2)
-						})
-				},
-			},
+			OnAny([]game.EventKind{game.EventZoneMove, game.EventCast}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b31YouPlayedALandOrCastASpell(ev, source, g)
+			}, "The Endstone — draw a card", Do(DrawCards{N: 1})),
+			AtYourEndStep("The Endstone — your life total becomes half your starting life total", func(g *game.Game, item *game.StackItem) error {
+				return b31LifeBecomes(NewContext(g, item), item.Controller, (game.StartingLife+1)/2)
+			}),
 		},
 	})
 }

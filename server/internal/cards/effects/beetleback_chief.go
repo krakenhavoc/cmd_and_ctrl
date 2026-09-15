@@ -16,12 +16,8 @@ func init() {
 		OracleID:     "f5c5f64c-6911-430c-a825-b32b96d39c7d",
 		Name:         "Beetleback Chief",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Beetleback Chief — create two 1/1 red Goblins", b34CreateTokens(RedGoblinToken, 2))
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Beetleback Chief — create two 1/1 red Goblins", b34CreateTokens(RedGoblinToken, 2)),
+		},
 	})
 }

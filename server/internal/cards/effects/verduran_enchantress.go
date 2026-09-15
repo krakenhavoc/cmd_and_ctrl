@@ -18,16 +18,8 @@ func init() {
 		OracleID:     "cd98a31b-cc7e-43f9-982e-109ad9850908",
 		Name:         "Verduran Enchantress",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:        []game.EventKind{game.EventCast},
-			AppliesTo:      b08EnchantmentSpellCastByYou,
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Verduran Enchantress — draw a card?"},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Verduran Enchantress — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventCast, b08EnchantmentSpellCastByYou, "Verduran Enchantress — draw a card", Do(DrawCards{N: 1})), "Verduran Enchantress — draw a card?"),
+		},
 	})
 }

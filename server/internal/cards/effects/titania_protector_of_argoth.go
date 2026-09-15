@@ -42,18 +42,9 @@ func init() {
 						})
 				},
 			},
-			{
-				Watches: []game.EventKind{game.EventLTB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b10LandYouControlDied(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Titania — create a 5/3 green Elemental",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: b10GreenElemental53Token(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b10LandYouControlDied(ev, source, g)
+			}, "Titania — create a 5/3 green Elemental", Do(CreateToken{Template: b10GreenElemental53Token(), N: 1})),
 		},
 	})
 }

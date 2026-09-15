@@ -25,15 +25,8 @@ func init() {
 			Produced: "{G}",
 			Label:    "Add {G}",
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Khalni Garden — create a 0/1 green Plant",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: b02PlantToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Khalni Garden — create a 0/1 green Plant", Do(CreateToken{Template: b02PlantToken(), N: 1})),
+		},
 	})
 }

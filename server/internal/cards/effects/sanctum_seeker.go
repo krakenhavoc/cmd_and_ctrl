@@ -23,15 +23,10 @@ func init() {
 		OracleID:     "afb71560-0fc9-4ea5-9d52-d93c17d72519",
 		Name:         "Sanctum Seeker",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventAttack},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b21CreatureOfSubtypeYouControlAttacked(ev, source, g, "Vampire")
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Sanctum Seeker — each opponent loses 1 life, you gain 1 life",
-					b07DrainEachOpponent)
-			},
-		}},
+			}, "Sanctum Seeker — each opponent loses 1 life, you gain 1 life", b07DrainEachOpponent),
+		},
 	})
 }

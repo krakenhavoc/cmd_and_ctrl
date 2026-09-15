@@ -22,18 +22,11 @@ func init() {
 		OracleID:     "d5a33091-a348-4b13-8dbd-79ab0ad99afe",
 		Name:         "Demon's Disciple",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Demon's Disciple — each player sacrifices a creature or planeswalker",
-					func(g *game.Game, item *game.StackItem) error {
-						return EachPlayerSacrifices{
-							Match: b10CreatureOrPlaneswalker(),
-							Label: "a creature or planeswalker",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Demon's Disciple — each player sacrifices a creature or planeswalker", Do(EachPlayerSacrifices{
+				Match: b10CreatureOrPlaneswalker(),
+				Label: "a creature or planeswalker",
+			})),
+		},
 	})
 }

@@ -21,15 +21,10 @@ func init() {
 		OracleID:     "2e9289d6-dbc6-456d-88cf-d1f534e731d6",
 		Name:         "Firebrand Archer",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventCast},
-			AppliesTo: b10NoncreatureSpellCastByYou,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Firebrand Archer — 1 damage to each opponent",
-					func(g *game.Game, item *game.StackItem) error {
-						return damageToEachOpponent(g, item, 1)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverYouCast(Noncreature(), "Firebrand Archer — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
+				return damageToEachOpponent(g, item, 1)
+			}),
+		},
 	})
 }

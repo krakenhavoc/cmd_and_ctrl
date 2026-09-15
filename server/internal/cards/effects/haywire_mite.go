@@ -23,18 +23,9 @@ func init() {
 		OracleID:     "749d2994-44e7-40d3-8630-7bebed239e9e",
 		Name:         "Haywire Mite",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return cardDied(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Haywire Mite — you gain 2 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return GainLife{Player: item.Controller, Amount: 2}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisDies("Haywire Mite — you gain 2 life", Do(GainLife{Amount: 2})),
+		},
 		Activated: []ActivatedAbility{{
 			Label: "{G}, Sacrifice this creature: Exile target noncreature artifact or noncreature enchantment.",
 			Cost:  Plus(ManaCost("{G}"), SacrificeThis()),

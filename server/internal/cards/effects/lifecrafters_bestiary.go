@@ -23,37 +23,19 @@ func init() {
 		Name:         "Lifecrafter's Bestiary",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventBeginUpkeep},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.Actor == source.Controller
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Lifecrafter's Bestiary — scry 1",
-						func(g *game.Game, item *game.StackItem) error {
-							return Scry{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventCast},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b12CreatureSpellCastByYou(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Lifecrafter's Bestiary — pay {G} to draw a card",
-						func(g *game.Game, item *game.StackItem) error {
-							return MayPay{
-								Chooser:  item.Controller,
-								Cost:     "{G}",
-								Question: "Lifecrafter's Bestiary — pay {G} to draw a card?",
-								OnPay: func(ctx *Context) error {
-									return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
-								},
-							}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			AtYourUpkeep("Lifecrafter's Bestiary — scry 1", Do(Scry{N: 1})),
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b12CreatureSpellCastByYou(ev, source, g)
+			}, "Lifecrafter's Bestiary — pay {G} to draw a card", func(g *game.Game, item *game.StackItem) error {
+				return MayPay{
+					Chooser:  item.Controller,
+					Cost:     "{G}",
+					Question: "Lifecrafter's Bestiary — pay {G} to draw a card?",
+					OnPay: func(ctx *Context) error {
+						return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+					},
+				}.Apply(NewContext(g, item))
+			}),
 		},
 	})
 }

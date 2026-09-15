@@ -36,21 +36,15 @@ func init() {
 				return nil
 			},
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventETB, func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b20ArtifactEntered(ev, g)
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Grinding Station — untap it?"},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Grinding Station — untap",
-					func(g *game.Game, item *game.StackItem) error {
-						if !b15OnBattlefield(g, item.SourceCardID) {
-							return nil
-						}
-						return UntapTarget{Target: item.SourceCardID}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Grinding Station — untap", func(g *game.Game, item *game.StackItem) error {
+				if !b15OnBattlefield(g, item.SourceCardID) {
+					return nil
+				}
+				return UntapTarget{Target: item.SourceCardID}.Apply(NewContext(g, item))
+			}), "Grinding Station — untap it?"),
+		},
 	})
 }

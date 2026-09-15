@@ -21,22 +21,11 @@ func init() {
 		Name:            "Rampaging Baloths",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				c, ok := enteredUnderYourControl(ev, source, g, false)
-				return ok && c.IsLand()
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Rampaging Baloths — create a 4/4 Beast (landfall)",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   b03GreenBeast44Token(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			Landfall("Rampaging Baloths — create a 4/4 Beast (landfall)", Do(CreateToken{
+				Template: b03GreenBeast44Token(),
+				N:        1,
+			})),
+		},
 	})
 }

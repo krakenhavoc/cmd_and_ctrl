@@ -33,48 +33,25 @@ func init() {
 	Register(Spec{
 		OracleID: "00c0543c-2a1f-4425-8283-4062d74a1637",
 		Name:     "Solemn Simulacrum",
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Solemn Simulacrum — search for a basic land",
-					func(g *game.Game, item *game.StackItem) error {
-						return SearchLibrary{
-							Player:        item.Controller,
-							Predicate:     IsBasicLand,
-							Dest:          game.ZoneBattlefield,
-							Limit:         1,
-							Reveal:        true,
-							Shuffle:       true,
-							TappedOnEntry: true,
-							Reason:        "Solemn Simulacrum — a basic land",
-						}.Apply(NewContext(g, item))
-					})
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{
-				Question: "Solemn Simulacrum — search for a basic land?",
-			},
-		}, {
+		Triggered: []game.TriggeredAbility{
+			Optional(WhenThisEnters("Solemn Simulacrum — search for a basic land", func(g *game.Game, item *game.StackItem) error {
+				return SearchLibrary{
+					Player:        item.Controller,
+					Predicate:     IsBasicLand,
+					Dest:          game.ZoneBattlefield,
+					Limit:         1,
+					Reveal:        true,
+					Shuffle:       true,
+					TappedOnEntry: true,
+					Reason:        "Solemn Simulacrum — a basic land",
+				}.Apply(NewContext(g, item))
+			}), "Solemn Simulacrum — search for a basic land?"),
 			// "When Solemn Simulacrum dies, you may draw a card."
 			// S19 sub-PR 4 wires the dies half onto the LTB harvester
 			// (cardDied gates graveyard-only — a bounced/exiled Solemn
 			// does not draw). Optional, so it queues a prompt; drawing
 			// always has an effect, so no HasLegalTarget predicate.
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return cardDied(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Solemn Simulacrum — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{
-				Question: "Solemn Simulacrum — draw a card?",
-			},
-		}},
+			Optional(WhenThisDies("Solemn Simulacrum — draw a card", Do(DrawCards{N: 1})), "Solemn Simulacrum — draw a card?"),
+		},
 	})
 }

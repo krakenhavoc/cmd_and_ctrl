@@ -22,25 +22,20 @@ func init() {
 		OracleID:     "b9f4f96b-6e54-4fe6-8df7-623e0fc72409",
 		Name:         "Mentor of the Meek",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, true)
 				return ok && c.IsCreature() && c.CurrentPower() <= 2
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Mentor of the Meek — pay {1} to draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return MayPay{
-							Chooser:  item.Controller,
-							Cost:     "{1}",
-							Question: "Mentor of the Meek — pay {1} to draw a card?",
-							OnPay: func(ctx *Context) error {
-								return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
-							},
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Mentor of the Meek — pay {1} to draw a card", func(g *game.Game, item *game.StackItem) error {
+				return MayPay{
+					Chooser:  item.Controller,
+					Cost:     "{1}",
+					Question: "Mentor of the Meek — pay {1} to draw a card?",
+					OnPay: func(ctx *Context) error {
+						return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+					},
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

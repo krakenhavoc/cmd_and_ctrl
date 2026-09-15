@@ -20,18 +20,10 @@ func init() {
 		OracleID:     "3f3439e1-75ce-482d-881f-836492dca6e9",
 		Name:         "Lys Alana Huntmaster",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b17ElfSpellCastByYou(ev, source, g)
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Lys Alana Huntmaster — create a 1/1 Elf Warrior?"},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Lys Alana Huntmaster — create a 1/1 green Elf Warrior",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: b13GreenElfWarriorToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Lys Alana Huntmaster — create a 1/1 green Elf Warrior", Do(CreateToken{Template: b13GreenElfWarriorToken(), N: 1})), "Lys Alana Huntmaster — create a 1/1 Elf Warrior?"),
+		},
 	})
 }

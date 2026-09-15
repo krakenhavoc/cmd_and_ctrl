@@ -24,23 +24,18 @@ func init() {
 		Name:            "Sunscorch Regent",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b15OpponentCastSpell(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Sunscorch Regent — +1/+1 counter and gain 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if b15OnBattlefield(g, item.SourceCardID) {
-							if err := (AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-								return err
-							}
-						}
-						return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
-					})
-			},
-		}},
+			}, "Sunscorch Regent — +1/+1 counter and gain 1 life", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				if b15OnBattlefield(g, item.SourceCardID) {
+					if err := (AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
+			}),
+		},
 	})
 }

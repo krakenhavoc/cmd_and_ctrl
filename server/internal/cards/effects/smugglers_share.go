@@ -30,34 +30,29 @@ func init() {
 		OracleID:     "17b29350-4f37-4552-8192-4856b15345f9",
 		Name:         "Smuggler's Share",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginEndStep},
-			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventBeginEndStep, func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b15EndStepBegan(ev)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Smuggler's Share — a card per greedy opponent, a Treasure per ramping one",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						drawn, lands := b15CardsDrawnThisTurn(g), b15LandsEnteredThisTurn(g)
-						cards, treasures := 0, 0
-						for _, opp := range ctx.Opponents() {
-							if drawn[opp] >= 2 {
-								cards++
-							}
-							if lands[opp] >= 2 {
-								treasures++
-							}
-						}
-						if err := (DrawCards{Player: item.Controller, N: cards}).Apply(ctx); err != nil {
-							return err
-						}
-						if treasures == 0 {
-							return nil
-						}
-						return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: treasures}.Apply(ctx)
-					})
-			},
-		}},
+			}, "Smuggler's Share — a card per greedy opponent, a Treasure per ramping one", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				drawn, lands := b15CardsDrawnThisTurn(g), b15LandsEnteredThisTurn(g)
+				cards, treasures := 0, 0
+				for _, opp := range ctx.Opponents() {
+					if drawn[opp] >= 2 {
+						cards++
+					}
+					if lands[opp] >= 2 {
+						treasures++
+					}
+				}
+				if err := (DrawCards{Player: item.Controller, N: cards}).Apply(ctx); err != nil {
+					return err
+				}
+				if treasures == 0 {
+					return nil
+				}
+				return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: treasures}.Apply(ctx)
+			}),
+		},
 	})
 }

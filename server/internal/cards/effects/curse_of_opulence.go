@@ -49,23 +49,15 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"Only the Curse's controller gets a Gold token; \"each opponent attacking that player does the same\" does nothing."},
 		Targets:      EnchantPlayer(),
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventAttack},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return source.AttachedTo.Kind == game.TargetPlayer &&
 					source.AttachedTo.ID == ev.Target &&
 					!triggerAlreadyPendingFrom(g, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Curse of Opulence — create a Gold token",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   GoldToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Curse of Opulence — create a Gold token", Do(CreateToken{
+				Template: GoldToken(),
+				N:        1,
+			})),
+		},
 	})
 }

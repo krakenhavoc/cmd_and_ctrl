@@ -27,15 +27,8 @@ func init() {
 			TribalAnthem(cats, 1, 1),
 			TribalKeywordGrant(cats, "lifelink"),
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Regal Caracal — create two 1/1 white Cat tokens with lifelink",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: b28WhiteCatLifelinkToken(), N: 2}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Regal Caracal — create two 1/1 white Cat tokens with lifelink", Do(CreateToken{Template: b28WhiteCatLifelinkToken(), N: 2})),
+		},
 	})
 }

@@ -32,23 +32,18 @@ func init() {
 		Name:         "Cloud, Midgar Mercenary",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The second ability isn't implemented — triggered abilities of Equipment attached to Cloud don't trigger an additional time."},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Cloud, Midgar Mercenary — search for an Equipment card",
-					func(g *game.Game, item *game.StackItem) error {
-						return SearchLibrary{
-							Player:    item.Controller,
-							Predicate: b09IsEquipmentCard,
-							Dest:      game.ZoneHand,
-							Limit:     1,
-							Reveal:    true,
-							Shuffle:   true,
-							Reason:    "Cloud, Midgar Mercenary — an Equipment card, revealed, to hand",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Cloud, Midgar Mercenary — search for an Equipment card", func(g *game.Game, item *game.StackItem) error {
+				return SearchLibrary{
+					Player:    item.Controller,
+					Predicate: b09IsEquipmentCard,
+					Dest:      game.ZoneHand,
+					Limit:     1,
+					Reveal:    true,
+					Shuffle:   true,
+					Reason:    "Cloud, Midgar Mercenary — an Equipment card, revealed, to hand",
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

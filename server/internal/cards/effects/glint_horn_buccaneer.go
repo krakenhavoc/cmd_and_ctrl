@@ -23,17 +23,12 @@ func init() {
 		Completeness:    CompletenessCaveats,
 		Caveats:         []string{"The \"{1}{R}, discard a card: draw a card\" ability while attacking cannot be activated; only the discard damage trigger works."},
 		PrintedKeywords: []string{"haste"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDiscardCard},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return discardedByYou(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Glint-Horn Buccaneer — 1 damage to each opponent",
-					func(g *game.Game, item *game.StackItem) error {
-						return damageToEachOpponent(g, item, 1)
-					})
-			},
-		}},
+			}, "Glint-Horn Buccaneer — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
+				return damageToEachOpponent(g, item, 1)
+			}),
+		},
 	})
 }

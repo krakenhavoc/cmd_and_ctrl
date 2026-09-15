@@ -44,34 +44,18 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventDealDamage},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return combatDamageToPlayerBy(ev, source.Controller, g) &&
-						!b12TriggerPendingOrOnStack(g, source, b31RapaciousGuestFoodLabel)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b31RapaciousGuestFoodLabel,
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: FoodToken(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventSacrifice},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b31YouSacrificedAFood(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Rapacious Guest — put a +1/+1 counter on it",
-						func(g *game.Game, item *game.StackItem) error {
-							if !onBattlefield(g, item.SourceCardID) {
-								return nil
-							}
-							return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return combatDamageToPlayerBy(ev, source.Controller, g) &&
+					!b12TriggerPendingOrOnStack(g, source, b31RapaciousGuestFoodLabel)
+			}, b31RapaciousGuestFoodLabel, Do(CreateToken{Template: FoodToken(), N: 1})),
+			On(game.EventSacrifice, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b31YouSacrificedAFood(ev, source, g)
+			}, "Rapacious Guest — put a +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {
+				if !onBattlefield(g, item.SourceCardID) {
+					return nil
+				}
+				return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))
+			}),
 			{
 				Watches: []game.EventKind{game.EventLTB},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

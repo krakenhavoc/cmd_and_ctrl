@@ -35,35 +35,19 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"haste"},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventAttack},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return attackDeclared(ev, source)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Laelia, the Blade Reforged — exile the top card, play it this turn",
-						func(g *game.Game, item *game.StackItem) error {
-							_, err := b12ImpulseExileForTurn(g, item, 1)
-							return err
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventZoneMove},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b12CardExiledFromYourLibraryOrGraveyard(ev, source, g) &&
-						!b12TriggerPendingOrOnStack(g, source, grow)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, grow,
-						func(g *game.Game, item *game.StackItem) error {
-							if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield {
-								return nil
-							}
-							return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			WheneverThisAttacks("Laelia, the Blade Reforged — exile the top card, play it this turn", func(g *game.Game, item *game.StackItem) error {
+				_, err := b12ImpulseExileForTurn(g, item, 1)
+				return err
+			}),
+			On(game.EventZoneMove, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b12CardExiledFromYourLibraryOrGraveyard(ev, source, g) &&
+					!b12TriggerPendingOrOnStack(g, source, grow)
+			}, grow, func(g *game.Game, item *game.StackItem) error {
+				if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield {
+					return nil
+				}
+				return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
+			}),
 		},
 	})
 }

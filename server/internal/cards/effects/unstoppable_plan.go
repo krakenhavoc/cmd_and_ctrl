@@ -20,17 +20,10 @@ func init() {
 		OracleID:     "3f6f4c98-ed7e-4fb1-8bfe-4210a39f77f2",
 		Name:         "Unstoppable Plan",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginEndStep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Unstoppable Plan — untap all nonland permanents you control",
-					func(g *game.Game, item *game.StackItem) error {
-						return b16UntapAllYouControlMatching(NewContext(g, item), item.Controller, func(c game.Card) bool { return !c.IsLand() })
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			AtYourEndStep("Unstoppable Plan — untap all nonland permanents you control", func(g *game.Game, item *game.StackItem) error {
+				return b16UntapAllYouControlMatching(NewContext(g, item), item.Controller, func(c game.Card) bool { return !c.IsLand() })
+			}),
+		},
 	})
 }

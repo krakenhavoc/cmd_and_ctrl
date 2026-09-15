@@ -33,32 +33,25 @@ func init() {
 			Label:                   "Add one mana of any color",
 			IgnoreCommanderIdentity: true,
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginUpkeep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Replicating Ring — put a night counter on it; at eight, replicate",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						ring := item.SourceCardID
-						if z := g.FindCardZoneForEffect(ring); z == nil || z.Kind != game.ZoneBattlefield {
-							return nil
-						}
-						if err := (AddCounter{Target: ring, Kind: "night", N: 1}).Apply(ctx); err != nil {
-							return err
-						}
-						c, ok := g.LookupCardForEffect(ring)
-						if !ok || c.Counters["night"] < 8 {
-							return nil
-						}
-						if err := (AddCounter{Target: ring, Kind: "night", N: -c.Counters["night"]}).Apply(ctx); err != nil {
-							return err
-						}
-						return CreateToken{Controller: item.Controller, Template: b14ReplicatedRingToken(), N: 8}.Apply(ctx)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			AtYourUpkeep("Replicating Ring — put a night counter on it; at eight, replicate", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				ring := item.SourceCardID
+				if z := g.FindCardZoneForEffect(ring); z == nil || z.Kind != game.ZoneBattlefield {
+					return nil
+				}
+				if err := (AddCounter{Target: ring, Kind: "night", N: 1}).Apply(ctx); err != nil {
+					return err
+				}
+				c, ok := g.LookupCardForEffect(ring)
+				if !ok || c.Counters["night"] < 8 {
+					return nil
+				}
+				if err := (AddCounter{Target: ring, Kind: "night", N: -c.Counters["night"]}).Apply(ctx); err != nil {
+					return err
+				}
+				return CreateToken{Controller: item.Controller, Template: b14ReplicatedRingToken(), N: 8}.Apply(ctx)
+			}),
+		},
 	})
 }

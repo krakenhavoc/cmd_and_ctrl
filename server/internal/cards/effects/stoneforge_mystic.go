@@ -32,24 +32,19 @@ func init() {
 		Name:         "Stoneforge Mystic",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The {1}{W}, {T} ability isn't implemented — Equipment has to be cast from your hand the ordinary way."},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Stoneforge Mystic — search for an Equipment card",
-					func(g *game.Game, item *game.StackItem) error {
-						return SearchLibrary{
-							Player:    item.Controller,
-							Predicate: b09IsEquipmentCard,
-							Dest:      game.ZoneHand,
-							Limit:     1,
-							Reveal:    true,
-							Shuffle:   true,
-							Optional:  true,
-							Reason:    "Stoneforge Mystic — an Equipment card, revealed, to hand",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Stoneforge Mystic — search for an Equipment card", func(g *game.Game, item *game.StackItem) error {
+				return SearchLibrary{
+					Player:    item.Controller,
+					Predicate: b09IsEquipmentCard,
+					Dest:      game.ZoneHand,
+					Limit:     1,
+					Reveal:    true,
+					Shuffle:   true,
+					Optional:  true,
+					Reason:    "Stoneforge Mystic — an Equipment card, revealed, to hand",
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

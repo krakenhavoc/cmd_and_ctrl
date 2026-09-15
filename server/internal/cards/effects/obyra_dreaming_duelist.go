@@ -23,17 +23,12 @@ func init() {
 		Name:            "Obyra, Dreaming Duelist",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash", "flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b32AnotherFaerieYouControlEntered(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Obyra, Dreaming Duelist — each opponent loses 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return eachOpponentLosesLife(g, item, 1)
-					})
-			},
-		}},
+			}, "Obyra, Dreaming Duelist — each opponent loses 1 life", func(g *game.Game, item *game.StackItem) error {
+				return eachOpponentLosesLife(g, item, 1)
+			}),
+		},
 	})
 }

@@ -26,16 +26,9 @@ func init() {
 		Name:            "Kykar, Wind's Fury",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventCast},
-			AppliesTo: b10NoncreatureSpellCastByYou,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Kykar, Wind's Fury — create a 1/1 white Spirit with flying",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: b28WhiteSpiritFlyingToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverYouCast(Noncreature(), "Kykar, Wind's Fury — create a 1/1 white Spirit with flying", Do(CreateToken{Template: b28WhiteSpiritFlyingToken(), N: 1})),
+		},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{SacrificeOther: sacrificeSpec("a Spirit", HasSubtype("Spirit"))},
 			Produced: "{R}",

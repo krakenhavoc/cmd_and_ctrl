@@ -26,24 +26,19 @@ func init() {
 		OracleID:     "c1d6cce8-085f-42cb-8b0c-b6fbbf88b16a",
 		Name:         "Goblin Engineer",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Goblin Engineer — search for an artifact card, put it into your graveyard",
-					func(g *game.Game, item *game.StackItem) error {
-						return SearchLibrary{
-							Player:    item.Controller,
-							Predicate: func(c game.Card) bool { return c.IsArtifact() },
-							Dest:      game.ZoneGraveyard,
-							Limit:     1,
-							Shuffle:   true,
-							Optional:  true,
-							Reason:    "Goblin Engineer — an artifact card, into your graveyard",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Goblin Engineer — search for an artifact card, put it into your graveyard", func(g *game.Game, item *game.StackItem) error {
+				return SearchLibrary{
+					Player:    item.Controller,
+					Predicate: func(c game.Card) bool { return c.IsArtifact() },
+					Dest:      game.ZoneGraveyard,
+					Limit:     1,
+					Shuffle:   true,
+					Optional:  true,
+					Reason:    "Goblin Engineer — an artifact card, into your graveyard",
+				}.Apply(NewContext(g, item))
+			}),
+		},
 		Activated: []ActivatedAbility{{
 			Label:   "{R}, {T}, Sacrifice an artifact: Return target artifact card with mana value 3 or less from your graveyard to the battlefield.",
 			Cost:    Plus(ManaCost("{R}"), TapCost(), b10SacrificeAnArtifact()),

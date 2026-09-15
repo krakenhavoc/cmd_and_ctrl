@@ -18,24 +18,19 @@ func init() {
 		OracleID:     "0fe01c7d-f435-44c1-82f1-0ec2c47d4704",
 		Name:         "Heliod's Pilgrim",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Heliod's Pilgrim — search for an Aura card",
-					func(g *game.Game, item *game.StackItem) error {
-						return SearchLibrary{
-							Player:    item.Controller,
-							Predicate: b36IsAuraCard,
-							Dest:      game.ZoneHand,
-							Limit:     1,
-							Reveal:    true,
-							Shuffle:   true,
-							Optional:  true,
-							Reason:    "Heliod's Pilgrim — an Aura card",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Heliod's Pilgrim — search for an Aura card", func(g *game.Game, item *game.StackItem) error {
+				return SearchLibrary{
+					Player:    item.Controller,
+					Predicate: b36IsAuraCard,
+					Dest:      game.ZoneHand,
+					Limit:     1,
+					Reveal:    true,
+					Shuffle:   true,
+					Optional:  true,
+					Reason:    "Heliod's Pilgrim — an Aura card",
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

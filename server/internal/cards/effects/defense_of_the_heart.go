@@ -25,33 +25,28 @@ func init() {
 		OracleID:     "e7e1b166-9267-426d-897d-24903327b48d",
 		Name:         "Defense of the Heart",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginUpkeep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventBeginUpkeep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Actor == source.Controller && b11OpponentControlsCreatures(g, source.Controller, 3)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Defense of the Heart — sacrifice it, put up to two creature cards onto the battlefield",
-					func(g *game.Game, item *game.StackItem) error {
-						if !b11OpponentControlsCreatures(g, item.Controller, 3) {
-							return nil
-						}
-						ctx := NewContext(g, item)
-						if onBattlefield(g, item.SourceCardID) {
-							if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
-								return err
-							}
-						}
-						return SearchLibrary{
-							Player:    item.Controller,
-							Predicate: func(c game.Card) bool { return c.IsCreature() },
-							Dest:      game.ZoneBattlefield,
-							Limit:     2,
-							Shuffle:   true,
-							Reason:    "Defense of the Heart — up to two creature cards, onto the battlefield",
-						}.Apply(ctx)
-					})
-			},
-		}},
+			}, "Defense of the Heart — sacrifice it, put up to two creature cards onto the battlefield", func(g *game.Game, item *game.StackItem) error {
+				if !b11OpponentControlsCreatures(g, item.Controller, 3) {
+					return nil
+				}
+				ctx := NewContext(g, item)
+				if onBattlefield(g, item.SourceCardID) {
+					if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return SearchLibrary{
+					Player:    item.Controller,
+					Predicate: func(c game.Card) bool { return c.IsCreature() },
+					Dest:      game.ZoneBattlefield,
+					Limit:     2,
+					Shuffle:   true,
+					Reason:    "Defense of the Heart — up to two creature cards, onto the battlefield",
+				}.Apply(ctx)
+			}),
+		},
 	})
 }

@@ -34,16 +34,9 @@ func init() {
 		Name:            "Gilded Goose",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Gilded Goose — create a Food",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: FoodToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Gilded Goose — create a Food", Do(CreateToken{Template: FoodToken(), N: 1})),
+		},
 		Activated: []ActivatedAbility{{
 			Label: "{1}{G}, {T}: Create a Food token.",
 			Cost:  Plus(ManaCost("{1}{G}"), TapCost()),

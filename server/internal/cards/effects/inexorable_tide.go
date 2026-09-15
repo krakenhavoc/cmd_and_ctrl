@@ -20,17 +20,8 @@ func init() {
 		Name:         "Inexorable Tide",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"You don't choose what to proliferate — the game picks for you, adding every counter that helps you and every counter that hurts an opponent."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Inexorable Tide — proliferate",
-					func(g *game.Game, item *game.StackItem) error {
-						return Proliferate{}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, ByYou, "Inexorable Tide — proliferate", Do(Proliferate{})),
+		},
 	})
 }

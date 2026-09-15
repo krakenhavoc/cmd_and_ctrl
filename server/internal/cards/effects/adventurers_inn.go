@@ -22,15 +22,8 @@ func init() {
 			Produced: "{C}",
 			Label:    "Add {C}",
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Adventurer's Inn — you gain 2 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return GainLife{Player: item.Controller, Amount: 2}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Adventurer's Inn — you gain 2 life", Do(GainLife{Amount: 2})),
+		},
 	})
 }

@@ -24,18 +24,10 @@ func init() {
 		Name:            "Soul of the Harvest",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b15AnotherNontokenCreatureYouControlEntered(ev, source, g)
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Soul of the Harvest — draw a card?"},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Soul of the Harvest — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Soul of the Harvest — draw a card", Do(DrawCards{N: 1})), "Soul of the Harvest — draw a card?"),
+		},
 	})
 }

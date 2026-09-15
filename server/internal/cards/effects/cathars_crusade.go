@@ -21,24 +21,16 @@ func init() {
 		OracleID:     "cc65ac73-5bef-4ecb-ad8e-39199084c027",
 		Name:         "Cathars' Crusade",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				c, ok := enteredUnderYourControl(ev, source, g, false)
-				return ok && c.IsCreature()
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Cathars' Crusade — a +1/+1 counter on each creature you control",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, id := range b04CreatureIDsControlledBy(g, item.Controller) {
-							if err := (AddCounter{Target: id, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-								return err
-							}
-						}
-						return nil
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, CreatureEnteredUnderYourControl, "Cathars' Crusade — a +1/+1 counter on each creature you control", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, id := range b04CreatureIDsControlledBy(g, item.Controller) {
+					if err := (AddCounter{Target: id, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
+			}),
+		},
 	})
 }

@@ -22,16 +22,11 @@ func init() {
 		OracleID:     "391978f6-0bbc-41e8-9246-f7d0e21c7900",
 		Name:         "Nadier's Nightblade",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && IsToken(c) && c.Controller == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Nadier's Nightblade — each opponent loses 1, you gain 1",
-					b07DrainEachOpponent)
-			},
-		}},
+			}, "Nadier's Nightblade — each opponent loses 1, you gain 1", b07DrainEachOpponent),
+		},
 	})
 }

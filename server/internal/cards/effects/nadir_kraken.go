@@ -23,24 +23,17 @@ func init() {
 		OracleID:     "5a73d439-bd78-42e1-90ae-eedd30536881",
 		Name:         "Nadir Kraken",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDrawCard},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Nadir Kraken — pay {1} for a +1/+1 counter and a Tentacle",
-					func(g *game.Game, item *game.StackItem) error {
-						return MayPay{
-							Chooser:  item.Controller,
-							Cost:     "{1}",
-							Question: "Nadir Kraken — pay {1} to put a +1/+1 counter on it and create a 1/1 Tentacle?",
-							OnPay: func(ctx *Context) error {
-								return b25GrowAndSpawnTentacle(ctx, item.SourceCardID, item.Controller)
-							},
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverYouDraw("Nadir Kraken — pay {1} for a +1/+1 counter and a Tentacle", func(g *game.Game, item *game.StackItem) error {
+				return MayPay{
+					Chooser:  item.Controller,
+					Cost:     "{1}",
+					Question: "Nadir Kraken — pay {1} to put a +1/+1 counter on it and create a 1/1 Tentacle?",
+					OnPay: func(ctx *Context) error {
+						return b25GrowAndSpawnTentacle(ctx, item.SourceCardID, item.Controller)
+					},
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

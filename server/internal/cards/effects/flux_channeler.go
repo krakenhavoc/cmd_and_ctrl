@@ -22,21 +22,14 @@ func init() {
 		Name:         "Flux Channeler",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"You don't choose what to proliferate — the game picks for you, adding every counter that helps you and every counter that hurts an opponent."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Actor != source.Controller {
 					return false
 				}
 				spell, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && !spell.IsCreature()
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Flux Channeler — proliferate",
-					func(g *game.Game, item *game.StackItem) error {
-						return Proliferate{}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Flux Channeler — proliferate", Do(Proliferate{})),
+		},
 	})
 }

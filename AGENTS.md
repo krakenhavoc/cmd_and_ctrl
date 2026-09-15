@@ -926,27 +926,70 @@ runs — only when every player has passed priority in succession,
 so opponents can respond (counter the ability, remove the target,
 sacrifice in response). See [ADR 0018](docs/decisions/0018-triggers-on-the-stack.md).
 
-```go
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+**Write the printed shape with a constructor** from
+[triggers_common.go](server/internal/cards/effects/triggers_common.go)
+(#579). The label is the whole stack label, "<card> — <what
+happens>", and `Do(...)` sequences primitive values whose `Player` /
+`Controller` field defaults to the item's controller:
 
-func init() {
-    Register(Spec{
-        OracleID: "<uuid>",
-        Name:     "Mulldrifter",
-        Triggered: []game.TriggeredAbility{{
-            Watches: []game.EventKind{game.EventETB},
-            AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-                return ev.CardID == source.InstanceID
-            },
-            Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-                return game.NewTriggeredItem(source, "Mulldrifter — draw two cards",
-                    func(g *game.Game, item *game.StackItem) error {
-                        return DrawCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
-                    })
-            },
-        }},
-    })
-}
+```go
+Triggered: []game.TriggeredAbility{
+    WhenThisEnters("Mulldrifter — draw two cards", Do(DrawCards{N: 2})),
+    Optional(WhenThisDies("Solemn Simulacrum — draw a card", Do(DrawCards{N: 1})),
+        "Solemn Simulacrum — draw a card?"),
+    AtYourUpkeep("Awakening Zone — create an Eldrazi Spawn", Do(CreateToken{Template: EldraziSpawnToken(), N: 1})),
+    WheneverYouCast(Noncreature(), "Black Waltz No. 3 — 2 damage to each opponent",
+        func(g *game.Game, item *game.StackItem) error { return damageToEachOpponent(g, item, 2) }),
+},
+```
+
+The shapes: `WhenThisEnters`, `WhenThisDies`, `WhenThisEntersOrAttacks`,
+`WheneverThisAttacks`, `AtYourUpkeep`, `AtEachUpkeep`, `AtYourEndStep`,
+`AtYourPrecombatMain`, `WheneverYouCast(pred, …)`, `WheneverYouDraw`,
+`WheneverAnOpponentDraws`, `Landfall`,
+`WheneverAnotherCreatureEntersUnderYourControl`,
+`WheneverACreatureYouControlDies`,
+`WheneverThisDealsCombatDamageToAPlayer`, `WheneverYouGainLife`. A
+condition with no shape yet is `On(game.EventX, when, label, effect)`
+where `when` is any `AppliesTo`-shaped predicate — a named one
+(`Self`, `ByYou`, `ByAnOpponent`, `AnyPlayer`, `ThisDied`,
+`ThisAttacked`, `YouCast(pred)`, `AnOpponentCast(pred)`,
+`LandEnteredUnderYourControl`, `ACreatureYouControlDied`, …, or
+`AllOf(...)` of several) or a closure. One printed ability with two
+conditions is `OnAny([]game.EventKind{…}, …)`. `Targeting(t, spec)`
+adds a target clause; the effect then reads `item.Targets[0]`, so it
+is a closure rather than `Do`. Add a missing shape or predicate to
+`triggers_common.go`, not to the card file.
+
+An effect that needs the item (targets, X, the source ID) or must
+capture something off the event is a closure with the `Effect`
+signature, exactly as before:
+
+```go
+WhenThisEnters("Mulldrifter — draw two cards",
+    func(g *game.Game, item *game.StackItem) error {
+        return DrawCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
+    }),
+```
+
+Every constructor returns an ordinary `game.TriggeredAbility`. The
+long form below is exactly what it builds, and is still the right
+tool when `Build` itself has to do something — capture `ev.Actor` for
+a PayUnless payer, read the event to decide whether to return nil:
+
+```go
+Triggered: []game.TriggeredAbility{{
+    Watches: []game.EventKind{game.EventETB},
+    AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+        return ev.CardID == source.InstanceID
+    },
+    Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+        return game.NewTriggeredItem(source, "Mulldrifter — draw two cards",
+            func(g *game.Game, item *game.StackItem) error {
+                return DrawCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
+            })
+    },
+}},
 ```
 
 **Adding an activated ability (S21+):** put it in
@@ -1345,7 +1388,7 @@ knowing: the copied card's `Spec.AsEnters` does **not** fire (its
 707.2. "Enters as a copy" for a real card (Clone) is a different thing
 and still unimplemented: that is CR 613 layer 1, deferred to S16.5.
 
-**Event picker:**
+**Event picker.** Each row is the `when` for `On(kind, when, label, effect)`; the rows with a name in `triggers_common.go` are the constructors above.
 
 | Trigger text | `Watches` | `AppliesTo` |
 |---|---|---|

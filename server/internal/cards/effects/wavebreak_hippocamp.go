@@ -21,17 +21,10 @@ func init() {
 		OracleID:     "3405c8a9-a8d6-4b45-9b64-94141076603b",
 		Name:         "Wavebreak Hippocamp",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b22FirstSpellOnAnOpponentsTurn(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Wavebreak Hippocamp — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Wavebreak Hippocamp — draw a card", Do(DrawCards{N: 1})),
+		},
 	})
 }

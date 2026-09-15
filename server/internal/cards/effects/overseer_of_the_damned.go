@@ -38,15 +38,9 @@ func init() {
 					return game.NewTriggeredItem(source, "Overseer of the Damned — destroy target creature", b17DestroyFirstLegalTarget)
 				},
 			},
-			{
-				Watches: []game.EventKind{game.EventLTB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b33OpponentsNontokenCreatureDied(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Overseer of the Damned — create a tapped 2/2 black Zombie", b33CreateTappedZombie)
-				},
-			},
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b33OpponentsNontokenCreatureDied(ev, source, g)
+			}, "Overseer of the Damned — create a tapped 2/2 black Zombie", b33CreateTappedZombie),
 		},
 	})
 }

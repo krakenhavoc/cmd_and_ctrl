@@ -21,20 +21,13 @@ func init() {
 		OracleID:     "050f5733-7c0b-4991-9a6c-7ea12ccf0ca9",
 		Name:         "Up the Beanstalk",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB, game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			OnAny([]game.EventKind{game.EventETB, game.EventCast}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Kind == game.EventETB {
 					return ev.CardID == source.InstanceID
 				}
 				return b09SpellCastByYouWithManaValueAtLeast(ev, source, g, 5)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Up the Beanstalk — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Up the Beanstalk — draw a card", Do(DrawCards{N: 1})),
+		},
 	})
 }

@@ -34,37 +34,21 @@ func init() {
 		Caveats:      []string{"Deathtouch counters only grant deathtouch while Vraska Joins Up is on the battlefield — once it leaves, the counters stay but stop working."},
 		Static:       []game.StaticAbility{b24KeywordCounterGrant("deathtouch")},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches:   []game.EventKind{game.EventETB},
-				AppliesTo: b06SelfETB,
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Vraska Joins Up — put a deathtouch counter on each creature you control",
-						func(g *game.Game, item *game.StackItem) error {
-							ctx := NewContext(g, item)
-							for _, id := range b04CreatureIDsControlledBy(g, item.Controller) {
-								if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
-									continue
-								}
-								if err := (AddCounter{Target: id, Kind: "deathtouch", N: 1}).Apply(ctx); err != nil {
-									return err
-								}
-							}
-							return nil
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventDealDamage},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b24LegendaryCreatureYouControlDealtCombatDamageToPlayer(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Vraska Joins Up — draw a card",
-						func(g *game.Game, item *game.StackItem) error {
-							return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			WhenThisEnters("Vraska Joins Up — put a deathtouch counter on each creature you control", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, id := range b04CreatureIDsControlledBy(g, item.Controller) {
+					if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
+						continue
+					}
+					if err := (AddCounter{Target: id, Kind: "deathtouch", N: 1}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
+			}),
+			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b24LegendaryCreatureYouControlDealtCombatDamageToPlayer(ev, source, g)
+			}, "Vraska Joins Up — draw a card", Do(DrawCards{N: 1})),
 		},
 	})
 }

@@ -19,24 +19,19 @@ func init() {
 		OracleID:     "145737a7-c597-4dec-b752-207c2d0501e3",
 		Name:         "Goblin Matron",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Goblin Matron — search for a Goblin card",
-					func(g *game.Game, item *game.StackItem) error {
-						return SearchLibrary{
-							Player:    item.Controller,
-							Predicate: func(c game.Card) bool { return c.HasSubtype("Goblin") },
-							Dest:      game.ZoneHand,
-							Limit:     1,
-							Reveal:    true,
-							Shuffle:   true,
-							Optional:  true,
-							Reason:    "Goblin Matron — a Goblin card, revealed, to hand",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Goblin Matron — search for a Goblin card", func(g *game.Game, item *game.StackItem) error {
+				return SearchLibrary{
+					Player:    item.Controller,
+					Predicate: func(c game.Card) bool { return c.HasSubtype("Goblin") },
+					Dest:      game.ZoneHand,
+					Limit:     1,
+					Reveal:    true,
+					Shuffle:   true,
+					Optional:  true,
+					Reason:    "Goblin Matron — a Goblin card, revealed, to hand",
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

@@ -20,17 +20,12 @@ func init() {
 		OracleID:     "6eb93545-a1a6-4447-82c5-421d8e9f023d",
 		Name:         "Erebor Flamesmith",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b12InstantOrSorceryCastByYou(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Erebor Flamesmith — 1 damage to each opponent",
-					func(g *game.Game, item *game.StackItem) error {
-						return damageToEachOpponent(g, item, 1)
-					})
-			},
-		}},
+			}, "Erebor Flamesmith — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
+				return damageToEachOpponent(g, item, 1)
+			}),
+		},
 	})
 }

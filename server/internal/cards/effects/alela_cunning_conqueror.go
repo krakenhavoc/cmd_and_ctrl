@@ -46,16 +46,9 @@ func init() {
 		Caveats:         []string{"Goad only marks the creature — the game doesn't force it to attack, or stop it attacking you."},
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventCast},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b22FirstSpellOnAnOpponentsTurn(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Alela, Cunning Conqueror — create a 1/1 black Faerie Rogue with flying",
-						b33CreateTokenBody(FaerieRogueToken, 1))
-				},
-			},
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b22FirstSpellOnAnOpponentsTurn(ev, source, g)
+			}, "Alela, Cunning Conqueror — create a 1/1 black Faerie Rogue with flying", b33CreateTokenBody(FaerieRogueToken, 1)),
 			{
 				Watches: []game.EventKind{game.EventDealDamage},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

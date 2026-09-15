@@ -27,14 +27,10 @@ func init() {
 		Static: []game.StaticAbility{
 			TribalAnthem(TribeFilter{Tribes: []string{"Faerie"}, Others: true, YoursOnly: true}, 1, 1),
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b36AnotherFaerieYouControlDied(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Tegwyll, Duke of Splendor — draw a card and lose 1 life", b36DrawAndLoseOne)
-			},
-		}},
+			}, "Tegwyll, Duke of Splendor — draw a card and lose 1 life", b36DrawAndLoseOne),
+		},
 	})
 }

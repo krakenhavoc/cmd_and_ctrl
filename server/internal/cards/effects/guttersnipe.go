@@ -21,17 +21,12 @@ func init() {
 		OracleID:     "c6bdaf76-6a03-4695-9c4b-f040e73435af",
 		Name:         "Guttersnipe",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b03InstantOrSorceryCastByYou(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Guttersnipe — 2 damage to each opponent",
-					func(g *game.Game, item *game.StackItem) error {
-						return damageToEachOpponent(g, item, 2)
-					})
-			},
-		}},
+			}, "Guttersnipe — 2 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
+				return damageToEachOpponent(g, item, 2)
+			}),
+		},
 	})
 }

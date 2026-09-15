@@ -33,16 +33,10 @@ func init() {
 			Produced: "{C}",
 			Label:    "Add {C}",
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b27ColorlessSpellWithManaValueAtLeastCastByYou(ev, source, g, 7)
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Sanctum of Ugin — sacrifice it to search for a colorless creature card?"},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Sanctum of Ugin — sacrifice it, then search for a colorless creature card",
-					b27SacrificeSelfThenTutorColorlessCreature)
-			},
-		}},
+			}, "Sanctum of Ugin — sacrifice it, then search for a colorless creature card", b27SacrificeSelfThenTutorColorlessCreature), "Sanctum of Ugin — sacrifice it to search for a colorless creature card?"),
+		},
 	})
 }

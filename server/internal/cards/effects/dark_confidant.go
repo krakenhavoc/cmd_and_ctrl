@@ -51,22 +51,14 @@ func init() {
 		OracleID:     "2068185c-1b50-47d0-aa3f-bf505d199428",
 		Name:         "Dark Confidant",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginUpkeep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				// "YOUR upkeep" — the drawer is the Confidant's
-				// controller, and the step's Actor is the active
-				// player.
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source,
-					"Dark Confidant — reveal the top card of your library and put it into your hand",
-					func(g *game.Game, item *game.StackItem) error {
-						return darkConfidantFlip(g, item)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			// "YOUR upkeep" — the drawer is the Confidant's
+			// controller, and the step's Actor is the active
+			// player.
+			AtYourUpkeep("Dark Confidant — reveal the top card of your library and put it into your hand", func(g *game.Game, item *game.StackItem) error {
+				return darkConfidantFlip(g, item)
+			}),
+		},
 	})
 }
 

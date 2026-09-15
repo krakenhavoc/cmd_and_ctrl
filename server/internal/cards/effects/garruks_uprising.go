@@ -52,37 +52,19 @@ func init() {
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return ev.CardID == source.InstanceID &&
-						youControlPowerFourOrGreater(g, source.Controller)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Garruk's Uprising — draw a card",
-						func(g *game.Game, item *game.StackItem) error {
-							return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					if ev.CardID == source.InstanceID {
-						return false
-					}
-					c, ok := g.LookupCardForEffect(ev.CardID)
-					return ok && c.IsCreature() &&
-						c.Controller == source.Controller &&
-						c.CurrentPower() >= 4
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Garruk's Uprising — draw a card",
-						func(g *game.Game, item *game.StackItem) error {
-							return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return ev.CardID == source.InstanceID &&
+					youControlPowerFourOrGreater(g, source.Controller)
+			}, "Garruk's Uprising — draw a card", Do(DrawCards{N: 1})),
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				if ev.CardID == source.InstanceID {
+					return false
+				}
+				c, ok := g.LookupCardForEffect(ev.CardID)
+				return ok && c.IsCreature() &&
+					c.Controller == source.Controller &&
+					c.CurrentPower() >= 4
+			}, "Garruk's Uprising — draw a card", Do(DrawCards{N: 1})),
 		},
 	})
 }

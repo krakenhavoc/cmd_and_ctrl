@@ -33,18 +33,11 @@ func init() {
 		Name:            "Dusk Legion Duelist",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCounterPlaced},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCounterPlaced, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b11CountersWerePlaced(ev, source.InstanceID, "+1/+1", g) &&
 					!b11TriggeredThisTurn(g, source.InstanceID, b26DuskLegionDuelistDrawLabel)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, b26DuskLegionDuelistDrawLabel,
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, b26DuskLegionDuelistDrawLabel, Do(DrawCards{N: 1})),
+		},
 	})
 }

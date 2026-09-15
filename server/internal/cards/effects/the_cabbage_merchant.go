@@ -34,41 +34,25 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The mana ability isn't available — tapping two Foods for a mana of any color isn't a cost the engine can pay."},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventCast},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					if !b15OpponentCastSpell(ev, source) {
-						return false
-					}
-					spell, ok := g.LookupCardForEffect(ev.CardID)
-					return ok && !spell.IsCreature()
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "The Cabbage Merchant — create a Food token",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: FoodToken(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventDealDamage},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					if !ev.Combat {
-						return false
-					}
-					_, ok := b13CreatureDealtDamageToYou(ev, source, g)
-					return ok
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "The Cabbage Merchant — sacrifice a Food token",
-						func(g *game.Game, item *game.StackItem) error {
-							g.PlayerSacrificesForEffect(item.SourceCardID, item.Controller,
-								sacrificeSpec("a Food token", Subtype("Food"), IsTokenPredicate()),
-								"The Cabbage Merchant — sacrifice a Food token")
-							return nil
-						})
-				},
-			},
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				if !b15OpponentCastSpell(ev, source) {
+					return false
+				}
+				spell, ok := g.LookupCardForEffect(ev.CardID)
+				return ok && !spell.IsCreature()
+			}, "The Cabbage Merchant — create a Food token", Do(CreateToken{Template: FoodToken(), N: 1})),
+			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				if !ev.Combat {
+					return false
+				}
+				_, ok := b13CreatureDealtDamageToYou(ev, source, g)
+				return ok
+			}, "The Cabbage Merchant — sacrifice a Food token", func(g *game.Game, item *game.StackItem) error {
+				g.PlayerSacrificesForEffect(item.SourceCardID, item.Controller,
+					sacrificeSpec("a Food token", Subtype("Food"), IsTokenPredicate()),
+					"The Cabbage Merchant — sacrifice a Food token")
+				return nil
+			}),
 		},
 	})
 }

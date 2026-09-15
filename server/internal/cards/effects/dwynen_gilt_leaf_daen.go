@@ -29,18 +29,11 @@ func init() {
 		Static: []game.StaticAbility{
 			TribalAnthem(TribeFilter{Tribes: []string{"Elf"}, Others: true, YoursOnly: true}, 1, 1),
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventAttack},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return attackDeclared(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Dwynen, Gilt-Leaf Daen — gain 1 life for each attacking Elf you control",
-					func(g *game.Game, item *game.StackItem) error {
-						n := b24AttackingCreaturesOfSubtype(g, item.Controller, "Elf")
-						return GainLife{Player: item.Controller, Amount: n}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverThisAttacks("Dwynen, Gilt-Leaf Daen — gain 1 life for each attacking Elf you control", func(g *game.Game, item *game.StackItem) error {
+				n := b24AttackingCreaturesOfSubtype(g, item.Controller, "Elf")
+				return GainLife{Player: item.Controller, Amount: n}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

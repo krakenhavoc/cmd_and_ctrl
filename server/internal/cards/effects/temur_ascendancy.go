@@ -32,19 +32,11 @@ func init() {
 				}
 			},
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && c.IsCreature() && c.CurrentPower() >= 4
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Temur Ascendancy — draw a card?"},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Temur Ascendancy — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Temur Ascendancy — draw a card", Do(DrawCards{N: 1})), "Temur Ascendancy — draw a card?"),
+		},
 	})
 }

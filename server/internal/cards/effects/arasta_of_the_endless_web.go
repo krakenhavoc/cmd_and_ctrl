@@ -23,17 +23,10 @@ func init() {
 		Name:            "Arasta of the Endless Web",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"reach"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b09OpponentCastInstantOrSorcery(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Arasta of the Endless Web — create a 1/2 Spider with reach",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: b09GreenSpiderToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Arasta of the Endless Web — create a 1/2 Spider with reach", Do(CreateToken{Template: b09GreenSpiderToken(), N: 1})),
+		},
 	})
 }

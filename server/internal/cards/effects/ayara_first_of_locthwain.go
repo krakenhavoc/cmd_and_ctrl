@@ -33,20 +33,15 @@ func init() {
 			"A black creature token only counts if its token template records its colour, so some older tokens neither trigger the drain nor can be sacrificed.",
 			"A second copy or token copy of Ayara can't be sacrificed to her own ability.",
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.CardID == source.InstanceID {
 					return true
 				}
 				c, ok := enteredUnderYourControl(ev, source, g, true)
 				return ok && c.IsCreature() && c.HasColor("B")
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Ayara — each opponent loses 1, you gain 1",
-					b07DrainEachOpponent)
-			},
-		}},
+			}, "Ayara — each opponent loses 1, you gain 1", b07DrainEachOpponent),
+		},
 		Activated: []ActivatedAbility{{
 			Label: "{T}, Sacrifice another black creature: Draw a card.",
 			Cost: Plus(TapCost(), game.AbilityCost{

@@ -70,30 +70,23 @@ func init() {
 		OracleID:     "38f3b157-0df4-409b-89cc-086e1531cd5b",
 		Name:         "Gray Merchant of Asphodel",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Gray Merchant of Asphodel — drain for your devotion to black",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						x := devotionTo(g, item.Controller, "B")
-						if x <= 0 {
-							return nil
-						}
-						opponents := ctx.Opponents()
-						if err := eachOpponentLosesLife(g, item, x); err != nil {
-							return err
-						}
-						return GainLife{
-							Player: item.Controller,
-							Amount: x * len(opponents),
-						}.Apply(ctx)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Gray Merchant of Asphodel — drain for your devotion to black", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				x := devotionTo(g, item.Controller, "B")
+				if x <= 0 {
+					return nil
+				}
+				opponents := ctx.Opponents()
+				if err := eachOpponentLosesLife(g, item, x); err != nil {
+					return err
+				}
+				return GainLife{
+					Player: item.Controller,
+					Amount: x * len(opponents),
+				}.Apply(ctx)
+			}),
+		},
 	})
 }
 

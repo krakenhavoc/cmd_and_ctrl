@@ -19,18 +19,8 @@ func init() {
 		OracleID:     "4a782bf9-4051-4613-8852-33b0d85a0edd",
 		Name:         "Ajani's Welcome",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				c, ok := enteredUnderYourControl(ev, source, g, false)
-				return ok && c.IsCreature()
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Ajani's Welcome — you gain 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, CreatureEnteredUnderYourControl, "Ajani's Welcome — you gain 1 life", Do(GainLife{Amount: 1})),
+		},
 	})
 }

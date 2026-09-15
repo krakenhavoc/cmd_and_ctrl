@@ -41,19 +41,14 @@ func init() {
 				c.Toughness = n
 			},
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Lumra — mill four, then return all land cards from your graveyard tapped",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if err := (MillCards{Player: item.Controller, N: 4}).Apply(ctx); err != nil {
-							return err
-						}
-						return b10ReturnAllLandCardsFromGraveyardTapped(ctx, item.Controller)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Lumra — mill four, then return all land cards from your graveyard tapped", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				if err := (MillCards{Player: item.Controller, N: 4}).Apply(ctx); err != nil {
+					return err
+				}
+				return b10ReturnAllLandCardsFromGraveyardTapped(ctx, item.Controller)
+			}),
+		},
 	})
 }

@@ -34,18 +34,9 @@ func init() {
 		Name:         "Scrawling Crawler",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventBeginUpkeep},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.Actor == source.Controller
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Scrawling Crawler — each player draws a card",
-						func(g *game.Game, item *game.StackItem) error {
-							return b05EachPlayerDraws(g, item, 1)
-						})
-				},
-			},
+			AtYourUpkeep("Scrawling Crawler — each player draws a card", func(g *game.Game, item *game.StackItem) error {
+				return b05EachPlayerDraws(g, item, 1)
+			}),
 			{
 				Watches: []game.EventKind{game.EventDrawCard},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

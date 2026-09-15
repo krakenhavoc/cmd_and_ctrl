@@ -54,28 +54,10 @@ func init() {
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches:   []game.EventKind{game.EventETB},
-				AppliesTo: b06SelfETB,
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Simulacrum Synthesizer — scry 2",
-						func(g *game.Game, item *game.StackItem) error {
-							return Scry{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b15AnotherBigArtifactYouControlEntered(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Simulacrum Synthesizer — create a Construct",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: b15ConstructToken(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			WhenThisEnters("Simulacrum Synthesizer — scry 2", Do(Scry{N: 2})),
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b15AnotherBigArtifactYouControlEntered(ev, source, g)
+			}, "Simulacrum Synthesizer — create a Construct", Do(CreateToken{Template: b15ConstructToken(), N: 1})),
 		},
 	})
 }

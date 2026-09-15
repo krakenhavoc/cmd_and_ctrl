@@ -34,18 +34,11 @@ func init() {
 		Completeness:    CompletenessCaveats,
 		Caveats:         []string{"Only creatures that weren't cast at all (reanimated, blinked, put onto the battlefield) draw the card — a creature you cast without spending any mana doesn't count."},
 		PrintedKeywords: []string{"menace"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b30NontokenCreatureYouControlEnteredUncast(ev, source, g) &&
 					!b04TriggerPendingOrOnStack(g, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Satoru, the Infiltrator — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Satoru, the Infiltrator — draw a card", Do(DrawCards{N: 1})),
+		},
 	})
 }

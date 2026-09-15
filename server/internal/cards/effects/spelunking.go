@@ -42,16 +42,9 @@ func init() {
 			"The entry trigger only draws the card — it doesn't offer to put a land from your hand onto the battlefield, and the Cave life bonus never happens.",
 			"A land an effect puts onto the battlefield tapped still enters tapped; only a land's own enters-tapped text is overridden.",
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Spelunking — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Spelunking — draw a card", Do(DrawCards{N: 1})),
+		},
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventZoneMove},
 			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {

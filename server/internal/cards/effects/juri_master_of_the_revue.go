@@ -33,21 +33,14 @@ func init() {
 		Name:         "Juri, Master of the Revue",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventSacrifice},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.Actor == source.Controller && ev.CardID != uuid.Nil
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Juri, Master of the Revue — put a +1/+1 counter on Juri",
-						func(g *game.Game, item *game.StackItem) error {
-							if !b15OnBattlefield(g, item.SourceCardID) {
-								return nil
-							}
-							return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			On(game.EventSacrifice, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return ev.Actor == source.Controller && ev.CardID != uuid.Nil
+			}, "Juri, Master of the Revue — put a +1/+1 counter on Juri", func(g *game.Game, item *game.StackItem) error {
+				if !b15OnBattlefield(g, item.SourceCardID) {
+					return nil
+				}
+				return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
+			}),
 			{
 				Watches: []game.EventKind{game.EventLTB},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

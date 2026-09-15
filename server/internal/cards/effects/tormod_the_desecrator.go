@@ -23,15 +23,11 @@ func init() {
 		OracleID:     "6dc0150d-7145-41e2-bd3d-2564d9d32301",
 		Name:         "Tormod, the Desecrator",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventZoneMove, game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			OnAny([]game.EventKind{game.EventZoneMove, game.EventCast}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b16CardLeftYourGraveyard(ev, source, g) && !b12TriggerPendingOrOnStack(g, source, b34TormodLabel)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, b34TormodLabel, b33CreateTappedZombie)
-			},
-		}},
+			}, b34TormodLabel, b33CreateTappedZombie),
+		},
 	})
 }
 

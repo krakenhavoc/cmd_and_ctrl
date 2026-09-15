@@ -36,15 +36,8 @@ func init() {
 		Name:         "The Necrobloom",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"Dredge isn't implemented — land cards in your graveyard can't be returned in place of a draw."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b33LandYouControlEntered(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "The Necrobloom — create a 0/1 green Plant, or a 2/2 black Zombie with seven differently-named lands",
-					b35NecrobloomLandfall)
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			Landfall("The Necrobloom — create a 0/1 green Plant, or a 2/2 black Zombie with seven differently-named lands", b35NecrobloomLandfall),
+		},
 	})
 }

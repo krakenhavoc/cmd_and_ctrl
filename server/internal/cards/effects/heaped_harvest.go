@@ -25,18 +25,13 @@ func init() {
 		OracleID:     "bbfc5011-a9b7-442d-a443-974a5a64de46",
 		Name:         "Heaped Harvest",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB, game.EventSacrifice},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			OnAny([]game.EventKind{game.EventETB, game.EventSacrifice}, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b26SelfEnteredOrWasSacrificed(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Heaped Harvest — you may search for a basic land, tapped",
-					func(g *game.Game, item *game.StackItem) error {
-						return b07SearchBasicOntoBattlefield(g, item, item.Controller, true, true, "Heaped Harvest — a basic land card, onto the battlefield tapped")
-					})
-			},
-		}},
+			}, "Heaped Harvest — you may search for a basic land, tapped", func(g *game.Game, item *game.StackItem) error {
+				return b07SearchBasicOntoBattlefield(g, item, item.Controller, true, true, "Heaped Harvest — a basic land card, onto the battlefield tapped")
+			}),
+		},
 		Activated: []ActivatedAbility{{
 			Label: "{2}, {T}, Sacrifice this artifact: You gain 3 life.",
 			Cost:  Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),

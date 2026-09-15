@@ -22,15 +22,10 @@ func init() {
 		Name:            "Black Waltz No. 3",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "deathtouch"},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventCast},
-			AppliesTo: b10NoncreatureSpellCastByYou,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Black Waltz No. 3 — 2 damage to each opponent",
-					func(g *game.Game, item *game.StackItem) error {
-						return damageToEachOpponent(g, item, 2)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverYouCast(Noncreature(), "Black Waltz No. 3 — 2 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
+				return damageToEachOpponent(g, item, 2)
+			}),
+		},
 	})
 }

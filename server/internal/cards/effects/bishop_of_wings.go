@@ -21,25 +21,12 @@ func init() {
 		Name:         "Bishop of Wings",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b21AngelYouControlEntered(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Bishop of Wings — you gain 4 life", b36GainLife(4))
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventLTB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b36AngelYouControlDied(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Bishop of Wings — create a 1/1 white Spirit with flying",
-						b34CreateTokens(b28WhiteSpiritFlyingToken, 1))
-				},
-			},
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b21AngelYouControlEntered(ev, source, g)
+			}, "Bishop of Wings — you gain 4 life", b36GainLife(4)),
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b36AngelYouControlDied(ev, source, g)
+			}, "Bishop of Wings — create a 1/1 white Spirit with flying", b34CreateTokens(b28WhiteSpiritFlyingToken, 1)),
 		},
 	})
 }

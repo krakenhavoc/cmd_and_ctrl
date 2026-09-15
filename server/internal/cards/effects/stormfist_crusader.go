@@ -21,15 +21,8 @@ func init() {
 		Name:            "Stormfist Crusader",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginUpkeep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Stormfist Crusader — each player draws a card and loses 1 life",
-					b18EachPlayerDrawsAndLosesLife)
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			AtYourUpkeep("Stormfist Crusader — each player draws a card and loses 1 life", b18EachPlayerDrawsAndLosesLife),
+		},
 	})
 }

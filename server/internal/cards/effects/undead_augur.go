@@ -22,21 +22,16 @@ func init() {
 		OracleID:     "c26887e1-27f4-4550-921b-53460e43c079",
 		Name:         "Undead Augur",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b17SelfOrZombieYouControlDied(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Undead Augur — draw a card and lose 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-							return err
-						}
-						return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -1)
-					})
-			},
-		}},
+			}, "Undead Augur — draw a card and lose 1 life", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
+					return err
+				}
+				return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -1)
+			}),
+		},
 	})
 }

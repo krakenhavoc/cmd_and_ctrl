@@ -22,20 +22,10 @@ func init() {
 		Name:         "Bident of Thassa",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The \"{1}{U}, {T}: Creatures your opponents control attack this turn if able\" ability isn't implemented — only the combat-damage draw trigger works."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return combatDamageToPlayerBy(ev, source.Controller, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Bident of Thassa — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{
-				Question: "Bident of Thassa — draw a card?",
-			},
-		}},
+			}, "Bident of Thassa — draw a card", Do(DrawCards{N: 1})), "Bident of Thassa — draw a card?"),
+		},
 	})
 }

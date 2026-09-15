@@ -23,17 +23,12 @@ func init() {
 		Name:            "Poison-Tip Archer",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"reach", "deathtouch"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b15AnotherCreatureDied(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Poison-Tip Archer — each opponent loses 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return eachOpponentLosesLife(g, item, 1)
-					})
-			},
-		}},
+			}, "Poison-Tip Archer — each opponent loses 1 life", func(g *game.Game, item *game.StackItem) error {
+				return eachOpponentLosesLife(g, item, 1)
+			}),
+		},
 	})
 }

@@ -59,26 +59,17 @@ func init() {
 						})
 				},
 			},
-			{
-				Watches: []game.EventKind{game.EventSacrifice},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.Actor == source.Controller
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Korvold — +1/+1 counter and draw a card",
-						func(g *game.Game, item *game.StackItem) error {
-							ctx := NewContext(g, item)
-							if err := (AddCounter{
-								Target: ctx.Source(),
-								Kind:   game.CounterPlusOne,
-								N:      1,
-							}).Apply(ctx); err != nil {
-								return err
-							}
-							return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-						})
-				},
-			},
+			On(game.EventSacrifice, ByYou, "Korvold — +1/+1 counter and draw a card", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				if err := (AddCounter{
+					Target: ctx.Source(),
+					Kind:   game.CounterPlusOne,
+					N:      1,
+				}).Apply(ctx); err != nil {
+					return err
+				}
+				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
+			}),
 		},
 	})
 }

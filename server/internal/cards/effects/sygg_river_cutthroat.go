@@ -24,15 +24,10 @@ func init() {
 		OracleID:     "cd4db500-0017-46c6-be94-1bf48f686b6a",
 		Name:         "Sygg, River Cutthroat",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginEndStep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b36EndStepAndAnOpponentLostThree(ev, source, g)
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Sygg, River Cutthroat — an opponent lost 3 or more life this turn. Draw a card?"},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Sygg, River Cutthroat — draw a card", b36DrawIfAnOpponentLostThree)
-			},
-		}},
+			}, "Sygg, River Cutthroat — draw a card", b36DrawIfAnOpponentLostThree), "Sygg, River Cutthroat — an opponent lost 3 or more life this turn. Draw a card?"),
+		},
 	})
 }

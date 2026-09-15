@@ -34,18 +34,9 @@ func init() {
 		Name:         "Illustrious Wanderglyph",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The city's blessing isn't kept once earned — your other artifact creatures get +2/+2 only while you control ten or more permanents."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginUpkeep},
-			AppliesTo: func(_ game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return true
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Illustrious Wanderglyph — create a 1/1 Gnome",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: b17GnomeToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			AtEachUpkeep("Illustrious Wanderglyph — create a 1/1 Gnome", Do(CreateToken{Template: b17GnomeToken(), N: 1})),
+		},
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,

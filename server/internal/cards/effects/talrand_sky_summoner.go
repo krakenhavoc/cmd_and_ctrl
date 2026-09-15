@@ -20,25 +20,17 @@ func init() {
 		OracleID:     "ea1eb902-a23c-44ff-9169-19baf71de238",
 		Name:         "Talrand, Sky Summoner",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Actor != source.Controller {
 					return false
 				}
 				spell, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && (spell.IsInstant() || spell.IsSorcery())
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Talrand, Sky Summoner — create a 2/2 Drake with flying",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   b06BlueDrakeToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Talrand, Sky Summoner — create a 2/2 Drake with flying", Do(CreateToken{
+				Template: b06BlueDrakeToken(),
+				N:        1,
+			})),
+		},
 	})
 }

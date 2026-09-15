@@ -45,21 +45,14 @@ func init() {
 			Label:                   "Add one mana of any color",
 			IgnoreCommanderIdentity: true,
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventTapCard},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "City of Brass — 1 damage to you",
-					func(g *game.Game, item *game.StackItem) error {
-						// "it deals 1 damage to YOU" — the land's
-						// controller, even when an opponent is the one
-						// who tapped it. NewTriggeredItem already put
-						// the controller on the item.
-						return g.DealDamageToPlayerForEffect(item.SourceCardID, item.Controller, 1)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			On(game.EventTapCard, Self, "City of Brass — 1 damage to you", func(g *game.Game, item *game.StackItem) error {
+				// "it deals 1 damage to YOU" — the land's
+				// controller, even when an opponent is the one
+				// who tapped it. NewTriggeredItem already put
+				// the controller on the item.
+				return g.DealDamageToPlayerForEffect(item.SourceCardID, item.Controller, 1)
+			}),
+		},
 	})
 }

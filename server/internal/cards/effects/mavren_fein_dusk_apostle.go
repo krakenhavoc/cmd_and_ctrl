@@ -23,15 +23,10 @@ func init() {
 		OracleID:     "1b94a11b-21b0-4465-a520-69608f022fb4",
 		Name:         "Mavren Fein, Dusk Apostle",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventAttack},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b36NontokenVampiresYouControlAttacked(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Mavren Fein, Dusk Apostle — create a 1/1 white Vampire with lifelink",
-					b34CreateTokens(b36WhiteVampireLifelinkToken, 1))
-			},
-		}},
+			}, "Mavren Fein, Dusk Apostle — create a 1/1 white Vampire with lifelink", b34CreateTokens(b36WhiteVampireLifelinkToken, 1)),
+		},
 	})
 }
