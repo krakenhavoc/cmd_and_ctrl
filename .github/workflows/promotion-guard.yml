@@ -1,0 +1,51 @@
+name: cmd_and_ctrl promotion guard
+
+permissions: {}
+
+# main is the release branch (ADR 0023). Exactly two things may merge
+# into it: a develop -> main promotion, and a hotfix/* branch. This check
+# is required by the "main: require CI" ruleset and fails everything else.
+#
+# It exists because the written rule was not enough. After the S32
+# promotion (#288) every one of the next ~100 PRs targeted main -- it is
+# still the default branch, so `gh pr create` and every agent land there
+# -- and develop sat 149 commits behind with the preview serving code
+# from days earlier.
+#
+# Its own workflow rather than a job in ci-cd.yml because it must rerun
+# on `edited`: retargeting a PR fires only that event, and without it a
+# fixed PR keeps its red check. `edited` on ci-cd.yml would rebuild the
+# whole tree on every title change.
+#
+# Retargeting away from main produces no run at all (the branches filter
+# sees the new base). That is correct -- the check is required on main only.
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited]
+    branches: [main]
+
+jobs:
+  promotion-guard:
+    runs-on: self-hosted
+    steps:
+      - name: Head must be develop or hotfix/*
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # A fork can name its branch develop too.
+          if [ "${HEAD_REPO}" != "${BASE_REPO}" ]; then
+            echo "::error::PRs into main must come from ${BASE_REPO}, not ${HEAD_REPO}. Target develop instead."
+            exit 1
+          fi
+          case "${HEAD_REF}" in
+            develop|hotfix/*)
+              echo "OK: ${HEAD_REF} -> main"
+              ;;
+            *)
+              echo "::error::${HEAD_REF} cannot merge into main. Feature branches target develop: gh pr edit ${PR_NUMBER} --base develop. Production fixes that cannot wait for a promotion go on a hotfix/* branch. See docs/environments.md."
+              exit 1
+              ;;
+          esac
