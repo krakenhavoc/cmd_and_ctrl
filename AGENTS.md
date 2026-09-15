@@ -103,7 +103,9 @@ When you create a new top-level directory, add it here.
 `develop` is the integration branch; `main` is the release branch.
 Feature branches PR into **`develop`**, which auto-deploys to
 `https://cmd-dev.labxp.io`. Promotion to production is a `develop` →
-`main` PR. Full matrix and host runbook:
+`main` PR. `main` is still the repo's default branch, so **always pass
+`--base develop` to `gh pr create`** — a feature PR into `main` fails
+the required `promotion-guard` check. Full matrix and host runbook:
 [docs/environments.md](docs/environments.md); rationale:
 [ADR 0023](docs/decisions/0023-develop-environment.md).
 

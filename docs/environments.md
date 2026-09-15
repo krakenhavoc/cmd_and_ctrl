@@ -32,9 +32,29 @@ feat/* ──PR──► develop ──deploy──► cmd-dev.labxp.io
                 main ──deploy──► cmd.labxp.io
 ```
 
-Feature branches PR into `develop`. Promotion is a `develop` → `main`
-PR. Hotfixes may PR straight into `main`; merge back into `develop`
-afterwards so it never falls behind.
+Feature branches PR into `develop`, with `cmdctrl-ci` required. `main`
+is still the repo's default branch, so pass `--base develop` to
+`gh pr create`.
+
+There is no merge queue. GitHub offers one only on organization-owned
+repositories and this one is user-owned, so the `merge_group` trigger
+in `ci-cd.yml` (#430) never fires. Two PRs that are each green against
+a stale `develop` can still break it together; `develop` breaking is
+what the preview is for, and it is caught before promotion rather
+than on the live table.
+
+Promotion is a `develop` → `main` PR, merged with a **merge commit** —
+the only method `main` allows. A squash would give `main` a commit
+`develop` does not have, and the two drift further apart with every
+promotion.
+
+Hotfixes may PR straight into `main` from a `hotfix/*` branch. Then
+open a `main` → `develop` PR so `develop` never falls behind.
+
+The rulesets enforce this. `main` requires `promotion-guard`, which
+fails any PR whose head is not `develop` or `hotfix/*`. If it fires on
+yours, retarget it: `gh pr edit <n> --base develop`. Neither branch
+accepts direct pushes.
 
 ## The host is Terraform
 
