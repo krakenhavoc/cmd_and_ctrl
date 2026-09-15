@@ -37,20 +37,15 @@ func init() {
 			Produced: "{C}{C}",
 			Label:    "Add {C}{C}",
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventZoneMove},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventZoneMove, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b10AnotherLandPlayedByYou(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "City of Traitors — sacrifice it",
-					func(g *game.Game, item *game.StackItem) error {
-						if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield {
-							return nil
-						}
-						return SacrificePermanent{Target: item.SourceCardID}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "City of Traitors — sacrifice it", func(g *game.Game, item *game.StackItem) error {
+				if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield {
+					return nil
+				}
+				return SacrificePermanent{Target: item.SourceCardID}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

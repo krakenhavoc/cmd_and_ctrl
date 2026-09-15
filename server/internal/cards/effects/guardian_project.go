@@ -29,9 +29,8 @@ func init() {
 		OracleID:     "4f9e07ae-6341-4b46-9f77-f17ab659d266",
 		Name:         "Guardian Project",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				if !ok || !c.IsCreature() || IsToken(c) {
 					return false
@@ -52,13 +51,7 @@ func init() {
 					}
 				}
 				return true
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Guardian Project — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Guardian Project — draw a card", Do(DrawCards{N: 1})),
+		},
 	})
 }

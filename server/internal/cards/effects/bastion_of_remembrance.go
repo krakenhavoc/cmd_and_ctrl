@@ -41,39 +41,20 @@ func init() {
 		OracleID:     "c7f33cea-2ec8-4081-9208-a5b1d86721b3",
 		Name:         "Bastion of Remembrance",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Bastion of Remembrance — create a 1/1 Human Soldier",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   bastionSoldierToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}, {
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				dead, ok := diedCreature(ev, g)
-				return ok && dead.Controller == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Bastion of Remembrance — each opponent loses 1",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, opp := range ctx.Opponents() {
-							if err := g.ChangePlayerLifeForEffect(ctx.Source(), opp, -1); err != nil {
-								return err
-							}
-						}
-						return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Bastion of Remembrance — create a 1/1 Human Soldier", Do(CreateToken{
+				Template: bastionSoldierToken(),
+				N:        1,
+			})),
+			WheneverACreatureYouControlDies("Bastion of Remembrance — each opponent loses 1", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, opp := range ctx.Opponents() {
+					if err := g.ChangePlayerLifeForEffect(ctx.Source(), opp, -1); err != nil {
+						return err
+					}
+				}
+				return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
+			}),
+		},
 	})
 }

@@ -29,19 +29,7 @@ func init() {
 		Name:         "Omnath, Locus of Rage",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					c, ok := enteredUnderYourControl(ev, source, g, false)
-					return ok && c.IsLand()
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Omnath, Locus of Rage — create a 5/5 Elemental",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: b08RedGreenElementalToken(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			Landfall("Omnath, Locus of Rage — create a 5/5 Elemental", Do(CreateToken{Template: b08RedGreenElementalToken(), N: 1})),
 			{
 				Watches: []game.EventKind{game.EventLTB},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

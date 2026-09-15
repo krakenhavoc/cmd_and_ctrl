@@ -22,18 +22,10 @@ func init() {
 		Name:            "Harvester of Souls",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b17AnotherNontokenCreatureDied(ev, source, g)
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Harvester of Souls — draw a card?"},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Harvester of Souls — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Harvester of Souls — draw a card", Do(DrawCards{N: 1})), "Harvester of Souls — draw a card?"),
+		},
 	})
 }

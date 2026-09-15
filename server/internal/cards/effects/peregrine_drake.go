@@ -22,31 +22,24 @@ func init() {
 		Completeness:    CompletenessCaveats,
 		Caveats:         []string{"You don't choose the lands — it auto-untaps up to five of your own tapped lands and can never untap another player's land."},
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Peregrine Drake — untap up to five lands",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						untapped := 0
-						for _, c := range g.BattlefieldCardsForEffect() {
-							if untapped >= 5 {
-								break
-							}
-							if !c.IsLand() || c.Controller != item.Controller || !c.Tapped {
-								continue
-							}
-							if err := (UntapTarget{Target: c.InstanceID}).Apply(ctx); err != nil {
-								return err
-							}
-							untapped++
-						}
-						return nil
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Peregrine Drake — untap up to five lands", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				untapped := 0
+				for _, c := range g.BattlefieldCardsForEffect() {
+					if untapped >= 5 {
+						break
+					}
+					if !c.IsLand() || c.Controller != item.Controller || !c.Tapped {
+						continue
+					}
+					if err := (UntapTarget{Target: c.InstanceID}).Apply(ctx); err != nil {
+						return err
+					}
+					untapped++
+				}
+				return nil
+			}),
+		},
 	})
 }

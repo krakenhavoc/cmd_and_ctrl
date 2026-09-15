@@ -44,19 +44,12 @@ func init() {
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return damageEachMatching(ctx, Creature(), ctx.X())
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b18OpponentsCreatureDied(ev, source, g) &&
 					!b11TriggeredThisTurn(g, source.InstanceID, b21SpitefulBanditryLabel)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, b21SpitefulBanditryLabel,
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, b21SpitefulBanditryLabel, Do(CreateToken{Template: TreasureToken(), N: 1})),
+		},
 	})
 }
 

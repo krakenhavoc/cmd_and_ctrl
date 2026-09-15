@@ -59,18 +59,9 @@ func init() {
 						})
 				},
 			},
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b13AnotherCreatureYouControlEntered(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "General Kreat — 1 damage to each opponent",
-						func(g *game.Game, item *game.StackItem) error {
-							return damageToEachOpponent(g, item, 1)
-						})
-				},
-			},
+			WheneverAnotherCreatureEntersUnderYourControl("General Kreat — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
+				return damageToEachOpponent(g, item, 1)
+			}),
 		},
 	})
 }

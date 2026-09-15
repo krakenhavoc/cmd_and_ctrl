@@ -21,17 +21,10 @@ func init() {
 		OracleID:     "5097f4e6-50af-4641-909f-db44abf0ce32",
 		Name:         "Rite of the Dragoncaller",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b12InstantOrSorceryCastByYou(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Rite of the Dragoncaller — create a 5/5 red Dragon with flying",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: b14RedDragonToken(5), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Rite of the Dragoncaller — create a 5/5 red Dragon with flying", Do(CreateToken{Template: b14RedDragonToken(5), N: 1})),
+		},
 	})
 }

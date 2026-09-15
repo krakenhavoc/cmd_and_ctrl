@@ -26,20 +26,11 @@ func init() {
 		OracleID:     "c3c45d50-9038-41df-bb2f-9bc40071845b",
 		Name:         "Merciless Executioner",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Merciless Executioner — each player sacrifices a creature",
-					func(g *game.Game, item *game.StackItem) error {
-						return EachPlayerSacrifices{
-							Match: Creature(),
-							Label: "a creature",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Merciless Executioner — each player sacrifices a creature", Do(EachPlayerSacrifices{
+				Match: Creature(),
+				Label: "a creature",
+			})),
+		},
 	})
 }

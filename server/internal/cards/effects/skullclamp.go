@@ -38,18 +38,11 @@ func init() {
 		Name:         "Skullclamp",
 		Completeness: CompletenessFull,
 		Static:       []game.StaticAbility{PumpAttached(1, -1)},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return equippedCreatureDied(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Skullclamp — draw two cards",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Skullclamp — draw two cards", Do(DrawCards{N: 2})),
+		},
 		Activated: []ActivatedAbility{
 			EquipAbility("{1}"),
 		},

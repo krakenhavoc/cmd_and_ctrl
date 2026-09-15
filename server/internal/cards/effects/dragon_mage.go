@@ -23,15 +23,8 @@ func init() {
 		Name:            "Dragon Mage",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return ev.Source == source.InstanceID && combatDamageToPlayerBy(ev, source.Controller, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Dragon Mage — each player discards their hand, then draws seven cards",
-					b10EachPlayerWheels)
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverThisDealsCombatDamageToAPlayer("Dragon Mage — each player discards their hand, then draws seven cards", b10EachPlayerWheels),
+		},
 	})
 }

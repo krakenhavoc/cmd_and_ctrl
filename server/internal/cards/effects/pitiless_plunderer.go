@@ -19,25 +19,17 @@ func init() {
 	Register(Spec{
 		OracleID: "a784481f-eccb-4112-bb38-04a659319660",
 		Name:     "Pitiless Plunderer",
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.CardID == source.InstanceID {
 					return false // "another"
 				}
 				dead, ok := diedCreature(ev, g)
 				return ok && dead.Controller == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Pitiless Plunderer — create a Treasure",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   TreasureToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Pitiless Plunderer — create a Treasure", Do(CreateToken{
+				Template: TreasureToken(),
+				N:        1,
+			})),
+		},
 	})
 }

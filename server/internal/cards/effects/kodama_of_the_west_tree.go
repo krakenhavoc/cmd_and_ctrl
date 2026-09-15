@@ -44,22 +44,17 @@ func init() {
 				}
 			},
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if !combatDamageToPlayerBy(ev, source.Controller, g) {
 					return false
 				}
 				dealer, ok := g.LookupCardForEffect(ev.Source)
 				return ok && b07IsModified(g, dealer)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Kodama of the West Tree — search for a basic land",
-					func(g *game.Game, item *game.StackItem) error {
-						return b07SearchBasicOntoBattlefield(g, item, item.Controller, true, false,
-							"Kodama of the West Tree — a basic land, tapped")
-					})
-			},
-		}},
+			}, "Kodama of the West Tree — search for a basic land", func(g *game.Game, item *game.StackItem) error {
+				return b07SearchBasicOntoBattlefield(g, item, item.Controller, true, false,
+					"Kodama of the West Tree — a basic land, tapped")
+			}),
+		},
 	})
 }

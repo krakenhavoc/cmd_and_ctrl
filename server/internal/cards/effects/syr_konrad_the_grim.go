@@ -38,9 +38,8 @@ func init() {
 		OracleID:     "14c3ff84-1e82-4606-a433-869fc52cc382",
 		Name:         "Syr Konrad, the Grim",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB, game.EventDiscardCard, game.EventMill, game.EventZoneMove},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			OnAny([]game.EventKind{game.EventLTB, game.EventDiscardCard, game.EventMill, game.EventZoneMove}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Kind == game.EventLTB {
 					if ev.CardID == source.InstanceID {
 						return false // "another"
@@ -50,14 +49,10 @@ func init() {
 				}
 				return b02CreatureCardEnteredGraveyardNotFromBattlefield(ev, g) ||
 					b02CreatureCardLeftYourGraveyard(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Syr Konrad, the Grim — 1 damage to each opponent",
-					func(g *game.Game, item *game.StackItem) error {
-						return damageToEachOpponent(g, item, 1)
-					})
-			},
-		}},
+			}, "Syr Konrad, the Grim — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
+				return damageToEachOpponent(g, item, 1)
+			}),
+		},
 		Activated: []ActivatedAbility{{
 			Label: "{1}{B}: Each player mills a card.",
 			Cost:  ManaCost("{1}{B}"),

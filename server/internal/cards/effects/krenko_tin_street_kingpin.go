@@ -32,33 +32,26 @@ func init() {
 		Name:         "Krenko, Tin Street Kingpin",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"If Krenko is removed in response to its attack trigger, the +1/+1 counter still lands on the card in the graveyard and you get two Goblins — one more than the real card's last known power would make."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventAttack},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return attackDeclared(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Krenko, Tin Street Kingpin — +1/+1 counter, then Goblins",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if err := (AddCounter{
-							Target: item.SourceCardID,
-							Kind:   game.CounterPlusOne,
-							N:      1,
-						}).Apply(ctx); err != nil {
-							return err
-						}
-						krenko, ok := g.LookupCardForEffect(item.SourceCardID)
-						if !ok {
-							return nil
-						}
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   RedGoblinToken(),
-							N:          krenko.CurrentPower(),
-						}.Apply(ctx)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverThisAttacks("Krenko, Tin Street Kingpin — +1/+1 counter, then Goblins", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				if err := (AddCounter{
+					Target: item.SourceCardID,
+					Kind:   game.CounterPlusOne,
+					N:      1,
+				}).Apply(ctx); err != nil {
+					return err
+				}
+				krenko, ok := g.LookupCardForEffect(item.SourceCardID)
+				if !ok {
+					return nil
+				}
+				return CreateToken{
+					Controller: item.Controller,
+					Template:   RedGoblinToken(),
+					N:          krenko.CurrentPower(),
+				}.Apply(ctx)
+			}),
+		},
 	})
 }

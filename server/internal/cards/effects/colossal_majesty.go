@@ -20,20 +20,15 @@ func init() {
 		OracleID:     "cac95494-0db0-4bec-8665-998431a6f76b",
 		Name:         "Colossal Majesty",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginUpkeep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventBeginUpkeep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Actor == source.Controller && youControlPowerFourOrGreater(g, source.Controller)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Colossal Majesty — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						if !youControlPowerFourOrGreater(g, item.Controller) {
-							return nil
-						}
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Colossal Majesty — draw a card", func(g *game.Game, item *game.StackItem) error {
+				if !youControlPowerFourOrGreater(g, item.Controller) {
+					return nil
+				}
+				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

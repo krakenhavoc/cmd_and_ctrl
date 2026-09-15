@@ -19,15 +19,10 @@ func init() {
 		OracleID:     "eadd9559-6dcb-4b96-8c95-58abddd0e120",
 		Name:         "Kessig Flamebreather",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventCast},
-			AppliesTo: b10NoncreatureSpellCastByYou,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Kessig Flamebreather — 1 damage to each opponent",
-					func(g *game.Game, item *game.StackItem) error {
-						return damageToEachOpponent(g, item, 1)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverYouCast(Noncreature(), "Kessig Flamebreather — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
+				return damageToEachOpponent(g, item, 1)
+			}),
+		},
 	})
 }

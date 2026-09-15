@@ -59,40 +59,33 @@ func init() {
 		Name:            "Craterhoof Behemoth",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"haste"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Craterhoof Behemoth — trample and +X/+X",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						x := 0
-						for _, c := range g.BattlefieldCardsForEffect() {
-							if c.IsCreature() && c.Controller == item.Controller {
-								x++
-							}
-						}
-						if x == 0 {
-							return nil
-						}
-						yours := And(Creature(), YouControl())
-						if err := (BoostUntilEOT{
-							Match:     yours,
-							Power:     x,
-							Toughness: x,
-							Label:     "Craterhoof Behemoth — +X/+X",
-						}).Apply(ctx); err != nil {
-							return err
-						}
-						return GrantKeywordUntilEOT{
-							Match:    yours,
-							Keywords: []string{"trample"},
-							Label:    "Craterhoof Behemoth — trample",
-						}.Apply(ctx)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Craterhoof Behemoth — trample and +X/+X", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				x := 0
+				for _, c := range g.BattlefieldCardsForEffect() {
+					if c.IsCreature() && c.Controller == item.Controller {
+						x++
+					}
+				}
+				if x == 0 {
+					return nil
+				}
+				yours := And(Creature(), YouControl())
+				if err := (BoostUntilEOT{
+					Match:     yours,
+					Power:     x,
+					Toughness: x,
+					Label:     "Craterhoof Behemoth — +X/+X",
+				}).Apply(ctx); err != nil {
+					return err
+				}
+				return GrantKeywordUntilEOT{
+					Match:    yours,
+					Keywords: []string{"trample"},
+					Label:    "Craterhoof Behemoth — trample",
+				}.Apply(ctx)
+			}),
+		},
 	})
 }

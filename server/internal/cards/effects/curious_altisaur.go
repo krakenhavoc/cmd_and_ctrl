@@ -22,17 +22,10 @@ func init() {
 		Name:            "Curious Altisaur",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"reach", "vigilance"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b24CombatDamageToPlayerByYourCreatureOfSubtypes(ev, source, g, "Dinosaur")
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Curious Altisaur — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Curious Altisaur — draw a card", Do(DrawCards{N: 1})),
+		},
 	})
 }

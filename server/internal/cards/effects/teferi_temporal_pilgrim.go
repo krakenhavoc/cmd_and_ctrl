@@ -60,17 +60,9 @@ func init() {
 		// (ADR 0032 §1); this is the fallback for tokens, fixtures
 		// and the dev spawner.
 		StartingLoyalty: 4,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDrawCard},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source,
-					"Teferi, Temporal Pilgrim — put a loyalty counter on Teferi",
-					teferiPilgrimLoyaltyCounter)
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverYouDraw("Teferi, Temporal Pilgrim — put a loyalty counter on Teferi", teferiPilgrimLoyaltyCounter),
+		},
 		Activated: []ActivatedAbility{
 			{
 				Label: "[0]: Draw a card.",

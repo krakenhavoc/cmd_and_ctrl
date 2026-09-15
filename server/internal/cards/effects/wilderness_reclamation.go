@@ -19,17 +19,10 @@ func init() {
 		OracleID:     "6f856f99-4cb4-479d-958d-964220965ed6",
 		Name:         "Wilderness Reclamation",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginEndStep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Wilderness Reclamation — untap all lands you control",
-					func(g *game.Game, item *game.StackItem) error {
-						return untapAllLandsControlledBy(g, item.Controller, NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			AtYourEndStep("Wilderness Reclamation — untap all lands you control", func(g *game.Game, item *game.StackItem) error {
+				return untapAllLandsControlledBy(g, item.Controller, NewContext(g, item))
+			}),
+		},
 	})
 }

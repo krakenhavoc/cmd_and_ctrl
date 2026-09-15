@@ -24,16 +24,9 @@ func init() {
 		OracleID:     "7fd4c452-07f2-492c-9c78-d1c6362d9eec",
 		Name:         "Yavimaya Elder",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return cardDied(ev, source)
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Yavimaya Elder — search your library for up to two basic land cards?"},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Yavimaya Elder — search for up to two basic lands", b34SearchUpToTwoBasicsToHand)
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			Optional(WhenThisDies("Yavimaya Elder — search for up to two basic lands", b34SearchUpToTwoBasicsToHand), "Yavimaya Elder — search your library for up to two basic land cards?"),
+		},
 		Activated: []ActivatedAbility{{
 			Label: "{2}, Sacrifice this creature: Draw a card.",
 			Cost:  Plus(ManaCost("{2}"), SacrificeThis()),

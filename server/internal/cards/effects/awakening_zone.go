@@ -20,21 +20,11 @@ func init() {
 		OracleID:     "f955bc96-d602-4142-a9a2-87009cc7028c",
 		Name:         "Awakening Zone",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginUpkeep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Awakening Zone — create an Eldrazi Spawn",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   EldraziSpawnToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			AtYourUpkeep("Awakening Zone — create an Eldrazi Spawn", Do(CreateToken{
+				Template: EldraziSpawnToken(),
+				N:        1,
+			})),
+		},
 	})
 }

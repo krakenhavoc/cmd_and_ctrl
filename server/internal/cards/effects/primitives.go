@@ -58,7 +58,11 @@ func (g GainLife) Apply(ctx *Context) error {
 	if g.Amount == 0 {
 		return nil
 	}
-	return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), g.Player, g.Amount)
+	player := g.Player
+	if player == uuid.Nil {
+		player = ctx.Controller()
+	}
+	return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), player, g.Amount)
 }
 
 // DrawCards draws N cards for `Player`. Non-positive N is a no-op.
@@ -73,7 +77,11 @@ func (d DrawCards) Apply(ctx *Context) error {
 	if d.N <= 0 {
 		return nil
 	}
-	return ctx.Game.DrawNForEffect(d.Player, d.N)
+	player := d.Player
+	if player == uuid.Nil {
+		player = ctx.Controller()
+	}
+	return ctx.Game.DrawNForEffect(player, d.N)
 }
 
 // DiscardCards removes N cards from `Player`'s hand. Sandbox
@@ -90,7 +98,11 @@ func (d DiscardCards) Apply(ctx *Context) error {
 	if d.N <= 0 {
 		return nil
 	}
-	return ctx.Game.DiscardRandomForEffect(d.Player, d.N)
+	player := d.Player
+	if player == uuid.Nil {
+		player = ctx.Controller()
+	}
+	return ctx.Game.DiscardRandomForEffect(player, d.N)
 }
 
 // MillCards mills the top N cards of `Player`'s library to their
@@ -104,7 +116,11 @@ func (m MillCards) Apply(ctx *Context) error {
 	if m.N <= 0 {
 		return nil
 	}
-	return ctx.Game.MillNForEffect(m.Player, m.N)
+	player := m.Player
+	if player == uuid.Nil {
+		player = ctx.Controller()
+	}
+	return ctx.Game.MillNForEffect(player, m.N)
 }
 
 // DestroyTarget routes a battlefield permanent to its owner's
@@ -330,7 +346,11 @@ type CreateToken struct {
 }
 
 func (c CreateToken) Apply(ctx *Context) error {
-	return ctx.Game.CreateTokenForEffect(c.Controller, c.Template, c.N)
+	controller := c.Controller
+	if controller == uuid.Nil {
+		controller = ctx.Controller()
+	}
+	return ctx.Game.CreateTokenForEffect(controller, c.Template, c.N)
 }
 
 // ReturnFromGraveyard moves a card from a graveyard to `Dest`

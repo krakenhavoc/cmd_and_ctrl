@@ -26,18 +26,9 @@ func init() {
 		Name:         "Primeval Bounty",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventCast},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b12CreatureSpellCastByYou(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Primeval Bounty — create a 3/3 Beast",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: GreenBeastToken(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b12CreatureSpellCastByYou(ev, source, g)
+			}, "Primeval Bounty — create a 3/3 Beast", Do(CreateToken{Template: GreenBeastToken(), N: 1})),
 			{
 				Watches:   []game.EventKind{game.EventCast},
 				AppliesTo: b10NoncreatureSpellCastByYou,
@@ -54,18 +45,7 @@ func init() {
 						})
 				},
 			},
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b13LandYouControlEntered(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Primeval Bounty — gain 3 life",
-						func(g *game.Game, item *game.StackItem) error {
-							return GainLife{Player: item.Controller, Amount: 3}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			Landfall("Primeval Bounty — gain 3 life", Do(GainLife{Amount: 3})),
 		},
 	})
 }

@@ -23,20 +23,15 @@ func init() {
 		Name:            "Youthful Valkyrie",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, "Angel")
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Youthful Valkyrie — put a +1/+1 counter on it",
-					func(g *game.Game, item *game.StackItem) error {
-						if !onBattlefield(g, item.SourceCardID) {
-							return nil
-						}
-						return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Youthful Valkyrie — put a +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {
+				if !onBattlefield(g, item.SourceCardID) {
+					return nil
+				}
+				return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

@@ -28,17 +28,10 @@ func init() {
 		Completeness:    CompletenessCaveats,
 		Caveats:         []string{"Choose a Background isn't supported — Ganax can be your commander, but not alongside a Background."},
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b14SelfOrDragonYouControlEntered(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Ganax, Astral Hunter — create a Treasure",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Ganax, Astral Hunter — create a Treasure", Do(CreateToken{Template: TreasureToken(), N: 1})),
+		},
 	})
 }

@@ -23,21 +23,14 @@ func init() {
 		OracleID:     "ed7300f4-831a-4ba4-b5e6-ceba8d079eaa",
 		Name:         "Cosmos Elixir",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginEndStep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Cosmos Elixir — draw a card if above starting life, otherwise gain 2 life",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if b25LifeAboveStarting(g, item.Controller) {
-							return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-						}
-						return GainLife{Player: item.Controller, Amount: 2}.Apply(ctx)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			AtYourEndStep("Cosmos Elixir — draw a card if above starting life, otherwise gain 2 life", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				if b25LifeAboveStarting(g, item.Controller) {
+					return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
+				}
+				return GainLife{Player: item.Controller, Amount: 2}.Apply(ctx)
+			}),
+		},
 	})
 }

@@ -21,18 +21,10 @@ func init() {
 		OracleID:     "fc7cda6f-7e5e-4a56-8d67-ffdea7edf269",
 		Name:         "Bred for the Hunt",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return combatDamageToPlayerBy(ev, source.Controller, g) && b25DamageDealtByCounteredCreature(ev, g)
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Bred for the Hunt: draw a card?"},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Bred for the Hunt — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Bred for the Hunt — draw a card", Do(DrawCards{N: 1})), "Bred for the Hunt: draw a card?"),
+		},
 	})
 }

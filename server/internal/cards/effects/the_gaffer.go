@@ -27,20 +27,15 @@ func init() {
 		OracleID:     "a177295e-3b58-4e46-a1cb-fc003a7a0848",
 		Name:         "The Gaffer",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginEndStep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b15EndStepBegan(ev) && b15LifeGainedThisTurn(g, source.Controller) >= 3
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "The Gaffer — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						if b15LifeGainedThisTurn(g, item.Controller) < 3 {
-							return nil
-						}
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "The Gaffer — draw a card", func(g *game.Game, item *game.StackItem) error {
+				if b15LifeGainedThisTurn(g, item.Controller) < 3 {
+					return nil
+				}
+				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

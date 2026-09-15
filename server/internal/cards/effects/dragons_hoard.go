@@ -32,19 +32,14 @@ func init() {
 		Name:         "Dragon's Hoard",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"Removing a gold counter to draw a card isn't implemented — the counters build up but can't be spent."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && c.HasSubtype("Dragon")
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Dragon's Hoard — put a gold counter on it",
-					func(g *game.Game, item *game.StackItem) error {
-						return AddCounter{Target: item.SourceCardID, Kind: "gold", N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Dragon's Hoard — put a gold counter on it", func(g *game.Game, item *game.StackItem) error {
+				return AddCounter{Target: item.SourceCardID, Kind: "gold", N: 1}.Apply(NewContext(g, item))
+			}),
+		},
 		ManaAbilities: []ManaAbility{{
 			Cost:                    ManaAbilityCost{Tap: true},
 			Produced:                "{W|U|B|R|G}",

@@ -18,22 +18,14 @@ func init() {
 		OracleID:     "045a9d3d-c20d-427f-a77b-0bffc6f55526",
 		Name:         "Soul's Attendant",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.CardID == source.InstanceID {
 					return false
 				}
 				c, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && c.IsCreature()
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Soul's Attendant — gain 1 life?"},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Soul's Attendant — gain 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Soul's Attendant — gain 1 life", Do(GainLife{Amount: 1})), "Soul's Attendant — gain 1 life?"),
+		},
 	})
 }

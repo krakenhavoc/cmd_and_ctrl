@@ -24,17 +24,10 @@ func init() {
 		Static: []game.StaticAbility{b16Anthem(func(target *game.Card, _ *game.Game, source *game.Card) bool {
 			return target.IsCreature() && target.Controller == source.Controller && target.HasColor("G")
 		}, 1, 1)},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b23AnotherGreenCreatureYouControlEntered(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Sylvan Anthem — scry 1",
-					func(g *game.Game, item *game.StackItem) error {
-						return Scry{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Sylvan Anthem — scry 1", Do(Scry{N: 1})),
+		},
 	})
 }

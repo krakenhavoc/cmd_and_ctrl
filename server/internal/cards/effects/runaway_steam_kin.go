@@ -51,21 +51,16 @@ func init() {
 				return g.AddCounterForEffect(source, "+1/+1", -3)
 			},
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b15RedSpellCastByYou(ev, source, g) && source.Counters["+1/+1"] < 3
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Runaway Steam-Kin — +1/+1 counter",
-					func(g *game.Game, item *game.StackItem) error {
-						c, ok := g.LookupCardForEffect(item.SourceCardID)
-						if !ok || !b15OnBattlefield(g, item.SourceCardID) || c.Counters["+1/+1"] >= 3 {
-							return nil
-						}
-						return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Runaway Steam-Kin — +1/+1 counter", func(g *game.Game, item *game.StackItem) error {
+				c, ok := g.LookupCardForEffect(item.SourceCardID)
+				if !ok || !b15OnBattlefield(g, item.SourceCardID) || c.Counters["+1/+1"] >= 3 {
+					return nil
+				}
+				return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

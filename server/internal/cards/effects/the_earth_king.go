@@ -34,30 +34,14 @@ func init() {
 		Name:         "The Earth King",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches:   []game.EventKind{game.EventETB},
-				AppliesTo: b06SelfETB,
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "The Earth King — create a 4/4 Bear",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: b26GreenBearToken(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventAttack},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b26CreatureYouControlWithPowerAtLeastAttacked(ev, source, g, 4) &&
-						!b12TriggerPendingOrOnStack(g, source, b26EarthKingSearchLabel)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b26EarthKingSearchLabel,
-						func(g *game.Game, item *game.StackItem) error {
-							n := b26AttackingCreaturesYouControlWithPowerAtLeast(g, item.Controller, 4)
-							return b26SearchBasicsOntoBattlefieldTapped(g, item, n, "The Earth King — up to that many basic lands, tapped")
-						})
-				},
-			},
+			WhenThisEnters("The Earth King — create a 4/4 Bear", Do(CreateToken{Template: b26GreenBearToken(), N: 1})),
+			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b26CreatureYouControlWithPowerAtLeastAttacked(ev, source, g, 4) &&
+					!b12TriggerPendingOrOnStack(g, source, b26EarthKingSearchLabel)
+			}, b26EarthKingSearchLabel, func(g *game.Game, item *game.StackItem) error {
+				n := b26AttackingCreaturesYouControlWithPowerAtLeast(g, item.Controller, 4)
+				return b26SearchBasicsOntoBattlefieldTapped(g, item, n, "The Earth King — up to that many basic lands, tapped")
+			}),
 		},
 	})
 }

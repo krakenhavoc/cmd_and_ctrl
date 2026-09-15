@@ -26,20 +26,11 @@ func init() {
 		OracleID:     "4b1bf05e-753e-4350-a913-894cf3cecc0c",
 		Name:         "Fleshbag Marauder",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Fleshbag Marauder — each player sacrifices a creature",
-					func(g *game.Game, item *game.StackItem) error {
-						return EachPlayerSacrifices{
-							Match: Creature(),
-							Label: "a creature",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Fleshbag Marauder — each player sacrifices a creature", Do(EachPlayerSacrifices{
+				Match: Creature(),
+				Label: "a creature",
+			})),
+		},
 	})
 }

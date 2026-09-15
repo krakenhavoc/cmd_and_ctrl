@@ -40,22 +40,14 @@ func init() {
 		Name:         "Magda, the Hoardmaster",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"Sacrificing three Treasures for a 4/4 Scorpion Dragon isn't implemented — only the Treasure-per-crime trigger works."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBecomesTarget},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventBecomesTarget, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b18CommittedCrime(ev, source, g) &&
 					!b11TriggeredThisTurn(g, source.InstanceID, b18MagdaTreasureLabel)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, b18MagdaTreasureLabel,
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   tappedTreasureToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, b18MagdaTreasureLabel, Do(CreateToken{
+				Template: tappedTreasureToken(),
+				N:        1,
+			})),
+		},
 	})
 }

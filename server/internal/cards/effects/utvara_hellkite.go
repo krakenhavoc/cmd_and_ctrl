@@ -23,17 +23,10 @@ func init() {
 		Name:            "Utvara Hellkite",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventAttack},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b14DragonYouControlAttacked(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Utvara Hellkite — create a 6/6 red Dragon with flying",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: b14RedDragonToken(6), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Utvara Hellkite — create a 6/6 red Dragon with flying", Do(CreateToken{Template: b14RedDragonToken(6), N: 1})),
+		},
 	})
 }

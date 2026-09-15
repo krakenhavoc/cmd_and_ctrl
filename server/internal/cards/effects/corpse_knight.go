@@ -19,17 +19,10 @@ func init() {
 		OracleID:     "0c77b805-728d-4ae4-88a9-223f4b7b52e0",
 		Name:         "Corpse Knight",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b13AnotherCreatureYouControlEntered(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Corpse Knight — each opponent loses 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return eachOpponentLosesLife(g, item, 1)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverAnotherCreatureEntersUnderYourControl("Corpse Knight — each opponent loses 1 life", func(g *game.Game, item *game.StackItem) error {
+				return eachOpponentLosesLife(g, item, 1)
+			}),
+		},
 	})
 }

@@ -31,18 +31,13 @@ func init() {
 		Name:            "Zacama, Primal Calamity",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"reach", "vigilance", "trample"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.CardID == source.InstanceID && b16EnteredFromStack(g, source.InstanceID)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Zacama, Primal Calamity — untap all lands you control",
-					func(g *game.Game, item *game.StackItem) error {
-						return b16UntapAllYouControlMatching(NewContext(g, item), item.Controller, func(c game.Card) bool { return c.IsLand() })
-					})
-			},
-		}},
+			}, "Zacama, Primal Calamity — untap all lands you control", func(g *game.Game, item *game.StackItem) error {
+				return b16UntapAllYouControlMatching(NewContext(g, item), item.Controller, func(c game.Card) bool { return c.IsLand() })
+			}),
+		},
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{2}{R}: Zacama deals 3 damage to target creature.",

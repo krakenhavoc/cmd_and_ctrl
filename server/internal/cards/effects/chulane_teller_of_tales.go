@@ -31,18 +31,11 @@ func init() {
 		Completeness:    CompletenessCaveats,
 		Caveats:         []string{"The cast trigger only draws the card — it doesn't offer to put a land from your hand onto the battlefield."},
 		PrintedKeywords: []string{"vigilance"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b12CreatureSpellCastByYou(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Chulane, Teller of Tales — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Chulane, Teller of Tales — draw a card", Do(DrawCards{N: 1})),
+		},
 		Activated: []ActivatedAbility{{
 			Label:   "{3}, {T}: Return target creature you control to its owner's hand.",
 			Cost:    Plus(ManaCost("{3}"), TapCost()),

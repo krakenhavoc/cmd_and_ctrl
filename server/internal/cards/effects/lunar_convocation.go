@@ -26,24 +26,12 @@ func init() {
 		Name:         "Lunar Convocation",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventBeginEndStep},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b24YourEndStepAndYouGainedLifeThisTurn(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Lunar Convocation — each opponent loses 1 life", b30LoseOneIfYouGainedLifeThisTurn)
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventBeginEndStep},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b30YourEndStepAndYouGainedAndLostLifeThisTurn(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Lunar Convocation — create a 1/1 Bat with flying", b30BatIfYouGainedAndLostLifeThisTurn)
-				},
-			},
+			On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b24YourEndStepAndYouGainedLifeThisTurn(ev, source, g)
+			}, "Lunar Convocation — each opponent loses 1 life", b30LoseOneIfYouGainedLifeThisTurn),
+			On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b30YourEndStepAndYouGainedAndLostLifeThisTurn(ev, source, g)
+			}, "Lunar Convocation — create a 1/1 Bat with flying", b30BatIfYouGainedAndLostLifeThisTurn),
 		},
 		Activated: []ActivatedAbility{{
 			Label: "{1}{B}, Pay 2 life: Draw a card",

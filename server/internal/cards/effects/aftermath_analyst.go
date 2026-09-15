@@ -31,18 +31,9 @@ func init() {
 		Name:         "Aftermath Analyst",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The returned lands come back untapped and are tapped a moment later, rather than entering tapped."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Aftermath Analyst — mill three cards",
-					func(g *game.Game, item *game.StackItem) error {
-						return MillCards{Player: item.Controller, N: 3}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Aftermath Analyst — mill three cards", Do(MillCards{N: 3})),
+		},
 		Activated: []ActivatedAbility{{
 			Label: "{3}{G}, Sacrifice this creature: Return all land cards from your graveyard to the battlefield tapped.",
 			Cost:  Plus(ManaCost("{3}{G}"), SacrificeThis()),

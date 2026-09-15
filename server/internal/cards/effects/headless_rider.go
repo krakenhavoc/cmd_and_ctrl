@@ -22,17 +22,10 @@ func init() {
 		OracleID:     "d4fdacd7-3101-44e2-a880-dde7326137a4",
 		Name:         "Headless Rider",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b27SelfOrNontokenZombieYouControlDied(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Headless Rider — create a 2/2 black Zombie",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: BlackZombieToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Headless Rider — create a 2/2 black Zombie", Do(CreateToken{Template: BlackZombieToken(), N: 1})),
+		},
 	})
 }

@@ -18,27 +18,19 @@ func init() {
 		OracleID:     "4ce2357f-93e6-40ca-beca-8f4e15adc464",
 		Name:         "Farhaven Elf",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			OptionalPrompt: &game.TriggerOptionalPrompt{
-				Question: "Farhaven Elf — search for a basic land?",
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Farhaven Elf — search for a basic land",
-					func(g *game.Game, item *game.StackItem) error {
-						return SearchLibrary{
-							Player:        item.Controller,
-							Predicate:     IsBasicLand,
-							Dest:          game.ZoneBattlefield,
-							Limit:         1,
-							Reveal:        true,
-							Shuffle:       true,
-							TappedOnEntry: true,
-							Reason:        "Farhaven Elf — a basic land, tapped",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			Optional(WhenThisEnters("Farhaven Elf — search for a basic land", func(g *game.Game, item *game.StackItem) error {
+				return SearchLibrary{
+					Player:        item.Controller,
+					Predicate:     IsBasicLand,
+					Dest:          game.ZoneBattlefield,
+					Limit:         1,
+					Reveal:        true,
+					Shuffle:       true,
+					TappedOnEntry: true,
+					Reason:        "Farhaven Elf — a basic land, tapped",
+				}.Apply(NewContext(g, item))
+			}), "Farhaven Elf — search for a basic land?"),
+		},
 	})
 }

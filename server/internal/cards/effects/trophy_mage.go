@@ -20,26 +20,21 @@ func init() {
 		OracleID:     "08afc0d7-192f-4ab6-b6a0-c4265cf5e225",
 		Name:         "Trophy Mage",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Trophy Mage — search for an artifact card with mana value 3",
-					func(g *game.Game, item *game.StackItem) error {
-						return SearchLibrary{
-							Player: item.Controller,
-							Predicate: func(c game.Card) bool {
-								return c.IsArtifact() && c.ManaValue() == 3
-							},
-							Dest:     game.ZoneHand,
-							Limit:    1,
-							Reveal:   true,
-							Shuffle:  true,
-							Optional: true,
-							Reason:   "Trophy Mage — an artifact card with mana value 3",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Trophy Mage — search for an artifact card with mana value 3", func(g *game.Game, item *game.StackItem) error {
+				return SearchLibrary{
+					Player: item.Controller,
+					Predicate: func(c game.Card) bool {
+						return c.IsArtifact() && c.ManaValue() == 3
+					},
+					Dest:     game.ZoneHand,
+					Limit:    1,
+					Reveal:   true,
+					Shuffle:  true,
+					Optional: true,
+					Reason:   "Trophy Mage — an artifact card with mana value 3",
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

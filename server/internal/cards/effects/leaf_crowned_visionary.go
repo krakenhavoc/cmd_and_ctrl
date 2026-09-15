@@ -25,24 +25,19 @@ func init() {
 		Static: []game.StaticAbility{
 			TribalAnthem(TribeFilter{Tribes: []string{"Elf"}, Others: true, YoursOnly: true}, 1, 1),
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b17ElfSpellCastByYou(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Leaf-Crowned Visionary — pay {G} to draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return MayPay{
-							Chooser:  item.Controller,
-							Cost:     "{G}",
-							Question: "Leaf-Crowned Visionary — pay {G} to draw a card?",
-							OnPay: func(ctx *Context) error {
-								return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
-							},
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Leaf-Crowned Visionary — pay {G} to draw a card", func(g *game.Game, item *game.StackItem) error {
+				return MayPay{
+					Chooser:  item.Controller,
+					Cost:     "{G}",
+					Question: "Leaf-Crowned Visionary — pay {G} to draw a card?",
+					OnPay: func(ctx *Context) error {
+						return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+					},
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

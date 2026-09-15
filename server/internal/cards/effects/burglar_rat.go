@@ -20,12 +20,8 @@ func init() {
 		OracleID:     "2f807301-37df-4724-871a-08e3512b07b3",
 		Name:         "Burglar Rat",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Burglar Rat — each opponent discards a card", b24EachOpponentDiscardsOne)
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Burglar Rat — each opponent discards a card", b24EachOpponentDiscardsOne),
+		},
 	})
 }

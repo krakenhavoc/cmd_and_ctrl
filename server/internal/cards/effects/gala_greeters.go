@@ -37,31 +37,24 @@ func init() {
 		Name:         "Gala Greeters",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The mode isn't chosen: each turn the first creature gives the +1/+1 counter, the second the tapped Treasure, the third the 2 life."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b13AnotherCreatureYouControlEntered(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, b15GalaGreetersLabel,
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						// The resolve event for THIS resolution is already
-						// logged, so the count includes it: 1 → first mode.
-						switch b15ResolvedThisTurn(g, item.SourceCardID, b15GalaGreetersLabel) {
-						case 1:
-							if !b15OnBattlefield(g, item.SourceCardID) {
-								return nil
-							}
-							return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(ctx)
-						case 2:
-							return b13CreateTappedTreasures(ctx, item.Controller, 1)
-						case 3:
-							return GainLife{Player: item.Controller, Amount: 2}.Apply(ctx)
-						}
+		Triggered: []game.TriggeredAbility{
+			WheneverAnotherCreatureEntersUnderYourControl(b15GalaGreetersLabel, func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				// The resolve event for THIS resolution is already
+				// logged, so the count includes it: 1 → first mode.
+				switch b15ResolvedThisTurn(g, item.SourceCardID, b15GalaGreetersLabel) {
+				case 1:
+					if !b15OnBattlefield(g, item.SourceCardID) {
 						return nil
-					})
-			},
-		}},
+					}
+					return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(ctx)
+				case 2:
+					return b13CreateTappedTreasures(ctx, item.Controller, 1)
+				case 3:
+					return GainLife{Player: item.Controller, Amount: 2}.Apply(ctx)
+				}
+				return nil
+			}),
+		},
 	})
 }

@@ -35,32 +35,25 @@ func init() {
 		AlternativeCosts: []game.AlternativeCost{
 			Evoke("{3}{U}"),
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Slithermuse — draw the hand-size difference",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						me := ctx.PlayerByID(item.Controller)
-						if me == nil {
-							return nil
-						}
-						best := 0
-						for _, oppID := range ctx.Opponents() {
-							opp := ctx.PlayerByID(oppID)
-							if opp == nil {
-								continue
-							}
-							if diff := len(opp.Hand.Cards) - len(me.Hand.Cards); diff > best {
-								best = diff
-							}
-						}
-						return DrawCards{Player: item.Controller, N: best}.Apply(ctx)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			On(game.EventLTB, Self, "Slithermuse — draw the hand-size difference", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				me := ctx.PlayerByID(item.Controller)
+				if me == nil {
+					return nil
+				}
+				best := 0
+				for _, oppID := range ctx.Opponents() {
+					opp := ctx.PlayerByID(oppID)
+					if opp == nil {
+						continue
+					}
+					if diff := len(opp.Hand.Cards) - len(me.Hand.Cards); diff > best {
+						best = diff
+					}
+				}
+				return DrawCards{Player: item.Controller, N: best}.Apply(ctx)
+			}),
+		},
 	})
 }

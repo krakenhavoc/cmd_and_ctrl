@@ -31,23 +31,15 @@ func init() {
 				return lootOne(g, item, 1)
 			},
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDiscardCard},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return discardedByYou(ev, source) &&
 					discardedCardHasType(ev, g, "island", "pirate", "vehicle")
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Mary Read and Anne Bonny — create a tapped Treasure",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   tappedTreasureToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Mary Read and Anne Bonny — create a tapped Treasure", Do(CreateToken{
+				Template: tappedTreasureToken(),
+				N:        1,
+			})),
+		},
 	})
 }
 

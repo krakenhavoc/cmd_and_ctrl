@@ -26,24 +26,19 @@ func init() {
 		OracleID:     "55eca80c-dcd8-4c2f-aa0f-fb0aec7b80f7",
 		Name:         "Ophiomancer",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginUpkeep},
-			AppliesTo: func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventBeginUpkeep, func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return !b05ControlsSubtype(g, source.Controller, "Snake")
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Ophiomancer — create a 1/1 Snake with deathtouch",
-					func(g *game.Game, item *game.StackItem) error {
-						if b05ControlsSubtype(g, item.Controller, "Snake") {
-							return nil // CR 603.4: the condition is re-checked on resolution
-						}
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   b05SnakeToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Ophiomancer — create a 1/1 Snake with deathtouch", func(g *game.Game, item *game.StackItem) error {
+				if b05ControlsSubtype(g, item.Controller, "Snake") {
+					return nil // CR 603.4: the condition is re-checked on resolution
+				}
+				return CreateToken{
+					Controller: item.Controller,
+					Template:   b05SnakeToken(),
+					N:          1,
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

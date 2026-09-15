@@ -47,18 +47,9 @@ func init() {
 		Name:         "Faith's Fetters",
 		Completeness: CompletenessFull,
 		Targets:      EnchantPermanent(),
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Faith's Fetters — you gain 4 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return GainLife{Player: item.Controller, Amount: 4}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Faith's Fetters — you gain 4 life", Do(GainLife{Amount: 4})),
+		},
 		Static: []game.StaticAbility{
 			RestrictAttached(game.CantAttackOrBlock | game.CantActivate),
 		},

@@ -28,33 +28,10 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The returned lands enter untapped and are tapped a moment later, before anyone can act."},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventAttack},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return attackDeclared(ev, source)
-				},
-				OptionalPrompt: &game.TriggerOptionalPrompt{
-					Question: "World Shaper — mill three cards?",
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "World Shaper — mill three cards",
-						func(g *game.Game, item *game.StackItem) error {
-							return MillCards{Player: item.Controller, N: 3}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventLTB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return cardDied(ev, source)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "World Shaper — return all land cards from your graveyard tapped",
-						func(g *game.Game, item *game.StackItem) error {
-							return b10ReturnAllLandCardsFromGraveyardTapped(NewContext(g, item), item.Controller)
-						})
-				},
-			},
+			Optional(WheneverThisAttacks("World Shaper — mill three cards", Do(MillCards{N: 3})), "World Shaper — mill three cards?"),
+			WhenThisDies("World Shaper — return all land cards from your graveyard tapped", func(g *game.Game, item *game.StackItem) error {
+				return b10ReturnAllLandCardsFromGraveyardTapped(NewContext(g, item), item.Controller)
+			}),
 		},
 	})
 }

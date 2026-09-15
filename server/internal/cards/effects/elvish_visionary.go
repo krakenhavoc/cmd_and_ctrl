@@ -16,15 +16,8 @@ func init() {
 		OracleID:     "c6a3a882-a127-4590-93d7-679ef4313efe",
 		Name:         "Elvish Visionary",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Elvish Visionary — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Elvish Visionary — draw a card", Do(DrawCards{N: 1})),
+		},
 	})
 }

@@ -23,27 +23,20 @@ func init() {
 		Name:            "Triplicate Titan",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "vigilance", "trample"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return cardDied(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Triplicate Titan — create three 3/3 Golems",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, kw := range []string{"flying", "vigilance", "trample"} {
-							if err := (CreateToken{
-								Controller: item.Controller,
-								Template:   b20GolemToken(kw),
-								N:          1,
-							}).Apply(ctx); err != nil {
-								return err
-							}
-						}
-						return nil
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisDies("Triplicate Titan — create three 3/3 Golems", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, kw := range []string{"flying", "vigilance", "trample"} {
+					if err := (CreateToken{
+						Controller: item.Controller,
+						Template:   b20GolemToken(kw),
+						N:          1,
+					}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
+			}),
+		},
 	})
 }

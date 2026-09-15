@@ -31,9 +31,8 @@ func init() {
 		Name:            "Mirkwood Bats",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventTokenCreated, game.EventSacrifice},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			OnAny([]game.EventKind{game.EventTokenCreated, game.EventSacrifice}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Actor != source.Controller {
 					return false
 				}
@@ -45,13 +44,9 @@ func init() {
 					return ok && IsToken(c)
 				}
 				return false
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Mirkwood Bats — each opponent loses 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return eachOpponentLosesLife(g, item, 1)
-					})
-			},
-		}},
+			}, "Mirkwood Bats — each opponent loses 1 life", func(g *game.Game, item *game.StackItem) error {
+				return eachOpponentLosesLife(g, item, 1)
+			}),
+		},
 	})
 }

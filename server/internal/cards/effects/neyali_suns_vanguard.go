@@ -54,15 +54,11 @@ func init() {
 			"Attacking tokens get double strike when Neyali's attack trigger resolves, not the moment they're declared.",
 			"A card exiled with Neyali can be played on a later turn only when her trigger resolves that turn — tokens must attack a player while she is on the battlefield.",
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventAttack},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b32TokenYouControlAttacked(ev, source, g) &&
 					!b12TriggerPendingOrOnStack(g, source, b32NeyaliLabel)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, b32NeyaliLabel, b32NeyaliAttack)
-			},
-		}},
+			}, b32NeyaliLabel, b32NeyaliAttack),
+		},
 	})
 }

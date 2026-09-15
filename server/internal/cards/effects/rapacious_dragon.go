@@ -20,12 +20,8 @@ func init() {
 		Name:            "Rapacious Dragon",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Rapacious Dragon — create two Treasures", b34CreateTokens(TreasureToken, 2))
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Rapacious Dragon — create two Treasures", b34CreateTokens(TreasureToken, 2)),
+		},
 	})
 }

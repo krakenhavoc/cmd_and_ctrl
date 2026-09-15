@@ -24,16 +24,10 @@ func init() {
 		Name:            "Sharding Sphinx",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b36ArtifactCreatureYouControlDealtCombatDamageToPlayer(ev, source, g)
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Sharding Sphinx — create a 1/1 blue Thopter with flying?"},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Sharding Sphinx — create a 1/1 blue Thopter with flying",
-					b34CreateTokens(b36BlueThopterToken, 1))
-			},
-		}},
+			}, "Sharding Sphinx — create a 1/1 blue Thopter with flying", b34CreateTokens(b36BlueThopterToken, 1)), "Sharding Sphinx — create a 1/1 blue Thopter with flying?"),
+		},
 	})
 }

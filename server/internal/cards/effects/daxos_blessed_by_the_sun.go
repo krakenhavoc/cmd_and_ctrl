@@ -35,17 +35,10 @@ func init() {
 				c.Toughness = devotionTo(g, source.Controller, "W")
 			},
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB, game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			OnAny([]game.EventKind{game.EventETB, game.EventLTB}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b16AnotherCreatureYouControlEnteredOrDied(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Daxos, Blessed by the Sun — you gain 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Daxos, Blessed by the Sun — you gain 1 life", Do(GainLife{Amount: 1})),
+		},
 	})
 }

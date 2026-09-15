@@ -21,17 +21,10 @@ func init() {
 		OracleID:     "3b9b5b22-5a7d-4e37-a870-ca0f0efa4f36",
 		Name:         "Sigil of the Empty Throne",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b12EnchantmentSpellCastByYou(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Sigil of the Empty Throne — a 4/4 Angel with flying",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: b12WhiteAngelFlyingToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Sigil of the Empty Throne — a 4/4 Angel with flying", Do(CreateToken{Template: b12WhiteAngelFlyingToken(), N: 1})),
+		},
 	})
 }

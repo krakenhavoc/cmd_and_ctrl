@@ -42,17 +42,8 @@ func init() {
 			"The \"Pay 10 life: Untap all lands you control\" ability isn't implemented.",
 		},
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginUpkeep},
-			AppliesTo: func(_ game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return true
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Beledros Witherbloom — create a Pest",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: b13PestToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			AtEachUpkeep("Beledros Witherbloom — create a Pest", Do(CreateToken{Template: b13PestToken(), N: 1})),
+		},
 	})
 }

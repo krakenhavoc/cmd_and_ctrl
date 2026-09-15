@@ -217,25 +217,18 @@ func b20JetmirClause(threshold int, keyword string) []game.StaticAbility {
 // Tribute Mage. "You may" is the search prompt's decline; the pick is
 // revealed and goes to hand.
 func b20TutorOnETB(label, reason string, pred func(game.Card) bool) game.TriggeredAbility {
-	return game.TriggeredAbility{
-		Watches:   []game.EventKind{game.EventETB},
-		AppliesTo: b06SelfETB,
-		Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			return game.NewTriggeredItem(source, label,
-				func(g *game.Game, item *game.StackItem) error {
-					return SearchLibrary{
-						Player:    item.Controller,
-						Predicate: pred,
-						Dest:      game.ZoneHand,
-						Limit:     1,
-						Reveal:    true,
-						Shuffle:   true,
-						Optional:  true,
-						Reason:    reason,
-					}.Apply(NewContext(g, item))
-				})
-		},
-	}
+	return WhenThisEnters(label, func(g *game.Game, item *game.StackItem) error {
+		return SearchLibrary{
+			Player:    item.Controller,
+			Predicate: pred,
+			Dest:      game.ZoneHand,
+			Limit:     1,
+			Reveal:    true,
+			Shuffle:   true,
+			Optional:  true,
+			Reason:    reason,
+		}.Apply(NewContext(g, item))
+	})
 }
 
 // b20ExileTopUntilEndOfNextTurn is Prosper's Mystic Arcanum: "exile

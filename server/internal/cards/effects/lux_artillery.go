@@ -34,15 +34,10 @@ func init() {
 		Name:         "Lux Artillery",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"Artifact creature spells you cast don't gain sunburst — only the end-step 10 damage at thirty counters works."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginEndStep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b35EndStepAndThirtyCounters(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Lux Artillery — 10 damage to each opponent",
-					b35TenDamageToEachOpponentIfThirtyCounters)
-			},
-		}},
+			}, "Lux Artillery — 10 damage to each opponent", b35TenDamageToEachOpponentIfThirtyCounters),
+		},
 	})
 }

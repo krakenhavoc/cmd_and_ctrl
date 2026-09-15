@@ -55,16 +55,7 @@ func init() {
 					return game.NewTriggeredItem(source, b36AngelOfSerenityExileLabel, b36ExileChosenCreatures)
 				},
 			},
-			{
-				Watches: []game.EventKind{game.EventLTB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.CardID == source.InstanceID
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Angel of Serenity — return the exiled cards to their owners' hands",
-						b36ReturnCardsExiledWithToOwnersHands)
-				},
-			},
+			On(game.EventLTB, Self, "Angel of Serenity — return the exiled cards to their owners' hands", b36ReturnCardsExiledWithToOwnersHands),
 		},
 	})
 }

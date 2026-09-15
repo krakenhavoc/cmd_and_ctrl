@@ -24,21 +24,13 @@ func init() {
 		OracleID:     "11b5308d-5bc0-4782-875f-a28be36e665d",
 		Name:         "Beastmaster Ascension",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventAttack},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return attackDeclaredByYou(ev, source.Controller)
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{
-				Question: "Beastmaster Ascension — put a quest counter on it?",
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Beastmaster Ascension — put a quest counter",
-					func(g *game.Game, item *game.StackItem) error {
-						return AddCounter{Target: item.SourceCardID, Kind: "quest", N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Beastmaster Ascension — put a quest counter", func(g *game.Game, item *game.StackItem) error {
+				return AddCounter{Target: item.SourceCardID, Kind: "quest", N: 1}.Apply(NewContext(g, item))
+			}), "Beastmaster Ascension — put a quest counter on it?"),
+		},
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,

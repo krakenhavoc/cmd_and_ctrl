@@ -30,18 +30,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch"},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventDrawCard},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.Actor == source.Controller
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Sheoldred, the Apocalypse — you gain 2 life",
-						func(g *game.Game, item *game.StackItem) error {
-							return GainLife{Player: item.Controller, Amount: 2}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			WheneverYouDraw("Sheoldred, the Apocalypse — you gain 2 life", Do(GainLife{Amount: 2})),
 			{
 				Watches: []game.EventKind{game.EventDrawCard},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

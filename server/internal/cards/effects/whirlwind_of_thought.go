@@ -19,15 +19,8 @@ func init() {
 		OracleID:     "6467cbb7-1e4e-482d-a20f-6cb9fc0f1ad1",
 		Name:         "Whirlwind of Thought",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventCast},
-			AppliesTo: b10NoncreatureSpellCastByYou,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Whirlwind of Thought — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverYouCast(Noncreature(), "Whirlwind of Thought — draw a card", Do(DrawCards{N: 1})),
+		},
 	})
 }

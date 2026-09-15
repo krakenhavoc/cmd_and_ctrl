@@ -19,13 +19,8 @@ func init() {
 		OracleID:     "e264ffe3-0252-49d6-b990-dbb3654325a5",
 		Name:         "Regal Force",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Regal Force — draw a card for each green creature you control",
-					b34DrawPerCreatureYouControlMatching(b34IsGreen))
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Regal Force — draw a card for each green creature you control", b34DrawPerCreatureYouControlMatching(b34IsGreen)),
+		},
 	})
 }

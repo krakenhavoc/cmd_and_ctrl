@@ -18,22 +18,14 @@ func init() {
 		OracleID:     "8f4b8a19-72f4-48ed-ac05-62a7c7525797",
 		Name:         "Mesa Enchantress",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Actor != source.Controller {
 					return false
 				}
 				spell, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && spell.IsEnchantment()
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Mesa Enchantress — draw a card?"},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Mesa Enchantress — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Mesa Enchantress — draw a card", Do(DrawCards{N: 1})), "Mesa Enchantress — draw a card?"),
+		},
 	})
 }

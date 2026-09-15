@@ -26,20 +26,11 @@ func init() {
 		OracleID:     "d8ad23a1-0b43-48ea-9fbe-d89b29194509",
 		Name:         "Accursed Marauder",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Accursed Marauder — each player sacrifices a nontoken creature",
-					func(g *game.Game, item *game.StackItem) error {
-						return EachPlayerSacrifices{
-							Match: b04NontokenCreature,
-							Label: "a nontoken creature",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Accursed Marauder — each player sacrifices a nontoken creature", Do(EachPlayerSacrifices{
+				Match: b04NontokenCreature,
+				Label: "a nontoken creature",
+			})),
+		},
 	})
 }

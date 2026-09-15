@@ -21,24 +21,19 @@ func init() {
 		OracleID:     "47a785ed-8095-4685-8daa-02c4e2b0ffcd",
 		Name:         "Spellseeker",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Spellseeker — search for an instant or sorcery with mana value 2 or less",
-					func(g *game.Game, item *game.StackItem) error {
-						return SearchLibrary{
-							Player:    item.Controller,
-							Predicate: b09IsCheapInstantOrSorceryCard,
-							Dest:      game.ZoneHand,
-							Limit:     1,
-							Reveal:    true,
-							Shuffle:   true,
-							Optional:  true,
-							Reason:    "Spellseeker — an instant or sorcery card with mana value 2 or less, revealed, to hand",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Spellseeker — search for an instant or sorcery with mana value 2 or less", func(g *game.Game, item *game.StackItem) error {
+				return SearchLibrary{
+					Player:    item.Controller,
+					Predicate: b09IsCheapInstantOrSorceryCard,
+					Dest:      game.ZoneHand,
+					Limit:     1,
+					Reveal:    true,
+					Shuffle:   true,
+					Optional:  true,
+					Reason:    "Spellseeker — an instant or sorcery card with mana value 2 or less, revealed, to hand",
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

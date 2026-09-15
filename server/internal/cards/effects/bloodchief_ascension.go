@@ -50,19 +50,11 @@ func init() {
 		Name:         "Bloodchief Ascension",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventBeginEndStep},
-				AppliesTo: func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b06AnOpponentLostAtLeastThisTurn(g, source.Controller, 2)
-				},
-				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Bloodchief Ascension — put a quest counter on it?"},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Bloodchief Ascension — put a quest counter on it",
-						func(g *game.Game, item *game.StackItem) error {
-							return AddCounter{Target: item.SourceCardID, Kind: "quest", N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			Optional(On(game.EventBeginEndStep, func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b06AnOpponentLostAtLeastThisTurn(g, source.Controller, 2)
+			}, "Bloodchief Ascension — put a quest counter on it", func(g *game.Game, item *game.StackItem) error {
+				return AddCounter{Target: item.SourceCardID, Kind: "quest", N: 1}.Apply(NewContext(g, item))
+			}), "Bloodchief Ascension — put a quest counter on it?"),
 			{
 				Watches: []game.EventKind{game.EventZoneMove, game.EventDiscardCard, game.EventMill, game.EventCounterSpell},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

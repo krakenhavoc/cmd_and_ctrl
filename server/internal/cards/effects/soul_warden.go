@@ -17,21 +17,14 @@ func init() {
 		OracleID:     "f3fad295-1af2-4ecc-8546-b121ad6be27b",
 		Name:         "Soul Warden",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.CardID == source.InstanceID {
 					return false
 				}
 				c, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && c.IsCreature()
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Soul Warden — you gain 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Soul Warden — you gain 1 life", Do(GainLife{Amount: 1})),
+		},
 	})
 }

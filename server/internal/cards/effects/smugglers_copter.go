@@ -34,20 +34,10 @@ func init() {
 			Cost:   CrewCost(1),
 			Effect: CrewEffect("Smuggler's Copter"),
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventAttack},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return attackDeclared(ev, source)
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{
-				Question: "Smuggler's Copter — draw a card, then discard a card?",
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Smuggler's Copter — loot",
-					func(g *game.Game, item *game.StackItem) error {
-						return lootOne(g, item, 1)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			Optional(WheneverThisAttacks("Smuggler's Copter — loot", func(g *game.Game, item *game.StackItem) error {
+				return lootOne(g, item, 1)
+			}), "Smuggler's Copter — draw a card, then discard a card?"),
+		},
 	})
 }

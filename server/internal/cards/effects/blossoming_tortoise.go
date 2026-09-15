@@ -78,15 +78,9 @@ func init() {
 					return game.NewTriggeredItem(source, b31BlossomingTortoiseLabel, b31MillThreeThenReturnChosenLandTapped)
 				},
 			},
-			{
-				Watches: []game.EventKind{game.EventETB, game.EventAttack},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b21SelfEnteredOrAttacked(ev, source) && !b25GraveyardHasLandCard(g, source.Controller)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b31BlossomingTortoiseLabel, b31MillThreeThenReturnChosenLandTapped)
-				},
-			},
+			OnAny([]game.EventKind{game.EventETB, game.EventAttack}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b21SelfEnteredOrAttacked(ev, source) && !b25GraveyardHasLandCard(g, source.Controller)
+			}, b31BlossomingTortoiseLabel, b31MillThreeThenReturnChosenLandTapped),
 		},
 	})
 }

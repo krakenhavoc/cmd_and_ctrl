@@ -18,17 +18,10 @@ func init() {
 		OracleID:     "328b42f1-d679-4f9c-80e3-38fe3b965d10",
 		Name:         "Psychic Corrosion",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDrawCard},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Psychic Corrosion — each opponent mills two cards",
-					func(g *game.Game, item *game.StackItem) error {
-						return b12EachOpponentMills(g, item, 2)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverYouDraw("Psychic Corrosion — each opponent mills two cards", func(g *game.Game, item *game.StackItem) error {
+				return b12EachOpponentMills(g, item, 2)
+			}),
+		},
 	})
 }

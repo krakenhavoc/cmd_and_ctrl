@@ -22,26 +22,21 @@ func init() {
 		OracleID:     "d521a329-a53a-4962-810a-2abed80df260",
 		Name:         "Recruiter of the Guard",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Recruiter of the Guard — search for a creature with toughness 2 or less",
-					func(g *game.Game, item *game.StackItem) error {
-						return SearchLibrary{
-							Player: item.Controller,
-							Predicate: func(c game.Card) bool {
-								return c.IsCreature() && c.Toughness <= 2
-							},
-							Dest:     game.ZoneHand,
-							Limit:    1,
-							Reveal:   true,
-							Shuffle:  true,
-							Optional: true,
-							Reason:   "Recruiter of the Guard — a creature card with toughness 2 or less, revealed, to hand",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Recruiter of the Guard — search for a creature with toughness 2 or less", func(g *game.Game, item *game.StackItem) error {
+				return SearchLibrary{
+					Player: item.Controller,
+					Predicate: func(c game.Card) bool {
+						return c.IsCreature() && c.Toughness <= 2
+					},
+					Dest:     game.ZoneHand,
+					Limit:    1,
+					Reveal:   true,
+					Shuffle:  true,
+					Optional: true,
+					Reason:   "Recruiter of the Guard — a creature card with toughness 2 or less, revealed, to hand",
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

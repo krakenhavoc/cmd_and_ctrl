@@ -19,17 +19,10 @@ func init() {
 		OracleID:     "814b87fe-2a75-4ff2-8637-7e69e3fb285b",
 		Name:         "Marauding Blight-Priest",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventChangeLife},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return b10YouGainedLife(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Marauding Blight-Priest — each opponent loses 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return eachOpponentLosesLife(g, item, 1)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverYouGainLife("Marauding Blight-Priest — each opponent loses 1 life", func(g *game.Game, item *game.StackItem) error {
+				return eachOpponentLosesLife(g, item, 1)
+			}),
+		},
 	})
 }

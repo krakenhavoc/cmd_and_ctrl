@@ -19,24 +19,16 @@ func init() {
 		OracleID:     "8afc00d4-a1c6-4329-af2c-a7f58a0c33e7",
 		Name:         "Ruin Crab",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				c, ok := enteredUnderYourControl(ev, source, g, false)
-				return ok && c.IsLand()
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Ruin Crab — each opponent mills three (landfall)",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, opp := range ctx.Opponents() {
-							if err := (MillCards{Player: opp, N: 3}).Apply(ctx); err != nil {
-								return err
-							}
-						}
-						return nil
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			Landfall("Ruin Crab — each opponent mills three (landfall)", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, opp := range ctx.Opponents() {
+					if err := (MillCards{Player: opp, N: 3}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
+			}),
+		},
 	})
 }

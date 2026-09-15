@@ -33,37 +33,18 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"double strike"},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventCast},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b12CreatureSpellCastByYou(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "God-Eternal Oketra — create a 4/4 black Zombie Warrior with vigilance",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: b22BlackZombieWarriorVigilanceToken(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventLTB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return b22SelfDiedOrWasExiledFromBattlefield(ev, source)
-				},
-				OptionalPrompt: &game.TriggerOptionalPrompt{
-					Question: "God-Eternal Oketra — put it into its owner's library third from the top?",
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "God-Eternal Oketra — put it into its owner's library third from the top",
-						func(g *game.Game, item *game.StackItem) error {
-							z := g.FindCardZoneForEffect(item.SourceCardID)
-							if z == nil || (z.Kind != game.ZoneGraveyard && z.Kind != game.ZoneExile) {
-								return nil
-							}
-							return b22TuckThirdFromTop(g, item.SourceCardID)
-						})
-				},
-			},
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b12CreatureSpellCastByYou(ev, source, g)
+			}, "God-Eternal Oketra — create a 4/4 black Zombie Warrior with vigilance", Do(CreateToken{Template: b22BlackZombieWarriorVigilanceToken(), N: 1})),
+			Optional(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return b22SelfDiedOrWasExiledFromBattlefield(ev, source)
+			}, "God-Eternal Oketra — put it into its owner's library third from the top", func(g *game.Game, item *game.StackItem) error {
+				z := g.FindCardZoneForEffect(item.SourceCardID)
+				if z == nil || (z.Kind != game.ZoneGraveyard && z.Kind != game.ZoneExile) {
+					return nil
+				}
+				return b22TuckThirdFromTop(g, item.SourceCardID)
+			}), "God-Eternal Oketra — put it into its owner's library third from the top?"),
 		},
 	})
 }

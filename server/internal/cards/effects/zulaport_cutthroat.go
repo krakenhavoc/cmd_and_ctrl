@@ -15,24 +15,16 @@ func init() {
 	Register(Spec{
 		OracleID: "76b003e0-15af-4f22-bdf2-1ade5430964a",
 		Name:     "Zulaport Cutthroat",
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				dead, ok := diedCreature(ev, g)
-				return ok && dead.Controller == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Zulaport Cutthroat — each opponent loses 1",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, opp := range ctx.Opponents() {
-							if err := g.ChangePlayerLifeForEffect(ctx.Source(), opp, -1); err != nil {
-								return err
-							}
-						}
-						return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverACreatureYouControlDies("Zulaport Cutthroat — each opponent loses 1", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, opp := range ctx.Opponents() {
+					if err := g.ChangePlayerLifeForEffect(ctx.Source(), opp, -1); err != nil {
+						return err
+					}
+				}
+				return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
+			}),
+		},
 	})
 }

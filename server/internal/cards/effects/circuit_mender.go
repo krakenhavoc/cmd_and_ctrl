@@ -20,28 +20,8 @@ func init() {
 		Name:         "Circuit Mender",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches:   []game.EventKind{game.EventETB},
-				AppliesTo: b06SelfETB,
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Circuit Mender — gain 2 life",
-						func(g *game.Game, item *game.StackItem) error {
-							return GainLife{Player: item.Controller, Amount: 2}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventLTB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.CardID == source.InstanceID
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Circuit Mender — draw a card",
-						func(g *game.Game, item *game.StackItem) error {
-							return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			WhenThisEnters("Circuit Mender — gain 2 life", Do(GainLife{Amount: 2})),
+			On(game.EventLTB, Self, "Circuit Mender — draw a card", Do(DrawCards{N: 1})),
 		},
 	})
 }

@@ -38,25 +38,20 @@ func init() {
 			Produced: "{C}",
 			Label:    "Add {C}",
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && c.IsLand() && b04LandNamesControlled(g, source.Controller) >= 7
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Field of the Dead — create a 2/2 Zombie",
-					func(g *game.Game, item *game.StackItem) error {
-						if b04LandNamesControlled(g, item.Controller) < 7 {
-							return nil // CR 603.4: the "if" is re-checked on resolution.
-						}
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   b04ZombieToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Field of the Dead — create a 2/2 Zombie", func(g *game.Game, item *game.StackItem) error {
+				if b04LandNamesControlled(g, item.Controller) < 7 {
+					return nil // CR 603.4: the "if" is re-checked on resolution.
+				}
+				return CreateToken{
+					Controller: item.Controller,
+					Template:   b04ZombieToken(),
+					N:          1,
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

@@ -32,15 +32,8 @@ func init() {
 			Produced: "{W}",
 			Label:    "Add {W}",
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return cardDied(ev, source)
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Flagstones of Trokair — search your library for a Plains card?"},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Flagstones of Trokair — search for a Plains card, onto the battlefield tapped", b31FetchPlainsTapped)
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			Optional(WhenThisDies("Flagstones of Trokair — search for a Plains card, onto the battlefield tapped", b31FetchPlainsTapped), "Flagstones of Trokair — search your library for a Plains card?"),
+		},
 	})
 }

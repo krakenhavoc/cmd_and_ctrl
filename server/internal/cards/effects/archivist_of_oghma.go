@@ -15,24 +15,19 @@ func init() {
 		Name:            "Archivist of Oghma",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventSearchLibrary},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventSearchLibrary, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				if ev.Label == "shuffle" {
 					return false
 				}
 				return ev.Actor != source.Controller && ev.Actor != ZeroUUID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Archivist of Oghma — gain 1 life and draw",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if err := (GainLife{Player: item.Controller, Amount: 1}).Apply(ctx); err != nil {
-							return err
-						}
-						return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-					})
-			},
-		}},
+			}, "Archivist of Oghma — gain 1 life and draw", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				if err := (GainLife{Player: item.Controller, Amount: 1}).Apply(ctx); err != nil {
+					return err
+				}
+				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
+			}),
+		},
 	})
 }

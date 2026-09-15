@@ -36,28 +36,23 @@ func init() {
 		Name:         "Teval's Judgment",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The mode isn't chosen: each turn the first trigger draws a card, the second makes a Treasure, the third makes the Zombie Druid."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventZoneMove, game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			OnAny([]game.EventKind{game.EventZoneMove, game.EventCast}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b16CardLeftYourGraveyard(ev, source, g) && !b12TriggerPendingOrOnStack(g, source, b16TevalsJudgmentLabel)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, b16TevalsJudgmentLabel,
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						// The resolve event for THIS resolution is already
-						// logged, so the count includes it: 1 → first mode.
-						switch b15ResolvedThisTurn(g, item.SourceCardID, b16TevalsJudgmentLabel) {
-						case 1:
-							return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-						case 2:
-							return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}.Apply(ctx)
-						case 3:
-							return CreateToken{Controller: item.Controller, Template: b16BlackZombieDruidToken(), N: 1}.Apply(ctx)
-						}
-						return nil
-					})
-			},
-		}},
+			}, b16TevalsJudgmentLabel, func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				// The resolve event for THIS resolution is already
+				// logged, so the count includes it: 1 → first mode.
+				switch b15ResolvedThisTurn(g, item.SourceCardID, b16TevalsJudgmentLabel) {
+				case 1:
+					return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
+				case 2:
+					return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}.Apply(ctx)
+				case 3:
+					return CreateToken{Controller: item.Controller, Template: b16BlackZombieDruidToken(), N: 1}.Apply(ctx)
+				}
+				return nil
+			}),
+		},
 	})
 }

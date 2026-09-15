@@ -31,22 +31,11 @@ func init() {
 		Name:         "Tireless Provisioner",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"Landfall always makes a Treasure — the Food token option is never offered."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				c, ok := enteredUnderYourControl(ev, source, g, false)
-				return ok && c.IsLand()
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Tireless Provisioner — create a Treasure (landfall)",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   TreasureToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			Landfall("Tireless Provisioner — create a Treasure (landfall)", Do(CreateToken{
+				Template: TreasureToken(),
+				N:        1,
+			})),
+		},
 	})
 }

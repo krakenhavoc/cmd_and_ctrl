@@ -25,15 +25,8 @@ func init() {
 		Static: []game.StaticAbility{
 			TribalKeywordGrant(TribeFilter{Tribes: []string{"Dinosaur"}, Others: true, YoursOnly: true}, "haste"),
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Regisaur Alpha — create a 3/3 green Dinosaur with trample",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: b23GreenDinosaurTrampleToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Regisaur Alpha — create a 3/3 green Dinosaur with trample", Do(CreateToken{Template: b23GreenDinosaurTrampleToken(), N: 1})),
+		},
 	})
 }

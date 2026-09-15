@@ -23,22 +23,12 @@ func init() {
 		Name:            "Dictate of Erebos",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				dead, ok := diedCreature(ev, g)
-				return ok && dead.Controller == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Dictate of Erebos — each opponent sacrifices a creature",
-					func(g *game.Game, item *game.StackItem) error {
-						return EachPlayerSacrifices{
-							ExceptController: true,
-							Match:            Creature(),
-							Label:            "a creature",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverACreatureYouControlDies("Dictate of Erebos — each opponent sacrifices a creature", Do(EachPlayerSacrifices{
+				ExceptController: true,
+				Match:            Creature(),
+				Label:            "a creature",
+			})),
+		},
 	})
 }

@@ -19,12 +19,8 @@ func init() {
 		Name:            "Cloudblazer",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Cloudblazer — gain 2 life and draw two cards", b33GainLifeThenDraw(2, 2))
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Cloudblazer — gain 2 life and draw two cards", b33GainLifeThenDraw(2, 2)),
+		},
 	})
 }

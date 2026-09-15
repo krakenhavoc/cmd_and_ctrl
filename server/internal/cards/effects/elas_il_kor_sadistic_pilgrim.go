@@ -23,35 +23,16 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch"},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					c, ok := enteredUnderYourControl(ev, source, g, true)
-					return ok && c.IsCreature()
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Elas il-Kor — you gain 1 life",
-						func(g *game.Game, item *game.StackItem) error {
-							return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventLTB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					if ev.CardID == source.InstanceID {
-						return false // "another"
-					}
-					dead, ok := diedCreature(ev, g)
-					return ok && dead.Controller == source.Controller
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Elas il-Kor — each opponent loses 1 life",
-						func(g *game.Game, item *game.StackItem) error {
-							return eachOpponentLosesLife(g, item, 1)
-						})
-				},
-			},
+			WheneverAnotherCreatureEntersUnderYourControl("Elas il-Kor — you gain 1 life", Do(GainLife{Amount: 1})),
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				if ev.CardID == source.InstanceID {
+					return false // "another"
+				}
+				dead, ok := diedCreature(ev, g)
+				return ok && dead.Controller == source.Controller
+			}, "Elas il-Kor — each opponent loses 1 life", func(g *game.Game, item *game.StackItem) error {
+				return eachOpponentLosesLife(g, item, 1)
+			}),
 		},
 	})
 }

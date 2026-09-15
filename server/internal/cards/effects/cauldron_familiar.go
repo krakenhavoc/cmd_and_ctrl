@@ -29,18 +29,13 @@ func init() {
 		Name:         "Cauldron Familiar",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The Cat can't be returned from your graveyard by sacrificing a Food — abilities can only be activated from the battlefield."},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Cauldron Familiar — each opponent loses 1 life and you gain 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						if err := eachOpponentLosesLife(g, item, 1); err != nil {
-							return err
-						}
-						return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Cauldron Familiar — each opponent loses 1 life and you gain 1 life", func(g *game.Game, item *game.StackItem) error {
+				if err := eachOpponentLosesLife(g, item, 1); err != nil {
+					return err
+				}
+				return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

@@ -16,32 +16,27 @@ func init() {
 		OracleID:        "cc6a83c7-e645-4a53-9550-be79b42cd851",
 		Name:            "Loyal Warhound",
 		PrintedKeywords: []string{"vigilance"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.CardID != source.InstanceID {
 					return false
 				}
 				return anOpponentHasMoreLands(g, source.Controller)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Loyal Warhound — search for a basic Plains",
-					func(g *game.Game, item *game.StackItem) error {
-						if !anOpponentHasMoreLands(g, item.Controller) {
-							return nil
-						}
-						return SearchLibrary{
-							Player:        item.Controller,
-							Predicate:     IsBasicLandWithSubtype("plains"),
-							Dest:          game.ZoneBattlefield,
-							Limit:         1,
-							Reveal:        true,
-							Shuffle:       true,
-							TappedOnEntry: true,
-							Reason:        "Loyal Warhound — a basic Plains",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Loyal Warhound — search for a basic Plains", func(g *game.Game, item *game.StackItem) error {
+				if !anOpponentHasMoreLands(g, item.Controller) {
+					return nil
+				}
+				return SearchLibrary{
+					Player:        item.Controller,
+					Predicate:     IsBasicLandWithSubtype("plains"),
+					Dest:          game.ZoneBattlefield,
+					Limit:         1,
+					Reveal:        true,
+					Shuffle:       true,
+					TappedOnEntry: true,
+					Reason:        "Loyal Warhound — a basic Plains",
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

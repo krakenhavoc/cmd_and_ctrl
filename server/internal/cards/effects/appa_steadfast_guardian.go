@@ -85,22 +85,12 @@ func init() {
 						})
 				},
 			},
-			{
-				Watches: []game.EventKind{game.EventCast},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.Actor == source.Controller && ev.OldZone == game.ZoneExile
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Appa, Steadfast Guardian — create a 1/1 Ally",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{
-								Controller: item.Controller,
-								Template:   WhiteAllyToken(),
-								N:          1,
-							}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return ev.Actor == source.Controller && ev.OldZone == game.ZoneExile
+			}, "Appa, Steadfast Guardian — create a 1/1 Ally", Do(CreateToken{
+				Template: WhiteAllyToken(),
+				N:        1,
+			})),
 		},
 	})
 }

@@ -22,13 +22,8 @@ func init() {
 		OracleID:     "f19d06af-6caf-41d8-8d0a-d5d50bd67900",
 		Name:         "Fanatic of Mogis",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Fanatic of Mogis — damage to each opponent equal to your devotion to red",
-					b36DamageEachOpponentForDevotionToRed)
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Fanatic of Mogis — damage to each opponent equal to your devotion to red", b36DamageEachOpponentForDevotionToRed),
+		},
 	})
 }

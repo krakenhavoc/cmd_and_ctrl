@@ -15,21 +15,11 @@ func init() {
 	Register(Spec{
 		OracleID: "caa02547-66e3-4e27-a2d3-5e94f3e7a069",
 		Name:     "Thraben Inspector",
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Thraben Inspector — investigate",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   ClueToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Thraben Inspector — investigate", Do(CreateToken{
+				Template: ClueToken(),
+				N:        1,
+			})),
+		},
 	})
 }

@@ -31,18 +31,9 @@ func init() {
 		Name:     "Hulking Raptor",
 		Triggered: []game.TriggeredAbility{
 			Ward(WardMana("{2}"), "Hulking Raptor — ward {2}"),
-			{
-				Watches: []game.EventKind{game.EventBeginPrecombatMain},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.Actor == source.Controller
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Hulking Raptor — add {G}{G}",
-						func(g *game.Game, item *game.StackItem) error {
-							return g.AddManaForEffect(item.Controller, item.SourceCardID, "{G}{G}")
-						})
-				},
-			},
+			AtYourPrecombatMain("Hulking Raptor — add {G}{G}", func(g *game.Game, item *game.StackItem) error {
+				return g.AddManaForEffect(item.Controller, item.SourceCardID, "{G}{G}")
+			}),
 		},
 	})
 }

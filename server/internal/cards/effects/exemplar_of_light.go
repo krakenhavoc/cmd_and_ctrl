@@ -44,35 +44,19 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventChangeLife},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.Target == source.Controller && ev.Amount > 0
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Exemplar of Light — put a +1/+1 counter on it",
-						func(g *game.Game, item *game.StackItem) error {
-							if !b09SourceStillOnBattlefield(g, item) {
-								return nil
-							}
-							return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventCounterPlaced},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b11CountersWerePlaced(ev, source.InstanceID, "+1/+1", g) &&
-						b11ResolvingController(g) == source.Controller &&
-						!b11TriggeredThisTurn(g, source.InstanceID, b11ExemplarDrawLabel)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b11ExemplarDrawLabel,
-						func(g *game.Game, item *game.StackItem) error {
-							return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			On(game.EventChangeLife, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return ev.Target == source.Controller && ev.Amount > 0
+			}, "Exemplar of Light — put a +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {
+				if !b09SourceStillOnBattlefield(g, item) {
+					return nil
+				}
+				return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
+			}),
+			On(game.EventCounterPlaced, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b11CountersWerePlaced(ev, source.InstanceID, "+1/+1", g) &&
+					b11ResolvingController(g) == source.Controller &&
+					!b11TriggeredThisTurn(g, source.InstanceID, b11ExemplarDrawLabel)
+			}, b11ExemplarDrawLabel, Do(DrawCards{N: 1})),
 		},
 	})
 }

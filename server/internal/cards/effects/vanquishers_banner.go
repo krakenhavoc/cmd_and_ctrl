@@ -21,21 +21,16 @@ func init() {
 		Static: []game.StaticAbility{
 			TribalAnthem(TribeFilter{Chosen: true, YoursOnly: true}, 1, 1),
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Actor != source.Controller || source.NamedTribe == "" {
 					return false
 				}
 				spell, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && spell.IsCreature() && spell.HasSubtype(source.NamedTribe)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Vanquisher's Banner — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return g.DrawNForEffect(item.Controller, 1)
-					})
-			},
-		}},
+			}, "Vanquisher's Banner — draw a card", func(g *game.Game, item *game.StackItem) error {
+				return g.DrawNForEffect(item.Controller, 1)
+			}),
+		},
 	})
 }

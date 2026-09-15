@@ -32,15 +32,8 @@ func init() {
 		Replacements: []game.ReplacementEffect{
 			b10EntersWithCounters("+1/+1", 4, "Kalonian Hydra: enters with four +1/+1 counters"),
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventAttack},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return attackDeclared(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Kalonian Hydra — double the +1/+1 counters on each creature you control",
-					b08DoubleCountersOnEachCreatureYouControl)
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverThisAttacks("Kalonian Hydra — double the +1/+1 counters on each creature you control", b08DoubleCountersOnEachCreatureYouControl),
+		},
 	})
 }

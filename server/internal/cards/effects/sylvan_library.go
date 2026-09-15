@@ -60,54 +60,44 @@ func init() {
 		OracleID:     "92eed395-62ca-4293-882b-8565c40daab5",
 		Name:         "Sylvan Library",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginDrawStep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
+		Triggered: []game.TriggeredAbility{
 			// "You MAY draw two additional cards" — the first link of
 			// the chain, and the one the engine already had.
-			OptionalPrompt: &game.TriggerOptionalPrompt{
-				Question: "Sylvan Library — draw two additional cards?",
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Sylvan Library — draw two additional cards",
-					func(g *game.Game, item *game.StackItem) error {
-						controller := item.Controller
-						if err := g.DrawNForEffect(controller, 2); err != nil {
-							return err
-						}
-						// "choose two cards in your hand drawn this
-						// turn" — every card drawn this turn, not just
-						// the two this ability drew. The turn-based
-						// draw is eligible and is frequently the right
-						// card to put back, which is why the engine
-						// tracks the draws rather than this file
-						// remembering its own two.
-						drawn := g.CardsDrawnThisTurnFor(controller)
-						if len(drawn) == 0 {
-							return nil
-						}
-						g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-							Chooser:  controller,
-							Source:   item.SourceCardID,
-							Question: "Sylvan Library — choose two cards drawn this turn",
-							Cards:    drawn,
-							// "Choose two" — and no fewer, unless the
-							// player has fewer than two left to
-							// choose from (they discarded one, or an
-							// opponent's effect took it).
-							Min:  min(2, len(drawn)),
-							Max:  min(2, len(drawn)),
-							Zone: game.ZoneHand,
-							Then: func(g *game.Game, picked []uuid.UUID) error {
-								return sylvanLibrarySettle(g, item.SourceCardID, controller, picked)
-							},
-						})
-						return nil
-					})
-			},
-		}},
+			Optional(On(game.EventBeginDrawStep, ByYou, "Sylvan Library — draw two additional cards", func(g *game.Game, item *game.StackItem) error {
+				controller := item.Controller
+				if err := g.DrawNForEffect(controller, 2); err != nil {
+					return err
+				}
+				// "choose two cards in your hand drawn this
+				// turn" — every card drawn this turn, not just
+				// the two this ability drew. The turn-based
+				// draw is eligible and is frequently the right
+				// card to put back, which is why the engine
+				// tracks the draws rather than this file
+				// remembering its own two.
+				drawn := g.CardsDrawnThisTurnFor(controller)
+				if len(drawn) == 0 {
+					return nil
+				}
+				g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+					Chooser:  controller,
+					Source:   item.SourceCardID,
+					Question: "Sylvan Library — choose two cards drawn this turn",
+					Cards:    drawn,
+					// "Choose two" — and no fewer, unless the
+					// player has fewer than two left to
+					// choose from (they discarded one, or an
+					// opponent's effect took it).
+					Min:  min(2, len(drawn)),
+					Max:  min(2, len(drawn)),
+					Zone: game.ZoneHand,
+					Then: func(g *game.Game, picked []uuid.UUID) error {
+						return sylvanLibrarySettle(g, item.SourceCardID, controller, picked)
+					},
+				})
+				return nil
+			}), "Sylvan Library — draw two additional cards?"),
+		},
 	})
 }
 

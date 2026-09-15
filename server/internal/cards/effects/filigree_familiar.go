@@ -31,29 +31,10 @@ func init() {
 		Name:         "Filigree Familiar",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The \"{2}, Sacrifice: Add one mana of any color\" ability is missing — the Fox can't be cracked for mana."},
-		Triggered: []game.TriggeredAbility{{
+		Triggered: []game.TriggeredAbility{
 			// "When this enters the battlefield, you gain 2 life."
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Filigree Familiar — gain 2 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return GainLife{Player: item.Controller, Amount: 2}.Apply(NewContext(g, item))
-					})
-			},
-		}, {
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return cardDied(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Filigree Familiar — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			WhenThisEnters("Filigree Familiar — gain 2 life", Do(GainLife{Amount: 2})),
+			WhenThisDies("Filigree Familiar — draw a card", Do(DrawCards{N: 1})),
+		},
 	})
 }

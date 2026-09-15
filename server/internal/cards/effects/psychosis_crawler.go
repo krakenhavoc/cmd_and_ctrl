@@ -72,23 +72,16 @@ func init() {
 				c.Toughness = n
 			},
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDrawCard},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Psychosis Crawler — each opponent loses 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, opp := range ctx.Opponents() {
-							if err := g.ChangePlayerLifeForEffect(item.SourceCardID, opp, -1); err != nil {
-								return err
-							}
-						}
-						return nil
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverYouDraw("Psychosis Crawler — each opponent loses 1 life", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, opp := range ctx.Opponents() {
+					if err := g.ChangePlayerLifeForEffect(item.SourceCardID, opp, -1); err != nil {
+						return err
+					}
+				}
+				return nil
+			}),
+		},
 	})
 }

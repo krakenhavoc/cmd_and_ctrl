@@ -38,30 +38,14 @@ func init() {
 		Completeness: CompletenessFull,
 		Static:       []game.StaticAbility{b22SlimeShrink()},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventBeginEndStep},
-				AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.Kind == game.EventBeginEndStep
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Toxrill — a slime counter on each creature you don't control",
-						func(g *game.Game, item *game.StackItem) error {
-							return b22PutCounterOnEachCreatureYouDontControl(g, item, "slime")
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventLTB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b22SlimedCreatureYouDontControlDied(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Toxrill — create a 1/1 black Slug",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: b22BlackSlugToken(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			On(game.EventBeginEndStep, func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return ev.Kind == game.EventBeginEndStep
+			}, "Toxrill — a slime counter on each creature you don't control", func(g *game.Game, item *game.StackItem) error {
+				return b22PutCounterOnEachCreatureYouDontControl(g, item, "slime")
+			}),
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b22SlimedCreatureYouDontControlDied(ev, source, g)
+			}, "Toxrill — create a 1/1 black Slug", Do(CreateToken{Template: b22BlackSlugToken(), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label: "{U}{B}, Sacrifice a Slug: Draw a card.",

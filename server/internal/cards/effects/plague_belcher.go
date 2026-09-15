@@ -38,16 +38,9 @@ func init() {
 						b35PutMinusCountersOnChosen(2))
 				},
 			},
-			{
-				Watches: []game.EventKind{game.EventLTB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b35AnotherZombieYouControlDied(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Plague Belcher — each opponent loses 1 life",
-						b35EachOpponentLosesOne)
-				},
-			},
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b35AnotherZombieYouControlDied(ev, source, g)
+			}, "Plague Belcher — each opponent loses 1 life", b35EachOpponentLosesOne),
 		},
 	})
 }

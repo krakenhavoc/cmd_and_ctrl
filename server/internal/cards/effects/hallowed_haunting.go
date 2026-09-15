@@ -44,17 +44,10 @@ func init() {
 			b16GrantKeywords(b29CreaturesYouControlWithSevenEnchantments, "flying", "vigilance"),
 			b29SpiritClericSizing(),
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b12EnchantmentSpellCastByYou(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Hallowed Haunting — create a Spirit Cleric",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: b29WhiteSpiritClericToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Hallowed Haunting — create a Spirit Cleric", Do(CreateToken{Template: b29WhiteSpiritClericToken(), N: 1})),
+		},
 	})
 }

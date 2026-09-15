@@ -23,27 +23,20 @@ func init() {
 		OracleID:     "4d6a1391-817a-4ddc-840d-886b138eeb3f",
 		Name:         "Imperial Recruiter",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Imperial Recruiter — search for a creature with power 2 or less",
-					func(g *game.Game, item *game.StackItem) error {
-						return SearchLibrary{
-							Player: item.Controller,
-							Predicate: func(c game.Card) bool {
-								return c.IsCreature() && c.Power <= 2
-							},
-							Dest:    game.ZoneHand,
-							Limit:   1,
-							Reveal:  true,
-							Shuffle: true,
-							Reason:  "Imperial Recruiter — a creature with power 2 or less",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Imperial Recruiter — search for a creature with power 2 or less", func(g *game.Game, item *game.StackItem) error {
+				return SearchLibrary{
+					Player: item.Controller,
+					Predicate: func(c game.Card) bool {
+						return c.IsCreature() && c.Power <= 2
+					},
+					Dest:    game.ZoneHand,
+					Limit:   1,
+					Reveal:  true,
+					Shuffle: true,
+					Reason:  "Imperial Recruiter — a creature with power 2 or less",
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }
