@@ -351,9 +351,7 @@ func TestTargetedTriggerPromptsPickThenBuildsWithTarget(t *testing.T) {
 		t.Errorf("item targets = %+v, want rock B", item.Targets)
 	}
 	g.WithWriteLock(func() {
-		if err := g.resolveTopAbilityLocked(); err != nil {
-			t.Fatal(err)
-		}
+		g.resolveTopAbilityLocked()
 	})
 	if len(destroyed) != 1 || destroyed[0] != rockB {
 		t.Errorf("destroyed = %v, want [rockB]", destroyed)
@@ -440,9 +438,7 @@ func TestTargetedTriggerRecheckFizzlesWhenTargetStopsQualifying(t *testing.T) {
 				g.Battlefield.Cards[i].TypeLine = "Enchantment"
 			}
 		}
-		if err := g.resolveTopAbilityLocked(); err != nil {
-			t.Fatal(err)
-		}
+		g.resolveTopAbilityLocked()
 	})
 	if len(destroyed) != 0 {
 		t.Errorf("effect ran on a target that no longer satisfies the spec")

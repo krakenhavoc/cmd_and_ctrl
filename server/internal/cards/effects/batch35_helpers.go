@@ -524,13 +524,11 @@ func b35RedirectDamageToChosen(amount int) func(g *game.Game, item *game.StackIt
 			return nil
 		}
 		ctx := NewContext(g, item)
-		for _, t := range ctx.LegalTargets() {
-			if t.Kind == game.TargetCard && t.ID == item.SourceCardID {
-				return nil
-			}
-			return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: amount}.Apply(ctx)
+		ts := ctx.LegalTargets()
+		if len(ts) == 0 || (ts[0].Kind == game.TargetCard && ts[0].ID == item.SourceCardID) {
+			return nil
 		}
-		return nil
+		return DealDamage{Source: item.SourceCardID, Target: ts[0].ID, Amount: amount}.Apply(ctx)
 	}
 }
 

@@ -179,7 +179,7 @@ func (g *Game) AttackTargetsForEffect(attackerController uuid.UUID) []AttackTarg
 		out = append(out, AttackTargetRef{Kind: AttackTargetPlayer, ID: p.ID})
 	}
 	for _, c := range g.Battlefield.Cards {
-		kind := AttackTargetNone
+		var kind AttackTargetKind
 		switch {
 		case c.IsPlaneswalker():
 			kind = AttackTargetPlaneswalker

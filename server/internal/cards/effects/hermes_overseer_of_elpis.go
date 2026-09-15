@@ -29,7 +29,7 @@ func init() {
 		Name:         "Hermes, Overseer of Elpis",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WheneverYouCast(Noncreature(), "Hermes, Overseer of Elpis — create a 1/1 blue Bird with flying and vigilance", b33CreateTokenBody(b33BlueBirdVigilanceToken, 1)),
+			WheneverYouCast(Noncreature(), "Hermes, Overseer of Elpis — create a 1/1 blue Bird with flying and vigilance", b33CreateTokenBody(b33BlueBirdVigilanceToken)),
 			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b33BirdYouControlAttacked(ev, source, g)
 			}, b33HermesScryLabel, b33ScryN(2))),

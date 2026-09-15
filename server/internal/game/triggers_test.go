@@ -666,9 +666,7 @@ func TestTriggeredItemEffectRunsOnResolutionNotOnBuild(t *testing.T) {
 
 	// Resolve — the effect fires exactly once against the live game.
 	g.WithWriteLock(func() {
-		if err := g.resolveTopAbilityLocked(); err != nil {
-			t.Fatalf("resolveTopAbilityLocked: %v", err)
-		}
+		g.resolveTopAbilityLocked()
 	})
 	if effectCalls != 1 {
 		t.Errorf("Effect calls after resolution: got %d, want 1", effectCalls)
@@ -751,9 +749,7 @@ func TestTriggeredItemFizzlesWhenTargetGone(t *testing.T) {
 				break
 			}
 		}
-		if err := g.resolveTopAbilityLocked(); err != nil {
-			t.Fatalf("resolveTopAbilityLocked: %v", err)
-		}
+		g.resolveTopAbilityLocked()
 	})
 	if effectCalls != 0 {
 		t.Errorf("Effect ran despite every target being illegal (%d calls)", effectCalls)
@@ -810,9 +806,7 @@ func TestTriggeredItemEffectErrorSurfacesAndClearsStack(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.EmitEvent(Event{Kind: EventETB, CardID: cardID, Actor: owner.ID})
 		g.drainPendingTriggersAPNAPLocked()
-		if err := g.resolveTopAbilityLocked(); err != nil {
-			t.Fatalf("resolveTopAbilityLocked returned %v — effect errors must not propagate", err)
-		}
+		g.resolveTopAbilityLocked()
 	})
 	if findAbilityOnStack(g, cardID) != nil {
 		t.Errorf("errored ability still in StackMeta")
@@ -864,9 +858,7 @@ func TestTriggeredItemEffectSurvivesCloneAndRestore(t *testing.T) {
 
 	// Mutate the live game past the snapshot, then rewind.
 	g.WithWriteLock(func() {
-		if err := g.resolveTopAbilityLocked(); err != nil {
-			t.Fatalf("resolveTopAbilityLocked (pre-restore): %v", err)
-		}
+		g.resolveTopAbilityLocked()
 	})
 	if owner.Life != lifeAtSnapshot+5 {
 		t.Fatalf("pre-restore resolution: life %d, want %d", owner.Life, lifeAtSnapshot+5)
@@ -885,9 +877,7 @@ func TestTriggeredItemEffectSurvivesCloneAndRestore(t *testing.T) {
 		t.Fatalf("Effect dropped by cloneStackItem")
 	}
 	g.WithWriteLock(func() {
-		if err := g.resolveTopAbilityLocked(); err != nil {
-			t.Fatalf("resolveTopAbilityLocked (post-restore): %v", err)
-		}
+		g.resolveTopAbilityLocked()
 	})
 	if restoredOwner.Life != lifeAtSnapshot+5 {
 		t.Errorf("post-restore resolution: life %d, want %d", restoredOwner.Life, lifeAtSnapshot+5)

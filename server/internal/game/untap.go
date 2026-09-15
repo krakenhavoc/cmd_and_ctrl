@@ -186,9 +186,9 @@ type boundUntapPermission struct {
 // symmetric and are not merged.)
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) untapPermanentLocked(c *Card) bool {
+func (g *Game) untapPermanentLocked(c *Card) {
 	if c == nil || !c.Tapped {
-		return false
+		return
 	}
 	c.Tapped = false
 	g.EmitEvent(Event{
@@ -196,23 +196,22 @@ func (g *Game) untapPermanentLocked(c *Card) bool {
 		Actor:  c.Controller,
 		CardID: c.InstanceID,
 	})
-	return true
 }
 
 // untapPermanentByIDLocked is untapPermanentLocked addressed by
 // instance ID. Used by callers that chose their set of permanents up
 // front and cannot hold pointers across the emits in between.
 // Caller must hold g.mu in write mode.
-func (g *Game) untapPermanentByIDLocked(cardID uuid.UUID) bool {
+func (g *Game) untapPermanentByIDLocked(cardID uuid.UUID) {
 	if g.Battlefield == nil {
-		return false
+		return
 	}
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cardID {
-			return g.untapPermanentLocked(&g.Battlefield.Cards[i])
+			g.untapPermanentLocked(&g.Battlefield.Cards[i])
+			return
 		}
 	}
-	return false
 }
 
 // activeUntapStepPermissionsLocked gathers the untap-step

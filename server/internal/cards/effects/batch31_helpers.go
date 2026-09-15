@@ -239,7 +239,7 @@ func b31YouPlayedALandOrCastASpell(ev game.Event, source *game.Card, g *game.Gam
 		if ev.Actor != source.Controller {
 			return false
 		}
-		_, ok := b20LandPlayed(ev, g)
+		ok := b20LandPlayed(ev, g)
 		return ok
 	}
 	return false

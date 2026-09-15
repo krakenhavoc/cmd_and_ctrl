@@ -169,7 +169,7 @@ func (c *AvatarCache) fetchAndStore(ctx context.Context, id, hash, path string) 
 	if err != nil {
 		return fmt.Errorf("cdn fetch: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode == http.StatusNotFound {
 		return fmt.Errorf("cdn: avatar not found for id=%s hash=%s", id, hash)
 	}

@@ -75,7 +75,7 @@ func Middleware(a Authenticator, requireRoles ...Role) func(http.Handler) http.H
 			p, err := a.Validate(r.Context(), cred)
 			if err != nil {
 				status := http.StatusUnauthorized
-				msg := "invalid credential"
+				var msg string
 				switch err {
 				case ErrExpiredCredential:
 					msg = "session expired"

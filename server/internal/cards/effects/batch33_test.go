@@ -46,15 +46,6 @@ const (
 	b33ContagionClaspOracle = "43f2d81e-aa01-4fa9-9046-6a27a05dbd2d"
 )
 
-// b33Lives is every seat's life total, seat order.
-func b33Lives(g *game.Game) []int {
-	out := make([]int, len(g.Seats))
-	for i, p := range g.Seats {
-		out[i] = p.Life
-	}
-	return out
-}
-
 // b33Hands is every seat's hand size, seat order.
 func b33Hands(g *game.Game) []int {
 	out := make([]int, len(g.Seats))
