@@ -176,7 +176,6 @@ func TestScrollThiefSelfOnly(t *testing.T) {
 	opp := g.Seats[1]
 	thiefID := pushDiesCreatureForTest(g, me.ID, "Scroll Thief", scrollThiefOracle, "Creature — Merfolk Rogue", 1, 3)
 	bear := pushVanillaCreature(g, me.ID, "Bear", 2, 2)
-	handBefore := me.Hand.Size()
 
 	// Only the bear attacks: no Thief trigger.
 	attackWith(t, g, opp.ID, bear)
@@ -195,7 +194,7 @@ func TestScrollThiefSelfOnly(t *testing.T) {
 	// Past the draw step before taking the baseline, so the turn
 	// draw doesn't pollute the delta.
 	advanceTo(t, g, game.StepPrecombatMain)
-	handBefore = me.Hand.Size()
+	handBefore := me.Hand.Size()
 	attackWith(t, g, opp.ID, thiefID)
 	trig := triggerOnStack(g, thiefID)
 	if trig == nil {

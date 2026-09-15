@@ -20,7 +20,7 @@ import (
 
 // ValidSizes is the set of Scryfall image sizes we accept. Anything
 // outside this list is rejected before it reaches the filesystem — see
-// ErrInvalidSize and the path-traversal note on pathFor.
+// ErrInvalidSize and the path-traversal note on pathForFace.
 var ValidSizes = map[string]struct{}{
 	"small":       {},
 	"normal":      {},
@@ -92,7 +92,7 @@ var ErrNoImage = errors.New("cards: no image uri for card")
 // If size is empty, Cache.DefaultSize is used. Valid Scryfall sizes:
 // small, normal, large, png, art_crop, border_crop. Any other size
 // returns ErrInvalidSize — this guard is what keeps a caller-supplied
-// size from becoming a path-traversal vector through pathFor.
+// size from becoming a path-traversal vector through pathForFace.
 func (c *ImageCache) Fetch(ctx context.Context, idx *Index, id uuid.UUID, size string) (string, error) {
 	return c.FetchFace(ctx, idx, id, size, 0)
 }
@@ -152,13 +152,6 @@ func (c *ImageCache) FetchFace(ctx context.Context, idx *Index, id uuid.UUID, si
 	return path, nil
 }
 
-// pathFor returns the disk path used for id + size. Sharded by the
-// first two hex characters so ls-ing the root directory remains
-// manageable.
-func (c *ImageCache) pathFor(id uuid.UUID, size string) string {
-	return c.pathForFace(id, size, 0)
-}
-
 // pathForFace is pathFor with the printed face folded into the key.
 //
 // Face 0 keeps the ORIGINAL filename, unsuffixed. That is not
@@ -211,7 +204,7 @@ func (c *ImageCache) download(ctx context.Context, uri, path string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("cards: scryfall returned HTTP %d for %s", resp.StatusCode, uri)
 	}

@@ -636,11 +636,11 @@ func b33MillN(n int) func(g *game.Game, item *game.StackItem) error {
 	}
 }
 
-// b33CreateTokenBody is a trigger body that makes `n` tokens from
+// b33CreateTokenBody is a trigger body that makes one token from
 // `template` for the controller.
-func b33CreateTokenBody(template func() game.Card, n int) func(g *game.Game, item *game.StackItem) error {
+func b33CreateTokenBody(template func() game.Card) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
-		return CreateToken{Controller: item.Controller, Template: template(), N: n}.Apply(NewContext(g, item))
+		return CreateToken{Controller: item.Controller, Template: template(), N: 1}.Apply(NewContext(g, item))
 	}
 }
 

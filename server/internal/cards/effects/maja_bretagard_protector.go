@@ -25,7 +25,7 @@ func init() {
 			TribalAnthem(TribeFilter{Others: true, YoursOnly: true}, 1, 1),
 		},
 		Triggered: []game.TriggeredAbility{
-			Landfall("Maja, Bretagard Protector — create a 1/1 white Human Warrior", b33CreateTokenBody(b33WhiteHumanWarriorToken, 1)),
+			Landfall("Maja, Bretagard Protector — create a 1/1 white Human Warrior", b33CreateTokenBody(b33WhiteHumanWarriorToken)),
 		},
 	})
 }

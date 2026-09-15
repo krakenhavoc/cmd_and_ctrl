@@ -48,7 +48,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b22FirstSpellOnAnOpponentsTurn(ev, source, g)
-			}, "Alela, Cunning Conqueror — create a 1/1 black Faerie Rogue with flying", b33CreateTokenBody(FaerieRogueToken, 1)),
+			}, "Alela, Cunning Conqueror — create a 1/1 black Faerie Rogue with flying", b33CreateTokenBody(FaerieRogueToken)),
 			{
 				OncePerBatch: true,
 				Watches:      []game.EventKind{game.EventDealDamage},

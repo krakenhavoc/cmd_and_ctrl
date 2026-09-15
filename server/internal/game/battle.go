@@ -193,22 +193,6 @@ func (g *Game) ResolveChooseProtector(choiceID, chooserID, protectorID uuid.UUID
 	return nil
 }
 
-// battlesDefeatedLocked returns the battles whose last defense
-// counter has come off (CR 310.9 — "defeated"). Collected before the
-// CR 704.5p sweep removes them so the defeated trigger has a live
-// permanent to read.
-//
-// Caller must hold g.mu.
-func (g *Game) battlesDefeatedLocked() []uuid.UUID {
-	var out []uuid.UUID
-	for _, c := range g.Battlefield.Cards {
-		if c.IsBattle() && c.Counters[CounterDefense] <= 0 {
-			out = append(out, c.InstanceID)
-		}
-	}
-	return out
-}
-
 // emitBattleDefeatedLocked announces a battle's defeat so a
 // DefeatedTrigger can harvest it (CR 310.9).
 //

@@ -96,9 +96,7 @@ func TestTriggerOrderPromptHoldsDrainUntilAnswered(t *testing.T) {
 	// (chosen first), then A.
 	g.WithWriteLock(func() {
 		for i := 0; i < 3; i++ {
-			if err := g.resolveTopAbilityLocked(); err != nil {
-				t.Fatalf("resolveTopAbilityLocked: %v", err)
-			}
+			g.resolveTopAbilityLocked()
 		}
 	})
 	want := []string{"C", "B", "A"}

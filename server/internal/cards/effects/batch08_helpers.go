@@ -113,35 +113,6 @@ func b08SacrificeAToken() game.AbilityCost {
 	return game.AbilityCost{SacrificeOther: sacrificeSpec("a token", IsTokenPredicate())}
 }
 
-// b08NonCreatureSubtypes are the subtypes that can sit on a creature's
-// type line without being creature types: the basic land types (Dryad
-// Arbor), the artifact and enchantment subtypes an animated permanent
-// keeps. Coat of Arms counts shared CREATURE types, and two crewed
-// Vehicles do not share one.
-var b08NonCreatureSubtypes = map[string]bool{
-	"Plains": true, "Island": true, "Swamp": true, "Mountain": true, "Forest": true,
-	"Equipment": true, "Aura": true, "Vehicle": true, "Saga": true, "Fortification": true,
-	"Treasure": true, "Food": true, "Clue": true, "Blood": true, "Gold": true, "Powerstone": true,
-}
-
-// b08SharesACreatureType reports whether two creatures have at least
-// one creature type in common, reading effective subtypes so a
-// Layer-4 type grant counts. Safe inside a layer recompute: subtypes
-// are settled at layer 4 and Coat of Arms applies at layer 7c.
-func b08SharesACreatureType(a, b game.Card) bool {
-	for _, sa := range a.Effective().Subtypes {
-		if b08NonCreatureSubtypes[sa] {
-			continue
-		}
-		for _, sb := range b.Effective().Subtypes {
-			if sa == sb {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // --- effect bodies -----------------------------------------------
 
 // b08EachOpponentDraws is Cut a Deal's first half: each opponent

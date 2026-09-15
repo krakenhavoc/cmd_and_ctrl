@@ -601,25 +601,6 @@ func TestPassTurnResetsPriorityHolder(t *testing.T) {
 	}
 }
 
-// playToBattlefield helper: draws a card to the player's hand and
-// plays it onto the battlefield, returning the card's instance ID.
-// Drawn cards are non-creature placeholders by default — combat
-// tests that need a creature should use pushCreatureToBattlefield.
-func playToBattlefield(t *testing.T, g *Game, p *Player) uuid.UUID {
-	t.Helper()
-	if err := g.DrawCard(p.ID); err != nil {
-		t.Fatalf("DrawCard: %v", err)
-	}
-	c, err := p.Hand.Top()
-	if err != nil {
-		t.Fatalf("Hand.Top: %v", err)
-	}
-	if err := g.PlayCard(p.ID, c.InstanceID); err != nil {
-		t.Fatalf("PlayCard: %v", err)
-	}
-	return c.InstanceID
-}
-
 // pushCreatureToBattlefield builds a 2/2 creature controlled by p and
 // drops it directly onto the battlefield, returning the instance ID.
 // Bypasses the draw/play loop so combat tests don't need to wrangle
@@ -3503,9 +3484,7 @@ func TestResolveTopAbilityLIFO(t *testing.T) {
 	}
 
 	g.WithWriteLock(func() {
-		if err := g.resolveTopAbilityLocked(); err != nil {
-			t.Errorf("resolveTopAbilityLocked: %v", err)
-		}
+		g.resolveTopAbilityLocked()
 	})
 	if len(g.StackMeta) != 1 {
 		t.Fatalf("StackMeta after first resolution: got %d items, want 1", len(g.StackMeta))
@@ -3517,9 +3496,7 @@ func TestResolveTopAbilityLIFO(t *testing.T) {
 	}
 
 	g.WithWriteLock(func() {
-		if err := g.resolveTopAbilityLocked(); err != nil {
-			t.Errorf("resolveTopAbilityLocked: %v", err)
-		}
+		g.resolveTopAbilityLocked()
 	})
 	if len(g.StackMeta) != 0 {
 		t.Errorf("StackMeta after second resolution: got %d items, want 0", len(g.StackMeta))

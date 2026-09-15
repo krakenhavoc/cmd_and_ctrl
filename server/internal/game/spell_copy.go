@@ -186,7 +186,7 @@ func itemHasChosenTarget(item *StackItem) bool {
 // ceaseToExistLocked bypasses — but pointing it at the controller
 // means that if a future path ever does route it, it does not
 // silently hand a card to a player who never had one.
-func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.UUID, targets []TargetRef) uuid.UUID {
+func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.UUID, targets []TargetRef) {
 	copyCard := src
 	copyCard.InstanceID = uuid.New()
 	copyCard.Owner = controller
@@ -225,7 +225,6 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	// at have become the target of one (CR 115.7), which is what a
 	// ward trigger or Monk Gyatso is watching for.
 	g.emitBecameTargetLocked(controller, copyCard.InstanceID, copyCard.InstanceID, meta.Targets)
-	return copyCard.InstanceID
 }
 
 // resolveCopySpellTargetsLocked is the submit half of the CR 706.10
@@ -260,20 +259,19 @@ func (g *Game) resolveCopySpellTargetsLocked(idx int, cf *copySpellFrame, target
 // in the engine watches for a move to nowhere, which is the point.
 //
 // Caller must hold g.mu.
-func (g *Game) ceaseToExistLocked(cardID uuid.UUID) error {
+func (g *Game) ceaseToExistLocked(cardID uuid.UUID) {
 	if g.Stack == nil {
-		return nil
+		return
 	}
 	if _, err := g.Stack.Remove(cardID); err != nil {
 		// Already gone — a copy that was countered and cleaned up by
 		// some other path. Nothing to do, and not an error: "it no
 		// longer exists" is the postcondition either way.
-		return nil
+		return
 	}
 	g.EmitEvent(Event{
 		Kind:    EventZoneMove,
 		CardID:  cardID,
 		OldZone: ZoneStack,
 	})
-	return nil
 }

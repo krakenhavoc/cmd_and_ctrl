@@ -261,7 +261,6 @@ func TestBeastWhispererDrawsOnOwnCreatureSpell(t *testing.T) {
 	caster := g.Seats[0]
 	whispererID := pushDiesCreatureForTest(g, caster.ID, "Beast Whisperer", beastWhispererOracle,
 		"Creature — Elf Druid", 2, 3)
-	handBefore := caster.Hand.Size()
 
 	// Noncreature: nothing.
 	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle,
@@ -270,7 +269,7 @@ func TestBeastWhispererDrawsOnOwnCreatureSpell(t *testing.T) {
 		t.Fatalf("Beast Whisperer triggered on an instant")
 	}
 	passPriorityAroundTable(t, g)
-	handBefore = caster.Hand.Size()
+	handBefore := caster.Hand.Size()
 
 	dreadmawID := castCatalogSpell(t, g, "Colossal Dreadmaw", "Creature — Dinosaur", colossalDreadmawOracle, nil)
 	trig := triggerOnStack(g, whispererID)

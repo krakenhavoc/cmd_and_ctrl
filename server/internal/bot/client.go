@@ -98,7 +98,7 @@ func (c *ServerClient) Login(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%w: %v", ErrServerUnreachable, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return "", ErrUnauthorized
@@ -195,7 +195,7 @@ func (c *ServerClient) CreateGame(ctx context.Context, name string) (lobby.GameM
 	if err != nil {
 		return lobby.GameMeta{}, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return lobby.GameMeta{}, ErrUnauthorized
@@ -234,7 +234,7 @@ func (c *ServerClient) ListGames(ctx context.Context) ([]lobby.GameMeta, error) 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, ErrUnauthorized

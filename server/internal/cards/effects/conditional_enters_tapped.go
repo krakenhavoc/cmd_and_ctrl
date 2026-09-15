@@ -92,36 +92,6 @@ func otherLandsAtLeast(n int) func(*game.Game, *game.Card) bool {
 	}
 }
 
-// controlsLandSubtype is a checkland's condition: "unless you
-// control a Plains or an Island".
-//
-// It reads EFFECTIVE subtypes, so Urborg, Tomb of Yawgmoth really
-// does switch every checkland on. The note that used to sit here
-// said Effective() was unreachable "because the checkland is the
-// entering card and the layer cache is maintained only for
-// battlefield permanents" — but the entering card is `src`, which
-// this loop skips. Every card it actually asks about is a
-// battlefield permanent with a live cache. The simplification was
-// reasoning about the wrong object.
-func controlsLandSubtype(subtypes ...string) func(*game.Game, *game.Card) bool {
-	return func(g *game.Game, src *game.Card) bool {
-		for _, c := range g.Battlefield.Cards {
-			if c.InstanceID == src.InstanceID || c.Controller != src.Controller {
-				continue
-			}
-			if !c.IsLand() {
-				continue
-			}
-			for _, s := range subtypes {
-				if c.HasSubtype(s) {
-					return true
-				}
-			}
-		}
-		return false
-	}
-}
-
 // dualManaAbility is the pipe-syntax "{T}: Add {X} or {Y}" every
 // two-colour land in this batch carries. Two separate one-colour
 // abilities would also work but would clutter the activation menu

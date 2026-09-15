@@ -31,7 +31,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventZoneMove},
 			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
-				_, ok := b20LandPlayed(ev, g)
+				ok := b20LandPlayed(ev, g)
 				return ok
 			},
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {

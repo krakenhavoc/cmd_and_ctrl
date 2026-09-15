@@ -35,7 +35,7 @@ func init() {
 			}, "Sidisi, Brood Tyrant — mill three cards", b33MillN(3)),
 			OncePerBatch(On(game.EventMill, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b33CreatureCardMilledIntoYourGraveyard(ev, source, g)
-			}, b33SidisiZombieLabel, b33CreateTokenBody(BlackZombieToken, 1))),
+			}, b33SidisiZombieLabel, b33CreateTokenBody(BlackZombieToken))),
 		},
 	})
 }

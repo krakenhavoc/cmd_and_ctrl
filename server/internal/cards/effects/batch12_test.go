@@ -1032,7 +1032,6 @@ func TestB12AllWillBeOnePingsForCountersYouPlace(t *testing.T) {
 	}
 
 	// Three counters at once is one trigger for three.
-	before = opp.Life
 	g.WithWriteLock(func() {
 		g.EmitEvent(game.Event{Kind: game.EventResolve, Actor: me.ID})
 		_ = g.AddCounterForEffect(bear, "+1/+1", 3)

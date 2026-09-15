@@ -82,6 +82,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+
 	// Blank import: effects/wire.go's init() populates the S14
 	// EffectResolver / ETBEffectHook / IsCatalogCard callbacks on
 	// the game package. Without this import the catalog stays cold

@@ -1031,7 +1031,7 @@ func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	// ServeContent does NOT close its ReadSeeker, and it completes
 	// before this handler returns — defer is the whole cleanup story.
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	w.Header().Set("Content-Type", "application/x-ndjson")
 	w.Header().Set(
 		"Content-Disposition",
@@ -1044,7 +1044,8 @@ func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 		http.ServeContent(w, r, id.String()+".jsonl", info.ModTime(), f)
 		return nil
 	}
-	return streamFilteredReplay(c, w, f, replayViewerID(p))
+	streamFilteredReplay(c, w, f, replayViewerID(p))
+	return nil
 }
 
 // replayViewerID converts a principal into the viewerID string
@@ -1074,7 +1075,7 @@ func replayViewerID(p auth.Principal) string {
 // header is already committed — so a torn tail (a partial append from
 // a crash) ends the stream cleanly, leaving the client a shorter but
 // well-formed JSONL document rather than a corrupt one.
-func streamFilteredReplay(c Config, w http.ResponseWriter, src io.Reader, viewerID string) error {
+func streamFilteredReplay(c Config, w http.ResponseWriter, src io.Reader, viewerID string) {
 	dec := json.NewDecoder(src)
 	enc := json.NewEncoder(w)
 	for n := 0; ; n++ {
@@ -1083,12 +1084,12 @@ func streamFilteredReplay(c Config, w http.ResponseWriter, src io.Reader, viewer
 			if !errors.Is(err, io.EOF) {
 				logReplayWarning(c, "replay stream ended early", err, n)
 			}
-			return nil
+			return
 		}
 		payload.Game = protocol.FilterViewFor(payload.Game, viewerID)
 		if err := enc.Encode(payload); err != nil {
 			// Client hung up mid-download. Nothing to report.
-			return nil
+			return
 		}
 	}
 }
