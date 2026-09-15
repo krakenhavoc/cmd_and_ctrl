@@ -94,13 +94,9 @@ func b25FirstMulticoloredSpellThisTurn(ev game.Event, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor == uuid.Nil || !b25CastIsMulticolored(ev, g) {
 		return false
 	}
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		prev := g.Events[i]
+	for _, prev := range g.EventsThisTurn() {
 		if prev.Seq >= ev.Seq {
-			continue
-		}
-		if prev.Kind == game.EventBeginUpkeep {
-			return true
+			break
 		}
 		if prev.Kind == game.EventCast && prev.Actor == ev.Actor && b25CastIsMulticolored(prev, g) {
 			return false

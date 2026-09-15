@@ -47,17 +47,12 @@ func b06EnteredThisTurn(g *game.Game, cardID uuid.UUID) bool {
 // (a negative EventChangeLife, and an EventDealDamage to a player,
 // which emits no EventChangeLife of its own).
 func b06AnOpponentLostAtLeastThisTurn(g *game.Game, controller uuid.UUID, n int) bool {
-	lost := map[uuid.UUID]int{}
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			break
+	for _, p := range g.Seats {
+		if p == nil || p.ID == controller {
+			continue
 		}
-		if amount, ok := b04OpponentLostLife(ev, controller, g); ok {
-			lost[ev.Target] += amount
-			if lost[ev.Target] >= n {
-				return true
-			}
+		if g.TurnTallyFor(p.ID).LifeLost >= n {
+			return true
 		}
 	}
 	return false

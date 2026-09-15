@@ -162,11 +162,7 @@ func b34NoOpponentHasMoreLifeThan(g *game.Game, controller, player uuid.UUID) bo
 // now sits — a Food token in a graveyard keeps its type line — and
 // one that can no longer be found does not count, which errs weaker.
 func b34YouSacrificedAFoodThisTurn(g *game.Game, controller uuid.UUID) bool {
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			break
-		}
+	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventSacrifice || ev.Actor != controller || ev.CardID == uuid.Nil {
 			continue
 		}
@@ -186,11 +182,7 @@ func b34YouSacrificedAFoodThisTurn(g *game.Game, controller uuid.UUID) bool {
 // subtypes, so a changeling counts.
 func b34GoblinsEnteredUnderYourControlThisTurn(g *game.Game, controller uuid.UUID) int {
 	n := 0
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			break
-		}
+	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventETB || ev.CardID == uuid.Nil {
 			continue
 		}

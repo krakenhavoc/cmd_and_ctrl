@@ -102,11 +102,7 @@ func b32TokenYouControlAttacksAPlayer(g *game.Game, controller uuid.UUID) bool {
 // matched by the LKI its death recorded.
 func b32PlayersDealtCombatDamageThisTurnByYourCreatureNamed(g *game.Game, controller uuid.UUID, name string) map[uuid.UUID]bool {
 	out := map[uuid.UUID]bool{}
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			break
-		}
+	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || ev.Actor != controller {
 			continue
 		}

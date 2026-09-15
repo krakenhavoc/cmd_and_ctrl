@@ -992,6 +992,20 @@ Triggered: []game.TriggeredAbility{{
 }},
 ```
 
+**"This turn" (#586):** anything a card asks about the current turn
+is read off `Game.TurnTally`, never by walking `g.Events`:
+`g.TurnTallyFor(player)` carries `LifeGained`, `LifeLost`, `CardsDrawn`,
+`CreaturesDied`, `TokensCreated`, `PermanentsSacrificed`, `LandsEntered`,
+`AttacksDeclared` and `CombatDamageToPlayers`; `g.TurnTally.CreaturesDied`
+is the table-wide count; `g.ResolvedThisTurn(source, label)` and
+`g.TriggeredThisTurn(source, label)` are the "once per turn" gates (an
+empty label sums the source's abilities). A filtered question the tally
+does not carry ("you sacrificed a *Food* this turn") ranges over
+`g.EventsThisTurn()`, which is bounded at the real turn boundary — the
+old upkeep-bounded scans missed the untap step. A counter the tally
+should carry and does not is a field on `PlayerTurnTally` plus one case
+in `turnTallyListener`, not a new scan.
+
 **Adding an activated ability (S21+):** put it in
 `Spec.Activated`, one entry per printed ability, with the cost built
 from the constructors in

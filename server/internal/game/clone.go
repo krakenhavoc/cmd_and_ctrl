@@ -90,6 +90,7 @@ func (g *Game) cloneLocked() *Game {
 			out.LandsPlayedThisTurn[k] = v
 		}
 	}
+	out.TurnTally = cloneTurnTally(g.TurnTally)
 	if len(g.DrawnThisTurn) > 0 {
 		out.DrawnThisTurn = make(map[uuid.UUID][]uuid.UUID, len(g.DrawnThisTurn))
 		for k, v := range g.DrawnThisTurn {
@@ -468,6 +469,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.LandsPlayedThisTurn = src.LandsPlayedThisTurn
 	g.DrawnThisTurn = src.DrawnThisTurn
+	g.TurnTally = src.TurnTally
 	g.DiscardPending = src.DiscardPending
 	g.Promises = src.Promises
 	g.Vote = src.Vote

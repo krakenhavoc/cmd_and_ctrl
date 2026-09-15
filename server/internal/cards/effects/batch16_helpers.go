@@ -253,16 +253,7 @@ func b16YouAttackedAPlayer(ev game.Event, source *game.Card, g *game.Game) bool 
 // carries the creator in Actor; the walk stops at the turn's upkeep
 // (b06EnteredThisTurn's posture).
 func b16CreatedATokenThisTurn(g *game.Game, player uuid.UUID) bool {
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			return false
-		}
-		if ev.Kind == game.EventTokenCreated && ev.Actor == player {
-			return true
-		}
-	}
-	return false
+	return g.TurnTallyFor(player).TokensCreated > 0
 }
 
 // --- board reads -------------------------------------------------
