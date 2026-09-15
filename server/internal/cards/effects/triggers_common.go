@@ -97,6 +97,7 @@ func OnAny(kinds []game.EventKind, when When, label string, effect Effect) game.
 	return game.TriggeredAbility{
 		Watches:   kinds,
 		AppliesTo: when,
+		Key:       label,
 		Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 			return game.NewTriggeredItem(source, label, effect)
 		},
@@ -107,6 +108,17 @@ func OnAny(kinds []game.EventKind, when When, label string, effect Effect) game.
 // `question` before Build runs, and a "No" drops the trigger.
 func Optional(t game.TriggeredAbility, question string) game.TriggeredAbility {
 	t.OptionalPrompt = &game.TriggerOptionalPrompt{Question: question}
+	return t
+}
+
+// OncePerBatch marks a "whenever ONE OR MORE …" ability (#587): the
+// engine emits one event per creature that attacks, enters or deals
+// damage, and this makes the harvester decline the rest of a batch
+// while the first event's trigger is still pending, on the stack, or
+// waiting on its prompt. Matched by the ability's label, which the
+// constructors stamp as its Key.
+func OncePerBatch(t game.TriggeredAbility) game.TriggeredAbility {
+	t.OncePerBatch = true
 	return t
 }
 

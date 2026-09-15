@@ -16,8 +16,8 @@ import (
 // b13AnotherCreatureYouControlEntered, "a permanent you control
 // entered" is enteredUnderYourControl, "this creature dealt combat
 // damage to a player" is combatDamageToPlayerBy, the per-label
-// "one or more" dedup is b12TriggerPendingOrOnStack and its
-// pick-prompt third leg b17PickTargetPendingFrom, "you gained life
+// "one or more" dedup is OncePerBatch and its
+// pick-prompt third leg OncePerBatch, "you gained life
 // this turn" is b15LifeGainedThisTurn, "each opponent loses N" is
 // eachOpponentLosesLife, "untap each X you control" is
 // b16UntapAllYouControlMatching, the bounded mill is

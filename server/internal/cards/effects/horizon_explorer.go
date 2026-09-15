@@ -41,9 +41,9 @@ func init() {
 		},
 		Replacements: []game.ReplacementEffect{b16LandsYouControlEnterUntapped()},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b16YouAttackedAPlayer(ev, source, g)
-			}, "Horizon Explorer — create a Lander token", Do(CreateToken{Template: b16LanderToken(), N: 1})),
+			}, "Horizon Explorer — create a Lander token", Do(CreateToken{Template: b16LanderToken(), N: 1}))),
 		},
 	})
 }

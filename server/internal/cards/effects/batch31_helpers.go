@@ -18,7 +18,7 @@ import (
 // "a permanent you control entered" is enteredUnderYourControl,
 // "you played a land" is b20LandPlayed, "this creature dealt combat
 // damage to a player" is combatDamageToPlayerBy, the per-label
-// "one or more" dedup is b12TriggerPendingOrOnStack, a dead
+// "one or more" dedup is OncePerBatch, a dead
 // creature's power with its counters is b13LastKnownPower, "the
 // graveyard holds a land card" is b25GraveyardHasLandCard, "an
 // opponent controls a creature" is b25OpponentControlsACreature,

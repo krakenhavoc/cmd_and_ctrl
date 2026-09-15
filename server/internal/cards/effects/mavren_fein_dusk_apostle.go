@@ -11,7 +11,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The Vampire token engine: one token per combat in which any
 // nontoken Vampire — Mavren himself included — attacks. The engine
 // emits one attack event per creature, so the condition carries the
-// b04TriggerPendingOrOnStack dedup: the second Vampire declared in
+// OncePerBatch dedup: the second Vampire declared in
 // the same combat sees the first's trigger pending or on the stack
 // and declines. Without it the card would ship STRONGER than
 // printed. The tokens it makes are Vampires but are tokens, so they
@@ -24,9 +24,9 @@ func init() {
 		Name:         "Mavren Fein, Dusk Apostle",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b36NontokenVampiresYouControlAttacked(ev, source, g)
-			}, "Mavren Fein, Dusk Apostle — create a 1/1 white Vampire with lifelink", b34CreateTokens(b36WhiteVampireLifelinkToken, 1)),
+			}, "Mavren Fein, Dusk Apostle — create a 1/1 white Vampire with lifelink", b34CreateTokens(b36WhiteVampireLifelinkToken, 1))),
 		},
 	})
 }

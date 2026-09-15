@@ -39,10 +39,9 @@ func init() {
 		Name:         "Dour Port-Mage",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b13OtherCreatureYouControlLeftWithoutDying(ev, source, g) &&
-					!b12TriggerPendingOrOnStack(g, source, label)
-			}, label, Do(DrawCards{N: 1})),
+			OncePerBatch(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b13OtherCreatureYouControlLeftWithoutDying(ev, source, g)
+			}, label, Do(DrawCards{N: 1}))),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{U}, {T}: Return another target creature you control to its owner's hand.",

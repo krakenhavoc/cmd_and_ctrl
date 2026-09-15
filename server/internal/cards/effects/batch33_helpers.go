@@ -22,8 +22,8 @@ import (
 // diedCreature, "this died or was exiled from the battlefield" is
 // b22SelfDiedOrWasExiledFromBattlefield and its tuck
 // b22TuckThirdFromTop, the per-label "one or more" dedup is
-// b12TriggerPendingOrOnStack and its pick-prompt third leg
-// b17PickTargetPendingFrom, "which player is resolving" is
+// OncePerBatch and its pick-prompt third leg
+// OncePerBatch, "which player is resolving" is
 // b11ResolvingController, the last-known power of a creature that is
 // no longer on the battlefield is b17LastKnownPowerOffBattlefield,
 // the milled-creature batch is b17MilledCreatureCards, the first

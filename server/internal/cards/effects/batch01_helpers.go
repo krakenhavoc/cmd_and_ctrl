@@ -35,37 +35,6 @@ func isTreasure(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 	return hasSubtype(c, "Treasure")
 }
 
-// triggerAlreadyPendingFrom reports whether a triggered ability
-// sourced from `source` is already waiting on PendingTriggers — the
-// harvester has built it this event batch and it has not yet drained
-// onto the stack.
-//
-// This is how a "whenever ONE OR MORE creatures you control deal
-// combat damage to a player" ability (Professional Face-Breaker)
-// fires once per combat damage step instead of once per creature.
-// The engine emits one EventDealDamage per creature (the CR 603.1
-// batching gap recorded on EventAttack), and the whole damage step's
-// events fire inside one mutation before any priority boundary, so
-// by the time the second creature's event reaches AppliesTo the
-// first creature's trigger is already queued. Checking the queue,
-// rather than the stack, is what keeps first-strike and regular
-// damage as two separate triggers: the first-strike trigger has
-// drained and resolved before regular damage is dealt.
-//
-// Without this the card would ship STRONGER than printed — three
-// attackers connecting would make three Treasures — which is the
-// #259 direction, and the reason Malcolm, Keen-Eyed Navigator
-// declares its over-fire as a known gap rather than pretending
-// otherwise.
-func triggerAlreadyPendingFrom(g *game.Game, source *game.Card) bool {
-	for _, item := range g.PendingTriggers {
-		if item != nil && item.SourceCardID == source.InstanceID {
-			return true
-		}
-	}
-	return false
-}
-
 // manaValueOnStack is CR 202.3e: the mana value of a spell ON THE
 // STACK, where {X} is the value chosen for it rather than zero. Mana
 // Drain reads this off the countered spell; every off-stack read in

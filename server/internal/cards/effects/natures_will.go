@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // event per creature — but per PLAYER, not per source: the stack
 // label names the damaged player, and a second event for the same
 // player is declined while that label's trigger is pending or on the
-// stack (b24TriggerPendingOrOnStackWithLabel). Creatures connecting
+// stack (the engine's TriggerInFlightForEffect, keyed by that label). Creatures connecting
 // with two players in one combat fire twice, once per player, as
 // printed; three creatures hitting one player fire once. First-
 // strike and regular damage are two batches and two triggers, as in
@@ -31,7 +31,7 @@ func init() {
 			Watches: []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return combatDamageToPlayerBy(ev, source.Controller, g) &&
-					!b24TriggerPendingOrOnStackWithLabel(g, source, b24NaturesWillLabel(g, ev.Target))
+					!g.TriggerInFlightForEffect(source.InstanceID, b24NaturesWillLabel(g, ev.Target))
 			},
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				victim := ev.Target

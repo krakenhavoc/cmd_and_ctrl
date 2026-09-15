@@ -90,7 +90,7 @@ func b28EldraziScionToken() game.Card {
 
 // b28TriggerPromptPendingFrom reports whether a yes/no trigger prompt
 // sourced from `source` is already waiting on an answer — the
-// optional-trigger twin of b17PickTargetPendingFrom. A "whenever you
+// optional-trigger twin of OncePerBatch. A "whenever you
 // gain life … do this only once each turn" ability asked twice in
 // one mutation (two lifelinkers connecting at once) would otherwise
 // open two prompts and, answered yes twice, run twice.

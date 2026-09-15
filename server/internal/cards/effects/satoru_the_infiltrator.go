@@ -15,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // entering under the controller's control from anywhere but the
 // stack: a reanimation, a flicker, a "put onto the battlefield"
 // (b30NontokenCreatureYouControlEnteredUncast). "One or more" is
-// one draw per batch (b04TriggerPendingOrOnStack), so a mass
+// one draw per batch (OncePerBatch), so a mass
 // reanimation draws once, as printed. A cast Satoru draws nothing,
 // as printed.
 //
@@ -35,10 +35,9 @@ func init() {
 		Caveats:         []string{"Only creatures that weren't cast at all (reanimated, blinked, put onto the battlefield) draw the card — a creature you cast without spending any mana doesn't count."},
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b30NontokenCreatureYouControlEnteredUncast(ev, source, g) &&
-					!b04TriggerPendingOrOnStack(g, source)
-			}, "Satoru, the Infiltrator — draw a card", Do(DrawCards{N: 1})),
+			OncePerBatch(On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b30NontokenCreatureYouControlEnteredUncast(ev, source, g)
+			}, "Satoru, the Infiltrator — draw a card", Do(DrawCards{N: 1}))),
 		},
 	})
 }

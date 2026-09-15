@@ -66,11 +66,11 @@ func init() {
 			Effect: func(_ *game.Game, _ *game.StackItem) error { return nil },
 		}},
 		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventAttack},
+			OncePerBatch: true,
+			Watches:      []game.EventKind{game.EventAttack},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return attackDeclaredByYou(ev, source.Controller) &&
-					b33ResolutionsThisTurn(g, source.InstanceID, b33DalkovanEncampmentLabel) > 0 &&
-					!b12TriggerPendingOrOnStack(g, source, b33DalkovanAttackLabel)
+					b33ResolutionsThisTurn(g, source.InstanceID, b33DalkovanEncampmentLabel) > 0
 			},
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 				return game.NewTriggeredItem(source, b33DalkovanAttackLabel, b33DalkovanWarriors(ev.Target))

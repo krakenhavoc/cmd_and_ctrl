@@ -24,9 +24,9 @@ func init() {
 		Name:         "Tormod, the Desecrator",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			OnAny([]game.EventKind{game.EventZoneMove, game.EventCast}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b16CardLeftYourGraveyard(ev, source, g) && !b12TriggerPendingOrOnStack(g, source, b34TormodLabel)
-			}, b34TormodLabel, b33CreateTappedZombie),
+			OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventCast}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b16CardLeftYourGraveyard(ev, source, g)
+			}, b34TormodLabel, b33CreateTappedZombie)),
 		},
 	})
 }

@@ -12,7 +12,7 @@ import (
 // because batch 09 is landing beside this one.
 //
 // What is NOT here, because main already had it: the attack-trigger
-// dedup is b04TriggerPendingOrOnStack, "double the +1/+1 counters on
+// dedup is OncePerBatch, "double the +1/+1 counters on
 // each creature you control" is b08DoubleCountersOnEachCreatureYouControl,
 // "unless you control a legendary creature" is
 // b08ControlsLegendaryCreature, the filter-land shape is

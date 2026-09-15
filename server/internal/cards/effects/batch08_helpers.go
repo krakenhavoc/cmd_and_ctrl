@@ -13,7 +13,7 @@ import (
 //
 // What is NOT here, because main already had it: "an opponent loses
 // life" is b04OpponentLostLife, the attack / combat-damage dedup is
-// b04TriggerPendingOrOnStack, "the creatures you control" snapshot is
+// OncePerBatch, "the creatures you control" snapshot is
 // b04CreatureIDsControlledBy, the reveal-and-tutor body is
 // b06TutorToHand, "untap all lands you control" is
 // untapAllLandsControlledBy, and the Treasure is tokens.go's.

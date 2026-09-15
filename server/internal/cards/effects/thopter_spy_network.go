@@ -35,13 +35,13 @@ func init() {
 			On(game.EventBeginUpkeep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Actor == source.Controller && b03ArtifactsControlled(g, source.Controller) > 0
 			}, "Thopter Spy Network — create a 1/1 Thopter", Do(CreateToken{Template: ThopterToken(), N: 1})),
-			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OncePerBatch(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if !combatDamageToPlayerBy(ev, source.Controller, g) {
 					return false
 				}
 				src, ok := g.LookupCardForEffect(ev.Source)
-				return ok && src.IsArtifact() && !b04TriggerPendingOrOnStack(g, source)
-			}, "Thopter Spy Network — draw a card", Do(DrawCards{N: 1})),
+				return ok && src.IsArtifact()
+			}, "Thopter Spy Network — draw a card", Do(DrawCards{N: 1}))),
 		},
 	})
 }
