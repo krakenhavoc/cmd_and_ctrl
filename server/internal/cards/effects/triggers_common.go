@@ -228,6 +228,20 @@ func YouGainedLife(ev game.Event, source *game.Card, _ game.Characteristic, _ *g
 	return ev.Kind == game.EventChangeLife && ev.Target == source.Controller && ev.Amount > 0
 }
 
+// StepBegan — the named step began (EventStepBegan, #588). With
+// yours set, only on the source's controller's turn. This is the
+// condition for every step the older per-step kinds do not cover:
+// beginning of combat, postcombat main, end of combat, declare
+// attackers / blockers.
+func StepBegan(step game.Step, yours bool) When {
+	return func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		if ev.Kind != game.EventStepBegan || ev.Step != step {
+			return false
+		}
+		return !yours || ev.Actor == source.Controller
+	}
+}
+
 // AllOf — every condition holds.
 func AllOf(conds ...When) When {
 	return func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
@@ -322,6 +336,40 @@ func WheneverACreatureYouControlDies(label string, effect Effect) game.Triggered
 // damage to a player".
 func WheneverThisDealsCombatDamageToAPlayer(label string, effect Effect) game.TriggeredAbility {
 	return On(game.EventDealDamage, ThisDealtCombatDamageToAPlayer, label, effect)
+}
+
+// AtYourStep — "At the beginning of your <step>" for any step. The
+// upkeep, draw, precombat-main and end-step shapes above use the
+// older per-step event kinds, which fire after that step's turn-based
+// action; this one fires as the step begins.
+func AtYourStep(step game.Step, label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventStepBegan, StepBegan(step, true), label, effect)
+}
+
+// AtEachStep — "At the beginning of each <step>" / "each player's".
+func AtEachStep(step game.Step, label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventStepBegan, StepBegan(step, false), label, effect)
+}
+
+// AtBeginningOfYourCombat — "At the beginning of combat on your turn".
+func AtBeginningOfYourCombat(label string, effect Effect) game.TriggeredAbility {
+	return AtYourStep(game.StepBeginCombat, label, effect)
+}
+
+// AtBeginningOfEachCombat — "At the beginning of each combat".
+func AtBeginningOfEachCombat(label string, effect Effect) game.TriggeredAbility {
+	return AtEachStep(game.StepBeginCombat, label, effect)
+}
+
+// AtYourPostcombatMain — "At the beginning of your postcombat main
+// phase" / "your second main phase".
+func AtYourPostcombatMain(label string, effect Effect) game.TriggeredAbility {
+	return AtYourStep(game.StepPostcombatMain, label, effect)
+}
+
+// AtEndOfYourCombat — "At end of combat on your turn" (CR 511).
+func AtEndOfYourCombat(label string, effect Effect) game.TriggeredAbility {
+	return AtYourStep(game.StepEndCombat, label, effect)
 }
 
 // WheneverYouGainLife — "Whenever you gain life".

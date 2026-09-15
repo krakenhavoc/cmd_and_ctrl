@@ -1418,6 +1418,7 @@ and still unimplemented: that is CR 613 layer 1, deferred to S16.5.
 | "Whenever another creature you control becomes the target…" | `EventBecomesTarget` | `targetedAnotherCreatureYouControl(ev, source, g)` (Monk Gyatso) — excludes the source, checks the target is still on the battlefield, then reads its type and controller. Fires once per target **slot**, at **announce** (CR 115.7), so the trigger goes on the stack ABOVE the spell that targeted and resolves first — which is the whole card |
 | "At the beginning of your upkeep" | `EventBeginUpkeep` | `ev.Actor == source.Controller` |
 | "At the beginning of your end step" | `EventBeginEndStep` | `ev.Actor == source.Controller` — drop the check for "the beginning of the end step" (any player's) |
+| "At the beginning of combat on your turn" / "your postcombat main phase" / "end of combat" (any step without a kind of its own) | `EventStepBegan` | `StepBegan(game.StepBeginCombat, true)` — or the constructors `AtBeginningOfYourCombat`, `AtYourPostcombatMain`, `AtEndOfYourCombat`, `AtYourStep(step, …)`, `AtEachStep(step, …)` (#588) |
 | "Whenever you cast a creature spell" | `EventCast` | `ev.Actor == source.Controller` + `g.LookupCardForEffect(ev.CardID)` for the spell's type |
 | "Whenever an opponent casts their first noncreature spell each turn" | `EventCast` | `g.CastTallyFor(ev.Actor).Noncreature == 1` (tally is bumped before the event fires) |
 | "Whenever an opponent draws a card" | `EventDrawCard` | `ev.Actor != uuid.Nil && ev.Actor != source.Controller` — fires once per card |
@@ -1640,8 +1641,7 @@ batch's skips to it in the batch PR (Discussion #559 item 6).
   cost has no shape, leave the CARD out.
 - **Triggers on events the engine doesn't emit yet** ("whenever a
   creature enters under an opponent's control", landfall-with-a-target,
-  "at the beginning of your precombat main phase" — Black Market
-  Connections — "whenever you attack with one or more creatures" as a
+  "whenever you attack with one or more creatures" as a
   single batched trigger) — check
   [events.go](server/internal/game/events.go) for an `EventKind`
   first. If there isn't one, the event plumbing is the PR, not the
