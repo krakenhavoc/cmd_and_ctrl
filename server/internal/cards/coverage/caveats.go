@@ -268,7 +268,7 @@ var mechanics = []Mechanic{
 		// Archive, Shadowy Backstreet, Undercity Sewers are lands
 		// whose ONLY printed trigger is the surveil, and whose specs
 		// today declare no entry hook at all. The day one of them
-		// grows an OnETB or a Triggered ability, the caveat saying
+		// grows an AsEnters hook or a Triggered ability, the caveat saying
 		// its entry trigger "never happens" needs re-reading.
 		//
 		// When surveil ships as a primitive, replace this probe with
@@ -276,9 +276,9 @@ var mechanics = []Mechanic{
 		Name:    "surveil",
 		Phrases: []string{"surveil"},
 		Implements: func(s effects.Spec) bool {
-			return s.OnETB != nil || len(s.Triggered) > 0
+			return s.AsEnters != nil || len(s.Triggered) > 0
 		},
-		Evidence:   "the spec declares an entry hook (OnETB or Triggered), which it did not when the caveat was written",
+		Evidence:   "the spec declares an entry hook (AsEnters or Triggered), which it did not when the caveat was written",
 		Confidence: Heuristic,
 		Adopt:      "implement the surveil on entry once the keyword exists, then drop the caveat",
 	},

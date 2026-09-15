@@ -144,7 +144,7 @@ func zoneDeclared(zones []game.ZoneKind, zone game.ZoneKind) bool {
 // for the resolution path to fall back to manual sandbox behaviour.
 // Callers MUST check the second return; the zero Spec{} is
 // semantically distinct from a real registered spec (no OnResolve,
-// no OnETB), which means a missed check would silently apply
+// no AsEnters), which means a missed check would silently apply
 // nothing rather than triggering the manual fallback correctly.
 func Lookup(oracleID string) (Spec, bool) {
 	s, ok := registry[oracleID]

@@ -15,14 +15,16 @@ import (
 // costs no card and no mana, which is why it is in essentially
 // every black deck.
 //
-// Enters-tapped follows the Worn Powerstone / Azorius Chancery
-// pattern — OnETB taps the permanent as it lands, a beat later than
-// a true CR 614 replacement, because a catalog replacement cannot
-// fire on its own source's entry (the entering card is not yet on
-// the battlefield when the pipeline walks it).
+// Enters-tapped is a real CR 614 self-replacement (SelfEntersTapped):
+// the land is never untapped on the battlefield and no tap event is
+// emitted. It used to be a hook that tapped the land a beat after
+// entry, written when a catalog replacement could not see its own
+// source's entry; the entering-card block in
+// gatherActiveReplacementsLocked has made that possible since the
+// Temple cycle (#360, #578).
 //
 // The ETB is a real "target player", so it goes through Triggered
-// rather than OnETB: the target is chosen when the trigger goes on
+// rather than the entry hook: the target is chosen when the trigger goes on
 // the stack, which is what makes the graveyard emptied the one that
 // existed at resolution rather than at entry. Mandatory, like
 // Ravenous Chupacabra — there is always a legal player, including
@@ -31,16 +33,13 @@ func init() {
 	Register(Spec{
 		OracleID:     "04b7362d-0490-4cb0-b5d7-2a7732f659ce",
 		Name:         "Bojuka Bog",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The land enters untapped and is tapped a moment later, rather than entering tapped."},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{B}",
 			Label:    "Add {B}",
 		}},
-		OnETB: func(card *game.Card, ctx *Context) error {
-			return TapTarget{Target: card.InstanceID}.Apply(ctx)
-		},
+		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

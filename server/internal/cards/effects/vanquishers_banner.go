@@ -17,7 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID: "8cf38025-5821-45a0-9483-266353b7e82d",
 		Name:     "Vanquisher's Banner",
-		OnETB:    ChooseCreatureTypeOnETB("Vanquisher's Banner"),
+		AsEnters: ChooseCreatureTypeAsEnters("Vanquisher's Banner"),
 		Static: []game.StaticAbility{
 			TribalAnthem(TribeFilter{Chosen: true, YoursOnly: true}, 1, 1),
 		},

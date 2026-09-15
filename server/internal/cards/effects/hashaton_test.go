@@ -160,27 +160,30 @@ func TestLateToDinnerReanimatesAndMakesFood(t *testing.T) {
 	}
 }
 
-// TestReanimationFiresTheOnETBHook pins the second of the engine's
-// two independently-wired ETB mechanisms. Triggered abilities
-// harvest off the emitted EventETB and always worked; Spec.OnETB
-// runs through fireETBHookLocked, which this path never called — so
-// a reanimated Solemn Simulacrum fetched nothing.
+// TestReanimationFiresTheAsEntersHook pins the second of the engine's
+// two independently-wired entry mechanisms. Triggered abilities
+// harvest off the emitted EventETB and always worked; Spec.AsEnters
+// runs through fireETBHookLocked, which this path once never called —
+// so a reanimated Solemn Simulacrum fetched nothing.
 //
-// A Temple is the probe because its ETB lives entirely in OnETB (a
-// scry) and nowhere else. It also double-checks the controller fix:
-// the scry is queued for the Temple's CONTROLLER, so the prompt
-// arriving for the reanimating player rather than the graveyard's
-// owner is the same assertion twice over.
-func TestReanimationFiresTheOnETBHook(t *testing.T) {
+// Vanquisher's Banner is the probe because its entry behaviour lives
+// entirely in AsEnters (the CR 614.12 creature-type choice) and
+// nowhere else — the Temples, the previous probe, moved their scry
+// onto the stack in #578. It also double-checks the controller fix:
+// the prompt is queued for the Banner's CONTROLLER, so it arriving
+// for the reanimating player rather than the graveyard's owner is
+// the same assertion twice over.
+
+func TestReanimationFiresTheAsEntersHook(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	opp := g.Seats[1]
 	id := uuid.New()
 	opp.Graveyard.PushTop(game.Card{
 		InstanceID: id,
-		Name:       "Temple of Silence",
-		TypeLine:   "Land",
-		OracleID:   templeOfSilenceOracle,
+		Name:       "Vanquisher's Banner",
+		TypeLine:   "Artifact",
+		OracleID:   vanquishersBannerOracle,
 		Owner:      opp.ID,
 		Controller: opp.ID,
 	})
@@ -195,17 +198,29 @@ func TestReanimationFiresTheOnETBHook(t *testing.T) {
 
 	card, ok := battlefieldCard(g, id)
 	if !ok {
-		t.Fatal("the Temple is not on the battlefield")
+		t.Fatal("the Banner is not on the battlefield")
 	}
 	if card.Controller != me.ID {
 		t.Errorf("controller: got %s, want %s", card.Controller, me.ID)
 	}
-	if scryChoiceFor(g, me.ID) == nil {
-		t.Error("the Temple's OnETB did not fire — no scry queued for the new controller")
+	if reanimatedTypeChoiceFor(g, me.ID) == nil {
+		t.Error("the Banner's AsEnters hook did not fire — no creature-type prompt for the new controller")
 	}
-	if scryChoiceFor(g, opp.ID) != nil {
-		t.Error("the scry was queued for the graveyard's owner instead of the new controller")
+	if reanimatedTypeChoiceFor(g, opp.ID) != nil {
+		t.Error("the prompt was queued for the graveyard's owner instead of the new controller")
 	}
+}
+
+// reanimatedTypeChoiceFor returns the queued creature-type prompt
+// addressed to a player, or nil.
+func reanimatedTypeChoiceFor(g *game.Game, chooser uuid.UUID) *game.PendingChoice {
+	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
+		c := g.PendingChoices[i]
+		if c != nil && c.Kind == game.PendingChoiceCreatureType && c.Chooser == chooser {
+			return c
+		}
+	}
+	return nil
 }
 
 // --- Hashaton ----------------------------------------------------

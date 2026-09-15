@@ -37,7 +37,7 @@ func init() {
 	Register(Spec{
 		OracleID: "89ca686a-7c72-4d8f-9290-e89635624a83",
 		Name:     "Cavern of Souls",
-		OnETB:    ChooseCreatureTypeOnETB("Cavern of Souls"),
+		AsEnters: ChooseCreatureTypeAsEnters("Cavern of Souls"),
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},

@@ -83,7 +83,7 @@ var EffectResolver func(g *Game, item *StackItem, oracleID string) error
 // ETBEffectHook fires after a permanent crosses into the
 // battlefield from any source (land cast, spell resolution,
 // MoveCardByID into battlefield). Implementations look up the
-// card's oracle ID in the catalog and run the registered OnETB
+// card's oracle ID in the catalog and run the registered AsEnters
 // callback + stamp StartingLoyalty for planeswalkers.
 var ETBEffectHook func(g *Game, cardID uuid.UUID, oracleID string) error
 
@@ -449,7 +449,7 @@ func (g *Game) fireEffectResolverLocked(item *StackItem, oracleID string, cardID
 //
 // The loyalty stamp runs FIRST and runs unconditionally — before
 // the oracle-ID / nil-hook guards below. Issue #274: it used to
-// live inside the catalog's hook (effects.fireOnETB), so it was
+// live inside the catalog's hook (effects.fireAsEnters), so it was
 // skipped for any card the catalog didn't know, and the CR 704.5i
 // SBA then swept the 0-loyalty planeswalker into the graveyard on
 // the next priority-grant boundary.

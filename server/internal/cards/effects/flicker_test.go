@@ -23,7 +23,7 @@ const (
 	flickerProbeOracle            = "test-flicker-etb-probe"
 )
 
-// flickerProbeETBs counts direct OnETB-hook fires on the probe
+// flickerProbeETBs counts direct AsEnters-hook fires on the probe
 // permanent. Mulldrifter covers the other ETB path (a declared
 // `Triggered` watching EventETB, harvested onto the stack); the two
 // are separate mechanisms and a return has to re-fire both.
@@ -33,7 +33,7 @@ func init() {
 	Register(Spec{
 		OracleID: flickerProbeOracle,
 		Name:     "Flicker ETB Probe",
-		OnETB: func(_ *game.Card, _ *Context) error {
+		AsEnters: func(_ *game.Card, _ *Context) error {
 			flickerProbeETBs++
 			return nil
 		},
@@ -151,7 +151,7 @@ func TestReturnFromExileMintsANewObject(t *testing.T) {
 		t.Errorf("returned under %v, want the owner %v", back.Controller, owner.ID)
 	}
 	if flickerProbeETBs != 1 {
-		t.Errorf("OnETB fired %d times on the return, want 1", flickerProbeETBs)
+		t.Errorf("AsEnters fired %d times on the return, want 1", flickerProbeETBs)
 	}
 }
 
@@ -279,7 +279,7 @@ func TestYshtolaRhulDoesNotTriggerOnAnOpponentsEndStep(t *testing.T) {
 // Two creatures leave together and come back together a step
 // boundary later. One is a Mulldrifter (its ETB is a declared
 // `Triggered` that goes on the stack), the other is the probe (a
-// direct OnETB hook) — the delayed return has to re-fire both
+// direct AsEnters hook) — the delayed return has to re-fire both
 // mechanisms, and they are wired independently.
 func TestWaterbendersRestorationReturnsAtTheNextEndStep(t *testing.T) {
 	g := newCatalogGame(t)
@@ -337,7 +337,7 @@ func TestWaterbendersRestorationReturnsAtTheNextEndStep(t *testing.T) {
 		t.Errorf("drew %d cards off the re-triggered ETB, want 2", got)
 	}
 	if flickerProbeETBs != 1 {
-		t.Errorf("OnETB fired %d times on the delayed return, want 1", flickerProbeETBs)
+		t.Errorf("AsEnters fired %d times on the delayed return, want 1", flickerProbeETBs)
 	}
 	if len(g.DelayedTriggers) != 0 {
 		t.Errorf("delayed-return queue not drained: %d", len(g.DelayedTriggers))
