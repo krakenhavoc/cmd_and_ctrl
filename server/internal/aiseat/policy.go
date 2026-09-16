@@ -1,7 +1,7 @@
 // Package aiseat runs a bot in a seat: a goroutine that watches a
 // ws.Room, asks a Policy which legal move to make whenever the seat
 // has a decision, and dispatches it through the same action path a
-// WebSocket client uses. ADR 0024 §2–§3.
+// WebSocket client uses. ADR 0033 §2–§3.
 //
 // The hidden-information guarantee is structural: a Policy receives
 // an Input built only from the seat's filtered protocol.GameView and
