@@ -15,8 +15,8 @@ import (
 // `EnumerateFor` returns ONLY a choice's answers while a seat owes one.
 // So a prompt kind the enumerator does not know is not a cosmetic gap:
 // it is a bot seat handed an empty move list, asleep, holding a live
-// table with a human on it. That is #544, and #499 counts four kinds
-// still in that state. These tests are the promise that the two kinds
+// table with a human on it. That is #544, and #499 was the last four
+// kinds in that state (pending_kinds_test.go). These tests are the promise that the two kinds
 // added here are not a fifth and sixth.
 
 func handOf(p *game.Player, n int) []uuid.UUID {

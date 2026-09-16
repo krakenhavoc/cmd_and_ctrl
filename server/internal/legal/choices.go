@@ -3,6 +3,7 @@ package legal
 import (
 	"fmt"
 	"log/slog"
+	"sort"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -30,6 +31,11 @@ type choiceParams struct {
 	// is the empty slice, and omitempty would erase it into absent,
 	// which is how the dispatcher tells a surveil from a scry.
 	Graveyard []string `json:"graveyard"`
+	// CreatureType answers a choose_creature_type prompt (CR 614.12).
+	// omitempty because the dispatcher routes on its PRESENCE: an
+	// empty string sent on every other kind would be read as "this is
+	// a creature-type answer".
+	CreatureType string `json:"creature_type,omitempty"`
 }
 
 type assignParam struct {
@@ -438,6 +444,48 @@ func (e *enumerator) choiceMoves() bool {
 				e.addChoice(c, reason+": put "+cardName(g, id)+" on top", p)
 			}
 
+		case game.PendingChoiceMayCast:
+			// #499. Cascade's "you may cast it without paying its mana
+			// cost". ResolveMayCast refuses neither answer — a failing
+			// branch is logged as an effect error, not returned — so
+			// both are offered, and the decline is the always-legal
+			// way out: it is the answer that commits the seat to
+			// nothing.
+			accept := true
+			p := base()
+			p.Apply = &accept
+			e.addChoice(c, reason+": cast it", p)
+
+			decline := false
+			d := base()
+			d.Apply = &decline
+			e.addAlwaysLegalChoice(c, reason+": don't cast it", d)
+
+		case game.PendingChoiceCreatureType:
+			// #499. "As this enters, choose a creature type" — Cavern
+			// of Souls, Door of Destinies, Adaptive Automaton. The
+			// legal set is all ~345 CR 205.3m types, and offering
+			// every one would bury a bot's list under names no deck
+			// cares about.
+			//
+			// So the answers are the creature types of the creatures
+			// this seat already controls, most common first, capped —
+			// what a player naming a tribe for Door of Destinies does.
+			// Read off the BATTLEFIELD only: it is public, so the
+			// labels leak nothing the visibility guard would object
+			// to, where the hand or library would.
+			//
+			// Every answer is always legal: ResolveCreatureTypeChoice
+			// accepts any canonical type and treats a departed source
+			// as "nowhere to land", not an error. A board with no
+			// creatures still gets one answer, so the seat is never
+			// handed an empty list — the wedge this case exists to end.
+			for _, t := range e.creatureTypeAnswers() {
+				p := base()
+				p.CreatureType = t
+				e.addAlwaysLegalChoice(c, reason+": "+t, p)
+			}
+
 		default:
 			// #499: a kind with no case above is enumerated NOTHING,
 			// and `owed` is already true, so the seat gets an empty
@@ -452,8 +500,8 @@ func (e *enumerator) choiceMoves() bool {
 			// it turns "the game stopped" into a line naming the kind,
 			// which is the difference between an hour and a minute.
 			//
-			// Two kinds still land here on purpose, tracked on #499:
-			// may_cast and choose_creature_type.
+			// No live kind lands here today. The four #499 named all
+			// have cases now; this branch is for the next one.
 			slog.Warn("legal: no moves enumerated for a pending choice kind — the seat owing it has no legal move",
 				"kind", c.Kind,
 				"chooser", c.Chooser,
@@ -672,4 +720,52 @@ func combinationsRefs(cands []game.TargetRef, lo, hi, limit int) [][]game.Target
 		rec(0, nil)
 	}
 	return out
+}
+
+// creatureTypeAnswersCap bounds the creature types offered for one
+// prompt. Enough to name every tribe a real Commander board runs, few
+// enough that a random policy still lands on a sensible one.
+const creatureTypeAnswersCap = 5
+
+// creatureTypeFallback answers a creature-type prompt on a board with
+// no creatures on it. Any canonical type is accepted; Human is the
+// most-printed, so it is the likeliest to matter later.
+const creatureTypeFallback = "Human"
+
+// creatureTypeAnswers ranks the creature types among the creatures
+// this seat controls on the battlefield, most common first and then
+// alphabetically so the list is stable across calls.
+//
+// Changelings count for nothing here: every type is theirs, so they
+// say nothing about which tribe the board is.
+func (e *enumerator) creatureTypeAnswers() []string {
+	counts := map[string]int{}
+	for i := range e.g.Battlefield.Cards {
+		c := &e.g.Battlefield.Cards[i]
+		if c.Controller != e.seat || !c.IsCreature() || game.HasAllCreatureTypes(c) {
+			continue
+		}
+		for _, t := range game.CreatureTypesOf(c) {
+			if canon, ok := game.CanonicalCreatureType(t); ok {
+				counts[canon]++
+			}
+		}
+	}
+	types := make([]string, 0, len(counts))
+	for t := range counts {
+		types = append(types, t)
+	}
+	sort.Slice(types, func(i, j int) bool {
+		if counts[types[i]] != counts[types[j]] {
+			return counts[types[i]] > counts[types[j]]
+		}
+		return types[i] < types[j]
+	})
+	if len(types) > creatureTypeAnswersCap {
+		types = types[:creatureTypeAnswersCap]
+	}
+	if len(types) == 0 {
+		return []string{creatureTypeFallback}
+	}
+	return types
 }
