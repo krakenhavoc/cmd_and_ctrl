@@ -75,7 +75,10 @@ planned just-in-time from the S12 pain-point triage.
 | S30      | Damage prevention, cloning, face-down, deferred protection keywords  | 7     | [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95)   | 2027-09-05 | partial     |
 | Post-S30 | Rolling deck-driven catalog growth                                   | 7     | TBD at S30 retro                                               | rolling    | not started |
 | S31      | AI bot seat (legal-move enumeration + tiered policy)                 | 8     | [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89)   | 2027-09-26 | partial     |
+| S32      | Playtest stabilisation, round 1                                      | 6     | [#277](https://github.com/krakenhavoc/cmd_and_ctrl/issues/277) | —          | partial     |
 | S33      | Surviving a deploy: reconnect, resume, and schema safety             | 6     | [#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515) | 2027-10-10 | planned     |
+| S34      | Persistent user database: people, their games, and their decks       | 6     | [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607) | —          | planned     |
+| S35      | Playtest stabilisation, round 2                                      | 6     | #TBD                                                           | —          | planned     |
 
 ### How to read the status column
 
@@ -101,8 +104,11 @@ alternative cast costs (#257), the Hashaton deck (#258), staples batches (#261, 
 (#268), airbend (#269) and convoke (#271) — and **none of them is card draw or library
 manipulation**, which is what S22 actually is. They belong to S19, S22, S28 and rolling catalog
 growth respectively. When the two disagree, the sprint *section* below is the scope and the commit
-tag is just a label someone typed. Retitling S22–S30 as themed epics, so PRs can reference the
-sprint they are really in, is tracked on [#281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/281).
+tag is just a label someone typed. S32 ([#277](https://github.com/krakenhavoc/cmd_and_ctrl/issues/277))
+proposed retitling S22–S30 as undated themed epics, on
+[#281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/281). **That proposal is superseded:** the
+2026-09-16 closeouts reconciled S22–S30 as sprints, each with its own section and a status row read
+by the legend above, so they stay sprints. A PR references the sprint whose section covers the work.
 
 ---
 
@@ -2386,6 +2392,56 @@ contract alone cannot express them:
 - [Forge AI wiki](https://github.com/Card-Forge/forge/wiki/AI) — rule-based heuristics, ~95% of cards scripted. The "playable but dumb" bar.
 - [XMage](https://github.com/magefree/mage) — `ComputerPlayer` target-score evaluation; inspiration for threat-weighted targeting.
 - Cowling / Ward / Powley, ["Ensemble Determinization in MCTS for Magic: The Gathering"](https://eprints.whiterose.ac.uk/id/eprint/75050/1/EnsDetMagic.pdf), 2012 — canonical MCTS-for-MTG; shapes the future `MCTSPolicy` slot.
+
+---
+
+## S32 — Playtest stabilisation, round 1
+
+**Phase:** 6 · **Goal:** the first real games on the deployed stack (2026-09-10/11, the first on the #244 redesign) produced in-app bug reports that nobody had turned into a sprint. S32 is S12's unfinished exit criterion, "triage the pain points from the real game into the backlog", run as a sprint of its own. It adds the one engine primitive both deck triages ranked most reusable (until end of turn) and the process debt that was misleading agents. Planned 2026-09-11 on [#277](https://github.com/krakenhavoc/cmd_and_ctrl/issues/277) and reconciled against the tree on 2026-09-16.
+
+### Lane A — real-game blockers
+
+- [ ] **[#266](https://github.com/krakenhavoc/cmd_and_ctrl/issues/266) — State freeze.** The **amplifier** is fixed and regression-tested in #284: a throwing subscriber poisoned Svelte's global `subscriber_queue` and froze the whole UI. Every GameClient store now goes through `guardedWritable`, pinned by `client/src/lib/ws.freeze.test.ts` and `tests-e2e/tests/state-freeze-266.spec.ts`. That E2E walk timed out once most priority windows auto-passed ([#602](https://github.com/krakenhavoc/cmd_and_ctrl/issues/602)) and #606 repaired it. **The trigger was never found**, which is what this line and exit criterion 1 asked for. #266 closed on 2026-09-16 with the trigger unreproducible: the report's diagnostics show no captured client errors, an accepted frame 77 and a live connection, and the pinned replays hold server views, not client actions. The hardening it pointed at is split to [#720](https://github.com/krakenhavoc/cmd_and_ctrl/issues/720)
+- [x] **#273 — Auto-tapper refuses a castable spell** — #275. `pickColorForSlot` short-circuited single-option slots and left a stale `{W}` on the pending list, so Command Tower paid white twice
+- [x] **#274 — Planeswalkers go straight to the graveyard on cast** — #285, with [ADR 0032](decisions/0032-planeswalkers.md). `fireOnETB` returned early on a catalog miss, so every uncatalogued planeswalker resolved at 0 loyalty and died to the SBA. Printed loyalty now travels like P/T (`server/internal/game/planeswalker_test.go`). The two gaps it exposed, attacking a planeswalker and damage to one, shipped under S27 in #415
+- [x] **#276 — Transform-DFC commanders have no colour identity** — #327. `Card.ColorIdentity` is carried on the card and read by the commander identity check
+- [x] **#265 → spike #278 — MDFC entered as a land with no face prompt** — [ADR 0034](decisions/0034-multi-face-cards.md) (#290), implemented in **#357**. Not #327: #327's body says "Does not close #265", GitHub read "close #265" in that sentence as a closing keyword, and the issue closed 2.5 hours before the fix. Land-back MDFCs, Sea Gate Restoration among them, now prompt for a face (`FacePickerModal.svelte`). Layouts still out of scope are refused at import with `CodeUnsupportedLayout` (`server/internal/deck/validate.go`), not played wrong. The #278 spike closed on 2026-09-16
+
+### Lane B — next engine primitive by blocked-card count
+
+- [x] **#279 — Until-end-of-turn continuous effects** — #314, with [ADR 0035](decisions/0035-until-end-of-turn-effects.md). Giant Growth is in the catalog, and `TestGiantGrowthPumpsUntilCleanup` (`server/internal/cards/effects/until_end_of_turn_test.go`) pins 5/5 on resolution and 2/2 after cleanup. S25's section ticks the same lifecycle
+- [x] **#280 — Attachments: ADR and spike only** — [ADR 0036](decisions/0036-attachments.md) (#291). #277 put the implementation in S33, but it shipped under S24 instead (#374, #379, #392, #511, #555), and S33 became [#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515). #280 closed on 2026-09-16
+
+### Lane C — process and infra
+
+- [x] **#281 — Tracker hygiene** — #270 merged, the issue audit landed as `docs/audit-2026-09-10.md` in #315, and every issue on its close/rescope list is closed (#12, #36, #38, #40, #59, #73, #92, #170, #229). This section and the S32 index row were the last pieces. The S22–S30 retitle is superseded, as the note under the sprint index explains
+- [x] **#282 — `develop` → `main` merge** — #288 (`489788e`), followed by the promotions #576, #604, #610 and #700. [#250](https://github.com/krakenhavoc/cmd_and_ctrl/issues/250) is closed
+- [x] **#247 — Discord sign-in credentials** — provisioned. `GET /auth/discord/config` returns `{"enabled":true}` on both hosts, as recorded on #247, and the sign-in flow shipped in #597. The bot half is [#249](https://github.com/krakenhavoc/cmd_and_ctrl/issues/249)
+- [x] **#283 — Land ADR 0024 and the rewritten S31 section** — landed as [ADR 0033](decisions/0033-ai-bot-seat.md) instead, in #286 (`f26c961`). #315 closed #283, and 0024 is permanently unused
+
+### Exit criteria
+
+1. **Unmet.** #274 is closed by #285 with a regression test, as is #273 by #275. #266 has its amplifier fixed and tested, but the trigger was never found (above)
+2. **Met.** ADR 0034 records the decision. Sea Gate Restoration prompts for a face (#357), and the layouts that are still unsupported are refused at import
+3. **Met.** Giant Growth's boost expires at cleanup, pinned by `TestGiantGrowthPumpsUntilCleanup`
+4. **Met.** `develop` reached `main` in #288, `https://cmd-dev.labxp.io/healthz` returns 200, and #250 is closed
+5. **Lands on `main` with the next promotion.** This reconciliation adds the S32 index row, plus the missing S34 row and the S35 row. It goes to `develop`, and the criterion names `main`. The audit's close/rescope list is actioned (#281, above)
+6. **Half met.** Games were played on the result: in-app reports #317–#376 came in on 2026-09-11, #500–#541 on 2026-09-14, and #596 on 2026-09-16. The criterion said the reports become S33, but S33 went to #515 (surviving a deploy) and S34 to #607, so they become **S35**, "Playtest stabilisation, round 2". The 4-player table S12 carried here is not on record and carries on to S35
+
+### Shipped under S32 beyond the checklist
+
+Four ADRs and the persistence work carry the S32 name, and only the first ADR is on #277's checklist. [ADR 0035](decisions/0035-until-end-of-turn-effects.md) is Lane B's until-end-of-turn work (#279, #314). [ADR 0037](decisions/0037-unimplemented-card-signal.md) tells the player when a card's printed rules aren't implemented (#344), prompted by five reports from the first games (#321, #324, #325, #332, #333). [ADR 0040](decisions/0040-mana-pipeline.md) adds restricted, derived, scaled and gated mana ([#352](https://github.com/krakenhavoc/cmd_and_ctrl/issues/352), shipped in #356). ADR 0034's **Addendum (S32)** puts a per-instance face on the exile-play grant, which let Sieges cast their back face (#574). **Game-state persistence**, phases 1–2 of [ADR 0041](decisions/0041-game-persistence.md), shipped in #355. That is the work the S33 section means by "S32 built the state persistence and it works", and #525 below is a defect in it.
+
+**Status: partial.** Exit criteria 2, 3 and 4 are met, and every line of the checklist has shipped except #266's trigger. Criterion 1 required that trigger and it was never found, so it is demonstrably unmet. By [the status legend](#how-to-read-the-status-column), that makes the row `partial`, not `**done**`. The owner decided this on 2026-09-16, when #266 closed with the trigger unreproducible. Criterion 5 is measured on `main`, so [#277](https://github.com/krakenhavoc/cmd_and_ctrl/issues/277) closes after the next `develop` → `main` promotion, not with this reconciliation.
+
+**What is left**, each piece in its own issue:
+
+- **Store and boundary hardening from #266:** guard every store and `derived` against the shared subscriber queue, and wrap `<Board>` in a `<svelte:boundary>`. [#720](https://github.com/krakenhavoc/cmd_and_ctrl/issues/720)
+- **Freeze-shaped mechanisms S33 owns:** a restored room hands clients a lower `seq` than they hold, [#523](https://github.com/krakenhavoc/cmd_and_ctrl/issues/523) (after [#518](https://github.com/krakenhavoc/cmd_and_ctrl/issues/518)). A deploy disconnect looks like a freeze, [#518](https://github.com/krakenhavoc/cmd_and_ctrl/issues/518) and [#519](https://github.com/krakenhavoc/cmd_and_ctrl/issues/519)
+- **`pruneOrphanMeta` destroys recoverable games:** ADR 0041's roll-back recovery deletes the game it should return. [#525](https://github.com/krakenhavoc/cmd_and_ctrl/issues/525)
+- **Multi-face follow-ups:** transform's flip verb, ADR 0034 step 5 ([#343](https://github.com/krakenhavoc/cmd_and_ctrl/issues/343), Aang), and adventure cards, step 6 ([#719](https://github.com/krakenhavoc/cmd_and_ctrl/issues/719))
+- **Session tokens in in-app bug reports:** redact them before [#517](https://github.com/krakenhavoc/cmd_and_ctrl/issues/517) makes sessions durable. [#721](https://github.com/krakenhavoc/cmd_and_ctrl/issues/721)
+- **The playtest reports and the 4-player table:** S35, "Playtest stabilisation, round 2" (#TBD), built from the [#534](https://github.com/krakenhavoc/cmd_and_ctrl/issues/534) triage and the in-app reports filed since
 
 ---
 
