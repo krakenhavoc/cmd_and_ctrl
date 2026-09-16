@@ -278,3 +278,21 @@ func destroyChosenPermanent(g *game.Game, item *game.StackItem) error {
 	}
 	return DestroyTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
 }
+
+// targetOpponentLosesAndYouGain is "target opponent loses n life and
+// you gain n life" for a trigger whose target clause is a player. A
+// target that is no longer legal is skipped, and the gain happens only
+// when a target was drained. Vein Ripper.
+func targetOpponentLosesAndYouGain(g *game.Game, item *game.StackItem, n int) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetPlayer {
+			continue
+		}
+		if err := g.ChangePlayerLifeForEffect(item.SourceCardID, t.ID, -n); err != nil {
+			return err
+		}
+		return GainLife{Player: item.Controller, Amount: n}.Apply(ctx)
+	}
+	return nil
+}

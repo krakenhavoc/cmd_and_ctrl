@@ -23,21 +23,20 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // two lines behind a name — the filter is exactly "the caster is my
 // controller".
 //
-// SANDBOX SIMPLIFICATION, weaker than printed: Ward—Pay 2 life is
-// not implemented, so the Elemental can be targeted for free.
-// effects/ward.go ships MANA wards only — PendingChoicePayUnless
-// parses its cost with game.ParseCost, and a life payment is not a
-// mana cost. Sedgemoor Witch and Vein Ripper are behind the same
-// seam; the file names WardCost as where a life-or-sacrifice ward
-// lands. Omitting the ward is the weaker direction (#259): the
-// creature is easier to answer than printed, never harder.
+// "Ward—Pay 2 life" is effects/ward.go's life cost: the spell's
+// controller gets a pay-2-life-or-it-is-countered prompt, and a
+// controller below 2 life cannot pay (CR 119.4), so the spell is
+// countered outright. It shipped without the ward until the life cost
+// existed.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     invasionOfKarsusOracleID + "#1",
 		Name:         "Refraction Elemental",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Ward—Pay 2 life isn't implemented, so opponents can target this creature without paying anything."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
+			Ward(WardLife(2), "Refraction Elemental — ward, pay 2 life"),
 			On(game.EventCast, ByYou, "Refraction Elemental — 2 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
 				return damageToEachOpponent(g, item, 2)
 			}),
