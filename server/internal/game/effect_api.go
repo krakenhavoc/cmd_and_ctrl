@@ -187,6 +187,12 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 		DamageSource: source,
 		DamageTarget: playerID,
 		DamageAmount: amount,
+		// #694: the tail goes on BEFORE the pipeline runs, because a
+		// CR 616 ordering prompt returns below without landing the
+		// damage and the resume has nothing else to go on. No actor,
+		// no lifelink, no commander tally — this path has never
+		// applied them, and the resume must not either.
+		damageTail: &damageTail{kind: damageTailPlayer},
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
@@ -199,21 +205,10 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 		return err
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled || out.DamageAmount <= 0 {
+	if out == nil || out.Canceled {
 		return nil
 	}
-	p := g.playerByIDLocked(out.DamageTarget)
-	if p == nil {
-		return ErrPlayerNotFound
-	}
-	g.EmitEvent(Event{
-		Kind:   EventDealDamage,
-		Source: out.DamageSource,
-		Target: out.DamageTarget,
-		Amount: out.DamageAmount,
-	})
-	p.ChangeLife(-out.DamageAmount)
-	return nil
+	return g.applyResolvedDamageLocked(out)
 }
 
 // DealDamageToCreatureForEffect marks amount damage on a
@@ -260,6 +255,11 @@ func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount in
 		DamageSource: source,
 		DamageTarget: cardID,
 		DamageAmount: amount,
+		// #694: the tail goes on BEFORE the pipeline runs, because a
+		// CR 616 ordering prompt returns below without landing the
+		// damage and the resume has nothing else to go on. No
+		// deathtouch: see the note above.
+		damageTail: &damageTail{kind: damageTailPermanent},
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
@@ -272,27 +272,15 @@ func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount in
 		return err
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled || out.DamageAmount <= 0 {
-		// Fully prevented. The permanent is untouched and no
-		// EventDealDamage fires, which is what "prevented" means —
-		// a "whenever ~ is dealt damage" trigger must not see it.
+	if out == nil || out.Canceled {
 		return nil
 	}
-	// Post-replacement values, and through the permanent-aware path:
-	// a creature marks damage, a planeswalker loses loyalty (CR 120.3c,
-	// the #406 fix) and a battle loses defence. The old inline loop
-	// here only ever incremented DamageMarked, which is why damage
-	// could not kill a planeswalker.
-	if !g.applyDamageToPermanentLocked(out.DamageTarget, out.DamageAmount, false) {
-		return ErrCardNotFound
-	}
-	g.EmitEvent(Event{
-		Kind:   EventDealDamage,
-		Source: out.DamageSource,
-		Target: out.DamageTarget,
-		Amount: out.DamageAmount,
-	})
-	return nil
+	// Through the permanent-aware tail: a creature marks damage, a
+	// planeswalker loses loyalty (CR 120.3c, the #406 fix) and a
+	// battle loses defence. The old inline loop here only ever
+	// incremented DamageMarked, which is why damage could not kill a
+	// planeswalker.
+	return g.applyResolvedDamageLocked(out)
 }
 
 // DrawNForEffect draws n cards for the given player, emitting one

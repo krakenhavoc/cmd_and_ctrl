@@ -2758,6 +2758,11 @@ func (g *Game) markDamageWithKind(source, cardID uuid.UUID, delta int, isCombat 
 		DamageTarget:   cardID,
 		DamageAmount:   delta,
 		IsCombatDamage: isCombat,
+		// #694: the manual mark keeps its own tail shape — a signed
+		// delta straight onto DamageMarked, no CR 120.3 split, no
+		// combat riders. It is the sandbox verb, and a negative delta
+		// (undo a mark) is a legitimate use of it.
+		damageTail: &damageTail{kind: damageTailManualMark},
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
@@ -2771,25 +2776,13 @@ func (g *Game) markDamageWithKind(source, cardID uuid.UUID, delta int, isCombat 
 	if out == nil || out.Canceled {
 		return nil
 	}
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID == out.DamageTarget {
-			g.Battlefield.Cards[i].DamageMarked += out.DamageAmount
-			if g.Battlefield.Cards[i].DamageMarked < 0 {
-				g.Battlefield.Cards[i].DamageMarked = 0
-			}
-			if out.DamageAmount > 0 {
-				g.EmitEvent(Event{
-					Kind:   EventDealDamage,
-					Source: out.DamageSource,
-					Target: out.DamageTarget,
-					Amount: out.DamageAmount,
-				})
-			}
-			g.runStateChecksLocked()
-			return nil
-		}
+	if err := g.applyResolvedDamageLocked(out); err != nil {
+		return err
 	}
-	return ErrCardNotFound
+	// The sandbox verb is its own action boundary, so it owes the SBA
+	// sweep the tail deliberately does not run (see damage_tail.go).
+	g.runStateChecksLocked()
+	return nil
 }
 
 // drainPendingTriggersAPNAPLocked moves every queued triggered
@@ -4698,13 +4691,21 @@ func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source
 		DamageTarget:   cardID,
 		DamageAmount:   amount,
 		IsCombatDamage: true,
+		// #694: the source's CR 702.2c deathtouch, CR 702.15 lifelink
+		// and CR 903.10a commander status are snapshotted HERE, before
+		// the pipeline can pause. A CR 616 prompt is answered after
+		// the blockers' damage has already landed and been swept, so
+		// the attacker may be in a graveyard by the time this event
+		// resumes — reading the keywords afterwards would silently
+		// lose both riders. Same reasoning the DamageAssignmentFrame
+		// paths have always used.
+		damageTail: g.combatDamageTailLocked(damageTailPermanent, source),
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
-		// CR 616 prompt queued; sandbox combat doesn't know how to
-		// resume combat damage mid-prompt today. Log + let damage
-		// pass through. Real-game prompts for combat-damage prevention
-		// land with S30.
+		// CR 616 ordering prompt queued. The damage lands when it is
+		// answered, through the same tail this function would have
+		// run (#694) — before that it was dropped on the floor.
 		return
 	}
 	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
@@ -4715,34 +4716,12 @@ func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source
 	if out == nil || out.Canceled {
 		return
 	}
-	if out.DamageAmount <= 0 {
-		return
-	}
-	// S18 sub-PR 3: CR 702.2c — damage from a deathtouch source flags
-	// the creature for SBA destruction regardless of toughness.
-	srcDeathtouch := false
-	if srcCard := findBattlefieldCard(g, out.DamageSource); srcCard != nil {
-		srcDeathtouch = HasKeyword(srcCard, "deathtouch")
-	}
-	actor := g.controllerOfBattlefieldCardLocked(out.DamageSource)
 	// S27 (#406): what the damage DOES depends on what the permanent
 	// is — marked on a creature, loyalty off a planeswalker, defense
-	// off a battle (CR 120.3). See permanent_damage.go.
-	if !g.applyDamageToPermanentLocked(out.DamageTarget, out.DamageAmount, srcDeathtouch) {
-		return
-	}
-	g.EmitEvent(Event{
-		Kind:   EventDealDamage,
-		Actor:  actor,
-		Source: out.DamageSource,
-		Target: out.DamageTarget,
-		Amount: out.DamageAmount,
-		Combat: true,
-	})
-	// S18 sub-PR 3: CR 702.15 — lifelink credits the source's
-	// controller for the (post-replacement) damage amount. Fires
-	// uniformly for combat and non-combat damage.
-	g.applyLifelinkLocked(out.DamageSource, out.DamageAmount)
+	// off a battle (CR 120.3). See permanent_damage.go. No SBA here:
+	// all combat damage is simultaneous (CR 510.2) and the resolver
+	// sweeps once after the whole step.
+	_ = g.applyResolvedDamageLocked(out)
 }
 
 // markCombatDamageFromFrameLocked is the damage-to-creature router
@@ -4765,9 +4744,14 @@ func (g *Game) markCombatDamageFromFrameLocked(cardID uuid.UUID, amount int, fra
 		DamageTarget:   cardID,
 		DamageAmount:   amount,
 		IsCombatDamage: true,
+		// #694: the frame IS the snapshot, so the tail is built from
+		// it rather than from a battlefield lookup.
+		damageTail: damageTailFromFrame(damageTailPermanent, frame),
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
+		// CR 616 ordering prompt queued; the damage lands through the
+		// same tail when it is answered (#694).
 		return
 	}
 	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
@@ -4778,24 +4762,8 @@ func (g *Game) markCombatDamageFromFrameLocked(cardID uuid.UUID, amount int, fra
 	if out == nil || out.Canceled {
 		return
 	}
-	if out.DamageAmount <= 0 {
-		return
-	}
 	// S27 (#406): same CR 120.3 split the direct path uses.
-	if !g.applyDamageToPermanentLocked(out.DamageTarget, out.DamageAmount, frame.HasDeathtouch) {
-		return
-	}
-	g.EmitEvent(Event{
-		Kind:   EventDealDamage,
-		Actor:  frame.SourceController,
-		Source: out.DamageSource,
-		Target: out.DamageTarget,
-		Amount: out.DamageAmount,
-		Combat: true,
-	})
-	if frame.SourceLifelink {
-		g.applyLifelinkFromFrameLocked(out.DamageAmount, frame)
-	}
+	_ = g.applyResolvedDamageLocked(out)
 }
 
 // markCombatDamageToPlayerFromFrameLocked is the damage-to-player
@@ -4815,9 +4783,18 @@ func (g *Game) markCombatDamageToPlayerFromFrameLocked(playerID uuid.UUID, amoun
 		DamageTarget:   playerID,
 		DamageAmount:   amount,
 		IsCombatDamage: true,
+		// #694: the frame IS the snapshot. CR 903.10a trample overflow
+		// from a commander counts toward the 21-damage SBA, and the
+		// tally is keyed on frame.AttackerID (the commander's instance
+		// ID, the CommanderDamage key since S25 / #77) because the
+		// attacker may have died to blocker damage before the prompt
+		// resolved.
+		damageTail: damageTailFromFrame(damageTailPlayer, frame),
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
+		// CR 616 ordering prompt queued; the damage lands through the
+		// same tail when it is answered (#694).
 		return
 	}
 	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
@@ -4828,90 +4805,7 @@ func (g *Game) markCombatDamageToPlayerFromFrameLocked(playerID uuid.UUID, amoun
 	if out == nil || out.Canceled {
 		return
 	}
-	if out.DamageAmount <= 0 {
-		return
-	}
-	p := g.playerByIDLocked(out.DamageTarget)
-	if p == nil {
-		return
-	}
-	p.ChangeLife(-out.DamageAmount)
-	// CR 903.10a: trample overflow from a commander counts toward the
-	// 21-damage SBA. Read the cached frame — the attacker may have
-	// died to blocker damage before the prompt resolved, so a
-	// battlefield lookup would miss it. AttackerID is the commander's
-	// instance ID, which is the CommanderDamage key since S25 (#77).
-	if frame.SourceIsCommander {
-		p.RecordCommanderDamage(frame.AttackerID, out.DamageAmount)
-	}
-	g.EmitEvent(Event{
-		Kind:   EventDealDamage,
-		Actor:  frame.SourceController,
-		Source: out.DamageSource,
-		Target: out.DamageTarget,
-		Amount: out.DamageAmount,
-		Combat: true,
-	})
-	if frame.SourceLifelink {
-		g.applyLifelinkFromFrameLocked(out.DamageAmount, frame)
-	}
-}
-
-// applyLifelinkFromFrameLocked credits the frame's cached source
-// controller with `amount` life. Used by the damage-assignment
-// resume path so lifelink still fires even if the attacker died
-// to blocker damage before the prompt resolved.
-//
-// Caller must hold g.mu.
-func (g *Game) applyLifelinkFromFrameLocked(amount int, frame *DamageAssignmentFrame) {
-	if amount <= 0 || frame == nil || !frame.SourceLifelink {
-		return
-	}
-	p := g.playerByIDLocked(frame.SourceController)
-	if p == nil {
-		return
-	}
-	p.ChangeLife(amount)
-	g.EmitEvent(Event{
-		Kind:   EventChangeLife,
-		Target: frame.SourceController,
-		Source: frame.AttackerID,
-		Amount: amount,
-	})
-}
-
-// applyLifelinkLocked credits the damage source's controller with
-// `amount` life if the source has the lifelink keyword (CR 702.15).
-// Called from both damage-to-card and damage-to-player routers so
-// lifelink fires for every damage event from a lifelink source —
-// combat and non-combat alike. Runs through ChangePlayerLife (not
-// the pipeline) because life gain from lifelink is not itself a
-// rules-visible replaceable event at S18 scope (replacement of the
-// life gain is an S28 cost/effect axis, not S18).
-//
-// Caller must hold g.mu.
-func (g *Game) applyLifelinkLocked(sourceID uuid.UUID, amount int) {
-	if amount <= 0 {
-		return
-	}
-	src := findBattlefieldCard(g, sourceID)
-	if src == nil {
-		return
-	}
-	if !HasKeyword(src, "lifelink") {
-		return
-	}
-	p := g.playerByIDLocked(src.Controller)
-	if p == nil {
-		return
-	}
-	p.ChangeLife(amount)
-	g.EmitEvent(Event{
-		Kind:   EventChangeLife,
-		Target: src.Controller,
-		Source: sourceID,
-		Amount: amount,
-	})
+	_ = g.applyResolvedDamageLocked(out)
 }
 
 // markCombatDamageToPlayerLocked applies combat damage to a player
@@ -4929,9 +4823,18 @@ func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount
 		DamageTarget:   playerID,
 		DamageAmount:   amount,
 		IsCombatDamage: true,
+		// #694: snapshot the source before the pipeline can pause —
+		// CR 903.10a commander damage (keyed on the commander's own
+		// instance ID since S25 / #77) and CR 702.15 lifelink both
+		// ride on it, and a CR 616 prompt is answered after the rest
+		// of the combat damage has landed.
+		damageTail: g.combatDamageTailLocked(damageTailPlayer, source),
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
+		// CR 616 ordering prompt queued; the damage lands through the
+		// same tail when it is answered (#694). Before that fix this
+		// return dropped the life loss entirely.
 		return
 	}
 	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
@@ -4942,49 +4845,7 @@ func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount
 	if out == nil || out.Canceled {
 		return
 	}
-	if out.DamageAmount <= 0 {
-		return
-	}
-	p := g.playerByIDLocked(out.DamageTarget)
-	if p == nil {
-		return
-	}
-	p.ChangeLife(-out.DamageAmount)
-	// CR 903.10a: combat damage from a commander accrues toward the
-	// 21-damage loss SBA. The attacker is still on the battlefield in
-	// this path (unblocked attackers take no blocker damage before
-	// their own damage lands).
-	g.recordCommanderCombatDamageLocked(p, out.DamageSource, out.DamageAmount)
-	g.EmitEvent(Event{
-		Kind:   EventDealDamage,
-		Actor:  g.controllerOfBattlefieldCardLocked(out.DamageSource),
-		Source: out.DamageSource,
-		Target: out.DamageTarget,
-		Amount: out.DamageAmount,
-		Combat: true,
-	})
-	// S18 sub-PR 3: lifelink credits the source's controller for
-	// damage dealt to a player too (CR 702.15 — all damage, not just
-	// damage to creatures).
-	g.applyLifelinkLocked(out.DamageSource, out.DamageAmount)
-}
-
-// recordCommanderCombatDamageLocked notes combat damage on the
-// defending player's CommanderDamage map when the source is a
-// commander, feeding the 21-damage SBA (CR 903.10a /
-// IsDeadByCommanderDamage). Keyed by the commander's own INSTANCE ID
-// since S25 (#77), so a partner pair tracks two independent clocks
-// (CR 903.10a). No-op when the source isn't on the battlefield or
-// isn't a commander. Caller must hold g.mu.
-func (g *Game) recordCommanderCombatDamageLocked(target *Player, sourceID uuid.UUID, amount int) {
-	if amount <= 0 || target == nil {
-		return
-	}
-	src := findBattlefieldCard(g, sourceID)
-	if src == nil || !src.IsCommander {
-		return
-	}
-	target.RecordCommanderDamage(src.InstanceID, amount)
+	_ = g.applyResolvedDamageLocked(out)
 }
 
 // ClearCombat resets every card on the battlefield to "not attacking

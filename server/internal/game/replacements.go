@@ -239,6 +239,20 @@ type ReplacementEvent struct {
 	DamageAmount   int
 	IsCombatDamage bool
 
+	// damageTail is the damage half's answer to zoneRoute: what the
+	// entry point still owes once the pipeline settles the amount —
+	// whether the target is a player or a permanent, and the snapshot
+	// of the source's deathtouch / lifelink / commander state that the
+	// riders need. Set by every damage entry point and read only by
+	// applyResolvedDamageLocked, which both the inline path and the
+	// CR 616 resume go through.
+	//
+	// Unexported engine plumbing — the catalog never sets or reads it.
+	// Added in #694, where the resume's hand-rolled copy of the tail
+	// was dropping player life loss, the CR 120.3 split, lifelink,
+	// deathtouch and commander damage. See damage_tail.go.
+	damageTail *damageTail
+
 	// --- RepEventStepTransition fields ---
 
 	// StepTransitionStep is the step being entered (StepUntap,
