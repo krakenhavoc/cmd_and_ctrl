@@ -34,7 +34,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBeginUpkeep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Actor == source.Controller && b03ArtifactsControlled(g, source.Controller) > 0
-			}, "Thopter Spy Network — create a 1/1 Thopter", Do(CreateToken{Template: ThopterToken(), N: 1})),
+			}, "Thopter Spy Network — create a 1/1 Thopter", Do(CreateToken{Template: TokenCard("1/1 colorless Thopter artifact with flying"), N: 1})),
 			OncePerBatch(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if !combatDamageToPlayerBy(ev, source.Controller, g) {
 					return false

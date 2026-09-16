@@ -26,7 +26,7 @@ func init() {
 			TribalKeywordGrant(TribeFilter{Tribes: []string{"Dinosaur"}, Others: true, YoursOnly: true}, "haste"),
 		},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Regisaur Alpha — create a 3/3 green Dinosaur with trample", Do(CreateToken{Template: b23GreenDinosaurTrampleToken(), N: 1})),
+			WhenThisEnters("Regisaur Alpha — create a 3/3 green Dinosaur with trample", Do(CreateToken{Template: TokenCard("3/3 green Dinosaur with trample"), N: 1})),
 		},
 	})
 }

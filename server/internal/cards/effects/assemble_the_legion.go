@@ -47,7 +47,7 @@ func init() {
 						if n <= 0 {
 							return nil
 						}
-						return CreateToken{Controller: item.Controller, Template: b20RedWhiteSoldierHasteToken(), N: n}.Apply(ctx)
+						return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 red and white Soldier with haste"), N: n}.Apply(ctx)
 					})
 			},
 		}},

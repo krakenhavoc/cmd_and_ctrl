@@ -23,7 +23,7 @@ func init() {
 		Caveats:      []string{"The Spirit token is created colorless instead of white, so anything that cares about a creature's color doesn't see it."},
 		Triggered: []game.TriggeredAbility{
 			WhenThisDies("Doomed Traveler — create a 1/1 Spirit", Do(CreateToken{
-				Template: SpiritToken(),
+				Template: TokenCard("1/1 colorless Spirit with flying"),
 				N:        1,
 			})),
 		},

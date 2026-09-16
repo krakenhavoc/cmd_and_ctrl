@@ -55,7 +55,7 @@ func init() {
 			Label: "{G}, {T}: Create a 1/1 green Squirrel creature token.",
 			Cost:  Plus(ManaCost("{G}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return CreateToken{Controller: item.Controller, Template: b29GreenSquirrelToken(), N: 1}.Apply(NewContext(g, item))
+				return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 green Squirrel"), N: 1}.Apply(NewContext(g, item))
 			},
 		}},
 	})

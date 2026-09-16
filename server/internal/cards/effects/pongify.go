@@ -40,22 +40,9 @@ func init() {
 			}
 			return CreateToken{
 				Controller: controller,
-				Template:   GreenApeToken(),
+				Template:   TokenCard("3/3 colorless Ape"),
 				N:          1,
 			}.Apply(ctx)
 		},
 	})
-}
-
-// GreenApeToken is Pongify's 3/3 green Ape. It lives here rather than
-// in tokens.go so a concurrent card batch editing that file doesn't
-// collide with this one; the template is one card's worth of data and
-// has no other consumer.
-func GreenApeToken() game.Card {
-	return game.Card{
-		Name:      "Ape",
-		TypeLine:  "Token Creature — Ape",
-		Power:     3,
-		Toughness: 3,
-	}
 }

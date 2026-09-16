@@ -26,7 +26,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b09OpponentCastInstantOrSorcery(ev, source, g)
-			}, "Arasta of the Endless Web — create a 1/2 Spider with reach", Do(CreateToken{Template: b09GreenSpiderToken(), N: 1})),
+			}, "Arasta of the Endless Web — create a 1/2 Spider with reach", Do(CreateToken{Template: TokenCard("1/2 green Spider with reach"), N: 1})),
 		},
 	})
 }

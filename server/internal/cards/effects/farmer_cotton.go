@@ -31,7 +31,7 @@ func init() {
 			if x <= 0 {
 				return nil
 			}
-			if err := (CreateToken{Controller: item.Controller, Template: b27WhiteHalflingToken(), N: x}).Apply(ctx); err != nil {
+			if err := (CreateToken{Controller: item.Controller, Template: TokenCard("1/1 white Halfling"), N: x}).Apply(ctx); err != nil {
 				return err
 			}
 			return CreateToken{Controller: item.Controller, Template: FoodToken(), N: x}.Apply(ctx)

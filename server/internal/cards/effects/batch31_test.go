@@ -502,7 +502,7 @@ func TestB31WeaponsManufacturingMunitionsBouncedStillShoots(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	b31Push(g, me.ID, "Weapons Manufacturing", "Enchantment", b31WeaponsManufacturingOracle, "{1}{R}", 0, 0, "R")
 	bear := b31Push(g, opp.ID, "Their Bear", "Creature — Bear", "", "{1}{G}", 2, 2, "G")
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, b31MunitionsToken(), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("Munitions"), 1) })
 	munitions := findBattlefieldByName(g, "Munitions")
 	g.WithWriteLock(func() { _ = g.BounceToHandForEffect(munitions) })
 	b04WaitForPick(t, g, me.ID)

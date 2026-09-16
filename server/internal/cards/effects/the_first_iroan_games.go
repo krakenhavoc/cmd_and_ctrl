@@ -43,7 +43,7 @@ func init() {
 func iroanSoldier(g *game.Game, item *game.StackItem) error {
 	return CreateToken{
 		Controller: item.Controller,
-		Template:   HumanSoldierToken(),
+		Template:   TokenCard("1/1 colorless Human Soldier"),
 		N:          1,
 	}.Apply(NewContext(g, item))
 }

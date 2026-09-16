@@ -24,17 +24,6 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b25BlueTentacleToken is Nadir Kraken's 1/1 blue Tentacle.
-func b25BlueTentacleToken() game.Card {
-	return game.Card{
-		Name:      "Tentacle",
-		TypeLine:  "Token Creature — Tentacle",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"U"},
-	}
-}
-
 // --- costs ---------------------------------------------------------
 
 // b25SacrificeAGoblin is Pashalik Mons' "Sacrifice a Goblin" — any
@@ -246,7 +235,7 @@ func b25GrowAndSpawnTentacle(ctx *Context, kraken, controller uuid.UUID) error {
 			return err
 		}
 	}
-	return CreateToken{Controller: controller, Template: b25BlueTentacleToken(), N: 1}.Apply(ctx)
+	return CreateToken{Controller: controller, Template: TokenCard("1/1 blue Tentacle"), N: 1}.Apply(ctx)
 }
 
 // b25TevalAttackLabel is the stack label both declarations of

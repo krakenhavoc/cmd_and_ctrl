@@ -26,7 +26,7 @@ func init() {
 				spell, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && (spell.IsInstant() || spell.IsSorcery())
 			}, "Young Pyromancer — create an Elemental", Do(CreateToken{
-				Template: b07RedElementalToken(),
+				Template: TokenCard("1/1 red Elemental"),
 				N:        1,
 			})),
 		},

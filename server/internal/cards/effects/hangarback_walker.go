@@ -63,7 +63,7 @@ func init() {
 						if n <= 0 {
 							return nil
 						}
-						return CreateToken{Controller: item.Controller, Template: ThopterToken(), N: n}.Apply(NewContext(g, item))
+						return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 colorless Thopter artifact with flying"), N: n}.Apply(NewContext(g, item))
 					})
 			},
 		}},

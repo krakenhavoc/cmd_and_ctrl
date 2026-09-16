@@ -133,15 +133,3 @@ func b03InstantOrSorceryCastByYou(ev game.Event, source *game.Card, g *game.Game
 	spell, ok := g.LookupCardForEffect(ev.CardID)
 	return ok && (spell.IsInstant() || spell.IsSorcery())
 }
-
-// b03GreenBeast44Token is Rampaging Baloths' 4/4 green Beast — a
-// different token from Beast Within's 3/3 GreenBeastToken, so it
-// gets its own template rather than a parameter on that one.
-func b03GreenBeast44Token() game.Card {
-	return game.Card{
-		Name:      "Beast",
-		TypeLine:  "Token Creature — Beast",
-		Power:     4,
-		Toughness: 4,
-	}
-}

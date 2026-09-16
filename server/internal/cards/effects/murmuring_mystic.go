@@ -23,7 +23,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b12InstantOrSorceryCastByYou(ev, source, g)
-			}, "Murmuring Mystic — create a 1/1 Bird Illusion with flying", Do(CreateToken{Template: b16BlueBirdIllusionToken(), N: 1})),
+			}, "Murmuring Mystic — create a 1/1 Bird Illusion with flying", Do(CreateToken{Template: TokenCard("1/1 blue Bird Illusion with flying"), N: 1})),
 		},
 	})
 }

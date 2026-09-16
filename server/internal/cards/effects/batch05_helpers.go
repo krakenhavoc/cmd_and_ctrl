@@ -106,16 +106,3 @@ func b05EachPlayerDraws(g *game.Game, item *game.StackItem, n int) error {
 	}
 	return nil
 }
-
-// b05SnakeToken is Ophiomancer's 1/1 black Snake with deathtouch.
-// Deathtouch is real (token Keywords feed the layer engine since S21);
-// Colors stays unset like every other template except the Goblin.
-func b05SnakeToken() game.Card {
-	return game.Card{
-		Name:      "Snake",
-		TypeLine:  "Token Creature — Snake",
-		Power:     1,
-		Toughness: 1,
-		Keywords:  []string{"deathtouch"},
-	}
-}

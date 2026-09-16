@@ -31,7 +31,7 @@ func init() {
 			if err := (CounterTarget{StackID: stackID}).Apply(ctx); err != nil {
 				return err
 			}
-			return CreateToken{Controller: tokenOwner, Template: b09BlueBirdToken(), N: 1}.Apply(ctx)
+			return CreateToken{Controller: tokenOwner, Template: TokenCard("2/2 blue Bird with flying"), N: 1}.Apply(ctx)
 		},
 	})
 }

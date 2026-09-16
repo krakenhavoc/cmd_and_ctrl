@@ -29,7 +29,7 @@ func init() {
 		Name:         "Omnath, Locus of Rage",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Landfall("Omnath, Locus of Rage — create a 5/5 Elemental", Do(CreateToken{Template: b08RedGreenElementalToken(), N: 1})),
+			Landfall("Omnath, Locus of Rage — create a 5/5 Elemental", Do(CreateToken{Template: TokenCard("5/5 red and green Elemental"), N: 1})),
 			{
 				Watches: []game.EventKind{game.EventLTB},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

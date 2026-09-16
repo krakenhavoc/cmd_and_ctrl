@@ -27,44 +27,6 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b22BlackSlugToken is Toxrill's 1/1 black Slug.
-func b22BlackSlugToken() game.Card {
-	return game.Card{
-		Name:      "Slug",
-		TypeLine:  "Token Creature — Slug",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"B"},
-	}
-}
-
-// b22WhiteSoldierLifelinkToken is Dawn of Hope's 1/1 white Soldier
-// with lifelink. Its own template rather than SoldierToken: the
-// colour and the lifelink are printed.
-func b22WhiteSoldierLifelinkToken() game.Card {
-	return game.Card{
-		Name:      "Soldier",
-		TypeLine:  "Token Creature — Soldier",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"W"},
-		Keywords:  []string{"lifelink"},
-	}
-}
-
-// b22BlackZombieWarriorVigilanceToken is God-Eternal Oketra's 4/4
-// black Zombie Warrior with vigilance.
-func b22BlackZombieWarriorVigilanceToken() game.Card {
-	return game.Card{
-		Name:      "Zombie Warrior",
-		TypeLine:  "Token Creature — Zombie Warrior",
-		Power:     4,
-		Toughness: 4,
-		Colors:    []string{"B"},
-		Keywords:  []string{"vigilance"},
-	}
-}
-
 // --- predicates --------------------------------------------------
 
 // b22SpellManaValueGE is "target spell with mana value N or greater"

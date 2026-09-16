@@ -44,7 +44,7 @@ func init() {
 			},
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b10LandYouControlDied(ev, source, g)
-			}, "Titania — create a 5/3 green Elemental", Do(CreateToken{Template: b10GreenElemental53Token(), N: 1})),
+			}, "Titania — create a 5/3 green Elemental", Do(CreateToken{Template: TokenCard("5/3 green Elemental"), N: 1})),
 		},
 	})
 }

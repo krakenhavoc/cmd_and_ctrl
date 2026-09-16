@@ -48,7 +48,7 @@ func init() {
 			}
 			return CreateToken{
 				Controller: tokenOwner,
-				Template:   WhiteBirdToken(),
+				Template:   TokenCard("2/2 colorless Bird with flying"),
 				N:          1,
 			}.Apply(ctx)
 		},

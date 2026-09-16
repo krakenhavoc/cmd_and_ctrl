@@ -47,7 +47,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b12EnchantmentSpellCastByYou(ev, source, g)
-			}, "Hallowed Haunting — create a Spirit Cleric", Do(CreateToken{Template: b29WhiteSpiritClericToken(), N: 1})),
+			}, "Hallowed Haunting — create a Spirit Cleric", Do(CreateToken{Template: TokenCard("0/0 white Spirit Cleric"), N: 1})),
 		},
 	})
 }

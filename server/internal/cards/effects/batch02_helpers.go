@@ -92,18 +92,6 @@ func b02CountLandsControlledBy(g *game.Game, controller uuid.UUID) int {
 	return n
 }
 
-// b02PlantToken is Avenger of Zendikar's 0/1 green Plant. Lives here
-// rather than in tokens.go so a concurrent batch editing that file
-// doesn't collide with this one.
-func b02PlantToken() game.Card {
-	return game.Card{
-		Name:      "Plant",
-		TypeLine:  "Token Creature — Plant",
-		Power:     0,
-		Toughness: 1,
-	}
-}
-
 // b02ExileAllGraveyards is "exile all graveyards" — every seat's,
 // the controller's included — through the same per-player helper
 // Bojuka Bog and Farewell use.

@@ -35,7 +35,7 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The city's blessing isn't kept once earned — your other artifact creatures get +2/+2 only while you control ten or more permanents."},
 		Triggered: []game.TriggeredAbility{
-			AtEachUpkeep("Illustrious Wanderglyph — create a 1/1 Gnome", Do(CreateToken{Template: b17GnomeToken(), N: 1})),
+			AtEachUpkeep("Illustrious Wanderglyph — create a 1/1 Gnome", Do(CreateToken{Template: TokenCard("1/1 colorless Gnome artifact"), N: 1})),
 		},
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,

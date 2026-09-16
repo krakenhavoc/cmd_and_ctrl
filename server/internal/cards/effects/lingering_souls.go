@@ -28,7 +28,7 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return CreateToken{
 				Controller: item.Controller,
-				Template:   SpiritToken(),
+				Template:   TokenCard("1/1 colorless Spirit with flying"),
 				N:          2,
 			}.Apply(ctx)
 		},

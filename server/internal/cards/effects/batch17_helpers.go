@@ -26,28 +26,6 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b17GnomeToken is Threefold Thunderhulk's 1/1 colorless Gnome
-// artifact creature.
-func b17GnomeToken() game.Card {
-	return game.Card{
-		Name:      "Gnome",
-		TypeLine:  "Token Artifact Creature — Gnome",
-		Power:     1,
-		Toughness: 1,
-	}
-}
-
-// b17RedOgreToken is Kazuul's 3/3 red Ogre.
-func b17RedOgreToken() game.Card {
-	return game.Card{
-		Name:      "Ogre",
-		TypeLine:  "Token Creature — Ogre",
-		Power:     3,
-		Toughness: 3,
-		Colors:    []string{"R"},
-	}
-}
-
 // --- board reads -------------------------------------------------
 
 // b17LandCardsInGraveyard counts the land cards in `player`'s

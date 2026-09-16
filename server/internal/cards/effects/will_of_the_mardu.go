@@ -41,7 +41,7 @@ func init() {
 			target := item.Targets[0]
 			if ctx.HasMode(0) && target.Kind == game.TargetPlayer {
 				n := b14CreaturesControlled(ctx.Game, target.ID)
-				return CreateToken{Controller: ctx.Controller(), Template: b21RedWarriorToken(), N: n}.Apply(ctx)
+				return CreateToken{Controller: ctx.Controller(), Template: TokenCard("1/1 red Warrior"), N: n}.Apply(ctx)
 			}
 			if ctx.HasMode(1) && target.Kind == game.TargetCard {
 				n := b14CreaturesControlled(ctx.Game, ctx.Controller())

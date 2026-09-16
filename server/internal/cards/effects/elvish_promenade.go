@@ -26,7 +26,7 @@ func init() {
 			if n <= 0 {
 				return nil
 			}
-			return CreateToken{Controller: item.Controller, Template: b13GreenElfWarriorToken(), N: n}.Apply(ctx)
+			return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 green Elf Warrior"), N: n}.Apply(ctx)
 		},
 	})
 }

@@ -50,7 +50,7 @@ func init() {
 			SorcerySpeed: true,
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				n := b13LastKnownCounterTotal(g, item.SourceCardID)
-				return CreateToken{Controller: item.Controller, Template: b13GreenSpiderReachToken(), N: n}.Apply(NewContext(g, item))
+				return CreateToken{Controller: item.Controller, Template: TokenCard("2/2 green Spider with reach"), N: n}.Apply(NewContext(g, item))
 			},
 		}},
 	})

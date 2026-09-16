@@ -30,39 +30,6 @@ import (
 
 // --- tokens ------------------------------------------------------
 
-// b26MyrToken is Genesis Chamber's 1/1 colorless Myr artifact
-// creature.
-func b26MyrToken() game.Card {
-	return game.Card{
-		Name:      "Myr",
-		TypeLine:  "Token Artifact Creature — Myr",
-		Power:     1,
-		Toughness: 1,
-	}
-}
-
-// b26GreenBearToken is The Earth King's 4/4 green Bear.
-func b26GreenBearToken() game.Card {
-	return game.Card{
-		Name:      "Bear",
-		TypeLine:  "Token Creature — Bear",
-		Power:     4,
-		Toughness: 4,
-		Colors:    []string{"G"},
-	}
-}
-
-// b26RedDwarfToken is Dwarven Mine's 1/1 red Dwarf.
-func b26RedDwarfToken() game.Card {
-	return game.Card{
-		Name:      "Dwarf",
-		TypeLine:  "Token Creature — Dwarf",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"R"},
-	}
-}
-
 // --- trigger conditions ------------------------------------------
 
 // b26AnotherPlayerCastFromOutsideHand is Aerial Extortionist's draw

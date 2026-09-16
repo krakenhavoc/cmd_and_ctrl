@@ -31,18 +31,6 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b21RedWarriorToken is Will of the Mardu's 1/1 red Warrior —
-// b11WhiteWarriorToken with the printed colour swapped.
-func b21RedWarriorToken() game.Card {
-	return game.Card{
-		Name:      "Warrior",
-		TypeLine:  "Token Creature — Warrior",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"R"},
-	}
-}
-
 // b21TappedAttackingGoblin is General Kreat's 1/1 red Goblin, stamped
 // tapped so CreateTokensAttackingForEffect — which copies the
 // template and sets only the attack — puts it in tapped and

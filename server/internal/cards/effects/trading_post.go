@@ -39,7 +39,7 @@ func init() {
 				Label: "{1}, {T}, Pay 1 life: Create a 0/1 white Goat",
 				Cost:  Plus(postCost, PayLife(1)),
 				Effect: func(g *game.Game, item *game.StackItem) error {
-					return CreateToken{Controller: item.Controller, Template: b20WhiteGoatToken(), N: 1}.Apply(NewContext(g, item))
+					return CreateToken{Controller: item.Controller, Template: TokenCard("0/1 white Goat"), N: 1}.Apply(NewContext(g, item))
 				},
 			},
 			{

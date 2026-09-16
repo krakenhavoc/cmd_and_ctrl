@@ -17,7 +17,7 @@ func init() {
 		Name:         "Secure the Wastes",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return CreateToken{Controller: ctx.Controller(), Template: b11WhiteWarriorToken(), N: ctx.X()}.Apply(ctx)
+			return CreateToken{Controller: ctx.Controller(), Template: TokenCard("1/1 white Warrior"), N: ctx.X()}.Apply(ctx)
 		},
 	})
 }

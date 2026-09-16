@@ -37,7 +37,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b26SelfEnteredUntapped(ev, source)
-			}, "Dwarven Mine — create a 1/1 red Dwarf", Do(CreateToken{Template: b26RedDwarfToken(), N: 1})),
+			}, "Dwarven Mine — create a 1/1 red Dwarf", Do(CreateToken{Template: TokenCard("1/1 red Dwarf"), N: 1})),
 		},
 	})
 }

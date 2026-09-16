@@ -30,7 +30,7 @@ func init() {
 			Label: "{1}{R}, {T}: Create a 0/1 red Kobold creature token named Kobolds of Kher Keep.",
 			Cost:  Plus(ManaCost("{1}{R}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return CreateToken{Controller: item.Controller, Template: b15KoboldToken(), N: 1}.Apply(NewContext(g, item))
+				return CreateToken{Controller: item.Controller, Template: TokenCard("0/1 red Kobolds of Kher Keep"), N: 1}.Apply(NewContext(g, item))
 			},
 		}},
 	})

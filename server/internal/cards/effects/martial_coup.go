@@ -26,7 +26,7 @@ func init() {
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			x := ctx.X()
-			tokens, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), b11WhiteSoldierToken(), x, game.TokenEntryOptions{})
+			tokens, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), TokenCard("1/1 white Soldier"), x, game.TokenEntryOptions{})
 			if err != nil {
 				return err
 			}

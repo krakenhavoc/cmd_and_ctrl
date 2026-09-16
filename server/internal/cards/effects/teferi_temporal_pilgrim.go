@@ -77,7 +77,7 @@ func init() {
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{
 						Controller: item.Controller,
-						Template:   teferiPilgrimSpiritToken(),
+						Template:   TokenCard("2/2 blue Spirit with vigilance"),
 						N:          1,
 					}.Apply(NewContext(g, item))
 				},
@@ -102,19 +102,4 @@ func teferiPilgrimLoyaltyCounter(g *game.Game, item *game.StackItem) error {
 		Kind:   game.CounterLoyalty,
 		N:      1,
 	}.Apply(NewContext(g, item))
-}
-
-// teferiPilgrimSpiritToken is the −2's 2/2 blue Spirit with
-// vigilance. Local to this file rather than added to tokens.go: it
-// is a shape no other card in the catalog makes, and the shared file
-// is the one every concurrent card batch collides on.
-func teferiPilgrimSpiritToken() game.Card {
-	return game.Card{
-		Name:      "Spirit",
-		TypeLine:  "Token Creature — Spirit",
-		Power:     2,
-		Toughness: 2,
-		Colors:    []string{"U"},
-		Keywords:  []string{"vigilance"},
-	}
 }

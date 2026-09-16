@@ -31,7 +31,7 @@ func init() {
 			Label: "{2}{R}, {T}, Sacrifice a land: Create a 3/3 colorless Golem enchantment artifact creature token.",
 			Cost:  Plus(ManaCost("{2}{R}"), TapCost(), game.AbilityCost{SacrificeOther: b29SacrificeALand()}),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return CreateToken{Controller: item.Controller, Template: b29GolemEnchantmentArtifactToken(), N: 1}.Apply(NewContext(g, item))
+				return CreateToken{Controller: item.Controller, Template: TokenCard("3/3 colorless Golem artifact"), N: 1}.Apply(NewContext(g, item))
 			},
 		}},
 	})

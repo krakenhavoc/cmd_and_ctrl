@@ -20,41 +20,6 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b08BlueRedElementalToken is Resculpt's 4/4 blue and red Elemental.
-func b08BlueRedElementalToken() game.Card {
-	return game.Card{
-		Name:      "Elemental",
-		TypeLine:  "Token Creature — Elemental",
-		Power:     4,
-		Toughness: 4,
-		Colors:    []string{"U", "R"},
-	}
-}
-
-// b08RedGreenElementalToken is Omnath, Locus of Rage's 5/5 red and
-// green Elemental — an Elemental, so it feeds Omnath's own dies
-// trigger, which is the whole card.
-func b08RedGreenElementalToken() game.Card {
-	return game.Card{
-		Name:      "Elemental",
-		TypeLine:  "Token Creature — Elemental",
-		Power:     5,
-		Toughness: 5,
-		Colors:    []string{"R", "G"},
-	}
-}
-
-// b08BlueFishToken is Fountainport's 1/1 blue Fish.
-func b08BlueFishToken() game.Card {
-	return game.Card{
-		Name:      "Fish",
-		TypeLine:  "Token Creature — Fish",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"U"},
-	}
-}
-
 // --- predicates and counts ---------------------------------------
 
 // b08EnchantmentSpellCastByYou is the enchantress condition Sythis

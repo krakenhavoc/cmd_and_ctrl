@@ -57,7 +57,7 @@ func init() {
 			WhenThisEnters("Simulacrum Synthesizer — scry 2", Do(Scry{N: 2})),
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b15AnotherBigArtifactYouControlEntered(ev, source, g)
-			}, "Simulacrum Synthesizer — create a Construct", Do(CreateToken{Template: b15ConstructToken(), N: 1})),
+			}, "Simulacrum Synthesizer — create a Construct", Do(CreateToken{Template: TokenCard("0/0 colorless Construct artifact"), N: 1})),
 		},
 	})
 }

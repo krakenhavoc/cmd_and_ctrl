@@ -42,7 +42,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b31NontokenArtifactYouControlEntered(ev, source, g)
-			}, "Weapons Manufacturing — create a Munitions token", Do(CreateToken{Template: b31MunitionsToken(), N: 1})),
+			}, "Weapons Manufacturing — create a Munitions token", Do(CreateToken{Template: TokenCard("Munitions"), N: 1})),
 			{
 				Watches: []game.EventKind{game.EventLTB},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

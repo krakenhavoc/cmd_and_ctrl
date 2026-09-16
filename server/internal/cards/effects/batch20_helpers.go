@@ -25,17 +25,6 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b20WhiteGoatToken is Trading Post's 0/1 white Goat.
-func b20WhiteGoatToken() game.Card {
-	return game.Card{
-		Name:      "Goat",
-		TypeLine:  "Token Creature — Goat",
-		Power:     0,
-		Toughness: 1,
-		Colors:    []string{"W"},
-	}
-}
-
 // b20GolemToken is one of Triplicate Titan's three 3/3 colorless
 // Golem artifact creatures, each carrying exactly one of the Titan's
 // keywords.
@@ -46,20 +35,6 @@ func b20GolemToken(keyword string) game.Card {
 		Power:     3,
 		Toughness: 3,
 		Keywords:  []string{keyword},
-	}
-}
-
-// b20RedWhiteSoldierHasteToken is Assemble the Legion's 1/1 red and
-// white Soldier with haste. Its own template rather than
-// SoldierToken: the colours and the haste are printed.
-func b20RedWhiteSoldierHasteToken() game.Card {
-	return game.Card{
-		Name:      "Soldier",
-		TypeLine:  "Token Creature — Soldier",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"R", "W"},
-		Keywords:  []string{"haste"},
 	}
 }
 

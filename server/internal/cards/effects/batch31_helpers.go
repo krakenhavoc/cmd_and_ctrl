@@ -31,38 +31,12 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b31WhiteBlackInklingFlyingToken is Fain, the Broker's 2/1 white
-// and black Inkling with flying.
-func b31WhiteBlackInklingFlyingToken() game.Card {
-	return game.Card{
-		Name:      "Inkling",
-		TypeLine:  "Token Creature — Inkling",
-		Power:     2,
-		Toughness: 1,
-		Colors:    []string{"W", "B"},
-		Keywords:  []string{"flying"},
-	}
-}
-
-// b31MunitionsToken is Weapons Manufacturing's colorless artifact
-// token named Munitions. Its printed "When this token leaves the
-// battlefield, it deals 2 damage to any target" is carried by the
-// Manufacturing on the token's behalf (b31MunitionsYouControlLeft) —
-// a token template carries no triggered abilities and a token has
-// no oracle ID for the catalog to key one on.
-func b31MunitionsToken() game.Card {
-	return game.Card{
-		Name:     "Munitions",
-		TypeLine: "Token Artifact",
-	}
-}
-
 // b31TappedCatLifelinkToken is Leonin Warleader's 1/1 white Cat with
 // lifelink, stamped tapped so CreateTokensAttackingForEffect — which
 // copies the template and sets only the attack — puts it in tapped
 // and attacking (General Kreat's posture).
 func b31TappedCatLifelinkToken() game.Card {
-	tmpl := b28WhiteCatLifelinkToken()
+	tmpl := TokenCard("1/1 white Cat with lifelink")
 	tmpl.Tapped = true
 	return tmpl
 }
