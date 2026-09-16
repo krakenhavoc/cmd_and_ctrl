@@ -172,6 +172,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	if src.Kind == ZoneBattlefield {
 		c.Tapped = false
 		c.Counters = nil
+		c.LostLastCounter = false
 		c.BattleX = 0
 		c.BattleY = 0
 		c.AttackingTarget = uuid.Nil

@@ -152,6 +152,15 @@ var cardFields = plan(
 	"EnteredBattlefieldAt", carried, "",
 	"SummonedThisTurn", carried, "",
 	"MarkedLethalByDeathtouch", carried, "",
+	// #683: carried — a restore that dropped it would let a 0/0 that
+	// lost its last counter survive the next state-based check.
+	"LostLastCounter", carried, "",
+	// #683: printed data, carried with Toughness — a restore that
+	// dropped it would let a `*` creature die to the toughness check
+	// the first time it lost its last counter. Carried, and backfilled
+	// from the printing when a file written before #683 has no key
+	// (snapshot_backfill.go); every file this binary writes has it.
+	"VariableToughness", carried, "",
 	// Embedded BY VALUE in CardSnapshot rather than mirrored, so
 	// every field it grows — S29's NotBeforeTurn, S32's Face — is
 	// carried automatically and none of them appear in this plan.

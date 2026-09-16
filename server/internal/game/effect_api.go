@@ -1606,6 +1606,7 @@ func (g *Game) CreateTokensForEffect(controller uuid.UUID, template Card, n int,
 		tok.Owner = controller
 		tok.Controller = controller
 		tok.Counters = nil
+		tok.LostLastCounter = false
 		tok.KnownBy = nil
 		if opts.Tapped {
 			// Additive, not an assignment: a caller that pre-stamped
@@ -1680,6 +1681,7 @@ func (g *Game) CreateTokensAttackingForEffect(controller uuid.UUID, template Car
 		tok.Owner = controller
 		tok.Controller = controller
 		tok.Counters = nil
+		tok.LostLastCounter = false
 		tok.KnownBy = nil
 		if attacking {
 			tok.AttackingTarget = defender
@@ -1996,6 +1998,7 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 	card.Controller = newController
 	card.Tapped = tapped || out.EntersTapped
 	card.Counters = nil
+	card.LostLastCounter = false
 	card.KnownBy = nil
 	card.ExilePlay = ExilePlayPermission{}
 	card.DamageMarked = 0

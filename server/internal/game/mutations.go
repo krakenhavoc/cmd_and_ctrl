@@ -2255,6 +2255,7 @@ func (g *Game) stateBasedActionsLocked() bool {
 			}
 			if len(c.Counters) == 0 {
 				c.Counters = nil
+				c.LostLastCounter = true
 			}
 			fired = true
 		}
@@ -2292,11 +2293,18 @@ func (g *Game) stateBasedActionsLocked() bool {
 	// Printed-0 creatures (Toughness == 0 and no counters applied)
 	// are skipped: that's the placeholder / unparseable-stats
 	// convention documented on Card.Power — the SBA would else
-	// destroy every demo seed card.
+	// destroy every demo seed card. A creature that has LOST its
+	// counters is not skipped (Card.LostLastCounter, #683): a 0/0
+	// whose last +1/+1 counter was removed or cancelled has a real 0
+	// toughness and dies (CR 704.5f).
+	// Unless its printed toughness is not a number
+	// (Card.VariableToughness): a `*` creature's 0 is the import
+	// stand-in whether or not it once had counters, so it stays
+	// skipped.
 	var doomed []uuid.UUID
 	for _, c := range g.Battlefield.Cards {
 		if c.IsCreature() {
-			if c.Toughness == 0 && len(c.Counters) == 0 {
+			if c.Toughness == 0 && len(c.Counters) == 0 && (!c.LostLastCounter || c.VariableToughness) {
 				continue
 			}
 			curT := c.CurrentToughness()
@@ -5312,6 +5320,7 @@ func (g *Game) applyCounterLocked(cardID uuid.UUID, name string, delta int) erro
 	}
 	for i := range z.Cards {
 		if z.Cards[i].InstanceID == cardID {
+			hadCounters := len(z.Cards[i].Counters) > 0
 			if z.Cards[i].Counters == nil {
 				z.Cards[i].Counters = make(map[string]int)
 			}
@@ -5321,6 +5330,14 @@ func (g *Game) applyCounterLocked(cardID uuid.UUID, name string, delta int) erro
 				delete(z.Cards[i].Counters, name)
 				if len(z.Cards[i].Counters) == 0 {
 					z.Cards[i].Counters = nil
+					// #683: not a placeholder any more — see
+					// Card.LostLastCounter and the toughness SBA.
+					// Only when there was a counter to lose:
+					// removing one from a card with none leaves
+					// whatever it was before.
+					if hadCounters {
+						z.Cards[i].LostLastCounter = true
+					}
 				}
 			}
 			g.EmitEvent(Event{
