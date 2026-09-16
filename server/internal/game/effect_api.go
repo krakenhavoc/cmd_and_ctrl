@@ -85,8 +85,9 @@ func (g *Game) RevealHandForEffect(playerID uuid.UUID) {
 // The card auto-resolves (goes to graveyard) while the choice is
 // pending — the pending entry outlives the spell.
 //
-// Cap n to the player's current hand size per CR 701.8c ("discard
-// as many as you can"). No-op if the player isn't seated or is
+// Cap n to the player's current hand size per CR 609.3 (an effect
+// does as much as it can, so "discard N" discards the whole hand
+// when it holds fewer). No-op if the player isn't seated or is
 // eliminated.
 //
 // Known bug (#651): nothing waits for this discard. PassPriority

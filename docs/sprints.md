@@ -1612,7 +1612,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 - **Cost-replacement effects** (Trinisphere, Thalia, Spellshift, Kambal) → **S28** [#93](https://github.com/krakenhavoc/cmd_and_ctrl/issues/93). S17 hooks touch the event-path; cost replacement touches the S15 cost engine — separate surface.
 - **Damage prevention shields with charges** (CR 615) → **S30** [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95). Fog in S17 is atomic cancel; stateful shields land in S30.
 - **Dependency detection** (CR 613.8) + **Layer 1 copy effects** → **S16.5** [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159). *(2026-09-16: copy effects shipped in #414. Dependency ordering moved to [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668) at the S16.5 closeout.)*
-- **Library of Leng** (including strict voluntariness CR 701.8a/c) → later sub-PR. Tracked at [#160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/160).
+- **Library of Leng** (including strict voluntariness CR 701.9) → later sub-PR. Tracked at [#160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/160).
   - *Corrected 2026-09-16:* the voluntariness framing was wrong ([ADR 0013 §10a](decisions/0013-replacement-effects.md)); #160 closes as not planned, and the work is [#650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/650) after [#651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/651).
 - **Hangarback Walker** — needs X-cost stack plumbing; future on-demand PR.
 - **Champion of Lambholt** — counter half is a trigger (S19), block-restriction is S18. Not a replacement.

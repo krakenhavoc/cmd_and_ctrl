@@ -358,7 +358,7 @@ export type LogKind =
   | "token"
   | "sacrifice"
   | "eliminated"
-  // A player revealed cards (CR 701.16): one entry per reveal, however
+  // A player revealed cards (CR 701.20): one entry per reveal, however
   // many cards it showed. Never carries card_id; `amount` is the card
   // count, `old_zone` where they were revealed from, and `target_seat`
   // is set when the reveal was to one player only, in which case the

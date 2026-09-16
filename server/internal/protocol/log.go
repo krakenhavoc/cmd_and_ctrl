@@ -124,7 +124,7 @@ const (
 	// LogEliminated — a player left the game (concede, or any of the
 	// state-based losses).
 	LogEliminated LogKind = "eliminated"
-	// LogReveal — a player revealed cards (CR 701.16). The engine
+	// LogReveal — a player revealed cards (CR 701.20). The engine
 	// fires one EventRevealCards per card; every event sharing a
 	// RevealSeq collapses into ONE entry, with Amount the card count
 	// and OldZone the zone they were revealed from. The entry never
