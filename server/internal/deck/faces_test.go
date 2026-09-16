@@ -324,3 +324,49 @@ func TestReversibleCardIsNotPlayable(t *testing.T) {
 			"the card would import as a free typeless blank", got.Layout)
 	}
 }
+
+// TestNonNumericToughnessIsStampedVariable pins the importer half of
+// #683's `*` exemption: a non-numeric printed toughness lands as 0 AND
+// as VariableToughness, so the toughness state check can tell it from
+// a printed 0/0 once counters have come and gone. A numeric 0 and an
+// empty value (a non-creature) are not variable.
+func TestNonNumericToughnessIsStampedVariable(t *testing.T) {
+	for _, tc := range []struct {
+		toughness string
+		parsed    int
+		want      bool
+	}{
+		{"*", 0, true},
+		{"1+*", 0, true},
+		{"?", 0, true},
+		{"0", 0, false},
+		{"3", 3, false},
+		{"", 0, false},
+	} {
+		got := importOne(cards.Card{
+			ID: uuid.New(), OracleID: uuid.New(), Name: "Test", Layout: "normal",
+			TypeLine: "Creature — Test", Power: "0", Toughness: tc.toughness,
+		})
+		if got.Toughness != tc.parsed {
+			t.Errorf("toughness %q: Toughness = %d, want %d", tc.toughness, got.Toughness, tc.parsed)
+		}
+		if got.VariableToughness != tc.want {
+			t.Errorf("toughness %q: VariableToughness = %v, want %v", tc.toughness, got.VariableToughness, tc.want)
+		}
+	}
+
+	// Per face, and SetFace materialises the active face's bit.
+	dfc := jacePrint()
+	dfc.CardFaces[0].Toughness = "*"
+	got := importOne(dfc)
+	if !got.VariableToughness {
+		t.Error("the front face's `*` toughness was not stamped on the card")
+	}
+	if len(got.Faces) != 2 || !got.Faces[0].VariableToughness || got.Faces[1].VariableToughness {
+		t.Fatalf("per-face VariableToughness wrong: %+v", got.Faces)
+	}
+	got.SetFace(1)
+	if got.VariableToughness {
+		t.Error("switching to the planeswalker face kept the front face's VariableToughness")
+	}
+}

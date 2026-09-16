@@ -246,6 +246,7 @@ type cardSnapshot struct {
 	TypeLine                 string              `json:"typeLine,omitempty"`
 	Power                    int                 `json:"power"`
 	Toughness                int                 `json:"toughness"`
+	VariableToughness        bool                `json:"variableToughness,omitempty"`
 	ManaCost                 string              `json:"manaCost,omitempty"`
 	ProducedMana             []string            `json:"producedMana,omitempty"`
 	Colors                   []string            `json:"colors,omitempty"`
@@ -273,6 +274,7 @@ type cardSnapshot struct {
 	EnteredBattlefieldAt     int64               `json:"enteredBattlefieldAt"`
 	SummonedThisTurn         bool                `json:"summonedThisTurn"`
 	MarkedLethalByDeathtouch bool                `json:"markedLethalByDeathtouch"`
+	LostLastCounter          bool                `json:"lostLastCounter,omitempty"`
 	ExilePlay                ExilePlayPermission `json:"exilePlay"`
 	AttachedTo               TargetRef           `json:"attachedTo,omitempty"`
 	AttachedAt               int64               `json:"attachedAt,omitempty"`
@@ -694,6 +696,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		TypeLine:                 c.TypeLine,
 		Power:                    c.Power,
 		Toughness:                c.Toughness,
+		VariableToughness:        c.VariableToughness,
 		ManaCost:                 c.ManaCost,
 		ProducedMana:             copyStrings(c.ProducedMana),
 		Colors:                   copyStrings(c.Colors),
@@ -721,6 +724,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
+		LostLastCounter:          c.LostLastCounter,
 		ExilePlay:                c.ExilePlay,
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
@@ -1159,6 +1163,7 @@ func restoreCard(c *cardSnapshot) Card {
 		TypeLine:                 c.TypeLine,
 		Power:                    c.Power,
 		Toughness:                c.Toughness,
+		VariableToughness:        c.VariableToughness,
 		ManaCost:                 c.ManaCost,
 		ProducedMana:             copyStrings(c.ProducedMana),
 		Colors:                   copyStrings(c.Colors),
@@ -1186,6 +1191,7 @@ func restoreCard(c *cardSnapshot) Card {
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
+		LostLastCounter:          c.LostLastCounter,
 		ExilePlay:                c.ExilePlay,
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,

@@ -495,6 +495,46 @@ type Card struct {
 	// alongside DamageMarked. Only meaningful on the battlefield.
 	// Added in S18 sub-PR 3.
 	MarkedLethalByDeathtouch bool
+
+	// VariableToughness records that the printed toughness is not a
+	// number ("*", "1+*", "?"), so Toughness is the importer's 0
+	// stand-in rather than a printed 0. The toughness state-based
+	// action's placeholder skip reads it: a `*` creature whose
+	// characteristic-defining ability is handled manually stays
+	// skipped even after it loses its last counter, where a real
+	// printed 0/0 does not (LostLastCounter, #683).
+	//
+	// Stamped by the deck importer, per face on Faces, and carried by
+	// copy effects with the rest of the printed values: Clone-style
+	// copies (CopiableValuesOf) and token copies (TokenCopyTemplate).
+	// A copy whose exception sets a numeric toughness clears it. False
+	// for an empty printed toughness (non-creatures) and for cards
+	// that never went through import (tokens, fixtures, the demo
+	// seed).
+	VariableToughness bool
+
+	// LostLastCounter records that this object's counters went from
+	// some to none: its last counter was removed (an effect, the
+	// add_counter action) or cancelled (CR 704.5q). Removing a counter
+	// from a card that has none does not set it. It exists for the
+	// toughness state-based action's printed-0 skip — "Toughness == 0
+	// and no counters" is the placeholder / unparseable-stats
+	// convention documented on Power, and a 0/0 that just LOST its
+	// last +1/+1 counter looks exactly like one. A card that has lost
+	// its counters is not a placeholder: its 0 toughness is real, and
+	// CR 704.5f puts it into its owner's graveyard. The exception is
+	// a card whose printed toughness is not a number
+	// (VariableToughness): its 0 is still the import stand-in, so the
+	// skip keeps covering it. Without the flag a Hangarback Walker
+	// whose one +1/+1 counter cancels against a -1/-1 counter, or is
+	// removed by an effect, would stay on the battlefield as a 0/0 no
+	// damage could kill (#683).
+	//
+	// Per object, like Counters: cleared wherever Counters is reset
+	// for a new object (leaving the battlefield, a token, a spell
+	// copy). A card cast for X=0 never had counters, so it is not
+	// flagged — that separate gap is noted on the X cards.
+	LostLastCounter bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for
@@ -574,7 +614,8 @@ func (c Card) CurrentPower() int {
 // callers compare against DamageMarked directly. NOT clamped (cf.
 // CurrentPower) because the SBAs need to distinguish "printed 0/0
 // placeholder" (Toughness == 0, no counters) from "reduced to 0/0
-// by -1/-1 counters" (Toughness > 0 + counters).
+// by -1/-1 counters" (Toughness > 0 + counters) and from "a 0/0 that
+// lost its last counter" (Card.LostLastCounter).
 //
 // Same caller responsibility as CurrentPower: ensure
 // RecomputeLayersIfStaleLocked has been called for this game state.

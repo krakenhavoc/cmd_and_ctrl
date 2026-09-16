@@ -425,6 +425,19 @@ func oracleTexts(c cards.Card) []string {
 	return out
 }
 
+// nonNumericStat reports whether a printed power / toughness string is
+// present but not a number ("*", "1+*", "?", "X"), which the parse
+// turns into a stand-in 0. An empty string is a card with no such
+// stat, not a variable one.
+func nonNumericStat(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+	_, err := strconv.Atoi(s)
+	return err != nil
+}
+
 func toGameCard(c cards.Card, isCommander bool) game.Card {
 	// Parse Scryfall's printed power/toughness strings to ints.
 	// Non-numeric values ("*", "1+*", "?", empty) parse to zero —
@@ -440,6 +453,10 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		TypeLine:   c.TypeLine,
 		Power:      power,
 		Toughness:  toughness,
+		// #683: the toughness SBA keeps skipping a `*` creature's
+		// stand-in 0 after it loses its last counter, where a
+		// printed 0/0 dies.
+		VariableToughness: nonNumericStat(c.Toughness),
 		// CR 306.5b — printed starting loyalty. The engine turns
 		// this into loyalty counters on battlefield entry; without
 		// it the 704.5i SBA eats the walker on the next priority
@@ -519,15 +536,16 @@ func printedFaces(c cards.Card) []game.Face {
 		loyalty, _ := strconv.Atoi(strings.TrimSpace(f.Loyalty))
 		defense, _ := strconv.Atoi(strings.TrimSpace(f.Defense))
 		out = append(out, game.Face{
-			Name:            f.Name,
-			TypeLine:        f.TypeLine,
-			ManaCost:        f.ManaCost,
-			Colors:          faceColors(f),
-			Power:           power,
-			Toughness:       toughness,
-			StartingLoyalty: loyalty,
-			StartingDefense: defense,
-			OracleText:      f.OracleText,
+			Name:              f.Name,
+			TypeLine:          f.TypeLine,
+			ManaCost:          f.ManaCost,
+			Colors:            faceColors(f),
+			Power:             power,
+			Toughness:         toughness,
+			VariableToughness: nonNumericStat(f.Toughness),
+			StartingLoyalty:   loyalty,
+			StartingDefense:   defense,
+			OracleText:        f.OracleText,
 		})
 	}
 	return out
