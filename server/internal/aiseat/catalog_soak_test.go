@@ -400,11 +400,29 @@ func playCatalogGame(t *testing.T, room *ws.Room, policies []aiseat.Policy, turn
 	return out
 }
 
+// soakBaseSeed is the default first seed: the UTC date as YYYYMMDD,
+// times 100.
+//
+// A fixed default dealt the same four decks every night, so the
+// nightly reached the same few dozen cards forever and the report
+// never grew. Keying on the date gives each night new decks, so
+// coverage accumulates across runs, while a whole day stays
+// reproducible: the seed is printed at the top of the log, and every
+// failure prints the exact seed to replay.
+//
+// The x100 leaves each day 100 seeds of its own, so a run of
+// AISEAT_CATALOG_GAMES up to 100 never replays tomorrow's first deck.
+func soakBaseSeed(now time.Time) uint64 {
+	y, m, d := now.UTC().Date()
+	return uint64(y*10000+int(m)*100+d) * 100
+}
+
 // TestCatalogSoak plays N four-bot games on decks dealt from the
 // catalog, fails on any effect error, and reports what the bots
 // reached.
 //
-// Count: AISEAT_CATALOG_GAMES (default 1). Seed: AISEAT_CATALOG_SEED.
+// Count: AISEAT_CATALOG_GAMES (default 1). Seed: AISEAT_CATALOG_SEED,
+// defaulting to one derived from today's UTC date (see soakBaseSeed).
 // Report: AISEAT_CATALOG_REPORT, a path to write the per-card JSON to.
 func TestCatalogSoak(t *testing.T) {
 	requireGameTests(t)
@@ -427,10 +445,11 @@ func TestCatalogSoak(t *testing.T) {
 	if v, err := strconv.Atoi(os.Getenv("AISEAT_CATALOG_GAMES")); err == nil && v > 0 {
 		games = v
 	}
-	base := uint64(601)
+	base := soakBaseSeed(time.Now())
 	if v, err := strconv.ParseUint(os.Getenv("AISEAT_CATALOG_SEED"), 10, 64); err == nil {
 		base = v
 	}
+	t.Logf("catalog soak: %d game(s) from base seed %d", games, base)
 
 	const seats, turnBudget = 4, 200
 	wall := envDuration("AISEAT_WALLCLOCK", 300*time.Second)
@@ -486,7 +505,8 @@ func TestCatalogSoak(t *testing.T) {
 			// logs it and carries on, so nothing else in the suite
 			// would ever go red over it.
 			for _, e := range errs {
-				t.Errorf("seed %d: %s errored during resolution: %s", seed, e.Card, e.Msg)
+				t.Errorf("seed %d: %s errored during resolution: %s\nreproduce: AISEAT_CATALOG_SEED=%d AISEAT_CATALOG_GAMES=1",
+					seed, e.Card, e.Msg, seed)
 			}
 
 			// A game that never cast anything exercised no cards, and
@@ -562,4 +582,26 @@ func reportCatalogSoak(t *testing.T, stats map[string]*cardStat, pool int) {
 		return
 	}
 	t.Logf("catalog soak: per-card report written to %s", path)
+}
+
+// TestSoakBaseSeedRollsDaily pins the two properties the nightly
+// relies on: a day is stable, and adjacent days cannot overlap.
+func TestSoakBaseSeedRollsDaily(t *testing.T) {
+	morning := time.Date(2026, 9, 16, 1, 0, 0, 0, time.UTC)
+	evening := time.Date(2026, 9, 16, 23, 0, 0, 0, time.UTC)
+	tomorrow := time.Date(2026, 9, 17, 1, 0, 0, 0, time.UTC)
+
+	if got, want := soakBaseSeed(morning), uint64(2026091600); got != want {
+		t.Fatalf("soakBaseSeed(2026-09-16) = %d, want %d", got, want)
+	}
+	if soakBaseSeed(morning) != soakBaseSeed(evening) {
+		t.Error("two runs on the same UTC day dealt different decks")
+	}
+	if soakBaseSeed(tomorrow)-soakBaseSeed(morning) < 100 {
+		t.Error("adjacent days are fewer than 100 seeds apart, so a long run would replay tomorrow's decks")
+	}
+	// Month and year boundaries keep moving forward.
+	if soakBaseSeed(time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)) <= soakBaseSeed(time.Date(2026, 9, 30, 0, 0, 0, 0, time.UTC)) {
+		t.Error("the seed went backwards across a month boundary")
+	}
 }
