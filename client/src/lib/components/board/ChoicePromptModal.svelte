@@ -950,7 +950,7 @@
             <span class="prompt-src" aria-hidden="true">search · CR 701.19</span>
           {:else if isCopyTarget}
             {active.reason || "Enter as a copy of…"}
-            <span class="prompt-src" aria-hidden="true">copy · CR 706</span>
+            <span class="prompt-src" aria-hidden="true">copy · CR 707</span>
           {:else if isChooseCards}
             {active.reason || "Choose cards"}
             <span class="prompt-src" aria-hidden="true">choose</span>

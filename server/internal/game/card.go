@@ -408,7 +408,7 @@ type Card struct {
 	NamedTribe string
 
 	// PrintedSelf is this card's OWN printed values, stashed when a
-	// CR 706 copy effect overwrote the flat printed fields above.
+	// CR 707 copy effect overwrote the flat printed fields above.
 	// nil — which is every card that is not a Clone-class permanent
 	// — means the printed fields are the card's own and nothing has
 	// to be undone.

@@ -1,6 +1,6 @@
 package game
 
-// copy.go — CR 706 copy effects (Clone, Phyrexian Metamorph, Spark
+// copy.go — CR 707 copy effects (Clone, Phyrexian Metamorph, Spark
 // Double, Sakashima the Impostor). The S16.5 half of #159 that a
 // real card finally asked for, and the fix for #335.
 //

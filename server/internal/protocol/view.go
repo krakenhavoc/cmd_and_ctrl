@@ -467,7 +467,7 @@ type StackItemView struct {
 	// permanent, so a responder needs to see which is on the stack.
 	AltCost string `json:"alt_cost,omitempty"`
 
-	// IsCopy marks a CR 706.10 spell copy — Reverberate's output,
+	// IsCopy marks a CR 707.10 spell copy — Reverberate's output,
 	// not a cast card (S30). Public and worth showing: the copy and
 	// the spell it came from are two identical-looking entries on
 	// the stack, and which one is the copy decides what a responder

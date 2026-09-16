@@ -100,7 +100,7 @@ everything else they are re-derived from the copied oracle ID.
 answer stamps `ev.EntersAsCopyOf` and the entry path materialises it
 **before** `EventETB` — so the permanent never exists on the
 battlefield as its own printed self, and every ETB trigger, its own
-and every watcher's, sees the copy (CR 706.2).
+and every watcher's, sees the copy (CR 707.2).
 
 The card's "except" clause is an edit to the values on their way in
 (`Except`), not a knob on the engine: Sakashima's `SetName`,

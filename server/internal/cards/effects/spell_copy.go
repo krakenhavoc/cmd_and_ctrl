@@ -6,7 +6,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// spell_copy.go — the catalog side of CR 706.10.
+// spell_copy.go — the catalog side of CR 707.10.
 //
 // One primitive, because every card in the family is the same
 // sentence with a different adjective on the target clause:
@@ -17,7 +17,7 @@ import (
 // of copies, never the copy itself.
 
 // CopySpell copies a spell that is currently on the stack, per CR
-// 706.10.
+// 707.10.
 //
 // Count > 1 produces that many copies, each created separately and
 // each offered its own target choice — which is what Increasing
@@ -41,7 +41,7 @@ type CopySpell struct {
 	StackID uuid.UUID
 
 	// Controller is who controls the copies. Usually
-	// ctx.Controller(): CR 706.10 gives the copy to the player who
+	// ctx.Controller(): CR 707.10 gives the copy to the player who
 	// created it, NOT to the controller of the copied spell, and
 	// that asymmetry is the whole point of Reverberate on an
 	// opponent's Time Warp.
@@ -50,7 +50,7 @@ type CopySpell struct {
 	// Count is how many copies to create. Zero is treated as one.
 	Count int
 
-	// ChooseNewTargets enables the CR 706.10c re-target prompt.
+	// ChooseNewTargets enables the CR 707.10c re-target prompt.
 	ChooseNewTargets bool
 }
 

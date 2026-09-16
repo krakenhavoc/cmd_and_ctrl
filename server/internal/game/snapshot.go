@@ -1473,7 +1473,7 @@ func copyFaces(in []Face) []Face {
 }
 
 // copyPrintedValues deep-copies a card's stashed pre-copy printed
-// values (CR 706 — see copy.go). nil in, nil out: the overwhelming
+// values (CR 707 — see copy.go). nil in, nil out: the overwhelming
 // majority of cards are not copies of anything.
 //
 // The value itself is pure data, which is why PrintedValues
