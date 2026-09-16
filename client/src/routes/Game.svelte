@@ -8,6 +8,7 @@
   import BugReportModal from "../lib/components/BugReportModal.svelte";
   import { fetchBugReportConfig } from "../lib/api";
   import { cardImageURL } from "../lib/cardImage";
+  import { cardArt } from "../lib/cardArt";
   import Board from "../lib/components/board/Board.svelte";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
@@ -1332,9 +1333,10 @@
           {#if (viewerSeat?.hand.cards.length ?? 0) > 0}
             <div class="mulligan-cards" role="list" aria-label="your opening hand">
               {#each viewerSeat?.hand.cards ?? [] as card (card.instance_id)}
+                {@const art = cardImageURL(card, "normal")}
                 <div class="mulligan-card" role="listitem" title={card.name}>
-                  {#if card.scryfall_id}
-                    <img src={cardImageURL(card, "normal")} alt={card.name} loading="lazy" />
+                  {#if art}
+                    <img src={art} alt={card.name} loading="lazy" use:cardArt={art} />
                   {:else}
                     <span class="mulligan-card-fallback">{card.name}</span>
                   {/if}
@@ -1931,6 +1933,8 @@
     padding: 2px 0;
   }
   .mulligan-card {
+    /* positioned for the failed-art pip (#33) */
+    position: relative;
     flex: 0 0 auto;
     width: 112px;
     height: 157px;

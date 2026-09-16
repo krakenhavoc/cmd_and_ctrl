@@ -604,6 +604,54 @@ textarea::placeholder {
   line-height: 1.4;
 }
 
+/* ---- Card-art failure marker (#33) ----
+   Created by the `use:cardArt` action (lib/cardArt.ts) as the next
+   sibling of a card-art <img> once its automatic retry has also
+   failed. Global because the element is created outside any
+   component's template, so no component's scoped styles reach it.
+   The img's parent must be positioned; a site whose top-right corner
+   is already taken moves the pip with --art-error-top / -right. */
+.card-art-error {
+  position: absolute;
+  top: var(--art-error-top, 3px);
+  right: var(--art-error-right, 3px);
+  z-index: 3;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(60, 0, 0, 0.9);
+  border: 1px solid rgba(255, 122, 122, 0.7);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  color: var(--danger);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.card-art-error:hover {
+  background: rgba(110, 10, 10, 0.95);
+  border-color: var(--danger);
+}
+.card-art-error:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+/* A click-retry is in flight. */
+.card-art-error.busy {
+  cursor: progress;
+  opacity: 0.55;
+}
+/* Display-only, e.g. inside the pointer-events: none hover panel. */
+.card-art-error.static {
+  cursor: default;
+}
+
 /* Thin, subtle scrollbars everywhere dark. Webkit + Firefox syntax. */
 * {
   scrollbar-width: thin;

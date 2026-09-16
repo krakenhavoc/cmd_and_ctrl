@@ -19,6 +19,7 @@
   import { onDestroy } from "svelte";
   import type { CardView } from "../../protocol";
   import { cardImageURL } from "../../cardImage";
+  import { cardArt } from "../../cardArt";
   import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
@@ -100,6 +101,7 @@
       <p class="prompt-hint">Which half are you playing?</p>
       <ul class="face-options">
         {#each faces as face, i (face.name)}
+          {@const art = cardImageURL(card, "normal", i)}
           <li>
             <button
               type="button"
@@ -112,8 +114,8 @@
                 confirm();
               }}
             >
-              {#if cardImageURL(card, "normal", i)}
-                <img class="face-art" src={cardImageURL(card, "normal", i)} alt="" />
+              {#if art}
+                <img class="face-art" src={art} alt="" use:cardArt={art} />
               {:else}
                 <div class="face-art face-art-blank" aria-hidden="true"></div>
               {/if}
@@ -159,6 +161,12 @@
   }
 
   .face-opt {
+    /* positioned for the failed-art pip (#33); the offsets are the
+       button's padding plus the pip's usual inset, so it lands on the
+       art's corner rather than the button's */
+    position: relative;
+    --art-error-top: 11px;
+    --art-error-right: 11px;
     display: grid;
     grid-template-rows: auto auto auto auto;
     gap: 2px;

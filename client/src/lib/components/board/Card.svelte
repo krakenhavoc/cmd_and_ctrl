@@ -22,6 +22,7 @@
 
   import type { CardView } from "../../protocol";
   import { cardImageURL } from "../../cardImage";
+  import { cardArt } from "../../cardArt";
   import { hoveredCard } from "../../cardTypes";
   import { animateTap } from "../../animations";
   import { play } from "../../sounds";
@@ -289,7 +290,16 @@
       draggable="false"
     />
   {:else if imgSrc}
-    <img src={imgSrc} alt={card.name} loading="lazy" decoding="async" draggable="false" />
+    <!-- use:cardArt (#33): retry once, then a click-to-retry pip.
+         Front face only — the back above is a bundled asset. -->
+    <img
+      src={imgSrc}
+      alt={card.name}
+      loading="lazy"
+      decoding="async"
+      draggable="false"
+      use:cardArt={imgSrc}
+    />
     {#if card.is_commander}
       <span class="badge cmd" aria-hidden="true">CMD</span>
     {/if}
@@ -429,6 +439,9 @@
     /* Compose tap rotation (animated by GSAP via --tap-rot) with the
        CSS-only hover lift (--hover-lift). */
     transform: rotate(var(--tap-rot, 0deg)) translateY(var(--hover-lift, 0px));
+    /* The failed-art pip (#33) drops below the top-right GOAD / cost
+       badges rather than sitting under them. */
+    --art-error-top: 22px;
   }
   .card.clickable {
     cursor: pointer;
