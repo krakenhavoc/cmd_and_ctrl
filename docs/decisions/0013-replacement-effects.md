@@ -277,9 +277,12 @@ it on top of your library instead of into your graveyard."
   if you or your opponent control the spell or ability." Looting
   ("draw, then discard") is also an effect discard.
 - **It never applies to the cleanup discard**, which is the one path
-  §10 wired it to. That discard is a turn-based action, not an effect.
-  And while you control Leng you have no maximum hand size (CR 402.2),
-  so you don't make a cleanup discard at all.
+  §10 wired it to. That discard is a turn-based action (CR 514.1,
+  703.1), not an effect. Leng usually removes your maximum hand size
+  (CR 402.2), but a later hand-size effect can set one again: hand-size
+  effects apply in timestamp order, so Null Profusion entering after
+  Leng makes your maximum hand size two (ruling, 2009-10-01). You can
+  still owe a cleanup discard then, and Leng doesn't replace it.
 - **The card goes on top of the library, not "top or bottom".** The
   replacement is a "may", which fits the existing
   `optional_replacement` prompt. When one effect discards several
