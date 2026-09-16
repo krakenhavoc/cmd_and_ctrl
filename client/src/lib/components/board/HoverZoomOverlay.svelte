@@ -129,9 +129,16 @@
              while its own image is still loading. The failure pip
              is display-only here: the panel is pointer-events: none
              and aria-hidden, and it closes as soon as the pointer
-             leaves the card it previews. -->
+             leaves the card it previews. fetchpriority (#33): the
+             panel exists to be read the moment it opens; the small
+             other-face inset below does not need the hint. -->
         {#key imgSrc}
-          <img src={imgSrc} alt="" use:cardArt={{ url: imgSrc, interactive: false }} />
+          <img
+            src={imgSrc}
+            alt=""
+            fetchpriority="high"
+            use:cardArt={{ url: imgSrc, interactive: false }}
+          />
         {/key}
       {:else}
         <div class="name-fallback">{card.name}</div>

@@ -75,6 +75,13 @@
     // to say who it is cursing — which is the entire card. Supplied by
     // BattlefieldRow; undefined for everything else.
     enchantedPlayer?: string;
+    // #33: request this card's art with fetchpriority="high". Opt-in,
+    // set only by Hand.svelte for the viewer's own hand — the art
+    // that is above the fold and latency-visible. Card is shared by
+    // hand, battlefield, command zone and attachment stacks, and
+    // marking every card on the table high is the same as marking
+    // none of them, so the default is no hint at all.
+    priority?: boolean;
     onClick?: (card: CardView, ev: MouseEvent) => void;
   }
 
@@ -102,6 +109,7 @@
     onActivateAbility,
     sorcerySpeedBlocked = "",
     enchantedPlayer,
+    priority = false,
     onClick,
   }: Props = $props();
 
@@ -298,6 +306,7 @@
       loading="lazy"
       decoding="async"
       draggable="false"
+      fetchpriority={priority ? "high" : undefined}
       use:cardArt={imgSrc}
     />
     {#if card.is_commander}
