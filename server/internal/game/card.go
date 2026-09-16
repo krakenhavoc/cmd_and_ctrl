@@ -141,26 +141,7 @@ type Card struct {
 	// the ~78% of real cards that print no keyword at all.
 	Keywords []string
 
-	// NeedsEffect records that this card's printed text describes
-	// rules only a hand-written catalog Spec can carry out — it is
-	// NOT "has oracle text" and it is NOT "is missing from the
-	// catalog". A vanilla creature is false; a creature whose whole
-	// text is enforced keywords is false; a Forest is false. See
-	// coverage.go for the reasoning and NeedsCatalogEffect for the
-	// derivation.
-	//
-	// Stamped by the deck importer from the Scryfall record, the
-	// same road Keywords and StartingLoyalty travel, and joined with
-	// catalog membership by game.Unimplemented — the one definition
-	// the deck-upload summary, the card view and the stack view all
-	// read, so they cannot disagree.
-	//
-	// False for cards that never went through deck import (tokens,
-	// fixtures, the demo seed), which means they are never flagged.
-	// Deliberate: a missed signal costs a player nothing they
-	// weren't already going to learn, and a false one costs the
-	// signal its credibility.
-	NeedsEffect bool
+	// NeedsEffect lives in the bool block at the end of Card, for alignment.
 
 	// ManaAbilities are mana abilities carried on the card object,
 	// for the same reason as Keywords: a Treasure token's "{T},
@@ -188,9 +169,7 @@ type Card struct {
 	// etc. Always equal to Owner for cards not on the battlefield.
 	Controller uuid.UUID
 
-	// Tapped is the usual MTG tap state. Only meaningful for cards on
-	// the battlefield; ignored in other zones.
-	Tapped bool
+	// Tapped lives in the bool block at the end of Card, for alignment.
 
 	// BattleX, BattleY are the normalised position of a card on the
 	// battlefield, as fractions of the battlefield area (each in the
@@ -207,9 +186,7 @@ type Card struct {
 	// counters; they're just storage until rules enforcement grows.
 	Counters map[string]int
 
-	// IsCommander marks a card as a commander for the Commander format.
-	// Commanders live in the command zone at game start.
-	IsCommander bool
+	// IsCommander lives in the bool block at the end of Card, for alignment.
 
 	// AttackingTarget is the player ID this card has been declared to
 	// attack. uuid.Nil means "not declared as attacker". Set by
@@ -238,14 +215,7 @@ type Card struct {
 	// Only meaningful for creatures on the battlefield. Added in S13.1.
 	DamageMarked int
 
-	// FaceDown is the visual face-down flag (CR 708) — morph,
-	// manifest, mutate-bottom, set face-down by an effect. Distinct
-	// from the KnownBy knowledge set: a face-down creature is
-	// face-down to everyone visually, but the morph caster (and
-	// anyone who saw it via Frantic Search-style reveal) still has
-	// the card in their KnownBy set so the hover-reveal works on
-	// their client. Added in S13.5.
-	FaceDown bool
+	// FaceDown lives in the bool block at the end of Card, for alignment.
 
 	// KnownBy is the per-instance "who currently knows this card's
 	// identity" set (S13.5). Sticky across zone moves: once a player
@@ -267,24 +237,8 @@ type Card struct {
 	// game's lifetime. Added in S16 sub-PR 3.
 	EnteredBattlefieldAt int64
 
-	// SummonedThisTurn is the summoning-sickness flag (CR 302.1).
-	// Set true whenever the card enters the battlefield; cleared at
-	// the start of the controller's untap step. Haste (CR 702.10)
-	// is a read-time bypass in HasSummoningSickness, NOT a
-	// clear-on-ETB — so a creature that gains haste mid-turn
-	// becomes attackable immediately, and one that loses haste
-	// mid-turn remains sick until next untap. Only meaningful on
-	// the battlefield; ignored in other zones. Added in S18 sub-PR 2.
-	SummonedThisTurn bool
-
-	// MarkedLethalByDeathtouch is the S18 deathtouch-mark flag (CR
-	// 702.2c — "any nonzero damage from a source with deathtouch
-	// causes that damage to be marked as lethal"). Set true when
-	// damage from a deathtouch source lands on this creature;
-	// read by the lethal-damage SBA. Cleared at StepCleanup
-	// alongside DamageMarked. Only meaningful on the battlefield.
-	// Added in S18 sub-PR 3.
-	MarkedLethalByDeathtouch bool
+	// SummonedThisTurn and MarkedLethalByDeathtouch live in the bool
+	// block at the end of Card, for alignment.
 
 	// ExilePlay is the impulse-exile permission (S21 sub-PR 6):
 	// "exile the top card of your library — you may play it this
@@ -472,6 +426,72 @@ type Card struct {
 	// atomically without partial-update visibility. Added in S16
 	// sub-PR 3.
 	effective *Characteristic
+
+	// --- bools --------------------------------------------------------
+	//
+	// Every bool on Card lives here, together, rather than beside the
+	// mechanic that added it: a lone bool between two 8-byte fields
+	// strands 7 bytes of padding, and six of them cost Card 32 bytes
+	// (#35). Each still has a one-line pointer in its original section.
+	// TestCardAlignmentPaddingStaysSmall fails if a new bool is added
+	// anywhere else.
+
+	// NeedsEffect records that this card's printed text describes
+	// rules only a hand-written catalog Spec can carry out — it is
+	// NOT "has oracle text" and it is NOT "is missing from the
+	// catalog". A vanilla creature is false; a creature whose whole
+	// text is enforced keywords is false; a Forest is false. See
+	// coverage.go for the reasoning and NeedsCatalogEffect for the
+	// derivation.
+	//
+	// Stamped by the deck importer from the Scryfall record, the
+	// same road Keywords and StartingLoyalty travel, and joined with
+	// catalog membership by game.Unimplemented — the one definition
+	// the deck-upload summary, the card view and the stack view all
+	// read, so they cannot disagree.
+	//
+	// False for cards that never went through deck import (tokens,
+	// fixtures, the demo seed), which means they are never flagged.
+	// Deliberate: a missed signal costs a player nothing they
+	// weren't already going to learn, and a false one costs the
+	// signal its credibility.
+	NeedsEffect bool
+
+	// Tapped is the usual MTG tap state. Only meaningful for cards on
+	// the battlefield; ignored in other zones.
+	Tapped bool
+
+	// IsCommander marks a card as a commander for the Commander format.
+	// Commanders live in the command zone at game start.
+	IsCommander bool
+
+	// FaceDown is the visual face-down flag (CR 708) — morph,
+	// manifest, mutate-bottom, set face-down by an effect. Distinct
+	// from the KnownBy knowledge set: a face-down creature is
+	// face-down to everyone visually, but the morph caster (and
+	// anyone who saw it via Frantic Search-style reveal) still has
+	// the card in their KnownBy set so the hover-reveal works on
+	// their client. Added in S13.5.
+	FaceDown bool
+
+	// SummonedThisTurn is the summoning-sickness flag (CR 302.1).
+	// Set true whenever the card enters the battlefield; cleared at
+	// the start of the controller's untap step. Haste (CR 702.10)
+	// is a read-time bypass in HasSummoningSickness, NOT a
+	// clear-on-ETB — so a creature that gains haste mid-turn
+	// becomes attackable immediately, and one that loses haste
+	// mid-turn remains sick until next untap. Only meaningful on
+	// the battlefield; ignored in other zones. Added in S18 sub-PR 2.
+	SummonedThisTurn bool
+
+	// MarkedLethalByDeathtouch is the S18 deathtouch-mark flag (CR
+	// 702.2c — "any nonzero damage from a source with deathtouch
+	// causes that damage to be marked as lethal"). Set true when
+	// damage from a deathtouch source lands on this creature;
+	// read by the lethal-damage SBA. Cleared at StepCleanup
+	// alongside DamageMarked. Only meaningful on the battlefield.
+	// Added in S18 sub-PR 3.
+	MarkedLethalByDeathtouch bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for
