@@ -1167,7 +1167,7 @@ func TestB17InsidiousFungusOffersEachModeAsAnAbility(t *testing.T) {
 	if me.Hand.Size() != hand+1 {
 		t.Errorf("the third mode draws 1, drew %d", me.Hand.Size()-hand)
 	}
-	if spec.Completeness != CompletenessCaveats {
-		t.Error("the land-from-hand gap must be declared")
+	if spec.Completeness != CompletenessFull {
+		t.Error("the land-from-hand clause landed with #654; nothing is deferred any more")
 	}
 }

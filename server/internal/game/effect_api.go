@@ -2047,6 +2047,182 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 	return newID, nil
 }
 
+// HandEntryOptions are the modifiers a "put a card from your hand
+// onto the battlefield" effect applies to the entry it causes. The
+// zero value is the printed common case — Growth Spiral's untapped
+// land under its owner's control — so an ordinary caller passes an
+// empty struct, exactly as CreateTokenForEffect does with
+// TokenEntryOptions.
+type HandEntryOptions struct {
+	// Controller is who the permanent enters under. uuid.Nil, or a
+	// player who has left, means "under its owner's control", which
+	// is what every card in this family prints today ("put a land
+	// card from YOUR hand onto the battlefield"). The field exists
+	// because the move is generic: a "put it onto the battlefield
+	// under target opponent's control" has nowhere else to say so,
+	// and the CR 614 pipeline has to know the answer before it runs.
+	Controller uuid.UUID
+
+	// Tapped is the putting effect's own "onto the battlefield
+	// TAPPED" clause (Arboreal Grazer). It is SEEDED onto the
+	// replacement event rather than OR-ed in after the pipeline, the
+	// way SearchLibrarySpec.TappedOnEntry is: the effect's clause and
+	// whatever CR 614 adds on top then settle in one field, and no
+	// reader downstream can lose one of the two.
+	Tapped bool
+}
+
+// PutFromHandOntoBattlefieldForEffect puts one card from its owner's
+// hand onto the battlefield without casting or playing it — "you may
+// put a land card from your hand onto the battlefield" (Growth
+// Spiral, Eureka Moment, Broken Bond, Chulane), "put an Equipment
+// card from your hand onto the battlefield" (Stoneforge Mystic).
+//
+// It is the MOVE half of the seam docs/engine-seams.md calls
+// "Put-from-hand onto the battlefield" (#654). The PICK half already
+// existed: ChooseCardsPrompt with Zone: ZoneHand and a Then
+// continuation (#552). The prompt, the "you may" and the per-card
+// filter stay in the catalog (effects.PutFromHandOntoBattlefield),
+// because those are card text; the move is engine.
+//
+// The shape is deliberately the one every other effect-side entry
+// uses — searchEnterBattlefieldLocked, the reanimation path in
+// ReturnFromGraveyardUnderControlForEffect, and
+// ReturnFromExileToBattlefieldForEffect:
+//
+//  1. Stamp the controller on the card WHILE IT IS STILL IN HAND.
+//     Authority of the Consuls asks whose permanent is entering and a
+//     self-replacement's condition counts that player's lands; both
+//     read Card.Controller, which in hand still names whoever it was
+//     stamped with last.
+//  2. Run the CR 614 pipeline BEFORE the card leaves the hand, so a
+//     CR 616 ordering prompt — which pauses — leaves the card where
+//     it is rather than stranding it between zones.
+//  3. Move, then apply the settled EntersTapped / EntersWithCounters.
+//  4. EventZoneMove, EventETB, then the catalog's AsEnters hook, so
+//     the permanent triggers everything an ordinary entry triggers.
+//
+// Three things it deliberately does NOT do:
+//
+//   - It does not count a land drop. A land an effect puts onto the
+//     battlefield was not PLAYED (CR 305.4), so LandsPlayedThisTurn
+//     is untouched and the enumerator still offers the turn's land
+//     play. That is also why this event is not flagged
+//     entryResumable: the generic resume in
+//     executeEntryToBattlefieldLocked bumps the tally for any land
+//     arriving with no stack item, which is right for the land-play
+//     branch it was written for and wrong here.
+//   - It does not run state checks. Like its neighbours it leaves
+//     them to the resolution boundary the caller is already inside,
+//     so a permanent that enters and dies does so once, together
+//     with everything else that effect did.
+//   - It does not offer the Clone choice. That prompt needs a
+//     resumable entry site (copy_choice.go), and this is not one for
+//     the reason above — the same declared simplification the search
+//     path carries, and weaker than printed rather than stronger.
+//
+// Returns the entering permanent's ID. It is the InstanceID the card
+// had in hand: every non-exile move keeps it, and only the exile
+// return mints a new one. uuid.Nil with a nil error means nothing
+// entered — a replacement canceled or redirected the move, or the
+// pipeline paused — which is a legal outcome, not a failure.
+//
+// Refuses, with ErrCardNotFound, a card that is not in a hand: this
+// is a hand move, and a caller holding a stale ID must not silently
+// rip a permanent off the battlefield or a card out of a graveyard.
+// A nonpermanent card is refused with ErrInvalidParam — CR 110.4
+// lists the permanent types and an instant is not among them, so the
+// card stays in hand.
+//
+// Caller must hold g.mu.
+func (g *Game) PutFromHandOntoBattlefieldForEffect(cardID uuid.UUID, opts HandEntryOptions) (uuid.UUID, error) {
+	src := g.findCardZoneLocked(cardID)
+	if src == nil || src.Kind != ZoneHand {
+		return uuid.Nil, ErrCardNotFound
+	}
+	newController := opts.Controller
+	if newController == uuid.Nil || g.playerByIDLocked(newController) == nil {
+		newController = src.Owner
+	}
+	for i := range src.Cards {
+		if src.Cards[i].InstanceID != cardID {
+			continue
+		}
+		if !src.Cards[i].IsPermanent() {
+			return uuid.Nil, ErrInvalidParam
+		}
+		src.Cards[i].Controller = newController
+		break
+	}
+	ev := &ReplacementEvent{
+		Kind:         RepEventMove,
+		Actor:        newController,
+		CardID:       cardID,
+		OldZone:      ZoneHand,
+		NewZone:      ZoneBattlefield,
+		EntersTapped: opts.Tapped,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		// A CR 616 ordering prompt is open. Nothing has moved; the
+		// card is still in hand and the put simply does not happen.
+		return uuid.Nil, nil
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return uuid.Nil, err
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled || out.NewZone != ZoneBattlefield {
+		// Canceled, or redirected somewhere else by a replacement.
+		// There is no generic "put it wherever the pipeline said"
+		// helper for a hand source, so a redirect is treated as a
+		// cancel rather than guessed at — the same posture the
+		// exile-return path takes.
+		return uuid.Nil, nil
+	}
+	moved, err := MoveCard(src, g.Battlefield, cardID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID != moved.InstanceID {
+			continue
+		}
+		g.Battlefield.Cards[i].Controller = newController
+		// out.EntersTapped carries both inputs: the putting effect's
+		// own "tapped" clause, seeded onto the event above, and
+		// whatever the CR 614 pipeline added on top. The permanent
+		// ARRIVES tapped — it is never tapped after the fact, so no
+		// tap event fires and nothing watching for one triggers.
+		if out.EntersTapped {
+			g.Battlefield.Cards[i].Tapped = true
+		}
+		// The impulse grant is spent by the entry, exactly as it is
+		// on the land-play and cast branches: a later effect that
+		// exiles this card must not inherit a permission it never
+		// granted.
+		g.Battlefield.Cards[i].ExilePlay = ExilePlayPermission{}
+		break
+	}
+	// The card just left a hidden zone for a public one, so the whole
+	// table knows it — the same call every other entry site makes.
+	g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
+	for name, n := range out.EntersWithCounters {
+		_ = g.AddCounterForEffect(moved.InstanceID, name, n)
+	}
+	g.EmitEvent(Event{
+		Kind:    EventZoneMove,
+		Actor:   newController,
+		CardID:  moved.InstanceID,
+		OldZone: ZoneHand,
+		NewZone: ZoneBattlefield,
+	})
+	g.EmitEvent(Event{Kind: EventETB, Actor: newController, CardID: moved.InstanceID})
+	g.fireETBHookLocked(moved.InstanceID, CatalogKey(moved))
+	return moved.InstanceID, nil
+}
+
 // AddManaForEffect adds the mana a SPELL or a non-mana ability
 // produces to playerID's pool — Dark Ritual's "Add {B}{B}{B}", Mana
 // Drain's delayed "add an amount of {C}", Jeska's Will. Every other
