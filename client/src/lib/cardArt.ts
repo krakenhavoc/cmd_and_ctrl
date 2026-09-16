@@ -33,17 +33,18 @@
 //                option, targetable stack item), whose children
 //                assistive tech treats as presentational: a nested
 //                button would be a nameless tab stop. The marker is
-//                aria-hidden and pointer-only; the control gets
-//                "Art failed to load" as its accessible description,
-//                and keyboard focus on the control is the retry.
-//                cardArtRetry.ts has the full reasoning.
+//                aria-hidden and pointer-only; the outermost such
+//                ancestor — the pile <button> around a role="img"
+//                Card, not the Card — gets "Art failed to load" as its
+//                accessible description, and keyboard focus on it is
+//                the retry. cardArtRetry.ts has the full reasoning.
 //   static     — `interactive: false`: a signal with no retry at all.
 
 import type { Action } from "svelte/action";
 import {
   ART_FAILED_TITLE,
   createArtRetry,
-  flattensChildren,
+  describedHost,
   markerFor,
   withIDRef,
   withoutIDRef,
@@ -130,13 +131,23 @@ export const cardArt: Action<HTMLImageElement, CardArtParam> = (img, param) => {
     if (host && focusIsVisible(host)) art.retry();
   }
 
-  // flatteningHost is the nearest ancestor whose children assistive
-  // tech treats as presentational, or null.
-  function flatteningHost(): HTMLElement | null {
+  function ancestors(): HTMLElement[] {
+    const out: HTMLElement[] = [];
     for (let el = img.parentElement; el && el !== document.body; el = el.parentElement) {
-      if (flattensChildren(el.tagName, el.getAttribute("role"))) return el;
+      out.push(el);
     }
-    return null;
+    return out;
+  }
+
+  // flatteningHost is the ancestor a "described" marker attaches to —
+  // the outermost one whose children assistive tech treats as
+  // presentational (describedHost has why) — or null.
+  function flatteningHost(): HTMLElement | null {
+    const chain = ancestors();
+    const i = describedHost(
+      chain.map((el) => ({ tagName: el.tagName, role: el.getAttribute("role") })),
+    );
+    return i < 0 ? null : chain[i];
   }
 
   function createMarker(kind: MarkerKind, control: HTMLElement | null): HTMLElement {

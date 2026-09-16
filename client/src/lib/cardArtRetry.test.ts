@@ -3,6 +3,7 @@ import {
   ART_RETRY_DELAY_MS,
   createArtRetry,
   describeArtURL,
+  describedHost,
   flattensChildren,
   markerFor,
   reportArtFailure,
@@ -283,6 +284,39 @@ describe("flattensChildren", () => {
   it("reads only the first role token, the rest being fallbacks", () => {
     expect(flattensChildren("DIV", " img button")).toBe(true);
     expect(flattensChildren("DIV", "group button")).toBe(false);
+  });
+});
+
+// The ancestors are listed nearest first, as the action walks them.
+describe("describedHost", () => {
+  const card = { tagName: "DIV", role: "img" }; // board Card, no click
+  const clickableCard = { tagName: "DIV", role: "button" };
+  const span = { tagName: "SPAN", role: null };
+  const div = { tagName: "DIV", role: null };
+  const nativeButton = { tagName: "BUTTON", role: null };
+
+  // PileButton: <button class="pile"><span class="thumb"><Card/>.
+  // ChoicePromptModal / DiscardPromptModal: <button class="card-pick"><Card/>.
+  // The Card div is role="img" with no tabindex; the button is the tab
+  // stop and the element a screen reader announces.
+  it("picks the control around a role=img Card, not the Card", () => {
+    expect(describedHost([card, span, nativeButton, div, div])).toBe(2);
+    expect(describedHost([card, nativeButton, { tagName: "LI", role: null }])).toBe(1);
+  });
+
+  it("picks the Card itself when nothing around it flattens", () => {
+    expect(describedHost([clickableCard, div, { tagName: "DIV", role: "listitem" }])).toBe(0);
+    expect(describedHost([card, div])).toBe(0);
+  });
+
+  // StackOverlay: <div class="item" role="button"><div class="thumb"><img>.
+  it("finds a flattening ancestor that is not the img's parent", () => {
+    expect(describedHost([div, clickableCard, div])).toBe(1);
+  });
+
+  it("is -1 when nothing flattens", () => {
+    expect(describedHost([div, { tagName: "DIV", role: "listitem" }])).toBe(-1);
+    expect(describedHost([])).toBe(-1);
   });
 });
 

@@ -8,8 +8,9 @@
 // failure was costing a tile its art for the whole session.
 //
 // This module is the DOM-free half: the retry state machine, the
-// deduplicated report, and the marker's accessibility decisions. The DOM half — listeners, the marker element,
-// re-requesting the image — is the `cardArt` action in cardArt.ts.
+// deduplicated report, and the marker's accessibility decisions. The
+// DOM half — listeners, the marker element, re-requesting the image —
+// is the `cardArt` action in cardArt.ts.
 // The split exists because there is no Svelte component harness in
 // this repo, and every decision worth testing lives here.
 //
@@ -179,9 +180,9 @@ export function createArtRetry(initialURL: string, hooks: ArtRetryHooks): ArtRet
 //
 // So the action asks, per marker, whether an ancestor flattens its
 // children. If one does, the marker is pointer-only (aria-hidden, no
-// tab stop), the failure is attached to that ancestor as an accessible
-// description, and keyboard focus on the ancestor is the retry. If
-// none does, the marker is a real button.
+// tab stop), the failure is attached to the outermost such ancestor
+// (describedHost) as an accessible description, and keyboard focus on
+// it is the retry. If none does, the marker is a real button.
 
 // FLATTENING_ROLES are the ARIA 1.2 roles whose children are
 // presentational. "image" is ARIA 1.3's synonym for "img".
@@ -212,6 +213,24 @@ export function flattensChildren(tagName: string, role: string | null): boolean 
   const first = role?.trim().split(/\s+/)[0]?.toLowerCase() ?? "";
   if (first !== "") return FLATTENING_ROLES.has(first);
   return tagName.toLowerCase() === "button";
+}
+
+// describedHost picks, from the img's ancestors listed nearest first,
+// the index of the one a "described" marker attaches to, or -1 when
+// none flattens its children. It is the OUTERMOST flattening ancestor,
+// not the nearest: inside a flattening element every descendant is
+// presentational, flattening ones included, so only the outermost is
+// exposed to assistive tech. A board Card with no click is role="img",
+// and the graveyard pile and the card-pick prompts wrap one in a
+// native <button> — the button is what Tab reaches and what a screen
+// reader announces, so the description and the focus retry go there.
+export function describedHost(
+  ancestors: readonly { tagName: string; role: string | null }[],
+): number {
+  for (let i = ancestors.length - 1; i >= 0; i--) {
+    if (flattensChildren(ancestors[i].tagName, ancestors[i].role)) return i;
+  }
+  return -1;
 }
 
 // withIDRef adds `id` to an ID-reference list attribute value such as

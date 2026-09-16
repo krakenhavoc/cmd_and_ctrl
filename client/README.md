@@ -86,9 +86,10 @@ wiring only.
   Inside a control or image — a `<button>`, or `role="button"` /
   `"img"` and the other roles whose children are presentational — a
   nested button would be a tab stop with no role or name, so the pip
-  is pointer-only (`aria-hidden`), the control gets "Art failed to
-  load" through `aria-describedby`, and keyboard focus on the control
-  retries the art.
+  is pointer-only (`aria-hidden`), the outermost such control (the
+  pile `<button>` around a `role="img"` `Card`, not the `Card`) gets
+  "Art failed to load" through `aria-describedby`, and keyboard focus
+  on it retries the art.
 - Not for card backs (`/card-back*.jpg`), which are bundled assets.
   Nor for the seat avatar in `PlayerIdentity.svelte`: a commander art
   crop that fails there falls through to the seat-colour disc, which
