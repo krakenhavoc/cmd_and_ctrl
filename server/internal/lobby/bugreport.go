@@ -793,7 +793,9 @@ func renderBugIssueBody(in bugIssue) string {
 		// what the reporter said they were filing.
 		fmt.Fprintf(&b, "- Kind: %s (label `%s`)\n", in.Kind.Noun, in.Kind.Label)
 	}
-	fmt.Fprintf(&b, "- Reporter: %s (%s)\n", reporterName(in.Principal), in.Principal.Role)
+	// Clipped like every other player-controlled value in the footer: a
+	// pathological display name must not stretch (or break) the row.
+	fmt.Fprintf(&b, "- Reporter: %s (%s)\n", clip(reporterName(in.Principal), bugFieldMax), in.Principal.Role)
 	if in.Ctx != nil && in.Ctx.GameID != "" {
 		fmt.Fprintf(&b, "- Game: `%s`", clip(in.Ctx.GameID, bugFieldMax))
 		if in.Ctx.Turn > 0 {
@@ -845,8 +847,8 @@ func renderBugIssueBody(in bugIssue) string {
 
 // redactBugIssue returns a copy of in with credentials removed from
 // every field a client or player controls: the description, each log
-// line, the context strings, the reporter's display name and the user
-// agent.
+// line, the context strings, every reporter display name (seat name,
+// Discord global name, Discord username) and the user agent.
 //
 // The issue body is published to everyone who can read the repo, and
 // the client log once carried the WebSocket URL with its ?token= (#721).
@@ -861,7 +863,12 @@ func renderBugIssueBody(in bugIssue) string {
 func redactBugIssue(in bugIssue) bugIssue {
 	in.Desc = redact.Secrets(in.Desc)
 	in.UserAgent = redact.Secrets(in.UserAgent)
+	// Every name reporterName can fall back to. The Discord names are
+	// self-chosen (global names allow spaces), so "foo token=…" is a
+	// valid one.
 	in.Principal.Name = redact.Secrets(in.Principal.Name)
+	in.Principal.DiscordGlobalName = redact.Secrets(in.Principal.DiscordGlobalName)
+	in.Principal.DiscordUsername = redact.Secrets(in.Principal.DiscordUsername)
 	if in.Ctx != nil {
 		ctx := *in.Ctx
 		ctx.GameID = redact.Secrets(ctx.GameID)
