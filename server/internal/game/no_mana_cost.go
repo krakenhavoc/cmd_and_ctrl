@@ -3,22 +3,31 @@ package game
 // no_mana_cost.go — CR 118.6: a spell with no mana cost can't be cast
 // by paying it.
 //
-// "Some objects are described as having no mana cost. ... If an
-// object has no mana cost, it can't be cast unless an alternative
-// cost can be paid" (CR 118.6, 202.1b). Ancestral Vision, Living End,
-// Hypergenesis and Lotus Bloom print nothing in the corner. ParseCost
-// reads the empty string as the zero cost, which lands need, and
-// which made every such card castable from hand for free.
+// Paraphrasing the rules, not quoting them: a card with no mana
+// symbols where its mana cost would appear has no mana cost (CR
+// 202.1b), and having no mana cost is an unpayable cost (CR 118.6).
+// Attempting to cast such a spell is a legal action; attempting to
+// pay the unpayable cost is not. Paper play would begin the cast and
+// then reverse it at the payment step; this engine refuses at
+// announce instead, which leaves the game in the same state.
+// Ancestral Vision, Living End, Hypergenesis and Lotus Bloom print
+// nothing in the corner. ParseCost reads the empty string as the zero
+// cost, which lands need, and which made every such card castable
+// from hand for free.
 //
 // "No mana cost" is not "{0}". Ornithopter and Memnite print {0} and
 // cast for nothing; the importer stamps that as the string "{0}", so
 // the two stay distinct on Card.ManaCost.
 //
-// CR 118.6a keeps the exits open: an alternative cost may still be
-// paid, and "cast it without paying its mana cost" is one. In this
-// engine that is a claimed AlternativeCost, or an exile grant that
-// carries its own price (cascade's and a Siege's "{0}", airbend's
-// {2}). Both replace the printed cost before anything reads it.
+// CR 118.6a keeps the exits open: if an alternative cost is applied to
+// the unpayable cost, including an effect that lets a player cast the
+// spell without paying its mana cost, the alternative cost may be
+// paid. A cost increase or an additional cost does not help; the cost
+// stays unpayable. In this engine the alternative cost is a claimed
+// AlternativeCost, or an exile grant that carries its own price
+// (cascade's and a Siege's "{0}", airbend's {2}). Both replace the
+// printed cost before anything reads it. Anything else (a tax, a
+// kicker) is layered on the printed cost, so it is still refused.
 
 // HasNoManaCost reports whether a card, as a spell, has no mana cost
 // to pay (CR 118.6).

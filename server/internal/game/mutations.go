@@ -582,9 +582,11 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		)
 		return err
 	}
-	// CR 118.6: a spell with no mana cost can't be cast by paying
-	// it. Checked once the claimed alternative cost and the exile
-	// grant are both known, because those are the CR 118.6a ways in.
+	// CR 118.6: no mana cost is an unpayable cost, and paying it is
+	// illegal, so a cast that would pay it is refused here. Checked
+	// once the claimed alternative cost and the exile grant are both
+	// known, because an alternative cost applied to the unpayable
+	// cost may be paid (CR 118.6a).
 	// Mode-independent, like the unparseable-cost refusal: there is
 	// no cost to have paid on paper either.
 	if HasNoManaCost(card) && castPaysPrintedCost(alt, exileGrant, hasExileGrant) {
