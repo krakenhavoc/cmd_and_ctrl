@@ -77,7 +77,10 @@ wiring only.
   uses, and `--art-error-z` to lift it over the tile's own overlays.
   `Card.svelte` puts it on the left edge below the top badge row,
   above the counter column, and lower on a tapped card, whose turned
-  tile the next tapped land overlaps (`boardArtPip.test.ts`).
+  tile the next tapped land overlaps. `BattlefieldRow.svelte` moves an
+  Aura's or Equipment's pip to its bottom-left corner, the part its
+  host leaves uncovered whether either is tapped
+  (`boardArtPip.test.ts` checks both).
 - Inside a tile that has its own click / double-click / Enter handling
   nothing extra is needed — the pip stops propagation. Inside a
   `pointer-events: none` or `aria-hidden` surface, pass

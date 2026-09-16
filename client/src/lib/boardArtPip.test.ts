@@ -1,17 +1,20 @@
 // Is the board card's failed-art pip (#33) visible on a tapped card in
-// a battlefield row?
+// a battlefield row, and on an attachment drawn behind its host?
 //
 // A tapped Card turns 90° clockwise, and the turn makes the tile its
 // own stacking context, so the pip's z-index counts only inside it: a
 // later tile that overlaps the pip paints over it. The land strip
-// overlaps tapped lands by 35% of a width, and a tapped tile in an
-// ordinary row overhangs its neighbours. Where the pip sits is CSS in
-// Card.svelte, the overlaps are CSS in BattlefieldRow.svelte, and the
-// client has no DOM to lay either out in — so this reads the numbers
-// out of those files and does the geometry. It was measured against
-// Chromium's hit-testing (elementFromPoint at the pip) and agrees:
-// 22px, the old tapped position, is covered on every tapped land but
-// the rightmost.
+// overlaps tapped lands by 35% of a width, a tapped tile in an
+// ordinary row overhangs its neighbours, and a host covers all but a
+// sliver of the Auras and Equipment tucked behind it. Where the pip
+// sits is CSS in Card.svelte and BattlefieldRow.svelte, the overlaps
+// are CSS in BattlefieldRow.svelte, and the client has no DOM to lay
+// either out in — so this reads the numbers out of those files and
+// does the geometry. It was measured against Chromium's hit-testing
+// (elementFromPoint at the pip) and agrees: 22px, the old tapped
+// position, is covered on every tapped land but the rightmost, and the
+// old attachment position, 22px down the left edge, under a tapped
+// host.
 //
 // If a regex here stops matching, the CSS moved: update the pattern,
 // and keep the assertions.
@@ -42,11 +45,10 @@ function decl(body: string, prop: string): string {
 }
 
 // px evaluates a length: `12px`, `0`, a percentage of `percentOf`, or
-// a calc() over --card-w / --card-h.
+// a calc() over percentages, --card-w and --card-h.
 function px(value: string, w: number, h: number, percentOf = 0): number {
-  const pct = /^([\d.]+)%$/.exec(value);
-  if (pct) return (Number(pct[1]) / 100) * percentOf;
   const expr = value
+    .replace(/([\d.]+)%/g, (_, n: string) => `(${n} / 100 * ${percentOf})`)
     .replace(/var\(--card-w[^)]*\)/g, String(w))
     .replace(/var\(--card-h[^)]*\)/g, String(h))
     .replace(/calc/g, "")
@@ -166,6 +168,158 @@ describe("failed-art pip on the battlefield", () => {
           });
         });
       }
+    }
+  }
+});
+
+// --- attachments ------------------------------------------------------
+//
+// BattlefieldRow draws a host's Auras and Equipment first inside its
+// .host-stack, each pulled under the next by a negative margin and
+// dropped a few pixels, and the host last, on top. What stays visible
+// of an attachment depends on what is tapped: a sliver down its left
+// edge while its neighbour is upright, a band along its bottom once
+// the host turns, and the left end of its own turned tile when the
+// attachment itself is tapped. The pip has to sit where all of those
+// agree, so this lays the stack out in two dimensions.
+
+const BORDER = px(decl(block(cardSvelte, ".card"), "border").split(/\s+/)[0], 0, 0);
+const attachmentRule = block(rowSvelte, ".host-stack .attachment");
+const ATTACHMENT_DROP = px(
+  /translateY\(([^)]+)\)/.exec(decl(attachmentRule, "transform"))?.[1] ?? "",
+  0,
+  0,
+);
+
+// pipVars resolves --art-error-top / -left for a Card, in cascade
+// order: Card.svelte's .card, then .card.tapped, then BattlefieldRow's
+// rule for a Card inside an attachment, which is more specific than
+// either (it is scoped by two of the row's own classes).
+const ATTACHED_CARD = ".host-stack .attachment :global(.card)";
+function pipVars(tapped: boolean, attached: boolean): { top: string; left: string } {
+  const bodies = [block(cardSvelte, ".card")];
+  if (tapped) bodies.push(block(cardSvelte, ".card.tapped"));
+  if (attached && rowSvelte.includes(`${ATTACHED_CARD} {`)) {
+    bodies.push(block(rowSvelte, ATTACHED_CARD));
+  }
+  const pick = (prop: string) =>
+    bodies.reduce<string | null>(
+      (v, b) => (new RegExp(`(?:^|[;\\s])${prop}:`).test(b) ? decl(b, prop) : v),
+      null,
+    )!;
+  return { top: pick("--art-error-top"), left: pick("--art-error-left") };
+}
+
+type Rect = { x1: number; y1: number; x2: number; y2: number };
+
+// A tile's box, and its pip, as painted. Turning (dx, dy) from the
+// tile's centre 90° clockwise gives (-dy, dx).
+function paint(box: Rect, tapped: boolean, r: Rect): Rect {
+  if (!tapped)
+    return { x1: box.x1 + r.x1, y1: box.y1 + r.y1, x2: box.x1 + r.x2, y2: box.y1 + r.y2 };
+  const cx = (box.x1 + box.x2) / 2;
+  const cy = (box.y1 + box.y2) / 2;
+  const w = box.x2 - box.x1;
+  const h = box.y2 - box.y1;
+  return {
+    x1: cx - (r.y2 - h / 2),
+    x2: cx - (r.y1 - h / 2),
+    y1: cy + (r.x1 - w / 2),
+    y2: cy + (r.x2 - w / 2),
+  };
+}
+
+// visibleShare samples the pip on a grid and returns the fraction of
+// it that no later tile paints over and the row does not clip.
+function visibleShare(pip: Rect, later: Rect[], clipLeft: number): number {
+  const N = 28;
+  let seen = 0;
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++) {
+      const x = pip.x1 + ((i + 0.5) / N) * (pip.x2 - pip.x1);
+      const y = pip.y1 + ((j + 0.5) / N) * (pip.y2 - pip.y1);
+      const hidden =
+        x < clipLeft || later.some((t) => x > t.x1 && x < t.x2 && y > t.y1 && y < t.y2);
+      if (!hidden) seen++;
+    }
+  }
+  return seen / (N * N);
+}
+
+// stackPips lays out one .host-stack — attachments, then the host —
+// with the stack's left edge at 0, and returns each tile's pip with
+// the share of it left visible.
+function stackPips(attachments: boolean[], hostTapped: boolean, w: number, h: number) {
+  const step = w + px(decl(attachmentRule, "margin-right"), w, h);
+  const stackMargin = px(
+    decl(block(rowSvelte, ".host-stack.has-attachments"), "margin-left"),
+    w,
+    h,
+  );
+  const tiles = [...attachments, hostTapped].map((tapped, i) => {
+    const attached = i < attachments.length;
+    const y = attached ? ATTACHMENT_DROP : 0;
+    const box = { x1: i * step, y1: y, x2: i * step + w, y2: y + h };
+    const vars = pipVars(tapped, attached);
+    const left = BORDER + px(vars.left, w, h, w - 2 * BORDER);
+    const top = BORDER + px(vars.top, w, h, h - 2 * BORDER);
+    const pip = paint(box, tapped, { x1: left, y1: top, x2: left + PIP, y2: top + PIP });
+    return { attached, tapped, face: paint(box, tapped, { x1: 0, y1: 0, x2: w, y2: h }), pip };
+  });
+  return tiles.map((t, i) => {
+    // The pip is inside its own tile (the tile clips it otherwise)…
+    const inside =
+      t.pip.x1 >= t.face.x1 &&
+      t.pip.x2 <= t.face.x2 &&
+      t.pip.y1 >= t.face.y1 &&
+      t.pip.y2 <= t.face.y2;
+    const later = tiles.slice(i + 1).map((l) => l.face);
+    // …and the row's padding is the most room the stack has to its
+    // left, for a first land with no strip margin.
+    return { ...t, inside, share: visibleShare(t.pip, later, -(stackMargin + ROW_PAD_LEFT)) };
+  });
+}
+
+// Every board size a host-stack is drawn at: the viewer's creatures and
+// lands, and the two opponent panel sizes.
+const STACK_SIZES: [number, number][] = [
+  [120, 168],
+  [88, 123],
+  [64, 90],
+  [48, 67],
+];
+// What is attached, and whether each is tapped, then whether the host
+// is. A tapped Aura or Equipment is unusual; a tapped host carrying
+// one — an enchanted land tapped for mana, an equipped attacker — is
+// every other turn. Not covered: an upright attachment in front of a
+// tapped one on a tile under about 88px, where the turned tile's
+// band reaches below the upright one's bottom edge. The pip is
+// modelled as its square box, which covers more than the round pip.
+const STACKS: [boolean[], boolean][] = [
+  [[false], false],
+  [[false], true],
+  [[true], false],
+  [[true], true],
+  [[false, false], false],
+  [[false, false], true],
+  [[true, true], true],
+];
+
+describe("failed-art pip on an attachment", () => {
+  for (const [w, h] of STACK_SIZES) {
+    for (const [attachments, hostTapped] of STACKS) {
+      const name = `${attachments.map((t) => (t ? "T" : "u")).join("")}+${hostTapped ? "T" : "u"}`;
+      it(`is visible behind its host: ${w}x${h} ${name}`, () => {
+        stackPips(attachments, hostTapped, w, h).forEach((t, i) => {
+          expect(t.inside, `tile ${i} pip outside its tile`).toBe(true);
+          // A 48px tile leaves 28% of its width, 13.4px, uncovered
+          // beside the next one — less than the 14px pip — so there
+          // most of the pip, not all of it, is the most there is room
+          // for. Everywhere else, all of it.
+          const need = w < 60 ? 0.75 : 1;
+          expect(t.share, `tile ${i} pip covered`).toBeGreaterThanOrEqual(need);
+        });
+      });
     }
   }
 });

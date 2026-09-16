@@ -453,16 +453,19 @@
        the hand's cost chip and a counter column that grows downward
        with every counter type — and the left edge of an UNTAPPED tile
        is the part that stays visible where tiles overlap: the hand
-       fan and its top-55% peek, the untapped land strip, attachments
-       tucked behind their host. 22px clears the top badge row (CMD on
-       the left; a GOAD or cost chip wide enough to reach across a
-       narrow tile). z-index 5 keeps it above the counter column (4): on
-       a tile under about 90px wide a wide chip (a two-digit count)
-       reaches under the pip, which covers the chip's left end.
+       fan and its top-55% peek, the untapped land strip. Not an
+       attachment tucked behind its host: once either of them is
+       tapped, the host covers most of that edge, so BattlefieldRow
+       moves an attachment's pip to its bottom-left corner. 22px
+       clears the top badge row (CMD on the left; a GOAD or cost chip
+       wide enough to reach across a narrow tile). z-index 5 keeps it
+       above the counter column (4): on a tile under about 90px wide a
+       wide chip (a two-digit count) reaches under the pip, which
+       covers the chip's left end.
        The pip's z-index only counts inside this tile — the transform
        makes the tile its own stacking context — so a later tile that
        overlaps it always paints over it. boardArtPip.test.ts checks
-       the rows. */
+       the rows and the attachment stacks. */
     --art-error-top: 22px;
     --art-error-left: 3px;
     --art-error-right: auto;

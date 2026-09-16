@@ -177,6 +177,24 @@
     z-index: 7;
     filter: none;
   }
+  /* An attachment's failed-art pip (#33) goes in its bottom-left
+     corner, tapped or not. The pip cannot paint over the tile after
+     it — each tile is its own stacking context — so it has to sit
+     where that tile leaves the attachment uncovered, whatever is
+     tapped. Upright next to an upright tile, that is the left 28% of
+     the attachment. A tapped host turns to cover a band across the
+     middle of its height, leaving the bottom of the attachment (the
+     8px drop helps) — Card's 22px, the old spot, went under it. A
+     tapped attachment turns its bottom edge to the left, clear of an
+     upright host, and its bottom-left corner to the top-left, left of a
+     turned host. 2px up keeps it clear of the band at the smallest
+     size, and the left edge keeps it inside the sliver. It covers the
+     start of an AUTO badge or keyword row there, which on an Aura or
+     Equipment is rare. boardArtPip.test.ts checks every combination. */
+  .host-stack .attachment :global(.card) {
+    --art-error-top: calc(100% - 16px);
+    --art-error-left: 0px;
+  }
   .row-cards {
     display: flex;
     flex-direction: row;
