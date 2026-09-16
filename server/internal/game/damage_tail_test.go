@@ -246,7 +246,7 @@ func TestPausedCombatDamageKeepsDeathtouchAndLifelink(t *testing.T) {
 			pushTestCreature(g, blkID, g.Seats[1], 1, 10)
 		},
 		deal: func(g *Game) {
-			g.markCombatDamageOnCardLocked(blkID, 3, atkID)
+			g.markCombatDamageOnCardLocked(blkID, 3, atkID, "")
 		},
 	})
 	if got := g.Seats[0].Life; got != StartingLife+4 {
@@ -273,7 +273,7 @@ func TestPausedCombatDamageToPlayerKeepsCommanderDamage(t *testing.T) {
 			findBattlefieldCard(g, atkID).IsCommander = true
 		},
 		deal: func(g *Game) {
-			g.markCombatDamageToPlayerLocked(g.Seats[1].ID, atkID, 3)
+			g.markCombatDamageToPlayerLocked(g.Seats[1].ID, atkID, 3, "")
 		},
 	})
 	if got := g.Seats[1].Life; got != StartingLife-4 {
@@ -313,7 +313,7 @@ func TestPausedDamageEmitsACombatFlaggedEvent(t *testing.T) {
 			g.Listeners = append(g.Listeners, seen)
 		},
 		deal: func(g *Game) {
-			g.markCombatDamageOnCardLocked(blkID, 3, atkID)
+			g.markCombatDamageOnCardLocked(blkID, 3, atkID, "")
 		},
 	}
 	_ = runDamageScenario(t, sc, true)

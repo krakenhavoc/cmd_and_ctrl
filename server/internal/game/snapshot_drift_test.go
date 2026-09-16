@@ -457,6 +457,10 @@ func TestEmbeddedDomainTypesStayPureData(t *testing.T) {
 	samples := []any{
 		Event{}, Turn{}, Vote{}, TargetRef{}, ManaToken{},
 		LifeChange{}, Characteristic{}, CastTally{},
+		// Event.CombatStep and DamageAssignmentFrame.CombatStep (#187)
+		// are carried through these two with no plan entry; their zero
+		// value "" is right for a file written before them, so no
+		// schema bump (combat_step_snapshot_test.go).
 		DamageAssignmentFrame{}, ManaPool{},
 		// Card.ExilePlay is one of these: CardSnapshot holds an
 		// ExilePlayPermission by value, so the type's fields never

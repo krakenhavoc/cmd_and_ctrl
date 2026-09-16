@@ -635,6 +635,21 @@ type DamageAssignmentFrame struct {
 	// hook.
 	FirstStrike bool
 
+	// CombatStep is the Event.CombatStep value the pass that queued
+	// this prompt stamps on its damage: CombatStepFirstStrike,
+	// CombatStepRegular, or "" when no first-strike pass ran (#187,
+	// ADR 0053 Decision 1). The resume paths tag the attacker's
+	// assigned damage from it, through damageTailFromFrame.
+	//
+	// Not derivable from FirstStrike: a regular-pass prompt has
+	// FirstStrike false in a combat that had a first-strike pass
+	// ("regular") and in one that did not (""). Zero value "" means
+	// untagged, which is also what a prompt restored from a snapshot
+	// written before this field existed resumes as, so no snapshot
+	// schema bump. Server-side only: not projected onto
+	// DamageAssignmentView.
+	CombatStep string `json:",omitempty"`
+
 	// SourceLifelink is the cached lifelink state of the attacker
 	// at prompt-queue time. Captured here because the attacker may
 	// have been destroyed by blocker damage (which resolves in the
