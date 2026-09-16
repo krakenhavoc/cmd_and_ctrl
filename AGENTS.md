@@ -1625,6 +1625,39 @@ a permanent and answers its prompt in one call. Assert through
 `effectivePower` / `effectiveAbilities` / `effectiveSubtypes` like
 any other layer card.
 
+### Shared vocabulary, and the clone gate
+
+The catalog is one package and its helpers are one vocabulary. The
+September 2026 review ([Discussion #557](https://github.com/krakenhavoc/cmd_and_ctrl/discussions/557))
+found the biggest cost in the tree was card-side copy-paste that grew
+because batch authors were told never to touch shared files; that rule
+is gone. In its place:
+
+- **Shared code lives in mechanic-named files, and those files are
+  append-only.** A trigger shape or condition goes in
+  `triggers_common.go`; a card predicate or an effect body used by
+  more than one card goes in `helpers.go` (or a `predicates_<mechanic>.go`
+  / `effects_<mechanic>.go` beside it); a token is a row in
+  `tokens_table.go`. Add a function; never change an existing one's
+  behaviour in a card PR. Two PRs that both append to the same file
+  merge cleanly.
+- **No batch prefixes.** A helper is named for what it says
+  (`instantOrSorceryCastByYou`), not for the batch that first needed
+  it. The `bNN` names still in the tree are the promotion pass's
+  backlog (#583), not a convention to follow.
+- **Grep before you write.** `grep -n "func .*CastByYou" *.go` before
+  writing a "whenever you cast" predicate; the third copy of a helper
+  is how the catalog got to ~8,700 redundant lines.
+- **The gate.** `TestNoNewExactClonesInTheCatalog`
+  (`server/internal/cards/coverage`) fails a PR that introduces a new
+  byte-identical function or closure body of six or more lines, and
+  names both copies. Fix it by calling the one that exists, or by
+  naming one shared helper and calling it twice. The baseline
+  (`coverage/testdata/clone_baseline.txt`) records the duplicates that
+  predate the gate; regenerate it with
+  `go test ./internal/cards/coverage/ -update` when a PR removes some,
+  never add a line to it by hand.
+
 ### When NOT to add a catalog entry
 
 The registry of known seams — what is missing, which cards wait on
