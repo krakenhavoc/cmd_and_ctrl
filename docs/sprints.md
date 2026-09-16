@@ -2500,6 +2500,8 @@ Meanwhile the restore point is staler than the ADR implies. The census fires on 
 
 `auth.MemoryAuthenticator`'s own doc comment has said since S04 that "session is lost on server restart", and ADR 0041 named the swap as a one-line change because `Authenticator` is the only seam the rest of the server sees. It is still one line.
 
+**Blocked on [#721](https://github.com/krakenhavoc/cmd_and_ctrl/issues/721)** (owner decision 2026-09-16): in-app bug reports published session tokens in issue bodies. Harmless while tokens die on restart; a durable token pasted in an issue stays live. Redaction lands first (ADR 0017 §9).
+
 - [ ] `auth.HMACAuthenticator` — Principal signed into the credential, constant-time verify, expiry honoured, no server-side store
 - [ ] Key from env; **absent key falls back to `MemoryAuthenticator` with a loud warning** rather than booting with a default
 - [ ] `Revoke` semantics under a stateless backend, documented on the type rather than left as a silent `return nil`
