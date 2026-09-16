@@ -363,7 +363,7 @@ func TestS13AutoUntapOnMulliganClose(t *testing.T) {
 }
 
 // TestS13AutoDrawOnStepEntry verifies the auto-draw turn-based action
-// fires on StepDraw and respects the turn-1 skip-draw rule (CR 103.7c).
+// fires on StepDraw and respects the turn-1 skip-draw rule (CR 103.8a).
 func TestS13AutoDrawOnStepEntry(t *testing.T) {
 	g := NewGame()
 	for i := 0; i < 2; i++ {
@@ -378,7 +378,7 @@ func TestS13AutoDrawOnStepEntry(t *testing.T) {
 
 	// Cursor at Upkeep (seat 0, turn 1). Advancing fires StepDraw
 	// entry hook — which should NOT draw because seat 0 is the
-	// starting player on turn 1 (CR 103.7c).
+	// starting player on turn 1 (CR 103.8a).
 	handBefore := g.Seats[0].Hand.Size()
 	if _, err := g.AdvanceStep(); err != nil {
 		t.Fatalf("AdvanceStep into Draw: %v", err)
@@ -387,7 +387,7 @@ func TestS13AutoDrawOnStepEntry(t *testing.T) {
 		t.Fatalf("expected cursor at StepDraw, got %q", g.Turn.Step)
 	}
 	if g.Seats[0].Hand.Size() != handBefore {
-		t.Errorf("turn-1 starting seat drew: hand %d → %d (CR 103.7c violation)",
+		t.Errorf("turn-1 starting seat drew: hand %d → %d (CR 103.8a violation)",
 			handBefore, g.Seats[0].Hand.Size())
 	}
 
@@ -465,7 +465,7 @@ func TestEndTransitionsToEnded(t *testing.T) {
 
 // TestTurnAdvanceClearsPerTurnCaches is the S25 (#77) regression for
 // a bypassed hook. `onTurnAdvanceLocked` clears the "once per turn"
-// bookkeeping — loyalty activations (CR 606.5), the spell tally, the
+// bookkeeping — loyalty activations (CR 606.3), the spell tally, the
 // land-drop count — but it was only reached from AdvanceStep, which
 // compares the step BEFORE the advance to the step after. In normal
 // play the cursor never rests on Cleanup: End → Cleanup → the next

@@ -21,7 +21,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - "Sacrifice ANOTHER permanent" is a choice the CONTROLLER makes,
 //     so it queues a sacrifice picker rather than the engine picking.
 //     Korvold excludes himself via NotSelf; with no other permanent
-//     the prompt is skipped and nothing is sacrificed (CR 701.17b).
+//     the prompt is skipped and nothing is sacrificed (CR 701.21a).
 //   - It is MANDATORY. A Korvold attacking into an empty board eats
 //     a land. There is no "you may" on the printed card, and adding
 //     one would make it strictly better than printed.

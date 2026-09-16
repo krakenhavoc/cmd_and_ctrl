@@ -272,7 +272,7 @@ func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount in
 		return nil
 	}
 	// Post-replacement values, and through the permanent-aware path:
-	// a creature marks damage, a planeswalker loses loyalty (CR 120.3d,
+	// a creature marks damage, a planeswalker loses loyalty (CR 120.3c,
 	// the #406 fix) and a battle loses defence. The old inline loop
 	// here only ever incremented DamageMarked, which is why damage
 	// could not kill a planeswalker.
@@ -420,7 +420,7 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, unt
 	// the library. Re-reading the top each iteration would hand back
 	// the same commander every time and mill nothing else. Choosing
 	// the set first lets the rest of the mill proceed AROUND the
-	// paused card, which is both what CR 701.13b's simultaneous mill
+	// paused card, which is both what CR 701.17a's simultaneous mill
 	// wants and the only version that does not silently shorten the
 	// mill when a commander is in the way.
 	avail := len(p.Library.Cards)
@@ -435,7 +435,7 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, unt
 
 	moved := make([]uuid.UUID, 0, want)
 	for _, c := range batch {
-		// Only a move to the GRAVEYARD is a mill (CR 701.13). "Exile
+		// Only a move to the GRAVEYARD is a mill (CR 701.17). "Exile
 		// the top N cards of your library" is not, and firing
 		// EventMill for it would trigger every mill payoff at the
 		// table — Bruvac would double an impulse-draw exile, which it
@@ -470,7 +470,7 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, unt
 }
 
 // DestroyPermanentForEffect destroys a battlefield permanent
-// (CR 701.7), routing it to its owner's graveyard — or exile if the
+// (CR 701.8), routing it to its owner's graveyard — or exile if the
 // owner is no longer seated. Exposed so effect primitives can call
 // it from an already-locked context.
 //
@@ -485,7 +485,7 @@ func (g *Game) DestroyPermanentForEffect(cardID uuid.UUID) error {
 }
 
 // SacrificePermanentForEffect sacrifices a battlefield permanent on
-// behalf of its controller (CR 701.17): EventSacrifice fires while
+// behalf of its controller (CR 701.21): EventSacrifice fires while
 // the card is still on the battlefield, then it takes the ordinary
 // route to its owner's graveyard (emitting ZoneMove + LTB, so
 // dies-triggers see it and the CR 903.9 commander-zone replacement
@@ -666,7 +666,7 @@ func (g *Game) UntapTargetForEffect(cardID uuid.UUID) error {
 // setTapStateLocked is the internal helper behind TapCard and the
 // TapTarget / UntapTarget effect primitives. Caller must hold g.mu.
 //
-// Both directions are a CHANGE of state (CR 701.19a / 701.20a): a
+// Both directions are a CHANGE of state (CR 701.26a / 701.26b): a
 // permanent that is already tapped does not become tapped, and one
 // that is already untapped does not become untapped. Neither emits,
 // and neither is an error — "untap target permanent" pointed at an
@@ -709,7 +709,7 @@ func (g *Game) CounterTargetForEffect(stackID uuid.UUID) error {
 	}
 	switch item.Kind {
 	case StackItemSpell:
-		// CR 701.5a + the "this spell can't be countered" rider
+		// CR 701.6a + the "this spell can't be countered" rider
 		// (Supreme Verdict). The spell is still a LEGAL TARGET — a
 		// Counterspell aimed at it resolves, and then does nothing.
 		// Modelling it as an illegal target would be the easy
@@ -1055,7 +1055,7 @@ type SearchLibrarySpec struct {
 	// own condition fires.
 	TappedOnEntry bool
 
-	// Optional marks a "you MAY search" (CR 701.19c). It forces the
+	// Optional marks a "you MAY search" (CR 701.23b). It forces the
 	// prompt even when the pick is otherwise forced, so the searcher
 	// can decline — Assassin's Trophy's victim keeps the right to
 	// refuse the land and the shuffle.
@@ -1454,7 +1454,7 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 }
 
 // revealLibraryCardsLocked reveals the named library cards to the
-// whole table — the CR 701.16 sense of "reveal" that a tutor prints
+// whole table — the CR 701.20 sense of "reveal" that a tutor prints
 // between "search your library for a card" and "put it into your
 // hand".
 //
@@ -1702,7 +1702,7 @@ func (g *Game) CreateTokensAttackingForEffect(controller uuid.UUID, template Car
 	return nil
 }
 
-// ScryForEffect performs a scry N (CR 701.18): the player looks at the
+// ScryForEffect performs a scry N (CR 701.22): the player looks at the
 // top N cards of their library and then decides which go to the bottom
 // and in what order the rest go back on top.
 //
@@ -1747,7 +1747,7 @@ func (g *Game) ScryThenForEffect(playerID, source uuid.UUID, n int, after func(g
 	return g.lookAtTopForEffect(PendingChoiceScry, playerID, source, n, scryReason, after)
 }
 
-// SurveilThenForEffect is surveil N with a continuation (CR 701.42):
+// SurveilThenForEffect is surveil N with a continuation (CR 701.25):
 // the player looks at the top N cards of their library and puts any
 // number of them into their graveyard, the rest back on top in any
 // order.

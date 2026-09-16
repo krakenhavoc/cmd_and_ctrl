@@ -9,7 +9,7 @@ import (
 )
 
 // saga_test.go covers the S27 Saga lifecycle end-to-end through a
-// real catalog card: the entry lore counter (CR 714.2b), the
+// real catalog card: the entry lore counter (CR 714.3), the
 // precombat-main advance, chapter dispatch in printed order, and the
 // CR 704.5s sacrifice — including the half of that rule that is easy
 // to get wrong, which is that the final chapter has to RESOLVE first.
@@ -22,7 +22,7 @@ const (
 
 // advanceToPrecombatMainOf walks the turn engine to the named seat's
 // precombat main phase — the step whose entry hook performs the
-// CR 714.2b lore-counter turn-based action.
+// CR 714.3 lore-counter turn-based action.
 // Always advances at least one step, so calling it while already
 // parked at the target seat's precombat main walks a full turn cycle
 // round to the NEXT one rather than returning immediately. Every
@@ -76,7 +76,7 @@ func inGraveyardOf(g *game.Game, playerID, cardID uuid.UUID) bool {
 	return false
 }
 
-// TestSagaEntersWithLoreCounterAndFiresChapterOne is CR 714.2b's
+// TestSagaEntersWithLoreCounterAndFiresChapterOne is CR 714.3's
 // first half: the counter arrives as the Saga enters, and the
 // chapter it lands on triggers immediately rather than waiting for
 // the next turn.
@@ -98,7 +98,7 @@ func TestSagaEntersWithLoreCounterAndFiresChapterOne(t *testing.T) {
 	}
 }
 
-// TestSagaAdvancesAtPrecombatMain is the second half of CR 714.2b —
+// TestSagaAdvancesAtPrecombatMain is the second half of CR 714.3 —
 // the turn-based action after the controller's draw step — plus the
 // dispatch of the chapter that counter reaches.
 func TestSagaAdvancesAtPrecombatMain(t *testing.T) {
@@ -120,7 +120,7 @@ func TestSagaAdvancesAtPrecombatMain(t *testing.T) {
 }
 
 // TestSagaOnlyAdvancesOnItsControllersTurn pins the "your draw step"
-// half of CR 714.2b: another player's precombat main must not move
+// half of CR 714.3: another player's precombat main must not move
 // the counter.
 func TestSagaOnlyAdvancesOnItsControllersTurn(t *testing.T) {
 	g := newCatalogGame(t)

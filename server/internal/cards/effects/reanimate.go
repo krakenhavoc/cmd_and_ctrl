@@ -24,7 +24,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The life loss is the card's mana value, read off the card in the
 // graveyard before it moves — a creature that would be bigger or
 // smaller as a permanent (a CDA, an anthem) does not change what you
-// pay, and {X} in a graveyard is 0 (CR 202.3b).
+// pay, and {X} in a graveyard is 0 (CR 202.3e).
 //
 // "You lose life" is not damage: no lifelink, no prevention, no
 // damage triggers. ChangePlayerLifeForEffect with a negative delta

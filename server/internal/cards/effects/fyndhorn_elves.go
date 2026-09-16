@@ -6,7 +6,7 @@ package effects
 //
 // Llanowar Elves with a different name — the second copy every
 // green deck runs. Same single fixed {G}, so activating it adds the
-// mana immediately with no colour prompt, and the same CR 302.1
+// mana immediately with no colour prompt, and the same CR 302.6
 // summoning-sickness gate the engine applies to every tap ability on
 // a creature.
 //

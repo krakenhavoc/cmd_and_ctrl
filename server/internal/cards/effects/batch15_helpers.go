@@ -68,7 +68,7 @@ func b15AnotherCreatureDied(ev game.Event, source *game.Card, g *game.Game) bool
 // b15AnotherBigArtifactYouControlEntered is Simulacrum Synthesizer's
 // condition: another artifact the controller controls entered with
 // mana value 3 or greater. Mana value is read off the permanent
-// (CR 202.3b — X is zero, a token with no cost is zero).
+// (CR 202.3e — X is zero, a token with no cost is zero).
 func b15AnotherBigArtifactYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
 	c, ok := enteredUnderYourControl(ev, source, g, true)
 	return ok && c.IsArtifact() && manaValueOf(c) >= 3

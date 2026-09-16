@@ -186,7 +186,7 @@ this branch.
   — `_ = label`), and no effect of any kind runs. It moves a counter.
   It also does not check that the target is a planeswalker (any
   battlefield card will take loyalty counters), does not check that
-  the activating player controls it, and does not enforce CR 606.3's
+  the activating player controls it, and does not enforce CR 606.6's
   "you cannot remove more loyalty than is there" — the comment at
   `mutations.go:1572-1574` deliberately allows negative so the SBA can
   see the intent.
@@ -311,12 +311,12 @@ spends the turn's once-per-turn window. Catalog files write it as
 
 | Rule | Enforcement |
 | --- | --- |
-| CR 606.1 | source must be a planeswalker → `ErrNotAPlaneswalker` |
-| CR 606.2 | activator must control it → the pre-existing `ErrCardCallerMismatch` |
-| CR 606.3 | a `−N` needs N counters → `ErrInsufficientLoyalty` |
-| CR 606.5 | sorcery speed, and once per turn per planeswalker → `ErrSorcerySpeedRequired`, `ErrLoyaltyAlreadyActivated` |
+| CR 606.2 | source must be a planeswalker → `ErrNotAPlaneswalker` |
+| CR 606.3 | activator must control it → the pre-existing `ErrCardCallerMismatch` |
+| CR 606.6 | a `−N` needs N counters → `ErrInsufficientLoyalty` |
+| CR 606.3 | sorcery speed, and once per turn per planeswalker → `ErrSorcerySpeedRequired`, `ErrLoyaltyAlreadyActivated` |
 
-CR 606.3 is checked in the validate-everything-first block, before
+CR 606.6 is checked in the validate-everything-first block, before
 any cost is paid, so a refused activation leaves the loyalty
 untouched and does **not** burn the turn's window. Paying down to
 exactly zero is legal and is not an overpayment — the 704.5i SBA of
@@ -355,7 +355,7 @@ manual `tap` strikes for every card the catalog cannot express, and
 #329's own Teferi is one of them. What changed is that it is no
 longer a counter faucet pointed at the whole table: it now rejects
 non-planeswalkers, rejects cards the activator doesn't control, and
-enforces CR 606.3 instead of driving loyalty negative. The old
+enforces CR 606.6 instead of driving loyalty negative. The old
 comment arguing for negative loyalty ("so the SBA can see the
 intent") is gone: the SBA reads `loyalty <= 0`, so clamping and
 refusing are indistinguishable to it, and refusing is what the rules
@@ -384,7 +384,7 @@ say.
   unused ever since, and PR #314's until-end-of-turn statics make
   the `−2` expressible as `BoostUntilEOT` + `GrantKeywordUntilEOT`.
   Her "activate loyalty abilities at instant speed the turn she
-  enters" clause is a per-permanent override of CR 606.5 that the
+  enters" clause is a per-permanent override of CR 606.3 that the
   gate has no hook for, so she is slower than printed on the turn
   she lands.
 
@@ -465,7 +465,7 @@ scope and none is made harder by this change.
 - **A VARIABLE loyalty cost** — Ugin, the Spirit Dragon's "−X: Exile
   each permanent with mana value X or less that's one or more
   colors". `AbilityCost.Loyalty` is a single `*int`, paid down at
-  announce and checked against the card's counters by CR 606.3, and
+  announce and checked against the card's counters by CR 606.6, and
   #550's `{X}` is deliberately confined to the MANA component:
   `DemandsX` reads the cost string and nothing else, which is what
   lets the view, the enumerator and the client all derive "does this

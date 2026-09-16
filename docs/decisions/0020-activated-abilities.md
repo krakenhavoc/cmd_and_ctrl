@@ -51,7 +51,7 @@ predicate, because the shape is identical. It is emphatically not
 targeting: a sacrifice cost doesn't target, so hexproof and
 "can't be the target of" never apply to it, and the client picks it
 from a plain list instead of the board-click targeting flow. The
-controller restriction (CR 701.17b) lives in the engine's cost
+controller restriction (CR 701.21a) lives in the engine's cost
 validation rather than the spec.
 
 ### 3. Validate everything, then pay everything
@@ -90,7 +90,7 @@ migration.
 ## Consequences
 
 - Sac outlets work end to end: Goblin Bombardment, Carrion Feeder.
-- Tap abilities enforce summoning sickness (CR 302.1), which the
+- Tap abilities enforce summoning sickness (CR 302.6), which the
   free-form path never did — Krenko can't tap the turn he lands.
   `CardView.summoning_sick` now rides the wire so the menu can grey
   the entry instead of failing the click.
@@ -101,7 +101,7 @@ migration.
 
 - **Mana abilities with a non-self sacrifice cost** (Ashnod's Altar:
   "Sacrifice a creature: Add {C}{C}"). It's a mana ability, so it
-  must not use the stack (CR 605.3a), but its cost needs the
+  must not use the stack (CR 605.3b), but its cost needs the
   sacrifice picker this ADR builds for stack-using abilities. It
   fits neither surface cleanly; it wants a third path where the
   activation collects a cost choice and then resolves immediately.

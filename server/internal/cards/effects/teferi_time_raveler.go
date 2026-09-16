@@ -24,7 +24,7 @@ import (
 //
 // WHAT IS WIRED
 //
-//   - −3 in full: the loyalty payment (CR 606.3 refuses it below
+//   - −3 in full: the loyalty payment (CR 606.6 refuses it below
 //     three counters), the bounce, and the draw. "Up to one target"
 //     is a Min 0 / Max 1 clause, so the −3 is activatable on an
 //     empty board and still draws — the draw is the half you always

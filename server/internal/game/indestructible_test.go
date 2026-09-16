@@ -39,7 +39,7 @@ func pushVanillaGolem(g *Game, owner *Player, name string) uuid.UUID {
 	return c.InstanceID
 }
 
-// TestIndestructibleSurvivesDestroyEffect is CR 701.7 + CR 702.12b at
+// TestIndestructibleSurvivesDestroyEffect is CR 701.8 + CR 702.12b at
 // the catalog's destruction verb: every `DestroyTarget` in the
 // effects package and every wrath that loops over the battlefield
 // reaches `DestroyPermanentForEffect`, so gating there covers all of
@@ -154,7 +154,7 @@ func TestIndestructibleDiesToZeroToughness(t *testing.T) {
 	}
 }
 
-// TestIndestructibleDoesNotStopSacrifice is CR 701.17b. Sacrifice
+// TestIndestructibleDoesNotStopSacrifice is CR 701.21a. Sacrifice
 // and destruction share an exit ramp
 // (routeBattlefieldCardToOwnerGraveyardLocked) and differ in every
 // other respect; this test is what pins the gate above that ramp

@@ -56,7 +56,7 @@ type GameView struct {
 	// client's "undos remaining" indicator. Added in S11.
 	UndoLimit int `json:"undo_limit,omitempty"`
 	// StartingSeat is the seat index that took the first turn. Used
-	// by the server to enforce the CR 103.7c turn-1 skip-draw rule;
+	// by the server to enforce the CR 103.8a turn-1 skip-draw rule;
 	// surfaced on the wire so spectators / reconnects can render
 	// "first player" UI affordances. Pre-S13 replays decode as 0,
 	// which matches the only seat games started on before this field
@@ -85,7 +85,7 @@ type GameView struct {
 	// S22.
 	DelayedTriggers []DelayedTriggerView `json:"delayed_triggers,omitempty"`
 	// SplitSecondActive mirrors `Game.SplitSecondActive` — true
-	// while any item with split second is on the stack (CR 702.79).
+	// while any item with split second is on the stack (CR 702.61).
 	// Drives the client's "no responses allowed" UI gating. Added
 	// in S13.1.
 	SplitSecondActive bool `json:"split_second_active,omitempty"`
@@ -133,7 +133,7 @@ type GameView struct {
 	// FilterViewFor. Added in S31 sub-PR 0 (ADR 0033 §4).
 	Log []LogEvent `json:"log,omitempty"`
 	// Reveals is the broadcast reveal window: the cards players have
-	// shown the whole table this turn (CR 701.16), oldest first, at
+	// shown the whole table this turn (CR 701.20), oldest first, at
 	// most PublicRevealMax of them. The counterpart to the
 	// controller-only look-at-cards prompt the scry family rides, and
 	// the one field on this view that is identical for every seat —
@@ -253,7 +253,7 @@ type PendingChoiceView struct {
 
 	// SearchMax populates the S22 "search_library" kind: how many of
 	// Options the searcher may take. The minimum is always zero —
-	// CR 701.19c permits failing to find — so the client's submit
+	// CR 701.23b permits failing to find — so the client's submit
 	// button is live from the first render. Absent for other kinds.
 	SearchMax int `json:"search_max,omitempty"`
 }
@@ -308,7 +308,7 @@ type AdditionalCostView struct {
 	DiscardCards int `json:"discard_cards,omitempty"`
 	// SacrificeOptions lists the permanents that may pay a
 	// "sacrifice a creature" clause, already filtered to the
-	// caster's own board (CR 701.17b). The picked instance ID rides
+	// caster's own board (CR 701.21a). The picked instance ID rides
 	// back on cast_spell's sacrifice_ids. Absent when the cost has
 	// no sacrifice component; present-and-empty means the cost is
 	// unpayable, which makes the spell uncastable.
@@ -528,7 +528,7 @@ type PlayerView struct {
 	Graveyard ZoneView `json:"graveyard"`
 	Command   ZoneView `json:"command"`
 	// CommanderDamage maps commander card instance ID → total damage
-	// that commander has dealt to this player (CR 903.14a). Keyed by
+	// that commander has dealt to this player (CR 903.10a). Keyed by
 	// COMMANDER, not by opposing player, since S25 (#77) — which is
 	// the shape the client's per-commander hover rows were already
 	// written against.
@@ -747,7 +747,7 @@ type CardView struct {
 	// what AttackingTarget names. Omitted when nothing is declared.
 	// Added in S27.
 	AttackingTargetKind string `json:"attacking_target_kind,omitempty"`
-	// ProtectorPlayer is the seat protecting this battle (CR 310.5),
+	// ProtectorPlayer is the seat protecting this battle (CR 310.9a),
 	// or omitted for every other card type and for a battle whose
 	// protector prompt has not been answered yet. Public information:
 	// the whole table needs to know who is defending, because it
@@ -880,7 +880,7 @@ type CardView struct {
 	// activated-ability menu's affordance; the server does the real
 	// check.
 	SummoningSick bool `json:"summoning_sick,omitempty"`
-	// LoyaltyActivated reports CR 606.5: this planeswalker has
+	// LoyaltyActivated reports CR 606.3: this planeswalker has
 	// already had a loyalty ability activated this turn, so every
 	// entry in ActivatedAbilities carrying a LoyaltyCost is greyed
 	// until the turn cursor moves on. Battlefield planeswalkers
@@ -1047,7 +1047,7 @@ type ActivatedAbilityView struct {
 	LifeCost      int    `json:"life_cost,omitempty"`
 	SorcerySpeed  bool   `json:"sorcery_speed,omitempty"`
 	// LoyaltyCost is the loyalty component of a planeswalker's
-	// loyalty ability: +N / 0 / −N (CR 606.1). A POINTER because [0]
+	// loyalty ability: +N / 0 / −N (CR 606.4). A POINTER because [0]
 	// is a real printed cost and `omitempty` would erase it — the
 	// client needs "no loyalty component" and "costs zero loyalty"
 	// to stay different, since only the first leaves the ability
@@ -1127,7 +1127,7 @@ type ManaAbilityView struct {
 	// LifeCost is a "Pay N life" component of the activation cost —
 	// Mana Confluence's "{T}, Pay 1 life:". Advisory, exactly like
 	// ActivatedAbilityView.LifeCost: the client renders the cost
-	// chip, the server does the real CR 118.8 check. A damage RIDER
+	// chip, the server does the real CR 119.4 check. A damage RIDER
 	// ("This land deals 1 damage to you") is not a cost and does not
 	// appear here — it's part of the ability's Label.
 	// Added in the S22 mana-ability-rider pass.
@@ -1667,7 +1667,7 @@ func stampCombatTargets(g *game.Game, view *GameView) {
 // Split from viewOfManaAbilities because that runs while building the
 // base card view, which has no game handle — computing a legal set
 // needs one. Same division the activated abilities already use, and
-// the same CR 701.17b filter: a sacrifice cost may only be paid with
+// the same CR 701.21a filter: a sacrifice cost may only be paid with
 // permanents you control, which the generic legal-target walk doesn't
 // know.
 func stampManaSacrificeOptions(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView) {
@@ -2706,7 +2706,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 			SorcerySpeed:  a.SorcerySpeed,
 			LoyaltyCost:   a.Cost.Loyalty,
 		}
-		// CR 606.5 is carried by the loyalty component itself, so a
+		// CR 606.3 is carried by the loyalty component itself, so a
 		// catalog entry doesn't have to remember to set SorcerySpeed
 		// — but the client greys on this flag, so stamp it.
 		if a.Cost.Loyalty != nil {
@@ -2716,7 +2716,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 			v.SacrificeLabel = a.Cost.SacrificeOther.Label
 			v.SacrificeOptions = abilityLegalTargets(g, caster, a.Cost.SacrificeOther)
 			// A sacrifice cost can only be paid with your own
-			// permanents (CR 701.17b); the legal-target walk doesn't
+			// permanents (CR 701.21a); the legal-target walk doesn't
 			// know that, so filter here.
 			v.SacrificeOptions.Cards = filterToController(g, v.SacrificeOptions.Cards, caster)
 			v.SacrificeOptions.Players = nil

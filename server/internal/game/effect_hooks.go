@@ -173,7 +173,7 @@ type ManaAbilityShape struct {
 	// activated on an empty pool fails without tapping. There is no
 	// auto-tap here: ActivateManaAbility will not tap other
 	// permanents to fund a mana ability, because a mana ability
-	// resolves with no priority window (CR 605.3a) and the player
+	// resolves with no priority window (CR 605.3b) and the player
 	// has to have floated the mana deliberately.
 	//
 	// This closes the last of S15's "mana / life / counter
@@ -257,7 +257,7 @@ type ManaAbilityShape struct {
 	// cycle's "This land deals 1 damage to you", Ancient Tomb's 2.
 	// It runs immediately after the produced mana lands in the
 	// controller's pool, in printed order, as part of the same
-	// atomic mana-ability resolution (CR 605.3a — no stack, no
+	// atomic mana-ability resolution (CR 605.3b — no stack, no
 	// priority window in between).
 	//
 	// `source` is the activating permanent's instance ID and may
@@ -461,7 +461,7 @@ func (g *Game) fireEffectResolverLocked(item *StackItem, oracleID string, cardID
 // the next priority-grant boundary.
 func (g *Game) fireETBHookLocked(cardID uuid.UUID, oracleID string) {
 	g.stampStartingLoyaltyLocked(cardID, oracleID)
-	// S27: a Saga enters with a lore counter (CR 714.2b). Same
+	// S27: a Saga enters with a lore counter (CR 714.3). Same
 	// reasoning as the loyalty stamp above, and the same placement:
 	// it is printed-rules behaviour keyed on the card's subtype, so
 	// it runs before the oracle-ID / nil-hook guards and applies to
@@ -469,7 +469,7 @@ func (g *Game) fireETBHookLocked(cardID uuid.UUID, oracleID string) {
 	g.sagaEntersWithLoreCounterLocked(cardID)
 
 	// S27: a battle enters with its printed defense counters and
-	// chooses a protector (CR 310.4, 310.5). Same placement and same
+	// chooses a protector (CR 310.4, 310.9a). Same placement and same
 	// reasoning as the loyalty stamp above: printed rules keyed on
 	// the card's type, so it runs before the oracle-ID / nil-hook
 	// guards and applies to battles the catalog has never heard of.
@@ -507,7 +507,7 @@ func (g *Game) fireETBHookLocked(cardID uuid.UUID, oracleID string) {
 // Counters go through AddCounterForEffect rather than being written
 // directly so the CR 614 counter-replacement pipeline still sees
 // them — a planeswalker entering under Doubling Season gets its
-// loyalty doubled (CR 121.3), which a direct map write would skip.
+// loyalty doubled (CR 122.6), which a direct map write would skip.
 //
 // Timing matters: this runs as part of the battlefield-entry path,
 // which is strictly before the next priority-grant boundary, so the

@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The spellslinger's pinger: a point to every opponent per untap,
 // and every instant or sorcery is an untap. The tap ability is a
 // CR 602 activation with a tap cost, so summoning sickness applies
-// (CR 302.1) and the damage goes on the stack with a response
+// (CR 302.6) and the damage goes on the stack with a response
 // window; the untap is a trigger on the cast, which resolves above
 // the spell — so the Alchemist can tap again before the spell
 // resolves, as printed. The Alchemist is the damage source, so

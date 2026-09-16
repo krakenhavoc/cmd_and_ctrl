@@ -15,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // is validated against the total-mana-value clause on submit (a
 // per-card predicate cannot express it; SearchLibrary.Validate can —
 // Myriad Landscape's hook), and an empty pick is the ordinary "fail
-// to find". Mana value is printed, X as zero (CR 202.3b). Each card
+// to find". Mana value is printed, X as zero (CR 202.3e). Each card
 // enters through the search path, so its own enters-tapped clause
 // and every ETB trigger fire, and the library shuffles either way.
 //

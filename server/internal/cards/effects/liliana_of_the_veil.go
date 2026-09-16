@@ -23,7 +23,7 @@ import (
 //     player with an empty hand discards nothing rather than erroring.
 //   - The −2 is an edict, so it is not targeted at a creature and
 //     hexproof does not save one. The victim picks from their own
-//     creatures through the sacrifice prompt (CR 701.17); a player
+//     creatures through the sacrifice prompt (CR 701.21); a player
 //     with no creature sacrifices nothing, and the loyalty is still
 //     paid, exactly as in paper.
 //

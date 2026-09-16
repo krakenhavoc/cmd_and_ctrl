@@ -114,12 +114,12 @@ type ExilePlayPermission struct {
 	//
 	// Every permission before this one granted "the card". A Siege's
 	// defeated ability grants something narrower: "exile it, then
-	// CAST IT TRANSFORMED" (CR 310.9c) is permission to cast one
+	// CAST IT TRANSFORMED" (CR 310.12b) is permission to cast one
 	// specific FACE of a card whose own layout offers only the other
 	// one — Card.CastableFaces returns front-only for `transform`,
 	// deliberately and correctly, because the back of an ordinary DFC
 	// is reached by transforming a permanent and not by casting it
-	// (CR 712.4). The permission has to carry the face because the
+	// (CR 712.11). The permission has to carry the face because the
 	// card cannot: two copies of the same Siege in exile can easily
 	// be at different stages, and only one of them has been defeated.
 	//

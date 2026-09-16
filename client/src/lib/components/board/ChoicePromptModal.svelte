@@ -76,12 +76,12 @@
     }
   });
 
-  // S22 search_library — "search your library for ..." (CR 701.19).
+  // S22 search_library — "search your library for ..." (CR 701.23).
   // Shares the card grid and the {choice_id, card_ids} payload with
   // discard / sacrifice; what differs is the floor. Every other
   // card-grid kind demands exactly `count` picks, but a search may
   // always find FEWER than it looked for, including none at all
-  // (CR 701.19c "you may fail to find"). So search_max is a ceiling
+  // (CR 701.23b "you may fail to find"). So search_max is a ceiling
   // and zero is a legal answer.
   const isSearch = $derived(active?.kind === "search_library");
 
@@ -252,7 +252,7 @@
   // (let the event proceed to graveyard/exile/hand/library).
   const isOptionalReplacement = $derived(active?.kind === "optional_replacement");
 
-  // S19 sub-PR 2 trigger-prompt branch — CR 603.4 "you may" prompt
+  // S19 sub-PR 2 trigger-prompt branch — CR 603.5 "you may" prompt
   // for an optional triggered ability. Same {choice_id, apply}
   // payload as optional-replacement; the server routes to
   // ResolveTriggerPrompt vs ResolveOptionalReplacement by inspecting
@@ -311,7 +311,7 @@
   // chooser controls — a player with none was never prompted.
   const isSacrifice = $derived(active?.kind === "sacrifice_choice");
 
-  // S21 scry branch — CR 701.18. Every looked-at card goes somewhere:
+  // S21 scry branch — CR 701.22. Every looked-at card goes somewhere:
   // back on top (in an order the player controls) or to the bottom.
   // Default is "keep everything, in the order shown", so the common
   // case — bottom the one bad card, or accept the top — is one click
@@ -321,7 +321,7 @@
   // first entry is the next card drawn.
   const isScry = $derived(active?.kind === "scry");
 
-  // S22 surveil branch — CR 701.42. Structurally identical to scry:
+  // S22 surveil branch — CR 701.25. Structurally identical to scry:
   // same prompt, same two lanes, same ordering control. The only
   // difference is where the cards that leave the top go, so this
   // shares every line of the scry branch and swaps the destination
@@ -572,7 +572,7 @@
           {active.reason || (isSurveil ? "Surveil" : isReorderOnly ? "Look at the top" : "Scry")}
           {#if !isReorderOnly}
             <span class="prompt-src" aria-hidden="true"
-              >{isSurveil ? "CR 701.42" : "CR 701.18"}</span
+              >{isSurveil ? "CR 701.25" : "CR 701.22"}</span
             >
           {/if}
         </h2>
@@ -728,7 +728,7 @@
       {:else if isTriggerPrompt}
         <h2 id="choice-title">
           {active.reason || `${triggerSourceName(active.source)} triggered`}
-          <span class="prompt-src" aria-hidden="true">may trigger · CR 603.4</span>
+          <span class="prompt-src" aria-hidden="true">may trigger · CR 603.5</span>
         </h2>
         {#if noLegalTarget}
           <p class="prompt-hint warn">
@@ -947,7 +947,7 @@
             <span class="prompt-src" aria-hidden="true">sacrifice</span>
           {:else if isSearch}
             {active.reason || "Search your library"}
-            <span class="prompt-src" aria-hidden="true">search · CR 701.19</span>
+            <span class="prompt-src" aria-hidden="true">search · CR 701.23</span>
           {:else if isCopyTarget}
             {active.reason || "Enter as a copy of…"}
             <span class="prompt-src" aria-hidden="true">copy · CR 706</span>

@@ -79,7 +79,7 @@ func TestElspethPlusOneMakesThreeSoldiers(t *testing.T) {
 	if err := g.ActivateCatalogAbility(owner.ID, pw, 0, game.ActivateAbilityParams{}); err != nil {
 		t.Fatalf("+1: %v", err)
 	}
-	// The loyalty is paid at ANNOUNCE (CR 606.2), before the ability
+	// The loyalty is paid at ANNOUNCE (CR 606.4), before the ability
 	// reaches the stack.
 	if got := loyaltyOf(g, pw); got != 5 {
 		t.Errorf("loyalty after +1 = %d, want 5", got)
@@ -171,7 +171,7 @@ func TestEveryPlaneswalkerDeclaresItsCompleteness(t *testing.T) {
 	}
 }
 
-// TestLoyaltyAbilityIsOncePerTurn is CR 606.5, enforced by the engine
+// TestLoyaltyAbilityIsOncePerTurn is CR 606.3, enforced by the engine
 // off the presence of the loyalty component rather than by anything
 // the card declares.
 func TestLoyaltyAbilityIsOncePerTurn(t *testing.T) {

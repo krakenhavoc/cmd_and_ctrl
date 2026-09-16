@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // means you too, and the Executioner is on the battlefield when its
 // own trigger resolves, so feeding it to itself is the printed line.
 // Every player picks their own creature in their own prompt; a
-// player with none is skipped (CR 701.17b).
+// player with none is skipped (CR 701.21a).
 //
 // The ETB is a triggered ability and uses the stack (#578). It used to
 // run from the direct AsEnters hook, which gave nobody a response

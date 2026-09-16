@@ -10,7 +10,7 @@ import (
 )
 
 // edict_test.go — "each player sacrifices a creature of their choice"
-// (CR 701.17a): Grave Pact, Dictate of Erebos, Fleshbag Marauder,
+// (CR 701.21a): Grave Pact, Dictate of Erebos, Fleshbag Marauder,
 // Butcher of Malakir.
 //
 // The assertions that matter are about WHO chooses and WHO is asked,

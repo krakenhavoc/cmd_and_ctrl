@@ -302,6 +302,24 @@ unused — they can be removed in a later cleanup PR.)
    listed there, surface it to the user rather than guessing.
 4. Prefer a spike (time-boxed, throwaway) over speculative architecture.
 
+### Rules citations
+
+`CR NNN.Nx` in code, tests and docs means the **Magic: The Gathering
+Comprehensive Rules effective August 7, 2026**, from
+[magic.wizards.com/en/rules](https://magic.wizards.com/en/rules) (the TXT
+download is `MagicCompRules 20260819.txt`; its text says "effective as of
+August 7, 2026"). Check a number against that text before you write it. Do not
+cite from memory: rule numbers move between editions. The June 2025 edition
+re-sorted every keyword action in 701, so discard went from 701.8 to 701.9 and
+reveal from 701.16 to 701.20. The 2026 edition added a new 310.8, which moved
+the battle protector rules to 310.9.
+
+To move the pin to a newer edition, do it in one PR of its own. Download the
+new TXT. For every section the tree cites
+(`git grep -ohE "CR ?[0-9]{3}\.[0-9]+[a-z]?" | sort -u`), compare the rule's
+text in the two editions, and renumber by matching content, never by adding
+to the number. Then update the date and file name above.
+
 ---
 
 ## 7. Adding a catalog card (S14+)
@@ -388,7 +406,7 @@ surface tiny.
    // "Choose two —": ChooseN("Choose two", 2, 2, Mode(…), Mode(…), …)
    ```
    `OnResolve` is a run of `if ctx.HasMode(i) { … }` blocks in
-   printed order (CR 700.2c). The engine validates the choice at
+   printed order (CR 608.2c). The engine validates the choice at
    announce and applies the chosen option's target clause exactly as
    it would a card-level one; the client shows a mode picker before
    targeting. Limit: one targeted option per cast — `Register`
@@ -551,7 +569,7 @@ Mana abilities can carry cost components beyond `{T}`:
 activated abilities use — build it with the `SacrificeACreature()` /
 `SacrificeAPermanent()` helpers and take their `.SacrificeOther` field
 rather than writing a spec by hand. The engine filters the candidate
-set to the controller's own permanents (CR 701.17b), stamps it onto
+set to the controller's own permanents (CR 701.21a), stamps it onto
 `ManaAbilityView.SacrificeOptions`, and the client reuses
 `SacrificeCostModal` to pick one. The chosen card comes back in the
 `activate_mana_ability` payload as `sacrifice_ids`, and
@@ -560,12 +578,12 @@ set to the controller's own permanents (CR 701.17b), stamps it onto
 `ActivateManaAbility` validates every component before paying any of
 them, so an illegal sacrifice choice leaves the source untapped. Mana
 lands in the pool first and the dies-triggers go on the stack after
-(CR 605.3a — a mana ability doesn't use the stack, but the sacrifice
+(CR 605.3b — a mana ability doesn't use the stack, but the sacrifice
 still triggers), which is what makes Ashnod's Altar + a drain outlet
 work.
 
 Summoning sickness applies to any mana ability with a tap cost on a
-creature source (CR 302.1) — Birds of Paradise, Palladium Myr. The
+creature source (CR 302.6) — Birds of Paradise, Palladium Myr. The
 engine enforces it inside `ActivateManaAbility`; specs don't declare
 it.
 
@@ -829,7 +847,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"lifelink"` | Lifelink (CR 702.15) |
 | `"trample"` | Trample (CR 702.19) |
 | `"vigilance"` | Vigilance (CR 702.20) |
-| `"menace"` | Menace (CR 702.110) |
+| `"menace"` | Menace (CR 702.111) |
 | `"defender"` | Defender (CR 702.3) |
 | `"haste"` | Haste (CR 702.10) |
 | `"flash"` | Flash (CR 702.8) |
@@ -1029,7 +1047,7 @@ Compose multi-part costs with `Plus(ManaCost("{2}"), TapCost())`.
 The engine validates every component before paying any of them, and
 pays at announce — so a sacrifice cost's dies-triggers land on the
 stack above the ability and resolve first. Mana abilities do NOT go
-here (they skip the stack, CR 605.3a); they stay in `ManaAbilities`.
+here (they skip the stack, CR 605.3b); they stay in `ManaAbilities`.
 See [ADR 0020](docs/decisions/0020-activated-abilities.md).
 
 **An `{X}` in the cost:** put it in the mana component and read it
@@ -1116,7 +1134,7 @@ on the stack, so Blood Artist and Zulaport Cutthroat drain BEFORE the
 cards are drawn, and countering the spell doesn't hand the creature
 back. With nothing to sacrifice the spell is uncastable — the view
 stamps `AdditionalCostView.SacrificeOptions` filtered to the caster's
-own permanents (CR 701.17b), and an empty list is what
+own permanents (CR 701.21a), and an empty list is what
 `canCastFromHand` greys the card on. The pick rides `cast_spell` as
 `sacrifice_ids`, and the client reuses `SacrificeCostModal`, the same
 picker the CR 602 abilities open.
@@ -1361,7 +1379,7 @@ the snapshot, and reads its payload off the item it is handed.
 **Mana from a spell (roadmap batch 01):** "Add {B}{B}{B}" on a SPELL
 (Dark Ritual) or a non-mana ability (Mana Drain's refund) is the
 `AddMana` primitive in `add_mana.go`, not a `ManaAbility` — a mana
-ability never uses the stack (CR 605.3a) and these do, which is why
+ability never uses the stack (CR 605.3b) and these do, which is why
 they can be countered and why Storm-Kiln Artist triggers on them:
 
 ```go
@@ -1509,7 +1527,7 @@ Waterskin, Quest for Renewal's second clause) is **not a trigger**,
 and writing it as one is the mistake this field exists to prevent.
 The untap step grants no priority (CR 502.4): nothing is announced,
 nothing goes on the stack and there is nothing to respond to. The
-clause widens the untap step's TURN-BASED ACTION — CR 502.1's "the
+clause widens the untap step's TURN-BASED ACTION — CR 502.3's "the
 active player determines which permanents they control untap".
 
 So it goes on `Spec.UntapStep []game.UntapStepPermission`, with the

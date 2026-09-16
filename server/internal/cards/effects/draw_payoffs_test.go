@@ -208,7 +208,7 @@ func TestHowlingMineIsCheckedTwiceForUntapped(t *testing.T) {
 	me := g.Seats[0]
 	mine := pushCatalogPermanent(g, me.ID, "Howling Mine", "Artifact", howlingMineOracle, false)
 
-	// Walk past the FIRST turn's draw step: CR 103.7c skips it for
+	// Walk past the FIRST turn's draw step: CR 103.8a skips it for
 	// the starting player, and this project's step hook returns
 	// before announcing the step at all in that case. The Mine is
 	// fine everywhere else, and the turn-1 corner is documented on

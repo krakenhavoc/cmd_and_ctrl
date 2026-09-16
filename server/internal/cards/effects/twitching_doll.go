@@ -19,7 +19,7 @@ import (
 // the any-colour pick with the nest counter as its rider — the
 // counter goes on through AddCounter, so a counter doubler sees it —
 // and both abilities are a creature's {T}, so summoning sickness
-// applies to each (CR 302.1).
+// applies to each (CR 302.6).
 //
 // "For each counter on this creature" is read for a creature that
 // was sacrificed to pay the cost: it is in the graveyard with its

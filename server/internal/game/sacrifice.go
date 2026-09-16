@@ -3,7 +3,7 @@ package game
 import "github.com/google/uuid"
 
 // sacrifice.go — S21 sub-PR 1: sacrifice as a first-class engine
-// operation (CR 701.17). A permanent is sacrificed by its
+// operation (CR 701.21). A permanent is sacrificed by its
 // controller, as a cost (Goblin Bombardment, Treasure's mana
 // ability) or as an effect's instruction. It is NOT destroyed:
 // indestructible and regeneration don't apply, and a replacement
@@ -34,7 +34,7 @@ func (g *Game) sacrificePermanentLocked(cardID uuid.UUID) error {
 
 // SacrificePermanent is the locking entry point: a player sacrifices
 // a permanent they control. Rejects a permanent controlled by
-// someone else (CR 701.17b — only a permanent's controller may
+// someone else (CR 701.21a — only a permanent's controller may
 // sacrifice it) so the action layer can expose it directly.
 //
 // Caller must NOT hold g.mu.
@@ -78,7 +78,7 @@ func (g *Game) SacrificePermanent(playerID, cardID uuid.UUID) error {
 // had a creature" from "everyone was asked".
 //
 // The choices are queued in APNAP order and answered in whatever
-// order the players click. Strictly, CR 701.17a makes the sacrifices
+// order the players click. Strictly, CR 701.21a makes the sacrifices
 // simultaneous after all choices are made; sequential resolution is
 // observable only through a payoff that counts them (a Blood Artist
 // sees the same number of deaths either way, just spread across more
@@ -114,7 +114,7 @@ func (g *Game) EachPlayerSacrificesForEffect(source uuid.UUID, except uuid.UUID,
 // chosen (nil means any permanent they control), the player chooses
 // their own, and a player with no legal permanent is skipped rather
 // than prompted with an empty list — a mandatory sacrifice with
-// nothing to sacrifice does nothing (CR 701.17b).
+// nothing to sacrifice does nothing (CR 701.21a).
 //
 // Returns 1 when a prompt was queued and 0 when it was skipped, so a
 // caller with a "if you do" rider can tell the two apart.

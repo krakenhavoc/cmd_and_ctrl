@@ -82,7 +82,7 @@ type Move struct {
 	// AlwaysLegal marks a move the engine cannot refuse whatever
 	// else happens between enumeration and dispatch: passing
 	// priority, and a choice kind's one unconditional answer (a
-	// search's "fail to find", CR 701.19c).
+	// search's "fail to find", CR 701.23b).
 	//
 	// Every enumerated move is legal when it is enumerated — that is
 	// this package's contract. AlwaysLegal is the stronger claim
@@ -126,13 +126,13 @@ type Move struct {
 // A POINTER so that the frame budget is untouched by moves that cost
 // nothing: no `cost` key is serialised for them at all.
 type MoveCost struct {
-	// Life is what the controller pays at announce (CR 118.4 /
-	// 118.8). Always positive — the enumerator has already checked
+	// Life is what the controller pays at announce (CR
+	// 119.4). Always positive — the enumerator has already checked
 	// the seat can pay it, and a seat that can pay exactly its whole
 	// life total legally may, which is the trap.
 	Life int `json:"life,omitempty"`
 
-	// Loyalty is a loyalty ability's counter delta (CR 606.1),
+	// Loyalty is a loyalty ability's counter delta (CR 606.4),
 	// SIGNED as printed: +1 adds a counter, −3 removes three. Zero
 	// covers both "[0]" and "not a loyalty ability"; the two are the
 	// same price even though they are not the same thing, and a

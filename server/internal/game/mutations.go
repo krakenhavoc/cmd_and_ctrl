@@ -435,7 +435,7 @@ func (e *InsufficientManaError) Unwrap() error { return ErrInsufficientMana }
 // them.
 //
 // Split-second blocks all casts and activations except mana abilities
-// and special actions (CR 702.79). The flag is mirrored on
+// and special actions (CR 702.61). The flag is mirrored on
 // Game.SplitSecondActive for fast lookup; recomputed every time the
 // stack changes.
 //
@@ -547,7 +547,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		}
 		// "You may CAST that card" (Ragavan) does not let you play a
 		// land: playing a land is a special action, not a cast
-		// (CR 305.1, 115.2a).
+		// (CR 305.1, 116.2a).
 		if hasExileGrant && exileGrant.CastOnly && card.IsLand() {
 			return ErrNoPlayPermission
 		}
@@ -1454,8 +1454,8 @@ func cloneDistributionLocked(in map[uuid.UUID]int) map[uuid.UUID]int {
 // resolveTopOfStackLocked pops the topmost stack item and resolves
 // it. For spells, permanents route to the battlefield with their
 // recorded controller; instants and sorceries route to the owner's
-// graveyard (CR 608.2f). For activated / triggered abilities, the
-// item simply ceases to exist (CR 608.2m) — there is no source-card
+// graveyard (CR 608.2n). For activated / triggered abilities, the
+// item simply ceases to exist (CR 608.2n) — there is no source-card
 // movement because the ability's source is a separate card that
 // stays put.
 //
@@ -1570,7 +1570,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// An MDFC keeps the face that was cast — the other one never
 		// returns — and since S32 so does a `transform` card, which is
 		// how a defeated Siege's back face becomes the permanent
-		// instead of the battle re-entering the battlefield. CR 712.4's
+		// instead of the battle re-entering the battlefield. CR 712.11's
 		// "always cast as its front face" is enforced by CastableFaces
 		// refusing to offer the back, so a non-zero transform face here
 		// can only have come from an effect that said "cast it
@@ -1675,7 +1675,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 			CardID: moved.InstanceID,
 		})
 		g.fireETBHookLocked(moved.InstanceID, CatalogKey(moved))
-		// S22: evoke's "it's sacrificed when it enters" (CR 702.74b).
+		// S22: evoke's "it's sacrificed when it enters" (CR 702.74a).
 		// Queued here because this is the last moment the StackItem —
 		// and so the cost that was actually paid — is still reachable.
 		g.queueAltCostEntryTriggerLocked(moved, item)
@@ -1782,7 +1782,7 @@ func (g *Game) topAbilityLocked() *StackItem {
 // EventFizzle, no effect), then EventResolve is emitted and the
 // item's Effect callback — if any — runs. Errors from Effect
 // surface as EventEffectError and do not wedge the stack; the
-// ability has ceased to exist either way (CR 608.2m).
+// ability has ceased to exist either way (CR 608.2n).
 func (g *Game) resolveTopAbilityLocked() {
 	top := g.topAbilityLocked()
 	if top == nil {
@@ -1870,7 +1870,7 @@ type AbilityParams struct {
 //
 // No card moves. The source card stays in its origin zone; the
 // stack item carries its own synthetic ID. Resolution removes the
-// item (CR 608.2m).
+// item (CR 608.2n).
 //
 // SourceCardID must reference a card that exists in some zone; an
 // unknown ID returns ErrCardNotFound.
@@ -1888,7 +1888,7 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 		return ErrGameNotActive
 	}
 	// Activation legality reads the source's effective types (the
-	// CR 302.1 summoning-sickness gate only applies to a creature)
+	// CR 302.6 summoning-sickness gate only applies to a creature)
 	// and the target predicates read every candidate's. Both are
 	// layer-dependent since the type predicates were rerouted
 	// through Effective(); fast-path no-op when nothing changed.
@@ -1943,15 +1943,15 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 // Returns:
 //   - ErrCardNotFound if planeswalkerID is not on the battlefield.
 //   - ErrNotAPlaneswalker if it is on the battlefield but isn't one
-//     (CR 606.1). Before #329 this action would hand loyalty
+//     (CR 606.2). Before #329 this action would hand loyalty
 //     counters to a Mountain.
 //   - ErrCardCallerMismatch if the activator doesn't control it.
 //   - ErrInsufficientLoyalty if a negative delta would remove more
-//     counters than the planeswalker has (CR 606.3). Paying down to
+//     counters than the planeswalker has (CR 606.6). Paying down to
 //     exactly zero is legal; the 704.5i SBA takes it from there.
 //   - ErrSorcerySpeedRequired if the gate is closed.
 //   - ErrLoyaltyAlreadyActivated if the planeswalker has already
-//     activated a loyalty ability this turn (CR 606.5).
+//     activated a loyalty ability this turn (CR 606.3).
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 //
@@ -1990,7 +1990,7 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	if pw == nil {
 		return ErrCardNotFound
 	}
-	// CR 606.1 / 606.2: a loyalty ability belongs to a planeswalker,
+	// CR 606.2 / 606.3: a loyalty ability belongs to a planeswalker,
 	// and only its controller may activate it. Neither was checked
 	// before #329, so this action was a counter faucet pointed at
 	// any card on the table.
@@ -2008,7 +2008,7 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	if pw.Controller != playerID {
 		return ErrCardCallerMismatch
 	}
-	// CR 606.3: can't remove more loyalty than is there. The old
+	// CR 606.6: can't remove more loyalty than is there. The old
 	// comment here argued for letting the counter go negative so the
 	// SBA could see the intent, but the SBA reads "loyalty <= 0" and
 	// an activation the rules forbid should be refused at announce,
@@ -2150,7 +2150,7 @@ func clearKnownInZoneLocked(zone *Zone) {
 
 // stateBasedActionsLocked runs one pass of state-based actions per
 // CR 704.5. Returns true if any SBA fired so the caller can re-run
-// the loop (CR 704.4 — SBAs repeat until none fire).
+// the loop (CR 704.3 — SBAs repeat until none fire).
 //
 // Player-loss SBAs (S13.1):
 //   - 704.5a: a player at 0 or less life loses
@@ -2321,7 +2321,7 @@ func (g *Game) stateBasedActionsLocked() bool {
 			continue
 		}
 	}
-	// S27 / CR 310.9: a battle at zero defense is DEFEATED, and the
+	// S27 / CR 310.12b: a battle at zero defense is DEFEATED, and the
 	// defeated trigger has to see it on the battlefield. Announced
 	// here — after the doomed set is collected and before any of it
 	// moves — so the harvester finds a live source, and so a Siege's
@@ -2375,7 +2375,7 @@ func (g *Game) stateBasedActionsLocked() bool {
 
 // runStateChecksLocked runs the SBA + APNAP-trigger-drain loop until
 // the game is quiet (no SBAs fire AND no triggers are pending).
-// CR 704.4 + 603.3b — both checks are paired at every priority-grant
+// CR 704.3 + 603.3b — both checks are paired at every priority-grant
 // boundary.
 //
 // Bounded at 32 iterations as a safety belt against an unintended
@@ -2995,7 +2995,7 @@ func (g *Game) CounterSpell(spellID uuid.UUID, dst *ZoneRef) error {
 }
 
 // CounterAbility removes an activated / triggered ability from the
-// stack. Abilities cease to exist on resolution (CR 608.2m); a
+// stack. Abilities cease to exist on resolution (CR 608.2n); a
 // counter is the same destinationless removal. Returns
 // ErrCardNotOnStack if the ID doesn't reference an ability item.
 //
@@ -3180,7 +3180,7 @@ func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCom
 		}
 	}
 	// A sandbox move is a special action: the mover keeps priority
-	// afterwards (CR 116.3c), and CR 117.5 puts SBAs + the APNAP
+	// afterwards (CR 116.3), and CR 117.5 puts SBAs + the APNAP
 	// trigger drain at that boundary. Without this, a catalog
 	// creature dropped straight onto the battlefield would leave its
 	// ETB trigger stranded in PendingTriggers until the next pass /
@@ -3259,7 +3259,7 @@ func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 // from the activator. Empty for the common case — a bare "{T}: Add
 // {C}" needs nothing.
 //
-// Mana abilities don't use the stack (CR 605.3a), so unlike
+// Mana abilities don't use the stack (CR 605.3b), so unlike
 // ActivateAbilityParams there is no target list here: a mana ability
 // that targeted would have to resolve, and none does.
 type ManaAbilityParams struct {
@@ -3304,7 +3304,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// fallback second. A catalog spec with ManaAbilities overrides
 	// the synthetic path wholesale (Dryad Arbor, if it ever lands,
 	// would declare its own; basic Forest just uses the synthetic).
-	// CR 602.5a: an effect that stops this permanent's activated
+	// CR 602.5: an effect that stops this permanent's activated
 	// abilities being activated stops its mana abilities too, when
 	// it says so. Arrest does; Faith's Fetters explicitly does not
 	// ("unless they're mana abilities"), which is why the two are
@@ -3357,7 +3357,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		return err
 	}
 	if ab.LifeCost > 0 && p.Life < ab.LifeCost {
-		// CR 118.8: you can't pay more life than you have. Paying
+		// CR 119.4: you can't pay more life than you have. Paying
 		// down to exactly 0 is legal and the SBA loop ends the game
 		// after. Same gate ActivateCatalogAbility applies to
 		// AbilityCost.Life.
@@ -3369,7 +3369,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// with the source still untapped.
 	//
 	// Deliberately no auto-tap. A mana ability resolves with no
-	// priority window (CR 605.3a), and tapping three lands to feed a
+	// priority window (CR 605.3b), and tapping three lands to feed a
 	// Signet is a decision with consequences the planner cannot
 	// weigh — the player floats the {1} first, which is how the card
 	// is played on paper anyway.
@@ -3430,7 +3430,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// S21 sub-PR 1 made sacrifice-self costs real (Treasure, Eldrazi
 	// Spawn, Lotus Petal); the mana-cost pass adds sacrifice-another
 	// (Ashnod's Altar, Phyrexian Altar). The mana still lands in the
-	// pool below — CR 605.3a: a mana ability resolves immediately,
+	// pool below — CR 605.3b: a mana ability resolves immediately,
 	// without the stack, so the sacrifices and the mana are one
 	// atomic step.
 	if len(sacrifices) > 0 {
@@ -3460,7 +3460,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	})
 	// Materialise the produced mana. An ability with a ProducedFunc
 	// computes its output now, from the board as it stands AFTER the
-	// cost was paid — which is what CR 605.3a's "resolves
+	// cost was paid — which is what CR 605.3b's "resolves
 	// immediately" means, and what makes Cabal Coffers count the
 	// Swamps that are still there.
 	produced := ab.Produced
@@ -3535,7 +3535,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	}
 	// --- rider --------------------------------------------------
 	//
-	// CR 605.3a: a mana ability resolves the instant it's activated,
+	// CR 605.3b: a mana ability resolves the instant it's activated,
 	// so everything after the "Add …" clause — the painland cycle's
 	// "This land deals 1 damage to you", Ancient Tomb's 2 — happens
 	// here, with the mana already in the pool and no priority window
@@ -4008,7 +4008,7 @@ func (g *Game) stackHasItemsLocked() bool {
 // ErrNotACreature for non-creature cards, ErrPlayerNotFound for an
 // unknown target player, ErrCardNotFound for an unknown attacker
 // card, ErrSummoningSick for a creature that entered this turn
-// without haste (CR 302.1, 702.10), and ErrDefender for a defender
+// without haste (CR 302.6, 702.10), and ErrDefender for a defender
 // creature (CR 702.3). Re-declaring the same attacker against a
 // different target overwrites the previous target.
 //
@@ -4150,7 +4150,7 @@ type AttackDeclaration struct {
 // deliberately lax so the sandbox can force odd board states by hand.
 // A bulk "attack with everything" must never turn one ineligible
 // creature into a failed alpha strike, so entries that are unknown,
-// not creatures, tapped, summoning-sick (CR 302.1), defenders
+// not creatures, tapped, summoning-sick (CR 302.6), defenders
 // (CR 702.3), under a "can't attack" restriction (CR 508.1c),
 // already declared this combat, or pointed at a nonexistent /
 // eliminated / self seat are skipped without error.
@@ -4440,7 +4440,7 @@ func participatesInSubstep(c *Card, firstStrike bool) bool {
 // damage-marking helpers so they fire uniformly via the replacement
 // pipeline.
 //
-// Menace enforcement (CR 702.110): a single blocker on a menace
+// Menace enforcement (CR 702.111): a single blocker on a menace
 // attacker is silently reverted — clear BlockingTarget, leaving the
 // attacker unblocked. Done at the top of this function so the
 // subsequent blocker list reflects the final legal state.
@@ -4920,7 +4920,7 @@ func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount
 // commander, feeding the 21-damage SBA (CR 903.10a /
 // IsDeadByCommanderDamage). Keyed by the commander's own INSTANCE ID
 // since S25 (#77), so a partner pair tracks two independent clocks
-// (CR 903.14a). No-op when the source isn't on the battlefield or
+// (CR 903.10a). No-op when the source isn't on the battlefield or
 // isn't a commander. Caller must hold g.mu.
 func (g *Game) recordCommanderCombatDamageLocked(target *Player, sourceID uuid.UUID, amount int) {
 	if amount <= 0 || target == nil {
@@ -5170,7 +5170,7 @@ func (g *Game) KeepHand(playerID uuid.UUID) error {
 // using the RNG captured by Start so deterministic test runs stay
 // deterministic. S13.5: clears KnownBy on every library card —
 // any prior scry / top-of-library knowledge dissolves with the
-// shuffle (CR 701.20 + the per-instance KnownBy invariant).
+// shuffle (CR 701.24 + the per-instance KnownBy invariant).
 func (g *Game) ShuffleLibrary(playerID uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()

@@ -11,7 +11,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // An Elf lord that is also a three-mana dork. The anthem is the
 // shared tribal builder over OTHER Elves the controller controls;
 // the mana ability is a plain tap for three green, summoning-sick
-// like any creature's tap ability (CR 302.1 — the engine enforces
+// like any creature's tap ability (CR 302.6 — the engine enforces
 // it, the spec does not declare it).
 //
 // No simplification.

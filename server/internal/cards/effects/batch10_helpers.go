@@ -332,7 +332,7 @@ func b10ReturnAllLandCardsFromGraveyardTapped(ctx *Context, player uuid.UUID) er
 	return nil
 }
 
-// b10Fight is CR 701.12: each creature deals damage equal to its
+// b10Fight is CR 701.14: each creature deals damage equal to its
 // power to the other. Both amounts are read before either is dealt,
 // so a first blow cannot change the second (the two are simultaneous
 // in the rules), and a creature that has left the battlefield fights

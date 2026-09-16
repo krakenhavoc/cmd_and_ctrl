@@ -479,7 +479,7 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
 // MAX_MANUAL_MINUS caps the manual minus rows. Karn Liberated's −14
 // is the deepest printed cost in Magic; anything past that is a row
 // nobody will ever click, and the list is already bounded above by
-// the walker's own loyalty (CR 606.3).
+// the walker's own loyalty (CR 606.6).
 const MAX_MANUAL_MINUS = 14;
 
 // MANUAL_PLUS_OFFERS is the non-negative side, which every
@@ -501,9 +501,9 @@ function signedLoyalty(n: number): string {
 // Slows the Sunset, four loyalty counters, `activated_abilities: []`.
 //
 // It offers the costs the walker can legally pay right now (+2, +1,
-// [0], and −1 down to its current loyalty, CR 606.3) as
+// [0], and −1 down to its current loyalty, CR 606.6) as
 // `activate_loyalty` actions. The engine charges the counters and
-// enforces CR 606.5 — sorcery speed and once per turn — and the
+// enforces CR 606.3 — sorcery speed and once per turn — and the
 // players resolve the ability's text between themselves, the same
 // bargain manual `tap` strikes for every other card the catalog
 // can't express.

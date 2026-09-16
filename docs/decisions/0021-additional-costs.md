@@ -153,7 +153,7 @@ produce.
 
 **Validation is shared, not duplicated.** The clause reuses
 `validateSacrificeCostLocked`, the activated-ability validator, so
-"you may only sacrifice what you control" (CR 701.17b) and the
+"you may only sacrifice what you control" (CR 701.21a) and the
 predicate check live in one place across all three cost sites
 (spell, activated ability, mana ability). `SacrificeCost` likewise
 builds its spec with the same `sacrificeSpec` helper the abilities

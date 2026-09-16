@@ -26,7 +26,7 @@ import (
 // it is the difference a draw-payoff deck notices first.
 //
 // The reveal happens FROM THE LIBRARY, before anything moves
-// (CR 701.16a — a reveal is not a zone change). #549's frame is what
+// (CR 701.20b — a reveal is not a zone change). #549's frame is what
 // makes that observable: without it the flip would be a card
 // appearing in a hidden zone with no announcement, and the whole
 // table is entitled to know what Bob just charged its controller for.
@@ -36,7 +36,7 @@ import (
 // MANA VALUE IS READ BEFORE THE MOVE, for the reason
 // reanimateSingleTarget reads its card before moving it: that is the
 // last moment the card is guaranteed findable where the effect put
-// it. The number is the same in either zone (CR 202.3b — {X} is zero
+// it. The number is the same in either zone (CR 202.3e — {X} is zero
 // anywhere but the stack), so this is about not losing the card, not
 // about picking a zone to read it in.
 //

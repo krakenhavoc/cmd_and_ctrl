@@ -176,7 +176,7 @@ func b12InstantsAndSorceriesCastBeforeThisTurn(g *game.Game, controller, spell u
 // Three placements happen outside any resolution and are attributed
 // by a stricter rule, so the card can never fire on an opponent's
 // action: a loyalty cost and a Saga's lore counter are put there by
-// the permanent's controller (CR 606.2, 714.2b), and a permanent
+// the permanent's controller (CR 606.4, 714.3), and a permanent
 // "entering with" counters — whose counter event precedes its own
 // arrival event, which is how it is recognised — likewise. Each of
 // those counts only when the permanent is the source's controller's

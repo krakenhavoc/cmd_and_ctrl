@@ -115,7 +115,7 @@ already refreshes: `ReadSnapshot` calls
 Six write entry points read effective types *before* any SBA pass
 would have refreshed them, so they now refresh at their head:
 `CastSpell` (CR 601.2c announce-time target legality),
-`ActivateAbility`, `ActivateLoyalty`, `TapCard` (the CR 302.1 gate
+`ActivateAbility`, `ActivateLoyalty`, `TapCard` (the CR 302.6 gate
 only binds creatures), `ActivateManaAbility` (the ability list is
 partly type-derived — see decision 4) and `PlayCard` (the card
 played is a hand card, but its enters-tapped replacement asks about

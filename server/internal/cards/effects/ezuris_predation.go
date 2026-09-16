@@ -14,7 +14,7 @@ import (
 //
 // Green's board wipe. The opponents' creatures are snapshotted at
 // resolution (CR 608.2), one Beast is created per creature, and the
-// N-th Beast fights the N-th creature — fight being CR 701.12, each
+// N-th Beast fights the N-th creature — fight being CR 701.14, each
 // deals damage equal to its power to the other, both amounts read
 // before either lands (b10Fight). Lethal damage is the SBA's business
 // at the next check, so a Beast that traded with a 4-power creature

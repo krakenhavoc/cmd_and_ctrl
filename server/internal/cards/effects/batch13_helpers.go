@@ -230,7 +230,7 @@ func b13PowerGreaterThan(n int) CardPredicate {
 // spell on the stack reads its controller off the stack item and its
 // mana value with X included (CR 202.3e); a creature on the
 // battlefield reads its controller off the card and a mana value
-// where X is zero (CR 202.3b). Re-run at resolution like every
+// where X is zero (CR 202.3e). Re-run at resolution like every
 // target predicate, so a graveyard that shrank in response can
 // legally take the target out.
 func b13ManaValueAtMostControllersGraveyard() CardPredicate {

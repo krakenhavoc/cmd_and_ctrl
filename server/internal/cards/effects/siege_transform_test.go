@@ -11,7 +11,7 @@ import (
 )
 
 // siege_transform_test.go — S32: "exile it, then cast it
-// transformed" (CR 310.9c), end to end, on real cards.
+// transformed" (CR 310.12b), end to end, on real cards.
 //
 // The engine half of the seam is pinned in
 // server/internal/game/exile_play_face_test.go against a fixture with
@@ -75,7 +75,7 @@ func importToHand(row cards.Card, p *game.Player) uuid.UUID {
 }
 
 // defeatBattle takes the last defense counter off a battle and walks
-// the game far enough for the CR 704.5p sweep and the defeated
+// the game far enough for the CR 704.5v sweep and the defeated
 // trigger to have run.
 func defeatBattle(t *testing.T, g *game.Game, id uuid.UUID, defense int) {
 	t.Helper()

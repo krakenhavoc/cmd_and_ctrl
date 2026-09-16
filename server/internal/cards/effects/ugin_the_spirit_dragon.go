@@ -22,7 +22,7 @@ import (
 // the effect reads it back through Context.X(). #550 put {X} in an
 // activated ability's cost and that machinery is real — but a
 // LOYALTY cost is an *int, a single fixed number that the engine
-// pays down at announce and that CR 606.3 checks against the
+// pays down at announce and that CR 606.6 checks against the
 // counters on the card. There is no shape for "the loyalty cost IS
 // the announced X", and inventing a second X mechanism to carry one
 // ability would put two different answers to "what is X" in the

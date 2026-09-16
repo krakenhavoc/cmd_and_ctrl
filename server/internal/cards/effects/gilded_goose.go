@@ -23,7 +23,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     made by a copy effect counts) — so the Goose cannot eat itself,
 //     and "any color" means no commander-identity narrowing.
 //
-// CR 302.1 summoning sickness applies to both tap abilities, as
+// CR 302.6 summoning sickness applies to both tap abilities, as
 // printed; the ETB Food is why the card is still a one-drop ramp
 // spell on turn one.
 //

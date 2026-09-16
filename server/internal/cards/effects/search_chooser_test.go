@@ -331,7 +331,7 @@ func TestSearchDoesNotPromptWhenThereIsNothingToDecide(t *testing.T) {
 	}
 }
 
-// CR 701.19c — a player may fail to find. The search still happened,
+// CR 701.23b — a player may fail to find. The search still happened,
 // so the library is still shuffled and the event still fires.
 func TestSearchFailToFindTakesNothing(t *testing.T) {
 	g := newCatalogGame(t)

@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Mana value is read off the PRINTED mana cost, so a token (no mana
 // cost, mana value 0) is destroyed and an X spell's permanent counts
-// X as 0 on the battlefield (CR 202.3b). Both are correct and both
+// X as 0 on the battlefield (CR 202.3e). Both are correct and both
 // follow from ManaValueLE, which is the same predicate a targeting
 // clause would use.
 func init() {

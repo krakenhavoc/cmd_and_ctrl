@@ -30,7 +30,7 @@ package effects
 // arrangement the painlands and Talismans have.
 //
 // Summoning sickness applies to both abilities — ActivateManaAbility
-// has enforced CR 302.1 on creature tap abilities since #233.
+// has enforced CR 302.6 on creature tap abilities since #233.
 //
 // Simplification, declared: "and that spell can't be countered" is
 // INERT. Nothing in the counter path reads a per-spell uncounterable
