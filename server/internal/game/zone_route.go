@@ -297,6 +297,12 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) error {
 		// the state-check loop does not run while a choice is queued.
 		g.pruneSacrificeChoicesLocked()
 	}
+	// #605: a card that has just landed invalidates any OTHER queued
+	// prompt still asking about a move of the same card out of the
+	// zone it has now left. Unconditional — an exit from the stack or
+	// a graveyard can strand a sibling prompt just as a battlefield
+	// one can.
+	g.pruneStaleZoneChangeChoicesLocked()
 	return nil
 }
 
