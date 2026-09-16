@@ -79,6 +79,10 @@ describe("service worker routing", () => {
     "/games",
     "/games/7f3c",
     "/games/7f3c/seats",
+    // The login page's bare-code join (ADR 0050). Top-level, so /games
+    // doesn't cover it. Listed so this keeps mirroring the @api matcher;
+    // the navigation test below is the one that actually guards the entry.
+    "/join",
     "/cards/",
     "/cards/search?q=sol+ring",
     "/catalog",
@@ -102,6 +106,16 @@ describe("service worker routing", () => {
 
   it("never caches an API route requested as a navigation either", () => {
     expect(kind("/auth/discord/callback", "GET", "navigate")).toBe("bypass");
+  });
+
+  // /join is POST-only, so the method check keeps the real request uncached
+  // on its own, and a plain GET falls through to "bypass" whether or not the
+  // path is in API_PATH. A navigation is the one shape where the entry decides
+  // the answer: without it the worker hands back the app shell. That makes
+  // this the case that actually guards the entry — the list above would pass
+  // with it missing.
+  it("sends a navigation to /join to the network, not the app shell", () => {
+    expect(kind("/join", "GET", "navigate")).toBe("bypass");
   });
 
   it("caches card art, which is immutable per scryfall id", () => {

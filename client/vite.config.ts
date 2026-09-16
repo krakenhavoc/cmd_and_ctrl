@@ -33,6 +33,12 @@ export default defineConfig({
       // dev-mode clients hit the same URL space as production.
       "/admin": { target: "http://localhost:8080", changeOrigin: true },
       "/games": { target: "http://localhost:8080", changeOrigin: true },
+      // The login page's bare-code join (ADR 0050). A sibling of
+      // /games/{id}/join, but top-level because the code alone names
+      // the table — so /games doesn't cover it and it needs its own
+      // entry. This is the same allow-list gap that shipped it broken
+      // behind Caddy: without it, POST /join gets Vite's index.html.
+      "/join": { target: "http://localhost:8080", changeOrigin: true },
       "/cards": { target: "http://localhost:8080", changeOrigin: true },
       // The public card catalogue (JSON + its scoped image route).
       // Same silent failure as /config if it is missing here: Vite
