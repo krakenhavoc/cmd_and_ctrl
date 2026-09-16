@@ -84,6 +84,40 @@ describe("createArtRetry", () => {
     expect(art.state).toBe("retrying");
   });
 
+  // An image that loaded can still fire `error` later: the browser
+  // re-fetches when src is set again, and that fetch can fail. Art that
+  // was on screen gets the same automatic retry as a first load.
+  it("an error after a load schedules the automatic retry", () => {
+    const { art, reload, report } = harness();
+    art.load();
+    art.error();
+    expect(art.state).toBe("scheduled");
+    vi.advanceTimersByTime(ART_RETRY_DELAY_MS);
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(reload).toHaveBeenCalledWith(URL_A);
+    expect(art.state).toBe("retrying");
+    expect(report).not.toHaveBeenCalled();
+  });
+
+  // Once failed, the attempt has been counted and reported; a second
+  // `error` for it must neither report again nor restart the cycle.
+  it("ignores a duplicate error once failed", () => {
+    const { art, reload, report, states } = harness();
+    art.error();
+    vi.advanceTimersByTime(ART_RETRY_DELAY_MS);
+    art.error();
+    expect(art.state).toBe("failed");
+    const before = states.length;
+
+    art.error();
+    expect(art.state).toBe("failed");
+    expect(states.length).toBe(before);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
+    vi.advanceTimersByTime(ART_RETRY_DELAY_MS * 10);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
   it("click-retry is a no-op until the art has actually failed", () => {
     const { art, reload } = harness();
     art.retry();
