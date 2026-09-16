@@ -16,7 +16,11 @@ import (
 // actual work.
 //
 // Layer ordering follows CR 613:
-//   1. Copy effects (Clone) — deferred to S16.5.
+//   1. Copy effects (Clone) — landed in S16.5 as a rewrite of the
+//      copiable-value baseline (Card.PrintedSelf), not as an effect
+//      in this bucket; ADR 0043. The Layer1Copy bucket stays for
+//      copies with a duration (Mirage Mirror, Cytoshape), which aren't
+//      supported yet.
 //   2. Control-changing effects (Mind Control) — S24. The output
 //      lands in Characteristic.Controller and is materialised back
 //      onto Card.Controller at the end of the pass; see
@@ -24,15 +28,23 @@ import (
 //      EffectiveController() accessor plus a 385-site sweep.
 //   3. Text-changing effects — out of scope for the layer foundation.
 //   4. Type-changing effects (Mycosynth Lattice) — sub-PR 4.
-//   5. Color-changing effects — engine stub, no in-scope card.
+//   5. Color-changing effects — engine stub in S16; first used by
+//      Kenrith's Transformation and Song of the Dryads (ADR 0046).
 //   6. Ability-changing effects (Lord of Atlantis grants) — sub-PR 4.
 //   7. Power / toughness — sub-layers 7a (CDA, Tarmogoyf), 7b (set),
 //      7c (modify, Glorious Anthem), 7d (counters, delegates to
 //      CurrentPower/CurrentToughness), 7e (switch).
 //
-// Dependency detection (CR 613.8) is INTENTIONALLY skipped — pure
-// timestamp ordering covers ~95% of real cards. ADR 0012 documents
-// the trade-off + the S16.5 hand-off when a real card surfaces.
+// Dependency ordering (CR 613.8) is not implemented: every bucket is
+// applied in timestamp order. The one exception is ability removal,
+// which recomputeLayersLocked resolves by iterating to a fixed point
+// (ADR 0046 §4). ADR 0012 and ADR 0043 §5 deferred the rest on the
+// grounds that no catalog pair could produce a dependency. That
+// stopped being true on 2026-09-13: in layer 4, Urborg, Tomb of
+// Yawgmoth depends on Song of the Dryads and on Arixmethes, and
+// Maskwood Nexus depends on crew, The Warring Triad and Arixmethes,
+// so those pairs come out differently depending on entry order.
+// Tracked in #668; #644 declares the pairs as caveats on the cards.
 
 // Layer is one of CR 613's seven continuous-effect application
 // stages. Layer7PT carries a SubLayer; the others ignore it.
@@ -232,6 +244,15 @@ func (e staticContinuousEffect) Apply(c *Characteristic, target *Card, g *Game) 
 // generate a continuous effect from (CR 613.1f + CR 113.3). Nil on
 // the discovery pass, which is how the set is learned in the first
 // place; see recomputeLayersLocked.
+//
+// KNOWN WRONG, #669: dropping a silenced source from EVERY layer
+// breaks CR 613.6. Removal happens in layer 6, so the source's
+// layer 1-5 effects should still apply, and an effect that already
+// started applying carries on into layer 7 (Magus of the Moon's
+// ruling: under a removal it keeps making Mountains). No catalog card
+// shows it yet. The fix needs CR 704.5p first (#675), because a
+// Song'd Control Magic stays attached and only this silence hands
+// the creature back today.
 //
 // Turn-scoped statics are never silenced. They have no battlefield
 // source to take abilities away from: the effect outlived its source
@@ -503,16 +524,19 @@ func (g *Game) recomputeLayersLocked() {
 	//
 	// If it is not empty the pass runs again with the set honoured
 	// at GATHER time, so a silenced permanent stops contributing to
-	// layers 1-5 and 7 as well as to 6 — a Mind Control that became
-	// a Forest has to stop stealing the creature, and layer 2 is
-	// applied long before layer 6 could have told it to.
+	// layers 1-5 and 7 as well as to 6. That is more than the rules
+	// allow (CR 613.6, #669; see activeStaticAbilitiesLocked). The
+	// Mind Control that became a Forest gives the creature back in
+	// paper because it becomes unattached (CR 704.5p, #675), not
+	// because of layer order.
 	//
 	// This is the one CR 613.8 dependency the engine resolves, and
 	// it resolves it by iterating to a fixed point rather than by
-	// analysing the effects (ADR 0012 declined the analysis, and
-	// still does). The cap is what makes that safe: a board that has
-	// not settled after maxLayerPasses keeps the last pass's answer
-	// rather than spinning. Reaching it needs a cycle of ability
+	// analysing the effects. The layer-4 dependencies the catalog
+	// can now build are not resolved (#668). The cap is what makes
+	// the iteration safe: a board that has not settled after
+	// maxLayerPasses keeps the last pass's answer rather than
+	// spinning. Reaching it needs a cycle of ability
 	// removers that the within-layer-6 timestamp skip in
 	// applyLayerLocked does not already break, which no catalogued
 	// card can currently build.

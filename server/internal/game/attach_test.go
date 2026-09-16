@@ -188,7 +188,7 @@ func TestUnattachForEffectIsIdempotent(t *testing.T) {
 	}
 }
 
-// CR 704.5m — the Equipment branch. The host leaves; the Equipment
+// CR 704.5n — the Equipment branch. The host leaves; the Equipment
 // unattaches and STAYS on the battlefield.
 func TestSBAUnattachesEquipmentWhenHostLeaves(t *testing.T) {
 	g := newActiveGame(t)
@@ -207,14 +207,14 @@ func TestSBAUnattachesEquipmentWhenHostLeaves(t *testing.T) {
 
 	got, ok := battlefieldCardByID(g, sword)
 	if !ok {
-		t.Fatal("CR 704.5m: the Equipment must STAY on the battlefield")
+		t.Fatal("CR 704.5n: the Equipment must STAY on the battlefield")
 	}
 	if got.IsAttached() {
 		t.Errorf("still attached to a card that left: %+v", got.AttachedTo)
 	}
 }
 
-// CR 704.5m again, the other way in: the host is still on the
+// CR 704.5n again, the other way in: the host is still on the
 // battlefield but has stopped being a creature. Read through
 // Effective(), never the printed type line.
 func TestSBAUnattachesEquipmentFromNonCreature(t *testing.T) {
@@ -242,7 +242,7 @@ func TestSBAUnattachesEquipmentFromNonCreature(t *testing.T) {
 	}
 }
 
-// CR 704.5n — the Aura branch, which is the opposite outcome from
+// CR 704.5m — the Aura branch, which is the opposite outcome from
 // the same trigger condition.
 func TestSBAPutsIllegallyAttachedAuraInGraveyard(t *testing.T) {
 	g := newActiveGame(t)
@@ -260,7 +260,7 @@ func TestSBAPutsIllegallyAttachedAuraInGraveyard(t *testing.T) {
 	})
 
 	if _, ok := battlefieldCardByID(g, aura); ok {
-		t.Fatal("CR 704.5n: the Aura must leave the battlefield")
+		t.Fatal("CR 704.5m: the Aura must leave the battlefield")
 	}
 	if !graveyardHas(me, aura) {
 		t.Error("the Aura should be in its owner's graveyard")
@@ -303,7 +303,7 @@ func TestSBAKeepsPlayerAttachmentUntilElimination(t *testing.T) {
 		g.runStateChecksLocked()
 	})
 	if _, ok := battlefieldCardByID(g, curse); ok {
-		t.Error("CR 704.5n: a Curse on an eliminated player must go to the graveyard")
+		t.Error("CR 704.5m: a Curse on an eliminated player must go to the graveyard")
 	}
 }
 
@@ -447,7 +447,7 @@ func TestResolvedAuraIgnoresAmbiguousTargets(t *testing.T) {
 }
 
 // pushCataloguedAura seeds an Aura the catalog knows an enchant
-// clause for — the distinction CR 704.5n's "attached to nothing"
+// clause for — the distinction CR 704.5m's "attached to nothing"
 // branch turns on, since an UNCATALOGUED Aura is a manual sandbox
 // object and must not be swept.
 func pushCataloguedAura(g *Game, controller uuid.UUID, name string) uuid.UUID {
@@ -484,7 +484,7 @@ func enchantCreatureSpec() *TargetSpec {
 	}
 }
 
-// CR 704.5n, second disjunct: "...or is not attached to an object or
+// CR 704.5m, second disjunct: "...or is not attached to an object or
 // player". An Aura put onto the battlefield by an effect that does
 // not say "attached to" — Brilliant Restoration, Carmen — used to sit
 // there permanently, which is a board state no sequence of legal
@@ -499,7 +499,7 @@ func TestSBAPutsAnUnattachedAuraInTheGraveyard(t *testing.T) {
 	g.WithWriteLock(func() { g.runStateChecksLocked() })
 
 	if _, ok := battlefieldCardByID(g, aura); ok {
-		t.Fatal("CR 704.5n: an Aura attached to nothing must leave the battlefield")
+		t.Fatal("CR 704.5m: an Aura attached to nothing must leave the battlefield")
 	}
 	if !graveyardHas(me, aura) {
 		t.Error("the Aura should be in its owner's graveyard")
@@ -532,7 +532,7 @@ func TestSBALeavesAnUncataloguedUnattachedAuraAlone(t *testing.T) {
 	}
 }
 
-// CR 704.5m has no "attached to nothing" clause — an Equipment that
+// CR 704.5n has no "attached to nothing" clause — an Equipment that
 // is attached to nothing is an ordinary artifact sitting on the
 // battlefield, which is where every Equipment starts its life.
 func TestSBALeavesAnUnattachedEquipmentAlone(t *testing.T) {

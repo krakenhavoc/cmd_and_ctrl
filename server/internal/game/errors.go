@@ -176,6 +176,22 @@ var (
 	// in S14.
 	ErrNotTheChooser = errors.New("game: caller is not the chooser of this pending choice")
 
+	// ErrChoiceSetRejected is returned by ResolveChooseCards when the
+	// picks are individually fine (right count, all candidates, all
+	// still where the prompt found them) but the SET breaks a rule
+	// the card prints about them together — ChooseCardsPrompt.
+	// Validate refused it. "Discard two cards unless you discard a
+	// creature card" answered with one land is the shape.
+	//
+	// Its own sentinel rather than ErrInvalidParam because the player
+	// can fix it by choosing again, and the prompt stays open for
+	// exactly that; "invalid parameter" in the prompt's error line
+	// would read as a broken client. The player-facing sentence lives
+	// in ws.classifyActionError, as it does for ErrUnparseableCost and
+	// ErrInvalidFace. The prompt's own Question carries the card's
+	// words, so neither needs to repeat them. Added for #624.
+	ErrChoiceSetRejected = errors.New("game: chosen cards rejected by the prompt's set rule")
+
 	// ErrAlreadyTapped is returned by ActivateManaAbility when the
 	// ability has a tap cost and the permanent is already tapped —
 	// the mana-ability rules require the cost to be payable (CR

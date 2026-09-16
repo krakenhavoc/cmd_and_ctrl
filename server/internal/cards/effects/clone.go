@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -37,11 +35,7 @@ func init() {
 		Replacements: []game.ReplacementEffect{
 			EntersAsCopyOf(
 				"Clone",
-				func(g *game.Game, _ uuid.UUID, self uuid.UUID) []uuid.UUID {
-					return copyCandidates(g, self, func(c game.Card) bool {
-						return c.IsCreature()
-					})
-				},
+				anyCreatureOnBattlefield,
 				nil,
 			),
 		},
