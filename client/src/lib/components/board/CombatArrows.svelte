@@ -38,19 +38,18 @@
   import { gsap } from "gsap";
   import { settings } from "../../settings";
   import {
-    BeatSequencer,
-    arrowRender,
+    BeatDirector,
     beatMode,
     cueAnchor,
-    cueDetail,
-    emptyBeatTracker,
-    ghostGeometry,
+    cueSummary,
     keepArrowCache,
     midpointOffset,
-    planFrame,
+    pruneCardCache,
+    resolveArrow,
     type ArrowGeometry,
     type BeatTag,
     type CachedArrow,
+    type CachedPoint,
     type Point,
     type ScheduledCue,
   } from "../../combatBeats";
@@ -212,6 +211,7 @@
       }
     }
     arrows = next;
+    measureTiles(boardRect);
   }
 
   // ---- Combat damage beats (#187, ADR 0053) ----
@@ -221,6 +221,35 @@
   // it directly. Kept through combat and until the last scheduled cue
   // has played (keepArrowCache), cleared on prime.
   const geoCache = new Map<string, CachedArrow>();
+
+  // cardCache is every battlefield tile's last measured centre, keyed
+  // by instance ID. It exists because arrows are measured in a
+  // requestAnimationFrame: when the declare-blockers frame and the
+  // combat damage frame land inside one animation frame (a bot, a fast
+  // network), the block arrow is never measured and geoCache has
+  // nothing for it. The tiles were measured on every earlier frame they
+  // were on the board, so resolveArrow can still build the ghost from
+  // them. Same lifetime rules as geoCache for cards that have left.
+  const cardCache = new Map<string, CachedPoint>();
+
+  function measureTiles(boardRect: DOMRect): void {
+    if (!boardEl) return;
+    const onBattlefield = new Set(view.battlefield.cards.map((c) => c.instance_id));
+    const board = { w: boardRect.width, h: boardRect.height };
+    const seen = new Set<string>();
+    // First match per ID, as rectIn's querySelector picks.
+    for (const el of boardEl.querySelectorAll<HTMLElement>("[data-instance-id]")) {
+      const id = el.dataset.instanceId;
+      if (!id || seen.has(id) || !onBattlefield.has(id)) continue;
+      seen.add(id);
+      const r = el.getBoundingClientRect();
+      cardCache.set(id, {
+        at: { x: r.left + r.width / 2 - boardRect.left, y: r.top + r.height / 2 - boardRect.top },
+        board,
+      });
+    }
+    pruneCardCache(cardCache, onBattlefield, keepArrowCache(view.turn?.step, director.pending));
+  }
 
   // One pulse (on a live arrow) or ghost (from cached geometry). Each
   // removes itself when its tween completes.
@@ -240,23 +269,32 @@
     stepSeq: number;
     x: number;
     y: number;
-    lines: { tag: BeatTag; label: string; detail: string }[];
+    lines: { tag: BeatTag; label: string; summary: string }[];
   }
   let cueBoxes = $state<CueBox[]>([]);
 
-  let tracker = emptyBeatTracker();
   let reprimeNext = false;
 
-  const sequencer = new BeatSequencer({
+  // The director cancels every pending cue when a frame primes, and
+  // onReset clears what those cues had put on screen.
+  const director = new BeatDirector({
     onCue: playCue,
     onHide: (stepSeq) => {
       cueBoxes = cueBoxes.filter((b) => b.stepSeq !== stepSeq);
     },
+    onReset: () => {
+      cueBoxes = [];
+      effects = [];
+      geoCache.clear();
+      cardCache.clear();
+    },
   });
-  onDestroy(() => sequencer.dispose());
+  onDestroy(() => director.dispose());
 
   function dropCacheIfDone(): void {
-    if (!keepArrowCache(view.turn?.step, sequencer.pending)) geoCache.clear();
+    const keep = keepArrowCache(view.turn?.step, director.pending);
+    if (!keep) geoCache.clear();
+    pruneCardCache(cardCache, new Set(view.battlefield.cards.map((c) => c.instance_id)), keep);
   }
 
   // measure is an endpoint's board-relative centre, or null when it is
@@ -272,7 +310,8 @@
   function playCue(cue: ScheduledCue): void {
     if (!boardEl) return;
     // Measure now: the frame that carried the beat has rendered, so
-    // the live set is the end state's, not the previous frame's.
+    // the live set is the end state's, not the previous frame's. This
+    // also refreshes the tiles still on the board.
     recomputeArrows();
     const boardRect = boardEl.getBoundingClientRect();
     const board = { w: boardRect.width, h: boardRect.height };
@@ -284,24 +323,21 @@
       kind: "attack" | "block";
       geo: ArrowGeometry;
     }[] = [];
-    for (const id of cue.arrowIDs) {
-      const render = arrowRender(id, live, geoCache);
-      if (render === "live") {
-        const a = live.get(id)!;
-        if (a.kind === "attack" || a.kind === "block")
-          drawn.push({ id, style: "pulse", kind: a.kind, geo: a });
-      } else if (render === "ghost") {
-        const c = geoCache.get(id)!;
-        const geo = ghostGeometry(
-          c,
-          board,
-          measure(boardRect, c.fromCardID),
-          measure(boardRect, c.toCardID, c.toSeatID),
-        );
-        // Null: the board changed size, so the cached point is a guess.
-        // The text cue carries the beat.
-        if (geo) drawn.push({ id, style: "ghost", kind: c.kind, geo });
-      }
+    for (const ref of cue.arrows) {
+      const seatID = ref.toSeat !== undefined ? view.seats[ref.toSeat]?.id : undefined;
+      if (ref.kind === "attack" && !seatID) continue;
+      const { render, geo } = resolveArrow(ref, {
+        live,
+        arrowCache: geoCache,
+        cardCache,
+        board,
+        fromNow: measure(boardRect, ref.fromCardID),
+        toNow: measure(boardRect, ref.toCardID, seatID),
+      });
+      // "none": no geometry, or only geometry from a board of another
+      // size. The text cue carries the beat.
+      if (render === "none" || !geo) continue;
+      drawn.push({ id: ref.id, style: render === "live" ? "pulse" : "ghost", kind: ref.kind, geo });
     }
 
     // Motion is decided again at cue time, so turning reduce-motion on
@@ -325,7 +361,7 @@
     }
 
     if (cue.label !== null) {
-      const line = { tag: cue.tag, label: cue.label, detail: cueDetail(cue) };
+      const line = { tag: cue.tag, label: cue.label, summary: cueSummary(cue) };
       const existing = cueBoxes.find((b) => b.stepSeq === cue.stepSeq);
       if (existing) {
         cueBoxes = cueBoxes.map((b) =>
@@ -354,13 +390,14 @@
     });
   });
 
-  // Plan each frame's beats. Only `view` is tracked: settings are read
-  // at plan time, and nothing a later frame does cancels a cue.
+  // Plan and play each frame's beats. Only `view` is tracked: settings
+  // are read at plan time. A normal frame never cancels a cue; a
+  // priming frame cancels them all (BeatDirector).
   $effect(() => {
     const log = view.log;
     untrack(() => {
       const s = get(settings);
-      const plan = planFrame(tracker, log, {
+      director.frame(log, {
         mode: beatMode(
           s.animations.enabled,
           s.animations.damagePopups,
@@ -370,9 +407,6 @@
         reprime: reprimeNext,
       });
       reprimeNext = false;
-      tracker = plan.tracker;
-      if (plan.primed) geoCache.clear();
-      sequencer.play(plan.cues);
       dropCacheIfDone();
     });
   });
@@ -535,7 +569,7 @@
     <div class="beat-cue" style:left="{box.x}px" style:top="{box.y}px">
       {#each box.lines as line (line.tag)}
         <span class="beat-line {line.tag}"
-          >{line.label}<span class="sr-only">: {line.detail}</span></span
+          >{line.label}<span class="sr-only">, {line.summary}</span></span
         >
       {/each}
     </div>

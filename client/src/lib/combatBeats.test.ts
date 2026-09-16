@@ -4,24 +4,31 @@ import {
   BEAT_CUE_HOLD_MS,
   BEAT_EFFECT_MS,
   BEAT_PAUSE_MS,
+  BeatDirector,
   BeatSequencer,
   arrowGeometry,
   arrowIDsFor,
+  arrowRefsFor,
   arrowRender,
   beatMode,
   cueAnchor,
-  cueDetail,
+  cueSummary,
   emptyBeatTracker,
   ghostGeometry,
   keepArrowCache,
   planFrame,
+  pruneCardCache,
+  resolveArrow,
   scaledMs,
   schedule,
   splitBeats,
   track,
   type BeatMode,
   type BeatTracker,
+  type ArrowInputs,
+  type ArrowRef,
   type CachedArrow,
+  type CachedPoint,
   type ScheduledCue,
 } from "./combatBeats";
 import type { LogEvent } from "./protocol";
@@ -776,10 +783,238 @@ describe("keepArrowCache", () => {
   });
 });
 
-describe("cueDetail", () => {
-  it("joins the beat's log lines", () => {
-    expect(cueDetail({ entries: [dmgSeat(1, "ace", 1, 1), dies(2, "bears")] })).toBe(
-      "ace dealt 1 combat damage to seat 1; bears died",
+describe("cueSummary", () => {
+  it("is a short count of the beat's hits, not the log lines", () => {
+    const one = {
+      tag: "first_strike" as const,
+      entries: [dmgSeat(1, "ace", 1, 1, "first_strike"), dies(2, "bears")],
+    };
+    expect(cueSummary(one)).toBe("1 hit");
+    const two = {
+      tag: "regular" as const,
+      entries: [
+        dmgCard(1, "ace", "bears", 1, "regular"),
+        dmgCard(2, "bears", "ace", 2, "regular"),
+        dies(3, "ace"),
+      ],
+    };
+    expect(cueSummary(two)).toBe("2 hits");
+  });
+});
+
+describe("effect timing margin", () => {
+  it("keeps one arrow effect shorter than the pause, so beats never overlap", () => {
+    expect(BEAT_EFFECT_MS).toBeLessThan(BEAT_PAUSE_MS);
+    for (const speed of [0.5, 1, 1.5, 2]) {
+      expect(scaledMs(BEAT_EFFECT_MS, speed)).toBeLessThan(scaledMs(BEAT_PAUSE_MS, speed));
+    }
+  });
+});
+
+describe("arrowRefsFor", () => {
+  it("carries the endpoints CombatArrows draws between", () => {
+    const log = declaredCombat();
+    expect(
+      arrowRefsFor([dmgCard(121, "ace", "bears", 1), dmgSeat(122, "ogre", 0, 3)], log),
+    ).toEqual([
+      { id: "blk-bears", kind: "block", fromCardID: "bears", toCardID: "ace" },
+      { id: "atk-ogre", kind: "attack", fromCardID: "ogre", toSeat: 0 },
+    ]);
+  });
+});
+
+describe("resolveArrow", () => {
+  const board = { w: 800, h: 600 };
+  const blk: ArrowRef = { id: "blk-bears", kind: "block", fromCardID: "bears", toCardID: "ace" };
+  const atk: ArrowRef = { id: "atk-ace", kind: "attack", fromCardID: "ace", toSeat: 1 };
+  const pt = (x: number, y: number, b = board): CachedPoint => ({ at: { x, y }, board: b });
+
+  function inputs(over: Partial<ArrowInputs> = {}): ArrowInputs {
+    return {
+      live: new Map(),
+      arrowCache: new Map(),
+      cardCache: new Map(),
+      board,
+      fromNow: null,
+      toNow: null,
+      ...over,
+    };
+  }
+
+  it("pulses a live arrow", () => {
+    const geo = arrowGeometry({ x: 1, y: 2 }, { x: 3, y: 4 });
+    expect(resolveArrow(blk, inputs({ live: new Map([["blk-bears", geo]]) }))).toEqual({
+      render: "live",
+      geo,
+    });
+  });
+
+  it("ghosts from the arrow cache when the arrow was drawn earlier", () => {
+    const cached: CachedArrow = {
+      kind: "block",
+      fromCardID: "bears",
+      toCardID: "ace",
+      geo: arrowGeometry({ x: 10, y: 10 }, { x: 90, y: 90 }),
+      board,
+    };
+    expect(resolveArrow(blk, inputs({ arrowCache: new Map([["blk-bears", cached]]) }))).toEqual({
+      render: "ghost",
+      geo: cached.geo,
+    });
+  });
+
+  it("ghosts from card tiles when the arrow was never measured (frames batched in one animation frame)", () => {
+    // declare_blockers and combat damage landed inside one rAF: no arrow
+    // geometry, but both tiles were measured on earlier frames, and
+    // both creatures are gone now.
+    const cardCache = new Map([
+      ["bears", pt(100, 400)],
+      ["ace", pt(300, 150)],
+    ]);
+    expect(resolveArrow(blk, inputs({ cardCache }))).toEqual({
+      render: "ghost",
+      geo: arrowGeometry({ x: 100, y: 400 }, { x: 300, y: 150 }),
+    });
+  });
+
+  it("prefers a fresh measurement for a tile still on the board", () => {
+    const cardCache = new Map([
+      ["bears", pt(100, 400)],
+      ["ace", pt(300, 150)],
+    ]);
+    const r = resolveArrow(blk, inputs({ cardCache, toNow: { x: 320, y: 160 } }));
+    expect(r.geo).toEqual(arrowGeometry({ x: 100, y: 400 }, { x: 320, y: 160 }));
+  });
+
+  it("builds an attack ghost from the attacker's tile and the live seat header", () => {
+    const cardCache = new Map([["ace", pt(200, 450)]]);
+    const r = resolveArrow(atk, inputs({ cardCache, toNow: { x: 400, y: 30 } }));
+    expect(r).toEqual({
+      render: "ghost",
+      geo: arrowGeometry({ x: 200, y: 450 }, { x: 400, y: 30 }),
+    });
+  });
+
+  it("draws nothing when a card tile is missing", () => {
+    expect(resolveArrow(blk, inputs({ cardCache: new Map([["bears", pt(100, 400)]]) }))).toEqual({
+      render: "none",
+      geo: null,
+    });
+    expect(resolveArrow(atk, inputs({ toNow: { x: 400, y: 30 } })).render).toBe("none");
+  });
+
+  it("draws nothing from tiles measured on a board of another size", () => {
+    const old = { w: 820, h: 600 };
+    const cardCache = new Map([
+      ["bears", pt(100, 400, old)],
+      ["ace", pt(300, 150, old)],
+    ]);
+    expect(resolveArrow(blk, inputs({ cardCache })).render).toBe("none");
+  });
+
+  it("falls back to fresh tiles when the cached arrow is from another board size", () => {
+    const cached: CachedArrow = {
+      kind: "block",
+      fromCardID: "bears",
+      toCardID: "ace",
+      geo: arrowGeometry({ x: 10, y: 10 }, { x: 90, y: 90 }),
+      board: { w: 820, h: 600 },
+    };
+    const r = resolveArrow(
+      blk,
+      inputs({
+        arrowCache: new Map([["blk-bears", cached]]),
+        fromNow: { x: 5, y: 6 },
+        toNow: { x: 7, y: 8 },
+      }),
     );
+    expect(r).toEqual({ render: "ghost", geo: arrowGeometry({ x: 5, y: 6 }, { x: 7, y: 8 }) });
+    const noFresh = resolveArrow(blk, inputs({ arrowCache: new Map([["blk-bears", cached]]) }));
+    expect(noFresh.render).toBe("none");
+  });
+});
+
+describe("pruneCardCache", () => {
+  it("keeps departed tiles while combat or a cue needs them, and drops them after", () => {
+    const cache = new Map<string, CachedPoint>([
+      ["ace", { at: { x: 1, y: 1 }, board: { w: 1, h: 1 } }],
+      ["bears", { at: { x: 2, y: 2 }, board: { w: 1, h: 1 } }],
+    ]);
+    const onBattlefield = new Set(["ace"]);
+    pruneCardCache(cache, onBattlefield, true);
+    expect([...cache.keys()]).toEqual(["ace", "bears"]);
+    pruneCardCache(cache, onBattlefield, false);
+    expect([...cache.keys()]).toEqual(["ace"]);
+  });
+});
+
+describe("BeatDirector", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const before = declaredCombat();
+  const both = [
+    ...before,
+    step(120, "combat_damage"),
+    dmgCard(121, "ace", "bears", 1, "first_strike"),
+    dmgCard(122, "ace", "bears", 1, "regular"),
+  ];
+
+  function director() {
+    const fired: string[] = [];
+    const hidden: number[] = [];
+    let resets = 0;
+    const d = new BeatDirector({
+      onCue: (cue) => fired.push(cue.tag),
+      onHide: (stepSeq) => hidden.push(stepSeq),
+      onReset: () => resets++,
+    });
+    return { d, fired, hidden, resets: () => resets };
+  }
+
+  it("keeps pending cues across a normal frame, even one that leaves the step (AC14)", () => {
+    const { d, fired } = director();
+    d.frame(before, { mode: "full", speed: 1 });
+    d.frame(both, { mode: "full", speed: 1 });
+    vi.advanceTimersByTime(100);
+    d.frame([...both, step(130, "end_combat")], { mode: "full", speed: 1 });
+    vi.runAllTimers();
+    expect(fired).toEqual(["first_strike", "regular"]);
+  });
+
+  it("cancels pending cues and hides, and resets the screen, on a re-prime", () => {
+    const { d, fired, hidden, resets } = director();
+    d.frame(before, { mode: "full", speed: 1 });
+    expect(resets()).toBe(1); // the first frame primes too
+    d.frame(both, { mode: "full", speed: 1 });
+    vi.advanceTimersByTime(100);
+    expect(fired).toEqual(["first_strike"]);
+    expect(d.pending).toBe(1);
+
+    // A replay scrubber jump mid-sequence.
+    d.frame(before, { mode: "full", speed: 1, reprime: true });
+    expect(resets()).toBe(2);
+    expect(d.pending).toBe(0);
+    vi.runAllTimers();
+    expect(fired).toEqual(["first_strike"]);
+    expect(hidden).toEqual([]);
+
+    // And it still plays new beats afterwards.
+    d.frame(both, { mode: "full", speed: 1 });
+    vi.runAllTimers();
+    expect(fired).toEqual(["first_strike", "first_strike", "regular"]);
+  });
+
+  it("cancels everything on dispose", () => {
+    const { d, fired } = director();
+    d.frame(before, { mode: "full", speed: 1 });
+    d.frame(both, { mode: "full", speed: 1 });
+    d.dispose();
+    vi.runAllTimers();
+    expect(fired).toEqual([]);
   });
 });

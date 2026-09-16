@@ -51,9 +51,11 @@ export type BeatMode = "full" | "still";
 export const BEAT_PAUSE_MS = 400;
 
 // BEAT_EFFECT_MS is one arrow pulse or ghost fade, in and out, before
-// the speed multiplier. Shorter than the pause, so a beat's arrow
-// effect is over before the next beat's starts.
-export const BEAT_EFFECT_MS = 360;
+// the speed multiplier. It must stay shorter than BEAT_PAUSE_MS, so a
+// beat's arrow effect is over before the next beat's starts; the clamp
+// makes raising it past the pause a no-op rather than an overlap (and
+// a unit test pins the margin).
+export const BEAT_EFFECT_MS = Math.min(360, BEAT_PAUSE_MS - 40);
 
 // BEAT_CUE_HOLD_MS is how long the text cue stays up after the last
 // beat of a frame has been cued. Not speed-scaled on purpose: it is
@@ -178,7 +180,8 @@ export interface Beat {
   entries: LogEvent[];
   // The tagged combat damage entries only.
   damage: LogEvent[];
-  // The combat arrows the damage names (arrowIDsFor).
+  // The combat arrows the damage names (arrowRefsFor), and their IDs.
+  arrows: ArrowRef[];
   arrowIDs: string[];
   // This beat was already cued in an earlier frame of its step: no
   // label, no pause.
@@ -231,6 +234,7 @@ export function splitBeats(
         tag,
         entries: [],
         damage: [],
+        arrows: [],
         arrowIDs: [],
         continuation: prev.cued.get(step.seq)?.has(tag) ?? false,
         pauseBefore: false,
@@ -248,7 +252,8 @@ export function splitBeats(
   const cued = new Map<number, Map<BeatTag, number>>();
   for (const [stepSeq, m] of prev.cued) cued.set(stepSeq, new Map(m));
   for (const beat of beats) {
-    beat.arrowIDs = arrowIDsFor(beat.damage, log);
+    beat.arrows = arrowRefsFor(beat.damage, log);
+    beat.arrowIDs = beat.arrows.map((a) => a.id);
     if (beat.tag === "regular" && !beat.continuation) {
       const first = byKey.get(`${beat.stepSeq}:first_strike`);
       // Only beat 1 THEN beat 2 in this frame earns the pause. A
@@ -268,20 +273,35 @@ export function splitBeats(
   return { tracker: { ...prev, cued }, beats };
 }
 
-// arrowIDsFor names the CombatArrows arrow each damage entry travelled
+// ArrowRef is one combat arrow a damage entry travelled along, with
+// the endpoints CombatArrows draws it between: an attack runs from the
+// attacker to the defending seat's header, a block from the blocker to
+// the attacker. Everything here comes from the log, so it is known even
+// when the arrow was never drawn.
+export interface ArrowRef {
+  id: string;
+  kind: "attack" | "block";
+  fromCardID: string;
+  // Card endpoint of a block arrow.
+  toCardID?: string;
+  // Seat index of an attack arrow's defending player.
+  toSeat?: number;
+}
+
+// arrowRefsFor names the CombatArrows arrow each damage entry travelled
 // along, from the log alone (ADR 0053 Decision 4). Roles come from
 // the same turn's `block` entries, the latest per blocker — never from
 // live battlefield state, which has already lost the creatures that
 // died. An entry that names no arrow (an attack on a planeswalker or
 // battle, or a block entry that fell out of the log window) adds
 // nothing; the text cue still carries it.
-export function arrowIDsFor(
+export function arrowRefsFor(
   damage: readonly LogEvent[],
   log: readonly LogEvent[] | undefined,
-): string[] {
-  const out: string[] = [];
-  const add = (id: string) => {
-    if (!out.includes(id)) out.push(id);
+): ArrowRef[] {
+  const out: ArrowRef[] = [];
+  const add = (ref: ArrowRef) => {
+    if (!out.some((r) => r.id === ref.id)) out.push(ref);
   };
   const blocksByTurn = new Map<number, Map<string, string>>();
   const blocksOn = (turn: number): Map<string, string> => {
@@ -301,16 +321,27 @@ export function arrowIDsFor(
     const source = d.card_id;
     if (!source) continue;
     if (d.target_seat !== undefined && d.target_seat !== null) {
-      add(`atk-${source}`);
+      add({ id: `atk-${source}`, kind: "attack", fromCardID: source, toSeat: d.target_seat });
       continue;
     }
     const target = d.target;
     if (!target) continue;
     const blocks = blocksOn(d.turn ?? 0);
-    if (blocks.get(target) === source) add(`blk-${target}`);
-    else if (blocks.get(source) === target) add(`blk-${source}`);
+    if (blocks.get(target) === source) {
+      add({ id: `blk-${target}`, kind: "block", fromCardID: target, toCardID: source });
+    } else if (blocks.get(source) === target) {
+      add({ id: `blk-${source}`, kind: "block", fromCardID: source, toCardID: target });
+    }
   }
   return out;
+}
+
+// arrowIDsFor is arrowRefsFor's IDs.
+export function arrowIDsFor(
+  damage: readonly LogEvent[],
+  log: readonly LogEvent[] | undefined,
+): string[] {
+  return arrowRefsFor(damage, log).map((r) => r.id);
 }
 
 // ---- Schedule ----
@@ -324,6 +355,7 @@ export interface ScheduledCue {
   // beat whose label was already shown.
   label: string | null;
   entries: LogEvent[];
+  arrows: ArrowRef[];
   arrowIDs: string[];
   // True only in "full" mode: pulse live arrows, draw ghosts. A "still"
   // schedule has no motion at all, only the text cue.
@@ -348,6 +380,7 @@ export function schedule(beats: readonly Beat[], mode: BeatMode, speed: number):
     tag: b.tag,
     label: b.continuation ? null : BEAT_LABELS[b.tag],
     entries: b.entries,
+    arrows: b.arrows,
     arrowIDs: b.arrowIDs,
     motion: mode === "full",
     effectMs,
@@ -380,10 +413,13 @@ export function planFrame(
   };
 }
 
-// cueDetail is the accessible sentence behind a cue's label: the log
-// lines of the beat, already redacted for this viewer by the server.
-export function cueDetail(cue: Pick<ScheduledCue, "entries">): string {
-  return cue.entries.map((e) => e.text).join("; ");
+// cueSummary is the short count a screen reader hears after a cue's
+// label ("First strike, 2 hits"). Deliberately not the log lines: the
+// cue region announces on every beat of every combat, and the log panel
+// already carries the full sentences.
+export function cueSummary(cue: Pick<ScheduledCue, "entries" | "tag">): string {
+  const n = cue.entries.filter((e) => combatTagOf(e) === cue.tag).length;
+  return n === 1 ? "1 hit" : `${n} hits`;
 }
 
 // ---- Arrows: live, ghost or nothing ----
@@ -477,15 +513,95 @@ export function ghostGeometry(
   fromNow: Point | null,
   toNow: Point | null,
 ): ArrowGeometry | null {
-  if (
-    Math.abs(boardNow.w - cached.board.w) > BOARD_RESIZE_TOLERANCE_PX ||
-    Math.abs(boardNow.h - cached.board.h) > BOARD_RESIZE_TOLERANCE_PX
-  ) {
-    return null;
-  }
+  if (!sameBoard(boardNow, cached.board)) return null;
   const from = fromNow ?? { x: cached.geo.x1, y: cached.geo.y1 };
   const to = toNow ?? { x: cached.geo.x2, y: cached.geo.y2 };
   return arrowGeometry(from, to);
+}
+
+// CachedPoint is one card tile's last measured board-relative centre,
+// with the board size at the time.
+export interface CachedPoint {
+  at: Point;
+  board: BoardSize;
+}
+
+function sameBoard(a: BoardSize, b: BoardSize): boolean {
+  return (
+    Math.abs(a.w - b.w) <= BOARD_RESIZE_TOLERANCE_PX &&
+    Math.abs(a.h - b.h) <= BOARD_RESIZE_TOLERANCE_PX
+  );
+}
+
+export interface ArrowInputs {
+  // Arrows drawn right now, by ID: both endpoints mounted.
+  live: { get(id: string): ArrowGeometry | undefined };
+  // Last measured arrow geometry, by arrow ID.
+  arrowCache: { get(id: string): CachedArrow | undefined };
+  // Last measured card tile centres, by instance ID. Tiles are measured
+  // on every frame they are on the board, long before combat, so this
+  // knows both endpoints of an arrow that was never drawn.
+  cardCache: { get(id: string): CachedPoint | undefined };
+  board: BoardSize;
+  // Fresh measurements of the ref's endpoints, or null for one that is
+  // not on the board now.
+  fromNow: Point | null;
+  toNow: Point | null;
+}
+
+// resolveArrow decides how a beat shows one arrow, and where:
+//
+//   1. live — the arrow is drawn right now: pulse it.
+//   2. ghost from the arrow cache — it was drawn earlier (ghostGeometry).
+//   3. ghost from card tiles — no usable arrow geometry. Typically the
+//      arrow was never drawn, because the frame
+//      that declared it and the frame that dealt the damage landed
+//      inside one animation frame (a bot, or a fast network), but both
+//      creatures' tiles were measured earlier. Each endpoint is a fresh
+//      measurement if it is still on the board, else its cached centre.
+//   4. none — the text cue carries the beat.
+//
+// A cached point measured on a board of another size is never used
+// (the reflow rule): the ghost is dropped instead.
+export function resolveArrow(
+  ref: ArrowRef,
+  inputs: ArrowInputs,
+): { render: ArrowRender; geo: ArrowGeometry | null } {
+  const liveGeo = inputs.live.get(ref.id);
+  const cachedArrow = inputs.arrowCache.get(ref.id);
+  const cachedIDs = { has: () => cachedArrow !== undefined };
+  const render = arrowRender(ref.id, { has: () => liveGeo !== undefined }, cachedIDs);
+  if (render === "live") return { render, geo: liveGeo! };
+  if (render === "ghost") {
+    const geo = ghostGeometry(cachedArrow!, inputs.board, inputs.fromNow, inputs.toNow);
+    if (geo) return { render, geo };
+    // The board changed size since the arrow was measured. A tile
+    // re-measured after the resize can still place it.
+  }
+  const cachedPoint = (id: string | undefined): Point | null => {
+    if (!id) return null;
+    const c = inputs.cardCache.get(id);
+    return c && sameBoard(c.board, inputs.board) ? c.at : null;
+  };
+  const from = inputs.fromNow ?? cachedPoint(ref.fromCardID);
+  // A seat header is never cached: it is always mounted, so toNow is it.
+  const to = inputs.toNow ?? (ref.kind === "block" ? cachedPoint(ref.toCardID) : null);
+  if (!from || !to) return { render: "none", geo: null };
+  return { render: "ghost", geo: arrowGeometry(from, to) };
+}
+
+// pruneCardCache drops the tiles of cards no longer on the battlefield,
+// unless combat or a pending cue may still need them (keepArrowCache).
+// Cards still on the battlefield are kept: they are re-measured anyway.
+export function pruneCardCache(
+  cache: Map<string, CachedPoint>,
+  onBattlefield: { has(id: string): boolean },
+  keep: boolean,
+): void {
+  if (keep) return;
+  for (const id of [...cache.keys()]) {
+    if (!onBattlefield.has(id)) cache.delete(id);
+  }
 }
 
 // The text cue keeps this far from the board's edges.
@@ -580,5 +696,44 @@ export class BeatSequencer {
     for (const { handle } of this.hideTimers.values()) clearTimeout(handle);
     this.cueTimers.clear();
     this.hideTimers.clear();
+  }
+}
+
+// BeatDirector is the per-component beat runtime: it folds each frame
+// into the tracker and plays the frame's cues. A normal frame only ever
+// adds cues. A frame that PRIMES (a re-prime after a reconnect or a
+// replay scrubber jump) cancels every pending cue and hide first, by
+// swapping in a fresh sequencer, and tells the shell to clear what is on
+// screen: those cues belong to frames this client is no longer showing,
+// and firing them against the new frame would flash a stale label.
+export class BeatDirector {
+  private tracker = emptyBeatTracker();
+  private sequencer: BeatSequencer;
+
+  constructor(private readonly handlers: BeatHandlers & { onReset(): void }) {
+    this.sequencer = new BeatSequencer(handlers);
+  }
+
+  frame(
+    log: readonly LogEvent[] | undefined,
+    opts: { mode: BeatMode; speed: number; reprime?: boolean },
+  ): FramePlan {
+    const plan = planFrame(this.tracker, log, opts);
+    this.tracker = plan.tracker;
+    if (plan.primed) {
+      this.sequencer.dispose();
+      this.sequencer = new BeatSequencer(this.handlers);
+      this.handlers.onReset();
+    }
+    this.sequencer.play(plan.cues);
+    return plan;
+  }
+
+  get pending(): number {
+    return this.sequencer.pending;
+  }
+
+  dispose(): void {
+    this.sequencer.dispose();
   }
 }
