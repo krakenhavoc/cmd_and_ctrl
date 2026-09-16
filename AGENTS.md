@@ -1706,6 +1706,18 @@ batch's skips to it in the batch PR (Discussion #559 item 6).
   both use it. The S14 "auto-pick the top of the graveyard" fallback is
   only for cards that never declared a clause.
 
+### Adding a `Spec` slot (#622)
+
+The engine reads the catalog through one precomputed `game.CardDef`
+per card, built at `Register`. A new slot is four edits: the field on
+`effects.Spec`, the field on `game.CardDef`
+([carddef.go](server/internal/game/carddef.go)), one line in
+`effects.buildDef` ([carddef.go](server/internal/cards/effects/carddef.go)),
+and the engine call site that reads it. Add a per-slot
+`game.CatalogX` variable only if a game-package test needs to stub
+that slot without importing the catalog; the existing ones default to
+reading the `CardDef` and are not set by the catalog any more.
+
 ### When in doubt
 
 [ADR 0010](docs/decisions/0010-card-effect-catalog.md) captures every

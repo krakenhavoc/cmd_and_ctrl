@@ -125,6 +125,7 @@ func Register(spec Spec) {
 		}
 	}
 	registry[spec.OracleID] = spec
+	defs[spec.OracleID] = buildDef(spec)
 }
 
 // zoneDeclared reports whether `zone` appears in a Spec's
