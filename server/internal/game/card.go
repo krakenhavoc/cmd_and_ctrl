@@ -12,8 +12,8 @@ import "github.com/google/uuid"
 // the rules engine keeps (tap, combat, damage, knowledge, layers,
 // attachments). Fields are grouped by the mechanic that added them,
 // except the bools, which share one block at the end for alignment.
-// TestCardAlignmentPaddingStaysSmall (card_layout_test.go) guards the
-// padding; put a new bool in that block.
+// TestCardHasNoInteriorPadding (card_layout_test.go) guards the
+// layout; put a new bool in that block.
 type Card struct {
 	// InstanceID uniquely identifies this physical card within the game.
 	// Generated when the card enters play or when a deck is imported.
@@ -436,7 +436,7 @@ type Card struct {
 	// mechanic that added it: a lone bool between two 8-byte fields
 	// strands 7 bytes of padding, and six of them cost Card 32 bytes
 	// (#35). Each still has a one-line pointer in its original section.
-	// TestCardAlignmentPaddingStaysSmall fails if a new bool is added
+	// TestCardHasNoInteriorPadding fails if a new bool strands padding
 	// anywhere else.
 
 	// NeedsEffect records that this card's printed text describes

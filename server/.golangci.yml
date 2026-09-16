@@ -6,7 +6,7 @@
 #   - govet/fieldalignment — noisy on structs containing sync primitives
 #     where the author usually has a deliberate layout. The one struct
 #     whose padding matters, game.Card, is guarded by
-#     TestCardAlignmentPaddingStaysSmall (internal/game/card_layout_test.go)
+#     TestCardHasNoInteriorPadding (internal/game/card_layout_test.go)
 #     instead (#35).
 #   - shadow — too many false positives on common idioms.
 run:
