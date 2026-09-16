@@ -263,6 +263,8 @@ unused — they can be removed in a later cleanup PR.)
   - `AISEAT_FUNNEL_GAMES=N` — widen the Layer A absorption / model-funnel whole-game run.
   - `AISEAT_SOAK_GAMES=N` — independent of the master gate; runs `TestRandomBotSoak` for N games. `AISEAT_SOAK_POLICY=random|heuristic|mixed` picks what fills the seats (default `random`), and `AISEAT_SOAK_SEED=<uint64>` pins the base seed (default: the clock). A stall prints its seed for reproduction.
   - `AISEAT_DEBUG=1` — per-move log in the runner tests.
+  - `AISEAT_CATALOG_GAMES=N` / `AISEAT_CATALOG_SEED=<uint64>` — the catalog soak (`TestCatalogSoak`, #601): N four-bot games on decks dealt from the catalog itself rather than from the hand-written vanilla decks the other whole-game tests use. Needs `CMDCTRL_SCRYFALL_DUMP` as well (a `Spec` carries an oracle ID and a name, not a type line or a mana cost) and skips without it. It **fails on any `EventEffectError`** — a card whose primitive threw mid-resolution, which the engine logs and survives, so nothing else in the tree goes red over it.
+  - `AISEAT_CATALOG_REPORT=<path>` — where the catalog soak writes its per-card JSON (cast / resolved / entered / triggered / errored, per oracle ID). The nightly uploads it as an artifact on every run, green included: the useful half is the list of cards no bot game reached, which is where a unit test buys more than another bot game.
   - `AISEAT_STALL` / `AISEAT_WALLCLOCK` — Go durations, defaults `15s` and `300s`, for the bot-table stall detector and wall-clock budget. Raise them on a loaded runner rather than editing the test.
   - `CMDCTRL_SCRYFALL_DUMP=<path>` — gates the manual bot-deck test that validates the four curated decks against the real Scryfall dump. Also used by other packages.
 

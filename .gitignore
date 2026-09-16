@@ -12,6 +12,11 @@
 # tracked; the zip itself is provenance-only and bloats history.
 *.zip
 
+# Per-card report from the catalog soak (AISEAT_CATALOG_REPORT).
+# The nightly writes it into the workspace and uploads it as an
+# artifact; a local run writes it wherever the variable points.
+/catalog-report/
+
 # Scratch deck lists used for manual S19 testing — referenced by
 # nothing in the repo; the e2e suites build their decks in code
 # (tests-e2e/tests/*deck-fixture.ts).
