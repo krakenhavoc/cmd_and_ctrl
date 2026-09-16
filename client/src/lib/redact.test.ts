@@ -80,6 +80,29 @@ describe("redactSecrets — URL-encoded variants", () => {
   it("redacts a token value that itself carries percent-escapes", () => {
     expect(redactSecrets("?token=ab%2Bcd%2Fef&game=1")).toBe(`?token=${REDACTED}&game=1`);
   });
+
+  it("redacts a double-encoded token%253D and is idempotent", () => {
+    const got = redactSecrets(`token%253D${TOKEN}`);
+    expect(got).toBe(`token%253D${REDACTED}`);
+    expect(redactSecrets(got)).toBe(got);
+    expect(redactSecrets(`TOKEN%253d${TOKEN}`)).toBe(`TOKEN%253d${REDACTED}`);
+  });
+
+  it("redacts a double-encoded nested URL and keeps what follows", () => {
+    const twice = encodeURIComponent(encodeURIComponent(`/ws?token=${TOKEN}&game=g-1`));
+    expect(twice).toContain("%253Ftoken%253D");
+    const got = redactSecrets(`https://h/r?u=${twice}`);
+    expect(got).not.toContain(TOKEN);
+    expect(got).toBe(`https://h/r?u=%252Fws%253Ftoken%253D${REDACTED}%2526game%253Dg-1`);
+    expect(redactSecrets(got)).toBe(got);
+  });
+
+  it("redacts a double-encoded invite t", () => {
+    const twice = encodeURIComponent(encodeURIComponent(`#/games/abc/join?t=${INVITE}&x=1`));
+    const got = redactSecrets(`next=${twice}`);
+    expect(got).not.toContain(INVITE);
+    expect(got).toContain(`%253Ft%253D${REDACTED}%2526x%253D1`);
+  });
 });
 
 describe("redactSecrets — headers and JSON", () => {

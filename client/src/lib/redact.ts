@@ -39,23 +39,30 @@ const QUERY_ONLY_KEY = "t";
 
 // VALUE is one key's value: everything up to the next parameter or
 // fragment separator, whitespace, quote or bracket. Percent-escapes are
-// consumed as part of the value EXCEPT %23 (#) and %26 (&), which end
-// it — that is what keeps a URL-encoded URL (`…%3Ftoken%3Dabc%26game%3D1`)
-// from losing its trailing parameters to the redaction.
-const VALUE = String.raw`(?:[^&#\s"'<>()\[\]{},;%\\]|%(?:[013-9a-f][0-9a-f]|2[0-2457-9a-f]))+`;
+// consumed as part of the value EXCEPT %23 (#) and %26 (&) — and their
+// double-encoded %2523 / %2526 — which end it. That is what keeps a
+// URL-encoded URL (`…%3Ftoken%3Dabc%26game%3D1`) from losing its
+// trailing parameters to the redaction.
+//
+// The three escape branches: a single escape other than %23/%25/%26;
+// a double escape (%25XX) other than %2523/%2526.
+const VALUE = String.raw`(?:[^&#\s"'<>()\[\]{},;%\\]|%(?:[013-9a-f][0-9a-f]|2[0-2479a-f])|%25(?:[013-9a-f][0-9a-f]|2[0-2457-9a-f]))+`;
 
-// EQ is a literal or percent-encoded equals sign.
-const EQ = "(=|%3d)";
+// EQ is a literal, percent-encoded or double-encoded equals sign
+// (`=`, `%3D`, `%253D` — the last is what a URL carried inside an
+// encoded parameter of another URL looks like).
+const EQ = "(=|%3d|%253d)";
 
 // Key=value anywhere: the key must not be glued to a preceding word
 // character, so "bearer_tokens=3" style prose is the worst false
 // positive and "notatoken=x" is not one.
 const KEY_VALUE_RE = new RegExp(String.raw`(^|[^a-z0-9_-])(${SECRET_KEY})${EQ}(${VALUE})`, "gi");
 
-// `?t=` / `&t=` (and their encoded forms `%3Ft=`, `%26t%3D`, and the
-// HTML-escaped `&amp;t=`).
+// `?t=` / `&t=` (and their encoded forms `%3Ft%3D`, `%26t%3D`, the
+// double-encoded `%253Ft%253D` / `%2526t%253D`, and the HTML-escaped
+// `&amp;t=`).
 const QUERY_ONLY_RE = new RegExp(
-  String.raw`(\?|&amp;|&|%3f|%26)(${QUERY_ONLY_KEY})${EQ}(${VALUE})`,
+  String.raw`(\?|&amp;|&|%253f|%2526|%3f|%26)(${QUERY_ONLY_KEY})${EQ}(${VALUE})`,
   "gi",
 );
 
