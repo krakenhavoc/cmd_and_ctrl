@@ -953,10 +953,7 @@ func (g *Game) ResolveOptionalReplacement(choiceID, chooserID uuid.UUID, apply b
 		return err
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		return nil
-	}
-	return g.applyResolvedReplacementEventLocked(out)
+	return g.finishSettledReplacementLocked(ev, out)
 }
 
 // queueReplacementOrderPromptLocked queues a CR 616 order-choose
@@ -1168,10 +1165,7 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 	// S17 sub-PR 3 so Doubling Season + Hardened Scales actually
 	// land counters after the CR 616 prompt resolves.
 	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		return nil
-	}
-	return g.applyResolvedReplacementEventLocked(out)
+	return g.finishSettledReplacementLocked(ev, out)
 }
 
 // applyResolvedReplacementEventLocked runs the underlying
@@ -1264,11 +1258,67 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		}
 		return g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner)
 	case RepEventStepTransition:
-		// Step-transition resumes land with sub-PR 4+ (Stasis
-		// skip-step). Sub-PR 6 doesn't add new prompt paths here.
+		// #710: finish the step entry the prompt interrupted, with
+		// the same code the unpaused path runs. A cancelled event is
+		// a skipped step (CR 500.11) — advance the cursor past it;
+		// an uncancelled one runs the step's turn-based action.
+		//
+		// This branch used to return nil for both, while
+		// runStepEntryHooksLocked fell through and ran the step
+		// anyway, so two skip-step replacements under one controller
+		// queued a prompt and then drew (or untapped) regardless.
+		if !g.stepEntryStillPendingLocked(ev) {
+			return nil
+		}
+		g.finishStepEntryLocked(ev.Canceled)
 		return nil
 	}
 	return nil
+}
+
+// stepEntryStillPendingLocked reports whether the step entry ev
+// paused is still the one the turn cursor is sitting on — i.e.
+// whether finishing it now finishes the transition that queued the
+// prompt rather than stamping an old answer onto a newer step.
+//
+// Nothing in the engine advances the cursor while a step-transition
+// prompt is outstanding (the step never begins, so it grants no
+// priority and runs no turn-based action), so this guard should never
+// fire. It is here because the consequence of being wrong is the
+// cursor jumping a step the table never saw, and because a resume
+// whose prompt was answered out of a snapshot restore or a replay is
+// exactly the shape #701 found for zone moves. Dropping the resume
+// leaves the cursor where it is, which a player can always advance.
+//
+// Caller must hold g.mu.
+func (g *Game) stepEntryStillPendingLocked(ev *ReplacementEvent) bool {
+	return ev != nil &&
+		g.Turn.Step == ev.StepTransitionStep &&
+		g.Turn.ActiveSeat == ev.StepTransitionSeat
+}
+
+// finishSettledReplacementLocked is the single "the apply-loop has
+// settled — now finish the event" call the CR 616 / CR 614.10 resumes
+// make. `ev` is the event the resume has been holding; `out` is what
+// applyReplacementsLocked handed back (nil when cancelled).
+//
+// Cancelling means "the mutation simply does not happen" for every
+// event kind but one. A cancelled STEP TRANSITION is not nothing: by
+// CR 500.11 it is a SKIPPED step, and skipping is an action — the
+// turn cursor has to move past it, which only the step-entry resume
+// can do. Returning nil for every cancelled event is what left
+// two skip-step replacements queueing a prompt whose answer changed
+// nothing (#710).
+//
+// Caller must hold g.mu.
+func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
+	if out != nil && !out.Canceled {
+		return g.applyResolvedReplacementEventLocked(out)
+	}
+	if ev == nil || ev.Kind != RepEventStepTransition {
+		return nil
+	}
+	return g.applyResolvedReplacementEventLocked(ev)
 }
 
 // QueueDiscardFromRevealedHand is the Thoughtseize entry point.
