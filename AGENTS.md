@@ -1747,13 +1747,23 @@ batch's skips to it in the batch PR (Discussion #559 item 6).
 - **Activated abilities whose cost has no component** — `AbilityCost`
   carries tap-this, sacrifice-this, sacrifice-another, mana, life,
   and since S27 **loyalty** (`LoyaltyCost(n)`, [ADR 0032](docs/decisions/0032-planeswalkers.md) §8)
-  and **crew** (`CrewCost(n)`)
+  and **crew** (`CrewCost(n)`), and since #625 **counter removal**
+  (`RemoveCountersFromThis(kind, n)` for "from this",
+  `RemoveCountersFrom(kind, n, "a planeswalker you control", preds…)`
+  for another permanent you control, kind `""` for "a counter" of any
+  kind — [ADR 0020](docs/decisions/0020-activated-abilities.md) addendum)
   ([activated.go](server/internal/game/activated.go)) and nothing else.
   Equip needs no component of its own — `EquipAbility("{2}")` is a mana
-  cost plus a target clause. So cycling, **convoke / waterbend on an
-  ACTIVATED ability**, and an **alternative cost on an activated
-  ability** (Heart of Kiran's "remove a loyalty counter rather than pay
-  the crew cost") still have no shape —
+  cost plus a target clause. **"Rather than pay" on an activated
+  ability** is not an alternatives slot either: write it as a **second
+  ability entry** with the same effect and its own real cost, which is
+  what Heart of Kiran does ("Crew 3" and "Crew — remove a loyalty counter
+  from a planeswalker you control"). The second entry must have a cost
+  that can actually go unpaid, or it is the #259 mistake below. Still
+  no shape: cycling, **convoke / waterbend on an ACTIVATED ability**, a
+  counter removal **split across several permanents** (Iron Spider,
+  Stark Upgrade's "from among artifacts you control"), and a cost that
+  **adds** a counter (Devoted Druid) —
   don't invent one. (Convoke and waterbend on a *spell* do have one since
   S22: `Spec.TapCost`, built with `Convoke()` / `Waterbend("{X}")`. The
   activated-ability seam is separate and still open — Katara, Water

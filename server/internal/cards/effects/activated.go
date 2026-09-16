@@ -94,6 +94,12 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.Crew != 0 {
 			out.Crew = c.Crew
 		}
+		// #625: without this a composed "{T}, Remove a +1/+1 counter"
+		// silently loses its counter component and the ability becomes
+		// free to repeat — stronger than printed, the #259 direction.
+		if c.RemoveCounters != nil {
+			out.RemoveCounters = c.RemoveCounters
+		}
 		if c.MinX != 0 {
 			out.MinX = c.MinX
 		}
@@ -109,4 +115,34 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 // validation (CR 701.21a).
 func sacrificeSpec(label string, preds ...CardPredicate) *game.TargetSpec {
 	return TargetPermanent(label, preds...)
+}
+
+// RemoveCountersFromThis is "Remove N <kind> counters from this
+// permanent" — Dragon's Hoard's "Remove a gold counter from this
+// artifact" is RemoveCountersFromThis("gold", 1). Paid at announce
+// (#625), so a response cannot spend the same counter twice.
+func RemoveCountersFromThis(kind string, n int) game.AbilityCost {
+	return game.AbilityCost{RemoveCounters: &game.CounterRemovalCost{Counter: kind, N: n}}
+}
+
+// RemoveCountersFrom is "Remove N <kind> counters from <a permanent
+// you control>": Heart of Kiran's "remove a loyalty counter from a
+// planeswalker you control" is
+//
+//	RemoveCountersFrom(game.CounterLoyalty, 1, "a planeswalker you control", Planeswalker())
+//
+// An empty kind is "a counter" of any kind (Fain, the Broker), and the
+// activator names the kind with the permanent; Register refuses an
+// empty kind with n > 1, because one kind choice cannot say how a
+// "remove two counters" that mixes kinds was paid.
+//
+// Like a sacrifice clause the permanent is chosen, not targeted, and
+// "you control" is the engine's rule rather than a predicate the card
+// file has to remember — the label says it for the player.
+func RemoveCountersFrom(kind string, n int, label string, preds ...CardPredicate) game.AbilityCost {
+	return game.AbilityCost{RemoveCounters: &game.CounterRemovalCost{
+		Counter: kind,
+		N:       n,
+		From:    TargetPermanent(label, preds...),
+	}}
 }

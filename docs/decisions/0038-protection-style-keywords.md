@@ -247,6 +247,14 @@ creature" need a pay-unless prompt whose cost is an `AbilityCost`
 rather than a string, and `effects.WardCost` is the type that will
 carry it.
 
+*Update, 2026-09-16 (#95):* life and sacrifice wards have shipped,
+and they did not need an `AbilityCost` pay-unless. `WardCost` gained
+`Life` and `Sacrifice`. A life ward is a `PendingChoiceConfirm` with
+`LifeCost` declared. A sacrifice ward is the same Confirm chained to
+a `PendingChoiceChooseCards` over the payer's own permanents. Both
+prompt kinds came from #552. Refraction Elemental, Sedgemoor Witch
+and Vein Ripper carry them; see `effects/ward.go`.
+
 **Protection is unchanged and still absent.** Its blocker is the
 one decision 7 identified as a real refactor — the quality is
 tested against the SOURCE object (CR 702.16b) and neither

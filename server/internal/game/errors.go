@@ -329,4 +329,11 @@ var (
 	// all. Distinct from ErrInvalidParam so the client can say "tap
 	// more power" rather than "bad request". Added in S27.
 	ErrInsufficientCrew = errors.New("game: crewing creatures' total power is below the crew number")
+	// ErrInsufficientCounters is returned when the permanent named to
+	// pay a "remove N counters" cost holds fewer than N counters of
+	// the kind — including, for "remove a counter" of any kind, the
+	// case where the named kind is not on it at all. Distinct from
+	// ErrInvalidParam so the client can say what is missing. Added
+	// for #625.
+	ErrInsufficientCounters = errors.New("game: not enough counters to pay that cost")
 )

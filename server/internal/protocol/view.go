@@ -1074,6 +1074,34 @@ type ActivatedAbilityView struct {
 	// without a second round trip. Added in S27.
 	CrewCost    int               `json:"crew_cost,omitempty"`
 	CrewOptions *LegalTargetsView `json:"crew_options,omitempty"`
+	// CounterCostN / Kind / Label / Self / Options describe a
+	// "remove N counters" cost component (#625). CounterCostN is the
+	// number removed and its presence marks the component; zero and
+	// absent for every ability without one.
+	//
+	//   - CounterCostKind is the printed kind ("loyalty", "gold");
+	//     empty means "a counter" of ANY kind, and the client asks
+	//     for the kind as well as the permanent.
+	//   - CounterCostSelf is the "from this" form: the counters come
+	//     off the source, and no permanent is sent.
+	//   - CounterCostLabel is the "from" clause of the other form ("a
+	//     planeswalker you control"); empty for the self form.
+	//   - CounterCostOptions is what could pay right now: permanents
+	//     the controller controls that match the clause (the source
+	//     alone for the self form) and hold at least N counters of the
+	//     kind, each with the kinds that could pay — most counters
+	//     first. Built from the NON-targeting candidate walk, so a
+	//     hexproof or shrouded permanent of yours is offered: a cost
+	//     does not target. Absent when nothing can pay.
+	//
+	// The client sends the chosen permanent as `counter_source_ids`
+	// (omitted for the self form) and, for the any-kind form, the
+	// chosen kind as `counter_kind`.
+	CounterCostN       int                     `json:"counter_cost_n,omitempty"`
+	CounterCostKind    string                  `json:"counter_cost_kind,omitempty"`
+	CounterCostSelf    bool                    `json:"counter_cost_self,omitempty"`
+	CounterCostLabel   string                  `json:"counter_cost_label,omitempty"`
+	CounterCostOptions []CounterCostOptionView `json:"counter_cost_options,omitempty"`
 	// DemandsX marks an ability whose mana component contains {X}
 	// (Helm of Obedience, Treasure Vault, Soothsaying). The client
 	// opens its X picker before the targeting step and sends the
@@ -1098,6 +1126,19 @@ type ActivatedAbilityView struct {
 	// fields for an ability that targets.
 	TargetMode   string            `json:"target_mode,omitempty"`
 	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+}
+
+// CounterCostOptionView is one permanent that could pay a "remove N
+// counters" cost, and the counter kinds on it that could (#625).
+type CounterCostOptionView struct {
+	CardID string             `json:"card_id"`
+	Kinds  []CounterKindCount `json:"kinds"`
+}
+
+// CounterKindCount is a counter kind and how many the permanent holds.
+type CounterKindCount struct {
+	Kind  string `json:"kind"`
+	Count int    `json:"count"`
 }
 
 type ManaAbilityView struct {
@@ -2748,6 +2789,15 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 			v.CrewCost = a.Cost.Crew
 			v.CrewOptions = crewOptions(g, caster)
 		}
+		if rc := a.Cost.RemoveCounters; rc != nil && rc.N > 0 {
+			v.CounterCostN = rc.N
+			v.CounterCostKind = rc.Counter
+			v.CounterCostSelf = rc.From == nil
+			if rc.From != nil {
+				v.CounterCostLabel = rc.From.Label
+			}
+			v.CounterCostOptions = counterCostOptions(g, caster, c.InstanceID, rc)
+		}
 		if a.Cost.DemandsX() {
 			v.DemandsX = true
 			v.MinX = a.Cost.FloorX()
@@ -2781,6 +2831,32 @@ func crewOptions(g *game.Game, caster uuid.UUID) *LegalTargetsView {
 			continue
 		}
 		out.Cards = append(out.Cards, c.InstanceID.String())
+	}
+	return out
+}
+
+// counterCostOptions projects game.CounterCostOptionsForEffect — the
+// one candidate walk the engine validates against and the move
+// enumerator expands — so the client's picker, the bots and the
+// engine cannot disagree about which permanent pays (#625). NOT
+// abilityLegalTargets: that is the targeting walk, and a cost does
+// not target (CR 601.2h), so it would hide a shrouded planeswalker
+// the engine accepts — the same rule sacrificeCostOptions follows.
+// Its own shape rather than sacrificeCostOptions' LegalTargetsView
+// because each option carries the counter kinds that could pay.
+// Caller must hold g.mu.
+func counterCostOptions(g *game.Game, caster, sourceID uuid.UUID, rc *game.CounterRemovalCost) []CounterCostOptionView {
+	opts := g.CounterCostOptionsForEffect(caster, sourceID, rc)
+	if len(opts) == 0 {
+		return nil
+	}
+	out := make([]CounterCostOptionView, 0, len(opts))
+	for _, o := range opts {
+		ov := CounterCostOptionView{CardID: o.CardID.String()}
+		for _, k := range o.Kinds {
+			ov.Kinds = append(ov.Kinds, CounterKindCount{Kind: k.Kind, Count: k.Count})
+		}
+		out = append(out, ov)
 	}
 	return out
 }

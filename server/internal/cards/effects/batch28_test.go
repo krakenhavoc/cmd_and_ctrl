@@ -541,8 +541,10 @@ func TestB28BenevolentHydraEntersWithXAndGivesOthersAnExtraCounter(t *testing.T)
 	if got := counterCount(g, theirs, "+1/+1"); got != 1 {
 		t.Errorf("an opponent's creature gets the printed one: %d", got)
 	}
-	if spec, _ := Lookup(b28BenevolentHydraOracle); len(spec.Activated) != 0 || spec.Completeness != CompletenessCaveats {
-		t.Error("the counter-removal ability is a declared gap")
+	// #625: the counter-moving tap ability ships; counter_cost_cards_test.go
+	// drives it. The X-counter timing is still a declared caveat.
+	if spec, _ := Lookup(b28BenevolentHydraOracle); len(spec.Activated) != 1 || spec.Completeness != CompletenessCaveats {
+		t.Error("the tap ability ships, and the X-counter caveat is still declared")
 	}
 }
 

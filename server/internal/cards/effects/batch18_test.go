@@ -1193,8 +1193,10 @@ func TestB18MikaeusEntersWithXAndGrowsByTapping(t *testing.T) {
 	if b18Counters(t, g, mik, "+1/+1") != 3 {
 		t.Errorf("%d counters after the tap, want 3", b18Counters(t, g, mik, "+1/+1"))
 	}
-	if spec, _ := Lookup(b18MikaeusTheLunarchOracle); spec.Completeness != CompletenessCaveats || len(spec.Activated) != 1 {
-		t.Error("the counter-removal gap must be declared, and only the self-grow ships")
+	// #625: the team pump is the second ability; counter_cost_cards_test.go
+	// drives it. The X-counter timing is still a declared caveat.
+	if spec, _ := Lookup(b18MikaeusTheLunarchOracle); spec.Completeness != CompletenessCaveats || len(spec.Activated) != 2 {
+		t.Error("both tap abilities ship, and the X-counter caveat is still declared")
 	}
 }
 

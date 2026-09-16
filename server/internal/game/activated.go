@@ -115,6 +115,36 @@ type AbilityCost struct {
 	// exact amount.
 	Crew int
 
+	// RemoveCounters is a "remove N counters" component (#625): from
+	// the source ("Remove a gold counter from this artifact"), from
+	// another permanent the activator controls ("remove a loyalty
+	// counter from a planeswalker you control"), or of any kind
+	// ("Remove a counter from a creature you control"). Nil means no
+	// counter component. See CounterRemovalCost in counter_cost.go.
+	//
+	// The activator names the permanent in
+	// ActivateAbilityParams.CounterSourceIDs and, for the any-kind
+	// form, the kind in CounterKind — both at announce, beside the
+	// sacrifice and crew picks. Two rules are enforced in
+	// ActivateCatalogAbility rather than asked of each card:
+	//
+	//	CR 118.3 / 602.2b  paid at activation, after everything
+	//	                   else is validated; the removal is not a
+	//	                   replaceable event, so nothing doubles or
+	//	                   halves it.
+	//	CR 606             removing a planeswalker's loyalty counter
+	//	                   this way is not activating a loyalty
+	//	                   ability — no sorcery-speed window, and the
+	//	                   once-per-turn flag is left alone.
+	//
+	// "Rather than pay" on an activated ability (Heart of Kiran) is
+	// modelled as a SECOND ability entry whose cost is this component,
+	// not as an alternatives slot on AbilityCost: the client already
+	// lists abilities separately, and the entry is only payable while
+	// a real planeswalker holds a real counter, which is the whole of
+	// what #259 asks.
+	RemoveCounters *CounterRemovalCost
+
 	// MinX is the floor the printed text puts on the announced X —
 	// Helm of Obedience's "X can't be 0" is MinX: 1. Zero means the
 	// ordinary floor of zero, which is what every other {X} cost
@@ -253,6 +283,19 @@ type ActivateAbilityParams struct {
 	// matters is that their total effective power clears the crew
 	// number (CR 702.122a).
 	CrewIDs []uuid.UUID
+
+	// CounterSourceIDs names the permanent a RemoveCounters cost
+	// removes from (#625). Exactly one for the "from a planeswalker
+	// you control" form; empty (or the source's own ID) for the
+	// self form. A slice for the same wire-shape reason SacrificeIDs
+	// is one.
+	CounterSourceIDs []uuid.UUID
+
+	// CounterKind is the kind a "remove a counter" cost of ANY kind
+	// removes (Fain, the Broker), chosen at announce with the
+	// permanent. Optional for a cost that prints its kind — if sent,
+	// it must repeat that kind.
+	CounterKind string
 
 	// Targets are the ability's targets, validated against the
 	// ability's spec.
@@ -405,6 +448,10 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	if err != nil {
 		return err
 	}
+	counters, err := g.validateCounterRemovalCostLocked(playerID, cardID, ab.Cost, params.CounterSourceIDs, params.CounterKind)
+	if err != nil {
+		return err
+	}
 	if ab.Cost.Life > 0 && p.Life < ab.Cost.Life {
 		// CR 119.4 forbids paying more life than you have. Paying
 		// down to exactly 0 is legal; the SBA loop ends the game
@@ -470,6 +517,14 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 			g.LoyaltyActivatedThisTurn = make(map[uuid.UUID]bool)
 		}
 		g.LoyaltyActivatedThisTurn[cardID] = true
+	}
+	// #625: a "remove N counters" component. After life and loyalty,
+	// before sacrifices — a self-form removal on a source that is
+	// also sacrificed has to find the source still on the
+	// battlefield. Never replaceable and never a loyalty activation;
+	// payCounterRemovalLocked says why.
+	if err := g.payCounterRemovalLocked(counters); err != nil {
+		return err
 	}
 	// Sacrifices last: they move cards, which invalidates `source`.
 	for _, id := range sacrifices {
