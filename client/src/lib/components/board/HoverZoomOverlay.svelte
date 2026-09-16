@@ -18,6 +18,7 @@
 
   import { hoveredCard } from "../../cardTypes";
   import { cardImageURL } from "../../cardImage";
+  import { cardArt } from "../../cardArt";
   import { metaFor, type CardMeta } from "../../cardMetaCache";
   import type { GameView, PlayerView } from "../../protocol";
   import { playerColor } from "../../avatarColor";
@@ -125,9 +126,19 @@
     <div class="scan">
       {#if imgSrc}
         <!-- keyed so a new card never shows the previous card's scan
-             while its own image is still loading -->
+             while its own image is still loading. The failure pip
+             is display-only here: the panel is pointer-events: none
+             and aria-hidden, and it closes as soon as the pointer
+             leaves the card it previews. fetchpriority (#33): the
+             panel exists to be read the moment it opens; the small
+             other-face inset below does not need the hint. -->
         {#key imgSrc}
-          <img src={imgSrc} alt="" />
+          <img
+            src={imgSrc}
+            alt=""
+            fetchpriority="high"
+            use:cardArt={{ url: imgSrc, interactive: false }}
+          />
         {/key}
       {:else}
         <div class="name-fallback">{card.name}</div>
@@ -139,7 +150,11 @@
       {#if otherFace?.src}
         <div class="other-face" title={otherFace.face.name}>
           {#key otherFace.src}
-            <img src={otherFace.src} alt={otherFace.face.name} />
+            <img
+              src={otherFace.src}
+              alt={otherFace.face.name}
+              use:cardArt={{ url: otherFace.src, interactive: false }}
+            />
           {/key}
         </div>
       {/if}
