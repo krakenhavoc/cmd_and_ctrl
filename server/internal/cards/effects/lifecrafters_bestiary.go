@@ -25,7 +25,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("Lifecrafter's Bestiary — scry 1", Do(Scry{N: 1})),
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b12CreatureSpellCastByYou(ev, source, g)
+				return creatureSpellCastByYou(ev, source, g)
 			}, "Lifecrafter's Bestiary — pay {G} to draw a card", func(g *game.Game, item *game.StackItem) error {
 				return MayPay{
 					Chooser:  item.Controller,

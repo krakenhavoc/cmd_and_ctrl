@@ -100,34 +100,14 @@ func b12OtherMountainsControlled(g *game.Game, controller, except uuid.UUID) int
 	return n
 }
 
-// b12EnchantmentSpellCastByYou is Sigil of the Empty Throne's
-// condition. The spell is read off the stack, where its type line is
-// intact.
-func b12EnchantmentSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
-		return false
-	}
-	spell, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && spell.IsEnchantment()
-}
-
-// b12CreatureSpellCastByYou is Lifecrafter's Bestiary's second
+// creatureSpellCastByYou is Lifecrafter's Bestiary's second
 // condition.
-func b12CreatureSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
+func creatureSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
 	spell, ok := g.LookupCardForEffect(ev.CardID)
 	return ok && spell.IsCreature()
-}
-
-// b12InstantOrSorceryCastByYou is Thousand-Year Storm's condition.
-func b12InstantOrSorceryCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
-		return false
-	}
-	spell, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && (spell.IsInstant() || spell.IsSorcery())
 }
 
 // b12YouSacrificedAnArtifact is Crime Novelist's condition. The

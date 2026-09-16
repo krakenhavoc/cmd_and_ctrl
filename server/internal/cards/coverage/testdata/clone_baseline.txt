@@ -4,52 +4,36 @@
 04b64b99fd6854ae 10 3 authority_of_the_consuls.go:closure@29
 05619471636b20d7 7 2 dragon_fodder.go:closure@21
 059e7bc2be2e6e18 11 2 goblin_bombardment.go:closure@27
-0934e4588c5da7bf 7 2 batch24_helpers.go:func b24EachOpponentDiscardsOne
 10c7a9f6a74160a9 7 3 attachments.go:closure@118
-155a54c8938a7e48 7 2 batch33_helpers.go:func b33TuckSelfThirdFromTop
-17e4a215612f412b 7 2 batch33_helpers.go:func b33CreateTappedZombie
 19705d5be8187b11 6 4 arbor_elf.go:closure@28
 1c12b5c6d39981b3 6 2 angraths_marauders.go:closure@31
 1e6babbdc7a3eaf3 7 2 liesa_forgotten_archangel.go:closure@65
 1efa2882831aaaca 12 2 junk_diver.go:closure@37
 2583fef819d1461d 6 3 abraded_bluffs.go:closure@32
-2bb8f2519210504f 9 2 tokens.go:func BlueShapeshifterToken
 2bfc7f64441b2dc5 6 10 cancel.go:closure@19
 2c94a73075e12677 16 2 copy_effects.go:closure@59
 2e9cdde2f4504f84 7 2 efficient_construction.go:closure@23
-31370bca3469e42a 8 2 batch36_helpers.go:func b36BounceChosenCommander
 31cc55b4573333d0 21 2 aang_swift_savior.go:closure@91
-32d5bc92b0d627b8 6 2 batch07_helpers.go:func b07DrainEachOpponent
 33c0713d2abdc36e 9 2 bastion_of_remembrance.go:closure@31
 379a0425537f869b 8 2 batch20_helpers.go:closure@175
 3d233195a1026310 7 7 archivist_of_oghma.go:closure@24
 3d44994ea622de6b 6 2 emeria_the_sky_ruin.go:closure@48
 45f32f7cba45cc2b 8 2 concordant_crossroads.go:closure@33
-4649a6846298f106 7 2 reanimation_helpers.go:func manaValueOf
 47802667a8d29368 6 2 all_will_be_one.go:closure@56
 489066695f71657c 9 2 infernal_grasp.go:closure@22
-4fdb863af5e215bc 6 5 ajanis_pridemate.go:closure@24
 50ec6ce2e4092bf2 6 2 grinding_station.go:closure@42
-5b3109969a07fee2 7 2 animar_soul_of_elements.go:closure@50
 67997cc5509c0805 6 2 deadly_rollick.go:closure@38
-6c39ad9972382a44 8 2 batch05_helpers.go:closure@29
-72ec8104cd4166c6 7 3 batch02_helpers.go:func b02CastInstantOrSorcery
 7621313c61d22514 7 2 pashalik_mons.go:closure@41
 7bc059f70d12ebaf 6 3 fate_unraveler.go:closure@36
 7dea5838a812ea42 6 2 azorius_chancery.go:closure@50
 83c64377cd36a3e7 6 4 champion_of_the_perished.go:closure@26
 86f0274bc8e1a6d6 6 2 bartolome_del_presidio.go:closure@34
-874fd18e872112fa 7 2 batch08_helpers.go:func b08EnchantmentSpellCastByYou
-8d9a2b5f4bebfb7c 12 2 batch03_helpers.go:func b03CastSpellHasType
 8e5bc7548aff534f 8 4 duskshell_crawler.go:closure@34
-935bf332009284a2 8 3 batch17_helpers.go:func b17DestroyFirstLegalTarget
 94ba5af651becf17 10 2 blood_artist.go:closure@32
 97419120497d32e5 7 3 essence_warden.go:closure@20
 98dbbe20deb18622 6 3 gimli_of_the_glittering_caves.go:closure@33
 9e5ad3cab369e90f 7 2 conclave_mentor.go:closure@33
 b6ecd0768b6b83eb 8 2 aether_spellbomb.go:closure@30
-ba0a29edcea1908c 7 3 batch35_helpers.go:func b35AnotherCreatureYouControlDied
-ba9ba02713f4c108 6 4 archaeomancer.go:closure@29
 bb6201482e1b5e56 6 3 batch04_helpers.go:closure@54
 bc67b2b6e7f5452c 6 13 bedevil.go:closure@21
 beb594ee1f0f782c 10 2 reverberate.go:closure@24
@@ -63,9 +47,7 @@ caed564ea540ced5 9 2 batch20_helpers.go:closure@277
 d46495c46dee625f 7 2 batch17_helpers.go:closure@510
 d5f348c17ebbf744 7 2 thirst_for_discovery.go:closure@30
 dd481c2a4e82af35 6 2 blood_seeker.go:closure@38
-e9c0214fa1e683bc 6 6 acidic_slime.go:closure@37
 ec369074573e8e94 16 2 branching_evolution.go:closure@31
-f79aea4189e2a03d 7 2 batch35_helpers.go:func b35AnotherZombieYouControlDied
 f86f8fb018c793a6 9 2 magewrights_stone.go:closure@33
 f9c60e49e144a4e4 6 2 into_the_flood_maw.go:closure@35
 fd7c4991832e1ed9 6 2 bojuka_bog.go:closure@51

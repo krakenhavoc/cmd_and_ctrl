@@ -51,9 +51,9 @@ func b07IsModified(g *game.Game, c game.Card) bool {
 	return false
 }
 
-// b07DrainEachOpponent is "each opponent loses 1 life and you gain 1
+// drainEachOpponent is "each opponent loses 1 life and you gain 1
 // life" — Ayara's ETB, Nadier's Nightblade.
-func b07DrainEachOpponent(g *game.Game, item *game.StackItem) error {
+func drainEachOpponent(g *game.Game, item *game.StackItem) error {
 	if err := eachOpponentLosesLife(g, item, 1); err != nil {
 		return err
 	}

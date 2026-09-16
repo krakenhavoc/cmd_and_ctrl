@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The Bant value commander. Vigilance rides PrintedKeywords; the
 // cast trigger is Beast Whisperer's condition
-// (b12CreatureSpellCastByYou — the spell is read off the stack) and
+// (creatureSpellCastByYou — the spell is read off the stack) and
 // draws one; the activation is a CR 602 ability with a mana-and-tap
 // cost over a creature the controller controls, bounced to its
 // owner's hand on resolution — so a bounced Clone goes back to whom
@@ -33,7 +33,7 @@ func init() {
 		PrintedKeywords: []string{"vigilance"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b12CreatureSpellCastByYou(ev, source, g)
+				return creatureSpellCastByYou(ev, source, g)
 			}, "Chulane, Teller of Tales — draw a card", Do(DrawCards{N: 1})),
 		},
 		Activated: []ActivatedAbility{{

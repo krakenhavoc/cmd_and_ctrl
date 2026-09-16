@@ -17,7 +17,7 @@ func init() {
 		Name:         "Enchantress's Presence",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, b08EnchantmentSpellCastByYou, "Enchantress's Presence — draw a card", Do(DrawCards{N: 1})),
+			On(game.EventCast, enchantmentSpellCastByYou, "Enchantress's Presence — draw a card", Do(DrawCards{N: 1})),
 		},
 	})
 }

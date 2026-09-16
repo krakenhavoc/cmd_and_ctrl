@@ -21,11 +21,7 @@ func init() {
 		Name:     "Pitiless Plunderer",
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.CardID == source.InstanceID {
-					return false // "another"
-				}
-				dead, ok := diedCreature(ev, g)
-				return ok && dead.Controller == source.Controller
+				return anotherCreatureYouControlDied(ev, source, g)
 			}, "Pitiless Plunderer — create a Treasure", Do(CreateToken{
 				Template: TreasureToken(),
 				N:        1,

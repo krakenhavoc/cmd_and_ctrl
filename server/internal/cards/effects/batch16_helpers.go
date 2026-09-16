@@ -15,7 +15,7 @@ import (
 // devotionTo, "this permanent enters" is b06SelfETB, "another
 // creature you control enters" is b13AnotherCreatureYouControlEntered,
 // "whenever you cast an instant or sorcery" is
-// b12InstantOrSorceryCastByYou, "a permanent spell resolving" is
+// instantOrSorceryCastByYou, "a permanent spell resolving" is
 // nothing at all (the event log knows — b16EnteredFromStack), a
 // tutor to hand is b06TutorToHand, the basic-land fetch body is
 // b07SearchBasicOntoBattlefield, the per-label "one or more" dedup is

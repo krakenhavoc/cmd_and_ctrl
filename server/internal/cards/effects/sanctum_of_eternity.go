@@ -41,7 +41,7 @@ func init() {
 			Cost:         Plus(ManaCost("{2}"), TapCost()),
 			Targets:      TargetPermanent("target commander you own", b36CommanderYouOwn()),
 			SorcerySpeed: true,
-			Effect:       b36BounceChosenCommander,
+			Effect:       bounceChosenTarget,
 		}},
 	})
 }

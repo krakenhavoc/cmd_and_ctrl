@@ -30,7 +30,7 @@ import (
 // the battlefield" is b24ReturnGraveyardTargetsToBattlefield,
 // "exile the top card until the end of your next turn" is
 // b20ExileTopUntilEndOfNextTurn, the tapped 2/2 Zombie body is
-// b33CreateTappedZombie, the Saproling is b11GreenSaprolingToken,
+// createTappedZombie, the Saproling is b11GreenSaprolingToken,
 // the Goblin is RedGoblinToken, the Treasure and Food are in
 // tokens.go, the basic-land test is b30IsBasicLandCard, "enters
 // tapped unless you control a <type>" is

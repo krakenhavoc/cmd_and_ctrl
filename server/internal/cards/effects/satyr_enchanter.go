@@ -9,7 +9,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The enchantress that does not ask. Mesa Enchantress's cast trigger
 // without the "you may": the spell's type is read off the stack
-// (b08EnchantmentSpellCastByYou), and the draw resolves before the
+// (enchantmentSpellCastByYou), and the draw resolves before the
 // enchantment does (LIFO), as in paper.
 //
 // No simplification.
@@ -19,7 +19,7 @@ func init() {
 		Name:         "Satyr Enchanter",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, b08EnchantmentSpellCastByYou, "Satyr Enchanter — draw a card", Do(DrawCards{N: 1})),
+			On(game.EventCast, enchantmentSpellCastByYou, "Satyr Enchanter — draw a card", Do(DrawCards{N: 1})),
 		},
 	})
 }

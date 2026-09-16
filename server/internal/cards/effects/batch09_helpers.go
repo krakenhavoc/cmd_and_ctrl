@@ -12,7 +12,7 @@ import (
 // prefix because batch 08 is landing beside this one.
 //
 // What is NOT here, because main already had it: "an instant or
-// sorcery cast by you" is b03InstantOrSorceryCastByYou, "untap up to
+// sorcery cast by you" is instantOrSorceryCastByYou, "untap up to
 // N lands" is untapUpToLands, the reveal-and-tutor body is
 // b06TutorToHand, "this permanent enters" is b06SelfETB, the Castle
 // condition is b06EntersTappedUnlessLandType, and the mana value of
@@ -20,7 +20,7 @@ import (
 
 // b09OpponentCastInstantOrSorcery is Arasta of the Endless Web's
 // condition: an OPPONENT of the source's controller cast an instant
-// or sorcery. b02CastInstantOrSorcery with the actor test flipped.
+// or sorcery. instantOrSorceryCastByYou with the actor test flipped.
 func b09OpponentCastInstantOrSorcery(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor == uuid.Nil || ev.Actor == source.Controller {
 		return false

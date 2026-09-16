@@ -17,7 +17,7 @@ import (
 // creature you control entered" is b15AnotherNontokenCreatureYouControlEntered,
 // "you gained life" is b10YouGainedLife, "an opponent discarded" is
 // b18OpponentDiscarded, "you cast a creature / instant or sorcery
-// spell" is b12CreatureSpellCastByYou / b12InstantOrSorceryCastByYou,
+// spell" is creatureSpellCastByYou / instantOrSorceryCastByYou,
 // landfall is b13LandYouControlEntered, "an opponent cast a spell" is
 // b15OpponentCastSpell, the dead-creature counter read is
 // b13LastKnownCounters, the counter doubler is b17DoubleCountersOn,

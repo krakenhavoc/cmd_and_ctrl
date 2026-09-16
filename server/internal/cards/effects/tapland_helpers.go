@@ -68,7 +68,7 @@ func SelfEntersTappedUnless(untapped func(g *game.Game, controller uuid.UUID) bo
 //
 // Needles MUST be lowercase — containsFoldASCII folds the haystack
 // and not the needle, the trap already documented on
-// discardedCardHasType.
+// eventCardHasType.
 func youControlLandTyped(a, b string) func(*game.Game, uuid.UUID) bool {
 	first, second := IsLandWithSubtype(a), IsLandWithSubtype(b)
 	return func(g *game.Game, controller uuid.UUID) bool {

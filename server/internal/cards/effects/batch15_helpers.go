@@ -13,7 +13,7 @@ import (
 //
 // What is NOT here, because main already had it: "whenever you cast
 // a noncreature spell" is b10NoncreatureSpellCastByYou, "an instant
-// or sorcery" is b12InstantOrSorceryCastByYou, "another creature
+// or sorcery" is instantOrSorceryCastByYou, "another creature
 // you control enters" is b13AnotherCreatureYouControlEntered, "each
 // opponent loses N life" is eachOpponentLosesLife, "N damage to each
 // opponent" is damageToEachOpponent, "draw, then discard" is

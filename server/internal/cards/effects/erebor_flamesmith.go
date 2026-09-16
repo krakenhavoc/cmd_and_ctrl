@@ -22,7 +22,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b12InstantOrSorceryCastByYou(ev, source, g)
+				return instantOrSorceryCastByYou(ev, source, g)
 			}, "Erebor Flamesmith — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
 				return damageToEachOpponent(g, item, 1)
 			}),

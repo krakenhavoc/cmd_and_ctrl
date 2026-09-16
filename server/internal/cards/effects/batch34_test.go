@@ -788,7 +788,7 @@ func TestB34KioraLootsOnEntryAndMakesTheScionAtThreshold(t *testing.T) {
 	if p, tt := effectivePower(t, g, scion), effectiveToughness(t, g, scion); p != 8 || tt != 8 {
 		t.Errorf("the Scion is %d/%d, want 8/8", p, tt)
 	}
-	if c, _ := battlefieldCard(g, scion); !b06IsLegendary(&c) {
+	if c, _ := battlefieldCard(g, scion); !isLegendary(&c) {
 		t.Error("the Scion is legendary")
 	}
 }

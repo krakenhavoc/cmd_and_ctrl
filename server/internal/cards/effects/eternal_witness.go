@@ -25,12 +25,7 @@ func init() {
 			Targets: TargetCardInGraveyard("target card in your graveyard", YouOwn()),
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 				return game.NewTriggeredItem(source, "Eternal Witness — return target card to hand",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-							return nil
-						}
-						return ReturnFromGraveyard{Target: item.Targets[0].ID, Dest: game.ZoneHand}.Apply(NewContext(g, item))
-					})
+					returnTargetCardToHand)
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Eternal Witness — return a card from your graveyard?",

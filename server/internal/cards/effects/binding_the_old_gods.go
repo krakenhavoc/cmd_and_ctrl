@@ -24,18 +24,11 @@ func init() {
 			ChapterTriggerTargeting(1, "Binding the Old Gods — I: destroy target nonland permanent",
 				TargetPermanent("target nonland permanent an opponent controls",
 					Nonland(), OpponentControls()),
-				bindingOldGodsDestroy),
+				destroyChosenPermanent),
 			ChapterTrigger(2, "Binding the Old Gods — II: search for a Forest", bindingOldGodsFetchForest),
 			ChapterTrigger(3, "Binding the Old Gods — III: creatures gain deathtouch", bindingOldGodsDeathtouch),
 		},
 	})
-}
-
-func bindingOldGodsDestroy(g *game.Game, item *game.StackItem) error {
-	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-		return nil
-	}
-	return DestroyTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
 }
 
 func bindingOldGodsFetchForest(g *game.Game, item *game.StackItem) error {

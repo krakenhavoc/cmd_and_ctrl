@@ -363,10 +363,10 @@ func b30SourceFightsFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 	return b10Fight(ctx, item.SourceCardID, id)
 }
 
-// b30PutCounterOnSelf puts one +1/+1 counter on the item's source if
+// putCounterOnSelf puts one +1/+1 counter on the item's source if
 // it is still on the battlefield — Honored Dreyleader's second
 // trigger, Surly Badgersaur's first.
-func b30PutCounterOnSelf(g *game.Game, item *game.StackItem) error {
+func putCounterOnSelf(g *game.Game, item *game.StackItem) error {
 	if !b09SourceStillOnBattlefield(g, item) {
 		return nil
 	}

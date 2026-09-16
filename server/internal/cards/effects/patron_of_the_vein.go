@@ -35,7 +35,7 @@ func init() {
 				AppliesTo: b06SelfETB,
 				Targets:   TargetCreature("target creature an opponent controls", OpponentControls()),
 				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Patron of the Vein — destroy target creature an opponent controls", b17DestroyFirstLegalTarget)
+					return game.NewTriggeredItem(source, "Patron of the Vein — destroy target creature an opponent controls", destroyFirstLegalTarget)
 				},
 			},
 			{

@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"Whenever you cast an enchantment spell, you may draw a card."
 //
 // The original enchantress. Mesa Enchantress's trigger in green: the
-// spell's type is read off the stack (b08EnchantmentSpellCastByYou),
+// spell's type is read off the stack (enchantmentSpellCastByYou),
 // "you may" is the prompt, and the draw resolves before the
 // enchantment does (LIFO), as in paper.
 //
@@ -19,7 +19,7 @@ func init() {
 		Name:         "Verduran Enchantress",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventCast, b08EnchantmentSpellCastByYou, "Verduran Enchantress — draw a card", Do(DrawCards{N: 1})), "Verduran Enchantress — draw a card?"),
+			Optional(On(game.EventCast, enchantmentSpellCastByYou, "Verduran Enchantress — draw a card", Do(DrawCards{N: 1})), "Verduran Enchantress — draw a card?"),
 		},
 	})
 }

@@ -22,7 +22,7 @@ func init() {
 			Label:   "{1}{G}, Sacrifice Caustic Caterpillar: Destroy target artifact or enchantment.",
 			Cost:    Plus(ManaCost("{1}{G}"), SacrificeThis()),
 			Targets: TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
-			Effect:  b17DestroyFirstLegalTarget,
+			Effect:  destroyFirstLegalTarget,
 		}},
 	})
 }

@@ -37,7 +37,7 @@ func init() {
 			Targets:   TargetCreature("a creature you control to return to its owner's hand", YouControl()),
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 				return game.NewTriggeredItem(source, "Whitemane Lion — return a creature you control to its owner's hand",
-					b36BounceChosenCreature)
+					bounceChosenTarget)
 			},
 		}},
 	})

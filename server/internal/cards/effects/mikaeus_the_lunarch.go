@@ -50,14 +50,9 @@ func init() {
 			return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: ctx.X()}.Apply(ctx)
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{T}: Put a +1/+1 counter on Mikaeus.",
-			Cost:  TapCost(),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if !b09SourceStillOnBattlefield(g, item) {
-					return nil
-				}
-				return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
-			},
+			Label:  "{T}: Put a +1/+1 counter on Mikaeus.",
+			Cost:   TapCost(),
+			Effect: putCounterOnSelf,
 		}},
 	})
 }

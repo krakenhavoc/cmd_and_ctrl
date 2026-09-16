@@ -122,18 +122,6 @@ func b02EachPlayerMills(g *game.Game, item *game.StackItem, n int) error {
 	return nil
 }
 
-// b02CastInstantOrSorcery is the magecraft trigger condition: the
-// controller cast an instant or sorcery. The "or copy" half is not
-// modelled — no spell-copy event exists (storm_kiln_artist.go
-// declares the same gap).
-func b02CastInstantOrSorcery(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
-		return false
-	}
-	spell, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && (spell.IsInstant() || spell.IsSorcery())
-}
-
 // b02PlantsYouControl lists the creatures with the Plant subtype
 // `controller` controls — Avenger of Zendikar's landfall targets
 // (not targeted: "each Plant creature you control").

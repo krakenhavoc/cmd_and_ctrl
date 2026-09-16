@@ -34,7 +34,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return discardedByYou(ev, source) &&
-					discardedCardHasType(ev, g, "island", "pirate", "vehicle")
+					eventCardHasType(ev, g, "island", "pirate", "vehicle")
 			}, "Mary Read and Anne Bonny — create a tapped Treasure", Do(CreateToken{
 				Template: tappedTreasureToken(),
 				N:        1,

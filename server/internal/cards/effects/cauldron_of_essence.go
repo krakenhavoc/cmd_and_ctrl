@@ -33,7 +33,7 @@ func init() {
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b22CreatureYouControlDied(ev, source, g)
 			}, "Cauldron of Essence — each opponent loses 1 life and you gain 1 life", func(g *game.Game, item *game.StackItem) error {
-				return b07DrainEachOpponent(g, item)
+				return drainEachOpponent(g, item)
 			}),
 		},
 		Activated: []ActivatedAbility{{

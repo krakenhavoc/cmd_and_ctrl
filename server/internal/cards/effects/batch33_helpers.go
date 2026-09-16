@@ -28,7 +28,7 @@ import (
 // no longer on the battlefield is b17LastKnownPowerOffBattlefield,
 // the milled-creature batch is b17MilledCreatureCards, the first
 // legal target read is b16FirstLegalTargetCard and its destroy body
-// b17DestroyFirstLegalTarget, "exile target players' graveyards, then
+// destroyFirstLegalTarget, "exile target players' graveyards, then
 // draw" is b30ExileTargetGraveyardsThenDraw, the counter-on-each body is
 // b13PutCounterOnEach, the delayed-trigger token cursor is
 // b25LastEventSeq + b27TokensCreatedByAfter, "enters tapped unless
@@ -225,7 +225,7 @@ func b33AnyCreatureEntered(ev game.Event, g *game.Game) bool {
 // dead card is read post-move, so the supertype is its printed one.
 func b33LegendaryCreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller && b06IsLegendary(&dead)
+	return ok && dead.Controller == source.Controller && isLegendary(&dead)
 }
 
 // b33OpponentsCreatureDied is "whenever a creature an opponent
@@ -564,9 +564,9 @@ func b33PutCounterOnEnteredCreature(entered uuid.UUID) func(g *game.Game, item *
 	}
 }
 
-// b33CreateTappedZombie is Overseer of the Damned's dies body: one
+// createTappedZombie is Overseer of the Damned's dies body: one
 // tapped 2/2 black Zombie.
-func b33CreateTappedZombie(g *game.Game, item *game.StackItem) error {
+func createTappedZombie(g *game.Game, item *game.StackItem) error {
 	return CreateTokenAdvanced{
 		Controller: item.Controller,
 		Spec:       Token(BlackZombieToken()).EntersTapped(),
@@ -728,10 +728,10 @@ func b33SacrificeChosenThenDrawThatMany(g *game.Game, item *game.StackItem) erro
 	return DrawCards{Player: item.Controller, N: n}.Apply(ctx)
 }
 
-// b33TuckSelfThirdFromTop is God-Eternal Bontu's return body —
+// tuckSelfThirdFromTop is God-Eternal Bontu's return body —
 // Oketra's: the card, if it is still in a graveyard or in exile, goes
 // into its owner's library third from the top.
-func b33TuckSelfThirdFromTop(g *game.Game, item *game.StackItem) error {
+func tuckSelfThirdFromTop(g *game.Game, item *game.StackItem) error {
 	z := g.FindCardZoneForEffect(item.SourceCardID)
 	if z == nil || (z.Kind != game.ZoneGraveyard && z.Kind != game.ZoneExile) {
 		return nil

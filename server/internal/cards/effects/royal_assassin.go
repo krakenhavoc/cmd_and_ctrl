@@ -24,7 +24,7 @@ func init() {
 			Label:   "{T}: Destroy target tapped creature.",
 			Cost:    TapCost(),
 			Targets: TargetCreature("target tapped creature", tappedPermanent()),
-			Effect:  b17DestroyFirstLegalTarget,
+			Effect:  destroyFirstLegalTarget,
 		}},
 	})
 }

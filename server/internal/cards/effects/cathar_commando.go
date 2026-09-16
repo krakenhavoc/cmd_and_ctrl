@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Cathar Commando — Creature — Human Soldier {1}{W}, 3/1 (EDHREC
 // rank 1416):
 //
@@ -27,12 +25,7 @@ func init() {
 			Label:   "{1}, Sacrifice this creature: Destroy target artifact or enchantment.",
 			Cost:    Plus(ManaCost("{1}"), SacrificeThis()),
 			Targets: TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-					return nil
-				}
-				return DestroyTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
-			},
+			Effect:  destroyChosenPermanent,
 		}},
 	})
 }

@@ -32,7 +32,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b35AnotherCreatureYouControlDied(ev, source, g)
+				return anotherCreatureYouControlDied(ev, source, g)
 			},
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				attacking := b35WasAttackingWhenItLeft(g, ev.CardID, ev.Seq)

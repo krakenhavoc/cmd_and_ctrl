@@ -26,7 +26,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCast},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b12InstantOrSorceryCastByYou(ev, source, g)
+				return instantOrSorceryCastByYou(ev, source, g)
 			},
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				spell := ev.CardID

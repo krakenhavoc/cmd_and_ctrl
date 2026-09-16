@@ -35,12 +35,12 @@ func init() {
 					Question: "Overseer of the Damned — destroy target creature?",
 				},
 				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Overseer of the Damned — destroy target creature", b17DestroyFirstLegalTarget)
+					return game.NewTriggeredItem(source, "Overseer of the Damned — destroy target creature", destroyFirstLegalTarget)
 				},
 			},
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b33OpponentsNontokenCreatureDied(ev, source, g)
-			}, "Overseer of the Damned — create a tapped 2/2 black Zombie", b33CreateTappedZombie),
+			}, "Overseer of the Damned — create a tapped 2/2 black Zombie", createTappedZombie),
 		},
 	})
 }

@@ -56,14 +56,7 @@ func init() {
 				Label:   "{2}{G}: Destroy target artifact or enchantment.",
 				Cost:    ManaCost("{2}{G}"),
 				Targets: TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					id, ok := b16FirstLegalTargetCard(ctx)
-					if !ok {
-						return nil
-					}
-					return DestroyTarget{Target: id}.Apply(ctx)
-				},
+				Effect:  destroyFirstLegalTarget,
 			},
 			{
 				Label: "{2}{W}: You gain 3 life.",

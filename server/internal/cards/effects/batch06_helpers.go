@@ -91,8 +91,8 @@ func b06SelfETB(ev game.Event, source *game.Card, _ game.Characteristic, _ *game
 	return ev.CardID == source.InstanceID
 }
 
-// b06IsLegendary reads the post-layer supertypes.
-func b06IsLegendary(c *game.Card) bool {
+// isLegendary reads the post-layer supertypes.
+func isLegendary(c *game.Card) bool {
 	for _, s := range c.Effective().Supertypes {
 		if s == "Legendary" {
 			return true
