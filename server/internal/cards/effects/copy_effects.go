@@ -112,3 +112,14 @@ func copyCandidates(
 	}
 	return out
 }
+
+// anyCreatureOnBattlefield is the `candidates` argument for "enter as
+// a copy of any creature on the battlefield" — Clone, Sakashima the
+// Impostor, Stunt Double. Any controller, any creature, never the
+// entering permanent itself. Not targeting, so hexproof, shroud and
+// protection do not narrow it (CR 706.2).
+func anyCreatureOnBattlefield(g *game.Game, _ uuid.UUID, self uuid.UUID) []uuid.UUID {
+	return copyCandidates(g, self, func(c game.Card) bool {
+		return c.IsCreature()
+	})
+}

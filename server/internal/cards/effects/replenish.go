@@ -19,7 +19,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // graveyard, not only the ones with nothing to enchant. CR 303.4f —
 // the Aura's controller chooses what it enchants as it enters — has
 // no prompt on the reanimation path, and Brilliant Restoration's
-// posture (return it unattached, let CR 704.5n bin it) would fire
+// posture (return it unattached, let CR 704.5m bin it) would fire
 // the Aura's enters triggers for nothing. Leaving it where it is
 // matches the printed parenthetical exactly for the no-legal-host
 // case and is weaker than printed for the rest, never stronger.

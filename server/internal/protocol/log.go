@@ -13,7 +13,9 @@ package protocol
 //     hidden zone at both ends (library → hand, hand → library) is
 //     emitted without any card reference at all, not even an instance
 //     ID — the ID alone would let a client track a tutored card and
-//     recognise it when it later surfaced. At FILTER time, every
+//     recognise it when it later surfaced. A reveal gets the same
+//     treatment: it names the cards the table saw by printed name
+//     and never by instance ID (see revealEntry). At FILTER time, every
 //     surviving card reference goes through the SAME S13.5 knower
 //     predicate that redacts CardViews, which is what keeps a
 //     face-down Grizzly Bears anonymous to everyone but its
@@ -122,7 +124,21 @@ const (
 	// LogEliminated — a player left the game (concede, or any of the
 	// state-based losses).
 	LogEliminated LogKind = "eliminated"
+	// LogReveal — a player revealed cards (CR 701.16). The engine
+	// fires one EventRevealCards per card; every event sharing a
+	// RevealSeq collapses into ONE entry, with Amount the card count
+	// and OldZone the zone they were revealed from. The entry never
+	// carries a card_id: see revealEntry.
+	LogReveal LogKind = "reveal"
 )
+
+// logRevealNamesMax bounds how many revealed card names one LogReveal
+// entry's text spells out. Five is Fact or Fiction, the largest
+// fixed-size reveal in the catalog; past it the text says "and N
+// more". The cap is for Hermit Druid, whose whole-library reveal
+// would otherwise put a decklist into one line of a 200-line log that
+// rides every frame.
+const logRevealNamesMax = 5
 
 // LogEvent is one line of the public game log.
 //
@@ -201,6 +217,14 @@ type LogEvent struct {
 	// GameView.Seats already carries them.
 	actorName      string
 	targetSeatName string
+	// revealSeq / revealIDs / revealNames are LogReveal's render
+	// inputs. The instance IDs exist only between projection and name
+	// resolution — resolveLogNames swaps them for printed names and
+	// drops them — so the exported half of the entry never holds a
+	// handle to a card revealed out of a hidden zone.
+	revealSeq   uint64
+	revealIDs   []string
+	revealNames []string
 }
 
 // hiddenZone reports whether a zone's contents are hidden from the
@@ -224,6 +248,12 @@ func publicLogOf(g *game.Game, v *GameView) []LogEvent {
 	// battlefield → graveyard move it causes, so the very next zone
 	// move for that card is the same fact told twice.
 	var sacrificed uuid.UUID
+	// revealAt maps a RevealSeq to the ring push that opened its
+	// entry. Keyed rather than adjacency-based for the reason
+	// game.Event.RevealSeq gives: two back-to-back reveals are two
+	// announcements, and a listener may emit between the per-card
+	// events of one.
+	revealAt := make(map[uint64]int)
 
 	for _, ev := range g.Events {
 		e, ok := projectEvent(ev, seatOf, &turn, &step, &sacrificed)
@@ -233,6 +263,23 @@ func publicLogOf(g *game.Game, v *GameView) []LogEvent {
 		e.Turn = turn
 		if e.Kind == LogStep {
 			e.Step = step
+		}
+		if e.Kind == LogReveal && e.revealSeq != 0 {
+			if at, seen := revealAt[e.revealSeq]; seen {
+				if prev := ring.pushed(at); prev != nil {
+					prev.Amount += e.Amount
+					// Only the IDs the text can name are kept; Amount
+					// carries the true count.
+					if len(prev.revealIDs) < logRevealNamesMax {
+						prev.revealIDs = append(prev.revealIDs, e.revealIDs...)
+					}
+				}
+				// An opening entry already evicted from the ring is
+				// not re-opened: the tail of a reveal whose head fell
+				// off the log is not worth a line of its own.
+				continue
+			}
+			revealAt[e.revealSeq] = ring.total
 		}
 		// Collapse a run of single-card draws by one player into one
 		// "drew N cards" line. Draw is the only event the engine
@@ -409,9 +456,52 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Kind = LogEliminated
 		return base, true
 
+	case game.EventRevealCards:
+		return revealEntry(base, ev, seatOf), true
+
 	default:
 		return LogEvent{}, false
 	}
+}
+
+// revealEntry projects one EventRevealCards. The caller collapses a
+// run sharing a RevealSeq into the first entry.
+//
+// No card_id, for anyone, whatever zone the card was revealed from.
+// A reveal is almost always out of a hand or a library, and the build-
+// time rule at the top of this file applies unchanged: the instance
+// ID of a card in a hidden zone is a handle that outlives the moment
+// (Dark Confidant's card goes to hand, Fact or Fiction's go to hand
+// and graveyard, a tutor's goes back to be shuffled). The per-viewer
+// knower filter cannot stand in for that rule, because a reveal makes
+// every seat a knower. The reveal frame reached the same answer; see
+// reveal_frame.go.
+//
+// A reveal the whole table saw is logged with the printed names,
+// resolved from revealIDs and never gated on knowers, for the reason
+// publicRevealsOf gives: the table saw the cards, and a later shuffle
+// clearing KnownBy must not blank the history.
+//
+// A reveal with a player Target is one only that player saw ("reveal
+// it to target opponent", the #170 "Show to <player>" verb). It is
+// logged for everyone, with TargetSeat set and no identity at all, so
+// the line never says more than the viewer saw. The engine has no
+// producer for it yet; the log fails closed ahead of it.
+func revealEntry(base LogEvent, ev game.Event, seatOf func(uuid.UUID) int) LogEvent {
+	base.Kind = LogReveal
+	base.Amount = 1
+	base.OldZone = string(ev.OldZone)
+	base.revealSeq = ev.RevealSeq
+	if ev.Target != uuid.Nil {
+		if seat := seatOf(ev.Target); seat != NoSeat {
+			base.TargetSeat = &seat
+		}
+		return base
+	}
+	if ev.CardID != uuid.Nil {
+		base.revealIDs = []string{ev.CardID.String()}
+	}
+	return base
 }
 
 // resolveLogNames fills the unexported name / knower fields on every
@@ -432,6 +522,12 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 		}
 		if e.Target != "" {
 			wanted[e.Target] = true
+		}
+		for i, id := range e.revealIDs {
+			if i >= logRevealNamesMax {
+				break
+			}
+			wanted[id] = true
 		}
 	}
 
@@ -467,6 +563,20 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 		if c, ok := cards[e.Target]; ok {
 			e.targetName = c.Name
 			e.targetKnowers = c.knowers
+		}
+		// Revealed cards are looked up in every zone, hands and
+		// libraries included, without a knower check: see
+		// revealEntry. A card that has since left every tracked zone
+		// renders as "a card".
+		if len(e.revealIDs) > 0 {
+			e.revealNames = make([]string, 0, min(len(e.revealIDs), logRevealNamesMax))
+			for j, id := range e.revealIDs {
+				if j >= logRevealNamesMax {
+					break
+				}
+				e.revealNames = append(e.revealNames, cards[id].Name)
+			}
+			e.revealIDs = nil
 		}
 	}
 }
@@ -616,6 +726,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s conceded", actor)
 		}
 		return fmt.Sprintf("%s was eliminated", actor)
+	case LogReveal:
+		return renderRevealText(e, actor)
 	default:
 		return card
 	}
@@ -644,6 +756,43 @@ func renderZoneText(e LogEvent, card string) string {
 	default:
 		return fmt.Sprintf("%s moved from %s to %s", card, prettyZone(e.OldZone), prettyZone(e.NewZone))
 	}
+}
+
+// renderRevealText words a LogReveal entry: "P1 revealed Island from
+// their library", "P1 revealed 5 cards from their library: A, B, C,
+// D, E", or, for a reveal to one player, "P1 revealed a card from
+// their hand to P2" with no names for anyone.
+func renderRevealText(e LogEvent, actor string) string {
+	from := ""
+	switch game.ZoneKind(e.OldZone) {
+	case "":
+	case game.ZoneHand, game.ZoneLibrary:
+		from = " from their " + e.OldZone
+	default:
+		from = " from " + prettyZone(e.OldZone)
+	}
+	what := "a card"
+	if e.Amount > 1 {
+		what = fmt.Sprintf("%d cards", e.Amount)
+	}
+	if e.TargetSeat != nil {
+		return fmt.Sprintf("%s revealed %s%s to %s", actor, what, from, nameOr(e.targetSeatName, "a player"))
+	}
+	if len(e.revealNames) == 0 {
+		return fmt.Sprintf("%s revealed %s%s", actor, what, from)
+	}
+	names := make([]string, len(e.revealNames))
+	for i, n := range e.revealNames {
+		names[i] = nameOr(n, "a card")
+	}
+	if e.Amount <= 1 {
+		return fmt.Sprintf("%s revealed %s%s", actor, names[0], from)
+	}
+	list := strings.Join(names, ", ")
+	if more := e.Amount - len(names); more > 0 {
+		list += fmt.Sprintf(" and %d more", more)
+	}
+	return fmt.Sprintf("%s revealed %s%s: %s", actor, what, from, list)
 }
 
 func nameOr(s, fallback string) string {
@@ -693,13 +842,27 @@ type logRing struct {
 	buf   []LogEvent
 	start int
 	n     int
+	// total counts every push ever made, evicted or not, so a caller
+	// can name an entry by its push ordinal and ask for it back.
+	total int
 }
 
 func newLogRing(capacity int) *logRing {
 	return &logRing{buf: make([]LogEvent, capacity)}
 }
 
+// pushed returns a pointer to the entry made by push number `ord`
+// (the value of total just before that push), or nil when it has been
+// evicted or never happened.
+func (r *logRing) pushed(ord int) *LogEvent {
+	if ord < r.total-r.n || ord >= r.total {
+		return nil
+	}
+	return &r.buf[(r.start+r.n-(r.total-ord))%len(r.buf)]
+}
+
 func (r *logRing) push(e LogEvent) {
+	r.total++
 	if r.n < len(r.buf) {
 		r.buf[(r.start+r.n)%len(r.buf)] = e
 		r.n++
