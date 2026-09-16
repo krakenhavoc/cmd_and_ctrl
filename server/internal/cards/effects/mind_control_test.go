@@ -172,7 +172,7 @@ func TestSecondMindControlWinsOnTimestamp(t *testing.T) {
 	}
 }
 
-// CR 704.5n composes with the control change: the Aura leaves
+// CR 704.5m composes with the control change: the Aura leaves
 // because its host stopped being a legal creature, and control goes
 // home in the same settling.
 func TestMindControlFallsOffAndRevertsWhenTheHostLeaves(t *testing.T) {
@@ -198,9 +198,9 @@ func TestMindControlFallsOffAndRevertsWhenTheHostLeaves(t *testing.T) {
 		t.Fatalf("MoveCardByID: %v", err)
 	}
 	if g.Battlefield.Contains(aura) {
-		t.Error("CR 704.5n: the Aura should have gone to the graveyard")
+		t.Error("CR 704.5m: the Aura should have gone to the graveyard")
 	}
 	if !me.Graveyard.Contains(aura) {
-		t.Error("CR 704.5n: the Aura left the battlefield but did not reach its owner's graveyard")
+		t.Error("CR 704.5m: the Aura left the battlefield but did not reach its owner's graveyard")
 	}
 }

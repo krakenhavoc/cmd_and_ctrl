@@ -133,6 +133,12 @@ func TestMoveCardByIDSrcEqualsDstPreservesState(t *testing.T) {
 	_ = g.PlayCard(p.ID, card.InstanceID)
 	_ = g.TapCard(card.InstanceID, true)
 	_ = g.AddCounter(card.InstanceID, "+1/+1", 3)
+	// A stamped position is battlefield-only state too, so MoveCard's
+	// leave-the-battlefield cleanup would zero it. Non-default values on
+	// both axes make a clobber visible.
+	if err := g.SetBattlefieldPosition(card.InstanceID, 0.3, 0.7); err != nil {
+		t.Fatalf("SetBattlefieldPosition: %v", err)
+	}
 
 	// No-op move on battlefield.
 	err := g.MoveCardByID(
@@ -153,6 +159,9 @@ func TestMoveCardByIDSrcEqualsDstPreservesState(t *testing.T) {
 		}
 		if c.Counters["+1/+1"] != 3 {
 			t.Errorf("no-op move clobbered counters: %v", c.Counters)
+		}
+		if c.BattleX != 0.3 || c.BattleY != 0.7 {
+			t.Errorf("no-op move clobbered position: got (%v, %v), want (0.3, 0.7)", c.BattleX, c.BattleY)
 		}
 	}
 }
@@ -379,6 +388,7 @@ func TestSetBattlefieldPositionRejectsNaNAndInf(t *testing.T) {
 		{"neg_inf_x", math.Inf(-1), 0.5, 0, 0.5},
 		{"pos_inf_y", 0.5, math.Inf(1), 0.5, 1},
 		{"upper_clamp_x", 1.5, 0.5, 1, 0.5},
+		{"lower_clamp_y", 0.5, -0.5, 0.5, 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -31,23 +31,28 @@ import (
 //
 // S22 sandbox simplifications:
 //
-//   - **No foretell.** The reason is no longer the one this comment
-//     gave until S29: alternative-cast-cost machinery exists
-//     (`game.AlternativeCost`, #257, which landed hours after this
-//     file), and S29 added the zone half — `Spec.CastableZones` plus
-//     `AlternativeCost.FromZone` are exactly "pay {1}{W} instead of
-//     the mana cost, from exile". What foretell still lacks is the
-//     HIDDEN half. `foretell_card` exiles the card FACE DOWN, and
-//     both primitives that mint an exile-play grant
+//   - **No foretell** (CR 702.143, tracked in #658). Foretell is three
+//     things the engine does not have yet, and none of them is a
+//     card-file detail. First, a special action taken from HAND: pay
+//     {2} and exile the card face down, any time its owner has
+//     priority during their own turn (CR 116.2h, 702.143a-b); there
+//     is no special-action verb (#655). Second, a face-down exile its
+//     OWNER can see and the table cannot (CR 702.143a): both
+//     primitives that mint an exile-play grant
 //     (ExileTopWithPermissionForEffect,
-//     ExileCardWithPermissionForEffect) call
-//     markCardKnownInZoneLocked on the way in, deliberately: an
-//     impulse grant nobody can see is unplayable in practice.
-//     Foretell needs the opposite — a grant its holder can see and
-//     the table cannot — and that is a real extension to the
-//     permission model rather than a card-file detail. The card is
-//     castable only for its printed {3}{W} until it lands. Strictly
-//     weaker than printed.
+//     ExileCardWithPermissionForEffect) mark the card known to every
+//     seat on the way in, deliberately, because an impulse grant
+//     nobody can see is unplayable, and the face-down route marks it
+//     known to nobody (#656). Third, a permission on that ONE exiled
+//     card, keyed "foretell" and live from the next turn on, that
+//     leaves the spell "foretold" on the stack (CR 702.143c-d, #652).
+//     `Spec.CastableZones` plus `AlternativeCost.FromZone` are NOT
+//     that permission: they are card-level, so they would make every
+//     exiled copy, a Path to Exile target included, castable for
+//     {1}{W} on any turn. Warp's end-step exile
+//     (scheduleWarpExileLocked) is the nearest precedent for the
+//     third piece. The card is castable only for its printed {3}{W}
+//     until foretell lands. Strictly weaker than printed.
 //   - The replacement does not fire on a permanent that would go to
 //     the **command zone** instead (a commander dying with the CR
 //     903.9 built-in taken): that built-in rewrites the destination

@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // they read a printed one.
 //
 // Sandbox simplification, declared: the WORLD supertype's "world
-// rule" (CR 704.5m — when two world permanents are on the
+// rule" (CR 704.5k — when two world permanents are on the
 // battlefield, the older one goes to the graveyard) is not
 // modelled; no other world permanent is in the catalog for it to
 // meet. Weaker for nobody today; the Crossroads would survive a

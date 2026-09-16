@@ -159,6 +159,16 @@ var (
 	// Added in S29.
 	ErrCastCostRequired = errors.New("game: casting from that zone requires its alternative cost")
 
+	// ErrNoManaCost is returned by cast_spell when a non-land card
+	// with no mana cost (Ancestral Vision, Living End) is cast by
+	// paying that cost. CR 118.6: no mana cost is an unpayable cost,
+	// and paying it is illegal, so the cast is refused at announce
+	// unless an alternative cost replaces it (CR 118.6a; "without
+	// paying its mana cost" counts). Distinct from a {0} cost, which
+	// is a real cost of zero. Mode-independent, for the #289 reason:
+	// permissive mode's "pay it on paper" has nothing to pay.
+	ErrNoManaCost = errors.New("game: a spell with no mana cost can't be cast by paying it")
+
 	// ErrCardNotOnStack is returned by counter_spell / counter_ability
 	// when the targeted item is not currently on the stack (already
 	// resolved, never cast, or wrong instance ID). Added in S13.1.
@@ -175,6 +185,22 @@ var (
 	// caller is not the player the choice was addressed to. Added
 	// in S14.
 	ErrNotTheChooser = errors.New("game: caller is not the chooser of this pending choice")
+
+	// ErrChoiceSetRejected is returned by ResolveChooseCards when the
+	// picks are individually fine (right count, all candidates, all
+	// still where the prompt found them) but the SET breaks a rule
+	// the card prints about them together — ChooseCardsPrompt.
+	// Validate refused it. "Discard two cards unless you discard a
+	// creature card" answered with one land is the shape.
+	//
+	// Its own sentinel rather than ErrInvalidParam because the player
+	// can fix it by choosing again, and the prompt stays open for
+	// exactly that; "invalid parameter" in the prompt's error line
+	// would read as a broken client. The player-facing sentence lives
+	// in ws.classifyActionError, as it does for ErrUnparseableCost and
+	// ErrInvalidFace. The prompt's own Question carries the card's
+	// words, so neither needs to repeat them. Added for #624.
+	ErrChoiceSetRejected = errors.New("game: chosen cards rejected by the prompt's set rule")
 
 	// ErrAlreadyTapped is returned by ActivateManaAbility when the
 	// ability has a tap cost and the permanent is already tapped —
