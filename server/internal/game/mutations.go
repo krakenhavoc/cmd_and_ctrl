@@ -534,10 +534,15 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// touch at all.
 	//
 	// S29 softened the "no grant, no cast" half by exactly one case:
-	// a card whose own text declares ZoneExile castable (suspend's
-	// "cast it without paying its mana cost" is the shape) does not
-	// need an instance grant. Everything else is unchanged, and
-	// hasExileGrant rides down to validateCastPathLocked so the
+	// a card whose own text declares ZoneExile castable does not need
+	// an instance grant. That declaration is a CARD-level permission,
+	// so it opens exile for every copy of the card at any time, and
+	// no catalog card declares it today. Suspend and foretell are NOT
+	// this shape: CR 702.62a allows a suspended card's cast only while
+	// its last-time-counter trigger resolves, and CR 702.143 makes
+	// foretold status belong to the exiled instance. Both want a
+	// per-instance ExilePlayPermission, the way cascade's free cast
+	// works. hasExileGrant rides down to validateCastPathLocked so the
 	// zone-cost rule can tell the two apart.
 	hasExileGrant := false
 	if src.Kind == ZoneExile {
@@ -1283,11 +1288,23 @@ func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams)
 	// reason the tax is: tapping creatures is a way of PAYING the
 	// total cost, and CR 601.2f settles the total before anything
 	// is paid against it.
+	//
+	// The zone comes from castZoneFromWire, the same mapping the
+	// cast path resolved its source pile with. A private copy of that
+	// switch used to live here and knew only hand, command and exile,
+	// so a flashback or escape cast reached every modifier as a HAND
+	// cast. CastSpell has already refused an unknown string by the
+	// time it prices anything; the error below is for a caller that
+	// skipped that step.
+	fromZone, ok := castZoneFromWire(params.FromZone)
+	if !ok {
+		return ParsedCost{}, ErrZoneNotFound
+	}
 	cost, err = g.applyCostModifiersLocked(cost, CostQuery{
 		Game:       g,
 		Card:       card,
 		Controller: p.ID,
-		FromZone:   castFromZoneKind(params.FromZone),
+		FromZone:   fromZone,
 		XValue:     params.XValue,
 	})
 	if err != nil {
@@ -1347,23 +1364,6 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 		cost = asAnyColorCost(cost)
 	}
 	return cost, nil
-}
-
-// castFromZoneKind maps CastSpellParams.FromZone onto the ZoneKind a
-// cost modifier's predicate reads. Mirrors castSourceZoneLocked's
-// switch — including its "unknown falls back to hand" posture, which
-// keeps an older client's omitted field meaning what it always meant.
-// Split out because the cost-modifier query wants the kind without
-// wanting the zone pointer (and without wanting a *Player).
-func castFromZoneKind(fromZone string) ZoneKind {
-	switch fromZone {
-	case "command":
-		return ZoneCommand
-	case "exile":
-		return ZoneExile
-	default:
-		return ZoneHand
-	}
 }
 
 // castSourceZoneLocked resolves the FromZone string to the zone
