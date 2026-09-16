@@ -29,7 +29,7 @@ func init() {
 			WhenThisEnters("Honored Dreyleader — a +1/+1 counter per other Squirrel or Food you control", b30CountersForOtherSquirrelsAndFood),
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b30AnotherSquirrelOrFoodYouControlEntered(ev, source, g)
-			}, "Honored Dreyleader — put a +1/+1 counter on it", b30PutCounterOnSelf),
+			}, "Honored Dreyleader — put a +1/+1 counter on it", putCounterOnSelf),
 		},
 	})
 }

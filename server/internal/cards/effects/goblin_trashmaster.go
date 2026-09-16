@@ -28,7 +28,7 @@ func init() {
 			Label:   "Sacrifice a Goblin: Destroy target artifact",
 			Cost:    b25SacrificeAGoblin(),
 			Targets: TargetPermanent("target artifact", Artifact()),
-			Effect:  b17DestroyFirstLegalTarget,
+			Effect:  destroyFirstLegalTarget,
 		}},
 	})
 }

@@ -26,14 +26,7 @@ func b05HasSubtype(subtype string) CardPredicate {
 // Water's Edge). Supertypes come from the effective characteristic so
 // a layer effect that adds or removes Legendary composes.
 func b05Legendary() CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-		for _, s := range c.Effective().Supertypes {
-			if s == "Legendary" {
-				return true
-			}
-		}
-		return false
-	}
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return isLegendary(&c) }
 }
 
 // b05ControlsSubtype reports whether `controller` controls a

@@ -38,7 +38,7 @@ func fetchlandCost() game.AbilityCost {
 //
 // Needles MUST be lowercase. containsFoldASCII folds the haystack
 // and not the needle, so "Island" would silently match nothing —
-// the trap already documented on discardedCardHasType.
+// the trap already documented on eventCardHasType.
 func landWithEitherSubtype(a, b string) func(game.Card) bool {
 	first, second := IsLandWithSubtype(a), IsLandWithSubtype(b)
 	return func(c game.Card) bool { return first(c) || second(c) }

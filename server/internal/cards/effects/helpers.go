@@ -104,13 +104,13 @@ func discardedByYou(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventDiscardCard && ev.Actor == source.Controller
 }
 
-// discardedCardHasType reports whether the card just discarded has
+// eventCardHasType reports whether the card just discarded has
 // any of the given type-line words ("Island", "Pirate", "Vehicle").
 // The card is read from the graveyard, where its printed type line
 // is intact.
 // Needles must be lowercase — containsFoldASCII folds the haystack,
 // not the needle.
-func discardedCardHasType(ev game.Event, g *game.Game, words ...string) bool {
+func eventCardHasType(ev game.Event, g *game.Game, words ...string) bool {
 	c, ok := g.LookupCardForEffect(ev.CardID)
 	if !ok {
 		return false
@@ -261,4 +261,20 @@ func controllerOfTarget(ctx *Context, target uuid.UUID) (uuid.UUID, bool) {
 		return uuid.Nil, false
 	}
 	return c.Controller, true
+}
+
+// --- shared effect bodies (folded by #583) -------------------------
+
+func returnTargetCardToHand(g *game.Game, item *game.StackItem) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return ReturnFromGraveyard{Target: item.Targets[0].ID, Dest: game.ZoneHand}.Apply(NewContext(g, item))
+}
+
+func destroyChosenPermanent(g *game.Game, item *game.StackItem) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return DestroyTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
 }

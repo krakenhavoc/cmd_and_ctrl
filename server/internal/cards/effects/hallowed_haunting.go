@@ -15,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // seven or more enchantments, counted per recompute with the
 // Haunting itself included (b29CreaturesYouControlWithSevenEnchantments);
 // the trigger is Sigil of the Empty Throne's condition
-// (b12EnchantmentSpellCastByYou) and makes a Spirit Cleric.
+// (enchantmentSpellCastByYou) and makes a Spirit Cleric.
 //
 // Sandbox simplification, and the reason the card carries a
 // caveat (the Simulacrum Synthesizer posture): the Spirit Cleric's
@@ -45,9 +45,7 @@ func init() {
 			b29SpiritClericSizing(),
 		},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b12EnchantmentSpellCastByYou(ev, source, g)
-			}, "Hallowed Haunting — create a Spirit Cleric", Do(CreateToken{Template: TokenCard("0/0 white Spirit Cleric"), N: 1})),
+			On(game.EventCast, enchantmentSpellCastByYou, "Hallowed Haunting — create a Spirit Cleric", Do(CreateToken{Template: TokenCard("0/0 white Spirit Cleric"), N: 1})),
 		},
 	})
 }

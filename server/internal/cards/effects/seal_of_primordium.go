@@ -21,7 +21,7 @@ func init() {
 			Label:   "Sacrifice this enchantment: Destroy target artifact or enchantment.",
 			Cost:    SacrificeThis(),
 			Targets: TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
-			Effect:  b35DestroyChosenTarget,
+			Effect:  destroyFirstLegalTarget,
 		}},
 	})
 }

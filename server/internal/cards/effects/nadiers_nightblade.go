@@ -26,7 +26,7 @@ func init() {
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && IsToken(c) && c.Controller == source.Controller
-			}, "Nadier's Nightblade — each opponent loses 1, you gain 1", b07DrainEachOpponent),
+			}, "Nadier's Nightblade — each opponent loses 1, you gain 1", drainEachOpponent),
 		},
 	})
 }

@@ -472,11 +472,11 @@ func b17ClaimJumperSearch(g *game.Game, item *game.StackItem, again bool) error 
 	}.Apply(NewContext(g, item))
 }
 
-// b17DestroyFirstLegalTarget destroys the first announce-time target
+// destroyFirstLegalTarget destroys the first announce-time target
 // slot that is still a legal battlefield card — the body of a
 // single-target "destroy target X" activated ability (Insidious
 // Fungus's two removal modes).
-func b17DestroyFirstLegalTarget(g *game.Game, item *game.StackItem) error {
+func destroyFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	id, ok := b16FirstLegalTargetCard(ctx)
 	if !ok {

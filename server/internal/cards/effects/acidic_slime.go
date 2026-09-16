@@ -34,10 +34,5 @@ func init() {
 // that destroys whatever the engine stamped into item.Targets[0]
 // (the pick_target answer). Shared by the ETB-destroy cards.
 func destroyChosenTargetTrigger(source *game.Card, label string) *game.StackItem {
-	return game.NewTriggeredItem(source, label, func(g *game.Game, item *game.StackItem) error {
-		if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-			return nil
-		}
-		return DestroyTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
-	})
+	return game.NewTriggeredItem(source, label, destroyChosenPermanent)
 }

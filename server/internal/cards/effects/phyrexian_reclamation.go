@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Phyrexian Reclamation — Enchantment, {B} (EDHREC rank 948):
 //
 //	"{1}{B}, Pay 2 life: Return target creature card from your
@@ -23,12 +21,7 @@ func init() {
 			Label:   "{1}{B}, Pay 2 life: Return target creature card from your graveyard to your hand.",
 			Cost:    Plus(ManaCost("{1}{B}"), PayLife(2)),
 			Targets: TargetCardInGraveyard("target creature card in your graveyard", Creature(), YouOwn()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-					return nil
-				}
-				return ReturnFromGraveyard{Target: item.Targets[0].ID, Dest: game.ZoneHand}.Apply(NewContext(g, item))
-			},
+			Effect:  returnTargetCardToHand,
 		}},
 	})
 }

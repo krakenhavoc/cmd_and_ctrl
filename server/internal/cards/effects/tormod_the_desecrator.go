@@ -26,7 +26,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventCast}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b16CardLeftYourGraveyard(ev, source, g)
-			}, b34TormodLabel, b33CreateTappedZombie)),
+			}, b34TormodLabel, createTappedZombie)),
 		},
 	})
 }

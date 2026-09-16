@@ -16,7 +16,7 @@ import (
 // "a player lost life this turn" is b18LifeLostThisTurn, "an
 // opponent discarded" is b18OpponentDiscarded, "a creature an
 // opponent controls died" is b18OpponentsCreatureDied, "you cast a
-// creature / noncreature spell" is b12CreatureSpellCastByYou /
+// creature / noncreature spell" is creatureSpellCastByYou /
 // b10NoncreatureSpellCastByYou, "an opponent cast a spell" is
 // b15OpponentCastSpell with manaValueOnStack for its mana value,
 // "a creature entered under your control" is enteredUnderYourControl,
@@ -83,7 +83,7 @@ func b24LegendaryCreatureYouControlDealtCombatDamageToPlayer(ev game.Event, sour
 		return false
 	}
 	dealer, ok := g.LookupCardForEffect(ev.Source)
-	return ok && b06IsLegendary(&dealer)
+	return ok && isLegendary(&dealer)
 }
 
 // b24NaturesWillLabel is Nature's Will's stack label for one damaged
@@ -228,11 +228,11 @@ func b24TargetAnyNotSubtype(subtype string) *game.TargetSpec {
 
 // --- effect bodies -----------------------------------------------
 
-// b24EachOpponentDiscardsOne is Burglar Rat's body: every opponent
+// eachOpponentDiscardsOne is Burglar Rat's body: every opponent
 // picks a card from their own hand to discard, one prompt per
 // opponent, addressed to that opponent. A player with an empty hand
 // is skipped by the discard prompt itself.
-func b24EachOpponentDiscardsOne(g *game.Game, item *game.StackItem) error {
+func eachOpponentDiscardsOne(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, opp := range ctx.Opponents() {
 		g.DiscardChoiceForEffect(opp, 1)

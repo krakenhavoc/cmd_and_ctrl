@@ -24,7 +24,7 @@ func init() {
 			Label:   "{1}, Sacrifice this creature: Destroy target artifact or enchantment.",
 			Cost:    Plus(ManaCost("{1}"), SacrificeThis()),
 			Targets: TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
-			Effect:  b17DestroyFirstLegalTarget,
+			Effect:  destroyFirstLegalTarget,
 		}},
 	})
 }

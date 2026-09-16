@@ -223,6 +223,7 @@ func BlueShapeshifterToken() game.Card {
 		TypeLine:  "Token Creature — Shapeshifter",
 		Power:     2,
 		Toughness: 2,
+		Colors:    []string{"U"},
 		Keywords:  []string{game.KeywordChangeling},
 	}
 }

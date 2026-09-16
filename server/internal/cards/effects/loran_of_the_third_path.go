@@ -42,12 +42,7 @@ func init() {
 			},
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 				return game.NewTriggeredItem(source, "Loran of the Third Path — destroy target artifact or enchantment",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-							return nil
-						}
-						return DestroyTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
-					})
+					destroyChosenPermanent)
 			},
 		}},
 		Activated: []ActivatedAbility{{

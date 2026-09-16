@@ -282,11 +282,11 @@ func b36RepurposingBaySearch(g *game.Game, item *game.StackItem) error {
 	}.Apply(NewContext(g, item))
 }
 
-// b36BounceChosenCommander is Sanctum of Eternity's body: the
+// bounceChosenTarget is Sanctum of Eternity's body: the
 // announced commander, if still on the battlefield and still legal,
 // goes to its owner's hand — through the shared exit primitive, so
 // CR 903.9 offers the command zone on the way (#539).
-func b36BounceChosenCommander(g *game.Game, item *game.StackItem) error {
+func bounceChosenTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	id, ok := b16FirstLegalTargetCard(ctx)
 	if !ok || !onBattlefield(g, id) {
@@ -372,18 +372,6 @@ func b36GainLife(n int) func(g *game.Game, item *game.StackItem) error {
 // Visionary's entry.
 func b36DrawOne(g *game.Game, item *game.StackItem) error {
 	return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-}
-
-// b36BounceChosenCreature is Whitemane Lion's entry body: the
-// announced creature — the Lion itself included — returns to its
-// owner's hand if it is still on the battlefield.
-func b36BounceChosenCreature(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
-	if !ok || !onBattlefield(g, id) {
-		return nil
-	}
-	return BounceToHand{Target: id}.Apply(ctx)
 }
 
 // b36DesertDual is the Outlaws of Thunder Junction tapped Desert

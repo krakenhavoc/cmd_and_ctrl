@@ -16,7 +16,7 @@ import (
 // What is NOT here, because main already had it: "this permanent
 // enters" is b06SelfETB, "another permanent you control entered" is
 // enteredUnderYourControl, "whenever you cast an instant or sorcery"
-// is b12InstantOrSorceryCastByYou, "sacrifice a Goblin" as a cost is
+// is instantOrSorceryCastByYou, "sacrifice a Goblin" as a cost is
 // b12SacrificeAGoblin, "a +1/+1 counter on each creature you
 // control" is b11PutCounterOnEachCreatureYouControl, "historic" is
 // b09IsHistoric, "lands you control" is b10LandsControlled, "an

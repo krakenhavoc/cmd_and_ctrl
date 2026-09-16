@@ -19,7 +19,7 @@ import (
 // creature died" is diedCreature, "a creature you control dealt
 // combat damage to a player" is combatDamageToPlayerBy, "an
 // opponent's creature attacked you" is b17OpponentsCreatureAttackedYou,
-// "you cast an instant or sorcery" is b12InstantOrSorceryCastByYou,
+// "you cast an instant or sorcery" is instantOrSorceryCastByYou,
 // "you cast a colorless spell" is b11ColorlessSpellCastByYou, the
 // devotion count is devotionTo, the wheel is b10EachPlayerWheels,
 // the tapped Treasures are b13CreateTappedTreasures, the pod search's

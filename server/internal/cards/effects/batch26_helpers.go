@@ -23,7 +23,7 @@ import (
 // step is b15EndStepBegan, the land-count CDA is b10LandsControlled,
 // the basic-land search is b07SearchBasicOntoBattlefield, the land
 // search is b11FetchLandTapped, the anthem is b16Anthem, the
-// first-legal-target destroy is b17DestroyFirstLegalTarget, the
+// first-legal-target destroy is destroyFirstLegalTarget, the
 // two-slot "creature you control, then …" posture is Soul's Fire,
 // the Elf Warrior token is b13GreenElfWarriorToken and the Angel
 // with flying and vigilance is AngelVigilanceToken.

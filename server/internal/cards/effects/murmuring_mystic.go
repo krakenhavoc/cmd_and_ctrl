@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"Whenever you cast an instant or sorcery spell, create a 1/1 blue
 //	 Bird Illusion creature token with flying."
 //
-// Talrand on a wall. The condition is b12InstantOrSorceryCastByYou
+// Talrand on a wall. The condition is instantOrSorceryCastByYou
 // and the token is b16BlueBirdIllusionToken, whose flying is real
 // (carried on its Keywords). The trigger goes on the stack above the
 // spell that caused it, so the Bird is on the battlefield before the
@@ -22,7 +22,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b12InstantOrSorceryCastByYou(ev, source, g)
+				return instantOrSorceryCastByYou(ev, source, g)
 			}, "Murmuring Mystic — create a 1/1 Bird Illusion with flying", Do(CreateToken{Template: TokenCard("1/1 blue Bird Illusion with flying"), N: 1})),
 		},
 	})

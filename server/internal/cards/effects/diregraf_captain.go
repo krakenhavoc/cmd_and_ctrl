@@ -33,11 +33,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.CardID == source.InstanceID {
-					return false
-				}
-				dead, ok := diedCreature(ev, g)
-				return ok && dead.Controller == source.Controller && dead.HasSubtype("Zombie")
+				return anotherZombieYouControlDied(ev, source, g)
 			},
 			Targets: TargetPlayer("target opponent", Opponent()),
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {

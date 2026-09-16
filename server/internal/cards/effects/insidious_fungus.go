@@ -35,13 +35,13 @@ func init() {
 				Label:   "{2}, Sacrifice Insidious Fungus: Destroy target artifact",
 				Cost:    fungusCost,
 				Targets: TargetPermanent("target artifact", Artifact()),
-				Effect:  b17DestroyFirstLegalTarget,
+				Effect:  destroyFirstLegalTarget,
 			},
 			{
 				Label:   "{2}, Sacrifice Insidious Fungus: Destroy target enchantment",
 				Cost:    fungusCost,
 				Targets: TargetPermanent("target enchantment", Enchantment()),
-				Effect:  b17DestroyFirstLegalTarget,
+				Effect:  destroyFirstLegalTarget,
 			},
 			{
 				Label: "{2}, Sacrifice Insidious Fungus: Draw a card",

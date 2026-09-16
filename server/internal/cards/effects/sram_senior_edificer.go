@@ -22,7 +22,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return ev.Actor == source.Controller && b03CastSpellHasType(ev, g, "aura", "equipment", "vehicle")
+				return ev.Actor == source.Controller && eventCardHasType(ev, g, "aura", "equipment", "vehicle")
 			}, "Sram, Senior Edificer — draw a card", Do(DrawCards{N: 1})),
 		},
 	})

@@ -21,7 +21,7 @@ func init() {
 		Name:         "Sythis, Harvest's Hand",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, b08EnchantmentSpellCastByYou, "Sythis, Harvest's Hand — gain 1 life and draw a card", func(g *game.Game, item *game.StackItem) error {
+			On(game.EventCast, enchantmentSpellCastByYou, "Sythis, Harvest's Hand — gain 1 life and draw a card", func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				if err := (GainLife{Player: item.Controller, Amount: 1}).Apply(ctx); err != nil {
 					return err

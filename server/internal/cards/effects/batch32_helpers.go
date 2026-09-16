@@ -23,7 +23,7 @@ import (
 // b16UntapAllYouControlMatching, the bounded mill is
 // b31MillAtMost, the first-legal-target read is
 // b16FirstLegalTargetCard and its destroy body
-// b17DestroyFirstLegalTarget, the Mirage fetch body is fetchDual,
+// destroyFirstLegalTarget, the Mirage fetch body is fetchDual,
 // the painless {C} half is painlessColorless, the 4/4 Angel is
 // b12WhiteAngelFlyingToken, the Blood / Clue / Food tokens are in
 // tokens.go, and the lord keyword grant is TribalKeywordGrant.

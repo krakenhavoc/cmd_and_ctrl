@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Strip Mine — Land (EDHREC rank 524):
 //
 //	"{T}: Add {C}.
@@ -27,12 +25,7 @@ func init() {
 			Label:   "{T}, Sacrifice this land: Destroy target land.",
 			Cost:    Plus(TapCost(), SacrificeThis()),
 			Targets: TargetPermanent("target land", Land()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-					return nil
-				}
-				return DestroyTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
-			},
+			Effect:  destroyChosenPermanent,
 		}},
 	})
 }

@@ -48,11 +48,7 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.Kind != game.EventCast || ev.Actor != source.Controller {
-					return false
-				}
-				spell, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && spell.IsCreature()
+				return creatureSpellCastByYou(ev, source, g)
 			}, "Animar, Soul of Elements — put a +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {
 				return AddCounter{
 					Target: item.SourceCardID,
