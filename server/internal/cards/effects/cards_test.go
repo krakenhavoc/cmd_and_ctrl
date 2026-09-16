@@ -37,6 +37,30 @@ func newCatalogGame(t *testing.T) *game.Game {
 			t.Fatalf("KeepHand: %v", err)
 		}
 	}
+	// #692 / CR 103.8c: at four seats the starting player DOES draw on
+	// turn 1 — only a two-player game skips it (CR 103.8a). Walk the
+	// cursor onto that draw step here so every test's baseline hand
+	// size is taken after the turn-based draw. Otherwise the first
+	// AdvanceStep inside a test body silently adds a card to seat 0's
+	// hand and every "hand +1" assertion in this package is off by one
+	// for reasons that have nothing to do with the card under test.
+	//
+	// The draw step is the EARLIEST cursor position where that is true,
+	// which is why the harness stops here rather than walking on to the
+	// main phase: upkeep-step and "beginning of precombat main" triggers
+	// stay observable, and sorcery-speed restrictions are still in force.
+	// The one trap it leaves: g.DrawCard(seat 0) is a deliberate no-op
+	// during the active player's own draw step (see Game.DrawCard), so a
+	// test that wants a manual draw for the active seat must walk the
+	// cursor off this step first.
+	for i := 0; g.Turn.Step != game.StepDraw; i++ {
+		if i >= 8 {
+			t.Fatalf("never reached the turn-1 draw step (stuck at %v)", g.Turn.Step)
+		}
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep toward the turn-1 draw step: %v", err)
+		}
+	}
 	return g
 }
 

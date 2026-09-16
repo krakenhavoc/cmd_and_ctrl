@@ -76,6 +76,13 @@ func newTable(t *testing.T) *game.Game {
 			t.Fatalf("KeepHand: %v", err)
 		}
 	}
+	// #692 / CR 103.8c: at four seats the starting player draws on
+	// turn 1 like everyone else — only a two-player game skips it
+	// (CR 103.8a). Park the cursor on that draw step so the draw, and
+	// anything that triggers off it, happens before a scenario stocks
+	// the board or calls clearHand. Otherwise the first advanceTo in
+	// a test body drops a card into a hand the test thinks it owns.
+	advanceTo(t, g, game.StepDraw)
 	return g
 }
 

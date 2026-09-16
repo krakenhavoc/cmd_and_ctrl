@@ -142,6 +142,12 @@ func TestSmotheringTitheOpponentDrawDeclineMakesTreasure(t *testing.T) {
 	owner := g.Seats[1]
 	titheID := pushPermanentForTest(g, owner.ID, "Smothering Tithe", smotheringTitheOracle, "Enchantment")
 
+	// The manual draw has to happen off the active seat's own draw
+	// step: Game.DrawCard is a deliberate no-op there, because the
+	// turn-based draw has already fired. newCatalogGame parks the
+	// cursor on that step (#692), so walk to the main phase first.
+	advanceToMain(t, g)
+
 	if err := g.DrawCard(drawer.ID); err != nil {
 		t.Fatalf("DrawCard: %v", err)
 	}
@@ -168,6 +174,13 @@ func TestSmotheringTitheOpponentPaysNoTreasure(t *testing.T) {
 	drawer := g.Seats[0]
 	owner := g.Seats[1]
 	pushPermanentForTest(g, owner.ID, "Smothering Tithe", smotheringTitheOracle, "Enchantment")
+	// The manual draw has to happen off the active seat's own draw
+	// step: Game.DrawCard is a deliberate no-op there, because the
+	// turn-based draw has already fired. newCatalogGame parks the
+	// cursor on that step (#692), so walk to the main phase first.
+	// The mana goes in AFTER the walk — the pool empties at the end
+	// of every step (CR 500.4).
+	advanceToMain(t, g)
 	drawer.ManaPool.AddMana(game.ManaToken{Color: "C"}, game.ManaToken{Color: "C"})
 
 	if err := g.DrawCard(drawer.ID); err != nil {
@@ -297,6 +310,11 @@ func TestConsecratedSphinxOpponentDrawYesDrawsTwo(t *testing.T) {
 	owner := g.Seats[1]
 	sphinxID := pushDiesCreatureForTest(g, owner.ID, "Consecrated Sphinx", consecratedSphinxOracle,
 		"Creature — Sphinx", 4, 6)
+	// The manual draw has to happen off the active seat's own draw
+	// step: Game.DrawCard is a deliberate no-op there, because the
+	// turn-based draw has already fired. newCatalogGame parks the
+	// cursor on that step (#692), so walk to the main phase first.
+	advanceToMain(t, g)
 	handBefore := owner.Hand.Size()
 
 	if err := g.DrawCard(drawer.ID); err != nil {
@@ -324,6 +342,11 @@ func TestConsecratedSphinxDeclineDrawsNothing(t *testing.T) {
 	owner := g.Seats[1]
 	pushDiesCreatureForTest(g, owner.ID, "Consecrated Sphinx", consecratedSphinxOracle,
 		"Creature — Sphinx", 4, 6)
+	// The manual draw has to happen off the active seat's own draw
+	// step: Game.DrawCard is a deliberate no-op there, because the
+	// turn-based draw has already fired. newCatalogGame parks the
+	// cursor on that step (#692), so walk to the main phase first.
+	advanceToMain(t, g)
 	handBefore := owner.Hand.Size()
 
 	if err := g.DrawCard(drawer.ID); err != nil {

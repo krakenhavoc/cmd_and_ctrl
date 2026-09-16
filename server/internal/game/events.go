@@ -325,8 +325,10 @@ const (
 	// player next receives priority (CR 504.2) — by which time the
 	// card is already in hand.
 	//
-	// Not emitted on the turn-1 skipped draw step of the starting
-	// player (CR 103.8a): that step still happens and still grants
+	// Not emitted on the turn-1 skipped draw step of a two-player
+	// game's starting player (CR 103.8a; at three or more seats
+	// CR 103.8c has nobody skip, so the draw and this event both
+	// happen): that step still happens and still grants
 	// priority, but this project's cursor returns before reaching
 	// here. Howling Mine on turn 1 of the first player's turn is the
 	// only case that notices, and it is not worth restructuring the
