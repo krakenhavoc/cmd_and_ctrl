@@ -1797,8 +1797,6 @@ batch's skips to it in the batch PR (Discussion #559 item 6).
 - **Cost-replacement effects** (Trinisphere, Thalia, Spellshift, Kambal)
   touch the S15 cost engine rather than the S17 event pipeline. They
   land with S28.
-- **Aura-attachment + control-change** (Mind Control) — requires
-  aura-attaching state the engine doesn't model. Lands with S24.
 - **Cards that add a layer dependency, or that ability removal gets
   wrong: hold them.** The layer engine applies each layer in timestamp
   order and has no CR 613.8 dependency ordering, and it silences a

@@ -2,6 +2,7 @@
 
 **Status:** Proposed · 2026-09-11 · S32 spike ([#280](https://github.com/krakenhavoc/cmd_and_ctrl/issues/280)), implementation S33 · Designs [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76) (S24)
 **Corrected:** 2026-09-16 (the [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159) closeout). This ADR, and the code comments and test messages it seeded, had the two attachment rules swapped. CR 704.5m is the **Aura** rule (to the graveyard, including "not attached to an object or player") and CR 704.5n is the **Equipment and Fortification** rule (unattach, stays on the battlefield). Both the April 4, 2025 and September 19, 2025 editions number them this way. The citations below are corrected in place. No decision and no behaviour changes.
+**Status update:** 2026-09-16 (the [#280](https://github.com/krakenhavoc/cmd_and_ctrl/issues/280) closeout). **Accepted and implemented in Sprint S24** ([#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76)), not S33 as the status line says. The attachment PRs are [#374](https://github.com/krakenhavoc/cmd_and_ctrl/pull/374) (the relation, `AttachedAt`, the SBAs, the wire field), [#379](https://github.com/krakenhavoc/cmd_and_ctrl/pull/379) (equip, Enchant targets, the client render and the first eight cards), [#392](https://github.com/krakenhavoc/cmd_and_ctrl/pull/392) (layer 2 and Mind Control, decision 17), [#511](https://github.com/krakenhavoc/cmd_and_ctrl/pull/511) (decision 18, the Curse badge, eight more cards) and [#555](https://github.com/krakenhavoc/cmd_and_ctrl/pull/555) (23 more). [#353](https://github.com/krakenhavoc/cmd_and_ctrl/pull/353) (shroud and hexproof), [#380](https://github.com/krakenhavoc/cmd_and_ctrl/pull/380) (S25's indestructible) and [#562](https://github.com/krakenhavoc/cmd_and_ctrl/pull/562) (the restriction vocabulary Pacifism uses) are enablers, not attachment PRs. S33 is now [#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515), "Surviving a deploy". The status line above is kept as written; the body's S33 hand-offs carry dated notes.
 
 ## Context
 
@@ -92,6 +93,10 @@ it." It must, and with a value-typed field **it already does** — `out
 `src.Battlefield` wholesale (`clone.go:380`). Zero new lines. Because
 nothing structurally enforces that, S33 must add an explicit
 attachment case to `clone_test.go` to pin it.
+*(Update 2026-09-16: done in S24, not S33, and in `attach_test.go`
+rather than `clone_test.go`: `TestCloneAndRestoreCarryAttachment`
+pins the clone and restore carry, and `snapshot_drift_test.go`
+classifies `AttachedTo` and `AttachedAt` as carried.)*
 
 **Reverse lookup** is a linear scan of `g.Battlefield.Cards`, the same
 shape as `findCardOnBattlefield` (`layers.go:244-254`). The battlefield
@@ -112,6 +117,8 @@ becomes observable only when a 7b *set* meets a 7c *modify*, which no
 in-scope card does. This is one `int64` (free through `cloneCard`'s
 value copy) and one line, and it removes a class of latent wrongness;
 but it is the first thing to cut if S33 runs long.
+*(Update 2026-09-16: not cut. It shipped in S24's #374, and
+`activeStaticAbilitiesLocked` prefers `AttachedAt` when it is set.)*
 
 ### 3. Equipment and Auras share the relation and almost nothing else
 
@@ -651,6 +658,15 @@ attached Equipment would be counted **twice** — once as a utility
 permanent, and again through the P/T it grants, which arrives on
 `CardView.power`. An attached permanent should score zero on its own
 line.
+*(Update 2026-09-16: the attachments shipped in S24, and S33 is now
+#515. This scoring change was not made: `permanentValue` in
+`aiseat/heuristic/score.go` still prices every non-creature, non-land
+permanent at `w.Permanent`, attached or not, and no issue tracks it.
+"Score zero" is also too broad as written: Pacifism and Curse of
+Opulence are worth what their attachment does, and the heuristic does
+not price restrictions, so zeroing them would value them at nothing. The fix belongs to the bot work and needs
+scoping, for example to attachments on their controller's own
+creatures.)*
 
 **Beyond bots.** ~30 cards per #76, the top-100 triage's fourth
 build-order item cleared, the `Enchantment — Aura` type made functional
