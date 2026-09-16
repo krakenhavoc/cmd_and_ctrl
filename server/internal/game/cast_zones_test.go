@@ -280,16 +280,22 @@ func TestExileCastStillNeedsAGrantWithoutADeclaration(t *testing.T) {
 	}
 }
 
-// …and the other half: a card whose text declares exile castable
-// needs no instance grant. This is the shape suspend and foretell
-// will use once their own PRs land.
-func TestExileCastAllowedByDeclaration(t *testing.T) {
-	const oracle = "test-suspended"
+// …and the other half: a card whose own text declares exile
+// castable needs no instance grant. The declaration is card-level,
+// so it opens exile for every copy of the card at any time. That is
+// NOT suspend or foretell: a suspended card may be cast only while
+// its last-time-counter trigger resolves (CR 702.62a), and foretold
+// status belongs to the exiled instance (CR 702.143). Those need a
+// per-instance ExilePlayPermission, the way cascade's free cast
+// works. No catalog card declares ZoneExile today; this test pins
+// the engine path so it doesn't rot unnoticed.
+func TestExileCastAllowedByCardLevelDeclaration(t *testing.T) {
+	const oracle = "test-exile-castable"
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	withCatalogCastableZones(t, castableZonesFor(oracle, ZoneExile))
 	advanceTo(t, g, StepPrecombatMain)
-	c := NewCard("Test Suspended", me.ID)
+	c := NewCard("Test Exile Castable", me.ID)
 	c.TypeLine = "Sorcery"
 	c.ManaCost = "{R}"
 	c.OracleID = oracle

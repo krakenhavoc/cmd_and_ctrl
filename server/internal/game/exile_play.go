@@ -100,7 +100,7 @@ type ExilePlayPermission struct {
 	// It is the opposite end of the window from UntilTurn, and warp
 	// is why it exists: "exile this creature at the beginning of the
 	// next end step, then you may cast it from exile ON A LATER
-	// TURN" (CR 702.183a). Without the floor, a warped creature with
+	// TURN" (CR 702.185a). Without the floor, a warped creature with
 	// flash could be recast during the very end step that exiled it.
 	//
 	// The floor and the ceiling compose rather than exclude each

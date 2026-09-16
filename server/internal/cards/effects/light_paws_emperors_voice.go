@@ -29,7 +29,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Sandbox simplification, declared, weaker than printed: an Aura
 // found this way that cannot legally enchant Light-Paws ("enchant
 // land", "enchant creature you don't control") is attached anyway
-// and then put into the graveyard by the CR 704.5n state-based
+// and then put into the graveyard by the CR 704.5m state-based
 // action, where printed it would stay in the library. The search
 // offers every Aura card, because the enchant clause of a card in
 // the library is not readable from a library predicate.

@@ -1197,6 +1197,40 @@ every looked-at card must appear in exactly one list: scry moves all of
 them, so an answer that omits one is a client bug, not shorthand for
 "leave it".
 
+**A rule about the chosen cards as a set (#624):** when a card-set
+pick says something no count and no per-card list can ("discard two
+cards unless you discard a creature card", "two lands that share a land
+type"), put it on the prompt's `Validate`, never in `Then`:
+
+```go
+g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+    Chooser: c, Question: "Discard two cards unless you discard a creature card",
+    Cards: hand, Min: 1, Max: 2, Zone: game.ZoneHand,
+    Validate: func(picked []game.Card) bool {
+        return len(picked) == 2 || picked[0].IsCreature()
+    },
+    Then: discardThem,
+})
+```
+
+`SearchLibrarySpec.Validate` is the same hook for a search. Both run
+before the prompt is dequeued, so a refused set comes back to the
+player as an error (`ErrChoiceSetRejected` for a choose-cards prompt)
+with the prompt still open. And `internal/legal` asks the same hook
+(`ChooseCardsPickLegalLocked` / `SearchPickLegalLocked`) before it
+offers a bot a set. A rule checked only inside `Then` is the #544
+wedge: the enumerator offers the set, `Then` refuses it after the prompt
+is gone, and the card resolves wrong with nothing left to retry.
+
+`Validate` gets the picks as live `Card` values and no `*Game`, because
+the enumerator calls it under the read lock. Anything else the rule
+needs, like "or your whole hand if it has fewer than two", is a value
+you capture when you queue the prompt, the same way `Cards`, `Min` and
+`Max` are. It is never called for an empty pick, so a `Min: 0` prompt
+always keeps "choose nothing". With `Min` above zero, don't queue a
+prompt that no set can satisfy: nothing could answer it, and the
+enumerator logs it rather than inventing an answer.
+
 **"This permanent enters tapped" (S21):** declare a self-replacement,
 not an entry-hook tap:
 
@@ -1293,7 +1327,7 @@ again every turn forever.
 **Escape (S29)** is flashback's sibling and the place to look when a
 cost needs a component the struct doesn't have yet. `Escape("{3}{B}",
 5)` is "Escape—{3}{B}, Exile five other cards from your graveyard",
-and `EscapeWithCounters("{5}{G}{G}", 4, 3)` adds CR 702.144c's "this
+and `EscapeWithCounters("{5}{G}{G}", 4, 3)` adds CR 702.138c's "this
 creature escapes with three +1/+1 counters on it".
 
 Three things it added to `AlternativeCost`, all of them because escape
@@ -1700,6 +1734,30 @@ batch's skips to it in the batch PR (Discussion #559 item 6).
   land with S28.
 - **Aura-attachment + control-change** (Mind Control) — requires
   aura-attaching state the engine doesn't model. Lands with S24.
+- **Cards that add a layer dependency, or that ability removal gets
+  wrong: hold them.** The layer engine applies each layer in timestamp
+  order and has no CR 613.8 dependency ordering, and it silences a
+  source that lost its abilities in every layer, which breaks
+  CR 613.6. The catalog already has pairs that come out wrong in one
+  entry order (Urborg + Song of the Dryads, Maskwood Nexus + a crewed
+  Vehicle; [ADR 0043](docs/decisions/0043-copy-effects.md) §5's
+  amendment lists them). Don't add more until the fix lands:
+  - **Magus of the Moon** (#394): wait for
+    [#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669)
+    (which needs [#675](https://github.com/krakenhavoc/cmd_and_ctrl/issues/675)).
+    Under Kenrith's Transformation or Darksteel Mutation it would stop
+    making Mountains, and its ruling says it keeps making them. Magus +
+    Urborg already comes out right.
+  - **Arcane Adaptation** (#401), **Leyline of Transformation** (#396),
+    **Encroaching Mycosynth** (#401), **Yavimaya, Cradle of Growth**
+    (#294) and **Prismatic Omen** (#396): wait for
+    [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668).
+    Each is a type-add that reads a type other layer-4 effects write
+    (creatures, nonland permanents, lands), so each adds a new pair.
+
+  The same shape applies to any other card: a layer-4 type-add whose
+  "applies to" reads a card type or subtype, or a static that should
+  keep applying after its source loses its abilities.
 - ~~**Cards that need a pick-from-zone UI**~~ — no longer a blocker.
   S20 shipped structured targeting and S18.5 the zone browser, so
   "target card in your graveyard" is a real target clause:

@@ -136,7 +136,7 @@ type CostQuery struct {
 	Source Card
 
 	// FromZone is where the spell is being cast from — hand, the
-	// command zone, exile.
+	// command zone, the graveyard (flashback, escape), exile.
 	FromZone ZoneKind
 
 	// XValue is the value announced for {X} (CR 601.2b), needed by
