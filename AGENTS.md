@@ -281,6 +281,7 @@ unused — they can be removed in a later cleanup PR.)
   - `CMDCTRL_CLIENT_BASE_URL` — default `https://cmd.labxp.io`. Used to compose the invite URL posted back to Discord.
 - Unset `CMDCTRL_DISCORD_BOT_TOKEN` disables the bot (binary exits 0 after logging `bot disabled`). Convenient for dev stacks without a registered Discord app.
 - Bot secrets live in a dedicated env file, `/etc/cmd_and_ctrl/bot.env` (`root:cmdctrl-bot`, mode `0640`), not the server's env file — ADR 0004 §6 explains why. The CD "Sync bot env" step writes it on production only; never hand-edit it. Host setup and verification: [deploy/README.md](deploy/README.md#discord-bot-production-only).
+- Each allowed guild authorizes the app with the `bot applications.commands` scopes and `permissions=0` (ADR 0004, revised 2026-09-16): the bot user must be a guild member to open DMs for #613. Install URL: [deploy/README.md](deploy/README.md#discord-scopes).
 
 ### Client (TypeScript + Svelte 5 + Vite, `client/`)
 - `cd client && npm install` — first-time setup

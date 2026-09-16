@@ -1,6 +1,7 @@
 # ADR 0004 — Discord identity and slash-command bot (S12.5)
 
 **Status:** Accepted · 2026-04-22 · Sprint S12.5
+**Revised:** 2026-09-16 · Operator runbook, First deploy step 2: guilds authorize `bot applications.commands`, not `applications.commands` alone (owner decision, for #613's DM invites) · Branch `feat/bot-provisioning-cd`
 
 ## Context
 
@@ -143,8 +144,8 @@ should be considered on the next incident rotation.
 
 > **Production provisioning has moved to CD.** "First deploy" and
 > "Rotating tokens" below describe the original hand-installed setup
-> and are out of date, except step 2's guild scope, which still
-> stands. CD now installs the unit and writes
+> and are out of date, except step 2's guild scope, which stands as
+> revised on 2026-09-16. CD now installs the unit and writes
 > `/etc/cmd_and_ctrl/bot.env` (`root:cmdctrl-bot 0640`) from Actions
 > secrets and variables, so do not hand-edit it, and rotate the bot
 > token by updating the Actions secret. The current host steps are in
@@ -173,10 +174,24 @@ stack that doesn't have a registered Discord app.
 
 1. Create the Discord application in the Developer Portal; enable
    the Bot user; copy the bot token.
-2. Invite the bot to each approved guild with the
-   `applications.commands` scope (and nothing else — the bot
-   does not need message-content, member-list, or voice
-   permissions).
+2. Authorize the app in each approved guild with the
+   `bot applications.commands` scopes and no permissions:
+   `https://discord.com/oauth2/authorize?client_id=<APP_ID>&scope=bot+applications.commands&permissions=0`.
+   The bot does not need message-content, member-list, voice or
+   any other permission.
+
+   *Revised 2026-09-16 (owner decision, #249).* This step
+   originally said `applications.commands` and nothing else. That
+   is enough for the slash commands, but it never makes the bot
+   user a guild member, and a bot can open a DM only with a user
+   who shares a guild with it. ADR 0051 Decision 5's DM invites
+   (#613) need that, so the `bot` scope is added. DMs still need no
+   guild permission bits, so `permissions=0` stays: the bot token,
+   the shared guild, and a recipient whose privacy settings allow
+   DMs from that server are enough. Every guild authorized under
+   the old scope must be re-authorized once with the URL above (an
+   owner action in Discord, not a host step). Details:
+   [deploy/README.md](../../deploy/README.md#discord-scopes).
 3. Place `/etc/cmd_and_ctrl/bot.env` on the VPS:
    ```
    CMDCTRL_DISCORD_BOT_TOKEN=...

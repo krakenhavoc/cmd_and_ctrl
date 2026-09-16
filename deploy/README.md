@@ -105,6 +105,11 @@ restart step keys on it.
    ```
 
    From then on every `main` deploy restarts it.
+5. Authorize the app in each allowed guild with the install URL under
+   [Discord scopes](#discord-scopes). This is per guild, not per host, so
+   a rebuild does not need it again. A guild that was authorized before
+   2026-09-16 with `applications.commands` alone needs it **once more**,
+   with the new URL.
 
 ### Verify
 
@@ -121,20 +126,40 @@ sudo stat -c '%U:%G %a' /etc/cmd_and_ctrl/bot.env # root:cmdctrl-bot 640
 `bot config invalid` names the missing key; `bot disabled` means the
 token is empty. Then in an allowed guild, `/cc-games` should answer with
 an ephemeral list. A reply saying the bot is not authorized against the
-game server means the two admin tokens differ.
+game server means the two admin tokens differ. The bot user should also
+appear in each allowed guild's member list; if it does not, that guild
+was authorized without the `bot` scope.
 
 ### Discord scopes
 
-ADR 0004 (First deploy, step 2) authorizes the app in each allowed
-guild with the `applications.commands` scope and nothing else:
-`https://discord.com/oauth2/authorize?client_id=<APP_ID>&scope=applications.commands`.
-That is enough for `/cc-invite` and `/cc-games`, and it is the recorded
-decision, so follow it.
+**Decided 2026-09-16:** each allowed guild authorizes the app with
+**`bot applications.commands`**, and no guild permissions
+(ADR 0004, First deploy step 2, revised the same day):
 
-**Open question for the owner, not settled here:** direct-message
-invites (#613, ADR 0051 Decision 5) send DMs as the bot, which only
-works for users who share a guild with the bot user, and the bot user
-only joins a guild when the app is authorized with the `bot` scope too.
-If #613 ships as designed, each guild will need re-authorizing with
-`scope=bot+applications.commands`, and ADR 0004 needs amending to say
-so.
+```
+https://discord.com/oauth2/authorize?client_id=<APP_ID>&scope=bot+applications.commands&permissions=0
+```
+
+`<APP_ID>` is the `CMDCTRL_DISCORD_APP_ID` value. Authorizing needs
+Manage Server in the guild. It is done once per guild in Discord, not on
+the host, so a rebuild of production does not repeat it.
+
+- `applications.commands` is what `/cc-invite` and `/cc-games` need.
+  Their replies are interaction responses, which need no channel
+  permissions.
+- `bot` makes the bot user a member of the guild. Direct-message invites
+  (#613, ADR 0051 Decision 5) need that: Discord lets a bot open a DM
+  only with a user who shares a guild with it.
+- `permissions=0`, because DMs need no guild permission bits. Sending
+  one takes only the bot token, the shared guild, and a recipient whose
+  privacy settings allow DMs from members of that server and who has not
+  blocked the bot. It needs no privileged gateway intent either. The
+  server sends DMs over REST, and the gateway bot keeps only the
+  unprivileged `Guilds` intent.
+
+**Re-authorize every already-authorized guild once (owner action).** A
+guild authorized under the old `scope=applications.commands` URL has the
+commands but not the bot user. Open the URL above, pick that guild, and
+authorize. Its slash commands keep working throughout. When the bot
+user joins, the running bot sees the guild and re-registers the same two
+commands, which is harmless.

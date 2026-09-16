@@ -232,6 +232,12 @@ application both answer every slash command. CD enforces this
 and restart) — do not work around it by installing the bot unit on the
 preview by hand.
 
+Each allowed guild authorizes the app with the `bot applications.commands`
+scopes and no permissions (decided 2026-09-16, ADR 0004): the bot user has
+to be a guild member to send DM invites (#613). A guild authorized before
+then needs re-authorizing once. The install URL is in
+[deploy/README.md](../deploy/README.md#discord-scopes).
+
 ## Operating notes
 
 **Which environment am I looking at?** The client shows a fixed `DEV`
