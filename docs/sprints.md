@@ -57,6 +57,7 @@ planned just-in-time from the S12 pain-point triage.
 | S14      | Card-effect catalog foundation                                       | 7     | [#64](https://github.com/krakenhavoc/cmd_and_ctrl/issues/64)   | 2026-07-12 | **done**    |
 | S15      | Mana pool, cost model, and auto-tapper                               | 7     | [#65](https://github.com/krakenhavoc/cmd_and_ctrl/issues/65)   | 2026-08-09 | **done**    |
 | S16      | Continuous effects + layer system (CR 613)                           | 7     | [#66](https://github.com/krakenhavoc/cmd_and_ctrl/issues/66)   | 2026-09-06 | **done**    |
+| S16.5    | Layer follow-ups: copy effects (CR 613.8 dependency → #668)          | 7     | [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159) | —          | **done**    |
 | S17      | Replacement effects engine (CR 614)                                  | 7     | [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67)   | 2026-10-04 | **done**    |
 | S18      | Combat keywords                                                      | 7     | [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68)   | 2026-11-01 | **done**    |
 | S18.5    | Zone browser + library search (mini)                                 | 7     | [#179](https://github.com/krakenhavoc/cmd_and_ctrl/issues/179) | 2026-11-05 | **done**    |
@@ -1399,7 +1400,7 @@ The hard sprint of the rules-engine arc — continuous effects are the second-mo
 
 ### Out of scope (explicit handoffs)
 
-- **Dependency detection (CR 613.8)** — Opalescence + Humility pathological case. S16.5 follow-up if a real card surfaces. **Still deferred after S16.5** — the trigger has not fired and no pair of statics in the catalog can produce an observable dependency; see [ADR 0043](decisions/0043-copy-effects.md) §5 for the reasoning and the cost.
+- **Dependency detection (CR 613.8)** — Opalescence + Humility pathological case. S16.5 follow-up if a real card surfaces. **Still deferred after S16.5** — the trigger has not fired and no pair of statics in the catalog can produce an observable dependency; see [ADR 0043](decisions/0043-copy-effects.md) §5 for the reasoning and the cost. **Corrected 2026-09-16:** the "no pair" claim is false. Layer-4 pairs have reproduced on develop since 2026-09-13 (Urborg, Tomb of Yawgmoth + Song of the Dryads, Maskwood Nexus + a crewed Vehicle, and three more; listed in ADR 0043 §5's amendment). Dependency ordering is tracked in [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668).
 - **Layer 1 copy effects** — Clone, Phyrexian Metamorph, Spark Double. Defer to S16.5. **Landed in S16.5** ([#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159), closes [#335](https://github.com/krakenhavoc/cmd_and_ctrl/issues/335)) — as a copiable-value baseline rewrite rather than a `Layer1Copy` `ContinuousEffect`; see [ADR 0043](decisions/0043-copy-effects.md).
 - **Layer 3 text-changing effects** — Mind Bend, Glamerdye. Engine ships layer 3 stub; no execution path.
 - **Layer 5 color-changing effects** — Painter's Servant. Engine ships the layer 5 stub with no card.
@@ -1480,9 +1481,21 @@ Triggered by a Clone-class card reaching the catalog — and by [#335](https://g
 
 **Declared gaps:** duration-scoped copy effects (Mirage Mirror, Cytoshape) — the `Layer1Copy` bucket survives for them; an "except" clause that GRANTS an ability (Sakashima's own return-to-hand ability); a declined Clone surviving as a 0/0, which is the engine's pre-existing printed-0-toughness SBA convention, not a copy bug.
 
-### Dependency detection (CR 613.8) — still deferred
+### Dependency detection (CR 613.8) — not built; moved to [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668)
 
-The trigger #159 named for this half — a playtester hitting an Opalescence + Humility-class pathology — has not fired, and no pair of statics in the catalog can produce one: dependency is only observable when one static changes whether another static APPLIES, and every static in the catalog is an anthem, a keyword grant, a type-add or a CDA, all commutative under timestamp order. The cost is a required dependency declaration on every `StaticAbility` present and future, plus a topological sort with cycle detection on the hottest path in the engine. Reasoning in full at [ADR 0043](decisions/0043-copy-effects.md) §5. The trigger stays armed.
+*As written when #414 merged:* the trigger #159 named for this half — a playtester hitting an Opalescence + Humility-class pathology — has not fired, and no pair of statics in the catalog can produce one: dependency is only observable when one static changes whether another static APPLIES, and every static in the catalog is an anthem, a keyword grant, a type-add or a CDA, all commutative under timestamp order. The cost is a required dependency declaration on every `StaticAbility` present and future, plus a topological sort with cycle detection on the hottest path in the engine. Reasoning in full at [ADR 0043](decisions/0043-copy-effects.md) §5. The trigger stays armed.
+
+**Corrected 2026-09-16: that paragraph's premise is false.** Type-adds don't commute with type-sets when the add's "applies to" reads the type the set writes. The catalog has had such pairs since a few hours after #414 merged, when Maskwood Nexus (#404) and Arixmethes (#480) arrived, and Song of the Dryads (#563) followed on 2026-09-14. Reproduced on develop `7c1ae9b`, all in layer 4, each coming out wrong in one entry order: Urborg, Tomb of Yawgmoth + Song of the Dryads; Urborg + Arixmethes, Slumbering Isle; Maskwood Nexus + any Vehicle crewed after it entered (the usual order, since crew is stamped when it resolves); Maskwood Nexus + The Warring Triad; Maskwood Nexus + a slumbering Arixmethes. The trigger fired through catalog pairs, not a table report. The consequences are wrong mana and wrong tribal pumps, not Opalescence + Humility loops. The engine also already resolves one CR 613.8 case, ability removal, by iterating to a fixed point ([ADR 0046](decisions/0046-layer-6-authoritative.md) §4), and part of that is itself wrong. The details are in the dated notes on ADR 0043 §5, ADR 0012 §4 and ADR 0046 §4-5.
+
+**Status: done.** The copy-effects half shipped (#414). The dependency half did **not** ship, and it no longer belongs to this rolling sprint: it needs an ADR and a change to the hottest path in the engine, not an on-demand follow-up. [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159) closes with this reconciliation, and the tail has its own issues. Until they land, AGENTS.md §7 "When NOT to add a catalog entry" holds back the cards that would add more pairs.
+
+**What is left, and where it went** (decided 2026-09-16):
+
+- [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668): ADR, then CR 613.8 dependency ordering in layer 4. Detection is judged on each effect's instruction rather than by diffing outputs, with CR 613.8c re-checks. Blocks Arcane Adaptation, Leyline of Transformation, Encroaching Mycosynth, Yavimaya, Cradle of Growth and Prismatic Omen.
+- [#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669): ability removal drops a silenced source from every layer (CR 613.6), and Song of the Dryads wipes abilities that other effects granted (CR 305.7). Comes before #668, and blocks Magus of the Moon.
+- [#670](https://github.com/krakenhavoc/cmd_and_ctrl/issues/670): "every creature type" is stored as a keyword, so layer-6 removal wipes a layer-4 grant (Maskwood Nexus). A storage bug that belongs to the tribal area, not a dependency.
+- [#675](https://github.com/krakenhavoc/cmd_and_ctrl/issues/675), found at closeout: CR 704.5p isn't implemented, so an Aura or Equipment that Song of the Dryads turned into a Forest stays attached and works again once the Song leaves. Today only the gather-time silence hides it, so it has to land before #669.
+- Open PR [#644](https://github.com/krakenhavoc/cmd_and_ctrl/pull/644) declares the five pairs and the CR 305.7 gap as caveats on Urborg, Song of the Dryads, Arixmethes, Maskwood Nexus and The Warring Triad, and pins each as a skipped test for #668 and #669 to un-skip.
 
 ---
 
@@ -1598,7 +1611,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 - **Aura / Equipment attachment infrastructure** (Mind Control) → **S24** [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76). S16 doc bundled this into S17; re-homed for aura + combat-state coupling.
 - **Cost-replacement effects** (Trinisphere, Thalia, Spellshift, Kambal) → **S28** [#93](https://github.com/krakenhavoc/cmd_and_ctrl/issues/93). S17 hooks touch the event-path; cost replacement touches the S15 cost engine — separate surface.
 - **Damage prevention shields with charges** (CR 615) → **S30** [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95). Fog in S17 is atomic cancel; stateful shields land in S30.
-- **Dependency detection** (CR 613.8) + **Layer 1 copy effects** → **S16.5** [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159).
+- **Dependency detection** (CR 613.8) + **Layer 1 copy effects** → **S16.5** [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159). *(2026-09-16: copy effects shipped in #414. Dependency ordering moved to [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668) at the S16.5 closeout.)*
 - **Library of Leng** (including strict voluntariness CR 701.8a/c) → later sub-PR. Tracked at [#160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/160).
 - **Hangarback Walker** — needs X-cost stack plumbing; future on-demand PR.
 - **Champion of Lambholt** — counter half is a trigger (S19), block-restriction is S18. Not a replacement.

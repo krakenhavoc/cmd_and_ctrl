@@ -1734,6 +1734,30 @@ batch's skips to it in the batch PR (Discussion #559 item 6).
   land with S28.
 - **Aura-attachment + control-change** (Mind Control) — requires
   aura-attaching state the engine doesn't model. Lands with S24.
+- **Cards that add a layer dependency, or that ability removal gets
+  wrong: hold them.** The layer engine applies each layer in timestamp
+  order and has no CR 613.8 dependency ordering, and it silences a
+  source that lost its abilities in every layer, which breaks
+  CR 613.6. The catalog already has pairs that come out wrong in one
+  entry order (Urborg + Song of the Dryads, Maskwood Nexus + a crewed
+  Vehicle; [ADR 0043](docs/decisions/0043-copy-effects.md) §5's
+  amendment lists them). Don't add more until the fix lands:
+  - **Magus of the Moon** (#394): wait for
+    [#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669)
+    (which needs [#675](https://github.com/krakenhavoc/cmd_and_ctrl/issues/675)).
+    Under Kenrith's Transformation or Darksteel Mutation it would stop
+    making Mountains, and its ruling says it keeps making them. Magus +
+    Urborg already comes out right.
+  - **Arcane Adaptation** (#401), **Leyline of Transformation** (#396),
+    **Encroaching Mycosynth** (#401), **Yavimaya, Cradle of Growth**
+    (#294) and **Prismatic Omen** (#396): wait for
+    [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668).
+    Each is a type-add that reads a type other layer-4 effects write
+    (creatures, nonland permanents, lands), so each adds a new pair.
+
+  The same shape applies to any other card: a layer-4 type-add whose
+  "applies to" reads a card type or subtype, or a static that should
+  keep applying after its source loses its abilities.
 - ~~**Cards that need a pick-from-zone UI**~~ — no longer a blocker.
   S20 shipped structured targeting and S18.5 the zone browser, so
   "target card in your graveyard" is a real target clause:
