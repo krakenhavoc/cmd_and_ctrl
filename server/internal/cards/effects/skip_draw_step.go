@@ -59,7 +59,13 @@ func SkipYourDrawStep() game.ReplacementEffect {
 		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
 			return src.Controller
 		},
-		Label: "Skip your draw step",
+		// #710: Replace does nothing but cancel, so two of these
+		// under one controller (Necropotence + Yawgmoth's Bargain)
+		// have no CR 616 ordering to ask about — one skipped draw
+		// step either way. Without the flag the engine prompts, and
+		// before #710 it then ran the draw step anyway.
+		PureCancel: true,
+		Label:      "Skip your draw step",
 	}
 }
 

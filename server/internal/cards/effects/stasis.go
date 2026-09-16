@@ -24,9 +24,9 @@ import (
 // The replacement AppliesTo fires on any RepEventStepTransition
 // where the step being entered is StepUntap, regardless of seat —
 // the card's text is "players skip their untap steps", not just
-// the controller's. The apply-loop's short-circuit in
-// runStepEntryHooksLocked (sub-PR 2) treats any cancel as "skip
-// this step" so the turn cursor advances to Upkeep.
+// the controller's. The engine's step-entry path treats any cancel
+// as "skip this step" (CR 500.11) and advances the turn cursor to
+// Upkeep — see finishStepEntryLocked.
 func init() {
 	Register(Spec{
 		OracleID:     "a8cf1379-0195-4e11-b994-481ef1284245",
@@ -45,7 +45,11 @@ func init() {
 				Controller: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) uuid.UUID {
 					return src.Controller
 				},
-				Label: "Stasis: skip untap step",
+				// #710: a pure cancel, so a second untap-skip effect
+				// on the table does not raise a CR 616 ordering
+				// prompt — every order skips the same untap step.
+				PureCancel: true,
+				Label:      "Stasis: skip untap step",
 			},
 		},
 		Triggered: []game.TriggeredAbility{
