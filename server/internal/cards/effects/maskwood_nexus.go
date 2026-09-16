@@ -41,10 +41,42 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // pay for a Bear in your hand even with a Nexus out. Closing it needs
 // the layer engine to compute a characteristic for non-battlefield
 // cards, which is a real engine change and not a card change.
+//
+// DECLARED GAPS, CR 613.8. "Creatures you control" reads the Creature
+// type, which other layer-4 effects add and remove, so the Nexus
+// depends on them and should apply after them whatever the
+// timestamps. The layer engine orders layer 4 by timestamp only, so:
+//
+//   - a permanent that becomes a creature AFTER the Nexus entered is
+//     not every creature type. Crew is the common case: the crew
+//     effect is stamped when the ability resolves, so a Vehicle
+//     crewed with a Nexus already out misses every lord. Every
+//     turn-scoped "becomes a creature" effect has the same shape.
+//   - a permanent that switches its own creature type off and entered
+//     AFTER the Nexus (The Warring Triad under eight graveyard cards,
+//     a slumbering Arixmethes) keeps the every-type marker, because
+//     the marker rides the ability list the self type-strip does not
+//     clear.
+//
+// Those pairs are pinned, skipped, in layer_dependency_pairs_test.go.
+//
+// DECLARED GAP, not ordering: the every-type marker is stored as the
+// changeling keyword (AllCreatureTypesGrant), so layer-6 ability
+// removal wipes it. A creature you control that has lost all its
+// abilities (Kenrith's Transformation attached before the Nexus
+// entered) is not every creature type, although the Nexus's effect
+// comes from the Nexus and the rules keep it.
 func init() {
 	Register(Spec{
-		OracleID: "9b2cdbed-c733-409b-b0e4-2c8960c25111",
-		Name:     "Maskwood Nexus",
+		OracleID:     "9b2cdbed-c733-409b-b0e4-2c8960c25111",
+		Name:         "Maskwood Nexus",
+		Completeness: CompletenessCaveats,
+		Caveats: []string{
+			"Creature spells you cast and creature cards you own outside the battlefield aren't every creature type — only creatures you control on the battlefield are.",
+			"A permanent that becomes a creature after Maskwood Nexus is on the battlefield, such as a Vehicle you crew, isn't every creature type.",
+			"The Warring Triad or a sleeping Arixmethes, Slumbering Isle that entered after Maskwood Nexus still counts as every creature type while it isn't a creature.",
+			"A creature you control that has lost all its abilities, such as one enchanted by Kenrith's Transformation, isn't every creature type.",
+		},
 		Static: []game.StaticAbility{
 			AllCreatureTypesGrant(TribeFilter{YoursOnly: true}),
 		},

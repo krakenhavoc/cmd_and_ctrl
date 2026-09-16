@@ -50,11 +50,24 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // a hypothetical Spec that deliberately declared a land's ability
 // as something other than its land types would shadow the type
 // half. No card in the catalog is in that position today.
+//
+// DECLARED GAP, CR 613.8: "each land" reads a type that other layer-4
+// effects write, so Urborg depends on any effect that makes something
+// a land and should apply after it whatever the timestamps. The layer
+// engine orders layer 4 by timestamp only, so a permanent made a land
+// by an effect NEWER than Urborg is not a Swamp. The catalog pairs
+// today are Song of the Dryads attached after Urborg entered and
+// Arixmethes, Slumbering Isle entering after Urborg; both are pinned,
+// skipped, in layer_dependency_pairs_test.go. The caveat goes when
+// dependency ordering lands.
 func init() {
 	Register(Spec{
 		OracleID:     "db6174d7-211d-4817-b8e4-8384594c83f9",
 		Name:         "Urborg, Tomb of Yawgmoth",
-		Completeness: CompletenessFull,
+		Completeness: CompletenessCaveats,
+		Caveats: []string{
+			"A permanent that becomes a land after Urborg is already on the battlefield — such as one enchanted by a later Song of the Dryads, or an Arixmethes, Slumbering Isle that entered after Urborg — isn't a Swamp and doesn't tap for {B}.",
+		},
 		Static: []game.StaticAbility{
 			{
 				Layer: game.Layer4Type,

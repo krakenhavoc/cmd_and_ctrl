@@ -45,13 +45,34 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // not abilities. The loyalty state-based action does not kill it
 // either, because it is not a planeswalker while the Song is on it.
 //
-// No simplification.
+// DECLARED GAPS, both weaker than printed:
+//
+//   - CR 305.7 removes only the abilities from the permanent's own
+//     rules text; Song's 2014-11-07 ruling says the permanent "will
+//     still have any abilities it gained from other effects."
+//     LoseAllAbilities is a full layer-6 wipe, so an ability another
+//     effect granted BEFORE the Song attached (Boros Charm's
+//     indestructible) is removed too, and a wrath then destroys the
+//     Forest. A grant newer than the Song survives, by timestamp.
+//   - CR 613.8: Urborg, Tomb of Yawgmoth's "each land" depends on the
+//     land type this writes. The layer engine orders layer 4 by
+//     timestamp only, so with an Urborg that entered BEFORE the Song
+//     attached, the enchanted permanent is a Forest and not also a
+//     Swamp.
+//
+// Both are pinned, skipped, in layer_dependency_pairs_test.go and go
+// with the CR 613.8 dependency work, which also moves the CR 305.7
+// removal into layer 4.
 func init() {
 	Register(Spec{
 		OracleID:     "7c3944fa-7c86-4979-85a9-86196aa94594",
 		Name:         "Song of the Dryads",
-		Completeness: CompletenessFull,
-		Targets:      EnchantPermanent(),
+		Completeness: CompletenessCaveats,
+		Caveats: []string{
+			"The enchanted permanent also loses abilities other effects gave it before Song of the Dryads was attached (for example indestructible from Boros Charm); the printed card only removes its own abilities.",
+			"If Urborg, Tomb of Yawgmoth was on the battlefield before Song of the Dryads was attached, the enchanted permanent isn't also a Swamp and doesn't tap for {B}.",
+		},
+		Targets: EnchantPermanent(),
 		Static: []game.StaticAbility{
 			SetAttachedTypes([]string{"Land"}, []string{"Forest"}),
 			SetAttachedColors(),
