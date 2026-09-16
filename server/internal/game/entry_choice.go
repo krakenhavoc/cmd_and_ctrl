@@ -313,7 +313,7 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) error {
 		break
 	}
 	g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
-	// CR 706.2 — see the twin call in resolveTopOfStackLocked. The
+	// CR 707.2 — see the twin call in resolveTopOfStackLocked. The
 	// copy lands before the counters and before any event, so an ETB
 	// trigger never sees the permanent as its own printed self.
 	if copied, ok := g.applyEntersAsCopyLocked(ev, moved.InstanceID); ok {

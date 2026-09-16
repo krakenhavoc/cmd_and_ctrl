@@ -74,9 +74,14 @@ func init() {
 				// "Each land" — every land on the battlefield, not
 				// just the controller's. Reading IsLand through the
 				// effective view is deliberate: a permanent that
-				// some other Layer-4 effect has made a land is one,
-				// and CR 613's within-layer timestamp order decides
-				// which of the two saw the other.
+				// some other Layer-4 effect has made a land is one.
+				// Timestamp order should NOT decide which of the two
+				// saw the other: under CR 613.8a Urborg depends on
+				// any effect that makes something a land, so it
+				// applies after that effect whichever entered first.
+				// The engine orders layer 4 by timestamp only, so a
+				// Song of the Dryads or an Arixmethes newer than
+				// Urborg leaves its permanent without Swamp (#668).
 				AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 					return target.IsLand()
 				},

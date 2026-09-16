@@ -71,6 +71,7 @@ const LOG_TONE: Record<LogKind, string> = {
   token: "tone-zone",
   sacrifice: "tone-bad",
   eliminated: "tone-bad",
+  reveal: "tone-cast",
 };
 
 export function logTone(kind: LogKind): string {

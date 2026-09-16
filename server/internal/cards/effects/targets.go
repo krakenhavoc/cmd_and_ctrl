@@ -496,7 +496,7 @@ func CardInYourHand(label string, preds ...CardPredicate) *game.TargetSpec {
 }
 
 // CardsInYourGraveyard — "N other cards from your graveyard"
-// (escape's exile cost, CR 702.144a). The multi-slot sibling of
+// (escape's exile cost, CR 702.138a). The multi-slot sibling of
 // CardInYourHand, and the first cost component in the catalog that
 // names more than one card.
 //

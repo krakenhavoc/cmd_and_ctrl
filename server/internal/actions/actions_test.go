@@ -885,6 +885,291 @@ func TestCardActionUnknownInstancePassesThrough(t *testing.T) {
 	}
 }
 
+// cardActionFixture is what TestCardActionDispatchErrorPaths hands a
+// row's params / other builders: the two seats and a p0 creature on
+// the battlefield (the attacker a declare_blocker row blocks).
+type cardActionFixture struct {
+	p0, p1     *game.Player
+	p0Creature string
+}
+
+// TestCardActionDispatchErrorPaths walks the Dispatch-layer failure
+// exits of every card-instance action gated by requireCardController:
+// move_card, tap, untap, add_counter, declare_attacker,
+// declare_attackers, declare_blocker, sacrifice_permanent, mark_damage
+// and set_battlefield_position (#36). The wrong-controller exit is
+// TestCardActionRejectsWrongController's job; this covers the other
+// three, one subtest per action per failure:
+//
+//   - missing params: nil or zero-length Params → ErrMissingParams,
+//     before any ID is parsed.
+//   - malformed ID: each UUID field the arm parses, in parse order,
+//     surfaces the uuid.Parse error wrapped under "<action> <field>: ".
+//   - wrong zone: the named card sits in its owner's library, and the
+//     caller is either that owner (who also controls it) or an admin
+//     (uuid.Nil), so the controller gate passes and the game-layer
+//     mutation decides. wrongZone is what it returns; nil means a
+//     non-battlefield card is legal for that action, and the row's
+//     wrongZoneNote says why.
+func TestCardActionDispatchErrorPaths(t *testing.T) {
+	const badID = "not-a-uuid"
+	// uuid.Parse's length error is a comparable value type, so the one
+	// computed here is errors.Is-equal to the one wrapped by Dispatch.
+	_, wantParseErr := uuid.Parse(badID)
+	if wantParseErr == nil {
+		t.Fatalf("uuid.Parse(%q) succeeded; the malformed-ID rows need a failing input", badID)
+	}
+
+	cases := []struct {
+		name string
+		ty   Type
+		// params builds a well-formed payload naming `card` as the
+		// card instance and `other` as the action's second UUID, if
+		// it has one.
+		params func(card, other string) json.RawMessage
+		// cardField / otherField are the wrap prefixes for a malformed
+		// card ID and a malformed second ID. otherField is empty for
+		// an action with a single UUID.
+		cardField  string
+		otherField string
+		// other is the valid second UUID for the wrong-zone row.
+		other func(f cardActionFixture) string
+		// cardSeat owns the library card the wrong-zone row names.
+		cardSeat int
+		// step is where the wrong-zone row runs; "" leaves newGame's.
+		step          game.Step
+		wrongZone     error
+		wrongZoneNote string
+	}{
+		{
+			name: "move_card",
+			ty:   TypeMoveCard,
+			params: func(card, _ string) json.RawMessage {
+				return mustJSON(map[string]any{
+					"src":         map[string]string{"kind": "battlefield"},
+					"dst":         map[string]string{"kind": "exile"},
+					"instance_id": card,
+				})
+			},
+			cardField: "move_card instance_id",
+			// move_card is the sandbox move and takes any src zone, so
+			// a library card is not wrong in itself: library -> exile
+			// is legal. What IS wrong is a src that doesn't hold the
+			// card, which Zone.Remove reports as ErrCardNotFound.
+			wrongZone:     game.ErrCardNotFound,
+			wrongZoneNote: "src names the battlefield; a library src would be legal",
+		},
+		{
+			name: "tap",
+			ty:   TypeTap,
+			params: func(card, _ string) json.RawMessage {
+				return mustJSON(map[string]string{"instance_id": card})
+			},
+			cardField: "tap instance_id",
+			wrongZone: game.ErrCardNotFound,
+		},
+		{
+			name: "untap",
+			ty:   TypeUntap,
+			params: func(card, _ string) json.RawMessage {
+				return mustJSON(map[string]string{"instance_id": card})
+			},
+			// tap and untap share one Dispatch arm, and its wrap prefix
+			// says "tap" for both.
+			cardField: "tap instance_id",
+			wrongZone: game.ErrCardNotFound,
+		},
+		{
+			name: "add_counter",
+			ty:   TypeAddCounter,
+			params: func(card, _ string) json.RawMessage {
+				return mustJSON(map[string]any{"instance_id": card, "name": "+1/+1", "delta": 1})
+			},
+			cardField:     "add_counter instance_id",
+			wrongZone:     nil,
+			wrongZoneNote: "AddCounter finds the card in any zone (findCardZoneLocked), so counters off the battlefield are legal",
+		},
+		{
+			name: "declare_attacker",
+			ty:   TypeDeclareAttacker,
+			params: func(card, other string) json.RawMessage {
+				return mustJSON(map[string]string{"attacker": card, "target": other})
+			},
+			cardField:  "declare_attacker attacker",
+			otherField: "declare_attacker target",
+			other:      func(f cardActionFixture) string { return f.p1.ID.String() },
+			step:       game.StepDeclareAttackers,
+			wrongZone:  game.ErrCardNotFound,
+		},
+		{
+			name: "declare_attackers",
+			ty:   TypeDeclareAttackers,
+			params: func(card, other string) json.RawMessage {
+				return mustJSON(map[string]any{
+					"attackers": []attackerEntry{{Attacker: card, Target: other}},
+				})
+			},
+			cardField:  "declare_attackers attacker",
+			otherField: "declare_attackers target",
+			other:      func(f cardActionFixture) string { return f.p1.ID.String() },
+			step:       game.StepDeclareAttackers,
+			// The bulk verb skips an entry it can't find instead of
+			// erroring, so a one-entry batch naming a library card
+			// comes back as "nothing could attack".
+			wrongZone:     game.ErrNoLegalAttackers,
+			wrongZoneNote: "bulk declaration skips a card not on the battlefield; the empty batch is ErrNoLegalAttackers",
+		},
+		{
+			name: "declare_blocker",
+			ty:   TypeDeclareBlocker,
+			params: func(card, other string) json.RawMessage {
+				return mustJSON(map[string]string{"blocker": card, "attacker": other})
+			},
+			cardField:  "declare_blocker blocker",
+			otherField: "declare_blocker attacker",
+			other:      func(f cardActionFixture) string { return f.p0Creature },
+			cardSeat:   1,
+			step:       game.StepDeclareBlockers,
+			wrongZone:  game.ErrCardNotFound,
+		},
+		{
+			name: "sacrifice_permanent",
+			ty:   TypeSacrificePermanent,
+			params: func(card, _ string) json.RawMessage {
+				return mustJSON(map[string]string{"instance_id": card})
+			},
+			cardField: "sacrifice_permanent instance_id",
+			wrongZone: game.ErrCardNotFound,
+		},
+		{
+			name: "mark_damage",
+			ty:   TypeMarkDamage,
+			// A positive delta, because only that is controller-gated.
+			params: func(card, _ string) json.RawMessage {
+				return mustJSON(map[string]any{"instance_id": card, "delta": 1})
+			},
+			cardField: "mark_damage instance_id",
+			wrongZone: game.ErrCardNotFound,
+		},
+		{
+			name: "set_battlefield_position",
+			ty:   TypeSetBattlefieldPosition,
+			params: func(card, _ string) json.RawMessage {
+				return mustJSON(map[string]any{"instance_id": card, "x": 0.5, "y": 0.5})
+			},
+			cardField: "set_battlefield_position instance_id",
+			wrongZone: game.ErrCardNotFound,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.wrongZone == nil && tc.wrongZoneNote == "" {
+				t.Fatal("a row whose wrong-zone card is legal must say why in wrongZoneNote")
+			}
+
+			for _, missing := range []struct {
+				name string
+				raw  json.RawMessage
+			}{
+				{"missing_params_nil", nil},
+				{"missing_params_empty", json.RawMessage{}},
+			} {
+				t.Run(missing.name, func(t *testing.T) {
+					g := newGame(t)
+					a := mustAction(t, tc.ty, missing.raw)
+					a.Caller = g.Seats[0].ID
+					if err := Dispatch(g, a); !errors.Is(err, ErrMissingParams) {
+						t.Fatalf("Dispatch err = %v, want ErrMissingParams", err)
+					}
+				})
+			}
+
+			// Each malformed row breaks one field and keeps the other a
+			// well-formed (if unknown) UUID, so the failure is pinned
+			// to that field's parse.
+			type malformedID struct {
+				field       string
+				card, other string
+			}
+			malformed := []malformedID{{field: tc.cardField, card: badID, other: uuid.NewString()}}
+			if tc.otherField != "" {
+				malformed = append(malformed, malformedID{field: tc.otherField, card: uuid.NewString(), other: badID})
+			}
+			for _, m := range malformed {
+				t.Run("malformed "+m.field, func(t *testing.T) {
+					g := newGame(t)
+					a := mustAction(t, tc.ty, tc.params(m.card, m.other))
+					a.Caller = g.Seats[0].ID
+					err := Dispatch(g, a)
+					if !errors.Is(err, wantParseErr) {
+						t.Fatalf("Dispatch err = %v, want the wrapped uuid.Parse error %q", err, wantParseErr)
+					}
+					if want := m.field + ": " + wantParseErr.Error(); err.Error() != want {
+						t.Errorf("Dispatch err text = %q, want %q", err.Error(), want)
+					}
+				})
+			}
+
+			for _, caller := range []string{"owner", "admin"} {
+				t.Run("wrong_zone_library_"+caller, func(t *testing.T) {
+					g := newGame(t)
+					f := cardActionFixture{p0: g.Seats[0], p1: g.Seats[1]}
+					f.p0Creature = pushCreature(t, g, f.p0)
+					if tc.step == game.StepDeclareBlockers {
+						advanceTo(t, g, game.StepDeclareAttackers)
+						if err := Dispatch(g, mustAction(t, TypeDeclareAttacker, mustJSON(map[string]string{
+							"attacker": f.p0Creature,
+							"target":   f.p1.ID.String(),
+						}))); err != nil {
+							t.Fatalf("declare the attacker to block: %v", err)
+						}
+					}
+					if tc.step != "" {
+						advanceTo(t, g, tc.step)
+					}
+					owner := g.Seats[tc.cardSeat]
+					card, err := owner.Library.Top()
+					if err != nil {
+						t.Fatalf("library top: %v", err)
+					}
+					other := ""
+					if tc.other != nil {
+						other = tc.other(f)
+					}
+					a := mustAction(t, tc.ty, tc.params(card.InstanceID.String(), other))
+					if caller == "owner" {
+						a.Caller = owner.ID
+					}
+					// The premise: the gate must let this caller through,
+					// so whatever comes back is the mutation's answer. For
+					// the owner that means the gate actually FOUND the
+					// library card and matched its controller, not that it
+					// waved an unknown card through.
+					if caller == "owner" {
+						if ctl, ok := g.ControllerOfCard(card.InstanceID); !ok || ctl != owner.ID {
+							t.Fatalf("ControllerOfCard = (%v, %v), want (%v, true)", ctl, ok, owner.ID)
+						}
+					}
+					if err := requireCardController(g, a.Caller, card.InstanceID); err != nil {
+						t.Fatalf("controller gate rejected the %s caller: %v", caller, err)
+					}
+					err = Dispatch(g, a)
+					if tc.wrongZone == nil {
+						if err != nil {
+							t.Fatalf("Dispatch err = %v, want nil (%s)", err, tc.wrongZoneNote)
+						}
+						return
+					}
+					if !errors.Is(err, tc.wrongZone) {
+						t.Fatalf("Dispatch err = %v, want %v", err, tc.wrongZone)
+					}
+				})
+			}
+		})
+	}
+}
+
 // mustJSON marshals v or panics. Test-only convenience for the table-
 // driven controller-gate cases above.
 func mustJSON(v any) json.RawMessage {

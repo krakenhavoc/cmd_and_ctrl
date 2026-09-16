@@ -24,7 +24,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     704.5f looks at it.
 //   - The dies trigger has to still see the attachment. The trigger
 //     harvester runs synchronously inside the LTB emit, and the
-//     CR 704.5m unattach is a state-based action that has not run
+//     CR 704.5n unattach is a state-based action that has not run
 //     yet — so AttachedTo still names the creature that just died.
 //     See equippedCreatureDied for the full ordering note.
 //   - Re-equipping has to move the bonus. AttachedToSource is

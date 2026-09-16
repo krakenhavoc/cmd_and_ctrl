@@ -151,6 +151,23 @@ func TestMendingHandsOnAPlayer(t *testing.T) {
 	}
 }
 
+// TestTangleDeclaresItsMissingUntapClause pins the S30 closeout fix
+// (#95). Tangle's "doesn't untap" rider is a no-op, and the Spec used
+// to declare no Completeness, so the catalog page called the card
+// unreviewed instead of publishing the gap.
+func TestTangleDeclaresItsMissingUntapClause(t *testing.T) {
+	spec, ok := Lookup(tangleOracle)
+	if !ok {
+		t.Fatal("Tangle is not registered")
+	}
+	if spec.Completeness != CompletenessCaveats {
+		t.Errorf("Completeness = %v, want CompletenessCaveats", spec.Completeness)
+	}
+	if len(spec.Caveats) == 0 {
+		t.Error("no caveat names the missing doesn't-untap clause")
+	}
+}
+
 // Holy Day and Tangle are Fog in two other colours and share its
 // primitive; the assertion that earns its keep is that they
 // register the same uncharged shield, which is what stops a future

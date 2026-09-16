@@ -374,7 +374,7 @@ type PendingChoice struct {
 	pickTargetResume *pickTargetFrame
 
 	// copySpellResume is the other continuation a
-	// PendingChoicePickTarget can carry (S30, #95): the CR 706.10
+	// PendingChoicePickTarget can carry (S30, #95): the CR 707.10
 	// "you may choose new targets for the copy" prompt. It reuses
 	// the pick_target prompt rather than getting a kind of its own
 	// because the QUESTION is identical — here is a target clause,
@@ -1173,8 +1173,8 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 // CR 616 resume path (ResolveReplacementOrder) after the
 // replacement apply-loop finishes with no pending prompts. The
 // event's payload may have been mutated by replacements (e.g.
-// Doubling Season doubled CounterDelta; Library of Leng rewrote
-// NewZone). Pipeline functions' initial (non-paused) path inlines
+// Doubling Season doubled CounterDelta; the commander-zone built-in
+// rewrote NewZone). Pipeline functions' initial (non-paused) path inlines
 // the same mutation; the resume path uses this central dispatcher.
 //
 // Caller must hold g.mu.
@@ -1628,7 +1628,7 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 	if choice.Chooser != chooserID {
 		return ErrNotTheChooser
 	}
-	// S30: the same prompt kind serves the CR 706.10 spell-copy
+	// S30: the same prompt kind serves the CR 707.10 spell-copy
 	// re-target. Handled before the trigger frame because the two
 	// are mutually exclusive and the copy path builds something
 	// that is not a triggered ability.

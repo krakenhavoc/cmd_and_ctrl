@@ -94,6 +94,7 @@ func aangSwiftSavior() cards.Card {
 			{
 				Name:     "Aang, Swift Savior",
 				TypeLine: "Legendary Creature — Human Avatar Ally",
+				ManaCost: "{1}{W}{U}",
 				OracleText: "Flash\nFlying\nWhen Aang enters, airbend up to one other target creature or spell. " +
 					"(Exile it. While it's exiled, its owner may cast it for {2} rather than its mana cost.)\n" +
 					"Waterbend {8}: Transform Aang.",

@@ -71,6 +71,11 @@ type Face struct {
 	Power     int
 	Toughness int
 
+	// VariableToughness is Card.VariableToughness for this face: the
+	// printed toughness is non-numeric and Toughness is its 0
+	// stand-in.
+	VariableToughness bool
+
 	// StartingLoyalty is the face's printed loyalty (CR 306.5b).
 	// Zero for every non-planeswalker face — which is the point:
 	// Nissa, Vastwood Seer's FRONT face is a creature and must not
@@ -154,6 +159,7 @@ func (c *Card) SetFace(i int) {
 	c.Colors = append([]string(nil), f.Colors...)
 	c.Power = f.Power
 	c.Toughness = f.Toughness
+	c.VariableToughness = f.VariableToughness
 	c.StartingLoyalty = f.StartingLoyalty
 	c.StartingDefense = f.StartingDefense
 }

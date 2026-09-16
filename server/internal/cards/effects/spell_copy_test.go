@@ -8,7 +8,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// spell_copy_test.go — CR 706.10. The three facts the copy has to
+// spell_copy_test.go — CR 707.10. The three facts the copy has to
 // get right are all observable on one board: the copy runs the
 // spell's effect, the copy's targets can differ from the
 // original's, and the copy leaves NOTHING behind when it is done.
@@ -59,7 +59,7 @@ func TestReverberateCopiesAndRetargets(t *testing.T) {
 		[]game.TargetRef{{Kind: game.TargetCard, ID: bolt}})
 
 	// Reverberate is on top and resolves first, which opens the CR
-	// 706.10c prompt before anything reaches the stack.
+	// 707.10c prompt before anything reaches the stack.
 	for i := 0; i < 8 && latestPickTarget(g, me) == nil; i++ {
 		if err := g.PassPriority(); err != nil {
 			t.Fatalf("PassPriority: %v", err)
@@ -87,7 +87,7 @@ func TestReverberateCopiesAndRetargets(t *testing.T) {
 	// Lightning Bolt and Reverberate — and nothing else. A copy that
 	// went to a graveyard would make this 3.
 	if got := graveyardSize(g, me); got != 2 {
-		t.Errorf("graveyard = %d cards, want 2 (a copy is not a card, CR 706.10)", got)
+		t.Errorf("graveyard = %d cards, want 2 (a copy is not a card, CR 707.10)", got)
 	}
 }
 
@@ -157,7 +157,7 @@ func TestReverberateOnAnOpponentsSpell(t *testing.T) {
 
 // Twincast is Reverberate in blue and shares the primitive; the
 // test that earns its keep is the untouched-targets path — decline
-// the change by re-picking what was already there (CR 706.10c).
+// the change by re-picking what was already there (CR 707.10c).
 func TestTwincastKeepingTheSameTarget(t *testing.T) {
 	g := newCatalogGame(t)
 	me, victim := g.Seats[0].ID, g.Seats[1].ID
@@ -268,7 +268,7 @@ func TestIncreasingVengeanceCopiesYourOwnSpellTwice(t *testing.T) {
 
 // "If this spell was cast from a graveyard, copy that spell TWICE
 // instead." Two copies is not one copy resolving twice: each is
-// created separately and each is offered its own CR 706.10c target
+// created separately and each is offered its own CR 707.10c target
 // choice, so the assertion is two prompts and three Bolts' worth of
 // damage.
 //

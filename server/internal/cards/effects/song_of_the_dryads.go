@@ -12,21 +12,29 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // opposing Aura, a land. "Enchant permanent" is the whole card.
 //
 // The ability loss is not printed on it. CR 305.7: an effect that
-// changes a permanent's subtype to a basic land type makes it lose
-// all abilities generated from its rules text and GAIN the mana
-// ability of that land type. Both halves are here:
+// sets a land's subtype to a basic land type makes it lose all
+// abilities generated from its rules text and GAIN the mana ability
+// of that land type, and "this doesn't remove any abilities that were
+// granted to the land by other effects". Here is how each half is
+// built, and where that differs from the rules:
 //
 //   - layer 4 — "is a ... Forest land", replacing card types and
 //     subtypes. The single most consequential clause in the engine,
 //     because the host stops being a creature: every Equipment on it
-//     unattaches under CR 704.5m and every "enchant creature" Aura
-//     on it goes to the graveyard under CR 704.5n, both as
-//     state-based actions, in the same settling.
+//     unattaches under CR 704.5n and every "enchant creature" Aura
+//     on it goes to the graveyard under CR 704.5m, both as
+//     state-based actions, in the same settling. An enchanted
+//     Aura or Equipment should itself become unattached under
+//     CR 704.5p; that rule isn't implemented (#675).
 //   - layer 5 — colourless. Not cosmetic in Commander: it takes a
 //     commander out of range of a colour-restricted answer, and it
 //     changes what the permanent contributes to devotion.
-//   - layer 6 — CR 305.7's ability loss, which is what stops a
-//     Song'd Sol Ring making mana and a Song'd Saga advancing.
+//   - layer 6 — the ability loss, built as a full LoseAllAbilities.
+//     That is what stops a Song'd Sol Ring making mana and a Song'd
+//     Saga advancing. The rules put this loss in layer 4, as part of
+//     the type change, and limit it to the permanent's own rules
+//     text, so abilities other effects granted earlier should
+//     survive; this wipes them (#669).
 //
 // The {G} it taps for is deliberately NOT declared here. It comes
 // from the Forest subtype, through game.ManaAbilitiesForCard's
