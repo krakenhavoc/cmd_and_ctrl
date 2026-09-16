@@ -5,6 +5,9 @@
 `feat/bugreport-logs-attachments`
 **Revised:** 2026-09-14 · §8 added (report kinds → labels) · Branch
 `feat/inapp-report-kinds`
+**Revised:** 2026-09-16 · §9 added (credentials redacted before a
+report is published, #721; blocks #517) · Branch
+`fix/redact-tokens-721`
 
 ## Context
 
@@ -336,3 +339,53 @@ issue is worse than the 502 the reporter can act on. That distinction
 is why `github.CreateIssue` now returns a typed `*APIError` carrying
 the status — the decision is made from the status, not by grepping an
 error string.
+
+---
+
+## 9. Secrets are redacted before a report is published (added 2026-09-16)
+
+§7 called the client log safe to inline because it holds "only what
+that browser already had". That browser also had its session token.
+`GameClient` logged `connected to <ws URL>`, and the WebSocket URL
+carries `?token=` (browsers cannot set headers on an upgrade), so
+every report with a connect line published the reporter's session
+token to everyone who can read the repo (#721). Tokens die with the
+server process today; **durable sessions (#517) would keep a pasted
+token valid until it expires, so #517 is blocked on this.**
+
+§7 is amended: the log is inlined **after credentials are redacted**,
+and so is every other client- or player-supplied string in the issue.
+
+- **One rule set, two copies.** `client/src/lib/redact.ts` and
+  `server/internal/util/redact` replace the value (never the key) of
+  any `*token` / `*secret` / `*password` / `*ticket` key=value pair,
+  the invite and reclaim `?t=` as a query parameter, JSON
+  `"token":"…"` fields, and `Bearer <credential>`; literal and
+  URL-encoded forms both. The value becomes `REDACTED`, so triage
+  still sees that a token was sent. Keep the two in step.
+- **Client, at the source.** `ws.ts` logs `connectLogLine(url)`, which
+  keeps host, path, `game` and `player` and redacts the token.
+- **Client, as a backstop.** Every protocol-log entry, every captured
+  console/JS error, the merged report log (`collectBugLog`) and the
+  submitted title, description and context are redacted. A log line
+  added later cannot reintroduce the leak through the report.
+- **Server, for every other client.** `renderBugIssueBody` redacts its
+  input (`redactBugIssue`) before rendering and before clipping, so a
+  clip can never cut a key off and leave its value; the handler redacts
+  the issue title and the manifest's client-supplied game ID. An old
+  tab or a curl gets the same treatment as the current client.
+
+**What is not redacted, and why.** The pinned replay and game log (§7)
+are server-generated projections of game state: they carry no session
+or invite tokens (chat, the one player-typed text on the wire, bypasses
+`Room.Apply` and never reaches the replay), so their format is
+unchanged. Screenshots (§6) are images and cannot be filtered: a
+reporter who captures an address bar holding an invite link publishes
+it. The server never logs a request URL or query string, so
+`?token=` does not reach the server log either.
+
+Guards: `ws.redact.test.ts` drives a real `GameClient` connect and
+fails on any `token=` in the log that is not `REDACTED`;
+`bugreport_redact_test.go` fails if `renderBugIssueBody`, or the whole
+handler, lets a token from the client log, description, context or
+title through.
