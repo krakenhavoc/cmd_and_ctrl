@@ -35,8 +35,8 @@ import (
 // both halves, so an enchantment that became an Aura (or a
 // permanent that became an enchantment) answers correctly.
 //
-// The distinction is not cosmetic. CR 704.5n puts an illegally
-// attached Aura into its owner's graveyard; CR 704.5m merely
+// The distinction is not cosmetic. CR 704.5m puts an illegally
+// attached Aura into its owner's graveyard; CR 704.5n merely
 // unattaches an illegally attached Equipment and leaves it on the
 // battlefield. Same trigger condition, opposite outcome — which is
 // why the state-based action branches on exactly this predicate.
@@ -125,9 +125,9 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 // rather than an error, so a catalog effect can call it
 // unconditionally.
 //
-// This is the Equipment half of CR 704.5m by hand. It is NOT how an
+// This is the Equipment half of CR 704.5n by hand. It is NOT how an
 // Aura leaves play — an Aura with no legal host goes to its owner's
-// graveyard (CR 704.5n), which the state-based action handles.
+// graveyard (CR 704.5m), which the state-based action handles.
 //
 // Caller must hold g.mu.
 func (g *Game) UnattachForEffect(attachmentID uuid.UUID) error {
@@ -199,7 +199,7 @@ func (g *Game) AttachmentsOf(hostID uuid.UUID) []uuid.UUID {
 //     (CR 303.4c), so the answer is the card's own TargetSpec — the
 //     literal same predicate the cast used at announce and again at
 //     the CR 608.2b re-check. Evaluated WITHOUT the protection-style
-//     keyword gate: CR 704.5n asks about the enchant restriction,
+//     keyword gate: CR 704.5m asks about the enchant restriction,
 //     not about targeting, so a creature that gains hexproof does
 //     not shrug off the Pacifism already on it.
 //   - EQUIPMENT gets the flat CR 301.5c rule instead, and
@@ -219,7 +219,7 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 		return true
 	}
 	if !c.IsAttached() {
-		// CR 704.5n's OTHER half: "or is not attached to an object or
+		// CR 704.5m's OTHER half: "or is not attached to an object or
 		// player". An Aura on the battlefield attached to NOTHING is
 		// as illegal as one attached to something it may not enchant,
 		// and the rule says so in the same sentence. Missing it left
@@ -269,9 +269,9 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 //
 // Three outcomes, from two rules:
 //
-//	704.5m  Equipment attached to an illegal permanent  → unattach
-//	704.5n  Aura attached to an illegal object/player   → graveyard
-//	704.5n  Aura attached to NOTHING                    → graveyard
+//	704.5n  Equipment attached to an illegal permanent  → unattach
+//	704.5m  Aura attached to an illegal object/player   → graveyard
+//	704.5m  Aura attached to NOTHING                    → graveyard
 //
 // Runs from stateBasedActionsLocked immediately after the layer
 // recompute and before the destruction pre-pass, so that a creature
@@ -295,7 +295,7 @@ func (g *Game) attachmentSBALocked() bool {
 	var doomed []doomedAttachment
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		// NOT gated on IsAttached: CR 704.5n's condition is "attached
+		// NOT gated on IsAttached: CR 704.5m's condition is "attached
 		// to an illegal object or player, OR not attached to an
 		// object or player", and the second disjunct is the one an
 		// unattached Aura fails. attachmentLegalLocked owns both.
@@ -333,13 +333,13 @@ func (g *Game) attachmentSBALocked() bool {
 			})
 		}
 		if d.aura {
-			// CR 704.5n. Routed through the normal battlefield-leave
+			// CR 704.5m. Routed through the normal battlefield-leave
 			// path, so the CR 614 replacement pipeline and the
 			// commander-zone built-in both apply — an enchantment
 			// commander that is an Aura comes out right for free.
 			_ = g.routeBattlefieldCardToOwnerGraveyardLocked(d.id)
 		}
-		// CR 704.5m is the else branch and it is already done: the
+		// CR 704.5n is the else branch and it is already done: the
 		// link is cleared and the Equipment stays put.
 	}
 	return true

@@ -208,11 +208,11 @@ as a property of the call graph.
   Layer 5 has had a bucket in the recompute since S16 with nothing to
   put in it.
 - CR 704.5m and CR 704.5n now fire in real play rather than only in
-  fixtures. #511 fixed 704.5n's "attached to nothing" disjunct for
+  fixtures. #511 fixed 704.5m's "attached to nothing" disjunct for
   Auras an effect put onto the battlefield without a host; Song of the
   Dryads reaches the *first* disjunct from an ordinary cast — the host
-  stops being a creature, so its Equipment unattaches (704.5m) and its
-  "enchant creature" Auras go to the graveyard (704.5n), in the same
+  stops being a creature, so its Equipment unattaches (704.5n) and its
+  "enchant creature" Auras go to the graveyard (704.5m), in the same
   settling.
 - The coverage guard learns the mechanic: a caveat naming "loses all
   abilities" is now checked against an exact probe

@@ -19,8 +19,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - layer 4 — "is a ... Forest land", replacing card types and
 //     subtypes. The single most consequential clause in the engine,
 //     because the host stops being a creature: every Equipment on it
-//     unattaches under CR 704.5m and every "enchant creature" Aura
-//     on it goes to the graveyard under CR 704.5n, both as
+//     unattaches under CR 704.5n and every "enchant creature" Aura
+//     on it goes to the graveyard under CR 704.5m, both as
 //     state-based actions, in the same settling.
 //   - layer 5 — colourless. Not cosmetic in Commander: it takes a
 //     commander out of range of a colour-restricted answer, and it
