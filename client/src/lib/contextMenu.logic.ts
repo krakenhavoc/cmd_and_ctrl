@@ -22,6 +22,7 @@
 import { attackAllLabel, attackAllParams, planAttackAll, seatLabel } from "./attackAll";
 import { attackTargetHint, permanentAttackTargets } from "./attackTargets";
 import { isCreature, isLand, isPlaneswalker } from "./cardTypes";
+import { counterCostBlocked } from "./counterCost";
 import type { ActionType, CardView, GameView } from "./protocol";
 import {
   canActivateLoyalty,
@@ -371,6 +372,14 @@ interface AbilityCost {
   // it. Mana abilities never carry either.
   crew_cost?: number;
   crew_options?: { players?: string[]; cards?: string[] };
+  // #625: a "remove N counters" cost — its shape and what can pay it
+  // right now. Mirrors ActivatedAbilityView in protocol.ts; mana
+  // abilities never carry it.
+  counter_cost_n?: number;
+  counter_cost_kind?: string;
+  counter_cost_self?: boolean;
+  counter_cost_label?: string;
+  counter_cost_options?: { card_id: string; kinds: { kind: string; count: number }[] }[];
 }
 
 // abilityBlocked returns the reason an ability can't be activated
@@ -396,6 +405,12 @@ export function abilityBlocked(
   if (a.crew_cost && (a.crew_options?.cards?.length ?? 0) === 0) {
     return "no untapped creatures to crew with";
   }
+  // #625: a counter-removal cost nothing can pay — Heart of Kiran's
+  // alternative crew with no planeswalker holding a loyalty counter,
+  // Dragon's Hoard with no gold counter. Instant speed, like crew, so
+  // no timing arm: only the empty pool is judged.
+  const counters = counterCostBlocked(a);
+  if (counters) return counters;
   // CR 606: a loyalty ability answers to the sorcery-speed window,
   // the once-per-turn flag, and "you have enough counters to pay".
   // The value 0 is a real cost, so this tests for presence.

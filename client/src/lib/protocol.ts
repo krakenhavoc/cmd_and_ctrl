@@ -338,6 +338,10 @@ export interface MoveCost {
   // A loyalty ability's counter delta (CR 606.1), signed as printed:
   // +1 adds one, -3 removes three.
   loyalty?: number;
+  // #625: counters a "remove N counters" cost takes, and from which
+  // permanent — often not the move's source (Heart of Kiran's crew
+  // paid with a planeswalker's loyalty).
+  counters?: { card_id: string; counter: string; n: number }[];
 }
 
 // LogKind mirrors `protocol.LogKind` server-side. Coarser than the
@@ -909,6 +913,29 @@ export interface ActivatedAbilityView {
   // The picks ride activate_ability as `crew_ids`.
   crew_cost?: number;
   crew_options?: LegalTargetsView;
+  // #625: a "remove N counters" cost component. counter_cost_n is how
+  // many, and its presence marks the component.
+  //
+  //   - counter_cost_kind is the printed kind ("loyalty", "gold");
+  //     ABSENT means "a counter" of any kind, and the picker asks for
+  //     the kind as well as the permanent.
+  //   - counter_cost_self: the counters come off the source itself
+  //     ("Remove a gold counter from this artifact"); nothing is sent.
+  //   - counter_cost_label: the "from" clause of the other form ("a
+  //     planeswalker you control").
+  //   - counter_cost_options: what could pay right now, most counters
+  //     first — permanents the viewer controls holding enough of the
+  //     kind, each with the kinds that could pay. A cost does not
+  //     target, so hexproof permanents are included. Absent when
+  //     nothing can pay.
+  //
+  // The choice rides activate_ability as `counter_source_ids` (not for
+  // the self form) and `counter_kind` (only for the any-kind form).
+  counter_cost_n?: number;
+  counter_cost_kind?: string;
+  counter_cost_self?: boolean;
+  counter_cost_label?: string;
+  counter_cost_options?: CounterCostOptionView[];
   // {X} in the ability's mana cost (CR 602.2b) — Helm of Obedience,
   // Treasure Vault, Soothsaying. demands_x opens the X picker before
   // the targeting step, and the answer rides activate_ability as
@@ -929,6 +956,13 @@ export interface ActivatedAbilityView {
   // the Emperor's −2 — be confirmed with nothing picked.
   target_mode?: string;
   legal_targets?: LegalTargetsView;
+}
+
+// CounterCostOptionView is one permanent that could pay a "remove N
+// counters" cost, with the kinds on it that could (#625).
+export interface CounterCostOptionView {
+  card_id: string;
+  kinds: { kind: string; count: number }[];
 }
 
 export interface ModeOptionView {
