@@ -10,7 +10,7 @@ package effects
 // immediately instead of queueing a colour choice.
 //
 // Summoning sickness applies: Game.ActivateManaAbility checks CR
-// 302.1 (since #233), so the Elf cannot tap for mana the turn it
+// 302.6 (since #233), so the Elf cannot tap for mana the turn it
 // lands unless it has haste. This card shipped in #243 documenting
 // the opposite as a known gap — the two PRs crossed on main —
 // and TestLlanowarElvesCannotTapWhileSummoningSick pins the rule.

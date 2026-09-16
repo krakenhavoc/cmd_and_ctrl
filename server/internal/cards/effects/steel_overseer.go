@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"{T}: Put a +1/+1 counter on each artifact creature you control."
 //
 // The artifact-aggro lord. One tap ability (summoning sickness
-// applies, CR 302.1), whose effect walks the battlefield when it
+// applies, CR 302.6), whose effect walks the battlefield when it
 // resolves — so an artifact creature that enters in response gets a
 // counter, as printed. The Overseer counts itself.
 //

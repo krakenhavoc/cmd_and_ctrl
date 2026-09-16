@@ -15,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the command zone); the mill is a CR 602 activated ability with a
 // tap cost, so it uses the stack and can be responded to. Both taps
 // are on a creature, so summoning sickness applies to each (CR
-// 302.1) — the engine enforces that for mana abilities and activated
+// 302.6) — the engine enforces that for mana abilities and activated
 // abilities alike.
 //
 // No simplification.

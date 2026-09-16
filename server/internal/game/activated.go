@@ -21,20 +21,20 @@ import (
 // written: resolveTopAbilityLocked runs Effect with the live game,
 // after the CR 608.2b target re-check.
 //
-// Mana abilities stay separate (CR 605.3a — they don't use the
+// Mana abilities stay separate (CR 605.3b — they don't use the
 // stack) and keep their own ManaAbilityShape path. An ability that
 // would be a mana ability but whose cost sacrifices a DIFFERENT
 // permanent (Ashnod's Altar) fits neither surface cleanly and is
 // deferred; the note is in ADR 0020.
 
 // AbilityCost is what a player pays to activate an ability
-// (CR 602.1b). Every field is additive: Goblin Bombardment is
+// (CR 602.1a). Every field is additive: Goblin Bombardment is
 // {SacrificeOther: creature-spec}, Krenko is {Tap: true}, a
 // hypothetical "{2}, {T}, Sacrifice a creature:" would set all
 // three.
 type AbilityCost struct {
 	// Tap requires the source to be untapped, taps it, and — for a
-	// creature source — enforces summoning sickness (CR 302.1).
+	// creature source — enforces summoning sickness (CR 302.6).
 	Tap bool
 
 	// SacrificeSelf sacrifices the source as part of the cost.
@@ -53,12 +53,12 @@ type AbilityCost struct {
 	// means no mana component.
 	Mana string
 
-	// Life is a life payment (CR 118.8). Paying life is legal at any
+	// Life is a life payment (CR 119.4). Paying life is legal at any
 	// total above the payment; the SBA loop handles the rest.
 	Life int
 
 	// Loyalty is the loyalty-counter component of a planeswalker's
-	// loyalty ability (CR 606.1): +N adds N counters to the source,
+	// loyalty ability (CR 606.4): +N adds N counters to the source,
 	// −N removes N, and [0] neither. Nil means "this is not a
 	// loyalty ability", which is every other ability in the catalog.
 	//
@@ -79,9 +79,9 @@ type AbilityCost struct {
 	// Three rules ride along with a non-nil Loyalty and are enforced
 	// in ActivateCatalogAbility rather than asked of each card:
 	//
-	//	CR 606.1  the source must be a planeswalker you control
-	//	CR 606.3  a −N cost needs at least N loyalty counters
-	//	CR 606.5  sorcery speed, once per turn per planeswalker
+	//	CR 606.2  the source must be a planeswalker you control
+	//	CR 606.6  a −N cost needs at least N loyalty counters
+	//	CR 606.3  sorcery speed, once per turn per planeswalker
 	//
 	// SorcerySpeed therefore does not need to be set alongside it.
 	Loyalty *int
@@ -104,7 +104,7 @@ type AbilityCost struct {
 	//	CR 702.122b  summoning sickness does not apply. Tapping a
 	//	             creature to crew is not paying a {T} cost, so a
 	//	             creature that arrived this turn may crew.
-	//	CR 702.122c  power is read at the moment the cost is paid,
+	//	CR 702.122a  power is read at the moment the cost is paid,
 	//	             from the post-layer effective value, so an
 	//	             anthem and +1/+1 counters both count.
 	//
@@ -345,7 +345,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	// S24: the CR 602.5a restriction rides on the effective
+	// S24: the CR 602.5 restriction rides on the effective
 	// characteristic, so the layers have to be fresh before the
 	// source is judged. Hoisted above the controller check rather
 	// than tucked in beside the restriction test, because
@@ -361,7 +361,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	if source.Controller != playerID {
 		return ErrCardCallerMismatch
 	}
-	// CR 602.5a: "its activated abilities can't be activated"
+	// CR 602.5: "its activated abilities can't be activated"
 	// (Arrest, Faith's Fetters). Checked before the index lookup so
 	// the answer does not depend on which ability was named, and
 	// before any cost validation so nothing is paid. Loyalty
@@ -378,7 +378,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	ab := abilities[index]
 
 	// --- timing -------------------------------------------------
-	// CR 606.5: a loyalty ability is sorcery-speed whether or not
+	// CR 606.3: a loyalty ability is sorcery-speed whether or not
 	// the catalog entry bothered to say so — the loyalty component
 	// carries the restriction, so a card can't forget it.
 	if (ab.SorcerySpeed || ab.Cost.Loyalty != nil) && !g.sorcerySpeedOpenLocked(playerID) {
@@ -409,19 +409,19 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		return ErrInvalidParam
 	}
 	if ab.Cost.Loyalty != nil {
-		// CR 606.1: loyalty abilities live on planeswalkers. The
+		// CR 606.2: loyalty abilities live on planeswalkers. The
 		// controller check above already covers "a planeswalker you
 		// control".
 		if !source.IsPlaneswalker() {
 			return ErrNotAPlaneswalker
 		}
-		// CR 606.5: once per turn per planeswalker. The flag was
+		// CR 606.3: once per turn per planeswalker. The flag was
 		// S13.1's and only the sandbox action consulted it; this is
 		// the path that matters now.
 		if g.LoyaltyActivatedThisTurn[cardID] {
 			return ErrLoyaltyAlreadyActivated
 		}
-		// CR 606.3: you can't activate a −N ability with fewer than
+		// CR 606.6: you can't activate a −N ability with fewer than
 		// N loyalty counters. Paying down to exactly 0 is legal and
 		// the 704.5i SBA sweeps the walker afterwards.
 		if n := *ab.Cost.Loyalty; n < 0 && source.Counters[CounterLoyalty] < -n {
@@ -432,7 +432,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		if source.Tapped {
 			return ErrAlreadyTapped
 		}
-		// CR 302.1: a creature's {T} ability needs it to have been
+		// CR 302.6: a creature's {T} ability needs it to have been
 		// under your control since your most recent turn began.
 		// Non-creature sources (Krenko is a creature; an artifact
 		// with {T} isn't) are never sick.
@@ -453,7 +453,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		return err
 	}
 	if ab.Cost.Life > 0 && p.Life < ab.Cost.Life {
-		// CR 118.8 forbids paying more life than you have. Paying
+		// CR 119.4 forbids paying more life than you have. Paying
 		// down to exactly 0 is legal; the SBA loop ends the game
 		// after.
 		return ErrInvalidParam
@@ -585,7 +585,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 //     twice would let one 3-power creature crew a 6.
 //   - Total EFFECTIVE power must reach the crew number. Effective,
 //     so an anthem and +1/+1 counters both count (CurrentPower), and
-//     read at payment time (CR 702.122c) rather than at declaration.
+//     read at payment time (CR 702.122a) rather than at declaration.
 //   - Summoning sickness is NOT checked. Tapping a creature to crew
 //     is not paying a {T} cost, so a creature that arrived this turn
 //     may crew (CR 702.122b). This is the rule most implementations
@@ -667,7 +667,7 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 	if c == nil {
 		return nil, ErrCardNotFound
 	}
-	// CR 701.17b — you can only sacrifice what you control.
+	// CR 701.21a — you can only sacrifice what you control.
 	if c.Controller != playerID {
 		return nil, ErrCardCallerMismatch
 	}

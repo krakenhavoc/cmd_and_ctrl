@@ -1,5 +1,5 @@
 // reveals turns GameView.reveals — the S22 broadcast reveal window
-// (CR 701.16) — into the transient cues the board's attention strip
+// (CR 701.20) — into the transient cues the board's attention strip
 // shows.
 //
 // The server side is a WINDOW, not a stream: it carries up to four

@@ -235,7 +235,7 @@ func (e *enumerator) choiceMoves() bool {
 			}
 
 		case game.PendingChoiceSearchLibrary:
-			// CR 701.19: take up to SearchMax of the matching cards;
+			// CR 701.23: take up to SearchMax of the matching cards;
 			// failing to find (an empty list) is always legal, which
 			// is what makes it this choice's AlwaysLegal answer.
 			p := base()

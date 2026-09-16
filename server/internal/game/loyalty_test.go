@@ -15,7 +15,7 @@ import (
 // works) and `activated_abilities: []` — there was no loyalty
 // ability for the client to offer, because AbilityCost had no
 // loyalty component. These tests pin the component, its payment,
-// CR 606.3 and CR 606.5.
+// CR 606.6 and CR 606.3.
 
 // loyaltyN is the pointer form a catalog card writes its loyalty
 // cost in. [0] is a real printed cost, so the zero value has to be
@@ -110,7 +110,7 @@ func TestLoyaltyAbilityPlusAddsCounters(t *testing.T) {
 	}
 }
 
-// CR 606.3: you can't activate a loyalty ability whose cost removes
+// CR 606.6: you can't activate a loyalty ability whose cost removes
 // more loyalty counters than the permanent has. Nothing is paid and
 // nothing reaches the stack.
 func TestLoyaltyAbilityCannotOverpayCR6063(t *testing.T) {
@@ -133,7 +133,7 @@ func TestLoyaltyAbilityCannotOverpayCR6063(t *testing.T) {
 	}
 }
 
-// Paying a walker down to exactly 0 is legal (CR 606.3 forbids
+// Paying a walker down to exactly 0 is legal (CR 606.6 forbids
 // paying MORE than you have, not all of it); 704.5i then sweeps it.
 func TestLoyaltyAbilityMayPayDownToZero(t *testing.T) {
 	g := newActiveGame(t)
@@ -154,7 +154,7 @@ func TestLoyaltyAbilityMayPayDownToZero(t *testing.T) {
 	}
 }
 
-// CR 606.5: one loyalty ability per planeswalker per turn, and the
+// CR 606.3: one loyalty ability per planeswalker per turn, and the
 // gate lives on the normal ActivateAbility path now, not only on the
 // S13.1 sandbox action.
 func TestLoyaltyAbilityOncePerTurn(t *testing.T) {
@@ -195,7 +195,7 @@ func TestLoyaltyZeroCostStillGatesTheTurn(t *testing.T) {
 	}
 }
 
-// CR 606.5: loyalty abilities are sorcery-speed regardless of what
+// CR 606.3: loyalty abilities are sorcery-speed regardless of what
 // the catalog entry says about SorcerySpeed — the loyalty component
 // itself carries the restriction.
 func TestLoyaltyAbilityIsSorcerySpeed(t *testing.T) {
@@ -208,7 +208,7 @@ func TestLoyaltyAbilityIsSorcerySpeed(t *testing.T) {
 	}
 }
 
-// A loyalty cost only makes sense on a planeswalker (CR 606.1). A
+// A loyalty cost only makes sense on a planeswalker (CR 606.2). A
 // creature carrying one is a catalog bug, not a free counter faucet.
 func TestLoyaltyAbilityRequiresAPlaneswalker(t *testing.T) {
 	g := newActiveGame(t)
@@ -228,7 +228,7 @@ func TestLoyaltyAbilityRequiresAPlaneswalker(t *testing.T) {
 	}
 }
 
-// CR 606.2: only the planeswalker's controller may activate it.
+// CR 606.3: only the planeswalker's controller may activate it.
 func TestLoyaltyAbilityRequiresControl(t *testing.T) {
 	g := newActiveGame(t)
 	advanceTo(t, g, StepPrecombatMain)

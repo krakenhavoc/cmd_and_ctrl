@@ -184,7 +184,7 @@ func (g *Game) DestroyPermanentsForEffect(ids []uuid.UUID) int {
 // they are different rules. The effect path drops every
 // indestructible permanent (CR 702.12b); the SBA path drops them only
 // from the two damage-driven branches, because CR 704.5f / 704.5i /
-// 704.5p put a permanent into a graveyard rather than destroying it
+// 704.5v put a permanent into a graveyard rather than destroying it
 // and indestructible is no help there.
 //
 // Caller must hold g.mu in write mode.

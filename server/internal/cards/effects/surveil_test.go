@@ -9,7 +9,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
-// surveil_test.go — CR 701.42 surveil, and the surveil-land cycle
+// surveil_test.go — CR 701.25 surveil, and the surveil-land cycle
 // that finally does what its type line says.
 //
 // Surveil is scry with one word changed, so the tests that matter are

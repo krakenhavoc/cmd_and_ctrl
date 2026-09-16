@@ -10,7 +10,7 @@ package effects
 // Both halves are real here: the sweep is wrathDestroyAllCreatures,
 // and CantBeCountered is honoured at the engine's counter choke
 // point, where a Counterspell aimed at this resolves and does
-// nothing rather than fizzling (CR 701.5a). See
+// nothing rather than fizzling (CR 701.6a). See
 // server/internal/game/cant_be_countered.go.
 func init() {
 	Register(Spec{

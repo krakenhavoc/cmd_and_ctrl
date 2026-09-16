@@ -16,7 +16,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the keyword check had gone into
 // `routeBattlefieldCardToOwnerGraveyardLocked` — the shared exit ramp
 // — a Spirit that had already granted itself indestructible could not
-// have paid its own cost (CR 701.17b: sacrifice is not destruction).
+// have paid its own cost (CR 701.21a: sacrifice is not destruction).
 //
 // The Spirit sacrifices itself as a cost, so the grant lands on
 // everything ELSE you control: it is gone from the battlefield

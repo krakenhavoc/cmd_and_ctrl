@@ -20,7 +20,7 @@ const invasionOfInnistradOracle = invasionOfInnistradOracleID
 // TestBattleSpecFallbackStampsDefense covers the path a card that
 // never went through deck import takes — a fixture, a token, the demo
 // seed. The Card carries no StartingDefense, so the engine falls back
-// to the catalog's BattleSpec rather than letting the CR 704.5p
+// to the catalog's BattleSpec rather than letting the CR 704.5v
 // state-based action eat the battle on arrival.
 func TestBattleSpecFallbackStampsDefense(t *testing.T) {
 	g := newCatalogGame(t)
@@ -92,7 +92,7 @@ func TestInvasionOfInnistradShrinksACreatureAndIsDefeated(t *testing.T) {
 	}
 
 	// Now defeat the battle: five damage takes the last defense
-	// counter (CR 120.3e), and the defeated trigger exiles it.
+	// counter (CR 120.3h), and the defeated trigger exiles it.
 	g.WithWriteLock(func() {
 		if err := g.DealDamageToCreatureForEffect(uuid.Nil, id, 5); err != nil {
 			t.Fatalf("damage the battle: %v", err)

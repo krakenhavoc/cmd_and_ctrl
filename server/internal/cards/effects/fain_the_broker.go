@@ -38,7 +38,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     (b31UntapSelf) — which is what lets him activate twice a turn.
 //
 // Every {T} on a creature source waits out summoning sickness (CR
-// 302.1); the untap does not tap and does not.
+// 302.6); the untap does not tap and does not.
 func init() {
 	Register(Spec{
 		OracleID:     "31b990e3-9bad-4b0a-a9d5-f5b9ed2ad0b0",

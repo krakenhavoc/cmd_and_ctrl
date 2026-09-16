@@ -8,7 +8,7 @@ package effects
 // that want the effect want four of it and settle for two, which is
 // why both are top-of-list in a singleton format.
 //
-// Summoning sickness applies, as on Llanowar Elves (CR 302.1,
+// Summoning sickness applies, as on Llanowar Elves (CR 302.6,
 // enforced by ActivateManaAbility since #233).
 func init() {
 	Register(Spec{

@@ -7,7 +7,7 @@ import (
 )
 
 // mana_sacrifice_test.go — the S21 mana-cost pass: sacrifice-ANOTHER
-// as a mana ability's cost (Ashnod's Altar), and the CR 302.1
+// as a mana ability's cost (Ashnod's Altar), and the CR 302.6
 // summoning-sickness check that tap-for-mana abilities were missing.
 
 // altarAbility is Ashnod's Altar's shape: no tap, sacrifice a creature
@@ -58,7 +58,7 @@ func TestManaAbilitySacrificesAnotherCreatureForMana(t *testing.T) {
 	}
 }
 
-// CR 605.3a: a mana ability resolves immediately, so the mana must be
+// CR 605.3b: a mana ability resolves immediately, so the mana must be
 // in the pool by the time any dies-trigger the sacrifice queued gets
 // to resolve. That ordering is what makes an Altar plus a payoff an
 // engine rather than a coin flip.
@@ -176,7 +176,7 @@ func TestManaAbilityRejectsUnwantedSacrificeIDs(t *testing.T) {
 	}
 }
 
-// --- CR 302.1 on tap-for-mana abilities -------------------------
+// --- CR 302.6 on tap-for-mana abilities -------------------------
 
 // Before this pass, Birds of Paradise / Llanowar Merfolk / Palladium
 // Myr all tapped for mana the turn they landed. ActivateCatalogAbility

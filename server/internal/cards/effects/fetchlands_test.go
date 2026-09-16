@@ -218,7 +218,7 @@ func TestLlanowarElvesTapsForGreen(t *testing.T) {
 	}
 }
 
-// A summoning-sick creature cannot tap for mana (CR 302.1).
+// A summoning-sick creature cannot tap for mana (CR 302.6).
 //
 // This test shipped in #243 pinning the OPPOSITE — a known engine
 // gap where Game.ActivateManaAbility checked card.Tapped and nothing

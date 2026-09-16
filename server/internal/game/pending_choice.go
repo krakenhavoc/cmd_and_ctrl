@@ -88,7 +88,7 @@ const (
 	// in S18 sub-PR 3.
 	PendingChoiceDamageAssignment PendingChoiceKind = "damage_assignment"
 
-	// PendingChoiceTriggerPrompt — CR 603.4 "you may" yes/no
+	// PendingChoiceTriggerPrompt — CR 603.5 "you may" yes/no
 	// prompt queued by the S19 trigger harvester when a matching
 	// TriggeredAbility has a non-nil OptionalPrompt. The chooser is
 	// the source's controller (or an override defined on
@@ -138,7 +138,7 @@ const (
 
 	// PendingChoiceSacrifice — "each player sacrifices a creature"
 	// (Grave Pact, Dictate of Erebos, Fleshbag Marauder — CR
-	// 701.17a). One choice per affected player, addressed to that
+	// 701.21a). One choice per affected player, addressed to that
 	// player, carrying the permanents they may choose from.
 	//
 	// Deliberately NOT PendingChoicePickTarget. The effect does not
@@ -157,7 +157,7 @@ const (
 
 	// PendingChoiceScry — "look at the top N cards of your library.
 	// Put any number of them on the bottom of your library and the
-	// rest on top in any order." (CR 701.18)
+	// rest on top in any order." (CR 701.22)
 	//
 	// Private, not revealed: only the chooser becomes a knower of the
 	// looked-at cards, so the wire redacts them for everyone else.
@@ -174,7 +174,7 @@ const (
 
 	// PendingChoiceSurveil — "look at the top N cards of your
 	// library. Put any number of them into your graveyard and the
-	// rest on top of your library in any order." (CR 701.42)
+	// rest on top of your library in any order." (CR 701.25)
 	//
 	// Structurally scry with the bottom-of-library leg replaced by
 	// the graveyard, and it shares scry's plumbing: the looked-at
@@ -219,9 +219,9 @@ const (
 	PendingChoiceLookAtTop PendingChoiceKind = "look_at_top"
 
 	// PendingChoiceSearchLibrary — "search your library for ..."
-	// (CR 701.19). The searcher picks which of the matching cards
+	// (CR 701.23). The searcher picks which of the matching cards
 	// they take; picking none is always legal ("you may fail to
-	// find", CR 701.19c), so this prompt has a minimum of zero and a
+	// find", CR 701.23b), so this prompt has a minimum of zero and a
 	// maximum of the effect's limit.
 	//
 	// LOOK AT, not reveal — and the distinction is the whole reason
@@ -457,7 +457,7 @@ type PendingChoice struct {
 	SearchCards []uuid.UUID
 
 	// SearchMax is how many of SearchCards the chooser may take.
-	// The minimum is always zero: CR 701.19c lets a player fail to
+	// The minimum is always zero: CR 701.23b lets a player fail to
 	// find however hard they looked.
 	SearchMax int
 
@@ -1277,7 +1277,7 @@ func (g *Game) QueueDiscardFromRevealedHand(
 		}
 	}
 	// Cap count to available hand size so the chooser isn't stuck
-	// on an impossible count (CR 701.8c "as many as you can").
+	// on an impossible count (CR 609.3 "as many as you can").
 	if p := g.playerByIDLocked(fromPlayer); p != nil && p.Hand.Size() < count {
 		count = p.Hand.Size()
 	}
@@ -1469,7 +1469,7 @@ func (g *Game) ResolveDamageAssignment(
 		//
 		// S27: the attacker may have been attacking a planeswalker or
 		// a battle, in which case trample overflow goes to THAT, not
-		// to its defending player (CR 702.19c — excess damage is
+		// to its defending player (CR 702.19b — excess damage is
 		// assigned to the player or permanent the creature is
 		// attacking). So the target id is used as-is and the routing
 		// happens in dealCombatDamageToAttackTargetLocked.
@@ -1505,7 +1505,7 @@ func (g *Game) ResolveDamageAssignment(
 	return nil
 }
 
-// queueTriggerPromptLocked queues a CR 603.4 yes/no prompt for an
+// queueTriggerPromptLocked queues a CR 603.5 yes/no prompt for an
 // optional triggered ability that just matched. Captures the event,
 // a value copy of the source, and the LKI snapshot — all of which
 // the resume path will pass back into the Build closure on `apply:
@@ -2143,7 +2143,7 @@ func findBattlefieldCard(g *Game, id uuid.UUID) *Card {
 }
 
 // ResolveSacrificeChoice answers a PendingChoiceSacrifice: the chooser
-// names one of their own permanents and it is sacrificed (CR 701.17a).
+// names one of their own permanents and it is sacrificed (CR 701.21a).
 //
 // The option list is re-checked rather than trusted. Grave Pact
 // prompts every other player at once, and an earlier answer can change
@@ -2237,7 +2237,7 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 	}
 }
 
-// ResolveScry answers a PendingChoiceScry (CR 701.18): `bottom` are the
+// ResolveScry answers a PendingChoiceScry (CR 701.22): `bottom` are the
 // looked-at cards going to the bottom of the library, `topOrder` are the
 // ones staying on top, listed top-first.
 //
@@ -2461,7 +2461,7 @@ func partitionLookedAtCards(p *Player, lookedAt, away, topOrder []uuid.UUID) (ma
 	return want, nil
 }
 
-// ResolveSurveil answers a PendingChoiceSurveil (CR 701.42):
+// ResolveSurveil answers a PendingChoiceSurveil (CR 701.25):
 // `graveyard` are the looked-at cards going to the chooser's
 // graveyard, `topOrder` are the ones staying on top of the library,
 // listed top-first.

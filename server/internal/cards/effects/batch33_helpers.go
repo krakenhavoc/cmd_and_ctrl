@@ -787,7 +787,7 @@ func b33ClearListedGoads(g *game.Game, item *game.StackItem) error {
 // goaded by the controller if it is still legal and still controlled
 // by `victim`, the player the Faeries hit, and a delayed trigger
 // clears the marker at the beginning of the controller's next turn
-// (CR 701.38b's "until your next turn"). A pick under some other
+// (CR 701.15a's "until your next turn"). A pick under some other
 // player's control — possible when Faeries connected with two
 // players in one combat and the clause offered both players'
 // creatures — does nothing.

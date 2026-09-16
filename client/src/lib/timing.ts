@@ -26,7 +26,7 @@
 //     gate verbs the enumerator deliberately does NOT enumerate —
 //     `activate_loyalty` is a sandbox affordance where the players
 //     resolve the ability's text between themselves — so there is no
-//     server list to look them up in and the CR 602.5d / 606.5
+//     server list to look them up in and the CR 602.5d / 606.3
 //     window has to stay here. Between them they are the only rules
 //     derivation left in this file.
 //
@@ -267,14 +267,14 @@ export function canCastFromHand(
 
 // canActivateSorcerySpeedAbility is CR 602.5d's "activate only as a
 // sorcery" window, shared by every activated ability that declares
-// it — equip (CR 702.6b) is the first in the catalog, and a
+// it — equip (CR 702.6a) is the first in the catalog, and a
 // planeswalker's loyalty ability answers to the same three gates
 // plus two of its own (see canActivateLoyalty).
 //
 // S31 note: this is the LAST rules derivation left in this file, and
 // it survives because its callers gate actions the server does not
 // enumerate. `activate_loyalty` is a sandbox affordance — the engine
-// charges the counters and enforces CR 606.5, and the players resolve
+// charges the counters and enforces CR 606.3, and the players resolve
 // the ability text between themselves — so `internal/legal` skips it
 // by design (see its package doc on sandbox verbs) and there is no
 // move list to look it up in.
@@ -295,7 +295,7 @@ export function canActivateSorcerySpeedAbility(
   return LEGAL;
 }
 
-// canActivateLoyalty mirrors the engine's CR 606.5 gates: the
+// canActivateLoyalty mirrors the engine's CR 606.3 gates: the
 // sorcery-speed window plus once per turn per planeswalker. It greys
 // a loyalty row in the card menu — see contextMenu.logic.ts
 // `abilityBlocked` and `loyaltyAbilityItems`, its production callers.
@@ -325,12 +325,12 @@ export function canActivateLoyalty(
 }
 
 // loyaltyOf reads a planeswalker's current loyalty counters, which
-// is the number CR 606.3 measures a −N cost against.
+// is the number CR 606.6 measures a −N cost against.
 export function loyaltyOf(card: CardView): number {
   return card.counters?.loyalty ?? 0;
 }
 
-// canPayLoyaltyCost is CR 606.3: a cost that REMOVES N loyalty
+// canPayLoyaltyCost is CR 606.6: a cost that REMOVES N loyalty
 // counters can only be activated with at least N there. A + or [0]
 // cost is always payable. Returns "" when payable, otherwise the
 // reason to show in the greyed row's hint.

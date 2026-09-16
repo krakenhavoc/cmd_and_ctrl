@@ -30,7 +30,7 @@ import "github.com/google/uuid"
 // enforcement questions the sandbox has never taken on for attacks;
 // the one restriction that IS enforced is the protector's own, because
 // a player attacking a battle they protect is nonsense rather than a
-// judgement call (CR 306.2b / 310.7).
+// judgement call (CR 310.9b).
 
 // AttackTargetKind classifies what an attack declaration names.
 type AttackTargetKind string
@@ -90,13 +90,13 @@ func (g *Game) classifyAttackTargetLocked(target uuid.UUID) AttackTargetKind {
 // is the defending player, and it is their creatures that may block).
 // For a battle it is the PROTECTOR, not the controller: a battle's
 // controller is the player who cast it, and the whole point of the
-// protector mechanic is that somebody ELSE defends it (CR 310.7).
+// protector mechanic is that somebody ELSE defends it (CR 310.9d).
 //
 // Returns uuid.Nil when the target no longer resolves — a
 // planeswalker that died before the damage step, a battle already
 // exiled. Callers treat that as "the attack hits nothing", which is
 // the rule: an attacker whose defending target has left the
-// battlefield deals its damage to nothing (CR 506.4b).
+// battlefield deals its damage to nothing (CR 510.1b).
 //
 // Caller must hold g.mu.
 func (g *Game) defendingPlayerForAttackLocked(target uuid.UUID) uuid.UUID {
@@ -131,7 +131,7 @@ func (g *Game) defendingPlayerForAttackLocked(target uuid.UUID) uuid.UUID {
 //
 //	CR 506.2   you cannot attack yourself, and you cannot attack a
 //	           planeswalker you control
-//	CR 310.7   you cannot attack a battle you protect — you are the
+//	CR 310.9b  you cannot attack a battle you protect — you are the
 //	           one defending it
 //	           (and a battle you control that nobody protects is not
 //	           attackable by you either, for the same reason the
@@ -197,7 +197,7 @@ func (g *Game) AttackTargetsForEffect(attackerController uuid.UUID) []AttackTarg
 }
 
 // dealCombatDamageToAttackTargetLocked routes an attacker's combat
-// damage to whatever it was declared against (CR 510.1a): a player's
+// damage to whatever it was declared against (CR 510.1b): a player's
 // life total, a planeswalker's loyalty, or a battle's defense.
 //
 // The split is here rather than inside markCombatDamageToPlayerLocked
@@ -208,7 +208,7 @@ func (g *Game) AttackTargetsForEffect(attackerController uuid.UUID) []AttackTarg
 // already live inside the two helpers this dispatches to.
 //
 // A target that has left the battlefield since declaration deals its
-// damage to nothing (CR 506.4b — the attacker is removed from combat
+// damage to nothing (CR 510.1b — the attacker is removed from combat
 // and is simply not dealt with further). Silently dropping it is the
 // rule, not a shortcut.
 //

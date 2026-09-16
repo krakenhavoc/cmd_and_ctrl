@@ -8,7 +8,7 @@ package effects
 // and an artifact-synergy piece as well as ramp. The tap cost is on a
 // CREATURE, so summoning sickness applies — unlike Thran Dynamo, this
 // does nothing the turn it lands. ActivateManaAbility enforces that
-// (CR 302.1) from the source's type line; the spec just declares the
+// (CR 302.6) from the source's type line; the spec just declares the
 // ability. Haste on the Myr lifts it, same as any tap ability.
 func init() {
 	Register(Spec{

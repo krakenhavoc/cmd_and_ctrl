@@ -8,7 +8,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// proliferate_test.go — S21's Proliferate primitive (CR 701.27) and
+// proliferate_test.go — S21's Proliferate primitive (CR 701.34) and
 // the five catalog cards that were gated on it.
 
 const (

@@ -166,7 +166,7 @@ func TestActivatedAbilitySacrificeOptionsOfferAShroudedCreatureYouControl(t *tes
 		t.Error("a shrouded creature you control is missing from the activated ability's sacrifice options; sacrificing does not target (CR 601.2h)")
 	}
 	if containsID(opts, theirs) {
-		t.Error("an opponent's creature is in the sacrifice options; CR 701.17b limits them to permanents you control")
+		t.Error("an opponent's creature is in the sacrifice options; CR 701.21a limits them to permanents you control")
 	}
 	if opts.Min != 1 || opts.Max != 1 {
 		t.Errorf("sacrifice options min/max = %d/%d, want 1/1 from the spec", opts.Min, opts.Max)

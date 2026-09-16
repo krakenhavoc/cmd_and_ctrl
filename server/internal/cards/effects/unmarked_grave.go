@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Entomb with a legendary clause. A library search to the graveyard
 // — the searcher picks from every nonlegendary card in the library,
 // so the prompt always opens, and "fail to find" is a legal answer
-// (CR 701.19c). Legendary is read off the effective characteristic,
+// (CR 701.23b). Legendary is read off the effective characteristic,
 // which for a card in a library is the printed supertype.
 //
 // No simplification.

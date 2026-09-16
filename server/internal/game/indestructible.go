@@ -27,7 +27,7 @@ import "github.com/google/uuid"
 // That sentence is narrower than players remember, so the engine
 // enumerates it explicitly. Indestructible SAVES a permanent from:
 //
-//	CR 701.7   a "destroy" effect (Wrath of God, Doom Blade, …)
+//	CR 701.8   a "destroy" effect (Wrath of God, Doom Blade, …)
 //	CR 704.5g  the lethal-marked-damage state-based action
 //	CR 704.5h  the deathtouch state-based action
 //
@@ -39,8 +39,8 @@ import "github.com/google/uuid"
 //	CR 704.5i  a planeswalker at 0 loyalty — also "put into its
 //	           owner's graveyard", which is why an indestructible
 //	           planeswalker still dies to its own minus ability.
-//	CR 704.5p  a battle at 0 defense counters — sacrificed.
-//	CR 701.17b sacrifice, which is never destruction. This is the
+//	CR 704.5v  a battle at 0 defense counters — sacrificed.
+//	CR 701.21a sacrifice, which is never destruction. This is the
 //	           reason the check CANNOT live in
 //	           routeBattlefieldCardToOwnerGraveyardLocked: that
 //	           function is the shared exit ramp for destruction,
@@ -114,7 +114,7 @@ func IsIndestructible(c *Card) bool {
 }
 
 // destroyBattlefieldPermanentLocked is the engine's single
-// destruction verb (CR 701.7): it routes the permanent to its
+// destruction verb (CR 701.8): it routes the permanent to its
 // owner's graveyard UNLESS the permanent is indestructible, in which
 // case nothing happens at all — "the permanent remains on the
 // battlefield", not "the permanent is moved and then returned".
@@ -151,7 +151,7 @@ func (g *Game) destroyBattlefieldPermanentLocked(cardID uuid.UUID) error {
 //     sweep in mutations.go, and that sweep's `doomed` set contains
 //     three kinds of permanent indestructible does NOT save: a
 //     creature at 0 toughness (CR 704.5f), a planeswalker at 0
-//     loyalty (CR 704.5i), a battle at 0 defense (CR 704.5p). All
+//     loyalty (CR 704.5i), a battle at 0 defense (CR 704.5v). All
 //     three are "put into a graveyard", not "destroy". A filter one
 //     level down would wrongly protect every one of them. The SBA
 //     already filters the two branches that ARE destruction while it

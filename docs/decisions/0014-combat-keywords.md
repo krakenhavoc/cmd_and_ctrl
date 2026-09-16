@@ -85,7 +85,7 @@ haste. Keeping the flag pure makes that future work simpler.
 
 **Gates:** `DeclareAttacker` rejects sick creatures; tap-cost
 activation of creature abilities (e.g. mana abilities on a
-creature) rejects sick creatures. Land tap is exempt per CR 302.1
+creature) rejects sick creatures. Land tap is exempt per CR 302.6
 (not a creature).
 
 ### 3. Combat damage rewrite: split into two substeps (CR 510.2 + 510.3)
@@ -315,7 +315,7 @@ doesn't queue it until an S18-capable block happens. Additive.
   assigner. Unblocked → player; single blocker → full power
   with trample overflow when blocker at-least-lethal;
   multi-blocker → queue `PendingChoiceDamageAssignment` prompt.
-- **Menace close-out** (CR 702.110): a single blocker against a
+- **Menace close-out** (CR 702.111): a single blocker against a
   menace attacker is silently reverted (clear
   `BlockingTarget`); attacker becomes unblocked.
 - **`PendingChoiceDamageAssignment`** new kind + resume path.

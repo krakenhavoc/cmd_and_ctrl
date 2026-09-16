@@ -9,7 +9,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
-// reveal_frame_test.go — CR 701.16 reveal, from the card end.
+// reveal_frame_test.go — CR 701.20 reveal, from the card end.
 //
 // The engine and protocol halves are pinned in their own packages.
 // What is tested here is the thing those two cannot see: that the

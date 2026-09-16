@@ -134,7 +134,7 @@ func TestTeferiMinusThreeTargetsNothingAndStillDraws(t *testing.T) {
 	}
 }
 
-// CR 606.3 on a real card: Teferi at 2 loyalty cannot −3.
+// CR 606.6 on a real card: Teferi at 2 loyalty cannot −3.
 func TestTeferiCannotMinusThreeBelowCost(t *testing.T) {
 	g := newCatalogGame(t)
 	toMain(t, g)
@@ -154,7 +154,7 @@ func TestTeferiCannotMinusThreeBelowCost(t *testing.T) {
 	}
 }
 
-// CR 606.5 on a real card, across both of Teferi's abilities: one
+// CR 606.3 on a real card, across both of Teferi's abilities: one
 // activation per planeswalker per turn, not one per ability.
 func TestTeferiOneLoyaltyAbilityPerTurn(t *testing.T) {
 	g := newCatalogGame(t)

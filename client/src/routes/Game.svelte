@@ -1128,7 +1128,7 @@
                reasoning" setting on. S31 sub-PR 8 / ADR 0033 §8. -->
           <BotFeed chat={$chat} />
 
-          <!-- S22 broadcast reveals (CR 701.16). The strip rather than
+          <!-- S22 broadcast reveals (CR 701.20). The strip rather than
                a modal on purpose: a reveal asks nobody a question, and
                three of the four seats receiving it did not act. It
                must not take the board away from a player who is

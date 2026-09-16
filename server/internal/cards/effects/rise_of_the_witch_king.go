@@ -11,7 +11,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // An edict that pays you back. The sacrifice is EachPlayerSacrifices
 // with the controller included — every player picks their own, one
 // prompt each, and a player with no creature is skipped (CR
-// 701.17b). "If you sacrificed a creature this way" is whether the
+// 701.21a). "If you sacrificed a creature this way" is whether the
 // controller was handed a prompt: a player with a creature MUST
 // sacrifice one, so the prompt being queued is the condition.
 //

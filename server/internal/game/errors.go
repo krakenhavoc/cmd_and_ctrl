@@ -98,25 +98,25 @@ var (
 
 	// ErrSplitSecondActive is returned by cast_spell and
 	// activate_ability when an item with SplitSecond is on the stack
-	// (CR 702.79). Mana abilities and special actions are still
+	// (CR 702.61). Mana abilities and special actions are still
 	// allowed. Added in S13.1.
 	ErrSplitSecondActive = errors.New("game: split second is active")
 
 	// ErrLoyaltyAlreadyActivated is returned by activate_loyalty when
 	// the planeswalker's loyalty ability has already been activated
-	// this turn (CR 606.5). The flag clears when the turn cursor
+	// this turn (CR 606.3). The flag clears when the turn cursor
 	// wraps to the next ActiveSeat. Added in S13.1.
 	ErrLoyaltyAlreadyActivated = errors.New("game: planeswalker loyalty already activated this turn")
 
 	// ErrInsufficientLoyalty is returned when a loyalty ability's
 	// cost would remove more loyalty counters than the planeswalker
-	// has (CR 606.3). Paying down to exactly zero is legal — the
+	// has (CR 606.6). Paying down to exactly zero is legal — the
 	// 704.5i SBA takes it from there — so this fires only on a
 	// genuine overpayment. Added in S27 (#329, #334).
 	ErrInsufficientLoyalty = errors.New("game: not enough loyalty to pay that cost")
 
 	// ErrNotAPlaneswalker is returned when a loyalty cost is
-	// activated on something that isn't a planeswalker (CR 606.1).
+	// activated on something that isn't a planeswalker (CR 606.2).
 	// Guards both the catalog path (a miswritten Spec) and the
 	// S13.1 sandbox action, which used to take any battlefield card
 	// and hand it loyalty counters. Added in S27 (#329, #334).
@@ -247,7 +247,7 @@ var (
 	// printed face is not one this card offers (ADR 0034): a
 	// negative or out-of-range index, or the back face of anything
 	// that is not a modal DFC — a transform card's back is reached
-	// by transforming the permanent, never by casting it (CR 712.4),
+	// by transforming the permanent, never by casting it (CR 712.11),
 	// and an adventure's second half needs the exile-and-recast
 	// permission that is not built yet.
 	//
@@ -260,12 +260,12 @@ var (
 
 	// ErrSummoningSick is returned when a creature that entered
 	// the battlefield this turn is asked to attack or activate a
-	// tap-cost ability without haste (CR 302.1, 702.10). Added in
+	// tap-cost ability without haste (CR 302.6, 702.10). Added in
 	// S18 sub-PR 2.
 	ErrSummoningSick = errors.New("game: creature has summoning sickness")
 
 	// ErrConditionNotMet is returned when an ability carries an
-	// activation restriction (CR 602.5a — "Activate only if you
+	// activation restriction (CR 602.5 — "Activate only if you
 	// control five or more lands") that the board does not satisfy.
 	// Checked before any cost is validated or paid, so the source is
 	// untouched. Added in the S32 mana-pipeline pass (#352).
@@ -286,7 +286,7 @@ var (
 
 	// ErrCantActivate is returned by the activation paths when a
 	// continuous effect says this permanent's activated abilities
-	// can't be activated (CR 602.5a) — Arrest, Faith's Fetters. The
+	// can't be activated (CR 602.5) — Arrest, Faith's Fetters. The
 	// mana-ability half is the same error: a player who cannot tap
 	// an Arrested Birds of Paradise is being told the same thing.
 	// Added in S24.

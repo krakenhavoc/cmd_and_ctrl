@@ -28,7 +28,7 @@ import (
 // (b13ResolutionInProgressBy): the player whose spell or ability is
 // resolving. A placement outside any resolution — a loyalty cost, a
 // Saga's lore counter, a permanent entering with counters — is the
-// permanent's controller's (CR 606.2, 714.2b), and counts. An
+// permanent's controller's (CR 606.4, 714.3), and counts. An
 // opponent's effect putting counters on Lae'zel's controller's
 // creature does not, as printed; a placement of the controller's own
 // that happens to follow an opponent's resolution without a boundary

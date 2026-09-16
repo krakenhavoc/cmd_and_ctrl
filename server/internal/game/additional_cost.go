@@ -129,7 +129,7 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, cost *Ad
 		}
 	}
 	// The sacrifice clause reuses the activated-ability validator, so
-	// "you may only sacrifice what you control" (CR 701.17b) and the
+	// "you may only sacrifice what you control" (CR 701.21a) and the
 	// spec's own predicate are enforced in one place rather than two.
 	if cost.Sacrifice == nil {
 		if len(sacrificeIDs) > 0 {

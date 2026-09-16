@@ -10,7 +10,7 @@ import (
 
 // untap_step_test.go — #74's untap-step seam, from both ends: the
 // per-permanent "becomes untapped" trigger (Mesmeric Orb) and the
-// step-scoped permission that widens CR 502.1's set (Seedborn Muse,
+// step-scoped permission that widens CR 502.3's set (Seedborn Muse,
 // Unwinding Clock, Drumbellower, Bender's Waterskin).
 
 const (
@@ -58,7 +58,7 @@ func TestMesmericOrbMillsOncePerPermanentThatUntapsInTheUntapStep(t *testing.T) 
 	}
 }
 
-// CR 701.20a is a change of state. A permanent that was never tapped
+// CR 701.26b is a change of state. A permanent that was never tapped
 // does not become untapped, so a board of upright permanents mills
 // nobody — which is the difference between the Orb as printed and an
 // engine that mills the whole table every turn regardless.

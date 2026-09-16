@@ -8,7 +8,7 @@ package effects
 // The whole card is reminder text, and every clause of it is engine
 // behaviour: it is played as a land because its type line says Land,
 // it is summoning sick because its type line says Creature and the
-// mana ability has a tap cost (CR 302.1, checked in
+// mana ability has a tap cost (CR 302.6, checked in
 // ActivateManaAbility), and since #354 a Forest subtype produces {G}
 // with no Spec at all. The ability is declared here anyway so the card
 // reads like every other land in the catalog and its coverage is

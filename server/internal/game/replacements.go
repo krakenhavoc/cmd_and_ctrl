@@ -154,7 +154,7 @@ type ReplacementEvent struct {
 	// paused entry so the resume can finish the two jobs only stack
 	// resolution does: attaching a resolved Aura to what it targeted
 	// (CR 303.4a) and queueing evoke's sacrifice trigger (CR
-	// 702.74b). Unexported engine plumbing.
+	// 702.74a). Unexported engine plumbing.
 	//
 	// Set by resolveTopOfStackLocked, which is what makes that entry
 	// site entryResumable. Before it existed, a permanent spell

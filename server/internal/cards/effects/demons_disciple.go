@@ -14,7 +14,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // means you too, and the Disciple is on the battlefield when its own
 // trigger resolves, so feeding it to itself is the printed line.
 // Every player picks their own creature or planeswalker in their own
-// prompt; a player with neither is skipped (CR 701.17b).
+// prompt; a player with neither is skipped (CR 701.21a).
 //
 // No simplification.
 func init() {

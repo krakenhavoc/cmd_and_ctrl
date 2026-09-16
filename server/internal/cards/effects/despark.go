@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // answer a cheap threat or a land (mana value 0).
 //
 // ManaValueGE reads the printed cost, so {X} counts as 0 on the
-// battlefield (CR 202.3b) — a creature cast for X=8 is NOT a legal
+// battlefield (CR 202.3e) — a creature cast for X=8 is NOT a legal
 // Despark target unless its printed cost is otherwise 4+, exactly as
 // in paper.
 func init() {

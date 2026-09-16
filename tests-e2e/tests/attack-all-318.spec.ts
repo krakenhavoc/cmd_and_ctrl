@@ -102,7 +102,7 @@ test.describe("#318 attack with all", () => {
 
       // Everything just entered, so everything is summoning-sick.
       // untap_all clears the flag the same way the untap step does
-      // (CR 302.1), which is the cheapest way to get a board that has
+      // (CR 302.6), which is the cheapest way to get a board that has
       // "been around since last turn".
       await admin.sendActionAsPlayer(attacker.playerID, "untap_all", {});
 

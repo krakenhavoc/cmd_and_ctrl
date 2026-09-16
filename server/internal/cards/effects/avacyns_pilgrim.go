@@ -6,7 +6,7 @@ package effects
 //	"{T}: Add {W}."
 //
 // A one-drop dork that fixes into white — the Selesnya deck's Elf.
-// Same shape as Llanowar Elves with a different colour; CR 302.1
+// Same shape as Llanowar Elves with a different colour; CR 302.6
 // summoning sickness applies through the engine's mana-ability gate.
 //
 // No simplification.

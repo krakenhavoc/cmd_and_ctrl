@@ -317,7 +317,7 @@ func TestPonderShuffleIsASecondPromptOffTheFirst(t *testing.T) {
 	if len(g.PendingChoices) != 0 {
 		t.Errorf("%d prompts left open after the chain finished", len(g.PendingChoices))
 	}
-	// A shuffle un-knows the library (CR 701.20): the three cards the
+	// A shuffle un-knows the library (CR 701.24): the three cards the
 	// player just looked at are no longer theirs to read.
 	for _, card := range me.Library.Cards {
 		if len(card.KnownBy) != 0 {

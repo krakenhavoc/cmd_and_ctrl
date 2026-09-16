@@ -27,7 +27,7 @@ import "github.com/google/uuid"
 // Two writes of `Tapped = false` are deliberately NOT untaps and
 // keep their own code:
 //
-//   - MoveCard's battlefield-exit cleanup (zone.go). CR 701.20a is
+//   - MoveCard's battlefield-exit cleanup (zone.go). CR 701.26b is
 //     an action performed on a permanent, and a card that has left
 //     the battlefield is not a permanent. Announcing it would fire
 //     Mesmeric Orb on every creature that dies tapped, which is not
@@ -56,7 +56,7 @@ import "github.com/google/uuid"
 //
 // is NOT a trigger at all. Nothing goes on the stack, nobody gets
 // priority, and there is nothing to respond to (CR 502.4). It is a
-// modification of the untap step's TURN-BASED ACTION: CR 502.1 says
+// modification of the untap step's TURN-BASED ACTION: CR 502.3 says
 // the active player determines which permanents they control untap,
 // and Seedborn Muse widens that set. Modelling it as a trigger is
 // what Quest for Renewal had to settle for before this file, and its
@@ -94,7 +94,7 @@ import "github.com/google/uuid"
 //     nobody has read.
 
 // UntapStepPermission declares one card's contribution to the set of
-// permanents that untap during a player's untap step (CR 502.1) —
+// permanents that untap during a player's untap step (CR 502.3) —
 // Seedborn Muse, Unwinding Clock, Drumbellower, Bender's Waterskin,
 // the second half of Quest for Renewal.
 //
@@ -110,7 +110,7 @@ type UntapStepPermission struct {
 	// during the untap step of `activePlayer`. Every card in the
 	// family is printed "during each OTHER player's untap step",
 	// which is `activePlayer != source.Controller` — the active
-	// player's own permanents already untap by CR 502.1 and a
+	// player's own permanents already untap by CR 502.3 and a
 	// permission that fired on your own untap step would be a no-op
 	// at best.
 	//
@@ -150,7 +150,7 @@ type UntapStepPermission struct {
 // by the cards/effects package alongside the other catalog hooks.
 //
 // Nil hook ⇒ no catalog wired ⇒ the untap step untaps exactly what
-// CR 502.1 says and nothing else, which is the pre-existing
+// CR 502.3 says and nothing else, which is the pre-existing
 // behaviour and what the game package's own tests see.
 //
 // Consulted once per untap step, not once per event: see
@@ -167,11 +167,11 @@ type boundUntapPermission struct {
 }
 
 // untapPermanentLocked turns one permanent from sideways to upright
-// (CR 701.20a) and announces it as EventUntapCard. Returns whether
+// (CR 701.26b) and announces it as EventUntapCard. Returns whether
 // anything happened.
 //
 // A permanent that is ALREADY untapped does not become untapped, and
-// gets no event: CR 701.20a describes a change of state, and "untap
+// gets no event: CR 701.26b describes a change of state, and "untap
 // target permanent" pointed at an upright one does nothing at all.
 // This matters to exactly the card that motivated the file — a
 // Mesmeric Orb that milled for every no-op untap would mill for the
@@ -250,12 +250,12 @@ func (g *Game) activeUntapStepPermissionsLocked(activePlayer uuid.UUID) []boundU
 	return out
 }
 
-// untapStepSetLocked answers CR 502.1's question — which permanents
+// untapStepSetLocked answers CR 502.3's question — which permanents
 // untap during `activePlayer`'s untap step — as a list of instance
 // IDs.
 //
 // The set is chosen UP FRONT and returned by ID rather than untapped
-// in place, for two reasons that happen to agree. CR 502.2 untaps
+// in place, for two reasons that happen to agree. CR 502.3 untaps
 // them simultaneously, so the set cannot depend on what has already
 // untapped within the same step. And each untap emits, which runs
 // listeners, which is not a walk you want to be holding pointers
@@ -280,7 +280,7 @@ func (g *Game) untapStepSetLocked(activePlayer uuid.UUID) []uuid.UUID {
 		if !c.Tapped {
 			continue
 		}
-		// CR 502.1: the active player's own permanents, always.
+		// CR 502.3: the active player's own permanents, always.
 		if c.Controller == activePlayer {
 			ids = append(ids, c.InstanceID)
 			continue

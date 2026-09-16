@@ -126,7 +126,7 @@ func TestLethalDamageToAPlaneswalkerKillsIt(t *testing.T) {
 	}
 }
 
-// TestDamageRemovesDefenseFromABattle is CR 120.3e, the same rule one
+// TestDamageRemovesDefenseFromABattle is CR 120.3h, the same rule one
 // card type over.
 func TestDamageRemovesDefenseFromABattle(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
@@ -220,7 +220,7 @@ func TestDeclareAttackerRejectsABattleYouProtect(t *testing.T) {
 	attacker := g.Seats[g.Turn.ActiveSeat].ID
 	caster := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
 	// The active player is the protector, so the battle is theirs to
-	// defend and not theirs to attack (CR 310.7).
+	// defend and not theirs to attack (CR 310.9b).
 	b := pushBattleForTest(g, caster, attacker, "Their Siege", 5)
 	bear := pushReadyAttackerForTest(g, attacker, "Bear", 2)
 	stepToDeclareAttackers(t, g)

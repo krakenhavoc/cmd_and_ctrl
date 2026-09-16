@@ -17,7 +17,7 @@ package game
 // Card-level counter type identifiers.
 const (
 	// CounterPlusOne is the +1/+1 counter. Stacks with other
-	// +1/+1 counters (cf. CR 122.1c) and cancels 1-for-1 against
+	// +1/+1 counters (cf. CR 122.1a) and cancels 1-for-1 against
 	// CounterMinusOne via the SBA in CR 704.5q.
 	CounterPlusOne = "+1/+1"
 	// CounterMinusOne is the -1/-1 counter; same shape as
@@ -29,7 +29,7 @@ const (
 	CounterLoyalty = "loyalty"
 	// CounterDefense is the battle defense counter (post-MoM).
 	// SBA: a battle with 0 defense counters → graveyard
-	// (CR 704.5p).
+	// (CR 704.5v).
 	CounterDefense = "defense"
 	// CounterCharge is a generic resource counter (Aether Vial,
 	// Coalition Relic, etc.). No SBA.
@@ -43,7 +43,7 @@ const (
 	CounterShield = "shield"
 	// CounterLore is the saga lore counter (CR 714). SBA: a saga
 	// whose final-chapter lore counter is set is sacrificed by
-	// its controller (CR 704.5u). The advance-chapter trigger
+	// its controller (CR 704.5s). The advance-chapter trigger
 	// lands in S14+ with the effect catalog.
 	CounterLore = "lore"
 )
@@ -56,7 +56,7 @@ const (
 	// SetPoison action — both fields are kept in sync.
 	CounterPoison = "poison"
 	// CounterEnergy is the energy counter (Kaladesh resource
-	// counter; CR 106.12). No game-loss condition. Player.Energy
+	// counter; CR 107.14). No game-loss condition. Player.Energy
 	// stays as a duplicate int field for backwards-compat.
 	CounterEnergy = "energy"
 	// CounterExperience is the experience counter (Commander

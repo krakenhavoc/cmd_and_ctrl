@@ -97,7 +97,7 @@ const (
 	// 0-based offset into the catalog's Spec.ManaAbilities (or 0 for
 	// the synthetic basic-land ability derived from TypeLine).
 	TypeActivateManaAbility Type = "activate_mana_ability"
-	// S21 sub-PR 1 — sacrifice a permanent you control (CR 701.17).
+	// S21 sub-PR 1 — sacrifice a permanent you control (CR 701.21).
 	// Params carry `{instance_id}`. Distinct from a manual
 	// move_card to the graveyard: it emits EventSacrifice, so
 	// "whenever you sacrifice" payoffs fire. Only the permanent's
@@ -605,7 +605,7 @@ func Dispatch(g *game.Game, a Action) error {
 
 	case TypeSetCommanderDamage:
 		// `from` is a COMMANDER CARD instance ID since S25 (#77); it
-		// was an opposing player ID before the CR 903.14a rekey.
+		// was an opposing player ID before the CR 903.10a rekey.
 		var p struct {
 			From   string `json:"from"`
 			To     string `json:"to"`
@@ -1093,7 +1093,7 @@ func Dispatch(g *game.Game, a Action) error {
 			// ("up to two target creatures"). Ordered as clicked.
 			Targets []castTargetWire `json:"targets"`
 			// Bottom / TopOrder answer a PendingChoiceScry (CR
-			// 701.18): the looked-at cards going under the library,
+			// 701.22): the looked-at cards going under the library,
 			// and the ones staying on top listed TOP-FIRST. Every
 			// looked-at card must appear in exactly one list.
 			Bottom   []string `json:"bottom"`
@@ -1104,7 +1104,7 @@ func Dispatch(g *game.Game, a Action) error {
 			// engine validates and normalises it. Routed by presence,
 			// like Color above.
 			CreatureType string `json:"creature_type"`
-			// Graveyard answers a PendingChoiceSurveil (CR 701.42)
+			// Graveyard answers a PendingChoiceSurveil (CR 701.25)
 			// alongside TopOrder: the looked-at cards going to the
 			// chooser's graveyard. Its PRESENCE is what distinguishes
 			// a surveil answer from a scry one, since both carry
@@ -1175,7 +1175,7 @@ func Dispatch(g *game.Game, a Action) error {
 			// S27: two kinds answer with a single {kind, id} ref.
 			// pick_target is a real targeting choice; choose_protector
 			// is a battle's controller naming an opponent as it enters
-			// (CR 310.5), which is not targeting at all — it just asks
+			// (CR 310.9a), which is not targeting at all — it just asks
 			// the same question shape, so it reuses the payload and
 			// the client's player-highlight flow rather than growing a
 			// second one.
@@ -1310,7 +1310,7 @@ func Dispatch(g *game.Game, a Action) error {
 		// shape.
 		//
 		// search_library is the one that accepts an EMPTY list: "you
-		// may fail to find" (CR 701.19c) arrives as {choice_id} with
+		// may fail to find" (CR 701.23b) arrives as {choice_id} with
 		// no card_ids at all, which is why this lookup happens before
 		// the count-based guards below rather than after.
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok {

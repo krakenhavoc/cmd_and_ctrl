@@ -1376,7 +1376,7 @@ func TestSetCommanderDamageValidatesFrom(t *testing.T) {
 
 // TestSetCommanderDamageRejectsNonCommander is the other half of the
 // `from` gate: a real card that simply isn't a commander cannot
-// accrue commander damage (CR 903.14a).
+// accrue commander damage (CR 903.10a).
 func TestSetCommanderDamageRejectsNonCommander(t *testing.T) {
 	g := newActiveGame(t)
 	p0, p1 := g.Seats[0], g.Seats[1]
@@ -1674,7 +1674,7 @@ func TestFlashBypassesSorcerySpeedGate(t *testing.T) {
 }
 
 // TestS131SplitSecondBlocksFurtherCasts verifies that
-// SplitSecondActive rejects subsequent casts (CR 702.79). Split-
+// SplitSecondActive rejects subsequent casts (CR 702.61). Split-
 // second mana abilities and special actions remain legal — we only
 // cover the cast path here.
 func TestS131SplitSecondBlocksFurtherCasts(t *testing.T) {
@@ -2301,7 +2301,7 @@ func TestS131SBAEmptyLibraryDrawEliminates(t *testing.T) {
 	}
 }
 
-// TestS131SBA21CommanderDamageEliminates covers CR 704.5v / 903.14a
+// TestS131SBA21CommanderDamageEliminates covers CR 704.6c / 903.10a
 // — a player who has been dealt 21+ damage by a single commander
 // loses. Per-commander tracking, promised in S13.1 sub-PR 8 and
 // actually landed in S25 (#77), is what the instance-ID key here is.
@@ -2510,7 +2510,7 @@ func TestS132SBAPlaneswalkerZeroLoyalty(t *testing.T) {
 	}
 }
 
-// TestS132SBABattleZeroDefense covers CR 704.5p — a battle with 0
+// TestS132SBABattleZeroDefense covers CR 704.5v — a battle with 0
 // defense counters is moved to its owner's graveyard.
 func TestS132SBABattleZeroDefense(t *testing.T) {
 	g := newActiveGame(t)

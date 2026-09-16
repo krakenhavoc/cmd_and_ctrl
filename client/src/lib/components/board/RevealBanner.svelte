@@ -1,5 +1,5 @@
 <script lang="ts">
-  // RevealBanner renders the S22 broadcast reveal window (CR 701.16)
+  // RevealBanner renders the S22 broadcast reveal window (CR 701.20)
   // into the board's attention strip.
   //
   // A reveal is the one thing on GameView that every seat receives

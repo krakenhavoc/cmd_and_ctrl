@@ -22,9 +22,9 @@ import "github.com/google/uuid"
 //
 // Three CR rules split across three call sites:
 //
-//	714.2b  "As a Saga enters ... put a lore counter on it"
+//	714.3a  "This Saga enters with a lore counter on it"
 //	        → sagaEntersWithLoreCounterLocked, from fireETBHookLocked
-//	714.2b  "... and after your draw step, put a lore counter on it"
+//	714.3c  "As a player's precombat main phase begins, that player puts a lore counter on each Saga"
 //	        → advanceSagasForActiveSeatLocked, from the
 //	          StepPrecombatMain entry hook
 //	704.5s  a Saga at or past its final chapter, with no chapter
@@ -76,7 +76,7 @@ func SagaFinalChapter(c Card) int {
 	return final
 }
 
-// sagaEntersWithLoreCounterLocked puts the CR 714.2b entry lore
+// sagaEntersWithLoreCounterLocked puts the CR 714.3 entry lore
 // counter on a Saga that has just crossed onto the battlefield, and
 // fires the chapter events for whatever chapters that counter
 // reached.
@@ -120,7 +120,7 @@ func (g *Game) sagaEntersWithLoreCounterLocked(cardID uuid.UUID) {
 	g.fireSagaChaptersLocked(*after, 0, after.Counters[CounterLore])
 }
 
-// advanceSagasForActiveSeatLocked is the CR 714.2b turn-based action
+// advanceSagasForActiveSeatLocked is the CR 714.3 turn-based action
 // at the start of the active player's precombat main phase: one lore
 // counter onto each Saga that player controls.
 //
@@ -180,7 +180,7 @@ func (g *Game) advanceSagaLocked(cardID uuid.UUID) {
 }
 
 // fireSagaChaptersLocked emits one EventSagaChapter per chapter
-// number in (from, to], in ascending order (CR 714.2c — a chapter
+// number in (from, to], in ascending order (CR 714.2b — a chapter
 // ability triggers when the counter count becomes greater than or
 // equal to its number and was previously less). Chapters beyond the
 // card's final one are not emitted: CR 714.4 caps the Saga at its

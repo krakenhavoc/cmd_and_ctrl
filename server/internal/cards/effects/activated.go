@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Costs compose with Plus for the multi-part case ("{2}, {T}:").
 
 // TapCost is "{T}" — the source must be untapped, and a creature
-// source must be free of summoning sickness (CR 302.1).
+// source must be free of summoning sickness (CR 302.6).
 func TapCost() game.AbilityCost { return game.AbilityCost{Tap: true} }
 
 // SacrificeThis sacrifices the source as the cost.
@@ -51,17 +51,17 @@ func ManaCost(cost string) game.AbilityCost { return game.AbilityCost{Mana: cost
 // card.
 func MinX(n int) game.AbilityCost { return game.AbilityCost{MinX: n} }
 
-// PayLife is a life component (CR 118.8).
+// PayLife is a life component (CR 119.4).
 func PayLife(n int) game.AbilityCost { return game.AbilityCost{Life: n} }
 
 // LoyaltyCost is a planeswalker's loyalty cost — the "+1", "[0]" or
 // "−3" printed to the left of the ability. Positive adds counters,
 // negative removes them, zero does neither and still spends the
-// turn's activation (CR 606.5).
+// turn's activation (CR 606.3).
 //
 // Setting it is the whole declaration: the engine derives sorcery
 // speed, once-per-turn, "must be a planeswalker you control" and
-// CR 606.3 from the presence of the component, so a card file
+// CR 606.6 from the presence of the component, so a card file
 // writes the cost and nothing else. ADR 0020 kept loyalty out of
 // AbilityCost; ADR 0032 §7 reversed that — see the field comment on
 // game.AbilityCost.Loyalty.
@@ -112,7 +112,7 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 // battlefield cards — but it is NOT targeting: a sacrifice cost
 // doesn't target, so hexproof and "can't be the target of" never
 // apply to it. The controller filter lives in the engine's cost
-// validation (CR 701.17b).
+// validation (CR 701.21a).
 func sacrificeSpec(label string, preds ...CardPredicate) *game.TargetSpec {
 	return TargetPermanent(label, preds...)
 }

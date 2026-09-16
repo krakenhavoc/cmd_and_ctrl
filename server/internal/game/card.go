@@ -271,7 +271,7 @@ type Card struct {
 	// sites and 389 Card{} literals, whereas leaving them as fields
 	// means all 74 Is*() call sites keep compiling and START being
 	// right, since "the characteristics of the face that's currently
-	// up" is exactly CR 711.2.
+	// up" is exactly CR 712.8.
 	Faces []Face
 
 	// ActiveFace indexes Faces.
@@ -329,7 +329,7 @@ type Card struct {
 	// S24, per ADR 0036 decision 1.
 	AttachedTo TargetRef
 
-	// AttachedAt is the CR 613.7d timestamp: an Equipment's or
+	// AttachedAt is the CR 613.7e timestamp: an Equipment's or
 	// Aura's continuous effect gets a NEW timestamp when it becomes
 	// attached, not the one it got when it entered the
 	// battlefield. The layer engine prefers this over
@@ -391,7 +391,7 @@ type Card struct {
 	// like Power / Toughness / ManaCost, not card-effect data, and
 	// while the only source was the catalog every battle outside the
 	// opt-in catalog entered with zero defense counters and was
-	// swept into the graveyard by the CR 704.5p SBA before anyone
+	// swept into the graveyard by the CR 704.5v SBA before anyone
 	// could attack it. That was live on `main` for every battle a
 	// player could import. The catalog's BattleSpec.Defense survives
 	// as a fallback for cards with no printed data — tokens,
@@ -401,7 +401,7 @@ type Card struct {
 	StartingDefense int
 
 	// ProtectorPlayerID is the opponent chosen to protect a battle
-	// as it enters (CR 310.5). uuid.Nil for every other card type,
+	// as it enters (CR 310.9a). uuid.Nil for every other card type,
 	// and for a battle whose protector prompt has not been answered
 	// yet.
 	//
@@ -477,7 +477,7 @@ type Card struct {
 	// their client. Added in S13.5.
 	FaceDown bool
 
-	// SummonedThisTurn is the summoning-sickness flag (CR 302.1).
+	// SummonedThisTurn is the summoning-sickness flag (CR 302.6).
 	// Set true whenever the card enters the battlefield; cleared at
 	// the start of the controller's untap step. Haste (CR 702.10)
 	// is a read-time bypass in HasSummoningSickness, NOT a

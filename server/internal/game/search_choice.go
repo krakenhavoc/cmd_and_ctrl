@@ -22,10 +22,10 @@ type searchResumeFrame struct {
 }
 
 // ResolveSearchLibrary answers a PendingChoiceSearchLibrary (CR
-// 701.19): `picks` are the cards the searcher takes, chosen from the
+// 701.23): `picks` are the cards the searcher takes, chosen from the
 // candidates the prompt offered.
 //
-// An empty `picks` is a legal answer, not a client bug — CR 701.19c
+// An empty `picks` is a legal answer, not a client bug — CR 701.23b
 // lets a player fail to find no matter what their library holds, and
 // declining is the whole content of a "you MAY search" clause. The
 // search still happened, so EventSearchLibrary still fires and the
@@ -144,7 +144,7 @@ func (g *Game) checkSearchPicksLocked(choice *PendingChoice, p *Player, picks []
 // handing internal/legal the frame itself would make every future
 // continuation field part of the enumerator's contract.
 //
-// An empty `picks` is always legal — CR 701.19c lets a player fail
+// An empty `picks` is always legal — CR 701.23b lets a player fail
 // to find — which is what gives a stuck seat an answer to fall back
 // on (see legal.Move.AlwaysLegal).
 //

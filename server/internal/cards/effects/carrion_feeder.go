@@ -9,7 +9,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // A free sac outlet that grows. Two things worth noting:
 //
-//   - The ability can eat the Feeder itself (CR 701.17 has no
+//   - The ability can eat the Feeder itself (CR 701.21 has no
 //     "another" clause here). Doing so is legal and pointless: the
 //     Feeder is already in the graveyard when the ability resolves,
 //     so the counter has nowhere to land and the effect no-ops.

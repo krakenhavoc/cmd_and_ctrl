@@ -11,7 +11,7 @@ package effects
 // creature source) and two target slots read positionally: slot 0
 // is the controller's creature, slot 1 the other creature, any
 // controller. The fight is b10Fight — both powers read before either
-// blow lands, so the two are simultaneous as CR 701.12 asks — and a
+// blow lands, so the two are simultaneous as CR 701.14 asks — and a
 // creature that left in response fights nothing.
 //
 // DECLARED SIMPLIFICATION, weaker than printed — the Bite Down

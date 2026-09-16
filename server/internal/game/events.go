@@ -161,7 +161,7 @@ const (
 	// S19 sub-PR 4.
 	EventLTB EventKind = "ltb"
 
-	// EventScry — Actor finished a scry (CR 701.18). Emitted after
+	// EventScry — Actor finished a scry (CR 701.22). Emitted after
 	// the cards have been put back, with Amount = how many went to
 	// the bottom, so a "whenever you scry" payoff sees a completed
 	// scry rather than an in-flight one. Source is the card that
@@ -169,7 +169,7 @@ const (
 	// library), because no scry happened.
 	EventScry EventKind = "scry"
 
-	// EventSurveil — Actor finished a surveil (CR 701.42). Same
+	// EventSurveil — Actor finished a surveil (CR 701.25). Same
 	// shape as EventScry: emitted after the cards have been put
 	// back, with Amount = how many went to the GRAVEYARD (not the
 	// bottom — surveil has no bottom leg), so a "whenever you
@@ -183,7 +183,7 @@ const (
 	// an ordinary scry. Added in S22.
 	EventSurveil EventKind = "surveil"
 
-	// EventSacrifice — a permanent was sacrificed (CR 701.17):
+	// EventSacrifice — a permanent was sacrificed (CR 701.21):
 	// its controller moved it to the graveyard as a cost or as
 	// part of an effect's instruction. Emitted immediately BEFORE
 	// the zone move, so a listener sees the permanent still on the
@@ -326,7 +326,7 @@ const (
 	// card is already in hand.
 	//
 	// Not emitted on the turn-1 skipped draw step of the starting
-	// player (CR 103.7c): that step still happens and still grants
+	// player (CR 103.8a): that step still happens and still grants
 	// priority, but this project's cursor returns before reaching
 	// here. Howling Mine on turn 1 of the first player's turn is the
 	// only case that notices, and it is not worth restructuring the
@@ -370,7 +370,7 @@ const (
 	EventCostWarning EventKind = "cost_warning"
 
 	// EventSagaChapter — a lore counter advanced a Saga ONTO a
-	// chapter (CR 714.2c). Target / CardID = the Saga, Actor = its
+	// chapter (CR 714.2b). Target / CardID = the Saga, Actor = its
 	// controller, Amount = the chapter number just reached. One
 	// event per chapter crossed, in ascending order, so a Saga that
 	// gains two lore counters at once triggers both chapters in the
@@ -415,11 +415,11 @@ const (
 	// log — no card in the catalog reads "becomes blocked by" yet.
 	EventBlock EventKind = "block"
 	// EventBattleDefeated — a battle's last defense counter came off
-	// (CR 310.9). Source / Target / CardID = the battle, Actor = its
+	// (CR 310.12b). Source / Target / CardID = the battle, Actor = its
 	// controller.
 	//
 	// Emitted from the state-based-action pass IMMEDIATELY BEFORE the
-	// CR 704.5p move that puts the battle in the graveyard, so a
+	// CR 704.5v move that puts the battle in the graveyard, so a
 	// defeated trigger's source is still findable on the battlefield
 	// when the harvester walks it. A dies-trigger shape (EventLTB
 	// plus the LKI snapshot) would also work and would be lossier:
@@ -429,7 +429,7 @@ const (
 	EventBattleDefeated EventKind = "battle_defeated"
 
 	// EventRevealCards — Actor showed CardID to the whole table (CR
-	// 701.16). Fires once per card, so "reveal the top five cards of
+	// 701.20). Fires once per card, so "reveal the top five cards of
 	// your library" produces five events sharing one RevealSeq; the
 	// wire projection groups them back into a single announcement.
 	// Source is the card whose effect revealed; OldZone is the zone

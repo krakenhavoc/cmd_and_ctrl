@@ -12,7 +12,7 @@ import "github.com/google/uuid"
 // alternative cost is paid INSTEAD of it. "Overload {6}{U}" does not
 // mean "{1}{U} and also {6}{U}" — it means the spell costs {6}{U}
 // and nothing else. Additional costs survive the swap, because CR
-// 601.2f is evaluated independently of the cost chosen at 601.2e, so
+// 601.2f is evaluated independently of the cost chosen at 601.2b, so
 // a card that charged both would still charge both.
 //
 // Three things an alternative cost may carry beyond the price,
@@ -92,7 +92,7 @@ type AlternativeCost struct {
 	Condition func(g *Game, controller uuid.UUID) bool
 
 	// Life is a "pay N life" component of the alternative cost (CR
-	// 118.4) — Force of Will's 1 life, Snuff Out's 4.
+	// 119.4) — Force of Will's 1 life, Snuff Out's 4.
 	//
 	// A COST, not a drawback: it is validated before anything is
 	// paid, so a player below N life cannot claim the offer at all.

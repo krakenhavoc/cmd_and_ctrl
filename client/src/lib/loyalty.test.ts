@@ -188,7 +188,7 @@ describe("loyalty abilities in the card menu", () => {
     expect(itemIn(sections, "ability-0")?.disabled).toBeFalsy();
   });
 
-  it("greys a −N the planeswalker cannot pay for (CR 606.3)", () => {
+  it("greys a −N the planeswalker cannot pay for (CR 606.6)", () => {
     const pw = walker({ counters: { loyalty: 2 } });
     const sections = buildMenuSections(view({ battlefield: [pw] }), pw, "a", false);
     expect(itemIn(sections, "ability-1")?.disabled).toBe(true);
@@ -204,7 +204,7 @@ describe("loyalty abilities in the card menu", () => {
     expect(itemIn(sections, "ability-1")?.disabled).toBe(true);
   });
 
-  it("greys loyalty abilities outside the sorcery-speed window (CR 606.5)", () => {
+  it("greys loyalty abilities outside the sorcery-speed window (CR 606.3)", () => {
     const pw = walker();
     const v = view({ battlefield: [pw], step: "upkeep" });
     const sections = buildMenuSections(v, pw, "a", false);
@@ -326,7 +326,7 @@ describe("manual loyalty rows for a non-catalog planeswalker", () => {
     ]);
   });
 
-  it("stops the minus rows at the walker's current loyalty (CR 606.3)", () => {
+  it("stops the minus rows at the walker's current loyalty (CR 606.6)", () => {
     const pw = bare({ counters: { loyalty: 1 } });
     const sections = buildMenuSections(view({ battlefield: [pw] }), pw, "a", false);
     const ids = (sections.find((s) => s.id === "loyalty")?.items ?? []).map((i) => i.id);

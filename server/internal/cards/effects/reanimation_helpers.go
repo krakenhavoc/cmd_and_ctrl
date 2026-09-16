@@ -37,7 +37,7 @@ func targetCreatureInAnyGraveyard() *game.TargetSpec {
 }
 
 // manaValueOf is a card's mana value: generic pips plus one per
-// coloured pip. {X} contributes 0, which is what CR 202.3b says for
+// coloured pip. {X} contributes 0, which is what CR 202.3e says for
 // a card anywhere other than the stack — and a reanimated card is
 // always somewhere other than the stack when its mana value is read.
 //

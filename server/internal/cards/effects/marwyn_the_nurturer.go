@@ -23,7 +23,7 @@ import (
 // power at activation — counters and anthems both count, a -1/-1
 // counter subtracts — and a power of zero adds nothing and still
 // taps. Summoning sickness applies to the tap, as for every creature
-// mana ability (CR 302.1); the engine enforces it.
+// mana ability (CR 302.6); the engine enforces it.
 //
 // No simplification.
 func init() {

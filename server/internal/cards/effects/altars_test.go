@@ -130,7 +130,7 @@ func TestPhyrexianAltarPromptsForColor(t *testing.T) {
 
 // TestAltarViewOffersOnlyYourCreatures is the client's half of the
 // contract: the picker's candidate list is stamped, and filtered to
-// the controller's own creatures (CR 701.17b) — you may not eat an
+// the controller's own creatures (CR 701.21a) — you may not eat an
 // opponent's blocker to pay your own cost.
 func TestAltarViewOffersOnlyYourCreatures(t *testing.T) {
 	g := newCatalogGame(t)

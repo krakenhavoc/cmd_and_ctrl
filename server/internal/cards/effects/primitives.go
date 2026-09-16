@@ -136,7 +136,7 @@ func (d DestroyTarget) Apply(ctx *Context) error {
 }
 
 // SacrificePermanent sacrifices a battlefield permanent on behalf
-// of its controller (CR 701.17). Distinct from DestroyTarget:
+// of its controller (CR 701.21). Distinct from DestroyTarget:
 // sacrifice ignores indestructible / regeneration and fires
 // EventSacrifice as well as the ordinary dies-trigger, which is
 // what aristocrats payoffs watch. Added in S21 sub-PR 1.
@@ -407,7 +407,7 @@ type SearchLibrary struct {
 	// card's. Since S22 the fetched card's own enters-tapped
 	// replacement runs too (#263), and the two are OR-ed.
 	TappedOnEntry bool
-	// Optional is "you MAY search" (CR 701.19c) — Assassin's Trophy,
+	// Optional is "you MAY search" (CR 701.23b) — Assassin's Trophy,
 	// Path to Exile, Solemn Simulacrum. Forces the prompt so the
 	// searcher can decline the card AND the shuffle.
 	Optional bool
@@ -484,7 +484,7 @@ func (p PayUnless) Apply(ctx *Context) error {
 // EachPlayerSacrifices is "each player sacrifices a creature" (Fleshbag
 // Marauder), "each other player sacrifices a creature" (Grave Pact) or
 // "each opponent sacrifices a creature" (Butcher of Malakir) — CR
-// 701.17a.
+// 701.21a.
 //
 // Every affected player chooses their own, so this fans out one prompt
 // per player rather than picking for them; that is the whole rules
@@ -525,7 +525,7 @@ func (e EachPlayerSacrifices) Apply(ctx *Context) error {
 	return nil
 }
 
-// Scry is "scry N" (CR 701.18) — look at the top N cards of your
+// Scry is "scry N" (CR 701.22) — look at the top N cards of your
 // library, then put any number on the bottom and the rest back on top
 // in any order.
 //
@@ -563,7 +563,7 @@ func (s Scry) Apply(ctx *Context) error {
 	return nil
 }
 
-// Surveil is "surveil N" (CR 701.42) — look at the top N cards of
+// Surveil is "surveil N" (CR 701.25) — look at the top N cards of
 // your library, then put any number of them into your graveyard and
 // the rest back on top in any order.
 //
@@ -764,7 +764,7 @@ func (e ExileTopFaceDown) Apply(ctx *Context) error {
 	return err
 }
 
-// RevealCards is "reveal" (CR 701.16): show the named cards to every
+// RevealCards is "reveal" (CR 701.20): show the named cards to every
 // player at the table, and let them all remember it.
 //
 // The counterpart to Scry / Surveil / LookAtTop, and the difference

@@ -289,7 +289,7 @@ func TestB20FontOfMythosDrawsTwoMoreOnEveryDrawStep(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	b12Push(g, me.ID, "Font of Mythos", "Artifact", b20FontOfMythosOracle, 0, 0)
-	// CR 103.7c skips the first draw step of the game; the next
+	// CR 103.8a skips the first draw step of the game; the next
 	// seat's draw step is the first one the Font sees, and it is an
 	// OPPONENT's — each player's draw step, not the controller's.
 	advanceTo(t, g, game.StepEnd)

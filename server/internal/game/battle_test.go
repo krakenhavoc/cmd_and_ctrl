@@ -61,7 +61,7 @@ func protectorOf(g *Game, battleID uuid.UUID) uuid.UUID {
 // TestBattleEntersWithItsPrintedDefense is the #274 lesson applied to
 // battles: printed data on the card, stamped by the engine, so a
 // battle nobody wrote a Spec for is playable. Before this, every
-// battle entered with zero defense counters and the CR 704.5p
+// battle entered with zero defense counters and the CR 704.5v
 // state-based action swept it into the graveyard on the next priority
 // boundary.
 func TestBattleEntersWithItsPrintedDefense(t *testing.T) {
@@ -74,7 +74,7 @@ func TestBattleEntersWithItsPrintedDefense(t *testing.T) {
 	}
 }
 
-// TestBattleQueuesAProtectorChoiceForItsController is CR 310.5. The
+// TestBattleQueuesAProtectorChoiceForItsController is CR 310.9a. The
 // controller chooses; the options are their opponents and nobody
 // else.
 func TestBattleQueuesAProtectorChoiceForItsController(t *testing.T) {
@@ -100,7 +100,7 @@ func TestBattleQueuesAProtectorChoiceForItsController(t *testing.T) {
 }
 
 // TestResolveChooseProtectorRecordsTheProtector, and the protector is
-// what decides who defends it (CR 310.7) — which
+// what decides who defends it (CR 310.9d) — which
 // defendingPlayerForAttackLocked reads and the attack gate enforces.
 func TestResolveChooseProtectorRecordsTheProtector(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
@@ -150,8 +150,8 @@ func TestResolveChooseProtectorRejectsANonOpponent(t *testing.T) {
 }
 
 // TestBattleAtZeroDefenseIsSweptAndAnnounced covers both halves of a
-// defeat: the CR 310.9 announcement that a defeated trigger harvests,
-// and the CR 704.5p sweep that follows it in the same pass.
+// defeat: the CR 310.12b announcement that a defeated trigger harvests,
+// and the CR 704.5v sweep that follows it in the same pass.
 func TestBattleAtZeroDefenseIsSweptAndAnnounced(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	owner := g.Seats[0].ID
@@ -180,7 +180,7 @@ func TestBattleAtZeroDefenseIsSweptAndAnnounced(t *testing.T) {
 		t.Error("no battle_defeated event was emitted")
 	}
 	if counterOn(g, b, CounterDefense) >= 0 {
-		t.Error("a battle at zero defense survived the CR 704.5p sweep")
+		t.Error("a battle at zero defense survived the CR 704.5v sweep")
 	}
 }
 

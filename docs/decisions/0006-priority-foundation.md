@@ -79,7 +79,7 @@ lock.
 **Decision:** Add a new `Game.StartingSeat int` field, set in `Start()` to
 the active seat at game start (always `0` today). The `StepDraw` hook
 checks `Turn.Number == 1 && Turn.ActiveSeat == StartingSeat` and skips the
-auto-draw per CR 103.7c. The field is carried in `GameView` so spectators
+auto-draw per CR 103.8a. The field is carried in `GameView` so spectators
 and reconnects see the same skip-draw decision.
 
 **Why a separate field vs. inferring from turn state:**

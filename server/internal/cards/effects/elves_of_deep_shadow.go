@@ -10,7 +10,7 @@ package effects
 // (PainRider — see mana_rider_helpers.go for why that distinction is
 // load-bearing: the Elf stays activatable at 1 life, the damage is
 // damage rather than life loss, and its source is the creature). CR
-// 302.1 summoning sickness applies, engine-side.
+// 302.6 summoning sickness applies, engine-side.
 //
 // No simplification.
 func init() {
