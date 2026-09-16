@@ -3,11 +3,11 @@ package effects
 // Baneslayer Angel — "Flying, first strike, lifelink."
 //
 // 5/5 for 3WW. Printed text also includes "protection from Demons
-// and from Dragons" — protection (CR 702.16) is deferred to S24
-// alongside Mind Control per ADR 0014 §11. Ships here without
-// the protection clauses; when S24 lands protection, extend this
-// Spec with the predicate-based guards at damage / block / target
-// / attach hooks.
+// and from Dragons". Protection (CR 702.16) is not implemented: S24
+// shipped Mind Control without it, and it is tracked in #662. Ships
+// here without the protection clauses, declared in Caveats. The
+// shape is #662's ADR to decide. The quality is a subtype, so a
+// changeling source counts as a Demon and as a Dragon.
 //
 // Multi-keyword card — the PrintedKeywords slot feeds all three
 // as strings into Characteristic.Abilities; combat reads them via

@@ -658,6 +658,9 @@ at attach time, per #76 — not part of this ADR).
   Mind Control. Decision 10 takes only the narrow shroud / hexproof
   *target gate*, which is a legality check, not the full
   damage-prevention / can't-be-enchanted / can't-be-blocked bundle.
+  *(Update 2026-09-16: S24 shipped Mind Control without protection,
+  and S30 closed without it. Protection is tracked in
+  [#662](https://github.com/krakenhavoc/cmd_and_ctrl/issues/662).)*
 - **Fortifications, Reconfigure, mutate, "attach to a battle".** Same
   relation, different attach verbs. Nothing here blocks them.
 - **Auras entering attached from anywhere but the stack** (Animate Dead

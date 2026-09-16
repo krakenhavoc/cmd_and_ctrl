@@ -855,8 +855,11 @@ table**, for reasons [ADR 0038](docs/decisions/0038-protection-style-keywords.md
 restriction, and it ships per-card via the `effects.Ward(WardMana(…))`
 helper (S30) — it stays out of the table because the COST is a
 parameter a bare token has nowhere to put. *Protection* tests its
-quality against the SOURCE of a spell or ability, which the targeting
-choke point never receives; it is not implemented.
+quality against the SOURCE of a spell or ability (CR 702.16b), which
+the targeting choke point never receives; it is not implemented, and
+it is tracked in #662 (an ADR comes first). A card that prints
+protection ships without it and says so in `Caveats`, as Baneslayer
+Angel, both Swords and Animar do.
 
 **Layer-granted keywords still use `Spec.Static`.** Lord of Atlantis
 grants `"flying"` to *other* Merfolk via a conditional Layer 6
