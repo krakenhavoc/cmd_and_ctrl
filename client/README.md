@@ -60,6 +60,32 @@ client/
   `docs/protocol.md` changes, update both sides in lockstep.
 - Svelte 5 runes (`$state`, etc.) are used throughout.
 
+## Card art
+
+Build art URLs with `lib/cardImage.ts` (`lib/catalog.ts` for the public
+catalogue), and put `use:cardArt={url}` (`lib/cardArt.ts`) on every
+`<img>` that shows card art — the same string as its `src`. The action
+retries a failed load once after ~2 s, then inserts a small
+"Art failed to load" pip that retries on click, and records the failure
+in `lib/clientErrors.ts` once per URL. The logic is in
+`lib/cardArtRetry.ts` and is unit-tested there; the action is DOM
+wiring only.
+
+- The img's parent must be positioned (`position: relative`); set
+  `--art-error-top` / `--art-error-right` on it to move the pip off a
+  corner the tile already uses.
+- Inside a tile that has its own click / double-click / Enter handling
+  nothing extra is needed — the pip stops propagation. Inside a
+  `pointer-events: none` or `aria-hidden` surface, pass
+  `{ url, interactive: false }`.
+- Not for card backs (`/card-back*.jpg`), which are bundled assets.
+  Nor for the seat avatar in `PlayerIdentity.svelte`: a commander art
+  crop that fails there falls through to the seat-colour disc, which
+  is already its error state.
+- `fetchpriority="high"` is reserved for the viewer's own hand
+  (`Card`'s `priority` prop, set by `Hand.svelte`) and the hover-zoom
+  scan. Don't add it elsewhere: on every tile it means nothing.
+
 ## PWA
 
 The client installs as a progressive web app. See
