@@ -95,7 +95,9 @@ type Game struct {
 	// StartingSeat is the seat index that took the first turn. Set in
 	// Start() to the active seat at game start. Used by the StepDraw
 	// auto-action to skip the starting player's turn-1 draw per
-	// CR 103.8a. Replays predating S13 default to seat 0 on decode,
+	// CR 103.8a — in a two-player game only, because CR 103.8c has
+	// nobody skip it in any other multiplayer game.
+	// Replays predating S13 default to seat 0 on decode,
 	// which matches the only seat games started on before this field
 	// existed. Added in S13.
 	StartingSeat int
@@ -827,7 +829,8 @@ func (g *Game) CastTallyFor(playerID uuid.UUID) CastTally {
 //     refresh their per-turn undo budget; auto-advance because Untap
 //     grants no priority.
 //   - StepDraw (S13): draw 1 for the active seat, except when the
-//     starting player would draw on turn 1 (CR 103.8a skip).
+//     starting player would draw on turn 1 of a TWO-player game
+//     (CR 103.8a skip; CR 103.8c has no one skip at a larger table).
 //   - StepCombatDamage: auto-resolve unblocked attacker damage.
 //   - StepEnd (S22): emit EventBeginEndStep so "at the beginning of
 //     your end step" triggers fire. The delayed-trigger drain that
@@ -977,9 +980,14 @@ func (g *Game) runStepEntryHooksLocked() {
 		if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
 			return
 		}
-		// CR 103.8a: the player who takes the first turn skips their
-		// draw step on turn 1. Subsequent turns are normal.
-		if g.Turn.Number == 1 && g.Turn.ActiveSeat == g.StartingSeat {
+		// CR 103.8a: in a two-player game the player who takes the
+		// first turn skips their draw step on turn 1. CR 103.8c: in
+		// every other multiplayer game nobody skips it, so a 3- or
+		// 4-player table's starting seat draws like everyone else.
+		// (CR 103.8b's Two-Headed Giant case does not apply — the
+		// engine has no team format.) Subsequent turns are normal.
+		if g.Turn.Number == 1 && g.Turn.ActiveSeat == g.StartingSeat &&
+			g.startingPlayerCountLocked() == 2 {
 			return
 		}
 		// Best-effort: an empty library on auto-draw is not a hard
@@ -1049,6 +1057,29 @@ func (g *Game) runStepEntryHooksLocked() {
 			g.runStepEntryHooksLocked()
 		}
 	}
+}
+
+// startingPlayerCountLocked reports how many players the game began
+// with — the number CR 103.8 keys the turn-1 skip-draw rule off.
+//
+// Eliminated players deliberately still count. The rule is about the
+// game's player count at the start ("a two-player game", CR 103.8a vs
+// "all other multiplayer games", CR 103.8c), not about who is still
+// alive when the draw step arrives; a concession on turn 1 does not
+// retroactively turn a three-player game into a two-player one. Seats
+// are only ever added or removed in StateLobby (RemovePlayer refuses
+// once the game is active, and a player leaves an active game by
+// conceding), so the live seat count still is the count at Start.
+//
+// Caller must hold g.mu.
+func (g *Game) startingPlayerCountLocked() int {
+	n := 0
+	for _, p := range g.Seats {
+		if p != nil {
+			n++
+		}
+	}
+	return n
 }
 
 // populateDiscardPendingLocked records an over-max discard count

@@ -40,6 +40,11 @@ const (
 func TestPsychosisCrawlerIsAsBigAsYourHand(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
+	// The manual draw has to happen off the active seat's own draw
+	// step: Game.DrawCard is a deliberate no-op there, because the
+	// turn-based draw has already fired. newCatalogGame parks the
+	// cursor on that step (#692), so walk to the main phase first.
+	advanceToMain(t, g)
 	// Push through the zone-move path so the layer engine registers
 	// the static and recomputes; a raw battlefield push leaves the
 	// printed P/T in place and the CDA never runs.
@@ -99,6 +104,11 @@ func TestPsychosisCrawlerDrainsPerCard(t *testing.T) {
 	me := g.Seats[0]
 	pushCatalogPermanent(g, me.ID, "Psychosis Crawler",
 		"Artifact Creature — Phyrexian Horror", psychosisCrawlerOracle, false)
+	// The manual draw has to happen off the active seat's own draw
+	// step: Game.DrawCard is a deliberate no-op there, because the
+	// turn-based draw has already fired. newCatalogGame parks the
+	// cursor on that step (#692), so walk to the main phase first.
+	advanceToMain(t, g)
 
 	opponents := map[uuid.UUID]int{}
 	for _, p := range g.Seats {
@@ -139,6 +149,11 @@ func TestLocustGodMakesAnInsectPerDraw(t *testing.T) {
 	me := g.Seats[0]
 	pushCatalogPermanent(g, me.ID, "The Locust God", "Legendary Creature — God",
 		locustGodOracle, false)
+	// The manual draw has to happen off the active seat's own draw
+	// step: Game.DrawCard is a deliberate no-op there, because the
+	// turn-based draw has already fired. newCatalogGame parks the
+	// cursor on that step (#692), so walk to the main phase first.
+	advanceToMain(t, g)
 
 	for i := 0; i < 2; i++ {
 		if err := g.DrawCard(me.ID); err != nil {
@@ -208,11 +223,11 @@ func TestHowlingMineIsCheckedTwiceForUntapped(t *testing.T) {
 	me := g.Seats[0]
 	mine := pushCatalogPermanent(g, me.ID, "Howling Mine", "Artifact", howlingMineOracle, false)
 
-	// Walk past the FIRST turn's draw step: CR 103.8a skips it for
-	// the starting player, and this project's step hook returns
-	// before announcing the step at all in that case. The Mine is
-	// fine everywhere else, and the turn-1 corner is documented on
-	// the event rather than worked around here.
+	// Walk to the NEXT seat's draw step. Seat 0's own turn-1 draw
+	// step is already behind the cursor — newCatalogGame parks there
+	// (#692: at four seats CR 103.8c has the starting player draw
+	// like everyone else), so the Mine's first chance to trigger is
+	// the following seat's.
 	advanceTo(t, g, game.StepEnd)
 	// The extra draw is a trigger, so it needs the stack to drain.
 	// The turn-based draw has already happened by the time the

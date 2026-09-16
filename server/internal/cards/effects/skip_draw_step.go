@@ -32,10 +32,11 @@ import (
 //     controller. Omitting that check locks the whole table's draws
 //     off a single enchantment.
 //
-//   - Not conditional on the turn-1 skip. CR 103.8a already skips
-//     the starting player's first draw step in the engine's StepDraw
-//     hook, and two skips of the same step are one skip — a
-//     replacement that fires on an already-skipped step changes
+//   - Not conditional on the turn-1 skip. In a TWO-player game the
+//     engine's StepDraw hook already skips the starting player's
+//     first draw step (CR 103.8a; at three or more seats CR 103.8c
+//     has nobody skip), and two skips of the same step are one skip
+//     — a replacement that fires on an already-skipped step changes
 //     nothing (CR 614.5).
 //
 // Declared on Spec.Replacements, like every other continuous

@@ -182,7 +182,9 @@ export interface GameView {
   // Added in S11.
   undo_limit?: number;
   // Seat index that took the first turn. Used by the server to enforce
-  // the CR 103.8a turn-1 skip-draw rule. Added in S13. Pre-S13 replays
+  // the CR 103.8a turn-1 skip-draw rule — in two-player games only,
+  // since CR 103.8c has nobody skip at a larger table. Added in S13.
+  // Pre-S13 replays
   // decode as 0 (Go's int zero), which matches the only seat games
   // ever started on before the field existed.
   starting_seat?: number;

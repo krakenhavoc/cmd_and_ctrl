@@ -202,8 +202,9 @@ func TestB17JacesArchivistWheelsToTheGreatestDiscard(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	archivist := pushCatalogPermanent(g, me.ID, "Jace's Archivist", "Creature — Vedalken Wizard", b17JacesArchivistOracle, false)
 	advanceToMain(t, g)
-	// Hands of 7 (me), 7 (opp) and 7, 7: pad the opponent's to 9 so
-	// the greatest discard is theirs.
+	// Hands of 8 (me — seat 0 drew for turn 1, CR 103.8c at four
+	// seats), 7 (opp) and 7, 7: pad the opponent's to 9 so the
+	// greatest discard is theirs.
 	for i := 0; i < 2; i++ {
 		handCardFull(opp, "Extra", "Instant", "", "", nil)
 	}
@@ -214,8 +215,8 @@ func TestB17JacesArchivistWheelsToTheGreatestDiscard(t *testing.T) {
 			t.Errorf("seat %d holds %d after the wheel, want 9 (the greatest discard)", i, p.Hand.Size())
 		}
 	}
-	if opp.Graveyard.Size() != 9 || me.Graveyard.Size() != 7 {
-		t.Errorf("discards: me %d opp %d, want 7 and 9", me.Graveyard.Size(), opp.Graveyard.Size())
+	if opp.Graveyard.Size() != 9 || me.Graveyard.Size() != 8 {
+		t.Errorf("discards: me %d opp %d, want 8 and 9", me.Graveyard.Size(), opp.Graveyard.Size())
 	}
 }
 

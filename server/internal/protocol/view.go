@@ -56,7 +56,8 @@ type GameView struct {
 	// client's "undos remaining" indicator. Added in S11.
 	UndoLimit int `json:"undo_limit,omitempty"`
 	// StartingSeat is the seat index that took the first turn. Used
-	// by the server to enforce the CR 103.8a turn-1 skip-draw rule;
+	// by the server to enforce the CR 103.8a turn-1 skip-draw rule
+	// (two-player games only — CR 103.8c);
 	// surfaced on the wire so spectators / reconnects can render
 	// "first player" UI affordances. Pre-S13 replays decode as 0,
 	// which matches the only seat games started on before this field

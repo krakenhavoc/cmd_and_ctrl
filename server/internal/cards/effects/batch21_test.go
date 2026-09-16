@@ -817,7 +817,8 @@ func TestB21SpitefulVisionsDrawsExtraAndTaxesEveryDraw(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	b21Push(g, me.ID, "Spiteful Visions", "Enchantment", b21SpitefulVisionsOracle, 0, 0)
-	// Past the first turn's skipped draw step (CR 103.8a).
+	// On to the NEXT seat's draw step — seat 0's own is already
+	// behind the cursor (newCatalogGame parks there, #692).
 	advanceTo(t, g, game.StepEnd)
 	advanceTo(t, g, game.StepDraw)
 	active := g.Seats[g.Turn.ActiveSeat]
