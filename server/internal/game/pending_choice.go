@@ -921,6 +921,9 @@ func (g *Game) ResolveOptionalReplacement(choiceID, chooserID uuid.UUID, apply b
 	if frame == nil || frame.ev == nil || len(frame.applicable) == 0 {
 		return ErrInvalidParam
 	}
+	if g.dropStaleReplacementResumeLocked(frame) {
+		return nil
+	}
 
 	ev := frame.ev
 	chosen := frame.applicable[0]
@@ -1077,6 +1080,9 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 	g.dequeueChoiceLocked(idx)
 	if frame == nil || frame.ev == nil {
 		return ErrInvalidParam
+	}
+	if g.dropStaleReplacementResumeLocked(frame) {
+		return nil
 	}
 
 	// Apply ALL chosen effects in the submitted order (CR 616: the
@@ -2235,6 +2241,106 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 		}
 		c.SacrificeOptions = live
 	}
+}
+
+// pausedZoneChangeStaleLocked reports whether the exit stashed on a
+// queued prompt's resume frame can still happen.
+//
+// A paused exit moves NOTHING: the card sits in its old zone until
+// the prompt is answered (see routeCardToZoneLocked). So a card that
+// is no longer in the zone its paused move says it is leaving has
+// already left by some other route, and that move will never happen.
+// Answering the prompt then either fails — the battlefield-leave
+// resume cannot find the card on the battlefield, which is the
+// "card instance not found in zone" of #605 — or, worse, moves the
+// card a SECOND time out of a zone nobody asked about, because the
+// shared exit primitive moves it from wherever it finds it.
+//
+// Battlefield ENTRIES are excluded: executeEntryToBattlefieldLocked
+// locates the card by scan and short-circuits when it is already on
+// the battlefield, so an entry prompt is never stale in this sense.
+//
+// Caller must hold g.mu.
+func (g *Game) pausedZoneChangeStaleLocked(frame *replacementResumeFrame) bool {
+	if frame == nil || frame.ev == nil {
+		return false
+	}
+	ev := frame.ev
+	if ev.Kind != RepEventMove || ev.NewZone == ZoneBattlefield {
+		return false
+	}
+	src := g.findCardZoneLocked(ev.CardID)
+	return src == nil || src.Kind != ev.OldZone
+}
+
+// zoneChangePausedLocked reports whether an exit for cardID is already
+// waiting on a player's answer — the CR 903.9 "send your commander to
+// the command zone instead?" prompt, today the only one that pauses a
+// card on its way off the battlefield.
+//
+// The SBA sweep consults it because a paused exit leaves the doomed
+// permanent ON the battlefield with the condition that doomed it
+// intact, so the next sweep dooms it all over again (#605).
+//
+// Caller must hold g.mu.
+func (g *Game) zoneChangePausedLocked(cardID uuid.UUID) bool {
+	for _, c := range g.PendingChoices {
+		if c == nil || c.replacementResume == nil {
+			continue
+		}
+		ev := c.replacementResume.ev
+		if ev == nil || ev.Kind != RepEventMove || ev.NewZone == ZoneBattlefield {
+			continue
+		}
+		if ev.CardID == cardID {
+			return true
+		}
+	}
+	return false
+}
+
+// pruneStaleZoneChangeChoicesLocked drops every queued prompt whose
+// paused exit can no longer happen, and releases the CR 614.5
+// once-per-event bookkeeping the abandoned event was holding.
+//
+// Called at the two points a card actually lands — the shared exit
+// primitive and the battlefield-leave resume — because that is the
+// moment a sibling prompt about the same card goes stale, and the
+// state-check loop that would otherwise notice is exactly what does
+// NOT run while a choice is queued. Same reasoning, and the same call
+// sites, as pruneSacrificeChoicesLocked.
+//
+// Caller must hold g.mu.
+func (g *Game) pruneStaleZoneChangeChoicesLocked() {
+	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
+		c := g.PendingChoices[i]
+		if c == nil || !g.pausedZoneChangeStaleLocked(c.replacementResume) {
+			continue
+		}
+		g.clearReplacementEventLocked(c.replacementResume.ev.ID)
+		g.dequeueChoiceLocked(i)
+	}
+}
+
+// dropStaleReplacementResumeLocked is the answer-path half of the
+// prune above: a belt-and-braces check that the move a just-answered
+// prompt was asking about is still possible. Returns true when the
+// frame was abandoned, in which case the caller returns nil — the
+// prompt is already dequeued, and refusing the answer instead would
+// leave the seat holding a prompt it can never discharge.
+//
+// Caller must hold g.mu.
+func (g *Game) dropStaleReplacementResumeLocked(frame *replacementResumeFrame) bool {
+	if !g.pausedZoneChangeStaleLocked(frame) {
+		return false
+	}
+	g.clearReplacementEventLocked(frame.ev.ID)
+	g.EmitEvent(Event{
+		Kind: EventEffectError,
+		ErrorMsg: "replacement prompt dropped: its card is no longer in the " +
+			string(frame.ev.OldZone) + " the paused move would leave",
+	})
+	return true
 }
 
 // ResolveScry answers a PendingChoiceScry (CR 701.22): `bottom` are the

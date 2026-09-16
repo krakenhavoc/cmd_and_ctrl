@@ -2303,6 +2303,18 @@ func (g *Game) stateBasedActionsLocked() bool {
 	// skipped.
 	var doomed []uuid.UUID
 	for _, c := range g.Battlefield.Cards {
+		// #605: a permanent whose exit is already paused on a player
+		// prompt is still HERE, with whatever doomed it intact — a
+		// commander at zero toughness keeps its zero toughness while
+		// its owner is asked about the command zone. Dooming it again
+		// queues a second prompt for a move that is already in flight,
+		// and since destroying it counts as fired, runStateChecksLocked
+		// goes round again and does it thirty more times. Every one of
+		// those siblings becomes unanswerable the moment the first is
+		// answered. The move is already asked; wait for the answer.
+		if g.zoneChangePausedLocked(c.InstanceID) {
+			continue
+		}
 		if c.IsCreature() {
 			if c.Toughness == 0 && len(c.Counters) == 0 && (!c.LostLastCounter || c.VariableToughness) {
 				continue
@@ -2385,6 +2397,14 @@ func (g *Game) stateBasedActionsLocked() bool {
 	// to die for another reason has already gone, and the "chapter
 	// still on the stack" check sees the settled queue.
 	for _, id := range g.sagasReadyToSacrificeLocked() {
+		// Same re-entry guard as the doomed sweep above: a Saga
+		// commander waiting on the CR 903.9 prompt is still on the
+		// battlefield at its final chapter, and sacrificing it a
+		// second time would queue a second prompt and emit a second
+		// EventSacrifice for one sacrifice.
+		if g.zoneChangePausedLocked(id) {
+			continue
+		}
 		if err := g.sacrificePermanentLocked(id); err == nil {
 			fired = true
 		}
@@ -2687,6 +2707,10 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	// passing, so the state-check loop is exactly what does NOT run
 	// while such a prompt is outstanding. No-op when none is queued.
 	g.pruneSacrificeChoicesLocked()
+	// #605: and any sibling prompt still asking about a move of THIS
+	// card off the battlefield it has now left is unanswerable, for
+	// the same reason and at the same moment.
+	g.pruneStaleZoneChangeChoicesLocked()
 	return nil
 }
 
