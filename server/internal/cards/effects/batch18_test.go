@@ -448,7 +448,7 @@ func TestB18SpectralSailorDrawsForFourMana(t *testing.T) {
 	}
 }
 
-func TestB18EurekaMomentDrawsTwoAndDeclaresTheLandGap(t *testing.T) {
+func TestB18EurekaMomentDrawsTwo(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	hand := me.Hand.Size()
@@ -457,8 +457,8 @@ func TestB18EurekaMomentDrawsTwoAndDeclaresTheLandGap(t *testing.T) {
 	if got := me.Hand.Size(); got != hand+2 {
 		t.Errorf("hand %d → %d: added and cast (net 0), drew two (+2)", hand, got)
 	}
-	if spec, _ := Lookup(b18EurekaMomentOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the put-a-land gap must be declared")
+	if spec, _ := Lookup(b18EurekaMomentOracle); spec.Completeness != CompletenessFull {
+		t.Error("the put-a-land clause landed with #654; nothing is deferred any more")
 	}
 }
 

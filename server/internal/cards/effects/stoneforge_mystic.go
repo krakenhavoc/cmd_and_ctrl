@@ -17,15 +17,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Sandbox simplification, declared — the Ketria Triome posture, one
 // whole ability omitted: the activated ability is NOT implemented.
-// "Put an Equipment card from your hand onto the battlefield" is a
-// pick-from-hand prompt with a hand-to-battlefield move, and neither
-// exists (the Archaeomancer's Map / Kodama of the East Tree gap; the
-// only hand picker the engine has is the discard modal). Shipping
-// the ability with an auto-pick would be a choice the player never
-// made; shipping it as "put the first Equipment" would be the same.
 // So the Mystic is a tutor and nothing more, which is weaker than
-// printed, never stronger, and the caveat says so. It becomes whole
-// the day a put-from-hand prompt lands.
+// printed, never stronger, and the caveat says so.
+//
+// The machinery it was waiting on has since landed and the ability
+// is now a small edit rather than a seam: the pick-from-hand prompt
+// shipped in #552 and the hand-to-battlefield move in #654, so
+// "{1}{W}, {T}: You may put an Equipment card from your hand onto
+// the battlefield" is an ActivatedAbility over
+// PutFromHandOntoBattlefield{Match: …Equipment…, Optional: true}.
+// Writing it is card work with its own tests, which is why #654 left
+// it for a roadmap batch.
 func init() {
 	Register(Spec{
 		OracleID:     "358789f9-7d87-411d-919e-d597da665cbd",
