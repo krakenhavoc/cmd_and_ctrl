@@ -26,13 +26,19 @@ const (
 
 	// value is one key's value: everything up to the next parameter or
 	// fragment separator, whitespace, quote or bracket. Percent-escapes
-	// are part of the value EXCEPT %23 (#) and %26 (&), which end it —
-	// that keeps a URL-encoded URL (`…%3Ftoken%3Dabc%26game%3D1`) from
-	// losing its trailing parameters to the redaction.
-	value = `(?:[^&#\s"'<>()\[\]{},;%\\]|%(?:[013-9a-f][0-9a-f]|2[0-2457-9a-f]))+`
+	// are part of the value EXCEPT %23 (#) and %26 (&) — and their
+	// double-encoded %2523 / %2526 — which end it. That keeps a
+	// URL-encoded URL (`…%3Ftoken%3Dabc%26game%3D1`) from losing its
+	// trailing parameters to the redaction.
+	//
+	// The escape branches: a single escape other than %23/%25/%26; a
+	// double escape (%25XX) other than %2523/%2526.
+	value = `(?:[^&#\s"'<>()\[\]{},;%\\]|%(?:[013-9a-f][0-9a-f]|2[0-2479a-f])|%25(?:[013-9a-f][0-9a-f]|2[0-2457-9a-f]))+`
 
-	// eq is a literal or percent-encoded equals sign.
-	eq = `(=|%3d)`
+	// eq is a literal, percent-encoded or double-encoded equals sign
+	// (`=`, `%3D`, `%253D` — the last is a URL carried inside an encoded
+	// parameter of another URL).
+	eq = `(=|%3d|%253d)`
 )
 
 var (
@@ -42,8 +48,9 @@ var (
 
 	// `t` is the invite and reclaim token (`#/games/<id>/join?t=…`). Too
 	// short to trust in prose ("at t=3"), so only redacted as a query
-	// parameter: after ?, &, &amp;, or their encoded forms.
-	queryOnlyRE = regexp.MustCompile(`(?i)(\?|&amp;|&|%3f|%26)(t)` + eq + value)
+	// parameter: after ?, &, &amp;, or their encoded and double-encoded
+	// forms.
+	queryOnlyRE = regexp.MustCompile(`(?i)(\?|&amp;|&|%253f|%2526|%3f|%26)(t)` + eq + value)
 
 	// JSON-shaped: "token":"abc", and the escaped form a stringified
 	// object picks up inside another string (\"token\":\"abc\").

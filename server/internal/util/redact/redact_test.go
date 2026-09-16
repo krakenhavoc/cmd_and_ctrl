@@ -43,6 +43,18 @@ func TestSecretsRedacts(t *testing.T) {
 			"https://h/login?next=" + url.QueryEscape("/ws?token="+token+"&game=g-1"),
 			"https://h/login?next=%2Fws%3Ftoken%3DREDACTED%26game%3Dg-1",
 		},
+		{"double-encoded equals", "token%253D" + token, "token%253DREDACTED"},
+		{"double-encoded equals, upper-case key and hex", "TOKEN%253d" + token, "TOKEN%253dREDACTED"},
+		{
+			"double-encoded nested URL keeps trailing params",
+			"https://h/r?u=" + url.QueryEscape(url.QueryEscape("/ws?token="+token+"&game=g-1")),
+			"https://h/r?u=%252Fws%253Ftoken%253DREDACTED%2526game%253Dg-1",
+		},
+		{
+			"double-encoded invite t",
+			"next=" + url.QueryEscape(url.QueryEscape("#/games/abc/join?t="+invite+"&x=1")),
+			"next=%2523%252Fgames%252Fabc%252Fjoin%253Ft%253DREDACTED%2526x%253D1",
+		},
 		{"authorization bearer", "Authorization: Bearer " + token, "Authorization: Bearer REDACTED"},
 		{"encoded bearer", "Authorization%3A%20Bearer%20" + token, "Authorization%3A%20Bearer%20REDACTED"},
 		{"json token", `{"token":"` + token + `","gameID":"g"}`, `{"token":"REDACTED","gameID":"g"}`},
