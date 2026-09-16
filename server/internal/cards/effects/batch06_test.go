@@ -614,7 +614,7 @@ func TestB06WarstormSurgeShootsForTheNewcomersPower(t *testing.T) {
 	pushCatalogPermanent(g, me.ID, "Warstorm Surge", "Enchantment", b06WarstormSurgeOracle, false)
 	before := opp.Life
 
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, GreenBeastToken(), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 colorless Beast"), 1) })
 	b04WaitForPick(t, g, me.ID)
 	pickPlayer(t, g, me.ID, opp.ID)
 	passPriorityAroundTable(t, g)
@@ -623,7 +623,7 @@ func TestB06WarstormSurgeShootsForTheNewcomersPower(t *testing.T) {
 	}
 
 	// An opponent's creature is not "you control".
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(opp.ID, GreenBeastToken(), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(opp.ID, TokenCard("3/3 colorless Beast"), 1) })
 	passPriorityAroundTable(t, g)
 	if latestPickTarget(g, me.ID) != nil {
 		t.Error("an opponent's creature must not trigger the Surge")

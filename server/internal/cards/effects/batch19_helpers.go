@@ -26,18 +26,6 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b19GreenElementalToken is Zendikar's Roil's 2/2 green Elemental —
-// smaller than b10GreenElemental53Token, and not the red one.
-func b19GreenElementalToken() game.Card {
-	return game.Card{
-		Name:      "Elemental",
-		TypeLine:  "Token Creature — Elemental",
-		Power:     2,
-		Toughness: 2,
-		Colors:    []string{"G"},
-	}
-}
-
 // --- board reads -------------------------------------------------
 
 // b19ZombieCardsInGraveyard counts the Zombie cards in `player`'s

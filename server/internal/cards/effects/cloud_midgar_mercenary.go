@@ -14,7 +14,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Stoneforge Mystic as a commander. The ETB is the Equipment tutor
 // — mandatory here, unlike the Mystic's "you may", so the prompt
 // opens every time and "fail to find" is still a legal answer (CR
-// 701.19c).
+// 701.23b).
 //
 // Sandbox simplification, declared — one whole ability omitted, the
 // Stoneforge Mystic posture: the trigger-doubling static is NOT

@@ -23,7 +23,7 @@ func init() {
 		PrintedKeywords: []string{"trample"},
 		Triggered: []game.TriggeredAbility{
 			Landfall("Rampaging Baloths — create a 4/4 Beast (landfall)", Do(CreateToken{
-				Template: b03GreenBeast44Token(),
+				Template: TokenCard("4/4 colorless Beast"),
 				N:        1,
 			})),
 		},

@@ -3,6 +3,7 @@ package legal
 import (
 	"fmt"
 	"log/slog"
+	"sort"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -30,6 +31,11 @@ type choiceParams struct {
 	// is the empty slice, and omitempty would erase it into absent,
 	// which is how the dispatcher tells a surveil from a scry.
 	Graveyard []string `json:"graveyard"`
+	// CreatureType answers a choose_creature_type prompt (CR 614.12).
+	// omitempty because the dispatcher routes on its PRESENCE: an
+	// empty string sent on every other kind would be read as "this is
+	// a creature-type answer".
+	CreatureType string `json:"creature_type,omitempty"`
 }
 
 type assignParam struct {
@@ -229,7 +235,7 @@ func (e *enumerator) choiceMoves() bool {
 			}
 
 		case game.PendingChoiceSearchLibrary:
-			// CR 701.19: take up to SearchMax of the matching cards;
+			// CR 701.23: take up to SearchMax of the matching cards;
 			// failing to find (an empty list) is always legal, which
 			// is what makes it this choice's AlwaysLegal answer.
 			p := base()
@@ -242,7 +248,7 @@ func (e *enumerator) choiceMoves() bool {
 			// type" — and enumerating a pick the resolver will reject
 			// breaks this package's one promise (#544). The rule is
 			// not re-derived here; the engine is asked.
-			picks := searchCombinations(c.SearchCards, c.SearchMax, e.opts.MaxExpansionPerSource,
+			picks := filteredCombinations(c.SearchCards, 1, c.SearchMax, e.opts.MaxExpansionPerSource,
 				func(set []uuid.UUID) bool { return g.SearchPickLegalLocked(c, set) })
 			for _, set := range picks {
 				p := base()
@@ -302,31 +308,42 @@ func (e *enumerator) choiceMoves() bool {
 
 		case game.PendingChoiceChooseCards:
 			// "Choose N of these cards." The bounds ride on the
-			// choice, so the enumerated sets are exactly the sets
-			// ResolveChooseCards accepts — no Validate hook the
-			// enumerator cannot see, which is the hole #544 fell
-			// into.
+			// choice, and a prompt may also carry a set-level
+			// Validate hook ("discard two unless you discard a
+			// creature card") that lives on the unexported
+			// continuation frame. So every set is run past the
+			// engine's own acceptance check before it is offered —
+			// ChooseCardsPickLegalLocked, the same window search
+			// gets — rather than enumerating a superset the
+			// enumerator cannot see the constraint on, which is the
+			// hole #544 fell into.
 			//
 			// The empty answer is offered first when the floor is
 			// zero, for the same reason search offers "fail to find"
-			// first: it is the answer that always terminates, and it
-			// is the only one here that validates against nothing, so
-			// it is this kind's AlwaysLegal answer.
+			// first: it is the answer that always terminates, and the
+			// engine skips both the zone re-check and Validate for
+			// it, so it is this kind's AlwaysLegal answer.
 			//
 			// A prompt with a floor above zero has NO unconditional
 			// answer — every set it accepts is a set of cards that
-			// must still be where the prompt found them — and is
-			// deliberately left unmarked rather than guessed at.
+			// must still be where the prompt found them and must pass
+			// the card's rule — and is deliberately left unmarked
+			// rather than given a synthesised fallback the resolver
+			// would refuse.
 			if c.ChooseMin == 0 {
 				p := base()
 				p.CardIDs = []string{}
 				e.addAlwaysLegalChoice(c, reason+": choose nothing", p)
 			}
-			lo := c.ChooseMin
-			if lo < 1 {
-				lo = 1
-			}
-			for _, set := range combinations(c.ChooseCards, lo, c.ChooseMax, e.opts.MaxExpansionPerSource) {
+			// filteredCombinations, not combinations() plus a filter:
+			// it spreads the budget across set sizes, so a "choose one
+			// or two" prompt whose rule rejects most single cards
+			// still reaches the valid pairs instead of spending the
+			// whole budget on singles (#544, and
+			// TestChooseCardsReachesValidPairsPastTheBudget).
+			sets := filteredCombinations(c.ChooseCards, c.ChooseMin, c.ChooseMax, e.opts.MaxExpansionPerSource,
+				func(set []uuid.UUID) bool { return g.ChooseCardsPickLegalLocked(c, set) })
+			for _, set := range sets {
 				p := base()
 				p.CardIDs = idStrings(set)
 				label := reason + ": choose"
@@ -338,6 +355,18 @@ func (e *enumerator) choiceMoves() bool {
 					label += " " + cardNameFor(g, id, e.seat)
 				}
 				e.addChoice(c, label, p)
+			}
+			if c.ChooseMin > 0 && len(sets) == 0 {
+				// Nothing to answer with and nothing safe to invent:
+				// the prompt's rule, or a board that moved under it,
+				// accepts no set this enumerator could find. Say so in
+				// the default branch's words rather than hand the seat
+				// an empty list in silence.
+				slog.Warn("legal: no moves enumerated for a pending choice kind — the seat owing it has no legal move",
+					"kind", c.Kind,
+					"chooser", c.Chooser,
+					"reason", reason,
+				)
 			}
 
 		case game.PendingChoiceEntryPayLife:
@@ -438,6 +467,48 @@ func (e *enumerator) choiceMoves() bool {
 				e.addChoice(c, reason+": put "+cardName(g, id)+" on top", p)
 			}
 
+		case game.PendingChoiceMayCast:
+			// #499. Cascade's "you may cast it without paying its mana
+			// cost". ResolveMayCast refuses neither answer — a failing
+			// branch is logged as an effect error, not returned — so
+			// both are offered, and the decline is the always-legal
+			// way out: it is the answer that commits the seat to
+			// nothing.
+			accept := true
+			p := base()
+			p.Apply = &accept
+			e.addChoice(c, reason+": cast it", p)
+
+			decline := false
+			d := base()
+			d.Apply = &decline
+			e.addAlwaysLegalChoice(c, reason+": don't cast it", d)
+
+		case game.PendingChoiceCreatureType:
+			// #499. "As this enters, choose a creature type" — Cavern
+			// of Souls, Door of Destinies, Adaptive Automaton. The
+			// legal set is all ~345 CR 205.3m types, and offering
+			// every one would bury a bot's list under names no deck
+			// cares about.
+			//
+			// So the answers are the creature types of the creatures
+			// this seat already controls, most common first, capped —
+			// what a player naming a tribe for Door of Destinies does.
+			// Read off the BATTLEFIELD only: it is public, so the
+			// labels leak nothing the visibility guard would object
+			// to, where the hand or library would.
+			//
+			// Every answer is always legal: ResolveCreatureTypeChoice
+			// accepts any canonical type and treats a departed source
+			// as "nowhere to land", not an error. A board with no
+			// creatures still gets one answer, so the seat is never
+			// handed an empty list — the wedge this case exists to end.
+			for _, t := range e.creatureTypeAnswers() {
+				p := base()
+				p.CreatureType = t
+				e.addAlwaysLegalChoice(c, reason+": "+t, p)
+			}
+
 		default:
 			// #499: a kind with no case above is enumerated NOTHING,
 			// and `owed` is already true, so the seat gets an empty
@@ -452,8 +523,8 @@ func (e *enumerator) choiceMoves() bool {
 			// it turns "the game stopped" into a line naming the kind,
 			// which is the difference between an hour and a minute.
 			//
-			// Two kinds still land here on purpose, tracked on #499:
-			// may_cast and choose_creature_type.
+			// No live kind lands here today. The four #499 named all
+			// have cases now; this branch is for the next one.
 			slog.Warn("legal: no moves enumerated for a pending choice kind — the seat owing it has no legal move",
 				"kind", c.Kind,
 				"chooser", c.Chooser,
@@ -491,18 +562,21 @@ func (e *enumerator) addAlwaysLegalChoice(c *game.PendingChoice, label string, p
 	})
 }
 
-// searchCombinations picks the answers a search prompt is offered
-// for, out of `pool`, and is combinations() with two differences
-// that matter (#544).
+// filteredCombinations picks the answers a card-set prompt is offered
+// — a search, or a choose-cards pick — out of `pool`: subsets of size
+// lo..hi (lo raised to 1; the empty answer is the caller's to offer)
+// that `allow` accepts, at most `limit` of them. It is combinations()
+// with two differences that matter (#544).
 //
 // It FILTERS through `allow`, which is the engine's own acceptance
-// check, so a pick the resolver would reject is never offered.
+// check (SearchPickLegalLocked, ChooseCardsPickLegalLocked), so a pick
+// the resolver would reject is never offered.
 //
 // And it SPREADS `limit` across pick sizes instead of spending it on
 // the small ones first. That second half is not a refinement of the
 // first; without it the filter is not enough. combinations() walks
-// k=1 to exhaustion before it reaches k=2, so for a "search for up
-// to two" prompt:
+// the smallest size to exhaustion before it reaches the next, so for a
+// "search for up to two" prompt:
 //
 //   - with `limit` or more candidates the budget was gone before the
 //     first pair, no pair was offered at all, and Myriad Landscape
@@ -512,24 +586,35 @@ func (e *enumerator) addAlwaysLegalChoice(c *game.PendingChoice, label string, p
 //     first in pool order. Filtering an invalid one out of THAT list
 //     leaves a legal list that still never offers a valid pair.
 //
+// A choose-cards prompt with a set-level rule is the same trap from
+// the other side: "one creature card, or two cards" rejects every
+// non-creature single. combinations() capped at `limit` and filtered
+// afterwards hands out only singles once there are `limit` candidates,
+// and filtering those leaves a hand with no creature in it an EMPTY
+// list — no pair, no pass, the wedge itself.
+//
 // The budget has to reach the valid picks, not merely skip the
 // invalid ones. Round-robin by size does that; ties in pool order
-// are preserved within each size.
-func searchCombinations(pool []uuid.UUID, hi, limit int, allow func([]uuid.UUID) bool) [][]uuid.UUID {
+// are preserved within each size, so the first answer offered is
+// still the first smallest subset in pool order.
+func filteredCombinations(pool []uuid.UUID, lo, hi, limit int, allow func([]uuid.UUID) bool) [][]uuid.UUID {
 	if hi > len(pool) {
 		hi = len(pool)
 	}
-	if hi < 1 || limit <= 0 {
+	if lo < 1 {
+		lo = 1
+	}
+	if hi < lo || limit <= 0 {
 		return nil
 	}
 	bySize := make([][][]uuid.UUID, hi+1)
-	for k := 1; k <= hi; k++ {
+	for k := lo; k <= hi; k++ {
 		bySize[k] = allowedSubsets(pool, k, limit, allow)
 	}
 	out := make([][]uuid.UUID, 0, limit)
 	for i := 0; len(out) < limit; i++ {
 		before := len(out)
-		for k := 1; k <= hi && len(out) < limit; k++ {
+		for k := lo; k <= hi && len(out) < limit; k++ {
 			if i < len(bySize[k]) {
 				out = append(out, bySize[k][i])
 			}
@@ -541,20 +626,29 @@ func searchCombinations(pool []uuid.UUID, hi, limit int, allow func([]uuid.UUID)
 	return out
 }
 
-// searchScanBudget bounds how many candidate subsets of one size
-// allowedSubsets will test before giving up. A search whose Validate
-// rejects most pairs (Myriad Landscape on a five-colour mana base)
-// must not turn enumeration into a walk of every C(n,k).
-const searchScanBudget = 64
+// subsetScanBudget bounds, per unit of `limit`, how many candidate
+// subsets of one size allowedSubsets will test before giving up. A
+// prompt whose rule rejects most sets (Myriad Landscape on a
+// five-colour mana base) must not turn enumeration into a walk of
+// every C(n,k).
+const subsetScanBudget = 64
 
 // allowedSubsets returns up to `limit` k-subsets of pool, in pool
 // order, keeping only those `allow` accepts.
+//
+// The walk never extends a prefix that can no longer reach k cards:
+// the loop stops while there are still enough cards left in the pool
+// to finish the set. Without that, `scanned` (which counts only
+// finished subsets) bounds nothing at the sizes where few subsets
+// exist — k = n or n-1 — and the recursion visits every prefix, about
+// 2^n nodes, all under the read lock. With it, every node leads to at
+// least one finished subset, so the scan budget bounds the walk.
 func allowedSubsets(pool []uuid.UUID, k, limit int, allow func([]uuid.UUID) bool) [][]uuid.UUID {
 	if k > len(pool) || limit <= 0 {
 		return nil
 	}
 	var out [][]uuid.UUID
-	scanned, budget := 0, limit*searchScanBudget
+	scanned, budget := 0, limit*subsetScanBudget
 	var rec func(start int, cur []uuid.UUID)
 	rec = func(start int, cur []uuid.UUID) {
 		if len(out) >= limit || scanned >= budget {
@@ -567,7 +661,8 @@ func allowedSubsets(pool []uuid.UUID, k, limit int, allow func([]uuid.UUID) bool
 			}
 			return
 		}
-		for i := start; i < len(pool) && len(out) < limit && scanned < budget; i++ {
+		last := len(pool) - (k - len(cur)) // the last index that can still finish a k-set
+		for i := start; i <= last && len(out) < limit && scanned < budget; i++ {
 			rec(i+1, append(cur, pool[i]))
 		}
 	}
@@ -672,4 +767,52 @@ func combinationsRefs(cands []game.TargetRef, lo, hi, limit int) [][]game.Target
 		rec(0, nil)
 	}
 	return out
+}
+
+// creatureTypeAnswersCap bounds the creature types offered for one
+// prompt. Enough to name every tribe a real Commander board runs, few
+// enough that a random policy still lands on a sensible one.
+const creatureTypeAnswersCap = 5
+
+// creatureTypeFallback answers a creature-type prompt on a board with
+// no creatures on it. Any canonical type is accepted; Human is the
+// most-printed, so it is the likeliest to matter later.
+const creatureTypeFallback = "Human"
+
+// creatureTypeAnswers ranks the creature types among the creatures
+// this seat controls on the battlefield, most common first and then
+// alphabetically so the list is stable across calls.
+//
+// Changelings count for nothing here: every type is theirs, so they
+// say nothing about which tribe the board is.
+func (e *enumerator) creatureTypeAnswers() []string {
+	counts := map[string]int{}
+	for i := range e.g.Battlefield.Cards {
+		c := &e.g.Battlefield.Cards[i]
+		if c.Controller != e.seat || !c.IsCreature() || game.HasAllCreatureTypes(c) {
+			continue
+		}
+		for _, t := range game.CreatureTypesOf(c) {
+			if canon, ok := game.CanonicalCreatureType(t); ok {
+				counts[canon]++
+			}
+		}
+	}
+	types := make([]string, 0, len(counts))
+	for t := range counts {
+		types = append(types, t)
+	}
+	sort.Slice(types, func(i, j int) bool {
+		if counts[types[i]] != counts[types[j]] {
+			return counts[types[i]] > counts[types[j]]
+		}
+		return types[i] < types[j]
+	})
+	if len(types) > creatureTypeAnswersCap {
+		types = types[:creatureTypeAnswersCap]
+	}
+	if len(types) == 0 {
+		return []string{creatureTypeFallback}
+	}
+	return types
 }

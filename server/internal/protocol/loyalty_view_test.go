@@ -10,7 +10,7 @@ import (
 
 // loyalty_view_test.go — the wire half of #329 / #334. The client
 // cannot grey a loyalty row it can't see the cost of, and it cannot
-// enforce CR 606.5 against state the server keeps to itself.
+// enforce CR 606.3 against state the server keeps to itself.
 
 func loyaltyPtr(n int) *int { return &n }
 
@@ -68,7 +68,7 @@ func TestActivatedAbilityViewCarriesLoyaltyCost(t *testing.T) {
 	if minus.LoyaltyCost == nil || *minus.LoyaltyCost != -3 {
 		t.Errorf("−3 loyalty_cost: got %v, want -3", minus.LoyaltyCost)
 	}
-	// CR 606.5 rides the loyalty component, so a card doesn't have
+	// CR 606.3 rides the loyalty component, so a card doesn't have
 	// to remember to declare SorcerySpeed — but the client greys on
 	// the flag, so the view stamps it.
 	if !plus.SorcerySpeed || !minus.SorcerySpeed {
@@ -94,7 +94,7 @@ func TestAbilityLegalTargetsCarryTheCount(t *testing.T) {
 	}
 }
 
-// CR 606.5's once-per-turn flag was server-only, which is why
+// CR 606.3's once-per-turn flag was server-only, which is why
 // canActivateLoyalty had to take the client's guess as an argument.
 func TestCardViewReportsLoyaltyActivatedThisTurn(t *testing.T) {
 	g := buildActiveGame(t)

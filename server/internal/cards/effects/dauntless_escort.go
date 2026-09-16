@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // rather than folded into a shared helper because a singleton deck
 // plays both and one file per card is the rule; see
 // selfless_spirit.go for the reasoning on why the cost being a
-// SACRIFICE (and therefore not destruction, CR 701.17b) is the
+// SACRIFICE (and therefore not destruction, CR 701.21a) is the
 // interesting part of this ability.
 //
 // No simplifications.

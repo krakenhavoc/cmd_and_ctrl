@@ -15,7 +15,7 @@ import (
 // fails: a bot seat that is offered a loyalty activation the engine
 // then refuses has no move to make and the table stops. Loyalty
 // abilities are a fresh cost component with four gates of their own
-// (CR 606.1 / 606.2 / 606.3 / 606.5), so each new card is a fresh
+// (CR 606.2 / 606.3 / 606.6), so each new card is a fresh
 // chance for the enumerator and ActivateCatalogAbility to disagree
 // about whether an activation is legal.
 //
@@ -34,7 +34,7 @@ const (
 // walker puts a planeswalker on the battlefield with enough loyalty
 // that every one of its abilities is affordable, so the enumerator
 // has to make a judgement about all of them rather than being let
-// off by CR 606.3.
+// off by CR 606.6.
 func walker(g *game.Game, p *game.Player, name, oracleID string, loyalty int) uuid.UUID {
 	return battlefieldCard(g, p, game.Card{
 		Name:     name,
@@ -98,7 +98,7 @@ func TestS27PlaneswalkerLoyaltyAbilitiesAreOfferedAndAccepted(t *testing.T) {
 }
 
 // TestLoyaltyActivationIsNotOfferedTwiceInATurn mirrors
-// ActivateCatalogAbility's CR 606.5 gate. Offering a second
+// ActivateCatalogAbility's CR 606.3 gate. Offering a second
 // activation the engine refuses is the hung-table shape.
 func TestLoyaltyActivationIsNotOfferedTwiceInATurn(t *testing.T) {
 	g := newTable(t)
@@ -122,7 +122,7 @@ func TestLoyaltyActivationIsNotOfferedTwiceInATurn(t *testing.T) {
 	}
 }
 
-// TestUnaffordableMinusIsNotOffered is CR 606.3 from the
+// TestUnaffordableMinusIsNotOffered is CR 606.6 from the
 // enumerator's side: a walker at 1 loyalty cannot pay Karn's −3, and
 // a move list that offered it would be advertising a refusal.
 func TestUnaffordableMinusIsNotOffered(t *testing.T) {
@@ -142,7 +142,7 @@ func TestUnaffordableMinusIsNotOffered(t *testing.T) {
 	dispatchAll(t, g, active.ID, moves)
 }
 
-// TestLoyaltyAbilitiesAreNotOfferedAtInstantSpeed is CR 606.5's
+// TestLoyaltyAbilitiesAreNotOfferedAtInstantSpeed is CR 606.3's
 // other half.
 func TestLoyaltyAbilitiesAreNotOfferedAtInstantSpeed(t *testing.T) {
 	g := newTable(t)

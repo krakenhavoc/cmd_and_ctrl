@@ -241,7 +241,7 @@ func TestSearchForUpToTwoReachesValidPairsAtEveryLibrarySize(t *testing.T) {
 
 // TestSearchOffersAnAlwaysLegalAnswer pins the escape hatch's
 // enumerator half: a search prompt declares exactly one answer the
-// engine cannot refuse, and it is "fail to find" (CR 701.19c).
+// engine cannot refuse, and it is "fail to find" (CR 701.23b).
 // aiseat.SafeIndex is what reads this, and a seat owing a choice is
 // offered nothing else — no pass — so without it a bot whose every
 // other answer bounces has nowhere to go.

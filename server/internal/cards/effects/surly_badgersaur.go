@@ -32,7 +32,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b30YouDiscardedCardWhere(ev, source, g, func(c game.Card) bool { return c.IsCreature() })
-			}, "Surly Badgersaur — put a +1/+1 counter on it", b30PutCounterOnSelf),
+			}, "Surly Badgersaur — put a +1/+1 counter on it", putCounterOnSelf),
 			On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b30YouDiscardedCardWhere(ev, source, g, func(c game.Card) bool { return c.IsLand() })
 			}, "Surly Badgersaur — create a Treasure", Do(CreateToken{Template: TreasureToken(), N: 1})),

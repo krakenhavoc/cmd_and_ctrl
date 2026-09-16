@@ -15,7 +15,7 @@ import (
 // devotionTo, "this permanent enters" is b06SelfETB, "another
 // creature you control enters" is b13AnotherCreatureYouControlEntered,
 // "whenever you cast an instant or sorcery" is
-// b12InstantOrSorceryCastByYou, "a permanent spell resolving" is
+// instantOrSorceryCastByYou, "a permanent spell resolving" is
 // nothing at all (the event log knows — b16EnteredFromStack), a
 // tutor to hand is b06TutorToHand, the basic-land fetch body is
 // b07SearchBasicOntoBattlefield, the per-label "one or more" dedup is
@@ -26,33 +26,6 @@ import (
 // number of lands you control, untapped" is b02UntapLandsYouControl.
 
 // --- token templates ---------------------------------------------
-
-// b16BlueBirdIllusionToken is Murmuring Mystic's 1/1 blue Bird
-// Illusion with flying. Its own template rather than
-// b09BlueBirdToken because the second creature type is printed and
-// a Bird lord and an Illusion lord both read it.
-func b16BlueBirdIllusionToken() game.Card {
-	return game.Card{
-		Name:      "Bird Illusion",
-		TypeLine:  "Token Creature — Bird Illusion",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"U"},
-		Keywords:  []string{"flying"},
-	}
-}
-
-// b16BlackZombieDruidToken is Teval's Judgment's 2/2 black Zombie
-// Druid.
-func b16BlackZombieDruidToken() game.Card {
-	return game.Card{
-		Name:      "Zombie Druid",
-		TypeLine:  "Token Creature — Zombie Druid",
-		Power:     2,
-		Toughness: 2,
-		Colors:    []string{"B"},
-	}
-}
 
 // b16LanderToken is the Edge of Eternities Lander: a colorless
 // artifact with "{2}, {T}, Sacrifice this token: Search your library

@@ -54,7 +54,7 @@ import (
 //
 // WHAT IT ASSERTS, BY CARD TYPE
 //
-//	Saga        entry lore counter (CR 714.2b), the precombat-main
+//	Saga        entry lore counter (CR 714.3), the precombat-main
 //	            advance, chapters I / II / III firing in order, and
 //	            the CR 704.5s sacrifice once the final chapter has
 //	            RESOLVED.
@@ -65,8 +65,8 @@ import (
 //	            (CR 302.6 measures continuous control, not
 //	            creature-hood); and the animation expires at cleanup.
 //	Planeswalker printed loyalty becomes counters on entry; loyalty is
-//	            paid at announce (CR 606.2); once per turn per
-//	            planeswalker (CR 606.5) and the gate reopens next
+//	            paid at announce (CR 606.4); once per turn per
+//	            planeswalker (CR 606.3) and the gate reopens next
 //	            turn; combat damage from an attacker removes loyalty
 //	            (#406); a walker taken to zero leaves (CR 704.5i).
 //
@@ -240,7 +240,7 @@ func TestThemeDeckPlaysFourTurns(t *testing.T) {
 	// --- turn 1 ------------------------------------------------------
 	//
 	// The Vehicle lands as a bare artifact and the Saga lands with its
-	// first lore counter already on it (CR 714.2b), which fires
+	// first lore counter already on it (CR 714.3), which fires
 	// chapter I before anybody gets priority back.
 	advanceToMainOf(t, g, themeSeat)
 
@@ -263,7 +263,7 @@ func TestThemeDeckPlaysFourTurns(t *testing.T) {
 	castThemeSpell(t, g, me, hand["History of Benalia"])
 	saga := hand["History of Benalia"]
 	if got := counterOn(g, saga, game.CounterLore); got != 1 {
-		t.Fatalf("lore counters on the turn it entered = %d, want 1 (CR 714.2b)", got)
+		t.Fatalf("lore counters on the turn it entered = %d, want 1 (CR 714.3)", got)
 	}
 	if got := len(knightIDs(g)); got != 1 {
 		t.Fatalf("Knights after chapter I = %d, want 1", got)
@@ -298,7 +298,7 @@ func TestThemeDeckPlaysFourTurns(t *testing.T) {
 	// lands (CR 714.2b); it needs a trip round the table to resolve.
 	passPriorityAroundTable(t, g)
 	if got := counterOn(g, saga, game.CounterLore); got != 2 {
-		t.Fatalf("lore counters after the second precombat main = %d, want 2 (CR 714.2b)", got)
+		t.Fatalf("lore counters after the second precombat main = %d, want 2 (CR 714.3)", got)
 	}
 	if got := len(knightIDs(g)); got != 2 {
 		t.Fatalf("Knights after chapter II = %d, want 2", got)
@@ -372,9 +372,9 @@ func TestThemeDeckPlaysFourTurns(t *testing.T) {
 		t.Fatalf("Elspeth +1: %v", err)
 	}
 	if got := counterOn(g, elspeth, game.CounterLoyalty); got != 5 {
-		t.Errorf("loyalty after +1 = %d, want 5 — the cost is paid at announce (CR 606.2)", got)
+		t.Errorf("loyalty after +1 = %d, want 5 — the cost is paid at announce (CR 606.4)", got)
 	}
-	// CR 606.5: one loyalty ability per planeswalker per turn.
+	// CR 606.3: one loyalty ability per planeswalker per turn.
 	err := g.ActivateCatalogAbility(me.ID, elspeth, 0, game.ActivateAbilityParams{})
 	if !errors.Is(err, game.ErrLoyaltyAlreadyActivated) {
 		t.Errorf("second loyalty activation in one turn returned %v, want ErrLoyaltyAlreadyActivated", err)
@@ -437,7 +437,7 @@ func TestThemeDeckPlaysFourTurns(t *testing.T) {
 	})
 
 	if err := g.ActivateCatalogAbility(me.ID, elspeth, 1, game.ActivateAbilityParams{}); err != nil {
-		t.Fatalf("Elspeth −3 on a new turn (the CR 606.5 gate should have reopened): %v", err)
+		t.Fatalf("Elspeth −3 on a new turn (the CR 606.3 gate should have reopened): %v", err)
 	}
 	passPriorityAroundTable(t, g)
 

@@ -11,7 +11,7 @@ import "github.com/google/uuid"
 // per-viewer filter redacts the cards for everyone else. A reveal
 // tells the TABLE, and, the part that makes it a primitive rather
 // than a louder version of the same thing, every player is entitled
-// to remember it afterwards (CR 701.16).
+// to remember it afterwards (CR 701.20).
 //
 // A reveal therefore has two halves, and both live here:
 //
@@ -70,7 +70,7 @@ type RevealSpec struct {
 // knower of each named card and announces the whole thing as one
 // grouped run of EventRevealCards.
 //
-// Nothing moves. A reveal is not a zone change (CR 701.16a) and this
+// Nothing moves. A reveal is not a zone change (CR 701.20b) and this
 // function deliberately has no destination parameter — "reveal the
 // top card of your library and put it into your hand" is a reveal
 // followed by an ordinary move, in that order, so that the table

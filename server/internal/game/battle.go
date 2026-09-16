@@ -16,13 +16,13 @@ import "github.com/google/uuid"
 // The one thing about battles that has no analogue elsewhere in the
 // engine is the protector. Every other permanent is defended by its
 // controller; a battle is cast by one player and defended by ANOTHER,
-// chosen as it enters (CR 310.5). That inversion is the whole
+// chosen as it enters (CR 310.9a). That inversion is the whole
 // mechanic — "you and others can attack it" on a Siege means everyone
 // except the protector — and it is why ProtectorPlayerID cannot be
 // derived and has to be stored and chosen.
 
 // PendingChoiceChooseProtector is the "as this battle enters, choose
-// an opponent to protect it" prompt (CR 310.5). Answered with the
+// an opponent to protect it" prompt (CR 310.9a). Answered with the
 // same `{target: {kind: "player", id}}` payload the pick_target
 // prompts use, because it is the same question shape — pick one
 // player from a server-computed set — and reusing it means the
@@ -50,7 +50,7 @@ const PendingChoiceChooseProtector PendingChoiceKind = "choose_protector"
 var CatalogBattleDefense func(oracleID string) int
 
 // stampBattleEntryLocked runs the two things that happen as a battle
-// crosses onto the battlefield (CR 310.4, 310.5): the printed defense
+// crosses onto the battlefield (CR 310.4, 310.9a): the printed defense
 // counters, and the protector choice.
 //
 // Called from fireETBHookLocked beside the starting-loyalty stamp and
@@ -83,7 +83,7 @@ func (g *Game) stampBattleEntryLocked(cardID uuid.UUID, oracleID string) {
 			}
 		}
 		// A battle with nothing printed and nothing in the catalog
-		// enters at zero and the CR 704.5p SBA takes it, exactly as a
+		// enters at zero and the CR 704.5v SBA takes it, exactly as a
 		// planeswalker with no loyalty is taken by 704.5i. Inventing a
 		// number here would make battles unbeatable.
 	}
@@ -91,7 +91,7 @@ func (g *Game) stampBattleEntryLocked(cardID uuid.UUID, oracleID string) {
 }
 
 // queueChooseProtectorLocked asks the battle's controller which
-// opponent protects it (CR 310.5).
+// opponent protects it (CR 310.9a).
 //
 // No prompt is queued when there is nobody to choose — a two-player
 // game where the only opponent has been eliminated, or a fixture with
@@ -194,10 +194,10 @@ func (g *Game) ResolveChooseProtector(choiceID, chooserID, protectorID uuid.UUID
 }
 
 // emitBattleDefeatedLocked announces a battle's defeat so a
-// DefeatedTrigger can harvest it (CR 310.9).
+// DefeatedTrigger can harvest it (CR 310.12b).
 //
 // Emitted from the state-based-action pass IMMEDIATELY BEFORE the
-// CR 704.5p move that puts the battle in the graveyard, which is what
+// CR 704.5v move that puts the battle in the graveyard, which is what
 // makes the trigger's source findable on the battlefield when the
 // harvester walks it. Doing it after the move would send the harvest
 // down the LTB path, where the only characteristics available are the

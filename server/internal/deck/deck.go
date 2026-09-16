@@ -425,6 +425,49 @@ func oracleTexts(c cards.Card) []string {
 	return out
 }
 
+// nonNumericStat reports whether a printed power / toughness string is
+// present but not a number ("*", "1+*", "?", "X"), which the parse
+// turns into a stand-in 0. An empty string is a card with no such
+// stat, not a variable one.
+func nonNumericStat(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+	_, err := strconv.Atoi(s)
+	return err != nil
+}
+
+// PrintedVariableToughness returns the game.PrintedVariableToughness
+// lookup over idx: the answer toGameCard and printedFaces stamp,
+// recomputed for a printing by its Scryfall ID. Restoring a game
+// written before #683 uses it to backfill Card.VariableToughness (see
+// game/snapshot_backfill.go). Faces are reported only for a printing
+// with two or more, as printedFaces builds them. Nil for a nil index.
+func PrintedVariableToughness(idx *cards.Index) func(scryfallID string) (top bool, faces []bool, ok bool) {
+	if idx == nil {
+		return nil
+	}
+	return func(scryfallID string) (bool, []bool, bool) {
+		id, err := uuid.Parse(scryfallID)
+		if err != nil {
+			return false, nil, false
+		}
+		c, ok := idx.Get(id)
+		if !ok {
+			return false, nil, false
+		}
+		var faces []bool
+		if len(c.CardFaces) >= 2 {
+			faces = make([]bool, len(c.CardFaces))
+			for i, f := range c.CardFaces {
+				faces[i] = nonNumericStat(f.Toughness)
+			}
+		}
+		return nonNumericStat(c.Toughness), faces, true
+	}
+}
+
 func toGameCard(c cards.Card, isCommander bool) game.Card {
 	// Parse Scryfall's printed power/toughness strings to ints.
 	// Non-numeric values ("*", "1+*", "?", empty) parse to zero —
@@ -440,6 +483,10 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		TypeLine:   c.TypeLine,
 		Power:      power,
 		Toughness:  toughness,
+		// #683: the toughness SBA keeps skipping a `*` creature's
+		// stand-in 0 after it loses its last counter, where a
+		// printed 0/0 dies.
+		VariableToughness: nonNumericStat(c.Toughness),
 		// CR 306.5b — printed starting loyalty. The engine turns
 		// this into loyalty counters on battlefield entry; without
 		// it the 704.5i SBA eats the walker on the next priority
@@ -447,7 +494,7 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		StartingLoyalty: printedLoyalty(c),
 		// CR 310.4 — printed defense. Same road as starting loyalty
 		// and for the same reason: without it a battle enters with
-		// zero defense counters and the 704.5p SBA sweeps it before
+		// zero defense counters and the 704.5v SBA sweeps it before
 		// anybody can attack it. Top-level only for the day a
 		// single-faced battle is printed; every battle in the game
 		// today carries its number on the front FACE, which
@@ -519,15 +566,16 @@ func printedFaces(c cards.Card) []game.Face {
 		loyalty, _ := strconv.Atoi(strings.TrimSpace(f.Loyalty))
 		defense, _ := strconv.Atoi(strings.TrimSpace(f.Defense))
 		out = append(out, game.Face{
-			Name:            f.Name,
-			TypeLine:        f.TypeLine,
-			ManaCost:        f.ManaCost,
-			Colors:          faceColors(f),
-			Power:           power,
-			Toughness:       toughness,
-			StartingLoyalty: loyalty,
-			StartingDefense: defense,
-			OracleText:      f.OracleText,
+			Name:              f.Name,
+			TypeLine:          f.TypeLine,
+			ManaCost:          f.ManaCost,
+			Colors:            faceColors(f),
+			Power:             power,
+			Toughness:         toughness,
+			VariableToughness: nonNumericStat(f.Toughness),
+			StartingLoyalty:   loyalty,
+			StartingDefense:   defense,
+			OracleText:        f.OracleText,
 		})
 	}
 	return out

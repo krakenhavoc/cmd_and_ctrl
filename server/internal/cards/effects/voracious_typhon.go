@@ -19,7 +19,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // intuition: escaping does NOT exile the Typhon. It goes to the
 // battlefield, and when it dies it is in the graveyard again, ready
 // to escape a second time for four more cards. Escape's brake is the
-// yard it eats, not a one-shot exile (CR 702.144 has no equivalent
+// yard it eats, not a one-shot exile (CR 702.138 has no equivalent
 // of flashback's 702.34a clause).
 //
 // No simplification.

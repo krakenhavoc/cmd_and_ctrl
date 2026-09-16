@@ -8,7 +8,7 @@ import (
 
 // battles.go — the card-facing half of S27's battle support
 // (CR 310). The lifecycle is engine-side and keys off the card type:
-// defense counters on entry, the protector prompt, and the CR 704.5p
+// defense counters on entry, the protector prompt, and the CR 704.5v
 // sweep at zero defense are all in server/internal/game/battle.go and
 // apply to a battle the catalog has never heard of.
 //
@@ -50,19 +50,19 @@ type BattleSpec struct {
 	Subtype string
 }
 
-// BattleSubtypeSiege is the only printed battle subtype (CR 310.2).
+// BattleSubtypeSiege is the only printed battle subtype (CR 310.12).
 // A Siege is the one that chooses a protector and that transforms
 // when defeated.
 const BattleSubtypeSiege = "Siege"
 
 // DefeatedTrigger declares a battle's "when this is defeated"
-// ability (CR 310.9) — the last defense counter has come off and the
+// ability (CR 310.12b) — the last defense counter has come off and the
 // battle is about to leave the battlefield.
 //
 // It is an ordinary triggered ability on an ordinary event, so it
 // uses the stack and can be responded to. What is NOT ordinary is
 // the timing: the engine announces the defeat from the state-based
-// action pass, immediately BEFORE the CR 704.5p move puts the battle
+// action pass, immediately BEFORE the CR 704.5v move puts the battle
 // in the graveyard. So Build runs with the battle still on the
 // battlefield and the Effect runs after it has left — which is why
 // the effect must read the battle by id off the item rather than
@@ -88,7 +88,7 @@ const SiegeBackFace = 1
 const SiegeTransformedCastCaveat = "When the Siege is defeated you get to cast its back face for free, but only during your own main phase and only before the turn ends — so a Siege defeated on someone else's turn is lost."
 
 // SiegeDefeated is the reminder-text half every printed Siege shares:
-// "exile it, then cast it transformed" (CR 310.9c).
+// "exile it, then cast it transformed" (CR 310.12b).
 //
 // The battle leaves the battlefield for exile, and the exiled card is
 // stamped with a grant that opens its BACK face, for nothing, to the
@@ -155,7 +155,7 @@ func SiegeDefeated() func(g *game.Game, item *game.StackItem) error {
 		}
 		// The battle is already in its owner's graveyard by the time
 		// this resolves: the defeat is announced from the SBA pass,
-		// and the CR 704.5p move runs in the same pass, before the
+		// and the CR 704.5v move runs in the same pass, before the
 		// trigger drains onto the stack. The exile helper finds it
 		// wherever it is, and drops the grant silently if a trigger
 		// off the move takes the card somewhere else first.

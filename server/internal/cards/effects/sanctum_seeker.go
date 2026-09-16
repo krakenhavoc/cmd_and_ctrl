@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // engine's per-creature EventAttack is exactly that — the Seeker
 // itself included, since it is a Vampire and the text says "a
 // Vampire you control", not "another". Effective subtypes, so a
-// changeling counts. Each trigger is b07DrainEachOpponent: every
+// changeling counts. Each trigger is drainEachOpponent: every
 // opponent loses 1 (life loss, not damage) and the controller gains
 // 1 — once, not once per opponent.
 //
@@ -26,7 +26,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b21CreatureOfSubtypeYouControlAttacked(ev, source, g, "Vampire")
-			}, "Sanctum Seeker — each opponent loses 1 life, you gain 1 life", b07DrainEachOpponent),
+			}, "Sanctum Seeker — each opponent loses 1 life, you gain 1 life", drainEachOpponent),
 		},
 	})
 }

@@ -18,9 +18,13 @@ type activateParams struct {
 	Targets      []targetWire `json:"targets,omitempty"`
 	SacrificeIDs []string     `json:"sacrifice_ids,omitempty"`
 	CrewIDs      []string     `json:"crew_ids,omitempty"`
-	XValue       int          `json:"x_value,omitempty"`
-	Strict       bool         `json:"strict,omitempty"`
-	AutoTap      bool         `json:"auto_tap,omitempty"`
+	// #625: the permanent a RemoveCounters cost removes from (omitted
+	// for the self form) and, for "a counter" of any kind, the kind.
+	CounterSourceIDs []string `json:"counter_source_ids,omitempty"`
+	CounterKind      string   `json:"counter_kind,omitempty"`
+	XValue           int      `json:"x_value,omitempty"`
+	Strict           bool     `json:"strict,omitempty"`
+	AutoTap          bool     `json:"auto_tap,omitempty"`
 }
 
 // activatedMoves enumerates catalog activated abilities on the
@@ -146,6 +150,21 @@ func (e *enumerator) activatedMoves() {
 					continue
 				}
 			}
+			// #625: a "remove N counters" cost. One move per (permanent,
+			// kind) that could pay, most counters first — so a capped
+			// budget spends itself on the payments that hurt least
+			// (a 6-loyalty walker before a 1-loyalty one) — and the
+			// ability is not offered at all when nothing can pay. The
+			// candidates come from the same walk the engine's option
+			// view and validation agree with, so an offered payment is
+			// one ActivateCatalogAbility accepts (#544).
+			counterChoices := []counterChoice{{}}
+			if rc := ab.Cost.RemoveCounters; rc != nil {
+				counterChoices = counterPaymentChoices(g.CounterCostOptionsForEffect(e.seat, source.InstanceID, rc), rc)
+				if len(counterChoices) == 0 {
+					continue
+				}
+			}
 			budget := e.opts.MaxExpansionPerSource
 			targetSets := [][]game.TargetRef{nil}
 			if ab.Targets != nil {
@@ -166,37 +185,100 @@ func (e *enumerator) activatedMoves() {
 			}
 			for _, targets := range targetSets {
 				for _, sacs := range sacrificeSets {
-					if budget <= 0 {
-						break
+					for _, cc := range counterChoices {
+						if budget <= 0 {
+							break
+						}
+						budget--
+						label := source.Name + ": " + ab.Label
+						if xValue > 0 {
+							label += fmt.Sprintf(" for X=%d", xValue)
+						}
+						label += cc.label(g)
+						label += targetLabel(g, targets)
+						cost := moveCost(ab.Cost.Life, loyalty)
+						if cc.n > 0 {
+							cost = withCounterPrice(cost, CounterPrice{CardID: cc.cardID, Counter: cc.kind, N: cc.n})
+						}
+						e.add(Move{
+							Type:   TypeActivateAbility,
+							Player: e.seat,
+							Kind:   KindActivate,
+							Label:  label,
+							Source: source.InstanceID,
+							Cost:   cost,
+							Params: mustJSON(activateParams{
+								SourceCardID:     source.InstanceID.String(),
+								AbilityIndex:     idx,
+								Targets:          wireTargets(targets),
+								SacrificeIDs:     idStrings(sacs),
+								CrewIDs:          idStrings(crewIDs),
+								CounterSourceIDs: cc.wireIDs(),
+								CounterKind:      cc.wireKind,
+								XValue:           xValue,
+								Strict:           true,
+								AutoTap:          true,
+							}),
+						})
 					}
-					budget--
-					label := source.Name + ": " + ab.Label
-					if xValue > 0 {
-						label += fmt.Sprintf(" for X=%d", xValue)
-					}
-					label += targetLabel(g, targets)
-					e.add(Move{
-						Type:   TypeActivateAbility,
-						Player: e.seat,
-						Kind:   KindActivate,
-						Label:  label,
-						Source: source.InstanceID,
-						Cost:   moveCost(ab.Cost.Life, loyalty),
-						Params: mustJSON(activateParams{
-							SourceCardID: source.InstanceID.String(),
-							AbilityIndex: idx,
-							Targets:      wireTargets(targets),
-							SacrificeIDs: idStrings(sacs),
-							CrewIDs:      idStrings(crewIDs),
-							XValue:       xValue,
-							Strict:       true,
-							AutoTap:      true,
-						}),
-					})
 				}
 			}
 		}
 	}
+}
+
+// counterChoice is one way to pay a RemoveCounters cost: the zero
+// value stands for "the ability has no counter component".
+type counterChoice struct {
+	cardID uuid.UUID
+	kind   string
+	n      int
+	count  int
+	// fromOther is true for the "from a permanent you control" form,
+	// which names the permanent on the wire; the self form does not.
+	fromOther bool
+	// wireKind is the kind sent as counter_kind: set only for "a
+	// counter" of any kind, where the engine needs to be told.
+	wireKind string
+}
+
+// counterPaymentChoices flattens the engine's (permanent, kinds)
+// options into one choice per (permanent, kind), most counters first
+// across the whole set.
+func counterPaymentChoices(opts []game.CounterCostOption, rc *game.CounterRemovalCost) []counterChoice {
+	var out []counterChoice
+	for _, o := range opts {
+		for _, k := range o.Kinds {
+			cc := counterChoice{cardID: o.CardID, kind: k.Kind, n: rc.N, count: k.Count, fromOther: rc.From != nil}
+			if rc.Counter == "" {
+				cc.wireKind = k.Kind
+			}
+			out = append(out, cc)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].count > out[j].count })
+	return out
+}
+
+func (cc counterChoice) wireIDs() []string {
+	if !cc.fromOther {
+		return nil
+	}
+	return []string{cc.cardID.String()}
+}
+
+// label names the payment in the move label when it is a choice the
+// reader could not infer from the ability text: which permanent, and
+// for "a counter", which kind.
+func (cc counterChoice) label(g *game.Game) string {
+	if cc.n == 0 || (!cc.fromOther && cc.wireKind == "") {
+		return ""
+	}
+	what := cc.kind + " counter"
+	if cc.n > 1 {
+		what = fmt.Sprintf("%d %s counters", cc.n, cc.kind)
+	}
+	return " (removing " + what + " from " + cardName(g, cc.cardID) + ")"
 }
 
 // sacrificePool lists the seat's permanents that satisfy a

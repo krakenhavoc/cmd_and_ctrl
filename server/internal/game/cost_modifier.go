@@ -25,7 +25,7 @@ import (
 // The rule fixes the order and the order is observable:
 //
 //	1. the cost to pay — printed mana cost, or the alternative cost
-//	   claimed at announce (CR 601.2e, already settled by the time
+//	   claimed at announce (CR 601.2b, already settled by the time
 //	   this file runs);
 //	2. additional costs (paid, not priced — see additional_cost.go);
 //	3. cost INCREASES, in any order among themselves;
@@ -136,7 +136,7 @@ type CostQuery struct {
 	Source Card
 
 	// FromZone is where the spell is being cast from — hand, the
-	// command zone, exile.
+	// command zone, the graveyard (flashback, escape), exile.
 	FromZone ZoneKind
 
 	// XValue is the value announced for {X} (CR 601.2b), needed by
@@ -385,7 +385,7 @@ func reduceGeneric(cost ParsedCost, n int) ParsedCost {
 // part worth pinning is that the coloured half survives: the
 // shortfall is paid in generic, so the {B} is still a {B}.
 //
-// X counts toward the total at the announced value (CR 202.3b), so
+// X counts toward the total at the announced value (CR 202.3e), so
 // a {X}{U} spell announced with X=2 already costs three and
 // Trinisphere adds nothing.
 func raiseToMinimum(cost ParsedCost, min, xValue int) ParsedCost {
@@ -402,7 +402,7 @@ func raiseToMinimum(cost ParsedCost, min, xValue int) ParsedCost {
 }
 
 // ManaValue is the cost's converted mana cost with {X} counted as
-// zero (CR 202.3b — X is zero everywhere except on the stack).
+// zero (CR 202.3e — X is zero everywhere except on the stack).
 func (c ParsedCost) ManaValue() int {
 	return c.Generic + len(c.Required)
 }
@@ -420,7 +420,7 @@ func (c ParsedCost) ManaValueWithX(x int) int {
 //
 // Deliberately printed-cost-only: cost modifiers, alternative costs
 // and the commander tax all change what a spell COSTS and none of
-// them change its mana value (CR 202.3c).
+// them change its mana value (CR 202.3).
 func (c Card) ManaValue() int {
 	cost, err := ParseCost(c.ManaCost)
 	if err != nil {

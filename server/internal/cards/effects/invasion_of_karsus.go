@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // A four-mana sweeper that leaves a 4/4 behind if anyone can be
 // bothered to attack it. The bracketed reminder text is not
 // card-effect data — the defense counters, the protector prompt and
-// the CR 704.5p sweep are engine behaviour keyed on the card TYPE
+// the CR 704.5v sweep are engine behaviour keyed on the card TYPE
 // (server/internal/game/battle.go) and happen to a battle the catalog
 // has never heard of. What this Spec carries is the sweep, and the
 // defeated trigger that hands over Refraction Elemental.
@@ -23,7 +23,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // caster's, which is most of why the card is symmetrical enough to
 // be interesting. The Siege itself is neither a creature nor a
 // planeswalker, so it does not damage itself off the board — battles
-// lose defense counters to damage (CR 120.3e) and a self-sweep would
+// lose defense counters to damage (CR 120.3h) and a self-sweep would
 // have taken four off its own four.
 //
 // Damage rather than destruction is observable and is the reason the

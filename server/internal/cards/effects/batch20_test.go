@@ -289,9 +289,11 @@ func TestB20FontOfMythosDrawsTwoMoreOnEveryDrawStep(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	b12Push(g, me.ID, "Font of Mythos", "Artifact", b20FontOfMythosOracle, 0, 0)
-	// CR 103.7c skips the first draw step of the game; the next
-	// seat's draw step is the first one the Font sees, and it is an
-	// OPPONENT's — each player's draw step, not the controller's.
+	// Seat 0's own draw step is already behind the cursor
+	// (newCatalogGame parks there, #692), so the next seat's draw
+	// step is the first one the Font sees — and it is an OPPONENT's,
+	// which is the point: each player's draw step, not just the
+	// controller's.
 	advanceTo(t, g, game.StepEnd)
 	advanceTo(t, g, game.StepDraw)
 	active := g.Seats[g.Turn.ActiveSeat]
@@ -339,7 +341,7 @@ func TestB20GrindingStationMillsThreeAndMayUntapWhenAnArtifactEnters(t *testing.
 		t.Error("the Station untaps when an artifact enters")
 	}
 	// A nonartifact entering is silent.
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, GreenBeastToken(), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 colorless Beast"), 1) })
 	if b18TriggerPromptCount(g, me.ID) != 0 {
 		t.Error("a Beast is not an artifact")
 	}
@@ -611,7 +613,7 @@ func TestB20VerdantSunsAvatarGainsToughnessForItselfAndYourCreatures(t *testing.
 		t.Fatalf("its own entry: life %d → %d, want +5", life, me.Life)
 	}
 	// "Another creature you control": a 3/3 token.
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, GreenBeastToken(), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 colorless Beast"), 1) })
 	passPriorityAroundTable(t, g)
 	if me.Life != life+8 {
 		t.Errorf("a 3/3 entering: life %d → %d, want +8", life, me.Life)
@@ -629,7 +631,7 @@ func TestB20VerdantSunsAvatarGainsToughnessForItselfAndYourCreatures(t *testing.
 	}
 	// An opponent's creature and a noncreature are silent.
 	g.WithWriteLock(func() {
-		_ = g.CreateTokenForEffect(opp.ID, GreenBeastToken(), 1)
+		_ = g.CreateTokenForEffect(opp.ID, TokenCard("3/3 colorless Beast"), 1)
 		_ = g.CreateTokenForEffect(me.ID, TreasureToken(), 1)
 	})
 	passPriorityAroundTable(t, g)

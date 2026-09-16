@@ -435,7 +435,7 @@ func (e *InsufficientManaError) Unwrap() error { return ErrInsufficientMana }
 // them.
 //
 // Split-second blocks all casts and activations except mana abilities
-// and special actions (CR 702.79). The flag is mirrored on
+// and special actions (CR 702.61). The flag is mirrored on
 // Game.SplitSecondActive for fast lookup; recomputed every time the
 // stack changes.
 //
@@ -534,10 +534,15 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// touch at all.
 	//
 	// S29 softened the "no grant, no cast" half by exactly one case:
-	// a card whose own text declares ZoneExile castable (suspend's
-	// "cast it without paying its mana cost" is the shape) does not
-	// need an instance grant. Everything else is unchanged, and
-	// hasExileGrant rides down to validateCastPathLocked so the
+	// a card whose own text declares ZoneExile castable does not need
+	// an instance grant. That declaration is a CARD-level permission,
+	// so it opens exile for every copy of the card at any time, and
+	// no catalog card declares it today. Suspend and foretell are NOT
+	// this shape: CR 702.62a allows a suspended card's cast only while
+	// its last-time-counter trigger resolves, and CR 702.143 makes
+	// foretold status belong to the exiled instance. Both want a
+	// per-instance ExilePlayPermission, the way cascade's free cast
+	// works. hasExileGrant rides down to validateCastPathLocked so the
 	// zone-cost rule can tell the two apart.
 	hasExileGrant := false
 	if src.Kind == ZoneExile {
@@ -547,7 +552,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		}
 		// "You may CAST that card" (Ragavan) does not let you play a
 		// land: playing a land is a special action, not a cast
-		// (CR 305.1, 115.2a).
+		// (CR 305.1, 116.2a).
 		if hasExileGrant && exileGrant.CastOnly && card.IsLand() {
 			return ErrNoPlayPermission
 		}
@@ -581,6 +586,21 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			"err", err,
 		)
 		return err
+	}
+	// CR 118.6: no mana cost is an unpayable cost, and paying it is
+	// illegal, so a cast that would pay it is refused here. Checked
+	// once the claimed alternative cost and the exile grant are both
+	// known, because an alternative cost applied to the unpayable
+	// cost may be paid (CR 118.6a).
+	// Mode-independent, like the unparseable-cost refusal: there is
+	// no cost to have paid on paper either.
+	if HasNoManaCost(card) && castPaysPrintedCost(alt, exileGrant, hasExileGrant) {
+		slog.Warn("cast_spell rejected: no mana cost to pay",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"from_zone", src.Kind,
+		)
+		return ErrNoManaCost
 	}
 	// S28: the non-mana half of the claimed offer — the Condition
 	// ("if you control a Swamp"), the life payment, and the card
@@ -1023,10 +1043,11 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 //
 // The "effective cost" parses the printed ManaCost and adds
 // {2}-per-prior-cast for casts from the command zone (CR 903.8).
-// An EMPTY ManaCost still short-circuits to costless — ParseCost
-// treats "" as the zero cost, matching land behaviour — but an
-// UNPARSEABLE one now rejects the cast outright, before any of
-// the three outcomes above. Caller must hold g.mu.
+// ParseCost treats an EMPTY ManaCost as the zero cost, matching land
+// behaviour. A non-land spell never gets here on an empty cost it is
+// paying: CastSpell refuses that earlier with ErrNoManaCost (CR
+// 118.6). An UNPARSEABLE cost rejects the cast outright, before any
+// of the three outcomes above. Caller must hold g.mu.
 func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams, cardID uuid.UUID) error {
 	cost, err := g.effectiveCostLocked(p, card, params)
 	if err != nil {
@@ -1283,11 +1304,23 @@ func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams)
 	// reason the tax is: tapping creatures is a way of PAYING the
 	// total cost, and CR 601.2f settles the total before anything
 	// is paid against it.
+	//
+	// The zone comes from castZoneFromWire, the same mapping the
+	// cast path resolved its source pile with. A private copy of that
+	// switch used to live here and knew only hand, command and exile,
+	// so a flashback or escape cast reached every modifier as a HAND
+	// cast. CastSpell has already refused an unknown string by the
+	// time it prices anything; the error below is for a caller that
+	// skipped that step.
+	fromZone, ok := castZoneFromWire(params.FromZone)
+	if !ok {
+		return ParsedCost{}, ErrZoneNotFound
+	}
 	cost, err = g.applyCostModifiersLocked(cost, CostQuery{
 		Game:       g,
 		Card:       card,
 		Controller: p.ID,
-		FromZone:   castFromZoneKind(params.FromZone),
+		FromZone:   fromZone,
 		XValue:     params.XValue,
 	})
 	if err != nil {
@@ -1328,7 +1361,13 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// printed cost and is layered BEFORE the commander tax for the
 	// same reason the alternative cost is: CR 903.8 taxes whatever
 	// cost is actually being paid.
-	if ov := card.ExilePlay.CostOverride; ov != "" && card.ExilePlay.Active(p.ID, g.Turn.Number) {
+	//
+	// The grant prices a cast out of EXILE and nothing else. MoveCard
+	// clears it when the card leaves exile (CR 400.7); this check is
+	// the second half, so a grant still sitting on a card can't
+	// reprice a cast from any other zone.
+	fromExile := params.FromZone == string(ZoneExile)
+	if ov := card.ExilePlay.CostOverride; ov != "" && fromExile && card.ExilePlay.Active(p.ID, g.Turn.Number) {
 		costString = ov
 	}
 	cost, err := ParseCost(costString)
@@ -1343,27 +1382,10 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// color to cast those spells" (Breeches, Brazen Plunderer). Folds
 	// the colored slots into the generic demand, which is exactly
 	// equivalent for the solver.
-	if card.ExilePlay.AnyColor && card.ExilePlay.Active(p.ID, g.Turn.Number) {
+	if card.ExilePlay.AnyColor && fromExile && card.ExilePlay.Active(p.ID, g.Turn.Number) {
 		cost = asAnyColorCost(cost)
 	}
 	return cost, nil
-}
-
-// castFromZoneKind maps CastSpellParams.FromZone onto the ZoneKind a
-// cost modifier's predicate reads. Mirrors castSourceZoneLocked's
-// switch — including its "unknown falls back to hand" posture, which
-// keeps an older client's omitted field meaning what it always meant.
-// Split out because the cost-modifier query wants the kind without
-// wanting the zone pointer (and without wanting a *Player).
-func castFromZoneKind(fromZone string) ZoneKind {
-	switch fromZone {
-	case "command":
-		return ZoneCommand
-	case "exile":
-		return ZoneExile
-	default:
-		return ZoneHand
-	}
 }
 
 // castSourceZoneLocked resolves the FromZone string to the zone
@@ -1454,8 +1476,8 @@ func cloneDistributionLocked(in map[uuid.UUID]int) map[uuid.UUID]int {
 // resolveTopOfStackLocked pops the topmost stack item and resolves
 // it. For spells, permanents route to the battlefield with their
 // recorded controller; instants and sorceries route to the owner's
-// graveyard (CR 608.2f). For activated / triggered abilities, the
-// item simply ceases to exist (CR 608.2m) — there is no source-card
+// graveyard (CR 608.2n). For activated / triggered abilities, the
+// item simply ceases to exist (CR 608.2n) — there is no source-card
 // movement because the ability's source is a separate card that
 // stays put.
 //
@@ -1518,7 +1540,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 			Source: top.InstanceID,
 			CardID: top.InstanceID,
 		})
-		// A COPY has no way out of the stack at all: CR 706.10 says
+		// A COPY has no way out of the stack at all: CR 707.10 says
 		// it is not a card, so "countered by game rules" leaves it
 		// nowhere to go. Checked BEFORE the flashback branch below
 		// because a copy of a flashed-back spell is still not a card
@@ -1543,7 +1565,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// spells fire their effect here. Errors emit EventEffectError
 	// via fireEffectResolverLocked and do not wedge resolution.
 	g.fireEffectResolverLocked(item, CatalogKey(top), top.InstanceID)
-	// CR 707.10: a resolving copy of a PERMANENT spell becomes a
+	// CR 608.3f / 707.10f: a resolving copy of a PERMANENT spell becomes a
 	// token. This engine has no token-from-stack-item path, and
 	// letting the copy fall through to the battlefield branch below
 	// would be worse than doing nothing — it would put a second
@@ -1551,13 +1573,13 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// play, which a bounce spell then duplicates into a hand. Every
 	// S30 copy card targets an instant or sorcery, so this is
 	// unreachable today; it is written out because it is where the
-	// token rule lands.
+	// token rule lands (#666).
 	if item.IsCopy && top.IsPermanent() {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Actor:    item.Controller,
 			CardID:   top.InstanceID,
-			ErrorMsg: "copying a permanent spell is not implemented (CR 707.10 token)",
+			ErrorMsg: "copying a permanent spell is not implemented (CR 608.3f token)",
 		})
 		g.ceaseToExistLocked(top.InstanceID)
 		return nil
@@ -1570,7 +1592,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// An MDFC keeps the face that was cast — the other one never
 		// returns — and since S32 so does a `transform` card, which is
 		// how a defeated Siege's back face becomes the permanent
-		// instead of the battle re-entering the battlefield. CR 712.4's
+		// instead of the battle re-entering the battlefield. CR 712.11's
 		// "always cast as its front face" is enforced by CastableFaces
 		// refusing to offer the back, so a non-zero transform face here
 		// can only have come from an effect that said "cast it
@@ -1610,7 +1632,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 			stackItem:      item,
 		}
 		// S29: "this creature escapes with a +1/+1 counter on it"
-		// (CR 702.144c). Seeded onto the event BEFORE the pipeline
+		// (CR 702.138c). Seeded onto the event BEFORE the pipeline
 		// runs, so the counters are part of the entry every other
 		// replacement gets to see and modify — Doubling Season
 		// doubles them — rather than an afterthought stapled on once
@@ -1643,7 +1665,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 			}
 		}
 		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
-		// CR 706.2: a permanent entering as a copy is that copy from
+		// CR 707.2: a permanent entering as a copy is that copy from
 		// the moment it enters, so the values land before the counters
 		// (Spark Double's extra +1/+1 goes on the copy) and before any
 		// event fires. `moved` is re-taken because it is a pre-copy
@@ -1675,13 +1697,13 @@ func (g *Game) resolveTopOfStackLocked() error {
 			CardID: moved.InstanceID,
 		})
 		g.fireETBHookLocked(moved.InstanceID, CatalogKey(moved))
-		// S22: evoke's "it's sacrificed when it enters" (CR 702.74b).
+		// S22: evoke's "it's sacrificed when it enters" (CR 702.74a).
 		// Queued here because this is the last moment the StackItem —
 		// and so the cost that was actually paid — is still reachable.
 		g.queueAltCostEntryTriggerLocked(moved, item)
 		return nil
 	}
-	// CR 706.10 — a COPY is not a card, so it has no graveyard to go
+	// CR 707.10 — a COPY is not a card, so it has no graveyard to go
 	// to and no flashback exile to be caught by either. It ceases to
 	// exist, having already run its effect above. See spell_copy.go
 	// for why this branch is load-bearing rather than cosmetic.
@@ -1782,7 +1804,7 @@ func (g *Game) topAbilityLocked() *StackItem {
 // EventFizzle, no effect), then EventResolve is emitted and the
 // item's Effect callback — if any — runs. Errors from Effect
 // surface as EventEffectError and do not wedge the stack; the
-// ability has ceased to exist either way (CR 608.2m).
+// ability has ceased to exist either way (CR 608.2n).
 func (g *Game) resolveTopAbilityLocked() {
 	top := g.topAbilityLocked()
 	if top == nil {
@@ -1870,7 +1892,7 @@ type AbilityParams struct {
 //
 // No card moves. The source card stays in its origin zone; the
 // stack item carries its own synthetic ID. Resolution removes the
-// item (CR 608.2m).
+// item (CR 608.2n).
 //
 // SourceCardID must reference a card that exists in some zone; an
 // unknown ID returns ErrCardNotFound.
@@ -1888,7 +1910,7 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 		return ErrGameNotActive
 	}
 	// Activation legality reads the source's effective types (the
-	// CR 302.1 summoning-sickness gate only applies to a creature)
+	// CR 302.6 summoning-sickness gate only applies to a creature)
 	// and the target predicates read every candidate's. Both are
 	// layer-dependent since the type predicates were rerouted
 	// through Effective(); fast-path no-op when nothing changed.
@@ -1943,15 +1965,15 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 // Returns:
 //   - ErrCardNotFound if planeswalkerID is not on the battlefield.
 //   - ErrNotAPlaneswalker if it is on the battlefield but isn't one
-//     (CR 606.1). Before #329 this action would hand loyalty
+//     (CR 606.2). Before #329 this action would hand loyalty
 //     counters to a Mountain.
 //   - ErrCardCallerMismatch if the activator doesn't control it.
 //   - ErrInsufficientLoyalty if a negative delta would remove more
-//     counters than the planeswalker has (CR 606.3). Paying down to
+//     counters than the planeswalker has (CR 606.6). Paying down to
 //     exactly zero is legal; the 704.5i SBA takes it from there.
 //   - ErrSorcerySpeedRequired if the gate is closed.
 //   - ErrLoyaltyAlreadyActivated if the planeswalker has already
-//     activated a loyalty ability this turn (CR 606.5).
+//     activated a loyalty ability this turn (CR 606.3).
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 //
@@ -1990,7 +2012,7 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	if pw == nil {
 		return ErrCardNotFound
 	}
-	// CR 606.1 / 606.2: a loyalty ability belongs to a planeswalker,
+	// CR 606.2 / 606.3: a loyalty ability belongs to a planeswalker,
 	// and only its controller may activate it. Neither was checked
 	// before #329, so this action was a counter faucet pointed at
 	// any card on the table.
@@ -2008,7 +2030,7 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	if pw.Controller != playerID {
 		return ErrCardCallerMismatch
 	}
-	// CR 606.3: can't remove more loyalty than is there. The old
+	// CR 606.6: can't remove more loyalty than is there. The old
 	// comment here argued for letting the counter go negative so the
 	// SBA could see the intent, but the SBA reads "loyalty <= 0" and
 	// an activation the rules forbid should be refused at announce,
@@ -2150,12 +2172,12 @@ func clearKnownInZoneLocked(zone *Zone) {
 
 // stateBasedActionsLocked runs one pass of state-based actions per
 // CR 704.5. Returns true if any SBA fired so the caller can re-run
-// the loop (CR 704.4 — SBAs repeat until none fire).
+// the loop (CR 704.3 — SBAs repeat until none fire).
 //
 // Player-loss SBAs (S13.1):
 //   - 704.5a: a player at 0 or less life loses
 //   - 704.5b: a player who tried to draw from an empty library loses
-//   - 704.5v / 903.14a: 21 commander damage from a single source
+//   - 704.6c / 903.10a: 21 commander damage from a single source
 //
 // Player-loss SBAs (S13.2):
 //   - 704.5c: a player with ≥ 10 poison counters loses
@@ -2167,11 +2189,11 @@ func clearKnownInZoneLocked(zone *Zone) {
 // Counter SBAs (S13.2):
 //   - 704.5i: a planeswalker with 0 loyalty counters is moved to its
 //     owner's graveyard
-//   - 704.5p: a battle with 0 defense counters is moved to its
+//   - 704.5v: a battle with 0 defense counters is moved to its
 //     owner's graveyard
 //   - 704.5q: +1/+1 and -1/-1 counters on the same creature
 //     cancel out — remove min(N, M) of each
-//   - 704.5u: a saga whose final-chapter lore counter is set is
+//   - 704.5s: a saga whose final-chapter lore counter is set is
 //     sacrificed by its controller (the SBA half; the lore-counter
 //     advance trigger lands in S14+ with the effect catalog)
 //
@@ -2233,6 +2255,7 @@ func (g *Game) stateBasedActionsLocked() bool {
 			}
 			if len(c.Counters) == 0 {
 				c.Counters = nil
+				c.LostLastCounter = true
 			}
 			fired = true
 		}
@@ -2270,11 +2293,30 @@ func (g *Game) stateBasedActionsLocked() bool {
 	// Printed-0 creatures (Toughness == 0 and no counters applied)
 	// are skipped: that's the placeholder / unparseable-stats
 	// convention documented on Card.Power — the SBA would else
-	// destroy every demo seed card.
+	// destroy every demo seed card. A creature that has LOST its
+	// counters is not skipped (Card.LostLastCounter, #683): a 0/0
+	// whose last +1/+1 counter was removed or cancelled has a real 0
+	// toughness and dies (CR 704.5f).
+	// Unless its printed toughness is not a number
+	// (Card.VariableToughness): a `*` creature's 0 is the import
+	// stand-in whether or not it once had counters, so it stays
+	// skipped.
 	var doomed []uuid.UUID
 	for _, c := range g.Battlefield.Cards {
+		// #605: a permanent whose exit is already paused on a player
+		// prompt is still HERE, with whatever doomed it intact — a
+		// commander at zero toughness keeps its zero toughness while
+		// its owner is asked about the command zone. Dooming it again
+		// queues a second prompt for a move that is already in flight,
+		// and since destroying it counts as fired, runStateChecksLocked
+		// goes round again and does it thirty more times. Every one of
+		// those siblings becomes unanswerable the moment the first is
+		// answered. The move is already asked; wait for the answer.
+		if g.zoneChangePausedLocked(c.InstanceID) {
+			continue
+		}
 		if c.IsCreature() {
-			if c.Toughness == 0 && len(c.Counters) == 0 {
+			if c.Toughness == 0 && len(c.Counters) == 0 && (!c.LostLastCounter || c.VariableToughness) {
 				continue
 			}
 			curT := c.CurrentToughness()
@@ -2313,7 +2355,7 @@ func (g *Game) stateBasedActionsLocked() bool {
 			}
 			continue
 		}
-		// 704.5p — battle with 0 defense counters.
+		// 704.5v — battle with 0 defense counters.
 		if c.IsBattle() {
 			if c.Counters == nil || c.Counters[CounterDefense] <= 0 {
 				doomed = append(doomed, c.InstanceID)
@@ -2321,12 +2363,12 @@ func (g *Game) stateBasedActionsLocked() bool {
 			continue
 		}
 	}
-	// S27 / CR 310.9: a battle at zero defense is DEFEATED, and the
+	// S27 / CR 310.12b: a battle at zero defense is DEFEATED, and the
 	// defeated trigger has to see it on the battlefield. Announced
 	// here — after the doomed set is collected and before any of it
 	// moves — so the harvester finds a live source, and so a Siege's
 	// "exile it, then cast it transformed" reads a card that still
-	// exists. The battle is in `doomed` already via the 704.5p arm
+	// exists. The battle is in `doomed` already via the 704.5v arm
 	// above; this only adds the announcement.
 	for _, c := range g.Battlefield.Cards {
 		if c.IsBattle() && c.Counters[CounterDefense] <= 0 {
@@ -2355,6 +2397,14 @@ func (g *Game) stateBasedActionsLocked() bool {
 	// to die for another reason has already gone, and the "chapter
 	// still on the stack" check sees the settled queue.
 	for _, id := range g.sagasReadyToSacrificeLocked() {
+		// Same re-entry guard as the doomed sweep above: a Saga
+		// commander waiting on the CR 903.9 prompt is still on the
+		// battlefield at its final chapter, and sacrificing it a
+		// second time would queue a second prompt and emit a second
+		// EventSacrifice for one sacrifice.
+		if g.zoneChangePausedLocked(id) {
+			continue
+		}
 		if err := g.sacrificePermanentLocked(id); err == nil {
 			fired = true
 		}
@@ -2375,7 +2425,7 @@ func (g *Game) stateBasedActionsLocked() bool {
 
 // runStateChecksLocked runs the SBA + APNAP-trigger-drain loop until
 // the game is quiet (no SBAs fire AND no triggers are pending).
-// CR 704.4 + 603.3b — both checks are paired at every priority-grant
+// CR 704.3 + 603.3b — both checks are paired at every priority-grant
 // boundary.
 //
 // Bounded at 32 iterations as a safety belt against an unintended
@@ -2657,6 +2707,10 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	// passing, so the state-check loop is exactly what does NOT run
 	// while such a prompt is outstanding. No-op when none is queued.
 	g.pruneSacrificeChoicesLocked()
+	// #605: and any sibling prompt still asking about a move of THIS
+	// card off the battlefield it has now left is unanswerable, for
+	// the same reason and at the same moment.
+	g.pruneStaleZoneChangeChoicesLocked()
 	return nil
 }
 
@@ -2704,6 +2758,11 @@ func (g *Game) markDamageWithKind(source, cardID uuid.UUID, delta int, isCombat 
 		DamageTarget:   cardID,
 		DamageAmount:   delta,
 		IsCombatDamage: isCombat,
+		// #694: the manual mark keeps its own tail shape — a signed
+		// delta straight onto DamageMarked, no CR 120.3 split, no
+		// combat riders. It is the sandbox verb, and a negative delta
+		// (undo a mark) is a legitimate use of it.
+		damageTail: &damageTail{kind: damageTailManualMark},
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
@@ -2717,25 +2776,13 @@ func (g *Game) markDamageWithKind(source, cardID uuid.UUID, delta int, isCombat 
 	if out == nil || out.Canceled {
 		return nil
 	}
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID == out.DamageTarget {
-			g.Battlefield.Cards[i].DamageMarked += out.DamageAmount
-			if g.Battlefield.Cards[i].DamageMarked < 0 {
-				g.Battlefield.Cards[i].DamageMarked = 0
-			}
-			if out.DamageAmount > 0 {
-				g.EmitEvent(Event{
-					Kind:   EventDealDamage,
-					Source: out.DamageSource,
-					Target: out.DamageTarget,
-					Amount: out.DamageAmount,
-				})
-			}
-			g.runStateChecksLocked()
-			return nil
-		}
+	if err := g.applyResolvedDamageLocked(out); err != nil {
+		return err
 	}
-	return ErrCardNotFound
+	// The sandbox verb is its own action boundary, so it owes the SBA
+	// sweep the tail deliberately does not run (see damage_tail.go).
+	g.runStateChecksLocked()
+	return nil
 }
 
 // drainPendingTriggersAPNAPLocked moves every queued triggered
@@ -2995,7 +3042,7 @@ func (g *Game) CounterSpell(spellID uuid.UUID, dst *ZoneRef) error {
 }
 
 // CounterAbility removes an activated / triggered ability from the
-// stack. Abilities cease to exist on resolution (CR 608.2m); a
+// stack. Abilities cease to exist on resolution (CR 608.2n); a
 // counter is the same destinationless removal. Returns
 // ErrCardNotOnStack if the ID doesn't reference an ability item.
 //
@@ -3180,7 +3227,7 @@ func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCom
 		}
 	}
 	// A sandbox move is a special action: the mover keeps priority
-	// afterwards (CR 116.3c), and CR 117.5 puts SBAs + the APNAP
+	// afterwards (CR 116.3), and CR 117.5 puts SBAs + the APNAP
 	// trigger drain at that boundary. Without this, a catalog
 	// creature dropped straight onto the battlefield would leave its
 	// ETB trigger stranded in PendingTriggers until the next pass /
@@ -3259,7 +3306,7 @@ func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 // from the activator. Empty for the common case — a bare "{T}: Add
 // {C}" needs nothing.
 //
-// Mana abilities don't use the stack (CR 605.3a), so unlike
+// Mana abilities don't use the stack (CR 605.3b), so unlike
 // ActivateAbilityParams there is no target list here: a mana ability
 // that targeted would have to resolve, and none does.
 type ManaAbilityParams struct {
@@ -3304,7 +3351,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// fallback second. A catalog spec with ManaAbilities overrides
 	// the synthetic path wholesale (Dryad Arbor, if it ever lands,
 	// would declare its own; basic Forest just uses the synthetic).
-	// CR 602.5a: an effect that stops this permanent's activated
+	// CR 602.5: an effect that stops this permanent's activated
 	// abilities being activated stops its mana abilities too, when
 	// it says so. Arrest does; Faith's Fetters explicitly does not
 	// ("unless they're mana abilities"), which is why the two are
@@ -3321,7 +3368,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	//
 	// "Activate only if you control five or more lands" (Temple of
 	// the False God), "…three or more artifacts" (Mox Opal). CR
-	// 602.5a: an activation restriction is checked before anything
+	// 602.5: an activation restriction is checked before anything
 	// is paid, so a failed gate costs the player nothing.
 	if ab.Condition != nil && !ab.Condition(g, playerID, cardID) {
 		return ErrConditionNotMet
@@ -3357,7 +3404,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		return err
 	}
 	if ab.LifeCost > 0 && p.Life < ab.LifeCost {
-		// CR 118.8: you can't pay more life than you have. Paying
+		// CR 119.4: you can't pay more life than you have. Paying
 		// down to exactly 0 is legal and the SBA loop ends the game
 		// after. Same gate ActivateCatalogAbility applies to
 		// AbilityCost.Life.
@@ -3369,7 +3416,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// with the source still untapped.
 	//
 	// Deliberately no auto-tap. A mana ability resolves with no
-	// priority window (CR 605.3a), and tapping three lands to feed a
+	// priority window (CR 605.3b), and tapping three lands to feed a
 	// Signet is a decision with consequences the planner cannot
 	// weigh — the player floats the {1} first, which is how the card
 	// is played on paper anyway.
@@ -3430,7 +3477,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// S21 sub-PR 1 made sacrifice-self costs real (Treasure, Eldrazi
 	// Spawn, Lotus Petal); the mana-cost pass adds sacrifice-another
 	// (Ashnod's Altar, Phyrexian Altar). The mana still lands in the
-	// pool below — CR 605.3a: a mana ability resolves immediately,
+	// pool below — CR 605.3b: a mana ability resolves immediately,
 	// without the stack, so the sacrifices and the mana are one
 	// atomic step.
 	if len(sacrifices) > 0 {
@@ -3460,7 +3507,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	})
 	// Materialise the produced mana. An ability with a ProducedFunc
 	// computes its output now, from the board as it stands AFTER the
-	// cost was paid — which is what CR 605.3a's "resolves
+	// cost was paid — which is what CR 605.3b's "resolves
 	// immediately" means, and what makes Cabal Coffers count the
 	// Swamps that are still there.
 	produced := ab.Produced
@@ -3535,7 +3582,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	}
 	// --- rider --------------------------------------------------
 	//
-	// CR 605.3a: a mana ability resolves the instant it's activated,
+	// CR 605.3b: a mana ability resolves the instant it's activated,
 	// so everything after the "Add …" clause — the painland cycle's
 	// "This land deals 1 damage to you", Ancient Tomb's 2 — happens
 	// here, with the mana already in the pool and no priority window
@@ -4008,7 +4055,7 @@ func (g *Game) stackHasItemsLocked() bool {
 // ErrNotACreature for non-creature cards, ErrPlayerNotFound for an
 // unknown target player, ErrCardNotFound for an unknown attacker
 // card, ErrSummoningSick for a creature that entered this turn
-// without haste (CR 302.1, 702.10), and ErrDefender for a defender
+// without haste (CR 302.6, 702.10), and ErrDefender for a defender
 // creature (CR 702.3). Re-declaring the same attacker against a
 // different target overwrites the previous target.
 //
@@ -4150,7 +4197,7 @@ type AttackDeclaration struct {
 // deliberately lax so the sandbox can force odd board states by hand.
 // A bulk "attack with everything" must never turn one ineligible
 // creature into a failed alpha strike, so entries that are unknown,
-// not creatures, tapped, summoning-sick (CR 302.1), defenders
+// not creatures, tapped, summoning-sick (CR 302.6), defenders
 // (CR 702.3), under a "can't attack" restriction (CR 508.1c),
 // already declared this combat, or pointed at a nonexistent /
 // eliminated / self seat are skipped without error.
@@ -4289,7 +4336,7 @@ func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 			// shadow, …) restrict which creatures can be declared
 			// as blockers. CanBlock is the single helper that
 			// consolidates all current S18 evasion rules; future
-			// keywords (protection in S24, etc.) land there.
+			// keywords (protection, #662) land there.
 			if !CanBlock(attacker, blocker) {
 				return ErrIllegalBlock
 			}
@@ -4440,7 +4487,7 @@ func participatesInSubstep(c *Card, firstStrike bool) bool {
 // damage-marking helpers so they fire uniformly via the replacement
 // pipeline.
 //
-// Menace enforcement (CR 702.110): a single blocker on a menace
+// Menace enforcement (CR 702.111): a single blocker on a menace
 // attacker is silently reverted — clear BlockingTarget, leaving the
 // attacker unblocked. Done at the top of this function so the
 // subsequent blocker list reflects the final legal state.
@@ -4644,13 +4691,21 @@ func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source
 		DamageTarget:   cardID,
 		DamageAmount:   amount,
 		IsCombatDamage: true,
+		// #694: the source's CR 702.2c deathtouch, CR 702.15 lifelink
+		// and CR 903.10a commander status are snapshotted HERE, before
+		// the pipeline can pause. A CR 616 prompt is answered after
+		// the blockers' damage has already landed and been swept, so
+		// the attacker may be in a graveyard by the time this event
+		// resumes — reading the keywords afterwards would silently
+		// lose both riders. Same reasoning the DamageAssignmentFrame
+		// paths have always used.
+		damageTail: g.combatDamageTailLocked(damageTailPermanent, source),
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
-		// CR 616 prompt queued; sandbox combat doesn't know how to
-		// resume combat damage mid-prompt today. Log + let damage
-		// pass through. Real-game prompts for combat-damage prevention
-		// land with S30.
+		// CR 616 ordering prompt queued. The damage lands when it is
+		// answered, through the same tail this function would have
+		// run (#694) — before that it was dropped on the floor.
 		return
 	}
 	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
@@ -4661,34 +4716,12 @@ func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source
 	if out == nil || out.Canceled {
 		return
 	}
-	if out.DamageAmount <= 0 {
-		return
-	}
-	// S18 sub-PR 3: CR 702.2c — damage from a deathtouch source flags
-	// the creature for SBA destruction regardless of toughness.
-	srcDeathtouch := false
-	if srcCard := findBattlefieldCard(g, out.DamageSource); srcCard != nil {
-		srcDeathtouch = HasKeyword(srcCard, "deathtouch")
-	}
-	actor := g.controllerOfBattlefieldCardLocked(out.DamageSource)
 	// S27 (#406): what the damage DOES depends on what the permanent
 	// is — marked on a creature, loyalty off a planeswalker, defense
-	// off a battle (CR 120.3). See permanent_damage.go.
-	if !g.applyDamageToPermanentLocked(out.DamageTarget, out.DamageAmount, srcDeathtouch) {
-		return
-	}
-	g.EmitEvent(Event{
-		Kind:   EventDealDamage,
-		Actor:  actor,
-		Source: out.DamageSource,
-		Target: out.DamageTarget,
-		Amount: out.DamageAmount,
-		Combat: true,
-	})
-	// S18 sub-PR 3: CR 702.15 — lifelink credits the source's
-	// controller for the (post-replacement) damage amount. Fires
-	// uniformly for combat and non-combat damage.
-	g.applyLifelinkLocked(out.DamageSource, out.DamageAmount)
+	// off a battle (CR 120.3). See permanent_damage.go. No SBA here:
+	// all combat damage is simultaneous (CR 510.2) and the resolver
+	// sweeps once after the whole step.
+	_ = g.applyResolvedDamageLocked(out)
 }
 
 // markCombatDamageFromFrameLocked is the damage-to-creature router
@@ -4711,9 +4744,14 @@ func (g *Game) markCombatDamageFromFrameLocked(cardID uuid.UUID, amount int, fra
 		DamageTarget:   cardID,
 		DamageAmount:   amount,
 		IsCombatDamage: true,
+		// #694: the frame IS the snapshot, so the tail is built from
+		// it rather than from a battlefield lookup.
+		damageTail: damageTailFromFrame(damageTailPermanent, frame),
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
+		// CR 616 ordering prompt queued; the damage lands through the
+		// same tail when it is answered (#694).
 		return
 	}
 	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
@@ -4724,24 +4762,8 @@ func (g *Game) markCombatDamageFromFrameLocked(cardID uuid.UUID, amount int, fra
 	if out == nil || out.Canceled {
 		return
 	}
-	if out.DamageAmount <= 0 {
-		return
-	}
 	// S27 (#406): same CR 120.3 split the direct path uses.
-	if !g.applyDamageToPermanentLocked(out.DamageTarget, out.DamageAmount, frame.HasDeathtouch) {
-		return
-	}
-	g.EmitEvent(Event{
-		Kind:   EventDealDamage,
-		Actor:  frame.SourceController,
-		Source: out.DamageSource,
-		Target: out.DamageTarget,
-		Amount: out.DamageAmount,
-		Combat: true,
-	})
-	if frame.SourceLifelink {
-		g.applyLifelinkFromFrameLocked(out.DamageAmount, frame)
-	}
+	_ = g.applyResolvedDamageLocked(out)
 }
 
 // markCombatDamageToPlayerFromFrameLocked is the damage-to-player
@@ -4761,9 +4783,18 @@ func (g *Game) markCombatDamageToPlayerFromFrameLocked(playerID uuid.UUID, amoun
 		DamageTarget:   playerID,
 		DamageAmount:   amount,
 		IsCombatDamage: true,
+		// #694: the frame IS the snapshot. CR 903.10a trample overflow
+		// from a commander counts toward the 21-damage SBA, and the
+		// tally is keyed on frame.AttackerID (the commander's instance
+		// ID, the CommanderDamage key since S25 / #77) because the
+		// attacker may have died to blocker damage before the prompt
+		// resolved.
+		damageTail: damageTailFromFrame(damageTailPlayer, frame),
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
+		// CR 616 ordering prompt queued; the damage lands through the
+		// same tail when it is answered (#694).
 		return
 	}
 	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
@@ -4774,90 +4805,7 @@ func (g *Game) markCombatDamageToPlayerFromFrameLocked(playerID uuid.UUID, amoun
 	if out == nil || out.Canceled {
 		return
 	}
-	if out.DamageAmount <= 0 {
-		return
-	}
-	p := g.playerByIDLocked(out.DamageTarget)
-	if p == nil {
-		return
-	}
-	p.ChangeLife(-out.DamageAmount)
-	// CR 903.10a: trample overflow from a commander counts toward the
-	// 21-damage SBA. Read the cached frame — the attacker may have
-	// died to blocker damage before the prompt resolved, so a
-	// battlefield lookup would miss it. AttackerID is the commander's
-	// instance ID, which is the CommanderDamage key since S25 (#77).
-	if frame.SourceIsCommander {
-		p.RecordCommanderDamage(frame.AttackerID, out.DamageAmount)
-	}
-	g.EmitEvent(Event{
-		Kind:   EventDealDamage,
-		Actor:  frame.SourceController,
-		Source: out.DamageSource,
-		Target: out.DamageTarget,
-		Amount: out.DamageAmount,
-		Combat: true,
-	})
-	if frame.SourceLifelink {
-		g.applyLifelinkFromFrameLocked(out.DamageAmount, frame)
-	}
-}
-
-// applyLifelinkFromFrameLocked credits the frame's cached source
-// controller with `amount` life. Used by the damage-assignment
-// resume path so lifelink still fires even if the attacker died
-// to blocker damage before the prompt resolved.
-//
-// Caller must hold g.mu.
-func (g *Game) applyLifelinkFromFrameLocked(amount int, frame *DamageAssignmentFrame) {
-	if amount <= 0 || frame == nil || !frame.SourceLifelink {
-		return
-	}
-	p := g.playerByIDLocked(frame.SourceController)
-	if p == nil {
-		return
-	}
-	p.ChangeLife(amount)
-	g.EmitEvent(Event{
-		Kind:   EventChangeLife,
-		Target: frame.SourceController,
-		Source: frame.AttackerID,
-		Amount: amount,
-	})
-}
-
-// applyLifelinkLocked credits the damage source's controller with
-// `amount` life if the source has the lifelink keyword (CR 702.15).
-// Called from both damage-to-card and damage-to-player routers so
-// lifelink fires for every damage event from a lifelink source —
-// combat and non-combat alike. Runs through ChangePlayerLife (not
-// the pipeline) because life gain from lifelink is not itself a
-// rules-visible replaceable event at S18 scope (replacement of the
-// life gain is an S28 cost/effect axis, not S18).
-//
-// Caller must hold g.mu.
-func (g *Game) applyLifelinkLocked(sourceID uuid.UUID, amount int) {
-	if amount <= 0 {
-		return
-	}
-	src := findBattlefieldCard(g, sourceID)
-	if src == nil {
-		return
-	}
-	if !HasKeyword(src, "lifelink") {
-		return
-	}
-	p := g.playerByIDLocked(src.Controller)
-	if p == nil {
-		return
-	}
-	p.ChangeLife(amount)
-	g.EmitEvent(Event{
-		Kind:   EventChangeLife,
-		Target: src.Controller,
-		Source: sourceID,
-		Amount: amount,
-	})
+	_ = g.applyResolvedDamageLocked(out)
 }
 
 // markCombatDamageToPlayerLocked applies combat damage to a player
@@ -4875,9 +4823,18 @@ func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount
 		DamageTarget:   playerID,
 		DamageAmount:   amount,
 		IsCombatDamage: true,
+		// #694: snapshot the source before the pipeline can pause —
+		// CR 903.10a commander damage (keyed on the commander's own
+		// instance ID since S25 / #77) and CR 702.15 lifelink both
+		// ride on it, and a CR 616 prompt is answered after the rest
+		// of the combat damage has landed.
+		damageTail: g.combatDamageTailLocked(damageTailPlayer, source),
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
+		// CR 616 ordering prompt queued; the damage lands through the
+		// same tail when it is answered (#694). Before that fix this
+		// return dropped the life loss entirely.
 		return
 	}
 	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
@@ -4888,49 +4845,7 @@ func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount
 	if out == nil || out.Canceled {
 		return
 	}
-	if out.DamageAmount <= 0 {
-		return
-	}
-	p := g.playerByIDLocked(out.DamageTarget)
-	if p == nil {
-		return
-	}
-	p.ChangeLife(-out.DamageAmount)
-	// CR 903.10a: combat damage from a commander accrues toward the
-	// 21-damage loss SBA. The attacker is still on the battlefield in
-	// this path (unblocked attackers take no blocker damage before
-	// their own damage lands).
-	g.recordCommanderCombatDamageLocked(p, out.DamageSource, out.DamageAmount)
-	g.EmitEvent(Event{
-		Kind:   EventDealDamage,
-		Actor:  g.controllerOfBattlefieldCardLocked(out.DamageSource),
-		Source: out.DamageSource,
-		Target: out.DamageTarget,
-		Amount: out.DamageAmount,
-		Combat: true,
-	})
-	// S18 sub-PR 3: lifelink credits the source's controller for
-	// damage dealt to a player too (CR 702.15 — all damage, not just
-	// damage to creatures).
-	g.applyLifelinkLocked(out.DamageSource, out.DamageAmount)
-}
-
-// recordCommanderCombatDamageLocked notes combat damage on the
-// defending player's CommanderDamage map when the source is a
-// commander, feeding the 21-damage SBA (CR 903.10a /
-// IsDeadByCommanderDamage). Keyed by the commander's own INSTANCE ID
-// since S25 (#77), so a partner pair tracks two independent clocks
-// (CR 903.14a). No-op when the source isn't on the battlefield or
-// isn't a commander. Caller must hold g.mu.
-func (g *Game) recordCommanderCombatDamageLocked(target *Player, sourceID uuid.UUID, amount int) {
-	if amount <= 0 || target == nil {
-		return
-	}
-	src := findBattlefieldCard(g, sourceID)
-	if src == nil || !src.IsCommander {
-		return
-	}
-	target.RecordCommanderDamage(src.InstanceID, amount)
+	_ = g.applyResolvedDamageLocked(out)
 }
 
 // ClearCombat resets every card on the battlefield to "not attacking
@@ -5170,7 +5085,7 @@ func (g *Game) KeepHand(playerID uuid.UUID) error {
 // using the RNG captured by Start so deterministic test runs stay
 // deterministic. S13.5: clears KnownBy on every library card —
 // any prior scry / top-of-library knowledge dissolves with the
-// shuffle (CR 701.20 + the per-instance KnownBy invariant).
+// shuffle (CR 701.24 + the per-instance KnownBy invariant).
 func (g *Game) ShuffleLibrary(playerID uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -5290,6 +5205,7 @@ func (g *Game) applyCounterLocked(cardID uuid.UUID, name string, delta int) erro
 	}
 	for i := range z.Cards {
 		if z.Cards[i].InstanceID == cardID {
+			hadCounters := len(z.Cards[i].Counters) > 0
 			if z.Cards[i].Counters == nil {
 				z.Cards[i].Counters = make(map[string]int)
 			}
@@ -5299,6 +5215,14 @@ func (g *Game) applyCounterLocked(cardID uuid.UUID, name string, delta int) erro
 				delete(z.Cards[i].Counters, name)
 				if len(z.Cards[i].Counters) == 0 {
 					z.Cards[i].Counters = nil
+					// #683: not a placeholder any more — see
+					// Card.LostLastCounter and the toughness SBA.
+					// Only when there was a counter to lose:
+					// removing one from a card with none leaves
+					// whatever it was before.
+					if hadCounters {
+						z.Cards[i].LostLastCounter = true
+					}
 				}
 			}
 			g.EmitEvent(Event{

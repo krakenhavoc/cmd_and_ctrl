@@ -42,7 +42,7 @@ func init() {
 				return game.NewTriggeredItem(source, "Parhelion II — two attacking 4/4 Angels",
 					func(g *game.Game, item *game.StackItem) error {
 						return g.CreateTokensAttackingForEffect(
-							item.Controller, AngelVigilanceToken(), 2, defender)
+							item.Controller, TokenCard("4/4 colorless Angel with flying and vigilance"), 2, defender)
 					})
 			},
 		}},

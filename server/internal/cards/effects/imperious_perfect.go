@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // subtypes, so a changeling counts and the Perfect itself does not,
 // as printed — and each token it makes is an Elf, so it is pumped
 // the moment it lands. The tap ability is a creature's {T}, so
-// summoning sickness applies (CR 302.1); the engine enforces it.
+// summoning sickness applies (CR 302.6); the engine enforces it.
 //
 // No simplification.
 func init() {
@@ -38,7 +38,7 @@ func init() {
 			Label: "{G}, {T}: Create a 1/1 green Elf Warrior creature token.",
 			Cost:  Plus(ManaCost("{G}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return CreateToken{Controller: item.Controller, Template: b13GreenElfWarriorToken(), N: 1}.Apply(NewContext(g, item))
+				return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 green Elf Warrior"), N: 1}.Apply(NewContext(g, item))
 			},
 		}},
 	})

@@ -7,7 +7,7 @@ import (
 )
 
 // skip_draw_step.go — "Skip your draw step" (CR 614.10 /
-// CR 500.8), the price half of Necropotence and Yawgmoth's Bargain.
+// CR 500.11), the price half of Necropotence and Yawgmoth's Bargain.
 // Its own file rather than helpers.go, per the convention #231 set:
 // concurrent card batches collide on shared helper files.
 
@@ -18,7 +18,7 @@ import (
 // Three things this is not, and each is a bug someone would
 // otherwise write:
 //
-//   - Not "skip your draw". CR 500.8 skips the whole STEP, so the
+//   - Not "skip your draw". CR 500.11 skips the whole STEP, so the
 //     draw step grants no priority, nothing can be cast in it, and
 //     "at the beginning of each player's draw step" triggers
 //     (Howling Mine) do not fire for that player. The engine's
@@ -32,10 +32,11 @@ import (
 //     controller. Omitting that check locks the whole table's draws
 //     off a single enchantment.
 //
-//   - Not conditional on the turn-1 skip. CR 103.7c already skips
-//     the starting player's first draw step in the engine's StepDraw
-//     hook, and two skips of the same step are one skip — a
-//     replacement that fires on an already-skipped step changes
+//   - Not conditional on the turn-1 skip. In a TWO-player game the
+//     engine's StepDraw hook already skips the starting player's
+//     first draw step (CR 103.8a; at three or more seats CR 103.8c
+//     has nobody skip), and two skips of the same step are one skip
+//     — a replacement that fires on an already-skipped step changes
 //     nothing (CR 614.5).
 //
 // Declared on Spec.Replacements, like every other continuous

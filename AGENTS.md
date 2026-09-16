@@ -89,7 +89,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0048 cost modification) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0051 user database) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -263,6 +263,8 @@ unused — they can be removed in a later cleanup PR.)
   - `AISEAT_FUNNEL_GAMES=N` — widen the Layer A absorption / model-funnel whole-game run.
   - `AISEAT_SOAK_GAMES=N` — independent of the master gate; runs `TestRandomBotSoak` for N games. `AISEAT_SOAK_POLICY=random|heuristic|mixed` picks what fills the seats (default `random`), and `AISEAT_SOAK_SEED=<uint64>` pins the base seed (default: the clock). A stall prints its seed for reproduction.
   - `AISEAT_DEBUG=1` — per-move log in the runner tests.
+  - `AISEAT_CATALOG_GAMES=N` / `AISEAT_CATALOG_SEED=<uint64>` — the catalog soak (`TestCatalogSoak`, #601): N four-bot games on decks dealt from the catalog itself rather than from the hand-written vanilla decks the other whole-game tests use. The seed defaults to one derived from the UTC date, so each night deals new decks and coverage accumulates; the log prints the base seed, and every failure prints the seed to replay. Needs `CMDCTRL_SCRYFALL_DUMP` as well (a `Spec` carries an oracle ID and a name, not a type line or a mana cost) and skips without it. It **fails on any `EventEffectError`** — a card whose primitive threw mid-resolution, which the engine logs and survives, so nothing else in the tree goes red over it.
+  - `AISEAT_CATALOG_REPORT=<path>` — where the catalog soak writes its per-card JSON (cast / resolved / entered / triggered / errored, per oracle ID). The nightly uploads it as an artifact on every run, green included: the useful half is the list of cards no bot game reached, which is where a unit test buys more than another bot game.
   - `AISEAT_STALL` / `AISEAT_WALLCLOCK` — Go durations, defaults `15s` and `300s`, for the bot-table stall detector and wall-clock budget. Raise them on a loaded runner rather than editing the test.
   - `CMDCTRL_SCRYFALL_DUMP=<path>` — gates the manual bot-deck test that validates the four curated decks against the real Scryfall dump. Also used by other packages.
 
@@ -299,6 +301,37 @@ unused — they can be removed in a later cleanup PR.)
 3. Look for an open decision in [PLAN.md](PLAN.md) section 7. If the question is
    listed there, surface it to the user rather than guessing.
 4. Prefer a spike (time-boxed, throwaway) over speculative architecture.
+
+### Rules citations
+
+`CR NNN.Nx` in code, tests and docs means the **Magic: The Gathering
+Comprehensive Rules effective August 7, 2026**, from
+[magic.wizards.com/en/rules](https://magic.wizards.com/en/rules) (the TXT
+download is `MagicCompRules 20260819.txt`; its text says "effective as of
+August 7, 2026"). Check a number against that text before you write it. Do not
+cite from memory: rule numbers move between editions. The June 2025 edition
+re-sorted every keyword action in 701, so discard went from 701.8 to 701.9 and
+reveal from 701.16 to 701.20. The 2026 edition added a new 310.8, which moved
+the battle protector rules to 310.9.
+
+To move the pin to a newer edition, do it in one PR of its own. Download the
+new TXT. For every section the tree cites, compare the rule's text in the two
+editions, and renumber by matching content, never by adding to the number.
+Then update the date and file name above.
+
+A one-line grep does not find every citation. Comments wrap, so "CR" often
+ends one line and the number starts the next. List the sections with a search
+that crosses line breaks:
+
+```sh
+rg -U -o -N --no-filename 'CR\s*(//|\*|#)?\s*[0-9]{3}\.[0-9]+[a-z]?' . < /dev/null \
+  | grep -oE '[0-9]{3}\.[0-9]+[a-z]?' | sort -u
+```
+
+Some citations have no "CR" in front at all: the second number in
+"CR 305.1, 116.2a", and rule tables in comments such as the state-based
+action list in `mutations.go`. Once you know which numbers moved, search for
+each old number on its own too (`git grep -nw "701\.19"`), then read each hit.
 
 ---
 
@@ -386,7 +419,7 @@ surface tiny.
    // "Choose two —": ChooseN("Choose two", 2, 2, Mode(…), Mode(…), …)
    ```
    `OnResolve` is a run of `if ctx.HasMode(i) { … }` blocks in
-   printed order (CR 700.2c). The engine validates the choice at
+   printed order (CR 608.2c). The engine validates the choice at
    announce and applies the chosen option's target clause exactly as
    it would a card-level one; the client shows a mode picker before
    targeting. Limit: one targeted option per cast — `Register`
@@ -549,7 +582,7 @@ Mana abilities can carry cost components beyond `{T}`:
 activated abilities use — build it with the `SacrificeACreature()` /
 `SacrificeAPermanent()` helpers and take their `.SacrificeOther` field
 rather than writing a spec by hand. The engine filters the candidate
-set to the controller's own permanents (CR 701.17b), stamps it onto
+set to the controller's own permanents (CR 701.21a), stamps it onto
 `ManaAbilityView.SacrificeOptions`, and the client reuses
 `SacrificeCostModal` to pick one. The chosen card comes back in the
 `activate_mana_ability` payload as `sacrifice_ids`, and
@@ -558,12 +591,12 @@ set to the controller's own permanents (CR 701.17b), stamps it onto
 `ActivateManaAbility` validates every component before paying any of
 them, so an illegal sacrifice choice leaves the source untapped. Mana
 lands in the pool first and the dies-triggers go on the stack after
-(CR 605.3a — a mana ability doesn't use the stack, but the sacrifice
+(CR 605.3b — a mana ability doesn't use the stack, but the sacrifice
 still triggers), which is what makes Ashnod's Altar + a drain outlet
 work.
 
 Summoning sickness applies to any mana ability with a tap cost on a
-creature source (CR 302.1) — Birds of Paradise, Palladium Myr. The
+creature source (CR 302.6) — Birds of Paradise, Palladium Myr. The
 engine enforces it inside `ActivateManaAbility`; specs don't declare
 it.
 
@@ -638,7 +671,18 @@ place twice that many instead", "if a player would draw a card, that
 player mills instead") live on the same `Spec{}` struct via the
 optional `Replacements []game.ReplacementEffect` field. Used today by
 Doubling Season, Hardened Scales, Kismet, Stasis, Hangarback Walker,
-Fog, Library of Leng.
+Fog, Stone of Erech.
+
+**A discard can't be replaced yet.** All four places that discard move
+the card straight to the graveyard without going through the pipeline,
+and the event records no cause (effect, cost or turn-based action). So
+Library of Leng, Rest in Peace, madness and the Obstinate Baloth family
+have nothing to watch. Don't ship one of them with the replacement
+omitted; they wait on
+[#650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/650), which
+in turn waits on
+[#651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/651). See
+[ADR 0013 §10a](docs/decisions/0013-replacement-effects.md).
 
 Unlike static abilities, replacements fire **before** the event
 happens — the pipeline constructs a `game.ReplacementEvent`, the
@@ -699,7 +743,7 @@ func init() {
 - Counter multiplier — `ev.CounterDelta *= 2` (Doubling Season)
 - Counter addition — `ev.CounterDelta += 1` (Hardened Scales)
 - Cancel — `ev.Cancel()` (Fog, Stasis)
-- Redirect move — `ev.NewZone = ZoneBottomOfLibrary` (Library of Leng)
+- Redirect move — `ev.NewZone = game.ZoneExile` plus `ev.NewZoneOwner = uuid.Nil` (Stone of Erech)
 - Enters-tapped — `ev.EntersTapped = true` (Kismet)
 - Enters-with-counters — `ev.AddCounterAtETB("+1/+1", n)` (Hangarback Walker)
 
@@ -827,7 +871,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"lifelink"` | Lifelink (CR 702.15) |
 | `"trample"` | Trample (CR 702.19) |
 | `"vigilance"` | Vigilance (CR 702.20) |
-| `"menace"` | Menace (CR 702.110) |
+| `"menace"` | Menace (CR 702.111) |
 | `"defender"` | Defender (CR 702.3) |
 | `"haste"` | Haste (CR 702.10) |
 | `"flash"` | Flash (CR 702.8) |
@@ -853,8 +897,11 @@ table**, for reasons [ADR 0038](docs/decisions/0038-protection-style-keywords.md
 restriction, and it ships per-card via the `effects.Ward(WardMana(…))`
 helper (S30) — it stays out of the table because the COST is a
 parameter a bare token has nowhere to put. *Protection* tests its
-quality against the SOURCE of a spell or ability, which the targeting
-choke point never receives; it is not implemented.
+quality against the SOURCE of a spell or ability (CR 702.16b), which
+the targeting choke point never receives; it is not implemented, and
+it is tracked in #662 (an ADR comes first). A card that prints
+protection ships without it and says so in `Caveats`, as Baneslayer
+Angel, both Swords and Animar do.
 
 **Layer-granted keywords still use `Spec.Static`.** Lord of Atlantis
 grants `"flying"` to *other* Merfolk via a conditional Layer 6
@@ -1027,7 +1074,7 @@ Compose multi-part costs with `Plus(ManaCost("{2}"), TapCost())`.
 The engine validates every component before paying any of them, and
 pays at announce — so a sacrifice cost's dies-triggers land on the
 stack above the ability and resolve first. Mana abilities do NOT go
-here (they skip the stack, CR 605.3a); they stay in `ManaAbilities`.
+here (they skip the stack, CR 605.3b); they stay in `ManaAbilities`.
 See [ADR 0020](docs/decisions/0020-activated-abilities.md).
 
 **An `{X}` in the cost:** put it in the mana component and read it
@@ -1114,7 +1161,7 @@ on the stack, so Blood Artist and Zulaport Cutthroat drain BEFORE the
 cards are drawn, and countering the spell doesn't hand the creature
 back. With nothing to sacrifice the spell is uncastable — the view
 stamps `AdditionalCostView.SacrificeOptions` filtered to the caster's
-own permanents (CR 701.17b), and an empty list is what
+own permanents (CR 701.21a), and an empty list is what
 `canCastFromHand` greys the card on. The pick rides `cast_spell` as
 `sacrifice_ids`, and the client reuses `SacrificeCostModal`, the same
 picker the CR 602 abilities open.
@@ -1194,6 +1241,40 @@ The answer is `{bottom, top_order}` with `top_order` **top-first**, and
 every looked-at card must appear in exactly one list: scry moves all of
 them, so an answer that omits one is a client bug, not shorthand for
 "leave it".
+
+**A rule about the chosen cards as a set (#624):** when a card-set
+pick says something no count and no per-card list can ("discard two
+cards unless you discard a creature card", "two lands that share a land
+type"), put it on the prompt's `Validate`, never in `Then`:
+
+```go
+g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+    Chooser: c, Question: "Discard two cards unless you discard a creature card",
+    Cards: hand, Min: 1, Max: 2, Zone: game.ZoneHand,
+    Validate: func(picked []game.Card) bool {
+        return len(picked) == 2 || picked[0].IsCreature()
+    },
+    Then: discardThem,
+})
+```
+
+`SearchLibrarySpec.Validate` is the same hook for a search. Both run
+before the prompt is dequeued, so a refused set comes back to the
+player as an error (`ErrChoiceSetRejected` for a choose-cards prompt)
+with the prompt still open. And `internal/legal` asks the same hook
+(`ChooseCardsPickLegalLocked` / `SearchPickLegalLocked`) before it
+offers a bot a set. A rule checked only inside `Then` is the #544
+wedge: the enumerator offers the set, `Then` refuses it after the prompt
+is gone, and the card resolves wrong with nothing left to retry.
+
+`Validate` gets the picks as live `Card` values and no `*Game`, because
+the enumerator calls it under the read lock. Anything else the rule
+needs, like "or your whole hand if it has fewer than two", is a value
+you capture when you queue the prompt, the same way `Cards`, `Min` and
+`Max` are. It is never called for an empty pick, so a `Min: 0` prompt
+always keeps "choose nothing". With `Min` above zero, don't queue a
+prompt that no set can satisfy: nothing could answer it, and the
+enumerator logs it rather than inventing an answer.
 
 **"This permanent enters tapped" (S21):** declare a self-replacement,
 not an entry-hook tap:
@@ -1291,7 +1372,7 @@ again every turn forever.
 **Escape (S29)** is flashback's sibling and the place to look when a
 cost needs a component the struct doesn't have yet. `Escape("{3}{B}",
 5)` is "Escape—{3}{B}, Exile five other cards from your graveyard",
-and `EscapeWithCounters("{5}{G}{G}", 4, 3)` adds CR 702.144c's "this
+and `EscapeWithCounters("{5}{G}{G}", 4, 3)` adds CR 702.138c's "this
 creature escapes with three +1/+1 counters on it".
 
 Three things it added to `AlternativeCost`, all of them because escape
@@ -1359,7 +1440,7 @@ the snapshot, and reads its payload off the item it is handed.
 **Mana from a spell (roadmap batch 01):** "Add {B}{B}{B}" on a SPELL
 (Dark Ritual) or a non-mana ability (Mana Drain's refund) is the
 `AddMana` primitive in `add_mana.go`, not a `ManaAbility` — a mana
-ability never uses the stack (CR 605.3a) and these do, which is why
+ability never uses the stack (CR 605.3b) and these do, which is why
 they can be countered and why Storm-Kiln Artist triggers on them:
 
 ```go
@@ -1382,6 +1463,17 @@ Either way the permanent returns as a **new object** — fresh
 re-triggers every ETB it has. Leave `Controller` zero for "under its
 owner's control"; set it only for "under your control". See
 [flicker.go](server/internal/cards/effects/flicker.go).
+
+**A plain token (#581):** `TokenCard("1/1 white Soldier")` — the
+templates are rows in
+[tokens_table.go](server/internal/cards/effects/tokens_table.go), keyed
+the way the card prints them ("2/2 black Zombie", "1/1 blue Bird with
+flying", "3/3 green Beast", "0/4 colorless Wall artifact with defender").
+A token the table lacks is a new row, not a new constructor; a variant
+(enters tapped, with counters) wraps the template in a `TokenSpec`.
+Only tokens with behaviour — Treasure, Food, Clue, Gold and the other
+sacrifice-for-something artifacts — keep a constructor in `tokens.go`.
+`TestEveryTokenKeyResolves` fails on a key that is not in the table.
 
 **A token that's a copy (S22):** `CreateTokenCopy`, not a hand-written
 template:
@@ -1496,7 +1588,7 @@ Waterskin, Quest for Renewal's second clause) is **not a trigger**,
 and writing it as one is the mistake this field exists to prevent.
 The untap step grants no priority (CR 502.4): nothing is announced,
 nothing goes on the stack and there is nothing to respond to. The
-clause widens the untap step's TURN-BASED ACTION — CR 502.1's "the
+clause widens the untap step's TURN-BASED ACTION — CR 502.3's "the
 active player determines which permanents they control untap".
 
 So it goes on `Spec.UntapStep []game.UntapStepPermission`, with the
@@ -1612,6 +1704,39 @@ a permanent and answers its prompt in one call. Assert through
 `effectivePower` / `effectiveAbilities` / `effectiveSubtypes` like
 any other layer card.
 
+### Shared vocabulary, and the clone gate
+
+The catalog is one package and its helpers are one vocabulary. The
+September 2026 review ([Discussion #557](https://github.com/krakenhavoc/cmd_and_ctrl/discussions/557))
+found the biggest cost in the tree was card-side copy-paste that grew
+because batch authors were told never to touch shared files; that rule
+is gone. In its place:
+
+- **Shared code lives in mechanic-named files, and those files are
+  append-only.** A trigger shape or condition goes in
+  `triggers_common.go`; a card predicate or an effect body used by
+  more than one card goes in `helpers.go` (or a `predicates_<mechanic>.go`
+  / `effects_<mechanic>.go` beside it); a token is a row in
+  `tokens_table.go`. Add a function; never change an existing one's
+  behaviour in a card PR. Two PRs that both append to the same file
+  merge cleanly.
+- **No batch prefixes.** A helper is named for what it says
+  (`instantOrSorceryCastByYou`), not for the batch that first needed
+  it. The `bNN` names still in the tree are the promotion pass's
+  backlog (#583), not a convention to follow.
+- **Grep before you write.** `grep -n "func .*CastByYou" *.go` before
+  writing a "whenever you cast" predicate; the third copy of a helper
+  is how the catalog got to ~8,700 redundant lines.
+- **The gate.** `TestNoNewExactClonesInTheCatalog`
+  (`server/internal/cards/coverage`) fails a PR that introduces a new
+  byte-identical function or closure body of six or more lines, and
+  names both copies. Fix it by calling the one that exists, or by
+  naming one shared helper and calling it twice. The baseline
+  (`coverage/testdata/clone_baseline.txt`) records the duplicates that
+  predate the gate; regenerate it with
+  `go test ./internal/cards/coverage/ -update` when a PR removes some,
+  never add a line to it by hand.
+
 ### When NOT to add a catalog entry
 
 The registry of known seams — what is missing, which cards wait on
@@ -1620,18 +1745,31 @@ Check it before triaging a skip as "needs machinery", and append a
 batch's skips to it in the batch PR (Discussion #559 item 6).
 
 - **Activated abilities whose cost has no component** — `AbilityCost`
-  carries tap-this, sacrifice-this, sacrifice-another, mana and life
+  carries tap-this, sacrifice-this, sacrifice-another, mana, life,
+  and since S27 **loyalty** (`LoyaltyCost(n)`, [ADR 0032](docs/decisions/0032-planeswalkers.md) §8)
+  and **crew** (`CrewCost(n)`), and since #625 **counter removal**
+  (`RemoveCountersFromThis(kind, n)` for "from this",
+  `RemoveCountersFrom(kind, n, "a planeswalker you control", preds…)`
+  for another permanent you control, kind `""` for "a counter" of any
+  kind — [ADR 0020](docs/decisions/0020-activated-abilities.md) addendum)
   ([activated.go](server/internal/game/activated.go)) and nothing else.
-  So planeswalker **loyalty** costs, **equip**, cycling, and
-  **convoke / waterbend on an ACTIVATED ability** still have no shape —
+  Equip needs no component of its own — `EquipAbility("{2}")` is a mana
+  cost plus a target clause. **"Rather than pay" on an activated
+  ability** is not an alternatives slot either: write it as a **second
+  ability entry** with the same effect and its own real cost, which is
+  what Heart of Kiran does ("Crew 3" and "Crew — remove a loyalty counter
+  from a planeswalker you control"). The second entry must have a cost
+  that can actually go unpaid, or it is the #259 mistake below. Still
+  no shape: cycling, **convoke / waterbend on an ACTIVATED ability**, a
+  counter removal **split across several permanents** (Iron Spider,
+  Stark Upgrade's "from among artifacts you control"), and a cost that
+  **adds** a counter (Devoted Druid) —
   don't invent one. (Convoke and waterbend on a *spell* do have one since
   S22: `Spec.TapCost`, built with `Convoke()` / `Waterbend("{X}")`. The
   activated-ability seam is separate and still open — Katara, Water
   Tribe's Hope is the card waiting on it.) (Ordinary activated abilities built from
-  those five components are fine since S21: see `Spec.Activated`
-  above. Loyalty has a manual path — `ActivateLoyalty` moves the
-  counter and enforces CR 606.5 — but no catalog hook for the
-  ability's effect.) Shipping a card with a cost the engine
+  those components are fine since S21: see `Spec.Activated`
+  above.) Shipping a card with a cost the engine
   can't express simply omitted makes it **stronger than printed**, which
   is the wrong direction for a simplification:
   [#259](https://github.com/krakenhavoc/cmd_and_ctrl/issues/259) was that
@@ -1651,6 +1789,30 @@ batch's skips to it in the batch PR (Discussion #559 item 6).
   land with S28.
 - **Aura-attachment + control-change** (Mind Control) — requires
   aura-attaching state the engine doesn't model. Lands with S24.
+- **Cards that add a layer dependency, or that ability removal gets
+  wrong: hold them.** The layer engine applies each layer in timestamp
+  order and has no CR 613.8 dependency ordering, and it silences a
+  source that lost its abilities in every layer, which breaks
+  CR 613.6. The catalog already has pairs that come out wrong in one
+  entry order (Urborg + Song of the Dryads, Maskwood Nexus + a crewed
+  Vehicle; [ADR 0043](docs/decisions/0043-copy-effects.md) §5's
+  amendment lists them). Don't add more until the fix lands:
+  - **Magus of the Moon** (#394): wait for
+    [#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669)
+    (which needs [#675](https://github.com/krakenhavoc/cmd_and_ctrl/issues/675)).
+    Under Kenrith's Transformation or Darksteel Mutation it would stop
+    making Mountains, and its ruling says it keeps making them. Magus +
+    Urborg already comes out right.
+  - **Arcane Adaptation** (#401), **Leyline of Transformation** (#396),
+    **Encroaching Mycosynth** (#401), **Yavimaya, Cradle of Growth**
+    (#294) and **Prismatic Omen** (#396): wait for
+    [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668).
+    Each is a type-add that reads a type other layer-4 effects write
+    (creatures, nonland permanents, lands), so each adds a new pair.
+
+  The same shape applies to any other card: a layer-4 type-add whose
+  "applies to" reads a card type or subtype, or a static that should
+  keep applying after its source loses its abilities.
 - ~~**Cards that need a pick-from-zone UI**~~ — no longer a blocker.
   S20 shipped structured targeting and S18.5 the zone browser, so
   "target card in your graveyard" is a real target clause:
@@ -1659,6 +1821,18 @@ batch's skips to it in the batch PR (Discussion #559 item 6).
   clicking the card in the zone browser. Eternal Witness and Sun Titan
   both use it. The S14 "auto-pick the top of the graveyard" fallback is
   only for cards that never declared a clause.
+
+### Adding a `Spec` slot (#622)
+
+The engine reads the catalog through one precomputed `game.CardDef`
+per card, built at `Register`. A new slot is four edits: the field on
+`effects.Spec`, the field on `game.CardDef`
+([carddef.go](server/internal/game/carddef.go)), one line in
+`effects.buildDef` ([carddef.go](server/internal/cards/effects/carddef.go)),
+and the engine call site that reads it. Add a per-slot
+`game.CatalogX` variable only if a game-package test needs to stub
+that slot without importing the catalog; the existing ones default to
+reading the `CardDef` and are not set by the catalog any more.
 
 ### When in doubt
 

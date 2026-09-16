@@ -206,7 +206,7 @@ func TestTeferiPilgrimZeroDrawsAndTriggersItsOwnLoyalty(t *testing.T) {
 	if got := loyaltyOf(g, teferi); got != 5 {
 		t.Errorf("loyalty after the draw trigger = %d, want 5", got)
 	}
-	// CR 606.5: [0] still burns the turn's activation.
+	// CR 606.3: [0] still burns the turn's activation.
 	if err := g.ActivateCatalogAbility(owner.ID, teferi, 0, game.ActivateAbilityParams{}); err == nil {
 		t.Error("a [0] activation did not spend the once-per-turn window")
 	}

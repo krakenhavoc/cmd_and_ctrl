@@ -15,7 +15,7 @@ import (
 // A mana Myr that feeds the graveyard — the self-mill deck's rock.
 // ManaAbilityCost has no "mill a card" component, so the cost is
 // built from the two slots it does have: Condition gates the
-// activation on a non-empty library (CR 601.2h / 701.13a — a cost
+// activation on a non-empty library (CR 601.2h / 701.17b — a cost
 // that cannot be paid cannot be activated, and with no card to mill
 // there is nothing to pay), and Rider mills the card the moment the
 // mana lands. The order within one atomic mana-ability resolution is
@@ -25,7 +25,7 @@ import (
 // A Rider drops the ability out of auto-tap planning, which is the
 // right call twice over: auto-tap should not mill a library to pay
 // for a spell, and the tap is on a CREATURE, so summoning sickness
-// applies (CR 302.1) — the engine enforces that from the type line.
+// applies (CR 302.6) — the engine enforces that from the type line.
 //
 // No simplification.
 func init() {

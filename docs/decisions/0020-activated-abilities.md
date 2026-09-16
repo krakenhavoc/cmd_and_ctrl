@@ -51,7 +51,7 @@ predicate, because the shape is identical. It is emphatically not
 targeting: a sacrifice cost doesn't target, so hexproof and
 "can't be the target of" never apply to it, and the client picks it
 from a plain list instead of the board-click targeting flow. The
-controller restriction (CR 701.17b) lives in the engine's cost
+controller restriction (CR 701.21a) lives in the engine's cost
 validation rather than the spec.
 
 ### 3. Validate everything, then pay everything
@@ -90,7 +90,7 @@ migration.
 ## Consequences
 
 - Sac outlets work end to end: Goblin Bombardment, Carrion Feeder.
-- Tap abilities enforce summoning sickness (CR 302.1), which the
+- Tap abilities enforce summoning sickness (CR 302.6), which the
   free-form path never did — Krenko can't tap the turn he lands.
   `CardView.summoning_sick` now rides the wire so the menu can grey
   the entry instead of failing the click.
@@ -101,7 +101,7 @@ migration.
 
 - **Mana abilities with a non-self sacrifice cost** (Ashnod's Altar:
   "Sacrifice a creature: Add {C}{C}"). It's a mana ability, so it
-  must not use the stack (CR 605.3a), but its cost needs the
+  must not use the stack (CR 605.3b), but its cost needs the
   sacrifice picker this ADR builds for stack-using abilities. It
   fits neither surface cleanly; it wants a third path where the
   activation collects a cost choice and then resolves immediately.
@@ -110,3 +110,96 @@ migration.
   turn"** — all wanted by cards further down the S21 list, none
   needed by the three cards here.
 - **Loyalty abilities** keep their own `ActivateLoyalty` path.
+
+## Addendum (#625): counters as a cost
+
+The "counters as a cost" line under *Out of scope* is now in scope, in
+part. `AbilityCost.RemoveCounters` is a `game.CounterRemovalCost{Counter,
+N, From}`: remove N counters as part of paying the cost. It covers three
+printed shapes, and nothing else.
+
+| Shape | Printed | Declared as |
+|---|---|---|
+| self | "Remove a gold counter from this artifact" | `From == nil` — `RemoveCountersFromThis("gold", 1)` |
+| other permanent | "remove a loyalty counter from a planeswalker you control" | `From` is a `TargetSpec` — `RemoveCountersFrom("loyalty", 1, "a planeswalker you control", Planeswalker())` |
+| any kind | "Remove a counter from a creature you control" | `Counter == ""` — `RemoveCountersFrom("", 1, "a creature you control", Creature())` |
+
+**The choice is made at announce.** The permanent rides
+`ActivateAbilityParams.CounterSourceIDs` (omitted for the self form) and,
+for the any-kind form, the kind rides `CounterKind`, beside the
+sacrifice and crew picks. No pending prompt is involved.
+
+**§2 still holds: it is a predicate, not targeting.** `From` reuses
+`TargetSpec` the way `SacrificeOther` does, and the engine matches it
+with `specMatchLocked(..., false)`. A hexproof or shrouded permanent you
+control pays. "You control" is enforced by the engine, not the spec.
+`game.CounterCostOptionsForEffect` is the single candidate walk (built on
+`SpecCandidatesForEffect`, not `LegalTargetsForEffect`) that the
+protocol view and the move enumerator both read, so the client, the bots
+and the engine agree on which permanent pays.
+
+**§3 still holds: validate everything, then pay everything.**
+`validateCounterRemovalCostLocked` runs in the validate block beside the
+crew check: exactly one permanent for the other form, controlled by the
+activator, matching `From`, holding at least N of the kind (else
+`ErrInsufficientCounters`). A bad target, sacrifice or crew ID on the
+same activation removes no counter. Payment order is now
+mana → tap → crew → life → loyalty → **counters** → sacrifice. Counters
+come off before sacrifices so that a self-form removal on a source that is
+also sacrificed still finds the source.
+
+Three rules come with the component and are enforced by the engine rather than by each card:
+
+- **Not replaceable.** The removal goes through `applyCounterLocked`, not
+  `AddCounterForEffect`. It is a cost, not an effect, so nothing that
+  doubles or modifies counters applies. This is the loyalty cost's rule.
+- **Not a loyalty activation.** Removing a planeswalker's loyalty counter
+  to pay another permanent's cost does not stamp
+  `LoyaltyActivatedThisTurn` and has no sorcery-speed window. The walker
+  can still activate its own loyalty ability that turn. A walker paid
+  down to 0 dies to the CR 704.5i state-based action the activation
+  already runs, with the ability on the stack.
+- **No timing of its own.** Heart of Kiran's crew-by-counter is instant
+  speed, like crew.
+
+**A 0/0 that pays with its last counter dies, and a `*` creature does
+not, by the toughness rule in [ADR 0007 §7](0007-stack-foundation.md)
+as amended by #683, not by a rule of the cost's.** The payment goes
+through `applyCounterLocked` like any other counter removal, and the
+state-based check the activation already runs applies that rule with
+the ability on the stack. What the cost adds is that the case becomes
+ordinary play: Mikaeus, the Lunarch paying his team pump with his last
+counter, or Fain, the Broker spending a 0/0's last counter. A card cast
+for X=0 never had a counter, so it is still skipped; that gap is noted
+on the X cards, and declared to players on Mikaeus.
+
+**"Rather than pay" on an activated ability is a second ability entry,
+not an alternatives slot.** Heart of Kiran lists "Crew 3" and "Crew —
+remove a loyalty counter from a planeswalker you control" as two
+abilities with the same effect. The client already lists abilities
+separately. What #259 requires is that the second entry has a real
+cost, and it does: it cannot be activated without a planeswalker that
+holds a counter.
+
+`effects.Register` panics on `N <= 0`, and on an any-kind cost with
+`N > 1`, because one kind choice cannot say how "remove two counters"
+was paid when the two could be different kinds. `effects.Plus` merges
+the field. Without that, `Plus(TapCost(), RemoveCountersFromThis(...))`
+would silently drop the counter and the ability would be free.
+
+Bots see the price on `legal.MoveCost.Counters` (`{card_id, counter,
+n}`), priced against the permanent the counters come off, not the
+move's source. That follows the #74 and #547 precedent: a cost the wire
+payload cannot name rides the move.
+
+**Still out of scope:**
+
+- A removal **split across several permanents**: Iron Spider, Stark
+  Upgrade's "Remove two +1/+1 counters from among artifacts you control".
+  One permanent per payment cannot express it, and the card keeps its
+  caveat.
+- A cost that **adds** a counter: Devoted Druid's "Put a -1/-1 counter on
+  this creature".
+- Counter costs on **mana abilities** (`ManaAbilityCost`).
+
+`docs/engine-seams.md`'s counter-cost row lists what is still waiting.

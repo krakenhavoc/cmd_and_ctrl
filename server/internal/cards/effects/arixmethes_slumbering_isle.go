@@ -33,12 +33,28 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     counters it has.
 //   - The mana ability is a plain two-slot tap, printed colours.
 //
-// No simplification.
+// DECLARED GAPS, CR 613.8. "It's a land" changes what two other
+// layer-4 statics in the catalog apply to, so both depend on it and
+// should apply after it whatever the timestamps. The layer engine
+// orders layer 4 by timestamp only, so with either one on the
+// battlefield BEFORE Arixmethes entered, a slumbering Arixmethes:
+//
+//   - is not a Swamp under Urborg, Tomb of Yawgmoth (it taps for
+//     {G}{U} only), and
+//   - is still every creature type under its controller's Maskwood
+//     Nexus, even though it is not a creature.
+//
+// Both are pinned, skipped, in layer_dependency_pairs_test.go and go
+// with the CR 613.8 dependency work.
 func init() {
 	Register(Spec{
 		OracleID:     "caeb39ee-f0bb-4305-9e8b-b30ba0a74c78",
 		Name:         "Arixmethes, Slumbering Isle",
-		Completeness: CompletenessFull,
+		Completeness: CompletenessCaveats,
+		Caveats: []string{
+			"While it's asleep, an Urborg, Tomb of Yawgmoth that was on the battlefield before Arixmethes entered doesn't make it a Swamp.",
+			"While it's asleep, a Maskwood Nexus you controlled before Arixmethes entered still makes it count as every creature type.",
+		},
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventZoneMove},
 			AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {

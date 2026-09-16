@@ -119,8 +119,10 @@ type ReplacementEvent struct {
 	CardID uuid.UUID
 
 	// OldZone / NewZone / NewZoneOwner describe the motion.
-	// Replacements can rewrite NewZone (Library of Leng's discard-
-	// to-library, commander-zone replacement, etc.).
+	// Replacements can rewrite NewZone (the CR 903.9 commander-zone
+	// built-in, Stone of Erech's graveyard → exile, etc.). No discard
+	// builds a RepEventMove yet: every discard moves the card directly
+	// and bypasses this pipeline (#650).
 	OldZone      ZoneKind
 	NewZone      ZoneKind
 	NewZoneOwner uuid.UUID
@@ -131,7 +133,7 @@ type ReplacementEvent struct {
 	// before emitting EventETB.
 	EntersTapped bool
 
-	// EntersAsCopyOf is the CR 706 copy a permanent enters wearing —
+	// EntersAsCopyOf is the CR 707 copy a permanent enters wearing —
 	// the copiable values settled by a CopySelector replacement,
 	// with the card's "except" clause already applied. nil for the
 	// ~everything that enters as itself. Only meaningful when
@@ -152,7 +154,7 @@ type ReplacementEvent struct {
 	// paused entry so the resume can finish the two jobs only stack
 	// resolution does: attaching a resolved Aura to what it targeted
 	// (CR 303.4a) and queueing evoke's sacrifice trigger (CR
-	// 702.74b). Unexported engine plumbing.
+	// 702.74a). Unexported engine plumbing.
 	//
 	// Set by resolveTopOfStackLocked, which is what makes that entry
 	// site entryResumable. Before it existed, a permanent spell
@@ -236,6 +238,20 @@ type ReplacementEvent struct {
 	DamageTarget   uuid.UUID
 	DamageAmount   int
 	IsCombatDamage bool
+
+	// damageTail is the damage half's answer to zoneRoute: what the
+	// entry point still owes once the pipeline settles the amount —
+	// whether the target is a player or a permanent, and the snapshot
+	// of the source's deathtouch / lifelink / commander state that the
+	// riders need. Set by every damage entry point and read only by
+	// applyResolvedDamageLocked, which both the inline path and the
+	// CR 616 resume go through.
+	//
+	// Unexported engine plumbing — the catalog never sets or reads it.
+	// Added in #694, where the resume's hand-rolled copy of the tail
+	// was dropping player life loss, the CR 120.3 split, lifelink,
+	// deathtouch and commander damage. See damage_tail.go.
+	damageTail *damageTail
 
 	// --- RepEventStepTransition fields ---
 
@@ -342,7 +358,7 @@ type ReplacementEffect struct {
 
 	// CopySelector, when non-nil, makes this an "as this permanent
 	// enters, you may have it enter as a copy of X" effect (CR
-	// 706.2) — Clone, Phyrexian Metamorph, Spark Double, Sakashima
+	// 707.2) — Clone, Phyrexian Metamorph, Spark Double, Sakashima
 	// the Impostor. The apply-loop queues a
 	// PendingChoiceCopyTarget picker and bails; the answer stamps
 	// ev.EntersAsCopyOf and the entry path materialises it before

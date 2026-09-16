@@ -363,7 +363,7 @@ func TestS13AutoUntapOnMulliganClose(t *testing.T) {
 }
 
 // TestS13AutoDrawOnStepEntry verifies the auto-draw turn-based action
-// fires on StepDraw and respects the turn-1 skip-draw rule (CR 103.7c).
+// fires on StepDraw and respects the turn-1 skip-draw rule (CR 103.8a).
 func TestS13AutoDrawOnStepEntry(t *testing.T) {
 	g := NewGame()
 	for i := 0; i < 2; i++ {
@@ -378,7 +378,7 @@ func TestS13AutoDrawOnStepEntry(t *testing.T) {
 
 	// Cursor at Upkeep (seat 0, turn 1). Advancing fires StepDraw
 	// entry hook — which should NOT draw because seat 0 is the
-	// starting player on turn 1 (CR 103.7c).
+	// starting player on turn 1 (CR 103.8a).
 	handBefore := g.Seats[0].Hand.Size()
 	if _, err := g.AdvanceStep(); err != nil {
 		t.Fatalf("AdvanceStep into Draw: %v", err)
@@ -387,7 +387,7 @@ func TestS13AutoDrawOnStepEntry(t *testing.T) {
 		t.Fatalf("expected cursor at StepDraw, got %q", g.Turn.Step)
 	}
 	if g.Seats[0].Hand.Size() != handBefore {
-		t.Errorf("turn-1 starting seat drew: hand %d → %d (CR 103.7c violation)",
+		t.Errorf("turn-1 starting seat drew: hand %d → %d (CR 103.8a violation)",
 			handBefore, g.Seats[0].Hand.Size())
 	}
 
@@ -431,6 +431,70 @@ func TestS13AutoDrawOnStepEntry(t *testing.T) {
 	}
 }
 
+// TestTurn1DrawSkipIsTwoPlayerOnly is the #692 guard. CR 103.8a skips
+// the starting player's first draw step in a two-player game and
+// CR 103.8b in Two-Headed Giant; CR 103.8c says that in every other
+// multiplayer game no player skips it. The engine used to skip at any
+// table size, which left the starting seat of a Commander pod one card
+// behind for the rest of the game.
+func TestTurn1DrawSkipIsTwoPlayerOnly(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		seats    int
+		wantDraw bool
+	}{
+		{"two seats skip (CR 103.8a)", 2, false},
+		{"three seats draw (CR 103.8c)", 3, true},
+		{"four seats draw (CR 103.8c)", 4, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newActiveGameWithSeats(t, tc.seats)
+			if g.Turn.Number != 1 || g.Turn.ActiveSeat != g.StartingSeat {
+				t.Fatalf("harness did not park on the starting seat's first turn: turn=%d seat=%d starting=%d",
+					g.Turn.Number, g.Turn.ActiveSeat, g.StartingSeat)
+			}
+			before := g.Seats[g.StartingSeat].Hand.Size()
+			if _, err := g.AdvanceStep(); err != nil {
+				t.Fatalf("AdvanceStep into Draw: %v", err)
+			}
+			if g.Turn.Step != StepDraw {
+				t.Fatalf("expected cursor at StepDraw, got %q", g.Turn.Step)
+			}
+			got := g.Seats[g.StartingSeat].Hand.Size()
+			want := before
+			if tc.wantDraw {
+				want = before + 1
+			}
+			if got != want {
+				t.Errorf("%d-seat game: starting seat hand %d -> %d, want %d",
+					tc.seats, before, got, want)
+			}
+		})
+	}
+}
+
+// TestTurn1DrawSkipIgnoresEliminations pins the "player count at the
+// start of the game" reading of CR 103.8. A three-player game whose
+// third seat is already out is still a three-player game for 103.8c —
+// it does not collapse into a 103.8a two-player game — so the starting
+// seat still draws on turn 1.
+func TestTurn1DrawSkipIgnoresEliminations(t *testing.T) {
+	g := newActiveGameWithSeats(t, 3)
+	g.Seats[2].Eliminated = true
+
+	before := g.Seats[0].Hand.Size()
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatalf("AdvanceStep into Draw: %v", err)
+	}
+	if g.Turn.Step != StepDraw {
+		t.Fatalf("expected cursor at StepDraw, got %q", g.Turn.Step)
+	}
+	if got := g.Seats[0].Hand.Size(); got != before+1 {
+		t.Errorf("starting seat hand %d -> %d, want +1: an elimination must not turn a "+
+			"three-player game into a CR 103.8a two-player one", before, got)
+	}
+}
+
 // TestS13StartingSeatRecorded verifies Start() captures the starting
 // seat (0 in the standard case) and exposes it via Snapshot / Clone
 // for the protocol view to surface.
@@ -465,7 +529,7 @@ func TestEndTransitionsToEnded(t *testing.T) {
 
 // TestTurnAdvanceClearsPerTurnCaches is the S25 (#77) regression for
 // a bypassed hook. `onTurnAdvanceLocked` clears the "once per turn"
-// bookkeeping — loyalty activations (CR 606.5), the spell tally, the
+// bookkeeping — loyalty activations (CR 606.3), the spell tally, the
 // land-drop count — but it was only reached from AdvanceStep, which
 // compares the step BEFORE the advance to the step after. In normal
 // play the cursor never rests on Cleanup: End → Cleanup → the next

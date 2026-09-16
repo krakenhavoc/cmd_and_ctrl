@@ -21,14 +21,25 @@
   } from "../../protocol";
   import Card from "./Card.svelte";
   import ModalLayer from "../ModalLayer.svelte";
+  import {
+    rejectionForPrompt,
+    type ChoiceRejection,
+    type ChoiceSubmission,
+    type ServerErrorLike,
+  } from "../../choiceRejection";
 
   interface Props {
     snap: GameView;
     viewerID: string | null;
     sendAction: (type: ActionType, params?: unknown, player?: string) => void;
+    // GameClient.lastError. The board's toast for it sits under this
+    // modal's backdrop, so a refusal of this prompt's answer is shown
+    // here instead (#624). Optional so a caller with no error feed
+    // still mounts the modal.
+    lastError?: ServerErrorLike | null;
   }
 
-  const { snap, viewerID, sendAction }: Props = $props();
+  const { snap, viewerID, sendAction, lastError = null }: Props = $props();
 
   // First choice addressed to the viewer. Queue ordering: front of
   // list is "what the chooser sees next." One modal at a time; when
@@ -64,6 +75,11 @@
   // the array covers every candidate.
   let ordered = $state<string[]>([]);
 
+  // #624: the last answer this modal sent, and the server's refusal of
+  // it if one came back. See the effect below the reset.
+  let submission: ChoiceSubmission | null = null;
+  let rejection = $state<ChoiceRejection | null>(null);
+
   // Reset selection whenever the modal opens fresh (active changes
   // from null → non-null, or the choice ID changes).
   let lastChoiceID: string | null = null;
@@ -72,16 +88,41 @@
     if (nextID !== lastChoiceID) {
       selected = new Set();
       ordered = [];
+      rejection = null;
+      submission = null;
       lastChoiceID = nextID;
     }
   });
 
-  // S22 search_library — "search your library for ..." (CR 701.19).
+  // #624: a refused answer leaves the prompt open for another try, and
+  // the reason has to be readable while it is open. `submission` is a
+  // plain variable, like lastChoiceID, so sending an answer does not
+  // re-run the effect below; a new error frame or a new prompt does.
+  //
+  // The shown rejection is latched rather than derived: lastError
+  // clears itself after a few seconds, and a player reading the card's
+  // text again should not lose the reason halfway. It clears when they
+  // send another answer or the prompt changes.
+  $effect(() => {
+    const hit = rejectionForPrompt(submission, active?.id ?? null, lastError);
+    if (hit) rejection = hit;
+  });
+
+  // answer sends a resolve_choice for the open prompt. Every kind's
+  // submit goes through here so a refusal of any of them is shown.
+  function answer(params: Record<string, unknown>): void {
+    if (!active || !viewerID) return;
+    submission = { choiceID: active.id, sentAt: Date.now() };
+    rejection = null;
+    sendAction("resolve_choice", { choice_id: active.id, ...params }, viewerID);
+  }
+
+  // S22 search_library — "search your library for ..." (CR 701.23).
   // Shares the card grid and the {choice_id, card_ids} payload with
   // discard / sacrifice; what differs is the floor. Every other
   // card-grid kind demands exactly `count` picks, but a search may
   // always find FEWER than it looked for, including none at all
-  // (CR 701.19c "you may fail to find"). So search_max is a ceiling
+  // (CR 701.23b "you may fail to find"). So search_max is a ceiling
   // and zero is a legal answer.
   const isSearch = $derived(active?.kind === "search_library");
 
@@ -129,11 +170,7 @@
   function submit(): void {
     if (!active || !viewerID) return;
     if (!canSubmit) return;
-    sendAction(
-      "resolve_choice",
-      { choice_id: active.id, card_ids: Array.from(selected) },
-      viewerID,
-    );
+    answer({ card_ids: Array.from(selected) });
   }
 
   // Options come redacted for non-knowers; filter to cards the
@@ -161,7 +198,7 @@
 
   function pickColor(color: string): void {
     if (!active || !viewerID) return;
-    sendAction("resolve_choice", { choice_id: active.id, color }, viewerID);
+    answer({ color });
   }
 
   // S26 choose_creature_type branch — "as this permanent enters,
@@ -187,7 +224,7 @@
   function pickCreatureType(creatureType: string): void {
     if (!active || !viewerID) return;
     typeFilter = "";
-    sendAction("resolve_choice", { choice_id: active.id, creature_type: creatureType }, viewerID);
+    answer({ creature_type: creatureType });
   }
 
   // Enter submits the single best match, so a player who knows their
@@ -228,7 +265,7 @@
   function submitReplacementOrder(): void {
     if (!active || !viewerID) return;
     if (ordered.length !== replacementOptions.length) return;
-    sendAction("resolve_choice", { choice_id: active.id, order: ordered }, viewerID);
+    answer({ order: ordered });
   }
 
   function positionFor(id: string): number {
@@ -252,7 +289,7 @@
   // (let the event proceed to graveyard/exile/hand/library).
   const isOptionalReplacement = $derived(active?.kind === "optional_replacement");
 
-  // S19 sub-PR 2 trigger-prompt branch — CR 603.4 "you may" prompt
+  // S19 sub-PR 2 trigger-prompt branch — CR 603.5 "you may" prompt
   // for an optional triggered ability. Same {choice_id, apply}
   // payload as optional-replacement; the server routes to
   // ResolveTriggerPrompt vs ResolveOptionalReplacement by inspecting
@@ -311,7 +348,7 @@
   // chooser controls — a player with none was never prompted.
   const isSacrifice = $derived(active?.kind === "sacrifice_choice");
 
-  // S21 scry branch — CR 701.18. Every looked-at card goes somewhere:
+  // S21 scry branch — CR 701.22. Every looked-at card goes somewhere:
   // back on top (in an order the player controls) or to the bottom.
   // Default is "keep everything, in the order shown", so the common
   // case — bottom the one bad card, or accept the top — is one click
@@ -321,7 +358,7 @@
   // first entry is the next card drawn.
   const isScry = $derived(active?.kind === "scry");
 
-  // S22 surveil branch — CR 701.42. Structurally identical to scry:
+  // S22 surveil branch — CR 701.25. Structurally identical to scry:
   // same prompt, same two lanes, same ordering control. The only
   // difference is where the cards that leave the top go, so this
   // shares every line of the scry branch and swaps the destination
@@ -405,7 +442,7 @@
       : isSurveil
         ? { graveyard: scryBottom }
         : { bottom: scryBottom };
-    sendAction("resolve_choice", { choice_id: active.id, ...away, top_order: scryTop }, viewerID);
+    answer({ ...away, top_order: scryTop });
   }
 
   // S19 follow-up: the server flags optional triggers whose effect
@@ -441,7 +478,7 @@
 
   function answerOptional(apply: boolean): void {
     if (!active || !viewerID) return;
-    sendAction("resolve_choice", { choice_id: active.id, apply }, viewerID);
+    answer({ apply });
   }
 
   // sourceCardName resolves the source-card display name for a
@@ -551,15 +588,7 @@
       blocker_id: id,
       amount: damageAmounts[id] ?? 0,
     }));
-    sendAction(
-      "resolve_choice",
-      {
-        choice_id: active.id,
-        assignments,
-        trample_to_player: trampleToPlayer,
-      },
-      viewerID,
-    );
+    answer({ assignments, trample_to_player: trampleToPlayer });
   }
 </script>
 
@@ -572,7 +601,7 @@
           {active.reason || (isSurveil ? "Surveil" : isReorderOnly ? "Look at the top" : "Scry")}
           {#if !isReorderOnly}
             <span class="prompt-src" aria-hidden="true"
-              >{isSurveil ? "CR 701.42" : "CR 701.18"}</span
+              >{isSurveil ? "CR 701.25" : "CR 701.22"}</span
             >
           {/if}
         </h2>
@@ -728,7 +757,7 @@
       {:else if isTriggerPrompt}
         <h2 id="choice-title">
           {active.reason || `${triggerSourceName(active.source)} triggered`}
-          <span class="prompt-src" aria-hidden="true">may trigger · CR 603.4</span>
+          <span class="prompt-src" aria-hidden="true">may trigger · CR 603.5</span>
         </h2>
         {#if noLegalTarget}
           <p class="prompt-hint warn">
@@ -947,10 +976,10 @@
             <span class="prompt-src" aria-hidden="true">sacrifice</span>
           {:else if isSearch}
             {active.reason || "Search your library"}
-            <span class="prompt-src" aria-hidden="true">search · CR 701.19</span>
+            <span class="prompt-src" aria-hidden="true">search · CR 701.23</span>
           {:else if isCopyTarget}
             {active.reason || "Enter as a copy of…"}
-            <span class="prompt-src" aria-hidden="true">copy · CR 706</span>
+            <span class="prompt-src" aria-hidden="true">copy · CR 707</span>
           {:else if isChooseCards}
             {active.reason || "Choose cards"}
             <span class="prompt-src" aria-hidden="true">choose</span>
@@ -1032,6 +1061,12 @@
           </button>
         </div>
       {/if}
+      {#if rejection}
+        <p class="prompt-hint error prompt-rejection" role="alert">
+          <span class="rejection-label">Not accepted</span>
+          {rejection.message}
+        </p>
+      {/if}
     </div>
   </div>
 {/if}
@@ -1039,6 +1074,23 @@
 <svelte:window onkeydown={handleKey} />
 
 <style>
+  /* #624: the server's reason for refusing this prompt's answer. Below
+     the footer, next to the button that was just pressed. */
+  .prompt-rejection {
+    margin: 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+  }
+  .rejection-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-right: 6px;
+  }
   .scry-lane {
     margin: 2px 0;
   }

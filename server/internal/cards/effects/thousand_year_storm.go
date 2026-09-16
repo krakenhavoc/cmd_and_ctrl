@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // times. The count is fixed when the trigger goes on the stack —
 // "cast BEFORE it this turn" — and read off the event log
 // (b12InstantsAndSorceriesCastBeforeThisTurn), where a copy is not a
-// cast and does not count, as printed. The copies are the CR 706.10
+// cast and does not count, as printed. The copies are the CR 707.10
 // primitive: each is created separately, each with its own "you may
 // choose new targets" prompt, and a spell countered in response to
 // the trigger is simply not there to copy.
@@ -26,7 +26,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCast},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b12InstantOrSorceryCastByYou(ev, source, g)
+				return instantOrSorceryCastByYou(ev, source, g)
 			},
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				spell := ev.CardID

@@ -17,7 +17,7 @@ import (
 // creature you control entered" is b15AnotherNontokenCreatureYouControlEntered,
 // "you gained life" is b10YouGainedLife, "an opponent discarded" is
 // b18OpponentDiscarded, "you cast a creature / instant or sorcery
-// spell" is b12CreatureSpellCastByYou / b12InstantOrSorceryCastByYou,
+// spell" is creatureSpellCastByYou / instantOrSorceryCastByYou,
 // landfall is b13LandYouControlEntered, "an opponent cast a spell" is
 // b15OpponentCastSpell, the dead-creature counter read is
 // b13LastKnownCounters, the counter doubler is b17DoubleCountersOn,
@@ -26,44 +26,6 @@ import (
 // EvokePitch, and the Food / Soldier templates live in tokens.go.
 
 // --- token templates ---------------------------------------------
-
-// b22BlackSlugToken is Toxrill's 1/1 black Slug.
-func b22BlackSlugToken() game.Card {
-	return game.Card{
-		Name:      "Slug",
-		TypeLine:  "Token Creature — Slug",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"B"},
-	}
-}
-
-// b22WhiteSoldierLifelinkToken is Dawn of Hope's 1/1 white Soldier
-// with lifelink. Its own template rather than SoldierToken: the
-// colour and the lifelink are printed.
-func b22WhiteSoldierLifelinkToken() game.Card {
-	return game.Card{
-		Name:      "Soldier",
-		TypeLine:  "Token Creature — Soldier",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"W"},
-		Keywords:  []string{"lifelink"},
-	}
-}
-
-// b22BlackZombieWarriorVigilanceToken is God-Eternal Oketra's 4/4
-// black Zombie Warrior with vigilance.
-func b22BlackZombieWarriorVigilanceToken() game.Card {
-	return game.Card{
-		Name:      "Zombie Warrior",
-		TypeLine:  "Token Creature — Zombie Warrior",
-		Power:     4,
-		Toughness: 4,
-		Colors:    []string{"B"},
-		Keywords:  []string{"vigilance"},
-	}
-}
 
 // --- predicates --------------------------------------------------
 

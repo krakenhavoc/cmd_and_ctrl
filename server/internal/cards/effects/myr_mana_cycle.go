@@ -13,7 +13,7 @@ package effects
 // in the cycle's table, never in a new file.
 //
 // A single fixed colour, so activating it adds the mana immediately
-// with no colour prompt, under the same CR 302.1 summoning-sickness
+// with no colour prompt, under the same CR 302.6 summoning-sickness
 // gate the engine applies to every tap ability on a creature.
 //
 // No simplification.

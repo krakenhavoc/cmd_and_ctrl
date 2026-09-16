@@ -35,7 +35,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     combat.
 //   - It moves to the new controller's panel on the board, because
 //     the client partitions on CardView.controller.
-//   - CR 704.5n still applies: if the creature stops being a
+//   - CR 704.5m still applies: if the creature stops being a
 //     creature, the Aura goes to the graveyard and control reverts
 //     in the same state-based-action pass.
 //

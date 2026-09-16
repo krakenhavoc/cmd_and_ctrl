@@ -70,10 +70,13 @@ answered. The two remaining tap-after-entry workarounds use
 `SelfEntersTapped()`. `game.ETBEffectHook` keeps its name until D4
 replaces the hook variables. Issue #578.
 
-### D4 — Plumbing (#561) — open
+### D4 — Plumbing (#561, option A, approved 2026-09-16) — issue #622
 
-One precomputed catalog lookup instead of 21 hook variables, and a
-committed benchmark. Awaiting an answer; nothing is blocked on it.
+One precomputed `game.CardDef` per card, built at `effects.Register`;
+`game.CatalogLookup` is the only hook the catalog sets. The per-slot
+variables remain as defaults that read the `CardDef`, because two dozen
+test files stub them individually; nothing in the catalog assigns them.
+The review's benchmark is committed as `bench_test.go`.
 
 ## Consequences
 

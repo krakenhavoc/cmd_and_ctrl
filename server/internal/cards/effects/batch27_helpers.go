@@ -19,7 +19,7 @@ import (
 // creature died" is diedCreature, "a creature you control dealt
 // combat damage to a player" is combatDamageToPlayerBy, "an
 // opponent's creature attacked you" is b17OpponentsCreatureAttackedYou,
-// "you cast an instant or sorcery" is b12InstantOrSorceryCastByYou,
+// "you cast an instant or sorcery" is instantOrSorceryCastByYou,
 // "you cast a colorless spell" is b11ColorlessSpellCastByYou, the
 // devotion count is devotionTo, the wheel is b10EachPlayerWheels,
 // the tapped Treasures are b13CreateTappedTreasures, the pod search's
@@ -31,45 +31,6 @@ import (
 // FoodToken and TreasureToken.
 
 // --- token templates ---------------------------------------------
-
-// b27WhiteSoldierVigilanceToken is Finale of Glory's 2/2 white
-// Soldier with vigilance. Its own template: SoldierToken is
-// Elspeth's colourless-in-data 1/1.
-func b27WhiteSoldierVigilanceToken() game.Card {
-	return game.Card{
-		Name:      "Soldier",
-		TypeLine:  "Token Creature — Soldier",
-		Power:     2,
-		Toughness: 2,
-		Colors:    []string{"W"},
-		Keywords:  []string{"vigilance"},
-	}
-}
-
-// b27WhiteAngelFlyingVigilanceToken is Finale of Glory's 4/4 white
-// Angel with flying and vigilance — AngelVigilanceToken's shape with
-// the printed colour stamped.
-func b27WhiteAngelFlyingVigilanceToken() game.Card {
-	return game.Card{
-		Name:      "Angel",
-		TypeLine:  "Token Creature — Angel",
-		Power:     4,
-		Toughness: 4,
-		Colors:    []string{"W"},
-		Keywords:  []string{"flying", "vigilance"},
-	}
-}
-
-// b27WhiteHalflingToken is Farmer Cotton's 1/1 white Halfling.
-func b27WhiteHalflingToken() game.Card {
-	return game.Card{
-		Name:      "Halfling",
-		TypeLine:  "Token Creature — Halfling",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"W"},
-	}
-}
 
 // --- costs ---------------------------------------------------------
 

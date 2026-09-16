@@ -41,7 +41,7 @@ func init() {
 			}
 			return SearchLibrary{
 				Player:    controller,
-				Predicate: func(c game.Card) bool { return manaValueOfCard(c) <= lands },
+				Predicate: func(c game.Card) bool { return manaValueOf(c) <= lands },
 				Dest:      game.ZoneHand,
 				Limit:     1,
 				Reveal:    true,

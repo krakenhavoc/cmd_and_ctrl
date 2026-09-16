@@ -105,43 +105,13 @@ func b03OpponentControlsMoreLands(g *game.Game, controller uuid.UUID) bool {
 	return false
 }
 
-// b03CastSpellHasType reports whether the spell an EventCast names
-// has any of the given lowercase type-line words — Sram's "an Aura,
-// Equipment, or Vehicle spell". The card is read off the stack,
-// where its printed type line is intact. Needles must be lowercase
-// (containsFoldASCII folds the haystack only).
-func b03CastSpellHasType(ev game.Event, g *game.Game, words ...string) bool {
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok {
-		return false
-	}
-	for _, w := range words {
-		if containsFoldASCII(c.TypeLine, w) {
-			return true
-		}
-	}
-	return false
-}
-
-// b03InstantOrSorceryCastByYou is the magecraft-shaped condition
+// instantOrSorceryCastByYou is the magecraft-shaped condition
 // Guttersnipe shares with Storm-Kiln Artist: the controller cast an
 // instant or sorcery.
-func b03InstantOrSorceryCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
+func instantOrSorceryCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
 	spell, ok := g.LookupCardForEffect(ev.CardID)
 	return ok && (spell.IsInstant() || spell.IsSorcery())
-}
-
-// b03GreenBeast44Token is Rampaging Baloths' 4/4 green Beast — a
-// different token from Beast Within's 3/3 GreenBeastToken, so it
-// gets its own template rather than a parameter on that one.
-func b03GreenBeast44Token() game.Card {
-	return game.Card{
-		Name:      "Beast",
-		TypeLine:  "Token Creature — Beast",
-		Power:     4,
-		Toughness: 4,
-	}
 }

@@ -21,7 +21,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			Optional(Landfall("Emeria Angel — create a Bird", Do(CreateToken{
-				Template: b18WhiteBirdToken(),
+				Template: TokenCard("1/1 white Bird with flying"),
 				N:        1,
 			})), "Emeria Angel — create a 1/1 Bird with flying?"),
 		},

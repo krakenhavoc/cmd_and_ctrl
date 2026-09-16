@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 put it into your hand, then shuffle."
 //
 // The cheap-spell tutor on a blinkable body. "You may search" is the
-// search's Optional flag (CR 701.19c — the searcher may decline the
+// search's Optional flag (CR 701.23b — the searcher may decline the
 // card and the shuffle), so the prompt always opens and "fail to
 // find" is always an answer; the mana value is the printed one,
 // which is what a card in a library has.

@@ -25,10 +25,19 @@ import (
 // counters and an anthem, and spares a 6/6 that something shrank.
 // That is the printed card: "power 4 or greater" is the power it has
 // when the ability resolves.
+//
+// Declared CompletenessCaveats, not left at the zero value. #418
+// shipped the card without a declaration, so the catalog page
+// published it as "unreviewed" while the omission above sat in this
+// comment where no player reads it — the only planeswalker in the
+// catalog in that state. Wrenn and Six and Teferi, Hero of Dominaria
+// omit their emblem ultimates the same way and say so in Caveats.
 func init() {
 	Register(Spec{
-		OracleID: "05e6b243-48a6-4a42-bc5f-413441de9c33",
-		Name:     "Elspeth, Sun's Champion",
+		OracleID:     "05e6b243-48a6-4a42-bc5f-413441de9c33",
+		Name:         "Elspeth, Sun's Champion",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The -7 ultimate isn't offered — emblems don't exist yet."},
 		// Printed loyalty reaches the card through deck import
 		// (ADR 0032 §1); this is the fallback for tokens, fixtures
 		// and the dev spawner.
@@ -40,7 +49,7 @@ func init() {
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{
 						Controller: item.Controller,
-						Template:   SoldierToken(),
+						Template:   TokenCard("1/1 colorless Soldier"),
 						N:          3,
 					}.Apply(NewContext(g, item))
 				},

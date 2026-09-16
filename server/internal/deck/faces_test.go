@@ -324,3 +324,108 @@ func TestReversibleCardIsNotPlayable(t *testing.T) {
 			"the card would import as a free typeless blank", got.Layout)
 	}
 }
+
+// TestNonNumericToughnessIsStampedVariable pins the importer half of
+// #683's `*` exemption: a non-numeric printed toughness lands as 0 AND
+// as VariableToughness, so the toughness state check can tell it from
+// a printed 0/0 once counters have come and gone. A numeric 0 and an
+// empty value (a non-creature) are not variable.
+func TestNonNumericToughnessIsStampedVariable(t *testing.T) {
+	for _, tc := range []struct {
+		toughness string
+		parsed    int
+		want      bool
+	}{
+		{"*", 0, true},
+		{"1+*", 0, true},
+		{"?", 0, true},
+		{"0", 0, false},
+		{"3", 3, false},
+		{"", 0, false},
+	} {
+		got := importOne(cards.Card{
+			ID: uuid.New(), OracleID: uuid.New(), Name: "Test", Layout: "normal",
+			TypeLine: "Creature — Test", Power: "0", Toughness: tc.toughness,
+		})
+		if got.Toughness != tc.parsed {
+			t.Errorf("toughness %q: Toughness = %d, want %d", tc.toughness, got.Toughness, tc.parsed)
+		}
+		if got.VariableToughness != tc.want {
+			t.Errorf("toughness %q: VariableToughness = %v, want %v", tc.toughness, got.VariableToughness, tc.want)
+		}
+	}
+
+	// Per face, and SetFace materialises the active face's bit.
+	dfc := jacePrint()
+	dfc.CardFaces[0].Toughness = "*"
+	got := importOne(dfc)
+	if !got.VariableToughness {
+		t.Error("the front face's `*` toughness was not stamped on the card")
+	}
+	if len(got.Faces) != 2 || !got.Faces[0].VariableToughness || got.Faces[1].VariableToughness {
+		t.Fatalf("per-face VariableToughness wrong: %+v", got.Faces)
+	}
+	got.SetFace(1)
+	if got.VariableToughness {
+		t.Error("switching to the planeswalker face kept the front face's VariableToughness")
+	}
+}
+
+// TestPrintedVariableToughnessMatchesTheImporter pins the lookup a
+// pre-#683 restore point backfills from: for a printing in the index
+// it gives the same answers the importer stamps, per face for a
+// multi-face printing, and "unknown" for anything the index lacks.
+func TestPrintedVariableToughnessMatchesTheImporter(t *testing.T) {
+	if PrintedVariableToughness(nil) != nil {
+		t.Fatal("a nil index gave a lookup; restore would never fall back")
+	}
+
+	idx := cards.NewIndex()
+	star := cards.Card{
+		ID: uuid.New(), OracleID: uuid.New(), Name: "Star", Layout: "normal",
+		TypeLine: "Creature — Lhurgoyf", Power: "*", Toughness: "1+*",
+	}
+	zero := cards.Card{
+		ID: uuid.New(), OracleID: uuid.New(), Name: "Zero", Layout: "normal",
+		TypeLine: "Artifact Creature — Construct", Power: "0", Toughness: "0",
+	}
+	dfc := jacePrint()
+	dfc.CardFaces[0].Toughness = "*"
+	for _, c := range []cards.Card{star, zero, dfc} {
+		idx.Put(c)
+	}
+	lookup := PrintedVariableToughness(idx)
+
+	for _, c := range []cards.Card{star, zero, dfc} {
+		imported := importOne(c)
+		top, faces, ok := lookup(c.ID.String())
+		if !ok {
+			t.Fatalf("%s: the index has the printing but the lookup said unknown", c.Name)
+		}
+		if len(faces) != len(imported.Faces) {
+			t.Fatalf("%s: lookup gave %d faces, the importer %d", c.Name, len(faces), len(imported.Faces))
+		}
+		for i := range faces {
+			if faces[i] != imported.Faces[i].VariableToughness {
+				t.Errorf("%s face %d: lookup %v, importer %v", c.Name, i, faces[i], imported.Faces[i].VariableToughness)
+			}
+		}
+		if len(faces) == 0 && top != imported.VariableToughness {
+			t.Errorf("%s: lookup %v, importer %v", c.Name, top, imported.VariableToughness)
+		}
+	}
+
+	// A double-faced printing has no top-level toughness, so top is
+	// false while the imported card, up on its `*` face, is flagged. A
+	// token copy keeps the ScryfallID but not the Faces, which is why
+	// the restore backfill reads the face answers for a faceless card.
+	if top, faces, _ := lookup(dfc.ID.String()); top || len(faces) != 2 || !faces[0] || !importOne(dfc).VariableToughness {
+		t.Errorf("double-faced `*` printing: lookup top=%v faces=%v; want top false, faces[0] true and an imported card flagged", top, faces)
+	}
+
+	for _, id := range []string{uuid.New().String(), "", "not-a-uuid"} {
+		if _, _, ok := lookup(id); ok {
+			t.Errorf("lookup(%q) claimed to know a printing the index does not have", id)
+		}
+	}
+}

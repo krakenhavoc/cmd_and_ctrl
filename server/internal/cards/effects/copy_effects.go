@@ -7,7 +7,7 @@ import (
 )
 
 // copy_effects.go — the shared shape behind every "you may have this
-// creature enter as a copy of X" card (CR 706.2).
+// creature enter as a copy of X" card (CR 707.2).
 //
 // The whole class is one replacement effect with a picker inside it:
 // the permanent's own entry is replaced, the controller chooses what
@@ -111,4 +111,15 @@ func copyCandidates(
 		out = append(out, c.InstanceID)
 	}
 	return out
+}
+
+// anyCreatureOnBattlefield is the `candidates` argument for "enter as
+// a copy of any creature on the battlefield" — Clone, Sakashima the
+// Impostor, Stunt Double. Any controller, any creature, never the
+// entering permanent itself. Not targeting, so hexproof, shroud and
+// protection do not narrow it (CR 115.10a).
+func anyCreatureOnBattlefield(g *game.Game, _ uuid.UUID, self uuid.UUID) []uuid.UUID {
+	return copyCandidates(g, self, func(c game.Card) bool {
+		return c.IsCreature()
+	})
 }

@@ -7,7 +7,7 @@ package effects
 //	 hand, then draws seven cards."
 //
 // Wheel of Fortune on legs. A three-component activated ability —
-// mana, tap (so summoning sickness applies, CR 302.1) and sacrifice
+// mana, tap (so summoning sickness applies, CR 302.6) and sacrifice
 // the source — paid at announce, so the Magus is in the graveyard
 // before the wheel resolves and a dies-payoff triggers above it. The
 // body is Wheel of Fortune's: every discard before any draw, each

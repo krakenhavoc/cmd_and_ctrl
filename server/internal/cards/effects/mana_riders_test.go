@@ -312,6 +312,7 @@ func TestManaConfluenceLifeCostReachesTheWire(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	land := seedPermanentWithOracle(g, me.ID, "Mana Confluence", "Land", manaConfluenceOracle)
+	knownToTable(g, land)
 
 	view := protocol.ViewOfGameFor(g, me.ID.String())
 	var found *protocol.ManaAbilityView

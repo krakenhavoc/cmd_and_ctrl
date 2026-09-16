@@ -23,7 +23,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "deathtouch"},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Hornet Queen — create four 1/1 Insects with flying and deathtouch", Do(CreateToken{Template: b15GreenInsectToken(), N: 4})),
+			WhenThisEnters("Hornet Queen — create four 1/1 Insects with flying and deathtouch", Do(CreateToken{Template: TokenCard("1/1 green Insect with flying and deathtouch"), N: 4})),
 		},
 	})
 }

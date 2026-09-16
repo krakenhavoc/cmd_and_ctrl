@@ -25,6 +25,8 @@ timestamp-only ordering. Dependency detection (CR 613.8 — the
 Opalescence + Humility class of pathological cycle) is
 intentionally deferred to S16.5; pure timestamp ordering covers
 ~95% of real cards and never matters in casual EDH.
+*(2026-09-16: it matters now. Catalog pairs in layer 4 depend on each
+other; see the amendment under §4.)*
 
 ## Decisions
 
@@ -114,6 +116,21 @@ anthem, a keyword grant, a type-add or a CDA, all commutative under
 timestamp order. The cost is a required dependency declaration on
 every `StaticAbility` in the catalog, present and future.
 
+**Amended 2026-09-16 (the [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159)
+closeout): the re-affirmation above rests on a false claim.** Type-adds
+and type-sets don't commute when the add's `AppliesTo` reads the type
+the set writes, and the catalog has had such pairs since 2026-09-13.
+Reproduced on develop, all in layer 4: Urborg, Tomb of Yawgmoth +
+Song of the Dryads; Urborg + Arixmethes, Slumbering Isle; Maskwood
+Nexus + any Vehicle crewed after it entered; Maskwood Nexus + The
+Warring Triad; Maskwood Nexus + a slumbering Arixmethes. The table and
+the rules results are in [ADR 0043](0043-copy-effects.md) §5's
+amendment. The engine also already resolves one CR 613.8 case,
+ability removal, by iterating to a fixed point
+([ADR 0046](0046-layer-6-authoritative.md) §4). Dependency ordering is
+now tracked in [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668),
+after [#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669).
+
 ### 5. Layer 7 ships full sub-layer support; layers 1, 3, 5 ship
        as stubs
 
@@ -138,7 +155,10 @@ ships the layer-3 bucket but no in-scope card needs it.
 Layer 5 (color-changing effects — Painter's Servant) — engine
 ships the bucket; no catalog card. The commander-identity proxy
 replacement (sub-PR 5) reads `Effective().Colors` so a future
-Layer-5 card lights up identity automatically.
+Layer-5 card lights up identity automatically. *(2026-09-16: no longer
+empty. Kenrith's Transformation ("green") and Song of the Dryads
+("colorless") are layer-5 effects since #563, through
+`SetAttachedColors`; see [ADR 0046](0046-layer-6-authoritative.md).)*
 
 ### 6. Static abilities declared on `Spec.Static`
 
@@ -329,7 +349,10 @@ the three pairings under `-race`.
 - **S19** picks up triggered abilities. The event log + listener
   registry are the integration point.
 - **Dependency detection (CR 613.8)** deferred to S16.5 if a real
-  card surfaces in playtesting.
+  card surfaces in playtesting. *(2026-09-16: catalog pairs surfaced
+  instead, see §4's amendment. #159 closes at the S16.5 closeout with
+  its copy-effects half shipped, and the dependency work moves to
+  [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668).)*
 - **Decision 2's "wire ships `Effective`" was only half the
   hand-off**, and the other half sat unbuilt for four sprints:
   `Card.IsCreature` / `IsLand` / `IsArtifact` kept reading the

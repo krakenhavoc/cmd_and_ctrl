@@ -24,7 +24,7 @@ func init() {
 		Caveats:      []string{"The draw trigger only fires on instants and sorceries you cast, not on copies of them."},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b02CastInstantOrSorcery(ev, source, g)
+				return instantOrSorceryCastByYou(ev, source, g)
 			}, "Archmage Emeritus — draw a card (magecraft)", Do(DrawCards{N: 1})),
 		},
 	})

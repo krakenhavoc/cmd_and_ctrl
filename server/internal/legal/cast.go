@@ -119,6 +119,14 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 	if err != nil {
 		return
 	}
+	// CR 118.6: a spell with no mana cost (Ancestral Vision, Living
+	// End) can't be cast by paying it, and ParseCost reads that empty
+	// string as a free {0}. Every move this function builds pays the
+	// printed cost, so none of them is legal; the engine refuses the
+	// cast with ErrNoManaCost.
+	if game.HasNoManaCost(card) {
+		return
+	}
 	if from == "command" {
 		cost.Generic += p.CommanderCasts[card.InstanceID] * 2
 	}

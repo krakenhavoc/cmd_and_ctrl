@@ -14,13 +14,14 @@ package effects
 // creature and every Vehicle the controller controls, the Spider
 // itself included, snapshotted before the first counter lands. A
 // creature source, so the tap waits out summoning sickness (CR
-// 302.1), as printed.
+// 302.6), as printed.
 //
 // One declared simplification, weaker than printed: the draw
 // ability is not implemented. "Remove two +1/+1 counters from among
 // artifacts you control" is a counter-removal cost spread across
-// several permanents, and an ability cost has no counter component
-// (AbilityCost carries tap, sacrifice, mana, life, loyalty and crew).
+// several permanents. AbilityCost.RemoveCounters (#625) removes from
+// the source or from ONE other permanent per payment, so it cannot say
+// "one from this artifact and one from that one".
 // Shipping the draw without its cost would be stronger than printed
 // (#259), so the ability is left off and the counters simply build
 // up.

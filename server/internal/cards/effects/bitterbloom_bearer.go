@@ -28,7 +28,7 @@ func init() {
 				}
 				return CreateToken{
 					Controller: item.Controller,
-					Template:   b18BlueBlackFaerieToken(),
+					Template:   TokenCard("1/1 blue and black Faerie with flying"),
 					N:          1,
 				}.Apply(NewContext(g, item))
 			}),

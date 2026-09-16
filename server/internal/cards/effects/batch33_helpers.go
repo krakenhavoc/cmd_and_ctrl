@@ -28,7 +28,7 @@ import (
 // no longer on the battlefield is b17LastKnownPowerOffBattlefield,
 // the milled-creature batch is b17MilledCreatureCards, the first
 // legal target read is b16FirstLegalTargetCard and its destroy body
-// b17DestroyFirstLegalTarget, "exile target players' graveyards, then
+// destroyFirstLegalTarget, "exile target players' graveyards, then
 // draw" is b30ExileTargetGraveyardsThenDraw, the counter-on-each body is
 // b13PutCounterOnEach, the delayed-trigger token cursor is
 // b25LastEventSeq + b27TokensCreatedByAfter, "enters tapped unless
@@ -40,51 +40,20 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b33BlueBirdVigilanceToken is Hermes, Overseer of Elpis's 1/1 blue
-// Bird with flying and vigilance. b09BlueBirdToken is a 2/2 and
-// WhiteBirdToken has no vigilance, so a template of its own.
+// b33BlueBirdVigilanceToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
 func b33BlueBirdVigilanceToken() game.Card {
-	return game.Card{
-		Name:      "Bird",
-		TypeLine:  "Token Creature — Bird",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"U"},
-		Keywords:  []string{"flying", "vigilance"},
-	}
+	return TokenCard("1/1 blue Bird with flying and vigilance")
 }
 
-// b33BlackInsectToken is Nest of Scarabs' 1/1 black Insect. InsectToken
-// is Hornet Queen's flying-haste 1/1 and b15GreenInsectToken is
-// green, so a template of its own.
-func b33BlackInsectToken() game.Card {
-	return game.Card{
-		Name:      "Insect",
-		TypeLine:  "Token Creature — Insect",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"B"},
-	}
-}
-
-// b33WhiteHumanWarriorToken is Maja, Bretagard Protector's 1/1 white
-// Human Warrior.
-func b33WhiteHumanWarriorToken() game.Card {
-	return game.Card{
-		Name:      "Human Warrior",
-		TypeLine:  "Token Creature — Human Warrior",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"W"},
-	}
-}
+// b33WhiteHumanWarriorToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
+func b33WhiteHumanWarriorToken() game.Card { return TokenCard("1/1 white Human Warrior") }
 
 // b33TappedAttackingRedWarrior is Dalkovan Encampment's 1/1 red
 // Warrior, stamped tapped so CreateTokensAttackingForEffect — which
 // copies the template and sets only the attack — puts it in tapped
 // and attacking (b21TappedAttackingGoblin's shape).
 func b33TappedAttackingRedWarrior() game.Card {
-	tmpl := b21RedWarriorToken()
+	tmpl := TokenCard("1/1 red Warrior")
 	tmpl.Tapped = true
 	return tmpl
 }
@@ -256,7 +225,7 @@ func b33AnyCreatureEntered(ev game.Event, g *game.Game) bool {
 // dead card is read post-move, so the supertype is its printed one.
 func b33LegendaryCreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller && b06IsLegendary(&dead)
+	return ok && dead.Controller == source.Controller && isLegendary(&dead)
 }
 
 // b33OpponentsCreatureDied is "whenever a creature an opponent
@@ -527,7 +496,7 @@ func b33CreateInsectsPerMinusCounterPlaced(n int) func(g *game.Game, item *game.
 		if n <= 0 {
 			return nil
 		}
-		return CreateToken{Controller: item.Controller, Template: b33BlackInsectToken(), N: n}.Apply(NewContext(g, item))
+		return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 black Insect"), N: n}.Apply(NewContext(g, item))
 	}
 }
 
@@ -595,9 +564,9 @@ func b33PutCounterOnEnteredCreature(entered uuid.UUID) func(g *game.Game, item *
 	}
 }
 
-// b33CreateTappedZombie is Overseer of the Damned's dies body: one
+// createTappedZombie is Overseer of the Damned's dies body: one
 // tapped 2/2 black Zombie.
-func b33CreateTappedZombie(g *game.Game, item *game.StackItem) error {
+func createTappedZombie(g *game.Game, item *game.StackItem) error {
 	return CreateTokenAdvanced{
 		Controller: item.Controller,
 		Spec:       Token(BlackZombieToken()).EntersTapped(),
@@ -759,10 +728,10 @@ func b33SacrificeChosenThenDrawThatMany(g *game.Game, item *game.StackItem) erro
 	return DrawCards{Player: item.Controller, N: n}.Apply(ctx)
 }
 
-// b33TuckSelfThirdFromTop is God-Eternal Bontu's return body —
+// tuckSelfThirdFromTop is God-Eternal Bontu's return body —
 // Oketra's: the card, if it is still in a graveyard or in exile, goes
 // into its owner's library third from the top.
-func b33TuckSelfThirdFromTop(g *game.Game, item *game.StackItem) error {
+func tuckSelfThirdFromTop(g *game.Game, item *game.StackItem) error {
 	z := g.FindCardZoneForEffect(item.SourceCardID)
 	if z == nil || (z.Kind != game.ZoneGraveyard && z.Kind != game.ZoneExile) {
 		return nil
@@ -818,7 +787,7 @@ func b33ClearListedGoads(g *game.Game, item *game.StackItem) error {
 // goaded by the controller if it is still legal and still controlled
 // by `victim`, the player the Faeries hit, and a delayed trigger
 // clears the marker at the beginning of the controller's next turn
-// (CR 701.38b's "until your next turn"). A pick under some other
+// (CR 701.15a's "until your next turn"). A pick under some other
 // player's control — possible when Faeries connected with two
 // players in one combat and the clause offered both players'
 // creatures — does nothing.

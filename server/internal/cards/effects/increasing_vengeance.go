@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"Flashback {3}{R}{R}"
 //
 // Two copies is not one copy that resolves twice: each is created
-// separately, each gets its own CR 706.10c target choice, and an
+// separately, each gets its own CR 707.10c target choice, and an
 // opponent can respond between them being put on the stack and
 // either resolving. CopySpell.Count does exactly that — a loop of
 // independent CopySpellForEffect calls.

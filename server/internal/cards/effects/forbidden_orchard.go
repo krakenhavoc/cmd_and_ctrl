@@ -44,7 +44,7 @@ func init() {
 						}
 						return CreateToken{
 							Controller: item.Targets[0].ID,
-							Template:   b06ColorlessSpiritToken(),
+							Template:   TokenCard("1/1 colorless Spirit"),
 							N:          1,
 						}.Apply(NewContext(g, item))
 					})

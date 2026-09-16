@@ -26,14 +26,7 @@ func b05HasSubtype(subtype string) CardPredicate {
 // Water's Edge). Supertypes come from the effective characteristic so
 // a layer effect that adds or removes Legendary composes.
 func b05Legendary() CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-		for _, s := range c.Effective().Supertypes {
-			if s == "Legendary" {
-				return true
-			}
-		}
-		return false
-	}
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return isLegendary(&c) }
 }
 
 // b05ControlsSubtype reports whether `controller` controls a
@@ -105,17 +98,4 @@ func b05EachPlayerDraws(g *game.Game, item *game.StackItem, n int) error {
 		}
 	}
 	return nil
-}
-
-// b05SnakeToken is Ophiomancer's 1/1 black Snake with deathtouch.
-// Deathtouch is real (token Keywords feed the layer engine since S21);
-// Colors stays unset like every other template except the Goblin.
-func b05SnakeToken() game.Card {
-	return game.Card{
-		Name:      "Snake",
-		TypeLine:  "Token Creature — Snake",
-		Power:     1,
-		Toughness: 1,
-		Keywords:  []string{"deathtouch"},
-	}
 }

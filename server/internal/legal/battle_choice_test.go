@@ -22,7 +22,7 @@ import (
 // enumerator has no case for has zero legal moves and stops dead.
 //
 // Two S27 prompts were in that state on `main`: the battle's
-// "choose an opponent to protect it" (CR 310.5) and the legend rule's
+// "choose an opponent to protect it" (CR 310.9a) and the legend rule's
 // "keep one". Both answer with the pick_target payload — a single
 // {kind, id} ref out of a server-computed set — and actions.go routes
 // them apart on the choice KIND, so both belong on the enumerator's

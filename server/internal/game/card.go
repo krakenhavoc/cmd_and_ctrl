@@ -7,10 +7,13 @@ import "github.com/google/uuid"
 // same printed card from their library, there are two Card instances,
 // each with its own InstanceID.
 //
-// At S02 this struct is deliberately minimal: name + owner + a few
-// runtime state flags. Scryfall data (mana cost, oracle text, image
-// URLs, type line, etc.) arrives in S04 when the Scryfall pipeline
-// lands, at which point Card will grow a CardData reference.
+// Card carries the printed data stamped at deck import (Scryfall
+// fields, faces, keywords) alongside the per-instance runtime state
+// the rules engine keeps (tap, combat, damage, knowledge, layers,
+// attachments). Fields are grouped by the mechanic that added them,
+// except the bools, which share one block at the end for alignment.
+// TestCardHasNoInteriorPadding (card_layout_test.go) guards the
+// layout; put a new bool in that block.
 type Card struct {
 	// InstanceID uniquely identifies this physical card within the game.
 	// Generated when the card enters play or when a deck is imported.
@@ -141,26 +144,7 @@ type Card struct {
 	// the ~78% of real cards that print no keyword at all.
 	Keywords []string
 
-	// NeedsEffect records that this card's printed text describes
-	// rules only a hand-written catalog Spec can carry out — it is
-	// NOT "has oracle text" and it is NOT "is missing from the
-	// catalog". A vanilla creature is false; a creature whose whole
-	// text is enforced keywords is false; a Forest is false. See
-	// coverage.go for the reasoning and NeedsCatalogEffect for the
-	// derivation.
-	//
-	// Stamped by the deck importer from the Scryfall record, the
-	// same road Keywords and StartingLoyalty travel, and joined with
-	// catalog membership by game.Unimplemented — the one definition
-	// the deck-upload summary, the card view and the stack view all
-	// read, so they cannot disagree.
-	//
-	// False for cards that never went through deck import (tokens,
-	// fixtures, the demo seed), which means they are never flagged.
-	// Deliberate: a missed signal costs a player nothing they
-	// weren't already going to learn, and a false one costs the
-	// signal its credibility.
-	NeedsEffect bool
+	// NeedsEffect lives in the bool block at the end of Card, for alignment.
 
 	// ManaAbilities are mana abilities carried on the card object,
 	// for the same reason as Keywords: a Treasure token's "{T},
@@ -188,9 +172,7 @@ type Card struct {
 	// etc. Always equal to Owner for cards not on the battlefield.
 	Controller uuid.UUID
 
-	// Tapped is the usual MTG tap state. Only meaningful for cards on
-	// the battlefield; ignored in other zones.
-	Tapped bool
+	// Tapped lives in the bool block at the end of Card, for alignment.
 
 	// BattleX, BattleY are the normalised position of a card on the
 	// battlefield, as fractions of the battlefield area (each in the
@@ -207,9 +189,7 @@ type Card struct {
 	// counters; they're just storage until rules enforcement grows.
 	Counters map[string]int
 
-	// IsCommander marks a card as a commander for the Commander format.
-	// Commanders live in the command zone at game start.
-	IsCommander bool
+	// IsCommander lives in the bool block at the end of Card, for alignment.
 
 	// AttackingTarget is the player ID this card has been declared to
 	// attack. uuid.Nil means "not declared as attacker". Set by
@@ -238,14 +218,7 @@ type Card struct {
 	// Only meaningful for creatures on the battlefield. Added in S13.1.
 	DamageMarked int
 
-	// FaceDown is the visual face-down flag (CR 708) — morph,
-	// manifest, mutate-bottom, set face-down by an effect. Distinct
-	// from the KnownBy knowledge set: a face-down creature is
-	// face-down to everyone visually, but the morph caster (and
-	// anyone who saw it via Frantic Search-style reveal) still has
-	// the card in their KnownBy set so the hover-reveal works on
-	// their client. Added in S13.5.
-	FaceDown bool
+	// FaceDown lives in the bool block at the end of Card, for alignment.
 
 	// KnownBy is the per-instance "who currently knows this card's
 	// identity" set (S13.5). Sticky across zone moves: once a player
@@ -267,24 +240,8 @@ type Card struct {
 	// game's lifetime. Added in S16 sub-PR 3.
 	EnteredBattlefieldAt int64
 
-	// SummonedThisTurn is the summoning-sickness flag (CR 302.1).
-	// Set true whenever the card enters the battlefield; cleared at
-	// the start of the controller's untap step. Haste (CR 702.10)
-	// is a read-time bypass in HasSummoningSickness, NOT a
-	// clear-on-ETB — so a creature that gains haste mid-turn
-	// becomes attackable immediately, and one that loses haste
-	// mid-turn remains sick until next untap. Only meaningful on
-	// the battlefield; ignored in other zones. Added in S18 sub-PR 2.
-	SummonedThisTurn bool
-
-	// MarkedLethalByDeathtouch is the S18 deathtouch-mark flag (CR
-	// 702.2c — "any nonzero damage from a source with deathtouch
-	// causes that damage to be marked as lethal"). Set true when
-	// damage from a deathtouch source lands on this creature;
-	// read by the lethal-damage SBA. Cleared at StepCleanup
-	// alongside DamageMarked. Only meaningful on the battlefield.
-	// Added in S18 sub-PR 3.
-	MarkedLethalByDeathtouch bool
+	// SummonedThisTurn and MarkedLethalByDeathtouch live in the bool
+	// block at the end of Card, for alignment.
 
 	// ExilePlay is the impulse-exile permission (S21 sub-PR 6):
 	// "exile the top card of your library — you may play it this
@@ -314,7 +271,7 @@ type Card struct {
 	// sites and 389 Card{} literals, whereas leaving them as fields
 	// means all 74 Is*() call sites keep compiling and START being
 	// right, since "the characteristics of the face that's currently
-	// up" is exactly CR 711.2.
+	// up" is exactly CR 712.8.
 	Faces []Face
 
 	// ActiveFace indexes Faces.
@@ -372,7 +329,7 @@ type Card struct {
 	// S24, per ADR 0036 decision 1.
 	AttachedTo TargetRef
 
-	// AttachedAt is the CR 613.7d timestamp: an Equipment's or
+	// AttachedAt is the CR 613.7e timestamp: an Equipment's or
 	// Aura's continuous effect gets a NEW timestamp when it becomes
 	// attached, not the one it got when it entered the
 	// battlefield. The layer engine prefers this over
@@ -408,7 +365,7 @@ type Card struct {
 	NamedTribe string
 
 	// PrintedSelf is this card's OWN printed values, stashed when a
-	// CR 706 copy effect overwrote the flat printed fields above.
+	// CR 707 copy effect overwrote the flat printed fields above.
 	// nil — which is every card that is not a Clone-class permanent
 	// — means the printed fields are the card's own and nothing has
 	// to be undone.
@@ -434,7 +391,7 @@ type Card struct {
 	// like Power / Toughness / ManaCost, not card-effect data, and
 	// while the only source was the catalog every battle outside the
 	// opt-in catalog entered with zero defense counters and was
-	// swept into the graveyard by the CR 704.5p SBA before anyone
+	// swept into the graveyard by the CR 704.5v SBA before anyone
 	// could attack it. That was live on `main` for every battle a
 	// player could import. The catalog's BattleSpec.Defense survives
 	// as a fallback for cards with no printed data — tokens,
@@ -444,7 +401,7 @@ type Card struct {
 	StartingDefense int
 
 	// ProtectorPlayerID is the opponent chosen to protect a battle
-	// as it enters (CR 310.5). uuid.Nil for every other card type,
+	// as it enters (CR 310.9a). uuid.Nil for every other card type,
 	// and for a battle whose protector prompt has not been answered
 	// yet.
 	//
@@ -472,6 +429,112 @@ type Card struct {
 	// atomically without partial-update visibility. Added in S16
 	// sub-PR 3.
 	effective *Characteristic
+
+	// --- bools --------------------------------------------------------
+	//
+	// Every bool on Card lives here, together, rather than beside the
+	// mechanic that added it: a lone bool between two 8-byte fields
+	// strands 7 bytes of padding, and six of them cost Card 32 bytes
+	// (#35). Each still has a one-line pointer in its original section.
+	// TestCardHasNoInteriorPadding fails if a new bool strands padding
+	// anywhere else.
+
+	// NeedsEffect records that this card's printed text describes
+	// rules only a hand-written catalog Spec can carry out — it is
+	// NOT "has oracle text" and it is NOT "is missing from the
+	// catalog". A vanilla creature is false; a creature whose whole
+	// text is enforced keywords is false; a Forest is false. See
+	// coverage.go for the reasoning and NeedsCatalogEffect for the
+	// derivation.
+	//
+	// Stamped by the deck importer from the Scryfall record, the
+	// same road Keywords and StartingLoyalty travel, and joined with
+	// catalog membership by game.Unimplemented — the one definition
+	// the deck-upload summary, the card view and the stack view all
+	// read, so they cannot disagree.
+	//
+	// False for cards that never went through deck import (tokens,
+	// fixtures, the demo seed), which means they are never flagged.
+	// Deliberate: a missed signal costs a player nothing they
+	// weren't already going to learn, and a false one costs the
+	// signal its credibility.
+	NeedsEffect bool
+
+	// Tapped is the usual MTG tap state. Only meaningful for cards on
+	// the battlefield; ignored in other zones.
+	Tapped bool
+
+	// IsCommander marks a card as a commander for the Commander format.
+	// Commanders live in the command zone at game start.
+	IsCommander bool
+
+	// FaceDown is the visual face-down flag (CR 708) — morph,
+	// manifest, mutate-bottom, set face-down by an effect. Distinct
+	// from the KnownBy knowledge set: a face-down creature is
+	// face-down to everyone visually, but the morph caster (and
+	// anyone who saw it via Frantic Search-style reveal) still has
+	// the card in their KnownBy set so the hover-reveal works on
+	// their client. Added in S13.5.
+	FaceDown bool
+
+	// SummonedThisTurn is the summoning-sickness flag (CR 302.6).
+	// Set true whenever the card enters the battlefield; cleared at
+	// the start of the controller's untap step. Haste (CR 702.10)
+	// is a read-time bypass in HasSummoningSickness, NOT a
+	// clear-on-ETB — so a creature that gains haste mid-turn
+	// becomes attackable immediately, and one that loses haste
+	// mid-turn remains sick until next untap. Only meaningful on
+	// the battlefield; ignored in other zones. Added in S18 sub-PR 2.
+	SummonedThisTurn bool
+
+	// MarkedLethalByDeathtouch is the S18 deathtouch-mark flag (CR
+	// 702.2c — "any nonzero damage from a source with deathtouch
+	// causes that damage to be marked as lethal"). Set true when
+	// damage from a deathtouch source lands on this creature;
+	// read by the lethal-damage SBA. Cleared at StepCleanup
+	// alongside DamageMarked. Only meaningful on the battlefield.
+	// Added in S18 sub-PR 3.
+	MarkedLethalByDeathtouch bool
+
+	// VariableToughness records that the printed toughness is not a
+	// number ("*", "1+*", "?"), so Toughness is the importer's 0
+	// stand-in rather than a printed 0. The toughness state-based
+	// action's placeholder skip reads it: a `*` creature whose
+	// characteristic-defining ability is handled manually stays
+	// skipped even after it loses its last counter, where a real
+	// printed 0/0 does not (LostLastCounter, #683).
+	//
+	// Stamped by the deck importer, per face on Faces, and carried by
+	// copy effects with the rest of the printed values: Clone-style
+	// copies (CopiableValuesOf) and token copies (TokenCopyTemplate).
+	// A copy whose exception sets a numeric toughness clears it. False
+	// for an empty printed toughness (non-creatures) and for cards
+	// that never went through import (tokens, fixtures, the demo
+	// seed).
+	VariableToughness bool
+
+	// LostLastCounter records that this object's counters went from
+	// some to none: its last counter was removed (an effect, the
+	// add_counter action) or cancelled (CR 704.5q). Removing a counter
+	// from a card that has none does not set it. It exists for the
+	// toughness state-based action's printed-0 skip — "Toughness == 0
+	// and no counters" is the placeholder / unparseable-stats
+	// convention documented on Power, and a 0/0 that just LOST its
+	// last +1/+1 counter looks exactly like one. A card that has lost
+	// its counters is not a placeholder: its 0 toughness is real, and
+	// CR 704.5f puts it into its owner's graveyard. The exception is
+	// a card whose printed toughness is not a number
+	// (VariableToughness): its 0 is still the import stand-in, so the
+	// skip keeps covering it. Without the flag a Hangarback Walker
+	// whose one +1/+1 counter cancels against a -1/-1 counter, or is
+	// removed by an effect, would stay on the battlefield as a 0/0 no
+	// damage could kill (#683).
+	//
+	// Per object, like Counters: cleared wherever Counters is reset
+	// for a new object (leaving the battlefield, a token, a spell
+	// copy). A card cast for X=0 never had counters, so it is not
+	// flagged — that separate gap is noted on the X cards.
+	LostLastCounter bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for
@@ -551,7 +614,8 @@ func (c Card) CurrentPower() int {
 // callers compare against DamageMarked directly. NOT clamped (cf.
 // CurrentPower) because the SBAs need to distinguish "printed 0/0
 // placeholder" (Toughness == 0, no counters) from "reduced to 0/0
-// by -1/-1 counters" (Toughness > 0 + counters).
+// by -1/-1 counters" (Toughness > 0 + counters) and from "a 0/0 that
+// lost its last counter" (Card.LostLastCounter).
 //
 // Same caller responsibility as CurrentPower: ensure
 // RecomputeLayersIfStaleLocked has been called for this game state.

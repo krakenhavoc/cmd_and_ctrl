@@ -28,17 +28,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // observable difference is what happens when the last Synthesizer
 // leaves: the Constructs lose their sizing and shrink to 0/0, where
 // printed Constructs keep it for good and are never smaller than
-// 1/1. Weaker than printed, never stronger. (They shrink rather
-// than die: the engine's toughness state-based action skips a
-// printed 0/0 with no counters as a placeholder — the CurrentToughness
-// convention — so a shrunken Construct lingers as a 0/0 body. The
-// batch 15 test pins that so a change in the convention shows.)
+// 1/1. Weaker than printed, never stronger. (A shrunken Construct
+// that never had a counter lingers as a 0/0 body: the engine's
+// toughness state-based action skips a printed 0/0 with no counters
+// as a placeholder, the CurrentToughness convention. One that had
+// counters and lost them all is not skipped (Card.LostLastCounter,
+// #683), so it dies when it shrinks, which is weaker still: a printed
+// Construct never shrinks at all. The batch 15 tests pin both.)
 func init() {
 	Register(Spec{
 		OracleID:     "eb7a1f21-a66d-415b-8520-710b44890bb6",
 		Name:         "Simulacrum Synthesizer",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The Constructs get their +1/+1 per artifact from the Synthesizer rather than on their own, so if it leaves the battlefield they shrink to 0/0."},
+		Caveats:      []string{"The Constructs get their +1/+1 per artifact from the Synthesizer rather than on their own, so if it leaves the battlefield they shrink to 0/0, and a Construct that had counters and lost them all dies."},
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,
@@ -57,7 +59,7 @@ func init() {
 			WhenThisEnters("Simulacrum Synthesizer — scry 2", Do(Scry{N: 2})),
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b15AnotherBigArtifactYouControlEntered(ev, source, g)
-			}, "Simulacrum Synthesizer — create a Construct", Do(CreateToken{Template: b15ConstructToken(), N: 1})),
+			}, "Simulacrum Synthesizer — create a Construct", Do(CreateToken{Template: TokenCard("0/0 colorless Construct artifact"), N: 1})),
 		},
 	})
 }

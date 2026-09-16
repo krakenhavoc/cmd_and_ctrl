@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     the creature is gone at resolution (CR 608.2b), attaches the
 //     Aura to what it targeted as it enters, and re-runs this same
 //     spec as a state-based action for as long as it stays there
-//     (CR 704.5n). One declaration, four consumers.
+//     (CR 704.5m). One declaration, four consumers.
 //   - +2/+0 is a layer 7c modify and trample is a layer 6 grant,
 //     both scoped to the enchanted creature by the attachment.
 //   - The recursion clause is an LTB trigger, and it is what makes

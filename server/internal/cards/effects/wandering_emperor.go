@@ -48,7 +48,7 @@ import (
 //     here.
 //   - "You may activate her loyalty abilities any time you could
 //     cast an instant" while she entered this turn. That is a
-//     per-permanent override of CR 606.5's sorcery-speed half, and
+//     per-permanent override of CR 606.3's sorcery-speed half, and
 //     the gate that enforces it (activated.go) has no hook for one.
 //     She is strictly slower than printed on the turn she lands.
 func init() {
@@ -68,7 +68,7 @@ func init() {
 					ctx := NewContext(g, item)
 					return CreateToken{
 						Controller: ctx.Controller(),
-						Template:   WhiteSamuraiToken(),
+						Template:   TokenCard("2/2 colorless Samurai with vigilance"),
 						N:          1,
 					}.Apply(ctx)
 				},

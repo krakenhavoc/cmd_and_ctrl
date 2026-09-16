@@ -23,7 +23,7 @@ import (
 // b16UntapAllYouControlMatching, the bounded mill is
 // b31MillAtMost, the first-legal-target read is
 // b16FirstLegalTargetCard and its destroy body
-// b17DestroyFirstLegalTarget, the Mirage fetch body is fetchDual,
+// destroyFirstLegalTarget, the Mirage fetch body is fetchDual,
 // the painless {C} half is painlessColorless, the 4/4 Angel is
 // b12WhiteAngelFlyingToken, the Blood / Clue / Food tokens are in
 // tokens.go, and the lord keyword grant is TribalKeywordGrant.
@@ -242,7 +242,7 @@ func b32AngelIfYouGainedLifeThisTurnAtLeast(n int) func(g *game.Game, item *game
 		if b15LifeGainedThisTurn(g, item.Controller) < n {
 			return nil
 		}
-		return CreateToken{Controller: item.Controller, Template: b12WhiteAngelFlyingToken(), N: 1}.Apply(NewContext(g, item))
+		return CreateToken{Controller: item.Controller, Template: TokenCard("4/4 white Angel with flying"), N: 1}.Apply(NewContext(g, item))
 	}
 }
 

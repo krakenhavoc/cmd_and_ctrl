@@ -29,12 +29,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventSacrifice, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b28YouSacrificedArtifactOrCreature(ev, source, g)
-			}, "Ravenous Squirrel — put a +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {
-				if !b09SourceStillOnBattlefield(g, item) {
-					return nil
-				}
-				return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
-			}),
+			}, "Ravenous Squirrel — put a +1/+1 counter on it", putCounterOnSelf),
 		},
 		Activated: []ActivatedAbility{{
 			Label: "{1}{B}{G}, Sacrifice an artifact or creature: You gain 1 life and draw a card.",

@@ -95,7 +95,9 @@ type Game struct {
 	// StartingSeat is the seat index that took the first turn. Set in
 	// Start() to the active seat at game start. Used by the StepDraw
 	// auto-action to skip the starting player's turn-1 draw per
-	// CR 103.7c. Replays predating S13 default to seat 0 on decode,
+	// CR 103.8a — in a two-player game only, because CR 103.8c has
+	// nobody skip it in any other multiplayer game.
+	// Replays predating S13 default to seat 0 on decode,
 	// which matches the only seat games started on before this field
 	// existed. Added in S13.
 	StartingSeat int
@@ -132,14 +134,14 @@ type Game struct {
 	DelayedTriggers []*DelayedTrigger
 
 	// SplitSecondActive mirrors "any item on the stack has
-	// SplitSecond set" (CR 702.79). While true, cast_spell and
+	// SplitSecond set" (CR 702.61). While true, cast_spell and
 	// activate_ability return ErrSplitSecondActive. Mana abilities
 	// and special actions stay legal. Recomputed every time the
 	// stack changes (cast, counter, resolve). Added in S13.1.
 	SplitSecondActive bool
 
 	// LoyaltyActivatedThisTurn flags planeswalkers whose loyalty
-	// abilities have already been activated this turn (CR 606.5).
+	// abilities have already been activated this turn (CR 606.3).
 	// Keyed by the planeswalker's instance ID. Cleared on
 	// Turn.advance to a new turn (i.e. when ActiveSeat changes).
 	// Added in S13.1.
@@ -193,11 +195,16 @@ type Game struct {
 	// DiscardPending is the cleanup-step pause map (S13.4): keys
 	// are player IDs that need to discard, values are the count
 	// each player must discard. Set at cleanup-step entry by
-	// runStepEntryHooksLocked when Hand.Size() > MaxHandSize for
-	// any non-eliminated player; cleared per-player by the
-	// discard_selection action. The cleanup auto-advance is
-	// blocked while this map is non-empty so the cursor pauses
-	// for player input. Added in S13.4.
+	// populateDiscardPendingLocked, for the active player only
+	// (CR 514.1), when their hand is over their maximum hand size;
+	// cleared per-player by the discard_selection action. The
+	// cleanup auto-advance is blocked while this map is non-empty so
+	// the cursor pauses for player input. Added in S13.4.
+	//
+	// It is not cleanup-only: DiscardChoiceForEffect (Mind Rot,
+	// looting) adds to it too. That is a bug (#651). Outside cleanup
+	// nothing waits on the map, and entering cleanup resets it, so an
+	// effect discard still owed is lost.
 	DiscardPending map[uuid.UUID]int
 
 	// Promises is the directed per-pair "I owe you" promise-token count
@@ -601,7 +608,7 @@ func (g *Game) start(r *rand.Rand, state *rand.PCG) error {
 		// S13.5: opening-hand cards are known to their owner only.
 		// Library cards have no knowers (post-shuffle order is
 		// unknown to everyone). Command-zone cards are public — every
-		// seated player sees them per CR 400.7e.
+		// seated player sees them per CR 400.2.
 		for i := range p.Hand.Cards {
 			p.Hand.Cards[i].AddKnower(p.ID)
 		}
@@ -704,7 +711,7 @@ func (g *Game) advanceCursorLocked() {
 
 // onTurnAdvanceLocked clears any per-turn caches whenever the
 // active seat changes. Currently flushes
-// `LoyaltyActivatedThisTurn` (CR 606.5 — once per turn per
+// `LoyaltyActivatedThisTurn` (CR 606.3 — once per turn per
 // planeswalker), but the same hook is the natural home for any
 // other "reset on new turn" caches the engine grows. Caller must
 // hold g.mu.
@@ -822,7 +829,8 @@ func (g *Game) CastTallyFor(playerID uuid.UUID) CastTally {
 //     refresh their per-turn undo budget; auto-advance because Untap
 //     grants no priority.
 //   - StepDraw (S13): draw 1 for the active seat, except when the
-//     starting player would draw on turn 1 (CR 103.7c skip).
+//     starting player would draw on turn 1 of a TWO-player game
+//     (CR 103.8a skip; CR 103.8c has no one skip at a larger table).
 //   - StepCombatDamage: auto-resolve unblocked attacker damage.
 //   - StepEnd (S22): emit EventBeginEndStep so "at the beginning of
 //     your end step" triggers fire. The delayed-trigger drain that
@@ -908,7 +916,7 @@ func (g *Game) runStepEntryHooksLocked() {
 	g.fireDelayedTriggersLocked(g.Turn.Step)
 	switch g.Turn.Step {
 	case StepPrecombatMain:
-		// S27 / CR 714.2b: "after your draw step, put a lore counter
+		// S27 / CR 714.3: "after your draw step, put a lore counter
 		// on each Saga you control" is a turn-based action performed
 		// as the precombat main phase begins. Precombat main grants
 		// priority, so there is no auto-advance — the chapter
@@ -921,7 +929,7 @@ func (g *Game) runStepEntryHooksLocked() {
 		// of your precombat main phase" triggers auto-fire through
 		// the harvester. Same shape as the upkeep and end-step
 		// announcements, and it follows the Saga advance for the same
-		// reason CR 714.2b puts that first: the turn-based action
+		// reason CR 714.3 puts that first: the turn-based action
 		// happens as the phase begins, and the triggers that watch
 		// the phase go on the stack above whatever it queued.
 		if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
@@ -972,9 +980,14 @@ func (g *Game) runStepEntryHooksLocked() {
 		if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
 			return
 		}
-		// CR 103.7c: the player who takes the first turn skips their
-		// draw step on turn 1. Subsequent turns are normal.
-		if g.Turn.Number == 1 && g.Turn.ActiveSeat == g.StartingSeat {
+		// CR 103.8a: in a two-player game the player who takes the
+		// first turn skips their draw step on turn 1. CR 103.8c: in
+		// every other multiplayer game nobody skips it, so a 3- or
+		// 4-player table's starting seat draws like everyone else.
+		// (CR 103.8b's Two-Headed Giant case does not apply — the
+		// engine has no team format.) Subsequent turns are normal.
+		if g.Turn.Number == 1 && g.Turn.ActiveSeat == g.StartingSeat &&
+			g.startingPlayerCountLocked() == 2 {
 			return
 		}
 		// Best-effort: an empty library on auto-draw is not a hard
@@ -1044,6 +1057,29 @@ func (g *Game) runStepEntryHooksLocked() {
 			g.runStepEntryHooksLocked()
 		}
 	}
+}
+
+// startingPlayerCountLocked reports how many players the game began
+// with — the number CR 103.8 keys the turn-1 skip-draw rule off.
+//
+// Eliminated players deliberately still count. The rule is about the
+// game's player count at the start ("a two-player game", CR 103.8a vs
+// "all other multiplayer games", CR 103.8c), not about who is still
+// alive when the draw step arrives; a concession on turn 1 does not
+// retroactively turn a three-player game into a two-player one. Seats
+// are only ever added or removed in StateLobby (RemovePlayer refuses
+// once the game is active, and a player leaves an active game by
+// conceding), so the live seat count still is the count at Start.
+//
+// Caller must hold g.mu.
+func (g *Game) startingPlayerCountLocked() int {
+	n := 0
+	for _, p := range g.Seats {
+		if p != nil {
+			n++
+		}
+	}
+	return n
 }
 
 // populateDiscardPendingLocked records an over-max discard count

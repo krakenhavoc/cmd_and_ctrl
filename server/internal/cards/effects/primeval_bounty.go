@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The six-mana value engine, three triggers. The two cast triggers
 // read the spell off the stack, where its type line is intact
-// (b12CreatureSpellCastByYou / b10NoncreatureSpellCastByYou); the
+// (creatureSpellCastByYou / b10NoncreatureSpellCastByYou); the
 // counter trigger targets a creature the controller controls, so
 // with none on the battlefield it is removed (CR 603.3d) and the
 // target is re-checked as it resolves. Landfall is a land entering
@@ -27,8 +27,8 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b12CreatureSpellCastByYou(ev, source, g)
-			}, "Primeval Bounty — create a 3/3 Beast", Do(CreateToken{Template: GreenBeastToken(), N: 1})),
+				return creatureSpellCastByYou(ev, source, g)
+			}, "Primeval Bounty — create a 3/3 Beast", Do(CreateToken{Template: TokenCard("3/3 colorless Beast"), N: 1})),
 			{
 				Watches:   []game.EventKind{game.EventCast},
 				AppliesTo: b10NoncreatureSpellCastByYou,

@@ -11,7 +11,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // activated ability whose cost is "sacrifice a land", built through
 // the same clause the creature sac outlets use, so the client opens
 // the same picker and the engine filters it to the activator's own
-// lands (CR 701.17b). No tap, so it can be activated any number of
+// lands (CR 701.21a). No tap, so it can be activated any number of
 // times in a row.
 //
 // No simplification.

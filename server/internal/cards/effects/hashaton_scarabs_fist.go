@@ -53,7 +53,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDiscardCard},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return discardedByYou(ev, source) && discardedCardHasType(ev, g, "creature")
+				return discardedByYou(ev, source) && eventCardHasType(ev, g, "creature")
 			},
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 				// Capture the discarded card's ID, not the card and
@@ -90,6 +90,7 @@ func init() {
 func hashatonZombieException(t *game.Card) {
 	t.Power = 4
 	t.Toughness = 4
+	t.VariableToughness = false // a printed 4, not a `*` stand-in (#683)
 	t.Colors = []string{"B"}
 	t.TypeLine = retypedTypeLine(t.TypeLine, "Zombie")
 	t.Tapped = true

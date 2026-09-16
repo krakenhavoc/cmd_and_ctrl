@@ -79,7 +79,7 @@ func TestElspethPlusOneMakesThreeSoldiers(t *testing.T) {
 	if err := g.ActivateCatalogAbility(owner.ID, pw, 0, game.ActivateAbilityParams{}); err != nil {
 		t.Fatalf("+1: %v", err)
 	}
-	// The loyalty is paid at ANNOUNCE (CR 606.2), before the ability
+	// The loyalty is paid at ANNOUNCE (CR 606.4), before the ability
 	// reaches the stack.
 	if got := loyaltyOf(g, pw); got != 5 {
 		t.Errorf("loyalty after +1 = %d, want 5", got)
@@ -126,7 +126,52 @@ func TestElspethMinusThreeSweepsBigCreaturesOnly(t *testing.T) {
 	_ = small
 }
 
-// TestLoyaltyAbilityIsOncePerTurn is CR 606.5, enforced by the engine
+// TestElspethDeclaresItsOmittedUltimate pins the −7 as omitted AND
+// published. The two halves fail differently: an emblem stub would
+// grow the ability list, and a spec back at the zero Completeness
+// hides the omission from the catalog page, which is what #418
+// shipped.
+func TestElspethDeclaresItsOmittedUltimate(t *testing.T) {
+	spec, ok := Lookup(elspethSunsChampionOracle)
+	if !ok {
+		t.Fatal("Elspeth, Sun's Champion is not registered")
+	}
+	if len(spec.Activated) != 2 {
+		t.Fatalf("Elspeth declares %d abilities, want 2 (+1 and −3)", len(spec.Activated))
+	}
+	for i, ab := range spec.Activated {
+		if ab.Cost.Loyalty == nil || *ab.Cost.Loyalty <= -7 {
+			t.Errorf("ability %d (%q) is not the +1 or the −3", i, ab.Label)
+		}
+	}
+	if spec.Completeness != CompletenessCaveats {
+		t.Errorf("Completeness = %v, want CompletenessCaveats", spec.Completeness)
+	}
+	if len(spec.Caveats) == 0 {
+		t.Error("no caveat names the missing −7")
+	}
+}
+
+// TestEveryPlaneswalkerDeclaresItsCompleteness is the catalog-wide
+// form of the test above. Omitting an ultimate is the ordinary shape
+// of a planeswalker here (ADR 0032), so a spec with a loyalty ability
+// left at CompletenessUnreviewed is almost certainly an omission the
+// catalog page is not telling anyone about.
+func TestEveryPlaneswalkerDeclaresItsCompleteness(t *testing.T) {
+	for _, spec := range All() {
+		for _, ab := range spec.Activated {
+			if ab.Cost.Loyalty == nil {
+				continue
+			}
+			if spec.Completeness == CompletenessUnreviewed {
+				t.Errorf("%s has loyalty abilities but no Completeness declaration", spec.Name)
+			}
+			break
+		}
+	}
+}
+
+// TestLoyaltyAbilityIsOncePerTurn is CR 606.3, enforced by the engine
 // off the presence of the loyalty component rather than by anything
 // the card declares.
 func TestLoyaltyAbilityIsOncePerTurn(t *testing.T) {

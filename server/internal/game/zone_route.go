@@ -101,7 +101,7 @@ type zoneRoute struct {
 	// table as knowers — see ExileTopFaceDownForEffect.
 	FaceDown bool
 
-	// Mill flags a mill (CR 701.13) so the completed move emits
+	// Mill flags a mill (CR 701.17) so the completed move emits
 	// EventMill rather than EventZoneMove. Only honoured when the
 	// move actually lands in a graveyard: a commander redirected to
 	// the command zone was never put into a graveyard, so it was
@@ -297,6 +297,12 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) error {
 		// the state-check loop does not run while a choice is queued.
 		g.pruneSacrificeChoicesLocked()
 	}
+	// #605: a card that has just landed invalidates any OTHER queued
+	// prompt still asking about a move of the same card out of the
+	// zone it has now left. Unconditional — an exit from the stack or
+	// a graveyard can strand a sibling prompt just as a battlefield
+	// one can.
+	g.pruneStaleZoneChangeChoicesLocked()
 	return nil
 }
 

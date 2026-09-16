@@ -26,28 +26,6 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b17GnomeToken is Threefold Thunderhulk's 1/1 colorless Gnome
-// artifact creature.
-func b17GnomeToken() game.Card {
-	return game.Card{
-		Name:      "Gnome",
-		TypeLine:  "Token Artifact Creature — Gnome",
-		Power:     1,
-		Toughness: 1,
-	}
-}
-
-// b17RedOgreToken is Kazuul's 3/3 red Ogre.
-func b17RedOgreToken() game.Card {
-	return game.Card{
-		Name:      "Ogre",
-		TypeLine:  "Token Creature — Ogre",
-		Power:     3,
-		Toughness: 3,
-		Colors:    []string{"R"},
-	}
-}
-
 // --- board reads -------------------------------------------------
 
 // b17LandCardsInGraveyard counts the land cards in `player`'s
@@ -494,11 +472,11 @@ func b17ClaimJumperSearch(g *game.Game, item *game.StackItem, again bool) error 
 	}.Apply(NewContext(g, item))
 }
 
-// b17DestroyFirstLegalTarget destroys the first announce-time target
+// destroyFirstLegalTarget destroys the first announce-time target
 // slot that is still a legal battlefield card — the body of a
 // single-target "destroy target X" activated ability (Insidious
 // Fungus's two removal modes).
-func b17DestroyFirstLegalTarget(g *game.Game, item *game.StackItem) error {
+func destroyFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	id, ok := b16FirstLegalTargetCard(ctx)
 	if !ok {
@@ -509,9 +487,20 @@ func b17DestroyFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 
 // b17FoodPerCreatureYouControl is The Battle of Bywater's second
 // sentence: a Food for each creature the controller controls, read
-// after the destruction.
-func b17FoodPerCreatureYouControl(ctx *Context) error {
-	n := b14CreaturesControlled(ctx.Game, ctx.Controller())
+// after the destruction. `destroyed` is the sweep's set. A card from
+// it that is still on the battlefield is a commander waiting on its
+// owner's CR 903.9 answer: it was destroyed, so it does not count.
+func b17FoodPerCreatureYouControl(ctx *Context, destroyed []game.Card) error {
+	gone := make(map[uuid.UUID]bool, len(destroyed))
+	for _, c := range destroyed {
+		gone[c.InstanceID] = true
+	}
+	n := 0
+	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
+		if c.Controller == ctx.Controller() && c.IsCreature() && !gone[c.InstanceID] {
+			n++
+		}
+	}
 	if n == 0 {
 		return nil
 	}

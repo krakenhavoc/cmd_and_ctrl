@@ -14,7 +14,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // cropping. The size is a layer 7c modify keyed on
 // b17LandCardsInGraveyard (Multani's read); the ability is a CR 602
 // activation with three cost components — the mana, the tap (which
-// waits out summoning sickness, CR 302.1) and b08SacrificeALand's
+// waits out summoning sickness, CR 302.6) and b08SacrificeALand's
 // picker — whose land search is the S22 chooser with the tapped
 // flag, any land card at all.
 //

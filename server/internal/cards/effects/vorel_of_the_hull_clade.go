@@ -11,7 +11,7 @@ package effects
 // added again through AddCounter — so a Hardened Scales or Doubling
 // Season applies to the doubling, as printed, and a doubled kind is
 // never re-read mid-loop. A creature source, so the tap waits out
-// summoning sickness (CR 302.1). The target is any artifact,
+// summoning sickness (CR 302.6). The target is any artifact,
 // creature or land, the controller's or not.
 //
 // No simplification.

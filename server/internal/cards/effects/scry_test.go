@@ -9,7 +9,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
-// scry_test.go — CR 701.18 scry: Viscera Seer, Preordain.
+// scry_test.go — CR 701.22 scry: Viscera Seer, Preordain.
 //
 // Three things here are worth more than "the cards moved":
 //

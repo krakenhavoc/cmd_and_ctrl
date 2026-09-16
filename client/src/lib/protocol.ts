@@ -182,7 +182,9 @@ export interface GameView {
   // Added in S11.
   undo_limit?: number;
   // Seat index that took the first turn. Used by the server to enforce
-  // the CR 103.7c turn-1 skip-draw rule. Added in S13. Pre-S13 replays
+  // the CR 103.8a turn-1 skip-draw rule — in two-player games only,
+  // since CR 103.8c has nobody skip at a larger table. Added in S13.
+  // Pre-S13 replays
   // decode as 0 (Go's int zero), which matches the only seat games
   // ever started on before the field existed.
   starting_seat?: number;
@@ -200,7 +202,7 @@ export interface GameView {
   // the shared exile zone. Empty when nothing is pending.
   delayed_triggers?: DelayedTriggerView[];
   // Mirrors `Game.SplitSecondActive` — true while any item with
-  // split second is on the stack (S13.1, CR 702.79). Drives the
+  // split second is on the stack (S13.1, CR 702.61). Drives the
   // client's "no responses allowed" UI gating.
   split_second_active?: boolean;
   // Cleanup-step pause map (S13.4, CR 402.2). Keys are player UUID
@@ -228,7 +230,7 @@ export interface GameView {
   // entry naming a card is an entry this viewer is entitled to see
   // named. Absent on a game that has produced no events yet.
   log?: LogEvent[];
-  // S22 broadcast reveals (CR 701.16): the cards players have shown
+  // S22 broadcast reveals (CR 701.20): the cards players have shown
   // the WHOLE TABLE this turn, oldest first, at most 4 of them.
   //
   // The one field on this view that is byte-identical for every seat.
@@ -330,14 +332,18 @@ export interface LegalMoveView {
 }
 
 export interface MoveCost {
-  // Life paid at announce (CR 118.4 / 118.8) — Necropotence's 1,
+  // Life paid at announce (CR 119.4) — Necropotence's 1,
   // Griselbrand's 7. Always positive when present, and payable: the
   // server only offers a cost the seat can meet. Note that "payable"
   // includes paying your last point, which is legal and lethal.
   life?: number;
-  // A loyalty ability's counter delta (CR 606.1), signed as printed:
+  // A loyalty ability's counter delta (CR 606.4), signed as printed:
   // +1 adds one, -3 removes three.
   loyalty?: number;
+  // #625: counters a "remove N counters" cost takes, and from which
+  // permanent — often not the move's source (Heart of Kiran's crew
+  // paid with a planeswalker's loyalty).
+  counters?: { card_id: string; counter: string; n: number }[];
 }
 
 // LogKind mirrors `protocol.LogKind` server-side. Coarser than the
@@ -357,7 +363,13 @@ export type LogKind =
   | "block"
   | "token"
   | "sacrifice"
-  | "eliminated";
+  | "eliminated"
+  // A player revealed cards (CR 701.20): one entry per reveal, however
+  // many cards it showed. Never carries card_id; `amount` is the card
+  // count, `old_zone` where they were revealed from, and `target_seat`
+  // is set when the reveal was to one player only, in which case the
+  // text names no card for anyone.
+  | "reveal";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the
@@ -419,11 +431,11 @@ export interface PendingChoiceView {
     // {choice_id, card_ids} payload — one entry — and rendered by the
     // shared card grid with sacrifice copy.
     | "sacrifice_choice"
-    // S21: scry N (CR 701.18). Options carries the looked-at cards
+    // S21: scry N (CR 701.22). Options carries the looked-at cards
     // top-first, redacted to the chooser alone — scry is "look at",
     // not "reveal". Answered with {bottom, top_order}.
     | "scry"
-    // S22: surveil N (CR 701.42). Scry's frame with the
+    // S22: surveil N (CR 701.25). Scry's frame with the
     // bottom-of-library leg replaced by the graveyard — same
     // chooser-only redaction on options, same top-first ordering.
     // Answered with {graveyard, top_order}, NOT {bottom, top_order}:
@@ -443,11 +455,11 @@ export interface PendingChoiceView {
     // prompt is open; the answer is what decides how it enters.
     // pay_cost carries the payment ("2 life").
     | "entry_pay_life"
-    // S22: "search your library for ..." (CR 701.19). Options carries
+    // S22: "search your library for ..." (CR 701.23). Options carries
     // the matching cards, sent ONLY to the chooser — a library is a
     // hidden zone and even the number of matches is private. Answered
     // with the generic {choice_id, card_ids} payload; an empty list
-    // is a legal "fail to find" (CR 701.19c), so search_max is the
+    // is a legal "fail to find" (CR 701.23b), so search_max is the
     // ceiling and the floor is zero.
     | "search_library"
     // S28 cascade (CR 702.85): "you may cast it without paying its
@@ -630,7 +642,7 @@ export interface StackItemView {
   // for anyone deciding whether to respond: an overloaded Cyclonic
   // Rift is a one-sided wipe, a hard-cast one is a single bounce.
   alt_cost?: string;
-  // S30: a CR 706.10 spell copy rather than a cast card. The copy
+  // S30: a CR 707.10 spell copy rather than a cast card. The copy
   // and its source look identical on the stack, and which is which
   // decides what countering one leaves behind.
   is_copy?: boolean;
@@ -882,7 +894,7 @@ export interface ActivatedAbilityView {
   life_cost?: number;
   sorcery_speed?: boolean;
   // loyalty_cost is the +N / 0 / −N of a planeswalker's loyalty
-  // ability (CR 606.1). Its PRESENCE, not its value, is what marks
+  // ability (CR 606.4). Its PRESENCE, not its value, is what marks
   // the ability as a loyalty ability — 0 is a real printed cost —
   // so test for `!== undefined`, never for truthiness. Added with
   // #329 / #334.
@@ -903,6 +915,29 @@ export interface ActivatedAbilityView {
   // The picks ride activate_ability as `crew_ids`.
   crew_cost?: number;
   crew_options?: LegalTargetsView;
+  // #625: a "remove N counters" cost component. counter_cost_n is how
+  // many, and its presence marks the component.
+  //
+  //   - counter_cost_kind is the printed kind ("loyalty", "gold");
+  //     ABSENT means "a counter" of any kind, and the picker asks for
+  //     the kind as well as the permanent.
+  //   - counter_cost_self: the counters come off the source itself
+  //     ("Remove a gold counter from this artifact"); nothing is sent.
+  //   - counter_cost_label: the "from" clause of the other form ("a
+  //     planeswalker you control").
+  //   - counter_cost_options: what could pay right now, most counters
+  //     first — permanents the viewer controls holding enough of the
+  //     kind, each with the kinds that could pay. A cost does not
+  //     target, so hexproof permanents are included. Absent when
+  //     nothing can pay.
+  //
+  // The choice rides activate_ability as `counter_source_ids` (not for
+  // the self form) and `counter_kind` (only for the any-kind form).
+  counter_cost_n?: number;
+  counter_cost_kind?: string;
+  counter_cost_self?: boolean;
+  counter_cost_label?: string;
+  counter_cost_options?: CounterCostOptionView[];
   // {X} in the ability's mana cost (CR 602.2b) — Helm of Obedience,
   // Treasure Vault, Soothsaying. demands_x opens the X picker before
   // the targeting step, and the answer rides activate_ability as
@@ -923,6 +958,13 @@ export interface ActivatedAbilityView {
   // the Emperor's −2 — be confirmed with nothing picked.
   target_mode?: string;
   legal_targets?: LegalTargetsView;
+}
+
+// CounterCostOptionView is one permanent that could pay a "remove N
+// counters" cost, with the kinds on it that could (#625).
+export interface CounterCostOptionView {
+  card_id: string;
+  kinds: { kind: string; count: number }[];
 }
 
 export interface ModeOptionView {
@@ -988,9 +1030,10 @@ export interface CardView {
   // meaningful on the battlefield; omitted when zero.
   damage_marked?: number;
   // S13.5 visual face-down flag (CR 708 — morph / manifest /
-  // mutate-bottom). Distinct from known_by_you: a face-down card
-  // is visually a card back to everyone, but knowers can hover-
-  // reveal the printed characteristics.
+  // mutate-bottom, Necropotence's exile). Distinct from known_by_you:
+  // a viewer who doesn't know a face-down card gets it redacted to
+  // game state and Card.svelte draws a back (cardBack.ts, #95); a
+  // viewer who knows it still sees the face.
   face_down?: boolean;
   // S13.5 per-viewer knowledge flag. True when the viewer is in the
   // server-side KnownBy set for this card. When false, printed
@@ -1023,7 +1066,7 @@ export interface CardView {
   // id is a seat id or an instance id and this says which. Absent
   // when nothing is declared.
   attacking_target_kind?: "player" | "planeswalker" | "battle";
-  // S27: the seat protecting this battle (CR 310.5). Absent for every
+  // S27: the seat protecting this battle (CR 310.9a). Absent for every
   // other card type and for a battle whose protector prompt has not
   // been answered. Public — it decides who may attack it.
   protector_player?: string;
@@ -1111,10 +1154,10 @@ export interface CardView {
   exile_play?: ExilePlayView;
   // S21 sub-PR 2: activated abilities offered by this permanent.
   activated_abilities?: ActivatedAbilityView[];
-  // S21 sub-PR 2: CR 302.1 summoning sickness — entered this turn
+  // S21 sub-PR 2: CR 302.6 summoning sickness — entered this turn
   // without haste, so it can't attack or pay a {T} cost.
   summoning_sick?: boolean;
-  // CR 606.5: a loyalty ability has already been activated on this
+  // CR 606.3: a loyalty ability has already been activated on this
   // planeswalker this turn, so every loyalty row in its menu is
   // greyed until the turn cursor moves on. Before #334 this state
   // was server-only, which is why canActivateLoyalty had to take
@@ -1184,12 +1227,12 @@ export interface ManaAbilityView {
   // the identically-named fields on ActivatedAbilityView: the label
   // is the clause for the modal banner, and sacrifice_options lists
   // the legal choices already filtered to the controller
-  // (CR 701.17b). Absent means the cost needs no extra choice.
+  // (CR 701.21a). Absent means the cost needs no extra choice.
   sacrifice_label?: string;
   sacrifice_options?: LegalTargetsView;
   // S22: a "Pay N life" component of the activation cost — Mana
   // Confluence's "{T}, Pay 1 life:". Advisory only; the server does
-  // the real CR 118.8 check. A damage RIDER ("This land deals 1
+  // the real CR 119.4 check. A damage RIDER ("This land deals 1
   // damage to you", the painlands / Ancient Tomb) is NOT a cost and
   // never appears here — it is spelled out in `label` instead.
   life_cost?: number;

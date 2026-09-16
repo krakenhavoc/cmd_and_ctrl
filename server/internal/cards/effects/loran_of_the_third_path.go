@@ -21,7 +21,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     with one the controller may decline. The destroy goes through
 //     the S20 pick_target prompt and the CR 608.2b re-check.
 //   - The tap ability targets an opponent and draws one card for the
-//     controller and one for the target. CR 302.1 summoning sickness
+//     controller and one for the target. CR 302.6 summoning sickness
 //     applies (a tap cost on a creature), as printed.
 //
 // No simplification.
@@ -42,12 +42,7 @@ func init() {
 			},
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 				return game.NewTriggeredItem(source, "Loran of the Third Path — destroy target artifact or enchantment",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-							return nil
-						}
-						return DestroyTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
-					})
+					destroyChosenPermanent)
 			},
 		}},
 		Activated: []ActivatedAbility{{

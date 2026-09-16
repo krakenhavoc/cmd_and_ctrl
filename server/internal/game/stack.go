@@ -22,7 +22,7 @@ import "github.com/google/uuid"
 // on the stack: cast spells, activated abilities, and triggered
 // abilities. Spells reference an actual Card (in Game.Stack);
 // abilities reference their *source* card (which stays where it is —
-// usually the battlefield). Per CR 608.2m, abilities cease to exist
+// usually the battlefield). Per CR 608.2n, abilities cease to exist
 // on resolution; spells route to graveyard or battlefield.
 type StackItemKind string
 
@@ -85,7 +85,7 @@ type StackItem struct {
 
 	// Kind discriminates spell / activated / triggered. Spells route
 	// to battlefield or graveyard on resolve; abilities cease to
-	// exist (CR 608.2m).
+	// exist (CR 608.2n).
 	Kind StackItemKind
 
 	// Controller is the player who cast / activated this item. They
@@ -161,7 +161,7 @@ type StackItem struct {
 	AltCost string
 
 	// IsCopy marks a spell item that is a COPY of another spell
-	// (CR 706.10) rather than a cast card — Reverberate's output,
+	// (CR 707.10) rather than a cast card — Reverberate's output,
 	// Twincast's, the second half of a storm count. Set only on
 	// StackItemSpell items created by CopySpellForEffect.
 	//
@@ -183,7 +183,7 @@ type StackItem struct {
 	// Added in S30 (#95).
 	IsCopy bool
 
-	// SplitSecond marks an item as having split second (CR 702.79).
+	// SplitSecond marks an item as having split second (CR 702.61).
 	// While any stack item has SplitSecond set, no further casts /
 	// activations are legal except mana abilities and special
 	// actions. Game.SplitSecondActive mirrors this for fast lookup.

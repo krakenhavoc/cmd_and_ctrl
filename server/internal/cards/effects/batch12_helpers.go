@@ -28,72 +28,6 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b12ForestDryadToken is Awaken the Woods' 1/1 green Forest Dryad
-// LAND creature. The Forest subtype is load-bearing: the engine
-// derives CR 305.6's "{T}: Add {G}" from a land's effective subtypes
-// (#354), so the token taps for green with no ability declared — and
-// because it is a creature too, it is summoning sick first (CR
-// 302.1), exactly as the reminder text says.
-func b12ForestDryadToken() game.Card {
-	return game.Card{
-		Name:      "Dryad",
-		TypeLine:  "Token Land Creature — Forest Dryad",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"G"},
-	}
-}
-
-// b12ColorlessSoldierArtifactToken is Third Path Iconoclast's 1/1
-// colorless Soldier ARTIFACT creature — an artifact, so it feeds
-// every artifact payoff and every artifact sacrifice outlet.
-func b12ColorlessSoldierArtifactToken() game.Card {
-	return game.Card{
-		Name:      "Soldier",
-		TypeLine:  "Token Artifact Creature — Soldier",
-		Power:     1,
-		Toughness: 1,
-	}
-}
-
-// b12WhiteAngelFlyingToken is Sigil of the Empty Throne's 4/4 white
-// Angel with flying. Not tokens.go's AngelVigilanceToken, which is
-// Parhelion II's and has vigilance too.
-func b12WhiteAngelFlyingToken() game.Card {
-	return game.Card{
-		Name:      "Angel",
-		TypeLine:  "Token Creature — Angel",
-		Power:     4,
-		Toughness: 4,
-		Colors:    []string{"W"},
-		Keywords:  []string{"flying"},
-	}
-}
-
-// b12RedDinosaurToken is Bonehoard Dracosaur's 3/1 red Dinosaur.
-func b12RedDinosaurToken() game.Card {
-	return game.Card{
-		Name:      "Dinosaur",
-		TypeLine:  "Token Creature — Dinosaur",
-		Power:     3,
-		Toughness: 1,
-		Colors:    []string{"R"},
-	}
-}
-
-// b12GreenElephantToken is Terastodon's 3/3 green Elephant. Its own
-// template rather than Generous Gift's WhiteElephantToken because the
-// colour differs.
-func b12GreenElephantToken() game.Card {
-	return game.Card{
-		Name:      "Elephant",
-		TypeLine:  "Token Creature — Elephant",
-		Power:     3,
-		Toughness: 3,
-		Colors:    []string{"G"},
-	}
-}
-
 // --- mana-ability riders -----------------------------------------
 
 // b12GainLifeRider is the post-production half of Pristine Talisman:
@@ -166,34 +100,14 @@ func b12OtherMountainsControlled(g *game.Game, controller, except uuid.UUID) int
 	return n
 }
 
-// b12EnchantmentSpellCastByYou is Sigil of the Empty Throne's
-// condition. The spell is read off the stack, where its type line is
-// intact.
-func b12EnchantmentSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
-		return false
-	}
-	spell, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && spell.IsEnchantment()
-}
-
-// b12CreatureSpellCastByYou is Lifecrafter's Bestiary's second
+// creatureSpellCastByYou is Lifecrafter's Bestiary's second
 // condition.
-func b12CreatureSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
+func creatureSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
 	spell, ok := g.LookupCardForEffect(ev.CardID)
 	return ok && spell.IsCreature()
-}
-
-// b12InstantOrSorceryCastByYou is Thousand-Year Storm's condition.
-func b12InstantOrSorceryCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
-		return false
-	}
-	spell, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && (spell.IsInstant() || spell.IsSorcery())
 }
 
 // b12YouSacrificedAnArtifact is Crime Novelist's condition. The
@@ -262,7 +176,7 @@ func b12InstantsAndSorceriesCastBeforeThisTurn(g *game.Game, controller, spell u
 // Three placements happen outside any resolution and are attributed
 // by a stricter rule, so the card can never fire on an opponent's
 // action: a loyalty cost and a Saga's lore counter are put there by
-// the permanent's controller (CR 606.2, 714.2b), and a permanent
+// the permanent's controller (CR 606.4, 714.3), and a permanent
 // "entering with" counters — whose counter event precedes its own
 // arrival event, which is how it is recognised — likewise. Each of
 // those counts only when the permanent is the source's controller's
@@ -426,7 +340,7 @@ func b12ElephantsForTheDestroyed(ctx *Context, victims []b12Victim) error {
 		if ctx.PlayerByID(v.Controller) == nil {
 			continue
 		}
-		if err := (CreateToken{Controller: v.Controller, Template: b12GreenElephantToken(), N: 1}).Apply(ctx); err != nil {
+		if err := (CreateToken{Controller: v.Controller, Template: TokenCard("3/3 green Elephant"), N: 1}).Apply(ctx); err != nil {
 			return err
 		}
 	}

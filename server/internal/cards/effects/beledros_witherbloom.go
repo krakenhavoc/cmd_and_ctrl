@@ -43,7 +43,7 @@ func init() {
 		},
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			AtEachUpkeep("Beledros Witherbloom — create a Pest", Do(CreateToken{Template: b13PestToken(), N: 1})),
+			AtEachUpkeep("Beledros Witherbloom — create a Pest", Do(CreateToken{Template: TokenCard("1/1 black and green Pest"), N: 1})),
 		},
 	})
 }

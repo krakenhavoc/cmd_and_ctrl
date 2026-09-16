@@ -119,7 +119,7 @@ func Flashback(cost string) game.AlternativeCost {
 
 // Escape is "Escape—{cost}, Exile N other cards from your graveyard.
 // (You may cast this card from your graveyard for its escape cost.)"
-// — CR 702.144.
+// — CR 702.138.
 //
 // Flashback's sibling and its opposite in the one place that
 // matters. Both are alternative costs bound to the graveyard, but
@@ -154,7 +154,7 @@ func Escape(cost string, n int) game.AlternativeCost {
 }
 
 // EscapeWithCounters is Escape plus "this creature escapes with N
-// +1/+1 counters on it" (CR 702.144c) — the rider most escape
+// +1/+1 counters on it" (CR 702.138c) — the rider most escape
 // creatures print, and the reason an escaped Voracious Typhon is a
 // 7/7 rather than the 4/4 in the corner.
 //
@@ -190,7 +190,7 @@ func numberWord(n int) string {
 // Warp is "Warp {cost} (You may cast this card from your hand for
 // its warp cost. Exile this creature at the beginning of the next
 // end step, then you may cast it from exile on a later turn.)" —
-// CR 702.183, and the fix for #324.
+// CR 702.185, and the fix for #324.
 //
 // Unlike flashback, warp is paid from HAND: it is a discount now in
 // exchange for the real card later, which is why it needs no

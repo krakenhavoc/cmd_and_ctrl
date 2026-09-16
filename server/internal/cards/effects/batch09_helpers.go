@@ -12,7 +12,7 @@ import (
 // prefix because batch 08 is landing beside this one.
 //
 // What is NOT here, because main already had it: "an instant or
-// sorcery cast by you" is b03InstantOrSorceryCastByYou, "untap up to
+// sorcery cast by you" is instantOrSorceryCastByYou, "untap up to
 // N lands" is untapUpToLands, the reveal-and-tutor body is
 // b06TutorToHand, "this permanent enters" is b06SelfETB, the Castle
 // condition is b06EntersTappedUnlessLandType, and the mana value of
@@ -20,7 +20,7 @@ import (
 
 // b09OpponentCastInstantOrSorcery is Arasta of the Endless Web's
 // condition: an OPPONENT of the source's controller cast an instant
-// or sorcery. b02CastInstantOrSorcery with the actor test flipped.
+// or sorcery. instantOrSorceryCastByYou with the actor test flipped.
 func b09OpponentCastInstantOrSorcery(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor == uuid.Nil || ev.Actor == source.Controller {
 		return false
@@ -29,7 +29,7 @@ func b09OpponentCastInstantOrSorcery(ev game.Event, source *game.Card, g *game.G
 	return ok && (spell.IsInstant() || spell.IsSorcery())
 }
 
-// b09IsHistoric is CR 205.4h's "historic": an artifact, a legendary,
+// b09IsHistoric is CR 700.6's "historic": an artifact, a legendary,
 // or a Saga — Jhoira, Weatherlight Captain's word. Reads the
 // effective characteristic, which for a spell on the stack is the
 // printed type line.
@@ -68,7 +68,7 @@ func b09IsEquipmentCard(c game.Card) bool { return c.HasSubtype("Equipment") }
 
 // b09IsCheapInstantOrSorceryCard is Spellseeker's "an instant or
 // sorcery card with mana value 2 or less". Off the stack, so X is
-// zero (CR 202.3b) and a Fireball is a legal find.
+// zero (CR 202.3e) and a Fireball is a legal find.
 func b09IsCheapInstantOrSorceryCard(c game.Card) bool {
 	return (c.IsInstant() || c.IsSorcery()) && manaValueOf(c) <= 2
 }
@@ -157,31 +157,4 @@ func b09ArchonOfCrueltyTrigger(g *game.Game, item *game.StackItem) error {
 func b09SourceStillOnBattlefield(g *game.Game, item *game.StackItem) bool {
 	z := g.FindCardZoneForEffect(item.SourceCardID)
 	return z != nil && z.Kind == game.ZoneBattlefield
-}
-
-// b09GreenSpiderToken is Arasta of the Endless Web's 1/2 green
-// Spider with reach.
-func b09GreenSpiderToken() game.Card {
-	return game.Card{
-		Name:      "Spider",
-		TypeLine:  "Token Creature — Spider",
-		Power:     1,
-		Toughness: 2,
-		Colors:    []string{"G"},
-		Keywords:  []string{"reach"},
-	}
-}
-
-// b09BlueBirdToken is Strix Serenade's 2/2 blue Bird with flying.
-// The same token Swan Song hands out, with the printed colour
-// stamped — Swan Song's WhiteBirdToken predates token colours.
-func b09BlueBirdToken() game.Card {
-	return game.Card{
-		Name:      "Bird",
-		TypeLine:  "Token Creature — Bird",
-		Power:     2,
-		Toughness: 2,
-		Colors:    []string{"U"},
-		Keywords:  []string{"flying"},
-	}
 }

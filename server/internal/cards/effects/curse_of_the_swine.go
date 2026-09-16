@@ -52,7 +52,7 @@ func init() {
 				}
 			}
 			for _, v := range victims {
-				if err := (CreateToken{Controller: v.controller, Template: b07GreenBoarToken(), N: 1}).Apply(ctx); err != nil {
+				if err := (CreateToken{Controller: v.controller, Template: TokenCard("2/2 green Boar"), N: 1}).Apply(ctx); err != nil {
 					return err
 				}
 			}

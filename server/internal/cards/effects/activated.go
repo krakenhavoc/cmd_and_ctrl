@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Costs compose with Plus for the multi-part case ("{2}, {T}:").
 
 // TapCost is "{T}" — the source must be untapped, and a creature
-// source must be free of summoning sickness (CR 302.1).
+// source must be free of summoning sickness (CR 302.6).
 func TapCost() game.AbilityCost { return game.AbilityCost{Tap: true} }
 
 // SacrificeThis sacrifices the source as the cost.
@@ -51,17 +51,17 @@ func ManaCost(cost string) game.AbilityCost { return game.AbilityCost{Mana: cost
 // card.
 func MinX(n int) game.AbilityCost { return game.AbilityCost{MinX: n} }
 
-// PayLife is a life component (CR 118.8).
+// PayLife is a life component (CR 119.4).
 func PayLife(n int) game.AbilityCost { return game.AbilityCost{Life: n} }
 
 // LoyaltyCost is a planeswalker's loyalty cost — the "+1", "[0]" or
 // "−3" printed to the left of the ability. Positive adds counters,
 // negative removes them, zero does neither and still spends the
-// turn's activation (CR 606.5).
+// turn's activation (CR 606.3).
 //
 // Setting it is the whole declaration: the engine derives sorcery
 // speed, once-per-turn, "must be a planeswalker you control" and
-// CR 606.3 from the presence of the component, so a card file
+// CR 606.6 from the presence of the component, so a card file
 // writes the cost and nothing else. ADR 0020 kept loyalty out of
 // AbilityCost; ADR 0032 §7 reversed that — see the field comment on
 // game.AbilityCost.Loyalty.
@@ -94,6 +94,12 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.Crew != 0 {
 			out.Crew = c.Crew
 		}
+		// #625: without this a composed "{T}, Remove a +1/+1 counter"
+		// silently loses its counter component and the ability becomes
+		// free to repeat — stronger than printed, the #259 direction.
+		if c.RemoveCounters != nil {
+			out.RemoveCounters = c.RemoveCounters
+		}
 		if c.MinX != 0 {
 			out.MinX = c.MinX
 		}
@@ -106,7 +112,37 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 // battlefield cards — but it is NOT targeting: a sacrifice cost
 // doesn't target, so hexproof and "can't be the target of" never
 // apply to it. The controller filter lives in the engine's cost
-// validation (CR 701.17b).
+// validation (CR 701.21a).
 func sacrificeSpec(label string, preds ...CardPredicate) *game.TargetSpec {
 	return TargetPermanent(label, preds...)
+}
+
+// RemoveCountersFromThis is "Remove N <kind> counters from this
+// permanent" — Dragon's Hoard's "Remove a gold counter from this
+// artifact" is RemoveCountersFromThis("gold", 1). Paid at announce
+// (#625), so a response cannot spend the same counter twice.
+func RemoveCountersFromThis(kind string, n int) game.AbilityCost {
+	return game.AbilityCost{RemoveCounters: &game.CounterRemovalCost{Counter: kind, N: n}}
+}
+
+// RemoveCountersFrom is "Remove N <kind> counters from <a permanent
+// you control>": Heart of Kiran's "remove a loyalty counter from a
+// planeswalker you control" is
+//
+//	RemoveCountersFrom(game.CounterLoyalty, 1, "a planeswalker you control", Planeswalker())
+//
+// An empty kind is "a counter" of any kind (Fain, the Broker), and the
+// activator names the kind with the permanent; Register refuses an
+// empty kind with n > 1, because one kind choice cannot say how a
+// "remove two counters" that mixes kinds was paid.
+//
+// Like a sacrifice clause the permanent is chosen, not targeted, and
+// "you control" is the engine's rule rather than a predicate the card
+// file has to remember — the label says it for the player.
+func RemoveCountersFrom(kind string, n int, label string, preds ...CardPredicate) game.AbilityCost {
+	return game.AbilityCost{RemoveCounters: &game.CounterRemovalCost{
+		Counter: kind,
+		N:       n,
+		From:    TargetPermanent(label, preds...),
+	}}
 }

@@ -13,8 +13,9 @@
 // something the engine could already have been driven to do from
 // gamecli, just without a discoverable surface.
 //
-// The same MenuItem tree is what #164's forced commander-zone prompt
-// can render once it needs a per-card surface — an item is a label
+// The same MenuItem tree can render a future forced prompt that needs
+// a per-card surface (#164's commander-zone prompt, once named here,
+// shipped in #171 as an optional_replacement choice) — an item is a label
 // plus either an action, a nested list, or a prompt marker, so a
 // caller that wants a two-option "yes / no" menu builds one section
 // with two action items and reuses the component verbatim.
@@ -22,6 +23,7 @@
 import { attackAllLabel, attackAllParams, planAttackAll, seatLabel } from "./attackAll";
 import { attackTargetHint, permanentAttackTargets } from "./attackTargets";
 import { isCreature, isLand, isPlaneswalker } from "./cardTypes";
+import { counterCostBlocked } from "./counterCost";
 import type { ActionType, CardView, GameView } from "./protocol";
 import {
   canActivateLoyalty,
@@ -371,6 +373,14 @@ interface AbilityCost {
   // it. Mana abilities never carry either.
   crew_cost?: number;
   crew_options?: { players?: string[]; cards?: string[] };
+  // #625: a "remove N counters" cost — its shape and what can pay it
+  // right now. Mirrors ActivatedAbilityView in protocol.ts; mana
+  // abilities never carry it.
+  counter_cost_n?: number;
+  counter_cost_kind?: string;
+  counter_cost_self?: boolean;
+  counter_cost_label?: string;
+  counter_cost_options?: { card_id: string; kinds: { kind: string; count: number }[] }[];
 }
 
 // abilityBlocked returns the reason an ability can't be activated
@@ -396,6 +406,12 @@ export function abilityBlocked(
   if (a.crew_cost && (a.crew_options?.cards?.length ?? 0) === 0) {
     return "no untapped creatures to crew with";
   }
+  // #625: a counter-removal cost nothing can pay — Heart of Kiran's
+  // alternative crew with no planeswalker holding a loyalty counter,
+  // Dragon's Hoard with no gold counter. Instant speed, like crew, so
+  // no timing arm: only the empty pool is judged.
+  const counters = counterCostBlocked(a);
+  if (counters) return counters;
   // CR 606: a loyalty ability answers to the sorcery-speed window,
   // the once-per-turn flag, and "you have enough counters to pay".
   // The value 0 is a real cost, so this tests for presence.
@@ -479,7 +495,7 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
 // MAX_MANUAL_MINUS caps the manual minus rows. Karn Liberated's −14
 // is the deepest printed cost in Magic; anything past that is a row
 // nobody will ever click, and the list is already bounded above by
-// the walker's own loyalty (CR 606.3).
+// the walker's own loyalty (CR 606.6).
 const MAX_MANUAL_MINUS = 14;
 
 // MANUAL_PLUS_OFFERS is the non-negative side, which every
@@ -501,9 +517,9 @@ function signedLoyalty(n: number): string {
 // Slows the Sunset, four loyalty counters, `activated_abilities: []`.
 //
 // It offers the costs the walker can legally pay right now (+2, +1,
-// [0], and −1 down to its current loyalty, CR 606.3) as
+// [0], and −1 down to its current loyalty, CR 606.6) as
 // `activate_loyalty` actions. The engine charges the counters and
-// enforces CR 606.5 — sorcery speed and once per turn — and the
+// enforces CR 606.3 — sorcery speed and once per turn — and the
 // players resolve the ability's text between themselves, the same
 // bargain manual `tap` strikes for every other card the catalog
 // can't express.
@@ -788,8 +804,8 @@ function moveItems(card: CardView, location: CardLocation): MenuItem[] {
   }));
   // CR 903.9 — route a commander leaving the battlefield through the
   // replacement pipeline instead of dropping it straight in the
-  // command zone. This is the path #164 widens, so having a manual
-  // trigger for it makes the replacement testable by hand today.
+  // command zone. #164 (shipped in #171) made that replacement fire
+  // on every path, and this manual trigger keeps it testable by hand.
   if (card.is_commander && location.zone === "battlefield") {
     const gy: MoveDest = { id: "graveyard", label: "Graveyard", zone: "graveyard" };
     items.push({

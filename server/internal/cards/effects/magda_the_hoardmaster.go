@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // is EventBecomesTarget (S22), which fires once per target slot at
 // announce with the targeting player in Actor: an opponent, a
 // permanent or spell an opponent controls, or a card in an
-// opponent's graveyard qualifies (b18CommittedCrime, CR 701.60a).
+// opponent's graveyard qualifies (b18CommittedCrime, CR 700.13).
 // The trigger goes on the stack above the spell that targeted, as
 // printed — Magda pays out even if the spell is then countered.
 // "Only once each turn" is the Exemplar of Light tally: the log is

@@ -34,7 +34,7 @@ func init() {
 		Name:         "The Earth King",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("The Earth King — create a 4/4 Bear", Do(CreateToken{Template: b26GreenBearToken(), N: 1})),
+			WhenThisEnters("The Earth King — create a 4/4 Bear", Do(CreateToken{Template: TokenCard("4/4 green Bear"), N: 1})),
 			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b26CreatureYouControlWithPowerAtLeastAttacked(ev, source, g, 4)
 			}, b26EarthKingSearchLabel, func(g *game.Game, item *game.StackItem) error {

@@ -1,6 +1,7 @@
 # ADR 0046 — Layer 6 is authoritative: the catalog ability lookups read the layered result
 
 **Status:** Accepted · 2026-09-14 · follows [ADR 0012](0012-layer-system.md) and [ADR 0039](0039-layer-4-authoritative.md)
+**Amended:** 2026-09-16 (the [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159) closeout). Dated notes at the end of §4 and §5: the application pass silences more than CR 613.6 allows, and Song of the Dryads removes more than CR 305.7 does. [#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669) tracks the fix, which needs [#675](https://github.com/krakenhavoc/cmd_and_ctrl/issues/675) (CR 704.5p) first.
 
 ## Context
 
@@ -156,6 +157,44 @@ bucket. Two Song of the Dryads each enchanting the other settle on
 "the earlier one wins", which is what the rules say and not what a
 naive fixed point would produce.
 
+**Note, 2026-09-16: the application pass silences too much, and its
+Mind Control reasoning is wrong.** CR 613.6: "If an effect starts to
+apply in one layer and/or sublayer, it will continue to be applied to
+the same set of objects in each other applicable layer and/or
+sublayer, even if the ability generating the effect is removed during
+this process." Ability removal happens in layer 6. It can't reach back
+into layers 1-5, and it doesn't stop an effect that already started
+applying from carrying on into layer 7. Magus of the Moon's ruling
+(2021-03-19): "If Magus of the Moon loses its abilities, it continues
+to turn nonbasic lands into Mountains." Holding a silenced source out
+of the *gather* drops it from every layer, which is the opposite.
+
+No catalog card shows it yet. Every silenced source today is under an
+Aura that also overwrites its types, and every layer 1-5 static on a
+creature applies only to itself. Magus of the Moon under Kenrith's
+Transformation or Darksteel Mutation would show it, which is why
+AGENTS.md §7 holds Magus back until
+[#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669) lands.
+
+The Song of the Dryads on a Mind Control example gets the right answer
+for a different reason. Song makes the Mind Control a Forest land, so
+it's no longer an Aura. A noncreature, nonbattle permanent that isn't an
+Aura, Equipment or Fortification becomes unattached as a state-based
+action (CR 704.5p; Song's 2014-11-07 ruling: "If the permanent was an
+Aura or an Equipment, it becomes unattached from whatever it was
+attached to."). With nothing enchanted, "you control enchanted
+creature" applies to nothing. Layer order has nothing to do with it.
+The engine doesn't implement CR 704.5p yet
+([#675](https://github.com/krakenhavoc/cmd_and_ctrl/issues/675)): the
+Forest stays attached, and today only the gather-time silence hands
+the creature back. So #675 has to land before or with #669's fix.
+
+The fixed point also isn't the only CR 613.8 dependency the catalog
+can build. Layer-4 pairs (Urborg, Tomb of Yawgmoth + Song of the
+Dryads, Maskwood Nexus + a crewed Vehicle, and others) are listed in
+[ADR 0043](0043-copy-effects.md) §5's amendment and tracked in
+[#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668).
+
 ### 5. What survives ability removal
 
 CR 613.1f removes abilities. Stated once, because the boundary is the
@@ -183,6 +222,22 @@ granted by the land type, not printed in the rules text, so
 Dryads: the Sol Ring's "{T}: Add {C}{C}" goes and the Forest's
 "{T}: Add {G}" arrives, from the same effect, in the same recompute.
 
+**Note, 2026-09-16: it isn't the whole of CR 305.7.** The rule removes
+"all abilities generated from its rules text" and adds: "Note that this
+doesn't remove any abilities that were granted to the land by other
+effects." Song of the Dryads' ruling (2014-11-07) says the same: the
+permanent "will still have any abilities it gained from other effects."
+Song is built as a full layer-6 `LoseAllAbilities()`, so it also
+removes abilities that other effects granted before it attached.
+Reproduced on develop `7c1ae9b`: a Sol Ring given indestructible by
+Boros Charm loses it when Song of the Dryads resolves on it, so a
+wrath destroys a Forest the rules say survives. The loss is part of
+the type-changing effect, so it belongs in layer 4 next to the type
+change and should remove only the permanent's own rules text.
+[#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669) tracks
+the fix, and [#644](https://github.com/krakenhavoc/cmd_and_ctrl/pull/644)
+declares the gap on the card until then.
+
 ### 6. `internal/legal` needed no change, and that is the point
 
 `ActivatedAbilitiesForCard` and `ManaAbilitiesForCard` are the
@@ -208,11 +263,11 @@ as a property of the call graph.
   Layer 5 has had a bucket in the recompute since S16 with nothing to
   put in it.
 - CR 704.5m and CR 704.5n now fire in real play rather than only in
-  fixtures. #511 fixed 704.5n's "attached to nothing" disjunct for
+  fixtures. #511 fixed 704.5m's "attached to nothing" disjunct for
   Auras an effect put onto the battlefield without a host; Song of the
   Dryads reaches the *first* disjunct from an ordinary cast — the host
-  stops being a creature, so its Equipment unattaches (704.5m) and its
-  "enchant creature" Auras go to the graveyard (704.5n), in the same
+  stops being a creature, so its Equipment unattaches (704.5n) and its
+  "enchant creature" Auras go to the graveyard (704.5m), in the same
   settling.
 - The coverage guard learns the mechanic: a caveat naming "loses all
   abilities" is now checked against an exact probe

@@ -25,11 +25,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WheneverAnotherCreatureEntersUnderYourControl("Elas il-Kor — you gain 1 life", Do(GainLife{Amount: 1})),
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.CardID == source.InstanceID {
-					return false // "another"
-				}
-				dead, ok := diedCreature(ev, g)
-				return ok && dead.Controller == source.Controller
+				return anotherCreatureYouControlDied(ev, source, g)
 			}, "Elas il-Kor — each opponent loses 1 life", func(g *game.Game, item *game.StackItem) error {
 				return eachOpponentLosesLife(g, item, 1)
 			}),

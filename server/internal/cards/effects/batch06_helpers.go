@@ -58,30 +58,6 @@ func b06AnOpponentLostAtLeastThisTurn(g *game.Game, controller uuid.UUID, n int)
 	return false
 }
 
-// b06ColorlessSpiritToken is Forbidden Orchard's 1/1 colorless
-// Spirit — no flying, unlike the white Spirit Doomed Traveler makes,
-// which is why it is its own template.
-func b06ColorlessSpiritToken() game.Card {
-	return game.Card{
-		Name:      "Spirit",
-		TypeLine:  "Token Creature — Spirit",
-		Power:     1,
-		Toughness: 1,
-	}
-}
-
-// b06BlueDrakeToken is Talrand's 2/2 blue Drake with flying.
-func b06BlueDrakeToken() game.Card {
-	return game.Card{
-		Name:      "Drake",
-		TypeLine:  "Token Creature — Drake",
-		Power:     2,
-		Toughness: 2,
-		Colors:    []string{"U"},
-		Keywords:  []string{"flying"},
-	}
-}
-
 // b06ExileListedCards is the delayed-trigger body Whip of Erebos
 // schedules: exile every card the item carries that is still on the
 // battlefield. Package-level so the delayed trigger captures nothing.
@@ -115,8 +91,8 @@ func b06SelfETB(ev game.Event, source *game.Card, _ game.Characteristic, _ *game
 	return ev.CardID == source.InstanceID
 }
 
-// b06IsLegendary reads the post-layer supertypes.
-func b06IsLegendary(c *game.Card) bool {
+// isLegendary reads the post-layer supertypes.
+func isLegendary(c *game.Card) bool {
 	for _, s := range c.Effective().Supertypes {
 		if s == "Legendary" {
 			return true

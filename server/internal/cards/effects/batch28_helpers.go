@@ -29,45 +29,8 @@ import (
 
 // --- tokens ------------------------------------------------------
 
-// b28WhiteCatLifelinkToken is Regal Caracal's 1/1 white Cat with
-// lifelink.
-func b28WhiteCatLifelinkToken() game.Card {
-	return game.Card{
-		Name:      "Cat",
-		TypeLine:  "Token Creature — Cat",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"W"},
-		Keywords:  []string{"lifelink"},
-	}
-}
-
-// b28WhiteCatSoldierVigilanceToken is Brimaz, King of Oreskos's 1/1
-// white Cat Soldier with vigilance.
-func b28WhiteCatSoldierVigilanceToken() game.Card {
-	return game.Card{
-		Name:      "Cat Soldier",
-		TypeLine:  "Token Creature — Cat Soldier",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"W"},
-		Keywords:  []string{"vigilance"},
-	}
-}
-
-// b28WhiteSpiritFlyingToken is Kykar, Wind's Fury's 1/1 white Spirit
-// with flying. Its own template rather than SpiritToken: that one
-// carries no colour, and Kykar's Spirits are white on the card.
-func b28WhiteSpiritFlyingToken() game.Card {
-	return game.Card{
-		Name:      "Spirit",
-		TypeLine:  "Token Creature — Spirit",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"W"},
-		Keywords:  []string{"flying"},
-	}
-}
+// b28WhiteSpiritFlyingToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
+func b28WhiteSpiritFlyingToken() game.Card { return TokenCard("1/1 white Spirit with flying") }
 
 // b28EldraziScionToken is Spawnbed Protector's 1/1 colorless Eldrazi
 // Scion with "Sacrifice this token: Add {C}" — the Spawn's mana

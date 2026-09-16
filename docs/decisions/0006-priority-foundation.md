@@ -79,8 +79,17 @@ lock.
 **Decision:** Add a new `Game.StartingSeat int` field, set in `Start()` to
 the active seat at game start (always `0` today). The `StepDraw` hook
 checks `Turn.Number == 1 && Turn.ActiveSeat == StartingSeat` and skips the
-auto-draw per CR 103.7c. The field is carried in `GameView` so spectators
+auto-draw per CR 103.8a. The field is carried in `GameView` so spectators
 and reconnects see the same skip-draw decision.
+
+**Amendment (2026-09-16, #692):** the skip is gated on the game having
+exactly two players. CR 103.8a covers only a two-player game and CR 103.8b
+only Two-Headed Giant (a format the engine does not implement); CR 103.8c
+says that in all other multiplayer games no player skips the draw step of
+their first turn. The hook therefore also requires
+`startingPlayerCountLocked() == 2`, which counts seats and *not* who is
+still alive — the rule keys off the game's player count at the start, so a
+turn-1 concession does not turn a three-player game into a two-player one.
 
 **Why a separate field vs. inferring from turn state:**
 - "First player" can't be inferred from the current cursor — by turn 2 the

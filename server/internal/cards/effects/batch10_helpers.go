@@ -23,46 +23,6 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b10GreenPhyrexianBeastToken is Ezuri's Predation's 4/4 green
-// Phyrexian Beast. Its own template rather than Rampaging Baloths'
-// 4/4 Beast because the type line differs, and a Phyrexian payoff
-// should see one.
-func b10GreenPhyrexianBeastToken() game.Card {
-	return game.Card{
-		Name:      "Phyrexian Beast",
-		TypeLine:  "Token Creature — Phyrexian Beast",
-		Power:     4,
-		Toughness: 4,
-		Colors:    []string{"G"},
-	}
-}
-
-// b10GreenElemental53Token is Titania, Protector of Argoth's 5/3
-// green Elemental.
-func b10GreenElemental53Token() game.Card {
-	return game.Card{
-		Name:      "Elemental",
-		TypeLine:  "Token Creature — Elemental",
-		Power:     5,
-		Toughness: 3,
-		Colors:    []string{"G"},
-	}
-}
-
-// b10WhitePegasusToken is Archon of Sun's Grace's 2/2 white Pegasus
-// with flying — the flying is real, carried on Keywords the way the
-// Bird and Spirit templates carry theirs.
-func b10WhitePegasusToken() game.Card {
-	return game.Card{
-		Name:      "Pegasus",
-		TypeLine:  "Token Creature — Pegasus",
-		Power:     2,
-		Toughness: 2,
-		Colors:    []string{"W"},
-		Keywords:  []string{"flying"},
-	}
-}
-
 // --- entry replacements ------------------------------------------
 
 // b10EntersWithCounters is "this creature enters with N <kind>
@@ -216,7 +176,7 @@ func b10CreatureOrPlaneswalker() CardPredicate { return Or(Creature(), Planeswal
 // the comparison set is that player's board; ties all match, and the
 // player chooses among them (CR 700.3 — "the greatest" picks out a
 // set). Mana value is read off the battlefield, where X is zero (CR
-// 202.3b) and a token with no mana cost is zero.
+// 202.3e) and a token with no mana cost is zero.
 func b10GreatestManaValueCreatureOrPlaneswalkerYouControl() CardPredicate {
 	return func(g *game.Game, player uuid.UUID, c game.Card) bool {
 		if c.Controller != player || !(c.IsCreature() || c.IsPlaneswalker()) {
@@ -372,7 +332,7 @@ func b10ReturnAllLandCardsFromGraveyardTapped(ctx *Context, player uuid.UUID) er
 	return nil
 }
 
-// b10Fight is CR 701.12: each creature deals damage equal to its
+// b10Fight is CR 701.14: each creature deals damage equal to its
 // power to the other. Both amounts are read before either is dealt,
 // so a first blow cannot change the second (the two are simultaneous
 // in the rules), and a creature that has left the battlefield fights

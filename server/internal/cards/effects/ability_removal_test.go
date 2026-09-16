@@ -309,13 +309,13 @@ func TestSongOfTheDryadsDropsTheHostsEquipmentAndAuras(t *testing.T) {
 	settle(t, g)
 
 	if host := attachmentHostOf(t, g, splitter); host.Kind != "" {
-		t.Errorf("CR 704.5m: the Equipment should have unattached, host = %+v", host)
+		t.Errorf("CR 704.5n: the Equipment should have unattached, host = %+v", host)
 	}
 	if !g.Battlefield.Contains(splitter) {
-		t.Error("CR 704.5m unattaches an Equipment; it does not destroy it")
+		t.Error("CR 704.5n unattaches an Equipment; it does not destroy it")
 	}
 	if g.Battlefield.Contains(mastery) {
-		t.Error("CR 704.5n: an \"enchant creature\" Aura on a permanent that stopped being a creature must leave")
+		t.Error("CR 704.5m: an \"enchant creature\" Aura on a permanent that stopped being a creature must leave")
 	}
 	// The Song itself says "enchant permanent", so it stays — and
 	// that asymmetry is the card.
@@ -326,7 +326,7 @@ func TestSongOfTheDryadsDropsTheHostsEquipmentAndAuras(t *testing.T) {
 
 // The Song does not fall off the permanent it just turned into a
 // land, because "enchant permanent" is still satisfied. Worth its
-// own assertion: the CR 704.5n re-check runs the Aura's OWN target
+// own assertion: the CR 704.5m re-check runs the Aura's OWN target
 // spec, so a wider clause is what keeps it there.
 func TestSongOfTheDryadsStaysAttachedToWhatItMade(t *testing.T) {
 	g := newCatalogGame(t)
@@ -453,10 +453,10 @@ func TestSongOfTheDryadsOnAControlMagicGivesTheCreatureBack(t *testing.T) {
 	if got := controllerOf(t, g, theirs); got != owner.ID {
 		t.Errorf("controller %s, want the creature back with %s", got, owner.ID)
 	}
-	// The Control Magic is a Forest now, not an Aura, so CR 704.5n
+	// The Control Magic is a Forest now, not an Aura, so CR 704.5m
 	// has nothing to say about it and it stays on the battlefield
 	// attached to a creature it no longer affects.
 	if !g.Battlefield.Contains(steal) {
-		t.Error("a permanent that stopped being an Aura is not swept by CR 704.5n")
+		t.Error("a permanent that stopped being an Aura is not swept by CR 704.5m")
 	}
 }

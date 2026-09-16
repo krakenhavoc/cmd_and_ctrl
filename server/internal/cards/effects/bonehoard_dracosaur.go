@@ -47,7 +47,7 @@ func init() {
 				}
 				ctx := NewContext(g, item)
 				if land {
-					if err := (CreateToken{Controller: item.Controller, Template: b12RedDinosaurToken(), N: 1}).Apply(ctx); err != nil {
+					if err := (CreateToken{Controller: item.Controller, Template: TokenCard("3/1 red Dinosaur"), N: 1}).Apply(ctx); err != nil {
 						return err
 					}
 				}

@@ -24,23 +24,10 @@ import (
 // damageToEachOpponent, "draw then discard" is lootOne, the
 // graveyard-to-hand body is b34ReturnChosenGraveyardCardToHand, the
 // first legal target read is b16FirstLegalTargetCard, the Zombie is
-// BlackZombieToken and its tapped entry is b33CreateTappedZombie's
+// BlackZombieToken and its tapped entry is createTappedZombie's
 // Token(...).EntersTapped().
 
 // --- token templates ---------------------------------------------
-
-// b35GreenPlantToken is The Necrobloom's 0/1 green Plant.
-// b02PlantToken is the same body without a colour stamped, so a
-// template of its own.
-func b35GreenPlantToken() game.Card {
-	return game.Card{
-		Name:      "Plant",
-		TypeLine:  "Token Creature — Plant",
-		Power:     0,
-		Toughness: 1,
-		Colors:    []string{"G"},
-	}
-}
 
 // --- predicates --------------------------------------------------
 
@@ -161,12 +148,12 @@ func b35TwoNonlandCardsShareAColor(g *game.Game, milled []uuid.UUID) bool {
 
 // --- trigger conditions ------------------------------------------
 
-// b35AnotherZombieYouControlDied is Plague Belcher's condition: a
+// anotherZombieYouControlDied is Plague Belcher's condition: a
 // Zombie the source's controller controlled, other than the source,
 // died. The dead card is read post-move, so a changeling counts and a
 // Zombie that was one only through a layer effect does not — weaker,
 // never stronger (Undead Augur's read).
-func b35AnotherZombieYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
+func anotherZombieYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.CardID == source.InstanceID {
 		return false
 	}
@@ -174,9 +161,9 @@ func b35AnotherZombieYouControlDied(ev game.Event, source *game.Card, g *game.Ga
 	return ok && dead.Controller == source.Controller && dead.HasSubtype("Zombie")
 }
 
-// b35AnotherCreatureYouControlDied is Garna's condition: a creature
+// anotherCreatureYouControlDied is Garna's condition: a creature
 // the source's controller controlled, other than the source, died.
-func b35AnotherCreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
+func anotherCreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.CardID == source.InstanceID {
 		return false
 	}
@@ -306,17 +293,6 @@ func b35BounceChosenPermanents(ctx *Context) error {
 	return nil
 }
 
-// b35DestroyChosenTarget is "destroy the announced permanent, if it
-// is still legal" as an activated-ability body (Seal of Primordium).
-func b35DestroyChosenTarget(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
-	if !ok {
-		return nil
-	}
-	return DestroyTarget{Target: id}.Apply(ctx)
-}
-
 // b35PutMinusCountersOnChosen is Plague Belcher's entry body: two
 // -1/-1 counters on the announced creature, if it is still legal.
 func b35PutMinusCountersOnChosen(n int) func(g *game.Game, item *game.StackItem) error {
@@ -424,7 +400,7 @@ func b35ReturnChosenToBattlefieldWithCounter(g *game.Game, item *game.StackItem)
 // resolution, so the land that entered is among them.
 func b35NecrobloomLandfall(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	template := b35GreenPlantToken()
+	template := TokenCard("0/1 green Plant")
 	if b04LandNamesControlled(g, item.Controller) >= 7 {
 		template = BlackZombieToken()
 	}

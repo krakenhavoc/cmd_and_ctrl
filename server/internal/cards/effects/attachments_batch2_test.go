@@ -9,7 +9,7 @@ import (
 )
 
 // attachments_batch2_test.go covers the S24 tail: six more Equipment
-// and two more Auras on the surface #379 built, plus the CR 704.5n
+// and two more Auras on the surface #379 built, plus the CR 704.5m
 // branch that shipped with them (an Aura attached to NOTHING goes to
 // its owner's graveyard) seen through a real catalogued card rather
 // than through a fixture.
@@ -360,11 +360,11 @@ func TestTwoControlAurasSortByTimestamp(t *testing.T) {
 	}
 }
 
-// --- CR 704.5n's "attached to nothing" branch, through a card -----
+// --- CR 704.5m's "attached to nothing" branch, through a card -----
 
 // An Aura put onto the battlefield by something that does not say
 // "attached to" — Brilliant Restoration, Carmen — enters with no
-// host. CR 704.5n puts it in its owner's graveyard on the next
+// host. CR 704.5m puts it in its owner's graveyard on the next
 // state-based-action pass. Before this branch shipped it sat on the
 // battlefield permanently, which is a board state no sequence of
 // legal plays can reach.
@@ -383,7 +383,7 @@ func TestACataloguedAuraWithNoHostGoesToTheGraveyard(t *testing.T) {
 	}
 
 	if g.Battlefield.Contains(aura) {
-		t.Fatal("CR 704.5n: an Aura attached to nothing must leave the battlefield")
+		t.Fatal("CR 704.5m: an Aura attached to nothing must leave the battlefield")
 	}
 	found := false
 	for _, c := range me.Graveyard.Cards {
@@ -408,6 +408,6 @@ func TestAnUnequippedEquipmentStaysOnTheBattlefield(t *testing.T) {
 	}
 
 	if !g.Battlefield.Contains(collar) {
-		t.Error("CR 704.5m has no \"attached to nothing\" clause")
+		t.Error("CR 704.5n has no \"attached to nothing\" clause")
 	}
 }

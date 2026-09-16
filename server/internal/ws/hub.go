@@ -969,6 +969,13 @@ func classifyActionError(err error) (code, message string) {
 		// by casting it (CR 712.4).
 		return protocol.CodeBadRequest,
 			"that isn't a face you can play on this card"
+	case errors.Is(err, game.ErrChoiceSetRejected):
+		// #624: the picks were individually fine but the card's rule
+		// about them as a set refused them. The prompt stays open, so
+		// this sentence is what the client's modal shows while the
+		// player chooses again.
+		return protocol.CodeBadRequest,
+			"that selection doesn't meet the card's condition — check its text and choose again"
 	}
 	// Everything else is traceable to a client-supplied input — bad
 	// player ID, bad card ID, bad zone, unknown action type, etc.

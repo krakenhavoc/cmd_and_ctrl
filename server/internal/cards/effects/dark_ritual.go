@@ -9,7 +9,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The original fast mana, and the highest-ranked card in the
 // roadmap's "mana pipeline" group: a SPELL that adds mana. It could
 // never be a ManaAbility — mana abilities don't use the stack (CR
-// 605.3a) and this card does, which is why it can be countered and
+// 605.3b) and this card does, which is why it can be countered and
 // why Storm-Kiln Artist triggers on it — so until the AddMana
 // primitive existed there was no way to write it at all.
 //

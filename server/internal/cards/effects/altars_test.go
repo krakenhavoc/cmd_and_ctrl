@@ -130,12 +130,13 @@ func TestPhyrexianAltarPromptsForColor(t *testing.T) {
 
 // TestAltarViewOffersOnlyYourCreatures is the client's half of the
 // contract: the picker's candidate list is stamped, and filtered to
-// the controller's own creatures (CR 701.17b) — you may not eat an
+// the controller's own creatures (CR 701.21a) — you may not eat an
 // opponent's blocker to pay your own cost.
 func TestAltarViewOffersOnlyYourCreatures(t *testing.T) {
 	g := newCatalogGame(t)
 	me, them := g.Seats[0], g.Seats[1]
 	altar := seedPermanentWithOracle(g, me.ID, "Ashnod's Altar", "Artifact", ashnodsAltarOracle)
+	knownToTable(g, altar)
 	mine := seedCreature(g, "My Bear", me.ID)
 	theirs := seedCreature(g, "Their Bear", them.ID)
 
@@ -180,6 +181,7 @@ func TestAltarViewHidesOptionsWhenBoardIsEmpty(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	altar := seedPermanentWithOracle(g, me.ID, "Ashnod's Altar", "Artifact", ashnodsAltarOracle)
+	knownToTable(g, altar)
 
 	view := protocol.ViewOfGameFor(g, me.ID.String())
 	seen := false

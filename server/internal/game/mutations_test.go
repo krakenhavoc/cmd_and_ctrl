@@ -133,6 +133,12 @@ func TestMoveCardByIDSrcEqualsDstPreservesState(t *testing.T) {
 	_ = g.PlayCard(p.ID, card.InstanceID)
 	_ = g.TapCard(card.InstanceID, true)
 	_ = g.AddCounter(card.InstanceID, "+1/+1", 3)
+	// A stamped position is battlefield-only state too, so MoveCard's
+	// leave-the-battlefield cleanup would zero it. Non-default values on
+	// both axes make a clobber visible.
+	if err := g.SetBattlefieldPosition(card.InstanceID, 0.3, 0.7); err != nil {
+		t.Fatalf("SetBattlefieldPosition: %v", err)
+	}
 
 	// No-op move on battlefield.
 	err := g.MoveCardByID(
@@ -153,6 +159,9 @@ func TestMoveCardByIDSrcEqualsDstPreservesState(t *testing.T) {
 		}
 		if c.Counters["+1/+1"] != 3 {
 			t.Errorf("no-op move clobbered counters: %v", c.Counters)
+		}
+		if c.BattleX != 0.3 || c.BattleY != 0.7 {
+			t.Errorf("no-op move clobbered position: got (%v, %v), want (0.3, 0.7)", c.BattleX, c.BattleY)
 		}
 	}
 }
@@ -379,6 +388,7 @@ func TestSetBattlefieldPositionRejectsNaNAndInf(t *testing.T) {
 		{"neg_inf_x", math.Inf(-1), 0.5, 0, 0.5},
 		{"pos_inf_y", 0.5, math.Inf(1), 0.5, 1},
 		{"upper_clamp_x", 1.5, 0.5, 1, 0.5},
+		{"lower_clamp_y", 0.5, -0.5, 0.5, 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1366,7 +1376,7 @@ func TestSetCommanderDamageValidatesFrom(t *testing.T) {
 
 // TestSetCommanderDamageRejectsNonCommander is the other half of the
 // `from` gate: a real card that simply isn't a commander cannot
-// accrue commander damage (CR 903.14a).
+// accrue commander damage (CR 903.10a).
 func TestSetCommanderDamageRejectsNonCommander(t *testing.T) {
 	g := newActiveGame(t)
 	p0, p1 := g.Seats[0], g.Seats[1]
@@ -1664,7 +1674,7 @@ func TestFlashBypassesSorcerySpeedGate(t *testing.T) {
 }
 
 // TestS131SplitSecondBlocksFurtherCasts verifies that
-// SplitSecondActive rejects subsequent casts (CR 702.79). Split-
+// SplitSecondActive rejects subsequent casts (CR 702.61). Split-
 // second mana abilities and special actions remain legal — we only
 // cover the cast path here.
 func TestS131SplitSecondBlocksFurtherCasts(t *testing.T) {
@@ -2291,7 +2301,7 @@ func TestS131SBAEmptyLibraryDrawEliminates(t *testing.T) {
 	}
 }
 
-// TestS131SBA21CommanderDamageEliminates covers CR 704.5v / 903.14a
+// TestS131SBA21CommanderDamageEliminates covers CR 704.6c / 903.10a
 // — a player who has been dealt 21+ damage by a single commander
 // loses. Per-commander tracking, promised in S13.1 sub-PR 8 and
 // actually landed in S25 (#77), is what the instance-ID key here is.
@@ -2500,7 +2510,7 @@ func TestS132SBAPlaneswalkerZeroLoyalty(t *testing.T) {
 	}
 }
 
-// TestS132SBABattleZeroDefense covers CR 704.5p — a battle with 0
+// TestS132SBABattleZeroDefense covers CR 704.5v — a battle with 0
 // defense counters is moved to its owner's graveyard.
 func TestS132SBABattleZeroDefense(t *testing.T) {
 	g := newActiveGame(t)

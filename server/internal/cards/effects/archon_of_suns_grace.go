@@ -43,7 +43,7 @@ func init() {
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && c.IsEnchantment()
-			}, "Archon of Sun's Grace — create a 2/2 Pegasus with flying (constellation)", Do(CreateToken{Template: b10WhitePegasusToken(), N: 1})),
+			}, "Archon of Sun's Grace — create a 2/2 Pegasus with flying (constellation)", Do(CreateToken{Template: TokenCard("2/2 white Pegasus with flying"), N: 1})),
 		},
 	})
 }

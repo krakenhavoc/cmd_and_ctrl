@@ -34,17 +34,11 @@ func init() {
 		PrintedKeywords: []string{"double strike"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b12CreatureSpellCastByYou(ev, source, g)
-			}, "God-Eternal Oketra — create a 4/4 black Zombie Warrior with vigilance", Do(CreateToken{Template: b22BlackZombieWarriorVigilanceToken(), N: 1})),
+				return creatureSpellCastByYou(ev, source, g)
+			}, "God-Eternal Oketra — create a 4/4 black Zombie Warrior with vigilance", Do(CreateToken{Template: TokenCard("4/4 black Zombie Warrior with vigilance"), N: 1})),
 			Optional(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b22SelfDiedOrWasExiledFromBattlefield(ev, source)
-			}, "God-Eternal Oketra — put it into its owner's library third from the top", func(g *game.Game, item *game.StackItem) error {
-				z := g.FindCardZoneForEffect(item.SourceCardID)
-				if z == nil || (z.Kind != game.ZoneGraveyard && z.Kind != game.ZoneExile) {
-					return nil
-				}
-				return b22TuckThirdFromTop(g, item.SourceCardID)
-			}), "God-Eternal Oketra — put it into its owner's library third from the top?"),
+			}, "God-Eternal Oketra — put it into its owner's library third from the top", tuckSelfThirdFromTop), "God-Eternal Oketra — put it into its owner's library third from the top?"),
 		},
 	})
 }

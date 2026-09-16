@@ -56,7 +56,8 @@ type GameView struct {
 	// client's "undos remaining" indicator. Added in S11.
 	UndoLimit int `json:"undo_limit,omitempty"`
 	// StartingSeat is the seat index that took the first turn. Used
-	// by the server to enforce the CR 103.7c turn-1 skip-draw rule;
+	// by the server to enforce the CR 103.8a turn-1 skip-draw rule
+	// (two-player games only — CR 103.8c);
 	// surfaced on the wire so spectators / reconnects can render
 	// "first player" UI affordances. Pre-S13 replays decode as 0,
 	// which matches the only seat games started on before this field
@@ -85,7 +86,7 @@ type GameView struct {
 	// S22.
 	DelayedTriggers []DelayedTriggerView `json:"delayed_triggers,omitempty"`
 	// SplitSecondActive mirrors `Game.SplitSecondActive` — true
-	// while any item with split second is on the stack (CR 702.79).
+	// while any item with split second is on the stack (CR 702.61).
 	// Drives the client's "no responses allowed" UI gating. Added
 	// in S13.1.
 	SplitSecondActive bool `json:"split_second_active,omitempty"`
@@ -133,7 +134,7 @@ type GameView struct {
 	// FilterViewFor. Added in S31 sub-PR 0 (ADR 0033 §4).
 	Log []LogEvent `json:"log,omitempty"`
 	// Reveals is the broadcast reveal window: the cards players have
-	// shown the whole table this turn (CR 701.16), oldest first, at
+	// shown the whole table this turn (CR 701.20), oldest first, at
 	// most PublicRevealMax of them. The counterpart to the
 	// controller-only look-at-cards prompt the scry family rides, and
 	// the one field on this view that is identical for every seat —
@@ -253,7 +254,7 @@ type PendingChoiceView struct {
 
 	// SearchMax populates the S22 "search_library" kind: how many of
 	// Options the searcher may take. The minimum is always zero —
-	// CR 701.19c permits failing to find — so the client's submit
+	// CR 701.23b permits failing to find — so the client's submit
 	// button is live from the first render. Absent for other kinds.
 	SearchMax int `json:"search_max,omitempty"`
 }
@@ -308,7 +309,7 @@ type AdditionalCostView struct {
 	DiscardCards int `json:"discard_cards,omitempty"`
 	// SacrificeOptions lists the permanents that may pay a
 	// "sacrifice a creature" clause, already filtered to the
-	// caster's own board (CR 701.17b). The picked instance ID rides
+	// caster's own board (CR 701.21a). The picked instance ID rides
 	// back on cast_spell's sacrifice_ids. Absent when the cost has
 	// no sacrifice component; present-and-empty means the cost is
 	// unpayable, which makes the spell uncastable.
@@ -467,7 +468,7 @@ type StackItemView struct {
 	// permanent, so a responder needs to see which is on the stack.
 	AltCost string `json:"alt_cost,omitempty"`
 
-	// IsCopy marks a CR 706.10 spell copy — Reverberate's output,
+	// IsCopy marks a CR 707.10 spell copy — Reverberate's output,
 	// not a cast card (S30). Public and worth showing: the copy and
 	// the spell it came from are two identical-looking entries on
 	// the stack, and which one is the copy decides what a responder
@@ -528,7 +529,7 @@ type PlayerView struct {
 	Graveyard ZoneView `json:"graveyard"`
 	Command   ZoneView `json:"command"`
 	// CommanderDamage maps commander card instance ID → total damage
-	// that commander has dealt to this player (CR 903.14a). Keyed by
+	// that commander has dealt to this player (CR 903.10a). Keyed by
 	// COMMANDER, not by opposing player, since S25 (#77) — which is
 	// the shape the client's per-commander hover rows were already
 	// written against.
@@ -747,7 +748,7 @@ type CardView struct {
 	// what AttackingTarget names. Omitted when nothing is declared.
 	// Added in S27.
 	AttackingTargetKind string `json:"attacking_target_kind,omitempty"`
-	// ProtectorPlayer is the seat protecting this battle (CR 310.5),
+	// ProtectorPlayer is the seat protecting this battle (CR 310.9a),
 	// or omitted for every other card type and for a battle whose
 	// protector prompt has not been answered yet. Public information:
 	// the whole table needs to know who is defending, because it
@@ -880,7 +881,7 @@ type CardView struct {
 	// activated-ability menu's affordance; the server does the real
 	// check.
 	SummoningSick bool `json:"summoning_sick,omitempty"`
-	// LoyaltyActivated reports CR 606.5: this planeswalker has
+	// LoyaltyActivated reports CR 606.3: this planeswalker has
 	// already had a loyalty ability activated this turn, so every
 	// entry in ActivatedAbilities carrying a LoyaltyCost is greyed
 	// until the turn cursor moves on. Battlefield planeswalkers
@@ -1047,7 +1048,7 @@ type ActivatedAbilityView struct {
 	LifeCost      int    `json:"life_cost,omitempty"`
 	SorcerySpeed  bool   `json:"sorcery_speed,omitempty"`
 	// LoyaltyCost is the loyalty component of a planeswalker's
-	// loyalty ability: +N / 0 / −N (CR 606.1). A POINTER because [0]
+	// loyalty ability: +N / 0 / −N (CR 606.4). A POINTER because [0]
 	// is a real printed cost and `omitempty` would erase it — the
 	// client needs "no loyalty component" and "costs zero loyalty"
 	// to stay different, since only the first leaves the ability
@@ -1074,6 +1075,34 @@ type ActivatedAbilityView struct {
 	// without a second round trip. Added in S27.
 	CrewCost    int               `json:"crew_cost,omitempty"`
 	CrewOptions *LegalTargetsView `json:"crew_options,omitempty"`
+	// CounterCostN / Kind / Label / Self / Options describe a
+	// "remove N counters" cost component (#625). CounterCostN is the
+	// number removed and its presence marks the component; zero and
+	// absent for every ability without one.
+	//
+	//   - CounterCostKind is the printed kind ("loyalty", "gold");
+	//     empty means "a counter" of ANY kind, and the client asks
+	//     for the kind as well as the permanent.
+	//   - CounterCostSelf is the "from this" form: the counters come
+	//     off the source, and no permanent is sent.
+	//   - CounterCostLabel is the "from" clause of the other form ("a
+	//     planeswalker you control"); empty for the self form.
+	//   - CounterCostOptions is what could pay right now: permanents
+	//     the controller controls that match the clause (the source
+	//     alone for the self form) and hold at least N counters of the
+	//     kind, each with the kinds that could pay — most counters
+	//     first. Built from the NON-targeting candidate walk, so a
+	//     hexproof or shrouded permanent of yours is offered: a cost
+	//     does not target. Absent when nothing can pay.
+	//
+	// The client sends the chosen permanent as `counter_source_ids`
+	// (omitted for the self form) and, for the any-kind form, the
+	// chosen kind as `counter_kind`.
+	CounterCostN       int                     `json:"counter_cost_n,omitempty"`
+	CounterCostKind    string                  `json:"counter_cost_kind,omitempty"`
+	CounterCostSelf    bool                    `json:"counter_cost_self,omitempty"`
+	CounterCostLabel   string                  `json:"counter_cost_label,omitempty"`
+	CounterCostOptions []CounterCostOptionView `json:"counter_cost_options,omitempty"`
 	// DemandsX marks an ability whose mana component contains {X}
 	// (Helm of Obedience, Treasure Vault, Soothsaying). The client
 	// opens its X picker before the targeting step and sends the
@@ -1098,6 +1127,19 @@ type ActivatedAbilityView struct {
 	// fields for an ability that targets.
 	TargetMode   string            `json:"target_mode,omitempty"`
 	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+}
+
+// CounterCostOptionView is one permanent that could pay a "remove N
+// counters" cost, and the counter kinds on it that could (#625).
+type CounterCostOptionView struct {
+	CardID string             `json:"card_id"`
+	Kinds  []CounterKindCount `json:"kinds"`
+}
+
+// CounterKindCount is a counter kind and how many the permanent holds.
+type CounterKindCount struct {
+	Kind  string `json:"kind"`
+	Count int    `json:"count"`
 }
 
 type ManaAbilityView struct {
@@ -1127,7 +1169,7 @@ type ManaAbilityView struct {
 	// LifeCost is a "Pay N life" component of the activation cost —
 	// Mana Confluence's "{T}, Pay 1 life:". Advisory, exactly like
 	// ActivatedAbilityView.LifeCost: the client renders the cost
-	// chip, the server does the real CR 118.8 check. A damage RIDER
+	// chip, the server does the real CR 119.4 check. A damage RIDER
 	// ("This land deals 1 damage to you") is not a cost and does not
 	// appear here — it's part of the ability's Label.
 	// Added in the S22 mana-ability-rider pass.
@@ -1496,7 +1538,11 @@ func viewOfTapCost(g *game.Game, caster uuid.UUID, c *CardView, tc *game.TapPerm
 		ColorClause: tc.ColorClause,
 		DemandsX:    tc.DemandsX(),
 	}
-	opts := viewOfLegalTargets(g.LegalTargetsForEffect(caster, tc.Spec), tc.Spec)
+	// SpecCandidatesForEffect, not LegalTargetsForEffect: tapping a
+	// permanent for convoke or waterbend doesn't target it, so a
+	// shrouded creature you control is still a legal tapper. The
+	// engine's own check (tap_cost.go) already works this way.
+	opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, tc.Spec), tc.Spec)
 	opts.Cards = filterToController(g, opts.Cards, caster)
 	opts.Players = nil
 	opts.Min, opts.Max, opts.CountFromX = 0, 0, false
@@ -1667,9 +1713,7 @@ func stampCombatTargets(g *game.Game, view *GameView) {
 // Split from viewOfManaAbilities because that runs while building the
 // base card view, which has no game handle — computing a legal set
 // needs one. Same division the activated abilities already use, and
-// the same CR 701.17b filter: a sacrifice cost may only be paid with
-// permanents you control, which the generic legal-target walk doesn't
-// know.
+// the same list: sacrificeCostOptions.
 func stampManaSacrificeOptions(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView) {
 	raw := game.ManaAbilitiesForCard(card)
 	for i := range views {
@@ -1677,13 +1721,7 @@ func stampManaSacrificeOptions(g *game.Game, card game.Card, controller uuid.UUI
 			continue
 		}
 		views[i].SacrificeLabel = raw[i].SacrificeOther.Label
-		opts := abilityLegalTargets(g, controller, raw[i].SacrificeOther)
-		if opts == nil {
-			continue
-		}
-		opts.Cards = filterToController(g, opts.Cards, controller)
-		opts.Players = nil
-		views[i].SacrificeOptions = opts
+		views[i].SacrificeOptions = sacrificeCostOptions(g, controller, raw[i].SacrificeOther)
 	}
 }
 
@@ -2403,9 +2441,10 @@ func redactZone(z ZoneView, isKnower func(CardView) bool) ZoneView {
 
 // redactCardForViewer applies the S13.5 visibility rule to a single
 // card. When `known` is true the card keeps every printed
-// characteristic; when false, name / type_line / scryfall_id /
-// power / toughness / counters / is_commander zero out so the wire
-// doesn't leak identity. The unexported `knowers` map is always
+// characteristic; when false, every field derived from the card's
+// identity zeroes out — name, type line, costs, faces, abilities,
+// catalog flags — so the wire doesn't leak identity.
+// face_down_view_test.go pins the survivors as an allowlist. The unexported `knowers` map is always
 // cleared on the output so repeated FilterViewFor calls stay
 // idempotent.
 func redactCardForViewer(c CardView, known bool) CardView {
@@ -2446,6 +2485,37 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.Faces = nil
 	out.Layout = ""
 	out.ActiveFace = 0
+	// #95: everything below is read off the card's own text or type
+	// line — the catalog entry, its abilities, its target prompt — and
+	// so names it as surely as the fields above. A face-down Forest
+	// that still shipped "Add {G}" in mana_abilities, or a face-down
+	// catalog card that still shipped auto=true and target_mode, was
+	// the leak: Necropotence's face-down exiles carried both, and so
+	// did every card in the owner's own library.
+	//
+	// What survives is the game state around the card rather than the
+	// card: instance id, owner, controller, tapped, damage, combat
+	// declarations, goad, attachment and battlefield position.
+	out.Auto = false
+	out.TargetMode = ""
+	out.ManaAbilities = nil
+	out.ActivatedAbilities = nil
+	out.Restrictions = nil
+	out.ExilePlay = nil
+	// The hand / command / graveyard stamps are only meaningful to a
+	// player who can read the card, and each one quotes it: a mode
+	// prompt, an additional-cost label, a target clause's bounds.
+	out.LegalTargets = nil
+	out.Modes = nil
+	out.AdditionalCost = nil
+	// Type-derived bits. Sickness says "creature without haste",
+	// loyalty says "planeswalker", defense and a protector say
+	// "battle". Defense is also just the defense counter, and the
+	// counters map is already gone.
+	out.SummoningSick = false
+	out.LoyaltyActivated = false
+	out.Defense = 0
+	out.ProtectorPlayer = ""
 	return out
 }
 
@@ -2706,7 +2776,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 			SorcerySpeed:  a.SorcerySpeed,
 			LoyaltyCost:   a.Cost.Loyalty,
 		}
-		// CR 606.5 is carried by the loyalty component itself, so a
+		// CR 606.3 is carried by the loyalty component itself, so a
 		// catalog entry doesn't have to remember to set SorcerySpeed
 		// — but the client greys on this flag, so stamp it.
 		if a.Cost.Loyalty != nil {
@@ -2714,16 +2784,20 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 		}
 		if a.Cost.SacrificeOther != nil {
 			v.SacrificeLabel = a.Cost.SacrificeOther.Label
-			v.SacrificeOptions = abilityLegalTargets(g, caster, a.Cost.SacrificeOther)
-			// A sacrifice cost can only be paid with your own
-			// permanents (CR 701.17b); the legal-target walk doesn't
-			// know that, so filter here.
-			v.SacrificeOptions.Cards = filterToController(g, v.SacrificeOptions.Cards, caster)
-			v.SacrificeOptions.Players = nil
+			v.SacrificeOptions = sacrificeCostOptions(g, caster, a.Cost.SacrificeOther)
 		}
 		if a.Cost.Crew > 0 {
 			v.CrewCost = a.Cost.Crew
 			v.CrewOptions = crewOptions(g, caster)
+		}
+		if rc := a.Cost.RemoveCounters; rc != nil && rc.N > 0 {
+			v.CounterCostN = rc.N
+			v.CounterCostKind = rc.Counter
+			v.CounterCostSelf = rc.From == nil
+			if rc.From != nil {
+				v.CounterCostLabel = rc.From.Label
+			}
+			v.CounterCostOptions = counterCostOptions(g, caster, c.InstanceID, rc)
 		}
 		if a.Cost.DemandsX() {
 			v.DemandsX = true
@@ -2762,11 +2836,60 @@ func crewOptions(g *game.Game, caster uuid.UUID) *LegalTargetsView {
 	return out
 }
 
-// abilityLegalTargets is the legal set for one of an ability's
-// clauses (its target clause, or the permanents that can pay its
-// sacrifice cost). Caller must hold g.mu.
+// counterCostOptions projects game.CounterCostOptionsForEffect — the
+// one candidate walk the engine validates against and the move
+// enumerator expands — so the client's picker, the bots and the
+// engine cannot disagree about which permanent pays (#625). NOT
+// abilityLegalTargets: that is the targeting walk, and a cost does
+// not target (CR 601.2h), so it would hide a shrouded planeswalker
+// the engine accepts — the same rule sacrificeCostOptions follows.
+// Its own shape rather than sacrificeCostOptions' LegalTargetsView
+// because each option carries the counter kinds that could pay.
+// Caller must hold g.mu.
+func counterCostOptions(g *game.Game, caster, sourceID uuid.UUID, rc *game.CounterRemovalCost) []CounterCostOptionView {
+	opts := g.CounterCostOptionsForEffect(caster, sourceID, rc)
+	if len(opts) == 0 {
+		return nil
+	}
+	out := make([]CounterCostOptionView, 0, len(opts))
+	for _, o := range opts {
+		ov := CounterCostOptionView{CardID: o.CardID.String()}
+		for _, k := range o.Kinds {
+			ov.Kinds = append(ov.Kinds, CounterKindCount{Kind: k.Kind, Count: k.Count})
+		}
+		out = append(out, ov)
+	}
+	return out
+}
+
+// abilityLegalTargets is the legal set for an ability's TARGET
+// clause. It applies the targeting gate (hexproof, shroud), so it is
+// only for clauses whose text says "target". A cost clause goes
+// through sacrificeCostOptions instead. Caller must hold g.mu.
 func abilityLegalTargets(g *game.Game, caster uuid.UUID, spec *game.TargetSpec) *LegalTargetsView {
-	lt := g.LegalTargetsForEffect(caster, spec)
+	return abilityClauseView(g.LegalTargetsForEffect(caster, spec), spec)
+}
+
+// sacrificeCostOptions is the set of permanents that can pay an
+// ability's "sacrifice another" cost, for both activated and mana
+// abilities.
+//
+// It uses SpecCandidatesForEffect, not the targeting gate: paying a
+// cost doesn't target (CR 601.2h), so a shrouded creature you control
+// can still be sacrificed. The engine validates the payment the same
+// way (activated.go). A sacrifice cost can only be paid with
+// permanents you control (CR 701.21a), and the spec walk doesn't know
+// that, so this filters to the controller. Caller must hold g.mu.
+func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetSpec) *LegalTargetsView {
+	out := abilityClauseView(g.SpecCandidatesForEffect(controller, spec), spec)
+	out.Cards = filterToController(g, out.Cards, controller)
+	out.Players = nil
+	return out
+}
+
+// abilityClauseView converts a candidate set for one ability clause
+// into its wire form.
+func abilityClauseView(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
 	// Min / Max come off the spec, exactly as the cast-time path
 	// stamps them (viewOfLegalTargets). Omitting them shipped every
 	// ability clause to the client as min 0 / max 0 — "unbounded,

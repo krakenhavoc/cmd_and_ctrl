@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// reveal_test.go pins the engine half of CR 701.16.
+// reveal_test.go pins the engine half of CR 701.20.
 //
 // The tests that matter here are the ones that would still pass if
 // "reveal" had been built as "look at" with a bigger audience — which

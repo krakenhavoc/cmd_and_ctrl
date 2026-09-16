@@ -37,72 +37,17 @@ import (
 
 // --- tokens --------------------------------------------------------
 
-// b36WhiteCatToken is Arahbo, the First Fang's 1/1 white Cat. A Cat,
-// so Arahbo's own anthem lifts it; a token, so it never fires his
-// nontoken-Cat trigger again.
-func b36WhiteCatToken() game.Card {
-	return game.Card{
-		Name:      "Cat",
-		TypeLine:  "Token Creature — Cat",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"W"},
-	}
-}
+// b36WhiteCatToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
+func b36WhiteCatToken() game.Card { return TokenCard("1/1 white Cat") }
 
-// b36WhiteVampireLifelinkToken is Mavren Fein, Dusk Apostle's 1/1
-// white Vampire with lifelink. A token, so it never fires the
-// nontoken-Vampires-attack trigger by itself.
-func b36WhiteVampireLifelinkToken() game.Card {
-	return game.Card{
-		Name:      "Vampire",
-		TypeLine:  "Token Creature — Vampire",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"W"},
-		Keywords:  []string{"lifelink"},
-	}
-}
+// b36WhiteVampireLifelinkToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
+func b36WhiteVampireLifelinkToken() game.Card { return TokenCard("1/1 white Vampire with lifelink") }
 
-// b36WhiteRabbitToken is Cadira, Caller of the Small's 1/1 white
-// Rabbit. Vanilla; a token, so the next hit counts it.
-func b36WhiteRabbitToken() game.Card {
-	return game.Card{
-		Name:      "Rabbit",
-		TypeLine:  "Token Creature — Rabbit",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"W"},
-	}
-}
+// b36BlueThopterToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
+func b36BlueThopterToken() game.Card { return TokenCard("1/1 blue Thopter artifact with flying") }
 
-// b36BlueThopterToken is Sharding Sphinx's 1/1 blue Thopter artifact
-// creature with flying — tokens.go's ThopterToken is colourless, and
-// the colour is printed. An artifact creature, so the Thopter itself
-// grows the next batch.
-func b36BlueThopterToken() game.Card {
-	return game.Card{
-		Name:      "Thopter",
-		TypeLine:  "Token Artifact Creature — Thopter",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"U"},
-		Keywords:  []string{"flying"},
-	}
-}
-
-// b36WhiteHumanSoldierToken is Lossarnach Captain's 1/1 white Human
-// Soldier — tokens.go's HumanSoldierToken is colourless. A Human, so
-// the Captain's own tap trigger fires when it enters.
-func b36WhiteHumanSoldierToken() game.Card {
-	return game.Card{
-		Name:      "Human Soldier",
-		TypeLine:  "Token Creature — Human Soldier",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"W"},
-	}
-}
+// b36WhiteHumanSoldierToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
+func b36WhiteHumanSoldierToken() game.Card { return TokenCard("1/1 white Human Soldier") }
 
 // --- costs ---------------------------------------------------------
 
@@ -337,11 +282,11 @@ func b36RepurposingBaySearch(g *game.Game, item *game.StackItem) error {
 	}.Apply(NewContext(g, item))
 }
 
-// b36BounceChosenCommander is Sanctum of Eternity's body: the
+// bounceChosenTarget is Sanctum of Eternity's body: the
 // announced commander, if still on the battlefield and still legal,
 // goes to its owner's hand — through the shared exit primitive, so
 // CR 903.9 offers the command zone on the way (#539).
-func b36BounceChosenCommander(g *game.Game, item *game.StackItem) error {
+func bounceChosenTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	id, ok := b16FirstLegalTargetCard(ctx)
 	if !ok || !onBattlefield(g, id) {
@@ -393,7 +338,7 @@ func b36RabbitsPerTokenYouControl(g *game.Game, item *game.StackItem) error {
 	if n <= 0 {
 		return nil
 	}
-	return CreateToken{Controller: item.Controller, Template: b36WhiteRabbitToken(), N: n}.Apply(NewContext(g, item))
+	return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 white Rabbit"), N: n}.Apply(NewContext(g, item))
 }
 
 // b36DrawAndLoseOne is Tegwyll's dies body: the controller draws a
@@ -427,18 +372,6 @@ func b36GainLife(n int) func(g *game.Game, item *game.StackItem) error {
 // Visionary's entry.
 func b36DrawOne(g *game.Game, item *game.StackItem) error {
 	return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-}
-
-// b36BounceChosenCreature is Whitemane Lion's entry body: the
-// announced creature — the Lion itself included — returns to its
-// owner's hand if it is still on the battlefield.
-func b36BounceChosenCreature(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
-	if !ok || !onBattlefield(g, id) {
-		return nil
-	}
-	return BounceToHand{Target: id}.Apply(ctx)
 }
 
 // b36DesertDual is the Outlaws of Thunder Junction tapped Desert

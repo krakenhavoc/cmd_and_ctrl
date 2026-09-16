@@ -28,7 +28,7 @@ func init() {
 			TribalKeywordGrant(cats, "lifelink"),
 		},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Regal Caracal — create two 1/1 white Cat tokens with lifelink", Do(CreateToken{Template: b28WhiteCatLifelinkToken(), N: 2})),
+			WhenThisEnters("Regal Caracal — create two 1/1 white Cat tokens with lifelink", Do(CreateToken{Template: TokenCard("1/1 white Cat with lifelink"), N: 2})),
 		},
 	})
 }

@@ -58,7 +58,7 @@ func init() {
 			},
 			Optional(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b22SelfDiedOrWasExiledFromBattlefield(ev, source)
-			}, "God-Eternal Bontu — put it into its owner's library third from the top", b33TuckSelfThirdFromTop), "God-Eternal Bontu — put it into its owner's library third from the top?"),
+			}, "God-Eternal Bontu — put it into its owner's library third from the top", tuckSelfThirdFromTop), "God-Eternal Bontu — put it into its owner's library third from the top?"),
 		},
 	})
 }

@@ -21,12 +21,7 @@ func init() {
 		Name:         "Ajani's Pridemate",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WheneverYouGainLife("Ajani's Pridemate — put a +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {
-				if !b09SourceStillOnBattlefield(g, item) {
-					return nil
-				}
-				return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
-			}),
+			WheneverYouGainLife("Ajani's Pridemate — put a +1/+1 counter on it", putCounterOnSelf),
 		},
 	})
 }

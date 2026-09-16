@@ -33,59 +33,6 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b29GolemEnchantmentArtifactToken is Hammer of Purphoros's 3/3
-// colorless Golem enchantment artifact creature.
-func b29GolemEnchantmentArtifactToken() game.Card {
-	return game.Card{
-		Name:      "Golem",
-		TypeLine:  "Token Enchantment Artifact Creature — Golem",
-		Power:     3,
-		Toughness: 3,
-	}
-}
-
-// b29BlackWizardToken is Cornered by Black Mages' 0/1 black Wizard.
-// The printed token also has "Whenever you cast a noncreature
-// spell, this token deals 1 damage to each opponent"; a token
-// template carries no triggered abilities and a token has no oracle
-// ID for the catalog to key one on, and a sorcery is not around to
-// carry it on the token's behalf, so the Wizard is the body only —
-// declared on the card.
-func b29BlackWizardToken() game.Card {
-	return game.Card{
-		Name:      "Wizard",
-		TypeLine:  "Token Creature — Wizard",
-		Power:     0,
-		Toughness: 1,
-		Colors:    []string{"B"},
-	}
-}
-
-// b29WhiteSpiritClericToken is Hallowed Haunting's white Spirit
-// Cleric, printed */* — 0/0 here, sized by the Haunting's carried
-// static (b29SpiritClericSizing) rather than by an ability of its
-// own, the Simulacrum Synthesizer posture.
-func b29WhiteSpiritClericToken() game.Card {
-	return game.Card{
-		Name:      "Spirit Cleric",
-		TypeLine:  "Token Creature — Spirit Cleric",
-		Power:     0,
-		Toughness: 0,
-		Colors:    []string{"W"},
-	}
-}
-
-// b29GreenSquirrelToken is Chitterspitter's 1/1 green Squirrel.
-func b29GreenSquirrelToken() game.Card {
-	return game.Card{
-		Name:      "Squirrel",
-		TypeLine:  "Token Creature — Squirrel",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"G"},
-	}
-}
-
 // --- costs ---------------------------------------------------------
 
 // b29SacrificeALand is Hammer of Purphoros's "Sacrifice a land" —
@@ -531,7 +478,7 @@ func b29TargetOpponentSacrificesACreatureThenWizard(item *game.StackItem, ctx *C
 			"Cornered by Black Mages — sacrifice a creature")
 		break
 	}
-	return CreateToken{Controller: item.Controller, Template: b29BlackWizardToken(), N: 1}.Apply(ctx)
+	return CreateToken{Controller: item.Controller, Template: TokenCard("0/1 black Wizard"), N: 1}.Apply(ctx)
 }
 
 // b29TapAllCreaturesControlledBy taps every untapped creature

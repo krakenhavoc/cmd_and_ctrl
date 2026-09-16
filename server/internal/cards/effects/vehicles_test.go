@@ -265,7 +265,7 @@ func TestCrewRejectsAnotherPlayersCreature(t *testing.T) {
 	}
 }
 
-// TestCrewCountsEffectivePower — CR 702.122c reads power as the cost
+// TestCrewCountsEffectivePower — CR 702.122a reads power as the cost
 // is paid, and "power" means the post-layer effective value. Two
 // +1/+1 counters turn a 1-power creature into a legal crewer for a 3.
 func TestCrewCountsEffectivePower(t *testing.T) {

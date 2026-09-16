@@ -76,6 +76,13 @@ func newTable(t *testing.T) *game.Game {
 			t.Fatalf("KeepHand: %v", err)
 		}
 	}
+	// #692 / CR 103.8c: at four seats the starting player draws on
+	// turn 1 like everyone else — only a two-player game skips it
+	// (CR 103.8a). Park the cursor on that draw step so the draw, and
+	// anything that triggers off it, happens before a scenario stocks
+	// the board or calls clearHand. Otherwise the first advanceTo in
+	// a test body drops a card into a hand the test thinks it owns.
+	advanceTo(t, g, game.StepDraw)
 	return g
 }
 
@@ -103,10 +110,16 @@ func newTableMulligans(t *testing.T) *game.Game {
 // is castable.
 func clearHand(p *game.Player) { p.Hand.Cards = nil }
 
+// handCard and battlefieldCard mark the knowers the engine would: a
+// card in hand is known to its owner, a permanent to the whole table.
+// The enumerator never reads knowledge, but the wire frames
+// agreement_test.go commits do — and since #95 a card its viewer
+// does not know reaches them with no abilities, costs or targets.
 func handCard(p *game.Player, c game.Card) uuid.UUID {
 	c.InstanceID = uuid.New()
 	c.Owner = p.ID
 	c.Controller = p.ID
+	c.KnownBy = map[uuid.UUID]bool{p.ID: true}
 	p.Hand.PushTop(c)
 	return c.InstanceID
 }
@@ -115,6 +128,10 @@ func battlefieldCard(g *game.Game, p *game.Player, c game.Card) uuid.UUID {
 	c.InstanceID = uuid.New()
 	c.Owner = p.ID
 	c.Controller = p.ID
+	c.KnownBy = make(map[uuid.UUID]bool, len(g.Seats))
+	for _, s := range g.Seats {
+		c.KnownBy[s.ID] = true
+	}
 	g.Battlefield.PushTop(c)
 	return c.InstanceID
 }
@@ -332,6 +349,45 @@ func TestUnparseableCostIsNotEnumerated(t *testing.T) {
 	}
 	if !seenBolt {
 		t.Errorf("Lightning Bolt should still be enumerated: %v", labels(moves))
+	}
+}
+
+// TestNoManaCostSpellIsNotEnumerated: CR 118.6. A card with no mana
+// cost (Ancestral Vision) imports with an empty ManaCost, which
+// ParseCost reads as a free {0}. The engine refuses the cast with
+// ErrNoManaCost, so the enumerator must not offer it. A {0} spell is
+// a real cost and stays enumerated.
+func TestNoManaCostSpellIsNotEnumerated(t *testing.T) {
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	clearHand(active)
+	vision := handCard(active, game.Card{
+		Name:     "Ancestral Vision",
+		TypeLine: "Sorcery",
+		Layout:   "normal",
+	})
+	thopter := handCard(active, game.Card{
+		Name:     "Ornithopter",
+		TypeLine: "Artifact Creature — Thopter",
+		ManaCost: "{0}",
+		Layout:   "normal",
+	})
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	moves := legal.EnumerateFor(g, active.ID)
+	dispatchAll(t, g, active.ID, moves)
+
+	seenThopter := false
+	for _, m := range moves {
+		if m.Source == vision {
+			t.Errorf("a spell with no mana cost must not be enumerated: %q", m.Label)
+		}
+		if m.Source == thopter {
+			seenThopter = true
+		}
+	}
+	if !seenThopter {
+		t.Errorf("Ornithopter ({0}) should still be enumerated: %v", labels(moves))
 	}
 }
 

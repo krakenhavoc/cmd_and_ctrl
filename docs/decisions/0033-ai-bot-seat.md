@@ -42,7 +42,7 @@ engine.** Roughly 290 cards carry effect specs (289 registered as of
 #270 on 2026-09-11; `grep -c 'Register(Spec{'` undercounts — several
 cycles register in loops). There is no attachment layer,
 so Equipment and Auras are inert (S24). Sagas do not exist beyond a `lore` counter type with no chapter
-triggers and no 704.5u state-based action (S27).
+triggers and no 704.5s state-based action (S27).
 Mass-removal primitives are S23. A bot cannot be better than the
 engine it plays inside, and the catalog — not the model — is the
 binding constraint on play quality.
@@ -112,6 +112,17 @@ the expansion budget. Enumerating a range instead would spend the
 whole per-source budget on near-identical moves pointed at the first
 target and never offer the second, which is precisely the shape #544
 found in the library-search walk.
+
+The same corollary covers a **rule about a set of cards** on a prompt:
+a search's `SearchLibrarySpec.Validate`, and since #624 a choose-cards
+prompt's `ChooseCardsPrompt.Validate`. The enumerator doesn't
+re-derive the rule. It asks the engine's own acceptance check
+(`SearchPickLegalLocked`, `ChooseCardsPickLegalLocked`) before it offers
+a set. It also spreads the per-source budget across set sizes
+(`filteredCombinations`). The spreading matters as much as the check.
+If singles filled the budget first, a "one creature card, or two cards"
+prompt over a hand with no creature would list nothing at all, and a
+seat that owes a choice with an empty list is stuck.
 
 ### 2. Bot = in-process virtual seat
 

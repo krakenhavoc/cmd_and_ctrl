@@ -107,7 +107,7 @@ type TriggeredAbility struct {
 	// locking mutators.
 	Build func(ev Event, source *Card, sourceLKI Characteristic, g *Game) *StackItem
 
-	// OptionalPrompt is the declarative "you may" gate for CR 603.4
+	// OptionalPrompt is the declarative "you may" gate for CR 603.5
 	// optional triggers. When non-nil, the harvester does NOT call
 	// Build immediately on a matching event — it queues a
 	// PendingChoiceTriggerPrompt to the source's controller (or the
@@ -194,7 +194,7 @@ type TriggeredAbility struct {
 	OncePerBatch bool
 
 	// Chapter is the Saga chapter number this ability is printed
-	// against — 1 for "I —", 3 for "III —" (CR 714.2c). Zero for
+	// against — 1 for "I —", 3 for "III —" (CR 714.2b). Zero for
 	// every ability that is not a chapter, which is every ability on
 	// every card that is not a Saga.
 	//

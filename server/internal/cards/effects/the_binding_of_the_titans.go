@@ -31,7 +31,7 @@ func init() {
 			ChapterTriggerTargeting(3, "The Binding of the Titans — III: return a creature or land to hand",
 				TargetCardInGraveyard("target creature or land card in your graveyard",
 					YouOwn(), Or(Creature(), Land())),
-				titansReturnToHand),
+				returnTargetCardToHand),
 		},
 	})
 }
@@ -72,11 +72,4 @@ func titansExileFromGraveyards(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	return GainLife{Player: item.Controller, Amount: creatures}.Apply(ctx)
-}
-
-func titansReturnToHand(g *game.Game, item *game.StackItem) error {
-	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-		return nil
-	}
-	return ReturnFromGraveyard{Target: item.Targets[0].ID, Dest: game.ZoneHand}.Apply(NewContext(g, item))
 }

@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -314,12 +315,55 @@ func TestB29HallowedHauntingGatesAtSevenAndSizesItsSpirits(t *testing.T) {
 	}
 }
 
+// #683: when the last Haunting leaves, its Spirit Clerics shrink to
+// 0/0. One that never had a counter lingers (the placeholder
+// convention); one that had counters and lost them all is no
+// placeholder (Card.LostLastCounter) and dies.
+func TestB29HauntingClericsShrinkAndASpentOneDies(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	haunting := b29Push(g, me.ID, "Hallowed Haunting", "Enchantment", b29HallowedHauntingOracle, "{2}{W}{W}", 0, 0, "W")
+	g.WithWriteLock(func() {
+		_ = g.CreateTokenForEffect(me.ID, TokenCard("0/0 white Spirit Cleric"), 2)
+	})
+	var clerics []uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Spirit Cleric" {
+			clerics = append(clerics, c.InstanceID)
+		}
+	}
+	if len(clerics) != 2 {
+		t.Fatalf("want 2 Spirit Clerics, got %d", len(clerics))
+	}
+	spent, fresh := clerics[0], clerics[1]
+
+	gainAndLoseACounter(t, g, spent)
+	if !g.Battlefield.Contains(spent) {
+		t.Fatal("while the Haunting sizes it, a Cleric survives losing its last counter")
+	}
+	if got := effectiveToughness(t, g, spent); got != 2 {
+		t.Errorf("two Spirits: toughness %d, want 2", got)
+	}
+
+	b15Destroy(t, g, haunting)
+	runStateChecksViaDraw(t, g)
+	if g.Battlefield.Contains(spent) {
+		t.Error("a Spirit Cleric that lost its counters survived shrinking to 0/0")
+	}
+	if !g.Battlefield.Contains(fresh) {
+		t.Error("a Spirit Cleric that never had a counter should linger as a 0/0")
+	}
+	if spec, _ := Lookup(b29HallowedHauntingOracle); len(spec.Caveats) != 1 || !strings.Contains(spec.Caveats[0], "lost them all dies") {
+		t.Errorf("the caveat must tell players the spent Cleric dies: %v", spec.Caveats)
+	}
+}
+
 func TestB29ChitterspitterEatsATokenEachUpkeepAndGrowsSquirrels(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	spitter := b29Push(g, me.ID, "Chitterspitter", "Artifact", b29ChitterspitterOracle, "{2}{G}", 0, 0, "G")
 	squirrel := pushTribalCreature(g, me.ID, "Drey Keeper", "Creature — Squirrel", 1, 1)
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, b29GreenSquirrelToken(), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("1/1 green Squirrel"), 1) })
 	token := findBattlefieldByName(g, "Squirrel")
 	if got := effectivePower(t, g, squirrel); got != 1 {
 		t.Fatalf("no acorns: power %d, want 1", got)
@@ -446,7 +490,7 @@ func TestB29DazzlingAngelGainsOnOtherCreaturesEntering(t *testing.T) {
 	if me.Life != start+1 {
 		t.Errorf("a creature entering: life %d, want %d", me.Life, start+1)
 	}
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, SpiritToken(), 2) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("1/1 colorless Spirit with flying"), 2) })
 	passPriorityAroundTable(t, g)
 	if me.Life != start+3 {
 		t.Errorf("two tokens: life %d, want %d", me.Life, start+3)

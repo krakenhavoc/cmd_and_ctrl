@@ -100,7 +100,7 @@ everything else they are re-derived from the copied oracle ID.
 answer stamps `ev.EntersAsCopyOf` and the entry path materialises it
 **before** `EventETB` — so the permanent never exists on the
 battlefield as its own printed self, and every ETB trigger, its own
-and every watcher's, sees the copy (CR 706.2).
+and every watcher's, sees the copy (CR 707.2).
 
 The card's "except" clause is an edit to the values on their way in
 (`Except`), not a knob on the engine: Sakashima's `SetName`,
@@ -154,6 +154,51 @@ Shipping a speculative topological sort would mean adding a required
 declaration to every card in the catalog to fix a bug no game can
 currently produce. Pure timestamp ordering stays; the trigger stays
 armed.
+
+**Amended 2026-09-16 (the [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159)
+closeout): the "no pair exists" premise is false, and has been since
+the day this merged.** The paragraphs above are left as written, as
+the record of why #414 did not build dependency ordering. Their
+premise is not a reason to keep deferring it.
+
+- **Type-adds do not commute with type-sets.** A type-add whose
+  `AppliesTo` reads a type (Urborg, Tomb of Yawgmoth's "each land";
+  Maskwood Nexus's "creatures you control") depends, under CR 613.8a,
+  on any same-layer effect that writes that type. The catalog has
+  type-*sets*: `SetAttachedTypes` (Song of the Dryads, Kenrith's
+  Transformation, Darksteel Mutation), Arixmethes, Slumbering Isle's
+  slumber, The Warring Triad's self type-strip, and crew's "becomes an
+  artifact creature". Maskwood Nexus (#404) and Arixmethes (#480)
+  merged on 2026-09-13, a few hours after #414. Song of the Dryads
+  (#563) merged on 2026-09-14.
+- **Reproduced on develop `7c1ae9b`** with throwaway probe tests
+  (re-run 2026-09-16, not committed), all in layer 4. The rules result
+  is the same whichever card entered first; the engine's result isn't:
+
+  | pair | engine, in the wrong entry order | rules |
+  |---|---|---|
+  | Urborg (older) + Song of the Dryads (newer) on a Sol Ring | `[Forest]`, taps for {G} only | a Forest Swamp |
+  | Urborg (older) + Arixmethes, slumbering (newer) | no subtypes, {G}{U} only | a Swamp too |
+  | Maskwood Nexus (older) + a Vehicle crewed later | not every creature type: no lord pump, no haste from Goblin Chieftain | every creature type |
+  | Maskwood Nexus (older) + The Warring Triad under eight graveyard cards | not a creature, yet still every creature type | not every creature type |
+  | Maskwood Nexus (older) + Arixmethes, slumbering | a land that is every creature type | not every creature type |
+
+  Crew is stamped when it resolves, so the Maskwood + Vehicle order is
+  the usual one, for all six catalog Vehicles.
+- **The engine already resolves one CR 613.8 case**: ability removal,
+  by iterating to a fixed point ([ADR 0046](0046-layer-6-authoritative.md) §4).
+  Part of that is itself wrong (see the note on ADR 0046 §4).
+- **The cost argument is not settled either.** A required read/write
+  declaration on every `StaticAbility` is one design, not the only one.
+
+Tracked in [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668)
+(an ADR, then CR 613.8 dependency ordering in layer 4) and
+[#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669) (ability
+removal across layers, and Song of the Dryads' CR 305.7 loss), which
+comes first. Until they land, [#644](https://github.com/krakenhavoc/cmd_and_ctrl/pull/644)
+declares these pairs as caveats on the cards and pins them as skipped
+tests, and AGENTS.md §7 "When NOT to add a catalog entry" holds back
+the cards that would add more pairs.
 
 ## Consequences
 

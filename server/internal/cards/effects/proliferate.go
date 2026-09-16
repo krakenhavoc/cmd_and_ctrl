@@ -6,7 +6,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// proliferate.go — the Proliferate primitive (CR 701.27):
+// proliferate.go — the Proliferate primitive (CR 701.34):
 //
 //	"Choose any number of permanents and/or players with counters on
 //	 them, then give each another counter of each kind already
@@ -95,7 +95,7 @@ var harmfulPlayerCounters = map[string]bool{
 // counters.
 //
 // Only things that already have at least one counter can be chosen
-// (CR 701.27a), so an empty board or a board with no counters on it
+// (CR 701.34a), so an empty board or a board with no counters on it
 // returns two empty lists and the proliferate is a legal no-op.
 //
 // Deterministic: battlefield order then seat order, so the same board

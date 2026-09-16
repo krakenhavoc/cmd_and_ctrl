@@ -13,7 +13,7 @@ import (
 //
 // What is NOT here, because main already had it: "whenever you cast
 // a noncreature spell" is b10NoncreatureSpellCastByYou, "an instant
-// or sorcery" is b12InstantOrSorceryCastByYou, "another creature
+// or sorcery" is instantOrSorceryCastByYou, "another creature
 // you control enters" is b13AnotherCreatureYouControlEntered, "each
 // opponent loses N life" is eachOpponentLosesLife, "N damage to each
 // opponent" is damageToEachOpponent, "draw, then discard" is
@@ -24,60 +24,6 @@ import (
 // mana value of a card off the stack is manaValueOf.
 
 // --- token templates ---------------------------------------------
-
-// b15GreenInsectToken is Hornet Queen's 1/1 green Insect with flying
-// and deathtouch.
-func b15GreenInsectToken() game.Card {
-	return game.Card{
-		Name:      "Insect",
-		TypeLine:  "Token Creature — Insect",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"G"},
-		Keywords:  []string{"flying", "deathtouch"},
-	}
-}
-
-// b15BlueRedInsectToken is The Locust God's 1/1 blue and red Insect
-// with flying and haste.
-func b15BlueRedInsectToken() game.Card {
-	return game.Card{
-		Name:      "Insect",
-		TypeLine:  "Token Creature — Insect",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"U", "R"},
-		Keywords:  []string{"flying", "haste"},
-	}
-}
-
-// b15KoboldToken is Kher Keep's 0/1 red Kobold named Kobolds of Kher
-// Keep — the name is printed, and it is what Rohgahh and the other
-// Kobold cards read.
-func b15KoboldToken() game.Card {
-	return game.Card{
-		Name:      "Kobolds of Kher Keep",
-		TypeLine:  "Token Creature — Kobold",
-		Power:     0,
-		Toughness: 1,
-		Colors:    []string{"R"},
-	}
-}
-
-// b15ConstructToken is Simulacrum Synthesizer's 0/0 colorless
-// Construct artifact creature. The printed token also carries "This
-// token gets +1/+1 for each artifact you control"; a token template
-// has no static-ability slot and no oracle ID for the catalog to key
-// one on, so the Synthesizer carries that static on the token's
-// behalf — see simulacrum_synthesizer.go for what that costs.
-func b15ConstructToken() game.Card {
-	return game.Card{
-		Name:      "Construct",
-		TypeLine:  "Token Artifact Creature — Construct",
-		Power:     0,
-		Toughness: 0,
-	}
-}
 
 // --- trigger conditions ------------------------------------------
 
@@ -122,7 +68,7 @@ func b15AnotherCreatureDied(ev game.Event, source *game.Card, g *game.Game) bool
 // b15AnotherBigArtifactYouControlEntered is Simulacrum Synthesizer's
 // condition: another artifact the controller controls entered with
 // mana value 3 or greater. Mana value is read off the permanent
-// (CR 202.3b — X is zero, a token with no cost is zero).
+// (CR 202.3e — X is zero, a token with no cost is zero).
 func b15AnotherBigArtifactYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
 	c, ok := enteredUnderYourControl(ev, source, g, true)
 	return ok && c.IsArtifact() && manaValueOf(c) >= 3

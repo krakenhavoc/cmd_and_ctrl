@@ -38,22 +38,9 @@ func init() {
 			}
 			return CreateToken{
 				Controller: controller,
-				Template:   GreenFrogLizardToken(),
+				Template:   TokenCard("3/3 colorless Frog Lizard"),
 				N:          1,
 			}.Apply(ctx)
 		},
 	})
-}
-
-// GreenFrogLizardToken is Rapid Hybridization's 3/3 green Frog
-// Lizard. Lives here rather than in tokens.go, like Pongify's Ape,
-// so a concurrent batch editing that file doesn't collide with this
-// one; it has no other consumer.
-func GreenFrogLizardToken() game.Card {
-	return game.Card{
-		Name:      "Frog Lizard",
-		TypeLine:  "Token Creature — Frog Lizard",
-		Power:     3,
-		Toughness: 3,
-	}
 }

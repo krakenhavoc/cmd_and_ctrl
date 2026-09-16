@@ -22,9 +22,7 @@ func init() {
 		Name:         "Sigil of the Empty Throne",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b12EnchantmentSpellCastByYou(ev, source, g)
-			}, "Sigil of the Empty Throne — a 4/4 Angel with flying", Do(CreateToken{Template: b12WhiteAngelFlyingToken(), N: 1})),
+			On(game.EventCast, enchantmentSpellCastByYou, "Sigil of the Empty Throne — a 4/4 Angel with flying", Do(CreateToken{Template: TokenCard("4/4 white Angel with flying"), N: 1})),
 		},
 	})
 }

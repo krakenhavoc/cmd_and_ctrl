@@ -35,7 +35,7 @@ import "github.com/google/uuid"
 //   - **"Next" is free.** The queue is drained on step ENTRY only, so
 //     an ability created *during* an end step cannot fire in that same
 //     end step — the entry hook for it has already run. It waits for
-//     the next one, which is precisely CR 603.7c/d without any
+//     the next one, which is precisely CR 603.7b without any
 //     "created this step" bookkeeping. That timing is observable: a
 //     blink cast in an opponent's end step returns the permanent a
 //     whole turn later, not moments afterwards.

@@ -504,7 +504,7 @@ func TestToxicDelugeRejectsMoreLifeThanYouHave(t *testing.T) {
 // --- Supreme Verdict -----------------------------------------------
 
 // The counterspell RESOLVES — it is a legal target — and then does
-// nothing (CR 701.5a). The distinction from "illegal target" is
+// nothing (CR 701.6a). The distinction from "illegal target" is
 // observable: an illegal target would fizzle the counterspell
 // instead.
 func TestSupremeVerdictCannotBeCountered(t *testing.T) {

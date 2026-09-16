@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// proliferate.go is CR 701.27: "Choose any number of permanents
+// proliferate.go is CR 701.34: "Choose any number of permanents
 // and/or players with counters on them, then give each another
 // counter of each kind already there."
 //

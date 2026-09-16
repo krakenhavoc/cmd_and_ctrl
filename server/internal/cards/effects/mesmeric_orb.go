@@ -29,7 +29,7 @@ import (
 // the card does, and it is why it is a two-mana mill engine rather
 // than a curiosity.
 //
-// CR 701.20a is a change of state, so a permanent that was already
+// CR 701.26b is a change of state, so a permanent that was already
 // untapped does not become untapped and the Orb does not see it;
 // the engine's untap primitive enforces that centrally (see
 // game/untap.go), which is what keeps the Orb from milling the

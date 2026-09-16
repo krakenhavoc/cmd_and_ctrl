@@ -26,7 +26,7 @@ func init() {
 				}
 				spell, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && spell.IsArtifact()
-			}, "Efficient Construction — create a Thopter", Do(CreateToken{Template: ThopterToken(), N: 1})),
+			}, "Efficient Construction — create a Thopter", Do(CreateToken{Template: TokenCard("1/1 colorless Thopter artifact with flying"), N: 1})),
 		},
 	})
 }

@@ -6,7 +6,7 @@ package effects
 //	"{T}: Destroy target tapped creature."
 //
 // The original repeatable removal. A CR 602 activation with a tap
-// cost — summoning sickness applies (CR 302.1), the engine enforces
+// cost — summoning sickness applies (CR 302.6), the engine enforces
 // it — targeting a creature that is tapped RIGHT NOW: the Wandering
 // Emperor's tappedPermanent predicate keeps an untapped creature out
 // of the picker, and CR 608.2b re-checks it on resolution, so a
@@ -24,7 +24,7 @@ func init() {
 			Label:   "{T}: Destroy target tapped creature.",
 			Cost:    TapCost(),
 			Targets: TargetCreature("target tapped creature", tappedPermanent()),
-			Effect:  b17DestroyFirstLegalTarget,
+			Effect:  destroyFirstLegalTarget,
 		}},
 	})
 }

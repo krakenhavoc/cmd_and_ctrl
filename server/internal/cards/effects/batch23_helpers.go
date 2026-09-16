@@ -24,19 +24,6 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b23GreenDinosaurTrampleToken is Regisaur Alpha's 3/3 green
-// Dinosaur with trample.
-func b23GreenDinosaurTrampleToken() game.Card {
-	return game.Card{
-		Name:      "Dinosaur",
-		TypeLine:  "Token Creature — Dinosaur",
-		Power:     3,
-		Toughness: 3,
-		Colors:    []string{"G"},
-		Keywords:  []string{"trample"},
-	}
-}
-
 // --- trigger conditions ------------------------------------------
 
 // b23ArtifactPutIntoGraveyardFromBattlefield is Disciple of the
@@ -268,7 +255,7 @@ func b23ChargeThenDrawPerCharge(g *game.Game, item *game.StackItem) error {
 
 // b23TotalManaValueAtMost is Protean Hulk's set constraint: the
 // picked creature cards' mana values, printed and with X as zero
-// (CR 202.3b), sum to `limit` or less.
+// (CR 202.3e), sum to `limit` or less.
 func b23TotalManaValueAtMost(limit int) func([]game.Card) bool {
 	return func(cards []game.Card) bool {
 		total := 0

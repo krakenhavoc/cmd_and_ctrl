@@ -132,9 +132,9 @@ func sawStep(trace []stepFrame, seat int, step game.Step) bool {
 // cancels the step-transition event for seat 1 and leaves every
 // other seat's draw step alone.
 //
-// Seat 1 rather than seat 0 on purpose: CR 103.7c already skips the
-// starting player's turn-1 draw step, so asserting on seat 0's first
-// turn would pass with the card doing nothing at all.
+// Seat 1 rather than seat 0 on purpose: seat 0's turn-1 draw step is
+// already behind the cursor when newCatalogGame hands the table over
+// (#692), so asserting on seat 0's first turn would prove nothing.
 func TestNecropotenceSkipsOnlyItsControllersDrawStep(t *testing.T) {
 	g := newCatalogGame(t)
 	owner := g.Seats[1]

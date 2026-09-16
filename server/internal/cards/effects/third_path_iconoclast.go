@@ -22,7 +22,7 @@ func init() {
 		Name:         "Third Path Iconoclast",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WheneverYouCast(Noncreature(), "Third Path Iconoclast — a 1/1 Soldier artifact creature", Do(CreateToken{Template: b12ColorlessSoldierArtifactToken(), N: 1})),
+			WheneverYouCast(Noncreature(), "Third Path Iconoclast — a 1/1 Soldier artifact creature", Do(CreateToken{Template: TokenCard("1/1 colorless Soldier artifact"), N: 1})),
 		},
 	})
 }

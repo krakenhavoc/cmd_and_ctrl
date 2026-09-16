@@ -9,7 +9,7 @@ package effects
 // Eldrazi. The snow supertype is printed data on the type line and
 // needs no catalog help; the {C} is a fixed slot, so activating it
 // adds mana at once with no colour pick. Summoning sickness applies
-// through Game.ActivateManaAbility (CR 302.1), as for every creature
+// through Game.ActivateManaAbility (CR 302.6), as for every creature
 // mana ability.
 //
 // No simplification.

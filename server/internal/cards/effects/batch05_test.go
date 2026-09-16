@@ -335,7 +335,7 @@ func TestTributeDrawsForBigCreaturesAndGrowsSmallOnes(t *testing.T) {
 	pushCatalogPermanent(g, me.ID, "Tribute to the World Tree", "Enchantment", b05TributeOracle, false)
 	before := me.Hand.Size()
 
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, GreenBeastToken(), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 colorless Beast"), 1) })
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != before+1 {
 		t.Errorf("a 3/3 entering should draw one card, drew %d", me.Hand.Size()-before)
@@ -578,7 +578,7 @@ func TestMentorOfTheMeekOffersToPayForSmallCreaturesOnly(t *testing.T) {
 		t.Errorf("paying should draw one card, drew %d", me.Hand.Size()-before)
 	}
 
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, GreenBeastToken(), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 colorless Beast"), 1) })
 	passPriorityAroundTable(t, g)
 	if hasPayUnlessFor(g, me.ID) {
 		t.Error("a 3/3 entering must not trigger 'power 2 or less'")
@@ -722,7 +722,7 @@ func TestSawInHalfMakesTwoHalfSizeCopiesForTheVictim(t *testing.T) {
 // Flash the Mage in on top of your own Bolt, pick the Bolt for the
 // ETB, re-aim the copy at a second opponent. Both Bolts deal their
 // 3, the Mage stays on the battlefield, and the copy is not a card
-// (CR 706.10) so the graveyard holds the Bolt alone.
+// (CR 707.10) so the graveyard holds the Bolt alone.
 func TestDualcasterMageCopiesTheSpellBeneathIt(t *testing.T) {
 	g := newCatalogGame(t)
 	me, victimA, victimB := g.Seats[0].ID, g.Seats[1].ID, g.Seats[2].ID
@@ -752,7 +752,7 @@ func TestDualcasterMageCopiesTheSpellBeneathIt(t *testing.T) {
 	}
 	pickCard(t, g, me, bolt)
 
-	// The trigger resolves and opens the CR 706.10c re-target prompt.
+	// The trigger resolves and opens the CR 707.10c re-target prompt.
 	for i := 0; i < 8 && latestPickTarget(g, me) == nil; i++ {
 		if err := g.PassPriority(); err != nil {
 			t.Fatalf("PassPriority: %v", err)

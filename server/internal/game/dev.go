@@ -98,6 +98,7 @@ func (g *Game) SpawnCardsForDev(controller uuid.UUID, zone ZoneKind, template Ca
 		c.Controller = controller
 		// Never inherit the template's per-instance state.
 		c.Counters = nil
+		c.LostLastCounter = false
 		c.Tapped = false
 		c.ClearKnown()
 

@@ -85,11 +85,18 @@ func (g *Game) RevealHandForEffect(playerID uuid.UUID) {
 // The card auto-resolves (goes to graveyard) while the choice is
 // pending — the pending entry outlives the spell.
 //
-// Cap n to the player's current hand size per CR 701.8c ("discard
-// as many as you can"). Merges additively with existing pending
-// entries (e.g. cleanup-step discard stacked with a Mind Rot —
-// one combined modal handles both). No-op if the player isn't
-// seated or is eliminated.
+// Cap n to the player's current hand size per CR 609.3 (an effect
+// does as much as it can, so "discard N" discards the whole hand
+// when it holds fewer). No-op if the player isn't seated or is
+// eliminated.
+//
+// Known bug (#651): nothing waits for this discard. PassPriority
+// doesn't read DiscardPending, so play goes on while the discard is
+// owed, and entering cleanup resets the map to the active player's
+// hand-size count (populateDiscardPendingLocked), which drops an
+// effect discard still owed. The two do NOT merge into one modal.
+// The discard also bypasses the CR 614 window and records no cause
+// (#650).
 //
 // Used by Mind Rot et al; the UI is S13.4's DiscardPromptModal
 // which already watches DiscardPending for the viewer. Added in
@@ -180,6 +187,12 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 		DamageSource: source,
 		DamageTarget: playerID,
 		DamageAmount: amount,
+		// #694: the tail goes on BEFORE the pipeline runs, because a
+		// CR 616 ordering prompt returns below without landing the
+		// damage and the resume has nothing else to go on. No actor,
+		// no lifelink, no commander tally — this path has never
+		// applied them, and the resume must not either.
+		damageTail: &damageTail{kind: damageTailPlayer},
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
@@ -192,21 +205,10 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 		return err
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled || out.DamageAmount <= 0 {
+	if out == nil || out.Canceled {
 		return nil
 	}
-	p := g.playerByIDLocked(out.DamageTarget)
-	if p == nil {
-		return ErrPlayerNotFound
-	}
-	g.EmitEvent(Event{
-		Kind:   EventDealDamage,
-		Source: out.DamageSource,
-		Target: out.DamageTarget,
-		Amount: out.DamageAmount,
-	})
-	p.ChangeLife(-out.DamageAmount)
-	return nil
+	return g.applyResolvedDamageLocked(out)
 }
 
 // DealDamageToCreatureForEffect marks amount damage on a
@@ -253,6 +255,11 @@ func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount in
 		DamageSource: source,
 		DamageTarget: cardID,
 		DamageAmount: amount,
+		// #694: the tail goes on BEFORE the pipeline runs, because a
+		// CR 616 ordering prompt returns below without landing the
+		// damage and the resume has nothing else to go on. No
+		// deathtouch: see the note above.
+		damageTail: &damageTail{kind: damageTailPermanent},
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
@@ -265,27 +272,15 @@ func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount in
 		return err
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled || out.DamageAmount <= 0 {
-		// Fully prevented. The permanent is untouched and no
-		// EventDealDamage fires, which is what "prevented" means —
-		// a "whenever ~ is dealt damage" trigger must not see it.
+	if out == nil || out.Canceled {
 		return nil
 	}
-	// Post-replacement values, and through the permanent-aware path:
-	// a creature marks damage, a planeswalker loses loyalty (CR 120.3d,
-	// the #406 fix) and a battle loses defence. The old inline loop
-	// here only ever incremented DamageMarked, which is why damage
-	// could not kill a planeswalker.
-	if !g.applyDamageToPermanentLocked(out.DamageTarget, out.DamageAmount, false) {
-		return ErrCardNotFound
-	}
-	g.EmitEvent(Event{
-		Kind:   EventDealDamage,
-		Source: out.DamageSource,
-		Target: out.DamageTarget,
-		Amount: out.DamageAmount,
-	})
-	return nil
+	// Through the permanent-aware tail: a creature marks damage, a
+	// planeswalker loses loyalty (CR 120.3c, the #406 fix) and a
+	// battle loses defence. The old inline loop here only ever
+	// incremented DamageMarked, which is why damage could not kill a
+	// planeswalker.
+	return g.applyResolvedDamageLocked(out)
 }
 
 // DrawNForEffect draws n cards for the given player, emitting one
@@ -309,9 +304,10 @@ func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
 
 // DiscardRandomForEffect discards n cards from playerID's hand at
 // random order (top of the stack — hand isn't visibly ordered to
-// opponents, so the RNG choice isn't observable). Emits
-// EventDiscardCard + EventZoneMove per card. If the hand has fewer
-// than n cards, discards all of them.
+// opponents, so the RNG choice isn't observable). Emits one
+// EventDiscardCard per card and no EventZoneMove. The move is a direct
+// MoveCard, so the discard bypasses the CR 614 window (#650). If the
+// hand has fewer than n cards, discards all of them.
 func (g *Game) DiscardRandomForEffect(playerID uuid.UUID, n int) error {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
@@ -420,7 +416,7 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, unt
 	// the library. Re-reading the top each iteration would hand back
 	// the same commander every time and mill nothing else. Choosing
 	// the set first lets the rest of the mill proceed AROUND the
-	// paused card, which is both what CR 701.13b's simultaneous mill
+	// paused card, which is both what CR 701.17a's simultaneous mill
 	// wants and the only version that does not silently shorten the
 	// mill when a commander is in the way.
 	avail := len(p.Library.Cards)
@@ -435,7 +431,7 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, unt
 
 	moved := make([]uuid.UUID, 0, want)
 	for _, c := range batch {
-		// Only a move to the GRAVEYARD is a mill (CR 701.13). "Exile
+		// Only a move to the GRAVEYARD is a mill (CR 701.17). "Exile
 		// the top N cards of your library" is not, and firing
 		// EventMill for it would trigger every mill payoff at the
 		// table — Bruvac would double an impulse-draw exile, which it
@@ -470,7 +466,7 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, unt
 }
 
 // DestroyPermanentForEffect destroys a battlefield permanent
-// (CR 701.7), routing it to its owner's graveyard — or exile if the
+// (CR 701.8), routing it to its owner's graveyard — or exile if the
 // owner is no longer seated. Exposed so effect primitives can call
 // it from an already-locked context.
 //
@@ -485,7 +481,7 @@ func (g *Game) DestroyPermanentForEffect(cardID uuid.UUID) error {
 }
 
 // SacrificePermanentForEffect sacrifices a battlefield permanent on
-// behalf of its controller (CR 701.17): EventSacrifice fires while
+// behalf of its controller (CR 701.21): EventSacrifice fires while
 // the card is still on the battlefield, then it takes the ordinary
 // route to its owner's graveyard (emitting ZoneMove + LTB, so
 // dies-triggers see it and the CR 903.9 commander-zone replacement
@@ -526,8 +522,11 @@ func (g *Game) ExileCardForEffect(cardID uuid.UUID) error {
 // knower and the wire ships the card's name to the whole table. A
 // card exiled face down is one no player may look at — including
 // the player who exiled it — so its knowledge set is CLEARED on the
-// way in and Card.FaceDown is set, which is what makes the client
-// draw a card back rather than a blank.
+// way in and Card.FaceDown is set. An empty knowledge set is what
+// the wire keys on: protocol.redactCardForViewer strips every
+// identifying field (name, costs, abilities, catalog flags) for a
+// non-knower. Card.FaceDown is what the client keys on to draw a
+// card back for a face-down card the viewer does not know (#95).
 //
 // Clearing rather than leaving the set alone matters: a library card
 // is not always unknown. A player who has just scryed or used
@@ -666,7 +665,7 @@ func (g *Game) UntapTargetForEffect(cardID uuid.UUID) error {
 // setTapStateLocked is the internal helper behind TapCard and the
 // TapTarget / UntapTarget effect primitives. Caller must hold g.mu.
 //
-// Both directions are a CHANGE of state (CR 701.19a / 701.20a): a
+// Both directions are a CHANGE of state (CR 701.26a / 701.26b): a
 // permanent that is already tapped does not become tapped, and one
 // that is already untapped does not become untapped. Neither emits,
 // and neither is an error — "untap target permanent" pointed at an
@@ -709,7 +708,7 @@ func (g *Game) CounterTargetForEffect(stackID uuid.UUID) error {
 	}
 	switch item.Kind {
 	case StackItemSpell:
-		// CR 701.5a + the "this spell can't be countered" rider
+		// CR 701.6a + the "this spell can't be countered" rider
 		// (Supreme Verdict). The spell is still a LEGAL TARGET — a
 		// Counterspell aimed at it resolves, and then does nothing.
 		// Modelling it as an illegal target would be the easy
@@ -1055,7 +1054,7 @@ type SearchLibrarySpec struct {
 	// own condition fires.
 	TappedOnEntry bool
 
-	// Optional marks a "you MAY search" (CR 701.19c). It forces the
+	// Optional marks a "you MAY search" (CR 701.23b). It forces the
 	// prompt even when the pick is otherwise forced, so the searcher
 	// can decline — Assassin's Trophy's victim keeps the right to
 	// refuse the land and the shuffle.
@@ -1454,7 +1453,7 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 }
 
 // revealLibraryCardsLocked reveals the named library cards to the
-// whole table — the CR 701.16 sense of "reveal" that a tutor prints
+// whole table — the CR 701.20 sense of "reveal" that a tutor prints
 // between "search your library for a card" and "put it into your
 // hand".
 //
@@ -1606,6 +1605,7 @@ func (g *Game) CreateTokensForEffect(controller uuid.UUID, template Card, n int,
 		tok.Owner = controller
 		tok.Controller = controller
 		tok.Counters = nil
+		tok.LostLastCounter = false
 		tok.KnownBy = nil
 		if opts.Tapped {
 			// Additive, not an assignment: a caller that pre-stamped
@@ -1680,6 +1680,7 @@ func (g *Game) CreateTokensAttackingForEffect(controller uuid.UUID, template Car
 		tok.Owner = controller
 		tok.Controller = controller
 		tok.Counters = nil
+		tok.LostLastCounter = false
 		tok.KnownBy = nil
 		if attacking {
 			tok.AttackingTarget = defender
@@ -1702,7 +1703,7 @@ func (g *Game) CreateTokensAttackingForEffect(controller uuid.UUID, template Car
 	return nil
 }
 
-// ScryForEffect performs a scry N (CR 701.18): the player looks at the
+// ScryForEffect performs a scry N (CR 701.22): the player looks at the
 // top N cards of their library and then decides which go to the bottom
 // and in what order the rest go back on top.
 //
@@ -1747,7 +1748,7 @@ func (g *Game) ScryThenForEffect(playerID, source uuid.UUID, n int, after func(g
 	return g.lookAtTopForEffect(PendingChoiceScry, playerID, source, n, scryReason, after)
 }
 
-// SurveilThenForEffect is surveil N with a continuation (CR 701.42):
+// SurveilThenForEffect is surveil N with a continuation (CR 701.25):
 // the player looks at the top N cards of their library and puts any
 // number of them into their graveyard, the rest back on top in any
 // order.
@@ -1996,6 +1997,7 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 	card.Controller = newController
 	card.Tapped = tapped || out.EntersTapped
 	card.Counters = nil
+	card.LostLastCounter = false
 	card.KnownBy = nil
 	card.ExilePlay = ExilePlayPermission{}
 	card.DamageMarked = 0

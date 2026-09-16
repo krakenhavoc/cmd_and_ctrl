@@ -255,7 +255,7 @@ type Spec struct {
 	// CantBeCountered is the S23 "This spell can't be countered"
 	// rider (Supreme Verdict). A spell that declares it is still a
 	// legal target for Counterspell — the counter resolves and does
-	// nothing (CR 701.5a), which is a different and observable thing
+	// nothing (CR 701.6a), which is a different and observable thing
 	// from the counterspell fizzling.
 	//
 	// Only a card's OWN printed rider belongs here. A GRANT
@@ -311,7 +311,7 @@ type Spec struct {
 	// a *Characteristic and a target *Card. A cost modifier changes
 	// neither: it changes what someone PAYS to cast something that
 	// is not on the battlefield and has no Characteristic at all.
-	// Mana value is explicitly untouched (CR 202.3c), so there is
+	// Mana value is explicitly untouched (CR 202.3), so there is
 	// no layer for it to sit in.
 	//
 	// So the engine derives it instead, exactly the way it derives
@@ -355,7 +355,7 @@ type Spec struct {
 	// Effect that runs when the ability resolves off the stack.
 	//
 	// Mana abilities do NOT belong here — they don't use the stack
-	// (CR 605.3a) and keep their own ManaAbilities slot.
+	// (CR 605.3b) and keep their own ManaAbilities slot.
 	//
 	// Build the entries with the constructors in activated.go:
 	//
@@ -403,7 +403,7 @@ type Spec struct {
 	// this clause uses the stack: the untap step grants no priority
 	// (CR 502.4), so there is no announce, no response window and
 	// nothing to counter. It is a modification of the untap step's
-	// TURN-BASED ACTION — CR 502.1's "the active player determines
+	// TURN-BASED ACTION — CR 502.3's "the active player determines
 	// which permanents they control untap" — and the permission
 	// widens that set.
 	//
@@ -491,7 +491,7 @@ type ManaAbility struct {
 	// clause, as one callback: the painland cycle's "This land deals
 	// 1 damage to you", Ancient Tomb's "deals 2 damage to you". It
 	// runs immediately after the produced mana lands in the pool,
-	// inside the same atomic mana-ability resolution (CR 605.3a).
+	// inside the same atomic mana-ability resolution (CR 605.3b).
 	//
 	// Build one with PainRider(n) rather than by hand — that helper
 	// is the whole reason this slot exists so far.
@@ -551,7 +551,7 @@ type ManaAbility struct {
 	// five or more lands" (Temple of the False God), "…three or
 	// more artifacts" (Mox Opal). Checked before any cost is
 	// validated, so a failed gate taps nothing and spends nothing
-	// (CR 602.5a). Same read-only-under-the-lock contract as
+	// (CR 602.5). Same read-only-under-the-lock contract as
 	// ProducedFunc.
 	//
 	// Added in the S32 mana-pipeline pass (#352 sub-gap 5).
@@ -609,7 +609,7 @@ type ManaAbilityCost struct {
 	SacrificeOther *game.TargetSpec
 
 	// Life is a "Pay N life" component of the activation cost (CR
-	// 118.8) — Mana Confluence's "{T}, Pay 1 life: Add one mana of
+	// 119.4) — Mana Confluence's "{T}, Pay 1 life: Add one mana of
 	// any color". Mirrors game.AbilityCost.Life, which CR 602
 	// activated abilities have carried since S21 and the fetchlands
 	// already use.

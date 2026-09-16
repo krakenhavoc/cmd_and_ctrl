@@ -38,7 +38,7 @@ func init() {
 			Label: "{3}{W}: Create a 1/1 white Soldier creature token with lifelink.",
 			Cost:  ManaCost("{3}{W}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return CreateToken{Controller: item.Controller, Template: b22WhiteSoldierLifelinkToken(), N: 1}.Apply(NewContext(g, item))
+				return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 white Soldier with lifelink"), N: 1}.Apply(NewContext(g, item))
 			},
 		}},
 	})

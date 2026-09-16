@@ -69,7 +69,7 @@ can't come back with the card.
 
 Ragavan says "you may **cast** that card". Breeches says "you may
 **play** those cards". The difference is a land: playing one is a
-special action, not a cast (CR 305.1, 115.2a), so a land off the top
+special action, not a cast (CR 305.1, 116.2a), so a land off the top
 of Ragavan's trigger is stranded in exile forever. That is the
 printed card, and modelling it costs one bool — so the client
 offers no button on that card rather than a button that fails.

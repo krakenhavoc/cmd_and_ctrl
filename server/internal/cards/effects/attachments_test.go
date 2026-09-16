@@ -226,7 +226,7 @@ func TestSkullclampKillsAndDrawsTwo(t *testing.T) {
 	if got := me.Hand.Size(); got != before+2 {
 		t.Errorf("hand %d -> %d, want +2", before, got)
 	}
-	// CR 704.5m: the Clamp itself stays, unattached, ready to move.
+	// CR 704.5n: the Clamp itself stays, unattached, ready to move.
 	if !g.Battlefield.Contains(clamp) {
 		t.Fatal("Skullclamp should stay on the battlefield")
 	}
@@ -343,7 +343,7 @@ func TestRancorAttachesOnResolutionAndPumps(t *testing.T) {
 	}
 }
 
-// CR 704.5n plus Rancor's own recursion: the host leaves, the Aura
+// CR 704.5m plus Rancor's own recursion: the host leaves, the Aura
 // goes to the graveyard as a state-based action, and the LTB trigger
 // hands it straight back.
 func TestRancorReturnsToHandWhenItFallsOff(t *testing.T) {
@@ -358,7 +358,7 @@ func TestRancorReturnsToHandWhenItFallsOff(t *testing.T) {
 	passPriorityAroundTable(t, g)
 
 	// MoveCardByID rather than DestroyPermanentForEffect: the public
-	// mutator runs the state checks on the way out, and the CR 704.5n
+	// mutator runs the state checks on the way out, and the CR 704.5m
 	// unattach IS a state check. Nothing else is on the stack to
 	// carry a priority pass here.
 	if err := g.MoveCardByID(

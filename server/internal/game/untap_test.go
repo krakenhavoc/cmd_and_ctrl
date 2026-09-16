@@ -60,7 +60,7 @@ func TestUntapStepAnnouncesEveryPermanentItUntaps(t *testing.T) {
 	if n := untapEventsFor(g, tapped); n != 1 {
 		t.Errorf("the untap step announces the permanent it untapped: %d events", n)
 	}
-	// CR 701.20a is a change of state: an upright permanent does not
+	// CR 701.26b is a change of state: an upright permanent does not
 	// become untapped, and Mesmeric Orb must not see one.
 	if n := untapEventsFor(g, upright); n != 0 {
 		t.Errorf("an already-untapped permanent does not become untapped: %d events", n)
@@ -94,7 +94,7 @@ func TestUntapEventCarriesThePermanentsController(t *testing.T) {
 
 // With no catalog wired — which is this package's normal state, and
 // a server built without the effects blank import — the untap step
-// untaps exactly what CR 502.1 says and nothing else.
+// untaps exactly what CR 502.3 says and nothing else.
 func TestUntapStepWithoutCatalogUntapsOnlyTheActiveSeats(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	mine := pushTappedPermanent(g, g.Seats[0].ID, "Mine", "", "Artifact", true)
@@ -110,7 +110,7 @@ func TestUntapStepWithoutCatalogUntapsOnlyTheActiveSeats(t *testing.T) {
 	}
 }
 
-// A declared UntapStepPermission widens CR 502.1's set, and the
+// A declared UntapStepPermission widens CR 502.3's set, and the
 // widening is scoped by BOTH predicates: AppliesTo picks the step,
 // Untaps picks the permanents.
 func TestUntapStepPermissionWidensTheSet(t *testing.T) {
@@ -153,7 +153,7 @@ func TestUntapStepPermissionWidensTheSet(t *testing.T) {
 	retap := pushTappedPermanent(g, me, "Retap", "", "Artifact", true)
 	g.WithWriteLock(func() { g.performUntapStepLocked(1) })
 	if c, _ := battlefieldCardByID(g, retap); c.Tapped {
-		t.Error("its controller's own untap step untaps it by CR 502.1 anyway")
+		t.Error("its controller's own untap step untaps it by CR 502.3 anyway")
 	}
 }
 

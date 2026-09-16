@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The two-drop that untaps a Cabal Coffers, a creature, or an
 // opponent's blocker at end of turn — any permanent but itself, as
 // printed. A tap ability on a creature, so summoning sickness applies
-// (CR 302.1); the engine enforces that at activation.
+// (CR 302.6); the engine enforces that at activation.
 //
 // "Another" is Warren Soultrader's b03NotNamed: a target clause never
 // sees its source, so the Follower is excluded by name — which in a

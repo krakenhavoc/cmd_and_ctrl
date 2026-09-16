@@ -88,7 +88,7 @@ const (
 	// in S18 sub-PR 3.
 	PendingChoiceDamageAssignment PendingChoiceKind = "damage_assignment"
 
-	// PendingChoiceTriggerPrompt — CR 603.4 "you may" yes/no
+	// PendingChoiceTriggerPrompt — CR 603.5 "you may" yes/no
 	// prompt queued by the S19 trigger harvester when a matching
 	// TriggeredAbility has a non-nil OptionalPrompt. The chooser is
 	// the source's controller (or an override defined on
@@ -138,7 +138,7 @@ const (
 
 	// PendingChoiceSacrifice — "each player sacrifices a creature"
 	// (Grave Pact, Dictate of Erebos, Fleshbag Marauder — CR
-	// 701.17a). One choice per affected player, addressed to that
+	// 701.21a). One choice per affected player, addressed to that
 	// player, carrying the permanents they may choose from.
 	//
 	// Deliberately NOT PendingChoicePickTarget. The effect does not
@@ -157,7 +157,7 @@ const (
 
 	// PendingChoiceScry — "look at the top N cards of your library.
 	// Put any number of them on the bottom of your library and the
-	// rest on top in any order." (CR 701.18)
+	// rest on top in any order." (CR 701.22)
 	//
 	// Private, not revealed: only the chooser becomes a knower of the
 	// looked-at cards, so the wire redacts them for everyone else.
@@ -174,7 +174,7 @@ const (
 
 	// PendingChoiceSurveil — "look at the top N cards of your
 	// library. Put any number of them into your graveyard and the
-	// rest on top of your library in any order." (CR 701.42)
+	// rest on top of your library in any order." (CR 701.25)
 	//
 	// Structurally scry with the bottom-of-library leg replaced by
 	// the graveyard, and it shares scry's plumbing: the looked-at
@@ -219,9 +219,9 @@ const (
 	PendingChoiceLookAtTop PendingChoiceKind = "look_at_top"
 
 	// PendingChoiceSearchLibrary — "search your library for ..."
-	// (CR 701.19). The searcher picks which of the matching cards
+	// (CR 701.23). The searcher picks which of the matching cards
 	// they take; picking none is always legal ("you may fail to
-	// find", CR 701.19c), so this prompt has a minimum of zero and a
+	// find", CR 701.23b), so this prompt has a minimum of zero and a
 	// maximum of the effect's limit.
 	//
 	// LOOK AT, not reveal — and the distinction is the whole reason
@@ -374,7 +374,7 @@ type PendingChoice struct {
 	pickTargetResume *pickTargetFrame
 
 	// copySpellResume is the other continuation a
-	// PendingChoicePickTarget can carry (S30, #95): the CR 706.10
+	// PendingChoicePickTarget can carry (S30, #95): the CR 707.10
 	// "you may choose new targets for the copy" prompt. It reuses
 	// the pick_target prompt rather than getting a kind of its own
 	// because the QUESTION is identical — here is a target clause,
@@ -457,7 +457,7 @@ type PendingChoice struct {
 	SearchCards []uuid.UUID
 
 	// SearchMax is how many of SearchCards the chooser may take.
-	// The minimum is always zero: CR 701.19c lets a player fail to
+	// The minimum is always zero: CR 701.23b lets a player fail to
 	// find however hard they looked.
 	SearchMax int
 
@@ -921,6 +921,9 @@ func (g *Game) ResolveOptionalReplacement(choiceID, chooserID uuid.UUID, apply b
 	if frame == nil || frame.ev == nil || len(frame.applicable) == 0 {
 		return ErrInvalidParam
 	}
+	if g.dropStaleReplacementResumeLocked(frame) {
+		return nil
+	}
 
 	ev := frame.ev
 	chosen := frame.applicable[0]
@@ -1078,6 +1081,9 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 	if frame == nil || frame.ev == nil {
 		return ErrInvalidParam
 	}
+	if g.dropStaleReplacementResumeLocked(frame) {
+		return nil
+	}
 
 	// Apply ALL chosen effects in the submitted order (CR 616: the
 	// affected player picks the order once; the engine fires them
@@ -1173,8 +1179,8 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 // CR 616 resume path (ResolveReplacementOrder) after the
 // replacement apply-loop finishes with no pending prompts. The
 // event's payload may have been mutated by replacements (e.g.
-// Doubling Season doubled CounterDelta; Library of Leng rewrote
-// NewZone). Pipeline functions' initial (non-paused) path inlines
+// Doubling Season doubled CounterDelta; the commander-zone built-in
+// rewrote NewZone). Pipeline functions' initial (non-paused) path inlines
 // the same mutation; the resume path uses this central dispatcher.
 //
 // Caller must hold g.mu.
@@ -1193,25 +1199,36 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		g.EmitEvent(Event{Kind: EventChangeLife, Target: ev.LifePlayer, Amount: ev.LifeDelta})
 		return nil
 	case RepEventDamage:
-		for i := range g.Battlefield.Cards {
-			if g.Battlefield.Cards[i].InstanceID == ev.DamageTarget {
-				g.Battlefield.Cards[i].DamageMarked += ev.DamageAmount
-				if g.Battlefield.Cards[i].DamageMarked < 0 {
-					g.Battlefield.Cards[i].DamageMarked = 0
-				}
-				if ev.DamageAmount > 0 {
-					g.EmitEvent(Event{
-						Kind:   EventDealDamage,
-						Source: ev.DamageSource,
-						Target: ev.DamageTarget,
-						Amount: ev.DamageAmount,
-					})
-				}
-				g.runStateChecksLocked()
-				return nil
-			}
+		// #694: a damage event that came through any entry point
+		// carries its own tail, so it is finished by exactly the code
+		// the unpaused path runs — player life loss, the CR 120.3
+		// planeswalker/battle split, CR 702.2c deathtouch, CR 702.15
+		// lifelink and the CR 903.10a commander tally included. This
+		// branch used to be a copy of the manual MarkDamage body,
+		// which meant ordering two damage replacements marked
+		// DamageMarked on everything and returned ErrCardNotFound for
+		// a player. See damage_tail.go.
+		err := g.applyResolvedDamageLocked(ev)
+		if errors.Is(err, ErrCardNotFound) || errors.Is(err, ErrPlayerNotFound) {
+			// The target left between the prompt and the answer. The
+			// damage simply does not happen — but the choice is
+			// already dequeued, so returning the error here would
+			// fail the player's action AND take their prompt away
+			// with nothing to show for it. Log it and move on.
+			g.EmitEvent(Event{
+				Kind:     EventEffectError,
+				ErrorMsg: "damage dropped: its target is no longer in the game",
+			})
+			return nil
 		}
-		return ErrCardNotFound
+		if err != nil {
+			return err
+		}
+		// Answering a prompt is an action boundary, like every other
+		// Resolve* handler, so the sweep the tail deliberately skips
+		// happens here — which is also where it was before #694.
+		g.runStateChecksLocked()
+		return nil
 	case RepEventMove:
 		// #529: a move that came through the shared exit primitive
 		// carries everything its resume needs on the event itself, so
@@ -1277,7 +1294,7 @@ func (g *Game) QueueDiscardFromRevealedHand(
 		}
 	}
 	// Cap count to available hand size so the chooser isn't stuck
-	// on an impossible count (CR 701.8c "as many as you can").
+	// on an impossible count (CR 609.3 "as many as you can").
 	if p := g.playerByIDLocked(fromPlayer); p != nil && p.Hand.Size() < count {
 		count = p.Hand.Size()
 	}
@@ -1469,7 +1486,7 @@ func (g *Game) ResolveDamageAssignment(
 		//
 		// S27: the attacker may have been attacking a planeswalker or
 		// a battle, in which case trample overflow goes to THAT, not
-		// to its defending player (CR 702.19c — excess damage is
+		// to its defending player (CR 702.19b — excess damage is
 		// assigned to the player or permanent the creature is
 		// attacking). So the target id is used as-is and the routing
 		// happens in dealCombatDamageToAttackTargetLocked.
@@ -1505,7 +1522,7 @@ func (g *Game) ResolveDamageAssignment(
 	return nil
 }
 
-// queueTriggerPromptLocked queues a CR 603.4 yes/no prompt for an
+// queueTriggerPromptLocked queues a CR 603.5 yes/no prompt for an
 // optional triggered ability that just matched. Captures the event,
 // a value copy of the source, and the LKI snapshot — all of which
 // the resume path will pass back into the Build closure on `apply:
@@ -1628,7 +1645,7 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 	if choice.Chooser != chooserID {
 		return ErrNotTheChooser
 	}
-	// S30: the same prompt kind serves the CR 706.10 spell-copy
+	// S30: the same prompt kind serves the CR 707.10 spell-copy
 	// re-target. Handled before the trigger frame because the two
 	// are mutually exclusive and the copy path builds something
 	// that is not a triggered ability.
@@ -2143,7 +2160,7 @@ func findBattlefieldCard(g *Game, id uuid.UUID) *Card {
 }
 
 // ResolveSacrificeChoice answers a PendingChoiceSacrifice: the chooser
-// names one of their own permanents and it is sacrificed (CR 701.17a).
+// names one of their own permanents and it is sacrificed (CR 701.21a).
 //
 // The option list is re-checked rather than trusted. Grave Pact
 // prompts every other player at once, and an earlier answer can change
@@ -2237,7 +2254,107 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 	}
 }
 
-// ResolveScry answers a PendingChoiceScry (CR 701.18): `bottom` are the
+// pausedZoneChangeStaleLocked reports whether the exit stashed on a
+// queued prompt's resume frame can still happen.
+//
+// A paused exit moves NOTHING: the card sits in its old zone until
+// the prompt is answered (see routeCardToZoneLocked). So a card that
+// is no longer in the zone its paused move says it is leaving has
+// already left by some other route, and that move will never happen.
+// Answering the prompt then either fails — the battlefield-leave
+// resume cannot find the card on the battlefield, which is the
+// "card instance not found in zone" of #605 — or, worse, moves the
+// card a SECOND time out of a zone nobody asked about, because the
+// shared exit primitive moves it from wherever it finds it.
+//
+// Battlefield ENTRIES are excluded: executeEntryToBattlefieldLocked
+// locates the card by scan and short-circuits when it is already on
+// the battlefield, so an entry prompt is never stale in this sense.
+//
+// Caller must hold g.mu.
+func (g *Game) pausedZoneChangeStaleLocked(frame *replacementResumeFrame) bool {
+	if frame == nil || frame.ev == nil {
+		return false
+	}
+	ev := frame.ev
+	if ev.Kind != RepEventMove || ev.NewZone == ZoneBattlefield {
+		return false
+	}
+	src := g.findCardZoneLocked(ev.CardID)
+	return src == nil || src.Kind != ev.OldZone
+}
+
+// zoneChangePausedLocked reports whether an exit for cardID is already
+// waiting on a player's answer — the CR 903.9 "send your commander to
+// the command zone instead?" prompt, today the only one that pauses a
+// card on its way off the battlefield.
+//
+// The SBA sweep consults it because a paused exit leaves the doomed
+// permanent ON the battlefield with the condition that doomed it
+// intact, so the next sweep dooms it all over again (#605).
+//
+// Caller must hold g.mu.
+func (g *Game) zoneChangePausedLocked(cardID uuid.UUID) bool {
+	for _, c := range g.PendingChoices {
+		if c == nil || c.replacementResume == nil {
+			continue
+		}
+		ev := c.replacementResume.ev
+		if ev == nil || ev.Kind != RepEventMove || ev.NewZone == ZoneBattlefield {
+			continue
+		}
+		if ev.CardID == cardID {
+			return true
+		}
+	}
+	return false
+}
+
+// pruneStaleZoneChangeChoicesLocked drops every queued prompt whose
+// paused exit can no longer happen, and releases the CR 614.5
+// once-per-event bookkeeping the abandoned event was holding.
+//
+// Called at the two points a card actually lands — the shared exit
+// primitive and the battlefield-leave resume — because that is the
+// moment a sibling prompt about the same card goes stale, and the
+// state-check loop that would otherwise notice is exactly what does
+// NOT run while a choice is queued. Same reasoning, and the same call
+// sites, as pruneSacrificeChoicesLocked.
+//
+// Caller must hold g.mu.
+func (g *Game) pruneStaleZoneChangeChoicesLocked() {
+	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
+		c := g.PendingChoices[i]
+		if c == nil || !g.pausedZoneChangeStaleLocked(c.replacementResume) {
+			continue
+		}
+		g.clearReplacementEventLocked(c.replacementResume.ev.ID)
+		g.dequeueChoiceLocked(i)
+	}
+}
+
+// dropStaleReplacementResumeLocked is the answer-path half of the
+// prune above: a belt-and-braces check that the move a just-answered
+// prompt was asking about is still possible. Returns true when the
+// frame was abandoned, in which case the caller returns nil — the
+// prompt is already dequeued, and refusing the answer instead would
+// leave the seat holding a prompt it can never discharge.
+//
+// Caller must hold g.mu.
+func (g *Game) dropStaleReplacementResumeLocked(frame *replacementResumeFrame) bool {
+	if !g.pausedZoneChangeStaleLocked(frame) {
+		return false
+	}
+	g.clearReplacementEventLocked(frame.ev.ID)
+	g.EmitEvent(Event{
+		Kind: EventEffectError,
+		ErrorMsg: "replacement prompt dropped: its card is no longer in the " +
+			string(frame.ev.OldZone) + " the paused move would leave",
+	})
+	return true
+}
+
+// ResolveScry answers a PendingChoiceScry (CR 701.22): `bottom` are the
 // looked-at cards going to the bottom of the library, `topOrder` are the
 // ones staying on top, listed top-first.
 //
@@ -2461,7 +2578,7 @@ func partitionLookedAtCards(p *Player, lookedAt, away, topOrder []uuid.UUID) (ma
 	return want, nil
 }
 
-// ResolveSurveil answers a PendingChoiceSurveil (CR 701.42):
+// ResolveSurveil answers a PendingChoiceSurveil (CR 701.25):
 // `graveyard` are the looked-at cards going to the chooser's
 // graveyard, `topOrder` are the ones staying on top of the library,
 // listed top-first.

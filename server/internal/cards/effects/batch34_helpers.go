@@ -30,7 +30,7 @@ import (
 // the battlefield" is b24ReturnGraveyardTargetsToBattlefield,
 // "exile the top card until the end of your next turn" is
 // b20ExileTopUntilEndOfNextTurn, the tapped 2/2 Zombie body is
-// b33CreateTappedZombie, the Saproling is b11GreenSaprolingToken,
+// createTappedZombie, the Saproling is b11GreenSaprolingToken,
 // the Goblin is RedGoblinToken, the Treasure and Food are in
 // tokens.go, the basic-land test is b30IsBasicLandCard, "enters
 // tapped unless you control a <type>" is
@@ -40,31 +40,8 @@ import (
 
 // --- tokens --------------------------------------------------------
 
-// b34ScionOfTheDeepToken is Kiora, the Rising Tide's "Scion of the
-// Deep, a legendary 8/8 blue Octopus creature token". Legendary is a
-// real supertype on the token, so the legend rule applies to a
-// second one exactly as printed.
-func b34ScionOfTheDeepToken() game.Card {
-	return game.Card{
-		Name:      "Scion of the Deep",
-		TypeLine:  "Token Legendary Creature — Octopus",
-		Power:     8,
-		Toughness: 8,
-		Colors:    []string{"U"},
-	}
-}
-
-// b34WhiteZombieToken is On Wings of Gold's 1/1 white Zombie. A
-// Zombie AND a token, so the enchantment's own anthem lifts it.
-func b34WhiteZombieToken() game.Card {
-	return game.Card{
-		Name:      "Zombie",
-		TypeLine:  "Token Creature — Zombie",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"W"},
-	}
-}
+// b34WhiteZombieToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
+func b34WhiteZombieToken() game.Card { return TokenCard("1/1 white Zombie") }
 
 // --- card reads ----------------------------------------------------
 
@@ -679,7 +656,7 @@ func b34CreateScionIfThreshold(g *game.Game, item *game.StackItem) error {
 	if !b34GraveyardHasAtLeast(g, item.Controller, 7) {
 		return nil
 	}
-	return CreateToken{Controller: item.Controller, Template: b34ScionOfTheDeepToken(), N: 1}.Apply(NewContext(g, item))
+	return CreateToken{Controller: item.Controller, Template: TokenCard("8/8 blue Scion of the Deep"), N: 1}.Apply(NewContext(g, item))
 }
 
 // b34UntapAllCreaturesYouControl is "untap all creatures you

@@ -92,18 +92,6 @@ func b02CountLandsControlledBy(g *game.Game, controller uuid.UUID) int {
 	return n
 }
 
-// b02PlantToken is Avenger of Zendikar's 0/1 green Plant. Lives here
-// rather than in tokens.go so a concurrent batch editing that file
-// doesn't collide with this one.
-func b02PlantToken() game.Card {
-	return game.Card{
-		Name:      "Plant",
-		TypeLine:  "Token Creature — Plant",
-		Power:     0,
-		Toughness: 1,
-	}
-}
-
 // b02ExileAllGraveyards is "exile all graveyards" — every seat's,
 // the controller's included — through the same per-player helper
 // Bojuka Bog and Farewell use.
@@ -132,18 +120,6 @@ func b02EachPlayerMills(g *game.Game, item *game.StackItem, n int) error {
 		}
 	}
 	return nil
-}
-
-// b02CastInstantOrSorcery is the magecraft trigger condition: the
-// controller cast an instant or sorcery. The "or copy" half is not
-// modelled — no spell-copy event exists (storm_kiln_artist.go
-// declares the same gap).
-func b02CastInstantOrSorcery(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
-		return false
-	}
-	spell, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && (spell.IsInstant() || spell.IsSorcery())
 }
 
 // b02PlantsYouControl lists the creatures with the Plant subtype

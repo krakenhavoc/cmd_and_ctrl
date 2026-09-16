@@ -29,7 +29,7 @@ func init() {
 			ChapterTrigger(1, "The Eldest Reborn — I: each opponent sacrifices a creature or planeswalker",
 				eldestRebornSacrifice),
 			ChapterTrigger(2, "The Eldest Reborn — II: each opponent discards a card",
-				eldestRebornDiscard),
+				eachOpponentDiscardsOne),
 			ChapterTriggerTargeting(3, "The Eldest Reborn — III: reanimate under your control",
 				TargetCardInGraveyard("target creature or planeswalker card in a graveyard",
 					Or(Creature(), Planeswalker())),
@@ -44,14 +44,6 @@ func eldestRebornSacrifice(g *game.Game, item *game.StackItem) error {
 		Match:            Or(Creature(), Planeswalker()),
 		Label:            "a creature or planeswalker",
 	}.Apply(NewContext(g, item))
-}
-
-func eldestRebornDiscard(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, opp := range ctx.Opponents() {
-		g.DiscardChoiceForEffect(opp, 1)
-	}
-	return nil
 }
 
 func eldestRebornReanimate(g *game.Game, item *game.StackItem) error {

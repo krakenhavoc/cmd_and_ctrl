@@ -1,0 +1,105 @@
+// counterCost.ts — #625: the choices behind a "remove N counters"
+// activation cost, kept out of the modal so they can be tested without
+// a component harness.
+//
+// Three printed shapes arrive on ActivatedAbilityView:
+//
+//   self      "Remove a gold counter from this artifact"
+//             counter_cost_self; nothing to send, the source pays.
+//   other     "remove a loyalty counter from a planeswalker you control"
+//             counter_cost_label; send the chosen permanent.
+//   any kind  "Remove a counter from a creature you control"
+//             no counter_cost_kind; send the permanent AND the kind.
+//
+// The server lists what can pay right now in counter_cost_options —
+// permanents the viewer controls holding enough counters, each with the
+// kinds that could pay, most counters first — from the same candidate
+// walk it validates against. The client only has to choose among them.
+
+// CounterCostShape is the subset of ActivatedAbilityView this file reads.
+// Its own type rather than the protocol one so contextMenu.logic.ts's
+// structural AbilityCost can pass through it too.
+export interface CounterCostShape {
+  counter_cost_n?: number;
+  counter_cost_kind?: string;
+  counter_cost_self?: boolean;
+  counter_cost_label?: string;
+  counter_cost_options?: { card_id: string; kinds: { kind: string; count: number }[] }[];
+}
+
+// CounterChoice is one way to pay: this permanent, this kind.
+export interface CounterChoice {
+  cardID: string;
+  kind: string;
+  count: number;
+}
+
+// hasCounterCost reports whether the ability carries the component.
+export function hasCounterCost(a: CounterCostShape): boolean {
+  return (a.counter_cost_n ?? 0) > 0;
+}
+
+// counterChoices flattens the server's options into one choice per
+// (permanent, kind), most counters first across the whole set — the
+// same order the bots spend their budget in.
+export function counterChoices(a: CounterCostShape): CounterChoice[] {
+  const out: CounterChoice[] = [];
+  for (const o of a.counter_cost_options ?? []) {
+    for (const k of o.kinds ?? []) {
+      out.push({ cardID: o.card_id, kind: k.kind, count: k.count });
+    }
+  }
+  // Array.prototype.sort is stable, so ties keep the server's order.
+  return out.sort((x, y) => y.count - x.count);
+}
+
+// autoCounterChoice is the choice to make without asking: when there
+// is exactly one permanent that can pay and exactly one kind on it.
+// Heart of Kiran with one planeswalker out, Dragon's Hoard, Mikaeus —
+// the common case — never open a prompt. Null when there is a real
+// choice (or none at all).
+export function autoCounterChoice(a: CounterCostShape): CounterChoice | null {
+  const opts = a.counter_cost_options ?? [];
+  if (opts.length !== 1 || (opts[0].kinds ?? []).length !== 1) return null;
+  const k = opts[0].kinds[0];
+  return { cardID: opts[0].card_id, kind: k.kind, count: k.count };
+}
+
+// counterCostBlocked is the menu row's reason when nothing can pay, or
+// "" when something can. Advisory: the server re-checks.
+export function counterCostBlocked(a: CounterCostShape): string {
+  if (!hasCounterCost(a)) return "";
+  if ((a.counter_cost_options ?? []).length > 0) return "";
+  const n = a.counter_cost_n ?? 1;
+  const kind = a.counter_cost_kind ? `${a.counter_cost_kind} ` : "";
+  if (a.counter_cost_self) {
+    return n === 1 ? `no ${kind}counter to remove` : `fewer than ${n} ${kind}counters`;
+  }
+  const what = n === 1 ? `a ${kind}counter` : `${n} ${kind}counters`;
+  return `nothing to remove ${what} from (${a.counter_cost_label ?? "a permanent you control"})`;
+}
+
+// counterPaymentParams is the activate_ability payload half for a
+// chosen payment: `counter_source_ids` for the other-permanent form,
+// `counter_kind` for the any-kind form, nothing for a self cost that
+// prints its kind.
+export interface CounterPayment {
+  counter_source_ids?: string[];
+  counter_kind?: string;
+}
+
+export function counterPaymentParams(
+  a: CounterCostShape,
+  choice: CounterChoice | undefined,
+): CounterPayment {
+  if (!hasCounterCost(a) || !choice) return {};
+  const out: CounterPayment = {};
+  if (!a.counter_cost_self) out.counter_source_ids = [choice.cardID];
+  if (!a.counter_cost_kind) out.counter_kind = choice.kind;
+  return out;
+}
+
+// counterChoiceKey identifies a choice for the picker's selection.
+export function counterChoiceKey(c: CounterChoice): string {
+  return `${c.cardID}\u0000${c.kind}`;
+}

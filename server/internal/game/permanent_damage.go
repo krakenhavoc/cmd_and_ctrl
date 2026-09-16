@@ -17,9 +17,9 @@ import "github.com/google/uuid"
 // CR 120.3 splits by what the permanent IS, and a permanent can be
 // more than one thing at once:
 //
-//	120.3c  damage to a CREATURE is marked on it
-//	120.3d  damage to a PLANESWALKER removes that many loyalty counters
-//	120.3e  damage to a BATTLE removes that many defense counters
+//	120.3e  damage to a CREATURE is marked on it
+//	120.3c  damage to a PLANESWALKER removes that many loyalty counters
+//	120.3h  damage to a BATTLE removes that many defense counters
 //
 // So the clauses are additive, not a switch. A Gideon animated into a
 // creature takes BOTH: the damage is marked on him and the loyalty
@@ -85,13 +85,13 @@ func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, deatht
 	// emits an event, listeners run synchronously, and anything they do
 	// can reallocate the battlefield slice.
 	if isPlaneswalker {
-		// CR 120.3d. A walker at 3 loyalty hit for 5 goes to 0, not to
+		// CR 120.3c. A walker at 3 loyalty hit for 5 goes to 0, not to
 		// -2: applyCounterLocked deletes the entry once it reaches
 		// zero, and the CR 704.5i SBA sweeps it on the next check.
 		_ = g.applyCounterLocked(cardID, CounterLoyalty, -amount)
 	}
 	if isBattle {
-		// CR 120.3e, and the same clamping. The CR 704.5p SBA takes a
+		// CR 120.3h, and the same clamping. The CR 704.5v SBA takes a
 		// battle at zero defense; a Siege's defeated trigger fires off
 		// that exit, not off this line.
 		_ = g.applyCounterLocked(cardID, CounterDefense, -amount)

@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The white catch-all: it answers a creature, an equipment, a
 // planeswalker, a Sword of Feast and Famine, a Rogue's Passage.
 // "Enchant permanent" is what makes it that, and it is the reason
-// EnchantPermanent exists beside EnchantCreature — the CR 704.5n
+// EnchantPermanent exists beside EnchantCreature — the CR 704.5m
 // legality re-check runs the aura's own target spec every turn, so
 // an Aura declared "enchant creature" falls off a host that stops
 // being one and this one does not.

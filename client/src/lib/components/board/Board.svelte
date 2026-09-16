@@ -76,6 +76,14 @@
   import XCostModal from "./XCostModal.svelte";
   import SacrificeCostModal from "./SacrificeCostModal.svelte";
   import CrewCostModal from "./CrewCostModal.svelte";
+  import CounterCostModal from "./CounterCostModal.svelte";
+  import {
+    autoCounterChoice,
+    counterPaymentParams,
+    hasCounterCost,
+    type CounterChoice,
+    type CounterPayment,
+  } from "../../counterCost";
   import AltCostPaymentModal from "./AltCostPaymentModal.svelte";
   import ModePickerModal from "./ModePickerModal.svelte";
   import DiscardCostModal from "./DiscardCostModal.svelte";
@@ -576,6 +584,7 @@
         ability_index: state.ability.index,
         sacrifice_ids: state.ability.sacrificeIDs,
         crew_ids: state.ability.crewIDs,
+        ...state.ability.counter,
         targets,
       };
       if (state.ability.xValue !== undefined) params.x_value = state.ability.xValue;
@@ -636,6 +645,19 @@
     ability: ActivatedAbilityView;
     sacrificeIDs: string[];
     crewIDs: string[];
+    counter?: CounterPayment;
+  } | null>(null);
+
+  // #625: a "remove N counters" cost. Asked after the sacrifice / crew
+  // picks and before X and targeting — all of them announce-time cost
+  // choices (CR 602.2b) — and skipped outright when the server offers
+  // exactly one permanent with exactly one kind, which is Dragon's
+  // Hoard, Mikaeus, and Heart of Kiran with a single planeswalker.
+  let counterPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+    sacrificeIDs: string[];
+    crewIDs: string[];
   } | null>(null);
 
   function handleActivateAbility(card: CardView, index: number): void {
@@ -649,21 +671,60 @@
       crewPrompt = { card, ability };
       return;
     }
-    continueActivation(card, ability, []);
+    askCounterCost(card, ability, [], []);
+  }
+
+  function askCounterCost(
+    card: CardView,
+    ability: ActivatedAbilityView,
+    sacrificeIDs: string[],
+    crewIDs: string[],
+  ): void {
+    if (!hasCounterCost(ability)) {
+      continueActivation(card, ability, sacrificeIDs, crewIDs);
+      return;
+    }
+    const auto = autoCounterChoice(ability);
+    if (auto) {
+      continueActivation(
+        card,
+        ability,
+        sacrificeIDs,
+        crewIDs,
+        undefined,
+        counterPaymentParams(ability, auto),
+      );
+      return;
+    }
+    counterPrompt = { card, ability, sacrificeIDs, crewIDs };
+  }
+
+  function confirmCounterCost(choice: CounterChoice): void {
+    const p = counterPrompt;
+    counterPrompt = null;
+    if (!p) return;
+    continueActivation(
+      p.card,
+      p.ability,
+      p.sacrificeIDs,
+      p.crewIDs,
+      undefined,
+      counterPaymentParams(p.ability, choice),
+    );
   }
 
   function confirmCrew(instanceIDs: string[]): void {
     const p = crewPrompt;
     crewPrompt = null;
     if (!p) return;
-    continueActivation(p.card, p.ability, [], instanceIDs);
+    askCounterCost(p.card, p.ability, [], instanceIDs);
   }
 
   function confirmAbilityX(x: number): void {
     const p = xAbilityPrompt;
     xAbilityPrompt = null;
     if (!p) return;
-    continueActivation(p.card, p.ability, p.sacrificeIDs, p.crewIDs, x);
+    continueActivation(p.card, p.ability, p.sacrificeIDs, p.crewIDs, x, p.counter);
   }
 
   // S21: a mana ability with a sacrifice-another cost, handed up by
@@ -705,7 +766,7 @@
       );
       return;
     }
-    continueActivation(p.card, p.ability, [instanceID]);
+    askCounterCost(p.card, p.ability, [instanceID], []);
   }
 
   // continueActivation is the post-cost half: enter targeting for an
@@ -716,17 +777,18 @@
     sacrificeIDs: string[],
     crewIDs: string[] = [],
     xValue?: number,
+    counter?: CounterPayment,
   ): void {
     // CR 602.2b: X is announced with the other choices and before
     // any cost is paid, so the picker opens after the cost picks
     // that name cards and before the targeting step — the same
     // position it holds in a cast's prompt chain.
     if (ability.demands_x && xValue === undefined) {
-      xAbilityPrompt = { card, ability, sacrificeIDs, crewIDs };
+      xAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, counter };
       return;
     }
     if (ability.legal_targets) {
-      beginTargetingForAbility(card, ability, sacrificeIDs, crewIDs, xValue);
+      beginTargetingForAbility(card, ability, sacrificeIDs, crewIDs, xValue, counter);
       return;
     }
     const params: Record<string, unknown> = {
@@ -734,6 +796,7 @@
       ability_index: ability.index,
       sacrifice_ids: sacrificeIDs,
       crew_ids: crewIDs,
+      ...counter,
     };
     if (xValue !== undefined) params.x_value = xValue;
     sendAction("activate_ability", params, viewerID ?? undefined);
@@ -947,6 +1010,13 @@
     options={crewOptions}
     onConfirm={confirmCrew}
     onCancel={() => (crewPrompt = null)}
+  />
+  <CounterCostModal
+    card={counterPrompt?.card ?? null}
+    ability={counterPrompt?.ability ?? null}
+    board={view.battlefield.cards}
+    onConfirm={confirmCounterCost}
+    onCancel={() => (counterPrompt = null)}
   />
   <FacePickerModal
     card={facePromptCard}

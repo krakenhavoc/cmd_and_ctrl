@@ -23,7 +23,7 @@ import (
 // Two things keep the constant small, and both are visible in the
 // numbers below:
 //
-//   - Only permanents that were actually TAPPED emit. CR 701.20a is a
+//   - Only permanents that were actually TAPPED emit. CR 701.26b is a
 //     change of state, so a board sitting upright costs nothing new
 //     at all. The "nothing tapped" case is the old cost.
 //   - The harvester's inner loop is a map lookup per battlefield card

@@ -83,7 +83,7 @@ func answerSearchByID(t *testing.T, g *game.Game, chooser uuid.UUID, picks ...uu
 }
 
 // answerSearchFailToFind answers an open search prompt by taking nothing (CR
-// 701.19c).
+// 701.23b).
 func answerSearchFailToFind(t *testing.T, g *game.Game, chooser uuid.UUID) {
 	t.Helper()
 	c := searchChoiceFor(g, chooser)
@@ -331,7 +331,7 @@ func TestSearchDoesNotPromptWhenThereIsNothingToDecide(t *testing.T) {
 	}
 }
 
-// CR 701.19c — a player may fail to find. The search still happened,
+// CR 701.23b — a player may fail to find. The search still happened,
 // so the library is still shuffled and the event still fires.
 func TestSearchFailToFindTakesNothing(t *testing.T) {
 	g := newCatalogGame(t)

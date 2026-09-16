@@ -51,7 +51,13 @@ func CatalogKeyForFace(oracleID string, face int) string {
 	return oracleID + "#" + strconv.Itoa(face)
 }
 
-// effect_hooks.go holds the function-variable slots that the S14
+// effect_hooks.go holds the per-slot function variables the engine
+// reads the catalog through. Since #622 the catalog sets none of them:
+// carddef.go gives each a default that reads its slot off the one
+// precomputed CardDef, and they remain as per-slot test seams. The
+// history below is kept for the shape of the boundary.
+//
+// Originally: the function-variable slots that the S14
 // card-effect catalog populates from its own init() block. The
 // game package can't directly import server/internal/cards/effects
 // (effects needs to reach into *Game for mutations, so that
@@ -141,7 +147,7 @@ type ManaAbilityShape struct {
 	SacrificeOther *TargetSpec
 
 	// LifeCost is a life component in the activation cost (CR
-	// 118.8) — Mana Confluence's "{T}, Pay 1 life: Add one mana of
+	// 119.4) — Mana Confluence's "{T}, Pay 1 life: Add one mana of
 	// any color". Mirrors AbilityCost.Life, which CR 602 activated
 	// abilities have carried since S21. Validated before anything
 	// is paid and paid after the tap, so an attempt at too low a
@@ -167,7 +173,7 @@ type ManaAbilityShape struct {
 	// activated on an empty pool fails without tapping. There is no
 	// auto-tap here: ActivateManaAbility will not tap other
 	// permanents to fund a mana ability, because a mana ability
-	// resolves with no priority window (CR 605.3a) and the player
+	// resolves with no priority window (CR 605.3b) and the player
 	// has to have floated the mana deliberately.
 	//
 	// This closes the last of S15's "mana / life / counter
@@ -251,7 +257,7 @@ type ManaAbilityShape struct {
 	// cycle's "This land deals 1 damage to you", Ancient Tomb's 2.
 	// It runs immediately after the produced mana lands in the
 	// controller's pool, in printed order, as part of the same
-	// atomic mana-ability resolution (CR 605.3a — no stack, no
+	// atomic mana-ability resolution (CR 605.3b — no stack, no
 	// priority window in between).
 	//
 	// `source` is the activating permanent's instance ID and may
@@ -449,13 +455,13 @@ func (g *Game) fireEffectResolverLocked(item *StackItem, oracleID string, cardID
 //
 // The loyalty stamp runs FIRST and runs unconditionally — before
 // the oracle-ID / nil-hook guards below. Issue #274: it used to
-// live inside the catalog's hook (effects.fireAsEnters), so it was
+// live inside the catalog's hook (the catalog's as-enters wrapper), so it was
 // skipped for any card the catalog didn't know, and the CR 704.5i
 // SBA then swept the 0-loyalty planeswalker into the graveyard on
 // the next priority-grant boundary.
 func (g *Game) fireETBHookLocked(cardID uuid.UUID, oracleID string) {
 	g.stampStartingLoyaltyLocked(cardID, oracleID)
-	// S27: a Saga enters with a lore counter (CR 714.2b). Same
+	// S27: a Saga enters with a lore counter (CR 714.3). Same
 	// reasoning as the loyalty stamp above, and the same placement:
 	// it is printed-rules behaviour keyed on the card's subtype, so
 	// it runs before the oracle-ID / nil-hook guards and applies to
@@ -463,7 +469,7 @@ func (g *Game) fireETBHookLocked(cardID uuid.UUID, oracleID string) {
 	g.sagaEntersWithLoreCounterLocked(cardID)
 
 	// S27: a battle enters with its printed defense counters and
-	// chooses a protector (CR 310.4, 310.5). Same placement and same
+	// chooses a protector (CR 310.4, 310.9a). Same placement and same
 	// reasoning as the loyalty stamp above: printed rules keyed on
 	// the card's type, so it runs before the oracle-ID / nil-hook
 	// guards and applies to battles the catalog has never heard of.
@@ -501,7 +507,7 @@ func (g *Game) fireETBHookLocked(cardID uuid.UUID, oracleID string) {
 // Counters go through AddCounterForEffect rather than being written
 // directly so the CR 614 counter-replacement pipeline still sees
 // them — a planeswalker entering under Doubling Season gets its
-// loyalty doubled (CR 121.3), which a direct map write would skip.
+// loyalty doubled (CR 122.6), which a direct map write would skip.
 //
 // Timing matters: this runs as part of the battlefield-entry path,
 // which is strictly before the next priority-grant boundary, so the

@@ -45,7 +45,7 @@ func init() {
 							if !b11OpponentControlsMoreThanYou(g, item.Controller, opp, game.Card.IsCreature) {
 								return nil
 							}
-							return CreateToken{Controller: item.Controller, Template: b11WhiteSoldierToken(), N: 1}.Apply(NewContext(g, item))
+							return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 white Soldier"), N: 1}.Apply(NewContext(g, item))
 						})
 				},
 			},

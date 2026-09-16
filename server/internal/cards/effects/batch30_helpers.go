@@ -30,19 +30,6 @@ import (
 
 // --- tokens ------------------------------------------------------
 
-// b30BlackBatFlyingToken is Lunar Convocation's 1/1 black Bat with
-// flying.
-func b30BlackBatFlyingToken() game.Card {
-	return game.Card{
-		Name:      "Bat",
-		TypeLine:  "Token Creature — Bat",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"B"},
-		Keywords:  []string{"flying"},
-	}
-}
-
 // --- costs -------------------------------------------------------
 
 // b30SacrificeAnArtifactOrCreature is Dockside Chef's "Sacrifice an
@@ -206,8 +193,11 @@ func b30YourEndStepAndYouGainedAndLostLifeThisTurn(ev game.Event, source *game.C
 // b30YouDiscardedCardWhere reports whether the source's controller
 // discarded a card that passes `match` — Surly Badgersaur's three
 // discard triggers, one predicate each. The card is read from where
-// it landed (the graveyard, or exile under a Library of Leng), where
-// its printed type line is intact.
+// it landed, where its printed type line is intact. Today that is
+// always the graveyard, because no discard can be replaced (#650).
+// Once madness can exile a discarded card, exile works the same way.
+// A card Library of Leng puts on top of a library isn't revealed, so
+// #650 has to decide what this predicate may read there.
 func b30YouDiscardedCardWhere(ev game.Event, source *game.Card, g *game.Game, match func(game.Card) bool) bool {
 	if !discardedByYou(ev, source) {
 		return false
@@ -376,10 +366,10 @@ func b30SourceFightsFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 	return b10Fight(ctx, item.SourceCardID, id)
 }
 
-// b30PutCounterOnSelf puts one +1/+1 counter on the item's source if
+// putCounterOnSelf puts one +1/+1 counter on the item's source if
 // it is still on the battlefield — Honored Dreyleader's second
 // trigger, Surly Badgersaur's first.
-func b30PutCounterOnSelf(g *game.Game, item *game.StackItem) error {
+func putCounterOnSelf(g *game.Game, item *game.StackItem) error {
 	if !b09SourceStillOnBattlefield(g, item) {
 		return nil
 	}
@@ -460,7 +450,7 @@ func b30BatIfYouGainedAndLostLifeThisTurn(g *game.Game, item *game.StackItem) er
 	if b15LifeGainedThisTurn(g, item.Controller) <= 0 || b18LifeLostThisTurn(g, item.Controller) <= 0 {
 		return nil
 	}
-	return CreateToken{Controller: item.Controller, Template: b30BlackBatFlyingToken(), N: 1}.Apply(NewContext(g, item))
+	return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 black Bat with flying"), N: 1}.Apply(NewContext(g, item))
 }
 
 // b30FetchBasicTapped is Promising Vein's search: a basic land card

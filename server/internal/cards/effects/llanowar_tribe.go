@@ -6,7 +6,7 @@ package effects
 //	"{T}: Add {G}{G}{G}."
 //
 // Three Llanowar Elves in one body. A creature mana ability with a
-// tap cost, so summoning sickness applies (CR 302.1) — the engine
+// tap cost, so summoning sickness applies (CR 302.6) — the engine
 // enforces it inside ActivateManaAbility. The mana is three green
 // slots, no pick.
 //

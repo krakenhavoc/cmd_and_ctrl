@@ -9,7 +9,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 Dragon creature token with flying."
 //
 // A Dragon per spell. One trigger on EventCast, the controller's
-// instants and sorceries (b12InstantOrSorceryCastByYou reads the
+// instants and sorceries (instantOrSorceryCastByYou reads the
 // spell off the stack), making the 5/5 red flying Dragon
 // (b14RedDragonToken at five — Dragonmaster Outcast's). The trigger
 // goes on the stack above the spell and resolves first, so the
@@ -23,7 +23,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b12InstantOrSorceryCastByYou(ev, source, g)
+				return instantOrSorceryCastByYou(ev, source, g)
 			}, "Rite of the Dragoncaller — create a 5/5 red Dragon with flying", Do(CreateToken{Template: b14RedDragonToken(5), N: 1})),
 		},
 	})

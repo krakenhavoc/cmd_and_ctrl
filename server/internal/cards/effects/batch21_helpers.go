@@ -18,11 +18,11 @@ import (
 // is b13AnotherCreatureYouControlEntered, "an opponent's creature
 // died" is b18OpponentsCreatureDied, "an opponent discarded" is
 // b18OpponentDiscarded, the enchantress condition is
-// b08EnchantmentSpellCastByYou, the Elf-spell condition is
+// enchantmentSpellCastByYou, the Elf-spell condition is
 // b17ElfSpellCastByYou, the once-per-turn tally is
 // b11TriggeredThisTurn, "each opponent loses N" is
 // eachOpponentLosesLife, "each opponent loses 1 and you gain 1" is
-// b07DrainEachOpponent, the tapped-creature predicate is
+// drainEachOpponent, the tapped-creature predicate is
 // tappedPermanent, the fetch body is fetchBasicTapped, the
 // destroy-the-pick body is destroyChosenTargetTrigger, the DMU
 // duals are rows in dominaria_united_duals.go, and the Goblin /
@@ -30,18 +30,6 @@ import (
 // batch13_helpers.go.
 
 // --- token templates ---------------------------------------------
-
-// b21RedWarriorToken is Will of the Mardu's 1/1 red Warrior —
-// b11WhiteWarriorToken with the printed colour swapped.
-func b21RedWarriorToken() game.Card {
-	return game.Card{
-		Name:      "Warrior",
-		TypeLine:  "Token Creature — Warrior",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"R"},
-	}
-}
 
 // b21TappedAttackingGoblin is General Kreat's 1/1 red Goblin, stamped
 // tapped so CreateTokensAttackingForEffect — which copies the

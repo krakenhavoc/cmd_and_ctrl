@@ -82,7 +82,7 @@ type Move struct {
 	// AlwaysLegal marks a move the engine cannot refuse whatever
 	// else happens between enumeration and dispatch: passing
 	// priority, and a choice kind's one unconditional answer (a
-	// search's "fail to find", CR 701.19c).
+	// search's "fail to find", CR 701.23b).
 	//
 	// Every enumerated move is legal when it is enumerated — that is
 	// this package's contract. AlwaysLegal is the stronger claim
@@ -126,18 +126,40 @@ type Move struct {
 // A POINTER so that the frame budget is untouched by moves that cost
 // nothing: no `cost` key is serialised for them at all.
 type MoveCost struct {
-	// Life is what the controller pays at announce (CR 118.4 /
-	// 118.8). Always positive — the enumerator has already checked
+	// Life is what the controller pays at announce (CR
+	// 119.4). Always positive — the enumerator has already checked
 	// the seat can pay it, and a seat that can pay exactly its whole
 	// life total legally may, which is the trap.
 	Life int `json:"life,omitempty"`
 
-	// Loyalty is a loyalty ability's counter delta (CR 606.1),
+	// Loyalty is a loyalty ability's counter delta (CR 606.4),
 	// SIGNED as printed: +1 adds a counter, −3 removes three. Zero
 	// covers both "[0]" and "not a loyalty ability"; the two are the
 	// same price even though they are not the same thing, and a
 	// policy that needs to tell them apart has the label.
 	Loyalty int `json:"loyalty,omitempty"`
+
+	// Counters are the counters a "remove N counters" cost takes, and
+	// from which permanent (#625). Params names the permanent the
+	// actor chose (counter_source_ids) but not the kind or number the
+	// CARD charges, and the self form names nothing at all — so a
+	// policy reading only Params would price Heart of Kiran's
+	// alternative crew as free and happily crew it by killing a
+	// 1-loyalty planeswalker. Loyalty above is priced against the
+	// move's source; this is priced against CardID, which is usually a
+	// different permanent.
+	Counters []CounterPrice `json:"counters,omitempty"`
+}
+
+// CounterPrice is one counter-removal component of a move's cost.
+type CounterPrice struct {
+	// CardID is the permanent the counters come off. The move's own
+	// source for a "from this" cost.
+	CardID uuid.UUID `json:"card_id"`
+	// Counter is the kind removed: "loyalty", "+1/+1", "gold".
+	Counter string `json:"counter"`
+	// N is how many, always positive.
+	N int `json:"n"`
 }
 
 // moveCost returns the MoveCost for a set of components, or nil when
@@ -150,6 +172,18 @@ func moveCost(life, loyalty int) *MoveCost {
 	}
 	return &MoveCost{Life: life, Loyalty: loyalty}
 
+}
+
+// withCounterPrice adds a counter-removal component to a (possibly
+// nil) MoveCost, returning a fresh value so no two moves share one.
+func withCounterPrice(c *MoveCost, p CounterPrice) *MoveCost {
+	out := MoveCost{}
+	if c != nil {
+		out = *c
+		out.Counters = append([]CounterPrice(nil), c.Counters...)
+	}
+	out.Counters = append(out.Counters, p)
+	return &out
 }
 
 // Options tunes the expansion caps. The zero value is usable.

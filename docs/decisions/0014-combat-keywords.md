@@ -85,7 +85,7 @@ haste. Keeping the flag pure makes that future work simpler.
 
 **Gates:** `DeclareAttacker` rejects sick creatures; tap-cost
 activation of creature abilities (e.g. mana abilities on a
-creature) rejects sick creatures. Land tap is exempt per CR 302.1
+creature) rejects sick creatures. Land tap is exempt per CR 302.6
 (not a creature).
 
 ### 3. Combat damage rewrite: split into two substeps (CR 510.2 + 510.3)
@@ -245,6 +245,11 @@ replacement). Baneslayer ships with flying + first strike + lifelink
 — three of S18's four most-used keywords in one card. The absent
 clauses are noted in the card file and the #68 decision log.
 
+*Update 2026-09-16:* S24 shipped Mind Control (#392) without
+protection, and S30 (#95) closed without it too. Protection is now
+tracked in [#662](https://github.com/krakenhavoc/cmd_and_ctrl/issues/662),
+and Baneslayer Angel declares the missing clauses in its `Caveats`.
+
 ### 12. No protocol version bump
 
 `PendingChoiceView.DamageAssignment *DamageAssignmentView` is a
@@ -255,7 +260,7 @@ doesn't queue it until an S18-capable block happens. Additive.
 
 ## Out of scope (explicit deferrals)
 
-- **Protection** (CR 702.16) → **S24** [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76) alongside Mind Control.
+- **Protection** (CR 702.16) → **S24** [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76) alongside Mind Control. *(Update 2026-09-16: not delivered by S24 or S30; tracked in [#662](https://github.com/krakenhavoc/cmd_and_ctrl/issues/662).)*
 - **Indestructible** (CR 702.12), **damage-prevention shields with charges** (CR 615) → **S30** [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95).
 - **Hexproof, shroud, ward** — umbrella issue below.
 - **Legacy/evergreen tail** — banding, rampage, flanking, fear, intimidate, shadow, exalted, annihilator, persist, undying, tribute, prowess, cascade. Umbrella issue below.
@@ -310,7 +315,7 @@ doesn't queue it until an S18-capable block happens. Additive.
   assigner. Unblocked → player; single blocker → full power
   with trample overflow when blocker at-least-lethal;
   multi-blocker → queue `PendingChoiceDamageAssignment` prompt.
-- **Menace close-out** (CR 702.110): a single blocker against a
+- **Menace close-out** (CR 702.111): a single blocker against a
   menace attacker is silently reverted (clear
   `BlockingTarget`); attacker becomes unblocked.
 - **`PendingChoiceDamageAssignment`** new kind + resume path.
@@ -349,7 +354,8 @@ doesn't queue it until an S18-capable block happens. Additive.
   machinery (HasKeyword, two-substep combat, damage-assignment
   prompt) is the substrate.
 - **S24 inherits**: protection (CR 702.16) — Baneslayer Angel
-  ships here without protection clauses.
+  ships here without protection clauses. *(Update 2026-09-16: S24
+  did not deliver it; tracked in #662.)*
 - **S30 inherits**: indestructible (CR 702.12) — reads the SBA
   branch from the opposite side of `MarkedLethalByDeathtouch`.
   Damage-prevention shields with charges (CR 615) continue to

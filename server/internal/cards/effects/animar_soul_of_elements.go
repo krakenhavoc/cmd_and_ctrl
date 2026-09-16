@@ -31,10 +31,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // SANDBOX SIMPLIFICATION — "protection from white and from black" is
 // NOT implemented. ADR 0038 explains why the keyword has no home:
-// CR 702.16e tests the quality against the SOURCE of the spell or
+// CR 702.16b tests the quality against the SOURCE of the spell or
 // ability, and the engine's targeting choke point never sees the
 // source object. Strictly weaker than printed — Animar is a legal
-// target for a white removal spell here.
+// target for a white removal spell here. Tracked in #662.
 func init() {
 	Register(Spec{
 		OracleID:     "725880b2-1675-414f-b61b-cf6533797dbf",
@@ -48,11 +48,7 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.Kind != game.EventCast || ev.Actor != source.Controller {
-					return false
-				}
-				spell, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && spell.IsCreature()
+				return creatureSpellCastByYou(ev, source, g)
 			}, "Animar, Soul of Elements — put a +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {
 				return AddCounter{
 					Target: item.SourceCardID,

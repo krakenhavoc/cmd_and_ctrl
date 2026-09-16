@@ -98,25 +98,25 @@ var (
 
 	// ErrSplitSecondActive is returned by cast_spell and
 	// activate_ability when an item with SplitSecond is on the stack
-	// (CR 702.79). Mana abilities and special actions are still
+	// (CR 702.61). Mana abilities and special actions are still
 	// allowed. Added in S13.1.
 	ErrSplitSecondActive = errors.New("game: split second is active")
 
 	// ErrLoyaltyAlreadyActivated is returned by activate_loyalty when
 	// the planeswalker's loyalty ability has already been activated
-	// this turn (CR 606.5). The flag clears when the turn cursor
+	// this turn (CR 606.3). The flag clears when the turn cursor
 	// wraps to the next ActiveSeat. Added in S13.1.
 	ErrLoyaltyAlreadyActivated = errors.New("game: planeswalker loyalty already activated this turn")
 
 	// ErrInsufficientLoyalty is returned when a loyalty ability's
 	// cost would remove more loyalty counters than the planeswalker
-	// has (CR 606.3). Paying down to exactly zero is legal — the
+	// has (CR 606.6). Paying down to exactly zero is legal — the
 	// 704.5i SBA takes it from there — so this fires only on a
 	// genuine overpayment. Added in S27 (#329, #334).
 	ErrInsufficientLoyalty = errors.New("game: not enough loyalty to pay that cost")
 
 	// ErrNotAPlaneswalker is returned when a loyalty cost is
-	// activated on something that isn't a planeswalker (CR 606.1).
+	// activated on something that isn't a planeswalker (CR 606.2).
 	// Guards both the catalog path (a miswritten Spec) and the
 	// S13.1 sandbox action, which used to take any battlefield card
 	// and hand it loyalty counters. Added in S27 (#329, #334).
@@ -159,6 +159,16 @@ var (
 	// Added in S29.
 	ErrCastCostRequired = errors.New("game: casting from that zone requires its alternative cost")
 
+	// ErrNoManaCost is returned by cast_spell when a non-land card
+	// with no mana cost (Ancestral Vision, Living End) is cast by
+	// paying that cost. CR 118.6: no mana cost is an unpayable cost,
+	// and paying it is illegal, so the cast is refused at announce
+	// unless an alternative cost replaces it (CR 118.6a; "without
+	// paying its mana cost" counts). Distinct from a {0} cost, which
+	// is a real cost of zero. Mode-independent, for the #289 reason:
+	// permissive mode's "pay it on paper" has nothing to pay.
+	ErrNoManaCost = errors.New("game: a spell with no mana cost can't be cast by paying it")
+
 	// ErrCardNotOnStack is returned by counter_spell / counter_ability
 	// when the targeted item is not currently on the stack (already
 	// resolved, never cast, or wrong instance ID). Added in S13.1.
@@ -175,6 +185,22 @@ var (
 	// caller is not the player the choice was addressed to. Added
 	// in S14.
 	ErrNotTheChooser = errors.New("game: caller is not the chooser of this pending choice")
+
+	// ErrChoiceSetRejected is returned by ResolveChooseCards when the
+	// picks are individually fine (right count, all candidates, all
+	// still where the prompt found them) but the SET breaks a rule
+	// the card prints about them together — ChooseCardsPrompt.
+	// Validate refused it. "Discard two cards unless you discard a
+	// creature card" answered with one land is the shape.
+	//
+	// Its own sentinel rather than ErrInvalidParam because the player
+	// can fix it by choosing again, and the prompt stays open for
+	// exactly that; "invalid parameter" in the prompt's error line
+	// would read as a broken client. The player-facing sentence lives
+	// in ws.classifyActionError, as it does for ErrUnparseableCost and
+	// ErrInvalidFace. The prompt's own Question carries the card's
+	// words, so neither needs to repeat them. Added for #624.
+	ErrChoiceSetRejected = errors.New("game: chosen cards rejected by the prompt's set rule")
 
 	// ErrAlreadyTapped is returned by ActivateManaAbility when the
 	// ability has a tap cost and the permanent is already tapped —
@@ -221,7 +247,7 @@ var (
 	// printed face is not one this card offers (ADR 0034): a
 	// negative or out-of-range index, or the back face of anything
 	// that is not a modal DFC — a transform card's back is reached
-	// by transforming the permanent, never by casting it (CR 712.4),
+	// by transforming the permanent, never by casting it (CR 712.11),
 	// and an adventure's second half needs the exile-and-recast
 	// permission that is not built yet.
 	//
@@ -234,12 +260,12 @@ var (
 
 	// ErrSummoningSick is returned when a creature that entered
 	// the battlefield this turn is asked to attack or activate a
-	// tap-cost ability without haste (CR 302.1, 702.10). Added in
+	// tap-cost ability without haste (CR 302.6, 702.10). Added in
 	// S18 sub-PR 2.
 	ErrSummoningSick = errors.New("game: creature has summoning sickness")
 
 	// ErrConditionNotMet is returned when an ability carries an
-	// activation restriction (CR 602.5a — "Activate only if you
+	// activation restriction (CR 602.5 — "Activate only if you
 	// control five or more lands") that the board does not satisfy.
 	// Checked before any cost is validated or paid, so the source is
 	// untouched. Added in the S32 mana-pipeline pass (#352).
@@ -260,7 +286,7 @@ var (
 
 	// ErrCantActivate is returned by the activation paths when a
 	// continuous effect says this permanent's activated abilities
-	// can't be activated (CR 602.5a) — Arrest, Faith's Fetters. The
+	// can't be activated (CR 602.5) — Arrest, Faith's Fetters. The
 	// mana-ability half is the same error: a player who cannot tap
 	// an Arrested Birds of Paradise is being told the same thing.
 	// Added in S24.
@@ -303,4 +329,11 @@ var (
 	// all. Distinct from ErrInvalidParam so the client can say "tap
 	// more power" rather than "bad request". Added in S27.
 	ErrInsufficientCrew = errors.New("game: crewing creatures' total power is below the crew number")
+	// ErrInsufficientCounters is returned when the permanent named to
+	// pay a "remove N counters" cost holds fewer than N counters of
+	// the kind — including, for "remove a counter" of any kind, the
+	// case where the named kind is not on it at all. Distinct from
+	// ErrInvalidParam so the client can say what is missing. Added
+	// for #625.
+	ErrInsufficientCounters = errors.New("game: not enough counters to pay that cost")
 )
