@@ -875,16 +875,19 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"defender"` | Defender (CR 702.3) |
 | `"haste"` | Haste (CR 702.10) |
 | `"flash"` | Flash (CR 702.8) |
-| `"hexproof"` | Hexproof (CR 702.11) — S23, targeting gate |
-| `"shroud"` | Shroud (CR 702.18) — S23, targeting gate |
+| `"hexproof"` | Hexproof (CR 702.11) — #353, targeting gate |
+| `"shroud"` | Shroud (CR 702.18) — #353, targeting gate |
 | `"indestructible"` | Indestructible (CR 702.12) — S25, destruction path |
+| `"changeling"` | Changeling (CR 702.73) — S26, every creature type (`game.KeywordChangeling`) |
 
-The last three are not combat keywords, but they ride the same
+The last four are not combat keywords, but they ride the same
 `PrintedKeywords` slot and the same `HasKeyword` reader. Their
-consumers are `CanBeTargetedBy` (hexproof, shroud) and
+consumers are `CanBeTargetedBy` (hexproof, shroud),
 `DestroyPermanentForEffect` + the damage-driven creature SBAs
 (indestructible — see `server/internal/game/indestructible.go` for
-what it deliberately does *not* stop).
+what it deliberately does *not* stop) and `HasAllCreatureTypes` in
+`creature_types.go` (changeling — see "Adding a creature-type card"
+below).
 
 The table is closed on purpose: **a keyword joins it in the same
 change that teaches the engine to honour it.** Declaring a token the
@@ -904,9 +907,15 @@ protection ships without it and says so in `Caveats`, as Baneslayer
 Angel, both Swords and Animar do.
 
 **Layer-granted keywords still use `Spec.Static`.** Lord of Atlantis
-grants `"flying"` to *other* Merfolk via a conditional Layer 6
-`StaticAbility` — that pattern stays. `PrintedKeywords` is only for
-the card's own printed keywords.
+grants `"islandwalk"` to *other* Merfolk via a Layer 6
+`StaticAbility` (`TribalKeywordGrant` in `tribal.go`) — that pattern
+stays. The grant itself is a known exception to the closed table:
+islandwalk is not a canonical token and nothing enforces it until
+landwalk lands (#705), which the card declares in `Caveats`. Grant an
+enforced keyword the same way: Stromkirk Captain grants
+`"first strike"` to the other Vampires you control with the same
+builder. `PrintedKeywords` is only for the card's own printed
+keywords.
 
 **Tests** — assert `Effective().Abilities` contains the keyword
 strings after the card is pushed to the battlefield. See
