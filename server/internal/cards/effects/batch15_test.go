@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -518,12 +519,56 @@ func TestB15SimulacrumSynthesizerScriesAndBuildsConstructsItSizes(t *testing.T) 
 	if p := effectivePower(t, g, construct); p != 0 {
 		t.Errorf("with no Synthesizer the Construct shrinks to 0/0 — the declared gap: power %d", p)
 	}
-	// The engine treats a printed 0/0 with no counters as a
+	// The engine treats a printed 0/0 that never had a counter as a
 	// placeholder and never sweeps it (CurrentToughness's convention),
 	// so the shrunken Construct lingers rather than dying. Pinned so a
 	// change in that convention shows up here.
+	runStateChecksViaDraw(t, g)
 	if !g.Battlefield.Contains(construct) {
-		t.Error("a printed 0/0 with no counters is not swept by the toughness SBA")
+		t.Error("a printed 0/0 that never had a counter is not swept by the toughness SBA")
+	}
+}
+
+// #683: a Construct that has had counters and lost them all is no
+// placeholder (Card.LostLastCounter), so when the last Synthesizer
+// leaves and it shrinks to 0/0 it dies — the caveat's second clause.
+// A Construct that never had a counter still lingers beside it.
+func TestB15SynthesizerConstructThatLostItsCountersDiesWhenItShrinks(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	synth := b12Push(g, me.ID, "Simulacrum Synthesizer", "Artifact", b15SimulacrumSynthesizerOracle, 0, 0)
+	g.WithWriteLock(func() {
+		_ = g.CreateTokenForEffect(me.ID, TokenCard("0/0 colorless Construct artifact"), 2)
+	})
+	var constructs []uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Construct" {
+			constructs = append(constructs, c.InstanceID)
+		}
+	}
+	if len(constructs) != 2 {
+		t.Fatalf("want 2 Constructs, got %d", len(constructs))
+	}
+	spent, fresh := constructs[0], constructs[1]
+
+	gainAndLoseACounter(t, g, spent)
+	if !g.Battlefield.Contains(spent) {
+		t.Fatal("while the Synthesizer sizes it, a Construct survives losing its last counter")
+	}
+	if got := effectiveToughness(t, g, spent); got != 3 {
+		t.Errorf("Synthesizer and two Constructs: toughness %d, want 3", got)
+	}
+
+	b15Destroy(t, g, synth)
+	runStateChecksViaDraw(t, g)
+	if g.Battlefield.Contains(spent) {
+		t.Error("a Construct that lost its counters survived shrinking to 0/0")
+	}
+	if !g.Battlefield.Contains(fresh) {
+		t.Error("a Construct that never had a counter should linger as a 0/0")
+	}
+	if spec, _ := Lookup(b15SimulacrumSynthesizerOracle); len(spec.Caveats) != 1 || !strings.Contains(spec.Caveats[0], "lost them all dies") {
+		t.Errorf("the caveat must tell players the spent Construct dies: %v", spec.Caveats)
 	}
 }
 
@@ -854,7 +899,7 @@ func TestB15BloodMoneyPaysATappedTreasurePerNontokenCreatureDestroyed(t *testing
 		t.Errorf("the tokens die too: %d Goblins left", n)
 	}
 	if !g.Battlefield.Contains(darksteel) {
-		t.Error("an indestructible creature survives (#446 — the single-permanent verb honours it)")
+		t.Error("an indestructible creature survives (#446 — DestroyAllMatching honours it)")
 	}
 	treasures := battlefieldIDsNamed(g, "Treasure")
 	if len(treasures) != 2 {
@@ -864,6 +909,80 @@ func TestB15BloodMoneyPaysATappedTreasurePerNontokenCreatureDestroyed(t *testing
 		if !b13Tapped(t, g, id) || controllerOf(t, g, id) != me.ID {
 			t.Error("the Treasures are the caster's and enter tapped")
 		}
+	}
+}
+
+// A commander caught in Blood Money was destroyed and pays a Treasure
+// (CR 903.9 replaces the zone change, not the destruction). The
+// engine keeps it on the battlefield until its owner answers the
+// command-zone prompt, which happens after the Treasures are made, so
+// the count cannot be read off the board. The answer must not change
+// it either way.
+func TestB15BloodMoneyPaysForACommanderCaughtInTheWipe(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		commandZone bool
+	}{{"to the command zone", true}, {"to the graveyard", false}} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[0]
+			seedCreature(g, "My Bear", me.ID)
+			commander := b36Commander(g, me.ID, "My Commander")
+			g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, RedGoblinToken(), 1) })
+
+			castCatalogSpell(t, g, "Blood Money", "Sorcery", b15BloodMoneyOracle, nil)
+			passPriorityAroundTable(t, g)
+			if n := len(battlefieldIDsNamed(g, "Treasure")); n != 2 {
+				t.Errorf("the Bear and the commander are nontoken creatures destroyed: %d Treasures, want 2", n)
+			}
+
+			if tc.commandZone {
+				b36AcceptCommandZone(t, g, me.ID)
+				if !me.Command.Contains(commander) {
+					t.Error("the commander goes to the command zone")
+				}
+			} else {
+				b21DeclineCommandZone(t, g, me.ID)
+				if !me.Graveyard.Contains(commander) {
+					t.Error("the commander goes to the graveyard")
+				}
+			}
+			if n := len(battlefieldIDsNamed(g, "Treasure")); n != 2 {
+				t.Errorf("after the CR 903.9 answer: %d Treasures, want 2", n)
+			}
+		})
+	}
+}
+
+// Blood Money destroys every creature at the same time (CR 700.4), so
+// a Zulaport Cutthroat caught in the wipe triggers for every creature
+// its controller lost, itself included. Zulaport is pushed first, the
+// battlefield position where the old one-at-a-time loop destroyed it
+// before the others and it saw only its own death.
+func TestB15BloodMoneyDeathsAreSimultaneousForAristocratsPayoffs(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pushCatalogPermanent(g, me.ID, "Zulaport Cutthroat", "Creature — Human Rogue", zulaportOracle, false)
+	pushWipeCreature(g, me.ID, "Bear A", "Creature — Bear", 2, 2)
+	pushWipeCreature(g, me.ID, "Bear B", "Creature — Bear", 2, 2)
+	pushWipeCreature(g, me.ID, "Bear C", "Creature — Bear", 2, 2)
+	survivor := pushIndestructibleWipeCreature(g, me.ID, "Darksteel Myr")
+
+	meBefore, oppBefore := me.Life, opp.Life
+	castCatalogSpell(t, g, "Blood Money", "Sorcery", b15BloodMoneyOracle, nil)
+	passPriorityAroundTable(t, g)
+
+	if want := oppBefore - 4; opp.Life != want {
+		t.Errorf("opponent life %d -> %d, want %d (four simultaneous deaths; the indestructible survivor is not one)", oppBefore, opp.Life, want)
+	}
+	if want := meBefore + 4; me.Life != want {
+		t.Errorf("caster life %d -> %d, want %d", meBefore, me.Life, want)
+	}
+	if !g.Battlefield.Contains(survivor) {
+		t.Error("the indestructible creature survives the sweep")
+	}
+	if n := len(battlefieldIDsNamed(g, "Treasure")); n != 4 {
+		t.Errorf("four nontoken creatures died: %d Treasures, want 4", n)
 	}
 }
 

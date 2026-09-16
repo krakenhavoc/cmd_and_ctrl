@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// copy_test.go covers the engine half of CR 706 copy effects: what
+// copy_test.go covers the engine half of CR 707 copy effects: what
 // counts as a copiable value, what happens to a copy when it leaves
 // the battlefield, and the entry-site resume that made an
 // as-it-enters prompt possible at all. The catalog cards that drive

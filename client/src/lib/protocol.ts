@@ -636,7 +636,7 @@ export interface StackItemView {
   // for anyone deciding whether to respond: an overloaded Cyclonic
   // Rift is a one-sided wipe, a hard-cast one is a single bounce.
   alt_cost?: string;
-  // S30: a CR 706.10 spell copy rather than a cast card. The copy
+  // S30: a CR 707.10 spell copy rather than a cast card. The copy
   // and its source look identical on the stack, and which is which
   // decides what countering one leaves behind.
   is_copy?: boolean;
@@ -994,9 +994,10 @@ export interface CardView {
   // meaningful on the battlefield; omitted when zero.
   damage_marked?: number;
   // S13.5 visual face-down flag (CR 708 — morph / manifest /
-  // mutate-bottom). Distinct from known_by_you: a face-down card
-  // is visually a card back to everyone, but knowers can hover-
-  // reveal the printed characteristics.
+  // mutate-bottom, Necropotence's exile). Distinct from known_by_you:
+  // a viewer who doesn't know a face-down card gets it redacted to
+  // game state and Card.svelte draws a back (cardBack.ts, #95); a
+  // viewer who knows it still sees the face.
   face_down?: boolean;
   // S13.5 per-viewer knowledge flag. True when the viewer is in the
   // server-side KnownBy set for this card. When false, printed

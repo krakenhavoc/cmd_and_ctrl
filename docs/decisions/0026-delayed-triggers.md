@@ -68,7 +68,7 @@ matches the step being entered, immediately before the step's own
 turn-based actions.
 
 The consequence is the whole rules content of the word "next" (CR
-603.7c/d), obtained without any "was this created during the current
+603.7b), obtained without any "was this created during the current
 step" bookkeeping: an ability scheduled *during* an end step is queued
 after that step's entry hook has already run, so it waits for the
 following one. That timing is observable and it is exactly what blink

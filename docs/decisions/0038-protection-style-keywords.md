@@ -139,7 +139,7 @@ controller of the source). What is missing is the trigger condition
 the counter-the-spell consequence, and a home for the cost.
 
 **Protection's test is against the source, not the controller.**
-CR 702.16e compares the quality to the *source object* of the spell
+CR 702.16b compares the quality to the *source object* of the spell
 or ability. `targetLegalLocked` receives a `caster uuid.UUID` and
 never sees the source, so the test cannot be written here at all.
 Threading a source through the announce gate, the trigger
@@ -161,6 +161,21 @@ protection-from-red creature and watching it die. Neither keyword is
 in `canonicalKeywords`, so cards printing them still flag as
 unimplemented. That is the honest answer until the whole of DEBT
 lands.
+
+*Amended 2026-09-16 (S30 closeout, #95):* the protection half of this
+decision is superseded by the protection ADR that
+[#662](https://github.com/krakenhavoc/cmd_and_ctrl/issues/662) asks
+for, and two statements above were wrong as written. First, the
+targeting rule is CR 702.16b; 702.16e is damage prevention. Second,
+it is not true that no DEBT hook receives the source. `CanBlock`
+(`game/keywords.go`) is handed both creatures, and
+`attachmentLegalLocked` (`game/attach.go`) is handed the Aura or
+Equipment itself. Damage carries only a source ID
+(`ReplacementEvent.DamageSource`), and that source may already have
+left the battlefield, so it needs a last-known-information lookup.
+Targeting is the hook that gets only the controller's ID, and it is
+still the real refactor. Ward and the parameterised-keyword argument
+are unchanged.
 
 ## Consequences
 
@@ -242,7 +257,7 @@ and Vein Ripper carry them; see `effects/ward.go`.
 
 **Protection is unchanged and still absent.** Its blocker is the
 one decision 7 identified as a real refactor — the quality is
-tested against the SOURCE object (CR 702.16e) and neither
+tested against the SOURCE object (CR 702.16b) and neither
 `targetLegalLocked` nor the damage, block or attachment paths
 receive one — and S30 did not attempt it. Protection-printing cards
 continue to flag as unimplemented, which keeps the DEBT problem

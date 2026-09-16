@@ -7,7 +7,7 @@ import (
 )
 
 // copy_effects.go — the shared shape behind every "you may have this
-// creature enter as a copy of X" card (CR 706.2).
+// creature enter as a copy of X" card (CR 707.2).
 //
 // The whole class is one replacement effect with a picker inside it:
 // the permanent's own entry is replaced, the controller chooses what

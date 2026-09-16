@@ -587,6 +587,21 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		)
 		return err
 	}
+	// CR 118.6: no mana cost is an unpayable cost, and paying it is
+	// illegal, so a cast that would pay it is refused here. Checked
+	// once the claimed alternative cost and the exile grant are both
+	// known, because an alternative cost applied to the unpayable
+	// cost may be paid (CR 118.6a).
+	// Mode-independent, like the unparseable-cost refusal: there is
+	// no cost to have paid on paper either.
+	if HasNoManaCost(card) && castPaysPrintedCost(alt, exileGrant, hasExileGrant) {
+		slog.Warn("cast_spell rejected: no mana cost to pay",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"from_zone", src.Kind,
+		)
+		return ErrNoManaCost
+	}
 	// S28: the non-mana half of the claimed offer — the Condition
 	// ("if you control a Swamp"), the life payment, and the card
 	// pitched or bounced to pay it. Validated here, next to the claim
@@ -1028,10 +1043,11 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 //
 // The "effective cost" parses the printed ManaCost and adds
 // {2}-per-prior-cast for casts from the command zone (CR 903.8).
-// An EMPTY ManaCost still short-circuits to costless — ParseCost
-// treats "" as the zero cost, matching land behaviour — but an
-// UNPARSEABLE one now rejects the cast outright, before any of
-// the three outcomes above. Caller must hold g.mu.
+// ParseCost treats an EMPTY ManaCost as the zero cost, matching land
+// behaviour. A non-land spell never gets here on an empty cost it is
+// paying: CastSpell refuses that earlier with ErrNoManaCost (CR
+// 118.6). An UNPARSEABLE cost rejects the cast outright, before any
+// of the three outcomes above. Caller must hold g.mu.
 func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams, cardID uuid.UUID) error {
 	cost, err := g.effectiveCostLocked(p, card, params)
 	if err != nil {
@@ -1524,7 +1540,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 			Source: top.InstanceID,
 			CardID: top.InstanceID,
 		})
-		// A COPY has no way out of the stack at all: CR 706.10 says
+		// A COPY has no way out of the stack at all: CR 707.10 says
 		// it is not a card, so "countered by game rules" leaves it
 		// nowhere to go. Checked BEFORE the flashback branch below
 		// because a copy of a flashed-back spell is still not a card
@@ -1549,7 +1565,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// spells fire their effect here. Errors emit EventEffectError
 	// via fireEffectResolverLocked and do not wedge resolution.
 	g.fireEffectResolverLocked(item, CatalogKey(top), top.InstanceID)
-	// CR 707.10: a resolving copy of a PERMANENT spell becomes a
+	// CR 608.3f / 707.10f: a resolving copy of a PERMANENT spell becomes a
 	// token. This engine has no token-from-stack-item path, and
 	// letting the copy fall through to the battlefield branch below
 	// would be worse than doing nothing — it would put a second
@@ -1557,13 +1573,13 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// play, which a bounce spell then duplicates into a hand. Every
 	// S30 copy card targets an instant or sorcery, so this is
 	// unreachable today; it is written out because it is where the
-	// token rule lands.
+	// token rule lands (#666).
 	if item.IsCopy && top.IsPermanent() {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Actor:    item.Controller,
 			CardID:   top.InstanceID,
-			ErrorMsg: "copying a permanent spell is not implemented (CR 707.10 token)",
+			ErrorMsg: "copying a permanent spell is not implemented (CR 608.3f token)",
 		})
 		g.ceaseToExistLocked(top.InstanceID)
 		return nil
@@ -1649,7 +1665,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 			}
 		}
 		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
-		// CR 706.2: a permanent entering as a copy is that copy from
+		// CR 707.2: a permanent entering as a copy is that copy from
 		// the moment it enters, so the values land before the counters
 		// (Spark Double's extra +1/+1 goes on the copy) and before any
 		// event fires. `moved` is re-taken because it is a pre-copy
@@ -1687,7 +1703,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 		g.queueAltCostEntryTriggerLocked(moved, item)
 		return nil
 	}
-	// CR 706.10 — a COPY is not a card, so it has no graveyard to go
+	// CR 707.10 — a COPY is not a card, so it has no graveyard to go
 	// to and no flashback exile to be caught by either. It ceases to
 	// exist, having already run its effect above. See spell_copy.go
 	// for why this branch is load-bearing rather than cosmetic.
@@ -2239,6 +2255,7 @@ func (g *Game) stateBasedActionsLocked() bool {
 			}
 			if len(c.Counters) == 0 {
 				c.Counters = nil
+				c.LostLastCounter = true
 			}
 			fired = true
 		}
@@ -2276,11 +2293,18 @@ func (g *Game) stateBasedActionsLocked() bool {
 	// Printed-0 creatures (Toughness == 0 and no counters applied)
 	// are skipped: that's the placeholder / unparseable-stats
 	// convention documented on Card.Power — the SBA would else
-	// destroy every demo seed card.
+	// destroy every demo seed card. A creature that has LOST its
+	// counters is not skipped (Card.LostLastCounter, #683): a 0/0
+	// whose last +1/+1 counter was removed or cancelled has a real 0
+	// toughness and dies (CR 704.5f).
+	// Unless its printed toughness is not a number
+	// (Card.VariableToughness): a `*` creature's 0 is the import
+	// stand-in whether or not it once had counters, so it stays
+	// skipped.
 	var doomed []uuid.UUID
 	for _, c := range g.Battlefield.Cards {
 		if c.IsCreature() {
-			if c.Toughness == 0 && len(c.Counters) == 0 {
+			if c.Toughness == 0 && len(c.Counters) == 0 && (!c.LostLastCounter || c.VariableToughness) {
 				continue
 			}
 			curT := c.CurrentToughness()
@@ -4295,7 +4319,7 @@ func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 			// shadow, …) restrict which creatures can be declared
 			// as blockers. CanBlock is the single helper that
 			// consolidates all current S18 evasion rules; future
-			// keywords (protection in S24, etc.) land there.
+			// keywords (protection, #662) land there.
 			if !CanBlock(attacker, blocker) {
 				return ErrIllegalBlock
 			}
@@ -5296,6 +5320,7 @@ func (g *Game) applyCounterLocked(cardID uuid.UUID, name string, delta int) erro
 	}
 	for i := range z.Cards {
 		if z.Cards[i].InstanceID == cardID {
+			hadCounters := len(z.Cards[i].Counters) > 0
 			if z.Cards[i].Counters == nil {
 				z.Cards[i].Counters = make(map[string]int)
 			}
@@ -5305,6 +5330,14 @@ func (g *Game) applyCounterLocked(cardID uuid.UUID, name string, delta int) erro
 				delete(z.Cards[i].Counters, name)
 				if len(z.Cards[i].Counters) == 0 {
 					z.Cards[i].Counters = nil
+					// #683: not a placeholder any more — see
+					// Card.LostLastCounter and the toughness SBA.
+					// Only when there was a counter to lose:
+					// removing one from a card with none leaves
+					// whatever it was before.
+					if hadCounters {
+						z.Cards[i].LostLastCounter = true
+					}
 				}
 			}
 			g.EmitEvent(Event{

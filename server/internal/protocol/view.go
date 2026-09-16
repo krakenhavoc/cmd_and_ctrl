@@ -467,7 +467,7 @@ type StackItemView struct {
 	// permanent, so a responder needs to see which is on the stack.
 	AltCost string `json:"alt_cost,omitempty"`
 
-	// IsCopy marks a CR 706.10 spell copy — Reverberate's output,
+	// IsCopy marks a CR 707.10 spell copy — Reverberate's output,
 	// not a cast card (S30). Public and worth showing: the copy and
 	// the spell it came from are two identical-looking entries on
 	// the stack, and which one is the copy decides what a responder
@@ -2399,9 +2399,10 @@ func redactZone(z ZoneView, isKnower func(CardView) bool) ZoneView {
 
 // redactCardForViewer applies the S13.5 visibility rule to a single
 // card. When `known` is true the card keeps every printed
-// characteristic; when false, name / type_line / scryfall_id /
-// power / toughness / counters / is_commander zero out so the wire
-// doesn't leak identity. The unexported `knowers` map is always
+// characteristic; when false, every field derived from the card's
+// identity zeroes out — name, type line, costs, faces, abilities,
+// catalog flags — so the wire doesn't leak identity.
+// face_down_view_test.go pins the survivors as an allowlist. The unexported `knowers` map is always
 // cleared on the output so repeated FilterViewFor calls stay
 // idempotent.
 func redactCardForViewer(c CardView, known bool) CardView {
@@ -2442,6 +2443,37 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.Faces = nil
 	out.Layout = ""
 	out.ActiveFace = 0
+	// #95: everything below is read off the card's own text or type
+	// line — the catalog entry, its abilities, its target prompt — and
+	// so names it as surely as the fields above. A face-down Forest
+	// that still shipped "Add {G}" in mana_abilities, or a face-down
+	// catalog card that still shipped auto=true and target_mode, was
+	// the leak: Necropotence's face-down exiles carried both, and so
+	// did every card in the owner's own library.
+	//
+	// What survives is the game state around the card rather than the
+	// card: instance id, owner, controller, tapped, damage, combat
+	// declarations, goad, attachment and battlefield position.
+	out.Auto = false
+	out.TargetMode = ""
+	out.ManaAbilities = nil
+	out.ActivatedAbilities = nil
+	out.Restrictions = nil
+	out.ExilePlay = nil
+	// The hand / command / graveyard stamps are only meaningful to a
+	// player who can read the card, and each one quotes it: a mode
+	// prompt, an additional-cost label, a target clause's bounds.
+	out.LegalTargets = nil
+	out.Modes = nil
+	out.AdditionalCost = nil
+	// Type-derived bits. Sickness says "creature without haste",
+	// loyalty says "planeswalker", defense and a protector say
+	// "battle". Defense is also just the defense counter, and the
+	// counters map is already gone.
+	out.SummoningSick = false
+	out.LoyaltyActivated = false
+	out.Defense = 0
+	out.ProtectorPlayer = ""
 	return out
 }
 
