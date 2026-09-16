@@ -94,7 +94,11 @@ var gameFields = plan(
 	"Promises", carried, "",
 	"Vote", carried, "",
 	"PendingChoices", carried, "",
-	"Events", carried, "",
+	// The persisted snapshot copies the log; the undo CLONE shares
+	// its backing array and records the length, and RestoreFrom
+	// truncates to it (#629). Both restore the same log, which is
+	// what "carried" means here.
+	"Events", carried, "shared with the live log by Clone, copied by the persisted snapshot",
 	"eventSeq", carried, "",
 	"lastKnownBattlefield", carried, "",
 	"rngState", carried, "marshalled via rngSnapshot",
