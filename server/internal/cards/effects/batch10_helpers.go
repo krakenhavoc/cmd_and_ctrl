@@ -176,7 +176,7 @@ func b10CreatureOrPlaneswalker() CardPredicate { return Or(Creature(), Planeswal
 // the comparison set is that player's board; ties all match, and the
 // player chooses among them (CR 700.3 — "the greatest" picks out a
 // set). Mana value is read off the battlefield, where X is zero (CR
-// 202.3b) and a token with no mana cost is zero.
+// 202.3e) and a token with no mana cost is zero.
 func b10GreatestManaValueCreatureOrPlaneswalkerYouControl() CardPredicate {
 	return func(g *game.Game, player uuid.UUID, c game.Card) bool {
 		if c.Controller != player || !(c.IsCreature() || c.IsPlaneswalker()) {

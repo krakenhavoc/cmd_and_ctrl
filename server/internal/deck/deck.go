@@ -447,7 +447,7 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		StartingLoyalty: printedLoyalty(c),
 		// CR 310.4 — printed defense. Same road as starting loyalty
 		// and for the same reason: without it a battle enters with
-		// zero defense counters and the 704.5p SBA sweeps it before
+		// zero defense counters and the 704.5v SBA sweeps it before
 		// anybody can attack it. Top-level only for the day a
 		// single-faced battle is printed; every battle in the game
 		// today carries its number on the front FACE, which

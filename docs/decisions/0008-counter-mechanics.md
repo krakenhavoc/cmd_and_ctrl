@@ -30,7 +30,7 @@ ordering rule:
 - **704.5i** — planeswalker with 0 loyalty counters → owner's
   graveyard. The S13.1 placeholder-creature exemption doesn't apply
   here; planeswalkers always die at 0.
-- **704.5p** — battle with 0 defense counters → owner's graveyard.
+- **704.5v** — battle with 0 defense counters → owner's graveyard.
   Symmetric with the planeswalker SBA.
 - **704.5c** — player with ≥ 10 poison counters loses. Reads the
   unified `Player.Counters["poison"]` map; falls back to the legacy

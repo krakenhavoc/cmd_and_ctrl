@@ -17,9 +17,9 @@ import "github.com/google/uuid"
 // CR 120.3 splits by what the permanent IS, and a permanent can be
 // more than one thing at once:
 //
-//	120.3c  damage to a CREATURE is marked on it
-//	120.3d  damage to a PLANESWALKER removes that many loyalty counters
-//	120.3e  damage to a BATTLE removes that many defense counters
+//	120.3e  damage to a CREATURE is marked on it
+//	120.3c  damage to a PLANESWALKER removes that many loyalty counters
+//	120.3h  damage to a BATTLE removes that many defense counters
 //
 // So the clauses are additive, not a switch. A Gideon animated into a
 // creature takes BOTH: the damage is marked on him and the loyalty

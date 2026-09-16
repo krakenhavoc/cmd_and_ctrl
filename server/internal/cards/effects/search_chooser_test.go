@@ -83,7 +83,7 @@ func answerSearchByID(t *testing.T, g *game.Game, chooser uuid.UUID, picks ...uu
 }
 
 // answerSearchFailToFind answers an open search prompt by taking nothing (CR
-// 701.19c).
+// 701.23b).
 func answerSearchFailToFind(t *testing.T, g *game.Game, chooser uuid.UUID) {
 	t.Helper()
 	c := searchChoiceFor(g, chooser)

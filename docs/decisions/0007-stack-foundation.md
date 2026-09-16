@@ -123,7 +123,7 @@ canonical CR 704.5 SBAs:
 - 704.5f: creature with current toughness ≤ 0 → destroyed
 - 704.5g: creature with damage marked ≥ current toughness →
   destroyed
-- 704.5v / 903.14a: 21 commander damage from a single source →
+- 704.6c / 903.10a: 21 commander damage from a single source →
   eliminated
 
 `runStateChecksLocked()` is the loop wrapper that pairs SBAs with

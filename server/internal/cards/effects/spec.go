@@ -609,7 +609,7 @@ type ManaAbilityCost struct {
 	SacrificeOther *game.TargetSpec
 
 	// Life is a "Pay N life" component of the activation cost (CR
-	// 118.8) — Mana Confluence's "{T}, Pay 1 life: Add one mana of
+	// 119.4) — Mana Confluence's "{T}, Pay 1 life: Add one mana of
 	// any color". Mirrors game.AbilityCost.Life, which CR 602
 	// activated abilities have carried since S21 and the fetchlands
 	// already use.

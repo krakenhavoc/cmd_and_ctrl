@@ -12,7 +12,7 @@ package effects
 // its own file.
 //
 // The tap is on a CREATURE, so summoning sickness applies (CR
-// 302.1); ActivateManaAbility enforces that from the type line.
+// 302.6); ActivateManaAbility enforces that from the type line.
 //
 // No simplification.
 func init() {

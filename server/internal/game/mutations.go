@@ -2155,7 +2155,7 @@ func clearKnownInZoneLocked(zone *Zone) {
 // Player-loss SBAs (S13.1):
 //   - 704.5a: a player at 0 or less life loses
 //   - 704.5b: a player who tried to draw from an empty library loses
-//   - 704.5v / 903.14a: 21 commander damage from a single source
+//   - 704.6c / 903.10a: 21 commander damage from a single source
 //
 // Player-loss SBAs (S13.2):
 //   - 704.5c: a player with ≥ 10 poison counters loses
@@ -2167,11 +2167,11 @@ func clearKnownInZoneLocked(zone *Zone) {
 // Counter SBAs (S13.2):
 //   - 704.5i: a planeswalker with 0 loyalty counters is moved to its
 //     owner's graveyard
-//   - 704.5p: a battle with 0 defense counters is moved to its
+//   - 704.5v: a battle with 0 defense counters is moved to its
 //     owner's graveyard
 //   - 704.5q: +1/+1 and -1/-1 counters on the same creature
 //     cancel out — remove min(N, M) of each
-//   - 704.5u: a saga whose final-chapter lore counter is set is
+//   - 704.5s: a saga whose final-chapter lore counter is set is
 //     sacrificed by its controller (the SBA half; the lore-counter
 //     advance trigger lands in S14+ with the effect catalog)
 //
@@ -2313,7 +2313,7 @@ func (g *Game) stateBasedActionsLocked() bool {
 			}
 			continue
 		}
-		// 704.5p — battle with 0 defense counters.
+		// 704.5v — battle with 0 defense counters.
 		if c.IsBattle() {
 			if c.Counters == nil || c.Counters[CounterDefense] <= 0 {
 				doomed = append(doomed, c.InstanceID)
@@ -2326,7 +2326,7 @@ func (g *Game) stateBasedActionsLocked() bool {
 	// here — after the doomed set is collected and before any of it
 	// moves — so the harvester finds a live source, and so a Siege's
 	// "exile it, then cast it transformed" reads a card that still
-	// exists. The battle is in `doomed` already via the 704.5p arm
+	// exists. The battle is in `doomed` already via the 704.5v arm
 	// above; this only adds the announcement.
 	for _, c := range g.Battlefield.Cards {
 		if c.IsBattle() && c.Counters[CounterDefense] <= 0 {
@@ -3321,7 +3321,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	//
 	// "Activate only if you control five or more lands" (Temple of
 	// the False God), "…three or more artifacts" (Mox Opal). CR
-	// 602.5a: an activation restriction is checked before anything
+	// 602.5: an activation restriction is checked before anything
 	// is paid, so a failed gate costs the player nothing.
 	if ab.Condition != nil && !ab.Condition(g, playerID, cardID) {
 		return ErrConditionNotMet

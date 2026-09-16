@@ -138,7 +138,7 @@ const (
 
 	// PendingChoiceSacrifice — "each player sacrifices a creature"
 	// (Grave Pact, Dictate of Erebos, Fleshbag Marauder — CR
-	// 701.17a). One choice per affected player, addressed to that
+	// 701.21a). One choice per affected player, addressed to that
 	// player, carrying the permanents they may choose from.
 	//
 	// Deliberately NOT PendingChoicePickTarget. The effect does not

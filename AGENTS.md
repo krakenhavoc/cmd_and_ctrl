@@ -315,10 +315,23 @@ reveal from 701.16 to 701.20. The 2026 edition added a new 310.8, which moved
 the battle protector rules to 310.9.
 
 To move the pin to a newer edition, do it in one PR of its own. Download the
-new TXT. For every section the tree cites
-(`git grep -ohE "CR ?[0-9]{3}\.[0-9]+[a-z]?" | sort -u`), compare the rule's
-text in the two editions, and renumber by matching content, never by adding
-to the number. Then update the date and file name above.
+new TXT. For every section the tree cites, compare the rule's text in the two
+editions, and renumber by matching content, never by adding to the number.
+Then update the date and file name above.
+
+A one-line grep does not find every citation. Comments wrap, so "CR" often
+ends one line and the number starts the next. List the sections with a search
+that crosses line breaks:
+
+```sh
+rg -U -o -N --no-filename 'CR\s*(//|\*|#)?\s*[0-9]{3}\.[0-9]+[a-z]?' . < /dev/null \
+  | grep -oE '[0-9]{3}\.[0-9]+[a-z]?' | sort -u
+```
+
+Some citations have no "CR" in front at all: the second number in
+"CR 305.1, 116.2a", and rule tables in comments such as the state-based
+action list in `mutations.go`. Once you know which numbers moved, search for
+each old number on its own too (`git grep -nw "701\.19"`), then read each hit.
 
 ---
 

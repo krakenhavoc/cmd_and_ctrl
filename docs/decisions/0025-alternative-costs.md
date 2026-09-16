@@ -95,7 +95,7 @@ still demands a target — a strictly worse Vandalblast that looks right.
 ### 3. Alternative replaces the mana cost and *only* the mana cost
 
 Additional costs survive the swap: CR 601.2f is evaluated independently
-of the cost chosen at 601.2e, so a card charging both charges both.
+of the cost chosen at 601.2b, so a card charging both charges both.
 Commander tax likewise layers on top (CR 903.8 taxes whatever cost is
 being paid), which is why `effectiveCostLocked` applies the tax *after*
 the substitution rather than before.

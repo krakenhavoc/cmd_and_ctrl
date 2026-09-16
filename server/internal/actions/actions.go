@@ -1077,7 +1077,7 @@ func Dispatch(g *game.Game, a Action) error {
 			// ("up to two target creatures"). Ordered as clicked.
 			Targets []castTargetWire `json:"targets"`
 			// Bottom / TopOrder answer a PendingChoiceScry (CR
-			// 701.18): the looked-at cards going under the library,
+			// 701.22): the looked-at cards going under the library,
 			// and the ones staying on top listed TOP-FIRST. Every
 			// looked-at card must appear in exactly one list.
 			Bottom   []string `json:"bottom"`

@@ -484,7 +484,7 @@ func (p PayUnless) Apply(ctx *Context) error {
 // EachPlayerSacrifices is "each player sacrifices a creature" (Fleshbag
 // Marauder), "each other player sacrifices a creature" (Grave Pact) or
 // "each opponent sacrifices a creature" (Butcher of Malakir) — CR
-// 701.17a.
+// 701.21a.
 //
 // Every affected player chooses their own, so this fans out one prompt
 // per player rather than picking for them; that is the whole rules

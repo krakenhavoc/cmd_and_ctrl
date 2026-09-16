@@ -429,7 +429,7 @@ const (
 	EventBattleDefeated EventKind = "battle_defeated"
 
 	// EventRevealCards — Actor showed CardID to the whole table (CR
-	// 701.16). Fires once per card, so "reveal the top five cards of
+	// 701.20). Fires once per card, so "reveal the top five cards of
 	// your library" produces five events sharing one RevealSeq; the
 	// wire projection groups them back into a single announcement.
 	// Source is the card whose effect revealed; OldZone is the zone

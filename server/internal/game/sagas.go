@@ -22,9 +22,9 @@ import "github.com/google/uuid"
 //
 // Three CR rules split across three call sites:
 //
-//	714.2b  "As a Saga enters ... put a lore counter on it"
+//	714.3a  "This Saga enters with a lore counter on it"
 //	        → sagaEntersWithLoreCounterLocked, from fireETBHookLocked
-//	714.2b  "... and after your draw step, put a lore counter on it"
+//	714.3c  "As a player's precombat main phase begins, that player puts a lore counter on each Saga"
 //	        → advanceSagasForActiveSeatLocked, from the
 //	          StepPrecombatMain entry hook
 //	704.5s  a Saga at or past its final chapter, with no chapter

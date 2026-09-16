@@ -147,7 +147,7 @@ type ManaAbilityShape struct {
 	SacrificeOther *TargetSpec
 
 	// LifeCost is a life component in the activation cost (CR
-	// 118.8) — Mana Confluence's "{T}, Pay 1 life: Add one mana of
+	// 119.4) — Mana Confluence's "{T}, Pay 1 life: Add one mana of
 	// any color". Mirrors AbilityCost.Life, which CR 602 activated
 	// abilities have carried since S21. Validated before anything
 	// is paid and paid after the tap, so an attempt at too low a

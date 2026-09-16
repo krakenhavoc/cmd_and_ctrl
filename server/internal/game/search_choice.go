@@ -22,7 +22,7 @@ type searchResumeFrame struct {
 }
 
 // ResolveSearchLibrary answers a PendingChoiceSearchLibrary (CR
-// 701.19): `picks` are the cards the searcher takes, chosen from the
+// 701.23): `picks` are the cards the searcher takes, chosen from the
 // candidates the prompt offered.
 //
 // An empty `picks` is a legal answer, not a client bug — CR 701.23b

@@ -14,7 +14,7 @@ package effects
 // creature and every Vehicle the controller controls, the Spider
 // itself included, snapshotted before the first counter lands. A
 // creature source, so the tap waits out summoning sickness (CR
-// 302.1), as printed.
+// 302.6), as printed.
 //
 // One declared simplification, weaker than printed: the draw
 // ability is not implemented. "Remove two +1/+1 counters from among

@@ -29,7 +29,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     (b31UntapSelf) — which is what lets him activate twice a turn.
 //
 // Every {T} on a creature source waits out summoning sickness (CR
-// 302.1); the untap does not tap and does not.
+// 302.6); the untap does not tap and does not.
 //
 // DECLARED SIMPLIFICATION, weaker than printed: the Treasure ability
 // is not implemented. "Remove a counter from a creature you control"

@@ -42,7 +42,7 @@ engine.** Roughly 290 cards carry effect specs (289 registered as of
 #270 on 2026-09-11; `grep -c 'Register(Spec{'` undercounts — several
 cycles register in loops). There is no attachment layer,
 so Equipment and Auras are inert (S24). Sagas do not exist beyond a `lore` counter type with no chapter
-triggers and no 704.5u state-based action (S27).
+triggers and no 704.5s state-based action (S27).
 Mass-removal primitives are S23. A bot cannot be better than the
 engine it plays inside, and the catalog — not the model — is the
 binding constraint on play quality.
