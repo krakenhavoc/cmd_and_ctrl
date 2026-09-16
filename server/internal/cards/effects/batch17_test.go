@@ -259,7 +259,7 @@ func TestB17BattleOfBywaterKillsBigCreaturesAndFeedsTheRest(t *testing.T) {
 		t.Error("smaller creatures survive")
 	}
 	if !g.Battlefield.Contains(darksteel) {
-		t.Error("an indestructible creature survives (#446 — the single-permanent verb honours it)")
+		t.Error("an indestructible creature survives (#446 — DestroyAllMatching honours it)")
 	}
 	foods := battlefieldIDsNamed(g, "Food")
 	if len(foods) != 2 {
@@ -269,6 +269,39 @@ func TestB17BattleOfBywaterKillsBigCreaturesAndFeedsTheRest(t *testing.T) {
 		if controllerOf(t, g, id) != me.ID {
 			t.Error("the Foods are the caster's")
 		}
+	}
+}
+
+// The Battle of Bywater destroys its creatures at the same time
+// (CR 700.4), so a Zulaport Cutthroat big enough to be swept triggers
+// for every creature its controller lost, itself included. Zulaport is
+// pushed first, the battlefield position where the old one-at-a-time
+// loop destroyed it before the others and it saw only its own death.
+func TestB17BattleOfBywaterDeathsAreSimultaneousForAristocratsPayoffs(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	zulaport := pushCatalogPermanent(g, me.ID, "Zulaport Cutthroat", "Creature — Human Rogue", zulaportOracle, false)
+	g.WithWriteLock(func() { _ = g.AddCounterForEffect(zulaport, "+1/+1", 2) })
+	pushWipeCreature(g, me.ID, "Ent A", "Creature — Treefolk", 3, 3)
+	pushWipeCreature(g, me.ID, "Ent B", "Creature — Treefolk", 4, 4)
+	pushWipeCreature(g, me.ID, "Ent C", "Creature — Treefolk", 5, 5)
+	pushWipeCreature(g, me.ID, "Hobbit", "Creature — Halfling", 1, 1)
+
+	meBefore, oppBefore := me.Life, opp.Life
+	castCatalogSpell(t, g, "The Battle of Bywater", "Sorcery", b17BattleOfBywaterOracle, nil)
+	passPriorityAroundTable(t, g)
+
+	if g.Battlefield.Contains(zulaport) {
+		t.Fatal("Zulaport with two +1/+1 counters has power 3 and is destroyed")
+	}
+	if want := oppBefore - 4; opp.Life != want {
+		t.Errorf("opponent life %d -> %d, want %d (four simultaneous deaths; the Hobbit is too small to die)", oppBefore, opp.Life, want)
+	}
+	if want := meBefore + 4; me.Life != want {
+		t.Errorf("caster life %d -> %d, want %d", meBefore, me.Life, want)
+	}
+	if n := len(battlefieldIDsNamed(g, "Food")); n != 1 {
+		t.Errorf("only the Hobbit is left: %d Foods, want 1", n)
 	}
 }
 

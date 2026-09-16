@@ -14,33 +14,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // AFTER the destruction, so a creature of yours that survived — or
 // was too small to be swept — is what pays.
 //
-// Not the batched sweep. Each creature is destroyed through the
-// single-permanent verb (Blood Money's posture) and the survivors
-// are counted afterwards.
-//
-// The reason for that has lapsed: the mass-destroy path did not
-// check indestructible (#446), so through it an indestructible 4/4
-// of yours would die and pay nothing, stronger than printed one way
-// and weaker the other. S30 (#470) closed it. Converting this card
-// to DestroyAllMatching is now a safe follow-up and would retire the
-// simultaneity caveat below with it.
-//
-// Sandbox simplification, declared: the creatures leave one at a
-// time rather than as one simultaneous event, so a "whenever another
-// creature dies" watcher that is itself in the wipe sees only the
-// creatures destroyed before it. Weaker than printed for that
-// watcher's controller, never stronger.
+// The batched sweep. DestroyAllMatching destroys the big creatures as
+// one simultaneous event (CR 700.4), so a "whenever another creature
+// dies" watcher caught in the wipe sees every death, and it leaves
+// indestructible creatures on the battlefield (#446 / #470). No Then
+// clause is needed: the Food count reads the board after the sweep,
+// so an indestructible survivor of yours counts there like any other
+// creature you control.
 func init() {
 	Register(Spec{
 		OracleID:     "a94c191d-a938-458e-bc1b-2f44fd8873a3",
 		Name:         "The Battle of Bywater",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The creatures are destroyed one after another rather than all at once, so a creature with a \"whenever another creature dies\" ability that is itself destroyed may miss some of the deaths."},
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			for _, c := range MatchingBattlefield(ctx, And(Creature(), PowerGE(3))) {
-				if err := (DestroyTarget{Target: c.InstanceID}).Apply(ctx); err != nil {
-					return err
-				}
+			if err := (DestroyAllMatching{Match: And(Creature(), PowerGE(3))}).Apply(ctx); err != nil {
+				return err
 			}
 			return b17FoodPerCreatureYouControl(ctx)
 		},

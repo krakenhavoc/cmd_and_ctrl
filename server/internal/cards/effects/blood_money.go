@@ -10,43 +10,37 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // A seven-mana Damnation that pays you a Treasure per real creature
 // it killed, so the turn after the wipe is the biggest of the game.
 //
-// Not the batched sweep. The Treasure count has to match what
-// ACTUALLY died, so each creature is destroyed through the
-// single-permanent verb and counted only if it left the battlefield
-// (a commander tucked away by CR 903.9 was destroyed and counts, as
-// Fumigate notes; a token was destroyed and does not, as printed).
+// The batched sweep. DestroyAllMatching destroys every creature as
+// one simultaneous event (CR 700.4), so a "whenever another creature
+// dies" watcher caught in the wipe sees every death. The sweep also
+// leaves indestructible creatures out of `swept` (#446 / #470), so a
+// survivor pays nothing.
 //
-// Half the original reason for that has lapsed: the mass-destroy
-// path did not check indestructible (#446), so through it an Avacyn
-// board would die and pay out, stronger than printed on both counts.
-// S30 (#470) closed that, and DestroyAllMatching now reports only
-// the creatures it really destroyed. What still keeps this loop is
-// the NONTOKEN filter on the count, which the primitive's Then
-// clause would have to re-derive; converting the card is a small
-// follow-up that also retires the simultaneity caveat below.
-//
-// Sandbox simplification: the creatures leave one at a time rather
-// than as one simultaneous event, so a "whenever another creature
-// dies" watcher that is itself in the wipe sees only the creatures
-// destroyed before it. Weaker than printed for that watcher's
-// controller, never stronger.
+// The Then clause cannot use the `destroyed` count, because that
+// count includes tokens and the card pays only for nontoken
+// creatures. It walks `swept` instead, and counts a card only when
+// it is no longer on the battlefield, so a creature whose move failed
+// is never paid for. A commander sent to the command zone (CR 903.9)
+// was still destroyed and counts, as Fumigate notes. The hand-rolled
+// loop this replaced made the same battlefield check.
 func init() {
 	Register(Spec{
 		OracleID:     "75f5d372-4ff9-430c-8302-72472439e0d2",
 		Name:         "Blood Money",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The creatures are destroyed one after another rather than all at once, so a creature with a \"whenever another creature dies\" ability that is itself destroyed may miss some of the deaths."},
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			paid := 0
-			for _, c := range MatchingBattlefield(ctx, Creature()) {
-				if err := (DestroyTarget{Target: c.InstanceID}).Apply(ctx); err != nil {
-					return err
-				}
-				if !IsToken(c) && !ctx.Game.Battlefield.Contains(c.InstanceID) {
-					paid++
-				}
-			}
-			return b13CreateTappedTreasures(ctx, ctx.Controller(), paid)
+			return DestroyAllMatching{
+				Match: Creature(),
+				Then: func(ctx *Context, swept []game.Card, _ int) error {
+					paid := 0
+					for _, c := range swept {
+						if !IsToken(c) && !ctx.Game.Battlefield.Contains(c.InstanceID) {
+							paid++
+						}
+					}
+					return b13CreateTappedTreasures(ctx, ctx.Controller(), paid)
+				},
+			}.Apply(ctx)
 		},
 	})
 }
