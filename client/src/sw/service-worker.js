@@ -79,8 +79,12 @@ const CARD_IMAGE_PATH = /^\/(?:cards\/[^/]+\/image|catalog\/image\/[^/]+)$/;
 // matcher: denying a route that does not exist yet costs nothing, and the
 // alternative is a client that starts serving a stale /config from cache the
 // day the route lands.
+//
+// /join is the login page's bare-code join (ADR 0050). It is top-level rather
+// than under /games — the code alone names the table — so /games does not
+// cover it and it needs its own entry here, as in the @api matcher.
 const API_PATH =
-  /^\/(ws|healthz|me|logout|config|games|cards|admin|auth|avatars|bugreport|dev|bot|catalog|decks)(\/|$)/;
+  /^\/(ws|healthz|me|logout|config|games|join|cards|admin|auth|avatars|bugreport|dev|bot|catalog|decks)(\/|$)/;
 
 // Hashed build output. Vite content-hashes these filenames, so a given URL's
 // bytes never change and cache-first is always correct.
