@@ -190,6 +190,7 @@ func enrich(t *testing.T, g *Game) {
 				AttackerPower:    4,
 				AllowTrample:     true,
 				HasDeathtouch:    true,
+				CombatStep:       CombatStepRegular,
 				SourceController: p0.ID,
 			},
 		}}
@@ -252,6 +253,12 @@ func enrich(t *testing.T, g *Game) {
 		// --- event log -------------------------------------------
 		g.EmitEvent(Event{Kind: EventDrawCard, Actor: p0.ID, Amount: 1})
 		g.EmitEvent(Event{Kind: EventCast, Actor: p0.ID, Source: spellID, Label: "Test Instant"})
+		// #187: a tagged combat damage event, so the round trip proves
+		// Event.CombatStep is carried.
+		g.EmitEvent(Event{
+			Kind: EventDealDamage, Actor: p0.ID, Source: spellID, Target: p1.ID,
+			Amount: 2, Combat: true, CombatStep: CombatStepFirstStrike,
+		})
 	})
 }
 

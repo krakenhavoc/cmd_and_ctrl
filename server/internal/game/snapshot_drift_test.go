@@ -94,7 +94,11 @@ var gameFields = plan(
 	"Promises", carried, "",
 	"Vote", carried, "",
 	"PendingChoices", carried, "",
-	"Events", carried, "",
+	// The persisted snapshot copies the log; the undo CLONE shares
+	// its backing array and records the length, and RestoreFrom
+	// truncates to it (#629). Both restore the same log, which is
+	// what "carried" means here.
+	"Events", carried, "shared with the live log by Clone, copied by the persisted snapshot",
 	"eventSeq", carried, "",
 	"lastKnownBattlefield", carried, "",
 	"rngState", carried, "marshalled via rngSnapshot",
@@ -457,6 +461,10 @@ func TestEmbeddedDomainTypesStayPureData(t *testing.T) {
 	samples := []any{
 		Event{}, Turn{}, Vote{}, TargetRef{}, ManaToken{},
 		LifeChange{}, Characteristic{}, CastTally{},
+		// Event.CombatStep and DamageAssignmentFrame.CombatStep (#187)
+		// are carried through these two with no plan entry; their zero
+		// value "" is right for a file written before them, so no
+		// schema bump (combat_step_snapshot_test.go).
 		DamageAssignmentFrame{}, ManaPool{},
 		// Card.ExilePlay is one of these: CardSnapshot holds an
 		// ExilePlayPermission by value, so the type's fields never

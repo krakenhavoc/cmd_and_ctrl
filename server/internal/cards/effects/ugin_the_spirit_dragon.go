@@ -33,12 +33,15 @@ import (
 //
 // THE −10 IS REGISTERED AND IS WEAKER THAN PRINTED: the life and the
 // seven cards happen, and the "put up to seven permanent cards from
-// your hand onto the battlefield" clause does not. The only picker
-// the engine has over a hand is the discard modal (the same gap
-// Stoneforge Mystic's file names), and the alternatives are both
-// worse than omitting the clause — auto-picking seven permanents is
+// your hand onto the battlefield" clause does not. The alternatives
+// are both worse than omitting it — auto-picking seven permanents is
 // a choice the player never made, and skipping the ability entirely
 // would throw away a life gain and a draw seven that work perfectly.
+// The move itself is no longer the obstacle: #654 shipped
+// PutFromHandOntoBattlefield, which puts ONE card. Ugin's clause
+// puts up to seven, one prompt with a count, so it needs the shared
+// primitive to grow a bound (or to be applied in a chain) before the
+// clause can be written honestly.
 // Ugin still has a plus, so nothing here leaves him able only to
 // tick down.
 //

@@ -1,6 +1,6 @@
 // Package legal enumerates the moves a seat may make right now.
 //
-// It is the keystone of the S31 bot work (ADR 0024 §1): a policy —
+// It is the keystone of the S31 bot work (ADR 0033 §1): a policy —
 // heuristic or model-backed — never invents an action, it picks an
 // index into the closed list this package produces. The same list is
 // what the client will consume so its timing predicates stop
@@ -305,7 +305,7 @@ func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 	// Combat declarations are not priority-gated in the engine
 	// (declare_attacker / declare_blocker only check the step and the
 	// card's controller), and a defender must be able to block while
-	// the active player still holds priority — see ADR 0024 §2.
+	// the active player still holds priority — see ADR 0033 §2.
 	e.combatMoves()
 	return e.out
 }

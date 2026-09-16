@@ -371,6 +371,29 @@ type ReplacementEffect struct {
 	// no printed copy effect combines with. See copy_choice.go.
 	CopySelector *CopySelector
 
+	// PureCancel declares that Replace does nothing but call
+	// ev.Cancel() — it rewrites no other field on the event and
+	// changes nothing else in the game.
+	//
+	// The engine uses it for exactly one thing. CR 616 asks the
+	// affected player to order the applicable replacements, but when
+	// EVERY applicable replacement is a pure cancel there is nothing
+	// to order: whichever one is put first cancels the event, the
+	// CR 616.1 apply-loop ends there, and the outcome is identical
+	// for every permutation. Prompting would be a question with one
+	// answer, so the engine applies them in gather order instead.
+	//
+	// Only the "skip this step" effects set it today — Stasis's untap
+	// skip and the SkipYourDrawStep half of Necropotence and
+	// Yawgmoth's Bargain — which is the case #710 was filed about:
+	// two of them under one controller.
+	//
+	// Leaving it false is always safe; it costs a prompt, not
+	// correctness. Setting it on an effect that does anything more is
+	// NOT safe — the ordering it suppresses would have been
+	// observable. Added in #710.
+	PureCancel bool
+
 	// PromptQuestion is the text rendered in the yes/no Optional
 	// prompt. Short — fits in a modal header. Defaults to Label
 	// when empty.
@@ -469,22 +492,23 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		if len(applicable) > 1 {
 			// CR 616: affected player picks order. Queue a prompt
 			// and stash the resume frame; caller returns without
-			// applying — unless nobody is left to answer it, in
-			// which case the gathered order stands and the effects
-			// fire inline (an eliminated player's prompt would block
-			// the table forever; S31 fuzzer finding).
+			// applying — with two exceptions, both of which apply
+			// the gathered order inline instead.
+			//
+			// #710: every applicable effect is a PURE CANCEL, so
+			// every ordering produces the same event. Two "skip your
+			// draw step" enchantments under one controller are one
+			// skipped draw step, and asking which of them skipped it
+			// is a prompt with a single answer.
+			if allPureCancels(applicable) {
+				g.applyGatheredInOrderLocked(ev, applicable)
+				continue
+			}
+			// Nobody is left to answer the prompt: the gathered
+			// order stands (an eliminated player's prompt would
+			// block the table forever; S31 fuzzer finding).
 			if chooser := affectedPlayerForEvent(ev, applicable, g); g.chooserGoneLocked(chooser) {
-				for _, chosen := range applicable {
-					if ev.Canceled {
-						break
-					}
-					g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
-					if chosen.effect.Replace != nil {
-						if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
-							g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
-						}
-					}
-				}
+				g.applyGatheredInOrderLocked(ev, applicable)
 				continue
 			}
 			g.queueReplacementOrderPromptLocked(ev, applicable)
@@ -562,6 +586,60 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		ErrorMsg: ErrReplacementIterationExceeded.Error(),
 	})
 	return ev, ErrReplacementIterationExceeded
+}
+
+// allPureCancels reports whether every gathered replacement has
+// declared itself a pure cancel (see ReplacementEffect.PureCancel).
+// When they all have, the CR 616 ordering prompt is unobservable —
+// the first one applied cancels the event and ends the apply-loop,
+// and they are interchangeable — so the engine skips the prompt.
+//
+// An effect that asks its controller a question first — a CR 614.10
+// "may", a shockland's pay-life, a copy selector — is never treated
+// as a pure cancel however it is flagged: skipping the ordering
+// prompt would skip that question too, and firing Replace blind is
+// the bug ResolveReplacementOrder's own CopySelector branch exists to
+// avoid. No printed card combines them; the guard is here so a future
+// one fails loudly by prompting rather than quietly by deciding.
+//
+// An empty slice is not "all pure cancels": the only caller has
+// already established len > 1, and answering true for nothing would
+// be a trap for a future one.
+func allPureCancels(applicable []activeReplacement) bool {
+	if len(applicable) == 0 {
+		return false
+	}
+	for _, a := range applicable {
+		if !a.effect.PureCancel || a.effect.Optional ||
+			a.effect.EntryLifeCost > 0 || a.effect.CopySelector != nil {
+			return false
+		}
+	}
+	return true
+}
+
+// applyGatheredInOrderLocked fires the gathered replacements in the
+// order the gather pass produced, marking each applied, and stops at
+// the first one that cancels the event. The un-prompted sibling of
+// ResolveReplacementOrder's chosen-order loop, used when the CR 616
+// prompt is skipped — because nobody could answer it (an eliminated
+// chooser) or because every ordering gives the same answer
+// (allPureCancels).
+//
+// Caller must hold g.mu, and must have allocated the once-per-event
+// map entry for ev.ID.
+func (g *Game) applyGatheredInOrderLocked(ev *ReplacementEvent, applicable []activeReplacement) {
+	for _, chosen := range applicable {
+		if ev.Canceled {
+			break
+		}
+		g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
+		if chosen.effect.Replace != nil {
+			if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
+				g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
+			}
+		}
+	}
 }
 
 // optionalReplacementResumableLocked reports whether pausing on ev

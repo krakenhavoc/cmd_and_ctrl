@@ -847,35 +847,65 @@ func (g *Game) CastTallyFor(playerID uuid.UUID) CastTally {
 // Caller must hold g.mu.
 func (g *Game) runStepEntryHooksLocked() {
 	// S17 sub-PR 2: step-transition replacement hook. Stasis
-	// cancels StepUntap; "skip your next upkeep" cards would
-	// cancel StepUpkeep. The engine short-circuits on the cancel
-	// path: advance to the next step and recurse through this
-	// hook. Apply-loop iteration for skip-step is order-
-	// independent (multiple "skip this step" effects are
-	// idempotent) so even with ≥2 applicable the prompt path
-	// never actually queues — gatherActiveReplacementsLocked
-	// returns at most one eligible replacement in practice for
-	// sub-PR 2 (zero catalog replacements registered).
+	// cancels StepUntap; Necropotence's "skip your draw step"
+	// cancels StepDraw. A cancelled step is a SKIPPED step
+	// (CR 500.11): advance past it and recurse through this hook so
+	// the cursor lands on the next step's entry.
+	//
+	// #710: the window can PAUSE. Two skip-step effects under one
+	// controller (Necropotence + Yawgmoth's Bargain; Stasis plus any
+	// second untap skip) are two applicable replacements on one
+	// event, and CR 616 asks the affected player to order them. This
+	// used to fall straight through to the step body, so the prompt
+	// was queued and the draw happened anyway — the opposite of what
+	// both cards say. The rest of the step entry now lives in
+	// finishStepEntryLocked, which the resume in
+	// applyResolvedReplacementEventLocked calls with the settled
+	// answer. (Two pure cancels no longer prompt at all — see
+	// ReplacementEffect.PureCancel — but the pause has to be correct
+	// for the mixed case regardless.)
 	stepEv := &ReplacementEvent{
 		Kind:               RepEventStepTransition,
 		StepTransitionStep: g.Turn.Step,
 		StepTransitionSeat: g.Turn.ActiveSeat,
 	}
 	out, err := g.applyReplacementsLocked(stepEv)
-	if !errors.Is(err, errReplacementPending) {
-		defer g.clearReplacementEventLocked(stepEv.ID)
-		// Canceled events come back as (nil, nil) from
-		// applyReplacementsLocked — check err==nil + out==nil as
-		// the cancel signal, plus the belt-and-braces out.Canceled
-		// for any intermediate path that returns the event.
-		canceled := err == nil && (out == nil || out.Canceled)
-		if canceled {
-			// Step canceled — advance past and recurse so the
-			// cursor hits the next step's entry hook.
-			g.advanceCursorLocked()
-			g.runStepEntryHooksLocked()
-			return
-		}
+	if errors.Is(err, errReplacementPending) {
+		// A CR 616 ordering (or CR 614.10 "may") prompt is queued.
+		// The step does NOT begin: nothing below runs, nothing
+		// announces, and the tracking-map entry stays alive for the
+		// resume, which clears it.
+		return
+	}
+	defer g.clearReplacementEventLocked(stepEv.ID)
+	// Canceled events come back as (nil, nil) from
+	// applyReplacementsLocked — check err==nil + out==nil as
+	// the cancel signal, plus the belt-and-braces out.Canceled
+	// for any intermediate path that returns the event.
+	g.finishStepEntryLocked(err == nil && (out == nil || out.Canceled))
+}
+
+// finishStepEntryLocked is the second half of a step entry: what
+// happens once the CR 614 replacement window over the transition has
+// settled. `canceled` is the window's verdict — true means the step
+// is skipped (CR 500.11), so the cursor advances past it and the next
+// step's entry hook runs instead of this step's turn-based action.
+//
+// Split out of runStepEntryHooksLocked in #710 for the same reason
+// applyResolvedDamageLocked was split out of the damage entry points
+// in #694: the CR 616 resume has to finish the transition with
+// exactly the code the unpaused path runs, and the only way to
+// guarantee that is for there to be one copy of it. Everything below
+// the cancel branch is verbatim what ran inline before.
+//
+// Caller must hold g.mu.
+func (g *Game) finishStepEntryLocked(canceled bool) {
+	if canceled {
+		// Step canceled — advance past and recurse so the
+		// cursor hits the next step's entry hook.
+		g.advanceCursorLocked()
+		g.runStepEntryHooksLocked()
+		return
 	}
 	// CR 106.4: every player's mana pool empties at the end of each
 	// step / phase. We model this by clearing pools at the START of

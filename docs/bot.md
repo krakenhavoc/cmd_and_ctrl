@@ -21,6 +21,12 @@ fields are in [docs/protocol.md](protocol.md).
 > a seat that would play the heuristic under a model tier's name. See
 > [the model endpoint](#the-model-endpoint) for the one environment
 > variable that turns them on.
+>
+> **What is not live yet: improvisation.** The mechanism described
+> [below](#improvisation-and-why-an-undo-is-free) shipped and is
+> tested. No tier implements it yet, though, so no bot improvises in a
+> game today. [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686)
+> builds it for `assisted` and `strong`.
 
 ---
 
@@ -150,7 +156,7 @@ server picks the local one when both are set.
 | `CMDCTRL_OPENAI_API_KEY` | Optional; most local servers want no key at all. |
 | `CMDCTRL_OPENAI_SEND_THINK` | `0` stops the client sending Ollama's `think: false`. Only for a server that rejects the field — see below. |
 | `CMDCTRL_BOT_MODEL` | The model id to ask for. **Required for a local endpoint** — it is the name your server serves, e.g. what you `ollama pull`ed. |
-| `CMDCTRL_BOT_FRONTIER_MODEL` | The model for escalated windows. Defaults to `CMDCTRL_BOT_MODEL`; one model in both slots is a supported configuration, and the escalation then buys the wider candidate list rather than a better model. |
+| `CMDCTRL_BOT_FRONTIER_MODEL` | The model for escalated windows. Defaults to `CMDCTRL_BOT_MODEL`; one model in both slots is a supported configuration, and escalation then changes how a window is asked, not which model answers it (see [Known limitations](#known-limitations)). |
 | `CMDCTRL_BOT_MAX_THINK` | The model tiers' hard deadline, as a Go duration. Defaults to 20s with a local endpoint. |
 | `CMDCTRL_ANTHROPIC_API_KEY` | The hosted alternative. `CMDCTRL_ANTHROPIC_ENDPOINT` overrides the URL. |
 
@@ -216,10 +222,20 @@ how well the catalog supports it.
 
 ## Improvisation, and why an undo is free
 
+> **Not live yet.** Everything in this section is built into the
+> runner and covered by tests: the bundle, the validated announcement,
+> the replay tag and the free undo. But improvising is something a
+> policy has to opt into, through `aiseat.Improviser`, and none of the
+> four shipped tiers does. **No bot improvises in a game today.** A bot
+> picks only from its legal moves. The section describes how
+> improvisation will behave once
+> [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686) gives
+> `assisted` and `strong` an implementation.
+
 The catalog is a few hundred cards, and a bot's deck is drawn entirely
 from it — but a card can be registered without every clause of it
 being implemented. When the line a bot wants needs an effect the
-engine cannot execute, **the bot is allowed to do it by hand**, with
+engine cannot execute, **the bot will be allowed to do it by hand**, with
 the same four sandbox verbs you have: `move_card`, `change_life`,
 `add_counter`, `mark_damage`.
 
@@ -319,8 +335,30 @@ never negotiate.
 stateless between games. The one played you last night remembers
 nothing about it.
 
-**No deckbuilding.** Curated decks only. Picking a deck from the list
-is the whole of the customisation.
+**No deckbuilding.** A bot never builds, tunes or swaps a deck. In the
+lobby, picking one of the four curated decks is the whole of the
+customisation. The API also takes a pasted decklist instead of a
+curated one (`{tier, format, source}`, [above](#under-the-hood)). The
+test harness uses that path, and so can anyone trying a list that is
+not in the picker. A pasted list is validated exactly like a human
+upload, and its uncatalogued cards are listed in the response's
+`unimplemented`. It is not covered by the curated decks' build-failing
+test, though. The heuristic prices a card the engine does not
+implement as a card spent for nothing, with no credit for what it
+would have done ([ADR 0037](decisions/0037-unimplemented-card-signal.md)).
+The model tiers' prompt marks such cards too.
+
+**On a one-model deployment, `strong` and `assisted` ask the same
+model.** `CMDCTRL_BOT_FRONTIER_MODEL` defaults to `CMDCTRL_BOT_MODEL`,
+so a local setup that names one model puts it in both slots. There
+`strong` is not a better model. Both tiers already ask the model about
+every window that survives the rules filter. `strong` sends each one as
+an escalated request, over a wider candidate list. `assisted` escalates
+only the windows that trip an escalation trigger. With a local endpoint,
+`CMDCTRL_BOT_MAX_THINK`'s 20s default replaces both tiers' deadlines,
+so the 5s-versus-2s difference goes too. Name a second, stronger model
+in `CMDCTRL_BOT_FRONTIER_MODEL` if you want the gap between the tiers
+to be the model as well.
 
 **`strong` has no lookahead, and will not get one here.** The tier was
 specified as a one-ply simulation over the top candidates. Simulating

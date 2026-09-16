@@ -174,14 +174,38 @@ func (g *Game) cloneLocked() *Game {
 			out.PendingChoices[i] = &cloned
 		}
 	}
-	// Event log: deep-copy by value (Event is pure-data, no pointers).
+	// Event log: SHARED, not copied (#629).
+	//
+	// The log is append-only and 184 bytes an entry, so the deep copy
+	// this used to be made every undo snapshot — one per action —
+	// cost O(events) in time and memory. A few thousand events is
+	// invisible; a long game or a trigger loop makes each action copy
+	// megabytes, and the total is quadratic in the length of the
+	// game.
+	//
+	// Sharing is safe because of what a snapshot does with the log:
+	// it only ever reads entries that already existed when it was
+	// taken, and entries never change after they are appended. The
+	// recorded length is the slice header's own len, and RestoreFrom
+	// truncating to it is what makes an undo drop exactly the events
+	// the undone action emitted.
+	//
+	// The three-index slice is the safety belt. Capping cap to len
+	// means a write through the snapshot — an append by some future
+	// caller that decides to mutate a clone — reallocates instead of
+	// scribbling into the live game's backing array past its length,
+	// and equally that the live game's appends after a RestoreFrom
+	// cannot rewrite entries an older snapshot still points at. The
+	// cost is one reallocation on the first event emitted after an
+	// undo, which is a rounding error against a copy per action.
+	//
+	// The persisted snapshot in snapshot.go is a different animal and
+	// still copies: it serialises to JSON and outlives the process.
+	//
 	// Listeners are process-lifetime singletons — shallow-copy the
 	// slice so the clone dispatches to the same subscribers the
 	// original did.
-	if len(g.Events) > 0 {
-		out.Events = make([]Event, len(g.Events))
-		copy(out.Events, g.Events)
-	}
+	out.Events = g.Events[:len(g.Events):len(g.Events)]
 	out.eventSeq = g.eventSeq
 	if len(g.Listeners) > 0 {
 		out.Listeners = make([]Listener, len(g.Listeners))
@@ -473,6 +497,15 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.DiscardPending = src.DiscardPending
 	g.Promises = src.Promises
 	g.Vote = src.Vote
+	// The event log is TRUNCATED to the snapshot's length, not
+	// copied back into place: src.Events is the same backing array
+	// this game has been appending to, capped at the length it had
+	// when the snapshot was taken (#629, see cloneLocked). Assigning
+	// it drops exactly the events the undone action emitted, and
+	// eventSeq rewinds with it so the next event carries the Seq the
+	// undone one did. TurnTally.FirstEvent is an index into this log
+	// and comes from the same snapshot, so it cannot point past the
+	// restored end.
 	g.Events = src.Events
 	g.eventSeq = src.eventSeq
 	g.Listeners = src.Listeners

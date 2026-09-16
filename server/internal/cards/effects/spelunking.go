@@ -22,12 +22,17 @@ import (
 // A land with no such clause sees Spelunking's alone, which is a no-op
 // with no prompt.
 //
-// Sandbox simplifications, both weaker than printed:
+// The ETB is "draw a card, THEN you may put a land card from your
+// hand onto the battlefield" — the shared clause from #654,
+// sequenced after the draw so a land just drawn is a legal pick, with
+// the Cave rider in its Then continuation. The rider has to be a
+// continuation rather than the next step of the Do: the prompt is
+// asynchronous, so anything sequenced beside it would run before the
+// player had answered and would be gaining life for a Cave nobody
+// had put down yet.
 //
-//   - The ETB's "you may put a land card from your hand onto the
-//     battlefield" (and the Cave life rider) is not implemented — no
-//     pick-from-hand prompt with a continuation exists, the Growth
-//     Spiral gap. The ETB draws its card and stops.
+// Sandbox simplification, weaker than printed:
+//
 //   - A land put onto the battlefield TAPPED by an effect (Cultivate,
 //     Evolving Wilds, Riveteers Overlook — the SearchLibrary
 //     TappedOnEntry flag) still enters tapped: that flag is applied
@@ -39,11 +44,11 @@ func init() {
 		Name:         "Spelunking",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"The entry trigger only draws the card — it doesn't offer to put a land from your hand onto the battlefield, and the Cave life bonus never happens.",
 			"A land an effect puts onto the battlefield tapped still enters tapped; only a land's own enters-tapped text is overridden.",
 		},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Spelunking — draw a card", Do(DrawCards{N: 1})),
+			WhenThisEnters("Spelunking — draw a card, then you may put a land from your hand onto the battlefield",
+				Do(DrawCards{N: 1}, spelunkingLandDrop())),
 		},
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventZoneMove},
@@ -68,3 +73,30 @@ func init() {
 		}},
 	})
 }
+
+// spelunkingLandDrop is the ETB's second half: the shared "you may
+// put a land card from your hand onto the battlefield" clause with
+// Spelunking's own rider hung off its continuation.
+//
+// "If you put a CAVE onto the battlefield this way, you gain 4 life"
+// — read off the permanent that actually entered, so a decline pays
+// nothing and a Cave a replacement kept off the battlefield pays
+// nothing either. Package-level rather than a closure so it captures
+// nothing: the continuation outlives the trigger's resolution frame.
+func spelunkingLandDrop() PutFromHandOntoBattlefield {
+	p := MayPutALandFromHand("Spelunking")
+	p.Then = func(g *game.Game, res PutFromHandResult) error {
+		if res.Entered == uuid.Nil {
+			return nil
+		}
+		c, ok := g.LookupCardForEffect(res.Entered)
+		if !ok || !c.HasSubtype("Cave") {
+			return nil
+		}
+		return g.ChangePlayerLifeForEffect(res.Source, res.Player, spelunkingCaveLife)
+	}
+	return p
+}
+
+// spelunkingCaveLife is the printed 4.
+const spelunkingCaveLife = 4

@@ -4394,11 +4394,20 @@ func (g *Game) ResolveCombatDamage() {
 }
 
 // resolveCombatDamageLocked runs combat damage as two substeps
-// (CR 510.2 + 510.3). First-strike and double-strike creatures assign
-// in the first substep; SBA fires between; regular + double-strike
-// creatures assign in the second. A creature that died in the first
-// substep does not participate in the second — collectCombatants
-// re-reads live battlefield state each call.
+// (CR 510.4: a combat with a first-strike or double-strike creature has
+// two combat damage steps). First-strike and double-strike creatures
+// assign in the first substep; SBA fires between; regular +
+// double-strike creatures assign in the second. A creature that died in
+// the first substep does not participate in the second —
+// collectCombatants re-reads live battlefield state each call.
+//
+// Combat step tag (#187, ADR 0053 Decision 1): when the first-strike
+// substep runs, every combat damage event of this step is stamped with
+// Event.CombatStep — CombatStepFirstStrike for the first pass,
+// CombatStepRegular for the second. When it does not run, the step is
+// "" and nothing is tagged, so the tag's presence alone says there
+// were two beats. The value is passed down as an argument, never kept
+// on Game.
 //
 // Each substep delegates to assignAndDealCombatDamageLocked which
 // handles unblocked straight-to-player damage, single-blocker damage
@@ -4414,10 +4423,13 @@ func (g *Game) resolveCombatDamageLocked() {
 	// no relevant event has fired since the last recompute.
 	g.RecomputeLayersIfStaleLocked()
 
-	// Substep 1 — first-strike damage (CR 510.2). Creatures with
+	// Untagged unless the first-strike substep runs.
+	regularStep := ""
+
+	// Substep 1 — first-strike damage (CR 510.4). Creatures with
 	// first strike or double strike participate.
 	if g.hasAnyFirstStrikeCombatants() {
-		g.assignAndDealCombatDamageLocked(true)
+		g.assignAndDealCombatDamageLocked(CombatStepFirstStrike)
 		// SBA + trigger drain between substeps so creatures that
 		// died to first-strike damage exit before the regular pass.
 		g.runStateChecksLocked()
@@ -4425,11 +4437,12 @@ func (g *Game) resolveCombatDamageLocked() {
 		// ability (anthem off the field, etc.) and its absence
 		// affects the regular-substep attackers/blockers.
 		g.RecomputeLayersIfStaleLocked()
+		regularStep = CombatStepRegular
 	}
 
-	// Substep 2 — regular damage (CR 510.3). Creatures with
+	// Substep 2 — regular damage (CR 510.4). Creatures with
 	// double strike (re-hit) OR without first strike.
-	g.assignAndDealCombatDamageLocked(false)
+	g.assignAndDealCombatDamageLocked(regularStep)
 	g.runStateChecksLocked()
 
 	// Combat state is intentionally left in place. AdvanceStep's
@@ -4470,9 +4483,12 @@ func participatesInSubstep(c *Card, firstStrike bool) bool {
 }
 
 // assignAndDealCombatDamageLocked assigns and applies damage for one
-// substep. Builds per-attacker blocker lists (filtered to
-// substep-participating blockers), snapshots power, then iterates
-// attackers:
+// substep. step is the substep's Event.CombatStep value:
+// CombatStepFirstStrike selects the first-strike substep, and anything
+// else ("" or CombatStepRegular) is the regular substep, tagged only
+// when a first-strike substep ran before it. Builds per-attacker
+// blocker lists (filtered to substep-participating blockers),
+// snapshots power, then iterates attackers:
 //
 //   - Unblocked → straight to AttackingTarget via
 //     markCombatDamageToPlayerLocked.
@@ -4493,7 +4509,9 @@ func participatesInSubstep(c *Card, firstStrike bool) bool {
 // subsequent blocker list reflects the final legal state.
 //
 // Caller must hold g.mu.
-func (g *Game) assignAndDealCombatDamageLocked(firstStrike bool) {
+func (g *Game) assignAndDealCombatDamageLocked(step string) {
+	firstStrike := step == CombatStepFirstStrike
+
 	// Menace close-out: scan attackers, if any has menace and
 	// exactly one blocker assigned, revert that blocker.
 	menaceReversions := 0
@@ -4578,7 +4596,7 @@ func (g *Game) assignAndDealCombatDamageLocked(firstStrike bool) {
 		if atkParticipates {
 			if len(liveBlockers) == 0 {
 				if atkPower > 0 {
-					g.dealCombatDamageToAttackTargetLocked(atk.AttackingTarget, atkID, atkPower)
+					g.dealCombatDamageToAttackTargetLocked(atk.AttackingTarget, atkID, atkPower, step)
 				}
 			} else if len(liveBlockers) == 1 {
 				// Single blocker: attacker assigns all power. Trample
@@ -4601,10 +4619,10 @@ func (g *Game) assignAndDealCombatDamageLocked(firstStrike bool) {
 						toPlayer = atkPower - lethalThreshold
 					}
 					if toBlocker > 0 {
-						g.markCombatDamageOnCardLocked(blkID, toBlocker, atkID)
+						g.markCombatDamageOnCardLocked(blkID, toBlocker, atkID, step)
 					}
 					if toPlayer > 0 {
-						g.dealCombatDamageToAttackTargetLocked(atk.AttackingTarget, atkID, toPlayer)
+						g.dealCombatDamageToAttackTargetLocked(atk.AttackingTarget, atkID, toPlayer, step)
 					}
 				}
 			} else {
@@ -4614,7 +4632,7 @@ func (g *Game) assignAndDealCombatDamageLocked(firstStrike bool) {
 				// applied. Blocker damage still flows (simultaneous)
 				// because blockers deal power back regardless of
 				// attacker's assignment (CR 510.1d).
-				g.queueDamageAssignmentPromptLocked(atk, liveBlockers, atkPower, firstStrike)
+				g.queueDamageAssignmentPromptLocked(atk, liveBlockers, atkPower, step)
 			}
 		}
 
@@ -4633,7 +4651,7 @@ func (g *Game) assignAndDealCombatDamageLocked(firstStrike bool) {
 			if blkPower <= 0 {
 				continue
 			}
-			g.markCombatDamageOnCardLocked(atkID, blkPower, blkID)
+			g.markCombatDamageOnCardLocked(atkID, blkPower, blkID, step)
 		}
 	}
 }
@@ -4647,15 +4665,21 @@ func (g *Game) assignAndDealCombatDamageLocked(firstStrike bool) {
 // the same pipeline helpers so lifelink / deathtouch / Fog-style
 // replacement all fire uniformly.
 //
+// step is the queuing substep's Event.CombatStep value. It is stored on
+// the frame as-is ("" when no first-strike substep ran) so the resume
+// tags the assigned damage the way the same substep's direct paths are
+// tagged; FirstStrike is kept alongside it for #702.
+//
 // Caller must hold g.mu.
-func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UUID, atkPower int, firstStrike bool) {
+func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UUID, atkPower int, step string) {
 	frame := &DamageAssignmentFrame{
 		AttackerID:        atk.InstanceID,
 		BlockerIDs:        append([]uuid.UUID(nil), blockerIDs...),
 		AttackerPower:     atkPower,
 		AllowTrample:      HasKeyword(atk, "trample"),
 		HasDeathtouch:     HasKeyword(atk, "deathtouch"),
-		FirstStrike:       firstStrike,
+		FirstStrike:       step == CombatStepFirstStrike,
+		CombatStep:        step,
 		SourceLifelink:    HasKeyword(atk, "lifelink"),
 		SourceController:  atk.Controller,
 		SourceIsCommander: atk.IsCommander,
@@ -4680,7 +4704,10 @@ func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UU
 // S17 sub-PR 5: routes through the CR 614 replacement pipeline with
 // IsCombatDamage=true so Fog-class prevention effects intercept.
 // Damage can be modified (reduced) or canceled entirely.
-func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source uuid.UUID) {
+//
+// step is the substep's Event.CombatStep value (#187). It rides the
+// damage tail, so a CR 616 pause keeps it.
+func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source uuid.UUID, step string) {
 	if amount <= 0 {
 		return
 	}
@@ -4699,7 +4726,7 @@ func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source
 		// resumes — reading the keywords afterwards would silently
 		// lose both riders. Same reasoning the DamageAssignmentFrame
 		// paths have always used.
-		damageTail: g.combatDamageTailLocked(damageTailPermanent, source),
+		damageTail: g.combatDamageTailLocked(damageTailPermanent, source, step),
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
@@ -4812,7 +4839,10 @@ func (g *Game) markCombatDamageToPlayerFromFrameLocked(playerID uuid.UUID, amoun
 // via the replacement pipeline (Fog-class prevention + future
 // lifelink / redirect hooks). Zeroes out if canceled. Caller must
 // hold g.mu. Added in S17 sub-PR 5.
-func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount int) {
+//
+// step is the substep's Event.CombatStep value (#187). It rides the
+// damage tail, so a CR 616 pause keeps it.
+func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount int, step string) {
 	if amount <= 0 {
 		return
 	}
@@ -4828,7 +4858,7 @@ func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount
 		// instance ID since S25 / #77) and CR 702.15 lifelink both
 		// ride on it, and a CR 616 prompt is answered after the rest
 		// of the combat damage has landed.
-		damageTail: g.combatDamageTailLocked(damageTailPlayer, source),
+		damageTail: g.combatDamageTailLocked(damageTailPlayer, source, step),
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {

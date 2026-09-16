@@ -90,22 +90,38 @@ type damageTail struct {
 	// it, and gates the commander-damage tally.
 	combat bool
 
+	// combatStep is the combat damage step the event was created in —
+	// CombatStepFirstStrike, CombatStepRegular, or "" when no
+	// first-strike pass ran (#187, ADR 0053 Decision 1). Copied onto
+	// Event.CombatStep by emitDealDamageLocked. Riding the tail rather
+	// than being read off the game when the damage lands is what keeps
+	// it right across a pause: a CR 616 ordering prompt resumes with
+	// the tag it was created with, and there is no Game field that a
+	// finished pass could leave stale.
+	combatStep string
+
 	// actor is the player the emitted event is attributed to — the
 	// controller of the damage source. uuid.Nil leaves Actor unset,
 	// which is what the non-combat effect paths have always done.
 	actor uuid.UUID
 
-	// deathtouch flags CR 702.2c: any nonzero damage from this source
-	// is lethal to a creature regardless of toughness. Only the combat
-	// paths set it; DealDamageToCreatureForEffect never has, and
-	// whether direct damage from a deathtouch source should is a
-	// separate question from this one.
+	// deathtouch marks the target as destroyed-at-the-next-sweep
+	// (Card.MarkedLethalByDeathtouch, read by the CR 704.5h SBA).
+	// CR 702.2b is the rule: "a creature with toughness greater than
+	// 0 that's been dealt damage by a source with deathtouch since
+	// the last time state-based actions were checked is destroyed" —
+	// no mention of combat, which is why every entry point sets it
+	// from the source since #711, not just the combat ones.
+	// (CR 702.2c is the separate, combat-only half about what counts
+	// as lethal when ASSIGNING combat damage.)
 	deathtouch bool
 
-	// lifelinkTo is the player CR 702.15 credits with life equal to
-	// the damage dealt. uuid.Nil means the source has no lifelink (or
-	// this path has never applied it — the two non-combat effect
-	// entry points do not).
+	// lifelinkTo is the player CR 702.15b credits with life equal to
+	// the damage dealt — the source's controller. uuid.Nil means the
+	// source has no lifelink, or is not a permanent at all (a spell,
+	// an emblem, an absent source) and so has no keywords to read.
+	// Set on every path since #711, for the same reason as
+	// deathtouch above.
 	lifelinkTo uuid.UUID
 
 	// commanderSource is the instance ID the CR 903.10a 21-damage
@@ -123,9 +139,13 @@ type damageTail struct {
 // their tail from the frame instead, because the frame already IS this
 // snapshot, taken before the prompt was queued.
 //
+// step is the pass's Event.CombatStep value ("" when no first-strike
+// pass ran). It is an argument, not something read off the game, so no
+// value can outlive the pass that set it.
+//
 // Caller must hold g.mu.
-func (g *Game) combatDamageTailLocked(kind damageTailKind, sourceID uuid.UUID) *damageTail {
-	t := &damageTail{kind: kind, combat: true}
+func (g *Game) combatDamageTailLocked(kind damageTailKind, sourceID uuid.UUID, step string) *damageTail {
+	t := &damageTail{kind: kind, combat: true, combatStep: step}
 	src := findBattlefieldCard(g, sourceID)
 	if src == nil {
 		return t
@@ -141,16 +161,74 @@ func (g *Game) combatDamageTailLocked(kind damageTailKind, sourceID uuid.UUID) *
 	return t
 }
 
+// effectDamageTailLocked snapshots a live battlefield source into a
+// NON-COMBAT damage tail: the fight primitive, a pinger's activated
+// ability, a "target creature you control deals damage equal to its
+// power" spell. The sibling of combatDamageTailLocked, and it reads
+// the same two keywords off the same place for the same reason.
+//
+// #711: CR 702.15b and CR 702.2b are statements about the SOURCE, not
+// about the combat damage step — "damage dealt by a source with
+// lifelink causes that source's controller ... to gain that much
+// life", "a creature ... that's been dealt damage by a source with
+// deathtouch ... is destroyed as a state-based action". Neither says
+// combat. Both entry points used to pass a bare tail, so a Wurmcoil
+// Engine's fight gained its controller nothing and a Prodigal
+// Pyromancer wearing a Basilisk Collar pinged for one plain damage.
+// The card files had been claiming otherwise for sprints (Bite Down,
+// Soul's Fire and Chandra's Ignition all say the damage carries the
+// creature's deathtouch and lifelink "as printed"); now they are right.
+//
+// A source that is not a battlefield permanent — a spell, an emblem, a
+// token that has already left, uuid.Nil — has no characteristics to
+// read and carries neither keyword. That is what "a source with
+// lifelink" means, and it is why Lightning Bolt still just deals 3.
+//
+// Unlike combatDamageTailLocked this sets no actor and no commander
+// source. The non-combat paths have never attributed their
+// EventDealDamage to a player, and the CR 903.10a 21-damage tally is
+// combat damage only; neither is what #711 is about.
+//
+// Keywords come from the layer engine's resolved characteristics, as
+// they do for combat. Callers that grant or pump in the same breath
+// (the fight primitive, every activated ability, stack resolution)
+// have already recomputed by the time they get here.
+//
+// Caller must hold g.mu.
+func (g *Game) effectDamageTailLocked(kind damageTailKind, sourceID uuid.UUID) *damageTail {
+	t := &damageTail{kind: kind}
+	if sourceID == uuid.Nil {
+		return t
+	}
+	src := findBattlefieldCard(g, sourceID)
+	if src == nil {
+		return t
+	}
+	t.deathtouch = HasKeyword(src, "deathtouch")
+	if HasKeyword(src, "lifelink") {
+		t.lifelinkTo = src.Controller
+	}
+	return t
+}
+
 // damageTailFromFrame builds a combat damage tail from a queued
 // CR 510.1c damage-assignment prompt's frame. The frame was filled in
 // when the prompt was queued, which is the whole point: by the time it
 // is answered the attacker may have died to blocker damage dealt in the
 // same substep, so a battlefield lookup would lose its deathtouch,
 // lifelink and commander status.
+//
+// The combat step comes from frame.CombatStep, NOT frame.FirstStrike:
+// a regular-pass prompt has FirstStrike false whether or not a
+// first-strike pass ran, and a combat with no first strike anywhere
+// must stay untagged (ADR 0053 Decision 1). A frame restored from a
+// snapshot written before the field existed has "" and resumes
+// untagged — the cue is lost, the board is right.
 func damageTailFromFrame(kind damageTailKind, frame *DamageAssignmentFrame) *damageTail {
 	t := &damageTail{
 		kind:       kind,
 		combat:     true,
+		combatStep: frame.CombatStep,
 		actor:      frame.SourceController,
 		deathtouch: frame.HasDeathtouch,
 	}
@@ -287,19 +365,21 @@ func (g *Game) applyResolvedDamageToPermanentLocked(ev *ReplacementEvent, t *dam
 }
 
 // emitDealDamageLocked emits the one EventDealDamage a settled damage
-// event produces, with the Actor and Combat fields the tail carries so
-// "deals combat damage" triggers key off the same shape whether or not
-// the event paused.
+// event produces, with the Actor, Combat and CombatStep fields the tail
+// carries so "deals combat damage" triggers — and the public log's
+// combat_step tag — key off the same shape whether or not the event
+// paused. This is the only place Event.CombatStep is written.
 //
 // Caller must hold g.mu.
 func (g *Game) emitDealDamageLocked(ev *ReplacementEvent, t *damageTail) {
 	g.EmitEvent(Event{
-		Kind:   EventDealDamage,
-		Actor:  t.actor,
-		Source: ev.DamageSource,
-		Target: ev.DamageTarget,
-		Amount: ev.DamageAmount,
-		Combat: t.combat,
+		Kind:       EventDealDamage,
+		Actor:      t.actor,
+		Source:     ev.DamageSource,
+		Target:     ev.DamageTarget,
+		Amount:     ev.DamageAmount,
+		Combat:     t.combat,
+		CombatStep: t.combatStep,
 	})
 }
 

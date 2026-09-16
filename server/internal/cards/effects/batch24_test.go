@@ -920,8 +920,8 @@ func TestB24ChulaneDrawsOnCreatureSpellsAndBouncesYourCreature(t *testing.T) {
 	if !b20Tapped(t, g, chulane) {
 		t.Error("the bounce has a tap cost")
 	}
-	if spec, _ := Lookup(b24ChulaneOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the land drop is a declared gap")
+	if spec, _ := Lookup(b24ChulaneOracle); spec.Completeness != CompletenessFull {
+		t.Error("the land drop landed with #654; nothing is deferred any more")
 	}
 }
 
