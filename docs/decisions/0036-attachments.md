@@ -350,6 +350,13 @@ hexproof**. Haste works (decision 6). Shroud and hexproof are both on
 #176's deferred list, and nothing in the engine reads them —
 `targetLegalLocked` (`targets.go:239-274`) is the single choke point
 for target legality and has no keyword gate.
+*(Update 2026-09-16: no longer true. The engine has read shroud and
+hexproof at targeting since
+[#353](https://github.com/krakenhavoc/cmd_and_ctrl/pull/353)
+(`game.CanBeTargetedBy`, [ADR 0038](0038-protection-style-keywords.md)),
+so Greaves and Boots ship with both halves live.
+[#176](https://github.com/krakenhavoc/cmd_and_ctrl/issues/176) is
+closed.)*
 
 So both cards would ship **strictly stronger than printed**: the
 protection half is the *drawback-adjacent* half that stops you
@@ -372,6 +379,10 @@ If that is cut, Boots and Greaves must be cut with it, and the first
 cut ships Skullclamp, Darksteel Plate and Sword of Hearth and Home.
 Darksteel Plate's indestructible is also #176-deferred, but that
 omission makes the card *weaker* than printed, which is in convention.
+*(Update 2026-09-16: indestructible has been enforced since
+[#380](https://github.com/krakenhavoc/cmd_and_ctrl/pull/380)
+(`server/internal/game/indestructible.go`), so Darksteel Plate's grant
+is live.)*
 
 ### 11. Skullclamp's dies-trigger needs no LKI extension — the ordering already works
 

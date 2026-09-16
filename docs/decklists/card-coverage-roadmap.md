@@ -337,7 +337,8 @@ re-check first, and this is how much it was worth here:
 - **Darksteel Citadel** — filed "protection / prevention". Two of its
   three lines are live; indestructible is declared in
   `PrintedKeywords` and inert until #176, which is the weaker
-  direction and allowed.
+  direction and allowed. *(Update 2026-09-16: indestructible has been
+  enforced since #380, so all three lines are live.)*
 
 ### Batch 02 — the 19 declared skips, each with its missing seam
 
@@ -892,13 +893,13 @@ Ordered by "unlocks alone", because that is the column that answers
 |---:|---|---:|---:|---:|---|
 | 1 | Cost modification, alternative casts and costs computed at activation | **120** | 241 | 205 | #93 |
 | 2 | Mana pipeline — restricted / derived mana, mana from a spell, gated or scaled mana abilities | **98** | 183 | 115 | #352 |
-| 3 | Protection / hexproof / ward / indestructible / shroud, damage prevention, copying | **78** | 242 | 119 | #95 / #176 |
+| 3 | Protection / hexproof / ward / indestructible / shroud, damage prevention, copying | **78** | 242 | 119 | #662 / #665 / #666 ¹ |
 | 4 | Until-end-of-turn continuous effects (turn-scoped statics) | **59** | 232 | 171 | #279 |
 | 5 | Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse) | **59** | 106 | 95 | — |
 | 6 | Attachments — Equipment and Auras | **47** | 105 | 104 | #280 |
 | 7 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **45** | 98 | 61 | — |
 | 8 | Player-scoped and game-rule effects (hand size, extra turns / combats / land drops, command zone) | **39** | 95 | 45 | — |
-| 9 | Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling…) | **28** | 96 | 28 | #176 |
+| 9 | Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling…) | **28** | 96 | 28 | #705 / #706 ¹ |
 | 10 | Keyword actions with no primitive (proliferate, surveil, explore, connive, amass…) | **24** | 54 | 28 | — |
 | 11 | Exile-and-return (blink) and exile-until-leaves | **24** | 52 | 29 | — |
 | 12 | "As this enters, choose …" — creature type / colour / name a card | **23** | 47 | 24 | — |
@@ -912,8 +913,25 @@ Ordered by "unlocks alone", because that is the column that answers
 | 20 | Recurring self-drawbacks (cumulative upkeep, echo, fading, vanishing, doesn't untap) | **4** | 9 | 4 | — |
 | 21 | Table-state mechanics (monarch, initiative, day/night, The Ring, dungeons, speed) | **4** | 6 | 4 | — |
 | 22 | Face-down permanents (morph, manifest, disguise, cloak, mutate) | **3** | 14 | 13 | #95 |
-| 23 | Regeneration, phasing, totem armor | **2** | 14 | 3 | #176 |
+| 23 | Regeneration, phasing, totem armor | **2** | 14 | 3 | #667 ¹ |
 | 24 | Counters on players (energy, experience, poison, rad, ticket) | **0** | 10 | 1 | — |
+
+¹ *Update 2026-09-16:* these rows used to say #176 (the deferred
+combat keywords umbrella) and, on the protection rows, #95 (S30); both
+are closed. The counts are from the original pass and are unchanged;
+only the **Tracking** column moved. Protection is
+[#662](https://github.com/krakenhavoc/cmd_and_ctrl/issues/662); the
+hexproof, shroud, ward, indestructible and damage-prevention parts of
+that row have all shipped (#353, #421/#433 and #647, #380, #420), and
+copying's open pieces are #665 and #666. In the combat-keywords row,
+landwalk is [#705](https://github.com/krakenhavoc/cmd_and_ctrl/issues/705)
+and prowess is [#706](https://github.com/krakenhavoc/cmd_and_ctrl/issues/706);
+changeling shipped in S26 (#404), and infect, persist, undying, exalted
+and the other legacy keywords have no tracker and are built on demand,
+when a card needs one. In the last row, regeneration is
+[#667](https://github.com/krakenhavoc/cmd_and_ctrl/issues/667); phasing
+and totem armor are on demand too. The same footnote applies to the
+two tables below.
 
 **769 of the 2000 (38%) need no new machinery at all.** That is the most
 actionable number in this document: there is more than a sprint of
@@ -963,8 +981,8 @@ Same detectors, ranks 2,235–4,253.
 | Rank | Missing mechanic | Unlocks alone | Appears in | Dominant blocker for | Tracking |
 |---:|---|---:|---:|---:|---|
 | 1 | Cost modification, alternative casts and costs computed at activation | **110** | 282 | 225 | #93 |
-| 2 | Protection / hexproof / ward / indestructible / shroud, damage prevention, copying | **93** | 248 | 149 | #95 / #176 |
-| 3 | Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling…) | **64** | 214 | 64 | #176 |
+| 2 | Protection / hexproof / ward / indestructible / shroud, damage prevention, copying | **93** | 248 | 149 | #662 / #665 / #666 ¹ |
+| 3 | Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling…) | **64** | 214 | 64 | #705 / #706 ¹ |
 | 4 | Until-end-of-turn continuous effects (turn-scoped statics) | **63** | 270 | 180 | #279 |
 | 5 | Attachments — Equipment and Auras | **55** | 123 | 117 | #280 |
 | 6 | Mana pipeline — restricted / derived mana, mana from a spell, gated or scaled mana abilities | **47** | 113 | 59 | #352 |
@@ -985,16 +1003,19 @@ Same detectors, ranks 2,235–4,253.
 | 21 | Change of control (gain control, exchange control) | **6** | 25 | 8 | #76 |
 | 22 | Recurring self-drawbacks (cumulative upkeep, echo, fading, vanishing, doesn't untap) | **6** | 7 | 6 | — |
 | 23 | Face-down permanents (morph, manifest, disguise, cloak, mutate) | **4** | 23 | 19 | #95 |
-| 24 | Regeneration, phasing, totem armor | **1** | 13 | 7 | #176 |
+| 24 | Regeneration, phasing, totem armor | **1** | 13 | 7 | #667 ¹ |
 
 **660 of the second 2000 (33%) need no new machinery** — down from 38%
 in the first 2000, which is the expected shape: the deeper into the
 format you go, the weirder the card. Two rows move enough to matter:
 
-- **Deferred combat keywords (#176) jump from 9th to 3rd** — 64 sole
+- **Deferred combat keywords jump from 9th to 3rd** — 64 sole
   blockers against 28 in the first 2000. Ranks 2,000–4,000 is where
   infect, persist, undying, exalted, landwalk and changeling live, and
-  #176 buys more cards down here than the mana pipeline does.
+  the bucket buys more cards down here than the mana pipeline does.
+  *(Update 2026-09-16: the bucket's umbrella, #176, is closed. Landwalk
+  is #705, prowess is #706, changeling shipped in S26, and the rest are
+  built on demand; see note ¹ under the first table.)*
 - **Attachments (#280) move from 6th to 5th and the count rises** — 55
   sole, 123 touched. Equipment and Auras are a mid-rarity staple shape,
   not a top-of-format one.
@@ -1010,8 +1031,8 @@ Same detectors, ranks 4,254–6,289.
 |---:|---|---:|---:|---:|---|
 | 1 | Cost modification, alternative casts and costs computed at activation | **114** | 296 | 228 | #93 |
 | 2 | Until-end-of-turn continuous effects (turn-scoped statics) | **77** | 300 | 189 | #279 |
-| 3 | Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling…) | **73** | 224 | 73 | #176 |
-| 4 | Protection / hexproof / ward / indestructible / shroud, damage prevention, copying | **57** | 216 | 106 | #95 / #176 |
+| 3 | Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling…) | **73** | 224 | 73 | #705 / #706 ¹ |
+| 4 | Protection / hexproof / ward / indestructible / shroud, damage prevention, copying | **57** | 216 | 106 | #662 / #665 / #666 ¹ |
 | 5 | Attachments — Equipment and Auras | **49** | 114 | 111 | #280 |
 | 6 | Mana pipeline — restricted / derived mana, mana from a spell, gated or scaled mana abilities | **40** | 98 | 60 | #352 |
 | 7 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **37** | 108 | 53 | — |
@@ -1031,7 +1052,7 @@ Same detectors, ranks 4,254–6,289.
 | 21 | Face-down permanents (morph, manifest, disguise, cloak, mutate) | **6** | 37 | 32 | #95 |
 | 22 | Shuffle a card or permanent into a library | **5** | 14 | 5 | — |
 | 23 | Recurring self-drawbacks (cumulative upkeep, echo, fading, vanishing, doesn't untap) | **4** | 9 | 4 | — |
-| 24 | Regeneration, phasing, totem armor | **0** | 7 | 4 | #176 |
+| 24 | Regeneration, phasing, totem armor | **0** | 7 | 4 | #667 ¹ |
 
 **673 of the third 2000 (34%) need no new machinery** — flat against
 the second 2000's 33%, so the "it gets harder the deeper you go" curve
