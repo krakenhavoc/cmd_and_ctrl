@@ -56,13 +56,13 @@ func init() {
 					defender := ev.Target
 					return game.NewTriggeredItem(source, "Brimaz, King of Oreskos — an attacking 1/1 Cat Soldier with vigilance",
 						func(g *game.Game, item *game.StackItem) error {
-							return g.CreateTokensAttackingForEffect(item.Controller, b28WhiteCatSoldierVigilanceToken(), 1, defender)
+							return g.CreateTokensAttackingForEffect(item.Controller, TokenCard("1/1 white Cat Soldier with vigilance"), 1, defender)
 						})
 				},
 			},
 			On(game.EventBlock, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b28SelfBlocked(ev, source)
-			}, "Brimaz, King of Oreskos — a 1/1 Cat Soldier with vigilance", Do(CreateToken{Template: b28WhiteCatSoldierVigilanceToken(), N: 1})),
+			}, "Brimaz, King of Oreskos — a 1/1 Cat Soldier with vigilance", Do(CreateToken{Template: TokenCard("1/1 white Cat Soldier with vigilance"), N: 1})),
 		},
 	})
 }

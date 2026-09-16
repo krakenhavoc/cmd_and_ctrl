@@ -36,7 +36,7 @@ func init() {
 			for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 				before[c.InstanceID] = true
 			}
-			if err := (CreateToken{Controller: item.Controller, Template: b10GreenPhyrexianBeastToken(), N: len(victims)}).Apply(ctx); err != nil {
+			if err := (CreateToken{Controller: item.Controller, Template: TokenCard("4/4 green Phyrexian Beast"), N: len(victims)}).Apply(ctx); err != nil {
 				return err
 			}
 			var beasts []uuid.UUID

@@ -38,7 +38,7 @@ func init() {
 							Cost:     "{3}",
 							Question: "Kazuul, Tyrant of the Cliffs — pay {3} to stop the Ogre?",
 							OnDecline: func(ctx *Context) error {
-								return CreateToken{Controller: ctx.Controller(), Template: b17RedOgreToken(), N: 1}.Apply(ctx)
+								return CreateToken{Controller: ctx.Controller(), Template: TokenCard("3/3 red Ogre"), N: 1}.Apply(ctx)
 							},
 						}.Apply(NewContext(g, item))
 					})

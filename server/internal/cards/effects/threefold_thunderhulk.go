@@ -45,7 +45,7 @@ func init() {
 				if n <= 0 {
 					return nil
 				}
-				return CreateToken{Controller: item.Controller, Template: b17GnomeToken(), N: n}.Apply(NewContext(g, item))
+				return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 colorless Gnome artifact"), N: n}.Apply(NewContext(g, item))
 			}),
 		},
 		Activated: []ActivatedAbility{{

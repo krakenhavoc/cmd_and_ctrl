@@ -23,7 +23,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Optional(On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b17ElfSpellCastByYou(ev, source, g)
-			}, "Lys Alana Huntmaster — create a 1/1 green Elf Warrior", Do(CreateToken{Template: b13GreenElfWarriorToken(), N: 1})), "Lys Alana Huntmaster — create a 1/1 Elf Warrior?"),
+			}, "Lys Alana Huntmaster — create a 1/1 green Elf Warrior", Do(CreateToken{Template: TokenCard("1/1 green Elf Warrior"), N: 1})), "Lys Alana Huntmaster — create a 1/1 Elf Warrior?"),
 		},
 	})
 }

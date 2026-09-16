@@ -25,60 +25,6 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b15GreenInsectToken is Hornet Queen's 1/1 green Insect with flying
-// and deathtouch.
-func b15GreenInsectToken() game.Card {
-	return game.Card{
-		Name:      "Insect",
-		TypeLine:  "Token Creature — Insect",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"G"},
-		Keywords:  []string{"flying", "deathtouch"},
-	}
-}
-
-// b15BlueRedInsectToken is The Locust God's 1/1 blue and red Insect
-// with flying and haste.
-func b15BlueRedInsectToken() game.Card {
-	return game.Card{
-		Name:      "Insect",
-		TypeLine:  "Token Creature — Insect",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"U", "R"},
-		Keywords:  []string{"flying", "haste"},
-	}
-}
-
-// b15KoboldToken is Kher Keep's 0/1 red Kobold named Kobolds of Kher
-// Keep — the name is printed, and it is what Rohgahh and the other
-// Kobold cards read.
-func b15KoboldToken() game.Card {
-	return game.Card{
-		Name:      "Kobolds of Kher Keep",
-		TypeLine:  "Token Creature — Kobold",
-		Power:     0,
-		Toughness: 1,
-		Colors:    []string{"R"},
-	}
-}
-
-// b15ConstructToken is Simulacrum Synthesizer's 0/0 colorless
-// Construct artifact creature. The printed token also carries "This
-// token gets +1/+1 for each artifact you control"; a token template
-// has no static-ability slot and no oracle ID for the catalog to key
-// one on, so the Synthesizer carries that static on the token's
-// behalf — see simulacrum_synthesizer.go for what that costs.
-func b15ConstructToken() game.Card {
-	return game.Card{
-		Name:      "Construct",
-		TypeLine:  "Token Artifact Creature — Construct",
-		Power:     0,
-		Toughness: 0,
-	}
-}
-
 // --- trigger conditions ------------------------------------------
 
 // b15OpponentCastSpell is "whenever an opponent casts a spell" —

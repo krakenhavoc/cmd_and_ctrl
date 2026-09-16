@@ -18,10 +18,10 @@ func TestTokenTemplatesCarryTheirKeywords(t *testing.T) {
 		tmpl  game.Card
 		wants []string
 	}{
-		{"Spirit", SpiritToken(), []string{"flying"}},
+		{"Spirit", TokenCard("1/1 colorless Spirit with flying"), []string{"flying"}},
 		{"Faerie Rogue", FaerieRogueToken(), []string{"flying"}},
-		{"Bird", WhiteBirdToken(), []string{"flying"}},
-		{"Samurai", WhiteSamuraiToken(), []string{"vigilance"}},
+		{"Bird", TokenCard("2/2 colorless Bird with flying"), []string{"flying"}},
+		{"Samurai", TokenCard("2/2 colorless Samurai with vigilance"), []string{"vigilance"}},
 		{"Wurm (deathtouch half)", PhyrexianWurmDeathtouchToken(), []string{"deathtouch"}},
 		{"Wurm (lifelink half)", PhyrexianWurmLifelinkToken(), []string{"lifelink"}},
 	}
@@ -33,7 +33,7 @@ func TestTokenTemplatesCarryTheirKeywords(t *testing.T) {
 		}
 	}
 	// The shared base template stays vanilla — the halves add to it.
-	if len(PhyrexianWurmToken().Keywords) != 0 {
+	if len(TokenCard("3/3 colorless Phyrexian Wurm artifact").Keywords) != 0 {
 		t.Errorf("base Wurm template should carry no keywords")
 	}
 }

@@ -68,7 +68,7 @@ func init() {
 					ctx := NewContext(g, item)
 					return CreateToken{
 						Controller: ctx.Controller(),
-						Template:   WhiteSamuraiToken(),
+						Template:   TokenCard("2/2 colorless Samurai with vigilance"),
 						N:          1,
 					}.Apply(ctx)
 				},

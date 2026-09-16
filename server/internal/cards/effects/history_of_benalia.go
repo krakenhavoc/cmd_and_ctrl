@@ -36,7 +36,7 @@ func init() {
 func benaliaKnight(g *game.Game, item *game.StackItem) error {
 	return CreateToken{
 		Controller: item.Controller,
-		Template:   KnightVigilanceToken(),
+		Template:   TokenCard("2/2 colorless Knight with vigilance"),
 		N:          1,
 	}.Apply(NewContext(g, item))
 }

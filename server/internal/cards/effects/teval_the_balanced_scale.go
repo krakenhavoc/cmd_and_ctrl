@@ -69,7 +69,7 @@ func init() {
 			}, b25TevalAttackLabel, b25MillThreeThenReturnChosenLandTapped),
 			OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventCast}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b16CardLeftYourGraveyard(ev, source, g)
-			}, b25TevalLeftGraveyardLabel, Do(CreateToken{Template: b16BlackZombieDruidToken(), N: 1}))),
+			}, b25TevalLeftGraveyardLabel, Do(CreateToken{Template: TokenCard("2/2 black Zombie Druid"), N: 1}))),
 		},
 	})
 }

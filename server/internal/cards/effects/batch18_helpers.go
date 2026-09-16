@@ -23,46 +23,6 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b18BlackRatToken is Ogre Slumlord's 1/1 black Rat. The deathtouch
-// is NOT on the template: the Slumlord grants it to "Rats you
-// control" through a static, so a Rat outlives the grant only as a
-// plain 1/1, as printed.
-func b18BlackRatToken() game.Card {
-	return game.Card{
-		Name:      "Rat",
-		TypeLine:  "Token Creature — Rat",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"B"},
-	}
-}
-
-// b18BlueBlackFaerieToken is Bitterbloom Bearer's 1/1 blue and black
-// Faerie with flying — a Faerie, not Bitterblossom's Faerie Rogue.
-func b18BlueBlackFaerieToken() game.Card {
-	return game.Card{
-		Name:      "Faerie",
-		TypeLine:  "Token Creature — Faerie",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"U", "B"},
-		Keywords:  []string{"flying"},
-	}
-}
-
-// b18WhiteBirdToken is Emeria Angel's 1/1 white Bird with flying —
-// half the size of the Swan Song Bird in tokens.go.
-func b18WhiteBirdToken() game.Card {
-	return game.Card{
-		Name:      "Bird",
-		TypeLine:  "Token Creature — Bird",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"W"},
-		Keywords:  []string{"flying"},
-	}
-}
-
 // b18SpringleafShapeshifterToken is Springleaf Parade's 1/1
 // colorless Shapeshifter with changeling. It carries the Parade's
 // grant — "{T}: Add one mana of any color" — on the template,

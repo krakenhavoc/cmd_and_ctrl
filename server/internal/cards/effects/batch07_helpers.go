@@ -83,28 +83,6 @@ func b07TripleDamageFromYourSources() game.ReplacementEffect {
 	}
 }
 
-// b07RedElementalToken is Young Pyromancer's 1/1 red Elemental.
-func b07RedElementalToken() game.Card {
-	return game.Card{
-		Name:      "Elemental",
-		TypeLine:  "Token Creature — Elemental",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"R"},
-	}
-}
-
-// b07GreenBoarToken is Curse of the Swine's 2/2 green Boar.
-func b07GreenBoarToken() game.Card {
-	return game.Card{
-		Name:      "Boar",
-		TypeLine:  "Token Creature — Boar",
-		Power:     2,
-		Toughness: 2,
-		Colors:    []string{"G"},
-	}
-}
-
 // b07SearchBasicOntoBattlefield is "search your library for a basic
 // land card, put it onto the battlefield (tapped), then shuffle" for
 // `player`, from the resolving item — Kodama's trigger, Ghost

@@ -27,33 +27,6 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b16BlueBirdIllusionToken is Murmuring Mystic's 1/1 blue Bird
-// Illusion with flying. Its own template rather than
-// b09BlueBirdToken because the second creature type is printed and
-// a Bird lord and an Illusion lord both read it.
-func b16BlueBirdIllusionToken() game.Card {
-	return game.Card{
-		Name:      "Bird Illusion",
-		TypeLine:  "Token Creature — Bird Illusion",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"U"},
-		Keywords:  []string{"flying"},
-	}
-}
-
-// b16BlackZombieDruidToken is Teval's Judgment's 2/2 black Zombie
-// Druid.
-func b16BlackZombieDruidToken() game.Card {
-	return game.Card{
-		Name:      "Zombie Druid",
-		TypeLine:  "Token Creature — Zombie Druid",
-		Power:     2,
-		Toughness: 2,
-		Colors:    []string{"B"},
-	}
-}
-
 // b16LanderToken is the Edge of Eternities Lander: a colorless
 // artifact with "{2}, {T}, Sacrifice this token: Search your library
 // for a basic land card, put it onto the battlefield tapped, then

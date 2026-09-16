@@ -49,7 +49,7 @@ func init() {
 				case 2:
 					return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}.Apply(ctx)
 				case 3:
-					return CreateToken{Controller: item.Controller, Template: b16BlackZombieDruidToken(), N: 1}.Apply(ctx)
+					return CreateToken{Controller: item.Controller, Template: TokenCard("2/2 black Zombie Druid"), N: 1}.Apply(ctx)
 				}
 				return nil
 			})),

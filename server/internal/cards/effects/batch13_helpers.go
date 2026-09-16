@@ -24,46 +24,6 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b13GreenElfWarriorToken is Imperious Perfect's 1/1 green Elf
-// Warrior.
-func b13GreenElfWarriorToken() game.Card {
-	return game.Card{
-		Name:      "Elf Warrior",
-		TypeLine:  "Token Creature — Elf Warrior",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"G"},
-	}
-}
-
-// b13PestToken is Beledros Witherbloom's 1/1 black and green Pest.
-// The printed token also has "When this token dies, you gain 1
-// life"; a token template carries no triggered abilities and a token
-// has no oracle ID for the catalog to key one on, so the Pest is the
-// body only — declared on the card.
-func b13PestToken() game.Card {
-	return game.Card{
-		Name:      "Pest",
-		TypeLine:  "Token Creature — Pest",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"B", "G"},
-	}
-}
-
-// b13GreenSpiderReachToken is Twitching Doll's 2/2 green Spider with
-// reach. Not b09GreenSpiderToken, which is Arasta's 1/2.
-func b13GreenSpiderReachToken() game.Card {
-	return game.Card{
-		Name:      "Spider",
-		TypeLine:  "Token Creature — Spider",
-		Power:     2,
-		Toughness: 2,
-		Colors:    []string{"G"},
-		Keywords:  []string{"reach"},
-	}
-}
-
 // --- trigger conditions ------------------------------------------
 
 // b13AnotherCreatureYouControlEntered is "whenever another creature

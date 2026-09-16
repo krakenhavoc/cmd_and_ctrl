@@ -28,7 +28,7 @@ func init() {
 				spell, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && (spell.IsInstant() || spell.IsSorcery())
 			}, "Talrand, Sky Summoner — create a 2/2 Drake with flying", Do(CreateToken{
-				Template: b06BlueDrakeToken(),
+				Template: TokenCard("2/2 blue Drake with flying"),
 				N:        1,
 			})),
 		},

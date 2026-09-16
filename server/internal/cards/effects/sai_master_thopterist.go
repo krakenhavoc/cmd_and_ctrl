@@ -35,7 +35,7 @@ func init() {
 				spell, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && spell.IsArtifact()
 			}, "Sai, Master Thopterist — create a Thopter", Do(CreateToken{
-				Template: ThopterToken(),
+				Template: TokenCard("1/1 colorless Thopter artifact with flying"),
 				N:        1,
 			})),
 		},

@@ -23,13 +23,13 @@ func init() {
 			if x <= 0 {
 				return nil
 			}
-			if err := (CreateToken{Controller: item.Controller, Template: b27WhiteSoldierVigilanceToken(), N: x}).Apply(ctx); err != nil {
+			if err := (CreateToken{Controller: item.Controller, Template: TokenCard("2/2 white Soldier with vigilance"), N: x}).Apply(ctx); err != nil {
 				return err
 			}
 			if x < 10 {
 				return nil
 			}
-			return CreateToken{Controller: item.Controller, Template: b27WhiteAngelFlyingVigilanceToken(), N: x}.Apply(ctx)
+			return CreateToken{Controller: item.Controller, Template: TokenCard("4/4 white Angel with flying and vigilance"), N: x}.Apply(ctx)
 		},
 	})
 }

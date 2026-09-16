@@ -45,7 +45,7 @@ func init() {
 			}),
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b22SlimedCreatureYouDontControlDied(ev, source, g)
-			}, "Toxrill — create a 1/1 black Slug", Do(CreateToken{Template: b22BlackSlugToken(), N: 1})),
+			}, "Toxrill — create a 1/1 black Slug", Do(CreateToken{Template: TokenCard("1/1 black Slug"), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label: "{U}{B}, Sacrifice a Slug: Draw a card.",

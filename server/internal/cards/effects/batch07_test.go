@@ -328,7 +328,7 @@ func TestB07TemurAscendancyGrantsHasteAndMayDrawForPowerFour(t *testing.T) {
 	}
 	before := me.Hand.Size()
 
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, GreenBeastToken(), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 colorless Beast"), 1) })
 	passPriorityAroundTable(t, g)
 	if len(g.PendingChoices) != 0 {
 		t.Fatal("a 3/3 entering must not prompt")
@@ -363,7 +363,7 @@ func TestB07AyaraDrainsOnBlackCreaturesAndEatsThemForCards(t *testing.T) {
 	// A black creature drains again; a green one does not.
 	g.WithWriteLock(func() {
 		_ = g.CreateTokenForEffect(me.ID, BlackZombieToken(), 1)
-		_ = g.CreateTokenForEffect(me.ID, GreenBeastToken(), 1)
+		_ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 colorless Beast"), 1)
 	})
 	passPriorityAroundTable(t, g)
 	for i, b := range before {

@@ -1385,6 +1385,17 @@ re-triggers every ETB it has. Leave `Controller` zero for "under its
 owner's control"; set it only for "under your control". See
 [flicker.go](server/internal/cards/effects/flicker.go).
 
+**A plain token (#581):** `TokenCard("1/1 white Soldier")` — the
+templates are rows in
+[tokens_table.go](server/internal/cards/effects/tokens_table.go), keyed
+the way the card prints them ("2/2 black Zombie", "1/1 blue Bird with
+flying", "3/3 green Beast", "0/4 colorless Wall artifact with defender").
+A token the table lacks is a new row, not a new constructor; a variant
+(enters tapped, with counters) wraps the template in a `TokenSpec`.
+Only tokens with behaviour — Treasure, Food, Clue, Gold and the other
+sacrifice-for-something artifacts — keep a constructor in `tokens.go`.
+`TestEveryTokenKeyResolves` fails on a key that is not in the table.
+
 **A token that's a copy (S22):** `CreateTokenCopy`, not a hand-written
 template:
 

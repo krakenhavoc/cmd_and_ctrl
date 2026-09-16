@@ -135,13 +135,3 @@ func b04OpponentLostLife(ev game.Event, controller uuid.UUID, g *game.Game) (int
 	}
 	return 0, false
 }
-
-// b04ZombieToken is the 2/2 black Zombie Field of the Dead makes.
-func b04ZombieToken() game.Card {
-	return game.Card{
-		Name:      "Zombie",
-		TypeLine:  "Token Creature — Zombie",
-		Power:     2,
-		Toughness: 2,
-	}
-}

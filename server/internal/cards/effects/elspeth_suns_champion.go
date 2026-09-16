@@ -40,7 +40,7 @@ func init() {
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{
 						Controller: item.Controller,
-						Template:   SoldierToken(),
+						Template:   TokenCard("1/1 colorless Soldier"),
 						N:          3,
 					}.Apply(NewContext(g, item))
 				},

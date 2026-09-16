@@ -21,40 +21,8 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b11WhiteWarriorToken is Secure the Wastes' 1/1 white Warrior.
-func b11WhiteWarriorToken() game.Card {
-	return game.Card{
-		Name:      "Warrior",
-		TypeLine:  "Token Creature — Warrior",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"W"},
-	}
-}
-
-// b11WhiteSoldierToken is Keeper of the Accord's 1/1 white Soldier.
-// The same token Elspeth hands out, with the printed colour stamped
-// — tokens.go's SoldierToken predates token colours.
-func b11WhiteSoldierToken() game.Card {
-	return game.Card{
-		Name:      "Soldier",
-		TypeLine:  "Token Creature — Soldier",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"W"},
-	}
-}
-
-// b11GreenSaprolingToken is Tendershoot Dryad's 1/1 green Saproling.
-func b11GreenSaprolingToken() game.Card {
-	return game.Card{
-		Name:      "Saproling",
-		TypeLine:  "Token Creature — Saproling",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"G"},
-	}
-}
+// b11GreenSaprolingToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
+func b11GreenSaprolingToken() game.Card { return TokenCard("1/1 green Saproling") }
 
 // --- conditions and counts ---------------------------------------
 

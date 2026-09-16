@@ -281,7 +281,7 @@ func TestB23IvyLaneDenizenGrowsATargetPerGreenCreature(t *testing.T) {
 	}
 	// A green token counts; a colourless artifact creature and a
 	// red creature do not; an opponent's green creature is not yours.
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, b23GreenDinosaurTrampleToken(), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 green Dinosaur with trample"), 1) })
 	b04WaitForPick(t, g, me.ID)
 	pickCard(t, g, me.ID, elf)
 	passPriorityAroundTable(t, g)

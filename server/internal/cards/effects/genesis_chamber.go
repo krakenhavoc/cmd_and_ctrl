@@ -43,7 +43,7 @@ func init() {
 						if g.PlayerByIDForEffect(controller) == nil {
 							return nil
 						}
-						return CreateToken{Controller: controller, Template: b26MyrToken(), N: 1}.Apply(NewContext(g, item))
+						return CreateToken{Controller: controller, Template: TokenCard("1/1 colorless Myr artifact"), N: 1}.Apply(NewContext(g, item))
 					})
 			},
 		}},

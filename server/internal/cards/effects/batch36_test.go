@@ -544,7 +544,7 @@ func TestB36BishopOfWingsGainsFourPerAngelAndMakesASpiritWhenOneDies(t *testing.
 		t.Errorf("an Angel entering gains 4: %d → %d", before, me.Life)
 	}
 	b36CastCreature(t, g, "Bear", "Creature — Bear", "", 2, 2)
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(opp.ID, b12WhiteAngelFlyingToken(), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(opp.ID, TokenCard("4/4 white Angel with flying"), 1) })
 	passPriorityAroundTable(t, g)
 	if me.Life != before+4 {
 		t.Error("a Bear and an opponent's Angel gain nothing")

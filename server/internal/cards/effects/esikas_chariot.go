@@ -30,7 +30,7 @@ func init() {
 		}},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Esika's Chariot — create two 2/2 Cats", Do(CreateToken{
-				Template: CatToken(),
+				Template: TokenCard("2/2 colorless Cat"),
 				N:        2,
 			})),
 			{

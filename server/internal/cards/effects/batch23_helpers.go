@@ -24,19 +24,6 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b23GreenDinosaurTrampleToken is Regisaur Alpha's 3/3 green
-// Dinosaur with trample.
-func b23GreenDinosaurTrampleToken() game.Card {
-	return game.Card{
-		Name:      "Dinosaur",
-		TypeLine:  "Token Creature — Dinosaur",
-		Power:     3,
-		Toughness: 3,
-		Colors:    []string{"G"},
-		Keywords:  []string{"trample"},
-	}
-}
-
 // --- trigger conditions ------------------------------------------
 
 // b23ArtifactPutIntoGraveyardFromBattlefield is Disciple of the

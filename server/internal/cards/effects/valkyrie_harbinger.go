@@ -35,7 +35,7 @@ func init() {
 				if b15LifeGainedThisTurn(g, item.Controller) < 4 {
 					return nil
 				}
-				return CreateToken{Controller: item.Controller, Template: AngelVigilanceToken(), N: 1}.Apply(NewContext(g, item))
+				return CreateToken{Controller: item.Controller, Template: TokenCard("4/4 colorless Angel with flying and vigilance"), N: 1}.Apply(NewContext(g, item))
 			}),
 		},
 	})

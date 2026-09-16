@@ -29,19 +29,6 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b35GreenPlantToken is The Necrobloom's 0/1 green Plant.
-// b02PlantToken is the same body without a colour stamped, so a
-// template of its own.
-func b35GreenPlantToken() game.Card {
-	return game.Card{
-		Name:      "Plant",
-		TypeLine:  "Token Creature — Plant",
-		Power:     0,
-		Toughness: 1,
-		Colors:    []string{"G"},
-	}
-}
-
 // --- predicates --------------------------------------------------
 
 // b35Battle passes for a battle — Final Act's "destroy all battles".
@@ -424,7 +411,7 @@ func b35ReturnChosenToBattlefieldWithCounter(g *game.Game, item *game.StackItem)
 // resolution, so the land that entered is among them.
 func b35NecrobloomLandfall(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	template := b35GreenPlantToken()
+	template := TokenCard("0/1 green Plant")
 	if b04LandNamesControlled(g, item.Controller) >= 7 {
 		template = BlackZombieToken()
 	}

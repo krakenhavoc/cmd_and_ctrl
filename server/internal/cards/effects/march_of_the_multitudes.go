@@ -23,7 +23,7 @@ func init() {
 		Completeness: CompletenessFull,
 		TapCost:      Convoke(),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return CreateToken{Controller: ctx.Controller(), Template: b22WhiteSoldierLifelinkToken(), N: ctx.X()}.Apply(ctx)
+			return CreateToken{Controller: ctx.Controller(), Template: TokenCard("1/1 white Soldier with lifelink"), N: ctx.X()}.Apply(ctx)
 		},
 	})
 }

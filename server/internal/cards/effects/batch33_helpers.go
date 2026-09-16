@@ -40,51 +40,20 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// b33BlueBirdVigilanceToken is Hermes, Overseer of Elpis's 1/1 blue
-// Bird with flying and vigilance. b09BlueBirdToken is a 2/2 and
-// WhiteBirdToken has no vigilance, so a template of its own.
+// b33BlueBirdVigilanceToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
 func b33BlueBirdVigilanceToken() game.Card {
-	return game.Card{
-		Name:      "Bird",
-		TypeLine:  "Token Creature — Bird",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"U"},
-		Keywords:  []string{"flying", "vigilance"},
-	}
+	return TokenCard("1/1 blue Bird with flying and vigilance")
 }
 
-// b33BlackInsectToken is Nest of Scarabs' 1/1 black Insect. InsectToken
-// is Hornet Queen's flying-haste 1/1 and b15GreenInsectToken is
-// green, so a template of its own.
-func b33BlackInsectToken() game.Card {
-	return game.Card{
-		Name:      "Insect",
-		TypeLine:  "Token Creature — Insect",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"B"},
-	}
-}
-
-// b33WhiteHumanWarriorToken is Maja, Bretagard Protector's 1/1 white
-// Human Warrior.
-func b33WhiteHumanWarriorToken() game.Card {
-	return game.Card{
-		Name:      "Human Warrior",
-		TypeLine:  "Token Creature — Human Warrior",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"W"},
-	}
-}
+// b33WhiteHumanWarriorToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
+func b33WhiteHumanWarriorToken() game.Card { return TokenCard("1/1 white Human Warrior") }
 
 // b33TappedAttackingRedWarrior is Dalkovan Encampment's 1/1 red
 // Warrior, stamped tapped so CreateTokensAttackingForEffect — which
 // copies the template and sets only the attack — puts it in tapped
 // and attacking (b21TappedAttackingGoblin's shape).
 func b33TappedAttackingRedWarrior() game.Card {
-	tmpl := b21RedWarriorToken()
+	tmpl := TokenCard("1/1 red Warrior")
 	tmpl.Tapped = true
 	return tmpl
 }
@@ -527,7 +496,7 @@ func b33CreateInsectsPerMinusCounterPlaced(n int) func(g *game.Game, item *game.
 		if n <= 0 {
 			return nil
 		}
-		return CreateToken{Controller: item.Controller, Template: b33BlackInsectToken(), N: n}.Apply(NewContext(g, item))
+		return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 black Insect"), N: n}.Apply(NewContext(g, item))
 	}
 }
 

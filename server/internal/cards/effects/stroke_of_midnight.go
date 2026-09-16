@@ -34,22 +34,9 @@ func init() {
 			}
 			return CreateToken{
 				Controller: controller,
-				Template:   WhiteHumanToken(),
+				Template:   TokenCard("1/1 colorless Human"),
 				N:          1,
 			}.Apply(ctx)
 		},
 	})
-}
-
-// WhiteHumanToken is Stroke of Midnight's 1/1 white Human. Vanilla,
-// so only the printed fields; Colors stays unset like every other
-// template except the Goblin (nothing in the engine reads a token's
-// colour yet, per tokens.go).
-func WhiteHumanToken() game.Card {
-	return game.Card{
-		Name:      "Human",
-		TypeLine:  "Token Creature — Human",
-		Power:     1,
-		Toughness: 1,
-	}
 }

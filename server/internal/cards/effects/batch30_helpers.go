@@ -30,19 +30,6 @@ import (
 
 // --- tokens ------------------------------------------------------
 
-// b30BlackBatFlyingToken is Lunar Convocation's 1/1 black Bat with
-// flying.
-func b30BlackBatFlyingToken() game.Card {
-	return game.Card{
-		Name:      "Bat",
-		TypeLine:  "Token Creature — Bat",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"B"},
-		Keywords:  []string{"flying"},
-	}
-}
-
 // --- costs -------------------------------------------------------
 
 // b30SacrificeAnArtifactOrCreature is Dockside Chef's "Sacrifice an
@@ -460,7 +447,7 @@ func b30BatIfYouGainedAndLostLifeThisTurn(g *game.Game, item *game.StackItem) er
 	if b15LifeGainedThisTurn(g, item.Controller) <= 0 || b18LifeLostThisTurn(g, item.Controller) <= 0 {
 		return nil
 	}
-	return CreateToken{Controller: item.Controller, Template: b30BlackBatFlyingToken(), N: 1}.Apply(NewContext(g, item))
+	return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 black Bat with flying"), N: 1}.Apply(NewContext(g, item))
 }
 
 // b30FetchBasicTapped is Promising Vein's search: a basic land card

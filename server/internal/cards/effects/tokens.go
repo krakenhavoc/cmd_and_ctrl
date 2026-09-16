@@ -21,59 +21,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // paths: printedCharacteristic folds Keywords into the layer
 // engine, ManaAbilitiesForCard prefers the intrinsic list.
 
-// WhiteBirdToken returns a template for the Swan Song 2/2 Bird
-// token with flying. S21 sub-PR 1: the flying is real now.
-func WhiteBirdToken() game.Card {
-	return game.Card{
-		Name:      "Bird",
-		TypeLine:  "Token Creature — Bird",
-		Power:     2,
-		Toughness: 2,
-		Keywords:  []string{"flying"},
-	}
-}
-
-// WhiteSamuraiToken returns a template for The Wandering Emperor's
-// 2/2 Samurai token with vigilance (real since S21 sub-PR 1).
-// Unused by S14 catalog (the Emperor's +1 loyalty ability stays
-// manual this sprint), but the template lands now so S19's
-// ability-auto-fire flow can wire up to the existing CreateToken
-// primitive without growing a new template file.
-func WhiteSamuraiToken() game.Card {
-	return game.Card{
-		Name:      "Samurai",
-		TypeLine:  "Token Creature — Samurai",
-		Power:     2,
-		Toughness: 2,
-		Keywords:  []string{"vigilance"},
-	}
-}
-
-// SpiritToken returns a template for Doomed Traveler's 1/1 white
-// Spirit token with flying. Added in S19 sub-PR 4; the flying
-// became real in S21 sub-PR 1.
-func SpiritToken() game.Card {
-	return game.Card{
-		Name:      "Spirit",
-		TypeLine:  "Token Creature — Spirit",
-		Power:     1,
-		Toughness: 1,
-		Keywords:  []string{"flying"},
-	}
-}
-
-// FaerieRogueToken returns a template for Bitterblossom's 1/1 black
-// Faerie Rogue token with flying (real since S21 sub-PR 1). Added
-// in S19 sub-PR 5.
-func FaerieRogueToken() game.Card {
-	return game.Card{
-		Name:      "Faerie Rogue",
-		TypeLine:  "Token Creature — Faerie Rogue",
-		Power:     1,
-		Toughness: 1,
-		Keywords:  []string{"flying"},
-	}
-}
+// FaerieRogueToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
+func FaerieRogueToken() game.Card { return TokenCard("1/1 colorless Faerie Rogue with flying") }
 
 // EldraziSpawnToken returns a template for Awakening Zone's 0/1
 // colorless Eldrazi Spawn token with "Sacrifice this creature: Add
@@ -94,32 +43,17 @@ func EldraziSpawnToken() game.Card {
 	}
 }
 
-// PhyrexianWurmToken returns a template for Wurmcoil Engine's 3/3
-// colorless Phyrexian Wurm tokens. S19 shipped one shared vanilla
-// template because token keywords were cosmetic; S21 sub-PR 1 makes
-// them real, so the two halves are now distinct — see
-// PhyrexianWurmDeathtouchToken / PhyrexianWurmLifelinkToken. This
-// base template stays as the shared shape.
-func PhyrexianWurmToken() game.Card {
-	return game.Card{
-		Name:      "Phyrexian Wurm",
-		TypeLine:  "Token Artifact Creature — Phyrexian Wurm",
-		Power:     3,
-		Toughness: 3,
-	}
-}
-
 // PhyrexianWurmDeathtouchToken / PhyrexianWurmLifelinkToken are
 // Wurmcoil Engine's two halves (CR: the dies-trigger makes one of
 // each, not two of the same). Added in S21 sub-PR 1.
 func PhyrexianWurmDeathtouchToken() game.Card {
-	t := PhyrexianWurmToken()
+	t := TokenCard("3/3 colorless Phyrexian Wurm artifact")
 	t.Keywords = []string{"deathtouch"}
 	return t
 }
 
 func PhyrexianWurmLifelinkToken() game.Card {
-	t := PhyrexianWurmToken()
+	t := TokenCard("3/3 colorless Phyrexian Wurm artifact")
 	t.Keywords = []string{"lifelink"}
 	return t
 }
@@ -263,169 +197,15 @@ func PowerstoneToken() game.Card {
 	}
 }
 
-// RedGoblinToken returns a template for the 1/1 red Goblin token
-// Krenko, Mob Boss makes. Added in S21 sub-PR 2.
-func RedGoblinToken() game.Card {
-	return game.Card{
-		Name:      "Goblin",
-		TypeLine:  "Token Creature — Goblin",
-		Power:     1,
-		Toughness: 1,
-		Colors:    []string{"R"},
-	}
-}
+// RedGoblinToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
+func RedGoblinToken() game.Card { return TokenCard("1/1 red Goblin") }
 
-// GreenBeastToken is the 3/3 green Beast that Beast Within hands to
-// the permanent's controller — the drawback half of the card, and
-// the reason it's "destroy anything" rather than pure removal.
-func GreenBeastToken() game.Card {
-	return game.Card{
-		Name:      "Beast",
-		TypeLine:  "Token Creature — Beast",
-		Power:     3,
-		Toughness: 3,
-	}
-}
-
-// WhiteElephantToken is Generous Gift's 3/3 Elephant. Same shape as
-// the Beast; kept as its own constructor so the two cards read as
-// the printed cards do rather than sharing a misleading name.
-func WhiteElephantToken() game.Card {
-	return game.Card{
-		Name:      "Elephant",
-		TypeLine:  "Token Creature — Elephant",
-		Power:     3,
-		Toughness: 3,
-	}
-}
-
-// WhiteAllyToken is Appa, Steadfast Guardian's 1/1 white Ally.
-// Vanilla — no keywords — so the template carries only the printed
-// fields. Like every other template in this file it leaves Colors
-// unset; nothing in the engine reads a token's color yet, and
-// stamping one here alone would be an untested special case.
-func WhiteAllyToken() game.Card {
-	return game.Card{
-		Name:      "Ally",
-		TypeLine:  "Token Creature — Ally",
-		Power:     1,
-		Toughness: 1,
-	}
-}
-
-// BlackZombieToken is the 2/2 black Zombie Grave Titan makes, two at
-// a time, on both halves of its trigger. Vanilla — the Titan's power
-// is the volume, not the bodies.
-func BlackZombieToken() game.Card {
-	return game.Card{
-		Name:      "Zombie",
-		TypeLine:  "Token Creature — Zombie",
-		Power:     2,
-		Toughness: 2,
-		Colors:    []string{"B"},
-	}
-}
-
-// ThopterToken is the 1/1 colorless Thopter ARTIFACT creature with
-// flying that Hangarback Walker leaves behind. Both halves of the
-// type line are load-bearing — an artifact creature answers the
-// catalog's artifact-matters cards as well as its creature-matters
-// ones — and the flying is real, carried on Keywords the way every
-// token's printed keywords have been since S21 sub-PR 1.
-func ThopterToken() game.Card {
-	return game.Card{
-		Name:      "Thopter",
-		TypeLine:  "Token Artifact Creature — Thopter",
-		Power:     1,
-		Toughness: 1,
-		Keywords:  []string{"flying"},
-	}
-}
+// BlackZombieToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
+func BlackZombieToken() game.Card { return TokenCard("2/2 black Zombie") }
 
 // --- S27 templates ---------------------------------------------
 
-// KnightVigilanceToken is History of Benalia's 2/2 white Knight with
-// vigilance. The subtype matters as much as the stats: the Saga's
-// third chapter pumps "Knights you control", which reads the
-// effective subtype off exactly this type line.
-func KnightVigilanceToken() game.Card {
-	return game.Card{
-		Name:      "Knight",
-		TypeLine:  "Token Creature — Knight",
-		Power:     2,
-		Toughness: 2,
-		Keywords:  []string{"vigilance"},
-	}
-}
-
-// HumanSoldierToken is The First Iroan Games' 1/1 white Human
-// Soldier. Vanilla.
-func HumanSoldierToken() game.Card {
-	return game.Card{
-		Name:      "Human Soldier",
-		TypeLine:  "Token Creature — Human Soldier",
-		Power:     1,
-		Toughness: 1,
-	}
-}
-
-// WallDefenderToken is The Birth of Meletis' 0/4 colorless Wall
-// artifact creature with defender.
-//
-// Its 0 power is the reason the toughness has to be written down:
-// the CR 704.5f state-based action skips a creature printed 0/0 with
-// no counters (the demo-seed placeholder convention documented on
-// Card.Power), and a 0/4 must not be mistaken for that case.
-func WallDefenderToken() game.Card {
-	return game.Card{
-		Name:      "Wall",
-		TypeLine:  "Token Artifact Creature — Wall",
-		Power:     0,
-		Toughness: 4,
-		Keywords:  []string{"defender"},
-	}
-}
-
 // --- S27 Vehicle templates -------------------------------------
-
-// CatToken is Esika's Chariot's 2/2 green Cat. Vanilla — and the
-// pair of them is exactly the Chariot's crew 4.
-func CatToken() game.Card {
-	return game.Card{
-		Name:      "Cat",
-		TypeLine:  "Token Creature — Cat",
-		Power:     2,
-		Toughness: 2,
-	}
-}
-
-// AngelVigilanceToken is Parhelion II's 4/4 white Angel with flying
-// and vigilance. Both keywords are real: they ride Card.Keywords,
-// which printedCharacteristic folds into the layer engine.
-func AngelVigilanceToken() game.Card {
-	return game.Card{
-		Name:      "Angel",
-		TypeLine:  "Token Creature — Angel",
-		Power:     4,
-		Toughness: 4,
-		Keywords:  []string{"flying", "vigilance"},
-	}
-}
-
-// SoldierToken is Elspeth, Sun's Champion's 1/1 white Soldier.
-// Vanilla, and deliberately NOT the same template as
-// HumanSoldierToken above: Elspeth's token is a Soldier and The First
-// Iroan Games' is a Human Soldier, and the difference is live the
-// moment anything reads a creature type ("Soldiers you control get
-// +1/+1", "sacrifice a Human").
-func SoldierToken() game.Card {
-	return game.Card{
-		Name:      "Soldier",
-		TypeLine:  "Token Creature — Soldier",
-		Power:     1,
-		Toughness: 1,
-	}
-}
 
 // BlueShapeshifterToken is Maskwood Nexus' 2/2 blue Shapeshifter with
 // changeling, and ColorlessShapeshifterToken is Irregular Cohort's
@@ -456,23 +236,5 @@ func ColorlessShapeshifterToken() game.Card {
 		Power:     2,
 		Toughness: 2,
 		Keywords:  []string{game.KeywordChangeling},
-	}
-}
-
-// InsectToken is The Locust God's 1/1 blue and red Insect with
-// flying AND HASTE. The haste is the card: a draw spell that makes
-// five hasty fliers is a lethal attack this turn, and the same
-// template without it is a board that dies to the wrath on the way
-// back round. Added in S22.
-//
-// Colors is left unset, matching every other template in this file —
-// nothing in the engine reads a token's colour yet.
-func InsectToken() game.Card {
-	return game.Card{
-		Name:      "Insect",
-		TypeLine:  "Token Creature — Insect",
-		Power:     1,
-		Toughness: 1,
-		Keywords:  []string{"flying", "haste"},
 	}
 }

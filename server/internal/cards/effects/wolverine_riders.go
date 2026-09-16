@@ -28,7 +28,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBeginUpkeep, func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Kind == game.EventBeginUpkeep
-			}, "Wolverine Riders — create a 1/1 green Elf Warrior", Do(CreateToken{Template: b13GreenElfWarriorToken(), N: 1})),
+			}, "Wolverine Riders — create a 1/1 green Elf Warrior", Do(CreateToken{Template: TokenCard("1/1 green Elf Warrior"), N: 1})),
 			{
 				Watches: []game.EventKind{game.EventETB},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

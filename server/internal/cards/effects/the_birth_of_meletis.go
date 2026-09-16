@@ -48,7 +48,7 @@ func isBasicPlains(c game.Card) bool {
 func meletisWall(g *game.Game, item *game.StackItem) error {
 	return CreateToken{
 		Controller: item.Controller,
-		Template:   WallDefenderToken(),
+		Template:   TokenCard("0/4 colorless Wall artifact with defender"),
 		N:          1,
 	}.Apply(NewContext(g, item))
 }

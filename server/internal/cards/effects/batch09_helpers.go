@@ -158,30 +158,3 @@ func b09SourceStillOnBattlefield(g *game.Game, item *game.StackItem) bool {
 	z := g.FindCardZoneForEffect(item.SourceCardID)
 	return z != nil && z.Kind == game.ZoneBattlefield
 }
-
-// b09GreenSpiderToken is Arasta of the Endless Web's 1/2 green
-// Spider with reach.
-func b09GreenSpiderToken() game.Card {
-	return game.Card{
-		Name:      "Spider",
-		TypeLine:  "Token Creature — Spider",
-		Power:     1,
-		Toughness: 2,
-		Colors:    []string{"G"},
-		Keywords:  []string{"reach"},
-	}
-}
-
-// b09BlueBirdToken is Strix Serenade's 2/2 blue Bird with flying.
-// The same token Swan Song hands out, with the printed colour
-// stamped — Swan Song's WhiteBirdToken predates token colours.
-func b09BlueBirdToken() game.Card {
-	return game.Card{
-		Name:      "Bird",
-		TypeLine:  "Token Creature — Bird",
-		Power:     2,
-		Toughness: 2,
-		Colors:    []string{"U"},
-		Keywords:  []string{"flying"},
-	}
-}

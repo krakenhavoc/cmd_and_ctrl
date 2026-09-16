@@ -27,7 +27,7 @@ func init() {
 			Optional(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b17AnotherNontokenCreatureDied(ev, source, g)
 			}, "Ogre Slumlord — create a Rat", Do(CreateToken{
-				Template: b18BlackRatToken(),
+				Template: TokenCard("1/1 black Rat"),
 				N:        1,
 			})), "Ogre Slumlord — create a 1/1 black Rat?"),
 		},

@@ -319,7 +319,7 @@ func TestB29ChitterspitterEatsATokenEachUpkeepAndGrowsSquirrels(t *testing.T) {
 	me := g.Seats[0]
 	spitter := b29Push(g, me.ID, "Chitterspitter", "Artifact", b29ChitterspitterOracle, "{2}{G}", 0, 0, "G")
 	squirrel := pushTribalCreature(g, me.ID, "Drey Keeper", "Creature — Squirrel", 1, 1)
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, b29GreenSquirrelToken(), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("1/1 green Squirrel"), 1) })
 	token := findBattlefieldByName(g, "Squirrel")
 	if got := effectivePower(t, g, squirrel); got != 1 {
 		t.Fatalf("no acorns: power %d, want 1", got)
@@ -446,7 +446,7 @@ func TestB29DazzlingAngelGainsOnOtherCreaturesEntering(t *testing.T) {
 	if me.Life != start+1 {
 		t.Errorf("a creature entering: life %d, want %d", me.Life, start+1)
 	}
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, SpiritToken(), 2) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("1/1 colorless Spirit with flying"), 2) })
 	passPriorityAroundTable(t, g)
 	if me.Life != start+3 {
 		t.Errorf("two tokens: life %d, want %d", me.Life, start+3)
