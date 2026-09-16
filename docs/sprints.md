@@ -78,7 +78,7 @@ planned just-in-time from the S12 pain-point triage.
 | S32      | Playtest stabilisation, round 1                                      | 6     | [#277](https://github.com/krakenhavoc/cmd_and_ctrl/issues/277) | —          | partial     |
 | S33      | Surviving a deploy: reconnect, resume, and schema safety             | 6     | [#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515) | 2027-10-10 | planned     |
 | S34      | Persistent user database: people, their games, and their decks       | 6     | [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607) | —          | planned     |
-| S35      | Playtest stabilisation, round 2                                      | 6     | #TBD                                                           | —          | planned     |
+| S35      | Playtest stabilisation, round 2                                      | 6     | [#734](https://github.com/krakenhavoc/cmd_and_ctrl/issues/734)  | —          | planned     |
 
 ### How to read the status column
 
@@ -2441,7 +2441,7 @@ Four ADRs and the persistence work carry the S32 name, and only the first ADR is
 - **`pruneOrphanMeta` destroys recoverable games:** ADR 0041's roll-back recovery deletes the game it should return. [#525](https://github.com/krakenhavoc/cmd_and_ctrl/issues/525)
 - **Multi-face follow-ups:** transform's flip verb, ADR 0034 step 5 ([#343](https://github.com/krakenhavoc/cmd_and_ctrl/issues/343), Aang), and adventure cards, step 6 ([#719](https://github.com/krakenhavoc/cmd_and_ctrl/issues/719))
 - **Session tokens in in-app bug reports:** redact them before [#517](https://github.com/krakenhavoc/cmd_and_ctrl/issues/517) makes sessions durable. [#721](https://github.com/krakenhavoc/cmd_and_ctrl/issues/721)
-- **The playtest reports and the 4-player table:** S35, "Playtest stabilisation, round 2" (#TBD), built from the [#534](https://github.com/krakenhavoc/cmd_and_ctrl/issues/534) triage and the in-app reports filed since
+- **The playtest reports and the 4-player table:** S35, "Playtest stabilisation, round 2" ([#734](https://github.com/krakenhavoc/cmd_and_ctrl/issues/734)), built from the [#534](https://github.com/krakenhavoc/cmd_and_ctrl/issues/534) triage and the in-app reports filed since
 
 ---
 
