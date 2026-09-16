@@ -1349,7 +1349,9 @@
         </div>
       {/if}
       <DiscardPromptModal snap={view} {viewerID} {sendAction} />
-      <ChoicePromptModal snap={view} {viewerID} {sendAction} />
+      <!-- lastError too: this modal's backdrop covers the board's
+           rejection toast, so it shows a refusal of its own answer. -->
+      <ChoicePromptModal snap={view} {viewerID} {sendAction} lastError={$lastError} />
       <AutoTapPreviewModal
         {gameID}
         snap={view}

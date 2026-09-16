@@ -132,9 +132,16 @@ type confirmFrame struct {
 // the answer arrives — so an unchecked pick would let an effect operate
 // on a card that is somewhere else entirely. Zero value means "no zone
 // re-check"; the frame's `then` owns the validation in that case.
+//
+// validate is ChooseCardsPrompt.Validate, carried here rather than on
+// PendingChoice for the reason SearchLibrarySpec.Validate rides on
+// searchResumeFrame: it is a closure over the effect, not wire state.
+// The frame is already counted in ContinuationCensus, so a second
+// closure on it costs restorability nothing it was not already paying.
 type chooseCardsFrame struct {
-	zone ZoneKind
-	then func(g *Game, picked []uuid.UUID) error
+	zone     ZoneKind
+	validate func(picked []Card) bool
+	then     func(g *Game, picked []uuid.UUID) error
 }
 
 // ConfirmPrompt is the queue-side description of a
@@ -202,6 +209,41 @@ type ChooseCardsPrompt struct {
 	// Zone, when set, is re-checked on submit — every pick must still
 	// be in FromPlayer's zone of that kind.
 	Zone ZoneKind
+	// Validate, when set, is a legality check on the picked SET, for
+	// a clause that Min / Max and a per-card candidate list cannot
+	// express: "discard two cards unless you discard a creature
+	// card" accepts one card only if that card is a creature, which
+	// no bound on the count can say. It is SearchLibrarySpec.Validate
+	// for this prompt, with the same shape and the same rules.
+	//
+	// It is called with the picked cards in submitted order, as live
+	// value copies read after the other checks (bounds, candidates,
+	// duplicates, and the Zone re-check when Zone is set), so a battlefield
+	// pick carries its layered characteristics (Card.Effective()).
+	// It is NOT called for an empty pick: a prompt whose floor is
+	// zero keeps "choose nothing" as an answer the engine can never
+	// refuse, which is what the enumerator marks AlwaysLegal.
+	//
+	// It deliberately receives no *Game. It runs on the submit path
+	// under g.mu, and ALSO inside legal.EnumerateFor under the READ
+	// lock (ChooseCardsPickLegalLocked, like SearchPickLegalLocked),
+	// against whichever clone the enumerator was handed. A *Game
+	// argument would put the whole *ForEffect mutation surface one
+	// call away from a read-locked caller with only a comment in the
+	// way; a function of the picks cannot mutate the game at all. It
+	// must still not write through the Card values it is handed
+	// (their maps are shared with the live cards), and — the
+	// StackItem.Effect contract — must not capture a *Game or a
+	// pointer into a zone. Anything else the rule depends on ("two,
+	// or all of them if the hand is smaller") is a scalar the queuing
+	// effect captures when it asks, exactly as Cards, Min and Max are
+	// frozen when it asks.
+	//
+	// A prompt that sets Validate with Min > 0 must accept at least
+	// one set of candidates when it is queued, or no seat can answer
+	// it; the enumerator logs such a prompt rather than inventing an
+	// answer.
+	Validate func(picked []Card) bool
 	// Then receives the picks. Runs with g.mu held; may queue further
 	// choices, which is how a chain continues.
 	Then func(g *Game, picked []uuid.UUID) error
@@ -244,8 +286,9 @@ func (g *Game) QueueChooseCardsForEffect(p ChooseCardsPrompt) uuid.UUID {
 		ChooseMin:   lo,
 		ChooseMax:   hi,
 		chooseCardsResume: &chooseCardsFrame{
-			zone: p.Zone,
-			then: p.Then,
+			zone:     p.Zone,
+			validate: p.Validate,
+			then:     p.Then,
 		},
 	})
 }
@@ -312,11 +355,13 @@ func (g *Game) ResolveConfirm(choiceID, chooserID uuid.UUID, accept bool) error 
 //
 // Validation rejects before dequeuing, so a client that submits an
 // illegal set gets an error and can try again rather than losing the
-// prompt — the same contract ResolveSearchLibrary documents. The
-// difference, and it is the #544 lesson, is that every answer the
-// enumerator offers passes this validation: the bounds are on the
-// choice itself, so `legal` enumerates exactly the sets that are legal
-// rather than a superset it cannot see the constraint on.
+// prompt — the same contract ResolveSearchLibrary documents. A set the
+// prompt's Validate hook refuses comes back as ErrChoiceSetRejected,
+// with the prompt still open and Then not run. The #544 lesson is that
+// every answer the enumerator offers passes this validation: the bounds
+// ride on the choice, and the set-level hook is reached through
+// ChooseCardsPickLegalLocked, so `legal` asks the engine instead of
+// enumerating a superset it cannot see the constraint on.
 //
 // Caller must NOT hold g.mu.
 func (g *Game) ResolveChooseCards(choiceID, chooserID uuid.UUID, picks []uuid.UUID) error {
@@ -334,6 +379,42 @@ func (g *Game) ResolveChooseCards(choiceID, chooserID uuid.UUID, picks []uuid.UU
 	}
 	if choice.Chooser != chooserID {
 		return ErrNotTheChooser
+	}
+	if err := g.checkChooseCardsPicksLocked(choice, picks); err != nil {
+		return err
+	}
+	frame := choice.chooseCardsResume
+	source := choice.Source
+	g.dequeueChoiceLocked(idx)
+	if frame == nil || frame.then == nil {
+		return nil
+	}
+	if err := frame.then(g, append([]uuid.UUID(nil), picks...)); err != nil {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Actor:    chooserID,
+			Source:   source,
+			ErrorMsg: err.Error(),
+		})
+	}
+	g.runStateChecksLocked()
+	return nil
+}
+
+// checkChooseCardsPicksLocked is the ONE copy of "would this answer be
+// accepted for this choose-cards prompt": bounds, candidates,
+// duplicates, the live-zone re-check, then the set-level Validate hook.
+// ResolveChooseCards runs it before it dequeues; internal/legal runs it
+// through ChooseCardsPickLegalLocked before it OFFERS a set. One
+// function rather than two for checkSearchPicksLocked's reason — the
+// hook is card text, and a second copy of card text drifts.
+//
+// It reads and never writes, so it is safe under the read lock.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) checkChooseCardsPicksLocked(choice *PendingChoice, picks []uuid.UUID) error {
+	if choice == nil || choice.Kind != PendingChoiceChooseCards {
+		return ErrInvalidParam
 	}
 	if len(picks) < choice.ChooseMin || len(picks) > choice.ChooseMax {
 		return ErrInvalidParam
@@ -364,21 +445,38 @@ func (g *Game) ResolveChooseCards(choiceID, chooserID uuid.UUID, picks []uuid.UU
 			}
 		}
 	}
-	source := choice.Source
-	g.dequeueChoiceLocked(idx)
-	if frame == nil || frame.then == nil {
+	// Skipped for an empty pick, so a zero-floor prompt's "choose
+	// nothing" stays the answer nothing can refuse (see
+	// ChooseCardsPrompt.Validate).
+	if frame == nil || frame.validate == nil || len(picks) == 0 {
 		return nil
 	}
-	if err := frame.then(g, append([]uuid.UUID(nil), picks...)); err != nil {
-		g.EmitEvent(Event{
-			Kind:     EventEffectError,
-			Actor:    chooserID,
-			Source:   source,
-			ErrorMsg: err.Error(),
-		})
+	chosen := make([]Card, 0, len(picks))
+	for _, id := range picks {
+		card, ok := g.LookupCardForEffect(id)
+		if !ok {
+			return ErrCardNotFound
+		}
+		chosen = append(chosen, card)
 	}
-	g.runStateChecksLocked()
+	if !frame.validate(chosen) {
+		return ErrChoiceSetRejected
+	}
 	return nil
+}
+
+// ChooseCardsPickLegalLocked reports whether `picks` is an answer
+// ResolveChooseCards would accept for `choice` right now. It is the
+// enumerator's read-only window onto the prompt's Validate hook, which
+// rides on the unexported continuation frame and stays there for the
+// reason SearchPickLegalLocked gives: handing internal/legal the frame
+// would make every future continuation field part of the enumerator's
+// contract.
+//
+// Caller must hold g's read lock; internal/legal calls it from inside
+// ReadSnapshot, like SearchPickLegalLocked.
+func (g *Game) ChooseCardsPickLegalLocked(choice *PendingChoice, picks []uuid.UUID) bool {
+	return g.checkChooseCardsPicksLocked(choice, picks) == nil
 }
 
 // findChoiceLocked returns the queue index and entry for a choice ID,
