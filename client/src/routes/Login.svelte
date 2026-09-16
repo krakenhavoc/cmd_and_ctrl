@@ -21,6 +21,7 @@
 
   let token = $state("");
   let invite = $state("");
+  let joinName = $state("");
   let error = $state("");
   let busy = $state(false);
   let joining = $state(false);
@@ -40,6 +41,13 @@
   // the invite card — once we know who you are, the question stops
   // being "have an invite?" and becomes "which table?".
   const identity = $derived($session?.principal.role === "identified" ? $session.principal : null);
+
+  // A bare code claims the seat from this page, so it needs a name to
+  // put on it — unless Discord already supplied one. A pasted LINK
+  // doesn't: it hands off to the Join page, which has its own name
+  // field. Without this the manual path would post an empty name and
+  // take a 400 the user could do nothing about.
+  const needsName = $derived(!identity && invite.trim() !== "" && inviteHash(invite.trim()) === "");
 
   async function submit(e: SubmitEvent): Promise<void> {
     e.preventDefault();
@@ -84,8 +92,12 @@
 
     joining = true;
     try {
-      const s = await joinByCode(raw);
-      navigate(`#/games/${s.gameID}`);
+      await joinByCode(raw, joinName.trim());
+      // Lobby first, exactly like the invite-link flow: that is where
+      // a player imports a deck and sees the other seats before the
+      // table itself (s085 / #43). Going straight to the game route
+      // would skip the deck upload.
+      navigate("#/lobby");
     } catch (err) {
       error = err instanceof LobbyApiError ? err.message : "could not join with that code";
     } finally {
@@ -129,17 +141,32 @@
             Signed in as {identity.name ?? "your Discord account"}.
           </p>
         {/if}
-        <form class="frow" onsubmit={submitInvite}>
-          <input
-            class="mono"
-            type="text"
-            placeholder="invite code or link"
-            aria-label="invite code or link"
-            bind:value={invite}
-          />
-          <button type="submit" class="primary lg" disabled={joining || !invite.trim()}>
-            {joining ? "…" : "join"} <Icon name="chevronRight" size={14} />
-          </button>
+        <form class="fcol" onsubmit={submitInvite}>
+          <div class="frow">
+            <input
+              class="mono"
+              type="text"
+              placeholder="invite code or link"
+              aria-label="invite code or link"
+              bind:value={invite}
+            />
+            <button
+              type="submit"
+              class="primary lg"
+              disabled={joining || !invite.trim() || (needsName && !joinName.trim())}
+            >
+              {joining ? "…" : "join"}
+              <Icon name="chevronRight" size={14} />
+            </button>
+          </div>
+          {#if needsName}
+            <input
+              type="text"
+              placeholder="your name"
+              aria-label="your name"
+              bind:value={joinName}
+            />
+          {/if}
         </form>
         <p class="help">
           Paste the code from your pod's invite, or the whole link — both work. A spectator link
@@ -321,6 +348,23 @@
   .frow {
     display: flex;
     gap: 8px;
+  }
+  /* The invite card stacks: the code row, then the name field that
+     appears only for a bare code. A pasted link hands off to the Join
+     page, which asks for the name itself. */
+  .fcol {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  /* Direct child only — the code input lives inside .frow and is
+     already styled by the rule below it. */
+  .fcol > input {
+    margin: 0;
+    height: 40px;
+    padding: 0 12px;
+    box-sizing: border-box;
+    font-size: 13.5px;
   }
   .frow input {
     flex: 1;
