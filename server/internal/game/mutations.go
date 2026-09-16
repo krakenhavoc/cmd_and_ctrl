@@ -1540,7 +1540,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 			Source: top.InstanceID,
 			CardID: top.InstanceID,
 		})
-		// A COPY has no way out of the stack at all: CR 706.10 says
+		// A COPY has no way out of the stack at all: CR 707.10 says
 		// it is not a card, so "countered by game rules" leaves it
 		// nowhere to go. Checked BEFORE the flashback branch below
 		// because a copy of a flashed-back spell is still not a card
@@ -1565,7 +1565,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// spells fire their effect here. Errors emit EventEffectError
 	// via fireEffectResolverLocked and do not wedge resolution.
 	g.fireEffectResolverLocked(item, CatalogKey(top), top.InstanceID)
-	// CR 707.10: a resolving copy of a PERMANENT spell becomes a
+	// CR 608.3f / 707.10f: a resolving copy of a PERMANENT spell becomes a
 	// token. This engine has no token-from-stack-item path, and
 	// letting the copy fall through to the battlefield branch below
 	// would be worse than doing nothing — it would put a second
@@ -1573,13 +1573,13 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// play, which a bounce spell then duplicates into a hand. Every
 	// S30 copy card targets an instant or sorcery, so this is
 	// unreachable today; it is written out because it is where the
-	// token rule lands.
+	// token rule lands (#666).
 	if item.IsCopy && top.IsPermanent() {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Actor:    item.Controller,
 			CardID:   top.InstanceID,
-			ErrorMsg: "copying a permanent spell is not implemented (CR 707.10 token)",
+			ErrorMsg: "copying a permanent spell is not implemented (CR 608.3f token)",
 		})
 		g.ceaseToExistLocked(top.InstanceID)
 		return nil
@@ -1665,7 +1665,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 			}
 		}
 		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
-		// CR 706.2: a permanent entering as a copy is that copy from
+		// CR 707.2: a permanent entering as a copy is that copy from
 		// the moment it enters, so the values land before the counters
 		// (Spark Double's extra +1/+1 goes on the copy) and before any
 		// event fires. `moved` is re-taken because it is a pre-copy
@@ -1703,7 +1703,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 		g.queueAltCostEntryTriggerLocked(moved, item)
 		return nil
 	}
-	// CR 706.10 — a COPY is not a card, so it has no graveyard to go
+	// CR 707.10 — a COPY is not a card, so it has no graveyard to go
 	// to and no flashback exile to be caught by either. It ceases to
 	// exist, having already run its effect above. See spell_copy.go
 	// for why this branch is load-bearing rather than cosmetic.
@@ -4319,7 +4319,7 @@ func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 			// shadow, …) restrict which creatures can be declared
 			// as blockers. CanBlock is the single helper that
 			// consolidates all current S18 evasion rules; future
-			// keywords (protection in S24, etc.) land there.
+			// keywords (protection, #662) land there.
 			if !CanBlock(attacker, blocker) {
 				return ErrIllegalBlock
 			}

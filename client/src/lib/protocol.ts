@@ -636,7 +636,7 @@ export interface StackItemView {
   // for anyone deciding whether to respond: an overloaded Cyclonic
   // Rift is a one-sided wipe, a hard-cast one is a single bounce.
   alt_cost?: string;
-  // S30: a CR 706.10 spell copy rather than a cast card. The copy
+  // S30: a CR 707.10 spell copy rather than a cast card. The copy
   // and its source look identical on the stack, and which is which
   // decides what countering one leaves behind.
   is_copy?: boolean;
