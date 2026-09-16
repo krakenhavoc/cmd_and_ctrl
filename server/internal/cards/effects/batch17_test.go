@@ -272,6 +272,49 @@ func TestB17BattleOfBywaterKillsBigCreaturesAndFeedsTheRest(t *testing.T) {
 	}
 }
 
+// A commander of yours with power 3 or more is destroyed by The Battle
+// of Bywater, so it is not a creature you control when the Foods are
+// counted. The engine keeps it on the battlefield until its owner
+// answers the CR 903.9 prompt, which happens after the Foods are
+// made, so a plain board count would pay for it.
+func TestB17BattleOfBywaterDoesNotFeedADestroyedCommander(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		commandZone bool
+	}{{"to the command zone", true}, {"to the graveyard", false}} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[0]
+			commander := b36Commander(g, me.ID, "My Commander") // a 3/3
+			hobbit := b16Creature(g, me.ID, "Hobbit", "Creature — Halfling", 1, 1, "W")
+
+			castCatalogSpell(t, g, "The Battle of Bywater", "Sorcery", b17BattleOfBywaterOracle, nil)
+			passPriorityAroundTable(t, g)
+			if !g.Battlefield.Contains(hobbit) {
+				t.Fatal("the Hobbit is too small to be destroyed")
+			}
+			if n := len(battlefieldIDsNamed(g, "Food")); n != 1 {
+				t.Errorf("only the Hobbit is still a creature you control: %d Foods, want 1", n)
+			}
+
+			if tc.commandZone {
+				b36AcceptCommandZone(t, g, me.ID)
+				if !me.Command.Contains(commander) {
+					t.Error("the commander goes to the command zone")
+				}
+			} else {
+				b21DeclineCommandZone(t, g, me.ID)
+				if !me.Graveyard.Contains(commander) {
+					t.Error("the commander goes to the graveyard")
+				}
+			}
+			if n := len(battlefieldIDsNamed(g, "Food")); n != 1 {
+				t.Errorf("after the CR 903.9 answer: %d Foods, want 1", n)
+			}
+		})
+	}
+}
+
 // The Battle of Bywater destroys its creatures at the same time
 // (CR 700.4), so a Zulaport Cutthroat big enough to be swept triggers
 // for every creature its controller lost, itself included. Zulaport is

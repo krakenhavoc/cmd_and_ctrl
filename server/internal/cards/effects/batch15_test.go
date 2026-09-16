@@ -867,6 +867,48 @@ func TestB15BloodMoneyPaysATappedTreasurePerNontokenCreatureDestroyed(t *testing
 	}
 }
 
+// A commander caught in Blood Money was destroyed and pays a Treasure
+// (CR 903.9 replaces the zone change, not the destruction). The
+// engine keeps it on the battlefield until its owner answers the
+// command-zone prompt, which happens after the Treasures are made, so
+// the count cannot be read off the board. The answer must not change
+// it either way.
+func TestB15BloodMoneyPaysForACommanderCaughtInTheWipe(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		commandZone bool
+	}{{"to the command zone", true}, {"to the graveyard", false}} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[0]
+			seedCreature(g, "My Bear", me.ID)
+			commander := b36Commander(g, me.ID, "My Commander")
+			g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, RedGoblinToken(), 1) })
+
+			castCatalogSpell(t, g, "Blood Money", "Sorcery", b15BloodMoneyOracle, nil)
+			passPriorityAroundTable(t, g)
+			if n := len(battlefieldIDsNamed(g, "Treasure")); n != 2 {
+				t.Errorf("the Bear and the commander are nontoken creatures destroyed: %d Treasures, want 2", n)
+			}
+
+			if tc.commandZone {
+				b36AcceptCommandZone(t, g, me.ID)
+				if !me.Command.Contains(commander) {
+					t.Error("the commander goes to the command zone")
+				}
+			} else {
+				b21DeclineCommandZone(t, g, me.ID)
+				if !me.Graveyard.Contains(commander) {
+					t.Error("the commander goes to the graveyard")
+				}
+			}
+			if n := len(battlefieldIDsNamed(g, "Treasure")); n != 2 {
+				t.Errorf("after the CR 903.9 answer: %d Treasures, want 2", n)
+			}
+		})
+	}
+}
+
 // Blood Money destroys every creature at the same time (CR 700.4), so
 // a Zulaport Cutthroat caught in the wipe triggers for every creature
 // its controller lost, itself included. Zulaport is pushed first, the

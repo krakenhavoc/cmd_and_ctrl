@@ -17,20 +17,28 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The batched sweep. DestroyAllMatching destroys the big creatures as
 // one simultaneous event (CR 700.4), so a "whenever another creature
 // dies" watcher caught in the wipe sees every death, and it leaves
-// indestructible creatures on the battlefield (#446 / #470). No Then
-// clause is needed: the Food count reads the board after the sweep,
-// so an indestructible survivor of yours counts there like any other
-// creature you control.
+// indestructible creatures on the battlefield (#446 / #470), where
+// one of yours counts for a Food like any other creature you control.
+//
+// The Food count cannot simply read the board after the sweep. A
+// commander of yours with power 3 or more is destroyed, but CR 903.9
+// queues its owner's command-zone prompt and the card stays on the
+// battlefield until they answer, which is after the Foods are made.
+// So the Then clause leaves out every swept card that is still on
+// the battlefield: it was destroyed and is not a creature you
+// control any more, whichever zone its owner picks.
 func init() {
 	Register(Spec{
 		OracleID:     "a94c191d-a938-458e-bc1b-2f44fd8873a3",
 		Name:         "The Battle of Bywater",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (DestroyAllMatching{Match: And(Creature(), PowerGE(3))}).Apply(ctx); err != nil {
-				return err
-			}
-			return b17FoodPerCreatureYouControl(ctx)
+			return DestroyAllMatching{
+				Match: And(Creature(), PowerGE(3)),
+				Then: func(ctx *Context, swept []game.Card, _ int) error {
+					return b17FoodPerCreatureYouControl(ctx, swept)
+				},
+			}.Apply(ctx)
 		},
 	})
 }
