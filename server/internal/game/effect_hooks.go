@@ -51,7 +51,13 @@ func CatalogKeyForFace(oracleID string, face int) string {
 	return oracleID + "#" + strconv.Itoa(face)
 }
 
-// effect_hooks.go holds the function-variable slots that the S14
+// effect_hooks.go holds the per-slot function variables the engine
+// reads the catalog through. Since #622 the catalog sets none of them:
+// carddef.go gives each a default that reads its slot off the one
+// precomputed CardDef, and they remain as per-slot test seams. The
+// history below is kept for the shape of the boundary.
+//
+// Originally: the function-variable slots that the S14
 // card-effect catalog populates from its own init() block. The
 // game package can't directly import server/internal/cards/effects
 // (effects needs to reach into *Game for mutations, so that
@@ -449,7 +455,7 @@ func (g *Game) fireEffectResolverLocked(item *StackItem, oracleID string, cardID
 //
 // The loyalty stamp runs FIRST and runs unconditionally — before
 // the oracle-ID / nil-hook guards below. Issue #274: it used to
-// live inside the catalog's hook (effects.fireAsEnters), so it was
+// live inside the catalog's hook (the catalog's as-enters wrapper), so it was
 // skipped for any card the catalog didn't know, and the CR 704.5i
 // SBA then swept the 0-loyalty planeswalker into the graveyard on
 // the next priority-grant boundary.
