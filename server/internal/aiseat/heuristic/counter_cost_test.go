@@ -123,3 +123,37 @@ func TestCounterKindsArePricedInTheEvaluationsUnits(t *testing.T) {
 		t.Errorf("removing a -1/-1 counter (%.2f) should be worth more than a free activation (%.2f)", val[2], val[3])
 	}
 }
+
+// The +1/+1 cliff (CR 704.5f): a counter holding up a creature's last
+// point of toughness costs the whole creature, not a point of stats. A
+// printed 3/0 with one +1/+1 counter (shown as a 4/1) dies when Fain,
+// the Broker spends that counter — the engine agrees since
+// Card.LostLastCounter — so its price is its power too. The same
+// removal from a creature with toughness to spare is the ordinary stats
+// price, and ranks above the one that kills. (A 1/1 would not show the
+// cliff: its whole value IS one point of each stat.)
+func TestPlusOneCounterHoldingTheLastToughnessCostsTheCreature(t *testing.T) {
+	striker := creature(cardID(2), 0, "Zero Toughness Striker", 4, 1)
+	striker.Counters = map[string]int{"+1/+1": 1}
+	big := creature(cardID(3), 0, "Big Hydra", 4, 4)
+	big.Counters = map[string]int{"+1/+1": 4}
+	broker := creature(cardID(1), 0, "Broker", 3, 3)
+	v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)},
+		withBattlefield(broker, striker, big, land(cardID(10), 0)))
+	const kill, spare = "Broker: spend the striker's last counter", "Broker: spend a counter off the 4/4"
+	in := input(0, v,
+		passMove(0),
+		activateMove(t, 0, cardID(1), kill, counterCost(cardID(2), "+1/+1", 1)),
+		activateMove(t, 0, cardID(1), spare, counterCost(cardID(3), "+1/+1", 1)),
+	)
+	val := map[int]float64{}
+	for _, c := range heuristic.New().Rank(context.Background(), in) {
+		val[c.Index] = c.Value
+	}
+	if !(val[1] < val[2]) {
+		t.Errorf("spending the counter that keeps a creature alive (%.2f) is priced no worse than spending a spare one (%.2f)", val[1], val[2])
+	}
+	if got := chose(t, in, decide(t, heuristic.New(), in)); got == kill {
+		t.Error("the bot killed its own creature to pay, with a spare counter on offer")
+	}
+}
