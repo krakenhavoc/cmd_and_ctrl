@@ -18,16 +18,54 @@
   // across the table" rather than a straight gunfire line. Attacks
   // get a warm red; blocks get a cool blue. A small triangle marker
   // is placed at the target end so the direction is unambiguous.
+  //
+  // #187 / ADR 0053: combat damage beats. When a combat had a
+  // first-strike step, the log tags each combat damage entry with the
+  // step that dealt it, and this overlay cues the two steps one after
+  // the other: a pulse on each live arrow the beat's damage travelled
+  // along, a fading ghost arrow from cached geometry where an endpoint
+  // has already left the battlefield, and a text cue ("First strike",
+  // "Regular damage") that is real text in a live region. All the
+  // rules — which entries are new, beat membership, the pause, live vs
+  // ghost — live in lib/combatBeats.ts and are unit-tested there; this
+  // file only measures, draws and renders. Cues are overlays: the board
+  // already shows the frame's end state and input stays live under
+  // them (pointer-events: none throughout).
 
+  import { onDestroy, untrack } from "svelte";
+  import { get } from "svelte/store";
   import type { CardView, GameView } from "../../protocol";
   import { gsap } from "gsap";
+  import { settings } from "../../settings";
+  import {
+    BeatSequencer,
+    arrowRender,
+    beatMode,
+    cueAnchor,
+    cueDetail,
+    emptyBeatTracker,
+    ghostGeometry,
+    keepArrowCache,
+    midpointOffset,
+    planFrame,
+    type ArrowGeometry,
+    type BeatTag,
+    type CachedArrow,
+    type Point,
+    type ScheduledCue,
+  } from "../../combatBeats";
 
   interface Props {
     view: GameView;
     boardEl: HTMLElement | null;
+    // Changing this asks the beat tracker to prime again on the next
+    // frame, as on a first frame: Game.svelte changes it across a
+    // reconnect and a replay toggle, where the board stays mounted but
+    // the frames in between were never watched live.
+    beatsPrimeKey?: string;
   }
 
-  const { view, boardEl }: Props = $props();
+  const { view, boardEl, beatsPrimeKey = "" }: Props = $props();
 
   type Pair =
     | { kind: "attack"; id: string; fromCardID: string; toSeatID: string }
@@ -102,31 +140,6 @@
 
   let arrows = $state<ArrowGeo[]>([]);
 
-  function midpointOffset(
-    x1: number,
-    y1: number,
-    x2: number,
-    y2: number,
-  ): { cx: number; cy: number } {
-    // Curve bows perpendicular to the chord by ~20% of the chord
-    // length, biased upward so attack arcs don't dive through the
-    // hand fan when both endpoints are near the bottom of the board.
-    const mx = (x1 + x2) / 2;
-    const my = (y1 + y2) / 2;
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const len = Math.hypot(dx, dy) || 1;
-    const nx = -dy / len;
-    const ny = dx / len;
-    const bow = len * 0.18;
-    // Always bow upward (negative Y on screen). The sign of nx*ny
-    // depends on chord direction; we just compare and pick the
-    // candidate with the smaller Y.
-    const candA = { cx: mx + nx * bow, cy: my + ny * bow };
-    const candB = { cx: mx - nx * bow, cy: my - ny * bow };
-    return candA.cy < candB.cy ? candA : candB;
-  }
-
   function rectIn(boardRect: DOMRect, sel: string): { x: number; y: number } | null {
     if (!boardEl) return null;
     const el = boardEl.querySelector(sel) as HTMLElement | null;
@@ -174,7 +187,7 @@
       }
       if (!to) continue;
       const ctrl = midpointOffset(from.x, from.y, to.x, to.y);
-      next.push({
+      const geo: ArrowGeo = {
         id: p.id,
         kind: p.kind,
         x1: from.x,
@@ -183,9 +196,214 @@
         y2: to.y,
         cx: ctrl.cx,
         cy: ctrl.cy,
-      });
+      };
+      next.push(geo);
+      // ADR 0053: keep the last measured geometry of every combat
+      // arrow, so a beat can still draw it after an endpoint has left.
+      if (p.kind === "attack" || p.kind === "block") {
+        geoCache.set(p.id, {
+          kind: p.kind,
+          fromCardID: p.fromCardID,
+          toSeatID: p.kind === "attack" ? p.toSeatID : undefined,
+          toCardID: p.kind === "block" ? p.toCardID : undefined,
+          geo: { x1: geo.x1, y1: geo.y1, x2: geo.x2, y2: geo.y2, cx: geo.cx, cy: geo.cy },
+          board: { w: boardRect.width, h: boardRect.height },
+        });
+      }
     }
     arrows = next;
+  }
+
+  // ---- Combat damage beats (#187, ADR 0053) ----
+
+  // geoCache is each attack / block arrow's last measured geometry,
+  // keyed by arrow ID. Deliberately not reactive: nothing renders from
+  // it directly. Kept through combat and until the last scheduled cue
+  // has played (keepArrowCache), cleared on prime.
+  const geoCache = new Map<string, CachedArrow>();
+
+  // One pulse (on a live arrow) or ghost (from cached geometry). Each
+  // removes itself when its tween completes.
+  interface BeatEffect {
+    key: string;
+    style: "pulse" | "ghost";
+    kind: "attack" | "block";
+    geo: ArrowGeometry;
+    durationMs: number;
+  }
+  let effects = $state<BeatEffect[]>([]);
+  let effectCounter = 0;
+
+  // One text cue per combat_damage step, positioned next to the
+  // damage it describes. Lines join as beats are cued.
+  interface CueBox {
+    stepSeq: number;
+    x: number;
+    y: number;
+    lines: { tag: BeatTag; label: string; detail: string }[];
+  }
+  let cueBoxes = $state<CueBox[]>([]);
+
+  let tracker = emptyBeatTracker();
+  let reprimeNext = false;
+
+  const sequencer = new BeatSequencer({
+    onCue: playCue,
+    onHide: (stepSeq) => {
+      cueBoxes = cueBoxes.filter((b) => b.stepSeq !== stepSeq);
+    },
+  });
+  onDestroy(() => sequencer.dispose());
+
+  function dropCacheIfDone(): void {
+    if (!keepArrowCache(view.turn?.step, sequencer.pending)) geoCache.clear();
+  }
+
+  // measure is an endpoint's board-relative centre, or null when it is
+  // not mounted. A card counts only while it is on the battlefield: a
+  // dead creature's instance can still be drawn in a graveyard pile,
+  // and a ghost must not point there.
+  function measure(boardRect: DOMRect, cardID?: string, seatID?: string): Point | null {
+    if (seatID) return rectIn(boardRect, `[data-seat-id="${cssEscape(seatID)}"]`);
+    if (!cardID || !view.battlefield.cards.some((c) => c.instance_id === cardID)) return null;
+    return rectIn(boardRect, `[data-instance-id="${cssEscape(cardID)}"]`);
+  }
+
+  function playCue(cue: ScheduledCue): void {
+    if (!boardEl) return;
+    // Measure now: the frame that carried the beat has rendered, so
+    // the live set is the end state's, not the previous frame's.
+    recomputeArrows();
+    const boardRect = boardEl.getBoundingClientRect();
+    const board = { w: boardRect.width, h: boardRect.height };
+    const live = new Map(arrows.map((a) => [a.id, a]));
+
+    const drawn: {
+      id: string;
+      style: "pulse" | "ghost";
+      kind: "attack" | "block";
+      geo: ArrowGeometry;
+    }[] = [];
+    for (const id of cue.arrowIDs) {
+      const render = arrowRender(id, live, geoCache);
+      if (render === "live") {
+        const a = live.get(id)!;
+        if (a.kind === "attack" || a.kind === "block")
+          drawn.push({ id, style: "pulse", kind: a.kind, geo: a });
+      } else if (render === "ghost") {
+        const c = geoCache.get(id)!;
+        const geo = ghostGeometry(
+          c,
+          board,
+          measure(boardRect, c.fromCardID),
+          measure(boardRect, c.toCardID, c.toSeatID),
+        );
+        // Null: the board changed size, so the cached point is a guess.
+        // The text cue carries the beat.
+        if (geo) drawn.push({ id, style: "ghost", kind: c.kind, geo });
+      }
+    }
+
+    // Motion is decided again at cue time, so turning reduce-motion on
+    // mid-sequence starts no further tween.
+    const s = get(settings);
+    const motion =
+      cue.motion &&
+      beatMode(s.animations.enabled, s.animations.damagePopups, s.accessibility.reduceMotion) ===
+        "full";
+    if (motion && drawn.length > 0) {
+      effects = [
+        ...effects,
+        ...drawn.map((d) => ({
+          key: `${cue.stepSeq}-${cue.tag}-${d.id}-${effectCounter++}`,
+          style: d.style,
+          kind: d.kind,
+          geo: d.geo,
+          durationMs: cue.effectMs,
+        })),
+      ];
+    }
+
+    if (cue.label !== null) {
+      const line = { tag: cue.tag, label: cue.label, detail: cueDetail(cue) };
+      const existing = cueBoxes.find((b) => b.stepSeq === cue.stepSeq);
+      if (existing) {
+        cueBoxes = cueBoxes.map((b) =>
+          b.stepSeq === cue.stepSeq
+            ? { ...b, lines: [...b.lines.filter((l) => l.tag !== cue.tag), line] }
+            : b,
+        );
+      } else {
+        const at = cueAnchor(
+          drawn.map((d) => d.geo),
+          board,
+        );
+        cueBoxes = [...cueBoxes, { stepSeq: cue.stepSeq, x: at.x, y: at.y, lines: [line] }];
+      }
+    }
+    dropCacheIfDone();
+  }
+
+  // A prime-key change (reconnect, replay toggle) primes the next
+  // frame. Declared before the frame effect so a key and a view that
+  // change together prime on that same frame.
+  $effect(() => {
+    void beatsPrimeKey;
+    untrack(() => {
+      reprimeNext = true;
+    });
+  });
+
+  // Plan each frame's beats. Only `view` is tracked: settings are read
+  // at plan time, and nothing a later frame does cancels a cue.
+  $effect(() => {
+    const log = view.log;
+    untrack(() => {
+      const s = get(settings);
+      const plan = planFrame(tracker, log, {
+        mode: beatMode(
+          s.animations.enabled,
+          s.animations.damagePopups,
+          s.accessibility.reduceMotion,
+        ),
+        speed: s.animations.speed,
+        reprime: reprimeNext,
+      });
+      reprimeNext = false;
+      tracker = plan.tracker;
+      if (plan.primed) geoCache.clear();
+      sequencer.play(plan.cues);
+      dropCacheIfDone();
+    });
+  });
+
+  // beatEffect runs one pulse or ghost: in and out within its beat,
+  // then removes itself. Only ever mounted in "full" mode.
+  function beatEffect(node: SVGPathElement, effect: BeatEffect) {
+    const peak = effect.style === "pulse" ? 0.85 : 0.5;
+    const tween = gsap.fromTo(
+      node,
+      { opacity: 0 },
+      {
+        opacity: peak,
+        duration: effect.durationMs / 2000,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: 1,
+        onComplete: () => {
+          effects = effects.filter((e) => e.key !== effect.key);
+        },
+      },
+    );
+    return {
+      destroy() {
+        tween.kill();
+      },
+    };
+  }
+
+  function arcPath(g: ArrowGeometry): string {
+    return `M ${g.x1} ${g.y1} Q ${g.cx} ${g.cy} ${g.x2} ${g.y2}`;
   }
 
   // CSS.escape is the spec-correct selector escape but isn't typed on
@@ -247,7 +465,7 @@
   }
 </script>
 
-{#if arrows.length > 0}
+{#if arrows.length > 0 || effects.length > 0}
   <svg class="arrows" aria-hidden="true">
     <defs>
       <marker
@@ -292,8 +510,37 @@
         use:drawOn
       />
     {/each}
+    <!-- ADR 0053 beat effects. A pulse is a wide soft stroke over a
+         live arrow. A ghost is its own style — thin, dashed, no glow,
+         no arrowhead — so it never reads as a live arrow, and it fades
+         out within its beat. -->
+    {#each effects as e (e.key)}
+      <path
+        d={arcPath(e.geo)}
+        class="beat-{e.style} {e.kind}"
+        style="opacity: 0"
+        use:beatEffect={e}
+      />
+    {/each}
   </svg>
 {/if}
+
+<!-- The combat damage beat cue: real text, so it is in the
+     accessibility tree (the SVG above is aria-hidden). The live region
+     is always mounted, empty between beats, so a screen reader
+     announces each cue as it joins. Shown in both modes; only the
+     arrow effects are motion. -->
+<div class="beat-cues" role="status" aria-live="polite">
+  {#each cueBoxes as box (box.stepSeq)}
+    <div class="beat-cue" style:left="{box.x}px" style:top="{box.y}px">
+      {#each box.lines as line (line.tag)}
+        <span class="beat-line {line.tag}"
+          >{line.label}<span class="sr-only">: {line.detail}</span></span
+        >
+      {/each}
+    </div>
+  {/each}
+</div>
 
 <style>
   .arrows {
@@ -326,5 +573,62 @@
   path.stack-target-card {
     stroke: #ffd07a;
     stroke-dasharray: 6 4;
+  }
+  /* ADR 0053 beat effects. Opacity is driven by the tween. */
+  path.beat-pulse {
+    stroke-width: 9;
+    filter: blur(2px);
+  }
+  path.beat-ghost {
+    stroke-width: 2;
+    stroke-dasharray: 3 7;
+    filter: none;
+  }
+  .beat-cues {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 36;
+    overflow: hidden;
+  }
+  .beat-cue {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .beat-line {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 700;
+    white-space: nowrap;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    box-shadow: var(--shadow-lg);
+    color: var(--fg);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+  .beat-line.first_strike {
+    border-color: rgba(217, 180, 92, 0.7);
+    color: var(--gold-strong);
+  }
+  .beat-line.regular {
+    border-color: rgba(255, 122, 122, 0.6);
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 </style>
