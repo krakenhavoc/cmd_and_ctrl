@@ -1328,7 +1328,13 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// printed cost and is layered BEFORE the commander tax for the
 	// same reason the alternative cost is: CR 903.8 taxes whatever
 	// cost is actually being paid.
-	if ov := card.ExilePlay.CostOverride; ov != "" && card.ExilePlay.Active(p.ID, g.Turn.Number) {
+	//
+	// The grant prices a cast out of EXILE and nothing else. MoveCard
+	// clears it when the card leaves exile (CR 400.7); this check is
+	// the second half, so a grant still sitting on a card can't
+	// reprice a cast from any other zone.
+	fromExile := params.FromZone == string(ZoneExile)
+	if ov := card.ExilePlay.CostOverride; ov != "" && fromExile && card.ExilePlay.Active(p.ID, g.Turn.Number) {
 		costString = ov
 	}
 	cost, err := ParseCost(costString)
@@ -1343,7 +1349,7 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// color to cast those spells" (Breeches, Brazen Plunderer). Folds
 	// the colored slots into the generic demand, which is exactly
 	// equivalent for the solver.
-	if card.ExilePlay.AnyColor && card.ExilePlay.Active(p.ID, g.Turn.Number) {
+	if card.ExilePlay.AnyColor && fromExile && card.ExilePlay.Active(p.ID, g.Turn.Number) {
 		cost = asAnyColorCost(cost)
 	}
 	return cost, nil
