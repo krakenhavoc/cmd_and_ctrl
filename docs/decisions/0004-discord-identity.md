@@ -141,6 +141,16 @@ should be considered on the next incident rotation.
 
 ## Operator runbook
 
+> **Production provisioning has moved to CD.** "First deploy" and
+> "Rotating tokens" below describe the original hand-installed setup
+> and are out of date, except step 2's guild scope, which still
+> stands. CD now installs the unit and writes
+> `/etc/cmd_and_ctrl/bot.env` (`root:cmdctrl-bot 0640`) from Actions
+> secrets and variables, so do not hand-edit it, and rotate the bot
+> token by updating the Actions secret. The current host steps are in
+> [deploy/README.md](../../deploy/README.md#discord-bot-production-only).
+> Correcting §6 and this runbook is tracked in #615 and #251.
+
 ### Env vars
 
 The game server reads the existing OAuth trio (see S12.5 OAuth

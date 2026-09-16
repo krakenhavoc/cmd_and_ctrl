@@ -208,8 +208,9 @@ jobs:
       # and develop, and if that ever loosens, an unrecognised ref comes
       # up as a dev preview rather than as production.
       APP_ENV: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
-      # Gates the two Discord bot steps. Nothing else branches on it;
-      # see "Deploy bot binary" for why those two are the exception.
+      # Gates the Discord bot steps (binary, unit, bot.env, restart).
+      # Nothing else branches on it; see "Deploy bot binary" for why
+      # the bot is the exception.
       IS_DEV: ${{ github.ref != 'refs/heads/main' }}
 
       SSH_OPTS: -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10
@@ -222,6 +223,10 @@ jobs:
       DEPLOY_ROOT: /opt/cmd_and_ctrl
       WEB_ROOT: /var/www/cmdctrl-client
       ENV_FILE: /etc/cmd_and_ctrl/env
+      # Production only. The bot's own env file, root:cmdctrl-bot 0640,
+      # read by cmd-and-ctrl-bot.service (EnvironmentFile=). Written by
+      # "Sync bot env"; never exists on the preview.
+      BOT_ENV_FILE: /etc/cmd_and_ctrl/bot.env
       SERVICE: cmd-and-ctrl
       # Loopback port the service binds (CMDCTRL_ADDR in its env file).
       # Used only by the post-deploy environment check below.
@@ -314,20 +319,60 @@ jobs:
             server/bin/cmd_and_ctrl-server \
             krkn@${CMDCTRL_HOST}:${DEPLOY_ROOT}/server/bin/
 
-      # Production only, on purpose -- this and the bot restart below
-      # are the only genuinely prod-only steps in this job. A second bot
-      # process logged into the same Discord application answers every
-      # slash command twice, so the develop deployment never ships or
-      # restarts the bot. Slash commands are tested against production
-      # or a private test guild. See ADR 0023 sec. 6.
+      # Production only, on purpose -- this, "Install bot systemd unit",
+      # "Sync bot env" and the bot restart below are the only genuinely
+      # prod-only steps in this job. A second bot process logged into the
+      # same Discord application answers every slash command twice, so the
+      # develop deployment never ships, configures or restarts the bot.
+      # Slash commands are tested against production or a private test
+      # guild. See ADR 0023 sec. 6.
+      #
+      # The directory is created here rather than by cloud-init: rsync
+      # creates only the last path component, and the running VM carries
+      # ignore_changes on its cloud-init, so a template change would never
+      # reach it. krkn owns ${DEPLOY_ROOT}, so no sudo. With the directory
+      # guaranteed, any rsync or ssh failure is real and fails the job.
       - name: Deploy bot binary
         if: env.IS_DEV != 'true'
         run: |
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} "mkdir -p ${DEPLOY_ROOT}/bot/bin"
           rsync -a -e "ssh ${SSH_OPTS}" \
             server/bin/cmd_and_ctrl-bot \
-            krkn@${CMDCTRL_HOST}:${DEPLOY_ROOT}/bot/bin/ || {
-              echo "::warning::Bot deploy skipped — ${DEPLOY_ROOT}/bot/bin/ may not exist yet. Create it on the host before the bot rolls out."
-            }
+            krkn@${CMDCTRL_HOST}:${DEPLOY_ROOT}/bot/bin/
+
+      # Production only -- see "Deploy bot binary". Installs the unit from
+      # this repo so a change to deploy/cmd-and-ctrl-bot.service reaches the
+      # host without anyone copying it by hand.
+      #
+      # Installs and daemon-reloads only when the content, owner or mode
+      # differ; a missing unit counts as different. It does NOT enable the
+      # unit. Enabling is the operator's deliberate switch (see
+      # deploy/README.md; needed again after every rebuild of production),
+      # and "Restart cmd-and-ctrl-bot service (if enabled)" keys on it --
+      # so an unprovisioned host keeps deploying green instead of
+      # crash-looping a bot with no bot.env.
+      - name: Install bot systemd unit
+        if: env.IS_DEV != 'true'
+        run: |
+          rsync -a -e "ssh ${SSH_OPTS}" deploy/cmd-and-ctrl-bot.service \
+            krkn@${CMDCTRL_HOST}:/tmp/cmd-and-ctrl-bot.service.new
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} '
+            set -eu
+            NEW=/tmp/cmd-and-ctrl-bot.service.new
+            UNIT=/etc/systemd/system/cmd-and-ctrl-bot.service
+            trap "rm -f $NEW" EXIT
+            if [ -f "$UNIT" ] && cmp -s "$NEW" "$UNIT" \
+               && [ "$(stat -c "%U:%G %a" "$UNIT")" = "root:root 644" ]; then
+              echo "cmd-and-ctrl-bot.service unchanged."
+            else
+              sudo install -o root -g root -m 0644 "$NEW" "$UNIT"
+              sudo systemctl daemon-reload
+              echo "cmd-and-ctrl-bot.service installed; daemon reloaded."
+            fi
+            if ! systemctl is-enabled cmd-and-ctrl-bot >/dev/null 2>&1; then
+              echo "::notice::cmd-and-ctrl-bot is not enabled. Enabling it is an operator step, needed again after every rebuild of production -- see deploy/README.md."
+            fi
+          '
 
       - name: Deploy client dist
         run: |
@@ -510,14 +555,11 @@ jobs:
       # configure PRODUCTION with the preview's callback and send every
       # production sign-in to the dev box. Unset now warns and skips instead.
       #
-      # The bot's three variables (CMDCTRL_DISCORD_BOT_TOKEN, _APP_ID,
-      # _GUILD_IDS) are deliberately NOT set here. The bot is a separate unit
-      # reading a separate file as a separate user
-      # (EnvironmentFile=/etc/cmd_and_ctrl/bot.env, User=cmdctrl-bot), and none
-      # of that exists yet on either host -- no unit, no bot.env, no
-      # cmdctrl-bot user. Writing them into the server's env file would put
-      # them somewhere the bot never reads. Provisioning the bot is its own
-      # piece of work; see ADR 0004 section on the bot environment.
+      # The bot's variables (CMDCTRL_DISCORD_BOT_TOKEN, _APP_ID, _GUILD_IDS)
+      # are deliberately NOT set here. The bot is a separate unit reading a
+      # separate file as a separate user (EnvironmentFile=${BOT_ENV_FILE},
+      # User=cmdctrl-bot); "Sync bot env" below writes them there, on
+      # production only.
       - name: Sync server env (Discord sign-in)
         env:
           CMDCTRL_DISCORD_CLIENT_ID: ${{ secrets.CMDCTRL_DISCORD_CLIENT_ID }}
@@ -554,6 +596,111 @@ jobs:
             echo "::notice::${missing} of 3 Discord sign-in values unset -- /auth/discord/start will return 503 and the client will hide the sign-in button."
           fi
 
+      # Production only -- see "Deploy bot binary". Provisions the bot's env
+      # file the way the server's is provisioned: Actions is the source of
+      # truth, so rotating the bot token is "update the secret, redeploy".
+      #
+      # Sources: secret CMDCTRL_DISCORD_BOT_TOKEN, variables
+      # CMDCTRL_DISCORD_APP_ID and CMDCTRL_DISCORD_GUILD_IDS (comma-separated
+      # guild snowflakes). server/internal/bot/config.go Validate() also
+      # requires CMDCTRL_ADMIN_TOKEN; that one is not an Actions value. It
+      # is copied on the host from ${ENV_FILE}, where Terraform writes the
+      # server's copy, on every deploy -- so a HomeLab rotation of the admin
+      # token cannot leave the bot holding a stale one. The raw right-hand
+      # side is copied verbatim and both files are parsed by systemd's
+      # EnvironmentFile=, so they mean the same thing. The value moves over
+      # a pipe on the host and never leaves it.
+      #
+      # CMDCTRL_SERVER_BASE_URL and CMDCTRL_CLIENT_BASE_URL are not written:
+      # their defaults (http://127.0.0.1:8080, https://cmd.labxp.io) are
+      # production's values.
+      #
+      # bot.env must be root:cmdctrl-bot 0640. set-server-env.sh preserves an
+      # existing file's owner and mode but creates a missing one root:root,
+      # which the cmdctrl-bot service user could not read. So this step
+      # creates it with the right group and re-asserts owner and mode on
+      # every run before any value is written -- which needs the cmdctrl-bot
+      # group, created by the operator (deploy/README.md) on the running VM
+      # and again after every rebuild, until the HomeLab template creates
+      # it. Without it the step skips with a notice.
+      #
+      # Skips cleanly when the token secret is unset, so main keeps deploying
+      # before the bot is configured. Values travel over stdin, never ssh
+      # argv, exactly as in "Sync server env (Discord sign-in)".
+      #
+      # Deliberately NOT written to ${ENV_FILE}: no server code reads the bot
+      # token yet. ADR 0051 Decision 5's DM invites (#613) will add it there.
+      - name: Sync bot env
+        if: env.IS_DEV != 'true'
+        env:
+          CMDCTRL_DISCORD_BOT_TOKEN: ${{ secrets.CMDCTRL_DISCORD_BOT_TOKEN }}
+          CMDCTRL_DISCORD_APP_ID: ${{ vars.CMDCTRL_DISCORD_APP_ID }}
+          CMDCTRL_DISCORD_GUILD_IDS: ${{ vars.CMDCTRL_DISCORD_GUILD_IDS }}
+        run: |
+          if [ -z "${CMDCTRL_DISCORD_BOT_TOKEN}" ]; then
+            echo "::notice::CMDCTRL_DISCORD_BOT_TOKEN secret not set; skipping bot env sync (the bot stays unconfigured)."
+            exit 0
+          fi
+
+          prepared=$(ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} "
+            set -eu
+            if ! getent group cmdctrl-bot >/dev/null; then
+              echo no-group
+              exit 0
+            fi
+            if [ ! -e ${BOT_ENV_FILE} ]; then
+              sudo install -o root -g cmdctrl-bot -m 0640 /dev/null ${BOT_ENV_FILE}
+            fi
+            sudo chown root:cmdctrl-bot ${BOT_ENV_FILE}
+            sudo chmod 0640 ${BOT_ENV_FILE}
+            echo ready
+          ")
+          if [ "${prepared}" = "no-group" ]; then
+            echo "::notice::cmdctrl-bot group does not exist on ${CMDCTRL_HOST}; skipping bot env sync. Create the cmdctrl-bot system user (deploy/README.md; a rebuilt host needs it again), then redeploy."
+            exit 0
+          fi
+          if [ "${prepared}" != "ready" ]; then
+            echo "::error::Could not prepare ${BOT_ENV_FILE} on ${CMDCTRL_HOST} (got: ${prepared})."
+            exit 1
+          fi
+
+          missing=0
+          for KEY in CMDCTRL_DISCORD_BOT_TOKEN CMDCTRL_DISCORD_APP_ID \
+                     CMDCTRL_DISCORD_GUILD_IDS; do
+            VALUE="${!KEY}"
+            if [ -z "${VALUE}" ]; then
+              echo "::warning::${KEY} is not configured; skipping."
+              missing=$((missing + 1))
+              continue
+            fi
+            printf '%s' "${VALUE}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+              "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh ${KEY} ${BOT_ENV_FILE}"
+            echo "set ${KEY}"
+          done
+
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} "
+            set -eu
+            if sudo grep -q '^CMDCTRL_ADMIN_TOKEN=.' ${ENV_FILE}; then
+              sudo sed -n 's/^CMDCTRL_ADMIN_TOKEN=//p' ${ENV_FILE} | tail -n 1 \
+                | sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh CMDCTRL_ADMIN_TOKEN ${BOT_ENV_FILE}
+              echo 'set CMDCTRL_ADMIN_TOKEN (copied from ${ENV_FILE})'
+            else
+              echo '::warning::CMDCTRL_ADMIN_TOKEN is missing from ${ENV_FILE}; not copied into ${BOT_ENV_FILE}.'
+              exit 3
+            fi
+          " || {
+            rc=$?
+            if [ "${rc}" -eq 3 ]; then
+              missing=$((missing + 1))
+            else
+              exit "${rc}"
+            fi
+          }
+
+          if [ "${missing}" -gt 0 ]; then
+            echo "::notice::${missing} of 4 required bot values unset -- the bot will refuse to start (bot config invalid) until they are."
+          fi
+
       - name: Restart game server service
         run: |
           ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} "sudo systemctl restart ${SERVICE}"
@@ -561,9 +708,15 @@ jobs:
       - name: Restart cmd-and-ctrl-bot service (if enabled)
         # Production only — see "Deploy bot binary" above.
         if: env.IS_DEV != 'true'
-        # Conditional so CI keeps passing before the operator
-        # installs the bot systemd unit for the first time.
-        # Once the unit is enabled, this branch is the steady state.
+        # Conditional so CD keeps passing before the operator enables
+        # the unit for the first time ("Install bot systemd unit"
+        # installs it but never enables it). Once the unit is enabled,
+        # this branch is the steady state.
+        #
+        # `is-active` right after a restart only proves the process
+        # forked (Type=simple): a bot that exits on "bot config invalid"
+        # still prints active here. The real check is journalctl
+        # ("discord session ready") and NRestarts -- see deploy/README.md.
         run: |
           ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} '
             if systemctl is-enabled cmd-and-ctrl-bot >/dev/null 2>&1; then

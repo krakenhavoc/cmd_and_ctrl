@@ -4,14 +4,14 @@
 # to discord.com/api/gateway; needs no inbound ports. Calls back
 # into the game server over loopback for admin-scoped actions.
 #
-# Install:
-#   sudo cp deploy/cmd-and-ctrl-bot.service /etc/systemd/system/
-#   sudo systemctl daemon-reload
-#   sudo systemctl enable --now cmd-and-ctrl-bot
-#
-# The env file must exist at /etc/cmd_and_ctrl/bot.env with mode
-# 0640 and group cmdctrl-bot. See docs/decisions/0004-discord-identity.md
-# for the variable list and rationale for the separate env file.
+# Installed on production only, by CD on every main deploy ("Install
+# bot systemd unit" in .github/workflows/ci-cd.yml), which also writes
+# /etc/cmd_and_ctrl/bot.env (root:cmdctrl-bot 0640). CD never enables
+# the unit; that and creating the cmdctrl-bot user are operator steps
+# in deploy/README.md, needed again after every rebuild of production
+# until the HomeLab template creates the user. See
+# docs/decisions/0004-discord-identity.md for the rationale for the
+# separate env file.
 
 [Unit]
 Description=cmd_and_ctrl Discord bot
