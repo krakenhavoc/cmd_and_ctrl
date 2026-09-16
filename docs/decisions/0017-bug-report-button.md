@@ -360,8 +360,8 @@ and so is every other client- or player-supplied string in the issue.
   `server/internal/util/redact` replace the value (never the key) of
   any `*token` / `*secret` / `*password` / `*ticket` key=value pair,
   the invite and reclaim `?t=` as a query parameter, JSON
-  `"token":"…"` fields, and `Bearer <credential>`; literal and
-  URL-encoded forms both. The value becomes `REDACTED`, so triage
+  `"token":"…"` fields, and `Bearer <credential>`; literal, URL-encoded
+  (`%3D`) and double-encoded (`%253D`) forms. The value becomes `REDACTED`, so triage
   still sees that a token was sent. Keep the two in step.
 - **Client, at the source.** `ws.ts` logs `connectLogLine(url)`, which
   keeps host, path, `game` and `player` and redacts the token.
@@ -371,9 +371,13 @@ and so is every other client- or player-supplied string in the issue.
   added later cannot reintroduce the leak through the report.
 - **Server, for every other client.** `renderBugIssueBody` redacts its
   input (`redactBugIssue`) before rendering and before clipping, so a
-  clip can never cut a key off and leave its value; the handler redacts
-  the issue title and the manifest's client-supplied game ID. An old
-  tab or a curl gets the same treatment as the current client.
+  clip can never cut a key off and leave its value. That input includes
+  every reporter display name the footer can fall back to — seat name,
+  Discord global name, Discord username, all self-chosen — and the
+  rendered name is clipped like the other footer values. The handler
+  also redacts the issue title and the client-supplied game ID written
+  to the bugstore manifest. An old tab or a curl gets the same
+  treatment as the current client.
 
 **What is not redacted, and why.** The pinned replay and game log (§7)
 are server-generated projections of game state: they carry no session
@@ -387,5 +391,8 @@ it. The server never logs a request URL or query string, so
 Guards: `ws.redact.test.ts` drives a real `GameClient` connect and
 fails on any `token=` in the log that is not `REDACTED`;
 `bugreport_redact_test.go` fails if `renderBugIssueBody`, or the whole
-handler, lets a token from the client log, description, context or
-title through.
+handler, lets a token from the client log, description, context,
+reporter name or title through, or into the stored manifest. It seeds
+every string field of the issue, principal, context and log entry by
+reflection, so a field added later is covered unless it is explicitly
+exempted as server-issued.
