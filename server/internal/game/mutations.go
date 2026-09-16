@@ -582,6 +582,19 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		)
 		return err
 	}
+	// CR 118.6: a spell with no mana cost can't be cast by paying
+	// it. Checked once the claimed alternative cost and the exile
+	// grant are both known, because those are the CR 118.6a ways in.
+	// Mode-independent, like the unparseable-cost refusal: there is
+	// no cost to have paid on paper either.
+	if HasNoManaCost(card) && castPaysPrintedCost(alt, exileGrant, hasExileGrant) {
+		slog.Warn("cast_spell rejected: no mana cost to pay",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"from_zone", src.Kind,
+		)
+		return ErrNoManaCost
+	}
 	// S28: the non-mana half of the claimed offer — the Condition
 	// ("if you control a Swamp"), the life payment, and the card
 	// pitched or bounced to pay it. Validated here, next to the claim
@@ -1023,10 +1036,11 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 //
 // The "effective cost" parses the printed ManaCost and adds
 // {2}-per-prior-cast for casts from the command zone (CR 903.8).
-// An EMPTY ManaCost still short-circuits to costless — ParseCost
-// treats "" as the zero cost, matching land behaviour — but an
-// UNPARSEABLE one now rejects the cast outright, before any of
-// the three outcomes above. Caller must hold g.mu.
+// ParseCost treats an EMPTY ManaCost as the zero cost, matching land
+// behaviour. A non-land spell never gets here on an empty cost it is
+// paying: CastSpell refuses that earlier with ErrNoManaCost (CR
+// 118.6). An UNPARSEABLE cost rejects the cast outright, before any
+// of the three outcomes above. Caller must hold g.mu.
 func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams, cardID uuid.UUID) error {
 	cost, err := g.effectiveCostLocked(p, card, params)
 	if err != nil {
