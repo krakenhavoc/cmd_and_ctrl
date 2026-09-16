@@ -167,6 +167,13 @@ func (g *Game) ChangePlayerLifeForEffect(source, playerID uuid.UUID, delta int) 
 // "damage dealt → life changed." SBA check fires via the caller
 // (effects run inside resolveTopOfStackLocked, which pairs with
 // runStateChecks on the surrounding priority boundary).
+//
+// #711: CR 702.15b lifelink applies here. "Damage dealt by a source
+// with lifelink also causes that source's controller to gain that much
+// life" says nothing about combat, so a lifelinker's ping or Chandra's
+// Ignition pays its controller exactly as a swing does. A source that
+// is not a battlefield permanent (a spell, an emblem, uuid.Nil) has no
+// lifelink to read, so Lightning Bolt still just deals 3.
 func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount int) error {
 	if amount <= 0 {
 		return nil
@@ -189,10 +196,14 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 		DamageAmount: amount,
 		// #694: the tail goes on BEFORE the pipeline runs, because a
 		// CR 616 ordering prompt returns below without landing the
-		// damage and the resume has nothing else to go on. No actor,
-		// no lifelink, no commander tally — this path has never
-		// applied them, and the resume must not either.
-		damageTail: &damageTail{kind: damageTailPlayer},
+		// damage and the resume has nothing else to go on.
+		//
+		// #711: it carries the source's CR 702.15b lifelink, read
+		// here rather than when the damage lands, so a prompt
+		// answered after the source has left still credits the life
+		// it dealt. Still no actor and no CR 903.10a commander tally:
+		// those are combat-damage business.
+		damageTail: g.effectDamageTailLocked(damageTailPlayer, source),
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
@@ -242,9 +253,13 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 // Lightning Bolt aimed at a planeswalker incremented a number nothing
 // read — a two-mana no-op that looked like it had worked.
 //
-// Deathtouch is not applied here. This is the non-combat path, it has
-// never applied the CR 702.2c flag, and whether a deathtouch source's
-// direct damage should is a separate question from this one.
+// #711: deathtouch and lifelink ARE applied here. CR 702.2b and
+// CR 702.15b are about the source, not about combat — a fight between
+// a Wurmcoil Engine and anything is lethal and gains eight life, and a
+// Basilisk Collar makes a one-damage ping lethal. The keywords ride
+// the damageTail, so the paused CR 616 path applies them identically;
+// a source that is not a battlefield permanent (a spell, an emblem,
+// uuid.Nil) has neither.
 func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount int) error {
 	if amount <= 0 {
 		return nil
@@ -257,9 +272,12 @@ func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount in
 		DamageAmount: amount,
 		// #694: the tail goes on BEFORE the pipeline runs, because a
 		// CR 616 ordering prompt returns below without landing the
-		// damage and the resume has nothing else to go on. No
-		// deathtouch: see the note above.
-		damageTail: &damageTail{kind: damageTailPermanent},
+		// damage and the resume has nothing else to go on.
+		//
+		// #711: it carries the source's CR 702.2b deathtouch and
+		// CR 702.15b lifelink, snapshotted here so a prompt answered
+		// after the source has died still applies what it dealt with.
+		damageTail: g.effectDamageTailLocked(damageTailPermanent, source),
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
