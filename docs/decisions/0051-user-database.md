@@ -1,6 +1,6 @@
 # ADR 0051 — A persistent user database: people, their games, and their decks
 
-**Status:** Proposed · 2026-09-16 · Sprint S34 (proposed) · Tracking issue [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607)
+**Status:** Accepted · 2026-09-16 · Sprint S34 · Tracking issue [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607)
 **Builds on:** [ADR 0003](0003-auth-and-lobby.md) (roles and the
 `Authenticator` seam), [ADR 0004](0004-discord-identity.md) (Discord
 as the identity source), [ADR 0041](0041-game-persistence.md) and
@@ -299,11 +299,19 @@ variable. Nothing is ever stored in the clear.
 **Direct-message invites** therefore need one more secret on the
 *server*, `CMDCTRL_DISCORD_BOT_TOKEN`, and a plain REST call — open a
 DM channel, post a message — from the same stdlib HTTP client ADR
-0004 already uses for OAuth. The gateway bot binary is not involved
-and is not changed. `POST /games/{id}/invites/dm` takes a target
+0004 already uses for OAuth. The gateway bot binary does not send
+DMs. `POST /games/{id}/invites/dm` takes a target
 `user_id` and requires the caller to be seated in, or the creator of,
 the game. The message carries the ordinary invite link; nothing new
 is minted. Rate-limited per caller like every invite-adjacent route.
+
+**Amended at acceptance (2026-09-16):** the bot *does* gain a
+`/cc-invite-dm @user` slash command (#613), carried over from ADR 0004
+and S12.5 (#59). It is a thin client of this route: it creates the game
+with its existing admin credentials and calls
+`POST /games/{id}/invites/dm`. It never opens a DM from its gateway
+session. There is still exactly one place that builds and sends an
+invite DM, and it is this route.
 
 ## Decision 6 — Revocation comes back, per user
 
@@ -399,7 +407,7 @@ documented in `docs/environments.md` alongside the existing
 
 ## Sub-PRs
 
-Proposed shape, one PR each, in this order:
+One PR each, in this order:
 
 | # | Scope | Depends on |
 |---|---|---|
@@ -407,9 +415,9 @@ Proposed shape, one PR each, in this order:
 | 1 | `internal/db`: open, WAL, migrations runner, `VACUUM INTO` timer; backup lands in HomeLab and is rehearsed | — |
 | 2 | `users` + `identities`; OAuth callback writes them; `Principal.UserID` (coordinated with #517); refresh token encryption | 1, #517 |
 | 3 | `games` / `seats` / `invites` replace `lobby/*.json`; importer; hashed invite lookup | 1 |
-| 4 | `GET /me/games` and a "My games" view; seat linking on first sign-in | 2, 3 |
+| 4 | `GET /me/games` and a "My games" view; seat linking on first sign-in; linking Discord to an already-held seat mid-game (`GET /auth/discord/link`, carried over from S12.5 #59) | 2, 3 |
 | 5 | `decks`: library rows from upload, seat-from-library route, `GET /me/decks` | 2, 3 |
-| 6 | Tablemates query, invite picker, `POST /games/{id}/invites/dm` via bot REST | 4 |
+| 6 | Tablemates query, invite picker, `POST /games/{id}/invites/dm` via bot REST; the `/cc-invite-dm` slash command that calls it (#613) can follow separately | 4 |
 | 7 | `sessions_invalid_before`, logout-everywhere, admin remove-user | 2 |
 
 Sub-PRs 2 and 3 are independent of each other and can run in
