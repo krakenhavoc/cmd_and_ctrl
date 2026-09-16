@@ -18,7 +18,8 @@ package lobby
 //   - the client-side log ring buffer (what the reporter's own browser
 //     saw: actions sent, snapshot seqs, socket drops, JS errors). Safe
 //     to inline in the issue because it is, by construction, only what
-//     that browser already had.
+//     that browser already had — once its credentials are redacted
+//     (redactBugIssue, #721): that browser also had its session token.
 //   - screenshots, stored by bugstore and linked absolutely so
 //     GitHub's image proxy renders them inline.
 //   - a pinned copy of the game's replay JSONL, kept behind admin auth
@@ -50,6 +51,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/redact"
 )
 
 // BugReporter files a bug report as an issue in the project tracker.
@@ -354,7 +356,9 @@ func bugReport(c Config, w http.ResponseWriter, r *http.Request) error {
 		in.GameLog = report.GameLog()
 	}
 
-	url, number, label, err := fileBugIssue(r.Context(), c, bugTitlePrefix+title, renderBugIssueBody(in), kind.Label)
+	// The title is client text published verbatim as the issue title,
+	// so it is redacted like the body (#721).
+	url, number, label, err := fileBugIssue(r.Context(), c, bugTitlePrefix+redact.Secrets(title), renderBugIssueBody(in), kind.Label)
 	if err != nil {
 		report.discard()
 		// 502: the report was well-formed, the upstream filing
@@ -365,7 +369,9 @@ func bugReport(c Config, w http.ResponseWriter, r *http.Request) error {
 	if report != nil {
 		gameID := ""
 		if req.Context != nil {
-			gameID = req.Context.GameID
+			// Client-supplied and written to disk in the manifest:
+			// redacted for the same reason the issue body is (#721).
+			gameID = redact.Secrets(req.Context.GameID)
 		}
 		// A manifest that fails to write costs forensics later, not
 		// the report the user just filed — log-and-continue.
@@ -750,7 +756,11 @@ type bugIssue struct {
 // it takes admin credentials — so an issue is never a side channel
 // around the wire visibility filter, even for a reporter who is also
 // a repo collaborator (ADR 0017 §4, revised in §7).
+//
+// Credentials are redacted before anything is rendered (#721): see
+// redactBugIssue.
 func renderBugIssueBody(in bugIssue) string {
+	in = redactBugIssue(in)
 	var b strings.Builder
 	desc := in.Desc
 	if desc == "" {
@@ -831,6 +841,44 @@ func renderBugIssueBody(in bugIssue) string {
 		fmt.Fprintf(&b, "- User agent: %s\n", clip(in.UserAgent, 200))
 	}
 	return b.String()
+}
+
+// redactBugIssue returns a copy of in with credentials removed from
+// every field a client or player controls: the description, each log
+// line, the context strings, the reporter's display name and the user
+// agent.
+//
+// The issue body is published to everyone who can read the repo, and
+// the client log once carried the WebSocket URL with its ?token= (#721).
+// Current clients redact before sending; this is for every other
+// client — an old tab, a curl, a log line nobody thought about. It runs
+// BEFORE clipping, so a clip can never cut a key off and leave its
+// value behind.
+//
+// Server-generated fields (report ID, image URLs, pin sizes, the kind)
+// are left alone: they carry no credentials and redacting them could
+// only break a link.
+func redactBugIssue(in bugIssue) bugIssue {
+	in.Desc = redact.Secrets(in.Desc)
+	in.UserAgent = redact.Secrets(in.UserAgent)
+	in.Principal.Name = redact.Secrets(in.Principal.Name)
+	if in.Ctx != nil {
+		ctx := *in.Ctx
+		ctx.GameID = redact.Secrets(ctx.GameID)
+		ctx.Phase = redact.Secrets(ctx.Phase)
+		ctx.Step = redact.Secrets(ctx.Step)
+		ctx.Connection = redact.Secrets(ctx.Connection)
+		in.Ctx = &ctx
+	}
+	if len(in.Log) > 0 {
+		log := make([]bugLogEntry, len(in.Log))
+		for i, e := range in.Log {
+			e.Text = redact.Secrets(e.Text)
+			log[i] = e
+		}
+		in.Log = log
+	}
+	return in
 }
 
 // renderBugLog formats the client log ring buffer as fixed-width
