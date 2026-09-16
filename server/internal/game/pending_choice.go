@@ -1199,25 +1199,36 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		g.EmitEvent(Event{Kind: EventChangeLife, Target: ev.LifePlayer, Amount: ev.LifeDelta})
 		return nil
 	case RepEventDamage:
-		for i := range g.Battlefield.Cards {
-			if g.Battlefield.Cards[i].InstanceID == ev.DamageTarget {
-				g.Battlefield.Cards[i].DamageMarked += ev.DamageAmount
-				if g.Battlefield.Cards[i].DamageMarked < 0 {
-					g.Battlefield.Cards[i].DamageMarked = 0
-				}
-				if ev.DamageAmount > 0 {
-					g.EmitEvent(Event{
-						Kind:   EventDealDamage,
-						Source: ev.DamageSource,
-						Target: ev.DamageTarget,
-						Amount: ev.DamageAmount,
-					})
-				}
-				g.runStateChecksLocked()
-				return nil
-			}
+		// #694: a damage event that came through any entry point
+		// carries its own tail, so it is finished by exactly the code
+		// the unpaused path runs — player life loss, the CR 120.3
+		// planeswalker/battle split, CR 702.2c deathtouch, CR 702.15
+		// lifelink and the CR 903.10a commander tally included. This
+		// branch used to be a copy of the manual MarkDamage body,
+		// which meant ordering two damage replacements marked
+		// DamageMarked on everything and returned ErrCardNotFound for
+		// a player. See damage_tail.go.
+		err := g.applyResolvedDamageLocked(ev)
+		if errors.Is(err, ErrCardNotFound) || errors.Is(err, ErrPlayerNotFound) {
+			// The target left between the prompt and the answer. The
+			// damage simply does not happen — but the choice is
+			// already dequeued, so returning the error here would
+			// fail the player's action AND take their prompt away
+			// with nothing to show for it. Log it and move on.
+			g.EmitEvent(Event{
+				Kind:     EventEffectError,
+				ErrorMsg: "damage dropped: its target is no longer in the game",
+			})
+			return nil
 		}
-		return ErrCardNotFound
+		if err != nil {
+			return err
+		}
+		// Answering a prompt is an action boundary, like every other
+		// Resolve* handler, so the sweep the tail deliberately skips
+		// happens here — which is also where it was before #694.
+		g.runStateChecksLocked()
+		return nil
 	case RepEventMove:
 		// #529: a move that came through the shared exit primitive
 		// carries everything its resume needs on the event itself, so
