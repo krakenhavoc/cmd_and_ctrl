@@ -18,8 +18,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // EventDiscardCard per card, so a two-card discard deals 1 twice
 // rather than 2 once. Same total, two log lines.
 //
-// Cycling is an alternative cast path (S29) and isn't modelled, so
-// the cycling trigger can't fire either.
+// Cycling isn't modelled, so the cycling trigger can't fire either.
+// Cycling is not a cast: it is an activated ability that works only
+// from hand, "{1}{R}, Discard this card: Draw a card" (CR 702.29a),
+// and the engine has neither a discard cost component nor activation
+// from hand (#660). "When you cycle this card" triggers from wherever
+// the card ends up, normally the graveyard (CR 702.29c).
 func init() {
 	Register(Spec{
 		OracleID:     "900b9409-9c16-414d-8674-2ea42c2415a1",

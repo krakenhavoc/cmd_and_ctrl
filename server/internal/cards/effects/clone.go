@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -26,7 +24,7 @@ import (
 //
 // "Any creature on the battlefield" is not targeting: a copy choice
 // is made as the permanent enters, so hexproof, shroud and
-// protection do not stop it (CR 706.2 — the ruling that makes Clone
+// protection do not stop it (CR 707.2 — the ruling that makes Clone
 // the answer to an opposing Blightsteel Colossus).
 func init() {
 	Register(Spec{
@@ -37,11 +35,7 @@ func init() {
 		Replacements: []game.ReplacementEffect{
 			EntersAsCopyOf(
 				"Clone",
-				func(g *game.Game, _ uuid.UUID, self uuid.UUID) []uuid.UUID {
-					return copyCandidates(g, self, func(c game.Card) bool {
-						return c.IsCreature()
-					})
-				},
+				anyCreatureOnBattlefield,
 				nil,
 			),
 		},

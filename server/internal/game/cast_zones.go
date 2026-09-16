@@ -21,11 +21,16 @@ package game
 //   - The COMMAND zone. CR 903.4 lets a player cast their commander
 //     from there regardless of what the card says; the permission
 //     belongs to the format, not the card.
-//   - EXILE. Impulse exile, airbend, and (S29) madness / foretell /
-//     suspend all grant permission to one INSTANCE rather than to
-//     every copy of the card, so they ride ExilePlayPermission on
-//     the card instance instead. A card may additionally declare
-//     ZoneExile when the permission really is printed on it.
+//   - EXILE. Impulse exile, airbend, warp and cascade grant
+//     permission to one INSTANCE rather than to every copy of the
+//     card, so they ride ExilePlayPermission on the card instance.
+//     Madness, foretell and suspend, none of them built yet, are the
+//     same kind of permission (CR 702.35a, 702.143, 702.62a) and
+//     belong on the instance too. A card may additionally declare
+//     ZoneExile, but that is a CARD-level permission: it opens exile
+//     for every copy of the card, at any time, however the copy got
+//     there. It fits only a card whose printed text says exactly
+//     that, and no catalog card declares it today.
 //
 // The PRICE of a non-hand cast is not modelled here. It rides
 // AlternativeCost.FromZone, which binds an offer to one zone:
@@ -179,7 +184,9 @@ func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *Alternat
 		return nil
 	case ZoneExile:
 		// The instance grant is the usual permission and has already
-		// been checked. A printed declaration is the other way in.
+		// been checked. A card-level ZoneExile declaration is the
+		// other way in; it covers every copy in exile, so it is not
+		// the shape for suspend or foretell (see the file header).
 		if !hasExileGrant && !CardCastableFromZone(key, ZoneExile) {
 			return ErrNoPlayPermission
 		}

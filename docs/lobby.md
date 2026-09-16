@@ -994,3 +994,12 @@ CDN and writes to `$CMDCTRL_DATA_DIR/images/<aa>/<id>.<size>.jpg`.
 `size` defaults to `normal`; valid values: `small`, `normal`, `large`,
 `png`, `art_crop`, `border_crop`. Response carries `Cache-Control:
 public, max-age=604800, immutable` — Scryfall card UUIDs are immutable.
+
+A failed CDN download is not retried server-side: it answers `502`
+with a JSON error body and **no** cache headers, and writes nothing to
+the disk cache, so the same URL re-attempts the CDN on the next
+request. The client relies on that — every card-art `<img>` retries
+the plain URL once after ~2 s, then shows a click-to-retry marker
+(`client/src/lib/cardArt.ts`, #33). A cache-busting query parameter
+would be wrong here: the service worker keys card art on the full
+query string.

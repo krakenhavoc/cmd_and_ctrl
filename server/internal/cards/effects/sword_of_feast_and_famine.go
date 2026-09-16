@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // TWO SIMPLIFICATIONS, both strictly weaker than printed:
 //
 //   - PROTECTION FROM BLACK AND FROM GREEN is not granted.
-//     Protection is a parameterised keyword and CR 702.16e tests the
+//     Protection is a parameterised keyword and CR 702.16b tests the
 //     quality against the SOURCE of a spell or ability, which the
 //     engine's targeting choke point never receives — see
 //     ADR 0038 for why that is a structural gap and not a to-do.
@@ -32,8 +32,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     uniformly weaker in theory, but it is the house convention and
 //     changing it is a discard-prompt problem, not a Sword problem.
 //
-// Deferred to whichever sprint lands protection (CR 702.16) and an
-// opponent-chooses discard prompt.
+// Deferred until protection (CR 702.16, #662) and an opponent-chooses
+// discard prompt land.
 func init() {
 	Register(Spec{
 		OracleID:     "d0901053-6de0-46d0-9ee3-8d40510236c1",

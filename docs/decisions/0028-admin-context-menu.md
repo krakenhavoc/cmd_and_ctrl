@@ -1,6 +1,7 @@
 # ADR 0028 — Right-click admin context menu for per-card overrides
 
 **Status:** Implemented · 2026-09-10 · Branch `feat/admin-context-menu`
+**Amended:** 2026-09-16 · #170 closeout: the stale #164 references corrected, and the two unshipped items handed to their own issues (see the amendment at the end)
 **Issue:** [#170](https://github.com/krakenhavoc/cmd_and_ctrl/issues/170)
 
 ## Context
@@ -63,9 +64,16 @@ wrong player's graveyard. Same split, and same reasoning, as
 `zoneBrowser.logic.ts`.
 
 The `MenuItem` tree (label + one of: action, submenu, prompt,
-ability-handoff) is deliberately generic. [#164](https://github.com/krakenhavoc/cmd_and_ctrl/issues/164)'s
-forced commander-zone prompt can build a one-section, two-item menu
-and reuse the same component rather than growing another modal.
+ability-handoff) is deliberately generic, so a future forced prompt
+can build a one-section, two-item menu and reuse the same component
+rather than growing another modal.
+
+*Corrected 2026-09-16:* this paragraph first named
+[#164](https://github.com/krakenhavoc/cmd_and_ctrl/issues/164)'s
+commander-zone prompt as that consumer. #164 had already closed on
+2026-04-23 through #171, before this menu existed, and its prompt is
+the `optional_replacement` pending choice in `ChoicePromptModal.svelte`.
+Nothing builds a forced prompt on the `MenuItem` tree yet.
 
 ### 4. Per-player setting, off by default, NOT gated on the admin role
 
@@ -147,8 +155,9 @@ closes it too, before the card underneath gets its own right-click.
 - Any card, in any zone, can be moved anywhere by hand. An unwired or
   buggy card no longer wedges the table.
 - The commander-zone replacement (CR 903.9) is manually triggerable
-  from the battlefield, so #164's behaviour can be exercised before
-  #164 ships.
+  from the battlefield ("Graveyard → command zone"), so the replacement
+  path can be exercised by hand. (Corrected 2026-09-16: this line said
+  "before #164 ships", but #164 had shipped in #171.)
 - Settings schema goes to v7 (`gameplay.adminOverrides`). The migration
   is a pure default-fill; nothing to rescue.
 - Player-level counters (poison / energy / experience / rad) are
@@ -158,4 +167,55 @@ closes it too, before the card underneath gets its own right-click.
 - "Reveal a card to a specific player" from the issue's hand-overrides
   list is **not** implemented: there is no reveal action server-side,
   and the `KnownBy` machinery has no external entry point. That is a
-  real feature, not a menu row.
+  real feature, not a menu row. (2026-09-16: still true of the action
+  layer. It is now tracked in
+  [#671](https://github.com/krakenhavoc/cmd_and_ctrl/issues/671), and
+  the engine side has since landed; see the amendment below.)
+
+## Amendment (2026-09-16): #170 closeout — reveal and remove-from-combat
+
+#170 closes with this ADR's menu shipped. Two of its items did not
+ship, and each now has its own issue.
+
+**Reveal a hand card:
+[#671](https://github.com/krakenhavoc/cmd_and_ctrl/issues/671).** The
+Consequences bullet above calls this a real feature. It is now a small
+one, because the engine pieces exist. `game.RevealForEffect`
+(`server/internal/game/reveal.go`) makes every seat a knower and emits
+the reveal events that the S22 broadcast frame (#549) and
+`RevealBanner.svelte` display. Thoughtseize already gives one seat
+knowledge of a hand card with `AddKnower` and no reveal event, and
+`keepKnownInHandZone` plus `Hand.svelte` already send that card to
+that seat and draw it face up. The owner decided the shape on
+2026-09-16:
+
+- A hand card gets two rows: **"Reveal to table"**, backed by
+  `RevealForEffect`, and **"Show to <player>"**, backed by
+  `AddKnower(player)` only. The private show does not emit
+  `EventRevealCards` with a target, because that event kind means "shown
+  to the whole table" and the reveal frame reads it that way.
+- Knowledge **persists until the card leaves the hand**.
+- The action is **undoable**: undo restores the card's knowers.
+- It sits **behind the "Enable admin overrides" setting** (§4) and
+  passes `requireCardController` like the rest of the menu.
+- The owner sees which seats know each of their hand cards, through a
+  `known_by_seats` field sent only on the viewer's own hand cards.
+- It is **not offered to bots**.
+
+The `reveal_card` verb is a new server action, so it is a second
+exception to §1, alongside `to_bottom` (§7). #671 amends this ADR with
+the verb's details before any code. The Comprehensive Rules
+(September 19, 2025 edition) have no action for showing a card to one
+player: CR 701.20a defines revealing as showing a card to all players,
+and CR 701.20e's "look at" is the one-player form an effect can
+instruct. So "Show to <player>" is a table courtesy the sandbox allows,
+not a rules action. Open PR #643 adds the public log line for reveals.
+
+**Take one creature out of combat:
+[#672](https://github.com/krakenhavoc/cmd_and_ctrl/issues/672).** The
+issue asked to "toggle attacking / blocking". The menu can declare or
+re-declare an attacker or blocker, but the only way back out is "Clear
+ALL combat", which wipes every declaration on the table. There is no
+server verb to remove a single creature from combat (CR 506.4), so this
+is a partial, and #672 adds the verb and the row. It did not block
+closing #170.

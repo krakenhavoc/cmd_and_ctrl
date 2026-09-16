@@ -7,7 +7,7 @@ import (
 )
 
 // copy_choice.go — "you may have this creature enter as a copy of
-// any creature on the battlefield" (CR 706.2 + CR 614.1c).
+// any creature on the battlefield" (CR 707.2 + CR 614.1c).
 //
 // This is the third member of the family entry_choice.go started: a
 // replacement effect with a DECISION inside it, applied as the
@@ -275,7 +275,7 @@ func (g *Game) battlefieldCardLocked(cardID uuid.UUID) (*Card, bool) {
 // that has just been pushed to the battlefield, BEFORE the zone-move
 // and ETB events fire. That ordering is the rule, not an
 // optimisation: a permanent that enters as a copy never exists on
-// the battlefield as its own printed self (CR 706.2), so every ETB
+// the battlefield as its own printed self (CR 707.2), so every ETB
 // trigger — its own and every watcher's — must see the copied
 // characteristics.
 //

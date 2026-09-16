@@ -16,17 +16,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Card. Nothing exists to write the exception into.
 //
 // That makes Tangle strictly a two-mana Fog today — weaker than
-// printed, never stronger, which is the acceptable direction. It is
-// declared here rather than omitted because the missing half is
-// exactly one engine feature away (a skip-next-untap flag on Card
-// plus a read in the untap step), and a card file that says so is
-// how the next person finds the ticket. The fog half is the half
-// that gets cast in Commander: Tangle is played as a green Fog that
-// happens to have a rider.
+// printed, never stronger, which is the acceptable direction. The
+// missing half is exactly one engine feature away: a "doesn't untap"
+// restriction, which game/untap.go names as the thing
+// untapStepSetLocked grows when the first such card is written. The
+// fog half is the half that gets cast in Commander: Tangle is played
+// as a green Fog that happens to have a rider.
+//
+// The simplification is published in Caveats. Until the S30 closeout
+// (#95) it lived only in this comment and the Spec declared no
+// Completeness, so the catalog page showed Tangle as unreviewed
+// instead of saying what is missing.
 func init() {
 	Register(Spec{
-		OracleID: "f627e125-15af-4e53-b34e-82b60e4ec87b",
-		Name:     "Tangle",
+		OracleID:     "f627e125-15af-4e53-b34e-82b60e4ec87b",
+		Name:         "Tangle",
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"Attacking creatures still untap during their controller's next untap step; only the combat damage prevention works."},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return PreventAllCombatDamageThisTurn{
 				Label: "Tangle: prevent combat damage",

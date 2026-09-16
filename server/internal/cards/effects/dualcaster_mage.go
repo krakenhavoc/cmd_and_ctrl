@@ -17,9 +17,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // engine computes the legal set when the Mage enters, removes the
 // trigger with no prompt if no instant or sorcery spell is on the
 // stack (CR 603.3d), and otherwise asks the controller to pick. The
-// Effect is the CopySpell primitive with the CR 706.10c re-target
+// Effect is the CopySpell primitive with the CR 707.10c re-target
 // prompt enabled; the copy is controlled by the Mage's controller
-// (CR 706.10a), which is the whole point of flashing it in against
+// (CR 707.10), which is the whole point of flashing it in against
 // an opponent's spell.
 //
 // A spell that leaves the stack between the pick and the

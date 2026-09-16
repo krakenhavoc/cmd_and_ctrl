@@ -1,6 +1,7 @@
 # ADR 0013 — Replacement effects engine (S17)
 
 **Status:** Implemented · 2026-04-22 (planned), 2026-04-23 (shipped) · Sprint S17
+**Amended:** 2026-09-16 · Branch `docs/discard-rules-library-of-leng` — §10 withdrawn, see [§10a](#10a-amendment-2026-09-16-10-misread-the-card-and-the-rules)
 
 ## Context
 
@@ -226,17 +227,128 @@ because it watches arbitrary other moves.
 
 ### 10. Library of Leng scope limited to cleanup-step discard
 
-CR 701.8a/c distinguishes voluntary vs involuntary discard. Library
-of Leng's "top or bottom of library instead" only replaces
-voluntary discards. Threading `IsVoluntary` through every discard
-caller (cleanup, Mind Rot, Liliana's Caress, cast-trigger
-discard-to-draw) is out of scope for this sprint.
+**Withdrawn 2026-09-16: this section misstates both the card and the
+rules. Read [§10a](#10a-amendment-2026-09-16-10-misread-the-card-and-the-rules) instead.**
+The original text stays below as the record of what was decided.
 
-Decision: S17 ships Library of Leng wired into the cleanup-step
-discard path only (where voluntariness is implicit). An
-involuntary-discard follow-up issue tracks the gap; proper CR
-701.8a/c detection lands when a second voluntary-discard
-replacement enters the catalog.
+> CR 701.8a/c distinguishes voluntary vs involuntary discard. Library
+> of Leng's "top or bottom of library instead" only replaces
+> voluntary discards. Threading `IsVoluntary` through every discard
+> caller (cleanup, Mind Rot, Liliana's Caress, cast-trigger
+> discard-to-draw) is out of scope for this sprint.
+>
+> Decision: S17 ships Library of Leng wired into the cleanup-step
+> discard path only (where voluntariness is implicit). An
+> involuntary-discard follow-up issue tracks the gap; proper CR
+> 701.8a/c detection lands when a second voluntary-discard
+> replacement enters the catalog.
+
+### 10a. Amendment, 2026-09-16: §10 misread the card and the rules
+
+*Amendment, 2026-09-16, branch `docs/discard-rules-library-of-leng`.
+Closes [#160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/160)
+as not planned. The work moves to
+[#650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/650) and
+[#651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/651).*
+
+Nothing §10 describes ever shipped. Library of Leng was dropped from
+S17 (see Consequences), it is still not in the catalog (batch 28,
+[#390](https://github.com/krakenhavoc/cmd_and_ctrl/issues/390), skipped
+it), and `IsVoluntary` was never added. The problem is that the
+follow-up §10 created (#160) planned the wrong work.
+
+**What the card says.** Oracle text: "You have no maximum hand size.
+If an effect causes you to discard a card, discard it, but you may put
+it on top of your library instead of into your graveyard."
+
+- **What matters is effect, cost or game rule, not voluntary or
+  involuntary.** The rules have no such thing as a voluntary discard,
+  and the discard keyword action §10 cites doesn't say otherwise. An
+  effect is what a spell or ability does (CR 609.1). A cost is
+  something a player pays (CR 118.1). The cleanup hand-size discard is
+  a turn-based action (CR 514.1, 703.1). Leng replaces only a discard
+  caused by an effect. From the Gatherer rulings (2004-10-04): "You
+  can't use the Library of Leng ability to place a discarded card on
+  top of your library when you discard a card as a cost, because costs
+  aren't effects."
+- **It applies to Mind Rot**, which §10 listed as a discard Leng must
+  not replace. The same rulings: "The ability applies any time a spell
+  or ability has you discard as part of its effect. It does not matter
+  if you or your opponent control the spell or ability." Looting
+  ("draw, then discard") is also an effect discard.
+- **It never applies to the cleanup discard**, which is the one path
+  §10 wired it to. That discard is a turn-based action (CR 514.1,
+  703.1), not an effect. Leng usually removes your maximum hand size
+  (CR 402.2), but a later hand-size effect can set one again: hand-size
+  effects apply in timestamp order, so Null Profusion entering after
+  Leng makes your maximum hand size two (ruling, 2009-10-01). You can
+  still owe a cleanup discard then, and Leng doesn't replace it.
+- **The card goes on top of the library, not "top or bottom".** The
+  replacement is a "may", which fits the existing
+  `optional_replacement` prompt. When one effect discards several
+  cards, the player decides for each card and chooses the order of
+  the ones that go to the library (ruling). A card put there isn't
+  revealed unless the discarding effect says so.
+- **Some discards during resolution are costs.** In "[do X]. If you
+  do, …" and "… unless [a player does X]", X is a cost paid while the
+  spell or ability resolves (CR 118.12, 118.12a). So a discard that
+  happens during resolution isn't automatically an effect discard.
+  Thirst for Knowledge's "unless you discard an artifact card" branch
+  is a cost, and Leng doesn't apply to it.
+- The wording #160 quoted as Leng's ("if a spell or ability an
+  opponent controls causes you to discard") belongs to Obstinate
+  Baloth, Loxodon Smiter, Wilt-Leaf Liege and Dodecapod.
+
+**What the engine has to know about each discard** is its cause
+(effect, cost or turn-based action), the source, and who controls the
+source. Leng needs the cause. The Obstinate Baloth family also needs
+the controller. Madness (CR 702.35a) needs neither, because it
+replaces every discard. Rest in Peace needs no cause either, but all
+of these need discards to go through the replacement window first.
+
+**None of it can be written today, because no discard reaches the
+CR 614 window.** All four places that discard call
+`MoveCard(hand, graveyard)` directly and then emit `EventDiscardCard`
+without a `Source` (develop at `7c1ae9b`):
+
+| site | what discards there |
+|---|---|
+| `game/mutations.go` `DiscardSelection` | the cleanup hand-size discard, and every `DiscardChoiceForEffect` caller (Mind Rot, looting) |
+| `game/effect_api.go` `DiscardRandomForEffect` | random discards |
+| `game/additional_cost.go` `payAdditionalCostLocked` | discard as an additional cost to cast a spell |
+| `game/pending_choice.go` `PendingChoiceDiscardFromHand` | Thoughtseize-style "you choose, they discard" |
+
+`routeCardToZoneLocked` (`game/zone_route.go`) already opens the
+window for mill, countered spells, exile and bounce
+([#529](https://github.com/krakenhavoc/cmd_and_ctrl/issues/529)), but
+it has no discard flag. Two more graveyard arrivals skip the window
+too: a library search that puts the card into a graveyard (Entomb,
+`effect_api.go`) and surveil (`ResolveSurveil` in `pending_choice.go`).
+So Rest in Peace also needs those two.
+
+**There is also a bug underneath.** An effect discard doesn't block
+the game. `DiscardChoiceForEffect` adds to `DiscardPending`, the map
+the cleanup step uses. `PassPriority` never checks that map, and
+entering cleanup resets it to the hand-size count. So players can pass
+priority while a Mind Rot discard is still owed, and at cleanup the
+discard is lost (#651). That has to be fixed before a discard can
+pause inside the replacement window.
+
+**Where the work went.**
+
+- [#650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/650):
+  ADR for discard as a replaceable event with a cause. It decides the
+  cause taxonomy, a single route for all four sites, the CR 118.12
+  cost case, picking random discard sets up front, the CR 903.9 prompt
+  on a discarded commander, and what bots answer. It also decides
+  whether that lands as another amendment here or as a new ADR.
+  Depends on #651.
+- [#651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/651): bug.
+  Effect discards can be passed through and are wiped at cleanup.
+- [#657](https://github.com/krakenhavoc/cmd_and_ctrl/issues/657):
+  madness, which needs #650's routing but not the cause.
+- Library of Leng itself becomes an ordinary catalog card once #650
+  lands. It stays on #390's skip list until then.
 
 ### 11. Damage prevention hook only, no shield mechanic
 
@@ -293,9 +405,12 @@ user prompt. Either outcome is tracked (§Consequences below).
   in S17 is atomic cancel; stateful shields are a different shape.
 - **Dependency detection** (CR 613.8) + Layer 1 copy effects →
   **S16.5** layer-system follow-ups. Not blocking for replacements.
-- **Library of Leng voluntary-vs-involuntary discard precision** —
+- ~~**Library of Leng voluntary-vs-involuntary discard precision** —
   S17 ships cleanup-path only; proper CR 701.8a/c detection
-  tracked as a follow-up issue.
+  tracked as a follow-up issue.~~ Withdrawn 2026-09-16: the premise
+  was wrong, see §10a. Tracked now as
+  [#650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/650) and
+  [#651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/651).
 - **Non-self repeat replacements** — if a future card needs
   "replace the event again" behavior beyond CR 614/616, flag for
   rules review.
@@ -307,7 +422,8 @@ user prompt. Either outcome is tracked (§Consequences below).
   three S14 finishers (Cultivate / Path to Exile / Solemn Simulacrum)
   that now set `SearchLibrary.TappedOnEntry`. Hangarback Walker,
   Champion of Lambholt, Library of Leng, and the Mycosynth Lattice
-  clauses deferred — see Out of Scope below.
+  clauses deferred — see Out of Scope below. (Library of Leng is
+  still not in the catalog as of 2026-09-16; see §10a.)
 - **Seventh catalog hook** `CatalogReplacements` joins the
   S14/S15/S16 six.
 - **`Spec.Replacements []game.ReplacementEffect`** new field on the
@@ -389,7 +505,7 @@ user prompt. Either outcome is tracked (§Consequences below).
 3. Damage prevention split — S17 ships the hook + Fog; S30 ships
    the shield mechanic with charges.
 4. Library of Leng → cleanup-path only; strict voluntariness
-   deferred.
+   deferred. *Withdrawn 2026-09-16: see §10a.*
 5. Mycosynth Lattice clauses → own sub-PR, scope decision deferred
    to PR-open.
 6. Enters-tapped for fetched lands → `SearchLibrary.TappedOnEntry`

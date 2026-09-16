@@ -13,6 +13,7 @@
 
   import { onMount } from "svelte";
   import Icon from "../lib/components/Icon.svelte";
+  import { cardArt } from "../lib/cardArt";
   import {
     fetchCatalog,
     filterCatalog,
@@ -205,6 +206,7 @@
                     decoding="async"
                     width="488"
                     height="680"
+                    use:cardArt={img}
                   />
                 {:else}
                   <div class="noart">
@@ -527,6 +529,10 @@
     min-width: 0;
   }
   .art {
+    /* positioned for the failed-art pip (#33) */
+    position: relative;
+    --art-error-top: 8px;
+    --art-error-right: 8px;
     aspect-ratio: 488 / 680;
     border-radius: 12px;
     overflow: hidden;

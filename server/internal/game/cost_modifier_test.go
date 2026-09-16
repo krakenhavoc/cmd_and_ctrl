@@ -351,6 +351,37 @@ func TestCostModifierStacksOnCommanderTax(t *testing.T) {
 	}
 }
 
+// A modifier that reads FromZone sees a graveyard cast as a
+// graveyard cast. The cost path used to keep its own zone mapping
+// that knew hand, command and exile only, so a flashback or escape
+// cast was priced as if it came from hand and a "spells cast from
+// graveyards cost {1} more" clause never applied.
+func TestCostModifierSeesGraveyardCast(t *testing.T) {
+	const tax = "test-graveyard-tax"
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	withCatalogCostModifiers(t, modifiersFor(tax, CostModifier{
+		Kind:      CostIncrease,
+		Label:     "Spells cast from graveyards cost {1} more to cast.",
+		AppliesTo: func(q CostQuery) bool { return q.FromZone == ZoneGraveyard },
+		Amount:    fixed(1),
+	}))
+	modifierSource(t, g, me, "Graveyard Tax", tax)
+
+	advanceTo(t, g, StepPrecombatMain)
+	c := NewCard("Test Looting", me.ID)
+	c.TypeLine = "Sorcery"
+	c.ManaCost = "{R}"
+	me.Graveyard.PushTop(c)
+
+	if got := priceOf(t, g, me, c.InstanceID, CastSpellParams{FromZone: "graveyard"}); got.Generic != 1 {
+		t.Errorf("graveyard cast under a graveyard tax: generic = %d, want 1", got.Generic)
+	}
+	if got := priceOf(t, g, me, c.InstanceID, CastSpellParams{FromZone: "hand"}); got.Generic != 0 {
+		t.Errorf("hand cast under a graveyard tax: generic = %d, want 0", got.Generic)
+	}
+}
+
 // tapBattlefieldCard taps a permanent in place.
 func tapBattlefieldCard(t *testing.T, g *Game, id uuid.UUID) {
 	t.Helper()
