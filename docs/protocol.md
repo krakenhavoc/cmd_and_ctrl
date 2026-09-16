@@ -292,7 +292,10 @@ prompt's `reason` is already the card's own sentence and says the rule.
 A `resolve_choice` that has the right number of cards, all of them
 candidates, but breaks the rule gets an `error` frame with `payload.code
 = "bad_request"`. The prompt **stays in `pending_choices`**, so the
-client leaves its modal open and the player can choose again. For
+client leaves its modal open and the player can choose again, and the
+modal shows the error's message itself: the board's error toast sits
+under the modal's backdrop, so a refusal shown only there is unreadable
+while the prompt is open. For
 `choose_cards` the message is `"that selection doesn't meet the card's
 condition — check its text and choose again"`. (`search_library` still
 answers with the generic `"invalid parameter"`.) Every set listed in
