@@ -610,12 +610,15 @@ textarea::placeholder {
    failed. Global because the element is created outside any
    component's template, so no component's scoped styles reach it.
    The img's parent must be positioned; a site whose top-right corner
-   is already taken moves the pip with --art-error-top / -right. */
+   is already taken moves the pip with --art-error-top / -right /
+   -left (set -right to auto when using -left), and lifts it over its
+   own overlays with --art-error-z. */
 .card-art-error {
   position: absolute;
   top: var(--art-error-top, 3px);
   right: var(--art-error-right, 3px);
-  z-index: 3;
+  left: var(--art-error-left, auto);
+  z-index: var(--art-error-z, 3);
   width: 14px;
   height: 14px;
   box-sizing: border-box;

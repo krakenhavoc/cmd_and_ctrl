@@ -448,9 +448,20 @@
     /* Compose tap rotation (animated by GSAP via --tap-rot) with the
        CSS-only hover lift (--hover-lift). */
     transform: rotate(var(--tap-rot, 0deg)) translateY(var(--hover-lift, 0px));
-    /* The failed-art pip (#33) drops below the top-right GOAD / cost
-       badges rather than sitting under them. */
+    /* The failed-art pip (#33) sits on the left edge, one badge row
+       down. The top-right corner is the busiest on the tile — GOAD,
+       the hand's cost chip and a counter column that grows downward
+       with every counter type — and the left edge is the part that
+       stays visible where tiles overlap: the hand fan and stack, the
+       land strip, attachments tucked behind their host. 22px clears
+       the top badge row (CMD on the left; a GOAD or cost chip wide
+       enough to reach across a narrow tile). z-index 5 keeps it above
+       the counter column (4) on a tile too narrow for the two to sit
+       side by side. */
     --art-error-top: 22px;
+    --art-error-left: 3px;
+    --art-error-right: auto;
+    --art-error-z: 5;
   }
   .card.clickable {
     cursor: pointer;
