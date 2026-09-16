@@ -1173,8 +1173,8 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 // CR 616 resume path (ResolveReplacementOrder) after the
 // replacement apply-loop finishes with no pending prompts. The
 // event's payload may have been mutated by replacements (e.g.
-// Doubling Season doubled CounterDelta; Library of Leng rewrote
-// NewZone). Pipeline functions' initial (non-paused) path inlines
+// Doubling Season doubled CounterDelta; the commander-zone built-in
+// rewrote NewZone). Pipeline functions' initial (non-paused) path inlines
 // the same mutation; the resume path uses this central dispatcher.
 //
 // Caller must hold g.mu.
