@@ -1197,6 +1197,40 @@ every looked-at card must appear in exactly one list: scry moves all of
 them, so an answer that omits one is a client bug, not shorthand for
 "leave it".
 
+**A rule about the chosen cards as a set (#624):** when a card-set
+pick says something no count and no per-card list can ("discard two
+cards unless you discard a creature card", "two lands that share a land
+type"), put it on the prompt's `Validate`, never in `Then`:
+
+```go
+g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+    Chooser: c, Question: "Discard two cards unless you discard a creature card",
+    Cards: hand, Min: 1, Max: 2, Zone: game.ZoneHand,
+    Validate: func(picked []game.Card) bool {
+        return len(picked) == 2 || picked[0].IsCreature()
+    },
+    Then: discardThem,
+})
+```
+
+`SearchLibrarySpec.Validate` is the same hook for a search. Both run
+before the prompt is dequeued, so a refused set comes back to the
+player as an error (`ErrChoiceSetRejected` for a choose-cards prompt)
+with the prompt still open. And `internal/legal` asks the same hook
+(`ChooseCardsPickLegalLocked` / `SearchPickLegalLocked`) before it
+offers a bot a set. A rule checked only inside `Then` is the #544
+wedge: the enumerator offers the set, `Then` refuses it after the prompt
+is gone, and the card resolves wrong with nothing left to retry.
+
+`Validate` gets the picks as live `Card` values and no `*Game`, because
+the enumerator calls it under the read lock. Anything else the rule
+needs, like "or your whole hand if it has fewer than two", is a value
+you capture when you queue the prompt, the same way `Cards`, `Min` and
+`Max` are. It is never called for an empty pick, so a `Min: 0` prompt
+always keeps "choose nothing". With `Min` above zero, don't queue a
+prompt that no set can satisfy: nothing could answer it, and the
+enumerator logs it rather than inventing an answer.
+
 **"This permanent enters tapped" (S21):** declare a self-replacement,
 not an entry-hook tap:
 

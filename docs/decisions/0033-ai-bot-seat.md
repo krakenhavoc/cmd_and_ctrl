@@ -113,6 +113,17 @@ whole per-source budget on near-identical moves pointed at the first
 target and never offer the second, which is precisely the shape #544
 found in the library-search walk.
 
+The same corollary covers a **rule about a set of cards** on a prompt:
+a search's `SearchLibrarySpec.Validate`, and since #624 a choose-cards
+prompt's `ChooseCardsPrompt.Validate`. The enumerator doesn't
+re-derive the rule. It asks the engine's own acceptance check
+(`SearchPickLegalLocked`, `ChooseCardsPickLegalLocked`) before it offers
+a set. It also spreads the per-source budget across set sizes
+(`filteredCombinations`). The spreading matters as much as the check.
+If singles filled the budget first, a "one creature card, or two cards"
+prompt over a hand with no creature would list nothing at all, and a
+seat that owes a choice with an empty list is stuck.
+
 ### 2. Bot = in-process virtual seat
 
 New package `server/internal/aiseat`. One goroutine per bot seat,
