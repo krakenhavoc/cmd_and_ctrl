@@ -668,8 +668,17 @@ export class BeatSequencer {
     const start = Date.now();
     for (const cue of cues) {
       const handle = setTimeout(() => {
-        this.cueTimers.delete(handle);
-        this.handlers.onCue(cue);
+        // The cue counts as pending until onCue has RETURNED. The shell
+        // prunes its geometry caches on `pending === 0` outside combat,
+        // and it measures (and so prunes) inside onCue: deleting the
+        // timer first let the last cue of a sequence that finished after
+        // the step left combat prune away the very tiles it was about to
+        // draw its ghost from.
+        try {
+          this.handlers.onCue(cue);
+        } finally {
+          this.cueTimers.delete(handle);
+        }
       }, cue.atMs);
       this.cueTimers.add(handle);
 
@@ -686,7 +695,8 @@ export class BeatSequencer {
     }
   }
 
-  // pending is the number of cues scheduled but not yet played.
+  // pending is the number of cues scheduled or playing right now: a cue
+  // stops counting only once its onCue has returned.
   get pending(): number {
     return this.cueTimers.size;
   }

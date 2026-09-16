@@ -1009,6 +1009,72 @@ describe("BeatDirector", () => {
     expect(fired).toEqual(["first_strike", "first_strike", "regular"]);
   });
 
+  it("keeps tile geometry for the last cue after the step has left combat (auto-pass)", () => {
+    // Browser trace, run r2: declare_blockers and damage frames 3-5 ms
+    // apart, auto-pass straight to postcombat_main. Beat 2 plays with
+    // keepArrowCache false by step, the shell measures (and prunes)
+    // inside onCue, and the dead creatures' tiles must still be there
+    // for resolveArrow.
+    const cardCache = new Map<string, CachedPoint>([
+      ["ace", { at: { x: 300, y: 150 }, board: { w: 800, h: 600 } }],
+      ["bears", { at: { x: 100, y: 400 }, board: { w: 800, h: 600 } }],
+    ]);
+    const onBattlefield = new Set<string>(); // both died
+    const renders: string[] = [];
+    const pendingInCue: number[] = [];
+    const after = [
+      ...both,
+      dies(123, "bears"),
+      dies(124, "ace"),
+      step(130, "end_combat"),
+      step(131, "postcombat_main"),
+    ];
+    const d: BeatDirector = new BeatDirector({
+      onCue: (cue) => {
+        pendingInCue.push(d.pending);
+        // What CombatArrows.playCue does, in order: measure + prune, then resolve.
+        pruneCardCache(cardCache, onBattlefield, keepArrowCache("postcombat_main", d.pending));
+        for (const ref of cue.arrows) {
+          renders.push(
+            resolveArrow(ref, {
+              live: new Map(),
+              arrowCache: new Map(),
+              cardCache,
+              board: { w: 800, h: 600 },
+              fromNow: null,
+              toNow: null,
+            }).render,
+          );
+        }
+      },
+      onHide: () => {},
+      onReset: () => {},
+    });
+    d.frame(before, { mode: "full", speed: 1 });
+    d.frame(after, { mode: "full", speed: 1 });
+    vi.runAllTimers();
+    expect(pendingInCue).toEqual([2, 1]);
+    expect(renders).toEqual(["ghost", "ghost"]);
+    expect(d.pending).toBe(0);
+    // Once the last cue has returned, nothing is pending and the tiles go.
+    pruneCardCache(cardCache, onBattlefield, keepArrowCache("postcombat_main", d.pending));
+    expect(cardCache.size).toBe(0);
+  });
+
+  it("releases a cue even when its handler throws", () => {
+    const d = new BeatDirector({
+      onCue: () => {
+        throw new Error("boom");
+      },
+      onHide: () => {},
+      onReset: () => {},
+    });
+    d.frame(before, { mode: "full", speed: 1 });
+    d.frame(both, { mode: "full", speed: 1 });
+    expect(() => vi.advanceTimersByTime(0)).toThrow("boom");
+    expect(d.pending).toBe(1);
+  });
+
   it("cancels everything on dispose", () => {
     const { d, fired } = director();
     d.frame(before, { mode: "full", speed: 1 });

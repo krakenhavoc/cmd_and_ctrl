@@ -377,7 +377,10 @@
         cueBoxes = [...cueBoxes, { stepSeq: cue.stepSeq, x: at.x, y: at.y, lines: [line] }];
       }
     }
-    dropCacheIfDone();
+    // This cue still counts as pending until playCue returns, so drop
+    // the caches only after it has: the microtask runs once the
+    // sequencer has released it.
+    queueMicrotask(dropCacheIfDone);
   }
 
   // A prime-key change (reconnect, replay toggle) primes the next
