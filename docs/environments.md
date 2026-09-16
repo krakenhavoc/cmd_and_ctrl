@@ -51,6 +51,31 @@ promotion.
 Hotfixes may PR straight into `main` from a `hotfix/*` branch. Then
 open a `main` → `develop` PR so `develop` never falls behind.
 
+### Merge methods
+
+| PR | Method | Enforced |
+|---|---|---|
+| `feat/*`, `fix/*`, … → `develop` | squash | convention |
+| `develop` → `main` (promotion) | merge commit | ruleset |
+| `hotfix/*` → `main` | merge commit | ruleset |
+| `main` → `develop` (hotfix back-merge) | merge commit | convention |
+
+**Squash into `develop`** so each PR is one commit carrying its PR
+number, revertable in one `git revert`, without a branch's worth of
+"address review" commits.
+
+**Merge commits everywhere else** so no commit is ever copied between
+the two branches. A merge commit keeps `develop` an ancestor of `main`,
+and `git log --first-parent main` reads as the list of releases.
+
+**The back-merge is the one to watch.** `develop` allows both methods,
+so GitHub will offer squash there too. A squashed back-merge gives
+`develop` a copy of the hotfix rather than `main`'s commit. That merges
+cleanly until `develop` touches the same lines, and then the next
+promotion conflicts over a change both branches already have. `develop`
+is not squash-only for exactly this reason: that would force the
+back-merge to squash.
+
 The rulesets enforce this. `main` requires `promotion-guard`, which
 fails any PR whose head is not `develop` or `hotfix/*`. If it fires on
 yours, retarget it: `gh pr edit <n> --base develop`. Neither branch
