@@ -88,9 +88,58 @@ automatically bind to this seat.
 
 | Status | Reason |
 |---|---|
+| 400 | empty name |
 | 401 | invite token did not match |
 | 404 | game not found |
-| 409 | game already started, or game full, or empty name |
+| 409 | game already started, or game full |
+
+---
+
+### `POST /join`
+
+The login-page flow: the same seat claim as above, but the caller has
+only an invite **code** and no game id — the shape you get when
+somebody pastes a code out of a Discord message rather than clicking a
+link. The server resolves the table from the code itself
+(`Lobby.FindByInvite`).
+
+Player invites only; a spectator code does not resolve here. Archived
+tables are skipped, so a stale code from an old chat message reads as
+expired rather than quietly reopening one.
+
+**Request**
+
+```json
+{
+  "invite_token": "<invite code>",
+  "name": "Alice"
+}
+```
+
+The session is **optional**, and decides where the seat's identity
+comes from:
+
+| Session attached | Behaviour |
+|---|---|
+| `identified` (Discord sign-in, no seat yet) | Name and avatar come from the Discord identity; `name` in the body is ignored |
+| none, or a credential that no longer validates | Classic manual join — `name` is required |
+| `player` / `admin` / `spectator` | 409 — that session already belongs somewhere |
+
+**Response 200** — identical to `POST /games/{id}/join`, cookie
+included. On the Discord path the principal also carries `discord_id`,
+`discord_username`, `discord_global_name` and `discord_avatar_hash`.
+
+The identity session stays valid afterwards: it is how the same person
+joins a second table later without signing in to Discord again. On its
+own it can do nothing else — the WS authorizer refuses it outright.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | empty name on the anonymous path |
+| 401 | no live table has that invite code (an archived one reads the same way) |
+| 409 | game already started, game full, or a session that already belongs to a table |
 
 ---
 

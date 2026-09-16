@@ -233,6 +233,29 @@ export async function joinGame(
   return s;
 }
 
+// joinByCode is the login-page flow: the caller holds an invite code
+// but no game id, so the server resolves the table from the code
+// itself (POST /join). When a Discord identity session is installed,
+// authFetch attaches it and the seat takes its name and avatar from
+// Discord; `name` is only needed on the manual path, where there is
+// no identity to read them from.
+export async function joinByCode(inviteToken: string, name = ""): Promise<Session> {
+  const res = await authFetch("/join", {
+    method: "POST",
+    body: JSON.stringify({ invite_token: inviteToken, name }),
+  });
+  const body = (await res.json()) as SessionResponse;
+  const s: Session = {
+    token: body.token,
+    expiresAt: body.expires_at,
+    principal: body.principal,
+    playerID: body.player_id,
+    gameID: body.game?.id,
+  };
+  setSession(s);
+  return s;
+}
+
 // spectateGame is the read-only counterpart to joinGame: posts the
 // per-game spectator invite, receives a RoleSpectator session bound
 // to the game (no player_id). The session is installed in the
@@ -473,6 +496,17 @@ export async function discordAuthEnabled(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// discordLoginHref is the login-page entry into the OAuth flow. No
+// game, no invite: the server mints an identity-only session and
+// bounces back to #/oauth-complete with no game in the fragment.
+//
+// A plain href rather than a fetch, for the same reason as the Join
+// page's variant — the server answers with a 302 to Discord, and
+// only a real navigation lands the user on the consent screen.
+export function discordLoginHref(): string {
+  return "/auth/discord/start";
 }
 
 // BugReportConfig mirrors the JSON from GET /bugreport/config.

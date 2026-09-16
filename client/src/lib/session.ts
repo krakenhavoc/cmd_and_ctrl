@@ -7,7 +7,11 @@ export interface Session {
   token: string;
   expiresAt: string; // ISO 8601, for display
   principal: {
-    role: "player" | "admin" | "spectator";
+    // "identified" is a Discord sign-in that has not claimed a seat
+    // yet (server: auth.RoleIdentified). It can do exactly one
+    // thing — POST /join with an invite code, which swaps it for a
+    // player session — so no game-facing route ever sees one.
+    role: "player" | "admin" | "spectator" | "identified";
     admin_id?: string;
     game_id?: string;
     player_id?: string;

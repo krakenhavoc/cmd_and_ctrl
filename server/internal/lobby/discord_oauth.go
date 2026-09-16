@@ -22,26 +22,40 @@ func discordConfig(c Config, w http.ResponseWriter, _ *http.Request) error {
 	})
 }
 
-// discordStart kicks off the OAuth round-trip. Expects
-// ?game=<uuid>&t=<invite> on the URL; parks those in the state
-// store and 302s the browser off to Discord's authorize page.
+// discordStart kicks off the OAuth round-trip, in either of two
+// shapes:
+//
+//   - ?game=<uuid>&t=<invite> — the invite-link flow. Both values
+//     are parked in the state store and the callback claims that
+//     seat directly.
+//   - no query params — the login-page flow. Nothing to park; the
+//     callback mints an identity-only session and the SPA collects
+//     an invite code afterwards.
+//
+// One of the pair without the other is a 400 rather than a guess.
+// Treating it as unbound would silently discard a seat claim the
+// user asked for, and inventing the missing half is not possible.
 //
 // Kept GET rather than POST because users reach this by clicking
 // a plain link (either one the admin pasted into chat or the
-// "Sign in with Discord" button on the Join page, which is just
-// an <a href>). A POST would need a form + JS just to navigate.
+// "Sign in with Discord" button on the Join / Login page, which is
+// just an <a href>). A POST would need a form + JS just to navigate.
 func discordStart(c Config, w http.ResponseWriter, r *http.Request) error {
 	if !c.Discord.Enabled() {
 		return httpError(http.StatusServiceUnavailable, "Discord auth is not configured on this server")
 	}
 	gameStr := r.URL.Query().Get("game")
 	invite := r.URL.Query().Get("t")
-	if gameStr == "" || invite == "" {
-		return httpError(http.StatusBadRequest, "game and t query params required")
+	if (gameStr == "") != (invite == "") {
+		return httpError(http.StatusBadRequest, "game and t must be supplied together")
 	}
-	gameID, err := uuid.Parse(gameStr)
-	if err != nil {
-		return httpError(http.StatusBadRequest, "game id must be a uuid")
+	var gameID uuid.UUID
+	if gameStr != "" {
+		var err error
+		gameID, err = uuid.Parse(gameStr)
+		if err != nil {
+			return httpError(http.StatusBadRequest, "game id must be a uuid")
+		}
 	}
 
 	store := c.discordStore()
@@ -107,6 +121,35 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 		GlobalName: user.GlobalName,
 		AvatarHash: user.Avatar,
 	}
+
+	// Login-page flow: nobody named a table, so there is no seat to
+	// claim. Mint an identity-only session and hand it to the SPA,
+	// which shows the invite-code box. The fragment carries no game
+	// or player_id — their absence is how the client tells the two
+	// flows apart.
+	if entry.Unbound() {
+		p := auth.Principal{
+			Role:              auth.RoleIdentified,
+			Name:              identity.DisplayName(),
+			DiscordID:         user.ID,
+			DiscordUsername:   user.Username,
+			DiscordGlobalName: user.GlobalName,
+			DiscordAvatarHash: user.Avatar,
+		}
+		tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
+		if err != nil {
+			return fmt.Errorf("issue session: %w", err)
+		}
+		setSessionCookie(c, w, tok, issued.ExpiresAt)
+
+		frag := url.Values{}
+		frag.Set("token", tok)
+		frag.Set("expires_at", issued.ExpiresAt.UTC().Format("2006-01-02T15:04:05Z07:00"))
+		frag.Set("name", identity.DisplayName())
+		http.Redirect(w, r, "/#/oauth-complete?"+frag.Encode(), http.StatusFound)
+		return nil
+	}
+
 	meta, playerID, err := c.Lobby.JoinWithIdentity(entry.GameID, entry.InviteToken, "", identity)
 	if err != nil {
 		// Join failures (game full, game started, invalid invite, etc.)

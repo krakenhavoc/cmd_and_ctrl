@@ -512,6 +512,44 @@ func (l *Lobby) Preview(id uuid.UUID, invite string) (GameMeta, PreviewKind, err
 	return m, kind, nil
 }
 
+// FindByInvite resolves a bare player-invite token to the game it
+// belongs to. This is what lets the login page accept a short code
+// instead of a full link: somebody typing a code out of a Discord
+// message has no game id to put in the path.
+//
+// Two deliberate properties:
+//
+//   - The scan does NOT short-circuit on the first match. Returning
+//     early would make response time a function of where the table
+//     sits in the map — a weak oracle, but one that costs nothing
+//     to close at this scale (a handful of games).
+//   - Player invites only. A spectator code resolving here would
+//     let a read-only link start a seat-claiming flow, which is
+//     precisely the distinction the two tokens exist to draw.
+//
+// Archived tables are skipped: they are retired from the listing,
+// and a stale code in an old chat message should read as expired
+// rather than quietly reopen one.
+func (l *Lobby) FindByInvite(invite string) (uuid.UUID, error) {
+	if invite == "" {
+		return uuid.Nil, ErrInvalidInvite
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	var found uuid.UUID
+	for id, entry := range l.games {
+		match := subtle.ConstantTimeCompare([]byte(invite), []byte(entry.meta.InviteToken)) == 1
+		if match && entry.meta.ArchivedAt == nil {
+			found = id
+		}
+	}
+	if found == uuid.Nil {
+		return uuid.Nil, ErrInvalidInvite
+	}
+	return found, nil
+}
+
 // ErrDeckNotUploaded is returned by Start when one or more seats
 // haven't uploaded a real deck yet. The HTTP handler maps this to
 // 409 so the lobby UI can show which seats are blocking the start.
