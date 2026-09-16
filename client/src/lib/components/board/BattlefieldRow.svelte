@@ -207,6 +207,14 @@
   .row.strip .row-cards > [role="listitem"]:not(.tapped) + [role="listitem"].tapped {
     margin-left: calc(var(--card-h, 123px) * 0.2);
   }
+  /* Every land tapped: the first is tapped too. Without this rule the
+     .tapped overlap above, as specific as :first-child and later,
+     won, and pushed the first land a third of its turned width out of
+     the row's clip, its failed-art pip (#33) with it. The turned tile
+     overhangs its box by (h - w) / 2 on each side; that is its room. */
+  .row.strip .row-cards > [role="listitem"].tapped:first-child {
+    margin-left: calc((var(--card-h, 123px) - var(--card-w, 88px)) / 2);
+  }
   .row.strip .row-cards > [role="listitem"]:hover {
     z-index: 6;
   }

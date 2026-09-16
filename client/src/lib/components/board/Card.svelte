@@ -451,17 +451,34 @@
     /* The failed-art pip (#33) sits on the left edge, one badge row
        down. The top-right corner is the busiest on the tile — GOAD,
        the hand's cost chip and a counter column that grows downward
-       with every counter type — and the left edge is the part that
-       stays visible where tiles overlap: the hand fan and stack, the
-       land strip, attachments tucked behind their host. 22px clears
-       the top badge row (CMD on the left; a GOAD or cost chip wide
-       enough to reach across a narrow tile). z-index 5 keeps it above
-       the counter column (4) on a tile too narrow for the two to sit
-       side by side. */
+       with every counter type — and the left edge of an UNTAPPED tile
+       is the part that stays visible where tiles overlap: the hand
+       fan and its top-55% peek, the untapped land strip, attachments
+       tucked behind their host. 22px clears the top badge row (CMD on
+       the left; a GOAD or cost chip wide enough to reach across a
+       narrow tile). z-index 5 keeps it above the counter column (4): on
+       a tile under about 90px wide a wide chip (a two-digit count)
+       reaches under the pip, which covers the chip's left end.
+       The pip's z-index only counts inside this tile — the transform
+       makes the tile its own stacking context — so a later tile that
+       overlaps it always paints over it. boardArtPip.test.ts checks
+       the rows. */
     --art-error-top: 22px;
     --art-error-left: 3px;
     --art-error-right: auto;
     --art-error-z: 5;
+  }
+  .card.tapped {
+    /* A tapped tile turns 90° clockwise: its left edge becomes its top
+       edge, and the further down the tile the pip sits, the further
+       left it ends up. At 22px it lands on the right of the turned
+       tile, under the next tapped land in the strip (which overlaps by
+       35% of a width) and under a tapped neighbour in a battlefield
+       row. Below about 54% of the height it is covered; 58% puts it on
+       the uncovered left, clear of the AUTO badge and a single keyword
+       row from 64px wide up. Hand tiles are never tapped, so the
+       hand's peek keeps 22px. */
+    --art-error-top: 58%;
   }
   .card.clickable {
     cursor: pointer;

@@ -76,7 +76,8 @@ wiring only.
   `-right: auto`) on it to move the pip off a corner the tile already
   uses, and `--art-error-z` to lift it over the tile's own overlays.
   `Card.svelte` puts it on the left edge below the top badge row,
-  above the counter column.
+  above the counter column, and lower on a tapped card, whose turned
+  tile the next tapped land overlaps (`boardArtPip.test.ts`).
 - Inside a tile that has its own click / double-click / Enter handling
   nothing extra is needed — the pip stops propagation. Inside a
   `pointer-events: none` or `aria-hidden` surface, pass
