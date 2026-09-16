@@ -1,0 +1,363 @@
+{
+  "schema": 1,
+  "takenAt": "2026-09-16T17:17:40.798272981Z",
+  "id": "00000000-0000-4000-8000-000000000683",
+  "createdAt": "2026-09-16T17:17:40.79819785Z",
+  "state": "active",
+  "seats": [
+    {
+      "id": "e3194181-af35-4d93-b150-a35a8ef4b581",
+      "name": "P1",
+      "seat": 0,
+      "life": 40,
+      "poison": 0,
+      "energy": 0,
+      "library": {
+        "kind": "library",
+        "owner": "e3194181-af35-4d93-b150-a35a8ef4b581"
+      },
+      "hand": {
+        "kind": "hand",
+        "owner": "e3194181-af35-4d93-b150-a35a8ef4b581"
+      },
+      "graveyard": {
+        "kind": "graveyard",
+        "owner": "e3194181-af35-4d93-b150-a35a8ef4b581"
+      },
+      "command": {
+        "kind": "command",
+        "owner": "e3194181-af35-4d93-b150-a35a8ef4b581"
+      },
+      "eliminated": false,
+      "handKept": true,
+      "mulligansTaken": 0,
+      "deckImported": false,
+      "undosRemaining": 1,
+      "losesAtNextSba": false,
+      "maxHandSize": 7
+    },
+    {
+      "id": "78451be0-a6f2-49c1-b268-0b39529b399e",
+      "name": "P2",
+      "seat": 1,
+      "life": 40,
+      "poison": 0,
+      "energy": 0,
+      "library": {
+        "kind": "library",
+        "owner": "78451be0-a6f2-49c1-b268-0b39529b399e"
+      },
+      "hand": {
+        "kind": "hand",
+        "owner": "78451be0-a6f2-49c1-b268-0b39529b399e"
+      },
+      "graveyard": {
+        "kind": "graveyard",
+        "owner": "78451be0-a6f2-49c1-b268-0b39529b399e"
+      },
+      "command": {
+        "kind": "command",
+        "owner": "78451be0-a6f2-49c1-b268-0b39529b399e"
+      },
+      "eliminated": false,
+      "handKept": true,
+      "mulligansTaken": 0,
+      "deckImported": false,
+      "undosRemaining": 1,
+      "losesAtNextSba": false,
+      "maxHandSize": 7
+    }
+  ],
+  "battlefield": {
+    "kind": "battlefield",
+    "owner": "00000000-0000-0000-0000-000000000000",
+    "cards": [
+      {
+        "instanceId": "00000000-0000-4000-8000-000000000001",
+        "name": "Star Creature",
+        "scryfallId": "00000000-0000-4000-9000-00000000000a",
+        "typeLine": "Creature — Lhurgoyf",
+        "power": 0,
+        "toughness": 0,
+        "startingLoyalty": 0,
+        "needsEffect": false,
+        "owner": "e3194181-af35-4d93-b150-a35a8ef4b581",
+        "controller": "e3194181-af35-4d93-b150-a35a8ef4b581",
+        "tapped": false,
+        "battleX": 0,
+        "battleY": 0,
+        "counters": {
+          "+1/+1": 1
+        },
+        "isCommander": false,
+        "attackingTarget": "00000000-0000-0000-0000-000000000000",
+        "blockingTarget": "00000000-0000-0000-0000-000000000000",
+        "goadedBy": "00000000-0000-0000-0000-000000000000",
+        "damageMarked": 0,
+        "faceDown": false,
+        "enteredBattlefieldAt": 0,
+        "summonedThisTurn": false,
+        "markedLethalByDeathtouch": false,
+        "exilePlay": {
+          "Player": "00000000-0000-0000-0000-000000000000",
+          "UntilTurn": 0,
+          "WhileExiled": false,
+          "CostOverride": "",
+          "CastOnly": false,
+          "AnyColor": false,
+          "NotBeforeTurn": 0,
+          "Face": 0
+        },
+        "attachedTo": {
+          "Kind": "",
+          "ID": "00000000-0000-0000-0000-000000000000"
+        },
+        "baseController": "00000000-0000-0000-0000-000000000000",
+        "protectorPlayerId": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "instanceId": "00000000-0000-4000-8000-000000000002",
+        "name": "Zero Zero",
+        "scryfallId": "00000000-0000-4000-9000-00000000000b",
+        "typeLine": "Artifact Creature — Construct",
+        "power": 0,
+        "toughness": 0,
+        "startingLoyalty": 0,
+        "needsEffect": false,
+        "owner": "e3194181-af35-4d93-b150-a35a8ef4b581",
+        "controller": "e3194181-af35-4d93-b150-a35a8ef4b581",
+        "tapped": false,
+        "battleX": 0,
+        "battleY": 0,
+        "counters": {
+          "+1/+1": 1
+        },
+        "isCommander": false,
+        "attackingTarget": "00000000-0000-0000-0000-000000000000",
+        "blockingTarget": "00000000-0000-0000-0000-000000000000",
+        "goadedBy": "00000000-0000-0000-0000-000000000000",
+        "damageMarked": 0,
+        "faceDown": false,
+        "enteredBattlefieldAt": 0,
+        "summonedThisTurn": false,
+        "markedLethalByDeathtouch": false,
+        "exilePlay": {
+          "Player": "00000000-0000-0000-0000-000000000000",
+          "UntilTurn": 0,
+          "WhileExiled": false,
+          "CostOverride": "",
+          "CastOnly": false,
+          "AnyColor": false,
+          "NotBeforeTurn": 0,
+          "Face": 0
+        },
+        "attachedTo": {
+          "Kind": "",
+          "ID": "00000000-0000-0000-0000-000000000000"
+        },
+        "baseController": "00000000-0000-0000-0000-000000000000",
+        "protectorPlayerId": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "instanceId": "00000000-0000-4000-8000-000000000003",
+        "name": "Construct Token",
+        "typeLine": "Token Artifact Creature — Construct",
+        "power": 0,
+        "toughness": 0,
+        "startingLoyalty": 0,
+        "needsEffect": false,
+        "owner": "e3194181-af35-4d93-b150-a35a8ef4b581",
+        "controller": "e3194181-af35-4d93-b150-a35a8ef4b581",
+        "tapped": false,
+        "battleX": 0,
+        "battleY": 0,
+        "counters": {
+          "+1/+1": 1
+        },
+        "isCommander": false,
+        "attackingTarget": "00000000-0000-0000-0000-000000000000",
+        "blockingTarget": "00000000-0000-0000-0000-000000000000",
+        "goadedBy": "00000000-0000-0000-0000-000000000000",
+        "damageMarked": 0,
+        "faceDown": false,
+        "enteredBattlefieldAt": 0,
+        "summonedThisTurn": false,
+        "markedLethalByDeathtouch": false,
+        "exilePlay": {
+          "Player": "00000000-0000-0000-0000-000000000000",
+          "UntilTurn": 0,
+          "WhileExiled": false,
+          "CostOverride": "",
+          "CastOnly": false,
+          "AnyColor": false,
+          "NotBeforeTurn": 0,
+          "Face": 0
+        },
+        "attachedTo": {
+          "Kind": "",
+          "ID": "00000000-0000-0000-0000-000000000000"
+        },
+        "baseController": "00000000-0000-0000-0000-000000000000",
+        "protectorPlayerId": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "instanceId": "00000000-0000-4000-8000-000000000004",
+        "name": "Star Creature",
+        "scryfallId": "00000000-0000-4000-9000-00000000000a",
+        "typeLine": "Creature — Lhurgoyf",
+        "power": 0,
+        "toughness": 0,
+        "startingLoyalty": 0,
+        "printedSelf": {
+          "OracleID": "",
+          "ScryfallID": "00000000-0000-4000-9000-00000000000c",
+          "Name": "Clone",
+          "TypeLine": "Creature — Shapeshifter",
+          "ManaCost": "",
+          "Colors": null,
+          "ColorIdentity": null,
+          "ProducedMana": null,
+          "Keywords": null,
+          "Power": 0,
+          "Toughness": 0,
+          "StartingLoyalty": 0,
+          "Layout": "",
+          "Faces": null,
+          "ActiveFace": 0
+        },
+        "needsEffect": false,
+        "owner": "e3194181-af35-4d93-b150-a35a8ef4b581",
+        "controller": "e3194181-af35-4d93-b150-a35a8ef4b581",
+        "tapped": false,
+        "battleX": 0,
+        "battleY": 0,
+        "counters": {
+          "+1/+1": 1
+        },
+        "isCommander": false,
+        "attackingTarget": "00000000-0000-0000-0000-000000000000",
+        "blockingTarget": "00000000-0000-0000-0000-000000000000",
+        "goadedBy": "00000000-0000-0000-0000-000000000000",
+        "damageMarked": 0,
+        "faceDown": false,
+        "enteredBattlefieldAt": 0,
+        "summonedThisTurn": false,
+        "markedLethalByDeathtouch": false,
+        "exilePlay": {
+          "Player": "00000000-0000-0000-0000-000000000000",
+          "UntilTurn": 0,
+          "WhileExiled": false,
+          "CostOverride": "",
+          "CastOnly": false,
+          "AnyColor": false,
+          "NotBeforeTurn": 0,
+          "Face": 0
+        },
+        "attachedTo": {
+          "Kind": "",
+          "ID": "00000000-0000-0000-0000-000000000000"
+        },
+        "baseController": "00000000-0000-0000-0000-000000000000",
+        "protectorPlayerId": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "instanceId": "00000000-0000-4000-8000-000000000005",
+        "name": "Star Front",
+        "scryfallId": "00000000-0000-4000-9000-00000000000d",
+        "typeLine": "Creature — Horror",
+        "power": 0,
+        "toughness": 0,
+        "startingLoyalty": 0,
+        "layout": "transform",
+        "faces": [
+          {
+            "Name": "Star Front",
+            "TypeLine": "Creature — Horror",
+            "ManaCost": "",
+            "Colors": null,
+            "Power": 0,
+            "Toughness": 0,
+            "StartingLoyalty": 0,
+            "StartingDefense": 0,
+            "OracleText": ""
+          },
+          {
+            "Name": "Three Back",
+            "TypeLine": "Creature — Horror",
+            "ManaCost": "",
+            "Colors": null,
+            "Power": 3,
+            "Toughness": 3,
+            "StartingLoyalty": 0,
+            "StartingDefense": 0,
+            "OracleText": ""
+          }
+        ],
+        "needsEffect": false,
+        "owner": "e3194181-af35-4d93-b150-a35a8ef4b581",
+        "controller": "e3194181-af35-4d93-b150-a35a8ef4b581",
+        "tapped": false,
+        "battleX": 0,
+        "battleY": 0,
+        "counters": {
+          "+1/+1": 1
+        },
+        "isCommander": false,
+        "attackingTarget": "00000000-0000-0000-0000-000000000000",
+        "blockingTarget": "00000000-0000-0000-0000-000000000000",
+        "goadedBy": "00000000-0000-0000-0000-000000000000",
+        "damageMarked": 0,
+        "faceDown": false,
+        "enteredBattlefieldAt": 0,
+        "summonedThisTurn": false,
+        "markedLethalByDeathtouch": false,
+        "exilePlay": {
+          "Player": "00000000-0000-0000-0000-000000000000",
+          "UntilTurn": 0,
+          "WhileExiled": false,
+          "CostOverride": "",
+          "CastOnly": false,
+          "AnyColor": false,
+          "NotBeforeTurn": 0,
+          "Face": 0
+        },
+        "attachedTo": {
+          "Kind": "",
+          "ID": "00000000-0000-0000-0000-000000000000"
+        },
+        "baseController": "00000000-0000-0000-0000-000000000000",
+        "protectorPlayerId": "00000000-0000-0000-0000-000000000000"
+      }
+    ]
+  },
+  "stack": {
+    "kind": "stack",
+    "owner": "00000000-0000-0000-0000-000000000000"
+  },
+  "exile": {
+    "kind": "exile",
+    "owner": "00000000-0000-0000-0000-000000000000"
+  },
+  "turn": {
+    "Number": 1,
+    "ActiveSeat": 0,
+    "PriorityHolder": 0,
+    "Phase": "beginning",
+    "Step": "upkeep"
+  },
+  "mulligansOpen": false,
+  "monarch": "00000000-0000-0000-0000-000000000000",
+  "initiative": "00000000-0000-0000-0000-000000000000",
+  "undoLimit": 1,
+  "startingSeat": 0,
+  "splitSecondActive": false,
+  "turnTally": {},
+  "eventSeq": 3,
+  "rng": {
+    "kind": "pcg",
+    "state": "cGNnOlgPin3l6RYWLUkGVf7QrfE="
+  },
+  "layerVersion": 0,
+  "lastResolvedVersion": 0,
+  "continuations": {}
+}

@@ -91,6 +91,11 @@ func (c CreateTokenCopy) Apply(ctx *Context) error {
 // client's token affordances recognise it. Everything else is the
 // printed card: name, oracle ID, Scryfall ID (so the client renders
 // the original's art), type line, P/T, mana cost and colours.
+// VariableToughness travels with Toughness (#683): a token copy of a
+// `*` creature copies the importer's 0 stand-in, so it copies the bit
+// that says the 0 is a stand-in, and the toughness state check keeps
+// skipping it after it loses its last counter, as it does the
+// original.
 func TokenCopyTemplate(g *game.Game, cardID uuid.UUID) (game.Card, bool) {
 	src, ok := g.LookupCardForEffect(cardID)
 	if !ok {
@@ -103,6 +108,7 @@ func TokenCopyTemplate(g *game.Game, cardID uuid.UUID) (game.Card, bool) {
 		TypeLine:           tokenTypeLine(src.TypeLine),
 		Power:              src.Power,
 		Toughness:          src.Toughness,
+		VariableToughness:  src.VariableToughness,
 		ManaCost:           src.ManaCost,
 		Colors:             append([]string(nil), src.Colors...),
 		ProducedMana:       append([]string(nil), src.ProducedMana...),

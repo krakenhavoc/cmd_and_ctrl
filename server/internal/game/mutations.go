@@ -587,6 +587,21 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		)
 		return err
 	}
+	// CR 118.6: no mana cost is an unpayable cost, and paying it is
+	// illegal, so a cast that would pay it is refused here. Checked
+	// once the claimed alternative cost and the exile grant are both
+	// known, because an alternative cost applied to the unpayable
+	// cost may be paid (CR 118.6a).
+	// Mode-independent, like the unparseable-cost refusal: there is
+	// no cost to have paid on paper either.
+	if HasNoManaCost(card) && castPaysPrintedCost(alt, exileGrant, hasExileGrant) {
+		slog.Warn("cast_spell rejected: no mana cost to pay",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"from_zone", src.Kind,
+		)
+		return ErrNoManaCost
+	}
 	// S28: the non-mana half of the claimed offer — the Condition
 	// ("if you control a Swamp"), the life payment, and the card
 	// pitched or bounced to pay it. Validated here, next to the claim
@@ -1028,10 +1043,11 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 //
 // The "effective cost" parses the printed ManaCost and adds
 // {2}-per-prior-cast for casts from the command zone (CR 903.8).
-// An EMPTY ManaCost still short-circuits to costless — ParseCost
-// treats "" as the zero cost, matching land behaviour — but an
-// UNPARSEABLE one now rejects the cast outright, before any of
-// the three outcomes above. Caller must hold g.mu.
+// ParseCost treats an EMPTY ManaCost as the zero cost, matching land
+// behaviour. A non-land spell never gets here on an empty cost it is
+// paying: CastSpell refuses that earlier with ErrNoManaCost (CR
+// 118.6). An UNPARSEABLE cost rejects the cast outright, before any
+// of the three outcomes above. Caller must hold g.mu.
 func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams, cardID uuid.UUID) error {
 	cost, err := g.effectiveCostLocked(p, card, params)
 	if err != nil {
@@ -2239,6 +2255,7 @@ func (g *Game) stateBasedActionsLocked() bool {
 			}
 			if len(c.Counters) == 0 {
 				c.Counters = nil
+				c.LostLastCounter = true
 			}
 			fired = true
 		}
@@ -2276,11 +2293,18 @@ func (g *Game) stateBasedActionsLocked() bool {
 	// Printed-0 creatures (Toughness == 0 and no counters applied)
 	// are skipped: that's the placeholder / unparseable-stats
 	// convention documented on Card.Power — the SBA would else
-	// destroy every demo seed card.
+	// destroy every demo seed card. A creature that has LOST its
+	// counters is not skipped (Card.LostLastCounter, #683): a 0/0
+	// whose last +1/+1 counter was removed or cancelled has a real 0
+	// toughness and dies (CR 704.5f).
+	// Unless its printed toughness is not a number
+	// (Card.VariableToughness): a `*` creature's 0 is the import
+	// stand-in whether or not it once had counters, so it stays
+	// skipped.
 	var doomed []uuid.UUID
 	for _, c := range g.Battlefield.Cards {
 		if c.IsCreature() {
-			if c.Toughness == 0 && len(c.Counters) == 0 {
+			if c.Toughness == 0 && len(c.Counters) == 0 && (!c.LostLastCounter || c.VariableToughness) {
 				continue
 			}
 			curT := c.CurrentToughness()
@@ -5296,6 +5320,7 @@ func (g *Game) applyCounterLocked(cardID uuid.UUID, name string, delta int) erro
 	}
 	for i := range z.Cards {
 		if z.Cards[i].InstanceID == cardID {
+			hadCounters := len(z.Cards[i].Counters) > 0
 			if z.Cards[i].Counters == nil {
 				z.Cards[i].Counters = make(map[string]int)
 			}
@@ -5305,6 +5330,14 @@ func (g *Game) applyCounterLocked(cardID uuid.UUID, name string, delta int) erro
 				delete(z.Cards[i].Counters, name)
 				if len(z.Cards[i].Counters) == 0 {
 					z.Cards[i].Counters = nil
+					// #683: not a placeholder any more — see
+					// Card.LostLastCounter and the toughness SBA.
+					// Only when there was a counter to lose:
+					// removing one from a card with none leaves
+					// whatever it was before.
+					if hadCounters {
+						z.Cards[i].LostLastCounter = true
+					}
 				}
 			}
 			g.EmitEvent(Event{

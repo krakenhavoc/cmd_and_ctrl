@@ -89,6 +89,7 @@ import (
 	// and every card falls through to manual sandbox resolution.
 	_ "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -214,6 +215,12 @@ func main() {
 	// (auth.MemoryAuthenticator is explicit about it), so players
 	// re-authenticate through their invite link. That link is why
 	// lobby metadata is persisted alongside the engine snapshot.
+	//
+	// The Scryfall lookup is wired first: a restore point written
+	// before #683 has no Card.VariableToughness, and restore
+	// recomputes it from the printing (game/snapshot_backfill.go).
+	// With no index it falls back to the pre-#683 rule.
+	game.PrintedVariableToughness = deck.PrintedVariableToughness(cardIdx)
 	if n := l.RestoreFromDisk(log); n > 0 {
 		log.Info("resumed games from the previous process", "count", n)
 	}

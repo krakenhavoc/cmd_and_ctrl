@@ -119,8 +119,10 @@ type ReplacementEvent struct {
 	CardID uuid.UUID
 
 	// OldZone / NewZone / NewZoneOwner describe the motion.
-	// Replacements can rewrite NewZone (Library of Leng's discard-
-	// to-library, commander-zone replacement, etc.).
+	// Replacements can rewrite NewZone (the CR 903.9 commander-zone
+	// built-in, Stone of Erech's graveyard → exile, etc.). No discard
+	// builds a RepEventMove yet: every discard moves the card directly
+	// and bypasses this pipeline (#650).
 	OldZone      ZoneKind
 	NewZone      ZoneKind
 	NewZoneOwner uuid.UUID

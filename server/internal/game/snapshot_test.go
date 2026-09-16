@@ -97,6 +97,8 @@ func enrich(t *testing.T, g *Game) {
 				DamageMarked:         1,
 				EnteredBattlefieldAt: int64(100 + i),
 				SummonedThisTurn:     i == 1,
+				LostLastCounter:      i == 1,
+				VariableToughness:    i == 0,
 				KnownBy:              map[uuid.UUID]bool{p0.ID: true, p1.ID: true},
 			}
 			g.Battlefield.PushTop(c)

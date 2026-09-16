@@ -115,6 +115,12 @@ moves to the top. Adding a top/bottom split is cleaner done
 alongside S22's library-manipulation primitives than grafted onto
 the browser now.
 
+*Correction, 2026-09-16:* Library of Leng was never shipped (ADR 0013
+§10a), and it puts the discarded card on **top** of the library, so it
+never needed a bottom destination. The discard itself doesn't reach
+the replacement pipeline yet
+([#650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/650)).
+
 ## Consequences
 
 ### Good

@@ -847,7 +847,7 @@ S13's cleanup step auto-discards from the hand top as a placeholder — S13.4 re
 ### Out of scope
 
 - **Static-ability declarations** for Reliquary Tower, Thought Vessel, Spellbook, Library of Leng, Null Profusion, Venser's Journal — these land as [S14](#s14--card-effect-catalog-foundation) catalog cards plugged into [S16](#s16--continuous-effects--layer-system-cr-613) layer pipeline, writing to the `MaxHandSize` field S13.4 creates
-- Replacement effects on discard (Library of Leng's "to top/bottom of library instead") — [S17](#s17--replacement-effects-engine-cr-614)
+- Replacement effects on discard (Library of Leng's "to top/bottom of library instead") — [S17](#s17--replacement-effects-engine-cr-614). *Corrected 2026-09-16:* Leng puts a card discarded by an **effect** on **top** of the library; it doesn't apply to costs or to this cleanup discard, which is a turn-based action, not an effect (true even when a later effect like Null Profusion gives Leng's controller a maximum hand size again). No discard reaches the replacement pipeline yet: [#650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/650), after [#651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/651). See [ADR 0013 §10a](decisions/0013-replacement-effects.md)
 - Triggers on discard (Asylum Visitor, madness) — [S19](#s19--auto-fire-triggered-abilities) + [S29](#s29--alt-cast-paths-from-non-hand-zones)
 - Hand-reveal UX (Telepathy, Bottled Cloister)
 - Multi-player simultaneous discard ordering UI (server handles APNAP correctly; only one modal at a time)
@@ -1581,7 +1581,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 
 - Hangarback Walker — needs X-cost stack plumbing; future sub-PR.
 - Champion of Lambholt — both halves are triggered/static, not replacements; re-homed to S19 (triggers) + S18 (block-restriction). Dropped from S17.
-- Library of Leng — cleanup-discard picker UI has its own design surface; re-scoped to a later sub-PR. Gap tracked as [#160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/160) for the voluntariness nuance.
+- Library of Leng — cleanup-discard picker UI has its own design surface; re-scoped to a later sub-PR. Gap tracked as [#160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/160) for the voluntariness nuance. *Corrected 2026-09-16:* there is no voluntariness nuance. Leng replaces effect-caused discards only, never the cleanup discard, and #160 closes as not planned. Leng is still not in the catalog; it waits on [#650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/650) and [#651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/651) ([ADR 0013 §10a](decisions/0013-replacement-effects.md)).
 - Mycosynth Lattice's "lands tap for any color" + "no mana ability adds non-colorless" clauses — sub-PR 6 pivoted to the CR 903.9 commander-zone fix instead. Lattice clauses re-homed to S18 (mana-ability rewrite) per [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68).
 
 **Tests:**
@@ -1613,6 +1613,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 - **Damage prevention shields with charges** (CR 615) → **S30** [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95). Fog in S17 is atomic cancel; stateful shields land in S30.
 - **Dependency detection** (CR 613.8) + **Layer 1 copy effects** → **S16.5** [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159). *(2026-09-16: copy effects shipped in #414. Dependency ordering moved to [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668) at the S16.5 closeout.)*
 - **Library of Leng** (including strict voluntariness CR 701.8a/c) → later sub-PR. Tracked at [#160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/160).
+  - *Corrected 2026-09-16:* the voluntariness framing was wrong ([ADR 0013 §10a](decisions/0013-replacement-effects.md)); #160 closes as not planned, and the work is [#650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/650) after [#651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/651).
 - **Hangarback Walker** — needs X-cost stack plumbing; future on-demand PR.
 - **Champion of Lambholt** — counter half is a trigger (S19), block-restriction is S18. Not a replacement.
 - **Mycosynth Lattice clauses** — re-homed to S18 mana-ability rewrite.

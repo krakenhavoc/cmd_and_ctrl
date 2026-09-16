@@ -101,6 +101,11 @@ type PrintedValues struct {
 	Toughness       int
 	StartingLoyalty int
 
+	// VariableToughness travels with Toughness: a Clone of a `*`
+	// creature copies the 0 stand-in, so it copies the bit that says
+	// the 0 is a stand-in too.
+	VariableToughness bool
+
 	// Layout / Faces / ActiveFace are ADR 0034's multi-face data.
 	// Copied wholesale: copying the front face of a transform card
 	// gives a permanent that can still transform, which is right,
@@ -125,21 +130,22 @@ type PrintedValues struct {
 // not `src.Effective().Power`.
 func CopiableValuesOf(src Card) PrintedValues {
 	return PrintedValues{
-		OracleID:        src.OracleID,
-		ScryfallID:      src.ScryfallID,
-		Name:            src.Name,
-		TypeLine:        src.TypeLine,
-		ManaCost:        src.ManaCost,
-		Colors:          copyStringSlice(src.Colors),
-		ColorIdentity:   copyStringSlice(src.ColorIdentity),
-		ProducedMana:    copyStringSlice(src.ProducedMana),
-		Keywords:        copyStringSlice(src.Keywords),
-		Power:           src.Power,
-		Toughness:       src.Toughness,
-		StartingLoyalty: src.StartingLoyalty,
-		Layout:          src.Layout,
-		Faces:           copyFaceSlice(src.Faces),
-		ActiveFace:      src.ActiveFace,
+		OracleID:          src.OracleID,
+		ScryfallID:        src.ScryfallID,
+		Name:              src.Name,
+		TypeLine:          src.TypeLine,
+		ManaCost:          src.ManaCost,
+		Colors:            copyStringSlice(src.Colors),
+		ColorIdentity:     copyStringSlice(src.ColorIdentity),
+		ProducedMana:      copyStringSlice(src.ProducedMana),
+		Keywords:          copyStringSlice(src.Keywords),
+		Power:             src.Power,
+		Toughness:         src.Toughness,
+		VariableToughness: src.VariableToughness,
+		StartingLoyalty:   src.StartingLoyalty,
+		Layout:            src.Layout,
+		Faces:             copyFaceSlice(src.Faces),
+		ActiveFace:        src.ActiveFace,
 	}
 }
 
@@ -348,6 +354,7 @@ func (c *Card) applyCopy(v PrintedValues, src Card) {
 	c.Keywords = v.Keywords
 	c.Power = v.Power
 	c.Toughness = v.Toughness
+	c.VariableToughness = v.VariableToughness
 	c.StartingLoyalty = v.StartingLoyalty
 	c.Layout = v.Layout
 	c.Faces = v.Faces
@@ -386,6 +393,7 @@ func (c *Card) restorePrintedSelf() {
 	c.Keywords = v.Keywords
 	c.Power = v.Power
 	c.Toughness = v.Toughness
+	c.VariableToughness = v.VariableToughness
 	c.StartingLoyalty = v.StartingLoyalty
 	c.Layout = v.Layout
 	c.Faces = v.Faces
