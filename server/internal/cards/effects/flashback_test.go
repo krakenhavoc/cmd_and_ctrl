@@ -86,6 +86,8 @@ func TestFlashbackCardsDeclareBothHalves(t *testing.T) {
 		{"Faithless Looting", "3d6fa57a-aa53-4b5c-b8af-a7612c823117", "{2}{R}"},
 		{"Lingering Souls", "0b8c3337-04dd-4798-8203-6d8b8cfb936b", "{1}{B}"},
 		{"Cackling Counterpart", "9e2adca5-f39c-4a09-bcce-8238ebac2c4a", "{5}{U}{U}"},
+		{"Otherworldly Gaze", otherworldlyOracle, "{1}{U}"},
+		{"Deep Analysis", deepAnalysisOracle, "{1}{U}"},
 	}
 	for _, c := range cards {
 		t.Run(c.name, func(t *testing.T) {
@@ -217,6 +219,165 @@ func TestFaithlessLootingRefusesTheWrongCastPaths(t *testing.T) {
 		err := g.CastSpell(active.ID, id, game.CastSpellParams{FromZone: "graveyard"})
 		if err != game.ErrCastCostRequired {
 			t.Fatalf("got %v, want ErrCastCostRequired", err)
+		}
+	})
+}
+
+const deepAnalysisOracle = "579cbd92-797f-4cdf-91ed-fca7a523eae5"
+
+// Otherworldly Gaze — shipped before the graveyard cast path and kept
+// its "no flashback" note after the path landed. A graveyard cast
+// must be accepted, surveil three again, and exile the Gaze.
+func TestOtherworldlyGazeFlashbackSurveilsAgain(t *testing.T) {
+	g := newCatalogGame(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	seedLibrary(active, "One", "Two", "Three")
+	id := seedGraveyardCard(t, g, "Otherworldly Gaze", "Instant", otherworldlyOracle)
+
+	if err := g.CastSpell(active.ID, id, game.CastSpellParams{
+		FromZone: "graveyard", AlternativeCost: "flashback",
+	}); err != nil {
+		t.Fatalf("flashback cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+
+	c := surveilChoiceFor(g, active.ID)
+	if c == nil {
+		t.Fatal("the flashed-back Gaze queued no surveil")
+	}
+	if len(c.ScryCards) != 3 {
+		t.Errorf("looked at %d cards, want 3", len(c.ScryCards))
+	}
+	if !g.Exile.Contains(id) {
+		t.Errorf("the flashed-back instant is not in exile")
+	}
+	if active.Graveyard.Contains(id) {
+		t.Errorf("the flashed-back instant returned to the graveyard")
+	}
+}
+
+// Deep Analysis — the first flashback cost with a non-mana component.
+// The offer carries the 3 life, and the label reads like the card.
+func TestDeepAnalysisFlashbackCarriesThreeLife(t *testing.T) {
+	offers := game.AlternativeCostsOfferedFromZone(deepAnalysisOracle, game.ZoneGraveyard)
+	if len(offers) != 1 {
+		t.Fatalf("graveyard offers = %+v, want one", offers)
+	}
+	if offers[0].Life != 3 {
+		t.Errorf("flashback life: got %d, want 3", offers[0].Life)
+	}
+	if want := "Flashback—{1}{U}, Pay 3 life"; offers[0].Label != want {
+		t.Errorf("flashback label: got %q, want %q", offers[0].Label, want)
+	}
+}
+
+// The whole cast, strictly charged: {1}{U} rather than the printed
+// {3}{U}, 3 life, the target player draws two, and the card is exiled.
+func TestDeepAnalysisFlashbackPaysManaAndLife(t *testing.T) {
+	g := newCatalogGame(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	var other *game.Player
+	for _, p := range g.Seats {
+		if p.ID != active.ID {
+			other = p
+			break
+		}
+	}
+	id := seedGraveyardCard(t, g, "Deep Analysis", "Sorcery", deepAnalysisOracle)
+	active.ManaPool.AddMana(game.ManaToken{Color: "U"}, game.ManaToken{Color: "U"})
+	lifeBefore := active.Life
+	otherHand := other.Hand.Size()
+
+	if err := g.CastSpell(active.ID, id, game.CastSpellParams{
+		Strict:          true,
+		FromZone:        "graveyard",
+		AlternativeCost: "flashback",
+		Targets:         []game.TargetRef{{Kind: game.TargetPlayer, ID: other.ID}},
+	}); err != nil {
+		t.Fatalf("flashback cast on two blue: %v", err)
+	}
+	if got := len(active.ManaPool); got != 0 {
+		t.Errorf("mana left in pool: %d, want 0", got)
+	}
+	if got := active.Life; got != lifeBefore-3 {
+		t.Errorf("caster life: got %d, want %d", got, lifeBefore-3)
+	}
+	passPriorityAroundTable(t, g)
+
+	if got := other.Hand.Size(); got != otherHand+2 {
+		t.Errorf("target player's hand: got %d, want %d", got, otherHand+2)
+	}
+	if !g.Exile.Contains(id) {
+		t.Errorf("the flashed-back sorcery is not in exile")
+	}
+}
+
+// The life is a cost, not a drawback: a caster below 3 life cannot
+// claim the offer, and nothing moves or is paid. And the {1}{U} is
+// not claimable from hand, where it would be a discount on {3}{U}.
+func TestDeepAnalysisRefusesTheWrongCastPaths(t *testing.T) {
+	t.Run("flashback at 2 life", func(t *testing.T) {
+		g := newCatalogGame(t)
+		active := g.Seats[g.Turn.ActiveSeat]
+		id := seedGraveyardCard(t, g, "Deep Analysis", "Sorcery", deepAnalysisOracle)
+		active.Life = 2
+		err := g.CastSpell(active.ID, id, game.CastSpellParams{
+			FromZone:        "graveyard",
+			AlternativeCost: "flashback",
+			Targets:         []game.TargetRef{{Kind: game.TargetPlayer, ID: active.ID}},
+		})
+		// ErrInvalidParam is the life check's refusal. The cast-path
+		// check runs first, so a card that did not open the graveyard
+		// would fail with ErrCastZoneNotAllowed instead.
+		if err != game.ErrInvalidParam {
+			t.Fatalf("got %v, want ErrInvalidParam", err)
+		}
+		if active.Life != 2 {
+			t.Errorf("life after the refused cast: got %d, want 2", active.Life)
+		}
+		if !active.Graveyard.Contains(id) {
+			t.Errorf("the refused cast moved the card out of the graveyard")
+		}
+	})
+
+	// The boundary on the other side: CR 119.4 lets a player pay life
+	// down to exactly zero, so 3 life is enough to claim the offer.
+	t.Run("flashback at exactly 3 life", func(t *testing.T) {
+		g := newCatalogGame(t)
+		active := g.Seats[g.Turn.ActiveSeat]
+		id := seedGraveyardCard(t, g, "Deep Analysis", "Sorcery", deepAnalysisOracle)
+		active.Life = 3
+		if err := g.CastSpell(active.ID, id, game.CastSpellParams{
+			FromZone:        "graveyard",
+			AlternativeCost: "flashback",
+			Targets:         []game.TargetRef{{Kind: game.TargetPlayer, ID: active.ID}},
+		}); err != nil {
+			t.Fatalf("flashback at 3 life: %v", err)
+		}
+		if active.Life != 0 {
+			t.Errorf("life after paying 3 of 3: got %d, want 0", active.Life)
+		}
+	})
+
+	t.Run("flashback from hand", func(t *testing.T) {
+		g := newCatalogGame(t)
+		active := g.Seats[g.Turn.ActiveSeat]
+		id := uuid.New()
+		active.Hand.PushTop(game.Card{
+			InstanceID: id, Name: "Deep Analysis", TypeLine: "Sorcery",
+			OracleID: deepAnalysisOracle, Owner: active.ID, Controller: active.ID,
+		})
+		for g.Turn.Step != game.StepPrecombatMain {
+			if _, err := g.AdvanceStep(); err != nil {
+				t.Fatalf("AdvanceStep: %v", err)
+			}
+		}
+		err := g.CastSpell(active.ID, id, game.CastSpellParams{
+			AlternativeCost: "flashback",
+			Targets:         []game.TargetRef{{Kind: game.TargetPlayer, ID: active.ID}},
+		})
+		if err != game.ErrCastZoneNotAllowed {
+			t.Fatalf("got %v, want ErrCastZoneNotAllowed", err)
 		}
 	})
 }
