@@ -18,18 +18,10 @@ func init() {
 		OracleID:     "ef809e99-34a2-4471-8269-f56bf8037686",
 		Name:         "Geth's Grimoire",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDiscardCard},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b18OpponentDiscarded(ev, source)
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Geth's Grimoire — draw a card?"},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Geth's Grimoire — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Geth's Grimoire — draw a card", Do(DrawCards{N: 1})), "Geth's Grimoire — draw a card?"),
+		},
 	})
 }

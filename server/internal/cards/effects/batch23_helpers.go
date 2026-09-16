@@ -144,13 +144,9 @@ func b23ElfYouControlBecameTappedFirstTimeThisTurn(ev game.Event, source *game.C
 // number: the cursor stamps one on every step it enters, so every
 // event above that mark belongs to this turn.
 func b23TappedEarlierThisTurn(g *game.Game, ev game.Event) bool {
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		prev := g.Events[i]
+	for _, prev := range g.EventsThisTurn() {
 		if prev.Seq >= ev.Seq {
-			continue
-		}
-		if prev.Kind == game.EventStepBegan && prev.Amount < g.Turn.Number {
-			return false
+			break
 		}
 		if (prev.Kind == game.EventTapCard || prev.Kind == game.EventAttack) && prev.CardID == ev.CardID {
 			return true

@@ -14,9 +14,11 @@ import { expect, test } from "@playwright/test";
 test("landing page renders the player-first entry", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "CMD & CTRL", level: 1 })).toBeVisible();
-  // Players lead: the invite paste box is the first card on #/login.
+  // Players lead: the invite box is the first card on #/login. (With
+  // Discord configured a sign-in card sits above it; these stacks set
+  // no CMDCTRL_DISCORD_* values, so that button stays hidden.)
   await expect(page.getByRole("heading", { name: "Have an invite?" })).toBeVisible();
-  await expect(page.getByLabel("invite link")).toBeVisible();
+  await expect(page.getByLabel("invite code or link")).toBeVisible();
   // …with the admin token form under it.
   await expect(page.getByRole("heading", { name: "Admin log in" })).toBeVisible();
   await expect(page.getByPlaceholder("admin token")).toBeVisible();
@@ -30,7 +32,7 @@ test("#/admin leads with the token form and hides the invite paste", async ({ pa
   await page.goto("/#/admin");
   await expect(page.getByRole("heading", { name: "Admin log in" })).toBeVisible();
   await expect(page.getByPlaceholder("admin token")).toBeVisible();
-  await expect(page.getByLabel("invite link")).toHaveCount(0);
+  await expect(page.getByLabel("invite code or link")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Back" })).toBeVisible();
 });
 

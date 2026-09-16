@@ -31,20 +31,15 @@ func init() {
 			Label:                   "Add one mana of any color",
 			IgnoreCommanderIdentity: true,
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginUpkeep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventBeginUpkeep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Actor == source.Controller && b24ControlsCreatureWithPowerAtLeast(g, source.Controller, 7)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Bugenhagen, Wise Elder — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						if !b24ControlsCreatureWithPowerAtLeast(g, item.Controller, 7) {
-							return nil
-						}
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Bugenhagen, Wise Elder — draw a card", func(g *game.Game, item *game.StackItem) error {
+				if !b24ControlsCreatureWithPowerAtLeast(g, item.Controller, 7) {
+					return nil
+				}
+				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

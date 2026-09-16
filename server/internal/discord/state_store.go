@@ -24,11 +24,28 @@ import (
 // the first, so each start gets its own state; (2) a forged
 // callback without the matching state is rejected, which is the
 // CSRF guarantee PKCE + state are for.
+//
+// GameID / InviteToken are both zero for a round-trip started from
+// the login page, where the user signs in BEFORE they have an
+// invite. See Unbound.
 type StateEntry struct {
 	GameID       uuid.UUID
 	InviteToken  string
 	CodeVerifier string
 	CreatedAt    time.Time
+}
+
+// Unbound reports whether this round-trip started without an invite
+// — the login-page flow. The callback mints an identity-only
+// session for these instead of claiming a seat, and the user
+// supplies an invite code afterwards.
+//
+// Both fields are checked, not just one: a half-filled entry would
+// mean a caller built a StateEntry by hand with only one of the
+// pair, and treating that as "unbound" would silently drop a seat
+// claim the user asked for.
+func (e StateEntry) Unbound() bool {
+	return e.GameID == uuid.Nil && e.InviteToken == ""
 }
 
 // StateStore is a tiny in-memory TTL map. Sized for at most a

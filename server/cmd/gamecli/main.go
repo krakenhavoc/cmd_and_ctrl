@@ -53,7 +53,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("dial %s: %v", *addr, err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Consume the initial snapshot the server sends on connect.
 	initial, err := readSnapshot(conn, *timeout)
@@ -67,7 +67,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("open action source: %v", err)
 	}
-	defer source.Close()
+	defer func() { _ = source.Close() }()
 
 	dec := json.NewDecoder(source)
 	for {

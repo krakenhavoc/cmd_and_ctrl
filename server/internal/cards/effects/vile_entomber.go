@@ -22,22 +22,17 @@ func init() {
 		Name:            "Vile Entomber",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch"},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Vile Entomber — search for a card, put it into your graveyard",
-					func(g *game.Game, item *game.StackItem) error {
-						return SearchLibrary{
-							Player:    item.Controller,
-							Predicate: func(game.Card) bool { return true },
-							Dest:      game.ZoneGraveyard,
-							Limit:     1,
-							Shuffle:   true,
-							Reason:    "Vile Entomber — a card, into your graveyard",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Vile Entomber — search for a card, put it into your graveyard", func(g *game.Game, item *game.StackItem) error {
+				return SearchLibrary{
+					Player:    item.Controller,
+					Predicate: func(game.Card) bool { return true },
+					Dest:      game.ZoneGraveyard,
+					Limit:     1,
+					Shuffle:   true,
+					Reason:    "Vile Entomber — a card, into your graveyard",
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

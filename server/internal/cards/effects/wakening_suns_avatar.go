@@ -28,20 +28,15 @@ func init() {
 		OracleID:     "3c2aec69-ffd9-4a34-888c-58adbbb99bb5",
 		Name:         "Wakening Sun's Avatar",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 				return b06SelfETB(ev, source, lki, g) && b30CastFromHand(g, source.InstanceID)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Wakening Sun's Avatar — destroy all non-Dinosaur creatures",
-					func(g *game.Game, item *game.StackItem) error {
-						if !b30CastFromHand(g, item.SourceCardID) {
-							return nil
-						}
-						return DestroyAllMatching{Match: And(Creature(), Not(HasSubtype("Dinosaur")))}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Wakening Sun's Avatar — destroy all non-Dinosaur creatures", func(g *game.Game, item *game.StackItem) error {
+				if !b30CastFromHand(g, item.SourceCardID) {
+					return nil
+				}
+				return DestroyAllMatching{Match: And(Creature(), Not(HasSubtype("Dinosaur")))}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

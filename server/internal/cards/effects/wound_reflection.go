@@ -24,31 +24,24 @@ func init() {
 		OracleID:     "b09206a4-8b73-4125-8b79-53f6fd511b16",
 		Name:         "Wound Reflection",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginEndStep},
-			AppliesTo: func(_ game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return true
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Wound Reflection — each opponent loses the life they lost this turn",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						opponents := ctx.Opponents()
-						amounts := make([]int, len(opponents))
-						for i, opp := range opponents {
-							amounts[i] = b18LifeLostThisTurn(g, opp)
-						}
-						for i, opp := range opponents {
-							if amounts[i] <= 0 {
-								continue
-							}
-							if err := g.ChangePlayerLifeForEffect(item.SourceCardID, opp, -amounts[i]); err != nil {
-								return err
-							}
-						}
-						return nil
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			On(game.EventBeginEndStep, AnyPlayer, "Wound Reflection — each opponent loses the life they lost this turn", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				opponents := ctx.Opponents()
+				amounts := make([]int, len(opponents))
+				for i, opp := range opponents {
+					amounts[i] = b18LifeLostThisTurn(g, opp)
+				}
+				for i, opp := range opponents {
+					if amounts[i] <= 0 {
+						continue
+					}
+					if err := g.ChangePlayerLifeForEffect(item.SourceCardID, opp, -amounts[i]); err != nil {
+						return err
+					}
+				}
+				return nil
+			}),
+		},
 	})
 }

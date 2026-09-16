@@ -38,16 +38,7 @@ func init() {
 						b36TapChosenCreature)
 				},
 			},
-			{
-				Watches: []game.EventKind{game.EventBeginUpkeep},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.Actor == source.Controller
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Lossarnach Captain — create a 1/1 white Human Soldier",
-						b34CreateTokens(b36WhiteHumanSoldierToken, 1))
-				},
-			},
+			AtYourUpkeep("Lossarnach Captain — create a 1/1 white Human Soldier", b34CreateTokens(b36WhiteHumanSoldierToken, 1)),
 		},
 	})
 }

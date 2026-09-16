@@ -16,7 +16,7 @@ import (
 // creature died" is diedCreature, "a creature you control dealt
 // combat damage to a player" is combatDamageToPlayerBy, "a card left
 // your graveyard" is b16CardLeftYourGraveyard, the per-label "one or
-// more" dedup is b12TriggerPendingOrOnStack, the loot is lootOne,
+// more" dedup is OncePerBatch, the loot is lootOne,
 // the fight is b10Fight, the +1/+1 doubling is
 // b23DoublePlusOneCountersOn, the nonbasic predicate is b03Nonbasic,
 // and the Zombie Druid, Treasure and red Goblin tokens are
@@ -94,13 +94,9 @@ func b25FirstMulticoloredSpellThisTurn(ev game.Event, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor == uuid.Nil || !b25CastIsMulticolored(ev, g) {
 		return false
 	}
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		prev := g.Events[i]
+	for _, prev := range g.EventsThisTurn() {
 		if prev.Seq >= ev.Seq {
-			continue
-		}
-		if prev.Kind == game.EventBeginUpkeep {
-			return true
+			break
 		}
 		if prev.Kind == game.EventCast && prev.Actor == ev.Actor && b25CastIsMulticolored(prev, g) {
 			return false

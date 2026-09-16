@@ -17,20 +17,13 @@ func init() {
 	Register(Spec{
 		OracleID: "ee579a32-a048-4335-b966-231ba731cdea",
 		Name:     "Phyrexian Arena",
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginUpkeep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Phyrexian Arena — lose 1 life, draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						if err := g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -1); err != nil {
-							return err
-						}
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			AtYourUpkeep("Phyrexian Arena — lose 1 life, draw a card", func(g *game.Game, item *game.StackItem) error {
+				if err := g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -1); err != nil {
+					return err
+				}
+				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

@@ -21,18 +21,13 @@ func init() {
 		Completeness:    CompletenessCaveats,
 		Caveats:         []string{"Cycling {2} is not implemented — the creature can only be cast."},
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDiscardCard},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return discardedByYou(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Scrounging Skyray — +1/+1 counter",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						return AddCounter{Target: ctx.Source(), Kind: "+1/+1", N: 1}.Apply(ctx)
-					})
-			},
-		}},
+			}, "Scrounging Skyray — +1/+1 counter", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				return AddCounter{Target: ctx.Source(), Kind: "+1/+1", N: 1}.Apply(ctx)
+			}),
+		},
 	})
 }

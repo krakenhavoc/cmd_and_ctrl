@@ -36,27 +36,22 @@ func init() {
 		Name:         "Sword of the Animist",
 		Completeness: CompletenessFull,
 		Static:       []game.StaticAbility{PumpAttached(1, 1)},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventAttack},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return attachedCreatureAttacked(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Sword of the Animist — search for a basic land",
-					func(g *game.Game, item *game.StackItem) error {
-						return SearchLibrary{
-							Player:        item.Controller,
-							Predicate:     IsBasicLand,
-							Dest:          game.ZoneBattlefield,
-							Limit:         1,
-							TappedOnEntry: true,
-							Optional:      true,
-							Shuffle:       true,
-							Reason:        "Sword of the Animist — search for a basic land card",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Sword of the Animist — search for a basic land", func(g *game.Game, item *game.StackItem) error {
+				return SearchLibrary{
+					Player:        item.Controller,
+					Predicate:     IsBasicLand,
+					Dest:          game.ZoneBattlefield,
+					Limit:         1,
+					TappedOnEntry: true,
+					Optional:      true,
+					Shuffle:       true,
+					Reason:        "Sword of the Animist — search for a basic land card",
+				}.Apply(NewContext(g, item))
+			}),
+		},
 		Activated: []ActivatedAbility{
 			EquipAbility("{2}"),
 		},

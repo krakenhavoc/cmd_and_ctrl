@@ -23,26 +23,16 @@ func init() {
 		Name:            "Butcher of Malakir",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				dead, ok := diedCreature(ev, g)
-				// "This creature OR another creature you control" —
-				// the source's own death counts, and diedCreature has
-				// already resolved the card post-move so its
-				// controller is still readable.
-				return ok && dead.Controller == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Butcher of Malakir — each opponent sacrifices a creature",
-					func(g *game.Game, item *game.StackItem) error {
-						return EachPlayerSacrifices{
-							ExceptController: true,
-							Match:            Creature(),
-							Label:            "a creature",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			// "This creature OR another creature you control" —
+			// the source's own death counts, and diedCreature has
+			// already resolved the card post-move so its
+			// controller is still readable.
+			WheneverACreatureYouControlDies("Butcher of Malakir — each opponent sacrifices a creature", Do(EachPlayerSacrifices{
+				ExceptController: true,
+				Match:            Creature(),
+				Label:            "a creature",
+			})),
+		},
 	})
 }

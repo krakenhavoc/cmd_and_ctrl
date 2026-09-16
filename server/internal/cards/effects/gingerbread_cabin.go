@@ -44,17 +44,10 @@ func init() {
 			Produced: "{G}",
 			Label:    "Add {G}",
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b27SelfEnteredUntapped(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Gingerbread Cabin — create a Food token",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: FoodToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Gingerbread Cabin — create a Food token", Do(CreateToken{Template: FoodToken(), N: 1})),
+		},
 	})
 }

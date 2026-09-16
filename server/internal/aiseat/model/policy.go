@@ -322,21 +322,21 @@ func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 		Index:       base.Index,
 		Reason:      base.Reason,
 	}
-	finish := func(d aiseat.Decision) (aiseat.Decision, error) {
+	finish := func(d aiseat.Decision) aiseat.Decision {
 		rec.Latency = time.Since(started)
 		p.rec.record(rec)
-		return d, nil
+		return d
 	}
 
 	// --- Layer C ---------------------------------------------------
 	if p.cfg.Client == nil {
 		rec.Fallback = FallbackNoClient
-		return finish(base)
+		return finish(base), nil
 	}
 	budget := p.budget(ctx)
 	if budget < p.cfg.MinBudget {
 		rec.Fallback = FallbackNoBudget
-		return finish(base)
+		return finish(base), nil
 	}
 	profile := p.cfg.Routine
 	if len(rec.Escalations) > 0 {
@@ -375,11 +375,11 @@ func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 			rec.TimedOut = true
 			p.cfg.Log.Warn("bot model call TIMED OUT; playing the heuristic's move — the model is slower than this tier's deadline (raise CMDCTRL_BOT_MAX_THINK)",
 				"tier", p.cfg.Tier, "model", profile.ID, "took", rec.ModelLatency, "budget", budget)
-			return finish(base)
+			return finish(base), nil
 		}
 		p.cfg.Log.Warn("bot model call failed; playing the heuristic's move",
 			"tier", p.cfg.Tier, "model", profile.ID, "took", rec.ModelLatency, "err", cerr)
-		return finish(base)
+		return finish(base), nil
 	}
 
 	idx, why, perr := parseAnswer(resp.Text)
@@ -388,7 +388,7 @@ func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 		rec.Fallback = FallbackMalformed
 		p.cfg.Log.Warn("bot model reply was not an index; playing the heuristic's move",
 			"tier", p.cfg.Tier, "model", profile.ID, "reply", truncate(resp.Text, 200))
-		return finish(base)
+		return finish(base), nil
 	case idx < 0 || idx >= len(in.Moves):
 		// The one failure the closed move list makes harmless: a
 		// number that is not a move is not a move, and there is
@@ -402,13 +402,13 @@ func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 		rec.Fallback = FallbackOutOfRange
 		p.cfg.Log.Warn("bot model chose a move that was not offered; playing the heuristic's move",
 			"tier", p.cfg.Tier, "model", profile.ID, "index", idx, "moves", len(in.Moves))
-		return finish(base)
+		return finish(base), nil
 	}
 
 	rec.Layer = LayerC
 	rec.Index = idx
 	rec.Reason = modelReason(profile.ID, why)
-	return finish(aiseat.Decision{Index: idx, Reason: rec.Reason})
+	return finish(aiseat.Decision{Index: idx, Reason: rec.Reason}), nil
 }
 
 // budget is how long a model call may take: whatever the runner's

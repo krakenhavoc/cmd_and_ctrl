@@ -21,21 +21,15 @@ func init() {
 		OracleID:     "b26e3596-5b28-4eb6-b3e2-03f63d8c6d49",
 		Name:         "Deathreap Ritual",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginEndStep},
-			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventBeginEndStep, func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b15EndStepBegan(ev) && b11CreaturesDiedThisTurn(g) > 0
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Deathreap Ritual — a creature died this turn: draw a card?"},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Deathreap Ritual — draw a card (morbid)",
-					func(g *game.Game, item *game.StackItem) error {
-						if b11CreaturesDiedThisTurn(g) == 0 {
-							return nil
-						}
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Deathreap Ritual — draw a card (morbid)", func(g *game.Game, item *game.StackItem) error {
+				if b11CreaturesDiedThisTurn(g) == 0 {
+					return nil
+				}
+				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
+			}), "Deathreap Ritual — a creature died this turn: draw a card?"),
+		},
 	})
 }

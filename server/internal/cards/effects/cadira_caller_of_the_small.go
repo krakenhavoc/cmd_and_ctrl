@@ -23,15 +23,10 @@ func init() {
 		Name:            "Cadira, Caller of the Small",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b36SelfDealtCombatDamageToPlayer(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Cadira, Caller of the Small — a 1/1 white Rabbit for each token you control",
-					b36RabbitsPerTokenYouControl)
-			},
-		}},
+			}, "Cadira, Caller of the Small — a 1/1 white Rabbit for each token you control", b36RabbitsPerTokenYouControl),
+		},
 	})
 }

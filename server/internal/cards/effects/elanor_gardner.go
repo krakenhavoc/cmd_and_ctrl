@@ -27,24 +27,10 @@ func init() {
 		Name:         "Elanor Gardner",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches:   []game.EventKind{game.EventETB},
-				AppliesTo: b06SelfETB,
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Elanor Gardner — create a Food", b34CreateTokens(FoodToken, 1))
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventBeginEndStep},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return ev.Actor == source.Controller && b34YouSacrificedAFoodThisTurn(g, source.Controller)
-				},
-				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Elanor Gardner — you sacrificed a Food this turn. Search your library for a basic land card?"},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Elanor Gardner — search for a basic land, put it onto the battlefield tapped",
-						b34SearchBasicTappedIfSacrificedAFood)
-				},
-			},
+			WhenThisEnters("Elanor Gardner — create a Food", b34CreateTokens(FoodToken, 1)),
+			Optional(On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return ev.Actor == source.Controller && b34YouSacrificedAFoodThisTurn(g, source.Controller)
+			}, "Elanor Gardner — search for a basic land, put it onto the battlefield tapped", b34SearchBasicTappedIfSacrificedAFood), "Elanor Gardner — you sacrificed a Food this turn. Search your library for a basic land card?"),
 		},
 	})
 }

@@ -33,25 +33,17 @@ func init() {
 		Completeness:    CompletenessCaveats,
 		Caveats:         []string{"Two Pirates hitting the same opponent make two Treasures instead of one; Partner isn't supported, so Malcolm can't be your commander."},
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if damagedOpponent(ev, source.Controller, g) == uuid.Nil {
 					return false
 				}
 				dealer, ok := g.LookupCardForEffect(ev.Source)
 				return ok && isPirate(dealer)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Malcolm — create a Treasure",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   TreasureToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Malcolm — create a Treasure", Do(CreateToken{
+				Template: TreasureToken(),
+				N:        1,
+			})),
+		},
 	})
 }

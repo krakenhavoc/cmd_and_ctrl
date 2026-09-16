@@ -174,6 +174,25 @@ type TriggeredAbility struct {
 	// Added in S28.
 	FromStack bool
 
+	// Key names this ability for the OncePerBatch check: the stack
+	// label it announces with. The effects constructors stamp it from
+	// the label they are given; a hand-written ability may set it, or
+	// leave it empty to mean "any trigger from this source". Not
+	// persisted — it is catalog data.
+	Key string
+
+	// OncePerBatch is "whenever ONE OR MORE …": the engine emits one
+	// event per creature that attacks, enters or deals damage, and a
+	// printed once-per-batch ability must not fire once per event. With
+	// this set the harvester declines the event while an item of this
+	// ability (matched by Key, or by source when Key is empty) is still
+	// on PendingTriggers, on the stack, or waiting on its "you may" /
+	// target prompt — which is the whole window one batch of events
+	// can occupy before priority passes. Before #587 every card that
+	// needed it scanned those places by hand, four slightly different
+	// ways.
+	OncePerBatch bool
+
 	// Chapter is the Saga chapter number this ability is printed
 	// against — 1 for "I —", 3 for "III —" (CR 714.2c). Zero for
 	// every ability that is not a chapter, which is every ability on
@@ -343,6 +362,9 @@ func (g *Game) harvestCastFromStack(ev Event) {
 //
 // Caller must hold g.mu. Added in S20 sub-PR 2 (steps 1 and 3).
 func (g *Game) dispatchTriggerLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility) {
+	if t.OncePerBatch && g.triggerInFlightLocked(source.InstanceID, t.Key) {
+		return
+	}
 	if t.Targets != nil {
 		lt := g.legalTargetsLocked(source.Controller, t.Targets)
 		if len(lt.Players) == 0 && len(lt.Cards) == 0 {
@@ -522,6 +544,50 @@ func (g *Game) findCardByIDLocked(cardID uuid.UUID) *Card {
 		}
 	}
 	return nil
+}
+
+// triggerInFlightLocked reports whether an instance of the ability
+// identified by (source, key) is between "fired" and "resolved": on
+// PendingTriggers, on the stack, or waiting on a trigger prompt or a
+// target pick. An empty key matches any trigger from the source.
+// Caller must hold g.mu.
+func (g *Game) triggerInFlightLocked(source uuid.UUID, key string) bool {
+	match := func(item *StackItem) bool {
+		return item != nil && item.Kind == StackItemTriggered && item.SourceCardID == source && (key == "" || item.Label == key)
+	}
+	for _, item := range g.PendingTriggers {
+		if match(item) {
+			return true
+		}
+	}
+	for _, item := range g.StackMeta {
+		if match(item) {
+			return true
+		}
+	}
+	for _, c := range g.PendingChoices {
+		if c == nil || c.Source != source {
+			continue
+		}
+		if c.Kind != PendingChoiceTriggerPrompt && c.Kind != PendingChoicePickTarget {
+			continue
+		}
+		// A prompt from an ability with no Key (a hand-written literal)
+		// blocks every key of its source: that is the source-wide check
+		// the old helpers made, and the conservative direction.
+		if key == "" || c.triggerResume == nil || c.triggerResume.ability.Key == "" || c.triggerResume.ability.Key == key {
+			return true
+		}
+	}
+	return false
+}
+
+// TriggerInFlightForEffect is triggerInFlightLocked for card code
+// whose label is computed per event and so cannot ride
+// TriggeredAbility.Key (Breena's per-opponent label). Runs under the
+// lock the caller already holds.
+func (g *Game) TriggerInFlightForEffect(source uuid.UUID, key string) bool {
+	return g.triggerInFlightLocked(source, key)
 }
 
 // triggerWatches reports whether kinds contains kind. Linear scan;

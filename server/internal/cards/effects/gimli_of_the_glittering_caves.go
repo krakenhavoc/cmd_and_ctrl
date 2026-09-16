@@ -28,33 +28,15 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"double strike"},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b29AnotherLegendaryCreatureYouControlEntered(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Gimli of the Glittering Caves — put a +1/+1 counter on Gimli",
-						func(g *game.Game, item *game.StackItem) error {
-							if !onBattlefield(g, item.SourceCardID) {
-								return nil
-							}
-							return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventDealDamage},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return ev.Source == source.InstanceID && combatDamageToPlayerBy(ev, source.Controller, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Gimli of the Glittering Caves — create a Treasure",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b29AnotherLegendaryCreatureYouControlEntered(ev, source, g)
+			}, "Gimli of the Glittering Caves — put a +1/+1 counter on Gimli", func(g *game.Game, item *game.StackItem) error {
+				if !onBattlefield(g, item.SourceCardID) {
+					return nil
+				}
+				return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
+			}),
+			WheneverThisDealsCombatDamageToAPlayer("Gimli of the Glittering Caves — create a Treasure", Do(CreateToken{Template: TreasureToken(), N: 1})),
 		},
 	})
 }

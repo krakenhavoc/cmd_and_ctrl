@@ -17,14 +17,10 @@ func init() {
 		OracleID:     "568cf486-0261-4634-ac36-a6507101b2d0",
 		Name:         "Vedalken Archmage",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b29ArtifactSpellCastByYou(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Vedalken Archmage — draw a card", b27DrawOne)
-			},
-		}},
+			}, "Vedalken Archmage — draw a card", b27DrawOne),
+		},
 	})
 }

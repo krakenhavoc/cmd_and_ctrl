@@ -20,21 +20,14 @@ func init() {
 		OracleID:     "ea750169-1f6f-40c2-96e9-55719e103a63",
 		Name:         "Throne of the God-Pharaoh",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginEndStep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Throne of the God-Pharaoh — each opponent loses life equal to your tapped creatures",
-					func(g *game.Game, item *game.StackItem) error {
-						n := b24TappedCreaturesControlled(g, item.Controller)
-						if n <= 0 {
-							return nil
-						}
-						return eachOpponentLosesLife(g, item, n)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			AtYourEndStep("Throne of the God-Pharaoh — each opponent loses life equal to your tapped creatures", func(g *game.Game, item *game.StackItem) error {
+				n := b24TappedCreaturesControlled(g, item.Controller)
+				if n <= 0 {
+					return nil
+				}
+				return eachOpponentLosesLife(g, item, n)
+			}),
+		},
 	})
 }

@@ -394,14 +394,6 @@ func TestCounterTargetSpell(t *testing.T) {
 		Owner:      caster.ID,
 		Controller: caster.ID,
 	})
-	g.WithWriteLock(func() {
-		if g.StackMeta == nil {
-			// It's package-private normally, but tests in the same
-			// package (effects) can't reach it. Exercise via the public
-			// API (AnnounceTrigger produces a StackMeta entry, but not
-			// for spells). Simplest: cast a real spell.
-		}
-	})
 	// Re-set up by casting properly.
 	g = newTestGame(t)
 	caster = g.Seats[0]

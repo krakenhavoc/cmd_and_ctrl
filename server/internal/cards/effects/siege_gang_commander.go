@@ -23,16 +23,9 @@ func init() {
 		OracleID:     "ddc7f59a-bbb1-4ba1-82c8-6813fd191940",
 		Name:         "Siege-Gang Commander",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Siege-Gang Commander — create three 1/1 red Goblins",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: RedGoblinToken(), N: 3}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Siege-Gang Commander — create three 1/1 red Goblins", Do(CreateToken{Template: RedGoblinToken(), N: 3})),
+		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{R}, Sacrifice a Goblin: This creature deals 2 damage to any target.",
 			Cost:    Plus(ManaCost("{1}{R}"), game.AbilityCost{SacrificeOther: b12SacrificeAGoblin()}),

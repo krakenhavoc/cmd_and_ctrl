@@ -21,7 +21,7 @@ import (
 // b15OpponentCastSpell with manaValueOnStack for its mana value,
 // "a creature entered under your control" is enteredUnderYourControl,
 // the combat-damage-to-a-player read is combatDamageToPlayerBy with
-// b04TriggerPendingOrOnStack as the "one or more" dedup, the
+// OncePerBatch as the "one or more" dedup, the
 // each-opponent drain is b21DrainEachOpponentAndGainTheTotal, the
 // Vampire counter body is b17PutCounterOnEachVampireYouControl, the
 // tutor-to-hand body is b06TutorToHand, the "unless you control a
@@ -84,27 +84,6 @@ func b24LegendaryCreatureYouControlDealtCombatDamageToPlayer(ev game.Event, sour
 	}
 	dealer, ok := g.LookupCardForEffect(ev.Source)
 	return ok && b06IsLegendary(&dealer)
-}
-
-// b24TriggerPendingOrOnStackWithLabel is b04TriggerPendingOrOnStack
-// narrowed to one LABEL: a triggered item from `source` carrying
-// exactly `label` is waiting on PendingTriggers or sitting on the
-// stack. It is how Nature's Will fires once per PLAYER hit rather
-// than once per source: the label names the damaged player, so a
-// second creature connecting with the same player is declined while
-// a creature connecting with a different player is not.
-func b24TriggerPendingOrOnStackWithLabel(g *game.Game, source *game.Card, label string) bool {
-	for _, item := range g.PendingTriggers {
-		if item != nil && item.SourceCardID == source.InstanceID && item.Label == label {
-			return true
-		}
-	}
-	for _, item := range g.StackMeta {
-		if item != nil && item.Kind == game.StackItemTriggered && item.SourceCardID == source.InstanceID && item.Label == label {
-			return true
-		}
-	}
-	return false
 }
 
 // b24NaturesWillLabel is Nature's Will's stack label for one damaged

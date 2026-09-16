@@ -122,22 +122,7 @@ func b11CreatureCardsInGraveyard(g *game.Game, controller uuid.UUID) int {
 // tracked zone, or a permanent that was a creature only through a
 // layer effect when it died, is not counted.
 func b11CreaturesDiedThisTurn(g *game.Game) int {
-	n := 0
-	seen := map[uuid.UUID]bool{}
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			break
-		}
-		if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard || seen[ev.CardID] {
-			continue
-		}
-		seen[ev.CardID] = true
-		if c, ok := g.LookupCardForEffect(ev.CardID); ok && c.IsCreature() {
-			n++
-		}
-	}
-	return n
+	return g.TurnTally.CreaturesDied
 }
 
 // b11TriggeredThisTurn reports whether an ability of `source` with
@@ -148,16 +133,7 @@ func b11CreaturesDiedThisTurn(g *game.Game) int {
 // turn's upkeep is the tally; a trigger that was countered still
 // counts, as printed.
 func b11TriggeredThisTurn(g *game.Game, source uuid.UUID, label string) bool {
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			return false
-		}
-		if ev.Kind == game.EventTrigger && ev.Source == source && ev.Label == label {
-			return true
-		}
-	}
-	return false
+	return g.TriggeredThisTurn(source, label) > 0
 }
 
 // b11CountersWerePlaced reports whether ev is a PLACEMENT of `kind`

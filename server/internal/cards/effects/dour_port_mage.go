@@ -38,19 +38,11 @@ func init() {
 		OracleID:     "cf58e309-00e8-438e-813e-2e1c1002db23",
 		Name:         "Dour Port-Mage",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b13OtherCreatureYouControlLeftWithoutDying(ev, source, g) &&
-					!b12TriggerPendingOrOnStack(g, source, label)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, label,
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			OncePerBatch(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b13OtherCreatureYouControlLeftWithoutDying(ev, source, g)
+			}, label, Do(DrawCards{N: 1}))),
+		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{U}, {T}: Return another target creature you control to its owner's hand.",
 			Cost:    Plus(ManaCost("{1}{U}"), TapCost()),

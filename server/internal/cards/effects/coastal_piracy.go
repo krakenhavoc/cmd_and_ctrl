@@ -15,20 +15,10 @@ func init() {
 		OracleID:     "8a05ec32-7b0c-4f23-a4f7-413301c2a70a",
 		Name:         "Coastal Piracy",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Target != source.Controller && combatDamageToPlayerBy(ev, source.Controller, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Coastal Piracy — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{
-				Question: "Coastal Piracy — draw a card?",
-			},
-		}},
+			}, "Coastal Piracy — draw a card", Do(DrawCards{N: 1})), "Coastal Piracy — draw a card?"),
+		},
 	})
 }

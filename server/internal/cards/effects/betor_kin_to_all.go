@@ -30,14 +30,10 @@ func init() {
 		Name:            "Betor, Kin to All",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginEndStep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b30EndStepAndTotalToughnessAtLeast(ev, source, g, 10)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Betor, Kin to All — draw at 10 toughness, untap at 20, halve opponents' life at 40", b30BetorEndStep)
-			},
-		}},
+			}, "Betor, Kin to All — draw at 10 toughness, untap at 20, halve opponents' life at 40", b30BetorEndStep),
+		},
 	})
 }

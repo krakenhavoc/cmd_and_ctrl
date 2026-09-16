@@ -25,7 +25,7 @@ func init() {
 	Register(Spec{
 		OracleID: "53c730c6-2f8c-4af8-b400-b9d573a71e60",
 		Name:     "Adaptive Automaton",
-		OnETB:    ChooseCreatureTypeOnETB("Adaptive Automaton"),
+		AsEnters: ChooseCreatureTypeAsEnters("Adaptive Automaton"),
 		Static: []game.StaticAbility{
 			{
 				Layer: game.Layer4Type,

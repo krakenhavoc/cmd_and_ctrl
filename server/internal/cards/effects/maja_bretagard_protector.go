@@ -24,15 +24,8 @@ func init() {
 		Static: []game.StaticAbility{
 			TribalAnthem(TribeFilter{Others: true, YoursOnly: true}, 1, 1),
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b33LandYouControlEntered(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Maja, Bretagard Protector — create a 1/1 white Human Warrior",
-					b33CreateTokenBody(b33WhiteHumanWarriorToken, 1))
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			Landfall("Maja, Bretagard Protector — create a 1/1 white Human Warrior", b33CreateTokenBody(b33WhiteHumanWarriorToken)),
+		},
 	})
 }

@@ -62,26 +62,18 @@ func init() {
 				c.Subtypes = nil
 			},
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Arixmethes — remove a slumber counter?"},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Arixmethes, Slumbering Isle — remove a slumber counter",
-					func(g *game.Game, item *game.StackItem) error {
-						if !b09SourceStillOnBattlefield(g, item) {
-							return nil
-						}
-						c, ok := g.LookupCardForEffect(item.SourceCardID)
-						if !ok || c.Counters["slumber"] <= 0 {
-							return nil
-						}
-						return AddCounter{Target: item.SourceCardID, Kind: "slumber", N: -1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventCast, ByYou, "Arixmethes, Slumbering Isle — remove a slumber counter", func(g *game.Game, item *game.StackItem) error {
+				if !b09SourceStillOnBattlefield(g, item) {
+					return nil
+				}
+				c, ok := g.LookupCardForEffect(item.SourceCardID)
+				if !ok || c.Counters["slumber"] <= 0 {
+					return nil
+				}
+				return AddCounter{Target: item.SourceCardID, Kind: "slumber", N: -1}.Apply(NewContext(g, item))
+			}), "Arixmethes — remove a slumber counter?"),
+		},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{G}{U}",

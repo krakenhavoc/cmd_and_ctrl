@@ -93,7 +93,7 @@ func (c Config) ExchangeCode(ctx context.Context, client *http.Client, code, cod
 	if err != nil {
 		return TokenResponse{}, fmt.Errorf("discord: token request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
 	if err != nil {
@@ -153,7 +153,7 @@ func (c Config) FetchUser(ctx context.Context, client *http.Client, accessToken 
 	if err != nil {
 		return User{}, fmt.Errorf("discord: user request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return User{}, fmt.Errorf("discord: /users/@me: status %d", resp.StatusCode)
 	}

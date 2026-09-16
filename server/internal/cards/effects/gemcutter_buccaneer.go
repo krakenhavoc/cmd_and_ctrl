@@ -26,22 +26,14 @@ func init() {
 		Name:         "Gemcutter Buccaneer",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The second ability is missing — your Treasures don't become Equipment granting +2/+0, so there's nothing to equip."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && (c.InstanceID == source.InstanceID || isPirate(c))
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Gemcutter Buccaneer — create a tapped Treasure",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   tappedTreasureToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Gemcutter Buccaneer — create a tapped Treasure", Do(CreateToken{
+				Template: tappedTreasureToken(),
+				N:        1,
+			})),
+		},
 	})
 }

@@ -20,7 +20,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     emits one EventDealDamage per creature, so the AppliesTo
 //     declines any event that arrives while a Face-Breaker trigger
 //     is already waiting on PendingTriggers — see
-//     triggerAlreadyPendingFrom for why that is exactly "once per
+//     OncePerBatch for why that is exactly "once per
 //     batch". Without it the card would be STRONGER than printed
 //     (three attackers, three Treasures), which is the #259
 //     direction and not shippable. First-strike and regular damage
@@ -38,23 +38,14 @@ func init() {
 		Name:            "Professional Face-Breaker",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return combatDamageToPlayerBy(ev, source.Controller, g) &&
-					!triggerAlreadyPendingFrom(g, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Professional Face-Breaker — create a Treasure",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   TreasureToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			OncePerBatch(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return combatDamageToPlayerBy(ev, source.Controller, g)
+			}, "Professional Face-Breaker — create a Treasure", Do(CreateToken{
+				Template: TreasureToken(),
+				N:        1,
+			}))),
+		},
 		Activated: []ActivatedAbility{{
 			Label: "Sacrifice a Treasure: Exile the top card of your library. You may play that card this turn.",
 			Cost:  game.AbilityCost{SacrificeOther: sacrificeSpec("a Treasure", isTreasure)},

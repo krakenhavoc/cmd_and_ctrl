@@ -16,8 +16,8 @@ import (
 // b13AnotherCreatureYouControlEntered, "a permanent you control
 // entered" is enteredUnderYourControl, "this creature dealt combat
 // damage to a player" is combatDamageToPlayerBy, the per-label
-// "one or more" dedup is b12TriggerPendingOrOnStack and its
-// pick-prompt third leg b17PickTargetPendingFrom, "you gained life
+// "one or more" dedup is OncePerBatch and its
+// pick-prompt third leg OncePerBatch, "you gained life
 // this turn" is b15LifeGainedThisTurn, "each opponent loses N" is
 // eachOpponentLosesLife, "untap each X you control" is
 // b16UntapAllYouControlMatching, the bounded mill is
@@ -102,11 +102,7 @@ func b32TokenYouControlAttacksAPlayer(g *game.Game, controller uuid.UUID) bool {
 // matched by the LKI its death recorded.
 func b32PlayersDealtCombatDamageThisTurnByYourCreatureNamed(g *game.Game, controller uuid.UUID, name string) map[uuid.UUID]bool {
 	out := map[uuid.UUID]bool{}
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			break
-		}
+	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || ev.Actor != controller {
 			continue
 		}

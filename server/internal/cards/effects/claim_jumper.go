@@ -34,20 +34,15 @@ func init() {
 		Name:            "Claim Jumper",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.CardID == source.InstanceID && b03OpponentControlsMoreLands(g, source.Controller)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Claim Jumper — search for a Plains card, onto the battlefield tapped",
-					func(g *game.Game, item *game.StackItem) error {
-						if !b03OpponentControlsMoreLands(g, item.Controller) {
-							return nil
-						}
-						return b17ClaimJumperSearch(g, item, true)
-					})
-			},
-		}},
+			}, "Claim Jumper — search for a Plains card, onto the battlefield tapped", func(g *game.Game, item *game.StackItem) error {
+				if !b03OpponentControlsMoreLands(g, item.Controller) {
+					return nil
+				}
+				return b17ClaimJumperSearch(g, item, true)
+			}),
+		},
 	})
 }

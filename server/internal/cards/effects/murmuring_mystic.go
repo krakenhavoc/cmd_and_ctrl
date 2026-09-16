@@ -20,17 +20,10 @@ func init() {
 		OracleID:     "dcd4da46-5438-4454-8b1b-43ca51bda1f9",
 		Name:         "Murmuring Mystic",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b12InstantOrSorceryCastByYou(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Murmuring Mystic — create a 1/1 Bird Illusion with flying",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: b16BlueBirdIllusionToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Murmuring Mystic — create a 1/1 Bird Illusion with flying", Do(CreateToken{Template: b16BlueBirdIllusionToken(), N: 1})),
+		},
 	})
 }

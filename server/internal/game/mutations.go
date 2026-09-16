@@ -1469,7 +1469,8 @@ func (g *Game) resolveTopOfStackLocked() error {
 	if g.Stack == nil || len(g.Stack.Cards) == 0 {
 		// No spell on the stack — but there could still be ability
 		// items in StackMeta. Find the most recent and resolve it.
-		return g.resolveTopAbilityLocked()
+		g.resolveTopAbilityLocked()
+		return nil
 	}
 	// Top of the stack is the last card in the slice (LIFO).
 	top := g.Stack.Cards[len(g.Stack.Cards)-1]
@@ -1487,7 +1488,8 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// first. Ties — including legacy zero-Seq items from snapshots
 	// predating the field — keep the old spell-first behaviour.
 	if ab := g.topAbilityLocked(); ab != nil && ab.Seq > item.Seq {
-		return g.resolveTopAbilityLocked()
+		g.resolveTopAbilityLocked()
+		return nil
 	}
 	delete(g.StackMeta, top.InstanceID)
 	defer g.recomputeSplitSecondLocked()
@@ -1522,7 +1524,8 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// because a copy of a flashed-back spell is still not a card
 		// — the exile replacement has no object to act on.
 		if item.IsCopy {
-			return g.ceaseToExistLocked(top.InstanceID)
+			g.ceaseToExistLocked(top.InstanceID)
+			return nil
 		}
 		// S29: a flashed-back spell that fizzles is still exiled —
 		// CR 702.34a replaces every way out of the stack, not just
@@ -1556,7 +1559,8 @@ func (g *Game) resolveTopOfStackLocked() error {
 			CardID:   top.InstanceID,
 			ErrorMsg: "copying a permanent spell is not implemented (CR 707.10 token)",
 		})
-		return g.ceaseToExistLocked(top.InstanceID)
+		g.ceaseToExistLocked(top.InstanceID)
+		return nil
 	}
 	if top.IsPermanent() {
 		// ADR 0034: settle which face the PERMANENT keeps before the
@@ -1682,7 +1686,8 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// exist, having already run its effect above. See spell_copy.go
 	// for why this branch is load-bearing rather than cosmetic.
 	if item.IsCopy {
-		return g.ceaseToExistLocked(top.InstanceID)
+		g.ceaseToExistLocked(top.InstanceID)
+		return nil
 	}
 	// Instants / sorceries: resolve to the owner's graveyard — or to
 	// exile, when the flashback cost was paid (CR 702.34a).
@@ -1778,10 +1783,10 @@ func (g *Game) topAbilityLocked() *StackItem {
 // item's Effect callback — if any — runs. Errors from Effect
 // surface as EventEffectError and do not wedge the stack; the
 // ability has ceased to exist either way (CR 608.2m).
-func (g *Game) resolveTopAbilityLocked() error {
+func (g *Game) resolveTopAbilityLocked() {
 	top := g.topAbilityLocked()
 	if top == nil {
-		return nil
+		return
 	}
 	delete(g.StackMeta, top.ID)
 	g.recomputeSplitSecondLocked()
@@ -1792,7 +1797,7 @@ func (g *Game) resolveTopAbilityLocked() error {
 			Source: top.SourceCardID,
 			Label:  top.Label,
 		})
-		return nil
+		return
 	}
 	g.EmitEvent(Event{
 		Kind:   EventResolve,
@@ -1810,7 +1815,6 @@ func (g *Game) resolveTopAbilityLocked() error {
 			})
 		}
 	}
-	return nil
 }
 
 // routeStackCardToGraveyardLocked moves a card off Game.Stack and

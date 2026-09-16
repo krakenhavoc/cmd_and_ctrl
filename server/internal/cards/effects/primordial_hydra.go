@@ -57,17 +57,10 @@ func init() {
 				c.Abilities = append(c.Abilities, "trample")
 			},
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginUpkeep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Primordial Hydra — double its +1/+1 counters",
-					func(g *game.Game, item *game.StackItem) error {
-						return b23DoublePlusOneCountersOn(NewContext(g, item), item.SourceCardID)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			AtYourUpkeep("Primordial Hydra — double its +1/+1 counters", func(g *game.Game, item *game.StackItem) error {
+				return b23DoublePlusOneCountersOn(NewContext(g, item), item.SourceCardID)
+			}),
+		},
 	})
 }

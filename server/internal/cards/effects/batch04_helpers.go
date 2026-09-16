@@ -136,37 +136,6 @@ func b04OpponentLostLife(ev game.Event, controller uuid.UUID, g *game.Game) (int
 	return 0, false
 }
 
-// b04TriggerPendingOrOnStack reports whether a triggered ability
-// from `source` is already waiting on PendingTriggers OR already
-// sitting on the stack — the "whenever you attack" dedup Adeline
-// needs, and a wider net than batch 01's triggerAlreadyPendingFrom.
-//
-// The difference is where the events come from. Combat damage
-// (Professional Face-Breaker) fires every creature's event inside
-// one mutation, so the first trigger is still on PendingTriggers
-// when the second event arrives. Attackers declared one at a time
-// through DeclareAttacker are one mutation EACH, and each ends with
-// runStateChecksLocked, which drains the queue onto the stack — so
-// by the second declaration the first Adeline trigger is in
-// StackMeta, not PendingTriggers, and a queue-only check fires her
-// once per attacker. The batch DeclareAttackers path emits every
-// event before its single drain, so it is covered by either check.
-//
-// The residual gap runs the weaker way: once the trigger has
-// RESOLVED, a further attacker declared in the same step (the
-// sandbox permits it; paper does not) fires it again.
-func b04TriggerPendingOrOnStack(g *game.Game, source *game.Card) bool {
-	if triggerAlreadyPendingFrom(g, source) {
-		return true
-	}
-	for _, item := range g.StackMeta {
-		if item != nil && item.Kind == game.StackItemTriggered && item.SourceCardID == source.InstanceID {
-			return true
-		}
-	}
-	return false
-}
-
 // b04ZombieToken is the 2/2 black Zombie Field of the Dead makes.
 func b04ZombieToken() game.Card {
 	return game.Card{

@@ -22,8 +22,8 @@ import (
 // diedCreature, "this died or was exiled from the battlefield" is
 // b22SelfDiedOrWasExiledFromBattlefield and its tuck
 // b22TuckThirdFromTop, the per-label "one or more" dedup is
-// b12TriggerPendingOrOnStack and its pick-prompt third leg
-// b17PickTargetPendingFrom, "which player is resolving" is
+// OncePerBatch and its pick-prompt third leg
+// OncePerBatch, "which player is resolving" is
 // b11ResolvingController, the last-known power of a creature that is
 // no longer on the battlefield is b17LastKnownPowerOffBattlefield,
 // the milled-creature batch is b17MilledCreatureCards, the first
@@ -125,17 +125,7 @@ func b33IslandsControlled(g *game.Game, controller uuid.UUID) int {
 // attack THIS TURN" is created once per activation, so the count is
 // how many copies of the delayed trigger exist.
 func b33ResolutionsThisTurn(g *game.Game, source uuid.UUID, label string) int {
-	n := 0
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			break
-		}
-		if ev.Kind == game.EventResolve && ev.Source == source && ev.Label == label {
-			n++
-		}
-	}
-	return n
+	return g.ResolvedThisTurn(source, label)
 }
 
 // b33CountersPlacedDelta is how many `kind` counters the
@@ -180,11 +170,7 @@ func b33CountersPlacedDelta(ev game.Event, kind string, g *game.Game) int {
 // persists as a card, so its printed subtype is still there.
 func b33PlayersDealtCombatDamageThisTurnByYourFaeries(g *game.Game, controller uuid.UUID) map[uuid.UUID]bool {
 	out := map[uuid.UUID]bool{}
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			break
-		}
+	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || ev.Actor != controller {
 			continue
 		}
@@ -650,11 +636,11 @@ func b33MillN(n int) func(g *game.Game, item *game.StackItem) error {
 	}
 }
 
-// b33CreateTokenBody is a trigger body that makes `n` tokens from
+// b33CreateTokenBody is a trigger body that makes one token from
 // `template` for the controller.
-func b33CreateTokenBody(template func() game.Card, n int) func(g *game.Game, item *game.StackItem) error {
+func b33CreateTokenBody(template func() game.Card) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
-		return CreateToken{Controller: item.Controller, Template: template(), N: n}.Apply(NewContext(g, item))
+		return CreateToken{Controller: item.Controller, Template: template(), N: 1}.Apply(NewContext(g, item))
 	}
 }
 

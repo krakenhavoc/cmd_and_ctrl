@@ -418,8 +418,12 @@ surface tiny.
        })
    }
    ```
-   For permanents with an ETB trigger, populate `OnETB` instead of
-   (or alongside) `OnResolve`.
+   A permanent's printed "When ~ enters" trigger goes in
+   `Spec.Triggered` watching `EventETB` (see "Adding a triggered
+   ability" below) so it uses the stack and can be answered.
+   `Spec.AsEnters` is only for CR 614.12 "As ~ enters, choose …"
+   effects, which are not triggers and correctly happen off the
+   stack; it was called `OnETB` and misused for both until #578.
 
    **Declare `Completeness`.** Since
    [ADR 0042](docs/decisions/0042-card-catalog-page.md) the prose
@@ -482,8 +486,10 @@ surface tiny.
    [cards_test.go](server/internal/cards/effects/cards_test.go). Use
    `newCatalogGame(t)` + `castCatalogSpell(t, g, name, typeLine, oracleID, targets)`
    + `passPriorityAroundTable(t, g)` and assert the resulting state. For
-   OnETB tests, the ETB fires inline during resolution — no extra setup
-   needed. For library tutors, seed needles via `pushLibraryCardForTest`
+   an ETB trigger that call settles the spell and the trigger it queues;
+   assert `triggerOnStack` between two calls when the response window is
+   the point. An `AsEnters` choice fires inline during entry — no extra
+   setup needed. For library tutors, seed needles via `pushLibraryCardForTest`
    (which uses `PushBottom` so the "first match" sandbox pick is
    deterministic).
 
@@ -686,7 +692,7 @@ func init() {
 **`AppliesTo` patterns:**
 - "Counters go on a creature you control" — `target.Controller == src.Controller && target.IsCreature()`
 - "When a permanent enters the battlefield" — `ev.Kind == RepEventMove && ev.NewZone == ZoneBattlefield`
-- Self-replacement (Hangarback's X counters on own ETB; every "this land enters tapped") — `ev.CardID == src.InstanceID`. This works even though the entering card is not on the battlefield yet: `gatherActiveReplacementsLocked` has a dedicated block for a card that is NOT on the battlefield, which passes the entering card itself as `src` ([replacements.go](server/internal/game/replacements.go), the `!g.Battlefield.Contains(ev.CardID)` branch). Prefer `SelfEntersTapped()` over an `OnETB` tap — see the "enters tapped" note below.
+- Self-replacement (Hangarback's X counters on own ETB; every "this land enters tapped") — `ev.CardID == src.InstanceID`. This works even though the entering card is not on the battlefield yet: `gatherActiveReplacementsLocked` has a dedicated block for a card that is NOT on the battlefield, which passes the entering card itself as `src` ([replacements.go](server/internal/game/replacements.go), the `!g.Battlefield.Contains(ev.CardID)` branch). Prefer `SelfEntersTapped()` over an `AsEnters` tap — see the "enters tapped" note below.
 - Opponents only (Kismet) — `controllerOf(ev.CardID) != src.Controller`
 
 **`Replace` patterns:**
@@ -920,28 +926,85 @@ runs — only when every player has passed priority in succession,
 so opponents can respond (counter the ability, remove the target,
 sacrifice in response). See [ADR 0018](docs/decisions/0018-triggers-on-the-stack.md).
 
-```go
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+**Write the printed shape with a constructor** from
+[triggers_common.go](server/internal/cards/effects/triggers_common.go)
+(#579). The label is the whole stack label, "<card> — <what
+happens>", and `Do(...)` sequences primitive values whose `Player` /
+`Controller` field defaults to the item's controller:
 
-func init() {
-    Register(Spec{
-        OracleID: "<uuid>",
-        Name:     "Mulldrifter",
-        Triggered: []game.TriggeredAbility{{
-            Watches: []game.EventKind{game.EventETB},
-            AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-                return ev.CardID == source.InstanceID
-            },
-            Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-                return game.NewTriggeredItem(source, "Mulldrifter — draw two cards",
-                    func(g *game.Game, item *game.StackItem) error {
-                        return DrawCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
-                    })
-            },
-        }},
-    })
-}
+```go
+Triggered: []game.TriggeredAbility{
+    WhenThisEnters("Mulldrifter — draw two cards", Do(DrawCards{N: 2})),
+    Optional(WhenThisDies("Solemn Simulacrum — draw a card", Do(DrawCards{N: 1})),
+        "Solemn Simulacrum — draw a card?"),
+    AtYourUpkeep("Awakening Zone — create an Eldrazi Spawn", Do(CreateToken{Template: EldraziSpawnToken(), N: 1})),
+    WheneverYouCast(Noncreature(), "Black Waltz No. 3 — 2 damage to each opponent",
+        func(g *game.Game, item *game.StackItem) error { return damageToEachOpponent(g, item, 2) }),
+},
 ```
+
+The shapes: `WhenThisEnters`, `WhenThisDies`, `WhenThisEntersOrAttacks`,
+`WheneverThisAttacks`, `AtYourUpkeep`, `AtEachUpkeep`, `AtYourEndStep`,
+`AtYourPrecombatMain`, `WheneverYouCast(pred, …)`, `WheneverYouDraw`,
+`WheneverAnOpponentDraws`, `Landfall`,
+`WheneverAnotherCreatureEntersUnderYourControl`,
+`WheneverACreatureYouControlDies`,
+`WheneverThisDealsCombatDamageToAPlayer`, `WheneverYouGainLife`. A
+condition with no shape yet is `On(game.EventX, when, label, effect)`
+where `when` is any `AppliesTo`-shaped predicate — a named one
+(`Self`, `ByYou`, `ByAnOpponent`, `AnyPlayer`, `ThisDied`,
+`ThisAttacked`, `YouCast(pred)`, `AnOpponentCast(pred)`,
+`LandEnteredUnderYourControl`, `ACreatureYouControlDied`, …, or
+`AllOf(...)` of several) or a closure. One printed ability with two
+conditions is `OnAny([]game.EventKind{…}, …)`. `Targeting(t, spec)`
+adds a target clause; the effect then reads `item.Targets[0]`, so it
+is a closure rather than `Do`. Add a missing shape or predicate to
+`triggers_common.go`, not to the card file.
+
+An effect that needs the item (targets, X, the source ID) or must
+capture something off the event is a closure with the `Effect`
+signature, exactly as before:
+
+```go
+WhenThisEnters("Mulldrifter — draw two cards",
+    func(g *game.Game, item *game.StackItem) error {
+        return DrawCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
+    }),
+```
+
+Every constructor returns an ordinary `game.TriggeredAbility`. The
+long form below is exactly what it builds, and is still the right
+tool when `Build` itself has to do something — capture `ev.Actor` for
+a PayUnless payer, read the event to decide whether to return nil:
+
+```go
+Triggered: []game.TriggeredAbility{{
+    Watches: []game.EventKind{game.EventETB},
+    AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+        return ev.CardID == source.InstanceID
+    },
+    Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+        return game.NewTriggeredItem(source, "Mulldrifter — draw two cards",
+            func(g *game.Game, item *game.StackItem) error {
+                return DrawCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
+            })
+    },
+}},
+```
+
+**"This turn" (#586):** anything a card asks about the current turn
+is read off `Game.TurnTally`, never by walking `g.Events`:
+`g.TurnTallyFor(player)` carries `LifeGained`, `LifeLost`, `CardsDrawn`,
+`CreaturesDied`, `TokensCreated`, `PermanentsSacrificed`, `LandsEntered`,
+`AttacksDeclared` and `CombatDamageToPlayers`; `g.TurnTally.CreaturesDied`
+is the table-wide count; `g.ResolvedThisTurn(source, label)` and
+`g.TriggeredThisTurn(source, label)` are the "once per turn" gates (an
+empty label sums the source's abilities). A filtered question the tally
+does not carry ("you sacrificed a *Food* this turn") ranges over
+`g.EventsThisTurn()`, which is bounded at the real turn boundary — the
+old upkeep-bounded scans missed the untap step. A counter the tally
+should carry and does not is a field on `PlayerTurnTally` plus one case
+in `turnTallyListener`, not a new scan.
 
 **Adding an activated ability (S21+):** put it in
 `Spec.Activated`, one entry per printed ability, with the cost built
@@ -1133,14 +1196,14 @@ them, so an answer that omits one is a client bug, not shorthand for
 "leave it".
 
 **"This permanent enters tapped" (S21):** declare a self-replacement,
-not an `OnETB` tap:
+not an entry-hook tap:
 
 ```go
 Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 ```
 
-The two are observably different, which is why the machinery exists: an
-`OnETB` tap means the permanent enters UNTAPPED and is tapped a beat
+The two are observably different, which is why the machinery exists: a
+hook tap means the permanent enters UNTAPPED and is tapped a beat
 later, emitting `EventTapCard`, so anything watching for a tap or for an
 untapped permanent entering sees the wrong thing. A replacement emits
 none. (Worn Powerstone used the workaround and said so in a comment; it
@@ -1159,9 +1222,9 @@ permanent". It is skipped for a card already on the battlefield, so a
 permanent in play can never match both blocks and apply the same effect
 twice.
 
-Lands may carry `OnETB` and mana abilities like any other permanent —
+Lands may carry triggers and mana abilities like any other permanent —
 the ten-Temple cycle in `temples.go` combines all three (enters tapped,
-ETB scry, pipe-syntax dual) and is written as a loop over a table, since
+an ETB scry trigger on the stack, pipe-syntax dual) and is written as a loop over a table, since
 ten near-identical files is ten places to fix one mistake.
 
 **An alternative cast cost (S22):** "you may cast this spell for its
@@ -1333,13 +1396,13 @@ eternalize, battlefield for a Clone-style copy). The copied card's
 oracle ID rides onto the token, so its triggered / static / mana /
 activated abilities all come along for free — every one of those hooks
 does a catalog lookup rather than reading a field. Two gaps worth
-knowing: the copied card's `Spec.OnETB` does **not** fire (its
+knowing: the copied card's `Spec.AsEnters` does **not** fire (its
 `Triggered` `EventETB` abilities do), and per-instance state (counters,
 `ExilePlay`, the cached characteristic) is deliberately not copied — CR
 707.2. "Enters as a copy" for a real card (Clone) is a different thing
 and still unimplemented: that is CR 613 layer 1, deferred to S16.5.
 
-**Event picker:**
+**Event picker.** Each row is the `when` for `On(kind, when, label, effect)`; the rows with a name in `triggers_common.go` are the constructors above.
 
 | Trigger text | `Watches` | `AppliesTo` |
 |---|---|---|
@@ -1355,12 +1418,13 @@ and still unimplemented: that is CR 613 layer 1, deferred to S16.5.
 | "Whenever another creature you control becomes the target…" | `EventBecomesTarget` | `targetedAnotherCreatureYouControl(ev, source, g)` (Monk Gyatso) — excludes the source, checks the target is still on the battlefield, then reads its type and controller. Fires once per target **slot**, at **announce** (CR 115.7), so the trigger goes on the stack ABOVE the spell that targeted and resolves first — which is the whole card |
 | "At the beginning of your upkeep" | `EventBeginUpkeep` | `ev.Actor == source.Controller` |
 | "At the beginning of your end step" | `EventBeginEndStep` | `ev.Actor == source.Controller` — drop the check for "the beginning of the end step" (any player's) |
+| "At the beginning of combat on your turn" / "your postcombat main phase" / "end of combat" (any step without a kind of its own) | `EventStepBegan` | `StepBegan(game.StepBeginCombat, true)` — or the constructors `AtBeginningOfYourCombat`, `AtYourPostcombatMain`, `AtEndOfYourCombat`, `AtYourStep(step, …)`, `AtEachStep(step, …)` (#588) |
 | "Whenever you cast a creature spell" | `EventCast` | `ev.Actor == source.Controller` + `g.LookupCardForEffect(ev.CardID)` for the spell's type |
 | "Whenever an opponent casts their first noncreature spell each turn" | `EventCast` | `g.CastTallyFor(ev.Actor).Noncreature == 1` (tally is bumped before the event fires) |
 | "Whenever an opponent draws a card" | `EventDrawCard` | `ev.Actor != uuid.Nil && ev.Actor != source.Controller` — fires once per card |
 | "Whenever ~ deals combat damage to a player" | `EventDealDamage` | `ev.Source == source.InstanceID && combatDamageToPlayerBy(ev, source.Controller, g)` |
 | "Whenever a creature you control deals combat damage to a player" | `EventDealDamage` | `combatDamageToPlayerBy(ev, source.Controller, g)` — checks `ev.Combat`, player target, creature source |
-| "Whenever **one or more** creatures you control deal combat damage to a player" | `EventDealDamage` | `combatDamageToPlayerBy(…) && !triggerAlreadyPendingFrom(g, source)` (Professional Face-Breaker) — the engine emits one event per creature, so the second is declined while the first trigger is still on `PendingTriggers`. Without the dedup the card ships **stronger** than printed |
+| "Whenever **one or more** creatures you control deal combat damage to a player" / attack / enter | the same kind as the per-creature wording | wrap the ability in `OncePerBatch(...)` (#587) — the engine emits one event per creature and declines the rest of the batch while the first trigger is pending, on the stack or waiting on its prompt. Without it the card ships **stronger** than printed. A label computed per event (Breena) calls `g.TriggerInFlightForEffect(source, label)` directly |
 | "Whenever a creature / land you control enters" (landfall) | `EventETB` | `enteredUnderYourControl(ev, source, g, false)` then `c.IsCreature()` / `c.IsLand()` (Impact Tremors, Tireless Provisioner) |
 | "Whenever you create or sacrifice a token" | `EventTokenCreated` + `EventSacrifice` on one ability | `ev.Actor == source.Controller`, and for the sacrifice half `IsToken(LookupCardForEffect(ev.CardID))` — the sacrifice event fires **before** the zone move, so the token is still findable (Mirkwood Bats) |
 | "…its controller may draw" (Edric) | `EventDealDamage` | `ev.Actor` is the dealing creature's controller; use it for both `OptionalPrompt.Chooser` and the draw |
@@ -1496,11 +1560,11 @@ get a lord wrong, and the reason it is a named field rather than a
 hand-written predicate.
 
 **A named-tribe permanent** ("As this enters, choose a creature
-type") carries the CR 614.12 prompt on `OnETB` and reads the answer
+type") carries the CR 614.12 prompt on `AsEnters` and reads the answer
 back through `TribeFilter{Chosen: true}`:
 
 ```go
-OnETB:  ChooseCreatureTypeOnETB("Vanquisher's Banner"),
+AsEnters: ChooseCreatureTypeAsEnters("Vanquisher's Banner"),
 Static: []game.StaticAbility{TribalAnthem(TribeFilter{Chosen: true, YoursOnly: true}, 1, 1)},
 ```
 
@@ -1550,6 +1614,11 @@ any other layer card.
 
 ### When NOT to add a catalog entry
 
+The registry of known seams — what is missing, which cards wait on
+it, which are already tracked — is [docs/engine-seams.md](docs/engine-seams.md).
+Check it before triaging a skip as "needs machinery", and append a
+batch's skips to it in the batch PR (Discussion #559 item 6).
+
 - **Activated abilities whose cost has no component** — `AbilityCost`
   carries tap-this, sacrifice-this, sacrifice-another, mana and life
   ([activated.go](server/internal/game/activated.go)) and nothing else.
@@ -1570,11 +1639,7 @@ any other layer card.
   two-mana mass blink) and is now **closed**, but it stood for a sprint
   and was caught by writing a decklist doc rather than by a test. If the
   cost has no shape, leave the CARD out.
-- **Triggers on events the engine doesn't emit yet** ("whenever a
-  creature enters under an opponent's control", landfall-with-a-target,
-  "at the beginning of your precombat main phase" — Black Market
-  Connections — "whenever you attack with one or more creatures" as a
-  single batched trigger) — check
+- **Triggers on events the engine doesn't emit yet** ("whenever a creature enters under an opponent's control", landfall-with-a-target) — check
   [events.go](server/internal/game/events.go) for an `EventKind`
   first. If there isn't one, the event plumbing is the PR, not the
   card. Two things that used to be on this list are not any more:

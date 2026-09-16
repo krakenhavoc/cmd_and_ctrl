@@ -36,12 +36,22 @@ import (
 //     frames. Bound to GameID only; PlayerID is uuid.Nil. Issued
 //     via the per-game spectator invite from the lobby. Added in
 //     S11.
+//   - RoleIdentified: a Discord-authenticated visitor with no seat
+//     and no game. Minted by the login-page OAuth flow — the one
+//     started without an invite in hand — and good for exactly one
+//     thing: POST /join, which trades it plus an invite code for a
+//     RolePlayer session. It deliberately cannot open a WebSocket;
+//     lobby.WSAuthorizer rejects it by name rather than letting it
+//     fall through, because a principal arriving at the hub with a
+//     nil GameID would otherwise bind to the zero game. Added
+//     Sept 2026.
 type Role string
 
 const (
-	RolePlayer    Role = "player"
-	RoleAdmin     Role = "admin"
-	RoleSpectator Role = "spectator"
+	RolePlayer     Role = "player"
+	RoleAdmin      Role = "admin"
+	RoleSpectator  Role = "spectator"
+	RoleIdentified Role = "identified"
 )
 
 // Principal is the canonical authenticated identity. It is the only
@@ -51,7 +61,9 @@ const (
 //
 // A RolePlayer principal MUST have a non-zero PlayerID and GameID. A
 // RoleAdmin principal has an AdminID for audit-log identification
-// but typically no GameID until it claims a seat.
+// but typically no GameID until it claims a seat. A RoleIdentified
+// principal carries the Discord* fields and neither GameID nor
+// PlayerID — it is an identity waiting for an invite code.
 type Principal struct {
 	Role     Role      `json:"role"`
 	AdminID  uuid.UUID `json:"admin_id,omitempty"`

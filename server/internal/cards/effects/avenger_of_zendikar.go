@@ -28,48 +28,26 @@ func init() {
 		Name:         "Avenger of Zendikar",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.CardID == source.InstanceID
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Avenger of Zendikar — a Plant for each land you control",
-						func(g *game.Game, item *game.StackItem) error {
-							n := b02CountLandsControlledBy(g, item.Controller)
-							if n == 0 {
-								return nil
-							}
-							return CreateToken{
-								Controller: item.Controller,
-								Template:   b02PlantToken(),
-								N:          n,
-							}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					c, ok := enteredUnderYourControl(ev, source, g, false)
-					return ok && c.IsLand()
-				},
-				OptionalPrompt: &game.TriggerOptionalPrompt{
-					Question: "Avenger of Zendikar — put a +1/+1 counter on each Plant you control?",
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Avenger of Zendikar — +1/+1 counter on each Plant (landfall)",
-						func(g *game.Game, item *game.StackItem) error {
-							ctx := NewContext(g, item)
-							for _, id := range b02PlantsYouControl(g, item.Controller) {
-								if err := (AddCounter{Target: id, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-									return err
-								}
-							}
-							return nil
-						})
-				},
-			},
+			WhenThisEnters("Avenger of Zendikar — a Plant for each land you control", func(g *game.Game, item *game.StackItem) error {
+				n := b02CountLandsControlledBy(g, item.Controller)
+				if n == 0 {
+					return nil
+				}
+				return CreateToken{
+					Controller: item.Controller,
+					Template:   b02PlantToken(),
+					N:          n,
+				}.Apply(NewContext(g, item))
+			}),
+			Optional(Landfall("Avenger of Zendikar — +1/+1 counter on each Plant (landfall)", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, id := range b02PlantsYouControl(g, item.Controller) {
+					if err := (AddCounter{Target: id, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
+			}), "Avenger of Zendikar — put a +1/+1 counter on each Plant you control?"),
 		},
 	})
 }

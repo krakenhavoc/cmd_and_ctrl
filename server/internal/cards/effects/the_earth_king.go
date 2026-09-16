@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - "One or more … attack" is one trigger per combat: EventAttack
 //     fires once per attacker, so the first attacker with power 4 or
 //     more queues the ability and later ones are declined while it
-//     is pending or on the stack (b12TriggerPendingOrOnStack, the
+//     is pending or on the stack (OncePerBatch, the
 //     Adeline dedup). "That many" is read as the ability RESOLVES —
 //     the count of attacking creatures the controller controls with
 //     power 4 or more at that moment, so a pump in response widens
@@ -34,30 +34,13 @@ func init() {
 		Name:         "The Earth King",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches:   []game.EventKind{game.EventETB},
-				AppliesTo: b06SelfETB,
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "The Earth King — create a 4/4 Bear",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: b26GreenBearToken(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventAttack},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b26CreatureYouControlWithPowerAtLeastAttacked(ev, source, g, 4) &&
-						!b12TriggerPendingOrOnStack(g, source, b26EarthKingSearchLabel)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b26EarthKingSearchLabel,
-						func(g *game.Game, item *game.StackItem) error {
-							n := b26AttackingCreaturesYouControlWithPowerAtLeast(g, item.Controller, 4)
-							return b26SearchBasicsOntoBattlefieldTapped(g, item, n, "The Earth King — up to that many basic lands, tapped")
-						})
-				},
-			},
+			WhenThisEnters("The Earth King — create a 4/4 Bear", Do(CreateToken{Template: b26GreenBearToken(), N: 1})),
+			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b26CreatureYouControlWithPowerAtLeastAttacked(ev, source, g, 4)
+			}, b26EarthKingSearchLabel, func(g *game.Game, item *game.StackItem) error {
+				n := b26AttackingCreaturesYouControlWithPowerAtLeast(g, item.Controller, 4)
+				return b26SearchBasicsOntoBattlefieldTapped(g, item, n, "The Earth King — up to that many basic lands, tapped")
+			})),
 		},
 	})
 }

@@ -22,28 +22,8 @@ func init() {
 		Name:         "Prosperous Innkeeper",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches:   []game.EventKind{game.EventETB},
-				AppliesTo: b06SelfETB,
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Prosperous Innkeeper — create a Treasure",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b13AnotherCreatureYouControlEntered(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Prosperous Innkeeper — you gain 1 life",
-						func(g *game.Game, item *game.StackItem) error {
-							return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			WhenThisEnters("Prosperous Innkeeper — create a Treasure", Do(CreateToken{Template: TreasureToken(), N: 1})),
+			WheneverAnotherCreatureEntersUnderYourControl("Prosperous Innkeeper — you gain 1 life", Do(GainLife{Amount: 1})),
 		},
 	})
 }

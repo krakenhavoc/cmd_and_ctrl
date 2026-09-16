@@ -87,6 +87,17 @@ func (a *WSAuthorizer) AuthorizeUpgrade(r *http.Request) (ws.Binding, error) {
 		}
 		return ws.Binding{GameID: p.GameID, ReadOnly: true}, nil
 
+	case auth.RoleIdentified:
+		// A Discord sign-in that hasn't claimed a seat yet: no game,
+		// no player, nothing to bind to. Refused by name rather than
+		// through the default arm for two reasons — the message can
+		// tell the client what to do next (POST /join with an invite
+		// code, which swaps this for a RolePlayer session), and the
+		// default arm's "unrecognised role" would be a lie about a
+		// role the server mints itself.
+		return ws.Binding{}, ws.StatusError(http.StatusForbidden,
+			"sign-in session has no seat yet — join a table with an invite code first")
+
 	default:
 		return ws.Binding{}, ws.StatusError(http.StatusForbidden, "unrecognised principal role")
 	}

@@ -53,12 +53,23 @@ type Spec struct {
 	// stack.
 	OnResolve func(item *game.StackItem, ctx *Context) error
 
-	// OnETB fires after a permanent moves from the stack (or
-	// battlefield source) into the battlefield. S14 direct-call
-	// path; S19 re-routes through the listener registry without
-	// per-card changes. Nil is common (most catalog cards have no
-	// ETB effect).
-	OnETB func(card *game.Card, ctx *Context) error
+	// AsEnters runs synchronously as the permanent enters the
+	// battlefield, inside the entry path and OFF the stack. It is
+	// the CR 614.12 slot — "As this permanent enters, choose a
+	// creature type" (ChooseCreatureTypeAsEnters) — and nothing
+	// else belongs here: an "as enters" clause is not a triggered
+	// ability, nobody gets a response window, and that is correct.
+	//
+	// A printed "When ~ enters" is a trigger and goes in Triggered
+	// watching EventETB, so it uses the stack and can be answered.
+	// This slot used to be called OnETB and was used for both until
+	// #578 (Discussion #560); the rename is the guard against that
+	// coming back.
+	//
+	// The Context carries no stack item (Item is nil), so read the
+	// controller off the card, not off ctx.Controller(). Nil for
+	// nearly every card.
+	AsEnters func(card *game.Card, ctx *Context) error
 
 	// StartingLoyalty is the loyalty counter count a planeswalker
 	// enters the battlefield with. 0 means "not a planeswalker" or

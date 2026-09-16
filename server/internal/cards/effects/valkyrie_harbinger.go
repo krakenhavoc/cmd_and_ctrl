@@ -28,20 +28,15 @@ func init() {
 		Name:            "Valkyrie Harbinger",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "lifelink"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginEndStep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b26EachEndStepAndYouGainedAtLeastThisTurn(ev, source, g, 4)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Valkyrie Harbinger — create a 4/4 Angel with flying and vigilance",
-					func(g *game.Game, item *game.StackItem) error {
-						if b15LifeGainedThisTurn(g, item.Controller) < 4 {
-							return nil
-						}
-						return CreateToken{Controller: item.Controller, Template: AngelVigilanceToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Valkyrie Harbinger — create a 4/4 Angel with flying and vigilance", func(g *game.Game, item *game.StackItem) error {
+				if b15LifeGainedThisTurn(g, item.Controller) < 4 {
+					return nil
+				}
+				return CreateToken{Controller: item.Controller, Template: AngelVigilanceToken(), N: 1}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

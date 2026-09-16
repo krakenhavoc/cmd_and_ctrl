@@ -38,33 +38,17 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "vigilance", "haste"},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventAttack},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b16PlayerAttackedWithAtLeast(ev, source, g, 3, b16AureliaDrawLabel)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b16AureliaDrawLabel,
-						func(g *game.Game, item *game.StackItem) error {
-							return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventAttack},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b16PlayerAttackedWithAtLeast(ev, source, g, 5, b16AureliaDamageLabel)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b16AureliaDamageLabel,
-						func(g *game.Game, item *game.StackItem) error {
-							if err := damageToEachOpponent(g, item, 3); err != nil {
-								return err
-							}
-							return GainLife{Player: item.Controller, Amount: 3}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b16PlayerAttackedWithAtLeast(ev, source, g, 3, b16AureliaDrawLabel)
+			}, b16AureliaDrawLabel, Do(DrawCards{N: 1}))),
+			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b16PlayerAttackedWithAtLeast(ev, source, g, 5, b16AureliaDamageLabel)
+			}, b16AureliaDamageLabel, func(g *game.Game, item *game.StackItem) error {
+				if err := damageToEachOpponent(g, item, 3); err != nil {
+					return err
+				}
+				return GainLife{Player: item.Controller, Amount: 3}.Apply(NewContext(g, item))
+			})),
 		},
 	})
 }

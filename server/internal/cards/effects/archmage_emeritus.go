@@ -22,17 +22,10 @@ func init() {
 		Name:         "Archmage Emeritus",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The draw trigger only fires on instants and sorceries you cast, not on copies of them."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b02CastInstantOrSorcery(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Archmage Emeritus — draw a card (magecraft)",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Archmage Emeritus — draw a card (magecraft)", Do(DrawCards{N: 1})),
+		},
 	})
 }

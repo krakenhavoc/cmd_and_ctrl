@@ -40,18 +40,9 @@ func init() {
 			Subtype: BattleSubtypeSiege,
 		},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.CardID == source.InstanceID
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Invasion of Karsus — 3 damage to each creature and planeswalker",
-						func(g *game.Game, item *game.StackItem) error {
-							return damageEachMatching(NewContext(g, item), Or(Creature(), Planeswalker()), 3)
-						})
-				},
-			},
+			WhenThisEnters("Invasion of Karsus — 3 damage to each creature and planeswalker", func(g *game.Game, item *game.StackItem) error {
+				return damageEachMatching(NewContext(g, item), Or(Creature(), Planeswalker()), 3)
+			}),
 			DefeatedTrigger("Invasion of Karsus — defeated: exile it, then cast Refraction Elemental", SiegeDefeated()),
 		},
 	})

@@ -15,17 +15,22 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Every player picks their own creature in their own prompt; a
 // player with none is skipped (CR 701.17b).
 //
+// The ETB is a triggered ability and uses the stack (#578). It used to
+// run from the direct AsEnters hook, which gave nobody a response
+// window; now the trigger waits for every player to pass, like every
+// other "When ~ enters".
+//
 // No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "c3c45d50-9038-41df-bb2f-9bc40071845b",
 		Name:         "Merciless Executioner",
 		Completeness: CompletenessFull,
-		OnETB: func(_ *game.Card, ctx *Context) error {
-			return EachPlayerSacrifices{
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Merciless Executioner — each player sacrifices a creature", Do(EachPlayerSacrifices{
 				Match: Creature(),
 				Label: "a creature",
-			}.Apply(ctx)
+			})),
 		},
 	})
 }

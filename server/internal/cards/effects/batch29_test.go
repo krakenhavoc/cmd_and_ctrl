@@ -934,7 +934,7 @@ func pushGraveyardCardTyped(p *game.Player, name, typeLine string) uuid.UUID {
 func TestB29NayaCharmIsChooseOneAndResolvesEachMode(t *testing.T) {
 	// Mode 0: 3 damage to target creature.
 	g := newCatalogGame(t)
-	me, opp := g.Seats[0], g.Seats[1]
+	opp := g.Seats[1]
 	rhino := pushVanillaCreature(g, opp.ID, "Rhino", 3, 3)
 	castModal(t, g, "Naya Charm", "Instant", b29NayaCharmOracle, []int{0}, []game.TargetRef{{Kind: game.TargetCard, ID: rhino}})
 	passPriorityAroundTable(t, g)
@@ -943,7 +943,7 @@ func TestB29NayaCharmIsChooseOneAndResolvesEachMode(t *testing.T) {
 	}
 	// Mode 1: return target card from ANY graveyard to its owner's hand.
 	g = newCatalogGame(t)
-	me, opp = g.Seats[0], g.Seats[1]
+	opp = g.Seats[1]
 	dead := pushGraveyardCardTyped(opp, "Their Dead Bear", "Creature — Bear")
 	hand := opp.Hand.Size()
 	castModal(t, g, "Naya Charm", "Instant", b29NayaCharmOracle, []int{1}, []game.TargetRef{{Kind: game.TargetCard, ID: dead}})
@@ -953,7 +953,7 @@ func TestB29NayaCharmIsChooseOneAndResolvesEachMode(t *testing.T) {
 	}
 	// Mode 2: tap all creatures target player controls.
 	g = newCatalogGame(t)
-	me, opp = g.Seats[0], g.Seats[1]
+	me, opp := g.Seats[0], g.Seats[1]
 	a := pushVanillaCreature(g, opp.ID, "A", 1, 1)
 	b := pushVanillaCreature(g, opp.ID, "B", 1, 1)
 	mine := pushVanillaCreature(g, me.ID, "Mine", 1, 1)
@@ -972,7 +972,7 @@ func TestB29YargleAndMultaniIsVanilla(t *testing.T) {
 	if !ok {
 		t.Fatal("not registered")
 	}
-	if spec.Completeness != CompletenessFull || spec.OnResolve != nil || spec.OnETB != nil ||
+	if spec.Completeness != CompletenessFull || spec.OnResolve != nil || spec.AsEnters != nil ||
 		len(spec.Triggered) != 0 || len(spec.Static) != 0 || len(spec.Activated) != 0 || len(spec.PrintedKeywords) != 0 {
 		t.Error("Yargle and Multani has no rules text: a bare, complete spec")
 	}

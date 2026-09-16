@@ -59,19 +59,9 @@ func init() {
 						})
 				},
 			},
-			{
-				Watches: []game.EventKind{game.EventDealDamage},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return combatDamageToPlayerBy(ev, source.Controller, g) &&
-						!b12TriggerPendingOrOnStack(g, source, b18GrazilaxxDrawLabel)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b18GrazilaxxDrawLabel,
-						func(g *game.Game, item *game.StackItem) error {
-							return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			OncePerBatch(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return combatDamageToPlayerBy(ev, source.Controller, g)
+			}, b18GrazilaxxDrawLabel, Do(DrawCards{N: 1}))),
 		},
 	})
 }

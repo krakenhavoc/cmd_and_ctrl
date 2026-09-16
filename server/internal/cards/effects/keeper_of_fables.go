@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // per combat damage step, not one per creature: the engine emits one
 // damage event per creature, so the condition declines any event
 // that arrives while a Keeper trigger is already queued or on the
-// stack (b04TriggerPendingOrOnStack — both queues, since a damage
+// stack (OncePerBatch — both queues, since a damage
 // batch can straddle a state check). Without it three attackers
 // would draw three, which is stronger than printed. First-strike and
 // regular damage are two batches and two draws, as in paper. Human
@@ -25,18 +25,10 @@ func init() {
 		OracleID:     "c8ca3116-e0f0-4e27-aa0f-99ed85927040",
 		Name:         "Keeper of Fables",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b30NonHumanCreatureYouControlDealtCombatDamageToPlayer(ev, source, g) &&
-					!b04TriggerPendingOrOnStack(g, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Keeper of Fables — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			OncePerBatch(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b30NonHumanCreatureYouControlDealtCombatDamageToPlayer(ev, source, g)
+			}, "Keeper of Fables — draw a card", Do(DrawCards{N: 1}))),
+		},
 	})
 }

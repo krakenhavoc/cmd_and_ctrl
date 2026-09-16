@@ -43,34 +43,14 @@ func init() {
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventDrawCard},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.Actor == source.Controller
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "The Locust God — create a 1/1 Insect with flying and haste",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: b15BlueRedInsectToken(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventLTB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return cardDied(ev, source)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "The Locust God — return it to hand at the next end step",
-						func(g *game.Game, item *game.StackItem) error {
-							return ScheduleDelayedTrigger{
-								Label:  "The Locust God — return to its owner's hand",
-								Cards:  []uuid.UUID{item.SourceCardID},
-								Effect: b15ReturnListedCardsFromGraveyardToHand,
-							}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			WheneverYouDraw("The Locust God — create a 1/1 Insect with flying and haste", Do(CreateToken{Template: b15BlueRedInsectToken(), N: 1})),
+			WhenThisDies("The Locust God — return it to hand at the next end step", func(g *game.Game, item *game.StackItem) error {
+				return ScheduleDelayedTrigger{
+					Label:  "The Locust God — return to its owner's hand",
+					Cards:  []uuid.UUID{item.SourceCardID},
+					Effect: b15ReturnListedCardsFromGraveyardToHand,
+				}.Apply(NewContext(g, item))
+			}),
 		},
 	})
 }

@@ -18,17 +18,8 @@ func init() {
 		OracleID:     "d812fc6d-b96d-4986-b171-9f3feee603dc",
 		Name:         "Hinterland Sanctifier",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b13AnotherCreatureYouControlEntered(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Hinterland Sanctifier — you gain 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverAnotherCreatureEntersUnderYourControl("Hinterland Sanctifier — you gain 1 life", Do(GainLife{Amount: 1})),
+		},
 	})
 }

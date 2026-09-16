@@ -47,24 +47,15 @@ func init() {
 		Name:         "Massacre Wurm",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.CardID == source.InstanceID
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Massacre Wurm — opponents' creatures get -2/-2",
-						func(g *game.Game, item *game.StackItem) error {
-							ctx := NewContext(g, item)
-							return BoostUntilEOT{
-								Match:     And(Creature(), OpponentControls()),
-								Power:     -2,
-								Toughness: -2,
-								Label:     "Massacre Wurm — -2/-2",
-							}.Apply(ctx)
-						})
-				},
-			},
+			WhenThisEnters("Massacre Wurm — opponents' creatures get -2/-2", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				return BoostUntilEOT{
+					Match:     And(Creature(), OpponentControls()),
+					Power:     -2,
+					Toughness: -2,
+					Label:     "Massacre Wurm — -2/-2",
+				}.Apply(ctx)
+			}),
 			{
 				Watches: []game.EventKind{game.EventLTB},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

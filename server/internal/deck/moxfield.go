@@ -127,7 +127,7 @@ func fetchMoxfield(ctx context.Context, client *http.Client, u *url.URL) (name s
 	if err != nil {
 		return "", nil, fmt.Errorf("%w: moxfield fetch: %v", ErrExternalAPIUnavailable, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if werr := classifyHTTPStatus(resp.StatusCode); werr != nil {
 		// 401/403 can be either a genuine private-deck response from

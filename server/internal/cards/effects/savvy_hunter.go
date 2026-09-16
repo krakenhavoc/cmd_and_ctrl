@@ -28,17 +28,10 @@ func init() {
 		Name:         "Savvy Hunter",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The draw ability isn't available — a cost can't sacrifice two Foods, so only the Food-making attack and block trigger works."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventAttack, game.EventBlock},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			OnAny([]game.EventKind{game.EventAttack, game.EventBlock}, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return attackDeclared(ev, source) || b28SelfBlocked(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Savvy Hunter — create a Food",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: FoodToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Savvy Hunter — create a Food", Do(CreateToken{Template: FoodToken(), N: 1})),
+		},
 	})
 }

@@ -31,40 +31,26 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventBeginEndStep},
-				AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b24AnyPlayerLostAtLeastThisTurn(g, 4)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Y'shtola, Night's Blessed — you draw a card",
-						func(g *game.Game, item *game.StackItem) error {
-							if !b24AnyPlayerLostAtLeastThisTurn(g, 4) {
-								return nil
-							}
-							return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventCast},
-				AppliesTo: func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-					if !b10NoncreatureSpellCastByYou(ev, source, lki, g) {
-						return false
-					}
-					spell, ok := g.LookupCardForEffect(ev.CardID)
-					return ok && manaValueOnStack(spell, g.StackItemForEffect(ev.CardID)) >= 3
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Y'shtola, Night's Blessed — 2 damage to each opponent, you gain 2 life",
-						func(g *game.Game, item *game.StackItem) error {
-							if err := damageToEachOpponent(g, item, 2); err != nil {
-								return err
-							}
-							return GainLife{Player: item.Controller, Amount: 2}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			On(game.EventBeginEndStep, func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b24AnyPlayerLostAtLeastThisTurn(g, 4)
+			}, "Y'shtola, Night's Blessed — you draw a card", func(g *game.Game, item *game.StackItem) error {
+				if !b24AnyPlayerLostAtLeastThisTurn(g, 4) {
+					return nil
+				}
+				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
+			}),
+			On(game.EventCast, func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+				if !b10NoncreatureSpellCastByYou(ev, source, lki, g) {
+					return false
+				}
+				spell, ok := g.LookupCardForEffect(ev.CardID)
+				return ok && manaValueOnStack(spell, g.StackItemForEffect(ev.CardID)) >= 3
+			}, "Y'shtola, Night's Blessed — 2 damage to each opponent, you gain 2 life", func(g *game.Game, item *game.StackItem) error {
+				if err := damageToEachOpponent(g, item, 2); err != nil {
+					return err
+				}
+				return GainLife{Player: item.Controller, Amount: 2}.Apply(NewContext(g, item))
+			}),
 		},
 	})
 }

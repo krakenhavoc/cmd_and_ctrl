@@ -27,15 +27,8 @@ func init() {
 		Name:            "Archangel of Thune",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "lifelink"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventChangeLife},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return b10YouGainedLife(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Archangel of Thune — a +1/+1 counter on each creature you control",
-					b11PutCounterOnEachCreatureYouControl)
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverYouGainLife("Archangel of Thune — a +1/+1 counter on each creature you control", b11PutCounterOnEachCreatureYouControl),
+		},
 	})
 }

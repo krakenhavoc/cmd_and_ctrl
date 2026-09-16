@@ -25,22 +25,12 @@ func init() {
 		OracleID:     "6f4ac4a4-53ec-4bc9-8f5c-d4b801d867b2",
 		Name:         "Grave Pact",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				dead, ok := diedCreature(ev, g)
-				return ok && dead.Controller == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Grave Pact — each other player sacrifices a creature",
-					func(g *game.Game, item *game.StackItem) error {
-						return EachPlayerSacrifices{
-							ExceptController: true,
-							Match:            Creature(),
-							Label:            "a creature",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverACreatureYouControlDies("Grave Pact — each other player sacrifices a creature", Do(EachPlayerSacrifices{
+				ExceptController: true,
+				Match:            Creature(),
+				Label:            "a creature",
+			})),
+		},
 	})
 }

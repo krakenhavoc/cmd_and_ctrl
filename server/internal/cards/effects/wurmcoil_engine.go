@@ -22,30 +22,23 @@ func init() {
 		Name:            "Wurmcoil Engine",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch", "lifelink"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return cardDied(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Wurmcoil Engine — create two 3/3 Wurms",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, tmpl := range []game.Card{
-							PhyrexianWurmDeathtouchToken(),
-							PhyrexianWurmLifelinkToken(),
-						} {
-							if err := (CreateToken{
-								Controller: item.Controller,
-								Template:   tmpl,
-								N:          1,
-							}).Apply(ctx); err != nil {
-								return err
-							}
-						}
-						return nil
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisDies("Wurmcoil Engine — create two 3/3 Wurms", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, tmpl := range []game.Card{
+					PhyrexianWurmDeathtouchToken(),
+					PhyrexianWurmLifelinkToken(),
+				} {
+					if err := (CreateToken{
+						Controller: item.Controller,
+						Template:   tmpl,
+						N:          1,
+					}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
+			}),
+		},
 	})
 }

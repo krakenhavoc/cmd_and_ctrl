@@ -35,20 +35,15 @@ func init() {
 				return b23DamageEachCreatureAndEachPlayer(NewContext(g, item), 1)
 			},
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginEndStep},
-			AppliesTo: func(_ game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventBeginEndStep, func(_ game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b23NoCreaturesOnBattlefield(g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Pyrohemia — no creatures: sacrifice it",
-					func(g *game.Game, item *game.StackItem) error {
-						if !b23NoCreaturesOnBattlefield(g) || !onBattlefield(g, item.SourceCardID) {
-							return nil
-						}
-						return SacrificePermanent{Target: item.SourceCardID}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Pyrohemia — no creatures: sacrifice it", func(g *game.Game, item *game.StackItem) error {
+				if !b23NoCreaturesOnBattlefield(g) || !onBattlefield(g, item.SourceCardID) {
+					return nil
+				}
+				return SacrificePermanent{Target: item.SourceCardID}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

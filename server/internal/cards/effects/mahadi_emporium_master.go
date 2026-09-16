@@ -26,18 +26,11 @@ func init() {
 		Name:         "Mahadi, Emporium Master",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"A permanent that was only a creature because of another effect isn't counted when it dies."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginEndStep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Mahadi, Emporium Master — a Treasure for each creature that died this turn",
-					func(g *game.Game, item *game.StackItem) error {
-						n := b11CreaturesDiedThisTurn(g)
-						return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: n}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			AtYourEndStep("Mahadi, Emporium Master — a Treasure for each creature that died this turn", func(g *game.Game, item *game.StackItem) error {
+				n := b11CreaturesDiedThisTurn(g)
+				return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: n}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

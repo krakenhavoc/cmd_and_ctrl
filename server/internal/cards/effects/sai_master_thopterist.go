@@ -27,25 +27,17 @@ func init() {
 		Name:         "Sai, Master Thopterist",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The draw ability isn't implemented — only the Thopter-making trigger works."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Actor != source.Controller {
 					return false
 				}
 				spell, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && spell.IsArtifact()
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Sai, Master Thopterist — create a Thopter",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   ThopterToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Sai, Master Thopterist — create a Thopter", Do(CreateToken{
+				Template: ThopterToken(),
+				N:        1,
+			})),
+		},
 	})
 }

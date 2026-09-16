@@ -22,7 +22,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - "Whenever you attack" is ONE trigger per attack declaration.
 //     The engine emits EventAttack per creature, so the AppliesTo
 //     declines any further event while an Adeline trigger is already
-//     queued or on the stack — b04TriggerPendingOrOnStack, a wider
+//     queued or on the stack — OncePerBatch, a wider
 //     net than Professional Face-Breaker's because attackers
 //     declared one at a time each drain the queue (see the helper) —
 //     and without it a three-creature attack would make three times
@@ -58,26 +58,21 @@ func init() {
 				c.Power = b04CreaturesControlled(g, source.Controller)
 			},
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventAttack},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return attackDeclaredByYou(ev, source.Controller) && !b04TriggerPendingOrOnStack(g, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Adeline — a tapped and attacking Human for each opponent",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, opp := range ctx.Opponents() {
-							tmpl := WhiteHumanToken()
-							tmpl.Tapped = true
-							tmpl.AttackingTarget = opp
-							if err := (CreateToken{Controller: item.Controller, Template: tmpl, N: 1}).Apply(ctx); err != nil {
-								return err
-							}
-						}
-						return nil
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return attackDeclaredByYou(ev, source.Controller)
+			}, "Adeline — a tapped and attacking Human for each opponent", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, opp := range ctx.Opponents() {
+					tmpl := WhiteHumanToken()
+					tmpl.Tapped = true
+					tmpl.AttackingTarget = opp
+					if err := (CreateToken{Controller: item.Controller, Template: tmpl, N: 1}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
+			})),
+		},
 	})
 }

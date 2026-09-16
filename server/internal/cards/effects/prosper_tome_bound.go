@@ -39,31 +39,13 @@ func init() {
 		Caveats:         []string{"A land played from exile makes no Treasure if another land already came back to the battlefield from exile or a graveyard earlier that turn."},
 		PrintedKeywords: []string{"deathtouch"},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventBeginEndStep},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.Actor == source.Controller
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Prosper, Tome-Bound — exile the top card of your library; you may play it until the end of your next turn",
-						func(g *game.Game, item *game.StackItem) error {
-							return b20ExileTopUntilEndOfNextTurn(g, item, 1,
-								"Prosper, Tome-Bound — the exiled card may be played until end of turn")
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventCast, game.EventZoneMove},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b20PlayedACardFromExile(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Prosper, Tome-Bound — create a Treasure",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			AtYourEndStep("Prosper, Tome-Bound — exile the top card of your library; you may play it until the end of your next turn", func(g *game.Game, item *game.StackItem) error {
+				return b20ExileTopUntilEndOfNextTurn(g, item, 1,
+					"Prosper, Tome-Bound — the exiled card may be played until end of turn")
+			}),
+			OnAny([]game.EventKind{game.EventCast, game.EventZoneMove}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b20PlayedACardFromExile(ev, source, g)
+			}, "Prosper, Tome-Bound — create a Treasure", Do(CreateToken{Template: TreasureToken(), N: 1})),
 		},
 	})
 }

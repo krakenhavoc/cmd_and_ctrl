@@ -22,26 +22,21 @@ func init() {
 		OracleID:     "9ec43ec6-b625-4be8-8f79-3679e6657dbc",
 		Name:         "Mycosynth Wellspring",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB, game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			OnAny([]game.EventKind{game.EventETB, game.EventLTB}, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b22SelfEnteredOrDied(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Mycosynth Wellspring — search for a basic land card",
-					func(g *game.Game, item *game.StackItem) error {
-						return SearchLibrary{
-							Player:    item.Controller,
-							Predicate: IsBasicLand,
-							Dest:      game.ZoneHand,
-							Limit:     1,
-							Reveal:    true,
-							Shuffle:   true,
-							Optional:  true,
-							Reason:    "Mycosynth Wellspring — a basic land card",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Mycosynth Wellspring — search for a basic land card", func(g *game.Game, item *game.StackItem) error {
+				return SearchLibrary{
+					Player:    item.Controller,
+					Predicate: IsBasicLand,
+					Dest:      game.ZoneHand,
+					Limit:     1,
+					Reveal:    true,
+					Shuffle:   true,
+					Optional:  true,
+					Reason:    "Mycosynth Wellspring — a basic land card",
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

@@ -39,9 +39,8 @@ func init() {
 		Name:         "Agent of the Iron Throne",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The drain works only while you control your commander — a commander an opponent has stolen doesn't carry it."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				dead, ok := b21ArtifactOrCreatureYouControlDied(ev, source, g)
 				if !ok {
 					return false
@@ -50,13 +49,9 @@ func init() {
 					return true
 				}
 				return b21ControlsCommanderCreatureYouOwn(g, source.Controller)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Agent of the Iron Throne — each opponent loses 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return eachOpponentLosesLife(g, item, 1)
-					})
-			},
-		}},
+			}, "Agent of the Iron Throne — each opponent loses 1 life", func(g *game.Game, item *game.StackItem) error {
+				return eachOpponentLosesLife(g, item, 1)
+			}),
+		},
 	})
 }

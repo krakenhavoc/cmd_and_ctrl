@@ -15,7 +15,7 @@ import (
 // enters" is b06SelfETB, "enters with N counters" is
 // b10EntersWithCounters, "a player attacks with N or more creatures"
 // is b16PlayerAttackedWithAtLeast, the per-label "one or more" dedup
-// is b12TriggerPendingOrOnStack, the once-per-turn tally is
+// is OncePerBatch, the once-per-turn tally is
 // b11TriggeredThisTurn, "an opponent controls more lands than you"
 // is b03OpponentControlsMoreLands, lands / creature cards you have
 // are b03LandsControlled / b11CreatureCardsInGraveyard, a dead card's
@@ -374,25 +374,6 @@ func b17BreenaLabel(g *game.Game, opp uuid.UUID) string {
 		name = p.Name
 	}
 	return "Breena, the Demagogue — " + name + " was attacked: the attacker draws, two +1/+1 counters"
-}
-
-// b17PickTargetPendingFrom reports whether a targeted trigger from
-// `source` is waiting on its target pick — the third place a "one
-// or more" trigger can be between firing and resolving, which
-// b12TriggerPendingOrOnStack's two (PendingTriggers, StackMeta) do
-// not cover: a targeted trigger sits in PendingChoices as a
-// pick_target prompt, in neither queue, until its controller
-// answers, and every attacker declared meanwhile would fire it
-// again. The prompt carries the source but not the item's label, so
-// this is per source rather than per ability — right for a card
-// with one targeted trigger.
-func b17PickTargetPendingFrom(g *game.Game, source *game.Card) bool {
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoicePickTarget && c.Source == source.InstanceID {
-			return true
-		}
-	}
-	return false
 }
 
 // --- effect bodies -----------------------------------------------

@@ -2,6 +2,7 @@ package lobby
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -815,7 +816,7 @@ func TestLogoutRevokesSession(t *testing.T) {
 	resp.Body.Close()
 
 	// Pre-check: the token is valid server-side.
-	if _, err := a.Validate(nil, s.Token); err != nil {
+	if _, err := a.Validate(context.TODO(), s.Token); err != nil {
 		t.Fatalf("pre-logout validate: %v", err)
 	}
 
@@ -842,7 +843,7 @@ func TestLogoutRevokesSession(t *testing.T) {
 	resp.Body.Close()
 
 	// Post-check: the token no longer validates.
-	if _, err := a.Validate(nil, s.Token); err == nil {
+	if _, err := a.Validate(context.TODO(), s.Token); err == nil {
 		t.Error("post-logout validate: token still valid")
 	}
 

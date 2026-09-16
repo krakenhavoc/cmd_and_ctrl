@@ -27,3 +27,11 @@ issues:
   exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
+  exclude-rules:
+    # Test code drops Close/Write errors on purpose and keeps helpers
+    # whose spare parameter documents intent. errcheck and unparam earn
+    # their keep in production code; in tests they are noise (#582).
+    - path: _test\.go
+      linters:
+        - errcheck
+        - unparam

@@ -19,13 +19,9 @@ func init() {
 		OracleID:     "f75ed312-3a23-4624-80c5-03980aa22d0b",
 		Name:         "Llanowar Visionary",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Llanowar Visionary — draw a card", b36DrawOne)
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Llanowar Visionary — draw a card", b36DrawOne),
+		},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{G}",

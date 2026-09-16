@@ -48,15 +48,9 @@ func init() {
 					return game.NewTriggeredItem(source, b24WitchOfTheMoorsLabel, b24WitchOfTheMoorsEdictAndReturn)
 				},
 			},
-			{
-				Watches: []game.EventKind{game.EventBeginEndStep},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b24YourEndStepAndYouGainedLifeThisTurn(ev, source, g) && !b24GraveyardHasCreatureCard(g, source.Controller)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b24WitchOfTheMoorsLabel, b24WitchOfTheMoorsEdictAndReturn)
-				},
-			},
+			On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b24YourEndStepAndYouGainedLifeThisTurn(ev, source, g) && !b24GraveyardHasCreatureCard(g, source.Controller)
+			}, b24WitchOfTheMoorsLabel, b24WitchOfTheMoorsEdictAndReturn),
 		},
 	})
 }

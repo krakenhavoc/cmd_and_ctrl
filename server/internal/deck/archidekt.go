@@ -132,7 +132,7 @@ func fetchArchidekt(ctx context.Context, client *http.Client, u *url.URL) (name 
 	if err != nil {
 		return "", nil, fmt.Errorf("%w: archidekt fetch: %v", ErrExternalAPIUnavailable, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if werr := classifyHTTPStatus(resp.StatusCode); werr != nil {
 		return "", nil, fmt.Errorf("%w: archidekt", werr)

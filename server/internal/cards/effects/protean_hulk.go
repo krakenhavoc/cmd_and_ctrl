@@ -27,18 +27,11 @@ func init() {
 		OracleID:     "10180e2f-90c5-4d41-ba44-16b14948f923",
 		Name:         "Protean Hulk",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return cardDied(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Protean Hulk — creature cards with total mana value 6 or less, onto the battlefield",
-					func(g *game.Game, item *game.StackItem) error {
-						return b23SearchCreaturesWithTotalManaValue(g, item, 6,
-							"Protean Hulk — any number of creature cards with total mana value 6 or less")
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisDies("Protean Hulk — creature cards with total mana value 6 or less, onto the battlefield", func(g *game.Game, item *game.StackItem) error {
+				return b23SearchCreaturesWithTotalManaValue(g, item, 6,
+					"Protean Hulk — any number of creature cards with total mana value 6 or less")
+			}),
+		},
 	})
 }

@@ -14,7 +14,7 @@ import (
 // What is NOT here, because main already had it: "this permanent
 // enters" is b06SelfETB, "enters with N counters" is
 // b10EntersWithCounters, the per-label "one or more" dedup is
-// b12TriggerPendingOrOnStack, the once-per-turn tally is
+// OncePerBatch, the once-per-turn tally is
 // b11TriggeredThisTurn, "each player draws" is b05EachPlayerDraws,
 // "another creature dies" is b15AnotherCreatureDied, an opponent's
 // life loss is b04OpponentLostLife, the Shadowmoor filter land is
@@ -134,27 +134,7 @@ func b18AttackedThisTurn(g *game.Game, player uuid.UUID) bool {
 // directly and emits no EventChangeLife of its own. Summed back to
 // the current turn's upkeep.
 func b18LifeLostThisTurn(g *game.Game, player uuid.UUID) int {
-	lost := 0
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			break
-		}
-		if ev.Target != player {
-			continue
-		}
-		switch ev.Kind {
-		case game.EventChangeLife:
-			if ev.Amount < 0 {
-				lost -= ev.Amount
-			}
-		case game.EventDealDamage:
-			if ev.Amount > 0 {
-				lost += ev.Amount
-			}
-		}
-	}
-	return lost
+	return g.TurnTallyFor(player).LifeLost
 }
 
 // b18AttackerAlreadyBlocked reports whether the attacker named by an

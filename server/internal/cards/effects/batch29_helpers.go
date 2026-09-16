@@ -475,11 +475,10 @@ func b29SacrificeChosenCreature(g *game.Game, item *game.StackItem) error {
 // landing.
 func b29DamageChosenTargetAndThreeTreasures(g *game.Game, item *game.StackItem, power int) error {
 	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: power}).Apply(ctx); err != nil {
+	if ts := ctx.LegalTargets(); len(ts) > 0 {
+		if err := (DealDamage{Source: item.SourceCardID, Target: ts[0].ID, Amount: power}).Apply(ctx); err != nil {
 			return err
 		}
-		break
 	}
 	return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 3}.Apply(ctx)
 }

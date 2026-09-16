@@ -182,6 +182,14 @@ type Game struct {
 	// would cost a hook on every zone move to buy nothing.
 	DrawnThisTurn map[uuid.UUID][]uuid.UUID
 
+	// TurnTally counts what has happened this turn — life gained and
+	// lost, cards drawn, creatures died, tokens, sacrifices, landfall,
+	// attacks, combat damage to players, and per-ability resolution /
+	// trigger counts — bumped by turnTallyListener as the events fire
+	// and reset on Turn.advance to a new turn. See turn_tally.go
+	// (#586).
+	TurnTally TurnTally
+
 	// DiscardPending is the cleanup-step pause map (S13.4): keys
 	// are player IDs that need to discard, values are the count
 	// each player must discard. Set at cleanup-step entry by
@@ -380,6 +388,12 @@ func NewGame() *Game {
 	// Bumps g.layerVersion on the events that change which static
 	// abilities are active (battlefield zone moves) or what they
 	// apply to (counter changes). See layer_listener.go.
+	// #586: the per-turn tally. Registered FIRST so it reads a dying
+	// creature's last-known characteristics before the harvester
+	// drops them, and so a trigger's AppliesTo asking "already this
+	// turn?" during the same event sees the count as it stood before
+	// that event. See turn_tally.go.
+	g.Listeners = append(g.Listeners, turnTallyListener{})
 	g.Listeners = append(g.Listeners, layerVersionBump{})
 	// S19 sub-PR 1: install the auto-fire trigger dispatcher. Walks
 	// the battlefield (and the LKI map for LTB events) on every
@@ -728,6 +742,7 @@ func (g *Game) onTurnAdvanceLocked(prev, next Turn) {
 	if g.DrawnThisTurn != nil {
 		g.DrawnThisTurn = nil
 	}
+	g.resetTurnTallyLocked()
 }
 
 // CardsDrawnThisTurnFor returns the instance IDs playerID has drawn
@@ -861,17 +876,27 @@ func (g *Game) runStepEntryHooksLocked() {
 	// recursion through Untap → Upkeep and Cleanup → next-Untap)
 	// triggers the clear. Cheap to call on already-empty pools.
 	g.emptyAllManaPoolsLocked()
-	// S31 sub-PR 0: announce the step for the public game log. Placed
-	// after the skip-step replacement window so a cancelled step never
+	// The mulligan window holds the cursor at Untap and KeepHand
+	// re-runs this hook once per keep, so until the window closes the
+	// step has not really begun: nothing below announces, fires or
+	// untaps. (The per-step cases used to carry this guard each; #588
+	// hoisted it so EventStepBegan is emitted exactly once per step
+	// that begins and the harvester can trust it.)
+	if g.MulligansOpen && (g.Turn.Step == StepUntap || g.Turn.Step == StepUpkeep) {
+		return
+	}
+	// S31 sub-PR 0: announce the step for the public game log, and
+	// since #588 for the trigger harvester too. Placed after the
+	// skip-step replacement window so a cancelled step never
 	// announces, and before the per-step turn-based actions so the
-	// entries they produce read as happening INSIDE this step. No
-	// rules machinery listens for this kind.
+	// entries they produce read as happening INSIDE this step.
 	if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) && g.Seats[g.Turn.ActiveSeat] != nil {
 		g.EmitEvent(Event{
 			Kind:   EventStepBegan,
 			Actor:  g.Seats[g.Turn.ActiveSeat].ID,
 			Amount: g.Turn.Number,
 			Label:  string(g.Turn.Step),
+			Step:   g.Turn.Step,
 		})
 	}
 	// S22: CR 603.7 delayed triggered abilities fire on ENTRY to the
@@ -919,12 +944,7 @@ func (g *Game) runStepEntryHooksLocked() {
 		// S19 sub-PR 5: announce the upkeep so "at the beginning of
 		// your upkeep" triggers auto-fire through the harvester.
 		// Upkeep grants priority, so no auto-advance — just emit and
-		// fall through. Mulligans keep the cursor parked at Untap, so
-		// this is normally unreachable while they're open; guard
-		// anyway.
-		if g.MulligansOpen {
-			return
-		}
+		// fall through.
 		if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
 			g.EmitEvent(Event{
 				Kind:  EventBeginUpkeep,
@@ -932,11 +952,6 @@ func (g *Game) runStepEntryHooksLocked() {
 			})
 		}
 	case StepUntap:
-		// Mulligans still open → hold the cursor at Untap until
-		// KeepHand closes the window. KeepHand re-runs this hook.
-		if g.MulligansOpen {
-			return
-		}
 		if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
 			g.Seats[g.Turn.ActiveSeat].UndosRemaining = g.UndoLimit
 			// CR 502.1-502.3, in untap.go: the active seat's

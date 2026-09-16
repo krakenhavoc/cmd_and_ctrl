@@ -22,6 +22,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // empty hand is a legal no-op, which is the ordinary case after an
 // escape.
 //
+// The ETB is a triggered ability and uses the stack (#578). It used to
+// run from the direct AsEnters hook, which gave nobody a response
+// window; now the trigger waits for every player to pass, like every
+// other "When ~ enters".
+//
 // Sandbox simplification: the discard picks nothing, because there
 // is nothing to pick — "discard your hand" takes every card, so the
 // engine's random-selection discard is exactly right here and the
@@ -33,11 +38,13 @@ func init() {
 		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{EscapeWithCounters("{R}{R}", 8, 1)},
-		OnETB: func(card *game.Card, ctx *Context) error {
-			if _, err := discardWholeHand(ctx.Game, card.Controller); err != nil {
-				return err
-			}
-			return DrawCards{Player: card.Controller, N: 3}.Apply(ctx)
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Ox of Agonas — discard your hand, then draw three", func(g *game.Game, item *game.StackItem) error {
+				if _, err := discardWholeHand(g, item.Controller); err != nil {
+					return err
+				}
+				return DrawCards{Player: item.Controller, N: 3}.Apply(NewContext(g, item))
+			}),
 		},
 	})
 }

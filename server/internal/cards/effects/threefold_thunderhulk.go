@@ -35,26 +35,19 @@ func init() {
 		Replacements: []game.ReplacementEffect{
 			b10EntersWithCounters("+1/+1", 3, "Threefold Thunderhulk: enters with three +1/+1 counters"),
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB, game.EventAttack},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Threefold Thunderhulk — Gnomes equal to its power",
-					func(g *game.Game, item *game.StackItem) error {
-						self, ok := g.LookupCardForEffect(item.SourceCardID)
-						if !ok {
-							return nil
-						}
-						n := self.CurrentPower()
-						if n <= 0 {
-							return nil
-						}
-						return CreateToken{Controller: item.Controller, Template: b17GnomeToken(), N: n}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEntersOrAttacks("Threefold Thunderhulk — Gnomes equal to its power", func(g *game.Game, item *game.StackItem) error {
+				self, ok := g.LookupCardForEffect(item.SourceCardID)
+				if !ok {
+					return nil
+				}
+				n := self.CurrentPower()
+				if n <= 0 {
+					return nil
+				}
+				return CreateToken{Controller: item.Controller, Template: b17GnomeToken(), N: n}.Apply(NewContext(g, item))
+			}),
+		},
 		Activated: []ActivatedAbility{{
 			Label: "{2}, Sacrifice another artifact: Put a +1/+1 counter on Threefold Thunderhulk",
 			Cost: Plus(ManaCost("{2}"), game.AbilityCost{

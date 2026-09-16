@@ -17,21 +17,11 @@ func init() {
 		Name:         "Impulsive Pilferer",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"Encore isn't implemented — you can't pay {3}{R} to bring it back from your graveyard for token copies."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return cardDied(ev, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Impulsive Pilferer — create a Treasure",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   TreasureToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisDies("Impulsive Pilferer — create a Treasure", Do(CreateToken{
+				Template: TreasureToken(),
+				N:        1,
+			})),
+		},
 	})
 }

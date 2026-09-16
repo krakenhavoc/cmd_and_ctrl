@@ -29,15 +29,11 @@ func init() {
 			b34ZombiesAndTokensYouControlGetPlusOne(),
 			b34ZombiesAndTokensYouControlHaveFlying(),
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventZoneMove, game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b16CardLeftYourGraveyard(ev, source, g) && !b12TriggerPendingOrOnStack(g, source, b34OnWingsOfGoldLabel)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, b34OnWingsOfGoldLabel, b34CreateTokens(b34WhiteZombieToken, 1))
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventCast}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b16CardLeftYourGraveyard(ev, source, g)
+			}, b34OnWingsOfGoldLabel, b34CreateTokens(b34WhiteZombieToken, 1))),
+		},
 	})
 }
 

@@ -19,7 +19,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // EventDealDamage per creature, so the first Faerie to connect fires
 // it and the rest of that combat step's Faeries are declined while
 // it is queued, on the stack, or waiting on its target pick
-// (b12TriggerPendingOrOnStack + b17PickTargetPendingFrom). Alela
+// (OncePerBatch + b17PickTargetPendingFrom). Alela
 // herself is a Faerie and counts.
 //
 // The goad is the engine's goad. The sandbox has carried a goad
@@ -46,22 +46,14 @@ func init() {
 		Caveats:         []string{"Goad only marks the creature — the game doesn't force it to attack, or stop it attacking you."},
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b22FirstSpellOnAnOpponentsTurn(ev, source, g)
+			}, "Alela, Cunning Conqueror — create a 1/1 black Faerie Rogue with flying", b33CreateTokenBody(FaerieRogueToken)),
 			{
-				Watches: []game.EventKind{game.EventCast},
+				OncePerBatch: true,
+				Watches:      []game.EventKind{game.EventDealDamage},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b22FirstSpellOnAnOpponentsTurn(ev, source, g)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Alela, Cunning Conqueror — create a 1/1 black Faerie Rogue with flying",
-						b33CreateTokenBody(FaerieRogueToken, 1))
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventDealDamage},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b33FaerieYouControlDealtCombatDamageToPlayer(ev, source, g) &&
-						!b12TriggerPendingOrOnStack(g, source, b33AlelaGoadLabel) &&
-						!b17PickTargetPendingFrom(g, source)
+					return b33FaerieYouControlDealtCombatDamageToPlayer(ev, source, g)
 				},
 				Targets: TargetCreature("target creature that player controls", b33CreatureOfPlayerHitByYourFaeries),
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {

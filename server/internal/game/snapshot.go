@@ -151,6 +151,7 @@ type GameSnapshot struct {
 	SpellsCastThisTurn       map[uuid.UUID]CastTally   `json:"spellsCastThisTurn,omitempty"`
 	LandsPlayedThisTurn      map[uuid.UUID]int         `json:"landsPlayedThisTurn,omitempty"`
 	DrawnThisTurn            map[uuid.UUID][]uuid.UUID `json:"drawnThisTurn,omitempty"`
+	TurnTally                TurnTally                 `json:"turnTally"`
 	DiscardPending           map[uuid.UUID]int         `json:"discardPending,omitempty"`
 
 	// Promises is a slice because its live form is keyed by a
@@ -585,6 +586,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
 	s.LandsPlayedThisTurn = copyIntMap(g.LandsPlayedThisTurn)
 	s.DrawnThisTurn = copyUUIDListMap(g.DrawnThisTurn)
+	s.TurnTally = cloneTurnTally(g.TurnTally)
 	s.DiscardPending = copyIntMap(g.DiscardPending)
 
 	if len(g.Promises) > 0 {
@@ -1037,6 +1039,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 
 	g.LoyaltyActivatedThisTurn = copyBoolMap(s.LoyaltyActivatedThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
+	g.TurnTally = cloneTurnTally(s.TurnTally)
 	g.LandsPlayedThisTurn = copyIntMap(s.LandsPlayedThisTurn)
 	g.DrawnThisTurn = copyUUIDListMap(s.DrawnThisTurn)
 	g.DiscardPending = copyIntMap(s.DiscardPending)

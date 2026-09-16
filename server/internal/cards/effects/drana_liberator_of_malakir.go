@@ -31,17 +31,10 @@ func init() {
 		Completeness:    CompletenessCaveats,
 		Caveats:         []string{"The +1/+1 counters land after this combat's regular damage rather than between first-strike and regular damage, so the rest of the team doesn't hit harder in the same combat."},
 		PrintedKeywords: []string{"flying", "first strike"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return ev.Source == source.InstanceID && combatDamageToPlayerBy(ev, source.Controller, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Drana — a +1/+1 counter on each attacking creature you control",
-					func(g *game.Game, item *game.StackItem) error {
-						return b13PutCounterOnEach(NewContext(g, item), b13AttackingCreaturesYouControl(g, item.Controller))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverThisDealsCombatDamageToAPlayer("Drana — a +1/+1 counter on each attacking creature you control", func(g *game.Game, item *game.StackItem) error {
+				return b13PutCounterOnEach(NewContext(g, item), b13AttackingCreaturesYouControl(g, item.Controller))
+			}),
+		},
 	})
 }

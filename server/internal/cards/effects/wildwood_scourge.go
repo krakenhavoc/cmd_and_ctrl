@@ -37,15 +37,10 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: ctx.X()}.Apply(ctx)
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCounterPlaced},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCounterPlaced, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b35PlusCountersPutOnAnotherNonHydraCreatureYouControl(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Wildwood Scourge — put a +1/+1 counter on this creature",
-					b35PutCounterOnSelf)
-			},
-		}},
+			}, "Wildwood Scourge — put a +1/+1 counter on this creature", b35PutCounterOnSelf),
+		},
 	})
 }

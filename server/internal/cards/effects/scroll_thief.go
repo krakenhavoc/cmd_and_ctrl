@@ -14,17 +14,8 @@ func init() {
 	Register(Spec{
 		OracleID: "637c5583-4683-4ae4-8b4e-f5da42a772c7",
 		Name:     "Scroll Thief",
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return ev.Source == source.InstanceID && combatDamageToPlayerBy(ev, source.Controller, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Scroll Thief — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverThisDealsCombatDamageToAPlayer("Scroll Thief — draw a card", Do(DrawCards{N: 1})),
+		},
 	})
 }

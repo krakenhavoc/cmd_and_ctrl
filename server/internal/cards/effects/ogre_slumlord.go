@@ -23,23 +23,14 @@ func init() {
 		OracleID:     "0a5e3748-2e58-4e53-9653-8af4e21cf223",
 		Name:         "Ogre Slumlord",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b17AnotherNontokenCreatureDied(ev, source, g)
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Ogre Slumlord — create a 1/1 black Rat?"},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Ogre Slumlord — create a Rat",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   b18BlackRatToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Ogre Slumlord — create a Rat", Do(CreateToken{
+				Template: b18BlackRatToken(),
+				N:        1,
+			})), "Ogre Slumlord — create a 1/1 black Rat?"),
+		},
 		Static: []game.StaticAbility{
 			TribalKeywordGrant(TribeFilter{Tribes: []string{"Rat"}, YoursOnly: true}, "deathtouch"),
 		},

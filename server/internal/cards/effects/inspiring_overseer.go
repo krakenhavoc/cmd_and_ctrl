@@ -20,19 +20,14 @@ func init() {
 		Name:            "Inspiring Overseer",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Inspiring Overseer — gain 1 life and draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if err := (GainLife{Player: item.Controller, Amount: 1}).Apply(ctx); err != nil {
-							return err
-						}
-						return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Inspiring Overseer — gain 1 life and draw a card", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				if err := (GainLife{Player: item.Controller, Amount: 1}).Apply(ctx); err != nil {
+					return err
+				}
+				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
+			}),
+		},
 	})
 }

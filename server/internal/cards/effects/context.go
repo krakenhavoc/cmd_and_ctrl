@@ -7,7 +7,7 @@ import (
 )
 
 // Context is the scoped API surface handed to a Spec's OnResolve /
-// OnETB callback. Wraps the Game (under write-lock held by the
+// AsEnters callback. Wraps the Game (under write-lock held by the
 // resolution path) and the stack item currently being resolved. An
 // OnResolve that needs to read game state or mutate it goes through
 // Context rather than through *game.Game directly, so the hard rule
@@ -25,20 +25,20 @@ type Context struct {
 	Game *game.Game
 
 	// Item is the stack item being resolved (spell or ability).
-	// Nil for OnETB callbacks (which fire after the spell has
+	// Nil for AsEnters callbacks (which fire after the spell has
 	// already resolved and routed to the battlefield).
 	Item *game.StackItem
 }
 
 // NewContext constructs a Context bound to a game + stack item.
-// Called from the resolution path just before OnResolve / OnETB
+// Called from the resolution path just before OnResolve / AsEnters
 // fires.
 func NewContext(g *game.Game, item *game.StackItem) *Context {
 	return &Context{Game: g, Item: item}
 }
 
 // Controller returns the caster / controller of the current stack
-// item. uuid.Nil for OnETB contexts with no item (the resolution
+// item. uuid.Nil for AsEnters contexts with no item (the resolution
 // path can pass a synthetic item with Controller set to the owner
 // of the entering permanent if a primitive needs this).
 func (c *Context) Controller() uuid.UUID {

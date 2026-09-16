@@ -30,27 +30,12 @@ func init() {
 		Name:         "Surly Badgersaur",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventDiscardCard},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b30YouDiscardedCardWhere(ev, source, g, func(c game.Card) bool { return c.IsCreature() })
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Surly Badgersaur — put a +1/+1 counter on it", b30PutCounterOnSelf)
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventDiscardCard},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b30YouDiscardedCardWhere(ev, source, g, func(c game.Card) bool { return c.IsLand() })
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Surly Badgersaur — create a Treasure",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b30YouDiscardedCardWhere(ev, source, g, func(c game.Card) bool { return c.IsCreature() })
+			}, "Surly Badgersaur — put a +1/+1 counter on it", b30PutCounterOnSelf),
+			On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b30YouDiscardedCardWhere(ev, source, g, func(c game.Card) bool { return c.IsLand() })
+			}, "Surly Badgersaur — create a Treasure", Do(CreateToken{Template: TreasureToken(), N: 1})),
 			{
 				Watches: []game.EventKind{game.EventDiscardCard},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

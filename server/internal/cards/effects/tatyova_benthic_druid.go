@@ -19,22 +19,14 @@ func init() {
 		OracleID:     "0715e860-3b3b-4331-9718-207973e94fee",
 		Name:         "Tatyova, Benthic Druid",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				c, ok := enteredUnderYourControl(ev, source, g, false)
-				return ok && c.IsLand()
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Tatyova — gain 1 life and draw a card (landfall)",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if err := (GainLife{Player: item.Controller, Amount: 1}).Apply(ctx); err != nil {
-							return err
-						}
-						return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			Landfall("Tatyova — gain 1 life and draw a card (landfall)", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				if err := (GainLife{Player: item.Controller, Amount: 1}).Apply(ctx); err != nil {
+					return err
+				}
+				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
+			}),
+		},
 	})
 }

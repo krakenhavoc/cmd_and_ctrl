@@ -43,22 +43,12 @@ func init() {
 		OracleID:     invasionOfInnistradOracleID + "#1",
 		Name:         "Deluge of the Dead",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Deluge of the Dead — create two 2/2 Zombies",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   BlackZombieToken(),
-							N:          2,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Deluge of the Dead — create two 2/2 Zombies", Do(CreateToken{
+				Template: BlackZombieToken(),
+				N:        2,
+			})),
+		},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{B}: Exile target card from a graveyard. If it was a creature card, create a 2/2 black Zombie creature token.",
 			Cost:    ManaCost("{2}{B}"),

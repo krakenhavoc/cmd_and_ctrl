@@ -56,19 +56,9 @@ func init() {
 						b33SacrificeChosenThenDrawThatMany)
 				},
 			},
-			{
-				Watches: []game.EventKind{game.EventLTB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return b22SelfDiedOrWasExiledFromBattlefield(ev, source)
-				},
-				OptionalPrompt: &game.TriggerOptionalPrompt{
-					Question: "God-Eternal Bontu — put it into its owner's library third from the top?",
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "God-Eternal Bontu — put it into its owner's library third from the top",
-						b33TuckSelfThirdFromTop)
-				},
-			},
+			Optional(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return b22SelfDiedOrWasExiledFromBattlefield(ev, source)
+			}, "God-Eternal Bontu — put it into its owner's library third from the top", b33TuckSelfThirdFromTop), "God-Eternal Bontu — put it into its owner's library third from the top?"),
 		},
 	})
 }

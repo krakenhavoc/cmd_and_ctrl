@@ -119,30 +119,6 @@ func b12SacrificeAGoblin() *game.TargetSpec {
 
 // --- trigger dedup -----------------------------------------------
 
-// b12TriggerPendingOrOnStack is b04TriggerPendingOrOnStack narrowed
-// to ONE printed ability of the source, by stack label — the "one or
-// more" dedup for a card that has more than one triggered ability.
-//
-// The narrowing matters for Laelia: her attack trigger exiles a card
-// from the library, which is what fires her counter trigger, and the
-// attack trigger leaves StackMeta before its effect runs — but any
-// OTHER Laelia trigger sitting on the stack at that moment (a second
-// attack trigger from an extra combat, say) must not swallow the
-// counter. Matching the label keeps the two abilities independent.
-func b12TriggerPendingOrOnStack(g *game.Game, source *game.Card, label string) bool {
-	for _, item := range g.PendingTriggers {
-		if item != nil && item.SourceCardID == source.InstanceID && item.Label == label {
-			return true
-		}
-	}
-	for _, item := range g.StackMeta {
-		if item != nil && item.Kind == game.StackItemTriggered && item.SourceCardID == source.InstanceID && item.Label == label {
-			return true
-		}
-	}
-	return false
-}
-
 // --- trigger conditions ------------------------------------------
 
 // b12CardExiledFromYourLibraryOrGraveyard is Laelia's second
@@ -248,11 +224,7 @@ func b12YouSacrificedAnArtifact(ev game.Event, source *game.Card, g *game.Game) 
 // zone is not counted.
 func b12InstantsAndSorceriesCastBeforeThisTurn(g *game.Game, controller, spell uuid.UUID) int {
 	n := 0
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventBeginUpkeep {
-			break
-		}
+	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventCast || ev.Actor != controller || ev.CardID == spell {
 			continue
 		}

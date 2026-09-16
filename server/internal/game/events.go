@@ -386,24 +386,24 @@ const (
 	EventSagaChapter EventKind = "saga_chapter"
 
 	// EventStepBegan — the turn cursor entered a step. Actor is the
-	// active player, Amount the turn number, Label the step name
-	// (game.Step). Emitted from runStepEntryHooksLocked AFTER the
-	// S17 skip-step replacement window has had its say, so a step
-	// that Stasis cancelled never announces.
+	// active player, Step the step (typed), Amount the turn number and
+	// Label the step name. Emitted from runStepEntryHooksLocked AFTER
+	// the S17 skip-step replacement window has had its say, so a step
+	// that Stasis cancelled never announces, and never while the
+	// mulligan window holds the cursor at Untap, so it fires exactly
+	// once per step that really begins.
 	//
-	// Distinct from the older EventBeginUpkeep / EventBeginEndStep,
-	// which exist for the trigger harvester and only cover the two
-	// steps cards actually name. This one is the public game log's
-	// spine: it is what lets "Bolt resolved" be read as "on turn 7,
-	// in Aang's second main phase". Nothing in the rules engine
-	// listens for it — adding a listener that does would be a
-	// mistake, because the two upkeep/end-step kinds are the ones
-	// with the careful mulligan and recursion guards.
+	// It is both the public game log's spine and, since #588, the
+	// trigger event for every step: "at the beginning of combat",
+	// "at the beginning of your postcombat main phase", "at end of
+	// combat" watch this kind with a predicate on Step
+	// (effects.StepBegan). The older per-step kinds — EventBeginUpkeep,
+	// EventBeginDrawStep, EventBeginPrecombatMain, EventBeginEndStep —
+	// are emitted a little later in the hook, after that step's
+	// turn-based action, and stay for the cards that depend on that
+	// ordering (the draw-step trigger must see the card already drawn).
 	//
-	// The mulligan window re-runs the untap hook once per keep, so
-	// consecutive duplicates for the same (turn, step, seat) are
-	// expected and de-duplicated by the log projection rather than
-	// here. Added in S31 sub-PR 0.
+	// Added in S31 sub-PR 0; opened to the harvester in #588.
 	EventStepBegan EventKind = "step_began"
 
 	// EventBlock — CardID was declared as a blocker. Actor is the
@@ -501,6 +501,12 @@ type Event struct {
 	// classification. Kept as a string so adding new counter kinds
 	// doesn't require a schema change.
 	Label string `json:"label,omitempty"`
+
+	// Step is the step that began, on EventStepBegan. Typed so a
+	// trigger's predicate compares a constant rather than a string
+	// (Label still carries the name for the public log). Added in
+	// #588.
+	Step Step `json:"step,omitempty"`
 
 	// OldZone / NewZone are the zone kinds for ZoneMove-shaped
 	// events. Empty string means "not applicable."

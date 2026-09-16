@@ -21,12 +21,8 @@ func init() {
 		Name:            "Village Bell-Ringer",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Village Bell-Ringer — untap all creatures you control", b34UntapAllCreaturesYouControl)
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Village Bell-Ringer — untap all creatures you control", b34UntapAllCreaturesYouControl),
+		},
 	})
 }

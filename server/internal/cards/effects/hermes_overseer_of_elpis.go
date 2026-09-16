@@ -19,7 +19,7 @@ const b33HermesScryLabel = "Hermes, Overseer of Elpis — scry 2"
 // still makes a Bird. The attack trigger is "one or more": the
 // engine emits one EventAttack per attacker, so the first Bird
 // declared fires it and the rest of that combat's Birds are declined
-// while it is queued or on the stack (b12TriggerPendingOrOnStack).
+// while it is queued or on the stack (OncePerBatch).
 // Effective subtypes, so a changeling attacking is a Bird.
 //
 // No simplification.
@@ -29,23 +29,10 @@ func init() {
 		Name:         "Hermes, Overseer of Elpis",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches:   []game.EventKind{game.EventCast},
-				AppliesTo: b10NoncreatureSpellCastByYou,
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Hermes, Overseer of Elpis — create a 1/1 blue Bird with flying and vigilance",
-						b33CreateTokenBody(b33BlueBirdVigilanceToken, 1))
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventAttack},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b33BirdYouControlAttacked(ev, source, g) && !b12TriggerPendingOrOnStack(g, source, b33HermesScryLabel)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b33HermesScryLabel, b33ScryN(2))
-				},
-			},
+			WheneverYouCast(Noncreature(), "Hermes, Overseer of Elpis — create a 1/1 blue Bird with flying and vigilance", b33CreateTokenBody(b33BlueBirdVigilanceToken)),
+			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b33BirdYouControlAttacked(ev, source, g)
+			}, b33HermesScryLabel, b33ScryN(2))),
 		},
 	})
 }

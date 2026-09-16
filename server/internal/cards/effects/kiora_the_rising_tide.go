@@ -25,26 +25,12 @@ func init() {
 		Name:         "Kiora, the Rising Tide",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches:   []game.EventKind{game.EventETB},
-				AppliesTo: b06SelfETB,
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Kiora, the Rising Tide — draw two, then discard two",
-						func(g *game.Game, item *game.StackItem) error {
-							return lootOne(g, item, 2)
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventAttack},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return attackDeclared(ev, source) && b34GraveyardHasAtLeast(g, source.Controller, 7)
-				},
-				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Kiora, the Rising Tide — create Scion of the Deep, a legendary 8/8 Octopus?"},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Kiora, the Rising Tide — create Scion of the Deep", b34CreateScionIfThreshold)
-				},
-			},
+			WhenThisEnters("Kiora, the Rising Tide — draw two, then discard two", func(g *game.Game, item *game.StackItem) error {
+				return lootOne(g, item, 2)
+			}),
+			Optional(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return attackDeclared(ev, source) && b34GraveyardHasAtLeast(g, source.Controller, 7)
+			}, "Kiora, the Rising Tide — create Scion of the Deep", b34CreateScionIfThreshold), "Kiora, the Rising Tide — create Scion of the Deep, a legendary 8/8 Octopus?"),
 		},
 	})
 }

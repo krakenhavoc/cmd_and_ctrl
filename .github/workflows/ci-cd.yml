@@ -99,6 +99,13 @@ jobs:
         working-directory: server
         run: go vet ./...
 
+      - name: Server — lint
+        working-directory: server
+        # golangci-lint v1.64.8 via `go run` (see server/Makefile): the
+        # repo's .golangci.yml, with errcheck and unparam excluded in
+        # test files. Wired in by #582 once the tree was clean under it.
+        run: make lint
+
       - name: Server — test
         working-directory: server
         # -timeout 30m, not Go's 10m default. internal/aiseat runs whole

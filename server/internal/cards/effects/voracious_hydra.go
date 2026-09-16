@@ -66,15 +66,9 @@ func init() {
 					return game.NewTriggeredItem(source, b25VoraciousHydraLabel, b25DoubleCountersOrFightChosen)
 				},
 			},
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-					return b06SelfETB(ev, source, lki, g) && !b25OpponentControlsACreature(g, source.Controller)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b25VoraciousHydraLabel, b25DoubleCountersOrFightChosen)
-				},
-			},
+			On(game.EventETB, func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+				return b06SelfETB(ev, source, lki, g) && !b25OpponentControlsACreature(g, source.Controller)
+			}, b25VoraciousHydraLabel, b25DoubleCountersOrFightChosen),
 		},
 	})
 }

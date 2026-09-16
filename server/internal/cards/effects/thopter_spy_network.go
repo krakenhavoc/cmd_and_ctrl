@@ -32,34 +32,16 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The artifact check happens only when the upkeep trigger goes on the stack, so losing your last artifact in response won't stop the Thopter."},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventBeginUpkeep},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return ev.Actor == source.Controller && b03ArtifactsControlled(g, source.Controller) > 0
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Thopter Spy Network — create a 1/1 Thopter",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: item.Controller, Template: ThopterToken(), N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventDealDamage},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					if !combatDamageToPlayerBy(ev, source.Controller, g) {
-						return false
-					}
-					src, ok := g.LookupCardForEffect(ev.Source)
-					return ok && src.IsArtifact() && !b04TriggerPendingOrOnStack(g, source)
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Thopter Spy Network — draw a card",
-						func(g *game.Game, item *game.StackItem) error {
-							return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			On(game.EventBeginUpkeep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return ev.Actor == source.Controller && b03ArtifactsControlled(g, source.Controller) > 0
+			}, "Thopter Spy Network — create a 1/1 Thopter", Do(CreateToken{Template: ThopterToken(), N: 1})),
+			OncePerBatch(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				if !combatDamageToPlayerBy(ev, source.Controller, g) {
+					return false
+				}
+				src, ok := g.LookupCardForEffect(ev.Source)
+				return ok && src.IsArtifact()
+			}, "Thopter Spy Network — draw a card", Do(DrawCards{N: 1}))),
 		},
 	})
 }

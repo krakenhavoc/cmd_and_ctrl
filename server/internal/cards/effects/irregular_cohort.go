@@ -26,21 +26,11 @@ func init() {
 		OracleID:        "c0636d16-671c-4e80-af8c-67d80d2cd979",
 		Name:            "Irregular Cohort",
 		PrintedKeywords: []string{game.KeywordChangeling},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Irregular Cohort — create a Shapeshifter",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   ColorlessShapeshifterToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Irregular Cohort — create a Shapeshifter", Do(CreateToken{
+				Template: ColorlessShapeshifterToken(),
+				N:        1,
+			})),
+		},
 	})
 }

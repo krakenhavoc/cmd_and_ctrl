@@ -40,17 +40,10 @@ func init() {
 			"Attacking two players at once makes one Lander, not two.",
 		},
 		Replacements: []game.ReplacementEffect{b16LandsYouControlEnterUntapped()},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventAttack},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b16YouAttackedAPlayer(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Horizon Explorer — create a Lander token",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: b16LanderToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Horizon Explorer — create a Lander token", Do(CreateToken{Template: b16LanderToken(), N: 1}))),
+		},
 	})
 }

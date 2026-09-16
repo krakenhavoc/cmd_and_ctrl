@@ -28,13 +28,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - layer 6 — "loses all abilities", with nothing kept.
 //   - layer 7b — base 3/3, so counters and anthems still apply.
 //
-// The cantrip is an ordinary OnETB rather than a triggered ability.
-// It is written "When this Aura enters, draw a card", which IS a
-// triggered ability, and the difference is observable in exactly one
-// place: the draw does not use the stack and so cannot be responded
-// to between the Aura entering and the card being drawn. That is the
-// standing shape for every ETB in the catalog (ADR 0010), not a
-// decision this card is making.
+// The cantrip is a triggered ability on the stack: "When this Aura
+// enters, draw a card" IS a trigger, and the draw can be responded to
+// between the Aura entering and the card being drawn. It ran from the
+// direct entry hook until #578 moved every "When ~ enters" onto
+// Triggered.
 //
 // No simplification.
 func init() {
@@ -43,8 +41,8 @@ func init() {
 		Name:         "Kenrith's Transformation",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
-		OnETB: func(card *game.Card, ctx *Context) error {
-			return DrawCards{Player: card.Controller, N: 1}.Apply(ctx)
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Kenrith's Transformation — draw a card", Do(DrawCards{N: 1})),
 		},
 		Static: []game.StaticAbility{
 			SetAttachedTypes([]string{"Creature"}, []string{"Elk"}),

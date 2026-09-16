@@ -20,24 +20,17 @@ func init() {
 		Name:         "Bitterblossom",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The Faerie Rogue token is created colorless instead of black, so anything that cares about a creature's color doesn't see it."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginUpkeep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Actor == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Bitterblossom — lose 1 life, create a Faerie Rogue",
-					func(g *game.Game, item *game.StackItem) error {
-						if err := g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -1); err != nil {
-							return err
-						}
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   FaerieRogueToken(),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			AtYourUpkeep("Bitterblossom — lose 1 life, create a Faerie Rogue", func(g *game.Game, item *game.StackItem) error {
+				if err := g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -1); err != nil {
+					return err
+				}
+				return CreateToken{
+					Controller: item.Controller,
+					Template:   FaerieRogueToken(),
+					N:          1,
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

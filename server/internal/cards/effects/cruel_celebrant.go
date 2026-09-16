@@ -21,9 +21,8 @@ func init() {
 		OracleID:     "3ee78cfc-0e9e-4737-a7e2-b42f94228040",
 		Name:         "Cruel Celebrant",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if cardDied(ev, source) {
 					return true
 				}
@@ -32,11 +31,7 @@ func init() {
 				}
 				dead, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && dead.Controller == source.Controller && (dead.IsCreature() || dead.IsPlaneswalker())
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Cruel Celebrant — each opponent loses 1 life, you gain 1 life",
-					b07DrainEachOpponent)
-			},
-		}},
+			}, "Cruel Celebrant — each opponent loses 1 life, you gain 1 life", b07DrainEachOpponent),
+		},
 	})
 }

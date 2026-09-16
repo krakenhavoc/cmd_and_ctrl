@@ -30,30 +30,22 @@ func init() {
 		Name:            "Knight of the White Orchid",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"first strike"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.CardID == source.InstanceID && b05OpponentControlsMoreLands(g, source.Controller)
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{
-				Question: "Knight of the White Orchid — search your library for a Plains card and put it onto the battlefield?",
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Knight of the White Orchid — search for a Plains",
-					func(g *game.Game, item *game.StackItem) error {
-						if !b05OpponentControlsMoreLands(g, item.Controller) {
-							return nil // CR 603.4: re-checked on resolution
-						}
-						return SearchLibrary{
-							Player:    item.Controller,
-							Predicate: IsLandWithSubtype("plains"),
-							Dest:      game.ZoneBattlefield,
-							Limit:     1,
-							Shuffle:   true,
-							Reason:    "Knight of the White Orchid — a Plains card",
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Knight of the White Orchid — search for a Plains", func(g *game.Game, item *game.StackItem) error {
+				if !b05OpponentControlsMoreLands(g, item.Controller) {
+					return nil // CR 603.4: re-checked on resolution
+				}
+				return SearchLibrary{
+					Player:    item.Controller,
+					Predicate: IsLandWithSubtype("plains"),
+					Dest:      game.ZoneBattlefield,
+					Limit:     1,
+					Shuffle:   true,
+					Reason:    "Knight of the White Orchid — a Plains card",
+				}.Apply(NewContext(g, item))
+			}), "Knight of the White Orchid — search your library for a Plains card and put it onto the battlefield?"),
+		},
 	})
 }

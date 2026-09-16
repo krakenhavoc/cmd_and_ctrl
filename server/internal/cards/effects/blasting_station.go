@@ -29,17 +29,10 @@ func init() {
 			Targets: TargetAny(),
 			Effect:  b33DamageChosenTargetFromSource(1),
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventETB, func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b33AnyCreatureEntered(ev, g)
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{
-				Question: "Blasting Station — untap it?",
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Blasting Station — untap", b33UntapSelf)
-			},
-		}},
+			}, "Blasting Station — untap", b33UntapSelf), "Blasting Station — untap it?"),
+		},
 	})
 }

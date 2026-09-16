@@ -13,7 +13,7 @@ import (
 //
 // What is NOT here, because main already had it: "an opponent loses
 // life" is b04OpponentLostLife, the attack / combat-damage dedup is
-// b04TriggerPendingOrOnStack, "the creatures you control" snapshot is
+// OncePerBatch, "the creatures you control" snapshot is
 // b04CreatureIDsControlledBy, the reveal-and-tutor body is
 // b06TutorToHand, "untap all lands you control" is
 // untapAllLandsControlledBy, and the Treasure is tokens.go's.
@@ -111,35 +111,6 @@ func b08SacrificeALand() game.AbilityCost {
 // b08SacrificeAToken is Fountainport's "Sacrifice a token:".
 func b08SacrificeAToken() game.AbilityCost {
 	return game.AbilityCost{SacrificeOther: sacrificeSpec("a token", IsTokenPredicate())}
-}
-
-// b08NonCreatureSubtypes are the subtypes that can sit on a creature's
-// type line without being creature types: the basic land types (Dryad
-// Arbor), the artifact and enchantment subtypes an animated permanent
-// keeps. Coat of Arms counts shared CREATURE types, and two crewed
-// Vehicles do not share one.
-var b08NonCreatureSubtypes = map[string]bool{
-	"Plains": true, "Island": true, "Swamp": true, "Mountain": true, "Forest": true,
-	"Equipment": true, "Aura": true, "Vehicle": true, "Saga": true, "Fortification": true,
-	"Treasure": true, "Food": true, "Clue": true, "Blood": true, "Gold": true, "Powerstone": true,
-}
-
-// b08SharesACreatureType reports whether two creatures have at least
-// one creature type in common, reading effective subtypes so a
-// Layer-4 type grant counts. Safe inside a layer recompute: subtypes
-// are settled at layer 4 and Coat of Arms applies at layer 7c.
-func b08SharesACreatureType(a, b game.Card) bool {
-	for _, sa := range a.Effective().Subtypes {
-		if b08NonCreatureSubtypes[sa] {
-			continue
-		}
-		for _, sb := range b.Effective().Subtypes {
-			if sa == sb {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // --- effect bodies -----------------------------------------------

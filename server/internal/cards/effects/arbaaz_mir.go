@@ -25,15 +25,10 @@ func init() {
 		OracleID:     "a383ef16-1af8-4b3a-956c-c10a93768617",
 		Name:         "Arbaaz Mir",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b34SelfOrAnotherNontokenHistoricYouControlEntered(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Arbaaz Mir — 1 damage to each opponent; gain 1 life",
-					b34DamageEachOpponentAndGainLife(1, 1))
-			},
-		}},
+			}, "Arbaaz Mir — 1 damage to each opponent; gain 1 life", b34DamageEachOpponentAndGainLife(1, 1)),
+		},
 	})
 }

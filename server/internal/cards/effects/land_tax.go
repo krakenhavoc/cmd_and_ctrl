@@ -29,28 +29,20 @@ func init() {
 		Name:         "Land Tax",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The land-count check happens only when the trigger goes on the stack, so playing a land in response won't stop the search."},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventBeginUpkeep},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			Optional(On(game.EventBeginUpkeep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Actor == source.Controller && b03OpponentControlsMoreLands(g, source.Controller)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Land Tax — search for up to three basic lands",
-					func(g *game.Game, item *game.StackItem) error {
-						return SearchLibrary{
-							Player:    item.Controller,
-							Predicate: IsBasicLand,
-							Dest:      game.ZoneHand,
-							Limit:     3,
-							Reveal:    true,
-							Shuffle:   true,
-							Reason:    "Land Tax — up to three basic land cards, to your hand",
-						}.Apply(NewContext(g, item))
-					})
-			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{
-				Question: "Land Tax — search your library for up to three basic land cards?",
-			},
-		}},
+			}, "Land Tax — search for up to three basic lands", func(g *game.Game, item *game.StackItem) error {
+				return SearchLibrary{
+					Player:    item.Controller,
+					Predicate: IsBasicLand,
+					Dest:      game.ZoneHand,
+					Limit:     3,
+					Reveal:    true,
+					Shuffle:   true,
+					Reason:    "Land Tax — up to three basic land cards, to your hand",
+				}.Apply(NewContext(g, item))
+			}), "Land Tax — search your library for up to three basic land cards?"),
+		},
 	})
 }

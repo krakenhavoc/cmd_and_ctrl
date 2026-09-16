@@ -15,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // entering under the controller's control from anywhere but the
 // stack: a reanimation, a flicker, a "put onto the battlefield"
 // (b30NontokenCreatureYouControlEnteredUncast). "One or more" is
-// one draw per batch (b04TriggerPendingOrOnStack), so a mass
+// one draw per batch (OncePerBatch), so a mass
 // reanimation draws once, as printed. A cast Satoru draws nothing,
 // as printed.
 //
@@ -34,18 +34,10 @@ func init() {
 		Completeness:    CompletenessCaveats,
 		Caveats:         []string{"Only creatures that weren't cast at all (reanimated, blinked, put onto the battlefield) draw the card — a creature you cast without spending any mana doesn't count."},
 		PrintedKeywords: []string{"menace"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b30NontokenCreatureYouControlEnteredUncast(ev, source, g) &&
-					!b04TriggerPendingOrOnStack(g, source)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Satoru, the Infiltrator — draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			OncePerBatch(On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b30NontokenCreatureYouControlEnteredUncast(ev, source, g)
+			}, "Satoru, the Infiltrator — draw a card", Do(DrawCards{N: 1}))),
+		},
 	})
 }

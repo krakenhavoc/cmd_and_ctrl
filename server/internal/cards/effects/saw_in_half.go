@@ -27,7 +27,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // graveyard check exists, which is the same test.
 //
 // Sandbox simplification, inherited from CreateTokenCopy (Hashaton's
-// posture): a copied card's Spec.OnETB hook does not fire on the
+// posture): a copied card's Spec.AsEnters hook does not fire on the
 // tokens — its Triggered EventETB abilities do, which is what the
 // modern catalog uses, so a Sawed Mulldrifter still draws four.
 func init() {

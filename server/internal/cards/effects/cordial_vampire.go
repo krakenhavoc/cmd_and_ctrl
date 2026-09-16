@@ -21,15 +21,10 @@ func init() {
 		OracleID:     "d61fb9e8-d05a-481a-a90f-5def300c9abb",
 		Name:         "Cordial Vampire",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b17SelfOrAnotherCreatureDied(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Cordial Vampire — a +1/+1 counter on each Vampire you control",
-					b17PutCounterOnEachVampireYouControl)
-			},
-		}},
+			}, "Cordial Vampire — a +1/+1 counter on each Vampire you control", b17PutCounterOnEachVampireYouControl),
+		},
 	})
 }

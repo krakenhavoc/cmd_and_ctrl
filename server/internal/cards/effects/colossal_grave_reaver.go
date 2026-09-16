@@ -40,20 +40,10 @@ func init() {
 		Caveats:         []string{"When creature cards are milled, the one with the greatest mana value comes back automatically rather than one you choose."},
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
+			WhenThisEntersOrAttacks("Colossal Grave-Reaver — mill three cards", Do(MillCards{N: 3})),
 			{
-				Watches: []game.EventKind{game.EventETB, game.EventAttack},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.CardID == source.InstanceID
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Colossal Grave-Reaver — mill three cards",
-						func(g *game.Game, item *game.StackItem) error {
-							return MillCards{Player: item.Controller, N: 3}.Apply(NewContext(g, item))
-						})
-				},
-			},
-			{
-				Watches: []game.EventKind{game.EventMill},
+				OncePerBatch: true,
+				Watches:      []game.EventKind{game.EventMill},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					if ev.Actor != source.Controller || ev.NewZone != game.ZoneGraveyard {
 						return false
@@ -62,7 +52,7 @@ func init() {
 					if !ok || !c.IsCreature() || c.Owner != source.Controller {
 						return false
 					}
-					return !b12TriggerPendingOrOnStack(g, source, b17GraveReaverReturnLabel)
+					return true
 				},
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 					seq := ev.Seq

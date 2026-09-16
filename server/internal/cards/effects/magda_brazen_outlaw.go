@@ -44,17 +44,10 @@ func init() {
 				c.Power++
 			},
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventTapCard, game.EventAttack},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			OnAny([]game.EventKind{game.EventTapCard, game.EventAttack}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b11DwarfYouControlBecameTapped(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Magda, Brazen Outlaw — create a Treasure",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Magda, Brazen Outlaw — create a Treasure", Do(CreateToken{Template: TreasureToken(), N: 1})),
+		},
 	})
 }

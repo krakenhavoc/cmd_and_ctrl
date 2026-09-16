@@ -21,16 +21,11 @@ func init() {
 		Name:            "Earthshaker Dreadmaw",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Earthshaker Dreadmaw — draw a card for each other Dinosaur you control",
-					func(g *game.Game, item *game.StackItem) error {
-						n := b22OtherCreaturesOfSubtypeControlled(g, item.Controller, item.SourceCardID, "Dinosaur")
-						return DrawCards{Player: item.Controller, N: n}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Earthshaker Dreadmaw — draw a card for each other Dinosaur you control", func(g *game.Game, item *game.StackItem) error {
+				n := b22OtherCreaturesOfSubtypeControlled(g, item.Controller, item.SourceCardID, "Dinosaur")
+				return DrawCards{Player: item.Controller, N: n}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

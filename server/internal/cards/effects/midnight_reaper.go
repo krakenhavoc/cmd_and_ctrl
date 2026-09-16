@@ -22,26 +22,21 @@ func init() {
 		OracleID:     "e8c7566d-7cc0-48af-a986-83223ec7e06c",
 		Name:         "Midnight Reaper",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				dead, ok := diedCreature(ev, g)
 				return ok && dead.Controller == source.Controller && !IsToken(dead)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Midnight Reaper — 1 damage to you, draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if err := (DealDamage{
-							Source: ctx.Source(),
-							Target: item.Controller,
-							Amount: 1,
-						}).Apply(ctx); err != nil {
-							return err
-						}
-						return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-					})
-			},
-		}},
+			}, "Midnight Reaper — 1 damage to you, draw a card", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				if err := (DealDamage{
+					Source: ctx.Source(),
+					Target: item.Controller,
+					Amount: 1,
+				}).Apply(ctx); err != nil {
+					return err
+				}
+				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
+			}),
+		},
 	})
 }

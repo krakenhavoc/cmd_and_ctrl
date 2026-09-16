@@ -24,15 +24,10 @@ func init() {
 		Static: []game.StaticAbility{
 			TribalAnthem(TribeFilter{Tribes: []string{"Cat"}, Others: true, YoursOnly: true}, 1, 1),
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b36SelfOrAnotherNontokenCatYouControlEntered(ev, source, g)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Arahbo, the First Fang — create a 1/1 white Cat",
-					b34CreateTokens(b36WhiteCatToken, 1))
-			},
-		}},
+			}, "Arahbo, the First Fang — create a 1/1 white Cat", b34CreateTokens(b36WhiteCatToken, 1)),
+		},
 	})
 }

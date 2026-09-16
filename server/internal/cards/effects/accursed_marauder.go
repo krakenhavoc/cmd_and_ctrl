@@ -15,17 +15,22 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // EachPlayerSacrifices fans out one prompt per player, each offering
 // only that player's own nontoken creatures.
 //
+// The ETB is a triggered ability and uses the stack (#578). It used to
+// run from the direct AsEnters hook, which gave nobody a response
+// window; now the trigger waits for every player to pass, like every
+// other "When ~ enters".
+//
 // No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "d8ad23a1-0b43-48ea-9fbe-d89b29194509",
 		Name:         "Accursed Marauder",
 		Completeness: CompletenessFull,
-		OnETB: func(_ *game.Card, ctx *Context) error {
-			return EachPlayerSacrifices{
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Accursed Marauder — each player sacrifices a nontoken creature", Do(EachPlayerSacrifices{
 				Match: b04NontokenCreature,
 				Label: "a nontoken creature",
-			}.Apply(ctx)
+			})),
 		},
 	})
 }

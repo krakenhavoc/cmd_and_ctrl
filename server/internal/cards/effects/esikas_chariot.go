@@ -29,22 +29,10 @@ func init() {
 			Effect: CrewEffect("Esika's Chariot"),
 		}},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.CardID == source.InstanceID
-				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Esika's Chariot — create two 2/2 Cats",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{
-								Controller: item.Controller,
-								Template:   CatToken(),
-								N:          2,
-							}.Apply(NewContext(g, item))
-						})
-				},
-			},
+			WhenThisEnters("Esika's Chariot — create two 2/2 Cats", Do(CreateToken{
+				Template: CatToken(),
+				N:        2,
+			})),
 			{
 				Watches: []game.EventKind{game.EventAttack},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

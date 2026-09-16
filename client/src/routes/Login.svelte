@@ -1,23 +1,53 @@
 <script lang="ts">
-  import { adminLogin } from "../lib/api";
+  import { onMount } from "svelte";
+  import { adminLogin, discordAuthEnabled, discordLoginHref, joinByCode } from "../lib/api";
   import { navigate } from "../lib/router";
-  import { expiryNotice, LobbyApiError } from "../lib/session";
+  import { expiryNotice, LobbyApiError, session } from "../lib/session";
   import Icon from "../lib/components/Icon.svelte";
 
-  // Player-first landing: the invite paste is the only field a
-  // friend sees; the admin token form sits under it (the #/admin
-  // route leads with it instead — `admin` prop). Regular players
-  // arrive via an invite link and hit /routes/Join; the paste box
-  // is for a share link opened without its hash fragment.
+  // Player-first landing: Discord sign-in and the invite box are
+  // what a friend sees; the admin token form sits under them (the
+  // #/admin route leads with it instead — `admin` prop).
+  //
+  // Two ways in, meeting at the same input. Signing in with Discord
+  // mints an identity-only session and returns here to collect a
+  // code, which the server resolves to a table. A pasted invite link
+  // already names its table, so it goes straight to the Join page
+  // and the flow that has always handled it.
   interface Props {
     admin?: boolean;
   }
   const { admin = false }: Props = $props();
 
   let token = $state("");
-  let inviteURL = $state("");
+  let invite = $state("");
+  let joinName = $state("");
   let error = $state("");
   let busy = $state(false);
+  let joining = $state(false);
+
+  // discordEnabled gates the sign-in button. Probed once from
+  // /auth/discord/config: a deploy without the three CMDCTRL_DISCORD_*
+  // vars hides the button rather than offering one that 503s. Same
+  // posture as Join.svelte.
+  let discordEnabled = $state(false);
+  onMount(() => {
+    void discordAuthEnabled().then((on) => {
+      discordEnabled = on;
+    });
+  });
+
+  // The signed-in-but-seatless principal, or null. Drives the copy on
+  // the invite card — once we know who you are, the question stops
+  // being "have an invite?" and becomes "which table?".
+  const identity = $derived($session?.principal.role === "identified" ? $session.principal : null);
+
+  // A bare code claims the seat from this page, so it needs a name to
+  // put on it — unless Discord already supplied one. A pasted LINK
+  // doesn't: it hands off to the Join page, which has its own name
+  // field. Without this the manual path would post an empty name and
+  // take a 400 the user could do nothing about.
+  const needsName = $derived(!identity && invite.trim() !== "" && inviteHash(invite.trim()) === "");
 
   async function submit(e: SubmitEvent): Promise<void> {
     e.preventDefault();
@@ -33,19 +63,45 @@
     }
   }
 
-  function goToInvite(e: SubmitEvent): void {
-    e.preventDefault();
-    // Accept either a full URL or just the path+hash fragment.
+  // inviteHash pulls the #/games/…/join?t=… fragment out of a pasted
+  // invite URL. Returns "" for a bare code, which is the signal to
+  // ask the server which table the code belongs to instead.
+  function inviteHash(raw: string): string {
+    if (raw.startsWith("#")) return raw;
+    if (!/^https?:\/\//i.test(raw)) return "";
     try {
-      const url = new URL(inviteURL, location.origin);
-      if (url.hash) {
-        navigate(url.hash);
-      } else {
-        error = "invite URL does not contain a hash fragment";
-      }
+      return new URL(raw).hash;
     } catch {
-      // Treat as a raw hash.
-      navigate(inviteURL.startsWith("#") ? inviteURL : "#" + inviteURL);
+      return "";
+    }
+  }
+
+  async function submitInvite(e: SubmitEvent): Promise<void> {
+    e.preventDefault();
+    error = "";
+    const raw = invite.trim();
+    if (!raw) return;
+
+    // A link carries its own game id, so the router can take it from
+    // here — nothing for the server to resolve.
+    const hash = inviteHash(raw);
+    if (hash) {
+      navigate(hash);
+      return;
+    }
+
+    joining = true;
+    try {
+      await joinByCode(raw, joinName.trim());
+      // Lobby first, exactly like the invite-link flow: that is where
+      // a player imports a deck and sees the other seats before the
+      // table itself (s085 / #43). Going straight to the game route
+      // would skip the deck upload.
+      navigate("#/lobby");
+    } catch (err) {
+      error = err instanceof LobbyApiError ? err.message : "could not join with that code";
+    } finally {
+      joining = false;
     }
   }
 </script>
@@ -66,23 +122,55 @@
     {/if}
 
     {#if !admin}
+      {#if discordEnabled && !identity}
+        <div class="card">
+          <h2>Sign in</h2>
+          <a class="primary lg discord-btn" href={discordLoginHref()}>
+            Continue with Discord <Icon name="chevronRight" size={14} />
+          </a>
+          <p class="help">
+            Your Discord name and avatar become your seat. You'll enter an invite code next.
+          </p>
+        </div>
+      {/if}
+
       <div class="card">
-        <h2>Have an invite?</h2>
-        <form class="frow" onsubmit={goToInvite}>
-          <input
-            class="mono"
-            type="text"
-            placeholder="https://.../#/games/.../join?t=..."
-            aria-label="invite link"
-            bind:value={inviteURL}
-          />
-          <button type="submit" class="primary lg" disabled={!inviteURL}>
-            open <Icon name="chevronRight" size={14} />
-          </button>
+        <h2>{identity ? "Join a table" : "Have an invite?"}</h2>
+        {#if identity}
+          <p class="signed-in" role="status">
+            Signed in as {identity.name ?? "your Discord account"}.
+          </p>
+        {/if}
+        <form class="fcol" onsubmit={submitInvite}>
+          <div class="frow">
+            <input
+              class="mono"
+              type="text"
+              placeholder="invite code or link"
+              aria-label="invite code or link"
+              bind:value={invite}
+            />
+            <button
+              type="submit"
+              class="primary lg"
+              disabled={joining || !invite.trim() || (needsName && !joinName.trim())}
+            >
+              {joining ? "…" : "join"}
+              <Icon name="chevronRight" size={14} />
+            </button>
+          </div>
+          {#if needsName}
+            <input
+              type="text"
+              placeholder="your name"
+              aria-label="your name"
+              bind:value={joinName}
+            />
+          {/if}
         </form>
         <p class="help">
-          Invite links look like <span class="mono">…/#/games/…/join?t=…</span> and take you straight
-          to the table's lobby. A spectator link opens the table read-only.
+          Paste the code from your pod's invite, or the whole link — both work. A spectator link
+          opens the table read-only.
         </p>
       </div>
     {/if}
@@ -261,6 +349,23 @@
     display: flex;
     gap: 8px;
   }
+  /* The invite card stacks: the code row, then the name field that
+     appears only for a bare code. A pasted link hands off to the Join
+     page, which asks for the name itself. */
+  .fcol {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  /* Direct child only — the code input lives inside .frow and is
+     already styled by the rule below it. */
+  .fcol > input {
+    margin: 0;
+    height: 40px;
+    padding: 0 12px;
+    box-sizing: border-box;
+    font-size: 13.5px;
+  }
   .frow input {
     flex: 1;
     min-width: 0;
@@ -279,6 +384,28 @@
     padding: 0 16px;
     font-size: 13.5px;
     flex: 0 0 auto;
+  }
+  .discord-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-sizing: border-box;
+    text-decoration: none;
+    /* Discord blurple: the one hard-coded brand colour on the page.
+       A "Continue with Discord" button in our own gold reads as a
+       decoy rather than as the thing it is. */
+    background: #5865f2;
+    border-color: #4752c4;
+    color: #fff;
+  }
+  .discord-btn:hover {
+    background: #4752c4;
+  }
+  .signed-in {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--fg-muted);
   }
   .help {
     margin: 0;

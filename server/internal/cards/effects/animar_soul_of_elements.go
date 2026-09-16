@@ -46,25 +46,20 @@ func init() {
 				"Creature spells you cast cost {1} less to cast for each +1/+1 counter on Animar, Soul of Elements.",
 				YourSpell(), CreatureSpell()),
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 					return false
 				}
 				spell, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && spell.IsCreature()
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Animar, Soul of Elements — put a +1/+1 counter on it",
-					func(g *game.Game, item *game.StackItem) error {
-						return AddCounter{
-							Target: item.SourceCardID,
-							Kind:   game.CounterPlusOne,
-							N:      1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Animar, Soul of Elements — put a +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {
+				return AddCounter{
+					Target: item.SourceCardID,
+					Kind:   game.CounterPlusOne,
+					N:      1,
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }

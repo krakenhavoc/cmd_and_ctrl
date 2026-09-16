@@ -19,22 +19,14 @@ func init() {
 		OracleID:     "68639a3d-2192-4921-8298-c76bb0cd6b02",
 		Name:         "Moldervine Reclamation",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventLTB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				dead, ok := diedCreature(ev, g)
-				return ok && dead.Controller == source.Controller
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Moldervine Reclamation — gain 1 life and draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if err := (GainLife{Player: item.Controller, Amount: 1}).Apply(ctx); err != nil {
-							return err
-						}
-						return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverACreatureYouControlDies("Moldervine Reclamation — gain 1 life and draw a card", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				if err := (GainLife{Player: item.Controller, Amount: 1}).Apply(ctx); err != nil {
+					return err
+				}
+				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
+			}),
+		},
 	})
 }

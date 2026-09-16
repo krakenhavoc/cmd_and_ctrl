@@ -14,24 +14,19 @@ func init() {
 		Name:            "Brineborn Cutthroat",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		Triggered: []game.TriggeredAbility{
+			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Actor != source.Controller {
 					return false
 				}
 				return !isActivePlayer(g, source.Controller)
-			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Brineborn Cutthroat — +1/+1 counter",
-					func(g *game.Game, item *game.StackItem) error {
-						return AddCounter{
-							Target: item.SourceCardID,
-							Kind:   "+1/+1",
-							N:      1,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+			}, "Brineborn Cutthroat — +1/+1 counter", func(g *game.Game, item *game.StackItem) error {
+				return AddCounter{
+					Target: item.SourceCardID,
+					Kind:   "+1/+1",
+					N:      1,
+				}.Apply(NewContext(g, item))
+			}),
+		},
 	})
 }
