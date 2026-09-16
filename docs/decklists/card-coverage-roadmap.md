@@ -904,7 +904,7 @@ Ordered by "unlocks alone", because that is the column that answers
 | 11 | Exile-and-return (blink) and exile-until-leaves | **24** | 52 | 29 | — |
 | 12 | "As this enters, choose …" — creature type / colour / name a card | **23** | 47 | 24 | — |
 | 13 | Attack / block restrictions and taxes (can't be blocked, attack taxes, must attack) | **21** | 77 | 32 | — |
-| 14 | Multi-face cards (MDFC / transform / adventure / split / class / case) | **18** | 69 | 69 | #278 |
+| 14 | Multi-face cards (MDFC / transform / adventure / split ~~/ class / case~~) | **18** | 69 | 69 | #343 / #719 ² |
 | 15 | Card-type completeness — planeswalkers, sagas, vehicles, battles, classes | **13** | 49 | 44 | #92 |
 | 16 | Layer-4 type-changing statics feeding mana derivation (Urborg / Yavimaya / Blood Moon) | **9** | 29 | 14 | — |
 | 17 | Per-player / per-turn tallies (storm, second-spell, cast counts, lifegain counts) | **9** | 23 | 9 | — |
@@ -932,6 +932,21 @@ when a card needs one. In the last row, regeneration is
 [#667](https://github.com/krakenhavoc/cmd_and_ctrl/issues/667); phasing
 and totem armor are on demand too. The same footnote applies to the
 two tables below.
+
+² *Update 2026-09-16:* these rows used to say #278, the multi-face
+spike, which is closed. It delivered ADR 0034 (#290); the face model
+and the MDFC face picker shipped in #357, and #574 later let an effect
+cast a transform back face. What is still open in the row is the
+transform verb, [#343](https://github.com/krakenhavoc/cmd_and_ctrl/issues/343),
+and adventure's exile-then-cast,
+[#719](https://github.com/krakenhavoc/cmd_and_ctrl/issues/719). Split
+fusing, prepare, flip and meld stay declared simplifications in
+`deck/validate.go`, with no tracker. `class / case` is struck from the
+label because neither layout carries `card_faces` (ADR 0034's first
+correction, for `class`; `case` checks out the same against the dump),
+so neither is multi-face. The counts are from the original pass, under
+the old label, and are unchanged. The same footnote applies to the two
+tables below.
 
 **769 of the 2000 (38%) need no new machinery at all.** That is the most
 actionable number in this document: there is more than a sprint of
@@ -995,7 +1010,7 @@ Same detectors, ranks 2,235–4,253.
 | 13 | Table-state mechanics (monarch, initiative, day/night, The Ring, dungeons, speed) | **17** | 27 | 17 | — |
 | 14 | "As this enters, choose …" — creature type / colour / name a card | **17** | 35 | 18 | — |
 | 15 | Keyword actions with no primitive (proliferate, surveil, explore, connive, amass…) | **16** | 54 | 23 | — |
-| 16 | Multi-face cards (MDFC / transform / adventure / split / class / case) | **14** | 72 | 72 | #278 |
+| 16 | Multi-face cards (MDFC / transform / adventure / split ~~/ class / case~~) | **14** | 72 | 72 | #343 / #719 ² |
 | 17 | Counters on players (energy, experience, poison, rad, ticket) | **13** | 38 | 16 | — |
 | 18 | Per-player / per-turn tallies (storm, second-spell, cast counts, lifegain counts) | **10** | 38 | 13 | — |
 | 19 | Layer-4 type-changing statics feeding mana derivation (Urborg / Yavimaya / Blood Moon) | **9** | 39 | 15 | — |
@@ -1047,7 +1062,7 @@ Same detectors, ranks 4,254–6,289.
 | 16 | Change of control (gain control, exchange control) | **13** | 26 | 14 | #76 |
 | 17 | Table-state mechanics (monarch, initiative, day/night, The Ring, dungeons, speed) | **13** | 25 | 14 | — |
 | 18 | "As this enters, choose …" — creature type / colour / name a card | **11** | 23 | 12 | — |
-| 19 | Multi-face cards (MDFC / transform / adventure / split / class / case) | **10** | 71 | 71 | #278 |
+| 19 | Multi-face cards (MDFC / transform / adventure / split ~~/ class / case~~) | **10** | 71 | 71 | #343 / #719 ² |
 | 20 | Counters on players (energy, experience, poison, rad, ticket) | **9** | 34 | 13 | — |
 | 21 | Face-down permanents (morph, manifest, disguise, cloak, mutate) | **6** | 37 | 32 | #95 |
 | 22 | Shuffle a card or permanent into a library | **5** | 14 | 5 | — |
