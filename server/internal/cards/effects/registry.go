@@ -119,6 +119,19 @@ func Register(spec Spec) {
 		if ab.Cost.MinX < 0 {
 			panic(fmt.Sprintf("effects.Register: %q ability %d sets a negative MinX %d", spec.Name, i, ab.Cost.MinX))
 		}
+		if rc := ab.Cost.RemoveCounters; rc != nil {
+			// #625: a counter cost that removes nothing would make the
+			// ability free, and an any-kind cost of more than one
+			// counter has no single kind to name at announce.
+			if rc.N <= 0 {
+				panic(fmt.Sprintf("effects.Register: %q ability %d removes %d counters — a counter cost removes at least one",
+					spec.Name, i, rc.N))
+			}
+			if rc.Counter == "" && rc.N > 1 {
+				panic(fmt.Sprintf("effects.Register: %q ability %d removes %d counters of any kind — only \"a counter\" (N = 1) has an any-kind shape",
+					spec.Name, i, rc.N))
+			}
+		}
 		if ab.Cost.MinX > 0 && !ab.Cost.DemandsX() {
 			panic(fmt.Sprintf("effects.Register: %q ability %d sets MinX %d but its cost %q has no {X} — a floor on a variable that cannot vary makes the ability unactivatable",
 				spec.Name, i, ab.Cost.MinX, ab.Cost.Mana))
