@@ -86,10 +86,16 @@ func (g *Game) RevealHandForEffect(playerID uuid.UUID) {
 // pending — the pending entry outlives the spell.
 //
 // Cap n to the player's current hand size per CR 701.8c ("discard
-// as many as you can"). Merges additively with existing pending
-// entries (e.g. cleanup-step discard stacked with a Mind Rot —
-// one combined modal handles both). No-op if the player isn't
-// seated or is eliminated.
+// as many as you can"). No-op if the player isn't seated or is
+// eliminated.
+//
+// Known bug (#651): nothing waits for this discard. PassPriority
+// doesn't read DiscardPending, so play goes on while the discard is
+// owed, and entering cleanup resets the map to the active player's
+// hand-size count (populateDiscardPendingLocked), which drops an
+// effect discard still owed. The two do NOT merge into one modal.
+// The discard also bypasses the CR 614 window and records no cause
+// (#650).
 //
 // Used by Mind Rot et al; the UI is S13.4's DiscardPromptModal
 // which already watches DiscardPending for the viewer. Added in
@@ -309,9 +315,10 @@ func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
 
 // DiscardRandomForEffect discards n cards from playerID's hand at
 // random order (top of the stack — hand isn't visibly ordered to
-// opponents, so the RNG choice isn't observable). Emits
-// EventDiscardCard + EventZoneMove per card. If the hand has fewer
-// than n cards, discards all of them.
+// opponents, so the RNG choice isn't observable). Emits one
+// EventDiscardCard per card and no EventZoneMove. The move is a direct
+// MoveCard, so the discard bypasses the CR 614 window (#650). If the
+// hand has fewer than n cards, discards all of them.
 func (g *Game) DiscardRandomForEffect(playerID uuid.UUID, n int) error {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
@@ -526,8 +533,11 @@ func (g *Game) ExileCardForEffect(cardID uuid.UUID) error {
 // knower and the wire ships the card's name to the whole table. A
 // card exiled face down is one no player may look at — including
 // the player who exiled it — so its knowledge set is CLEARED on the
-// way in and Card.FaceDown is set, which is what makes the client
-// draw a card back rather than a blank.
+// way in and Card.FaceDown is set. An empty knowledge set is what
+// the wire keys on: protocol.redactCardForViewer strips every
+// identifying field (name, costs, abilities, catalog flags) for a
+// non-knower. Card.FaceDown is what the client keys on to draw a
+// card back for a face-down card the viewer does not know (#95).
 //
 // Clearing rather than leaving the set alone matters: a library card
 // is not always unknown. A player who has just scryed or used

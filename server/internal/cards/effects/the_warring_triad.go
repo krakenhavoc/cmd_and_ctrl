@@ -40,10 +40,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // wakes up, which is what it is played for.
 func init() {
 	Register(Spec{
-		OracleID:        "df0b5995-117b-4ba8-964d-ea3c592621ef",
-		Name:            "The Warring Triad",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The tap-and-mill ability isn't implemented — it can't add mana for a player."},
+		OracleID:     "df0b5995-117b-4ba8-964d-ea3c592621ef",
+		Name:         "The Warring Triad",
+		Completeness: CompletenessCaveats,
+		Caveats: []string{
+			"The tap-and-mill ability isn't implemented — it can't add mana for a player.",
+			"If you controlled a Maskwood Nexus before The Warring Triad entered, it counts as every creature type even while it isn't a creature.",
+		},
 		PrintedKeywords: []string{"flying", "trample", "haste"},
 		Static: []game.StaticAbility{
 			b31NotACreatureWhileGraveyardBelow(8),

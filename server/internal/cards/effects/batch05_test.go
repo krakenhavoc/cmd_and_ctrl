@@ -722,7 +722,7 @@ func TestSawInHalfMakesTwoHalfSizeCopiesForTheVictim(t *testing.T) {
 // Flash the Mage in on top of your own Bolt, pick the Bolt for the
 // ETB, re-aim the copy at a second opponent. Both Bolts deal their
 // 3, the Mage stays on the battlefield, and the copy is not a card
-// (CR 706.10) so the graveyard holds the Bolt alone.
+// (CR 707.10) so the graveyard holds the Bolt alone.
 func TestDualcasterMageCopiesTheSpellBeneathIt(t *testing.T) {
 	g := newCatalogGame(t)
 	me, victimA, victimB := g.Seats[0].ID, g.Seats[1].ID, g.Seats[2].ID
@@ -752,7 +752,7 @@ func TestDualcasterMageCopiesTheSpellBeneathIt(t *testing.T) {
 	}
 	pickCard(t, g, me, bolt)
 
-	// The trigger resolves and opens the CR 706.10c re-target prompt.
+	// The trigger resolves and opens the CR 707.10c re-target prompt.
 	for i := 0; i < 8 && latestPickTarget(g, me) == nil; i++ {
 		if err := g.PassPriority(); err != nil {
 			t.Fatalf("PassPriority: %v", err)

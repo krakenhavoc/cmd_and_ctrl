@@ -640,7 +640,18 @@ place twice that many instead", "if a player would draw a card, that
 player mills instead") live on the same `Spec{}` struct via the
 optional `Replacements []game.ReplacementEffect` field. Used today by
 Doubling Season, Hardened Scales, Kismet, Stasis, Hangarback Walker,
-Fog, Library of Leng.
+Fog, Stone of Erech.
+
+**A discard can't be replaced yet.** All four places that discard move
+the card straight to the graveyard without going through the pipeline,
+and the event records no cause (effect, cost or turn-based action). So
+Library of Leng, Rest in Peace, madness and the Obstinate Baloth family
+have nothing to watch. Don't ship one of them with the replacement
+omitted; they wait on
+[#650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/650), which
+in turn waits on
+[#651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/651). See
+[ADR 0013 §10a](docs/decisions/0013-replacement-effects.md).
 
 Unlike static abilities, replacements fire **before** the event
 happens — the pipeline constructs a `game.ReplacementEvent`, the
@@ -701,7 +712,7 @@ func init() {
 - Counter multiplier — `ev.CounterDelta *= 2` (Doubling Season)
 - Counter addition — `ev.CounterDelta += 1` (Hardened Scales)
 - Cancel — `ev.Cancel()` (Fog, Stasis)
-- Redirect move — `ev.NewZone = ZoneBottomOfLibrary` (Library of Leng)
+- Redirect move — `ev.NewZone = game.ZoneExile` plus `ev.NewZoneOwner = uuid.Nil` (Stone of Erech)
 - Enters-tapped — `ev.EntersTapped = true` (Kismet)
 - Enters-with-counters — `ev.AddCounterAtETB("+1/+1", n)` (Hangarback Walker)
 
@@ -855,8 +866,11 @@ table**, for reasons [ADR 0038](docs/decisions/0038-protection-style-keywords.md
 restriction, and it ships per-card via the `effects.Ward(WardMana(…))`
 helper (S30) — it stays out of the table because the COST is a
 parameter a bare token has nowhere to put. *Protection* tests its
-quality against the SOURCE of a spell or ability, which the targeting
-choke point never receives; it is not implemented.
+quality against the SOURCE of a spell or ability (CR 702.16b), which
+the targeting choke point never receives; it is not implemented, and
+it is tracked in #662 (an ADR comes first). A card that prints
+protection ships without it and says so in `Caveats`, as Baneslayer
+Angel, both Swords and Animar do.
 
 **Layer-granted keywords still use `Spec.Static`.** Lord of Atlantis
 grants `"flying"` to *other* Merfolk via a conditional Layer 6

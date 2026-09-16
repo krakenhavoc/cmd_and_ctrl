@@ -13,8 +13,9 @@
 // something the engine could already have been driven to do from
 // gamecli, just without a discoverable surface.
 //
-// The same MenuItem tree is what #164's forced commander-zone prompt
-// can render once it needs a per-card surface — an item is a label
+// The same MenuItem tree can render a future forced prompt that needs
+// a per-card surface (#164's commander-zone prompt, once named here,
+// shipped in #171 as an optional_replacement choice) — an item is a label
 // plus either an action, a nested list, or a prompt marker, so a
 // caller that wants a two-option "yes / no" menu builds one section
 // with two action items and reuses the component verbatim.
@@ -803,8 +804,8 @@ function moveItems(card: CardView, location: CardLocation): MenuItem[] {
   }));
   // CR 903.9 — route a commander leaving the battlefield through the
   // replacement pipeline instead of dropping it straight in the
-  // command zone. This is the path #164 widens, so having a manual
-  // trigger for it makes the replacement testable by hand today.
+  // command zone. #164 (shipped in #171) made that replacement fire
+  // on every path, and this manual trigger keeps it testable by hand.
   if (card.is_commander && location.zone === "battlefield") {
     const gy: MoveDest = { id: "graveyard", label: "Graveyard", zone: "graveyard" };
     items.push({

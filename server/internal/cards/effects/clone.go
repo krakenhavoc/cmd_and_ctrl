@@ -24,7 +24,7 @@ import (
 //
 // "Any creature on the battlefield" is not targeting: a copy choice
 // is made as the permanent enters, so hexproof, shroud and
-// protection do not stop it (CR 706.2 — the ruling that makes Clone
+// protection do not stop it (CR 707.2 — the ruling that makes Clone
 // the answer to an opposing Blightsteel Colossus).
 func init() {
 	Register(Spec{

@@ -899,7 +899,7 @@ func TestB15BloodMoneyPaysATappedTreasurePerNontokenCreatureDestroyed(t *testing
 		t.Errorf("the tokens die too: %d Goblins left", n)
 	}
 	if !g.Battlefield.Contains(darksteel) {
-		t.Error("an indestructible creature survives (#446 — the single-permanent verb honours it)")
+		t.Error("an indestructible creature survives (#446 — DestroyAllMatching honours it)")
 	}
 	treasures := battlefieldIDsNamed(g, "Treasure")
 	if len(treasures) != 2 {
@@ -909,6 +909,80 @@ func TestB15BloodMoneyPaysATappedTreasurePerNontokenCreatureDestroyed(t *testing
 		if !b13Tapped(t, g, id) || controllerOf(t, g, id) != me.ID {
 			t.Error("the Treasures are the caster's and enter tapped")
 		}
+	}
+}
+
+// A commander caught in Blood Money was destroyed and pays a Treasure
+// (CR 903.9 replaces the zone change, not the destruction). The
+// engine keeps it on the battlefield until its owner answers the
+// command-zone prompt, which happens after the Treasures are made, so
+// the count cannot be read off the board. The answer must not change
+// it either way.
+func TestB15BloodMoneyPaysForACommanderCaughtInTheWipe(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		commandZone bool
+	}{{"to the command zone", true}, {"to the graveyard", false}} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[0]
+			seedCreature(g, "My Bear", me.ID)
+			commander := b36Commander(g, me.ID, "My Commander")
+			g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, RedGoblinToken(), 1) })
+
+			castCatalogSpell(t, g, "Blood Money", "Sorcery", b15BloodMoneyOracle, nil)
+			passPriorityAroundTable(t, g)
+			if n := len(battlefieldIDsNamed(g, "Treasure")); n != 2 {
+				t.Errorf("the Bear and the commander are nontoken creatures destroyed: %d Treasures, want 2", n)
+			}
+
+			if tc.commandZone {
+				b36AcceptCommandZone(t, g, me.ID)
+				if !me.Command.Contains(commander) {
+					t.Error("the commander goes to the command zone")
+				}
+			} else {
+				b21DeclineCommandZone(t, g, me.ID)
+				if !me.Graveyard.Contains(commander) {
+					t.Error("the commander goes to the graveyard")
+				}
+			}
+			if n := len(battlefieldIDsNamed(g, "Treasure")); n != 2 {
+				t.Errorf("after the CR 903.9 answer: %d Treasures, want 2", n)
+			}
+		})
+	}
+}
+
+// Blood Money destroys every creature at the same time (CR 700.4), so
+// a Zulaport Cutthroat caught in the wipe triggers for every creature
+// its controller lost, itself included. Zulaport is pushed first, the
+// battlefield position where the old one-at-a-time loop destroyed it
+// before the others and it saw only its own death.
+func TestB15BloodMoneyDeathsAreSimultaneousForAristocratsPayoffs(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pushCatalogPermanent(g, me.ID, "Zulaport Cutthroat", "Creature — Human Rogue", zulaportOracle, false)
+	pushWipeCreature(g, me.ID, "Bear A", "Creature — Bear", 2, 2)
+	pushWipeCreature(g, me.ID, "Bear B", "Creature — Bear", 2, 2)
+	pushWipeCreature(g, me.ID, "Bear C", "Creature — Bear", 2, 2)
+	survivor := pushIndestructibleWipeCreature(g, me.ID, "Darksteel Myr")
+
+	meBefore, oppBefore := me.Life, opp.Life
+	castCatalogSpell(t, g, "Blood Money", "Sorcery", b15BloodMoneyOracle, nil)
+	passPriorityAroundTable(t, g)
+
+	if want := oppBefore - 4; opp.Life != want {
+		t.Errorf("opponent life %d -> %d, want %d (four simultaneous deaths; the indestructible survivor is not one)", oppBefore, opp.Life, want)
+	}
+	if want := meBefore + 4; me.Life != want {
+		t.Errorf("caster life %d -> %d, want %d", meBefore, me.Life, want)
+	}
+	if !g.Battlefield.Contains(survivor) {
+		t.Error("the indestructible creature survives the sweep")
+	}
+	if n := len(battlefieldIDsNamed(g, "Treasure")); n != 4 {
+		t.Errorf("four nontoken creatures died: %d Treasures, want 4", n)
 	}
 }
 

@@ -110,10 +110,10 @@ const KeywordChangeling = "changeling"
 //     controller pays. Enforcing it here would be the wrong rule in
 //     the wrong place — it would refuse the target outright instead
 //     of offering the payment.
-//   - protection — CR 702.16e tests the quality against the SOURCE
+//   - protection — CR 702.16b tests the quality against the SOURCE
 //     of the spell or ability. This choke point receives only the
 //     controller's ID and never the source object, so the test it
-//     needs cannot be expressed here at all.
+//     needs cannot be expressed here at all. Tracked in #662.
 //
 // Both are also PARAMETERISED keywords ("ward {2}", "protection
 // from red") and Characteristic.Abilities is a []string of bare

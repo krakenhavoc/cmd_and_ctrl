@@ -24,7 +24,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // event log; NewTriggeredItem already binds the source correctly.
 //
 // ONE SIMPLIFICATION, strictly weaker: protection from red and from
-// blue is not granted, for the CR 702.16e reason recorded on Sword of
+// blue is not granted, for the CR 702.16b reason recorded on Sword of
 // Feast and Famine and in ADR 0038 — the targeting choke point never
 // receives the source object, so the quality test cannot be
 // expressed. The Sword loses its evasion and its removal protection

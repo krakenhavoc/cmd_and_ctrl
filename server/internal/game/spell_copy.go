@@ -2,7 +2,7 @@ package game
 
 import "github.com/google/uuid"
 
-// spell_copy.go — CR 706.10, copying a spell on the stack.
+// spell_copy.go — CR 707.10, copying a spell on the stack.
 //
 // "Copy target instant or sorcery spell. You may choose new targets
 // for the copy." Reverberate, Twincast, Doublecast, Increasing
@@ -12,7 +12,7 @@ import "github.com/google/uuid"
 // Three facts about a copy drive the whole design, and each of them
 // is a thing the engine would otherwise get wrong by default:
 //
-//  1. A COPY IS NOT A CAST. CR 706.10 creates it directly on the
+//  1. A COPY IS NOT A CAST. CR 707.10 creates it directly on the
 //     stack; it was never announced, no cost was paid, and nothing
 //     that watches EventCast may fire. That falls out of this file
 //     emitting no EventCast — not out of a suppression check
@@ -20,7 +20,7 @@ import "github.com/google/uuid"
 //     for CastSpell and skipped the cost would trigger every
 //     Storm-Kiln Artist and Aetherflux Reservoir at the table.)
 //
-//  2. A COPY IS NOT A CARD. CR 706.10 again. When it finishes
+//  2. A COPY IS NOT A CARD. CR 707.10 again. When it finishes
 //     resolving it ceases to exist rather than going to a graveyard.
 //     The stack's ordinary instant/sorcery exit is
 //     routeStackCardToGraveyardLocked, so resolveTopOfStackLocked
@@ -51,26 +51,26 @@ import "github.com/google/uuid"
 //
 // What this deliberately does not do:
 //
-//   - Copies of PERMANENT spells. CR 707.10 makes a resolving copy
+//   - Copies of PERMANENT spells. CR 608.3f makes a resolving copy
 //     of a permanent spell a TOKEN, and this engine has no
 //     token-from-stack-item path. Every card in the S30 batch says
 //     "target instant or sorcery spell", so the restriction is
 //     enforced by the cards' TargetSpec rather than by a check here;
 //     a future card that copies a creature spell needs the token
-//     rule before it ships.
-//   - Copies of ABILITIES (CR 706.10 covers those too — Lithoform
+//     rule before it ships (#666).
+//   - Copies of ABILITIES (CR 707.10 covers those too — Lithoform
 //     Engine, Strionic Resonator). Ability items carry a resolution
 //     closure rather than a card, so they are a different copy
 //     shape; nothing in S30 needs one.
 
 // CopySpellForEffect creates a copy of the spell `spellID` under
-// `controller`'s control, per CR 706.10.
+// `controller`'s control, per CR 707.10.
 //
 // When mayChooseNewTargets is set and the copied spell actually has
 // a target clause with at least one legal target on the current
 // board, the controller is prompted first and the copy is created
 // from their answer. Otherwise the copy is created immediately with
-// the original's targets — which is also what CR 706.10c says
+// the original's targets — which is also what CR 707.10c says
 // happens when a player declines to change them.
 //
 // Errors: ErrCardNotFound when the spell is no longer on the stack
@@ -89,7 +89,7 @@ func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTar
 		g.createSpellCopyLocked(src, item, controller, item.Targets)
 		return nil
 	}
-	// CR 706.10c — the choice is optional, and it is also
+	// CR 707.10c — the choice is optional, and it is also
 	// impossible when nothing on the board qualifies any more. In
 	// that case the copy keeps the original's targets and is
 	// countered by game rules on resolution, which is the printed
@@ -123,11 +123,11 @@ func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTar
 	return nil
 }
 
-// copySpellFrame is the continuation for the CR 706.10 "you may
+// copySpellFrame is the continuation for the CR 707.10 "you may
 // choose new targets" prompt. It carries VALUE copies of the source
 // card and its stack item, deliberately: between the prompt and the
 // answer the original spell can be countered, and the copy is
-// unaffected by that (CR 706.10 — the copy's characteristics are
+// unaffected by that (CR 707.10 — the copy's characteristics are
 // locked in when it is created, and a copy of a countered spell
 // still resolves).
 type copySpellFrame struct {
@@ -173,7 +173,7 @@ func itemHasChosenTarget(item *StackItem) bool {
 // g.mu.
 //
 // The copy is a new object with a fresh InstanceID carrying the
-// original's COPIABLE VALUES (CR 706.2) — printed name, type line,
+// original's COPIABLE VALUES (CR 707.2) — printed name, type line,
 // mana cost, oracle ID and faces — which is exactly the value copy
 // of the Card minus its identity and zone bookkeeping. The oracle ID
 // riding along is what makes the copy resolve: the catalog's
@@ -216,7 +216,7 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 		Seq:          g.nextStackSeqLocked(),
 	}
 	// CastFromZone is deliberately left empty. The copy was not cast
-	// from anywhere (CR 706.10), so Wash Away's "target spell that
+	// from anywhere (CR 707.10), so Wash Away's "target spell that
 	// wasn't cast from its owner's hand" reads it as exactly that.
 	g.StackMeta[copyCard.InstanceID] = meta
 	g.recomputeSplitSecondLocked()
@@ -228,7 +228,7 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	g.emitBecameTargetLocked(controller, copyCard.InstanceID, copyCard.InstanceID, meta.Targets)
 }
 
-// resolveCopySpellTargetsLocked is the submit half of the CR 706.10
+// resolveCopySpellTargetsLocked is the submit half of the CR 707.10
 // re-target prompt, reached from ResolvePickTargets when the choice
 // carries a copySpellFrame. Validates the refs against the copied
 // spell's own clause — the same spec the original was announced
@@ -252,7 +252,7 @@ func (g *Game) resolveCopySpellTargetsLocked(idx int, cf *copySpellFrame, target
 }
 
 // ceaseToExistLocked removes a resolved or countered COPY from the
-// stack without sending it anywhere (CR 706.10 — a copy is not a
+// stack without sending it anywhere (CR 707.10 — a copy is not a
 // card, so it has no owner's graveyard to go to).
 //
 // Emits an EventZoneMove with an empty NewZone so the client's stack
