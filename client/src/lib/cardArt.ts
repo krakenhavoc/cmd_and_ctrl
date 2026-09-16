@@ -150,6 +150,25 @@ export const cardArt: Action<HTMLImageElement, CardArtParam> = (img, param) => {
     return i < 0 ? null : chain[i];
   }
 
+  // A role can change under a marker that is already showing: a stack
+  // item is role="button" only while it is a legal target, and a hand
+  // card is role="button" only while it is castable. While the marker
+  // shows, the ancestors' roles are watched and the kind re-decided.
+  let roleWatch: MutationObserver | null = null;
+  function watchRoles(): void {
+    if (roleWatch || typeof MutationObserver === "undefined") return;
+    roleWatch = new MutationObserver(() => {
+      if (marker) renderMarker(markerState);
+    });
+    for (const el of ancestors()) {
+      roleWatch.observe(el, { attributes: true, attributeFilter: ["role"] });
+    }
+  }
+  function unwatchRoles(): void {
+    roleWatch?.disconnect();
+    roleWatch = null;
+  }
+
   function createMarker(kind: MarkerKind, control: HTMLElement | null): HTMLElement {
     const el = document.createElement("span");
     el.className = "card-art-error";
@@ -214,11 +233,14 @@ export const cardArt: Action<HTMLImageElement, CardArtParam> = (img, param) => {
   function renderMarker(next: MarkerState): void {
     markerState = next;
     if (next === "hidden") {
+      unwatchRoles();
       removeMarker();
       return;
     }
-    // Re-decided on every render, not only at creation: a stack item
-    // gains and loses role="button" as targeting starts and ends.
+    // Re-decided on every render, not only at creation, and on any
+    // ancestor role change while the marker shows (watchRoles).
+    if (opts.interactive) watchRoles();
+    else unwatchRoles();
     const control = opts.interactive ? flatteningHost() : null;
     const kind: MarkerKind = !opts.interactive ? "static" : control ? "described" : "button";
     if (marker && (kind !== markerKind || control !== host)) removeMarker();
@@ -251,6 +273,7 @@ export const cardArt: Action<HTMLImageElement, CardArtParam> = (img, param) => {
       art.destroy();
       img.removeEventListener("error", onError);
       img.removeEventListener("load", onLoad);
+      unwatchRoles();
       removeMarker();
     },
   };
