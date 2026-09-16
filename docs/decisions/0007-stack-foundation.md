@@ -154,7 +154,12 @@ convention intact: a creature whose printed toughness is not a number
 and carried by copy effects and token copies, and stays exempt after
 losing its last counter, because its 0 is the import stand-in and not
 a printed 0. A creature that never had a counter (a card cast for
-X=0, a declined Clone, the demo seed) is exempt as before.
+X=0, a declined Clone, the demo seed) is exempt as before. A restore
+point written before this change has no `VariableToughness`, so
+restore recomputes it from the card's Scryfall printing without a
+schema bump. When the printing is unknown (a token, no dump loaded),
+the flag is set for any 0 toughness, which keeps the exemption as it
+was before (`game/snapshot_backfill.go`).
 
 Counter-specific SBAs (planeswalker loyalty 0, battle defense 0,
 +1/+1 -1/-1 cancel, poison ≥ 10, saga final chapter) belong to

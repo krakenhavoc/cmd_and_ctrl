@@ -73,6 +73,13 @@ import (
 // changed unit, a semantic shift in an existing field. Adding a field
 // that zero-values correctly does NOT need a bump.
 //
+// Neither does adding a field whose zero value is wrong for older
+// files, when restore can tell the field is ABSENT (not merely false)
+// and recompute it from printed data the new binary has. That is a
+// backfill, and it has to say where its answer comes from and what it
+// cannot know. Card.VariableToughness is the one such field; see
+// snapshot_backfill.go.
+//
 // Restore REFUSES anything it does not recognise rather than guessing.
 // See ErrSchemaTooNew / ErrSchemaUnsupported and ADR 0041 for the
 // version-skew policy this implements.
@@ -238,6 +245,11 @@ type zoneSnapshot struct {
 //     oracle ID, so its abilities are re-derivable; a true token
 //     (Treasure, Food, Clue, Blood) has no oracle ID and is counted
 //     in the census instead.
+//
+// VariableToughness is a *bool so restore can tell a file written
+// before #683, which has no such key, from one that says false.
+// snapshotCard always sets it, so every file this binary writes
+// carries the key; restore backfills it when the key is missing.
 type cardSnapshot struct {
 	InstanceID               uuid.UUID           `json:"instanceId"`
 	Name                     string              `json:"name"`
@@ -246,7 +258,7 @@ type cardSnapshot struct {
 	TypeLine                 string              `json:"typeLine,omitempty"`
 	Power                    int                 `json:"power"`
 	Toughness                int                 `json:"toughness"`
-	VariableToughness        bool                `json:"variableToughness,omitempty"`
+	VariableToughness        *bool               `json:"variableToughness,omitempty"`
 	ManaCost                 string              `json:"manaCost,omitempty"`
 	ProducedMana             []string            `json:"producedMana,omitempty"`
 	Colors                   []string            `json:"colors,omitempty"`
@@ -688,6 +700,7 @@ func snapshotZone(z *Zone, cen *ContinuationCensus) *zoneSnapshot {
 }
 
 func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
+	variableToughness := c.VariableToughness
 	out := cardSnapshot{
 		InstanceID:               c.InstanceID,
 		Name:                     c.Name,
@@ -696,7 +709,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		TypeLine:                 c.TypeLine,
 		Power:                    c.Power,
 		Toughness:                c.Toughness,
-		VariableToughness:        c.VariableToughness,
+		VariableToughness:        &variableToughness,
 		ManaCost:                 c.ManaCost,
 		ProducedMana:             copyStrings(c.ProducedMana),
 		Colors:                   copyStrings(c.Colors),
@@ -1163,7 +1176,6 @@ func restoreCard(c *cardSnapshot) Card {
 		TypeLine:                 c.TypeLine,
 		Power:                    c.Power,
 		Toughness:                c.Toughness,
-		VariableToughness:        c.VariableToughness,
 		ManaCost:                 c.ManaCost,
 		ProducedMana:             copyStrings(c.ProducedMana),
 		Colors:                   copyStrings(c.Colors),
@@ -1199,6 +1211,11 @@ func restoreCard(c *cardSnapshot) Card {
 		NamedTribe:               c.NamedTribe,
 		StartingDefense:          c.StartingDefense,
 		ProtectorPlayerID:        c.ProtectorPlayerID,
+	}
+	if c.VariableToughness != nil {
+		out.VariableToughness = *c.VariableToughness
+	} else {
+		backfillVariableToughness(&out)
 	}
 	// Re-derive intrinsic abilities from the catalog. This is the
 	// half of the closure problem that DOES have an answer: the

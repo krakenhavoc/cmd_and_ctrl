@@ -438,6 +438,36 @@ func nonNumericStat(s string) bool {
 	return err != nil
 }
 
+// PrintedVariableToughness returns the game.PrintedVariableToughness
+// lookup over idx: the answer toGameCard and printedFaces stamp,
+// recomputed for a printing by its Scryfall ID. Restoring a game
+// written before #683 uses it to backfill Card.VariableToughness (see
+// game/snapshot_backfill.go). Faces are reported only for a printing
+// with two or more, as printedFaces builds them. Nil for a nil index.
+func PrintedVariableToughness(idx *cards.Index) func(scryfallID string) (top bool, faces []bool, ok bool) {
+	if idx == nil {
+		return nil
+	}
+	return func(scryfallID string) (bool, []bool, bool) {
+		id, err := uuid.Parse(scryfallID)
+		if err != nil {
+			return false, nil, false
+		}
+		c, ok := idx.Get(id)
+		if !ok {
+			return false, nil, false
+		}
+		var faces []bool
+		if len(c.CardFaces) >= 2 {
+			faces = make([]bool, len(c.CardFaces))
+			for i, f := range c.CardFaces {
+				faces[i] = nonNumericStat(f.Toughness)
+			}
+		}
+		return nonNumericStat(c.Toughness), faces, true
+	}
+}
+
 func toGameCard(c cards.Card, isCommander bool) game.Card {
 	// Parse Scryfall's printed power/toughness strings to ints.
 	// Non-numeric values ("*", "1+*", "?", empty) parse to zero —
