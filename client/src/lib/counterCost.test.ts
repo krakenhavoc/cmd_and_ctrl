@@ -1,7 +1,10 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { ActivatedAbilityView } from "./protocol";
 import {
   autoCounterChoice,
+  counterChoiceKey,
   counterChoices,
   counterCostBlocked,
   counterPaymentParams,
@@ -152,5 +155,24 @@ describe("abilityBlocked for a counter cost", () => {
 
   it("still reports the tap first on a tap-and-counter cost", () => {
     expect(abilityBlocked(hoardDraw, true, false)).toBe("already tapped");
+  });
+});
+
+describe("counterChoiceKey", () => {
+  it("tells apart the same permanent's kinds, and the same kind on two permanents", () => {
+    const keys = new Set([
+      counterChoiceKey({ cardID: "a", kind: "+1/+1", count: 1 }),
+      counterChoiceKey({ cardID: "a", kind: "stun", count: 1 }),
+      counterChoiceKey({ cardID: "b", kind: "+1/+1", count: 1 }),
+    ]);
+    expect(keys.size).toBe(3);
+  });
+
+  // The separator was once a raw NUL byte in the source, which made git
+  // treat counterCost.ts as binary: every diff and PR review of it
+  // showed "Bin" and no content. The escape keeps the same string.
+  it("keeps its source text-diffable (no raw NUL byte)", () => {
+    const src = readFileSync(fileURLToPath(new URL("./counterCost.ts", import.meta.url)), "utf8");
+    expect(src.includes("\0")).toBe(false);
   });
 });
