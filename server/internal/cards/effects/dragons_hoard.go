@@ -44,7 +44,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:  "{T}, Remove a gold counter from this artifact: Draw a card.",
 			Cost:   Plus(TapCost(), RemoveCountersFromThis("gold", 1)),
-			Effect: drawOneCard,
+			Effect: b27DrawOne,
 		}},
 	})
 }

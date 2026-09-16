@@ -57,7 +57,7 @@ func init() {
 			Label:   "{T}, Remove a +1/+1 counter from this creature: Put a +1/+1 counter on another target creature you control.",
 			Cost:    Plus(TapCost(), RemoveCountersFromThis(game.CounterPlusOne, 1)),
 			Targets: TargetCreature("another target creature you control", YouControl(), b03NotNamed("Benevolent Hydra")),
-			Effect:  putCounterOnChosenCreature,
+			Effect:  b36CounterOnChosenAnimal,
 		}},
 	})
 }

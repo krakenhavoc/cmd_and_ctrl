@@ -54,7 +54,7 @@ func init() {
 			{
 				Label:  "{T}, Remove a counter from a creature you control: Create a Treasure token.",
 				Cost:   Plus(TapCost(), RemoveCountersFrom("", 1, "a creature you control", Creature())),
-				Effect: createOneTreasure,
+				Effect: Do(CreateToken{Template: TreasureToken(), N: 1}),
 			},
 			{
 				Label: "{T}, Sacrifice an artifact: Create a 2/1 white and black Inkling creature token with flying.",
