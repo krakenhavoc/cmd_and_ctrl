@@ -45,7 +45,7 @@ planned just-in-time from the S12 pain-point triage.
 | S10      | Polish II — Commander UX (cmd damage, politics)                      | 5     | [#10](https://github.com/krakenhavoc/cmd_and_ctrl/issues/10)   | 2026-08-28 | **done**    |
 | S11      | Polish III — hover preview, undo, spectator                          | 5     | [#11](https://github.com/krakenhavoc/cmd_and_ctrl/issues/11)   | 2026-09-11 | **done**    |
 | S11.5    | Per-user settings and preferences (mini)                             | 5     | [#82](https://github.com/krakenhavoc/cmd_and_ctrl/issues/82)   | 2026-09-18 | **done**    |
-| S12      | Deploy + 4-player go-live with friends                               | 6     | [#12](https://github.com/krakenhavoc/cmd_and_ctrl/issues/12)   | 2026-09-25 | planned     |
+| S12      | Deploy + 4-player go-live with friends                               | 6     | [#12](https://github.com/krakenhavoc/cmd_and_ctrl/issues/12)   | 2026-09-25 | **done**    |
 | S12.5    | Discord identity for players (OAuth + bot + presence)                | 6     | [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59)   | 2026-10-09 | planned     |
 | S13      | Priority foundation (rules graft kickoff)                            | 7     | [#62](https://github.com/krakenhavoc/cmd_and_ctrl/issues/62)   | 2026-05-17 | **done**    |
 | S13.1    | Stack: cast/resolve/target/counter/trigger/SBA                       | 7     | [#63](https://github.com/krakenhavoc/cmd_and_ctrl/issues/63)   | 2026-06-14 | **done**    |
@@ -466,13 +466,15 @@ Deferred, with concrete pickup points:
 
 - [x] VPS provisioning script (Docker Compose or plain systemd units) — systemd unit on a LAN box at cmd.labxp.io
 - [x] Deploy Go game server + static client — GitHub Actions CI/CD landed in [#111](https://github.com/krakenhavoc/cmd_and_ctrl/pull/111); scryfall bulk-dump refresh in [#112](https://github.com/krakenhavoc/cmd_and_ctrl/pull/112) / [#113](https://github.com/krakenhavoc/cmd_and_ctrl/pull/113)
-- [x] Basic observability (structured logs, uptime ping, crash dumps) — server emits JSON slog, crash-recovery snapshot dumps in `CMDCTRL_DATA_DIR`, `systemctl status` as live health signal
-- [ ] Play a real 4-player game with friends
-- [ ] Triage top 10 pain points from the real game into the S13+ backlog
+- [x] Basic observability (structured logs, crash dumps) — server emits JSON slog, crash-recovery snapshot dumps in `CMDCTRL_DATA_DIR`, `systemctl status` as live health signal. The "uptime ping" half was never built: nothing watches `/healthz` from outside, which is why an Aug 6 – Sep 8 crash loop went unnoticed for a month. Split out to [#598](https://github.com/krakenhavoc/cmd_and_ctrl/issues/598)
+- [ ] Play a real 4-player game with friends — real games are happening on the deployed stack, but 2-player so far. The 4-player table carries to S32 ([#277](https://github.com/krakenhavoc/cmd_and_ctrl/issues/277)) exit criterion 6
+- [x] Triage top 10 pain points from the real game into the S13+ backlog — delivered as a sprint of its own, S32 ([#277](https://github.com/krakenhavoc/cmd_and_ctrl/issues/277)), from the 2026-09-10/11 games
 
 **Exit criteria:** a real 4-player Commander game happens on the deployed stack, and a prioritised S13+ backlog exists.
 
-**Status:** partial. Deploy infrastructure is live (auto-deploy on merge to main, scheduled scryfall refresh, nightly e2e). The 4-player playtest + pain-point triage remain open.
+**Status:** done. The deployed stack is live and in real use — `https://cmd.labxp.io` serves the client, `/healthz` returns 200, auto-deploy on merge to `main`, scheduled scryfall refresh, nightly e2e. Real games produce a steady stream of in-app bug reports, and their triage became S32.
+
+Closed with one exit criterion moved rather than met: the table has not yet been a 4-player one. That box is S32's, so the tracker closes rather than sitting open behind a playtest that a later sprint already owns. Infrastructure follow-ups the go-live exposed — host addresses that can rot, unbounded unit restarts, no external health check, a deploy that depends on one runner's own SSH key — are [#598](https://github.com/krakenhavoc/cmd_and_ctrl/issues/598). The Discord bot is still not installed on the prod host ([#249](https://github.com/krakenhavoc/cmd_and_ctrl/issues/249)).
 
 ---
 
