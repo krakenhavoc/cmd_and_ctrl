@@ -2,6 +2,8 @@
 
 **Status:** Implemented · 2026-09-09 · Branch `chore/develop-environment`
 **Revised:** 2026-09-09 · §2 replaced · Branch `chore/dev-env-second-vm`
+**Revised:** 2026-09-16 · §4 and Consequences corrected (nightly e2e
+runs locally; both follow-ups dropped) · Branch `docs/adr-0023-nightly-e2e`
 
 ## Context
 
@@ -101,7 +103,11 @@ at WARN on boot so the misconception gets corrected. The existing
 `CMDCTRL_DEV_SKIP_DECK_VALIDATION` and
 `CMDCTRL_DEV_RELAX_RATE_LIMITS` knobs predate this and remain
 independent — they are ops escape hatches, not player-visible
-features, and folding them in is left for a follow-up.
+features. Folding them under `CMDCTRL_ENV` was considered and dropped
+(2026-09-16): their users — the Playwright web server,
+`make dev-skip-validation`, the lobby tests — run with `CMDCTRL_ENV`
+unset, so a hard gate would mean setting `dev` there and switching on
+all four dev features just to keep an ops knob working.
 
 ### 5. Every dev feature is gated server-side; the client flag only decides what to draw
 
@@ -170,9 +176,14 @@ HomeLab variable carries a validation rejecting equal tokens.
   is written by the HomeLab cloud-init template, which is now the
   single source of truth for both hosts. `deploy/README.md` points
   there.
-- The nightly e2e workflow still targets production only. Pointing it
-  at dev is a follow-up, and now genuinely safe: the preview is a
-  separate machine.
+- The nightly e2e workflow (`e2e-nightly.yml`) targets neither host.
+  Both its jobs — the bot whole-game tests and Playwright — run on the
+  self-hosted runner, and Playwright starts its own `go run` server and
+  Vite dev server there (`tests-e2e/playwright.config.ts`). An earlier
+  revision of this ADR said it targeted production; it does not.
+  Running e2e against the preview was considered and dropped
+  (2026-09-16): it would need the preview's admin token in CI and
+  relaxed rate limits on a public host. The nightly stays local.
 - Dev features land behind their flags one at a time: the frame
   inspector shipped with this ADR, then the card spawner, then seat
   swap, then the replay scrubber. Three of the four turned out to be
