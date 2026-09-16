@@ -852,6 +852,15 @@ shell. Choices the ADR left open, and the places the code goes past it:
   (`keepArrowCache`). Cleared otherwise, and on every prime. For tiles,
   "cleared" means the tiles of cards no longer on the battlefield; tiles
   still there are re-measured on every frame (`pruneCardCache`).
+  - **What "pending" means.** A cue counts as pending while it is
+    **playing**, not only while it is waiting. The sequencer releases
+    its timer after `onCue` returns, and the shell prunes the caches
+    in a microtask after the cue. A browser re-check found the
+    ordering bug this avoids. In the auto-pass flow, the last cue plays
+    after the step has reached `postcombat_main`. Measuring at cue
+    time pruned the dead creatures' tiles in the same millisecond,
+    before the ghost was resolved, so beat 2 drew nothing (7 of 8
+    runs).
 
 ## Dependencies
 
