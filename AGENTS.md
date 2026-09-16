@@ -1666,18 +1666,21 @@ Check it before triaging a skip as "needs machinery", and append a
 batch's skips to it in the batch PR (Discussion #559 item 6).
 
 - **Activated abilities whose cost has no component** — `AbilityCost`
-  carries tap-this, sacrifice-this, sacrifice-another, mana and life
+  carries tap-this, sacrifice-this, sacrifice-another, mana, life,
+  and since S27 **loyalty** (`LoyaltyCost(n)`, [ADR 0032](docs/decisions/0032-planeswalkers.md) §8)
+  and **crew** (`CrewCost(n)`)
   ([activated.go](server/internal/game/activated.go)) and nothing else.
-  So planeswalker **loyalty** costs, **equip**, cycling, and
-  **convoke / waterbend on an ACTIVATED ability** still have no shape —
+  Equip needs no component of its own — `EquipAbility("{2}")` is a mana
+  cost plus a target clause. So cycling, **convoke / waterbend on an
+  ACTIVATED ability**, and an **alternative cost on an activated
+  ability** (Heart of Kiran's "remove a loyalty counter rather than pay
+  the crew cost") still have no shape —
   don't invent one. (Convoke and waterbend on a *spell* do have one since
   S22: `Spec.TapCost`, built with `Convoke()` / `Waterbend("{X}")`. The
   activated-ability seam is separate and still open — Katara, Water
   Tribe's Hope is the card waiting on it.) (Ordinary activated abilities built from
-  those five components are fine since S21: see `Spec.Activated`
-  above. Loyalty has a manual path — `ActivateLoyalty` moves the
-  counter and enforces CR 606.5 — but no catalog hook for the
-  ability's effect.) Shipping a card with a cost the engine
+  those components are fine since S21: see `Spec.Activated`
+  above.) Shipping a card with a cost the engine
   can't express simply omitted makes it **stronger than printed**, which
   is the wrong direction for a simplification:
   [#259](https://github.com/krakenhavoc/cmd_and_ctrl/issues/259) was that
