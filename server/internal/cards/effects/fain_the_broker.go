@@ -13,16 +13,25 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 creature token with flying.
 //	 {3}{B}: Untap Fain."
 //
-// The Strixhaven broker: creatures into counters, artifacts into
-// Inklings, and mana into more activations. Three of the four
-// abilities are CR 602 activations with the cost vocabulary the
-// engine has:
+// The Strixhaven broker: creatures into counters, counters into
+// Treasure, artifacts into Inklings, and mana into more activations.
+// All four abilities are CR 602 activations:
 //
 //   - The counters: tap plus SacrificeACreature — Fain is a creature
 //     and may sacrifice himself, as printed — with the target picked
 //     at announce and two +1/+1 counters put on it at resolution
 //     (b31CountersOnChosenCreature). The sacrifice is paid at
 //     announce, so its dies triggers resolve above the ability.
+//   - The Treasure: tap plus "Remove a counter from a creature you
+//     control" — RemoveCountersFrom with no kind (#625). "A counter"
+//     is any kind, so the activator names the creature AND the kind
+//     at announce (a +1/+1 counter, a -1/-1 counter, a stun counter),
+//     and the counter comes off then, so a proliferate in response
+//     cannot bank it. The creature is chosen, not targeted: a hexproof
+//     creature of yours still pays, and Fain may pay from himself.
+//     Spending the last +1/+1 counter off a printed 0/0 (Hangarback
+//     Walker, an X hydra) kills it, as printed: the state check reads
+//     Card.LostLastCounter, not the placeholder convention.
 //   - The Inkling: tap plus b10SacrificeAnArtifact, and the token is
 //     a 2/1 white-and-black flier (b31WhiteBlackInklingFlyingToken).
 //   - The untap: {3}{B} and Fain untaps if he is still there
@@ -30,29 +39,22 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Every {T} on a creature source waits out summoning sickness (CR
 // 302.1); the untap does not tap and does not.
-//
-// DECLARED SIMPLIFICATION, weaker than printed: the Treasure ability
-// is not implemented. "Remove a counter from a creature you control"
-// is a cost component the engine cannot express — AbilityCost
-// carries tap, sacrifice, mana, life, loyalty and crew, and nothing
-// that removes a counter (the Walking Ballista gap; Iron Spider and
-// Dragon's Hoard carry the same note) — and deferring the removal to
-// resolution would let a proliferate in response bank a counter the
-// printed card had already spent, the #259 direction. Fain is still
-// the sacrifice outlet with the untap, which is what he is played
-// for; the ability is whole the day a counter-removal cost lands.
 func init() {
 	Register(Spec{
 		OracleID:     "31b990e3-9bad-4b0a-a9d5-f5b9ed2ad0b0",
 		Name:         "Fain, the Broker",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Removing a counter from a creature to make a Treasure isn't implemented — the other three abilities work as printed."},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{T}, Sacrifice a creature: Put two +1/+1 counters on target creature.",
 				Cost:    Plus(TapCost(), SacrificeACreature()),
 				Targets: TargetCreature("target creature"),
 				Effect:  b31CountersOnChosenCreature,
+			},
+			{
+				Label:  "{T}, Remove a counter from a creature you control: Create a Treasure token.",
+				Cost:   Plus(TapCost(), RemoveCountersFrom("", 1, "a creature you control", Creature())),
+				Effect: createOneTreasure,
 			},
 			{
 				Label: "{T}, Sacrifice an artifact: Create a 2/1 white and black Inkling creature token with flying.",

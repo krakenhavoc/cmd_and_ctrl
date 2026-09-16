@@ -842,8 +842,9 @@ func TestB10DragonsHoardCountsDragonsAndTapsForAnyColour(t *testing.T) {
 	if pick == nil || len(pick.ColorOptions) != 5 {
 		t.Fatalf("'any color' must offer all five, got %+v", pick)
 	}
-	if n := len(game.ActivatedAbilitiesForCard(game.Card{OracleID: b10DragonsHoardOracle})); n != 0 {
-		t.Errorf("the draw ability is declared missing; found %d activated abilities", n)
+	// #625: the draw ability ships; counter_cost_cards_test.go drives it.
+	if n := len(game.ActivatedAbilitiesForCard(game.Card{OracleID: b10DragonsHoardOracle})); n != 1 {
+		t.Errorf("the draw ability should be wired; found %d activated abilities", n)
 	}
 }
 
