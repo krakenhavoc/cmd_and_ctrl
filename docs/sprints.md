@@ -897,7 +897,7 @@ Today's filter is zone-default-only — no way to express Thoughtseize reveals, 
 - [x] `Card.svelte` renders the back when `face_down` or `known_by_you === false`; face-up otherwise
 - [x] `protocol.ts` mirrors `face_down` + `known_by_you`
 - [ ] Hover-reveal on face-down + known_by_you cards — deferred; the existing hover-zoom already shows the face for known cards via the imgSrc path
-- [ ] Mixed hand rendering (face-up for revealed-by-Thoughtseize cards) — deferred; depends on the opponent-hand-per-card filter, which is also deferred
+- [x] Mixed hand rendering (face-up for revealed-by-Thoughtseize cards) — shipped in S14 (#136), together with the opponent-hand-per-card filter it depended on. `keepKnownInHandZone` (`server/internal/protocol/view.go`) sends a seated viewer only the opponent hand cards they know, and `Hand.svelte` draws those face up with backs for the rest of the count. Ticked at the #170 closeout; this line had stayed "deferred" since S13.5
 
 **Tests:**
 
@@ -1617,7 +1617,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 - **Hangarback Walker** — needs X-cost stack plumbing; future on-demand PR.
 - **Champion of Lambholt** — counter half is a trigger (S19), block-restriction is S18. Not a replacement.
 - **Mycosynth Lattice clauses** — re-homed to S18 mana-ability rewrite.
-- **Right-click admin context menu** → [#170](https://github.com/krakenhavoc/cmd_and_ctrl/issues/170) standalone mini-sprint. Shift+click counter is the S17-era stopgap.
+- **Right-click admin context menu** → [#170](https://github.com/krakenhavoc/cmd_and_ctrl/issues/170) standalone mini-sprint. Shift+click counter is the S17-era stopgap. *Shipped in #256 ([ADR 0028](decisions/0028-admin-context-menu.md)), which removed the Shift+click chord. #170 closed out on 2026-09-16; its two unshipped items moved to [#671](https://github.com/krakenhavoc/cmd_and_ctrl/issues/671) (reveal a hand card) and [#672](https://github.com/krakenhavoc/cmd_and_ctrl/issues/672) (take one creature out of combat).*
 
 ### Exit criteria (all met)
 
