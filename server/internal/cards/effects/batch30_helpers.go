@@ -193,8 +193,11 @@ func b30YourEndStepAndYouGainedAndLostLifeThisTurn(ev game.Event, source *game.C
 // b30YouDiscardedCardWhere reports whether the source's controller
 // discarded a card that passes `match` — Surly Badgersaur's three
 // discard triggers, one predicate each. The card is read from where
-// it landed (the graveyard, or exile under a Library of Leng), where
-// its printed type line is intact.
+// it landed, where its printed type line is intact. Today that is
+// always the graveyard, because no discard can be replaced (#650).
+// Once madness can exile a discarded card, exile works the same way.
+// A card Library of Leng puts on top of a library isn't revealed, so
+// #650 has to decide what this predicate may read there.
 func b30YouDiscardedCardWhere(ev game.Event, source *game.Card, g *game.Game, match func(game.Card) bool) bool {
 	if !discardedByYou(ev, source) {
 		return false
