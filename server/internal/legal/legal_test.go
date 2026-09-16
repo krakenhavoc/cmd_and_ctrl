@@ -335,6 +335,45 @@ func TestUnparseableCostIsNotEnumerated(t *testing.T) {
 	}
 }
 
+// TestNoManaCostSpellIsNotEnumerated: CR 118.6. A card with no mana
+// cost (Ancestral Vision) imports with an empty ManaCost, which
+// ParseCost reads as a free {0}. The engine refuses the cast with
+// ErrNoManaCost, so the enumerator must not offer it. A {0} spell is
+// a real cost and stays enumerated.
+func TestNoManaCostSpellIsNotEnumerated(t *testing.T) {
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	clearHand(active)
+	vision := handCard(active, game.Card{
+		Name:     "Ancestral Vision",
+		TypeLine: "Sorcery",
+		Layout:   "normal",
+	})
+	thopter := handCard(active, game.Card{
+		Name:     "Ornithopter",
+		TypeLine: "Artifact Creature — Thopter",
+		ManaCost: "{0}",
+		Layout:   "normal",
+	})
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	moves := legal.EnumerateFor(g, active.ID)
+	dispatchAll(t, g, active.ID, moves)
+
+	seenThopter := false
+	for _, m := range moves {
+		if m.Source == vision {
+			t.Errorf("a spell with no mana cost must not be enumerated: %q", m.Label)
+		}
+		if m.Source == thopter {
+			seenThopter = true
+		}
+	}
+	if !seenThopter {
+		t.Errorf("Ornithopter ({0}) should still be enumerated: %v", labels(moves))
+	}
+}
+
 func TestOpponentPriorityOnlyInstants(t *testing.T) {
 	g := newTable(t)
 	active := g.Seats[g.Turn.ActiveSeat]
