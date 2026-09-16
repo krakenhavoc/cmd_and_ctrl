@@ -405,6 +405,12 @@ export interface LogEvent {
   new_zone?: string;
   // True when a `damage` entry is combat damage (CR 510).
   combat?: boolean;
+  // Which combat damage step dealt a combat `damage` entry (CR 510.4).
+  // Set only when that combat had a first-strike step; combat with no
+  // first strike or double strike anywhere is untagged, so its
+  // presence alone means there are two beats. Read it, don't derive it
+  // from keywords (#187, ADR 0053 Decision 1).
+  combat_step?: "first_strike" | "regular";
   // The rendered line. Already redacted for this viewer: a card the
   // viewer may not identify reads as "a card".
   text: string;

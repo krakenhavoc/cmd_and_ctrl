@@ -212,16 +212,19 @@ func (g *Game) AttackTargetsForEffect(attackerController uuid.UUID) []AttackTarg
 // and is simply not dealt with further). Silently dropping it is the
 // rule, not a shortcut.
 //
+// step is the substep's Event.CombatStep value (#187), passed through
+// to whichever helper deals the damage.
+//
 // Caller must hold g.mu.
-func (g *Game) dealCombatDamageToAttackTargetLocked(target, source uuid.UUID, amount int) {
+func (g *Game) dealCombatDamageToAttackTargetLocked(target, source uuid.UUID, amount int, step string) {
 	if amount <= 0 {
 		return
 	}
 	switch g.classifyAttackTargetLocked(target) {
 	case AttackTargetPlayer:
-		g.markCombatDamageToPlayerLocked(target, source, amount)
+		g.markCombatDamageToPlayerLocked(target, source, amount, step)
 	case AttackTargetPlaneswalker, AttackTargetBattle:
-		g.markCombatDamageOnCardLocked(target, amount, source)
+		g.markCombatDamageOnCardLocked(target, amount, source, step)
 	}
 }
 

@@ -90,6 +90,16 @@ type damageTail struct {
 	// it, and gates the commander-damage tally.
 	combat bool
 
+	// combatStep is the combat damage step the event was created in —
+	// CombatStepFirstStrike, CombatStepRegular, or "" when no
+	// first-strike pass ran (#187, ADR 0053 Decision 1). Copied onto
+	// Event.CombatStep by emitDealDamageLocked. Riding the tail rather
+	// than being read off the game when the damage lands is what keeps
+	// it right across a pause: a CR 616 ordering prompt resumes with
+	// the tag it was created with, and there is no Game field that a
+	// finished pass could leave stale.
+	combatStep string
+
 	// actor is the player the emitted event is attributed to — the
 	// controller of the damage source. uuid.Nil leaves Actor unset,
 	// which is what the non-combat effect paths have always done.
@@ -129,9 +139,13 @@ type damageTail struct {
 // their tail from the frame instead, because the frame already IS this
 // snapshot, taken before the prompt was queued.
 //
+// step is the pass's Event.CombatStep value ("" when no first-strike
+// pass ran). It is an argument, not something read off the game, so no
+// value can outlive the pass that set it.
+//
 // Caller must hold g.mu.
-func (g *Game) combatDamageTailLocked(kind damageTailKind, sourceID uuid.UUID) *damageTail {
-	t := &damageTail{kind: kind, combat: true}
+func (g *Game) combatDamageTailLocked(kind damageTailKind, sourceID uuid.UUID, step string) *damageTail {
+	t := &damageTail{kind: kind, combat: true, combatStep: step}
 	src := findBattlefieldCard(g, sourceID)
 	if src == nil {
 		return t
@@ -203,10 +217,18 @@ func (g *Game) effectDamageTailLocked(kind damageTailKind, sourceID uuid.UUID) *
 // is answered the attacker may have died to blocker damage dealt in the
 // same substep, so a battlefield lookup would lose its deathtouch,
 // lifelink and commander status.
+//
+// The combat step comes from frame.CombatStep, NOT frame.FirstStrike:
+// a regular-pass prompt has FirstStrike false whether or not a
+// first-strike pass ran, and a combat with no first strike anywhere
+// must stay untagged (ADR 0053 Decision 1). A frame restored from a
+// snapshot written before the field existed has "" and resumes
+// untagged — the cue is lost, the board is right.
 func damageTailFromFrame(kind damageTailKind, frame *DamageAssignmentFrame) *damageTail {
 	t := &damageTail{
 		kind:       kind,
 		combat:     true,
+		combatStep: frame.CombatStep,
 		actor:      frame.SourceController,
 		deathtouch: frame.HasDeathtouch,
 	}
@@ -343,19 +365,21 @@ func (g *Game) applyResolvedDamageToPermanentLocked(ev *ReplacementEvent, t *dam
 }
 
 // emitDealDamageLocked emits the one EventDealDamage a settled damage
-// event produces, with the Actor and Combat fields the tail carries so
-// "deals combat damage" triggers key off the same shape whether or not
-// the event paused.
+// event produces, with the Actor, Combat and CombatStep fields the tail
+// carries so "deals combat damage" triggers — and the public log's
+// combat_step tag — key off the same shape whether or not the event
+// paused. This is the only place Event.CombatStep is written.
 //
 // Caller must hold g.mu.
 func (g *Game) emitDealDamageLocked(ev *ReplacementEvent, t *damageTail) {
 	g.EmitEvent(Event{
-		Kind:   EventDealDamage,
-		Actor:  t.actor,
-		Source: ev.DamageSource,
-		Target: ev.DamageTarget,
-		Amount: ev.DamageAmount,
-		Combat: t.combat,
+		Kind:       EventDealDamage,
+		Actor:      t.actor,
+		Source:     ev.DamageSource,
+		Target:     ev.DamageTarget,
+		Amount:     ev.DamageAmount,
+		Combat:     t.combat,
+		CombatStep: t.combatStep,
 	})
 }
 
