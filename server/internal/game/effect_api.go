@@ -526,8 +526,11 @@ func (g *Game) ExileCardForEffect(cardID uuid.UUID) error {
 // knower and the wire ships the card's name to the whole table. A
 // card exiled face down is one no player may look at — including
 // the player who exiled it — so its knowledge set is CLEARED on the
-// way in and Card.FaceDown is set, which is what makes the client
-// draw a card back rather than a blank.
+// way in and Card.FaceDown is set. An empty knowledge set is what
+// the wire keys on: protocol.redactCardForViewer strips every
+// identifying field (name, costs, abilities, catalog flags) for a
+// non-knower. Card.FaceDown is what the client keys on to draw a
+// card back for a face-down card the viewer does not know (#95).
 //
 // Clearing rather than leaving the set alone matters: a library card
 // is not always unknown. A player who has just scryed or used

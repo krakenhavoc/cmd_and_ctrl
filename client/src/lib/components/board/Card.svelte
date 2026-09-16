@@ -22,6 +22,7 @@
 
   import type { CardView } from "../../protocol";
   import { cardImageURL } from "../../cardImage";
+  import { showsCardBack } from "../../cardBack";
   import { hoveredCard } from "../../cardTypes";
   import { animateTap } from "../../animations";
   import { play } from "../../sounds";
@@ -127,16 +128,12 @@
   // by Vite and in production by whoever serves the built client.
   const backSrc = $derived(size === "normal" ? "/card-back.jpg" : "/card-back-small.jpg");
 
-  // S13.5 — render the back when the wire says face-down. The
-  // `|| card.known_by_you === false` arm is a belt-and-braces
-  // fallback: the server's CardView uses `omitempty` on KnownByYou,
-  // so a revealed card sends `true` and an unrevealed card omits
-  // the field entirely (opponents never see an explicit `false`
-  // from the wire). If a future code path were to build a CardView
-  // locally with an explicit `{known_by_you: false}`, this check
-  // would keep it rendering as a back. Parents that know the zone
-  // (Hand.svelte for opponent cards) still set `faceDown` directly.
-  const showBack = $derived(faceDown || card.known_by_you === false);
+  // S13.5 / #95 — render the back for a face-down card the viewer
+  // doesn't know, for an explicit `known_by_you: false`, or when the
+  // parent says so (Hand.svelte for opponent cards). The rule, and
+  // why "doesn't know" is `!== true` rather than `=== false`, lives
+  // in cardBack.ts.
+  const showBack = $derived(showsCardBack(card, faceDown));
 
   // Type-aware P/T overlay (S16): every creature card on the table
   // gets a small bottom-right pip showing its current power/toughness

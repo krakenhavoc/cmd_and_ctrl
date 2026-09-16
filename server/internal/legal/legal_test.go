@@ -103,10 +103,16 @@ func newTableMulligans(t *testing.T) *game.Game {
 // is castable.
 func clearHand(p *game.Player) { p.Hand.Cards = nil }
 
+// handCard and battlefieldCard mark the knowers the engine would: a
+// card in hand is known to its owner, a permanent to the whole table.
+// The enumerator never reads knowledge, but the wire frames
+// agreement_test.go commits do — and since #95 a card its viewer
+// does not know reaches them with no abilities, costs or targets.
 func handCard(p *game.Player, c game.Card) uuid.UUID {
 	c.InstanceID = uuid.New()
 	c.Owner = p.ID
 	c.Controller = p.ID
+	c.KnownBy = map[uuid.UUID]bool{p.ID: true}
 	p.Hand.PushTop(c)
 	return c.InstanceID
 }
@@ -115,6 +121,10 @@ func battlefieldCard(g *game.Game, p *game.Player, c game.Card) uuid.UUID {
 	c.InstanceID = uuid.New()
 	c.Owner = p.ID
 	c.Controller = p.ID
+	c.KnownBy = make(map[uuid.UUID]bool, len(g.Seats))
+	for _, s := range g.Seats {
+		c.KnownBy[s.ID] = true
+	}
 	g.Battlefield.PushTop(c)
 	return c.InstanceID
 }
