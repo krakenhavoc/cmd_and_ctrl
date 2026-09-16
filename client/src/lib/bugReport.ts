@@ -4,6 +4,7 @@
 // as zoneBrowser.logic.ts (ADR 0015 §2).
 
 import type { GameView } from "./protocol";
+import { redactSecrets } from "./redact";
 
 // Client-side mirrors of the server caps in
 // server/internal/lobby/bugreport.go — enforced there
@@ -167,6 +168,19 @@ export function buildBugContext(
   return ctx;
 }
 
+// redactBugContext returns the context with every free-text field
+// redacted. The fields are echoes of server-issued values, but the
+// server clips and never trusts them, and neither does this (#721).
+export function redactBugContext(ctx: BugReportContext | undefined): BugReportContext | undefined {
+  if (!ctx) return ctx;
+  const out: BugReportContext = { ...ctx };
+  if (out.game_id !== undefined) out.game_id = redactSecrets(out.game_id);
+  if (out.phase !== undefined) out.phase = redactSecrets(out.phase);
+  if (out.step !== undefined) out.step = redactSecrets(out.step);
+  if (out.connection !== undefined) out.connection = redactSecrets(out.connection);
+  return out;
+}
+
 // validateBugReport returns a human-readable problem or null when
 // the draft is submittable. Mirrors the server's 400 rules.
 export function validateBugReport(title: string, description: string): string | null {
@@ -237,6 +251,10 @@ const LOG_KINDS: BugLogKind[] = ["sent", "received", "error", "info", "console"]
 //
 // The tail is what's kept — a bug report is filed just after the thing
 // went wrong, so the end of the log is the relevant part.
+//
+// Every line is redacted (#721). Both buffers already redact on the way
+// in; this is the last client-side gate before the log is shown to the
+// reporter and sent, so a buffer that forgets can't leak through it.
 export function collectBugLog(
   wsLog: readonly WsLogLike[],
   consoleLog: readonly ConsoleLogLike[],
@@ -246,9 +264,13 @@ export function collectBugLog(
     ...wsLog.map((e) => ({
       at: e.at instanceof Date ? e.at.getTime() : 0,
       kind: (LOG_KINDS as string[]).includes(e.direction) ? (e.direction as BugLogKind) : "info",
-      text: e.text,
+      text: redactSecrets(e.text),
     })),
-    ...consoleLog.map((e) => ({ at: e.at, kind: "console" as BugLogKind, text: e.text })),
+    ...consoleLog.map((e) => ({
+      at: e.at,
+      kind: "console" as BugLogKind,
+      text: redactSecrets(e.text),
+    })),
   ];
   // Stable sort by timestamp: entries stamped in the same millisecond
   // keep the order they were recorded in, which for the protocol log is

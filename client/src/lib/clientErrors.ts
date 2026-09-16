@@ -14,6 +14,8 @@
 // installing it must not depend on component lifecycle. main.ts calls
 // installErrorCapture() once at boot; everything else just reads.
 
+import { redactSecrets } from "./redact";
+
 // CLIENT_ERROR_LIMIT bounds the buffer. Errors in a broken render loop
 // arrive in the thousands, and only the first few are distinct — a
 // small window keeps the interesting ones without unbounded growth.
@@ -37,8 +39,16 @@ const TEXT_MAX = 400;
 // recordClientError appends an entry, dropping the oldest when full.
 // Exported so other modules can record a failure they handled but
 // still want visible in a report.
+//
+// Redacted before it is clipped (#721): a console.error that stringifies
+// a session object or a fetch URL must not carry the token into a bug
+// report, and clipping first could cut the key off a value and leave
+// the value behind.
 export function recordClientError(text: string): void {
-  const entry: ClientErrorEntry = { at: Date.now(), text: text.slice(0, TEXT_MAX) };
+  const entry: ClientErrorEntry = {
+    at: Date.now(),
+    text: redactSecrets(text).slice(0, TEXT_MAX),
+  };
   buffer = buffer.length >= CLIENT_ERROR_LIMIT ? [...buffer.slice(1), entry] : [...buffer, entry];
 }
 
