@@ -7,10 +7,13 @@ import "github.com/google/uuid"
 // same printed card from their library, there are two Card instances,
 // each with its own InstanceID.
 //
-// At S02 this struct is deliberately minimal: name + owner + a few
-// runtime state flags. Scryfall data (mana cost, oracle text, image
-// URLs, type line, etc.) arrives in S04 when the Scryfall pipeline
-// lands, at which point Card will grow a CardData reference.
+// Card carries the printed data stamped at deck import (Scryfall
+// fields, faces, keywords) alongside the per-instance runtime state
+// the rules engine keeps (tap, combat, damage, knowledge, layers,
+// attachments). Fields are grouped by the mechanic that added them,
+// except the bools, which share one block at the end for alignment.
+// TestCardAlignmentPaddingStaysSmall (card_layout_test.go) guards the
+// padding; put a new bool in that block.
 type Card struct {
 	// InstanceID uniquely identifies this physical card within the game.
 	// Generated when the card enters play or when a deck is imported.
