@@ -72,12 +72,23 @@ in `lib/clientErrors.ts` once per URL. The logic is in
 wiring only.
 
 - The img's parent must be positioned (`position: relative`); set
-  `--art-error-top` / `--art-error-right` on it to move the pip off a
-  corner the tile already uses.
+  `--art-error-top` / `--art-error-right` / `--art-error-left` (with
+  `-right: auto`) on it to move the pip off a corner the tile already
+  uses, and `--art-error-z` to lift it over the tile's own overlays.
+  `Card.svelte` puts it on the left edge below the top badge row,
+  above the counter column.
 - Inside a tile that has its own click / double-click / Enter handling
   nothing extra is needed — the pip stops propagation. Inside a
   `pointer-events: none` or `aria-hidden` surface, pass
   `{ url, interactive: false }`.
+- Keyboard and screen readers: where nothing above the img is a
+  control, the pip is a real button (a tab stop, Enter/Space retry).
+  Inside a control or image — a `<button>`, or `role="button"` /
+  `"img"` and the other roles whose children are presentational — a
+  nested button would be a tab stop with no role or name, so the pip
+  is pointer-only (`aria-hidden`), the control gets "Art failed to
+  load" through `aria-describedby`, and keyboard focus on the control
+  retries the art.
 - Not for card backs (`/card-back*.jpg`), which are bundled assets.
   Nor for the seat avatar in `PlayerIdentity.svelte`: a commander art
   crop that fails there falls through to the seat-colour disc, which

@@ -3,9 +3,12 @@ import {
   ART_RETRY_DELAY_MS,
   createArtRetry,
   describeArtURL,
+  flattensChildren,
   markerFor,
   reportArtFailure,
   resetArtFailureReports,
+  withIDRef,
+  withoutIDRef,
   type ArtState,
 } from "./cardArtRetry";
 import { recentClientErrors, resetClientErrors } from "./clientErrors";
@@ -247,6 +250,58 @@ describe("markerFor", () => {
     for (const [state, marker] of Object.entries(want)) {
       expect(markerFor(state as ArtState)).toBe(marker);
     }
+  });
+});
+
+// A marker inside one of these must not be a button of its own: the
+// ancestor's children are presentational, so a nested button is a tab
+// stop with no role or name.
+describe("flattensChildren", () => {
+  it("is true for the hosts card art actually sits in", () => {
+    // board Card: role="button" with a click, role="img" without
+    expect(flattensChildren("DIV", "button")).toBe(true);
+    expect(flattensChildren("DIV", "img")).toBe(true);
+    // face-picker option: a native button
+    expect(flattensChildren("BUTTON", null)).toBe(true);
+  });
+
+  it("is false for plain containers", () => {
+    // catalogue tile, mulligan grid (role="listitem"), reveal banner,
+    // a stack item that is not currently targetable
+    expect(flattensChildren("DIV", null)).toBe(false);
+    expect(flattensChildren("DIV", "listitem")).toBe(false);
+    expect(flattensChildren("SPAN", "")).toBe(false);
+    expect(flattensChildren("LI", null)).toBe(false);
+  });
+
+  it("lets an explicit role override the tag", () => {
+    expect(flattensChildren("BUTTON", "listitem")).toBe(false);
+    expect(flattensChildren("SPAN", "switch")).toBe(true);
+    expect(flattensChildren("div", "Option")).toBe(true);
+  });
+
+  it("reads only the first role token, the rest being fallbacks", () => {
+    expect(flattensChildren("DIV", " img button")).toBe(true);
+    expect(flattensChildren("DIV", "group button")).toBe(false);
+  });
+});
+
+describe("withIDRef / withoutIDRef", () => {
+  it("adds without clobbering a component's own references", () => {
+    expect(withIDRef(null, "art-1")).toBe("art-1");
+    expect(withIDRef("hint", "art-1")).toBe("hint art-1");
+    expect(withIDRef("  hint   other ", "art-1")).toBe("hint other art-1");
+  });
+
+  it("does not add the same id twice", () => {
+    expect(withIDRef("hint art-1", "art-1")).toBe("hint art-1");
+  });
+
+  it("removes only its own id, and reports empty as null", () => {
+    expect(withoutIDRef("hint art-1", "art-1")).toBe("hint");
+    expect(withoutIDRef("art-1", "art-1")).toBeNull();
+    expect(withoutIDRef(null, "art-1")).toBeNull();
+    expect(withoutIDRef("art-10", "art-1")).toBe("art-10");
   });
 });
 

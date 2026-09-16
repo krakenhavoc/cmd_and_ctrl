@@ -7,8 +7,8 @@
 // cache on launch is exactly when the CDN hiccups, so one transient
 // failure was costing a tile its art for the whole session.
 //
-// This module is the DOM-free half: the retry state machine and the
-// deduplicated report. The DOM half — listeners, the marker element,
+// This module is the DOM-free half: the retry state machine, the
+// deduplicated report, and the marker's accessibility decisions. The DOM half — listeners, the marker element,
 // re-requesting the image — is the `cardArt` action in cardArt.ts.
 // The split exists because there is no Svelte component harness in
 // this repo, and every decision worth testing lives here.
@@ -164,6 +164,73 @@ export function createArtRetry(initialURL: string, hooks: ArtRetryHooks): ArtRet
       cancelTimer();
     },
   };
+}
+
+// --- marker accessibility --------------------------------------------
+
+// Most card art sits inside an element that is itself a control or an
+// image: a board card is role="button" (or role="img" when it has no
+// click), a face-picker option is a native <button>, a targetable stack
+// item is role="button". ARIA makes the children of those roles
+// presentational, so a role="button" marker inside one loses its role
+// and name for a screen reader while still being a tab stop — a focus
+// target that announces nothing. It would also be a second tab stop
+// per failed tile, and a CDN outage fails every tile on the table.
+//
+// So the action asks, per marker, whether an ancestor flattens its
+// children. If one does, the marker is pointer-only (aria-hidden, no
+// tab stop), the failure is attached to that ancestor as an accessible
+// description, and keyboard focus on the ancestor is the retry. If
+// none does, the marker is a real button.
+
+// FLATTENING_ROLES are the ARIA 1.2 roles whose children are
+// presentational. "image" is ARIA 1.3's synonym for "img".
+const FLATTENING_ROLES = new Set([
+  "button",
+  "checkbox",
+  "image",
+  "img",
+  "math",
+  "menuitemcheckbox",
+  "menuitemradio",
+  "meter",
+  "option",
+  "progressbar",
+  "radio",
+  "scrollbar",
+  "separator",
+  "slider",
+  "switch",
+  "tab",
+]);
+
+// flattensChildren reports whether an element with this tag and `role`
+// attribute hides its descendants' semantics from assistive tech. An
+// explicit role decides (its first token — later tokens are
+// fallbacks); with none, a native <button> does.
+export function flattensChildren(tagName: string, role: string | null): boolean {
+  const first = role?.trim().split(/\s+/)[0]?.toLowerCase() ?? "";
+  if (first !== "") return FLATTENING_ROLES.has(first);
+  return tagName.toLowerCase() === "button";
+}
+
+// withIDRef adds `id` to an ID-reference list attribute value such as
+// aria-describedby, keeping whatever a component already put there.
+export function withIDRef(list: string | null, id: string): string {
+  const ids = splitIDRefs(list);
+  if (!ids.includes(id)) ids.push(id);
+  return ids.join(" ");
+}
+
+// withoutIDRef removes `id`, returning null when nothing is left so the
+// caller removes the attribute instead of leaving it empty.
+export function withoutIDRef(list: string | null, id: string): string | null {
+  const ids = splitIDRefs(list).filter((x) => x !== id);
+  return ids.length > 0 ? ids.join(" ") : null;
+}
+
+function splitIDRefs(list: string | null): string[] {
+  return (list ?? "").split(/\s+/).filter((x) => x !== "");
 }
 
 // --- reporting -------------------------------------------------------

@@ -15,20 +15,38 @@
 // The marker is created here, as the img's next sibling, and styled
 // by `.card-art-error` in app.css (global for the same scoping
 // reason). It is absolutely positioned, so the img's parent must be a
-// positioned box; `--art-error-top` / `--art-error-right` move it off
-// a corner a site already uses.
+// positioned box; `--art-error-top` / `-right` / `-left` / `-z` move
+// it off a corner a site already uses.
 //
 // The URL passed in must be the same string as the img's `src`. On a
 // change (a DFC transforming, a face flip) the action resets to a
 // fresh cycle for the new URL, so a failure on one face never marks
 // the other. Face-down and card-back images must not wear this: the
 // back is a bundled static asset, not card art.
+//
+// The marker comes in three kinds:
+//
+//   button     — role="button", a tab stop, Enter/Space retry. When
+//                nothing above the img is a control or an image (the
+//                catalogue, the mulligan grid, the reveal banner).
+//   described  — inside a control or image (board card, face-picker
+//                option, targetable stack item), whose children
+//                assistive tech treats as presentational: a nested
+//                button would be a nameless tab stop. The marker is
+//                aria-hidden and pointer-only; the control gets
+//                "Art failed to load" as its accessible description,
+//                and keyboard focus on the control is the retry.
+//                cardArtRetry.ts has the full reasoning.
+//   static     — `interactive: false`: a signal with no retry at all.
 
 import type { Action } from "svelte/action";
 import {
   ART_FAILED_TITLE,
   createArtRetry,
+  flattensChildren,
   markerFor,
+  withIDRef,
+  withoutIDRef,
   type ArtState,
   type MarkerState,
 } from "./cardArtRetry";
@@ -44,15 +62,25 @@ export type CardArtParam =
       interactive?: boolean;
     };
 
+type MarkerKind = "button" | "described" | "static";
+
 function normalise(p: CardArtParam): { url: string; interactive: boolean } {
   return typeof p === "string"
     ? { url: p, interactive: true }
     : { url: p.url, interactive: p.interactive ?? true };
 }
 
+// Description ids only need to be unique within the document.
+let nextDescriptionID = 0;
+
 export const cardArt: Action<HTMLImageElement, CardArtParam> = (img, param) => {
   let opts = normalise(param);
   let marker: HTMLElement | null = null;
+  let markerKind: MarkerKind | null = null;
+  // The control a "described" marker is attached to, and the id of
+  // the description element it references.
+  let host: HTMLElement | null = null;
+  let descriptionID = "";
   let markerState: MarkerState = "hidden";
 
   const art = createArtRetry(opts.url, {
@@ -93,42 +121,104 @@ export const cardArt: Action<HTMLImageElement, CardArtParam> = (img, param) => {
     ev.stopPropagation();
   }
 
-  function createMarker(): HTMLElement {
+  // Keyboard focus landing on a control whose art has failed retries
+  // it — the keyboard's equivalent of clicking the marker, which is
+  // not a tab stop there. Only keyboard focus: a mouse click focuses
+  // the tile too, and a click on the tile means play / tap / select,
+  // while the pointer has the marker for retrying.
+  function onHostFocus(): void {
+    if (host && focusIsVisible(host)) art.retry();
+  }
+
+  // flatteningHost is the nearest ancestor whose children assistive
+  // tech treats as presentational, or null.
+  function flatteningHost(): HTMLElement | null {
+    for (let el = img.parentElement; el && el !== document.body; el = el.parentElement) {
+      if (flattensChildren(el.tagName, el.getAttribute("role"))) return el;
+    }
+    return null;
+  }
+
+  function createMarker(kind: MarkerKind, control: HTMLElement | null): HTMLElement {
     const el = document.createElement("span");
     el.className = "card-art-error";
     el.title = ART_FAILED_TITLE;
     el.textContent = "!";
-    if (opts.interactive) {
-      // The tooltip stays exactly ART_FAILED_TITLE; the accessible
-      // name also says what activating it does.
-      el.setAttribute("aria-label", `${ART_FAILED_TITLE}, retry`);
-      el.setAttribute("role", "button");
-      el.tabIndex = 0;
-      el.addEventListener("click", activate);
-      el.addEventListener("keydown", onMarkerKeydown);
-      el.addEventListener("dblclick", swallow);
-    } else {
-      el.setAttribute("aria-label", ART_FAILED_TITLE);
-      el.setAttribute("role", "img");
-      el.classList.add("static");
+    switch (kind) {
+      case "button":
+        // The tooltip stays exactly ART_FAILED_TITLE; the accessible
+        // name also says what activating it does.
+        el.setAttribute("aria-label", `${ART_FAILED_TITLE}, retry`);
+        el.setAttribute("role", "button");
+        el.tabIndex = 0;
+        el.addEventListener("click", activate);
+        el.addEventListener("keydown", onMarkerKeydown);
+        el.addEventListener("dblclick", swallow);
+        break;
+      case "described": {
+        el.setAttribute("aria-hidden", "true");
+        el.addEventListener("click", activate);
+        el.addEventListener("dblclick", swallow);
+        // A description element that is itself hidden is still read
+        // when referenced by id — aria-describedby is the documented
+        // exception to hidden content being skipped.
+        const desc = document.createElement("span");
+        descriptionID = `card-art-error-${++nextDescriptionID}`;
+        desc.id = descriptionID;
+        desc.className = "card-art-error-desc";
+        desc.textContent = ART_FAILED_TITLE;
+        el.append(desc);
+        host = control;
+        if (host) {
+          host.setAttribute(
+            "aria-describedby",
+            withIDRef(host.getAttribute("aria-describedby"), descriptionID),
+          );
+          host.addEventListener("focus", onHostFocus);
+        }
+        break;
+      }
+      case "static":
+        el.setAttribute("aria-label", ART_FAILED_TITLE);
+        el.setAttribute("role", "img");
+        el.classList.add("static");
+        break;
     }
     return el;
+  }
+
+  function removeMarker(): void {
+    if (host) {
+      host.removeEventListener("focus", onHostFocus);
+      const rest = withoutIDRef(host.getAttribute("aria-describedby"), descriptionID);
+      if (rest === null) host.removeAttribute("aria-describedby");
+      else host.setAttribute("aria-describedby", rest);
+      host = null;
+    }
+    marker?.remove();
+    marker = null;
+    markerKind = null;
   }
 
   function renderMarker(next: MarkerState): void {
     markerState = next;
     if (next === "hidden") {
-      marker?.remove();
-      marker = null;
+      removeMarker();
       return;
     }
+    // Re-decided on every render, not only at creation: a stack item
+    // gains and loses role="button" as targeting starts and ends.
+    const control = opts.interactive ? flatteningHost() : null;
+    const kind: MarkerKind = !opts.interactive ? "static" : control ? "described" : "button";
+    if (marker && (kind !== markerKind || control !== host)) removeMarker();
     if (!marker) {
-      marker = createMarker();
+      marker = createMarker(kind, control);
+      markerKind = kind;
       img.after(marker);
     }
     const busy = next === "busy";
     marker.classList.toggle("busy", busy);
-    if (opts.interactive) marker.setAttribute("aria-disabled", busy ? "true" : "false");
+    if (kind === "button") marker.setAttribute("aria-disabled", busy ? "true" : "false");
   }
 
   img.addEventListener("error", onError);
@@ -141,21 +231,27 @@ export const cardArt: Action<HTMLImageElement, CardArtParam> = (img, param) => {
 
   return {
     update(next: CardArtParam) {
-      const prev = opts;
       opts = normalise(next);
-      if (prev.interactive !== opts.interactive && marker) {
-        marker.remove();
-        marker = null;
-        renderMarker(markerState);
-      }
+      // Rebuilds the marker if `interactive` changed its kind.
+      if (marker) renderMarker(markerState);
       art.setURL(opts.url);
     },
     destroy() {
       art.destroy();
       img.removeEventListener("error", onError);
       img.removeEventListener("load", onLoad);
-      marker?.remove();
-      marker = null;
+      removeMarker();
     },
   };
 };
+
+// focusIsVisible is `:focus-visible`, treated as true where the
+// selector is unsupported so the keyboard route never silently
+// disappears.
+function focusIsVisible(el: HTMLElement): boolean {
+  try {
+    return el.matches(":focus-visible");
+  } catch {
+    return true;
+  }
+}

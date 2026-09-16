@@ -654,6 +654,20 @@ textarea::placeholder {
 .card-art-error.static {
   cursor: default;
 }
+/* The text a "described" pip lends its control as an accessible
+   description (lib/cardArt.ts). Visually hidden; assistive tech only
+   ever reaches it through the control's aria-describedby. */
+.card-art-error-desc {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 /* Thin, subtle scrollbars everywhere dark. Webkit + Firefox syntax. */
 * {
