@@ -119,8 +119,10 @@ type ReplacementEvent struct {
 	CardID uuid.UUID
 
 	// OldZone / NewZone / NewZoneOwner describe the motion.
-	// Replacements can rewrite NewZone (Library of Leng's discard-
-	// to-library, commander-zone replacement, etc.).
+	// Replacements can rewrite NewZone (the CR 903.9 commander-zone
+	// built-in, Stone of Erech's graveyard → exile, etc.). No discard
+	// builds a RepEventMove yet: every discard moves the card directly
+	// and bypasses this pipeline (#650).
 	OldZone      ZoneKind
 	NewZone      ZoneKind
 	NewZoneOwner uuid.UUID
@@ -131,7 +133,7 @@ type ReplacementEvent struct {
 	// before emitting EventETB.
 	EntersTapped bool
 
-	// EntersAsCopyOf is the CR 706 copy a permanent enters wearing —
+	// EntersAsCopyOf is the CR 707 copy a permanent enters wearing —
 	// the copiable values settled by a CopySelector replacement,
 	// with the card's "except" clause already applied. nil for the
 	// ~everything that enters as itself. Only meaningful when
@@ -342,7 +344,7 @@ type ReplacementEffect struct {
 
 	// CopySelector, when non-nil, makes this an "as this permanent
 	// enters, you may have it enter as a copy of X" effect (CR
-	// 706.2) — Clone, Phyrexian Metamorph, Spark Double, Sakashima
+	// 707.2) — Clone, Phyrexian Metamorph, Spark Double, Sakashima
 	// the Impostor. The apply-loop queues a
 	// PendingChoiceCopyTarget picker and bails; the answer stamps
 	// ev.EntersAsCopyOf and the entry path materialises it before

@@ -172,6 +172,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	if src.Kind == ZoneBattlefield {
 		c.Tapped = false
 		c.Counters = nil
+		c.LostLastCounter = false
 		c.BattleX = 0
 		c.BattleY = 0
 		c.AttackingTarget = uuid.Nil
@@ -200,6 +201,24 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// happened to be picked last time — including, after a seat
 		// is eliminated, nobody.
 		c.ProtectorPlayerID = uuid.Nil
+	}
+	// CR 400.7: a card that leaves exile is a new object with no
+	// memory of its previous one. Two exile-only fields go with it:
+	//
+	//   - ExilePlay, the per-instance "you may cast/play it" grant.
+	//     The cast and land-play paths already zeroed it once the
+	//     card reached the stack or the battlefield, but every other
+	//     exit (a sandbox move to hand, an effect returning it to a
+	//     library or graveyard) kept it. An airbended card moved to
+	//     hand then still paid airbend's {2} for a hand cast, and a
+	//     second exile later revived a permission nobody granted.
+	//   - Counters. Nothing in the engine puts counters on an exiled
+	//     card yet, but a player can by hand, and suspend's time
+	//     counters will. A suspended creature must not enter the
+	//     battlefield still carrying them.
+	if src.Kind == ZoneExile {
+		c.ExilePlay = ExilePlayPermission{}
+		c.Counters = nil
 	}
 	// CR 712.8: a double-faced card is FRONT face up in every zone
 	// except the battlefield and the stack. Keyed on the DESTINATION

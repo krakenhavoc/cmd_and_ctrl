@@ -22,6 +22,7 @@
   // so this cannot and does not link a banner to a board object.
   import { untrack } from "svelte";
   import { scryfallImageURL } from "../../cardImage";
+  import { cardArt } from "../../cardArt";
   import { seatColor } from "../../colors";
   import type { GameView, RevealView } from "../../protocol";
   import {
@@ -107,7 +108,8 @@
       {#each r.cards as c, i (i)}
         <span class="reveal-card" title={c.name}>
           {#if c.scryfall_id}
-            <img src={scryfallImageURL(c.scryfall_id, "small")} alt={c.name} loading="lazy" />
+            {@const src = scryfallImageURL(c.scryfall_id, "small")}
+            <img {src} alt={c.name} loading="lazy" use:cardArt={src} />
           {:else}
             <span class="reveal-fallback">{c.name}</span>
           {/if}
@@ -202,6 +204,8 @@
   }
   .reveal-card {
     position: relative;
+    --art-error-top: 2px;
+    --art-error-right: 2px;
     display: block;
     width: 34px;
     height: 48px;

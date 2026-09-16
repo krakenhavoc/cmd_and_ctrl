@@ -8,9 +8,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 Basic landcycling {2}"
 //
 // S20 sub-PR 5's "up to N" card: Min 0, so it can be cast with no
-// targets at all (and then does nothing). Basic landcycling is an
-// activated ability from hand — S29 alt-cast-paths territory; the
-// card is castable only.
+// targets at all (and then does nothing). Basic landcycling isn't
+// modelled, so the card is castable only. It is an activated ability
+// from hand (typecycling, CR 702.29e), not a cast, and waits on a
+// discard cost and activation from hand (#660).
 func init() {
 	Register(Spec{
 		OracleID: "aeec8e85-6571-4da6-8a48-f5d3985ca10b",

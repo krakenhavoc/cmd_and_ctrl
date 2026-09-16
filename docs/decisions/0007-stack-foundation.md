@@ -1,6 +1,7 @@
 # ADR 0007 — Stack foundation (S13.1)
 
 **Status:** Accepted · 2026-04-21 · Sprint S13.1
+**Amended:** 2026-09-16 · Branch `fix/zero-toughness-683` — §7's placeholder-creature exemption ([#683](https://github.com/krakenhavoc/cmd_and_ctrl/issues/683))
 
 ## Context
 
@@ -137,6 +138,28 @@ existing `Card.Power` documentation note about Mortivore-style "*"
 cards and the demo seed) and is NOT destroyed by the toughness-0
 SBA. A printed >0 creature reduced to ≤0 by counters does die. New
 `Card.CurrentToughness` mirror of `CurrentPower` does the math.
+
+*Amended 2026-09-16 (#683).* The exemption no longer covers a
+creature that has **lost** its counters. A printed 0/0 (Hangarback
+Walker, Mikaeus, the Lunarch, an X hydra) whose last counter is
+removed, or cancelled under CR 704.5q, looked exactly like a
+placeholder and survived as a 0/0 nothing could kill. Taking a card's
+counters from some to none sets `Card.LostLastCounter`, and the
+exemption does not apply to a flagged card, so CR 704.5f puts it into
+the graveyard. The flag is per object: it clears wherever `Counters` is
+reset for a new object, and removing a counter from a card that has
+none does not set it. One exception keeps the placeholder
+convention intact: a creature whose printed toughness is not a number
+(`*`, `1+*`, `?`) imports with `Card.VariableToughness`, set per face
+and carried by copy effects and token copies, and stays exempt after
+losing its last counter, because its 0 is the import stand-in and not
+a printed 0. A creature that never had a counter (a card cast for
+X=0, a declined Clone, the demo seed) is exempt as before. A restore
+point written before this change has no `VariableToughness`, so
+restore recomputes it from the card's Scryfall printing without a
+schema bump. When the printing is unknown (a token, no dump loaded),
+the flag is set for any 0 toughness, which keeps the exemption as it
+was before (`game/snapshot_backfill.go`).
 
 Counter-specific SBAs (planeswalker loyalty 0, battle defense 0,
 +1/+1 -1/-1 cancel, poison ≥ 10, saga final chapter) belong to

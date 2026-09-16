@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -518,12 +519,56 @@ func TestB15SimulacrumSynthesizerScriesAndBuildsConstructsItSizes(t *testing.T) 
 	if p := effectivePower(t, g, construct); p != 0 {
 		t.Errorf("with no Synthesizer the Construct shrinks to 0/0 — the declared gap: power %d", p)
 	}
-	// The engine treats a printed 0/0 with no counters as a
+	// The engine treats a printed 0/0 that never had a counter as a
 	// placeholder and never sweeps it (CurrentToughness's convention),
 	// so the shrunken Construct lingers rather than dying. Pinned so a
 	// change in that convention shows up here.
+	runStateChecksViaDraw(t, g)
 	if !g.Battlefield.Contains(construct) {
-		t.Error("a printed 0/0 with no counters is not swept by the toughness SBA")
+		t.Error("a printed 0/0 that never had a counter is not swept by the toughness SBA")
+	}
+}
+
+// #683: a Construct that has had counters and lost them all is no
+// placeholder (Card.LostLastCounter), so when the last Synthesizer
+// leaves and it shrinks to 0/0 it dies — the caveat's second clause.
+// A Construct that never had a counter still lingers beside it.
+func TestB15SynthesizerConstructThatLostItsCountersDiesWhenItShrinks(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	synth := b12Push(g, me.ID, "Simulacrum Synthesizer", "Artifact", b15SimulacrumSynthesizerOracle, 0, 0)
+	g.WithWriteLock(func() {
+		_ = g.CreateTokenForEffect(me.ID, TokenCard("0/0 colorless Construct artifact"), 2)
+	})
+	var constructs []uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Construct" {
+			constructs = append(constructs, c.InstanceID)
+		}
+	}
+	if len(constructs) != 2 {
+		t.Fatalf("want 2 Constructs, got %d", len(constructs))
+	}
+	spent, fresh := constructs[0], constructs[1]
+
+	gainAndLoseACounter(t, g, spent)
+	if !g.Battlefield.Contains(spent) {
+		t.Fatal("while the Synthesizer sizes it, a Construct survives losing its last counter")
+	}
+	if got := effectiveToughness(t, g, spent); got != 3 {
+		t.Errorf("Synthesizer and two Constructs: toughness %d, want 3", got)
+	}
+
+	b15Destroy(t, g, synth)
+	runStateChecksViaDraw(t, g)
+	if g.Battlefield.Contains(spent) {
+		t.Error("a Construct that lost its counters survived shrinking to 0/0")
+	}
+	if !g.Battlefield.Contains(fresh) {
+		t.Error("a Construct that never had a counter should linger as a 0/0")
+	}
+	if spec, _ := Lookup(b15SimulacrumSynthesizerOracle); len(spec.Caveats) != 1 || !strings.Contains(spec.Caveats[0], "lost them all dies") {
+		t.Errorf("the caveat must tell players the spent Construct dies: %v", spec.Caveats)
 	}
 }
 

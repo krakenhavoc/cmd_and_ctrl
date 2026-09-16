@@ -161,7 +161,7 @@ type StackItem struct {
 	AltCost string
 
 	// IsCopy marks a spell item that is a COPY of another spell
-	// (CR 706.10) rather than a cast card — Reverberate's output,
+	// (CR 707.10) rather than a cast card — Reverberate's output,
 	// Twincast's, the second half of a storm count. Set only on
 	// StackItemSpell items created by CopySpellForEffect.
 	//

@@ -312,15 +312,15 @@ func EnchantCreature(preds ...CardPredicate) *game.TargetSpec {
 
 // EnchantPermanent is the widest enchant clause: "Enchant permanent"
 // (Faith's Fetters, Song of the Dryads). Distinct from
-// EnchantCreature because the CR 704.5n legality re-check runs this
+// EnchantCreature because the CR 704.5m legality re-check runs this
 // very spec every turn — an Aura declared as "enchant creature" falls
 // off a host that stops being one, and an Aura declared this way does
 // not.
 //
 // That asymmetry is the whole of Song of the Dryads. Its layer-4
 // change stops the host being a creature, so every Equipment on it
-// unattaches (CR 704.5m) and every "enchant creature" Aura on it goes
-// to the graveyard (CR 704.5n) — and the Song stays, because a land
+// unattaches (CR 704.5n) and every "enchant creature" Aura on it goes
+// to the graveyard (CR 704.5m) — and the Song stays, because a land
 // is still a permanent.
 func EnchantPermanent(preds ...CardPredicate) *game.TargetSpec {
 	return TargetPermanent("enchant permanent", preds...)
@@ -338,7 +338,7 @@ func EnchantPlayer(preds ...PlayerPredicate) *game.TargetSpec {
 //
 // The ordering this depends on was checked end to end and is not
 // obvious: the trigger harvester runs synchronously inside EmitEvent
-// under the write lock, and the CR 704.5m unattach is a state-based
+// under the write lock, and the CR 704.5n unattach is a state-based
 // action that has not run yet. So at the instant EventLTB fires, the
 // Equipment is still on the battlefield still pointing at the card
 // that just died, and a direct read of AttachedTo is correct. Had it
