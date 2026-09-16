@@ -1327,7 +1327,7 @@ again every turn forever.
 **Escape (S29)** is flashback's sibling and the place to look when a
 cost needs a component the struct doesn't have yet. `Escape("{3}{B}",
 5)` is "Escape—{3}{B}, Exile five other cards from your graveyard",
-and `EscapeWithCounters("{5}{G}{G}", 4, 3)` adds CR 702.144c's "this
+and `EscapeWithCounters("{5}{G}{G}", 4, 3)` adds CR 702.138c's "this
 creature escapes with three +1/+1 counters on it".
 
 Three things it added to `AlternativeCost`, all of them because escape

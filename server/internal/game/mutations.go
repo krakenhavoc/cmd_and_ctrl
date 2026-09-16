@@ -1616,7 +1616,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 			stackItem:      item,
 		}
 		// S29: "this creature escapes with a +1/+1 counter on it"
-		// (CR 702.144c). Seeded onto the event BEFORE the pipeline
+		// (CR 702.138c). Seeded onto the event BEFORE the pipeline
 		// runs, so the counters are part of the entry every other
 		// replacement gets to see and modify — Doubling Season
 		// doubles them — rather than an afterthought stapled on once

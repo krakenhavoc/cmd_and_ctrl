@@ -23,7 +23,7 @@ import (
 //
 // Every one of those fails in the player's favour if it is not
 // checked, which is the direction a sandbox must never err in. The
-// last two tests are about CR 702.144c's counters, and the contrast
+// last two tests are about CR 702.138c's counters, and the contrast
 // with flashback that trips people up: an escaped card is NOT exiled
 // when it leaves the stack.
 
@@ -205,7 +205,7 @@ func TestEscapeCannotPayFromAnotherPlayersGraveyard(t *testing.T) {
 }
 
 // seedEscapeCreature is seedEscapeSpell for a permanent, with the
-// CR 702.144c counter clause attached to the cost.
+// CR 702.138c counter clause attached to the cost.
 func seedEscapeCreature(t *testing.T, g *Game, me *Player, oracle string, counters int) (uuid.UUID, []uuid.UUID) {
 	t.Helper()
 	cost := escapeCost("{1}{G}", 2)
@@ -225,7 +225,7 @@ func seedEscapeCreature(t *testing.T, g *Game, me *Player, oracle string, counte
 	return c.InstanceID, fodder(me, 2)
 }
 
-// CR 702.144c: "this creature escapes with three +1/+1 counters on
+// CR 702.138c: "this creature escapes with three +1/+1 counters on
 // it". The counters ride the entry, so they are on the permanent
 // before anything else looks at it.
 func TestEscapedCreatureEntersWithItsCounters(t *testing.T) {
