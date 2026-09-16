@@ -171,7 +171,7 @@ the ability on the stack. What the cost adds is that the case becomes
 ordinary play: Mikaeus, the Lunarch paying his team pump with his last
 counter, or Fain, the Broker spending a 0/0's last counter. A card cast
 for X=0 never had a counter, so it is still skipped; that gap is noted
-on the X cards.
+on the X cards, and declared to players on Mikaeus.
 
 **"Rather than pay" on an activated ability is a second ability entry,
 not an alternatives slot.** Heart of Kiran lists "Crew 3" and "Crew —

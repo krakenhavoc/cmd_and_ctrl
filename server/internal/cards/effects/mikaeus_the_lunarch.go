@@ -34,7 +34,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // One engine-side gap, not the card's: cast for X=0 Mikaeus is a
 // printed 0/0 that never had a counter, which the toughness state
 // check deliberately skips as a placeholder, so he stays on the
-// battlefield and can be grown with the tap.
+// battlefield and can be grown with the tap. Declared to players as
+// the second caveat: it is the one way this card plays stronger than
+// printed.
 func init() {
 	Register(Spec{
 		OracleID:     "82f3faa8-39fa-450b-843f-d60a4c36d8f7",
@@ -42,6 +44,7 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"The X +1/+1 counters are put on Mikaeus as the spell resolves, a beat before he enters, so effects that watch you put counters on a permanent don't see them.",
+			"Cast for X=0, Mikaeus stays on the battlefield as a 0/0 instead of dying at once, and can tap to grow.",
 		},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: ctx.X()}.Apply(ctx)
