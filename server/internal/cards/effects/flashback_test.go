@@ -321,14 +321,21 @@ func TestDeepAnalysisRefusesTheWrongCastPaths(t *testing.T) {
 		active := g.Seats[g.Turn.ActiveSeat]
 		id := seedGraveyardCard(t, g, "Deep Analysis", "Sorcery", deepAnalysisOracle)
 		active.Life = 2
+		// CastSpell validates the alternative-cost key before the cast
+		// path, and it refuses an unknown or missing flashback offer
+		// with the same ErrInvalidParam as the life check. So pin the
+		// offer and its 3 life first. The exactly-3-life subtest below
+		// makes the same claim with the same target and is accepted,
+		// so the refusal here comes from the life check.
+		offers := game.AlternativeCostsOfferedFromZone(deepAnalysisOracle, game.ZoneGraveyard)
+		if len(offers) != 1 || offers[0].Life != 3 {
+			t.Fatalf("graveyard offers = %+v, want one flashback with Life 3", offers)
+		}
 		err := g.CastSpell(active.ID, id, game.CastSpellParams{
 			FromZone:        "graveyard",
 			AlternativeCost: "flashback",
 			Targets:         []game.TargetRef{{Kind: game.TargetPlayer, ID: active.ID}},
 		})
-		// ErrInvalidParam is the life check's refusal. The cast-path
-		// check runs first, so a card that did not open the graveyard
-		// would fail with ErrCastZoneNotAllowed instead.
 		if err != game.ErrInvalidParam {
 			t.Fatalf("got %v, want ErrInvalidParam", err)
 		}
