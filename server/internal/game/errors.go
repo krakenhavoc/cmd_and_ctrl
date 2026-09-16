@@ -159,6 +159,16 @@ var (
 	// Added in S29.
 	ErrCastCostRequired = errors.New("game: casting from that zone requires its alternative cost")
 
+	// ErrNoManaCost is returned by cast_spell when a non-land card
+	// with no mana cost (Ancestral Vision, Living End) is cast by
+	// paying that cost. CR 118.6: no mana cost is an unpayable cost,
+	// and paying it is illegal, so the cast is refused at announce
+	// unless an alternative cost replaces it (CR 118.6a; "without
+	// paying its mana cost" counts). Distinct from a {0} cost, which
+	// is a real cost of zero. Mode-independent, for the #289 reason:
+	// permissive mode's "pay it on paper" has nothing to pay.
+	ErrNoManaCost = errors.New("game: a spell with no mana cost can't be cast by paying it")
+
 	// ErrCardNotOnStack is returned by counter_spell / counter_ability
 	// when the targeted item is not currently on the stack (already
 	// resolved, never cast, or wrong instance ID). Added in S13.1.
