@@ -45,20 +45,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // not abilities. The loyalty state-based action does not kill it
 // either, because it is not a planeswalker while the Song is on it.
 //
-// DECLARED GAPS, both weaker than printed:
+// DECLARED GAPS. Neither is weaker than printed: both leave the
+// enchanted permanent with less than the rules give it.
 //
-//   - CR 305.7 removes only the abilities from the permanent's own
-//     rules text; Song's 2014-11-07 ruling says the permanent "will
-//     still have any abilities it gained from other effects."
-//     LoseAllAbilities is a full layer-6 wipe, so an ability another
-//     effect granted BEFORE the Song attached (Boros Charm's
-//     indestructible) is removed too, and a wrath then destroys the
-//     Forest. A grant newer than the Song survives, by timestamp.
-//   - CR 613.8: Urborg, Tomb of Yawgmoth's "each land" depends on the
-//     land type this writes. The layer engine orders layer 4 by
-//     timestamp only, so with an Urborg that entered BEFORE the Song
-//     attached, the enchanted permanent is a Forest and not also a
-//     Swamp.
+//   - CR 305.7, STRONGER than printed. The Song removes only the
+//     abilities from the permanent's own rules text; Song's
+//     2014-11-07 ruling says the permanent "will still have any
+//     abilities it gained from other effects." LoseAllAbilities is a
+//     full layer-6 wipe, so an ability another effect granted BEFORE
+//     the Song attached (Boros Charm's indestructible) is removed
+//     too, and a wrath then destroys a Forest the printed card would
+//     leave alive. A grant newer than the Song survives, by timestamp.
+//   - CR 613.8, and the enchanted permanent again ends up with less:
+//     Urborg, Tomb of Yawgmoth's "each land" depends on the land type
+//     this writes. The layer engine orders layer 4 by timestamp only,
+//     so with an Urborg that entered BEFORE the Song attached, the
+//     enchanted permanent is a Forest and not also a Swamp, and it
+//     loses the {B} mana ability Urborg should give it.
 //
 // Both are pinned, skipped, in layer_dependency_pairs_test.go and go
 // with the CR 613.8 dependency work, which also moves the CR 305.7

@@ -65,7 +65,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // removal wipes it. A creature you control that has lost all its
 // abilities (Kenrith's Transformation attached before the Nexus
 // entered) is not every creature type, although the Nexus's effect
-// comes from the Nexus and the rules keep it.
+// comes from the Nexus and the rules keep it. Only that order is
+// wrong. Both ability-loss Auras on a creature here (Kenrith's
+// Transformation, Darksteel Mutation) also set the creature types in
+// layer 4, independently of the Nexus, so timestamps decide: an Aura
+// attached AFTER the Nexus entered leaves an Elk (or Insect) and
+// nothing else, which is the rules answer and what the engine gives.
 func init() {
 	Register(Spec{
 		OracleID:     "9b2cdbed-c733-409b-b0e4-2c8960c25111",
@@ -75,7 +80,7 @@ func init() {
 			"Creature spells you cast and creature cards you own outside the battlefield aren't every creature type — only creatures you control on the battlefield are.",
 			"A permanent that becomes a creature after Maskwood Nexus is on the battlefield, such as a Vehicle you crew, isn't every creature type.",
 			"The Warring Triad or a sleeping Arixmethes, Slumbering Isle that entered after Maskwood Nexus still counts as every creature type while it isn't a creature.",
-			"A creature you control that has lost all its abilities, such as one enchanted by Kenrith's Transformation, isn't every creature type.",
+			"A creature you control that lost all its abilities before Maskwood Nexus entered, such as one already enchanted by Kenrith's Transformation, isn't every creature type.",
 		},
 		Static: []game.StaticAbility{
 			AllCreatureTypesGrant(TribeFilter{YoursOnly: true}),
