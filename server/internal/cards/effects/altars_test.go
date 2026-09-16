@@ -136,6 +136,7 @@ func TestAltarViewOffersOnlyYourCreatures(t *testing.T) {
 	g := newCatalogGame(t)
 	me, them := g.Seats[0], g.Seats[1]
 	altar := seedPermanentWithOracle(g, me.ID, "Ashnod's Altar", "Artifact", ashnodsAltarOracle)
+	knownToTable(g, altar)
 	mine := seedCreature(g, "My Bear", me.ID)
 	theirs := seedCreature(g, "Their Bear", them.ID)
 
@@ -180,6 +181,7 @@ func TestAltarViewHidesOptionsWhenBoardIsEmpty(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	altar := seedPermanentWithOracle(g, me.ID, "Ashnod's Altar", "Artifact", ashnodsAltarOracle)
+	knownToTable(g, altar)
 
 	view := protocol.ViewOfGameFor(g, me.ID.String())
 	seen := false

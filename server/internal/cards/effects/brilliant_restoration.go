@@ -15,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // castable with an empty graveyard to no effect.
 //
 // Sandbox simplification, declared: an Aura returned this way comes
-// back UNATTACHED, and CR 704.5n then puts it straight into the
+// back UNATTACHED, and CR 704.5m then puts it straight into the
 // graveyard. CR 303.4f is the clause that is missing — it lets the
 // Aura's controller choose what it enchants as it enters, and the
 // reanimation path has no such prompt. So the Aura goes back to the
@@ -23,7 +23,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // printed (the Aura does nothing), never stronger.
 //
 // It used to SIT on the battlefield forever instead, which was worse
-// than weak: an Aura attached to nothing is a board state CR 704.5n
+// than weak: an Aura attached to nothing is a board state CR 704.5m
 // forbids and no sequence of legal plays can reach. That branch of
 // the state-based action landed in the S24 tail.
 func init() {

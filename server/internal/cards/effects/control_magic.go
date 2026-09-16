@@ -20,7 +20,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Everything Mind Control's file records applies here verbatim:
 // control reverts by itself when the Aura leaves, CR 302.6 gives the
 // creature summoning sickness under its new controller, CR 506.4
-// removes it from combat, and CR 704.5n puts the Aura in the
+// removes it from combat, and CR 704.5m puts the Aura in the
 // graveyard if the creature stops being one.
 //
 // No simplification.

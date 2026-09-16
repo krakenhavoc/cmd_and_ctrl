@@ -61,6 +61,9 @@ func init() {
 				Except: func(t *game.Card) {
 					t.Power = (power + 1) / 2
 					t.Toughness = (toughness + 1) / 2
+					// The exception sets a number, so the copy's
+					// toughness is no `*` stand-in (#683).
+					t.VariableToughness = false
 				},
 			}.Apply(ctx)
 		},

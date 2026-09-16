@@ -30,16 +30,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // observable difference is what happens when the last Haunting
 // leaves: the tokens lose their sizing and shrink to 0/0, where
 // printed they keep it for good. Weaker than printed, never
-// stronger. (They shrink rather than die: the engine's toughness
-// state-based action skips a printed 0/0 with no counters — the
-// CurrentToughness convention — so a shrunken Cleric lingers as a
-// 0/0 body.)
+// stronger. (A shrunken Cleric that never had a counter lingers as a
+// 0/0 body: the engine's toughness state-based action skips a
+// printed 0/0 with no counters, the CurrentToughness convention. One
+// that had counters and lost them all is not skipped
+// (Card.LostLastCounter, #683), so it dies when it shrinks, which is
+// weaker still: a printed Cleric never shrinks at all. The batch 29
+// tests pin both.)
 func init() {
 	Register(Spec{
 		OracleID:     "e310ab58-180e-4840-bc8d-9f9b06f1b478",
 		Name:         "Hallowed Haunting",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The Spirit Cleric tokens get their size from Hallowed Haunting rather than on their own, so if it leaves the battlefield they shrink to 0/0."},
+		Caveats:      []string{"The Spirit Cleric tokens get their size from Hallowed Haunting rather than on their own, so if it leaves the battlefield they shrink to 0/0, and a Spirit Cleric that had counters and lost them all dies."},
 		Static: []game.StaticAbility{
 			b16GrantKeywords(b29CreaturesYouControlWithSevenEnchantments, "flying", "vigilance"),
 			b29SpiritClericSizing(),

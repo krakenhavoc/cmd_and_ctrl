@@ -467,7 +467,7 @@ type StackItemView struct {
 	// permanent, so a responder needs to see which is on the stack.
 	AltCost string `json:"alt_cost,omitempty"`
 
-	// IsCopy marks a CR 706.10 spell copy — Reverberate's output,
+	// IsCopy marks a CR 707.10 spell copy — Reverberate's output,
 	// not a cast card (S30). Public and worth showing: the copy and
 	// the spell it came from are two identical-looking entries on
 	// the stack, and which one is the copy decides what a responder
@@ -1496,7 +1496,11 @@ func viewOfTapCost(g *game.Game, caster uuid.UUID, c *CardView, tc *game.TapPerm
 		ColorClause: tc.ColorClause,
 		DemandsX:    tc.DemandsX(),
 	}
-	opts := viewOfLegalTargets(g.LegalTargetsForEffect(caster, tc.Spec), tc.Spec)
+	// SpecCandidatesForEffect, not LegalTargetsForEffect: tapping a
+	// permanent for convoke or waterbend doesn't target it, so a
+	// shrouded creature you control is still a legal tapper. The
+	// engine's own check (tap_cost.go) already works this way.
+	opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, tc.Spec), tc.Spec)
 	opts.Cards = filterToController(g, opts.Cards, caster)
 	opts.Players = nil
 	opts.Min, opts.Max, opts.CountFromX = 0, 0, false
@@ -1667,9 +1671,7 @@ func stampCombatTargets(g *game.Game, view *GameView) {
 // Split from viewOfManaAbilities because that runs while building the
 // base card view, which has no game handle — computing a legal set
 // needs one. Same division the activated abilities already use, and
-// the same CR 701.21a filter: a sacrifice cost may only be paid with
-// permanents you control, which the generic legal-target walk doesn't
-// know.
+// the same list: sacrificeCostOptions.
 func stampManaSacrificeOptions(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView) {
 	raw := game.ManaAbilitiesForCard(card)
 	for i := range views {
@@ -1677,13 +1679,7 @@ func stampManaSacrificeOptions(g *game.Game, card game.Card, controller uuid.UUI
 			continue
 		}
 		views[i].SacrificeLabel = raw[i].SacrificeOther.Label
-		opts := abilityLegalTargets(g, controller, raw[i].SacrificeOther)
-		if opts == nil {
-			continue
-		}
-		opts.Cards = filterToController(g, opts.Cards, controller)
-		opts.Players = nil
-		views[i].SacrificeOptions = opts
+		views[i].SacrificeOptions = sacrificeCostOptions(g, controller, raw[i].SacrificeOther)
 	}
 }
 
@@ -2403,9 +2399,10 @@ func redactZone(z ZoneView, isKnower func(CardView) bool) ZoneView {
 
 // redactCardForViewer applies the S13.5 visibility rule to a single
 // card. When `known` is true the card keeps every printed
-// characteristic; when false, name / type_line / scryfall_id /
-// power / toughness / counters / is_commander zero out so the wire
-// doesn't leak identity. The unexported `knowers` map is always
+// characteristic; when false, every field derived from the card's
+// identity zeroes out — name, type line, costs, faces, abilities,
+// catalog flags — so the wire doesn't leak identity.
+// face_down_view_test.go pins the survivors as an allowlist. The unexported `knowers` map is always
 // cleared on the output so repeated FilterViewFor calls stay
 // idempotent.
 func redactCardForViewer(c CardView, known bool) CardView {
@@ -2446,6 +2443,37 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.Faces = nil
 	out.Layout = ""
 	out.ActiveFace = 0
+	// #95: everything below is read off the card's own text or type
+	// line — the catalog entry, its abilities, its target prompt — and
+	// so names it as surely as the fields above. A face-down Forest
+	// that still shipped "Add {G}" in mana_abilities, or a face-down
+	// catalog card that still shipped auto=true and target_mode, was
+	// the leak: Necropotence's face-down exiles carried both, and so
+	// did every card in the owner's own library.
+	//
+	// What survives is the game state around the card rather than the
+	// card: instance id, owner, controller, tapped, damage, combat
+	// declarations, goad, attachment and battlefield position.
+	out.Auto = false
+	out.TargetMode = ""
+	out.ManaAbilities = nil
+	out.ActivatedAbilities = nil
+	out.Restrictions = nil
+	out.ExilePlay = nil
+	// The hand / command / graveyard stamps are only meaningful to a
+	// player who can read the card, and each one quotes it: a mode
+	// prompt, an additional-cost label, a target clause's bounds.
+	out.LegalTargets = nil
+	out.Modes = nil
+	out.AdditionalCost = nil
+	// Type-derived bits. Sickness says "creature without haste",
+	// loyalty says "planeswalker", defense and a protector say
+	// "battle". Defense is also just the defense counter, and the
+	// counters map is already gone.
+	out.SummoningSick = false
+	out.LoyaltyActivated = false
+	out.Defense = 0
+	out.ProtectorPlayer = ""
 	return out
 }
 
@@ -2714,12 +2742,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 		}
 		if a.Cost.SacrificeOther != nil {
 			v.SacrificeLabel = a.Cost.SacrificeOther.Label
-			v.SacrificeOptions = abilityLegalTargets(g, caster, a.Cost.SacrificeOther)
-			// A sacrifice cost can only be paid with your own
-			// permanents (CR 701.21a); the legal-target walk doesn't
-			// know that, so filter here.
-			v.SacrificeOptions.Cards = filterToController(g, v.SacrificeOptions.Cards, caster)
-			v.SacrificeOptions.Players = nil
+			v.SacrificeOptions = sacrificeCostOptions(g, caster, a.Cost.SacrificeOther)
 		}
 		if a.Cost.Crew > 0 {
 			v.CrewCost = a.Cost.Crew
@@ -2762,11 +2785,34 @@ func crewOptions(g *game.Game, caster uuid.UUID) *LegalTargetsView {
 	return out
 }
 
-// abilityLegalTargets is the legal set for one of an ability's
-// clauses (its target clause, or the permanents that can pay its
-// sacrifice cost). Caller must hold g.mu.
+// abilityLegalTargets is the legal set for an ability's TARGET
+// clause. It applies the targeting gate (hexproof, shroud), so it is
+// only for clauses whose text says "target". A cost clause goes
+// through sacrificeCostOptions instead. Caller must hold g.mu.
 func abilityLegalTargets(g *game.Game, caster uuid.UUID, spec *game.TargetSpec) *LegalTargetsView {
-	lt := g.LegalTargetsForEffect(caster, spec)
+	return abilityClauseView(g.LegalTargetsForEffect(caster, spec), spec)
+}
+
+// sacrificeCostOptions is the set of permanents that can pay an
+// ability's "sacrifice another" cost, for both activated and mana
+// abilities.
+//
+// It uses SpecCandidatesForEffect, not the targeting gate: paying a
+// cost doesn't target (CR 601.2h), so a shrouded creature you control
+// can still be sacrificed. The engine validates the payment the same
+// way (activated.go). A sacrifice cost can only be paid with
+// permanents you control (CR 701.21a), and the spec walk doesn't know
+// that, so this filters to the controller. Caller must hold g.mu.
+func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetSpec) *LegalTargetsView {
+	out := abilityClauseView(g.SpecCandidatesForEffect(controller, spec), spec)
+	out.Cards = filterToController(g, out.Cards, controller)
+	out.Players = nil
+	return out
+}
+
+// abilityClauseView converts a candidate set for one ability clause
+// into its wire form.
+func abilityClauseView(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
 	// Min / Max come off the spec, exactly as the cast-time path
 	// stamps them (viewOfLegalTargets). Omitting them shipped every
 	// ability clause to the client as min 0 / max 0 — "unbounded,

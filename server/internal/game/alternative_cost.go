@@ -117,7 +117,7 @@ type AlternativeCost struct {
 	ReturnToHand *TargetSpec
 
 	// ExileFromGraveyard is escape's "Exile N other cards from your
-	// graveyard" (CR 702.144a) — the half of the escape cost that is
+	// graveyard" (CR 702.138a) — the half of the escape cost that is
 	// not mana, and the reason escape is priced rather than merely
 	// permitted. Added in S29.
 	//
@@ -188,7 +188,7 @@ type AlternativeCost struct {
 
 	// WarpExile is warp's "exile this permanent at the beginning of
 	// the next end step, then you may cast it from exile on a later
-	// turn" (CR 702.183a).
+	// turn" (CR 702.185a).
 	//
 	// The sibling of SacrificeOnEntry, and modelled the same way:
 	// the cost attaches a clause to the permanent's ENTRY, and the
@@ -207,7 +207,7 @@ type AlternativeCost struct {
 	WarpExile bool
 
 	// EntersWithCounterName / EntersWithCounterCount is "this
-	// creature escapes with a +1/+1 counter on it" (CR 702.144c) —
+	// creature escapes with a +1/+1 counter on it" (CR 702.138c) —
 	// the clause most escape creatures print directly under the
 	// cost, and the reason an escaped Voracious Typhon is a 7/7
 	// rather than the 4/4 in the corner. Added in S29.
@@ -529,7 +529,7 @@ func TargetSpecUnderAlternativeCost(base *TargetSpec, alt *AlternativeCost) *Tar
 // cost attaches to the permanent's ENTRY: evoke's "it's sacrificed
 // when it enters" (CR 702.74b) and warp's "exile this at the
 // beginning of the next end step, then you may cast it from exile on
-// a later turn" (CR 702.183a).
+// a later turn" (CR 702.185a).
 //
 // Called from the resolution path right after the permanent lands
 // and its ETB hook fires, which is the last moment the StackItem —
@@ -576,7 +576,7 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 }
 
 // applyAltCostEntryCountersLocked folds "this creature escapes with
-// a +1/+1 counter on it" (CR 702.144c) into the permanent's ENTRY
+// a +1/+1 counter on it" (CR 702.138c) into the permanent's ENTRY
 // event, before the CR 614 pipeline runs.
 //
 // The sibling of queueAltCostEntryTriggerLocked and the reason both
@@ -608,7 +608,7 @@ func (g *Game) applyAltCostEntryCountersLocked(ev *ReplacementEvent, card Card, 
 
 // scheduleWarpExileLocked schedules warp's "exile this permanent at
 // the beginning of the next end step, then you may cast it from
-// exile on a later turn" (CR 702.183a).
+// exile on a later turn" (CR 702.185a).
 //
 // The "later turn" floor is computed HERE, at schedule time, rather
 // than inside the effect. Both readings give the same answer for a

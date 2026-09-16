@@ -193,11 +193,16 @@ type Game struct {
 	// DiscardPending is the cleanup-step pause map (S13.4): keys
 	// are player IDs that need to discard, values are the count
 	// each player must discard. Set at cleanup-step entry by
-	// runStepEntryHooksLocked when Hand.Size() > MaxHandSize for
-	// any non-eliminated player; cleared per-player by the
-	// discard_selection action. The cleanup auto-advance is
-	// blocked while this map is non-empty so the cursor pauses
-	// for player input. Added in S13.4.
+	// populateDiscardPendingLocked, for the active player only
+	// (CR 514.1), when their hand is over their maximum hand size;
+	// cleared per-player by the discard_selection action. The
+	// cleanup auto-advance is blocked while this map is non-empty so
+	// the cursor pauses for player input. Added in S13.4.
+	//
+	// It is not cleanup-only: DiscardChoiceForEffect (Mind Rot,
+	// looting) adds to it too. That is a bug (#651). Outside cleanup
+	// nothing waits on the map, and entering cleanup resets it, so an
+	// effect discard still owed is lost.
 	DiscardPending map[uuid.UUID]int
 
 	// Promises is the directed per-pair "I owe you" promise-token count

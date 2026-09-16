@@ -90,6 +90,7 @@ func init() {
 func hashatonZombieException(t *game.Card) {
 	t.Power = 4
 	t.Toughness = 4
+	t.VariableToughness = false // a printed 4, not a `*` stand-in (#683)
 	t.Colors = []string{"B"}
 	t.TypeLine = retypedTypeLine(t.TypeLine, "Zombie")
 	t.Tapped = true

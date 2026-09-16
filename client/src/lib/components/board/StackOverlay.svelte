@@ -31,6 +31,7 @@
   import type { CardView, PlayerView, StackItemView, ZoneView } from "../../protocol";
   import { seatColor } from "../../colors";
   import { cardImageURL } from "../../cardImage";
+  import { cardArt } from "../../cardArt";
   import Icon from "../Icon.svelte";
   import { targeting, isLegalCardTarget } from "../../targeting";
   import { hoveredCard } from "../../cardTypes";
@@ -310,7 +311,7 @@
           >
             <div class="thumb">
               {#if src}
-                <img {src} alt="" loading="lazy" decoding="async" />
+                <img {src} alt="" loading="lazy" decoding="async" use:cardArt={src} />
               {:else}
                 <span class="glyph">
                   {#if item.kind === "triggered"}<Icon name="bolt" size={16} />{:else}<Icon
@@ -569,6 +570,10 @@
     cursor: pointer;
   }
   .thumb {
+    /* positioned for the failed-art pip (#33) */
+    position: relative;
+    --art-error-top: 2px;
+    --art-error-right: 2px;
     width: 40px;
     height: 56px;
     border-radius: 3px;

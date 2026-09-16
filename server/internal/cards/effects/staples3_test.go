@@ -39,6 +39,27 @@ func seedPermanentWithOracle(g *game.Game, owner uuid.UUID, name, typeLine, orac
 	return id
 }
 
+// knownToTable marks every seat a knower of a battlefield card seeded
+// straight into the zone, which is what the engine does when a card
+// really enters (CR 400.2: the battlefield is public). The seed
+// helpers skip it, and a view test needs it: since #95 the wire
+// strips mana abilities and the rest of the catalog surface from a
+// card its viewer does not know.
+func knownToTable(g *game.Game, id uuid.UUID) {
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID != id {
+				continue
+			}
+			known := make(map[uuid.UUID]bool, len(g.Seats))
+			for _, p := range g.Seats {
+				known[p.ID] = true
+			}
+			g.Battlefield.Cards[i].KnownBy = known
+		}
+	})
+}
+
 // --- Pitiless Plunderer -----------------------------------------
 
 func TestPitilessPlundererMakesTreasureOnDeath(t *testing.T) {

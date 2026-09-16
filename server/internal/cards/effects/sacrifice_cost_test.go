@@ -341,6 +341,9 @@ func TestAdditionalCostViewOffersOnlyYourPermanents(t *testing.T) {
 	me.Hand.PushTop(game.Card{
 		InstanceID: spell, Name: "Village Rites", TypeLine: "Instant",
 		OracleID: villageRitesOracle, Owner: me.ID, Controller: me.ID,
+		// Drawn cards are known to their owner; a seeded one has to
+		// say so, or the view redacts the clause under test (#95).
+		KnownBy: map[uuid.UUID]bool{me.ID: true},
 	})
 
 	view := protocolViewFor(t, g, me.ID)
