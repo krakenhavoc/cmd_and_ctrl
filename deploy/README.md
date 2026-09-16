@@ -47,15 +47,35 @@ CD is gated `if: env.IS_DEV != 'true'`; do not work around that by hand.
    | `CMDCTRL_ADMIN_TOKEN` | copied on the host from `/etc/cmd_and_ctrl/env` every deploy, so it cannot drift from the server's |
 
    `CMDCTRL_SERVER_BASE_URL` and `CMDCTRL_CLIENT_BASE_URL` are left to
-   their defaults, which are production's values. The step skips with a
-   notice while the secret is unset, or while the `cmdctrl-bot` group
-   does not exist.
-4. Restarts the bot, **only if the unit is enabled**.
+   their defaults, which are production's values. The step skips while
+   the secret is unset, or while the `cmdctrl-bot` group does not exist.
+4. Restarts the bot, **only if the unit is enabled**, then checks it is
+   still active 4 seconds later.
 
 Rotating the bot token: update the secret, then start a new `main`
 deploy (see step 3 below for why a new run rather than a rerun).
 
-### Operator setup (running VM and every rebuild)
+### What CD reports
+
+The bot's state never fails a deploy; only a failed copy or ssh does.
+How loud CD is depends on whether the `CMDCTRL_DISCORD_BOT_TOKEN` secret
+is set. CD computes that as a `true`/`false` flag (`BOT_TOKEN_SET`) and
+never prints the token.
+
+| Host state | Secret unset | Secret set |
+|---|---|---|
+| no `cmdctrl-bot` group ("Sync bot env"; `bot.env` not written) | `::notice::` (the step skips before looking) | `::warning::` |
+| group but no `cmdctrl-bot` user ("Sync bot env"; `bot.env` still written) | `::notice::` (the step skips before looking) | `::warning::` |
+| unit not enabled (restart step; bot not restarted) | `::notice::` | `::warning::` |
+| unit not active 4 s after its restart (restart step) | `::notice::` | `::warning::` |
+
+Every warning is titled "Discord bot not provisioned" or "Discord bot
+not running" and points at the one-time host setup below. So once the
+secret is set, a green deploy with no warning annotations means the bot
+was installed, configured, restarted and survived its first 4 seconds.
+It does not prove the bot logged in; see [Verify](#verify).
+
+### One-time host setup (repeat after every rebuild)
 
 The HomeLab cloud-init template does not create the `cmdctrl-bot` user
 yet (the HomeLab half of #249). Until it does, these steps are needed on
@@ -63,11 +83,12 @@ the running production VM **and again after every rebuild of
 production**. A rebuilt VM comes up with no `cmdctrl-bot` user and no
 enabled unit, which is how the bot was lost in the August reprovision.
 
-CD will not tell you. On such a host "Sync bot env" skips with only a
-notice, "Install bot systemd unit" installs the unit without enabling
-it, the restart step skips, and every deploy stays green with no bot.
-After any rebuild, check `systemctl is-enabled cmd-and-ctrl-bot` and
-`id cmdctrl-bot`.
+CD warns but stays green. With the secret set, such a host gets a
+`::warning::` from "Sync bot env" (no `cmdctrl-bot` group) and another
+from the restart step (unit not enabled), and the deploy still passes
+with no bot. Look for them on the first `main` deploy after any rebuild,
+or check `systemctl is-enabled cmd-and-ctrl-bot` and `id cmdctrl-bot`
+by hand.
 
 This is not a permission limit: CD runs as `krkn` with sudo. The user
 belongs in the template, which is where a rebuild should get it from.
@@ -97,7 +118,8 @@ restart step keys on it.
    deploy that first installs or changes the unit, and
    `cmd-and-ctrl-bot.service unchanged.` after that. Either is fine.
    "Sync bot env" should print `set CMDCTRL_...` for all four keys, with
-   no notice about a missing group or secret.
+   no annotation about a missing group, user or secret. The restart step
+   still warns that the unit is not enabled; step 4 fixes that.
 4. Enable and start the bot:
 
    ```sh
@@ -115,7 +137,9 @@ restart step keys on it.
 
 `systemctl is-active` is not proof. The unit is `Type=simple`, so it
 reports active the moment the process forks, even when the bot exits a
-second later and systemd restarts it every 5 seconds. Check:
+second later and systemd restarts it every 5 seconds. CD's 4-second
+check catches a bot that dies at once, but not one that fails later.
+Check:
 
 ```sh
 journalctl -u cmd-and-ctrl-bot -n 50 --no-pager   # "bot config loaded", then "discord session ready"

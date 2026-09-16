@@ -212,6 +212,15 @@ jobs:
       # Nothing else branches on it; see "Deploy bot binary" for why
       # the bot is the exception.
       IS_DEV: ${{ github.ref != 'refs/heads/main' }}
+      # "true" or "false": whether the CMDCTRL_DISCORD_BOT_TOKEN secret is
+      # non-empty. Only the comparison is evaluated here, never the token,
+      # so this is safe to read in any step. It decides how loud the
+      # production bot steps are about a host that cannot run the bot (no
+      # cmdctrl-bot user or group, unit not enabled, unit not active after
+      # its restart): unset means the bot is not wanted yet, so a quiet
+      # ::notice::; set means it is, so a ::warning::. Neither fails the
+      # deploy. Consumed only by the bot steps, which are all prod-gated.
+      BOT_TOKEN_SET: ${{ secrets.CMDCTRL_DISCORD_BOT_TOKEN != '' }}
 
       SSH_OPTS: -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10
 
@@ -350,7 +359,8 @@ jobs:
       # deploy/README.md; needed again after every rebuild of production),
       # and "Restart cmd-and-ctrl-bot service (if enabled)" keys on it --
       # so an unprovisioned host keeps deploying green instead of
-      # crash-looping a bot with no bot.env.
+      # crash-looping a bot with no bot.env. That step, not this one,
+      # reports a unit that is not enabled.
       - name: Install bot systemd unit
         if: env.IS_DEV != 'true'
         run: |
@@ -368,9 +378,6 @@ jobs:
               sudo install -o root -g root -m 0644 "$NEW" "$UNIT"
               sudo systemctl daemon-reload
               echo "cmd-and-ctrl-bot.service installed; daemon reloaded."
-            fi
-            if ! systemctl is-enabled cmd-and-ctrl-bot >/dev/null 2>&1; then
-              echo "::notice::cmd-and-ctrl-bot is not enabled. Enabling it is an operator step, needed again after every rebuild of production -- see deploy/README.md."
             fi
           '
 
@@ -620,13 +627,18 @@ jobs:
       # which the cmdctrl-bot service user could not read. So this step
       # creates it with the right group and re-asserts owner and mode on
       # every run before any value is written -- which needs the cmdctrl-bot
-      # group, created by the operator (deploy/README.md) on the running VM
-      # and again after every rebuild, until the HomeLab template creates
-      # it. Without it the step skips with a notice.
+      # group, created by the operator (deploy/README.md, "One-time host
+      # setup") on the running VM and again after every rebuild, until the
+      # HomeLab template creates it.
       #
-      # Skips cleanly when the token secret is unset, so main keeps deploying
-      # before the bot is configured. Values travel over stdin, never ssh
-      # argv, exactly as in "Sync server env (Discord sign-in)".
+      # Skips with a ::notice:: when the token secret is unset
+      # (BOT_TOKEN_SET), so main keeps deploying before the bot is wanted.
+      # Past that point the secret is set, so the bot is wanted, and a host
+      # that cannot run it is a ::warning:: that leaves the deploy green: a
+      # missing cmdctrl-bot group skips the write, and a missing
+      # cmdctrl-bot user (group present) still writes bot.env. Values
+      # travel over stdin, never ssh argv, exactly as in "Sync server env
+      # (Discord sign-in)".
       #
       # Deliberately NOT written to ${ENV_FILE}: no server code reads the bot
       # token yet. ADR 0051 Decision 5's DM invites (#613) will add it there.
@@ -637,7 +649,7 @@ jobs:
           CMDCTRL_DISCORD_APP_ID: ${{ vars.CMDCTRL_DISCORD_APP_ID }}
           CMDCTRL_DISCORD_GUILD_IDS: ${{ vars.CMDCTRL_DISCORD_GUILD_IDS }}
         run: |
-          if [ -z "${CMDCTRL_DISCORD_BOT_TOKEN}" ]; then
+          if [ "${BOT_TOKEN_SET}" != "true" ]; then
             echo "::notice::CMDCTRL_DISCORD_BOT_TOKEN secret not set; skipping bot env sync (the bot stays unconfigured)."
             exit 0
           fi
@@ -653,16 +665,26 @@ jobs:
             fi
             sudo chown root:cmdctrl-bot ${BOT_ENV_FILE}
             sudo chmod 0640 ${BOT_ENV_FILE}
-            echo ready
+            if getent passwd cmdctrl-bot >/dev/null; then
+              echo ready
+            else
+              echo ready-no-user
+            fi
           ")
-          if [ "${prepared}" = "no-group" ]; then
-            echo "::notice::cmdctrl-bot group does not exist on ${CMDCTRL_HOST}; skipping bot env sync. Create the cmdctrl-bot system user (deploy/README.md; a rebuilt host needs it again), then redeploy."
-            exit 0
-          fi
-          if [ "${prepared}" != "ready" ]; then
-            echo "::error::Could not prepare ${BOT_ENV_FILE} on ${CMDCTRL_HOST} (got: ${prepared})."
-            exit 1
-          fi
+          case "${prepared}" in
+            no-group)
+              echo "::warning title=Discord bot not provisioned::CMDCTRL_DISCORD_BOT_TOKEN is set, but the cmdctrl-bot group does not exist on ${CMDCTRL_HOST}, so ${BOT_ENV_FILE} was not written and the bot cannot run. Do the one-time host setup in deploy/README.md (\"One-time host setup\"; a rebuilt host needs it again), then push a new main deploy."
+              exit 0
+              ;;
+            ready) ;;
+            ready-no-user)
+              echo "::warning title=Discord bot not provisioned::CMDCTRL_DISCORD_BOT_TOKEN is set, but the cmdctrl-bot user does not exist on ${CMDCTRL_HOST} (its group does), so cmd-and-ctrl-bot.service cannot start. ${BOT_ENV_FILE} is still written. Do the one-time host setup in deploy/README.md (\"One-time host setup\"; a rebuilt host needs it again)."
+              ;;
+            *)
+              echo "::error::Could not prepare ${BOT_ENV_FILE} on ${CMDCTRL_HOST} (got: ${prepared})."
+              exit 1
+              ;;
+          esac
 
           missing=0
           for KEY in CMDCTRL_DISCORD_BOT_TOKEN CMDCTRL_DISCORD_APP_ID \
@@ -713,19 +735,52 @@ jobs:
         # installs it but never enables it). Once the unit is enabled,
         # this branch is the steady state.
         #
-        # `is-active` right after a restart only proves the process
-        # forked (Type=simple): a bot that exits on "bot config invalid"
-        # still prints active here. The real check is journalctl
-        # ("discord session ready") and NRestarts -- see deploy/README.md.
+        # Never fails the deploy over the bot's state; only an ssh
+        # failure does. A unit that is not enabled, or not active 4 s
+        # after its restart, is a ::notice:: while the token secret is
+        # unset and a ::warning:: once it is set (BOT_TOKEN_SET).
+        #
+        # Why wait 4 s: `is-active` right after a restart only proves the
+        # process forked (Type=simple), so a bot that exits at once (on
+        # "bot config invalid", or a missing cmdctrl-bot user) would
+        # still print active. With RestartSec=5 such a bot is still
+        # "activating" (waiting to be restarted) 4 s later. A bot that
+        # fails after that is not caught here; the real check is
+        # journalctl ("discord session ready") and NRestarts -- see
+        # deploy/README.md.
         run: |
-          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} '
-            if systemctl is-enabled cmd-and-ctrl-bot >/dev/null 2>&1; then
-              sudo systemctl restart cmd-and-ctrl-bot
-              systemctl is-active cmd-and-ctrl-bot
-            else
-              echo "cmd-and-ctrl-bot unit is not enabled; skipping bot restart."
+          state=$(ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} '
+            if ! systemctl is-enabled cmd-and-ctrl-bot >/dev/null 2>&1; then
+              echo not-enabled
+              exit 0
             fi
-          '
+            if ! sudo systemctl restart cmd-and-ctrl-bot >&2; then
+              echo restart-failed
+              exit 0
+            fi
+            sleep 4
+            systemctl is-active cmd-and-ctrl-bot || true
+          ')
+
+          case "${state}" in
+            active)
+              echo "cmd-and-ctrl-bot restarted; still active 4 s later."
+              ;;
+            not-enabled)
+              if [ "${BOT_TOKEN_SET}" = "true" ]; then
+                echo "::warning title=Discord bot not running::CMDCTRL_DISCORD_BOT_TOKEN is set, but cmd-and-ctrl-bot is not enabled on ${CMDCTRL_HOST}, so the bot was not restarted and is not running. Do the one-time host setup in deploy/README.md (\"One-time host setup\"; a rebuilt host needs it again)."
+              else
+                echo "::notice::cmd-and-ctrl-bot is not enabled; skipping bot restart. Enabling it is an operator step, needed again after every rebuild of production -- see deploy/README.md."
+              fi
+              ;;
+            *)
+              if [ "${BOT_TOKEN_SET}" = "true" ]; then
+                echo "::warning title=Discord bot not running::CMDCTRL_DISCORD_BOT_TOKEN is set, but cmd-and-ctrl-bot is not active on ${CMDCTRL_HOST} 4 s after its restart (state: ${state:-unknown}). Check journalctl -u cmd-and-ctrl-bot (\"bot config invalid\" names the missing key) and the one-time host setup in deploy/README.md (\"One-time host setup\")."
+              else
+                echo "::notice::cmd-and-ctrl-bot is not active 4 s after its restart (state: ${state:-unknown}); CMDCTRL_DISCORD_BOT_TOKEN is not set, so the bot is not expected to run."
+              fi
+              ;;
+          esac
 
       - name: Verify service is active
         run: |
