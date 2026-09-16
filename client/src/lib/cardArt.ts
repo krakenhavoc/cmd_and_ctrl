@@ -37,7 +37,10 @@
 //                ancestor — the pile <button> around a role="img"
 //                Card, not the Card — gets "Art failed to load" as its
 //                accessible description, and keyboard focus on it is
-//                the retry. cardArtRetry.ts has the full reasoning.
+//                the retry — where it can take focus: a role="img"
+//                Card with nothing focusable around it is no tab stop,
+//                and there the retry is pointer-only.
+//                cardArtRetry.ts has the full reasoning.
 //   static     — `interactive: false`: a signal with no retry at all.
 
 import type { Action } from "svelte/action";

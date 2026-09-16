@@ -183,6 +183,13 @@ export function createArtRetry(initialURL: string, hooks: ArtRetryHooks): ArtRet
 // tab stop), the failure is attached to the outermost such ancestor
 // (describedHost) as an accessible description, and keyboard focus on
 // it is the retry. If none does, the marker is a real button.
+//
+// Focus is only a retry where the host is focusable. A board Card with
+// no click is role="img" with no tabindex, and when nothing focusable
+// wraps it (a zone browser tile outside a target prompt) the keyboard
+// never reaches it, so that tile's art is retried by pointer only. A
+// marker made a tab stop there would still be the nameless, roleless
+// one described above.
 
 // FLATTENING_ROLES are the ARIA 1.2 roles whose children are
 // presentational. "image" is ARIA 1.3's synonym for "img".

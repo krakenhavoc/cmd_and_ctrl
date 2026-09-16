@@ -93,7 +93,10 @@ wiring only.
   is pointer-only (`aria-hidden`), the outermost such control (the
   pile `<button>` around a `role="img"` `Card`, not the `Card`) gets
   "Art failed to load" through `aria-describedby`, and keyboard focus
-  on it retries the art.
+  on it retries the art. That needs the control to take focus: a
+  `role="img"` `Card` with nothing focusable around it (a zone browser
+  tile with no target prompt, say) is not a tab stop, so its retry is
+  pointer-only.
 - Not for card backs (`/card-back*.jpg`), which are bundled assets.
   Nor for the seat avatar in `PlayerIdentity.svelte`: a commander art
   crop that fails there falls through to the seat-colour disc, which
