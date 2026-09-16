@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -39,11 +37,7 @@ func init() {
 		Replacements: []game.ReplacementEffect{
 			EntersAsCopyOf(
 				"Sakashima the Impostor",
-				func(g *game.Game, _ uuid.UUID, self uuid.UUID) []uuid.UUID {
-					return copyCandidates(g, self, func(c game.Card) bool {
-						return c.IsCreature()
-					})
-				},
+				anyCreatureOnBattlefield,
 				func(_ *game.ReplacementEvent, v *game.PrintedValues, _ *game.Game, _ *game.Card) {
 					v.SetName("Sakashima the Impostor")
 					v.AddSupertype("Legendary")

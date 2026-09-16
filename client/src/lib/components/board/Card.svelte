@@ -22,6 +22,7 @@
 
   import type { CardView } from "../../protocol";
   import { cardImageURL } from "../../cardImage";
+  import { cardArt } from "../../cardArt";
   import { hoveredCard } from "../../cardTypes";
   import { animateTap } from "../../animations";
   import { play } from "../../sounds";
@@ -74,6 +75,13 @@
     // to say who it is cursing — which is the entire card. Supplied by
     // BattlefieldRow; undefined for everything else.
     enchantedPlayer?: string;
+    // #33: request this card's art with fetchpriority="high". Opt-in,
+    // set only by Hand.svelte for the viewer's own hand — the art
+    // that is above the fold and latency-visible. Card is shared by
+    // hand, battlefield, command zone and attachment stacks, and
+    // marking every card on the table high is the same as marking
+    // none of them, so the default is no hint at all.
+    priority?: boolean;
     onClick?: (card: CardView, ev: MouseEvent) => void;
   }
 
@@ -101,6 +109,7 @@
     onActivateAbility,
     sorcerySpeedBlocked = "",
     enchantedPlayer,
+    priority = false,
     onClick,
   }: Props = $props();
 
@@ -289,7 +298,17 @@
       draggable="false"
     />
   {:else if imgSrc}
-    <img src={imgSrc} alt={card.name} loading="lazy" decoding="async" draggable="false" />
+    <!-- use:cardArt (#33): retry once, then a click-to-retry pip.
+         Front face only — the back above is a bundled asset. -->
+    <img
+      src={imgSrc}
+      alt={card.name}
+      loading="lazy"
+      decoding="async"
+      draggable="false"
+      fetchpriority={priority ? "high" : undefined}
+      use:cardArt={imgSrc}
+    />
     {#if card.is_commander}
       <span class="badge cmd" aria-hidden="true">CMD</span>
     {/if}
@@ -429,6 +448,40 @@
     /* Compose tap rotation (animated by GSAP via --tap-rot) with the
        CSS-only hover lift (--hover-lift). */
     transform: rotate(var(--tap-rot, 0deg)) translateY(var(--hover-lift, 0px));
+    /* The failed-art pip (#33) sits on the left edge, one badge row
+       down. The top-right corner is the busiest on the tile — GOAD,
+       the hand's cost chip and a counter column that grows downward
+       with every counter type — and the left edge of an UNTAPPED tile
+       is the part that stays visible where tiles overlap: the hand
+       fan and its top-55% peek, the untapped land strip. Not an
+       attachment tucked behind its host: once either of them is
+       tapped, the host covers most of that edge, so BattlefieldRow
+       moves an attachment's pip to its bottom-left corner. 22px
+       clears the top badge row (CMD on the left; a GOAD or cost chip
+       wide enough to reach across a narrow tile). z-index 5 keeps it
+       above the counter column (4): on a tile under about 90px wide a
+       wide chip (a two-digit count) reaches under the pip, which
+       covers the chip's left end.
+       The pip's z-index only counts inside this tile — the transform
+       makes the tile its own stacking context — so a later tile that
+       overlaps it always paints over it. boardArtPip.test.ts checks
+       the rows and the attachment stacks. */
+    --art-error-top: 22px;
+    --art-error-left: 3px;
+    --art-error-right: auto;
+    --art-error-z: 5;
+  }
+  .card.tapped {
+    /* A tapped tile turns 90° clockwise: its left edge becomes its top
+       edge, and the further down the tile the pip sits, the further
+       left it ends up. At 22px it lands on the right of the turned
+       tile, under the next tapped land in the strip (which overlaps by
+       35% of a width) and under a tapped neighbour in a battlefield
+       row. Below about 54% of the height it is covered; 58% puts it on
+       the uncovered left, clear of the AUTO badge and a single keyword
+       row from 64px wide up. Hand tiles are never tapped, so the
+       hand's peek keeps 22px. */
+    --art-error-top: 58%;
   }
   .card.clickable {
     cursor: pointer;

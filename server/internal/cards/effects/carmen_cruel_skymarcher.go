@@ -33,7 +33,7 @@ import (
 //     graveyard"), through the ordinary reanimation path.
 //
 // Sandbox simplification, declared: an Aura returned this way comes
-// back unattached, and CR 704.5n puts it straight into the graveyard
+// back unattached, and CR 704.5m puts it straight into the graveyard
 // — the reanimation path has no "choose what it enchants" prompt
 // (CR 303.4f, the Brilliant Restoration posture). Weaker than
 // printed, never stronger.

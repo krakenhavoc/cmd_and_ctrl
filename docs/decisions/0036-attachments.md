@@ -1,6 +1,7 @@
 # ADR 0036 — Attachments: Equipment and Auras
 
 **Status:** Proposed · 2026-09-11 · S32 spike ([#280](https://github.com/krakenhavoc/cmd_and_ctrl/issues/280)), implementation S33 · Designs [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76) (S24)
+**Corrected:** 2026-09-16 (the [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159) closeout). This ADR, and the code comments and test messages it seeded, had the two attachment rules swapped. CR 704.5m is the **Aura** rule (to the graveyard, including "not attached to an object or player") and CR 704.5n is the **Equipment and Fortification** rule (unattach, stays on the battlefield). Both the April 4, 2025 and September 19, 2025 editions number them this way. The citations below are corrected in place. No decision and no behaviour changes.
 
 ## Context
 
@@ -133,8 +134,8 @@ control change is a Layer 2 effect and is explicitly **out of scope**
 
 **(c) What happens when the host becomes illegal.** This is the reason
 they cannot be one function. Equipment becomes unattached and **stays
-on the battlefield** (CR 704.5m). An Aura is put into its owner's
-**graveyard** (CR 704.5n). Same trigger condition, opposite outcome.
+on the battlefield** (CR 704.5n). An Aura is put into its owner's
+**graveyard** (CR 704.5m). Same trigger condition, opposite outcome.
 
 **(d) Re-attachment.** Equip may be activated again and moves the
 Equipment (CR 702.6d) — the second equip is an ordinary activation that
@@ -303,8 +304,8 @@ The two branches:
 for each battlefield card c where c.AttachedTo.Kind != "":
     if attachmentLegal(g, c) { continue }
     emit EventUnattach
-    if isAura(c) { routeBattlefieldCardToOwnerGraveyardLocked(c.ID) }  // 704.5n
-    else         { c.AttachedTo = TargetRef{} }                        // 704.5m
+    if isAura(c) { routeBattlefieldCardToOwnerGraveyardLocked(c.ID) }  // 704.5m
+    else         { c.AttachedTo = TargetRef{} }                        // 704.5n
     fired = true
 ```
 
@@ -787,11 +788,11 @@ hundreds of microseconds — and the contended case is flat.
 `server/internal/game/layers_concurrency_test.go` pins all three
 pairings under `go test -race`.
 
-## Amendment (S24 tail): decision 18 — CR 704.5n's second disjunct
+## Amendment (S24 tail): decision 18 — CR 704.5m's second disjunct
 
 Decision 8 spelled the unattach state-based action as a single
 condition — "is this attachment attached to something illegal?" — and
-implemented exactly that. CR 704.5n asks a wider question:
+implemented exactly that. CR 704.5m asks a wider question:
 
 > If an Aura is attached to an illegal object or player, **or is not
 > attached to an object or player**, that Aura is put into its owner's
@@ -830,7 +831,7 @@ Aura, by contrast, always acquires its host at resolution, so reaching
 the SBA unattached means an effect put it onto the battlefield without
 one.
 
-**CR 704.5m has no equivalent clause**, and Equipment is untouched: an
+**CR 704.5n has no equivalent clause**, and Equipment is untouched: an
 unattached Equipment is an ordinary artifact, which is where every
 Equipment starts its life.
 
