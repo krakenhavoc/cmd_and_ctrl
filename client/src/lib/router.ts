@@ -29,7 +29,21 @@ export type Route =
   // S12.5: /auth/discord/callback (server-side) redirects here with
   // the session details in the URL fragment. App.svelte's effect
   // reads them, installs the session, and navigates onward.
-  | { name: "oauthComplete"; token: string; gameID: string; playerID: string; expiresAt: string };
+  //
+  // Two shapes, matching the two ways the round-trip can start.
+  // From an invite link the fragment carries game + player_id and
+  // the user goes straight to the table. From the login page it
+  // carries neither — the session is identity-only — and the user
+  // lands back on login to type an invite code, with displayName
+  // there to show who they signed in as.
+  | {
+      name: "oauthComplete";
+      token: string;
+      expiresAt: string;
+      gameID?: string;
+      playerID?: string;
+      displayName?: string;
+    };
 
 const defaultRoute: Route = { name: "login" };
 
@@ -72,25 +86,27 @@ function parseHash(hash: string): Route {
         return { name: "game", gameID: parts[1] };
       }
       return { name: "lobby" };
-    case "oauth-complete":
-      // Server fragment carries the four Session fields. Any
-      // missing → we fall through to the login route rather than
-      // install a half-populated session.
-      if (
-        params.get("token") &&
-        params.get("game") &&
-        params.get("player_id") &&
-        params.get("expires_at")
-      ) {
-        return {
-          name: "oauthComplete",
-          token: params.get("token")!,
-          gameID: params.get("game")!,
-          playerID: params.get("player_id")!,
-          expiresAt: params.get("expires_at")!,
-        };
-      }
-      return defaultRoute;
+    case "oauth-complete": {
+      // token + expires_at are the minimum for any session. game and
+      // player_id arrive together on the invite-link variant and are
+      // both absent on the login-page one; one without the other is
+      // a malformed fragment, so it falls through to login rather
+      // than installing a half-populated session.
+      const token = params.get("token");
+      const expiresAt = params.get("expires_at");
+      const gameID = params.get("game");
+      const playerID = params.get("player_id");
+      if (!token || !expiresAt) return defaultRoute;
+      if (Boolean(gameID) !== Boolean(playerID)) return defaultRoute;
+      return {
+        name: "oauthComplete",
+        token,
+        expiresAt,
+        gameID: gameID ?? undefined,
+        playerID: playerID ?? undefined,
+        displayName: params.get("name") ?? undefined,
+      };
+    }
     default:
       return defaultRoute;
   }

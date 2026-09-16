@@ -55,6 +55,33 @@ test.describe("invite → join", () => {
     expect(session?.playerID).toBeTruthy();
   });
 
+  test("a bare invite code joins from the login page", async ({ page, request }) => {
+    const token = await adminLogin(request);
+    const game = await createGame(request, token, `Code Join ${Date.now()}`);
+    expect(game.invite_token).toBeTruthy();
+
+    // No session and no link — just the code, which is what somebody
+    // pastes out of a Discord message. The server resolves which table
+    // it belongs to (POST /join). These stacks have no Discord
+    // configured, so this exercises the manual half of that route: the
+    // name field appears once the input is a bare code.
+    await page.goto("/#/login");
+    await page.getByLabel("invite code or link").fill(game.invite_token!);
+    await page.getByLabel("your name").fill("E2E Code Player");
+    await page.getByRole("button", { name: "join" }).click();
+
+    // Same landing as the invite-link flow: lobby first, so the deck
+    // import step is not skipped.
+    await expect(page).toHaveURL(/#\/lobby$/);
+    await expect(page.getByText(/seat 1: E2E Code Player/)).toBeVisible();
+
+    const session = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("cmdctrl.session") ?? "null"),
+    );
+    expect(session?.principal.role).toBe("player");
+    expect(session?.gameID).toBe(game.id);
+  });
+
   test("empty player name keeps the join button disabled", async ({ page, request }) => {
     const token = await adminLogin(request);
     const game = await createGame(request, token, `Empty Name ${Date.now()}`);

@@ -202,6 +202,12 @@ func Handler(c Config) http.Handler {
 	avatarLimit := newLimiter(5, 40)
 	mux.Handle("POST /admin/login", limit.Middleware(handlerFunc(c, adminLogin)))
 	mux.Handle("POST /games/{id}/join", limit.Middleware(handlerFunc(c, joinGame)))
+	// Bare-code join (the login-page flow): no {id} in the path
+	// because the invite token names the table by itself, via
+	// Lobby.FindByInvite. Same limiter bucket as the path-scoped
+	// join — it is the same credential being guessed, and a
+	// code-only endpoint is the easier of the two to script.
+	mux.Handle("POST /join", limit.Middleware(handlerFunc(c, joinByCode)))
 	mux.Handle("POST /games/{id}/spectate", limit.Middleware(handlerFunc(c, spectateGame)))
 	// Invite-page preview: same bucket as join, since the invite in
 	// the query string is the credential being brute-forced.
@@ -468,6 +474,107 @@ func joinGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	// already has the player invite they used to get here, and the
 	// spectator invite is admin-only data that shouldn't leak to a
 	// freshly-seated player by default.
+	meta.InviteToken = ""
+	meta.SpectatorInvite = ""
+	return writeJSON(w, http.StatusOK, sessionResponse{
+		Token:     tok,
+		ExpiresAt: issued.ExpiresAt,
+		Principal: issued,
+		Game:      &meta,
+		PlayerID:  playerID,
+	})
+}
+
+// joinByCode is the login-page counterpart to joinGame: the caller
+// holds an invite code but no game id, which is the shape you get
+// when somebody pastes a code out of Discord chat instead of
+// clicking a link.
+//
+// Three callers, told apart by the session attached (if any):
+//
+//   - RoleIdentified — a Discord sign-in from the login page. The
+//     seat takes its name and avatar from the session's Discord
+//     identity and `name` in the body is ignored, so the identity
+//     on the seat is the one Discord vouched for rather than
+//     whatever the body claimed.
+//   - No session — behaves exactly like the classic join and
+//     requires `name`. Manual entry stays first-class: a deploy
+//     with Discord unconfigured still has to work.
+//   - Any other role — refused. An admin or an already-seated
+//     player arriving here is a client bug, and quietly minting
+//     them a second seat is worse than an error.
+//
+// The identity session is deliberately left valid after the swap.
+// It is how the same person joins a second table later without
+// signing in to Discord again; it cannot do anything on its own
+// (the WS authorizer refuses it outright).
+func joinByCode(c Config, w http.ResponseWriter, r *http.Request) error {
+	var body joinRequest
+	if err := decodeJSON(w, r, &body); err != nil {
+		return err
+	}
+	gameID, err := c.Lobby.FindByInvite(body.InviteToken)
+	if err != nil {
+		return err
+	}
+
+	// The session is OPTIONAL on this route, so a credential that
+	// fails to validate falls through to the manual-name path
+	// rather than 401-ing. An identity session that expired while
+	// the user was hunting for the code should feel like "type your
+	// name", not like being thrown out.
+	var identity DiscordIdentity
+	if cred := auth.CredentialFromRequest(r); cred != "" {
+		p, verr := c.Auth.Validate(r.Context(), cred)
+		switch {
+		case verr != nil:
+			// Expired or bogus — treat the caller as anonymous.
+		case p.Role == auth.RoleIdentified:
+			identity = DiscordIdentity{
+				ID:         p.DiscordID,
+				Username:   p.DiscordUsername,
+				GlobalName: p.DiscordGlobalName,
+				AvatarHash: p.DiscordAvatarHash,
+			}
+		default:
+			return httpError(http.StatusConflict,
+				"this session already belongs to a table — sign out before joining another")
+		}
+	}
+
+	// An empty name lets JoinWithIdentity fall back to the Discord
+	// display name; passing the body's name alongside a verified
+	// identity would let a caller relabel a seat Discord vouched for.
+	name := body.Name
+	if identity.Populated() {
+		name = ""
+	}
+	meta, playerID, err := c.Lobby.JoinWithIdentity(gameID, body.InviteToken, name, identity)
+	if err != nil {
+		return err
+	}
+
+	p := auth.Principal{
+		Role:     auth.RolePlayer,
+		GameID:   meta.ID,
+		PlayerID: playerID,
+		Name:     name,
+	}
+	if identity.Populated() {
+		p.Name = identity.DisplayName()
+		p.DiscordID = identity.ID
+		p.DiscordUsername = identity.Username
+		p.DiscordGlobalName = identity.GlobalName
+		p.DiscordAvatarHash = identity.AvatarHash
+	}
+	tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
+	if err != nil {
+		return err
+	}
+	setSessionCookie(c, w, tok, issued.ExpiresAt)
+
+	// Same scrub as joinGame: the joiner already has the player
+	// invite, and the spectator invite is admin-only data.
 	meta.InviteToken = ""
 	meta.SpectatorInvite = ""
 	return writeJSON(w, http.StatusOK, sessionResponse{

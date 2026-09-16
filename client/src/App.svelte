@@ -56,36 +56,48 @@
     // Landed on login with a live session? Kick to the lobby so the
     // reload-after-login flow doesn't leave you staring at a login
     // form you don't need.
-    if (s && r.name === "login") {
+    //
+    // An identity session is the one exception: a Discord sign-in
+    // that hasn't claimed a seat belongs ON the login page, because
+    // that is where the invite-code box lives. Bouncing it to the
+    // lobby would strand the user one step short of a table.
+    if (s && r.name === "login" && s.principal.role !== "identified") {
       navigate("#/lobby");
     }
   });
 
   // oauth-complete handoff (S12.5). /auth/discord/callback on the
-  // server 302s here with token / game / player_id / expires_at in
-  // the URL fragment. Install the session, clear the fragment so
-  // it doesn't survive a reload (we've already persisted the
-  // session to localStorage), and send the user into the game.
+  // server 302s here with the session in the URL fragment. Install
+  // it and move on; the fragment doesn't survive the navigate, and
+  // the session is already persisted to localStorage.
+  //
+  // The fragment's shape says which flow this was. With game +
+  // player_id the seat is already claimed, so go to the table. With
+  // neither, this is an identity-only session from the login page —
+  // land back on login, where the invite-code box is waiting.
   $effect(() => {
     const r = $route;
     if (r.name !== "oauthComplete") return;
+    const seated = Boolean(r.gameID && r.playerID);
     setSession({
       token: r.token,
       expiresAt: r.expiresAt,
       principal: {
         // The server's /me returns the full principal, but we
-        // don't block navigation on fetching it — a RolePlayer
-        // session with game_id + player_id is enough for Game.
-        role: "player",
+        // don't block navigation on fetching it — game_id +
+        // player_id is enough for Game, and the identity variant
+        // needs only the name it was handed.
+        role: seated ? "player" : "identified",
         game_id: r.gameID,
         player_id: r.playerID,
+        name: r.displayName,
         issued_at: new Date().toISOString(),
         expires_at: r.expiresAt,
       },
       playerID: r.playerID,
       gameID: r.gameID,
     });
-    navigate(`#/games/${r.gameID}`);
+    navigate(seated ? `#/games/${r.gameID}` : "#/login");
   });
 
   // Apply the subset of settings that hang off :root as CSS

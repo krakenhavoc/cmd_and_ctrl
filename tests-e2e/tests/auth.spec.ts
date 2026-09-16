@@ -55,8 +55,8 @@ test.describe("admin login", () => {
 
   test("pasting a full invite URL navigates to the join view", async ({ page }) => {
     const url = `${page.url().split("#")[0]}#/games/11111111-2222-3333-4444-555555555555/join?t=xyz`;
-    await page.getByLabel("invite link").fill(url);
-    await page.getByRole("button", { name: "open" }).click();
+    await page.getByLabel("invite code or link").fill(url);
+    await page.getByRole("button", { name: "join" }).click();
     await expect(page).toHaveURL(/#\/games\/[0-9a-f-]+\/join\?t=xyz$/);
     await expect(page.getByRole("heading", { name: "join game" })).toBeVisible();
   });
