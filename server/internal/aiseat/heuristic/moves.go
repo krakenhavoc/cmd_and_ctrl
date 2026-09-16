@@ -114,7 +114,53 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 			v -= st.w.permanentValue(src)
 		}
 	}
+	for _, cp := range c.Counters {
+		// #625: counters a cost removes, usually from a permanent
+		// other than the source — Heart of Kiran's crew paid with a
+		// planeswalker's loyalty. Priced against THAT permanent.
+		v -= st.w.counterRemovalValue(st.bf[cp.CardID.String()], cp.Counter, cp.N)
+	}
 	return v, false
+}
+
+// genericCounterValue is what one counter of a kind the evaluation
+// does not otherwise read (gold, charge, stun, …) is worth to lose.
+// Small and positive: a counter that exists is usually there to be
+// spent, which is exactly what a cost that removes it does.
+const genericCounterValue = 0.25
+
+// counterRemovalValue prices removing n counters of `kind` from `c`,
+// as a positive cost.
+//
+// The two kinds the evaluation already counts are priced in its own
+// units, and both carry the cliff that matters: the LAST loyalty
+// counter is the whole planeswalker (CR 704.5i), and the last point of
+// toughness a +1/+1 counter was holding up is the whole creature
+// (CR 704.5f). That cliff is what stops a bot crewing Heart of Kiran
+// by killing a 1-loyalty walker for a Vehicle it had no plan for — the
+// #74 lesson, one cost component over. A -1/-1 counter removed is a
+// gain. A permanent the policy cannot see (nil) is priced at the
+// generic rate rather than as free.
+func (w Weights) counterRemovalValue(c *protocol.CardView, kind string, n int) float64 {
+	if n <= 0 {
+		return 0
+	}
+	switch kind {
+	case "loyalty":
+		v := w.Loyalty * float64(n)
+		if c != nil && isType(c, "planeswalker") && c.Counters["loyalty"]-n <= 0 {
+			v += w.permanentValue(c)
+		}
+		return v
+	case "+1/+1":
+		if c != nil && isCreature(c) && c.Toughness-n <= 0 {
+			return w.permanentValue(c)
+		}
+		return (w.Power + w.Toughness) * float64(n)
+	case "-1/-1":
+		return -(w.Power + w.Toughness) * float64(n)
+	}
+	return genericCounterValue * float64(n)
 }
 
 // payoffOf prices what a move buys, before its declared cost.

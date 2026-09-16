@@ -159,6 +159,20 @@ describe("activated-ability targeting", () => {
     cancel();
     expect(get(targeting)).toBeNull();
   });
+
+  it("carries a counter-cost payment through the prompt (#625)", () => {
+    // Benevolent Hydra-shaped: the counter is chosen before the target,
+    // and has to reach the one activate_ability the confirm sends.
+    beginForAbility(bombardment, ability, [], [], undefined, {
+      counter_source_ids: ["c-walker"],
+      counter_kind: "stun",
+    });
+    expect(get(targeting)!.ability?.counter).toEqual({
+      counter_source_ids: ["c-walker"],
+      counter_kind: "stun",
+    });
+    cancel();
+  });
 });
 
 // --- S20 sub-PR 5: multi-target ------------------------------------

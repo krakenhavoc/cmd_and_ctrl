@@ -12,6 +12,7 @@
   // figure out overflow / flip-to-top-if-near-edge itself.
 
   import type { ActivatedAbilityView, ManaAbilityView } from "../../protocol";
+  import { counterCostBlocked, type CounterCostShape } from "../../counterCost";
   import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
@@ -70,7 +71,7 @@
     // stack and have no timing restriction (CR 605.1a) — so the arm
     // below is inert for the first list and live for the second.
     sorcery_speed?: boolean;
-  };
+  } & CounterCostShape;
 
   function abilityBlocked(a: CostShaped): string {
     if (a.tap_cost && tapped) return "already tapped";
@@ -80,6 +81,9 @@
       const n = a.sacrifice_options.cards?.length ?? 0;
       if (n === 0) return `nothing to sacrifice (${a.sacrifice_label ?? "a permanent"})`;
     }
+    // #625: a "remove N counters" cost with nothing that can pay it.
+    const counters = counterCostBlocked(a);
+    if (counters) return counters;
     if (a.legal_targets) {
       const n = (a.legal_targets.players?.length ?? 0) + (a.legal_targets.cards?.length ?? 0);
       if (n === 0) return "no legal target";

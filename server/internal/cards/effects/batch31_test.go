@@ -814,12 +814,12 @@ func TestB31FainTheBrokerTradesCreaturesAndArtifactsAndUntaps(t *testing.T) {
 	}
 	// {3}{B}: untap.
 	b31AddMana(me, "C", "C", "C", "B")
-	b16Activate(t, g, me.ID, fain, 2, game.ActivateAbilityParams{})
+	b16Activate(t, g, me.ID, fain, 3, game.ActivateAbilityParams{})
 	if b31Tapped(t, g, fain) {
 		t.Fatal("Fain untaps")
 	}
 	// The artifact half.
-	b16Activate(t, g, me.ID, fain, 1, game.ActivateAbilityParams{SacrificeIDs: []uuid.UUID{rock}})
+	b16Activate(t, g, me.ID, fain, 2, game.ActivateAbilityParams{SacrificeIDs: []uuid.UUID{rock}})
 	if g.Battlefield.Contains(rock) {
 		t.Error("the artifact is sacrificed to pay")
 	}
@@ -831,10 +831,12 @@ func TestB31FainTheBrokerTradesCreaturesAndArtifactsAndUntaps(t *testing.T) {
 	if c.Power != 2 || c.Toughness != 1 || len(c.Colors) != 2 || !hasEffectiveKeyword(t, g, inkling, "flying") {
 		t.Errorf("a 2/1 white and black flier, got %d/%d %v", c.Power, c.Toughness, c.Colors)
 	}
-	if abilities := game.ActivatedAbilitiesForCard(game.Card{OracleID: b31FainTheBrokerOracle}); len(abilities) != 3 {
-		t.Errorf("three of the four abilities are wired, got %d", len(abilities))
+	// #625: the Treasure ability — the fourth — is covered in
+	// counter_cost_cards_test.go.
+	if abilities := game.ActivatedAbilitiesForCard(game.Card{OracleID: b31FainTheBrokerOracle}); len(abilities) != 4 {
+		t.Errorf("all four abilities are wired, got %d", len(abilities))
 	}
-	if spec, _ := Lookup(b31FainTheBrokerOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the Treasure gap must be declared")
+	if spec, _ := Lookup(b31FainTheBrokerOracle); spec.Completeness != CompletenessFull {
+		t.Error("Fain has no remaining gap and should declare CompletenessFull")
 	}
 }

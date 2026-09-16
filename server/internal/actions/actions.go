@@ -919,8 +919,14 @@ func Dispatch(g *game.Game, a Action) error {
 			// Vehicle's crew cost (CR 702.122a). Any number of them;
 			// what the server checks is the total power.
 			CrewIDs []string `json:"crew_ids,omitempty"`
-			Strict  bool     `json:"strict,omitempty"`
-			AutoTap bool     `json:"auto_tap,omitempty"`
+			// #625 — counter_source_ids names the permanent a
+			// "remove N counters" cost removes from (omitted for the
+			// "from this" form); counter_kind names the kind for "a
+			// counter" of any kind.
+			CounterSourceIDs []string `json:"counter_source_ids,omitempty"`
+			CounterKind      string   `json:"counter_kind,omitempty"`
+			Strict           bool     `json:"strict,omitempty"`
+			AutoTap          bool     `json:"auto_tap,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -952,6 +958,14 @@ func Dispatch(g *game.Game, a Action) error {
 				}
 				crewIDs = append(crewIDs, id)
 			}
+			counterIDs := make([]uuid.UUID, 0, len(p.CounterSourceIDs))
+			for _, raw := range p.CounterSourceIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability counter_source_ids: %w", err)
+				}
+				counterIDs = append(counterIDs, id)
+			}
 			refs := make([]game.TargetRef, 0, len(p.Targets))
 			for _, t := range p.Targets {
 				ref, err := t.toRef()
@@ -961,9 +975,11 @@ func Dispatch(g *game.Game, a Action) error {
 				refs = append(refs, ref)
 			}
 			return g.ActivateCatalogAbility(a.Player, srcID, *p.AbilityIndex, game.ActivateAbilityParams{
-				SacrificeIDs: sacIDs,
-				CrewIDs:      crewIDs,
-				Targets:      refs,
+				SacrificeIDs:     sacIDs,
+				CrewIDs:          crewIDs,
+				CounterSourceIDs: counterIDs,
+				CounterKind:      p.CounterKind,
+				Targets:          refs,
 				// The same `x_value` the free-form branch below
 				// hands to buildAbilityParams, now reaching the real
 				// CR 602 path: an ability whose cost carries {X}

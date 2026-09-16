@@ -8,6 +8,7 @@ import type {
   PendingChoiceView,
   TapCostView,
 } from "./protocol";
+import type { CounterPayment } from "./counterCost";
 
 // targeting.ts is the shared-store plumbing for the S14 "cast a
 // catalog card, pick a target" flow. When a player clicks a hand
@@ -148,7 +149,16 @@ export interface TargetingState {
   // S21 sub-PR 2: set when the prompt collects targets for an
   // ACTIVATED ability rather than a cast. The confirm fires
   // activate_ability with these announce-time choices.
-  ability?: { index: number; sacrificeIDs: string[]; crewIDs: string[]; xValue?: number };
+  // #625: `counter` is the chosen payment for a "remove N counters"
+  // cost, already shaped as the payload's counter_source_ids /
+  // counter_kind.
+  ability?: {
+    index: number;
+    sacrificeIDs: string[];
+    crewIDs: string[];
+    xValue?: number;
+    counter?: CounterPayment;
+  };
   // Human-readable clause for the banner ("target artifact or
   // enchantment"); the server's TargetSpec label.
   label?: string;
@@ -411,6 +421,7 @@ export function beginForAbility(
   sacrificeIDs: string[],
   crewIDs: string[] = [],
   xValue?: number,
+  counter?: CounterPayment,
 ): void {
   const lt = ability.legal_targets;
   targeting.set({
@@ -420,7 +431,7 @@ export function beginForAbility(
     // CR 602.2b: X was announced before the targets were chosen and
     // cannot change now — it rides through to the one
     // activate_ability the confirm sends.
-    ability: { index: ability.index, sacrificeIDs, crewIDs, xValue },
+    ability: { index: ability.index, sacrificeIDs, crewIDs, xValue, counter },
     // The count comes off the wire like every other clause's. This
     // used to be a hard-coded 1 / 1 with a note explaining that
     // ActivatedAbilityView carried an inline `{players?, cards?}`
